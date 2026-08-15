@@ -1,0 +1,72 @@
+/**
+ * HOW LONG A MOMENT STAYS ON SCREEN — the dwell times, in ONE place.
+ *
+ * The law these serve is `docs/DESIGN_AUTHORITY.md` **§F**. This file is the definition
+ * site (§0d): a duration a MOMENT chooses deliberately lives here, never as a literal at a
+ * call site. `6_000` was written out at FOUR call sites — the Up & Down announcer twice and
+ * the long-form poller twice — which is four chances to disagree about how long a player is
+ * given to read that their money settled.
+ *
+ * ⚠️ THE PRIMITIVES KEEP THEIR OWN GENERIC DEFAULTS, and that is not a second definition.
+ * `toast.tsx`'s `DEFAULT_DURATION` and `operation-result-modal.tsx`'s
+ * `DEFAULT_AUTO_CLOSE_MS` answer *"nobody said, so pick something sane"*. The constants
+ * below answer *"this moment is worth exactly this long"*. Different questions.
+ *
+ * ── THE RULE THAT ORDERS THEM ────────────────────────────────────────────────────────
+ * ⭐ **THE MORE A SURFACE INTERRUPTS, THE LESS UNATTENDED TIME IT GETS.**
+ * A celebration is a centred modal behind a scrim — it takes the screen, so it may not
+ * linger uninvited. A result toast sits in the corner and blocks nothing, so it can afford
+ * to wait longer for a player who is mid-scroll. Hence `CELEBRATION < RESULT`, which looks
+ * backwards until you notice it is measuring *cost to the player*, not importance.
+ *
+ * ⛔ EVERY ONE OF THESE IS A CEILING ON WAITING, NEVER A FLOOR ON WATCHING. Dismissal is
+ * instant and always available — the celebration takes ✕, click-outside and Esc; a toast
+ * takes ✕, an up-swipe or a horizontal swipe. Nothing here delays a player who has seen it.
+ * (Ali's standing instruction, 2026-08-15: *"always keep the ability to hide instantly as
+ * it is now"*.)
+ *
+ * ⛔ AND NONE OF THIS APPLIES TO A FAILURE. A money-path refusal is `durationMs: 0` —
+ * sticky until dismissed — because a player must be able to read why nothing happened. Not
+ * a dwell time; the absence of one.
+ */
+
+/**
+ * The WIN celebration — the struck seal, the gilt figure, the count-up.
+ *
+ * **7s.** Raised from 4.5s on 2026-08-15 (Ali: *"more time … for users to feel excited …
+ * not to annoy"*). The old figure was tighter than it looked: the amount counts 0 → value
+ * over ~900ms, and the modal needs ~400ms to arrive and the eye to land, so of 4.5s only
+ * about **3.2s** was spent looking at the final number. Budgeted honestly — arrive 0.4s,
+ * count 0.9s, read the figure and the market line 1.6s, absorb ~2s, reach for a control
+ * ~1s — the moment wants ~5.9s, and 7s carries that with headroom.
+ *
+ * ⛔ NOT LONGER. Past ~8s an undismissed overlay stops being a moment and becomes an
+ * obstruction, which is the "annoy" half of the same instruction — and on a licensed
+ * real-money product a celebration that overstays is the reinforcement pattern §C5 and §H1
+ * already forbid in their own channels. 7s is the largest number that is still a beat.
+ *
+ * ⚠️ Wins QUEUE, so the worst case is bounded by `MAX_INDIVIDUAL` (3) in
+ * `win-celebration.tsx`, not by this value: past three the tail collapses into one honest
+ * summary. Without that cap this raise would have turned a weekend backlog into ~2½ minutes
+ * of modals.
+ */
+export const DWELL_CELEBRATION_MS = 7_000;
+
+/**
+ * A settled RESULT — won, lost, or voided — announced in the corner.
+ *
+ * **8s.** Raised from 6s on 2026-08-15, and it is longer than the celebration on purpose:
+ * a toast blocks nothing, so waiting costs the player nothing, and a player mid-scroll may
+ * take a second or more just to notice it.
+ *
+ * ⭐ **A LOSS TAKES THE SAME 8s AS A WIN, DELIBERATELY.** They are one channel and one
+ * class of event, and §F exists precisely to stop two actions of the same kind answering
+ * differently. Giving a win longer than a loss would be the platform leaning on the outcome
+ * it prefers — which `docs/DESIGN_AUTHORITY.md` §C4 forbids in as many words: losses are
+ * *calm, factual, final*. The extra seconds here are READING time, not dwelling time, and
+ * they cut the right way for harm prevention: the LCCP standard behind "Bet lost · TZS X"
+ * is that a loss must actually register, not that it must pass quickly.
+ * ⚠️ VOID keeps the same value for the same reason — a refund is neither good news nor bad,
+ * and timing it differently would editorialise a neutral outcome.
+ */
+export const DWELL_RESULT_MS = 8_000;

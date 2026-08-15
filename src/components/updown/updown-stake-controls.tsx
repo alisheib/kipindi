@@ -8,7 +8,15 @@
  *     validated numeric field (bounded to the chain's min/max)
  *   · the Up / Down place buttons (disabled until the chosen amount is usable)
  *   · a helper line, a success pulse on the tapped side, and a visually-hidden
- *     aria-live announcement (the confirmation for screen readers, in place of a toast)
+ *     aria-live announcement (the confirmation for screen readers)
+ *
+ * ⚠️ THIS HEADER USED TO SAY THE aria-live LINE WAS THERE "in place of a toast". It has not
+ * been true since 2026-08-05 (E-64), when the success toast was restored — and a stale
+ * comment naming an absent channel is how the next reader concludes the gap is deliberate.
+ * A placed bet now answers on FIVE channels: the pulse, the aria-live line, the haptic, the
+ * 3-second toast, and — since UD-22 — the centred `OperationResultModal` receipt hosted at
+ * the bottom of this component, which is the house rule every other consequential mutation
+ * has always followed.
  *
  * Presentational only — all money logic + the placement/validation state come from
  * `useUpDownQuickBet`, passed in as `bet`. Two sizes: "card" (compact, on the board)
@@ -23,6 +31,8 @@ import { cn, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { usePlacePulse, type useUpDownQuickBet } from "./use-quick-bet";
 import { UpDownBetBlockedModal } from "./updown-bet-blocked-modal";
+import { UpDownBetReceiptModal } from "./updown-bet-receipt-modal";
+import type { UpDownReceiptInfo } from "@/lib/updown-receipt";
 import { stakeChipLabel } from "./stake-math";
 // ⭐ D2 · ONE RULE for "what would I be paid", shared with the card, the round page and the
 // server's own `myExactPayout`. Never re-derived here — see `@/lib/updown-pricing`.
@@ -34,10 +44,21 @@ export function UpDownStakeControls({
   bet,
   pricing,
   assetName,
+  receipt,
+  onWatchRound,
   size = "card",
   stopPropagation = false,
 }: {
   bet: Bet;
+  /**
+   * UD-22 · the round's frozen receipt facts (`BoardRound.receipt`), for the confirmation
+   * modal. Optional ONLY so a surface that genuinely has no round context can still render
+   * the controls; when it is absent the receipt is skipped and the other four channels
+   * still fire. Every real bet surface passes it.
+   */
+  receipt?: UpDownReceiptInfo;
+  /** Ghost CTA on the receipt. Omitted on `/updown/[roundId]` — already there. */
+  onWatchRound?: () => void;
   /**
    * ⛔ REQUIRED, not optional, and that is deliberate. The E-99 near-miss was a fourth argument
    * left off one call site: it type-checked perfectly and the feature silently did nothing on
@@ -249,12 +270,34 @@ export function UpDownStakeControls({
         <p className={cn("mt-1 leading-[1.45] text-text-faint", compact ? "text-[10px]" : "text-[10.5px]")}>{t.market.udEstimateNote}</p>
       )}
 
-      {/* Screen-reader confirmation — replaces the happy-path toast. */}
+      {/* Screen-reader confirmation. ⛔ NOT a replacement for the toast — both, always: a
+          toast is a transient region a screen reader may never voice, and this is the
+          announcement. (This comment said "replaces the happy-path toast"; the toast has
+          been back since E-64.) */}
       <span aria-live="polite" className="sr-only">{bet.liveMessage}</span>
 
       {/* UD-3 · compliance/account refusals must be READ, not glimpsed — the canonical
           result modal, danger variant, open until dismissed. One host per bet instance. */}
       <UpDownBetBlockedModal blocked={bet.blocked} onClose={bet.clearBlocked} />
+
+      {/* ⭐ UD-22 · and its SIBLING, the success case — the receipt a placed bet ends in.
+          Hosted here, beside the refusal, so every bet surface confirms identically.
+          ⛔ `key` is the receipt's nonce, and that is what makes a burst COALESCE correctly:
+          the modal's auto-close target is anchored once per open cycle, so without a remount
+          a second bet would show under the FIRST tap's countdown and could vanish almost
+          immediately. Re-keying restarts the 5s for the latest bet while still rendering
+          exactly one dialog — never a stack, and never a gate on the next tap. */}
+      {receipt && (
+        <UpDownBetReceiptModal
+          key={bet.placedReceipt?.nonce ?? 0}
+          placed={bet.placedReceipt}
+          info={receipt}
+          pricing={pricing}
+          assetName={assetName}
+          onClose={bet.clearPlacedReceipt}
+          onWatchRound={onWatchRound}
+        />
+      )}
     </>
   );
 }

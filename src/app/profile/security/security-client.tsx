@@ -39,13 +39,25 @@ export function SecurityClient({ enabled, backupRemaining }: { enabled: boolean;
     return () => { alive = false; };
   }, [otpauthUrl]);
 
-  const errFor = (e?: string) =>
-    e === "rate_limited" ? t.security.errRateLimited : e === "invalid" ? t.security.errInvalid : t.security.errGeneric;
+  // FEEDBACK LAW (DESIGN_AUTHORITY §F) — a refusal states the reason AND the next step.
+  // This returned a bare TITLE, so the generic branch reached the player as "Something
+  // went wrong. Try again." with nothing saying what had (or had not) happened to their
+  // account. Each branch now carries its own body; the pair is what the toast renders.
+  // `danger` is kept deliberately: this is the two-factor rail, and a change that did not
+  // take on the control guarding the account is an error, not a fixable slip.
+  const errFor = (e?: string): { title: string; body: string } =>
+    e === "rate_limited" ? { title: t.security.errRateLimited, body: t.security.errRateLimitedBody }
+    : e === "invalid"    ? { title: t.security.errInvalid,     body: t.security.errInvalidBody }
+    :                      { title: t.security.errGeneric,     body: t.security.errGenericBody };
+  const errToast = (e?: string) => {
+    const c = errFor(e);
+    toast({ title: c.title, description: c.body, variant: "danger" });
+  };
 
   function beginEnroll() {
     start(async () => {
       const r = await startEnrollAction();
-      if (!r.ok || !r.otpauthUrl) { toast({ title: errFor(r.error), variant: "danger" }); return; }
+      if (!r.ok || !r.otpauthUrl) { errToast(r.error); return; }
       setOtpauthUrl(r.otpauthUrl);
       setSecret(r.secret ?? null);
       setCode("");
@@ -56,7 +68,7 @@ export function SecurityClient({ enabled, backupRemaining }: { enabled: boolean;
   function confirmEnroll() {
     start(async () => {
       const r = await confirmEnrollAction(code);
-      if (!r.ok || !r.backupCodes) { toast({ title: errFor(r.error), variant: "danger" }); return; }
+      if (!r.ok || !r.backupCodes) { errToast(r.error); return; }
       setBackupCodes(r.backupCodes);
       setPhase("codes");
     });
@@ -76,13 +88,13 @@ export function SecurityClient({ enabled, backupRemaining }: { enabled: boolean;
     start(async () => {
       if (kind === "regen") {
         const r = await regenerateBackupCodesAction(disarmCode);
-        if (!r.ok || !r.backupCodes) { toast({ title: errFor(r.error), variant: "danger" }); return; }
+        if (!r.ok || !r.backupCodes) { errToast(r.error); return; }
         setDisarm(null); setDisarmCode("");
         setBackupCodes(r.backupCodes);
         setPhase("codes");
       } else {
         const r = await disable2faAction(disarmCode);
-        if (!r.ok) { toast({ title: errFor(r.error), variant: "danger" }); return; }
+        if (!r.ok) { errToast(r.error); return; }
         setDisarm(null); setDisarmCode("");
         toast({ title: t.security.disabledToast, variant: "success" });
         router.refresh();

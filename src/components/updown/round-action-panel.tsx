@@ -25,6 +25,7 @@ import { RoundStakePanel } from "./round-stake-panel";
 import { formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import type { UpDownPricing } from "@/lib/updown-pricing";
+import type { UpDownReceiptInfo } from "@/lib/updown-receipt";
 
 const cardStyle = {
   background: "var(--bg-elevated)", border: "1px solid var(--border)",
@@ -53,6 +54,8 @@ export function RoundActionPanel(props: {
     signInHref: string;
     lockedSide: "UP" | "DOWN" | null;
     walletBalance: number | null;
+    /** UD-22 · the round's frozen receipt facts, for the bet-confirmation modal. */
+    receipt?: UpDownReceiptInfo;
   };
   /** The frozen figure for the locked presentation — server-computed, never derived here. */
   myExactPayout: number | null;

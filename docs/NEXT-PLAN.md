@@ -1,6 +1,28 @@
 STATUS: the next plan. Written 2026-07-29, immediately after the design system was
 frozen and shipped. **Revised 2026-07-31 against the live platform, not against memory.**
 
+> ⭐ **THE FEEDBACK LAYER HAS A LAW (2026-08-15) — `DESIGN_AUTHORITY.md` §F.** What a
+> consequential action answers with — popup · toast · haptic · in-app/push/email, and the
+> options inside them — is stated once, per CLASS of action, with a severity rule and a dwell
+> rule. Guard `npm run test:feedback-law` (**130**) · `npm run red:feedback-law` (**21/21**).
+> The matrix it was derived from is [`docs/FAILURE-INVENTORY.md`](FAILURE-INVENTORY.md) §6:
+> **171** server actions, opened at their call sites rather than grepped.
+> **UD-22 shipped** — the Up & Down bet now ends in the shared `OperationResultModal` like
+> every other money mutation; its "way out" row is COMPUTED per bet (a 3-minute round has no
+> free exit at all, and a bonus-funded bet never does), pinned against `cashOutValue`'s own
+> expression so client and server cannot drift.
+> **Win/loss dwell raised on Ali's instruction (2026-08-15):** celebration 4.5s → **7s**,
+> result toasts 6s → **8s**, bet-placed deliberately unchanged, dismissal still instant.
+> Values live once in `src/lib/feedback-timing.ts`; `6_000` had been copy-pasted at four sites.
+> 🔴 **Two live defects the matrix found:** a background poll fired the money-settled haptic on
+> a page render *and over LOSS notifications*; and the push opt-OUT threw away the server's
+> `{ ok: false }`, telling a player push was off while the subscription survived.
+> ⏳ **Left open, deliberately:** five player surfaces render a raw server sentence as a JSX
+> banner (`{sp.error}`), a channel `test:failure-reasons` §10 structurally cannot see — one is
+> RG. That is §2.3's wallet/KYC/auth tranche. `test:feedback-law` §8 ratchets it at **5**.
+> ⚠️ **Four RED harnesses were ABSENT TESTS** and are repaired — see the §6b handoff. `red:all`
+> is a `&&` chain, so the first break starves everything after it.
+>
 > ⭐ **EVERY UP & DOWN POSITION IS VISIBLE (2026-08-15).** Ali: *"make it show, no matter how
 > much position I have, perfectly."* Two surfaces compressed a player's own money and both are
 > fixed. `/updown/history` rendered `g.bets.slice(0, 2)` per round card and collapsed the rest

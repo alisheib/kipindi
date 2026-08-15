@@ -591,7 +591,21 @@ class BetAbort extends Error {
 }
 
 type BuyOpts = { marketId: string; side: Side; stake: number; idempotencyKey?: string };
-type BuyResult = ServiceResult<{ positionId: string; balance: number; payoutIfWin: number }>;
+/**
+ * ⭐ `placedAt` and `bonusStakeTzs` are here for the BET RECEIPT, and both are load-bearing.
+ * The Up & Down receipt states whether this bet has a free cancellation, and that answer is
+ * `cashOutValue`'s — runway measured from the SERVER's placement instant, and refused
+ * outright when any of the stake came from the bonus wallet. Deriving either in the browser
+ * (`Date.now()`, or assuming zero bonus) would let the popup promise an exit the server
+ * always refuses. See `src/lib/updown-receipt.ts`.
+ */
+type BuyResult = ServiceResult<{
+  positionId: string;
+  balance: number;
+  payoutIfWin: number;
+  placedAt: string;
+  bonusStakeTzs: number;
+}>;
 
 /**
  * Player buys a position on a market.
@@ -723,7 +737,7 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
   // recordSnapshot/emit call below for why these can't fire inside any more.
   type CommittedBet = { positionId: string; placedAt: string; yesPool: number; noPool: number; payoutIfWin: number; bonusPart: number; walletId: string; bonusAllocations: BonusAllocation[]; usedTx: boolean };
   let committed: CommittedBet | null = null;
-  let result: ServiceResult<{ positionId: string; balance: number; payoutIfWin: number }>;
+  let result: BuyResult;
   try {
   result = await withLock(`wallet:${userId}`, async (lockTx) => {
     // Idempotency: if this key was already used, return the existing position.
@@ -732,7 +746,20 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
       const existing = await positionStore.findByIdempotencyKey(opts.idempotencyKey, lockTx);
       if (existing) {
         const w = await db.wallet.findByUserId(userId, lockTx);
-        return { ok: true as const, data: { positionId: existing.id, balance: w?.balance ?? 0, payoutIfWin: existing.potentialPayout } };
+        // ⛔ The REPLAY reports the ORIGINAL bet's facts, not this attempt's. A retry on the
+        // same idempotency key is the same bet, so its receipt must state the runway the
+        // stored position actually has — re-stamping `placedAt` here would hand a replayed
+        // tap a free cancellation the first one never had.
+        return {
+          ok: true as const,
+          data: {
+            positionId: existing.id,
+            balance: w?.balance ?? 0,
+            payoutIfWin: existing.potentialPayout,
+            placedAt: existing.placedAt,
+            bonusStakeTzs: existing.bonusStakeTzs ?? 0,
+          },
+        };
       }
     }
 
@@ -1038,7 +1065,7 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
       audit({ category: "SYSTEM", action: "bonus.wagering_error", actorId: userId, targetType: "Position", targetId: positionId, payload: { stake: opts.stake, error: String((err as Error)?.message ?? err) } });
     }
 
-    return { ok: true as const, data: { positionId, balance: newBalance, payoutIfWin } };
+    return { ok: true as const, data: { positionId, balance: newBalance, payoutIfWin, placedAt, bonusStakeTzs: bonusPart } };
   });
   } catch (err) {
     // BetAbort now has to escape withLock to do its job. Since withMoneyTx joins

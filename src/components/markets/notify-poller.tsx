@@ -41,6 +41,7 @@ import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
 import { dispatchWinCelebration } from "@/components/markets/win-celebration";
 import { formatTzs } from "@/lib/utils";
+import { DWELL_RESULT_MS } from "@/lib/feedback-timing";
 
 const WATCH_KEY = "50pick-notify-markets";
 /** Announced-once key. ⛔ Per POSITION, not per market — two bets on one market are two
@@ -169,7 +170,7 @@ export function NotifyPoller() {
                   title: t.market.marketStakeReturnedTitle,
                   description: `${label} · ${formatTzs(p.payout)}`,
                   variant: "factual",
-                  durationMs: 6000,
+                  durationMs: DWELL_RESULT_MS,
                 });
               } else {
                 // LOSS — plain and direct. ⛔ NOT `warning`, which is GOLD, the celebration
@@ -179,7 +180,7 @@ export function NotifyPoller() {
                   title: t.market.marketLostTitle,
                   description: `${label} · ${formatTzs(p.stake)}`,
                   variant: "factual",
-                  durationMs: 6000,
+                  durationMs: DWELL_RESULT_MS,
                 });
               }
 

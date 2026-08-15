@@ -28,6 +28,7 @@ import { I } from "@/components/ui/glyphs";
 import {
   impliedMultiplier, projectedReturn, refundWarningFor, formatMultiplier, type UpDownPricing,
 } from "@/lib/updown-pricing";
+import type { UpDownReceiptInfo } from "@/lib/updown-receipt";
 
 export function RoundStakePanel(props: {
   marketId: string;
@@ -46,6 +47,8 @@ export function RoundStakePanel(props: {
   /** UD-2 · the lock instant + server clock — the hook refuses a tap past the lock. */
   selectionClosesAtMs?: number | null;
   serverNowMs?: number;
+  /** UD-22 · the round's frozen receipt facts, for the bet-confirmation modal. */
+  receipt?: UpDownReceiptInfo;
 }) {
   const { t } = useT();
   const { marketId, isAuthed, minStake, maxStake, myUpStake, myDownStake, pricing, assetName, signInHref, lockedSide } = props;
@@ -79,7 +82,10 @@ export function RoundStakePanel(props: {
     return (
       <div className={cn(pulse && "ud-place-pulse")}>
         <p className="mb-3 text-[12.5px] leading-[1.55] text-text-muted">{t.market.udTagline}</p>
-        <UpDownStakeControls bet={bet} pricing={pricing} assetName={assetName} size="detail" />
+        {/* UD-22 · no `onWatchRound`: the player is already on the round, and a ghost CTA
+            that navigates to the page you are standing on is the dead-end this session's
+            brief names. The receipt keeps its single primary action. */}
+        <UpDownStakeControls bet={bet} pricing={pricing} assetName={assetName} size="detail" receipt={props.receipt} />
       </div>
     );
   }

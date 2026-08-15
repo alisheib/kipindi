@@ -53,7 +53,9 @@ export function PositionShare({
     if (won && positionId) {
       const r = await mintWinShareTokenAction(positionId);
       if (!r.ok || !r.token) {
-        toast({ title: t.share.errGeneric, variant: "danger" });
+        // FEEDBACK LAW (DESIGN_AUTHORITY §F) — warning severity: the mint failed, nothing
+        // about the player's position changed, and tapping Share again is the whole remedy.
+        toast({ title: t.share.errGeneric, description: t.share.errGenericBody, variant: "factual" });
         return null;
       }
       params.set("w", r.token);

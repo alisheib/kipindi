@@ -21,7 +21,10 @@
  *
  * The component is mounted once via <WinCelebrationHost /> in AppShell. Any
  * client component can fire one with `dispatchWinCelebration({...})`. The popup
- * auto-dismisses after 4.5s; manual close + click-anywhere-outside also work.
+ * auto-dismisses after `DWELL_CELEBRATION_MS` (§F; 7s since 2026-08-15, raised from
+ * 4.5s); manual close, Esc and click-anywhere-outside all still dismiss it INSTANTLY.
+ * ⚠️ The duration is a named constant, not a literal here — a stale "4.5s" in this very
+ * sentence is what the one-definition-site rule exists to prevent.
  * Choreography lives in the SYSTEM (`.seal-*` paint in globals.css, cascade and
  * flip offsets in motion.css) — this file only composes classes.
  */
@@ -31,6 +34,7 @@ import { Modal } from "@/components/ui/modal";
 import { FiftyMark } from "@/components/brand";
 import { haptics } from "@/lib/haptics";
 import { acknowledgeNeedle } from "@/lib/needle-bridge";
+import { DWELL_CELEBRATION_MS } from "@/lib/feedback-timing";
 import { useT } from "@/lib/i18n";
 import { formatNumber, formatTzs } from "@/lib/utils";
 
@@ -177,7 +181,11 @@ export function WinCelebrationHost() {
       haptics.success();
     }
     if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(dismiss, 4_500);
+    // §F · the dwell is a named constant, not a literal — see `@/lib/feedback-timing` for
+    // why 7s and why the celebration gets LESS unattended time than the corner toast.
+    // ⛔ It is a ceiling on waiting, never a floor on watching: ✕, click-outside and Esc all
+    // still dismiss instantly, unchanged.
+    timerRef.current = setTimeout(dismiss, DWELL_CELEBRATION_MS);
   };
 
   // Dismiss closes THIS seal, then hands over to the next after a short gap so the

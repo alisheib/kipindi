@@ -22,6 +22,9 @@ import { impliedYesPct } from "./market-service";
 // client component, this is the server, and one definition of "what would I be paid" is the
 // point (same reasoning as `updown-refund-reason.ts`).
 import type { UpDownPricing } from "@/lib/updown-pricing";
+// The frozen facts a placed bet is confirmed with, and the one rule that decides whether it
+// has a way out. Isomorphic for the same reason `UpDownPricing` is — see the module header.
+import type { UpDownReceiptInfo } from "@/lib/updown-receipt";
 // E-99 · the result clock is driven by an asset's OWN measured record, never by a constant.
 import { feedHistoryFor } from "./updown-feed-history";
 import { MIN_SAMPLES_FOR_ADVICE } from "./updown-feed-advice";
@@ -215,6 +218,18 @@ export type BoardRound = {
    * to refuse. "Reading the closing price…" is the honest state, and it is what we keep.
    */
   expectedResultAtMs: number | null;
+  /**
+   * ⭐ THE BET RECEIPT'S FROZEN FACTS — assembled ONCE, here, so the board card and
+   * `/updown/[roundId]` confirm a bet with the same sentences.
+   *
+   * ⛔ IT CARRIES `freeExitGraceMinutes` FROM `ratesFor(m)`, THE MARKET'S OWN SNAPSHOT, and
+   * that is the whole reason it is built server-side rather than in the modal. The receipt
+   * states whether this bet can be cancelled, and `cashOutValue` answers that from the
+   * market's frozen grace against the bet's runway — never live config. A client reading
+   * `docs/RULES.md` §2.6's "5 minutes" as a constant would print *"Free cancellation ·
+   * 5 min"* on a 3-minute round, where the exit does not exist at all.
+   */
+  receipt: UpDownReceiptInfo;
 };
 
 /**
@@ -282,6 +297,15 @@ async function heldPayout(
 async function toBoardRound(
   r: StoredRound,
   chain: StoredChain,
+  /**
+   * ⛔ REQUIRED, and positioned BEFORE the optional arguments deliberately. The receipt needs
+   * the asset's `decimals` and `sourceClass`, and this file has already been bitten once by
+   * an optional trailing parameter: the note on `measuredLagSeconds` at the `getRoundDetail`
+   * call site records that `toBoardRound(r, chain, mine)` type-checked perfectly with the
+   * lag missing, so a feature would have been null on `/updown/[roundId]` for ever while the
+   * board card worked. A required parameter makes forgetting it a compile error instead.
+   */
+  asset: Pick<StoredAsset, "decimals" | "symbol" | "category">,
   mine?: MyMarketStake,
   /** The asset's measured median seconds from boundary to a confirmed reading, or null when
    *  it has too little history to quote one. Passed in — never recomputed per round, which
@@ -338,6 +362,20 @@ async function toBoardRound(
     // answer to "when do bets close", and the two would drift the first time the fraction is
     // tuned — the `[5, 15, 30]` failure, applied to a deadline that decides whether a bet is legal.
     selectionClosedAt: m.selectionClosedAt,
+    // ⭐ The receipt's frozen facts, built here so both bet surfaces confirm identically.
+    // `rates` is `ratesFor(m)` — the MARKET's own snapshot, already resolved above for the
+    // pricing block, so the exit terms stated on the receipt are the exact ones
+    // `cashOutValue` will apply. See `src/lib/updown-receipt.ts`.
+    receipt: {
+      durationMinutes: chain.durationMinutes,
+      selectionClosedAt: m.selectionClosedAt,
+      closesAt: r.closesAt,
+      openPrice: r.openPrice,
+      decimals: asset.decimals,
+      sourceClass: publicSourceClassFor(asset),
+      roundHref: `/updown/${r.id}`,
+      freeExitGraceMinutes: rates.freeExitGraceMinutes,
+    },
     serverNowMs: Date.now(),
     state,
     settled: !!r.settledAt,
@@ -564,6 +602,12 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
     (opts?.assetKey ? assets.find((a) => a.key === opts.assetKey) : undefined)
     ?? firstPlayable ?? assets[0] ?? null;
   if (!activeAsset) return { assets, activeAsset: null, activeDuration: null, rounds: [], recent: [], chainPaused: false, stakeBounds: defaultBounds, walletBalance };
+  // The STORED row behind the active card. `BoardAsset` is the mapped, player-safe shape and
+  // deliberately carries no `symbol`/`category` — E-53 keeps the vendor's identifiers off the
+  // wire — but `publicSourceClassFor` classifies FROM those fields, so the receipt is built
+  // from the row rather than by widening what crosses to the browser.
+  const activeAssetRow = enabled.find((a) => a.id === activeAsset.id);
+  if (!activeAssetRow) return { assets, activeAsset, activeDuration: null, rounds: [], recent: [], chainPaused: true, stakeBounds: defaultBounds, walletBalance };
 
   const activeDuration =
     (opts?.durationMinutes && activeAsset.durations.includes(opts.durationMinutes) ? opts.durationMinutes : undefined)
@@ -591,7 +635,7 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
   // Newest first, bounded — never an unbounded scan of a table that grows every minute.
   const raw = await roundStore.list({ chainId: chain.id, limit: 24 }).catch(() => []);
   const mapped = (await Promise.all(
-    raw.map((r) => toBoardRound(r, chain, mineByMarket.get(r.marketId), lagSeconds)),
+    raw.map((r) => toBoardRound(r, chain, activeAssetRow, mineByMarket.get(r.marketId), lagSeconds)),
   )).filter(Boolean) as BoardRound[];
 
   // The board shows what a player can act on or has just watched: open + confirming,
@@ -849,7 +893,7 @@ export async function getRoundDetail(roundId: string, userId?: string): Promise<
   // perfectly with the fourth argument missing, so `expectedResultAtMs` would have been null
   // on `/updown/[roundId]` for ever while the board card worked — a feature that is present in
   // the code, passes tsc, and does nothing on half the surfaces it claims to cover.
-  const board = await toBoardRound(r, chain, mine, await measuredLagSeconds(a.key));
+  const board = await toBoardRound(r, chain, a, mine, await measuredLagSeconds(a.key));
   if (!board) return null;
 
   const live = await latestConfirmed(a.id);

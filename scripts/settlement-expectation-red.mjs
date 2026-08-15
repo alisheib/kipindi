@@ -24,6 +24,8 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+// ⭐ THE ONE LOCATOR (E-108). Imported, never re-spelled — five drifts of this anchor say so.
+import { locateHandoff } from "./campaign-handoff.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const RUNBOOK = join(ROOT, "docs/runbooks/markets-runbook.html");
@@ -54,11 +56,40 @@ const MUTATIONS = [
     // about the guard. §5 anchors LINE-INITIALLY (`/^⏭️ \*\*RESUME AT:/m`); a plain `indexOf`
     // on the same marker text finds the copy quoted inside §0.1a's prose first and mutates a
     // paragraph §5 never reads — which is precisely how this mutation reported a MISS twice.
+    // 🔴 THE FIFTH DRIFT OF THIS ONE ANCHOR — found 2026-08-15, and it is the same finding
+    // E-108 filed, on the one copy that repair missed.
+    //
+    // E-108's fix was to put the locator in ONE module (`campaign-handoff.mjs`) and import it
+    // everywhere, precisely because each previous repair fixed one copy and handed the next
+    // bug to the others by copy-paste. `test:settlement-expectation` §5 was migrated;
+    // `tracker-hygiene-red.mjs` was migrated; **this harness was not.** It kept the retired
+    // `/^⏭️ \*\*RESUME AT:/m`, which cannot match the live marker
+    // (`#### ⏭️ **RESUME AT (session NN):` — a HEADING, with the session number after `AT`).
+    // It therefore matched a line-initial copy in §0.1a's narrative and mutated a paragraph
+    // §5 never reads, so the guard stayed green and the harness reported a MISS — for which
+    // `red:all` has been exiting 1.
+    //
+    // ⛔ AND THE COMMENT ABOVE ALREADY SAID WHAT TO DO: *"THE MUTATION MUST LOCATE THE TARGET
+    // EXACTLY AS THE GUARD DOES, or it proves nothing about the guard."* It then hand-rolled a
+    // different regex on the next line. Importing the locator is the only form of that rule
+    // that cannot rot again.
+    // ⭐ AND IT MUST **INSERT** THE WRONG FIGURE, NOT REPLACE ONE. The original mutation
+    // rewrote an existing `receive **TZS 3,740**` inside the handoff — which worked only while
+    // a market was mid-settlement. §5 is explicitly conditional (`if (expected)`): a handoff
+    // that declares "no money moved" states its position correctly and has no figure to check,
+    // and §5's own comment explains that demanding one would force a session to INVENT a
+    // number (A-5). Today's handoff is exactly that shape, so a REPLACE mutation had nothing
+    // to bite on — `doc.slice(h.index)` then ran to end-of-file and silently edited a findings
+    // table 1,400 lines below, which §5 never reads. Inserting the wrong expectation tests the
+    // property that actually matters — *"a handoff that names a payout must name the right
+    // one"* — and it keeps testing it whatever this session's handoff happens to say.
     rewrite: (doc) => {
-      const m = /^⏭️ \*\*RESUME AT:/m.exec(doc);
-      if (!m) return doc;
-      const at = m.index;
-      return doc.slice(0, at) + doc.slice(at).replace("**TZS 3,740**", "**TZS 3,480**");
+      const h = locateHandoff(doc);
+      // ⛔ Not a silent no-op: an unlocatable or stale handoff means this mutation is testing
+      // nothing, and the runner below reports "NOTHING CHANGED — harness broken, not a pass".
+      if (!h.found || h.stale) return doc;
+      const at = h.index + h.marker.length;
+      return `${doc.slice(0, at)}\n\nalpha should receive **TZS 3,480** on settlement.\n${doc.slice(at)}`;
     },
   },
   {

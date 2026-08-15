@@ -104,6 +104,7 @@ gold on this platform means **earned money only**. A warning-severity refusal us
 | …that render a **raw server string** | ✅ **0 as of 2026-08-14** — was 12 |  `comments-thread.tsx:83/:103/:118` · `objection-dialog.tsx:61` · `create-form.tsx:77` · `export-data-button.tsx:19` · `profile/account/page.tsx:75` · `profile/source-of-funds/page.tsx:71` · `profile/responsible-gambling/page.tsx:79` · `auth/otp/page.tsx:65` · `auth/2fa/page.tsx:47` · raw `Error.message` at `avatar-uploader.tsx:94`, `kyc-doc-uploader.tsx:49`, `:154` |
 | …that say only that something failed | **8** | `watch-star.tsx:81` · `position-share.tsx:56` · `push-settings.tsx:58/:62/:80` · `security-client.tsx` generic branch · `password-section.tsx:47` (title is the bare word "Failed") |
 | …that are **SILENT** | **1** | `auth/login/page.tsx:138` — `default: return null` |
+| …rendered as a **JSX BANNER** rather than a toast prop | **5**, and §10's ratchet cannot see them | 🔴 see the note below |
 | Nothing tests any mapper | ✅ **closed 2026-08-14** | `test:failure-reasons` §8 pins every phrase test against the **server's own string**, §9 pins the code→reason→severity mapping, §10 is a ratchet at **zero** on raw renders. `red:failure-reasons` catches 16/16, including a reworded server sentence and a drifted pattern |
 
 > ⭐ **THE RAW-STRING COUNT WAS SIX, NOT TWELVE — AND MEASURING IT WRONG COST TWO WOLF-CRIES.**
@@ -115,6 +116,35 @@ gold on this platform means **earned money only**. A warning-severity refusal us
 > `create-form.tsx` ×1. The ceiling is **0** and may only stay there.
 > ⚠️ 71 raw renders remain on the **staff** console. They are excluded deliberately, counted
 > and printed by §10 rather than hidden inside a filter, and are not this inventory's subject.
+
+> 🔴 **AND THE ZERO IS TRUE OF ONE CHANNEL ONLY — measured 2026-08-15.** §10's pattern is
+> `/\b(?:title|description):\s*(?!t\.)[A-Za-z_$][\w$]*\.error\b(?!\.)/` — an object
+> **property**, i.e. a toast or modal argument. A **form-action page does not report that
+> way**: it `redirect(...?error=<the server's English sentence>)` and the server component
+> renders `{sp.error}` as JSX text in a `Callout` or a `role="alert"` div. That form matches
+> nothing in §10's regex, so the entire channel sits outside its denominator. This is §5b's
+> *"a check adjacent to the truth"*, and it is why the row above must not be read as "no
+> player ever sees English prose".
+>
+> **Five do today**, and one is a **compliance** surface — a Swahili or Chinese player who
+> trips `setLimits` validation reads *"Invalid value for dailyLossLimit."*:
+>
+> | Surface | Class |
+> |---|---|
+> | `profile/responsible-gambling/page.tsx:79` | 🔴 RG / compliance |
+> | `profile/kyc/page.tsx:94` | KYC |
+> | `profile/source-of-funds/page.tsx:71` | KYC / SOF |
+> | `profile/account/page.tsx:75` | account |
+> | `auth/reset-password/page.tsx:138` | auth |
+>
+> ⚠️ **NOT FIXED, and deliberately so.** Fixing them means teaching those services to emit a
+> machine `reason` and routing it through the redirect — which is §2.3's wallet/KYC/auth
+> tranche, the RULES programme's open ⏳, not this session's. What DID land is a **ratchet
+> that can see the channel**: `npm run test:feedback-law` §8 pins the count at **5**, may only
+> be lowered, prints the five by name, and carries a positive control; `red:feedback-law`
+> proves a sixth banner goes red. Four of the five were in the original list of twelve above
+> and were dropped from the "real population of six" because the re-measurement scanned only
+> toast props; `auth/reset-password/page.tsx` was never listed at all.
 
 ### 1.6 · The documented bug this must not repeat
 
@@ -359,3 +389,70 @@ A count of mapped surfaces is not enough — that check passes by never growing.
 | C3 | one renderer, three severities | ✅ `renderFailure`, both bet surfaces |
 | C4 | kill the BUSY lie | ✅ `system_busy` vs `system_error`; the same-key retry kept |
 | C5 | the guard, red first | ✅ `test:failure-reasons` 48 · `red:failure-reasons` 9/9 |
+
+---
+
+## §6 · THE FEEDBACK MATRIX — every consequential action, and what it answers with
+
+> Measured 2026-08-15 by opening the call sites, not by grepping names. The LAW this serves is
+> [`docs/DESIGN_AUTHORITY.md`](DESIGN_AUTHORITY.md) **§F**; the guard is
+> `npm run test:feedback-law` (113) with `npm run red:feedback-law` (15/15).
+>
+> ⛔ **The denominator first.** `171` exported `"use server"` functions across
+> `src/app/**/actions.ts` and `src/app/_actions/**`. Of those, **41 have no client caller at
+> all** (they are `<form action>` targets or server-internal), and the rest split into the
+> classes below. A matrix that starts from "things I noticed" is not a matrix.
+
+### 6.1 · How a consequential action reports, by class
+
+| Class | Action(s) | Popup | Toast | Haptic | In-app / push / email | On FAILURE |
+|---|---|---|---|---|---|---|
+| **Bet — poll** | `buyPositionAction` (dial) | ✅ `OperationResultModal` `conviction-dial.tsx:1642` | ✅ secondary, deferred | ✅ `confirm` on the confirm press | ✅ `notifyBetPlaced` + email | `renderFailure` → severity-mapped; blocked → modal |
+| **Bet — Up & Down** | `buyPositionAction` (quick-bet) | ✅ **`UpDownBetReceiptModal` — NEW, UD-22** | ✅ secondary, 3 s | ✅ `confirm` | ✅ `notifyBetPlaced` (push suppressed for UPDOWN by decision) | sticky `danger` toast; compliance block → `UpDownBetBlockedModal` |
+| **Sell / cash-out** | `cashOutPositionAction` | ✅ `sell-button.tsx:223`, `stripTone="gold"` | ✅ secondary | ✅ via `SellConfirmModal` | ✅ `notifyCashout` | `danger` toast, reason-mapped |
+| **Deposit / withdraw** | `depositAction` · `withdrawAction` | ✅ `wallet-result-modal.tsx` (redirect-driven) | — | ✅ via toast variant | ✅ in-app + **email**, per `comms-registry.ts` | modal, `variant="danger"`, stays until dismissed |
+| **Settlement** | server-side (`resolveMarket`) | ✅ win → `win-celebration.tsx` | ✅ result toast (`factual` on a loss) | ✅ `success` on the win reveal | ✅ in-app + push + email | n/a (no player action) |
+| **KYC** | `attachDocumentAction` · `submitNidaAction` · `submitKycForReviewAction` | ⛔ **none** — inline banner after redirect | ✅ on the two uploader actions | — | ✅ email | 🔴 raw `{sp.error}` banner (§1.5 note) |
+| **RG** | `setLimitsAction` · `selfExcludeAction` · `coolOffAction` | ⛔ none — `Callout` after redirect | — | — | ✅ email | 🔴 raw `{sp.error}` banner |
+| **Account / security** | `changePasswordAction` · 2FA ×4 · `closeAccountAction` | ⛔ none | ✅ `danger` / `success` | — | ✅ email | reason + next step ✅ (fixed 2026-08-15) |
+| **Preference** | `toggleWatchAction` · push ×2 · `updateProfileBasicsAction` | ⛔ never (correct — §F2) | ✅ only | ⛔ **silent** (correct) | — | `factual` + next step ✅ (fixed 2026-08-15) |
+| **Social** | `postCommentAction` · `reportCommentAction` · `deleteCommentAction` · `voteAction` · `fileObjectionAction` · `createProposalAction` | ✅ proposals only | ✅ | ✅ `confirm`/`warning` | — | `danger` toast, dictionary-mapped |
+| **Notifications panel** | `markNotifRead` · `markAllRead` · `dismiss*` | ⛔ never | ⛔ none | ⛔ **silent** (correct — §F5) | — | silent; the row's own disappearance is the feedback |
+| **Admin** | 100+ actions | ✅ shared `action-overlay.tsx` | ✅ `useDeferredToast` | ✅ `warning` on the confirm | audit chain | `variant="danger"`, English by design |
+
+### 6.2 · What the matrix found that a gap-list would not have
+
+1. 🔴 **A background poll was firing the money-settled haptic** — `notifications-panel.tsx`,
+   `haptics.success()` = `[22, 36, 60]`, byte-identical to a WIN, on any unread arriving during
+   a 5-second poll. Its baseline started at `0`, so **the first poll after every page load
+   counted as an arrival**: opening the app holding one unread vibrated the handset for a
+   render. And the inbox carries LOSSES, whose copy is deliberately blunt so a loss is not
+   softened — the win pattern played over them. **Fixed**; §F5 and `test:feedback-law` §4.1
+   hold it, `red:feedback-law` proves it red.
+2. 🔴 **The push opt-OUT threw away the server's answer.** `deletePushSubscriptionAction`
+   returns `{ ok: false }` on a lapsed session; the panel called it `.catch(() => {})`, never
+   read `r.ok`, set the switch to OFF and toasted *"Push notifications off"* — while the row
+   stayed in the database and the device kept receiving. A false statement on a **consent**
+   surface. **Fixed**: the result is read, the switch stays ON, and the copy says the device
+   may still receive alerts.
+3. 🔴 **`red:updown-bet-feedback` had a stale anchor and was in no runner.** Its
+   `toast-replaces-aria-live` mutation targeted the single-line `setLiveMessage(...)`; UD-21
+   (`00a0595a`, 2026-08-07) split it over three lines, so from that day the mutation was a
+   no-op — an ABSENT test. The harness said so honestly and exited 1; **nothing ran it**,
+   because it was not in `red:all`. Anchor repaired (**7/7**) and both it and
+   `red:feedback-law` are now in `red:all`.
+4. ⚠️ **The "0 raw server strings" figure covered one channel of two** — see §1.5's note.
+   Five JSX banners were outside the ratchet's denominator entirely.
+5. ⚠️ **`operation-result-modal.tsx`'s own header overstates its reach.** It says it is used
+   "after every consequential action: … KYC submit, self-exclusion, password change". None of
+   those three uses it — they redirect to an inline banner or toast. The rows above state what
+   is actually there. ⛔ Not "fixed" by adding three modals: that is a product decision about
+   three flows, not a defect, and §F2 is written to describe the shipped shape.
+
+### 6.3 · Where the matrix says the platform is already consistent
+
+Worth recording, because the session's question was *"is it the same answer for the same kind
+of action everywhere?"* and for most classes it now is: every **money** mutation ends in the
+shared `OperationResultModal` (the Up & Down bet was the last exception and is closed); every
+**preference** is silent-but-toasted; every **admin** action goes through one overlay; and no
+surface anywhere uses a native `confirm()`/`alert()` — verified, not assumed.

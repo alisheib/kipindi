@@ -18,6 +18,29 @@ export { quickStakes, parseStake } from "./stake-math";
 export type PlacedSignal = { side: "UP" | "DOWN"; amount: number; nonce: number };
 
 /**
+ * ⭐ THE BET RECEIPT — what the confirmation modal states, captured at the moment the server
+ * confirms the bet.
+ *
+ * ⛔ `placedAt` AND `bonusStakeTzs` COME FROM THE SERVER'S REPLY, never from the browser.
+ * The receipt tells the player whether this bet can still be cancelled, and that answer is
+ * `cashOutValue`'s: runway measured from the server's own placement instant, and refused
+ * outright on any bonus-funded stake. A `Date.now()` here would drift from the instant the
+ * money path recorded, and assuming zero bonus would promise an exit the server refuses.
+ *
+ * ⛔ ONE SLOT, NOT A LIST. Repeat taps are repeat bets (Ali's standing decision), so a burst
+ * REPLACES this rather than queueing — one modal showing the latest bet, never a stack. The
+ * surface keys the modal on `nonce` so each new bet restarts the auto-dismiss instead of
+ * inheriting the first tap's countdown, which on a fast burst would close it almost at once.
+ */
+export type PlacedReceipt = {
+  side: "UP" | "DOWN";
+  amount: number;
+  placedAt: string;
+  bonusStakeTzs: number;
+  nonce: number;
+};
+
+/**
  * Turns each new placement `nonce` into a short-lived boolean the surface uses to add
  * the success-pulse class, then clears it so a rapid next tap re-fires cleanly. Motion
  * itself is removed under `prefers-reduced-motion` in CSS — this only toggles the class.
@@ -181,8 +204,11 @@ export function useUpDownQuickBet(opts: {
   const [blocked, setBlocked] = useState<Extract<UdBetFailure, { kind: "blocked" }> | null>(null);
   const clearBlocked = useCallback(() => setBlocked(null), []);
 
-  // Success pulse signal + a screen-reader announcement, in place of the old toast.
+  // Success pulse signal + a screen-reader announcement, alongside the toast and the receipt.
   const [justPlaced, setJustPlaced] = useState<PlacedSignal | null>(null);
+  /** UD-22 · the confirmation modal's contents. One slot — a burst coalesces (see the type). */
+  const [placedReceipt, setPlacedReceipt] = useState<PlacedReceipt | null>(null);
+  const clearPlacedReceipt = useCallback(() => setPlacedReceipt(null), []);
   const [liveMessage, setLiveMessage] = useState("");
   const nonce = useRef(0);
 
@@ -285,6 +311,20 @@ export function useUpDownQuickBet(opts: {
           mutateInFlight((m) => { const e = m.get(key); if (e) m.set(key, { ...e, settled: true }); });
           nonce.current += 1;
           setJustPlaced({ side, amount, nonce: nonce.current });
+          // UD-22 · the FIFTH channel, and the one the house rule always required: every
+          // consequential mutation ends in the shared `OperationResultModal` (CLAUDE.md, "UX
+          // commitments"). Up & Down was the exception — a bet moved real money and produced
+          // a pulse, an SR line, a haptic and a 3s toast, but never the centred receipt that
+          // a deposit, a sale and a withdrawal all get. The toast stays: it is the SECONDARY
+          // signal the same rule names, and it is what a player mid-burst reads.
+          const placed = r.data;
+          if (placed) {
+            setPlacedReceipt({
+              side, amount, nonce: nonce.current,
+              placedAt: placed.placedAt,
+              bonusStakeTzs: placed.bonusStakeTzs,
+            });
+          }
           // UD-21 · re-announce IDENTICAL consecutive bets. Two same-side same-stake taps
           // set the same string, and most screen readers do not re-voice unchanged
           // live-region content — so the second bet was silent for SR users, the E-64 gap
@@ -345,6 +385,8 @@ export function useUpDownQuickBet(opts: {
     min, max, customMode, customValue, setCustomValue, customValid, enterCustom, exitCustom,
     // feedback
     justPlaced, liveMessage,
+    /** UD-22 · the placed-bet receipt for the confirmation modal, or null. */
+    placedReceipt, clearPlacedReceipt,
     // UD-9 · per-tap acknowledgement + slow-burst escalation
     /** The last tapped side while a burst is in flight — that button shows a spinner. */
     pendingSide: pending ? pendingSide : null,

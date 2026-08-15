@@ -5760,6 +5760,24 @@ state**, 1,338,504 of players' stakes in escrow, and every ledger entry ever wri
 > landing one atom per commit. Read the block directly below this note before touching
 > `src/app/globals.css`, `src/app/motion.css`, or anything under `src/components/ui/`.
 
+### 🟢 Laptop A, session 45 (2026-08-15) — ⭐ THE FEEDBACK LAYER GETS A LAW, AND A BACKGROUND POLL WAS BUZZING THE WIN PATTERN OVER LOSSES
+
+#### ⏭️ **RESUME AT (session 46):** ⭐ **LABELLING — the whole platform, every layer, three languages. The prompt is [`docs/SESSION-PROMPT-LABELLING.md`](SESSION-PROMPT-LABELLING.md).**
+
+💰 **NO MONEY MOVED THIS SESSION.** Every drive ran against a LOCAL in-memory server on `:3013` with **no `DATABASE_URL`**, so the shared database was never opened. Production was read-only: `https://50pick.tz` HTTP 200, `server: railway-hikari`. No bet, no market, no wallet write, no migration. There is no payout to expect.
+
+**SHIPPED.** `docs/DESIGN_AUTHORITY.md` **§F** — the feedback law: which class of action answers on which channel, at which severity, and for how long. Guard `npm run test:feedback-law` (**130**), `npm run red:feedback-law` (**21/21**). The matrix it was derived from is `docs/FAILURE-INVENTORY.md` **§6**, built by opening the call sites of **171** server actions rather than by grepping names. **UD-22**, the Up & Down bet-confirmation modal, is live on the shared `OperationResultModal`.
+
+🔴 **A BACKGROUND POLL WAS FIRING THE MONEY-SETTLED HAPTIC.** `notifications-panel.tsx` called `haptics.success()` — `[22, 36, 60]`, byte-identical to a WIN — whenever an unread arrived on its 5-second poll. Its baseline started at `0`, so **the first poll after every page load counted as an arrival**: opening the app holding one unread vibrated the handset for a render. And the inbox carries LOSSES, whose copy is deliberately blunt so a loss is not softened — the win pattern played over them. Removed; the bell's `.g-ring` is the signal.
+
+🔴 **THE PUSH OPT-OUT DISCARDED THE SERVER'S ANSWER.** `deletePushSubscriptionAction` returns `{ ok: false }` on a lapsed session; the panel called it `.catch(() => {})` and never read `r.ok`, then set the switch OFF and said *"Push notifications off"* while the row survived and the device kept receiving. A false statement on a **consent** surface.
+
+⚠️ **AND "0 RAW SERVER STRINGS IN FRONT OF A PLAYER" WAS TRUE OF ONE CHANNEL OF TWO.** `test:failure-reasons` §10 matches `title:`/`description:` **properties**. A form-action page instead redirects with the server's English sentence and renders `{sp.error}` as JSX text, which that regex cannot see. **Five do**, one of them RG. Not fixed — that is §2.3's open wallet/KYC/auth tranche — but `test:feedback-law` §8 now ratchets the count at **5** and goes red on a sixth.
+
+🔴 **FOUR RED HARNESSES WERE ABSENT TESTS, AND THAT IS THE FINDING WORTH CARRYING FORWARD.** `red-e64` (anchor stale 8 days, and **not in `red:all`, so nothing ran it**) · `settlement-expectation-red` (the one copy E-108's "one locator" repair missed) · `updown-admin-options-red` (a signature gained a 5th argument on 2026-08-10) · `updown-chain-stats-red` (the **last** harness still hand-rolling anchor matching instead of importing `red-anchor.mjs` — so all five of its MULTI-LINE anchors missed on a CRLF checkout while every single-line one matched). All four repaired and proven. ⛔ **`red:all` is a `&&` chain, so the FIRST break starves every harness after it** — which is why the two feedback guards now sit at its HEAD. Consider making it run all and report.
+
+⚠️ **A PROCESS LESSON, PAID FOR IN THIS SESSION:** killing a mutation harness mid-run **zeroed two source files** (`round-action-panel.tsx`, `updown-board.ts`). Their "restored byte-for-byte" contract only holds if the run completes. Caught by scanning for NUL bytes; restored from git and re-applied. ⛔ **Never `TaskStop` a red harness.**
+
 ### 🟢 Laptop A, session 44 (2026-08-11) — ⭐ A READ-ONLY AUDITOR WAS OFFERED THE EMERGENCY STOP FOR THE PAYMENT RAIL
 
 #### ⏭️ **RESUME AT (session 45):** ⭐ **READ [`docs/ADMIN-CONSOLE-FINDINGS.md`](ADMIN-CONSOLE-FINDINGS.md) FIRST — it is the record and it carries a COVERAGE section in three buckets; this block is only the pointer.** Six findings (**A1–A6**) filed and **all six shipped**, each one fix + one RED-proven guard + docs in ONE commit, pushed and verified separately.

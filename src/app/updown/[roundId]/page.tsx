@@ -376,6 +376,9 @@ export default async function UpDownRoundPage({
                   signInHref: `/auth/login?next=${encodeURIComponent(`/updown/${roundId}${lockedSide ? `?side=${lockedSide}` : ""}`)}`,
                   lockedSide,
                   walletBalance: detail.walletBalance,
+                  // UD-22 · assembled server-side on the round itself, so this page and the
+                  // board card confirm a bet with the same sentences and the same exit terms.
+                  receipt: round.receipt,
                 }}
               />
             ) : decided && myPosition && result ? (

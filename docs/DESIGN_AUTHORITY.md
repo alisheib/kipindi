@@ -656,6 +656,135 @@ Patterns live in those two files. Laws:
 
 ---
 
+## F — The feedback law: what an action answers with
+
+> Added 2026-08-15. §H says what a haptic may mark; this says which CHANNELS an action
+> answers on at all, and at which severity. It exists because the defect in this layer was
+> never "too few toasts" — it was **two actions of the same kind and consequence answering
+> the player differently**, decided by whichever product the player happened to be in.
+> Guarded by `npm run test:feedback-law`; proved red by `npm run red:feedback-law` (14/14).
+
+### F1 — Five channels, and they are not interchangeable
+
+| Channel | What it is for |
+|---|---|
+| **Popup** | the PRIMARY signal on a consequential mutation — the shared `OperationResultModal`, or `ConfirmModal` before one |
+| **Toast** | the SECONDARY signal, and the primary one for a refusal the player can fix |
+| **Haptic** | punctuation on a physical event (§H). Never a channel of its own — it rides the toast's variant or a confirm press |
+| **In-app / push / email** | the record, for what the player is not looking at. Inventory is CODE: `src/lib/server/comms-registry.ts` |
+| **The options inside them** | the CHOICES a dialog offers. ⛔ A dialog that states a problem and offers no way out is a dead end |
+
+### F2 — The class of action decides the channels
+
+| Class | Popup | Toast | Haptic | Record |
+|---|---|---|---|---|
+| **Money moved** (bet, sell, deposit, withdraw, settle) | ✅ `OperationResultModal`, success auto-dismisses at the shared 5s | ✅ secondary | ✅ via the toast variant | ✅ in-app + email where the registry says |
+| **Account / compliance state** (KYC, RG, 2FA, close) | ✅ | ✅ secondary | ✅ | ✅ |
+| **Preference** (watch, push toggle, language, name) | ⛔ never | ✅ only | ⛔ **silent** — a preference is not a physical event | — |
+| **Refusal — the player can fix it** | ⛔ never | ✅ `factual` | ⛔ silent | — |
+| **Refusal — a hard block or a real fault** | ✅ when it must be acknowledged (LCCP) | ✅ `danger`, sticky on a money path | ✅ `error` | — |
+
+### F3 — Severity picks the variant, and gold is not available
+
+Severities are `docs/FAILURE-INVENTORY.md` §0's: **info** · **warning** (the player can fix it,
+their money did not move) · **error** (a hard block or a genuine fault).
+
+- **warning → the `factual` toast.** ⛔ **NOT toast `warning`, which is struck in GOLD**
+  (`--warning-500` is hue 86, `--gold-500` hue 84, and `--warning-fg` *is* `--gilt`) — and gold
+  means money that was **earned** (§M3). A refusal has earned nothing.
+- ⛔ **And not toast `default` either**, which paints `checkCircle`: a confirmation tick over
+  a failure is the same euphemism `factual` was added to remove when "Round lost · TZS 2,000"
+  shipped wearing a tick.
+- `factual` fires **no haptic**, which is correct: a slip the player can fix is not an event
+  landing on their money.
+- **error → `danger`**, which is red, announces `role="alert"` and fires `haptics.error()`.
+  ⛔ Do not spend it on a star that failed to save.
+
+> ⚠️ **The platform had already decided this and only one surface knew.**
+> `use-quick-bet.ts` has routed *insufficient balance* — a textbook fixable refusal — to
+> `variant: "factual"` since UD-1, with the comment *"a fact about the wallet, not an alarm"*.
+> Everything in F3 is that precedent written down and applied to its siblings, not a new
+> preference. The eight surfaces `FAILURE-INVENTORY.md` §1.5 counted as saying only that
+> something failed were all shouting `danger` at slips.
+
+### F4 — Every refusal states the reason AND the next step
+
+`docs/RULES.md` §2.9 is the standard; this is where it binds on the UI. A title that names
+only the failure (*"Failed"*, *"Couldn't update your watchlist."*) is half a message: the
+title says what did not happen, the description says what to do about it. Both, in EN + SW
++ ZH, and no two languages byte-identical.
+
+### F5 — Nothing answers an action the player did not take
+
+⛔ **No haptic on a render, a poll or a background refresh** (§H.1: never to pull attention
+back to the app). A notification arriving is the *app's* act, not the player's.
+
+> 🔴 **This was live.** `notifications-panel.tsx` fired `haptics.success()` — `[22, 36, 60]`,
+> the money-settled pattern, byte-identical to a WIN — on the arrival of any unread during a
+> 5-second poll. Its baseline started at `0`, so the first poll after every page load counted
+> as an arrival: **open the app holding one unread and the handset buzzed for a render.** And
+> the inbox carries LOSSES, whose copy is deliberately blunt ("Bet lost · TZS X") so a loss is
+> not softened — so the win pattern played over them. Removed 2026-08-15; the bell's `.g-ring`
+> is the signal, and the settlement moment is already marked on its own channel.
+
+### F6 — One signal per event
+
+⛔ A modal **and** a toast for one action is a double signal unless the toast is deliberately
+the secondary one (F1). A burst of repeat actions **coalesces** into one dialog showing the
+latest — never a stack, and never a gate on the next tap.
+
+### F8 — How long a moment stays, and the intrusion rule
+
+⭐ **THE MORE A SURFACE INTERRUPTS, THE LESS UNATTENDED TIME IT GETS.** A celebration is a
+centred modal behind a scrim, so it may not linger uninvited; a result toast blocks nothing,
+so it can afford to wait for a player who is mid-scroll. That is why the celebration's dwell
+is **shorter** than the toast's — the ordering measures *cost to the player*, not importance.
+
+Values live in **`src/lib/feedback-timing.ts`** and nowhere else (§0d). `6_000` was written
+out at four call sites before 2026-08-15 — four chances to disagree about how long a player
+gets to read that their money settled.
+
+| Moment | Dwell | Why |
+|---|---|---|
+| Win celebration (blocking modal) | **7 s** | the amount counts up over ~900 ms and the modal takes ~400 ms to arrive, so the old 4.5 s left only ~3.2 s on the final figure |
+| Result — won · lost · voided (toast) | **8 s** | non-blocking, and a corner toast takes a moment to notice at all |
+| Bet placed | **unchanged** (5 s modal / 3 s toast) | Ali, 2026-08-15: *"keep placing bets popups normal"* |
+| Any money-path failure | **sticky** (`durationMs: 0`) | not a dwell time — the absence of one |
+
+⛔ **A DWELL IS A CEILING ON WAITING, NEVER A FLOOR ON WATCHING.** Dismissal stays instant
+and always available — ✕, click-outside and Esc on the celebration; ✕, up-swipe or
+horizontal swipe on a toast. A longer dwell is only defensible *because* leaving is instant.
+
+⛔ **A LOSS IS TIMED IDENTICALLY TO A WIN.** One channel, one class of event — and §F exists
+to stop two actions of the same kind answering differently. Timing a win longer would be the
+platform leaning on the outcome it prefers, which §C4 forbids: losses are *calm, factual,
+final*. The extra seconds are **reading** time, and they cut the right way for harm
+prevention — the standard behind "Bet lost · TZS X" is that a loss must actually register.
+⚠️ VOID takes the same value: a refund is neither good news nor bad, and timing it
+differently would editorialise a neutral outcome.
+
+⚠️ Wins QUEUE. The worst case is bounded by `MAX_INDIVIDUAL` (3) in `win-celebration.tsx`,
+not by the dwell — past three the tail collapses into one honest summary. Without that cap
+this raise would have turned a weekend backlog into minutes of modals.
+
+Guarded by `test:feedback-law` §9; `red:feedback-law` proves the literal returning, the
+ordering inverting, the raise being reverted, the bet path being swept up, and a loss being
+timed shorter than a win.
+
+### F7 — A promise about money is computed, never stated as a constant
+
+If a dialog tells the player what will happen to their money, the figure and the condition
+come from the same function the money path uses.
+
+> ⛔ The Up & Down receipt's "way out" row is the worked example. `docs/RULES.md` §2.6 sets
+> free cancellation at 5 minutes, and printing that would be **false on most Up & Down bets**:
+> `cashOutValue` gates on RUNWAY (`hadRunway = graceMs > 0 && lockAt − placedAt >= graceMs`),
+> so a 3-minute round has no exit at all and a bonus-funded bet never has one. The rule lives
+> once, in `src/lib/updown-receipt.ts`, and `test:feedback-law` §6.6–6.10 pins it against the
+> server's own expression so the two cannot drift.
+
+---
+
 ## E — Elevation and motion mechanics
 
 Extends §B5 (one definition site per motion token) and §M2 (a surface picks a rung).

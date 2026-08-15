@@ -15,7 +15,7 @@
 | Go to | For |
 |---|---|
 | [`docs/SETUP.md`](docs/SETUP.md) | **Getting this running on a machine that has never seen it.** Prerequisites, install, how to boot with no database, and the eight symptoms that waste an afternoon. |
-| [`docs/README.md`](docs/README.md) | **The doc index** — 42 docs, each with a status. From the outside a snapshot of a Tuesday in May looks identical to a law. |
+| [`docs/README.md`](docs/README.md) | **The doc index** — every doc at that level, each with a status. From the outside a snapshot of a Tuesday in May looks identical to a law. ⚠️ This row used to say "42 docs" and the index itself said 45; the real number was **59**, and eleven were unindexed. A count restated in two places is a count that will disagree with itself — so neither states one now. |
 | [`docs/NEXT-PLAN.md`](docs/NEXT-PLAN.md) | **Current state.** Opens with "PICK UP HERE": what shipped last session, what to start on, what not to touch. |
 | [`docs/MODULE-CERTIFICATION-PROGRAM.md`](docs/MODULE-CERTIFICATION-PROGRAM.md) | **The programme that finishes the platform** — 52 modules, 8 gates, the 12 laws, the status board. |
 
