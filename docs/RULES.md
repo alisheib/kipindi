@@ -271,17 +271,36 @@ find yourself adding a deduction to a player's money, stop.
 ### 2.9 · Failure messages
 
 > ⏳ **LANDING — betting and cash-out shipped 2026-08-14 (C2–C5); wallet, KYC, auth and the
-> BANNER channel shipped 2026-08-15.** What remains is named honestly rather than implied
-> complete: the `loss limit` refusal is the **last** INVALID family still recovered from English
-> prose, because its service has not been taught to emit a reason yet, and `INVALID`/`SUSPENDED`
-> remain deliberately unmapped (they mean four things each — see below). ⛔ Do not delete this
-> marker until that tail is closed and verified on production.
+> BANNER channel shipped 2026-08-15. THE LAST PROSE ROUTE IS DELETED IN CODE 2026-08-15 and
+> this marker stays until it is read on production.** `INVALID`/`SUSPENDED` remain
+> deliberately unmapped (they mean four things each — see below); that is a decision, not a
+> tail. ⛔ Do not delete this marker until the loss-limit refusal has been driven on
+> `50pick.tz` and the modal read.
+>
+> ⚠️ **AND WHAT THIS MARKER SAID BEFORE WAS WRONG WHEN IT WAS WRITTEN.** It read: *"the
+> `loss limit` refusal is the last INVALID family still recovered from English prose, because
+> **its service has not been taught to emit a reason yet**"*. `checkLossLimit` has exactly one
+> caller — `buyPosition` — and that caller has returned `reason: "loss_limit_daily"` since
+> `19ac78ec` (2026-08-14 17:59), the same commit that built the registry. So there were **two
+> live routes to one refusal** for a day: the token, and a phrase test underneath it that could
+> no longer fire. A marker describing a gap that is already closed costs the next session the
+> time to re-find that, and this one was read by four session prompts.
+>
+> 🔴 **AND THE DEAD ROUTE WAS MASKING A LIVE DEFECT.** With the phrase test gone, the Up & Down
+> refusal took the reason branch — which chose the acknowledge-modal's HEADING from the
+> refusal's **severity**. Every `modal`-channel reason in the registry is severity `error`, so
+> a player who hit the daily loss cap they set themselves read **"Betting unavailable"** —
+> an operator-block heading — over a body explaining their own limit, and `udErrRgLimitTitle`
+> ("Daily loss limit reached") was unreachable. Severity answers *how loud*; it cannot also
+> answer *whose decision this was*. The heading is keyed on the reason now
+> (`updown-bet-errors.ts` `MODAL_TITLE_BY_REASON`), proven by `test:updown-quickbet` 29.5b with
+> a control at 29.5c.
 
 | | |
 |---|---|
 | **Enforced in** | `src/lib/failure-reasons.ts` — the registry, each row carrying a severity, a channel and a dictionary key. The server emits a machine `reason` alongside the `code`, and carries the FIGURES in `detail` as **numbers**. ⚠️ This row used to state a count ("22 reasons"); it was stale within a day of being written. The registry is code — read it. |
 | **Rendered by** | `renderFailure()` — **one** function, for every channel. The poll dial and Up & Down quick-bet call it directly; the form-action pages reach the same function through `src/lib/failure-banner.ts`. ⛔ It never renders `r.error`: the server's English prose is API/audit truth and has no business being a headline in front of a Swahili or Chinese player. |
-| **Guarded by** | `npm run test:failure-reasons` · `npm run red:failure-reasons` · `npm run test:feedback-law` §8 (the banner ratchet, at **0**) |
+| **Guarded by** | `npm run test:failure-reasons` · `npm run red:failure-reasons` · `npm run test:feedback-law` §8 (the banner ratchet, at **0**) · `npm run test:updown-quickbet` §29.5–29.5c (the acknowledge-modal is reached by the TOKEN and headed by the REASON) |
 
 > ⭐ **AND A REFUSAL CAN NO LONGER TRAVEL AS PROSE (2026-08-15).** A form-action page cannot
 > hand a toast an object — it redirects, and a redirect carries a string. All five such surfaces

@@ -395,10 +395,14 @@ console.log("\n§8 · the phrase tests still match the server's own words");
     // HERE. Their services now emit a machine `reason`, the phrase tests are deleted, and §8b
     // below proves the replacement. A pin left beside its replacement is two routes to one
     // refusal — exactly what drifts apart.
-    // ⛔ ELEVEN PINS WERE DELETED HERE, each in the commit that gave its refusal a real reason.
-    // What is LEFT is the honest remainder: `loss limit` is the only INVALID family still
-    // recovered from prose, because its service has not been taught to say so yet.
-    { name: "loss limit",           code: "INVALID",   re: /loss limit/i,                       expect: t.error.errLossLimit },
+    // ⛔ TWELVE PINS WERE DELETED HERE, each in the commit that gave its refusal a real reason.
+    // ⭐ `loss limit` WAS THE TWELFTH, and it went on 2026-08-15 — the LAST INVALID family
+    // recovered from prose, which `docs/RULES.md` §2.9 carried a ⏳ for. Its pin is replaced by
+    // §8c's `loss_limit_daily` emitter pin and §8b's render assertions, and the dictionary line
+    // it expected (`errLossLimit`) is deleted in all three languages rather than left as a
+    // second wording for a refusal the registry already words better.
+    // ⛔ What is LEFT is the honest remainder, and it is NOT an INVALID: both survivors sit under
+    // `SUSPENDED`, which is deliberately unmapped because it means four different things.
     { name: "self-exclusion",       code: "SUSPENDED", re: /self-exclusion|cooling-off/i,       expect: t.error.errBreakActive },
     { name: "wallet frozen",        code: "SUSPENDED", re: /frozen/i,                           expect: t.error.errWalletFrozen },
   ];
@@ -543,6 +547,11 @@ console.log("\n§8c · the services still emit the reasons that replaced the phr
     { file: "src/lib/server/wallet-service.ts", reasons: [
       "deposit_limit", "sof_required", "withdraw_below_min", "kyc_required",
     ] },
+    // ⭐ THE ONE THAT CLOSED `docs/RULES.md` §2.9's ⏳. `checkLossLimit` has exactly ONE caller
+    // — `buyPosition` — and it is the sole route by which an RG daily-loss refusal can reach a
+    // player on either product. If this token goes, both surfaces fall to their generic line
+    // and the LCCP acknowledge-modal silently becomes a toast.
+    { file: "src/lib/server/market-service.ts", reasons: ["loss_limit_daily"] },
   ];
   for (const e of EMITTERS) {
     const src = readFileSync(e.file, "utf8");
@@ -557,6 +566,33 @@ console.log("\n§8c · the services still emit the reasons that replaced the phr
   const kyc = readFileSync("src/lib/server/kyc-service.ts", "utf8");
   ok("8c.control · the pin can fail — an unemitted reason reads as absent",
      !/reason:\s*"stake_below_min"/.test(kyc));
+
+  // ⭐ 8c.loss-limit · AND THE ONE-CALLER CLAIM IS ASSERTED, NOT ASSUMED.
+  // ⛔ The pin above proves `buyPosition` still says why. It does NOT prove that `buyPosition`
+  // is the ONLY way to be refused by the daily-loss cap — and that is the claim the ⏳ was
+  // deleted on. A second caller added tomorrow (a cash-out gate, an Up & Down pre-flight)
+  // would refuse a player with no `reason` at all, fall to the generic line, and every
+  // assertion above would stay green because the first caller is untouched.
+  // So: walk the server tree and count the call sites. One, and it is the one that says why.
+  {
+    // ⛔ Its own walker: §8's lives inside §8's block. A hand-written file list here would be
+    // the exact staleness §8's own header records paying for three times.
+    const walkServer = (dir: string, out: string[] = []): string[] => {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        const p = `${dir}/${e.name}`;
+        if (e.isDirectory()) walkServer(p, out);
+        else if (e.name.endsWith(".ts")) out.push(p);
+      }
+      return out;
+    };
+    const callers = walkServer("src/lib/server")
+      .filter((f) => !f.endsWith("responsible-gambling.ts"))
+      .filter((f) => /\bcheckLossLimit\s*\(/.test(
+        readFileSync(f, "utf8").replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:])\/\/.*$/gm, "$1")));
+    ok("8c.loss-limit · ⛔ `checkLossLimit` still has exactly ONE caller, and it is the one that says why",
+       callers.length === 1 && callers[0].endsWith("market-service.ts"),
+       callers.length ? callers.join(", ") : "NO caller — the daily-loss cap is not enforced at all");
+  }
 
   // ⛔ AND THE BANNER CHANNEL MUST REJECT WHAT IT DOES NOT KNOW. `?reason=` is attacker-supplied
   // text on a signed-in money surface. If `bannerFor` ever rendered an unknown key through the

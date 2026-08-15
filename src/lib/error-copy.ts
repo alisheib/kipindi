@@ -106,7 +106,33 @@ export function errorCopy(t: Dict, r: ActionFailure): string {
       // or a literal "{net}", on a money screen. The figures are `detail` numbers now.
       // ⛔ Do not re-add a phrase test for any of the three: a reason beats prose, and two
       // routes to one refusal is how they drift apart.
-      if (/loss limit/i.test(err)) return t.error.errLossLimit;
+      //
+      // ⭐ AND THE LAST ONE IS GONE TOO (2026-08-15). A phrase test on the RG daily-loss
+      // sentence stood here — the FINAL INVALID family recovered from English prose.
+      // `docs/RULES.md` §2.9 carried a ⏳ naming it, and this file's own comment above said its
+      // service "has not been taught to emit a reason yet".
+      //
+      // ⛔ THE DELETED PATTERN IS DELIBERATELY NOT QUOTED IN THIS COMMENT. `red:failure-reasons`
+      // anchors its mutations on exact source text, and the first draft of this note pasted the
+      // old `if (…) return …` line in verbatim — so the harness happily found its anchor INSIDE
+      // the comment, mutated prose, changed no behaviour, and reported the guard as having
+      // missed a defect that no longer exists. A comment that quotes deleted code is a decoy
+      // anchor; `red-anchor.mjs`'s uniqueness rule cannot see the difference.
+      //
+      // ⛔ THAT WAS NOT TRUE WHEN IT WAS WRITTEN, AND THAT IS THE FINDING. `checkLossLimit`
+      // has exactly ONE caller (`market-service.ts` `buyPosition`), and that caller has
+      // returned `reason: "loss_limit_daily"` since `19ac78ec` (2026-08-14 17:59) — the same
+      // commit that built this registry. So from that hour there were TWO live routes to one
+      // refusal: the reason, and this phrase test underneath it. The prose route was already
+      // dead code the day the ⏳ was written to describe it, and a marker that names a gap
+      // which has been closed costs the next session the time to re-find that.
+      //
+      // ⚠️ THE TWO ROUTES DID NOT EVEN AGREE. `errLossLimit` said *"This would pass a loss
+      // limit you set"*; the registry's `failLossLimitDaily` says *"You've reached the daily
+      // loss limit you set. It resets tomorrow"* — which names WHICH limit and WHEN it lifts.
+      // Two sentences for one refusal, drifting, exactly as §7 predicts. `errLossLimit` is
+      // deleted from all three languages rather than left as a second definition.
+      //
       // ⛔ AND THE WHOLE KYC BLOCK IS GONE — eight phrase tests, replaced by reasons that
       // `kyc-service.ts` now emits at the same eight sites: nida_taken · doc_image_type ·
       // doc_too_large · docs_locked · no_extra_request · nida_not_verified · docs_required ·

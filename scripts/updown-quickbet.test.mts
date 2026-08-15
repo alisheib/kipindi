@@ -296,9 +296,31 @@ async function mine(userId: string | undefined): Promise<{ up: number; down: num
   const susp = f("SUSPENDED", "Account suspended. Contact support.");
   ok("29.4 · ⛔ SUSPENDED → the acknowledge-modal (LCCP), never a toast",
      susp.kind === "blocked" && susp.title === "suspT" && susp.body === "suspB");
-  const rg = f("INVALID", "Daily loss limit reached.");
+  // ⭐ 29.5 · THE RG DAILY-LOSS REFUSAL IS REACHED BY ITS TOKEN, NOT BY ITS SENTENCE.
+  // ⛔ This case used to read `f("INVALID", "Daily loss limit reached.")` — it drove the
+  // English PROSE through a phrase test in `updown-bet-errors.ts`. That test is deleted
+  // (`docs/RULES.md` §2.9's last ⏳): `buyPosition` emits `reason: "loss_limit_daily"`, so the
+  // sentence is no longer load-bearing and the prose fixture would have proved a dead route.
+  // The fixture now carries a DELIBERATELY UNRELATED sentence: if the phrase test is ever
+  // re-added, this case fails instead of passing for the wrong reason.
+  const rgDict = { failLossLimitDaily: "the cap you set has been reached" } as Record<string, string>;
+  const rg = udBetErrorCopy("INVALID", "nothing here mentions the c-a-p at all", dict,
+                            { reason: "loss_limit_daily" }, rgDict, (n: number) => `TZS ${n}`);
   ok("29.5 · ⛔ the RG daily-loss refusal → the acknowledge-modal, even though its code is INVALID",
-     rg.kind === "blocked" && rg.title === "rgT" && rg.body === "rgB");
+     rg.kind === "blocked" && rg.body === "the cap you set has been reached", JSON.stringify(rg));
+  // 🔴 29.5b · AND THE HEADING NAMES THE LIMIT, NOT A BLOCK. The reason branch used to title
+  // by SEVERITY, and every `modal`-channel reason is severity `error` — so the loss cap was
+  // headed `udErrSuspendedTitle` ("Betting unavailable") over a body about the player's own
+  // limit, and `udErrRgLimitTitle` was unreachable. Titling is keyed on the reason now.
+  ok("29.5b · 🔴 …and it is headed by the LIMIT, never by the account-block heading",
+     rg.kind === "blocked" && rg.title === "rgT", rg.kind === "blocked" ? rg.title : "not blocked");
+  // ⭐ CONTROL · a genuine account block still gets the block heading, so 29.5b is not
+  // passing because every modal now says "rgT".
+  const blockDict = { errSuspended: "your account cannot bet" } as Record<string, string>;
+  const blocked = udBetErrorCopy("INVALID", "", dict,
+                                 { reason: "account_suspended" }, blockDict, (n: number) => `TZS ${n}`);
+  ok("29.5c · control · a real account block keeps the account-block heading",
+     blocked.kind === "blocked" && blocked.title === "suspT", JSON.stringify(blocked));
   const bounds = f("INVALID", "Stake must be a whole number between TZS 500 and TZS 1,000,000.");
   ok("29.6 · an ordinary INVALID (bounds) stays a transient toast, localized",
      bounds.kind === "transient" && bounds.description === "invalid");

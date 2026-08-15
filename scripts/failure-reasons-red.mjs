@@ -168,14 +168,27 @@ const MUTATIONS = [
     to: ', code: "INVALID" }',
   },
   {
-    // ⚠️ The mirror, on the family that still HAS a phrase test. `loss limit` is the last
-    // INVALID branch recovered from prose, so §8's pin is still the only thing standing between
-    // a reworded sentence and a silently generic refusal.
-    name: "phrase-test-drifts-from-the-server",
-    why: "the mapper's own pattern is edited so it no longer matches the string the server still sends",
-    file: COPY,
-    from: "/loss limit/i.test(err)",
-    to: "/losing limit/i.test(err)",
+    // ⭐ THE MUTATION THAT REPLACED `phrase-test-drifts-from-the-server` (2026-08-15).
+    //
+    // ⛔ THAT CASE MUTATED THE LAST SURVIVING PHRASE TEST — `/loss limit/i` in `error-copy.ts`
+    // — and it went with the test itself when `buyPosition`'s `reason: "loss_limit_daily"`
+    // made prose recovery dead code. Deleting a mutation without replacing it silently drops
+    // a whole refusal family out of RED coverage, which is §3.9's lesson in a different key.
+    //
+    // ⚠️ AND IT MISFIRED ONCE BEFORE IT WAS REPLACED, WHICH IS WORTH THE LINE. The commit that
+    // deleted the phrase test quoted the deleted `if (…)` inside the explanatory comment above
+    // it. The anchor therefore still resolved — UNIQUELY, so `red-anchor.mjs` was satisfied —
+    // and the harness mutated a COMMENT, changed nothing, and reported the guard as having
+    // missed. A harness anchored on source text cannot tell code from prose about code.
+    //
+    // The new risk this pins is the one §8c names: the SERVICE quietly stops saying why. The
+    // daily-loss cap is the only refusal on the betting path routed to an acknowledge-modal by
+    // LCCP informed consent, so losing its reason demotes a compliance dialog to a toast.
+    name: "loss-limit-service-stops-saying-why",
+    why: "⭐ RULES.md §2.9's last ⏳, in reverse — `buyPosition` drops `loss_limit_daily`, so the RG daily-loss cap falls to the generic line and the LCCP acknowledge-modal quietly becomes a toast",
+    file: MARKET,
+    from: `code: "INVALID" as const, reason: "loss_limit_daily" as const`,
+    to: `code: "INVALID" as const`,
   },
   {
     // 🔴 THE CHANNEL NOBODY WAS SCANNING, PROVEN. A page reverts to rendering the query string

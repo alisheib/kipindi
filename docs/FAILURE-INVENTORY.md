@@ -465,6 +465,54 @@ the set restored is by construction the set mutated. A restore list maintained b
 mutation list is `RULES.md` §7's *"a number written twice"* applied to file paths — it can only
 ever go stale, and it goes stale silently.
 
+### 3.10 · 🔴 FIXED (2026-08-15) · A dead phrase test was hiding a live wrong heading
+
+`RULES.md` §2.9 carried a ⏳ saying the `loss limit` refusal was *"the last INVALID family still
+recovered from English prose, **because its service has not been taught to emit a reason yet**"*.
+
+⛔ **That premise was false when it was written.** `checkLossLimit` has exactly ONE caller —
+`buyPosition` — and it has returned `reason: "loss_limit_daily"` since `19ac78ec` (2026-08-14
+17:59), *the same commit that built the registry*. Two phrase tests survived underneath it
+(`error-copy.ts`, `updown-bet-errors.ts`), and because both surfaces consult the reason FIRST,
+neither could fire. The ⏳ described a closed gap, and four session prompts inherited it.
+
+> ⭐ **THE DEFECT WAS NOT THE DEAD CODE. IT WAS WHAT THE DEAD CODE CONCEALED.** With the phrase
+> test removed, the Up & Down refusal takes the reason branch — which chose the acknowledge
+> modal's **heading** from the refusal's **severity**:
+>
+> ```ts
+> title: f.severity === "error" ? m.udErrSuspendedTitle : m.udErrRgLimitTitle
+> ```
+>
+> Every `modal`-channel reason in the registry is severity `error` — `self_excluded`,
+> `account_blocked`, `wallet_frozen`, `loss_limit_daily`, `break_active`, `kyc_required`,
+> `nida_taken`, `account_suspended`. So the `udErrRgLimitTitle` arm was **unreachable**, and a
+> player who reached the daily loss cap *they set themselves* read **"Betting unavailable"** —
+> the operator-block heading — over a body explaining their own limit. The registry states the
+> principle one row away, at `break_active`: *"A BREAK THE PLAYER SET THEMSELVES IS NOT A FAULT
+> — it is the tool working."*
+>
+> ⛔ Severity answers **how loud**. It cannot also answer **whose decision this was**. The
+> heading is keyed on the reason now (`MODAL_TITLE_BY_REASON`), which restores exactly what the
+> phrase test achieved and nothing more.
+
+⚠️ **`break_active` and `self_excluded` deliberately keep the neutral heading.** The only other
+heading this dictionary has names the *daily loss limit*, which would be a false statement over a
+cooling-off body. Two more headings is a copy decision; it is filed here rather than guessed.
+
+⚠️ **AND THE FIRST FIX RE-ARMED THE HARNESS ON A COMMENT.** The commit deleting the phrase test
+quoted the deleted `if (…) return …` line verbatim in the comment explaining the deletion.
+`red:failure-reasons` anchors on exact source text, so its mutation resolved — **uniquely**, so
+`red-anchor.mjs`'s ambiguity rule was satisfied — inside the comment, mutated prose, changed no
+behaviour, and reported the guard as having MISSED. ⛔ **A comment that quotes deleted code is a
+decoy anchor**, and no uniqueness check can tell code from prose about code. Both the comment and
+the mutation were replaced; the harness is back to 18/18.
+
+**Proof.** `test:failure-reasons` 209 (incl. §8c's new `loss_limit_daily` emitter pin and a walked
+assertion that `checkLossLimit` still has exactly one caller) · `test:updown-quickbet` 53 (29.5
+drives the TOKEN with a deliberately unrelated sentence, 29.5b pins the heading, 29.5c controls it)
+· `red:failure-reasons` 18/18 · `test:i18n` 1846×3 after deleting the orphaned `errLossLimit`.
+
 ---
 
 ## §4 · WHAT C5's GUARD MUST DO
