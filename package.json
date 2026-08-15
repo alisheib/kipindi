@@ -75,6 +75,7 @@
     "test:sentinel-guards": "tsx scripts/sentinel-strict-guards.test.mts",
     "test:i18n": "tsx scripts/i18n-parity.test.mts",
     "test:labels": "tsx scripts/label-lexicon.test.mts",
+    "test:red-anchors": "tsx scripts/red-anchors.test.mts",
     "red:labels": "node scripts/red-labels.mjs",
     "test:trilingual": "tsx scripts/trilingual-titles.test.mts",
     "test:duration": "tsx scripts/duration-input.test.mts",
