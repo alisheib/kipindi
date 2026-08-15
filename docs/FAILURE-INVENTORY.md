@@ -137,14 +137,27 @@ gold on this platform means **earned money only**. A warning-severity refusal us
 > | `profile/account/page.tsx:75` | account |
 > | `auth/reset-password/page.tsx:138` | auth |
 >
-> ⚠️ **NOT FIXED, and deliberately so.** Fixing them means teaching those services to emit a
-> machine `reason` and routing it through the redirect — which is §2.3's wallet/KYC/auth
-> tranche, the RULES programme's open ⏳, not this session's. What DID land is a **ratchet
-> that can see the channel**: `npm run test:feedback-law` §8 pins the count at **5**, may only
-> be lowered, prints the five by name, and carries a positive control; `red:feedback-law`
-> proves a sixth banner goes red. Four of the five were in the original list of twelve above
-> and were dropped from the "real population of six" because the re-measurement scanned only
-> toast props; `auth/reset-password/page.tsx` was never listed at all.
+> ✅ **ALL FIVE FIXED 2026-08-15 — the ceiling is 0.** Each surface carries the reason **KEY**
+> on its redirect and resolves it through `renderFailure` via `src/lib/failure-banner.ts`. ⛔ Not
+> a second renderer: the pure function is imported, not forked, so a reason cannot say one thing
+> in a toast and another in a banner. `test:feedback-law` §8's `CEILING` went 5 → 0 in the same
+> commit, and `test:failure-reasons` §10 now counts **both** channels into **one** denominator
+> with its own controls — the banner pattern must catch `{sp.error}`, must ignore
+> `{banner.body}`, and must stay distinct from the toast pattern, because a refactor that
+> collapsed them would silently halve the denominator while still claiming both.
+>
+> 🔴 **AND KEYING THE CHANNEL CLOSED A REFLECTION HOLE.** `?error=` rendered whatever the query
+> string said, so any text could be put in front of a signed-in player by handing them a link —
+> `/profile/account?error=Your account is suspended. Call +255…`. React escapes it, so it was
+> never script injection; it was a plausible, styled, **first-party** alert box saying anything
+> an attacker chose, on the operator's own domain, above a real account page. On a licensed
+> money platform that is a phishing surface, and it was invisible to every guard here because
+> every guard here was looking for a *translation* defect. `bannerFor` validates against the
+> registry before rendering, so an unrecognised `?reason=` renders nothing at all.
+>
+> ⚠️ Four of the five were in the original list of twelve above and were dropped from the "real
+> population of six" because the re-measurement scanned only toast props; `auth/reset-password`
+> was never listed at all.
 
 ### 1.6 · The documented bug this must not repeat
 
@@ -205,6 +218,38 @@ the way `tzsFigures` does today.
 
 ### 2.3 · Wallet, KYC, auth, proposals, objections
 
+> 🔴 **THE "SHORTER ROUTE" BELOW WAS WRONG, AND MEASURING IT COST A TRANCHE — corrected
+> 2026-08-15.** This section claimed *"19 of them already carry a distinct machine CODE … the
+> services were never the problem"*, and the registry duly mapped `DOC_IMAGE`, `DOC_TOO_LARGE`,
+> `DOCS_LOCKED`, `NIDA_TAKEN` and `NO_EXTRA_REQUEST`. Measured by **opening the call sites**:
+>
+> **No service anywhere emitted any of those five codes.** `kyc-service.ts` emits exactly three —
+> `INVALID`, `NOT_FOUND`, `RATE_LIMITED`. Those five registry rows were therefore *unreachable*,
+> and every KYC refusal a player actually saw arrived through `errorCopy`'s INVALID phrase tests
+> and nothing else. The rows looked like coverage and were dead code.
+>
+> ⛔ **And where the mapped codes ARE emitted, the code is minted by phrase-matching the prose.**
+> `PW_CURRENT_WRONG`, `PW_WEAK`, `VOTING_CLOSED`, `EMAIL_TAKEN` and `NAME_INVALID` are all
+> produced in the **action layer**, like this:
+>
+> ```
+>   /current password is incorrect/i.test(r.error) ? "PW_CURRENT_WRONG" : ...
+>   /voting has closed/i.test(r.error)             ? "VOTING_CLOSED"    : "NOT_FOUND"
+> ```
+>
+> So the "distinct machine code" the registry maps so exactly is itself manufactured by the
+> substring-matching the registry exists to retire. The defect was **moved one layer up, not
+> removed** — and mapping the code made it look solved. Still open for the auth/proposals family.
+>
+> ⚠️ **A third seam, found the same way:** `attachDocumentAction` forwarded `{ ok, error, code }`
+> and silently dropped everything else, so a `reason` minted in the service died at the action
+> boundary. Teaching a service to say why is inert until every layer between it and the player
+> carries it. This is what §3 Step 1 means by *"a list built from greps is a lie — open the call
+> sites"*.
+>
+> The paragraph below is kept as written, because what it got RIGHT — that §1.4's missing
+> `Severity` was the real gap — is still true.
+>
 > ✅ **LANDED 2026-08-14, and by a shorter route than this section assumed.** It reads as
 > though every one of these needs a service change. Most do not: **19 of them already carry a
 > distinct machine CODE** (`EMAIL_TAKEN`, `NIDA_TAKEN`, `DOC_TOO_LARGE`, `PW_WEAK`,
@@ -392,6 +437,33 @@ edit — never reaches `main`.
 ⭐ **The rest of the range is clean.** Every commit from 2026-08-14/15 was swept for the same
 shape: no other `if (true)`/`if (false)` anywhere in `src/`, no NUL bytes, no zeroed source
 files. This was the only one.
+
+### 3.9 · 🔴 FIXED (2026-08-15) · The RED harness reported "tree restored" and had not
+
+`red:failure-reasons` kept its restore set as a **hard-coded list of six files**:
+
+```js
+const originals = new Map([[MARKET, …], [REASONS, …], [DICT, …], [PAGE, …], [KYC, …], [COPY, …]]);
+const restore = () => { for (const [f, s] of originals) writeFileSync(f, s); };
+```
+
+Add a mutation against a **seventh** file and the harness writes it, never restores it, and then
+prints `tree restored · 18/18` and exits **0**. That is exactly what happened when the two banner
+mutations were first added: both defects were left **on disk in a green tree** — a compliance
+surface rendering `{sp.error}` again, and a `bannerFor` that no longer validates the query
+string. A commit at that moment would have shipped both, with every guard passing and the
+harness's own summary saying the tree was clean.
+
+> ⭐ **THE TELL WAS NOT IN ANY OUTPUT.** Both guards passed, RED passed, `git status` showed the
+> files as modified — indistinguishable from the edits I had made myself moments earlier. It was
+> caught only by reading the two lines back. ⛔ **A harness's claim about the tree is not
+> evidence about the tree**; §0's "scan for NUL bytes after any interrupted run" is the same
+> lesson, and this run was not interrupted.
+
+Fixed at the root rather than by extending the list: the snapshot is taken **on first touch**, so
+the set restored is by construction the set mutated. A restore list maintained by hand beside a
+mutation list is `RULES.md` §7's *"a number written twice"* applied to file paths — it can only
+ever go stale, and it goes stale silently.
 
 ---
 

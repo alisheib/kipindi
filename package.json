@@ -424,6 +424,7 @@
     "red:thin-alert": "node scripts/thin-market-alert-red.mjs",
     "qa:admin-updown-widths": "node scripts/live-admin-updown-widths.mjs",
     "test:failure-reasons": "tsx scripts/failure-reasons.test.mts",
+    "qa:refusal-frames": "node scripts/refusal-frames.mjs",
     "red:failure-reasons": "node scripts/failure-reasons-red.mjs",
     "test:rate-copy": "tsx scripts/rate-copy.test.mts",
     "red:rate-copy": "node scripts/rate-copy-red.mjs",
