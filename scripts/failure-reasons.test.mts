@@ -522,6 +522,56 @@ console.log("\n§8b · the reasons that replaced the deleted phrase tests");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// §8c · THE SERVICES STILL SAY WHY — the pin that replaces the deleted phrase pins
+// ═══════════════════════════════════════════════════════════════════════════
+// ⭐ §8 EXISTS BECAUSE A PHRASE TEST CAN ROT SILENTLY. Deleting a phrase test does not delete
+// that risk — it MOVES it. The new failure mode is not "the sentence was reworded"; it is
+// **the service quietly stops emitting its reason**, at which point the refusal falls to the
+// generic line and nothing anywhere goes red. §8's own header says a rewording is invisible in
+// review, in production logs, and in every existing suite. So is a deleted `reason:`.
+//
+// ⛔ SO EACH RETIRED PHRASE TEST IS REPLACED BY A PIN ON ITS SERVICE, NOT BY NOTHING. This
+// reads the service source and asserts the token is still there — the same shape as §8, which
+// reads the service source and asserts the sentence is still there.
+console.log("\n§8c · the services still emit the reasons that replaced the phrase tests");
+{
+  const EMITTERS: Array<{ file: string; reasons: string[] }> = [
+    { file: "src/lib/server/kyc-service.ts", reasons: [
+      "nida_taken", "nida_not_verified", "docs_required", "extra_docs_required",
+      "docs_locked", "no_extra_request", "doc_image_type", "doc_too_large",
+    ] },
+    { file: "src/lib/server/wallet-service.ts", reasons: [
+      "deposit_limit", "sof_required", "withdraw_below_min", "kyc_required",
+    ] },
+  ];
+  for (const e of EMITTERS) {
+    const src = readFileSync(e.file, "utf8");
+    for (const r of e.reasons) {
+      ok(`8c.${r} · ${e.file.split("/").pop()} still says why`,
+         new RegExp(`reason:\\s*"${r}"`).test(src),
+         `no \`reason: "${r}"\` — the refusal now falls to the generic line, silently`);
+    }
+  }
+  // ⭐ CONTROL · the pin must be capable of failing. A reason that is NOT emitted anywhere must
+  // read as absent, or every assertion above would pass on an empty file.
+  const kyc = readFileSync("src/lib/server/kyc-service.ts", "utf8");
+  ok("8c.control · the pin can fail — an unemitted reason reads as absent",
+     !/reason:\s*"stake_below_min"/.test(kyc));
+
+  // ⛔ AND THE BANNER CHANNEL MUST REJECT WHAT IT DOES NOT KNOW. `?reason=` is attacker-supplied
+  // text on a signed-in money surface. If `bannerFor` ever rendered an unknown key through the
+  // caller's generic fallback instead of returning null, the query string would be back to
+  // putting a real-looking first-party alert box in front of a player.
+  const { bannerFor } = await import("../src/lib/failure-banner.ts");
+  const dict = DICT.en.error as unknown as Record<string, string>;
+  ok("8c.banner · a known reason renders", !!bannerFor("rg_limit_invalid", dict));
+  ok("8c.banner · ⛔ an UNKNOWN reason renders NOTHING, rather than echoing itself",
+     bannerFor("Your account is suspended, call +255000000", dict) === null);
+  ok("8c.banner · …and an absent reason renders nothing", bannerFor(undefined, dict) === null);
+  ok("8c.banner · severity drives the tone", bannerFor("kyc_required", dict)?.tone === "danger");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // §9 · C2 SECOND TRANCHE — every coded refusal now knows HOW LOUD to be
 // ═══════════════════════════════════════════════════════════════════════════
 // `docs/FAILURE-INVENTORY.md` §1.4 counts the actual gap: *"five tone vocabularies, and no
@@ -629,12 +679,37 @@ console.log("\n§10 · raw server strings in front of a player — the ratchet")
   // would have made the product worse. The negative lookahead is what tells the two apart.
   // ⛔ The trailing `\b(?!\.)` matters too: `r.error` is the raw string, `t.error.foo` is not.
   const RAW = /\b(?:title|description):\s*(?!t\.)[A-Za-z_$][\w$]*\.error\b(?!\.)/g;
+
+  // 🔴 AND THE SECOND CHANNEL, WHICH THIS SECTION WAS STRUCTURALLY BLIND TO UNTIL 2026-08-15.
+  // `RAW` matches an object PROPERTY — a toast or modal argument. A form-action page does not
+  // report that way: it `redirect(...?error=<the server's English sentence>)` and the server
+  // component renders `{sp.error}` as JSX TEXT inside a `Callout` or a `role="alert"` div. That
+  // form matches nothing in `RAW`, so FIVE surfaces — one of them the responsible-gambling
+  // console — sat outside this denominator while it printed a confident **0**. That is §5b's
+  // "a check adjacent to the truth": the number was correct about the channel it measured and
+  // said nothing about the one it did not.
+  //
+  // ⛔ ONE DENOMINATOR, NOT TWO. Both patterns are counted into the same `count` against the
+  // same ceiling, because the player-facing defect is identical — a Swahili or Chinese player
+  // reading English audit prose — and a defect that can hide by moving between two scoreboards
+  // is a defect with somewhere to hide.
+  // ⚠️ `test:feedback-law` §8 still ratchets the banner channel on its own. That is deliberate
+  // duplication of a MEASUREMENT, not of a rule: it is the guard that found this blindness, and
+  // it fails independently if either half regresses.
+  const RAW_BANNER = /\{\s*(?:sp|searchParams|params|q)\s*\.\s*error\s*\}/g;
   const offenders: string[] = [];
   let count = 0;
   const files0 = [...walkTsx("src/app"), ...walkTsx("src/components")];
   for (const f of files0) {
-    const n = (readFileSync(f, "utf8").match(RAW) ?? []).length;
-    if (n) { count += n; offenders.push(`${f.replace("src/", "")}×${n}`); }
+    const src = readFileSync(f, "utf8");
+    const nToast = (src.match(RAW) ?? []).length;
+    const nBanner = (src.match(RAW_BANNER) ?? []).length;
+    const n = nToast + nBanner;
+    if (n) {
+      count += n;
+      const which = [nToast ? `toast×${nToast}` : "", nBanner ? `banner×${nBanner}` : ""].filter(Boolean).join("+");
+      offenders.push(`${f.replace("src/", "")}(${which})`);
+    }
   }
   // The excluded population, counted for the record (see the note by `isAdmin`).
   const walkAll = (dir: string, out: string[] = []): string[] => {
@@ -665,6 +740,21 @@ console.log("\n§10 · raw server strings in front of a player — the ratchet")
   ok("10.4 · control · …and still IGNORES the dictionary, which is the correct thing to render",
      !probe('toast({ title: t.toast.oops, description: t.error.somethingDidntWork, variant: "danger" });'));
   ok("10.5 · control · …and the tree really was walked", files0.length > 40, `${files0.length} player .tsx files`);
+
+  // ⭐ THE BANNER HALF NEEDS ITS OWN CONTROLS, OR ADDING IT TO THE DENOMINATOR IS DECORATION.
+  // A scanner that has gone blind prints "0" in exactly the same words as a clean tree, so
+  // prove this pattern discriminates too — it must catch a banner rendering the query string,
+  // and must NOT catch one rendering the registry.
+  const probeB = (line: string) => new RegExp(RAW_BANNER.source).test(line);
+  ok("10.6 · control · the BANNER pattern catches a page rendering the server's own sentence",
+     probeB('<Callout tone="danger" live>{sp.error}</Callout>'));
+  ok("10.7 · control · …and ignores one rendering the registry",
+     !probeB('<Callout tone={banner.tone} live>{banner.body}</Callout>'));
+  // ⛔ AND THE TWO PATTERNS MUST NOT BE THE SAME PATTERN. If a refactor ever collapsed them,
+  // the denominator would silently halve and this section would go back to measuring one
+  // channel while claiming both.
+  ok("10.8 · control · the two channels really are two different patterns",
+     RAW.source !== RAW_BANNER.source && !probe('<Callout tone="danger">{sp.error}</Callout>'));
   // ℹ️ Recorded, not asserted: the ADMIN console is an English-only staff surface by design,
   // so its raw renders are excluded above. Printing the number keeps that decision visible
   // rather than hidden inside a filter.

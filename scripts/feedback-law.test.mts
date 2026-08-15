@@ -412,9 +412,20 @@ console.log("\n§8 · The OTHER raw-server-string channel — a ratchet on the b
     const n = (readFileSync(f, "utf8").match(RAW_BANNER) ?? []).length;
     if (n) { count += n; seen.push(`${f.replace("src/", "")}×${n}`); }
   }
-  // The measured population on 2026-08-15. ⛔ THIS NUMBER MAY ONLY GO DOWN. Lower it in the
-  // same commit that fixes one — a ceiling nobody lowers is a budget, not a ratchet.
-  const CEILING = 5;
+  // The measured population. ⛔ THIS NUMBER MAY ONLY GO DOWN. Lower it in the same commit that
+  // fixes one — a ceiling nobody lowers is a budget, not a ratchet.
+  //
+  // ⭐ 5 → 0 on 2026-08-15. All five surfaces now carry a reason KEY on the redirect and render
+  // it through `renderFailure` — the same registry every toast and modal already used — via
+  // `src/lib/failure-banner.ts`. The compliance one is the reason this mattered: a Swahili or
+  // Chinese player who mistyped a limit read *"Invalid value for dailyLossLimit."*
+  //
+  // 🔴 AND KEYING THE CHANNEL CLOSED A REFLECTION HOLE. `?error=` rendered whatever the query
+  // string said, so a link could put ANY sentence in a styled, first-party alert box in front
+  // of a signed-in player on the operator's own domain. React escaped it, so it was never
+  // script injection — it was a phishing surface on a licensed money platform. An unrecognised
+  // `?reason=` now renders nothing at all.
+  const CEILING = 0;
   ok("8.1 · the banner channel has not grown", count <= CEILING, `${count} > ${CEILING} — ${seen.join(" ")}`);
   ok("8.2 · …and if it has SHRUNK, lower the ceiling in the same commit",
     count >= CEILING, `${count} < ${CEILING} — a fix landed; drop CEILING to ${count}`);

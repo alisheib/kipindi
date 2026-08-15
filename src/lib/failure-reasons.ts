@@ -113,7 +113,18 @@ export type FailureReason =
   | "break_active"
   | "account_suspended"
   | "not_found"
-  | "signin_required";
+  | "signin_required"
+  // ── C2 THIRD TRANCHE · the BANNER channel (docs/FAILURE-INVENTORY.md §1.5's note) ────────
+  // A form-action page cannot hand a toast an object — it redirects, and a redirect carries a
+  // string. These are the reasons those five surfaces send as a KEY instead of as prose.
+  | "rg_limit_invalid"
+  | "rg_period_invalid"
+  | "sof_incomplete"
+  | "sof_locked"
+  | "close_confirm_required"
+  | "password_mismatch"
+  | "reset_link_invalid"
+  | "unknown_failure";
 
 export interface ReasonSpec {
   severity: Severity;
@@ -220,6 +231,24 @@ export const REASONS: Record<FailureReason, ReasonSpec> = {
   break_active:         { severity: "error",   channel: "modal",  key: "errBreakActive" },
   account_suspended:    { severity: "error",   channel: "modal",  key: "errSuspended" },
   signin_required:      { severity: "warning", channel: "toast",  key: "errSignIn" },
+
+  // ── C2 THIRD TRANCHE · the banner channel ─────────────────────────────────
+  // ⛔ ALL `inline`, AND THAT IS THE POINT OF THE CHANNEL. These render beside the form the
+  // player is still looking at, so they are never a toast that can be missed — and never
+  // `warning`-as-gold, which on this platform means money that was EARNED.
+  rg_limit_invalid:      { severity: "warning", channel: "inline", key: "errRgLimitInvalid" },
+  rg_period_invalid:     { severity: "warning", channel: "inline", key: "errRgPeriodInvalid" },
+  sof_incomplete:        { severity: "warning", channel: "inline", key: "errSofIncomplete" },
+  // Nothing is wrong — an accepted declaration is deliberately not editable in place.
+  sof_locked:            { severity: "info",    channel: "inline", key: "errSofLocked" },
+  close_confirm_required:{ severity: "warning", channel: "inline", key: "errCloseConfirm" },
+  password_mismatch:     { severity: "warning", channel: "inline", key: "errPasswordMismatch" },
+  reset_link_invalid:    { severity: "warning", channel: "inline", key: "errResetLinkInvalid" },
+  // ⭐ THE ONE THAT MAKES THE CHANNEL CONVERTIBLE AT ALL. A banner surface must send SOME key
+  // for a refusal the registry does not classify, or it falls back to echoing the server's
+  // prose and the channel can never reach zero. It points at the dictionary line the callers
+  // already used as their generic fallback, so it invents no copy.
+  unknown_failure:       { severity: "warning", channel: "inline", key: "somethingDidntWork" },
 };
 
 /**

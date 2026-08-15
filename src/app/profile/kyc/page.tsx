@@ -17,6 +17,7 @@ import { RewardBurst } from "@/components/brand/reward-burst";
 import { SUPPORT_EMAIL } from "@/lib/support-config";
 import { getPayoutStatus, payoutsAcceptingRequests } from "@/lib/server/payout-status";
 import { getServerT, type Dict } from "@/lib/i18n-server";
+import { bannerFor } from "@/lib/failure-banner";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Verify identity", which a Swahili player saw in their browser tab and history.
@@ -25,7 +26,7 @@ export async function generateMetadata() {
   return { title: t.profile.verifyIdentity };
 }
 
-export default async function KycPage({ searchParams }: { searchParams?: Promise<{ welcome?: string; error?: string; nida?: string; submitted?: string; fullName?: string; dob?: string; email?: string; next?: string }> }) {
+export default async function KycPage({ searchParams }: { searchParams?: Promise<{ welcome?: string; reason?: string; nida?: string; submitted?: string; fullName?: string; dob?: string; email?: string; next?: string }> }) {
   const { t } = await getServerT();
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/profile/kyc");
@@ -54,6 +55,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
   const user = await db.user.findById(session.userId);
 
   const sp = (await searchParams) ?? {};
+  const banner = bannerFor(sp.reason, t.error as unknown as Record<string, string>);
   const isWelcome = sp.welcome === "new";
   // Safe internal return target (IA review R6) — a gated action (e.g. Withdraw)
   // sends `?next=/wallet/withdraw`; on approval we offer a "Continue" CTA back
@@ -89,12 +91,12 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
     <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-5">
       <BackLink fallbackHref="/profile" label={t.common.profile} />
 
-      {sp.error && (
+      {banner && (
         <div role="alert" className="rounded-xl border border-no-700 bg-no-500/10 px-4 py-3 text-[13px] text-no-300">
-          {sp.error}
+          {banner.body}
         </div>
       )}
-      {sp.nida === "verified" && !sp.error && (
+      {sp.nida === "verified" && !banner && (
         <div role="status" className="rounded-xl border border-yes-700 bg-yes-500/10 px-4 py-3 text-[13px] text-yes-300">
           {t.profile.kycNidaVerified}
         </div>
@@ -115,7 +117,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
           </div>
         </div>
       )}
-      {sp.submitted && !sp.error && (
+      {sp.submitted && !banner && (
         <div role="status" className="rounded-xl border border-yes-700 bg-yes-500/10 px-4 py-3 text-[13px] text-yes-300">
           {t.profile.kycSubmitted}
         </div>

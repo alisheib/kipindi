@@ -19,6 +19,7 @@ import { formatDateTimeSafe, formatDateTime } from "@/lib/utils";
 import { ExportDataButton } from "./export-data-button";
 import { SUPPORT_EMAIL, SUPPORT_PHONE } from "@/lib/support-config";
 import { getServerT } from "@/lib/i18n-server";
+import { bannerFor } from "@/lib/failure-banner";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "My account", which a Swahili player saw in their browser tab and history.
@@ -35,7 +36,7 @@ export const dynamic = "force-dynamic";
  */
 const OWN_ACTIVITY_MAX = 100_000;
 
-export default async function AccountPage({ searchParams }: { searchParams?: Promise<{ error?: string; act?: string; page?: string }> }) {
+export default async function AccountPage({ searchParams }: { searchParams?: Promise<{ reason?: string; act?: string; page?: string }> }) {
   const { t } = await getServerT();
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/profile/account");
@@ -52,6 +53,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
   // and it is the one a customer meets rather than an operator.
   try { allActivity = getOwnActivity(session.userId, OWN_ACTIVITY_MAX); } catch { /* graceful */ }
   const sp = (await searchParams) ?? {};
+  const banner = bannerFor(sp.reason, t.error as unknown as Record<string, string>);
   const actFilter = sp.act ?? "all";
   const activityCategories = [...new Set(allActivity.map((e) => e.category))].sort();
   // Filter across the WHOLE history, then page the result — the other order is the bug.
@@ -70,9 +72,9 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
 
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-5">
-      {sp.error && (
+      {banner && (
         <div role="alert" className="rounded-xl border border-no-700 bg-no-500/10 px-4 py-3 text-[13px] text-no-300">
-          {sp.error}
+          {banner.body}
         </div>
       )}
       <BackLink fallbackHref="/profile" label={t.common.profile} />

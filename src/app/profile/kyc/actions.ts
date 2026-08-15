@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
 import { startKyc, submitNidaStep, attachDocument, attachExtraDocument, submitForReview } from "@/lib/server/kyc-service";
 import { getServerT } from "@/lib/i18n-server";
-import { errorCopy } from "@/lib/error-copy";
+import { reasonKeyFor } from "@/lib/failure-banner";
 
 /**
  * Player explicitly restarts a REJECTED submission.
@@ -47,10 +47,12 @@ export async function submitNidaAction(formData: FormData) {
   // Carry form values through the error redirect so the player doesn't
   // have to re-type a 20-digit NIDA number + full name on validation failure.
   if (!result.ok) {
-    // B-7 — the page renders this verbatim; mint it in the player's language.
-    const { t } = await getServerT();
+    // ⛔ THE KEY, NOT THE SENTENCE. This used to mint the localized copy HERE and put the
+    // finished sentence on the query string. That was already better than raw prose, but it
+    // still meant the page rendered whatever `?error=` said — so any text could be shown to a
+    // signed-in player by handing them a link. The page resolves the key itself now.
     const carry = `&nida=${encodeURIComponent(nida)}&fullName=${encodeURIComponent(fullName)}&dob=${encodeURIComponent(dob)}${emailStr ? `&email=${encodeURIComponent(emailStr)}` : ""}`;
-    redirect(`/profile/kyc?error=${encodeURIComponent(errorCopy(t, result))}${carry}`);
+    redirect(`/profile/kyc?reason=${encodeURIComponent(reasonKeyFor(result))}${carry}`);
   }
   // A NIDA that FAILS the identity check (mismatch / sanctioned / underage /
   // not-found) still returns ok:true — `ok` reports that the step ran, not that
@@ -98,8 +100,7 @@ export async function submitKycForReviewAction() {
   const result = await submitForReview(session.userId);
   revalidatePath("/profile/kyc");
   if (!result.ok) {
-    const { t } = await getServerT();
-    redirect(`/profile/kyc?error=${encodeURIComponent(errorCopy(t, result))}`);
+    redirect(`/profile/kyc?reason=${encodeURIComponent(reasonKeyFor(result))}`);
   }
   redirect("/profile/kyc?submitted=1");
 }

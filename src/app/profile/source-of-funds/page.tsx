@@ -14,6 +14,7 @@ import { Chip } from "@/components/ui/chip";
 import { submitSourceOfFundsAction } from "./actions";
 import { formatDate } from "@/lib/utils";
 import { getServerT } from "@/lib/i18n-server";
+import { bannerFor } from "@/lib/failure-banner";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Source of funds", which a Swahili player saw in their browser tab and history.
@@ -23,7 +24,7 @@ export async function generateMetadata() {
 }
 export const dynamic = "force-dynamic";
 
-export default async function SourceOfFundsPage({ searchParams }: { searchParams?: Promise<{ error?: string; saved?: string; src?: string; occ?: string; band?: string; emp?: string; other?: string }> }) {
+export default async function SourceOfFundsPage({ searchParams }: { searchParams?: Promise<{ reason?: string; saved?: string; src?: string; occ?: string; band?: string; emp?: string; other?: string }> }) {
   const { t } = await getServerT();
 
   const SOURCES: { id: string; label: string; glyph: keyof typeof I }[] = [
@@ -46,6 +47,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
   let existing: Awaited<ReturnType<typeof db.sourceOfFunds.get>> | null = null;
   try { existing = await db.sourceOfFunds.get(session.userId); } catch { /* graceful */ }
   const sp = (await searchParams) ?? {};
+  const banner = bannerFor(sp.reason, t.error as unknown as Record<string, string>);
   // Restore form values from error redirect (takes precedence over existing record for the current attempt)
   const prevSource = sp.src ?? existing?.declaredSource ?? "";
   const prevOcc = sp.occ ?? existing?.declaredOccupation ?? "";
@@ -66,12 +68,12 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
     <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-5">
       <BackLink fallbackHref="/profile" label={t.common.profile} />
 
-      {sp.error && (
+      {banner && (
         <div role="alert" className="rounded-xl border border-no-700 bg-no-500/10 px-4 py-3 text-[13px] text-no-300">
-          {sp.error}
+          {banner.body}
         </div>
       )}
-      {sp.saved && !sp.error && (
+      {sp.saved && !banner && (
         <div role="status" className="rounded-xl border border-yes-700 bg-yes-500/10 px-4 py-3 text-[13px] text-yes-300">
           {t.profile.declarationSaved}
         </div>

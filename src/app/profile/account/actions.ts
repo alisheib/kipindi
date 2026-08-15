@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { reasonKeyFor } from "@/lib/failure-banner";
 import { currentSession } from "@/lib/server/auth-service";
 import { closeAccount, exportUserData } from "@/lib/server/user-service";
 import { audit } from "@/lib/server/audit";
@@ -44,10 +45,10 @@ export async function closeAccountAction(formData: FormData) {
   if (!session) redirect("/auth/login");
   const confirm = String(formData.get("confirm") ?? "");
   if (confirm !== "CLOSE MY ACCOUNT") {
-    redirect(`/profile/account?error=${encodeURIComponent("Type CLOSE MY ACCOUNT exactly to confirm.")}`);
+    redirect(`/profile/account?reason=close_confirm_required`);
   }
   const reason = String(formData.get("reason") ?? "").slice(0, 500);
   const result = await closeAccount(session.userId, reason || undefined);
-  if (!result.ok) redirect(`/profile/account?error=${encodeURIComponent(result.error)}`);
+  if (!result.ok) redirect(`/profile/account?reason=${encodeURIComponent(reasonKeyFor(result))}`);
   redirect("/auth/login?closed=1");
 }

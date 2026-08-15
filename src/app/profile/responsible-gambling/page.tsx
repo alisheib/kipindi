@@ -20,6 +20,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { FeedbackSettings } from "@/components/settings/feedback-settings";
 import { formatTzs } from "@/lib/utils";
 import { getServerT } from "@/lib/i18n-server";
+import { bannerFor } from "@/lib/failure-banner";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Responsible gambling", which a Swahili player saw in their browser tab and history.
@@ -29,7 +30,7 @@ export async function generateMetadata() {
 }
 export const dynamic = "force-dynamic";
 
-export default async function ResponsibleGamblingPage({ searchParams }: { searchParams: Promise<{ error?: string; saved?: string }> }) {
+export default async function ResponsibleGamblingPage({ searchParams }: { searchParams: Promise<{ reason?: string; saved?: string }> }) {
   const { t } = await getServerT();
 
   const SELF_EXCLUSION_OPTIONS = [
@@ -68,6 +69,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
     : [];
 
   const sp = await searchParams;
+  const banner = bannerFor(sp.reason, t.error as unknown as Record<string, string>);
 
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-5">
@@ -75,10 +77,10 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
 
       {/* DS-26 — the kit Callout, not a bespoke box, for the outcome of a
           protection-limit change (consequential; `live` announces promptly). */}
-      {sp.error && (
-        <Callout tone="danger" live>{sp.error}</Callout>
+      {banner && (
+        <Callout tone={banner.tone} live>{banner.body}</Callout>
       )}
-      {sp.saved && !sp.error && (
+      {sp.saved && !banner && (
         <Callout tone="success" live>{t.rg.limitsSaved}</Callout>
       )}
 

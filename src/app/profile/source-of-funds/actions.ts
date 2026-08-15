@@ -24,12 +24,16 @@ export async function submitSourceOfFundsAction(formData: FormData) {
 
   // Carry form values through error redirects so the player doesn't re-enter everything
   const carry = `&src=${encodeURIComponent(declaredSource)}&occ=${encodeURIComponent(declaredOccupation)}&band=${encodeURIComponent(declaredAnnualIncomeBand)}${declaredEmployer ? `&emp=${encodeURIComponent(declaredEmployer)}` : ""}${declaredOther ? `&other=${encodeURIComponent(declaredOther)}` : ""}`;
-  const fail = (msg: string) => redirect(`/profile/source-of-funds?error=${encodeURIComponent(msg)}${carry}`);
-  if (!validSources.includes(declaredSource)) fail("Pick a source of funds.");
-  if (!validBands.includes(declaredAnnualIncomeBand)) fail("Pick an annual income band.");
-  if (declaredOccupation.length < 2) fail("Tell us your occupation.");
+  // ⛔ THE KEY, NOT THE PROSE. `fail` used to put its English argument straight onto the query
+  // string, and the page rendered it verbatim — so every line below was read in English by a
+  // Swahili or Chinese player. The four field checks share one reason because they share one
+  // next step: complete the form.
+  const fail = (reason: string) => redirect(`/profile/source-of-funds?reason=${reason}${carry}`);
+  if (!validSources.includes(declaredSource)) fail("sof_incomplete");
+  if (!validBands.includes(declaredAnnualIncomeBand)) fail("sof_incomplete");
+  if (declaredOccupation.length < 2) fail("sof_incomplete");
   if (declaredSource === "other" && (!declaredOther || declaredOther.length < 10)) {
-    fail("When source is 'other', describe it (at least 10 characters).");
+    fail("sof_incomplete");
   }
 
   // 🔴 An ACCEPTED declaration is EVIDENCE an officer acted on, and it gates
@@ -49,7 +53,7 @@ export async function submitSourceOfFundsAction(formData: FormData) {
       targetId: session.userId,
       payload: { attemptedSource: declaredSource, attemptedBand: declaredAnnualIncomeBand },
     });
-    fail("Your source-of-funds declaration has already been accepted and cannot be changed here. Contact support if your circumstances have changed.");
+    fail("sof_locked");
   }
 
   const record: StoredSourceOfFunds = {
