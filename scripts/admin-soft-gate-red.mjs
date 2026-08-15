@@ -19,6 +19,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
+import { injectDefect } from "./red-anchor.mjs";
 
 const ROOT = join(import.meta.dirname, "..");
 const GUARD = join(ROOT, "src/lib/server/rbac-guard.ts");
@@ -104,10 +105,31 @@ console.log("\nred:admin-soft-gate — the guard must FAIL when the defect is pr
 // The unmodified tree must be GREEN first, or a red below proves nothing.
 ok("CONTROL — the guard is GREEN on the unmodified tree", runGuard() === 0);
 
+// ⛔ THE ANCHORS GO THROUGH `red-anchor.mjs`, NOT THROUGH `String.includes`.
+// 🔴 Measured 2026-08-15: **not one of the three plants below could be located**, and every one
+// of them spans a line break. `core.autocrlf=true` and there is no `.gitattributes`, so
+// `rbac-guard.ts` and `privacy/actions.ts` hold CRLF on disk while these anchors are written
+// with `\n`. The run printed `2 passed, 3 failed` — and the two that passed were the two
+// CONTROLS, which touch no anchor at all. So the only things this harness actually proved were
+// that the guard is green before it starts and green when it finishes, and it reported the
+// three real cases as failures: a guard apparently gone weak on exactly the audit-trail cases
+// that matter most (a DSAR refusal going unrecorded on the PDPA surface).
+//
+// ⛔ IT WAS A VERDICT THAT DEPENDED ON HOW THE TREE HAD BEEN CHECKED OUT — red here, green on an
+// LF clone. That is the second bug `red-anchor.mjs`'s header records paying for, verbatim, and
+// this harness was carrying its own `includes`/`replace` pair instead of using it.
+// `injectDefect` also refuses an anchor that matches TWICE, which `includes` cannot see.
 for (const p of PLANTS) {
   const original = readFileSync(p.file, "utf8");
-  if (!ok(`plant located: ${p.name}`, original.includes(p.from))) continue;
-  writeFileSync(p.file, original.replace(p.from, p.to));
+  let mutated;
+  try {
+    mutated = injectDefect(original, p.from, p.to);
+  } catch (e) {
+    ok(`plant located: ${p.name}`, false, e.message);
+    continue;
+  }
+  ok(`plant located: ${p.name}`, true);
+  writeFileSync(p.file, mutated);
   const code = runGuard();
   ok(`RED: ${p.name} → guard exits non-zero`, code !== 0, `exit=${code}`);
   writeFileSync(p.file, original);

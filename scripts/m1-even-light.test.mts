@@ -195,7 +195,30 @@ const hits: Hit[] = [];
 const benign: Hit[] = [];
 
 for (const rel of FILES) {
-  const text = readFileSync(`${ROOT}/${rel}`, "utf8").replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "));
+  /**
+   * ⛔ `//` LINE COMMENTS ARE STRIPPED TOO, IN `.tsx` ONLY — and this was a hole, not a tidy-up.
+   *
+   * 🔴 Found 2026-08-15 by re-aiming `red:m1-light`'s `.tsx` case at a site that still exists.
+   * The declaration matcher below requires a shadow property to follow `;`, `{`, `,` or the
+   * start of the file with only WHITESPACE between. A JSX style object satisfies that — every
+   * property follows a comma — **unless a `//` comment sits in the gap**:
+   *
+   *     border: "2px solid var(--bg-base)",
+   *     // DS-24 — fully token-composed (the drop half was a raw oklch).
+   *     boxShadow: "…",                       ← invisible to this gate
+   *
+   * ⚠️ And in THIS codebase that gap is where the explanation of a conversion is written, so
+   * the blind spot sat precisely over the declarations most likely to be re-litigated. Only
+   * `/* … *\/` was being stripped; measured across `src/**\/*.tsx`, exactly **one** declaration
+   * is hidden today (and it carries no `inset`, so the ratchet's 0 was not wrong) — but a
+   * ratchet whose corpus silently skips a shape cannot honestly claim a count, and the whole
+   * point of §63's note is that **the corpus is part of the claim**.
+   *
+   * ⛔ `.tsx` ONLY, and the `[^:]` guard is why: `//` is not a comment in CSS, and stripping it
+   * there would eat the rest of any line containing `url(https://…)`.
+   */
+  const raw = readFileSync(`${ROOT}/${rel}`, "utf8").replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "));
+  const text = rel.endsWith(".tsx") ? raw.replace(/(^|[^:])\/\/[^\n]*/g, "$1") : raw;
   /**
    * Every declaration whose property is a shadow: `box-shadow` in CSS and inside a `.tsx`
    * `<style>` block, **`boxShadow` in a JSX inline style object**, and any custom property

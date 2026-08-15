@@ -69,6 +69,34 @@ const cats = Object.keys(base.promised);
 ok(`the category rail exposes per-control counts (${cats.length} controls)`, cats.length >= 2, "no [data-chip=cat:*] found — selector may have rotted");
 console.log(`  promised: ${JSON.stringify(base.promised)}\n`);
 
+// ⛔ THE PREMISE, ASSERTED BEFORE ANYTHING IS CONCLUDED FROM IT.
+//
+// 🔴 MEASURED 2026-08-15, AND IT IS THE FAILURE THIS FILE'S OWN HEADER WARNS ABOUT. Every
+// assertion below compares a PROMISE against a DELIVERY — `promised 0 and the page states 0`,
+// `delivers no more than it promised (0 ≤ 0)`. On a board with **no settled markets** all of
+// them are trivially true, and the guard printed a full green card over 32 assertions that had
+// nothing to discriminate. `red:results-filter` reintroduced the exact production defect — the
+// category silently dropped whenever a search is active — and the guard **stayed green**.
+//
+// ⛔ THAT IS NOT A HARNESS FAULT AND MUST NOT BE "FIXED" IN THE HARNESS. The harness was
+// telling the truth: on this dataset the guard does not prove what it claims. This codebase has
+// shipped that shape before — *"a vacuity check that passed over the exact drift it existed to
+// catch"* — and the answer is always the same: a check that would still pass if every row it
+// reads had been deleted is not a check.
+//
+// So the guard now REFUSES on an absent premise instead of certifying it. Two rows is the floor
+// at which "the category was dropped" can differ from "the category was kept".
+{
+  const total = base.promised.all ?? 0;
+  const nonEmptyCats = cats.filter((c) => c !== "all" && (base.promised[c] ?? 0) > 0).length;
+  ok("⛔ PREMISE · the board has settled markets to filter — a filter test on 0 rows proves nothing",
+     total >= 2,
+     `only ${total} settled market(s) on this board. Point this at a populated environment, or seed one: every promise/delivery pair below is 0 ≤ 0 and cannot tell a working filter from a broken one.`);
+  ok("⛔ PREMISE · …in at least one real category, or category filtering cannot be discriminated",
+     nonEmptyCats >= 1,
+     `every category promises 0 — a category filter cannot be observed to work or fail`);
+}
+
 /**
  * Press a control and check the page keeps the promise it advertised.
  *

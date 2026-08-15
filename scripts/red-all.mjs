@@ -44,6 +44,17 @@
  * ⛔ SEQUENTIAL, DELIBERATELY. These harnesses mutate real files in `src/`. Two running at
  * once would inject into each other's snapshots and restore each other's mutations, and the
  * verdicts would depend on scheduling. Slow and true beats fast and meaningless.
+ *
+ * ⚠️ ONE HARNESS NEEDS AN ENVIRONMENT, AND ITS FAILURE IS EXPECTED WITHOUT ONE — the same
+ * shape `test-all.mjs` documents for `test:responsive` / `test:motion`. `red:results-filter`
+ * drives a real browser against a running board and needs **≥2 settled markets in ≥1 category**:
+ * on an empty board every promise/delivery pair is `0 ≤ 0` and proves nothing, so the guard
+ * refuses on the absent premise. Point it at a populated server:
+ *     npm run red:results-filter -- http://localhost:3017
+ * or drop it from a serverless run:
+ *     npm run red:all -- --skip results-filter
+ * ⛔ It is NOT silently excused here. A runner that hides an unrunnable guard is the disease
+ * this file exists to cure; it fails, and it says why.
  */
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";

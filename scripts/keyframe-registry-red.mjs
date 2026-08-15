@@ -46,11 +46,16 @@ const MUTATIONS = [
     name: "retune mark-breathe inside a width media query — a second tuning, not a calm branch",
     check: "2.1",
     file: "src/app/globals.css",
+    // ⚠️ RE-ANCHORED 2026-08-15. This pointed at a `@media (min-width: 1024px)` block whose
+    // first rule was `.app-topbar` — a pairing that no longer exists anywhere in the sheet, so
+    // the mutation could not be injected and the harness said so honestly into a runner that
+    // had already exited (§8). ⛔ The mutation is about WHERE a keyframe is defined, not about
+    // which rule follows it: any real width query serves, and this one is unique.
     from: `@media (min-width: 1024px) {
-  .app-topbar {`,
+  .kp-band { padding-block: var(--rh-section); }`,
     to: `@media (min-width: 1024px) {
   @keyframes mark-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.4); } }
-  .app-topbar {`,
+  .kp-band { padding-block: var(--rh-section); }`,
   },
   {
     // 🔴 A KEYFRAME DEFINED NOWHERE AT ALL — `wc-trophy-pulse`'s shipped state, which
