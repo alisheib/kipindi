@@ -24,6 +24,7 @@ import { randomId } from "./crypto";
 import { emit } from "./event-bus";
 import type { StoredNotification } from "./store";
 import { formatTzs } from "@/lib/utils";
+import { sideWordIn, outcomeWordIn, type StoredSide, type StoredOutcome } from "@/lib/side-label";
 
 export type NotifyInput = Omit<StoredNotification, "id" | "userId" | "readAt" | "dismissedAt" | "createdAt"> & {
   userId: string;
@@ -375,16 +376,21 @@ export function notifyWatchedClosingSoon(userId: string, opts: { marketTitle: st
  * position (bettors already get their own win/loss receipt, which carries the
  * money). Purely informational: the outcome, not an invitation to bet again.
  */
-export function notifyWatchedSettled(userId: string, opts: { marketTitle: string; marketId: string; outcome: string }) {
+export function notifyWatchedSettled(userId: string, opts: { marketTitle: string; marketId: string; outcome: StoredOutcome }) {
+  // ⛔ §L3 — THIS USED TO INTERPOLATE THE STORED ENUM INTO ALL THREE LANGUAGES.
+  // `resolved ${opts.outcome}` / `matokeo: ${opts.outcome}` / `结果：${opts.outcome}` put the
+  // ASCII token `YES` inside a Swahili and a Chinese sentence, over a dictionary that has
+  // always defined NDIO and 是. The parameter was typed `string`, so nothing could catch it.
+  // It is now `StoredOutcome`, and each language reads its own word out of the one lexicon.
   return notify({
     userId,
     kind: "WATCHLIST",
     titleEn: "A market you follow has settled",
     titleSw: "Soko unalofuatilia limetatuliwa",
     titleZh: "你关注的市场已结算",
-    bodyEn: `${opts.marketTitle.slice(0, 70)} · resolved ${opts.outcome}.`,
-    bodySw: `${opts.marketTitle.slice(0, 50)} · matokeo: ${opts.outcome}.`,
-    bodyZh: `${opts.marketTitle.slice(0, 50)} · 结果：${opts.outcome}。`,
+    bodyEn: `${opts.marketTitle.slice(0, 70)} · resolved ${outcomeWordIn("en", opts.outcome, "MARKET")}.`,
+    bodySw: `${opts.marketTitle.slice(0, 50)} · matokeo: ${outcomeWordIn("sw", opts.outcome, "MARKET")}.`,
+    bodyZh: `${opts.marketTitle.slice(0, 50)} · 结果：${outcomeWordIn("zh", opts.outcome, "MARKET")}。`,
     href: `/markets/${opts.marketId}`,
   });
 }
@@ -404,17 +410,36 @@ export function notifySelectionClosed(userId: string, opts: {
 }) {
   const both = opts.hasYes && opts.hasNo;
   const only = opts.hasYes ? opts.payoutIfYes : opts.payoutIfNo;
-  const side = opts.hasYes ? "YES" : "NO";
+  const side: StoredSide = opts.hasYes ? "YES" : "NO";
+
+  // ⛔ §L3 — THE SIDE WORDS WERE HARD-WRITTEN INTO ALL THREE LANGUAGES. A Swahili player read
+  // "YES ikishinda utapata …" and a Chinese one "若 YES 获胜您将获得 …", on the message that
+  // tells them exactly what their money does. Each language now takes its own word from the
+  // one lexicon.
+  //
+  // ⚠️ "MARKET" is correct here, and it is ESTABLISHED rather than assumed: an Up & Down round
+  // never reaches this function. The guard is NOT `perEventNotificationsSuppressed()` — the
+  // only caller, `notifySelectionClosedForMarket`, does not consult it. What keeps rounds out
+  // is `nextDeadlineFor()` returning null for productLine UPDOWN (`market-scheduler.ts:147`),
+  // so no round is ever armed for the `notify-closed` transition. ⛔ If a second caller is ever
+  // added, re-establish that — do not trust the predicate's name.
+  const yesW = { en: sideWordIn("en", "YES", "MARKET"), sw: sideWordIn("sw", "YES", "MARKET"), zh: sideWordIn("zh", "YES", "MARKET") };
+  const noW = { en: sideWordIn("en", "NO", "MARKET"), sw: sideWordIn("sw", "NO", "MARKET"), zh: sideWordIn("zh", "NO", "MARKET") };
+  const oneW = { en: sideWordIn("en", side, "MARKET"), sw: sideWordIn("sw", side, "MARKET"), zh: sideWordIn("zh", side, "MARKET") };
 
   const bodyEn = both
-    ? `${opts.marketTitle.slice(0, 60)} · Betting is closed. If YES wins you receive ${formatTzs(opts.payoutIfYes)}; if NO wins you receive ${formatTzs(opts.payoutIfNo)}.`
-    : `${opts.marketTitle.slice(0, 60)} · Betting is closed. If ${side} wins you receive ${formatTzs(only)}.`;
+    ? `${opts.marketTitle.slice(0, 60)} · Betting is closed. If ${yesW.en} wins you receive ${formatTzs(opts.payoutIfYes)}; if ${noW.en} wins you receive ${formatTzs(opts.payoutIfNo)}.`
+    : `${opts.marketTitle.slice(0, 60)} · Betting is closed. If ${oneW.en} wins you receive ${formatTzs(only)}.`;
   const bodySw = both
-    ? `Kuweka dau kumefungwa. YES ikishinda utapata ${formatTzs(opts.payoutIfYes)}; NO ikishinda utapata ${formatTzs(opts.payoutIfNo)}.`
-    : `Kuweka dau kumefungwa. ${side} ikishinda utapata ${formatTzs(only)}.`;
+    ? `Kuweka dau kumefungwa. ${yesW.sw} ikishinda utapata ${formatTzs(opts.payoutIfYes)}; ${noW.sw} ikishinda utapata ${formatTzs(opts.payoutIfNo)}.`
+    : `Kuweka dau kumefungwa. ${oneW.sw} ikishinda utapata ${formatTzs(only)}.`;
+  // ⚠️ THE CHINESE SIDE WORD IS BRACKETED, AND THAT IS NOT DECORATION. `是` and `否` are also
+  // ordinary function words, so `若是获胜` reads as the conjunction 若是 ("if") swallowing the
+  // side — the player loses which side it was. 「」 marks it as the option's NAME. The same
+  // reasoning bracketed `backYesAria` and `probOverTime` in the dictionary.
   const bodyZh = both
-    ? `${opts.marketTitle.slice(0, 50)} · 投注已截止。若 YES 获胜您将获得 ${formatTzs(opts.payoutIfYes)}；若 NO 获胜您将获得 ${formatTzs(opts.payoutIfNo)}。`
-    : `${opts.marketTitle.slice(0, 50)} · 投注已截止。若 ${side} 获胜您将获得 ${formatTzs(only)}。`;
+    ? `${opts.marketTitle.slice(0, 50)} · 投注已截止。若「${yesW.zh}」获胜您将获得 ${formatTzs(opts.payoutIfYes)}；若「${noW.zh}」获胜您将获得 ${formatTzs(opts.payoutIfNo)}。`
+    : `${opts.marketTitle.slice(0, 50)} · 投注已截止。若「${oneW.zh}」获胜您将获得 ${formatTzs(only)}。`;
 
   return notify({
     userId,

@@ -17,6 +17,7 @@ import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { formatTzsCompact } from "@/lib/utils";
 import { pickLocalized } from "@/lib/localized";
 import { getServerT } from "@/lib/i18n-server";
+import { outcomeWord } from "@/lib/side-label";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -360,7 +361,9 @@ async function ResultsContent({
                     yesPct={impliedYesPct(m)}
                     volume={m.yesPool + m.noPool}
                     predictors={m.predictorCount}
-                    timeLeft={m.resolvedOutcome === "VOID" ? t.common.voided : `${t.market.resolvedOutcome} ${m.resolvedOutcome}`}
+                    // §L3 — was `${t.market.resolvedOutcome} ${m.resolvedOutcome}`, i.e. a
+                    // translated label wrapped around the raw enum on the public results board.
+                    timeLeft={m.resolvedOutcome === "VOID" ? t.common.voided : `${t.market.resolvedOutcome} ${outcomeWord(t, m.resolvedOutcome ?? "VOID", "MARKET")}`}
                     status={m.status === "VOIDED" ? "VOIDED" : "RESOLVED"}
                     resolvedOutcome={m.resolvedOutcome}
                     sourceUrl={m.sourceUrl}

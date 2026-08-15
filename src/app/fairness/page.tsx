@@ -17,6 +17,7 @@ import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { formatDateTimeSafe } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getServerT } from "@/lib/i18n-server";
+import { outcomeWord } from "@/lib/side-label";
 import { pickLocalized } from "@/lib/localized";
 
 export async function generateMetadata() {
@@ -160,8 +161,12 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
                       <Link href={`/markets/${m.id}` as never} className="font-display font-semibold text-text hover:text-brand-300 line-clamp-2">{pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}</Link>
                     </td>
                     <td className="p-3">
+                      {/* §L3 — this printed the stored token, and its null arm printed the
+                          LITERAL string "VOID". The fairness page is the one surface whose
+                          whole purpose is a player checking a settlement, so an untranslated
+                          verdict here is the worst place for one. */}
                       <Chip variant={m.resolvedOutcome === "YES" ? "yes" : m.resolvedOutcome === "NO" ? "no" : "neutral"} size="md">
-                        {m.resolvedOutcome ?? "VOID"}
+                        {outcomeWord(t, m.resolvedOutcome ?? "VOID", "MARKET")}
                       </Chip>
                     </td>
                     <td className="p-3 font-mono text-[11px] text-text-muted">

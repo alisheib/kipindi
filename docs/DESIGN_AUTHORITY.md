@@ -684,6 +684,13 @@ screen-reader user heard *"YES"*. Swahili had translated all six correctly, and 
 what proves it a defect rather than a house style: **the platform's own two translations
 disagreed, over a dictionary that already defined `是` and `否`.**
 
+⭐ **A Chinese side word next to a conjunction MUST be bracketed `「 」`.** `是` and `否` are
+also ordinary function words, so `若是获胜` reads as the conjunction 若是 (*"if"*) swallowing
+the side and the player never learns which one it was. Caught by reading the rendered
+sentence, not by any suite — the string was correct token by token. The bracket belongs to
+the SENTENCE, not to the word, so `side-label.ts` returns the bare word and the call site
+adds the marks; a chip must not wear them.
+
 ⚠️ The exception is a DECIDED one and carries its reason in the allowlist of
 `scripts/i18n-parity.test.mts` — e.g. `home.heroHeadline` (*"The wisdom of YES & NO."*) is
 the brand line, verbatim in all three locales by Ali's call (PLAN-OF-RECORD §7b).
