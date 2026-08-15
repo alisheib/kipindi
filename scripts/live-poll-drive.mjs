@@ -12,8 +12,10 @@
  * in session 2 (mkt_39b5c1731ae414, fee 1,040.00 = 13% × 8,000). The long-form poll has never
  * been driven under `loser-share` at all, so the ⏳ on that line is honest and this closes it.
  *
- * ⚠️ REAL MONEY from QA-fleet wallets, on production, authorised by Ali 2026-08-14 (§0 of
- * `docs/SESSION-PROMPT-RATES-SESSION-3.md`: "no cap — whatever the test needs").
+ * ⚠️ REAL MONEY from QA-fleet wallets, on production, authorised by Ali 2026-08-14: "no cap —
+ * whatever the test needs". ⚠️ The citation used to name `SESSION-PROMPT-RATES-SESSION-3.md`,
+ * which was deleted on 2026-08-15 as a spent prompt; the standing authorisation is restated in
+ * `docs/SESSION-PROMPT-RATES-SESSION-4.md` §0, which is still open work.
  *
  * ⛔ SIX PLAYERS AND SEVEN POSITIONS, NOT TWO — Ali's standing instruction, given twice. Two
  * personas cannot exercise `allocateFeeShares`, which distributes the fee across winners by
