@@ -6,7 +6,7 @@ Written 2026-07-31. **Read this before opening anything else in here.**
 [`50pick-updown-operator-guide.pdf`](50pick-updown-operator-guide.pdf) — the Up & Down operator
 contract. Everything else in here is for whoever builds and runs the platform.
 
-There are **61 files** at this level — this index plus 60 documents — and five
+There are **62 files** at this level — this index plus 61 documents — and five
 subdirectories with their own indexes: [`design-system/`](design-system/README.md) (the index of
 the delivered design archive — **record, not rule**; the design rule book is
 [`DESIGN_AUTHORITY.md`](DESIGN_AUTHORITY.md) and nothing else is needed to build correctly),
@@ -150,7 +150,8 @@ to teal and resurrects the killed light theme.
 |---|---|---|
 | [`FAILURE-INVENTORY.md`](FAILURE-INVENTORY.md) | 🔵 LIVE | **Every server refusal a player can reach**, what it means, what they are told, and at what severity — plus **§6, the action × channel feedback matrix** (171 server actions, opened at their call sites). Cited by `test:failure-reasons` and `test:feedback-law`. Read before changing any failure copy. |
 | [`SESSION-PROMPT-LABELLING.md`](SESSION-PROMPT-LABELLING.md) | 🔵 LIVE | ⭐ **IN FLIGHT** — labelling correctness across every layer, player→admin, in all three languages. Carries verified starting evidence and an atomic unit plan. |
-| [`SESSION-PROMPT-REFUSAL-TRANCHE.md`](SESSION-PROMPT-REFUSAL-TRANCHE.md) | 🔵 LIVE | ⭐ **QUEUED** — wallet/KYC/auth refusal reasons: the **last ⏳ in `RULES.md`** (§2.9), plus the five raw-server-string BANNERS that `test:failure-reasons` §10 structurally could not see. Ratcheted at 5 by `test:feedback-law` §8. |
+| [`SESSION-PROMPT-RED-FLEET.md`](SESSION-PROMPT-RED-FLEET.md) | 🔵 LIVE | ⭐ **QUEUED** — the RED harnesses that stopped guarding. `red:all` is a `&&` chain that currently exits 1, so everything after the break runs never; four harnesses were repaired 2026-08-15 after 5–8 days as ABSENT tests. Motivated by an `if (true)` debug override that reached production and lied about a bonus for two hours. |
+| [`SESSION-PROMPT-REFUSAL-TRANCHE.md`](SESSION-PROMPT-REFUSAL-TRANCHE.md) | 🔵 LIVE | ⭐ **IN FLIGHT** — wallet/KYC/auth refusal reasons: the **last ⏳ in `RULES.md`** (§2.9), plus the five raw-server-string BANNERS that `test:failure-reasons` §10 structurally could not see. Ratcheted at 5 by `test:feedback-law` §8. |
 | [`SESSION-PROMPT-FEEDBACK-LAYER.md`](SESSION-PROMPT-FEEDBACK-LAYER.md) | ⚪ RECORD | ✅ **SPENT 2026-08-15.** Emptied to a pointer at the law (`DESIGN_AUTHORITY` §F) and the matrix it produced. ⛔ Do not paste it. |
 | [`SESSION-PROMPT-UPDOWN-POLLS-FINALISATION.md`](SESSION-PROMPT-UPDOWN-POLLS-FINALISATION.md) | ⚪ RECORD | Spent. §5a shipped; its §5b (the Up & Down bet modal) shipped as UD-22 on 2026-08-15. Valuable for the three factual corrections it records about round length, the lock window and free cancellation. |
 | [`SESSION-PROMPT-RATES-SESSION-4.md`](SESSION-PROMPT-RATES-SESSION-4.md) | ⚪ RECORD | Spent. Its one surviving ⏳ is the wallet/KYC/auth reason tranche, tracked at `FAILURE-INVENTORY.md` §2.3. |
