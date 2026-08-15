@@ -1283,7 +1283,7 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
   const kyc = await db.kyc.findByUserId(userId);
   if (kyc?.status !== "APPROVED") {
     audit({ category: "COMPLIANCE", action: "withdraw.kyc_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { kycStatus: kyc?.status ?? "NOT_STARTED" } });
-    return { ok: false, error: "Verify your identity to withdraw.", code: "INVALID" };
+    return { ok: false, error: "Verify your identity to withdraw.", code: "INVALID", reason: "kyc_required" as FailureReason };
   }
 
   const amount = parse.data.amount;

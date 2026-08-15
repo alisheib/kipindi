@@ -107,16 +107,17 @@ export function errorCopy(t: Dict, r: ActionFailure): string {
       // ⛔ Do not re-add a phrase test for any of the three: a reason beats prose, and two
       // routes to one refusal is how they drift apart.
       if (/loss limit/i.test(err)) return t.error.errLossLimit;
-      if (/verify your identity/i.test(err)) return t.error.errVerifyIdentity;
-      // KYC families (kyc-service keeps one code; the strings are stable).
-      if (/National ID is already linked/i.test(err)) return t.error.errNidaTaken;
-      if (/JPG, PNG, or WebP|Empty image/i.test(err)) return t.error.errDocImage;
-      if (/Image too large|under 3 MB/i.test(err)) return t.error.errDocTooLarge;
-      if (/locked while your submission/i.test(err)) return t.error.errDocsLocked;
-      if (/No extra documents/i.test(err)) return t.error.errNoExtraRequest;
-      if (/NIDA not yet verified/i.test(err)) return t.error.errNidaNotVerified;
-      if (/All three documents required/i.test(err)) return t.error.errDocsRequired;
-      if (/requested document(s)? before submitting/i.test(err)) return t.error.errExtraDocsRequired;
+      // ⛔ AND THE WHOLE KYC BLOCK IS GONE — eight phrase tests, replaced by reasons that
+      // `kyc-service.ts` now emits at the same eight sites: nida_taken · doc_image_type ·
+      // doc_too_large · docs_locked · no_extra_request · nida_not_verified · docs_required ·
+      // extra_docs_required.
+      //
+      // 🔴 THOSE EIGHT WERE THE LAST ROUTE. `REASON_BY_CODE` maps DOC_IMAGE, DOC_TOO_LARGE,
+      // DOCS_LOCKED, NIDA_TAKEN and NO_EXTRA_REQUEST — and measuring it 2026-08-15 found that
+      // **no service anywhere emitted any of those five codes**. `kyc-service.ts` emits only
+      // INVALID, NOT_FOUND and RATE_LIMITED. So those registry rows were unreachable and every
+      // KYC refusal in front of a player was arriving through the phrase tests below and
+      // nothing else. Now the service says which, and the code stays INVALID for the API.
       return t.error.errInvalid;
     }
     default:

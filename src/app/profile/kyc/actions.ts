@@ -63,9 +63,12 @@ export async function submitNidaAction(formData: FormData) {
   redirect("/profile/kyc?nida=verified");
 }
 
-export async function attachDocumentAction(formData: FormData): Promise<{ ok: true } | { ok: false; error: string; code?: string }> {
+export async function attachDocumentAction(formData: FormData): Promise<{ ok: true } | { ok: false; error: string; code?: string; reason?: string }> {
   // B-7 — failures carry `code` (+ the stable service string) so the uploader
   // can render its own localized line via errorCopy.
+  // ⛔ AND THEY MUST CARRY `reason`, OR TEACHING THE SERVICE TO EMIT ONE IS INERT. This
+  // boundary used to forward `error` and `code` and silently drop everything else, so a
+  // reason minted in `kyc-service.ts` died here and the uploader fell back to prose.
   const session = await currentSession();
   if (!session) return { ok: false, error: "Sign in required.", code: "AUTH" };
   const docType = String(formData.get("docType") ?? "") as "NIDA_FRONT" | "NIDA_BACK" | "SELFIE";
@@ -75,10 +78,10 @@ export async function attachDocumentAction(formData: FormData): Promise<{ ok: tr
   const image = String(formData.get("image") ?? "");
   const result = await attachDocument(session.userId, docType, image);
   revalidatePath("/profile/kyc");
-  return result.ok ? { ok: true } : { ok: false, error: result.error, code: result.code };
+  return result.ok ? { ok: true } : { ok: false, error: result.error, code: result.code, reason: result.reason };
 }
 
-export async function attachExtraDocumentAction(formData: FormData): Promise<{ ok: true } | { ok: false; error: string; code?: string }> {
+export async function attachExtraDocumentAction(formData: FormData): Promise<{ ok: true } | { ok: false; error: string; code?: string; reason?: string }> {
   const session = await currentSession();
   if (!session) return { ok: false, error: "Sign in required.", code: "AUTH" };
   const requestId = String(formData.get("requestId") ?? "");
@@ -86,7 +89,7 @@ export async function attachExtraDocumentAction(formData: FormData): Promise<{ o
   const image = String(formData.get("image") ?? "");
   const result = await attachExtraDocument(session.userId, requestId, image);
   revalidatePath("/profile/kyc");
-  return result.ok ? { ok: true } : { ok: false, error: result.error, code: result.code };
+  return result.ok ? { ok: true } : { ok: false, error: result.error, code: result.code, reason: result.reason };
 }
 
 export async function submitKycForReviewAction() {

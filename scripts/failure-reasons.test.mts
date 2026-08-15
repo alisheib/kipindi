@@ -395,16 +395,10 @@ console.log("\n§8 · the phrase tests still match the server's own words");
     // HERE. Their services now emit a machine `reason`, the phrase tests are deleted, and §8b
     // below proves the replacement. A pin left beside its replacement is two routes to one
     // refusal — exactly what drifts apart.
+    // ⛔ ELEVEN PINS WERE DELETED HERE, each in the commit that gave its refusal a real reason.
+    // What is LEFT is the honest remainder: `loss limit` is the only INVALID family still
+    // recovered from prose, because its service has not been taught to say so yet.
     { name: "loss limit",           code: "INVALID",   re: /loss limit/i,                       expect: t.error.errLossLimit },
-    { name: "verify your identity", code: "INVALID",   re: /verify your identity/i,             expect: t.error.errVerifyIdentity },
-    { name: "NIDA already linked",  code: "INVALID",   re: /National ID is already linked/i,    expect: t.error.errNidaTaken },
-    { name: "doc image type",       code: "INVALID",   re: /JPG, PNG, or WebP|Empty image/i,    expect: t.error.errDocImage },
-    { name: "doc too large",        code: "INVALID",   re: /Image too large|under 3 MB/i,       expect: t.error.errDocTooLarge },
-    { name: "docs locked",          code: "INVALID",   re: /locked while your submission/i,     expect: t.error.errDocsLocked },
-    { name: "no extra request",     code: "INVALID",   re: /No extra documents/i,               expect: t.error.errNoExtraRequest },
-    { name: "NIDA not verified",    code: "INVALID",   re: /NIDA not yet verified/i,            expect: t.error.errNidaNotVerified },
-    { name: "all three documents",  code: "INVALID",   re: /All three documents required/i,     expect: t.error.errDocsRequired },
-    { name: "extra docs required",  code: "INVALID",   re: /requested document(s)? before submitting/i, expect: t.error.errExtraDocsRequired },
     { name: "self-exclusion",       code: "SUSPENDED", re: /self-exclusion|cooling-off/i,       expect: t.error.errBreakActive },
     { name: "wallet frozen",        code: "SUSPENDED", re: /frozen/i,                           expect: t.error.errWalletFrozen },
   ];
@@ -482,6 +476,16 @@ console.log("\n§8b · the reasons that replaced the deleted phrase tests");
       ["deposit_limit", "errDepositLimit"],
       ["sof_required", "errSofRequired"],
       ["email_unverified", "errEmailUnverified"],
+      ["kyc_required", "errVerifyIdentity"],
+      // ── the KYC family · every one of these was reachable ONLY through a phrase test ──
+      ["nida_taken", "errNidaTaken"],
+      ["nida_not_verified", "errNidaNotVerified"],
+      ["doc_image_type", "errDocImage"],
+      ["doc_too_large", "errDocTooLarge"],
+      ["docs_locked", "errDocsLocked"],
+      ["docs_required", "errDocsRequired"],
+      ["extra_docs_required", "errExtraDocsRequired"],
+      ["no_extra_request", "errNoExtraRequest"],
     ] as const) {
       const got = errorCopy(t, { code: "INVALID", error: "Something entirely reworded happened.", reason });
       ok(`8b.${reason}.${lang} · the reason wins over the prose`,
@@ -502,6 +506,15 @@ console.log("\n§8b · the reasons that replaced the deleted phrase tests");
     ["deposit limit", "Daily deposit limit of TZS 50,000 would be exceeded."],
     ["source of funds", "Deposits of TZS 1,000,000 or more require a Source of Funds declaration on file."],
     ["withdraw min", "The smallest amount we can send is TZS 1,000 after the fee. Withdraw at least TZS 1,016."],
+    ["verify identity", "Verify your identity to withdraw."],
+    ["NIDA already linked", "This National ID is already linked to another account. If this is a mistake, contact support."],
+    ["doc image type", "Document must be a JPG, PNG, or WebP image."],
+    ["doc too large", "Image too large. Use a photo under 3 MB."],
+    ["docs locked", "Documents are locked while your submission is under review."],
+    ["no extra request", "No extra documents are being requested right now."],
+    ["NIDA not verified", "NIDA not yet verified."],
+    ["all three documents", "All three documents required."],
+    ["extra docs required", "Please upload the 2 requested documents before submitting."],
   ] as const) {
     ok(`8b.deleted · "${name}" no longer has a phrase test`,
        errorCopy(t, { code: "INVALID", error: sentence }) === t.error.errInvalid);
