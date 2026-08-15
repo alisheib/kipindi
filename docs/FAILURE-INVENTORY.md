@@ -360,6 +360,39 @@ The behaviour (suppress the figure rather than price a two-sided position as one
 unchanged and still right; **UD-20 is re-opened as a decision for Ali** — a hedged holder on a
 locked round now sees no payout figure at all, on a state the product deliberately permits.
 
+### 3.8 · ✅ FIXED (`690aa237`, 2026-08-15) · A RED-harness mutation reached production
+
+`markets/[id]/page.tsx:329` — the gate deciding whether to show the §2.5 one-side bonus
+warning — was **`if (true)`** on `main`, and therefore deployed on `50pick.tz` from 12:52 to
+14:41. Commit `76efe614` (*"Unit B — the side word comes from the lexicon"*) carried **three**
+hunks into that file: two were the real `sideWord`/`outcomeWord` work, and the third was a
+debug override swept in with them.
+
+**What a player read.** The comment three lines above the gate states the contract in as many
+words — *"shown ONLY to a player who actually holds an unfulfilled grant … for everyone else
+this renders nothing at all"*. Forced true, any signed-in player opening a market while holding
+the **opposite** side — the hedge `RULES.md` §2.4 explicitly permits, driven with real money on
+2026-08-14 — read *"…only one side counts toward the **TZS 0** you still need to bet before your
+bonus can be withdrawn."* Production has had **two** grants in its entire history, so for
+essentially every hedging player that was a false statement about their money, naming a nonsense
+figure, on a money surface, under a rule `RULES.md` §2.5 marks ✅ live.
+
+> ⭐ **TWO PARALLEL SESSIONS FOUND IT INDEPENDENTLY, THREE MINUTES APART, AND THAT IS THE
+> FINDING.** The restore sat **on disk, uncommitted, from 13:41** — after the 12:52 commit — so
+> the working tree looked correct while `main` shipped the mutation. Every local test run was
+> therefore green against code production was not running. A session that trusts its own tree to
+> tell it what is deployed cannot see this class of defect at all; only `git show origin/main`
+> can.
+
+⛔ **The mechanism is the `git add -A` hazard in §0 of the session prompts, realised.** A RED
+harness rewrites real source and restores it when the run completes; a broad `git add` between
+those two moments commits the mutation, and the later restore — being a separate, uncommitted
+edit — never reaches `main`.
+
+⭐ **The rest of the range is clean.** Every commit from 2026-08-14/15 was swept for the same
+shape: no other `if (true)`/`if (false)` anywhere in `src/`, no NUL bytes, no zeroed source
+files. This was the only one.
+
 ---
 
 ## §4 · WHAT C5's GUARD MUST DO
@@ -551,29 +584,6 @@ explained, not merely look small.
 
 ### 7.2c · FILED, not fixed — these need a decision, not a session's guess
 
-- 🔴 **A RED-HARNESS MUTATION IS COMMITTED AND LIVE — `markets/[id]/page.tsx:329`.** Found
-  2026-08-15 by the refusal-tranche session's §0 sweep. Commit `76efe614` (*"Unit B — the side
-  word comes from the lexicon"*, 12:52) carries **three** hunks into that file: two are the real
-  `sideWord`/`outcomeWord` work, and the third is not —
-  `if (b.activeCount > 0 && b.activeWagerRemainingTzs > 0)` → **`if (true)`**. It was pushed to
-  `main`, so it is deployed on `50pick.tz`.
-  **What a player reads.** The §2.5 bonus warning is gated on holding an unfulfilled grant — the
-  comment three lines above the mutation says so in as many words (*"shown ONLY to a player who
-  actually holds an unfulfilled grant … for everyone else this renders nothing at all"*). With
-  the gate forced true, any signed-in player who opens a market while holding the **opposite**
-  side — the hedge `RULES.md` §2.4 explicitly permits, driven with real money on 2026-08-14 —
-  reads *"…only one side counts toward the **TZS 0** you still need to bet before your bonus can
-  be withdrawn."* Production has had **two** grants in its entire history, so for essentially
-  every hedging player this is a false statement about their money naming a nonsense figure, on
-  a money surface. It puts `RULES.md` §2.5's ✅ *"shown ONLY to a player who holds a grant"* out
-  of step with what is deployed.
-  ⭐ **The restore already exists on disk, uncommitted** — `page.tsx` was restored at 13:41,
-  after the 12:52 commit, and never committed, which is why live kept the mutation. This is the
-  §0 `git add -A` hazard, realised: a harness mutation swept into an unrelated commit.
-  ⛔ **Not fixed here by decision** — this session's mandate is what a refusal *says*, not what
-  it *refuses*, and the restore is another session's uncommitted work. It needs an owner.
-  ⚠️ **Every other commit from 2026-08-14/15 was swept for the same shape and is clean**: no
-  other `if (true)`/`if (false)` anywhere in `src/`, no NUL bytes, no zeroed files.
 - ⚠️ **`red:all` exits 1 before it reaches most guards** — see the `red:updown-readiness` entry
   below. Any session whose definition of done says "`npm run red:all` green" cannot meet it
   until those five anchors are re-pointed; the failure is unrelated to whatever that session
