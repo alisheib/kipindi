@@ -24,6 +24,7 @@ import { randomId } from "./crypto";
 import { emit } from "./event-bus";
 import type { StoredNotification } from "./store";
 import { formatTzs } from "@/lib/utils";
+import type { LocalizedText } from "@/lib/localized";
 import { sideWordIn, outcomeWordIn, type StoredSide, type StoredOutcome } from "@/lib/side-label";
 
 export type NotifyInput = Omit<StoredNotification, "id" | "userId" | "readAt" | "dismissedAt" | "createdAt"> & {
@@ -228,7 +229,7 @@ export function pushOnly(userId: string, copy: {
 }
 
 export function notifyBetPlaced(userId: string, opts: {
-  side: "YES" | "NO"; stake: number; payoutIfWin: number; marketTitle: string; marketId: string; positionId?: string;
+  side: "YES" | "NO"; stake: number; payoutIfWin: number; marketTitle: LocalizedText; marketId: string; positionId?: string;
   /** The poll's OWN rates. Hardcoding these numbers is how the copy came to lie. */
   cashOutFeeRate: number; freeExitGraceMinutes: number; paidExitWindowMinutes?: number;
 }) {
@@ -241,14 +242,14 @@ export function notifyBetPlaced(userId: string, opts: {
   const paid = opts.paidExitWindowMinutes ?? 0;
   // Default policy: no paid tail — after the free window it locks to settlement.
   const bodyEn = paid > 0
-    ? `${opts.marketTitle.slice(0, 70)} · free exit within ${mins} min, then a ${pct}% fee applies.${ref}`
-    : `${opts.marketTitle.slice(0, 70)} · free exit within ${mins} min, then it locks to settlement.${ref}`;
+    ? `${opts.marketTitle.en.slice(0, 70)} · free exit within ${mins} min, then a ${pct}% fee applies.${ref}`
+    : `${opts.marketTitle.en.slice(0, 70)} · free exit within ${mins} min, then it locks to settlement.${ref}`;
   const bodySw = paid > 0
-    ? `${opts.marketTitle.slice(0, 50)} · toka bila gharama ndani ya dakika ${mins}, baadaye ada ya ${pct}% itatumika.${ref}`
-    : `${opts.marketTitle.slice(0, 50)} · toka bila gharama ndani ya dakika ${mins}, kisha linafungwa hadi malipo.${ref}`;
+    ? `${opts.marketTitle.sw.slice(0, 50)} · toka bila gharama ndani ya dakika ${mins}, baadaye ada ya ${pct}% itatumika.${ref}`
+    : `${opts.marketTitle.sw.slice(0, 50)} · toka bila gharama ndani ya dakika ${mins}, kisha linafungwa hadi malipo.${ref}`;
   const bodyZh = paid > 0
-    ? `${opts.marketTitle.slice(0, 50)} · ${mins} 分钟内可免费退出，之后按 ${pct}% 收取手续费。${ref}`
-    : `${opts.marketTitle.slice(0, 50)} · ${mins} 分钟内可免费退出，之后将锁定至结算。${ref}`;
+    ? `${opts.marketTitle.zh.slice(0, 50)} · ${mins} 分钟内可免费退出，之后按 ${pct}% 收取手续费。${ref}`
+    : `${opts.marketTitle.zh.slice(0, 50)} · ${mins} 分钟内可免费退出，之后将锁定至结算。${ref}`;
   return notify({
     userId,
     kind: "BET_PLACED",
@@ -276,16 +277,16 @@ export function notifyBetPlaced(userId: string, opts: {
  * wrong for one of two products is not a safe default; it is a decision nobody made. Callers
  * now state where the money is, and `positionPermalinkHref` is how they say it.
  */
-export function notifyWin(userId: string, amount: number, label: string, href: string) {
+export function notifyWin(userId: string, amount: number, label: LocalizedText, href: string) {
   return notify({
     userId,
     kind: "WIN",
     titleEn: `You won ${formatTzs(amount)}`,
     titleSw: `Umeshinda ${formatTzs(amount)}`,
     titleZh: `您赢得 ${formatTzs(amount)}`,
-    bodyEn: `${label} paid out. Tap to view.`,
-    bodySw: `${label} kimelipa. Bonyeza kuona.`,
-    bodyZh: `${label} 已赔付。点击查看。`,
+    bodyEn: `${label.en} paid out. Tap to view.`,
+    bodySw: `${label.sw} kimelipa. Bonyeza kuona.`,
+    bodyZh: `${label.zh} 已赔付。点击查看。`,
     href,
   });
 }
@@ -294,7 +295,7 @@ export function notifyWin(userId: string, amount: number, label: string, href: s
  * Loss receipt — direct, respectful language. No euphemisms that could
  * delay the player's awareness of their loss (LCCP harm-prevention).
  */
-export function notifyLoss(userId: string, opts: { stake: number; marketTitle: string; marketId: string; positionId?: string }) {
+export function notifyLoss(userId: string, opts: { stake: number; marketTitle: LocalizedText; marketId: string; positionId?: string }) {
   const ref = opts.positionId ? ` · ${opts.positionId}` : "";
   return notify({
     userId,
@@ -311,12 +312,12 @@ export function notifyLoss(userId: string, opts: { stake: number; marketTitle: s
     // moment it had been placed and lost. `投注未中` is the idiomatic "the bet did not
     // win" and cannot be read as a placement failure.
     titleZh: `投注未中 · ${formatTzs(opts.stake)}`,
-    bodyEn: `${opts.marketTitle.slice(0, 70)} · your side didn't win.${ref}`,
+    bodyEn: `${opts.marketTitle.en.slice(0, 70)} · your side didn't win.${ref}`,
     // ⚠️ Carries the market title, like EN and ZH. Without it a Swahili player with
     // several open positions got "your side didn't win" with nothing saying WHICH
     // market — the one thing the receipt exists to identify.
-    bodySw: `${opts.marketTitle.slice(0, 70)} · Upande wako haukushinda.${ref}`,
-    bodyZh: `${opts.marketTitle.slice(0, 50)} · 您所选的一方未获胜。${ref}`,
+    bodySw: `${opts.marketTitle.sw.slice(0, 70)} · Upande wako haukushinda.${ref}`,
+    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} · 您所选的一方未获胜。${ref}`,
     href: `/markets/${opts.marketId}`,
   });
 }
@@ -362,16 +363,16 @@ export function notifyUpDownDigest(userId: string, opts: {
  * now!", "last chance!") — that would be pressuring an opted-in user and is an RG
  * harm risk (LCCP SR 3.4). State the fact; let them decide.
  */
-export function notifyWatchedClosingSoon(userId: string, opts: { marketTitle: string; marketId: string; minutes: number }) {
+export function notifyWatchedClosingSoon(userId: string, opts: { marketTitle: LocalizedText; marketId: string; minutes: number }) {
   return notify({
     userId,
     kind: "WATCHLIST",
     titleEn: "A market you follow closes soon",
     titleSw: "Soko unalofuatilia linafunga karibuni",
     titleZh: "你关注的市场即将关闭",
-    bodyEn: `${opts.marketTitle.slice(0, 70)} · selections close in about ${opts.minutes} minutes.`,
-    bodySw: `${opts.marketTitle.slice(0, 50)} · uchaguzi unafunga baada ya takriban dakika ${opts.minutes}.`,
-    bodyZh: `${opts.marketTitle.slice(0, 50)} · 选择将在约 ${opts.minutes} 分钟后关闭。`,
+    bodyEn: `${opts.marketTitle.en.slice(0, 70)} · selections close in about ${opts.minutes} minutes.`,
+    bodySw: `${opts.marketTitle.sw.slice(0, 50)} · uchaguzi unafunga baada ya takriban dakika ${opts.minutes}.`,
+    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} · 选择将在约 ${opts.minutes} 分钟后关闭。`,
     href: `/markets/${opts.marketId}`,
   });
 }
@@ -381,7 +382,7 @@ export function notifyWatchedClosingSoon(userId: string, opts: { marketTitle: st
  * position (bettors already get their own win/loss receipt, which carries the
  * money). Purely informational: the outcome, not an invitation to bet again.
  */
-export function notifyWatchedSettled(userId: string, opts: { marketTitle: string; marketId: string; outcome: StoredOutcome }) {
+export function notifyWatchedSettled(userId: string, opts: { marketTitle: LocalizedText; marketId: string; outcome: StoredOutcome }) {
   // ⛔ §L3 — THIS USED TO INTERPOLATE THE STORED ENUM INTO ALL THREE LANGUAGES.
   // `resolved ${opts.outcome}` / `matokeo: ${opts.outcome}` / `结果：${opts.outcome}` put the
   // ASCII token `YES` inside a Swahili and a Chinese sentence, over a dictionary that has
@@ -393,9 +394,9 @@ export function notifyWatchedSettled(userId: string, opts: { marketTitle: string
     titleEn: "A market you follow has settled",
     titleSw: "Soko unalofuatilia limetatuliwa",
     titleZh: "你关注的市场已结算",
-    bodyEn: `${opts.marketTitle.slice(0, 70)} · resolved ${outcomeWordIn("en", opts.outcome, "MARKET")}.`,
-    bodySw: `${opts.marketTitle.slice(0, 50)} · matokeo: ${outcomeWordIn("sw", opts.outcome, "MARKET")}.`,
-    bodyZh: `${opts.marketTitle.slice(0, 50)} · 结果：${outcomeWordIn("zh", opts.outcome, "MARKET")}。`,
+    bodyEn: `${opts.marketTitle.en.slice(0, 70)} · resolved ${outcomeWordIn("en", opts.outcome, "MARKET")}.`,
+    bodySw: `${opts.marketTitle.sw.slice(0, 50)} · matokeo: ${outcomeWordIn("sw", opts.outcome, "MARKET")}.`,
+    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} · 结果：${outcomeWordIn("zh", opts.outcome, "MARKET")}。`,
     href: `/markets/${opts.marketId}`,
   });
 }
@@ -409,7 +410,7 @@ export function notifyWatchedSettled(userId: string, opts: { marketTitle: string
  * A player holding both sides gets both figures.
  */
 export function notifySelectionClosed(userId: string, opts: {
-  marketTitle: string; marketId: string;
+  marketTitle: LocalizedText; marketId: string;
   payoutIfYes: number; payoutIfNo: number;
   hasYes: boolean; hasNo: boolean;
 }) {
@@ -433,8 +434,8 @@ export function notifySelectionClosed(userId: string, opts: {
   const oneW = { en: sideWordIn("en", side, "MARKET"), sw: sideWordIn("sw", side, "MARKET"), zh: sideWordIn("zh", side, "MARKET") };
 
   const bodyEn = both
-    ? `${opts.marketTitle.slice(0, 60)} · Betting is closed. If ${yesW.en} wins you receive ${formatTzs(opts.payoutIfYes)}; if ${noW.en} wins you receive ${formatTzs(opts.payoutIfNo)}.`
-    : `${opts.marketTitle.slice(0, 60)} · Betting is closed. If ${oneW.en} wins you receive ${formatTzs(only)}.`;
+    ? `${opts.marketTitle.en.slice(0, 60)} · Betting is closed. If ${yesW.en} wins you receive ${formatTzs(opts.payoutIfYes)}; if ${noW.en} wins you receive ${formatTzs(opts.payoutIfNo)}.`
+    : `${opts.marketTitle.en.slice(0, 60)} · Betting is closed. If ${oneW.en} wins you receive ${formatTzs(only)}.`;
   const bodySw = both
     ? `Kuweka dau kumefungwa. ${yesW.sw} ikishinda utapata ${formatTzs(opts.payoutIfYes)}; ${noW.sw} ikishinda utapata ${formatTzs(opts.payoutIfNo)}.`
     : `Kuweka dau kumefungwa. ${oneW.sw} ikishinda utapata ${formatTzs(only)}.`;
@@ -443,8 +444,8 @@ export function notifySelectionClosed(userId: string, opts: {
   // side — the player loses which side it was. 「」 marks it as the option's NAME. The same
   // reasoning bracketed `backYesAria` and `probOverTime` in the dictionary.
   const bodyZh = both
-    ? `${opts.marketTitle.slice(0, 50)} · 投注已截止。若「${yesW.zh}」获胜您将获得 ${formatTzs(opts.payoutIfYes)}；若「${noW.zh}」获胜您将获得 ${formatTzs(opts.payoutIfNo)}。`
-    : `${opts.marketTitle.slice(0, 50)} · 投注已截止。若「${oneW.zh}」获胜您将获得 ${formatTzs(only)}。`;
+    ? `${opts.marketTitle.zh.slice(0, 50)} · 投注已截止。若「${yesW.zh}」获胜您将获得 ${formatTzs(opts.payoutIfYes)}；若「${noW.zh}」获胜您将获得 ${formatTzs(opts.payoutIfNo)}。`
+    : `${opts.marketTitle.zh.slice(0, 50)} · 投注已截止。若「${oneW.zh}」获胜您将获得 ${formatTzs(only)}。`;
 
   return notify({
     userId,
@@ -751,6 +752,10 @@ export function notifyProposalUnderReview(userId: string, opts: { titleEn: strin
  * courtesy ping: an OPEN objection FREEZES that market's settlement, so until an
  * officer rules, nobody in that market gets paid. Fans out to all console roles.
  */
+// ⛔ STAYS A BARE STRING, DELIBERATELY. This is an ADMIN notification, and the admin console is
+// monolingual English by design (`admin-status-lexicon.ts` owns that decision). Widening it to
+// `LocalizedText` would demand three titles from callers to serve one audience that reads one
+// language — the opposite of the change the PLAYER emitters needed.
 export async function notifyAdminObjectionFiled(objectionId: string, marketTitle: string): Promise<void> {
   const officers = await db.user.listByRoles(["ADMIN", "COMPLIANCE", "MODERATOR"]); // audit M5
   for (const o of officers) {
@@ -889,7 +894,7 @@ export function notifyProposalDeclined(userId: string, opts: { titleEn: string; 
  *  came back twice. That is the ordinary case on a voided market, not a corner: the
  *  platform allows repeat bets by design. `notifyCashout` and `notifyOneSidedRefund`
  *  already carry the reference for exactly this reason; these two did not. */
-export function notifyRefund(userId: string, opts: { stake: number; marketTitle: string; marketId: string; positionId?: string }) {
+export function notifyRefund(userId: string, opts: { stake: number; marketTitle: LocalizedText; marketId: string; positionId?: string }) {
   const ref = opts.positionId ? ` · ${opts.positionId}` : "";
   return notify({
     userId,
@@ -897,16 +902,16 @@ export function notifyRefund(userId: string, opts: { stake: number; marketTitle:
     titleEn: `Refund · ${formatTzs(opts.stake)} returned`,
     titleSw: `Kurudishiwa · ${formatTzs(opts.stake)}`,
     titleZh: `退款 · 已退回 ${formatTzs(opts.stake)}`,
-    bodyEn: `${opts.marketTitle.slice(0, 70)} was voided. Your stake has been returned.${ref}`,
-    bodySw: `${opts.marketTitle.slice(0, 70)} limebatilishwa. Dau lako limerudishwa.${ref}`,
-    bodyZh: `${opts.marketTitle.slice(0, 50)} 已作废。您的本金已全额退回。${ref}`,
+    bodyEn: `${opts.marketTitle.en.slice(0, 70)} was voided. Your stake has been returned.${ref}`,
+    bodySw: `${opts.marketTitle.sw.slice(0, 70)} limebatilishwa. Dau lako limerudishwa.${ref}`,
+    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} 已作废。您的本金已全额退回。${ref}`,
     href: `/markets/${opts.marketId}`,
   });
 }
 
 /** Player notice: a market they had a stake in was cancelled (emergency void).
  *  Carries the admin's reason and confirms the full refund. */
-export function notifyMarketCancelled(userId: string, opts: { stake: number; marketTitle: string; marketId: string; reason: string; positionId?: string }) {
+export function notifyMarketCancelled(userId: string, opts: { stake: number; marketTitle: LocalizedText; marketId: string; reason: string; positionId?: string }) {
   const ref = opts.positionId ? ` · ${opts.positionId}` : "";
   return notify({
     userId,
@@ -914,9 +919,9 @@ export function notifyMarketCancelled(userId: string, opts: { stake: number; mar
     titleEn: `Market cancelled · ${formatTzs(opts.stake)} refunded`,
     titleSw: `Soko limefutwa · ${formatTzs(opts.stake)} imerejeshwa`,
     titleZh: `市场已取消 · 已退款 ${formatTzs(opts.stake)}`,
-    bodyEn: `"${opts.marketTitle.slice(0, 60)}" was cancelled: ${opts.reason.slice(0, 120)}. Your full stake has been returned to your wallet.${ref}`,
-    bodySw: `"${opts.marketTitle.slice(0, 60)}" limefutwa: ${opts.reason.slice(0, 120)}. Dau lako lote limerejeshwa kwenye pochi yako.${ref}`,
-    bodyZh: `"${opts.marketTitle.slice(0, 60)}" 已取消：${opts.reason.slice(0, 120)}。您的本金已全额退回钱包。${ref}`,
+    bodyEn: `"${opts.marketTitle.en.slice(0, 60)}" was cancelled: ${opts.reason.slice(0, 120)}. Your full stake has been returned to your wallet.${ref}`,
+    bodySw: `"${opts.marketTitle.sw.slice(0, 60)}" limefutwa: ${opts.reason.slice(0, 120)}. Dau lako lote limerejeshwa kwenye pochi yako.${ref}`,
+    bodyZh: `"${opts.marketTitle.zh.slice(0, 60)}" 已取消：${opts.reason.slice(0, 120)}。您的本金已全额退回钱包。${ref}`,
     href: "/wallet",
   });
 }
@@ -947,7 +952,7 @@ export function notifyAdminMarketCancelled(adminUserId: string, opts: { title: s
  * the platform was not applying. The caller passes the poll's own frozen rate.
  */
 export function notifyCashout(userId: string, opts: {
-  amount: number; marketTitle: string; marketId: string; inGracePeriod?: boolean; positionId?: string;
+  amount: number; marketTitle: LocalizedText; marketId: string; inGracePeriod?: boolean; positionId?: string;
   /** The poll's OWN frozen free-exit window. Never hardcode it here. */
   freeExitGraceMinutes: number;
 }) {
@@ -961,19 +966,19 @@ export function notifyCashout(userId: string, opts: {
     titleZh: `${opts.inGracePeriod ? "免费退出" : "已套现"} · ${formatTzs(opts.amount)}`,
     bodyEn: opts.inGracePeriod
       ? `Full stake returned — sold within the ${mins}-min grace window, no fee.${ref}`
-      : `Early exit from ${opts.marketTitle.slice(0, 60)}. Funds in wallet.${ref}`,
+      : `Early exit from ${opts.marketTitle.en.slice(0, 60)}. Funds in wallet.${ref}`,
     bodySw: opts.inGracePeriod
       ? `Pesa yote imerudishwa — umetoka ndani ya dakika ${mins}.${ref}`
       : `Umetoka mapema. Pesa imo kwenye pochi yako.${ref}`,
     bodyZh: opts.inGracePeriod
       ? `本金已全额退回 — 在 ${mins} 分钟免费窗口内卖出，不收取手续费。${ref}`
-      : `已从 ${opts.marketTitle.slice(0, 50)} 提前退出。款项已存入钱包。${ref}`,
+      : `已从 ${opts.marketTitle.zh.slice(0, 50)} 提前退出。款项已存入钱包。${ref}`,
     href: `/markets/${opts.marketId}`,
   });
 }
 
 /** One-sided refund — all bets were on the same side so everyone gets their stake back at 0% fee. */
-export function notifyOneSidedRefund(userId: string, opts: { stake: number; marketTitle: string; marketId: string; positionId?: string }) {
+export function notifyOneSidedRefund(userId: string, opts: { stake: number; marketTitle: LocalizedText; marketId: string; positionId?: string }) {
   const ref = opts.positionId ? ` · ${opts.positionId}` : "";
   return notify({
     userId,
@@ -981,9 +986,9 @@ export function notifyOneSidedRefund(userId: string, opts: { stake: number; mark
     titleEn: `Full refund · ${formatTzs(opts.stake)}`,
     titleSw: `Pesa imerudishwa · ${formatTzs(opts.stake)}`,
     titleZh: `全额退款 · ${formatTzs(opts.stake)}`,
-    bodyEn: `${opts.marketTitle.slice(0, 60)} — all bets were on one side. Full stake returned, no fee.${ref}`,
-    bodySw: `${opts.marketTitle.slice(0, 60)} — wote walibetia upande mmoja. Dau lako lote limerudishwa bila gharama.${ref}`,
-    bodyZh: `${opts.marketTitle.slice(0, 50)} — 所有投注都在同一方。本金全额退回，不收取手续费。${ref}`,
+    bodyEn: `${opts.marketTitle.en.slice(0, 60)} — all bets were on one side. Full stake returned, no fee.${ref}`,
+    bodySw: `${opts.marketTitle.sw.slice(0, 60)} — wote walibetia upande mmoja. Dau lako lote limerudishwa bila gharama.${ref}`,
+    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} — 所有投注都在同一方。本金全额退回，不收取手续费。${ref}`,
     href: `/markets/${opts.marketId}`,
   });
 }

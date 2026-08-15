@@ -56,8 +56,12 @@ const MUTATIONS = [
   {
     name: "§3 · the stored enum goes back into a translated sentence",
     file: p("src", "lib", "server", "notification-service.ts"),
-    from: `    bodyZh: \`\${opts.marketTitle.slice(0, 50)} · 结果：\${outcomeWordIn("zh", opts.outcome, "MARKET")}。\`,`,
-    to: `    bodyZh: \`\${opts.marketTitle.slice(0, 50)} · 结果：\${opts.outcome}。\`,`,
+    // ⚠️ RE-ANCHORED 2026-08-15: `marketTitle` became `LocalizedText`, so the Chinese body now
+    // reads `opts.marketTitle.zh` — a Chinese sentence around a Chinese question rather than an
+    // English one (§7.2c). The MUTATION is unchanged: put the stored enum back in place of the
+    // dictionary word, and the scanner must see it.
+    from: `    bodyZh: \`\${opts.marketTitle.zh.slice(0, 50)} · 结果：\${outcomeWordIn("zh", opts.outcome, "MARKET")}。\`,`,
+    to: `    bodyZh: \`\${opts.marketTitle.zh.slice(0, 50)} · 结果：\${opts.outcome}。\`,`,
   },
   {
     name: "§3 · 🔴 ALI'S BUG — the Up & Down push speaks the poll's vocabulary again",

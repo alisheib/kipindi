@@ -390,5 +390,58 @@ check("§5i private-map matcher rejects a dictionary ternary",
 check("§5j private-map matcher ACCEPTS a tone ternary (a colour is not a word)",
   !PRIVATE_MAP.test(`  const tone = row.outcome === "YES" ? "chip-yes" : "chip-no";`));
 
+
+// ───────────────────────────────────────────────────────────────────────────
+// §7 · The NOTIFY path carries all three titles — a shape, not a word
+// ───────────────────────────────────────────────────────────────────────────
+/**
+ * 🔴 §7.2c: *"`notifyWin` takes a `label` the caller builds from `m.titleEn`, so a Chinese
+ * player's inbox reads a Chinese sentence around an English market question."* Every player
+ * emitter that embedded a market title took a bare `marketTitle: string`, and every caller
+ * passed `m.titleEn` — so the SW and ZH bodies were correct sentences wrapped around English.
+ * The ticker fixed exactly this for its own titles; the notification path never did.
+ *
+ * ⛔ THE GUARD IS ON THE SHAPE, NOT ON A WORD. A prose test would pass the moment someone
+ * translated one sentence. What must hold is that the signature cannot ACCEPT a bare English
+ * string — so a caller reaching for `m.titleEn` fails to compile rather than shipping quietly.
+ */
+{
+  const notif = readFileSync(join(SRC, "lib/server/notification-service.ts"), "utf8");
+  const market = readFileSync(join(SRC, "lib/server/market-service.ts"), "utf8");
+
+  // ⚠️ SCOPED TO PLAYER EMITTERS. The one surviving `marketTitle: string` is
+  // `notifyAdminObjectionFiled`, and §7f pins that it is the only one — so this cannot be
+  // satisfied by quietly reverting a player emitter to a bare string.
+  const bareSigs = notif.split(/\r?\n/).filter((l) => /marketTitle: string/.test(l));
+  check("§7a no PLAYER emitter takes a bare `marketTitle: string`",
+    bareSigs.length === 1 && /notifyAdminObjectionFiled/.test(bareSigs[0]),
+    bareSigs.length !== 1
+      ? `${bareSigs.length} bare signatures — a string cannot carry SW or ZH, and the caller will pass titleEn`
+      : `the survivor is not the admin one: ${bareSigs[0].trim().slice(0, 70)}`);
+  check("§7b the emitters take the three-language shape",
+    (notif.match(/marketTitle: LocalizedText/g) ?? []).length >= 5,
+    "");
+  check("§7c `notifyWin`'s label is localized too — it was the one that took a pre-built string",
+    /export function notifyWin\(userId: string, amount: number, label: LocalizedText, href: string\)/.test(notif),
+    "");
+  // ⛔ AND THE CALLERS ACTUALLY PASS ALL THREE. A signature widened while every caller still
+  // hands it `localizedText(m.titleEn)` would type-check perfectly and change nothing.
+  // ⚠️ `notifyAdmin*` IS EXCLUDED, and that is not a convenience: the admin console is
+  // monolingual English by design, so a staff notice built from `titleEn` is correct.
+  const bareTitleEn = market.split(/\r?\n/).filter((l) =>
+    /notify[A-Z]\w*\(|alertWatchers\w*\(/.test(l) && !/notifyAdmin/.test(l)
+    && /\bm\.titleEn\b|\bmarket\.titleEn\b/.test(l) && !/localizedText\(/.test(l));
+  check("§7d every PLAYER notify/alert caller passes all three titles, not `titleEn`",
+    bareTitleEn.length === 0,
+    bareTitleEn.length ? bareTitleEn[0].trim().slice(0, 90) : "");
+  check("§7e …and they go through `localizedText`, so the empty-translation fallback is one rule",
+    (market.match(/localizedText\(/g) ?? []).length >= 9, "");
+  // ⚠️ THE ADMIN EMITTER IS DELIBERATELY EXEMPT — one audience, one language, by design.
+  check("§7f ⚠️ the ADMIN objection emitter stays English by design",
+    /notifyAdminObjectionFiled\(objectionId: string, marketTitle: string\)/.test(notif),
+    "widening an English-only staff notice would demand three titles to serve one language");
+}
+
+
 log(`\n${fail === 0 ? "ALL PASS" : `${fail} FAILED`} — ${LOCALES.length} locales × ${LINES.length} products, ${files.length} files scanned, ${privateMaps.length}/${PRIVATE_MAP_RATCHET} private maps`);
 process.exit(fail === 0 ? 0 : 1);

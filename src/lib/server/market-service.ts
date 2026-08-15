@@ -32,6 +32,7 @@ import { rateCheck } from "./rate-limit";
 import { normaliseCriterionTranslation } from "../localized";
 import { getEffectiveConfig, getEffectiveResolutionMode, snapshotFromConfig, snapshotOrLegacy, type RateConfig } from "./market-config";
 import { stakeBoundsForUpDownMarket } from "./updown-config";
+import { localizedText } from "@/lib/localized";
 import { payoutFor, settledPayoutFor, allocateWinnerPayouts, allocateFeeShares, poolFee, levySplit, leanFor, resolveFeeModel, THIN_SMALLER_SIDE_SHARE, type FeeSnapshot } from "@/lib/payout";
 import type { FailureReason } from "@/lib/failure-reasons";
 import { getRequireTwoOfficerResolution } from "./resolution-policy";
@@ -1122,7 +1123,7 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
       side: opts.side,
       stake: opts.stake,
       payoutIfWin: c.payoutIfWin,
-      marketTitle: market.titleEn,
+      marketTitle: localizedText(market.titleEn, market.titleSw, market.titleZh),
       marketId: market.id,
       positionId: c.positionId,
       cashOutFeeRate: betRates.cashOutFeeRate,
@@ -1413,7 +1414,7 @@ export async function notifySelectionClosedForMarket(marketId: string): Promise<
     const ifNo = mine.filter((p) => p.side === "NO").reduce((s, p) => s + (payoutByPosition.get(p.id) ?? 0), 0);
 
     notifySelectionClosed(userId, {
-      marketTitle: m.titleEn, marketId: m.id,
+      marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh), marketId: m.id,
       payoutIfYes: ifYes, payoutIfNo: ifNo,
       hasYes: mine.some((p) => p.side === "YES"),
       hasNo: mine.some((p) => p.side === "NO"),
@@ -1536,7 +1537,7 @@ export async function notifyClosingSoonForMarket(marketId: string): Promise<{ no
   const cutoff = m.selectionClosedAt ? Date.parse(m.selectionClosedAt) : Date.parse(m.resolutionAt);
   const minutes = Math.max(1, Math.round((cutoff - now) / 60_000));
   const { alertWatchersClosingSoon } = await import("./watchlist-service");
-  const watchers = await alertWatchersClosingSoon(m.id, m.titleEn, minutes);
+  const watchers = await alertWatchersClosingSoon(m.id, localizedText(m.titleEn, m.titleSw, m.titleZh), minutes);
   return { notified: true, watchers };
 }
 
@@ -1910,7 +1911,7 @@ export async function repairOrphanedPositions(): Promise<{ repaired: number; ref
       amlReason: null,
       createdAt: p.settledAt, updatedAt: p.settledAt, completedAt: p.settledAt,
     });
-    notifyRefund(p.userId, { stake: p.stake, marketTitle: "Orphaned position", marketId: "", positionId: p.id });
+    notifyRefund(p.userId, { stake: p.stake, marketTitle: localizedText("Orphaned position"), marketId: "", positionId: p.id });
     audit({
       category: "WALLET",
       action: "position.orphan_refund",
@@ -2253,7 +2254,7 @@ export async function cashOutPosition(
     // thing we should do in that state.
     // The free-exit window comes from THIS poll's frozen snapshot — the receipt
     // must state the rule we actually applied, not a constant.
-    notifyCashout(userId, { amount: paid, marketTitle: m.titleEn, marketId: m.id, inGracePeriod, positionId, freeExitGraceMinutes: ratesFor(m).freeExitGraceMinutes });
+    notifyCashout(userId, { amount: paid, marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh), marketId: m.id, inGracePeriod, positionId, freeExitGraceMinutes: ratesFor(m).freeExitGraceMinutes });
     sendEmailToUser(userId, (email) => ({
       to: email,
       subject: `Position sold · ${formatTzs(paid)}`,
@@ -2599,7 +2600,7 @@ export async function settleMarket(
       // player heard about was the one where their money came back unchanged.
       // The digest states refunds with their own count and figure.
       if (!perEventNotificationsSuppressed(m)) {
-        notifyOneSidedRefund(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id, positionId: p.id });
+        notifyOneSidedRefund(p.userId, { stake: p.stake, marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh), marketId: m.id, positionId: p.id });
         sendEmailToUser(p.userId, (email) => ({
           to: email,
           subject: `Full refund · ${formatTzs(p.stake)} returned`,
@@ -2724,7 +2725,7 @@ export async function settleMarket(
       // E-57 — and the same push, for the same reason: every terminal outcome reaches
       // the device or none does.
       if (!perEventNotificationsSuppressed(m)) {
-        notifyRefund(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id, positionId: p.id });
+        notifyRefund(p.userId, { stake: p.stake, marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh), marketId: m.id, positionId: p.id });
       } else {
         pushOnly(p.userId, {
           titleEn: `Refunded · ${formatTzs(p.stake)}`,
@@ -2835,7 +2836,7 @@ export async function settleMarket(
           // E-101 · the bell entry opens THIS ticket. It used to open `/positions`, which is
           // the long-form list — right product here by luck (this branch is suppressed for
           // Up & Down), wrong row always.
-          notifyWin(p.userId, payout, `${m.titleEn} · ${p.id}`, positionPermalinkHref(p.id));
+          notifyWin(p.userId, payout, localizedText(`${m.titleEn} · ${p.id}`, m.titleSw ? `${m.titleSw} · ${p.id}` : null, m.titleZh ? `${m.titleZh} · ${p.id}` : null), positionPermalinkHref(p.id));
           sendEmailToUser(p.userId, (email) => ({
             to: email,
             subject: `You won · ${formatTzs(payout)}`,
@@ -2876,7 +2877,7 @@ export async function settleMarket(
         // loss clause carries its own count and its own figure and is never folded
         // into the net — asserted by `npm run test:updown-digest`.
         if (!perEventNotificationsSuppressed(m)) {
-          notifyLoss(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id, positionId: p.id });
+          notifyLoss(p.userId, { stake: p.stake, marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh), marketId: m.id, positionId: p.id });
           sendEmailToUser(p.userId, (email) => ({
             to: email,
             subject: `Bet lost · ${formatTzs(p.stake)}`,
@@ -2982,7 +2983,7 @@ export async function settleMarket(
   try {
     const { alertWatchersSettled } = await import("./watchlist-service");
     const bettorIds = new Set((await listPositionsForMarket(m.id)).map((p) => p.userId));
-    await alertWatchersSettled(m.id, m.titleEn, opts.outcome, bettorIds);
+    await alertWatchersSettled(m.id, localizedText(m.titleEn, m.titleSw, m.titleZh), opts.outcome, bettorIds);
   } catch { /* watcher alerts must never break settlement */ }
 
   audit({
@@ -3352,7 +3353,7 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
       if (bonusPart > 0) pendingBonusRefunds.push({ userId: p.userId, amount: bonusPart });
       // Player notice — BOTH channels, and both carry the admin's reason so the
       // player knows WHY their market was pulled and that they were made whole.
-      notifyMarketCancelled(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id, reason, positionId: p.id });
+      notifyMarketCancelled(p.userId, { stake: p.stake, marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh), marketId: m.id, reason, positionId: p.id });
       sendEmailToUser(p.userId, (email) => ({
         to: email,
         subject: `Market cancelled — ${formatTzs(p.stake)} refunded`,
