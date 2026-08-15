@@ -486,6 +486,19 @@ surface anywhere uses a native `confirm()`/`alert()` — verified, not assumed.
 
 ### 7.2 · What the lexicon found that a gap-list would not have
 
+0. 🔴 **ALI'S REPORTED BUG, FOUND — the Up & Down bet push spoke the POLL's vocabulary.**
+   `market-service.ts` branches at `buyPosition`: the long-form arm writes an inbox row, the
+   `else` arm **pushes to the phone** for Up & Down. That push read
+   `Bet placed · ${opts.side}` in all three languages — and `opts.side` is the STORED token,
+   which is `YES | NO` on **both** product lines. So a player who backed **Up** got a phone
+   notification saying **"Bet placed · YES"**, on a product that has no Yes and no No; Swahili
+   and Chinese got the English token on top of it. It is the only arm where the product line
+   is genuinely `UPDOWN`, and it was the one arm never told. ⭐ Found by the §3 scanner, not by
+   looking — and the guard's FIRST version could not see it, because its scope was a hardcoded
+   file list naming `notification-service.ts` and `email.ts`. `red:labels` caught that at 7/8.
+   The scope is now structural: a file that writes `titleSw`/`bodyZh` is a copy surface,
+   wherever it sits.
+
 1. 🔴 **Six Chinese keys carried the ASCII token `YES`/`NO` inside otherwise-Chinese strings**
    — `probOverTime`, `probChartAria`, `backYesAria`, `backNoAria`, `backYesAriaNoPrice`,
    `backNoAriaNoPrice`. **Four are `aria-label`s**, so a Chinese screen-reader user *heard*

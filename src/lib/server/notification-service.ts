@@ -252,9 +252,14 @@ export function notifyBetPlaced(userId: string, opts: {
   return notify({
     userId,
     kind: "BET_PLACED",
-    titleEn: `Bet placed · ${opts.side} ${formatTzs(opts.stake)}`,
-    titleSw: `Dau limewekwa · ${opts.side} ${formatTzs(opts.stake)}`,
-    titleZh: `已下注 · ${opts.side} ${formatTzs(opts.stake)}`,
+    // ⛔ §L3 — the STORED token was the title in all three languages, so a Swahili player
+    // read "Dau limewekwa · YES" over a dictionary that says NDIO. This function is only
+    // reached from the long-form branch of `buyPosition` (the Up & Down arm pushes its own
+    // message), so MARKET is the vocabulary — and it is now said out loud rather than
+    // inherited from where the call happens to sit.
+    titleEn: `Bet placed · ${sideWordIn("en", opts.side, "MARKET")} ${formatTzs(opts.stake)}`,
+    titleSw: `Dau limewekwa · ${sideWordIn("sw", opts.side, "MARKET")} ${formatTzs(opts.stake)}`,
+    titleZh: `已下注 · ${sideWordIn("zh", opts.side, "MARKET")} ${formatTzs(opts.stake)}`,
     bodyEn,
     bodySw,
     bodyZh,

@@ -46,6 +46,7 @@ import { marketStore, positionStore } from "./market-dal";
 // E-94 · a void refund names the reason the player was already given everywhere else.
 import { roundStore } from "./updown-dal";
 import { formatTzs } from "@/lib/utils";
+import { sideWordIn } from "@/lib/side-label";
 // E-101 · one rule for "where does this ticket live", shared with the wallet, the round page
 // and the emails.
 import { positionPermalinkHref } from "@/lib/position-permalink";
@@ -1141,10 +1142,18 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
       // asked for a live signal on their phone; what the digest prevents is forty rows
       // to dismiss, not knowing that a bet landed. The `tag` is scoped to the CHAIN, so
       // the next round REPLACES this notification instead of stacking beside it.
+      // 🔴 §L1 — THIS IS THE DEFECT ALI REPORTED, AND IT WAS LIVE ON THE PHONE.
+      // `opts.side` is the STORED token, which is `YES | NO` on BOTH product lines. So a
+      // player who backed **Up** on an Up & Down round got a push reading
+      // "Bet placed · YES" — the poll's vocabulary on a round that has no Yes and no No —
+      // and Swahili and Chinese got the English token on top of it. This is the one arm
+      // where the product line is genuinely UPDOWN, and it is the arm that had never been
+      // told. ⛔ Do not "simplify" the two arms back into one call: they are different
+      // vocabularies, which is the whole reason `sideWordIn` takes a product.
       pushOnly(userId, {
-        titleEn: `Bet placed · ${opts.side} ${formatTzs(opts.stake)}`,
-        titleSw: `Dau limewekwa · ${opts.side} ${formatTzs(opts.stake)}`,
-        titleZh: `已下注 · ${opts.side} ${formatTzs(opts.stake)}`,
+        titleEn: `Bet placed · ${sideWordIn("en", opts.side, "UPDOWN")} ${formatTzs(opts.stake)}`,
+        titleSw: `Dau limewekwa · ${sideWordIn("sw", opts.side, "UPDOWN")} ${formatTzs(opts.stake)}`,
+        titleZh: `已下注 · ${sideWordIn("zh", opts.side, "UPDOWN")} ${formatTzs(opts.stake)}`,
         bodyEn: `${market.titleEn.slice(0, 60)} — you're in this round.`,
         bodySw: `${market.titleSw.slice(0, 60)} — uko kwenye raundi hii.`,
         bodyZh: `${(market.titleZh ?? market.titleEn).slice(0, 40)} — 您已参与本回合。`,
