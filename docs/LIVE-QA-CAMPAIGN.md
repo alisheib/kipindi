@@ -5780,26 +5780,44 @@ state**, 1,338,504 of players' stakes in escrow, and every ledger entry ever wri
 
 ---
 
-### 🔴 UNFILED LIVE PRODUCTION DEFECT — UP & DOWN CANNOT OPEN A ROUND, AND IT IS NOW DIAGNOSED
+### ⚪ FALSE ALARM, WITHDRAWN THE SAME HOUR — Up & Down is NOT down, and the way I got there is the lesson
 
-⚠️ **NEEDS AN `E-` ID.** Deliberately not claimed here: the register is shared and an id must be re-grepped at the moment of filing (it stood at **E-160** at 2026-08-15 ~12:5x). Whoever files it, take the next free one.
+⛔ **AN EARLIER VERSION OF THIS BLOCK CLAIMED A LIVE PRODUCTION OUTAGE. IT WAS WRONG.** It is
+rewritten rather than deleted, because the reasoning error is worth more than the retraction.
 
-**Symptom** — the session-44 record already flagged this and left it uninvestigated: *"every Up & Down chain refusing to open on `open price for <boundary> not published yet`, retrying every 15s across at least five chains."* It is still happening, and it is **not** a weekend effect: the FX/metals chains report the Saturday closure separately and correctly, while the CRYPTO chains fail for a different reason.
-
-**The cause, read off `railway logs -s 50pick` on 2026-08-15:**
+**What I saw** — `railway logs -s 50pick` carried both of these, repeatedly:
 
 ```
 Invalid `prisma.upDownObservation.create()` invocation:
 Unique constraint failed on the fields: (`assetId`,`boundaryAt`)
+[updown] udc_… boundary pending — open price for <T> not published yet (91s) — not opening a round…
 ```
 
-**The chain of consequence.** Several chains share a boundary instant — that is the whole point of the epoch lattice in `updown-durations.ts` (*"one paid provider read still serves every chain whose boundary meets there"*). Each of them independently **`create`s** the observation for `(assetId, boundaryAt)`. The first wins; every other one throws `P2002` against the unique constraint. The write is **not idempotent**, so for those chains no CONFIRMED observation is recorded → no open price exists for that boundary → `openRound` correctly declines to open a round that could only void → **the product is dark on production.**
+**What I concluded, and why it was wrong.** I chained them: chains share a boundary → each
+`create`s the same observation → all but one throw → no confirmed price → no round opens → the
+product is dark. **Every link after the first is false, and the code says so in as many words:**
 
-⭐ **The guard is behaving correctly and is not the bug.** Declining to open a priceless round is right. The bug is one layer down: a shared read is being written as if it were exclusive.
+- `observationStore.ensure()` (`updown-dal.ts`) is find → create → **catch the unique violation
+  → re-read the winner's row**, with a comment stating that the race *"is the DESIGNED behaviour
+  of the unique index, not an error"*. Prisma logs `prisma:error` for a query that throws **even
+  when the caller catches it** — so that log line is the handler working, not a failure.
+- The *not published yet* wait is documented behaviour, not a fault. `advanceChain` fires AT the
+  boundary and asks for the bar labelled with that instant, and a bar labelled T does not exist
+  until **~+19s (BTC/ETH/XAU) or ~+87s (SOL)**, measured on the live plan 2026-08-05. Pending at
+  tick time is expected **every single time**; the chain retries the same boundary rather than
+  opening a round that could only void — which is E-69's fix, working. A 91s wait on SOL is
+  inside the normal window.
 
-**Likely shape of the fix** (not attempted here — it is money-adjacent settlement data, and this session had no mandate for it): make the observation write idempotent — an `upsert` on the `(assetId, boundaryAt)` unique key, or catch `P2002` and re-read the row the winner wrote. ⛔ Whichever, the losing racer must end up **reading the same observation**, never fabricating a second one — two prices for one boundary is a settlement fork.
+**What settled it, measured rather than reasoned:** production had **live rounds on the board**
+(`udr_79d55de43e8734962750`, `udr_8ef53b98b43545b4ef33`) and **zero** `boundary abandoned` lines —
+which is the actual failure signal, and the one that should have been checked first.
 
-⚠️ **VERIFY THE BLAST RADIUS BEFORE FIXING:** how long has this been live, and did any round settle against a partially-written observation set? `UpDownObservation` rows plus the round table answer it. This session did not check.
+⭐ **THE LESSON, AND IT IS THIS REGISTER'S OLDEST ONE:** *an `ERROR` in a log is not a defect, and
+a retry is not an outage.* Both lines here are subsystems behaving correctly and saying so. The
+session-44 note that flagged this as *"worth someone's attention"* was right to want it checked
+and wrong to leave it sounding broken — **it is now checked, and the answer is that it is fine.**
+⛔ Before reporting an outage, measure the OUTCOME (are rounds opening?), never the symptom (is
+something retrying?).
 
 ### 🟢 Laptop A, session 44 (2026-08-11) — ⭐ A READ-ONLY AUDITOR WAS OFFERED THE EMERGENCY STOP FOR THE PAYMENT RAIL
 
