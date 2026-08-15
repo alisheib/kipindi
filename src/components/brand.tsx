@@ -205,6 +205,7 @@ export function TippingBar({
   recastOnHover = true,
   empty = false,
   emptyLabel = "No bets yet",
+  probabilityLabel = "YES probability {pct}%",
 }: {
   yesPct?: number;
   height?: number;
@@ -227,6 +228,9 @@ export function TippingBar({
    *  for callers that have no `t` in scope, never a shipped English label on a
    *  Swahili screen. */
   emptyLabel?: string;
+  /** The bar's accessible name, `{pct}` substituted. Callers with a dictionary pass
+   *  `t.market.probBarAria`; the English default keeps the brand primitive dict-free. */
+  probabilityLabel?: string;
 }) {
   const target = Math.max(0, Math.min(100, yesPct));
   const [animYes, setAnimYes] = React.useState(target);
@@ -301,7 +305,13 @@ export function TippingBar({
         aria-valuenow={target}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-label={`YES probability ${target}%`}
+        /* ⛔ THIS WAS A HARDCODED ENGLISH STRING — `YES probability ${target}%` — and it
+           never went through the dictionary at all, so a Chinese screen-reader user HEARD
+           "YES probability 100 percent" on a page whose every visible word was Chinese.
+           Found by reading the live page, not by any suite (§L4).
+           A prop with an English default, exactly like `emptyLabel` above: this file is a
+           brand primitive and deliberately does not import the dictionary. */
+        aria-label={probabilityLabel.replace("{pct}", String(target))}
       >
         <div className="tipbar-fill tipbar-yes" data-full={yesFull} style={{ width: `${yes}%` }} />
         <div className="tipbar-fill tipbar-no" data-full={noFull} style={{ width: `${no}%` }} />

@@ -195,7 +195,12 @@ const VIA_LEXICON = /(sideWord|outcomeWord|positionStatusWord|sideWordIn|outcome
  * fastest way to teach a session to ignore a guard.
  */
 function exprCarriesEnum(expr: string): boolean {
-  const bare = expr.replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, "");
+  let bare = expr.replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, "");
+  // ⛔ A DICTIONARY LOOKUP IS A TRANSLATED STRING, NEVER AN ENUM — and the key that proves it
+  // is `t.market.resolvedOutcome`, whose NAME is an enum name. Left in, the scanner read the
+  // translated label "Resolved outcome" as the enum it labels, and flagged every corrected
+  // line in the codebase. `t.<path>` is stripped before the enum test for that reason.
+  bare = bare.replace(/\bt\.\w+(?:\.\w+)*/g, "");
   if (VIA_LEXICON.test(expr)) return false;      // already routed through the lexicon
   if (/\?\s*["']/.test(expr)) return false;      // ⛔ ternary yielding a LITERAL = a tone/class, not a word
   return ENUM_WORD.test(bare);
@@ -235,7 +240,15 @@ function isProseTemplate(lit: string, before = ""): boolean {
 function templateInterpolatesEnum(lit: string, before = ""): boolean {
   const safe = lit.replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, '""');
   const exprs = [...safe.matchAll(/\$\{([^}]*)\}/g)].map((m) => m[1]);
-  return exprs.some(exprCarriesEnum) && isProseTemplate(lit, before);
+  if (!exprs.some(exprCarriesEnum)) return false;
+  // 🔴 A TEMPLATE THAT IS *ONLY* INTERPOLATIONS IS STILL A SENTENCE, and missing that let a
+  // live defect through. `${t.market.resolvedOutcome} ${m.resolvedOutcome}` has no literal
+  // word between the braces, so `isProseTemplate`'s "must contain a word" test rejected it —
+  // and it was rendering "已结算 YES" on the production markets board while this suite was
+  // green. ⭐ A dictionary lookup in the template IS the proof it is copy: nothing reaches
+  // for `t.` except to say something to a person.
+  if (exprs.some((e) => /\bt\.\w/.test(e))) return true;
+  return isProseTemplate(lit, before);
 }
 
 /** Blank out block and line comments, preserving offsets so reported line numbers stay true. */

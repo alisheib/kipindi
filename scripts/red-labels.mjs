@@ -84,6 +84,16 @@ const MUTATIONS = [
     to: `          {isVoid ? t.market.resVoided : \`\${t.market.resolvedOutcome} · \${outcome === "YES" ? t.common.yes : t.common.no}\`}`,
   },
   {
+    // 🔴 THIS ONE SHIPPED. The guard was green while production's Chinese markets board read
+    // "已结算 YES", because a template of PURE interpolations carries no literal word and the
+    // prose test rejected it. Found by reading the live page. It is a mutation now so the
+    // blind spot cannot come back.
+    name: "§3 · a template that is ONLY interpolations — the shape that reached production",
+    file: p("src", "app", "markets", "page.tsx"),
+    from: `                timeLeft={m.resolvedOutcome === "VOID" ? t.common.voided : \`\${t.market.resolvedOutcome} \${outcomeWord(t, m.resolvedOutcome ?? "VOID", "MARKET")}\`}`,
+    to: `                timeLeft={\`\${t.market.resolvedOutcome} \${m.resolvedOutcome}\`}`,
+  },
+  {
     name: "§2 · ⭐ THE SCANNER GOES BLIND — the locale-block locator stops matching",
     file: p("scripts", "label-lexicon.test.mts"),
     from: `const blockStart = (k: string) => dictLines.findIndex((l) => new RegExp(\`^  \${k}: \\\\{\`).test(l));`,

@@ -974,7 +974,9 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
         return;
       }
       deferToast({
-        title: `${t.toast.betPlaced} · ${q.side} ${formatTzs(q.stake)}`,
+        // §L3 — the toast sibling of the bet-placed notification, and wrong the same way:
+        // a translated label ("已下注") closing around the stored token. The dial is poll-only.
+        title: `${t.toast.betPlaced} · ${sideWord(t, q.side, "MARKET")} ${formatTzs(q.stake)}`,
         description: t.toast.payoutAtResolution,
         variant: "success",
       });
