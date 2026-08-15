@@ -16,7 +16,7 @@ import { getUpDownConfig, stakeBoundsFor } from "./updown-config";
 // HERE, on the server, because translating a vendor string in the browser still ships the
 // vendor in the RSC payload where View Source finds it.
 import { publicSourceClassFor, type PublicSourceClass } from "./updown-symbols";
-import { ratesFor, listPositionsForUser, projectedPayout } from "./market-service";
+import { ratesFor, listPositionsForUser, listPositionsForMarket, projectedPayout } from "./market-service";
 import { impliedYesPct } from "./market-service";
 // ⭐ D2 · the shape the player surfaces price a bet from. Isomorphic by design — the card is a
 // client component, this is the server, and one definition of "what would I be paid" is the
@@ -726,14 +726,45 @@ async function priceSeriesFor(
   return out.map((p) => ({ t: p.t, price: p.price }));
 }
 
-/** The viewer's OWN position on THIS market, aggregated for the resolved "Your result"
- *  panel. Reads only the money the settlement path already wrote (status + finalPayout) —
- *  adds no money logic. Null when the viewer holds no position on this round. */
+/** The viewer's OWN position on THIS market, for the resolved "Your result" panel.
+ *  Reads only the money the settlement path already wrote (status + finalPayout) —
+ *  adds no money logic. Null when the viewer holds no position on this round.
+ *
+ *  🔴 IT USED TO READ THE PLAYER'S 500 MOST RECENT POSITIONS AND *THEN* FILTER TO THIS
+ *  MARKET — `listPositionsForUser(userId, 500, "UPDOWN").filter(p => p.marketId === …)`.
+ *  The cap is applied by the STORE, before the filter, so a player past 500 Up & Down
+ *  positions opening an older round got an empty list and this returned `null`: the page
+ *  then says they did not play a round they did play, and their settled money is invisible.
+ *  A silent truncation is bad; a silent truncation that reads as "you have no position" on
+ *  a money surface is the B-1 class outright. Scoping the query to the MARKET removes the
+ *  cap entirely — one round's positions are bounded by the round, and it is the indexed
+ *  lookup on `@@index([marketId, status])` rather than a scan of the player's history.
+ *
+ *  ⭐ `items` is every position, itemised. The aggregate stays (settlement wrote it and the
+ *  panel's headline figures are read straight off it) — but a player holding six positions
+ *  was shown ONE line, and a HEDGED player was shown a single `side` chosen by
+ *  `up >= down`, which is not a fact about their bet. Both surfaces now render each one. */
+export type MyRoundPosition = {
+  id: string;
+  side: "UP" | "DOWN";
+  stake: number;
+  payout: number | null;
+  status: "OPEN" | "WIN" | "LOSS" | "VOID" | "CASHED_OUT";
+  placedAt: string;
+};
+
 async function myPositionFor(
   userId: string | undefined, marketId: string,
-): Promise<{ side: "UP" | "DOWN"; stake: number; payout: number | null; result: "WIN" | "LOSS" | "VOID" | null; ids: string[] } | null> {
+): Promise<{
+  side: "UP" | "DOWN"; stake: number; payout: number | null;
+  result: "WIN" | "LOSS" | "VOID" | null; ids: string[];
+  /** Every position this viewer holds on this round, newest first. Never truncated. */
+  items: MyRoundPosition[];
+  /** True when the viewer backed BOTH sides — the aggregate `side` cannot describe them. */
+  hedged: boolean;
+} | null> {
   if (!userId) return null;
-  const positions = (await listPositionsForUser(userId, 500, "UPDOWN").catch(() => [])).filter((p) => p.marketId === marketId);
+  const positions = (await listPositionsForMarket(marketId).catch(() => [])).filter((p) => p.userId === userId);
   if (positions.length === 0) return null;
   let up = 0, down = 0, stake = 0, payout = 0, anyPayout = false, anyWin = false, anyVoid = false, allSettled = true;
   for (const p of positions) {
@@ -746,11 +777,29 @@ async function myPositionFor(
   }
   const side: "UP" | "DOWN" = up >= down ? "UP" : "DOWN";
   const result: "WIN" | "LOSS" | "VOID" | null = !allSettled ? null : anyVoid && !anyWin ? "VOID" : anyWin ? "WIN" : "LOSS";
+  // ⭐ Newest first, matching /updown/history's own ordering so a player reading both
+  // surfaces sees their positions in one order. `listForMarket` orders by the store's
+  // own key, so the sort is explicit here rather than assumed.
+  const items: MyRoundPosition[] = positions
+    .map((p) => ({
+      id: p.id,
+      side: (p.side === "YES" ? "UP" : "DOWN") as "UP" | "DOWN",
+      stake: p.stake,
+      payout: p.finalPayout,
+      status: p.status,
+      placedAt: p.placedAt,
+    }))
+    .sort((a, b) => (Date.parse(b.placedAt) || 0) - (Date.parse(a.placedAt) || 0));
   // ⭐ E-101 · the ids the panel AGGREGATES, so the page can render an anchor for each one and a
   // `/positions/<id>` permalink actually lands on the panel it named. Without these the fragment
   // matches nothing, the browser silently stays at the top, and the deep link is
   // indistinguishable from the generic href it replaced — the subtler version of the same bug.
-  return { side, stake, payout: anyPayout ? payout : null, result, ids: positions.map((p) => p.id) };
+  return {
+    side, stake, payout: anyPayout ? payout : null, result,
+    ids: items.map((p) => p.id),
+    items,
+    hedged: up > 0 && down > 0,
+  };
 }
 
 /** One round, for the detail page — with its settlement proof when it has one. */
@@ -761,8 +810,13 @@ export async function getRoundDetail(roundId: string, userId?: string): Promise<
   /** Real confirmed price points inside the round window; null ⇒ hero draws open line only. */
   priceSeries: { t: string; price: number }[] | null;
   /** The viewer's own stake/result on this round, or null when they did not play it.
-   *  `ids` are the positions it aggregates — E-101's anchors are rendered from them. */
-  myPosition: { side: "UP" | "DOWN"; stake: number; payout: number | null; result: "WIN" | "LOSS" | "VOID" | null; ids: string[] } | null;
+   *  `ids` are the positions it aggregates — E-101's anchors are rendered from them.
+   *  `items` is every one of those positions, itemised and never truncated. */
+  myPosition: {
+    side: "UP" | "DOWN"; stake: number; payout: number | null;
+    result: "WIN" | "LOSS" | "VOID" | null; ids: string[];
+    items: MyRoundPosition[]; hedged: boolean;
+  } | null;
   proof: {
     openPrice: number | null; closePrice: number | null;
     // E-53 · NEITHER endpoint is sent. The half-applied version of this change dropped

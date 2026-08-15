@@ -1,6 +1,39 @@
 STATUS: the next plan. Written 2026-07-29, immediately after the design system was
 frozen and shipped. **Revised 2026-07-31 against the live platform, not against memory.**
 
+> ⭐ **EVERY UP & DOWN POSITION IS VISIBLE (2026-08-15).** Ali: *"make it show, no matter how
+> much position I have, perfectly."* Two surfaces compressed a player's own money and both are
+> fixed. `/updown/history` rendered `g.bets.slice(0, 2)` per round card and collapsed the rest
+> into a bare `+N` chip **that was not a control** — six positions read as two chips and the
+> number four, with nowhere to go for the rest. `/updown/[roundId]` rendered `myPosition`, which
+> `myPositionFor` AGGREGATED to one side / one stake / one payout; every position is itemised
+> now (side · stake · payout · its own stored result) **beside** the aggregate settlement wrote,
+> which is untouched — this path adds no money logic.
+> 🔴 **AND A HEDGED HOLDER WAS QUOTED ONE SIDE.** `myPositionFor` picks its single `side` with
+> `up >= down`, which is a tie-break, not a fact about the bet — so a player who backed BOTH ways
+> saw the larger leg presented as their position. Same class as UD-20 on the board.
+> 🔴 **A THIRD DEFECT, FOUND WHILE FIXING THOSE TWO — and the worst of the three.**
+> `myPositionFor` read `listPositionsForUser(userId, 500, "UPDOWN")` and only THEN filtered to
+> the market. The cap is applied by the STORE, before the filter, so a player past 500 Up & Down
+> positions opening an older round got an empty list and the page told them **they had no
+> position on a round they had played**. It is a market-scoped query now — the round bounds it,
+> so there is no cap to overflow, and it is the indexed lookup on `@@index([marketId, status])`
+> rather than a scan of the player's history.
+> ⭐ **The remaining read cap is now SAID OUT LOUD.** `/updown/history` reads the most recent 400
+> positions and rendered them as the player's whole record — including the P&L strip, whose "net
+> return" was then a real shilling figure over an unstated subset. Same class as the `+N` chip:
+> not a wrong number, a number whose scope was concealed.
+> **Guards:** `test:updown-positions-visible` (29 assertions, each absence check paired with a
+> positive control) · `red:updown-positions-visible` (**4/4**, each pre-fix defect restored
+> VERBATIM and on its own).
+> 🔴 **THE RED PROOF CAUGHT A HOLE IN THE GUARD, which is the point of running it.** Disabling
+> the itemised list with `{false && (` left the `.map` in the source, so the assertion stayed
+> green over a panel that rendered nothing — E-65 exactly ("the guard asserted the branch
+> EXISTED; it did not assert it was REACHABLE"). Reachability is asserted directly now.
+> ⚠️ **And the guard's first run failed on a CORRECT file**: the comment explaining the fix
+> quotes the defect it replaced, so the absence check matched the prose. Source assertions run
+> comment-stripped now — a check that fails when the product is fine is worth nothing.
+>
 > ⭐ **BATCH 5 IS LIVE (2026-08-14): every player filter control is ONE control.** Ali, reading
 > the live platform: *"filtering is not designed properly, markets has a different filter design
 > than up and down."* Measured in a browser before anything moved: **four control heights (40 /

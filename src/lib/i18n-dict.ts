@@ -887,6 +887,30 @@ export const dict = {
       udLivePrice: "Live price", udAboveOpenBy: "Above open by", udBelowOpenBy: "Below open by", udPool: "Pool",
       udPickLocked: "Locked from your pick on the board. To switch sides, leave this round.",
       udConfirm: "Confirm", udYourResult: "Your result", udPaidOut: "Paid out", udOpenInPositions: "Open in Positions",
+      // ── Up & Down · EVERY POSITION, ITEMISED (2026-08-15) ────────────────
+      // The history card and the round panel both used to compress a player's positions —
+      // two chips + "+N" on one, a single aggregated line on the other. These label the
+      // itemised list that replaced both.
+      udPositionsOnRound: "Your positions", udBothSides: "You backed both sides",
+      udPosWon: "Won", udPosLost: "Lost", udPosRefunded: "Refunded", udPosOpen: "Open",
+      udPosCashedOut: "Cancelled",
+      udHistoryCapped: "Showing your {n} most recent bets — the totals above cover these only.",
+      // ── Up & Down · THE BET RECEIPT (2026-08-15) ─────────────────────────
+      // ⛔ `udRcProjected` is a PROJECTION and is never gilded: gold on this platform means
+      // money that was earned, and nothing has been decided yet. The sentence that qualifies
+      // it is `udEstimateNote`, which already exists and already says exactly this — it is
+      // reused rather than restated so the board card and this receipt cannot drift.
+      udRcProjected: "Projected return", udRcOpenPrice: "Open price",
+      udRcBetsClose: "Betting closes", udRcResultDue: "Result due",
+      // ⛔ The exit row is COMPUTED per bet, never stated as a constant. Cash-out needs
+      // `freeExitGraceMinutes` of betting time still left when the bet lands (the RUNWAY rule
+      // in market-service.cashOutValue), and an Up & Down round's betting window IS its
+      // advertised duration — so a 3-minute round can never offer one, and a longer round
+      // stops offering it partway through. Promising a cancellation the server would refuse
+      // is a false statement made on the commit screen.
+      udRcExitLabel: "Free cancellation", udRcExitValue: "{mins} min",
+      udRcNoExitLabel: "No early exit", udRcNoExitValue: "Rides to the result",
+      udRcKeepPlaying: "Keep playing", udRcWatchRound: "Watch this round",
       udRoundLabel: "Round", udAuditableRecord: "auditable record", udOutcome: "Outcome", udObserved: "Observed",
       udMove: "Move", udPercent: "Percent", udRule: "Rule",
       // Two sentences, because the rule genuinely differs per round. `udRuleText` is the
@@ -2515,6 +2539,15 @@ export const dict = {
       udLivePrice: "Bei ya sasa", udAboveOpenBy: "Juu ya ufunguzi kwa", udBelowOpenBy: "Chini ya ufunguzi kwa", udPool: "Dimbwi",
       udPickLocked: "Imefungwa kutoka chaguo lako kwenye ubao. Kubadili upande, ondoka kwenye raundi hii.",
       udConfirm: "Thibitisha", udYourResult: "Matokeo yako", udPaidOut: "Kilicholipwa", udOpenInPositions: "Fungua kwenye Nafasi",
+      udPositionsOnRound: "Nafasi zako", udBothSides: "Umeweka pande zote mbili",
+      udPosWon: "Umeshinda", udPosLost: "Umeshindwa", udPosRefunded: "Imerudishwa", udPosOpen: "Wazi",
+      udPosCashedOut: "Imeghairiwa",
+      udHistoryCapped: "Tunaonyesha dau {n} za hivi karibuni — jumla hapo juu ni za hizo tu.",
+      udRcProjected: "Marejesho yanayotarajiwa", udRcOpenPrice: "Bei ya ufunguzi",
+      udRcBetsClose: "Dau zinafungwa", udRcResultDue: "Matokeo yanatarajiwa",
+      udRcExitLabel: "Kughairi bila malipo", udRcExitValue: "dakika {mins}",
+      udRcNoExitLabel: "Hakuna kutoka mapema", udRcNoExitValue: "Litaenda hadi matokeo",
+      udRcKeepPlaying: "Endelea kucheza", udRcWatchRound: "Tazama raundi hii",
       udRoundLabel: "Raundi", udAuditableRecord: "rekodi inayokaguliwa", udOutcome: "Matokeo", udObserved: "Ilionekana",
       udMove: "Mwendo", udPercent: "Asilimia", udRule: "Kanuni",
       udRuleText: "Juu ikiwa bei ya kufunga iko juu ya ufunguzi · Chini ikiwa iko chini · Batili ikiwa haijasogea",
@@ -4052,6 +4085,15 @@ export const dict = {
       udLivePrice: "实时价格", udAboveOpenBy: "高于开盘", udBelowOpenBy: "低于开盘", udPool: "奖池",
       udPickLocked: "已根据你在面板上的选择锁定。若要切换方向，请离开本轮。",
       udConfirm: "确认", udYourResult: "你的结果", udPaidOut: "已支付", udOpenInPositions: "在持仓中打开",
+      udPositionsOnRound: "你的持仓", udBothSides: "你同时押了涨和跌",
+      udPosWon: "已赢", udPosLost: "已输", udPosRefunded: "已退还", udPosOpen: "进行中",
+      udPosCashedOut: "已取消",
+      udHistoryCapped: "仅显示最近 {n} 笔下注——上方合计也只涵盖这些。",
+      udRcProjected: "预计回报", udRcOpenPrice: "开盘价",
+      udRcBetsClose: "投注截止", udRcResultDue: "结果公布",
+      udRcExitLabel: "免费取消", udRcExitValue: "{mins} 分钟",
+      udRcNoExitLabel: "不可提前退出", udRcNoExitValue: "将持有至结果公布",
+      udRcKeepPlaying: "继续游戏", udRcWatchRound: "观看本轮",
       udRoundLabel: "轮次", udAuditableRecord: "可审计记录", udOutcome: "结果", udObserved: "观测",
       udMove: "变动", udPercent: "百分比", udRule: "规则",
       udRuleText: "收盘高于开盘为涨 · 低于为跌 · 无变动则作废",

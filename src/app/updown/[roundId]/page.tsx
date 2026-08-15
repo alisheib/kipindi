@@ -43,6 +43,24 @@ import { refreshCadence } from "@/lib/refresh-cadence";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * One position's OWN outcome, in the player's language.
+ *
+ * ⛔ It maps the STORED status and nothing else — it never re-derives a result from prices
+ * or payouts. The itemised list this feeds is a reading of what settlement wrote, and the
+ * moment it starts inferring, it becomes a second money authority next to the aggregate.
+ */
+function POSITION_STATUS_LABEL(
+  t: Awaited<ReturnType<typeof getServerT>>["t"],
+  status: "OPEN" | "WIN" | "LOSS" | "VOID" | "CASHED_OUT",
+): string {
+  return status === "WIN" ? t.market.udPosWon
+    : status === "LOSS" ? t.market.udPosLost
+    : status === "VOID" ? t.market.udPosRefunded
+    : status === "CASHED_OUT" ? t.market.udPosCashedOut
+    : t.market.udPosOpen;
+}
+
 const card = { background: "var(--bg-elevated)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", boxShadow: "var(--shadow-card)" } as const;
 const inset = { background: "var(--bg-inset)", border: "1px solid color-mix(in oklab, var(--border) 70%, transparent)", borderRadius: "var(--r-md)" } as const;
 const eyebrow = "m-0 font-mono text-[8.5px] font-semibold uppercase tracking-[0.12em] text-text-faint";
@@ -381,9 +399,53 @@ export default async function UpDownRoundPage({
                   </div>
                   <div className="text-right">
                     <p className="m-0 font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">{t.market.udYourPick} · {t.market.udStake}</p>
-                    <p className="mt-1 m-0 font-mono text-[12px] tabular-nums text-text-muted">{myPosition.side === "UP" ? t.market.udUp : t.market.udDown} · {formatTzs(myPosition.stake)}</p>
+                    {/* ⛔ A HEDGED HOLDER IS NOT QUOTED ONE SIDE. `myPositionFor` derives its
+                        single `side` with `up >= down`, which is a tie-break, not a fact about
+                        the bet — so a player who backed BOTH ways was shown the larger leg as
+                        though it were their whole position. Same rule as UD-20 on the board. */}
+                    <p className="mt-1 m-0 font-mono text-[12px] tabular-nums text-text-muted">
+                      {myPosition.hedged
+                        ? t.market.udBothSides
+                        : myPosition.side === "UP" ? t.market.udUp : t.market.udDown} · {formatTzs(myPosition.stake)}
+                    </p>
                   </div>
                 </div>
+
+                {/* ⭐ EVERY POSITION, ITEMISED (Ali, 2026-08-15). The block above is the
+                    AGGREGATE the settlement path wrote and it stays — but it is one line, and a
+                    player holding six positions on this round was shown one line and one side.
+                    ⛔ This reads ONLY what settlement already wrote (`status` + `finalPayout`).
+                    No money arithmetic happens here; the figures above remain the money truth.
+                    Rendered from `items.length > 1` because with a single position the aggregate
+                    IS the itemisation, and repeating it under an identical headline is noise. */}
+                {myPosition.items.length > 1 && (
+                  <div className="mt-3.5 border-t border-border-subtle/60 pt-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="m-0 font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">
+                        {t.market.udPositionsOnRound} · {myPosition.items.length}
+                      </p>
+                      {myPosition.hedged && <span className="chip">{t.market.udBothSides}</span>}
+                    </div>
+                    <ul className="mt-2 m-0 flex list-none flex-col gap-1.5 p-0">
+                      {myPosition.items.map((p) => (
+                        <li
+                          key={p.id}
+                          className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 rounded-md border border-border bg-bg-overlay/50 px-2.5 py-1.5"
+                        >
+                          <span className="flex min-w-0 items-center gap-1.5">
+                            <span className={"chip tabular-nums " + (p.side === "UP" ? "chip-yes" : "chip-no")}>
+                              {p.side === "UP" ? "↑" : "↓"} {formatTzs(p.stake)}
+                            </span>
+                            <span className="font-mono text-[10px] text-text-faint">{POSITION_STATUS_LABEL(t, p.status)}</span>
+                          </span>
+                          <span className="ml-auto font-mono text-[12.5px] font-bold tabular-nums text-text">
+                            {p.payout == null ? "—" : formatTzs(p.payout)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
                 {/* ⭐ E-65 · THE REFUND REASON BELONGS *HERE*, INSIDE THE RESULT PANEL.
                     🔴 FOUND BY DRIVING IT ON PRODUCTION, not by any suite. The refund branch
                     below is unreachable for the one player it was written for: this

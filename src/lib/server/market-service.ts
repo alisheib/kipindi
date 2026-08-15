@@ -106,7 +106,10 @@ export type Side = "YES" | "NO";
  *
  *  - `MARKET` — a long-form 50pick poll (sports, macro, weather…). Every row that
  *    existed before this discriminator, via the column default.
- *  - `UPDOWN` — one round of an Up & Down price chain (5/15/30 min).
+ *  - `UPDOWN` — one round of an Up & Down price chain. ⛔ The durations are
+ *    `ALLOWED_DURATIONS` in `@/lib/updown-durations`, never a list restated here: this
+ *    line read "5/15/30 min" until 2026-08-15, four durations out of date (3, 10 and 60
+ *    were added 2026-08-04) — the exact hand-copied-list drift that module exists to end.
  *
  * The two share this table — and therefore share every proven money path (bet,
  * settle, refund, ledger, audit) — but have wildly different row economics: a poll

@@ -62,7 +62,7 @@ Per `Markets Appearing.txt`, the platform now has three destinations:
 | Destination | Shows |
 |---|---|
 | **Markets** | long-form polls only — a day or more |
-| **Up & Down** | short-term price rounds only — 5 / 15 / 30 min |
+| **Up & Down** | short-term price rounds only — see `ALLOWED_DURATIONS` |
 | **Live** | everything, both product lines |
 
 ---
@@ -238,6 +238,39 @@ that is what the source publishes; it must read as visually distinct from player
 
 Design detail — states, redlines, prop contracts:
 `Up Down Design System/handoff/D1-updown-card-spec.md`.
+
+---
+
+## 8b · What the player's OWN positions must show (2026-08-15)
+
+A player may hold **unlimited positions on one round, on either or both sides**
+(`docs/RULES.md` §1). Both surfaces that list them used to compress that, and both now
+render every one.
+
+| Surface | Rule |
+|---|---|
+| `/updown/history` round card | **Every** bet on the round is its own chip. No cap, no `+N`, and no `max-height` or scroll box — clipping the row is the same defect wearing a different mechanism. The count LEADS the row: at 360px in SW/ZH ten chips wrap to four lines, and a trailing count lands alone on the last one reading as a stray figure. |
+| `/updown/[roundId]` result panel | Every position itemised — side · stake · payout · **its own** stored result — **beside** the aggregate, which is what settlement wrote and is unchanged. Rendered only when the viewer holds more than one: with a single position the aggregate *is* the itemisation. |
+
+⛔ **The itemised list adds NO money logic.** It reads `status` and `finalPayout` and nothing
+else. The moment it infers a result from prices or payouts it becomes a second money
+authority standing next to settlement's own figures.
+
+⛔ **A hedged holder is never quoted one side.** `myPositionFor` derives a single `side` with
+`up >= down` — a tie-break, not a fact about the bet. Where the aggregate must name a side and
+the player backed both, it says so (`udBothSides`). Same rule as UD-20 on the board.
+
+⛔ **`myPositionFor` queries by MARKET, never by user-with-a-cap.** It used to read the
+player's 500 most recent Up & Down positions and filter to the round afterwards; the store
+applies the cap *before* the filter, so a heavy player opening an older round was told they
+held no position on a round they had played. One round's positions are bounded by the round.
+
+⚠️ **`/updown/history` reads the most recent `UD_HISTORY_LIMIT` (400) positions and SAYS SO
+when it bites.** The P&L strip is computed over exactly that set, so an unstated cap made
+"net return" a real shilling figure over a concealed subset.
+
+**Guards:** `test:updown-positions-visible` · `red:updown-positions-visible` (4/4, each
+pre-fix defect restored verbatim and on its own).
 
 ---
 
