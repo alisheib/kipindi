@@ -630,6 +630,67 @@ The platform's hardest-won rules. Most were bought with an incident.
 
 ---
 
+## L — The label law: the right word, in the right place, in the right language
+
+> Added 2026-08-15. §C says what the interface may CLAIM; this says what it may CALL
+> things. It exists because the platform stores ONE vocabulary and sells TWO products, so
+> the stored token does not tell a surface what word a player should read.
+> Guarded by `npm run test:labels`; proved red by `npm run red:labels`.
+
+### L1 — A label is any word that NAMES something to a human
+
+An outcome, a side, a status, a column heading, a chip, a tab, a button, a filter, an
+email subject, an audit action rendered to an officer, a notification title. The four ways
+it goes wrong, each of which had a LIVE instance on the day this section was written:
+
+| # | Failure | Shape |
+|---|---|---|
+| **L1** | Wrong vocabulary for the product | a poll's YES/NO used for an Up & Down round, whose sides are UP/DOWN |
+| **L2** | A raw enum reaches a human | `resolved ${outcome}` interpolating `"YES"`; *"flip the position to CASHED_OUT"* in the FAQ |
+| **L3** | An English token inside a translated string | `probOverTime` read *"YES 概率随时间变化"* while Swahili correctly read *"Uwezekano wa NDIYO"* |
+| **L4** | Right word, wrong context | "Bet" where the product says "prediction"; "poll" on an Up & Down surface |
+
+### L2 — One definition site per enum family, and it is PRODUCT-AWARE
+
+A position's side is stored `YES | NO` whatever product owns it; the Up & Down layer maps
+it to `UP | DOWN` at the edge. So the stored token is not the word.
+
+⛔ **A render site that cannot tell which product it is holding IS the defect** — not the
+word it happened to pick. `src/lib/side-label.ts` is the single map from (stored side,
+`productLine`) to the word; `updown-refund-reason.ts` and `updown-source-label.ts` are the
+same pattern for their families.
+
+⛔ **`productLine` has no default and must never be given one.** A default is the bug: it
+lets a caller that does not know its product compile, and answer confidently in the wrong
+vocabulary.
+
+⛔ **If you find a mapping in two places, DELETE one** (§0a). Measured 2026-08-15:
+`market.sideYesWord.toUpperCase()` and `common.yes` are byte-identical in all three
+locales — two homes for one word. The helper standardises on `common.*`.
+
+### L3 — No enum ever reaches a sentence
+
+⛔ Never interpolate a stored enum into copy, in any language. `resolved ${outcome}` put
+the ASCII token `YES` inside an otherwise-Chinese sentence, and the same shape put
+`CASHED_OUT` into player help text in **all three** languages. An enum is a storage
+detail; a word is a product decision. They meet only in the lexicon.
+
+### L4 — A translated string contains no English enum tokens
+
+⛔ **`test:i18n` cannot catch this.** That guard compares a translation against its English
+source and passes anything that DIFFERS — so `"YES 概率随时间变化"` counts as translated by
+its measure. Six Chinese keys shipped that way, four of them `aria-label`s, so a Chinese
+screen-reader user heard *"YES"*. Swahili had translated all six correctly, and that is
+what proves it a defect rather than a house style: **the platform's own two translations
+disagreed, over a dictionary that already defined `是` and `否`.**
+
+⚠️ The exception is a DECIDED one and carries its reason in the allowlist of
+`scripts/i18n-parity.test.mts` — e.g. `home.heroHeadline` (*"The wisdom of YES & NO."*) is
+the brand line, verbatim in all three locales by Ali's call (PLAN-OF-RECORD §7b).
+⛔ Do not "fix" an allowlisted string.
+
+---
+
 ## H — Haptics: physical events only
 
 ⚠️ **There are TWO haptic modules and they are not interchangeable.**

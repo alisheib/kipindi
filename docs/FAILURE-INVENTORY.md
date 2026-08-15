@@ -456,3 +456,78 @@ of action everywhere?"* and for most classes it now is: every **money** mutation
 shared `OperationResultModal` (the Up & Down bet was the last exception and is closed); every
 **preference** is silent-but-toasted; every **admin** action goes through one overlay; and no
 surface anywhere uses a native `confirm()`/`alert()` — verified, not assumed.
+
+---
+
+## §7 · THE LABEL LEXICON — every enum that reaches a human, and the word it becomes
+
+> Measured 2026-08-15 by opening the render sites, not by grepping names. The LAW this
+> serves is [`docs/DESIGN_AUTHORITY.md`](DESIGN_AUTHORITY.md) **§L**; the guard is
+> `npm run test:labels` with `npm run red:labels`.
+>
+> ⛔ **The denominator first.** `40` enums are declared in `prisma/schema.prisma`. Of those,
+> **13 never reach a human at all** (`Locale`, `AdminDomain`, `NotificationChannel`,
+> `AuditCategory`, the four DEAD `LedgerEntryType` arms, …) — they route, they do not label.
+> The rest split into the families below. ⛔ A lexicon built from what a session *noticed* is
+> not a lexicon; this one starts from `schema.prisma` and `store.ts`.
+
+### 7.1 · The families, and where each becomes words
+
+| Enum family | Values | Player EN / SW / ZH | Admin | Definition site |
+|---|---|---|---|---|
+| **Side** (`MarketSide`) | `YES` `NO` | poll → `common.yes/no` (YES·NDIO·是) · round → `market.udUp/udDown` (Up·Juu·涨) | raw, English by design | ⭐ **`src/lib/side-label.ts`** |
+| **Outcome** (`resolvedOutcome`) | `YES` `NO` `VOID` | as Side, + `market.statusVoid` (Void·Batili·已作废) | raw | ⭐ `side-label.ts` |
+| **Up & Down outcome** | `UP` `DOWN` `VOID` | `market.udUpWins/udDownWins` | raw | ⭐ `side-label.ts` |
+| **Refund reason** | 6 arms | `market.udRefund*` | — | `updown-refund-reason.ts` |
+| **Source class** | 5 arms | `market.udSource*` | — | `updown-source-label.ts` |
+| **PositionStatus** | `OPEN` `WIN` `LOSS` `VOID` `CASHED_OUT` | `position-card.tsx`'s local map | `admin-status-lexicon.ts` | ⚠️ **two sites** — see 7.3 |
+| **PredictionMarketStatus** | `DRAFT` `LIVE` `CLOSED` `RESOLVED` `VOIDED` | `market.statusLive/statusResolved/statusVoid` | `components/admin/status-badge.tsx` | `admin-status-lexicon.ts` |
+| **KycStatus / TxnType / TxnStatus / FlagStatus** | — | wallet + profile surfaces | `admin-status-lexicon.ts` | `admin-status-lexicon.ts` |
+
+### 7.2 · What the lexicon found that a gap-list would not have
+
+1. 🔴 **Six Chinese keys carried the ASCII token `YES`/`NO` inside otherwise-Chinese strings**
+   — `probOverTime`, `probChartAria`, `backYesAria`, `backNoAria`, `backYesAriaNoPrice`,
+   `backNoAriaNoPrice`. **Four are `aria-label`s**, so a Chinese screen-reader user *heard*
+   "YES". ⭐ **Swahili had translated all six correctly** (`NDIYO` / `HAPANA`) — the platform's
+   own two translations disagreed, which is what makes this a defect and not a house style.
+   ⛔ `test:i18n` cannot see it: it only compares a translation to its English source, and
+   `"YES 概率随时间变化"` differs from `"YES probability over time"`, so it passed clean.
+2. 🔴 **`faq6a` told the player their position becomes `CASHED_OUT` — in ALL THREE languages.**
+   The raw `PositionStatus` enum in player help text, beside a dictionary that already defines
+   *Cashed out · Imetolewa · 已兑现*.
+3. 🔴 **`bet-confirm-modal.tsx` renders the side TWICE, one raw and one translated, on the same
+   screen.** Line 267 prints `{side}` at 26px under a translated *"You are picking"*; line 307
+   uses the dictionary for the pool-share sentence three rows below. On the Chinese
+   money-commit dialog the headline read **YES** while the sentence beneath read **是**.
+4. 🔴 **`notifySelectionClosed` hard-wrote `YES`/`NO` into its Swahili AND Chinese bodies**
+   (*"若 YES 获胜您将获得 …"*), and **`notifyWatchedSettled` interpolated the raw enum** into all
+   three (`resolved ${outcome}` / `matokeo: ${outcome}` / `结果：${outcome}`).
+5. ⚠️ **The Up & Down half of §2a is NOT reachable today — established, not assumed.**
+   `notifySelectionClosedForMarket` does **not** gate on `perEventNotificationsSuppressed()`,
+   so the guard is not where it looks; what actually keeps Up & Down out is
+   `nextDeadlineFor()` returning `null` for `productLine === "UPDOWN"`
+   (`market-scheduler.ts:147`), so no round is ever armed for `notify-closed`. ⛔ The suppression
+   predicate is therefore NOT what protects this path — anyone adding a second caller must
+   re-establish that, not trust the predicate's name.
+6. ⚠️ **`market.sideYesWord.toUpperCase()` and `common.yes` are the same string in all three
+   locales** (EN YES · SW NDIO · ZH 是, and no/HAPANA/否). Two definition sites for one word —
+   §0a. Verified by evaluating the dictionary, not by reading it.
+7. ⚠️ **The eight hand-written side ternaries are NOT live bugs, and saying so would be wrong.**
+   `listMarkets()` defaults to `productLine: "MARKET"`, and `/results`, `/fairness`,
+   `/positions` and the ticker each filter to long-form (`platform-stats.ts:103`), so they
+   render YES/NO on markets that really are YES/NO. ⭐ **The risk is structural**: the day one
+   of those queries gains `productLine: "ALL"`, all eight lie at once and silently. The
+   pattern is the finding, not a count.
+
+### 7.3 · Where the lexicon says the platform is already right — ⛔ do not "fix" these
+
+- **`/updown/history`** uses `udUpWins`/`udDownWins` and `b.side === "UP" ? "↑" : "↓"`.
+- **`/positions`** filters to `"MARKET"` (`page.tsx:41`), so its YES/NO is the true vocabulary.
+- **`home.heroHeadline`** (*"The wisdom of YES & NO."*) is verbatim in all three locales by
+  Ali's decision (PLAN-OF-RECORD §7b) and is allowlisted in `i18n-parity.test.mts`.
+- **Admin is English by design** — one language, and `admin-status-lexicon.ts` already owns it.
+- ⚠️ **`PositionStatus` has two label maps** (`position-card.tsx`'s local object for players,
+  `admin-status-lexicon.ts` for officers). That is *defensible* — the audiences differ and the
+  admin console is monolingual — but it is two sites for one family and is recorded here so the
+  next session decides deliberately rather than discovering it.
