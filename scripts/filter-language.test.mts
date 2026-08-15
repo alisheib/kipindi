@@ -321,8 +321,17 @@ ok(/html\[data-sheet-open\] \.route-enter/.test(css),
 // ⭐ THE BODY SCROLLS, THE PANEL DOES NOT — so the heading and the dismiss button survive any
 //    content length. If the panel became the scroller, the count a player is accepting would be
 //    the thing they have to scroll past to reach it.
-const panelRule = css.match(/\.kp-fsheet-panel\s*\{([^}]*)\}/);
-const bodyRule = css.match(/\.kp-fsheet-body\s*\{([^}]*)\}/);
+/**
+ * ⛔ ANCHORED TO THE START OF A LINE, WHICH IS NOT PEDANTRY — `red:filter-language` caught this
+ * one live. The locator was `/\.kp-fsheet-panel\s*\{/`, and the moment a second rule appeared
+ * whose selector ENDS with that class (`.kp-fsheet:not([open]) > .kp-fsheet-panel { display: none }`,
+ * added earlier in the file) the gate started reading THAT block instead of the definition —
+ * so §5.15 was inspecting `display: none` and the `panel-scrolls` mutation walked straight past
+ * it. A guard whose locator can drift onto a neighbour is the §5b rule-7 failure exactly: the
+ * check and its RED proof agreeing with each other about the wrong subject.
+ */
+const panelRule = css.match(/(?:^|\n)\.kp-fsheet-panel\s*\{([^}]*)\}/);
+const bodyRule = css.match(/(?:^|\n)\.kp-fsheet-body\s*\{([^}]*)\}/);
 ok(!!panelRule && !!bodyRule, "5.13 CONTROL: the sheet's panel and body rules exist to be checked");
 ok(!!bodyRule && /overflow-y:\s*auto/.test(bodyRule[1]) && /min-height:\s*0/.test(bodyRule[1]),
   "5.14 the sheet's BODY is the scroll container, and can actually shrink to become one");
@@ -364,6 +373,18 @@ ok(!sheetGroups.some((g) => /common\.sort/.test(g)),
   "5.21 …and sort is NOT one of them — it stays in the bar at every width", sheetGroups.join(", "));
 ok(sheetGroups.some((g) => /oddsKey/.test(g)) && sheetGroups.some((g) => /poolKey/.test(g)) && sheetGroups.some((g) => /common\.topic/.test(g)),
   "5.22 …they are odds, pool and topic", sheetGroups.join(", "));
+
+/**
+ * 🔴 A CLOSED DISCLOSURE MUST LAY OUT NOTHING — and Chrome does not give you that for free.
+ * It hides `<details>` content through the `::details-content` slot, so descendants keep real
+ * boxes: a chip in the CLOSED sheet measures 81×44 at y=765. Combined with the `.route-enter`
+ * capture (which does not apply while the sheet is shut, so `left: 0; right: 0` resolves against
+ * the page wrapper rather than the window), the phantom panel measured PAST THE RIGHT EDGE OF
+ * THE VIEWPORT at six widths — `responsive-audit` read
+ * `button[Close filters] l363 r427 > vw390`. Shipped, then caught by the audit, then fixed.
+ */
+ok(/\.kp-fsheet:not\(\[open\]\)[\s\S]{0,140}?\{[^}]*display:\s*none/.test(css),
+  "5.23 a CLOSED sheet lays out nothing — otherwise its phantom panel overflows the viewport");
 
 console.log(`filter-language: ${pass} assertions passed · ${SURFACES.length} rails · ${discovered.length} discovered`);
 if (fails.length) {

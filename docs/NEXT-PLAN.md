@@ -61,7 +61,13 @@ frozen and shipped. **Revised 2026-07-31 against the live platform, not against 
 > the sheet. All three files now say the measured thing, and `qa:discovery-board` prints what a
 > scripts-off browser sees. ⬜ Making the board render without scripts is a page-architecture
 > change, not a filter one; recorded, not half-attempted.
-> **Guards:** `test:filter-language` **91 assertions** (was 66) · `red:filter-language` **17/17**.
+> 🔴 **A CLOSED `<details>` keeps a real box, and that shipped for an hour.** `test:responsive`
+> read `button[Close filters] l363 r427 > vw390` at six widths with the sheet SHUT — Chrome hides
+> disclosure content through the `::details-content` slot, so the phantom panel still laid out,
+> and positioned against the page wrapper it hung past the viewport. A shut sheet lays out
+> nothing now. Fixing it then broke a guard's own locator (a second rule whose selector ends in
+> `.kp-fsheet-panel`), which `red:filter-language` caught the same minute at 16/17.
+> **Guards:** `test:filter-language` **92 assertions** (was 66) · `red:filter-language` **18/18**.
 > Full account: PLAN-OF-RECORD §8.7i.
 >
 > ⭐ **BATCH 5 IS LIVE (2026-08-14): every player filter control is ONE control.** Ali, reading

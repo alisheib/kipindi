@@ -172,6 +172,18 @@ const CASES = [
     expect: "5.11",
   },
   {
+    /* 🔴 SHIPPED, THEN CAUGHT BY `responsive-audit`, THEN FIXED. Chrome leaves a closed
+       <details>'s content with real layout boxes, and the phantom panel — positioned against
+       `.route-enter` rather than the window while shut — measured past the right edge of the
+       viewport at SIX widths (`button[Close filters] l363 r427 > vw390`). Invisible to the eye,
+       a real horizontal-overflow finding. */
+    name: "closed-sheet-lays-out (the shut sheet keeps a box and overflows the viewport)",
+    file: CSS,
+    from: `.kp-fsheet:not([open]) > .kp-fsheet-scrim,\n.kp-fsheet:not([open]) > .kp-fsheet-panel { display: none; }`,
+    to: ``,
+    expect: "5.23",
+  },
+  {
     // If the PANEL scrolls, the heading and the dismiss button scroll away with the content —
     // so the count a player is accepting is the thing they must scroll past to accept it.
     name: "panel-scrolls (the scroll moves off the body and onto the panel)",

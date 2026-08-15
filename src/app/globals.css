@@ -2789,6 +2789,18 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
 .kp-fsheet > summary { list-style: none; }
 .kp-fsheet > summary::-webkit-details-marker { display: none; }
 
+/* 🔴 A CLOSED DISCLOSURE MUST HAVE NO BOX, AND CHROME DOES NOT GIVE YOU THAT FOR FREE.
+   Chrome hides `<details>` content through the `::details-content` slot, which leaves the
+   descendants with real layout: a chip inside the CLOSED sheet measures **81×44 at y=765** and
+   reports `display: flex`. Combined with the `.route-enter` capture above — which does NOT apply
+   while the sheet is shut, so `left: 0; right: 0` resolves against the page wrapper rather than
+   the window — the phantom panel measured **past the right edge of the viewport at six widths**:
+   `responsive-audit` read `button[Close filters] l363 r427 > vw390`. Invisible to the eye and a
+   real horizontal-overflow finding, on the audit that exists to catch exactly that.
+   ⛔ Do not "fix" this by widening a tolerance. A shut sheet lays out nothing. */
+.kp-fsheet:not([open]) > .kp-fsheet-scrim,
+.kp-fsheet:not([open]) > .kp-fsheet-panel { display: none; }
+
 /* The trigger wears the SAME selected language as a pill when filters are on — `--pill-active`
    plus the halo — because it is standing in for those pills at this width. One fill, one
    meaning; a second treatment invented here would be a second definition of "this is on".

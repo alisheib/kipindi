@@ -1632,6 +1632,27 @@ unconditionally would delete the entrance every page has.
    calls it visible. `qa:filter-scan` uses `checkVisibility()` now, **reports how many controls it
    skipped**, and fails if a rail's controls are *all* hidden.
 
+### 🔴 A CLOSED disclosure keeps a real box — shipped, caught by the audit, fixed in the hour
+
+`test:responsive` (scoped to `/markets`) reported **`button[Close filters] l363 r427 > vw390`** and
+the same for `Show N markets`, at **six widths**. The sheet was SHUT in every one of them.
+
+Chrome hides `<details>` content through the `::details-content` slot, so the descendants keep
+layout — the same fact that made a bounding-box visibility test lie (instrument 3 above). While
+the sheet is shut the `.route-enter` neutralisation does **not** apply, so the panel's
+`left: 0; right: 0` resolved against the page wrapper rather than the window, and the phantom
+panel hung past the right edge of the viewport. Invisible to the eye; a real horizontal-overflow
+finding on the audit that exists to catch exactly that.
+`.kp-fsheet:not([open]) > …{ display: none }` now makes a shut sheet lay out nothing.
+Guarded at §5.23, `red` case `closed-sheet-lays-out`.
+
+⚠️ **And fixing it broke a guard's locator, which the RED harness caught immediately.** §5.15 read
+`/\.kp-fsheet-panel\s*\{/`; the new rule's selector *ends* with that class, so the gate began
+inspecting `display: none` instead of the panel definition and the `panel-scrolls` mutation walked
+straight past it — 16/17. The locator is anchored to the start of a line now. ⭐ This is §5b rule 7
+in miniature: **a check and its own proof agreeing with each other about the wrong subject**, and
+the only reason it surfaced in minutes is that every assertion has a mutation that must fail on it.
+
 Plus a fourth, found because seeding six markets locally made it fire for the first time:
 `qa:discovery-board`'s `?page=2` case expected an **empty** grid, while `markets/page.tsx:233`
 deliberately clamps (`safePage = Math.min(pageNum, totalPages)`), the same "a hand-edited URL still
