@@ -1368,6 +1368,7 @@ which it named by filename.
 
 | # | Sev | Area | Finding | Evidence |
 |---|---|---|---|---|
+| **E-165** | ⚠️ **OPEN — measured 2026-08-15 (session 47), and the commission's own suggested fix has the same defect** | QA · `refusal-frames.mjs` · **the drive half drives the ONE refusal the UI prevents** | `qa:refusal-frames` passes its locale half 12/12 and fails its drive half 12/12. The cause is not a flaky selector: it submits close-account with a wrong confirmation phrase, and `close-account-form.tsx` computes `canSubmit = confirm.trim() === "CLOSE MY ACCOUNT"` and **disables the control**. A wrong phrase can never be submitted, so `?reason=close_confirm_required` is **unreachable by any real player action** — the harness drives the one refusal the client gate exists to prevent. Measured against a local server: 12 × `locator.click: Timeout 30000ms`. | ⚠️ **AND THE COMMISSIONED ALTERNATIVE IS THE SAME SHAPE.** The work order suggested driving `/profile/kyc` submit-for-review with fewer than three documents; `kyc/page.tsx` renders `<button type="submit" disabled>` whenever `docsCount < 3`. Both server refusals are **defence in depth behind a client gate** — correct engineering, and useless to a frame-reader. ⭐ **The reachable one is `password_mismatch`**: `/auth/reset-password` has NO client gate, and `resetPasswordAction` compares the two fields **before** consuming the token, so the SERVER chooses the reason. ⛔ It needs a **valid** token to render the form at all — an invalid one renders the expired state — so it needs the work order's other suggestion, a minted reset token, which needs a new dev-test route (`requestPasswordReset` only emails the link). ⛔ **Do not close this by navigating to `?reason=…`**: that proves the renderer renders and nothing else. |
 | **E-164** | 🔴 **FIXED + proven RED 2026-08-15 (session 47) — `test:feedback-law` §10, `red:feedback-law` 24/24, `qa:toast-modal` 12/12** | feedback · `toast.tsx` · **the toast covered the bet receipt's crest at 360 — and the FIRST fix was wrong while every guard was green** | §F1 makes the popup the PRIMARY signal and the corner toast the SECONDARY one. At 360px the toast stack covered the receipt's crest for the toast's first 3 seconds; at 768+ there is room for both, which is why it survived — the two fire together by design and only the narrowest viewport, the one most players use, collides. | ⭐ **THE FINDING IS THE FIRST FIX, NOT THE DEFECT.** It asked `isResultModalOpen()` INSIDE `toast()` and queued. §10 passed all nine assertions; `red:feedback-law` caught all three of its mutations; a real bet at 360 in EN/SW/ZH then showed the toast on screen over the receipt anyway — the quick-bet fires its toast in the SAME COMMIT that mounts the modal, and presence registers from an EFFECT, so at that instant the modal was not open. ⛔ A check whose answer depends on which effect ran first is a coin flip, and it landed the same way every time. Nothing that reads source could see it. The mechanism is REACTIVE now (the viewport holds; countdowns pause through the same pause/resume hover already uses), so there is no instant to race. ⛔ Not a z-index change — toasts sit above modals so a failure during a CONFIRM dialog stays readable. The driver that caught it is kept as `npm run qa:toast-modal`. |
 | **E-163** | 🔴 **FIXED + proven RED 2026-08-15 (session 47) — `test:failure-reasons` 240, `red:failure-reasons` 19/19** | refusals · `error-copy.ts` · `updown-bet-errors.ts` · **an RG daily-loss cap was headed "Betting unavailable"** | `RULES.md` §2.9's ⏳ said the loss-limit refusal was the last INVALID family recovered from English prose *"because its service has not been taught to emit a reason yet"*. **False when written**: `checkLossLimit` has exactly ONE caller and it has emitted `reason: "loss_limit_daily"` since `19ac78ec` — the same commit that built the registry. Two live routes to one refusal, for a day. | ⭐ **THE DEAD ROUTE WAS MASKING A LIVE DEFECT.** With the phrase test gone, the Up & Down refusal took the reason branch — which chose the acknowledge modal's HEADING from SEVERITY. Every `modal`-channel reason is severity `error`, so `udErrRgLimitTitle` ("Daily loss limit reached") was **unreachable** and a player who hit the cap **they set themselves** read the operator-block heading over a body about their own limit. Severity answers *how loud*; it cannot also answer *whose decision this was*. Keyed on the reason now. ⚠️ Also: three ACTION layers minted machine codes by phrase-matching their own service's English, and in `changePasswordAction` **`PW_WEAK` was the fallback arm** — any unmatched refusal told the player to choose a stronger password. And **six `REASON_BY_CODE` rows mapped codes NOTHING has ever emitted**, while §9 proved them "working" by synthesising the code itself. §9b walks the tree now. |
 | **E-162** | 🔴 **FIXED 2026-08-15 (session 47) — `red:all` 68 harnesses, tree fingerprinted per harness** | instruments · `red:all` · **27 harnesses had never run, and one was rewriting tracked source on every run** | `red:all` was a 41-segment `&&` chain. `&&` stops at the first non-zero exit, and a RED harness exits non-zero for two different reasons — the guard missed a defect, or the harness cannot find its own anchor. **68 `red:*` are declared; the chain named 41.** 10 of the 68 were failing: 6 could not resolve their own anchors (23 anchors), 1 had **never run on Windows at all** (`execFileSync("npx", …)` is ENOENT; its catch reported "the suite is already red" against a suite passing 82/82). | 🔴 **AND `red:updown-bars` REWROTE 740 LINES OF `updown-feed.ts` FROM CRLF TO LF, ON EVERY RUN IT HAS EVER DONE** — it kept a local copy of the line-ending rule and restored the NORMALISED copy, while its own comment three lines above claimed it restored the original bytes. ⛔ `git diff` normalises line endings, so it printed **nothing**; only `git status` showed the file modified, which is indistinguishable from a session's own edit — §3.8's exact invisibility, over a harness printing `7/7 caught` and exiting 0. Found by the new runner's per-harness tree fingerprint on its FIRST full run. Fixed at the root via `red-anchor.mjs` (7/7 → 8/8: the shared resolver found a ninth anchor the local matcher was silently missing). Full record: [`FAILURE-INVENTORY.md`](FAILURE-INVENTORY.md) §8 |
@@ -5768,9 +5769,11 @@ state**, 1,338,504 of players' stakes in escrow, and every ledger entry ever wri
 
 #### ⏭️ **RESUME AT (session 48):** ⭐ **`qa:refusal-frames`' DRIVE HALF — the one commissioned item this session did NOT close — and then **E-161**, which is the reason two suites broke under a clean `tsc` today.**
 >
-> **This session's register rows: E-161 (OPEN) · E-162 · E-163 · E-164.** Only **E-161** is
-> still open; the other three are fixed and proven RED. ⛔ Read E-161 before planning any
-> signature change — the gate you are about to trust does not cover the suites.
+> **This session's register rows: E-161 (OPEN) · E-162 · E-163 · E-164 · E-165 (OPEN).**
+> E-162/163/164 are fixed and proven RED. ⛔ Read **E-161** before planning any signature
+> change — the gate you are about to trust does not cover the suites. ⛔ And read **E-165**
+> before starting unit H: the refusal the harness drives is the one the UI *prevents*, and
+> the commissioned alternative has the identical defect.
 
 > 💰 **THE MONEY POSITION, FIRST AND PLAINLY: NO MONEY MOVED THIS SESSION.** Nothing is in
 > flight, nothing is stranded, and there is no payout to expect.
@@ -5836,13 +5839,22 @@ defects while the fleet that protects them is disarmed is how the last `if (true
 
 **⛔ WHAT IS OPEN, AND WHY — READ THIS BEFORE PLANNING SESSION 48.**
 
-1. **`qa:refusal-frames`' drive half (unit H) — NOT STARTED.** The locale half passes 12/12; the
-   drive half cannot reach the banners because they are client-gated or post through the kit
-   `Select`'s hidden input. ⛔ **Do not "fix" it by navigating to `?reason=…`** — that proves the
-   renderer renders and nothing else. Mint a real reset token, or drive `/profile/kyc`
-   submit-for-review with fewer than three documents. It was left because the session's
-   remaining capacity was spent on the verification and deploy the other eleven units needed,
-   and half-driving it would have been worse than leaving it honestly named.
+1. **`qa:refusal-frames`' drive half (unit H) — NOT CLOSED, but now MEASURED. See E-165.**
+   The locale half passes 12/12 and the drive half fails 12/12. ⭐ **The cause is not a flaky
+   selector: the harness drives the ONE refusal the UI prevents.** `close-account-form.tsx`
+   computes `canSubmit = confirm.trim() === "CLOSE MY ACCOUNT"` and disables the control, so a
+   wrong phrase can never be submitted and `close_confirm_required` is unreachable by any real
+   player action. ⛔ **And the alternative this commission suggested has the identical shape** —
+   `/profile/kyc` submit-for-review renders `<button type="submit" disabled>` below three
+   documents. Both refusals are defence in depth behind a client gate: correct engineering, and
+   useless to a frame-reader.
+   ⭐ **The reachable one is `password_mismatch`** on `/auth/reset-password`, which has no client
+   gate and where the SERVER compares the fields before consuming the token. ⚠️ It needs a
+   **valid** token to render the form at all, so it needs the work order's other suggestion — a
+   minted reset token — which needs a new dev-test route (`requestPasswordReset` only emails the
+   link). That route was not added here: it is a new production-gated API surface, and adding one
+   late in a session that deploys is how unverified changes ship. ⛔ Do not close this by
+   navigating to `?reason=…` — that proves the renderer renders and nothing else.
 2. 🔴 **`npx tsc --noEmit` DOES NOT TYPECHECK THE TEST SUITE** — filed at §7.2b-tsc, and it bit
    this session. `tsconfig` includes `scripts/**/*.ts`; every suite is `.mts`. The gate ran
    clean and `test:all` then failed two suites on stale fixtures. Closing it means enabling
