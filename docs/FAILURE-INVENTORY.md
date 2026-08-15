@@ -533,6 +533,42 @@ surface anywhere uses a native `confirm()`/`alert()` — verified, not assumed.
    of those queries gains `productLine: "ALL"`, all eight lie at once and silently. The
    pattern is the finding, not a count.
 
+### 7.2b · What the LIVE PAGE found that the green suite did not
+
+⭐ `test:labels` was ALL PASS, the deploy was verified, and the Chinese `/markets` page still
+carried three defects. All three came out of `curl`-ing production per locale and accounting
+for **every** remaining ASCII `YES` — the discipline that the count must reach zero or be
+explained, not merely look small.
+
+1. 🔴 `markets/page.tsx` rendered **"已结算 YES"** — the third copy of
+   `${t.market.resolvedOutcome} ${m.resolvedOutcome}`, and the one on the board. ⛔ **The
+   guard could not see it**: its prose test required a literal WORD outside the `${…}`
+   braces, and this template is two interpolations and a space. A `t.` lookup in a template
+   is now itself the proof it is copy. Red mutation #9.
+2. 🔴 `brand.tsx` carried `aria-label={\`YES probability ${target}%\`}` — hardcoded English
+   that never went through the dictionary, so a Chinese screen-reader user **heard** it.
+3. 🔴 `conviction-dial.tsx`'s bet-placed TOAST was the notification defect one channel over.
+
+### 7.2c · FILED, not fixed — these need a decision, not a session's guess
+
+- 🔴 **`trust-band.tsx:127` has no null arm.** `SettlementRow.outcome` is
+  `"YES" | "NO" | "VOID" | null`, so an unrecorded outcome falls through and renders **"NO"
+  in red** on the landing page, under a header reading *"THE OUTCOME IS READ, NEVER
+  INFERRED"*. `ticker.ts` rule 5 drops null rows; `page.tsx:247` feeds trust-band from
+  `stats.recentSettlements` **directly** and bypasses that filter. Latent, not observed.
+  What the landing shows for an absent outcome is a product decision.
+- ⚠️ **`red:updown-readiness` has FIVE stale anchors** and reports 11/16 — *"ANCHOR NOT
+  FOUND — the harness is broken, not the guard."* It anchors into
+  `src/app/admin/updown/*`, `updown-config.ts`, `updown-symbols.ts`, `updown-durations.ts`;
+  last touched 2026-08-05. ⛔ **This makes `red:all` exit 1 today**, and because that chain is
+  `&&`, everything after it is starved. Unrelated to the label work (zero file overlap) but
+  it is the tail-guard failure mode §5 warns about, now live.
+- ⚠️ **Notification titles are English-only across all three languages.** `notifyWin` takes a
+  `label` that the caller builds from `m.titleEn`, so a Chinese player's inbox reads a
+  Chinese sentence around an English market question. The ticker fixed exactly this for its
+  own titles (`ticker-feed.ts` header); the notification path never did. It needs the notify
+  signature to carry all three titles — a shape change, not a word change.
+
 ### 7.3 · Where the lexicon says the platform is already right — ⛔ do not "fix" these
 
 - **`/updown/history`** uses `udUpWins`/`udDownWins` and `b.side === "UP" ? "↑" : "↓"`.
