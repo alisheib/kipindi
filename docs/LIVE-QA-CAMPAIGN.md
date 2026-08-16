@@ -5881,7 +5881,7 @@ defects while the fleet that protects them is disarmed is how the last `if (true
 
 ### 🟢 Laptop A, session 45 (2026-08-15) — ⭐ THE FEEDBACK LAYER GETS A LAW, AND A BACKGROUND POLL WAS BUZZING THE WIN PATTERN OVER LOSSES
 
-#### ⏭️ **RESUME AT (session 46):** ⭐ **LABELLING — the whole platform, every layer, three languages. The prompt is [`docs/SESSION-PROMPT-LABELLING.md`](SESSION-PROMPT-LABELLING.md).**
+#### ⏭️ **RESUME AT (session 46):** ⭐ **LABELLING — the whole platform, every layer, three languages.** (Its prompt, `docs/SESSION-PROMPT-LABELLING.md`, was **deleted 2026-08-16** once spent — see the note at the head of §6b. The work landed as `DESIGN_AUTHORITY.md` §L, `src/lib/side-label.ts` and `test:labels`; the post-mortem is `FAILURE-INVENTORY.md` §7.3.)
 
 💰 **NO MONEY MOVED THIS SESSION.** Every drive ran against a LOCAL in-memory server on `:3013` with **no `DATABASE_URL`**, so the shared database was never opened. Production was read-only: `https://50pick.tz` HTTP 200, `server: railway-hikari`. No bet, no market, no wallet write, no migration. There is no payout to expect.
 

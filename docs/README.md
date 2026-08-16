@@ -6,7 +6,7 @@ Written 2026-07-31. **Read this before opening anything else in here.**
 [`50pick-updown-operator-guide.pdf`](50pick-updown-operator-guide.pdf) — the Up & Down operator
 contract. Everything else in here is for whoever builds and runs the platform.
 
-There are **64 files** at this level — this index plus 63 documents — and five
+There are **57 files** at this level — this index plus 56 documents — and five
 subdirectories with their own indexes: [`design-system/`](design-system/README.md) (the index of
 the delivered design archive — **record, not rule**; the design rule book is
 [`DESIGN_AUTHORITY.md`](DESIGN_AUTHORITY.md) and nothing else is needed to build correctly),
@@ -149,14 +149,7 @@ to teal and resurrects the killed light theme.
 | Doc | | What it is |
 |---|---|---|
 | [`FAILURE-INVENTORY.md`](FAILURE-INVENTORY.md) | 🔵 LIVE | **Every server refusal a player can reach**, what it means, what they are told, and at what severity — plus **§6, the action × channel feedback matrix** (171 server actions, opened at their call sites). Cited by `test:failure-reasons` and `test:feedback-law`. Read before changing any failure copy. |
-| [`SESSION-PROMPT-FINISH-LINE.md`](SESSION-PROMPT-FINISH-LINE.md) | 🔵 LIVE | ⭐ **THE CURRENT COMMISSION — every open item, one session.** The RED fleet (`red:all` is a 41-segment `&&` chain that exits 1 early, starving ~30 guards), the last `RULES.md` ⏳, the action-layer phrase-matching, the labelling tail, and three decisions Ali has already made. Supersedes four prompts. |
-| [`SESSION-PROMPT-VISUAL-SWEEP.md`](SESSION-PROMPT-VISUAL-SWEEP.md) | 🔵 LIVE | ⭐ **ALSO LIVE — Ali’s separate visual-only commission** (2026-08-15): every pixel, control, width and language against the design kit; nothing technical. Runs alongside FINISH-LINE — they do not overlap. ⚠️ Take an isolated worktree if both are running. |
-| [`SESSION-PROMPT-RED-FLEET.md`](SESSION-PROMPT-RED-FLEET.md) | ⚪ RECORD | ⚪ Folded into FINISH-LINE units A–E. ⛔ Do not paste. |
-| [`SESSION-PROMPT-REFUSAL-TRANCHE.md`](SESSION-PROMPT-REFUSAL-TRANCHE.md) | ⚪ RECORD | ✅ Shipped 2026-08-15; its three unmet DoD items are FINISH-LINE units F–H. Keeps the three findings worth more than the tranche. ⛔ Do not paste. |
-| [`SESSION-PROMPT-LABELLING.md`](SESSION-PROMPT-LABELLING.md) | ⚪ RECORD | ✅ Spent 2026-08-15 — `§L` + `side-label.ts` + `test:labels`. ⚠️ **Declared spent TWICE before it was**: Ali's consultants found the reported bug still live afterwards, on three surfaces the sweep never opened, with three guards ALL PASS over it. Post-mortem `FAILURE-INVENTORY.md` §7.3/§7.3a — ⭐ read it for the method lesson (a guard measuring a PRESENCE cannot see an ABSENCE), not the fixes. Its tail is FINISH-LINE unit K. ⛔ Do not paste. |
-| [`SESSION-PROMPT-FEEDBACK-LAYER.md`](SESSION-PROMPT-FEEDBACK-LAYER.md) | ⚪ RECORD | ✅ Spent 2026-08-15 — `DESIGN_AUTHORITY` §F + the action×channel matrix. ⛔ Do not paste. |
-| [`SESSION-PROMPT-RATES-SESSION-4.md`](SESSION-PROMPT-RATES-SESSION-4.md) | ⚪ RECORD | ⚪ Retired 2026-08-15 — it still read as a live prompt and carried a spent production authorisation plus an `F:\` path that does not exist here. Its last thread (`loss limit`) is FINISH-LINE unit F. ⛔ Do not paste; the authorisation is NOT transferable. |
-| [`SESSION-PROMPT-UPDOWN-POLLS-FINALISATION.md`](SESSION-PROMPT-UPDOWN-POLLS-FINALISATION.md) | ⚪ RECORD | ✅ Both halves shipped (§5b = UD-22). Kept for three measured corrections — round lengths, the scaling lock window, and why free cancellation usually does NOT apply to Up & Down. |
+| [`SESSION-PROMPT-VISUAL-SWEEP.md`](SESSION-PROMPT-VISUAL-SWEEP.md) | 🔵 LIVE | ⭐ **THE ONLY LIVE COMMISSION, and the only session prompt left on disk** (Ali, 2026-08-15): every pixel, control, width and language against the design kit; nothing technical. ⛔ **Seven spent prompts were DELETED on 2026-08-16** at Ali’s instruction, so the next machine pulls a tree with exactly one thing to run. Their substance was already in the files that own each subject — `DESIGN_AUTHORITY` §F/§L, `FAILURE-INVENTORY` §6/§7, `LIVE-QA-CAMPAIGN` §6b — and git history holds the originals. ⚠️ One item outlived its prompt: **unit H** (`qa:refusal-frames`’ drive half), recorded in `LIVE-QA-CAMPAIGN` §6b, session-48 block. |
 | [`ADMIN-CONSOLE-FINDINGS.md`](ADMIN-CONSOLE-FINDINGS.md) | ⚪ RECORD | Session 44's admin-console audit — A1–A6, all shipped. Carries the role × page coverage buckets. |
 | [`UPDOWN-PLAYBOOK.md`](UPDOWN-PLAYBOOK.md) | 🔵 LIVE | The Up & Down operator playbook — which asset/duration pairings the tape actually supports, and why a pairing is greyed. |
 | [`FEE-DOCX-SUPERSEDED.md`](FEE-DOCX-SUPERSEDED.md) | ⚪ RECORD | The banner for two `.docx` hand-outs that state **retired** rates. A binary cannot carry its own warning, so it lives here. ⛔ Regenerate from `RULES.md` before either is handed to anyone. |

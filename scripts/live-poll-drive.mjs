@@ -12,10 +12,19 @@
  * in session 2 (mkt_39b5c1731ae414, fee 1,040.00 = 13% × 8,000). The long-form poll has never
  * been driven under `loser-share` at all, so the ⏳ on that line is honest and this closes it.
  *
- * ⚠️ REAL MONEY from QA-fleet wallets, on production, authorised by Ali 2026-08-14: "no cap —
- * whatever the test needs". ⚠️ The citation used to name `SESSION-PROMPT-RATES-SESSION-3.md`,
- * which was deleted on 2026-08-15 as a spent prompt; the standing authorisation is restated in
- * `docs/SESSION-PROMPT-RATES-SESSION-4.md` §0, which is still open work.
+ * ⚠️ REAL MONEY from QA-fleet wallets, on production. Authorised by **Ali, 2026-08-14**: *"no cap
+ * — whatever the test needs"*.
+ *
+ * ⛔ THAT AUTHORISATION IS SPENT AND IS **NOT** TRANSFERABLE TO A NEW RUN. Get it again, from
+ * Ali, before this script moves a shilling.
+ *
+ * ⚠️ THIS CITATION HAS NOW OUTLIVED **THREE** DOCUMENTS, WHICH IS THE POINT. It first named
+ * `SESSION-PROMPT-RATES-SESSION-3.md` (deleted 2026-08-15 as spent), was repointed at
+ * `SESSION-PROMPT-RATES-SESSION-4.md` and called it *"still open work"* — that prompt was
+ * retired the same day **precisely because it carried a spent production authorisation that read
+ * as live**, and was deleted 2026-08-16. ⭐ A live-money permission chased through a chain of
+ * session prompts is how a spent one gets read as standing. The grant is stated here, with its
+ * date and its owner, and it points nowhere.
  *
  * ⛔ SIX PLAYERS AND SEVEN POSITIONS, NOT TWO — Ali's standing instruction, given twice. Two
  * personas cannot exercise `allocateFeeShares`, which distributes the fee across winners by
