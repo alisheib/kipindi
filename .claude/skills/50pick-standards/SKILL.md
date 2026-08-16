@@ -263,12 +263,24 @@ deploy — never by hand.
 Two Claude sessions work this repo at once. They cannot see each other, so every rule below
 exists because the collision is **silent** — you find out by losing work, not by an error.
 
-**Layout — TWO MACHINES sharing only `origin` (corrected 2026-08-03):**
+**Layout — MULTIPLE MACHINES sharing only `origin`. ⭐ Keyed by `hostname`, because "laptop A/B"
+is not something a session can evaluate about itself (rewritten 2026-08-15):**
 
-| Machine | Note |
-|---|---|
-| **laptop A** — `F:\kipindi-main` | the `F:\…` paths throughout `docs/LIVE-QA-CAMPAIGN.md`. Holds the `railway` CLI link — run `railway …` from here. **A single tree**: the `kipindi-kyc` / `kipindi-liveqa` / `kipindi-updown` worktrees were merged and removed |
-| **laptop B** — added 2026-07-31 | its own clone. Ran campaign sessions 8–16 alone |
+⛔ **RUN THIS FIRST. Do not copy a path out of any document — every attempt to keep one in
+`CLAUDE.md` has rotted within days, on two different machines:**
+
+```bash
+hostname && git rev-parse --show-toplevel && git worktree list
+```
+
+| `hostname` | Repo root | Measured |
+|---|---|---|
+| **`Ali-Blade15`** | `C:\kipindi-main` | 2026-08-15 — a full session ran here all day. ⚠️ **`F:\kipindi-main` does not exist on this machine**, so the `F:\…` paths in `docs/LIVE-QA-CAMPAIGN.md` are another machine's. `railway` CLI **is** linked and authenticated here (`railway status` → project `50pick`, env `production`). `git worktree list` showed ONE tree at the close of that session |
+| *(the `F:\kipindi-main` machine)* | `F:\kipindi-main` | its hostname was **never recorded**, which is exactly why this table now leads with `hostname`. Source of the `F:\…` paths in `LIVE-QA-CAMPAIGN.md`. ⚠️ Treat as unverified until a session there fills in its own row |
+
+⚠️ **A `C:\kipindi-night` worktree existed on `Ali-Blade15` mid-session on 2026-08-15 (branch
+`night/measure-search`) and was gone by the end of the day.** If you see a second tree, it is
+someone's live work — ⛔ never `git checkout` in it.
 
 ⛔ **THE OLD "one clone, two worktrees" MODEL IS GONE.** It described laptop A before 2026-08-03.
 `git worktree list` now shows one tree, and the `rmdir`-the-junction and shared-`node_modules`

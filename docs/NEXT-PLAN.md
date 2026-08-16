@@ -1,6 +1,37 @@
 STATUS: the next plan. Written 2026-07-29, immediately after the design system was
 frozen and shipped. **Revised 2026-07-31 against the live platform, not against memory.**
 
+> 🔴 **PICK UP HERE — LIVE ON PRODUCTION, UNFIXED (filed 2026-08-15, `FAILURE-INVENTORY.md`
+> §7.4).** Two Up & Down chains — `udc_5820850ef13f34e5` and `udc_f8d666a0d781b8d6` — fail
+> `fire` on **every tick** with *"Cannot create a market with a past or invalid resolution
+> date"*. 60 consecutive log lines in one sample; **zero** `settled`/`opened` beside them. A
+> retry loop, not a transient, and it will not self-heal — each retry recomputes from the same
+> stale boundary. ⚠️ **Not claimed:** that Up & Down is down — `/updown` still renders with round
+> cards and five assets. ⭐ **The finding behind it: NOTHING SURFACES THIS.** A player sees a
+> board that never advances; an operator sees nothing at all. It was found only because a deploy
+> verification happened to read `railway logs`. Whatever fixes it should make a chain **alarm or
+> pause itself** after N identical failures — a permanent error retried silently is
+> indistinguishable from a healthy idle chain.
+>
+> ⭐ **LABELS HAVE A LAW (2026-08-15) — `DESIGN_AUTHORITY.md` §L, lexicon `src/lib/side-label.ts`,
+> guard `test:labels` + `red:labels` (9/9) at the HEAD of `red:all`.** 50pick runs two products
+> over ONE storage vocabulary (a side is stored `YES|NO` on both), so a surface that cannot tell
+> which product it holds writes the wrong word. Ali's report — *"Up & Down says YES won, should
+> be UP won"* — was real and is fixed in **four** places: the Up & Down push, the wallet's
+> Activity descriptions, `/positions/performance`, and 15 dictionary/render sites.
+> 🔴 **AND IT WAS DECLARED DONE TWICE BEFORE IT WAS.** Consultants found the reported bug still
+> live after the sweep shipped, on surfaces it never opened, with **three guards ALL PASS over
+> it** — each correct about what it measured, none measuring an **absence**. Full post-mortem:
+> `FAILURE-INVENTORY.md` **§7.3/§7.3a**. ⛔ *English-only does not mean machine-only* — a
+> `Transaction.description` is rendered verbatim to the player.
+> ⏳ **Open:** the wallet description is stored as ONE English string, so SW/ZH players read
+> English there (a rendering change, not a word change); `admin/markets/[id]:384` shows YES/NO on
+> an Up & Down round; the §L ratchet stands at **14** and may only go down.
+>
+> ⭐ **NEXT COMMISSION, WRITTEN AND READY:** `docs/SESSION-PROMPT-VISUAL-SWEEP.md` — the whole
+> platform, visual only, five failure modes, 360/768/1280/1920 × EN/SW/ZH. ⛔ It leads with what
+> **not** to rebuild: 26 design guards and ~65 screenshot drivers already exist.
+>
 > ⭐ **THE FEEDBACK LAYER HAS A LAW (2026-08-15) — `DESIGN_AUTHORITY.md` §F.** What a
 > consequential action answers with — popup · toast · haptic · in-app/push/email, and the
 > options inside them — is stated once, per CLASS of action, with a severity rule and a dwell

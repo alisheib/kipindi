@@ -215,10 +215,23 @@ The one thing worth repeating here, because it is a mechanic and not a number:
 - Proof: `npm run test:fee-model` · `test:loser-share-fee` · `test:money-invariants` ·
   `test:withdrawal` · `test:config` (+ `red:stake-bounds`).
 
-- **Repo:** `F:\kipindi-main` on laptop A ⚠️ corrected again 2026-08-13 — this said
-  `C:\kipindi-main`, which does not exist on laptop A either, so a session copying the `cd`
-  out of this file still failed. Laptop B has its own clone at its own path; the skill's
-  §8b table is the authority on which machine is where.
+- **Repo:** ⛔ **DO NOT COPY A `cd` OUT OF THIS FILE. Ask the shell instead:**
+
+  ```bash
+  hostname && pwd && git rev-parse --show-toplevel
+  ```
+
+  ⚠️ **Corrected a THIRD time, 2026-08-15.** This line has now been wrong on two different
+  machines in three days. It said `C:\kipindi-main`; that was corrected on 2026-08-13 to
+  `F:\kipindi-main` *"which does not exist on laptop A either"* — and on **2026-08-15 a session
+  ran the whole day in `C:\kipindi-main` on `Ali-Blade15`, where `F:\kipindi-main` does not
+  exist at all.** Both corrections were true about the machine the session was sitting at and
+  false about the other one.
+
+  ⭐ **THE PATH IS NOT A FACT ABOUT THE PROJECT — IT IS A FACT ABOUT THE MACHINE**, so this file
+  is the wrong place to keep it and every attempt to keep it here has rotted within days. The
+  measured mapping lives in the skill's §8b table, keyed by `hostname` so a session can tell
+  which row is its own without guessing. Verify, never assume.
 - **GitHub:** `https://github.com/alisheib/kipindi.git` (private)
 - **Live site:** `https://www.50pick.tz` (the `kipindi-production.up.railway.app`
   address this line used to name is the pre-DNS Railway host, not where players are)
