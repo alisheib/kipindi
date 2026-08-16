@@ -47,7 +47,7 @@ import { marketStore, positionStore } from "./market-dal";
 // E-94 · a void refund names the reason the player was already given everywhere else.
 import { roundStore } from "./updown-dal";
 import { formatTzs } from "@/lib/utils";
-import { sideWordIn } from "@/lib/side-label";
+import { sideWordIn, outcomeWordIn } from "@/lib/side-label";
 // E-101 · one rule for "where does this ticket live", shared with the wallet, the round page
 // and the emails.
 import { positionPermalinkHref } from "@/lib/position-permalink";
@@ -968,6 +968,12 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
           fresh.updatedAt = placedAt;
           await positionStore.set(position, tx);
 
+          // The word this player's own money record will carry for their side, in the
+          // vocabulary of the product they actually bet on. English by design: a txn
+          // description is an operational record. ⚠️ That it is NOT translated is a separate,
+          // filed gap (§7.2c) — a word fix here, a rendering change there.
+          const betSideWord = sideWordIn("en", opts.side, market.productLine === "UPDOWN" ? "UPDOWN" : "MARKET");
+
           // The real-wallet ledger records only the REAL cash that left `balance`
           // (-realPart). The bonus-funded portion moves on the bonus wallet and is
           // tracked via BonusGrant + bonus audit entries, not here, so balanceAfter
@@ -979,9 +985,15 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
             amount: -realPart, fee: 0, taxWithheld: 0,
             balanceAfter: newBalance, currency: "TZS",
             provider: "INTERNAL", providerRef: null, msisdn: null,
+            // 🔴 §L1 · ALI'S BUG, IN THE WALLET'S ACTIVITY TAB. This read `${opts.side} on …`,
+            // and `opts.side` is the STORED token — `YES | NO` on BOTH product lines. So an
+            // Up & Down bet was filed on the player's own money record as *"YES on Bitcoin Up
+            // or Down"*. ⛔ This path is deliberately NOT behind `perEventNotificationsSuppressed`
+            // — a transaction is a money record and is written for EVERY round — which is
+            // precisely why the notification fix did not reach it.
             description: bonusPart > 0
-              ? `${opts.side} on "${market.titleEn.slice(0, 50)}" (incl. ${formatTzs(bonusPart)} bonus)`
-              : `${opts.side} on "${market.titleEn.slice(0, 60)}"`,
+              ? `${betSideWord} on "${market.titleEn.slice(0, 50)}" (incl. ${formatTzs(bonusPart)} bonus)`
+              : `${betSideWord} on "${market.titleEn.slice(0, 60)}"`,
             positionId: positionId,
             amlReason: null,
             createdAt: placedAt, updatedAt: placedAt, completedAt: placedAt,
@@ -2811,7 +2823,9 @@ export async function settleMarket(
             amount: payout, fee: 0, taxWithheld: 0,
             balanceAfter: updated.balance, currency: "TZS",
             provider: "INTERNAL", providerRef: null, msisdn: null,
-            description: `${opts.outcome} won · "${m.titleEn.slice(0, 60)}"`,
+            // 🔴 §L1 — the other half of Ali's report: "NO won" over a round whose sides are
+            // Up and Down. Same stored-token cause as the stake row above.
+            description: `${outcomeWordIn("en", opts.outcome, m.productLine === "UPDOWN" ? "UPDOWN" : "MARKET")} won · "${m.titleEn.slice(0, 60)}"`,
             positionId: p.id,
             amlReason: null,
             createdAt: settledAt, updatedAt: settledAt, completedAt: settledAt,

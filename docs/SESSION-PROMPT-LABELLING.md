@@ -1,8 +1,27 @@
-# SESSION PROMPT — LABELS · ✅ SPENT, 2026-08-15
+# SESSION PROMPT — LABELS · ✅ SPENT, 2026-08-15 · ⚠️ REOPENED AND RE-CLOSED THE SAME DAY
 
 > ⛔ **THIS PROMPT IS DONE. DO NOT PASTE IT.** It is kept only as a pointer, because a spent
 > prompt that still reads as live sends the next session to redo finished work — which its own
 > §7 asked for, so emptying it is the last step of the work itself.
+
+> 🔴 **AND IT WAS CLOSED TOO EARLY. Ali's consultants found the reported bug still live after
+> this prompt was retired, on THREE more surfaces the sweep never opened** — and the guard was
+> ALL PASS through every one of them. Full record: `FAILURE-INVENTORY.md` **§7.3**. The three:
+>
+> · **`/positions/performance`** — the one player list that deliberately takes *every* product
+>   line, rendering `p.side` raw: *"YES · TZS 5,000"* over an **Up** bet, in all three languages.
+> · **The wallet's Activity tab** — `Transaction.description`, built as `${opts.side} on "…"`
+>   and `${opts.outcome} won · "…"`. **This is the surface Ali photographed**, and the one his
+>   original words — *"in activity"* — named from the very first sentence.
+> · Both survived because the money-record path is deliberately **not** behind
+>   `perEventNotificationsSuppressed`: a transaction is written for EVERY round, which is
+>   exactly why the notification fix could not reach it.
+>
+> ⭐ **THE LESSON, AND IT IS THE EXPENSIVE ONE.** Three separate guards were green while the
+> commissioned defect was live: §4 counts private word-maps and there was no ternary to count;
+> §3 recognises trilingual copy by its `title*`/`body*` keys and a `description` is neither.
+> **Each guard was correct about what it measured and none measured an ABSENCE** — a surface
+> that never made a decision at all. §8 and §9 now check for that shape directly.
 
 **Commissioned by Ali:** *"work solely on labelling… in Up & Down polls, in activity, we have
 'NO won' and 'YES won', but it should be 'UP won' or 'DOWN won'… go through the whole

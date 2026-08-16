@@ -479,5 +479,47 @@ check("§5j private-map matcher ACCEPTS a tone ternary (a colour is not a word)"
     `raw side on a mixed book: ${offenders.join(", ")}`);
 }
 
+// ───────────────────────────────────────────────────────────────────────────
+// §9 · A MONEY RECORD'S `description` IS A PLAYER SURFACE
+// ───────────────────────────────────────────────────────────────────────────
+/**
+ * 🔴 THE THIRD PLACE ALI'S BUG SURVIVED, AND THE SECOND GUARD MISS IN ONE DAY.
+ *
+ * The wallet's Activity tab renders `Transaction.description` verbatim. Two of them were
+ * built by interpolating the STORED token:
+ *
+ *   · `${opts.side} on "…"`      → *"YES on \"Bitcoin Up or Down\""*
+ *   · `${opts.outcome} won · "…"` → *"NO won · \"Bitcoin Up or Down\""*
+ *
+ * ⛔ §3 could not see these BY CONSTRUCTION. It recognises trilingual copy by the key a
+ * literal is assigned to — `titleEn/titleSw/titleZh`, `bodyEn/bodySw/bodyZh` — because that
+ * is what makes a string player-facing *in three languages*. A `description` is English-only
+ * operational prose, so §3 excluded it deliberately and correctly. What nobody noticed is
+ * that English-only does not mean machine-only: **this one is rendered to the player**, so
+ * the WORD still has to be the right word even though the SENTENCE stays English.
+ *
+ * ⭐ The rule: a description may stay English; it may not stay in the storage vocabulary.
+ */
+{
+  /**
+   * ⛔ BARE INTERPOLATION ONLY — `${opts.side}`, never `${side === "UP" ? copy.up : …}`.
+   * The first draft matched any `side` inside the braces and flagged `use-quick-bet.ts`,
+   * whose ternary ALREADY resolves to the Up & Down words. A guard that fails on correct
+   * code teaches the next session to weaken it. The defect is the **absence** of a
+   * decision, so the pattern is the shape that contains no decision at all.
+   */
+  const DESC = /description:\s*(?:[^`\n]*)?`[^`]*\$\{\s*(?:[A-Za-z_$][\w$]*\.)?(?:side|outcome)\s*\}/;
+  const offenders: string[] = [];
+  for (const f of files) {
+    readFileSync(f, "utf8").split(/\r?\n/).forEach((l, i) => {
+      if (!DESC.test(l)) return;
+      offenders.push(`${f.slice(ROOT.length + 1)}:${i + 1}`);
+    });
+  }
+  check("§9 a money record's description names the side in the product's vocabulary",
+    offenders.length === 0,
+    `raw enum in a rendered description: ${offenders.join(", ")}`);
+}
+
 log(`\n${fail === 0 ? "ALL PASS" : `${fail} FAILED`} — ${LOCALES.length} locales × ${LINES.length} products, ${files.length} files scanned, ${privateMaps.length}/${PRIVATE_MAP_RATCHET} private maps`);
 process.exit(fail === 0 ? 0 : 1);

@@ -903,3 +903,56 @@ silently missing — 7/7 became 8/8 without a new mutation being written).
 ⛔ **This is why `red:all` fingerprints the tree per harness and why it must never repair it.**
 A runner that ran `git checkout` would have hidden this defect *and* destroyed the session's own
 uncommitted work.
+
+---
+
+### §7.3 · WHAT THE LEXICON SWEEP MISSED — found by Ali's consultants, after it shipped
+
+> 🔴 **The reported bug was still live after §7 was declared done, on three surfaces the sweep
+> never opened — and `test:labels` was ALL PASS through every one of them.** Ali produced a
+> photograph of the wallet's Activity tab reading *"NO won · \"Bitcoin Up or Down\""*. That is
+> the surface his ORIGINAL commission named — *"in Up & Down polls, **in activity**"* — in its
+> first sentence.
+
+| # | Surface | What it rendered over an **Up** bet | Why the sweep missed it |
+|---|---|---|---|
+| 1 | `/positions/performance` | `YES · TZS 5,000` | the ONE player list that deliberately passes **no** product line to `listPositionsForUser` — a performance total that hid half a book would misstate the player's money — then rendered `p.side` raw |
+| 2 | Wallet **Activity** · stake row | `YES on "Bitcoin Up or Down"` | `Transaction.description`, built as `${opts.side} on …` |
+| 3 | Wallet **Activity** · payout row | `NO won · "Bitcoin Up or Down"` | `Transaction.description`, built as `${opts.outcome} won · …` |
+
+⛔ **THE CAUSE THEY SHARE.** Rows 2 and 3 are inside `db.txn.create` — a **money record**, which
+`perEventNotificationsSuppressed` deliberately does NOT gate, because the transaction, ledger and
+audit rows are written for EVERY round. The notification fix was therefore structurally incapable
+of reaching them. ⭐ **A suppression predicate marks where COMMUNICATION stops; it is not a map of
+where a player reads words.** The wallet is the counter-example, and it is the one a player opens
+to check their own money.
+
+⭐ **AND THE MARKET ROW WAS IN HAND AT ALL THREE.** None of these lacked the product line —
+`recentMarketMap.get(p.marketId)` on row 1, `market`/`m` in scope on rows 2 and 3. The vocabulary
+was never unavailable; it was never asked for.
+
+### §7.3a · Three green guards over one live defect — the method finding
+
+Each guard was **correct about what it measured**, and none of them measured an **absence**:
+
+| Guard | What it counts | Why it was blind here |
+|---|---|---|
+| §4 private-map ratchet | `=== "YES" ? t.…` ternaries | there was no ternary — the raw token was rendered with no decision at all |
+| §3 enum-in-a-sentence | literals assigned to `titleEn/Sw/Zh`, `bodyEn/Sw/Zh` | a `description` is English-only operational prose, so §3 excluded it **deliberately and correctly** |
+| §2 raw-enum-in-JSX | JSX text nodes | rows 2 and 3 are built on the SERVER and stored in the database, hours before any JSX exists |
+
+⛔ **ENGLISH-ONLY DOES NOT MEAN MACHINE-ONLY.** That is the mistaken premise the whole miss rests
+on. A `description` may stay in one language; it may not stay in the **storage vocabulary**,
+because the wallet renders it verbatim to the player.
+
+**Closed by** `test:labels` **§8** (a surface holding EVERY product line must resolve its side
+words through the lexicon — the omitted third argument is the tell) and **§9** (a money record's
+description names the side in the product's vocabulary). Both proved RED against the real defect.
+⚠️ §9's first draft flagged `use-quick-bet.ts`, whose ternary already resolves correctly — a guard
+that fails on correct code teaches the next session to weaken it, so it now matches only a **bare**
+interpolation, which is the shape that contains no decision.
+
+⛔ **STILL OPEN, FILED NOT FIXED:** the transaction description is stored as ONE English string, so
+a Swahili or Chinese player reads English in their wallet. Fixing that is a rendering/storage
+change — structured metadata or a client-side re-render — not a word change, and it is out of a
+labelling session's remit. The WORD is now right in every language's row; the SENTENCE is not yet.
