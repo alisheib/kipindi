@@ -443,5 +443,41 @@ check("§5j private-map matcher ACCEPTS a tone ternary (a colour is not a word)"
 }
 
 
+// ───────────────────────────────────────────────────────────────────────────
+// §8 · A MIXED BOOK CANNOT USE ONE VOCABULARY
+// ───────────────────────────────────────────────────────────────────────────
+/**
+ * 🔴 THIS SECTION EXISTS BECAUSE §1–§7 WERE ALL GREEN WHILE ALI'S BUG WAS STILL LIVE ON THE
+ * SURFACE HE NAMED. Consultants found it after the sweep shipped; the guard had not.
+ *
+ * `/positions/performance` calls `listPositionsForUser(userId, 5_000)` with **no product
+ * line** — correctly, because a performance summary that hid half a player's book would
+ * misstate their money. It then rendered `p.side` raw, so a player who backed **Up** read
+ * "YES · TZS 5,000" in their own history, in all three languages.
+ *
+ * ⭐ THE RULE THAT GENERALISES: the omitted third argument is the tell. A caller that asks
+ * for EVERY product line is holding both vocabularies at once, so it is exactly the caller
+ * that may not hard-code either. §4's ratchet could not see this — there was no `=== "YES" ?`
+ * to count. The defect was the ABSENCE of a decision, and absence is what this checks.
+ *
+ * ⛔ Do not "fix" a listed file by adding a product filter. Filtering would hide bets from a
+ * page whose whole job is to total them; the fix is to ask the market for its line, which is
+ * already in hand at every one of these call sites.
+ */
+{
+  const MIXED_CALL = /listPositionsForUser\s*\(\s*[^,)]+,\s*[^,)]+\s*\)/;   // exactly 2 args → no productLine
+  const RENDERS_SIDE = /\{\s*(?:[A-Za-z_$][\w$]*\.)?(?:side|outcome|resolvedOutcome)\s*\}/;
+  const offenders: string[] = [];
+  for (const f of files) {
+    const src = readFileSync(f, "utf8");
+    if (!MIXED_CALL.test(src) || !RENDERS_SIDE.test(src)) continue;
+    if (/from "@\/lib\/side-label"/.test(src)) continue;   // it asks the lexicon — that is the fix
+    offenders.push(f.slice(ROOT.length + 1));
+  }
+  check("§8 a surface holding EVERY product line resolves its side words through the lexicon",
+    offenders.length === 0,
+    `raw side on a mixed book: ${offenders.join(", ")}`);
+}
+
 log(`\n${fail === 0 ? "ALL PASS" : `${fail} FAILED`} — ${LOCALES.length} locales × ${LINES.length} products, ${files.length} files scanned, ${privateMaps.length}/${PRIVATE_MAP_RATCHET} private maps`);
 process.exit(fail === 0 ? 0 : 1);
