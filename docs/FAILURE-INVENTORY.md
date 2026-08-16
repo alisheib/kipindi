@@ -956,3 +956,37 @@ interpolation, which is the shape that contains no decision.
 a Swahili or Chinese player reads English in their wallet. Fixing that is a rendering/storage
 change — structured metadata or a client-side re-render — not a word change, and it is out of a
 labelling session's remit. The WORD is now right in every language's row; the SENTENCE is not yet.
+
+---
+
+### §7.4 · OPEN, LIVE ON PRODUCTION — two Up & Down chains cannot fire a round
+
+> 🔴 **FILED 2026-08-15, NOT FIXED — behavioural, and outside a labelling session's remit.**
+> Found while reading `railway logs` to verify a deploy, which is the only reason it was found
+> at all: nothing alarms on it.
+
+```
+[updown] fire udc_5820850ef13f34e5 failed: Error: Cannot create a market with a past or invalid resolution date.
+[updown] fire udc_f8d666a0d781b8d6 failed: Error: Cannot create a market with a past or invalid resolution date.
+```
+
+**Measured, not inferred:** 60 consecutive log lines across one sample were these two chains
+failing, and **zero** `settled` / `opened` / `armed` lines appeared beside them. The two chain ids
+repeat indefinitely — a retry loop, not a transient.
+
+⚠️ **What is NOT claimed.** `/updown` still renders (100 KB, three round-card references, BTC ·
+Bitcoin · Ethereum · Gold · XAU present), so this is **not** "Up & Down is down". What is certain
+is that these two chains are not producing rounds and are burning a scheduler slot on every tick.
+Whether other chains are healthy was not established — establish it before acting.
+
+**Where to start:** `updown-service.ts` builds the next round's `resolutionAt` from the chain's
+duration and boundary. The message comes from `createMarket`'s validation, so the computed date is
+at or before `now` — the usual cause is a chain whose boundary has drifted into the past (a long
+pause, a clock offset, or a duration that no longer divides the window) and which therefore
+recomputes the same invalid date forever. ⛔ It will not self-heal: every retry recomputes from the
+same stale boundary.
+
+⭐ **AND NOTHING SURFACES IT.** A player sees a board that simply never advances; an operator sees
+nothing at all. Whatever the fix, the chain should **alarm or pause itself** after N consecutive
+identical failures rather than retry forever — a permanent error retried silently is indistinguishable
+from a healthy idle chain.
