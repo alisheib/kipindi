@@ -130,6 +130,26 @@ carried four defects, and every one of them was found by *reading the live page*
 **Step 5 — one definition site.** When you find V2, ⛔ **DELETE one, never sync both** (§0a).
 Extend the kit and use it everywhere; do not add a third.
 
+### ⛔ Step 0, actually — A SURFACE IS NOT ONLY A COMPONENT
+
+🔴 **The labelling sweep the day before this one shipped with its commissioned bug still live,
+because it swept `src/components/**` and `src/app/**` and called that "every surface".** It was
+not. The bug survived in a string **built on the server and stored in the database** —
+`Transaction.description`, rendered verbatim by the wallet hours later. Three separate guards
+were green over it. Full record: `FAILURE-INVENTORY.md` **§7.3**.
+
+Your inventory must therefore also include, for every screen:
+- **strings composed server-side and persisted** (`description`, audit payloads, notification
+  and email bodies) — a JSX scan cannot see these, because no JSX exists when they are written;
+- **text baked into images** — OG/social cards under `src/app/api/og/**` render real type;
+- **`aria-label`s, `title`s and `alt`s** — four of the labelling sweep's findings were aria-only,
+  so a screen-reader user *heard* the defect while every screenshot looked perfect.
+
+⭐ **AND CHECK WHETHER A FIX CAN EVEN REACH ITS SURFACE.** `perEventNotificationsSuppressed()`
+marks where *communication* stops — it is **not** a map of where a player reads words. The money
+record is written for every round regardless, which is exactly why fixing the notification could
+not fix the wallet.
+
 ---
 
 ## §4 · ATOMIC UNITS — one family, one commit
@@ -166,6 +186,18 @@ everything after it, and one is failing there right now: see §7).
 4. ⛔ **Use `scripts/red-anchor.mjs`** — the shared anchor resolver. The last harness that
    hand-rolled matching had **all five** of its multi-line anchors silently missing on a CRLF
    checkout.
+5. 🔴 **A GUARD THAT MEASURES A PRESENCE CANNOT SEE AN ABSENCE — the most expensive lesson
+   available to you, paid for on 2026-08-15.** Three guards were ALL PASS over one live defect,
+   and **each was correct about what it measured**: one counted `=== "YES" ? t.` ternaries, and
+   there was no ternary; one recognised translated copy by its `title*`/`body*` keys, and the
+   offending string was neither; one read JSX, and the string was built on the server. The
+   defect was a surface that **never made a decision at all**. ⭐ So for every rule you write,
+   ask: *what does the code look like when this decision was never taken?* — and check for
+   **that** shape, not only for the wrong answer.
+6. ⛔ **A GUARD THAT FAILS ON CORRECT CODE IS WORSE THAN NO GUARD**, because the next session
+   weakens it. One draft flagged a call site that already resolved correctly; it was narrowed to
+   the shape that contains no decision. **Run every new check against the whole tree and read
+   each hit before you believe the count.**
 
 ---
 
