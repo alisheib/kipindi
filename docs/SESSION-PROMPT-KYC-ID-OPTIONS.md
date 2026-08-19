@@ -108,6 +108,13 @@ prevent."*
    catalogue entry and in `COMPLIANCE-DECISIONS.md` that no authoritative format was found**, exactly
    the way `updown-symbols.ts` says it for silver. The image plus the human reviewer carry the
    weight here.
+
+   ⭐ **AND THIS IS NOW AN OWNER DECISION, NOT A RECOMMENDATION.** Ali, 2026-08-19, asked directly:
+   *"for now driving and voting, keep them open — later we change."* So the permissive field for
+   those two is **instructed**, and the next session does not get to tighten it on a guess. ⛔ Build
+   the validator so a format can be **added later without reshaping anything** — one place per type
+   that returns either a rule or "no published format", so tightening the licence is a one-line
+   change with a citation beside it and never a refactor.
 4. 🔴 **If you find an authoritative TRA / NEC / Immigration specification, cite it inline and
    tighten the rule.** A sourced regex is a control; an invented one is a liability.
 
