@@ -785,6 +785,7 @@ export const dict = {
       // Player-facing only: never narrate ops detail. "Confirming price" is a calm
       // state, not an error, and VOID is neutral — a refund, not a failure.
       udTitle: "Up & Down",
+      gameKey: "Game",
       udTagline: "Will the price be higher or lower when the clock runs out?",
       udUp: "Up", udDown: "Down",
       udMin: "min",
@@ -2494,6 +2495,7 @@ export const dict = {
       statusPending: "Inasubiri", statusClosed: "Imefungwa",
       // ── Juu na Chini (Up & Down) ─────────────────────────────────────────
       udTitle: "Juu na Chini",
+      gameKey: "Mchezo",
       udTagline: "Je, bei itakuwa juu au chini saa itakapoisha?",
       udUp: "Juu", udDown: "Chini",
       udMin: "dakika",
@@ -4072,6 +4074,7 @@ export const dict = {
       posOpen: "进行中", posWin: "已获胜", posLoss: "未中", posVoid: "已作废", posCashed: "已套现",
       // ── 涨跌 (Up & Down) ──────────────────────────────────────────────────
       udTitle: "涨跌",
+      gameKey: "游戏",
       udTagline: "倒计时结束时，价格会更高还是更低？",
       udUp: "涨", udDown: "跌",
       udMin: "分钟",

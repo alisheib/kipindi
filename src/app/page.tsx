@@ -178,6 +178,7 @@ export default async function LandingPage() {
                 const cc = cardCharts.get(r.id) ?? { spark: [] };
                 return (
                   <MarketCard
+                    productLine={"MARKET"}
                     key={r.id}
                     id={r.id}
                     titleEn={r.titleEn}

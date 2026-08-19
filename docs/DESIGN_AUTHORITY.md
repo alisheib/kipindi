@@ -664,6 +664,28 @@ same pattern for their families.
 lets a caller that does not know its product compile, and answer confidently in the wrong
 vocabulary.
 
+⛔ **AND ON A MIXED BOOK, A LITERAL *IS* A DEFAULT — it just wears an argument.** Added
+2026-08-19 (`E-170`, Gaming Board comment #10). If a surface's own read declares that it holds
+**both** product lines — `productLine: "ALL"` — then every side word on it must be resolved from
+the **row**, never from a hard-written `"MARKET"` or `"UPDOWN"`. `/results` and `/watchlist` both
+passed the literal while reading a mixed book, and both were *accidentally* correct only for as
+long as the read excluded the other product.
+
+⭐ **THE TELL IS A DATA-DERIVED SIDE WITH A HARD-WRITTEN PRODUCT**, and that pairing is what
+`test:labels` §10 looks for. Two shapes are deliberately NOT the defect:
+
+- **both arguments literal** — `sideWord(t, "YES", "MARKET")` is NAMING a vocabulary, not
+  describing a row. That is how `/results` labels its own product-filter pills, and it is why
+  the split needed no new dictionary key.
+- **a literal inside an arm that already established the product** — a service resolving per
+  call inside a product branch. §10 therefore scans **render surfaces only**; §3, §7 and §9 own
+  the notification paths.
+
+⚠️ **A guard for this rule must not be satisfiable by an import.** `test:labels` §8 skips any
+file containing `from "@/lib/side-label"` — and a file that passes a *wrong* literal to the
+lexicon imports the lexicon, so that escape hatch fires on exactly the files most worth
+checking. §10 asks its question of the **arguments**, which an import cannot answer.
+
 ⛔ **If you find a mapping in two places, DELETE one** (§0a). Measured 2026-08-15:
 `market.sideYesWord.toUpperCase()` and `common.yes` are byte-identical in all three
 locales — two homes for one word. The helper standardises on `common.*`.

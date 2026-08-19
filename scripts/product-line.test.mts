@@ -102,10 +102,42 @@ for (const { file, why, minCalls } of MUST_OPT_IN) {
 // them and the board goes back to reading both products.
 const MUST_STAY_DEFAULT = [
   "src/app/markets/page.tsx",
-  "src/app/results/page.tsx",
+  // ⛔ `src/app/results/page.tsx` WAS HERE AND WAS MOVED OUT DELIBERATELY on 2026-08-19, on a
+  // Gaming Board instruction (Jay, `50pick_website_comments-2.pdf` #10: settled Up & Down rounds
+  // must reach the results page). Its protection is NOT dropped — it is asserted directly, and
+  // more precisely, by the RESULTS_FLOOD_GUARD block below. Read that before touching this list.
   "src/app/fairness/page.tsx",
   "src/app/api/fairness/recent/route.ts",
 ];
+/**
+ * RESULTS_FLOOD_GUARD — the results archive reads BOTH product lines and still leads with the
+ * long-form one.
+ *
+ * 🔴 WHY A DEFAULT IS THE WHOLE PROTECTION, measured on production 2026-08-19: settled
+ * **UPDOWN 11,112 · MARKET 65**, i.e. Up & Down is **99.4%** of the archive. Sorted newest-first
+ * over both lines, all 65 long-form results are buried under 11,112 price rounds — page 1 would
+ * be nothing but 3-minute rounds. That is what the old MUST_STAY_DEFAULT entry was protecting,
+ * and deleting the entry without replacing the protection would have re-created the problem the
+ * moment the Board's instruction landed.
+ *
+ * ⛔ THIS IS NOT A STYLE RULE. It asserts BOTH halves, because either alone is a defect:
+ *   ① the read opts into "ALL"  — else settled Up & Down rounds never reach the page (#10);
+ *   ② the product filter defaults to a SINGLE line — else the archive floods (this block).
+ */
+{
+  const file = "src/app/results/page.tsx";
+  const src = read(file) ?? "";
+  const calls = listMarketsCalls(src);
+  const optedIn = calls.filter((a) => /productLine\s*:\s*["']ALL["']/.test(a));
+  ok(`A · ${file} reads BOTH product lines (Board instruction #10)`,
+     calls.length > 0 && optedIn.length === calls.length,
+     `${calls.length - optedIn.length} of ${calls.length} listMarkets call(s) still on the MARKET default`);
+  // The default must be a product, never the "all" view — that is the flood protection.
+  ok(`A · ${file} still DEFAULTS to one product, so the archive cannot flood`,
+     /\?\s*sp\.product\s*:\s*"MARKET"/.test(src),
+     'the product filter no longer falls back to "MARKET" — 99.4% of settled rows are Up & Down');
+}
+
 for (const file of MUST_STAY_DEFAULT) {
   const src = read(file);
   if (!src) continue; // optional — a page may legitimately be renamed

@@ -297,6 +297,7 @@ async function DiscoveryBoard({ searchParams }: { searchParams: Promise<SP> }) {
           const cc = cardCharts.get(m.id) ?? { spark: [] };
           return (
             <MarketCard
+              productLine={"MARKET"}
               key={m.id}
               id={m.id}
               titleEn={m.titleEn}
@@ -352,6 +353,7 @@ async function DiscoveryBoard({ searchParams }: { searchParams: Promise<SP> }) {
           <div className="market-grid">
             {resolved.map((m) => (
               <MarketCard
+                productLine={"MARKET"}
                 key={m.id}
                 id={m.id}
                 titleEn={m.titleEn}

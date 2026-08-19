@@ -223,6 +223,7 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards }: Prop
               favourite here would stop the hero being an instrument. */}
           {featured && (
             <MarketCard
+              productLine={"MARKET"}
               featured
               id={featured.id}
               titleEn={featured.titleEn}

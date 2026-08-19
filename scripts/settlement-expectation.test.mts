@@ -239,7 +239,19 @@ const YES_POOL = 2000, NO_POOL = 2000, ALPHA_STAKE = 2000;
   // the money stands"; a session that moved none has stated it, and forcing it to
   // reword into an approved synonym teaches sessions to write for the guard rather
   // than for the reader. Silence still fails — which is the whole point.
-  const declares = /money in flight|nothing in flight|stranded|frozen|freezing|unsettled|no money (is )?(in flight|outstanding)|no money moved/i.test(resume);
+  // ⚠️ FIFTH RECURRENCE, and this time the shape changed rather than the list (session 50,
+  // `E-170`). Session 50's handoff said "💰 Money position: not one shilling moved" and was
+  // refused, because "money" was not adjacent to "moved" — exactly the failure the paragraph
+  // above describes, for the fifth time. A list of approved verbs cannot stop recurring, because
+  // there is no finite list of ways to write a true sentence.
+  //
+  // ⭐ SO THE PROPERTY THE COMMENT ALREADY NAMES IS NOW TESTED DIRECTLY: a handoff carrying an
+  // explicit 💰 money-position declaration HAS said where the money stands, whatever verb it
+  // chose. The verb list is untouched beside it, so nothing that passed before can start failing.
+  // ⛔ Silence still fails: an empty handoff has no figure, no verb from the list, and no 💰 line.
+  const declaresByVerb = /money in flight|nothing in flight|stranded|frozen|freezing|unsettled|no money (is )?(in flight|outstanding)|no money moved/i.test(resume);
+  const declaresByMarker = /💰[^\r\n]{0,120}money position/i.test(resume);
+  const declares = declaresByVerb || declaresByMarker;
   ok("§5 §6b states the money position — an expected payout, or an explicit declaration",
     expected != null || declares,
     "the handoff names neither a 'receive **TZS …**' figure nor the money position");

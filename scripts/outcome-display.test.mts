@@ -112,9 +112,35 @@ check(
 //    (Guards the fallback: no side is better than a wrong side.)
 // ---------------------------------------------------------------------------
 const card = readFileSync(join(SRC, "components/markets/market-card.tsx"), "utf8");
+/**
+ * 🔴 REWRITTEN 2026-08-19 (`E-169`) — THIS CHECK USED TO REQUIRE THE DEFECT.
+ *
+ * It asserted that `resolvedOutcome === "YES"` was PRESENT in the card, which pinned a private
+ * word-map in the POLL vocabulary into a component rendered by MIXED books (`/results` after
+ * #10, `/watchlist` already). Routing the card through the lexicon therefore turned this suite
+ * RED — so the correct fix read as a regression, and *"Up & Down says YES won"* was declared
+ * fixed twice while this guard held it in place.
+ *
+ * ⭐ THE RULE IT WAS ACTUALLY FOR IS KEPT, AND IT IS THE ONLY THING ASSERTED NOW: the card must
+ * take its side from the stored outcome and never from the crowd's money split (`yesPct`), and
+ * an unknown outcome must render NO side rather than a guessed one. Both survive below. What is
+ * no longer asserted is HOW the word is looked up — that belongs to the lexicon, which is the
+ * one place allowed to know it.
+ *
+ * ⛔ Note the inversion this is the antidote to: §5 trap 1 asks *"would this still pass if the
+ * feature were absent?"*. This one would have FAILED IF THE FEATURE WERE PRESENT.
+ */
 check(
-  "market-card derives its outcome label from resolvedOutcome only",
-  /resolvedOutcome\s*===\s*["']YES["']/.test(card) && !PROB.test(card.replace(/\/\*[\s\S]*?\*\//g, "")),
+  "market-card takes its outcome from resolvedOutcome, through the lexicon, and shows no side when unknown",
+  // ① the word comes from the lexicon, in THIS CARD'S product — not a private map
+  /outcomeWord\(\s*t\s*,\s*resolvedOutcome\s*,\s*productLine\s*\)/.test(card)
+  // ② …and the product is a required prop, so no call site can default it
+  && /productLine:\s*LabelProductLine;/.test(card)
+  // ③ unknown outcome still renders no side at all (the rule the old pin was really for)
+  && /resolvedOutcome\s*\?\s*outcomeWord/.test(card)
+  // ④ and the side is STILL never inferred from the pool split. Comments stripped both ways:
+  //    the prop docs discuss yesPct on purpose, and a doc must not be able to fail a code rule.
+  && !PROB.test(card.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "")),
   "",
 );
 

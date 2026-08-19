@@ -65,10 +65,11 @@ export default async function WatchlistPage() {
             // around the stored token. The VOID arm was already localised, which is what made
             // the other two stand out. `outcomeWord` covers all three.
             const timeLeft = resolved
-              ? (m.resolvedOutcome === "VOID" ? t.common.voided : `${t.market.resolvedOutcome} ${outcomeWord(t, m.resolvedOutcome ?? "VOID", "MARKET")}`)
+              ? (m.resolvedOutcome === "VOID" ? t.common.voided : `${t.market.resolvedOutcome} ${outcomeWord(t, m.resolvedOutcome ?? "VOID", m.productLine)}`)
               : formatDateTime(m.resolutionAt);
             return (
               <MarketCard
+                productLine={m.productLine}
                 key={m.id}
                 id={m.id}
                 titleEn={m.titleEn}

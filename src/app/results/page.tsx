@@ -17,7 +17,7 @@ import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { formatTzsCompact } from "@/lib/utils";
 import { pickLocalized } from "@/lib/localized";
 import { getServerT } from "@/lib/i18n-server";
-import { outcomeWord } from "@/lib/side-label";
+import { outcomeWord, sideWord, type LabelProductLine } from "@/lib/side-label";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -34,15 +34,33 @@ export const dynamic = "force-dynamic";
 const PER_PAGE = PLAYER_PER_PAGE;
 
 type SortField = "resolved" | "volume";
+/** ⛔ "all" is a VIEW state, not a product. It never reaches the lexicon — every side word is
+ *  resolved per ROW, from that row's own `productLine`. */
+type ProductFilter = LabelProductLine | "all";
 
 export default async function ResultsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ cat?: string; sort?: string; q?: string; page?: string }>;
+  searchParams: Promise<{ cat?: string; sort?: string; q?: string; page?: string; product?: string }>;
 }) {
   const { t } = await getServerT();
   const sp = await searchParams;
   const activeCat = sp.cat ?? "all";
+  // #4 — the visible split between the two products.
+  //
+  // 🔴 THE DEFAULT IS LONG-FORM, AND THAT IS A MEASUREMENT, NOT A PREFERENCE. Settled rounds on
+  // production 2026-08-19: **UPDOWN 11,112 · MARKET 65** — Up & Down is 99.4% of the archive. A
+  // newest-first read of BOTH lines buries all 65 long-form results under 11,112 price rounds on
+  // page 1. `product-line.test.mts` carried an entry saying exactly this ("Up & Down rounds would
+  // flood it") and it was right.
+  //
+  // ⭐ So both of Jay's requirements hold together: the page READS both lines (#10) and the split
+  // is visible with real counts (#4), while the default view stays legible. The Up & Down pill
+  // shows 11,112 — the rounds are present and one tap away, not hidden.
+  //
+  // ⚠️ "all" remains reachable by URL for a regulator read that wants the undivided archive.
+  const activeProduct: ProductFilter =
+    sp.product === "UPDOWN" || sp.product === "all" ? sp.product : "MARKET";
   const activeSort: SortField = sp.sort === "volume" ? "volume" : "resolved";
   // Shared grammar (src/lib/search) — same rule as /markets and every admin list.
   const parsed = parseQuery(sp.q, { fields: fieldNames(MARKET_SEARCH) });
@@ -59,6 +77,7 @@ export default async function ResultsPage({
       <Suspense fallback={<ResultsSkeleton />}>
         <ResultsContent
           activeCat={activeCat}
+          activeProduct={activeProduct}
           activeSort={activeSort}
           qRaw={qRaw}
           searching={searching}
@@ -71,12 +90,14 @@ export default async function ResultsPage({
 
 async function ResultsContent({
   activeCat,
+  activeProduct,
   activeSort,
   qRaw,
   searching,
   pageNum,
 }: {
   activeCat: string;
+  activeProduct: ProductFilter;
   activeSort: SortField;
   qRaw: string;
   searching: boolean;
@@ -112,15 +133,31 @@ async function ResultsContent({
   // the unfiltered read is what already happened on the default `cat=all` view.
   // B-1 — no swallow: the results archive IS this page; a failed read must throw
   // to results/error.tsx, never render "no results yet" over a live archive.
-  const resolved = await listMarkets({ status: "RESOLVED" });
-  const voided = await listMarkets({ status: "VOIDED" });
+  // ⛔ "ALL" — BOTH PRODUCT LINES. #10: settled Up & Down rounds must reach the results page.
+  // `market-service.ts` documents this exact value for this exact purpose: *"Pass `"ALL"` for
+  // money/regulator reads."* This page is the regulator read.
+  //
+  // ⚠️ THE MOMENT THIS LINE CHANGED, EVERY SIDE WORD ON THIS PAGE BECAME A DECISION. Three sites
+  // below used to hard-write `"MARKET"` and were accidentally correct only because this read
+  // excluded the other product. See `E-169`.
+  const resolved = await listMarkets({ status: "RESOLVED", productLine: "ALL" });
+  const voided = await listMarkets({ status: "VOIDED", productLine: "ALL" });
   /** Everything the SEARCH admits, across every category — the set the counts are folded from. */
   const searched = [...resolved, ...voided].filter(matches);
-  const all = activeCat === "all" ? searched : searched.filter((m) => m.category === activeCat);
+  /** The product filter applies BEFORE the category one, so every category count below is a
+   *  count within the chosen product — pressing a category never changes the product. */
+  const inProduct = activeProduct === "all" ? searched : searched.filter((m) => m.productLine === activeProduct);
+  const all = activeCat === "all" ? inProduct : inProduct.filter((m) => m.category === activeCat);
+  /** Cross-filtered the other way: what each product pill would deliver under this search. */
+  const productCounts = {
+    all: searched.length,
+    MARKET: searched.filter((m) => m.productLine === "MARKET").length,
+    UPDOWN: searched.filter((m) => m.productLine === "UPDOWN").length,
+  } as const;
   /** Cross-filtered: each number is what pressing that category would deliver under this search. */
   const catCounts: Record<string, number> = {
-    all: searched.length,
-    ...Object.fromEntries(MARKET_CATEGORIES.map((c) => [c, searched.filter((m) => m.category === c).length])),
+    all: inProduct.length,
+    ...Object.fromEntries(MARKET_CATEGORIES.map((c) => [c, inProduct.filter((m) => m.category === c).length])),
   };
 
   // Sort
@@ -143,9 +180,24 @@ async function ResultsContent({
 
   // KPIs
   const totalVolume = all.reduce((s, m) => s + m.yesPool + m.noPool, 0);
+  // 🔴 THE THIRD SIDE-WORD SITE ON THIS PAGE, AND THE ONE NOBODY NAMED (`E-169`). These two
+  // numbers used to be rendered through the hard-wired `t.results.yesOutcome` / `noOutcome`,
+  // so the moment this page read BOTH product lines the headline donut folded every **Up** win
+  // into a figure labelled *"YES"* — in the summary the regulator reads first.
+  //
+  // ⛔ There is no honest single word for a mixed set, so this is per-product arithmetic and the
+  // words come from the lexicon. The donut keeps totalling both because a donut is a SHAPE, not
+  // a word — it says "this many settled one way" without naming the way.
   const yesWins = all.filter((m) => m.resolvedOutcome === "YES").length;
   const noWins = all.filter((m) => m.resolvedOutcome === "NO").length;
   const voidCount = all.filter((m) => m.resolvedOutcome === "VOID" || m.status === "VOIDED").length;
+  /** Wins per product per side — the only shape that can be labelled truthfully. */
+  const winsIn = (line: LabelProductLine, side: "YES" | "NO") =>
+    all.filter((m) => m.productLine === line && m.resolvedOutcome === side).length;
+  /** Which products are actually ON SCREEN. A product with nothing to show gets no row (A-5). */
+  const linesShown: LabelProductLine[] = (["MARKET", "UPDOWN"] as const).filter(
+    (l) => winsIn(l, "YES") + winsIn(l, "NO") > 0,
+  );
 
   // C2b / A19 — "notable results" featured above the grid = the highest-volume
   // settled markets. Only on page 1 with no active search. On a healthy result set
@@ -165,12 +217,14 @@ async function ResultsContent({
   const cardCharts = await getCardCharts(paged.map((m) => m.id)).catch(() => new Map());
 
   // Helpers
-  const buildHref = (next: { cat?: string; sort?: string; page?: number }) => {
+  const buildHref = (next: { cat?: string; sort?: string; page?: number; product?: ProductFilter }) => {
     const params = new URLSearchParams();
     const c = next.cat ?? activeCat;
     const s = next.sort ?? activeSort;
     const p = next.page ?? safePage;
+    const pr = next.product ?? activeProduct;
     if (c !== "all") params.set("cat", c);
+    if (pr !== "all") params.set("product", pr);
     if (s !== "resolved") params.set("sort", s);
     if (qRaw) params.set("q", qRaw);
     if (p > 1) params.set("page", String(p));
@@ -182,6 +236,7 @@ async function ResultsContent({
   const resultsBaseHref = (() => {
     const params = new URLSearchParams();
     if (activeCat !== "all") params.set("cat", activeCat);
+    if (activeProduct !== "all") params.set("product", activeProduct);
     if (activeSort !== "resolved") params.set("sort", activeSort);
     if (qRaw) params.set("q", qRaw);
     const qs = params.toString();
@@ -201,9 +256,18 @@ async function ResultsContent({
           {totalCount > 0 && (
             <div className="flex items-center gap-2">
               <OutcomeDonut yes={yesWins} no={noWins} voided={voidCount} size={38} />
+              {/* ⛔ ONE ROW PER PRODUCT, each in its own vocabulary, both words from the lexicon.
+                  Never `t.results.yesOutcome` over a mixed set — see `winsIn` above. Two short
+                  rows also keep this block narrow at 393px, where a single combined row would
+                  have run past the viewport in SW and ZH. */}
               <div className="flex flex-col leading-tight font-mono text-[10px] font-semibold tabular-nums">
-                <span className="text-yes-300">{t.results.yesOutcome} {yesWins}</span>
-                <span className="text-no-300">{t.results.noOutcome} {noWins}</span>
+                {linesShown.map((line) => (
+                  <span key={line} className="whitespace-nowrap">
+                    <span className="text-yes-300">{sideWord(t, "YES", line)} {winsIn(line, "YES")}</span>
+                    <span className="text-text-subtle"> · </span>
+                    <span className="text-no-300">{sideWord(t, "NO", line)} {winsIn(line, "NO")}</span>
+                  </span>
+                ))}
               </div>
             </div>
           )}
@@ -244,6 +308,30 @@ async function ResultsContent({
                 the 4px bleed on each side simply pushed the wrapper 4px past its own container at
                 360 and 768 in all three languages. Same shape as the `-mx-3` bleed removed from
                 the /markets strips. */}
+            {/* #4 · THE PRODUCT SPLIT. ⛔ The kit's `FilterPill`, the same control the sort and
+                category groups use — 8 rails already speak this language and hand-rolling a
+                ninth is a documented refusal (DESIGN_AUTHORITY §F). The labels are built from
+                the LEXICON rather than a new dictionary key, so each product is named by the
+                vocabulary it actually uses and all three locales are covered by definition. */}
+            <nav aria-label={t.results.categoriesAria} className="flex flex-wrap items-center gap-1.5 lg:flex-col lg:flex-nowrap lg:items-stretch lg:gap-1">
+              <FilterGroupKey className="pr-1 lg:pr-0 lg:mb-1">{t.market.gameKey}</FilterGroupKey>
+              {([
+                { id: "all" as const, label: t.market.catAll },
+                { id: "MARKET" as const, label: `${sideWord(t, "YES", "MARKET")} / ${sideWord(t, "NO", "MARKET")}` },
+                { id: "UPDOWN" as const, label: `${sideWord(t, "YES", "UPDOWN")} / ${sideWord(t, "NO", "UPDOWN")}` },
+              ]).map((o) => (
+                <FilterPill
+                  key={o.id}
+                  replace
+                  scroll={false}
+                  href={buildHref({ product: o.id, cat: "all", page: 1 })}
+                  label={o.label}
+                  count={productCounts[o.id]}
+                  on={o.id === activeProduct}
+                  testId={`product-${o.id}`}
+                />
+              ))}
+            </nav>
             <nav aria-label={t.results.sortAria} className="flex flex-wrap items-center gap-1.5 lg:flex-col lg:flex-nowrap lg:items-stretch lg:gap-1">
               <FilterGroupKey className="pr-1 lg:pr-0 lg:mb-1">{t.common.sort}</FilterGroupKey>
               {SORT_OPTIONS.map((o) => (
@@ -352,6 +440,7 @@ async function ResultsContent({
               <section className="market-grid">
                 {paged.filter((m) => !notableIds.has(m.id)).map((m) => (
                   <MarketCard
+                    productLine={m.productLine}
                     key={m.id}
                     id={m.id}
                     titleEn={m.titleEn}
@@ -363,7 +452,7 @@ async function ResultsContent({
                     predictors={m.predictorCount}
                     // §L3 — was `${t.market.resolvedOutcome} ${m.resolvedOutcome}`, i.e. a
                     // translated label wrapped around the raw enum on the public results board.
-                    timeLeft={m.resolvedOutcome === "VOID" ? t.common.voided : `${t.market.resolvedOutcome} ${outcomeWord(t, m.resolvedOutcome ?? "VOID", "MARKET")}`}
+                    timeLeft={m.resolvedOutcome === "VOID" ? t.common.voided : `${t.market.resolvedOutcome} ${outcomeWord(t, m.resolvedOutcome ?? "VOID", m.productLine)}`}
                     status={m.status === "VOIDED" ? "VOIDED" : "RESOLVED"}
                     resolvedOutcome={m.resolvedOutcome}
                     sourceUrl={m.sourceUrl}
@@ -442,7 +531,7 @@ function FeaturedResult({ m, t, locale }: { m: Awaited<ReturnType<typeof listMar
             the raw enum: "Imetatuliwa · NO" / "已结算 · NO" on production. */}
         {isVoid
           ? <Chip variant="pending" size="sm">{t.common.voided}</Chip>
-          : <Chip variant="resolved" size="sm">{t.market.resolvedOutcome} · {outcomeWord(t, m.resolvedOutcome ?? "VOID", "MARKET")}</Chip>}
+          : <Chip variant="resolved" size="sm">{t.market.resolvedOutcome} · {outcomeWord(t, m.resolvedOutcome ?? "VOID", m.productLine)}</Chip>}
         <span className="ml-auto inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">
           <I.crown s={13} /> {t.results.notableResult}
         </span>

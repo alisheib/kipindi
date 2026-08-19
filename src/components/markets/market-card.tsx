@@ -10,6 +10,7 @@ import { Modal } from "@/components/ui/modal";
 import { cn, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { pickLocalized, marketCategoryLabel } from "@/lib/localized";
+import { outcomeWord, type LabelProductLine } from "@/lib/side-label";
 
 type Props = {
   id: string;
@@ -30,6 +31,24 @@ type Props = {
    *  rendered the OPPOSITE of the truth, so the board and the detail page
    *  contradicted each other on real money. Never infer this. */
   resolvedOutcome?: "YES" | "NO" | "VOID" | null;
+  /** Which product owns this card — `PredictionMarket.productLine`.
+   *
+   *  ⛔ REQUIRED, AND DELIBERATELY WITHOUT A DEFAULT. `side-label.ts` states the law this
+   *  prop serves: *"There is no default, on purpose. A default is exactly the bug: it lets a
+   *  caller that does not know its product compile, and answer confidently in the wrong
+   *  vocabulary."* This card is rendered by a MIXED book on `/results` and `/watchlist`, so
+   *  a default here would be the whole defect wearing a type.
+   *
+   *  🔴 Until 2026-08-19 this component resolved its own outcome word from a private map that
+   *  compared the stored token against the POLL vocabulary for every product — the last mile of
+   *  *"Up & Down says YES won"*. Worse, `test:outcome` §3 asserted that comparison was PRESENT,
+   *  so the correct fix read as a regression and the defect was held in place by its own guard
+   *  (`E-169`).
+   *
+   *  ⛔ THE SHAPE OF THAT COMPARISON IS DELIBERATELY NOT QUOTED HERE. The suite greps the raw
+   *  file, so pasting it back as an example would satisfy the very check that hunts it — trap 4,
+   *  a comment that quotes deleted code is a decoy anchor. */
+  productLine: LabelProductLine;
   sourceUrl?: string;
   /** Recent YES% series for the sparkline (optional). */
   spark?: number[];
@@ -205,7 +224,7 @@ function HowItWorks() {
 }
 
 export function MarketCard({
-  id, titleEn, titleSw, titleZh, category, yesPct, volume, predictors, timeLeft, status, resolvedOutcome, spark, move24h, traders, selectionClosed, comments, isNew, featured, className,
+  id, titleEn, titleSw, titleZh, category, yesPct, volume, predictors, timeLeft, status, resolvedOutcome, productLine, spark, move24h, traders, selectionClosed, comments, isNew, featured, className,
 }: Props) {
   const router = useRouter();
   const { t, locale } = useT();
@@ -242,11 +261,15 @@ export function MarketCard({
   /** The settled side, or null when we genuinely don't know. Never inferred from
    *  yesPct — see the `resolvedOutcome` prop doc. When null we show "RESOLVED"
    *  with no side rather than risk stating the wrong one on a money surface. */
-  const outcomeLabel =
-    resolvedOutcome === "YES" ? t.common.yes
-    : resolvedOutcome === "NO" ? t.common.no
-    : resolvedOutcome === "VOID" ? t.market.statusVoid
-    : null;
+  // ⛔ THROUGH THE LEXICON, IN THIS CARD'S OWN PRODUCT — never a private map. `outcomeWord`
+  // owns all three arms including VOID (a refund is neutral in both vocabularies, and printing
+  // a direction over one is a false statement about someone's money).
+  //
+  // ⚠️ The `resolvedOutcome ?` guard is NOT ceremony and must not be folded into the lexicon:
+  // a null outcome means "we genuinely do not know", and the rule this card has always kept is
+  // that no side is better than a wrong side. `outcomeWord` cannot express "no side" — it
+  // always returns a word — so the absence has to be decided here.
+  const outcomeLabel = resolvedOutcome ? outcomeWord(t, resolvedOutcome, productLine) : null;
   // Real YES% history only, ≥4 points (else hide — A-5 no-fabrication rule).
   // A fresh market has no history, so never draw the spark on one.
   const showSpark = !fresh && Array.isArray(spark) && spark.length >= 4;

@@ -521,5 +521,129 @@ check("§5j private-map matcher ACCEPTS a tone ternary (a colour is not a word)"
     `raw enum in a rendered description: ${offenders.join(", ")}`);
 }
 
+// ───────────────────────────────────────────────────────────────────────────
+// §10 · A MIXED-BOOK SURFACE MAY NOT NAME ITS PRODUCT WITH A LITERAL
+// ───────────────────────────────────────────────────────────────────────────
+/**
+ * 🔴 THIS EXISTS BECAUSE §8 IS STRUCTURALLY BLIND TO THE SURFACE THE GAMING BOARD ASKED FOR,
+ * and finding that out is `E-169`.
+ *
+ * §8 asks its question through two locators that both miss `/results`:
+ *   ① it `continue`s on any file importing `@/lib/side-label` — and a file that passes a WRONG
+ *     literal to the lexicon imports the lexicon, so the escape hatch fires on exactly the
+ *     files most worth checking. `results/page.tsx` was excused by its own import;
+ *   ② its mixed-book detector matches `listPositionsForUser(x, y)` only, so a page that reads
+ *     `listMarkets({ productLine: "ALL" })` is never even looked at.
+ *
+ * ⭐ THE RULE, STATED SO IT CANNOT BE SATISFIED BY AN IMPORT: if a file's own read declares that
+ * it holds BOTH product lines, then every side word on it must be resolved from the ROW, and a
+ * string literal in the product-line argument is the tell. This is the same law `side-label.ts`
+ * states for its parameter — *"There is no default, on purpose"* — applied one level out: a
+ * literal on a mixed book is a default wearing an argument.
+ *
+ * ⛔ AND IT DELIBERATELY DOES NOT BAN LITERALS OUTRIGHT. `markets/page.tsx`, `page.tsx`,
+ * `landing-hero.tsx` and `markets/[id]/page.tsx` all pass `"MARKET"` and are CORRECT to: they
+ * provably hold one product, and `side-label.ts` asks a caller to say which. A rule that failed
+ * them would teach the next session to weaken it. §10b proves both directions in this run.
+ */
+{
+  /**
+   * ⛔ COMMENTS STRIPPED FIRST. `market-service.ts:284` DOCUMENTS the rule in prose — *"any MONEY
+   * or REGULATOR read must opt IN with `productLine: \"ALL\"`"* — and the first draft of this
+   * section read that sentence as a mixed-book read. A guard that cannot tell code from a comment
+   * about code will be turned off by the first person it lies to.
+   */
+  const codeOnly = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+
+  /** The file's own declaration, in CODE, that it holds both lines. */
+  const MIXED_READ = /productLine\s*:\s*["']ALL["']/;
+
+  /**
+   * A lexicon call, captured so its arguments can be judged separately.
+   *
+   * ⭐ THE DEFECT IS A DATA-DERIVED SIDE WITH A HARD-WRITTEN PRODUCT, and that pairing is the
+   * whole signature. Two shapes are therefore NOT the defect and must stay green:
+   *
+   *   · **both arguments literal** — `sideWord(t, "YES", "MARKET")`. Nothing about a row is being
+   *     described; the call is NAMING a vocabulary, which is how `/results` labels its own product
+   *     filter pills. The literal IS the meaning.
+   *   · **a literal inside an arm that already established the product** — `market-service.ts:1175`
+   *     sits in the `else` of a product branch whose comment reads *"this is the one arm where the
+   *     product line is genuinely UPDOWN"* and warns against merging the arms. A regex cannot see
+   *     a branch, so this section does not look at services at all (see SURFACES below); §3, §7
+   *     and §9 already own the notification paths.
+   */
+  const CALL = /\b(?:sideWord|outcomeWord|sideWordIn|outcomeWordIn)\s*\(([^()]*)\)/g;
+  const isLiteral = (arg: string) => /^\s*["']/.test(arg);
+
+  /**
+   * ⛔ RENDER SURFACES ONLY. The requirement Jay filed is about what a PLAYER READS, and a page
+   * or component holds one book for its whole render — so a literal there is a claim about the
+   * whole surface and can be judged. A service resolves per call inside product branches.
+   */
+  const SURFACES = /[\\/]src[\\/](app|components)[\\/]/;
+
+  /**
+   * The predicate, kept as a named function so §10b can aim known input at THIS code rather
+   * than at a copy of it — §5's rule, and the reason a scanner that has gone blind gets caught.
+   */
+  const offends = (raw: string) => {
+    const text = codeOnly(raw);
+    if (!MIXED_READ.test(text)) return false;
+    for (const m of text.matchAll(CALL)) {
+      const args = m[1].split(",");
+      if (args.length < 3) continue;
+      const side = args[args.length - 2];
+      const line = args[args.length - 1];
+      // literal product + data-derived side = the defect. Both-literal = a label.
+      if (isLiteral(line) && !isLiteral(side)) return true;
+    }
+    return false;
+  };
+
+  const offenders: string[] = [];
+  for (const f of files) {
+    if (!SURFACES.test(f)) continue;
+    if (offends(readFileSync(f, "utf8"))) offenders.push(f.slice(ROOT.length + 1));
+  }
+  check("§10 a surface that reads BOTH product lines resolves every side word from the row",
+    offenders.length === 0,
+    `literal product line on a mixed book: ${offenders.join(", ")}`);
+
+  // ── §10b · POSITIVE CONTROL, in this same run ────────────────────────────
+  // ⛔ Both directions, because a refusal with no positive control is an absent test (§0 rule 2)
+  // and a rule that also fails correct code is worse than no rule at all.
+  check("§10b the scanner REJECTS a mixed read that passes a literal",
+    offends('const rows = await listMarkets({ productLine: "ALL" });' +
+            'const w = outcomeWord(t, m.resolvedOutcome ?? "VOID", "MARKET");'),
+    "the exact shape of results/page.tsx:366 before Unit A — if this passes, the scanner is blind");
+
+  check("§10b the scanner ACCEPTS a single-product surface passing a literal",
+    !offends('const rows = await listMarkets({ status: "RESOLVED" });' +
+             'const w = outcomeWord(t, m.resolvedOutcome ?? "VOID", "MARKET");'),
+    "markets/page.tsx is correct to name its one product — a rule that fails it would be weakened");
+
+  check("§10b the scanner ACCEPTS a label that names a product with BOTH arguments literal",
+    !offends('const rows = await listMarkets({ productLine: "ALL" });' +
+             'const label = `${sideWord(t, "YES", "MARKET")} / ${sideWord(t, "NO", "MARKET")}`;'),
+    "/results names its own product filter pills this way — flagging it would force a new dict key");
+
+  check("§10b the scanner does not read a COMMENT as a mixed-book read",
+    !offends('// any MONEY or REGULATOR read must opt IN with `productLine: "ALL"`' + String.fromCharCode(10) +
+             'const w = outcomeWord(t, m.resolvedOutcome, "MARKET");'),
+    "market-service.ts:284 documents the rule in prose; the first draft of §10 flagged the sentence");
+
+  check("§10b the scanner ACCEPTS a mixed read that resolves from the row",
+    !offends('const rows = await listMarkets({ productLine: "ALL" });' +
+             'const w = outcomeWord(t, m.resolvedOutcome ?? "VOID", m.productLine);'),
+    "the fixed shape must be green, or the rule cannot be satisfied");
+
+  // ⚠️ And the scanner must have had something to scan — a §10 that covered nothing would
+  // report the same green as a §10 that covered everything (§5's whole reason for existing).
+  check("§10b the scanner actually saw the mixed-book surfaces",
+    files.some((f) => MIXED_READ.test(readFileSync(f, "utf8"))),
+    "no file in the scan declares productLine \"ALL\" — the locator has drifted");
+}
+
 log(`\n${fail === 0 ? "ALL PASS" : `${fail} FAILED`} — ${LOCALES.length} locales × ${LINES.length} products, ${files.length} files scanned, ${privateMaps.length}/${PRIVATE_MAP_RATCHET} private maps`);
 process.exit(fail === 0 ? 0 : 1);

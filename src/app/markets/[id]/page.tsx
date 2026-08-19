@@ -818,6 +818,7 @@ export default async function MarketDetail({
             <div className="market-grid lg:!grid-cols-1">
               {similar.map((s) => (
                 <MarketCard
+                  productLine={"MARKET"}
                   key={s.id}
                   id={s.id}
                   titleEn={s.titleEn}
