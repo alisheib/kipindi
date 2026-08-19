@@ -449,8 +449,10 @@ export default async function MarketDetail({
             resolved={isResolved}
             empty={noPriceMarket}
             emptyLabel={t.market.noBetsYet}
-            probabilityLabel={t.market.probBarAria}
-            labels={{ yes: t.common.yes, no: t.common.no, tipping: t.market.tipping, leansYes: t.market.leansYes, leansNo: t.market.leansNo }}
+            // "MARKET" is safe here and only here: an UPDOWN row never reaches this render —
+            // it is redirected to /updown at :117, ~330 lines above.
+            probabilityLabel={t.market.probBarAria.replace("{side}", sideWord(t, "YES", "MARKET"))}
+            labels={{ yes: sideWord(t, "YES", "MARKET"), no: sideWord(t, "NO", "MARKET"), tipping: t.market.tipping, leansYes: t.market.leansYes, leansNo: t.market.leansNo }}
           />
           {freshMarket && (
             <p className="-mt-3 text-center font-mono text-[11px] tracking-[0.06em] text-text-faint">

@@ -9,6 +9,7 @@ import { pickLocalized } from "@/lib/localized";
 import { useT } from "@/lib/i18n";
 import { SearchBox } from "@/components/ui/search-box";
 import { parseQuery, matchesQuery, fieldNames, MARKET_SEARCH } from "@/lib/search";
+import { sideWord } from "@/lib/side-label";
 
 type Market = {
   id: string;
@@ -187,7 +188,7 @@ function PulseCard({ market, index }: { market: Market; index: number }) {
         {title}
       </h3>
       <div className="mt-3">
-        <TippingBar yesPct={yes} height={9} showLabels={false} recastOnHover={false} probabilityLabel={t.market.probBarAria} />
+        <TippingBar yesPct={yes} height={9} showLabels={false} recastOnHover={false} probabilityLabel={t.market.probBarAria.replace("{side}", sideWord(t, "YES", isUpDown ? "UPDOWN" : "MARKET"))} />
       </div>
       <div className="mt-2.5 flex items-center justify-between font-mono text-[12px] tabular-nums">
         <span className="font-bold text-yes-300">{isUpDown ? t.market.udUp : t.common.yes} <span className="opacity-75">@ {yes}%</span></span>

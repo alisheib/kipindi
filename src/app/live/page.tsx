@@ -111,7 +111,7 @@ export default async function LivePage() {
   const topContested = [...markets]
     .sort((a, b) => Math.abs(a.yesPct - 50) - Math.abs(b.yesPct - 50))
     .slice(0, 6)
-    .map((m) => ({ id: m.id, title: pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh), yesPct: m.yesPct }));
+    .map((m) => ({ id: m.id, title: pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh), yesPct: m.yesPct, productLine: m.productLine }));
 
   return (
     <div className="relative min-h-[calc(100vh-44px)]">

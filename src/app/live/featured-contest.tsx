@@ -12,11 +12,16 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import type { Route } from "next";
+import { sideWord } from "@/lib/side-label";
 import { TippingBar } from "@/components/brand";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
 
-export type FeaturedMarket = { id: string; title: string; yesPct: number };
+// ⛔ `productLine` is REQUIRED, not optional. /live carries both products (see `pulse-grid`),
+// and this type used to drop the field — so the hero named its sides in poll vocabulary over an
+// Up & Down round. An optional field with a `?? "MARKET"` at the render would be the same bug
+// wearing a default; required means `tsc` makes /live state it.
+export type FeaturedMarket = { id: string; title: string; yesPct: number; productLine: "MARKET" | "UPDOWN" };
 
 const AUTO_ADVANCE_MS = 6000;
 const SWIPE_THRESHOLD = 40;
@@ -111,8 +116,8 @@ export function FeaturedContest({
           </h2>
         </Link>
         <TippingBar yesPct={m.yesPct} height={32} showLabels
-          probabilityLabel={t.market.probBarAria}
-          labels={{ yes: t.common.yes, no: t.common.no, tipping: t.market.tipping, leansYes: t.market.leansYes, leansNo: t.market.leansNo }} />
+          probabilityLabel={t.market.probBarAria.replace("{side}", sideWord(t, "YES", m.productLine))}
+          labels={{ yes: sideWord(t, "YES", m.productLine), no: sideWord(t, "NO", m.productLine), tipping: t.market.tipping, leansYes: t.market.leansYes, leansNo: t.market.leansNo }} />
         <div className="mt-4 flex items-center gap-3">
           <Link href={`/markets/${m.id}` as Route} className="btn btn-primary btn-md inline-flex">
             {openLabel}

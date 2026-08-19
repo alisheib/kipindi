@@ -30,6 +30,7 @@ import { pickLocalized } from "@/lib/localized";
 import { timeLeftLabel } from "@/lib/markets/time-left";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import type { HeroFigures, HeroRow } from "@/lib/markets/hero";
+import { sideWord } from "@/lib/side-label";
 
 export type HeroCardData = {
   charts: Map<string, { spark?: number[]; move24h?: number }>;
@@ -158,7 +159,7 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards }: Prop
           {figures.yesShare == null ? (
             <TippingBar empty emptyLabel={t.home.heroConvEmpty} height={10} />
           ) : (
-            <TippingBar yesPct={figures.yesShare} height={10} showLabels={false} recastOnHover={false} probabilityLabel={t.market.probBarAria} />
+            <TippingBar yesPct={figures.yesShare} height={10} showLabels={false} recastOnHover={false} probabilityLabel={t.market.probBarAria.replace("{side}", sideWord(t, "YES", "MARKET"))} />
           )}
           <p className="kp-conv__read">
             {figures.yesShare == null

@@ -10,7 +10,7 @@ import { Modal } from "@/components/ui/modal";
 import { cn, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { pickLocalized, marketCategoryLabel } from "@/lib/localized";
-import { outcomeWord, type LabelProductLine } from "@/lib/side-label";
+import { outcomeWord, sideWord, type LabelProductLine } from "@/lib/side-label";
 
 type Props = {
   id: string;
@@ -351,7 +351,7 @@ export function MarketCard({
             <div className="mcardp-pct mcardp-pct--empty" aria-label={t.market.noBetsYet}>—</div>
           ) : (
             <>
-              <div className="mcardp-pctcap">{isResolved ? t.market.result : t.common.yes}</div>
+              <div className="mcardp-pctcap">{isResolved ? t.market.result : sideWord(t, "YES", productLine)}</div>
               <div className="mcardp-pct">{isResolved ? (outcomeLabel ?? "—") : <>{yesPct}<span className="u">%</span></>}</div>
             </>
           )}
@@ -368,7 +368,7 @@ export function MarketCard({
 
       {/* `noPrice`, not `fresh` — a centred bar on an empty pool reads as "contested",
           which is a claim about a crowd that is not there. */}
-      <TippingBar yesPct={yesPct} height={7} resolved={isResolved} showLabels={false} recastOnHover={false} empty={noPrice} emptyLabel={t.market.noBetsYet} probabilityLabel={t.market.probBarAria} />
+      <TippingBar yesPct={yesPct} height={7} resolved={isResolved} showLabels={false} recastOnHover={false} empty={noPrice} emptyLabel={t.market.noBetsYet} probabilityLabel={t.market.probBarAria.replace("{side}", sideWord(t, "YES", productLine))} />
       {noPrice && <div className="mcardp-nobets">{t.market.noBetsYet}</div>}
 
       {showSpark && <Spark data={spark!} />}
@@ -396,10 +396,10 @@ export function MarketCard({
       {live ? (
         <div className="mcardp-actions">
           <button type="button" aria-label={noPrice ? t.market.backYesAriaNoPrice : t.market.backYesAria.replace("{pct}", String(yesPct))} onClick={go("YES")} className="btn btn-yes btn-md">
-            {t.common.yes}{!noPrice && <span className="font-mono text-[11.5px] opacity-85"> @ {yesPct}%</span>}
+            {sideWord(t, "YES", productLine)}{!noPrice && <span className="font-mono text-[11.5px] opacity-85"> @ {yesPct}%</span>}
           </button>
           <button type="button" aria-label={noPrice ? t.market.backNoAriaNoPrice : t.market.backNoAria.replace("{pct}", String(100 - yesPct))} onClick={go("NO")} className="btn btn-no btn-md">
-            {t.common.no}{!noPrice && <span className="font-mono text-[11.5px] opacity-85"> @ {100 - yesPct}%</span>}
+            {sideWord(t, "NO", productLine)}{!noPrice && <span className="font-mono text-[11.5px] opacity-85"> @ {100 - yesPct}%</span>}
           </button>
         </div>
       ) : (
