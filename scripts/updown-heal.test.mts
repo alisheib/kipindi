@@ -58,6 +58,8 @@ import {
 } from "../src/lib/server/updown-config.ts";
 // E-86 — one rule for "is this a rate limit", shared by both readers and both report shapes.
 import { isRateLimit } from "../src/lib/server/updown-feed.ts";
+// §6 · a boundary can only open a round while its own SPAN still has room — see E83.0b.
+import { roundSpanMinutes } from "../src/lib/updown-durations.ts";
 import {
   openRound, closeRound, advanceChain, healStuckRounds, voidRoundByOperator, acquireObservation,
   settlementNote,
@@ -930,7 +932,24 @@ console.log("\n── 13 · E-29 · the settlement note states only what is true
 {
   // A different duration: the asset already carries a 5-minute chain from §1, and one chain
   // per asset per length is a real rule (§8.2) rather than a fixture inconvenience.
-  const c2c = await createChain({ assetId: asset.id, durationMinutes: 3 }, OFFICER);
+  //
+  // ⛔ AND THE LENGTH IS NOT FREE — IT MUST BE ONE WHOSE SPAN OUTLASTS THE ABANDON DEADLINE.
+  // This read `durationMinutes: 3` until 2026-08-19, and that made E83.5 assert something
+  // UNSATISFIABLE without anyone noticing. A 3-minute round SPANS 240s (3 minutes of betting
+  // plus a 1-minute result phase) and the fixture below pins the boundary 240s back — the
+  // midpoint of 90 and 390 on the defaults, the same number by coincidence of the config.
+  //
+  // A boundary whose round has already CLOSED cannot open one however often it is retried:
+  // `openRound` derives a close of boundary + span, `createMarket` refuses a past resolution
+  // date BY THROWING, the throw skips the re-arm, and the scheduler repeats the identical
+  // call every 30s for ever. That is the production outage filed as
+  // `docs/FAILURE-INVENTORY.md` §7.4 — and both stalled chains were 3-MINUTE chains.
+  //
+  // `advanceChain` now ABANDONS a boundary that outlived its own round rather than retrying
+  // it, so "retried, not consumed" is only a real property on a chain whose span still has
+  // room at the deadline. E83.0b pins that requirement so this fixture cannot drift back,
+  // and E83.6-E83.9 assert the short-chain half deliberately.
+  const c2c = await createChain({ assetId: asset.id, durationMinutes: 15 }, OFFICER);
   if (!c2c.ok) throw new Error(c2c.error);
   const chain2 = (await chainStore.get(c2c.data.id))!;
   await setChainState(chain2.id, "RUNNING", OFFICER);
@@ -956,6 +975,9 @@ console.log("\n── 13 · E-29 · the settlement note states only what is true
   ok("E83.0 · the fixture sits between the staleness limit and the abandon deadline",
      backSeconds > staleWindow && backSeconds < abandonWindow,
      `${backSeconds}s back · stale>${staleWindow}s · abandon<${abandonWindow}s`);
+  ok("E83.0b · ⛔ …and the chain's SPAN outlasts that deadline, or E83.5 asserts the impossible",
+     roundSpanMinutes(15) * 60 > abandonWindow,
+     `15m spans ${roundSpanMinutes(15) * 60}s vs abandon ${abandonWindow}s — a 3m chain spans ${roundSpanMinutes(3) * 60}s and would FAIL this`);
   const e83Boundary = new Date(Math.floor((Date.now() - backSeconds * 1000) / 60_000) * 60_000).toISOString();
   await chainStore.patch(chain2.id, { gridAnchorAt: e83Boundary, nextBoundaryAt: e83Boundary, currentRoundId: null });
 
@@ -981,6 +1003,43 @@ console.log("\n── 13 · E-29 · the settlement note states only what is true
   const c2 = await chainStore.get(chain2.id);
   ok("E83.5 · ⭐ the boundary is RETRIED, not consumed",
      c2!.nextBoundaryAt === e83Boundary, `nextBoundaryAt=${c2!.nextBoundaryAt} (expected ${e83Boundary})`);
+
+  // ⭐ THE OTHER HALF OF THE SAME RULE — AND THE HALF PRODUCTION PAID FOR (§7.4).
+  //
+  // E83.5 says a boundary that can still become a round is RETRIED. This says a boundary
+  // that cannot is NOT — because retrying that one is not merely wasteful, it is unbounded:
+  // the reading eventually confirms, `openRound` derives a past close, `createMarket` throws,
+  // the throw skips the re-arm, and the chain fires the identical call for ever while
+  // producing nothing. Two chains did exactly that on production until they were stopped by
+  // hand, which silenced the logs and left the code untouched.
+  //
+  // ⛔ THE PAIR IS THE POINT, and neither half is padding. A suite asserting only E83.5 is
+  // green on a chain that never advances; a suite asserting only E83.7 is green on a chain
+  // that consumes every boundary unpriced — the 175-void defect this section is named for.
+  // Together they say the boundary moves exactly when it can no longer be played.
+  const short = await createChain({ assetId: asset.id, durationMinutes: 3 }, OFFICER);
+  if (!short.ok) throw new Error(short.error);
+  await setChainState(short.data.id, "RUNNING", OFFICER);
+  const shortSpanS = roundSpanMinutes(3) * 60;
+  ok("E83.6 · fixture · a 3-minute round's span is SHORTER than the abandon deadline",
+     shortSpanS < abandonWindow, `${shortSpanS}s span vs ${abandonWindow}s deadline`);
+
+  // Pinned one span back: the earliest instant at which no round can open there any more.
+  const deadBoundary = new Date(Math.floor((Date.now() - shortSpanS * 1000) / 60_000) * 60_000).toISOString();
+  await chainStore.patch(short.data.id, {
+    gridAnchorAt: deadBoundary, nextBoundaryAt: deadBoundary, currentRoundId: null,
+  });
+  const dead = await advanceChain(short.data.id);
+  const shortAfter = await chainStore.get(short.data.id);
+  ok("E83.7 · 🔴 a boundary that outlived its own round is ABANDONED, not retried for ever",
+     shortAfter!.nextBoundaryAt !== deadBoundary,
+     `${deadBoundary} → ${shortAfter!.nextBoundaryAt}`);
+  ok("E83.8 · ⭐ …and it lands at or after NOW, so ONE tick catches up — not one span per tick",
+     shortAfter!.nextBoundaryAt != null && Date.parse(shortAfter!.nextBoundaryAt) >= Date.parse(deadBoundary) + shortSpanS * 1000,
+     `${shortAfter!.nextBoundaryAt} vs one-span-on ${new Date(Date.parse(deadBoundary) + shortSpanS * 1000).toISOString()}`);
+  ok("E83.9 · …and it says so in the operator's terms, naming the round's own close",
+     /outlived its own round/i.test(dead.detail ?? "") && dead.opened === false,
+     (dead.detail ?? "").slice(0, 80));
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

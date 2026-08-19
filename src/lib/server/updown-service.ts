@@ -663,6 +663,32 @@ export async function openRound(
   const closeMs = openMs + roundSpanMinutes(chain.durationMinutes) * 60_000;
   const closeIso = new Date(closeMs).toISOString();
 
+  // ⛔ A ROUND WHOSE CLOSE IS ALREADY PAST IS REFUSED HERE, SOFTLY — because the alternative
+  // is `createMarket` THROWING, and a throw from this function is what turned a late price
+  // bar into a permanent outage (`docs/FAILURE-INVENTORY.md` §7.4).
+  //
+  // ⚠️ THIS IS THE SECOND LAYER, NOT THE FIX. `advanceChain` now abandons such a boundary
+  // before it ever calls this — and it must keep doing so, because a soft refusal alone would
+  // leave the chain crawling one span per tick instead of catching up (§7.3 of
+  // `test:updown-rearm` is that assertion). What this line adds is that NO caller can turn
+  // the condition into an unhandled throw: both call sites already read `.ok`, and neither
+  // wraps this function in a try/catch.
+  //
+  // ⭐ AND THE OTHER CALLER REALLY CAN REACH IT. `generateRoundNow` walks back up to three
+  // completed minutes, so on a 3-minute chain (span 4m) its margin against `createMarket`'s
+  // own `Date.now()` is at most 60s and can be milliseconds — and between computing that
+  // minute and arriving here it awaits the config, the dead-hours profile and up to three
+  // network price reads. An operator pressing Generate at the wrong moment got a 500; now
+  // they get the refusal the operator guide already promises them.
+  if (closeMs <= Date.now()) {
+    return {
+      ok: false,
+      error:
+        `Round would close at ${clockUtc(closeIso)}, which has already passed — no round can ` +
+        `open at ${clockUtc(openBoundaryIso)} any more. Nothing was created.`,
+    };
+  }
+
   const last = await roundStore.latestForChain(chain.id);
   const roundNumber = (last?.roundNumber ?? 0) + 1;
   if (last && last.boundaryAt === closeIso) {
@@ -1534,6 +1560,55 @@ export async function advanceChain(
     };
   }
   if (!alreadyOpen) {
+    // ⛔ A BOUNDARY THAT OUTLIVED ITS OWN ROUND CANNOT BE OPENED — ABANDON IT, AND DO THAT
+    // BEFORE ASKING ABOUT THE PRICE, BECAUSE NO PRICE CAN RESCUE IT.
+    //
+    // 🔴 THE LIVE PRODUCTION OUTAGE THIS CLOSES (`docs/FAILURE-INVENTORY.md` §7.4, filed
+    // 2026-08-15 as `50c3a282`, mechanism reproduced 2026-08-19). BTC/USD 3m
+    // (`udc_5820850ef13f34e5`) and ETH/USD 3m (`udc_f8d666a0d781b8d6`) logged
+    //     [updown] fire udc_… failed: Error: Cannot create a market with a past or invalid resolution date.
+    // on every tick, produced no rounds for as long as anyone looked, and were eventually
+    // STOPPED BY HAND — which silences `fireChain` (it returns unless the chain is RUNNING)
+    // without changing one line of this function. The logs went quiet; the defect did not move.
+    //
+    // THE MECHANISM, end to end. `openRound` derives the close as `boundary + roundSpanMinutes`,
+    // and `createMarket` refuses a resolution at or before now BY THROWING, not by returning a
+    // refusal. `fireChain` catches, backs off `FIRE_RETRY_MS`, and its `finally` re-arms on the
+    // SAME `nextBoundaryAt` — because the throw skipped step 4, the only line that moves it. The
+    // next tick therefore makes the byte-identical call, every 30 seconds, for ever.
+    //
+    // ⛔ AND THE ABANDON BRANCH BELOW COULD NOT HAVE SAVED IT, FOR TWO INDEPENDENT REASONS.
+    // This is why the fix is a new test and not a widened `ageMs > abandonMs`:
+    //   ① it is gated on `obs.state !== "confirmed"`, and a boundary hours old HAS a dated bar,
+    //      so the reading comes back CONFIRMED and the branch is never entered at all;
+    //   ② its deadline is `abandonAfterSeconds` — 390s by default — which is LONGER than the
+    //      span of a 3-minute round (240s) or a 5-minute one (360s). Even reached
+    //      unconditionally it would still hand `createMarket` a past close for those two
+    //      durations. Measured, not argued: §7.2 of `test:updown-rearm` pins both.
+    // The question "can this boundary still become a round?" is answered by the round's own
+    // SPAN. The observation state and the abandon deadline are both the wrong instrument for it.
+    //
+    // ⚠️ NOTHING IS STRANDED BY GIVING UP HERE, and §6 checks that rather than assuming it:
+    // step 2 above has already had its close attempt on the round that ENDS at this boundary,
+    // and anything it could not close stays reachable through `roundStore.unresolvedBefore`,
+    // the healer's read, which is filtered by neither the grid nor the chain's state. What is
+    // lost is one round of PLAY — the unavoidable cost of a tick arriving after its own round
+    // would have finished — and not one shilling.
+    //
+    // ⛔ THE SKIP IS TAKEN FROM `now`, NEVER FROM `boundaryIso`. A chain 28 hours behind on a
+    // 4-minute grid is 420 boundaries behind; stepping one span per tick would grind through
+    // every one of them, each tick firing instantly because the boundary is still past. That is
+    // the crawl `red:updown-rearm` already mutates for, and §7.3 is the assertion for this one.
+    const spanCloseMs = Date.parse(boundaryIso) + roundSpanMinutes(chain.durationMinutes) * 60_000;
+    if (spanCloseMs <= now) {
+      const skipTo = new Date(boundaryAfter(anchorMs, chain.durationMinutes, now)).toISOString();
+      await chainStore.patch(chain.id, { nextBoundaryAt: skipTo });
+      return {
+        observation: obs.state, closed, opened: false,
+        detail: `boundary ${boundaryIso} outlived its own round — its close ${new Date(spanCloseMs).toISOString()} is already past, so no round can open there; boundary abandoned, next ${skipTo}`,
+      };
+    }
+
     // 🔴 NEVER OPEN A ROUND WITHOUT AN OPEN PRICE. This used to pass `null` through when the
     // reading was not confirmed, and `generateRoundNow`'s own refusal message says exactly why
     // that is fatal: *"a round opened without an open price cannot resolve: it would take

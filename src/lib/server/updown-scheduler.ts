@@ -27,10 +27,82 @@
 import { chainStore } from "./updown-dal";
 import { advanceChain } from "./updown-service";
 import { boundaryAfter } from "./updown-config";
+// ⭐ §7.4's alarm has to OUTLIVE the log buffer. `captureServerError` writes to the audit
+// chain (always on, on-box, durable, deduped) and to Sentry when a DSN is configured, and it
+// never throws — see its own header. A console line alone is what the outage already had.
+import { captureServerError } from "./monitoring";
 
 const MAX_TIMEOUT_MS = 2_147_483_647; // setTimeout's signed-32-bit ceiling (~24.8 days)
 const BOOT_GRACE_MS = 20_000;         // a boundary missed while DOWN fires after this
 const FIRE_RETRY_MS = 30_000;         // back-off when a fire throws
+
+/**
+ * ⭐ HOW MANY IDENTICAL FIRE FAILURES BEFORE THE LOG STOPS WHISPERING AND SAYS "STALLED".
+ *
+ * 🔴 THE REASON THIS EXISTS IS A LIVE OUTAGE NOBODY WAS TOLD ABOUT
+ * (`docs/FAILURE-INVENTORY.md` §7.4, filed 2026-08-15 as `50c3a282`). Two chains failed
+ * `fire` on EVERY tick for days with the same error, and the filing's own sharpest line is
+ * not about the bug: *"a permanent error retried silently is indistinguishable from a healthy
+ * idle chain"*. It was found only because someone happened to read `railway logs` while
+ * verifying an unrelated deploy.
+ *
+ * ⛔ AND "IT WAS IN THE LOGS" IS NOT OBSERVABILITY. The old line was one
+ * `console.error` per failure, identical every 30 seconds and indistinguishable from a
+ * transient — 60 consecutive copies in the sample that found it. Nothing said "this has
+ * happened 60 times", which is the single fact that separates a blip from an outage.
+ *
+ * ⚠️ THREE, not one: a redeploy racing a boundary, or a database blip, genuinely does fail a
+ * fire once or twice, and an alarm that cries wolf gets filtered out by the person reading
+ * it. Three identical failures spans ~90s of retries and cannot be a transient.
+ */
+const FIRE_ALARM_AFTER = 3;
+
+/**
+ * Consecutive fire failures per chain — in memory, deliberately.
+ *
+ * ⚠️ NOT PERSISTED, and that is a real limitation stated rather than hidden: a restart clears
+ * it, so the count answers "is this chain failing NOW" and not "how many times since
+ * Tuesday". Persisting it would mean a migration and a write on every failed fire — a write
+ * on the error path, which is the path least able to afford one. The durable record of a
+ * stalled chain is its own `nextBoundaryAt` sitting in the past, which is what
+ * `scripts/live/ops/chain-stall-census.cjs` reads and what the admin console now flags.
+ */
+export type FireFailure = { count: number; firstAt: number; lastError: string; sameThroughout: boolean };
+const fireFailures = new Map<string, FireFailure>();
+
+/**
+ * Fold one more failure into a chain's record. PURE, so the alarm is provable without a
+ * timer, a clock or a database.
+ *
+ * ⛔ WHY IT IS EXTRACTED. Reached only through `fireChain`, this rule needs a real
+ * `setTimeout`, a real failing transition and 90 seconds of wall clock to observe once — so it
+ * would have shipped untested, which for the alarm on a SILENT outage is the wrong place to
+ * take that risk. §7 of `test:updown-tick-cadence` drives it directly.
+ *
+ * ⚠️ `firstAt` is carried from the FIRST failure, never restamped: the alarm's value is the
+ * WINDOW ("3 failures over 92s"), and restamping would make every stall look one tick old.
+ *
+ * ⚠️ A DIFFERENT error still counts. §7.4 asked for N *identical* failures, and identical is
+ * what `sameThroughout` reports — but a chain alternating between two permanent errors is just
+ * as dead as one repeating a single error, and a counter that reset on any difference would
+ * never reach the threshold. Count everything; SAY whether it was the same.
+ */
+export function foldFireFailure(prev: FireFailure | undefined, msg: string, nowMs: number): FireFailure {
+  return prev
+    ? { count: prev.count + 1, firstAt: prev.firstAt, lastError: msg, sameThroughout: prev.sameThroughout && prev.lastError === msg }
+    : { count: 1, firstAt: nowMs, lastError: msg, sameThroughout: true };
+}
+
+/**
+ * Does this failure earn a DURABLE record (audit chain + Sentry), as opposed to a log line?
+ *
+ * On the crossing, then every 20th — so at a 30s back-off the first alarm lands ~90s in and
+ * re-asserts about every ten minutes. ⛔ Alarming on EVERY failure would rebuild the exact
+ * stream §7.4 was lost in: 1,003 identical lines that nobody could tell from a blip.
+ */
+export function fireAlarmDue(count: number, alarmAfter: number = FIRE_ALARM_AFTER): boolean {
+  return count === alarmAfter || (count > alarmAfter && count % 20 === 0);
+}
 
 /**
  * ⛔ THE BUSY-WAIT FLOOR. A chain whose boundary is already in the past may never be re-armed
@@ -207,6 +279,10 @@ async function fireChain(id: string): Promise<void> {
       const fresh = await chainStore.get(id);
       if (!fresh || fresh.state !== "RUNNING") return;
       const r = await advanceChain(id);
+      // ⛔ CLEARED ONLY BY A FIRE THAT ACTUALLY COMPLETED. Clearing it in `finally` — or on
+      // any of the early returns above — would reset the count on the very paths a stalled
+      // chain takes, and the alarm could then never reach its threshold.
+      fireFailures.delete(id);
       // The one branch that leaves the boundary alone says when it is worth asking again.
       // ⛔ `max`, so a throw's back-off can never be SHORTENED by a hint from a healthy call.
       if (r.retryAfterMs != null) retryMs = Math.max(retryMs, r.retryAfterMs);
@@ -216,7 +292,44 @@ async function fireChain(id: string): Promise<void> {
       }
     });
   } catch (e) {
-    console.error(`[updown] fire ${id} failed:`, e);
+    // ⭐ COUNT IT, AND SAY THE COUNT. See `FIRE_ALARM_AFTER` for why the count is the whole
+    // point: the outage this replaces logged the same line 60 times and read as 60 blips.
+    const msg = e instanceof Error ? e.message : String(e);
+    const rec = foldFireFailure(fireFailures.get(id), msg, Date.now());
+    fireFailures.set(id, rec);
+    if (rec.count >= FIRE_ALARM_AFTER) {
+      // ⛔ AND IT MUST LEAVE THE PROCESS. The §7.4 outage WAS logged — 1,003 lines of it —
+      // and was still found only because somebody read `railway logs` for another reason.
+      // A log line is not an alarm; a durable record with a count on it is.
+      //
+      // ⚠️ ON THE CROSSING, THEN EVERY 20th — not every fire. At a 30s back-off that is the
+      // first alarm at ~90s and a re-assertion every ~10 minutes, so a stall that lasts days
+      // stays visible without turning the sink into the same undifferentiated stream the
+      // console already was.
+      if (fireAlarmDue(rec.count)) {
+        await captureServerError(e, {
+          scope: "updown.chain.stalled", chainId: id,
+          consecutiveFailures: rec.count,
+          stalledForSeconds: Math.round((Date.now() - rec.firstAt) / 1000),
+          sameErrorThroughout: rec.sameThroughout,
+          note:
+            "This chain has failed its boundary transition repeatedly and is producing no " +
+            "rounds. A permanent error retried on a timer is indistinguishable from a healthy " +
+            "idle chain, which is why this record exists (FAILURE-INVENTORY.md 7.4).",
+        });
+      }
+      // ⛔ ONE LINE THAT NAMES THE COUNT, THE WINDOW AND THE VERDICT — because the person
+      // reading it is scrolling a live log and will see exactly one line.
+      console.error(
+        `[updown] ⛔ CHAIN STALLED — ${id} has failed ${rec.count} consecutive fires over ` +
+        `${Math.round((Date.now() - rec.firstAt) / 1000)}s` +
+        `${rec.sameThroughout ? " with the SAME error every time" : " (the error varies)"}` +
+        `: ${msg} — this chain is producing NO rounds. A permanent error retried is not a ` +
+        `transient: fix it or stop the chain.`,
+      );
+    } else {
+      console.error(`[updown] fire ${id} failed (${rec.count} of ${FIRE_ALARM_AFTER} before alarm):`, e);
+    }
     retryMs = FIRE_RETRY_MS; // unknown error — back off; the reconciler is the net
   } finally {
     void armChain(id, { minDelayMs: retryMs });
@@ -263,6 +376,8 @@ export function getUpDownSchedulerHealth(): {
   nextFireAt: string | null;
   entries: Array<{ chainId: string; at: string }>;
   gate: { inFlight: number; queued: number; max: number };
+  /** Chains failing their fire repeatedly — §7.4's alarm, readable instead of grepped. */
+  failing: Array<{ chainId: string; consecutive: number; sinceIso: string; sameError: boolean; lastError: string }>;
 } {
   let min: number | null = null;
   const entries: Array<{ chainId: string; at: string }> = [];
@@ -271,13 +386,24 @@ export function getUpDownSchedulerHealth(): {
     if (min === null || e.at < min) min = e.at;
   }
   entries.sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+  const failing = [...fireFailures.entries()]
+    .map(([chainId, f]) => ({
+      chainId, consecutive: f.count, sinceIso: new Date(f.firstAt).toISOString(),
+      sameError: f.sameThroughout, lastError: f.lastError,
+    }))
+    .sort((a, b) => b.consecutive - a.consecutive);
   return {
     armed: timers.size,
     nextFireAt: min != null ? new Date(min).toISOString() : null,
     entries,
     gate: chainGateState(),
+    failing,
   };
 }
+
+/** Test seam — the consecutive-failure counter is module state, so a suite must be able to
+ *  clear it between cases and to read it without waiting for a real 30s retry. */
+export function __resetUpDownFireFailures(): void { fireFailures.clear(); }
 
 /**
  * Drive every due chain synchronously, with no timers. This is what tests call so they

@@ -1,17 +1,16 @@
 STATUS: the next plan. Written 2026-07-29, immediately after the design system was
 frozen and shipped. **Revised 2026-07-31 against the live platform, not against memory.**
 
-> 🔴 **PICK UP HERE — LIVE ON PRODUCTION, UNFIXED (filed 2026-08-15, `FAILURE-INVENTORY.md`
-> §7.4).** Two Up & Down chains — `udc_5820850ef13f34e5` and `udc_f8d666a0d781b8d6` — fail
-> `fire` on **every tick** with *"Cannot create a market with a past or invalid resolution
-> date"*. 60 consecutive log lines in one sample; **zero** `settled`/`opened` beside them. A
-> retry loop, not a transient, and it will not self-heal — each retry recomputes from the same
-> stale boundary. ⚠️ **Not claimed:** that Up & Down is down — `/updown` still renders with round
-> cards and five assets. ⭐ **The finding behind it: NOTHING SURFACES THIS.** A player sees a
-> board that never advances; an operator sees nothing at all. It was found only because a deploy
-> verification happened to read `railway logs`. Whatever fixes it should make a chain **alarm or
-> pause itself** after N identical failures — a permanent error retried silently is
-> indistinguishable from a healthy idle chain.
+> ✅ **CLOSED 2026-08-19 as E-167 — the two stalled Up & Down chains, and the alarm they never had.**
+> `advanceChain` now abandons a boundary whose close is already past (decided by the round's own
+> SPAN), `openRound` refuses softly instead of letting `createMarket` throw, and the scheduler
+> counts consecutive fire failures and writes a durable record through `captureServerError` at the
+> third one. ⭐ **The trigger was a price bar that published LATE (302s against a 240s span), not a
+> pause and not downtime** — and the chains had been **stopped by hand**, which silenced the logs
+> while leaving the code untouched. The whole measured account, including the 8,925-row observation
+> census that bounds the live risk, is `FAILURE-INVENTORY.md` **§7.4**.
+> ⏳ **Still open:** BTC/USD 3m and ETH/USD 3m are **STOPPED on production** and need starting, and a
+> manual **Generate** still writes a schedule onto a stopped chain (a product decision, filed in §7.4).
 >
 > ⭐ **LABELS HAVE A LAW (2026-08-15) — `DESIGN_AUTHORITY.md` §L, lexicon `src/lib/side-label.ts`,
 > guard `test:labels` + `red:labels` (9/9) at the HEAD of `red:all`.** 50pick runs two products

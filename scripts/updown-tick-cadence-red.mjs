@@ -19,7 +19,41 @@ import { execSync } from "node:child_process";
 const SCHED = new URL("../src/lib/server/updown-scheduler.ts", import.meta.url);
 const SERVICE = new URL("../src/lib/server/updown-service.ts", import.meta.url);
 
+const SCHEDULER = new URL("../src/lib/server/updown-scheduler.ts", import.meta.url);
+
 const MUTATIONS = [
+  {
+    // 🔴 THE OUTAGE'S OWN CONDITION: every failure logged, none counted. This is what
+    // production did for 1,003 lines.
+    name: "alarm-never-due — a permanent error is retried for ever and nothing is ever recorded",
+    file: SCHEDULER,
+    from: `  return count === alarmAfter || (count > alarmAfter && count % 20 === 0);`,
+    to: `  return false;`,
+  },
+  {
+    // ⛔ THE OPPOSITE ERROR, AND IT IS ALSO A DEFECT: alarm on every fire and the durable
+    // sink becomes the same undifferentiated stream the console already was.
+    name: "alarm-on-every-failure — the durable record becomes the stream it was meant to replace",
+    file: SCHEDULER,
+    from: `  return count === alarmAfter || (count > alarmAfter && count % 20 === 0);`,
+    to: `  return true;`,
+  },
+  {
+    // ⚠️ RESTAMPING `firstAt` makes every stall look one tick old, so the window — the whole
+    // point of the alarm — reads as zero however long it has been failing.
+    name: "alarm-window-restamped — a three-day stall reports as one tick old",
+    file: SCHEDULER,
+    from: `    ? { count: prev.count + 1, firstAt: prev.firstAt, lastError: msg, sameThroughout: prev.sameThroughout && prev.lastError === msg }`,
+    to: `    ? { count: prev.count + 1, firstAt: nowMs, lastError: msg, sameThroughout: prev.sameThroughout && prev.lastError === msg }`,
+  },
+  {
+    // ⚠️ RESETTING ON A DIFFERENT ERROR means a chain alternating between two permanent
+    // failures never reaches the threshold — dead, and silent.
+    name: "alarm-resets-on-a-different-error — an alternating permanent failure never alarms",
+    file: SCHEDULER,
+    from: `    ? { count: prev.count + 1, firstAt: prev.firstAt, lastError: msg, sameThroughout: prev.sameThroughout && prev.lastError === msg }`,
+    to: `    ? (prev.lastError === msg ? { count: prev.count + 1, firstAt: prev.firstAt, lastError: msg, sameThroughout: true } : { count: 1, firstAt: nowMs, lastError: msg, sameThroughout: true })`,
+  },
   {
     // 🔴 THE PRODUCTION DEFECT. A past boundary re-arms at 0 ms and the loop turns as fast as
     // the database can answer.

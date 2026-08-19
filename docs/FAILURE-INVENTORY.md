@@ -959,34 +959,154 @@ labelling session's remit. The WORD is now right in every language's row; the SE
 
 ---
 
-### §7.4 · OPEN, LIVE ON PRODUCTION — two Up & Down chains cannot fire a round
+### §7.4 · CLOSED — two Up & Down chains could not fire a round, and a late price bar was why
 
-> 🔴 **FILED 2026-08-15, NOT FIXED — behavioural, and outside a labelling session's remit.**
-> Found while reading `railway logs` to verify a deploy, which is the only reason it was found
-> at all: nothing alarms on it.
+> ✅ **FIXED 2026-08-19 (session 46, register row `E-167`).** Filed 2026-08-15 as `50c3a282`,
+> unfixed for four days, and **still deployed** when this session opened: production ran
+> `0f1cf873`, which is the commit that filed it.
+>
+> 🔴 **The chains were silenced BY HAND, not fixed.** `AuditLog`:
+> `updown.chain.stopped` on `udc_5820850ef13f34e5` by `usr_53406f2f9f793abe1fd0e8af` at
+> **2026-08-18 08:11:36.846**, **14.09s after that chain's last error line**. Stopping a chain
+> makes `fireChain` return before it does anything (it exits unless the state is `RUNNING`), so
+> the log went quiet while the code stayed exactly as it was. ⛔ **A quiet log is not a fixed
+> defect, and this is the shape that made it look like one.**
 
 ```
 [updown] fire udc_5820850ef13f34e5 failed: Error: Cannot create a market with a past or invalid resolution date.
 [updown] fire udc_f8d666a0d781b8d6 failed: Error: Cannot create a market with a past or invalid resolution date.
 ```
 
-**Measured, not inferred:** 60 consecutive log lines across one sample were these two chains
-failing, and **zero** `settled` / `opened` / `armed` lines appeared beside them. The two chain ids
-repeat indefinitely — a retry loop, not a transient.
+#### The mechanism, end to end
 
-⚠️ **What is NOT claimed.** `/updown` still renders (100 KB, three round-card references, BTC ·
-Bitcoin · Ethereum · Gold · XAU present), so this is **not** "Up & Down is down". What is certain
-is that these two chains are not producing rounds and are burning a scheduler slot on every tick.
-Whether other chains are healthy was not established — establish it before acting.
+`advanceChain` reads `chain.nextBoundaryAt` and, if no round is open there, hands the instant to
+`openRound`. `openRound` derives the close as `boundary + roundSpanMinutes(duration)`, and
+`createMarket` refuses a resolution at or before now **by throwing, not by returning a refusal**.
+The throw escapes `advanceChain` before **step 4** — the only line that moves `nextBoundaryAt` —
+and `fireChain`'s `finally` re-arms on the *same* instant. The next tick makes the byte-identical
+call, every `FIRE_RETRY_MS` (30s), for ever.
 
-**Where to start:** `updown-service.ts` builds the next round's `resolutionAt` from the chain's
-duration and boundary. The message comes from `createMarket`'s validation, so the computed date is
-at or before `now` — the usual cause is a chain whose boundary has drifted into the past (a long
-pause, a clock offset, or a duration that no longer divides the window) and which therefore
-recomputes the same invalid date forever. ⛔ It will not self-heal: every retry recomputes from the
-same stale boundary.
+⛔ **The abandon branch that should have caught it could not, for two independent reasons**, and
+this is why the fix is a new test rather than a widened deadline:
 
-⭐ **AND NOTHING SURFACES IT.** A player sees a board that simply never advances; an operator sees
-nothing at all. Whatever the fix, the chain should **alarm or pause itself** after N consecutive
-identical failures rather than retry forever — a permanent error retried silently is indistinguishable
-from a healthy idle chain.
+1. it is gated on `obs.state !== "confirmed"`, and a boundary minutes or hours old **has** a dated
+   bar — so the reading comes back CONFIRMED and the branch is never entered;
+2. its deadline is `abandonAfterSeconds` — **390s** on the live config — which is **longer** than
+   the span of a 3-minute round (**240s**) or a 5-minute one (**360s**). Even reached
+   unconditionally it would still hand `createMarket` a past close for those two lengths.
+
+#### The trigger, measured — and it is NOT what the filing guessed
+
+The filing suspected "a long pause, a clock offset, or a duration that no longer divides the
+window", and this session's own first hypothesis was downtime. **Both are wrong**, and the
+database says so:
+
+| Fact | Value |
+|---|---|
+| the boundary that broke both chains | **2026-08-15 21:28:00** |
+| observation created (BTC / ETH) | 21:28:00.036 / 21:28:00.024, state PENDING, `attempts` 3 |
+| last attempt | 21:31:01.659 / 21:31:02.072 |
+| **CONFIRMED at** | **21:33:01.787 / 21:33:02.232** — a lag of **301.8s / 302.2s** |
+| the neighbouring boundaries | confirmed at **~+91s**, as every healthy boundary does |
+| the loop's first error line | **21:33:10.532** — ten seconds after the confirmation |
+| uptime before it | **5h43m uninterrupted**; the previous boot was 15:49:39 |
+| **the dead window it landed in** | span close **21:32:00** (boundary + 240s) · abandon deadline **21:34:30** (boundary + 390s) — the reading confirmed at **21:33:01**, i.e. **inside** it |
+
+⭐ **That last row is the whole defect in one line, and the log stream shows it independently.** The
+ladder is visible climbing on both chains — staleness 0, 15, 30, 45, 61, 76, 91, 106, 121, 136, 182s,
+last `boundary pending` at 21:31:01.68 — and then nothing until the permanent throw. The previous
+round settled correctly in the same second (`udr_a05df24b15e8e040dae2` settled 21:33:01.912), so
+**step 2 did its job and step 3 threw eight seconds later**: no money was ever at risk, and the chain
+never fired again. The loop then survived **six boots** between 2026-08-16 13:24 and 14:02 and ran
+**1,003** identical error lines, because the stale boundary is persisted — a restart cannot clear it.
+
+So the bar **published — late**. Nothing paused, nothing restarted, no clock drifted. A
+3-minute round spans 240s, the reading arrived at 302s, and by then the round's own close was 62
+seconds in the past. ⭐ **The chain was bricked by a price it had asked for and eventually got.**
+
+⚠️ **`setChainState` cannot cause this**, which rules out the filing's other guess by code: it
+writes `nextBoundaryAt = null` for both PAUSED and STOPPED and recomputes a fresh boundary on
+resume. **A pause can never leave a stale boundary — and stop→start was therefore always a
+complete manual remedy, which nothing said out loud.**
+
+#### Why exactly those two chains, and how exposed the rest were
+
+Exactly **two rounds platform-wide** carry `boundaryAt = 2026-08-15 21:28:00` — BTC/USD 3m #887
+and ETH/USD 3m #886. No other chain's grid contained that instant, and no other length's span is
+short enough for a 302s lag to overrun it.
+
+⭐ **The observation table bounds the live risk, and this is the number worth keeping.** Of
+**8,925** CONFIRMED rows: **219** with a lag over 240s, **zero** over 360s, **zero** over 390s,
+**maximum 338.4s**. So the late-bar trigger has only ever been able to reach a **3-minute** chain
+— and a 5-minute chain came within **22 seconds** of it.
+
+⛔ **But do not read that as "only short chains are exposed."** The confirmed path skipped the
+abandon check at *every* duration, so any boundary left stale by any other means bricked a chain
+of any length. Driven in-suite: a 60-minute chain a day stale threw exactly as hard as a
+3-minute one (`test:updown-rearm` §7.6). The 240s/390s arithmetic describes **which chains a
+half-fix still leaves broken**, not which chains the defect could reach.
+
+#### The fix
+
+| Where | What |
+|---|---|
+| `advanceChain` (`updown-service.ts`) | **A boundary whose close is already past is ABANDONED and re-armed from `now`** — checked *before* the price question, because no price can rescue it, and derived from the round's own SPAN rather than from the observation state or the abandon deadline. One tick catches up; it never crawls a span at a time. |
+| `openRound` (`updown-service.ts`) | Refuses **softly** when the close is already past, so no caller can turn the condition into an unhandled throw. Second layer, not the fix — a soft refusal alone would leave the chain crawling. |
+| `updown-scheduler.ts` | **The alarm §7.4 asked for.** Consecutive fire failures are counted per chain; at **3** the log stops whispering and names the count, the window and the verdict, and `captureServerError` writes a durable record to the audit chain **and Sentry** (production reports `sink: "audit-chain + sentry"`). Re-asserted every 20th failure so a days-long stall stays visible without flooding. Exposed as `getUpDownSchedulerHealth().failing`. |
+
+⭐ **The healer was never going to save it, and that is now stated where it matters.**
+`healStuckRounds` heals **rounds**, never **chains**: `udr_eabe50800cdbfa4ea55b` was healed by
+`system_updown_healer` at 2026-08-18 08:22:51.764 while the chain's `nextBoundaryAt` sat at
+2026-08-18 08:21:00 — the round rescued, the chain still bricked. ⚠️ It *is* what makes the fix
+money-safe, though: `healOneRound` reads `roundStore.unresolvedBefore`, filtered by neither the
+grid nor the chain's state, climbs the observation ladder itself inside the deadline, and past it
+performs the late **dated** re-read that settles a round properly instead of voiding it. So
+moving the boundary on costs a round nothing. Asserted, not assumed: `test:updown-rearm` §7.7c.
+
+#### Proof
+
+`test:updown-rearm` **48** (was 27) · `red:updown-rearm` **14/14** (was 8/8) ·
+`test:updown-heal` **164** (was 159) · `test:updown-tick-cadence` **29** (was 28) ·
+`test:all` **225/228**.
+
+⭐ **The mutation that matters is `span-check-uses-abandon-deadline`** — the fix a reasonable
+person writes first. It judges a dead boundary by the 390s deadline instead of by the round's own
+span, it makes §7.1 go **green**, and it leaves the 3-minute chain that actually stalled still
+broken. Only §7.2b catches it, which is the entire reason those assertions are split.
+
+#### ⛔ Two fixtures were asserting something impossible, and had been all along
+
+Closing this turned two existing assertions red, and **neither was a regression** — both were
+asserting a property their own fixture made unreachable:
+
+- `test:updown-heal` **E83.5** ("the boundary is RETRIED, not consumed") ran on a **3-minute**
+  chain pinned **240s** back. 240s *is* that chain's span, so the retry it demanded could never
+  open a round. The 240s is not a coincidence either: the fixture derives it as the midpoint of
+  `maxStalenessSeconds` (90) and `abandonAfterSeconds` (390), and on the live config that lands
+  exactly on a 3-minute span.
+- `test:updown-tick-cadence` **§3.3** ("the retry never sleeps past the abandon deadline") ran on
+  a **5-minute** chain at `deadline − 2s` = 388s, which is 28s past that round's 360s close.
+
+Both are re-fixtured onto **15 minutes**, where the deadline is genuinely the binding constraint,
+and each gained a **fixture guard that fails on the old value** — `E83.0b` and `§0.0` — so they
+cannot drift back. E83.6–E83.9 then assert the short-chain half deliberately, as the pair.
+
+#### ⏳ Left open, filed not fixed — a manual Generate writes a schedule onto a stopped chain
+
+`generateRoundNow` never checks `chain.state`, and `openRound` patched `nextBoundaryAt`
+unconditionally — so pressing **Generate round** on a STOPPED chain wrote a live schedule onto a
+chain the scheduler will never fire, defeating `setChainState`'s own invariant. Proven on
+production: `updown.round.generated` at **2026-08-18 08:18:34.147** by
+`usr_53406f2f9f793abe1fd0e8af` on `udc_5820850ef13f34e5`, which had been STOPPED since 08:11:36.
+The same explains SOL/USD 15m `udc_653197e2a7e89b85` — created 2026-08-18 08:40:15.861, and both
+rounds it has ever had were manual generates. ⚠️ **Not fixed here because it is a product
+decision**: whether Generate should work at all on a stopped chain is the operator guide's call,
+not a bug fix's. Nothing is stranded either way — the healer closes such a round — but the census
+reads the leftover boundary as a stall.
+
+#### ⚠️ Checked and NOT a defect, so nobody re-opens it
+
+~150 `UpDownObservation_assetId_boundaryAt_key` unique-constraint violations appear in
+production's logs per 29 hours. That is `observationStore.ensure`'s **intended** P2002 handler:
+two chains sharing a boundary race to create one row, the loser catches the violation and
+re-reads. It is the write-once guarantee working, logged by Prisma rather than by us.

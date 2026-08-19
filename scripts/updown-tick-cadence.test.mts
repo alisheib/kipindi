@@ -44,8 +44,12 @@ import {
 import { advanceChain, acquireObservation } from "../src/lib/server/updown-service.ts";
 import {
   nextFireDelayMs, REFIRE_FLOOR_MS, armChain, disarmAllChains, getUpDownSchedulerHealth,
+  foldFireFailure, fireAlarmDue, __resetUpDownFireFailures,
 } from "../src/lib/server/updown-scheduler.ts";
 import { addSource, seedDefaultSources } from "../src/lib/server/source-registry.ts";
+// §0.0 · the fixture's length is load-bearing — a round's SPAN decides whether the abandon
+// deadline is reachable at all.
+import { roundSpanMinutes } from "../src/lib/updown-durations.ts";
 
 let pass = 0, fail = 0;
 const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"} ${l}${x ? ` — ${x}` : ""}`); };
@@ -74,7 +78,26 @@ const a = await createAsset({
 if (!a.ok) throw new Error(a.error);
 await setAssetEnabled(a.data.id, true, OFFICER);
 const asset = (await assetStore.get(a.data.id))!;
-const c = await createChain({ assetId: asset.id, durationMinutes: 5 }, OFFICER);
+/**
+ * ⛔ THE CHAIN'S LENGTH IS A FIXTURE REQUIREMENT, NOT A PREFERENCE — and it was wrong here
+ * until 2026-08-19.
+ *
+ * This suite asks what `advanceChain` hands the scheduler when it declines to move the
+ * boundary, and §3.3 pins that hint against the ABANDON DEADLINE. That is only a meaningful
+ * test while the boundary can still BECOME a round at that deadline — i.e. while the round's
+ * SPAN outlasts it.
+ *
+ * A 5-minute round spans 360s and the deadline is 390s, so §3.3's instant (deadline − 2s,
+ * i.e. 388s past the boundary) sat 28s BEYOND the round's own close. `advanceChain` now
+ * abandons such a boundary — correctly, because `openRound` would derive a past close and
+ * `createMarket` throws, which is the outage in `docs/FAILURE-INVENTORY.md` §7.4 — so the
+ * branch §3.3 names was not the branch being reached. 15 minutes spans 1080s and leaves the
+ * deadline the binding constraint, which is what §3.3 is about.
+ *
+ * §0.0 asserts this instead of trusting the number.
+ */
+const CHAIN_MINUTES = 15;
+const c = await createChain({ assetId: asset.id, durationMinutes: CHAIN_MINUTES }, OFFICER);
 if (!c.ok) throw new Error(c.error);
 await setChainState(c.data.id, "RUNNING", OFFICER);
 const chain = (await chainStore.get(c.data.id))!;
@@ -96,6 +119,14 @@ const pin = (iso: string) => chainStore.patch(chain.id, { nextBoundaryAt: iso })
 // 0 · THE LADDER THIS SUITE REASONS ABOUT — read, never assumed
 // ═══════════════════════════════════════════════════════════════════════════
 {
+  // ⛔ THE FIXTURE'S OWN PRECONDITION, FIRST. §3.3 pins the retry hint against the abandon
+  // deadline, which only tests that branch while the round's SPAN outlasts the deadline —
+  // otherwise `advanceChain` rightly abandons the boundary instead and §3.3 reads a branch
+  // it was not aiming at. See the note on CHAIN_MINUTES. A 5-minute chain FAILS this.
+  ok("0.0 · ⭐ the fixture chain's span outlasts the abandon deadline",
+     roundSpanMinutes(CHAIN_MINUTES) * 60_000 > ABANDON_MS,
+     `${CHAIN_MINUTES}m spans ${roundSpanMinutes(CHAIN_MINUTES) * 60}s vs abandon ${ABANDON_MS / 1000}s` +
+       ` — 5m spans ${roundSpanMinutes(5) * 60}s and would fail this`);
   ok("0.1 · the first rung is a real, positive wait", RUNG1_MS > 0, `${RUNG1_MS}ms`);
   ok("0.2 · attempt 1 is still taken AT the boundary with no delay", retryDelaySeconds(CFG, 0) === 0);
   ok("0.3 · the abandon deadline outlasts the whole ladder", ABANDON_MS > RUNG1_MS, `${ABANDON_MS}ms`);
@@ -132,7 +163,7 @@ const pin = (iso: string) => chainStore.patch(chain.id, { nextBoundaryAt: iso })
 // If the hint were merely "about a rung", a round could open a rung late. It is not an
 // estimate: `now + retryAfterMs` is the exact instant the backoff gate stops refusing.
 {
-  const b = new Date(boundaryAfter(anchorMs, 5, Date.now() + 60_000)).toISOString();
+  const b = new Date(boundaryAfter(anchorMs, CHAIN_MINUTES, Date.now() + 60_000)).toISOString();
   const obs = await observationStore.ensure(asset.id, b);
   const attemptAt = Date.parse(b);
   await setAttempt(obs.id, new Date(attemptAt).toISOString(), 1);
@@ -155,7 +186,7 @@ const pin = (iso: string) => chainStore.patch(chain.id, { nextBoundaryAt: iso })
      String((r2 as { retryAfterMs?: number }).retryAfterMs));
 
   // A confirmed reading has nothing to wait for and must carry no hint at all.
-  const b2 = new Date(boundaryAfter(anchorMs, 5, Date.now() + 600_000)).toISOString();
+  const b2 = new Date(boundaryAfter(anchorMs, CHAIN_MINUTES, Date.now() + 600_000)).toISOString();
   const o2 = await observationStore.ensure(asset.id, b2);
   await observationStore.confirm(o2.id, {
     price: 65_000, sourceUrl: "https://api.twelvedata.com/quote", sourceQuotedAt: b2,
@@ -170,7 +201,7 @@ const pin = (iso: string) => chainStore.patch(chain.id, { nextBoundaryAt: iso })
 // 3 · WHAT advanceChain HANDS THE SCHEDULER
 // ═══════════════════════════════════════════════════════════════════════════
 {
-  const b = new Date(boundaryAfter(anchorMs, 5, Date.now() + 3_600_000)).toISOString();
+  const b = new Date(boundaryAfter(anchorMs, CHAIN_MINUTES, Date.now() + 3_600_000)).toISOString();
   await pin(b);
 
   // The branch that must NOT move the boundary is the branch that owes a delay.
@@ -186,7 +217,7 @@ const pin = (iso: string) => chainStore.patch(chain.id, { nextBoundaryAt: iso })
      (nearDeadline.retryAfterMs ?? Infinity) <= 3_000, `${nearDeadline.retryAfterMs}ms with 2s left`);
 
   // A FAILED reading is terminal — no rung will ever change it, so only the deadline matters.
-  const bf = new Date(boundaryAfter(anchorMs, 5, Date.now() + 7_200_000)).toISOString();
+  const bf = new Date(boundaryAfter(anchorMs, CHAIN_MINUTES, Date.now() + 7_200_000)).toISOString();
   const of_ = await observationStore.ensure(asset.id, bf);
   await observationStore.fail(of_.id, "test fixture — terminal");
   await pin(bf);
@@ -285,5 +316,58 @@ const pin = (iso: string) => chainStore.patch(chain.id, { nextBoundaryAt: iso })
   disarmAllChains();
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 7 · THE ALARM — a permanent error retried is not a transient
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// 🔴 §7.4 OF `docs/FAILURE-INVENTORY.md`, AND THE LINE THAT MATTERS IS NOT ABOUT THE BUG:
+// *"a permanent error retried silently is indistinguishable from a healthy idle chain."* Two
+// chains failed `fire` every 30 seconds for nearly three days and logged **1,003** identical
+// lines, and the outage was still found only because somebody read `railway logs` for an
+// unrelated deploy. ⛔ The defect was in the logs the whole time. A log line is not an alarm.
+//
+// ⭐ WHAT IS ASSERTED HERE IS THE COUNT, because the count is the entire difference between a
+// blip and an outage — and it is the one thing 1,003 separate lines could not express.
+{
+  const M = "Cannot create a market with a past or invalid resolution date.";
+  const T0 = 1_000_000;
+
+  const f1 = foldFireFailure(undefined, M, T0);
+  ok("7.1 · the first failure starts a record, and is NOT an alarm",
+     f1.count === 1 && f1.sameThroughout === true && !fireAlarmDue(f1.count), `count=${f1.count}`);
+  const f2 = foldFireFailure(f1, M, T0 + 30_000);
+  ok("7.2 · …nor is the second — a redeploy racing a boundary really does fail one fire",
+     f2.count === 2 && !fireAlarmDue(f2.count), `count=${f2.count}`);
+  const f3 = foldFireFailure(f2, M, T0 + 61_000);
+  ok("7.3 · ⭐ the THIRD identical failure raises the alarm",
+     f3.count === 3 && fireAlarmDue(f3.count) === true, `count=${f3.count}`);
+
+  ok("7.4 · ⚠️ the window is measured from the FIRST failure, never restamped",
+     f3.firstAt === T0, `firstAt=${f3.firstAt} vs T0=${T0}`);
+  ok("7.5 · …and the record says the error was the same one every time",
+     f3.sameThroughout === true);
+
+  // ⛔ A chain alternating between two permanent errors is just as dead. It must still reach
+  // the threshold — and must still be honest that the error varied.
+  const v = foldFireFailure(foldFireFailure(foldFireFailure(undefined, M, T0), "a different error", T0 + 1), M, T0 + 2);
+  ok("7.6 · ⭐ a VARYING error still counts to the threshold — a dead chain is dead either way",
+     v.count === 3 && fireAlarmDue(v.count) === true, `count=${v.count}`);
+  ok("7.7 · …but it does not claim the failures were identical",
+     v.sameThroughout === false);
+
+  // ⛔ AND IT MUST NOT ALARM ON EVERY FIRE. That is the 1,003-line stream, rebuilt.
+  const alarmed = [];
+  for (let n = 1; n <= 60; n++) if (fireAlarmDue(n)) alarmed.push(n);
+  ok("7.8 · ⭐ over 60 consecutive failures the durable record fires 4 times, not 60",
+     alarmed.length === 4 && alarmed[0] === 3, `at ${alarmed.join(", ")}`);
+  ok("7.9 · …and it re-asserts on a cadence, so a days-long stall never goes quiet",
+     alarmed[1] === 20 && alarmed[2] === 40 && alarmed[3] === 60, `at ${alarmed.join(", ")}`);
+
+  // The live surface an operator (or a probe) can read without grepping a log stream.
+  __resetUpDownFireFailures();
+  ok("7.10 · the health readout starts clean and exposes the list at all",
+     Array.isArray(getUpDownSchedulerHealth().failing) && getUpDownSchedulerHealth().failing.length === 0);
+}
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

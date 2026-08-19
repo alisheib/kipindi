@@ -6,7 +6,7 @@ Written 2026-07-31. **Read this before opening anything else in here.**
 [`50pick-updown-operator-guide.pdf`](50pick-updown-operator-guide.pdf) — the Up & Down operator
 contract. Everything else in here is for whoever builds and runs the platform.
 
-There are **57 files** at this level — this index plus 56 documents — and five
+There are **60 files** at this level — this index plus 59 documents — and five
 subdirectories with their own indexes: [`design-system/`](design-system/README.md) (the index of
 the delivered design archive — **record, not rule**; the design rule book is
 [`DESIGN_AUTHORITY.md`](DESIGN_AUTHORITY.md) and nothing else is needed to build correctly),

@@ -22,6 +22,9 @@
  *      who lands in the middle of one knows what they are holding.
  */
 import { readFileSync, existsSync, readdirSync } from "node:fs";
+// §6 counts what git TRACKS, not what happens to be sitting in this working tree — see the
+// comment above the count for the two files that made the difference.
+import { execSync } from "node:child_process";
 import { globSync } from "node:fs";
 
 const AUTHORITY = "docs/DESIGN_AUTHORITY.md";
@@ -174,17 +177,44 @@ if (authorityCopies.length === 0) {
 // ⛔ THE FIX IS NOT TO DELETE THE NUMBER. A reader genuinely wants to know whether the index
 // is complete, and "no count" cannot answer that. The fix is to make the number FALSIFIABLE:
 // derive the real one by LISTING, and fail here the moment the prose disagrees.
+//
+// 🔴 AND THE LISTING HAS TO BE THE ONE EVERY MACHINE AGREES ON, which it was not until
+// 2026-08-19. This counted the WORKING TREE (`readdirSync`), so the "real" number included
+// whatever happened to be on that particular disk — and `docs/` holds two **gitignored**
+// `.docx` files (`.gitignore` line 87, `*.docx`). A clean checkout therefore sees two files
+// FEWER than this laptop does, so the prose could be correct in one place and red in the
+// other, with no edit in between. Two untracked PDFs had the same effect in the opposite
+// direction and left this gate red for four days.
+//
+// ⛔ That is the environment trap `RULES.md` warns about, in a guard whose whole job is to be
+// falsifiable: a check whose expected value depends on the room it runs in cannot be held to.
+// Counting TRACKED files gives one answer everywhere — this laptop, the other laptop, CI.
+//
+// ⚠️ AND IT NEVER FALLS BACK. If `git ls-files` cannot run, the count is unknown and this says
+// so; guessing with `readdirSync` is what produced the drift in the first place.
 {
-  const atLevel = readdirSync("docs", { withFileTypes: true }).filter((e) => e.isFile()).length;
+  let atLevel = -1;
+  try {
+    atLevel = execSync("git ls-files docs", { encoding: "utf8" })
+      .split("\n")
+      .map((p) => p.trim())
+      // one level only: `docs/x.md` counts, `docs/design-system/x.md` does not.
+      .filter((p) => p.startsWith("docs/") && p.split("/").length === 2)
+      .length;
+  } catch (e) {
+    bad(`§6 could not list tracked docs (${(e as Error).message.split("\n")[0]}) — the count is UNKNOWN, not zero`);
+  }
   const readme = readFileSync("docs/README.md", "utf8");
   const claimed = /There are \*\*(\d+) files\*\* at this level — this index plus (\d+) documents/.exec(readme);
-  if (!claimed) {
+  if (atLevel < 0) {
+    // already reported above; do not also fail the prose for a listing we never got.
+  } else if (!claimed) {
     bad("docs/README.md no longer states its file count in the form this guard reads — change the guard WITH the prose, never one without the other");
   } else {
     const total = Number(claimed[1]);
     const docs = Number(claimed[2]);
-    if (total !== atLevel) bad(`docs/README.md claims ${total} files at its level; listing finds ${atLevel} — update the prose`);
-    else ok(`docs/README.md's count is derived-checkable and agrees with listing (${atLevel} files)`);
+    if (total !== atLevel) bad(`docs/README.md claims ${total} files at its level; git tracks ${atLevel} — update the prose`);
+    else ok(`docs/README.md's count is derived-checkable and agrees with git (${atLevel} tracked files)`);
     if (docs !== atLevel - 1) bad(`docs/README.md says "plus ${docs} documents", but ${atLevel} files means ${atLevel - 1} besides the index`);
     else ok("…and its index-plus-documents arithmetic is self-consistent");
   }
