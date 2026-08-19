@@ -161,6 +161,36 @@ export function useUpDownQuickBet(opts: {
     return () => clearInterval(id);
   }, [pending]);
 
+  /**
+   * ⭐ E-166 · PUBLISH "A BET IS IN THE AIR" WHERE THE HANDOVER CAN SEE IT.
+   *
+   * ⛔ The auto-advance on `/updown/[roundId]` may not navigate out from under a submission —
+   * a bet placed a heartbeat before the round hands over must land and be reported on the page
+   * that owns it, not vanish mid-flight into a different round. That gate has to read something
+   * REAL, or it is a comment pretending to be a control.
+   *
+   * A `<body>` attribute rather than a context, deliberately: the bet hook and the handover sit
+   * in different subtrees on both surfaces (the card's controls and the page's poller), and a
+   * provider spanning them would exist solely to carry one boolean. `useModalLock` already
+   * establishes the body element as this app's cross-tree signal for "do not move the player".
+   *
+   * ⚠️ REFERENCE-COUNTED. Several cards can be mid-place at once on the board, and a naive
+   * `delete` on the first one to settle would clear the flag while another was still in flight.
+   */
+  useEffect(() => {
+    if (!pending || typeof document === "undefined") return;
+    const body = document.body;
+    const n = Number.parseInt(body.dataset.udBusyCount ?? "0", 10) || 0;
+    body.dataset.udBusyCount = String(n + 1);
+    body.dataset.udBusy = "1";
+    return () => {
+      const left = (Number.parseInt(body.dataset.udBusyCount ?? "1", 10) || 1) - 1;
+      if (left > 0) { body.dataset.udBusyCount = String(left); return; }
+      delete body.dataset.udBusyCount;
+      delete body.dataset.udBusy;
+    };
+  }, [pending]);
+
   // ── UD-1/UD-2/UD-3 · pre-flight + refusal state ────────────────────────────
   //
   // A tap that cannot succeed must never look like a placed bet: these gates refuse

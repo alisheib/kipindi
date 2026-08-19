@@ -17,17 +17,39 @@ const { spawnSync } = require("node:child_process");
 const SUITE = "scripts/refresh-cadence.test.mts";
 
 const MUTATIONS = [
+  // ⚠️ THREE ANCHORS WERE RE-CUT 2026-08-19 (E-166) AND THAT IS THE WHOLE E-108 LESSON PLAYING
+  // OUT AGAIN. The handover arm reshaped all three subjects — the poller call grew a nested
+  // `handover`, and the settled branch became an `if` block with a bounded exception inside it —
+  // so every one of these anchors stopped matching. The harness did NOT fail: it printed
+  // "ANCHOR NOT FOUND … proves NOTHING" and reported 2/5, which is the only reason this was
+  // caught. ⛔ A mutation that cannot find its target is a mutation that proves nothing, and a
+  // harness that scores itself out of the mutations it managed to apply would have read green.
   {
-    name: "round-page-has-no-poller (the product as it shipped this morning)",
+    name: "round-page-has-no-poller (the product as it shipped before E-102)",
     file: "src/app/updown/[roundId]/page.tsx",
-    find: `      <RefreshPoller {...refreshCadence({ settled: decided, awaitingResult })} />\n`,
-    with: ``,
+    find: `      <RefreshPoller {...refreshCadence({`,
+    with: `      <RefreshPoller {...({ enabled: false, intervalMs: 0 } as never)} {...(({`,
   },
   {
     name: "settled-round-keeps-polling-forever (the waste the rule exists to stop)",
     file: "src/lib/refresh-cadence.ts",
-    find: `  if (settled) return { enabled: false, intervalMs: LIVE_ROUND_MS };`,
-    with: `  if (settled) return { enabled: true, intervalMs: LIVE_ROUND_MS };`,
+    find: `    return { enabled: false, intervalMs: LIVE_ROUND_MS };\n  }`,
+    with: `    return { enabled: true, intervalMs: LIVE_ROUND_MS };\n  }`,
+  },
+  {
+    // ⭐ E-166's OWN RED. The bounded exception is the one edit that could re-create the defect
+    // above while looking like a feature: drop the deadline and a decided round polls for ever.
+    name: "handover-poll-is-unbounded (the exception swallowing the rule)",
+    file: "src/lib/refresh-cadence.ts",
+    find: `    if (handover?.active && handover.nowMs <= handover.untilMs) {`,
+    with: `    if (handover?.active) {`,
+  },
+  {
+    // ⭐ …and the other half: a bound that is not really a bound.
+    name: "handover-bound-is-infinite (a ceiling that is not one)",
+    file: "src/lib/refresh-cadence.ts",
+    find: `  if (successorOpensAtMs == null) return ceiling;`,
+    with: `  if (successorOpensAtMs == null) return Number.POSITIVE_INFINITY;`,
   },
   {
     name: "result-phase-loses-its-tighter-cadence (a finished clock, then 20s of nothing)",
@@ -44,8 +66,16 @@ const MUTATIONS = [
   {
     name: "cadence-called-with-constants (one cadence for every phase, rule-shaped)",
     file: "src/app/updown/[roundId]/page.tsx",
-    find: `refreshCadence({ settled: decided, awaitingResult })`,
-    with: `refreshCadence({ settled: false, awaitingResult: false })`,
+    find: `        settled: decided,\n        awaitingResult,`,
+    with: `        settled: false,\n        awaitingResult: false,`,
+  },
+  {
+    // ⭐ E-166 · the same mutation one level down, in the field that was added after §3.3 was
+    // written. `active: true` is a permanent handover poll on a decided round.
+    name: "handover-active-is-a-constant (a permanent poll wearing a new field name)",
+    file: "src/app/updown/[roundId]/page.tsx",
+    find: `          active: decided && round.successor.chainRunning && round.successor.roundId == null,`,
+    with: `          active: true,`,
   },
 ];
 

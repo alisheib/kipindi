@@ -879,6 +879,26 @@ export const dict = {
       udStillPlacing: "Still placing — busy moment, your tap is queued.",
       udNextRoundSoon: "Between rounds",
       udNextRoundSoonBody: "The next {n}-minute round is being prepared. Stay close — it opens here.",
+      // ── ⭐ E-166 · THE HANDOVER · a finished round names the one that follows it ───────────
+      // ⛔ The four captions sit in an 8.5px mono pod beside 28px digits and MUST stay on one
+      // line at 360px in all three languages, or the pod grows and the layout shifts. Keep them
+      // short; the explanation lives in the *Body lines, which may wrap.
+      // ⛔ "Closed" is never a result (copy discipline §7) — that word is what these replace.
+      udNextMatchIn: "Next match in",
+      udNextMatchLive: "Next match live",
+      udNextMatchSoon: "Next match soon",
+      udNextMatchNone: "No next match",
+      // ⚠️ "already under way" is the literal truth 98.6% of the time: the successor opens in
+      // the same call that settles this round, with an `opensAt` ~91s in the past. Do not soften
+      // it to "is starting" — the player has a betting window running down that they cannot see.
+      udNextMatchLiveBody: "The next match is already under way.",
+      udNextMatchCountingBody: "The next round opens here — no need to reload.",
+      udNextMatchSoonBody: "The next round opens as soon as its opening price is confirmed.",
+      udNextMatchNoneBody: "No further rounds are scheduled here right now.",
+      udNextMatchGo: "Go to it",
+      // The compact strip carried onto the NEW round so a handover never steals a result.
+      udLastRound: "Last round",
+      udLastRoundView: "See the full result",
       udSignInToBet: "Sign in to bet", udTapToBet: "Tap Up or Down to bet",
       udCustom: "Custom", udCustomAmount: "Custom stake amount", udStakeRange: "Outside the allowed range", udEnterStake: "Enter a stake to bet",
       // UD-4 key families from the two 2026-08 sessions were merged 2026-08-08 into ONE
@@ -2509,6 +2529,19 @@ export const dict = {
       udStillPlacing: "Bado inaweka — mfumo una shughuli, mguso wako uko kwenye foleni.",
       udNextRoundSoon: "Kati ya raundi",
       udNextRoundSoonBody: "Raundi inayofuata ya dakika {n} inaandaliwa. Kaa karibu — itafunguliwa hapa.",
+      // ⭐ E-166 · the handover. ⛔ Kept SHORT deliberately: Swahili runs ~35% longer than
+      // English and these four sit on one line in an 8.5px pod at 360px.
+      udNextMatchIn: "Mechi ijayo baada ya",
+      udNextMatchLive: "Mechi ijayo inaendelea",
+      udNextMatchSoon: "Mechi ijayo hivi karibuni",
+      udNextMatchNone: "Hakuna mechi ijayo",
+      udNextMatchLiveBody: "Mechi inayofuata tayari imeanza.",
+      udNextMatchCountingBody: "Raundi inayofuata itafunguliwa hapa — huhitaji kupakia upya.",
+      udNextMatchSoonBody: "Raundi inayofuata itafunguliwa mara bei ya kufungua itakapothibitishwa.",
+      udNextMatchNoneBody: "Hakuna raundi nyingine iliyopangwa hapa kwa sasa.",
+      udNextMatchGo: "Nenda",
+      udLastRound: "Raundi iliyopita",
+      udLastRoundView: "Ona tokeo kamili",
       udSignInToBet: "Ingia ili kuweka dau", udTapToBet: "Gusa Juu au Chini kuweka dau",
       udCustom: "Maalum", udCustomAmount: "Kiasi maalum cha dau", udStakeRange: "Nje ya kiwango kinachoruhusiwa", udEnterStake: "Weka kiasi kucheza",
       // ── Up & Down · D3 round detail ──────────────────────────────────────
@@ -4046,6 +4079,18 @@ export const dict = {
       udStillPlacing: "仍在下注——系统繁忙，您的操作已排队。",
       udNextRoundSoon: "回合间歇",
       udNextRoundSoonBody: "下一场 {n} 分钟回合正在准备中，即将在此开启。",
+      // ⭐ E-166 · 交接。四个标题与 28px 数字同行显示，须在 360px 下保持单行。
+      udNextMatchIn: "下一场还有",
+      udNextMatchLive: "下一场进行中",
+      udNextMatchSoon: "下一场即将开始",
+      udNextMatchNone: "暂无下一场",
+      udNextMatchLiveBody: "下一场已经开始。",
+      udNextMatchCountingBody: "下一回合将在此开启，无需刷新。",
+      udNextMatchSoonBody: "开盘价确认后，下一回合即刻开启。",
+      udNextMatchNoneBody: "此处暂无后续回合安排。",
+      udNextMatchGo: "前往",
+      udLastRound: "上一回合",
+      udLastRoundView: "查看完整结果",
       udSignInToBet: "登录后下注", udTapToBet: "点击涨或跌下注",
       udCustom: "自定义", udCustomAmount: "自定义投注额", udStakeRange: "超出允许范围", udEnterStake: "输入投注额",
       // ── Up & Down · D3 round detail ──────────────────────────────────────

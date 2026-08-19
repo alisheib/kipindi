@@ -39,7 +39,9 @@ import { positionListHref } from "@/lib/position-permalink";
 // E-102 · how often this page re-asks the server, and when it stops.
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { UpDownResultAnnouncer } from "@/components/updown/updown-result-announcer";
-import { refreshCadence } from "@/lib/refresh-cadence";
+import { refreshCadence, handoverPollUntil } from "@/lib/refresh-cadence";
+// E-166 · the auto-advance. Client-side because it is a navigation on an observed transition.
+import { UpDownHandover } from "@/components/updown/updown-handover";
 
 export const dynamic = "force-dynamic";
 
@@ -71,7 +73,7 @@ export default async function UpDownRoundPage({
   searchParams,
 }: {
   params: Promise<{ roundId: string }>;
-  searchParams: Promise<{ side?: string }>;
+  searchParams: Promise<{ side?: string; from?: string }>;
 }) {
   const { roundId } = await params;
   const sp = await searchParams;
@@ -86,6 +88,28 @@ export default async function UpDownRoundPage({
   // every real throw reaches this route's error.tsx with a retry.
   const detail = await getRoundDetail(roundId, session?.userId);
   if (!detail) notFound();
+
+  /**
+   * ⭐ E-166 · THE ROUND THE PLAYER WAS HANDED OVER FROM, for the compact result strip.
+   *
+   * ⛔ READ FROM THE DATABASE, NEVER FROM THE QUERY STRING. `?from=` supplies only an ID; the
+   * outcome printed beside it comes from the round row, so a hand-edited URL cannot make this
+   * page state a result that did not happen. Fabricating an outcome on a money surface is A-5,
+   * and a URL parameter is the least trustworthy input there is.
+   * ⛔ AND ONLY IF IT IS GENUINELY THE PREDECESSOR — same chain, and it closed exactly where
+   * this round opened. Otherwise any settled round could be pinned above any other.
+   * ⚠️ Never fatal: a failed read drops the strip, it does not break the page.
+   */
+  const fromId = typeof sp?.from === "string" && sp.from.length > 0 && sp.from !== roundId ? sp.from : null;
+  const fromDetail = fromId ? await getRoundDetail(fromId).catch(() => null) : null;
+  const fromRound =
+    fromDetail
+    && fromDetail.round.assetId === detail.round.assetId
+    && fromDetail.round.durationMinutes === detail.round.durationMinutes
+    && fromDetail.round.closesAt === detail.round.opensAt
+    && (fromDetail.round.state === "resolved" || fromDetail.round.state === "void")
+      ? { roundId: fromDetail.round.roundId, outcome: fromDetail.round.outcome }
+      : null;
 
   const { round, asset, proof, priceSeries, myPosition, minStake, maxStake } = detail;
   const name = pickLocalized(locale, asset.nameEn, asset.nameSw, asset.nameZh);
@@ -208,7 +232,29 @@ export default async function UpDownRoundPage({
           and then denies it.
           ⛔ The cadence is a RULE, not a number — fast while the price is landing, the board's
           20s while the round is live, and OFF once it is decided. See `refreshCadence`. */}
-      <RefreshPoller {...refreshCadence({ settled: decided, awaitingResult })} />
+      {/* ⭐ E-166 · AND THE ONE BOUNDED EXCEPTION TO "a settled round stops polling". A decided
+          round has exactly one fact outstanding — has the round that follows it arrived? — and
+          until it has, this page is the dead end Ali described: `settled ⇒ enabled:false` froze
+          the screen with no statement about what comes next.
+          ⛔ The exception is bounded TWICE: `active` is false the moment a successor is in hand,
+          and `handoverPollUntil` stops it dead at the successor's own open plus a grace (or a
+          hard five-minute ceiling when that instant is unknown). There is no input that makes
+          it unbounded — `test:refresh-cadence` §5 proves it. */}
+      <RefreshPoller {...refreshCadence({
+        settled: decided,
+        awaitingResult,
+        handover: {
+          // Nothing left to wait for once the successor row is open, or once the chain has
+          // said there will not be one.
+          active: decided && round.successor.chainRunning && round.successor.roundId == null,
+          untilMs: handoverPollUntil({
+            settledAtMs: round.resolvedAtMs,
+            successorOpensAtMs: round.successor.opensAtMs,
+            nowMs: round.serverNowMs,
+          }),
+          nowMs: round.serverNowMs,
+        },
+      })} />
       {/* ⭐ THE RESULT MOMENT — the same shared announcer the board mounts, so the two surfaces
           cannot drift. It fires on the OBSERVED transition the poller above delivers, and
           `sessionStorage` keeps it to once per round even if the player has both open.
@@ -222,6 +268,37 @@ export default async function UpDownRoundPage({
       <HashFocus />
       <div className="flex flex-col gap-[18px]">
         <BackLink fallbackHref="/updown" label={t.market.udTitle} />
+
+        {/* ── ⭐ E-166 · THE LAST-ROUND STRIP ──────────────────────────────────────────────
+            🔴 THE RULE THIS EXISTS FOR: *the player who WON must not have their result yanked
+            off screen.* The handover replaces the page under them, so the result they waited
+            ~91 seconds for arrives here — compact, with a link to the full proof, on the round
+            they have been moved to. ⛔ Rendered ONLY from `?from=`, which only the auto-advance
+            writes, so a hand-typed or shared URL never shows a strip about a round the player
+            did not watch. The old round's URL stays valid for ever; nothing is hidden. */}
+        {fromRound && (
+          <div className="m-in flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 px-3.5 py-2.5" style={inset}>
+            <span className="inline-flex items-baseline gap-2">
+              <span className={eyebrow}>{t.market.udLastRound}</span>
+              <span className="font-mono text-[12.5px] font-bold tracking-[0.04em]"
+                    style={{
+                      // ⛔ NEUTRAL FOR A VOID. A refund is not a failure (rule 7), so it takes
+                      // muted ink and never rose — the same treatment the card gives it.
+                      color: fromRound.outcome === "UP" ? "var(--yes-300)"
+                        : fromRound.outcome === "DOWN" ? "var(--no-300)" : "var(--text-muted)",
+                    }}>
+                {fromRound.outcome === "UP" ? t.market.udUpWins
+                  : fromRound.outcome === "DOWN" ? t.market.udDownWins
+                  : t.market.statusVoid}
+              </span>
+            </span>
+            <Link href={`/updown/${fromRound.roundId}`}
+                  className="inline-flex items-center gap-0.5 font-mono text-[10.5px] font-semibold uppercase tracking-[0.08em]"
+                  style={{ color: "var(--brand-300)" }}>
+              {t.market.udLastRoundView}
+            </Link>
+          </div>
+        )}
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <header className="flex flex-wrap items-center justify-between gap-4">
@@ -272,8 +349,45 @@ export default async function UpDownRoundPage({
               awaiting: t.market.udAwaitingResult,
               settled: t.market.udRoundSettled,
             }}
+            /* ⭐ E-166 · past the hold this pod stops reading `Round settled 00:00` — the dead
+               clock measured on production 2026-08-19 — and becomes the handover ticker. Same
+               box, same 28px digits; only the caption and the digits change. */
+            handover={{
+              roundId,
+              settledAtMs: round.resolvedAtMs,
+              successorExists: round.successor.roundId != null,
+              successorOpensAtMs: round.successor.opensAtMs,
+              chainRunning: round.successor.chainRunning,
+            }}
+            handoverLabels={{
+              counting: t.market.udNextMatchIn,
+              live: t.market.udNextMatchLive,
+              waiting: t.market.udNextMatchSoon,
+              unavailable: t.market.udNextMatchNone,
+            }}
           />
         </header>
+
+        {/* ⭐ E-166 · THE HANDOVER BAR. It renders nothing until the hold has passed, then states
+            what comes next and — when auto-advance is deferred by an open overlay, an in-flight
+            bet, or a player who deliberately opened an already-settled round — offers the way
+            out. It also OWNS the auto-advance itself; the gates are in its own header. */}
+        <UpDownHandover
+          roundId={roundId}
+          settled={decided}
+          settledAtMs={round.resolvedAtMs}
+          successorRoundId={round.successor.roundId}
+          successorOpensAtMs={round.successor.opensAtMs}
+          chainRunning={round.successor.chainRunning}
+          serverNowMs={round.serverNowMs}
+          labels={{
+            live: t.market.udNextMatchLiveBody,
+            counting: t.market.udNextMatchCountingBody,
+            waiting: t.market.udNextMatchSoonBody,
+            unavailable: t.market.udNextMatchNoneBody,
+            go: t.market.udNextMatchGo,
+          }}
+        />
 
         {/* ── Grid: price hero (left) · pool + stake/result (right) ───────── */}
         <div className="grid grid-cols-1 items-start gap-4 xl:[grid-template-columns:minmax(0,1.55fr)_minmax(300px,1fr)]">

@@ -215,7 +215,96 @@ export type BoardRound = {
    * to refuse. "Reading the closing price…" is the honest state, and it is what we keep.
    */
   expectedResultAtMs: number | null;
+  /**
+   * ⭐ E-166 · WHEN THIS ROUND'S RESULT LANDED — the anchor the handover hold is measured from.
+   *
+   * ⛔ It must be the SERVER's record of the settle, never the instant a component mounted. A
+   * hold anchored to the mount restarts on every `router.refresh()`, which the poller fires
+   * constantly, so the ticker would appear and vanish for ever. Null until the round resolves.
+   */
+  resolvedAtMs: number | null;
+  /**
+   * ⭐ E-166 · THE ROUND THAT TAKES THE SCREEN NEXT, and everything needed to say something true
+   * about it. Always present (never null) so a surface cannot silently forget to ask; the
+   * emptiness is expressed in the fields, which is the shape `resultClock` already established.
+   *
+   * ⛔ THE PLAYER SURFACES MAY NOT DERIVE THIS. The successor's open instant is a fact about the
+   * chain's grid and its persisted `nextBoundaryAt`, and re-deriving it in the browser would be
+   * a second answer to "when does the next match start" — the drift `selectionClosedAt` and
+   * `expectedResultAtMs` are both shaped to avoid.
+   */
+  successor: RoundSuccessor;
 };
+
+/**
+ * ⭐ E-166 · What the surface is allowed to say about the round that follows this one.
+ *
+ * ⛔ EVERY FIELD CAN BE EMPTY, AND EACH EMPTINESS MEANS SOMETHING DIFFERENT — which is why this
+ * is four fields rather than one nullable id. "The chain is stopped" and "the chain is running
+ * but the bar has not published yet" are opposite facts about the player's next two minutes,
+ * and collapsing them into `successor: null` would make the surface say the same wrong thing
+ * about both.
+ */
+export type RoundSuccessor = {
+  /** The successor round, when it EXISTS. Null ⇒ no row yet, whatever the clock says. */
+  roundId: string | null;
+  /**
+   * When it opens: its own `opensAt` when the row exists, else the chain's persisted
+   * `nextBoundaryAt` — the instant the chain will next act.
+   * ⛔ Null when we cannot honestly name one, and the surface then shows `—:—`.
+   */
+  opensAtMs: number | null;
+  /** False ⇒ no successor can exist right now: the chain is not RUNNING. */
+  chainRunning: boolean;
+};
+
+/**
+ * ⭐ E-166 · Resolve the successor of `r` on `chain`.
+ *
+ * ⛔ THE SUCCESSOR IS THE ROUND THAT OPENS WHERE THIS ONE CLOSES — matched on the INSTANT, not
+ * on `roundNumber + 1`. Numbers survive an abandoned boundary and the instants do not lie about
+ * it: when a boundary is skipped (measured: 20 of 2,357 successions in 48h, gaps of 11 to 83
+ * minutes) round `n+1` exists but does NOT start where round `n` ended, and calling it "next"
+ * would hand a player a round that begins an hour later as though it were imminent.
+ *
+ * ⛔ AND WHEN NO ROW MATCHES, `chain.nextBoundaryAt` IS THE ANSWER — not arithmetic on the grid.
+ * `advanceChain` leaves that column pinned to the boundary it is still retrying, so it names
+ * exactly the instant the chain will next attempt to open a round. Deriving `anchor + k·span`
+ * here instead would produce a boundary the chain has already abandoned, and the player would
+ * watch a countdown reach zero and nothing happen. Re-read on every poll, never accumulated.
+ */
+async function successorFor(
+  r: StoredRound,
+  chain: StoredChain,
+  /** Rounds already in hand (the board has 24 of them) — saves a query per card. */
+  siblings?: StoredRound[],
+): Promise<RoundSuccessor> {
+  const chainRunning = chain.state === "RUNNING";
+  const empty: RoundSuccessor = { roundId: null, opensAtMs: null, chainRunning };
+  if (!chainRunning) return empty;
+
+  const pool = siblings ?? await roundStore.list({ chainId: chain.id, limit: 4 }).catch(() => []);
+  const next = pool.find((x) => x.id !== r.id && x.opensAt === r.closesAt) ?? null;
+
+  if (!next) {
+    // No round at this boundary yet. The chain's own declared next attempt is the honest
+    // instant — and null when it has none, which the surface renders as `—:—`.
+    const nb = chain.nextBoundaryAt ? Date.parse(chain.nextBoundaryAt) : NaN;
+    return { ...empty, opensAtMs: Number.isFinite(nb) ? nb : null };
+  }
+
+  // ⚠️ THE SUCCESSOR'S LOCK INSTANT IS DELIBERATELY NOT CARRIED. It was, for one iteration: the
+  // handover pod counted down to "how long you have to get into the next match". Looking at the
+  // board killed it — the successor is the card immediately to the left, already showing that
+  // very clock, so the settled card rendered a second identical `02:50`. The next match's clock
+  // belongs to the next match, so nothing here needs to know when its betting shuts.
+  const opensAtMs = Date.parse(next.opensAt);
+  return {
+    roundId: next.id,
+    opensAtMs: Number.isFinite(opensAtMs) ? opensAtMs : null,
+    chainRunning,
+  };
+}
 
 /**
  * The player-visible state of a round. Derived, so board and detail always agree.
@@ -406,7 +495,37 @@ async function toBoardRound(
       medianLagSeconds != null && Number.isFinite(closesAtMs)
         ? closesAtMs + medianLagSeconds * 1000
         : null,
+    // ⭐ E-166 · the SERVER's record of when the result landed — the hold's anchor.
+    resolvedAtMs: r.resolvedAt != null && Number.isFinite(Date.parse(r.resolvedAt))
+      ? Date.parse(r.resolvedAt) : null,
+    // ⛔ E-166 · DELIBERATELY EMPTY HERE, and filled only for the rounds that can use it.
+    // `handoverClock` returns `none` for anything unsettled, so resolving a successor for every
+    // one of the board's 24 mapped rounds would be 24 queries answering a question no surface
+    // asks. `chainRunning` is the one fact that is free and always true of the chain, so it is
+    // the one fact this default carries.
+    successor: { roundId: null, opensAtMs: null, chainRunning: chain.state === "RUNNING" },
   };
+}
+
+/**
+ * ⭐ E-166 · Fill in the successor for the rounds that will actually be RENDERED, and only for
+ * the settled ones — the only state in which a handover exists.
+ *
+ * ⛔ AFTER the board's selection, never before. `toBoardRound` runs over 24 rows to find the two
+ * or three the board shows; resolving a successor inside it would put a market read on every one
+ * of them, on a page that already carries the product's heaviest query.
+ */
+async function withSuccessors(
+  rounds: BoardRound[],
+  chain: StoredChain,
+  siblings: StoredRound[],
+): Promise<BoardRound[]> {
+  return Promise.all(rounds.map(async (b) => {
+    if (b.state !== "resolved" && b.state !== "void") return b;
+    const raw = siblings.find((x) => x.id === b.roundId);
+    if (!raw) return b;
+    return { ...b, successor: await successorFor(raw, chain, siblings) };
+  }));
 }
 
 /** One viewer's stake on one market: the live money, plus what SETTLED (E-64/result moment). */
@@ -525,9 +644,17 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
         sourceQuotedAt: live?.quotedAt ?? null,
         // ⛔ E-67 · A DURATION IS OFFERED BECAUSE THE CHAIN EXISTS, NOT BECAUSE IT IS RUNNING.
         //
+        // ⚠️ CORRECTED 2026-08-19 — the sentence below said *"EVERY chain is now STOPPED"* and
+        // it has stopped being true. Live census the same day: **19 chains, 14 RUNNING**, the
+        // scheduler armed and current on every one of them, emitting automatically. Automatic
+        // emission was evidently turned back on and this comment did not hear about it. The
+        // CONCLUSION still stands and the filter must stay off — a stopped chain's existing
+        // rounds are still playable — but a session reading this to learn how the product runs
+        // today would have been told the opposite of the truth, which is the drift §0 forbids.
+        //
         // This filtered on `state !== "STOPPED"`. That was fine while a STOPPED chain meant a
         // dead market — but Ali removed automatic emission (*"my admins will enter and generate
-        // every 5 min"*), so EVERY chain is now STOPPED and rounds are made by hand. The filter
+        // every 5 min"*), so every chain was STOPPED and rounds were made by hand. The filter
         // therefore returned an EMPTY duration list, `activeDuration` fell to null, and the
         // board returned no rounds at all: the duration chips vanished from the page and a real
         // live round (`udr_17e07a91ecf526c2ae17`, open 63,716.56, targets set) was invisible.
@@ -559,14 +686,44 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
   //
   // An EXPLICIT `?asset=` still wins — including onto an asset with no chains, because a player
   // who asked for gold should be told gold is idle, not silently redirected somewhere else.
-  const firstPlayable = assets.find((a) => a.durations.length > 0);
+  /**
+   * 🔴 E-166 · AND "HAS A CHAIN" WAS NOT ENOUGH EITHER — measured on production 2026-08-19.
+   *
+   * The note above fixed the ASSET default and left the DURATION default as `durations[0]`,
+   * which is simply the SMALLEST round length. BTC's smallest is **3 minutes and its 3-minute
+   * chain is STOPPED** — so `https://50pick.tz/updown`, the front door of this product, served
+   * exactly one card: a round that had settled **25 hours earlier**, headed *"Closed · BTC"*.
+   * No live game at all, while BTC 5m, 10m and 15m were all running and bettable one tab away.
+   *
+   * ⚠️ THE SAME MISTAKE, ONE FIELD ACROSS. The asset default already reasons *"default to one
+   * that is actually playable"*; the duration default was still reasoning *"the first one"*. Of
+   * nineteen live chains five are STOPPED, and three of those five are the shortest length on
+   * their asset — so this was not an unlucky configuration, it was the likely one.
+   *
+   * ⛔ AN EXPLICIT `?d=` STILL WINS, exactly as `?asset=` does: a player who asked for the
+   * 3-minute board is told the 3-minute board is idle, never silently moved somewhere else.
+   * ⛔ AND THE TABS ARE UNCHANGED. A stopped length is still offered — E-67's whole finding is
+   * that a chain's state says whether MORE rounds will appear, not whether the ones there can
+   * be played. This changes only which one you land on when you did not choose.
+   */
+  const runningDurations = (assetId: string) =>
+    allChains
+      .filter((c) => c.assetId === assetId && c.state === "RUNNING")
+      .map((c) => c.durationMinutes)
+      .sort((x, y) => x - y);
+
   const activeAsset =
     (opts?.assetKey ? assets.find((a) => a.key === opts.assetKey) : undefined)
-    ?? firstPlayable ?? assets[0] ?? null;
+    // Prefer an asset with a RUNNING chain; fall back to one that merely has a chain, so an
+    // all-stopped platform still lands somewhere real rather than on the empty state.
+    ?? assets.find((a) => runningDurations(a.id).length > 0)
+    ?? assets.find((a) => a.durations.length > 0)
+    ?? assets[0] ?? null;
   if (!activeAsset) return { assets, activeAsset: null, activeDuration: null, rounds: [], recent: [], chainPaused: false, stakeBounds: defaultBounds, walletBalance };
 
   const activeDuration =
     (opts?.durationMinutes && activeAsset.durations.includes(opts.durationMinutes) ? opts.durationMinutes : undefined)
+    ?? runningDurations(activeAsset.id)[0]
     ?? activeAsset.durations[0] ?? null;
   if (activeDuration == null) {
     return { assets, activeAsset, activeDuration: null, rounds: [], recent: [], chainPaused: true, stakeBounds: defaultBounds, walletBalance };
@@ -619,7 +776,13 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
   // cards and buries the round that is actually playable.
   const justClosed = started.slice(1).find((r) => r.state === "confirming") ?? null;
   const lastDone = mapped.find((r) => r.state === "resolved" || r.state === "void");
-  const rounds = [current, justClosed, lastDone].filter(Boolean) as BoardRound[];
+  // ⭐ E-166 · the settled card must be able to say what comes NEXT, not "Closed". Resolved here
+  // — after the selection — so the cost is one lookup for the one card that can use it.
+  const rounds = await withSuccessors(
+    [current, justClosed, lastDone].filter(Boolean) as BoardRound[],
+    chain,
+    raw,
+  );
 
   // The heartbeat strip — oldest → newest, real outcomes only.
   const recent = mapped
@@ -797,6 +960,13 @@ export async function getRoundDetail(roundId: string, userId?: string): Promise<
   // the code, passes tsc, and does nothing on half the surfaces it claims to cover.
   const board = await toBoardRound(r, chain, mine, await measuredLagSeconds(a.key));
   if (!board) return null;
+  // ⭐ E-166 · THE DETAIL PAGE NEEDS THIS TOO, and it is the surface that would have shipped
+  // broken without the line. `toBoardRound` type-checks perfectly with an empty successor, so
+  // the round page would have rendered a permanent "no next match" while the board worked —
+  // exactly the half-wired shape E-99's own comment three lines above warns about.
+  if (board.state === "resolved" || board.state === "void") {
+    board.successor = await successorFor(r, chain);
+  }
 
   const live = await latestConfirmed(a.id);
   const [openObs, closeObs] = await Promise.all([

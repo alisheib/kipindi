@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 // E-104 · the pod derives its phase from the SHARED rule, with a live clock the server cannot give it.
-import { resultClock } from "@/lib/updown-card-phase";
+// E-166 · and the same for the HANDOVER, so board and round page cannot describe one settle differently.
+import { resultClock, handoverClock } from "@/lib/updown-card-phase";
 
 /**
  * Seconds remaining until `targetMs`, ticking client-side.
@@ -73,22 +74,132 @@ export function useServerNow(serverNowMs?: number): number | null {
     const tick = () => setNow(Date.now() + offset);
     tick();
     const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
+    // ⭐ E-166 · RECOMPUTE THE MOMENT THE TAB COMES BACK, and never trust elapsed ticks.
+    //
+    // 🔴 Chrome throttles `setInterval` in a hidden tab — to roughly once a minute, and it may
+    // not fire at all for the first stretch. Measured in the handover E2E: a backgrounded round
+    // page sat on a settled round for nine seconds without advancing, because the ONE thing
+    // driving every phase in this file is this clock, and this clock had stopped.
+    //
+    // ⛔ THE FIX IS TO RE-READ THE INSTANT, NOT TO COUNT THE TICKS. `tick()` recomputes from
+    // `Date.now() + offset` — the server-anchored absolute instant — so a tab that was hidden
+    // for twenty minutes lands on the correct phase on its first frame back, with no catch-up
+    // and no accumulated drift. Counting missed intervals would be the accumulation this whole
+    // subsystem is built to avoid (`boundaryAfter`'s "derived, never accumulated").
+    //
+    // ⚠️ A hidden tab is DELIBERATELY left to drift. The handover navigates a page the player is
+    // looking at; moving one they are not is pointless work on the low-end Android over 2G, and
+    // this listener is what makes it correct the instant they look again.
+    const onVisible = () => { if (document.visibilityState === "visible") tick(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { clearInterval(id); document.removeEventListener("visibilitychange", onVisible); };
   }, [serverNowMs]);
   return now;
 }
 
 /**
+ * ⭐ E-166 · WHEN DID **THIS SCREEN** LEARN THE RESULT — the instant the handover hold is owed
+ * from.
+ *
+ * 🔴 THE DEFECT THIS EXISTS TO FIX, found while writing the E2E for the hold and not by any
+ * suite. The hold was anchored to the server's `resolvedAt`, which is correct about the ROUND
+ * and wrong about the PLAYER. A surface does not learn of a settle at `resolvedAt`; it learns
+ * of it on its next poll — up to 5s later on the round page and up to 20s later on the board.
+ * By then `now − resolvedAt` already exceeds a 2.5s hold, so the player would have seen their
+ * result and been moved off it **in the same paint**. The hold would have existed in the rule,
+ * passed its unit tests, and done nothing whatsoever for the person it is for.
+ *
+ * ⛔ AND THE OBVIOUS FIX IS THE OTHER DEFECT. Anchoring to the mount, or to "now" on the render
+ * that first shows a settled round, restarts the hold on every `router.refresh()` — and the
+ * poller fires those constantly, so the ticker would appear and vanish for ever. That is the
+ * failure `handoverClock`'s own header warns about.
+ *
+ * ⭐ SO IT IS STAMPED EXACTLY ONCE, PER ROUND, ON THE OBSERVED TRANSITION — the same contract
+ * `updown-result-announcer.tsx` uses to decide whether a result is news: the first render
+ * SEEDS and never stamps, and only `unsettled → settled` while mounted counts.
+ *
+ *   · observed the settle here → the stamp, so the player gets the whole hold;
+ *   · arrived already settled  → `resolvedAtMs`, which is old, so no hold is owed. They did not
+ *     watch the result land, and holding a screen they opened deliberately is not a courtesy.
+ *
+ * ⛔ SERVER-ANCHORED like every other clock in this file: the stamp is taken from the same
+ * offset `useServerNow` applies, never from `Date.now()` raw, so it is comparable to the
+ * server's own `resolvedAt` on a handset whose clock is minutes out (E-72).
+ */
+export function useHoldAnchor(
+  roundId: string,
+  settled: boolean,
+  resolvedAtMs: number | null,
+  /** The SERVER-ANCHORED current instant — `useServerNow`, never `Date.now()`. Null pre-hydration. */
+  nowMs: number | null,
+): number | null {
+  /** roundId → the instant THIS mount first saw that round settled. Written once, never again. */
+  const stamps = useRef<Map<string, number>>(new Map());
+  /** roundId → what we knew before. `undefined` = never seen, i.e. this render is the seed. */
+  const seen = useRef<Map<string, boolean>>(new Map());
+
+  // ⛔ STAMPED DURING RENDER, NOT IN AN EFFECT — and this is the whole correctness of the hook,
+  // paid for by the E2E on the first run.
+  //
+  // 🔴 The first version stamped in a `useEffect`. Effects run AFTER the commit, so on the very
+  // render where `settled` first flips true the stamp did not exist yet and the hook fell back
+  // to `resolvedAtMs` — an instant already ~11 seconds old by the time the poll delivered it.
+  // The hold therefore evaluated as ALREADY SPENT on exactly the render it exists to govern, and
+  // the auto-advance fired **155ms after the result appeared**, measured. The result flashed and
+  // the player was gone. A hold that is computed one commit too late is not a hold.
+  //
+  // ⚠️ Writing a ref during render is safe HERE and only here: the write is keyed, idempotent and
+  // guarded by `has()`, so a StrictMode double-invoke keeps the first value and nothing outside
+  // this hook observes it. It is the same shape as `useState`'s lazy initialiser.
+  const prev = seen.current.get(roundId);
+  if (prev === undefined) {
+    // SEED. A round this mount has never heard of is recorded, never stamped — otherwise opening
+    // an already-settled round would hold a result the player did not watch arrive.
+    seen.current.set(roundId, settled);
+  } else if (settled && prev === false && nowMs != null && !stamps.current.has(roundId)) {
+    // THE OBSERVED TRANSITION. Exactly once, on the render that first carries the result.
+    seen.current.set(roundId, true);
+    stamps.current.set(roundId, nowMs);
+  }
+
+  if (!settled) return resolvedAtMs;
+  return stamps.current.get(roundId) ?? resolvedAtMs;
+}
+
+/**
  * D3 round-detail countdown POD — the boxed readout in the round header: 28px tabular
  * digits with the label beside them, in the kit's inset-pod chrome. Open rounds tick
- * live and pulse rose in the final 30s (reduced-motion turns the pulse off); once closed
- * it shows a static 00:00 in `--text-subtle`. Same shared hook as everywhere else.
+ * live and pulse rose in the final 30s (reduced-motion turns the pulse off). Same shared
+ * hook as everywhere else.
+ *
+ * ⚠️ THIS COMMENT USED TO END *"once closed it shows a static 00:00 in `--text-subtle`"*, and
+ * that was both a description and a defect: E-99's rule 3 is **never a dead `0:00`**, and the
+ * settled branch was the one place it survived — measured on production 2026-08-19. Past the
+ * close the pod now shows `—:—` when nothing is counting, and once the handover facts are
+ * supplied it becomes the ticker for the round that follows (E-166).
  */
 export function RoundCountdownPod({
   closesAtMs, isOpen, label, serverNowMs, resultMode = false,
   roundClosesAtMs, resultTargetMs = null, settled = false, resultLabels,
+  handover, handoverLabels,
 }: {
   closesAtMs: number; isOpen: boolean; label: string; serverNowMs?: number;
+  /**
+   * ⭐ E-166 · THE HANDOVER'S SERVER FACTS. Given these the pod stops saying "Round settled"
+   * over a dead `00:00` and becomes the ticker for the round that follows.
+   * ⛔ Omit them and the pod behaves exactly as it did before — additive, not a rewrite.
+   */
+  handover?: {
+    /** Which round this is — the key the hold stamp is kept under. */
+    roundId: string;
+    /** The server's `resolvedAt`. `useHoldAnchor` decides what the hold is actually owed from. */
+    settledAtMs: number | null;
+    successorExists: boolean;
+    successorOpensAtMs: number | null;
+    chainRunning: boolean;
+  };
+  /** Captions for the four handover phases, translated on the server. */
+  handoverLabels?: { counting: string; live: string; waiting: string; unavailable: string };
   /**
    * ⭐ E-104 · THE BOUNDARY, so the pod can enter the result phase BY ITSELF.
    *
@@ -141,7 +252,35 @@ export function RoundCountdownPod({
     ? (settled ? resultLabels.settled : resultTargetMs != null ? resultLabels.resultIn : resultLabels.awaiting)
     : label;
 
+  // ── ⭐ E-166 · THE HANDOVER, from the SAME shared rule the board card uses ────────────────
+  //
+  // 🔴 WHAT IT REPLACES on this exact pod, read off production 2026-08-19 for round
+  // `udr_038998ddaeb0ab9b950f`: **`Round settled  00:00`** — a dead zero under a settled
+  // caption, with the poller already disabled behind it, so the page was final until a manual
+  // reload. E-99's rule 3 says never a dead `0:00`; this branch is where that stopped being
+  // true, because `spent` requires `inResult` and a SETTLED round never entered it.
+  // ⛔ THE HOLD IS OWED FROM WHEN **THIS SCREEN** LEARNED THE RESULT, not from `resolvedAt` —
+  // see `useHoldAnchor`. The poll can be 5s late, and a hold measured from the server's stamp
+  // would already be spent by the time the player first sees the outcome.
+  const holdAnchor = useHoldAnchor(
+    handover?.roundId ?? "", settled, handover?.settledAtMs ?? null, now,
+  );
+  const hand = handover && now != null
+    ? handoverClock({
+        state: settled ? "resolved" : "confirming",
+        settledAtMs: holdAnchor,
+        successorExists: handover.successorExists,
+        successorOpensAtMs: handover.successorOpensAtMs,
+        chainRunning: handover.chainRunning,
+        nowMs: now,
+      })
+    : null;
+  const inHandover = hand != null && hand.phase !== "none" && hand.phase !== "hold";
+
   const left = useCountdown(target, serverNowMs);
+  // ⛔ UNCONDITIONAL, like every hook here: the handover's own digits count to their own
+  // instant, and `hand.counting` decides whether they are shown at all.
+  const handLeft = useCountdown(hand?.targetMs ?? closesAtMs, serverNowMs);
   const running = (isOpen || pastClose) && (left == null || left > 0);
   // ⛔ Never urgent in result mode: `confirming` is CALM by design, and rose here would tell a
   // player something is wrong at the exact moment the platform is working correctly.
@@ -150,15 +289,63 @@ export function RoundCountdownPod({
   // that has been overrun — we say we have stopped counting, which is the truth. This branch is
   // now reached the INSTANT the boundary passes rather than at the next poll.
   const spent = inResult && !running;
+  // ⭐ E-166 · past the hold, the pod is the handover ticker. The BOX does not move: same flex
+  // row, same padding, same 28px digits — only the caption and the digits cross-fade, which is
+  // what makes it read as one object changing state rather than a component being swapped.
+  const handCaption = !inHandover || !handoverLabels ? null
+    : hand!.phase === "counting" ? handoverLabels.counting
+    : hand!.phase === "live" ? handoverLabels.live
+    : hand!.phase === "waiting" ? handoverLabels.waiting
+    : handoverLabels.unavailable;
+  const shownCaption = handCaption ?? caption;
+  // ⛔ `—:—` ON EVERY NON-COUNTING BRANCH, INCLUDING SETTLED. The `"00:00"` this used to fall
+  // through to is the dead clock measured on production; see the block above.
+  const shownDigits = inHandover
+    ? (hand!.counting ? mmss(handLeft) : "—:—")
+    : settled ? "—:—"
+    : spent ? "—:—"
+    : (isOpen || pastClose) ? mmss(left) : "—:—";
+
+  /**
+   * ⭐ E-166 · THE POD IS ONE OBJECT CHANGING STATE, NOT A COMPONENT BEING SWAPPED.
+   *
+   * `.m-tick` is the kit's existing vocabulary for exactly this — *"live value change: dips and
+   * lands. NEVER translates, NEVER counts up"* — `--t-base` on `--m-glide`, which is the pairing
+   * §7.1 asks for. ⛔ NO NEW KEYFRAME AND NO NEW EASING: the ladder's rule is that a timing not
+   * on it takes the nearest rung, and the honest way to obey that is to reuse the rung that
+   * already exists rather than to type 220ms somewhere new.
+   *
+   * ⛔ KEYED ON THE PHASE, NEVER ON THE VALUE. The digits change every second; dipping them
+   * each time is the counting-up animation `.m-tick`'s own comment forbids. The key changes
+   * only when the pod starts saying a different KIND of thing.
+   *
+   * ⚠️ The box does not participate. Padding, gap, font size and the caption's single line are
+   * all fixed, so the pod occupies the same rectangle before and after — no layout shift.
+   * ⚠️ Reduced motion needs no branch here: all three gates clamp `animation-duration` to
+   * 0.01ms globally (motion.css §"THREE GATES"), so this becomes an instant state change and
+   * the handover still happens. That is why the kit utility is used instead of a bespoke one.
+   */
+  const podPhase = inHandover ? `h:${hand!.phase}`
+    : settled ? "settled" : spent ? "spent" : inResult ? "result" : isOpen ? "open" : "idle";
+
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 14px", background: "var(--bg-inset)", border: "1px solid color-mix(in oklab, var(--border) 70%, transparent)", borderRadius: "var(--r-md)" }}>
-      <span className="font-mono text-[8.5px] font-semibold uppercase tracking-[0.12em] text-text-faint">{caption}</span>
+      <span key={`c-${podPhase}`}
+            className="m-tick font-mono text-[8.5px] font-semibold uppercase tracking-[0.12em] text-text-faint"
+            /* ⛔ ONE LINE IN EVERY LOCALE — SW and ZH run ~35% longer and this pod sits inline
+               beside 28px digits in a wrapping header. A wrapped caption grows the pod and
+               shifts the whole header row, which is the layout shift §6 forbids. */
+            style={{ whiteSpace: "nowrap" }}>{shownCaption}</span>
       <span
-        className={urgent ? "ud-count-pulse" : undefined}
+        key={`d-${podPhase}`}
+        className={urgent ? "m-tick ud-count-pulse" : "m-tick"}
         style={{
           fontFamily: "var(--font-mono)", fontSize: 28, fontWeight: 700,
           fontVariantNumeric: "tabular-nums", letterSpacing: "0.05em", lineHeight: 1,
           color: urgent ? "var(--no-300)"
+            // ⭐ E-166 · a counting handover is "something is coming" — the same brand ink the
+            // result clock uses, for the same reason. Never rose: a void hands over as a win does.
+            : inHandover ? (hand!.counting ? "var(--brand-300)" : "var(--text-subtle)")
             : inResult && running ? "var(--brand-300)"
             : running ? "var(--text)" : "var(--text-subtle)",
           // ⛔ THE LADDER, NOT A TYPED NUMBER (E-113's ratchet). This was `240ms ease`, exempted
@@ -172,7 +359,7 @@ export function RoundCountdownPod({
           transition: "color var(--t-base) var(--m-glide)",
         }}
       >
-        {spent ? "—:—" : (isOpen || pastClose) ? mmss(left) : "00:00"}
+        {shownDigits}
       </span>
     </div>
   );

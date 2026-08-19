@@ -421,7 +421,11 @@
     "red:failure-reasons": "node scripts/failure-reasons-red.mjs",
     "test:rate-copy": "tsx scripts/rate-copy.test.mts",
     "red:rate-copy": "node scripts/rate-copy-red.mjs",
-    "qa:rasterise-pdf": "node scripts/rasterise-pdf.mjs"
+    "qa:rasterise-pdf": "node scripts/rasterise-pdf.mjs",
+    "test:updown-handover": "tsx scripts/updown-handover.test.mts",
+    "red:updown-handover": "node scripts/red-e166.cjs",
+    "qa:updown-handover": "node scripts/live-updown-handover.mjs",
+    "qa:updown-handover-widths": "node scripts/live-updown-handover-widths.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

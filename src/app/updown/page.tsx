@@ -203,6 +203,11 @@ export default async function UpDownPage({
                 serverNowMs={r.serverNowMs}
                 expectedResultAtMs={/* E-99 · null under the sample floor → no clock, never a
                                         guessed one. */ r.expectedResultAtMs}
+                /* ⭐ E-166 · what this card says once its round is finished. The instants are
+                   the SERVER's — the chain's own next boundary and the successor market's own
+                   lock — so the card never invents "when does the next match start". */
+                resolvedAtMs={r.resolvedAtMs}
+                successor={r.successor}
                 myExactPayout={r.myExactPayout}
                 myPayoutIfUp={r.myPayoutIfUp}
                 myPayoutIfDown={r.myPayoutIfDown}
