@@ -99,7 +99,7 @@ async function grant() {
     rec.check("the grant ledger is no longer empty — the row exists, not just the label",
               !/no bonuses granted yet/i.test(txt), txt.slice(0, 200));
     await shot(page, "bonus-grant-after");
-    console.log(`\n  ⛔ Now read the ROW, not this page:\n     KP_REPO=F:/kipindi-main node scripts/live/ops/bonus-census.cjs ${PLAYER}\n`);
+    console.log(`\n  ⛔ Now read the ROW, not this page:\n     node scripts/live/ops/bonus-census.cjs ${PLAYER}\n`);
   } finally { await ctx.close(); await b.close(); }
 }
 
@@ -281,5 +281,5 @@ const CMDS = { grant, warn, first, hedge, cancel };
 if (!CMDS[CMD]) throw new Error(`unknown command "${CMD}" — ${Object.keys(CMDS).join(" | ")}`);
 await CMDS[CMD]();
 console.log(`\n  ⛔ Read the GRANT ROW, not this page:`);
-console.log(`     KP_REPO=F:/kipindi-main node scripts/live/ops/bonus-census.cjs ${PLAYER}\n`);
+console.log(`     node scripts/live/ops/bonus-census.cjs ${PLAYER}\n`);
 rec.done();

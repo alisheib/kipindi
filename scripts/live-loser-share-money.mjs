@@ -186,5 +186,5 @@ const good = placed.filter((p) => p.ok).length;
 console.log(`\n${good}/${placed.length} bets placed`);
 for (const p of placed) if (p.label) console.log(`   fleet:${p.idx} ${p.side} saw "${p.label}"`);
 console.log(`\n⛔ THE DOM IS NOT THE PROOF. Wait for the round to settle, then:`);
-console.log(`   KP_REPO=F:/kipindi-main node scripts/live/ops/loser-share-settled.cjs`);
+console.log(`   node scripts/live/ops/loser-share-settled.cjs`);
 process.exit(good === placed.length ? 0 : 1);

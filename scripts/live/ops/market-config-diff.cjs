@@ -2,8 +2,8 @@
 /**
  * market-config-diff.cjs — snapshot the LIVE `market.config` and diff two snapshots.
  *
- *   KP_REPO=F:/kipindi-main node scripts/live/ops/market-config-diff.cjs save before
- *   KP_REPO=F:/kipindi-main node scripts/live/ops/market-config-diff.cjs diff before after
+ *   node scripts/live/ops/market-config-diff.cjs save before
+ *   node scripts/live/ops/market-config-diff.cjs diff before after
  *
  * ⛔ WHY THIS EXISTS. `/admin/config` posts EVERY field, and `persist()` writes the whole
  * config snapshot — so a save intended to change one number rewrites all of them from whatever
@@ -19,7 +19,7 @@
  */
 const fs = require("node:fs");
 const path = require("node:path");
-const { Client } = require(path.join(process.env.KP_REPO || "F:/kipindi-main", "node_modules", "pg"));
+const { Client } = require(path.join(process.env.KP_REPO || path.resolve(__dirname, "..", "..", ".."), "node_modules", "pg"));
 
 for (const line of fs.readFileSync(path.join(__dirname, ".env"), "utf8").split("\n")) {
   const i = line.indexOf("=");

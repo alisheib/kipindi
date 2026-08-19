@@ -3,7 +3,7 @@
  * bonus-census.cjs — READ-ONLY. Every bonus grant on production, and the turnover each has
  * actually accrued.
  *
- *   KP_REPO=F:/kipindi-main node scripts/live/ops/bonus-census.cjs [phoneSuffix]
+ *   node scripts/live/ops/bonus-census.cjs [phoneSuffix]
  *
  * ⭐ WHY THIS EXISTS. `docs/RULES.md` §2.5 — *only one side of a market counts toward a bonus
  * requirement* — has carried a ⏳ for one reason: **production has ZERO grants**, so the rule
@@ -19,7 +19,7 @@
  */
 const fs = require("node:fs");
 const path = require("node:path");
-const { Client } = require(path.join(process.env.KP_REPO || "F:/kipindi-main", "node_modules", "pg"));
+const { Client } = require(path.join(process.env.KP_REPO || path.resolve(__dirname, "..", "..", ".."), "node_modules", "pg"));
 
 for (const line of fs.readFileSync(path.join(__dirname, ".env"), "utf8").split("\n")) {
   const i = line.indexOf("=");

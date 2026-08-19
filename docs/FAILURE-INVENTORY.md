@@ -1029,6 +1029,16 @@ writes `nextBoundaryAt = null` for both PAUSED and STOPPED and recomputes a fres
 resume. **A pause can never leave a stale boundary — and stop→start was therefore always a
 complete manual remedy, which nothing said out loud.**
 
+> ⭐ **AND NOTHING COULD SAY IT, WHICH IS THE REST OF THIS STORY (added 2026-08-19, session 50, `E-168`).** The remedy was a manual
+> console gesture with **no instrument behind it**: this repo shipped `ops-updown-pause-chains.mts` and `ops-stop-updown-chains.mts`
+> and nothing that started a chain again. So the two chains stopped above stayed stopped — **BTC/USD 3m for 35.2h and ETH/USD 3m for
+> 3.9 days** — and the census excluded them by design for every hour of it. `npm run ops:updown-resume-chains` is now the bottom rung:
+> it goes through the same `setChainState`, pre-flights all three start refusals in a dry run, and flushes the audit queue (E-66).
+> Both chains were resumed with it and each opened and settled a round within five minutes (**83.1s / 82.9s** settle lag).
+>
+> ⛔ **A REMEDY THAT EXISTS ONLY AS A SENTENCE IN A POST-MORTEM IS NOT A REMEDY.** The line above was written, correct, and read by at
+> least one later session — and the chains were still dead four days later.
+
 #### Why exactly those two chains, and how exposed the rest were
 
 Exactly **two rounds platform-wide** carry `boundaryAt = 2026-08-15 21:28:00` — BTC/USD 3m #887

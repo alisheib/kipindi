@@ -2,7 +2,7 @@
 /**
  * rates-census.cjs — READ-ONLY. What the LIVE platform actually charges, and where.
  *
- *   KP_REPO=F:/kipindi-main node scripts/live/ops/rates-census.cjs
+ *   node scripts/live/ops/rates-census.cjs
  *
  * ⛔ A CODE DEFAULT IS NOT A LIVE SETTING. Every number below is read from the persisted
  * SystemConfig rows and from the per-chain / per-market frozen snapshots — never from a
@@ -18,7 +18,7 @@
  */
 const fs = require("node:fs");
 const path = require("node:path");
-const { Client } = require(path.join(process.env.KP_REPO || "F:/kipindi-main", "node_modules", "pg"));
+const { Client } = require(path.join(process.env.KP_REPO || path.resolve(__dirname, "..", "..", ".."), "node_modules", "pg"));
 
 for (const line of fs.readFileSync(path.join(__dirname, ".env"), "utf8").split("\n")) {
   const i = line.indexOf("=");

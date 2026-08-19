@@ -2,7 +2,7 @@
 /**
  * handover-gap-census.cjs — READ-ONLY. When round N settles, where is round N+1?
  *
- *   KP_REPO=F:/kipindi-main node scripts/live/ops/handover-gap-census.cjs
+ *   node scripts/live/ops/handover-gap-census.cjs
  *
  * ⭐ WHY THIS EXISTS. The handover feature (round N ends → round N+1 takes the screen) was
  * briefed around a countdown — *"NEXT MATCH IN 0:47"*. Whether that countdown is the common
@@ -30,7 +30,7 @@
  */
 const fs = require("node:fs");
 const path = require("node:path");
-const { Client } = require(path.join(process.env.KP_REPO || "F:/kipindi-main", "node_modules", "pg"));
+const { Client } = require(path.join(process.env.KP_REPO || path.resolve(__dirname, "..", "..", ".."), "node_modules", "pg"));
 
 for (const line of fs.readFileSync(path.join(__dirname, ".env"), "utf8").split("\n")) {
   const i = line.indexOf("=");

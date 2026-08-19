@@ -3,7 +3,7 @@
  * db-load-sample.cjs — READ-ONLY. Transactions per second against the LIVE database,
  * sampled over a window, from `pg_stat_database`.
  *
- *   KP_REPO=F:/kipindi-main node scripts/live/ops/db-load-sample.cjs [seconds]
+ *   node scripts/live/ops/db-load-sample.cjs [seconds]
  *
  * ⭐ WHY THIS EXISTS (2026-08-14). `armChain` re-arms a fired chain with `minDelayMs: 0`,
  * and computes `delay = 0` whenever the boundary is already in the past — which it always
@@ -22,7 +22,7 @@
  */
 const fs = require("node:fs");
 const path = require("node:path");
-const { Client } = require(path.join(process.env.KP_REPO || "F:/kipindi-main", "node_modules", "pg"));
+const { Client } = require(path.join(process.env.KP_REPO || path.resolve(__dirname, "..", "..", ".."), "node_modules", "pg"));
 
 for (const line of fs.readFileSync(path.join(__dirname, ".env"), "utf8").split("\n")) {
   const i = line.indexOf("=");

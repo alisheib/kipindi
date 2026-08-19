@@ -2,7 +2,7 @@
 /**
  * loser-share-settled.cjs — READ-ONLY. A4's three questions, asked of PRODUCTION.
  *
- *   KP_REPO=F:/kipindi-main node scripts/live/ops/loser-share-settled.cjs
+ *   node scripts/live/ops/loser-share-settled.cjs
  *
  * A2 moved Up & Down to `loser-share` on 2026-08-14 13:06. A4 asks what that did to real
  * money, on real rounds — not on a fixture:
@@ -27,7 +27,7 @@
  */
 const fs = require("node:fs");
 const path = require("node:path");
-const { Client } = require(path.join(process.env.KP_REPO || "F:/kipindi-main", "node_modules", "pg"));
+const { Client } = require(path.join(process.env.KP_REPO || path.resolve(__dirname, "..", "..", ".."), "node_modules", "pg"));
 for (const l of fs.readFileSync(path.join(__dirname, ".env"), "utf8").split("\n")) {
   const i = l.indexOf("="); if (i > 0) process.env[l.slice(0, i)] = l.slice(i + 1).trim();
 }

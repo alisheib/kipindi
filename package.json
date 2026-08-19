@@ -223,6 +223,7 @@
     "ops:updown-verify-source": "tsx scripts/ops-updown-verify-source.mts",
     "ops:updown-source-drift": "tsx scripts/audit-updown-source-drift.mts",
     "ops:updown-pause-chains": "tsx scripts/ops-updown-pause-chains.mts",
+    "ops:updown-resume-chains": "tsx scripts/ops-updown-resume-chains.mts",
     "ops:updown-void-stuck": "tsx scripts/ops-updown-void-stuck-rounds.mts",
     "ops:ai-budget-live-check": "tsx scripts/ops-ai-budget-live-check.mts",
     "ops:updown-open-guard": "node scripts/ops-updown-open-guard.mjs",

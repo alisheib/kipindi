@@ -76,7 +76,7 @@ async function windowCmd() {
       await page.waitForTimeout(250);
     }
     await shot(page, `config-objection-${OBJ}`);
-    console.log(`\n  ⛔ Now DIFF the whole config, not just this field:\n     KP_REPO=F:/kipindi-main node scripts/live/ops/market-config-diff.cjs diff before live\n`);
+    console.log(`\n  ⛔ Now DIFF the whole config, not just this field:\n     node scripts/live/ops/market-config-diff.cjs diff before live\n`);
   } finally { await ctx.close(); await b.close(); }
 }
 

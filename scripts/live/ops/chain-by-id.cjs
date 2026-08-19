@@ -4,7 +4,7 @@
  * last rounds and its last observations. The follow-up to `chain-stall-census.cjs` once that
  * has named a chain worth looking at.
  *
- *   KP_REPO=F:/kipindi-main node scripts/live/ops/chain-by-id.cjs udc_xxxxxxxx
+ *   node scripts/live/ops/chain-by-id.cjs udc_xxxxxxxx
  *
  * 🔴 EVERY TIMESTAMP IS `::text`. Prisma maps `DateTime` to `timestamp` WITHOUT time zone and
  * node-postgres parses a naive timestamp in the CLIENT's zone — on a laptop in EAT that is a
@@ -16,7 +16,7 @@
  */
 const fs = require("node:fs");
 const path = require("node:path");
-const { Client } = require(path.join(process.env.KP_REPO || "F:/kipindi-main", "node_modules", "pg"));
+const { Client } = require(path.join(process.env.KP_REPO || path.resolve(__dirname, "..", "..", ".."), "node_modules", "pg"));
 
 for (const line of fs.readFileSync(path.join(__dirname, ".env"), "utf8").split("\n")) {
   const i = line.indexOf("=");

@@ -27,7 +27,7 @@ rewrite happened**, refusing to write a file that still points at the internal h
 Every script loads `./.env` from this directory and takes `KP_REPO` for its `pg` import:
 
 ```bash
-KP_REPO=F:/kipindi-main node scripts/live/ops/census.cjs
+node scripts/live/ops/census.cjs
 ```
 
 | Script | Answers | The trap it encodes |

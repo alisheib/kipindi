@@ -101,7 +101,7 @@ recomputes a fresh `nextBoundaryAt` on resume, and E-167's fix means a late bar 
 them. Then **watch one full round open and settle** before trusting anything else.
 
 ```bash
-KP_REPO=F:/kipindi-main node scripts/live/ops/chain-stall-census.cjs   # 0 bricked, and now 0 stopped-with-a-stale-boundary
+node scripts/live/ops/chain-stall-census.cjs   # 0 bricked, and now 0 stopped-with-a-stale-boundary
 ```
 
 **② Mint a real fleet.** ⛔ **Ali has asked for this twice, and the harness itself admits the gap:**
