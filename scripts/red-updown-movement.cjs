@@ -72,14 +72,20 @@ const MUTATIONS = [
   {
     name: "the server write path stops passing the movement record (console greys, server accepts)",
     file: CONFIG,
-    find: `  const durationErr = validateSymbolDuration(asset.symbol, input.durationMinutes, measured, movement);`,
-    with: `  const durationErr = validateSymbolDuration(asset.symbol, input.durationMinutes, measured);`,
+    // ⚠️ RE-ANCHORED 2026-08-15 — the gate wrapped when the playbook axis was added. The
+    // DEFECT is unchanged: drop the movement record and the server takes a pairing the console
+    // greys. Same drift, and the same two call sites, that stranded five of red:updown-readiness.
+    find: `    asset.symbol, input.durationMinutes, measured, movement, toReadinessAdvice(playbook),`,
+    with: `    asset.symbol, input.durationMinutes, measured, undefined, toReadinessAdvice(playbook),`,
   },
   {
     name: "the console stops passing it, so a greyed option and the server disagree",
     file: CONSOLE,
-    find: `const r = symbolReadiness(findSymbol(a.symbol), d, feed?.advise(a.key, d), feed?.movement(a.key, d));`,
-    with: `const r = symbolReadiness(findSymbol(a.symbol), d, feed?.advise(a.key, d));`,
+    // ⚠️ RE-ANCHORED 2026-08-15 — the call gained the playbook axis and wrapped across two lines.
+    find: `const r = symbolReadiness(findSymbol(a.symbol), d, feed?.advise(a.key, d), feed?.movement(a.key, d),
+                      toReadinessAdvice(book?.choice(a.symbol, d, findSymbol(a.symbol)?.minDurationMinutes ?? null)));`,
+    with: `const r = symbolReadiness(findSymbol(a.symbol), d, feed?.advise(a.key, d),
+                      undefined);`,
   },
   {
     name: "an UNMEASURED movement verdict is pinned to every option as a warning",

@@ -1,5 +1,58 @@
 # Changelog (reconstructed)
 
+## 2026-08-15 (design-system · filter-sheet) — the phone's filters move behind one button, and `position: fixed` turned out not to be
+
+**New component: `FilterSheet` + `FilterSheetGroup`** (`src/components/markets/filter-sheet.tsx`).
+Below `lg`, `/markets`' **odds, pool and topic** render inside a `<details>` bottom sheet with a
+scrim, behind one `Filters` button. The sticky filter bar went **214px → 116px** at 360×780,
+measured in **both** Swahili and Chinese (448px was the wrapped original; 214 the stacked one).
+
+**It picks rungs rather than composing them.** `.mat-modal` (rung 3), `.m-sheet-in` and `.m-scrim`
+— the same material and motion the shared `<Modal sheet>` uses. No new wash, no new shadow, no new
+keyframe. Geometry only in `globals.css`. `FilterPill` is unchanged: only its container is new,
+and topic arrives there as pills on the kit's `1fr 1fr` grid.
+
+⛔ **Sort and status stay in the bar at EVERY width**, per COMPONENTS §21: *"they answer the first
+two questions a punter has and must never cost a tap."* 🔴 The first build put sort inside the
+sheet, following PLAN-OF-RECORD §8.8 — which the kit contradicts in four separate documents. §8.8
+is corrected, and `red:filter-language` case 17 now reintroduces the drift and catches it. Nothing
+else would have: that build passed every gate, every probe and every screenshot.
+
+🔴 **`position: fixed` is not viewport-fixed inside page content.** Measured on the first build at
+360×780, the panel reported **`top: -32px`, `bottom: 608px`** — heading above the top of the
+screen, sheet floating 172px clear of the bottom, and a `position: fixed; inset: 0` scrim covering
+neither end, on a dialog claiming `aria-modal="true"`. `.route-enter` is
+`animation: m-settle-in … both`, and a `both` fill retains the final keyframe's transform for
+ever, so the page-transition wrapper is the containing block for every fixed descendant on every
+route. ⭐ This is why the shared `<Modal>` portals to `document.body` — and why nothing had hit it
+before: the sheet is the first fixed element that must live inside page content, because it must
+open with **no JavaScript** and a portal cannot. ⛔ `transform: none` does not undo it (an
+animation's applied value beats a normal declaration); the rule drops the animation, scoped to
+while a sheet is open.
+
+**The behaviour contract is the shipped `<Modal>`'s, not the kit's drawing** — Escape, focus trap,
+focus RETURN, `useModalLock`, an inert scrim. Including its hard-won detail: the focus effect
+depends on `[open]` **alone**. `<Modal>`'s once depended on `onClose` too, and because every caller
+passed a fresh inline arrow it re-ran on every render and dragged focus onto the primary button —
+once a second on the bet-confirm dialog, whose countdown ticks, so a keyboard user who tabbed to
+Cancel had focus pulled onto Confirm. On a money dialog.
+
+**`.pchart-range` 40 → 44px** (Ali's ruling, 2026-08-14): the eighth filter control now stands at
+the height of the other seven rails. A **literal**, because `--tap-min` is 40 and would silently
+revert it, and `--h-input: 44px` is named for inputs.
+
+🔴 **Three instruments were wrong before the product was.** A "≥90% visible" ratio passed at
+**95%** over the broken layout above — a ratio is not the requirement, so it now asserts the panel
+docks to the window bottom and that none of it is above the top. A flat 300ms timeout reported a
+keyframe as a layout. And **a rect is not visibility**: a chip inside a CLOSED `<details>` reports
+`display: flex`, `visibility: visible`, `content-visibility: visible` and a real **81×44 box** —
+Chrome hides disclosure content through the `::details-content` slot, which shows in none of them.
+`qa:filter-scan` uses `checkVisibility()`, opens the sheet, and reports what it skipped.
+
+**Guards:** `test:filter-language` **66 → 91** assertions (§5 is new) · `red:filter-language`
+**8/8 → 17/17** · `qa:discovery-board` opens the sheet at 360 in sw + zh · `qa:tap-hit` opens the
+chart's collapsed panel and walks `elementFromPoint` across the rail at 4 widths.
+
 ## 2026-08-14 (design-system · filter-pill) — eight filter rails, one control, and the reference was breaking its own law
 
 **New component: `FilterPill` + `FilterGroupKey`** (`src/components/ui/filter-pill.tsx`, spec at

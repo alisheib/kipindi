@@ -21,6 +21,7 @@ import { I } from "@/components/ui/glyphs";
 import { cn } from "@/lib/utils";
 import { haptics } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
+import { subscribeResultModal } from "@/lib/result-modal-presence";
 
 /**
  * ⭐ `factual` states something that is neither good news, a warning, nor an error — see
@@ -94,15 +95,15 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     timersRef.current.set(id, setTimeout(() => dismiss(id), meta.remaining));
   }, [dismiss]);
 
-  const toast = React.useCallback((input: ToastInput) => {
-    const id = `t_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    const next: Toast = {
-      ...input,
-      id,
-      createdAt: Date.now(),
-      durationMs: input.durationMs ?? DEFAULT_DURATION,
-      variant: input.variant ?? "default",
-    };
+  /**
+   * Put a toast on screen: stack it, punctuate it, arm its countdown.
+   *
+   * ⭐ Factored out of `toast()` so a HELD toast is presented by the SAME code path when the
+   * modal closes. A separate "flush" that re-implemented stacking would be a second definition
+   * of the flood guard and the haptic rule — and the flushed toast is the money-path failure,
+   * i.e. the one that must least of all behave differently.
+   */
+  const present = React.useCallback((next: Toast) => {
     setToasts((prev) => {
       const merged = [...prev, next];
       // Flood guard: when more than MAX_VISIBLE pile up, drop the oldest — and
@@ -130,12 +131,66 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     }
     // Sticky (durationMs 0): no countdown at all — dismiss is the user's act.
     if (next.durationMs! > 0) {
-      metaRef.current.set(id, { remaining: next.durationMs!, start: Date.now() });
-      const tm = setTimeout(() => dismiss(id), next.durationMs);
-      timersRef.current.set(id, tm);
+      metaRef.current.set(next.id, { remaining: next.durationMs!, start: Date.now() });
+      const tm = setTimeout(() => dismiss(next.id), next.durationMs);
+      timersRef.current.set(next.id, tm);
     }
-    return id;
   }, [dismiss]);
+
+  /* ── §F1 · WHILE A RESULT MODAL IS UP, THE SECONDARY SIGNAL WAITS ITS TURN ──────────────
+   *
+   * At 360px the toast stack covers the bet receipt's CREST for the toast's first 3 seconds.
+   * At 768 and above there is room for both, which is exactly why it survived: the two fire
+   * together by design and only the narrowest viewport — the one most players are on — collides.
+   *
+   * 🔴 THE FIRST IMPLEMENTATION OF THIS WAS WRONG, AND ONLY THE FRAME SAID SO. It asked
+   * `isResultModalOpen()` INSIDE `toast()` and queued the toast if a modal was up. Every static
+   * assertion passed and `red:feedback-law` caught all three mutations — and driving a real bet
+   * at 360 in all three languages showed the toast on screen over the receipt anyway. The
+   * quick-bet fires its toast in the same commit that mounts the modal, and presence is
+   * registered from an EFFECT, so at the moment `toast()` ran the modal was not open yet. A
+   * check whose answer depends on which effect ran first is a coin flip, and it landed the same
+   * way every time, which is what made it look like a working fix.
+   *
+   * ⭐ SO IT IS REACTIVE, NOT A DECISION TAKEN AT ARRIVAL TIME. Toasts are stacked exactly as
+   * before; the VIEWPORT holds them back while a modal is up, and their countdowns pause and
+   * resume through the same `pause`/`resume` the hover behaviour already uses. Ordering cannot
+   * matter, because there is no instant at which the answer is captured.
+   *
+   * ⛔ NOTHING IS DROPPED, BY CONSTRUCTION. A held toast never leaves `toasts` — it is not
+   * queued somewhere else and re-presented, it simply is not painted yet, and its timer is not
+   * running while it is unseen. A sticky money-path failure (`durationMs: 0`, the shape UD-3
+   * requires so a refusal stays until read) has no timer to pause and is untouched.
+   *
+   * ⛔ AND NOT A Z-INDEX CHANGE: toasts sit above modals deliberately, so a failure fired during
+   * a CONFIRM dialog stays readable. Only a RESULT modal stands the toast down.
+   */
+  const [resultModalOpen, setResultModalOpen] = React.useState(false);
+  // ⚠️ Subscribed once, for the life of the provider: a subscription tied to a modal's own
+  // lifetime would be torn down by the very unmount it needs to react to.
+  React.useEffect(() => subscribeResultModal(setResultModalOpen), []);
+
+  // Pause every countdown while the modal is up; resume them all when it closes. Reusing the
+  // hover machinery means a held toast gets its FULL dwell once it is actually on screen —
+  // banking the remaining time is exactly what `pause` already does.
+  React.useEffect(() => {
+    const ids = toasts.map((t) => t.id);
+    if (resultModalOpen) for (const id of ids) pause(id);
+    else for (const id of ids) resume(id);
+  }, [resultModalOpen, toasts, pause, resume]);
+
+  const toast = React.useCallback((input: ToastInput) => {
+    const id = `t_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const next: Toast = {
+      ...input,
+      id,
+      createdAt: Date.now(),
+      durationMs: input.durationMs ?? DEFAULT_DURATION,
+      variant: input.variant ?? "default",
+    };
+    present(next);
+    return id;
+  }, [present]);
 
   React.useEffect(() => {
     const timers = timersRef.current;
@@ -152,7 +207,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastCtx.Provider value={value}>
       {children}
-      <ToastViewport toasts={toasts} exiting={exiting} onDismiss={dismiss} onPause={pause} onResume={resume} />
+      <ToastViewport toasts={toasts} exiting={exiting} held={resultModalOpen} onDismiss={dismiss} onPause={pause} onResume={resume} />
     </ToastCtx.Provider>
   );
 }
@@ -273,8 +328,13 @@ const variantStyles: Record<ToastVariant, { bar: string; icon: React.ReactNode; 
   },
 };
 
-function ToastViewport({ toasts, exiting, onDismiss, onPause, onResume }: { toasts: Toast[]; exiting: string[]; onDismiss: (id: string) => void; onPause: (id: string) => void; onResume: (id: string) => void }) {
+function ToastViewport({ toasts, exiting, held, onDismiss, onPause, onResume }: { toasts: Toast[]; exiting: string[]; held: boolean; onDismiss: (id: string) => void; onPause: (id: string) => void; onResume: (id: string) => void }) {
   const { t } = useT();
+  // ⭐ §F1 · HELD, NOT DISCARDED. The stack still holds every toast and their countdowns are
+  // paused, so nothing is lost and nothing expires unseen — the primary signal simply owns the
+  // screen until it is dismissed. ⛔ Returning null here rather than restacking z-index keeps
+  // the ordering that lets a failure fired during a CONFIRM dialog stay readable.
+  if (held) return null;
   return (
     <div
       role="region"

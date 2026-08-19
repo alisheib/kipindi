@@ -345,7 +345,7 @@ export function MarketCard({
 
       {/* `noPrice`, not `fresh` — a centred bar on an empty pool reads as "contested",
           which is a claim about a crowd that is not there. */}
-      <TippingBar yesPct={yesPct} height={7} resolved={isResolved} showLabels={false} recastOnHover={false} empty={noPrice} emptyLabel={t.market.noBetsYet} />
+      <TippingBar yesPct={yesPct} height={7} resolved={isResolved} showLabels={false} recastOnHover={false} empty={noPrice} emptyLabel={t.market.noBetsYet} probabilityLabel={t.market.probBarAria} />
       {noPrice && <div className="mcardp-nobets">{t.market.noBetsYet}</div>}
 
       {showSpark && <Spark data={spark!} />}

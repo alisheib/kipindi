@@ -22,19 +22,32 @@
  * email (no ZH variant exists there by decision). Those pass through unchanged.
  */
 import type { Dict } from "@/lib/i18n-dict";
+import { hasReason, renderFailure, type FailureReason, type FailureDetail } from "@/lib/failure-reasons";
+import { formatTzs } from "@/lib/utils";
 
 export type ActionFailure = {
   code?: string;
   error?: string;
   retryAfterSec?: number;
+  /** The machine reason, when the service emits one. Beats every phrase test below. */
+  reason?: string;
+  /** The figures, as NUMBERS. Never parsed back out of `error`. */
+  detail?: FailureDetail;
 };
 
-/** Extract "TZS 1,234" style figures from a service string, in order. */
-function tzsFigures(s: string): string[] {
-  return s.match(/TZS\s?[\d,]+/g) ?? [];
-}
-
 export function errorCopy(t: Dict, r: ActionFailure): string {
+  // ⭐ THE REGISTRY FIRST, AND THIS IS WHAT LETS A PHRASE TEST BE DELETED RATHER THAN LEFT
+  // BESIDE ITS REPLACEMENT. Once a service says WHY in a machine token, nothing below needs to
+  // guess it back out of English prose — same row, same copy, same figures as `renderFailure`
+  // hands every other surface, so the two mappers cannot drift into two wordings for one refusal.
+  if (hasReason(r)) {
+    return renderFailure(
+      { ok: false, error: r.error ?? "", code: r.code, reason: r.reason as FailureReason, detail: r.detail, retryAfterSec: r.retryAfterSec },
+      t.error as unknown as Record<string, string>,
+      t.error.somethingDidntWork,
+      formatTzs,
+    ).body;
+  }
   const err = r.error ?? "";
   switch (r.code) {
     case "RATE_LIMITED":
@@ -57,16 +70,11 @@ export function errorCopy(t: Dict, r: ActionFailure): string {
       return t.error.errAvatarType;
     case "AVATAR_SIZE":
       return t.error.errAvatarSize;
-    case "DOC_IMAGE":
-      return t.error.errDocImage;
-    case "DOC_TOO_LARGE":
-      return t.error.errDocTooLarge;
-    case "DOCS_LOCKED":
-      return t.error.errDocsLocked;
-    case "NO_EXTRA_REQUEST":
-      return t.error.errNoExtraRequest;
-    case "NIDA_TAKEN":
-      return t.error.errNidaTaken;
+    // ⛔ FIVE DEAD ARMS WERE DELETED HERE (2026-08-15): DOC_IMAGE, DOC_TOO_LARGE, DOCS_LOCKED,
+    // NO_EXTRA_REQUEST and NIDA_TAKEN. Measured: no service or action anywhere emits any of
+    // those codes — `kyc-service.ts` returns INVALID and says which refusal it is through the
+    // `reason`, which `renderFailure` reads. The dictionary lines they returned are still live
+    // and still reached, through the registry rather than through this switch.
     case "PW_CURRENT_WRONG":
       return t.error.errPwCurrentWrong;
     case "PW_WEAK":
@@ -83,25 +91,54 @@ export function errorCopy(t: Dict, r: ActionFailure): string {
     case "INVALID": {
       // Bilingual EN·SW gateway copy passes through (see header).
       if (err.includes("·")) return err;
-      if (/deposit limit .* exceeded|deposit limit reached/i.test(err)) return t.error.errDepositLimit;
-      if (/loss limit/i.test(err)) return t.error.errLossLimit;
-      if (/source.of.funds|source-of-funds/i.test(err)) return t.error.errSofRequired;
-      if (/verify your identity/i.test(err)) return t.error.errVerifyIdentity;
-      if (/smallest amount we can send/i.test(err)) {
-        const figs = tzsFigures(err);
-        if (figs.length >= 2) {
-          return t.error.errWithdrawMin.replace("{net}", figs[0]).replace("{min}", figs[1]);
-        }
-      }
-      // KYC families (kyc-service keeps one code; the strings are stable).
-      if (/National ID is already linked/i.test(err)) return t.error.errNidaTaken;
-      if (/JPG, PNG, or WebP|Empty image/i.test(err)) return t.error.errDocImage;
-      if (/Image too large|under 3 MB/i.test(err)) return t.error.errDocTooLarge;
-      if (/locked while your submission/i.test(err)) return t.error.errDocsLocked;
-      if (/No extra documents/i.test(err)) return t.error.errNoExtraRequest;
-      if (/NIDA not yet verified/i.test(err)) return t.error.errNidaNotVerified;
-      if (/All three documents required/i.test(err)) return t.error.errDocsRequired;
-      if (/requested document(s)? before submitting/i.test(err)) return t.error.errExtraDocsRequired;
+      // ⛔ THREE PHRASE TESTS WERE DELETED HERE, and their services now emit a `reason`:
+      //   · `deposit limit … exceeded`      → wallet-service, reason "deposit_limit"
+      //   · `source.of.funds`               → wallet-service, reason "sof_required"
+      //   · `smallest amount we can send`   → wallet-service, reason "withdraw_below_min"
+      // The last one took `tzsFigures` with it — a regex that pulled "TZS 1,234" figures OUT OF
+      // THE ENGLISH SENTENCE and fed match[0] into {net} and match[1] into {min}. A reworded
+      // sentence, a third TZS figure, or a translated one and the player got the wrong number,
+      // or a literal "{net}", on a money screen. The figures are `detail` numbers now.
+      // ⛔ Do not re-add a phrase test for any of the three: a reason beats prose, and two
+      // routes to one refusal is how they drift apart.
+      //
+      // ⭐ AND THE LAST ONE IS GONE TOO (2026-08-15). A phrase test on the RG daily-loss
+      // sentence stood here — the FINAL INVALID family recovered from English prose.
+      // `docs/RULES.md` §2.9 carried a ⏳ naming it, and this file's own comment above said its
+      // service "has not been taught to emit a reason yet".
+      //
+      // ⛔ THE DELETED PATTERN IS DELIBERATELY NOT QUOTED IN THIS COMMENT. `red:failure-reasons`
+      // anchors its mutations on exact source text, and the first draft of this note pasted the
+      // old `if (…) return …` line in verbatim — so the harness happily found its anchor INSIDE
+      // the comment, mutated prose, changed no behaviour, and reported the guard as having
+      // missed a defect that no longer exists. A comment that quotes deleted code is a decoy
+      // anchor; `red-anchor.mjs`'s uniqueness rule cannot see the difference.
+      //
+      // ⛔ THAT WAS NOT TRUE WHEN IT WAS WRITTEN, AND THAT IS THE FINDING. `checkLossLimit`
+      // has exactly ONE caller (`market-service.ts` `buyPosition`), and that caller has
+      // returned `reason: "loss_limit_daily"` since `19ac78ec` (2026-08-14 17:59) — the same
+      // commit that built this registry. So from that hour there were TWO live routes to one
+      // refusal: the reason, and this phrase test underneath it. The prose route was already
+      // dead code the day the ⏳ was written to describe it, and a marker that names a gap
+      // which has been closed costs the next session the time to re-find that.
+      //
+      // ⚠️ THE TWO ROUTES DID NOT EVEN AGREE. `errLossLimit` said *"This would pass a loss
+      // limit you set"*; the registry's `failLossLimitDaily` says *"You've reached the daily
+      // loss limit you set. It resets tomorrow"* — which names WHICH limit and WHEN it lifts.
+      // Two sentences for one refusal, drifting, exactly as §7 predicts. `errLossLimit` is
+      // deleted from all three languages rather than left as a second definition.
+      //
+      // ⛔ AND THE WHOLE KYC BLOCK IS GONE — eight phrase tests, replaced by reasons that
+      // `kyc-service.ts` now emits at the same eight sites: nida_taken · doc_image_type ·
+      // doc_too_large · docs_locked · no_extra_request · nida_not_verified · docs_required ·
+      // extra_docs_required.
+      //
+      // 🔴 THOSE EIGHT WERE THE LAST ROUTE. `REASON_BY_CODE` maps DOC_IMAGE, DOC_TOO_LARGE,
+      // DOCS_LOCKED, NIDA_TAKEN and NO_EXTRA_REQUEST — and measuring it 2026-08-15 found that
+      // **no service anywhere emitted any of those five codes**. `kyc-service.ts` emits only
+      // INVALID, NOT_FOUND and RATE_LIMITED. So those registry rows were unreachable and every
+      // KYC refusal in front of a player was arriving through the phrase tests below and
+      // nothing else. Now the service says which, and the code stays INVALID for the API.
       return t.error.errInvalid;
     }
     default:

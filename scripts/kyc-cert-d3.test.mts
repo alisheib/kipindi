@@ -109,8 +109,26 @@ ok("…and the attempt is audited rather than dropped",
   /sof\.overwrite_blocked/.test(submit),
   "A player trying to change an accepted source-of-funds story is exactly the\n" +
   "       signal an AML officer wants to see.");
-ok("the refusal tells the player what to do next",
-  /Contact support/i.test(submit));
+// ⭐ RE-POINTED 2026-08-15. This used to grep the ACTION SOURCE for "Contact support", which
+// stopped being true the moment the refusal started travelling as a reason KEY instead of as an
+// English sentence — the C2 banner tranche. Grepping the action for player copy was always the
+// weaker check anyway: it asserted what the SOURCE FILE contains, not what the PLAYER READS, and
+// it could only ever pass in English. Follow the reason to the dictionary instead, in all three
+// languages, which is the thing the assertion was actually about.
+ok("the refusal carries a machine reason rather than prose",
+  /fail\("sof_locked"\)/.test(submit),
+  "The action redirects with ?reason=; the page resolves it through the registry.");
+{
+  const dict = read("src/lib/i18n-dict.ts");
+  const lines = dict.split("\n").filter((l) => /^\s*errSofLocked:/.test(l));
+  ok("…and the copy exists in all three languages", lines.length === 3, `${lines.length} definitions`);
+  // ⛔ "What to do next" is the point of the rule (RULES.md §2.9), so assert each language
+  // actually says it — not merely that a key exists.
+  const NEXT_STEP = [/contact support/i, /wasiliana na msaada/i, /联系客服/];
+  ok("…and every one of them names the next step",
+    NEXT_STEP.every((re) => lines.some((l) => re.test(l))),
+    lines.map((l) => l.trim().slice(0, 40)).join(" | "));
+}
 ok("PENDING and REJECTED remain editable",
   !/reviewStatus === "PENDING"/.test(submit.replace(/reviewStatus: "PENDING"/g, "")),
   "A player must be able to correct a rejected declaration, and MORE_INFO puts the\n" +

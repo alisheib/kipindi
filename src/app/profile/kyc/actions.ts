@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
 import { startKyc, submitNidaStep, attachDocument, attachExtraDocument, submitForReview } from "@/lib/server/kyc-service";
 import { getServerT } from "@/lib/i18n-server";
-import { errorCopy } from "@/lib/error-copy";
+import { reasonKeyFor } from "@/lib/failure-banner";
 
 /**
  * Player explicitly restarts a REJECTED submission.
@@ -47,10 +47,12 @@ export async function submitNidaAction(formData: FormData) {
   // Carry form values through the error redirect so the player doesn't
   // have to re-type a 20-digit NIDA number + full name on validation failure.
   if (!result.ok) {
-    // B-7 — the page renders this verbatim; mint it in the player's language.
-    const { t } = await getServerT();
+    // ⛔ THE KEY, NOT THE SENTENCE. This used to mint the localized copy HERE and put the
+    // finished sentence on the query string. That was already better than raw prose, but it
+    // still meant the page rendered whatever `?error=` said — so any text could be shown to a
+    // signed-in player by handing them a link. The page resolves the key itself now.
     const carry = `&nida=${encodeURIComponent(nida)}&fullName=${encodeURIComponent(fullName)}&dob=${encodeURIComponent(dob)}${emailStr ? `&email=${encodeURIComponent(emailStr)}` : ""}`;
-    redirect(`/profile/kyc?error=${encodeURIComponent(errorCopy(t, result))}${carry}`);
+    redirect(`/profile/kyc?reason=${encodeURIComponent(reasonKeyFor(result))}${carry}`);
   }
   // A NIDA that FAILS the identity check (mismatch / sanctioned / underage /
   // not-found) still returns ok:true — `ok` reports that the step ran, not that
@@ -63,9 +65,12 @@ export async function submitNidaAction(formData: FormData) {
   redirect("/profile/kyc?nida=verified");
 }
 
-export async function attachDocumentAction(formData: FormData): Promise<{ ok: true } | { ok: false; error: string; code?: string }> {
+export async function attachDocumentAction(formData: FormData): Promise<{ ok: true } | { ok: false; error: string; code?: string; reason?: string }> {
   // B-7 — failures carry `code` (+ the stable service string) so the uploader
   // can render its own localized line via errorCopy.
+  // ⛔ AND THEY MUST CARRY `reason`, OR TEACHING THE SERVICE TO EMIT ONE IS INERT. This
+  // boundary used to forward `error` and `code` and silently drop everything else, so a
+  // reason minted in `kyc-service.ts` died here and the uploader fell back to prose.
   const session = await currentSession();
   if (!session) return { ok: false, error: "Sign in required.", code: "AUTH" };
   const docType = String(formData.get("docType") ?? "") as "NIDA_FRONT" | "NIDA_BACK" | "SELFIE";
@@ -75,10 +80,10 @@ export async function attachDocumentAction(formData: FormData): Promise<{ ok: tr
   const image = String(formData.get("image") ?? "");
   const result = await attachDocument(session.userId, docType, image);
   revalidatePath("/profile/kyc");
-  return result.ok ? { ok: true } : { ok: false, error: result.error, code: result.code };
+  return result.ok ? { ok: true } : { ok: false, error: result.error, code: result.code, reason: result.reason };
 }
 
-export async function attachExtraDocumentAction(formData: FormData): Promise<{ ok: true } | { ok: false; error: string; code?: string }> {
+export async function attachExtraDocumentAction(formData: FormData): Promise<{ ok: true } | { ok: false; error: string; code?: string; reason?: string }> {
   const session = await currentSession();
   if (!session) return { ok: false, error: "Sign in required.", code: "AUTH" };
   const requestId = String(formData.get("requestId") ?? "");
@@ -86,7 +91,7 @@ export async function attachExtraDocumentAction(formData: FormData): Promise<{ o
   const image = String(formData.get("image") ?? "");
   const result = await attachExtraDocument(session.userId, requestId, image);
   revalidatePath("/profile/kyc");
-  return result.ok ? { ok: true } : { ok: false, error: result.error, code: result.code };
+  return result.ok ? { ok: true } : { ok: false, error: result.error, code: result.code, reason: result.reason };
 }
 
 export async function submitKycForReviewAction() {
@@ -95,8 +100,7 @@ export async function submitKycForReviewAction() {
   const result = await submitForReview(session.userId);
   revalidatePath("/profile/kyc");
   if (!result.ok) {
-    const { t } = await getServerT();
-    redirect(`/profile/kyc?error=${encodeURIComponent(errorCopy(t, result))}`);
+    redirect(`/profile/kyc?reason=${encodeURIComponent(reasonKeyFor(result))}`);
   }
   redirect("/profile/kyc?submitted=1");
 }

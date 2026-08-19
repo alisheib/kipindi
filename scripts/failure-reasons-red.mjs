@@ -32,14 +32,24 @@ const PAGE = new URL("../src/app/markets/[id]/page.tsx", import.meta.url);
 // has to be able to reword a server sentence and watch the guard notice.
 const KYC = new URL("../src/lib/server/kyc-service.ts", import.meta.url);
 const COPY = new URL("../src/lib/error-copy.ts", import.meta.url);
-const originals = new Map([
-  [MARKET, readFileSync(MARKET, "utf8")],
-  [REASONS, readFileSync(REASONS, "utf8")],
-  [DICT, readFileSync(DICT, "utf8")],
-  [PAGE, readFileSync(PAGE, "utf8")],
-  [KYC, readFileSync(KYC, "utf8")],
-  [COPY, readFileSync(COPY, "utf8")],
-]);
+// C2 third tranche · the BANNER channel.
+const BANNER = new URL("../src/lib/failure-banner.ts", import.meta.url);
+const RG_PAGE = new URL("../src/app/profile/responsible-gambling/page.tsx", import.meta.url);
+
+// 🔴 THE SNAPSHOT IS LAZY, AND IT HAS TO BE — 2026-08-15.
+//
+// This was a HARD-CODED LIST OF SIX FILES, and `restore()` rewrote exactly those six. Add a
+// mutation against a seventh file and the harness would write it, never restore it, and then
+// print **"tree restored"** and exit 0. That is what happened the first time the two banner
+// mutations below were run: both defects were left ON DISK in a green tree, and a commit at
+// that moment would have shipped a compliance surface rendering `{sp.error}` again plus a
+// `bannerFor` that no longer validates the query string.
+//
+// ⛔ A restore list maintained by hand beside a mutation list is a second definition of the
+// same fact — `docs/RULES.md` §7's "a number written twice" applied to file paths. Snapshot on
+// first touch instead, so the set restored is BY CONSTRUCTION the set mutated.
+const originals = new Map();
+const snapshot = (f) => { if (!originals.has(f)) originals.set(f, readFileSync(f, "utf8")); };
 const restore = () => { for (const [f, s] of originals) writeFileSync(f, s); };
 
 const CWD = new URL("..", import.meta.url);
@@ -142,24 +152,63 @@ const MUTATIONS = [
     // through to "That didn't go through" and the player is no longer told what to do.
     // `docs/FAILURE-INVENTORY.md` §1.6 calls this "the single largest risk any new mapper
     // inherits" — and until now literally nothing in the tree would have noticed.
-    name: "server-sentence-reworded",
-    why: "🔴 §1.6's risk, made real: the KYC sentence is reworded, the phrase test no longer matches it, and the player silently gets the generic line instead of being told their ID is already linked",
+    // ⭐ RE-POINTED 2026-08-15. This used to reword the KYC sentence and expect §8 to notice
+    // the phrase test had stopped matching. That defect is now STRUCTURALLY IMPOSSIBLE for this
+    // family: `kyc-service.ts` emits `reason: "nida_taken"`, the phrase test is deleted, and the
+    // sentence can be reworded — or translated — with no effect on what the player reads. The
+    // risk did not vanish though, it MOVED: the new silent failure is the service dropping the
+    // reason. That is what this mutation models now, and §8c is what catches it.
+    name: "service-stops-saying-why",
+    why: "🔴 §1.6's risk, relocated: kyc-service stops emitting `nida_taken`, so the one-NIDA-one-account block falls through to the generic line and nothing goes red — the deleted phrase test is no longer there to catch it",
     file: KYC,
-    // ⚠️ BOTH SITES. The sentence is returned from TWO places in kyc-service; rewording one
-    // and leaving the other would leave the phrase test still matching, and the harness would
-    // score its own half-mutation as a MISS by the guard.
+    // ⚠️ BOTH SITES, for the same reason the reworded version needed `all` — the reason is
+    // returned from TWO places, and mutating one would leave the other satisfying §8c.
     all: true,
-    from: "This National ID is already linked to another account.",
-    to: "That identity number is already registered to another account.",
+    from: ', code: "INVALID", reason: "nida_taken" }',
+    to: ', code: "INVALID" }',
   },
   {
-    // ⚠️ The mirror: the PATTERN drifts away from a sentence that never moved. Same outcome,
-    // opposite cause, and equally invisible without §8.
-    name: "phrase-test-drifts-from-the-server",
-    why: "the mapper's own pattern is edited so it no longer matches the string the server still sends",
-    file: COPY,
-    from: "/locked while your submission/i",
-    to: "/locked while the submission/i",
+    // ⭐ THE MUTATION THAT REPLACED `phrase-test-drifts-from-the-server` (2026-08-15).
+    //
+    // ⛔ THAT CASE MUTATED THE LAST SURVIVING PHRASE TEST — `/loss limit/i` in `error-copy.ts`
+    // — and it went with the test itself when `buyPosition`'s `reason: "loss_limit_daily"`
+    // made prose recovery dead code. Deleting a mutation without replacing it silently drops
+    // a whole refusal family out of RED coverage, which is §3.9's lesson in a different key.
+    //
+    // ⚠️ AND IT MISFIRED ONCE BEFORE IT WAS REPLACED, WHICH IS WORTH THE LINE. The commit that
+    // deleted the phrase test quoted the deleted `if (…)` inside the explanatory comment above
+    // it. The anchor therefore still resolved — UNIQUELY, so `red-anchor.mjs` was satisfied —
+    // and the harness mutated a COMMENT, changed nothing, and reported the guard as having
+    // missed. A harness anchored on source text cannot tell code from prose about code.
+    //
+    // The new risk this pins is the one §8c names: the SERVICE quietly stops saying why. The
+    // daily-loss cap is the only refusal on the betting path routed to an acknowledge-modal by
+    // LCCP informed consent, so losing its reason demotes a compliance dialog to a toast.
+    name: "loss-limit-service-stops-saying-why",
+    why: "⭐ RULES.md §2.9's last ⏳, in reverse — `buyPosition` drops `loss_limit_daily`, so the RG daily-loss cap falls to the generic line and the LCCP acknowledge-modal quietly becomes a toast",
+    file: MARKET,
+    from: `code: "INVALID" as const, reason: "loss_limit_daily" as const`,
+    to: `code: "INVALID" as const`,
+  },
+  {
+    // 🔴 THE CHANNEL NOBODY WAS SCANNING, PROVEN. A page reverts to rendering the query string
+    // as text. Before 2026-08-15 this scored as a MISS by both guards: §10's pattern matches an
+    // object property and could not see JSX text at all.
+    name: "banner-renders-the-server-string-again",
+    why: "🔴 a compliance surface goes back to printing whatever `?error=` says — English prose to a SW/ZH player, and any sentence an attacker puts in a link",
+    file: RG_PAGE,
+    from: "<Callout tone={banner.tone} live>{banner.body}</Callout>",
+    to: "<Callout tone=\"danger\" live>{sp.error}</Callout>",
+  },
+  {
+    // ⛔ THE REFLECTION GUARD. If `bannerFor` stops validating, an unrecognised `?reason=`
+    // renders through the generic fallback and the query string is a content-injection surface
+    // on a signed-in money page again.
+    name: "banner-stops-validating-the-query-string",
+    why: "⛔ `bannerFor` renders an unknown `?reason=` instead of returning null — a styled, first-party alert box saying anything an attacker chose",
+    file: BANNER,
+    from: "if (!hasReason({ reason: key })) return null;",
+    to: "if (!key) return null;",
   },
   {
     // ⛔ OVER-CORRECTION. Mapping an OVERLOADED code picks ONE meaning for a token that has
@@ -171,8 +220,26 @@ const MUTATIONS = [
     // ⚠️ The `to` REPLACES the anchor rather than wrapping it — the harness verifies the
     // anchor is gone after the write, so a mutation whose replacement contains its own anchor
     // scores as a harness error rather than as a red.
-    from: "  MAINTENANCE: \"maintenance\",",
+    // ⚠️ RE-ANCHORED 2026-08-15: this pointed at `MAINTENANCE: "maintenance",`, one of the six
+    // rows deleted for mapping a code no service emits. `VOTING_CLOSED` is a row with a real
+    // emitter, so it cannot go the same way without §9b failing first.
+    from: "  VOTING_CLOSED: \"voting_closed\",",
     to: "  INVALID: \"stake_below_min\",",
+  },
+  {
+    // ⭐ THE DEAD-ROW DEFECT, RE-INJECTED. `REASON_BY_CODE` carried six rows for codes NO
+    // service emitted — five KYC families and `MAINTENANCE`. §9 proved each of them "worked"
+    // by synthesising the code itself, so the suite was green on six routes the product cannot
+    // take, and a session reading that table concluded those refusals were handled while every
+    // one was arriving through a phrase test. §9b is the only thing that says no.
+    name: "a-dead-code-row-returns",
+    why: "⛔ a row is added for a code nothing emits — §9 would prove it 'works' by minting the code itself, which is how five KYC families looked handled while they were not",
+    file: REASONS,
+    // ⚠️ The anchor CARRIES ITS NEWLINE, and that is not cosmetic: the harness verifies the
+    // anchor is gone after the write, so a `to` that merely prepends to its own `from` scores
+    // as a harness error rather than as a red. Appending on the same line consumes it.
+    from: "  VOTING_CLOSED: \"voting_closed\",\n",
+    to: "  VOTING_CLOSED: \"voting_closed\", DOC_IMAGE: \"doc_image_type\",\n",
   },
   {
     // ⚠️ A severity is a promise about how alarmed to be. An identity already linked to
@@ -199,6 +266,10 @@ const problems = [];
 
 for (const m of MUTATIONS) {
   restore();
+  // ⛔ BEFORE THE FIRST BYTE IS WRITTEN. `restore()` has just put every previously-touched file
+  // back, so what is read here is the pristine content — snapshot it now and this file is in
+  // the restore set for the rest of the run, whether or not anyone remembered to list it.
+  snapshot(m.file);
   const src = readFileSync(m.file, "utf8");
   const asCRLF = m.from.replace(/\n/g, "\r\n");
   const anchor = src.includes(m.from) ? m.from : src.includes(asCRLF) ? asCRLF : null;

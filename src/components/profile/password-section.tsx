@@ -44,7 +44,11 @@ export function PasswordSection({ hasPassword }: { hasPassword: boolean }) {
         setConfirm("");
         router.refresh();
       } else {
-        toast({ title: t.toast.failed, description: errorCopy(t, r), variant: "danger" });
+        // FEEDBACK LAW (DESIGN_AUTHORITY §F) — the title used to be the bare word
+        // "Failed", which names neither what failed nor what survived. `errorCopy` was
+        // already carrying the reason in the body; the title now says which action did
+        // not happen, so the pair reads as reason + state without opening the description.
+        toast({ title: t.toast.passwordFailed, description: errorCopy(t, r), variant: "danger" });
       }
     });
   };

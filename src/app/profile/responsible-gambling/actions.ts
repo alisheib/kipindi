@@ -26,8 +26,11 @@ export async function setLimitsAction(formData: FormData) {
     realityCheckIntervalMin: parseInt(String(formData.get("realityCheckIntervalMin") ?? "30"), 10) || 30,
   });
   revalidatePath("/profile/responsible-gambling");
+  // ⛔ THE KEY, NOT THE PROSE. This used to forward `result.error` — the server's own English —
+  // straight onto a COMPLIANCE screen, so a Swahili or Chinese player who mistyped a limit read
+  // "Invalid value for dailyLossLimit." The page renders the reason through the registry now.
   if (!result.ok) {
-    redirect(`/profile/responsible-gambling?error=${encodeURIComponent(result.error ?? "Unknown error")}`);
+    redirect(`/profile/responsible-gambling?reason=rg_limit_invalid`);
   }
   redirect("/profile/responsible-gambling?saved=1");
 }
@@ -37,7 +40,7 @@ export async function selfExcludeAction(formData: FormData) {
   if (!session) redirect("/auth/login");
   const period = String(formData.get("period") ?? "");
   if (!(period in SELF_EXCLUSION_PERIODS_SEC)) {
-    redirect(`/profile/responsible-gambling?error=${encodeURIComponent("Pick a valid self-exclusion period.")}`);
+    redirect(`/profile/responsible-gambling?reason=rg_period_invalid`);
   }
   await selfExclude(session.userId, period as keyof typeof SELF_EXCLUSION_PERIODS_SEC);
   await destroySession();
@@ -49,7 +52,7 @@ export async function coolOffAction(formData: FormData) {
   if (!session) redirect("/auth/login");
   const period = String(formData.get("period") ?? "");
   if (!(period in COOLING_OFF_PERIODS_SEC)) {
-    redirect(`/profile/responsible-gambling?error=${encodeURIComponent("Pick a valid cooling-off period.")}`);
+    redirect(`/profile/responsible-gambling?reason=rg_period_invalid`);
   }
   await coolOff(session.userId, period as keyof typeof COOLING_OFF_PERIODS_SEC);
   await destroySession();

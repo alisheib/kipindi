@@ -28,6 +28,8 @@ import { getServerT } from "@/lib/i18n-server";
 // five chances to disagree about someone money.
 import { refundReasonFor, REFUND_REASON_KEY } from "@/lib/updown-refund-reason";
 import { pickLocalized } from "@/lib/localized";
+// ⛔ ONE lexicon for side words across both products — never a local ternary (test:labels §4).
+import { outcomeWord } from "@/lib/side-label";
 import { formatTzs } from "@/lib/utils";
 import { RoundCountdownPod } from "@/components/updown/round-countdown";
 import { PriceHero } from "@/components/updown/price-hero";
@@ -44,6 +46,24 @@ import { refreshCadence, handoverPollUntil } from "@/lib/refresh-cadence";
 import { UpDownHandover } from "@/components/updown/updown-handover";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * One position's OWN outcome, in the player's language.
+ *
+ * ⛔ It maps the STORED status and nothing else — it never re-derives a result from prices
+ * or payouts. The itemised list this feeds is a reading of what settlement wrote, and the
+ * moment it starts inferring, it becomes a second money authority next to the aggregate.
+ */
+function POSITION_STATUS_LABEL(
+  t: Awaited<ReturnType<typeof getServerT>>["t"],
+  status: "OPEN" | "WIN" | "LOSS" | "VOID" | "CASHED_OUT",
+): string {
+  return status === "WIN" ? t.market.udPosWon
+    : status === "LOSS" ? t.market.udPosLost
+    : status === "VOID" ? t.market.udPosRefunded
+    : status === "CASHED_OUT" ? t.market.udPosCashedOut
+    : t.market.udPosOpen;
+}
 
 const card = { background: "var(--bg-elevated)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", boxShadow: "var(--shadow-card)" } as const;
 const inset = { background: "var(--bg-inset)", border: "1px solid color-mix(in oklab, var(--border) 70%, transparent)", borderRadius: "var(--r-md)" } as const;
@@ -211,7 +231,12 @@ export default async function UpDownRoundPage({
   const pMove = proof && proof.openPrice != null && proof.closePrice != null ? proof.closePrice - proof.openPrice : null;
   const pMovePct = pMove != null && proof?.openPrice ? (pMove / proof.openPrice) * 100 : null;
   const sgn = (v: number) => (v >= 0 ? "+" : "−");
-  const outcomeWord = round.outcome === "UP" ? t.market.udUp : round.outcome === "DOWN" ? t.market.udDown : t.market.statusVoid;
+  // ⛔ THE SHARED LEXICON, NOT A LOCAL TERNARY. `test:labels` §4's ratchet flagged this one and
+  // the last-round strip's twin on the same run — and the reason it is a ratchet is that a
+  // private side-word map is exactly how `/positions/performance` came to print "NO won" over an
+  // UP bet. ⚠️ It also SHADOWED the imported `outcomeWord`, so the strip's call resolved to this
+  // string and would not compile — the collision was the tell that there were two of one thing.
+  const outcomeLabel = outcomeWord(t, round.outcome ?? "VOID", "UPDOWN");
   const outcomeInk = round.outcome === "UP" ? "var(--yes-300)" : round.outcome === "DOWN" ? "var(--no-300)" : "var(--text-muted)";
   const outcomeArrow = round.outcome === "UP" ? "M5 15l7-7 7 7" : round.outcome === "DOWN" ? "M5 9l7 7 7-7" : null;
   const evidence = proof?.closeEvidence ?? proof?.openEvidence ?? null;
@@ -287,9 +312,12 @@ export default async function UpDownRoundPage({
                       color: fromRound.outcome === "UP" ? "var(--yes-300)"
                         : fromRound.outcome === "DOWN" ? "var(--no-300)" : "var(--text-muted)",
                     }}>
-                {fromRound.outcome === "UP" ? t.market.udUpWins
-                  : fromRound.outcome === "DOWN" ? t.market.udDownWins
-                  : t.market.statusVoid}
+                {/* ⛔ THE SHARED LEXICON, NOT A THIRD SIDE-WORD MAP. This shipped as
+                    `outcome === "UP" ? udUpWins : … : statusVoid` and `test:labels` §4's ratchet
+                    caught it on the merge: a private word-map is how one product came to read
+                    "NO won" over an UP bet. `outcomeWord` already knows that a VOID is never a
+                    direction, which is the half a hand-rolled ternary gets wrong. */}
+                {outcomeWord(t, fromRound.outcome ?? "VOID", "UPDOWN")}
               </span>
             </span>
             <Link href={`/updown/${fromRound.roundId}`}
@@ -472,6 +500,9 @@ export default async function UpDownRoundPage({
                   signInHref: `/auth/login?next=${encodeURIComponent(`/updown/${roundId}${lockedSide ? `?side=${lockedSide}` : ""}`)}`,
                   lockedSide,
                   walletBalance: detail.walletBalance,
+                  // UD-22 · assembled server-side on the round itself, so this page and the
+                  // board card confirm a bet with the same sentences and the same exit terms.
+                  receipt: round.receipt,
                 }}
               />
             ) : decided && myPosition && result ? (
@@ -495,9 +526,53 @@ export default async function UpDownRoundPage({
                   </div>
                   <div className="text-right">
                     <p className="m-0 font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">{t.market.udYourPick} · {t.market.udStake}</p>
-                    <p className="mt-1 m-0 font-mono text-[12px] tabular-nums text-text-muted">{myPosition.side === "UP" ? t.market.udUp : t.market.udDown} · {formatTzs(myPosition.stake)}</p>
+                    {/* ⛔ A HEDGED HOLDER IS NOT QUOTED ONE SIDE. `myPositionFor` derives its
+                        single `side` with `up >= down`, which is a tie-break, not a fact about
+                        the bet — so a player who backed BOTH ways was shown the larger leg as
+                        though it were their whole position. Same rule as UD-20 on the board. */}
+                    <p className="mt-1 m-0 font-mono text-[12px] tabular-nums text-text-muted">
+                      {myPosition.hedged
+                        ? t.market.udBothSides
+                        : myPosition.side === "UP" ? t.market.udUp : t.market.udDown} · {formatTzs(myPosition.stake)}
+                    </p>
                   </div>
                 </div>
+
+                {/* ⭐ EVERY POSITION, ITEMISED (Ali, 2026-08-15). The block above is the
+                    AGGREGATE the settlement path wrote and it stays — but it is one line, and a
+                    player holding six positions on this round was shown one line and one side.
+                    ⛔ This reads ONLY what settlement already wrote (`status` + `finalPayout`).
+                    No money arithmetic happens here; the figures above remain the money truth.
+                    Rendered from `items.length > 1` because with a single position the aggregate
+                    IS the itemisation, and repeating it under an identical headline is noise. */}
+                {myPosition.items.length > 1 && (
+                  <div className="mt-3.5 border-t border-border-subtle/60 pt-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="m-0 font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">
+                        {t.market.udPositionsOnRound} · {myPosition.items.length}
+                      </p>
+                      {myPosition.hedged && <span className="chip">{t.market.udBothSides}</span>}
+                    </div>
+                    <ul className="mt-2 m-0 flex list-none flex-col gap-1.5 p-0">
+                      {myPosition.items.map((p) => (
+                        <li
+                          key={p.id}
+                          className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 rounded-md border border-border bg-bg-overlay/50 px-2.5 py-1.5"
+                        >
+                          <span className="flex min-w-0 items-center gap-1.5">
+                            <span className={"chip tabular-nums " + (p.side === "UP" ? "chip-yes" : "chip-no")}>
+                              {p.side === "UP" ? "↑" : "↓"} {formatTzs(p.stake)}
+                            </span>
+                            <span className="font-mono text-[10px] text-text-faint">{POSITION_STATUS_LABEL(t, p.status)}</span>
+                          </span>
+                          <span className="ml-auto font-mono text-[12.5px] font-bold tabular-nums text-text">
+                            {p.payout == null ? "—" : formatTzs(p.payout)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
                 {/* ⭐ E-65 · THE REFUND REASON BELONGS *HERE*, INSIDE THE RESULT PANEL.
                     🔴 FOUND BY DRIVING IT ON PRODUCTION, not by any suite. The refund branch
                     below is unreachable for the one player it was written for: this
@@ -582,7 +657,7 @@ export default async function UpDownRoundPage({
                 <p className={eyebrow}>{t.market.udOutcome}</p>
                 <p className="mt-[7px] m-0 flex items-center gap-1.5 font-mono text-[19px] font-bold leading-none" style={{ letterSpacing: "0.04em", color: outcomeInk }}>
                   {outcomeArrow && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={outcomeArrow} /></svg>}
-                  {outcomeWord}
+                  {outcomeLabel}
                 </p>
                 <dl className="mt-[11px] grid grid-cols-[auto_1fr] gap-x-2.5 gap-y-[5px] font-mono text-[10.5px]">
                   <dt className="text-text-faint">{t.market.udMove}</dt>

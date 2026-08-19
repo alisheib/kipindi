@@ -205,6 +205,30 @@ export function hasActiveFilters(s: DiscoveryState): boolean {
 }
 
 /**
+ * How many of the mobile SHEET's own axes are narrowed — the number on the `Filters` button.
+ *
+ * ⭐ IT COUNTS WHAT THE SHEET CONTAINS, AND NOTHING ELSE. A badge is a promise about what is
+ * behind the button it sits on; counting an axis the sheet does not hold sends a player in to
+ * look for a filter that is not there.
+ *
+ * ⛔ SORT IS NOT A FILTER and is not counted, even though the sheet holds its control. It
+ * narrows nothing — every market is still on the board — which is the same reason
+ * `hasActiveFilters` has excluded it since batch 1 and the same reason the bar has always
+ * refused sort the gold treatment ("sort is view state").
+ * ⛔ STATUS AND `q` ARE NOT COUNTED either: both keep their own visible control OUTSIDE the
+ * sheet (the chip strip and the search box), so a player can already see they are on. Counting
+ * them would label the button with filters it does not contain — and would leave the badge
+ * reading `1` on the DEFAULT board, since `status` opens at `open`.
+ */
+export function sheetFilterCount(s: DiscoveryState): number {
+  return (
+    (s.odds !== DEFAULTS.odds ? 1 : 0) +
+    (s.pool !== DEFAULTS.pool ? 1 : 0) +
+    (s.topic !== DEFAULTS.topic ? 1 : 0)
+  );
+}
+
+/**
  * `Clear all` returns to the DEFAULT board (`status: open`), not to `all`.
  *
  * ⚠️ The kit's prototype disagreed with itself here: its bar's `clearAll` reset status to

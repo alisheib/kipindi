@@ -210,6 +210,8 @@ topic taxonomy source of truth, whether search is server-side._
 | 5 ONE filter language | `(this session, batch 5)` | **`test:filter-language` (NEW, 66 assertions incl. a vacuity control) wired into `predeploy`**; `red:filter-language` **8/8, each defect on its own assertion** — the 8th being the INSTRUMENT's own failure mode (an empty subject set); `test:design-frozen` · `ui-consistency` · `i18n` · `bridge` · `tokens` · `measure` · `design-one-door` · `chip-contract` · `discovery-contract` · `board-discovery` · `updown-digest` · `gold-is-money` · `trilingual` · `position-permalink` · `orphans` all green; `red:discovery-contract` / `red:board-discovery` / `red:time-left` green; `tsc --noEmit` exit 0; `npm run build` exit 0 | **516 controls measured in a browser at 360/768/1280/1920 × en/sw/zh** — 999px, ≥44px, 0 inline styles, 0 unselected outlines on every one; **120 frames read**, every `<details>` menu OPENED; all four board probes green (`qa:discovery-probe` · `qa:discovery-board` · `qa:results-board` · `qa:filter-stress`); `qa:tap-hit` green; the day rail proven promise == delivery | ONE primitive (`ui/filter-pill.tsx`) for **eight** rails — the brief said six. 🔴 The reference broke its own law-82 and the extraction FIXED it (`.kp-fchip[data-on]` in globals.css) rather than copying it; `test:design-frozen` was green over all six inline styles because `var(--` exempts the line. 🔴 A filter control was wearing the money ink (`.pchart-range.is-active` = `--gilt`), outside `test:gold-is-money`'s deliberate two-file scope. 🔴 Batch 4's `::after` hit-area trick **measured 36px, not 40** — paint order — now `min-height`. 🔴 `/updown/history` had a filter with NO control; it has a derived day rail with honest counts and zero extra I/O. Three corrections to §8.7h's own scan: 8 surfaces not 6, `/positions` is 48px not 32, `/markets` had 5 inline-styled controls not 2. Full account in §8.7h |
 | 4 cleanup + the deferred trio | `(this session, batch 4)` | **40 gates green individually, real exit codes, no pipes** — the 22 design gates + `hero-contract`/`discovery-contract`/`board-discovery`/`landing-contract`/`ticker-honesty`/`product-line`/`i18n`/`trilingual`/`docs`/`orphans`/`orphan-actions`/`markets`/`selection-closed`/`grid-paging`/`needle` + **`test:time-left` (NEW, 34 assertions incl. a vacuity control)**; `red:time-left` **5/5**, each defect on its own assertion, tree restored byte-identical; `tsc --noEmit` exit 0. ⚠️ `test:responsive`/`test:motion` are server-dependent (default `:3000`, not in PLAN §3's 22) — `test:motion` exit 0 at `BASE=:3009`, 43 passed | 12 seam frames **before AND after** at 360/768/1280/1920 × en/sw/zh · 12 time-left frames · 3 minute-branch frames · **32 card hit tests**; 0 overflow, 0 console errors anywhere; card geometry diff **IDENTICAL** before/after | 🔴 **The live RG regression Ali reported, fixed first**: each of the three RG destinations appeared **twice on one page** (1 RG line, 1 footer) at all 12 combinations — counted by href, not localised text — and the void was **320px, not the 192px the finding estimated** (`.kp-rg`'s own margin-top+padding-top added 96, and **`mt-12` computes to 128px on this repo's CUSTOM scale**, `tailwind.config.ts:176`). Links deleted, dead CSS deleted in the same commit, the double-count margin removed → 96 above / 128 below, both single tokens, landing on the rhythm block's own drawing. 🔴 **§4d found a THIRD time-left copy the plan did not name** — `markets/page.tsx:271`, with the defective `Math.floor`, on the busiest board; all five callers now delegate and a gate + RED proof now guard it. 🔴 **§4e shipped** — Details hit area 17→40px with **zero** layout movement, proven by hit test because no bounding-box instrument can see it. §4a cite-check: **clean, nothing archived, no empty dated folder created**. §4b: all three carried forward (Ali). §4c: filter UI for four more surfaces **NOT commissioned** (Ali). Plus **three of this batch's own instruments were wrong before the product was** — full account in §8.7g |
 
+| 6 the phone filter sheet + the chart's 44px | `(this session, batch 6)` | **`test:filter-language` 91 assertions** (66 → 91: §5 is new, §4 gained the 44px pair); `red:filter-language` **17/17, each defect on its own assertion** (8 → 17, seven of them this batch's); `tsc --noEmit` exit 0 / 0 lines | `qa:discovery-board` green incl. **the sheet OPENED at 360 in sw and zh** — docks to the window bottom (780/780), nothing above the top, 100% inside the viewport, scrim covers the window, Escape closes, focus returns; `qa:filter-scan` measured the sheet's controls **with the sheet open**; `qa:tap-hit` extended to the chart rail at 4 widths | Odds · pool · topic move behind ONE `Filters` button below `lg`: sticky bar **214px → 116px** at 360 in **both** sw and zh. ⭐ Sort and status stay in the bar at every width, per COMPONENTS §21 — see §8.7i for why the first build got that wrong. 🔴 **`position: fixed` was not viewport-fixed**: `.route-enter`'s `both`-filled animation retains a transform for ever and became the containing block, putting the panel at `top: -32px` with its bottom 172px clear of the window and a scrim covering neither. 🔴 **Three instruments were wrong before the product was.** `.pchart-range` 40 → **44px** (Ali, 2026-08-14). Full account in §8.7i |
+
 ## 7 · IMPLEMENTATION DOSSIER — measured facts for the next session (2026-08-12)
 
 Three read-only investigations mapped the live code. Everything below is verified with
@@ -874,7 +876,7 @@ codebase does not ship.
 | Deferred | Why | What it needs |
 |---|---|---|
 | **Density toggle / compact list** (kit §3e, COMPONENTS §5) | The label is "Compact list view" and the spec is a genuinely different DOM: `role="table"`, `role="row"`, `role="cell"`, seven columns with individual hide points (watch star 44 never hides · market flex:1 · trend 96 hidden <1024 · YES 56 · pool 104 hidden <720 · closes 78 hidden <720 · YES/NO 144 hidden <1024). A toggle bearing that label while only restyling the existing cards would be a false promise | A `MarketListRow` component + its own responsive column table. The toggle's persistence (`50pick.discovery.v1`) and its 44×44 geometry are already specified |
-| **The mobile filter SHEET** (kit `05-markets-discovery-mobile.html`) | The kit puts every filter behind one `Filters` button on a phone, which would take the sticky bar from **220px back under 120px**. Batch 1 chose scrolling strips instead because they need no JavaScript, and §8.7c has now spent 104px of sticky height keeping every control readable and operable. That is the right trade for a defect fix and the wrong end state | A `<details>`-driven bottom sheet with a scrim (elevation rung 3 already defines "sheet with a scrim"). ⛔ The sort and topic options must render as flat lists inside it, NOT as nested `<details>` menus — a sheet that scrolls would clip an absolutely-positioned panel and re-create exactly the 4px listbox §8.7c just removed |
+| ~~**The mobile filter SHEET**~~ | ✅ **DONE, batch 6 (2026-08-15).** Sticky bar **214px → 116px** at 360 in sw and zh. ⚠️ AND THIS ROW WAS WRONG ABOUT SORT: it said "the sort and topic options must render as flat lists inside it", which the first build read as *sort belongs in the sheet*. The kit says the opposite in four places — **sort and status stay in the bar at every width**, COMPONENTS §21 — and this row's real concern was only that neither may become a NESTED `<details>`. The sheet holds odds, pool and topic. Full account in §8.7i | — |
 | **Search typeahead** (kit §3g) | `SearchBox` already delivers debounced-URL search on the shared grammar (quoted phrase, `-exclude`, `field:`), so the board searches correctly today. The typeahead is an ENHANCEMENT — combobox + listbox, `/` focus shortcut, topic/source/market suggestion kinds — not a gap in behaviour | A client combobox over the existing parser; suggestion kinds are specified in COMPONENTS §8 |
 
 | **"Predictions today" as the hero's third figure** (kit §1a, §7b) | It needs `COUNT(Position WHERE placedAt >= 00:00 EAT)`. `Position` is a never-pruned financial-record table already ~20× the poll rows on production, `placedAt` is unindexed, and the landing is the highest-traffic public page — so this is an unindexed count on the hottest surface, plus a migration inside a design batch. The hero ships **Σ `predictorCount` over the open book**, captioned "Open predictions": free (already in the board read), equally real, and it names the set it counts | A `@@index([placedAt])` migration + a DB-side count folded into `getPlatformStats`'s existing 60s memo (never a per-render query) |
@@ -889,7 +891,7 @@ deferral stays a decision rather than a silence:
 | Deferred | Restated reason | Still needs |
 |---|---|---|
 | **Density toggle / compact list** | The label is "Compact list view" and the spec is a genuinely different DOM. A toggle bearing that label while only restyling the existing cards is a false promise — and it is a NEW component, not a restyle, so it is not a cleanup-batch item | `MarketListRow` + its own 7-column responsive table with individual hide points |
-| ~~**The mobile filter SHEET**~~ | ▶ **COMMISSIONED — Ali 2026-08-14, chosen over the other two carried pieces. This is BATCH 6.** The reason it was carried still describes the WORK, not a reason to avoid it: batch 1's scrolling strips are "the right trade for a defect fix, the wrong end state", and the verification surface is larger than it looks — the sheet must not regress the strip's keyboard operability, and its focus trap / focus return / Escape-closes must be checked against the shared `<Modal>` primitive's ACTUAL contract, not the kit's spec drawing, at four widths in three locales. **Half-rigor here is worse than the carry was** | A `<details>`-driven bottom sheet + scrim, sort/topic as FLAT lists inside it. ⛔ never nested `<details>` — it would clip exactly like §8.7c's defect. ⛔ And it must not re-parent a menu inside `.kp-thin-scroll` / `.kp-strip-fade`: a mask clips an absolutely-positioned panel exactly as an overflow does |
+| ~~**The mobile filter SHEET**~~ | ✅ **SHIPPED, batch 6 (2026-08-15)** — see §8.7i. The carry's own warning proved exact: *"the verification surface is larger than it looks"*. The focus trap / focus return / Escape were checked against the shared `<Modal>`'s ACTUAL contract and reproduce its `[open]`-only dependency — the one that once dragged focus onto a money dialog's confirm button once a second. **Three of the batch's own instruments were wrong before the product was**, and `position: fixed` turned out not to be viewport-fixed inside page content at all | — |
 | **Search typeahead** | `SearchBox` already delivers correct debounced search on the shared grammar, so the board searches correctly today. This is a pure ENHANCEMENT, not a gap in behaviour | A client combobox over the existing parser; suggestion kinds per COMPONENTS §8 |
 
 ### ⚖️ ALI'S RULINGS — 2026-08-14, asked explicitly and answered
@@ -904,12 +906,20 @@ Put to him as four plain-English choices at the close of batch 5, with the trade
 | Admin filter rails · `/wallet`'s section tabs | ⛔ **Leave both as they are** | The exclusions are now RULED, not merely defensible. ⛔ Do not propose them again |
 | The stale QA credentials | ▶ **Re-mint from the office PC** | Done — 6/6, and all eight rails then verified on production |
 
+### Found by batch 6, NOT batch 6's — filed rather than fixed (2026-08-15)
+
+| Finding | Measured | Why it is not fixed here |
+|---|---|---|
+| 🔴 **The language menu's panel hangs off the LEFT edge of the screen at ≤390px** | `responsive-audit` against **production**: `/markets@xs button[KiswahiliSW] l-71 r123 > vw320`, `@sm l-63 r131 > vw360`, `@md l-33 r161 > vw390`. Identical on `/admin/markets`, so it is the shared top bar, on every page. `a[Sign up]` is clipped at `xs` too (`l239 r337 > vw320`) | `ui/language-menu.tsx` is a cross-cutting shell component on **every** surface, and a second session is working this clone. Changing it inside a filter batch that has already shipped and been verified would put an unverified edit on every page. It needs its own pass at the four widths × three locales, which is what it will get |
+| ⚠️ **The board does not render at all with JavaScript disabled** | `.kp-discovery-bar` 0px inside a `display: none` holder, 19 streamed `<template>`s, on production. See §8.7i | A page-architecture change (the Suspense boundary and streaming strategy), not a filter one, and not commissioned. `qa:discovery-board` prints it on every run so it cannot go quiet |
+| ⚠️ **`a[Details]` is 17px painted at all ten widths** | `responsive-audit` soft-warns 6 per board | ⛔ NOT a defect — batch 4 grew the HIT AREA to 40px with an `::after` while deliberately keeping the paint at 17px, and `qa:tap-hit` proves it by walking `elementFromPoint`. A bounding-box audit cannot see that, which is why the warning is a warning |
+
 ### Batch 5's own deferrals — named, with the reason (2026-08-14)
 
 | Deferred | Why | What it needs |
 |---|---|---|
 | **`/markets`' chips announce `aria-pressed`, on an `<a>`** | `aria-pressed` is only valid on `role="button"`; on a link it is a role mismatch a screen reader may ignore or misreport. Every other rail is `aria-current="page"`, which is the accurate reading for a link that reflects current state. But it is the shipped semantics of the REFERENCE surface, changing it is an a11y behaviour change the batch was not asked for, and it deserves its own verification rather than a side effect of a shape batch. The primitive already supports both, so the change is one prop | A screen-reader pass on `/markets` at 360/1280, then flip `semantics="toggle"` → `"tab"` in `discovery-bar.tsx`'s local `Chip` wrapper |
-| ~~**`.pchart-range` sits at 40px, not the rails' 44px**~~ | ▶ **COMMISSIONED — Ali 2026-08-14: raise it to 44.** He was given the trade (40 already clears Law 9's floor; 44 makes the rail ~48px tall in a chart header whose label is 10px mono) and chose consistency. **BATCH 6** | `min-height: var(--tap-min)` → 44px in `.pchart-range`, then re-measure the hit area and READ the chart header at 4 widths — the header must not wrap or push the chart |
+| ~~**`.pchart-range` sits at 40px, not the rails' 44px**~~ | ✅ **DONE, batch 6 (2026-08-15).** `min-height: 44px` — a LITERAL, because `--tap-min` is 40 and would silently revert the ruling, and `--h-input: 44px` is named for inputs. `test:filter-language` §4.3 asserts 44, §4.4 asserts it is not reached through `--tap-min`, and `red` case 15 reintroduces exactly that reversal. `qa:tap-hit` now opens the chart's collapsed panel and walks `elementFromPoint` across the rail at 4 widths | — |
 | **`rounded-pill` is a hard-typed `"999px"` in `tailwind.config.ts:199`** | Two homes for one truth (`--r-pill: 999px` is the other), and B10 rule 4 names `rounded-chip` — which reads `var(--r-pill)` — as the canonical semantic key for new design. ⛔ NOT changed here on purpose: switching one call site to `rounded-chip` while ~40 others say `rounded-pill` creates TWO names for one value, which is worse than the single duplication it fixes. §0a says delete one, not add a third | A platform-wide `rounded-pill` → `rounded-chip` sweep, its own change |
 | ~~**`red:updown-digest`'s `ungate-refunds` anchor is stale**~~ | ✅ **DONE, same session (2026-08-14), `b70b5a82`** — Ali: *"fix anything found as u go."* Re-anchored against the current `notifyRefund` call and **proven: 7/7, the case failing EXACTLY 1 assertion — §5's own "notifyRefund: every round call site is gated"** — with `market-service.ts` restored byte-identical. ⛔ The repair had to **move** the call, not negate the gate: §5 is a SOURCE assertion that looks back 400 chars for `!perEventNotificationsSuppressed(`, so `if (true \|\| !pred(m))` would leave the text in place and the suite would stay GREEN over a genuinely ungated refund. ⭐ It had been printing 6/7 for four days, which reads as "known red" rather than as a case that had stopped testing its defect — see [[an-instrument-reports-its-own-staleness]]'s fifth shape | — |
 | **Admin filter rails are untouched** | `/admin/**` has its own density rules and a different audience, and `DateTimeRangeFilter` is a genuinely different control (a range, not a set of options) already shared across 7 admin routes. Ali's instruction named the player platform | A separate decision about whether admin should share the player pill |
@@ -1559,6 +1569,156 @@ every case above it proved nothing.
 harness (`dead-link`, `raw-param-filter`) went ✓ RED, which is what proves the `/updown/history`
 edits kept the guard's contract. ⛔ It is a money-NOTIFICATION proof; repairing its anchor inside a
 design batch would be a remedy written in the wrong session, so it is filed rather than patched.
+
+## 8.7i · BATCH 6 — the phone filter sheet, and the chart rail at 44. SHIPPED 2026-08-15
+
+Commissioned by Ali on 2026-08-14 from the deferred register (§8.8): **the mobile filter sheet**
+and **the chart's time-range buttons raised 40 → 44px**. Both are done.
+
+### What shipped
+
+| | |
+|---|---|
+| The sticky bar at 360×780 | **214px → 116px**, measured in **both** Swahili and Chinese. History: 448 wrapped → 214 stacked → 116 behind one button |
+| The sheet | `<details>`-driven, so it opens and operates with **no JavaScript** — the property batch 1 protected for a mid-range Android and the one thing this batch was forbidden from regressing |
+| Its contents | Odds · Pool · Topic, all `FilterPill` chips, topic on the kit's `1fr 1fr` grid |
+| The chart rail | `.pchart-range` `min-height: 44px`, a literal (see below) |
+| Guards | `test:filter-language` **66 → 91 assertions**; `red:filter-language` **8/8 → 17/17** |
+
+### 🔴 The first build put SORT in the sheet, and the kit says four times that it must not
+
+The brief and §8.8 both read *"sort and topic render as flat lists inside it"*, so that is what was
+built. The design system disagrees in four separate documents — COMPONENTS §21, SPEC's responsive
+table, README §discovery and DISCOVERY-RATIONALE — and states a reason:
+
+> **Sort and status stay outside the sheet, in the bar, at every width.** They answer the first two
+> questions a punter has and must never cost a tap.
+
+Reading §8.8 precisely, its concern was that sort and topic must not become **nested `<details>`**
+inside a scrolling sheet — §8.7c's 4px listbox — *not* that sort should leave the bar. The kit is
+followed, and **§8.8 is corrected below rather than left to disagree with it**. `test:filter-language`
+§5.20–5.22 now assert the sheet holds exactly odds, pool and topic, and `red:filter-language` case
+17 (`sort-in-the-sheet`) reintroduces the drift and is caught. ⭐ Nothing else would have noticed:
+the sort-in-the-sheet build passed every gate, every probe and every screenshot.
+
+### 🔴 `position: fixed` was not fixed to the viewport — and no gate could have said so
+
+Measured on the first build at 360×780: the panel reported **`top: -32px`, `bottom: 608px`**. The
+grab handle and part of the heading sat above the top of the screen; the sheet floated **172px
+clear of the bottom**; and the scrim — `position: fixed; inset: 0` — covered neither end, so a
+dialog claiming `aria-modal="true"` left the top bar and the area under the wrapper live and
+tappable.
+
+The cause is one line in §1.8: `.route-enter { animation: m-settle-in … both; }`. A `both` fill
+**retains the final keyframe's transform for ever**, and a transformed element is the containing
+block for every fixed-position descendant. So on **every route**, `bottom: 0` means "the bottom of
+the page-transition wrapper".
+
+⭐ **This is why the shared `<Modal>` portals to `document.body`**, and why nothing else in the
+product has ever hit it: the sheet is the first fixed element that must live inside page content,
+because it must open without JavaScript and a portal cannot.
+⛔ **`transform: none` does not fix it** — an animation's applied value beats a normal author
+declaration in the cascade. Only dropping the animation returns the base value. That is the fix
+that *looks* right and does nothing, so it is `red:filter-language` case 13 (`sheet-captured`).
+The rule is scoped to "while a sheet is open": the retained matrix is the IDENTITY by the time a
+player can press the trigger, so dropping it is visually a no-op, and neutralising it
+unconditionally would delete the entrance every page has.
+
+### 🔴 Three of this batch's own instruments were wrong before the product was
+
+1. **A ratio passed over a visibly broken sheet.** The first assertion was "≥90% of the panel
+   visible" and it read **95%** on the layout described above. ⭐ A ratio is not the requirement:
+   it now asserts the panel **docks to the window bottom** and that **none of it is above the top**,
+   and reports the ratio as detail. *Assert the thing you mean, not a number it can satisfy.*
+2. **A flat 300ms timeout reported a keyframe as a layout.** The same 95% first appeared because
+   the panel was still mid-`m-sheet-in`. It would have been filed as a 5% clipping defect in the
+   product. The driver now awaits `panel.getAnimations()`.
+3. **A rect is not visibility, and a closed `<details>` proves it.** A chip inside the CLOSED sheet
+   reports `display: flex`, `visibility: visible`, `content-visibility: visible` and a real
+   **81×44 box at y=765** — Chrome hides disclosure content through the `::details-content` slot,
+   which appears in none of those properties and does not zero the rect. Every bounding-box test
+   calls it visible. `qa:filter-scan` uses `checkVisibility()` now, **reports how many controls it
+   skipped**, and fails if a rail's controls are *all* hidden.
+
+### 🔴 A CLOSED disclosure keeps a real box — shipped, caught by the audit, fixed in the hour
+
+`test:responsive` (scoped to `/markets`) reported **`button[Close filters] l363 r427 > vw390`** and
+the same for `Show N markets`, at **six widths**. The sheet was SHUT in every one of them.
+
+Chrome hides `<details>` content through the `::details-content` slot, so the descendants keep
+layout — the same fact that made a bounding-box visibility test lie (instrument 3 above). While
+the sheet is shut the `.route-enter` neutralisation does **not** apply, so the panel's
+`left: 0; right: 0` resolved against the page wrapper rather than the window, and the phantom
+panel hung past the right edge of the viewport. Invisible to the eye; a real horizontal-overflow
+finding on the audit that exists to catch exactly that.
+`.kp-fsheet:not([open]) > …{ display: none }` now makes a shut sheet lay out nothing.
+Guarded at §5.23, `red` case `closed-sheet-lays-out`.
+
+⚠️ **And fixing it broke a guard's locator, which the RED harness caught immediately.** §5.15 read
+`/\.kp-fsheet-panel\s*\{/`; the new rule's selector *ends* with that class, so the gate began
+inspecting `display: none` instead of the panel definition and the `panel-scrolls` mutation walked
+straight past it — 16/17. The locator is anchored to the start of a line now. ⭐ This is §5b rule 7
+in miniature: **a check and its own proof agreeing with each other about the wrong subject**, and
+the only reason it surfaced in minutes is that every assertion has a mutation that must fail on it.
+
+Plus a fourth, found because seeding six markets locally made it fire for the first time:
+`qa:discovery-board`'s `?page=2` case expected an **empty** grid, while `markets/page.tsx:233`
+deliberately clamps (`safePage = Math.min(pageNum, totalPages)`), the same "a hand-edited URL still
+renders a board" contract `qa:discovery-probe` asserts for junk params. It had been green only for
+as long as production held more than one page.
+
+### Two judgements this batch made, stated rather than left silent
+
+1. **The sheet appears below `lg` (1024), not only at phone width.** The kit's responsive table
+   says *"768 | both rows wrap to 3–4 lines | no sheet"*. This surface has used `lg` as its one
+   breakpoint since batch 1 (the strips, the `lg:contents` dissolves), and the 768 wrap was never
+   built — it would be the same 3-row sticky bar the batch exists to remove. The sheet is a strict
+   improvement at 768 and keeps the surface on ONE breakpoint instead of two.
+2. 🔴 **And reading the 768 frame is what caught the cost of it.** The topic grid was a literal
+   `grid-cols-2`, which at 768 meant two ~380px cells — a pill stretched to fill one stops looking
+   like a pill and reads as a button bar. It is
+   `grid-cols-[repeat(auto-fill,minmax(148px,1fr))]` now, which is the kit's `1fr 1fr` at the
+   390px it was drawn for and four columns at 768, with the pills sized to their labels
+   (`justify-self-start`) rather than to the cell. ⛔ No gate saw this: every control was 44px,
+   999px, un-outlined and inside its box. **It was obvious in a frame and invisible to all of them.**
+
+### 🔴 "The board works with no JavaScript" was false, and it was the reason for batch 1's trade
+
+`discovery-bar.tsx` and `menu-shell.tsx` have both said since batch 1 that the board works with
+JavaScript disabled, and §8.8 records that as the reason the scrolling strips were chosen **over**
+this very sheet. Nobody had measured it.
+
+Measured 2026-08-15 with scripts disabled, **on production as well as locally**: `/markets`
+streams its board through a Suspense boundary, and React only relocates streamed content out of
+its hidden holder with an inline `<script>`. With scripts off that never runs, so
+`.kp-discovery-bar` measures **0px tall inside a `display: none` `div#S:3`**, with the cards
+sitting in `<template>` elements. **Nothing on the board is reachable** — the strips no more than
+the sheet.
+
+⭐ So the sheet costs nothing that was not already gone, and batch 1's trade rested on a premise
+that does not hold. The native markup is still the right build — it is what would make the page
+recoverable if the streaming ever changed — but it is a different claim from "it works", and all
+three files now say the measured thing instead. `qa:discovery-board` asserts the MARKUP is native
+(a real `<details>`, every control a real `<a href>`) and **prints** what a scripts-off browser
+actually sees, so this cannot go quiet again.
+
+⬜ **Not fixed here, deliberately.** Making the board render without scripts is a page-architecture
+change (the Suspense boundary and the streaming strategy), not a filter change, and it was not
+commissioned. It is recorded rather than half-attempted.
+
+### The chart rail at 44
+
+`min-height: 44px` as a **literal**, deliberately: `--tap-min` is 40 and would silently undo the
+ruling, and there is no `--h-control-*` rung at 44 (`--h-input: 44px` is named for inputs, and
+borrowing it for a chart button would be a second meaning for one name). `test:filter-language`
+§4.3 asserts 44 and §4.4 asserts it is **not** reached through `--tap-min`; `red` case 15
+reintroduces exactly that reversal.
+
+⚠️ **Verified on production after the deploy, not before it.** The chart is behind a collapsed
+disclosure and only renders when the market has price history, which a locally seeded board does
+not have — so `qa:tap-hit` was extended to open the panel and walk `elementFromPoint`, and it
+**failed against production at 40/41px before the deploy**, which is the proof it can tell 40 from
+44 at all.
 
 ## 8.7h-bis · The original scan, as written 2026-08-14 (kept for the corrections above)
 

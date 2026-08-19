@@ -78,7 +78,12 @@ export function WatchStar({
           router.push(`/auth/login?next=${encodeURIComponent(pathname || `/markets/${marketId}`)}` as never);
           return;
         }
-        toast({ title: t.watchlist.toggleFailed, variant: "danger" });
+        // FEEDBACK LAW (DESIGN_AUTHORITY §F) — warning severity, not error. The player
+        // can fix this (tap again) and no money moved, so it takes the FACTUAL register:
+        // `danger` paints red, announces `role="alert"` and fires the heavy `error`
+        // haptic — an alarm for a star that did not save. The body carries the next step,
+        // which "Couldn't update your watchlist." never did.
+        toast({ title: t.watchlist.toggleFailed, description: t.watchlist.toggleFailedBody, variant: "factual" });
         return;
       }
       setOn(r.watching);

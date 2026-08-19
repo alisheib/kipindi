@@ -13,6 +13,7 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { execSync } from "node:child_process";
+import { injectDefect } from "./red-anchor.mjs";
 
 const HERO = new URL("../src/components/updown/price-hero.tsx", import.meta.url);
 
@@ -47,15 +48,22 @@ let caught = 0;
 const missed = [];
 const original = readFileSync(HERO, "utf8");
 
+// ⛔ ANCHORS THROUGH `red-anchor.mjs`. `price-hero.tsx` checks out CRLF and these anchors are
+// written with `\n`, so every MULTI-LINE one matched nothing — measured 2026-08-15, two of three.
+// The single-line mutation matched, so the harness reported 2/3 and looked like a guard with one
+// weak case rather than a harness with the repo's oldest trap in it.
 for (const m of MUTATIONS) {
-  if (!original.includes(m.from)) {
-    console.log(`  ✗ ${m.name}\n      ⛔ ANCHOR NOT FOUND — the harness is broken, not the guard.`);
+  let mutated;
+  try {
+    mutated = injectDefect(original, m.from, m.to);
+  } catch (e) {
+    console.log(`  ✗ ${m.name}\n      ⛔ ANCHOR NOT FOUND — the harness is broken, not the guard. (${e.message})`);
     missed.push(`${m.name} (anchor missing)`);
     continue;
   }
-  writeFileSync(HERO, original.replace(m.from, m.to));
+  writeFileSync(HERO, mutated);
   try {
-    if (readFileSync(HERO, "utf8").includes(m.from)) throw new Error("mutation did not land on disk");
+    if (readFileSync(HERO, "utf8") === original) throw new Error("mutation did not land on disk");
     let exitCode = 0, out = "";
     try {
       out = execSync("npx tsx scripts/updown-chart.test.mts", {

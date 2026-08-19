@@ -391,18 +391,18 @@ console.log("\n§8 · the phrase tests still match the server's own words");
 
   /** A phrase test, the code it lives under, and the line it must produce. */
   const PINS: Array<{ name: string; code: string; re: RegExp; expect: string }> = [
-    { name: "deposit limit",        code: "INVALID",   re: /deposit limit .* exceeded|deposit limit reached/i, expect: t.error.errDepositLimit },
-    { name: "loss limit",           code: "INVALID",   re: /loss limit/i,                       expect: t.error.errLossLimit },
-    { name: "source of funds",      code: "INVALID",   re: /source.of.funds|source-of-funds/i,  expect: t.error.errSofRequired },
-    { name: "verify your identity", code: "INVALID",   re: /verify your identity/i,             expect: t.error.errVerifyIdentity },
-    { name: "NIDA already linked",  code: "INVALID",   re: /National ID is already linked/i,    expect: t.error.errNidaTaken },
-    { name: "doc image type",       code: "INVALID",   re: /JPG, PNG, or WebP|Empty image/i,    expect: t.error.errDocImage },
-    { name: "doc too large",        code: "INVALID",   re: /Image too large|under 3 MB/i,       expect: t.error.errDocTooLarge },
-    { name: "docs locked",          code: "INVALID",   re: /locked while your submission/i,     expect: t.error.errDocsLocked },
-    { name: "no extra request",     code: "INVALID",   re: /No extra documents/i,               expect: t.error.errNoExtraRequest },
-    { name: "NIDA not verified",    code: "INVALID",   re: /NIDA not yet verified/i,            expect: t.error.errNidaNotVerified },
-    { name: "all three documents",  code: "INVALID",   re: /All three documents required/i,     expect: t.error.errDocsRequired },
-    { name: "extra docs required",  code: "INVALID",   re: /requested document(s)? before submitting/i, expect: t.error.errExtraDocsRequired },
+    // ⛔ `deposit limit`, `source of funds` and `smallest amount we can send` USED TO BE PINNED
+    // HERE. Their services now emit a machine `reason`, the phrase tests are deleted, and §8b
+    // below proves the replacement. A pin left beside its replacement is two routes to one
+    // refusal — exactly what drifts apart.
+    // ⛔ TWELVE PINS WERE DELETED HERE, each in the commit that gave its refusal a real reason.
+    // ⭐ `loss limit` WAS THE TWELFTH, and it went on 2026-08-15 — the LAST INVALID family
+    // recovered from prose, which `docs/RULES.md` §2.9 carried a ⏳ for. Its pin is replaced by
+    // §8c's `loss_limit_daily` emitter pin and §8b's render assertions, and the dictionary line
+    // it expected (`errLossLimit`) is deleted in all three languages rather than left as a
+    // second wording for a refusal the registry already words better.
+    // ⛔ What is LEFT is the honest remainder, and it is NOT an INVALID: both survivors sit under
+    // `SUSPENDED`, which is deliberately unmapped because it means four different things.
     { name: "self-exclusion",       code: "SUSPENDED", re: /self-exclusion|cooling-off/i,       expect: t.error.errBreakActive },
     { name: "wallet frozen",        code: "SUSPENDED", re: /frozen/i,                           expect: t.error.errWalletFrozen },
   ];
@@ -439,15 +439,172 @@ console.log("\n§8 · the phrase tests still match the server's own words");
   ok("8.control · …and so does an unrecognised SUSPENDED string",
      bogus2 === t.error.errSuspended, `got "${bogus2.slice(0, 60)}"`);
 
-  // ⛔ AND THE WITHDRAWAL MINIMUM CARRIES TWO FIGURES RECOVERED FROM PROSE — the very defect
-  // `detail` exists to retire. Pin that it still finds both, so the day it stops the player
-  // does not silently get "{net}" and "{min}" back.
-  const wmin = literals.find((s) => /smallest amount we can send/i.test(s));
-  ok("8.withdraw-min · the withdrawal-minimum sentence still exists on the server", !!wmin,
-     wmin ? `"${wmin.slice(0, 62)}"` : "the phrase moved");
-  const rendered = errorCopy(t, { code: "INVALID", error: "That leaves TZS 900 after the fee, and the smallest amount we can send is TZS 1,000." });
-  ok("8.withdraw-min · …and both figures are interpolated, with no placeholder left behind",
-     rendered.includes("900") && rendered.includes("1,000") && !/\{\w+\}/.test(rendered), rendered.slice(0, 90));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §8b · THE REPLACEMENT — a machine reason beats every phrase test above
+// ═══════════════════════════════════════════════════════════════════════════
+// ⭐ THIS SECTION IS THE OTHER HALF OF DELETING A PHRASE TEST. §8 proves the tests that REMAIN
+// still match; this proves the ones that were REMOVED were replaced by something exact rather
+// than simply dropped. Each case feeds `errorCopy` the shape the SERVICE now returns — reason
+// plus numeric `detail` — and asserts the player's own line comes back.
+//
+// ⛔ AND IT ASSERTS THE FIGURES CAME FROM `detail`, NOT FROM THE PROSE. The `error` string in
+// each fixture below is deliberately WRONG or empty: if any figure still leaked out of the
+// sentence, these would render it and fail.
+console.log("\n§8b · the reasons that replaced the deleted phrase tests");
+{
+  const { errorCopy } = await import("../src/lib/error-copy.ts");
+
+  for (const [lang, t] of [["en", DICT.en], ["sw", DICT.sw], ["zh", DICT.zh]] as const) {
+    // ── withdraw_below_min · the one that retired `tzsFigures` ────────────────
+    const w = errorCopy(t, {
+      code: "INVALID",
+      // ⚠️ Prose that names DIFFERENT figures on purpose. If the mapper ever reads the sentence
+      // again, 7,777 shows up in the output and this fails.
+      error: "The smallest amount we can send is TZS 7,777 after the fee. Withdraw at least TZS 8,888.",
+      reason: "withdraw_below_min",
+      detail: { net: 1000, min: 1016 },
+    });
+    ok(`8b.withdraw-min.${lang} · renders its OWN line, not the generic fallback`,
+       w !== t.error.somethingDidntWork && w !== t.error.errInvalid, w.slice(0, 70));
+    ok(`8b.withdraw-min.${lang} · ⛔ NO placeholder survives — the {min}-twice defect`,
+       !/\{\w+\}/.test(w), w.slice(0, 70));
+    ok(`8b.withdraw-min.${lang} · both figures come from detail, as numbers`,
+       w.includes("1,000") && w.includes("1,016"), w.slice(0, 90));
+    ok(`8b.withdraw-min.${lang} · ⛔ and NOTHING was scraped out of the prose`,
+       !w.includes("7,777") && !w.includes("8,888"), w.slice(0, 90));
+
+    // ── deposit_limit / sof_required / email_unverified ───────────────────────
+    for (const [reason, key] of [
+      ["deposit_limit", "errDepositLimit"],
+      ["sof_required", "errSofRequired"],
+      ["email_unverified", "errEmailUnverified"],
+      ["kyc_required", "errVerifyIdentity"],
+      // ── the KYC family · every one of these was reachable ONLY through a phrase test ──
+      ["nida_taken", "errNidaTaken"],
+      ["nida_not_verified", "errNidaNotVerified"],
+      ["doc_image_type", "errDocImage"],
+      ["doc_too_large", "errDocTooLarge"],
+      ["docs_locked", "errDocsLocked"],
+      ["docs_required", "errDocsRequired"],
+      ["extra_docs_required", "errExtraDocsRequired"],
+      ["no_extra_request", "errNoExtraRequest"],
+    ] as const) {
+      const got = errorCopy(t, { code: "INVALID", error: "Something entirely reworded happened.", reason });
+      ok(`8b.${reason}.${lang} · the reason wins over the prose`,
+         got === (t.error as unknown as Record<string, string>)[key], got.slice(0, 70));
+    }
+  }
+
+  // ⭐ THE POSITIVE CONTROL. Without it, a `hasReason` that always returned false would leave
+  // every assertion above passing through the OLD path — and on `en` several of them would
+  // still look right. Prove an unknown reason really does fall through.
+  const t = DICT.en;
+  const bogus = errorCopy(t, { code: "INVALID", error: "Something entirely reworded happened.", reason: "not_a_real_reason" });
+  ok("8b.control · ⚠️ an UNKNOWN reason falls through to the phrase tests, not to a blank",
+     bogus === t.error.errInvalid, bogus.slice(0, 70));
+  // ⛔ And the deleted phrase tests are really gone — feeding the old sentences with NO reason
+  // must now reach the generic line. If any still mapped, the deletion was cosmetic.
+  for (const [name, sentence] of [
+    ["deposit limit", "Daily deposit limit of TZS 50,000 would be exceeded."],
+    ["source of funds", "Deposits of TZS 1,000,000 or more require a Source of Funds declaration on file."],
+    ["withdraw min", "The smallest amount we can send is TZS 1,000 after the fee. Withdraw at least TZS 1,016."],
+    ["verify identity", "Verify your identity to withdraw."],
+    ["NIDA already linked", "This National ID is already linked to another account. If this is a mistake, contact support."],
+    ["doc image type", "Document must be a JPG, PNG, or WebP image."],
+    ["doc too large", "Image too large. Use a photo under 3 MB."],
+    ["docs locked", "Documents are locked while your submission is under review."],
+    ["no extra request", "No extra documents are being requested right now."],
+    ["NIDA not verified", "NIDA not yet verified."],
+    ["all three documents", "All three documents required."],
+    ["extra docs required", "Please upload the 2 requested documents before submitting."],
+  ] as const) {
+    ok(`8b.deleted · "${name}" no longer has a phrase test`,
+       errorCopy(t, { code: "INVALID", error: sentence }) === t.error.errInvalid);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §8c · THE SERVICES STILL SAY WHY — the pin that replaces the deleted phrase pins
+// ═══════════════════════════════════════════════════════════════════════════
+// ⭐ §8 EXISTS BECAUSE A PHRASE TEST CAN ROT SILENTLY. Deleting a phrase test does not delete
+// that risk — it MOVES it. The new failure mode is not "the sentence was reworded"; it is
+// **the service quietly stops emitting its reason**, at which point the refusal falls to the
+// generic line and nothing anywhere goes red. §8's own header says a rewording is invisible in
+// review, in production logs, and in every existing suite. So is a deleted `reason:`.
+//
+// ⛔ SO EACH RETIRED PHRASE TEST IS REPLACED BY A PIN ON ITS SERVICE, NOT BY NOTHING. This
+// reads the service source and asserts the token is still there — the same shape as §8, which
+// reads the service source and asserts the sentence is still there.
+console.log("\n§8c · the services still emit the reasons that replaced the phrase tests");
+{
+  const EMITTERS: Array<{ file: string; reasons: string[] }> = [
+    { file: "src/lib/server/kyc-service.ts", reasons: [
+      "nida_taken", "nida_not_verified", "docs_required", "extra_docs_required",
+      "docs_locked", "no_extra_request", "doc_image_type", "doc_too_large",
+    ] },
+    { file: "src/lib/server/wallet-service.ts", reasons: [
+      "deposit_limit", "sof_required", "withdraw_below_min", "kyc_required",
+    ] },
+    // ⭐ THE ONE THAT CLOSED `docs/RULES.md` §2.9's ⏳. `checkLossLimit` has exactly ONE caller
+    // — `buyPosition` — and it is the sole route by which an RG daily-loss refusal can reach a
+    // player on either product. If this token goes, both surfaces fall to their generic line
+    // and the LCCP acknowledge-modal silently becomes a toast.
+    { file: "src/lib/server/market-service.ts", reasons: ["loss_limit_daily"] },
+  ];
+  for (const e of EMITTERS) {
+    const src = readFileSync(e.file, "utf8");
+    for (const r of e.reasons) {
+      ok(`8c.${r} · ${e.file.split("/").pop()} still says why`,
+         new RegExp(`reason:\\s*"${r}"`).test(src),
+         `no \`reason: "${r}"\` — the refusal now falls to the generic line, silently`);
+    }
+  }
+  // ⭐ CONTROL · the pin must be capable of failing. A reason that is NOT emitted anywhere must
+  // read as absent, or every assertion above would pass on an empty file.
+  const kyc = readFileSync("src/lib/server/kyc-service.ts", "utf8");
+  ok("8c.control · the pin can fail — an unemitted reason reads as absent",
+     !/reason:\s*"stake_below_min"/.test(kyc));
+
+  // ⭐ 8c.loss-limit · AND THE ONE-CALLER CLAIM IS ASSERTED, NOT ASSUMED.
+  // ⛔ The pin above proves `buyPosition` still says why. It does NOT prove that `buyPosition`
+  // is the ONLY way to be refused by the daily-loss cap — and that is the claim the ⏳ was
+  // deleted on. A second caller added tomorrow (a cash-out gate, an Up & Down pre-flight)
+  // would refuse a player with no `reason` at all, fall to the generic line, and every
+  // assertion above would stay green because the first caller is untouched.
+  // So: walk the server tree and count the call sites. One, and it is the one that says why.
+  {
+    // ⛔ Its own walker: §8's lives inside §8's block. A hand-written file list here would be
+    // the exact staleness §8's own header records paying for three times.
+    const walkServer = (dir: string, out: string[] = []): string[] => {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        const p = `${dir}/${e.name}`;
+        if (e.isDirectory()) walkServer(p, out);
+        else if (e.name.endsWith(".ts")) out.push(p);
+      }
+      return out;
+    };
+    const callers = walkServer("src/lib/server")
+      .filter((f) => !f.endsWith("responsible-gambling.ts"))
+      .filter((f) => /\bcheckLossLimit\s*\(/.test(
+        readFileSync(f, "utf8").replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:])\/\/.*$/gm, "$1")));
+    ok("8c.loss-limit · ⛔ `checkLossLimit` still has exactly ONE caller, and it is the one that says why",
+       callers.length === 1 && callers[0].endsWith("market-service.ts"),
+       callers.length ? callers.join(", ") : "NO caller — the daily-loss cap is not enforced at all");
+  }
+
+  // ⛔ AND THE BANNER CHANNEL MUST REJECT WHAT IT DOES NOT KNOW. `?reason=` is attacker-supplied
+  // text on a signed-in money surface. If `bannerFor` ever rendered an unknown key through the
+  // caller's generic fallback instead of returning null, the query string would be back to
+  // putting a real-looking first-party alert box in front of a player.
+  const { bannerFor } = await import("../src/lib/failure-banner.ts");
+  const dict = DICT.en.error as unknown as Record<string, string>;
+  ok("8c.banner · a known reason renders", !!bannerFor("rg_limit_invalid", dict));
+  ok("8c.banner · ⛔ an UNKNOWN reason renders NOTHING, rather than echoing itself",
+     bannerFor("Your account is suspended, call +255000000", dict) === null);
+  ok("8c.banner · …and an absent reason renders nothing", bannerFor(undefined, dict) === null);
+  ok("8c.banner · severity drives the tone", bannerFor("kyc_required", dict)?.tone === "danger");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -471,11 +628,10 @@ console.log("\n§9 · a coded refusal knows how loud to be");
     ["NAME_INVALID", "name_invalid", "warning"],
     ["AVATAR_TYPE", "avatar_type", "warning"],
     ["AVATAR_SIZE", "avatar_size", "warning"],
-    ["DOC_IMAGE", "doc_image_type", "warning"],
-    ["DOC_TOO_LARGE", "doc_too_large", "warning"],
-    ["DOCS_LOCKED", "docs_locked", "info"],
-    ["NO_EXTRA_REQUEST", "no_extra_request", "info"],
-    ["NIDA_TAKEN", "nida_taken", "error"],
+    // ⛔ DOC_IMAGE, DOC_TOO_LARGE, DOCS_LOCKED, NO_EXTRA_REQUEST, NIDA_TAKEN and MAINTENANCE
+    // were listed here and are gone with their `REASON_BY_CODE` rows — no service emitted any
+    // of those six codes, so every case above proved a route nothing could take. §9b below is
+    // what replaced them: it walks the tree and fails on any mapped code with no emitter.
     ["PW_CURRENT_WRONG", "password_wrong", "warning"],
     ["PW_WEAK", "password_weak", "warning"],
     ["VOTING_CLOSED", "voting_closed", "info"],
@@ -512,6 +668,119 @@ console.log("\n§9 · a coded refusal knows how loud to be");
   // authority, or a service that learns to emit its own reason would be silently overridden.
   const both = renderFailure({ ok: false, error: "x", code: "BUSY", reason: "maintenance" } as never, dict, "GENERIC", formatTzs);
   ok("9.precedence · an explicit reason beats the code", both.reason === "maintenance", String(both.reason));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §9b · ⛔ EVERY MAPPED CODE IS ACTUALLY EMITTED — no row for a code nobody sends
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔴 THE DEFECT THIS EXISTS FOR, MEASURED 2026-08-15. `REASON_BY_CODE` carried rows for
+// `DOC_IMAGE`, `DOC_TOO_LARGE`, `DOCS_LOCKED`, `NO_EXTRA_REQUEST`, `NIDA_TAKEN` and
+// `MAINTENANCE`. **No service or action anywhere emitted any of those six codes** — not on the
+// day they were added, not since. `error-copy.ts` carried five matching dead switch arms.
+//
+// ⛔ AND THAT IS NOT A HARMLESS SPARE TYRE. §9 above proved each of those rows "worked" by
+// synthesising the code itself, so the suite was GREEN on six routes the product cannot take —
+// and the previous session read the same table and concluded those KYC refusals were handled,
+// while every one of them was in fact arriving through a phrase test.
+//
+// ⭐ THE RULE: a code may be mapped here only if something really sends it. Walked from
+// `REASON_BY_CODE` itself — never a hand-list, which is what went stale in the first place.
+console.log("\n§9b · every mapped code is emitted by something");
+{
+  const { REASON_BY_CODE_KEYS } = await import("../src/lib/failure-reasons.ts");
+  const walkCode = (dir: string, out: string[] = []): string[] => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const p = `${dir}/${e.name}`;
+      if (e.isDirectory()) walkCode(p, out);
+      else if (/\.(ts|tsx)$/.test(e.name)) out.push(p);
+    }
+    return out;
+  };
+  // ⛔ The registry's OWN file is excluded, and so is the mapper's: a row citing itself, or a
+  // `case "X":` in `error-copy.ts`, is not an emitter. An emitter is something that RETURNS it.
+  const sources = [...walkCode("src/lib/server"), ...walkCode("src/app")]
+    .filter((f) => !f.endsWith("failure-reasons.ts") && !f.endsWith("error-copy.ts"))
+    .map((f) => readFileSync(f, "utf8").replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:])\/\/.*$/gm, "$1"));
+
+  ok("9b.0 · fixture · the emitting tree was walked and read", sources.length > 100, `${sources.length} files`);
+
+  /**
+   * Does anything RETURN this code?
+   *
+   * ⛔ NOT a bare search for the quoted token, and the first draft of this guard was exactly
+   * that — which would have passed `MAINTENANCE`, one of the six dead rows, because
+   * `proposals-config.ts` declares `ProposalsState = "ACTIVE" | "COMING_SOON" | "MAINTENANCE"
+   * | "DISABLED"`. An unrelated enum member spelled the same way is not an emitter, and a
+   * guard that cannot tell the difference would have reported the defect it exists to catch
+   * as already fixed.
+   *
+   * So: the token must sit in a `code:` position — which admits `code: "X"` and the ternary
+   * form `code: a ? "X" : "Y"` that `profile/actions.ts` really uses — and must NOT be a
+   * member of a TYPE UNION (`code: "A" | "B"`), which declares what a code may be rather than
+   * sending one.
+   */
+  const emits = (code: string) => sources.some((s) => {
+    const re = new RegExp(`\\bcode:\\s*[^;\\n]{0,200}?["']${code}["']([^\\n]*)`, "g");
+    for (const m of s.matchAll(re)) {
+      const before = m[0].slice(0, m[0].length - (m[1]?.length ?? 0));
+      const after = m[1] ?? "";
+      if (/\|\s*$/.test(before.slice(0, before.lastIndexOf(code) - 1))) continue; // "A" | "X"
+      if (/^\s*\|/.test(after)) continue;                                          // "X" | "B"
+      return true;
+    }
+    return false;
+  });
+  for (const code of REASON_BY_CODE_KEYS) {
+    ok(`9b.${code} · something really returns this code`, emits(code),
+       `no emitter for "${code}" — the row maps a refusal the product never sends, and §9 would still pass by synthesising it`);
+  }
+  // ⭐ CONTROL · the walk must be capable of saying NO, or every line above passes vacuously.
+  ok("9b.control · a code nothing emits reads as absent", !emits("NEVER_EMITTED_ANYWHERE_XYZ"));
+  // ⭐ AND THE SIX DELETED ROWS ARE PINNED AS STILL-UNEMITTED — the live control, on the real
+  // finding. ⛔ If one of these ever gains an emitter, this line fails and the answer is to
+  // put its row BACK, not to relax the assertion.
+  for (const dead of ["DOC_IMAGE", "DOC_TOO_LARGE", "DOCS_LOCKED", "NO_EXTRA_REQUEST", "NIDA_TAKEN", "MAINTENANCE"]) {
+    ok(`9b.deleted.${dead} · still emitted by nothing — which is why its row is gone`, !emits(dead),
+       `something now returns "${dead}" — restore its REASON_BY_CODE row`);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §9c · THE SAME PROMISE, ON THE ROUTE THESE REFUSALS ACTUALLY TAKE
+// ═══════════════════════════════════════════════════════════════════════════
+// ⛔ DELETING A DEAD ROW MUST NOT DELETE ITS COVERAGE. §9 used to assert the loudness of the
+// six KYC/maintenance families by feeding their CODE in — a route the product never takes. The
+// rows are gone; the refusals are not. They arrive as a `reason`, so their severity and channel
+// are pinned here, on the route that is real.
+//
+// ⚠️ Caught by `red:failure-reasons`, not by reading: removing §9's rows silently un-guarded
+// `nida_taken`, and the harness's `nida-taken-demoted-to-a-nudge` mutation — which demotes a
+// fraud-shaped block to a quiet inline nudge — stopped being caught by anything.
+console.log("\n§9c · loudness is pinned on the reason route, not only the code route");
+{
+  const dict = DICT.en.error as unknown as Record<string, string>;
+  const CASES: Array<[FailureReason, "info" | "warning" | "error", "inline" | "toast" | "modal"]> = [
+    // ⛔ An identity already linked to another account is a fraud-shaped fact, not a typo to
+    // fix in place — error, and it must be acknowledged.
+    ["nida_taken", "error", "modal"],
+    ["doc_image_type", "warning", "inline"],
+    ["doc_too_large", "warning", "inline"],
+    // Nothing is wrong; a state the player cannot change and need not act on.
+    ["docs_locked", "info", "inline"],
+    ["no_extra_request", "info", "inline"],
+    // ⭐ The row a service reached for the first time today — and the sentence is the point:
+    // "Nothing has been charged", on a refusal that happens mid-stake.
+    ["maintenance", "error", "toast"],
+  ];
+  for (const [reason, severity, channel] of CASES) {
+    const r = renderFailure({ ok: false, error: "English audit prose nobody should read", reason } as never,
+                            dict, "GENERIC", formatTzs);
+    ok(`9c.${reason} · resolves through the REASON`, r.reason === reason, String(r.reason));
+    ok(`9c.${reason} · …at severity ${severity}`, r.severity === severity, r.severity);
+    ok(`9c.${reason} · …on the ${channel} channel`, r.channel === channel, r.channel);
+    ok(`9c.${reason} · …and shows neither the server prose nor the generic line`,
+       r.body !== "GENERIC" && !r.body.includes("audit prose"), r.body.slice(0, 50));
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -558,12 +827,37 @@ console.log("\n§10 · raw server strings in front of a player — the ratchet")
   // would have made the product worse. The negative lookahead is what tells the two apart.
   // ⛔ The trailing `\b(?!\.)` matters too: `r.error` is the raw string, `t.error.foo` is not.
   const RAW = /\b(?:title|description):\s*(?!t\.)[A-Za-z_$][\w$]*\.error\b(?!\.)/g;
+
+  // 🔴 AND THE SECOND CHANNEL, WHICH THIS SECTION WAS STRUCTURALLY BLIND TO UNTIL 2026-08-15.
+  // `RAW` matches an object PROPERTY — a toast or modal argument. A form-action page does not
+  // report that way: it `redirect(...?error=<the server's English sentence>)` and the server
+  // component renders `{sp.error}` as JSX TEXT inside a `Callout` or a `role="alert"` div. That
+  // form matches nothing in `RAW`, so FIVE surfaces — one of them the responsible-gambling
+  // console — sat outside this denominator while it printed a confident **0**. That is §5b's
+  // "a check adjacent to the truth": the number was correct about the channel it measured and
+  // said nothing about the one it did not.
+  //
+  // ⛔ ONE DENOMINATOR, NOT TWO. Both patterns are counted into the same `count` against the
+  // same ceiling, because the player-facing defect is identical — a Swahili or Chinese player
+  // reading English audit prose — and a defect that can hide by moving between two scoreboards
+  // is a defect with somewhere to hide.
+  // ⚠️ `test:feedback-law` §8 still ratchets the banner channel on its own. That is deliberate
+  // duplication of a MEASUREMENT, not of a rule: it is the guard that found this blindness, and
+  // it fails independently if either half regresses.
+  const RAW_BANNER = /\{\s*(?:sp|searchParams|params|q)\s*\.\s*error\s*\}/g;
   const offenders: string[] = [];
   let count = 0;
   const files0 = [...walkTsx("src/app"), ...walkTsx("src/components")];
   for (const f of files0) {
-    const n = (readFileSync(f, "utf8").match(RAW) ?? []).length;
-    if (n) { count += n; offenders.push(`${f.replace("src/", "")}×${n}`); }
+    const src = readFileSync(f, "utf8");
+    const nToast = (src.match(RAW) ?? []).length;
+    const nBanner = (src.match(RAW_BANNER) ?? []).length;
+    const n = nToast + nBanner;
+    if (n) {
+      count += n;
+      const which = [nToast ? `toast×${nToast}` : "", nBanner ? `banner×${nBanner}` : ""].filter(Boolean).join("+");
+      offenders.push(`${f.replace("src/", "")}(${which})`);
+    }
   }
   // The excluded population, counted for the record (see the note by `isAdmin`).
   const walkAll = (dir: string, out: string[] = []): string[] => {
@@ -594,6 +888,21 @@ console.log("\n§10 · raw server strings in front of a player — the ratchet")
   ok("10.4 · control · …and still IGNORES the dictionary, which is the correct thing to render",
      !probe('toast({ title: t.toast.oops, description: t.error.somethingDidntWork, variant: "danger" });'));
   ok("10.5 · control · …and the tree really was walked", files0.length > 40, `${files0.length} player .tsx files`);
+
+  // ⭐ THE BANNER HALF NEEDS ITS OWN CONTROLS, OR ADDING IT TO THE DENOMINATOR IS DECORATION.
+  // A scanner that has gone blind prints "0" in exactly the same words as a clean tree, so
+  // prove this pattern discriminates too — it must catch a banner rendering the query string,
+  // and must NOT catch one rendering the registry.
+  const probeB = (line: string) => new RegExp(RAW_BANNER.source).test(line);
+  ok("10.6 · control · the BANNER pattern catches a page rendering the server's own sentence",
+     probeB('<Callout tone="danger" live>{sp.error}</Callout>'));
+  ok("10.7 · control · …and ignores one rendering the registry",
+     !probeB('<Callout tone={banner.tone} live>{banner.body}</Callout>'));
+  // ⛔ AND THE TWO PATTERNS MUST NOT BE THE SAME PATTERN. If a refactor ever collapsed them,
+  // the denominator would silently halve and this section would go back to measuring one
+  // channel while claiming both.
+  ok("10.8 · control · the two channels really are two different patterns",
+     RAW.source !== RAW_BANNER.source && !probe('<Callout tone="danger">{sp.error}</Callout>'));
   // ℹ️ Recorded, not asserted: the ADMIN console is an English-only staff surface by design,
   // so its raw renders are excluded above. Printing the number keeps that decision visible
   // rather than hidden inside a filter.

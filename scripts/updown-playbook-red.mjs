@@ -42,9 +42,22 @@ const MUTATIONS = [
     to:   "if (false) {" },
 ];
 
+// ⛔ RESOLVE THE TSX CLI AND RUN IT WITH `process.execPath` — never `execFileSync("npx", …)`.
+// On Windows `npx` is `npx.cmd`, which execFileSync cannot spawn without a shell: it throws
+// ENOENT, and the catch below turns that into `{ code: 1, out: "" }` — INDISTINGUISHABLE from
+// "the suite failed". This harness then aborted with *"the suite is RED before any mutation —
+// fix that first"* on a suite that passes 82/82, and it has done so since the day it was
+// written. It ran for 0.5s and nobody looked, because `red:all` was an `&&` chain that had
+// already exited long before reaching it (§8).
+//
+// ⚠️ THREE OTHER HARNESSES ALREADY CARRIED THIS EXACT WARNING IN THEIR OWN HEADERS
+// (`settle-atomicity-red`, `margin-series-red`, `admin-soft-gate-red`) and four more use the
+// `shell: process.platform === "win32"` form. This was the last one still spawning `npx`
+// directly — the copy-paste trap `red-anchor.mjs`'s header describes, in a different place.
+const TSX = join(HERE, "..", "node_modules", "tsx", "dist", "cli.mjs");
 const run = () => {
   try {
-    const out = execFileSync("npx", ["tsx", SUITE], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+    const out = execFileSync(process.execPath, [TSX, SUITE], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
     return { code: 0, out };
   } catch (e) {
     return { code: e.status ?? 1, out: `${e.stdout ?? ""}${e.stderr ?? ""}` };

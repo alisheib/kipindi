@@ -158,7 +158,7 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards }: Prop
           {figures.yesShare == null ? (
             <TippingBar empty emptyLabel={t.home.heroConvEmpty} height={10} />
           ) : (
-            <TippingBar yesPct={figures.yesShare} height={10} showLabels={false} recastOnHover={false} />
+            <TippingBar yesPct={figures.yesShare} height={10} showLabels={false} recastOnHover={false} probabilityLabel={t.market.probBarAria} />
           )}
           <p className="kp-conv__read">
             {figures.yesShare == null

@@ -1,6 +1,128 @@
 STATUS: the next plan. Written 2026-07-29, immediately after the design system was
 frozen and shipped. **Revised 2026-07-31 against the live platform, not against memory.**
 
+> 🔴 **PICK UP HERE — LIVE ON PRODUCTION, UNFIXED (filed 2026-08-15, `FAILURE-INVENTORY.md`
+> §7.4).** Two Up & Down chains — `udc_5820850ef13f34e5` and `udc_f8d666a0d781b8d6` — fail
+> `fire` on **every tick** with *"Cannot create a market with a past or invalid resolution
+> date"*. 60 consecutive log lines in one sample; **zero** `settled`/`opened` beside them. A
+> retry loop, not a transient, and it will not self-heal — each retry recomputes from the same
+> stale boundary. ⚠️ **Not claimed:** that Up & Down is down — `/updown` still renders with round
+> cards and five assets. ⭐ **The finding behind it: NOTHING SURFACES THIS.** A player sees a
+> board that never advances; an operator sees nothing at all. It was found only because a deploy
+> verification happened to read `railway logs`. Whatever fixes it should make a chain **alarm or
+> pause itself** after N identical failures — a permanent error retried silently is
+> indistinguishable from a healthy idle chain.
+>
+> ⭐ **LABELS HAVE A LAW (2026-08-15) — `DESIGN_AUTHORITY.md` §L, lexicon `src/lib/side-label.ts`,
+> guard `test:labels` + `red:labels` (9/9) at the HEAD of `red:all`.** 50pick runs two products
+> over ONE storage vocabulary (a side is stored `YES|NO` on both), so a surface that cannot tell
+> which product it holds writes the wrong word. Ali's report — *"Up & Down says YES won, should
+> be UP won"* — was real and is fixed in **four** places: the Up & Down push, the wallet's
+> Activity descriptions, `/positions/performance`, and 15 dictionary/render sites.
+> 🔴 **AND IT WAS DECLARED DONE TWICE BEFORE IT WAS.** Consultants found the reported bug still
+> live after the sweep shipped, on surfaces it never opened, with **three guards ALL PASS over
+> it** — each correct about what it measured, none measuring an **absence**. Full post-mortem:
+> `FAILURE-INVENTORY.md` **§7.3/§7.3a**. ⛔ *English-only does not mean machine-only* — a
+> `Transaction.description` is rendered verbatim to the player.
+> ⏳ **Open:** the wallet description is stored as ONE English string, so SW/ZH players read
+> English there (a rendering change, not a word change); `admin/markets/[id]:384` shows YES/NO on
+> an Up & Down round; the §L ratchet stands at **14** and may only go down.
+>
+> ⭐ **NEXT COMMISSION, WRITTEN AND READY:** `docs/SESSION-PROMPT-VISUAL-SWEEP.md` — the whole
+> platform, visual only, five failure modes, 360/768/1280/1920 × EN/SW/ZH. ⛔ It leads with what
+> **not** to rebuild: 26 design guards and ~65 screenshot drivers already exist.
+>
+> ⭐ **THE FEEDBACK LAYER HAS A LAW (2026-08-15) — `DESIGN_AUTHORITY.md` §F.** What a
+> consequential action answers with — popup · toast · haptic · in-app/push/email, and the
+> options inside them — is stated once, per CLASS of action, with a severity rule and a dwell
+> rule. Guard `npm run test:feedback-law` (**130**) · `npm run red:feedback-law` (**21/21**).
+> The matrix it was derived from is [`docs/FAILURE-INVENTORY.md`](FAILURE-INVENTORY.md) §6:
+> **171** server actions, opened at their call sites rather than grepped.
+> **UD-22 shipped** — the Up & Down bet now ends in the shared `OperationResultModal` like
+> every other money mutation; its "way out" row is COMPUTED per bet (a 3-minute round has no
+> free exit at all, and a bonus-funded bet never does), pinned against `cashOutValue`'s own
+> expression so client and server cannot drift.
+> **Win/loss dwell raised on Ali's instruction (2026-08-15):** celebration 4.5s → **7s**,
+> result toasts 6s → **8s**, bet-placed deliberately unchanged, dismissal still instant.
+> Values live once in `src/lib/feedback-timing.ts`; `6_000` had been copy-pasted at four sites.
+> 🔴 **Two live defects the matrix found:** a background poll fired the money-settled haptic on
+> a page render *and over LOSS notifications*; and the push opt-OUT threw away the server's
+> `{ ok: false }`, telling a player push was off while the subscription survived.
+> ⏳ **Left open, deliberately:** five player surfaces render a raw server sentence as a JSX
+> banner (`{sp.error}`), a channel `test:failure-reasons` §10 structurally cannot see — one is
+> RG. That is §2.3's wallet/KYC/auth tranche. `test:feedback-law` §8 ratchets it at **5**.
+> ⚠️ **Four RED harnesses were ABSENT TESTS** and are repaired — see the §6b handoff. `red:all`
+> is a `&&` chain, so the first break starves everything after it.
+>
+> ⭐ **EVERY UP & DOWN POSITION IS VISIBLE (2026-08-15).** Ali: *"make it show, no matter how
+> much position I have, perfectly."* Two surfaces compressed a player's own money and both are
+> fixed. `/updown/history` rendered `g.bets.slice(0, 2)` per round card and collapsed the rest
+> into a bare `+N` chip **that was not a control** — six positions read as two chips and the
+> number four, with nowhere to go for the rest. `/updown/[roundId]` rendered `myPosition`, which
+> `myPositionFor` AGGREGATED to one side / one stake / one payout; every position is itemised
+> now (side · stake · payout · its own stored result) **beside** the aggregate settlement wrote,
+> which is untouched — this path adds no money logic.
+> 🔴 **AND A HEDGED HOLDER WAS QUOTED ONE SIDE.** `myPositionFor` picks its single `side` with
+> `up >= down`, which is a tie-break, not a fact about the bet — so a player who backed BOTH ways
+> saw the larger leg presented as their position. Same class as UD-20 on the board.
+> 🔴 **A THIRD DEFECT, FOUND WHILE FIXING THOSE TWO — and the worst of the three.**
+> `myPositionFor` read `listPositionsForUser(userId, 500, "UPDOWN")` and only THEN filtered to
+> the market. The cap is applied by the STORE, before the filter, so a player past 500 Up & Down
+> positions opening an older round got an empty list and the page told them **they had no
+> position on a round they had played**. It is a market-scoped query now — the round bounds it,
+> so there is no cap to overflow, and it is the indexed lookup on `@@index([marketId, status])`
+> rather than a scan of the player's history.
+> ⭐ **The remaining read cap is now SAID OUT LOUD.** `/updown/history` reads the most recent 400
+> positions and rendered them as the player's whole record — including the P&L strip, whose "net
+> return" was then a real shilling figure over an unstated subset. Same class as the `+N` chip:
+> not a wrong number, a number whose scope was concealed.
+> **Guards:** `test:updown-positions-visible` (29 assertions, each absence check paired with a
+> positive control) · `red:updown-positions-visible` (**4/4**, each pre-fix defect restored
+> VERBATIM and on its own).
+> 🔴 **THE RED PROOF CAUGHT A HOLE IN THE GUARD, which is the point of running it.** Disabling
+> the itemised list with `{false && (` left the `.map` in the source, so the assertion stayed
+> green over a panel that rendered nothing — E-65 exactly ("the guard asserted the branch
+> EXISTED; it did not assert it was REACHABLE"). Reachability is asserted directly now.
+> ⚠️ **And the guard's first run failed on a CORRECT file**: the comment explaining the fix
+> quotes the defect it replaced, so the absence check matched the prose. Source assertions run
+> comment-stripped now — a check that fails when the product is fine is worth nothing.
+>
+> ⭐ **BATCH 6 IS LIVE (2026-08-15): the phone filter sheet, and the chart rail at 44px.** Both
+> pieces Ali commissioned on 2026-08-14 are shipped. Below `lg`, `/markets` puts **odds, pool and
+> topic** behind one `Filters` button — a `<details>` bottom sheet with a scrim, so it opens with
+> **no JavaScript** on a mid-range Android. The sticky bar went **214px → 116px** at 360×780,
+> measured in **both** Swahili and Chinese. ⛔ Sort and status stay in the bar at every width:
+> the kit's ruling, *"they answer the first two questions a punter has and must never cost a tap"*.
+> `.pchart-range` is **44px**, a literal (`--tap-min` is 40 and would silently revert it).
+> 🔴 **The first build put sort inside the sheet** — following PLAN-OF-RECORD §8.8, which the kit
+> contradicts in four documents. §8.8 is corrected, and `red:filter-language` case 17 now catches
+> the drift. Nothing else would have: that build passed every gate, probe and screenshot.
+> 🔴 **`position: fixed` was not fixed to the viewport.** `.route-enter`'s `both`-filled animation
+> retains its transform for ever, making it the containing block for fixed descendants on EVERY
+> route — the panel measured `top: -32px` with its bottom 172px clear of the window and a scrim
+> covering neither end. `<Modal>` escapes this only by portalling to `document.body`.
+> ⛔ `transform: none` does not undo it; an animation's applied value beats a normal declaration.
+> 🔴 **Three of the batch's own instruments were wrong before the product was** — a "≥90% visible"
+> ratio that passed at 95% over that broken layout, a flat timeout that reported a keyframe as a
+> layout, and a bounding-box visibility test (a chip inside a CLOSED `<details>` reports
+> `display: flex` and a real 81×44 box — `checkVisibility()` is the only primitive that knows).
+> 🔴 **AND "the board works with no JavaScript" was false — measured, on production.** Both
+> `discovery-bar.tsx` and `menu-shell.tsx` claimed it since batch 1, and §8.8 records it as the
+> reason the scrolling strips were chosen **over** this sheet. With scripts disabled the board
+> streams through Suspense and React never relocates it: `.kp-discovery-bar` is **0px inside a
+> `display: none` holder**, cards in `<template>`s, nothing reachable — the strips no more than
+> the sheet. All three files now say the measured thing, and `qa:discovery-board` prints what a
+> scripts-off browser sees. ⬜ Making the board render without scripts is a page-architecture
+> change, not a filter one; recorded, not half-attempted.
+> 🔴 **A CLOSED `<details>` keeps a real box, and that shipped for an hour.** `test:responsive`
+> read `button[Close filters] l363 r427 > vw390` at six widths with the sheet SHUT — Chrome hides
+> disclosure content through the `::details-content` slot, so the phantom panel still laid out,
+> and positioned against the page wrapper it hung past the viewport. A shut sheet lays out
+> nothing now. Fixing it then broke a guard's own locator (a second rule whose selector ends in
+> `.kp-fsheet-panel`), which `red:filter-language` caught the same minute at 16/17.
+> **Guards:** `test:filter-language` **92 assertions** (was 66) · `red:filter-language` **18/18**.
+> Full account: PLAN-OF-RECORD §8.7i.
+>
 > ⭐ **BATCH 5 IS LIVE (2026-08-14): every player filter control is ONE control.** Ali, reading
 > the live platform: *"filtering is not designed properly, markets has a different filter design
 > than up and down."* Measured in a browser before anything moved: **four control heights (40 /
@@ -44,12 +166,13 @@ frozen and shipped. **Revised 2026-07-31 against the live platform, not against 
 > `/updown/history` day rail proven promise-vs-delivery on real data (6 promised, 6 delivered).
 > ⚠️ **The HOME laptop's `.env.qa.local` is now stale** until Ali copies the new one across.
 >
-> ▶ **BATCH 6 IS COMMISSIONED** (Ali, 2026-08-14, chosen from the deferred register):
-> **the mobile filter sheet** — the `/markets` filter bar eats ~220px on a phone and the kit's
-> answer takes it under 120 — **and the chart's time-range buttons raised 40 → 44px**.
-> ⛔ Ruled OUT in the same breath, do not re-ask: compact list · search typeahead · admin filter
-> rails · `/wallet` tabs · the `/markets` aria wording · the `rounded-pill` sweep.
-> Brief: `design-brief/00-NEXT-SESSION-PROMPT.md`.
+> ✅ **BATCH 6 IS DONE** (commissioned by Ali 2026-08-14, shipped 2026-08-15) — the record is the
+> block above and PLAN-OF-RECORD §8.7i. ⚠️ Its brief, `design-brief/00-NEXT-SESSION-PROMPT.md`,
+> is now EMPTY on purpose: a spent brief that still says "paste this as your opening prompt"
+> sends the next session to redo finished work.
+> ⛔ Ruled OUT by Ali in the same breath, do not re-ask: compact list / density toggle · search
+> typeahead · admin filter rails · `/wallet` tabs · the `/markets` `aria-pressed` wording ·
+> the `rounded-pill` → `rounded-chip` sweep. All six keep their reasons in PLAN-OF-RECORD §8.8.
 >
 > 🗄️ **(history) The QA login block, and how it was diagnosed —**
 > `login(page, "alpha")` and `"echo"` both land back on the signed-out shell — the identifier

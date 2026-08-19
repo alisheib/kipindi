@@ -53,7 +53,19 @@ const MUTATIONS = [
   },
   {
     name: "toast-replaces-aria-live — the sighted fix deletes the screen-reader one",
-    find: `          setLiveMessage(\`\${copy.placed} · \${side === "UP" ? copy.up : copy.down} · \${formatTzs(amount)}\`);`,
+    // ⚠️ THIS ANCHOR WENT STALE FOR EIGHT DAYS, AND IT IS THE REASON THE HEADER'S CRLF
+    // WARNING IS NOT ENOUGH ON ITS OWN. It was written 2026-08-05 against the single-line
+    // call; UD-21 (`00a0595a`, 2026-08-07) split it over three lines and appended the
+    // zero-width-space suffix that makes two identical consecutive bets re-announce. From
+    // that commit the anchor matched NEITHER form, so this mutation was a no-op and proved
+    // nothing — an ABSENT test wearing a passing name, which is E-108 exactly.
+    // ⭐ The harness DID say so ("ANCHOR NOT FOUND … PROVES NOTHING", exit 1). What let it
+    // sit was that `red:updown-bet-feedback` was not in `red:all`, so nothing ran it. Both
+    // halves are fixed together: an honest report nobody reads is not a guard.
+    find: `          setLiveMessage(
+            \`\${copy.placed} · \${side === "UP" ? copy.up : copy.down} · \${formatTzs(amount)}\` +
+            "\\u200B".repeat(nonce.current % 2),
+          );`,
     with: ``,
   },
   {

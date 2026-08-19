@@ -12,15 +12,53 @@
  * per surface. ⛔ The server is NOT edited for this (handover §6 rule 6): the codes
  * are what `buyPosition` already returns.
  *
- * ⚠️ THE ONE STRING TEST IN HERE, AND WHY. The RG daily-loss refusal returns
- * `code: "INVALID"` — the same code as a stake-bounds error — and the §5 matrix
- * routes it to the acknowledge-modal (LCCP informed consent), not a toast. The
- * guardrails forbid adding a distinct code server-side from this session, so the
- * classifier matches the refusal's own stable phrase. If that phrase ever moves,
- * the failure mode is a sticky toast instead of a modal — quieter than intended,
- * never silent. Flagged for Ali in MASTER-PLAN §9: a dedicated code would be cleaner.
+ * ⭐ THERE IS NO LONGER A STRING TEST IN HERE (2026-08-15). This header used to describe
+ * one and explain why it was unavoidable: the RG daily-loss refusal returns
+ * `code: "INVALID"` — the same code as a stake-bounds error — and the §5 matrix routes it
+ * to the acknowledge-modal (LCCP informed consent), not a toast, so the classifier matched
+ * the refusal's own English phrase. `buyPosition` has emitted `reason: "loss_limit_daily"`
+ * since `19ac78ec`, the reason branch below consults it first, and the phrase test is gone.
+ * `docs/RULES.md` §2.9's ⏳ named this as the last INVALID family recovered from prose.
+ *
+ * ⛔ AND REMOVING IT EXPOSED A SECOND DEFECT THAT THE DEAD TEST HAD BEEN MASKING. See
+ * `MODAL_TITLE_BY_REASON` below: the reason branch chose the modal's HEADING from the
+ * refusal's SEVERITY, and `error` covers both "we have blocked you" and "the limit you set
+ * yourself has been reached". Those are opposite statements about someone's account.
  */
-import { renderFailure, hasReason, type FailureDetail } from "@/lib/failure-reasons";
+import { renderFailure, hasReason, type FailureDetail, type FailureReason } from "@/lib/failure-reasons";
+
+/**
+ * Which heading a `modal`-channel refusal gets — keyed on the REASON, never on the severity.
+ *
+ * 🔴 THE DEFECT THIS REPLACES. The reason branch read
+ *     `title: f.severity === "error" ? m.udErrSuspendedTitle : m.udErrRgLimitTitle`
+ * and every `modal`-channel reason in the registry is severity `error` — `self_excluded`,
+ * `account_blocked`, `wallet_frozen`, `loss_limit_daily`, `break_active`, `kyc_required`,
+ * `nida_taken`, `account_suspended`. So `udErrRgLimitTitle` ("Daily loss limit reached")
+ * was UNREACHABLE through this branch, and a player who hit the cap they set themselves
+ * read **"Betting unavailable"** over a body saying they had reached their own limit — a
+ * heading that describes an operator block, on the one refusal that is the player's own
+ * tool working correctly. The registry says so in as many words at `break_active`:
+ * *"A BREAK THE PLAYER SET THEMSELVES IS NOT A FAULT — it is the tool working."*
+ *
+ * ⚠️ It was invisible because the deleted phrase test above ran FIRST for the loss cap in
+ * every real refusal shape before `19ac78ec`, and produced the right title. Removing the
+ * dead route is what made the live one observable.
+ *
+ * ⛔ NOT FIXED BY SPLITTING ON SEVERITY DIFFERENTLY. Severity answers "how loud", which is
+ * a real and separate question; it cannot also answer "whose decision was this".
+ *
+ * ⚠️ ONE ROW, AND THE OMISSIONS ARE DELIBERATE. `break_active` and `self_excluded` are also
+ * the player's own tools, but the only other heading this dictionary has is
+ * `udErrRgLimitTitle` — *"Daily loss limit reached"* — which would be a FALSE statement over
+ * a cooling-off or a self-exclusion body. They keep the neutral heading, which is at least
+ * true (betting genuinely is unavailable) while their body says whose decision it was.
+ * Inventing two more headings is a copy decision, and it is filed rather than guessed.
+ * ⛔ This map restores exactly what the deleted phrase test achieved and nothing more.
+ */
+const MODAL_TITLE_BY_REASON: Partial<Record<FailureReason, keyof UdErrDict>> = {
+  loss_limit_daily: "udErrRgLimitTitle",
+};
 
 /** How the surface must present the refusal (§5 decision matrix). */
 export type UdBetFailure =
@@ -71,15 +109,19 @@ export function udBetErrorCopy(
   // token and carry the figures as NUMBERS.
   //
   // ⚠️ The `switch` below stays and is NOT dead code: it still serves every service that
-  // has not been converted (docs/FAILURE-INVENTORY.md §2.3), and the RG string test with it.
+  // has not been converted (docs/FAILURE-INVENTORY.md §2.3). ⛔ It no longer carries a phrase
+  // test of any kind — see the header.
   if (r?.reason && reasonDict && money && hasReason(r)) {
     const f = renderFailure(r as never, reasonDict, m.udErrInvalid, money);
-    // ⛔ SEVERITY DECIDES THE CHANNEL, and `modal` is reserved for what must be
+    // ⛔ THE CHANNEL DECIDES THE SHAPE, and `modal` is reserved for what must be
     // acknowledged: the RG daily-loss cap (LCCP informed consent) and hard account blocks.
     // Everything a player can fix stays a sticky toast — a money refusal stays until read,
     // but it does not seize the screen.
     if (f.channel === "modal") {
-      return { kind: "blocked", title: f.severity === "error" ? m.udErrSuspendedTitle : m.udErrRgLimitTitle, body: f.body };
+      // ⛔ THE HEADING COMES FROM THE REASON, NOT THE SEVERITY — `MODAL_TITLE_BY_REASON`
+      // above records what titling by severity did to the loss cap.
+      const titleKey = (f.reason && MODAL_TITLE_BY_REASON[f.reason]) ?? "udErrSuspendedTitle";
+      return { kind: "blocked", title: m[titleKey], body: f.body };
     }
     return { kind: "transient", description: f.body, lockNow: f.reason === "selection_closed" };
   }
@@ -95,10 +137,22 @@ export function udBetErrorCopy(
     case "SUSPENDED":
       return { kind: "blocked", title: m.udErrSuspendedTitle, body: m.udErrSuspendedBody };
     case "INVALID":
-      // The RG daily-loss refusal — see the header for why this is a string test.
-      if (serverError && /daily loss limit|loss limit/i.test(serverError)) {
-        return { kind: "blocked", title: m.udErrRgLimitTitle, body: m.udErrRgLimitBody };
-      }
+      // ⭐ THE RG DAILY-LOSS PHRASE TEST STOOD HERE AND IS DELETED (2026-08-15).
+      // It read `if (serverError && /daily loss limit|loss limit/i.test(serverError))` and was
+      // the LAST INVALID family on this surface recovered from the server's English prose.
+      //
+      // ⛔ IT WAS ALREADY UNREACHABLE, WHICH IS WORSE THAN IT SOUNDS. `buyPosition` has emitted
+      // `reason: "loss_limit_daily"` since `19ac78ec`, and the reason branch ABOVE returns
+      // before this switch is consulted — so every real refusal has taken the reason route for
+      // a day, and this test could only ever have fired on a response shape the server does not
+      // produce. A dead phrase test is not harmless: it reads as the live route, so a reader
+      // checking "how does the loss cap reach the player?" finds the wrong answer, and any
+      // rewording of the service sentence looks like it would break something when it would not.
+      //
+      // ⚠️ The channel it produced is PRESERVED, not lost: the registry rows `loss_limit_daily`
+      // as `channel: "modal"`, and the reason branch above turns a `modal` channel into exactly
+      // this `kind: "blocked"` — with `m.udErrRgLimitTitle` as the heading, because the severity
+      // is `error`. Same dialog, reached by a token instead of by a sentence.
       return { kind: "transient", description: m.udErrInvalid, lockNow: false };
     default:
       // No code at all → the server string is the only truth we have. Demoted to

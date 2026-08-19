@@ -184,6 +184,9 @@ export default async function UpDownPage({
               <UpDownCard
                 key={r.roundId}
                 roundId={r.roundId}
+                // UD-22 · assembled server-side on the round itself, so the card and
+                // `/updown/[roundId]` confirm a bet with the same sentences.
+                receipt={r.receipt}
                 assetName={pickLocalized(locale, activeAsset!.nameEn, activeAsset!.nameSw, activeAsset!.nameZh)}
                 assetTicker={activeAsset!.key}
                 assetIcon={activeAsset!.iconKey}

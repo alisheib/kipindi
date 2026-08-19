@@ -31,7 +31,7 @@ file is worthless the moment it describes an intention as a fact.
 | Our fee: 13% of the losing side, **both** games | ✅ **live, and now SETTLED ON BOTH PRODUCTS with real money.** Up & Down: Gold round #267 — fee **1,820.00 = 13% × 14,000**, payouts 20,180, residual 0.00. Long-form poll `mkt_3254d2723f3443358300` — fee **1,690.00 = 13% × 13,000**, payouts 12,069 + 4,827 + 2,414 = **19,310 = pool − fee**, residual 0.00, TRA 169 and GBT 85 taken from *our fee* only. ⭐ The winners' shares were 12,068.75 / 4,827.50 / 2,413.75 — they do not divide, so `allocateFeeShares`' largest-remainder path really was exercised and still summed exactly |
 | Positions per market: unlimited, both sides | ✅ **live, verified on production 2026-08-14** — one player held BOTH sides of Up & Down round #268, and another held YES then added NO on a long-form poll; the wallet moved both times |
 | Bonus wagering: one side only | ✅ **live, verified on production 2026-08-14** — the first two grants in production's history were issued, and `wageredTzs` did **not** move for the hedge or for a top-up taken while the opposite leg was open. A free exit gave the credit back. §2.5 |
-| Failure messages explain themselves | ⏳ LANDING |
+| Failure messages explain themselves | ⏳ LANDING — betting + cash-out (2026-08-14); wallet, KYC, auth and the banner channel (2026-08-15). The `loss limit` family is the last still recovered from prose. §2.9 |
 
 ---
 
@@ -270,16 +270,55 @@ find yourself adding a deduction to a player's money, stop.
 
 ### 2.9 · Failure messages
 
-> ⏳ **LANDING — the BETTING and CASH-OUT paths shipped 2026-08-14 (C2–C5).** The wallet,
-> KYC, auth, proposals and objections reasons are the next tranche and are enumerated at
-> `docs/FAILURE-INVENTORY.md` §2.3; until they emit a `reason` they render exactly as before.
-> ⛔ Do not read this rule as fully live for those surfaces.
+> ⏳ **LANDING — betting and cash-out shipped 2026-08-14 (C2–C5); wallet, KYC, auth and the
+> BANNER channel shipped 2026-08-15. THE LAST PROSE ROUTE IS DELETED IN CODE 2026-08-15 and
+> this marker stays until it is read on production.** `INVALID`/`SUSPENDED` remain
+> deliberately unmapped (they mean four things each — see below); that is a decision, not a
+> tail. ⛔ Do not delete this marker until the loss-limit refusal has been driven on
+> `50pick.tz` and the modal read.
+>
+> ⚠️ **AND WHAT THIS MARKER SAID BEFORE WAS WRONG WHEN IT WAS WRITTEN.** It read: *"the
+> `loss limit` refusal is the last INVALID family still recovered from English prose, because
+> **its service has not been taught to emit a reason yet**"*. `checkLossLimit` has exactly one
+> caller — `buyPosition` — and that caller has returned `reason: "loss_limit_daily"` since
+> `19ac78ec` (2026-08-14 17:59), the same commit that built the registry. So there were **two
+> live routes to one refusal** for a day: the token, and a phrase test underneath it that could
+> no longer fire. A marker describing a gap that is already closed costs the next session the
+> time to re-find that, and this one was read by four session prompts.
+>
+> 🔴 **AND THE DEAD ROUTE WAS MASKING A LIVE DEFECT.** With the phrase test gone, the Up & Down
+> refusal took the reason branch — which chose the acknowledge-modal's HEADING from the
+> refusal's **severity**. Every `modal`-channel reason in the registry is severity `error`, so
+> a player who hit the daily loss cap they set themselves read **"Betting unavailable"** —
+> an operator-block heading — over a body explaining their own limit, and `udErrRgLimitTitle`
+> ("Daily loss limit reached") was unreachable. Severity answers *how loud*; it cannot also
+> answer *whose decision this was*. The heading is keyed on the reason now
+> (`updown-bet-errors.ts` `MODAL_TITLE_BY_REASON`), proven by `test:updown-quickbet` 29.5b with
+> a control at 29.5c.
 
 | | |
 |---|---|
-| **Enforced in** | `src/lib/failure-reasons.ts` — the registry (22 reasons), each with a severity, a channel and a dictionary key. The server emits a machine `reason` alongside the `code`, and carries the FIGURES in `detail` as **numbers**. |
-| **Rendered by** | `renderFailure()` — one function, used by the poll dial and the Up & Down quick-bet surface. ⛔ It never renders `r.error`: the server's English prose is API/audit truth and has no business being a headline in front of a Swahili or Chinese player. |
-| **Guarded by** | `npm run test:failure-reasons` (48 checks) · `npm run red:failure-reasons` (9/9) |
+| **Enforced in** | `src/lib/failure-reasons.ts` — the registry, each row carrying a severity, a channel and a dictionary key. The server emits a machine `reason` alongside the `code`, and carries the FIGURES in `detail` as **numbers**. ⚠️ This row used to state a count ("22 reasons"); it was stale within a day of being written. The registry is code — read it. |
+| **Rendered by** | `renderFailure()` — **one** function, for every channel. The poll dial and Up & Down quick-bet call it directly; the form-action pages reach the same function through `src/lib/failure-banner.ts`. ⛔ It never renders `r.error`: the server's English prose is API/audit truth and has no business being a headline in front of a Swahili or Chinese player. |
+| **Guarded by** | `npm run test:failure-reasons` · `npm run red:failure-reasons` · `npm run test:feedback-law` §8 (the banner ratchet, at **0**) · `npm run test:updown-quickbet` §29.5–29.5c (the acknowledge-modal is reached by the TOKEN and headed by the REASON) |
+
+> ⭐ **AND A REFUSAL CAN NO LONGER TRAVEL AS PROSE (2026-08-15).** A form-action page cannot
+> hand a toast an object — it redirects, and a redirect carries a string. All five such surfaces
+> used to put the server's English sentence on the query string and render `{sp.error}` as text.
+> They now carry the reason **KEY** and resolve it through the same registry.
+>
+> 🔴 **That closed a hole which had nothing to do with language.** `?error=` rendered whatever
+> the query string said, so any text could be put in front of a signed-in player by handing them
+> a link — `/profile/account?error=Your account is suspended. Call +255…`. React escapes it, so
+> it was never script injection; it was a plausible, styled, **first-party** alert box saying
+> anything an attacker chose, on the operator's own domain. An unrecognised `?reason=` now
+> renders nothing at all.
+
+> ⛔ **`objection_window_open` IS DELIBERATELY NOT A PLAYER REASON.** `OBJECTION_OPEN` is
+> returned by `settleMarket`, which takes an `officerId` and is called only by the admin
+> settlement action and the scheduler. It never reaches a player surface, so giving it player
+> copy in three languages would be inventing a refusal that does not exist. Recorded here so the
+> next session does not re-open it as an omission.
 
 > ⭐ **THIS IS WHAT CLOSES §2.3.** A 999 stake is now refused with *"Minimum bet is TZS 1,000.
 > Enter TZS 1,000 or more and try again."* — driven through the real `buyPosition` and

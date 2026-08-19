@@ -32,6 +32,7 @@ import { rateCheck } from "./rate-limit";
 import { normaliseCriterionTranslation } from "../localized";
 import { getEffectiveConfig, getEffectiveResolutionMode, snapshotFromConfig, snapshotOrLegacy, type RateConfig } from "./market-config";
 import { stakeBoundsForUpDownMarket } from "./updown-config";
+import { localizedText } from "@/lib/localized";
 import { payoutFor, settledPayoutFor, allocateWinnerPayouts, allocateFeeShares, poolFee, levySplit, leanFor, resolveFeeModel, THIN_SMALLER_SIDE_SHARE, type FeeSnapshot } from "@/lib/payout";
 import type { FailureReason } from "@/lib/failure-reasons";
 import { getRequireTwoOfficerResolution } from "./resolution-policy";
@@ -46,6 +47,7 @@ import { marketStore, positionStore } from "./market-dal";
 // E-94 · a void refund names the reason the player was already given everywhere else.
 import { roundStore } from "./updown-dal";
 import { formatTzs } from "@/lib/utils";
+import { sideWordIn, outcomeWordIn } from "@/lib/side-label";
 // E-101 · one rule for "where does this ticket live", shared with the wallet, the round page
 // and the emails.
 import { positionPermalinkHref } from "@/lib/position-permalink";
@@ -106,7 +108,10 @@ export type Side = "YES" | "NO";
  *
  *  - `MARKET` — a long-form 50pick poll (sports, macro, weather…). Every row that
  *    existed before this discriminator, via the column default.
- *  - `UPDOWN` — one round of an Up & Down price chain (5/15/30 min).
+ *  - `UPDOWN` — one round of an Up & Down price chain. ⛔ The durations are
+ *    `ALLOWED_DURATIONS` in `@/lib/updown-durations`, never a list restated here: this
+ *    line read "5/15/30 min" until 2026-08-15, four durations out of date (3, 10 and 60
+ *    were added 2026-08-04) — the exact hand-copied-list drift that module exists to end.
  *
  * The two share this table — and therefore share every proven money path (bet,
  * settle, refund, ledger, audit) — but have wildly different row economics: a poll
@@ -588,7 +593,21 @@ class BetAbort extends Error {
 }
 
 type BuyOpts = { marketId: string; side: Side; stake: number; idempotencyKey?: string };
-type BuyResult = ServiceResult<{ positionId: string; balance: number; payoutIfWin: number }>;
+/**
+ * ⭐ `placedAt` and `bonusStakeTzs` are here for the BET RECEIPT, and both are load-bearing.
+ * The Up & Down receipt states whether this bet has a free cancellation, and that answer is
+ * `cashOutValue`'s — runway measured from the SERVER's placement instant, and refused
+ * outright when any of the stake came from the bonus wallet. Deriving either in the browser
+ * (`Date.now()`, or assuming zero bonus) would let the popup promise an exit the server
+ * always refuses. See `src/lib/updown-receipt.ts`.
+ */
+type BuyResult = ServiceResult<{
+  positionId: string;
+  balance: number;
+  payoutIfWin: number;
+  placedAt: string;
+  bonusStakeTzs: number;
+}>;
 
 /**
  * Player buys a position on a market.
@@ -642,8 +661,16 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
 
   // Global maintenance switch (§9.3 #1) — new bets are paused platform-wide.
   // Withdrawals/cash-outs stay open so funds are never trapped.
+  //
+  // ⭐ THE REASON IS WHAT SEPARATES THIS FROM THE THREE OTHER `SUSPENDED` FAMILIES. The code
+  // stays `SUSPENDED` (API/audit truth, and four refusals genuinely share it — which is why
+  // the registry deliberately leaves it unmapped). Without a reason, this fell to `errorCopy`'s
+  // SUSPENDED fallback — *"This service is temporarily paused."* — which is true but says
+  // nothing about the player's money. `failMaintenance` says *"Betting is paused for
+  // maintenance. **Nothing has been charged.**"*, which is the sentence a player wants at the
+  // instant a stake was refused. The registry row existed and no service reached it.
   if (await isMaintenanceMode()) {
-    return { ok: false, error: await maintenanceMessage(), code: "SUSPENDED" };
+    return { ok: false, error: await maintenanceMessage(), code: "SUSPENDED", reason: "maintenance" as const };
   }
 
   const lockout = await isLockedOut(userId);
@@ -720,7 +747,7 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
   // recordSnapshot/emit call below for why these can't fire inside any more.
   type CommittedBet = { positionId: string; placedAt: string; yesPool: number; noPool: number; payoutIfWin: number; bonusPart: number; walletId: string; bonusAllocations: BonusAllocation[]; usedTx: boolean };
   let committed: CommittedBet | null = null;
-  let result: ServiceResult<{ positionId: string; balance: number; payoutIfWin: number }>;
+  let result: BuyResult;
   try {
   result = await withLock(`wallet:${userId}`, async (lockTx) => {
     // Idempotency: if this key was already used, return the existing position.
@@ -729,7 +756,20 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
       const existing = await positionStore.findByIdempotencyKey(opts.idempotencyKey, lockTx);
       if (existing) {
         const w = await db.wallet.findByUserId(userId, lockTx);
-        return { ok: true as const, data: { positionId: existing.id, balance: w?.balance ?? 0, payoutIfWin: existing.potentialPayout } };
+        // ⛔ The REPLAY reports the ORIGINAL bet's facts, not this attempt's. A retry on the
+        // same idempotency key is the same bet, so its receipt must state the runway the
+        // stored position actually has — re-stamping `placedAt` here would hand a replayed
+        // tap a free cancellation the first one never had.
+        return {
+          ok: true as const,
+          data: {
+            positionId: existing.id,
+            balance: w?.balance ?? 0,
+            payoutIfWin: existing.potentialPayout,
+            placedAt: existing.placedAt,
+            bonusStakeTzs: existing.bonusStakeTzs ?? 0,
+          },
+        };
       }
     }
 
@@ -928,6 +968,12 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
           fresh.updatedAt = placedAt;
           await positionStore.set(position, tx);
 
+          // The word this player's own money record will carry for their side, in the
+          // vocabulary of the product they actually bet on. English by design: a txn
+          // description is an operational record. ⚠️ That it is NOT translated is a separate,
+          // filed gap (§7.2c) — a word fix here, a rendering change there.
+          const betSideWord = sideWordIn("en", opts.side, market.productLine === "UPDOWN" ? "UPDOWN" : "MARKET");
+
           // The real-wallet ledger records only the REAL cash that left `balance`
           // (-realPart). The bonus-funded portion moves on the bonus wallet and is
           // tracked via BonusGrant + bonus audit entries, not here, so balanceAfter
@@ -939,9 +985,15 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
             amount: -realPart, fee: 0, taxWithheld: 0,
             balanceAfter: newBalance, currency: "TZS",
             provider: "INTERNAL", providerRef: null, msisdn: null,
+            // 🔴 §L1 · ALI'S BUG, IN THE WALLET'S ACTIVITY TAB. This read `${opts.side} on …`,
+            // and `opts.side` is the STORED token — `YES | NO` on BOTH product lines. So an
+            // Up & Down bet was filed on the player's own money record as *"YES on Bitcoin Up
+            // or Down"*. ⛔ This path is deliberately NOT behind `perEventNotificationsSuppressed`
+            // — a transaction is a money record and is written for EVERY round — which is
+            // precisely why the notification fix did not reach it.
             description: bonusPart > 0
-              ? `${opts.side} on "${market.titleEn.slice(0, 50)}" (incl. ${formatTzs(bonusPart)} bonus)`
-              : `${opts.side} on "${market.titleEn.slice(0, 60)}"`,
+              ? `${betSideWord} on "${market.titleEn.slice(0, 50)}" (incl. ${formatTzs(bonusPart)} bonus)`
+              : `${betSideWord} on "${market.titleEn.slice(0, 60)}"`,
             positionId: positionId,
             amlReason: null,
             createdAt: placedAt, updatedAt: placedAt, completedAt: placedAt,
@@ -1035,7 +1087,7 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
       audit({ category: "SYSTEM", action: "bonus.wagering_error", actorId: userId, targetType: "Position", targetId: positionId, payload: { stake: opts.stake, error: String((err as Error)?.message ?? err) } });
     }
 
-    return { ok: true as const, data: { positionId, balance: newBalance, payoutIfWin } };
+    return { ok: true as const, data: { positionId, balance: newBalance, payoutIfWin, placedAt, bonusStakeTzs: bonusPart } };
   });
   } catch (err) {
     // BetAbort now has to escape withLock to do its job. Since withMoneyTx joins
@@ -1083,7 +1135,7 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
       side: opts.side,
       stake: opts.stake,
       payoutIfWin: c.payoutIfWin,
-      marketTitle: market.titleEn,
+      marketTitle: localizedText(market.titleEn, market.titleSw, market.titleZh),
       marketId: market.id,
       positionId: c.positionId,
       cashOutFeeRate: betRates.cashOutFeeRate,
@@ -1111,10 +1163,18 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
       // asked for a live signal on their phone; what the digest prevents is forty rows
       // to dismiss, not knowing that a bet landed. The `tag` is scoped to the CHAIN, so
       // the next round REPLACES this notification instead of stacking beside it.
+      // 🔴 §L1 — THIS IS THE DEFECT ALI REPORTED, AND IT WAS LIVE ON THE PHONE.
+      // `opts.side` is the STORED token, which is `YES | NO` on BOTH product lines. So a
+      // player who backed **Up** on an Up & Down round got a push reading
+      // "Bet placed · YES" — the poll's vocabulary on a round that has no Yes and no No —
+      // and Swahili and Chinese got the English token on top of it. This is the one arm
+      // where the product line is genuinely UPDOWN, and it is the arm that had never been
+      // told. ⛔ Do not "simplify" the two arms back into one call: they are different
+      // vocabularies, which is the whole reason `sideWordIn` takes a product.
       pushOnly(userId, {
-        titleEn: `Bet placed · ${opts.side} ${formatTzs(opts.stake)}`,
-        titleSw: `Dau limewekwa · ${opts.side} ${formatTzs(opts.stake)}`,
-        titleZh: `已下注 · ${opts.side} ${formatTzs(opts.stake)}`,
+        titleEn: `Bet placed · ${sideWordIn("en", opts.side, "UPDOWN")} ${formatTzs(opts.stake)}`,
+        titleSw: `Dau limewekwa · ${sideWordIn("sw", opts.side, "UPDOWN")} ${formatTzs(opts.stake)}`,
+        titleZh: `已下注 · ${sideWordIn("zh", opts.side, "UPDOWN")} ${formatTzs(opts.stake)}`,
         bodyEn: `${market.titleEn.slice(0, 60)} — you're in this round.`,
         bodySw: `${market.titleSw.slice(0, 60)} — uko kwenye raundi hii.`,
         bodyZh: `${(market.titleZh ?? market.titleEn).slice(0, 40)} — 您已参与本回合。`,
@@ -1366,7 +1426,7 @@ export async function notifySelectionClosedForMarket(marketId: string): Promise<
     const ifNo = mine.filter((p) => p.side === "NO").reduce((s, p) => s + (payoutByPosition.get(p.id) ?? 0), 0);
 
     notifySelectionClosed(userId, {
-      marketTitle: m.titleEn, marketId: m.id,
+      marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh), marketId: m.id,
       payoutIfYes: ifYes, payoutIfNo: ifNo,
       hasYes: mine.some((p) => p.side === "YES"),
       hasNo: mine.some((p) => p.side === "NO"),
@@ -1489,7 +1549,7 @@ export async function notifyClosingSoonForMarket(marketId: string): Promise<{ no
   const cutoff = m.selectionClosedAt ? Date.parse(m.selectionClosedAt) : Date.parse(m.resolutionAt);
   const minutes = Math.max(1, Math.round((cutoff - now) / 60_000));
   const { alertWatchersClosingSoon } = await import("./watchlist-service");
-  const watchers = await alertWatchersClosingSoon(m.id, m.titleEn, minutes);
+  const watchers = await alertWatchersClosingSoon(m.id, localizedText(m.titleEn, m.titleSw, m.titleZh), minutes);
   return { notified: true, watchers };
 }
 
@@ -1863,7 +1923,7 @@ export async function repairOrphanedPositions(): Promise<{ repaired: number; ref
       amlReason: null,
       createdAt: p.settledAt, updatedAt: p.settledAt, completedAt: p.settledAt,
     });
-    notifyRefund(p.userId, { stake: p.stake, marketTitle: "Orphaned position", marketId: "", positionId: p.id });
+    notifyRefund(p.userId, { stake: p.stake, marketTitle: localizedText("Orphaned position"), marketId: "", positionId: p.id });
     audit({
       category: "WALLET",
       action: "position.orphan_refund",
@@ -2206,7 +2266,7 @@ export async function cashOutPosition(
     // thing we should do in that state.
     // The free-exit window comes from THIS poll's frozen snapshot — the receipt
     // must state the rule we actually applied, not a constant.
-    notifyCashout(userId, { amount: paid, marketTitle: m.titleEn, marketId: m.id, inGracePeriod, positionId, freeExitGraceMinutes: ratesFor(m).freeExitGraceMinutes });
+    notifyCashout(userId, { amount: paid, marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh), marketId: m.id, inGracePeriod, positionId, freeExitGraceMinutes: ratesFor(m).freeExitGraceMinutes });
     sendEmailToUser(userId, (email) => ({
       to: email,
       subject: `Position sold · ${formatTzs(paid)}`,
@@ -2552,7 +2612,7 @@ export async function settleMarket(
       // player heard about was the one where their money came back unchanged.
       // The digest states refunds with their own count and figure.
       if (!perEventNotificationsSuppressed(m)) {
-        notifyOneSidedRefund(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id, positionId: p.id });
+        notifyOneSidedRefund(p.userId, { stake: p.stake, marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh), marketId: m.id, positionId: p.id });
         sendEmailToUser(p.userId, (email) => ({
           to: email,
           subject: `Full refund · ${formatTzs(p.stake)} returned`,
@@ -2677,7 +2737,7 @@ export async function settleMarket(
       // E-57 — and the same push, for the same reason: every terminal outcome reaches
       // the device or none does.
       if (!perEventNotificationsSuppressed(m)) {
-        notifyRefund(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id, positionId: p.id });
+        notifyRefund(p.userId, { stake: p.stake, marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh), marketId: m.id, positionId: p.id });
       } else {
         pushOnly(p.userId, {
           titleEn: `Refunded · ${formatTzs(p.stake)}`,
@@ -2763,7 +2823,9 @@ export async function settleMarket(
             amount: payout, fee: 0, taxWithheld: 0,
             balanceAfter: updated.balance, currency: "TZS",
             provider: "INTERNAL", providerRef: null, msisdn: null,
-            description: `${opts.outcome} won · "${m.titleEn.slice(0, 60)}"`,
+            // 🔴 §L1 — the other half of Ali's report: "NO won" over a round whose sides are
+            // Up and Down. Same stored-token cause as the stake row above.
+            description: `${outcomeWordIn("en", opts.outcome, m.productLine === "UPDOWN" ? "UPDOWN" : "MARKET")} won · "${m.titleEn.slice(0, 60)}"`,
             positionId: p.id,
             amlReason: null,
             createdAt: settledAt, updatedAt: settledAt, completedAt: settledAt,
@@ -2788,7 +2850,7 @@ export async function settleMarket(
           // E-101 · the bell entry opens THIS ticket. It used to open `/positions`, which is
           // the long-form list — right product here by luck (this branch is suppressed for
           // Up & Down), wrong row always.
-          notifyWin(p.userId, payout, `${m.titleEn} · ${p.id}`, positionPermalinkHref(p.id));
+          notifyWin(p.userId, payout, localizedText(`${m.titleEn} · ${p.id}`, m.titleSw ? `${m.titleSw} · ${p.id}` : null, m.titleZh ? `${m.titleZh} · ${p.id}` : null), positionPermalinkHref(p.id));
           sendEmailToUser(p.userId, (email) => ({
             to: email,
             subject: `You won · ${formatTzs(payout)}`,
@@ -2829,7 +2891,7 @@ export async function settleMarket(
         // loss clause carries its own count and its own figure and is never folded
         // into the net — asserted by `npm run test:updown-digest`.
         if (!perEventNotificationsSuppressed(m)) {
-          notifyLoss(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id, positionId: p.id });
+          notifyLoss(p.userId, { stake: p.stake, marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh), marketId: m.id, positionId: p.id });
           sendEmailToUser(p.userId, (email) => ({
             to: email,
             subject: `Bet lost · ${formatTzs(p.stake)}`,
@@ -2935,7 +2997,7 @@ export async function settleMarket(
   try {
     const { alertWatchersSettled } = await import("./watchlist-service");
     const bettorIds = new Set((await listPositionsForMarket(m.id)).map((p) => p.userId));
-    await alertWatchersSettled(m.id, m.titleEn, opts.outcome, bettorIds);
+    await alertWatchersSettled(m.id, localizedText(m.titleEn, m.titleSw, m.titleZh), opts.outcome, bettorIds);
   } catch { /* watcher alerts must never break settlement */ }
 
   audit({
@@ -3305,7 +3367,7 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
       if (bonusPart > 0) pendingBonusRefunds.push({ userId: p.userId, amount: bonusPart });
       // Player notice — BOTH channels, and both carry the admin's reason so the
       // player knows WHY their market was pulled and that they were made whole.
-      notifyMarketCancelled(p.userId, { stake: p.stake, marketTitle: m.titleEn, marketId: m.id, reason, positionId: p.id });
+      notifyMarketCancelled(p.userId, { stake: p.stake, marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh), marketId: m.id, reason, positionId: p.id });
       sendEmailToUser(p.userId, (email) => ({
         to: email,
         subject: `Market cancelled — ${formatTzs(p.stake)} refunded`,

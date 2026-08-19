@@ -14,7 +14,19 @@
  * ⚠️ Needs a dev server on the target URL; it edits `src/app/results/page.tsx` in place, lets the
  * server recompile, then restores from an in-memory copy in a `finally`.
  *
+ * ⛔ AND IT NEEDS A **POPULATED** BOARD, WHICH IS NOT THE SAME REQUIREMENT.
+ * 🔴 Measured 2026-08-15: pointed at a fresh in-memory dev server (0 settled markets), the guard
+ * printed 32 green assertions and this harness reported *"the guard stayed GREEN with the defect
+ * reintroduced"*. It was right. Every assertion in `live-results-board.mjs` compares a PROMISE
+ * against a DELIVERY, and on an empty board every pair is `0 ≤ 0` — trivially true, and unable
+ * to tell a working filter from the exact one production shipped broken. The guard now refuses
+ * on that absent premise instead of certifying it, so this harness's baseline goes red with a
+ * line naming the reason rather than with a misleading MISS.
+ *
  * Run: npm run red:results-filter -- [baseUrl]      (default http://localhost:3009)
+ *   · a server with ≥2 settled markets in ≥1 real category, or the premise check refuses
+ *   · in `red:all`, skip it when you have no such environment:
+ *       npm run red:all -- --skip results-filter
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";

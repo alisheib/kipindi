@@ -11,6 +11,7 @@ import { listPositionsForUser, getMarket } from "@/lib/server/market-service";
 import { currentSession } from "@/lib/server/auth-service";
 import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
+import { sideWord } from "@/lib/side-label";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -101,7 +102,16 @@ export default async function PerformancePage() {
     return {
       id: p.id, marketId: p.marketId,
       title: m ? pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh) : p.marketId.slice(0, 8),
-      side: p.side, stake: p.stake,
+      // 🔴 §L1 · THE DEFECT ALI REPORTED, ON THE SURFACE HE NAMED — "in activity".
+      // This page is the ONE player list that does NOT filter by product line (line 28 takes
+      // every position, deliberately: a performance summary that hid half a player's book
+      // would be a lie about their money). It then rendered `p.side` RAW — the stored token,
+      // which is `YES | NO` on BOTH product lines — so a player who backed **Up** read
+      // "YES · TZS 5,000" on their own history, in all three languages.
+      // ⭐ The market row is already in hand on the line above, so the product line was
+      // never missing here — only unasked for.
+      side: m ? sideWord(t, p.side, m.productLine === "UPDOWN" ? "UPDOWN" : "MARKET") : null,
+      stake: p.stake,
       date: formatDayShort(d.toISOString()),
       pnl: pnlOf(p), statusLabel: statusLabel(p.status),
     };
@@ -216,7 +226,11 @@ export default async function PerformancePage() {
                   <Link key={r.id} href={`/markets/${r.marketId}` as never} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-bg-overlay/40 transition-colors">
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[13px] font-medium text-text">{r.title}</p>
-                      <p className="mt-0.5 font-mono text-[10px] text-text-muted">{r.side} &middot; {formatTzsAbs(r.stake)} &middot; {r.date}</p>
+                      {/* ⛔ The side is OMITTED, not guessed, when the market row is missing:
+                          without it there is no way to know whether this bet's vocabulary is
+                          Yes/No or Up/Down, and naming the wrong one is a false statement about
+                          the player's own bet. Same rule as `ticker.ts` rule 5. */}
+                      <p className="mt-0.5 font-mono text-[10px] text-text-muted">{r.side ? <>{r.side} &middot; </> : null}{formatTzsAbs(r.stake)} &middot; {r.date}</p>
                     </div>
                     <div className="shrink-0 text-right">
                       <p className={`font-mono text-[13px] font-bold tabular-nums ${r.pnl >= 0 ? "text-[var(--gilt)]" : "text-no-300"}`}>{formatTzsSigned(r.pnl)}</p>

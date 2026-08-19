@@ -14,6 +14,8 @@ import { db } from "./store";
 import { audit } from "./audit";
 import { isLockedOut } from "./responsible-gambling";
 import { notifyWatchedClosingSoon, notifyWatchedSettled } from "./notification-service";
+import type { LocalizedText } from "@/lib/localized";
+import type { StoredOutcome } from "@/lib/side-label";
 
 export async function isWatching(marketId: string, userId: string): Promise<boolean> {
   return db.watchlist.isWatching(marketId, userId);
@@ -63,7 +65,7 @@ export async function alertableWatcherIds(marketId: string, exclude: Set<string>
 }
 
 /** Alert watchers that a followed market closes in ~`minutes`. RG-suppressed. */
-export async function alertWatchersClosingSoon(marketId: string, marketTitle: string, minutes: number): Promise<number> {
+export async function alertWatchersClosingSoon(marketId: string, marketTitle: LocalizedText, minutes: number): Promise<number> {
   const ids = await alertableWatcherIds(marketId);
   for (const userId of ids) {
     notifyWatchedClosingSoon(userId, { marketTitle, marketId, minutes }).catch(() => {});
@@ -75,7 +77,10 @@ export async function alertWatchersClosingSoon(marketId: string, marketTitle: st
  * Alert watchers that a followed market settled. `bettorIds` are excluded — they
  * already receive their own win/loss receipt, so this would be a duplicate.
  */
-export async function alertWatchersSettled(marketId: string, marketTitle: string, outcome: string, bettorIds: Set<string>): Promise<number> {
+// ⚠️ `outcome` was typed `string` here and in `notifyWatchedSettled`, which is precisely why
+// the raw enum could reach three languages unnoticed — nothing in the chain had an opinion
+// about what the value was allowed to be. Typed end to end now (§L3).
+export async function alertWatchersSettled(marketId: string, marketTitle: LocalizedText, outcome: StoredOutcome, bettorIds: Set<string>): Promise<number> {
   const ids = await alertableWatcherIds(marketId, bettorIds);
   for (const userId of ids) {
     notifyWatchedSettled(userId, { marketTitle, marketId, outcome }).catch(() => {});

@@ -6,7 +6,7 @@ Written 2026-07-31. **Read this before opening anything else in here.**
 [`50pick-updown-operator-guide.pdf`](50pick-updown-operator-guide.pdf) — the Up & Down operator
 contract. Everything else in here is for whoever builds and runs the platform.
 
-There are **46 files** at this level — this index plus 45 documents — and five
+There are **57 files** at this level — this index plus 56 documents — and five
 subdirectories with their own indexes: [`design-system/`](design-system/README.md) (the index of
 the delivered design archive — **record, not rule**; the design rule book is
 [`DESIGN_AUTHORITY.md`](DESIGN_AUTHORITY.md) and nothing else is needed to build correctly),
@@ -137,6 +137,24 @@ to teal and resurrects the killed light theme.
 | [`GLI-COST-TRACKER.csv`](GLI-COST-TRACKER.csv) | ⚪ RECORD | Cost lines for the GLI remediation. Companion to `gli-remediation-tracker.md`. |
 
 ---
+
+## Session prompts, findings and operator material
+
+> ⚠️ **ADDED 2026-08-15, and the omission was the point.** Eleven files at this level were
+> absent from this index — including `FAILURE-INVENTORY.md`, which two gates cite — while the
+> count above still read "46 files … plus 45 documents" against a real **60**. Rule 4 below
+> says an unindexed doc is one nobody trusts; it had been broken for four of these files since
+> they were created. The count is now derived by listing, not remembered.
+
+| Doc | | What it is |
+|---|---|---|
+| [`FAILURE-INVENTORY.md`](FAILURE-INVENTORY.md) | 🔵 LIVE | **Every server refusal a player can reach**, what it means, what they are told, and at what severity — plus **§6, the action × channel feedback matrix** (171 server actions, opened at their call sites). Cited by `test:failure-reasons` and `test:feedback-law`. Read before changing any failure copy. |
+| [`SESSION-PROMPT-VISUAL-SWEEP.md`](SESSION-PROMPT-VISUAL-SWEEP.md) | 🔵 LIVE | ⭐ **THE ONLY LIVE COMMISSION, and the only session prompt left on disk** (Ali, 2026-08-15): every pixel, control, width and language against the design kit; nothing technical. ⛔ **Seven spent prompts were DELETED on 2026-08-16** at Ali’s instruction, so the next machine pulls a tree with exactly one thing to run. Their substance was already in the files that own each subject — `DESIGN_AUTHORITY` §F/§L, `FAILURE-INVENTORY` §6/§7, `LIVE-QA-CAMPAIGN` §6b — and git history holds the originals. ⚠️ One item outlived its prompt: **unit H** (`qa:refusal-frames`’ drive half), recorded in `LIVE-QA-CAMPAIGN` §6b, session-48 block. |
+| [`ADMIN-CONSOLE-FINDINGS.md`](ADMIN-CONSOLE-FINDINGS.md) | ⚪ RECORD | Session 44's admin-console audit — A1–A6, all shipped. Carries the role × page coverage buckets. |
+| [`UPDOWN-PLAYBOOK.md`](UPDOWN-PLAYBOOK.md) | 🔵 LIVE | The Up & Down operator playbook — which asset/duration pairings the tape actually supports, and why a pairing is greyed. |
+| [`FEE-DOCX-SUPERSEDED.md`](FEE-DOCX-SUPERSEDED.md) | ⚪ RECORD | The banner for two `.docx` hand-outs that state **retired** rates. A binary cannot carry its own warning, so it lives here. ⛔ Regenerate from `RULES.md` before either is handed to anyone. |
+| [`FINDING-SCHEDULER-BUSY-WAIT.md`](FINDING-SCHEDULER-BUSY-WAIT.md) | ⚪ RECORD | A single filed finding, kept as its own file because it predates the register. |
+| [`rates-for-admins.html`](rates-for-admins.html) · [`rates-decisions-needed.html`](rates-decisions-needed.html) | ⚪ RECORD | Two generated hand-outs from the 2026-08-14 rates programme. Snapshots — `RULES.md` is the truth. |
 
 ## Rules for this directory
 

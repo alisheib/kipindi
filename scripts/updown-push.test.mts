@@ -120,7 +120,13 @@ const ok = (name: string, cond: boolean, detail = "") => {
 
   // Name each outcome explicitly, so a removal says WHICH one went missing.
   for (const [outcome, needle] of [
-    ["bet placed",        /titleEn: `Bet placed · \$\{opts\.side\}/],
+    // ⚠️ RE-ANCHORED 2026-08-15. This needle was `Bet placed · ${opts.side}` — the STORED
+    // token — and that expression was itself the defect (§L1): `opts.side` is `YES | NO` on
+    // both product lines, so this push told an Up & Down player "Bet placed · YES". The
+    // needle now pins the CORRECTED form, which is strictly stronger: it still proves the
+    // bet-placed outcome pushes, and it additionally fails if anyone puts the poll's
+    // vocabulary back on a round. ⛔ Do not relax it to just `Bet placed ·`.
+    ["bet placed",        /titleEn: `Bet placed · \$\{sideWordIn\("en", opts\.side, "UPDOWN"\)\}/],
     ["win",               /titleEn: `You won \$\{formatTzs\(payout\)\}`/],
     ["loss",              /titleEn: `Bet lost · \$\{formatTzs\(p\.stake\)\}`/],
     ["refund",            /the round was voided and your stake came back in full/],

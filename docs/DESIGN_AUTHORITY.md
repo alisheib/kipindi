@@ -630,6 +630,74 @@ The platform's hardest-won rules. Most were bought with an incident.
 
 ---
 
+## L — The label law: the right word, in the right place, in the right language
+
+> Added 2026-08-15. §C says what the interface may CLAIM; this says what it may CALL
+> things. It exists because the platform stores ONE vocabulary and sells TWO products, so
+> the stored token does not tell a surface what word a player should read.
+> Guarded by `npm run test:labels`; proved red by `npm run red:labels`.
+
+### L1 — A label is any word that NAMES something to a human
+
+An outcome, a side, a status, a column heading, a chip, a tab, a button, a filter, an
+email subject, an audit action rendered to an officer, a notification title. The four ways
+it goes wrong, each of which had a LIVE instance on the day this section was written:
+
+| # | Failure | Shape |
+|---|---|---|
+| **L1** | Wrong vocabulary for the product | a poll's YES/NO used for an Up & Down round, whose sides are UP/DOWN |
+| **L2** | A raw enum reaches a human | `resolved ${outcome}` interpolating `"YES"`; *"flip the position to CASHED_OUT"* in the FAQ |
+| **L3** | An English token inside a translated string | `probOverTime` read *"YES 概率随时间变化"* while Swahili correctly read *"Uwezekano wa NDIYO"* |
+| **L4** | Right word, wrong context | "Bet" where the product says "prediction"; "poll" on an Up & Down surface |
+
+### L2 — One definition site per enum family, and it is PRODUCT-AWARE
+
+A position's side is stored `YES | NO` whatever product owns it; the Up & Down layer maps
+it to `UP | DOWN` at the edge. So the stored token is not the word.
+
+⛔ **A render site that cannot tell which product it is holding IS the defect** — not the
+word it happened to pick. `src/lib/side-label.ts` is the single map from (stored side,
+`productLine`) to the word; `updown-refund-reason.ts` and `updown-source-label.ts` are the
+same pattern for their families.
+
+⛔ **`productLine` has no default and must never be given one.** A default is the bug: it
+lets a caller that does not know its product compile, and answer confidently in the wrong
+vocabulary.
+
+⛔ **If you find a mapping in two places, DELETE one** (§0a). Measured 2026-08-15:
+`market.sideYesWord.toUpperCase()` and `common.yes` are byte-identical in all three
+locales — two homes for one word. The helper standardises on `common.*`.
+
+### L3 — No enum ever reaches a sentence
+
+⛔ Never interpolate a stored enum into copy, in any language. `resolved ${outcome}` put
+the ASCII token `YES` inside an otherwise-Chinese sentence, and the same shape put
+`CASHED_OUT` into player help text in **all three** languages. An enum is a storage
+detail; a word is a product decision. They meet only in the lexicon.
+
+### L4 — A translated string contains no English enum tokens
+
+⛔ **`test:i18n` cannot catch this.** That guard compares a translation against its English
+source and passes anything that DIFFERS — so `"YES 概率随时间变化"` counts as translated by
+its measure. Six Chinese keys shipped that way, four of them `aria-label`s, so a Chinese
+screen-reader user heard *"YES"*. Swahili had translated all six correctly, and that is
+what proves it a defect rather than a house style: **the platform's own two translations
+disagreed, over a dictionary that already defined `是` and `否`.**
+
+⭐ **A Chinese side word next to a conjunction MUST be bracketed `「 」`.** `是` and `否` are
+also ordinary function words, so `若是获胜` reads as the conjunction 若是 (*"if"*) swallowing
+the side and the player never learns which one it was. Caught by reading the rendered
+sentence, not by any suite — the string was correct token by token. The bracket belongs to
+the SENTENCE, not to the word, so `side-label.ts` returns the bare word and the call site
+adds the marks; a chip must not wear them.
+
+⚠️ The exception is a DECIDED one and carries its reason in the allowlist of
+`scripts/i18n-parity.test.mts` — e.g. `home.heroHeadline` (*"The wisdom of YES & NO."*) is
+the brand line, verbatim in all three locales by Ali's call (PLAN-OF-RECORD §7b).
+⛔ Do not "fix" an allowlisted string.
+
+---
+
 ## H — Haptics: physical events only
 
 ⚠️ **There are TWO haptic modules and they are not interchangeable.**
@@ -653,6 +721,135 @@ Patterns live in those two files. Laws:
 7. Duration is standing in for amplitude, which is a documented hack. If a native wrapper
    ever ships, replace this module's internals with real amplitude curves and
    **keep every call site identical.**
+
+---
+
+## F — The feedback law: what an action answers with
+
+> Added 2026-08-15. §H says what a haptic may mark; this says which CHANNELS an action
+> answers on at all, and at which severity. It exists because the defect in this layer was
+> never "too few toasts" — it was **two actions of the same kind and consequence answering
+> the player differently**, decided by whichever product the player happened to be in.
+> Guarded by `npm run test:feedback-law`; proved red by `npm run red:feedback-law` (14/14).
+
+### F1 — Five channels, and they are not interchangeable
+
+| Channel | What it is for |
+|---|---|
+| **Popup** | the PRIMARY signal on a consequential mutation — the shared `OperationResultModal`, or `ConfirmModal` before one |
+| **Toast** | the SECONDARY signal, and the primary one for a refusal the player can fix |
+| **Haptic** | punctuation on a physical event (§H). Never a channel of its own — it rides the toast's variant or a confirm press |
+| **In-app / push / email** | the record, for what the player is not looking at. Inventory is CODE: `src/lib/server/comms-registry.ts` |
+| **The options inside them** | the CHOICES a dialog offers. ⛔ A dialog that states a problem and offers no way out is a dead end |
+
+### F2 — The class of action decides the channels
+
+| Class | Popup | Toast | Haptic | Record |
+|---|---|---|---|---|
+| **Money moved** (bet, sell, deposit, withdraw, settle) | ✅ `OperationResultModal`, success auto-dismisses at the shared 5s | ✅ secondary | ✅ via the toast variant | ✅ in-app + email where the registry says |
+| **Account / compliance state** (KYC, RG, 2FA, close) | ✅ | ✅ secondary | ✅ | ✅ |
+| **Preference** (watch, push toggle, language, name) | ⛔ never | ✅ only | ⛔ **silent** — a preference is not a physical event | — |
+| **Refusal — the player can fix it** | ⛔ never | ✅ `factual` | ⛔ silent | — |
+| **Refusal — a hard block or a real fault** | ✅ when it must be acknowledged (LCCP) | ✅ `danger`, sticky on a money path | ✅ `error` | — |
+
+### F3 — Severity picks the variant, and gold is not available
+
+Severities are `docs/FAILURE-INVENTORY.md` §0's: **info** · **warning** (the player can fix it,
+their money did not move) · **error** (a hard block or a genuine fault).
+
+- **warning → the `factual` toast.** ⛔ **NOT toast `warning`, which is struck in GOLD**
+  (`--warning-500` is hue 86, `--gold-500` hue 84, and `--warning-fg` *is* `--gilt`) — and gold
+  means money that was **earned** (§M3). A refusal has earned nothing.
+- ⛔ **And not toast `default` either**, which paints `checkCircle`: a confirmation tick over
+  a failure is the same euphemism `factual` was added to remove when "Round lost · TZS 2,000"
+  shipped wearing a tick.
+- `factual` fires **no haptic**, which is correct: a slip the player can fix is not an event
+  landing on their money.
+- **error → `danger`**, which is red, announces `role="alert"` and fires `haptics.error()`.
+  ⛔ Do not spend it on a star that failed to save.
+
+> ⚠️ **The platform had already decided this and only one surface knew.**
+> `use-quick-bet.ts` has routed *insufficient balance* — a textbook fixable refusal — to
+> `variant: "factual"` since UD-1, with the comment *"a fact about the wallet, not an alarm"*.
+> Everything in F3 is that precedent written down and applied to its siblings, not a new
+> preference. The eight surfaces `FAILURE-INVENTORY.md` §1.5 counted as saying only that
+> something failed were all shouting `danger` at slips.
+
+### F4 — Every refusal states the reason AND the next step
+
+`docs/RULES.md` §2.9 is the standard; this is where it binds on the UI. A title that names
+only the failure (*"Failed"*, *"Couldn't update your watchlist."*) is half a message: the
+title says what did not happen, the description says what to do about it. Both, in EN + SW
++ ZH, and no two languages byte-identical.
+
+### F5 — Nothing answers an action the player did not take
+
+⛔ **No haptic on a render, a poll or a background refresh** (§H.1: never to pull attention
+back to the app). A notification arriving is the *app's* act, not the player's.
+
+> 🔴 **This was live.** `notifications-panel.tsx` fired `haptics.success()` — `[22, 36, 60]`,
+> the money-settled pattern, byte-identical to a WIN — on the arrival of any unread during a
+> 5-second poll. Its baseline started at `0`, so the first poll after every page load counted
+> as an arrival: **open the app holding one unread and the handset buzzed for a render.** And
+> the inbox carries LOSSES, whose copy is deliberately blunt ("Bet lost · TZS X") so a loss is
+> not softened — so the win pattern played over them. Removed 2026-08-15; the bell's `.g-ring`
+> is the signal, and the settlement moment is already marked on its own channel.
+
+### F6 — One signal per event
+
+⛔ A modal **and** a toast for one action is a double signal unless the toast is deliberately
+the secondary one (F1). A burst of repeat actions **coalesces** into one dialog showing the
+latest — never a stack, and never a gate on the next tap.
+
+### F8 — How long a moment stays, and the intrusion rule
+
+⭐ **THE MORE A SURFACE INTERRUPTS, THE LESS UNATTENDED TIME IT GETS.** A celebration is a
+centred modal behind a scrim, so it may not linger uninvited; a result toast blocks nothing,
+so it can afford to wait for a player who is mid-scroll. That is why the celebration's dwell
+is **shorter** than the toast's — the ordering measures *cost to the player*, not importance.
+
+Values live in **`src/lib/feedback-timing.ts`** and nowhere else (§0d). `6_000` was written
+out at four call sites before 2026-08-15 — four chances to disagree about how long a player
+gets to read that their money settled.
+
+| Moment | Dwell | Why |
+|---|---|---|
+| Win celebration (blocking modal) | **7 s** | the amount counts up over ~900 ms and the modal takes ~400 ms to arrive, so the old 4.5 s left only ~3.2 s on the final figure |
+| Result — won · lost · voided (toast) | **8 s** | non-blocking, and a corner toast takes a moment to notice at all |
+| Bet placed | **unchanged** (5 s modal / 3 s toast) | Ali, 2026-08-15: *"keep placing bets popups normal"* |
+| Any money-path failure | **sticky** (`durationMs: 0`) | not a dwell time — the absence of one |
+
+⛔ **A DWELL IS A CEILING ON WAITING, NEVER A FLOOR ON WATCHING.** Dismissal stays instant
+and always available — ✕, click-outside and Esc on the celebration; ✕, up-swipe or
+horizontal swipe on a toast. A longer dwell is only defensible *because* leaving is instant.
+
+⛔ **A LOSS IS TIMED IDENTICALLY TO A WIN.** One channel, one class of event — and §F exists
+to stop two actions of the same kind answering differently. Timing a win longer would be the
+platform leaning on the outcome it prefers, which §C4 forbids: losses are *calm, factual,
+final*. The extra seconds are **reading** time, and they cut the right way for harm
+prevention — the standard behind "Bet lost · TZS X" is that a loss must actually register.
+⚠️ VOID takes the same value: a refund is neither good news nor bad, and timing it
+differently would editorialise a neutral outcome.
+
+⚠️ Wins QUEUE. The worst case is bounded by `MAX_INDIVIDUAL` (3) in `win-celebration.tsx`,
+not by the dwell — past three the tail collapses into one honest summary. Without that cap
+this raise would have turned a weekend backlog into minutes of modals.
+
+Guarded by `test:feedback-law` §9; `red:feedback-law` proves the literal returning, the
+ordering inverting, the raise being reverted, the bet path being swept up, and a loss being
+timed shorter than a win.
+
+### F7 — A promise about money is computed, never stated as a constant
+
+If a dialog tells the player what will happen to their money, the figure and the condition
+come from the same function the money path uses.
+
+> ⛔ The Up & Down receipt's "way out" row is the worked example. `docs/RULES.md` §2.6 sets
+> free cancellation at 5 minutes, and printing that would be **false on most Up & Down bets**:
+> `cashOutValue` gates on RUNWAY (`hadRunway = graceMs > 0 && lockAt − placedAt >= graceMs`),
+> so a 3-minute round has no exit at all and a bonus-funded bet never has one. The rule lives
+> once, in `src/lib/updown-receipt.ts`, and `test:feedback-law` §6.6–6.10 pins it against the
+> server's own expression so the two cannot drift.
 
 ---
 
@@ -697,6 +894,21 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
    they drift. The live file is the truth.
 5. **Extend the kit; never fork it.** A one-off that duplicates a primitive is how a design
    system dies — not in one decision, but in fifteen reasonable-looking ones.
+6b. ⭐ **AND AT PHONE WIDTH THE FILTERS LIVE IN A SHEET** (added 2026-08-15, batch 6).
+   Below `lg`, `/markets` puts **odds, pool and topic** behind one `Filters` button —
+   `src/components/markets/filter-sheet.tsx`, a `<details>` bottom sheet with a scrim, so it
+   opens with **no JavaScript**. It took the sticky bar from 214px to **116px** at 360.
+   ⛔ **Sort and status stay in the bar at EVERY width** — the round-2 kit's ruling, stated in
+   four of its documents: *"they answer the first two questions a punter has and must never cost
+   a tap"* (COMPONENTS §21). ⛔ **Never nest a `<details>` inside the sheet**: its body scrolls,
+   and a box that scrolls on one axis clips an absolutely-positioned child on the other — the
+   4px listbox of PLAN-OF-RECORD §8.7c. Everything in the sheet is a `FilterPill`.
+   ⚠️ **`position: fixed` is not viewport-fixed inside page content.** `.route-enter` carries a
+   `both`-filled animation, so its retained transform is the containing block for fixed
+   descendants on every route; the sheet drops that animation while open. The shared `<Modal>`
+   never meets this because it portals to `document.body`. Guarded by `test:filter-language` §5
+   + `red:filter-language` (17/17).
+
 6. ⛔ **THERE IS ONE FILTER CONTROL, AND IT IS `FilterPill`** (added 2026-08-14, batch 5).
    Every player-facing control that chooses which rows are shown renders through
    `src/components/ui/filter-pill.tsx` — no exceptions, no per-surface variant. **Only the

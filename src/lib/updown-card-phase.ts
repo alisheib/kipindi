@@ -17,6 +17,8 @@
  * never `Date.now()` — a device clock can be minutes out (this campaign's own laptop is 93
  * seconds slow, E-81) and would put the player in a different phase from the server.
  */
+import { DWELL_HANDOVER_HOLD_MS } from "@/lib/feedback-timing";
+
 export type RoundPhaseState = "open" | "locked" | "closing" | "confirming" | "resolved" | "void";
 
 export type RoundPhase = {
@@ -146,14 +148,6 @@ export function resultClock(input: {
  * around ticking intervals and no node suite can drive them. The rule is the part worth guarding.
  */
 
-/**
- * ⛔ HOW LONG THE RESULT IS HELD BEFORE THE HANDOVER SPEAKS. A named constant, never a magic
- * number: it is the whole difference between *"you saw your result"* and *"something flashed"*.
- * 2.5s is a comfortable read of the outcome line plus the payout beside it, and it is
- * deliberately SHORTER than the ~91s head start the successor already has — the player is late
- * to the next match either way, so the hold must not make them later than it has to be.
- */
-export const HANDOVER_HOLD_MS = 2_500;
 
 export type HandoverPhase =
   /** Not settled — there is no handover to speak of. */
@@ -199,7 +193,7 @@ export function handoverClock(input: {
   holdMs?: number;
 }): HandoverClock {
   const { state, settledAtMs, successorExists, successorOpensAtMs, chainRunning, nowMs } = input;
-  const holdMs = input.holdMs ?? HANDOVER_HOLD_MS;
+  const holdMs = input.holdMs ?? DWELL_HANDOVER_HOLD_MS;
 
   const settled = state === "resolved" || state === "void";
   if (!settled) return { phase: "none", targetMs: null, counting: false, ready: false };

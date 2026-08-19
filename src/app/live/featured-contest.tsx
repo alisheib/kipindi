@@ -110,7 +110,9 @@ export function FeaturedContest({
             {m.title}
           </h2>
         </Link>
-        <TippingBar yesPct={m.yesPct} height={32} showLabels />
+        <TippingBar yesPct={m.yesPct} height={32} showLabels
+          probabilityLabel={t.market.probBarAria}
+          labels={{ yes: t.common.yes, no: t.common.no, tipping: t.market.tipping, leansYes: t.market.leansYes, leansNo: t.market.leansNo }} />
         <div className="mt-4 flex items-center gap-3">
           <Link href={`/markets/${m.id}` as Route} className="btn btn-primary btn-md inline-flex">
             {openLabel}

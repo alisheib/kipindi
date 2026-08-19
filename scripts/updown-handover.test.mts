@@ -18,7 +18,8 @@
  * countdown is the 1.3% case, and §6 is the check that keeps the common case working.
  */
 import { readFileSync } from "node:fs";
-import { handoverClock, HANDOVER_HOLD_MS } from "../src/lib/updown-card-phase.ts";
+import { handoverClock } from "../src/lib/updown-card-phase.ts";
+import { DWELL_HANDOVER_HOLD_MS as HANDOVER_HOLD_MS } from "../src/lib/feedback-timing.ts";
 
 let pass = 0; const fails: string[] = [];
 function ok(name: string, cond: boolean, detail = "") {
@@ -84,7 +85,7 @@ console.log("\n── 2 · the HOLD: the result is held before the handover spea
   ok("2.6 ⛔ a legacy row with no settle instant skips the hold rather than holding for ever",
     call({ settledAtMs: null, nowMs: RESOLVED }).phase !== "hold");
   // The constant itself: a magic number here would be untestable and unfindable.
-  ok("2.7 HANDOVER_HOLD_MS is a real, sane, named constant",
+  ok("2.7 the hold is a real, sane, named constant — and it lives with the other dwell times",
     Number.isFinite(HANDOVER_HOLD_MS) && HANDOVER_HOLD_MS >= 1_000 && HANDOVER_HOLD_MS <= 6_000,
     `${HANDOVER_HOLD_MS}ms`);
   // ⛔ And the caller must honour an override, or the constant is decoration.
@@ -355,8 +356,40 @@ console.log("\n── 8 · the surfaces are WIRED to it (asserting the call, nev
 
   // ⛔ THE HOLD MUST NOT BE A MAGIC NUMBER ANYWHERE (Ali's §3, in as many words).
   const bare = [card, pod, page, adv].filter((s) => /\b2_?500\b/.test(s));
-  ok("8.10 ⛔ no surface hardcodes the hold — it is HANDOVER_HOLD_MS or nothing",
+  ok("8.10 ⛔ no surface hardcodes the hold — it is the named constant or nothing",
     bare.length === 0, `${bare.length} file(s) contain a bare 2500`);
+  // ⛔ AND IT LIVES AT THE DEFINITION SITE, WITH THE OTHER DWELLS. `feedback-timing.ts` §0d:
+  // *"a duration a MOMENT chooses deliberately lives here, never as a literal at a call site."*
+  // The hold arrived in `updown-card-phase.ts` before that file existed and was moved on the
+  // merge — it has to be read against the celebration's 7s, which is the whole point of §8.11.
+  const timing = code("src/lib/feedback-timing.ts");
+  ok("8.10b ⭐ the hold is defined beside the other dwell times, not in the rule that uses it",
+    /export const DWELL_HANDOVER_HOLD_MS = /.test(timing)
+    && !/export const \w*HANDOVER_HOLD_MS/.test(code("src/lib/updown-card-phase.ts")));
+  // ⛔ AND IT IS SHORTER THAN THE MOMENTS IT MUST NOT INTERRUPT. This is an ORDERING, not a
+  // number: if the hold ever grew past the result toast it would be holding a screen longer
+  // than the platform holds the announcement of the thing on it.
+  const val = (name: string) => Number((new RegExp(`export const ${name} = ([0-9_]+)`).exec(timing)?.[1] ?? "0").replace(/_/g, ""));
+  ok("8.10c ⛔ …and it is the SHORTEST of them — the successor is already ~91s old, so a generous "
+    + "hold is betting time taken from the player, not generosity",
+    val("DWELL_HANDOVER_HOLD_MS") > 0
+    && val("DWELL_HANDOVER_HOLD_MS") < val("DWELL_CELEBRATION_MS")
+    && val("DWELL_HANDOVER_HOLD_MS") < val("DWELL_RESULT_MS"),
+    `hold=${val("DWELL_HANDOVER_HOLD_MS")} celebration=${val("DWELL_CELEBRATION_MS")} result=${val("DWELL_RESULT_MS")}`);
+
+  // ── ⭐ THE MERGE COUPLING, MADE A GUARD (standards §8b: "ask what the two changes do to EACH
+  // OTHER"). The win celebration dwells 7s — 2.8× the hold — so on the numbers alone the
+  // handover would navigate a winner off their own seal. It does not, because the celebration
+  // is a kit `<Modal>`, `<Modal>` takes `useModalLock`, and the auto-advance defers to that very
+  // lock. ⛔ That chain is load-bearing and NOTHING else was asserting it: if the celebration
+  // ever renders outside the kit modal, a winner loses their moment at 2.5s.
+  const celeb = code("src/components/markets/win-celebration.tsx");
+  const modal = code("src/components/ui/modal.tsx");
+  ok("8.11 ⭐ the win celebration renders in the kit <Modal>…", /<Modal\b/.test(celeb));
+  ok("8.11b ⭐ …which takes `useModalLock`…", /useModalLock/.test(modal));
+  ok("8.11c ⭐ …which is exactly the lock the auto-advance defers to, so a 7s celebration is "
+    + "never cut short by a 2.5s hold",
+    /document\.body\.style\.overflow === "hidden"/.test(adv));
 
   // ⛔ THE REDIRECT IS `replace`, NEVER `push`. `push` builds a back-stack of dead rounds and
   // the back button then walks the player backwards through them one at a time.
@@ -415,8 +448,8 @@ console.log("\n── 9 · the copy exists in all three languages, and stays on 
   // ⛔ THE POD CAPTION MUST NOT REFLOW THE POD. Four captions × three languages sit on one line
   // in an 8.5px mono pod at 360px; a long one wraps, the pod grows, and the board shifts.
   // 26 characters is the measured comfortable ceiling for that box.
-  const caps = dict.match(/udNextMatch(In|Live|Soon|None):\s*"([^"]*)"/g) ?? [];
-  const tooLong = caps.filter((c) => (c.match(/"([^"]*)"/)?.[1] ?? "").length > 26);
+  const caps: string[] = dict.match(/udNextMatch(In|Live|Soon|None):\s*"([^"]*)"/g) ?? [];
+  const tooLong = caps.filter((c: string) => (c.match(/"([^"]*)"/)?.[1] ?? "").length > 26);
   ok("9.len ⭐ every pod caption is ≤26 chars in every locale, so the pod cannot reflow",
     caps.length === 12 && tooLong.length === 0, `${caps.length} captions, too long: ${tooLong.join(" | ")}`);
   // ⛔ AND "Closed" MAY NOT COME BACK AS A HANDOVER WORD.

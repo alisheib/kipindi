@@ -68,8 +68,14 @@ const MUTATIONS = [
     name: "put the toast's top-edge line back — a converted site regresses with no exemption left",
     check: "1.1",
     file: "src/app/globals.css",
-    from: `  box-shadow: var(--edge-lit-strong), var(--shadow-4);`,
-    to: `  box-shadow: 0 1px 0 oklch(98% 0.01 268 / 0.08) inset, var(--shadow-4);`,
+    // ⚠️ RE-ANCHORED 2026-08-15. The toast's shadow is no longer written at the rule; it is
+    // composed into the `--elev-toast` TOKEN, and the old anchor
+    // (`box-shadow: var(--edge-lit-strong), var(--shadow-4);`) exists nowhere in the sheet.
+    // ⛔ Re-aimed at the token, which is the site a regression would now be written at — the
+    // rule this proves is unchanged: a one-sided inner light, with no exemption left to hide
+    // behind, must make the gate red.
+    from: `  --elev-toast:  var(--edge-lit-strong),`,
+    to: `  --elev-toast:  inset 0 1px 0 oklch(98% 0.01 268 / 0.08),`,
   },
   {
     // The stale-exemption half — rule 1.2. ⛔ IT CANNOT BE PROVEN BY MUTATING CSS
@@ -120,9 +126,16 @@ const MUTATIONS = [
      */
     name: "put a one-sided lamp back in a .tsx inline style — the component half of the corpus",
     check: "1.1",
-    file: "src/components/layout/top-app-bar.tsx",
-    from: `      ? "var(--edge-lit-strong), 0 0 16px -4px oklch(63% 0.18 262 / 0.55)"`,
-    to: `      ? "inset 0 1px 0 oklch(100% 0 0 / 0.16), 0 0 16px -4px oklch(63% 0.18 262 / 0.55)"`,
+    // ⚠️ RE-ANCHORED 2026-08-15, AND THE FILE CHANGED WITH IT. `top-app-bar.tsx` and
+    // `bottom-nav.tsx` no longer contain `--edge-lit-strong` at all — both were converted to
+    // token/class shadows, so neither anchor existed and the `.tsx` HALF OF THE CORPUS was
+    // going unproven. ⛔ That is the more important loss: the gate's `.tsx` scanner is the half
+    // whose first version was broken (a JSX value is a JS string, so the leading quote came out
+    // as part of the token), and it had no live proof left.
+    // Re-aimed at a `.tsx` that really does carry an inline shadow today.
+    file: "src/components/layout/notifications-panel.tsx",
+    from: `              boxShadow: "0 0 8px var(--no-500), 0 2px 4px color-mix(in oklab, var(--royal-950) 40%, transparent)",`,
+    to: `              boxShadow: "inset 0 1px 0 oklch(100% 0 0 / 0.16), 0 2px 4px color-mix(in oklab, var(--royal-950) 40%, transparent)",`,
   },
   {
     /**
@@ -138,11 +151,14 @@ const MUTATIONS = [
     name: "an EVEN ring in a .tsx, quoted and concatenated — the gate must stay SILENT",
     kind: "green",
     check: "1.1",
-    file: "src/components/layout/bottom-nav.tsx",
-    from: `          "0 14px 36px -10px oklch(8% 0.09 264 / 0.8), " +
-          "var(--edge-lit-strong)",`,
-    to: `          "0 14px 36px -10px oklch(8% 0.09 264 / 0.8), " +
-          "inset 0 0 0 1px oklch(96% 0.04 268 / 0.09)",`,
+    // ⚠️ RE-ANCHORED 2026-08-15 — see the case above for why `bottom-nav.tsx` no longer serves.
+    // ⭐ THE GREEN CASE STILL MATTERS MOST. It writes an EVEN ring into a `.tsx` as a QUOTED
+    // string and requires the gate to stay SILENT. The gate's first `.tsx` run flagged exactly
+    // this shape, because a JSX value is a JS string and the leading quote came out as part of
+    // the token — a false positive on the three sites that had just been converted CORRECTLY.
+    file: "src/components/layout/notifications-panel.tsx",
+    from: `              boxShadow: "0 0 8px var(--no-500), 0 2px 4px color-mix(in oklab, var(--royal-950) 40%, transparent)",`,
+    to: `              boxShadow: "inset 0 0 0 1px oklch(96% 0.04 268 / 0.09), 0 2px 4px color-mix(in oklab, var(--royal-950) 40%, transparent)",`,
   },
 ];
 

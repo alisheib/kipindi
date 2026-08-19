@@ -2,9 +2,28 @@
 
 /**
  * OperationResultModal — the single, kit-faithful "this happened"
- * confirmation popup used across the platform after every consequential
- * action: bet placed, position sold, deposit, withdrawal, KYC submit,
- * self-exclusion, password change, etc.
+ * confirmation popup for a consequential action.
+ *
+ * ⚠️ THIS HEADER USED TO CLAIM MORE GROUND THAN IT HOLDS, and the matrix in
+ * `docs/FAILURE-INVENTORY.md` §6 measured it. It said it was used "after every
+ * consequential action: bet placed, position sold, deposit, withdrawal, KYC
+ * submit, self-exclusion, password change, etc." — and **none of the last three
+ * uses it**. KYC submit, self-exclusion and password change are `<form action>`
+ * server actions that redirect to an inline banner or fire a toast. A component
+ * doc that overstates its own adoption is how the next reader concludes a gap is
+ * already covered, so the real list is stated instead:
+ *
+ *   · poll bet          `conviction-dial.tsx`
+ *   · Up & Down bet     `updown-bet-receipt-modal.tsx`  (UD-22)
+ *   · Up & Down refusal `updown-bet-blocked-modal.tsx`
+ *   · sell / cash-out   `sell-button.tsx`
+ *   · deposit/withdraw  `wallet-result-modal.tsx`  (redirect-driven)
+ *   · proposal created  `create-form.tsx`
+ *   · every admin action via `action-overlay.tsx`
+ *
+ * ⛔ Whether the three that don't SHOULD is a product decision about three flows,
+ * not a defect to be quietly closed — `docs/DESIGN_AUTHORITY.md` §F2 describes the
+ * shape that actually ships.
  *
  * Design language mirrors the BetConfirmModal so the user gets a
  * recognisable beat at every checkpoint:
@@ -30,6 +49,7 @@ import { useEffect, useRef } from "react";
 import { Modal } from "@/components/ui/modal";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
+import { useResultModalPresence } from "@/lib/result-modal-presence";
 
 const DEFAULT_AUTO_CLOSE_MS = 5_000;
 
@@ -140,6 +160,13 @@ export function OperationResultModal({
   const closeRef = useRef(onClose);
   const primaryRef = useRef<HTMLButtonElement>(null);
   useEffect(() => { closeRef.current = onClose; }, [onClose]);
+
+  // ⭐ §F1 · THE SECONDARY STANDS DOWN WHILE THE PRIMARY IS UP (Ali, 2026-08-15).
+  // Registering here covers every result popup in the product in one place — the bet receipt,
+  // the compliance block, the wallet result, the sell result and the dial — because all of
+  // them ARE this component. ⛔ Not a z-index change: toasts sit above modals deliberately so
+  // a failure fired during a confirm dialog stays readable. See `result-modal-presence.ts`.
+  useResultModalPresence(open);
 
   // RAF-driven gold strip. Same pattern as BetConfirmModal — direct
   // DOM mutation each frame keeps the bar exactly aligned with the

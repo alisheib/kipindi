@@ -104,6 +104,7 @@ gold on this platform means **earned money only**. A warning-severity refusal us
 | …that render a **raw server string** | ✅ **0 as of 2026-08-14** — was 12 |  `comments-thread.tsx:83/:103/:118` · `objection-dialog.tsx:61` · `create-form.tsx:77` · `export-data-button.tsx:19` · `profile/account/page.tsx:75` · `profile/source-of-funds/page.tsx:71` · `profile/responsible-gambling/page.tsx:79` · `auth/otp/page.tsx:65` · `auth/2fa/page.tsx:47` · raw `Error.message` at `avatar-uploader.tsx:94`, `kyc-doc-uploader.tsx:49`, `:154` |
 | …that say only that something failed | **8** | `watch-star.tsx:81` · `position-share.tsx:56` · `push-settings.tsx:58/:62/:80` · `security-client.tsx` generic branch · `password-section.tsx:47` (title is the bare word "Failed") |
 | …that are **SILENT** | **1** | `auth/login/page.tsx:138` — `default: return null` |
+| …rendered as a **JSX BANNER** rather than a toast prop | **5**, and §10's ratchet cannot see them | 🔴 see the note below |
 | Nothing tests any mapper | ✅ **closed 2026-08-14** | `test:failure-reasons` §8 pins every phrase test against the **server's own string**, §9 pins the code→reason→severity mapping, §10 is a ratchet at **zero** on raw renders. `red:failure-reasons` catches 16/16, including a reworded server sentence and a drifted pattern |
 
 > ⭐ **THE RAW-STRING COUNT WAS SIX, NOT TWELVE — AND MEASURING IT WRONG COST TWO WOLF-CRIES.**
@@ -115,6 +116,48 @@ gold on this platform means **earned money only**. A warning-severity refusal us
 > `create-form.tsx` ×1. The ceiling is **0** and may only stay there.
 > ⚠️ 71 raw renders remain on the **staff** console. They are excluded deliberately, counted
 > and printed by §10 rather than hidden inside a filter, and are not this inventory's subject.
+
+> 🔴 **AND THE ZERO IS TRUE OF ONE CHANNEL ONLY — measured 2026-08-15.** §10's pattern is
+> `/\b(?:title|description):\s*(?!t\.)[A-Za-z_$][\w$]*\.error\b(?!\.)/` — an object
+> **property**, i.e. a toast or modal argument. A **form-action page does not report that
+> way**: it `redirect(...?error=<the server's English sentence>)` and the server component
+> renders `{sp.error}` as JSX text in a `Callout` or a `role="alert"` div. That form matches
+> nothing in §10's regex, so the entire channel sits outside its denominator. This is §5b's
+> *"a check adjacent to the truth"*, and it is why the row above must not be read as "no
+> player ever sees English prose".
+>
+> **Five do today**, and one is a **compliance** surface — a Swahili or Chinese player who
+> trips `setLimits` validation reads *"Invalid value for dailyLossLimit."*:
+>
+> | Surface | Class |
+> |---|---|
+> | `profile/responsible-gambling/page.tsx:79` | 🔴 RG / compliance |
+> | `profile/kyc/page.tsx:94` | KYC |
+> | `profile/source-of-funds/page.tsx:71` | KYC / SOF |
+> | `profile/account/page.tsx:75` | account |
+> | `auth/reset-password/page.tsx:138` | auth |
+>
+> ✅ **ALL FIVE FIXED 2026-08-15 — the ceiling is 0.** Each surface carries the reason **KEY**
+> on its redirect and resolves it through `renderFailure` via `src/lib/failure-banner.ts`. ⛔ Not
+> a second renderer: the pure function is imported, not forked, so a reason cannot say one thing
+> in a toast and another in a banner. `test:feedback-law` §8's `CEILING` went 5 → 0 in the same
+> commit, and `test:failure-reasons` §10 now counts **both** channels into **one** denominator
+> with its own controls — the banner pattern must catch `{sp.error}`, must ignore
+> `{banner.body}`, and must stay distinct from the toast pattern, because a refactor that
+> collapsed them would silently halve the denominator while still claiming both.
+>
+> 🔴 **AND KEYING THE CHANNEL CLOSED A REFLECTION HOLE.** `?error=` rendered whatever the query
+> string said, so any text could be put in front of a signed-in player by handing them a link —
+> `/profile/account?error=Your account is suspended. Call +255…`. React escapes it, so it was
+> never script injection; it was a plausible, styled, **first-party** alert box saying anything
+> an attacker chose, on the operator's own domain, above a real account page. On a licensed
+> money platform that is a phishing surface, and it was invisible to every guard here because
+> every guard here was looking for a *translation* defect. `bannerFor` validates against the
+> registry before rendering, so an unrecognised `?reason=` renders nothing at all.
+>
+> ⚠️ Four of the five were in the original list of twelve above and were dropped from the "real
+> population of six" because the re-measurement scanned only toast props; `auth/reset-password`
+> was never listed at all.
 
 ### 1.6 · The documented bug this must not repeat
 
@@ -175,6 +218,38 @@ the way `tzsFigures` does today.
 
 ### 2.3 · Wallet, KYC, auth, proposals, objections
 
+> 🔴 **THE "SHORTER ROUTE" BELOW WAS WRONG, AND MEASURING IT COST A TRANCHE — corrected
+> 2026-08-15.** This section claimed *"19 of them already carry a distinct machine CODE … the
+> services were never the problem"*, and the registry duly mapped `DOC_IMAGE`, `DOC_TOO_LARGE`,
+> `DOCS_LOCKED`, `NIDA_TAKEN` and `NO_EXTRA_REQUEST`. Measured by **opening the call sites**:
+>
+> **No service anywhere emitted any of those five codes.** `kyc-service.ts` emits exactly three —
+> `INVALID`, `NOT_FOUND`, `RATE_LIMITED`. Those five registry rows were therefore *unreachable*,
+> and every KYC refusal a player actually saw arrived through `errorCopy`'s INVALID phrase tests
+> and nothing else. The rows looked like coverage and were dead code.
+>
+> ⛔ **And where the mapped codes ARE emitted, the code is minted by phrase-matching the prose.**
+> `PW_CURRENT_WRONG`, `PW_WEAK`, `VOTING_CLOSED`, `EMAIL_TAKEN` and `NAME_INVALID` are all
+> produced in the **action layer**, like this:
+>
+> ```
+>   /current password is incorrect/i.test(r.error) ? "PW_CURRENT_WRONG" : ...
+>   /voting has closed/i.test(r.error)             ? "VOTING_CLOSED"    : "NOT_FOUND"
+> ```
+>
+> So the "distinct machine code" the registry maps so exactly is itself manufactured by the
+> substring-matching the registry exists to retire. The defect was **moved one layer up, not
+> removed** — and mapping the code made it look solved. Still open for the auth/proposals family.
+>
+> ⚠️ **A third seam, found the same way:** `attachDocumentAction` forwarded `{ ok, error, code }`
+> and silently dropped everything else, so a `reason` minted in the service died at the action
+> boundary. Teaching a service to say why is inert until every layer between it and the player
+> carries it. This is what §3 Step 1 means by *"a list built from greps is a lie — open the call
+> sites"*.
+>
+> The paragraph below is kept as written, because what it got RIGHT — that §1.4's missing
+> `Severity` was the real gap — is still true.
+>
 > ✅ **LANDED 2026-08-14, and by a shorter route than this section assumed.** It reads as
 > though every one of these needs a service change. Most do not: **19 of them already carry a
 > distinct machine CODE** (`EMAIL_TAKEN`, `NIDA_TAKEN`, `DOC_TOO_LARGE`, `PW_WEAK`,
@@ -330,6 +405,165 @@ The behaviour (suppress the figure rather than price a two-sided position as one
 unchanged and still right; **UD-20 is re-opened as a decision for Ali** — a hedged holder on a
 locked round now sees no payout figure at all, on a state the product deliberately permits.
 
+### 3.8 · ✅ FIXED (`690aa237`, 2026-08-15) · A RED-harness mutation reached production
+
+`markets/[id]/page.tsx:329` — the gate deciding whether to show the §2.5 one-side bonus
+warning — was **`if (true)`** on `main`, and therefore deployed on `50pick.tz` from 12:52 to
+14:41. Commit `76efe614` (*"Unit B — the side word comes from the lexicon"*) carried **three**
+hunks into that file: two were the real `sideWord`/`outcomeWord` work, and the third was a
+debug override swept in with them.
+
+**What a player read.** The comment three lines above the gate states the contract in as many
+words — *"shown ONLY to a player who actually holds an unfulfilled grant … for everyone else
+this renders nothing at all"*. Forced true, any signed-in player opening a market while holding
+the **opposite** side — the hedge `RULES.md` §2.4 explicitly permits, driven with real money on
+2026-08-14 — read *"…only one side counts toward the **TZS 0** you still need to bet before your
+bonus can be withdrawn."* Production has had **two** grants in its entire history, so for
+essentially every hedging player that was a false statement about their money, naming a nonsense
+figure, on a money surface, under a rule `RULES.md` §2.5 marks ✅ live.
+
+> ⭐ **TWO PARALLEL SESSIONS FOUND IT INDEPENDENTLY, THREE MINUTES APART, AND THAT IS THE
+> FINDING.** The restore sat **on disk, uncommitted, from 13:41** — after the 12:52 commit — so
+> the working tree looked correct while `main` shipped the mutation. Every local test run was
+> therefore green against code production was not running. A session that trusts its own tree to
+> tell it what is deployed cannot see this class of defect at all; only `git show origin/main`
+> can.
+
+⛔ **The mechanism is the `git add -A` hazard in §0 of the session prompts, realised.** A RED
+harness rewrites real source and restores it when the run completes; a broad `git add` between
+those two moments commits the mutation, and the later restore — being a separate, uncommitted
+edit — never reaches `main`.
+
+⭐ **The rest of the range is clean.** Every commit from 2026-08-14/15 was swept for the same
+shape: no other `if (true)`/`if (false)` anywhere in `src/`, no NUL bytes, no zeroed source
+files. This was the only one.
+
+### 3.9 · 🔴 FIXED (2026-08-15) · The RED harness reported "tree restored" and had not
+
+`red:failure-reasons` kept its restore set as a **hard-coded list of six files**:
+
+```js
+const originals = new Map([[MARKET, …], [REASONS, …], [DICT, …], [PAGE, …], [KYC, …], [COPY, …]]);
+const restore = () => { for (const [f, s] of originals) writeFileSync(f, s); };
+```
+
+Add a mutation against a **seventh** file and the harness writes it, never restores it, and then
+prints `tree restored · 18/18` and exits **0**. That is exactly what happened when the two banner
+mutations were first added: both defects were left **on disk in a green tree** — a compliance
+surface rendering `{sp.error}` again, and a `bannerFor` that no longer validates the query
+string. A commit at that moment would have shipped both, with every guard passing and the
+harness's own summary saying the tree was clean.
+
+> ⭐ **THE TELL WAS NOT IN ANY OUTPUT.** Both guards passed, RED passed, `git status` showed the
+> files as modified — indistinguishable from the edits I had made myself moments earlier. It was
+> caught only by reading the two lines back. ⛔ **A harness's claim about the tree is not
+> evidence about the tree**; §0's "scan for NUL bytes after any interrupted run" is the same
+> lesson, and this run was not interrupted.
+
+Fixed at the root rather than by extending the list: the snapshot is taken **on first touch**, so
+the set restored is by construction the set mutated. A restore list maintained by hand beside a
+mutation list is `RULES.md` §7's *"a number written twice"* applied to file paths — it can only
+ever go stale, and it goes stale silently.
+
+### 3.10 · 🔴 FIXED (2026-08-15) · A dead phrase test was hiding a live wrong heading
+
+`RULES.md` §2.9 carried a ⏳ saying the `loss limit` refusal was *"the last INVALID family still
+recovered from English prose, **because its service has not been taught to emit a reason yet**"*.
+
+⛔ **That premise was false when it was written.** `checkLossLimit` has exactly ONE caller —
+`buyPosition` — and it has returned `reason: "loss_limit_daily"` since `19ac78ec` (2026-08-14
+17:59), *the same commit that built the registry*. Two phrase tests survived underneath it
+(`error-copy.ts`, `updown-bet-errors.ts`), and because both surfaces consult the reason FIRST,
+neither could fire. The ⏳ described a closed gap, and four session prompts inherited it.
+
+> ⭐ **THE DEFECT WAS NOT THE DEAD CODE. IT WAS WHAT THE DEAD CODE CONCEALED.** With the phrase
+> test removed, the Up & Down refusal takes the reason branch — which chose the acknowledge
+> modal's **heading** from the refusal's **severity**:
+>
+> ```ts
+> title: f.severity === "error" ? m.udErrSuspendedTitle : m.udErrRgLimitTitle
+> ```
+>
+> Every `modal`-channel reason in the registry is severity `error` — `self_excluded`,
+> `account_blocked`, `wallet_frozen`, `loss_limit_daily`, `break_active`, `kyc_required`,
+> `nida_taken`, `account_suspended`. So the `udErrRgLimitTitle` arm was **unreachable**, and a
+> player who reached the daily loss cap *they set themselves* read **"Betting unavailable"** —
+> the operator-block heading — over a body explaining their own limit. The registry states the
+> principle one row away, at `break_active`: *"A BREAK THE PLAYER SET THEMSELVES IS NOT A FAULT
+> — it is the tool working."*
+>
+> ⛔ Severity answers **how loud**. It cannot also answer **whose decision this was**. The
+> heading is keyed on the reason now (`MODAL_TITLE_BY_REASON`), which restores exactly what the
+> phrase test achieved and nothing more.
+
+⚠️ **`break_active` and `self_excluded` deliberately keep the neutral heading.** The only other
+heading this dictionary has names the *daily loss limit*, which would be a false statement over a
+cooling-off body. Two more headings is a copy decision; it is filed here rather than guessed.
+
+⚠️ **AND THE FIRST FIX RE-ARMED THE HARNESS ON A COMMENT.** The commit deleting the phrase test
+quoted the deleted `if (…) return …` line verbatim in the comment explaining the deletion.
+`red:failure-reasons` anchors on exact source text, so its mutation resolved — **uniquely**, so
+`red-anchor.mjs`'s ambiguity rule was satisfied — inside the comment, mutated prose, changed no
+behaviour, and reported the guard as having MISSED. ⛔ **A comment that quotes deleted code is a
+decoy anchor**, and no uniqueness check can tell code from prose about code. Both the comment and
+the mutation were replaced; the harness is back to 18/18.
+
+**Proof.** `test:failure-reasons` 209 (incl. §8c's new `loss_limit_daily` emitter pin and a walked
+assertion that `checkLossLimit` still has exactly one caller) · `test:updown-quickbet` 53 (29.5
+drives the TOKEN with a deliberately unrelated sentence, 29.5b pins the heading, 29.5c controls it)
+· `red:failure-reasons` 18/18 · `test:i18n` 1846×3 after deleting the orphaned `errLossLimit`.
+
+### 3.11 · 🔴 FIXED (2026-08-15) · The ACTION layer minted codes by reading the SERVICE's English
+
+Three server actions recovered a machine code by matching, with a regex, the English sentence the
+service they had just called had returned. `§1.6` records what that pattern cost when
+`error-copy.ts` did it; these did the same thing **one layer up**, where it is harder to see
+because the code that comes out *looks* like a machine token.
+
+| Where | What it did | What went wrong |
+|---|---|---|
+| `profile/account/actions.ts` | `/current password is incorrect/i → PW_CURRENT_WRONG`, `/not found/i → NOT_FOUND`, **else `PW_WEAK`** | 🔴 `PW_WEAK` was the FALLBACK. `validatePasswordStrength` returns **six** different sentences and the two patterns matched none of them — they landed correctly only because the ordering left them last. Any unmatched refusal told the player *"choose a stronger password"*, which is the one answer that makes them change a field that was never the problem. |
+| `proposals/actions.ts` | `/unavailable\|available right now\|coming soon/i → PAUSED`, `/voting has closed/i → VOTING_CLOSED`, else `NOT_FOUND` | 🔴 The gate arm returns `proposalsBlockedReason(cfg.state)`, whose wording an **operator configures**. The three alternatives were a guess at what someone might type; any other phrasing fell through to `NOT_FOUND` — so a paused feature told the player *"We couldn't find that. Refresh and try again."* about a proposal that exists. |
+| `profile/actions.ts` | `/already linked/i → EMAIL_TAKEN`, else `NOT_FOUND` | Rewording the duplicate-address sentence would silently turn "that inbox is taken" into "we couldn't find that", on the surface that gates depositing. |
+
+**Fixed at the source.** `changePassword`, `castVote` and `setUserEmail` each return `code` **and**
+`reason` at every refusal site; the three actions now carry them, unread. ⛔ No action layer
+decides a refusal by phrase-matching English.
+
+### 3.12 · 🔴 FIXED (2026-08-15) · Six `REASON_BY_CODE` rows mapped codes NOTHING emits
+
+`DOC_IMAGE` · `DOC_TOO_LARGE` · `DOCS_LOCKED` · `NO_EXTRA_REQUEST` · `NIDA_TAKEN` ·
+`MAINTENANCE`. **Measured across `src/lib/server` and `src/app`: zero emitters, for any of them,
+on the day they were added and since.** `error-copy.ts` carried five matching dead switch arms.
+
+> ⭐ **AND THE SUITE WAS GREEN ON ALL SIX, WHICH IS THE POINT.** `test:failure-reasons` §9 proved
+> each row "worked" by **synthesising the code itself** — `renderFailure({ code: "DOC_IMAGE" })` —
+> a route the product cannot take. So the previous session read a passing table and concluded the
+> KYC refusals were handled, while every one of them was in fact arriving through a phrase test.
+> A test that manufactures its own input proves the mapper, never the wiring.
+
+**Both ends fixed.** The five KYC families reach the registry through the `reason` that
+`kyc-service.ts` emits — the better route, and the one that works; their rows are deleted rather
+than left as a second, plausible, dead one. **Maintenance went the other way**: `market-service`
+and `wallet-service` refuse with `code: "SUSPENDED"` (four families share it, which is why the
+registry leaves `SUSPENDED` unmapped by design), and they now emit `reason: "maintenance"` — so a
+stake refused mid-maintenance reads *"Betting is paused for maintenance. **Nothing has been
+charged.**"* instead of the generic *"This service is temporarily paused."* That row existed and
+no service had ever reached it.
+
+⛔ **The structural fix is `test:failure-reasons` §9b**: it walks the tree from
+`REASON_BY_CODE_KEYS` — exported so the guard cannot hand-list — and fails on any mapped code
+with no emitter. ⚠️ **Its first draft would have passed `MAINTENANCE`**, because
+`proposals-config.ts` declares `ProposalsState = … | "MAINTENANCE" | …` and a bare token search
+cannot tell an unrelated enum member from a refusal. It now requires a `code:` position and
+excludes type-union membership. §9c re-pins the loudness of all six on the route they really take
+— found by `red:failure-reasons`, not by reading: deleting §9's rows had silently un-guarded
+`nida_taken`, and the harness's demote-to-a-nudge mutation stopped being caught by anything.
+
+**Proof.** `test:failure-reasons` 240 · `red:failure-reasons` **19/19** (a new mutation re-injects
+a dead row) · `test:proposals` 48 · `test:proposals-state` 28 · `test:kyc` · `test:maintenance` 13
+· `test:i18n` 1846×3 · `tsc` clean.
+
 ---
 
 ## §4 · WHAT C5's GUARD MUST DO
@@ -359,3 +593,400 @@ A count of mapped surfaces is not enough — that check passes by never growing.
 | C3 | one renderer, three severities | ✅ `renderFailure`, both bet surfaces |
 | C4 | kill the BUSY lie | ✅ `system_busy` vs `system_error`; the same-key retry kept |
 | C5 | the guard, red first | ✅ `test:failure-reasons` 48 · `red:failure-reasons` 9/9 |
+
+---
+
+## §6 · THE FEEDBACK MATRIX — every consequential action, and what it answers with
+
+> Measured 2026-08-15 by opening the call sites, not by grepping names. The LAW this serves is
+> [`docs/DESIGN_AUTHORITY.md`](DESIGN_AUTHORITY.md) **§F**; the guard is
+> `npm run test:feedback-law` (113) with `npm run red:feedback-law` (15/15).
+>
+> ⛔ **The denominator first.** `171` exported `"use server"` functions across
+> `src/app/**/actions.ts` and `src/app/_actions/**`. Of those, **41 have no client caller at
+> all** (they are `<form action>` targets or server-internal), and the rest split into the
+> classes below. A matrix that starts from "things I noticed" is not a matrix.
+
+### 6.1 · How a consequential action reports, by class
+
+| Class | Action(s) | Popup | Toast | Haptic | In-app / push / email | On FAILURE |
+|---|---|---|---|---|---|---|
+| **Bet — poll** | `buyPositionAction` (dial) | ✅ `OperationResultModal` `conviction-dial.tsx:1642` | ✅ secondary, deferred | ✅ `confirm` on the confirm press | ✅ `notifyBetPlaced` + email | `renderFailure` → severity-mapped; blocked → modal |
+| **Bet — Up & Down** | `buyPositionAction` (quick-bet) | ✅ **`UpDownBetReceiptModal` — NEW, UD-22** | ✅ secondary, 3 s | ✅ `confirm` | ✅ `notifyBetPlaced` (push suppressed for UPDOWN by decision) | sticky `danger` toast; compliance block → `UpDownBetBlockedModal` |
+| **Sell / cash-out** | `cashOutPositionAction` | ✅ `sell-button.tsx:223`, `stripTone="gold"` | ✅ secondary | ✅ via `SellConfirmModal` | ✅ `notifyCashout` | `danger` toast, reason-mapped |
+| **Deposit / withdraw** | `depositAction` · `withdrawAction` | ✅ `wallet-result-modal.tsx` (redirect-driven) | — | ✅ via toast variant | ✅ in-app + **email**, per `comms-registry.ts` | modal, `variant="danger"`, stays until dismissed |
+| **Settlement** | server-side (`resolveMarket`) | ✅ win → `win-celebration.tsx` | ✅ result toast (`factual` on a loss) | ✅ `success` on the win reveal | ✅ in-app + push + email | n/a (no player action) |
+| **KYC** | `attachDocumentAction` · `submitNidaAction` · `submitKycForReviewAction` | ⛔ **none** — inline banner after redirect | ✅ on the two uploader actions | — | ✅ email | 🔴 raw `{sp.error}` banner (§1.5 note) |
+| **RG** | `setLimitsAction` · `selfExcludeAction` · `coolOffAction` | ⛔ none — `Callout` after redirect | — | — | ✅ email | 🔴 raw `{sp.error}` banner |
+| **Account / security** | `changePasswordAction` · 2FA ×4 · `closeAccountAction` | ⛔ none | ✅ `danger` / `success` | — | ✅ email | reason + next step ✅ (fixed 2026-08-15) |
+| **Preference** | `toggleWatchAction` · push ×2 · `updateProfileBasicsAction` | ⛔ never (correct — §F2) | ✅ only | ⛔ **silent** (correct) | — | `factual` + next step ✅ (fixed 2026-08-15) |
+| **Social** | `postCommentAction` · `reportCommentAction` · `deleteCommentAction` · `voteAction` · `fileObjectionAction` · `createProposalAction` | ✅ proposals only | ✅ | ✅ `confirm`/`warning` | — | `danger` toast, dictionary-mapped |
+| **Notifications panel** | `markNotifRead` · `markAllRead` · `dismiss*` | ⛔ never | ⛔ none | ⛔ **silent** (correct — §F5) | — | silent; the row's own disappearance is the feedback |
+| **Admin** | 100+ actions | ✅ shared `action-overlay.tsx` | ✅ `useDeferredToast` | ✅ `warning` on the confirm | audit chain | `variant="danger"`, English by design |
+
+### 6.2 · What the matrix found that a gap-list would not have
+
+1. 🔴 **A background poll was firing the money-settled haptic** — `notifications-panel.tsx`,
+   `haptics.success()` = `[22, 36, 60]`, byte-identical to a WIN, on any unread arriving during
+   a 5-second poll. Its baseline started at `0`, so **the first poll after every page load
+   counted as an arrival**: opening the app holding one unread vibrated the handset for a
+   render. And the inbox carries LOSSES, whose copy is deliberately blunt so a loss is not
+   softened — the win pattern played over them. **Fixed**; §F5 and `test:feedback-law` §4.1
+   hold it, `red:feedback-law` proves it red.
+2. 🔴 **The push opt-OUT threw away the server's answer.** `deletePushSubscriptionAction`
+   returns `{ ok: false }` on a lapsed session; the panel called it `.catch(() => {})`, never
+   read `r.ok`, set the switch to OFF and toasted *"Push notifications off"* — while the row
+   stayed in the database and the device kept receiving. A false statement on a **consent**
+   surface. **Fixed**: the result is read, the switch stays ON, and the copy says the device
+   may still receive alerts.
+3. 🔴 **`red:updown-bet-feedback` had a stale anchor and was in no runner.** Its
+   `toast-replaces-aria-live` mutation targeted the single-line `setLiveMessage(...)`; UD-21
+   (`00a0595a`, 2026-08-07) split it over three lines, so from that day the mutation was a
+   no-op — an ABSENT test. The harness said so honestly and exited 1; **nothing ran it**,
+   because it was not in `red:all`. Anchor repaired (**7/7**) and both it and
+   `red:feedback-law` are now in `red:all`.
+4. ⚠️ **The "0 raw server strings" figure covered one channel of two** — see §1.5's note.
+   Five JSX banners were outside the ratchet's denominator entirely.
+5. ⚠️ **`operation-result-modal.tsx`'s own header overstates its reach.** It says it is used
+   "after every consequential action: … KYC submit, self-exclusion, password change". None of
+   those three uses it — they redirect to an inline banner or toast. The rows above state what
+   is actually there. ⛔ Not "fixed" by adding three modals: that is a product decision about
+   three flows, not a defect, and §F2 is written to describe the shipped shape.
+
+### 6.3 · Where the matrix says the platform is already consistent
+
+Worth recording, because the session's question was *"is it the same answer for the same kind
+of action everywhere?"* and for most classes it now is: every **money** mutation ends in the
+shared `OperationResultModal` (the Up & Down bet was the last exception and is closed); every
+**preference** is silent-but-toasted; every **admin** action goes through one overlay; and no
+surface anywhere uses a native `confirm()`/`alert()` — verified, not assumed.
+
+---
+
+## §7 · THE LABEL LEXICON — every enum that reaches a human, and the word it becomes
+
+> Measured 2026-08-15 by opening the render sites, not by grepping names. The LAW this
+> serves is [`docs/DESIGN_AUTHORITY.md`](DESIGN_AUTHORITY.md) **§L**; the guard is
+> `npm run test:labels` with `npm run red:labels`.
+>
+> ⛔ **The denominator first.** `40` enums are declared in `prisma/schema.prisma`. Of those,
+> **13 never reach a human at all** (`Locale`, `AdminDomain`, `NotificationChannel`,
+> `AuditCategory`, the four DEAD `LedgerEntryType` arms, …) — they route, they do not label.
+> The rest split into the families below. ⛔ A lexicon built from what a session *noticed* is
+> not a lexicon; this one starts from `schema.prisma` and `store.ts`.
+
+### 7.1 · The families, and where each becomes words
+
+| Enum family | Values | Player EN / SW / ZH | Admin | Definition site |
+|---|---|---|---|---|
+| **Side** (`MarketSide`) | `YES` `NO` | poll → `common.yes/no` (YES·NDIO·是) · round → `market.udUp/udDown` (Up·Juu·涨) | raw, English by design | ⭐ **`src/lib/side-label.ts`** |
+| **Outcome** (`resolvedOutcome`) | `YES` `NO` `VOID` | as Side, + `market.statusVoid` (Void·Batili·已作废) | raw | ⭐ `side-label.ts` |
+| **Up & Down outcome** | `UP` `DOWN` `VOID` | `market.udUpWins/udDownWins` | raw | ⭐ `side-label.ts` |
+| **Refund reason** | 6 arms | `market.udRefund*` | — | `updown-refund-reason.ts` |
+| **Source class** | 5 arms | `market.udSource*` | — | `updown-source-label.ts` |
+| **PositionStatus** | `OPEN` `WIN` `LOSS` `VOID` `CASHED_OUT` | `position-card.tsx`'s local map | `admin-status-lexicon.ts` | ⚠️ **two sites** — see 7.3 |
+| **PredictionMarketStatus** | `DRAFT` `LIVE` `CLOSED` `RESOLVED` `VOIDED` | `market.statusLive/statusResolved/statusVoid` | `components/admin/status-badge.tsx` | `admin-status-lexicon.ts` |
+| **KycStatus / TxnType / TxnStatus / FlagStatus** | — | wallet + profile surfaces | `admin-status-lexicon.ts` | `admin-status-lexicon.ts` |
+
+### 7.2 · What the lexicon found that a gap-list would not have
+
+0. 🔴 **ALI'S REPORTED BUG, FOUND — the Up & Down bet push spoke the POLL's vocabulary.**
+   `market-service.ts` branches at `buyPosition`: the long-form arm writes an inbox row, the
+   `else` arm **pushes to the phone** for Up & Down. That push read
+   `Bet placed · ${opts.side}` in all three languages — and `opts.side` is the STORED token,
+   which is `YES | NO` on **both** product lines. So a player who backed **Up** got a phone
+   notification saying **"Bet placed · YES"**, on a product that has no Yes and no No; Swahili
+   and Chinese got the English token on top of it. It is the only arm where the product line
+   is genuinely `UPDOWN`, and it was the one arm never told. ⭐ Found by the §3 scanner, not by
+   looking — and the guard's FIRST version could not see it, because its scope was a hardcoded
+   file list naming `notification-service.ts` and `email.ts`. `red:labels` caught that at 7/8.
+   The scope is now structural: a file that writes `titleSw`/`bodyZh` is a copy surface,
+   wherever it sits.
+
+1. 🔴 **Six Chinese keys carried the ASCII token `YES`/`NO` inside otherwise-Chinese strings**
+   — `probOverTime`, `probChartAria`, `backYesAria`, `backNoAria`, `backYesAriaNoPrice`,
+   `backNoAriaNoPrice`. **Four are `aria-label`s**, so a Chinese screen-reader user *heard*
+   "YES". ⭐ **Swahili had translated all six correctly** (`NDIYO` / `HAPANA`) — the platform's
+   own two translations disagreed, which is what makes this a defect and not a house style.
+   ⛔ `test:i18n` cannot see it: it only compares a translation to its English source, and
+   `"YES 概率随时间变化"` differs from `"YES probability over time"`, so it passed clean.
+2. 🔴 **`faq6a` told the player their position becomes `CASHED_OUT` — in ALL THREE languages.**
+   The raw `PositionStatus` enum in player help text, beside a dictionary that already defines
+   *Cashed out · Imetolewa · 已兑现*.
+3. 🔴 **`bet-confirm-modal.tsx` renders the side TWICE, one raw and one translated, on the same
+   screen.** Line 267 prints `{side}` at 26px under a translated *"You are picking"*; line 307
+   uses the dictionary for the pool-share sentence three rows below. On the Chinese
+   money-commit dialog the headline read **YES** while the sentence beneath read **是**.
+4. 🔴 **`notifySelectionClosed` hard-wrote `YES`/`NO` into its Swahili AND Chinese bodies**
+   (*"若 YES 获胜您将获得 …"*), and **`notifyWatchedSettled` interpolated the raw enum** into all
+   three (`resolved ${outcome}` / `matokeo: ${outcome}` / `结果：${outcome}`).
+5. ⚠️ **The Up & Down half of §2a is NOT reachable today — established, not assumed.**
+   `notifySelectionClosedForMarket` does **not** gate on `perEventNotificationsSuppressed()`,
+   so the guard is not where it looks; what actually keeps Up & Down out is
+   `nextDeadlineFor()` returning `null` for `productLine === "UPDOWN"`
+   (`market-scheduler.ts:147`), so no round is ever armed for `notify-closed`. ⛔ The suppression
+   predicate is therefore NOT what protects this path — anyone adding a second caller must
+   re-establish that, not trust the predicate's name.
+6. ⚠️ **`market.sideYesWord.toUpperCase()` and `common.yes` are the same string in all three
+   locales** (EN YES · SW NDIO · ZH 是, and no/HAPANA/否). Two definition sites for one word —
+   §0a. Verified by evaluating the dictionary, not by reading it.
+7. ⚠️ **The eight hand-written side ternaries are NOT live bugs, and saying so would be wrong.**
+   `listMarkets()` defaults to `productLine: "MARKET"`, and `/results`, `/fairness`,
+   `/positions` and the ticker each filter to long-form (`platform-stats.ts:103`), so they
+   render YES/NO on markets that really are YES/NO. ⭐ **The risk is structural**: the day one
+   of those queries gains `productLine: "ALL"`, all eight lie at once and silently. The
+   pattern is the finding, not a count.
+
+### 7.2b · What the LIVE PAGE found that the green suite did not
+
+⭐ `test:labels` was ALL PASS, the deploy was verified, and the Chinese `/markets` page still
+carried three defects. All three came out of `curl`-ing production per locale and accounting
+for **every** remaining ASCII `YES` — the discipline that the count must reach zero or be
+explained, not merely look small.
+
+1. 🔴 `markets/page.tsx` rendered **"已结算 YES"** — the third copy of
+   `${t.market.resolvedOutcome} ${m.resolvedOutcome}`, and the one on the board. ⛔ **The
+   guard could not see it**: its prose test required a literal WORD outside the `${…}`
+   braces, and this template is two interpolations and a space. A `t.` lookup in a template
+   is now itself the proof it is copy. Red mutation #9.
+2. 🔴 `brand.tsx` carried `aria-label={\`YES probability ${target}%\`}` — hardcoded English
+   that never went through the dictionary, so a Chinese screen-reader user **heard** it.
+3. 🔴 `conviction-dial.tsx`'s bet-placed TOAST was the notification defect one channel over.
+
+### 7.2b-tsc · 🔴 FILED 2026-08-15 · `npx tsc --noEmit` DOES NOT TYPECHECK THE TEST SUITE
+
+`tsconfig.json`'s `include` names `scripts/**/*.ts` — and **every test in this repo is `.mts`**.
+So the definition-of-done gate that every session runs, and that this one ran clean before
+pushing, covers **none of the ~226 suites**.
+
+⭐ **Measured, not suspected.** The 2026-08-15 `LocalizedText` change (§7.2c) altered a widely
+called signature. `npx tsc --noEmit` reported **clean**; `test:all` then failed **two** suites
+(`test:cert-c3`, `test:updown-digest`) on fixtures still passing bare strings. The compiler had
+the information and was not asked.
+
+⚠️ **The fix is not one line, which is why it is filed rather than done.** Adding
+`scripts/**/*.mts` to `include` produces **1324 errors**, and essentially all of them are
+`TS5097` — *"an import path can only end with a '.ts' extension when
+`allowImportingTsExtensions` is enabled"*. The suites import `../src/lib/foo.ts` **with** the
+extension because that is what `tsx` wants. So closing this means enabling
+`allowImportingTsExtensions` (legal here — the gate is already `--noEmit`) and then reading
+whatever REAL errors remain underneath, which nobody has ever seen.
+
+⛔ **Do not "fix" it by deleting the extensions**: that would break every suite at runtime.
+⛔ And do not raise it as a small tidy-up — the value is precisely in the unknown remainder.
+
+### 7.2c · FILED, not fixed — these need a decision, not a session's guess
+
+- ✅ **`red:all` exits 1 before it reaches most guards** — **CLOSED 2026-08-15**, and what it was
+  hiding is now measured rather than estimated. See **§8** below for the first full-fleet run.
+- 🔴 **`trust-band.tsx:127` has no null arm.** `SettlementRow.outcome` is
+  `"YES" | "NO" | "VOID" | null`, so an unrecorded outcome falls through and renders **"NO"
+  in red** on the landing page, under a header reading *"THE OUTCOME IS READ, NEVER
+  INFERRED"*. `ticker.ts` rule 5 drops null rows; `page.tsx:247` feeds trust-band from
+  `stats.recentSettlements` **directly** and bypasses that filter. Latent, not observed.
+  What the landing shows for an absent outcome is a product decision.
+- ⚠️ **`red:updown-readiness` has FIVE stale anchors** and reports 11/16 — measured again by the
+  full-fleet run and **confirmed at exactly 11/16**, the third independent measurement to agree.
+  ⛔ It is no longer what starves the fleet: `red:all` is a reporting runner now (§8). See §8 for
+  what it was starving.
+- ✅ **Notification titles are English-only across all three languages** — **CLOSED
+  2026-08-15.** It was exactly the shape change this entry predicted: `LocalizedText
+  { en, sw, zh }`, built by `localizedText()` and carried by every player emitter. Nine
+  callers in `market-service` and the two `alertWatchers*` entry points now pass all three
+  titles. ⚠️ `notifyAdminObjectionFiled` deliberately stays a bare string — the console is
+  monolingual English by design — and `test:labels` §7f pins it as the ONLY survivor, so the
+  guard cannot be satisfied by quietly reverting a player emitter. Emails are untouched:
+  EN+SW in one message is a recorded position, and two call sites one line apart in
+  `market-service` are one notify and one email.
+- ✅ **`trust-band.tsx` has no null arm** — **CLOSED 2026-08-15**, and it needed no product
+  decision after all. This entry said unifying it "forces a product decision about what the
+  landing shows for an unrecorded outcome". `ticker.ts` rule 5 (law 25) had already made
+  that decision — *"a row whose outcome is absent is DROPPED rather than guessed"* — and the
+  landing was simply bypassing it, because `page.tsx` feeds the band from
+  `recentSettlements` directly. Applying an existing rule to the surface that was skipping
+  it is not a new decision. Both ends are pinned by `test:outcome`.
+- ✅ **UD-20 — a hedged holder is quoted BOTH outcomes on `/updown/[roundId]`.** Measured
+  2026-08-15 and found **already shipped**, in `209a97da`: `getRoundDetail` returns
+  `myPayoutIfUp`/`myPayoutIfDown` from the same `projectedPayout` settlement uses, the round
+  page passes them, and `round-action-panel.tsx`'s locked branch renders both rows. Guarded
+  at `test:updown-hedge-quote` (28) and `red:updown-hedge-quote` (8/8) — whose
+  `the-panel-stops-rendering-the-pair` mutation reads the COMPONENT, because a payload
+  nobody paints is not a fix. ⚠️ Recorded here because the finish-line commission listed it
+  as open; no change was needed and none was invented.
+  ⚠️ **One cosmetic difference is left deliberately**: the round page reads *"If it closes UP
+  **you get** X"* while the board card omits *"you get"*. The card is the visual sweep's
+  territory this session, and the omission is a density choice on a small card, not a
+  defect — filed rather than edited across a session boundary.
+
+### 7.3 · Where the lexicon says the platform is already right — ⛔ do not "fix" these
+
+- **`/updown/history`** uses `udUpWins`/`udDownWins` and `b.side === "UP" ? "↑" : "↓"`.
+- **`/positions`** filters to `"MARKET"` (`page.tsx:41`), so its YES/NO is the true vocabulary.
+- **`home.heroHeadline`** (*"The wisdom of YES & NO."*) is verbatim in all three locales by
+  Ali's decision (PLAN-OF-RECORD §7b) and is allowlisted in `i18n-parity.test.mts`.
+- **Admin is English by design** — one language, and `admin-status-lexicon.ts` already owns it.
+- ⚠️ **`PositionStatus` has two label maps** (`position-card.tsx`'s local object for players,
+  `admin-status-lexicon.ts` for officers). That is *defensible* — the audiences differ and the
+  admin console is monolingual — but it is two sites for one family and is recorded here so the
+  next session decides deliberately rather than discovering it.
+
+---
+
+## §8 · THE RED FLEET, MEASURED — the first run in which every harness actually ran
+
+> Run 2026-08-15 on an isolated worktree, `npm run red:all` (the reporting runner, `255c1782`).
+> **68 harnesses · 58 green · 10 failing · 778.5s.** ⛔ Every figure below is from that run's
+> table. This section replaces four estimates that were circulating, two of which were wrong.
+
+### 8.1 · What the `&&` chain was hiding
+
+| | Before | Measured |
+|---|---|---|
+| `red:*` declared in `package.json` | — | **68** |
+| Reachable from `red:all` | **41** | 68 |
+| **Never ran at all** | — | **27** |
+| Harnesses that fail | "some tail after segment 32" | **10** |
+| Harnesses with unresolvable anchors | "~27 anchors across ~6 harnesses" (a static *lead*) | **23 anchors across 6 harnesses** |
+| Harnesses that corrupt the tree | unknown — nothing looked | **1** |
+
+⭐ **The lead was right about the harness count and wrong about the rest.** A static sweep had
+guessed "~27 non-matching anchors across ~6 harnesses" and cautioned that CSS-targeting harnesses
+were *"almost certainly false positives"* because it only scanned `src/**.{ts,tsx,mts}`. The real
+six are `red:updown-readiness` (10 anchor reports · 5 mutations), `red:m1-light` (6),
+`red:updown-chart` (2), `red:updown-movement` (2), `red:keyframes` (2) and
+`red:updown-result-clock` (1) — and **`red:keyframes` is exactly the CSS-targeting kind the sweep
+excused**. ⛔ A lead is a place to look, never a count; the 27 it produced turned out to be the
+number of harnesses *outside the runner*, which it was not measuring at all.
+
+### 8.2 · The ten, and why each fails
+
+| Harness | Score | Why |
+|---|---|---|
+| `red:updown-readiness` | 11/16 | 5 stale anchors — §7.2c, now measured a third time |
+| `red:m1-light` | 5/8 | 6 unresolved anchors |
+| `red:updown-movement` | 10/12 | 2 unresolved anchors |
+| `red:keyframes` | 6/7 | 2 unresolved anchors |
+| `red:updown-chart` | 2/3 | 2 unresolved anchors |
+| `red:updown-result-clock` | 3/4 | 1 unresolved anchor |
+| `red:updown-playbook` | — | exits in 0.5s — it never reaches a mutation |
+| `red:admin-soft-gate` | — | exits in 0.9s — same shape |
+| `red:results-filter` | — | fails with no anchor complaint |
+| `red:updown-bars` | 8/8 | ⭐ **caught the tree, not the guard** — see 8.3 |
+
+### 8.3 · 🔴 `red:updown-bars` rewrote 740 lines of tracked source on every run
+
+The runner's tree fingerprint flagged it `DIRTY` on the first full run. `updown-bars-red.mjs`
+carried its own copy of the line-ending rule — normalise to `\n`, match, mutate — and then
+restored with the **normalised** copy:
+
+```js
+const original = lf(originalRaw);          // 740 CRLF → LF
+…
+} finally { writeFileSync(FEED, original); }   // ← writes back the NORMALISED bytes
+```
+
+⛔ **The comment three lines above it stated the opposite, in as many words**: *"Restoration
+writes back the ORIGINAL bytes, not the normalised copy."*
+
+> ⭐ **AND IT WAS INVISIBLE IN EXACTLY THE WAY §3.8's `if (true)` WAS.** `git diff` normalises
+> line endings, so it printed **nothing**. Only `git status` showed the file modified — which is
+> indistinguishable from an edit the session made itself, and §3.8 records that ambiguity costing
+> two hours of a false statement about money on production. The harness printed `7/7 caught` and
+> exited **0** over it, every time, for as long as it has existed.
+
+Fixed the way §3.9 was — by deleting the local rule, not by correcting the restore line. It uses
+`red-anchor.mjs`'s `injectDefect`, which re-expresses the anchor in the FILE's own convention
+instead of dragging the file into the anchor's. Verified byte-for-byte: 740 CRLF before, 740 CRLF
+after, **8/8 caught** (the shared resolver found a ninth anchor the local matcher had been
+silently missing — 7/7 became 8/8 without a new mutation being written).
+
+⛔ **This is why `red:all` fingerprints the tree per harness and why it must never repair it.**
+A runner that ran `git checkout` would have hidden this defect *and* destroyed the session's own
+uncommitted work.
+
+---
+
+### §7.3 · WHAT THE LEXICON SWEEP MISSED — found by Ali's consultants, after it shipped
+
+> 🔴 **The reported bug was still live after §7 was declared done, on three surfaces the sweep
+> never opened — and `test:labels` was ALL PASS through every one of them.** Ali produced a
+> photograph of the wallet's Activity tab reading *"NO won · \"Bitcoin Up or Down\""*. That is
+> the surface his ORIGINAL commission named — *"in Up & Down polls, **in activity**"* — in its
+> first sentence.
+
+| # | Surface | What it rendered over an **Up** bet | Why the sweep missed it |
+|---|---|---|---|
+| 1 | `/positions/performance` | `YES · TZS 5,000` | the ONE player list that deliberately passes **no** product line to `listPositionsForUser` — a performance total that hid half a book would misstate the player's money — then rendered `p.side` raw |
+| 2 | Wallet **Activity** · stake row | `YES on "Bitcoin Up or Down"` | `Transaction.description`, built as `${opts.side} on …` |
+| 3 | Wallet **Activity** · payout row | `NO won · "Bitcoin Up or Down"` | `Transaction.description`, built as `${opts.outcome} won · …` |
+
+⛔ **THE CAUSE THEY SHARE.** Rows 2 and 3 are inside `db.txn.create` — a **money record**, which
+`perEventNotificationsSuppressed` deliberately does NOT gate, because the transaction, ledger and
+audit rows are written for EVERY round. The notification fix was therefore structurally incapable
+of reaching them. ⭐ **A suppression predicate marks where COMMUNICATION stops; it is not a map of
+where a player reads words.** The wallet is the counter-example, and it is the one a player opens
+to check their own money.
+
+⭐ **AND THE MARKET ROW WAS IN HAND AT ALL THREE.** None of these lacked the product line —
+`recentMarketMap.get(p.marketId)` on row 1, `market`/`m` in scope on rows 2 and 3. The vocabulary
+was never unavailable; it was never asked for.
+
+### §7.3a · Three green guards over one live defect — the method finding
+
+Each guard was **correct about what it measured**, and none of them measured an **absence**:
+
+| Guard | What it counts | Why it was blind here |
+|---|---|---|
+| §4 private-map ratchet | `=== "YES" ? t.…` ternaries | there was no ternary — the raw token was rendered with no decision at all |
+| §3 enum-in-a-sentence | literals assigned to `titleEn/Sw/Zh`, `bodyEn/Sw/Zh` | a `description` is English-only operational prose, so §3 excluded it **deliberately and correctly** |
+| §2 raw-enum-in-JSX | JSX text nodes | rows 2 and 3 are built on the SERVER and stored in the database, hours before any JSX exists |
+
+⛔ **ENGLISH-ONLY DOES NOT MEAN MACHINE-ONLY.** That is the mistaken premise the whole miss rests
+on. A `description` may stay in one language; it may not stay in the **storage vocabulary**,
+because the wallet renders it verbatim to the player.
+
+**Closed by** `test:labels` **§8** (a surface holding EVERY product line must resolve its side
+words through the lexicon — the omitted third argument is the tell) and **§9** (a money record's
+description names the side in the product's vocabulary). Both proved RED against the real defect.
+⚠️ §9's first draft flagged `use-quick-bet.ts`, whose ternary already resolves correctly — a guard
+that fails on correct code teaches the next session to weaken it, so it now matches only a **bare**
+interpolation, which is the shape that contains no decision.
+
+⛔ **STILL OPEN, FILED NOT FIXED:** the transaction description is stored as ONE English string, so
+a Swahili or Chinese player reads English in their wallet. Fixing that is a rendering/storage
+change — structured metadata or a client-side re-render — not a word change, and it is out of a
+labelling session's remit. The WORD is now right in every language's row; the SENTENCE is not yet.
+
+---
+
+### §7.4 · OPEN, LIVE ON PRODUCTION — two Up & Down chains cannot fire a round
+
+> 🔴 **FILED 2026-08-15, NOT FIXED — behavioural, and outside a labelling session's remit.**
+> Found while reading `railway logs` to verify a deploy, which is the only reason it was found
+> at all: nothing alarms on it.
+
+```
+[updown] fire udc_5820850ef13f34e5 failed: Error: Cannot create a market with a past or invalid resolution date.
+[updown] fire udc_f8d666a0d781b8d6 failed: Error: Cannot create a market with a past or invalid resolution date.
+```
+
+**Measured, not inferred:** 60 consecutive log lines across one sample were these two chains
+failing, and **zero** `settled` / `opened` / `armed` lines appeared beside them. The two chain ids
+repeat indefinitely — a retry loop, not a transient.
+
+⚠️ **What is NOT claimed.** `/updown` still renders (100 KB, three round-card references, BTC ·
+Bitcoin · Ethereum · Gold · XAU present), so this is **not** "Up & Down is down". What is certain
+is that these two chains are not producing rounds and are burning a scheduler slot on every tick.
+Whether other chains are healthy was not established — establish it before acting.
+
+**Where to start:** `updown-service.ts` builds the next round's `resolutionAt` from the chain's
+duration and boundary. The message comes from `createMarket`'s validation, so the computed date is
+at or before `now` — the usual cause is a chain whose boundary has drifted into the past (a long
+pause, a clock offset, or a duration that no longer divides the window) and which therefore
+recomputes the same invalid date forever. ⛔ It will not self-heal: every retry recomputes from the
+same stale boundary.
+
+⭐ **AND NOTHING SURFACES IT.** A player sees a board that simply never advances; an operator sees
+nothing at all. Whatever the fix, the chain should **alarm or pause itself** after N consecutive
+identical failures rather than retry forever — a permanent error retried silently is indistinguishable
+from a healthy idle chain.

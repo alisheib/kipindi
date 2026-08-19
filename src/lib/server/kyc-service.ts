@@ -23,6 +23,7 @@ import { rateCheckAsync } from "./rate-limit";
 import { KycNidaSchema } from "./validators";
 import type { z } from "zod";
 import type { ServiceResult } from "./auth-service";
+import type { FailureReason } from "@/lib/failure-reasons";
 import { notifyKyc, notifyAdminKycReview } from "./notification-service";
 import { sendEmail, sendEmailToUser, kycRejectedHtml, kycApprovedHtml, kycSubmittedHtml, kycSubmittedAdminHtml, kycMoreInfoHtml } from "./email";
 import { resolvePhoneEmail } from "./email-map";
@@ -117,7 +118,7 @@ export async function submitNidaStep(userId: string, input: z.input<typeof KycNi
   const nidaConflict = await db.kyc.findActiveByNida(parse.data.nida, userId);
   if (nidaConflict) {
     audit({ category: "SECURITY", action: "kyc.nida.duplicate_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { conflictUserId: nidaConflict.userId, conflictStatus: nidaConflict.status } });
-    return { ok: false, error: "This National ID is already linked to another account. If this is a mistake, contact support.", code: "INVALID" };
+    return { ok: false, error: "This National ID is already linked to another account. If this is a mistake, contact support.", code: "INVALID", reason: "nida_taken" };
   }
 
   // Collect the contact email at the identity step (canonical collection point).
@@ -184,7 +185,7 @@ export async function submitNidaStep(userId: string, input: z.input<typeof KycNi
     // the same way for AML.
     if (!isNidaUniqueViolation(err)) throw err;
     audit({ category: "SECURITY", action: "kyc.nida.duplicate_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { viaConstraint: true } });
-    return { ok: false, error: "This National ID is already linked to another account. If this is a mistake, contact support.", code: "INVALID" };
+    return { ok: false, error: "This National ID is already linked to another account. If this is a mistake, contact support.", code: "INVALID", reason: "nida_taken" };
   }
   // `nidaVerifiedAt` means "format accepted + unique", never "authority
   // confirmed" (docs/NIDA-POLICY.md). The payload used to carry a fabricated
@@ -230,21 +231,21 @@ export function isNidaUniqueViolation(err: unknown): boolean {
 export const MAX_DOC_BYTES = 3 * 1024 * 1024; // 3 MB decoded — legible ID photos, bounded
 const DOC_DATAURL_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
 /** Validate an uploaded document image data URL. Returns decoded byte size. */
-export function validateDocImage(s: string): { ok: true; bytes: number; mimeType: string } | { ok: false; error: string } {
+export function validateDocImage(s: string): { ok: true; bytes: number; mimeType: string } | { ok: false; error: string; reason: FailureReason } {
   const declared = DOC_DATAURL_RE.exec(s ?? "");
-  if (!s || !declared) return { ok: false, error: "Document must be a JPG, PNG, or WebP image." };
+  if (!s || !declared) return { ok: false, error: "Document must be a JPG, PNG, or WebP image.", reason: "doc_image_type" };
   const b64 = s.slice(s.indexOf(",") + 1);
   const bytes = Math.floor((b64.length * 3) / 4) - (b64.endsWith("==") ? 2 : b64.endsWith("=") ? 1 : 0);
-  if (bytes <= 0) return { ok: false, error: "Empty image." };
-  if (bytes > MAX_DOC_BYTES) return { ok: false, error: "Image too large. Use a photo under 3 MB." };
+  if (bytes <= 0) return { ok: false, error: "Empty image.", reason: "doc_image_type" };
+  if (bytes > MAX_DOC_BYTES) return { ok: false, error: "Image too large. Use a photo under 3 MB.", reason: "doc_too_large" };
   // 🔴 The mime above is whatever the CLIENT wrote in the data URL. Identify the
   // format from the BYTES and require it to agree — otherwise a renamed .exe, a
   // zip, or an SVG carrying <script> is stored as a citizen's identity document
   // and an officer approves against something that is not an image at all.
   const actual = sniffBase64ImageMime(b64);
-  if (!actual) return { ok: false, error: "That file isn't a JPG, PNG, or WebP image." };
+  if (!actual) return { ok: false, error: "That file isn't a JPG, PNG, or WebP image.", reason: "doc_image_type" };
   if (actual !== `image/${declared[1]}`) {
-    return { ok: false, error: "That file isn't a JPG, PNG, or WebP image." };
+    return { ok: false, error: "That file isn't a JPG, PNG, or WebP image.", reason: "doc_image_type" };
   }
   // `actual` — sniffed from the bytes — not `declared`, which the client wrote.
   return { ok: true, bytes, mimeType: actual };
@@ -252,13 +253,13 @@ export function validateDocImage(s: string): { ok: true; bytes: number; mimeType
 
 export async function attachDocument(userId: string, docType: "NIDA_FRONT" | "NIDA_BACK" | "SELFIE", storageKey: string): Promise<ServiceResult> {
   const valid = validateDocImage(storageKey);
-  if (!valid.ok) return { ok: false, error: valid.error, code: "INVALID" };
+  if (!valid.ok) return { ok: false, error: valid.error, code: "INVALID", reason: valid.reason };
   const k = await db.kyc.findByUserId(userId);
   if (!k) return { ok: false, error: "Start KYC first.", code: "NOT_FOUND" };
   // Re-uploading a document while it's already under review or approved would
   // change the evidence behind an officer's pending/made decision — block it.
   if (k.status === "PENDING_REVIEW" || k.status === "APPROVED") {
-    return { ok: false, error: "Documents are locked while your submission is under review.", code: "INVALID" };
+    return { ok: false, error: "Documents are locked while your submission is under review.", code: "INVALID", reason: "docs_locked" };
   }
   // H8: persist via the storage seam — INLINE (data URL) today, Cloudflare R2 the
   // moment it's configured, with no change to this call site.
@@ -280,11 +281,11 @@ export async function attachDocument(userId: string, docType: "NIDA_FRONT" | "NI
  */
 export async function attachExtraDocument(userId: string, requestId: string, storageKey: string): Promise<ServiceResult> {
   const valid = validateDocImage(storageKey);
-  if (!valid.ok) return { ok: false, error: valid.error, code: "INVALID" };
+  if (!valid.ok) return { ok: false, error: valid.error, code: "INVALID", reason: valid.reason };
   const k = await db.kyc.findByUserId(userId);
   if (!k) return { ok: false, error: "Start KYC first.", code: "NOT_FOUND" };
   if (k.status !== "ADDITIONAL_INFO_REQUIRED") {
-    return { ok: false, error: "No extra documents are being requested right now.", code: "INVALID" };
+    return { ok: false, error: "No extra documents are being requested right now.", code: "INVALID", reason: "no_extra_request" };
   }
   const requests: KycExtraRequest[] = k.extraRequests ?? [];
   const target = requests.find((r: KycExtraRequest) => r.id === requestId);
@@ -300,13 +301,13 @@ export async function attachExtraDocument(userId: string, requestId: string, sto
 export async function submitForReview(userId: string): Promise<ServiceResult> {
   const k = await db.kyc.findByUserId(userId);
   if (!k) return { ok: false, error: "Start KYC first.", code: "NOT_FOUND" };
-  if (!k.nidaVerifiedAt) return { ok: false, error: "NIDA not yet verified.", code: "INVALID" };
-  if (k.documents.length < 3) return { ok: false, error: "All three documents required.", code: "INVALID" };
+  if (!k.nidaVerifiedAt) return { ok: false, error: "NIDA not yet verified.", code: "INVALID", reason: "nida_not_verified" };
+  if (k.documents.length < 3) return { ok: false, error: "All three documents required.", code: "INVALID", reason: "docs_required" };
   // If an officer requested extra documents, every slot must be filled before
   // the player can resubmit — otherwise it'd bounce straight back.
   const unfulfilled = (k.extraRequests ?? []).filter((r: KycExtraRequest) => !r.storageKey);
   if (unfulfilled.length > 0) {
-    return { ok: false, error: `Please upload the ${unfulfilled.length} requested document${unfulfilled.length > 1 ? "s" : ""} before submitting.`, code: "INVALID" };
+    return { ok: false, error: `Please upload the ${unfulfilled.length} requested document${unfulfilled.length > 1 ? "s" : ""} before submitting.`, code: "INVALID", reason: "extra_docs_required" };
   }
 
   // Idempotency guard: only fire on the transition INTO PENDING_REVIEW. A

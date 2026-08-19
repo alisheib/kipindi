@@ -18,6 +18,16 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { execSync } from "node:child_process";
+// ⭐ THE SHARED ANCHOR RESOLVER (2026-08-15). This harness was doing a naked
+// `original.includes(m.from)` / `original.replace(...)`, which is exactly the trap
+// `red-anchor.mjs` was written to end — and its header names this very failure:
+// *"The two failing anchors were the only two that spanned a line break."*
+// `core.autocrlf=true` with no `.gitattributes` means the working tree holds CRLF while
+// these anchors are authored with `\n`, so EVERY MULTI-LINE anchor here missed while every
+// single-line one matched. Measured: 4/9 caught, the 5 uncaught ones being precisely the 5
+// multi-line anchors — a verdict that depended on how the tree was checked out rather than
+// on the code. It was the last harness in the repo still hand-rolling this.
+import { resolveAnchor, toEol } from "./red-anchor.mjs";
 
 const STATS = new URL("../src/lib/server/updown-chain-stats.ts", import.meta.url);
 const PAGE = new URL("../src/app/admin/updown/page.tsx", import.meta.url);
@@ -107,16 +117,20 @@ const missed = [];
 
 for (const m of MUTATIONS) {
   const original = readFileSync(m.file, "utf8");
-  // Rule 1 — the anchor must exist, or this run proves nothing.
-  if (!original.includes(m.from)) {
-    console.log(`  ✗ ${m.name}\n      ⛔ ANCHOR NOT FOUND — the harness is broken, not the guard.`);
-    missed.push(`${m.name} (anchor missing)`);
+  // Rule 1 — the anchor must exist EXACTLY ONCE, whatever the checkout's line endings, or
+  // this run proves nothing. `resolveAnchor` also refuses an ambiguous anchor: a `from` that
+  // matched twice would inject the defect at whichever site came first and leave the other
+  // intact, so the gate could go red for a different reason than the case claims.
+  const a = resolveAnchor(original, m.from);
+  if (!a.ok) {
+    console.log(`  ✗ ${m.name}\n      ⛔ ANCHOR ${a.reason.toUpperCase()} — the harness is broken, not the guard.`);
+    missed.push(`${m.name} (${a.reason})`);
     continue;
   }
-  const mutated = original.replace(m.from, m.to);
+  const mutated = original.replace(a.needle, toEol(m.to, a.eol));
   writeFileSync(m.file, mutated);
   try {
-    if (readFileSync(m.file, "utf8").includes(m.from)) {
+    if (readFileSync(m.file, "utf8").includes(a.needle)) {
       throw new Error("mutation did not land on disk");
     }
     let exitCode = 0;

@@ -7,10 +7,20 @@
  * wall with a single menu of the same shape as sort.
  *
  * ⭐ BUILT ON `<details>`, NOT ON STATE. The board is a server component and every option is a
- * real `<Link>`, so the whole control works with JavaScript disabled: the disclosure opens
- * natively and the options navigate natively. The client code here is pure enhancement —
- * Escape and outside-click — and nothing breaks without it. That matters on a board a player
- * reaches on a mid-range Android over a Tanzanian mobile connection.
+ * real `<Link>`, so this control's MARKUP needs no JavaScript: the disclosure opens natively and
+ * the options navigate natively. The client code here is pure enhancement — Escape and
+ * outside-click — and nothing breaks without it.
+ *
+ * 🔴 IT USED TO SAY "the whole control works with JavaScript disabled", AND THAT WAS FALSE ABOUT
+ * THE PAGE. Measured 2026-08-15 with scripts off, on production as well as locally: `/markets`
+ * streams its board through Suspense, and React only relocates streamed content with an inline
+ * `<script>` — so with scripts disabled `.kp-discovery-bar` measures 0px inside a `display: none`
+ * holder and NOTHING on the board is reachable, this menu included. Native markup is still the
+ * right build (it is what would make the page recoverable if the streaming changed), but it is a
+ * different claim from "it works". See `discovery-bar.tsx`'s header and `qa:discovery-board`.
+ *
+ * ⚠️ SINCE BATCH 6 THIS MENU IS DESKTOP-ONLY for topic; sort keeps it at every width. The phone's
+ * odds/pool/topic live in `filter-sheet.tsx`.
  *
  * ⚠️ `min-h-[44px]` and `w-[44px]` are arbitrary values on purpose: Tailwind's spacing scale is
  * OVERRIDDEN in this repo (`h-8` = 48px, `h-10` = 80px — `tailwind.config.ts:156-171`), so a

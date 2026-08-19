@@ -1369,6 +1369,11 @@ which it named by filename.
 | # | Sev | Area | Finding | Evidence |
 |---|---|---|---|---|
 | **E-166** | 🔴 **FIXED + proven RED 2026-08-19 (session 45) — `test:updown-handover` 109, `red:updown-handover` 18/18, `test:refresh-cadence` 34, `red:refresh-cadence` 8/8, `qa:updown-handover` 26, `qa:updown-handover-widths` 198** | player · `/updown` + `/updown/[roundId]` · **an ending round was a dead end, and the front door of the product was a dead chain** | Ali, 2026-08-19: *"every ending round confirmed ⇒ the next one is already armed and takes the screen."* **Six defects, all read off production the same morning.** ① 🔴 **`/updown/[roundId]` FROZE FOR EVER on a settle** — `refreshCadence({settled:true})` returns `{enabled:false}`, so the page stopped polling with no statement about what came next; only a manual reload escaped. ② 🔴 **A DEAD `00:00`**, on BOTH surfaces, which is E-99's rule 3 broken in the one branch it never covered: `spent` requires `inResult`, and a SETTLED round never enters it. Read on `udr_038998ddaeb0ab9b950f`: **`Round settled  00:00`**. ③ 🔴 **"Closed" as a result.** The board card's header was `bettable ? udStreaming : statusClosed`, so a settled card read **"Closed · BTC"** beside its own *"Up wins"* — and a LOCKED round, still running and still being watched, read "Closed" too. *Closed is not a result.* ④ 🔴 **THE FRONT DOOR WAS DEAD.** `/updown` defaulted its duration to `durations[0]` — simply the SHORTEST — and BTC's shortest is the **STOPPED** 3-minute chain, so the board served **one card: a round settled 25 hours earlier**, while BTC 5m/10m/15m were all live one tab away. The asset default had been fixed for exactly this reason and the duration default was never brought with it. ⑤ 🔴 **THE CARD'S CLOCK STOPPED AT THE CLOSE.** `nowMs` was derived from `useCountdown`, which clamps at zero, so past the close it froze at `closesAtMs` — making `resultClock.counting` permanently true (a dead `0:00` through every overrun) and pinning the handover in `hold` for ever. ⑥ 🔴 **A hold anchored to `resolvedAt` is no hold at all** — the poll delivers a settle up to 5s (round page) or 20s (board) late, so the beat was already spent when the player first saw the outcome; measured, the redirect fired **155ms** after the result rendered. **FIXED:** one pure rule `handoverClock()` beside `roundPhase`/`resultClock`; a bounded third arm on `refreshCadence`; `useHoldAnchor` stamping the instant THIS SCREEN learned the result, once, during render; `useServerNow` recomputing on `visibilitychange`; the successor resolved server-side and matched on the INSTANT (`opensAt === closesAt`), never `roundNumber + 1`; `router.replace` carrying `?from=` so the result travels with the player; and four gates on the auto-advance — observed settle only, past the hold, no open overlay, no bet in flight. | ⭐ **THE BRIEF'S COUNTDOWN IS THE 1.3% CASE, AND MEASURING THAT CHANGED THE DESIGN.** `scripts/live/ops/handover-gap-census.cjs` (new, read-only) over **every settled round in 24h, n=1,203**: **1,186 (98.6%) had their successor ALREADY OPEN** when the result landed · median `successor.opensAt − predecessor.resolvedAt` = **−91.5s** (p10 −121s, min −306s) · median `createdAt − resolvedAt` = **0.1s**, i.e. `advanceChain` closes round N and opens round N+1 **in one call** · only **16 (1.3%)** had a successor still ahead. So *"NEXT MATCH IN 0:47"* would have rendered a dead or negative clock on 98.6% of settles. ⛔ **And `live` counts NOTHING, which the screenshot decided, not the reasoning:** the first build ran the digits to the successor's bets-close, and the board then showed **two identical `02:50`** 300px apart, because the successor is the card immediately to the left. Grid continuity measured too: **2,337/2,357 (99.15%)** successions open exactly where the predecessor closed; the 20 that do not gap by **11 to 83 minutes**, which is why the waiting state must never invent an instant. Chain census: **19 chains, 14 RUNNING** — correcting a code comment that claimed *"EVERY chain is now STOPPED"*. ⚠️ **Four of the six defects were found by the E2E and the screenshots, not by any suite**, and three of my own instruments were wrong first: a URL check that matched the round id inside its own `?from=`, a stopped-state check that matched the settlement proof's `13:47:22 EAT` and passed **vacuously** in SW and ZH, and a `visibilitychange` guard that asserted the word — which survives in the `removeEventListener` beside it — instead of the subscription. `red:refresh-cadence` also lost **3 of 5 anchors** to this change and printed *"ANCHOR NOT FOUND … proves NOTHING"* rather than a false green (E-108's lesson holding). Visual: **36 screenshots**, 393/768/1024/1280/1440 × EN/SW/ZH × board · round · stopped-chain, every pod **63px** in all three languages, 0 horizontal overflow, 0 clipped elements, 0 dead `00:00` |
+| **E-165** | ⚠️ **OPEN — measured 2026-08-15 (session 47), and the commission's own suggested fix has the same defect** | QA · `refusal-frames.mjs` · **the drive half drives the ONE refusal the UI prevents** | `qa:refusal-frames` passes its locale half 12/12 and fails its drive half 12/12. The cause is not a flaky selector: it submits close-account with a wrong confirmation phrase, and `close-account-form.tsx` computes `canSubmit = confirm.trim() === "CLOSE MY ACCOUNT"` and **disables the control**. A wrong phrase can never be submitted, so `?reason=close_confirm_required` is **unreachable by any real player action** — the harness drives the one refusal the client gate exists to prevent. Measured against a local server: 12 × `locator.click: Timeout 30000ms`. | ⚠️ **AND THE COMMISSIONED ALTERNATIVE IS THE SAME SHAPE.** The work order suggested driving `/profile/kyc` submit-for-review with fewer than three documents; `kyc/page.tsx` renders `<button type="submit" disabled>` whenever `docsCount < 3`. Both server refusals are **defence in depth behind a client gate** — correct engineering, and useless to a frame-reader. ⭐ **The reachable one is `password_mismatch`**: `/auth/reset-password` has NO client gate, and `resetPasswordAction` compares the two fields **before** consuming the token, so the SERVER chooses the reason. ⛔ It needs a **valid** token to render the form at all — an invalid one renders the expired state — so it needs the work order's other suggestion, a minted reset token, which needs a new dev-test route (`requestPasswordReset` only emails the link). ⛔ **Do not close this by navigating to `?reason=…`**: that proves the renderer renders and nothing else. |
+| **E-164** | 🔴 **FIXED + proven RED 2026-08-15 (session 47) — `test:feedback-law` §10, `red:feedback-law` 24/24, `qa:toast-modal` 12/12** | feedback · `toast.tsx` · **the toast covered the bet receipt's crest at 360 — and the FIRST fix was wrong while every guard was green** | §F1 makes the popup the PRIMARY signal and the corner toast the SECONDARY one. At 360px the toast stack covered the receipt's crest for the toast's first 3 seconds; at 768+ there is room for both, which is why it survived — the two fire together by design and only the narrowest viewport, the one most players use, collides. | ⭐ **THE FINDING IS THE FIRST FIX, NOT THE DEFECT.** It asked `isResultModalOpen()` INSIDE `toast()` and queued. §10 passed all nine assertions; `red:feedback-law` caught all three of its mutations; a real bet at 360 in EN/SW/ZH then showed the toast on screen over the receipt anyway — the quick-bet fires its toast in the SAME COMMIT that mounts the modal, and presence registers from an EFFECT, so at that instant the modal was not open. ⛔ A check whose answer depends on which effect ran first is a coin flip, and it landed the same way every time. Nothing that reads source could see it. The mechanism is REACTIVE now (the viewport holds; countdowns pause through the same pause/resume hover already uses), so there is no instant to race. ⛔ Not a z-index change — toasts sit above modals so a failure during a CONFIRM dialog stays readable. The driver that caught it is kept as `npm run qa:toast-modal`. |
+| **E-163** | 🔴 **FIXED + proven RED 2026-08-15 (session 47) — `test:failure-reasons` 240, `red:failure-reasons` 19/19** | refusals · `error-copy.ts` · `updown-bet-errors.ts` · **an RG daily-loss cap was headed "Betting unavailable"** | `RULES.md` §2.9's ⏳ said the loss-limit refusal was the last INVALID family recovered from English prose *"because its service has not been taught to emit a reason yet"*. **False when written**: `checkLossLimit` has exactly ONE caller and it has emitted `reason: "loss_limit_daily"` since `19ac78ec` — the same commit that built the registry. Two live routes to one refusal, for a day. | ⭐ **THE DEAD ROUTE WAS MASKING A LIVE DEFECT.** With the phrase test gone, the Up & Down refusal took the reason branch — which chose the acknowledge modal's HEADING from SEVERITY. Every `modal`-channel reason is severity `error`, so `udErrRgLimitTitle` ("Daily loss limit reached") was **unreachable** and a player who hit the cap **they set themselves** read the operator-block heading over a body about their own limit. Severity answers *how loud*; it cannot also answer *whose decision this was*. Keyed on the reason now. ⚠️ Also: three ACTION layers minted machine codes by phrase-matching their own service's English, and in `changePasswordAction` **`PW_WEAK` was the fallback arm** — any unmatched refusal told the player to choose a stronger password. And **six `REASON_BY_CODE` rows mapped codes NOTHING has ever emitted**, while §9 proved them "working" by synthesising the code itself. §9b walks the tree now. |
+| **E-162** | 🔴 **FIXED 2026-08-15 (session 47) — `red:all` 68 harnesses, tree fingerprinted per harness** | instruments · `red:all` · **27 harnesses had never run, and one was rewriting tracked source on every run** | `red:all` was a 41-segment `&&` chain. `&&` stops at the first non-zero exit, and a RED harness exits non-zero for two different reasons — the guard missed a defect, or the harness cannot find its own anchor. **68 `red:*` are declared; the chain named 41.** 10 of the 68 were failing: 6 could not resolve their own anchors (23 anchors), 1 had **never run on Windows at all** (`execFileSync("npx", …)` is ENOENT; its catch reported "the suite is already red" against a suite passing 82/82). | 🔴 **AND `red:updown-bars` REWROTE 740 LINES OF `updown-feed.ts` FROM CRLF TO LF, ON EVERY RUN IT HAS EVER DONE** — it kept a local copy of the line-ending rule and restored the NORMALISED copy, while its own comment three lines above claimed it restored the original bytes. ⛔ `git diff` normalises line endings, so it printed **nothing**; only `git status` showed the file modified, which is indistinguishable from a session's own edit — §3.8's exact invisibility, over a harness printing `7/7 caught` and exiting 0. Found by the new runner's per-harness tree fingerprint on its FIRST full run. Fixed at the root via `red-anchor.mjs` (7/7 → 8/8: the shared resolver found a ninth anchor the local matcher was silently missing). Full record: [`FAILURE-INVENTORY.md`](FAILURE-INVENTORY.md) §8 |
+| **E-161** | ⚠️ **OPEN — filed 2026-08-15 (session 47), measured not guessed** | tooling · `tsconfig.json` · **`npx tsc --noEmit` does not typecheck the test suite** | `include` names `scripts/**/*.ts`; **every suite in this repo is `.mts`**. So the definition-of-done gate that every session runs before pushing covers **none of the ~226 suites**. Demonstrated the same day: a widely-called signature change (`LocalizedText`) passed `tsc` **clean**, then failed `test:cert-c3` and `test:updown-digest` on fixtures still handing over bare strings. The compiler had the information and was not asked. | ⚠️ **Not a one-line fix, which is why it is filed rather than done.** Adding the glob yields **1324** errors, essentially all `TS5097` — the `.ts`-extension import style `tsx` requires. Closing it means enabling `allowImportingTsExtensions` (legal: the gate is already `--noEmit`) and then reading whatever REAL errors remain underneath, which nobody has ever seen. ⛔ Do **not** "fix" it by deleting the extensions — that breaks every suite at runtime. ⛔ And do not treat it as a tidy-up: the value is precisely the unknown remainder. |
 | **E-160** | 🔴 **FIXED + proven RED 2026-08-11 (session 44) — `test:margin-series` 15, `red:margin-series` 8/0** | finance · `analytics.ts` · **the "Operator margin" chart was not a margin** | `marginSeries` bucketed stakes, payouts and refunds by the day the money MOVED. Settlement lags the stake by days in a prediction market, so numerator and denominator described **different bets**. Recomputed from raw SQL over 23 live days: **five days read exactly 100.0%** — impossible in a pari-mutuel, where the operator takes a commission and the rest of the pool belongs to the winners — and 2026-07-30 read **−1183.3%** because that day's refunds were **12.8× its stakes**. The card was subtitled *"band 7–10%"*, inviting the officer to read those points against a band no point was near. ⚠️ The same page prints a SECOND "Operator margin" (the aggregate KPI tile) over a different denominator; the two visibly disagreed. | ⭐ **The defect was never the formula — it was WHERE THE ACCUMULATORS LIVED**, so a guard checking the arithmetic would have passed in both states. Now cumulative-to-date: every point is a real margin over a real period and the LAST point equals `operatorMarginPct` **by construction**, which is what §3 asserts. The fixture is the REAL production shape (four of the 23 measured days), and §1's CONTROLs first prove the OLD algorithm produces 100% and −346% on it. 🔴 **§4's card check was VACUOUS as first written** — it split on `"Operator margin"`, which occurs **twice** in `finance/page.tsx`, so the plant restoring the false subtitle left it green. **Sixth ambiguous anchor of the session.** Full write-up: [`ADMIN-CONSOLE-FINDINGS.md`](ADMIN-CONSOLE-FINDINGS.md) A6 |
 | **E-159** | 🟠 **FIXED + proven RED 2026-08-11 (session 44) — `test:admin-charts` 32, `red:admin-charts` 11/0** | admin charts · **a ZERO painted a visible mark** | `AdminStackedBars` (`Math.max(0.5, segH)`), `AdminMeter` (`Math.max(1, pct)`) and `AdminBarList` (`Math.max(2, pct)`) all drew a bar for a zero value. ⭐ The stacked bar is the one that matters: unlike the other two it prints **no number beside it**, so nothing disclosed the zero — and its single instance is `/admin/finance` "Provider mix over time". **Measured live: 6 of 8 (provider × day) cells hold zero volume**, so ¾ of that chart's marks stood for deposits that did not happen. | Fixed as *"zero is zero"*, **not** *"small values vanish"* — the visibility floor survives for every non-zero value, guarded by three anti-collateral CONTROLs asserting a row worth 1 in 10,000 still paints. ⚠️ Those pass in both states on purpose: a check that only goes red with the defect cannot protect what the fix might break. Proven by **rendering** the primitives, not grepping them. |
 | **E-158** | 🟡 **FIXED + proven RED 2026-08-11 (session 44)** | admin charts · **the area chart's y-axis mislabelled its own gridlines** | `compact()` rounded every y-tick to a whole number while the ticks sit at `min + t·range`. On a series topping out at 1 the five DISTINCT gridlines were labelled `0, 0, 1, 1, 1` — the line at 0.25 read `0` and the one at 0.5 read `1`, with no adjacent figure to correct it. | `compact(n, step)` now keeps exactly enough precision to tell adjacent ticks apart, so a money axis stays `24K`. ⭐ **Filed `low` because reachability was MEASURED, not assumed**: `chart-source-census.cjs` recomputed the live 24h flow (`min −24,499 max 0`) and 28d margin (`min −1183 max 100`) and both give **5 of 5 distinct labels** — the forced zero baseline saves them. The defect is certain; its current exposure is nil. |
@@ -5760,6 +5765,179 @@ state**, 1,338,504 of players' stakes in escrow, and every ledger entry ever wri
 > **UPDATED 2026-08-06 (session 33):** the **material system merge is IN FLIGHT** on `main`,
 > landing one atom per commit. Read the block directly below this note before touching
 > `src/app/globals.css`, `src/app/motion.css`, or anything under `src/components/ui/`.
+
+### 🟢 Laptop B, session 47 (2026-08-15) — ⭐ THE FINISH LINE: THE INSTRUMENTS FIRST, AND THEY WERE WORSE THAN ANYBODY HAD MEASURED
+
+#### ⏭️ **RESUME AT (session 48):** ⭐ **`qa:refusal-frames`' DRIVE HALF — the one commissioned item this session did NOT close — and then **E-161**, which is the reason two suites broke under a clean `tsc` today.**
+>
+> **This session's register rows: E-161 (OPEN) · E-162 · E-163 · E-164 · E-165 (OPEN).**
+> E-162/163/164 are fixed and proven RED. ⛔ Read **E-161** before planning any signature
+> change — the gate you are about to trust does not cover the suites. ⛔ And read **E-165**
+> before starting unit H: the refusal the harness drives is the one the UI *prevents*, and
+> the commissioned alternative has the identical defect.
+
+> 💰 **THE MONEY POSITION, FIRST AND PLAINLY: NO MONEY MOVED THIS SESSION.** Nothing is in
+> flight, nothing is stranded, and there is no payout to expect.
+> ⛔ **No money path was changed, and no money defect was found to file.** Every commit is
+> instruments, refusal *copy/routing*,
+> a landing label, a notification shape and a toast/modal layering rule. `src/lib/payout.ts`,
+> `market-service`'s settlement arithmetic, the ledger, the fee snapshot and the wallet were
+> not touched — the two edits inside `market-service.ts` add a `reason:` token to an existing
+> refusal and swap a notification's title argument, neither of which moves a shilling.
+> `e2e:money`, `test:money-invariants`, `test:ledger`, `test:fee-model` and `test:trial-balance`
+> all ran green in `test:all` (222 suites, 316s).
+
+**WHAT WAS COMMISSIONED, AND WHAT LANDED.** Twelve units, A–L. **Eleven closed, one left open
+and named below.** Order was not negotiable: the instruments came first, because fixing product
+defects while the fleet that protects them is disarmed is how the last `if (true)` shipped.
+
+**▶ THE INSTRUMENTS (A–E) — and what they found the moment they could see.**
+
+- ⭐ **`red:all` is a reporting runner** (`255c1782`). It was a 41-segment `&&` chain, so it
+  reported the FIRST failure and went silent — and a RED harness exits non-zero for two
+  entirely different reasons (the guard missed a defect, or the harness cannot find its own
+  anchor). **68 harnesses are declared; the chain named 41. TWENTY-SEVEN HAD NEVER RUN.**
+- 🔴 **The first full run found ONE HARNESS CORRUPTING THE TREE.** `red:updown-bars` rewrote
+  740 lines of `src/lib/server/updown-feed.ts` from CRLF to LF **on every run it has ever
+  done**, and restored the normalised copy while its own comment three lines up claimed it
+  restored the original bytes. ⛔ **`git diff` normalises line endings, so it printed NOTHING** —
+  §3.8's exact invisibility, on a harness printing `7/7 caught` and exiting 0. This is why the
+  runner fingerprints the tree per harness, and why it must never repair it.
+- **10 of 68 harnesses were failing.** Six could not resolve their own anchors (23 anchors);
+  one had **never run on Windows at all** (`execFileSync("npx", …)` is ENOENT here, and its
+  catch turned that into "the suite is already red" against a suite passing 82/82); two were
+  hiding **real defects in the gates they protect** — `test:m1-light` could not see any shadow
+  declaration preceded by a `//` comment, and `qa:results-board` passed 32 assertions on a
+  board with **zero rows**, where every promise/delivery pair is `0 ≤ 0`.
+- ⭐ **`test:red-anchors`** (`e8f6d51e`) — a static audit that reads and never mutates, so it is
+  safe inside `test:all`. It proves reachability from `red:all` (the check with a body count:
+  `red-e64` sat outside every runner for eight days) and resolves declared anchors through
+  `red-anchor.mjs`'s own resolver. ⚠️ **Its coverage is stated, not implied**: ONE harness
+  declares today; §4 ratchets the other 67 and prints all of them every run.
+
+**▶ THE REFUSALS (F–G).**
+
+- `RULES.md` §2.9's last ⏳ premise **was false when it was written** — the service had emitted
+  `loss_limit_daily` since `19ac78ec`. Removing the dead phrase test **exposed a live defect it
+  had been masking**: the acknowledge modal took its HEADING from SEVERITY, and every
+  modal-channel reason is `error`, so a player who hit the cap **they set themselves** read
+  *"Betting unavailable"*.
+- **No action layer decides a refusal by phrase-matching English any more.** Three did; in one,
+  `PW_WEAK` was the FALLBACK arm, so any unmatched refusal told the player to choose a stronger
+  password. And **six `REASON_BY_CODE` rows mapped codes NOTHING has ever emitted**, while §9
+  proved them "working" by synthesising the code itself.
+
+**▶ THE PRODUCT (I–K).**
+
+- **UD-20 was already shipped** (`209a97da`) — measured, verified at 28 + 8/8, and **not
+  re-done**. Recorded in §7.2c so it is not re-found.
+- 🔴 **The toast/modal fix was WRONG on its first implementation and every static guard was
+  GREEN over it.** §10 passed all nine assertions and `red:feedback-law` caught all three of its
+  mutations — then a real bet at 360 in three languages showed the toast on screen over the
+  receipt anyway. ⛔ **Only the rendered frame could see it.** The driver that caught it is now
+  `npm run qa:toast-modal`, because the one thing that found the defect should not be the one
+  thing thrown away.
+
+**⛔ WHAT IS OPEN, AND WHY — READ THIS BEFORE PLANNING SESSION 48.**
+
+1. **`qa:refusal-frames`' drive half (unit H) — NOT CLOSED, but now MEASURED. See E-165.**
+   The locale half passes 12/12 and the drive half fails 12/12. ⭐ **The cause is not a flaky
+   selector: the harness drives the ONE refusal the UI prevents.** `close-account-form.tsx`
+   computes `canSubmit = confirm.trim() === "CLOSE MY ACCOUNT"` and disables the control, so a
+   wrong phrase can never be submitted and `close_confirm_required` is unreachable by any real
+   player action. ⛔ **And the alternative this commission suggested has the identical shape** —
+   `/profile/kyc` submit-for-review renders `<button type="submit" disabled>` below three
+   documents. Both refusals are defence in depth behind a client gate: correct engineering, and
+   useless to a frame-reader.
+   ⭐ **The reachable one is `password_mismatch`** on `/auth/reset-password`, which has no client
+   gate and where the SERVER compares the fields before consuming the token. ⚠️ It needs a
+   **valid** token to render the form at all, so it needs the work order's other suggestion — a
+   minted reset token — which needs a new dev-test route (`requestPasswordReset` only emails the
+   link). That route was not added here: it is a new production-gated API surface, and adding one
+   late in a session that deploys is how unverified changes ship. ⛔ Do not close this by
+   navigating to `?reason=…` — that proves the renderer renders and nothing else.
+2. 🔴 **`npx tsc --noEmit` DOES NOT TYPECHECK THE TEST SUITE** — filed at §7.2b-tsc, and it bit
+   this session. `tsconfig` includes `scripts/**/*.ts`; every suite is `.mts`. The gate ran
+   clean and `test:all` then failed two suites on stale fixtures. Closing it means enabling
+   `allowImportingTsExtensions` and reading the ~real errors underneath **1324** mostly-`TS5097`
+   noise. ⛔ Not a tidy-up: the value is the unknown remainder.
+3. **66 harnesses still do not declare their anchors** (`test:red-anchors` §4 ratchet at 67,
+   minus the one converted). Each conversion is a `scripts/anchors/<name>.anchors.mjs` sidecar
+   and lowers the ceiling in the same commit.
+4. **`test:labels` §4 is at 14** (was 15). The remaining sites are named in that file with the
+   reason each survived; `market-card.tsx` needs `test:outcome` §3 rewritten in the same commit.
+
+**⚠️ TWO TRAPS THIS SESSION PAID FOR TWICE EACH — they will cost you the same hour.**
+
+- ⛔ **A COMMENT THAT QUOTES DELETED CODE IS A DECOY ANCHOR.** `red:failure-reasons` found its
+  mutation anchor **inside the comment explaining the deletion** — uniquely, so `red-anchor.mjs`
+  was satisfied — mutated prose, changed nothing, and reported the guard as having missed. The
+  same shape kept `test:labels` §4 at 15: the note explaining the trust-band fix quoted the line
+  it had just removed, and **was itself the fifteenth private word-map.** Describe old code; do
+  not paste it.
+- ⛔ **APPENDING A SECTION TO A SUITE PUTS IT AFTER THE VERDICT.** Twice, `cat >>` placed new
+  assertions below the summary and `process.exit`, so they printed after the result and could
+  not fail the run. Insert above the summary, and compute the total after the last assertion.
+
+
+### 🟢 Laptop A, session 45 (2026-08-15) — ⭐ THE FEEDBACK LAYER GETS A LAW, AND A BACKGROUND POLL WAS BUZZING THE WIN PATTERN OVER LOSSES
+
+#### ⏭️ **RESUME AT (session 46):** ⭐ **LABELLING — the whole platform, every layer, three languages.** (Its prompt, `docs/SESSION-PROMPT-LABELLING.md`, was **deleted 2026-08-16** once spent — see the note at the head of §6b. The work landed as `DESIGN_AUTHORITY.md` §L, `src/lib/side-label.ts` and `test:labels`; the post-mortem is `FAILURE-INVENTORY.md` §7.3.)
+
+💰 **NO MONEY MOVED THIS SESSION.** Every drive ran against a LOCAL in-memory server on `:3013` with **no `DATABASE_URL`**, so the shared database was never opened. Production was read-only: `https://50pick.tz` HTTP 200, `server: railway-hikari`. No bet, no market, no wallet write, no migration. There is no payout to expect.
+
+**SHIPPED.** `docs/DESIGN_AUTHORITY.md` **§F** — the feedback law: which class of action answers on which channel, at which severity, and for how long. Guard `npm run test:feedback-law` (**130**), `npm run red:feedback-law` (**21/21**). The matrix it was derived from is `docs/FAILURE-INVENTORY.md` **§6**, built by opening the call sites of **171** server actions rather than by grepping names. **UD-22**, the Up & Down bet-confirmation modal, is live on the shared `OperationResultModal`.
+
+🔴 **A BACKGROUND POLL WAS FIRING THE MONEY-SETTLED HAPTIC.** `notifications-panel.tsx` called `haptics.success()` — `[22, 36, 60]`, byte-identical to a WIN — whenever an unread arrived on its 5-second poll. Its baseline started at `0`, so **the first poll after every page load counted as an arrival**: opening the app holding one unread vibrated the handset for a render. And the inbox carries LOSSES, whose copy is deliberately blunt so a loss is not softened — the win pattern played over them. Removed; the bell's `.g-ring` is the signal.
+
+🔴 **THE PUSH OPT-OUT DISCARDED THE SERVER'S ANSWER.** `deletePushSubscriptionAction` returns `{ ok: false }` on a lapsed session; the panel called it `.catch(() => {})` and never read `r.ok`, then set the switch OFF and said *"Push notifications off"* while the row survived and the device kept receiving. A false statement on a **consent** surface.
+
+⚠️ **AND "0 RAW SERVER STRINGS IN FRONT OF A PLAYER" WAS TRUE OF ONE CHANNEL OF TWO.** `test:failure-reasons` §10 matches `title:`/`description:` **properties**. A form-action page instead redirects with the server's English sentence and renders `{sp.error}` as JSX text, which that regex cannot see. **Five do**, one of them RG. Not fixed — that is §2.3's open wallet/KYC/auth tranche — but `test:feedback-law` §8 now ratchets the count at **5** and goes red on a sixth.
+
+🔴 **FOUR RED HARNESSES WERE ABSENT TESTS, AND THAT IS THE FINDING WORTH CARRYING FORWARD.** `red-e64` (anchor stale 8 days, and **not in `red:all`, so nothing ran it**) · `settlement-expectation-red` (the one copy E-108's "one locator" repair missed) · `updown-admin-options-red` (a signature gained a 5th argument on 2026-08-10) · `updown-chain-stats-red` (the **last** harness still hand-rolling anchor matching instead of importing `red-anchor.mjs` — so all five of its MULTI-LINE anchors missed on a CRLF checkout while every single-line one matched). All four repaired and proven. ⛔ **`red:all` is a `&&` chain, so the FIRST break starves every harness after it** — which is why the two feedback guards now sit at its HEAD. Consider making it run all and report.
+
+⚠️ **A PROCESS LESSON, PAID FOR IN THIS SESSION:** killing a mutation harness mid-run **zeroed two source files** (`round-action-panel.tsx`, `updown-board.ts`). Their "restored byte-for-byte" contract only holds if the run completes. Caught by scanning for NUL bytes; restored from git and re-applied. ⛔ **Never `TaskStop` a red harness.**
+
+---
+
+### ⚪ FALSE ALARM, WITHDRAWN THE SAME HOUR — Up & Down is NOT down, and the way I got there is the lesson
+
+⛔ **AN EARLIER VERSION OF THIS BLOCK CLAIMED A LIVE PRODUCTION OUTAGE. IT WAS WRONG.** It is
+rewritten rather than deleted, because the reasoning error is worth more than the retraction.
+
+**What I saw** — `railway logs -s 50pick` carried both of these, repeatedly:
+
+```
+Invalid `prisma.upDownObservation.create()` invocation:
+Unique constraint failed on the fields: (`assetId`,`boundaryAt`)
+[updown] udc_… boundary pending — open price for <T> not published yet (91s) — not opening a round…
+```
+
+**What I concluded, and why it was wrong.** I chained them: chains share a boundary → each
+`create`s the same observation → all but one throw → no confirmed price → no round opens → the
+product is dark. **Every link after the first is false, and the code says so in as many words:**
+
+- `observationStore.ensure()` (`updown-dal.ts`) is find → create → **catch the unique violation
+  → re-read the winner's row**, with a comment stating that the race *"is the DESIGNED behaviour
+  of the unique index, not an error"*. Prisma logs `prisma:error` for a query that throws **even
+  when the caller catches it** — so that log line is the handler working, not a failure.
+- The *not published yet* wait is documented behaviour, not a fault. `advanceChain` fires AT the
+  boundary and asks for the bar labelled with that instant, and a bar labelled T does not exist
+  until **~+19s (BTC/ETH/XAU) or ~+87s (SOL)**, measured on the live plan 2026-08-05. Pending at
+  tick time is expected **every single time**; the chain retries the same boundary rather than
+  opening a round that could only void — which is E-69's fix, working. A 91s wait on SOL is
+  inside the normal window.
+
+**What settled it, measured rather than reasoned:** production had **live rounds on the board**
+(`udr_79d55de43e8734962750`, `udr_8ef53b98b43545b4ef33`) and **zero** `boundary abandoned` lines —
+which is the actual failure signal, and the one that should have been checked first.
+
+⭐ **THE LESSON, AND IT IS THIS REGISTER'S OLDEST ONE:** *an `ERROR` in a log is not a defect, and
+a retry is not an outage.* Both lines here are subsystems behaving correctly and saying so. The
+session-44 note that flagged this as *"worth someone's attention"* was right to want it checked
+and wrong to leave it sounding broken — **it is now checked, and the answer is that it is fine.**
+⛔ Before reporting an outage, measure the OUTCOME (are rounds opening?), never the symptom (is
+something retrying?).
 
 ### 🟢 Laptop A, session 44 (2026-08-11) — ⭐ A READ-ONLY AUDITOR WAS OFFERED THE EMERGENCY STOP FOR THE PAYMENT RAIL
 

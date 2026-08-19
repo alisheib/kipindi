@@ -47,6 +47,7 @@ import { useToast } from "@/components/ui/toast";
 import { dispatchWinCelebration } from "@/components/markets/win-celebration";
 import { useT } from "@/lib/i18n";
 import { formatTzs } from "@/lib/utils";
+import { DWELL_RESULT_MS } from "@/lib/feedback-timing";
 
 export type AnnounceableRound = {
   roundId: string;
@@ -119,7 +120,7 @@ export function UpDownResultAnnouncer({ rounds }: { rounds: AnnounceableRound[] 
           title: t.market.udStakeReturnedTitle,
           description: `${sideWord} · ${formatTzs(res.payout)}`,
           variant: "factual",
-          durationMs: 6000,
+          durationMs: DWELL_RESULT_MS,
         });
         continue;
       }
@@ -138,7 +139,7 @@ export function UpDownResultAnnouncer({ rounds }: { rounds: AnnounceableRound[] 
         title: t.market.udLostTitle,
         description: `${sideWord} · ${formatTzs(res.stake)}`,
         variant: "factual",
-        durationMs: 6000,
+        durationMs: DWELL_RESULT_MS,
       });
     }
   }, [rounds, toast, t]);

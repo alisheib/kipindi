@@ -10,12 +10,12 @@ export async function resetPasswordAction(formData: FormData) {
 
   if (!token) redirect("/auth/forgot-password");
   if (password !== confirm) {
-    redirect(`/auth/reset-password?token=${encodeURIComponent(token)}&error=${encodeURIComponent("Passwords do not match. · Nenosiri hazilingani.")}` as never);
+    redirect(`/auth/reset-password?token=${encodeURIComponent(token)}&reason=password_mismatch` as never);
   }
 
   const result = await consumeResetToken(token, password);
   if (!result.ok) {
-    redirect(`/auth/reset-password?token=${encodeURIComponent(token)}&error=${encodeURIComponent(result.error)}` as never);
+    redirect(`/auth/reset-password?token=${encodeURIComponent(token)}&reason=reset_link_invalid` as never);
   }
   redirect("/auth/login?reset=1" as never);
 }

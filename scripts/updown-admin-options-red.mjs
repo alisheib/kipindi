@@ -87,11 +87,17 @@ import { symbolReadiness } from "@/lib/server/updown-symbols";`,
     name: "console-and-server-drift — the greying stops matching the refusal",
     file: SYMBOLS,
     // ⚠️ Anchor refreshed 2026-08-07: E-110 added the measured/movement axes to the signature.
+    // ⚠️ AND AGAIN 2026-08-15 — it had been stale for five days. `b382f994` (2026-08-10, "The
+    // Asset Playbook") added a FIFTH argument, `playbook`, so the four-argument form here
+    // matched nothing and both mutations below reported ANCHOR NOT FOUND — `red:all` exiting 1
+    // on a harness fault, not a product one. This is the same class as E-108 and as the two
+    // other stale anchors repaired in this commit: a signature change silently disarms every
+    // harness that spells the call out by hand.
     // The drift itself is unchanged — the server keeps accepting a pairing the console greys.
-    from: `  const r = symbolReadiness(findSymbol(symbol), durationMinutes, measured, movement);
+    from: `  const r = symbolReadiness(findSymbol(symbol), durationMinutes, measured, movement, playbook);
   return r.level === 3 ? r.reason : null;
 }`,
-    to: `  const r = symbolReadiness(findSymbol(symbol), durationMinutes, measured, movement);
+    to: `  const r = symbolReadiness(findSymbol(symbol), durationMinutes, measured, movement, playbook);
   return r.level === 3 && durationMinutes < 3 ? r.reason : null;
 }`,
   },
@@ -99,7 +105,11 @@ import { symbolReadiness } from "@/lib/server/updown-symbols";`,
     name: "page-stops-computing-readiness — the console has nothing to grey with",
     file: PAGE,
     // ⚠️ Anchor refreshed 2026-08-07: the page call now folds in the measured + movement records.
-    from: `                    const r = symbolReadiness(findSymbol(a.symbol), d, feed?.advise(a.key, d), feed?.movement(a.key, d));`,
+    // ⚠️ AND AGAIN 2026-08-15 — `b382f994` wrapped the call over two lines and appended the
+    // playbook advice, so the single-line form matched nothing. Same stale-anchor class as the
+    // mutation above; both are repaired against the live source rather than re-guessed.
+    from: `                    const r = symbolReadiness(findSymbol(a.symbol), d, feed?.advise(a.key, d), feed?.movement(a.key, d),
+                      toReadinessAdvice(book?.choice(a.symbol, d, findSymbol(a.symbol)?.minDurationMinutes ?? null)));`,
     to: `                    const r = { level: 1 as const, reason: "" };`,
   },
 ];

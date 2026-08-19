@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Chip } from "@/components/ui/chip";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
+import { sideWord } from "@/lib/side-label";
 // ⛔ NEVER THE RAW SERVER STRING. `docs/FAILURE-INVENTORY.md` §1.5 counts twelve surfaces
 // that put `r.error` — English audit prose — in front of the player, and §1.6 records what
 // that costs: a Swahili or Chinese player reading an English sentence at the moment something
@@ -186,9 +187,12 @@ export function CommentsThread({
                       {c.authorRole === "ADMIN" ? t.profile.adminRole : c.authorRole === "MODERATOR" ? t.profile.moderatorRole : t.profile.complianceRole}
                     </Chip>
                   )}
+                  {/* §L3 — a translated verb must not close around a stored token. This read
+                      "Ana YES" in Swahili and "持有 YES" in Chinese; the noun now comes from
+                      the same lexicon as the verb. Comments are poll-only. */}
                   {c.side && (
                     <Chip variant={c.side === "YES" ? "yes" : "no"} size="sm">
-                      {t.market.holds} {c.side}
+                      {t.market.holds} {sideWord(t, c.side, "MARKET")}
                     </Chip>
                   )}
                   <span className="font-mono text-[10.5px] text-text-subtle">{relTime(c.createdAt, t.common.now)}</span>

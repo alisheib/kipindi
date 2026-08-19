@@ -70,17 +70,17 @@ const U = "c3_player";
  * are driven separately in §5.
  */
 const EMITTED: { fn: string; row: StoredNotification | null }[] = [
-  { fn: "notifyBetPlaced",           row: await N.notifyBetPlaced(U, { side: "YES", stake: 10_000, payoutIfWin: 18_000, marketTitle: "Will it rain in Dar today?", marketId: "mkt_1", positionId: "pos_1", cashOutFeeRate: 0.1, freeExitGraceMinutes: 5, paidExitWindowMinutes: 0 }) },
-  { fn: "notifyWin",                 row: await N.notifyWin(U, 18_000, "Will it rain · pos_2", "/positions") },
-  { fn: "notifyLoss",                row: await N.notifyLoss(U, { stake: 10_000, marketTitle: "Will it rain in Dar today?", marketId: "mkt_1", positionId: "pos_3" }) },
-  { fn: "notifySelectionClosed",     row: await N.notifySelectionClosed(U, { marketTitle: "Will it rain in Dar today?", marketId: "mkt_2", payoutIfYes: 18_500, payoutIfNo: 0, hasYes: true, hasNo: false }) },
-  { fn: "notifyCashout",             row: await N.notifyCashout(U, { amount: 9_500, marketTitle: "Will it rain in Dar today?", marketId: "mkt_3", inGracePeriod: true, positionId: "pos_4", freeExitGraceMinutes: 5 }) },
-  { fn: "notifyOneSidedRefund",      row: await N.notifyOneSidedRefund(U, { stake: 10_000, marketTitle: "One-sided poll", marketId: "mkt_4", positionId: "pos_5" }) },
-  { fn: "notifyRefund",              row: await N.notifyRefund(U, { stake: 10_000, marketTitle: "Voided poll", marketId: "mkt_5" }) },
+  { fn: "notifyBetPlaced",           row: await N.notifyBetPlaced(U, { side: "YES", stake: 10_000, payoutIfWin: 18_000, marketTitle: { en: "Will it rain in Dar today?", sw: "Je mvua itanyesha Dar leo?", zh: "今天达累斯萨拉姆会下雨吗？" }, marketId: "mkt_1", positionId: "pos_1", cashOutFeeRate: 0.1, freeExitGraceMinutes: 5, paidExitWindowMinutes: 0 }) },
+  { fn: "notifyWin",                 row: await N.notifyWin(U, 18_000, { en: "Will it rain · pos_2", sw: "Je mvua itanyesha · pos_2", zh: "会下雨吗 · pos_2" }, "/positions") },
+  { fn: "notifyLoss",                row: await N.notifyLoss(U, { stake: 10_000, marketTitle: { en: "Will it rain in Dar today?", sw: "Je mvua itanyesha Dar leo?", zh: "今天达累斯萨拉姆会下雨吗？" }, marketId: "mkt_1", positionId: "pos_3" }) },
+  { fn: "notifySelectionClosed",     row: await N.notifySelectionClosed(U, { marketTitle: { en: "Will it rain in Dar today?", sw: "Je mvua itanyesha Dar leo?", zh: "今天达累斯萨拉姆会下雨吗？" }, marketId: "mkt_2", payoutIfYes: 18_500, payoutIfNo: 0, hasYes: true, hasNo: false }) },
+  { fn: "notifyCashout",             row: await N.notifyCashout(U, { amount: 9_500, marketTitle: { en: "Will it rain in Dar today?", sw: "Je mvua itanyesha Dar leo?", zh: "今天达累斯萨拉姆会下雨吗？" }, marketId: "mkt_3", inGracePeriod: true, positionId: "pos_4", freeExitGraceMinutes: 5 }) },
+  { fn: "notifyOneSidedRefund",      row: await N.notifyOneSidedRefund(U, { stake: 10_000, marketTitle: { en: "One-sided poll", sw: "Kura ya upande mmoja", zh: "单边投票" }, marketId: "mkt_4", positionId: "pos_5" }) },
+  { fn: "notifyRefund",              row: await N.notifyRefund(U, { stake: 10_000, marketTitle: { en: "Voided poll", sw: "Kura batili", zh: "已作废投票" }, marketId: "mkt_5" }) },
   // The Up & Down daily digest (E-37). Driven on a LOSING day: that is the branch
   // that carries the LCCP claim, and the one that was promised and never built.
   { fn: "notifyUpDownDigest",        row: await N.notifyUpDownDigest(U, { dayKey: "2026-08-02", titleEn: "Up & Down · you lost TZS 11,300", titleSw: "Up & Down · umepoteza TZS 11,300", titleZh: "涨跌 · 亏损 TZS 11,300", bodyEn: "2 Aug: 4 rounds — won 1 (TZS 8,700 paid), lost 3 (TZS 15,000). Staked TZS 20,000, returned TZS 8,700.", bodySw: "2 Ago: raundi 4 — umeshinda 1 (TZS 8,700 imelipwa), umepoteza 3 (TZS 15,000). Umeweka TZS 20,000, umerudishiwa TZS 8,700.", bodyZh: "2026年8月2日：共 4 轮 — 赢 1 轮（赔付 TZS 8,700）、输 3 轮（TZS 15,000）。投注 TZS 20,000，收回 TZS 8,700。" }) },
-  { fn: "notifyMarketCancelled",     row: await N.notifyMarketCancelled(U, { stake: 10_000, marketTitle: "Cancelled poll", marketId: "mkt_6", reason: "Source retracted the result" }) },
+  { fn: "notifyMarketCancelled",     row: await N.notifyMarketCancelled(U, { stake: 10_000, marketTitle: { en: "Cancelled poll", sw: "Kura iliyoghairiwa", zh: "已取消投票" }, marketId: "mkt_6", reason: "Source retracted the result" }) },
   { fn: "notifyDeposit",             row: await N.notifyDeposit(U, { status: "CONFIRMED", amount: 50_000, provider: "Selcom", txnId: "txn_1" }) },
   { fn: "notifyWithdraw",            row: await N.notifyWithdraw(U, { status: "CONFIRMED", amount: 20_000, net: 19_700, provider: "M-Pesa" }) },
   { fn: "notifyBonusCredited",       row: await N.notifyBonusCredited(U, { amountTzs: 5_000, wagerRequiredTzs: 25_000 }) },
@@ -93,8 +93,8 @@ const EMITTED: { fn: string; row: StoredNotification | null }[] = [
   { fn: "notifySelfExclusion",       row: await N.notifySelfExclusion(U, { until: "2027-01-31T00:00:00.000Z" }) },
   { fn: "notifyCoolOff",             row: await N.notifyCoolOff(U, { until: "2026-08-01T00:00:00.000Z" }) },
   { fn: "notifyPasswordChanged",     row: await N.notifyPasswordChanged(U) },
-  { fn: "notifyWatchedClosingSoon",  row: await N.notifyWatchedClosingSoon(U, { marketTitle: "Watched poll", marketId: "mkt_7", minutes: 30 }) },
-  { fn: "notifyWatchedSettled",      row: await N.notifyWatchedSettled(U, { marketTitle: "Watched poll", marketId: "mkt_8", outcome: "YES" }) },
+  { fn: "notifyWatchedClosingSoon",  row: await N.notifyWatchedClosingSoon(U, { marketTitle: { en: "Watched poll", sw: "Kura inayofuatiliwa", zh: "关注的投票" }, marketId: "mkt_7", minutes: 30 }) },
+  { fn: "notifyWatchedSettled",      row: await N.notifyWatchedSettled(U, { marketTitle: { en: "Watched poll", sw: "Kura inayofuatiliwa", zh: "关注的投票" }, marketId: "mkt_8", outcome: "YES" }) },
   { fn: "notifyProposalUnderReview", row: await N.notifyProposalUnderReview(U, { titleEn: "A market idea" }) },
   { fn: "notifyProposalApproved",    row: await N.notifyProposalApproved(U, { titleEn: "A market idea", amountTzs: 5_000, queued: false }) },
   { fn: "notifyProposalListed",      row: await N.notifyProposalListed(U, { titleEn: "A market idea", marketId: "mkt_9" }) },
@@ -171,8 +171,8 @@ section("4 · dedupe — 28 byte-identical notifications shipped on production")
 
 {
   const before = (await db.notification.findByUser(U, 500)).length;
-  const a = await N.notifyWin(U, 23_349, "Ronaldo to score · pos_dup", "/positions");
-  const b = await N.notifyWin(U, 23_349, "Ronaldo to score · pos_dup", "/positions");
+  const a = await N.notifyWin(U, 23_349, { en: "Ronaldo to score · pos_dup", sw: "Ronaldo afunge · pos_dup", zh: "C罗进球 · pos_dup" }, "/positions");
+  const b = await N.notifyWin(U, 23_349, { en: "Ronaldo to score · pos_dup", sw: "Ronaldo afunge · pos_dup", zh: "C罗进球 · pos_dup" }, "/positions");
   const after = (await db.notification.findByUser(U, 500)).length;
   ok("an identical repeat inside the window creates NO second row", after === before + 1, `before=${before} after=${after}`);
   ok("…and the caller still gets a row back (never null)", a !== null && b !== null);

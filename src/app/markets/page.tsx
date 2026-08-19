@@ -16,6 +16,7 @@ import {
 import { getCardCharts } from "@/lib/server/market-history";
 import { countCommentsByMarkets } from "@/lib/server/comments-store";
 import { getServerT } from "@/lib/i18n-server";
+import { outcomeWord } from "@/lib/side-label";
 import { getSession } from "@/lib/server/session";
 import { listWatchedMarketIds } from "@/lib/server/watchlist-service";
 
@@ -360,7 +361,10 @@ async function DiscoveryBoard({ searchParams }: { searchParams: Promise<SP> }) {
                 yesPct={impliedYesPct(m)}
                 volume={m.yesPool + m.noPool}
                 predictors={m.predictorCount}
-                timeLeft={`${t.market.resolvedOutcome} ${m.resolvedOutcome}`}
+                // §L3 — the THIRD copy of this shape, and the one actually on the board.
+                // It rendered "已结算 YES" live: a translated label closing around the stored
+                // token. `/results` and `/watchlist` carried the same line.
+                timeLeft={m.resolvedOutcome === "VOID" ? t.common.voided : `${t.market.resolvedOutcome} ${outcomeWord(t, m.resolvedOutcome ?? "VOID", "MARKET")}`}
                 status="RESOLVED"
                 resolvedOutcome={m.resolvedOutcome}
                 sourceUrl={m.sourceUrl}

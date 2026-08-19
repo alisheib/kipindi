@@ -35,6 +35,7 @@ import { audit } from "./audit";
 import { randomId } from "./crypto";
 import { withLock } from "./locks";
 import { maskName } from "./affiliate-service";
+import type { FailureReason } from "@/lib/failure-reasons";
 import { creditBonus } from "./bonus-service";
 import { creditInternal } from "./wallet-service";
 import { displayLabel } from "@/lib/display-label";
@@ -306,17 +307,33 @@ async function notifyOfficersOfNewProposal(proposal: StoredProposal): Promise<vo
 export async function castVote(userId: string, proposalId: string, dir: "up" | "down" | null):
   Promise<
     | { ok: true; up: number; down: number; myVote: "up" | "down" | null }
-    | { ok: false; error: string }
+    | { ok: false; error: string; code: "PAUSED" | "NOT_FOUND" | "VOTING_CLOSED"; reason: FailureReason }
   > {
+  // ⛔ THE CODE IS MINTED HERE, NOT IN `voteAction`. That action used to recover it by matching
+  // this function's own English back out of the string it had just returned:
+  //
+  //     /unavailable|available right now|coming soon/i.test(r.error) ? "PAUSED"
+  //       : /voting has closed/i.test(r.error) ? "VOTING_CLOSED" : "NOT_FOUND";
+  //
+  // ⚠️ AND THE FIRST PATTERN DID NOT MATCH ITS OWN SENTENCE. The gate arm returns
+  // `proposalsBlockedReason(cfg.state)`, whose wording is CONFIGURED per state — the action's
+  // three alternatives were a guess at what an operator might have typed. Any other phrasing
+  // fell through the `VOTING_CLOSED` test too and landed on `NOT_FOUND`, so a paused feature
+  // told the player *"We couldn't find that. Refresh and try again."* — a refusal that invites
+  // the one action guaranteed not to help, about a proposal that exists.
   const cfg = getProposalsConfig();
   // Voting is a feature interaction, gated by the same ACTIVE state as creating.
-  if (!isProposalsActive(cfg)) return { ok: false, error: proposalsBlockedReason(cfg.state) };
+  if (!isProposalsActive(cfg)) {
+    return { ok: false, error: proposalsBlockedReason(cfg.state), code: "PAUSED", reason: "proposals_paused" };
+  }
   // Serialize per-proposal so concurrent voters can't interleave the
   // record-then-recount and lose a tally.
   return withLock(`proposal:${proposalId}`, async () => {
     const p = await db.proposal.findById(proposalId);
-    if (!p) return { ok: false as const, error: "Proposal not found." };
-    if (!OPEN_STATES.includes(p.status)) return { ok: false as const, error: "Voting has closed for this proposal." };
+    if (!p) return { ok: false as const, error: "Proposal not found.", code: "NOT_FOUND" as const, reason: "not_found" as const };
+    if (!OPEN_STATES.includes(p.status)) {
+      return { ok: false as const, error: "Voting has closed for this proposal.", code: "VOTING_CLOSED" as const, reason: "voting_closed" as const };
+    }
 
     // O(1) incremental tally — back out this voter's previous effect and apply
     // the new one. Correct by construction because the per-proposal lock above

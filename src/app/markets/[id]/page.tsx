@@ -37,6 +37,7 @@ import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { formatDateTime, formatDayTime, formatTzsCompact, formatTzs, fill } from "@/lib/utils";
 import { appUrl } from "@/lib/app-url";
 import { getServerT } from "@/lib/i18n-server";
+import { sideWord, outcomeWord } from "@/lib/side-label";
 import { renderFailure } from "@/lib/failure-reasons";
 import { getBonusSummary } from "@/lib/server/bonus-service";
 import { pickLocalized, pickCriterion, marketCategoryLabel } from "@/lib/localized";
@@ -401,7 +402,7 @@ export default async function MarketDetail({
             </span>
           )}
           {isResolved && m.resolvedOutcome && (
-            <Chip variant="resolved" size="lg">{t.market.resolvedOutcome} · {m.resolvedOutcome === "YES" ? t.common.yes : m.resolvedOutcome === "NO" ? t.common.no : t.market.statusVoid}</Chip>
+            <Chip variant="resolved" size="lg">{t.market.resolvedOutcome} · {outcomeWord(t, m.resolvedOutcome ?? "VOID", "MARKET")}</Chip>
           )}
           <a
             href={m.sourceUrl}
@@ -448,6 +449,8 @@ export default async function MarketDetail({
             resolved={isResolved}
             empty={noPriceMarket}
             emptyLabel={t.market.noBetsYet}
+            probabilityLabel={t.market.probBarAria}
+            labels={{ yes: t.common.yes, no: t.common.no, tipping: t.market.tipping, leansYes: t.market.leansYes, leansNo: t.market.leansNo }}
           />
           {freshMarket && (
             <p className="-mt-3 text-center font-mono text-[11px] tracking-[0.06em] text-text-faint">
@@ -548,7 +551,7 @@ export default async function MarketDetail({
                             status chip in the same header three hundred lines above was
                             fully localised. A Swahili player reading "NDIO" on the card
                             they arrived from met "YES" here. */}
-                        <span className={`font-bold ${p.side === "YES" ? "text-yes-300" : "text-no-300"}`}>{p.side === "YES" ? t.common.yes : t.common.no}</span>
+                        <span className={`font-bold ${p.side === "YES" ? "text-yes-300" : "text-no-300"}`}>{sideWord(t, p.side, "MARKET")}</span>
                         <span className={`text-[10px] uppercase tracking-[0.10em] font-semibold ${
                           p.status === "OPEN" ? "text-info-fg" : p.status === "WIN" ? "text-gold-300" : p.status === "LOSS" ? "text-no-300" : "text-text-subtle"
                         }`}>{

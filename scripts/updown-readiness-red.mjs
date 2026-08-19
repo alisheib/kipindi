@@ -14,155 +14,19 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 
-const SYMBOLS = new URL("../src/lib/server/updown-symbols.ts", import.meta.url);
-const DURATIONS = new URL("../src/lib/updown-durations.ts", import.meta.url);
-const CONFIG = new URL("../src/lib/server/updown-config.ts", import.meta.url);
-const PAGE = new URL("../src/app/admin/updown/page.tsx", import.meta.url);
+/**
+ * ⭐ THE MUTATIONS ARE DECLARED AS DATA, NEXT DOOR, AND IMPORTED HERE.
+ *
+ * ⛔ They used to be a literal in this file, which meant `npm run test:red-anchors` could only
+ * learn them by parsing this source and guessing which array was the mutations and which key
+ * was the anchor — a guess that FAILS OPEN, reporting a harness it did not understand as clean.
+ * One definition, two readers: this harness injects them, the auditor resolves them, and
+ * adding a mutation adds it to the audit in the same keystroke.
+ */
+import { MUTATIONS } from "./anchors/updown-readiness.anchors.mjs";
 
-const MUTATIONS = [
-  // ── ⭐ THE MEASURED PER-ASSET GATE (2026-08-05) ────────────────────────────
-  // The engine existed for a session with NO caller. Every mutation below leaves it existing
-  // and correct while disconnecting it, which is exactly how it shipped unused the first time.
-  {
-    name: "measured-block-ignored — the record says ③ and the symbol reads ready anyway",
-    file: SYMBOLS,
-    suite: "updown-readiness",
-    from: `  if (measured && measured.level === 3) return { level: 3, reason: measured.message };`,
-    to: `  if (false && measured && measured.level === 3) return { level: 3, reason: measured.message };`,
-  },
-  {
-    name: "measured-caution-dropped — the record's ② never reaches the operator",
-    file: SYMBOLS,
-    suite: "updown-readiness",
-    from: `  if (measured && measured.level === 2) caveats.push(measured.message);`,
-    to: `  if (false && measured && measured.level === 2) caveats.push(measured.message);`,
-  },
-  {
-    // ⛔ THE SHAPE THIS SESSION STARTED IN: the console greys it, the server takes it.
-    name: "server-gate-unmeasured — the console greys the pairing and the server accepts it",
-    file: CONFIG,
-    suite: "updown-readiness",
-    from: `  const durationErr = validateSymbolDuration(asset.symbol, input.durationMinutes, measured);`,
-    to: `  const durationErr = validateSymbolDuration(asset.symbol, input.durationMinutes);`,
-  },
-  {
-    // Keyed on the symbol, the lookup finds nothing, reads UNMEASURED, and disarms the gate
-    // while every screen still looks right.
-    name: "record-keyed-on-symbol — the lookup finds nothing and everything reads unmeasured",
-    file: CONFIG,
-    suite: "updown-readiness",
-    from: `  const measured = await feedAdviceFor(asset.key, input.durationMinutes);`,
-    to: `  const measured = await feedAdviceFor(asset.symbol, input.durationMinutes);`,
-  },
-  {
-    name: "console-half-unmeasured — the Add-chain duration list stops reading the record",
-    file: PAGE,
-    suite: "updown-admin-options",
-    from: `                    const r = symbolReadiness(findSymbol(a.symbol), d, feed?.advise(a.key, d));`,
-    to: `                    const r = symbolReadiness(findSymbol(a.symbol), d);`,
-  },
-  {
-    // ⛔ A-5. Two readings produce a median as readily as two thousand, and on screen the two
-    // are indistinguishable — so an unmeasured asset showing "+132s typical" is a fabrication.
-    name: "unmeasured-shows-a-median — the asset table quotes an average off two readings",
-    file: PAGE,
-    suite: "updown-admin-options",
-    from: `                                  {advice?.unmeasured
-                                    ? "not measured yet"
-                                    : <>`,
-    to: `                                  {false
-                                    ? "not measured yet"
-                                    : <>`,
-  },
-  {
-    // E-85: the band trigger clipped "(recommended)" away, on the field that decides whether
-    // rounds pay or refund. The regression is a layout one, so the mutation is a layout one.
-    name: "band-column-narrowed — the winning band clips back to \"Smallest possible…\"",
-    file: new URL("../src/app/admin/updown/updown-controls.tsx", import.meta.url),
-    suite: "updown-admin-options",
-    from: `      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">`,
-    to: `      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">`,
-  },
-  {
-    name: "record-column-removed — the operator cannot see what refuses their duration",
-    file: PAGE,
-    suite: "updown-admin-options",
-    from: `                    <th className="px-4 py-2.5 font-semibold">Feed record</th>`,
-    to: `                    <th className="px-4 py-2.5 font-semibold">Feed</th>`,
-  },
-  {
-    name: "measurement-overrides-the-catalogue — a good record lifts gold's 15-minute floor",
-    file: SYMBOLS,
-    suite: "updown-readiness",
-    from: `  // ③ beats everything: the platform genuinely cannot feed it.
-  if (spec.unsupported) return { level: 3, reason: spec.unsupported };`,
-    to: `  // ③ beats everything: the platform genuinely cannot feed it.
-  if (spec.unsupported) return { level: 3, reason: spec.unsupported };
-  if (measured && measured.level === 1) return { level: 1, reason: "" };`,
-  },
-  {
-    name: "gold-minimum-removed — gold is offered at 3 and 5 minutes again",
-    file: SYMBOLS,
-    suite: "updown-readiness",
-    from: `    minDurationMinutes: 15,
-    minDurationWhy:
-      "Gold's own price feed disagrees`,
-    to: `    minDurationWhy:
-      "Gold's own price feed disagrees`,
-  },
-  {
-    name: "gold-reason-dropped — an option is greyed with no explanation",
-    file: SYMBOLS,
-    suite: "updown-readiness",
-    from: `        spec.minDurationWhy ??
-        \`\${spec.symbol} needs rounds of at least \${spec.minDurationMinutes} minutes.\``,
-    to: `        \`\${spec.symbol} needs rounds of at least \${spec.minDurationMinutes} minutes.\``,
-  },
-  {
-    name: "unknown-symbol-passes — an uncatalogued symbol reads as ready",
-    file: SYMBOLS,
-    suite: "updown-readiness",
-    from: `  if (!spec) {
-    return {
-      level: 3,`,
-    to: `  if (!spec) {
-    return {
-      level: 1,`,
-  },
-  {
-    // The gate removed: the dropdown still greys the option, the server takes it anyway.
-    name: "server-gate-removed — the console greys it and the server accepts it",
-    file: CONFIG,
-    suite: "updown-readiness",
-    from: `  const durationErr = validateSymbolDuration(asset.symbol, input.durationMinutes, measured);
-  if (durationErr) return { ok: false, error: durationErr };`,
-    to: `  const durationErr: string | null = null;
-  if (durationErr) return { ok: false, error: durationErr };`,
-  },
-  {
-    name: "catalogue-tick-below-the-floor — the form prefills a value the server refuses",
-    file: SYMBOLS,
-    suite: "updown-readiness",
-    from: `    category: "crypto", iconKey: "crypto", decimals: 2, minMoveTicks: 2, group: "Crypto" },
-  { symbol: "ETH/USD"`,
-    to: `    category: "crypto", iconKey: "crypto", decimals: 2, minMoveTicks: 1, group: "Crypto" },
-  { symbol: "ETH/USD"`,
-  },
-  {
-    name: "lattice-rule-loosened — a duration that does not divide the day is admitted",
-    file: DURATIONS,
-    suite: "updown-durations",
-    from: `  return Number.isInteger(minutes) && minutes > 0 && MINUTES_PER_DAY % minutes === 0;`,
-    to: `  return Number.isInteger(minutes) && minutes > 0;`,
-  },
-  {
-    name: "duration-added-off-lattice — 7 minutes, whose boundaries drift across midnight",
-    file: DURATIONS,
-    suite: "updown-durations",
-    from: `export const ALLOWED_DURATIONS = [3, 5, 10, 15, 30, 60] as const;`,
-    to: `export const ALLOWED_DURATIONS = [3, 5, 7, 10, 15, 30, 60] as const;`,
-  },
-];
+/** Repo-relative POSIX paths from the declaration → the URLs this harness writes through. */
+const urlOf = (rel) => new URL("../" + rel, import.meta.url);
 
 let caught = 0;
 const missed = [];
@@ -170,7 +34,8 @@ const cwd = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$
 const toFileEol = (text, contents) => (contents.includes("\r\n") ? text.replace(/\n/g, "\r\n") : text);
 
 for (const m of MUTATIONS) {
-  const original = readFileSync(m.file, "utf8");
+  const file = urlOf(m.file);
+  const original = readFileSync(file, "utf8");
   const from = toFileEol(m.from, original);
   const to = toFileEol(m.to, original);
   if (!original.includes(from)) {
@@ -178,9 +43,9 @@ for (const m of MUTATIONS) {
     missed.push(`${m.name} (anchor missing)`);
     continue;
   }
-  writeFileSync(m.file, original.replace(from, to));
+  writeFileSync(file, original.replace(from, to));
   try {
-    if (readFileSync(m.file, "utf8") === original) throw new Error("mutation did not land on disk");
+    if (readFileSync(file, "utf8") === original) throw new Error("mutation did not land on disk");
     const script = m.suite === "updown-durations" ? "updown-durations.test.mts"
       : m.suite === "updown-admin-options" ? "updown-admin-options.test.mts"
       : "updown-readiness.test.mts";
@@ -206,7 +71,7 @@ for (const m of MUTATIONS) {
       console.log(`  ✗ MISS ${m.name}\n         → exit ${exitCode}, ${failed} failed — the guard did NOT catch this`);
     }
   } finally {
-    writeFileSync(m.file, original);
+    writeFileSync(file, original);
   }
 }
 

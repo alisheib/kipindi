@@ -15,6 +15,7 @@ import { listWatchedMarketIds } from "@/lib/server/watchlist-service";
 import { listMarkets, impliedYesPct, isClosedByTime, isSelectionClosed } from "@/lib/server/market-service";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { getServerT } from "@/lib/i18n-server";
+import { outcomeWord } from "@/lib/side-label";
 import { formatDateTime } from "@/lib/utils";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
@@ -60,8 +61,11 @@ export default async function WatchlistPage() {
         <section className="market-grid">
           {markets.map((m) => {
             const resolved = m.status === "RESOLVED" || m.status === "VOIDED";
+            // §L3 — this read "Imetatuliwa YES" / "已结算 YES": a translated label closing
+            // around the stored token. The VOID arm was already localised, which is what made
+            // the other two stand out. `outcomeWord` covers all three.
             const timeLeft = resolved
-              ? (m.resolvedOutcome === "VOID" ? t.common.voided : `${t.market.resolvedOutcome} ${m.resolvedOutcome}`)
+              ? (m.resolvedOutcome === "VOID" ? t.common.voided : `${t.market.resolvedOutcome} ${outcomeWord(t, m.resolvedOutcome ?? "VOID", "MARKET")}`)
               : formatDateTime(m.resolutionAt);
             return (
               <MarketCard

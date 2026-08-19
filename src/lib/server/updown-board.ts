@@ -16,12 +16,15 @@ import { getUpDownConfig, stakeBoundsFor } from "./updown-config";
 // HERE, on the server, because translating a vendor string in the browser still ships the
 // vendor in the RSC payload where View Source finds it.
 import { publicSourceClassFor, type PublicSourceClass } from "./updown-symbols";
-import { ratesFor, listPositionsForUser, projectedPayout } from "./market-service";
+import { ratesFor, listPositionsForUser, listPositionsForMarket, projectedPayout } from "./market-service";
 import { impliedYesPct } from "./market-service";
 // ⭐ D2 · the shape the player surfaces price a bet from. Isomorphic by design — the card is a
 // client component, this is the server, and one definition of "what would I be paid" is the
 // point (same reasoning as `updown-refund-reason.ts`).
 import type { UpDownPricing } from "@/lib/updown-pricing";
+// The frozen facts a placed bet is confirmed with, and the one rule that decides whether it
+// has a way out. Isomorphic for the same reason `UpDownPricing` is — see the module header.
+import type { UpDownReceiptInfo } from "@/lib/updown-receipt";
 // E-99 · the result clock is driven by an asset's OWN measured record, never by a constant.
 import { feedHistoryFor } from "./updown-feed-history";
 import { MIN_SAMPLES_FOR_ADVICE } from "./updown-feed-advice";
@@ -234,6 +237,18 @@ export type BoardRound = {
    * `expectedResultAtMs` are both shaped to avoid.
    */
   successor: RoundSuccessor;
+  /**
+   * ⭐ THE BET RECEIPT'S FROZEN FACTS — assembled ONCE, here, so the board card and
+   * `/updown/[roundId]` confirm a bet with the same sentences.
+   *
+   * ⛔ IT CARRIES `freeExitGraceMinutes` FROM `ratesFor(m)`, THE MARKET'S OWN SNAPSHOT, and
+   * that is the whole reason it is built server-side rather than in the modal. The receipt
+   * states whether this bet can be cancelled, and `cashOutValue` answers that from the
+   * market's frozen grace against the bet's runway — never live config. A client reading
+   * `docs/RULES.md` §2.6's "5 minutes" as a constant would print *"Free cancellation ·
+   * 5 min"* on a 3-minute round, where the exit does not exist at all.
+   */
+  receipt: UpDownReceiptInfo;
 };
 
 /**
@@ -371,6 +386,15 @@ async function heldPayout(
 async function toBoardRound(
   r: StoredRound,
   chain: StoredChain,
+  /**
+   * ⛔ REQUIRED, and positioned BEFORE the optional arguments deliberately. The receipt needs
+   * the asset's `decimals` and `sourceClass`, and this file has already been bitten once by
+   * an optional trailing parameter: the note on `measuredLagSeconds` at the `getRoundDetail`
+   * call site records that `toBoardRound(r, chain, mine)` type-checked perfectly with the
+   * lag missing, so a feature would have been null on `/updown/[roundId]` for ever while the
+   * board card worked. A required parameter makes forgetting it a compile error instead.
+   */
+  asset: Pick<StoredAsset, "decimals" | "symbol" | "category">,
   mine?: MyMarketStake,
   /** The asset's measured median seconds from boundary to a confirmed reading, or null when
    *  it has too little history to quote one. Passed in — never recomputed per round, which
@@ -427,6 +451,20 @@ async function toBoardRound(
     // answer to "when do bets close", and the two would drift the first time the fraction is
     // tuned — the `[5, 15, 30]` failure, applied to a deadline that decides whether a bet is legal.
     selectionClosedAt: m.selectionClosedAt,
+    // ⭐ The receipt's frozen facts, built here so both bet surfaces confirm identically.
+    // `rates` is `ratesFor(m)` — the MARKET's own snapshot, already resolved above for the
+    // pricing block, so the exit terms stated on the receipt are the exact ones
+    // `cashOutValue` will apply. See `src/lib/updown-receipt.ts`.
+    receipt: {
+      durationMinutes: chain.durationMinutes,
+      selectionClosedAt: m.selectionClosedAt,
+      closesAt: r.closesAt,
+      openPrice: r.openPrice,
+      decimals: asset.decimals,
+      sourceClass: publicSourceClassFor(asset),
+      roundHref: `/updown/${r.id}`,
+      freeExitGraceMinutes: rates.freeExitGraceMinutes,
+    },
     serverNowMs: Date.now(),
     state,
     settled: !!r.settledAt,
@@ -720,6 +758,12 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
     ?? assets.find((a) => a.durations.length > 0)
     ?? assets[0] ?? null;
   if (!activeAsset) return { assets, activeAsset: null, activeDuration: null, rounds: [], recent: [], chainPaused: false, stakeBounds: defaultBounds, walletBalance };
+  // The STORED row behind the active card. `BoardAsset` is the mapped, player-safe shape and
+  // deliberately carries no `symbol`/`category` — E-53 keeps the vendor's identifiers off the
+  // wire — but `publicSourceClassFor` classifies FROM those fields, so the receipt is built
+  // from the row rather than by widening what crosses to the browser.
+  const activeAssetRow = enabled.find((a) => a.id === activeAsset.id);
+  if (!activeAssetRow) return { assets, activeAsset, activeDuration: null, rounds: [], recent: [], chainPaused: true, stakeBounds: defaultBounds, walletBalance };
 
   const activeDuration =
     (opts?.durationMinutes && activeAsset.durations.includes(opts.durationMinutes) ? opts.durationMinutes : undefined)
@@ -748,7 +792,7 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
   // Newest first, bounded — never an unbounded scan of a table that grows every minute.
   const raw = await roundStore.list({ chainId: chain.id, limit: 24 }).catch(() => []);
   const mapped = (await Promise.all(
-    raw.map((r) => toBoardRound(r, chain, mineByMarket.get(r.marketId), lagSeconds)),
+    raw.map((r) => toBoardRound(r, chain, activeAssetRow, mineByMarket.get(r.marketId), lagSeconds)),
   )).filter(Boolean) as BoardRound[];
 
   // The board shows what a player can act on or has just watched: open + confirming,
@@ -889,14 +933,45 @@ async function priceSeriesFor(
   return out.map((p) => ({ t: p.t, price: p.price }));
 }
 
-/** The viewer's OWN position on THIS market, aggregated for the resolved "Your result"
- *  panel. Reads only the money the settlement path already wrote (status + finalPayout) —
- *  adds no money logic. Null when the viewer holds no position on this round. */
+/** The viewer's OWN position on THIS market, for the resolved "Your result" panel.
+ *  Reads only the money the settlement path already wrote (status + finalPayout) —
+ *  adds no money logic. Null when the viewer holds no position on this round.
+ *
+ *  🔴 IT USED TO READ THE PLAYER'S 500 MOST RECENT POSITIONS AND *THEN* FILTER TO THIS
+ *  MARKET — `listPositionsForUser(userId, 500, "UPDOWN").filter(p => p.marketId === …)`.
+ *  The cap is applied by the STORE, before the filter, so a player past 500 Up & Down
+ *  positions opening an older round got an empty list and this returned `null`: the page
+ *  then says they did not play a round they did play, and their settled money is invisible.
+ *  A silent truncation is bad; a silent truncation that reads as "you have no position" on
+ *  a money surface is the B-1 class outright. Scoping the query to the MARKET removes the
+ *  cap entirely — one round's positions are bounded by the round, and it is the indexed
+ *  lookup on `@@index([marketId, status])` rather than a scan of the player's history.
+ *
+ *  ⭐ `items` is every position, itemised. The aggregate stays (settlement wrote it and the
+ *  panel's headline figures are read straight off it) — but a player holding six positions
+ *  was shown ONE line, and a HEDGED player was shown a single `side` chosen by
+ *  `up >= down`, which is not a fact about their bet. Both surfaces now render each one. */
+export type MyRoundPosition = {
+  id: string;
+  side: "UP" | "DOWN";
+  stake: number;
+  payout: number | null;
+  status: "OPEN" | "WIN" | "LOSS" | "VOID" | "CASHED_OUT";
+  placedAt: string;
+};
+
 async function myPositionFor(
   userId: string | undefined, marketId: string,
-): Promise<{ side: "UP" | "DOWN"; stake: number; payout: number | null; result: "WIN" | "LOSS" | "VOID" | null; ids: string[] } | null> {
+): Promise<{
+  side: "UP" | "DOWN"; stake: number; payout: number | null;
+  result: "WIN" | "LOSS" | "VOID" | null; ids: string[];
+  /** Every position this viewer holds on this round, newest first. Never truncated. */
+  items: MyRoundPosition[];
+  /** True when the viewer backed BOTH sides — the aggregate `side` cannot describe them. */
+  hedged: boolean;
+} | null> {
   if (!userId) return null;
-  const positions = (await listPositionsForUser(userId, 500, "UPDOWN").catch(() => [])).filter((p) => p.marketId === marketId);
+  const positions = (await listPositionsForMarket(marketId).catch(() => [])).filter((p) => p.userId === userId);
   if (positions.length === 0) return null;
   let up = 0, down = 0, stake = 0, payout = 0, anyPayout = false, anyWin = false, anyVoid = false, allSettled = true;
   for (const p of positions) {
@@ -909,11 +984,29 @@ async function myPositionFor(
   }
   const side: "UP" | "DOWN" = up >= down ? "UP" : "DOWN";
   const result: "WIN" | "LOSS" | "VOID" | null = !allSettled ? null : anyVoid && !anyWin ? "VOID" : anyWin ? "WIN" : "LOSS";
+  // ⭐ Newest first, matching /updown/history's own ordering so a player reading both
+  // surfaces sees their positions in one order. `listForMarket` orders by the store's
+  // own key, so the sort is explicit here rather than assumed.
+  const items: MyRoundPosition[] = positions
+    .map((p) => ({
+      id: p.id,
+      side: (p.side === "YES" ? "UP" : "DOWN") as "UP" | "DOWN",
+      stake: p.stake,
+      payout: p.finalPayout,
+      status: p.status,
+      placedAt: p.placedAt,
+    }))
+    .sort((a, b) => (Date.parse(b.placedAt) || 0) - (Date.parse(a.placedAt) || 0));
   // ⭐ E-101 · the ids the panel AGGREGATES, so the page can render an anchor for each one and a
   // `/positions/<id>` permalink actually lands on the panel it named. Without these the fragment
   // matches nothing, the browser silently stays at the top, and the deep link is
   // indistinguishable from the generic href it replaced — the subtler version of the same bug.
-  return { side, stake, payout: anyPayout ? payout : null, result, ids: positions.map((p) => p.id) };
+  return {
+    side, stake, payout: anyPayout ? payout : null, result,
+    ids: items.map((p) => p.id),
+    items,
+    hedged: up > 0 && down > 0,
+  };
 }
 
 /** One round, for the detail page — with its settlement proof when it has one. */
@@ -924,8 +1017,13 @@ export async function getRoundDetail(roundId: string, userId?: string): Promise<
   /** Real confirmed price points inside the round window; null ⇒ hero draws open line only. */
   priceSeries: { t: string; price: number }[] | null;
   /** The viewer's own stake/result on this round, or null when they did not play it.
-   *  `ids` are the positions it aggregates — E-101's anchors are rendered from them. */
-  myPosition: { side: "UP" | "DOWN"; stake: number; payout: number | null; result: "WIN" | "LOSS" | "VOID" | null; ids: string[] } | null;
+   *  `ids` are the positions it aggregates — E-101's anchors are rendered from them.
+   *  `items` is every one of those positions, itemised and never truncated. */
+  myPosition: {
+    side: "UP" | "DOWN"; stake: number; payout: number | null;
+    result: "WIN" | "LOSS" | "VOID" | null; ids: string[];
+    items: MyRoundPosition[]; hedged: boolean;
+  } | null;
   proof: {
     openPrice: number | null; closePrice: number | null;
     // E-53 · NEITHER endpoint is sent. The half-applied version of this change dropped
@@ -958,7 +1056,7 @@ export async function getRoundDetail(roundId: string, userId?: string): Promise<
   // perfectly with the fourth argument missing, so `expectedResultAtMs` would have been null
   // on `/updown/[roundId]` for ever while the board card worked — a feature that is present in
   // the code, passes tsc, and does nothing on half the surfaces it claims to cover.
-  const board = await toBoardRound(r, chain, mine, await measuredLagSeconds(a.key));
+  const board = await toBoardRound(r, chain, a, mine, await measuredLagSeconds(a.key));
   if (!board) return null;
   // ⭐ E-166 · THE DETAIL PAGE NEEDS THIS TOO, and it is the surface that would have shipped
   // broken without the line. `toBoardRound` type-checks perfectly with an empty successor, so

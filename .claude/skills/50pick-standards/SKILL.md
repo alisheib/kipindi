@@ -263,12 +263,24 @@ deploy — never by hand.
 Two Claude sessions work this repo at once. They cannot see each other, so every rule below
 exists because the collision is **silent** — you find out by losing work, not by an error.
 
-**Layout — TWO MACHINES sharing only `origin` (corrected 2026-08-03):**
+**Layout — MULTIPLE MACHINES sharing only `origin`. ⭐ Keyed by `hostname`, because "laptop A/B"
+is not something a session can evaluate about itself (rewritten 2026-08-15):**
 
-| Machine | Note |
-|---|---|
-| **laptop A** — `F:\kipindi-main` | the `F:\…` paths throughout `docs/LIVE-QA-CAMPAIGN.md`. Holds the `railway` CLI link — run `railway …` from here. **A single tree**: the `kipindi-kyc` / `kipindi-liveqa` / `kipindi-updown` worktrees were merged and removed |
-| **laptop B** — added 2026-07-31 | its own clone. Ran campaign sessions 8–16 alone |
+⛔ **RUN THIS FIRST. Do not copy a path out of any document — every attempt to keep one in
+`CLAUDE.md` has rotted within days, on two different machines:**
+
+```bash
+hostname && git rev-parse --show-toplevel && git worktree list
+```
+
+| `hostname` | Repo root | Measured |
+|---|---|---|
+| **`Ali-Blade15`** | `C:\kipindi-main` | 2026-08-15 — a full session ran here all day. ⚠️ **`F:\kipindi-main` does not exist on this machine**, so the `F:\…` paths in `docs/LIVE-QA-CAMPAIGN.md` are another machine's. `railway` CLI **is** linked and authenticated here (`railway status` → project `50pick`, env `production`). `git worktree list` showed ONE tree at the close of that session |
+| *(the `F:\kipindi-main` machine)* | `F:\kipindi-main` | its hostname was **never recorded**, which is exactly why this table now leads with `hostname`. Source of the `F:\…` paths in `LIVE-QA-CAMPAIGN.md`. ⚠️ Treat as unverified until a session there fills in its own row |
+
+⚠️ **A `C:\kipindi-night` worktree existed on `Ali-Blade15` mid-session on 2026-08-15 (branch
+`night/measure-search`) and was gone by the end of the day.** If you see a second tree, it is
+someone's live work — ⛔ never `git checkout` in it.
 
 ⛔ **THE OLD "one clone, two worktrees" MODEL IS GONE.** It described laptop A before 2026-08-03.
 `git worktree list` now shows one tree, and the `rmdir`-the-junction and shared-`node_modules`
@@ -308,6 +320,22 @@ deployment**, which is the one safe failure mode here, and it is luck rather tha
 **Stage surgically: `git add <path>` and `git commit -F msg -- <paths>`**, which commits those
 paths whatever else sits in the index. Fix forward rather than reverting: the other session's
 commit carries its own work too.
+
+🔴 **IT HAPPENED AGAIN — 2026-08-15, and staging surgically YOURSELF is not enough.** The
+labelling session staged only its own paths, every commit, all session. It was still hit: the
+*other* session's `git add -A` swept its in-flight `markets/[id]/page.tsx` — which passed a
+new `labels={{…}}` prop — into commit `690aa237` and pushed it, while `brand.tsx`, which
+*defines* that prop, sat uncommitted in the first session's tree. `main` could not typecheck,
+so `next build` failed and Railway could not deploy. Production was again untouched, again by
+luck.
+
+⭐ **THE LESSON THE FIRST INSTANCE DID NOT TEACH: your own discipline does not protect you —
+only the other session's does.** So when a change spans two files where one *types* the other
+(a prop and its call site, a type and its consumer), **commit them in the SAME commit, and do
+it promptly** — the window in which they sit uncommitted together is exactly the window an
+`add -A` can split them. ⚠️ And `git status` showing your file as clean is NOT proof it is
+unchanged: it can mean the other session committed it. Check `git show HEAD:<path>` before
+concluding anything about a file you edited.
 
 ⚠️ **AND A SHARED REGISTER MEANS SHARED IDS.** The same session filed a finding as `E-111`; the
 other session had already taken `E-111` minutes earlier. `test:tracker-hygiene` §1 caught it (one

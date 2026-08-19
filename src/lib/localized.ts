@@ -27,6 +27,36 @@ export function pickLocalized(
 }
 
 /**
+ * ALL THREE LANGUAGES AT ONCE — the shape the NOTIFICATION path needs.
+ *
+ * ⛔ WHY `pickLocalized` CANNOT SERVE HERE. That helper answers *"which string do I render?"*
+ * for ONE reader. `notify()` writes the EN, SW and ZH body of one message in a single call, so
+ * it has no single reader and no `locale` to pick with. Every emitter that embedded a market
+ * title therefore took a bare `marketTitle: string`, and every caller passed `m.titleEn` —
+ * so a Chinese player's inbox read a Chinese sentence wrapped around an ENGLISH question,
+ * and a Swahili player's the same. `docs/FAILURE-INVENTORY.md` §7.2c filed it as needing "the
+ * notify signature to carry all three titles — a shape change, not a word change". This is
+ * that shape.
+ *
+ * ⭐ The ticker fixed exactly this for its own titles (`ticker-feed.ts`); the notification path
+ * never did. Same defect, one channel over.
+ *
+ * ⚠️ THE FALLBACK IS `pickLocalized`'S, DELIBERATELY. A missing or whitespace-only translation
+ * falls back to English rather than rendering blank — English is canonical, and a blank title
+ * in an inbox is worse than an untranslated one.
+ */
+export type LocalizedText = { en: string; sw: string; zh: string };
+
+/** Build the three-language shape from an entity's stored columns. */
+export function localizedText(en: string, sw?: string | null, zh?: string | null): LocalizedText {
+  return {
+    en,
+    sw: sw && sw.trim() ? sw : en,
+    zh: zh && zh.trim() ? zh : en,
+  };
+}
+
+/**
  * The resolution criterion for ONE locale, WITH ITS PROVENANCE.
  *
  * ⛔ WHY THIS IS NOT `pickLocalized`, WHICH IS RIGHT ABOVE IT AND LOOKS SUFFICIENT.

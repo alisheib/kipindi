@@ -102,6 +102,7 @@ export type FailureReason =
   | "withdraw_below_min"
   | "email_invalid"
   | "email_taken"
+  | "email_unverified"
   | "name_invalid"
   | "avatar_type"
   | "avatar_size"
@@ -112,7 +113,18 @@ export type FailureReason =
   | "break_active"
   | "account_suspended"
   | "not_found"
-  | "signin_required";
+  | "signin_required"
+  // ── C2 THIRD TRANCHE · the BANNER channel (docs/FAILURE-INVENTORY.md §1.5's note) ────────
+  // A form-action page cannot hand a toast an object — it redirects, and a redirect carries a
+  // string. These are the reasons those five surfaces send as a KEY instead of as prose.
+  | "rg_limit_invalid"
+  | "rg_period_invalid"
+  | "sof_incomplete"
+  | "sof_locked"
+  | "close_confirm_required"
+  | "password_mismatch"
+  | "reset_link_invalid"
+  | "unknown_failure";
 
 export interface ReasonSpec {
   severity: Severity;
@@ -186,6 +198,13 @@ export const REASONS: Record<FailureReason, ReasonSpec> = {
   withdraw_below_min:   { severity: "warning", channel: "inline", key: "errWithdrawMin", needs: ["net", "min"] },
   email_invalid:        { severity: "warning", channel: "inline", key: "errEmailInvalid" },
   email_taken:          { severity: "warning", channel: "inline", key: "errEmailTaken" },
+  // ⛔ NOT an error, and not a money fault: the deposit was refused because the address that
+  // will carry the receipt is not confirmed yet. The player fixes it by opening a link that is
+  // already in their inbox, so it is a WARNING with the next step named — never a red failure
+  // on the money-in path. `EMAIL_UNVERIFIED` has been a distinct server code since the
+  // email gate shipped, and until now nothing rendered it: `errorCopy` had no branch for it, so
+  // it fell to `default:` and printed the SERVER'S OWN ENGLISH SENTENCE to a SW/ZH player.
+  email_unverified:     { severity: "warning", channel: "inline", key: "errEmailUnverified" },
   name_invalid:         { severity: "warning", channel: "inline", key: "errNameInvalid" },
   avatar_type:          { severity: "warning", channel: "inline", key: "errAvatarType" },
   avatar_size:          { severity: "warning", channel: "inline", key: "errAvatarSize" },
@@ -212,6 +231,24 @@ export const REASONS: Record<FailureReason, ReasonSpec> = {
   break_active:         { severity: "error",   channel: "modal",  key: "errBreakActive" },
   account_suspended:    { severity: "error",   channel: "modal",  key: "errSuspended" },
   signin_required:      { severity: "warning", channel: "toast",  key: "errSignIn" },
+
+  // ── C2 THIRD TRANCHE · the banner channel ─────────────────────────────────
+  // ⛔ ALL `inline`, AND THAT IS THE POINT OF THE CHANNEL. These render beside the form the
+  // player is still looking at, so they are never a toast that can be missed — and never
+  // `warning`-as-gold, which on this platform means money that was EARNED.
+  rg_limit_invalid:      { severity: "warning", channel: "inline", key: "errRgLimitInvalid" },
+  rg_period_invalid:     { severity: "warning", channel: "inline", key: "errRgPeriodInvalid" },
+  sof_incomplete:        { severity: "warning", channel: "inline", key: "errSofIncomplete" },
+  // Nothing is wrong — an accepted declaration is deliberately not editable in place.
+  sof_locked:            { severity: "info",    channel: "inline", key: "errSofLocked" },
+  close_confirm_required:{ severity: "warning", channel: "inline", key: "errCloseConfirm" },
+  password_mismatch:     { severity: "warning", channel: "inline", key: "errPasswordMismatch" },
+  reset_link_invalid:    { severity: "warning", channel: "inline", key: "errResetLinkInvalid" },
+  // ⭐ THE ONE THAT MAKES THE CHANNEL CONVERTIBLE AT ALL. A banner surface must send SOME key
+  // for a refusal the registry does not classify, or it falls back to echoing the server's
+  // prose and the channel can never reach zero. It points at the dictionary line the callers
+  // already used as their generic fallback, so it invents no copy.
+  unknown_failure:       { severity: "warning", channel: "inline", key: "somethingDidntWork" },
 };
 
 /**
@@ -239,19 +276,38 @@ const REASON_BY_CODE: Readonly<Record<string, FailureReason>> = {
   AUTH: "signin_required",
   EMAIL_INVALID: "email_invalid",
   EMAIL_TAKEN: "email_taken",
+  EMAIL_UNVERIFIED: "email_unverified",
   NAME_INVALID: "name_invalid",
   AVATAR_TYPE: "avatar_type",
   AVATAR_SIZE: "avatar_size",
-  DOC_IMAGE: "doc_image_type",
-  DOC_TOO_LARGE: "doc_too_large",
-  DOCS_LOCKED: "docs_locked",
-  NO_EXTRA_REQUEST: "no_extra_request",
-  NIDA_TAKEN: "nida_taken",
   PW_CURRENT_WRONG: "password_wrong",
   PW_WEAK: "password_weak",
   VOTING_CLOSED: "voting_closed",
-  MAINTENANCE: "maintenance",
+  // ⛔ SIX ROWS WERE DELETED HERE (2026-08-15), AND NOT BECAUSE THEIR REFUSALS WENT AWAY.
+  //   · DOC_IMAGE · DOC_TOO_LARGE · DOCS_LOCKED · NO_EXTRA_REQUEST · NIDA_TAKEN
+  //   · MAINTENANCE
+  // ⭐ Measured, not assumed: **no service or action anywhere emitted any of those six codes**
+  // — not on the day they were added, not since. The five KYC families reach the registry
+  // through the `reason` that `kyc-service.ts` emits at the same eight sites, which is the
+  // better route and the one that works. Maintenance is refused with `code: "SUSPENDED"`
+  // (four families share it), and its services now emit `reason: "maintenance"` instead.
+  //
+  // ⛔ A MAPPING FOR A CODE NOBODY SENDS IS NOT HARMLESS DEFENCE. It is a second, plausible
+  // route to a refusal that the code has never taken, so a reader answering *"how does a
+  // too-large document reach the player?"* finds this table and stops — which is exactly how
+  // the previous session concluded those refusals were handled when they were arriving
+  // through phrase tests. `test:failure-reasons` §9b now walks the tree and fails on any row
+  // here whose code no service emits, so a dead row cannot be added back silently.
 };
+
+/**
+ * Every code this table maps, for the guard that proves each one is really emitted.
+ *
+ * ⛔ EXPORTED SO `test:failure-reasons` §9b CANNOT HAND-LIST THEM. A guard that enumerates the
+ * codes it checks from its own literal is the exact shape that let six dead rows sit here
+ * unnoticed while the suite reported them working.
+ */
+export const REASON_BY_CODE_KEYS: readonly string[] = Object.keys(REASON_BY_CODE);
 
 /** The reason for a code, or null when the code is absent, unknown, or overloaded. */
 export function reasonForCode(code: string | null | undefined): FailureReason | null {
@@ -287,8 +343,16 @@ export interface ReasonedFailure {
   retryAfterSec?: number;
 }
 
-/** True when `r` carries a reason this registry knows. */
-export function hasReason(r: { reason?: string } | null | undefined): r is { reason: FailureReason } {
+/**
+ * True when `r` carries a reason this registry knows.
+ *
+ * ⚠️ GENERIC ON PURPOSE. The first version narrowed to the bare `{ reason: FailureReason }`,
+ * which REPLACES the caller's type instead of refining it — so inside the `if`, every other
+ * field (`error`, `code`, `detail`, `retryAfterSec`) vanished from the type and the narrowed
+ * value could no longer be passed to `renderFailure` at all. Intersecting keeps the object the
+ * caller actually has.
+ */
+export function hasReason<T extends { reason?: string }>(r: T | null | undefined): r is T & { reason: FailureReason } {
   return !!r?.reason && Object.prototype.hasOwnProperty.call(REASONS, r.reason);
 }
 

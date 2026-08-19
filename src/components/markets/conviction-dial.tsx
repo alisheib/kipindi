@@ -20,6 +20,7 @@ import { InfoHint } from "@/components/ui/info-hint";
 import { I } from "@/components/ui/glyphs";
 import { useDeferredToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
+import { sideWord } from "@/lib/side-label";
 import { buyPositionAction } from "@/app/markets/actions";
 import { HouseLeanWarning } from "./house-lean-warning";
 import { BetConfirmModal } from "./bet-confirm-modal";
@@ -535,10 +536,15 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
     : effectiveSide === "YES" ? "oklch(58% 0.16 152)" : "oklch(60% 0.18 22)";
   const sideAccent = ringColor;
   const sideText = effectiveSide === "YES" ? "var(--yes-300)" : effectiveSide === "NO" ? "var(--no-300)" : "var(--text-subtle)";
-  // Localized side word (NDIO / HAPANA / 是 / 否) — uppercased so it reads as a
-  // pole label; used in aria-valuetext and the free-mode pole header (kit B1).
-  const sideWord = effectiveSide === "YES" ? t.market.sideYesWord.toUpperCase()
-    : effectiveSide === "NO" ? t.market.sideNoWord.toUpperCase() : "";
+  // Localized side word (NDIO / HAPANA / 是 / 否) — used in aria-valuetext and the
+  // free-mode pole header (kit B1).
+  //
+  // ⚠️ This used to read `t.market.sideYesWord.toUpperCase()`, which is byte-identical to
+  // `t.common.yes` in ALL THREE locales — the two definition sites §L2 calls a bug. The
+  // lexicon owns the choice now, so the pole and the chip cannot drift apart.
+  const sideLabel = effectiveSide === "YES" || effectiveSide === "NO"
+    ? sideWord(t, effectiveSide, "MARKET")
+    : "";
 
   // RAF-throttled pos update — pointermove can fire > 60 fps on
   // high-rate trackpads, and each setState cascades through the
@@ -968,7 +974,9 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
         return;
       }
       deferToast({
-        title: `${t.toast.betPlaced} · ${q.side} ${formatTzs(q.stake)}`,
+        // §L3 — the toast sibling of the bet-placed notification, and wrong the same way:
+        // a translated label ("已下注") closing around the stored token. The dial is poll-only.
+        title: `${t.toast.betPlaced} · ${sideWord(t, q.side, "MARKET")} ${formatTzs(q.stake)}`,
         description: t.toast.payoutAtResolution,
         variant: "success",
       });
@@ -1096,7 +1104,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
                 >
                   {!active && <span aria-hidden style={{ opacity: 0.75 }}><I.lock s={12} /></span>}
                   {s}
-                  <span className="font-mono text-[10px] font-normal opacity-70">{s === "YES" ? t.market.sideYesWord : t.market.sideNoWord}</span>
+                  <span className="font-mono text-[10px] font-normal opacity-70">{sideWord(t, s, "MARKET")}</span>
                 </div>
               );
             })}
@@ -1134,7 +1142,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
         aria-valuenow={ariaValue}
         aria-valuetext={effectiveSide === "NEUTRAL"
           ? t.market.neutral
-          : `${formatTzs(stake)} ${t.market.onSide.replace("{side}", sideWord)}`}
+          : `${formatTzs(stake)} ${t.market.onSide.replace("{side}", sideLabel)}`}
         aria-disabled={closedNow ? "true" : "false"}
         onPointerDown={closedNow ? undefined : onPointerDown}
         onKeyDown={closedNow ? undefined : onKeyDown}

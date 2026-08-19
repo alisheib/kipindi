@@ -42,10 +42,13 @@ import { refundReasonFor, REFUND_REASON_KEY } from "@/lib/updown-refund-reason";
 // page and the server's own `myExactPayout`. The card never re-derives money.
 import { impliedMultiplier, emptySideOf, formatMultiplier, type UpDownPricing } from "@/lib/updown-pricing";
 import type { PublicSourceClass } from "@/lib/server/updown-symbols";
+import type { UpDownReceiptInfo } from "@/lib/updown-receipt";
 
 export type UpDownCardState = "open" | "locked" | "closing" | "confirming" | "resolved" | "void";
 
 export type UpDownCardProps = {
+  /** UD-22 · the round's frozen receipt facts, for the bet-confirmation modal. */
+  receipt?: UpDownReceiptInfo;
   roundId: string;
   assetName: string;
   assetTicker: string;
@@ -243,7 +246,7 @@ export function UpDownCard(props: UpDownCardProps) {
     sourceClass, sourceQuotedAt, className,
     selectionClosesAtMs, serverNowMs, myExactPayout, myPayoutIfUp, myPayoutIfDown, myRefundedStake,
     marketId, isAuthed, minStake, maxStake, walletBalance, myUpStake = 0, myDownStake = 0,
-    expectedResultAtMs = null, resolvedAtMs = null, successor,
+    expectedResultAtMs = null, resolvedAtMs = null, successor, receipt,
   } = props;
   const { t } = useT();
   const router = useRouter();
@@ -711,7 +714,13 @@ export function UpDownCard(props: UpDownCardProps) {
               onClick={(e) => e.stopPropagation()}
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") e.stopPropagation(); }}
             >
-              <UpDownStakeControls bet={bet} pricing={pricing} assetName={assetName} size="card" stopPropagation />
+              {/* UD-22 · the receipt's ghost CTA goes to the round. From the BOARD that is a
+                  real destination, so it is offered here; the round page omits it. */}
+              <UpDownStakeControls
+                bet={bet} pricing={pricing} assetName={assetName} size="card" stopPropagation
+                receipt={receipt}
+                onWatchRound={receipt ? () => router.push(receipt.roundHref as never) : undefined}
+              />
             </div>
           ) : (
             // Signed-out / display-only → the buttons route to the round detail, where

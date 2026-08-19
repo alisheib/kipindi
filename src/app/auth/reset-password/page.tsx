@@ -10,6 +10,7 @@ import { db } from "@/lib/server/store";
 import { passwordFingerprint } from "@/lib/server/password-reset";
 import { resetPasswordAction } from "./actions";
 import { getServerT } from "@/lib/i18n-server";
+import { bannerFor } from "@/lib/failure-banner";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -34,7 +35,7 @@ async function checkToken(token: string): Promise<TokenState> {
   return "valid";
 }
 
-export default async function ResetPasswordPage({ searchParams }: { searchParams?: Promise<{ token?: string; error?: string }> }) {
+export default async function ResetPasswordPage({ searchParams }: { searchParams?: Promise<{ token?: string; reason?: string }> }) {
   const { t } = await getServerT();
 
   const errorCopy: Record<Exclude<TokenState, "valid">, { eyebrow: string; title: string; body: string }> = {
@@ -55,6 +56,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
     },
   };
   const sp = (await searchParams) ?? {};
+  const banner = bannerFor(sp.reason, t.error as unknown as Record<string, string>);
   const token = sp.token ?? "";
   if (!token) redirect("/auth/forgot-password");
 
@@ -133,9 +135,9 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
             </p>
           </div>
 
-          {sp.error && (
+          {banner && (
             <div role="alert" className="rounded-md border border-no-700 bg-no-500/10 px-3.5 py-3 text-[13px] text-no-300">
-              {sp.error}
+              {banner.body}
             </div>
           )}
 

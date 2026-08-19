@@ -7,7 +7,6 @@ import { I } from "@/components/ui/glyphs";
 import { cn } from "@/lib/utils";
 import { fetchMyNotifications, markNotifReadAction, markAllReadAction, dismissNotifAction, dismissAllAction } from "@/app/_actions/notifications";
 import type { StoredNotification } from "@/lib/server/store";
-import { haptics } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 
 const iconFor = (k: StoredNotification["kind"]) => {
@@ -92,10 +91,36 @@ export function NotificationsPanel() {
 
   const unread = items.filter((n) => !n.readAt).length;
 
-  const prevUnreadRef = useRef(0);
-  /* M5 alert primitive — the bell takes `.g-ring` on the arrival of a NEW unread
-     (the same edge that fires the haptic), single-shot; the key bump restarts the
-     keyframe on each fresh arrival. Never on hover, never looping. */
+  /**
+   * `null` until the FIRST poll has landed — the baseline, not a count.
+   *
+   * 🔴 IT USED TO START AT `0`, AND THAT MADE THE FIRST POLL AN ARRIVAL. `refresh()` runs
+   * on mount, so any player holding even one unread notification tripped
+   * `clientUnread > 0` on page load and the bell rang — and, until this change, the
+   * handset VIBRATED — for a render they had not asked for. Seeding on the first poll is
+   * what the comment below always claimed: only an unread that appears WHILE the player
+   * is watching is an arrival.
+   * (The old guard `prevUnreadRef.current >= 0` was a tautology on a counter that can
+   * never be negative; it read like a condition and tested nothing.)
+   */
+  const prevUnreadRef = useRef<number | null>(null);
+  /* M5 alert primitive — the bell takes `.g-ring` on the arrival of a NEW unread,
+     single-shot; the key bump restarts the keyframe on each fresh arrival. Never on
+     hover, never looping.
+
+     ⛔ AND IT NO LONGER FIRES A HAPTIC. This called `haptics.success()` — `[22, 36, 60]`,
+     the money-settled pattern, byte-identical to what `win-celebration.tsx` fires on a
+     WIN. Two things were wrong with that, and both are laws this repo already carries:
+       · DESIGN_AUTHORITY §H.1 — haptics are physical events only, "⛔ never to pull
+         attention back to the app". A background poll is not an act of the player's;
+         `watch-star.tsx` states the identical reasoning for its own silence.
+       · The inbox carries LOSSES. Loss notifications use direct language ("Bet lost ·
+         TZS X") precisely so a loss is not softened — and this buzzed the win pattern
+         over them. A congratulatory vibration on a lost round is reinforcement, which
+         is against the kit AND against the RG standard that copy exists to serve.
+     The settlement moment is already marked on the proper channel (the result toast's
+     own variant haptic, and the win celebration), so removing this also removes a
+     double signal rather than leaving the moment silent. */
   const [ringSeq, setRingSeq] = useState(0);
   const refresh = useCallback(async () => {
     // B-15 — offline, this rejected every 5s as an unhandled promise. A poll
@@ -104,8 +129,7 @@ export function NotificationsPanel() {
     try { r = await fetchMyNotifications(); } catch { return; }
     setItems(r.items);
     const clientUnread = r.items.filter((n: StoredNotification) => !n.readAt).length;
-    if (clientUnread > prevUnreadRef.current && prevUnreadRef.current >= 0) {
-      haptics.success();
+    if (prevUnreadRef.current !== null && clientUnread > prevUnreadRef.current) {
       setRingSeq((s) => s + 1);
     }
     prevUnreadRef.current = clientUnread;

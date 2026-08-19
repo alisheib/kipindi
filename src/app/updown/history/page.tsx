@@ -51,6 +51,15 @@ const usd = (n: number | null, d: number) => (n == null ? "—" : `$${n.toLocale
  */
 const DAY_PICKER_DAYS = 7;
 
+/**
+ * How many of the player's most recent Up & Down positions this page reads.
+ *
+ * ⚠️ It is a REAL limit and the page states it when it bites (see `capped` below). Named
+ * here rather than inlined at the call site so the number the page reads and the number it
+ * reports to the player can never be two different literals.
+ */
+const UD_HISTORY_LIMIT = 400;
+
 export default async function UpDownHistoryPage({ searchParams }: {
   searchParams?: Promise<{ day?: string }>;
 }) {
@@ -85,7 +94,14 @@ export default async function UpDownHistoryPage({ searchParams }: {
 
   // ⛔ UD-15 · no swallow: a failed read must never render as "you have no bets"
   // (B-1's exact defect class, on a money history). Throws reach error.tsx.
-  const allRows = await getMyUpDownHistory(session.userId, 400);
+  const allRows = await getMyUpDownHistory(session.userId, UD_HISTORY_LIMIT);
+  // ⛔ AND THE CAP IS NOW SAID OUT LOUD. `getMyUpDownHistory` takes the most recent
+  // `UD_HISTORY_LIMIT` positions and this page renders them as though they were the player's
+  // whole Up & Down record — including the P&L strip, whose "net return" is then a real
+  // shilling figure computed over an unstated subset. That is the same class of defect as the
+  // `+N` chip one section down: not a wrong number, a number whose scope is concealed. A
+  // player past the cap is now told what they are looking at.
+  const capped = allRows.length >= UD_HISTORY_LIMIT;
   // Filter on `settledAt` when the round has settled, and on `placedAt` while it
   // has not — the digest bins by settlement, and a still-open round has no
   // settlement to bin by but is still part of the day the player was playing.
@@ -123,7 +139,7 @@ export default async function UpDownHistoryPage({ searchParams }: {
 
   // GROUP BY ROUND. Up & Down is a fast game — placing many bets on one 5-minute round is
   // normal, so a per-position list reads as a redundant cluster and miscounts "rounds".
-  // One card per round: the bets collapse to chips (max 2 + "+N"), and the round shows the
+  // One card per round: EVERY bet on it renders as its own chip, and the round shows the
   // player's aggregate stake / return / net across all their positions on it.
   const groups = new Map<string, {
     row: MyRoundRow;               // representative (asset/duration/outcome/prices/round)
@@ -240,7 +256,16 @@ export default async function UpDownHistoryPage({ searchParams }: {
             </div>
           </div>
 
-          {/* ── Rounds — one card per round; bets collapse to chips (max 2 + "+N"). ── */}
+          {/* The cap, stated — faint factual register (a fact about the list, not an alarm),
+              directly under the figures it qualifies so it cannot be read in isolation. */}
+          {capped && (
+            <p className="mt-3 flex items-start gap-1.5 text-[11px] leading-[1.5] text-text-faint">
+              <I.info s={11} className="mt-[2px] shrink-0" />
+              <span>{t.market.udHistoryCapped.replace("{n}", String(UD_HISTORY_LIMIT))}</span>
+            </p>
+          )}
+
+          {/* ── Rounds — one card per round; EVERY bet on it rendered as its own chip. ── */}
           <div className="mt-4 grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))" }}>
             {rounds.map((g) => {
               const r = g.row;
@@ -253,8 +278,6 @@ export default async function UpDownHistoryPage({ searchParams }: {
                 : r.outcome === "UP" ? { cls: "chip-yes", label: t.market.udUpWins, live: false }
                 : r.outcome === "DOWN" ? { cls: "chip-no", label: t.market.udDownWins, live: false }
                 : { cls: "chip-pending", label: t.market.udConfirmingPrice, live: false };
-              const shown = g.bets.slice(0, 2);
-              const extra = g.bets.length - shown.length;
               const roundLink = r.roundId ? `/updown/${r.roundId}` : null;
               // ⛔ UD-18 · next/link, NOT a raw <a>. The anchor form made every click out
               // of history a full document reload — the slowest navigation in the
@@ -288,15 +311,27 @@ export default async function UpDownHistoryPage({ searchParams }: {
                     </span>
                   </div>
 
-                  {/* Bets on this round — capped at 2 chips + a "+N" overflow. */}
+                  {/* Bets on this round — EVERY position, one chip each.
+                      🔴 This rendered `g.bets.slice(0, 2)` and collapsed the rest into a bare
+                      `+N`. A player holding six positions on one round saw two of them and the
+                      number four, on the only surface that lists their Up & Down money — and the
+                      `+N` chip was not a control, so there was nowhere to go to see the rest.
+                      Ali, 2026-08-15: "make it show, no matter how much position I have."
+                      ⛔ THE COUNT LEADS THE ROW, it does not trail it. With ten chips the row
+                      wraps to four lines at 360px in SW/ZH and a trailing count lands alone on
+                      the last line, reading as a stray figure rather than a label for the group.
+                      ⛔ No `max-h` and no scroll container here: clipping the row would be the
+                      same defect wearing a different mechanism. The card is allowed to grow —
+                      the grid's rows auto-size, and the money block below stays inside it. */}
                   <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-                    {shown.map((b) => (
+                    <span className="font-mono text-[10px] uppercase tracking-[0.10em] text-text-faint">
+                      {g.bets.length} {t.market.udBets}
+                    </span>
+                    {g.bets.map((b) => (
                       <span key={b.positionId} className={"chip tabular-nums " + (b.side === "UP" ? "chip-yes" : "chip-no")}>
                         {b.side === "UP" ? "↑" : "↓"} {formatTzs(b.stake)}
                       </span>
                     ))}
-                    {extra > 0 && <span className="chip" title={`${g.bets.length} ${t.market.udBets}`}>+{extra}</span>}
-                    <span className="font-mono text-[10px] text-text-faint">· {g.bets.length} {t.market.udBets}</span>
                   </div>
 
                   {/* Money: staked → return + net; prices. */}

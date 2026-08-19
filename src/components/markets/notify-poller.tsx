@@ -39,8 +39,10 @@
 import { useEffect } from "react";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
+import { positionStatusWord } from "@/lib/side-label";
 import { dispatchWinCelebration } from "@/components/markets/win-celebration";
 import { formatTzs } from "@/lib/utils";
+import { DWELL_RESULT_MS } from "@/lib/feedback-timing";
 
 const WATCH_KEY = "50pick-notify-markets";
 /** Announced-once key. ⛔ Per POSITION, not per market — two bets on one market are two
@@ -169,7 +171,7 @@ export function NotifyPoller() {
                   title: t.market.marketStakeReturnedTitle,
                   description: `${label} · ${formatTzs(p.payout)}`,
                   variant: "factual",
-                  durationMs: 6000,
+                  durationMs: DWELL_RESULT_MS,
                 });
               } else {
                 // LOSS — plain and direct. ⛔ NOT `warning`, which is GOLD, the celebration
@@ -179,14 +181,18 @@ export function NotifyPoller() {
                   title: t.market.marketLostTitle,
                   description: `${label} · ${formatTzs(p.stake)}`,
                   variant: "factual",
-                  durationMs: 6000,
+                  durationMs: DWELL_RESULT_MS,
                 });
               }
 
               // A browser notification only for money that MOVED, and only once.
               if (typeof Notification !== "undefined" && Notification.permission === "granted") {
                 try {
-                  new Notification(`${t.market.marketResolvedToast} · ${p.status}`, {
+                  // §L3 — this printed the raw enum into an OS notification title, so the
+                  // phone read "· WIN" in every language while the toast above it was
+                  // localised. MARKET is established: `/api/positions/settled` reads
+                  // `listPositionsForUser(…, "MARKET")` and says so in its own header.
+                  new Notification(`${t.market.marketResolvedToast} · ${positionStatusWord(t, p.status, "MARKET")}`, {
                     body: label.slice(0, 120),
                     tag: `50pick-${p.positionId}`,
                   });
