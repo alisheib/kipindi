@@ -1,86 +1,163 @@
-# SESSION PROMPT · THE GAMING BOARD'S 15 COMMENTS — a regulator's requirement list, and what the code says about delivering each one
+# SESSION COMMISSION · THE GAMING BOARD'S 15 REQUIREMENTS — every one delivered, nothing skipped
 
 **Source:** `50pick_website_comments-2.pdf` — *"Website Development Comments"*, prepared by **Jay**,
 2026-08-19, 15 items with screenshots.
-**Written:** 2026-08-19, immediately after E-167 shipped (`5055cea5`).
+**Commissioned:** Ali, 2026-08-19 — *"give me a new session prompt to start with the new ones
+perfectly until done. None is allowed to be skipped. Don't come back until all paths completed,
+tested, validated and documents updated."*
+**Written after E-167 shipped** (`5055cea5`) and triaged against the code the same day.
 
-> ⭐ **WHO JAY IS, AND WHY IT CHANGES HOW THIS DOCUMENT READS.** Ali, 2026-08-19: *"Jay is from
-> Gaming Board — anything he says is actually legit, we just do it."*
+> ⭐ **WHO JAY IS, AND WHY THE DEFAULT IS "IMPLEMENT".** Ali: *"Jay is from Gaming Board — anything
+> he says is actually legit, we just do it."* These are requirements from the licensing authority.
+> The default answer to every item is **build it**. This document's job is narrower: to stop you
+> building two things that already exist, to hand you the three traps that would embarrass us in
+> front of the regulator, and to make sure the two items that need a purchase or a direction get
+> **asked** rather than silently dropped.
 >
-> These are not stakeholder preferences to be weighed against engineering taste. **They are
-> requirements from the licensing authority, and the default answer to every one of them is
-> IMPLEMENT.** This document exists for one narrower purpose: to say, per item, **what the code
-> already does** (so nothing is built twice), and **where physical reality constrains delivery** (so
-> the two items that need a purchase or a decision get reported back to him promptly instead of
-> quietly slipping).
->
-> ⛔ **Nothing below is a refusal.** Where an item cannot be delivered as literally described, the
-> entry says what *can* be delivered, what it costs, and **exactly what to put in front of Jay** so
-> he can decide. A regulator asking for the impossible has been given a wrong description of the
-> system by us; the fix is a better description, not a "no".
+> ⛔ **NOTHING HERE MAY BE SKIPPED, AND "BLOCKED" IS NOT AN EXIT.** §4 gives every
+> decision-dependent item a *partial delivery that is still real work*, so the session ends with
+> every path either **DONE** or **DONE-TO-THE-DECISION** with the question in writing. A unit left
+> untouched because it "needs input" is a skipped unit and fails this commission.
 
 ---
 
-## §0 · THE STANDARD, AND THE ONE THING TO GET RIGHT ABOUT ITEM #1
+## §0 · WHAT "DONE" MEANS HERE
 
-**The house standard, unchanged:**
+A unit is **DONE** only when all six are true. Not five.
 
-- 🔴 **Real data or nothing** (A-5). A surface with nothing to show says so. No fabricated zero, no
-  placeholder that reads like a value.
-- ⛔ **Every change ships with a guard proven RED against the defect**, plus a positive control in
-  the same run. A refusal with no positive control is an absent test.
-- ⛔ **Docs move with the code, in the same commit.**
-- 💰 **State the money position in the handoff**, first and plainly, whether or not money moved.
-- ⛔ **`test:all` with `DATABASE_URL` UNSET before each commit**, not batched at the end.
+1. **It works on the real product**, driven — not asserted. A green suite is not proof; this campaign
+   has 30+ findings that were green somewhere before they were found.
+2. **A guard exists and has been proven RED** against the defect it protects, with a **positive
+   control in the same run**. A refusal with no positive control is an absent test.
+3. **It was LOOKED AT** — screenshots at **393 / 768 / 1024 / 1280 / 1440 × EN / SW / ZH** for
+   anything a player or operator sees. Swahili and Chinese are where labels overflow and where a
+   check passes *vacuously*.
+4. **`test:all` is green with `DATABASE_URL` UNSET**, run **before that unit's commit**, not batched
+   at the end. (`test:responsive` and `test:motion` need a live server — run them against one, don't
+   write them off.)
+5. **Docs moved in the same commit** — the file that *owns* the subject, not a new file beside it.
+6. **The register row is filed** in `docs/LIVE-QA-CAMPAIGN.md` with the measurement, and the
+   completion ledger in §1 is ticked.
 
-**And one thing specific to this list:**
+💰 **And the handoff states the money position first and plainly**, whether or not a shilling moved.
 
-⭐ **ITEM #1 REVERSES A DECISION THE CODE ATTRIBUTES TO THE GAMING BOARD ITSELF, so the attribution
-has to be rewritten or the next session will re-add the gate citing Jay's own institution.**
-`docs/FLOWS.md:30` currently reads:
+### §0b · THE ZERO-FLAW GATE — twelve checks, run at the end, every one of them mechanical
 
-> *"Bet placement (no KYC required). Allowed pre-KYC (**TZ Gaming Board model**). KYC only gates
-> withdrawals."*
+Ali: *"everything 100% handled properly, 0 flaws, integrations perfect, end to end sealed."* That is
+only meaningful if it is **checkable**, so here it is as commands and counts rather than adjectives.
+**Every line must be true before the session closes.**
 
-That line is the reason the gate exists. Once #1 is implemented that line is **superseded**, and
-leaving it in place is how a "fix" gets reverted six weeks later by someone reading the docs
-correctly. See Unit A.
+| # | Check | How |
+|---|---|---|
+| 1 | **No suite is red** — including the two that need a server. ⛔ "Known-red" is not a status | `npm run test:all` with `DATABASE_URL` UNSET, then `test:responsive` and `test:motion` against a live server |
+| 2 | **Every RED harness catches every mutation** | `npm run red:all` — and read its report, because it is a *reporting* runner: 27 of 68 harnesses had never run when it was a `&&` chain |
+| 3 | **No orphan scripts** — nothing written this session is unreachable from `package.json` | `npm run test:orphans` |
+| 4 | **No dead mapped failure codes** — Unit B removes an emitter, so its code must go too | `npm run test:failure-reasons` |
+| 5 | **No stale anchors** — this session touches `updown-service.ts`, which six harnesses anchor into | `npm run test:red-anchors`, then re-run all six harnesses |
+| 6 | **Typecheck clean — and the suites actually RAN.** ⛔ `tsc` does **not** cover `.mts`, so a green typecheck says nothing about the suites (E-161) | `npx tsc --noEmit` **and** every suite executed |
+| 7 | **No doc claims something false.** The index count, any "the only X" phrasing, any file:line reference you moved | `npm run test:docs`, `test:design-one-door`, `test:tracker-hygiene` |
+| 8 | **No `TODO`, `FIXME` or commented-out code introduced** | `git diff origin/main -- . \| grep -nE "^\+.*(TODO\|FIXME\|XXX)"` → empty |
+| 9 | **Working tree clean** — no untracked leftovers, no temp scripts, no zero-byte redirect artefacts (four were found this month) | `git status --short` → empty |
+| 10 | **Every §6 integration pair driven together**, after both units landed | §6, each row evidenced |
+| 11 | **The §7 seal completed as one continuous journey**, with an artefact per step | §7 |
+| 12 | **The §1 ledger fully ticked**, and anything not ✅ named in the handoff with what remains | §1 |
 
----
-
-## §1 · THE TRIAGE TABLE — what to build, what already exists, what needs a decision from Jay
-
-| # | Requirement | Status | Where the truth is |
-|---|---|---|---|
-| 1 | Remove KYC from withdrawals | ✅ **AUTHORISED — implement.** The authority that put the gate there is the authority removing it. ⛔ Record the attribution and keep the adjacent AML controls, which come from a different regulator | `wallet-service.ts` · `docs/FLOWS.md:29-30` · `docs/NIDA-POLICY.md` |
-| 2 | UD: next round ready while the current resolves; "AI searches 30s before the end" | 🟢 **ALREADY DELIVERED (E-166) — demonstrate it, don't rebuild it.** The 30s pre-open specifically cannot be built; §2 has the paragraph to send Jay | `updown-board.ts` · `handover-gap-census.cjs` |
-| 3 | Delete button on Add Chain | ✅ **BUILD — as archive + zero-round delete.** A hard delete cascades over settled rounds, i.e. over the settlement record the Board audits | `schema.prisma` `onDelete: Cascade` · E-63 |
-| 4 | Redirect to results when a round/poll ends; split Yes/No and Up/Down | ✅ **BUILD.** Redirect exists for UD only; the split results view is genuinely absent | `results/page.tsx` · `updown-handover.tsx` |
-| 5 | Remove Cash Back Deposit | ✅ **BUILD** — hide the offer, keep the ledger path so granted bonuses still settle | `components/ui/cashback-promo.tsx` |
-| 6 | Date beside every closing timer | ✅ **BUILD.** Days already show; the absolute date does not. ⚠️ Timezone is the whole risk | `components/markets/countdown.tsx` |
-| 7 | Standalone Selcom page: C2B + B2C balances and statements | ✅ **BUILD.** B2C float already exists on `/admin/payments`. ⛔ Never conflate ledger with rail | `admin/payments/page.tsx` · `payments-now.cjs` |
-| 8 | Prefill deposit/withdraw phone with the registered number | ✅ **BUILD.** Today it repopulates from the URL only | `wallet/withdraw/page.tsx:59` |
-| 9 | Keep UD bets in the notification inbox | 🟢 **ALREADY THERE** — his own screenshot is the daily digest. One question in §6 before adding more | `updown-digest.ts` |
-| 10 | Settled rounds in the results section | ✅ **BUILD — highest value in the list.** ⛔ Carries the labelling trap that already produced a wrong word over a real bet | `results/page.tsx:366` |
-| 11 | Add S&P 500, USD/CNY, USD/CAD, GBP/USD, USD/JPY, KES/USD, ZAR/USD | 🟡 **TWO SHIP NOW · FOUR NEED MEASUREMENT · S&P 500 NEEDS A PURCHASE.** §2 has what to send him | `updown-symbols.ts:194-209` |
-| 12 | Customer-care admin: ticket search + customer history | ✅ **BUILD.** `SUPPORT` role exists; the surface does not | `schema.prisma:25` · READ_TIERS |
-| 13 | Group email `msaada@50pick.tz` | ✅ **DO — mostly infrastructure** (DNS + Postmark + mailbox group), then wire the address into the app's support copy | `docs/EMAIL-SIGNATURES.md` |
-| 14 | Authority to re-categorise a bet/poll | ✅ **BUILD — confirmed absent.** Category is set once in the creation wizard and never editable after; audit the change and keep the licence exclusion | `markets/new/wizard.tsx:91` |
-| 15 | Test the bonus system before going live | ✅ **DO.** Five unit suites exist; the live end-to-end drive does not | `package.json` `test:bonus*` |
-
-**Nothing on this list is declined.** Twelve are build-and-ship. Two are already delivered and need
-*demonstrating* to Jay rather than rebuilding. One (#11) is partly a purchase decision.
+⛔ **AND ONE JUDGEMENT CHECK THAT IS NOT MECHANICAL, ASKED OF EVERY GUARD YOU WROTE:**
+*"would this still pass if the feature were absent?"* If yes, it is not a guard. Six shapes of
+check-that-lies are catalogued in this repo, and each one was green over a real defect.
 
 ---
 
-## §2 · THE THREE ITEMS THAT NEED SOMETHING SENT BACK TO JAY
+## §1 · THE COMPLETION LEDGER — fill this in as you go, and do not delete a row
 
-### ✅ #1 · Remove KYC from withdrawals — authorised, and here is how to do it without losing the record
+Order is dependency-driven, not importance-driven. **Do not reorder without reading why.**
 
-**What is there now.** KYC-approved is a **server-side** gate at
-**`wallet-service.ts:1285-1288`**, not a UI inconvenience. `/wallet/withdraw` also renders a
-`KycLock` and computes `canSubmit = kycApproved && payoutsOpen`, but the service refuses
-independently:
+| Order | Unit | Item(s) | Why here | Status |
+|---|---|---|---|---|
+| 0 | **Pre-flight** | — | The 3m chains and the fleet are the instrument for A, C and J | ⬜ |
+| A | Results page: UD rounds + product split | #10 · #4 | Everything else about "where do I see my bet" depends on this surface existing once | ⬜ |
+| B | Withdrawal KYC gate removed | #1 | Independent, high-visibility, and its paper trail must be right | ⬜ |
+| C | Next round visibly playable | #2c | Needs A's fleet + the 3m chains; engine already done | ⬜ |
+| D | Date beside every timer | #6 | Independent; touches a shared formatter, so land it before more surfaces exist | ⬜ |
+| E | Phone prefilled from the account | #8 | Independent, small | ⬜ |
+| F | Cash Back removed | #5 | **Before J** — it changes what the bonus drive must test | ⬜ |
+| G | Chain archive + safe delete | #3 | Independent; admin only | ⬜ |
+| H | Re-categorise a market | #14 | Independent; admin only | ⬜ |
+| I | Selcom page: C2B + B2C | #7 | Independent; verify the API first | ⬜ |
+| J | Bonus proved end to end | #15 | **After F**; extends an existing drive | ⬜ |
+| K | Customer-care surface + mailbox | #12 · #13 | One feature; largest; needs the READ_TIERS design first | ⬜ |
+| L | New markets | #11 | Last: two ship immediately, four need measurement over time | ⬜ |
+| M | Per-bet UD notifications, switchable | #9 | Last: capability behind a switch, default OFF | ⬜ |
+| Z | **Close-out** | — | Register rows, handoff, the questions sent to Jay | ⬜ |
+
+---
+
+## §2 · UNIT 0 · PRE-FLIGHT — not code, and not optional
+
+**① Start the two stopped chains.** 🔴 **BTC/USD 3m (`udc_5820850ef13f34e5`) and ETH/USD 3m
+(`udc_f8d666a0d781b8d6`) are STOPPED on production**, left over from the E-167 outage, so players
+have **no 3-minute game on either asset**. Start them from `/admin/updown`. Safe now: `setChainState`
+recomputes a fresh `nextBoundaryAt` on resume, and E-167's fix means a late bar can no longer brick
+them. Then **watch one full round open and settle** before trusting anything else.
+
+```bash
+KP_REPO=F:/kipindi-main node scripts/live/ops/chain-stall-census.cjs   # 0 bricked, and now 0 stopped-with-a-stale-boundary
+```
+
+**② Mint a real fleet.** ⛔ **Ali has asked for this twice, and the harness itself admits the gap:**
+`scripts/live/harness.mjs` carries only `alpha` and `echo`, and its own comment names *"the
+two-personas blindness"*. Every finding about one-sidedness came from having too few players. Mint
+**as many players as the case needs and play BOTH sides** — the fleet convention is `fleet:NN` on
+`7990000NN` (see `scripts/live-bonus-live-proof.mjs`). Prod minting is pre-authorised (Ali,
+2026-08-14): players, markets, money, grants, tokens, no cap, don't ask.
+
+**③ Re-grep the `E-` ids at the moment you file, not now.** The last session's work was numbered
+E-119, then E-161, before landing on **E-167** — two ids were taken while it ran.
+
+```bash
+grep -ohE "\*\*E-[0-9]+\*\*" docs/LIVE-QA-CAMPAIGN.md | grep -oE "[0-9]+" | sort -n | tail -3
+```
+
+**④ Read these three, in order:** `docs/HANDOVER-E166-NEXT-SESSION.md` §5 (the celebration/handover
+coupling you can break), `docs/FAILURE-INVENTORY.md` §7.4 (why a chain bricks), and
+`DESIGN_AUTHORITY.md` (the only design door).
+
+---
+
+## §3 · THE UNITS
+
+### ▶ A · #10 + #4 — settled rounds reach the results page, split by product
+
+**What is true now.** `src/app/results/page.tsx` is built entirely on `listMarkets`,
+`MARKET_CATEGORIES` and `MARKET_SEARCH`. **Up & Down rounds are not on it at all.**
+
+🔴 **THE TRAP, AND IT IS THE WORST ONE IN THIS COMMISSION.** Line **366** passes the literal
+`"MARKET"` as the product line to `outcomeWord`. `test:labels` §8 exists because *"a surface holding
+EVERY product line must resolve its side words through the lexicon — the omitted third argument is
+the tell."* Ali's own report — *"Up & Down says YES won, should be UP won"* — was this defect on other
+surfaces; it was **declared fixed twice** before it was, with **three green guards over it**. Add UD
+rounds and leave that literal, and the results page prints **"YES won" over an Up bet**, on the page
+the regulator asked for.
+
+**Build.** ① UD rounds appear on `/results` once settled, side words resolved through the **same**
+lexicon with the round's real `productLine` — never a literal. ② A visible split between long-form
+(Yes/No) and Up & Down. ⛔ **Use the kit's `FilterPill`** — ONE filter language, 8 rails; hand-rolling
+a ninth is a documented refusal. ③ #4's redirect for long-form markets **reuses
+`updown-handover.tsx`'s gates** (observed settle only, past the hold, no open overlay, no bet in
+flight) rather than adding a second auto-navigation.
+
+**Guards.** Extend `test:labels` §8/§9 and prove RED against the hardcoded-`"MARKET"` version. A
+positive control in the same run: a long-form market still says YES/NO.
+
+**Acceptance.** A settled UD round is findable on `/results` in all three languages with the correct
+side word; both sections render at all five widths with no horizontal overflow; the redirect does not
+fire over an open modal or a bet in flight.
+
+---
+
+### ▶ B · #1 — remove KYC as a precondition of withdrawal
+
+**What is there now.** A **server-side** gate at **`wallet-service.ts:1285-1288`**:
 
 ```ts
 const kyc = await db.kyc.findByUserId(userId);
@@ -90,250 +167,158 @@ if (kyc?.status !== "APPROVED") {
 }
 ```
 
-The trust ladder is written into the code beside the deposit gate — *browse free → verify email to
-deposit → KYC to withdraw* — with the reason given as *"a heavier check for money leaving."*
+`/wallet/withdraw` also renders a `KycLock` and computes `canSubmit = kycApproved && payoutsOpen`.
 
-⚠️ **`docs/FLOWS.md` points at the wrong lines.** Its row cites `wallet-service.ts:100-104`; that is
-the **deposit** email gate. The withdrawal gate is at **1285-1288**. Fix the reference while you are
-in there — a stale line number in the one document a session is told to follow is how the next
-person concludes the gate is somewhere it is not.
+⛔ **CHANGE BOTH.** A UI-only change leaves the service refusing and reproduces **E-5** — a screen
+promising what the next screen refuses, which landed on the celebration screen last time.
 
-🔴 **AND `kyc_required` IS A MAPPED FAILURE REASON WITH EXACTLY ONE EMITTER — RETIRE THEM TOGETHER.**
-`src/lib/failure-reasons.ts:93` declares it in the union and `:228` maps it
-(`severity: "error", channel: "modal", key: "errVerifyIdentity"`), and line 1288 above is the only
-place it is ever produced. Delete the emitter alone and the registry gains a **dead mapped code** —
-which is precisely the defect session 47 filed: *"six `REASON_BY_CODE` rows mapped codes NOTHING has
-ever emitted, while §9 proved them 'working' by synthesising the code itself."* So the guard would
-report it healthy for ever. Remove the row, the union member and the dictionary key in the **same
-commit** as the gate, and let `test:failure-reasons` prove the absence.
+⛔ **THREE THINGS MUST SURVIVE, each for a different reason:**
 
-**Implement:** remove KYC as a **precondition of withdrawal**, on the server and on the page (a UI-only
-change would leave the service refusing and produce exactly the E-5 defect — a screen promising what
-the next screen refuses).
-
-⛔ **THREE THINGS THAT MUST SURVIVE THE CHANGE, and each for a different reason:**
-
-1. **The KYC system itself.** `docs/NIDA-POLICY.md` records *"Uniqueness — one NIDA, one account"*,
-   enforced and audited as `kyc.nida.duplicate_blocked`, and *"Document review by a human — this is
-   the real identity control."* Jay is removing a **gate on a payout**, not the identity system. KYC
-   stays available, stays reviewable, and stays the thing an AML escalation can demand.
+1. **The KYC system.** `docs/NIDA-POLICY.md`: *"Uniqueness — one NIDA, one account"*, audited as
+   `kyc.nida.duplicate_blocked`, and *"Document review by a human — this is the real identity
+   control."* Jay is removing a **gate on a payout**, not the identity system.
 2. **The AML controls.** `/admin/aml` reasons in thresholds (`TWO_PERSON_THRESHOLD_TZS`, two-person
-   review over a limit). ⚠️ **Those obligations do not come from the Gaming Board** — they come from
-   the AML/FIU regime, which is a different authority. A Gaming Board instruction about KYC-on-
-   withdrawal does not repeal them, so **do not touch them in this unit.** If Jay intends those to
-   change too, that is a separate written instruction from the right body.
-3. **The audit trail.** Keep a COMPLIANCE record of the *change* itself, and keep emitting an event
-   when a withdrawal is made by an unverified account — not as a refusal, as a **fact**. That single
-   record is what lets 50pick answer "why did you pay an unverified player?" with "because the Board
-   instructed it on 2026-08-19, and here is every instance."
+   review over a limit). ⚠️ **Those come from the AML/FIU regime, a different authority** — a Gaming
+   Board instruction about KYC-on-withdrawal does not repeal them. **Do not touch them in this unit.**
+3. **An audit fact.** Keep emitting a COMPLIANCE event when an **unverified** account withdraws — not
+   a refusal, a *fact*. That record is what answers *"why did you pay an unverified player?"* with
+   *"the Board instructed it on 2026-08-19, and here is every instance."*
 
-⭐ **AND REWRITE THE ATTRIBUTION, OR THIS GETS REVERTED.** In the same commit:
+🔴 **AND REWRITE THE ATTRIBUTION, OR THIS GETS REVERTED.** `docs/FLOWS.md:30` cites the
+**"TZ Gaming Board model"** as the *reason* the gate exists. Leave it and someone re-adds the gate in
+six weeks by reading the docs correctly. In the same commit: replace that row with the new rule,
+dated, naming the source document; and add a dated entry to `docs/COMPLIANCE-DECISIONS.md` recording
+the instruction, its source, what changed, and what deliberately did not (1–3 above).
 
-- `docs/FLOWS.md:29-30` — the row citing the *"TZ Gaming Board model"* as the reason for the gate is
-  now **superseded**. Replace it with the new rule and the new attribution, dated, naming the source
-  document.
-- `docs/COMPLIANCE-DECISIONS.md` — a new dated entry: the instruction, who gave it, which document
-  it came from, what changed in the code, and what deliberately did **not** (points 1–3 above).
+⚠️ **`docs/FLOWS.md` also points at the wrong lines** — it cites `wallet-service.ts:100-104`, which is
+the *deposit* email gate. Fix the reference while you are there.
 
-⚠️ **Optional, worth putting to him in the same reply, because it is cheap and he may prefer it:**
-the codebase already reasons in thresholds for AML, so *"KYC required above a cumulative lifetime
-payout"* is a small variant that keeps a first small cash-out frictionless while still binding the
-control in aggregate. If he wants the flat removal, do the flat removal — but he should know the
-option existed, because he is the one who will be asked about it.
+🔴 **AND RETIRE THE FAILURE REASON WITH ITS EMITTER.** `kyc_required` is declared at
+`failure-reasons.ts:93` and mapped at `:228` (`severity error, channel modal, key errVerifyIdentity`),
+and line 1288 is its **only** producer. Delete the emitter alone and the registry gains a **dead
+mapped code** — exactly what session 47 filed six of: *"six `REASON_BY_CODE` rows mapped codes NOTHING
+has ever emitted, while §9 proved them 'working' by synthesising the code itself."* Remove the union
+member, the map row and the dictionary key in the same commit.
 
----
-
-### 🟢 #2 · "The next round should already be active; the AI should search 30s before the end"
-
-**Two of his three sentences are already delivered, and the third describes a mechanism we do not
-have. Send him this, with screenshots.**
-
-**(a) "When users wait for a round result, the next round should already be active."**
-✅ **Already true, and measured rather than claimed.** `scripts/live/ops/handover-gap-census.cjs`,
-over **every settled round in 24 hours (n = 1,203)**:
-
-| Measurement | Value |
-|---|---|
-| successor **already open** when the result landed | **1,186 / 1,203 — 98.6%** |
-| median (successor opens − predecessor resolved) | **−91.5s** — open a minute and a half *before* |
-| median (successor created − predecessor resolved) | **0.1s** |
-| successor still in the future | 16 / 1,203 — **1.3%** |
-
-E-166 then built the handover on top of that measurement: a settled card names its successor, holds
-2.5s, and moves the player to it. **Deployed.** Do not rebuild it.
-
-**(b) "When 30 seconds remain, the AI should search for the next round so it is ready for betting."**
-⛔ **This cannot be built as described, and the reason is a money guarantee — put it to him plainly:**
-
-> A round's opening price is not chosen by us; it is read from the **dated one-minute price bar
-> labelled with that round's own start instant**. That bar does not exist until roughly 19 seconds
-> *after* the instant it names (and ~87 seconds for Solana). So a round cannot be opened 30 seconds
-> **early** — there is nothing to open it at. When we did open rounds without a confirmed opening
-> price, **175 consecutive rounds voided and refunded** over eleven hours while the price data was
-> available the whole time. The engine now refuses to open a round it could only void.
->
-> There is also no AI in this path. Round times are not searched for — they sit on a fixed grid
-> derived from the chain's anchor, so every instance and every restart computes the same instants.
-> The AI reads *prices*; it never decides *when* a round exists.
-
-**(c) "Users should be able to play the next round while waiting for the current one to resolve."**
-🟢 **This is the real deliverable, and it is a UI job.** The successor is already open ~91s before its
-predecessor settles, so the bet is already *possible* — the question is whether a player can *see*
-that. E-166's own post-mortem records the first attempt showing **two identical `02:50` three hundred
-pixels apart**, because the successor is the card immediately to the left.
-
-**Do:** with the fleet on a 3-minute chain, drive a real settle at 393/768/1024/1280/1440 × EN/SW/ZH
-and answer one question from the frames — *can a player who has just seen a result tell, without
-scrolling, that the next round is open and bettable?* Fix what the screenshots show. ⛔ Read §5 of
-`docs/HANDOVER-E166-NEXT-SESSION.md` first: the win celebration dwells 7s and the handover moves at
-2.5s, and they are safe only because the celebration is a kit `<Modal>` whose lock the auto-advance
-reads. **A celebration rendered outside the kit modal loses a winner their moment.**
+**Acceptance.** An unverified fleet player completes a withdrawal **end to end on production**; the
+COMPLIANCE record exists and names the instruction; `test:kyc-honesty`, the KYC suites and
+`test:failure-reasons` are green; a guard proves the page and the service agree.
 
 ---
 
-### 🟡 #11 · The seven markets — two ship now, four need measuring, one needs a purchase
+### ▶ C · #2c — a player can see that the next round is playable
 
-`src/lib/server/updown-symbols.ts` is a catalogue built so that absences are **explained rather than
-mysterious**. Against Jay's list:
+**Already delivered, and do not rebuild:** the successor is open when the result lands in
+**1,186 of 1,203 settles measured over 24h (98.6%)**, median **91.5s early**
+(`handover-gap-census.cjs`), and E-166 shipped the handover on top of that.
 
-| His symbol | Reality | Action |
-|---|---|---|
-| **GBP/USD** | ✅ already catalogued — `macro`, FX/metals week, 5 decimals, 2 ticks | **Enable now** |
-| **USD/JPY** | ✅ already catalogued — `macro`, 3 decimals, 2 ticks | **Enable now** |
-| **USD/CNY** · **USD/CAD** | ⚪ not catalogued | Add + **measure** (below) |
-| **KES/USD** · **ZAR/USD** | ⚪ not catalogued, and **quoted the other way round** in market convention (`USD/KES`, `USD/ZAR`) | **Confirm the direction with Jay first** — a reversed pair inverts every Up and Down on the board |
-| **S&P 500 (SPX)** | 🔴 two independent blockers, both already written down in the catalogue | **Report to Jay** |
+⛔ **And #2's "the AI should search 30s before the end" cannot be built** — see §4, which has the
+paragraph to send Jay. Do not attempt a pre-open: a round's opening price comes from the dated bar
+labelled with its own start instant, which does not publish until ~19s **after** it, and opening
+without one voided **175 consecutive rounds** over eleven hours (E-83).
 
-**What to send Jay about the S&P 500**, both facts, because one is a cost and one is a delivery date:
+**Do.** With the fleet on a 3-minute chain, drive a real settle at all five widths × three languages
+and answer one question **from the frames**: *can a player who has just seen a result tell, without
+scrolling, that the next round is open and bettable?* Fix only what the screenshots show.
 
-> 1. **The data plan.** Our market-data provider returns **HTTP 404 for SPX on the tier we currently
->    buy** — the index needs their higher tier. This is a purchase decision, not development work.
-> 2. **The trading session.** The S&P 500 trades a **cash session (~13:30–20:00 UTC)**, and our
->    calendar models two week-shapes today: 24/7 for crypto, and the FX/metals week for gold and FX.
->    Classified as either, the index would be treated as open overnight and at weekends, and every
->    round opened outside its session would void and refund. It needs its own session model built
->    before it can be listed — that is real work, and it is wasted until the data plan exists.
-
-⛔ **AND ADDING AN ASSET IS NOT ADDING A ROW.** This catalogue is a monument to why: gold carries
-`minMoveTicks: 40` and `minDurationMinutes: 15` because *"the feed disagrees with itself by up to
-$0.87 at a single instant — about the size of a whole 5-minute gold move."* Silver and platinum are
-deliberately given **no** measured minimum, with the reason recorded: *"nobody has measured their
-seams — and inventing one from gold's would be exactly the guess this file exists to prevent."*
-
-**So each new symbol, before it is enabled:** `decimals` and `minMoveTicks` measured from the live
-feed (`ops:updown-probe-bars`, `ops:updown-probe-source`); the seam disagreement measured to set
-`minDurationMinutes`; the session confirmed against `market-calendar`. **One asset per commit**, each
-carrying its measurement in the catalogue entry the way gold's does. ⚠️ The real risk on an exotic
-pair is the band: if the smallest legal move is a large fraction of a 3-minute move, the chain
-refunds constantly — that is the SOL/USD lesson already in the file, and a regulator will hear about
-it as "the game never pays".
+⛔ **The coupling you can break:** the win celebration dwells **7s**, the handover moves at **2.5s**,
+and they are safe only because the celebration is a kit `<Modal>` whose lock the auto-advance reads.
+A celebration rendered outside the kit modal loses a winner their moment.
 
 ---
 
-## §3 · THE WORK, IN ORDER — with acceptance criteria
+### ▶ D · #6 — the date beside every timer
 
-⭐ **The order matters because #10 and #4 share a surface.** Build the results view once, with both
-product lines in it, rather than twice.
-
-### ▶ UNIT A · #1 — the withdrawal gate, and its paper trail
-
-Server + page + `docs/FLOWS.md` + `docs/COMPLIANCE-DECISIONS.md`, in one commit. Keep the KYC system,
-the NIDA uniqueness rule and the AML thresholds untouched. Keep an audit fact for a withdrawal by an
-unverified account.
-
-**Acceptance:** an unverified player completes a withdrawal end to end on a live drive; the
-COMPLIANCE record exists and names the instruction; `test:kyc-honesty` and the KYC suites stay green;
-a guard proves the *page* and the *service* agree (E-5 was a screen promising what the next screen
-refused, and it landed on the celebration screen).
-
-### ▶ UNIT B · #10 + #4 — settled rounds reach the results page, split by product
-
-**What is true now.** `src/app/results/page.tsx` is built entirely on `listMarkets`,
-`MARKET_CATEGORIES` and `MARKET_SEARCH`. Up & Down rounds are **not on it at all** — the tell is line
-366, which passes the literal `"MARKET"` as the product line to `outcomeWord`.
-
-🔴 **THAT LITERAL IS THE TRAP.** `test:labels` §8 exists because *"a surface holding EVERY product
-line must resolve its side words through the lexicon — the omitted third argument is the tell."*
-Ali's own report — *"Up & Down says YES won, should be UP won"* — was this defect on other surfaces;
-it was declared fixed **twice** before it was, with **three green guards over it**. Add UD rounds to
-`/results` and leave that literal, and the results page will say **YES won over an Up bet** — in
-front of the regulator who asked for the page.
-
-**Build:** UD rounds on `/results` once settled, resolved through the same lexicon with the round's
-real `productLine`; a visible split between long-form (Yes/No) and Up & Down; #4's redirect for
-long-form markets reusing the handover's existing gates (it already defers to an open modal, a bet in
-flight and the celebration lock). ⛔ **Use the kit's `FilterPill`** — ONE filter language, 8 rails,
-and hand-rolling a ninth is a documented refusal.
-
-**Acceptance:** a settled UD round is findable on `/results` in all three languages with the correct
-side word; `test:labels` extended and proven RED against the hardcoded-`"MARKET"` version;
-screenshots at five widths × three languages, no horizontal overflow.
-
-### ▶ UNIT C · #6 — the date beside every timer
-
-`components/markets/countdown.tsx` already renders a `days` cell (his screenshot shows **64 DAYS**),
+`components/markets/countdown.tsx` already renders a `days` cell (Jay's screenshot shows **64 DAYS**),
 so the gap is the **absolute date**.
 
 ⚠️ **THE TIMEZONE IS THE WHOLE RISK, and this project nearly filed a false money finding over it.** A
-settlement proof reads `13:47:22 EAT` while the database holds UTC wall-clock, and a session was
-spent concluding a correct page was wrong because the driver shifted a naive timestamp by the
-reader's offset. One convention, resolved in one place: reuse the platform's `formatDateTime` /
-`resolveRange` helpers, never a new `toISOString().slice()`.
+settlement proof reads `13:47:22 EAT` while the database holds UTC wall-clock; a session was spent
+concluding a correct page was wrong because the reader shifted a naive timestamp by its own offset.
+**One convention, resolved in one place** — reuse the platform's `formatDateTime` / `resolveRange`
+helpers. ⛔ Never a new `toISOString().slice()`.
 
-**Acceptance:** closing and resolve timers show the same date in the same zone in all three
+**Acceptance.** Closing and resolve timers show the same date in the same zone in all three
 languages; a guard pins that the two agree and that neither derives its own format; no overflow at
 393px.
 
-### ▶ UNIT D · #8 — prefill the registered number
+---
 
-Today `prevMsisdn = sp.msisdn ?? ""` — repopulated from the **URL** after a failed submit, otherwise
-empty behind a placeholder (`712 345 678`, a placeholder that must never become a value — A-5).
+### ▶ E · #8 — prefill the registered number
 
-**Build:** default both deposit and withdraw to the account's registered msisdn, still editable.
-⚠️ Withdrawals are the sensitive half — a defaulted payout destination is a convenience, not an
-assumption. Keep it editable, keep every existing destination validation.
+Today `prevMsisdn = sp.msisdn ?? ""` (`wallet/withdraw/page.tsx:59`) — repopulated from the **URL**
+after a failed submit, otherwise empty behind the placeholder `712 345 678`. ⛔ **A placeholder must
+never become a value** (A-5).
 
-**Acceptance:** prefilled on both pages; a failed submit still round-trips what the player typed
-rather than reverting; guard covers both.
+**Build.** Default both deposit and withdraw to the account's registered msisdn, still editable.
+⚠️ Withdrawals are the sensitive half: a defaulted payout destination is a convenience, not an
+assumption. Keep every existing destination validation.
 
-### ▶ UNIT E · #5 — remove the Cash Back Deposit promo
+**Acceptance.** Prefilled on both pages; a failed submit still round-trips what the player typed
+rather than reverting to the account number; guard covers both.
+
+---
+
+### ▶ F · #5 — remove the Cash Back Deposit promo
 
 `components/ui/cashback-promo.tsx`, plus `wallet/page.tsx`, `wallet/wallet-client.tsx`,
 `wallet/deposit/page.tsx`, `admin/bonuses/*`, `bonus-config.ts`, `bonus-service.ts`, `i18n-dict.ts`.
 
-⛔ **HIDE THE OFFER; DO NOT DELETE THE LEDGER PATH.** His words are *"disabled/hidden for now until
+⛔ **HIDE THE OFFER; DO NOT DELETE THE LEDGER PATH.** His words: *"disabled/hidden for now until
 further notice"* — a feature-state, not a deletion. Any cash back already granted must still fulfil
-and stay visible in the player's own history. Use the existing feature-state mechanism (the
-4-state proposals switch is the precedent). ⚠️ **Check the live state after deploy** — that
-precedent exists because a switch read differently in production than in the repo.
+and stay visible in the player's own history.
 
-**Acceptance:** the promo renders nowhere for players; existing grants still fulfil; the five bonus
-suites stay green; a guard asserts the surface is absent.
+⭐ **Reuse the existing 4-state mechanism** rather than inventing a flag:
+`src/lib/server/proposals-config.ts` defines `PROPOSALS_STATES = ["ACTIVE","COMING_SOON",
+"MAINTENANCE","DISABLED"]`, driven from `/admin/config`. ⚠️ **Check the live state after deploy** —
+that precedent exists because a switch read differently in production than in the repo.
 
-### ▶ UNIT F · #3 — a chain removal that cannot destroy the audit trail
+**Acceptance.** The promo renders nowhere for players; existing grants still fulfil; all five bonus
+suites green; a guard asserts the surface is absent **and** that a pre-existing grant still settles.
 
-🔴 **A HARD DELETE IS NOT SAFE, AND IT HAS ALREADY HAPPENED ONCE HERE.**
-`prisma/schema.prisma`: `UpDownRound.chain` is `onDelete: Cascade`, so **deleting a chain deletes
-every round it ever ran** — the settlement record for real money. `e63-window.cjs` exists because
-**1,915 "failures" turned out to be rounds deleted with the board.**
+---
 
-⭐ **This is the one item where the regulator's own interest argues for the safer form:** the Board
-audits settlement history, so the control he wants must not be able to erase it.
+### ▶ G · #3 — chain removal that cannot destroy the audit trail
 
-**Build:** an **ARCHIVE** state (hidden from the admin list and the player board, every round kept),
-**and** a hard delete permitted **only when the chain has zero rounds** — the mistyped-chain case,
-minutes old — refused with a stated reason otherwise.
+🔴 **A HARD DELETE IS NOT SAFE, AND IT HAS ALREADY HAPPENED HERE.** `prisma/schema.prisma`:
+`UpDownRound.chain` is `onDelete: Cascade`, so deleting a chain **deletes every round it ever ran** —
+the settlement record for real money. `e63-window.cjs` exists because **1,915 "failures" turned out
+to be rounds deleted with the board.**
 
-⚠️ Also tell the operator what already works: **stop → start** fully recovers a chain
-(`setChainState` nulls `nextBoundaryAt` on stop and recomputes a fresh one on resume). If the
-underlying need is *"undo a chain I just created"*, archive plus zero-round delete covers it without
-touching history.
+⭐ **The Board's own interest argues for the safer form:** it audits settlement history, so the control
+must not be able to erase it.
 
-**Acceptance:** removing a chain with rounds is refused, with the reason, and audited; the refusal
-has a RED-proven guard; archived chains are invisible to players, visible to admins, and their rounds
-still reachable by the healer's read.
+**Build both halves.** ① An **ARCHIVE** state — hidden from the admin list and the player board,
+every round kept. ② A hard delete permitted **only when the chain has zero rounds** (the mistyped
+chain, minutes old), refused with a stated reason and audited otherwise.
 
-### ▶ UNIT G · #7 — the Selcom page
+⚠️ Also surface what already works: **stop → start** fully recovers a chain. If the underlying need is
+*"undo a chain I just created"*, archive plus zero-round delete covers it without touching history.
+
+**Acceptance.** Removing a chain with rounds is refused, with the reason, and audited; a RED-proven
+guard covers the refusal **and** a positive control proves a zero-round chain really can be deleted;
+archived chains are invisible to players, visible to admins, and their rounds still reachable by the
+healer's read.
+
+---
+
+### ▶ H · #14 — re-categorise a market
+
+✅ **Confirmed absent.** Category is set **once, at creation** (`admin/markets/new/wizard.tsx:91`).
+Everywhere else in `/admin/markets` it is only filtered and sorted. A market in the wrong category
+can currently only be fixed by re-creating it — which is Jay's problem exactly.
+
+**Build.** An edit control on an existing market, audited (`actor`, `before`, `after`).
+⚠️ **Keep the licence exclusion**: `MARKET_CATEGORIES` excludes politics **by licence**, and
+re-categorisation must not become the way back in. If Jay wants that changed, it is its own
+instruction.
+
+**Acceptance.** A mis-categorised market can be corrected; the change is in the audit chain; a guard
+proves the licence-excluded category cannot be reached by this path.
+
+---
+
+### ▶ I · #7 — the Selcom page
 
 **Exists:** `/admin/payments` shows the **disbursement float** (B2C) with a low-float warning and an
 honest *"Unavailable"* when the float PIN is unset.
@@ -342,136 +327,249 @@ honest *"Unavailable"* when the float PIN is unset.
 ⛔ **THE ONE MISTAKE THIS PAGE MUST NOT MAKE**, from `scripts/live/ops/README.md`: separate
 `BET_PAYOUT` (an internal wallet credit) from `WITHDRAWAL` (money actually leaving to Selcom).
 *"Conflating them reads as 'payouts work' when the rail is untested."* Adding a ledger movement to a
-rail movement produces a number that is true of nothing — and this page is for the regulator.
+rail movement produces a number true of nothing — on a page built for the regulator.
 
-⚠️ **VERIFY FIRST** whether Selcom's API exposes a C2B balance at all. If it does not, the page says
-so; it does not compute one from our own ledger and label it a Selcom balance (A-5).
+⚠️ **VERIFY FIRST** whether Selcom's API exposes a C2B balance at all (`docs/SELCOM-API-DIGEST.md`,
+`ops:payments-now`). If it does not, **the page says so** — it does not compute one from our ledger
+and label it a Selcom balance (A-5).
 
-### ▶ UNIT H · #12 (+ #13) — the customer-care surface
+**Acceptance.** Both balances shown or honestly absent; a statement reconciling to
+`scripts/live/ops/payments-now.cjs`; a guard that fails if a ledger figure is ever labelled a rail
+figure.
 
-`SUPPORT` already exists in the role enum and `/admin/players` already holds customer history. What
-is new is **ticket search** — there is no ticket system in the codebase.
+---
+
+### ▶ J · #15 — the bonus system, proved end to end
+
+⭐ **NOT GREENFIELD, AND FURTHER ALONG THAN THE REPORT ASSUMES.** Five unit suites exist
+(`test:bonus`, `-restitution`, `-betting`, `-stress`, `-one-side`) **and a live production drive
+already exists**: `npm run qa:bonus-live` → `scripts/live-bonus-live-proof.mjs`, with four legs —
+`grant` (issued by the **GROWTH** officer, not ADMIN, because `grantBonusToPlayerAction` calls
+`requireStaff("growth")` and ADMIN bypasses every domain check), `warn`, `hedge` (turnover must NOT
+move) and `cancel`. ⛔ Its own rule: *"THE DOM IS NOT THE PROOF"* — every turnover claim is read off
+the **grant row** via `bonus-census.cjs`.
+
+**What is missing is the last leg:** a bonus-funded bet that **settles**, completes the **wagering
+requirement**, and reaches a **withdrawal**.
+
+**Build.** Extend the existing drive with `settle` and `withdraw` legs. Read the ledger at each step
+and check the `balance + hold` identity. ⚠️ **Run after Unit F** — removing cash back changes what
+there is to test.
+
+**Acceptance.** One end-to-end run on production: grant → bet → settle → turnover met → withdrawal,
+every figure read from the grant row and the ledger, never from a rendered number.
+
+---
+
+### ▶ K · #12 + #13 — the customer-care surface and its mailbox
+
+⚠️ **These are one feature, not two.** `msaada@50pick.tz` is the inbound side of a ticket system. Build
+them together.
+
+`SUPPORT` already exists in the role enum (`schema.prisma:25`) and `/admin/players` already holds
+customer history. **New:** ticket search — there is no ticket system in the codebase.
 
 ⛔ **READ_TIERS IS THE GATE, AND IT IS NOT OPTIONAL.** The Final Audit remediation blocks `MODERATOR`
-from money and PII, and an earlier audit found a **read-only auditor being offered the payment
-kill-switches**. A support agent needs enough to help and no more. Design the tier in `docs/` first,
-then build it through the data-driven matrix at `/admin/roles` — never a new hardcoded check.
+from money and PII, and an earlier audit found **a read-only auditor being offered the payment
+kill-switches**. A support agent needs enough to help and no more. **Design the tier in `docs/` first
+and get it agreed**, then build it through the data-driven matrix at `/admin/roles` — never a new
+hardcoded check.
 
-⚠️ #12 and #13 are probably **one feature**: `msaada@50pick.tz` is the inbound side of a real ticket
-system. Confirm with Jay (see §6) before building two things.
+**#13 is mostly infrastructure:** DNS + Postmark + a mailbox group delivering to both agents. Then
+wire the address into the app's support copy and `docs/EMAIL-SIGNATURES.md` so the platform has **one**
+support address. ⚠️ **The mail key dies silently** — verify a real inbound and a real reply, not
+configuration.
 
-### ▶ UNIT I · #14 — re-categorise a market
-
-✅ **CONFIRMED ABSENT.** Category is set **once, at creation**, in the wizard
-(`admin/markets/new/wizard.tsx:91`, `fd.set("category", category)`). Everywhere else in
-`/admin/markets` it is only **filtered** and **sorted** (`page.tsx:53, 67, 72, 77, 146`). There is no
-edit control anywhere, so a market placed in the wrong category today can only be fixed by
-re-creating it — which is exactly the problem Jay is describing.
-
-Category is part of a market's **published** identity, so the change must be audited
-(actor, before, after). ⚠️ **Keep the licence exclusion** — `MARKET_CATEGORIES` excludes politics by
-licence, and re-categorisation must not become the way back in. If Jay wants that exclusion changed
-too, that is its own instruction.
-
-### ▶ UNIT J · #15 — prove the bonus system, end to end
-
-**Not greenfield:** `test:bonus`, `test:bonus-restitution`, `test:bonus-betting`, `test:bonus-stress`,
-`test:bonus-one-side` all exist.
-
-⭐ **What is missing is the thing a suite cannot give you:** a real grant, spent on a real bet, on a
-real round, settling to a real wallet, through the wagering requirement, to a real withdrawal. *"A
-green suite is not proof"* — `qa:results-board` once passed 32 assertions on a board with zero rows,
-where every promise/delivery pair was `0 ≤ 0`.
-
-**Build:** one live drive on production with the fleet, recorded like the Up & Down money drives, with
-the ledger read at each step and the `balance + hold` identity checked. ⚠️ Sequence **after** Unit E
-(#5) — removing cash back changes what there is to test.
-
-### ▶ UNIT K · #13 — the group mailbox
-
-DNS + Postmark + a mailbox group for `msaada@50pick.tz`, delivering to both agents. Then wire the
-address into the app's support copy and `docs/EMAIL-SIGNATURES.md` so there is one support address on
-the platform, not two. ⚠️ **The Resend/Postmark key dies silently** — verify a real inbound and a
-real reply, not just configuration.
+**Acceptance.** A support agent can find a customer and their history without seeing anything the tier
+forbids; a ticket sent to `msaada@50pick.tz` arrives, is searchable, and can be replied to; a
+RED-proven guard covers the tier boundary (a SUPPORT session must be *refused* something an ADMIN
+gets, with a positive control in the same run).
 
 ---
 
-## §4 · WHAT NOT TO DO
+### ▶ L · #11 — the new markets
 
-- ⛔ **Do not rebuild the Up & Down handover** (#2a). Shipped, deployed, measured at n=1,203, with a
-  load-bearing coupling documented in `docs/HANDOVER-E166-NEXT-SESSION.md` §5.
-- ⛔ **Do not pre-open a round before its boundary** (#2b). There is no opening price to open it with;
-  E-83's 175 consecutive voids are the cost.
-- ⛔ **Do not touch the AML thresholds or the NIDA uniqueness rule** while doing #1. Different
-  authority, different instruction.
-- ⛔ **Do not implement #1 in the UI only.** The service refuses independently; a page-only change
-  reproduces E-5 — a screen promising what the next screen refuses.
-- ⛔ **Do not hard-delete a chain** (#3). It cascades over settled rounds.
-- ⛔ **Do not enable SPX** (#11) until the data plan is bought *and* a session kind exists.
-- ⛔ **Do not hand-roll a filter control** (#4/#10). ONE `FilterPill`.
-- ⛔ **Do not add a second auto-navigation mechanism** (#4). Extend the handover's gates.
-- ⛔ **Do not write a new date formatter** (#6). One `formatDateTime`, one zone.
+| His symbol | Reality | Action |
+|---|---|---|
+| **GBP/USD** | ✅ already catalogued — `macro`, FX/metals week, 5 dp, 2 ticks | **Enable now** |
+| **USD/JPY** | ✅ already catalogued — `macro`, 3 dp, 2 ticks | **Enable now** |
+| **USD/CNY** · **USD/CAD** | ⚪ not catalogued | Add + **measure** |
+| **KES/USD** · **ZAR/USD** | ⚪ not catalogued, and quoted the other way round in convention | §4 — ship as `USD/KES` / `USD/ZAR`, flagged |
+| **S&P 500 (SPX)** | 🔴 blocked twice, both recorded in the catalogue | §4 — design + ask |
 
----
+⛔ **ADDING AN ASSET IS NOT ADDING A ROW**, and `updown-symbols.ts` is a monument to why. Gold carries
+`minMoveTicks: 40` and `minDurationMinutes: 15` because *"the feed disagrees with itself by up to
+$0.87 at a single instant — about the size of a whole 5-minute gold move."* Silver and platinum are
+deliberately given **no** measured minimum: *"nobody has measured their seams — and inventing one from
+gold's would be exactly the guess this file exists to prevent."*
 
-## §5 · THE LENSES, APPLIED — a checklist before any unit is called done
+**Per symbol, before enabling:** `decimals` and `minMoveTicks` measured from the live feed
+(`ops:updown-probe-bars`, `ops:updown-probe-source`); the seam disagreement measured to set
+`minDurationMinutes`; the session confirmed against `market-calendar`. **One asset per commit**, each
+carrying its measurement in the catalogue entry the way gold's does.
 
-**UI/UX.** Does it survive **393/768/1024/1280/1440 × EN/SW/ZH**? Swahili and Chinese are where
-labels overflow and where a check can pass **vacuously** — E-166 shipped a stopped-state assertion
-that matched a timestamp and passed in SW and ZH while proving nothing. **Look at the frame; a green
-suite is not a readable screen.**
-
-**Theme-kit consistency.** Kit components only; extend the kit rather than adding an ad-hoc control.
-`DESIGN_AUTHORITY.md` is the single door. The system is **FROZEN** with a ratchet that may only
-shrink — and note `test:design-frozen` **exempts any line containing `var(--`**, so its green is not
-coverage.
-
-**Compliance.** For every unit: does this change what a regulator can reconstruct? Audit events are
-part of the product, not instrumentation. Player surfaces never narrate internal ops (no vendor
-names). Licence exclusions are not a filter to be re-opened by a side door.
-
-**Integration / architecture.** One rule per concept, in one place: one date formatter, one lexicon,
-one filter language, one feature-state mechanism. Every duplicated rule here has produced a finding —
-E-49, E-56, the four drifts of the handoff anchor, the three copies of a refusal map.
-
-**Money.** `balance + hold` is the identity. Decimal/NUMERIC, never float. Claim the row on every
-write. State the money position in the handoff whether or not a shilling moved.
+⚠️ **The real risk on an exotic pair is the band.** If the smallest legal move is a large fraction of a
+3-minute move, the chain refunds constantly — the SOL/USD lesson already in the file, and a regulator
+hears it as *"the game never pays."* If a measured pair fails that test, **give it a
+`minDurationMinutes` and say why in the entry** rather than shipping a refund machine.
 
 ---
 
-## §6 · WHAT TO SEND JAY — three questions and two demonstrations, in one reply
+### ▶ M · #9 — per-bet UD notifications, behind a switch
 
-**Questions:**
+**Already there:** UD notifications are in the inbox — Jay's own screenshot is the **daily digest**
+(`updown-digest.ts`): *"18 Aug: 38 rounds — won 13… Staked TZS 141,000, returned TZS 145,430."*
 
-1. **#11 · S&P 500** — our data provider does not serve SPX on the tier we buy (HTTP 404); it needs
-   their higher tier. **Is that purchase approved?** And note it separately needs a cash-session
-   calendar built, which is wasted work until the plan exists.
-2. **#11 · KES and ZAR** — market convention quotes these `USD/KES` and `USD/ZAR`. **Confirm the
-   direction**, because a reversed pair inverts every Up and Down on the board.
-3. **#12 + #13** — is a ticket **system** wanted (inbound mail to `msaada@50pick.tz` becomes a
-   searchable record), or ticket **search** over customer history, which mostly exists already?
+⚠️ **A per-bet notification is not obviously an improvement**, and this is worth being straight about:
+a 3-minute chain runs **~480 rounds a day**, so per-bet notifications would bury the inbox they are
+meant to serve.
 
-**Demonstrations (screenshots, not prose):**
+**Deliver both, decided by a switch, default OFF** — so the capability exists the moment Jay wants it
+and nothing is skipped. Use the 4-state mechanism from Unit F. Ask him the question in §4 in the same
+reply.
 
-4. **#2** — the next round is already open and bettable while the current one resolves, in **98.6% of
-   1,203 settles measured over 24 hours**, median 91.5 seconds early. Show him the board mid-handover.
-   And explain the one part that cannot work: a round cannot open 30 seconds early because its
-   opening price comes from a price bar labelled with its own start instant, which does not publish
-   until ~19s *after* it.
-5. **#9** — Up & Down notifications are already in the inbox; his own screenshot shows the **daily
-   digest** (*"18 Aug: 38 rounds — won 13… Staked TZS 141,000, returned TZS 145,430"*). **Does he want
-   one notification per bet?** A 3-minute chain runs ~480 rounds a day, so per-bet notifications
-   would bury the inbox they are meant to serve. Confirm before building.
+**Acceptance.** With the switch ON a fleet player receives one notification per UD bet; with it OFF
+the digest behaves exactly as today; a guard covers both states and a positive control proves the
+digest is unaffected.
 
 ---
 
-## §7 · THE FIRST THING TO DO IN THE SESSION
+## §4 · THE FOUR DECISION-DEPENDENT ITEMS — how each is delivered *without* waiting
 
-Not code. Two things, in this order:
+⛔ **"Waiting for an answer" is not a status.** Each of these has work that must be finished this
+session, plus a question sent in writing.
 
-1. 🔴 **BTC/USD 3m and ETH/USD 3m are STOPPED on production** (left over from the E-167 outage), so
-   players have no 3-minute game on either asset. Start them and watch one full round open and
-   settle. This is also the fleet needed for #2c, #10 and #15.
-2. Re-grep the `E-` ids in `docs/LIVE-QA-CAMPAIGN.md` **at the moment you file**, not before. The last
-   session's work was numbered E-119, then E-161, before landing on **E-167** — two ids were taken
-   while it ran.
+| Item | Do this session, regardless | Send Jay |
+|---|---|---|
+| **#11 · S&P 500** | Write the **cash-session calendar design** into `docs/` (a third session kind beside 24/7 and FX-metals: ~13:30–20:00 UTC, holidays, half-days) so only the purchase remains. ⛔ Enable nothing | *Our provider returns **HTTP 404 for SPX** on the tier we buy — the index needs their higher tier, which is a purchase, not development. Separately it trades a **cash session (~13:30–20:00 UTC)** that our calendar does not model; classified as either of our two week-shapes it would be treated as open overnight and at weekends, and every round outside its session would void and refund. **Is the data-tier purchase approved?*** |
+| **#11 · KES / ZAR** | Ship as **`USD/KES`** and **`USD/ZAR`** — the market convention — with the assumption stated at the top of each catalogue entry and in the register row | *Convention quotes these `USD/KES` and `USD/ZAR`. We have used that direction. **Confirm** — a reversed pair inverts every Up and Down on the board* |
+| **#12 + #13** | Build the READ_TIERS design doc **and** the ticket system fed by the mailbox — that satisfies both readings of the requirement | *We read #12 and #13 as one feature: mail to `msaada@50pick.tz` becomes a searchable ticket. **Confirm**, or tell us if you wanted history search only* |
+| **#9** | Build per-bet notifications behind the switch, default OFF | *Already in the inbox as a daily digest (your screenshot). A 3-minute chain runs ~480 rounds a day, so per-bet would bury the inbox. **The switch is built and off — say the word*** |
+
+**And two demonstrations to send, as screenshots not prose:**
+
+- **#2** — the next round is already open and playable in **98.6% of 1,203 settles**, median 91.5s
+  early. Show the board mid-handover. Then the one part that cannot work: *a round cannot open 30
+  seconds early, because its opening price is read from the price bar labelled with its own start
+  instant, and that bar does not publish until ~19 seconds after it. When we did open rounds without
+  a confirmed opening price, 175 consecutive rounds voided and refunded over eleven hours. There is
+  also no AI in that path — round times sit on a fixed grid, so every instance computes the same
+  instants.*
+- **#1** — the withdrawal completing for an unverified account, with the compliance record beside it.
+
+---
+
+## §5 · THE TRAPS — every one of these has already cost this project a session
+
+1. ⛔ **A check can pass through the wrong field.** A "black band" assertion matched the SKU and
+   stayed green with the colour columns deleted. Ask of every guard: *would this still pass if the
+   feature were absent?*
+2. ⛔ **An assertion phrased as the defect goes red when you fix it.** Every refusal needs a
+   **positive control in the same run**.
+3. ⛔ **A guard and its RED proof can share one wrong locator** and be green for eight sessions.
+4. ⛔ **A comment that quotes deleted code is a decoy anchor.** Describe old code; never paste it.
+5. ⛔ **Appending a section to a suite puts it after the verdict.** Insert above the summary and
+   compute the total after the last assertion.
+6. ⛔ **`import()` of a red harness RUNS it.** Two instances mutating one file made a 48/0 suite
+   report 37/7. Check a harness by running it.
+7. ⛔ **A fix can duplicate a string another harness anchors on**, and `String.replace` takes the
+   first match. Six harnesses anchor into `updown-service.ts`; re-run them all after touching it.
+8. ⛔ **An injected clock the code under test does not read.** `advanceChain` takes `now`;
+   `createMarket` reads `Date.now()`. A fixture dated in the past threw in every case *including the
+   control*.
+9. ⛔ **Git Bash rewrites paths and pipes eat exit codes.** Never `| tail` a suite you need the exit
+   code from; write to a file and echo `$?`.
+10. ⛔ **PowerShell destroys UTF-8 on round-trip**, and backticks inside a double-quoted shell string
+    are executed. Write patch scripts with the file tool, not a heredoc.
+11. ⛔ **`test:design-frozen` exempts any line containing `var(--`** — its green is not coverage.
+12. ⛔ **A DB read gives state, not reason.** Cast every timestamp `::text`; read "now" from the
+    database (this laptop's clock is ~93s slow).
+13. ⛔ **Truncation is paint.** `innerText` returns the full string whatever the ellipsis shows.
+14. ⛔ **Never `git add -A`** — two sessions share this working directory. Stage surgically, and check
+    `git branch --show-current` before every commit: **every push to `main` deploys live.**
+
+---
+
+## §6 · THE INTEGRATION MATRIX — where the units touch, and what must be true JOINTLY
+
+⛔ **A UNIT THAT PASSES ALONE AND BREAKS ITS NEIGHBOUR IS NOT DONE.** Every one of these pairs has to
+be driven **together**, after both units land, and each has a named failure mode. This section is the
+difference between fifteen features and a sealed product.
+
+| Pair | The joint requirement | The failure mode if you skip it |
+|---|---|---|
+| **B × E** (#1 KYC removed × #8 phone prefilled) | 🔴 **STATE THIS TO THE BOARD; DO NOT SILENTLY MITIGATE IT.** Together these mean a payout goes to the registered number of an **unverified** account, prefilled, with no identity check anywhere in the path. The only remaining controls are the AML threshold and one-NIDA-one-account — and the NIDA rule only binds accounts that *chose* to verify | The two requirements are individually correct and jointly remove every identity control from the money-out path. The Board must know that is the shape it asked for, in writing, before it is discovered later |
+| **B × J** (#1 × #15 bonus end-to-end) | The bonus drive's new **withdrawal leg must run as an UNVERIFIED player**. Turnover completion, then payout, with no KYC | A bonus withdrawal tested only with a verified fleet player proves the old path, not the new one |
+| **B × I** (#1 × #7 Selcom page) | Unverified payouts must still appear in the Selcom statement **and** still trip `TWO_PERSON_THRESHOLD_TZS` above the limit | Removing the gate raises unverified payout volume; if the AML threshold silently stops firing, the last control is gone and the page will not show it |
+| **B × K** (#1 × #12 support) | A support agent looking at a withdrawal must see a coherent record for an account with **no KYC submission at all** | Support surfaces built against verified accounts render an empty or broken identity panel for the majority case |
+| **A × C × M** (#10 results × #2c next round × #9 notifications) | ⛔ **All three answer "where is my outcome", and they must give the SAME answer.** One side word (the lexicon), one destination, one timestamp. If the notification deep-links to `/results` while the handover sends the player to the round page, the product contradicts itself twice in ten seconds | This is exactly how *"Up & Down says YES won"* survived three green guards — each surface was correct about what it measured, and none measured agreement |
+| **A × D** (#10 results × #6 dates) | The date on a results row, a countdown and a notification body must be the **same instant in the same zone**, from the one formatter | ⚠️ **A notification body is STORED.** A formatted date written into a stored string freezes the zone at write time — and the wallet already has this defect (one English string rendered verbatim to SW and ZH players). Store the instant; format at render |
+| **A × H** (#10 results × #14 re-categorise) | Changing a market's category **after** it settles must move it correctly on `/results` and leave an audit trail — and must never move it into the licence-excluded category | `/results` groups by category; a re-categorisation that does not invalidate the page's grouping shows a market in two places or none |
+| **A × L** (#10 results × #11 new assets) | New FX assets are `macro`, so they follow the **FX/metals week**. At a weekend the board must say **"closed"**, not render as broken — and their rounds must appear on `/results` with the right side words and category group | E-36 / E-16 / E-25 / E-32 are all one lesson: *"the game is closed right now"* and *"the game is broken"* look identical in a history full of voids |
+| **F × J** (#5 cashback removed × #15 bonus proof) | Existing cash-back grants must still fulfil and still be visible in the player's own history **after** the promo is hidden; the bonus census must still reconcile | Deleting rather than switching off strands a granted bonus — real money a player was promised |
+| **G × L** (#3 archive × #11 new assets) | An archived chain must vanish from the player board **and** from the asset board, while its rounds stay reachable by the healer | A half-archived chain leaves a card nobody can bet on and a round nobody closes |
+| **K × everything** (#12 READ_TIERS) | The tier must be proven by **refusal**: a SUPPORT session is denied something an ADMIN gets, with a positive control in the same run | *"A read-only AUDITOR was offered the payment kill-switches"* — a permission surface that only ever tests the allow path is an absent test |
+| **L × the refund rate** | After a new pair runs for a day, measure its **void/refund rate** against BTC's. If it refunds materially more, give it a `minDurationMinutes` and record why | SOL/USD is already in the catalogue as this exact lesson. A regulator experiences a high refund rate as *"the game never pays"* |
+
+---
+
+## §7 · THE SEAL — one continuous end-to-end drive, on production, with real money
+
+⛔ **THE PER-UNIT DRIVES ARE NOT THE SEAL.** They each prove one thing in isolation. The seal is **one
+uninterrupted journey** by a fleet player who has never verified, exercising every unit in the order a
+real person would meet them. Run it **once, at the end, after every unit has landed and deployed** —
+and if any step needs a workaround to proceed, that workaround is a defect, not a note.
+
+**The journey, and what to record at each step:**
+
+1. **Register** a fresh fleet player. No KYC, ever, for the whole drive.
+2. **Deposit** — the phone is **prefilled with the registered number** (E). Complete it on the real
+   rail. *Record: the prefill, and the deposit landing in the ledger.*
+3. **No cash-back offer is visible** anywhere in the wallet (F). *Record: a screenshot of the wallet
+   with the promo absent.*
+4. **A GROWTH officer grants a bonus** (J). *Record: the grant row, read by `bonus-census.cjs`.*
+5. **Bet on a 3-minute Up & Down round** — placed with the bonus. *Record: the receipt, and the stake
+   in the ledger.*
+6. **While that round is resolving, bet on the NEXT round** (C) — without scrolling, without a reload.
+   *Record: the frame that proves both were reachable.*
+7. **Bet on a long-form Yes/No market too**, so both product lines are live in one account.
+8. **Both settle.** *Record: the outcome, and the settlement proof's date **in the same zone** as the
+   countdown that preceded it (D).*
+9. **The results page shows both**, in the correct section, with the correct side word — **"Up wins",
+   never "YES"** (A). *Record: five widths × three languages.*
+10. **The notification inbox agrees** with the results page — same outcome, same side word, same date,
+    and it links where the results page lives (M, A×C×M).
+11. **Turnover completes**; the bonus becomes withdrawable (J).
+12. **Withdraw — with no KYC at any point** (B). *Record: the payout on the rail, the COMPLIANCE audit
+    fact, and the AML threshold behaviour.*
+13. **The Selcom page reconciles** the deposit and the withdrawal, with `WITHDRAWAL` never conflated
+    with `BET_PAYOUT` (I).
+14. **A support agent finds this player and this journey** within their tier — and is refused what the
+    tier forbids (K).
+15. **An operator re-categorises** the long-form market and the results page follows (H); **archives** a
+    chain and it disappears from the board while its rounds remain (G).
+16. **`chain-stall-census.cjs` is green** and no chain is stopped-with-a-stale-boundary.
+
+⭐ **THE SEAL IS THE ARTEFACT.** Write it up as one numbered walk with one screenshot or one ledger
+read per step, in the register row. A step you cannot evidence did not happen.
+
+---
+
+## §8 · CLOSE-OUT — Unit Z, and the session is not done until this is done
+
+1. **A register row per unit** in `docs/LIVE-QA-CAMPAIGN.md`, with the measurement that proves it, and
+   the id re-grepped at the moment of filing.
+2. **A new topmost `RESUME AT` block** in §6b naming what is open. ⚠️ The marker must sit inside §6b's
+   **topmost** `###` block or `test:tracker-hygiene` fails — that guard has drifted four times.
+3. **Each subject's owning doc updated in the unit's own commit** — `FLOWS.md` and
+   `COMPLIANCE-DECISIONS.md` for B, `updown-symbols.ts` entries for L, `EMAIL-SIGNATURES.md` for K,
+   `RULES.md` for anything that changes a rule a player is held to.
+4. **`docs/README.md`'s count and index row** if any doc is added or removed — the gate now counts
+   **tracked** files, so `git add` it before running the gate.
+5. **The four questions and two demonstrations from §4, sent to Jay**, and recorded here so the next
+   session knows what is outstanding.
+6. **`test:all` green** (with `DATABASE_URL` UNSET) **and `red:all`**, plus `test:responsive` and
+   `test:motion` run **against a live server** rather than counted as known-red.
+7. 💰 **The money position, first and plainly**, in the handoff.
+8. **The completion ledger in §1, fully ticked** — and if any row is not ⬜→✅, the handoff says which,
+   why, and exactly what remains. **A row silently left blank fails this commission.**
