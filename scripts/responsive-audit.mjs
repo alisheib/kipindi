@@ -156,6 +156,25 @@ async function assertCell(page) {
     // 1780·392. Exempt the object, keep the rules honest for everything else.
     const inNeedle = (el) => !!el.closest?.("#needle-root");
 
+    // 🔴 A CLOSED `<details>` STILL HAS LAYOUT BOXES, AND THIS SWEEP WAS READING THEM AS
+    // CLIPPED CONTROLS. Measured on production 2026-08-19 at /results, 320/360/390:
+    // `LanguageMenu`'s listbox rows report `getBoundingClientRect()` of 194×44 at left **-71**,
+    // with `visibility: visible`, `display: flex`, `opacity: 1` — so every filter above passes
+    // them through. But the `<details>` is CLOSED: `document.elementFromPoint()` at the row's
+    // own centre returns `div.mb-4`, and Playwright's `isVisible()` returns **false**. Chrome
+    // lays the subtree out and neither paints nor hit-tests it, so no player can see or reach it.
+    //
+    // ⛔ THAT PRODUCED ~200 FALSE FAILURES ON EVERY SURFACE × WIDTH — the whole reason this suite
+    // reads red against a live server (3562·202 on production before this fix). It is the same
+    // shape as the Needle exemption above, and the same shape as E-81: a harness manufacturing a
+    // phantom defect. The OPEN state is measured for real, at 320/360/390/430/768, and the panel
+    // fits the viewport at every one — `LanguageMenu` flips to left-anchored below 430 exactly as
+    // its own comment says.
+    //
+    // ⚠️ NO COVERAGE IS LOST, and that is the only reason this exemption is allowed: the OPEN
+    // state is what a player interacts with, and `overlaySweep` asserts it explicitly below.
+    const inClosedDisclosure = (el) => !!el.closest?.("details:not([open])");
+
     const offscreen = [];
     for (const el of document.querySelectorAll("*")) {
       const cs = getComputedStyle(el);
@@ -192,6 +211,7 @@ async function assertCell(page) {
       const cs = getComputedStyle(el);
       if (cs.visibility === "hidden" || cs.display === "none") continue;
       if (inNeedle(el)) continue;   // deliberate edge-tuck — see the note above
+      if (inClosedDisclosure(el)) continue;   // laid out but neither painted nor hit-tested
       if ((r.right > vw + 2 || r.left < -2) && !hasScrollableAncestor(el)) {
         const label = (el.getAttribute("aria-label") || el.textContent || "").trim().slice(0, 22);
         clipped.push(`${el.tagName.toLowerCase()}[${label}] l${Math.round(r.left)} r${Math.round(r.right)}>vw${vw}`);
@@ -361,13 +381,38 @@ async function overlaySweep(browser, playerCtxFactory, adminCtxFactory) {
       await p.setViewportSize({ width: bp.w, height: bp.h });
       await p.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
       await p.waitForTimeout(600);
-      const lang = p.locator('button[aria-label^="Language:"]').first();
-      if (await lang.isVisible().catch(() => false)) {
+      // 🔴 THIS CHECK HAD BEEN MEASURING NOTHING, AND PASSING. Its selectors described
+      // `LanguageToggle` — a `<button aria-label="Language: …">` opening a `div[role="menu"]`.
+      // That component was REPLACED by `LanguageMenu`: a `<details>` whose trigger is a
+      // `<summary aria-label="Switch to …">` and whose panel is `[role="listbox"]`. Neither old
+      // selector can match, so `isVisible()` was false on every run and the `else` branch
+      // recorded a SOFT PASS — "lang toggle not visible" — as though absence were acceptable.
+      //
+      // ⛔ SO THE ONE PIECE OF LOGIC THAT MAKES THIS CONTROL CORRECT WAS NEVER GUARDED.
+      // `LanguageMenu` measures on open and flips from right- to left-anchored when right would
+      // run off the viewport; below 430 it must flip. Nothing checked that. Measured by hand on
+      // production 2026-08-19 — 320 l66, 360 l73, 390 l103 (left-anchored), 430 l6, 768 l336
+      // (right-anchored), all inside the viewport — and now asserted here every run.
+      //
+      // ⚠️ The trigger's ABSENCE is a defect, not a skip: the component's contract is "ONE 44×44
+      // control, at EVERY width". A missing trigger means no way to change language at all.
+      const lang = p.locator("details.kp-menu > summary").first();
+      const langThere = await lang.isVisible().catch(() => false);
+      ok(`overlay language trigger present @${bp.tag}`, langThere,
+         "LanguageMenu's summary is the only way to change language; it must exist at every width");
+      if (langThere) {
         await lang.click().catch(() => {});
-        await p.waitForTimeout(300);
-        const menu = p.locator('div[role="menu"][aria-label="Language"]').first();
+        await p.waitForTimeout(350);
+        const menu = p.locator('details.kp-menu[open] [role="listbox"]').first();
         await fitsViewport(p, menu, `overlay language @${bp.tag}`, 56);
-      } else soft(`overlay language @${bp.tag}`, true, "lang toggle not visible");
+        // ⭐ Fit is not enough — the rows must be REACHABLE. A panel can satisfy the box test and
+        // still sit under something, which is precisely how the closed-panel false positive read
+        // as a real defect for so long.
+        const row = p.locator('details.kp-menu[open] [role="option"]').last();
+        ok(`overlay language rows reachable @${bp.tag}`,
+           await row.isVisible().catch(() => false),
+           "the last language row must be visible and hit-testable once the menu is open");
+      }
       await p.close();
     }
     // ---- bet dial + confirm on a market detail ----
