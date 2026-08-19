@@ -91,8 +91,21 @@ export type FailureReason =
   | "deposit_limit"
   | "sof_required"
   | "kyc_required"
-  | "nida_taken"
-  | "nida_not_verified"
+  // ⛔ RENAMED 2026-08-20, and the rename is the point. `nida_taken` /
+  // `nida_not_verified` were named for the only document the product accepted.
+  // From 2026-08-20 a player proves identity with any ONE of four, so leaving
+  // `nida_taken` firing for a rejected PASSPORT would be a lie in the audit
+  // trail — the one record a regulator asks for. The union member, the registry
+  // row below and the dictionary key moved in a single commit; `test:failure-reasons`
+  // fails on a mapped code with no emitter, so a half-move cannot ship.
+  | "id_taken"
+  | "id_not_verified"
+  /** The number failed the rule recorded for THAT document in `id-documents.ts`. */
+  | "id_number_format"
+  /** A passport / driving licence whose expiry date has passed. */
+  | "id_expired"
+  /** A passport / driving licence submitted with no expiry date at all. */
+  | "id_expiry_required"
   | "doc_image_type"
   | "doc_too_large"
   | "docs_locked"
@@ -221,10 +234,20 @@ export const REASONS: Record<FailureReason, ReasonSpec> = {
   proposals_paused:     { severity: "info",    channel: "toast",  key: "errProposalsPaused" },
   not_found:            { severity: "info",    channel: "toast",  key: "errNotFound" },
   // A hard block the player cannot lift, or an identity/compliance gate:
-  // ⛔ `nida_taken` is an ERROR and a MODAL: the National ID is already linked to another
-  // account, which is a fraud-shaped fact, not a typo to fix in place.
-  nida_taken:           { severity: "error",   channel: "modal",  key: "errNidaTaken" },
-  nida_not_verified:    { severity: "warning", channel: "inline", key: "errNidaNotVerified" },
+  // ⛔ `id_taken` is an ERROR and a MODAL: the identity document is already linked to
+  // another account, which is a fraud-shaped fact, not a typo to fix in place. It covers
+  // all four document types — a DUPLICATE_IDENTITY block on a NIDA that a passport could
+  // walk around would not be a uniqueness rule at all.
+  id_taken:             { severity: "error",   channel: "modal",  key: "errIdTaken" },
+  id_not_verified:      { severity: "warning", channel: "inline", key: "errIdNotVerified" },
+  // ⭐ The player can fix all three of these, and their money did not move — so
+  // `warning`, and `inline`, beside the field they must correct. ⛔ The copy is
+  // deliberately type-NEUTRAL: `/profile/kyc` knows which document was chosen and
+  // prints THAT document's rule underneath, so the player reads the real rule
+  // rather than the word "invalid" (§F4 — a refusal states the reason AND the step).
+  id_number_format:     { severity: "warning", channel: "inline", key: "errIdNumberFormat" },
+  id_expired:           { severity: "warning", channel: "inline", key: "errIdExpired" },
+  id_expiry_required:   { severity: "warning", channel: "inline", key: "errIdExpiryRequired" },
   kyc_required:         { severity: "error",   channel: "modal",  key: "errVerifyIdentity" },
   // ⛔ A BREAK THE PLAYER SET THEMSELVES IS NOT A FAULT — it is the tool working. Error
   // severity, because they cannot lift it, but never phrased or coloured as a malfunction.

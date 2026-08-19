@@ -1,8 +1,9 @@
 /**
  * D1 · qa:cert-d1 — the KYC journey in a real browser, against real server actions.
  *
- *   NEW PLAYER → NIDA identity step → uploads ID front/back/selfie through the real
- *                client resize + server action → submits for review
+ *   NEW PLAYER → identity step for ONE of the four accepted documents → uploads that
+ *                document's OWN slots through the real client resize + server action
+ *                → submits for review
  *   OFFICER    → opens the KYC workstation, sees the submission and its imagery,
  *                and is offered the three outcomes
  *   Plus a desktop-width responsiveness pass and a console/page-error sweep.
@@ -26,12 +27,36 @@
  * `npm run test:kyc` — this suite proves what only a browser can: that the player
  * can actually complete the journey and the officer can actually see the evidence.
  *
+ * ⭐ FOUR DOCUMENTS, ONE JOURNEY (2026-08-20). A player proves identity with any ONE
+ * of NIDA / passport / driving licence / voter's card, so this driver takes the type
+ * as a parameter and reads the SLOT COUNT from the page rather than assuming three —
+ * a passport submission has two slots, and "three upload slots are present" would have
+ * been a false failure on a correct product.
+ *
  * Needs a running server (NODE_ENV != production, so /api/dev-test/* answers):
  *   BASE=http://localhost:3009 npm run qa:cert-d1
+ *   ID_TYPE=PASSPORT BASE=... npm run qa:cert-d1
  */
 import { chromium, devices } from "playwright";
 
 const BASE = process.env.BASE || "http://localhost:3009";
+/**
+ * Which of the four documents this run proves. ⛔ Everything below is derived from
+ * this — the number, the expiry, the slot count — because a driver that hard-writes
+ * NIDA's shape can only ever prove NIDA works.
+ */
+const ID_TYPE = (process.env.ID_TYPE || "NIDA").toUpperCase();
+const RUN = String(Date.now()).slice(-9);
+const ID_SPEC = {
+  // 20 digits = "19900101" (a real YYYYMMDD) + 9 run digits + 3 filler. ⛔ Never
+  // ending ...0000 or ...9999 — those are the NIDA mock's sanctioned / mismatch QA
+  // hooks, and a run that tripped one would read as a product refusal.
+  NIDA:           { number: "19900101" + RUN + "123",                              expiry: null,         slots: 3 },
+  PASSPORT:       { number: "AB" + RUN.slice(-7),                                  expiry: "2032-06-30", slots: 2 },
+  DRIVER_LICENSE: { number: "DL" + RUN.slice(-7),                                  expiry: "2031-06-30", slots: 2 },
+  VOTER_CARD:     { number: "VC" + RUN.slice(-7),                                  expiry: null,         slots: 2 },
+}[ID_TYPE];
+if (!ID_SPEC) { console.error(`unknown ID_TYPE "${ID_TYPE}" — one of NIDA / PASSPORT / DRIVER_LICENSE / VOTER_CARD`); process.exit(1); }
 let pass = 0; const failures = [];
 const ok = (l, c, x = "") => { c ? (pass++, console.log(`  ✓ ${l}`)) : (failures.push(`${l} ${x}`), console.log(`  ✗ ${l} ${x}`)); };
 
@@ -70,41 +95,74 @@ try {
   const fresh = await (await pp.request.post(`${BASE}/api/dev-test/fresh-kyc-player`, { data: { state: "none" } })).json();
   ok("fresh player + session created", !!fresh.userId, JSON.stringify(fresh));
   const userId = fresh.userId;
-  // Unique 20-digit NIDA per run (one-NIDA-per-account is enforced), never ...0000/9999.
-  const NIDA = "19900101" + String(Date.now()).slice(-11) + "7";
+  // ⛔ A UNIQUE NUMBER PER RUN — one document, one account, is enforced by a partial
+  // unique index, so re-using last run's number is refused and reads as a product bug.
+  const NIDA = ID_TYPE === "NIDA" ? "19900101" + String(Date.now()).slice(-11) + "7" : ID_SPEC.number;
 
   await pp.goto(`${BASE}/profile/kyc`, { waitUntil: "domcontentloaded" });
   await dismissPrimer(pp);
   // Anchor on STRUCTURE, not copy: this suite sat unrun for months and then failed
   // on renamed strings ('Verify NIDA' -> 'Continue verification', 'ID front · Mbele'
   // -> 'ID front'). The identity form's field ids are the stable contract.
-  ok("new user lands on NIDA step", (await pp.locator("#nida").count()) === 1);
+  ok("new user lands on the identity step", (await pp.locator("#idNumber").count()) === 1);
+  // ⭐ THE CHOOSER IS PART OF THE CONTRACT. All four documents must be offered, and
+  // choosing one must round-trip through the URL so the form works with no JS.
+  ok("all four documents are offered", (await pp.locator('[data-chip^="idType:"]').count()) === 4,
+     `found ${await pp.locator('[data-chip^="idType:"]').count()}`);
+  if (ID_TYPE !== "NIDA") {
+    await pp.locator(`[data-chip="idType:${ID_TYPE}"]`).click();
+    await pp.waitForFunction((t) => new URL(location.href).searchParams.get("idType") === t, ID_TYPE, { timeout: 8000 });
+    ok(`chooser selected ${ID_TYPE} and put it in the URL`, true);
+  }
   ok("player kyc page: no overflow (mobile)", (await overflow(pp)) <= 1);
 
   // Fill the identity form. Date of birth is NO LONGER asked here — it's collected
   // (and 18+ gated) at sign-up and shown read-only on this step, submitted via a
   // hidden field. So the form only needs NIDA + name + email. (Regression guard
   // for commit fc5bdde — re-typing DOB was redundant friction.)
-  await pp.fill("#nida", NIDA);
+  await pp.fill("#idNumber", NIDA);
+  // ⛔ ASKED FOR ONLY WHERE THE DOCUMENT HAS ONE — a NIDA and a voter's card do not
+  // expire, so an expiry field on either is itself a defect.
+  const expiryPresent = (await pp.locator("#idExpiry").count()) > 0;
+  ok(`expiry field ${ID_SPEC.expiry ? "IS" : "is NOT"} asked for on ${ID_TYPE}`, expiryPresent === !!ID_SPEC.expiry);
+  if (ID_SPEC.expiry) {
+    // ⚠️ DateSelect is a SEGMENTED field: DD / MM / YYYY as three visible text
+    // inputs, with the ISO value on a HIDDEN input carrying the id. Playwright
+    // cannot `fill` the hidden one, and the segments have no ids of their own —
+    // their only stable handle is their position inside the control. Typing into
+    // them is also what a player does, so this exercises the real keystroke path
+    // (`date-mask.ts`) rather than writing a value the UI never produced.
+    const [ey, em, ed] = ID_SPEC.expiry.split("-");
+    const box = pp.locator("div").filter({ has: pp.locator("#idExpiry") }).last();
+    const segInputs = box.locator('input[type="text"]');
+    await segInputs.nth(0).fill(ed);
+    await segInputs.nth(1).fill(em);
+    await segInputs.nth(2).fill(ey);
+    await pp.waitForFunction((iso) => document.querySelector("#idExpiry")?.value === iso, ID_SPEC.expiry, { timeout: 8000 });
+    ok(`expiry ${ID_SPEC.expiry} typed into the segmented field and reached the form`, true);
+  }
   await pp.fill("#fullName", "Asha Mwamba Juma");
   ok("DOB pre-filled read-only from sign-up (not re-asked)", /From sign-up/i.test(await pp.locator("body").innerText()));
   await pp.fill("#email", `newuser${String(Date.now()).slice(-6)}@example.com`);
   await pp.getByRole("button", { name: /Continue verification/ }).click();
-  await pp.waitForFunction(() => /Upload documents|NIDA verified/i.test(document.body.innerText), null, { timeout: 12000 }).catch(() => {});
+  await pp.waitForFunction(() => /Upload documents|Document details saved/i.test(document.body.innerText), null, { timeout: 12000 }).catch(() => {});
   const afterNida = await pp.locator("body").innerText();
-  ok("NIDA verified — NO snag, reached upload step", /Upload documents|NIDA verified/i.test(afterNida) && !/hit a snag/i.test(afterNida), afterNida.slice(0, 120).replace(/\n+/g, " "));
+  ok(`${ID_TYPE} accepted — NO snag, reached upload step`, /Upload documents|Document details saved/i.test(afterNida) && !/hit a snag/i.test(afterNida), afterNida.slice(0, 160).replace(/\n+/g, " "));
 
   // Upload the three documents through the real uploader (resize + action).
   // Anchor on STRUCTURE, not copy: this suite sat unrun for months and then broke
   // on renamed strings — the slot labels lost their bilingual suffix when i18n
   // landed ("ID front · Mbele" → "ID front"). The three file inputs are the
   // stable contract, and they survive a locale switch too.
+  // ⛔ THE SLOT COUNT IS THIS DOCUMENT'S, NEVER A LITERAL 3. A passport asks for the
+  // bio page + a selfie; asserting three would fail on a correct product.
+  const want = ID_SPEC.slots;
   const slots = pp.locator('input[type="file"]');
-  await pp.waitForFunction(() => document.querySelectorAll('input[type="file"]').length >= 3, null, { timeout: 15000 });
-  ok("three upload slots are present", (await slots.count()) >= 3, `found ${await slots.count()}`);
-  for (let i = 0; i < 3; i++) await slots.nth(i).setInputFiles(FILE);
-  await pp.waitForFunction(() => (document.body.innerText.match(/Attached/g) || []).length >= 3, null, { timeout: 15000 });
-  ok("all three documents attached", (await pp.locator("body").innerText()).match(/Attached/g).length >= 3);
+  await pp.waitForFunction((n) => document.querySelectorAll('input[type="file"]').length >= n, want, { timeout: 15000 });
+  ok(`${want} upload slots are present for ${ID_TYPE}`, (await slots.count()) === want, `found ${await slots.count()}`);
+  for (let i = 0; i < want; i++) await slots.nth(i).setInputFiles(FILE);
+  await pp.waitForFunction((n) => (document.body.innerText.match(/Attached/g) || []).length >= n, want, { timeout: 15000 });
+  ok(`all ${want} documents attached`, (await pp.locator("body").innerText()).match(/Attached/g).length >= want);
 
   await submitForReview(pp);
   await pp.waitForFunction(() => /Submitted for review|Compliance is reviewing|under review/i.test(document.body.innerText), null, { timeout: 12000 }).catch(() => {});
@@ -143,7 +201,7 @@ try {
     /Approve identity/i.test(wsBody) && /Reject/i.test(wsBody) && /Escalate AML/i.test(wsBody));
   ok("🔴 the checklist does NOT claim a government match",
     !/government match|NIDA verified/i.test(wsBody) && /no authority check/i.test(wsBody),
-    "docs/NIDA-POLICY.md: format + uniqueness only. An officer releasing a withdrawal\n" +
+    "docs/IDENTITY-POLICY.md: format + uniqueness only. An officer releasing a withdrawal\n" +
     "    on a 'NIDA verified' tick would be acting on evidence that does not exist.");
   ok("workstation: no overflow (mobile)", (await overflow(ap)) <= 1);
 

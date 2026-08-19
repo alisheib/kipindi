@@ -1,7 +1,7 @@
 /**
  * S14 — "one NIDA, one account" across two instances.
  *
- * NIDA-POLICY.md (Ali, 2026-07-19) states the ENTIRE identity control is format
+ * IDENTITY-POLICY.md (Ali, 2026-07-19) states the ENTIRE identity control is format
  * + uniqueness: there is no authority check, so uniqueness is not a nicety — it
  * is the only thing standing between one human and two funded accounts. It is a
  * P0 AML control for a licensed book.

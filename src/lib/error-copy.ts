@@ -129,9 +129,11 @@ export function errorCopy(t: Dict, r: ActionFailure): string {
       // deleted from all three languages rather than left as a second definition.
       //
       // ⛔ AND THE WHOLE KYC BLOCK IS GONE — eight phrase tests, replaced by reasons that
-      // `kyc-service.ts` now emits at the same eight sites: nida_taken · doc_image_type ·
-      // doc_too_large · docs_locked · no_extra_request · nida_not_verified · docs_required ·
-      // extra_docs_required.
+      // `kyc-service.ts` now emits at the same sites: id_taken · doc_image_type ·
+      // doc_too_large · docs_locked · no_extra_request · id_not_verified · docs_required ·
+      // extra_docs_required — joined 2026-08-20 by id_number_format · id_expired ·
+      // id_expiry_required, when identity stopped meaning "a NIDA" and started meaning
+      // "any one of four documents". (The first two were named nida_* until then.)
       //
       // 🔴 THOSE EIGHT WERE THE LAST ROUTE. `REASON_BY_CODE` maps DOC_IMAGE, DOC_TOO_LARGE,
       // DOCS_LOCKED, NIDA_TAKEN and NO_EXTRA_REQUEST — and measuring it 2026-08-15 found that

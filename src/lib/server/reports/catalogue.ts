@@ -43,15 +43,22 @@ async function regulatorSignatures(generatorId: string) {
   ];
 }
 
-function hashNida(nida: string): string {
+/**
+ * Salted SHA-256 of one identifier for the self-exclusion register.
+ *
+ * ⚠️ RENAMED FROM `hashNida` 2026-08-20. It was never NIDA-only — the phone number
+ * goes through the same function — and from 2026-08-20 the identity half can be any
+ * of four documents, so the old name described neither of its two call sites.
+ */
+function hashIdentifier(value: string): string {
   const salt = process.env.SX_REGISTER_SALT;
   // In production a real, secret salt is mandatory — without it the "anonymized"
-  // cross-operator NIDA hashes are dictionary-reversible over the NIDA space.
+  // cross-operator identity hashes are dictionary-reversible over the ID space.
   // Mirror the AUDIT_CHAIN_SECRET guard: refuse rather than ship a guessable salt.
   if (process.env.NODE_ENV === "production" && !salt) {
     throw new Error("SX_REGISTER_SALT must be set in production before generating the self-exclusion register.");
   }
-  return createHash("sha256").update(`${salt ?? "tz-gbt-salt-dev-only"}:${nida}`, "utf8").digest("hex");
+  return createHash("sha256").update(`${salt ?? "tz-gbt-salt-dev-only"}:${value}`, "utf8").digest("hex");
 }
 
 function makeReference(acronym: string, generatorId: string): string {
@@ -340,8 +347,14 @@ export async function buildSxRegister(generatorId: string): Promise<Report> {
     const coAt = r.coolingOffUntil ? new Date(r.coolingOffUntil).getTime() : 0;
     if (sxAt < now && coAt < now) continue;
     const kyc = await db.kyc.findByUserId(u.id);
-    const nidaHash = kyc?.nidaNumber ? hashNida(kyc.nidaNumber) : "";
-    const phoneHash = hashNida(u.phoneE164); // same salted-SHA-256 (prod-salt-guarded)
+    // 🔴 THE IDENTITY NUMBER, WHICHEVER DOCUMENT IT CAME FROM. This read the
+    // deprecated NIDA-only column, so from 2026-08-20 a player self-excluded on a
+    // PASSPORT would have gone onto the cross-operator register with an EMPTY
+    // hash — the one column that makes the register work across operators.
+    // ⚠️ The TYPE is hashed with the number: two documents can share digits, and
+    // a register that collides them excludes the wrong person.
+    const nidaHash = kyc?.idNumber ? hashIdentifier(`${kyc.idType ?? ""}:${kyc.idNumber}`) : "";
+    const phoneHash = hashIdentifier(u.phoneE164); // same salted-SHA-256 (prod-salt-guarded)
     if (sxAt > now) {
       rows.push({
         rowNo: rows.length + 1,
@@ -385,16 +398,16 @@ export async function buildSxRegister(generatorId: string): Promise<Report> {
     },
     summary: [
       { label: "Active entries", value: rows.length.toLocaleString(), tone: "neutral" },
-      { label: "Hash algorithm", value: "SHA-256(salt:NIDA)", tone: "neutral" },
+      { label: "Hash algorithm", value: "SHA-256(salt:idType:idNumber)", tone: "neutral" },
       { label: "Schema version", value: "GBT-v1", tone: "neutral" },
     ],
     sections: [
       {
         title: "Register",
-        description: "One row per active exclusion or cooling-off period. Plain NIDA and phone are never written; only their salted hashes.",
+        description: "One row per active exclusion or cooling-off period. Plain identity numbers and phones are never written; only their salted hashes.",
         columns: [
           { header: "#",            key: "rowNo",         format: "integer", align: "right", width: 5 },
-          { header: "NIDA hash",    sub: "SHA-256",       key: "nidaHash",  width: 22 },
+          { header: "ID hash",      sub: "SHA-256",       key: "nidaHash",  width: 22 },
           { header: "Phone hash",   sub: "SHA-256",       key: "phoneHash", width: 22 },
           { header: "Region",       key: "region",        width: 10 },
           { header: "Kind",         key: "periodKind",    width: 12 },
@@ -417,7 +430,16 @@ export async function buildSxRegister(generatorId: string): Promise<Report> {
         "operator to use the identical Gaming Board-issued salt; this file is generated " +
         "with the salt configured for this operator. Confirm salt alignment with the " +
         "Board before relying on these hashes to match another operator's register.",
-      "Plain NIDA and phone numbers are NEVER written into this file by design (PDPA + LCCP).",
+      "Plain identity numbers and phone numbers are NEVER written into this file by design (PDPA + LCCP).",
+      // ⛔ THE DOCUMENT TYPE IS INSIDE THE HASH, NOT IN A COLUMN. It has to be in the
+      // hash, because from 2026-08-20 a person may be excluded on any one of four
+      // documents and two of them could share digits — a register that collides them
+      // excludes the wrong person. It must NOT be a column: this file's whole design is
+      // that it carries no plain identity data, and "this exclusion is on a passport" is
+      // a de-anonymising axis over a small population.
+      "Hashes cover the identity document TYPE as well as its number, so the same digits " +
+        "on two different documents cannot collide. Schema GBT-v1 hashes covered the NIDA " +
+        "number alone; a register issued before 2026-08-20 will not hash-match this one.",
       // Honest disclosure for the blank "Started" cells on legacy rows.
       "\"Started\" is the date the exclusion period began. It is blank for periods set " +
         "before the platform began recording exclusion start dates; the end date and days " +
@@ -772,7 +794,7 @@ export async function buildKycReverify(generatorId: string): Promise<Report> {
 
   let dueNow = 0, dueSoon = 0;
   const rows: Row[] = approved.map((k) => {
-    const anchor = k.reviewedAt ?? k.nidaVerifiedAt ?? k.submittedAt ?? k.updatedAt;
+    const anchor = k.reviewedAt ?? k.idVerifiedAt ?? k.submittedAt ?? k.updatedAt;
     const anchorMs = anchor ? new Date(anchor).getTime() : now;
     const dueAt = addMonths(anchorMs, REVERIFY_MONTHS);
     const daysToDue = Math.round((dueAt - now) / (24 * 3600_000));
@@ -780,7 +802,7 @@ export async function buildKycReverify(generatorId: string): Promise<Report> {
     if (status === "DUE NOW") dueNow++; else if (status === "DUE ≤ 90d") dueSoon++;
     return {
       player: maskUserId(k.userId),
-      nida: maskNidaTail(k.nidaNumber),
+      idDoc: k.idType ? `${k.idType} ${maskNidaTail(k.idNumber)}` : maskNidaTail(k.idNumber),
       verifiedOn: anchor ? anchor.slice(0, 10) : "—",
       dueOn: new Date(dueAt).toISOString().slice(0, 10),
       daysToDue,
@@ -804,7 +826,7 @@ export async function buildKycReverify(generatorId: string): Promise<Report> {
       description: `Soonest-due first. Re-verification is triggered every ${REVERIFY_MONTHS} months from the last approval, or on a phone/region change.`,
       columns: [
         { header: "Player", key: "player", width: 18 },
-        { header: "NIDA", key: "nida", width: 14 },
+        { header: "Document", key: "idDoc", width: 22 },
         { header: "Verified on", key: "verifiedOn", format: "date", width: 16 },
         { header: "Re-verify by", key: "dueOn", format: "date", width: 16 },
         { header: "Days to due", key: "daysToDue", format: "integer", align: "right", width: 12 },
@@ -814,7 +836,7 @@ export async function buildKycReverify(generatorId: string): Promise<Report> {
     }],
     notes: [
       `Re-verification interval: ${REVERIFY_MONTHS} months from last approval (or on phone/region change).`,
-      "NIDA shown masked (last 4) — the full number lives only in the verification record.",
+      "Identity number shown masked (last 4), beside the document type it came from — the full number lives only in the verification record.",
       "Drives the customer-comms outreach queue; not a regulator filing.",
     ],
   };

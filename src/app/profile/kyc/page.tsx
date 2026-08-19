@@ -10,8 +10,16 @@ import { db } from "@/lib/server/store";
 import { getKycStatus, startKyc } from "@/lib/server/kyc-service";
 import { DateSelect } from "@/components/ui/date-select";
 import { Input, Field as KitField } from "@/components/ui/input";
+import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
 import { SubmitButton } from "@/components/ui/submit-button";
-import { submitNidaAction, submitKycForReviewAction, restartKycAction } from "./actions";
+import { submitIdentityAction, submitKycForReviewAction, restartKycAction } from "./actions";
+import {
+  ID_DOC_TYPES,
+  ID_DOC_SPECS,
+  DOC_SLOT_LABEL_KEY,
+  isIdDocType,
+  type IdDocType,
+} from "@/lib/id-documents";
 import { KycDocUploader, KycExtraDocUploader } from "@/components/profile/kyc-doc-uploader";
 import { RewardBurst } from "@/components/brand/reward-burst";
 import { SUPPORT_EMAIL } from "@/lib/support-config";
@@ -26,7 +34,7 @@ export async function generateMetadata() {
   return { title: t.profile.verifyIdentity };
 }
 
-export default async function KycPage({ searchParams }: { searchParams?: Promise<{ welcome?: string; reason?: string; nida?: string; submitted?: string; fullName?: string; dob?: string; email?: string; next?: string }> }) {
+export default async function KycPage({ searchParams }: { searchParams?: Promise<{ welcome?: string; reason?: string; id?: string; idType?: string; idNumber?: string; idExpiry?: string; submitted?: string; fullName?: string; dob?: string; email?: string; next?: string }> }) {
   const { t } = await getServerT();
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/profile/kyc");
@@ -61,11 +69,32 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
   // sends `?next=/wallet/withdraw`; on approval we offer a "Continue" CTA back
   // to it. Reject anything that isn't a same-site absolute path (no open redirect).
   const nextHref = sp.next && /^\/(?!\/)/.test(sp.next) ? sp.next : null;
-  const nidaDone = !!kyc?.nidaVerifiedAt;
+  const idDone = !!kyc?.idVerifiedAt;
+
+  /**
+   * WHICH DOCUMENT THIS SCREEN IS ABOUT.
+   *
+   * Once the identity step is done the RECORD decides and the chooser is gone — a
+   * player mid-upload must never be shown a different document's slots because of a
+   * stale link. Before that the URL decides, which is what makes a refused submit
+   * round-trip to the SAME form; anything that is not one of the four falls back to
+   * NIDA rather than rendering an empty chooser.
+   */
+  const chosenType: IdDocType =
+    (idDone && isIdDocType(kyc?.idType) ? (kyc!.idType as IdDocType) : null) ??
+    (isIdDocType(sp.idType) ? sp.idType : "NIDA");
+  const spec = ID_DOC_SPECS[chosenType];
+  const idLabel = (t.profile as unknown as Record<string, string>)[spec.labelKey];
+
   const hasEmail = !!user?.email;
   const emailVerified = !!user?.emailVerifiedAt;
-  const docsCount = kyc?.documents.length ?? 0;
   const hasDoc = (dt: string) => (kyc?.documents ?? []).some((d: { docType: string }) => d.docType === dt);
+  // ⛔ PROGRESS IS COUNTED AGAINST THE SLOTS THIS DOCUMENT NEEDS, never against a
+  // literal 3. A passport needs two; "2/3 attached" on a complete passport submission
+  // is the screen telling the player they are not finished when they are.
+  const requiredSlots = spec.requiredSlots;
+  const attachedCount = requiredSlots.filter((s) => hasDoc(s)).length;
+  const allAttached = attachedCount >= requiredSlots.length;
   const submitted = kyc?.status === "PENDING_REVIEW" || kyc?.status === "APPROVED";
   const rejected = kyc?.status === "REJECTED";
   const needsInfo = kyc?.status === "ADDITIONAL_INFO_REQUIRED";
@@ -96,12 +125,12 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
           {banner.body}
         </div>
       )}
-      {sp.nida === "verified" && !banner && (
+      {sp.id === "accepted" && !banner && (
         <div role="status" className="rounded-xl border border-yes-700 bg-yes-500/10 px-4 py-3 text-[13px] text-yes-300">
-          {t.profile.kycNidaVerified}
+          {t.profile.kycIdAccepted}
         </div>
       )}
-      {hasEmail && !emailVerified && nidaDone && (
+      {hasEmail && !emailVerified && idDone && (
         <div className="rounded-xl border border-gold-700 bg-gold-500/[0.06] px-4 py-3 flex items-start gap-2.5">
           <I.mail s={16} className="text-gold-300 mt-0.5 shrink-0" />
           <div className="text-[12.5px] text-text-muted leading-snug">
@@ -123,7 +152,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
         </div>
       )}
 
-      {isWelcome && !submitted && !nidaDone && (
+      {isWelcome && !submitted && !idDone && (
         <section className="rounded-xl border border-gold-700 bg-gold-500/10 p-4 lg:p-5 flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="flex-1">
             <p className="font-display text-[14px] font-bold text-gold-300">
@@ -220,35 +249,111 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
           the live node carries the gilt ring. */}
       <ProgressRail
         nodes={[
-          { label: t.profile.nida,       glyph: "idCard",      done: nidaDone },
-          { label: t.profile.selfie,     glyph: "user",        done: docsCount >= 3 },
+          // ⛔ The first node is named after the document the player actually chose.
+          // It said "NIDA" unconditionally, which on a passport journey labelled the
+          // step after a document the player never touched.
+          { label: idLabel,              glyph: "idCard",      done: idDone },
+          { label: t.profile.selfie,     glyph: "user",        done: allAttached },
           { label: t.profile.review,     glyph: "shieldcheck", done: kyc?.status === "APPROVED" },
           { label: t.profile.idVerified, glyph: "check",       done: kyc?.status === "APPROVED" },
         ]}
       />
 
-      {!nidaDone && (
+      {!idDone && (
         <section className="rounded-xl glass-panel p-5 lg:p-6 space-y-4">
           <div className="flex items-center gap-2">
             <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-500/15 text-brand-300">
               <I.user s={15} />
             </span>
-            <h2 className="font-display text-[15px] font-semibold text-text">{t.profile.step1} · {t.profile.nida}</h2>
+            <h2 className="font-display text-[15px] font-semibold text-text">{t.profile.step1} · {t.profile.identityDocument}</h2>
           </div>
-          <form action={submitNidaAction} className="space-y-4">
+
+          {/* ── THE CHOOSER ──────────────────────────────────────────────────
+              ⛔ NOT A HAND-ROLLED CONTROL. `FilterPill` is the ONE filter/segment
+              language on this platform (DESIGN_AUTHORITY: hand-rolling a second is a
+              documented refusal), and its `semantics="tab"` reading — exactly one
+              option in force, choosing it navigates — is what this rail is.
+
+              ⭐ IT IS A LINK, AND THAT IS THE FEATURE. The type lands in the URL, so
+              (a) the form round-trips to the SAME document after a refused submit,
+              (b) it works with no JavaScript at all, and (c) switching document
+              deliberately drops the previous number rather than validating a passport
+              against a licence's rule.
+
+              ⚠️ Every pill is 44px and only the SELECTED one carries an outline — both
+              properties belong to the primitive, so this call site cannot drift from
+              the other eight rails that use it. */}
+          <div>
+            <FieldLegend as="p" className="block mb-1.5">{t.profile.chooseIdType}</FieldLegend>
+            <p className="mb-2.5 text-[12px] text-text-muted leading-snug">{t.profile.chooseIdTypeBody}</p>
+            <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={t.profile.chooseIdType}>
+              <FilterGroupKey>{t.profile.idDocsNeeded}</FilterGroupKey>
+              {ID_DOC_TYPES.map((ty) => (
+                <FilterPill
+                  key={ty}
+                  href={`/profile/kyc?idType=${ty}`}
+                  label={(t.profile as unknown as Record<string, string>)[ID_DOC_SPECS[ty].labelKey]}
+                  on={ty === chosenType}
+                  semantics="tab"
+                  testId={`idType:${ty}`}
+                  replace
+                  scroll={false}
+                />
+              ))}
+            </div>
+          </div>
+
+          <form action={submitIdentityAction} className="space-y-4">
+            {/* The form carries its own copy of the choice, so what is VALIDATED is
+                what was on screen — never a query string a link could have staled. */}
+            <input type="hidden" name="idType" value={chosenType} />
             <Field
-              id="nida"
-              label={t.profile.nationalId}
-              hint={t.profile.nidaHint}
+              id="idNumber"
+              label={(t.profile as unknown as Record<string, string>)[spec.numberLabelKey]}
+              hint={(t.profile as unknown as Record<string, string>)[spec.hintKey]}
               type="text"
               required
-              pattern="\d{20}"
-              title={t.profile.nidaValidation}
-              maxLength={20}
-              inputMode="numeric"
-              placeholder="00000000000000000000"
-              defaultValue={(sp as Record<string, string | undefined>).nida ?? ""}
+              {...(spec.htmlPattern ? { pattern: spec.htmlPattern } : {})}
+              title={(t.profile as unknown as Record<string, string>)[spec.ruleKey]}
+              maxLength={chosenType === "NIDA" ? 20 : 40}
+              inputMode={spec.inputMode}
+              defaultValue={(sp as Record<string, string | undefined>).idNumber ?? ""}
             />
+            {/* ⛔ A `pattern` ONLY where a published rule exists. Synthesising one for
+                the licence or the voter's card from our own sanity band would put a
+                browser-enforced lockout in front of a real citizen on a rule no
+                authority ever published.
+
+                ⛔ AND NO PLACEHOLDER (A-5). A placeholder must never become a value;
+                the shape lives in the hint and in the rule line below, which are text
+                rather than a greyed value sitting in a box. The rule is named IN FULL
+                whenever the server refused the number — "invalid" is never an
+                acceptable answer on an identity field (§F4). */}
+            {sp.reason === "id_number_format" && (
+              <p role="alert" className="-mt-2 text-[12px] leading-snug text-no-300">
+                {(t.profile as unknown as Record<string, string>)[spec.ruleKey]}
+              </p>
+            )}
+
+            {/* ⛔ ASKED FOR ONLY WHERE THE DOCUMENT HAS ONE. A NIDA and a voter's card
+                do not expire, and asking for a date a document does not carry invites
+                an invented one — which is worse than no date in a compliance record. */}
+            {spec.expires && (
+              <div>
+                <FieldLegend as="label" htmlFor="idExpiry" className="block mb-2">
+                  {t.profile.idExpiryLabel}
+                </FieldLegend>
+                <DateSelect
+                  name="idExpiry"
+                  id="idExpiry"
+                  required
+                  min={new Date().toISOString().slice(0, 10)}
+                  max={`${new Date().getFullYear() + 20}-12-31`}
+                  defaultValue={(sp as Record<string, string | undefined>).idExpiry ?? ""}
+                />
+                <p className="mt-1.5 text-[11px] text-text-subtle">{t.profile.idExpiryHint}</p>
+              </div>
+            )}
             <Field
               id="fullName"
               label={t.profile.fullName}
@@ -320,24 +425,28 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
         </section>
       )}
 
-      {nidaDone && !submitted && (
+      {idDone && !submitted && (
         <section className="rounded-xl glass-panel p-5 lg:p-6 space-y-3">
           <div className="flex items-center gap-2">
             {/* This badge marks STEP 1 being done, not identity being verified.
-                It renders on `nidaDone && !submitted` — a 20-digit NIDA that
-                passed the format + uniqueness check — before a single document
-                is uploaded and long before an officer looks at anything. It used
-                to read "ID verified" (SW "Imethibitishwa", ZH "已验证"), which
+                It renders on `idDone && !submitted` — a number that passed its
+                document's format rule and the uniqueness check — before a single
+                photo is uploaded and long before an officer looks at anything. It
+                used to read "ID verified" (SW "Imethibitishwa", ZH "已验证"), which
                 told an unverified player they were verified on the one surface
-                that must never overstate. docs/NIDA-POLICY.md, the owner
-                decision: `nidaVerifiedAt` means "format accepted", there is no
+                that must never overstate. docs/IDENTITY-POLICY.md, the owner
+                decision: `idVerifiedAt` means "format accepted", there is no
                 authority check, and "if any surface contradicts it, that surface
                 is wrong". Same string is still correct in the stepper above,
                 where it is gated on `kyc?.status === "APPROVED"`. */}
             <span className="inline-flex items-center gap-1 rounded-pill border border-yes-700 bg-yes-500/10 px-2.5 py-0.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.1em] text-yes-300">
               <I.check s={11} />
-              {t.profile.nidaSaved}
+              {t.profile.idSaved}
             </span>
+            {/* Which document this submission is built on, stated where the player
+                can see it — a passport journey that never names the passport leaves
+                somebody wondering whether the right thing was recorded. */}
+            <span className="font-mono text-[10.5px] uppercase tracking-[0.1em] text-text-subtle">{idLabel}</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-500/15 text-brand-300">
@@ -348,19 +457,32 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
           <p className="text-[12.5px] text-text-muted leading-snug">
             {t.profile.uploadDocsBody}
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <KycDocUploader label={t.profile.idFront}    docType="NIDA_FRONT" attached={hasDoc("NIDA_FRONT")} />
-            <KycDocUploader label={t.profile.idBack}     docType="NIDA_BACK"  attached={hasDoc("NIDA_BACK")} />
-            <KycDocUploader label={t.profile.selfie} docType="SELFIE"     attached={hasDoc("SELFIE")} />
+          {/* ⛔ THE SLOTS COME FROM THE CATALOGUE, NOT FROM THIS FILE. A NIDA asks for
+              front + back + selfie; the other three ask for one image of the document
+              + a selfie. ⭐ THE SELFIE SURVIVES ON ALL FOUR ON PURPOSE: "Selfie matches
+              the ID photo" is one of the officer's four attestations, so dropping it
+              for three of the types would have removed the human control while widening
+              the document list — exactly what the policy forbids.
+              ⚠️ `sm:grid-cols-*` is derived from the count, or a two-slot document
+              renders a 3-column grid with a hole in it at ≥640px. */}
+          <div className={`grid grid-cols-1 gap-2 ${requiredSlots.length >= 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+            {requiredSlots.map((slot) => (
+              <KycDocUploader
+                key={slot}
+                label={(t.profile as unknown as Record<string, string>)[DOC_SLOT_LABEL_KEY[slot]]}
+                docType={slot}
+                attached={hasDoc(slot)}
+              />
+            ))}
           </div>
           <p className="text-[10.5px] text-text-subtle">
             {t.profile.tapToAttach}
           </p>
           <p className="font-mono text-[11px] font-bold tabular-nums text-text-muted">
-            {docsCount}/3 {t.toast.documentAttached.toLowerCase()}{docsCount >= 3 ? ` — ${t.profile.readyToSubmit}` : ""}
+            {attachedCount}/{requiredSlots.length} {t.toast.documentAttached.toLowerCase()}{allAttached ? ` — ${t.profile.readyToSubmit}` : ""}
           </p>
           <form action={submitKycForReviewAction}>
-            {docsCount >= 3 ? (
+            {allAttached ? (
               <SubmitButton label={t.common.confirm} pendingLabel={t.common.loading} />
             ) : (
               <>

@@ -154,17 +154,17 @@ const MUTATIONS = [
     // inherits" — and until now literally nothing in the tree would have noticed.
     // ⭐ RE-POINTED 2026-08-15. This used to reword the KYC sentence and expect §8 to notice
     // the phrase test had stopped matching. That defect is now STRUCTURALLY IMPOSSIBLE for this
-    // family: `kyc-service.ts` emits `reason: "nida_taken"`, the phrase test is deleted, and the
+    // family: `kyc-service.ts` emits `reason: "id_taken"`, the phrase test is deleted, and the
     // sentence can be reworded — or translated — with no effect on what the player reads. The
     // risk did not vanish though, it MOVED: the new silent failure is the service dropping the
     // reason. That is what this mutation models now, and §8c is what catches it.
     name: "service-stops-saying-why",
-    why: "🔴 §1.6's risk, relocated: kyc-service stops emitting `nida_taken`, so the one-NIDA-one-account block falls through to the generic line and nothing goes red — the deleted phrase test is no longer there to catch it",
+    why: "🔴 §1.6's risk, relocated: kyc-service stops emitting `id_taken`, so the one-document-one-account block falls through to the generic line and nothing goes red — the deleted phrase test is no longer there to catch it",
     file: KYC,
     // ⚠️ BOTH SITES, for the same reason the reworded version needed `all` — the reason is
     // returned from TWO places, and mutating one would leave the other satisfying §8c.
     all: true,
-    from: ', code: "INVALID", reason: "nida_taken" }',
+    from: ', code: "INVALID", reason: "id_taken" }',
     to: ', code: "INVALID" }',
   },
   {
@@ -244,11 +244,11 @@ const MUTATIONS = [
   {
     // ⚠️ A severity is a promise about how alarmed to be. An identity already linked to
     // another account is a fraud-shaped fact, not a typo to fix in place.
-    name: "nida-taken-demoted-to-a-nudge",
+    name: "id-taken-demoted-to-a-nudge",
     why: "the National-ID-already-linked block is demoted from an error modal to a quiet inline warning",
     file: REASONS,
-    from: "  nida_taken:           { severity: \"error\",   channel: \"modal\",  key: \"errNidaTaken\" },",
-    to: "  nida_taken:           { severity: \"info\",    channel: \"inline\", key: \"errNidaTaken\" },",
+    from: "  id_taken:             { severity: \"error\",   channel: \"modal\",  key: \"errIdTaken\" },",
+    to: "  id_taken:             { severity: \"info\",    channel: \"inline\", key: \"errIdTaken\" },",
   },
   {
     // ⚠️ The code must never outrank an explicit reason, or a service taught to emit its own

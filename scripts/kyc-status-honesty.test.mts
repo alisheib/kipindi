@@ -1,22 +1,23 @@
 /**
  * THE KYC SCREEN MUST NOT TELL AN UNVERIFIED PLAYER THEY ARE VERIFIED.
  *
- * Found by walking the live KYC ladder as a real player. On step 2 — NIDA number
- * typed, not one document uploaded, nothing submitted, no officer involved — the
+ * Found by walking the live KYC ladder as a real player. On step 2 — the identity
+ * number typed, not one document uploaded, nothing submitted, no officer involved — the
  * card rendered a green ticked pill reading "ID verified" (SW "Imethibitishwa",
  * ZH "已验证"). It was bound to `nidaDone && !submitted`, i.e. to
- * `nidaVerifiedAt`.
+ * `idVerifiedAt` (`nidaVerifiedAt` before 2026-08-20).
  *
- * docs/NIDA-POLICY.md is the owner decision and could not be plainer:
+ * docs/IDENTITY-POLICY.md is the owner decision and could not be plainer:
  *
- *   > `nidaVerifiedAt` therefore means "format accepted", NOT "government
+ *   > `idVerifiedAt` therefore means "format accepted", NOT "government
  *   > confirmed" … If any surface, doc or comment contradicts it, that surface
  *   > is wrong.
  *
- * There is no authority check anywhere in the product; identity assurance comes
- * from three documents a human compliance officer reviews. So that badge was a
- * false status claim on the one surface that must never overstate — and it was
- * false in all three languages.
+ * There is no authority check anywhere in the product — not for NIDA, and there is
+ * no endpoint at all for a passport, a driving licence or a voter's card. Identity
+ * assurance comes from the documents a human compliance officer reviews. So that
+ * badge was a false status claim on the one surface that must never overstate —
+ * and it was false in all three languages.
  *
  * The same string is legitimate twice on the same page: the stepper node and the
  * approval reward-burst, both gated on `kyc?.status === "APPROVED"`. This test
@@ -34,7 +35,12 @@ const ok = (label: string, cond: boolean, extra?: string) => {
 const SRC = readFileSync(new URL("../src/app/profile/kyc/page.tsx", import.meta.url), "utf8");
 
 // ── 1. The pre-submission step-2 card must not claim verification ──────────
-const OPEN = "{nidaDone && !submitted && (";
+// ⚠️ RE-ANCHORED 2026-08-20. `nidaDone` became `idDone` when the identity step
+// stopped being NIDA-only. An anchor that no longer matches makes indexOf return
+// -1, and the assertions below would then run over a 4000-character slice of the
+// WRONG part of the file — passing on nothing. The "still exists" check underneath
+// is what turns that into a red.
+const OPEN = "{idDone && !submitted && (";
 const start = SRC.indexOf(OPEN);
 ok("the pre-submission step-2 card still exists", start !== -1);
 if (start !== -1) {
@@ -48,8 +54,8 @@ if (start !== -1) {
     "an unverified player would be badged 'ID verified' before any document is reviewed",
   );
   ok(
-    "step-2 card uses the truthful nidaSaved label instead",
-    block.includes("t.profile.nidaSaved"),
+    "step-2 card uses the truthful idSaved label instead",
+    block.includes("t.profile.idSaved"),
   );
 }
 
@@ -70,10 +76,10 @@ for (const at of usages) {
 // ── 3. The truthful label exists in all three languages ────────────────────
 for (const loc of ["en", "sw", "zh"] as const) {
   const d = (dict as unknown as Record<string, { profile: Record<string, string> }>)[loc];
-  const v = d?.profile?.nidaSaved;
-  ok(`${loc} has profile.nidaSaved`, typeof v === "string" && v.length > 0, String(v));
+  const v = d?.profile?.idSaved;
+  ok(`${loc} has profile.idSaved`, typeof v === "string" && v.length > 0, String(v));
   ok(
-    `${loc} nidaSaved does not itself claim verification`,
+    `${loc} idSaved does not itself claim verification`,
     !/verified|imethibitishwa|已验证/i.test(v ?? ""),
     v,
   );
@@ -84,7 +90,7 @@ for (const loc of ["en", "sw", "zh"] as const) {
 //     nida.verify.requested  {"nidaLast4":"9014"}
 //     nida.verify.success    {"matchScore":0.97}
 //     kyc.nida.verified      {"matchScore":0.97}
-// docs/NIDA-POLICY.md: the authority check is "deliberately absent … no request
+// docs/IDENTITY-POLICY.md: the authority check is "deliberately absent … no request
 // has ever reached the National Identification Authority". So the hash-chained
 // record a GBT/TRA inspector reads asserted a 97%-confidence identity match that
 // nothing computed — and it returned gender "M" for every player alive.

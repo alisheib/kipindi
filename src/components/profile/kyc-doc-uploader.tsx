@@ -15,12 +15,16 @@ import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
 import { attachDocumentAction, attachExtraDocumentAction } from "@/app/profile/kyc/actions";
 import { fileToDataUrl, MAX_DOC_BYTES as MAX_BYTES } from "@/lib/client/kyc-image";
+import type { KycDocSlot } from "@/lib/id-documents";
 import { errorCopy } from "@/lib/error-copy";
 
 export function KycDocUploader({
   docType, label, attached, locked,
 }: {
-  docType: "NIDA_FRONT" | "NIDA_BACK" | "SELFIE";
+  // ⛔ THE SLOT UNION IS THE CATALOGUE’S, not this file’s. A literal here is
+  // what kept PASSPORT / DRIVER_LICENSE / VOTER_CARD unreachable from the product
+  // while they sat in the database enum.
+  docType: KycDocSlot;
   label: string;
   attached: boolean;
   locked?: boolean; // submission under review / approved → no changes

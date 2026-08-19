@@ -13,7 +13,7 @@ import { randomId } from "./crypto";
 /**
  * Is a real National Identification Authority endpoint wired up?
  *
- * Today: no, and by owner decision none is required (docs/NIDA-POLICY.md). What
+ * Today: no, and by owner decision none is required (docs/IDENTITY-POLICY.md). What
  * this module performs is a FORMAT check; uniqueness is enforced separately and
  * identity assurance comes from the documents a human officer reviews. The flag
  * exists so the audit trail describes whichever of the two actually ran, instead

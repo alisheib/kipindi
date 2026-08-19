@@ -44,7 +44,7 @@ async function player(id: string, balance: number) {
     createdAt: now, updatedAt: now, lastLoginAt: now, closedAt: null,
   } as never);
   await db.wallet.create({ id: `wlt_${id}`, userId: id, balance, pending: 0, hold: 0, currency: "TZS", status: "ACTIVE", createdAt: now, updatedAt: now });
-  await db.kyc.upsert({ id: `kyc_${id}`, userId: id, status: "APPROVED", rejectReason: null, rejectNote: null, nidaNumber: "19900101456712341234", nidaVerifiedAt: now, fullName: "T", dob: "1990-01-01", documents: [], reviewerId: null, reviewedAt: null, submittedAt: now, createdAt: now, updatedAt: now } as never);
+  await db.kyc.upsert({ id: `kyc_${id}`, userId: id, status: "APPROVED", rejectReason: null, rejectNote: null, nidaNumber: "19900101456712341234", nidaVerifiedAt: now, idType: "NIDA", idNumber: "19900101456712341234", idExpiry: null, idVerifiedAt: now, fullName: "T", dob: "1990-01-01", documents: [], reviewerId: null, reviewedAt: null, submittedAt: now, createdAt: now, updatedAt: now } as never);
 }
 
 console.log("\npredictorCount — people, not bets\n");

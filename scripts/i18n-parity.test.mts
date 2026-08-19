@@ -42,6 +42,11 @@ const IDENTICAL_OK = new Set<string>([
   // lived as English JSX in page.tsx with no key, which is why nothing could check it at all.
   "home.heroHeadline",          // "The wisdom of YES & NO." — brand line, intentionally untranslated
   "profile.nida",               // NIDA — national-ID acronym
+  // ⛔ NIDA IS THE AUTHORITY'S OWN NAME, NOT A WORD. It is the chooser's label for
+  // one of the four documents, and it is "NIDA" in Swahili and in Chinese exactly as
+  // it is in English — the other three (passport / driving licence / voter's card)
+  // ARE translated, which is what proves this is a proper noun and not an oversight.
+  "profile.idTypeNida",         // NIDA — same acronym in all three locales
   "profile.signOutConfirmBodySw", // already a Swahili-named key
   "profile.tanzania",           // "Tanzania" — proper noun
   "leaderboard.tableRoi",       // ROI — finance acronym

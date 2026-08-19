@@ -34,7 +34,9 @@ export async function POST(req: Request) {
   const kyc: StoredKyc = {
     id: `kyc_${randomId(10)}`, userId: id, status, rejectReason: null,
     rejectNote: status === "ADDITIONAL_INFO_REQUIRED" ? "The back of your ID is blurry — please re-upload a clearer photo." : null,
-    nidaNumber: "19900101456712345678", nidaVerifiedAt: now, fullName: "Asha Mwamba Juma", dob: "1990-01-01",
+    nidaNumber: "19900101456712345678", nidaVerifiedAt: now,
+    idType: "NIDA", idNumber: "19900101456712345678", idExpiry: null, idVerifiedAt: now,
+    fullName: "Asha Mwamba Juma", dob: "1990-01-01",
     documents: [
       { docType: "NIDA_FRONT", storageKey: "data:image/jpeg;base64,/9j/seed", uploadedAt: now },
       { docType: "NIDA_BACK", storageKey: "data:image/jpeg;base64,/9j/seed", uploadedAt: now },

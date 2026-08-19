@@ -39,10 +39,11 @@ export const tzPhone = z
 
 export const otpCode = z.string().trim().regex(/^\d{6}$/, "OTP must be 6 digits");
 
-export const nidaNumber = z
-  .string()
-  .trim()
-  .regex(/^\d{20}$/, "NIDA number must be 20 digits");
+// ⛔ `nidaNumber` WAS DELETED HERE ON 2026-08-20. It declared a SECOND home for the
+// 20-digit NIDA rule, and from that date a NIDA is one of four accepted documents
+// rather than the only one. There is now exactly ONE catalogue of identity-number
+// rules — `src/lib/id-documents.ts` — so a licence format arriving later is added
+// beside its citation instead of racing a copy in the file named "validators".
 
 export const dateOfBirth = z
   .string()
@@ -133,8 +134,38 @@ export const OtpVerifySchema = z.object({
 });
 export type OtpVerifyInput = z.infer<typeof OtpVerifySchema>;
 
-export const KycNidaSchema = z.object({
-  nida: nidaNumber,
+/**
+ * THE IDENTITY STEP — any ONE of four Tanzanian documents (owner decision, Ali
+ * 2026-08-19). Replaces `KycNidaSchema`, which could only describe a NIDA.
+ *
+ * ⛔ THE NUMBER'S RULE IS NOT HERE, AND THAT IS DELIBERATE. Each document has its
+ * own — one published, one advisory, two openly absent — and they live in exactly
+ * one place, `src/lib/id-documents.ts`, so tightening a licence format later is a
+ * one-line change there with its citation beside it. A second copy of the rule in
+ * this file is how two validators come to disagree. This schema checks the SHAPE of
+ * the submission (a real type, a non-empty number, a plausible expiry) and hands the
+ * number to `validateIdNumber`, which is also what gives a refusal a `reason` the
+ * player's own language can render.
+ *
+ * ⭐ `dob` IS THE AGE GATE FOR ALL FOUR TYPES. Only a NIDA number carries a date of
+ * birth inside it, so an age check derived from the NUMBER would be silently
+ * NIDA-only — a control that passes because the feature is absent. `dateOfBirth`
+ * refuses anyone under 18 whatever document they chose.
+ */
+export const KycIdentitySchema = z.object({
+  idType: z.enum(["NIDA", "PASSPORT", "DRIVER_LICENSE", "VOTER_CARD"], {
+    errorMap: () => ({ message: "Choose which identity document you are using." }),
+  }),
+  idNumber: z.string().trim().min(1, "Enter your document number").max(40),
+  // Only the two documents that HAVE an expiry send one; `""` is "not applicable",
+  // never "unknown". The per-type requirement is enforced in kyc-service, which can
+  // name the document in the refusal.
+  idExpiry: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD")
+    .or(z.literal(""))
+    .optional(),
   fullName,
   dob: dateOfBirth,
   // Optional contact email collected at the identity step — the canonical
@@ -142,7 +173,7 @@ export const KycNidaSchema = z.object({
   // "" / omitted leaves any existing email untouched. Mirrors profile actions.
   email: z.string().trim().toLowerCase().email("Enter a valid email.").max(254).or(z.literal("")).optional(),
 });
-export type KycNidaInput = z.infer<typeof KycNidaSchema>;
+export type KycIdentityInput = z.infer<typeof KycIdentitySchema>;
 
 export const DepositSchema = z.object({
   provider: z.enum(["MPESA", "AIRTEL_MONEY", "HALO_PESA", "MIXX", "CARD"]),

@@ -1,14 +1,20 @@
 /**
  * Security test — identity uniqueness across the platform. A single identity
- * may NOT exist twice: email, NIDA, and phone are each unique. This is a P0
- * AML / multi-accounting control for a licensed book.
+ * may NOT exist twice: email, the identity DOCUMENT, and phone are each unique.
+ * This is a P0 AML / multi-accounting control for a licensed book.
+ *
+ * ⭐ FROM 2026-08-20 THE DOCUMENT MAY BE ANY OF FOUR, and the uniqueness rule is
+ * on the PAIR (type, number). The four-type coverage — including the fact that a
+ * duplicate is refused identically whichever document it arrived on — lives in
+ * `npm run test:id-documents`; this suite keeps the NIDA path it has always
+ * guarded and proves the API it now goes through.
  *
  *   npx tsx scripts/kyc-security.test.mts
  */
 process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-min-aaaa";
 process.env.OTP_PEPPER ??= "test-only-pepper";
 
-import { startKyc, submitNidaStep, getKycStatus } from "../src/lib/server/kyc-service.ts";
+import { startKyc, submitIdentityStep, getKycStatus } from "../src/lib/server/kyc-service.ts";
 import { setUserEmail } from "../src/lib/server/email-verification.ts";
 import { db } from "../src/lib/server/store.ts";
 
@@ -47,22 +53,40 @@ const NIDA = "19900101456712345671";
 await mkUser("usr_n_a", "+255710000211");
 await mkUser("usr_n_b", "+255710000212");
 await startKyc("usr_n_a");
-r = await submitNidaStep("usr_n_a", { nida: NIDA, fullName: "Alpha One", dob: "1990-01-01" });
+r = await submitIdentityStep("usr_n_a", { idType: "NIDA", idNumber: NIDA, fullName: "Alpha One", dob: "1990-01-01" });
 ok("NIDA verifies for A", r.ok && (r as { data?: { verified: boolean } }).data?.verified === true);
 await startKyc("usr_n_b");
-r = await submitNidaStep("usr_n_b", { nida: NIDA, fullName: "Beta Two", dob: "1990-01-01" });
+r = await submitIdentityStep("usr_n_b", { idType: "NIDA", idNumber: NIDA, fullName: "Beta Two", dob: "1990-01-01" });
 ok("duplicate NIDA blocked for B", !r.ok && /already linked to another account/.test((r as { error: string }).error));
-ok("B kyc did NOT verify", !(await getKycStatus("usr_n_b"))?.nidaVerifiedAt);
+ok("…and the refusal carries the id_taken reason, not prose", !r.ok && (r as { reason?: string }).reason === "id_taken");
+ok("B kyc did NOT verify", !(await getKycStatus("usr_n_b"))?.idVerifiedAt);
 
 // 2b. If A is REJECTED, the NIDA frees up for B.
 const ka = await getKycStatus("usr_n_a");
 await db.kyc.upsert({ ...ka!, status: "REJECTED", updatedAt: now });
-r = await submitNidaStep("usr_n_b", { nida: NIDA, fullName: "Beta Two", dob: "1990-01-01" });
+r = await submitIdentityStep("usr_n_b", { idType: "NIDA", idNumber: NIDA, fullName: "Beta Two", dob: "1990-01-01" });
 ok("freed NIDA (A rejected) now verifies for B", r.ok && (r as { data?: { verified: boolean } }).data?.verified === true);
 
 // 2c. Re-submitting your OWN NIDA is fine (not a self-conflict).
-r = await submitNidaStep("usr_n_b", { nida: NIDA, fullName: "Beta Two", dob: "1990-01-01" });
+r = await submitIdentityStep("usr_n_b", { idType: "NIDA", idNumber: NIDA, fullName: "Beta Two", dob: "1990-01-01" });
 ok("own NIDA re-submit ok", r.ok && (r as { data?: { verified: boolean } }).data?.verified === true);
+
+// 2d. 🔴 THE DEPRECATED MIRROR IS WRITTEN FOR A NIDA AND NULLED FOR ANYTHING ELSE.
+// It exists only so a rolling deploy's previous container keeps serving KYC reads.
+// If it were left populated after a switch to another document type, the LEGACY
+// partial unique index would still be holding a number this submission no longer
+// claims — i.e. a NIDA burned by a player who has since moved to a passport.
+{
+  const kb = await getKycStatus("usr_n_b");
+  ok("NIDA submission mirrors the deprecated column", kb?.nidaNumber === NIDA);
+  await mkUser("usr_n_c", "+255710000213");
+  await startKyc("usr_n_c");
+  const rc = await submitIdentityStep("usr_n_c", { idType: "PASSPORT", idNumber: "AB123456", idExpiry: "2030-01-01", fullName: "Cee Three", dob: "1990-01-01" });
+  ok("a passport submission is accepted", rc.ok && (rc as { data?: { verified: boolean } }).data?.verified === true);
+  const kc = await getKycStatus("usr_n_c");
+  ok("…and does NOT write the deprecated NIDA mirror", kc?.nidaNumber === null);
+  ok("…and records the tuple instead", kc?.idType === "PASSPORT" && kc?.idNumber === "AB123456");
+}
 
 // ─── 3. PHONE uniqueness (the lookup the registration guard relies on) ───
 // requestRegisterOtp() blocks a duplicate via `db.user.findByPhone(phone)` →

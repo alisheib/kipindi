@@ -78,6 +78,10 @@ enum KycRejectReason {
   OTHER
 }
 
+/// An ATTACHMENT slot on a KYC submission — which image this file is, not which
+/// document proves identity. `PASSPORT`, `DRIVER_LICENSE` and `VOTER_CARD` sat
+/// unused here from the first KYC release and are live from 2026-08-20: one image
+/// slot per non-NIDA document, alongside the selfie every type still requires.
 enum DocType {
   NIDA
   NIDA_FRONT
@@ -86,6 +90,20 @@ enum DocType {
   DRIVER_LICENSE
   VOTER_CARD
   SELFIE
+}
+
+/// WHICH DOCUMENT PROVES IDENTITY — exactly the four a player may choose from.
+///
+/// ⛔ DELIBERATELY NOT `DocType`. That enum names attachment SLOTS and admits
+/// `NIDA_FRONT` and `SELFIE`, neither of which is a document a person holds. A
+/// column typed `DocType` would let the database store `idType = SELFIE`, and the
+/// partial unique index below is only as trustworthy as the values it can hold.
+/// Catalogue + validation: `src/lib/id-documents.ts`. Policy: docs/IDENTITY-POLICY.md.
+enum IdDocType {
+  NIDA
+  PASSPORT
+  DRIVER_LICENSE
+  VOTER_CARD
 }
 
 enum WalletStatus {
@@ -315,8 +333,32 @@ model KycSubmission {
   status         KycStatus        @default(IN_PROGRESS)
   rejectReason   KycRejectReason?
   rejectNote     String?
+  /// 🔴 DEPRECATED 2026-08-20 — SUPERSEDED BY `idType` + `idNumber`, KEPT FOR ONE
+  /// RELEASE. Backfilled into the pair by
+  /// `20260820120000_kyc_identity_document`, and still MIRRORED on a NIDA
+  /// submission by the one write site in `kyc-service.ts` so that (a) the previous
+  /// container keeps serving KYC reads through a rolling deploy and (b) a rollback
+  /// does not lose the number. ⛔ NOTHING READS IT — `test:id-documents` fails if
+  /// anything does. Dropped, with its index, by the contract migration named in
+  /// docs/COMPLIANCE-DECISIONS.md (2026-08-20).
   nidaNumber     String?
+  /// 🔴 DEPRECATED 2026-08-20 — superseded by `idVerifiedAt`. Same terms as above.
   nidaVerifiedAt DateTime?
+  /// WHICH of the four documents this submission is built on. Null only before the
+  /// identity step is completed.
+  idType         IdDocType?
+  /// The identity number, NORMALISED (`normaliseIdNumber`: separators stripped,
+  /// uppercased). ⛔ The normalisation is a uniqueness control, not a tidy-up — two
+  /// spellings of one passport must never index as two documents.
+  idNumber       String?
+  /// Expiry, for the two documents that carry one (passport, driving licence).
+  /// ⛔ Null for NIDA and the voter's card BY DESIGN — asking for a date a document
+  /// does not have invites an invented one.
+  idExpiry       DateTime?
+  /// When the number was ACCEPTED — format valid and unique to this account.
+  /// ⛔ Never "an authority confirmed this identity"; there is no authority check
+  /// and none is required (docs/IDENTITY-POLICY.md).
+  idVerifiedAt   DateTime?
   fullName       String?
   dob            DateTime?
   gender         String?
@@ -336,15 +378,28 @@ model KycSubmission {
   @@index([userId, status])
   @@index([status, submittedAt])
   @@index([nidaNumber])
-  // ⚠️ ALSO ON THIS TABLE, but not expressible here: the PARTIAL unique index
-  // "KycSubmission_nidaNumber_active_key" ON ("nidaNumber")
-  //   WHERE "nidaNumber" IS NOT NULL AND status <> 'REJECTED'
-  // It enforces one-NIDA-one-account (docs/NIDA-POLICY.md) and must be partial,
-  // because a REJECTED submission deliberately frees the number. The Prisma DSL
-  // has no partial-unique syntax, so it is raw SQL in
-  // prisma/migrations/20260731120000_kyc_nida_active_unique. Do not "tidy" this
-  // away as drift — scripts/load/s14-kyc-nida-race.mts proves what happens
-  // without it (two accounts, one national ID).
+  @@index([idType, idNumber])
+  // ⚠️ ALSO ON THIS TABLE, but not expressible here: TWO PARTIAL unique indexes.
+  //
+  // 🔴 THE LIVE ONE, from 2026-08-20 — it is the whole uniqueness control:
+  //   "KycSubmission_idType_idNumber_active_key" ON ("idType", "idNumber")
+  //     WHERE "idNumber" IS NOT NULL AND status <> 'REJECTED'
+  // ONE identity tuple, unique together, enforced by the DATABASE rather than by
+  // application code that can be forgotten (docs/IDENTITY-POLICY.md). It must stay
+  // PARTIAL because a REJECTED submission deliberately frees the number, and it
+  // must span the TYPE as well as the number — three parallel per-document columns
+  // would hand one human four accounts and a route around a DUPLICATE_IDENTITY
+  // rejection.
+  //
+  // 🔴 THE LEGACY ONE, retained until the contract migration:
+  //   "KycSubmission_nidaNumber_active_key" ON ("nidaNumber")
+  //     WHERE "nidaNumber" IS NOT NULL AND status <> 'REJECTED'
+  //
+  // The Prisma DSL has no partial-unique syntax, so both are raw SQL —
+  // prisma/migrations/20260731120000_kyc_nida_active_unique and
+  // prisma/migrations/20260820120000_kyc_identity_document. Do not "tidy" either
+  // away as drift: scripts/load/s14-kyc-nida-race.mts proves what happens without
+  // one (two accounts, one national ID).
 }
 
 model KycDocument {

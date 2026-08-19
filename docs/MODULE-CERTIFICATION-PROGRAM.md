@@ -490,7 +490,7 @@ disconnect? · reconnect storm after a deploy.
 > three consecutive runs. Recorded because a property nobody has measured is not a
 > property anybody knows.
 **Attack** 🔴 **NIDA is a MOCK.** A licensed operator must not imply verification it does not
-perform — the product text and `NIDA-POLICY.md` must agree with the code (G8 at its sharpest) ·
+perform — the product text and `IDENTITY-POLICY.md` must agree with the code (G8 at its sharpest) ·
 resubmit unchanged after rejection and get auto-approved · read another player's submission by ID ·
 approve without the required documents · PII in logs, Sentry, audit rows and exports.
 **Exit** Product text truthful about NIDA, no cross-player read, zero PII in any sink.

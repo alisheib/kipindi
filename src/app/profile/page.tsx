@@ -179,7 +179,11 @@ export default async function ProfilePage() {
                 {t.profile.verifyBody}
               </p>
               <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-3">
-                <Step n={1} title={t.profile.nida}   detail={t.profile.nationalId} done />
+                {/* ⛔ NOT "NIDA". From 2026-08-20 a player proves identity with any
+                    ONE of four documents, and this teaser sits BEFORE the choice is
+                    made — naming one of the four here would tell somebody holding a
+                    passport that they cannot start. */}
+                <Step n={1} title={t.profile.identityDocument} detail={t.profile.chooseIdTypeBody} done />
                 <Step n={2} title={t.profile.phoneSms}  detail={t.profile.phoneSms}           done />
                 <Step n={3} title={t.profile.selfieDocs} detail={t.profile.selfieDocs} active />
               </div>

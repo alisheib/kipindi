@@ -62,8 +62,24 @@ export type StoredKyc = {
   status: "NOT_STARTED" | "IN_PROGRESS" | "PENDING_REVIEW" | "APPROVED" | "REJECTED" | "ADDITIONAL_INFO_REQUIRED";
   rejectReason: string | null;
   rejectNote: string | null;
+  /** 🔴 DEPRECATED 2026-08-20 — superseded by `idType`/`idNumber`. Written as a
+   *  rolling-deploy mirror on a NIDA submission and READ BY NOTHING; see the
+   *  schema comment and docs/COMPLIANCE-DECISIONS.md. */
   nidaNumber: string | null;
+  /** 🔴 DEPRECATED 2026-08-20 — superseded by `idVerifiedAt`. Same terms. */
   nidaVerifiedAt: string | null;
+  /** WHICH of the four documents proves this identity. `IdDocType` in
+   *  `@/lib/id-documents`; typed as a string here because `StoredKyc` is the
+   *  storage shape both back-ends map onto. */
+  idType?: string | null;
+  /** The identity number, NORMALISED (`normaliseIdNumber`). ⛔ Half of the
+   *  uniqueness tuple — one document, one account, across all four types. */
+  idNumber?: string | null;
+  /** Expiry, for the two documents that carry one. Null for NIDA / voter card. */
+  idExpiry?: string | null;
+  /** When the number was accepted: format valid and unique. Never "authority
+   *  confirmed" — there is no authority check (docs/IDENTITY-POLICY.md). */
+  idVerifiedAt?: string | null;
   fullName: string | null;
   dob: string | null;
   /** `mimeType`/`sizeBytes` are the VERIFIED facts about the bytes, captured at
@@ -609,6 +625,36 @@ const memoryDb = {
       if (!norm) return null;
       for (const k of store.kyc.values()) {
         if ((k.nidaNumber ?? "").trim() !== norm) continue;
+        if (excludeUserId && k.userId === excludeUserId) continue;
+        if (k.status === "REJECTED") continue;
+        return { userId: k.userId, status: k.status };
+      }
+      return null;
+    },
+    /**
+     * 🔴 ONE DOCUMENT, ONE ACCOUNT — the duplicate read for ALL FOUR identity
+     * types. A non-REJECTED submission carrying this (type, number) on a
+     * DIFFERENT user.
+     *
+     * ⛔ It matches on the PAIR, never on the number alone. Matching the number
+     * alone would refuse a passport that happens to share its digits with somebody
+     * else's licence; matching the type alone is meaningless. And the pair is what
+     * the partial unique index enforces, so the fast path and the enforcement must
+     * ask the same question or the two disagree under load.
+     *
+     * ⚠️ The caller passes an ALREADY-NORMALISED number (`normaliseIdNumber`).
+     * Normalising here as well would hide a call site that forgot to.
+     */
+    findActiveByIdNumber: (
+      idType: string,
+      idNumber: string,
+      excludeUserId?: string,
+    ): { userId: string; status: string } | null => {
+      const norm = idNumber.trim();
+      if (!norm || !idType) return null;
+      for (const k of store.kyc.values()) {
+        if ((k.idNumber ?? "").trim() !== norm) continue;
+        if ((k.idType ?? "") !== idType) continue;
         if (excludeUserId && k.userId === excludeUserId) continue;
         if (k.status === "REJECTED") continue;
         return { userId: k.userId, status: k.status };

@@ -1,5 +1,5 @@
 /**
- * /api/admin/kyc-doc?user=<userId>&type=<NIDA_FRONT|NIDA_BACK|SELFIE>
+ * /api/admin/kyc-doc?user=<userId>&type=<one of ALL_DOC_SLOTS>
  *
  * Streams a player's KYC document image to a compliance officer for review.
  * Same gate as every /admin/* surface: ADMIN/COMPLIANCE/MODERATOR only (role
@@ -20,9 +20,15 @@ import { audit } from "@/lib/server/audit";
 import { canAct } from "@/lib/server/rbac";
 import { checkAdminTotp } from "@/lib/server/admin-guard";
 import { readKycDocument } from "@/lib/server/storage";
+import { ALL_DOC_SLOTS } from "@/lib/id-documents";
 
-// RBAC: raw KYC/NIDA document access = compliance (see canAct). Owner/ADMIN bypasses.
-const DOC_TYPES = new Set(["NIDA_FRONT", "NIDA_BACK", "SELFIE"]);
+// RBAC: raw identity-document access = compliance (see canAct). Owner/ADMIN bypasses.
+//
+// ⛔ DERIVED FROM THE CATALOGUE, NEVER HAND-WRITTEN. A literal set here would have
+// gone stale the moment a fifth document type shipped — and the previous literal is
+// exactly why an officer could not open a passport bio page: the slot existed in
+// the database enum and this route refused it with "Bad request".
+const DOC_TYPES = new Set<string>(ALL_DOC_SLOTS);
 
 export async function GET(req: Request) {
   const session = await currentSession();

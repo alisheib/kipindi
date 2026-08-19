@@ -482,8 +482,11 @@ console.log("\n§8b · the reasons that replaced the deleted phrase tests");
       ["email_unverified", "errEmailUnverified"],
       ["kyc_required", "errVerifyIdentity"],
       // ── the KYC family · every one of these was reachable ONLY through a phrase test ──
-      ["nida_taken", "errNidaTaken"],
-      ["nida_not_verified", "errNidaNotVerified"],
+      ["id_taken", "errIdTaken"],
+      ["id_not_verified", "errIdNotVerified"],
+      ["id_number_format", "errIdNumberFormat"],
+      ["id_expired", "errIdExpired"],
+      ["id_expiry_required", "errIdExpiryRequired"],
       ["doc_image_type", "errDocImage"],
       ["doc_too_large", "errDocTooLarge"],
       ["docs_locked", "errDocsLocked"],
@@ -540,8 +543,16 @@ console.log("\n§8b · the reasons that replaced the deleted phrase tests");
 console.log("\n§8c · the services still emit the reasons that replaced the phrase tests");
 {
   const EMITTERS: Array<{ file: string; reasons: string[] }> = [
+    // ⭐ `nida_taken` / `nida_not_verified` became `id_taken` / `id_not_verified` on
+    // 2026-08-20, when identity stopped meaning "a NIDA" and started meaning "any ONE
+    // of four documents". ⛔ Leaving `nida_taken` firing for a rejected PASSPORT would
+    // be a lie in the audit trail — the record a regulator asks for — so the union
+    // member, the registry row, the dictionary key and this pin moved together.
+    // `id_number_format` / `id_expired` / `id_expiry_required` are the three new
+    // refusals that come with a document that has a rule and a document that expires.
     { file: "src/lib/server/kyc-service.ts", reasons: [
-      "nida_taken", "nida_not_verified", "docs_required", "extra_docs_required",
+      "id_taken", "id_not_verified", "id_number_format", "id_expired", "id_expiry_required",
+      "docs_required", "extra_docs_required",
       "docs_locked", "no_extra_request", "doc_image_type", "doc_too_large",
     ] },
     { file: "src/lib/server/wallet-service.ts", reasons: [
@@ -761,8 +772,17 @@ console.log("\n§9c · loudness is pinned on the reason route, not only the code
   const dict = DICT.en.error as unknown as Record<string, string>;
   const CASES: Array<[FailureReason, "info" | "warning" | "error", "inline" | "toast" | "modal"]> = [
     // ⛔ An identity already linked to another account is a fraud-shaped fact, not a typo to
-    // fix in place — error, and it must be acknowledged.
-    ["nida_taken", "error", "modal"],
+    // fix in place — error, and it must be acknowledged. ⭐ It covers all FOUR document
+    // types from 2026-08-20: a DUPLICATE_IDENTITY block a passport could walk around
+    // would not be a uniqueness rule at all.
+    ["id_taken", "error", "modal"],
+    // ⭐ The player can fix all three of these and their money did not move — warning,
+    // inline, beside the field. ⛔ The copy is type-NEUTRAL on purpose: /profile/kyc
+    // knows which document was chosen and prints THAT document's rule under the field,
+    // so the player reads the real rule rather than the word "invalid" (§F4).
+    ["id_number_format", "warning", "inline"],
+    ["id_expired", "warning", "inline"],
+    ["id_expiry_required", "warning", "inline"],
     ["doc_image_type", "warning", "inline"],
     ["doc_too_large", "warning", "inline"],
     // Nothing is wrong; a state the player cannot change and need not act on.

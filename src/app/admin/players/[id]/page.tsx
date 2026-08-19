@@ -18,6 +18,7 @@ import { formatTzs, formatTzsCompact, formatDateTime, formatDateShort } from "@/
 import { displayLabel, displayInitials } from "@/lib/display-label";
 import { KycStatusBadge, kycStatusLabel, kycStatusVariant, playerStatusVariant } from "@/components/admin/status-badge";
 import { KycReviewControls } from "@/components/admin/kyc-review-controls";
+import { ID_DOC_SPECS, ALL_DOC_SLOTS, type IdDocType, type KycDocSlot } from "@/lib/id-documents";
 import { SuspendControls } from "./suspend-controls";
 import { SetEmailForm } from "./set-email-form";
 import { ResetPasswordButton } from "./reset-password-button";
@@ -26,6 +27,20 @@ import { ForceReverifyControls } from "./force-reverify-controls";
 import { ExportPlayerButton } from "./export-player-button";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Officer-facing names for the four documents and their image slots.
+ * ⚠️ ENGLISH LITERALS ON PURPOSE — /admin is a staff surface and is English-only by
+ * design (test:failure-reasons §10 excludes it from the trilingual ratchet for that
+ * reason). The PLAYER’s names for the same things are dictionary keys.
+ */
+const ADMIN_ID_TYPE_LABEL: Record<IdDocType, string> = {
+  NIDA: "NIDA", PASSPORT: "Passport", DRIVER_LICENSE: "Driving licence", VOTER_CARD: "Voter’s card",
+};
+const ADMIN_SLOT_LABEL: Record<KycDocSlot, string> = {
+  NIDA_FRONT: "NIDA front", NIDA_BACK: "NIDA back", PASSPORT: "Passport bio page",
+  DRIVER_LICENSE: "Licence front", VOTER_CARD: "Voter’s card", SELFIE: "Selfie",
+};
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -204,12 +219,20 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
                     </Chip>
                   </a>
                 )}
-                {/* NIDA-POLICY.md: format + uniqueness only, NO authority check —
+                {/* IDENTITY-POLICY.md: format + uniqueness only, NO authority check —
                     nida.ts is a mock and no request has ever reached the National
-                    Identification Authority. "NIDA verified" told an officer a
-                    government had confirmed this identity, which would invite them
-                    to release a withdrawal on evidence that does not exist. */}
-                {kyc?.nidaVerifiedAt && canSeePII && <Chip size="sm" variant="neutral"><I.check s={10} className="inline -mt-0.5 mr-0.5" />NIDA format OK</Chip>}
+                    Identification Authority, and no equivalent endpoint exists for a
+                    passport, a licence or a voter's card. "NIDA verified" told an
+                    officer a government had confirmed this identity, which would
+                    invite them to release a withdrawal on evidence that does not
+                    exist. ⛔ The chip names the DOCUMENT so it cannot say "NIDA" over
+                    a passport. */}
+                {kyc?.idVerifiedAt && canSeePII && (
+                  <Chip size="sm" variant="neutral">
+                    <I.check s={10} className="inline -mt-0.5 mr-0.5" />
+                    {kyc.idType ? `${ADMIN_ID_TYPE_LABEL[kyc.idType as IdDocType] ?? kyc.idType} format OK` : "ID format OK"}
+                  </Chip>
+                )}
                 {rg?.dailyDepositLimit && (
                   <Chip size="sm" variant="warning">limit {formatTzsCompact(rg.dailyDepositLimit).replace("TZS ", "")}/day</Chip>
                 )}
@@ -451,12 +474,18 @@ function KycTab({ kyc, userEmail, userId, makerCheckerRequired, canActSupport, c
 
       <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-caption">
         <Item label="Status" value={<KycStatusBadge status={kyc.status} />} />
-        <Item label="NIDA number" value={<span className="font-mono">{kyc.nidaNumber ? `${kyc.nidaNumber.slice(0, 4)}…${kyc.nidaNumber.slice(-4)}` : "—"}</span>} />
+        {/* ⛔ WHICH DOCUMENT, THEN THE NUMBER. From 2026-08-20 a player proves
+            identity with any ONE of four documents, so a masked tail alone no longer
+            says what was submitted — and this panel is a support agent’s only view
+            of it. The §6 matrix requires the TYPE to be legible without the number. */}
+        <Item label="Document type" value={kyc.idType ? ADMIN_ID_TYPE_LABEL[kyc.idType as IdDocType] ?? kyc.idType : "—"} />
+        <Item label="Document number" value={<span className="font-mono">{kyc.idNumber ? `${kyc.idNumber.slice(0, 4)}…${kyc.idNumber.slice(-4)}` : "—"}</span>} />
+        {kyc.idExpiry && <Item label="Expiry" value={<span className="font-mono">{kyc.idExpiry}</span>} />}
         <Item label="Full name" value={kyc.fullName ?? "—"} />
         <Item label="DOB" value={kyc.dob ?? "—"} />
         {/* "verified at" read as a government-confirmation timestamp. It is the
             moment the FORMAT was accepted and the number found unique. */}
-        <Item label="NIDA format accepted at" value={kyc.nidaVerifiedAt ? new Date(kyc.nidaVerifiedAt).toLocaleString("en-GB") : "—"} />
+        <Item label="Number format accepted at" value={kyc.idVerifiedAt ? new Date(kyc.idVerifiedAt).toLocaleString("en-GB") : "—"} />
         <Item label="Documents" value={kyc.documents.length > 0 ? kyc.documents.map((d: { docType: string }) => d.docType).join(", ") : "none"} />
         <Item label="Submitted" value={kyc.submittedAt ? new Date(kyc.submittedAt).toLocaleString("en-GB") : "—"} />
         {decided && <Item label="Reviewed by" value={<span className="font-mono">{kyc.reviewerId ? `${kyc.reviewerId.slice(0, 14)}…` : "—"}{kyc.reviewedAt ? ` · ${new Date(kyc.reviewedAt).toLocaleString("en-GB")}` : ""}</span>} />}
@@ -466,16 +495,20 @@ function KycTab({ kyc, userEmail, userId, makerCheckerRequired, canActSupport, c
       {/* Document previews — fetched per-image through the admin-gated route
           (never inlined here). Click to open the full-size photo. */}
       {(() => {
-        const SLOTS = [
-          { type: "NIDA_FRONT", label: "ID front" },
-          { type: "NIDA_BACK", label: "ID back" },
-          { type: "SELFIE", label: "Selfie" },
-        ] as const;
+        // ⛔ THE SLOTS THIS DOCUMENT ACTUALLY HAS. Three hard-written tiles rendered
+        // two permanent "missing" boxes on every passport submission — which, on an
+        // identity panel, reads as absent evidence rather than as a slot that does
+        // not apply. Falls back to every known slot when no type is recorded, so a
+        // pre-2026-08-20 row shows everything on file rather than hiding it.
+        const SLOTS = (kyc.idType && ID_DOC_SPECS[kyc.idType as IdDocType]
+          ? ID_DOC_SPECS[kyc.idType as IdDocType].requiredSlots
+          : ALL_DOC_SLOTS
+        ).map((type) => ({ type, label: ADMIN_SLOT_LABEL[type] }));
         const present = new Set(kyc.documents.map((d: { docType: string }) => d.docType));
         return (
           <div>
             <p className="font-mono text-micro tracking-[0.12em] uppercase text-text-tertiary mb-2.5">Documents</p>
-            <div className="grid grid-cols-3 gap-2.5">
+            <div className={`grid gap-2.5 ${SLOTS.length >= 3 ? "grid-cols-3" : "grid-cols-2"}`}>
               {SLOTS.map((s) => {
                 const has = present.has(s.type);
                 const src = `/api/admin/kyc-doc?user=${encodeURIComponent(kyc.userId)}&type=${s.type}`;

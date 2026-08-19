@@ -12,7 +12,7 @@ process.env.OTP_PEPPER ??= "test-only-pepper";
 process.env.KYC_NOTIFY_EMAILS = "compliance@50pick.tz,ops@50pick.tz";
 
 import {
-  startKyc, submitNidaStep, attachDocument, attachExtraDocument, submitForReview, reviewKyc, validateDocImage, getKycStatus,
+  startKyc, submitIdentityStep, attachDocument, attachExtraDocument, submitForReview, reviewKyc, validateDocImage, getKycStatus,
 } from "../src/lib/server/kyc-service.ts";
 import { db } from "../src/lib/server/store.ts";
 import { listForUser } from "../src/lib/server/notification-service.ts";
@@ -70,7 +70,7 @@ async function getToVerified(uid: string) {
   await startKyc(uid);
   nidaSeq++;
   const nida = "1990010100000000" + String(nidaSeq).padStart(4, "0"); // 20 digits, unique, not ...0000/...9999
-  const r = await submitNidaStep(uid, { nida, fullName: "Asha Mwamba Juma", dob: "1990-01-01" });
+  const r = await submitIdentityStep(uid, { idType: "NIDA", idNumber: nida, fullName: "Asha Mwamba Juma", dob: "1990-01-01" });
   return r;
 }
 async function attach3(uid: string) {
@@ -97,22 +97,48 @@ ok("validate: reports the SNIFFED mime, not the declared one",
 // ─── 2. NIDA reject paths (each a distinct user; NIDA tail drives the mock) ───
 await mkPlayer("usr_nida_san");
 await startKyc("usr_nida_san");
-let r = await submitNidaStep("usr_nida_san", { nida: "19900101456712340000", fullName: "Sani Test", dob: "1990-01-01" });
+let r = await submitIdentityStep("usr_nida_san", { idType: "NIDA", idNumber: "19900101456712340000", fullName: "Sani Test", dob: "1990-01-01" });
 ok("NIDA sanctioned -> verified:false", r.ok && (r as { data?: { verified: boolean } }).data?.verified === false);
 ok("NIDA sanctioned -> kyc REJECTED", (await getKycStatus("usr_nida_san"))?.status === "REJECTED");
 
 await mkPlayer("usr_nida_mis");
 await startKyc("usr_nida_mis");
-r = await submitNidaStep("usr_nida_mis", { nida: "19900101456712349999", fullName: "Miss Match", dob: "1990-01-01" });
+r = await submitIdentityStep("usr_nida_mis", { idType: "NIDA", idNumber: "19900101456712349999", fullName: "Miss Match", dob: "1990-01-01" });
 ok("NIDA mismatch -> verified:false", r.ok && (r as { data?: { verified: boolean } }).data?.verified === false);
 
 // Underage + bad format are caught by zod BEFORE the NIDA call.
 await mkPlayer("usr_nida_under");
 await startKyc("usr_nida_under");
-r = await submitNidaStep("usr_nida_under", { nida: GOOD_NIDA, fullName: "Too Young", dob: "2015-01-01" });
+r = await submitIdentityStep("usr_nida_under", { idType: "NIDA", idNumber: GOOD_NIDA, fullName: "Too Young", dob: "2015-01-01" });
 ok("underage DOB blocked by validation", !r.ok && r.code === "INVALID");
-r = await submitNidaStep("usr_nida_under", { nida: "123", fullName: "Bad Nida", dob: "1990-01-01" });
+r = await submitIdentityStep("usr_nida_under", { idType: "NIDA", idNumber: "123", fullName: "Bad Nida", dob: "1990-01-01" });
 ok("short NIDA blocked by validation", !r.ok && r.code === "INVALID");
+ok("…and it says WHICH rule, not 'invalid'", !r.ok && (r as { reason?: string }).reason === "id_number_format");
+// ⭐ 🔴 THE AGE GATE IS NOT NIDA-ONLY. Only a NIDA carries a date of birth inside
+// the number, so an age check derived from the NUMBER would pass for the other
+// three because the feature is absent (§3 ④). Assert it on EVERY type.
+//
+// ⚠️ ONE FRESH PLAYER PER TYPE, and that is not tidiness. Reusing one account put
+// the FOURTH attempt past `rateCheckAsync(userId, "kyc.submit")`, so the refusal
+// came back RATE_LIMITED and the assertion was measuring the rate limiter rather
+// than the age gate. A guard whose verdict depends on an unrelated control is not
+// a guard. Caught by running it.
+for (const [n, idType] of (["NIDA", "PASSPORT", "DRIVER_LICENSE", "VOTER_CARD"] as const).entries()) {
+  const uid = `usr_under_${idType.toLowerCase()}`;
+  await mkPlayer(uid);
+  await startKyc(uid);
+  const num = idType === "NIDA" ? `19900101456712349${String(100 + n)}` : `AB12345${n}`;
+  const under = await submitIdentityStep(uid, { idType, idNumber: num, fullName: "Too Young", dob: "2015-01-01", idExpiry: "2030-01-01" });
+  ok(`underage refused on ${idType} too`, !under.ok && under.code === "INVALID", String(under.code));
+  // ⭐ POSITIVE CONTROL IN THE SAME RUN — the very same call with an ADULT date of
+  // birth must be ACCEPTED. Without it, "refused for every type" would also be
+  // satisfied by a validator that refuses everything.
+  const uidOk = `usr_adult_${idType.toLowerCase()}`;
+  await mkPlayer(uidOk);
+  await startKyc(uidOk);
+  const adult = await submitIdentityStep(uidOk, { idType, idNumber: num, fullName: "Grown Up", dob: "1990-01-01", idExpiry: "2030-01-01" });
+  ok(`control · an ADULT is accepted on ${idType}`, adult.ok && (adult as { data?: { verified: boolean } }).data?.verified === true, JSON.stringify(adult).slice(0, 90));
+}
 
 // ─── 3. attachDocument guards ───
 r = await attachDocument("usr_ghost_none", "SELFIE", VALID_IMG);

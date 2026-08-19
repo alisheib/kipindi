@@ -1,4 +1,4 @@
--- "One NIDA, one account" is the whole identity control (docs/NIDA-POLICY.md:
+-- "One NIDA, one account" is the whole identity control (docs/IDENTITY-POLICY.md:
 -- format + uniqueness, no authority check). Until now it was an application-level
 -- read-then-write with no lock: `findActiveByNida` then `upsert`, unserialised
 -- across users. PROVEN defeated by scripts/load/s14-kyc-nida-race.mts — two OS

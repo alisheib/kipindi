@@ -123,6 +123,14 @@ export function toStoredKyc(row: any): StoredKyc {
     rejectNote: row.rejectNote,
     nidaNumber: row.nidaNumber,
     nidaVerifiedAt: iso(row.nidaVerifiedAt),
+    idType: row.idType ?? null,
+    idNumber: row.idNumber ?? null,
+    // ⚠️ DATE ONLY, and that is not cosmetic. `idExpiry` is a calendar day printed
+    // on a document, stored at UTC midnight; `iso()` returns a full timestamp,
+    // and this laptop is EAT (+3), so rendering the timestamp shows the day
+    // BEFORE the one on the passport. Every consumer wants the day.
+    idExpiry: row.idExpiry ? iso(row.idExpiry)?.slice(0, 10) ?? null : null,
+    idVerifiedAt: iso(row.idVerifiedAt),
     fullName: row.fullName,
     dob: iso(row.dob),
     // 🔴 `mimeType`/`sizeBytes` MUST be carried back out. `db.kyc.upsert` syncs
@@ -642,6 +650,12 @@ export const prismaDb = {
         rejectNote: k.rejectNote,
         nidaNumber: k.nidaNumber,
         nidaVerifiedAt: k.nidaVerifiedAt ? new Date(k.nidaVerifiedAt) : null,
+        idType: (k.idType ?? null) as "NIDA" | "PASSPORT" | "DRIVER_LICENSE" | "VOTER_CARD" | null,
+        idNumber: k.idNumber ?? null,
+        // Stored at UTC midnight so the day on the document is the day in the
+        // column, whatever zone the reader is in.
+        idExpiry: k.idExpiry ? new Date(`${k.idExpiry.slice(0, 10)}T00:00:00.000Z`) : null,
+        idVerifiedAt: k.idVerifiedAt ? new Date(k.idVerifiedAt) : null,
         fullName: k.fullName,
         dob: k.dob ? new Date(k.dob) : null,
         reviewerId: k.reviewerId,
@@ -695,6 +709,36 @@ export const prismaDb = {
       const row = await pc().kycSubmission.findFirst({
         where: {
           nidaNumber: norm,
+          status: { not: "REJECTED" },
+          ...(excludeUserId ? { userId: { not: excludeUserId } } : {}),
+        },
+        select: { userId: true, status: true },
+      });
+      return row ? { userId: row.userId, status: String(row.status) } : null;
+    },
+    /**
+     * 🔴 ONE DOCUMENT, ONE ACCOUNT — across all four identity types.
+     *
+     * Indexed by `@@index([idType, idNumber])`, with the same tiny `select` as the
+     * NIDA read above so it never hydrates the base64 KYC images (audit H5:
+     * ~1.2 TB pulled per submission at scale).
+     *
+     * ⛔ This is the FAST PATH. The enforcement is the partial unique index
+     * "KycSubmission_idType_idNumber_active_key"; the two must ask the same
+     * question — the same pair, the same `status <> REJECTED` exclusion — or a
+     * race resolves differently from a sequential duplicate.
+     */
+    findActiveByIdNumber: async (
+      idType: string,
+      idNumber: string,
+      excludeUserId?: string,
+    ): Promise<{ userId: string; status: string } | null> => {
+      const norm = idNumber.trim();
+      if (!norm || !idType) return null;
+      const row = await pc().kycSubmission.findFirst({
+        where: {
+          idType: idType as "NIDA" | "PASSPORT" | "DRIVER_LICENSE" | "VOTER_CARD",
+          idNumber: norm,
           status: { not: "REJECTED" },
           ...(excludeUserId ? { userId: { not: excludeUserId } } : {}),
         },

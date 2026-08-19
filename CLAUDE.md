@@ -122,19 +122,31 @@ corrected.
 > 📋 Remaining: deploy 3 (transient retry) · deploy 4 (narrow market stamps + atomic pool
 > deltas incl. cash-out) · deploy 5 (drop the market lock from the bet path — **only after
 > a ≥1 week soak of deploy 4**). Plan: `docs/LOAD_DAY1_FINDINGS.md`.
-> 🪪 **NIDA POLICY (Ali, 2026-07-19) — read [`docs/NIDA-POLICY.md`](docs/NIDA-POLICY.md).**
-> The control is **format + uniqueness only (one NIDA, one account)**. There is **no
-> authority check and none is wanted** — `nida.ts` is a mock, so `nidaVerifiedAt` means
-> "format accepted", never "government confirmed". Identity assurance comes from the
-> DOCUMENTS a human officer reviews. Two surfaces were claiming otherwise and are fixed:
+> 🪪 **IDENTITY POLICY (Ali, 2026-07-19; widened 2026-08-19) — read
+> [`docs/IDENTITY-POLICY.md`](docs/IDENTITY-POLICY.md).** ⚠️ That file was
+> `NIDA-POLICY.md` until 2026-08-20 and was renamed because it stopped being about one
+> document. **A player proves identity with ANY ONE of four: NIDA · passport · driving
+> licence · voter's card.** The control is **format + uniqueness only (one DOCUMENT, one
+> account)**. There is **no authority check and none is wanted** — `nida.ts` is a mock,
+> and there is no endpoint at all for the other three — so `idVerifiedAt` means "format
+> accepted", never "government confirmed". Identity assurance comes from the DOCUMENTS a
+> human officer reviews, and the selfie is required on all four so that control is never
+> weakened by widening the list. Two surfaces once claimed otherwise and are fixed:
 > the admin KYC checklist said **"NIDA verified — government match"** (it told an officer
 > a government had confirmed an identity, inviting a withdrawal release on evidence that
 > does not exist), and player copy said withdrawals go only to a *"NIDA-verified account"*.
 > **The mechanics are INTERNAL**: docs and admin state them plainly; player surfaces
-> neither claim the check nor advertise its absence.
-> ⚠️ Open gap: the uniqueness check is app-level read-then-write with no unique index, so
-> two *different* users submitting the same NIDA at the same instant can both pass. The
-> exact pre-flight query + `CREATE UNIQUE INDEX CONCURRENTLY` is in the policy doc.
+> neither claim the check nor advertise its absence — and never name one of the four as
+> though it were the only one.
+> ✅ The 2026-07-19 "open gap" (an app-level read-then-write with no unique index, so two
+> users submitting one national ID at the same instant both passed) was **closed
+> 2026-07-31** by a partial unique index, and **widened 2026-08-20** to the tuple
+> `("idType","idNumber")` so it spans all four documents.
+> 🔴 **The residual gap that CANNOT be closed in code, and is stated to the Board in
+> writing:** one human legitimately holds several of these documents, so per-document
+> uniqueness does not stop one person holding two accounts on two different documents.
+> `docs/COMPLIANCE-DECISIONS.md` (2026-08-20) is the record. Do not describe a
+> `DUPLICATE_IDENTITY` rejection as though it blocked a different document.
 > ✅ **OPERATOR ACTION 2 OF 2 IS DONE (2026-07-19).** The persisted `test.overrides`
 > conflicted-resolution flag was cleared in production via
 > `scripts/ops-clear-conflicted-override.mjs` (true → false, confirmed by the compliance

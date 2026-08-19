@@ -6,6 +6,126 @@
 
 ---
 
+## 2026-08-20 · FOUR ways to prove who you are — NIDA is no longer the only accepted document
+
+**Owner decision:** Ali, 2026-08-19. *"We have to give options for KYC, not just NIDA. One of
+them: mandatory NIDA, or passport number and attach passport front page, or driving licence
+number and attach driving licence front, or voting card and attach it. One of them works for us,
+not just NIDA."* And, on the two undocumented formats, 2026-08-19: *"for now driving and voting,
+keep them open — later we change."*
+
+**The rule, in one line:** a player proves identity with **any ONE** of **NIDA**, **passport**
+(+ bio page image), **driving licence** (+ front image) or **voter's card** (+ image). Full
+statement, with every enforcement point: [`docs/IDENTITY-POLICY.md`](IDENTITY-POLICY.md).
+
+### 🔴 THE RESIDUAL GAP — stated to the Board, in writing, and NOT closed
+
+**One human legitimately holds a NIDA *and* a passport *and* a driving licence *and* a voter's
+card.** The uniqueness rule is `(document type, document number)`, enforced by a partial unique
+index at the database level. It stops **the same document** being used on two accounts. It does
+**not** stop **one person** opening two accounts on **two different documents**.
+
+⛔ **Nothing in the codebase can close this, and it is not an oversight.** It is the direct,
+accepted consequence of the instruction above. Only two things could close it, and both are
+excluded:
+
+1. **NIDA-as-mandatory** — which is precisely what this decision removes.
+2. **A cross-document identity match** against an authority — which would require an authority
+   check. There is none, for any of the four, by owner decision (2026-07-19), and none is wired.
+
+⚠️ **So the control that catches it is the HUMAN REVIEWER, and only the human reviewer.** The
+officer sees the name, the declared date of birth, the document image and a selfie on every
+submission. A second account opened by the same person on a different document is the case they
+are positioned to catch, and it is the only place it can be caught.
+
+⛔ **And one consequence must not be misdescribed anywhere:** a `DUPLICATE_IDENTITY` rejection on
+one document does **not** prevent that person submitting a different one. No surface, report or
+statement to the Board may imply that it does.
+
+**Flagged for Ali and for the GBT file.** If the Board's position is that one natural person must
+hold exactly one account regardless of which document they present, that requirement cannot be
+met by this platform without an authority check, and the answer is a policy change rather than a
+code change. Test it once, on this entry.
+
+### What changed
+
+| | |
+|---|---|
+| **The identity fact** | `KycSubmission.nidaNumber` → the tuple **`idType` + `idNumber`**, plus `idExpiry` and `idVerifiedAt`. ONE identity number per submission, whatever document it came from |
+| **The uniqueness rule** | partial unique index **`KycSubmission_idType_idNumber_active_key`** on `("idType","idNumber") WHERE "idNumber" IS NOT NULL AND status <> 'REJECTED'` — the **exact** `WHERE` semantics of the 2026-07-31 NIDA index it supersedes, so a REJECTED submission still frees the number |
+| **Formats** | NIDA `^\d{20}$` with digits 1–8 validated as a real calendar date (🟢 published) · passport 9 alphanumeric as an **advisory** shape that flags but never refuses (🟡 secondary sources only) · driving licence and voter's card **openly unformatted** (🔴 TRA and NEC publish nothing), held to a stated 4–20 alphanumeric sanity band |
+| **Expiry** | captured, and **refused at submit**, for the two documents that carry one (passport, driving licence). Re-checked again at submit-for-review. ⛔ Never asked for on a NIDA or a voter's card |
+| **Images** | per document: NIDA front + back + selfie · the other three, one document image + selfie |
+| **Failure reasons** | `nida_taken` → **`id_taken`**, `nida_not_verified` → **`id_not_verified`**, plus new `id_number_format`, `id_expired`, `id_expiry_required`. Union member, registry row and dictionary key moved together in one commit |
+
+⭐ **THE SELFIE IS STILL REQUIRED ON ALL FOUR, and that is deliberate.** *"Selfie matches the ID
+photo"* is one of the officer's four recorded attestations. Dropping it for three of the types
+would have removed the human control in the same change that widened the document list — the one
+thing the policy says this change must not do.
+
+⛔ **AND THE AGE GATE IS NOT DERIVED FROM THE NUMBER.** Only a NIDA carries a date of birth
+inside it. An UNDERAGE check read out of the number would pass for the other three *because the
+feature is absent*. The gate is on the **declared** date of birth, enforced twice (Zod at parse
+time, and the service above the per-document branch), and asserted per document type.
+
+### 🟡 What is deliberately NOT enforced, and why
+
+**We did not invent a driving-licence or voter-card format.** TRA's own driver's-licence guide
+describes the card and not the number; NEC/INEC material confirms a voter number exists and does
+not publish its shape. ⛔ A wrong regex on a national ID **locks a real citizen out of their own
+money**, and a format-rejected submission never reaches the human who is the actual control — so
+a permissive field is the safer error here. This is the same discipline `updown-symbols.ts`
+applies to silver and platinum, and it is **instructed**, not assumed. A later session does not
+get to tighten either on a guess: adding a rule is a one-line change to that document's entry in
+`src/lib/id-documents.ts`, **with its citation beside it**.
+
+**Ali asked for "100% accurate" sizes.** The honest form of that is a **sourced rule where a
+source exists and a stated absence where none does** — two of the four are enforced from a
+source, one is advisory from secondary sources, and two are deliberately permissive with the
+absence written into the catalogue, this entry and the officer's own screen.
+
+**No PDF uploads.** A passport scan arrives as a photograph like everything else. The storage
+seam validates image magic bytes, the client downscales to stay under the 3 MB cap, and the
+officer's viewer is an `<img>`; admitting PDFs would mean a second validation path, a second
+viewer, and an active-content format on an identity page. Decided, not overlooked.
+
+### What was NOT touched
+
+- ⛔ **`TWO_PERSON_THRESHOLD_TZS` and `/admin/aml` are untouched.** Those come from the AML/FIU
+  regime, a **different authority**. A Gaming Board instruction about which documents are
+  accepted does not repeal an AML threshold.
+- ⛔ **KYC remains a precondition of withdrawal.** Board instruction #1 (remove that gate) had
+  **not** landed when this shipped — `wallet-service.ts` still requires `APPROVED` — and this
+  unit deliberately does not pre-empt it.
+- ⛔ **No `nidaNumber` value was rewritten or discarded.** The migration BACKFILLS the existing
+  rows into the new tuple (`idType='NIDA'`) and changes nothing about them.
+
+### ⚠️ One deliberate piece of debt, with its discharge named
+
+The migration is **EXPAND ONLY**: `nidaNumber` and `nidaVerifiedAt` are kept, and mirrored on a
+NIDA submission by exactly one write site. Railway health-checks a new deployment while the OLD
+container is still serving, and Prisma selects every scalar column — so dropping them in the same
+migration would have returned a 500 on every KYC read (`/profile/kyc`, `/wallet/withdraw`,
+`/admin/kyc`) for the length of the switch, on an identity path.
+
+⛔ **Nothing reads them**, and `npm run test:id-documents` §9 fails if anything starts to.
+**The contract step is: a follow-up migration dropping `nidaNumber`, `nidaVerifiedAt` and
+`KycSubmission_nidaNumber_active_key`, once the expand release has been stable on production.**
+Until that lands, this entry is the record that the duplication is time-boxed and intentional.
+
+### Where it lives
+
+`src/lib/id-documents.ts` (the catalogue — one entry per document, the ONLY place a format is
+declared) · `src/lib/server/kyc-service.ts` (`submitIdentityStep`) ·
+`prisma/migrations/20260820120000_kyc_identity_document` ·
+`src/app/profile/kyc/page.tsx` (the chooser, built from the kit's one filter control) ·
+`src/app/admin/kyc/[id]` (the reviewer's per-document screen).
+Guards: `npm run test:id-documents` (191 assertions, every refusal beside a positive control) ·
+`npm run red:id-documents` (**18 injected defects, 18 caught**) · `npm run test:cert-d1` ·
+`npm run test:failure-reasons`.
+
+---
+
 ## 2026-08-14 · ONE fee for both games — Up & Down moves to `loser-share`
 
 **Owner decision:** Ali, 2026-08-14. **This SUPERSEDES § 2026-07-24 item 1** below, which put

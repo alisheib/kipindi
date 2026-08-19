@@ -97,7 +97,7 @@ to teal and resurrects the killed light theme.
 | Doc | | |
 |---|---|---|
 | [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) | 🟢 LAW | Owner-authorised decisions touching a compliance control. Append, never rewrite. |
-| [`NIDA-POLICY.md`](NIDA-POLICY.md) | 🟢 LAW | Owner decision 2026-07-19. Authoritative over any contradicting doc. |
+| [`IDENTITY-POLICY.md`](IDENTITY-POLICY.md) | 🟢 LAW | Owner decision 2026-07-19, widened 2026-08-19. Authoritative over any contradicting doc. ⚠️ **Was `NIDA-POLICY.md` until 2026-08-20** — renamed because it stopped being about one document: a player proves identity with **any ONE of four** (NIDA · passport · driving licence · voter's card). Carries the per-document format table with its sources — two published, two openly absent — and the 🔴 **residual gap** that per-`(type, number)` uniqueness cannot stop one human using two *different* documents on two accounts. |
 | [`gli-remediation-plan.md`](gli-remediation-plan.md) | 🟢 LAW | Canonical GLI spec of record, ticket-level acceptance criteria. |
 | [`gli-remediation-tracker.md`](gli-remediation-tracker.md) | 🔵 LIVE | The done / not-done companion to the plan above. |
 | [`REGULATOR_STRESS_REPORT.md`](REGULATOR_STRESS_REPORT.md) | ⚫ HISTORICAL | 2026-05-26 — **the oldest doc here.** Opens with "DO NOT SHOW THIS TO A REGULATOR AS-IS". Predates the licence, the fee-model fix, the design freeze and every payment change. Re-run before citing it. |

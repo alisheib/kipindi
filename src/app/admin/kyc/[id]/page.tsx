@@ -12,11 +12,43 @@ import { currentSession } from "@/lib/server/auth-service";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import { KycDocViewer } from "./kyc-doc-viewer";
 import { KycDecisionRail } from "./kyc-decision-rail";
+import {
+  ID_DOC_SPECS,
+  ALL_DOC_SLOTS,
+  isIdDocType,
+  isExpired,
+  nidaDateOfBirth,
+  validateIdNumber,
+  type IdDocType,
+  type KycDocSlot,
+} from "@/lib/id-documents";
 
 export const metadata = { title: "Admin · KYC workstation" };
 export const dynamic = "force-dynamic";
 
 const SLA_HOURS = 24;
+
+/**
+ * Officer-facing names. ⚠️ The ADMIN CONSOLE IS ENGLISH-ONLY BY DESIGN (it is a
+ * staff surface — `test:failure-reasons` §10 excludes it from the trilingual
+ * ratchet for exactly this reason), so these are literals rather than dictionary
+ * keys. The PLAYER's names for the same things live in `i18n-dict.ts` and are
+ * resolved through `DOC_SLOT_LABEL_KEY`.
+ */
+const ID_TYPE_LABEL: Record<IdDocType, string> = {
+  NIDA: "NIDA",
+  PASSPORT: "Passport",
+  DRIVER_LICENSE: "Driving licence",
+  VOTER_CARD: "Voter's card",
+};
+const ADMIN_SLOT_LABEL: Record<KycDocSlot, string> = {
+  NIDA_FRONT: "NIDA front",
+  NIDA_BACK: "NIDA back",
+  PASSPORT: "Passport bio page",
+  DRIVER_LICENSE: "Licence front",
+  VOTER_CARD: "Voter's card",
+  SELFIE: "Selfie",
+};
 
 function ageLabel(iso: string | null): string {
   if (!iso) return "—";
@@ -48,24 +80,62 @@ export default async function KycWorkstationPage({ params }: { params: Promise<{
   const queuePos = pending.findIndex((k) => k.userId === id);
   const oldest = pending[0]?.submittedAt ?? null;
 
+  // ── WHICH DOCUMENT THIS SUBMISSION IS BUILT ON ────────────────────────────
+  // ⛔ Everything below is derived from it. A reviewer's screen that assumes NIDA
+  // shows the wrong slots, asks for an expiry a voter's card does not have, and
+  // ticks "all documents present" against a count that means nothing.
+  const idType = isIdDocType(kyc.idType) ? (kyc.idType as IdDocType) : null;
+  const spec = idType ? ID_DOC_SPECS[idType] : null;
+
   // Auto-derived checklist (real signals only).
   const present = new Set(kyc.documents.map((d) => d.docType));
   const age18 = kyc.dob ? (Date.now() - Date.parse(kyc.dob)) / (365.25 * 24 * 3600_000) >= 18 : null;
-  const allDocs = ["NIDA_FRONT", "NIDA_BACK", "SELFIE"].every((t) => present.has(t));
+  const required = spec?.requiredSlots ?? [];
+  const allDocs = required.length > 0 && required.every((t) => present.has(t));
+
+  // What the format check ACTUALLY established for THIS document, and what it
+  // deliberately did not. `flags` is recomputed here rather than stored, so the
+  // officer always reads the current rule rather than one frozen at submit time.
+  const verdict = idType && kyc.idNumber ? validateIdNumber(idType, kyc.idNumber) : null;
+  const formatDetail = !spec
+    ? "no document type recorded"
+    : spec.format.kind === "published"
+      ? `format valid · unique to this account (no authority check by design) · ${spec.format.sourceNote}`
+      : spec.format.kind === "secondary"
+        ? `unique to this account (no authority check by design) · ${spec.format.sourceNote}${verdict?.ok && verdict.flags.includes("unofficial_shape") ? " ⚠ THIS NUMBER IS OUTSIDE THAT SHAPE — accepted deliberately, read the image" : ""}`
+        : `unique to this account (no authority check by design) · ${spec.format.absenceNote}`;
+
+  // 🔴 NIDA ONLY, AND SAID SO. Digits 1-8 of a NIDA are the holder's date of
+  // birth; no other document carries one. Where they disagree with the DOB on the
+  // account this is a REVIEWER FLAG, not a refusal — a stated DOB can be a
+  // sign-up typo, and refusing would lock a real citizen out over it.
+  const nidaDob = idType === "NIDA" && kyc.idNumber ? nidaDateOfBirth(kyc.idNumber) : null;
+  const statedDob = kyc.dob ? kyc.dob.slice(0, 10) : null;
+  const dobAgrees = nidaDob && statedDob ? nidaDob === statedDob : null;
+
+  const expired = isExpired(kyc.idExpiry ?? null, new Date());
   const autoChecks = [
-    // POLICY (Ali, 2026-07-19): the NIDA control is FORMAT + UNIQUENESS only —
-    // one NIDA number, one account. There is deliberately no authority check;
-    // `nida.ts` is a deterministic mock and no request has ever reached the
-    // National Identification Authority.
+    // POLICY (Ali, 2026-07-19, extended 2026-08-19): the control is FORMAT +
+    // UNIQUENESS only — one document, one account. There is deliberately no
+    // authority check for any of the four; `nida.ts` is a deterministic mock and
+    // no request has ever reached the National Identification Authority, and no
+    // equivalent endpoint exists for a passport, a licence or a voter's card.
     //
-    // So this row must NOT read "NIDA verified / government match", as it used to.
+    // So this row must NOT read "verified / government match", as it used to.
     // That told a compliance officer a government confirmed this identity, which
     // would invite them to approve a withdrawal on evidence that does not exist.
-    // It now states exactly what was actually checked, and the officer's decision
-    // rests on the DOCUMENTS — which is what already happens in practice.
-    { label: "NIDA number", state: (kyc.nidaNumber ? "pass" : "pending") as "pass" | "fail" | "pending", detail: kyc.nidaNumber ? "format valid · unique to this account (no authority check by design)" : "not recorded" },
-    { label: "18 or older", state: (age18 === null ? "pending" : age18 ? "pass" : "fail") as "pass" | "fail" | "pending", detail: kyc.dob ? `DOB ${formatDate(kyc.dob)}` : "no DOB" },
-    { label: "All documents present", state: (allDocs ? "pass" : "fail") as "pass" | "fail" | "pending", detail: `${present.size}/3 uploaded` },
+    // It now states exactly what was checked and — where no format is published —
+    // says so in the officer's own words, so the weight of the decision sits
+    // visibly on the DOCUMENT IMAGE, which is where it has always actually been.
+    { label: idType ? `${ID_TYPE_LABEL[idType]} number` : "Identity number", state: (kyc.idNumber ? "pass" : "pending") as "pass" | "fail" | "pending", detail: kyc.idNumber ? formatDetail : "not recorded" },
+    { label: "18 or older", state: (age18 === null ? "pending" : age18 ? "pass" : "fail") as "pass" | "fail" | "pending", detail: kyc.dob ? `DOB ${formatDate(kyc.dob)} — declared, and gated for every document type` : "no DOB" },
+    ...(idType === "NIDA"
+      ? [{ label: "NIDA date of birth agrees", state: (dobAgrees === null ? "pending" : dobAgrees ? "pass" : "fail") as "pass" | "fail" | "pending", detail: dobAgrees === null ? "not derivable" : `number says ${nidaDob}, account says ${statedDob}` }]
+      : []),
+    ...(spec?.expires
+      ? [{ label: "Document in date", state: (!kyc.idExpiry ? "pending" : expired ? "fail" : "pass") as "pass" | "fail" | "pending", detail: kyc.idExpiry ? `expires ${kyc.idExpiry}${expired ? " — EXPIRED" : ""}` : "no expiry recorded" }]
+      : []),
+    { label: "All documents present", state: (allDocs ? "pass" : "fail") as "pass" | "fail" | "pending", detail: required.length ? `${required.filter((r) => present.has(r)).length}/${required.length} uploaded` : "no document type recorded" },
     { label: "Source-of-funds on file", state: (sof ? "pass" : "pending") as "pass" | "fail" | "pending", detail: sof ? sof.reviewStatus : "not required / absent" },
   ];
 
@@ -73,11 +143,19 @@ export default async function KycWorkstationPage({ params }: { params: Promise<{
   const slaLabel = slaMs === null ? "—" : slaMs <= 0 ? `${Math.floor(-slaMs / 3600_000)}h overdue` : `${Math.floor(slaMs / 3600_000)}h ${Math.floor((slaMs % 3600_000) / 60_000)}m left`;
   const slaTone = slaMs === null ? "neutral" : slaMs <= 0 ? "danger" : slaMs < 2 * 3600_000 ? "warning" : "brand";
 
-  const slots = [
-    { type: "NIDA_FRONT" as const, label: "ID front", uploadedAt: kyc.documents.find((d) => d.docType === "NIDA_FRONT")?.uploadedAt ?? null },
-    { type: "NIDA_BACK" as const, label: "ID back", uploadedAt: kyc.documents.find((d) => d.docType === "NIDA_BACK")?.uploadedAt ?? null },
-    { type: "SELFIE" as const, label: "Selfie", uploadedAt: kyc.documents.find((d) => d.docType === "SELFIE")?.uploadedAt ?? null },
-  ];
+  // ⛔ THE VIEWER'S TABS ARE THIS DOCUMENT'S SLOTS. Three hard-written tabs meant
+  // a passport submission offered "ID front / ID back / Selfie", two of which can
+  // never hold anything — and the bio page, the only image that matters, had no
+  // tab at all. An officer approving a document they cannot open is the human
+  // control failing silently.
+  //
+  // ⚠️ Falls back to every known slot when the type is missing (a pre-2026-08-20
+  // record mid-backfill), so nothing on file becomes unreachable.
+  const slots = (required.length ? required : ALL_DOC_SLOTS).map((s) => ({
+    type: s,
+    label: ADMIN_SLOT_LABEL[s],
+    uploadedAt: kyc.documents.find((d) => d.docType === s)?.uploadedAt ?? null,
+  }));
 
   return (
     <>
@@ -102,14 +180,32 @@ export default async function KycWorkstationPage({ params }: { params: Promise<{
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,380px)] items-start">
           {/* Document viewer (left) */}
           <div className="space-y-4">
-            <AdminCard title="Documents · Nyaraka" sw="ID front · back · selfie">
+            <AdminCard title="Documents · Nyaraka" sw={slots.map((s) => s.label).join(" · ")}>
               <KycDocViewer userId={id} slots={slots} />
             </AdminCard>
 
             <AdminCard title="Applicant · Mwombaji">
               <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-[12.5px]">
                 <Field label="Full name" value={kyc.fullName ?? "—"} />
-                <Field label="NIDA" value={<span className="font-mono">{kyc.nidaNumber ? `${kyc.nidaNumber.slice(0, 4)}…${kyc.nidaNumber.slice(-4)}` : "—"}</span>} />
+                {/* ⛔ WHICH DOCUMENT, THEN THE NUMBER. A masked tail alone stopped
+                    being a complete statement the day four documents were accepted —
+                    "•••• 5678" does not tell an officer what they are about to
+                    approve, and the whole point of this screen is that they know. */}
+                <Field label="Document type" value={idType ? ID_TYPE_LABEL[idType] : "—"} />
+                <Field label="Number" value={<span className="font-mono">{kyc.idNumber ? `${kyc.idNumber.slice(0, 4)}…${kyc.idNumber.slice(-4)}` : "—"}</span>} />
+                {/* Rendered only for the two documents that HAVE an expiry — a blank
+                    "Expiry: —" on a voter's card reads as missing evidence rather
+                    than as a document that does not carry one. */}
+                {spec?.expires && (
+                  <Field
+                    label="Expiry"
+                    value={
+                      <span className={`font-mono ${expired ? "text-no-300" : ""}`}>
+                        {kyc.idExpiry ? `${kyc.idExpiry}${expired ? " · EXPIRED" : ""}` : "—"}
+                      </span>
+                    }
+                  />
+                )}
                 {/* Was the raw ISO string — "1995-04-12T00:00:00.000Z" — on a card
                     whose other dates are formatted (§6 E-2). formatDate renders in
                     the platform zone, which is also what keeps a DOB stored at

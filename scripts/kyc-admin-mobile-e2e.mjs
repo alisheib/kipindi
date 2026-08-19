@@ -104,14 +104,18 @@ try {
 
     // A REJECTING NIDA (ends 9999 → MISMATCH) so the rejection panel renders — the
     // panel that was unreachable dead code until 2026-07-31.
-    await wp.fill("#nida", "199001" + String(Date.now()).slice(-10) + "9999");
+    // ⚠️ The field is `#idNumber` from 2026-08-20 (it was `#nida` while NIDA was the
+    // only accepted document). The MISMATCH hook lives in the NIDA mock, so this
+    // shot deliberately stays on the NIDA journey — it is proving the REJECTION
+    // panel, not the chooser.
+    await wp.fill("#idNumber", "199001" + String(Date.now()).slice(-10) + "9999");
     await wp.fill("#fullName", "Asha Mwamba Juma");
     await wp.fill("#email", `rej${String(Date.now()).slice(-6)}@example.com`);
     await wp.getByRole("button", { name: /Continue verification/ }).click();
     await wp.waitForTimeout(2500);
     const rejBody = await wp.locator("body").innerText();
     ok(`🔴 rejected player is TOLD they were rejected @${width}px`,
-      /Rejected/i.test(rejBody) && !/NIDA number accepted/i.test(rejBody),
+      /Rejected/i.test(rejBody) && !/Document details accepted/i.test(rejBody),
       "Until 2026-07-31 this showed a green 'NIDA number accepted' banner while the\n" +
       "    player's inbox held 'Identity check needs attention'.");
     ok(`player KYC (rejected) @${width}px: no horizontal overflow`, (await overflowOf(wp)) <= 1);

@@ -1,9 +1,16 @@
 /**
- * KYC service — Tanzania-aligned (NIDA-first), GBT-acceptable workflow.
+ * KYC service — Tanzania-aligned, GBT-acceptable workflow.
+ *
+ * ⭐ FOUR WAYS TO PROVE WHO YOU ARE (owner decision, Ali 2026-08-19). A player
+ * proves identity with ANY ONE of NIDA, passport, driving licence or voter's card.
+ * Which documents exist, what their numbers must look like, which images each one
+ * requires and whether it carries an expiry are ALL declared in ONE place —
+ * `src/lib/id-documents.ts`. ⛔ Nothing in this file may hard-write a fifth answer.
+ *
  * Steps:
- *  1) NIDA number + name + DOB → NIDA API verify
+ *  1) Identity: document type + number + name + DOB → format, expiry, uniqueness
  *  2) Phone verified (already done at signup)
- *  3) Documents: ID front, ID back, selfie (uploaded to object storage by hash key)
+ *  3) Documents: the slots THAT TYPE requires, plus a selfie, through the storage seam
  *  4) Submitted → PENDING_REVIEW (compliance reviewer assigns + decides)
  *  5) APPROVED unlocks withdrawals; REJECTED returns reason code
  *
@@ -20,7 +27,18 @@ import { putKycDocument } from "./storage";
 import { sniffBase64ImageMime } from "./image-signature";
 import { verifyNida } from "./nida";
 import { rateCheckAsync } from "./rate-limit";
-import { KycNidaSchema } from "./validators";
+import { KycIdentitySchema } from "./validators";
+import {
+  ID_DOC_SPECS,
+  ALL_DOC_SLOTS,
+  MIN_AGE_YEARS,
+  ageOn,
+  isExpired,
+  missingSlots,
+  validateIdNumber,
+  type IdDocType,
+  type KycDocSlot,
+} from "@/lib/id-documents";
 import type { z } from "zod";
 import type { ServiceResult } from "./auth-service";
 import type { FailureReason } from "@/lib/failure-reasons";
@@ -86,6 +104,15 @@ export async function startKyc(userId: string): Promise<ServiceResult<{ kycId: s
     rejectNote: null,
     nidaNumber: null,
     nidaVerifiedAt: null,
+    // ⛔ THE WHOLE IDENTITY TUPLE CLEARS TOGETHER. Leaving `idType` behind while
+    // nulling `idNumber` would let a restarted submission carry the previous
+    // document's type into the next one's validation — and leaving `idNumber`
+    // behind would hold a number hostage under the partial unique index for a
+    // submission that no longer claims it.
+    idType: null,
+    idNumber: null,
+    idExpiry: null,
+    idVerifiedAt: null,
     fullName: null,
     dob: null,
     documents: [],
@@ -99,26 +126,105 @@ export async function startKyc(userId: string): Promise<ServiceResult<{ kycId: s
   return { ok: true, data: { kycId: k.id } };
 }
 
-export async function submitNidaStep(userId: string, input: z.input<typeof KycNidaSchema>): Promise<ServiceResult<{ verified: boolean; reason?: string }>> {
+/**
+ * STEP 1 — the identity step, for ANY ONE of the four documents.
+ *
+ * Order matters and every step is here for a reason it has already been bitten by:
+ *
+ *  1. RATE LIMIT — an identity field is a guessing surface.
+ *  2. SHAPE (`KycIdentitySchema`) — a real type, a number, a name, a DOB ≥ 18.
+ *     ⭐ The AGE GATE LIVES ON THE DECLARED DOB, so it covers all four types. Only
+ *     a NIDA carries a date of birth inside the number; an age check derived from
+ *     the number would be silently NIDA-only, which is a control that passes
+ *     because the feature is absent.
+ *  3. FORMAT (`validateIdNumber`) — the ONE catalogue. Published rules refuse;
+ *     advisory shapes only flag; the two documents with no published format are
+ *     held to a sanity band and nothing more, by owner instruction.
+ *  4. EXPIRY — asked for, and enforced, only where the document has one.
+ *  5. 🔴 UNIQUENESS — one document, one account, ACROSS ALL FOUR TYPES.
+ *  6. The write, whose losing racer is caught by the partial unique index.
+ */
+export async function submitIdentityStep(userId: string, input: z.input<typeof KycIdentitySchema>): Promise<ServiceResult<{ verified: boolean; reason?: string }>> {
   const rl = await rateCheckAsync(userId, "kyc.submit");
   if (!rl.allowed) return { ok: false, error: "Too many attempts.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
 
-  const parse = KycNidaSchema.safeParse(input);
+  const parse = KycIdentitySchema.safeParse(input);
   if (!parse.success) return { ok: false, error: parse.error.errors[0]?.message ?? "Invalid input", code: "INVALID" };
 
   const k = await db.kyc.findByUserId(userId);
   if (!k) return { ok: false, error: "Start KYC first.", code: "NOT_FOUND" };
 
-  // Uniqueness: one NIDA = one account. Block if this national ID is already on
-  // ANOTHER user's submission that isn't rejected (a rejected one frees it).
-  // Multi-accounting / identity-reuse is a P0 AML control for a licensed book.
-  // findActiveByNida is an indexed findFirst that returns only { userId, status }
-  // — it never hydrates the base64 KYC images the old list()+find() pulled on
-  // every submission (audit H5: ~1.2 TB at 100k players).
-  const nidaConflict = await db.kyc.findActiveByNida(parse.data.nida, userId);
-  if (nidaConflict) {
-    audit({ category: "SECURITY", action: "kyc.nida.duplicate_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { conflictUserId: nidaConflict.userId, conflictStatus: nidaConflict.status } });
-    return { ok: false, error: "This National ID is already linked to another account. If this is a mistake, contact support.", code: "INVALID", reason: "nida_taken" };
+  const idType = parse.data.idType as IdDocType;
+  const spec = ID_DOC_SPECS[idType];
+
+  // ── 🔴 AGE, FOR ALL FOUR TYPES ────────────────────────────────────────────
+  // `dateOfBirth` in the schema already refuses under-18, so this is the second
+  // lock rather than the first — and it is here, above the per-type branch, so it
+  // can never become a property of one document. A caller that reaches the service
+  // without the schema (a script, a future API) still meets the gate.
+  const declaredAge = ageOn(parse.data.dob, new Date());
+  if (!Number.isFinite(declaredAge) || declaredAge < MIN_AGE_YEARS) {
+    audit({ category: "COMPLIANCE", action: "kyc.identity.underage_attempt", actorId: userId, targetType: "User", targetId: userId, payload: { idType } });
+    await db.kyc.upsert({ ...k, status: "REJECTED", rejectReason: "UNDERAGE", rejectNote: null, updatedAt: new Date().toISOString() });
+    notifyKyc(userId, "REJECTED").catch(() => {});
+    sendEmailToUser(userId, (email) => ({
+      to: email,
+      subject: "Identity check needs attention",
+      html: kycRejectedHtml({ reason: REJECT_EMAIL_TEXT.UNDERAGE }),
+      tag: "kyc-rejected",
+    }));
+    return { ok: true, data: { verified: false, reason: "UNDERAGE" } };
+  }
+
+  // ── FORMAT — one catalogue, one entry per document ────────────────────────
+  const verdict = validateIdNumber(idType, parse.data.idNumber);
+  if (!verdict.ok) {
+    // Named for what happened, and carrying WHICH rule failed — a compliance
+    // record that says only "invalid" cannot answer "did we lock a real citizen
+    // out, and on what basis?".
+    audit({ category: "KYC", action: "kyc.id.invalid_format", actorId: userId, targetType: "User", targetId: userId, payload: { idType, refusal: verdict.refusal, formatKind: spec.format.kind } });
+    return { ok: false, error: `That ${idType} number does not meet the recorded rule (${verdict.refusal}).`, code: "INVALID", reason: "id_number_format" };
+  }
+  const idNumber = verdict.value;
+
+  // ── EXPIRY — only where the document actually has one ─────────────────────
+  // ⛔ NIDA and the voter's card do not expire, so nothing asks for a date they
+  // do not carry. Asking would invite an invented one, and an invented date in a
+  // compliance record is worse than no date.
+  const expiryRaw = (parse.data.idExpiry ?? "").trim();
+  let idExpiry: string | null = null;
+  if (spec.expires) {
+    if (!expiryRaw) {
+      return { ok: false, error: `An expiry date is required for a ${idType}.`, code: "INVALID", reason: "id_expiry_required" };
+    }
+    // 🔴 REFUSED AT SUBMIT, not accepted-and-flagged. An expired document is not
+    // valid identity evidence, and an officer approving one is the human control
+    // failing silently. `KycRejectReason.EXPIRED_ID` stays the officer's word for
+    // a document whose IMAGE shows an expiry the player did not declare.
+    if (isExpired(expiryRaw, new Date())) {
+      audit({ category: "COMPLIANCE", action: "kyc.id.expired_rejected", actorId: userId, targetType: "User", targetId: userId, payload: { idType, expiry: expiryRaw } });
+      return { ok: false, error: `That ${idType} expired on ${expiryRaw}.`, code: "INVALID", reason: "id_expired" };
+    }
+    idExpiry = expiryRaw.slice(0, 10);
+  }
+
+  // ── 🔴 UNIQUENESS — ONE DOCUMENT, ONE ACCOUNT, ACROSS ALL FOUR TYPES ──────
+  // Block if this (type, number) is already on ANOTHER user's submission that is
+  // not rejected (a rejected one frees it). Multi-accounting / identity-reuse is a
+  // P0 AML control for a licensed book, and since there is no authority check
+  // (docs/IDENTITY-POLICY.md) uniqueness is the ENTIRE machine-side control.
+  //
+  // ⛔ THE PAIR, NEVER THE NUMBER ALONE. On the number alone a passport would
+  // collide with an unrelated licence sharing its digits; on the type alone the
+  // check means nothing. And the partial unique index enforces exactly this pair,
+  // so the fast path and the enforcement ask one question.
+  //
+  // ⚠️ `findActiveByIdNumber` is an indexed findFirst returning only
+  // { userId, status } — it never hydrates the base64 KYC images (audit H5).
+  const conflict = await db.kyc.findActiveByIdNumber(idType, idNumber, userId);
+  if (conflict) {
+    audit({ category: "SECURITY", action: "kyc.id.duplicate_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { idType, conflictUserId: conflict.userId, conflictStatus: conflict.status } });
+    return { ok: false, error: "This identity document is already linked to another account. If this is a mistake, contact support.", code: "INVALID", reason: "id_taken" };
   }
 
   // Collect the contact email at the identity step (canonical collection point).
@@ -132,99 +238,141 @@ export async function submitNidaStep(userId: string, input: z.input<typeof KycNi
     if (emailResult && !emailResult.ok) console.warn(`[kyc] setUserEmail rejected: ${emailResult.error}`);
     else if (emailResult?.ok) console.log(`[kyc] email saved for ${userId.slice(0, 14)}… (changed=${emailResult.changed}, verificationSent=${emailResult.verificationSent})`);
   } else {
-    console.warn(`[kyc] no email provided in NIDA step for ${userId.slice(0, 14)}…`);
+    console.warn(`[kyc] no email provided in identity step for ${userId.slice(0, 14)}…`);
   }
 
-  const result = await verifyNida({ nida: parse.data.nida, fullName: parse.data.fullName, dob: parse.data.dob, userId });
-  if (!result.ok) {
-    return { ok: false, error: result.error };
-  }
-  if (result.verified === false) {
-    // The DB `rejectReason` column is the KycRejectReason enum — writing the raw
-    // NIDA code (e.g. "MISMATCH"/"NOT_FOUND") throws in Postgres (it only passed
-    // in the in-memory dev store). Map to a valid enum member and keep a
-    // player-readable detail in rejectNote.
-    const NIDA_ENUM = { MISMATCH: "DETAILS_MISMATCH", EXPIRED: "EXPIRED_ID", NOT_FOUND: "OTHER", UNDERAGE: "UNDERAGE", SANCTIONED: "SANCTIONED" } as const;
-    const NIDA_TEXT = { MISMATCH: "Your details didn't match the National ID record.", EXPIRED: "The National ID on file has expired.", NOT_FOUND: "We couldn't find this National ID.", UNDERAGE: "You must be 18 or older to use 50pick.", SANCTIONED: "We're unable to verify this identity." } as const;
-    const enumMember = NIDA_ENUM[result.reason];
-    // ⚠️ These sentences are ENGLISH. `/profile/kyc` renders the enum member in
-    // the player's own language, so storing one alongside a categorised
-    // rejection prints the same reason twice — once translated, once in ours
-    // (§6 E-6). Keep it only for OTHER, which shows no category at all. The
-    // EMAIL still carries it: email templates have no dictionary.
-    const rejectNote = enumMember === "OTHER" ? NIDA_TEXT[result.reason] : null;
-    await db.kyc.upsert({ ...k, status: "REJECTED", rejectReason: enumMember, rejectNote, updatedAt: new Date().toISOString() });
-    audit({ category: "KYC", action: "kyc.nida.rejected", actorId: userId, targetType: "Kyc", targetId: k.id, payload: { reason: result.reason } });
-    // In-app + email notice (best-effort).
-    notifyKyc(userId, "REJECTED").catch(() => {});
-    sendEmailToUser(userId, (email) => ({
-      to: email,
-      subject: "Identity check needs attention",
-      html: kycRejectedHtml({ reason: NIDA_TEXT[result.reason] }),
-      tag: "kyc-rejected",
-    }));
-    return { ok: true, data: { verified: false, reason: result.reason } };
+  // ── THE NIDA AUTHORITY SEAM ───────────────────────────────────────────────
+  // ⛔ ONLY NIDA HAS ONE, AND TODAY IT ANSWERS NOTHING. `nida.ts` is a
+  // deterministic mock; no request has ever reached the National Identification
+  // Authority, and by owner decision none is required. There is no equivalent
+  // endpoint for a passport, a licence or a voter's card and none is invented
+  // here — the image plus a human officer is the control for all four.
+  // The sanctions / details-mismatch QA paths live in that mock and so are
+  // NIDA-only by construction; they are test hooks, not a control.
+  if (idType === "NIDA") {
+    const result = await verifyNida({ nida: idNumber, fullName: parse.data.fullName, dob: parse.data.dob, userId });
+    if (!result.ok) {
+      return { ok: false, error: result.error };
+    }
+    if (result.verified === false) {
+      // The DB `rejectReason` column is the KycRejectReason enum — writing the raw
+      // NIDA code (e.g. "MISMATCH"/"NOT_FOUND") throws in Postgres (it only passed
+      // in the in-memory dev store). Map to a valid enum member and keep a
+      // player-readable detail in rejectNote.
+      const NIDA_ENUM = { MISMATCH: "DETAILS_MISMATCH", EXPIRED: "EXPIRED_ID", NOT_FOUND: "OTHER", UNDERAGE: "UNDERAGE", SANCTIONED: "SANCTIONED" } as const;
+      const NIDA_TEXT = { MISMATCH: "Your details didn't match the National ID record.", EXPIRED: "The National ID on file has expired.", NOT_FOUND: "We couldn't find this National ID.", UNDERAGE: "You must be 18 or older to use 50pick.", SANCTIONED: "We're unable to verify this identity." } as const;
+      const enumMember = NIDA_ENUM[result.reason];
+      // ⚠️ These sentences are ENGLISH. `/profile/kyc` renders the enum member in
+      // the player's own language, so storing one alongside a categorised
+      // rejection prints the same reason twice — once translated, once in ours
+      // (§6 E-6). Keep it only for OTHER, which shows no category at all. The
+      // EMAIL still carries it: email templates have no dictionary.
+      const rejectNote = enumMember === "OTHER" ? NIDA_TEXT[result.reason] : null;
+      await db.kyc.upsert({ ...k, status: "REJECTED", rejectReason: enumMember, rejectNote, updatedAt: new Date().toISOString() });
+      audit({ category: "KYC", action: "kyc.nida.rejected", actorId: userId, targetType: "Kyc", targetId: k.id, payload: { reason: result.reason } });
+      // In-app + email notice (best-effort).
+      notifyKyc(userId, "REJECTED").catch(() => {});
+      sendEmailToUser(userId, (email) => ({
+        to: email,
+        subject: "Identity check needs attention",
+        html: kycRejectedHtml({ reason: NIDA_TEXT[result.reason] }),
+        tag: "kyc-rejected",
+      }));
+      return { ok: true, data: { verified: false, reason: result.reason } };
+    }
   }
 
+  const now = new Date().toISOString();
   try {
     await db.kyc.upsert({
       ...k,
-      nidaNumber: parse.data.nida,
-      nidaVerifiedAt: new Date().toISOString(),
-      fullName: result.fullName,
-      dob: result.dob,
-      updatedAt: new Date().toISOString(),
+      idType,
+      idNumber,
+      idExpiry,
+      idVerifiedAt: now,
+      // 🔴 DEPRECATED MIRROR, ONE WRITE SITE, ZERO READERS. `nidaNumber` /
+      // `nidaVerifiedAt` are superseded by the pair above and are dropped by the
+      // contract migration named in docs/COMPLIANCE-DECISIONS.md (2026-08-20).
+      // They are still written for a NIDA — and NULLED for the other three — so a
+      // rolling deploy's previous container keeps serving KYC reads, and so the
+      // legacy partial unique index cannot be left holding a number this
+      // submission no longer claims. ⛔ Do not read them; `test:id-documents`
+      // fails if anything does.
+      nidaNumber: idType === "NIDA" ? idNumber : null,
+      nidaVerifiedAt: idType === "NIDA" ? now : null,
+      fullName: parse.data.fullName,
+      dob: parse.data.dob,
+      updatedAt: now,
     });
   } catch (err) {
     // The check above is the FAST PATH; the partial unique index
-    // "KycSubmission_nidaNumber_active_key" is the ENFORCEMENT. Two users
-    // submitting the same NIDA in the same instant both clear the read (proven
-    // by scripts/load/s14-kyc-nida-race.mts) — the loser lands here. Present it
-    // as the same refusal a sequential duplicate gets, so a race is
-    // indistinguishable from an ordinary duplicate to the player, and audited
-    // the same way for AML.
-    if (!isNidaUniqueViolation(err)) throw err;
-    audit({ category: "SECURITY", action: "kyc.nida.duplicate_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { viaConstraint: true } });
-    return { ok: false, error: "This National ID is already linked to another account. If this is a mistake, contact support.", code: "INVALID", reason: "nida_taken" };
+    // "KycSubmission_idType_idNumber_active_key" is the ENFORCEMENT. Two users
+    // submitting the same document in the same instant both clear the read
+    // (proven by scripts/load/s14-kyc-nida-race.mts) — the loser lands here.
+    // Present it as the same refusal a sequential duplicate gets, so a race is
+    // indistinguishable from an ordinary duplicate to the player, and audited the
+    // same way for AML.
+    if (!isIdUniqueViolation(err)) throw err;
+    audit({ category: "SECURITY", action: "kyc.id.duplicate_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { idType, viaConstraint: true } });
+    return { ok: false, error: "This identity document is already linked to another account. If this is a mistake, contact support.", code: "INVALID", reason: "id_taken" };
   }
-  // `nidaVerifiedAt` means "format accepted + unique", never "authority
-  // confirmed" (docs/NIDA-POLICY.md). The payload used to carry a fabricated
-  // matchScore of 0.97 straight into the audit chain; record the real basis.
+  // `idVerifiedAt` means "format accepted + unique", never "authority confirmed"
+  // (docs/IDENTITY-POLICY.md). The payload used to carry a fabricated matchScore
+  // of 0.97 straight into the audit chain; record the real basis, and record WHICH
+  // document — a regulator asking "what did you accept, and on what rule?" gets
+  // the answer from this row.
   audit({
     category: "KYC",
-    action: "kyc.nida.accepted",
+    action: "kyc.id.accepted",
     actorId: userId, targetType: "Kyc", targetId: k.id,
     payload: {
-      authorityChecked: result.authorityChecked,
-      basis: result.authorityChecked ? "authority" : "format+uniqueness",
-      ...(result.matchScore === undefined ? {} : { matchScore: result.matchScore }),
+      idType,
+      basis: "format+uniqueness",
+      formatKind: spec.format.kind,
+      flags: verdict.flags,
+      expiryCaptured: idExpiry !== null,
     },
   });
   return { ok: true, data: { verified: true } };
 }
 
-/** Name of the partial unique index that enforces one-NIDA-one-account.
- *  Declared in prisma/migrations/20260731120000_kyc_nida_active_unique. */
+/**
+ * 🔴 THE INDEX THAT IS THE UNIQUENESS RULE — one document, one account, across all
+ * four identity types. Declared in
+ * prisma/migrations/20260820120000_kyc_identity_document.
+ */
+export const ID_UNIQUE_INDEX = "KycSubmission_idType_idNumber_active_key";
+
+/**
+ * The index it supersedes. Retained only until the contract migration drops
+ * `nidaNumber`; it still fires for a NIDA because that column is mirrored, and a
+ * violation of EITHER index means the same thing to the player.
+ */
 export const NIDA_UNIQUE_INDEX = "KycSubmission_nidaNumber_active_key";
 
 /**
- * Did this write lose the one-NIDA-one-account race?
+ * Did this write lose the one-document-one-account race?
  *
  * Matches Prisma's P2002 (unique constraint) and, defensively, the raw Postgres
  * 23505 / index name — a PARTIAL unique index is created by raw SQL rather than
  * the Prisma DSL, so the driver does not always attach `meta.target`.
+ *
+ * ⚠️ It answers for BOTH indexes on purpose. During the expand release a NIDA
+ * write touches both, and which one Postgres reports first is not something this
+ * code should depend on: either way the player gets the same refusal and AML gets
+ * the same row.
  */
-export function isNidaUniqueViolation(err: unknown): boolean {
+export function isIdUniqueViolation(err: unknown): boolean {
   const e = err as { code?: string; message?: string; meta?: { target?: unknown } };
   const msg = String(e?.message ?? "");
-  if (msg.includes(NIDA_UNIQUE_INDEX)) return true;
+  if (msg.includes(ID_UNIQUE_INDEX) || msg.includes(NIDA_UNIQUE_INDEX)) return true;
   if (e?.code === "23505") return true;
   if (e?.code !== "P2002") return false;
-  // P2002 on this table can only be the NIDA index — `id` is a cuid we generate
+  // P2002 on this table can only be an identity index — `id` is a cuid we generate
   // and `userId` is not unique — but check the target when we are given one.
   const t = e.meta?.target;
   const asText = Array.isArray(t) ? t.join(",") : String(t ?? "");
-  return asText === "" || /nida/i.test(asText) || asText.includes(NIDA_UNIQUE_INDEX);
+  return asText === "" || /nida|idnumber|idtype/i.test(asText) || asText.includes(ID_UNIQUE_INDEX);
 }
 
 /** Max decoded size of a document image, and the accepted data-URL shape. */
@@ -251,7 +399,20 @@ export function validateDocImage(s: string): { ok: true; bytes: number; mimeType
   return { ok: true, bytes, mimeType: actual };
 }
 
-export async function attachDocument(userId: string, docType: "NIDA_FRONT" | "NIDA_BACK" | "SELFIE", storageKey: string): Promise<ServiceResult> {
+/**
+ * Attach one image to a slot.
+ *
+ * ⛔ THE SLOT LIST IS NOT WRITTEN HERE. `ALL_DOC_SLOTS` is derived from the four
+ * documents' own `requiredSlots`, so a fifth document type gets its slot accepted
+ * by adding a catalogue row and nothing else — and, more importantly, a slot that
+ * NO document asks for can never be accepted by this function. A hand-written union
+ * here is how `PASSPORT` sat in the database enum, unused and unreachable, from the
+ * first KYC release until 2026-08-20.
+ */
+export async function attachDocument(userId: string, docType: KycDocSlot, storageKey: string): Promise<ServiceResult> {
+  if (!ALL_DOC_SLOTS.includes(docType)) {
+    return { ok: false, error: "Unknown document slot.", code: "INVALID", reason: "doc_image_type" };
+  }
   const valid = validateDocImage(storageKey);
   if (!valid.ok) return { ok: false, error: valid.error, code: "INVALID", reason: valid.reason };
   const k = await db.kyc.findByUserId(userId);
@@ -301,8 +462,22 @@ export async function attachExtraDocument(userId: string, requestId: string, sto
 export async function submitForReview(userId: string): Promise<ServiceResult> {
   const k = await db.kyc.findByUserId(userId);
   if (!k) return { ok: false, error: "Start KYC first.", code: "NOT_FOUND" };
-  if (!k.nidaVerifiedAt) return { ok: false, error: "NIDA not yet verified.", code: "INVALID", reason: "nida_not_verified" };
-  if (k.documents.length < 3) return { ok: false, error: "All three documents required.", code: "INVALID", reason: "docs_required" };
+  if (!k.idVerifiedAt || !k.idType) return { ok: false, error: "Identity document not yet accepted.", code: "INVALID", reason: "id_not_verified" };
+  // 🔴 THE REQUIRED SLOTS ARE THE ONES *THIS DOCUMENT* NEEDS — never a count.
+  // `documents.length >= 3` was true of a NIDA and is a lie about a passport, and a
+  // count can be satisfied by three copies of the same slot. Ask the catalogue
+  // which slots are missing and name them.
+  const missing = missingSlots(k.idType as IdDocType, k.documents.map((d: { docType: string }) => d.docType));
+  if (missing.length > 0) {
+    return { ok: false, error: `Missing document${missing.length > 1 ? "s" : ""}: ${missing.join(", ")}.`, code: "INVALID", reason: "docs_required" };
+  }
+  // ⚠️ EXPIRY IS RE-CHECKED AT SUBMIT, not only at the identity step. A passport
+  // accepted on Monday can be out of date by the time the documents are attached,
+  // and an officer must never be handed an expired document to approve.
+  if (isExpired(k.idExpiry ?? null, new Date())) {
+    audit({ category: "COMPLIANCE", action: "kyc.id.expired_rejected", actorId: userId, targetType: "Kyc", targetId: k.id, payload: { idType: k.idType, expiry: k.idExpiry, at: "submit" } });
+    return { ok: false, error: `That ${k.idType} expired on ${k.idExpiry}.`, code: "INVALID", reason: "id_expired" };
+  }
   // If an officer requested extra documents, every slot must be filled before
   // the player can resubmit — otherwise it'd bounce straight back.
   const unfulfilled = (k.extraRequests ?? []).filter((r: KycExtraRequest) => !r.storageKey);
@@ -343,7 +518,10 @@ export async function submitForReview(userId: string): Promise<ServiceResult> {
   // Compliance/ops: one best-effort send per recipient. No PII (masked NIDA,
   // masked phone, no images, no DOB) — the reviewer opens the secured drill-in.
   const reviewUrl = `${BASE_URL()}/admin/players/${userId}?tab=kyc`;
-  const nidaMasked = "•••• " + (k.nidaNumber?.slice(-4) ?? "");
+  // ⚠️ The document TYPE travels with the masked tail, because from 2026-08-20
+  // "•••• 5678" alone no longer says what was submitted — and an officer opening
+  // the queue decides which case to pick up from this line.
+  const nidaMasked = `${k.idType ?? "ID"} •••• ${k.idNumber?.slice(-4) ?? ""}`;
   const playerLabel = displayLabel({ id: userId, displayName: k.fullName ?? u?.displayName ?? null });
 
   // In-app alert in every admin's MAIN notification bell (deep-links to the

@@ -9,12 +9,15 @@
 import { useState } from "react";
 import { I } from "@/components/ui/glyphs";
 import { formatDateTime } from "@/lib/utils";
+import type { KycDocSlot } from "@/lib/id-documents";
 
-type Slot = { type: "NIDA_FRONT" | "NIDA_BACK" | "SELFIE"; label: string; uploadedAt: string | null };
+// ⛔ THE SLOT UNION IS THE CATALOGUE'S. A literal here meant a passport bio page
+// had no tab to be opened from — see the note beside `slots` in page.tsx.
+type Slot = { type: KycDocSlot; label: string; uploadedAt: string | null };
 
 export function KycDocViewer({ userId, slots }: { userId: string; slots: Slot[] }) {
   const firstPresent = slots.find((s) => s.uploadedAt) ?? slots[0];
-  const [active, setActive] = useState(firstPresent?.type ?? "NIDA_FRONT");
+  const [active, setActive] = useState<KycDocSlot>(firstPresent?.type ?? "NIDA_FRONT");
   const [zoom, setZoom] = useState<"fit" | "100" | "200">("fit");
   const [rot, setRot] = useState(0);
   // B-28 / V-4 — the img used to render bare: while fetching there was nothing,

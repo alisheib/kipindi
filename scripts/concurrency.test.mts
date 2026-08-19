@@ -218,7 +218,7 @@ async function makeMarket(): Promise<string> {
   const t0 = now();
   await db.kyc.upsert({
     id: `kyc_${uid}`, userId: uid, status: "APPROVED", rejectReason: null, rejectNote: null,
-    nidaNumber: "19900101456712341234", nidaVerifiedAt: t0, fullName: "WD Tester", dob: "1990-01-01",
+    nidaNumber: "19900101456712341234", nidaVerifiedAt: t0, idType: "NIDA", idNumber: "19900101456712341234", idExpiry: null, idVerifiedAt: t0, fullName: "WD Tester", dob: "1990-01-01",
     documents: [], reviewerId: null, reviewedAt: null, submittedAt: t0, createdAt: t0, updatedAt: t0,
   } as never);
   const key = "cc-wd-key";

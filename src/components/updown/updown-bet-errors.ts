@@ -34,7 +34,7 @@ import { renderFailure, hasReason, type FailureDetail, type FailureReason } from
  *     `title: f.severity === "error" ? m.udErrSuspendedTitle : m.udErrRgLimitTitle`
  * and every `modal`-channel reason in the registry is severity `error` — `self_excluded`,
  * `account_blocked`, `wallet_frozen`, `loss_limit_daily`, `break_active`, `kyc_required`,
- * `nida_taken`, `account_suspended`. So `udErrRgLimitTitle` ("Daily loss limit reached")
+ * `id_taken`, `account_suspended`. So `udErrRgLimitTitle` ("Daily loss limit reached")
  * was UNREACHABLE through this branch, and a player who hit the cap they set themselves
  * read **"Betting unavailable"** over a body saying they had reached their own limit — a
  * heading that describes an operator block, on the one refusal that is the player's own

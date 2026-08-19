@@ -161,6 +161,8 @@
     "test:search-adoption": "tsx scripts/search-adoption.test.mts",
     "test:measure": "tsx scripts/measure-system.test.mts",
     "test:docs": "node scripts/docs-links.mjs",
+    "test:id-documents": "tsx scripts/id-documents.test.mts",
+    "red:id-documents": "node scripts/id-documents-red.mjs",
     "test:kyc-honesty": "tsx scripts/kyc-status-honesty.test.mts",
     "test:kyc-reject-reason": "tsx scripts/kyc-reject-reason.test.mts",
     "test:kyc-doc-metadata": "tsx scripts/kyc-doc-metadata.test.mts",

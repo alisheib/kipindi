@@ -3,7 +3,7 @@
  * claim to be more than it is.
  *
  * ⚠️ WHY THIS SUITE EXISTS. `nida.ts` is a deterministic MOCK. No request has ever
- * reached the National Identification Authority. Per docs/NIDA-POLICY.md (Ali,
+ * reached the National Identification Authority. Per docs/IDENTITY-POLICY.md (Ali,
  * 2026-07-19) that is deliberate and sufficient: the control is FORMAT + UNIQUENESS,
  * and identity assurance comes from a human officer reading the documents.
  *
@@ -23,6 +23,14 @@
  *     "active submissions holding this NIDA : 2". Closed with a partial unique
  *     index. This suite fails if that index, its migration, or the handler that
  *     turns the constraint into a player-readable refusal is removed.
+ *
+ *     🔴 AND FROM 2026-08-20 IT MUST SPAN FOUR DOCUMENTS, NOT ONE. A player proves
+ *     identity with any ONE of NIDA / passport / driving licence / voter's card.
+ *     Three more per-document number columns would have handed one human four
+ *     accounts AND a route around a DUPLICATE_IDENTITY rejection — blocked on your
+ *     NIDA, re-register with your passport. So the index is on the TUPLE
+ *     ("idType","idNumber") with the same partial WHERE, and §3 below asserts BOTH
+ *     halves: the pair, and the exclusion of REJECTED.
  *
  * 3 · A REJECTED PLAYER MUST BE TOLD. `page.tsx` called `startKyc()` — which CLEARS
  *     the submission — one line BEFORE it read the status, so `rejected` was always
@@ -55,7 +63,7 @@ const nida = read("src/lib/server/nida.ts");
 ok("nida.ts still declares itself a mock",
   /mock/i.test(nida),
   "If a REAL NIDA integration ever lands, this suite's premise changes — update\n" +
-  "       docs/NIDA-POLICY.md in the SAME commit, then relax the claims below.");
+  "       docs/IDENTITY-POLICY.md in the SAME commit, then relax the claims below.");
 ok("nida.ts makes no outbound request",
   !/\bfetch\(|axios|https?\.request|undici/.test(stripComments(nida)),
   "A network call here would mean the mock is gone and every 'no authority check'\n" +
@@ -76,7 +84,7 @@ for (const f of CLAIM_SURFACES) {
   const body = stripComments(read(f));
   ok(`🔴 ${f} does not invoke the National Identification Authority as a checker`,
     !/National Identification Authority|Mamlaka ya Vitambulisho vya Taifa|国民身份管理局/.test(body),
-    "docs/NIDA-POLICY.md: no request has ever reached NIDA. Naming the authority as\n" +
+    "docs/IDENTITY-POLICY.md: no request has ever reached NIDA. Naming the authority as\n" +
     "       the verifier tells a player — or a regulator — something that is not true.");
 }
 
@@ -103,35 +111,95 @@ ok("the KYC review checklist states the control has no authority check",
 section("3 · uniqueness is atomic, not hopeful");
 
 const MIGRATION = "prisma/migrations/20260731120000_kyc_nida_active_unique/migration.sql";
+// 🔴 THE LIVE ONE from 2026-08-20 — one document, one account, across all four types.
+const ID_MIGRATION = "prisma/migrations/20260820120000_kyc_identity_document/migration.sql";
 let migration = "";
 try { migration = read(MIGRATION); } catch { /* reported below */ }
+let idMigration = "";
+try { idMigration = read(ID_MIGRATION); } catch { /* reported below */ }
+
 ok("🔴 the partial unique-index migration exists", migration.length > 0,
   `Missing ${MIGRATION}. Without it, scripts/load/s14-kyc-nida-race.mts puts TWO\n` +
   "       accounts on one national ID. Uniqueness is the entire identity control.");
-ok("…and it targets the real table (KycSubmission, never 'Kyc')",
-  /ON\s+"KycSubmission"/.test(migration) && !/ON\s+"Kyc"\s*\(/.test(migration),
-  "`Kyc` is the app-layer name (db.kyc.*). There is no such table — that SQL fails.");
-ok("…and it is PARTIAL, so a REJECTED submission still frees the number",
-  /WHERE[\s\S]*status\s*<>\s*'REJECTED'/.test(migration),
-  "A total unique index would permanently burn a national ID on any rejection.");
-ok("…and it is idempotent (production applies it CONCURRENTLY by hand first)",
-  /IF NOT EXISTS/.test(migration));
+ok("🔴 the FOUR-DOCUMENT identity migration exists", idMigration.length > 0,
+  `Missing ${ID_MIGRATION}. Without it the uniqueness rule knows only about NIDA,\n` +
+  "       so a player blocked as DUPLICATE_IDENTITY re-registers with their passport.");
+/**
+ * 🔴 STRIP THE SQL COMMENTS FIRST, AND SLICE TO THE STATEMENT.
+ *
+ * ⛔ A COMMENT THAT QUOTES SQL IS A DECOY ANCHOR (campaign trap 6, measured at
+ * `E-170` on a fix's own comment). Both migrations explain themselves, and the
+ * identity one prints the duplicate-check query — which contains the exact string
+ * `WHERE "idNumber" IS NOT NULL AND status <> 'REJECTED'`. A file-wide test for
+ * "is it partial?" therefore matched the PROSE: `red:id-documents` case 2 made the
+ * index TOTAL and this suite stayed green. Read the statement, not the file.
+ */
+const uniqueIndexStatement = (sql: string): string => {
+  const code = sql.replace(/^\s*--.*$/gm, "");
+  const i = code.search(/CREATE\s+UNIQUE\s+INDEX/i);
+  if (i < 0) return "";
+  const end = code.indexOf(";", i);
+  return end < 0 ? code.slice(i) : code.slice(i, end + 1);
+};
+
+for (const [label, sql] of [["legacy NIDA", migration], ["identity tuple", idMigration]] as const) {
+  const stmt = uniqueIndexStatement(sql);
+  ok(`${label} · a CREATE UNIQUE INDEX statement exists outside the comments`,
+    stmt.length > 0,
+    "Everything below reads this statement. Without it they would all pass vacuously.");
+  ok(`${label} · targets the real table (KycSubmission, never 'Kyc')`,
+    /ON\s+"KycSubmission"/.test(stmt) && !/ON\s+"Kyc"\s*\(/.test(stmt),
+    "`Kyc` is the app-layer name (db.kyc.*). There is no such table — that SQL fails.");
+  ok(`${label} · is PARTIAL, so a REJECTED submission still frees the number`,
+    /WHERE[\s\S]*status\s*<>\s*'REJECTED'/.test(stmt),
+    "A total unique index would permanently burn an identity document on any rejection.");
+  ok(`${label} · is idempotent (production applies it CONCURRENTLY by hand first)`,
+    /IF NOT EXISTS/.test(stmt));
+}
+// ⭐ CONTROL · the comment-stripper must actually be capable of hiding prose from the
+// assertions above, or the fix for `red:id-documents` case 2 is decoration.
+ok("control · a WHERE clause that exists ONLY in a comment does not read as partial",
+  !/WHERE[\s\S]*status\s*<>\s*'REJECTED'/.test(
+    uniqueIndexStatement(`-- WHERE "idNumber" IS NOT NULL AND status <> 'REJECTED'\nCREATE UNIQUE INDEX "x" ON "KycSubmission" ("idType", "idNumber");`),
+  ));
+// 🔴 THE PAIR, NOT THE NUMBER ALONE. An index on ("idNumber") alone would refuse a
+// passport that shares its digits with somebody else's licence; an index on
+// ("idType") is meaningless. This is the assertion the whole unit turns on.
+ok('🔴 the identity index is on the TUPLE ("idType", "idNumber")',
+  /CREATE UNIQUE INDEX[\s\S]{0,200}ON\s+"KycSubmission"\s*\(\s*"idType"\s*,\s*"idNumber"\s*\)/.test(idMigration),
+  "One identity tuple, unique together. Three parallel per-document columns give\n" +
+  "       one human four accounts and a route around a DUPLICATE_IDENTITY rejection.");
+ok("…and it BACKFILLS the existing NIDA rows into that tuple",
+  /UPDATE\s+"KycSubmission"[\s\S]{0,400}"idType"\s*=\s*'NIDA'[\s\S]{0,400}"idNumber"\s*=\s*"nidaNumber"/.test(idMigration),
+  "Without the backfill every already-verified player reads as having no document,\n" +
+  "       and their national ID stops being reserved.");
+// ⛔ EXPAND ONLY. Dropping nidaNumber in the same migration 500s every KYC read on
+// the previous container for the length of a rolling deploy — on an identity path.
+ok("…and it does NOT drop the deprecated columns in the same migration",
+  !/DROP\s+COLUMN/i.test(idMigration),
+  "Railway health-checks the new deployment while the OLD one still serves, and\n" +
+  "       Prisma selects every scalar column. The contract migration is a separate,\n" +
+  "       recorded step (docs/COMPLIANCE-DECISIONS.md).");
 
 const svc = read("src/lib/server/kyc-service.ts");
 const svcCode = stripComments(svc);
-ok("kyc-service pins the index name in one place",
+ok("kyc-service pins the LIVE index name in one place",
+  /ID_UNIQUE_INDEX\s*=\s*"KycSubmission_idType_idNumber_active_key"/.test(svcCode));
+ok("kyc-service still pins the legacy index name while it exists",
   /NIDA_UNIQUE_INDEX\s*=\s*"KycSubmission_nidaNumber_active_key"/.test(svcCode));
-ok("the migration and the code agree on that index name",
-  migration.includes("KycSubmission_nidaNumber_active_key"),
+ok("the identity migration and the code agree on the live index name",
+  idMigration.includes("KycSubmission_idType_idNumber_active_key"),
   "A rename in one place turns the constraint into an unhandled 500 for the loser\n" +
   "       of the race, instead of a readable refusal.");
+ok("the legacy migration and the code agree on the legacy index name",
+  migration.includes("KycSubmission_nidaNumber_active_key"));
 // ⚠️ An earlier draft of this assertion tested `/isNidaUniqueViolation\(/`, which
 // matches the function's own DEFINITION. Deleting the catch-block guard left the
 // gate GREEN — the guard was reading a symbol that happened to be nearby instead
 // of the control itself. Caught by mutating the source on purpose. Assert the
 // WIRING: the handler must be CALLED, and must re-throw anything else.
 ok("🔴 the losing writer is translated into a player-readable refusal",
-  /if\s*\(\s*!\s*isNidaUniqueViolation\s*\([^)]*\)\s*\)\s*throw\b/.test(svcCode),
+  /if\s*\(\s*!\s*isIdUniqueViolation\s*\([^)]*\)\s*\)\s*throw\b/.test(svcCode),
   "Without this the second submitter gets a raw Prisma error. The refusal must look\n" +
   "       the same whether the duplicate was sequential or a race — and a NON-constraint\n" +
   "       error must still propagate rather than be swallowed as a duplicate.");
@@ -139,8 +207,14 @@ ok("…and the refusal wording is shared with the sequential-duplicate path",
   (svcCode.match(/already linked to another account/g) ?? []).length >= 2,
   "A race and an ordinary duplicate must be indistinguishable to the player.");
 ok("…and the race is audited exactly like an ordinary duplicate",
-  (svcCode.match(/kyc\.nida\.duplicate_blocked/g) ?? []).length >= 2,
+  (svcCode.match(/kyc\.id\.duplicate_blocked/g) ?? []).length >= 2,
   "AML needs both refusals in the log under one action name.");
+// ⛔ AND THE DUPLICATE CHECK MUST ASK FOR THE PAIR. `findActiveByIdNumber(type, number)`
+// — a read on the number alone would disagree with the index that enforces the rule,
+// so a race would resolve differently from a sequential duplicate.
+ok("🔴 the fast-path duplicate read matches on (type, number)",
+  /findActiveByIdNumber\s*\(\s*idType\s*,\s*idNumber\s*,\s*userId\s*\)/.test(svcCode),
+  "The read and the index must ask one question, or the two disagree under load.");
 
 // The proof itself must stay runnable, or the guarantee decays into a memory.
 ok("the two-process race proof is still present",
@@ -172,7 +246,7 @@ ok("🔴 restarting is an explicit player action, not a side effect of looking",
 
 const actions = stripComments(read("src/app/profile/kyc/actions.ts"));
 ok("🔴 a FAILED identity check does not redirect to the success banner",
-  /verified === false/.test(actions) && actions.indexOf("verified === false") < actions.indexOf('"/profile/kyc?nida=verified"'),
+  /verified === false/.test(actions) && actions.indexOf("verified === false") < actions.indexOf('"/profile/kyc?id=accepted"'),
   "submitNidaStep returns ok:true even when it REJECTS — `ok` reports that the step\n" +
   "       ran, not that the player passed. Redirecting on `ok` alone greeted a rejected\n" +
   "       player with 'NIDA number accepted', contradicting the email just sent to them.");
@@ -212,7 +286,7 @@ const branch = (from: string, to: string): string => {
 };
 
 for (const [label, fn, template] of [
-  ["NIDA check fails → REJECTED", "submitNidaStep", "kycRejectedHtml"],
+  ["identity check fails → REJECTED", "submitIdentityStep", "kycRejectedHtml"],
   ["player submits → PENDING_REVIEW", "submitForReview", "kycSubmittedHtml"],
   ["officer forces re-verify", "forceReverifyKyc", "kycMoreInfoHtml"],
 ] as const) {
