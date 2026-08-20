@@ -358,13 +358,21 @@ read-modify-write sequences remain.
 
 ## Deploy workflow
 
-⚠️ **Ali's checkout sits on branch `qa/live-experience`, not `main`** — so the push
-line is ALWAYS `git push origin HEAD:main`. A bare `git push` pushes the wrong branch
-and the deploy never fires. (And never put a `#` comment on a command line: Windows
-`cmd` does not strip them, so git reads the comment words as refspecs and errors.)
+🔴 **READ THE BRANCH, EVERY TIME, BEFORE COMMITTING — `git branch --show-current`.**
+
+⚠️ **CORRECTED 2026-08-20. This note used to say the checkout sits on
+`qa/live-experience`, so "a bare `git push` pushes the wrong branch and the deploy never
+fires."** The checkout on this machine is on **`main`** at `F:\kipindi-main`, so a bare
+`git push` **deploys the live real-money platform immediately**. The note promised the
+exact opposite of the truth, and a second session shares this working directory.
+
+⛔ Never `git add -A` or `git add .` here — stage the files you touched, by name, from the
+current HEAD. (And never put a `#` comment on a command line: Windows `cmd` does not strip
+them, so git reads the comment words as refspecs and errors.)
 
 ```
-cd C:\kipindi-main
+cd F:\kipindi-main
+git branch --show-current   # main → the next push is a LIVE deploy
 # Make your change
 git add <files>
 git commit -m "Sprint NN: short title — one-line summary"
