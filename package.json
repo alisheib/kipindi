@@ -176,6 +176,7 @@
     "red:erasure": "node scripts/erasure-red.mjs",
     "red:dsar-intake": "node scripts/dsar-intake-red.mjs",
     "red:dead-schema": "node scripts/dead-schema-red.mjs",
+    "red:retention": "node scripts/retention-red.mjs",
     "test:kyc-honesty": "tsx scripts/kyc-status-honesty.test.mts",
     "test:kyc-reject-reason": "tsx scripts/kyc-reject-reason.test.mts",
     "test:kyc-doc-metadata": "tsx scripts/kyc-doc-metadata.test.mts",

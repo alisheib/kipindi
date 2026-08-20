@@ -30,6 +30,10 @@ import { assertAiBudget } from "./ai-usage";
 import { listMarkets, resolvePublishCategory } from "./market-service";
 import { seedDefaultSources, getGeneratableCategories, isSourceTrusted } from "./source-registry";
 import { prisma, hasDatabase } from "./prisma";
+// `Prisma.DbNull` writes a real SQL NULL into a nullable Json column. ⛔ Plain `null` is
+// ambiguous there — Prisma reads it as the JSON value `null`, which is a 4-byte payload rather
+// than an absent one, so the prune would report success and free nothing.
+import { Prisma } from "@prisma/client";
 
 /* ─── Types ─── */
 
@@ -145,7 +149,31 @@ export interface AIPollStore {
   delete(id: string): Promise<boolean>;
   values(): Promise<StoredAIPoll[]>;
   size(): Promise<number>;
+  /** Retention: blank the two bulk payload columns on rows older than `beforeIso`.
+   *  ⛔ Deletes no row and touches no decision field — see `prunePayloadsOlderThan`. */
+  prunePayloads(beforeIso: string): Promise<AIPollPruneResult>;
 }
+
+/** What a payload prune actually did. Two numbers because they are two columns and a row
+ *  can legitimately have one and not the other — reporting a single total would double-count
+ *  the rows that had both and hide the ones that had neither. */
+export type AIPollPruneResult = { rawResponses: number; generations: number };
+
+/**
+ * 🔴 THE TOMBSTONE, AND WHY IT IS NOT A NULL.
+ *
+ * `rawResponse` is rendered on `/admin/ai-polls` for a VALIDATION_FAILED or FILTERED poll —
+ * it is the reviewer's only view of what the provider actually said. Nulling it makes that
+ * section VANISH, and a reviewer looking at a 40-day-old failure then cannot tell "there was
+ * never a raw response" from "it aged out". That is the same silent-absence defect this whole
+ * audit is about, so the column keeps a sentence instead of nothing: ~60 bytes against the
+ * ~7 kB average it replaces.
+ *
+ * ⛔ It is written ONLY where a payload actually existed. A row whose `rawResponse` was always
+ * null keeps its null — stamping "pruned" over a column that never held anything would be a
+ * false statement, which is the defect wearing the other hat.
+ */
+export const AIPOLL_PAYLOAD_PRUNED = "[raw response pruned by retention — docs/DATA-RETENTION.md]";
 
 const memoryStore: AIPollStore = {
   async get(id) { return polls.get(id) ?? null; },
@@ -153,6 +181,20 @@ const memoryStore: AIPollStore = {
   async delete(id) { return polls.delete(id); },
   async values() { return Array.from(polls.values()); },
   async size() { return polls.size; },
+  async prunePayloads(beforeIso) {
+    const cutoff = Date.parse(beforeIso);
+    let rawResponses = 0, generations = 0;
+    for (const [id, poll] of polls) {
+      if (Date.parse(poll.createdAt) >= cutoff) continue;
+      let touched = false;
+      if (poll.rawResponse !== null && poll.rawResponse !== AIPOLL_PAYLOAD_PRUNED) {
+        poll.rawResponse = AIPOLL_PAYLOAD_PRUNED; rawResponses++; touched = true;
+      }
+      if (poll.generation != null) { poll.generation = null; generations++; touched = true; }
+      if (touched) polls.set(id, poll);
+    }
+    return { rawResponses, generations };
+  },
 };
 
 function pc() {
@@ -272,6 +314,29 @@ const prismaStore: AIPollStore = {
   },
   async size() {
     return pc().aIPoll.count();
+  },
+  /**
+   * ⛔ TWO `updateMany` PASSES, NOT ONE `OR`. A single statement with
+   * `OR: [rawResponse not pruned, generation not null]` would qualify a row on the GENERATION
+   * arm and then stamp the tombstone over a `rawResponse` that was always null — telling a
+   * reviewer a payload was pruned when there never was one. Each column is filtered on its own
+   * emptiness, so each write is true of the column it touches.
+   *
+   * ⚠️ `NOT: { rawResponse: … }` does not match NULLs, and that is wanted here: SQL's
+   * `NULL <> 'x'` is NULL, so a row with no raw response is left alone rather than tombstoned.
+   * It also makes the pass IDEMPOTENT — a second run matches nothing.
+   */
+  async prunePayloads(beforeIso) {
+    const createdAt = { lt: new Date(beforeIso) };
+    const raw = await pc().aIPoll.updateMany({
+      where: { createdAt, NOT: { rawResponse: AIPOLL_PAYLOAD_PRUNED } },
+      data: { rawResponse: AIPOLL_PAYLOAD_PRUNED },
+    });
+    const gen = await pc().aIPoll.updateMany({
+      where: { createdAt, NOT: { generation: { equals: Prisma.DbNull } } },
+      data: { generation: Prisma.DbNull },
+    });
+    return { rawResponses: raw.count, generations: gen.count };
   },
 };
 

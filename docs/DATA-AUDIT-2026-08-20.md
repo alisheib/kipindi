@@ -183,7 +183,23 @@ for the statutory 7 years from closure rather than deleted on request.
   0 rows in all four, 0 non-null in both columns and in `Session.deviceId`.
   `test:dead-schema` 34/34 · `red:dead-schema` 7/7. The prepared DDL is in
   [`SESSION-PROMPT-DATA-FINALISE.md`](SESSION-PROMPT-DATA-FINALISE.md) §3.
-- **F-09** AIPoll payload prune · **F-11** the small placements.
+- ✅ **F-09 DONE 2026-08-21** — `rawResponse` and `generation` are blanked on `AIPoll` rows
+  older than 30 days by `retention.purge.daily`. ⛔ **No row is deleted**: an `AIPoll` row is the
+  decision record for every AI-generated market the platform has published. `rawResponse` keeps a
+  tombstone SENTENCE rather than a NULL, so a reviewer can tell *pruned* from *never existed*.
+  Measured on production: 621 rows / 8,432 kB, of which the 494 rows older than 30 days carry
+  **4.41 MB** — a little over half the table. ⚠️ The finding's field list named a `trace` column
+  on `AIPoll`; there is none. `trace` is on `MarketCandidate` and is a decision trail, not a
+  payload. `test:retention` 34/34 · `red:retention` 9/9.
+- ⚠️ **AND THE SNAPSHOT HALF OF F-09 HAD ITS PREMISE WRONG TWICE** — see
+  [`DATA-RETENTION.md`](DATA-RETENTION.md) §2c. There is no "1-in-50 sampling" (`PRUNE_EVERY` is
+  how often an append also prunes; every snapshot is written), and shortening the FIFO depth
+  would evict nothing (`MAX_POINTS` is 800; the deepest market in the database holds **30**).
+  The driver is the number of ROUNDS: 13,245 UPDOWN markets × ~1 row each. ⭐ And a market with
+  one snapshot cannot draw a sparkline at all — one point is not a line — so those rows are kept
+  for a garnish they cannot render. Not changed here: it touches a rendered surface and the
+  measurement changes what the right fix is. **Ali's call.**
+- **F-11** the small placements.
   ⛔ **F-09's snapshot-skip must NOT be done as written** — an adversarial check returned
   **NOT_SAFE**; verify the readers first.
 - **F-07's remaining sites** — insights, catalogue, analytics, the admin user lists. The boot

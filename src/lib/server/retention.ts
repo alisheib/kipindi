@@ -20,6 +20,7 @@
  */
 import { db } from "./store";
 import { audit } from "./audit";
+import { aiPollStore } from "./ai-poll-generation";
 
 /**
  * 🔴 NOTIFICATION RETENTION IS COUPLED TO THE UP & DOWN DIGEST. Read this before changing it.
@@ -61,25 +62,67 @@ export const MAX_DIGEST_REPLAY_DAYS = 90;
  */
 export const OTP_RETENTION_DAYS = 30;
 
+/**
+ * AI poll PAYLOADS. 30 days from generation — audit F-09.
+ *
+ * ⛔ THIS ONE DELETES NO ROW, AND THE DISTINCTION IS THE WHOLE DESIGN. An `AIPoll` row is a
+ * DECISION record: which category was asked for, what was generated, what an officer approved
+ * or rejected and why, what it cost, and whether it became a live market. None of that goes.
+ * What goes is the two bulk columns nothing reads after the fact — `rawResponse` (the
+ * provider's verbatim reply) and `generation` (the parsed object it was built from).
+ *
+ * 📏 Measured read-only on production 2026-08-21: 621 rows / 8,432 kB, of which `rawResponse`
+ * is 4.45 MB and `generation` 1.19 MB. **494 rows are already older than 30 days and carry
+ * 4.41 MB between them** — a little over half the table, for two columns that answer a
+ * question nobody asks about a month-old generation.
+ *
+ * ⚠️ 30 days, not 180 like the notifications, because the audience is different: `rawResponse`
+ * exists so a reviewer can see why a generation FAILED, and that review happens within days or
+ * never. `docs/DATA-RETENTION.md` §1 carries the row.
+ */
+export const AIPOLL_PAYLOAD_RETENTION_DAYS = 30;
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-export type RetentionResult = { notifications: number; otps: number };
+export type RetentionResult = {
+  notifications: number;
+  otps: number;
+  /** Rows whose `rawResponse` was replaced by the tombstone. */
+  aiPollRawResponses: number;
+  /** Rows whose `generation` was nulled. */
+  aiPollGenerations: number;
+};
 
 /**
  * Delete what has aged out. Idempotent, and safe to run as often as the caller likes.
  *
  * ⛔ IT TOUCHES NOTHING FINANCIAL AND NOTHING IN THE AUDIT CHAIN. Transactions, LedgerEntry,
  * Position, Wallet, KycSubmission, KycDocument and AuditLog are all outside its reach by
- * construction — it names the two classes it deletes and cannot reach a third. Money and
+ * construction — it names the three classes it touches and cannot reach a fourth. Money and
  * identity records are kept for 7 years under POCA Cap 423 §16, and the audit chain is
  * append-only: pruning it would break the HMAC links that make it evidence.
+ *
+ * ⚠️ TWO OF THE THREE DELETE ROWS; THE THIRD DOES NOT. The AI-poll pass blanks two payload
+ * COLUMNS and leaves every row and every decision field in place. That difference is reported
+ * separately in the result and in the audit payload rather than folded into one "pruned"
+ * number, because "we deleted 494 AI polls" and "we blanked a column on 494 AI polls" are very
+ * different sentences to have to say to somebody.
  */
 export async function runRetentionPass(now = Date.now()): Promise<RetentionResult> {
   const notifBefore = new Date(now - NOTIFICATION_RETENTION_DAYS * DAY_MS).toISOString();
   const otpBefore = new Date(now - OTP_RETENTION_DAYS * DAY_MS).toISOString();
 
+  const aiPollBefore = new Date(now - AIPOLL_PAYLOAD_RETENTION_DAYS * DAY_MS).toISOString();
+
   const notifications = await db.notification.pruneOlderThan(notifBefore);
   const otps = await db.otp.pruneOlderThan(otpBefore);
+  // ⛔ Best-effort, and deliberately last. A failure here must not stop the two classes above
+  // from being pruned — those are the ones with a published period against them.
+  const aiPolls = await aiPollStore.prunePayloads(aiPollBefore)
+    .catch((err) => {
+      console.error("[retention] AI poll payload prune failed:", (err as Error)?.message ?? err);
+      return { rawResponses: 0, generations: 0 };
+    });
 
   // One SYSTEM row per run, under the name the product already published. A retention pass
   // that leaves no trace cannot be shown to have run — which is the question an inspector
@@ -87,7 +130,7 @@ export async function runRetentionPass(now = Date.now()): Promise<RetentionResul
   //
   // ⚠️ Only when it actually deleted something. A daily no-op entry would add ~365 rows a
   // year to an unprunable chain to record that nothing happened (audit F-10).
-  if (notifications > 0 || otps > 0) {
+  if (notifications > 0 || otps > 0 || aiPolls.rawResponses > 0 || aiPolls.generations > 0) {
     audit({
       category: "SYSTEM",
       action: "retention.purge.daily",
@@ -97,8 +140,16 @@ export async function runRetentionPass(now = Date.now()): Promise<RetentionResul
       payload: {
         notifications, notificationRetentionDays: NOTIFICATION_RETENTION_DAYS,
         otps, otpRetentionDays: OTP_RETENTION_DAYS,
+        // Named for what happened to them. `aiPollsDeleted` would be a lie: no row went.
+        aiPollRawResponsesBlanked: aiPolls.rawResponses,
+        aiPollGenerationsBlanked: aiPolls.generations,
+        aiPollPayloadRetentionDays: AIPOLL_PAYLOAD_RETENTION_DAYS,
       },
     });
   }
-  return { notifications, otps };
+  return {
+    notifications, otps,
+    aiPollRawResponses: aiPolls.rawResponses,
+    aiPollGenerations: aiPolls.generations,
+  };
 }

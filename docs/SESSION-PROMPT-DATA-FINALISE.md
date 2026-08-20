@@ -211,7 +211,31 @@ the reason the row counts above were measured before the declarations were remov
 
 ---
 
-## 4 · F-09 — AIPoll payloads only
+## 4 · ✅ DONE 2026-08-21 — F-09, AIPoll payloads
+
+> **Shipped.** `rawResponse` + `generation` blanked after 30 days by `retention.purge.daily`.
+> `npm run test:retention` 34/34 · `npm run red:retention` 9/9.
+> ⛔ **No row is deleted** — an `AIPoll` row is the decision record for every AI market ever
+> published. `rawResponse` keeps a tombstone SENTENCE, not a NULL, so a reviewer can tell
+> *pruned* from *never existed*. Measured: 494 of 621 rows are already past 30 days and carry
+> **4.41 MB of an 8.43 MB table**.
+>
+> ⚠️ **The field list below is wrong about `trace`** — there is no such column on `AIPoll`.
+> `trace` is on `MarketCandidate` and is a decision trail, not a payload. Not pruned.
+>
+> 🔴 **AND THE SNAPSHOT NOTE BELOW IS WRONG TWICE.** Measured on production 2026-08-21:
+> there is no 1-in-50 *sampling* (`PRUNE_EVERY` is how often an append also runs a prune —
+> **every** snapshot is written), and shortening the FIFO depth would evict **nothing**
+> (`MAX_POINTS` is 800; the deepest market in the whole database holds **30**). The driver is
+> the number of ROUNDS: 13,245 UPDOWN markets × ~1 row each, 97.6% of the table.
+> ⭐ And a market with ONE snapshot cannot draw a sparkline — one point is not a line — so those
+> rows are kept for a garnish they cannot render. The honest options and the numbers are in
+> [`DATA-RETENTION.md`](DATA-RETENTION.md) §2c. **Ali's call; not changed here.**
+
+<details>
+<summary>The original work order (kept as written, for the record)</summary>
+
+### F-09 — AIPoll payloads only
 
 Null `rawResponse` / `trace` / `generation` after 30 days, keeping the decision fields. Copy the
 opportunistic prune pattern in `ai-usage.ts`. **494 of 621 polls are already older than 30 days.**
@@ -226,6 +250,8 @@ audit doc so nobody re-checks them.
 rows are on UPDOWN markets** — 97.6% of the table — for a garnish. Reducing the 1-in-50 sampling
 for UPDOWN, or shortening its FIFO depth, keeps the sparkline and cuts the volume. That is the
 real fix.
+
+</details>
 
 ---
 

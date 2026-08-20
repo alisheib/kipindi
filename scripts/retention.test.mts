@@ -25,10 +25,13 @@
 process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-min-aaaa";
 process.env.OTP_PEPPER ??= "test-only-pepper";
 
+import { readFileSync } from "node:fs";
 import { db } from "../src/lib/server/store.ts";
 import {
   runRetentionPass, NOTIFICATION_RETENTION_DAYS, OTP_RETENTION_DAYS, MAX_DIGEST_REPLAY_DAYS,
+  AIPOLL_PAYLOAD_RETENTION_DAYS,
 } from "../src/lib/server/retention.ts";
+import { aiPollStore, AIPOLL_PAYLOAD_PRUNED } from "../src/lib/server/ai-poll-generation.ts";
 import { verifyChain, getAuditPage } from "../src/lib/server/audit.ts";
 
 let pass = 0, fail = 0;
@@ -173,15 +176,138 @@ ok("a digest notification INSIDE the replay window is still answerable after a p
 ok("CONTROL: and one OUTSIDE it is genuinely gone, so the purge really ran",
   !(await db.notification.existsWithHref("u_ret", "/updown/history?day=2026-01-01")));
 
+// ── 5b · AI POLL PAYLOADS — the class that blanks columns and deletes no row ──────────
+section("5b · AI poll payloads: two columns go, the decision stays");
+
+/**
+ * 🔴 F-09. `AIPoll` is 621 rows / 8,432 kB on production, of which `rawResponse` is 4.45 MB
+ * and `generation` 1.19 MB — and 494 rows are already older than 30 days, carrying 4.41 MB
+ * between them (measured read-only 2026-08-21). Half the table, for two columns nobody reads
+ * about a month-old generation.
+ *
+ * ⛔ AND THIS PASS MUST NOT BEHAVE LIKE THE OTHER TWO. An `AIPoll` row is a DECISION record —
+ * what was asked for, what an officer approved or rejected and why, what it cost, whether it
+ * became a live market. Deleting rows here would destroy the record of every AI-generated
+ * market the platform has ever published. So the assertions below come in pairs: the payload
+ * is gone AND the decision is intact AND the row count did not move.
+ */
+const mkPoll = async (id: string, ageDays: number, raw: string | null) =>
+  aiPollStore.set({
+    id, state: "FILTERED", requestCategory: "sports", requestPrompt: "p",
+    generation: { ideas: [{ titleEn: id }] } as never,
+    rawResponse: raw,
+    filterReasons: [], qualityIndicators: [], overallQuality: 50,
+    titleEn: `Title ${id}`, titleSw: `Kichwa ${id}`, titleZh: "",
+    category: "sports", resolutionCriterion: "criterion",
+    resolutionCriterionSw: null, resolutionCriterionZh: null,
+    resolutionAt: iso(now + 10 * DAY), selectionClosedAt: null,
+    options: [], sources: [], confidence: 70, reasoning: "because",
+    reviewedBy: "usr_officer", reviewedAt: iso(now - ageDays * DAY), reviewNote: "seen",
+    rejectReasons: [], publishedMarketId: "mkt_from_poll", publishedCandidateId: null,
+    tokensUsed: 1234, costUsd: 0.0456, latencyMs: 900,
+    regenerationOf: null, regenerationCount: 0,
+    createdAt: iso(now - ageDays * DAY), updatedAt: iso(now - ageDays * DAY),
+  } as never);
+
+await mkPoll("aip_aged", AIPOLL_PAYLOAD_RETENTION_DAYS + 10, "THE-VERBATIM-PROVIDER-REPLY");
+await mkPoll("aip_young", 1, "STILL-NEEDED-FOR-REVIEW");
+// ⭐ A row that never had a raw response. It must keep its NULL, not gain a tombstone saying
+// something was pruned — that would be a false statement, the same defect facing the other way.
+await mkPoll("aip_aged_no_raw", AIPOLL_PAYLOAD_RETENTION_DAYS + 10, null);
+
+const pollsBefore = await aiPollStore.size();
+ok("5b.0 CONTROL: the three poll fixtures are on the store", pollsBefore >= 3, `${pollsBefore}`);
+
+const pollPass = await runRetentionPass(now);
+// ⭐ THE TWO NUMBERS DISAGREE ON PURPOSE, and that is the assertion. Three fixtures:
+//   · aip_aged          — aged, has a raw response  → counts in BOTH
+//   · aip_aged_no_raw   — aged, raw response NULL   → counts in GENERATIONS ONLY
+//   · aip_young         — inside the window          → counts in neither
+// So raw=1 and gen=2. A single "payloads pruned" total would have to pick one of those and be
+// wrong about the other, which is exactly why the result carries two.
+// ⚠️ This assertion first read `raw === 2 && gen === 3` — my own miscount, caught on the first
+// run. The code was right; the expectation was not.
+ok("5b.1 it reports what it blanked — TWO numbers, because they are two columns",
+  pollPass.aiPollRawResponses === 1 && pollPass.aiPollGenerations === 2,
+  `raw=${pollPass.aiPollRawResponses}, gen=${pollPass.aiPollGenerations}`);
+
+const aged = await aiPollStore.get("aip_aged");
+const young = await aiPollStore.get("aip_young");
+const noRaw = await aiPollStore.get("aip_aged_no_raw");
+ok("5b.2 🔴 the AGED payload is gone", aged?.rawResponse === AIPOLL_PAYLOAD_PRUNED && aged?.generation == null,
+  `raw=${String(aged?.rawResponse).slice(0, 40)}, gen=${JSON.stringify(aged?.generation)}`);
+ok("5b.3 …and it left a SENTENCE, not a null — a reviewer must be able to tell 'pruned' from " +
+   "'there never was one'",
+  (aged?.rawResponse ?? "").includes("pruned"), String(aged?.rawResponse));
+ok("5b.4 the YOUNG payload survives untouched",
+  young?.rawResponse === "STILL-NEEDED-FOR-REVIEW" && young?.generation != null);
+ok("5b.5 ⭐ a row that never HAD a raw response keeps its null rather than gaining a tombstone",
+  noRaw?.rawResponse === null, String(noRaw?.rawResponse));
+
+ok("5b.6 🔴 EVERY DECISION FIELD SURVIVES on the pruned row — this table is the record of " +
+   "every AI market the platform published",
+  aged?.state === "FILTERED" && aged?.titleEn === "Title aip_aged"
+    && aged?.reviewedBy === "usr_officer" && aged?.publishedMarketId === "mkt_from_poll"
+    && aged?.costUsd === 0.0456 && aged?.tokensUsed === 1234
+    && aged?.resolutionCriterion === "criterion" && aged?.confidence === 70,
+  JSON.stringify({ state: aged?.state, title: aged?.titleEn, by: aged?.reviewedBy,
+    mkt: aged?.publishedMarketId, cost: aged?.costUsd }));
+ok("5b.7 🔴 and NOT ONE ROW was deleted", (await aiPollStore.size()) === pollsBefore,
+  `${pollsBefore} -> ${await aiPollStore.size()}`);
+
+/**
+ * ⛔ THE HALF THIS SUITE CANNOT EXECUTE. Everything above runs against the in-memory store; the
+ * PRISMA implementation is the one production uses and there is no database here. So it is read,
+ * for the two properties that cannot be inferred from behaviour — the same approach
+ * `test:erasure` §11 takes for the partial unique index.
+ */
+{
+  const src = readFileSync("src/lib/server/ai-poll-generation.ts", "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+  ok("5b.9 CONTROL · the store module was read", src.includes("const prismaStore: AIPollStore"));
+  const prismaHalf = src.slice(src.indexOf("const prismaStore: AIPollStore"));
+  const updateManys = (prismaHalf.match(/aIPoll\.updateMany/g) ?? []).length;
+  ok("5b.10 🔴 the Prisma half uses TWO separate updateMany passes, one per column",
+    updateManys === 2,
+    `found ${updateManys}. ⛔ A single statement with OR: [raw not pruned, generation not null]\n` +
+    "       qualifies a row on the GENERATION arm and then stamps the tombstone over a\n" +
+    "       rawResponse that was always null — telling a reviewer a payload was pruned when\n" +
+    "       there never was one. That is 5b.5's defect, and the in-memory half cannot show it.");
+  ok("5b.11 🔴 …and it writes `Prisma.DbNull`, not a bare null",
+    /generation:\s*Prisma\.DbNull/.test(prismaHalf),
+    "A bare `null` into a nullable Json column is stored by Prisma as the JSON VALUE null —\n" +
+    "       a 4-byte payload, not an absent one. The prune would report success and free nothing.");
+}
+
+const blankEntry = getAuditPage({ limit: 10_000 }).find(
+  (e) => e.action === "retention.purge.daily"
+    && (e.payload as Record<string, unknown> | null)?.aiPollRawResponsesBlanked !== undefined);
+ok("5b.8 the audit row says BLANKED, and carries no field named for a deletion",
+  !!blankEntry && !JSON.stringify(blankEntry.payload ?? {}).includes("aiPollsDeleted"),
+  JSON.stringify(blankEntry?.payload ?? {}));
+
 // ── 5 · Idempotent — a second pass is a no-op ────────────────────────────────────────
 section("5 · running it twice deletes nothing more");
 
 const second = await runRetentionPass(now);
 ok("second pass deletes nothing", second.notifications === 0 && second.otps === 0,
   `notifications=${second.notifications}, otps=${second.otps}`);
+ok("…and blanks no further payload — the prune is idempotent",
+  second.aiPollRawResponses === 0 && second.aiPollGenerations === 0,
+  `raw=${second.aiPollRawResponses}, gen=${second.aiPollGenerations}`);
+// ⚠️ TWO passes in this run did real work — §2 (notifications + OTPs) and §5b (AI payloads) —
+// so the chain holds exactly TWO rows, not one. What F-10 forbids is a row for a pass that did
+// NOTHING, and the assertion below measures that directly: the count does not move across the
+// no-op pass above. (It read `=== 1` until §5b existed, which made it an assertion about how
+// many sections the suite happened to have.)
+const purgeRows = getAuditPage({ limit: 10_000 }).filter((e) => e.action === "retention.purge.daily").length;
 ok("and writes no audit row for a no-op — a daily 'nothing happened' entry in an " +
    "unprunable chain is 365 rows a year of noise (F-10)",
-  getAuditPage({ limit: 10_000 }).filter((e) => e.action === "retention.purge.daily").length === 1);
+  purgeRows === 2, `${purgeRows} rows for 2 passes that did work + 1 that did not`);
+const afterAnotherNoop = await runRetentionPass(now);
+ok("…proven by running it a THIRD time and watching the count stay put",
+  getAuditPage({ limit: 10_000 }).filter((e) => e.action === "retention.purge.daily").length === purgeRows
+    && afterAnotherNoop.notifications === 0 && afterAnotherNoop.aiPollRawResponses === 0);
 
 console.log("");
 console.log("─".repeat(64));

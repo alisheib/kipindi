@@ -25,9 +25,9 @@
 | In-app notifications | **180 days** | Creation | Operational only | ✅ **Code** — `retention.purge.daily` | `Notification` |
 | OTP code hashes | **30 days** | Issue | Operational only | ✅ **Code** — `retention.purge.daily` | `Otp` |
 | Up & Down price observations | Indefinite | — | Fairness evidence (GLI-19) | **Never deleted** — write-once per `(asset, boundary)` | `UpDownObservation` |
-| Market snapshots (pool history) | Newest N per market | — | Operational only | ✅ **Code** — FIFO prune in `market-history.ts` | `MarketSnapshot` |
+| Market snapshots (pool history) | Newest **800** per market (`MAX_POINTS`) | — | Operational only | ✅ **Code** — FIFO prune in `market-history.ts`, but ⚠️ **it has never evicted anything** — see §2c | `MarketSnapshot` |
 | AI usage events | `RETAIN_DAYS` | Event date | Operational only | ✅ **Code** — opportunistic prune in `ai-usage.ts` | `AiUsageEvent` |
-| AI poll raw payloads (`rawResponse`, `trace`, `generation`) | *Unset* | — | Operational only | ⚠️ **Nothing** — 621 rows, 8.4 MB, kept forever (audit F-09, open) | `AIPoll` |
+| AI poll payloads (`rawResponse`, `generation`) | **30 days** | Generation date | Operational only | ✅ **Code** — `retention.purge.daily`. ⛔ **Blanks two COLUMNS; deletes no row** — the decision record (state, title, reviewer, cost, published market) is kept. `rawResponse` gets a tombstone sentence rather than a NULL so a reviewer can tell *pruned* from *never existed*. ⚠️ There is no `trace` column on `AIPoll` — `trace` is on **`MarketCandidate`** and is a decision trail, not a payload; it is NOT pruned | `AIPoll` |
 | Self-exclusion register | **5 years** | End of exclusion | LCCP SR Code 3.4.4 | 📋 Policy | `ResponsibleGambling` |
 | Behavioural-marker logs (RG) | **5 years** | Event date | LCCP SR Code 3.4.1 | 📋 Policy | `ResponsibleGambling` |
 | Marketing-consent records | **2 years** | Last activity | PDPA 2022 §15 | 📋 Policy | `User.marketingOptIn` |
@@ -160,6 +160,48 @@ fingerprint from the normal case into something worth investigating.
 
 ---
 
+## 2c. ⚠️ `MarketSnapshot` — the finding's premise was wrong, twice, and the real lever is elsewhere
+
+Audit F-09 and the session brief both proposed: *"reducing the 1-in-50 sampling for UPDOWN, or
+shortening its FIFO depth, keeps the sparkline and cuts the volume. That is the real fix."*
+
+**Neither would change anything, and the numbers say so.** Measured read-only on production
+2026-08-21:
+
+| | |
+|---|---|
+| `MarketSnapshot` | **14,254 rows / 3,744 kB** (13,797 the day before — **+457/day**) |
+| on UPDOWN markets | **13,915 = 97.6%** |
+| UPDOWN markets holding snapshots | **13,245** |
+| snapshots per UPDOWN market | **1.0** (RESOLVED) · **1.1** (VOIDED) |
+| deepest single market, any product | **30** |
+| `MAX_POINTS` (the FIFO cap) | **800** |
+| orphan rows (no market) | **0** |
+
+- **There is no 1-in-50 sampling.** `PRUNE_EVERY = 50` is how often an append *also runs a
+  prune* — pruning on every write would double the cost of the hottest write on the platform.
+  **Every snapshot is written.** Reducing it would prune *less often*, not sample less.
+- **Shortening the FIFO depth would evict nothing.** The cap is 800 and the deepest market in
+  the database holds **30**. `pruneHistory` has never had anything to delete.
+
+**The actual driver is the number of rounds**, exactly as `COMPLIANCE-DECISIONS.md`
+(2026-08-20) concluded for the audit chain: one Up & Down round produces about one snapshot row,
+and the FIFO cap is *per market*, so those rows live for ever. 13,245 markets × ~1 row.
+
+⭐ **And a market with one snapshot has no sparkline.** One point is not a line. So the
+13,245 rows kept "for the garnish" cannot draw the garnish — which makes the honest options:
+
+1. **Downsample or drop snapshots for TERMINAL markets below the minimum a sparkline needs.**
+   Keeps every drawable sparkline, removes the rows that can never render one. Needs a decision
+   about what that minimum is, and it touches a rendered surface.
+2. **Accept it.** 3.7 MB, +457 rows/day ≈ 45 MB/year. Not urgent at this size.
+
+⛔ **Not done in this session, and deliberately.** It changes what a player sees on the archive,
+the brief's own instruction on this item was to be careful here (*"⛔ DO NOT do the snapshot
+skip"*), and the measurement above changes what the right fix even is. **Ali's call.**
+
+---
+
 ## 3. Why the audit log is not on any deletion path
 
 The audit chain is HMAC-linked: each row's `prevHash` is the previous row's `entryHash`, and
@@ -182,9 +224,17 @@ remaining lever is the number of rounds, not the code.
 Leader-leased by the surrounding pass and **fails closed**, so two containers cannot double-run
 it. Its own `.catch` means a failed purge can never take the market lifecycle down.
 
-It deletes exactly two classes and **cannot reach a third** — it names them. Money, identity
-and audit records are outside its reach by construction, and `test:retention` proves it by
-seeding a 400-day-old confirmed deposit and asserting it survives.
+It touches exactly **three** classes and **cannot reach a fourth** — it names them. Money,
+identity and audit records are outside its reach by construction, and `test:retention` proves it
+by seeding a 400-day-old confirmed deposit and asserting it survives.
+
+⛔ **Two of the three delete rows; the third does not.** The AI-poll pass (added 2026-08-21,
+audit F-09) blanks `rawResponse` and `generation` on rows older than 30 days and leaves every
+row and every decision field in place. The result object and the audit payload report it
+separately — `aiPollRawResponsesBlanked`, `aiPollGenerationsBlanked` — because *"we deleted 494
+AI polls"* and *"we blanked a column on 494 AI polls"* are very different sentences to have to
+say to somebody, and `red:retention` case 7 renames the field to prove the suite catches the
+wrong one.
 
 ### ⛔ One coupling that is invisible from either side
 
@@ -222,6 +272,11 @@ npm run test:dsar-intake    # 36 assertions on the register: a request LANDS (E-
                             # and fulfilment tells the truth about what it did.
 npm run red:dsar-intake     # 12 defects. Cases 10-11 UNMOUNT the form and the button —
                             # E-33 coming straight back, which tsc cannot see at all.
+npm run red:retention       # 9 defects against the pass itself. Case 3 makes the payload
+                            # prune DELETE rows instead of blanking columns; case 2 removes
+                            # the tombstone; case 7 mislabels the audit field.
+npm run test:dead-schema    # 34 assertions on F-05's expand step, and the contract rules
+npm run red:dead-schema     # any future DROP migration must satisfy (7 defects).
 ```
 
 The suite runs against the in-memory store, which is also what forces both DAL halves to
