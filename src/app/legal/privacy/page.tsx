@@ -40,8 +40,8 @@ const CONTENT: Record<Locale, React.ReactNode> = {
           <li><strong className="text-text">Identity</strong>: full name, date of birth, NIDA number, photographic ID</li>
           <li><strong className="text-text">Contact</strong>: phone number (E.164), region</li>
           <li><strong className="text-text">Financial</strong>: deposit and withdrawal records, mobile-money MSISDN, prediction activity</li>
-          <li><strong className="text-text">Technical</strong>: IP address, device and browser fingerprint, session timestamps</li>
-          <li><strong className="text-text">Behavioural</strong>: time on platform, reality-check responses, limit changes</li>
+          <li><strong className="text-text">Technical</strong>: IP address and browser user-agent string, recorded on sign-in and security events; session issue and expiry times</li>
+          <li><strong className="text-text">Behavioural</strong>: deposit and loss limit changes, self-exclusion and cooling-off periods</li>
         </ul>
       </LegalSection>
 
@@ -95,7 +95,7 @@ const CONTENT: Record<Locale, React.ReactNode> = {
       <LegalSection n="8" title="Security">
         <p>
           Sessions signed with HMAC-SHA-256. OTP codes hashed with scrypt + per-OTP salt + global pepper.
-          Passwords (when introduced) will use Argon2id. All data in transit over TLS 1.2+. At-rest
+          Passwords: scrypt with a per-user salt (NIST SP 800-132). All data in transit over TLS 1.2+. At-rest
           encryption via AES-256 in the database tier. Annual ISO 27001 audit cadence; pentest twice a year.
         </p>
       </LegalSection>
@@ -116,8 +116,8 @@ const CONTENT: Record<Locale, React.ReactNode> = {
           <li><strong className="text-text">Utambulisho</strong>: jina kamili, tarehe ya kuzaliwa, namba ya NIDA, kitambulisho chenye picha</li>
           <li><strong className="text-text">Mawasiliano</strong>: namba ya simu (E.164), mkoa</li>
           <li><strong className="text-text">Fedha</strong>: kumbukumbu za kuweka na kutoa fedha, MSISDN ya pesa za simu, shughuli za utabiri</li>
-          <li><strong className="text-text">Kiufundi</strong>: anwani ya IP, alama ya kifaa na kivinjari, alama za muda za vipindi (session)</li>
-          <li><strong className="text-text">Kitabia</strong>: muda kwenye jukwaa, majibu ya ukaguzi wa uhalisia (reality check), mabadiliko ya mipaka</li>
+          <li><strong className="text-text">Kiufundi</strong>: anwani ya IP na maandishi ya user-agent ya kivinjari, huhifadhiwa unapoingia na kwenye matukio ya usalama; muda wa kuanza na wa kuisha wa kipindi</li>
+          <li><strong className="text-text">Kitabia</strong>: mabadiliko ya mipaka ya kuweka fedha na hasara, vipindi vya kujiondoa na kupumzika</li>
         </ul>
       </LegalSection>
 
@@ -171,7 +171,7 @@ const CONTENT: Record<Locale, React.ReactNode> = {
       <LegalSection n="8" title="Usalama">
         <p>
           Vipindi vinasainiwa kwa HMAC-SHA-256. Misimbo ya OTP inafichwa kwa scrypt + chumvi (salt) ya kila OTP + pilipili
-          (pepper) ya jumla. Nywila (zitakapoanzishwa) zitatumia Argon2id. Data yote inayosafirishwa hupita kwenye TLS 1.2+.
+          (pepper) ya jumla. Nywila: scrypt pamoja na chumvi (salt) ya kila mtumiaji (NIST SP 800-132). Data yote inayosafirishwa hupita kwenye TLS 1.2+.
           Ufichaji wa data iliyohifadhiwa kupitia AES-256 katika tabaka la hifadhidata. Mzunguko wa ukaguzi wa ISO 27001 kila
           mwaka; pentest mara mbili kwa mwaka.
         </p>
@@ -193,8 +193,8 @@ const CONTENT: Record<Locale, React.ReactNode> = {
           <li><strong className="text-text">身份</strong>：全名、出生日期、NIDA 号码、带照片的身份证件</li>
           <li><strong className="text-text">联系方式</strong>：电话号码（E.164）、地区</li>
           <li><strong className="text-text">财务</strong>：存款与提现记录、移动货币 MSISDN、预测活动</li>
-          <li><strong className="text-text">技术</strong>：IP 地址、设备及浏览器指纹、会话时间戳</li>
-          <li><strong className="text-text">行为</strong>：在平台的停留时间、现实核查（reality check）响应、限额变更</li>
+          <li><strong className="text-text">技术</strong>：IP 地址与浏览器 user-agent 字符串（在登录及安全事件时记录）；会话签发与到期时间</li>
+          <li><strong className="text-text">行为</strong>：存款与亏损限额变更、自我排除与冷静期</li>
         </ul>
       </LegalSection>
 
@@ -248,7 +248,7 @@ const CONTENT: Record<Locale, React.ReactNode> = {
       <LegalSection n="8" title="安全">
         <p>
           会话以 HMAC-SHA-256 签名。OTP 验证码采用 scrypt + 每个 OTP 独立盐值（salt）+ 全局胡椒值（pepper）进行哈希。
-          密码（引入后）将使用 Argon2id。所有传输中的数据均通过 TLS 1.2+ 传输。数据库层静态数据通过 AES-256 加密。每年进行
+          密码：采用 scrypt 与每位用户独立盐值（NIST SP 800-132）。所有传输中的数据均通过 TLS 1.2+ 传输。数据库层静态数据通过 AES-256 加密。每年进行
           一次 ISO 27001 审计；每年进行两次渗透测试。
         </p>
       </LegalSection>

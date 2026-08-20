@@ -6,6 +6,79 @@
 
 ---
 
+## 2026-08-20 · The privacy policy stops declaring collection and controls we do not have
+
+**Origin:** the data-handling audit ([`DATA-AUDIT-2026-08-20.md`](DATA-AUDIT-2026-08-20.md))
+finding **F-04**, which named one false claim. Grounding the finding against the code found
+**three**, each repeated in all three locales. Ali's decision on the open a/b question:
+**option (a) — correct the policy to actual collection.** Device/browser fingerprinting is
+NOT implemented and is NOT planned for launch, so the `Device` model stays unwritten and
+F-05 may drop it.
+
+**What was false, and what is true.**
+
+| The policy said | The code does | Corrected to |
+|---|---|---|
+| "IP address, **device and browser fingerprint**, session timestamps" | Nothing computes a fingerprint. `Device.fingerprint` exists in the schema with **zero writes anywhere in `src/`**. The only "fingerprint" in auth code is `passwordFingerprint()` — a SHA-256 of the stored *password hash* that makes a reset link single-use (`password-reset.ts:52-55`). No browser entropy is read, stored or transmitted. | "IP address and browser user-agent string, recorded on sign-in and security events; session issue and expiry times" — which is exactly what `AuditLog.ip` / `AuditLog.userAgent` hold |
+| "Behavioural: **time on platform, reality-check responses**, limit changes" | Session elapsed time and the reality-check dismissal are written to browser `sessionStorage` and **never sent to the server** — `reality-check.tsx` contains no `fetch`, no action, no POST. No table holds either. Only "limit changes" was ever real. | "deposit and loss limit changes, self-exclusion and cooling-off periods" — the whole of what `ResponsibleGambling` stores |
+| "Passwords **(when introduced) will use Argon2id**." | Password registration and login are the **primary, live** auth path, and hashing is **scrypt with a per-user salt**. | "Passwords: scrypt with a per-user salt (NIST SP 800-132)." |
+
+**Which of the three mattered most.** The Argon2id sentence. Over-claiming *collection* is
+inaccurate; mis-stating an *actual security control* to a regulator, on the page they read,
+is a different category — and it was future-tense about a control that had already shipped.
+
+**⛔ This page is not dictionary-driven.** All three locales are inline JSX in
+`src/app/legal/privacy/page.tsx`, so `npm run test:i18n` cannot see a word of it and never
+protected any of this. The new `test:cert-d1` §2b block is the only guard there is; it
+asserts the negative in all three languages, requires `scrypt` to appear at least three
+times so a partial fix cannot pass, and carries a control assertion so the negatives cannot
+pass vacuously on an unreadable page. Both new negatives were driven red by reinstating the
+old sentences.
+
+### The ISO 27001 / penetration-testing claim — Ali's attestation, recorded
+
+§8 of the same page states, in all three locales, an **annual ISO 27001 audit cadence and
+penetration testing twice a year**. Unlike the three corrections above this is an
+operational fact, not a code fact — nothing in `docs/` records a completed ISO 27001 audit
+or a pentest report, so it could not be settled from the repository.
+
+Put to Ali on **2026-08-20**. His instruction: **both have happened; the sentence stands as
+written.** The reports are held outside this repository.
+
+This entry is the record of that attestation, and it is deliberately explicit about its
+own basis: the claim rests on the owner's statement, **not** on anything verified in code or
+filed in `docs/`. ⚠️ If a regulator asks for the ISO certificate or a pentest report, they
+are requested from Ali — there is nothing in the repo to hand over. Filing copies (or a
+summary with dates, scope and assessor) under `docs/` would close that gap; until then the
+gap is this paragraph.
+
+### Two inert controls found in the same sweep — NOT fixed here, recorded so they are not forgotten
+
+Both are the same shape as the privacy overclaim — the product describes a control that no
+code path can exercise — but both sit outside the data-handling audit's scope and neither was
+changed in this pass:
+
+1. **Shared-IP affiliate anti-fraud never fires.** `referrerSharesIp()`
+   (`affiliate-service.ts:255-267`) reads `globalThis.__50PICK_SESSIONS`; a repo-wide grep
+   finds that symbol on **that line only**, so it is always `undefined` and the function
+   always returns `false`. `suspectIpOverlap` is therefore permanently false — the
+   "rewards land HELD for review" branch never triggers, and every
+   `affiliate.recruit.bound` audit payload records `suspectIpOverlap: false` forever. The IP
+   *is* available at the call site (`bindRecruit` receives `ip: meta.ip`), so this is a
+   wiring gap, not a missing input.
+2. **The `SESSION_OVERRUN` responsible-gambling detector is unreachable.**
+   `responsible-gambling.ts:537-551` returns immediately unless `ctx.opts.sessionStartedAt`
+   is set, and its only caller (`:593`) passes no options. The detector that watches for a
+   player sitting on the platform past 4× their reality-check interval has never produced a
+   flag and cannot. Note the neighbouring detector #4 is *declared* an intentional no-op in
+   a comment — so this file already has a convention for saying so honestly, and #5 should
+   either be wired or labelled the same way.
+
+**Code:** `src/app/legal/privacy/page.tsx` (9 lines, 3 claims × 3 locales).
+**Tests:** `test:cert-d1` §2b (74/74, both negatives driven red).
+
+---
+
 ## 2026-08-20 · Identity verification STOPS being a precondition of withdrawal
 
 **Instruction:** Gaming Board comment **#1**, relayed by the owner (Ali) on **2026-08-19**. That

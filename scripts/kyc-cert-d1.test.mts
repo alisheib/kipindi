@@ -107,6 +107,61 @@ ok("the KYC review checklist states the control has no authority check",
   /no authority check/i.test(rail),
   "The officer must be told what the tick actually means, at the point of decision.");
 
+// ── 2b · 🔴 The privacy policy claims no control and no collection we do not have ─────────────
+section("2b · privacy declares only what the code actually does");
+
+/**
+ * ⚠️ WHY THIS BLOCK EXISTS (audit F-04, 2026-08-20). §2 above guards the direction everyone
+ * expects — a page must not claim a verification we never perform. The privacy policy was
+ * failing in the OTHER direction on three separate statements, in all three locales:
+ *
+ *   1. "device and browser fingerprint" — nothing on the platform computes one. The `Device`
+ *      model has a `fingerprint` column and zero writes anywhere in src/. The only
+ *      "fingerprint" in auth code is `passwordFingerprint()`, a SHA-256 of the stored
+ *      PASSWORD HASH used to make a reset link single-use (password-reset.ts:52-55) — no
+ *      browser entropy is read, stored or transmitted.
+ *   2. "time on platform, reality-check responses" — both live in browser sessionStorage
+ *      and are never sent to the server (reality-check.tsx has no fetch, no action, no POST).
+ *      No table holds either.
+ *   3. "Passwords (when introduced) will use Argon2id" — password auth is LIVE and primary,
+ *      and hashing is scrypt with a per-user salt.
+ *
+ * The third is the worst of them: over-claiming collection is inaccurate, but mis-stating an
+ * actual security control to a regulator on the page they read is a different category. All
+ * three are corrected; these assertions keep them corrected.
+ *
+ * ⛔ This page is NOT dictionary-driven — all three locales are inline JSX in the one file —
+ * so `npm run test:i18n` cannot see any of it. This block is the only guard there is.
+ */
+const privacy = stripComments(read("src/app/legal/privacy/page.tsx"));
+
+ok("🔴 privacy does not claim a device or browser fingerprint (EN/SW/ZH)",
+  !/browser fingerprint|device and browser fingerprint|alama ya kifaa na kivinjari|浏览器指纹|设备及浏览器指纹/.test(privacy),
+  "Nothing computes a fingerprint. The `Device` model has never been written to. Declaring\n" +
+  "       collection that does not happen fails a PDPA accuracy review as surely as concealing\n" +
+  "       collection that does.");
+
+ok("🔴 privacy does not claim to collect time-on-platform or reality-check answers",
+  !/time on platform|muda kwenye jukwaa|在平台的停留时间/.test(privacy),
+  "Session elapsed time and the reality-check dismissal live in browser sessionStorage and\n" +
+  "       never reach the server. Only 'limit changes' was ever real (ResponsibleGambling).");
+
+ok("🔴 privacy does not say passwords 'will use' Argon2id — they are live, and scrypt",
+  !/will use Argon2id|zitatumia Argon2id|将使用 Argon2id/.test(privacy),
+  "Password registration and login are the PRIMARY auth path and hash with scrypt +\n" +
+  "       per-user salt. A future-tense claim about a different algorithm mis-states a\n" +
+  "       shipped security control on a regulator-facing page.");
+
+ok("and it states the algorithm it actually uses, in all three locales",
+  (privacy.match(/scrypt/g) ?? []).length >= 3,
+  "The correction must be made in EN, SW and ZH — they are three inline strings in one file,\n" +
+  "       and a partial fix leaves two locales lying.");
+
+// CONTROL — if the page ever stops being readable here, every negative above passes vacuously.
+ok("CONTROL: the privacy page really was read and contains its own §2 collection list",
+  privacy.includes("Technical") && privacy.includes("Kiufundi") && privacy.includes("技术"),
+  "The three locale blocks are missing, so the assertions above measured nothing.");
+
 // ── 3 · 🔴 One NIDA, one account — enforced by the DATABASE ───────────────────────────────────
 section("3 · uniqueness is atomic, not hopeful");
 
