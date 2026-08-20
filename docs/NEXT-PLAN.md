@@ -1,3 +1,84 @@
+> # ⭐ SESSION 54 — THE DATA-HANDLING FIXING SESSION (2026-08-20 evening)
+>
+> ⛔ **NOT PUSHED.** 9 commits sit on local `main`, ahead of `origin/main`. The push was blocked
+> by the environment's permission classifier, twice — pushing to `main` is a live production
+> deploy. **Someone has to run `git push origin main`.** Everything below is committed and green
+> locally; nothing is half-applied in the working tree.
+>
+> ⚠️ **BUT THREE THINGS ARE ALREADY LIVE ON PRODUCTION**, because they were data changes, not
+> code: the 24 inline KYC documents were migrated to R2, 16 rows' metadata was repaired, and two
+> sealed backups were taken. Production data and the unpushed code are consistent — the code
+> reads both key shapes — but they are not the same artefact.
+>
+> ## What this session was
+>
+> `docs/DATA-AUDIT-2026-08-20.md` — the whole-platform data audit — **§0a of that file is the
+> authority for what happened.** Read it before anything else. 8 of its 11 work orders are done,
+> **F-08's premise turned out to be wrong**, and **two findings worse than anything in the audit
+> were found while doing them**:
+>
+> | 🔴 | What |
+> |---|---|
+> | **The player-facing data export was shipping the account's password hash and salt.** `exportUserData` returned the whole user row, so the JSON a player downloads from `/profile/account` carried their own scrypt `passwordHash` *and* `passwordSalt`. Measured, both present in the file. Both export doors now read one allowlist projection. |
+> | **The tamper-evidence control was crying wolf.** Every backup artifact printed *"the audit chain has a BROKEN LINK"* about a chain that was completely intact — verified by walking it from GENESIS to all 114,379 rows. The verifier assumed insertion order equals link order; it does not, for 4,978 rows. A control that cries wolf is a control that has been switched off, and that warning prints on a document an operator may hand to a regulator. A fresh production backup now prints no warning at all. |
+>
+> ## ✅ Shipped, each with a test driven red first
+>
+> F-03 (per-game money stops guessing) · F-06 (7 email leaks masked, audit found 4) ·
+> F-04 (3 false privacy claims × 3 locales, audit found 1) · F-02 (11 MB of national IDs out of
+> Postgres, **applied on production**) · F-08 (fixed *differently* — see below) ·
+> F-10 (Ali's audit-volume decision) · F-01 (the retention purge the product had been
+> advertising unwired for months) · F-07 (the boot-path whole-table read).
+>
+> ## 🔴 F-08: the finding was wrong, and this is the lesson worth keeping
+>
+> The audit said `/api/fairness/recent` scans 12,860 rows every 2 seconds. **I repeated that
+> claim before checking it.** `listMarkets` always applies `productLine ?? "MARKET"`, so the
+> route is an **Index Scan over 53 rows in 0.169 ms** — my first EXPLAIN had omitted the filter
+> and measured a query the code never runs. No index was justified.
+>
+> What *was* broken: `NotifyPoller` was mounted with **no session gate**, and its only prune
+> sits behind a 401 — so a signed-out tab with a stale watch entry polled an unauthenticated
+> endpoint every 2 seconds **forever**. One line. And the real full scans (13,013 rows, Seq
+> Scan) are the `productLine: "ALL"` reads on `/results`, `/fairness` and the app-shell ticker,
+> which the audit never examined.
+>
+> ## 🟠 FOUR ANSWERS ARE OWED BY ALI before the next data session
+>
+> All four are in [`DATA-RETENTION.md`](DATA-RETENTION.md) §2:
+>
+> 1. **Marketing consent: 2 years or 3?** The player policy says *"2 years of inactivity"* in
+>    all three locales; `/admin/retention` tells the Gaming Board *"3 years from withdrawal of
+>    consent"*. Different period AND different trigger, same data. Untouched deliberately —
+>    changing either is a policy statement, not a typo.
+> 2. **Who may file a DSAR, on what evidence?** `fileDsarAction` is a declared orphan (E-33), so
+>    nothing on the platform can start the 30-day statutory clock. Until this is answered the
+>    erasure routine would attach to a branch nothing can reach.
+> 3. **How is a national ID number erased?** ⚠️ The `(idType, idNumber)` partial unique index is
+>    the **sole** enforcement of one-document-one-account. Nulling it would silently hand one
+>    human a second account.
+> 4. **Support tickets** — 3 years is published; there is no ticket store to enforce it against.
+>
+> ## Recorded, and NOT re-raised
+>
+> - **ISO 27001 + biannual pentest.** Nothing in `docs/` evidences either. Put to Ali; his
+>   instruction is that both happened and the sentence stands. Recorded in
+>   `COMPLIANCE-DECISIONS.md` **as his attestation**, stating plainly that it rests on his word
+>   and not on anything in this repo. ⚠️ If a regulator asks for the certificate there is
+>   nothing here to hand over.
+> - **`DISABLE_ADMIN_TOTP=true` in production.** Ali's dated call. Not re-raised — but the
+>   audit's §1 had listed the KYC-document TOTP gate as an *effective* control, and that row is
+>   now annotated, because in production it is open.
+>
+> ## Next
+>
+> §5 of the audit doc is the real remaining sequence. The cheapest high-value items:
+> `PHONE_EMAIL_MAP` is **still set in production** and on no checklist; `docs/DATA-LAYER.md` is
+> stale and it is the file that teaches a new session how data works. ⛔ **F-09's snapshot skip
+> must NOT be done as written** — an adversarial check returned NOT_SAFE.
+>
+> ---
+
 > # ⭐ CURRENT TRUTH — 2026-08-20 (after session 52). READ THIS BLOCK, THEN STOP.
 >
 > Everything below this block is **history**: correct when written, superseded in places. This block

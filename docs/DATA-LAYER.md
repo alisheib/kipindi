@@ -75,8 +75,15 @@ memoryMarkets  prismaMarkets
 | TrustedSource | `source-registry.ts` | TrustedSource | inline DAL |
 | TOTP Secret | `totp.ts` | TotpSecret | inline DAL |
 
-| Market History | `market-history.ts` | -- | memory-only (write-heavy chart data) |
-| Market Config | `market-config.ts` | -- | memory-only (TODO: SystemConfig table) |
+| Market History | `market-history.ts` | **MarketSnapshot** | ⚠️ **NOT memory-only** — corrected 2026-08-20. It is durable, and FIFO-pruned to the newest N per market with a 1-in-50 write sampling. 13,797 rows on production, 97.6% of them on Up & Down markets. |
+| Market Config | `market-config.ts` | **SystemConfig** (via `config-store.ts`) | ⚠️ **NOT memory-only** — corrected 2026-08-20. Durable, write-through, hydrated on boot. 26 keys on production. |
+| Retention purge | `retention.ts` | — | Deletes `Notification` > 180 d and `Otp` > 30 d, once daily from the lifecycle pass. `docs/DATA-RETENTION.md` is the authority. |
+
+> 🔴 **The two rows above said "memory-only" until 2026-08-20, and both were wrong** (audit
+> F-11d). This is the file a new session reads to learn how data works here, so a stale row is
+> not a cosmetic problem: it invites someone to "add persistence" to something already
+> persisted, or to assume a value is lost on restart when it is not. If you change where an
+> entity lives, this table changes in the same commit.
 
 ## How to Add a New Entity
 

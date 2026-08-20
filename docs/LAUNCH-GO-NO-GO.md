@@ -79,12 +79,22 @@
        authorization is an optional resolver-queue toggle (the old solo-resolution
        hard-lock was removed; docs/COMPLIANCE-DECISIONS.md, 2026-07-24). Also confirm
        `/admin/payments` shows **Selcom** active (not the mock simulator) for real money.
-5. [ ] **Format / rebaseline the DB** → clean genesis (ledger, audit chain, wallets
+5. [ ] 🔴 **Remove `PHONE_EMAIL_MAP` from Railway.** Confirmed still set in production on
+       2026-08-20, and it was on no checklist anywhere — which is why it is here now
+       (audit F-11a). It is a pre-KYC relic that maps a phone number to an email address,
+       and it has already caused one real defect: the email-laundering login bug, where an
+       account could be reached through a mapped address.
+       ⚠️ **Read every use before removing it.** `resolvePhoneEmail` is consulted when
+       `user.email` is absent, so a live QA persona or an admin who has never set an email
+       may depend on it to receive mail. Removing it blind turns those into silent
+       no-address sends. Grep first, confirm nobody live is resolved through it, then unset
+       and redeploy.
+6. [ ] **Format / rebaseline the DB** → clean genesis (ledger, audit chain, wallets
        from zero; clears the test float + pre-audit rows). *This is the point where
        "clean" becomes real — after it, ANY trial-balance drift = a real defect.*
-6. [ ] Verify on the fresh DB: trial balance = **TZS 0 drift**, audit chain verifies,
+7. [ ] Verify on the fresh DB: trial balance = **TZS 0 drift**, audit chain verifies,
        a real small deposit→bet→settle→withdraw round-trip is correct end-to-end.
-7. [ ] **Settlement — nothing to flip; verify instead.** There is no `AUTO_SETTLE` env
+8. [ ] **Settlement — nothing to flip; verify instead.** There is no `AUTO_SETTLE` env
        var and no auto-settle admin toggle any more: each adjudicated market arms its
        own timer at its `objectionsClosedAt` and pays itself then (a ~5-minute
        reconciler re-arms any market whose timer was dropped). So on the go-live commit,
