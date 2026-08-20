@@ -6,6 +6,114 @@
 
 ---
 
+## 2026-08-21 (later) · Erasure, built — one hole in the reasoning, and three calls made in the code
+
+**Origin:** implementing item 3 of the four answers below. The decision itself is unchanged and
+is not being re-raised. What follows is what building it turned up, recorded so nobody has to
+rediscover it, plus three sub-decisions the answer did not cover.
+
+### 1 · 🔴 The mechanism was right and its stated reason was wrong — measured
+
+Item 3 says the number becomes a keyed HMAC *"so the same document still hashes to the same
+value, so the index still rejects the second account."* The first clause is the right mechanism.
+**The second does not follow, and building it that way would have repealed the AML control the
+decision exists to protect.**
+
+A unique index compares STORED STRINGS. After erasure the row holds `a3f9…`; the next person
+presenting that same document writes the RAW number, `19900101…`; those are different strings,
+so `KycSubmission_idType_idNumber_active_key` sees no duplicate and the second account is
+created. Hashing in place is the same hole as nulling — one step further from view.
+
+⛔ **This was measured, not reasoned about.** `red:erasure` case 1 is the decision implemented
+exactly as written, and `test:erasure` §5.5 — which drives `submitIdentityStep`, the same
+function `/profile/kyc` calls — then reports a second account on one national ID.
+
+**The fix keeps the decision to the letter** (`idNumber` becomes its keyed HMAC and is never
+NULL) and adds `KycSubmission.idFingerprint`, the same HMAC in a column that BOTH the erased row
+and any future applicant write, unique-indexed with the tuple index's exact partial predicate.
+Full detail, including the table that makes it obvious, is in
+[`DATA-RETENTION.md`](DATA-RETENTION.md) §2b.
+
+⚠️ **`OTP_PEPPER` is now load-bearing for an AML control.** Rotating it makes every stored
+fingerprint disagree with every new one, so each erased document silently frees its slot. There
+is deliberately no separate `ID_PEPPER` and no optional override.
+
+### 2 · ⚠️ The identity IMAGES are held 7 years, not deleted outright — flagged for Ali
+
+Item 3 says the images *"are deleted outright — the bytes are the sensitive part."* They are
+**held until 7 years after account closure** instead, and this is the one place the
+implementation departs from the answer, so it is stated plainly rather than buried.
+
+**Why.** [`DATA-RETENTION.md`](DATA-RETENTION.md) §1 has said since 2026-08-20 that identity
+documents are kept *"7 years, from account closure, POCA Cap 423 §16; FATF R.11"*. Item 3
+answered **how** an identity is erased, not **when** a customer-due-diligence record may be
+destroyed. Destroying a passport scan in year 1 is irreversible and would breach the schedule
+the platform publishes; holding it is `KYC_DOCUMENT_HOLD_YEARS`, one constant. When two readings
+differ, take the recoverable one.
+
+The number and the name ARE pseudonymised immediately, which is exactly what
+`/admin/retention` already tells the Gaming Board (*"we partially fulfil"*).
+
+⭐ **Ali's call.** If the images should go on request, change the constant to 0 and
+`test:erasure` §10.2 will demand the published schedule change with it.
+
+### 3 · What happens to a comment's BODY — decided: redacted, and the comment soft-deleted
+
+Item 3's brief left this open. The author mask had to be overwritten (with no display name it is
+the last three digits of the phone number, frozen at write time), but the 500 characters of free
+text underneath it was undecided.
+
+**Decision: the body is replaced with `[removed at the author's request]` and the comment is
+soft-deleted.** A player's own words routinely contain their own name (*"Asha here, I think…"*)
+and sometimes a number, and the platform has no way to know which — *"we could not tell, so we
+kept it"* is not an answer to PDPA §31. Keeping the row and anonymising only the author is the
+common forum pattern and it assumes the text is safe; here nobody has checked.
+
+The cost is accepted and is real: a market discussion loses a message. The ROW stays, so
+`reports`, the moderation trail and every audit entry naming the comment id still resolve.
+
+⭐ **Objections and proposals are treated differently, deliberately.** `Objection.detail` is
+dispute evidence and `Proposal.description` may have become a live market's text — both are
+records with a business or legal function, not social content. They are kept.
+
+### 4 · A DSAR can now be **PARTIAL**, and that request stays in the queue
+
+Marking an erasure FULFILLED while the images are held for another seven years would put the
+DSAR queue in exactly the position audit F-01 found the retention schedule in: describing work
+it has not done. So `DsarStatus` gains `PARTIAL` — rendered *"Partly done · docs held"*, carrying
+the release date, and **left open**.
+
+⚠️ **Nothing re-runs erasure at year seven.** There is no 7-year timer, and building one nobody
+can test for seven years would be worse than writing this line. The open request IS the
+reminder, `/admin/privacy` prints the next release date as a KPI, and the **Fulfil** button
+stays available on a PARTIAL row so an officer can finish the job when the date arrives. This is
+a known manual step, recorded as one.
+
+### 5 · ⭐ Two PII surfaces no hand-written list had — found by sweeping, not by checking
+
+`test:erasure` §8 walks the whole store asking *"does anything still hold this value?"* rather
+than checking a list of fields somebody remembered. It found two:
+
+- **The referrer's notification body.** `notifyReferralJoined` writes
+  `maskName(displayName, phoneE164)` into *somebody else's* row and freezes it there —
+  `+255•••417 signed up with your link.` Erasure does not own that row and deleting the
+  subject's own notifications does not reach it. It is now redacted, in **both** mask forms,
+  because which one got frozen depends on whether the player had set a name that day.
+- **`KycSubmission.extraRequests[].description`** — an officer's free text, and officers write
+  the obvious thing: *"Proof of address for Asha Mwangi"*. The player's name survived inside a
+  JSON column on a row whose name column had just been carefully pseudonymised.
+
+The second one is the audit's own F-02 scope note (*"`extraRequests` is a second inline store the
+acceptance query never looked at"*) coming back in a new place.
+
+**Code:** `src/lib/server/erasure.ts` · `crypto.ts` (`identityFingerprint`) ·
+`kyc-service.ts` · `privacy.ts` · `comments-store.ts` · `store.ts` + `prisma-dal.ts` (both DAL
+halves) · `prisma/migrations/20260821140000_kyc_identity_fingerprint`.
+**Tests:** `test:erasure` 155/155 · `red:erasure` 16/16 · `test:red-anchors` 238/238.
+**Docs:** [`DATA-RETENTION.md`](DATA-RETENTION.md) §2b is the authority.
+
+---
+
 ## 2026-08-21 · The four open retention / erasure questions — answered
 
 **Instruction:** Ali, **2026-08-21**, asked for the four answers rather than being asked for
@@ -76,12 +184,12 @@ The document **images** are a different matter and are deleted outright — the 
 sensitive part and nothing depends on them for uniqueness. `deleteKycDocument` was shipped on
 2026-08-20 specifically so this step would have something to call.
 
-⚠️ **Still to build:** `anonymizeClosedAccount`. Deliberately not rushed at the end of a long
-session — it touches an AML control and needs its own suite proving PII gone, money untouched,
-trial balance still clean, the audit chain still verifying, **and the identity tuple still
-colliding for the same document after erasure**. Also unresolved within it:
-`Comment.authorName` is NOT NULL and freezes the last three digits of the pre-tombstone phone,
-so erasure is incomplete until that is overwritten too.
+✅ **BUILT 2026-08-21** — `anonymizeClosedAccount`, `test:erasure` 155/155, `red:erasure` 16/16.
+⛔ **Read the entry above this one before touching it.** The mechanism recorded here is right and
+the reason given for it is not: hashing the number IN PLACE does not preserve the collision,
+because a unique index compares stored strings. The collision now lives on
+`KycSubmission.idFingerprint`. The images are held for the statutory 7 years rather than deleted
+outright — flagged there for Ali. `Comment.authorName` is overwritten and the body is redacted.
 
 ---
 
@@ -99,8 +207,9 @@ treatment as the `Session` row, which is marked N/A because that model has never
 
 **Code:** `src/app/admin/retention/page.tsx` (rows 1 and 4, each with its reasoning inline).
 **Docs:** `docs/DATA-RETENTION.md` §2 rewritten from open questions to recorded answers.
-**Open:** `anonymizeClosedAccount` (item 3) and the DSAR intake wiring (item 2) — both now
-unblocked, neither built.
+**Since:** item 3 is ✅ built (2026-08-21 — see the entry above, and `DATA-RETENTION.md` §2b),
+and its officer door is wired: **Fulfil** on an ERASURE request runs the routine. Item 2's
+**player-side intake** from `/profile/account` is still to wire.
 
 ---
 

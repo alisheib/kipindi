@@ -59,6 +59,8 @@ interface CommentStore {
   set(c: StoredComment): Promise<void>;
   values(): Promise<StoredComment[]>;
   listForMarket(marketId: string, limit?: number): Promise<StoredComment[]>;
+  /** Every comment one user wrote. Erasure only — see `anonymiseAuthorComments`. */
+  listForUser(userId: string): Promise<StoredComment[]>;
 }
 
 const memoryStore: CommentStore = {
@@ -68,6 +70,9 @@ const memoryStore: CommentStore = {
   async listForMarket(marketId, limit) {
     const all = Array.from(comments.values()).filter((c) => c.marketId === marketId);
     return limit ? all.slice(0, limit) : all;
+  },
+  async listForUser(userId) {
+    return Array.from(comments.values()).filter((c) => c.userId === userId);
   },
 };
 
@@ -127,6 +132,10 @@ const prismaStore: CommentStore = {
       orderBy: { createdAt: "desc" },
       ...(limit ? { take: limit } : {}),
     });
+    return rows.map(toStored);
+  },
+  async listForUser(userId) {
+    const rows = await pc().comment.findMany({ where: { userId } });
     return rows.map(toStored);
   },
 };
@@ -335,4 +344,49 @@ export async function deleteComment(
   await store.set(c);
   audit({ category: "COMPLIANCE", action: "comment.delete", actorId: userId, targetType: "Comment", targetId: commentId, payload: { byMod: c.userId !== userId } });
   return { ok: true };
+}
+
+/**
+ * 🔴 ERASURE — strip one author out of every comment they wrote, without deleting the row.
+ *
+ * ⛔ WHY THE ROW CANNOT SIMPLY GO, and why the author's name cannot simply be nulled:
+ * `Comment.user` is a REQUIRED relation with no `onDelete`, and `Comment.authorName` is
+ * NOT NULL. So the User row must survive erasure and this column must hold *something*.
+ *
+ * ── THE FRAGMENT THAT MAKES ERASURE INCOMPLETE ───────────────────────────────
+ * `authorName` is `maskName(displayName, phoneE164)` FROZEN AT WRITE TIME. With no display
+ * name that function returns `+255•••417` — **the last three digits of the phone number**.
+ * So tombstoning `User.phoneE164` does not remove the number from the platform: a public
+ * comment thread still carries a piece of it, written months earlier. With a display name
+ * it is worse in a different way: `As***i M.` is a fragment of the person's real name.
+ * Either way the value has to be OVERWRITTEN, not left and not nulled.
+ *
+ * ── AND THE BODY, WHICH IS THE PART NOBODY CAN VET ───────────────────────────
+ * ⭐ DECISION (2026-08-21, recorded in docs/COMPLIANCE-DECISIONS.md): the body is
+ * **redacted and the comment soft-deleted**, not preserved.
+ *
+ * The body is 500 characters of free text the player typed. It routinely contains their
+ * own name ("Asha here, I think…"), sometimes a phone number, and the platform has no way
+ * to know which. Under PDPA 2022 §31 the test is whether the data identifies the person,
+ * and "we could not tell, so we kept it" is not an answer to that. Keeping the row and
+ * anonymising only the author — the common forum pattern — assumes the text is safe, and
+ * here nobody has checked.
+ *
+ * The cost is real and is accepted: a discussion thread loses a message, and the market's
+ * conversation is a little poorer. That is the right side to be wrong on. The row itself
+ * stays, so `reports`, the moderation trail and every audit entry naming the comment id
+ * still resolve.
+ */
+export async function anonymiseAuthorComments(
+  userId: string,
+  opts: { authorName: string; body: string },
+): Promise<{ comments: number }> {
+  const mine = await store.listForUser(userId);
+  for (const c of mine) {
+    c.authorName = opts.authorName;
+    c.body = opts.body;
+    c.deleted = true;
+    await store.set(c);
+  }
+  return { comments: mine.length };
 }

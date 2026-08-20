@@ -129,6 +129,7 @@ export function toStoredKyc(row: any): StoredKyc {
     // BEFORE the one on the passport. Every consumer wants the day.
     idExpiry: row.idExpiry ? iso(row.idExpiry)?.slice(0, 10) ?? null : null,
     idVerifiedAt: iso(row.idVerifiedAt),
+    idFingerprint: row.idFingerprint ?? null,
     fullName: row.fullName,
     dob: iso(row.dob),
     // 🔴 `mimeType`/`sizeBytes` MUST be carried back out. `db.kyc.upsert` syncs
@@ -652,6 +653,7 @@ export const prismaDb = {
         // column, whatever zone the reader is in.
         idExpiry: k.idExpiry ? new Date(`${k.idExpiry.slice(0, 10)}T00:00:00.000Z`) : null,
         idVerifiedAt: k.idVerifiedAt ? new Date(k.idVerifiedAt) : null,
+        idFingerprint: k.idFingerprint ?? null,
         fullName: k.fullName,
         dob: k.dob ? new Date(k.dob) : null,
         reviewerId: k.reviewerId,
@@ -724,6 +726,57 @@ export const prismaDb = {
         select: { userId: true, status: true },
       });
       return row ? { userId: row.userId, status: String(row.status) } : null;
+    },
+    /**
+     * 🔴 THE SAME CONTROL, ON THE VALUE THAT SURVIVES ERASURE — see the in-memory twin.
+     *
+     * Indexed by `@@index([idFingerprint])`, and the same tiny `select` as the tuple read
+     * so it never hydrates a document (audit H5). ⛔ FAST PATH ONLY: the enforcement is
+     * "KycSubmission_idFingerprint_active_key", and the two must ask the same question —
+     * the same `status <> REJECTED` exclusion — or a race resolves differently from a
+     * sequential duplicate.
+     */
+    findActiveByFingerprint: async (
+      fingerprint: string,
+      excludeUserId?: string,
+    ): Promise<{ userId: string; status: string } | null> => {
+      const fp = fingerprint.trim();
+      if (!fp) return null;
+      const row = await pc().kycSubmission.findFirst({
+        where: {
+          idFingerprint: fp,
+          status: { not: "REJECTED" },
+          ...(excludeUserId ? { userId: { not: excludeUserId } } : {}),
+        },
+        select: { userId: true, status: true },
+      });
+      return row ? { userId: row.userId, status: String(row.status) } : null;
+    },
+    /**
+     * EVERY submission this user has ever made, newest first.
+     *
+     * ⛔ NOT `findByUserId`, which returns the newest ONE. Erasure that reads the newest
+     * leaves the number, name and date of birth on every earlier submission, and a
+     * resubmission after a rejection is the ordinary case.
+     */
+    listByUser: async (userId: string): Promise<StoredKyc[]> => {
+      const rows = await pc().kycSubmission.findMany({
+        where: { userId },
+        include: { documents: true },
+        orderBy: { createdAt: "desc" },
+      });
+      return rows.map(toStoredKyc);
+    },
+    /**
+     * Drop every document row on a submission. Erasure only.
+     *
+     * ⛔ `upsert` CANNOT DO THIS — its document sync is guarded by `if (k.documents?.length)`,
+     * so an empty array is a no-op rather than a delete. The R2 objects are destroyed
+     * separately by `deleteKycDocument`; this removes the rows that point at them.
+     */
+    deleteDocuments: async (submissionId: string): Promise<number> => {
+      const res = await pc().kycDocument.deleteMany({ where: { submissionId } });
+      return res.count;
     },
     list: async (): Promise<StoredKyc[]> => {
       const rows = await pc().kycSubmission.findMany({ include: { documents: true } });
@@ -811,6 +864,17 @@ export const prismaDb = {
       } catch {
         return null;
       }
+    },
+    /**
+     * Delete every OTP row issued to a phone number. Erasure only.
+     *
+     * `Otp.phoneE164` is the number itself, not a reference to the user, so tombstoning
+     * `User.phoneE164` leaves it behind. The 30-day prune reaches it eventually; erasure
+     * is not "eventually".
+     */
+    deleteAllForPhone: async (phone: string): Promise<number> => {
+      const res = await pc().otp.deleteMany({ where: { phoneE164: phone } });
+      return res.count;
     },
   },
 
@@ -1344,6 +1408,54 @@ export const prismaDb = {
         data: { dismissedAt: new Date() },
       });
       return result.count;
+    },
+    /**
+     * Delete every notification belonging to one user. Erasure only.
+     *
+     * ⛔ NOT `dismissAll` — a `dismissedAt` hides a row whose `bodyEn` still says what the
+     * player bet and won. In-app notifications are "operational only, 180 days" on
+     * docs/DATA-RETENTION.md: no statute asks us to keep them.
+     *
+     * ⚠️ It also removes the rows `existsWithHref` answers from — the Up & Down digest's
+     * only idempotency key. Safe HERE and nowhere else: the account is closed and erased,
+     * so a replayed digest has nobody to double-notify.
+     */
+    deleteAllForUser: async (userId: string): Promise<number> => {
+      const res = await pc().notification.deleteMany({ where: { userId } });
+      return res.count;
+    },
+    /**
+     * 🔴 OVERWRITE A FROZEN MASK WHEREVER IT LANDED IN SOMEBODY ELSE'S ROW.
+     *
+     * `notifyReferralJoined` writes `maskName(displayName, phoneE164)` into the REFERRER's
+     * body — "+255•••417 signed up with your link." — frozen at write time. That is the
+     * last three digits of the recruit's phone number in a row erasure does not own and
+     * `deleteAllForUser` does not reach. Same defect as `Comment.authorName`, one table
+     * across.
+     *
+     * ⚠️ A full scan of `Notification` by construction (no index answers `contains`), which
+     * is why it is reachable only from erasure — a rare, officer-triggered operation — and
+     * never from a render path.
+     */
+    redactFragment: async (fragment: string, replacement: string): Promise<number> => {
+      if (!fragment) return 0;
+      const FIELDS = ["titleEn", "titleSw", "titleZh", "bodyEn", "bodySw", "bodyZh"] as const;
+      const rows = await pc().notification.findMany({
+        where: { OR: FIELDS.map((f) => ({ [f]: { contains: fragment } })) },
+        select: { id: true, titleEn: true, titleSw: true, titleZh: true, bodyEn: true, bodySw: true, bodyZh: true },
+      });
+      let changed = 0;
+      for (const row of rows) {
+        const data: Record<string, string> = {};
+        for (const f of FIELDS) {
+          const v = (row as Record<string, unknown>)[f];
+          if (typeof v === "string" && v.includes(fragment)) data[f] = v.split(fragment).join(replacement);
+        }
+        if (Object.keys(data).length === 0) continue;
+        await pc().notification.update({ where: { id: row.id }, data });
+        changed++;
+      }
+      return changed;
     },
   },
 

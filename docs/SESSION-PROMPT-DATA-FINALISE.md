@@ -22,7 +22,31 @@ one that can hurt somebody.
 
 ---
 
-## 1 · 🔴 `anonymizeClosedAccount` — the only item with a trap in it
+## 1 · ✅ DONE 2026-08-21 — `anonymizeClosedAccount`
+
+> **Shipped.** `src/lib/server/erasure.ts` · `npm run test:erasure` 155/155 ·
+> `npm run red:erasure` 16/16. Wired to the officer's **Fulfil** button on an ERASURE request.
+> **The authority is now [`DATA-RETENTION.md`](DATA-RETENTION.md) §2b**; the reasoning is in
+> [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) (2026-08-21, later).
+>
+> 🔴 **Read this before believing the section below.** The trap it describes is real and it is
+> *understated*. Hashing `idNumber` in place does **not** preserve the collision — a unique
+> index compares stored strings, so the erased row's hash never meets the next applicant's raw
+> number, and the second account is created. Proved by building it that way (`red:erasure` case
+> 1). The collision now lives on a new `KycSubmission.idFingerprint` column that BOTH rows write.
+>
+> Also different from the plan below, deliberately:
+> · the identity **images** are held 7 years from closure, not deleted on request — flagged for
+>   Ali, one constant (`KYC_DOCUMENT_HOLD_YEARS`);
+> · `Comment.body` is redacted and the comment soft-deleted (the open question, decided);
+> · **every** KYC submission is erased, not the newest — `findByUserId` returns one row;
+> · two surfaces this section does not mention were found by sweeping the store: the referrer's
+>   frozen notification mask, and `KycSubmission.extraRequests[].description`.
+
+<details>
+<summary>The original work order (kept as written, for the record)</summary>
+
+### 🔴 `anonymizeClosedAccount` — the only item with a trap in it
 
 **Ali's decision is already made** (COMPLIANCE-DECISIONS § 2026-08-21 item 3): the national ID
 number is replaced with a **keyed HMAC of itself — never NULL**.
@@ -72,9 +96,17 @@ in-memory twin, and a Prisma-only method throws in every unit test).
    the assertion the whole item exists for. Drive it red by switching the HMAC to a null.
 5. Assert no comment carries a fragment of the erased phone.
 
+</details>
+
 ---
 
 ## 2 · The DSAR intake — small, but do it in one commit
+
+> ⭐ **Half of this is done.** The OFFICER door is wired: `fulfillDsarAction` → `Fulfil` on an
+> ERASURE request now runs `anonymizeClosedAccount` instead of refusing, and a request that
+> cannot be finished lands in the new **PARTIAL** state carrying its release date. What remains
+> is the **player-side intake** from `/profile/account`, and `fileDsarAction`'s
+> `KNOWN_ORPHAN` entry, which must go in the same commit as its first caller.
 
 Ali's answer: **the player files it from `/profile/account`, on their authenticated session**
 (already the accepted standard for handing over their whole bundle via "Export my data" — a higher

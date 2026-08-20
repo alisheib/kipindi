@@ -146,13 +146,30 @@ Verified end to end by `npm run qa:redis-armed` (8/8): one ordinary forgot-passw
 moves `clientStatus` from `none` to `ready` and `state` to `cross-container` — evidence the
 request went **through** Redis rather than around it.
 
-### Still open
+### ✅ CLOSED 2026-08-21 — F-01's anonymization routine, and the landmine inside it
 
-- **F-01's anonymization routine** — deliberately not shipped. It would attach a working
-  routine to an unreachable branch (`fileDsarAction` is a declared orphan, E-33), and the
-  erasure mechanism for the national ID is a landmine: the `(idType, idNumber)` partial unique
-  index is the **sole** enforcement of one-document-one-account, so nulling it would hand one
-  human a second account. Needs Ali's answers — listed in `docs/DATA-RETENTION.md` §2.
+`anonymizeClosedAccount` ships (`src/lib/server/erasure.ts`), wired to the officer's **Fulfil**
+button on an ERASURE request. `test:erasure` 155/155 · `red:erasure` 16/16 defects caught.
+[`DATA-RETENTION.md`](DATA-RETENTION.md) §2b is the authority; the reasoning is in
+[`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) (2026-08-21, later).
+
+🔴 **And the landmine was worse than this document or the decision described.** Both said
+nulling `idNumber` frees the unique index that is the sole enforcement of
+one-document-one-account, and that a keyed HMAC therefore preserves the collision.
+**It does not.** A unique index compares STORED STRINGS: the erased row holds the hash, the next
+applicant writes the RAW number, and nothing collides. *Hashing in place is the same hole as
+nulling.* Measured by implementing the decision as written and watching a second account get
+created on one national ID. The collision now lives on a new `KycSubmission.idFingerprint`
+column, written by both rows.
+
+⚠️ Two more PII surfaces were found by **sweeping the store** rather than by checking a list:
+the referrer's frozen notification mask, and `KycSubmission.extraRequests[].description` — which
+is this document's own F-02 scope note reappearing.
+
+⚠️ One departure, flagged for Ali rather than decided quietly: the identity **images** are held
+for the statutory 7 years from closure rather than deleted on request.
+
+### Still open
 - **F-05** dead schema · **F-09** AIPoll payload prune · **F-11** the small placements.
   ⛔ **F-09's snapshot-skip must NOT be done as written** — an adversarial check returned
   **NOT_SAFE**; verify the readers first.

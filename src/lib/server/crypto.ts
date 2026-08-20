@@ -219,3 +219,51 @@ export function verifyWebhookSignature(opts: {
 export function signWebhook(timestamp: string, body: string, secret: string): string {
   return createHmac("sha256", secret).update(`${timestamp}.${body}`, "utf8").digest("hex");
 }
+
+// ---------------------------------------------------------------------------
+// IDENTITY FINGERPRINT — the keyed, deterministic hash of an identity document.
+// ---------------------------------------------------------------------------
+
+/**
+ * 🔴 THE ONE-WAY FORM OF AN IDENTITY DOCUMENT — deterministic, irreversible, and the
+ * reason one-document-one-account survives erasure.
+ *
+ * ── WHY IT IS NOT `hashOtp` ──────────────────────────────────────────────────
+ * `hashOtp` is scrypt over a PER-ROW salt, so the same code hashes differently in two
+ * rows. That is exactly right for a credential (it defeats a rainbow table across the
+ * table) and exactly wrong here: this value's entire job is to COLLIDE with itself when
+ * the same document is presented again. So it is a keyed HMAC with no per-row salt —
+ * the same construction as `TotpBackupCode.codeHash` (`backup-codes.ts`), which needs
+ * the same property for the same reason.
+ *
+ * ── ⛔ WHY IT REUSES `OTP_PEPPER` AND HAS NO KEY OF ITS OWN ───────────────────
+ * Two reasons, and the second is the important one.
+ *
+ *  1. A new mandatory secret is a boot failure waiting for the deploy that forgets it —
+ *     `requireSecret` throws in production, and `start` is `migrate deploy && next start`.
+ *  2. 🔴 **ROTATING THIS KEY SILENTLY REPEALS AN AML CONTROL.** Fingerprints are stored;
+ *     a rotated key makes every new fingerprint disagree with every stored one, so the
+ *     unique index stops colliding and each erased document quietly frees its slot. An
+ *     OPTIONAL `ID_PEPPER` override would be the worst of both: the platform would run
+ *     for months on the fallback and break the day somebody "tightened" it by setting
+ *     one. One key, no override, and the failure mode written down here.
+ *
+ * Domain separation is in the message, not the key: the `idfp:v1:` prefix means a
+ * fingerprint can never equal an OTP hash of the same input, and `v1` leaves room for a
+ * construction change that is then explicitly a migration rather than an accident.
+ *
+ * ⚠️ `idType` is INSIDE the hash. The uniqueness rule is the PAIR — a passport that
+ * shares its digits with someone else's licence is a different document — so the
+ * fingerprint has to be of the pair too, or hashing would widen the rule it preserves.
+ *
+ * @param idType   one of the four `IdDocType` members
+ * @param idNumber the NORMALISED number (`normaliseIdNumber` — separators stripped,
+ *                 uppercased). ⛔ Passing a raw one produces a fingerprint that does not
+ *                 match the same document typed differently, which is the uniqueness bug
+ *                 normalisation exists to prevent.
+ */
+export function identityFingerprint(idType: string, idNumber: string): string {
+  return createHmac("sha256", otpPepper())
+    .update(`idfp:v1:${idType}:${idNumber}`, "utf8")
+    .digest("hex");
+}

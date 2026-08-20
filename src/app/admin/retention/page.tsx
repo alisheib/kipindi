@@ -153,12 +153,24 @@ export default async function AdminRetentionPage() {
             <div className="flex items-start gap-3">
               <I.alertCircle s={18} />
               <div className="text-caption text-text-secondary space-y-1">
-                <p className="text-text font-bold">Erasure-vs-AML conflict <span className="font-normal text-text-tertiary">· policy (routine not yet wired)</span></p>
+                <p className="text-text font-bold">Erasure-vs-AML conflict <span className="font-normal text-success-fg">· LIVE since 2026-08-21</span></p>
                 <p>
-                  Policy: where a player invokes erasure (PDPA §31 / GDPR Art. 17) and we hold AML records subject to
-                  POCA Cap 423 §16 (7-year minimum), we partially fulfil — PII fields pseudonymised (hashed-NIDA replaces
-                  full name + phone), financial record retained for the statutory period. The automated routine is not yet
-                  wired, so manual erasure-fulfillment is currently blocked in the DSAR queue (escalate to engineering).
+                  Where a player invokes erasure (PDPA §31 / GDPR Art. 17) and we hold AML records subject to
+                  POCA Cap 423 §16 (7-year minimum), we <strong>partially fulfil</strong>, and pressing
+                  <em> Fulfil</em> on an ERASURE request in the DSAR queue now runs it. Contact details, password,
+                  profile, in-app messages, push registrations and the name and number on the identity record are
+                  erased immediately — the identity number is replaced by a <strong>keyed HMAC of itself</strong>,
+                  never blanked, so one document still cannot open two accounts. The financial record and the
+                  identity <strong>images</strong> are retained for the statutory 7 years from closure; the request
+                  stays in the queue marked <em>Partly done · docs held</em> and carries the release date, because
+                  nothing else on the platform remembers it.
+                </p>
+                <p className="text-text-tertiary">
+                  ⛔ The routine refuses an account that is not CLOSED, and it cannot reach a wallet, a transaction,
+                  a ledger entry, a position or the audit chain — it names what it writes.
+                  <code className="font-mono"> npm run test:erasure</code> proves the identity document is still spent
+                  after erasure; <code className="font-mono">npm run red:erasure</code> puts each defect back and
+                  requires the suite to catch it.
                 </p>
               </div>
             </div>

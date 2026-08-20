@@ -80,10 +80,26 @@ export const CASES = [
     name: "the duplicate read is pinned to NIDA, so a passport can be reused on a second account",
     gate: GATE_ID,
     expect: "PASSPORT · the SAME document is refused for a SECOND account",
+    // ⭐ THIS CASE GREW A SECOND EDIT ON 2026-08-21, and the reason is worth reading — it is
+    // the same shape as the age gate above. The duplicate check is now held by TWO
+    // independent reads, each mirroring one of the two partial unique indexes: the tuple
+    // read (`findActiveByIdNumber`) and the fingerprint read (`findActiveByFingerprint`,
+    // added so a document that was ERASED is still spent — the erased row holds a hash, not
+    // a number, so the tuple read cannot see it).
+    //
+    // The fingerprint is computed over the PAIR, so it catches every live duplicate the
+    // tuple read catches. Pinning only the tuple read to "NIDA" therefore no longer lets a
+    // passport through — the product is genuinely safer — and a one-edit case would report
+    // "not caught" while nothing was wrong. So the defect needs both sites, and the list is
+    // the honest description of it.
     edits: [{
       file: SVC,
-      from: `  const conflict = await db.kyc.findActiveByIdNumber(idType, idNumber, userId);`,
-      to: `  const conflict = await db.kyc.findActiveByIdNumber("NIDA", idNumber, userId);`,
+      from: `    (await db.kyc.findActiveByIdNumber(idType, idNumber, userId)) ??`,
+      to: `    (await db.kyc.findActiveByIdNumber("NIDA", idNumber, userId)) ??`,
+    }, {
+      file: SVC,
+      from: `    (await db.kyc.findActiveByFingerprint(fingerprint, userId));`,
+      to: `    (await db.kyc.findActiveByFingerprint("NIDA:" + fingerprint, userId));`,
     }],
   },
   {

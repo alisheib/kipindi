@@ -29,6 +29,11 @@ export default async function AdminPrivacyPage({
   const requests = listDsarRequests();
   const pending = requests.filter((r) => r.status === "PENDING");
   const fulfilled = requests.filter((r) => r.status === "FULFILLED");
+  // ⭐ PARTIAL is its own column of work, not a variety of "fulfilled". The personal data is
+  // gone; the identity documents are held to a date under POCA Cap 423 §16 and the request
+  // is the ONLY thing on the platform that remembers that date — nothing re-runs erasure at
+  // year seven. Folding these into `fulfilled` would retire the reminder.
+  const partial = requests.filter((r) => r.status === "PARTIAL");
   // A-5: a failed player-list read must NOT show "No recent players" — a false
   // empty on the on-behalf export queue. Show an explicit "couldn't load" instead.
   let recentUsers: Awaited<ReturnType<typeof db.user.list>> = [];
@@ -57,6 +62,8 @@ export default async function AdminPrivacyPage({
       <div className="px-4 lg:px-6 py-5 space-y-4">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <AdminKpi label="Pending"  sw="Inasubiri"  value={String(pending.length)}   delta="< 30 days SLA" />
+          <AdminKpi label="Docs held" sw="Nyaraka zimehifadhiwa" value={String(partial.length)}
+            delta={partial.length > 0 ? `next release ${partial.map((r) => r.erasureHeldUntil ?? "—").sort()[0]}` : "none held"} />
           <AdminKpi label="Fulfilled" sw="Imekamilika" value={String(fulfilled.length)} delta="lifetime" />
           <AdminKpi label="Access"    sw="Kupata"     value={String(requests.filter((r) => r.type === "ACCESS").length)} delta="GDPR Art. 15" />
           <AdminKpi label="Erasure"   sw="Kufuta"     value={String(requests.filter((r) => r.type === "ERASURE").length)} delta="GDPR Art. 17" />
@@ -92,7 +99,12 @@ export default async function AdminPrivacyPage({
                       <DsarStatusBadge status={r.status} />
                     </td>
                     <td className="p-3">
-                      {r.status === "PENDING" ? (
+                      {/* ⛔ PARTIAL KEEPS ITS BUTTON. The erasure routine is idempotent, and
+                          this is the only door that finishes the job once the statutory hold
+                          expires — take the button away and the held documents can never be
+                          destroyed through the product at all. Re-running before the release
+                          date is harmless: it reports the same date back. */}
+                      {r.status === "PENDING" || r.status === "PARTIAL" ? (
                         <div className="flex gap-2">
                           <ExportDsarBundleButton userId={r.userId} />
                           <FulfillDsarButton id={r.id} />

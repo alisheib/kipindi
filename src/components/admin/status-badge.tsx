@@ -100,9 +100,18 @@ export function playerStatusVariant(status: string): "success" | "warning" | "da
 /** Byte-identical to privacy/page's prior ternary: PENDING→warning,
  *  FULFILLED→success, REJECTED→danger. */
 export function DsarStatusBadge({ status, size = "sm" }: { status: DsarStatus; size?: "sm" | "md" | "lg" }) {
-  const variant = status === "PENDING" ? "warning" : status === "FULFILLED" ? "success" : "danger";
+  // ⛔ `PARTIAL` HAD TO BE ADDED HERE IN THE SAME COMMIT AS THE STATUS ITSELF. This chain
+  // ended in a bare `: "danger"` / `: REVIEW.dsarRejected.en`, so a request the platform had
+  // partially fulfilled would have rendered as **Rejected** — telling an officer the opposite
+  // of what happened, on the compliance queue, in the one colour that means refused.
+  const variant =
+    status === "PENDING" ? "warning"
+    : status === "PARTIAL" ? "warning"
+    : status === "FULFILLED" ? "success"
+    : "danger";
   const label =
     status === "PENDING" ? REVIEW.dsarPending.en
+    : status === "PARTIAL" ? REVIEW.dsarPartial.en
     : status === "FULFILLED" ? REVIEW.dsarFulfilled.en
     : REVIEW.dsarRejected.en;
   return <Chip size={size} variant={variant}>{label}</Chip>;

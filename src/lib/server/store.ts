@@ -74,6 +74,12 @@ export type StoredKyc = {
   /** When the number was accepted: format valid and unique. Never "authority
    *  confirmed" — there is no authority check (docs/IDENTITY-POLICY.md). */
   idVerifiedAt?: string | null;
+  /** 🔴 The keyed HMAC of `(idType, idNumber)` — `identityFingerprint` in `crypto.ts`.
+   *  The half of one-document-one-account that SURVIVES erasure: `anonymizeClosedAccount`
+   *  destroys `idNumber`, so from then on the tuple can no longer collide with the raw
+   *  number a future applicant submits, and this can. Optional so rows written before
+   *  2026-08-21 still load. */
+  idFingerprint?: string | null;
   fullName: string | null;
   dob: string | null;
   /** `mimeType`/`sizeBytes` are the VERIFIED facts about the bytes, captured at
@@ -638,6 +644,61 @@ const memoryDb = {
       }
       return null;
     },
+    /**
+     * 🔴 THE SAME CONTROL, ON THE VALUE THAT SURVIVES ERASURE.
+     *
+     * `findActiveByIdNumber` above matches the RAW number, and an erased submission no
+     * longer has one — `anonymizeClosedAccount` replaced it with its keyed HMAC. So a
+     * document that was erased would read as free to the fast path while the DATABASE
+     * still refuses it on "KycSubmission_idFingerprint_active_key", and the player would
+     * meet an unexplained 500 instead of the `id_taken` refusal. Both questions get
+     * asked, in the same shape, for the same reason the tuple pair does.
+     *
+     * Mirror of the Prisma DAL's implementation. Both halves exist because every unit
+     * test runs against this store, and a Prisma-only method throws there.
+     */
+    findActiveByFingerprint: (
+      fingerprint: string,
+      excludeUserId?: string,
+    ): { userId: string; status: string } | null => {
+      const fp = fingerprint.trim();
+      if (!fp) return null;
+      for (const k of store.kyc.values()) {
+        if ((k.idFingerprint ?? "") !== fp) continue;
+        if (excludeUserId && k.userId === excludeUserId) continue;
+        if (k.status === "REJECTED") continue;
+        return { userId: k.userId, status: k.status };
+      }
+      return null;
+    },
+    /**
+     * EVERY submission this user has ever made, newest first.
+     *
+     * ⛔ NOT `findByUserId`, which returns the NEWEST ONE ONLY. Erasure that reads the
+     * newest leaves the identity number, full name and date of birth intact on every
+     * earlier submission — and a resubmission after a rejection is the ordinary case, so
+     * "one row per user" is the exception, not the rule.
+     */
+    listByUser: (userId: string): StoredKyc[] =>
+      Array.from(store.kyc.values())
+        .filter((k) => k.userId === userId)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    /**
+     * Drop every document row on a submission. Used only by erasure.
+     *
+     * ⛔ `upsert` CANNOT DO THIS. Its document sync is guarded by
+     * `if (k.documents?.length)`, so handing it an empty array is a no-op, not a delete —
+     * an erasure routine written against `upsert` alone would report success while every
+     * identity image stayed in the table. The R2 objects are a separate destruction and
+     * are `deleteKycDocument`'s job; this removes the rows that point at them.
+     */
+    deleteDocuments: (submissionId: string): number => {
+      const k = store.kyc.get(submissionId);
+      if (!k) return 0;
+      const n = k.documents?.length ?? 0;
+      store.kyc.set(submissionId, { ...k, documents: [] });
+      return n;
+    },
     list: () => Array.from(store.kyc.values()),
   },
   otp: {
@@ -682,6 +743,20 @@ const memoryDb = {
       o.attempts += 1;
       store.otps.set(id, o);
       return o;
+    },
+    /**
+     * Delete every OTP row issued to a phone number. Erasure only.
+     *
+     * `Otp.phoneE164` is the number itself, not a reference to the user, so tombstoning
+     * `User.phoneE164` leaves it behind untouched. The 30-day prune would reach it
+     * eventually; erasure is not "eventually".
+     */
+    deleteAllForPhone: (phone: string): number => {
+      let removed = 0;
+      for (const [id, o] of store.otps) {
+        if (o.phoneE164 === phone) { store.otps.delete(id); removed++; }
+      }
+      return removed;
     },
   },
   wallet: {
@@ -940,6 +1015,56 @@ const memoryDb = {
         }
       }
       return count;
+    },
+    /**
+     * Delete every notification belonging to one user. Erasure only.
+     *
+     * ⛔ NOT `dismissAll` — dismissing hides a row whose `bodyEn` still says what the
+     * player bet and won. In-app notifications are "operational only, 180 days" on
+     * docs/DATA-RETENTION.md: no statute asks us to keep them, so erasure deletes them
+     * rather than pretending a `dismissedAt` is a deletion.
+     *
+     * ⚠️ It also removes the rows `existsWithHref` answers from — the Up & Down digest's
+     * only idempotency key. That is safe HERE and nowhere else: the account is CLOSED and
+     * erased, so a replayed digest has nobody to double-notify.
+     */
+    deleteAllForUser: (userId: string): number => {
+      let removed = 0;
+      for (const [id, n] of store.notifications) {
+        if (n.userId === userId) { store.notifications.delete(id); removed++; }
+      }
+      return removed;
+    },
+    /**
+     * 🔴 OVERWRITE A FROZEN MASK WHEREVER IT LANDED IN SOMEBODY ELSE'S ROW.
+     *
+     * `notifyReferralJoined` writes `maskName(displayName, phoneE164)` into the
+     * REFERRER's notification body — "+255•••417 signed up with your link." — and freezes
+     * it there at write time. That is the last three digits of the recruit's phone number,
+     * sitting in a row erasure does not own and `deleteAllForUser` above does not reach.
+     * Same defect as `Comment.authorName`, one table across.
+     *
+     * ⚠️ Matches on the MASK, not the phone number, because the mask is what was stored.
+     * Two accounts sharing a country prefix and last three digits would both be replaced;
+     * the cost of that collision is one notification reading "a former member" instead of
+     * a mask, which is the right side to err on.
+     */
+    redactFragment: (fragment: string, replacement: string): number => {
+      if (!fragment) return 0;
+      let changed = 0;
+      for (const [id, n] of store.notifications) {
+        const next = { ...n };
+        let hit = false;
+        for (const f of ["titleEn", "titleSw", "titleZh", "bodyEn", "bodySw", "bodyZh"] as const) {
+          const v = (next as Record<string, unknown>)[f];
+          if (typeof v === "string" && v.includes(fragment)) {
+            (next as Record<string, unknown>)[f] = v.split(fragment).join(replacement);
+            hit = true;
+          }
+        }
+        if (hit) { store.notifications.set(id, next); changed++; }
+      }
+      return changed;
     },
   },
   sourceOfFunds: {

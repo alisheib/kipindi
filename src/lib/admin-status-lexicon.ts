@@ -142,6 +142,10 @@ export const REVIEW = {
   kycAdditionalInfo:  { en: "More information needed" },
   // DSAR / privacy request status
   dsarPending:        { en: "Pending" },
+  // ⭐ Named for what an officer must DO about it, not for a fraction. A partially fulfilled
+  // erasure is still open work: the PII is gone and the statutory documents are held to a
+  // date, and the request stays in the queue because nothing else remembers that date.
+  dsarPartial:        { en: "Partly done · docs held" },
   dsarFulfilled:      { en: "Fulfilled" },
   dsarRejected:       { en: "Rejected" },
 } satisfies Record<string, AdminLabel>;

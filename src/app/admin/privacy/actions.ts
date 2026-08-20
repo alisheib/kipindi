@@ -42,9 +42,19 @@ export async function fulfillDsarAction(formData: FormData) {
   const id = String(formData.get("id") || "").trim();
   const exportRef = String(formData.get("exportRef") || "") || null;
   try {
-    const r = fulfillDsarRequest({ id, officerId: auth.userId, exportRef });
+    const r = await fulfillDsarRequest({ id, officerId: auth.userId, exportRef });
     if (!r.ok) return { ok: false, error: r.error };
     revalidatePath("/admin/privacy");
+    // ⭐ An ERASURE that only PARTIALLY completed must say so to the officer who pressed the
+    // button. A bare `{ ok: true }` reads as "done" on a compliance action whose whole point
+    // is that a statutory hold is still running.
+    if (r.request.status === "PARTIAL") {
+      return {
+        ok: true,
+        notice: `Personal data erased. Identity documents are held under POCA Cap 423 §16 `
+          + `until ${r.request.erasureHeldUntil}; the request stays in the queue until then.`,
+      };
+    }
     return { ok: true };
   } catch (err) {
     return { ok: false, error: safeError(err, "Fulfillment failed") };

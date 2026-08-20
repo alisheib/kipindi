@@ -16,11 +16,25 @@ import { audit } from "./audit";
 import { db } from "./store";
 import type { StoredUser } from "./store";
 import { loadConfig, saveConfig } from "./config-store";
+import { anonymizeClosedAccount, type AnonymizeOutcome } from "./erasure";
 
 const DSAR_QUEUE_KEY = "privacy.dsar_queue";
 
 export type DsarType = "ACCESS" | "ERASURE" | "CORRECTION" | "PORTABILITY";
-export type DsarStatus = "PENDING" | "FULFILLED" | "REJECTED";
+/**
+ * ⭐ `PARTIAL` EXISTS BECAUSE "FULFILLED" WOULD HAVE BEEN A FALSE STATEMENT.
+ *
+ * An erasure request against an account closed less than seven years ago cannot be finished:
+ * the identity IMAGES are held under POCA Cap 423 §16 / FATF R.11, which is exactly the
+ * posture `/admin/retention` already publishes to the Gaming Board — *"we PARTIALLY fulfil"*.
+ * Stamping such a request FULFILLED would put the platform's own queue in the same position
+ * as the retention schedule that F-01 found: describing work it has not done.
+ *
+ * ⛔ It also has to STAY IN THE QUEUE. Nothing on this platform re-runs erasure at year
+ * seven — there is no seven-year timer and building one nobody can test for seven years
+ * would be worse than saying so. The open request IS the reminder, and it carries the date.
+ */
+export type DsarStatus = "PENDING" | "PARTIAL" | "FULFILLED" | "REJECTED";
 
 export type DsarRequest = {
   id: string;
@@ -33,6 +47,9 @@ export type DsarRequest = {
   fulfilledBy: string | null;
   /** Filename of the export payload, if access type. */
   exportRef: string | null;
+  /** ERASURE only: the date the held identity documents may be destroyed (ISO `YYYY-MM-DD`),
+   *  or null once they have been. Set when the status becomes `PARTIAL`. */
+  erasureHeldUntil?: string | null;
 };
 
 declare global {
@@ -65,6 +82,7 @@ export function fileDsarRequest(opts: { userId: string; type: DsarType; reason?:
     fulfilledAt: null,
     fulfilledBy: null,
     exportRef: null,
+    erasureHeldUntil: null,
   };
   queue.push(r);
   persistQueue();
@@ -79,23 +97,50 @@ export function fileDsarRequest(opts: { userId: string; type: DsarType; reason?:
   return r;
 }
 
-/** Officer marks a DSAR fulfilled. Returns a discriminated result so the caller
- *  can surface why an erasure can't be closed manually. */
-export function fulfillDsarRequest(opts: { id: string; officerId: string; exportRef?: string | null }):
-  { ok: true; request: DsarRequest } | { ok: false; error: string } {
+/**
+ * Officer closes a DSAR. Returns a discriminated result so the caller can surface exactly
+ * why an erasure could not be closed.
+ *
+ * ⭐ ERASURE IS NOT A STATUS FLIP, AND NEVER WAS ALLOWED TO BE. Until 2026-08-21 this branch
+ * REFUSED outright, because marking a request fulfilled while every column stayed intact
+ * records a false "we erased your data" in a compliance queue — the worst kind of green.
+ * The refusal was correct for as long as there was no routine. There is one now, so the
+ * branch RUNS it instead of refusing, and the three outcomes are kept distinct:
+ *
+ *   · the routine refuses (the account is not closed) → the request stays PENDING and the
+ *     officer is told what to do about it. Still no false fulfilment.
+ *   · the routine runs and the 7-year hold is still on → **PARTIAL**, with the release date
+ *     on the request. The request stays in the queue because nothing else will remember.
+ *   · the routine runs and nothing is left to hold → FULFILLED.
+ */
+export async function fulfillDsarRequest(opts: { id: string; officerId: string; exportRef?: string | null }):
+  Promise<{ ok: true; request: DsarRequest; erasure?: AnonymizeOutcome } | { ok: false; error: string }> {
   const r = queue.find((x) => x.id === opts.id);
   if (!r) return { ok: false, error: "DSAR not found." };
-  // ERASURE must NOT be closed by a status flip — that records a FALSE "fulfilled"
-  // while the data stays fully intact. The real anonymization routine (respecting
-  // the 7-year AML retention window) isn't wired yet, so block it and audit.
+
+  let erasure: AnonymizeOutcome | undefined;
   if (r.type === "ERASURE") {
-    audit({ category: "COMPLIANCE", action: "privacy.dsar.erasure_blocked", actorId: opts.officerId, targetType: "DsarRequest", targetId: r.id, payload: { userId: r.userId } });
-    return { ok: false, error: "Erasure can't be completed manually yet — the anonymization/retention routine isn't wired. Escalate to engineering; do not mark fulfilled." };
+    erasure = await anonymizeClosedAccount(r.userId);
+    if (!erasure.ok) {
+      // ⛔ The SAME audit action the old refusal wrote, deliberately. A regulator reading the
+      // chain for "when could we not erase, and why" gets one action name across both eras,
+      // and the payload now says which of the two reasons it was.
+      audit({
+        category: "COMPLIANCE", action: "privacy.dsar.erasure_blocked", actorId: opts.officerId,
+        targetType: "DsarRequest", targetId: r.id,
+        payload: { userId: r.userId, reason: erasure.reason },
+      });
+      return { ok: false, error: erasure.error };
+    }
   }
-  r.status = "FULFILLED";
+
+  // 🔴 PARTIAL, NOT FULFILLED, while a statutory hold is still running. See `DsarStatus`.
+  const held = erasure?.ok ? erasure.documentsHeldUntil : null;
+  r.status = held ? "PARTIAL" : "FULFILLED";
   r.fulfilledAt = new Date().toISOString();
   r.fulfilledBy = opts.officerId;
   r.exportRef = opts.exportRef ?? null;
+  r.erasureHeldUntil = held;
   persistQueue();
   audit({
     category: "ADMIN",
@@ -103,9 +148,15 @@ export function fulfillDsarRequest(opts: { id: string; officerId: string; export
     actorId: opts.officerId,
     targetType: "DsarRequest",
     targetId: r.id,
-    payload: { type: r.type, userId: r.userId, exportRef: r.exportRef },
+    // ⛔ Counts and dates only. Never a field of the data just erased — this row is in the
+    // append-only chain for seven years, which would make it the last place it survives.
+    payload: {
+      type: r.type, userId: r.userId, exportRef: r.exportRef,
+      status: r.status,
+      ...(erasure?.ok ? { erasureHeldUntil: held, ...erasure.counts } : {}),
+    },
   });
-  return { ok: true, request: r };
+  return { ok: true, request: r, erasure };
 }
 
 export function listDsarRequests(filter?: { status?: DsarStatus }): DsarRequest[] {
@@ -191,21 +242,28 @@ export async function buildDsarBundle(userId: string) {
     rights: {
       access: "Granted (this document).",
       correction: "Submit a correction request via /profile/account or by contacting privacy@50pick.tz.",
-      // ⚠️ THIS STATES THE CHANNEL, NOT A CAPABILITY (audit F-01, corrected 2026-08-20).
-      // It used to read "Available 7 years after account closure subject to AML retention
-      // requirements" — which tells the data subject the platform can do something it
-      // cannot. There is no anonymization routine, and the ERASURE branch of
-      // `fulfillDsarRequest` refuses and audits rather than acting. Worse, the DSAR register
-      // cannot be populated at all: `fileDsarAction` is a declared orphan (E-33), so nothing
-      // on the platform can start the statutory clock.
-      // Saying so plainly is not weaker than the old sentence — it is the difference between
-      // a request a person can actually make and a promise nobody can keep. The right to
-      // erasure is not diminished by describing how to exercise it; it is diminished by
-      // describing a button that is not there.
-      erasure: "Request erasure by writing to privacy@50pick.tz. Financial, identity and "
-        + "audit records are retained for 7 years from account closure under POCA Cap 423 "
-        + "§16 and cannot be erased before then; anything outside that statutory set is "
-        + "assessed on request. Each request is handled by a compliance officer within the "
+      // ⚠️ THIS SENTENCE HAS BEEN WRONG IN BOTH DIRECTIONS, WHICH IS WHY IT CARRIES A HISTORY.
+      //
+      //  · Before 2026-08-20 it promised "available 7 years after account closure subject to
+      //    AML retention requirements" — a capability the platform did not have at all.
+      //  · Corrected that day to state only the CHANNEL, because there was no routine and the
+      //    ERASURE branch of `fulfillDsarRequest` refused rather than acting.
+      //  · Corrected again 2026-08-21, because there IS a routine now
+      //    (`anonymizeClosedAccount`) and describing a capability we have as a mere postal
+      //    address is the same defect pointing the other way: it under-states a right.
+      //
+      // ⛔ IT DESCRIBES A PARTIAL FULFILMENT AND SAYS WHICH PART. That is the honest shape of
+      // erasure for a licensed operator, and it is the posture `/admin/retention` already
+      // publishes to the Gaming Board. Whatever this says must stay true of what the routine
+      // does — `test:erasure` §10 holds the period, and the two tiers are named in
+      // `docs/DATA-RETENTION.md` §2.
+      erasure: "Request erasure by writing to privacy@50pick.tz, or from Account settings. "
+        + "On a closed account we erase your contact details, password, profile, in-app "
+        + "messages and the name and number on your identity record, and we replace any "
+        + "name shown beside your past comments. Your financial and audit records, and the "
+        + "images of your identity documents, are retained for 7 years from account closure "
+        + "under POCA Cap 423 §16 and cannot be erased before then; they are erased when "
+        + "that period ends. Each request is handled by a compliance officer within the "
         + "30-day statutory period (PDPA 2022 §31 / GDPR Art. 17).",
       portability: "This bundle is the portability format (machine-readable JSON).",
     },

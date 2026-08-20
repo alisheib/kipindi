@@ -359,6 +359,21 @@ model KycSubmission {
   /// ⛔ Never "an authority confirmed this identity"; there is no authority check
   /// and none is required (docs/IDENTITY-POLICY.md).
   idVerifiedAt   DateTime?
+  /// 🔴 THE KEYED HMAC OF (idType, idNumber) — the half of the uniqueness control that
+  /// SURVIVES ERASURE. Written for every submission that reaches the identity step
+  /// (`identityFingerprint` in `crypto.ts`), never read back into anything a human sees.
+  ///
+  /// ⛔ WITHOUT THIS COLUMN, ERASURE REPEALS AN AML CONTROL — and it looks safe while it
+  /// does it. `anonymizeClosedAccount` replaces `idNumber` with its keyed HMAC (owner
+  /// decision, COMPLIANCE-DECISIONS 2026-08-21 item 3) precisely so the document keeps
+  /// colliding. But the tuple index compares STORED STRINGS: the erased row then holds a
+  /// hash, the next person presenting that same document writes the RAW number, and the
+  /// two do not collide. Hashing in place is the same hole as nulling, one step further
+  /// from view. So the collision has to happen on a value BOTH rows carry — this one.
+  ///
+  /// ⚠️ It is unique-indexed with the SAME partial predicate as the tuple index, so it
+  /// can never disagree with it: a duplicate here is a duplicate there.
+  idFingerprint  String?
   fullName       String?
   dob            DateTime?
   gender         String?
@@ -378,6 +393,7 @@ model KycSubmission {
   @@index([userId, status])
   @@index([status, submittedAt])
   @@index([idType, idNumber])
+  @@index([idFingerprint])
   // ⚠️ ALSO ON THIS TABLE, but not expressible here: TWO PARTIAL unique indexes.
   //
   // 🔴 THE LIVE ONE, from 2026-08-20 — it is the whole uniqueness control:
@@ -407,6 +423,17 @@ model KycSubmission {
   // one-document-one-account — a P0 AML control that used to be doubly covered for a
   // NIDA. `test:kyc` §2d therefore proves it at service level for a NIDA *and* for a
   // second document type.
+  //
+  // 🔴 AND A THIRD PARTIAL UNIQUE INDEX FROM 2026-08-21, ON `idFingerprint`:
+  //   "KycSubmission_idFingerprint_active_key" ON ("idFingerprint")
+  //     WHERE "idFingerprint" IS NOT NULL AND status <> 'REJECTED'
+  // The SAME control, expressed on a value that survives erasure. It is not redundancy
+  // for its own sake: `anonymizeClosedAccount` destroys `idNumber` (replacing it with
+  // its keyed HMAC), and from that moment the tuple index can no longer collide with
+  // the RAW number a future applicant submits. The fingerprint is written by BOTH rows,
+  // so it still can. ⛔ Its WHERE clause must stay identical to the tuple index's, or
+  // the two enforcement paths start disagreeing about what a duplicate is —
+  // prisma/migrations/20260821140000_kyc_identity_fingerprint.
   //
   // The Prisma DSL has no partial-unique syntax, so both are raw SQL —
   // prisma/migrations/20260731120000_kyc_nida_active_unique and

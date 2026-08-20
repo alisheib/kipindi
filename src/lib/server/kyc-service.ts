@@ -22,7 +22,7 @@
 import { audit } from "./audit";
 import { db } from "./store";
 import type { StoredUser, KycExtraRequest } from "./store";
-import { randomId } from "./crypto";
+import { randomId, identityFingerprint } from "./crypto";
 import { putKycDocument } from "./storage";
 import { sniffBase64ImageMime } from "./image-signature";
 import { verifyNida } from "./nida";
@@ -219,7 +219,18 @@ export async function submitIdentityStep(userId: string, input: z.input<typeof K
   //
   // ⚠️ `findActiveByIdNumber` is an indexed findFirst returning only
   // { userId, status } — it never hydrates the base64 KYC images (audit H5).
-  const conflict = await db.kyc.findActiveByIdNumber(idType, idNumber, userId);
+  const fingerprint = identityFingerprint(idType, idNumber);
+  const conflict =
+    (await db.kyc.findActiveByIdNumber(idType, idNumber, userId)) ??
+    // 🔴 AND THE SAME QUESTION ASKED OF AN ERASED ROW. `anonymizeClosedAccount` destroys
+    // `idNumber` (it becomes this document's keyed HMAC), so from that moment the read
+    // above cannot match it — the erased row holds a hash and this applicant is holding
+    // the raw number. Without this second read a re-presented document would clear the
+    // fast path and then lose to "KycSubmission_idFingerprint_active_key" in the DATABASE:
+    // the control would still hold, but the player would meet an unexplained failure
+    // instead of the `id_taken` refusal, and the SECURITY audit row would say
+    // `viaConstraint` for an ordinary, sequential duplicate.
+    (await db.kyc.findActiveByFingerprint(fingerprint, userId));
   if (conflict) {
     audit({ category: "SECURITY", action: "kyc.id.duplicate_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { idType, conflictUserId: conflict.userId, conflictStatus: conflict.status } });
     return { ok: false, error: "This identity document is already linked to another account. If this is a mistake, contact support.", code: "INVALID", reason: "id_taken" };
@@ -288,6 +299,13 @@ export async function submitIdentityStep(userId: string, input: z.input<typeof K
       idNumber,
       idExpiry,
       idVerifiedAt: now,
+      // 🔴 WRITTEN FOR EVERY SUBMISSION, not only for the ones that will one day be
+      // erased — and that is the whole point. The fingerprint only collides if BOTH rows
+      // carry one: the erased row (which gets it at erasure time, computed from the raw
+      // number it is destroying) and the row of whoever presents that document next.
+      // Write it only at erasure and the second account sails through with a NULL
+      // fingerprint and nothing to collide with. See prisma/schema.prisma on the column.
+      idFingerprint: fingerprint,
       // ⚠️ THE DEPRECATED MIRROR IS GONE (2026-08-20, contract step). This upsert
       // used to also write `nidaNumber` / `nidaVerifiedAt` for a NIDA so a rolling
       // deploy's previous container could keep serving KYC reads. That mirror had
@@ -339,6 +357,15 @@ export async function submitIdentityStep(userId: string, input: z.input<typeof K
 export const ID_UNIQUE_INDEX = "KycSubmission_idType_idNumber_active_key";
 
 /**
+ * 🔴 THE SECOND ENFORCEMENT OF THE SAME RULE — on the value that survives erasure.
+ * Declared in prisma/migrations/20260821140000_kyc_identity_fingerprint, with the SAME
+ * partial predicate as the tuple index. A live duplicate can trip either one (both are
+ * written by the same upsert and Postgres reports whichever it checks first), so both
+ * names must read as `id_taken` or the loser of an ordinary duplicate gets a 500.
+ */
+export const ID_FINGERPRINT_UNIQUE_INDEX = "KycSubmission_idFingerprint_active_key";
+
+/**
  * Did this write lose the one-document-one-account race?
  *
  * Matches Prisma's P2002 (unique constraint) and, defensively, the raw Postgres
@@ -358,14 +385,15 @@ export const ID_UNIQUE_INDEX = "KycSubmission_idType_idNumber_active_key";
 export function isIdUniqueViolation(err: unknown): boolean {
   const e = err as { code?: string; message?: string; meta?: { target?: unknown } };
   const msg = String(e?.message ?? "");
-  if (msg.includes(ID_UNIQUE_INDEX) || msg.includes("KycSubmission_nidaNumber_active_key")) return true;
+  if (msg.includes(ID_UNIQUE_INDEX) || msg.includes(ID_FINGERPRINT_UNIQUE_INDEX) || msg.includes("KycSubmission_nidaNumber_active_key")) return true;
   if (e?.code === "23505") return true;
   if (e?.code !== "P2002") return false;
   // P2002 on this table can only be an identity index — `id` is a cuid we generate
   // and `userId` is not unique — but check the target when we are given one.
   const t = e.meta?.target;
   const asText = Array.isArray(t) ? t.join(",") : String(t ?? "");
-  return asText === "" || /nida|idnumber|idtype/i.test(asText) || asText.includes(ID_UNIQUE_INDEX);
+  return asText === "" || /nida|idnumber|idtype|idfingerprint/i.test(asText)
+    || asText.includes(ID_UNIQUE_INDEX) || asText.includes(ID_FINGERPRINT_UNIQUE_INDEX);
 }
 
 /** Max decoded size of a document image, and the accepted data-URL shape. */
