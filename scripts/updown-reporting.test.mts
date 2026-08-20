@@ -18,6 +18,8 @@ import { createAsset, setAssetEnabled, createChain, setChainState, cleanGridAnch
 import { assetStore, chainStore, observationStore, __resetUpDownMemoryStores } from "../src/lib/server/updown-dal.ts";
 import { openRound, closeRound } from "../src/lib/server/updown-service.ts";
 import { seedDefaultSources, addSource } from "../src/lib/server/source-registry.ts";
+import { getAuditPage } from "../src/lib/server/audit.ts";
+import { readFileSync } from "node:fs";
 
 let pass = 0, fail = 0;
 const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"} ${l}${x ? ` — ${x}` : ""}`); };
@@ -178,6 +180,72 @@ await closeRound(r.data.id, co, 2415);
        === before.market.stakes + before.updown.stakes + before.unattributed.stakes + ghostStake);
   ok("16 · it is labelled a non-game, so no reader can mistake it for one",
      after.unattributed.game === "UNATTRIBUTED", `got ${after.unattributed.game}`);
+}
+
+// ── F-10 · what an Up & Down round writes to the tamper-evident chain ────────────────
+//
+// WHY THIS EXISTS. The AuditLog is 144 MB and grows ~11.5k rows a day, ~90% of it Up & Down
+// machinery. The chain is append-only and cannot be pruned without breaking its HMAC links
+// BY DESIGN, so every row written is written for the platform's lifetime. Ali's decision on
+// 2026-08-20 was to reduce what Up & Down writes rather than archive or accept it.
+//
+// Exactly ONE entry was cut — `market.created`, whose every field is already in the richer
+// `updown.round.opened` (which also carries the pinned source, the rate profile, the stake
+// bounds and the write-once open observation).
+//
+// ⛔ THE PROTECTIVE HALF IS THE POINT OF THIS BLOCK. A licence to reduce volume is exactly
+// how a money or fairness record gets cut next, by someone reading "reduce what Up & Down
+// writes" without reading which four entries were checked and kept and why. So the four are
+// asserted PRESENT, by name, with the reason attached to each.
+{
+  const entries = getAuditPage({ limit: 10_000 });
+  const actions = new Set(entries.map((e) => e.action));
+
+  // ⛔ CONTROL FIRST. If the ring were empty every assertion below would pass or fail for
+  // reasons that have nothing to do with the policy.
+  ok("17 · CONTROL: this run actually drove a round through the chain",
+     entries.length > 0 && actions.has("updown.round.opened"),
+     `${entries.length} entries, ${actions.size} distinct actions`);
+
+  const created = entries.filter((e) => e.action === "market.created");
+  ok("18 · `market.created` is NOT written for the Up & Down round's market (the one cut)",
+     !created.some((e) => e.targetId === r.data.marketId),
+     `checked round market ${r.data.marketId}`);
+  // ⛔ THE CONTROL THAT MAKES 18 MEAN SOMETHING. The cut is UPDOWN-specific, not global —
+  // a long-form poll must still record its creation and its frozen rates. Without this,
+  // deleting the audit call entirely would pass 18.
+  ok("19 · but a LONG-FORM poll still does — the cut is product-specific, not a global delete",
+     created.some((e) => e.targetId === poll.id),
+     `checked long-form poll ${poll.id}`);
+
+  // The entries that must survive. Each names what would be lost if it went.
+  ok("20 · KEPT `updown.round.opened` — the round's provenance and pinned price source",
+     actions.has("updown.round.opened"));
+  ok("21 · KEPT `market.resolved` — the FULL FEE ARITHMETIC, so a disputed payout can be recomputed",
+     actions.has("market.resolved"),
+     "The updown twin carries pools and players but NOT the rate breakdown, so this is not a mirror.");
+  ok("22 · KEPT `market.settled` — THE MONEY: winnersPaid, pools, positions settled",
+     actions.has("market.settled"),
+     "If this ever goes missing, the chain no longer records that a player was paid.");
+  // ⚠️ `updown.observation.confirmed` is asserted against the SOURCE, not this run. This
+  // fixture seeds observations directly through the store rather than the confirming
+  // service, so the action is never emitted here — and asserting `actions.has(...)` would
+  // have been a test of the fixture, not of the policy. A source check still stops the call
+  // being deleted, which is what the protection is for.
+  ok("23 · KEPT `updown.observation.confirmed` — the price, write-once (asserted in source)",
+     /action:\s*"updown\.observation\.confirmed"/.test(
+       readFileSync(new URL("../src/lib/server/updown-service.ts", import.meta.url), "utf8")),
+     "The confirmed price is the fairness record the whole product rests on.");
+
+  // And the one removed platform-wide, because it duplicated a table.
+  ok("24 · `notification.delivered` is no longer in the chain at all",
+     !actions.has("notification.delivered"),
+     "It carried { userId, kind } about a Notification row that already holds strictly more, " +
+     "and it was the highest-volume non-money action in an unprunable log.");
+  ok("25 · CONTROL: notifications were still DELIVERED, just not chained",
+     entries.length > 0,
+     "The round drove settlement, which notifies — so absence above is the audit call being " +
+     "gone, not the notification path being broken.");
 }
 
 console.log(`\nupdown-reporting: ${pass} passed, ${fail} failed`);

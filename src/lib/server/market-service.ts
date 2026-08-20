@@ -542,16 +542,39 @@ export async function createMarket(input: CreateMarketInput) {
     updatedAt: now,
   };
   await marketStore.set(m);
-  audit({
-    category: "ADMIN",
-    action: "market.created",
-    actorId: input.proposedBy,
-    targetType: "Market",
-    targetId: m.id,
-    // The frozen rates go into the tamper-evident chain too — so we can always
-    // prove, to a player or an inspector, what this poll was priced at.
-    payload: { titleEn: m.titleEn, category: m.category, sourceUrl: m.sourceUrl, resolutionAt: m.resolutionAt, selectionClosedAt: m.selectionClosedAt, feeSnapshot },
-  });
+  // ⭐ NOT WRITTEN FOR AN UP & DOWN ROUND (audit F-10, Ali's decision 2026-08-20:
+  // "reduce what Up & Down writes").
+  //
+  // A price round is a market row, so this fired once per round — 10,012 entries in the
+  // last 7 days alone, and the AuditLog is 144 MB growing ~11.5k rows a day. But for an
+  // UPDOWN round every field here is already in the COMPLIANCE entry
+  // `updown.round.opened` writes moments later, and that entry is STRICTLY richer: it
+  // carries the marketId, the pinned `capturedSourceUrl`/`capturedSourceDomain`, the
+  // `rateProfile`, the stake bounds, the margin, both targets, the open price and the
+  // write-once observation id. Nothing is lost by not saying it twice in two vocabularies.
+  //
+  // ⛔ THE OTHER FOUR ENTRIES PER ROUND STAY, and each was checked individually before
+  // this one was cut — they are not duplicates of anything:
+  //   · `updown.round.opened`        — the round's provenance and pinned source
+  //   · `updown.observation.confirmed` — the price, write-once
+  //   · `market.resolved`            — the FULL FEE ARITHMETIC, so a player disputing a
+  //                                    payout can recompute it. The updown twin does not
+  //                                    carry the rate breakdown, so this is not a mirror.
+  //   · `market.settled`             — THE MONEY: winnersPaid, pools, positionsSettled.
+  // Cutting any of those would trade audit volume for a compliance record, which is not a
+  // trade to make on a licensed operator's tamper-evident chain.
+  if (m.productLine !== "UPDOWN") {
+    audit({
+      category: "ADMIN",
+      action: "market.created",
+      actorId: input.proposedBy,
+      targetType: "Market",
+      targetId: m.id,
+      // The frozen rates go into the tamper-evident chain too — so we can always
+      // prove, to a player or an inspector, what this poll was priced at.
+      payload: { titleEn: m.titleEn, category: m.category, sourceUrl: m.sourceUrl, resolutionAt: m.resolutionAt, selectionClosedAt: m.selectionClosedAt, feeSnapshot },
+    });
+  }
   // Arm this market's per-market timers (closing-soon → selection-closed → resolve).
   // Fire-and-forget: a scheduler hiccup must never fail market creation; the 5-min
   // reconciler heals any market that ends up without a live timer.

@@ -102,14 +102,25 @@ export async function notify(input: NotifyInput): Promise<StoredNotification | n
       createdAt: new Date().toISOString(),
     };
     await db.notification.create(n);
-    audit({
-      category: "SYSTEM",
-      action: "notification.delivered",
-      actorId: null,
-      targetType: "Notification",
-      targetId: n.id,
-      payload: { userId: n.userId, kind: n.kind },
-    });
+    // ⛔ NO AUDIT ENTRY HERE (audit F-10, removed 2026-08-20).
+    //
+    // This used to write a SYSTEM `notification.delivered` row into the tamper-evident
+    // chain carrying `{ userId, kind }` and pointing at `n.id`. Every field of it — and
+    // considerably more: both titles, both bodies, the href, readAt, dismissedAt,
+    // createdAt — is in the `Notification` row that the line above just committed. The
+    // chain entry was a strictly poorer copy of a record that already exists.
+    //
+    // The audit chain is append-only and cannot be pruned without breaking the HMAC links
+    // by design, so anything written here is written for the lifetime of the platform. That
+    // is the right bargain for money movements, officer decisions and identity events. It
+    // is the wrong bargain for "a bell was rung", which is what this was: the highest-volume
+    // non-money action in the chain, duplicating a table that is itself queryable and,
+    // unlike the chain, prunable under a retention schedule.
+    //
+    // Nothing read it — grep found no consumer of the action name anywhere in src/ or
+    // scripts/ — so no surface loses information. If a delivery ever needs to be PROVEN
+    // rather than merely recorded, the honest place is the Notification row plus the
+    // money/decision event that caused it, both of which remain.
     // SSE: nudge the connected client so the bell updates instantly.
     //
     // ⚠️ This used to carry `title: n.titleEn, body: n.bodyEn` — English, to

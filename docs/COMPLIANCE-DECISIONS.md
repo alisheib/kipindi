@@ -6,6 +6,66 @@
 
 ---
 
+## 2026-08-20 · What Up & Down writes to the audit chain — one entry cut, four protected
+
+**Instruction:** Ali, **2026-08-20**, choosing between three options put to him for audit
+finding **F-10**: *"Reduce what Up & Down writes"* — in preference to accepting the growth
+or to a yearly export-and-re-anchor ceremony.
+
+**The problem, measured.** `AuditLog` is **144 MB / 114,480 rows**, growing **~11,500 rows a
+day** — three times the rate the audit recorded. ~90% is Up & Down machinery at six entries
+per round. The chain is append-only and **cannot be pruned without breaking its HMAC links
+by design**, so every row written is written for the platform's lifetime.
+
+### What was cut
+
+| Entry | Why it could go |
+|---|---|
+| `market.created` (for `productLine === "UPDOWN"` only) | Every field is already in the `updown.round.opened` entry written moments later, and that one is **strictly richer** — it carries the marketId, the pinned `capturedSourceUrl`/`capturedSourceDomain`, the `rateProfile`, the stake bounds, the margin, both targets, the open price and the write-once observation id. Nothing is lost by not saying it twice in two vocabularies. **10,012 entries in the last 7 days alone.** |
+| `notification.delivered` (platform-wide) | Carried `{ userId, kind }` about a `Notification` row that already holds strictly more — both titles, both bodies, href, readAt, dismissedAt, createdAt. A poorer copy of a record that already exists, and the highest-volume non-money action in an unprunable log. Nothing read it: no consumer of the action name exists in `src/` or `scripts/`. |
+
+### 🔴 What was NOT cut, and why — read this before reducing anything further
+
+Each was examined individually. None is a duplicate:
+
+- **`market.settled`** — THE MONEY: `winnersPaid`, `positionsSettled`, `grossPool`,
+  `winningPool`, `objectionsClosedAt`. If this goes, the chain no longer records that a
+  player was paid.
+- **`market.resolved`** — the FULL FEE ARITHMETIC, written so *"an inspector (or a player who
+  disputes a payout) can recompute the fee from these numbers"*. ⚠️ The Up & Down twin
+  `updown.round.resolved` carries pools and players but **NOT the rate breakdown**, so this
+  is *not* a mirror and dropping it would cost a dispute record.
+- **`updown.round.opened`** — the round's provenance and its pinned price source.
+- **`updown.observation.confirmed`** — the price, write-once. The fairness record the whole
+  product rests on.
+
+**⛔ Guardrail.** "Reduce what Up & Down writes" is not a licence to keep cutting. The four
+above are asserted PRESENT by name in `test:updown-reporting` (assertions 20–23), each with
+the reason attached, and the cut one is asserted ABSENT **for the round's market only** while
+a long-form poll must still record its creation — so deleting the audit call outright fails
+too. Both directions were driven red.
+
+### ⚠️ Be honest about the size of the win
+
+This removes **one of six** entries per round plus the notification rows: roughly
+**1,700–3,000 rows a day**, on the order of **1 GB a year**. It does not solve the growth
+curve — four load-bearing entries per round remain, and at ~1,650 rounds a day that is still
+~6,600 rows a day from Up & Down alone.
+
+**The remaining lever is not an engineering one: it is the number of rounds.** Nothing else
+can come out of the chain without losing a money, fee, provenance or fairness record. If the
+growth needs to be halved again, that is a decision about how many rounds the product
+generates — or the export-and-re-anchor ceremony, which remains on the table and is recorded
+here as *not chosen today*.
+
+**Code:** `src/lib/server/market-service.ts` (the `productLine !== "UPDOWN"` guard) ·
+`src/lib/server/notification-service.ts` (the audit call removed, with the reasoning left in
+its place).
+**Tests:** `test:updown-reporting` 25/25 (assertions 17–25, both halves driven red) ·
+`test:audit` 36/36 · `test:lifecycle-e2e` 1545/1545 · `test:markets` 24/24.
+
+---
+
 ## 2026-08-20 · The privacy policy stops declaring collection and controls we do not have
 
 **Origin:** the data-handling audit ([`DATA-AUDIT-2026-08-20.md`](DATA-AUDIT-2026-08-20.md))
