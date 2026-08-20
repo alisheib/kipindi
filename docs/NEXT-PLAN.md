@@ -50,6 +50,9 @@
 > Scan) are the `productLine: "ALL"` reads on `/results`, `/fairness` and the app-shell ticker,
 > which the audit never examined.
 >
+> ▶ **NEXT SESSION ON DATA: [`SESSION-PROMPT-DATA-FINALISE.md`](SESSION-PROMPT-DATA-FINALISE.md).**
+> Erasure first — it is the only remaining item that can hurt somebody.
+>
 > ## ✅ 2026-08-21 — the four answers are IN, and Redis is armed
 >
 > Ali answered all four on 2026-08-21; reasoning per item in
