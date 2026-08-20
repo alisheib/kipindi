@@ -27,8 +27,11 @@
 --
 -- ⛔ NO `CONCURRENTLY`. `prisma migrate deploy` wraps a migration in a transaction and
 -- CREATE INDEX CONCURRENTLY cannot run inside one (25001), which would take the boot with
--- it. Nothing here needs it: `KycSubmission` is 67 rows / 360 kB after the F-02 move to
--- R2, so the ACCESS EXCLUSIVE lock is held for microseconds. `IF NOT EXISTS` is still on
+-- it. Nothing here needs it: `KycSubmission` holds 72 active rows / 360 kB after the F-02
+-- move to R2 (measured read-only on production 2026-08-21 — 67 is the KycDocument count from
+-- F-02 and a different table), so the ACCESS EXCLUSIVE lock is held for microseconds.
+-- ⭐ The same probe returned **0** duplicate active `(idType, idNumber)` groups, so the UNIQUE
+-- index in statement 3 cannot fail on creation. `IF NOT EXISTS` is still on
 -- every statement so the index MAY be pre-created by hand with CONCURRENTLY on production
 -- first — the practice recorded in 20260731120000's commit body — and this file then
 -- becomes a no-op.

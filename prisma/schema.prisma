@@ -150,32 +150,6 @@ enum PaymentProvider {
 // Legacy sports enums (MatchStatus, WindowKind, WindowStatus, BetOutcome,
 // BetStatus) dropped in Phase 0b — prediction markets are the only wager type.
 
-enum FlagType {
-  MULTI_ACCOUNT
-  IP_OVERLAP
-  DEVICE_OVERLAP
-  STAKE_PATTERN
-  COLLUSION_RING
-  VELOCITY
-  WASH_TRADE
-  MATCH_FIXING_SUSPECT
-  CHARGEBACK
-}
-
-enum FlagSeverity {
-  LOW
-  MEDIUM
-  HIGH
-  CRITICAL
-}
-
-enum FlagStatus {
-  OPEN
-  REVIEWING
-  CONFIRMED
-  DISMISSED
-}
-
 enum NotificationChannel {
   IN_APP
   PUSH
@@ -208,6 +182,30 @@ enum AuditCategory {
 // IDENTITY & ACCESS
 // ============================================================================
 
+/// ⛔ REMOVED FROM THIS SCHEMA 2026-08-21 (audit F-05), SCHEMA-FIRST — the TABLES ARE STILL
+/// THERE and are dropped by the contract migration one release later:
+///   `Device` · `MatchIntegrityCheck` · `AntiFraudFlag` (+ enums `FlagType`, `FlagSeverity`,
+///   `FlagStatus`) · `ProviderHealth` · `KycDocument.ocrText` · `KycDocument.blurScore`
+///   · `Session.deviceId` / `Session.device`
+///
+/// Measured read-only on production 2026-08-21, and this is the evidence the drop rests on:
+/// every one of those tables held **0 rows**, `KycDocument.ocrText` and `.blurScore` were
+/// **0 non-null across 67 rows**, and `Session.deviceId` was **0 non-null**. A grep of `src/`
+/// and `scripts/` found **no code reference to any of them** — so nothing could have written a
+/// row between the measurement and the drop even in principle.
+///
+/// 🔴 THE ORDER IS THE SAFETY ARGUMENT, and it is the same one the NIDA contract migration
+/// records at `KycSubmission`: `postinstall` runs `prisma generate`, which bakes the column
+/// list from THIS FILE, and Prisma selects every scalar column. Removing the declaration first
+/// means no deployed client names them; the DDL then drops columns nothing selects. The other
+/// order — or both in one release — drops a column the previously-deployed container is still
+/// naming, which is a 42703 on every read of that table for the length of a rolling deploy.
+///
+/// ⛔ Do NOT re-add any of them to "keep the schema tidy" before the DDL has run: a declaration
+/// without its column is the failure mode above, wearing the opposite hat.
+///
+/// ⭐ `Session` and `Otp` are DELIBERATELY KEPT and are commented as dormant at their own
+/// definitions. They have code paths; these had none.
 model User {
   id                   String     @id @default(cuid())
   phoneE164            String     @unique
@@ -241,9 +239,6 @@ model User {
   transactions            Transaction[]
   sessions                Session[]
   otps                    Otp[]
-  devices                 Device[]
-  flags                   AntiFraudFlag[]      @relation("FlaggedUser")
-  reviewedFlags           AntiFraudFlag[]      @relation("FlagReviewer")
   responsibleGambling     ResponsibleGambling?
   notifications           Notification[]
   affiliateAgent          AffiliateAgent?
@@ -268,6 +263,23 @@ model User {
   @@index([createdAt])
 }
 
+/// ⭐ DORMANT, DELIBERATELY KEPT (audit F-05, 2026-08-21). **0 rows on production, measured.**
+///
+/// It is on this side of the line and `Device` was not, and the difference is the only thing
+/// worth remembering: **this model has code paths and `Device` had none.** The platform
+/// authenticates with a signed HttpOnly cookie plus the `ActiveSession` registry
+/// (`session.ts`, `session-registry.ts`), which is why nothing has ever written a row here —
+/// but the columns are the shape a real server-side session table needs, and `/profile/sessions`
+/// is the surface that would read them.
+///
+/// ⛔ IT IS NOT ON ANY RETENTION SCHEDULE, AND THAT IS THE POINT. `docs/DATA-RETENTION.md` §1
+/// marks the Session row **N/A** rather than giving it a period: a prune against a table nothing
+/// writes is *"a permanent no-op dressed as a control"*, and publishing a period for it is the
+/// same defect as the rest of F-01. If sessions are ever persisted here, that row needs a real
+/// period in the same commit.
+///
+/// ⚠️ `deviceId` / `device` LEFT THIS MODEL 2026-08-21 with the `Device` table. The COLUMN is
+/// still in the database until the contract migration — see the note above `model User`.
 model Session {
   id           String    @id @default(cuid())
   userId       String
@@ -275,8 +287,6 @@ model Session {
   tokenHash    String    @unique
   ip           String?
   userAgent    String?
-  deviceId     String?
-  device       Device?   @relation(fields: [deviceId], references: [id])
   createdAt    DateTime  @default(now())
   expiresAt    DateTime
   revokedAt    DateTime?
@@ -285,6 +295,17 @@ model Session {
   @@index([userId, revokedAt])
 }
 
+/// ⭐ DORMANT, DELIBERATELY KEPT (audit F-05, 2026-08-21). **0 rows on production, measured.**
+///
+/// Unlike `Session` this one is dormant for a reason that will END: `SMS_PROVIDER=console`, so
+/// no code has ever been issued. `codeHash` is scrypt-hashed and peppered (`crypto.ts`) and the
+/// whole issue/verify/consume path is live in `auth-service.ts` — it is waiting on an SMS
+/// contract, not on engineering.
+///
+/// ⛔ AND IT IS THE ONE DORMANT TABLE THAT ALREADY HAS AN ENFORCED PERIOD. `retention.purge.daily`
+/// deletes rows older than `OTP_RETENTION_DAYS` (30) from ISSUE, wired 2026-08-20 and asserted by
+/// `test:retention`. That prune deletes nothing today and is wired anyway, because *the day SMS is
+/// switched on is the wrong day to discover that nothing expires a credential hash.*
 model Otp {
   id         String    @id @default(cuid())
   userId     String?
@@ -299,27 +320,6 @@ model Otp {
 
   @@index([phoneE164, purpose])
   @@index([expiresAt])
-}
-
-model Device {
-  id          String    @id @default(cuid())
-  userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  fingerprint String
-  platform    String? // ios, android, web
-  model       String?
-  osVersion   String?
-  appVersion  String?
-  pushToken   String?
-  firstSeenAt DateTime  @default(now())
-  lastSeenAt  DateTime  @default(now())
-  trustedAt   DateTime?
-  blockedAt   DateTime?
-
-  sessions Session[]
-
-  @@unique([userId, fingerprint])
-  @@index([fingerprint])
 }
 
 // ============================================================================
@@ -456,8 +456,6 @@ model KycDocument {
   mimeType     String
   sizeBytes    Int
   uploadedAt   DateTime      @default(now())
-  blurScore    Float?
-  ocrText      String?
   rejected     Boolean       @default(false)
   rejectReason String?
 }
@@ -693,45 +691,6 @@ model InviteEntry {
 // ANTI-FRAUD & INTEGRITY
 // ============================================================================
 
-model AntiFraudFlag {
-  id          String       @id @default(cuid())
-  userId      String
-  user        User         @relation("FlaggedUser", fields: [userId], references: [id])
-  type        FlagType
-  severity    FlagSeverity
-  status      FlagStatus   @default(OPEN)
-  riskScore   Float?
-  description String
-  evidence    Json?
-  matchId     String?
-  windowId    String?
-  reviewerId  String?
-  reviewer    User?        @relation("FlagReviewer", fields: [reviewerId], references: [id])
-  reviewedAt  DateTime?
-  resolution  String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-
-  @@index([userId, status])
-  @@index([type, severity, status])
-}
-
-model MatchIntegrityCheck {
-  id           String    @id @default(cuid())
-  matchId      String
-  windowId     String?
-  anomalyType  String
-  anomalyScore Float
-  evidence     Json
-  reviewed     Boolean   @default(false)
-  reviewerId   String?
-  reviewedAt   DateTime?
-  notes        String?
-  createdAt    DateTime  @default(now())
-
-  @@index([matchId, createdAt])
-}
-
 // ============================================================================
 // RESPONSIBLE GAMBLING
 // ============================================================================
@@ -859,19 +818,6 @@ model AffiliateAgent {
 // ============================================================================
 // SYSTEM HEALTH (provider health, used by admin analytics)
 // ============================================================================
-
-model ProviderHealth {
-  id           String          @id @default(cuid())
-  provider     PaymentProvider
-  bucketStart  DateTime
-  successCount Int             @default(0)
-  failureCount Int             @default(0)
-  p50LatencyMs Int?
-  p95LatencyMs Int?
-
-  @@unique([provider, bucketStart])
-  @@index([provider, bucketStart])
-}
 
 // ============================================================================
 // ENUMS — Prediction Markets, Proposals, AI Pipeline, House Pool

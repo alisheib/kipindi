@@ -147,7 +147,7 @@ railway run --service 50pick -- npm run ops:backfill-id-fingerprints            
 railway run --service 50pick -- npx tsx scripts/ops-backfill-id-fingerprints.mts --write
 ```
 
-Fills `idFingerprint` on the rows that predate the column (67 on production). ⛔ **Production
+Fills `idFingerprint` on the rows that predate the column. ⚠️ **29 rows, not 67** — measured read-only on production 2026-08-21: `KycSubmission` holds 72 active rows of which **29** carry an `idNumber`, and 67 is the `KycDocument` count from audit F-02, which is a different table. The same probe found **0** duplicate active `(idType, idNumber)` groups, so the new unique index cannot fail on creation. ⛔ **Production
 only, and it refuses to run without `OTP_PEPPER`** — under the dev fallback it would write 67
 fingerprints the live application can never reproduce, which *disarms* the index instead of
 arming it. It never overwrites a value, so a re-run is a no-op, and it pre-flights for a

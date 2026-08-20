@@ -174,7 +174,16 @@ is this document's own F-02 scope note reappearing.
 for the statutory 7 years from closure rather than deleted on request.
 
 ### Still open
-- **F-05** dead schema · **F-09** AIPoll payload prune · **F-11** the small placements.
+- ✅ **F-05 — EXPAND STEP DONE 2026-08-21.** The declarations are out of `prisma/schema.prisma`
+  (`Device`, `MatchIntegrityCheck`, `AntiFraudFlag` + its three enums, `ProviderHealth`,
+  `KycDocument.ocrText`/`.blurScore`, `Session.deviceId`); **the tables are still in the
+  database** and the DDL is the release after, for the reason `20260821090000` records at
+  length. `Session` and `Otp` are KEPT and annotated as dormant — emptiness was the symptom,
+  *having no reader anywhere* was the finding. Re-measured read-only on production 2026-08-21:
+  0 rows in all four, 0 non-null in both columns and in `Session.deviceId`.
+  `test:dead-schema` 34/34 · `red:dead-schema` 7/7. The prepared DDL is in
+  [`SESSION-PROMPT-DATA-FINALISE.md`](SESSION-PROMPT-DATA-FINALISE.md) §3.
+- **F-09** AIPoll payload prune · **F-11** the small placements.
   ⛔ **F-09's snapshot-skip must NOT be done as written** — an adversarial check returned
   **NOT_SAFE**; verify the readers first.
 - **F-07's remaining sites** — insights, catalogue, analytics, the admin user lists. The boot

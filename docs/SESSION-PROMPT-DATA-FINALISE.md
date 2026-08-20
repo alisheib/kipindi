@@ -130,20 +130,84 @@ comment as a caller.)
 
 ---
 
-## 3 · F-05 — the dead schema
+## 3 · 🟠 F-05 — the dead schema · **EXPAND DONE 2026-08-21, DDL IS THE NEXT RELEASE**
 
-Zero rows **and** zero code references: `Device` (+`pushToken`), `MatchIntegrityCheck`,
-`AntiFraudFlag`, `ProviderHealth`, `KycDocument.ocrText`, `KycDocument.blurScore`.
-F-04 chose option (a), so **`Device` may go** — fingerprinting is not implemented and not planned.
+> **Step 1 of 2 is shipped.** The declarations are out of `prisma/schema.prisma`; **every table
+> and column is still in the database.** `npm run test:dead-schema` 34/34 ·
+> `npm run red:dead-schema` 7/7.
+>
+> ⛔ **DO NOT COMMIT THE DDL IN THE SAME RELEASE.** `package.json`'s `start` is
+> `prisma migrate deploy && … && next start`, so a migration file committed now runs on the
+> **same** deploy that removes the declarations — and the previously-deployed container's
+> generated client still names them. That is a 42703 on every read of those tables for the
+> length of the rolling deploy. The declarations must be *deployed* first, then the DDL.
 
-**KEEP, and comment as dormant:** `Session` and `Otp`. Their code paths exist and OTP may activate
-when SMS is wired.
+### What left the schema
 
-⛔ **Expand → contract across TWO releases, schema-first then DDL.**
-`prisma/migrations/20260821090000_kyc_drop_nida_legacy` is the worked example, and there is now a
-guard that reads contract migrations — a DROP must satisfy it. Apply from the machine **before**
-pushing: `prisma migrate deploy` runs before `next start`, so a failing migration is a
-platform-wide sign-in outage.
+`Device` · `MatchIntegrityCheck` · `AntiFraudFlag` (+ enums `FlagType`, `FlagSeverity`,
+`FlagStatus`) · `ProviderHealth` · `KycDocument.ocrText` · `KycDocument.blurScore` ·
+`Session.deviceId` / `Session.device` · `User.devices` / `.flags` / `.reviewedFlags`.
+
+**KEPT and annotated as dormant:** `Session` and `Otp`, each with a note at its own definition
+saying why. The difference that matters is not emptiness — all six were empty — it is that these
+two **have code paths** and the dead four had none. `test:dead-schema` §1.4/1.5 holds both halves,
+and `red:dead-schema` case 3 deletes the annotation to prove the note is load-bearing.
+
+### 📏 The evidence, measured read-only on production 2026-08-21
+
+| Table / column | Rows |
+|---|---|
+| `Device`, `MatchIntegrityCheck`, `AntiFraudFlag`, `ProviderHealth` | **0** each |
+| `KycDocument.ocrText`, `.blurScore` | **0 non-null** across 67 rows |
+| `Session.deviceId` | **0 non-null** |
+| `Session`, `Otp` (kept) | **0** each — dormant, as documented |
+
+⛔ **Re-measure before running the DDL.** A grep found no code that can write to any of them, so
+nothing should have changed — but the whole point of this document is not asserting things nobody
+checked.
+
+### The DDL, ready for the release AFTER this one
+
+⛔ Not committed. Paste into `prisma/migrations/<next>_f05_drop_dead_schema/migration.sql` in the
+release after the schema change has deployed, with the reasoning above it, and hand-apply on
+production first (`IF EXISTS` makes the file a no-op afterwards).
+
+```sql
+-- Indexes explicitly and BEFORE their tables/columns: DROP TABLE cascades, so naming them
+-- puts them in the audit trail of what this migration removed instead of letting them vanish.
+DROP INDEX IF EXISTS "Device_fingerprint_idx";
+DROP INDEX IF EXISTS "Device_userId_fingerprint_key";
+DROP INDEX IF EXISTS "AntiFraudFlag_userId_status_idx";
+DROP INDEX IF EXISTS "AntiFraudFlag_type_severity_status_idx";
+DROP INDEX IF EXISTS "MatchIntegrityCheck_matchId_createdAt_idx";
+DROP INDEX IF EXISTS "ProviderHealth_provider_bucketStart_idx";
+DROP INDEX IF EXISTS "ProviderHealth_provider_bucketStart_key";
+
+-- Session.deviceId FIRST: it holds the FK into Device, so Device cannot go while it exists.
+ALTER TABLE "Session"     DROP COLUMN IF EXISTS "deviceId";
+ALTER TABLE "KycDocument" DROP COLUMN IF EXISTS "ocrText";
+ALTER TABLE "KycDocument" DROP COLUMN IF EXISTS "blurScore";
+
+DROP TABLE IF EXISTS "AntiFraudFlag";
+DROP TABLE IF EXISTS "MatchIntegrityCheck";
+DROP TABLE IF EXISTS "ProviderHealth";
+DROP TABLE IF EXISTS "Device";
+
+-- The enums only AntiFraudFlag used. AFTER the table, or Postgres refuses the type as in use.
+DROP TYPE IF EXISTS "FlagStatus";
+DROP TYPE IF EXISTS "FlagSeverity";
+DROP TYPE IF EXISTS "FlagType";
+```
+
+⛔ **No `CONCURRENTLY` anywhere** — `migrate deploy` wraps a migration in a transaction and
+CONCURRENTLY fails 25001 inside one, taking the boot with it. `test:dead-schema` §3 reads any
+migration that drops one of these names and holds it to that rule plus IF EXISTS plus
+index-before-column ordering, so the file above cannot be committed in a broken shape.
+`prisma/migrations/20260821090000_kyc_drop_nida_legacy` is the worked example for the prose.
+
+⚠️ **The backup stops covering these tables the moment the declaration goes**, because
+`tableOrder()` is driven by `Prisma.dmmf`. They hold zero rows, so nothing is lost — but that is
+the reason the row counts above were measured before the declarations were removed and not after.
 
 ---
 
