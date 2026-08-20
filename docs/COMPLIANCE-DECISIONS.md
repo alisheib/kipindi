@@ -120,7 +120,7 @@ declared) · `src/lib/server/kyc-service.ts` (`submitIdentityStep`) ·
 `prisma/migrations/20260820120000_kyc_identity_document` ·
 `src/app/profile/kyc/page.tsx` (the chooser, built from the kit's one filter control) ·
 `src/app/admin/kyc/[id]` (the reviewer's per-document screen).
-Guards: `npm run test:id-documents` (191 assertions, every refusal beside a positive control) ·
+Guards: `npm run test:id-documents` (192 assertions, every refusal beside a positive control) ·
 `npm run red:id-documents` (**18 injected defects, 18 caught**) · `npm run test:cert-d1` ·
 `npm run test:failure-reasons`.
 
