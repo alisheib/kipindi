@@ -108,6 +108,16 @@ slow"*. That is separate work: paginate the filtering or move the category count
 aggregates. For scale: that table's lifetime counters read **13.4 M sequential scans and 960 M
 tuples**.
 
+Also noted from the production logs after deploying: **`prisma:error` is printed for an
+expected, correctly-handled control.** Two chains on the same asset race to write the same
+`UpDownObservation`, and `@@unique([assetId, boundaryAt])` makes one lose — which is the
+write-once guarantee working. `updown-dal.ts:757-765` catches it, re-reads, shares the winner's
+row, and rethrows if the re-read genuinely fails, with a comment saying exactly that. Nothing is
+broken. But Prisma logs the violation at **error** level before the catch sees it, so a healthy
+control reads as a defect to whoever is watching logs — the same class of problem as the
+crying-wolf verifier fixed above, and it trains an operator to ignore `prisma:error`. Fix is to
+pre-check or to quiet that one violation, not to change the constraint. Not done here.
+
 Also noted while verifying the deploy: **a Redis service is provisioned and Online**, but
 `REDIS_URL` is not among the 50pick service's variables — so it is running, and being paid for,
 while the application cannot see it. Either arm it or remove it.
