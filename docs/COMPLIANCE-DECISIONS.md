@@ -126,8 +126,24 @@ Until that lands, this entry is the record that the duplication is time-boxed an
 >
 > **Step 1 shipped 2026-08-20:** the fields left `prisma/schema.prisma`, the mirror write,
 > the DTO, the two dead readers, eleven fixtures, both race proofs and one data-migration
-> script — **with no DDL**. **Step 2 is the migration**,
-> `20260821090000_kyc_drop_nida_legacy`, in the release after it.
+> script — **with no DDL**. **Step 2 shipped 2026-08-20** as
+> `20260821090000_kyc_drop_nida_legacy`, in the release after it, once `/api/health`
+> confirmed the step-1 container was serving and `leadership.lifecycle.isMe: true` showed
+> the previous instance had stopped renewing the lifecycle lease.
+>
+> ⭐ **From step 2 on, `KycSubmission_idType_idNumber_active_key` is the SOLE enforcement
+> of one-document-one-account** — a P0 AML control that a NIDA used to have twice.
+> `test:kyc` §2d therefore proves it at service level for a **passport** as well: the
+> duplicate refusal, the `status <> 'REJECTED'` half that frees a rejected number, and a
+> control showing the same digits under a different document type are a different
+> document. All three proved RED by mutation.
+>
+> ⚠️ **And nothing in the platform had ever read a contract migration.** `test:cert-d1`
+> hard-coded two migration paths, and its "does NOT drop the deprecated columns" check is
+> scoped to the *expand* file — so a contract migration that dropped the wrong index,
+> forgot `KycSubmission_nidaNumber_idx`, ran `CONCURRENTLY` inside Prisma's transaction or
+> was not re-runnable would have been caught by **no suite**. §3b now reads it: nine
+> assertions, three of them proved RED.
 >
 > 🔴 **THE ORDER IS THE SAFETY ARGUMENT, and the hazard was recorded five times with the
 > wrong blast radius.** Every statement of it — including the paragraph above — named

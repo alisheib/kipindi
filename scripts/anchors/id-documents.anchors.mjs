@@ -34,6 +34,7 @@ const ROUTE = "src/app/api/admin/kyc-doc/route.ts";
 const PAGE = "src/app/profile/kyc/page.tsx";
 const SCHEMA = "prisma/schema.prisma";
 const STORE = "src/lib/server/store.ts";
+const DROP_MIG = "prisma/migrations/20260821090000_kyc_drop_nida_legacy/migration.sql";
 
 export const GATE_ID = ["tsx", "scripts/id-documents.test.mts"];
 export const GATE_D1 = ["tsx", "scripts/kyc-cert-d1.test.mts"];
@@ -254,6 +255,48 @@ export const CASES = [
       file: SCHEMA,
       from: `  /// WHICH of the four documents this submission is built on. Null only before the`,
       to: `  nidaNumber     String?\n  /// WHICH of the four documents this submission is built on. Null only before the`,
+    }],
+  },
+  {
+    // ⭐ THE CONTRACT MIGRATION'S RE-BACKFILL. Without it, a row written by a pre-tuple
+    // container mid-deploy (or after a rollback) is held ONLY by the legacy column, and
+    // the drop destroys that player's identity number while silently freeing a national
+    // ID that is in use. Nothing in the repo read a contract migration before this.
+    name: "the contract migration drops the column without re-running the backfill",
+    gate: GATE_D1,
+    expect: "it RE-RUNS the backfill, before the drop, in the same transaction",
+    edits: [{
+      file: DROP_MIG,
+      from: `UPDATE "KycSubmission"`,
+      to: `SELECT 1; -- UPDATE "KycSubmission"`,
+    }],
+  },
+  {
+    // ⭐ DROP INDEX after DROP COLUMN cannot find its target; migrate deploy runs the
+    // file in one transaction, so the migration aborts and `next start` never runs.
+    name: "the contract migration drops the index AFTER the column",
+    gate: GATE_D1,
+    expect: "with the index drops BEFORE the column drop",
+    edits: [{
+      file: DROP_MIG,
+      // ⚠️ The two statement groups are separated by a comment, so the anchor cannot
+      // span them. Moving the FIRST index drop below the columns is enough: the guard
+      // compares the positions of that statement and the column drop.
+      from: `DROP INDEX IF EXISTS "KycSubmission_nidaNumber_active_key";\nDROP INDEX IF EXISTS "KycSubmission_nidaNumber_idx";`,
+      to: `DROP INDEX IF EXISTS "KycSubmission_nidaNumber_idx";\nALTER TABLE "KycSubmission" DROP COLUMN IF EXISTS "nidaNumber";\nDROP INDEX IF EXISTS "KycSubmission_nidaNumber_active_key";`,
+    }],
+  },
+  {
+    // ⭐ Hand-applying a migration before pushing is normal practice here, and CI replays
+    // each migration exactly once — so a non-re-runnable file is GREEN in CI and fatal on
+    // production, where it aborts migrate deploy and stops the container booting.
+    name: "the contract migration is not re-runnable (no IF EXISTS)",
+    gate: GATE_D1,
+    expect: "every DDL statement is IF EXISTS",
+    edits: [{
+      file: DROP_MIG,
+      from: `ALTER TABLE "KycSubmission" DROP COLUMN IF EXISTS "nidaNumber";`,
+      to: `ALTER TABLE "KycSubmission" DROP COLUMN "nidaNumber";`,
     }],
   },
   {

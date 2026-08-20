@@ -119,10 +119,18 @@ for (const [i, c] of CASES.entries()) {
   if (r.code === 0) {
     problems.push(`case ${i + 1} (${c.name}): gate stayed GREEN with the defect present`);
     console.log(`  ${String(i + 1).padStart(2)}. NOT CAUGHT   ${c.name}`);
-  } else if (!r.out.includes(c.expect)) {
+  } else if (!r.out.split("\n").filter((l) => l.trim().startsWith("FAIL")).some((l) => l.includes(c.expect))) {
     // ⛔ Red for the WRONG reason is not a proof. This is what separates "the gate
     // caught my defect" from "the gate fell over".
-    const lines = r.out.split("\n").filter((l) => l.startsWith("FAIL")).map((l) => l.trim()).slice(0, 3);
+    //
+    // ⚠️ THIS TEST USED TO BE `!r.out.includes(c.expect)` — the WHOLE output, which
+    // contains a line for every assertion whether it PASSED or FAILED. So a mutation
+    // that reddened some OTHER assertion, while the named one sailed through green,
+    // counted as "caught": the wrong-reason detector could be satisfied by a PASS line
+    // bearing the expected words. It now requires the expected text to appear on a FAIL
+    // line. (Found while adding the contract-migration cases; all 20 pre-existing cases
+    // still pass under the stricter rule, so nothing was resting on the loophole.)
+    const lines = r.out.split("\n").filter((l) => l.trim().startsWith("FAIL")).map((l) => l.trim()).slice(0, 3);
     problems.push(`case ${i + 1} (${c.name}): went red, but NOT on "${c.expect}" — got: ${lines.join(" | ") || "(no FAIL lines)"}`);
     console.log(`  ${String(i + 1).padStart(2)}. WRONG REASON ${c.name}`);
   } else {

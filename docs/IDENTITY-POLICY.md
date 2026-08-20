@@ -144,12 +144,23 @@ a rolling-deploy mirror. They are removed in **two steps, in this order**:
 1. ✅ **DONE — the fields left `prisma/schema.prisma` and every layer, with NO DDL.**
    After this release no deployed generated client names the columns. The columns are
    still physically present in production, holding their old values, read by nothing.
-2. ⏳ **NEXT RELEASE — the columns leave the database**, as
+2. ✅ **DONE — the columns left the database**, as
    `prisma/migrations/20260821090000_kyc_drop_nida_legacy`, which re-runs the backfill
    in the same transaction before dropping (a row written by a pre-tuple container
    during the expand deploy, or after a rollback, carries `nidaNumber` with no
    `idNumber`, and dropping the column would destroy that player's identity number and
-   silently free a national ID that is in use).
+   silently free a national ID that is in use). It drops **both** indexes by name,
+   creates nothing, contains no `CONCURRENTLY` in either direction — `prisma migrate
+   deploy` wraps a migration in a transaction and neither `CREATE INDEX CONCURRENTLY`
+   nor `DROP INDEX CONCURRENTLY` can run inside one — and every DDL statement is
+   `IF EXISTS`, because hand-applying before pushing is normal practice here while CI
+   replays each migration exactly once, so a non-re-runnable file is green in CI and
+   fatal in production.
+
+   ⛔ **The step-1 container had to be confirmed live and the previous one gone first.**
+   Evidence used: `/api/health` showed a fresh container (`uptimeSec` reset) and then
+   `leadership.lifecycle.isMe: true`, meaning the previous instance had stopped renewing
+   the lifecycle lease. Timestamps alone would not have proved it.
 
 ⛔ **NOT THE OTHER ORDER, AND NOT IN ONE RELEASE.** `package.json`'s `start` is
 `prisma migrate deploy && … && next start`, so a migration commits inside the NEW
@@ -175,8 +186,8 @@ unallowlisted. Its positive control fed it the one shape it already matched. §9
 **every** spelling across all of `src/`, with no allowlist, plus the schema and the
 absence of a number-only duplicate read, and carries five controls instead of one.
 
-⭐ **AND THE TUPLE INDEX BECOMES THE SOLE ENFORCEMENT** of one-document-one-account once
-step 2 lands. Until the contract step, a NIDA is covered twice — by
+⭐ **AND THE TUPLE INDEX IS NOW THE SOLE ENFORCEMENT** of one-document-one-account. Until
+the contract step, a NIDA was covered twice — by
 `KycSubmission_idType_idNumber_active_key` and, redundantly, by the legacy
 `KycSubmission_nidaNumber_active_key`. `test:kyc` §2d therefore proves the rule at
 service level for a **passport** as well as a NIDA: the duplicate refusal, the

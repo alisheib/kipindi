@@ -391,14 +391,17 @@ model KycSubmission {
   // rejection.
   //
   // ⚠️ THE LEGACY ONE — "KycSubmission_nidaNumber_active_key" ON ("nidaNumber") — and
-  // "KycSubmission_nidaNumber_idx" STILL EXIST IN THE DATABASE and no longer exist in
-  // this file. That gap is DELIBERATE and it is one release long: the fields leave the
-  // schema first (this release), the columns leave the database next (the contract
-  // migration, docs/COMPLIANCE-DECISIONS.md 2026-08-20). `prisma migrate deploy` runs
-  // pending migrations and does NOT drift-check, so a column the schema no longer
-  // declares is simply never selected. ⛔ Doing it in the other order — or in one
-  // release — drops a column the previously-deployed container is still naming in
-  // every KYC SELECT, which is a sign-in outage, not a KYC-page outage.
+  // "KycSubmission_nidaNumber_idx" ARE GONE, dropped with their column by
+  // prisma/migrations/20260821090000_kyc_drop_nida_legacy.
+  //
+  // ⛔ IT TOOK TWO RELEASES, AND THE ORDER IS THE POINT. The fields left this file
+  // FIRST, with no DDL; the columns left the database in the release after. `prisma
+  // migrate deploy` runs pending migrations and does NOT drift-check, so a column the
+  // schema no longer declares is simply never selected — which is what made the gap
+  // safe. The other order, or both in one release, drops a column the
+  // previously-deployed container is still naming in every KYC SELECT: `createSession`
+  // reads KYC on all three login paths, so that is a sign-in outage, platform-wide, not
+  // the three-KYC-page outage the expand release's note estimated.
   //
   // ⭐ FROM THE CONTRACT MIGRATION ON, the tuple index above is the SOLE enforcement of
   // one-document-one-account — a P0 AML control that used to be doubly covered for a

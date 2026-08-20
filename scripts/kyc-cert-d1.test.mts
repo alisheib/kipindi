@@ -113,10 +113,18 @@ section("3 · uniqueness is atomic, not hopeful");
 const MIGRATION = "prisma/migrations/20260731120000_kyc_nida_active_unique/migration.sql";
 // 🔴 THE LIVE ONE from 2026-08-20 — one document, one account, across all four types.
 const ID_MIGRATION = "prisma/migrations/20260820120000_kyc_identity_document/migration.sql";
+// 🔴 THE CONTRACT STEP. ⚠️ NOTHING IN THIS REPO READ A CONTRACT MIGRATION BEFORE THIS
+// LINE: cert-d1 hard-coded the two paths above, and its "does NOT drop the deprecated
+// columns" assertion is scoped to ID_MIGRATION — so a contract migration that dropped
+// the wrong index, forgot one, or wrapped a CONCURRENTLY statement inside Prisma's
+// transaction would have been caught by NO suite in the platform.
+const DROP_MIGRATION = "prisma/migrations/20260821090000_kyc_drop_nida_legacy/migration.sql";
 let migration = "";
 try { migration = read(MIGRATION); } catch { /* reported below */ }
 let idMigration = "";
 try { idMigration = read(ID_MIGRATION); } catch { /* reported below */ }
+let dropMigration = "";
+try { dropMigration = read(DROP_MIGRATION); } catch { /* reported below */ }
 
 ok("🔴 the partial unique-index migration exists", migration.length > 0,
   `Missing ${MIGRATION}. Without it, scripts/load/s14-kyc-nida-race.mts puts TWO\n` +
@@ -202,6 +210,102 @@ ok("the identity migration and the code agree on the live index name",
   idMigration.includes("KycSubmission_idType_idNumber_active_key"),
   "A rename in one place turns the constraint into an unhandled 500 for the loser\n" +
   "       of the race, instead of a readable refusal.");
+// ── 3b · 🔴 THE CONTRACT MIGRATION — every way it can take production down ──────────
+{
+  ok("🔴 the contract migration exists", dropMigration.length > 0,
+    `Missing ${DROP_MIGRATION}.`);
+
+  // ⛔ READ THE CODE, NOT THE PROSE. A migration in this repo explains itself at length,
+  // and its explanation necessarily QUOTES the SQL it is explaining — so a bare
+  // `/CONCURRENTLY/` over the whole file fires on the paragraph saying why there is no
+  // CONCURRENTLY. Both of these assertions failed exactly that way on their first run
+  // against a correct file. It is the same decoy-anchor shape that made "is the index
+  // PARTIAL?" pass over a TOTAL one, inside the expand migration's own comment.
+  // ⚠️ `--` TO END OF LINE, ANYWHERE — not just on lines that START with it. Written
+  // first as `/^\s*--.*$/gm`, and the RED case proved it insufficient in one run: a
+  // mutation that commented a statement out INLINE (`SELECT 1; -- UPDATE "KycSubmission"`)
+  // left the searched text sitting in the stripped output, so the backfill assertion
+  // passed over a migration that no longer had a backfill. The guard was measuring a
+  // comment, which is the exact shape it was written to defeat.
+  const dropCode = dropMigration.replace(/--.*$/gm, "");
+  ok("control · stripping the comments left the statements behind",
+    /ALTER TABLE/.test(dropCode) && !/whole safety argument/.test(dropCode),
+    "If this fires the stripper ate the SQL, and every assertion below it is vacuous.");
+  ok("control · …and an INLINE comment is stripped too",
+    !/hidden-by-inline/.test('SELECT 1; -- hidden-by-inline'.replace(/--.*$/gm, "")),
+    "A statement commented out mid-line must not still be findable, or every shape\n" +
+    "       assertion below can be satisfied by prose.");
+
+  // ⭐ ORDER, INSIDE THE FILE. Postgres DROP COLUMN cascades to every index on the
+  // column, so a DROP INDEX placed AFTER it addresses an index that no longer exists.
+  // migrate deploy runs the file in ONE transaction, so that aborts the whole
+  // migration — and `start` is `migrate deploy && … && next start`, so the container
+  // never boots. IF EXISTS makes it survivable either way; the order makes it right.
+  const iDropIdx = dropCode.indexOf('DROP INDEX IF EXISTS "KycSubmission_nidaNumber_active_key"');
+  const iDropCol = dropCode.indexOf('DROP COLUMN IF EXISTS "nidaNumber"');
+  const iBackfill = dropCode.search(/UPDATE\s+"KycSubmission"/);
+  ok("🔴 it drops BOTH indexes on the column, by name",
+    /DROP INDEX IF EXISTS "KycSubmission_nidaNumber_active_key"/.test(dropCode) &&
+    /DROP INDEX IF EXISTS "KycSubmission_nidaNumber_idx"/.test(dropCode),
+    "@@index([nidaNumber]) — KycSubmission_nidaNumber_idx, created 2026-06-14 — was left\n" +
+    "       out of all three written statements of this step. Naming both puts them in the\n" +
+    "       audit trail of what was removed instead of letting them vanish as a cascade.");
+  ok("🔴 …and both columns", 
+    /DROP COLUMN IF EXISTS "nidaNumber"/.test(dropCode) &&
+    /DROP COLUMN IF EXISTS "nidaVerifiedAt"/.test(dropCode));
+  ok("🔴 …with the index drops BEFORE the column drop",
+    iDropIdx > 0 && iDropCol > 0 && iDropIdx < iDropCol,
+    "A DROP INDEX after the DROP COLUMN cannot find its target; in one transaction that\n" +
+    "       aborts the migration, and `next start` is never reached.");
+
+  // ⭐ THE RE-BACKFILL. The expand migration's backfill was exhaustive AT THE TIME
+  // because it created idNumber in the same file. But the code that shipped BEFORE the
+  // tuple wrote nidaNumber with no idType/idNumber — so a row written by the previous
+  // container mid-deploy, or after a rollback, is held ONLY by the legacy column.
+  // Dropping without this line destroys that player's identity number and silently
+  // frees a national ID that is in use.
+  ok("🔴 it RE-RUNS the backfill, before the drop, in the same transaction",
+    iBackfill > 0 && iBackfill < iDropCol &&
+    /"idNumber"\s*=\s*"nidaNumber"/.test(dropCode) &&
+    /WHERE\s+"nidaNumber" IS NOT NULL\s+AND\s+"idNumber" IS NULL/.test(dropCode),
+    "A row written by a pre-tuple container carries nidaNumber with no idNumber. Without\n" +
+    "       the re-backfill the drop destroys an identity number and frees a national ID.");
+  ok("…and COALESCEs idVerifiedAt rather than overwriting it",
+    /"idVerifiedAt"\s*=\s*COALESCE\("idVerifiedAt",\s*"nidaVerifiedAt"\)/.test(dropCode),
+    "Assignment would clobber a timestamp written since the expand release.");
+
+  // ⛔ NO CONCURRENTLY, EITHER DIRECTION. migrate deploy wraps a migration in a
+  // transaction; neither CREATE INDEX CONCURRENTLY nor DROP INDEX CONCURRENTLY can run
+  // inside one. (The session-52 note asking for a hand-applied CONCURRENTLY index first
+  // was describing the EXPAND step — that index already exists. This file creates none.)
+  ok("🔴 no CONCURRENTLY anywhere in the contract migration",
+    !/CONCURRENTLY/i.test(dropCode),
+    "CONCURRENTLY inside Prisma's transaction fails with 25001 and takes the boot with it.");
+  ok("🔴 …and it CREATES nothing",
+    !/CREATE\s+(UNIQUE\s+)?INDEX/i.test(dropCode),
+    "The tuple index shipped with the expand migration. A second CREATE here would be a\n" +
+    "       duplicate-name failure or, worse, a silently different definition.");
+
+  // ⛔ IDEMPOTENCE. Pre-applying a migration by hand before pushing is normal practice
+  // here (20260731120000's commit body records it), and CI replays each migration
+  // exactly ONCE against a fresh database — so a file that is not re-runnable is GREEN
+  // in CI and fatal on production, where it aborts migrate deploy and stops the boot.
+  const ddl = dropMigration.split("\n").filter((l) => /^\s*(DROP|ALTER)\b/i.test(l));
+  ok("control · the DDL lines were actually located", ddl.length >= 4, `found ${ddl.length}`);
+  ok("🔴 every DDL statement is IF EXISTS",
+    ddl.every((l) => /IF EXISTS/i.test(l)),
+    `not re-runnable: ${ddl.filter((l) => !/IF EXISTS/i.test(l)).join(" | ")}\n` +
+    "       CI replays a migration once, so a non-idempotent file is green there and fatal\n" +
+    "       on a production database where it has already been applied by hand.");
+
+  // ⛔ AND THE EXPAND FILE STAYS UNTOUCHED. Applied history is immutable, and two
+  // assertions plus a RED case read it off disk.
+  ok("🔴 the expand migration still contains no DROP",
+    !/DROP\s+(COLUMN|INDEX)/i.test(idMigration),
+    "Editing applied history to match the present tense is how a migration ledger stops\n" +
+    "       being one — and the contract step is a SEPARATE file for exactly that reason.");
+}
+
 // ⛔ The 2026-07-31 migration file is IMMUTABLE APPLIED HISTORY: five assertions above
 // read it off disk. It keeps naming the legacy index, and that is correct — a migration
 // records what happened, not what is currently true.
