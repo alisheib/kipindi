@@ -112,6 +112,19 @@ export async function GET() {
             clientStatus: h.clientStatus,
             subscribed: h.subscribed,
             breakerOpen: h.breakerOpen,
+            // ⚠️ WITHOUT THIS, "UNREACHABLE" IS A DIAGNOSTIC DEAD END. The state word says
+            // something is wrong; only the error says what, and the difference between
+            // ENOTFOUND (DNS / IPv6), ECONNREFUSED (wrong port or Redis down), WRONGPASS
+            // (stale credential after a rotation) and "construct:" (a malformed URL) is the
+            // difference between four completely different operator actions.
+            //
+            // ⛔ CREDENTIALS SCRUBBED. `errText` is only a truncated `err.message`, and ioredis
+            // messages carry host:port rather than secrets — but a construct-time throw on a
+            // malformed URL can echo the URL back, and that URL contains the password. So any
+            // `//user:pass@` is rewritten before it can be served on a PUBLIC endpoint. Adding
+            // a field to a public health payload is exactly where a secret leaks by accident.
+            lastError: h.lastError ? h.lastError.replace(/\/\/[^/@\s]*:[^/@\s]*@/g, "//***:***@") : null,
+            subscriberError: h.subscriberError ? h.subscriberError.replace(/\/\/[^/@\s]*:[^/@\s]*@/g, "//***:***@") : null,
             // A word, not a boolean, for the same reason `adminTotp` is — and FOUR words, not
             // three, because the first version of this line got it wrong in the way this whole
             // audit has been about.
