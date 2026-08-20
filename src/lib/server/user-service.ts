@@ -12,6 +12,7 @@
  */
 import { audit, getAuditForActor, type AuditEntry } from "./audit";
 import { db } from "./store";
+import { dsarUserView } from "./privacy";
 import { destroySession } from "./session";
 import { revokeUserSessions } from "./session-registry";
 import { sendEmailToUser, accountClosedHtml } from "./email";
@@ -21,7 +22,8 @@ import type { ServiceResult } from "./auth-service";
 
 export type UserDataExport = {
   generatedAt: string;
-  user: ReturnType<typeof db.user.findById>;
+  /** Projected through `dsarUserView` — never the raw row. See exportUserData. */
+  user: ReturnType<typeof dsarUserView> | null;
   kyc: ReturnType<typeof db.kyc.findByUserId>;
   wallet: ReturnType<typeof db.wallet.findByUserId>;
   responsibleGambling: ReturnType<typeof db.responsible.get>;
@@ -29,11 +31,22 @@ export type UserDataExport = {
   auditEntries: AuditEntry[];
 };
 
-/** GDPR Art 15 — return a structured snapshot of all data we hold on this user. */
+/**
+ * GDPR Art 15 — return a structured snapshot of all data we hold on this user.
+ *
+ * 🔴 `user` GOES THROUGH `dsarUserView`, NEVER STRAIGHT OUT OF THE DAL. This used to be
+ * `user: await db.user.findById(userId)` — the whole row — so the JSON a player downloads
+ * from /profile/account carried their own scrypt `passwordHash` and `passwordSalt`
+ * (measured 2026-08-20, both values present in the file). The officer-side bundle in
+ * privacy.ts had always field-picked correctly; only this door was wrong, which is exactly
+ * why the projection now lives in ONE place that both doors call. See dsarUserView's own
+ * comment for why it is an allowlist and must stay one.
+ */
 export async function exportUserData(userId: string) {
+  const user = await db.user.findById(userId);
   return {
     generatedAt: new Date().toISOString(),
-    user: await db.user.findById(userId),
+    user: user ? dsarUserView(user) : null,
     kyc: await db.kyc.findByUserId(userId),
     wallet: await db.wallet.findByUserId(userId),
     responsibleGambling: await db.responsible.get(userId),

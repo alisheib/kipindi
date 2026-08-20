@@ -14,6 +14,7 @@
  */
 import { audit } from "./audit";
 import { db } from "./store";
+import type { StoredUser } from "./store";
 import { loadConfig, saveConfig } from "./config-store";
 
 const DSAR_QUEUE_KEY = "privacy.dsar_queue";
@@ -114,6 +115,53 @@ export function listDsarRequests(filter?: { status?: DsarStatus }): DsarRequest[
 }
 
 /**
+ * 🔴 THE ONE PROJECTION OF A USER ROW THAT MAY LEAVE THE PLATFORM.
+ *
+ * An ALLOWLIST, deliberately, and it must stay one. A denylist ("everything except
+ * passwordHash") silently starts leaking the next secret column somebody adds to `User`;
+ * an allowlist silently starts OMITTING a new field, which is a bug a player can report
+ * and nobody can exploit. When those are the two failure modes, pick the boring one.
+ *
+ * WHY THIS FUNCTION EXISTS (2026-08-20). The platform grants the same right — access /
+ * portability — through two doors, and they had drifted:
+ *
+ *   · `buildDsarBundle` (officer-triggered, /admin/privacy + /admin/players) field-picked
+ *     correctly and never carried a secret.
+ *   · `exportUserData` (PLAYER-triggered, /profile/account → "Export my data") returned
+ *     `await db.user.findById(userId)` WHOLE. Measured: the downloaded JSON contained the
+ *     account's scrypt `passwordHash` AND `passwordSalt`.
+ *
+ * That is the worse of the two doors to get wrong. The file lands in a phone's Downloads,
+ * gets mailed to the player, synced to consumer cloud storage — carrying an offline
+ * cracking target for their own account, and for every other service where they reused the
+ * password. Nothing in the export needed it; nobody had noticed because the safe
+ * implementation and the unsafe one lived in different files.
+ *
+ * Both doors now read this function. There is one list, in one place.
+ */
+export function dsarUserView(user: StoredUser) {
+  return {
+    id: user.id,
+    phoneE164: user.phoneE164,
+    email: user.email ?? null,
+    role: user.role,
+    status: user.status,
+    locale: user.locale,
+    displayName: user.displayName,
+    dob: user.dob,
+    region: user.region,
+    acceptedTermsVersion: user.acceptedTermsVersion,
+    acceptedTermsAt: user.acceptedTermsAt,
+    marketingOptIn: user.marketingOptIn,
+    twoFactorEnabled: user.twoFactorEnabled,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+    lastLoginAt: user.lastLoginAt,
+    closedAt: user.closedAt,
+  };
+}
+
+/**
  * Build a full DSAR access bundle for a user. Returns a serialisable object
  * containing every piece of data the platform holds about that user. The
  * output is deliberately verbose — we choose oversharing over undersharing
@@ -134,24 +182,7 @@ export async function buildDsarBundle(userId: string) {
   return {
     generatedAt: new Date().toISOString(),
     schemaVersion: 1,
-    user: {
-      id: user.id,
-      phoneE164: user.phoneE164,
-      role: user.role,
-      status: user.status,
-      locale: user.locale,
-      displayName: user.displayName,
-      dob: user.dob,
-      region: user.region,
-      acceptedTermsVersion: user.acceptedTermsVersion,
-      acceptedTermsAt: user.acceptedTermsAt,
-      marketingOptIn: user.marketingOptIn,
-      twoFactorEnabled: user.twoFactorEnabled,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-      lastLoginAt: user.lastLoginAt,
-      closedAt: user.closedAt,
-    },
+    user: dsarUserView(user),
     wallet,
     transactions: txns,
     kyc,
