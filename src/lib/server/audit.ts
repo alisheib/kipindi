@@ -593,6 +593,52 @@ export function verifyChain(): { valid: boolean; firstBreakAt?: string; index?: 
  *  - `{ valid: false, firstBreakAt, index, total }` at the first tamper point
  *  - Falls back to `verifyChain()` (in-memory) when no DB is available
  */
+/**
+ * Decide whether the chain's LINKS are intact, from four counts.
+ *
+ * Split out of `verifyChainFull` so the decision is unit-testable without a database —
+ * the SQL that produces the counts is four plain aggregates, but the judgement it feeds is
+ * the thing that once cried tamper on a healthy chain, and that judgement is what needs
+ * pinning. Each failure names WHICH kind of damage it is; "broken" on its own tells an
+ * operator nothing they can act on.
+ *
+ * Given `@@unique([prevHash])` (no two rows may share a predecessor, so the chain cannot
+ * fork), an intact chain is exactly: one root, nothing missing, one tail.
+ */
+export function classifyChainLinks(counts: {
+  /** Rows in the table. */
+  total: number;
+  /** Rows whose `prevHash` is GENESIS. Exactly one, ever. */
+  genesisRows: number;
+  /** Rows whose `prevHash` names an `entryHash` that is not present — proof of REMOVAL. */
+  dangling: number;
+  /** Entries no row points back to. Exactly one: the tail. */
+  unreferenced: number;
+}): { linkBroken: boolean; reason?: string } {
+  // An empty table is not a broken chain — it is a chain that has not started. Saying
+  // otherwise would make every fresh environment look tampered with.
+  if (counts.total === 0) return { linkBroken: false };
+  if (counts.genesisRows !== 1) {
+    return {
+      linkBroken: true,
+      reason: `chain has ${counts.genesisRows} GENESIS roots, expected exactly 1`,
+    };
+  }
+  if (counts.dangling > 0) {
+    return {
+      linkBroken: true,
+      reason: `${counts.dangling} row(s) reference a prevHash that no longer exists — entries were REMOVED`,
+    };
+  }
+  if (counts.unreferenced !== 1) {
+    return {
+      linkBroken: true,
+      reason: `${counts.unreferenced} entries are referenced by nothing, expected exactly 1 (the tail) — an entry was SPLICED IN or the chain forked`,
+    };
+  }
+  return { linkBroken: false };
+}
+
 export async function verifyChainFull(): Promise<{
   valid: boolean; firstBreakAt?: string; index?: number; total: number;
   /** Rows that recompute under one of the keys they could have been signed with. */
@@ -606,32 +652,115 @@ export async function verifyChainFull(): Promise<{
 }> {
   const db = prisma();
   if (!db) return { ...verifyChain(), total: ring.length };
+
+  // ── THE LINK CHECK IS A GRAPH PROPERTY, NOT AN ORDERING ─────────────────────────────
+  //
+  // 🔴 THIS USED TO REPORT A TAMPER ALARM ON A PERFECTLY HEALTHY CHAIN (fixed 2026-08-20).
+  //
+  // The old walk paged `orderBy: { createdAt: "asc" }` with skip/take, held a running
+  // `prevHash`, and declared `linkBroken: true` the moment a row's `prevHash` did not equal
+  // the previous row's `entryHash`. Two things were wrong with that, and both fired on
+  // production:
+  //
+  //  1. IT ASSUMED INSERTION ORDER EQUALS LINK ORDER. It does not. An append picks its
+  //     predecessor, hashes, and only then INSERTs — so under concurrent writers the row
+  //     that committed second can carry the earlier `prevHash`. Measured on production
+  //     2026-08-20: link order differs from `seq` order for 4,978 of 114,379 rows (3,393 in
+  //     June, 1,585 in July, 0 in August — the concurrency that caused it was later fixed,
+  //     but the history is permanent). `reconstructChainOrder` was applied to the FIRST
+  //     batch only (`offset === 0 ? … : rows`), so the walk recovered the true order for
+  //     1,000 rows and then tripped over the rest.
+  //  2. `createdAt` IS NOT UNIQUE, so `skip`/`take` over it is not a stable pagination —
+  //     rows sharing a millisecond (the Up & Down machinery writes 6 per round in a tight
+  //     loop) can be returned twice or skipped entirely between batches, independent of
+  //     any link question.
+  //
+  // The consequence was worse than a wrong boolean. Every `db-backup` and
+  // `db-verify-backup` artifact printed "SOURCE INTEGRITY WARNING — the audit chain has a
+  // BROKEN LINK" about a chain that was completely intact. A control that cries wolf is a
+  // control that has been switched off: a REAL tamper event would have been
+  // indistinguishable from the everyday false alarm, and the warning is on a document an
+  // operator may hand to a regulator.
+  //
+  // What "nothing was inserted, removed or reordered" actually means is a property of the
+  // GRAPH, and it needs no ordering at all. With `@@unique([prevHash])` making the chain
+  // physically fork-proof (no two rows may share a predecessor), the chain is one unbroken
+  // list exactly when:
+  //
+  //   (a) exactly ONE row roots at GENESIS,
+  //   (b) NO row's `prevHash` points at an `entryHash` that does not exist  — nothing removed,
+  //   (c) exactly ONE `entryHash` is referenced by no row                   — one tail, so
+  //       nothing was spliced in and no second list exists.
+  //
+  // Verified against production the day this was written: 1 genesis, 0 dangling, 1 tail,
+  // 0 gaps in `seq` across 114,379 rows, and a recursive walk from GENESIS reaching all
+  // 114,379. The chain was sound the whole time.
+  //
+  // ⛔ These three checks do not exclude a DISJOINT CYCLE (a closed ring of rows off to the
+  // side would contribute no genesis, no dangling and no tail). That is deliberate and it is
+  // not a gap worth paying for: every `entryHash` is an HMAC over the row INCLUDING its
+  // `prevHash`, so building a cycle means finding a hash preimage loop under a secret nobody
+  // outside the platform holds. Checking it would mean either walking the links in
+  // application memory — a map of every hash, which is ~25 MB today and grows with a table
+  // adding ~11.5k rows a day — or a recursive CTE over the whole table on every backup. The
+  // three aggregates below are index-assisted and stay flat forever.
+  const [linkAudit] = await db.$queryRaw<Array<{
+    total: number; genesis_rows: number; dangling: number; unreferenced: number;
+  }>>`
+    SELECT
+      (SELECT count(*)::int FROM "AuditLog")                                       AS total,
+      (SELECT count(*)::int FROM "AuditLog" WHERE "prevHash" = ${GENESIS})         AS genesis_rows,
+      (SELECT count(*)::int FROM "AuditLog" a
+         WHERE a."prevHash" <> ${GENESIS}
+           AND NOT EXISTS (SELECT 1 FROM "AuditLog" b WHERE b."entryHash" = a."prevHash"))
+                                                                                  AS dangling,
+      (SELECT count(*)::int FROM "AuditLog" a
+         WHERE NOT EXISTS (SELECT 1 FROM "AuditLog" b WHERE b."prevHash" = a."entryHash"))
+                                                                                  AS unreferenced
+  `;
+  const chainTotal = Number(linkAudit?.total ?? 0);
+  const linkVerdict = classifyChainLinks({
+    total: chainTotal,
+    genesisRows: Number(linkAudit?.genesis_rows ?? 0),
+    dangling: Number(linkAudit?.dangling ?? 0),
+    unreferenced: Number(linkAudit?.unreferenced ?? 0),
+  });
+  if (linkVerdict.linkBroken) {
+    return {
+      valid: false, firstBreakAt: linkVerdict.reason, index: chainTotal,
+      total: chainTotal, linkBroken: true,
+    };
+  }
+
+  // ── The per-row HASH recompute — order-independent by construction ───────────────────
+  //
+  // Each row's hash covers its OWN stored `prevHash`, so recomputing it needs no knowledge
+  // of any neighbour. That is why this loop can page in any order it likes — and it pages by
+  // `seq`, which is `@unique`, so unlike `createdAt` it is a stable key. Keyset pagination
+  // (`seq > last`) rather than `skip`, so the cost does not climb with offset.
   const BATCH = 1000;
-  let offset = 0;
-  let prevHash = GENESIS;
+  // `seq` is a BIGSERIAL starting at 1, so a cursor of 0 selects the whole table on the
+  // first pass. Kept as a plain bigint rather than `bigint | null` so the query args do not
+  // depend on a value inferred from the query's own result (TS7022).
+  let lastSeq = BigInt(0);
   let total = 0;
   let verified = 0;
   let unverifiable = 0;
   // eslint-disable-next-line no-constant-condition
   while (true) {
     const rows = await db.auditLog.findMany({
-      orderBy: { createdAt: "asc" },
-      skip: offset,
+      where: { seq: { gt: lastSeq } },
+      orderBy: { seq: "asc" },
       take: BATCH,
       select: {
         id: true, category: true, action: true, actorId: true, targetType: true,
         targetId: true, payload: true, ip: true, userAgent: true, createdAt: true,
-        prevHash: true, entryHash: true,
+        prevHash: true, entryHash: true, seq: true,
       },
     });
     if (rows.length === 0) break;
-    const ordered = offset === 0 ? reconstructChainOrder(rows) : rows;
-    for (const r of ordered) {
-      // A LINK break is the real tamper signal: the chain no longer joins up, so a
-      // row was inserted, removed or reordered. This is fatal and is reported as such.
-      if (r.prevHash !== prevHash) {
-        return { valid: false, firstBreakAt: r.id, index: total, total, verified, unverifiable, linkBroken: true };
-      }
+    for (const r of rows) {
+      lastSeq = r.seq;
       const recomputed = hashEntry({
         id:         r.id,
         category:   r.category as AuditCategory,
@@ -667,15 +796,13 @@ export async function verifyChainFull(): Promise<{
       } else {
         verified++;
       }
-      prevHash = r.entryHash;
       total++;
     }
-    offset += rows.length;
     if (rows.length < BATCH) break;
   }
-  // `valid` reflects the CHAIN, not the key history: every link joined up. Rows that
-  // could not be recomputed are reported separately so the caller can state both
-  // facts honestly instead of collapsing them into a single alarming boolean.
+  // `valid` reflects the CHAIN, not the key history: the links join up. Rows that could not
+  // be recomputed are reported separately so the caller can state both facts honestly
+  // instead of collapsing them into a single alarming boolean.
   return { valid: true, total, verified, unverifiable, linkBroken: false };
 }
 

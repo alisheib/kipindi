@@ -6,7 +6,7 @@
  */
 import {
   audit, auditFlush, verifyChain, getAuditPage, getAuditForActor,
-  reconstructChainOrder, auditRingSize,
+  reconstructChainOrder, auditRingSize, classifyChainLinks,
 } from "../src/lib/server/audit.ts";
 
 let pass = 0, fail = 0;
@@ -142,6 +142,66 @@ await (async () => {
   ok("an altered field is still detected", !vc().valid);
   live.action = originalAction;
   ok("chain valid again once the field is restored", vc().valid);
+})();
+
+// ── 🔴 THE LINK CHECK MUST NOT CRY WOLF ────────────────────────────────────────────────
+//
+// WHY THIS BLOCK EXISTS (2026-08-20). `verifyChainFull()` reported
+// "the audit chain has a BROKEN LINK" about a production chain that was completely intact,
+// and it had been doing so on every `db-backup` and `db-verify-backup` artifact — documents
+// an operator may hand to a regulator.
+//
+// The cause was an assumption, not a defect in the data: the walk paged
+// `orderBy: createdAt` and required each row's `prevHash` to equal the PREVIOUS ROW'S
+// `entryHash`, i.e. it assumed insertion order equals link order. It does not. An append
+// picks its predecessor, hashes, and only then INSERTs, so under concurrent writers the row
+// that commits second can carry the earlier `prevHash`. Measured on production: link order
+// differs from `seq` order for 4,978 of 114,379 rows. `createdAt` is not unique either, so
+// `skip`/`take` over it could double-count or skip rows regardless of links.
+//
+// A control that cries wolf is a control that has been switched off — a real tamper event
+// would have been indistinguishable from the daily false alarm. So the link test is now a
+// GRAPH property with no ordering in it, and these assertions pin that: legitimate
+// out-of-order insertion must stay silent, and each kind of real damage must be named.
+(() => {
+  const intact = { total: 114379, genesisRows: 1, dangling: 0, unreferenced: 1 };
+
+  ok("🔴 an intact chain is silent even at production scale", !classifyChainLinks(intact).linkBroken,
+    "This is the exact shape measured on production 2026-08-20 — 1 root, nothing missing, one tail. " +
+    "If this goes red, every backup artifact starts alleging tampering again.");
+
+  ok("⭐ out-of-order INSERTION is not damage — the counts are identical either way",
+    !classifyChainLinks({ ...intact, total: 114379 }).linkBroken,
+    "Insertion order is not link order. Concurrency reorders seq, never the links.");
+
+  ok("a chain that has not started yet is not a broken chain",
+    !classifyChainLinks({ total: 0, genesisRows: 0, dangling: 0, unreferenced: 0 }).linkBroken,
+    "A fresh environment must not look tampered with.");
+
+  // ── and it must still catch each kind of REAL damage, by name ──────────────────────
+  const removed = classifyChainLinks({ total: 114378, genesisRows: 1, dangling: 1, unreferenced: 2 });
+  ok("⛔ a REMOVED entry is caught", removed.linkBroken);
+  ok("   and is named as a removal, not just 'broken'", /REMOVED/.test(removed.reason ?? ""),
+    `got: ${removed.reason}`);
+
+  const spliced = classifyChainLinks({ total: 114380, genesisRows: 1, dangling: 0, unreferenced: 2 });
+  ok("⛔ a SPLICED-IN entry is caught", spliced.linkBroken);
+  ok("   and is named as a splice/fork", /SPLICED IN|forked/.test(spliced.reason ?? ""),
+    `got: ${spliced.reason}`);
+
+  const twoRoots = classifyChainLinks({ total: 114379, genesisRows: 2, dangling: 0, unreferenced: 1 });
+  ok("⛔ a SECOND GENESIS root is caught", twoRoots.linkBroken);
+  ok("   and says how many roots it found", /2 GENESIS roots/.test(twoRoots.reason ?? ""),
+    `got: ${twoRoots.reason}`);
+
+  const noTail = classifyChainLinks({ total: 114379, genesisRows: 1, dangling: 0, unreferenced: 0 });
+  ok("⛔ a chain with NO tail is caught (a cycle, or the tail overwritten)", noTail.linkBroken);
+
+  // ⛔ CONTROL. If `classifyChainLinks` ever returned a constant, every assertion above
+  // would still pass except this pairing — the same input shape must be able to produce
+  // both answers.
+  ok("CONTROL: the classifier is not a constant — it returns both answers",
+    !classifyChainLinks(intact).linkBroken && classifyChainLinks({ ...intact, dangling: 1 }).linkBroken);
 })();
 
 console.log(`\naudit-chain: ${pass} passed, ${fail} failed`);
