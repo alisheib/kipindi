@@ -150,6 +150,10 @@ request went **through** Redis rather than around it.
 
 `anonymizeClosedAccount` ships (`src/lib/server/erasure.ts`), wired to the officer's **Fulfil**
 button on an ERASURE request. `test:erasure` 155/155 · `red:erasure` 16/16 defects caught.
+**E-33 is closed with it** — the register has two doors (the player's own on `/profile/account`,
+the officer's *File request* for a walk-in) and `test:dsar-intake` 36/36 · `red:dsar-intake`
+12/12 hold both of them, including the two mutations that simply UNMOUNT the controls, which is
+E-33 itself and which `tsc` cannot see.
 [`DATA-RETENTION.md`](DATA-RETENTION.md) §2b is the authority; the reasoning is in
 [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) (2026-08-21, later).
 

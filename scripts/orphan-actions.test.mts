@@ -59,15 +59,19 @@ const KNOWN_ORPHANS: Record<string, string> = {
   // than a missing control.
   checkTotpAction:
     "read-only TOTP-enrolment lookup; the setup page resolves it server-side instead",
-  // 🔴 E-33 — a REAL gap, deliberately not fixed in the session that found it because it
-  // is a compliance decision (who may file, and on what evidence), not a wiring job.
-  // `fileDsarRequest` has exactly ONE caller: this orphan. So nothing on the platform can
-  // put a request INTO the DSAR register, and `/admin/privacy` renders "No data-subject
-  // access requests are on file" permanently. The on-behalf export path works, so a
-  // player can still GET their data — what cannot be recorded is that they ASKED, which
-  // is the half a regulator asks about (the statutory response clock runs from the ask).
-  fileDsarAction:
-    "E-33 — the DSAR register cannot be populated; needs a compliance decision, not wiring",
+  // ✅ E-33 IS CLOSED (2026-08-21) and its entry is GONE from this list, in the same commit
+  // as its first caller — which is what this suite's §2 ratchet demands: an entry that is no
+  // longer true fails as loudly as a missing one, with "it now HAS a caller".
+  //
+  // For the record, because the shape recurs: `fileDsarAction` was RBAC-gated, audited and
+  // correct from the day it was written, and it was reachable from nothing. `/admin/privacy`
+  // rendered "No data-subject access requests are on file" permanently — not because nobody
+  // had asked, but because asking was unrecordable, and the statutory clock runs from the ask.
+  // The blocker was recorded here as "needs a compliance decision, not wiring", and that was
+  // true: Ali answered it on 2026-08-21 (COMPLIANCE-DECISIONS item 2) and the wiring took an
+  // afternoon. ⛔ A declared orphan is a decision waiting for an owner, not a dead line.
+  // Callers now: `FileDsarOnBehalfButton` (officer, on a player's behalf) and, for the player's
+  // own door, `filePrivacyRequestAction` in src/app/profile/account/actions.ts.
 };
 
 // ── collect ──────────────────────────────────────────────────────────────────

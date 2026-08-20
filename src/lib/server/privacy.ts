@@ -159,6 +159,47 @@ export async function fulfillDsarRequest(opts: { id: string; officerId: string; 
   return { ok: true, request: r, erasure };
 }
 
+/**
+ * ⛔ ONE OPEN REQUEST PER PERSON PER KIND — the cap BOTH doors share.
+ *
+ * It lives here rather than in either action for two reasons. The player's door is a public
+ * form on an authenticated session, so without a cap a frustrated player (or a script) fills
+ * the compliance queue with a hundred identical erasure requests and the officer can no longer
+ * see the real ones. And the OFFICER's door needs the same protection for a duller reason: a
+ * double-click, or two officers taking the same walk-in, files it twice. A cap in one action
+ * and not the other is a cap somebody will find the way around.
+ *
+ * ⚠️ `PARTIAL` counts as OPEN. A partially fulfilled erasure is still live work — the identity
+ * documents are held to a date and nothing but that request remembers it — so a second erasure
+ * request for the same account would duplicate a job already in progress.
+ */
+export function hasOpenRequest(userId: string, type: DsarType): boolean {
+  return queue.some(
+    (r) => r.userId === userId && r.type === type && (r.status === "PENDING" || r.status === "PARTIAL"),
+  );
+}
+
+/**
+ * The two rights a DSAR register is FOR.
+ *
+ * ⭐ ACCESS and PORTABILITY are deliberately absent, and this constant is where that decision
+ * is enforced rather than remembered. Both are already served — immediately, with no queue and
+ * no clock — by the data export (`exportUserData` for the player, `buildDsarBundle` for the
+ * officer). Filing one opens a 30-day statutory obligation for work that is already done, and a
+ * queue full of already-answered requests is exactly how a real one gets missed. Ali's decision,
+ * 2026-08-21: *"the ACCESS right needs no DSAR at all… the register is for ERASURE and
+ * CORRECTION, the requests that need a human decision and a statutory clock."*
+ */
+export const REQUESTABLE_TYPES = ["ERASURE", "CORRECTION"] as const;
+export type RequestableType = (typeof REQUESTABLE_TYPES)[number];
+
+/** Narrow untrusted form input to a type the register accepts. ⛔ Never a cast. */
+export function asRequestableType(raw: unknown): RequestableType | null {
+  return (REQUESTABLE_TYPES as readonly string[]).includes(String(raw))
+    ? (String(raw) as RequestableType)
+    : null;
+}
+
 export function listDsarRequests(filter?: { status?: DsarStatus }): DsarRequest[] {
   return queue
     .filter((r) => !filter?.status || r.status === filter.status)

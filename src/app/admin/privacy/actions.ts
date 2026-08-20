@@ -2,7 +2,7 @@
 
 import { safeError } from "@/lib/server/safe-error";
 import { revalidatePath } from "next/cache";
-import { fileDsarRequest, fulfillDsarRequest, buildDsarBundle } from "@/lib/server/privacy";
+import { fileDsarRequest, fulfillDsarRequest, buildDsarBundle, hasOpenRequest, asRequestableType } from "@/lib/server/privacy";
 import { audit } from "@/lib/server/audit";
 import { softRequireStaff } from "@/lib/server/rbac-guard";
 
@@ -20,14 +20,39 @@ async function requireOfficer(): Promise<{ ok: true; userId: string } | { ok: fa
   return g.ok ? { ok: true, userId: g.userId } : g;
 }
 
+/**
+ * File a request on a player's behalf — walk-in, letter, telephone.
+ *
+ * 🔴 THIS HAD NO CALLER UNTIL 2026-08-21 (E-33), and that was the whole defect: nothing on the
+ * platform could put a request INTO the register, so this page read *"No data-subject access
+ * requests are on file"* permanently — not because nobody had asked, but because asking was
+ * unrecordable, and **the statutory clock runs from the ask**. Its caller is
+ * `FileDsarOnBehalfButton` in `dsar-controls.tsx`; the player's own door is
+ * `filePrivacyRequestAction` in `src/app/profile/account/actions.ts`.
+ */
 export async function fileDsarAction(formData: FormData) {
   const auth = await requireOfficer();
   if (!auth.ok) return { ok: false, error: auth.error };
   const userId = String(formData.get("userId") || "").trim();
-  const type = String(formData.get("type") || "ACCESS") as "ACCESS" | "ERASURE" | "CORRECTION" | "PORTABILITY";
+  // ⛔ AN ALLOWLIST, NOT A CAST, AND NOT DEFAULTING TO "ACCESS". The old line took whatever the
+  // form said `as DsarType` and fell back to ACCESS — the one right that needs no request at
+  // all, because `buildDsarBundleAction` serves it immediately from this same card. Filing one
+  // opens a 30-day statutory obligation for work the officer has just finished doing, and a
+  // queue full of already-answered requests is how a real one gets missed. One narrower,
+  // shared with the player's door.
+  const type = asRequestableType(formData.get("type"));
+  if (!type) {
+    return { ok: false, error: "Type must be ERASURE or CORRECTION — access and portability are served by Export bundle." };
+  }
   const reason = String(formData.get("reason") || "") || null;
   if (!userId) return { ok: false, error: "userId required" };
   try {
+    // ⛔ The SAME cap the player's door uses. A double-click, or two officers taking the same
+    // walk-in, must not file the request twice — see `hasOpenRequest`.
+    if (hasOpenRequest(userId, type)) {
+      revalidatePath("/admin/privacy");
+      return { ok: true, duplicate: true };
+    }
     fileDsarRequest({ userId, type, reason: reason ?? undefined });
     revalidatePath("/admin/privacy");
     return { ok: true };

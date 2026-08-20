@@ -12,7 +12,7 @@ import { ScrollX } from "@/components/ui/scroll-x";
 import { db } from "@/lib/server/store";
 import { listDsarRequests } from "@/lib/server/privacy";
 import { maskName } from "@/lib/server/affiliate-service";
-import { ExportDsarBundleButton, FulfillDsarButton } from "./dsar-controls";
+import { ExportDsarBundleButton, FulfillDsarButton, FileDsarOnBehalfButton } from "./dsar-controls";
 import { formatDateTime } from "@/lib/utils";
 import { I } from "@/components/ui/glyphs";
 import { DsarStatusBadge } from "@/components/admin/status-badge";
@@ -107,7 +107,10 @@ export default async function AdminPrivacyPage({
                       {r.status === "PENDING" || r.status === "PARTIAL" ? (
                         <div className="flex gap-2">
                           <ExportDsarBundleButton userId={r.userId} />
-                          <FulfillDsarButton id={r.id} />
+                          {/* type + status drive the copy: an ERASURE row's button DESTROYS
+                              columns, and describing that as "mark fulfilled" tells the
+                              officer the wrong thing about an irreversible action. */}
+                          <FulfillDsarButton id={r.id} type={r.type} status={r.status} />
                         </div>
                       ) : (
                         <span className="font-mono text-micro text-text-tertiary uppercase tracking-[0.10em]">{r.fulfilledAt?.slice(0, 10) ?? "—"}</span>
@@ -168,7 +171,14 @@ export default async function AdminPrivacyPage({
                     </td>
                     <td className="py-2 pr-3 font-mono whitespace-nowrap">{u.createdAt.slice(0, 10)}</td>
                     <td className="py-2 pl-3">
-                      <ExportDsarBundleButton userId={u.id} />
+                      <div className="flex gap-2">
+                        <ExportDsarBundleButton userId={u.id} />
+                        {/* 🔴 fileDsarAction's FIRST CALLER (E-33). Without it nothing on the
+                            platform could put a request into the register, so this page read
+                            "No data-subject access requests are on file" for ever — not
+                            because nobody asked, but because asking was unrecordable. */}
+                        <FileDsarOnBehalfButton userId={u.id} />
+                      </div>
                     </td>
                   </tr>
                 ))}

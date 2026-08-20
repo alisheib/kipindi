@@ -17,6 +17,7 @@ import { EmailEditor } from "@/components/profile/email-editor";
 import { PasswordSection } from "@/components/profile/password-section";
 import { formatDateTimeSafe, formatDateTime } from "@/lib/utils";
 import { ExportDataButton } from "./export-data-button";
+import { PrivacyRequestForm } from "./privacy-request-form";
 import { SUPPORT_EMAIL, SUPPORT_PHONE } from "@/lib/support-config";
 import { getServerT } from "@/lib/i18n-server";
 import { bannerFor } from "@/lib/failure-banner";
@@ -213,6 +214,24 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
         <div className="pt-1">
           <ExportDataButton />
         </div>
+      </section>
+
+      {/* ERASURE / CORRECTION REQUEST — PDPA 2022 §31 / §30, GDPR Art. 17 / 16.
+          ⭐ DELIBERATELY BELOW THE EXPORT, because the export is the answer to two of the
+          four rights and this form is the answer to the other two. Ali's decision
+          2026-08-21: the player files it themselves on their authenticated session, which
+          is already the standard for handing over the whole bundle one section up. */}
+      <section className="rounded-xl glass-panel p-5 space-y-2.5">
+        <div className="flex items-center gap-2">
+          <I.shield s={15} />
+          <h2 className="font-display text-[15px] font-semibold text-text">
+            {t.profile.privacyRequestTitle}
+          </h2>
+        </div>
+        <p className="text-[12.5px] text-text-muted leading-snug">
+          {t.profile.privacyRequestBody}
+        </p>
+        <FormColumn measure="field"><PrivacyRequestForm /></FormColumn>
       </section>
 
       {/* CLOSE ACCOUNT — GDPR Art 17. C2g: warning-topo backdrop (BrandTopo over

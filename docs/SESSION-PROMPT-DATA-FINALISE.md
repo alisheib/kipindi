@@ -100,13 +100,21 @@ in-memory twin, and a Prisma-only method throws in every unit test).
 
 ---
 
-## 2 · The DSAR intake — small, but do it in one commit
+## 2 · ✅ DONE 2026-08-21 — The DSAR intake
 
-> ⭐ **Half of this is done.** The OFFICER door is wired: `fulfillDsarAction` → `Fulfil` on an
-> ERASURE request now runs `anonymizeClosedAccount` instead of refusing, and a request that
-> cannot be finished lands in the new **PARTIAL** state carrying its release date. What remains
-> is the **player-side intake** from `/profile/account`, and `fileDsarAction`'s
-> `KNOWN_ORPHAN` entry, which must go in the same commit as its first caller.
+> **Shipped, both doors.** The player files from `/profile/account`; an officer files on a
+> player's behalf from `/admin/privacy`. `fileDsarAction`'s `KNOWN_ORPHAN` entry is gone in the
+> same commit as its first caller, and the §2 ratchet confirms it.
+> `npm run test:dsar-intake` 36/36 · `npm run red:dsar-intake` 12/12.
+>
+> Beyond the brief, and worth knowing:
+> · **both doors REFUSE ACCESS and PORTABILITY** through one shared narrower — the officer's
+>   door used to *default* to ACCESS, filing a 30-day obligation for the one right the export
+>   answers instantly;
+> · **both cap at one open request per person per kind** — the player's is a public form;
+> · ⚠️ the Fulfil dialog was promising the player a notification that nothing sends and that,
+>   for an erasure, is impossible — the routine destroys the email and phone you would reply
+>   to. It now says to answer the player FIRST.
 
 Ali's answer: **the player files it from `/profile/account`, on their authenticated session**
 (already the accepted standard for handing over their whole bundle via "Export my data" — a higher

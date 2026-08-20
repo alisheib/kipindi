@@ -106,10 +106,38 @@ than checking a list of fields somebody remembered. It found two:
 The second one is the audit's own F-02 scope note (*"`extraRequests` is a second inline store the
 acceptance query never looked at"*) coming back in a new place.
 
+### 6 · E-33 closed — and two false claims found on the button that closes it
+
+Item 2 below (*who may file a DSAR*) is wired. `fileDsarRequest` had exactly one caller,
+`fileDsarAction`, and that action had **none**, so `/admin/privacy` said *"No data-subject
+access requests are on file"* permanently — not because nobody had asked, but because asking
+was unrecordable. Both doors now exist: the player's own on `/profile/account`, and the
+officer's *File request* for a walk-in, letter or telephone request.
+
+⛔ **Both refuse ACCESS and PORTABILITY** through one shared narrower, and the officer's door
+used to **default to ACCESS** on unrecognised input — filing a 30-day statutory obligation for
+the one right the export answers instantly. ⛔ **Both cap at one open request per kind**: the
+player's is a public form, and the officer's needs it against a double-click.
+
+⚠️ **And the Fulfil dialog was making two claims that were not true**, found by reading it
+against what the code does:
+
+- *"The player will be notified."* Nothing in `fulfillDsarRequest` notifies anybody — and for
+  an erasure it is **impossible**, because the routine nulls the email, tombstones the phone
+  and deletes the account's notifications. **The confirmation channel is destroyed by the act
+  being confirmed.** The dialog now tells the officer to answer the player FIRST.
+- *"This records the completion date and closes this request."* On an ERASURE row that button
+  now DESTROYS columns. A destructive control described as bookkeeping does not tell the
+  operator what they are about to do — the same defect as a retention schedule no code
+  enforces, pointing the other way.
+
 **Code:** `src/lib/server/erasure.ts` · `crypto.ts` (`identityFingerprint`) ·
-`kyc-service.ts` · `privacy.ts` · `comments-store.ts` · `store.ts` + `prisma-dal.ts` (both DAL
-halves) · `prisma/migrations/20260821140000_kyc_identity_fingerprint`.
-**Tests:** `test:erasure` 155/155 · `red:erasure` 16/16 · `test:red-anchors` 238/238.
+`kyc-service.ts` · `privacy.ts` (`hasOpenRequest`, `asRequestableType`, `PARTIAL`) ·
+`comments-store.ts` · `store.ts` + `prisma-dal.ts` (both DAL halves) ·
+`src/app/profile/account/*` · `src/app/admin/privacy/*` ·
+`prisma/migrations/20260821140000_kyc_identity_fingerprint`.
+**Tests:** `test:erasure` 155/155 · `red:erasure` 16/16 · `test:dsar-intake` 36/36 ·
+`red:dsar-intake` 12/12 · `test:red-anchors` 264/264, ratchet still 67.
 **Docs:** [`DATA-RETENTION.md`](DATA-RETENTION.md) §2b is the authority.
 
 ---

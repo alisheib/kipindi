@@ -46,7 +46,7 @@
 | # | Question | Answer | State |
 |---|---|---|---|
 | 1 | Marketing consent: 2 years or 3? | **2 years from last activity** — the number the player was told. You may not retain longer than you disclosed to the data subject, and correcting the admin row down requires notice to nobody while raising the player's would. | ✅ Implemented |
-| 2 | Who may file a DSAR? | **The player, from `/profile/account`, on their authenticated session** — already the accepted standard for handing over their whole data bundle via "Export my data", so a higher bar for *asking* than for *receiving* would be incoherent. Officers may also file on a player's behalf. ⭐ Note the ACCESS right needs no DSAR at all; the register is for **erasure and correction**. | 🟠 Unblocked, not wired |
+| 2 | Who may file a DSAR? | **The player, from `/profile/account`, on their authenticated session** — already the accepted standard for handing over their whole data bundle via "Export my data", so a higher bar for *asking* than for *receiving* would be incoherent. Officers may also file on a player's behalf. ⭐ The ACCESS and PORTABILITY rights need no DSAR at all and are **refused by the intake**; the register is for **erasure and correction**. | ✅ **Wired 2026-08-21** (E-33 closed) |
 | 3 | How is a national ID erased? | **Keyed HMAC of the number — never NULL.** ⚠️ Nulling `idNumber` frees the partial unique index that is the **sole** enforcement of one-document-one-account, so the obvious implementation would repeal a P0 AML control. ⛔ **And hashing it IN PLACE does not preserve the collision either — see §2b before touching any of this.** Document **images** are held for the statutory 7 years, then destroyed. | ✅ **Built 2026-08-21** |
 | 4 | Support-ticket retention? | **N/A until a ticket store exists.** Publishing a period for data we do not hold is the same defect as the rest of F-01. Row kept and labelled so Unit K picks it up. | ✅ Implemented |
 
@@ -114,6 +114,31 @@ Pressing **Fulfil** on an ERASURE request now runs the routine. Three outcomes, 
 can test for seven years would be worse than saying so. The open PARTIAL request is the
 reminder, `/admin/privacy` shows the next release date as a KPI, and the Fulfil button stays on
 a PARTIAL row so the job can be finished when the date arrives. **This is a known manual step.**
+
+### 2b-i · The register can be populated at all — E-33, closed the same day
+
+`fileDsarRequest` had exactly one caller, `fileDsarAction`, and that action had **none**. So
+`/admin/privacy` rendered *"No data-subject access requests are on file"* permanently — not
+because nobody had asked, but because **asking was unrecordable**, and the statutory clock runs
+from the ask. Two doors now:
+
+| Door | Where | Who |
+|---|---|---|
+| The player's own | `/profile/account` → *Ask us to erase or correct your data* | any signed-in player, on their session — the same evidence already accepted for handing over their entire bundle one section above |
+| On a player's behalf | `/admin/privacy` → *File request* | a compliance officer, for a walk-in, letter or telephone request |
+
+⛔ **Both refuse ACCESS and PORTABILITY** (`asRequestableType`, one narrower shared by both).
+Those are served by the export, immediately and with no clock; filing one opens a 30-day
+statutory obligation for work already done, and a queue of already-answered requests is how a
+real one gets missed. ⛔ **Both cap at one open request per person per kind** (`hasOpenRequest`)
+— the player's door is a public form, and the officer's needs it against a double-click.
+
+⚠️ **Two claims on the Fulfil dialog were false and are gone.** It said *"the player will be
+notified"* — nothing notifies anybody, and for an erasure it is **impossible**: the routine
+nulls the email, tombstones the phone and deletes the account's notifications, so the
+confirmation channel is destroyed by the act being confirmed. **The officer must answer the
+player before pressing it**, which the dialog now says. And on an ERASURE row the button no
+longer describes itself as recording a completion date; it says what it destroys.
 
 ### Ops
 
@@ -192,6 +217,11 @@ npm run test:erasure        # 155 assertions. §5 is the one that matters — th
 npm run red:erasure         # 16 plausible defects put back one at a time, each of which
                             # must be caught. Case 1 is answer 3 implemented as literally
                             # written, and it hands out a second account.
+npm run test:dsar-intake    # 36 assertions on the register: a request LANDS (E-33), only
+                            # ERASURE and CORRECTION may land, one open request per kind,
+                            # and fulfilment tells the truth about what it did.
+npm run red:dsar-intake     # 12 defects. Cases 10-11 UNMOUNT the form and the button —
+                            # E-33 coming straight back, which tsc cannot see at all.
 ```
 
 The suite runs against the in-memory store, which is also what forces both DAL halves to
