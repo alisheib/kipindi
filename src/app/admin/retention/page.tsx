@@ -29,10 +29,31 @@ const SCHEDULE: Row[] = [
   { category: "Transactions (deposit/withdraw/bet)", swahili: "Miamala", retentionYears: 7, legalBasis: "POCA Cap 423 §16; TRA Income Tax Act §80", trigger: "From transaction date", storage: "Postgres + signed daily snapshot" },
   { category: "Audit log (HMAC-chained)", swahili: "Kumbukumbu", retentionYears: 7, legalBasis: "ISO 27001 A.12.4; GLI-19 §11", trigger: "From event date", storage: "In-memory ring → Postgres → cold archive" },
   { category: "Self-exclusion register entries", swahili: "Kujizuia", retentionYears: 5, legalBasis: "LCCP SR Code 3.4.4", trigger: "From end of exclusion", storage: "Postgres + cross-operator SFTP daily" },
-  { category: "Marketing-consent records", swahili: "Idhini ya matangazo", retentionYears: 3, legalBasis: "Tanzania PDPA §15", trigger: "From withdrawal of consent", storage: "Postgres" },
+  // ⭐ CORRECTED 2026-08-21 (Ali's decision, audit F-01). This row said "3 years · From
+  // withdrawal of consent" while /legal/privacy §5 told the PLAYER "until withdrawn or 2 years
+  // of inactivity", in all three locales. Two different periods AND two different triggers for
+  // the same data class — one shown to the Gaming Board, one to the data subject.
+  //
+  // It was corrected DOWN to match the player, not the other way round, and the direction is
+  // the whole argument: under PDPA 2022 you may not retain personal data longer than the
+  // purpose you disclosed to the person it belongs to, and the player-facing policy IS that
+  // disclosure. Raising the player's number to 3 years would have told players their data is
+  // kept longer than they were previously told — a change requiring notice, and the only one
+  // of the two options carrying exposure. Lowering this one requires notice to nobody.
+  //
+  // The business case for 3 years was weak in any event: what is actually stored is
+  // `User.marketingOptIn`, a boolean, plus the audit trail of consent changes. There is no
+  // rich marketing dataset here being preserved.
+  { category: "Marketing-consent records", swahili: "Idhini ya matangazo", retentionYears: 2, legalBasis: "Tanzania PDPA §15", trigger: "From last activity (matches the player-facing policy)", storage: "Postgres" },
   { category: "OTP code hashes", swahili: "Misimbo ya OTP", retentionYears: "30 days", legalBasis: "Operational only", trigger: "From issue", storage: "Postgres (purged nightly)" },
   { category: "Session cookies", swahili: "Vidakuzi vya kikao", retentionYears: "7 days max TTL", legalBasis: "Operational only", trigger: "Per cookie expiry", storage: "Browser only (HMAC-signed)" },
-  { category: "Customer-support tickets", swahili: "Tiketi za usaidizi", retentionYears: 3, legalBasis: "Tanzania PDPA §22", trigger: "From ticket close", storage: "Postgres" },
+  // ⚠️ MARKED N/A 2026-08-21 (Ali's decision, audit F-01). This published a 3-year retention
+  // period for data the platform does not hold: there is no ticket store, and customer care is
+  // still unbuilt (NEXT-PLAN queue, Unit K · #12 + #13). Publishing a period for a system that
+  // does not exist is the same defect as the rest of F-01 — a schedule describing a platform we
+  // are not. The intent is kept rather than deleted so it is picked up when Unit K ships, which
+  // is the same treatment the Session row gets.
+  { category: "Customer-support tickets", swahili: "Tiketi za usaidizi", retentionYears: "n/a — no ticket store yet (Unit K)", legalBasis: "Tanzania PDPA §22 — applies once built", trigger: "From ticket close", storage: "— not yet stored" },
   { category: "Behavioural-marker logs (RG)", swahili: "Alama za tabia", retentionYears: 5, legalBasis: "LCCP SR Code 3.4.1", trigger: "From event date", storage: "Postgres" },
   { category: "Backup snapshots (HMAC-signed)", swahili: "Nakala rudufu", retentionYears: "90 days rolling", legalBasis: "DR/BCP", trigger: "Per snapshot date", storage: "S3 with SSE-KMS" },
 ];

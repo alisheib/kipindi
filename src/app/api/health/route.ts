@@ -112,10 +112,26 @@ export async function GET() {
             clientStatus: h.clientStatus,
             subscribed: h.subscribed,
             breakerOpen: h.breakerOpen,
-            // A word, not a boolean, for the same reason `adminTotp` is: "off by choice"
-            // and "on but unreachable" are different operator problems.
+            // A word, not a boolean, for the same reason `adminTotp` is — and FOUR words, not
+            // three, because the first version of this line got it wrong in the way this whole
+            // audit has been about.
+            //
+            // ⚠️ It read `connected ? "cross-container" : "ARMED BUT UNREACHABLE"`, and on the
+            // first deploy after arming it duly reported UNREACHABLE. Redis was fine: an
+            // `ioredis` PING from inside the container returned PONG with a SET/GET round trip
+            // and `status: ready`. The module is LAZY — `getRedis()` constructs nothing until a
+            // caller needs it — so 39 seconds after boot, with no login or OTP yet, there was
+            // simply no client. `clientStatus: "none"` means *not yet built*, which is not the
+            // same fact as *cannot connect*, and collapsing the two would have put a false
+            // alarm on a health endpoint. That is precisely the defect fixed in
+            // `verifyChainFull` earlier in this audit: a control that cries wolf gets ignored,
+            // and then the real alarm is ignored too.
+            //
+            // ⛔ Health must not construct a client to find out. A health check with a side
+            // effect is a health check that can cause the outage it reports.
             state: !h.enabled || !h.urlPresent ? "OFF (in-memory fallback)"
               : h.connected ? "cross-container"
+              : h.clientStatus === "none" && !h.lastError ? "ARMED — no client yet (lazy; first login or OTP builds it)"
               : "ARMED BUT UNREACHABLE — falling back in-memory",
           };
         })(),

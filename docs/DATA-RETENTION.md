@@ -30,55 +30,34 @@
 | AI poll raw payloads (`rawResponse`, `trace`, `generation`) | *Unset* | — | Operational only | ⚠️ **Nothing** — 621 rows, 8.4 MB, kept forever (audit F-09, open) | `AIPoll` |
 | Self-exclusion register | **5 years** | End of exclusion | LCCP SR Code 3.4.4 | 📋 Policy | `ResponsibleGambling` |
 | Behavioural-marker logs (RG) | **5 years** | Event date | LCCP SR Code 3.4.1 | 📋 Policy | `ResponsibleGambling` |
-| Marketing-consent records | 🔴 **CONFLICTED — see §2** | — | PDPA 2022 §15 | 📋 Policy | `User.marketingOptIn` |
-| Customer-support tickets | **3 years** | Ticket close | PDPA 2022 §22 | 📋 Policy | — |
+| Marketing-consent records | **2 years** | Last activity | PDPA 2022 §15 | 📋 Policy | `User.marketingOptIn` |
+| Customer-support tickets | ⛔ **N/A — no ticket store exists** | Ticket close, once built | PDPA 2022 §22 | ⛔ Nothing to enforce against; revisit with Unit K | — |
 | Backup artifacts | **90 days** rolling | Snapshot date | DR/BCP | 📋 Policy — operator action | R2 `50pick-backups` |
 | Session records | — | — | — | ⛔ **N/A** — the `Session` model has never been written to; the platform uses a signed cookie plus `ActiveSession`. A prune here would be a permanent no-op dressed as a control. | — |
 
 ---
 
-## 2. 🔴 The one number that does not agree with itself — needs Ali's decision
+## 2. The four open questions — ANSWERED 2026-08-21
 
-**Marketing-consent retention is stated two different ways, with two different triggers, on
-two surfaces — one shown to the player, one shown to the Gaming Board.**
+> Ali answered all four on **2026-08-21**. The reasoning for each is in
+> [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) § *2026-08-21 · The four open retention /
+> erasure questions*. Summarised here because this is the file people read for a period.
 
-| Surface | What it says |
-|---|---|
-| `/legal/privacy` §5 — shown to the **data subject**, in all three locales (`page.tsx:73` en, `:149` sw, `:226` zh) | "Marketing preferences: until withdrawn or **2 years of inactivity**" |
-| `/admin/retention` row 5 — described on that page as *"the dataset GBT / TRA / FIU expect to see during a periodic review"* (`page.tsx:32`) | "Marketing-consent records · **3 years** · Tanzania PDPA §15 · **From withdrawal of consent**" |
+| # | Question | Answer | State |
+|---|---|---|---|
+| 1 | Marketing consent: 2 years or 3? | **2 years from last activity** — the number the player was told. You may not retain longer than you disclosed to the data subject, and correcting the admin row down requires notice to nobody while raising the player's would. | ✅ Implemented |
+| 2 | Who may file a DSAR? | **The player, from `/profile/account`, on their authenticated session** — already the accepted standard for handing over their whole data bundle via "Export my data", so a higher bar for *asking* than for *receiving* would be incoherent. Officers may also file on a player's behalf. ⭐ Note the ACCESS right needs no DSAR at all; the register is for **erasure and correction**. | 🟠 Unblocked, not wired |
+| 3 | How is a national ID erased? | **Keyed HMAC of the number — never NULL.** ⚠️ Nulling `idNumber` frees the partial unique index that is the **sole** enforcement of one-document-one-account, so the obvious implementation would repeal a P0 AML control. Hashing destroys the number while preserving collision, so uniqueness survives erasure. Document **images** are deleted outright — `deleteKycDocument` exists for it. | 🟠 Decided, not built |
+| 4 | Support-ticket retention? | **N/A until a ticket store exists.** Publishing a period for data we do not hold is the same defect as the rest of F-01. Row kept and labelled so Unit K picks it up. | ✅ Implemented |
 
-Neither the period nor the trigger matches. This was not touched in this session, deliberately:
-changing either one is a substantive statement about how long a person's data is kept, not a
-typo.
+### What is still to BUILD (the decisions no longer block it)
 
-**The two options, and the argument each way:**
-
-1. **Correct the ADMIN page down to 2 years / inactivity.** The principled default. You cannot
-   lawfully retain longer than you disclosed to the data subject, and the player-facing text
-   is the disclosure. Requires no notice to anybody.
-2. **Correct the PLAYER policy up to 3 years / withdrawal of consent.** Only if the business
-   genuinely needs 3 years. This tells players their data is kept *longer than they were
-   previously told*, so the policy must be updated first and the change is visible.
-
-⛔ **Do not "reconcile" this by picking whichever number is in front of you.** Record the
-decision in `COMPLIANCE-DECISIONS.md`, then change **all four** locations in one commit — the
-three privacy locales are inline JSX and `npm run test:i18n` cannot see them.
-
-### Also open, and also Ali's to answer
-
-- **Who may file a DSAR, on what evidence?** `fileDsarAction` is a declared orphan (E-33), so
-  **nothing on the platform can put a request into the register** — `/admin/privacy` renders
-  empty permanently and the 30-day statutory clock is never started. Until this is answered,
-  the ERASURE branch is unreachable code and there is no point wiring a routine to it.
-- **How is a national ID number erased?** ⚠️ There is a landmine here: `KycSubmission`'s
-  partial unique index on `(idType, idNumber)` is, since the NIDA contract migration, *the sole
-  enforcement of one-document-one-account* — a P0 AML control. **Nulling `idNumber` on erasure
-  would silently hand one human a second account.** `/admin/retention` already states the
-  intended mechanism as pseudonymisation ("hashed-NIDA replaces full name + phone"), which
-  preserves uniqueness where nulling destroys it. That looks right; it needs confirming, not
-  assuming.
-- **Support-ticket retention** — 3 years is published but there is no ticket store to enforce
-  it against.
+`anonymizeClosedAccount` — deliberately not rushed. It touches an AML control and needs its own
+suite proving: every PII column null or tombstoned · money, ledger and positions byte-identical
+· `trialBalance()` still ok · the audit chain still verifying · **and the identity tuple still
+colliding for the same document after erasure.** One further unresolved detail inside it:
+`Comment.authorName` is NOT NULL and freezes the last three digits of the pre-tombstone phone
+number, so erasure is incomplete until that value is overwritten too.
 
 ---
 

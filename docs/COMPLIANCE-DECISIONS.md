@@ -6,6 +6,104 @@
 
 ---
 
+## 2026-08-21 · The four open retention / erasure questions — answered
+
+**Instruction:** Ali, **2026-08-21**, asked for the four answers rather than being asked for
+them. Each is recorded here with the reasoning, so a future session inherits the decision and
+not the question. Origin: audit finding **F-01**, `docs/DATA-RETENTION.md` §2.
+
+---
+
+### 1 · Marketing consent — **2 years from last activity.** ✅ Implemented
+
+The player-facing policy said *"until withdrawn or 2 years of inactivity"* in all three
+locales; `/admin/retention` told the Gaming Board *"3 years, from withdrawal of consent"*.
+Different period **and** different trigger for the same data class.
+
+**Corrected DOWN to the player's number, and the direction is the whole argument.** Under
+PDPA 2022 you may not retain personal data longer than the purpose you disclosed to the person
+it belongs to — and the player-facing policy *is* that disclosure. Raising the player's figure
+to 3 years would have told players their data is kept longer than they were previously told: a
+change requiring notice, and the only one of the two options carrying exposure. Lowering the
+admin row requires notice to nobody.
+
+The business case for 3 years was weak regardless: what is stored is `User.marketingOptIn`, a
+boolean, plus the audit trail of consent changes. There is no rich marketing dataset here.
+
+---
+
+### 2 · Who may file a DSAR — **the player, from `/profile/account`, on their authenticated session**
+
+The register could not be populated at all because `fileDsarAction` had no caller (E-33), and
+the blocker was recorded as *"needs a compliance decision, not wiring"*. The decision:
+
+- **The player files it themselves.** An authenticated session is sufficient evidence of
+  identity — and it must be, because it is *already* the standard this platform accepts for
+  handing over the player's entire data bundle through the existing "Export my data" button. A
+  higher bar for *asking* than for *receiving* would be incoherent.
+- **The ACCESS right needs no DSAR at all.** It is already served, immediately and without a
+  queue, by that export. The register exists for **ERASURE** and **CORRECTION** — the requests
+  that need a human decision and a statutory clock.
+- **An officer may also file on a player's behalf** (letter, walk-in, phone), which is what
+  `/admin/privacy` is for.
+
+⛔ **What this decision does NOT do:** it does not make erasure work. It unblocks the register
+so the 30-day clock can start and be seen. The routine itself is item 3.
+
+---
+
+### 3 · How a national ID is erased — **keyed HMAC of the number, never NULL.** ⚠️ Not yet built
+
+🔴 **The landmine, stated plainly:** since the NIDA contract migration, the partial unique index
+on `(idType, idNumber)` is the **sole** enforcement of one-document-one-account — a P0 AML
+control. **Nulling `idNumber` frees that slot, so one human could open a second account.** An
+erasure routine written the obvious way would quietly repeal an AML control.
+
+**The mechanism:** replace `idNumber` with a **keyed HMAC of itself** (the same peppered-hash
+pattern already used for OTP codes and 2FA backup codes). This is the only option that satisfies
+both requirements at once:
+
+- **Uniqueness survives** — the same document hashes to the same value, so the unique index
+  still collides and one-document-one-account still holds after erasure.
+- **The number is destroyed** — nobody can read a citizen's ID out of the database, and it is
+  irreversible without the pepper.
+
+It is also what the product **already tells the Board** on `/admin/retention` ("PII fields
+pseudonymised, hashed-NIDA replaces full name + phone"), so this makes an existing published
+statement true rather than introducing a new one.
+
+The document **images** are a different matter and are deleted outright — the bytes are the
+sensitive part and nothing depends on them for uniqueness. `deleteKycDocument` was shipped on
+2026-08-20 specifically so this step would have something to call.
+
+⚠️ **Still to build:** `anonymizeClosedAccount`. Deliberately not rushed at the end of a long
+session — it touches an AML control and needs its own suite proving PII gone, money untouched,
+trial balance still clean, the audit chain still verifying, **and the identity tuple still
+colliding for the same document after erasure**. Also unresolved within it:
+`Comment.authorName` is NOT NULL and freezes the last three digits of the pre-tombstone phone,
+so erasure is incomplete until that is overwritten too.
+
+---
+
+### 4 · Support tickets — **the row is marked N/A until there is a ticket store.** ✅ Implemented
+
+A 3-year retention period was published for data the platform does not hold: there is no ticket
+store, and customer care is unbuilt (`NEXT-PLAN` queue, Unit K · #12 + #13). Publishing a period
+for a system that does not exist is the same defect as the rest of F-01 — a schedule describing
+a platform we are not.
+
+The intent is **kept and labelled**, not deleted, so it is picked up when Unit K ships. Same
+treatment as the `Session` row, which is marked N/A because that model has never been written to.
+
+---
+
+**Code:** `src/app/admin/retention/page.tsx` (rows 1 and 4, each with its reasoning inline).
+**Docs:** `docs/DATA-RETENTION.md` §2 rewritten from open questions to recorded answers.
+**Open:** `anonymizeClosedAccount` (item 3) and the DSAR intake wiring (item 2) — both now
+unblocked, neither built.
+
+---
+
 ## 2026-08-20 · What Up & Down writes to the audit chain — one entry cut, four protected
 
 **Instruction:** Ali, **2026-08-20**, choosing between three options put to him for audit
