@@ -69,10 +69,23 @@ const MUST_OPT_IN: Array<{ file: string; why: string; minCalls: number }> = [
     minCalls: 1 },
 ];
 
-/** Every `listMarkets(...)` invocation in a file, with its argument text. */
+/**
+ * Every product-line-bearing market read in a file, with its argument text.
+ *
+ * ⚠️ IT MATCHES `listTerminalMarkets` TOO, AND THAT IS LOAD-BEARING (2026-08-20). `/results`
+ * moved its two `listMarkets({ productLine: "ALL" })` calls onto the memoised
+ * `listTerminalMarkets("ALL")` (audit F-08 — they were an uncached Seq Scan over 13,013 rows
+ * on a public page). A matcher that knew only `listMarkets` then found ZERO calls there, and
+ * the RESULTS_FLOOD_GUARD below started asserting "0 of 0" — passing over nothing. An
+ * assertion that cannot fail is not evidence, and this suite exists precisely because a
+ * product-line read going unnoticed is how the archive floods.
+ *
+ * The inverse guard needs it just as much: without this, a player board could opt into both
+ * products via `listTerminalMarkets("ALL")` and walk straight past MUST_STAY_DEFAULT.
+ */
 function listMarketsCalls(src: string): string[] {
   const out: string[] = [];
-  const re = /listMarkets\s*\(/g;
+  const re = /\blist(?:Terminal)?Markets\s*\(/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(src))) {
     // Walk forward balancing parens so nested objects/calls are captured whole.
@@ -87,13 +100,22 @@ function listMarketsCalls(src: string): string[] {
   return out;
 }
 
+/**
+ * Does this call read BOTH product lines? Two shapes are legitimate:
+ *   listMarkets({ status: …, productLine: "ALL" })   — the object form
+ *   listTerminalMarkets("ALL")                        — the positional form
+ * Anything else is on the single-product default, which is the protection.
+ */
+const readsAllProducts = (args: string): boolean =>
+  /productLine\s*:\s*["']ALL["']/.test(args) || /^\s*["']ALL["']\s*$/.test(args);
+
 for (const { file, why, minCalls } of MUST_OPT_IN) {
   const src = read(file);
   if (!src) { ok(`A · ${file} readable`, false, "file missing — did it move?"); continue; }
   const calls = listMarketsCalls(src);
   ok(`A · ${file} still calls listMarkets`, calls.length >= minCalls,
      `found ${calls.length}, expected >= ${minCalls}`);
-  const bare = calls.filter((args) => !/productLine\s*:\s*["']ALL["']/.test(args));
+  const bare = calls.filter((args) => !readsAllProducts(args));
   ok(`A · ${file} passes productLine "ALL" on every call`, bare.length === 0,
      bare.length ? `${bare.length} call(s) missing it — ${why}. Bare: listMarkets(${bare[0].trim().slice(0, 70)})` : "");
 }
@@ -128,7 +150,7 @@ const MUST_STAY_DEFAULT = [
   const file = "src/app/results/page.tsx";
   const src = read(file) ?? "";
   const calls = listMarketsCalls(src);
-  const optedIn = calls.filter((a) => /productLine\s*:\s*["']ALL["']/.test(a));
+  const optedIn = calls.filter(readsAllProducts);
   ok(`A · ${file} reads BOTH product lines (Board instruction #10)`,
      calls.length > 0 && optedIn.length === calls.length,
      `${calls.length - optedIn.length} of ${calls.length} listMarkets call(s) still on the MARKET default`);
@@ -141,7 +163,7 @@ const MUST_STAY_DEFAULT = [
 for (const file of MUST_STAY_DEFAULT) {
   const src = read(file);
   if (!src) continue; // optional — a page may legitimately be renamed
-  const optedIn = listMarketsCalls(src).filter((a) => /productLine\s*:\s*["']ALL["']/.test(a));
+  const optedIn = listMarketsCalls(src).filter(readsAllProducts);
   ok(`A · ${file} stays on the MARKET default`, optedIn.length === 0,
      optedIn.length ? "a player board opted into ALL — Up & Down rounds would flood it" : "");
 }

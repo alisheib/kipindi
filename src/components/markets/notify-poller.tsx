@@ -110,6 +110,13 @@ export function NotifyPoller() {
 
   useEffect(() => {
     let cancelled = false;
+    // 🔴 DEFENCE IN DEPTH FOR THE CADENCE (audit F-08). The component is now mounted only
+    // for a signed-in viewer (app-shell.tsx), but a session can lapse WHILE it is mounted —
+    // and the prune below lives inside `if (pr.ok)`, so once /api/positions/settled starts
+    // answering 401 the watch list can never shrink and `stillWatching` stays true forever.
+    // That is what kept a 2s cadence running with nothing left to report. A lapsed session
+    // drops to the idle cadence instead; a genuine sign-in re-mounts the component.
+    let sessionLapsed = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
 
     const tick = async () => {
@@ -139,7 +146,9 @@ export function NotifyPoller() {
         if (adjudicated.length > 0) {
           const ids = adjudicated.map((a) => a.marketId);
           const pr = await fetch(`/api/positions/settled?markets=${encodeURIComponent(ids.join(","))}`, { cache: "no-store" });
-          // 401 = the session lapsed. Say nothing; a signed-out browser has no money news.
+          // 401 = the session lapsed. Say nothing; a signed-out browser has no money news —
+          // but DO remember it, so the cadence below stops behaving as if news were imminent.
+          if (pr.status === 401) sessionLapsed = true;
           if (pr.ok) {
             const pj = (await pr.json()) as { positions: SettledPosition[] };
             const seen = readSeen();
@@ -216,7 +225,7 @@ export function NotifyPoller() {
       }
       // Re-read from localStorage (not the cached `watch`) so pruned markets are
       // reflected in the cadence decision.
-      const stillWatching = readWatch().length > 0;
+      const stillWatching = readWatch().length > 0 && !sessionLapsed;
       if (cancelled) return;
       timer = setTimeout(tick, stillWatching ? ACTIVE_POLL_MS : IDLE_POLL_MS);
     };

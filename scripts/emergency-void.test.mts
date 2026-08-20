@@ -13,6 +13,7 @@
  * penalty), then the emergency void — so it doubles as a regression check that
  * the cash-out-fee change didn't disturb betting/refunds.
  */
+process.env.EMAIL_OUTBOX_CAPTURE = "1";
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { createMarket, buyPosition, cashOutPosition, emergencyVoidMarket, getMarket, listPositionsForUser } from "../src/lib/server/market-service.ts";
 import { setGlobalConfig } from "../src/lib/server/market-config.ts";
@@ -20,6 +21,7 @@ import { positionStore } from "../src/lib/server/market-dal.ts";
 
 import { listForUser } from "../src/lib/server/notification-service.ts";
 import { marketCancelledRefundHtml, marketCancelledAdminHtml } from "../src/lib/server/email.ts";
+import { emailOutbox } from "../src/lib/server/email.ts";
 
 let pass = 0, fail = 0;
 function ok(label: string, cond: boolean, extra?: string) {
@@ -126,7 +128,11 @@ console.log = (...a: unknown[]) => { logs.push(a.join(" ")); };
 const r = await emergencyVoidMarket({ marketId: m.id, officerId: "ev_admin", reason: REASON });
 await new Promise((res) => setTimeout(res, 250)); // let fire-and-forget emails flush
 console.log = realLog;
-const mailed = logs.filter((l) => l.includes("[email-stub]"));
+// ⚠️ RECIPIENTS COME FROM THE OUTBOX, NOT STDOUT — the log masks the address (audit F-06),
+// and matching the masked form would keep these green while destroying what they measure:
+// "somebody was mailed" is not the claim, "the REFUNDED PLAYER was, and so was the admin"
+// is. `to === addr` is also exact, where a log scrape matched the fragment anywhere.
+const mailed = emailOutbox();
 ok("emergency void on a LIVE market succeeds", r.ok);
 ok("refundedCount = 4 open positions (cashed-out one excluded)", r.ok && r.data!.refundedCount === 4, `count=${r.ok ? r.data!.refundedCount : "n/a"}`);
 ok("refundedTzs = sum of the 4 open stakes", r.ok && r.data!.refundedTzs === stakes.ev_b + stakes.ev_c + stakes.ev_d + stakes.ev_e, `tzs=${r.ok ? r.data!.refundedTzs : "n/a"}`);
@@ -158,8 +164,11 @@ ok("whole-system money conserved (wallets + pools + house)", endSystem === start
 
 // ── Notifications + emails (with the admin's reason) ───────────────────────
 // Player WITH an email got a refund email; admin got a confirmation email.
-ok("refunded player was emailed the cancellation+refund", mailed.some((l) => l.includes("evb@test.tz") && l.includes("refunded")), `mailed=${JSON.stringify(mailed)}`);
-ok("admin was emailed the cancellation confirmation", mailed.some((l) => l.includes("void-admin@test.tz") && l.includes("Market cancelled")));
+ok("refunded player was emailed the cancellation+refund",
+   mailed.some((m) => m.to === "evb@test.tz" && /refunded/i.test(`${m.subject} ${m.html}`)),
+   `mailed=${JSON.stringify(mailed.map((m) => `${m.to} | ${m.subject}`))}`);
+ok("admin was emailed the cancellation confirmation",
+   mailed.some((m) => m.to === "void-admin@test.tz" && m.subject.includes("Market cancelled")));
 // In-app: player sees the cancellation notice; admin sees the confirmation.
 ok("player in-app notice mentions the cancellation", !!(await listForUser("ev_b", 20)).find((n) => /Market cancelled/i.test(n.titleEn)));
 ok("admin in-app confirmation delivered", !!(await listForUser("ev_admin", 20)).find((n) => /Market cancelled/i.test(n.titleEn)));

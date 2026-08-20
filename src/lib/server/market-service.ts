@@ -307,6 +307,60 @@ export async function listMarkets(filter?: {
   })).filter((m) => !isDemoMarket(m));
 }
 
+/**
+ * The whole terminal archive for one product-line filter, memoised.
+ *
+ * 🔴 WHY (audit F-08, corrected). The audit named `/api/fairness/recent` as the unbounded
+ * read on the hot path. Measured on production, that route is not the problem: it inherits
+ * `productLine: "MARKET"`, so it is an Index Scan over 53 rows in 0.169 ms. The unbounded
+ * reads are the `productLine: "ALL"` ones the audit did not look at — `/results`,
+ * `/fairness` and the app-shell ticker — because the UPDOWN product puts every price round
+ * in this table: 12,948 terminal rows today, growing ~360 a day.
+ *
+ * `EXPLAIN (ANALYZE, BUFFERS)` on production for `status IN ('RESOLVED','VOIDED')`:
+ * Seq Scan, 13,013 rows, 2,233 shared buffers (~17 MB), 11 ms — per render, on a PUBLIC
+ * page with no session and no cache. Anyone can hold that page open or curl it in a loop.
+ *
+ * ⛔ WINDOWING IS THE WRONG FIX FOR THESE CALLERS, which is why this is a cache and not a
+ * `take`. `/results` is the settled archive: it searches, filters by category and product,
+ * and prints counts folded from the whole set (see the E-169 comment at its read site). A
+ * windowed read would silently shrink search to the most recent N and quietly make every
+ * count on the page wrong — trading a slow page for a lying one.
+ *
+ * So the read stays complete and stops being repeated. The TTL matches `platform-stats.ts`,
+ * whose own ALL read is memoised the same way, on the same table, for the same reason —
+ * and settlement is a process with a 24-hour objection window, so a minute of staleness on
+ * an archive of already-paid markets is not a fact anyone can act on differently.
+ *
+ * ⚠️ Cache the READ, never the filtered output: the callers filter by URL parameters, and
+ * keying on those would multiply the entries without reducing a single query.
+ */
+declare global {
+  // eslint-disable-next-line no-var
+  var __50PICK_TERMINAL_MARKETS: Map<string, { at: number; value: Awaited<ReturnType<typeof listMarkets>> }> | undefined;
+}
+const TERMINAL_TTL_MS = 60_000;
+
+export async function listTerminalMarkets(
+  productLine: ProductLineFilter = DEFAULT_PRODUCT_LINE,
+): Promise<Awaited<ReturnType<typeof listMarkets>>> {
+  const key = String(productLine);
+  const now = Date.now();
+  const store = (globalThis.__50PICK_TERMINAL_MARKETS ??= new Map());
+  const hit = store.get(key);
+  if (hit && now - hit.at < TERMINAL_TTL_MS) return hit.value;
+
+  // One pass per terminal status, then concatenated — `listMarkets` takes a single status,
+  // and widening it to an array would change an indexed board query used everywhere else.
+  const [resolved, voided] = await Promise.all([
+    listMarkets({ status: "RESOLVED", productLine }),
+    listMarkets({ status: "VOIDED", productLine }),
+  ]);
+  const value = [...resolved, ...voided];
+  store.set(key, { at: now, value });
+  return value;
+}
+
 export async function getMarket(id: string) {
   return (await marketStore.get(id)) ?? null;
 }

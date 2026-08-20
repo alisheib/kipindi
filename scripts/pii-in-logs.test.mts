@@ -142,6 +142,54 @@ ok("⛔ no line in email.ts interpolates an address without maskEmail()",
   rawInEmail.length === 0,
   rawInEmail.length ? rawInEmail.map((l) => l.trim().slice(0, 120)).join("\n       ") : undefined);
 
+// ── 3b · No TEST asserts a recipient by scraping the log ─────────────────────────────────
+section("3b · tests read recipients from the outbox, not from stdout");
+
+/**
+ * ⚠️ WHY THIS IS A GUARD AND NOT JUST A CLEANUP. Masking the address broke NINE assertions
+ * across four suites, every one of the shape
+ * `logs.some(l => l.includes("[email-stub]") && l.includes("jay@example.com"))`.
+ *
+ * The cheap repair was to match the masked form — `j***@example.com`. That keeps a suite
+ * green while destroying what it measured: "an email went to somebody at example.com" is not
+ * the claim any of those tests were making. "The approval email went to THIS player", "the
+ * REFUNDED player was mailed", "the player was NOT mailed" — those are the claims, and on a
+ * KYC decision or a void refund the distinction is the entire point.
+ *
+ * They all moved onto `emailOutbox()`, which existed for this and is stricter (`to === addr`
+ * is exact; a log scrape matched the fragment anywhere in the line, subject and URL
+ * included). This assertion stops the log-scraping shape coming back — the next person to
+ * write one gets a red build and a pointer, instead of a passing test that proves less than
+ * they think.
+ */
+const testFiles = walk("scripts").length ? [] : [];  // scripts/ is not under src/; walk it directly
+const scriptDir = readdirSync(join(root, "scripts"))
+  .filter((f) => /\.(mts|mjs)$/.test(f))
+  .map((f) => `scripts/${f}`);
+void testFiles;
+
+// A log line that carries an email address AND is being matched for one — the shape that
+// silently became unfalsifiable when the address started being masked.
+const SCRAPES = /\.includes\(\s*["'][^"']*@[^"']*["']\s*\)/;
+const offendingTests: string[] = [];
+for (const f of scriptDir) {
+  const code = stripComments(read(f));
+  // Only lines that look at LOG output. A test may legitimately compare an address it
+  // pulled from the outbox or the database.
+  for (const line of code.split("\n")) {
+    if (!/\blogs?\d*\b|\[email-stub\]/.test(line)) continue;
+    if (SCRAPES.test(line)) { offendingTests.push(`${f} :: ${line.trim().slice(0, 110)}`); break; }
+  }
+}
+ok(`no test scrapes an email address out of a log line (scanned ${scriptDir.length} scripts)`,
+  offendingTests.length === 0,
+  offendingTests.length
+    ? `Read the recipient from emailOutbox() instead — arm it with EMAIL_OUTBOX_CAPTURE=1:\n       ` +
+      offendingTests.join("\n       ")
+    : undefined);
+ok(`CONTROL: the scan actually looked at files (${scriptDir.length} found)`, scriptDir.length > 50,
+  "If scripts/ came back near-empty the assertion above proves nothing.");
+
 // ── 4 · The SMS body is still never printed in production ────────────────────────────────
 section("4 · the OTP-bearing SMS body stays out of production logs");
 

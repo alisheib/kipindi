@@ -168,7 +168,18 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       <PublicFooter proposalsState={proposalsState} />
       <BottomNav isAuthed={!!session} />
       <RealityCheckHost enabled={!!session} intervalMin={realityCheckMin} userId={session?.userId ?? null} />
-      <Suspense fallback={null}><LazyNotifyPoller /></Suspense>
+      {/* 🔴 SESSION-GATED, like its neighbours on the lines above and below (audit F-08).
+          It was the only one of the three that was not, and the omission had no upper bound.
+          NotifyPoller's gate is a non-empty `50pick-notify-markets` key in localStorage, and
+          its ONLY prune site lives inside `if (pr.ok)` after a call to
+          /api/positions/settled — which answers 401 to a signed-out browser. So a lapsed or
+          signed-out tab holding a stale watch entry could never clear it, and hit the
+          unauthenticated /api/fairness/recent every 2 seconds indefinitely: one query per
+          2s per abandoned tab, forever, for a player who is not even signed in.
+          The row cost of that endpoint is genuinely small — measured on production it is an
+          Index Scan over 53 rows in 0.169 ms — so this was never the "unbounded query" the
+          audit described. What was unbounded was the DURATION. */}
+      {session && <Suspense fallback={null}><LazyNotifyPoller /></Suspense>}
       {session && <Suspense fallback={null}><LazyEventStream /></Suspense>}
       <Suspense fallback={null}><LazyWinCelebration /></Suspense>
       <Suspense fallback={null}>

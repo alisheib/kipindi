@@ -11,11 +11,13 @@
  */
 process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-min-aaaa";
 
+process.env.EMAIL_OUTBOX_CAPTURE = "1";
 import { marketStore } from "../src/lib/server/market-dal.ts";
 import { resolveDueMarket, autoResolveExpiredDemoMarkets } from "../src/lib/server/market-service.ts";
 import { listForUser } from "../src/lib/server/notification-service.ts";
 import { marketResolutionAdminHtml } from "../src/lib/server/email.ts";
 import { db } from "../src/lib/server/store.ts";
+import { emailOutbox, clearEmailOutbox } from "../src/lib/server/email.ts";
 
 let pass = 0, fail = 0;
 const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"} ${l} ${x}`); };
@@ -65,14 +67,20 @@ console.log = (...a: unknown[]) => { logs.push(a.join(" ")); };
 let r = await resolveDueMarket("mkt_real_1", { assessment: null });
 await new Promise((res) => setTimeout(res, 150)); // let fire-and-forget emails flush
 console.log = realLog;
-const mailedLines = logs.filter((l) => l.includes("[email-stub]") && l.includes("Market awaiting resolution"));
+// ⚠️ RECIPIENTS COME FROM THE OUTBOX, NOT STDOUT. The log masks the address
+// (`m***@test.tz`, audit F-06) because Railway's log retention is not ours to control, so
+// an `l.includes("mkt-admin@test.tz")` assertion cannot pass. Matching the masked form
+// instead would keep this green while destroying what it measures — "an admin was mailed"
+// is not the claim; "THIS admin was, and the player was NOT" is. `emailOutbox()` exists
+// for exactly this, and `to === addr` is stricter than a substring of a log line.
+const mailedLines = emailOutbox().filter((m) => m.subject.includes("Market awaiting resolution"));
 ok("real due market → human fallback fired", r.status === "closed-human", `status=${r.status}`);
 ok("admin got 'Market awaiting resolution'", !!(await listForUser("usr_mkt_admin1", 20)).find((n) => n.titleEn === "Market awaiting resolution"));
 ok("compliance got it too", !!(await listForUser("usr_mkt_comp1", 20)).find((n) => n.titleEn === "Market awaiting resolution"));
 ok("player did NOT get it", !(await listForUser("usr_mkt_player", 20)).find((n) => n.titleEn === "Market awaiting resolution"));
 ok("notification deep-links to resolver queue", (await listForUser("usr_mkt_admin1", 20)).find((n) => n.titleEn === "Market awaiting resolution")?.href === "/admin/resolver-queue");
-ok("admin WITH an email was emailed the resolution nudge", mailedLines.some((l) => l.includes("mkt-admin@test.tz")), `mailed=${JSON.stringify(mailedLines)}`);
-ok("player was NOT emailed", !mailedLines.some((l) => l.includes("player@test.tz")));
+ok("admin WITH an email was emailed the resolution nudge", mailedLines.some((m) => m.to === "mkt-admin@test.tz"), `mailed=${JSON.stringify(mailedLines.map((m) => m.to))}`);
+ok("player was NOT emailed", !mailedLines.some((m) => m.to === "player@test.tz"));
 ok("resolutionNotifiedAt stamped", !!(await marketStore.get("mkt_real_1"))?.resolutionNotifiedAt);
 // The trigger now also closes the market to bets — and must NOT seal an outcome
 // without the two-officer ceremony.
@@ -81,6 +89,9 @@ ok("no outcome sealed without the ceremony", (await marketStore.get("mkt_real_1"
 
 // 2. Idempotent — a second trigger fire notifies nobody new and re-mails nobody.
 const logs2: string[] = [];
+// Phase 2 asserts that NO second email went out. It must start from a cleared outbox, or
+// it would see phase 1's send and fail for the wrong reason.
+clearEmailOutbox();
 console.log = (...a: unknown[]) => { logs2.push(a.join(" ")); };
 r = await resolveDueMarket("mkt_real_1", { assessment: null });
 await new Promise((res) => setTimeout(res, 150));
@@ -88,7 +99,7 @@ console.log = realLog;
 ok("second fire → no re-notify", r.status === "skipped", `status=${r.status}`);
 const adminNotes = (await listForUser("usr_mkt_admin1", 50)).filter((n) => n.titleEn === "Market awaiting resolution");
 ok("exactly one alert per market", adminNotes.length === 1, `count=${adminNotes.length}`);
-ok("no second email dispatched", !logs2.some((l) => l.includes("[email-stub]") && l.includes("Market awaiting resolution")));
+ok("no second email dispatched", !emailOutbox().some((m) => m.subject.includes("Market awaiting resolution")));
 
 // 3. A still-open market (future resolutionAt) is NOT alerted — the early re-check
 //    guard leaves it LIVE and does not consume the trigger.

@@ -5,7 +5,7 @@ import { MarketCard } from "@/components/markets/market-card";
 import { Chip } from "@/components/ui/chip";
 import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
 import { TippingBar } from "@/components/brand";
-import { listMarkets, impliedYesPct, MARKET_CATEGORIES } from "@/lib/server/market-service";
+import { listMarkets, impliedYesPct, MARKET_CATEGORIES, listTerminalMarkets } from "@/lib/server/market-service";
 import { categoryOptions } from "@/lib/markets/category-label";
 import { getCardCharts } from "@/lib/server/market-history";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -140,10 +140,17 @@ async function ResultsContent({
   // ⚠️ THE MOMENT THIS LINE CHANGED, EVERY SIDE WORD ON THIS PAGE BECAME A DECISION. Three sites
   // below used to hard-write `"MARKET"` and were accidentally correct only because this read
   // excluded the other product. See `E-169`.
-  const resolved = await listMarkets({ status: "RESOLVED", productLine: "ALL" });
-  const voided = await listMarkets({ status: "VOIDED", productLine: "ALL" });
+  //
+  // ⭐ ONE MEMOISED READ (audit F-08). These were two uncached `productLine: "ALL"` queries on
+  // a PUBLIC page: measured on production, a Seq Scan over 13,013 rows / 2,233 shared buffers
+  // / 11 ms EACH RENDER, growing ~360 rows a day because every Up & Down round is a market.
+  // Anyone could hold this page open or curl it in a loop.
+  // The read is still COMPLETE — it has to be, per the E-169 note above: the search, the
+  // product filter and every category count below are folded from the whole set, so a
+  // windowed read would quietly make the counts wrong. It just stops being repeated.
+  const terminal = await listTerminalMarkets("ALL");
   /** Everything the SEARCH admits, across every category — the set the counts are folded from. */
-  const searched = [...resolved, ...voided].filter(matches);
+  const searched = terminal.filter(matches);
   /** The product filter applies BEFORE the category one, so every category count below is a
    *  count within the chosen product — pressing a category never changes the product. */
   const inProduct = activeProduct === "all" ? searched : searched.filter((m) => m.productLine === activeProduct);
