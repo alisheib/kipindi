@@ -289,7 +289,7 @@ export default async function AdminReportsPage({
             )}
           </AdminCard>
 
-          {byGame && (byGame.market.stakes > 0 || byGame.updown.stakes > 0) && (
+          {byGame && (byGame.market.stakes > 0 || byGame.updown.stakes > 0 || byGame.unattributed.stakes > 0) && (
             <AdminCard title="By game" sw="Kwa mchezo · Markets vs Up &amp; Down" padding="p-0">
               <ScrollX label="Money by game">
                 {/* `admin-table` was a typo — that class does not exist anywhere,
@@ -309,11 +309,18 @@ export default async function AdminReportsPage({
                   </thead>
                   <tbody>
                     {[
-                      { label: "Markets · long-form polls", g: byGame.market },
-                      { label: "Up & Down · price rounds", g: byGame.updown },
-                    ].map(({ label, g }) => (
+                      { label: "Markets · long-form polls", g: byGame.market, unknown: false },
+                      { label: "Up & Down · price rounds", g: byGame.updown, unknown: false },
+                      // 🔴 DISCLOSED, NEVER FOLDED. Bet money whose Position row no longer
+                      // resolves, so the game cannot be determined. This line used to be
+                      // added to "Markets", which overstated long-form GGR by an amount no
+                      // reader could see (audit F-03). Hidden only when it is genuinely zero.
+                      ...(byGame.unattributed.stakes > 0 || byGame.unattributed.payouts > 0 || byGame.unattributed.refunds > 0
+                        ? [{ label: "Unattributed · game not determinable", g: byGame.unattributed, unknown: true }]
+                        : []),
+                    ].map(({ label, g, unknown }) => (
                       <tr key={g.game}>
-                        <td className="text-left font-semibold text-text">{label}</td>
+                        <td className={["text-left font-semibold", unknown ? "text-warning-fg" : "text-text"].join(" ")}>{label}</td>
                         <td className="font-mono tabular text-right text-text">{formatTzs(g.stakes)}</td>
                         <td className="font-mono tabular text-right text-text">{formatTzs(g.payouts)}</td>
                         <td className="font-mono tabular text-right text-text-tertiary">{formatTzs(g.refunds)}</td>
@@ -325,13 +332,18 @@ export default async function AdminReportsPage({
                   </tbody>
                   <tfoot>
                     <tr>
+                      {/* ⭐ Combined includes the unattributed line. That money is real
+                          bet-derived revenue and IS levied, so leaving it out would make the
+                          statutory total understate by exactly the amount F-03 moved off the
+                          MARKET line. Combined is therefore unchanged by that fix — only the
+                          per-game attribution above it became honest. */}
                       <td className="text-left font-bold text-text">Combined</td>
-                      <td className="font-mono tabular text-right font-bold text-text">{formatTzs(byGame.market.stakes + byGame.updown.stakes)}</td>
-                      <td className="font-mono tabular text-right font-bold text-text">{formatTzs(byGame.market.payouts + byGame.updown.payouts)}</td>
-                      <td className="font-mono tabular text-right font-bold text-text-tertiary">{formatTzs(byGame.market.refunds + byGame.updown.refunds)}</td>
-                      <td className="font-mono tabular text-right font-bold text-text">{formatTzs(byGame.market.ggr + byGame.updown.ggr)}</td>
+                      <td className="font-mono tabular text-right font-bold text-text">{formatTzs(byGame.market.stakes + byGame.updown.stakes + byGame.unattributed.stakes)}</td>
+                      <td className="font-mono tabular text-right font-bold text-text">{formatTzs(byGame.market.payouts + byGame.updown.payouts + byGame.unattributed.payouts)}</td>
+                      <td className="font-mono tabular text-right font-bold text-text-tertiary">{formatTzs(byGame.market.refunds + byGame.updown.refunds + byGame.unattributed.refunds)}</td>
+                      <td className="font-mono tabular text-right font-bold text-text">{formatTzs(byGame.market.ggr + byGame.updown.ggr + byGame.unattributed.ggr)}</td>
                       <td className="font-mono tabular text-right font-bold text-text">—</td>
-                      <td className="font-mono tabular text-right font-bold text-text-tertiary">{(byGame.market.bets + byGame.updown.bets).toLocaleString()}</td>
+                      <td className="font-mono tabular text-right font-bold text-text-tertiary">{(byGame.market.bets + byGame.updown.bets + byGame.unattributed.bets).toLocaleString()}</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -339,6 +351,16 @@ export default async function AdminReportsPage({
               <p className="px-4 py-3 text-[11px] text-text-tertiary leading-snug">
                 Bet-derived money only. Deposits, withdrawals, bonuses and payment fees belong to neither game and stay in
                 the platform totals above. The statutory pack and the TRA/GBT levy read the COMBINED commission.
+                {(byGame.unattributed.stakes > 0 || byGame.unattributed.payouts > 0 || byGame.unattributed.refunds > 0) && (
+                  <>
+                    {" "}
+                    <span className="text-warning-fg">
+                      &ldquo;Unattributed&rdquo; is bet money whose position record no longer resolves, so the game cannot be
+                      determined ({byGame.unattributed.bets.toLocaleString()} staking {byGame.unattributed.bets === 1 ? "bet" : "bets"} in
+                      this window). It is disclosed rather than assigned to a game, and is included in Combined.
+                    </span>
+                  </>
+                )}
               </p>
             </AdminCard>
           )}

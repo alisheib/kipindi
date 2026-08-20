@@ -107,6 +107,29 @@ export function clearEmailOutbox(): void {
  * Callers that genuinely don't care (receipts, notifications) can keep ignoring
  * the result. Callers that make a PROMISE to the player must read it.
  */
+/**
+ * Mask an email address for a log line — keep the first character of the local part
+ * and the whole domain (`a***@gmail.com`).
+ *
+ * 🔴 WHY. Phone numbers are masked platform-wide before they reach a log or an audit
+ * payload (`maskPhoneForAudit` in auth-service.ts, `maskPhone` in kyc-service.ts), and the
+ * console SMS provider refuses to print a message body in production at all. Email
+ * addresses were the one identifier still going out RAW — every suppression, stub, send
+ * and failure line printed the full address into Railway's log stream, whose retention is
+ * not ours to control. A player's email is personal data under PDPA 2022 exactly as their
+ * phone is; there was no reason for the asymmetry beyond nobody having noticed it.
+ *
+ * The domain is deliberately kept: diagnosing "are Gmail addresses bouncing?" is the whole
+ * reason these lines exist, and the domain is not what identifies the person.
+ */
+export function maskEmail(address?: string | null): string {
+  const a = (address ?? "").trim();
+  if (!a) return "(none)";
+  const at = a.lastIndexOf("@");
+  if (at < 1) return "***"; // no local part to keep, or no domain — reveal nothing
+  return `${a[0]}***${a.slice(at)}`;
+}
+
 export type SendResult = {
   ok: boolean;
   messageId?: string;
@@ -244,7 +267,7 @@ export async function sendEmail({ to, subject, html, tag, trackLinks = true }: S
   // Skip addresses that hard-bounced or filed a spam complaint (Postmark webhook
   // → suppression list). Protects sender reputation; never throws.
   if (isSuppressed(to)) {
-    console.log(`[email] suppressed (bounced/complained): ${to} | ${subject}`);
+    console.log(`[email] suppressed (bounced/complained): ${maskEmail(to)} | ${subject}`);
     // ok:false — we did NOT deliver, and a caller promising the player an email
     // must be able to tell the difference.
     return { ok: false, reason: "suppressed" };
@@ -252,7 +275,7 @@ export async function sendEmail({ to, subject, html, tag, trackLinks = true }: S
 
   const pm = client();
   if (!pm) {
-    console.log(`[email-stub] To: ${to} | Subject: ${subject}`);
+    console.log(`[email-stub] To: ${maskEmail(to)} | Subject: ${subject}`);
     return { ok: true, messageId: "stub", reason: "stub" };
   }
 
@@ -291,7 +314,7 @@ export async function sendEmail({ to, subject, html, tag, trackLinks = true }: S
   } catch (err) {
     const e = err as Error & { statusCode?: number; errorCode?: number };
     const detail = `${e.message} (statusCode=${e.statusCode ?? "?"}, errorCode=${e.errorCode ?? "?"})`;
-    console.error(`[email] Send failed: ${detail} (to=${to})`);
+    console.error(`[email] Send failed: ${detail} (to=${maskEmail(to)})`);
     // A non-2xx, a timeout and a dead key all arrive here. They are all
     // "we did not deliver", and they all count toward the outage threshold.
     recordFailure(detail, tag);
@@ -569,13 +592,13 @@ export async function sendEmailToUser(
     // login/welcome emails resolve the address).
     const email = user?.email || resolvePhoneEmail(user?.phoneE164 ?? "");
     if (!email) {
-      console.warn(`[email] sendEmailToUser skipped — no email for user ${userId.slice(0, 14)}… (user.email=${user?.email ?? "null"}, phone=${user?.phoneE164?.slice(0, 6) ?? "?"}…)`);
+      console.warn(`[email] sendEmailToUser skipped — no email for user ${userId.slice(0, 14)}… (user.email=${user?.email ? maskEmail(user.email) : "null"}, phone=${user?.phoneE164?.slice(0, 6) ?? "?"}…)`);
       return { ok: false, reason: "no-address" };
     }
     const input = build(email);
-    console.log(`[email] sending "${input.subject}" → ${email} (tag=${input.tag ?? "none"})`);
+    console.log(`[email] sending "${input.subject}" → ${maskEmail(email)} (tag=${input.tag ?? "none"})`);
     const result = await sendEmail(input);
-    if (!result.ok) console.warn(`[email] sendEmailToUser delivery failed for ${email} (reason=${result.reason}, subject="${input.subject}")`);
+    if (!result.ok) console.warn(`[email] sendEmailToUser delivery failed for ${maskEmail(email)} (reason=${result.reason}, subject="${input.subject}")`);
     return result;
   } catch (err) {
     console.error("[email] sendEmailToUser failed:", (err as Error)?.message);

@@ -193,7 +193,12 @@ export async function reportSummary(period: Window, now = Date.now()): Promise<{
 // every existing reader and the statutory pack — TRA/GBT is levied on TOTAL commission
 // across both games. This is additive.
 
-export type GameLine = "MARKET" | "UPDOWN";
+/**
+ * The two games — plus the honest third bucket for bet money whose game cannot be
+ * determined. `UNATTRIBUTED` is NOT a game and must never be presented as one; it exists
+ * so the per-game split can DISCLOSE what it does not know instead of guessing.
+ */
+export type GameLine = "MARKET" | "UPDOWN" | "UNATTRIBUTED";
 
 export type GameMoney = {
   game: GameLine;
@@ -218,13 +223,34 @@ function emptyGame(game: GameLine): GameMoney {
  * The viewer of a report needs money split by GAME. Builds the positionId→productLine
  * map once (join over the position + market stores) and buckets the window's bet txns.
  *
+ * 🔴 ATTRIBUTION IS DISCLOSED, NEVER GUESSED (F-03, 2026-08-20).
+ * This used to read `plByPosition.get(t.positionId) ?? "MARKET"` — so a bet transaction
+ * whose Position row no longer exists was silently counted as long-form MARKET money. That
+ * is a regulator-facing number: the per-game GGR split feeds management reporting and the
+ * Up & Down economics card. Guessing inside it means the MARKET line overstates itself by
+ * an amount nobody can see.
+ *
+ * Measured on production 2026-08-20: 374 CONFIRMED bet transactions carry a `positionId`
+ * that no longer resolves (213 BET_PLACED · 104 BET_REFUND · 57 BET_PAYOUT, 16 players,
+ * net −50,494 TZS) — pre-launch reset artifacts. They now land in `unattributed`, printed
+ * as its own line. `Combined` still includes them, so the statutory total is unchanged;
+ * only the MARKET line stops absorbing money it cannot account for.
+ *
+ * ⛔ DO NOT "RESCUE" THESE VIA LedgerEntry.marketId. It looks like it should work —
+ * LedgerEntry does carry `marketId`, and 317 of the 374 have a ledger row that carries one.
+ * Measured with a control: platform-wide, 4,041 of 5,074 ledger `marketId`s resolve to a
+ * live market row, so the join itself is sound — but for these 374, **0 resolve**. The same
+ * reset deleted the markets. The rescue recovers an id, not a game. Disclosure is the only
+ * honest answer.
+ *
  * SCALE NOTE (updated 2026-07-31): the transaction side no longer walks the whole table —
  * it asks SQL for the window, like every other function here. The `positionId → productLine`
- * join is still built in memory from the position and market stores; that is the remaining
- * cost and it is bounded by markets, not by transaction history. A full SQL GROUP BY over
- * the join is still the eventual answer for the whole reporting layer.
+ * join is still built in memory from the position and market stores. ⚠️ That is no longer
+ * cheap: "bounded by markets" was written when markets meant long-form polls, and every
+ * Up & Down round is now a market row — 12,931 of them on production 2026-08-20, growing
+ * ~360/day. A full SQL GROUP BY over the join is the answer (audit F-07).
  */
-export async function moneyByGame(start: number, end: number): Promise<{ market: GameMoney; updown: GameMoney }> {
+export async function moneyByGame(start: number, end: number): Promise<{ market: GameMoney; updown: GameMoney; unattributed: GameMoney }> {
   const [allTxn, positions, markets] = await Promise.all([
     db.txn.listInRange(start, end),
     positionStore.values(),
@@ -236,6 +262,7 @@ export async function moneyByGame(start: number, end: number): Promise<{ market:
   const out: Record<GameLine, GameMoney & { _players: Set<string> }> = {
     MARKET: { ...emptyGame("MARKET"), _players: new Set<string>() },
     UPDOWN: { ...emptyGame("UPDOWN"), _players: new Set<string>() },
+    UNATTRIBUTED: { ...emptyGame("UNATTRIBUTED"), _players: new Set<string>() },
   };
 
   for (const t of allTxn) {
@@ -243,7 +270,9 @@ export async function moneyByGame(start: number, end: number): Promise<{ market:
     if (!within(t, start, end)) continue;
     if (!t.positionId) continue; // deposits/withdrawals/bonus have no position → platform-level, not a game
     if (t.type !== "BET_PLACED" && t.type !== "BET_PAYOUT" && t.type !== "CASHOUT" && t.type !== "BET_REFUND") continue;
-    const game = plByPosition.get(t.positionId) ?? "MARKET";
+    // ⛔ NO `?? "MARKET"`. An unresolvable positionId means we do not know the game;
+    // saying "MARKET" would put money on a regulator-facing line that cannot support it.
+    const game = plByPosition.get(t.positionId) ?? "UNATTRIBUTED";
     const g = out[game];
     const amt = Math.abs(t.amount);
     if (t.type === "BET_PLACED") { g.stakes += amt; g.bets += 1; g._players.add(t.userId); }
@@ -259,7 +288,7 @@ export async function moneyByGame(start: number, end: number): Promise<{ market:
       bets: g.bets, players: g._players.size,
     };
   };
-  return { market: finish(out.MARKET), updown: finish(out.UPDOWN) };
+  return { market: finish(out.MARKET), updown: finish(out.UPDOWN), unattributed: finish(out.UNATTRIBUTED) };
 }
 
 export type DailyPnlRow = {

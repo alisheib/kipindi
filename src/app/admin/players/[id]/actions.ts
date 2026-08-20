@@ -13,6 +13,7 @@ import { requireStaff } from "@/lib/server/rbac-guard";
 import { setUserEmail } from "@/lib/server/email-verification";
 import { loadConfig, saveConfig } from "@/lib/server/config-store";
 import { TWO_PERSON_THRESHOLD_TZS } from "../../aml/constants";
+import { maskEmail } from "@/lib/server/email";
 
 /**
  * Privileged player-management actions. Each one:
@@ -196,7 +197,15 @@ export async function setPlayerEmailAction(formData: FormData) {
     targetId: userId,
     payload: { prev, next: email },
   });
-  console.log(`[admin] officer ${officerId.slice(0, 14)}… set email for ${userId.slice(0, 14)}…: ${prev ?? "null"} → ${email}`);
+  // ⚠️ MASKED, unlike the audit payload immediately above — deliberately different.
+  // The audit entry MUST carry both addresses in full: "officer changed this player's email
+  // from X to Y" is the material fact, and a masked audit of a contact-detail change would
+  // be useless to a regulator reading it back. The audit chain is access-controlled,
+  // tamper-evident and ours.
+  // This console line is only a convenience duplicate of that entry, and it goes to
+  // Railway's log stream, whose retention is not ours to control — so it gets the mask
+  // (audit F-06). Nothing is lost: the full values are one lookup away in /admin/audit.
+  console.log(`[admin] officer ${officerId.slice(0, 14)}… set email for ${userId.slice(0, 14)}…: ${prev ? maskEmail(prev) : "null"} → ${maskEmail(email)}`);
   revalidatePath(`/admin/players/${userId}`);
   return { ok: true as const };
 }
