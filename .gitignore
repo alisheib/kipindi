@@ -207,3 +207,9 @@ design-brief-lite/
 
 # Live config snapshots taken either side of a deliberate operator change (ops drill).
 scripts/live/ops/.cfg-snapshots/
+# KYC identity-document evidence shots (qa:kyc-id-seal / qa:kyc-id-review /
+# qa:kyc-id-looked-at, SHOT_DIR=.qa-kyc-id). Same rule as .qa-design/ and .qa-board/:
+# the DRIVER is committed so the seal can be re-shot against production for any of the
+# four documents, at any width and locale; the PNGs are not, because a checked-in
+# screenshot is a claim nobody can re-derive.
+.qa-kyc-id/
