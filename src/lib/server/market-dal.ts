@@ -198,6 +198,20 @@ export interface PositionStore {
   set(p: StoredPosition, tx?: Prisma.TransactionClient | null): Promise<void>;
   values(): Promise<StoredPosition[]>;
   /**
+   * Every OPEN position, pushed down to the database.
+   *
+   * 🔴 EXISTS BECAUSE `values()` RUNS ON EVERY BOOT. `repairOrphanedPositions()` loaded the
+   * whole Position table and filtered `status !== "OPEN"` in JS — 919 rows to reach 129 on
+   * production 2026-08-20, and the table grows by one row per bet forever, on a product
+   * whose Up & Down side creates rounds all day. A boot-path whole-table read is the shape
+   * that already exhausted the connection pool once, on /leaderboard.
+   *
+   * ⛔ Do NOT widen this into a general `listByStatus`. The repair is the only caller that
+   * wants every open position across every market regardless of user, and an open-ended
+   * status query is how a whole-table read comes back wearing a narrower name.
+   */
+  listOpen(): Promise<StoredPosition[]>;
+  /**
    * A user's positions, newest first. `productLine` filters to ONE game via the
    * market relation — `"MARKET"` for the Bets page (long-form polls), `"UPDOWN"` for
    * the Up & Down history, omitted for everything (both games), which is the historical
@@ -367,6 +381,7 @@ const memoryPositions: PositionStore = {
   async get(id) { return positions.get(id) ?? null; },
   async set(p, _tx) { positions.set(p.id, p); },
   async values() { return Array.from(positions.values()); },
+  async listOpen() { return Array.from(positions.values()).filter((p) => p.status === "OPEN"); },
   async listForUser(userId, limit = 100, productLine) {
     const pl = productLine && productLine !== "ALL" ? productLine : null;
     return Array.from(positions.values())
@@ -675,6 +690,23 @@ const prismaPositions: PositionStore = {
   },
   async values() {
     const rows = await pc().position.findMany();
+    return rows.map(toStoredPosition);
+  },
+  async listOpen() {
+    // Pushed down. See the interface comment: this runs on every boot and the table only
+    // grows.
+    //
+    // ⚠️ NO INDEX SERVES THIS, and saying otherwise would be worse than saying nothing.
+    // Position has @@index([marketId, status]) — `status` is not a leading column, so
+    // Postgres seq-scans. Measured on production 2026-08-20: 921 rows scanned, 131 returned,
+    // 26 shared buffers, 0.163 ms. The win is not the scan, it is that 790 rows stop being
+    // streamed to the app and hydrated into objects the caller immediately discards.
+    //
+    // An @@index([status]) is NOT worth adding at this size — 26 buffers is nothing, and an
+    // index on a low-cardinality column where one value holds 86% of the table would mostly
+    // not be chosen anyway. Revisit if Position passes ~100k rows; `scripts/load/
+    // s13-scale-ceilings.mts` is the harness that would show it.
+    const rows = await pc().position.findMany({ where: { status: "OPEN" } });
     return rows.map(toStoredPosition);
   },
   async listForUser(userId, limit = 100, productLine) {

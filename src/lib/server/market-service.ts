@@ -1960,8 +1960,13 @@ export async function resolveDueMarket(
 export async function repairOrphanedPositions(): Promise<{ repaired: number; refundedTzs: number }> {
   let repaired = 0;
   let refundedTzs = 0;
-  for (const p of await positionStore.values()) {
-    if (p.status !== "OPEN") continue;
+  // ⭐ `listOpen()`, not `values()` (audit F-07). This runs on EVERY BOOT, so on every
+  // deploy, and it used to load the whole Position table and filter in JS: 921 rows to reach
+  // 131 on production 2026-08-20, on a table that grows by one row per bet forever. The
+  // filter is the database's job. Measured: 790 rows no longer streamed and hydrated per
+  // boot, and the shape that once exhausted the connection pool on /leaderboard is gone from
+  // the boot path.
+  for (const p of await positionStore.listOpen()) {
     if (await marketStore.has(p.marketId)) continue; // market still exists → nothing to repair
     // Orphaned — refund the stake, mark VOID, audit. Split: real portion → real
     // balance, bonus portion → bonus wallet (no market lock held here, so the

@@ -112,6 +112,36 @@ for (const [name, src] of [
   ok(`${name}: no whole-table walk on a windowed path`, walks === 0, `${walks} remaining`);
 }
 
+console.log("\n── 4b · The BOOT path does not read a whole table ──────────────");
+
+/**
+ * ⚠️ THE BOOT PATH IS THE WORST PLACE FOR THIS SHAPE, and §4 above never looked at it.
+ * `repairOrphanedPositions()` runs on every boot — so on every deploy — and it used to call
+ * `positionStore.values()` and filter `status !== "OPEN"` in JS: 921 rows to reach 131 on
+ * production 2026-08-20, on a table that grows by one row per bet forever (audit F-07).
+ *
+ * A slow report is a slow report. A whole-table read on the boot path is the shape that
+ * exhausted the connection pool on /leaderboard, and it fires while the container is also
+ * hydrating market timers and electing a lifecycle leader.
+ */
+{
+  const svc = read("../src/lib/server/market-service.ts");
+  // Isolate the repair function so an unrelated `values()` elsewhere in this large file
+  // cannot make the assertion pass or fail for the wrong reason.
+  const start = svc.indexOf("export async function repairOrphanedPositions");
+  ok("repairOrphanedPositions is still there to check", start > 0,
+    "If it was renamed, this guard silently stops guarding.");
+  const body = svc.slice(start, svc.indexOf("\nexport ", start + 10));
+  ok("🔴 the boot repair does NOT load every position",
+    !/positionStore\.values\(\)/.test(body),
+    "It must use positionStore.listOpen(), which pushes WHERE status='OPEN' to the database.");
+  ok("…it uses the pushed-down read instead",
+    /positionStore\.listOpen\(\)/.test(body));
+  // CONTROL: the slice really contains the function, not an empty string.
+  ok("CONTROL: the isolated body is the real function", body.includes("marketStore.has(p.marketId)"),
+    `sliced ${body.length} chars`);
+}
+
 console.log("\n── 5 · The leaderboard is bounded by the board, not the platform ─");
 
 const board = read("../src/app/leaderboard/page.tsx");
