@@ -52,6 +52,25 @@ import Redis, { type RedisOptions } from "ioredis";
  * turns into "don't even try" within a handful of attempts.
  */
 const OPTIONS: RedisOptions = {
+  /**
+   * 🔴 DUAL-STACK DNS. Without this, arming Redis on Railway can fail with
+   * `ENOTFOUND redis.railway.internal` and nothing else would be wrong.
+   *
+   * ioredis resolves a hostname with an IPv4 (A record) lookup ONLY. Railway's private
+   * network published AAAA records only for environments created before 2025-10-16, so on a
+   * legacy environment `redis.railway.internal` has no A record and the lookup fails outright.
+   * `family: 0` asks for a dual-stack lookup (A *and* AAAA), which is Railway's documented fix
+   * (databases/troubleshooting/enotfound-redis-railway-internal) and is correct on new
+   * dual-stack environments too — so it is right regardless of when this project was created.
+   *
+   * ⚠️ This module is fail-open, which is exactly why the option matters. Without it the
+   * failure would not be an outage — every caller would silently fall back to the in-memory
+   * bucket — so Redis would read "armed" in the variable list while cross-container rate
+   * limiting (audit H2) quietly did not exist. A fail-open layer hides its own
+   * misconfiguration; that is the argument for making the connection correct up front rather
+   * than discovering it from a metric nobody is watching.
+   */
+  family: 0,
   lazyConnect: true,           // constructing the client must not open a socket
   enableOfflineQueue: false,   // fail NOW; never buffer work for a dead server
   maxRetriesPerRequest: 1,     // one retry, then surface it to withRedis

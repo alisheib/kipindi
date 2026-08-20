@@ -13,6 +13,7 @@ import { lifecycleTickerHealth } from "@/lib/server/lifecycle";
 import { isMonitoringEnabled } from "@/lib/server/monitoring";
 import { leadershipSnapshot } from "@/lib/server/leader";
 import { isAdminTotpEnforced } from "@/lib/server/admin-guard";
+import { redisHealth } from "@/lib/server/redis";
 import { emailHealth } from "@/lib/server/email";
 
 export const dynamic = "force-dynamic";
@@ -86,6 +87,38 @@ export async function GET() {
         // exactly that happened and went unnoticed. `status` is a word, not a
         // boolean, for the same reason `adminTotp` is.
         email: emailHealth(),
+        // 🔴 Is the cross-container layer actually ON? Redis is armed by TWO variables
+        // (`REDIS_ENABLED=true` AND `REDIS_URL`) precisely so configuring it and activating
+        // it are separate acts — but that also means "is it on?" had four possible answers
+        // (neither key, one key, both keys but not connected, connected) and only an
+        // admin-gated page could tell you which. A Redis service was provisioned and Online
+        // on this project for weeks while the application could not see it, and nothing said
+        // so. Reported here for the same reason as `alerting` and `adminTotp` above.
+        //
+        // ⚠️ What turning it on CHANGES, so the answer is meaningful: rate limits become
+        // cross-container (audit H2 — two containers each granting the full per-phone OTP,
+        // login and register budget), and SSE frames fan out between containers. It is
+        // deliberately NOT on the bet or admission path, and every access is fail-open, so
+        // `connected: false` while `configured: true` is a degraded cache, never an outage.
+        //
+        // ⛔ No URL, no credentials — booleans, a status word and a last-error string only.
+        redis: (() => {
+          const h = redisHealth();
+          return {
+            configured: h.configured,
+            enabled: h.enabled,
+            urlPresent: h.urlPresent,
+            connected: h.connected,
+            clientStatus: h.clientStatus,
+            subscribed: h.subscribed,
+            breakerOpen: h.breakerOpen,
+            // A word, not a boolean, for the same reason `adminTotp` is: "off by choice"
+            // and "on but unreachable" are different operator problems.
+            state: !h.enabled || !h.urlPresent ? "OFF (in-memory fallback)"
+              : h.connected ? "cross-container"
+              : "ARMED BUT UNREACHABLE — falling back in-memory",
+          };
+        })(),
       },
       {
         headers: {
