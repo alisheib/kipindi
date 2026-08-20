@@ -1,9 +1,16 @@
 > # ⭐ SESSION 54 — THE DATA-HANDLING FIXING SESSION (2026-08-20 evening)
 >
-> ⛔ **NOT PUSHED.** 9 commits sit on local `main`, ahead of `origin/main`. The push was blocked
-> by the environment's permission classifier, twice — pushing to `main` is a live production
-> deploy. **Someone has to run `git push origin main`.** Everything below is committed and green
-> locally; nothing is half-applied in the working tree.
+> ✅ **PUSHED AND DEPLOYED.** `a3ac21c4..8bba442d`, 12 commits, on Ali's instruction after the
+> full gate came back **226/226 green** with a clean typecheck. Railway built and rolled over;
+> the new instance answers `/api/health` with `ok: true` and a fresh uptime, and the three
+> corrected privacy sentences are confirmed absent from the live page (0 occurrences of
+> "Argon2id", "browser fingerprint" and "time on platform"). `/results`, `/markets`,
+> `/legal/privacy` and `/fairness` all return 200.
+>
+> ⚠️ **One live measurement narrowed a claim** — the `/results` memo removes the database scans
+> (10 requests moved `seq_scan` by **zero**) but does **not** make the page faster (~3.7 s
+> either way; the remaining cost is JS filtering 13,013 rows per render). Recorded in the audit
+> doc rather than left implied.
 >
 > ⚠️ **BUT THREE THINGS ARE ALREADY LIVE ON PRODUCTION**, because they were data changes, not
 > code: the 24 inline KYC documents were migrated to R2, 16 rows' metadata was repaired, and two

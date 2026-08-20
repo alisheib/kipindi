@@ -327,6 +327,18 @@ export async function listMarkets(filter?: {
  * windowed read would silently shrink search to the most recent N and quietly make every
  * count on the page wrong — trading a slow page for a lying one.
  *
+ * ⚠️ MEASURED AFTER SHIPPING, and it is narrower than it sounds: this removes DATABASE load,
+ * not page latency. Ten consecutive requests to `/results` on production moved
+ * `pg_stat_user_tables.seq_scan` for `PredictionMarket` by **zero** — before, each request cost
+ * two sequential scans of 13,013 rows. But the page took the same ~3.7 s each time, because
+ * the remaining cost is the JS filtering, sorting and counting of 13,013 rows per render, and
+ * caching the read does nothing about that.
+ *
+ * That is still the right fix for the right problem — an unauthenticated page can no longer
+ * make Postgres scan a growing table on demand, and that table's lifetime counters read
+ * 13.4M sequential scans and 960M tuples. But if `/results` needs to be FAST, that is separate
+ * work: paginate the filtering, or move the counts to SQL aggregates.
+ *
  * So the read stays complete and stops being repeated. The TTL matches `platform-stats.ts`,
  * whose own ALL read is memoised the same way, on the same table, for the same reason —
  * and settlement is a process with a 24-hour objection window, so a minute of staleness on

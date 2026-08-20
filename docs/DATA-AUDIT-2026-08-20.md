@@ -94,6 +94,24 @@ Corrected inline below, and worth reading as a set — the pattern is measuring 
   (`GO-LIVE-RUNBOOK.md`), tracked elsewhere, and is not being re-raised — but §1 should not
   list the gate as an effective control without saying so.
 
+### ⚠️ Measured on production AFTER the deploy — one claim narrowed
+
+The `/results` memo does **not** make the page faster, and the commit message implied it might.
+Measured: ten consecutive requests moved `pg_stat_user_tables.seq_scan` for `PredictionMarket`
+by **zero** (each request previously cost two sequential scans of 13,013 rows) — but page time
+stayed at ~3.7 s, because the remaining cost is JS filtering, sorting and counting 13,013 rows
+per render.
+
+So the finding it fixes is *"an unauthenticated public page can make Postgres scan a growing
+table on demand"* — real, and now closed. The finding it does **not** fix is *"/results is
+slow"*. That is separate work: paginate the filtering or move the category counts to SQL
+aggregates. For scale: that table's lifetime counters read **13.4 M sequential scans and 960 M
+tuples**.
+
+Also noted while verifying the deploy: **a Redis service is provisioned and Online**, but
+`REDIS_URL` is not among the 50pick service's variables — so it is running, and being paid for,
+while the application cannot see it. Either arm it or remove it.
+
 ### Still open
 
 - **F-01's anonymization routine** — deliberately not shipped. It would attach a working
