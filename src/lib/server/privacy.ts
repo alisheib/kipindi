@@ -191,7 +191,22 @@ export async function buildDsarBundle(userId: string) {
     rights: {
       access: "Granted (this document).",
       correction: "Submit a correction request via /profile/account or by contacting privacy@50pick.tz.",
-      erasure: "Available 7 years after account closure subject to AML retention requirements (POCA Cap 423 §16).",
+      // ⚠️ THIS STATES THE CHANNEL, NOT A CAPABILITY (audit F-01, corrected 2026-08-20).
+      // It used to read "Available 7 years after account closure subject to AML retention
+      // requirements" — which tells the data subject the platform can do something it
+      // cannot. There is no anonymization routine, and the ERASURE branch of
+      // `fulfillDsarRequest` refuses and audits rather than acting. Worse, the DSAR register
+      // cannot be populated at all: `fileDsarAction` is a declared orphan (E-33), so nothing
+      // on the platform can start the statutory clock.
+      // Saying so plainly is not weaker than the old sentence — it is the difference between
+      // a request a person can actually make and a promise nobody can keep. The right to
+      // erasure is not diminished by describing how to exercise it; it is diminished by
+      // describing a button that is not there.
+      erasure: "Request erasure by writing to privacy@50pick.tz. Financial, identity and "
+        + "audit records are retained for 7 years from account closure under POCA Cap 423 "
+        + "§16 and cannot be erased before then; anything outside that statutory set is "
+        + "assessed on request. Each request is handled by a compliance officer within the "
+        + "30-day statutory period (PDPA 2022 §31 / GDPR Art. 17).",
       portability: "This bundle is the portability format (machine-readable JSON).",
     },
   };

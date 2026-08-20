@@ -103,11 +103,27 @@ export default async function AdminRetentionPage() {
             <div className="flex items-start gap-3">
               <I.archive size={18} className="text-info shrink-0 mt-0.5" />
               <div className="text-caption text-text-secondary space-y-1">
-                <p className="text-text font-bold">Automated purge <span className="font-normal text-text-tertiary">· target architecture (not yet enforced)</span></p>
+                <p className="text-text font-bold">Automated purge <span className="font-normal text-success-fg">· LIVE since 2026-08-20</span></p>
                 <p>
-                  Planned: a nightly cron <code className="font-mono">retention.purge.daily</code> at 02:30 EAT purging
-                  OTP hashes &gt; 30 days, sessions &gt; 7 days, and tickets &gt; 3 years from close, each emitting a
-                  <code className="font-mono"> SYSTEM</code> audit row. This job is not wired in the current build.
+                  <code className="font-mono">retention.purge.daily</code> runs once every 24 hours inside the
+                  lifecycle pass (leader-leased, so one container only), deleting in-app notifications older than
+                  180 days and OTP hashes older than 30 days from issue. Each run that deletes anything writes a
+                  <code className="font-mono"> SYSTEM</code> audit row naming the counts per class; a run that
+                  deletes nothing writes none, because a daily &ldquo;nothing happened&rdquo; entry in a log that
+                  cannot be pruned is noise forever.
+                </p>
+                <p className="text-text-tertiary">
+                  Two honest differences from the plan this card used to describe. It runs on a 24-hour interval
+                  rather than at 02:30 EAT — every other chore in the lifecycle pass works that way, it needs no
+                  timezone reasoning, and for deleting aged rows the hour is not a property anyone depends on.
+                  And it does not purge sessions: that model has never been written to (the platform uses a signed
+                  cookie plus <code className="font-mono">ActiveSession</code>), so a prune there would be a
+                  permanent no-op dressed as a control. Support tickets are still policy-only.
+                </p>
+                <p className="text-text-tertiary">
+                  ⛔ It cannot reach money, identity or audit records: it names the two classes it deletes.
+                  <code className="font-mono"> docs/DATA-RETENTION.md</code> is the authority for the full schedule
+                  and marks which rows are enforced by code and which remain policy.
                 </p>
               </div>
             </div>

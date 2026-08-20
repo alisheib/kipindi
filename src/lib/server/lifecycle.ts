@@ -21,6 +21,7 @@ import { repairOrphanedPositions } from "./market-service";
 import { reconcileMarketSchedules } from "./market-scheduler";
 import { expireActiveGrants } from "./bonus-service";
 import { trialBalance } from "./ledger";
+import { runRetentionPass } from "./retention";
 import { audit } from "./audit";
 import { acquireLeadership, releaseLeadership } from "./leader";
 import { reapStuckGenerations } from "./ai-poll-generation";
@@ -116,6 +117,36 @@ async function maybeReconcileLedger(): Promise<void> {
         : null,
     },
   }).catch(() => {});
+}
+
+// ── Daily data-retention purge (audit F-01) ─────────────────────────────────
+// `/admin/retention` has published a nightly chore by this exact name for months,
+// under a card that admitted in smaller type: "This job is not wired in the current
+// build." Nothing pruned anything, and Notification held rows back to 2026-05-30 with
+// no upper bound. A published retention schedule that no code enforces is the same
+// defect as a privacy policy describing collection that does not happen.
+//
+// ⛔ NO LEASE CODE HERE. The whole lifecycle pass is already leader-leased and fails
+// CLOSED, so a second container cannot double-run this. Adding a second lease would be
+// two things to keep in agreement.
+//
+// Deliberately NOT on a wall-clock time. The product copy says 02:30 EAT; a
+// once-a-day elapsed-time chore is what every other chore in this file does, it needs
+// no timezone reasoning, and for deleting aged rows the hour is not a property anyone
+// depends on. `docs/DATA-RETENTION.md` records that as the deliberate difference.
+const RETENTION_EVERY_MS = 24 * 60 * 60 * 1000;
+const RETENTION_BOOT_GRACE_MS = 5 * 60 * 1000; // don't scan during boot
+let lastRetentionAt = 0;
+
+async function maybeRunRetention(): Promise<void> {
+  const now = Date.now();
+  if (now - tickerStartedAt < RETENTION_BOOT_GRACE_MS) return;
+  if (now - lastRetentionAt < RETENTION_EVERY_MS) return;
+  lastRetentionAt = now;
+  const r = await runRetentionPass(now);
+  if (r.notifications > 0 || r.otps > 0) {
+    console.log(`[lifecycle] retention purge — ${r.notifications} notification(s), ${r.otps} OTP row(s)`);
+  }
 }
 
 // ── Payment reconciliation + stuck-deposit notice ───────────────────────────
@@ -390,6 +421,10 @@ export async function runLifecyclePass(): Promise<void> {
     // payments.fast_credit audit rows. Observed in production 2026-07-20 12:49:47.
     await maybePaymentSweeps().catch((e) => console.error("[lifecycle] payment sweeps:", e));
     await maybeReconcileLedger().catch((e) => console.error("[lifecycle] trial balance:", e));
+    // Last in the pass, and with its own catch per the per-chore contract above: a purge
+    // that fails must never take the market lifecycle down with it. Deleting aged rows is
+    // the least urgent thing this ticker does.
+    await maybeRunRetention().catch((e) => console.error("[lifecycle] retention:", e));
   } finally {
     // A completed pass ends the overrun: clear the consecutive count and re-arm the
     // alert so the NEXT episode is reported too. `skippedTotal` is lifetime and is

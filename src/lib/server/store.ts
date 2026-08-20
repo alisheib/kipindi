@@ -642,6 +642,16 @@ const memoryDb = {
   },
   otp: {
     create: (o: StoredOtp) => { store.otps.set(o.id, o); return o; },
+    /** Mirror of the Prisma DAL's prune — see its comment for why this keys on issue,
+     *  not expiry. Both halves exist because unit tests run against the memory store. */
+    pruneOlderThan: (beforeIso: string): number => {
+      const cutoff = Date.parse(beforeIso);
+      let removed = 0;
+      for (const [id, o] of store.otps) {
+        if (Date.parse(o.createdAt) < cutoff) { store.otps.delete(id); removed++; }
+      }
+      return removed;
+    },
     findActive: (phone: string, purpose: string) => {
       // Most-recent active OTP (createdAt desc) — matches the Prisma DAL ordering
       // so the same code is selected in tests and prod under clock skew.
@@ -870,6 +880,24 @@ const memoryDb = {
      *  this is unbounded in time and `findRecentDuplicate` is not. */
     existsWithHref: (userId: string, href: string): boolean =>
       Array.from(store.notifications.values()).some((n) => n.userId === userId && n.href === href),
+    /**
+     * Delete in-app notifications created before `beforeIso`. Returns the count removed.
+     *
+     * ⚠️ THE PERIOD IS NOT A FREE CHOICE — see `retention.ts`. `existsWithHref` above is
+     * deliberately unbounded in time because it is the Up & Down digest's only idempotency
+     * key, and this method deletes the rows that answer is read from.
+     *
+     * Mirror of the Prisma DAL's implementation. Both halves exist because the in-memory
+     * store is what every unit test runs against; a Prisma-only method throws there.
+     */
+    pruneOlderThan: (beforeIso: string): number => {
+      const cutoff = Date.parse(beforeIso);
+      let removed = 0;
+      for (const [id, n] of store.notifications) {
+        if (Date.parse(n.createdAt) < cutoff) { store.notifications.delete(id); removed++; }
+      }
+      return removed;
+    },
     findByUser: (userId: string, limit = 50) =>
       Array.from(store.notifications.values())
         .filter((n) => n.userId === userId && !n.dismissedAt)

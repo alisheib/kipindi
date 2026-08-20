@@ -749,6 +749,23 @@ export const prismaDb = {
       });
       return toStoredOtp(row);
     },
+    /**
+     * Delete OTP rows issued before `beforeIso`. Returns the count removed.
+     *
+     * An OTP hash is credential material with no value once its window has passed. 30 days
+     * from issue is the figure already published on /admin/retention, so wiring this makes an
+     * existing statement true rather than creating a new one.
+     *
+     * ⚠️ Prunes on `createdAt`, not `expiresAt`: the retention promise is measured from
+     * ISSUE, and an OTP that was never consumed still expires minutes after issue — keying on
+     * expiry would make the published period meaningless.
+     */
+    pruneOlderThan: async (beforeIso: string): Promise<number> => {
+      const res = await pc().otp.deleteMany({
+        where: { createdAt: { lt: new Date(beforeIso) } },
+      });
+      return res.count;
+    },
     findActive: async (phone: string, purpose: string): Promise<StoredOtp | null> => {
       const row = await pc().otp.findFirst({
         where: {
@@ -1257,6 +1274,20 @@ export const prismaDb = {
         select: { id: true },
       });
       return !!row;
+    },
+    /**
+     * Delete in-app notifications created before `beforeIso`. Returns the count removed.
+     *
+     * ⚠️ THE PERIOD IS NOT A FREE CHOICE — see `retention.ts`. `existsWithHref` above is
+     * deliberately unbounded in time because it is the Up & Down digest's only idempotency
+     * key (E-37), and this method deletes exactly the rows that answer is read from. Tighten
+     * the period and a replayed digest tells players about their day twice.
+     */
+    pruneOlderThan: async (beforeIso: string): Promise<number> => {
+      const res = await pc().notification.deleteMany({
+        where: { createdAt: { lt: new Date(beforeIso) } },
+      });
+      return res.count;
     },
     findByUser: async (userId: string, limit = 50): Promise<StoredNotification[]> => {
       const rows = await pc().notification.findMany({
