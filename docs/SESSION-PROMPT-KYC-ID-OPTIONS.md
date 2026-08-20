@@ -1,3 +1,56 @@
+> ## ✅ DELIVERED 2026-08-20 (session 51) — `42680d1e` + `07a419f4`, live on production
+>
+> **The commission is complete.** Register row: **`E-173`** in
+> [`LIVE-QA-CAMPAIGN.md`](LIVE-QA-CAMPAIGN.md). Policy:
+> [`IDENTITY-POLICY.md`](IDENTITY-POLICY.md) (renamed from `NIDA-POLICY.md` —
+> it stopped being about one document). Board record, dated, including the residual gap:
+> [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) § 2026-08-20.
+>
+> ⛔ **THIS FILE IS KEPT, NOT EMPTIED.** It is the reasoning the unit was built from, and
+> three of its warnings were paid for again during the build — a comment that quotes SQL is
+> still a decoy anchor (§5 trap 6, this time inside the migration's own explanation, where it
+> made "is the index PARTIAL?" pass over a TOTAL one), a closed/off-screen control still
+> hit-tests as `null` (§5 trap 13, second sighting, 14 false failures), and a guard can still
+> require the defect. Delete this file and the next session re-learns them.
+>
+> **What was delivered:** the identity tuple `(idType, idNumber)` with a partial unique index
+> spanning all four documents · one catalogue (`src/lib/id-documents.ts`) declaring each
+> document's rule, required images and expiry · the chooser on `/profile/kyc` built from the
+> kit's one filter control · the per-document reviewer screen · `nida_taken` → `id_taken` with
+> the union member, registry row and dictionary key moved together · `test:id-documents`
+> (192 assertions) and `red:id-documents` (**18 injected defects, 18 caught**) · the §7 seal
+> walked on production for all four documents · 60 responsive cells, 300 assertions, 0 failed.
+>
+> ### ⏳ WHAT IS **NOT** DONE, AND IS NOT PRETENDED TO BE
+>
+> 1. 🔴 **THE CONTRACT MIGRATION.** This shipped **EXPAND ONLY**: `nidaNumber` /
+>    `nidaVerifiedAt` and the legacy index survive one release, written by one site and read
+>    by nothing (`test:id-documents` §9 fails if that changes). Dropping them in the same
+>    migration would have 500'd every KYC read on the previous container for the length of a
+>    rolling deploy. **The drop is the next session's first job** — see the `RESUME AT` block.
+> 2. ⚠️ **§7 step 4 measures something else than this file expected, and the difference is
+>    real.** An oversize image **cannot reach the server through the form**: `fileToDataUrl`
+>    downscales every pick to 1400px first, so a 12000×60 PNG is accepted, downscaled. That is
+>    §3 ⑥ working as designed, not a hole. What the driver proves instead is the non-image
+>    refusal (reachable, fires by name) and that the resize really runs on production; the
+>    3 MB **server** cap stays proven headlessly by `test:kyc`.
+> 3. ⚠️ **The seal registered fresh `78…` players rather than `fleet:NN`.** `QA_FLEET_PASSWORD`
+>    is absent from `.env.qa.local` on this machine, and registering through the real sign-up
+>    form is a stronger proof anyway — it is the path a new player actually takes. ⚠️ The six
+>    QA **persona** passwords were stale and were re-minted (`ops-remint-qa-passwords.mts`,
+>    6/6 verified); the new values are in the gitignored `.env.qa.local`, not in any transcript.
+> 4. 🔴 **`test:responsive` against production is 3,735 / 63, and every one of the 63 is the
+>    SAME pre-existing defect** — the guest header's `Sign up` link clipped at **320px**,
+>    already filed unfixed at `E-172`, on surfaces this unit never touched. Zero failures at
+>    any other width; zero naming a control this unit added. 320 is not one of the five widths
+>    this commission requires. ⛔ Left alone deliberately: it is the shared header, and folding
+>    it into an identity commit would be exactly the unrelated change §5 warns about.
+> 5. 🔴 **THE RESIDUAL UNIQUENESS GAP CANNOT BE CLOSED IN CODE** and is stated to the Board in
+>    writing, dated. One human legitimately holds several of these documents, so
+>    per-`(type, number)` uniqueness stops the same document twice and does not stop one person
+>    on two different documents. Only the human reviewer can catch that. ⛔ Never describe a
+>    `DUPLICATE_IDENTITY` rejection as though it blocked a different document.
+
 # SESSION COMMISSION · FOUR WAYS TO PROVE WHO YOU ARE — any ONE of them, not NIDA alone
 
 **Commissioned:** Ali, 2026-08-19 — *"we have to give options for KYC, not just NIDA. One of them:
