@@ -93,6 +93,47 @@ export async function readKycDocument(storageKey: string): Promise<{ mime: strin
   }
 }
 
+/**
+ * Delete a stored document, routing by key shape. Returns true when the object is gone
+ * (or was never there), false only when R2 refused.
+ *
+ * 🔴 WHY THIS EXISTS (2026-08-20). It did not, and that was about to become permanent.
+ *
+ * Erasure — PDPA 2022 §31, GDPR Art. 17 — has to be able to destroy a national ID scan and
+ * a selfie. While a document lived INLINE, erasure was implicit: null the `storageKey`
+ * column and the base64 bytes are gone with it. Moving the last 24 inline documents to R2
+ * (audit F-02) removes that property from the platform: every document becomes an object
+ * the application can PUT and GET but has no way to DELETE. The result would have been an
+ * erasure routine that reports success while national IDs and selfies sit in the bucket
+ * forever, with the database row insisting they are gone. That is the worst possible
+ * combination — the record says erased, the data is not.
+ *
+ * So the delete seam ships WITH the migration, not after it.
+ *
+ * ⛔ A missing object is SUCCESS, not failure. Erasure must be idempotent and must not be
+ * blocked by an object a previous run already removed; `DeleteObject` on S3/R2 is itself
+ * idempotent and returns 204 for a key that does not exist.
+ */
+export async function deleteKycDocument(storageKey: string): Promise<boolean> {
+  // An inline document has no external object. The bytes ARE the column, so the caller
+  // nulling or overwriting the column is the deletion — nothing to do here, and reporting
+  // failure would make an erasure routine think it had not finished.
+  if (!storageKey.startsWith("r2:")) return true;
+  try {
+    const { client, mod } = await getS3();
+    await client.send(new mod.DeleteObjectCommand({
+      Bucket: process.env.R2_BUCKET,
+      Key: storageKey.slice(3),
+    }));
+    return true;
+  } catch {
+    // Deliberately does NOT throw: an erasure sweep must be able to record which objects it
+    // could not remove and carry on, rather than aborting halfway and leaving the caller
+    // unsure what was destroyed. The caller decides what a false means.
+    return false;
+  }
+}
+
 // ── R2 (S3-compatible) — optional dependency, loaded only when configured ─────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

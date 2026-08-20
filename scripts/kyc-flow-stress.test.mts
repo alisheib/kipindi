@@ -10,12 +10,16 @@
 process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-min-aaaa";
 process.env.OTP_PEPPER ??= "test-only-pepper";
 process.env.KYC_NOTIFY_EMAILS = "compliance@50pick.tz,ops@50pick.tz";
+// Arm the email outbox so assertions can read the real recipient. Read lazily by
+// `outboxArmed()`, so setting it here — before the imports run — works.
+process.env.EMAIL_OUTBOX_CAPTURE = "1";
 
 import {
   startKyc, submitIdentityStep, attachDocument, attachExtraDocument, submitForReview, reviewKyc, validateDocImage, getKycStatus,
 } from "../src/lib/server/kyc-service.ts";
 import { db } from "../src/lib/server/store.ts";
 import { listForUser } from "../src/lib/server/notification-service.ts";
+import { emailOutbox, clearEmailOutbox } from "../src/lib/server/email.ts";
 
 let pass = 0, fail = 0;
 const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.error(`${c ? "PASS" : "FAIL"} ${l} ${x}`); };
@@ -25,8 +29,19 @@ let logs: string[] = [];
 const realLog = console.log;
 console.log = (...a: unknown[]) => { logs.push(a.map(String).join(" ")); };
 const flush = () => new Promise((r) => setTimeout(r, 60));
-const clearLogs = () => { logs = []; };
-const stubTo = (frag: string) => logs.filter((l) => l.includes("[email-stub]") && l.includes(frag));
+const clearLogs = () => { logs = []; clearEmailOutbox(); };
+// ⚠️ EMAIL RECIPIENTS COME FROM THE OUTBOX, NOT FROM STDOUT (2026-08-20).
+// The log lines mask the address (`j***@example.com`, audit F-06) because Railway's log
+// retention is not ours to control — so `logs.some(l => l.includes("jay@example.com"))`
+// can no longer pass. Relaxing those assertions to the masked form was the wrong fix: it
+// keeps the suite green while destroying what it measured. "An email went to somebody at
+// example.com" is not the claim being tested; "this email went to THIS player" is, and on
+// a KYC decision that is the whole point.
+// `emailOutbox()` already existed for exactly this. Reading it is also STRICTER than the
+// old check: `to === addr` is an exact recipient match, where a log scrape matched the
+// fragment anywhere in the line — including inside a subject or a URL.
+const sentTo = (addr: string) => emailOutbox().filter((m) => m.to === addr);
+const sentSubject = (frag: string) => emailOutbox().filter((m) => m.subject.includes(frag));
 const latestKycNote = async (uid: string) => (await listForUser(uid, 50)).find((n) => n.kind === "KYC")?.titleEn ?? "";
 
 // ⚠️ These fixtures used to be `Buffer.from("a".repeat(2048))` — the letter 'a',
@@ -169,8 +184,8 @@ await attach3("usr_loop01");
 clearLogs();
 r = await submitForReview("usr_loop01"); await flush();
 ok("loop submit ok", r.ok && (await getKycStatus("usr_loop01"))?.status === "PENDING_REVIEW");
-ok("loop submit: player email", stubTo("loop@example.com").some((l) => l.includes("Documents received")));
-ok("loop submit: admin emails (2)", stubTo("New KYC to verify").length === 2);
+ok("loop submit: player email", sentTo("loop@example.com").some((m) => m.subject.includes("Documents received")));
+ok("loop submit: admin emails (2)", sentSubject("New KYC to verify").length === 2);
 ok("loop submit: in-app 'Identity submitted'", (await latestKycNote("usr_loop01")) === "Identity submitted");
 
 // 5b. attach blocked while PENDING_REVIEW
@@ -184,7 +199,7 @@ await flush();
 ok("request-info ok", r.ok);
 ok("status -> ADDITIONAL_INFO_REQUIRED", (await getKycStatus("usr_loop01"))?.status === "ADDITIONAL_INFO_REQUIRED");
 ok("request-info: note stored for player", (await getKycStatus("usr_loop01"))?.rejectNote?.includes("blurry"));
-ok("request-info: email sent", stubTo("loop@example.com").some((l) => l.includes("More information needed")));
+ok("request-info: email sent", sentTo("loop@example.com").some((m) => m.subject.includes("More information needed")));
 ok("request-info: in-app 'More information needed'", (await latestKycNote("usr_loop01")) === "More information needed");
 ok("request-info: requires a note", !(await reviewKyc({ officerId: OFFICER, userId: "usr_loop01", decision: "REQUEST_INFO", reason: "x" })).ok);
 
@@ -194,19 +209,19 @@ ok("re-upload allowed in ADDITIONAL_INFO_REQUIRED", r.ok);
 clearLogs();
 r = await submitForReview("usr_loop01"); await flush();
 ok("resubmit ok -> PENDING_REVIEW", r.ok && (await getKycStatus("usr_loop01"))?.status === "PENDING_REVIEW");
-ok("resubmit re-notifies player + admins", stubTo("loop@example.com").length >= 1 && stubTo("New KYC to verify").length === 2);
+ok("resubmit re-notifies player + admins", sentTo("loop@example.com").length >= 1 && sentSubject("New KYC to verify").length === 2);
 
 // 5e. Idempotency: re-submitting while PENDING_REVIEW sends nothing
 clearLogs();
 r = await submitForReview("usr_loop01"); await flush();
-ok("double-submit idempotent (no emails)", r.ok && stubTo("[email-stub]").length === 0 && logs.filter((l) => l.includes("[email-stub]")).length === 0);
+ok("double-submit idempotent (no emails)", r.ok && emailOutbox().length === 0);
 
 // 5f. Reject → REJECTED + email
 clearLogs();
 r = await reviewKyc({ officerId: OFFICER, userId: "usr_loop01", decision: "REJECT", reason: "Photo still unreadable after re-upload." });
 await flush();
 ok("reject ok -> REJECTED", r.ok && (await getKycStatus("usr_loop01"))?.status === "REJECTED");
-ok("reject: email sent", stubTo("loop@example.com").some((l) => l.includes("Identity check needs attention")));
+ok("reject: email sent", sentTo("loop@example.com").some((m) => m.subject.includes("Identity check needs attention")));
 ok("reject: in-app 'Identity needs review'", (await latestKycNote("usr_loop01")) === "Identity needs review");
 
 // 5g. After reject, player can re-upload + resubmit again
@@ -221,7 +236,7 @@ r = await reviewKyc({ officerId: OFFICER, userId: "usr_loop01", decision: "APPRO
 ok("approve ok -> APPROVED", r.ok && (await getKycStatus("usr_loop01"))?.status === "APPROVED");
 ok("approve: displayName = legal name", (await db.user.findById("usr_loop01"))?.displayName === "Asha Mwamba Juma");
 ok("approve: account ACTIVE", (await db.user.findById("usr_loop01"))?.status === "ACTIVE");
-ok("approve: email with reference", stubTo("loop@example.com").some((l) => l.includes("fully verified")));
+ok("approve: email with reference", sentTo("loop@example.com").some((m) => m.subject.includes("fully verified")));
 
 // 5i. Decisions are final once APPROVED
 r = await reviewKyc({ officerId: OFFICER, userId: "usr_loop01", decision: "REJECT", reason: "should be blocked now" });

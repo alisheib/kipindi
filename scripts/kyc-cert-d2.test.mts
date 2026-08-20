@@ -23,8 +23,18 @@
  *     token broke KYC storage on production and nothing reported it.
  *     Measured on production 2026-07-31: 31 documents, 24 inline (11.00 MB of
  *     base64 in the DB, ~83% of every nightly backup), 7 in R2. The inline rows
- *     are LEGACY — all 24 were uploaded 2026-06-13..15, all 7 R2 rows
- *     2026-07-27..28, with no interleaving — so this is not a live regression.
+ *     were LEGACY — all 24 uploaded 2026-06-13..15, all 7 R2 rows 2026-07-27..28,
+ *     with no interleaving — so it was not a live regression.
+ *     ⭐ RE-MEASURED 2026-08-20 (audit F-02): all 24 were migrated to R2 and the
+ *     table now holds 67 documents, 0 inline. `KycDocument` dropped from 12 MB to
+ *     360 kB, so nothing at all rides in a dump any more. The same pass repaired 16
+ *     already-on-R2 rows whose mimeType/sizeBytes had been written as
+ *     `application/octet-stream / 0` — for an `r2:` key those columns are the only
+ *     evidence there is, so an officer had been shown "0 bytes" for a real national
+ *     ID. `npm run verify:kyc-storage` now reads all 67 back through the seam and
+ *     checks every one against its record.
+ *     ⛔ The inline BRANCH stays, and stays tested: local and E2E fixtures seed
+ *     `data:` keys, and `readKycDocument` routes on key shape alone.
  *     "Make sure new ones are correct" still has to be CODE, not a promise.
  *
  * Every negative assertion below has been broken on purpose and observed red.
@@ -212,8 +222,9 @@ ok("the object key is never taken from the request",
 console.log("");
 console.log("─".repeat(64));
 console.log(`  D2 · KYC DOCUMENTS: ${pass} passed, ${fail} failed`);
-console.log(`  Production 2026-07-31: 31 documents · 24 inline (legacy, 06-13..15)`);
-console.log(`  · 7 in R2 (07-27..28). No interleaving — the seam did not regress.`);
+console.log(`  Production 2026-08-20: 67 documents · 0 inline · 67 in R2 (all 24 legacy rows migrated; table 12 MB → 360 kB)`);
+console.log(`  Nothing rides in a dump any more. 'npm run verify:kyc-storage' reads all 67`);
+console.log(`  back through the seam and checks each against its recorded mime + size.`);
 console.log("─".repeat(64));
 
 if (fail > 0) process.exit(1);

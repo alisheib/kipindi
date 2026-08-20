@@ -5,10 +5,14 @@
  * Run: npx tsx scripts/kyc-submit-notify.test.mts
  */
 process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-min-aaaa";
+// Arm the email outbox so assertions read the real recipient rather than scraping stdout,
+// which masks the address (audit F-06). `outboxArmed()` reads this lazily.
+process.env.EMAIL_OUTBOX_CAPTURE = "1";
 process.env.KYC_NOTIFY_EMAILS = "Compliance@50pick.tz, ops@50pick.tz , compliance@50pick.tz"; // dupes + case + spaces
 
 import { submitForReview, reviewKyc, kycNotifyEmails } from "../src/lib/server/kyc-service.ts";
 import { setUserEmail, verifyEmailToken, buildEmailVerifyUrl } from "../src/lib/server/email-verification.ts";
+import { emailOutbox, clearEmailOutbox } from "../src/lib/server/email.ts";
 import { listForUser } from "../src/lib/server/notification-service.ts";
 import { db } from "../src/lib/server/store.ts";
 
@@ -21,7 +25,13 @@ let logs: string[] = [];
 const realLog = console.log;
 console.log = (...a: unknown[]) => { logs.push(a.map(String).join(" ")); };
 const flush = () => new Promise((r) => setTimeout(r, 60)); // let fire-and-forget sends settle
-const clearLogs = () => { logs = []; };
+const clearLogs = () => { logs = []; clearEmailOutbox(); };
+// ⚠️ Recipients come from the OUTBOX, never from stdout — the log masks the address
+// (audit F-06), and relaxing these assertions to the masked form would keep them green
+// while destroying what they measure. `to === addr` is also an exact match, where the
+// old log scrape matched the fragment anywhere in the line.
+const sentTo = (addr: string) => emailOutbox().filter((m) => m.to === addr);
+const sentSubject = (frag: string) => emailOutbox().filter((m) => m.subject.includes(frag));
 
 let phoneSeq = 0;
 async function mkUser(id: string, status: string, role: string, opts: { email?: string | null; displayName?: string | null } = {}) {
@@ -73,12 +83,15 @@ let r = await submitForReview("usr_p0001");
 await flush();
 ok("submit returns ok", r.ok);
 ok("kyc -> PENDING_REVIEW", (await db.kyc.findByUserId("usr_p0001"))?.status === "PENDING_REVIEW");
-const playerStub = logs.filter((l) => l.includes("[email-stub]") && l.includes("jay@example.com") && l.includes("Documents received"));
+const playerStub = sentTo("jay@example.com").filter((m) => m.subject.includes("Documents received"));
 ok("player 'documents received' email sent", playerStub.length === 1, JSON.stringify(playerStub));
-const adminStubs = logs.filter((l) => l.includes("[email-stub]") && l.includes("New KYC to verify · kyc_usr_p0001"));
-const toCompliance = adminStubs.some((l) => l.includes("compliance@50pick.tz"));
-const toOps = adminStubs.some((l) => l.includes("ops@50pick.tz"));
-ok("one admin email per recipient", adminStubs.length === 2 && toCompliance && toOps, JSON.stringify(adminStubs));
+const adminStubs = sentSubject("New KYC to verify · kyc_usr_p0001");
+// Exact recipient match, not a substring of a log line — so "ops@50pick.tz.example.com"
+// could no longer satisfy "ops@50pick.tz".
+const toCompliance = adminStubs.some((m) => m.to === "compliance@50pick.tz");
+const toOps = adminStubs.some((m) => m.to === "ops@50pick.tz");
+ok("one admin email per recipient", adminStubs.length === 2 && toCompliance && toOps,
+  JSON.stringify(adminStubs.map((m) => m.to)));
 // In-app: every admin gets a "New KYC to review" alert in their MAIN bell,
 // deep-linking to the player's KYC tab (admins removed the separate admin bell).
 const adminNote = (await listForUser("usr_admin01", 20)).find((n) => n.kind === "KYC" && n.titleEn === "New KYC to review");
@@ -93,7 +106,7 @@ clearLogs();
 r = await submitForReview("usr_p0001");
 await flush();
 ok("re-submit returns ok (idempotent)", r.ok);
-ok("re-submit sends NO emails", logs.filter((l) => l.includes("[email-stub]")).length === 0, JSON.stringify(logs));
+ok("re-submit sends NO emails", emailOutbox().length === 0, JSON.stringify(emailOutbox().map((m) => m.subject)));
 
 // ── 5. reviewKyc APPROVE: name overwrite + reference + unlock ──
 clearLogs();
@@ -102,7 +115,7 @@ await flush();
 ok("approve ok", r.ok);
 ok("displayName overwritten from fullName", (await db.user.findById("usr_p0001"))?.displayName === "Asha Mwamba Juma");
 ok("user PENDING_KYC -> ACTIVE", (await db.user.findById("usr_p0001"))?.status === "ACTIVE");
-ok("approved email carries reference", logs.some((l) => l.includes("[email-stub]") && l.includes("jay@example.com") && l.includes("fully verified")));
+ok("approved email carries reference", sentTo("jay@example.com").some((m) => m.subject.includes("fully verified")));
 
 // 5b. ALWAYS overwrite, even over a chosen handle.
 await mkUser("usr_p0002", "PENDING_KYC", "PLAYER", { email: "kay@example.com", displayName: "LuckyStriker" });
@@ -117,7 +130,7 @@ clearLogs();
 r = await reviewKyc({ officerId: OFFICER, userId: "usr_p0003", decision: "REJECT", reason: "Name mismatch with NIDA records." });
 await flush();
 ok("reject ok", r.ok);
-ok("rejected email sent", logs.some((l) => l.includes("[email-stub]") && l.includes("ray@example.com") && l.includes("Identity check needs attention")));
+ok("rejected email sent", sentTo("ray@example.com").some((m) => m.subject.includes("Identity check needs attention")));
 
 // ── 7. Email verification token round-trip ──
 await mkUser("usr_v0001", "ACTIVE", "PLAYER", { email: null });
@@ -127,7 +140,7 @@ await flush();
 ok("setUserEmail stores normalized address", (await db.user.findById("usr_v0001"))?.email === "new.user@example.com");
 ok("setUserEmail leaves email unverified", !(await db.user.findById("usr_v0001"))?.emailVerifiedAt);
 ok("setUserEmail reports a verification send", sr.ok && sr.changed && sr.verificationSent);
-ok("verification email stub sent to new address", logs.some((l) => l.includes("[email-stub]") && l.includes("new.user@example.com") && l.includes("Confirm your email")));
+ok("verification email stub sent to new address", sentTo("new.user@example.com").some((m) => m.subject.includes("Confirm your email")));
 
 const token = new URL(buildEmailVerifyUrl("usr_v0001", "new.user@example.com")).searchParams.get("token") ?? undefined;
 let vr = await verifyEmailToken(token);

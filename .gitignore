@@ -61,6 +61,11 @@ scripts/_walkthrough/
 # probe is committed so the board can be RE-SHOT at any width and locale; the PNGs
 # are not, because a checked-in screenshot is a claim nobody can re-derive.
 .qa-board/
+# 🔴 NEVER COMMITTABLE. `scripts/live-kyc-r2-read-drive.mjs` writes the identity documents it
+# retrieves — real national ID scans and selfies pulled from production — into this directory
+# so their byte length can be checked against the database. They are evidence that a
+# compliance officer can still read a migrated document; they are not artefacts to publish.
+.qa-kyc-r2/
 # Resolution-criterion i18n shots (npm run qa:criterion-visual --shots). Same rule.
 # ⭐ Re-shooting the TRANSLATED arm needs `npm run db:seed-criterion-local` first —
 # until F6b/F6c land, no production poll has a translated criterion to photograph.

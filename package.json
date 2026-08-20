@@ -55,6 +55,8 @@
     "test:updown-reporting": "tsx scripts/updown-reporting.test.mts",
     "test:pii-logs": "tsx scripts/pii-in-logs.test.mts",
     "test:dsar-secrets": "tsx scripts/dsar-export-secrets.test.mts",
+    "migrate:kyc-r2": "tsx scripts/migrate-kyc-inline-to-r2.mts",
+    "verify:kyc-storage": "tsx scripts/verify-kyc-storage.mts",
     "test:updown-quickbet": "tsx scripts/updown-quickbet.test.mts",
     "test:updown-heal": "tsx scripts/updown-heal.test.mts",
     "test:updown-rearm": "tsx scripts/updown-rearm.test.mts",

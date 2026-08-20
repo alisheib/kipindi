@@ -85,7 +85,18 @@ const outboxArmed = (): boolean =>
   process.env.EMAIL_OUTBOX_CAPTURE === "1" && process.env.NODE_ENV !== "production";
 const _outbox: { to: string; subject: string; html: string; tag?: string }[] = [];
 
-/** Everything captured so far (empty unless armed). */
+/**
+ * Everything captured so far (empty unless armed).
+ *
+ * ⭐ THIS IS HOW A TEST ASSERTS WHO AN EMAIL WENT TO. Do not scrape stdout for it. The log
+ * lines mask the recipient (`j***@example.com`, audit F-06) because Railway's log retention
+ * is not ours to control, so a `logs.some(l => l.includes("jay@example.com"))` assertion
+ * cannot pass — and relaxing such an assertion to the masked form is the wrong fix: it keeps
+ * the test green while destroying what it measured. "An email went to somebody at
+ * example.com" is not the claim; "the approval email went to THIS player" is.
+ *
+ * Arm it with `EMAIL_OUTBOX_CAPTURE=1` (ignored in production) and read the `to` field.
+ */
 export function emailOutbox(): readonly { to: string; subject: string; html: string; tag?: string }[] {
   return _outbox;
 }
