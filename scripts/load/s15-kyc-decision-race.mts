@@ -64,9 +64,9 @@ async function mkPending(userId: string, kycId: string) {
   // to Postgres verbatim (it was, and it failed with 42601).
   const nida = (String(Date.now()) + String(Math.floor(Math.random() * 1e9)).padStart(9, "0")).slice(0, 20);
   await client.$executeRawUnsafe(`
-    INSERT INTO "KycSubmission" (id, "userId", status, "nidaNumber", "nidaVerifiedAt",
+    INSERT INTO "KycSubmission" (id, "userId", status, "idType", "idNumber", "idVerifiedAt",
                                  "fullName", dob, "submittedAt", "createdAt", "updatedAt")
-    VALUES ('${kycId}', '${userId}', 'PENDING_REVIEW', '${nida}',
+    VALUES ('${kycId}', '${userId}', 'PENDING_REVIEW', 'NIDA', '${nida}',
             now(), 'Asha Mwamba Juma', '1990-01-01', now(), now(), now())`);
   for (const t of ["NIDA_FRONT", "NIDA_BACK", "SELFIE"]) {
     await client.$executeRawUnsafe(`

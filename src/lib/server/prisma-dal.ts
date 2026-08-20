@@ -121,8 +121,6 @@ export function toStoredKyc(row: any): StoredKyc {
     status: row.status,
     rejectReason: row.rejectReason ?? null,
     rejectNote: row.rejectNote,
-    nidaNumber: row.nidaNumber,
-    nidaVerifiedAt: iso(row.nidaVerifiedAt),
     idType: row.idType ?? null,
     idNumber: row.idNumber ?? null,
     // ⚠️ DATE ONLY, and that is not cosmetic. `idExpiry` is a calendar day printed
@@ -648,8 +646,6 @@ export const prismaDb = {
         status: k.status as "NOT_STARTED" | "IN_PROGRESS" | "PENDING_REVIEW" | "APPROVED" | "REJECTED" | "ADDITIONAL_INFO_REQUIRED",
         rejectReason: k.rejectReason as null,
         rejectNote: k.rejectNote,
-        nidaNumber: k.nidaNumber,
-        nidaVerifiedAt: k.nidaVerifiedAt ? new Date(k.nidaVerifiedAt) : null,
         idType: (k.idType ?? null) as "NIDA" | "PASSPORT" | "DRIVER_LICENSE" | "VOTER_CARD" | null,
         idNumber: k.idNumber ?? null,
         // Stored at UTC midnight so the day on the document is the day in the
@@ -690,38 +686,21 @@ export const prismaDb = {
       });
       return toStoredKyc(full ?? row);
     },
-    findByNida: async (nidaNumber: string): Promise<StoredKyc | null> => {
-      const norm = nidaNumber.trim();
-      if (!norm) return null;
-      const row = await pc().kycSubmission.findFirst({
-        where: { nidaNumber: norm },
-        include: { documents: true },
-        orderBy: { createdAt: "desc" },
-      });
-      return row ? toStoredKyc(row) : null;
-    },
-    /** Indexed duplicate check — findFirst on the indexed nidaNumber with a
-     *  tiny select, so it never hydrates the base64 KYC images the way
-     *  list()+find did (audit H5: ~1.2 TB pulled per submission at scale). */
-    findActiveByNida: async (nidaNumber: string, excludeUserId?: string): Promise<{ userId: string; status: string } | null> => {
-      const norm = nidaNumber.trim();
-      if (!norm) return null;
-      const row = await pc().kycSubmission.findFirst({
-        where: {
-          nidaNumber: norm,
-          status: { not: "REJECTED" },
-          ...(excludeUserId ? { userId: { not: excludeUserId } } : {}),
-        },
-        select: { userId: true, status: true },
-      });
-      return row ? { userId: row.userId, status: String(row.status) } : null;
-    },
+    // ⚠️ `findByNida` / `findActiveByNida` LIVED HERE UNTIL 2026-08-20, and were the
+    // ONLY readers of the deprecated `nidaNumber` column anywhere in the platform —
+    // which is why "read by nothing" was true of PRODUCT code and never of the store
+    // layer, and why the guard that claimed to prove it had to exempt this file.
+    // They had zero callers from the day `findActiveByIdNumber` below shipped.
+    // ⛔ Deleted with the column. Do not reinstate a number-only duplicate read: it
+    // refuses a passport for sharing digits with a NIDA, and it lets one human hold
+    // two accounts on two different documents.
     /**
      * 🔴 ONE DOCUMENT, ONE ACCOUNT — across all four identity types.
      *
-     * Indexed by `@@index([idType, idNumber])`, with the same tiny `select` as the
-     * NIDA read above so it never hydrates the base64 KYC images (audit H5:
-     * ~1.2 TB pulled per submission at scale).
+     * Indexed by `@@index([idType, idNumber])`, and deliberately a tiny `select` so
+     * it never hydrates the base64 KYC images (audit H5: ~1.2 TB pulled per
+     * submission at scale — the defect the deleted NIDA read was itself written to
+     * fix, which is why the shape is worth keeping now that it is the only one).
      *
      * ⛔ This is the FAST PATH. The enforcement is the partial unique index
      * "KycSubmission_idType_idNumber_active_key"; the two must ask the same

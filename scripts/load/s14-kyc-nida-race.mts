@@ -9,13 +9,15 @@
  * That control is implemented as an application-level read-then-write with NO
  * lock and NO unique constraint:
  *
- *     kyc-service.ts:116   const conflict = await db.kyc.findActiveByNida(...)
- *     kyc-service.ts:161   await db.kyc.upsert({ ...k, nidaNumber, ... })
+ *     kyc-service.ts   const conflict = await db.kyc.findActiveByIdNumber(idType, idNumber, userId)
+ *     kyc-service.ts   await db.kyc.upsert({ ...k, idType, idNumber, ... })
  *
  * `withLock("kyc:" + userId)` guards reviewKyc/forceReverifyKyc but NOT this
  * path — and it is keyed by USER, so it would serialise one user against
  * themselves, never two different users against each other. The schema carries
- * `@@index([nidaNumber])`, not a unique index (prisma/schema.prisma:338).
+ * `@@index([idType, idNumber])` — a FAST PATH, not a unique index. The uniqueness
+ * comes from the partial unique index `KycSubmission_idType_idNumber_active_key`,
+ * which is raw SQL because the Prisma DSL has no partial-unique syntax.
  *
  * Two OS processes (each its own PrismaClient + pool = a Railway container)
  * submit the SAME NIDA for two DIFFERENT users, aligned to one wall-clock
@@ -101,9 +103,14 @@ console.log(`   worker A: ${JSON.stringify(a)}`);
 console.log(`   worker B: ${JSON.stringify(b)}`);
 
 /* ── Verdict, straight from SQL ───────────────────────────────────────────── */
+// ⚠️ READS THE TUPLE SINCE 2026-08-20. This query named "nidaNumber" until the
+// contract migration, and would have thrown 42703 the moment the column was dropped —
+// while `test:cert-d1`'s "the two-process race proof is still present" assertion, which
+// only greps this file for the string "must be exactly 1", stayed GREEN. A red harness
+// with a dead anchor is an ABSENT test, and this one guards a P0 AML control.
 const holders = await client.$queryRawUnsafe<{ userId: string; status: string }[]>(
   `SELECT "userId", status::text FROM "KycSubmission"
-    WHERE "nidaNumber" = '${NIDA}' AND status <> 'REJECTED'`);
+    WHERE "idType" = 'NIDA' AND "idNumber" = '${NIDA}' AND status <> 'REJECTED'`);
 
 console.log("\n  ── verdict (from the database) ─────────────────────────────────");
 console.log(`     active submissions holding this NIDA : ${holders.length}   (must be exactly 1)`);

@@ -333,17 +333,17 @@ model KycSubmission {
   status         KycStatus        @default(IN_PROGRESS)
   rejectReason   KycRejectReason?
   rejectNote     String?
-  /// 🔴 DEPRECATED 2026-08-20 — SUPERSEDED BY `idType` + `idNumber`, KEPT FOR ONE
-  /// RELEASE. Backfilled into the pair by
-  /// `20260820120000_kyc_identity_document`, and still MIRRORED on a NIDA
-  /// submission by the one write site in `kyc-service.ts` so that (a) the previous
-  /// container keeps serving KYC reads through a rolling deploy and (b) a rollback
-  /// does not lose the number. ⛔ NOTHING READS IT — `test:id-documents` fails if
-  /// anything does. Dropped, with its index, by the contract migration named in
-  /// docs/COMPLIANCE-DECISIONS.md (2026-08-20).
-  nidaNumber     String?
-  /// 🔴 DEPRECATED 2026-08-20 — superseded by `idVerifiedAt`. Same terms as above.
-  nidaVerifiedAt DateTime?
+  // ⚠️ `nidaNumber` / `nidaVerifiedAt` LIVED HERE UNTIL 2026-08-20 (CONTRACT STEP).
+  // They were the pre-2026-08-20 single-document identity home, backfilled into
+  // (`idType`, `idNumber`) by `20260820120000_kyc_identity_document` and mirrored for
+  // ONE release so a rolling deploy's previous container kept serving KYC reads.
+  // ⛔ THE ORDER MATTERED AND IS THE LESSON: the fields left the SCHEMA one release
+  // BEFORE the columns left the DATABASE. `postinstall: prisma generate` bakes the
+  // column list from this file, and Prisma selects every scalar column, so dropping
+  // the column while a previous container still named it would have thrown 42703 on
+  // `db.kyc.findByUserId` — which `createSession` calls on all three login paths
+  // (`auth-service.ts:353`, `:911`, `:952`). That is platform-wide SIGN-IN, not the
+  // three KYC pages the expand release's note estimated.
   /// WHICH of the four documents this submission is built on. Null only before the
   /// identity step is completed.
   idType         IdDocType?
@@ -377,7 +377,6 @@ model KycSubmission {
 
   @@index([userId, status])
   @@index([status, submittedAt])
-  @@index([nidaNumber])
   @@index([idType, idNumber])
   // ⚠️ ALSO ON THIS TABLE, but not expressible here: TWO PARTIAL unique indexes.
   //
@@ -391,9 +390,20 @@ model KycSubmission {
   // would hand one human four accounts and a route around a DUPLICATE_IDENTITY
   // rejection.
   //
-  // 🔴 THE LEGACY ONE, retained until the contract migration:
-  //   "KycSubmission_nidaNumber_active_key" ON ("nidaNumber")
-  //     WHERE "nidaNumber" IS NOT NULL AND status <> 'REJECTED'
+  // ⚠️ THE LEGACY ONE — "KycSubmission_nidaNumber_active_key" ON ("nidaNumber") — and
+  // "KycSubmission_nidaNumber_idx" STILL EXIST IN THE DATABASE and no longer exist in
+  // this file. That gap is DELIBERATE and it is one release long: the fields leave the
+  // schema first (this release), the columns leave the database next (the contract
+  // migration, docs/COMPLIANCE-DECISIONS.md 2026-08-20). `prisma migrate deploy` runs
+  // pending migrations and does NOT drift-check, so a column the schema no longer
+  // declares is simply never selected. ⛔ Doing it in the other order — or in one
+  // release — drops a column the previously-deployed container is still naming in
+  // every KYC SELECT, which is a sign-in outage, not a KYC-page outage.
+  //
+  // ⭐ FROM THE CONTRACT MIGRATION ON, the tuple index above is the SOLE enforcement of
+  // one-document-one-account — a P0 AML control that used to be doubly covered for a
+  // NIDA. `test:kyc` §2d therefore proves it at service level for a NIDA *and* for a
+  // second document type.
   //
   // The Prisma DSL has no partial-unique syntax, so both are raw SQL —
   // prisma/migrations/20260731120000_kyc_nida_active_unique and

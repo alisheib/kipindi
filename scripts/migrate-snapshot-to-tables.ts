@@ -165,8 +165,13 @@ async function migrateKyc(kyc: AnyMap) {
         status: k.status,
         rejectReason: k.rejectReason ?? null,
         rejectNote: k.rejectNote ?? null,
-        nidaNumber: k.nidaNumber ?? null,
-        nidaVerifiedAt: dt(k.nidaVerifiedAt),
+        // ⛔ `nidaNumber` / `nidaVerifiedAt` WERE WRITTEN HERE UNTIL 2026-08-20 and
+        // are gone with the columns. ⚠️ `tsc` DID NOT CATCH THIS. `data` is a
+        // variable, not an inline literal, so TypeScript's excess-property check
+        // never ran over it — Prisma would have thrown "Unknown argument" at
+        // RUNTIME, on a data-migration script, with typecheck exiting 0. That is the
+        // repo's recorded "a field passes validation and is dropped by the data
+        // allow-list" trap, and this is the second sighting.
         fullName: k.fullName ?? null,
         dob: k.dob ? new Date(k.dob) : null,
         reviewerId: k.reviewerId ?? null,

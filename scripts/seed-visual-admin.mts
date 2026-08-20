@@ -60,7 +60,7 @@ if (existing) {
   const kyc: StoredKyc = {
     id: `kyc_${randomId(10)}`, userId: id, status: "APPROVED",
     rejectReason: null, rejectNote: null,
-    nidaNumber: "19900101000000001", nidaVerifiedAt: now, idType: "NIDA", idNumber: "19900101000000001", idExpiry: null, idVerifiedAt: now,
+    idType: "NIDA", idNumber: "19900101000000001", idExpiry: null, idVerifiedAt: now,
     fullName: NAME, dob: "1990-01-01", documents: [], extraRequests: [],
     reviewerId: "system", reviewedAt: now, submittedAt: now, createdAt: now, updatedAt: now,
   };
@@ -97,7 +97,7 @@ if (demo) {
   await db.kyc.upsert({
     id: `kyc_${randomId(10)}`, userId: id, status: "APPROVED",
     rejectReason: null, rejectNote: null,
-    nidaNumber: "19900101000000002", nidaVerifiedAt: now, idType: "NIDA", idNumber: "19900101000000002", idExpiry: null, idVerifiedAt: now,
+    idType: "NIDA", idNumber: "19900101000000002", idExpiry: null, idVerifiedAt: now,
     fullName: "Demo Admin", dob: "1990-01-01", documents: [], extraRequests: [],
     reviewerId: "system", reviewedAt: now, submittedAt: now, createdAt: now, updatedAt: now,
   } as StoredKyc);

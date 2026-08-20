@@ -185,14 +185,30 @@ const svc = read("src/lib/server/kyc-service.ts");
 const svcCode = stripComments(svc);
 ok("kyc-service pins the LIVE index name in one place",
   /ID_UNIQUE_INDEX\s*=\s*"KycSubmission_idType_idNumber_active_key"/.test(svcCode));
-ok("kyc-service still pins the legacy index name while it exists",
-  /NIDA_UNIQUE_INDEX\s*=\s*"KycSubmission_nidaNumber_active_key"/.test(svcCode));
+// ⚠️ REWRITTEN 2026-08-20 (contract step). This used to require the EXPORTED constant
+// `NIDA_UNIQUE_INDEX` to exist — an assertion phrased as the transitional state, which
+// goes RED the moment that state is correctly retired. The constant is gone with the
+// column; what must survive is the RECOGNITION, because a row written before this
+// release can still trip the legacy index by its old name until the column is dropped.
+ok("🔴 the exported legacy-index constant is GONE with the column",
+  !/NIDA_UNIQUE_INDEX/.test(svcCode),
+  "A pinned name nothing can violate is a dead constant that reads as a live rule.");
+ok("🔴 …and a legacy-index violation is STILL recognised as a duplicate, not a 500",
+  /msg\.includes\("KycSubmission_nidaNumber_active_key"\)/.test(svcCode),
+  "Until the columns are physically dropped, a submission that predates this release\n" +
+  "       can still lose the race on the OLD index. The loser must get the readable\n" +
+  "       `id_taken` refusal, not an unhandled error on an identity path.");
 ok("the identity migration and the code agree on the live index name",
   idMigration.includes("KycSubmission_idType_idNumber_active_key"),
   "A rename in one place turns the constraint into an unhandled 500 for the loser\n" +
   "       of the race, instead of a readable refusal.");
-ok("the legacy migration and the code agree on the legacy index name",
-  migration.includes("KycSubmission_nidaNumber_active_key"));
+// ⛔ The 2026-07-31 migration file is IMMUTABLE APPLIED HISTORY: five assertions above
+// read it off disk. It keeps naming the legacy index, and that is correct — a migration
+// records what happened, not what is currently true.
+ok("the legacy migration file still records the index it created",
+  migration.includes("KycSubmission_nidaNumber_active_key"),
+  "Editing applied history to match the present tense is how a database's audit trail\n" +
+  "       stops being one.");
 // ⚠️ An earlier draft of this assertion tested `/isNidaUniqueViolation\(/`, which
 // matches the function's own DEFINITION. Deleting the catch-block guard left the
 // gate GREEN — the guard was reading a symbol that happened to be nearby instead
@@ -217,8 +233,24 @@ ok("🔴 the fast-path duplicate read matches on (type, number)",
   "The read and the index must ask one question, or the two disagree under load.");
 
 // The proof itself must stay runnable, or the guarantee decays into a memory.
-ok("the two-process race proof is still present",
-  read("scripts/load/s14-kyc-nida-race.mts").includes("must be exactly 1"));
+// ⚠️ "PRESENT" IS NOT "RUNNABLE", and this assertion used to check only that the file
+// still contained the string "must be exactly 1". Its verdict query named "nidaNumber"
+// in raw SQL, so the contract migration would have made the proof throw 42703 on its
+// last line with this gate reporting green — a red harness with a dead anchor is an
+// ABSENT test, over the one control that stops two accounts sharing a national ID.
+{
+  const race = read("scripts/load/s14-kyc-nida-race.mts");
+  ok("the two-process race proof is still present",
+    race.includes("must be exactly 1"));
+  ok("🔴 …and its verdict SQL names columns that exist",
+    /"idType"\s*=\s*'NIDA'\s*AND\s*"idNumber"\s*=/.test(race) && !/"nidaNumber"\s*=/.test(race),
+    "Raw SQL is invisible to tsc and to Prisma's types. A dropped column in a\n" +
+    "       $queryRawUnsafe fails at RUNTIME, on the line that decides the verdict.");
+  const dec = read("scripts/load/s15-kyc-decision-race.mts");
+  ok("🔴 …and the decision-race fixture inserts the tuple, not the dropped mirror",
+    /INSERT INTO "KycSubmission"[\s\S]{0,200}"idType",\s*"idNumber"/.test(dec) && !/"nidaNumber"/.test(dec),
+    "An INSERT naming a dropped column throws before the race it is setting up begins.");
+}
 
 // ── 4 · 🔴 A rejected player is told they were rejected ───────────────────────────────────────
 section("4 · rejection is visible, and the record survives being looked at");

@@ -57,7 +57,7 @@ const JPEG_URL = `data:image/jpeg;base64,${JPEG.toString("base64")}`;
 /** A Prisma `KycSubmission` row as `include: { documents: true }` returns it. */
 const prismaRow = (documents: unknown[]) => ({
   id: "kyc_test", userId: "usr_test", status: "PENDING_REVIEW",
-  rejectReason: null, rejectNote: null, nidaNumber: null, nidaVerifiedAt: null,
+  rejectReason: null, rejectNote: null,
   fullName: "Test Player", dob: null, reviewerId: null, reviewedAt: null,
   submittedAt: new Date("2026-07-31T13:31:33.406Z"), extraRequests: [],
   createdAt: new Date("2026-07-31T13:26:00.000Z"), updatedAt: new Date("2026-07-31T13:31:33.406Z"),
@@ -145,12 +145,24 @@ ok("no size evidence → 0", unknown[0].sizeBytes === 0);
 // ── 4 · The write path must keep going through the tested builder ───────────
 section("4 · the upsert cannot re-implement the row builder");
 
-const upsert = /upsert: async \(k: StoredKyc\)[\s\S]*?findByNida:/.exec(DAL)?.[0] ?? "";
+// ⚠️ THIS SLICE USED `findByNida:` AS ITS CLOSING DELIMITER — the very method the
+// contract migration deleted. With the terminator gone the `.exec()` returned null,
+// `upsert` became the empty string, and all three assertions below passed over NOTHING.
+// It slices to the next DAL METHOD KEY now, and the length control makes an empty or
+// runaway window fail instead of falling through green.
+const upsert = /upsert: async \(k: StoredKyc\)[\s\S]*?\n    [a-zA-Z]+: (?:async )?\(/.exec(DAL)?.[0] ?? "";
+ok("control · the upsert window was actually located, and is not the whole file",
+  upsert.length > 500 && upsert.length < 0.5 * DAL.length,
+  `window is ${upsert.length} chars of a ${DAL.length}-char file — a slice that matched\n` +
+  "       nothing passes every assertion below it, and a slice that matched everything\n" +
+  "       passes them for the wrong reason");
 ok("db.kyc.upsert still syncs documents", /kycDocument\.deleteMany/.test(upsert) && /kycDocument\.createMany/.test(upsert));
 ok("…and builds its rows with toKycDocumentRows", /toKycDocumentRows\(/.test(upsert),
   "an inline re-implementation is how the mime/size derivation drifted the first time");
+// ⚠️ AND THIS PATTERN WAS ALREADY VACUOUS: `/data:\(image/` looks for a literal `(`
+// after `data:`, which appears nowhere. It matched nothing whatever the code said.
 ok("…with no second, inline data-URL derivation left in it",
-  !/data:\(image/.test(upsert),
+  !/data:image\//.test(upsert),
   "two derivations = two answers; there must be exactly one");
 
 // ── 5 · The seams the round trip depends on ─────────────────────────────────

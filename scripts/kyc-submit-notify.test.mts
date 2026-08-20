@@ -37,8 +37,7 @@ async function mkUser(id: string, status: string, role: string, opts: { email?: 
 }
 async function mkKyc(userId: string, status: string, fullName = "Asha Mwamba Juma") {
   await db.kyc.upsert({
-    id: `kyc_${userId}`, userId, status: status as never, rejectReason: null, rejectNote: null, nidaNumber: "19900101456712340000",
-    nidaVerifiedAt: now,
+    id: `kyc_${userId}`, userId, status: status as never, rejectReason: null, rejectNote: null,
     idType: "NIDA", idNumber: "19900101456712340000", idExpiry: null, idVerifiedAt: now,
     fullName, dob: "1990-01-01",
     documents: [{ docType: "NIDA_FRONT", storageKey: "a", uploadedAt: now }, { docType: "NIDA_BACK", storageKey: "b", uploadedAt: now }, { docType: "SELFIE", storageKey: "c", uploadedAt: now }],

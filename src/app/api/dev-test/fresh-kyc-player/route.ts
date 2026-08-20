@@ -42,12 +42,10 @@ export async function POST(req: Request) {
   if (state === "nida_verified") {
     const kyc: StoredKyc = {
       id: `kyc_${randomId(10)}`, userId: id, status: "IN_PROGRESS", rejectReason: null, rejectNote: null,
-      // Unique NIDA so the one-NIDA-per-account rule never collides across runs.
-      nidaNumber: "1990010100000000" + String((parseInt(id.slice(-4), 36) % 9000) + 1000),
-      nidaVerifiedAt: now,
-      // The identity tuple is what the product reads from 2026-08-20; the two
-      // nida* fields above are the deprecated mirror and are set only so this
-      // fixture matches exactly what submitIdentityStep writes for a NIDA.
+      // Unique NIDA so the one-document-one-account rule never collides across runs.
+      // ⚠️ The deprecated `nida*` mirror was written here until 2026-08-20. This
+      // fixture must match exactly what `submitIdentityStep` writes for a NIDA, and
+      // what it writes is the tuple and nothing else.
       idType: "NIDA",
       idNumber: "1990010100000000" + String((parseInt(id.slice(-4), 36) % 9000) + 1000),
       idExpiry: null,

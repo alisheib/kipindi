@@ -58,7 +58,10 @@ for (const p of ["db-check.cjs", "db-check.js"]) if (existsSync(join(ROOT, p))) 
 for (const f of srcFiles) {
   if (f.startsWith("src/lib/server/")) continue;
   const t = read(f);
-  if (/\b(nidaNumber|fullName)\s*:\s*true\b/.test(t)) fail("C10", `${f}: raw nidaNumber/fullName select outside the server layer`);
+  // ⚠️ `nidaNumber` was half of this check until 2026-08-20 and no longer exists as a
+  // column — so half the guard was policing a shape that cannot occur. The identity
+  // number lives in `idNumber` now, and that is the PII a route must never select.
+  if (/\b(idNumber|fullName)\s*:\s*true\b/.test(t)) fail("C10", `${f}: raw idNumber/fullName select outside the server layer`);
 }
 
 // ── M11 / B3 · dead theme deps + light mode must not return ──────────────────

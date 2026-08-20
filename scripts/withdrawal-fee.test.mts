@@ -52,7 +52,9 @@ async function kycdUser(id: string, balance: number): Promise<void> {
   // so the withdrawal-fee proof never ran against Postgres.
   await db.kyc.upsert({
     id: `kyc_${id}`,
-    userId: id, status: "APPROVED", nidaNumber: "12345678901234567890",
+    // ⛔ Same trap as money-e2e: this said `nidaNumber` alone, so after the contract
+    // migration it seeded an APPROVED submission with no identity number.
+    userId: id, status: "APPROVED", idType: "NIDA", idNumber: "12345678901234567890", idVerifiedAt: now(),
     documents: [],
     createdAt: now(), updatedAt: now(),
   } as never);

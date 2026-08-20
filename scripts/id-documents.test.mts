@@ -389,11 +389,23 @@ section("8 · the required slots gate submission, per document");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-section("9 · the deprecated NIDA mirror has ONE writer and ZERO readers");
+section("9 · the identity tuple is the ONLY home — the deprecated mirror is GONE");
 // ═══════════════════════════════════════════════════════════════════════════
-// `nidaNumber` / `nidaVerifiedAt` survive one release so a rolling deploy's previous
-// container keeps serving KYC reads. ⛔ That is the ONLY reason they exist. The moment
-// a surface READS one, the platform has two homes for one fact and they will diverge.
+// ⚠️ THIS SECTION USED TO POLICE A MIRROR THAT NO LONGER EXISTS, and left as it was it
+// would have become a guard that CANNOT FAIL: "nothing reads the deprecated columns" is
+// trivially true once the columns are gone, and its RED case would then have proved
+// only that a detector detects an impossible defect.
+//
+// 🔴 AND THE OLD VERSION WAS NARROWER THAN EVERY DOCUMENT CLAIMED. Its locator was
+// `\b(?:kyc|k)\??\.\s*nida(?:Number|VerifiedAt)\b` — a dot-read through an identifier
+// spelled exactly `kyc` or `k` — and it EXEMPTED prisma-dal.ts and store.ts, which is
+// precisely where the platform's only two readers lived. Its one positive control fed
+// it the single shape it could already see. So "read by NOTHING", stated in five
+// documents and in the session-52 handoff, was a claim no check had ever tested.
+//
+// What it asserts now is what can still go wrong: no spelling of the columns survives
+// anywhere under src/, the schema declares neither field nor index, and the number-only
+// duplicate read does not come back.
 {
   const APP = ["src/app", "src/components", "src/lib"];
   const { readdirSync } = await import("node:fs");
@@ -405,37 +417,56 @@ section("9 · the deprecated NIDA mirror has ONE writer and ZERO readers");
     }
     return out;
   };
-  // The writers: kyc-service (the mirror), the two store back-ends (the column), and
-  // the dev-test fixtures (which imitate what the service writes).
-  const ALLOWED = [
-    "src/lib/server/kyc-service.ts",
-    "src/lib/server/store.ts",
-    "src/lib/server/prisma-dal.ts",
-    "src/app/api/dev-test/",
-  ];
+  // ⛔ NO ALLOWLIST THIS TIME. The old one exempted the only three files that ever
+  // touched the column — which is how the guard and its own control came to agree and
+  // be blind together. If a store back-end needs the token again, that IS the finding.
+  const LEGACY = /\bnida(?:Number|VerifiedAt)\b/;
   const offenders: string[] = [];
   for (const root of APP) {
     for (const f of walk(root)) {
-      if (ALLOWED.some((a) => f.startsWith(a))) continue;
       const body = stripComments(read(f));
-      if (/\b(?:kyc|k)\??\.\s*nida(?:Number|VerifiedAt)\b/.test(body)) offenders.push(f);
+      if (LEGACY.test(body)) offenders.push(f);
     }
   }
-  ok("🔴 nothing outside the store layer reads the deprecated nida* columns",
+  ok("🔴 no spelling of the deprecated nida* columns survives anywhere under src/",
     offenders.length === 0,
-    `reads found in: ${offenders.join(", ")}\n` +
+    `found in: ${offenders.join(", ")}\n` +
     "       Two homes for one fact diverge silently, and the stale one is always the one\n" +
     "       somebody reads. Use `idType` / `idNumber` / `idVerifiedAt`.");
-  ok("control · the detector can actually see a read",
-    /\b(?:kyc|k)\??\.\s*nida(?:Number|VerifiedAt)\b/.test("const x = kyc.nidaNumber;"),
-    "Without this the assertion above passes on a broken regex.");
-  // And the ONE writer is the identity step, writing it only for a NIDA.
-  const svc = stripComments(read("src/lib/server/kyc-service.ts"));
-  ok("🔴 the mirror is written only when the document IS a NIDA",
-    /nidaNumber:\s*idType === "NIDA" \? idNumber : null/.test(svc) &&
-    /nidaVerifiedAt:\s*idType === "NIDA" \? now : null/.test(svc),
-    "Leaving it populated after a switch to another document type would keep the LEGACY\n" +
-    "       partial unique index holding a number this submission no longer claims.");
+  // ⭐ FOUR CONTROLS, because ONE control was the reason the old guard was narrow: it
+  // proved only the single shape its regex already matched.
+  ok("control · the detector sees a dot-read",   LEGACY.test("const x = kyc.nidaNumber;"));
+  ok("control · …a destructure",                 LEGACY.test("const { nidaVerifiedAt } = kyc;"));
+  ok("control · …a bare row property",           LEGACY.test("row.nidaNumber ?? null"));
+  ok("control · …and a Prisma where-key",        LEGACY.test("where: { nidaNumber: norm }"));
+  ok("control · and it does NOT fire on the legacy INDEX NAME, which must survive",
+    !LEGACY.test('msg.includes("KycSubmission_nidaNumber_active_key")'),
+    "An underscore is a word character, so the index name is not a column read. If this\n" +
+    "       flips, the guard starts refusing the one legacy reference that has to stay.");
+
+  // 🔴 THE SCHEMA IS THE OTHER HALF. A field re-added there re-enters every generated
+  // client, and the column comes back with it.
+  const schema = read("prisma/schema.prisma");
+  const kycModel = /model KycSubmission \{[\s\S]*?\n\}/.exec(schema)?.[0] ?? "";
+  ok("control · the KycSubmission model was actually located", kycModel.length > 400);
+  ok("🔴 KycSubmission declares NO nida* field and NO index on one",
+    !/^\s*nida(?:Number|VerifiedAt)\s/m.test(kycModel) && !/@@index\(\[nidaNumber\]\)/.test(kycModel),
+    "The fields must leave the schema one release BEFORE the columns leave the database:\n" +
+    "       postinstall runs `prisma generate`, which bakes the column list from this file,\n" +
+    "       and Prisma selects every scalar column — so a column dropped while a\n" +
+    "       previously-deployed container still names it throws 42703 on\n" +
+    "       `db.kyc.findByUserId`, which `createSession` calls on all three login paths.\n" +
+    "       That is sign-in, platform-wide, not three KYC pages.");
+
+  // 🔴 AND THE NUMBER-ONLY DUPLICATE READ MUST NOT COME BACK. Not dead-code hygiene:
+  // matching a number without its document type refuses a passport for sharing digits
+  // with a NIDA, and lets one human hold two accounts on two different documents.
+  for (const f of ["src/lib/server/store.ts", "src/lib/server/prisma-dal.ts"]) {
+    ok(`🔴 ${f.split("/").pop()} exposes no number-only duplicate read`,
+      !/\bfind(?:ByNida|ActiveByNida)\s*[:(]/.test(stripComments(read(f))),
+      "findActiveByIdNumber matches on the PAIR. A number-only read is the route around\n" +
+      "       a DUPLICATE_IDENTITY rejection that the tuple exists to close.");
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

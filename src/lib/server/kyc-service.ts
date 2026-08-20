@@ -102,8 +102,6 @@ export async function startKyc(userId: string): Promise<ServiceResult<{ kycId: s
     status: "IN_PROGRESS",
     rejectReason: null,
     rejectNote: null,
-    nidaNumber: null,
-    nidaVerifiedAt: null,
     // ⛔ THE WHOLE IDENTITY TUPLE CLEARS TOGETHER. Leaving `idType` behind while
     // nulling `idNumber` would let a restarted submission carry the previous
     // document's type into the next one's validation — and leaving `idNumber`
@@ -290,16 +288,13 @@ export async function submitIdentityStep(userId: string, input: z.input<typeof K
       idNumber,
       idExpiry,
       idVerifiedAt: now,
-      // 🔴 DEPRECATED MIRROR, ONE WRITE SITE, ZERO READERS. `nidaNumber` /
-      // `nidaVerifiedAt` are superseded by the pair above and are dropped by the
-      // contract migration named in docs/COMPLIANCE-DECISIONS.md (2026-08-20).
-      // They are still written for a NIDA — and NULLED for the other three — so a
-      // rolling deploy's previous container keeps serving KYC reads, and so the
-      // legacy partial unique index cannot be left holding a number this
-      // submission no longer claims. ⛔ Do not read them; `test:id-documents`
-      // fails if anything does.
-      nidaNumber: idType === "NIDA" ? idNumber : null,
-      nidaVerifiedAt: idType === "NIDA" ? now : null,
+      // ⚠️ THE DEPRECATED MIRROR IS GONE (2026-08-20, contract step). This upsert
+      // used to also write `nidaNumber` / `nidaVerifiedAt` for a NIDA so a rolling
+      // deploy's previous container could keep serving KYC reads. That mirror had
+      // exactly one release to live and this is the release it dies in — the fields
+      // leave the schema HERE, the columns leave the database in the migration that
+      // follows. ⛔ Do not re-add either: two homes for one fact diverge, and the
+      // stale one is always the one somebody reads.
       fullName: parse.data.fullName,
       dob: parse.data.dob,
       updatedAt: now,
@@ -344,28 +339,26 @@ export async function submitIdentityStep(userId: string, input: z.input<typeof K
 export const ID_UNIQUE_INDEX = "KycSubmission_idType_idNumber_active_key";
 
 /**
- * The index it supersedes. Retained only until the contract migration drops
- * `nidaNumber`; it still fires for a NIDA because that column is mirrored, and a
- * violation of EITHER index means the same thing to the player.
- */
-export const NIDA_UNIQUE_INDEX = "KycSubmission_nidaNumber_active_key";
-
-/**
  * Did this write lose the one-document-one-account race?
  *
  * Matches Prisma's P2002 (unique constraint) and, defensively, the raw Postgres
  * 23505 / index name — a PARTIAL unique index is created by raw SQL rather than
  * the Prisma DSL, so the driver does not always attach `meta.target`.
  *
- * ⚠️ It answers for BOTH indexes on purpose. During the expand release a NIDA
- * write touches both, and which one Postgres reports first is not something this
- * code should depend on: either way the player gets the same refusal and AML gets
- * the same row.
+ * ⚠️ IT USED TO ANSWER FOR TWO INDEXES, AND NOW THERE IS ONE. Through the expand
+ * release a NIDA write touched both the tuple index and the legacy
+ * `KycSubmission_nidaNumber_active_key`, and which one Postgres reported first was
+ * not something this code should depend on. The legacy index is partial on
+ * `nidaNumber IS NOT NULL`, and since the mirror write above was deleted nothing
+ * populates that column — so it cannot fire again even while the column is still
+ * physically there. ⛔ The `/nida/i` branch below stays: it matches the message of a
+ * legacy-index violation from a row written BEFORE this release, which is the one
+ * case where a real duplicate can still surface through the old name.
  */
 export function isIdUniqueViolation(err: unknown): boolean {
   const e = err as { code?: string; message?: string; meta?: { target?: unknown } };
   const msg = String(e?.message ?? "");
-  if (msg.includes(ID_UNIQUE_INDEX) || msg.includes(NIDA_UNIQUE_INDEX)) return true;
+  if (msg.includes(ID_UNIQUE_INDEX) || msg.includes("KycSubmission_nidaNumber_active_key")) return true;
   if (e?.code === "23505") return true;
   if (e?.code !== "P2002") return false;
   // P2002 on this table can only be an identity index — `id` is a cuid we generate

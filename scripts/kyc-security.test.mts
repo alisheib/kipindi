@@ -71,21 +71,63 @@ ok("freed NIDA (A rejected) now verifies for B", r.ok && (r as { data?: { verifi
 r = await submitIdentityStep("usr_n_b", { idType: "NIDA", idNumber: NIDA, fullName: "Beta Two", dob: "1990-01-01" });
 ok("own NIDA re-submit ok", r.ok && (r as { data?: { verified: boolean } }).data?.verified === true);
 
-// 2d. 🔴 THE DEPRECATED MIRROR IS WRITTEN FOR A NIDA AND NULLED FOR ANYTHING ELSE.
-// It exists only so a rolling deploy's previous container keeps serving KYC reads.
-// If it were left populated after a switch to another document type, the LEGACY
-// partial unique index would still be holding a number this submission no longer
-// claims — i.e. a NIDA burned by a player who has since moved to a passport.
+// 2d. 🔴 THE TUPLE IS THE ONLY IDENTITY HOME, AND FROM 2026-08-20 THE ONLY RULE.
+// ⚠️ THIS BLOCK USED TO ASSERT THE OPPOSITE. Until the contract migration it read
+// `ok("NIDA submission mirrors the deprecated column", kb?.nidaNumber === NIDA)` —
+// an assertion phrased as the transitional state, which goes RED the moment that
+// state is correctly retired. It was NOT relaxed to `== null`: relaxing it would
+// have deleted the only service-level proof of one-document-one-account and left the
+// new rule proven by nothing. It asserts the replacement instead.
+//
+// ⭐ AND IT NOW COVERS A NON-NIDA DOCUMENT END TO END, because that coverage used to
+// come from somewhere else. Through the expand release "one NIDA, one account" was
+// enforced TWICE — by the tuple index and, redundantly, by the legacy
+// `KycSubmission_nidaNumber_active_key`. The contract migration removes the
+// redundancy, so `KycSubmission_idType_idNumber_active_key` is the sole enforcement
+// of a P0 AML control, and its `status <> REJECTED` half was asserted for a passport
+// nowhere in this suite.
 {
   const kb = await getKycStatus("usr_n_b");
-  ok("NIDA submission mirrors the deprecated column", kb?.nidaNumber === NIDA);
+  ok("🔴 a NIDA submission records the tuple, and the tuple is where the number lives",
+    kb?.idType === "NIDA" && kb?.idNumber === NIDA);
   await mkUser("usr_n_c", "+255710000213");
   await startKyc("usr_n_c");
-  const rc = await submitIdentityStep("usr_n_c", { idType: "PASSPORT", idNumber: "AB123456", idExpiry: "2030-01-01", fullName: "Cee Three", dob: "1990-01-01" });
+  const PASSPORT = "AB123456";
+  const rc = await submitIdentityStep("usr_n_c", { idType: "PASSPORT", idNumber: PASSPORT, idExpiry: "2030-01-01", fullName: "Cee Three", dob: "1990-01-01" });
   ok("a passport submission is accepted", rc.ok && (rc as { data?: { verified: boolean } }).data?.verified === true);
   const kc = await getKycStatus("usr_n_c");
-  ok("…and does NOT write the deprecated NIDA mirror", kc?.nidaNumber === null);
-  ok("…and records the tuple instead", kc?.idType === "PASSPORT" && kc?.idNumber === "AB123456");
+  ok("…and records its own tuple", kc?.idType === "PASSPORT" && kc?.idNumber === PASSPORT);
+
+  // ⭐ ONE PASSPORT, ONE ACCOUNT — the non-NIDA half of the rule the legacy index
+  // never covered. A fourth user claiming the SAME passport must be refused.
+  await mkUser("usr_n_d", "+255710000214");
+  await startKyc("usr_n_d");
+  const rd = await submitIdentityStep("usr_n_d", { idType: "PASSPORT", idNumber: PASSPORT, idExpiry: "2030-01-01", fullName: "Dee Four", dob: "1990-01-01" });
+  ok("🔴 a SECOND account claiming the same passport is refused",
+    !rd.ok && (rd as { reason?: string }).reason === "id_taken",
+    "one document, one account must hold for all four types — not just the one the deleted legacy index knew about");
+  ok("…and D's submission did not verify", !(await getKycStatus("usr_n_d"))?.idVerifiedAt);
+
+  // ⭐ AND THE RULE IS PARTIAL FOR A PASSPORT TOO: rejecting C frees the number.
+  const kcc = await getKycStatus("usr_n_c");
+  await db.kyc.upsert({ ...kcc!, status: "REJECTED", updatedAt: now });
+  const rd2 = await submitIdentityStep("usr_n_d", { idType: "PASSPORT", idNumber: PASSPORT, idExpiry: "2030-01-01", fullName: "Dee Four", dob: "1990-01-01" });
+  ok("🔴 a REJECTED passport frees the number, exactly like a NIDA",
+    rd2.ok && (rd2 as { data?: { verified: boolean } }).data?.verified === true,
+    "a total unique index would burn a document on any rejection; the partial one must not");
+
+  // ⛔ CONTROL · the number is matched WITH its type, never alone — and the control
+  // only works if the number is a REAL collision. ⚠️ Written first as
+  // `"X" + NIDA.slice(1, 9)`, which collides with nothing, so deleting the type
+  // comparison from the duplicate read left this assertion GREEN: it named
+  // type-discrimination and measured an unrelated string. Proven by mutation, not
+  // assumed. The number below is byte-identical to the NIDA usr_n_b holds.
+  await mkUser("usr_n_e", "+255710000215");
+  await startKyc("usr_n_e");
+  const re = await submitIdentityStep("usr_n_e", { idType: "PASSPORT", idNumber: NIDA, idExpiry: "2030-01-01", fullName: "Eee Five", dob: "1990-01-01" });
+  ok("🔴 control · the SAME digits as a live NIDA, presented as a PASSPORT, are a different document",
+    re.ok && (re as { data?: { verified: boolean } }).data?.verified === true,
+    "matching a number without its type refuses a real citizen for a coincidence — and a type-blind read would refuse here");
 }
 
 // ─── 3. PHONE uniqueness (the lookup the registration guard relies on) ───

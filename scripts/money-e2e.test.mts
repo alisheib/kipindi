@@ -60,7 +60,11 @@ async function player(id: string) {
   // A verified email is required before a first deposit (wallet-service email gate).
   await prisma.user.create({ data: { id, phoneE164: p, role: "PLAYER", status: "ACTIVE", locale: "EN", displayName: id, email: `${id}@test.tz`, emailVerifiedAt: new Date() } });
   await prisma.wallet.create({ data: { id: `wal_${id}`, userId: id, balance: 0, currency: "TZS", status: "ACTIVE" } });
-  await prisma.kycSubmission.create({ data: { userId: id, status: "APPROVED", nidaNumber: `${19900101}${String(phone).slice(-10)}` } });
+  // ⛔ THE IDENTITY TUPLE, NOT THE DELETED MIRROR. This fixture set `nidaNumber`
+  // ALONE until 2026-08-20 — so after the contract migration it would have created an
+  // APPROVED submission carrying NO identity number at all, and every uniqueness
+  // assertion downstream would have passed over nothing.
+  await prisma.kycSubmission.create({ data: { userId: id, status: "APPROVED", idType: "NIDA", idNumber: `${19900101}${String(phone).slice(-10)}`, idVerifiedAt: new Date() } });
   return p;
 }
 async function officer(id: string) {

@@ -62,12 +62,6 @@ export type StoredKyc = {
   status: "NOT_STARTED" | "IN_PROGRESS" | "PENDING_REVIEW" | "APPROVED" | "REJECTED" | "ADDITIONAL_INFO_REQUIRED";
   rejectReason: string | null;
   rejectNote: string | null;
-  /** 🔴 DEPRECATED 2026-08-20 — superseded by `idType`/`idNumber`. Written as a
-   *  rolling-deploy mirror on a NIDA submission and READ BY NOTHING; see the
-   *  schema comment and docs/COMPLIANCE-DECISIONS.md. */
-  nidaNumber: string | null;
-  /** 🔴 DEPRECATED 2026-08-20 — superseded by `idVerifiedAt`. Same terms. */
-  nidaVerifiedAt: string | null;
   /** WHICH of the four documents proves this identity. `IdDocType` in
    *  `@/lib/id-documents`; typed as a string here because `StoredKyc` is the
    *  storage shape both back-ends map onto. */
@@ -608,29 +602,12 @@ const memoryDb = {
       return latest;
     },
     upsert: (k: StoredKyc) => { store.kyc.set(k.id, k); return k; },
-    /** Find any KYC submission carrying this NIDA number. Used to enforce
-     *  one-NIDA-per-account (multi-accounting / identity-reuse defence). */
-    findByNida: (nidaNumber: string): StoredKyc | null => {
-      const norm = nidaNumber.trim();
-      if (!norm) return null;
-      for (const k of store.kyc.values()) if ((k.nidaNumber ?? "").trim() === norm) return k;
-      return null;
-    },
-    /** A non-REJECTED submission with this NIDA belonging to a DIFFERENT user —
-     *  the one-NIDA-per-account (AML) duplicate check. Returns only { userId,
-     *  status }; the Prisma DAL uses an indexed findFirst + select so it never
-     *  loads KYC images (audit H5). */
-    findActiveByNida: (nidaNumber: string, excludeUserId?: string): { userId: string; status: string } | null => {
-      const norm = nidaNumber.trim();
-      if (!norm) return null;
-      for (const k of store.kyc.values()) {
-        if ((k.nidaNumber ?? "").trim() !== norm) continue;
-        if (excludeUserId && k.userId === excludeUserId) continue;
-        if (k.status === "REJECTED") continue;
-        return { userId: k.userId, status: k.status };
-      }
-      return null;
-    },
+    // ⚠️ `findByNida` / `findActiveByNida` LIVED HERE UNTIL 2026-08-20. They read the
+    // deprecated `nidaNumber` column and had ZERO callers from the day the identity
+    // tuple shipped — `findActiveByIdNumber` below replaced them, matching on the PAIR.
+    // ⛔ Deleted with the column and not reinstated: a duplicate read that matches a
+    // number without its document type refuses a passport for sharing digits with a
+    // NIDA, and lets one human hold two accounts on two different documents.
     /**
      * 🔴 ONE DOCUMENT, ONE ACCOUNT — the duplicate read for ALL FOUR identity
      * types. A non-REJECTED submission carrying this (type, number) on a

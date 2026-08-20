@@ -95,8 +95,6 @@ export async function POST(req: Request) {
     status: "APPROVED",
     rejectReason: null,
     rejectNote: null,
-    nidaNumber: "19900101000000001",
-    nidaVerifiedAt: now,
     idType: "NIDA", idNumber: "19900101000000001", idExpiry: null, idVerifiedAt: now,
     fullName: name,
     dob: "1990-01-01",

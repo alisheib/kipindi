@@ -113,6 +113,30 @@ migration would have returned a 500 on every KYC read (`/profile/kyc`, `/wallet/
 `KycSubmission_nidaNumber_active_key`, once the expand release has been stable on production.**
 Until that lands, this entry is the record that the duplication is time-boxed and intentional.
 
+> #### ✅ AMENDED 2026-08-20 — the debt is being discharged, and in TWO releases
+>
+> ⚠️ **This paragraph named THREE objects and there are FOUR.** `@@index([nidaNumber])`
+> (`KycSubmission_nidaNumber_idx`, created 2026-06-14) was not listed. It goes with the column.
+>
+> ⚠️ **And "nothing reads them" was true of PRODUCT code only.** `prisma-dal.findByNida` /
+> `findActiveByNida` read the column — with zero callers — and §9, the guard cited here as
+> proof, **allowlisted the file they lived in**. The claim was never tested. §9 has been
+> re-pointed at every spelling across all of `src/`, with no allowlist, plus the schema and
+> the absence of a number-only duplicate read.
+>
+> **Step 1 shipped 2026-08-20:** the fields left `prisma/schema.prisma`, the mirror write,
+> the DTO, the two dead readers, eleven fixtures, both race proofs and one data-migration
+> script — **with no DDL**. **Step 2 is the migration**,
+> `20260821090000_kyc_drop_nida_legacy`, in the release after it.
+>
+> 🔴 **THE ORDER IS THE SAFETY ARGUMENT, and the hazard was recorded five times with the
+> wrong blast radius.** Every statement of it — including the paragraph above — named
+> `/profile/kyc`, `/wallet/withdraw` and `/admin/kyc`. But `createSession` calls
+> `db.kyc.findByUserId` **unguarded on all three login paths** (`auth-service.ts:353`,
+> `:911`, `:952`), so dropping a column a previously-deployed container still selects is
+> **sign-in, platform-wide** — and `/api/health` never touches `KycSubmission`, so nothing
+> would have reported it.
+
 ### Where it lives
 
 `src/lib/id-documents.ts` (the catalogue — one entry per document, the ONLY place a format is

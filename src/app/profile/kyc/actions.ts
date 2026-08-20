@@ -11,7 +11,8 @@ import { ALL_DOC_SLOTS, isIdDocType, type KycDocSlot } from "@/lib/id-documents"
 /**
  * Player explicitly restarts a REJECTED submission.
  *
- * `startKyc()` CLEARS the record (nidaNumber, documents, rejectReason, rejectNote
+ * `startKyc()` CLEARS the record (the identity tuple, documents, rejectReason,
+ * rejectNote
  * — see kyc-service.ts:79-95). That is correct for a deliberate "start again", and
  * wrong for a page load: until 2026-07-31 `page.tsx` called it on every render,
  * which wiped the rejection one line before the page read it, so the rejection

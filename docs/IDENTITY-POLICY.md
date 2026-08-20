@@ -136,15 +136,55 @@ Guarded by `npm run test:cert-d1` (the migrations, both index names, and the vio
 handler) and `npm run test:id-documents` (the rule itself, for each of the four types,
 each beside a positive control). Proved red by `npm run red:id-documents`.
 
-### ⚠️ `nidaNumber` is DEPRECATED, and its removal is a filed step
+### 🔄 `nidaNumber` IS BEING REMOVED IN TWO RELEASES — and the ORDER is the reusable part
 
-`nidaNumber` / `nidaVerifiedAt` survive one release as a rolling-deploy mirror: Railway
-health-checks a new deployment while the OLD container is still serving, and Prisma
-selects every scalar column, so dropping them in the expand migration would 500 every
-KYC read on `/profile/kyc`, `/wallet/withdraw` and `/admin/kyc` for the length of the
-switch — on an identity path. They are written by exactly ONE site (and only for a
-NIDA), read by nothing, and `test:id-documents` §9 fails if anything reads one. The
-contract migration that drops them is recorded in
+`nidaNumber` / `nidaVerifiedAt` and their two indexes existed for exactly one release as
+a rolling-deploy mirror. They are removed in **two steps, in this order**:
+
+1. ✅ **DONE — the fields left `prisma/schema.prisma` and every layer, with NO DDL.**
+   After this release no deployed generated client names the columns. The columns are
+   still physically present in production, holding their old values, read by nothing.
+2. ⏳ **NEXT RELEASE — the columns leave the database**, as
+   `prisma/migrations/20260821090000_kyc_drop_nida_legacy`, which re-runs the backfill
+   in the same transaction before dropping (a row written by a pre-tuple container
+   during the expand deploy, or after a rollback, carries `nidaNumber` with no
+   `idNumber`, and dropping the column would destroy that player's identity number and
+   silently free a national ID that is in use).
+
+⛔ **NOT THE OTHER ORDER, AND NOT IN ONE RELEASE.** `package.json`'s `start` is
+`prisma migrate deploy && … && next start`, so a migration commits inside the NEW
+container *before it serves*, while the OLD one is still taking traffic; and
+`postinstall` runs `prisma generate`, which bakes the column list from `schema.prisma`,
+with Prisma selecting every scalar column. Dropping the columns while the
+previously-deployed container still named them would have thrown Postgres **42703** on
+every `db.kyc.findByUserId`.
+
+🔴 **AND THE BLAST RADIUS WAS RECORDED TOO SMALL FIVE TIMES.** Every earlier statement of
+this hazard — including this file's own previous revision — named `/profile/kyc`,
+`/wallet/withdraw` and `/admin/kyc`. But `createSession` calls `db.kyc.findByUserId`
+**unguarded on all three login paths** (`auth-service.ts:353`, `:911`, `:952`), so the
+real failure is **sign-in, platform-wide**. `/api/health` never touches `KycSubmission`
+and `qa:live` never logs in, so nothing in the platform would have reported it.
+
+⚠️ **"Read by nothing" was a claim nothing had ever tested.** It was true of product
+code and never of the store layer: `prisma-dal.findByNida` / `findActiveByNida` read the
+column and had zero callers, and the guard cited as proof — `test:id-documents` §9 —
+**allowlisted the very file those reads lived in**, with a locator (`kyc.`/`k.` dot-reads
+only) that could not have seen `row.nidaNumber` or a Prisma `where` key even
+unallowlisted. Its positive control fed it the one shape it already matched. §9 now scans
+**every** spelling across all of `src/`, with no allowlist, plus the schema and the
+absence of a number-only duplicate read, and carries five controls instead of one.
+
+⭐ **AND THE TUPLE INDEX BECOMES THE SOLE ENFORCEMENT** of one-document-one-account once
+step 2 lands. Until the contract step, a NIDA is covered twice — by
+`KycSubmission_idType_idNumber_active_key` and, redundantly, by the legacy
+`KycSubmission_nidaNumber_active_key`. `test:kyc` §2d therefore proves the rule at
+service level for a **passport** as well as a NIDA: the duplicate refusal, the
+`status <> 'REJECTED'` half that frees a rejected number, and a control showing the same
+digits under a different document type are a different document. All three are proved RED
+by mutation.
+
+The instruction, the dates and what deliberately did **not** change are in
 [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) (2026-08-20).
 
 ## 🔴 THE RESIDUAL GAP — stated, not closed

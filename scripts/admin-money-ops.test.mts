@@ -46,7 +46,7 @@ async function seedUser(id: string) {
 
 // ── forceReverifyKyc ─────────────────────────────────────────────────────────
 async function seedKyc(userId: string, status: string) {
-  await db.kyc.upsert({ id: `kyc_${userId}`, userId, status, rejectReason: null, rejectNote: null, nidaNumber: "19900101", nidaVerifiedAt: now, idType: "NIDA", idNumber: "19900101", idExpiry: null, idVerifiedAt: now, fullName: "Jay Tester", dob: "1990-01-01", documents: [{ docType: "NIDA_FRONT", storageKey: "a", uploadedAt: now }, { docType: "NIDA_BACK", storageKey: "b", uploadedAt: now }, { docType: "SELFIE", storageKey: "c", uploadedAt: now }], reviewerId: null, reviewedAt: null, submittedAt: now, createdAt: now, updatedAt: now });
+  await db.kyc.upsert({ id: `kyc_${userId}`, userId, status, rejectReason: null, rejectNote: null, idType: "NIDA", idNumber: "19900101", idExpiry: null, idVerifiedAt: now, fullName: "Jay Tester", dob: "1990-01-01", documents: [{ docType: "NIDA_FRONT", storageKey: "a", uploadedAt: now }, { docType: "NIDA_BACK", storageKey: "b", uploadedAt: now }, { docType: "SELFIE", storageKey: "c", uploadedAt: now }], reviewerId: null, reviewedAt: null, submittedAt: now, createdAt: now, updatedAt: now });
 }
 {
   await seedUser("usr_rv");

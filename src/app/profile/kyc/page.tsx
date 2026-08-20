@@ -39,8 +39,9 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/profile/kyc");
 
-  // READ BEFORE START. `startKyc()` RESETS a REJECTED submission — it nulls
-  // nidaNumber, nidaVerifiedAt, rejectReason, rejectNote and empties documents
+  // READ BEFORE START. `startKyc()` RESETS a REJECTED submission — it nulls the
+  // identity tuple (idType, idNumber, idExpiry, idVerifiedAt), rejectReason,
+  // rejectNote and empties documents
   // (kyc-service.ts:79-95). Calling it unconditionally here wiped the rejection
   // one line before the read below, so `rejected` was ALWAYS false and the
   // rejection panel further down was unreachable dead code: a player whose

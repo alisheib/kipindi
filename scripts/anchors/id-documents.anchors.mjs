@@ -32,6 +32,8 @@ const VAL = "src/lib/server/validators.ts";
 const MIG = "prisma/migrations/20260820120000_kyc_identity_document/migration.sql";
 const ROUTE = "src/app/api/admin/kyc-doc/route.ts";
 const PAGE = "src/app/profile/kyc/page.tsx";
+const SCHEMA = "prisma/schema.prisma";
+const STORE = "src/lib/server/store.ts";
 
 export const GATE_ID = ["tsx", "scripts/id-documents.test.mts"];
 export const GATE_D1 = ["tsx", "scripts/kyc-cert-d1.test.mts"];
@@ -229,11 +231,42 @@ export const CASES = [
   {
     name: "a surface reads the DEPRECATED nida* mirror, so one fact has two homes again",
     gate: GATE_ID,
-    expect: "nothing outside the store layer reads the deprecated nida* columns",
+    // ⚠️ RE-POINTED 2026-08-20 with the contract migration. It used to expect
+    // "nothing outside the store layer reads the deprecated nida* columns" — an
+    // assertion that became impossible to fail once the columns were dropped, and
+    // whose locator exempted the two files that actually held the reads.
+    expect: "no spelling of the deprecated nida* columns survives anywhere under src/",
     edits: [{
       file: PAGE,
       from: `  const idDone = !!kyc?.idVerifiedAt;`,
       to: `  const idDone = !!kyc?.idVerifiedAt || !!kyc?.nidaVerifiedAt;`,
+    }],
+  },
+  {
+    // ⭐ THE OTHER HALF OF THE CONTRACT STEP, and the one that would actually take
+    // production down. The column list every generated client selects comes from
+    // schema.prisma via `postinstall: prisma generate`; re-adding the field there
+    // re-adds `"nidaNumber"` to every KYC SELECT, and the column no longer exists.
+    name: "the deprecated column is re-added to the SCHEMA, so every KYC read names a dropped column",
+    gate: GATE_ID,
+    expect: "KycSubmission declares NO nida* field and NO index on one",
+    edits: [{
+      file: SCHEMA,
+      from: `  /// WHICH of the four documents this submission is built on. Null only before the`,
+      to: `  nidaNumber     String?\n  /// WHICH of the four documents this submission is built on. Null only before the`,
+    }],
+  },
+  {
+    // ⭐ A number-only duplicate read is the route AROUND a rejection: blocked on your
+    // NIDA, re-register on your passport. It was deleted with the column; this proves
+    // the guard notices if it comes back.
+    name: "a number-only duplicate read returns to the store layer",
+    gate: GATE_ID,
+    expect: "store.ts exposes no number-only duplicate read",
+    edits: [{
+      file: STORE,
+      from: `    findActiveByIdNumber: (`,
+      to: `    findByNida: (n: string): StoredKyc | null => null,\n    findActiveByIdNumber: (`,
     }],
   },
 ];

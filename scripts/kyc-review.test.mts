@@ -14,7 +14,7 @@ async function mkUser(id, status, email=null) {
   await db.user.create({ id, phoneE164:`+25570${String(++phoneSeq).padStart(6,"0")}`, passwordHash:null, passwordSalt:null, failedLoginCount:0, lockedUntil:null, role:"PLAYER", status, locale:"EN", displayName:"Test "+id.slice(-3), dob:"1990-01-01", region:"TZ", acceptedTermsVersion:"v1", acceptedTermsAt:now, marketingOptIn:false, twoFactorEnabled:false, avatarDataUrl:null, email, createdAt:now, updatedAt:now, lastLoginAt:now, closedAt:null });
 }
 async function mkKyc(userId, status) {
-  await db.kyc.upsert({ id:`kyc_${userId}`, userId, status, rejectReason:null, rejectNote:null, nidaNumber:"19900101", nidaVerifiedAt:now, idType:"NIDA", idNumber:"19900101", idExpiry:null, idVerifiedAt:now, fullName:"Jay Tester", dob:"1990-01-01", documents:[{docType:"NIDA_FRONT",storageKey:"a",uploadedAt:now},{docType:"NIDA_BACK",storageKey:"b",uploadedAt:now},{docType:"SELFIE",storageKey:"c",uploadedAt:now}], reviewerId:null, reviewedAt:null, submittedAt:now, createdAt:now, updatedAt:now });
+  await db.kyc.upsert({ id:`kyc_${userId}`, userId, status, rejectReason:null, rejectNote:null, idType:"NIDA", idNumber:"19900101", idExpiry:null, idVerifiedAt:now, fullName:"Jay Tester", dob:"1990-01-01", documents:[{docType:"NIDA_FRONT",storageKey:"a",uploadedAt:now},{docType:"NIDA_BACK",storageKey:"b",uploadedAt:now},{docType:"SELFIE",storageKey:"c",uploadedAt:now}], reviewerId:null, reviewedAt:null, submittedAt:now, createdAt:now, updatedAt:now });
 }
 const OFFICER = "usr_officer0001";
 await mkUser(OFFICER, "ACTIVE");
