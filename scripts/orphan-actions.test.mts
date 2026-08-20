@@ -80,7 +80,23 @@ const files: string[] = [];
   }
 })(SRC);
 
-const text = new Map(files.map((f) => [f, readFileSync(f, "utf8")]));
+/**
+ * ⚠️ COMMENTS ARE STRIPPED BEFORE ANY CALLER SEARCH (2026-08-20).
+ *
+ * This suite decides "is X still orphaned?" with `new RegExp(\`\b${name}\b\`)` over whole
+ * files. Without stripping, a file that merely NAMES an action in prose counts as a caller —
+ * and on 2026-08-20 that is exactly what happened: a comment in `privacy.ts` explaining *why*
+ * `fileDsarAction` is a declared orphan (E-33) made this suite report that it "now HAS a
+ * caller", i.e. the explanation of the defect was read as the defect being fixed.
+ *
+ * ⛔ Do not solve that by rewording the comment. The repo has already been here once —
+ * `admin-2fa-honesty.test.mts` carries the note "that is the third time in this session a
+ * guard of mine read prose instead of code" and strips comments for the same reason. A guard
+ * that cannot be written about is a guard that stops being documented.
+ */
+const stripComments = (src: string) =>
+  src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+const text = new Map(files.map((f) => [f, stripComments(readFileSync(f, "utf8"))]));
 const actionFiles = files.filter((f) => /[\\/]admin[\\/].*action.*\.ts$/i.test(f));
 
 console.log(`\n§1 · every gated admin action is reachable from the product (${actionFiles.length} action files)`);

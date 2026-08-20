@@ -6,7 +6,7 @@ Written 2026-07-31. **Read this before opening anything else in here.**
 [`50pick-updown-operator-guide.pdf`](50pick-updown-operator-guide.pdf) — the Up & Down operator
 contract. Everything else in here is for whoever builds and runs the platform.
 
-There are **64 files** at this level — this index plus 63 documents — and five
+There are **65 files** at this level — this index plus 64 documents — and five
 subdirectories with their own indexes: [`design-system/`](design-system/README.md) (the index of
 the delivered design archive — **record, not rule**; the design rule book is
 [`DESIGN_AUTHORITY.md`](DESIGN_AUTHORITY.md) and nothing else is needed to build correctly),
@@ -88,6 +88,7 @@ to teal and resurrects the killed light theme.
 | [`LAUNCH-GO-NO-GO.md`](LAUNCH-GO-NO-GO.md) | 🔵 LIVE | The env/infra walk-down before real money. |
 | [`CLOUDFLARE-SETUP-GUIDE.md`](CLOUDFLARE-SETUP-GUIDE.md) | ⚪ RECORD | Mostly done. ⚠️ Keep the mail-records section — it is what stops `ali.sheib@50pick.tz` breaking. |
 | [`DATA-LAYER.md`](DATA-LAYER.md) | 🟢 LAW | Read before touching any persistence. |
+| [`DATA-RETENTION.md`](DATA-RETENTION.md) | 🟢 LAW | **The authority for every retention period.** Read the Enforcement column before quoting a row to anybody — it separates a control from an intention, which is the defect it was written to close (audit F-01). ⚠️ §2 holds the unresolved marketing-consent conflict and the three other answers owed by Ali. |
 | [`FLOWS.md`](FLOWS.md) | 🟢 LAW | Every redirect, gate and recovery path, with file references. |
 | [`EMAIL-SIGNATURES.md`](EMAIL-SIGNATURES.md) | ⚪ RECORD | Signature images hosted on the domain. |
 | [`PARALLEL-SESSION-COORDINATION.md`](PARALLEL-SESSION-COORDINATION.md) | ⚫ HISTORICAL | ⚠️ Written for a specific Session M / Session E split whose A2–A5 scope is **finished**. The *hazard* it describes is still real — parallel lanes still run here, and an unmerged 28-commit branch is open — but the role assignments no longer apply. Use a git worktree per lane. |

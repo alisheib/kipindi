@@ -58,6 +58,7 @@
     "test:retention": "tsx scripts/retention.test.mts",
     "migrate:kyc-r2": "tsx scripts/migrate-kyc-inline-to-r2.mts",
     "verify:kyc-storage": "tsx scripts/verify-kyc-storage.mts",
+    "qa:kyc-r2-read": "node scripts/live-kyc-r2-read-drive.mjs",
     "test:updown-quickbet": "tsx scripts/updown-quickbet.test.mts",
     "test:updown-heal": "tsx scripts/updown-heal.test.mts",
     "test:updown-rearm": "tsx scripts/updown-rearm.test.mts",
