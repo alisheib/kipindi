@@ -52,7 +52,8 @@ console.log(`    before: clientStatus=${before.clientStatus} connected=${before.
 
 // ── 2 · one ordinary request down a Redis-backed path ────────────────────────────────
 const browser = await chromium.launch();
-const page = await browser.newContext({ viewport: { width: 1200, height: 900 } }).newPage();
+const ctx = await browser.newContext({ viewport: { width: 1200, height: 900 } });
+const page = await ctx.newPage();
 await page.goto(`${BASE}/auth/forgot-password`, { waitUntil: "domcontentloaded" });
 const phoneBox = page.locator('input[inputmode="numeric"], input[type="tel"]').first();
 await phoneBox.fill(PROBE_MSISDN);

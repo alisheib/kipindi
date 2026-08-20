@@ -50,7 +50,31 @@
 > Scan) are the `productLine: "ALL"` reads on `/results`, `/fairness` and the app-shell ticker,
 > which the audit never examined.
 >
-> ## 🟠 FOUR ANSWERS ARE OWED BY ALI before the next data session
+> ## ✅ 2026-08-21 — the four answers are IN, and Redis is armed
+>
+> Ali answered all four on 2026-08-21; reasoning per item in
+> [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) § *2026-08-21*, summarised in
+> [`DATA-RETENTION.md`](DATA-RETENTION.md) §2. **Two are implemented** (marketing consent
+> corrected DOWN to the player's 2 years — you may not retain longer than you disclosed to the
+> data subject; support tickets marked N/A until a ticket store exists). **Two are decided and
+> unblocked but NOT built:** the DSAR intake, and `anonymizeClosedAccount` — the latter
+> deliberately, because it touches a P0 AML control and needs a suite proving the identity tuple
+> still collides after erasure. ⚠️ Its mechanism is a **keyed HMAC of `idNumber`, never NULL**:
+> nulling it frees the partial unique index that is the sole enforcement of
+> one-document-one-account.
+>
+> **Redis armed and verified** (`REDIS_ENABLED=true` + `REDIS_URL` as a service reference),
+> closing audit **H2** — two containers had each been granting the full per-phone OTP/login/
+> register budget. ⛔ `family: 0` was load-bearing: ioredis does IPv4-only lookups, Railway's
+> private network needs dual-stack, and because the module is fail-open the failure would have
+> been silent. `npm run qa:redis-armed` proves it behaviourally, 8/8.
+>
+> ⚠️ Two self-corrections worth reading, both the same shape as the bugs they followed: my
+> `/results` memo removes database scans but does NOT make the page faster, and my new Redis
+> health line reported UNREACHABLE for a lazy-not-yet-built client. Both fixed and both recorded
+> at the code.
+>
+> ## (superseded) FOUR ANSWERS WERE OWED BY ALI
 >
 > All four are in [`DATA-RETENTION.md`](DATA-RETENTION.md) §2:
 >

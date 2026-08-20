@@ -118,9 +118,33 @@ control reads as a defect to whoever is watching logs — the same class of prob
 crying-wolf verifier fixed above, and it trains an operator to ignore `prisma:error`. Fix is to
 pre-check or to quiet that one violation, not to change the constraint. Not done here.
 
-Also noted while verifying the deploy: **a Redis service is provisioned and Online**, but
-`REDIS_URL` is not among the 50pick service's variables — so it is running, and being paid for,
-while the application cannot see it. Either arm it or remove it.
+**✅ CLOSED 2026-08-21 — Redis is armed and verified in the live request path.** It had been
+Online and paid for while the application could not see it, because arming needs two variables
+and only one existed. Both are now set (`REDIS_ENABLED=true`, and `REDIS_URL` as a service
+*reference* so it survives a credential rotation). This closes **audit H2**: two containers were
+each granting the FULL per-phone OTP, login and register budget, doubling every ceiling the
+compliance story claims.
+
+Two things worth keeping from doing it:
+
+- 🔴 **`ioredis` does IPv4-only DNS lookups and Railway's private network needs dual-stack.**
+  Without `family: 0` the connection fails with `ENOTFOUND redis.railway.internal` — and
+  because this module is **fail-open**, that failure would have been INVISIBLE: every caller
+  would have kept using the in-memory bucket while the variable list read "armed". A fail-open
+  layer cannot report its own misconfiguration, which is the whole argument for verifying
+  behaviour rather than presence. Proven from inside the container: PING → PONG, SET/GET round
+  trip, `status: ready`.
+- ⚠️ **The health line I added to report this then cried wolf itself.** It read
+  `connected ? "cross-container" : "ARMED BUT UNREACHABLE"` and duly said UNREACHABLE while
+  Redis was perfectly fine — the module is lazy, so seconds after boot with no login yet there
+  was no client at all. `clientStatus: "none"` means *not built*, not *cannot connect*. Same
+  defect as the chain verifier above, made by me, one commit after fixing theirs. There is a
+  fourth state now, plus a credential-scrubbed `lastError`, because "UNREACHABLE" with no
+  reason attached is a diagnostic dead end.
+
+Verified end to end by `npm run qa:redis-armed` (8/8): one ordinary forgot-password request
+moves `clientStatus` from `none` to `ready` and `state` to `cross-container` — evidence the
+request went **through** Redis rather than around it.
 
 ### Still open
 
