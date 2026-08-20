@@ -115,9 +115,13 @@ try {
     await p.goto(`${BASE}/wallet/withdraw`, { waitUntil: "networkidle" });
     await p.waitForTimeout(600);
     const body = (await p.locator("body").textContent()) ?? "";
-    // The page itself should render but signal that KYC is required.
-    log("4a /wallet/withdraw signals KYC requirement",
-        /KYC|Verify.*identity|Thibitisha|verify/i.test(body));
+    // 🔴 INVERTED 2026-08-20. This asserted the page "signals KYC requirement" via
+    // /KYC|verify/i — which the page still satisfies through "Secured by KYC & AML" long
+    // after the requirement itself was removed (Board comment #1, 2026-08-19). It measured a
+    // vocabulary, not a requirement, so it could never have detected the change.
+    log("4a /wallet/withdraw renders the form, not an identity requirement",
+        (await p.locator("form").count()) > 0
+        && !/verify\s+your\s+(identity|ID)[^.]{0,40}(to|before)\s+withdraw/i.test(body));
     await p.close();
     await ctx.close();
   }

@@ -1,3 +1,84 @@
+> # ⭐ CURRENT TRUTH — 2026-08-20 (after session 52). READ THIS BLOCK, THEN STOP.
+>
+> Everything below this block is **history**: correct when written, superseded in places. This block
+> is the whole remaining programme, in the order to do it. ⛔ **One door per unit** — each item names
+> its commission or its register row; do not re-derive scope from the prose further down.
+>
+> ## THE QUEUE
+>
+> | # | Unit | Where the scope lives | State |
+> |---|---|---|---|
+> | ~~**1**~~ | ~~**B · #1 — identity verification stops gating withdrawal**~~ | [`BOARD-DISCLOSURE-B-E.md`](BOARD-DISCLOSURE-B-E.md) · `E-175` | ✅ **WRITTEN AND GREEN (session 53).** Service + page in one commit, `kyc_required` fully retired, all four traps closed, 4 live drives re-anchored, 12 mutations. ⛔ **The real-money seal was WAIVED BY ALI**, so the payout leg is unproven on production — `E-177` |
+> | **2** | **C · #2c — a player can see the next round is playable** | [`SESSION-PROMPT-JAY-COMMENTS.md`](SESSION-PROMPT-JAY-COMMENTS.md) § C | ▶ **START HERE.** ⚠️ The mechanism SHIPPED (`E-166`). What is owed is a **drive at 5 widths × 3 languages** answering one question from the frames — do not rebuild it |
+> | **3** | **D · #6 — the date beside every timer** | § D | Not built. ⛔ One formatter, never a new `toISOString().slice()` |
+> | **4** | **E · #8 — prefill the registered number** | § E | Not built. ⛔ A placeholder must never become a value |
+> | **5** | **F · #5 — remove the Cash Back Deposit promo** | § F | Not built. ⛔ Switch it off, never delete a granted bonus |
+> | **6** | **G · #3 — chain removal that cannot destroy the audit trail** | § G | Not built |
+> | **7** | **H · #14 — re-categorise a market** | § H | Not built |
+> | **8** | **I · #7 — the Selcom page** | § I | Not built |
+> | **9** | **J · #15 — the bonus system, proved end to end** | § J | Not built. ⚠️ Its withdrawal leg must run as an **unverified** player once B lands |
+> | **10** | **K · #12 + #13 — customer care and its mailbox** | § K | Not built. ⛔ Prove the tier by **refusal**, with a positive control in the same run |
+> | **11** | **L · #11 — the new markets** | § L | Partly answerable now: **GBP/USD** is catalogued and can be enabled; **KES/ZAR** need Ali's direction confirm; **S&P 500 needs a data-tier PURCHASE** and a third calendar shape |
+> | **12** | **M · #9 — per-bet Up & Down notifications, behind a switch** | § M | Built and OFF. Needs Ali's word before it goes on |
+>
+> ⭐ **Unit A (#10 + #4) is DONE** — `E-170`, settled Up & Down rounds reach `/results`.
+>
+> ## PLATFORM DEBT, worth a session of its own
+>
+> - 🔴 **`E-161` — `tsc` does not typecheck `.mts`.** Sized 2026-08-20: **297 files, 1,007 errors**,
+>   mostly `TS18048` on un-narrowed `ServiceResult` reads. Not an `include` one-liner: a
+>   scripts-scoped tsconfig plus ~1,000 mechanical narrowings. ⛔ **This is not cosmetic** — it is
+>   why eleven fixtures kept writing a deleted column while `npm run typecheck` exited 0.
+> - 🟠 **`E-172`'s survivor** — the guest header's `Sign up` clipped at **320px**, ~63 identical
+>   failures against production. It is the SHARED header; give it its own commit.
+> - 🟠 **`E-165`** — `qa:refusal-frames`' drive half, open since session 47.
+> - ⏳ **Up & Down chains:** BTC/USD 3m and ETH/USD 3m are **STOPPED on production**; a manual
+>   **Generate** still writes a schedule onto a stopped chain (a product decision, `FAILURE-INVENTORY.md` §7.4).
+> - ⏳ **A stored `Transaction.description` is ONE English string**, so SW/ZH players read English in
+>   the wallet. A rendering change, not a word change — store the instant and the tokens, format at
+>   render. Same class as the `§L` label law.
+> - ⏳ **`admin/markets/[id]:384` shows YES/NO on an Up & Down round.** The `§L` ratchet stands at
+>   **14** and may only go down.
+> - ⏳ **Design batch 6** (Ali, 2026-08-14): the `/markets` mobile filter bar 220px → under 120, and
+>   chart buttons 40 → 44px. ⛔ RULED OUT by him: compact list · typeahead · admin rails ·
+>   `/wallet` tabs · a `rounded-pill` sweep.
+>
+> - ⏳ **`E-177` — Unit B's payout leg is UNPROVEN on production, by Ali's decision.** The seal moves
+>   real money, and he waived it: *"proceed without this real test, if anything happens we detect
+>   later in live testing."* So nobody has watched an unverified player actually be PAID, and three
+>   things rest on a DB read nobody has taken: the payout completes · `withdraw.initiated` carries
+>   `kycStatus` · `withdraw.unverified_payer` lands with a matching `txnId`. 🔑 A zero-money variant
+>   exists — a gross ≥ TZS 1,000,000 request returns at the AML hold before any gateway adapter is
+>   touched, so both audit rows exist while nothing leaves the platform.
+> - ⏳ **`faq3a` tells players a withdrawal needs "an OTP code", in all three languages.** No OTP is
+>   collected. Found while removing the identity gate, deliberately NOT folded into that commit.
+>
+> ## OWED BY ALI — do not chase these, and do not build around them
+>
+> - 🔴 **Rotate the owner console password** (`POLL-OPEN-FINDINGS.md` **OP3**). It reached a pushed
+>   branch in plaintext, *"redaction does not un-publish"*, and it still signs in — confirmed
+>   2026-08-20. ⚪ **Ali's call, parked by him on 2026-08-20: "keep for later, I do that one."**
+> - **A6 / admin 2FA** — parked by Ali; production reports `adminTotp: DISABLED`.
+> - **Board answers still outstanding:** the S&P 500 data-tier purchase · the `USD/KES` `USD/ZAR`
+>   direction · whether #12 and #13 are one feature · whether the #9 switch goes on.
+> - **Before public launch:** remove the operator credit tools, and rotate the DB password that
+>   leaked into a doc.
+>
+> ## THE RULES THAT KEEP BITING — read before you write code
+>
+> 1. **A green suite is not evidence.** Drive it on production and read the database, not the page.
+>    `E-174` was green three ways before a DB read proved it.
+> 2. **An assertion phrased as the current defect goes RED when you fix it.** Invert it, never relax
+>    it — relaxing deletes the coverage instead of moving it. Four of these landed in one session.
+> 3. **A guard with an ALLOWLIST may be exempting the very files that hold the thing it forbids.**
+>    Read the allowlist first and ask what is left to catch.
+> 4. **Prove your own new check by mutation.** Two of mine were green over nothing until a mutation
+>    said so — one measured an unrelated string, one matched its own explanatory comment.
+> 5. **A register row is ONE line.** A multi-line row is not a table row, and the handoff guard then
+>    reports "points at a finding with no row".
+
+---
+
 STATUS: the next plan. Written 2026-07-29, immediately after the design system was
 frozen and shipped. **Revised 2026-07-31 against the live platform, not against memory.**
 

@@ -169,16 +169,26 @@ export function KycDecisionRail({
               </button>
             }
             title="Approve identity · Idhinisha kitambulisho"
-            /* E-9 (officer-facing twin of E-5). This used to read "unlocks full
-               real-money deposits, play and withdrawals" — wrong on two of the three,
-               measured at the ENFORCEMENT layer, not the UI: deposits are gated on a
-               confirmed email address (`wallet-service.ts:121`), and play is not gated
-               on identity at all (`market-service.ts` contains no KYC reference in
-               2,986 lines). Only the withdrawal gate turns on this decision
-               (`wallet-service.ts:1226`). Misstating the consequence of a compliance
-               action, in the confirmation the accountable officer reads, is worse than
-               the same error shown to a player. */
-            body={<>This marks the player&apos;s identity as <strong>verified</strong> and opens the <strong>withdrawal</strong> gate — that is what this decision unlocks. Deposits are gated on a confirmed email address, not on this; play is not gated on identity. Confirm the checklist reflects the documents you actually reviewed.</>}
+            /* E-9 (officer-facing twin of E-5). Measured at the ENFORCEMENT layer, not
+               the UI. This sentence has been wrong twice, in opposite directions:
+                 · It first read "unlocks full real-money deposits, play and withdrawals"
+                   — wrong on two of three. Deposits are gated on a confirmed email
+                   address (`deposit()` in wallet-service), and play is not gated on
+                   identity at all (`market-service.ts` contains no KYC reference).
+                 · It then read "opens the withdrawal gate", which was true until
+                   2026-08-20 and is now false: identity verification stopped being a
+                   precondition of withdrawal on the Gaming Board's instruction (comment
+                   #1, relayed by the owner 2026-08-19), and `withdraw()` no longer
+                   refuses on identity. An officer reading "this opens the withdrawal
+                   gate" would believe they were granting a permission that is already
+                   universal — and, worse, would believe withholding approval withholds
+                   it. `kyc-approved-copy.test.mts` REQUIRED the old sentence; that
+                   assertion is inverted rather than relaxed, because a green suite
+                   holding a false statement in front of the accountable officer at the
+                   moment of decision is exactly what this suite exists to prevent.
+               ⛔ Do not re-add a money consequence here. What approval does is record an
+               identity and bind a document. docs/BOARD-DISCLOSURE-B-E.md §3-§4. */
+            body={<>This records the player&apos;s identity as <strong>verified</strong> and binds this document to this account, so no other account can claim it. It is audit-logged. It does <strong>not</strong> open any money gate: withdrawals no longer depend on identity verification, deposits are gated on a confirmed email address, and play is not gated on identity. Confirm the checklist reflects the documents you actually reviewed.</>}
             confirmLabel="Yes, approve identity"
             tone="brand"
             /* E-4: the attestations travel WITH the decision. They used to arm this

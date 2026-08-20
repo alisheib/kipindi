@@ -1,10 +1,16 @@
 "use client";
 
 /** Force re-verify KYC (audit §9.3 #4). Moves an APPROVED player to
- *  re-verification (re-locks withdrawals + reopens resubmit). Reason required +
- *  audit-logged server-side. Shown only when KYC is APPROVED. The confirm happens
- *  in the kit <Modal> (portal + focus-trap + scroll-lock + Esc) — re-locking
- *  withdrawals is money-critical and deserves a deliberate surface, not an inline link. */
+ *  re-verification (reopens resubmit). Reason required + audit-logged server-side.
+ *  Shown only when KYC is APPROVED. The confirm happens in the kit <Modal> (portal +
+ *  focus-trap + scroll-lock + Esc) — changing a player's compliance state deserves a
+ *  deliberate surface, not an inline link.
+ *  🔴 IT DOES NOT RE-LOCK WITHDRAWALS. It said so here, in the modal body and in the
+ *  success toast until 2026-08-20; the withdrawal identity gate is gone (Board comment
+ *  #1, 2026-08-19). Telling an officer this stops a payout, at the moment they choose
+ *  it to stop a payout, is the officer-facing twin of E-5. To stop money leaving:
+ *  freeze the wallet, pause payouts, or the AML ≥ TZS 1,000,000 two-officer hold.
+ *  docs/BOARD-DISCLOSURE-B-E.md §6.1. */
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
@@ -39,7 +45,7 @@ export function ForceReverifyControls({ userId }: { userId: string }) {
       if (!r.ok) { toast({ title: "Blocked", description: r.error, variant: "danger" }); return; }
       setOpen(false); setReason("");
       router.refresh();
-      toast({ title: "Re-verification required", description: "Withdrawals re-locked; player asked to re-submit.", variant: "warning" });
+      toast({ title: "Re-verification required", description: "Player asked to re-submit documents. This does not stop withdrawals — freeze the wallet or pause payouts for that.", variant: "warning" });
     });
   };
 
@@ -63,7 +69,7 @@ export function ForceReverifyControls({ userId }: { userId: string }) {
         <p className="font-mono text-[10px] uppercase tracking-[0.18em] font-bold text-text mb-1">KYC · Re-verify</p>
         <h3 className="font-display text-[18px] font-bold text-text leading-tight">Force KYC re-verification?</h3>
         <p className="mt-1 text-[12.5px] italic text-text-subtle">
-          Moves this APPROVED player back to re-verification: withdrawals re-lock and the player is asked to re-submit. Audit-logged.
+          Moves this APPROVED player back to re-verification and asks them to re-submit their documents. Audit-logged. It does <strong>not</strong> stop withdrawals — to hold money, freeze the wallet or pause payouts.
         </p>
         <label className="mt-3 block">
           <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle">Reason · Sababu (required, audit-logged)</span>

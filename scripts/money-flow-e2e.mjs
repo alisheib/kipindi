@@ -134,7 +134,14 @@ try {
     await p.goto(`${BASE}/wallet/withdraw`, { waitUntil: "networkidle" });
     await p.waitForTimeout(400);
     const body = (await p.locator("body").textContent()) ?? "";
-    log("07 /wallet/withdraw renders KYC + tax notice", /KYC|withholding|tax/i.test(body));
+    // ⛔ THIS LINE NEVER PROVED ANYTHING ABOUT KYC. It was named "renders KYC + tax notice"
+    // and tested /KYC|withholding|tax/i — an OR. The tax notice alone satisfied it, so it
+    // passed with every KYC word on the page deleted, and would have passed identically
+    // before and after the withdrawal identity gate was removed on 2026-08-20. Split into two
+    // assertions that can each fail on their own.
+    log("07a /wallet/withdraw renders the fee/tax notice", /withholding|tax|ada|费/i.test(body));
+    log("07b …and does not require identity verification to withdraw",
+        !/verify\s+your\s+(identity|ID)[^.]{0,40}(to|before)\s+withdraw/i.test(body));
     await p.close();
   }
 

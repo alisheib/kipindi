@@ -45,11 +45,19 @@ const KYC_PAGE_RAW = read("../src/app/profile/kyc/page.tsx");
 const DEPOSIT_RAW = read("../src/app/wallet/deposit/page.tsx");
 const WALLET = read("../src/lib/server/wallet-service.ts");     // the enforcement, not the page
 const MARKET = read("../src/lib/server/market-service.ts");
-const RAIL_S = read("../src/app/admin/kyc/[id]/kyc-decision-rail.tsx");
+const RAIL_RAW = read("../src/app/admin/kyc/[id]/kyc-decision-rail.tsx");
 const stripComments = (s: string) =>
   s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
 const KYC_PAGE = stripComments(KYC_PAGE_RAW);
 const DEPOSIT = stripComments(DEPOSIT_RAW);
+// 🔴 THE RAIL IS NOW STRIPPED TOO, AND IT SHOULD HAVE BEEN ALL ALONG. §7's "dead promise"
+// assertions run against this file, and the fix's own comment deliberately QUOTES the wrong
+// sentence so the next reader knows what was wrong — exactly as §4 already says of the page.
+// Unstripped, that assertion passed only because the old comment happened to WRAP the quoted
+// string across two lines, putting a newline inside the regex's literal. Reflowing a comment
+// would have reddened it; quoting the string on one line did, on 2026-08-20. What must not
+// survive is a RENDERED promise, never a documented one.
+const RAIL_S = stripComments(RAIL_RAW);
 
 const LOCALES = ["en", "sw", "zh"] as const;
 
@@ -151,8 +159,25 @@ ok("the deposit page does NOT gate on KYC approval",
 // that is what makes the claim true or false.
 ok("🔴 the deposit SERVICE enforces email verification, not KYC",
   /if \(!depositor\?\.emailVerifiedAt\)/.test(WALLET));
-ok("🔴 the withdraw SERVICE is what enforces KYC APPROVED",
-  /kyc\?\.status !== "APPROVED"/.test(WALLET) && /withdraw\.kyc_blocked/.test(WALLET));
+// 🔴 INVERTED 2026-08-20, NOT RELAXED. This asserted that the withdraw SERVICE enforces
+// KYC APPROVED. It stopped doing so on the Gaming Board's instruction (comment #1, relayed
+// by the owner 2026-08-19), so the assertion had to MOVE, not go away: deleting it would
+// have left the platform with no proof either way, on the money path, at the exact moment
+// the behaviour changed. Three things are pinned instead — the gate is ABSENT, the identity
+// read SURVIVES, and the record that replaced the gate is actually emitted.
+const WALLET_CODE = stripComments(WALLET);
+ok("🔴 the withdraw SERVICE no longer refuses on identity",
+  !/kyc\?\.status !== "APPROVED"/.test(WALLET_CODE) && !/withdraw\.kyc_blocked/.test(WALLET_CODE),
+  "the withdrawal identity gate is back — docs/BOARD-DISCLOSURE-B-E.md is then false to the Board");
+ok("🔴 …but it STILL READS identity, because the record depends on it",
+  /db\.kyc\.findByUserId\(userId\)/.test(WALLET_CODE) && /kycStatus\s*=\s*kyc\?\.status/.test(WALLET_CODE),
+  "without this read the platform cannot answer 'which payouts went to unverified accounts?'");
+ok("🔴 …and EVERY withdrawal is stamped with it",
+  /action:\s*"withdraw\.initiated"[\s\S]{0,400}?kycStatus/.test(WALLET_CODE),
+  "a stamp missing from withdraw.initiated makes its own absence ambiguous");
+ok("🔴 …and an unverified payer produces an AWAITED compliance fact carrying the txn",
+  /await audit\(\{[\s\S]{0,600}?action:\s*"withdraw\.unverified_payer"[\s\S]{0,600}?targetId:\s*txnId/.test(WALLET_CODE),
+  "not awaited, or not carrying txnId, and the record cannot be joined to the payout it explains");
 ok("play is not gated on identity at all",
   !/kyc/i.test(MARKET),
   "market-service carries no KYC reference; if it gains one, every 'what approval unlocks' string moves");
@@ -163,8 +188,23 @@ section("7 · the officer's confirm dialog");
 ok("🔴 the approve dialog no longer claims it unlocks deposits or play",
   !/unlocks full real-money deposits, play and withdrawals/.test(RAIL_S),
   "the officer-facing twin of E-5 — misstating a compliance action to the accountable officer");
-ok("…and it names the withdrawal gate as what the decision opens",
-  /opens the <strong>withdrawal<\/strong> gate/.test(RAIL_S));
+// 🔴 INVERTED 2026-08-20. This REQUIRED the dialog to say approval "opens the withdrawal
+// gate". True when written; false from the moment the gate came out — and a green suite
+// holding a false statement in front of the accountable compliance officer, at the instant
+// they make the decision, is the officer-facing twin of E-5 that this very section exists to
+// catch. So the requirement is reversed and replaced with what approval actually does.
+ok("🔴 the approve dialog no longer claims it opens a withdrawal gate",
+  !/opens the <strong>withdrawal<\/strong> gate/.test(RAIL_S),
+  "approval opens nothing in the money path since 2026-08-20");
+ok("…and it says plainly that no money gate turns on this decision",
+  /does <strong>not<\/strong> open any money gate/.test(RAIL_S),
+  "an officer must not infer a consequence the code does not have");
+ok("…and it still names what approval DOES do — record an identity, bind the document",
+  /binds this document to this account/.test(RAIL_S) && /verified/.test(RAIL_S));
+// ⭐ CONTROL · the three assertions above read a real file, not an empty string. If `RAIL_S`
+// ever failed to load, every `!/…/` above would pass vacuously.
+ok("§7.control · the rail source actually loaded",
+  RAIL_S.length > 2_000 && /Approve identity/.test(RAIL_S));
 
 // ── 6 · The gate's meaning, straight from the source ───────────────────────
 // The whole conditional hangs on what `unavailable` means. Pin it.

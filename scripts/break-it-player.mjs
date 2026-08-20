@@ -320,12 +320,38 @@ console.log("\n=== G · PRIVILEGE ESCALATION ===");
 // =========================================================
 // H · KYC GATE on withdrawal
 // =========================================================
-console.log("\n=== H · KYC GATE on withdraw ===");
+console.log("\n=== H · WITHDRAW IS OPEN TO AN UNVERIFIED PLAYER ===");
+// 🔴 INVERTED 2026-08-20. This asserted "unverified user sees KYC gate copy" by matching
+// /verify|kyc|nida/i over the whole page body. Identity verification stopped being a
+// precondition of withdrawal (Board comment #1, relayed by the owner 2026-08-19) — and the
+// page still carries the words "Secured by KYC & AML", so the OLD assertion would have gone
+// on reporting a gate that no longer exists, indefinitely, with nothing failing.
+// ⛔ A word is not a control. What is measured now is the CONTROL: is the form usable.
 {
   await p.goto(`${BASE}/wallet/withdraw`, { waitUntil: "networkidle" });
   const text = (await p.locator("body").textContent()) ?? "";
-  const blocks = /verify|kyc|hujahakikishwa|complete.*verification|nida/i.test(text);
-  log("H1 unverified user sees KYC gate copy on /wallet/withdraw", blocks, `len=${text.length}`);
+  // Payouts being SHUT also disables this form, for a completely different reason. Read that
+  // first, or a paused payout rail reads as an identity gate — they are indistinguishable
+  // from the outside, and conflating them is how "the game is closed" became "the game is
+  // broken" five times in this campaign.
+  const payoutsShut = await p.locator("text=/payouts|malipo|提现/i").first().isVisible().catch(() => false)
+    && await p.locator("fieldset[disabled]").first().isVisible().catch(() => false);
+  const fieldsetDisabled = (await p.locator("fieldset[disabled]").count()) > 0;
+  // The instruction that would come back if someone re-added the gate — an actionable
+  // "verify before you can withdraw", not the mere word KYC.
+  const tellsThemToVerifyFirst =
+    /verify\s+your\s+(identity|ID)[^.]{0,40}(to|before)\s+withdraw/i.test(text) ||
+    /thibitisha[^.]{0,40}(kabla|ili)\s+ku(toa|toa pesa)/i.test(text) ||
+    /(提现|提款)[^。]{0,20}(需|须)[^。]{0,10}验证/.test(text);
+  log("H1 the withdraw form is NOT closed to an unverified player",
+    !fieldsetDisabled || payoutsShut,
+    fieldsetDisabled ? (payoutsShut ? "disabled by the PAYOUT PAUSE, not identity — environment, not a defect" : "🔴 form disabled with payouts open") : "form open");
+  log("H2 …and the page does not instruct them to verify before withdrawing",
+    !tellsThemToVerifyFirst, `len=${text.length}`);
+  // ⭐ CONTROL · both checks above are absences. If the page failed to render at all they
+  // would pass over an empty body, which is precisely the vacuous shape being replaced.
+  log("H3 control · the withdraw page actually rendered",
+    text.length > 400 && (await p.locator("form").count()) > 0, `len=${text.length}`);
 }
 
 // =========================================================

@@ -480,7 +480,6 @@ console.log("\n§8b · the reasons that replaced the deleted phrase tests");
       ["deposit_limit", "errDepositLimit"],
       ["sof_required", "errSofRequired"],
       ["email_unverified", "errEmailUnverified"],
-      ["kyc_required", "errVerifyIdentity"],
       // ── the KYC family · every one of these was reachable ONLY through a phrase test ──
       ["id_taken", "errIdTaken"],
       ["id_not_verified", "errIdNotVerified"],
@@ -555,8 +554,12 @@ console.log("\n§8c · the services still emit the reasons that replaced the phr
       "docs_required", "extra_docs_required",
       "docs_locked", "no_extra_request", "doc_image_type", "doc_too_large",
     ] },
+    // ⛔ `kyc_required` IS DELIBERATELY ABSENT FROM THIS LIST, and its absence is
+    // asserted separately below rather than left implicit. It was retired on 2026-08-20
+    // with the withdrawal identity gate (Board comment #1, 2026-08-19): union member,
+    // registry row, three dictionary keys and this pin went together.
     { file: "src/lib/server/wallet-service.ts", reasons: [
-      "deposit_limit", "sof_required", "withdraw_below_min", "kyc_required",
+      "deposit_limit", "sof_required", "withdraw_below_min",
     ] },
     // ⭐ THE ONE THAT CLOSED `docs/RULES.md` §2.9's ⏳. `checkLossLimit` has exactly ONE caller
     // — `buyPosition` — and it is the sole route by which an RG daily-loss refusal can reach a
@@ -577,6 +580,40 @@ console.log("\n§8c · the services still emit the reasons that replaced the phr
   const kyc = readFileSync("src/lib/server/kyc-service.ts", "utf8");
   ok("8c.control · the pin can fail — an unemitted reason reads as absent",
      !/reason:\s*"stake_below_min"/.test(kyc));
+
+  // ── 8c.retired · `kyc_required` IS GONE, AND THAT IS ASSERTED, NOT ASSUMED ──────
+  // ⛔ INVERTED, NOT DELETED (2026-08-20). Three assertions used to prove this reason was
+  // wired end to end. Deleting them would have left the retirement unmeasured, and the
+  // specific way a half-retirement ships is silent: drop the registry row and the three
+  // dictionary keys are orphaned with NOTHING detecting it. So the same three layers are
+  // still checked — in the opposite direction.
+  // Comments are stripped line-initially FIRST, on both files. Both carry a retirement
+  // note that deliberately NAMES the retired code so the next reader knows why it is
+  // absent — and an assertion that matched its own explanatory comment would go red on a
+  // correct tree while a real re-addition slipped past. That exact defect has shipped
+  // here before (a migration guard that fired on its own comment).
+  const stripComments = (s: string) => s.split("\n").filter((l) => !l.trim().startsWith("//")).join("\n");
+  const REASONS_CODE = stripComments(readFileSync("src/lib/failure-reasons.ts", "utf8"));
+  const WALLET_CODE = stripComments(readFileSync("src/lib/server/wallet-service.ts", "utf8"));
+  ok("8c.retired · no code emits `kyc_required` any more",
+     !/reason:\s*"kyc_required"/.test(WALLET_CODE),
+     "the withdrawal identity refusal is back — see docs/BOARD-DISCLOSURE-B-E.md");
+  ok("8c.retired · …and the registry no longer maps it",
+     !/\bkyc_required\s*:/.test(REASONS_CODE),
+     "a mapped code nothing emits is the dead-mapping defect session 47 filed six of");
+  ok("8c.retired · …and the union member is gone too",
+     !/\|\s*"kyc_required"/.test(REASONS_CODE));
+  for (const loc of ["en", "sw", "zh"] as const) {
+    ok(`8c.retired · ${loc}: the orphaned dictionary key is gone`,
+       !("errVerifyIdentity" in ((DICT as Record<string, { error: Record<string, string> }>)[loc].error)),
+       "three dictionary keys outliving their reason is undetectable without this");
+  }
+  // ⭐ CONTROL · these four would pass over a file that failed to load, or a dict shape
+  // that changed. Prove they can still SEE a live reason and a live key.
+  ok("8c.retired.control · the same checks still detect a reason that IS present",
+     /\bwithdraw_below_min\s*:/.test(REASONS_CODE) && /reason:\s*"withdraw_below_min"/.test(WALLET_CODE));
+  ok("8c.retired.control · …and still detect a dictionary key that IS present",
+     "errBreakActive" in ((DICT as Record<string, { error: Record<string, string> }>).en.error));
 
   // ⭐ 8c.loss-limit · AND THE ONE-CALLER CLAIM IS ASSERTED, NOT ASSUMED.
   // ⛔ The pin above proves `buyPosition` still says why. It does NOT prove that `buyPosition`
@@ -615,7 +652,11 @@ console.log("\n§8c · the services still emit the reasons that replaced the phr
   ok("8c.banner · ⛔ an UNKNOWN reason renders NOTHING, rather than echoing itself",
      bannerFor("Your account is suspended, call +255000000", dict) === null);
   ok("8c.banner · …and an absent reason renders nothing", bannerFor(undefined, dict) === null);
-  ok("8c.banner · severity drives the tone", bannerFor("kyc_required", dict)?.tone === "danger");
+  // Re-pointed 2026-08-20: this measured severity→tone through `kyc_required`, which no
+  // longer exists. `break_active` is the nearest equivalent still in the registry — same
+  // `error` severity, same `modal` channel — so the assertion measures what it always did
+  // rather than being deleted along with its subject.
+  ok("8c.banner · severity drives the tone", bannerFor("break_active", dict)?.tone === "danger");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

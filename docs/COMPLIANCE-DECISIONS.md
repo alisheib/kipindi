@@ -6,6 +6,78 @@
 
 ---
 
+## 2026-08-20 · Identity verification STOPS being a precondition of withdrawal
+
+**Instruction:** Gaming Board comment **#1**, relayed by the owner (Ali) on **2026-08-19**. That
+relay is the authority of record for this change. Register row **`E-175`**. The statement sent to
+the Board **before** the code was written is [`BOARD-DISCLOSURE-B-E.md`](BOARD-DISCLOSURE-B-E.md);
+it is the fuller document and this entry does not restate it.
+
+**What changed.** `wallet-service.withdraw()` no longer refuses a payout on identity status. The
+refusal, its `withdraw.kyc_blocked` COMPLIANCE audit, and the `kyc_required` failure reason — union
+member, registry row, three dictionary keys and its single emitter — are retired together. The
+`/wallet/withdraw` page changed in the **same commit** (`canSubmit = payoutsOpen`, the verify-first
+panel deleted); a UI-only change would have reproduced `E-5`, a screen promising what the next
+screen refuses.
+
+**What replaced it — a RECORD, not another gate.** The identity read is deliberately KEPT. Every
+withdrawal's `withdraw.initiated` audit now carries `kycStatus`, and an unverified payer produces an
+**awaited** COMPLIANCE fact `withdraw.unverified_payer` carrying `txnId`, the amount, the provider,
+and the instruction that authorised it. Stamping every payout — not only the unverified ones — is
+deliberate: a stamp that appeared selectively would make its own absence ambiguous.
+
+**Deliberately NOT changed.** The identity system itself (collection, the four documents, the
+`(idType, idNumber)` uniqueness tuple, the human review, the audit trail) · the AML/FIU controls
+(the ≥ TZS 1,000,000 two-officer hold comes from a **different authority** and a Gaming Board
+instruction about identity-on-withdrawal does not repeal it; `payments.ts` contains no identity
+reference at all and so cannot be weakened by this) · the human review queue.
+
+### 🔴 THE LEVERS THIS COST US — recorded because they were real controls
+
+1. **`forceReverifyKyc` is no longer a money control.** Its entire stated purpose was to "re-lock
+   withdrawals". It now changes a player's KYC state and nothing about their ability to be paid.
+   Four surfaces that said otherwise were corrected. What an officer has instead: **wallet freeze**,
+   **payout pause**, **the AML two-officer hold**.
+2. **`withdraw()` has no `user.status` check and no self-exclusion check.** With the identity gate
+   gone, `wallet.status !== "ACTIVE"` is the only account-level control inside the function.
+   Suspension and self-exclusion are enforced upstream by session revocation — which stops a
+   *player*, not a call arriving without a session. The two **operator** retry paths
+   (`retryWithdrawalAction`, `bulkRetryAction`) call `withdraw()` directly and pass neither those
+   nor the route-level payout pause; the identity gate used to stop them for unverified accounts as
+   a side effect, and no longer does. An actor is now threaded through so the record names the
+   **officer** rather than the player. ⛔ The controls themselves were **not** changed here — that
+   is a separate decision, disclosed rather than quietly patched.
+3. **The payee-name lookup was ungated on purpose.** It was KYC-gated, and leaving it would have
+   switched off the one check that catches a mistyped payout destination for exactly the population
+   this opens up — silently, since it fails by returning no name. Its rate limit is now the only
+   control against name enumeration.
+
+### ⚠️ THE RECORD IS FAIL-OPEN, AND THAT IS DISCLOSED
+
+`audit()` keeps the entry in a per-instance in-memory ring and lets the request proceed if the
+database write throws. So under a database outage a payout can succeed while the record explaining
+it does not durably persist — on the one path where that record is the only evidence. Stated to the
+Board rather than presented as durability we have not built.
+
+### ⛔ THE ATTRIBUTION WAS REWRITTEN, OR THIS GETS REVERTED
+
+`docs/FLOWS.md` cited the *"TZ Gaming Board model"* as the **reason** the gate existed. Left
+standing, that sentence invites a future session to re-add the gate by reading our own docs
+correctly. It now records the removal, dated, naming this instruction. Four player-facing surfaces
+additionally asserted that the **Tanzania Gaming Act requires** verification before withdrawal — a
+legal claim the instruction contradicts — and one FAQ cited the Gaming Act *and* the AML Act. The
+Gaming Act claims are gone; the AML attribution is kept, because it is true.
+
+### 🔴 WHAT IS NOT PROVEN — the seal was waived
+
+**No unverified player has completed a withdrawal on production.** The end-to-end seal moves real
+money to a real mobile-money account and was **waived by Ali on 2026-08-20** — *"proceed without
+this real test, if anything happens we detect later in live testing."* The change is proven by
+green guards, twelve mutations and re-anchored live drives; the **payout leg is unproven**. Filed as
+**`E-177`** so it is not mistaken for passed.
+
+---
+
 ## 2026-08-20 · FOUR ways to prove who you are — NIDA is no longer the only accepted document
 
 **Owner decision:** Ali, 2026-08-19. *"We have to give options for KYC, not just NIDA. One of
@@ -108,7 +180,7 @@ container is still serving, and Prisma selects every scalar column — so droppi
 migration would have returned a 500 on every KYC read (`/profile/kyc`, `/wallet/withdraw`,
 `/admin/kyc`) for the length of the switch, on an identity path.
 
-⛔ **Nothing reads them**, and `npm run test:id-documents` §9 fails if anything starts to.
+⛔ **Nothing reads them**, and `npm run test:id-documents` §9 fails if anything starts to. ⚠️ **BOTH HALVES OF THAT SENTENCE WERE FALSE — see the amendment below:** the store layer held two readers, and §9 allowlisted the file they lived in.
 **The contract step is: a follow-up migration dropping `nidaNumber`, `nidaVerifiedAt` and
 `KycSubmission_nidaNumber_active_key`, once the expand release has been stable on production.**
 Until that lands, this entry is the record that the duplication is time-boxed and intentional.

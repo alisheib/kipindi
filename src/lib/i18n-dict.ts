@@ -373,7 +373,10 @@ export const dict = {
       confirmPrediction: "Confirm prediction",
       // auth flash
       welcomeTo50pick: "Welcome to 50pick",
-      welcomeNewBody: "You\u2019re in. Verify your ID to start playing and to enable withdrawals.",
+      // \u26d4 THIS ONE WAS WRONG TWICE OVER: play was NEVER gated on identity
+      // (`market-service.ts` holds no KYC reference), and withdrawal stopped being gated
+      // on it on 2026-08-20. A welcome message is the first thing a new player reads.
+      welcomeNewBody: "You\u2019re in. You can play straight away, and verifying your ID is not required in order to withdraw.",
       welcomeBack: "Welcome back",
       welcomeBackBody: "You\u2019re signed in.",
       // withdraw confirm
@@ -1016,9 +1019,11 @@ export const dict = {
       available: "Available",
       holdWarning: "hold",
       withdrawFailed: "Withdrawal didn't go through",
-      verifyFirst: "Verify your identity first",
-      verifyFirstBody: "Tanzania Gaming Act requires identity verification before any withdrawal.",
-      continueKyc: "Continue KYC →",
+      // ⛔ `verifyFirst` / `verifyFirstBody` / `continueKyc` were DELETED 2026-08-20 with
+      // the withdraw page's verify-first panel. `verifyFirstBody` asserted "Tanzania
+      // Gaming Act requires identity verification before any withdrawal" — a legal claim
+      // the Board's own instruction contradicts (comment #1, 2026-08-19). Removed, not
+      // reworded: there is no panel left to title. docs/BOARD-DISCLOSURE-B-E.md
       destination: "Destination",
       amount: "Amount",
       amountHint: "Min TZS 1,000 · Max TZS 5,000,000 per withdrawal. Amounts ≥ TZS 1,000,000 may require AML review (up to 24 hours).",
@@ -1030,7 +1035,10 @@ export const dict = {
       msisdnRequired: "Enter the mobile-money number to send the payment prompt to.",
       chooseProvider: "Choose a payment method first.",
       securedByKyc: "Secured by KYC & AML",
-      securedBody: "Withdrawals are released only after our compliance team has reviewed your ID documents, and amounts of TZS 1,000,000+ are held for AML review. SMS step-up confirmation is added once the licensed SMS provider is live.",
+      // ⛔ RENDERED ON THE DEPOSIT PAGE TOO (`wallet/deposit/page.tsx`), so it has to read
+      // correctly in both places. It used to open "Withdrawals are released only after our
+      // compliance team has reviewed your ID documents" — false since 2026-08-20.
+      securedBody: "Amounts of TZS 1,000,000 and above are held for review by two compliance officers before release. Identity documents are reviewed by our compliance team when you submit them. SMS step-up confirmation is added once the licensed SMS provider is live.",
       taxNotice: "Withdrawal fee",
       taxBody: "A {pct}% fee applies to withdrawals, and nothing else. There is no tax withheld from your money — taxes are paid out of 50pick's own commission, never from your balance.",
       bankTransfer: "Bank transfer",
@@ -1065,7 +1073,7 @@ export const dict = {
       verifyAlreadyDone: "Your email is already confirmed. Reload this page to continue.",
       verifyNoEmailTitle: "No email address on your account",
       verifyNoEmailBody: "Add one so we can send your deposit receipts and confirm it's you.",
-      verifyGateFootnote: "Browsing and betting stay open. Confirming your email is only required to add money, and identity verification only to withdraw.",
+      verifyGateFootnote: "Browsing and betting stay open. Confirming your email is only required to add money — identity verification is not required to withdraw.",
       // ── Standing app-wide unconfirmed-email bar (app-shell) ───────────────
       verifyBannerText: "Confirm your email to add money to your account. We sent you a link.",
       verifyBannerCta: "Resend link",
@@ -1135,7 +1143,7 @@ export const dict = {
       // "ID verified", telling an unverified player they were verified.
       idSaved: "Document details saved",
       verifyIdentity: "Verify your identity",
-      verifyBody: "We verify your identity before withdrawal. Takes about 2 minutes.",
+      verifyBody: "We verify your identity to keep your account yours: one document, one account. It is not required in order to withdraw. Takes about 2 minutes.",
       nida: "NIDA", nationalId: "National ID number",
       // The four documents, one label each. ⛔ NIDA is a proper noun and stays
       // "NIDA" in every language — it is the authority's own name, not a word.
@@ -1220,8 +1228,13 @@ export const dict = {
       uploadDocsBody: "We need a clear photo of each item below, plus a selfie of you holding the document.",
       tapToAttach: "Tap each card to attach a photo, then submit for compliance review.",
       attachAllThree: "Attach every document listed above to submit.",
-      kycApprovedBody: "Your identity is verified. You can now request withdrawals to your mobile money account.",
-      kycApprovedPayoutsPaused: "Your identity is verified. Withdrawals are paused right now — our payout provider cannot complete transfers. Your balance is safe and unchanged.",
+      // ⛔ NEITHER OF THESE MAY PROMISE A MONEY CONSEQUENCE. Approval used to "unlock"
+      // withdrawals and the first string said so; identity stopped gating withdrawal on
+      // 2026-08-20 (Board comment #1). `kyc-approved-copy.test.mts` additionally forbids
+      // the words deposit/"freely" here and requires the paused variant to say the
+      // balance is safe — "we cannot pay you" must never read as "your money is gone".
+      kycApprovedBody: "Your identity is verified and this document is now linked to your account.",
+      kycApprovedPayoutsPaused: "Your identity is verified and this document is now linked to your account. Withdrawals are paused right now — our payout provider cannot complete transfers. Your balance is safe and unchanged.",
       kycReviewingBody: "Compliance is reviewing. Most reviews finish within 2 hours.",
       documents: "Documents", review: "Review", complianceApproval: "Compliance approval",
       step1: "Step 1", step2: "Step 2", step3: "Step 3",
@@ -1264,7 +1277,7 @@ export const dict = {
       tryDifferentFilter: "Try a different category filter above.",
       kycWelcomeCan: "You can",
       kycWelcomeBrowse: "browse markets and place bets right away",
-      kycWelcomeLater: "Verify your identity later — withdrawals unlock once KYC is approved.",
+      kycWelcomeLater: "Verify your identity later — withdrawals do not depend on it.",
       kycMoreInfoBody1: "Our team needs a clearer or additional document.",
       kycMoreInfoBody2: "Update the document(s) below and submit again — this isn’t a rejection.",
       // One per KycRejectReason member that a player may be shown. OTHER has no
@@ -1635,7 +1648,12 @@ export const dict = {
       faq3q: "How do I withdraw winnings?",
       faq3a: "Open Wallet \u2192 Withdraw. Enter your mobile-money number, the amount, and an OTP code. Withdrawals under TZS 1,000,000 settle within 60 seconds. Larger amounts may be held for AML review for up to 24 hours.",
       faq4q: "Why do I have to verify my identity?",
-      faq4a: "The Tanzania Gaming Act + Anti-Money-Laundering Act require us to verify every player\u2019s identity before any withdrawal: a valid NIDA number and photographic ID reviewed by our compliance team. We do this once. After verification you can withdraw freely.",
+      // \u26d4 THE GAMING ACT CLAIM IS GONE AND MUST NOT COME BACK. This answer asserted that
+      // the Tanzania Gaming Act REQUIRES identity verification before any withdrawal \u2014 a
+      // legal claim the Board's own instruction contradicts (comment #1, 2026-08-19). The
+      // AML half is kept because it is true and comes from a different authority: the
+      // \u2265 TZS 1,000,000 two-officer hold is untouched by that instruction.
+      faq4a: "Identity verification is not required before a withdrawal. You can verify with any one of four documents \u2014 National ID (NIDA), passport, driving licence or voter\u2019s card \u2014 and our compliance team reviews it once; one document can only be used on one account. Separately, under anti-money-laundering rules, withdrawals of TZS 1,000,000 or more are held for review by two compliance officers.",
       faq5q: "I think I have a problem with gambling. What can I do?",
       faq5a: "Open Profile \u2192 Responsible gambling. You can set deposit and time limits, take a break, or self-exclude.",
       faq6q: "Can I cash out before resolution?",
@@ -1737,7 +1755,6 @@ export const dict = {
       errBreakActive: "Your account is on a break you set. Money actions stay paused until it ends — see Responsible Gambling in your profile.",
       errDepositLimit: "This deposit would pass a deposit limit you set. You can review your limits under Responsible Gambling.",
       errSofRequired: "We need a source-of-funds document for an amount this size. Submit one from your profile, then try again.",
-      errVerifyIdentity: "Verify your identity (KYC) in your profile to withdraw.",
       errWithdrawMin: "The smallest amount we can send after the fee is {net}. Withdraw at least {min}.",
       errInvalid: "That didn't go through. Check the details and try again.",
       errProposalsPaused: "Proposals are paused right now. Try again later.",
@@ -2199,7 +2216,7 @@ export const dict = {
       highConvictionHint: "Imani ya juu ina dau kubwa na mgao mkubwa wa malipo ukiwa sahihi.",
       confirmPrediction: "Thibitisha utabiri",
       welcomeTo50pick: "Karibu kwenye 50pick",
-      welcomeNewBody: "Umeingia. Thibitisha kitambulisho chako kuanza kucheza na kutoa pesa.",
+      welcomeNewBody: "Umeingia. Unaweza kucheza mara moja, na uthibitisho wa kitambulisho hauhitajiki ili kutoa pesa.",
       welcomeBack: "Karibu tena",
       welcomeBackBody: "Umeingia kwenye akaunti.",
       confirmWithdrawal: "Thibitisha kutoa",
@@ -2696,9 +2713,7 @@ export const dict = {
       available: "Inapatikana",
       holdWarning: "zimezuiliwa",
       withdrawFailed: "Kutoa hakujafanikiwa",
-      verifyFirst: "Thibitisha kitambulisho kwanza",
-      verifyFirstBody: "Sheria ya Bodi ya Michezo ya Kubahatisha inahitaji uthibitisho wa utambulisho kabla ya kutoa pesa.",
-      continueKyc: "Endelea KYC →",
+      // Deleted 2026-08-20 with the EN keys above — see the note there.
       destination: "Mahali",
       amount: "Kiasi",
       amountHint: "Chini TZS 1,000 · Juu TZS 5,000,000 kwa kila kutoa. Kiasi cha TZS 1,000,000+ kinaweza kuhitaji ukaguzi wa AML (hadi masaa 24).",
@@ -2709,7 +2724,7 @@ export const dict = {
       chooseProvider: "Chagua njia ya malipo kwanza.",
       destinationPhone: "Simu ya mpokeaji",
       securedByKyc: "Imelindwa na KYC & AML",
-      securedBody: "Kutoa kunaruhusiwa tu baada ya timu yetu ya uzingatiaji kukagua nyaraka zako za utambulisho, na kiasi cha TZS 1,000,000+ kinashikiliwa kwa ukaguzi wa AML.",
+      securedBody: "Kiasi cha TZS 1,000,000 na zaidi kinashikiliwa kwa ukaguzi wa maafisa wawili wa uzingatiaji kabla ya kutolewa. Nyaraka za utambulisho zinakaguliwa na timu yetu ya uzingatiaji unapoziwasilisha. Uthibitisho wa SMS utaongezwa mtoa huduma wa SMS aliyeidhinishwa atakapoanza kazi.",
       taxNotice: "Ada ya kutoa pesa",
       taxBody: "Ada ya {pct}% inatumika unapotoa pesa, na si kitu kingine. Hakuna kodi inayokatwa kwenye pesa zako — kodi hulipwa kutoka kamisheni ya 50pick, si kutoka salio lako.",
       bankTransfer: "Uhamisho wa benki",
@@ -2740,7 +2755,7 @@ export const dict = {
       verifyAlreadyDone: "Barua pepe yako tayari imethibitishwa. Pakia upya ukurasa huu ili kuendelea.",
       verifyNoEmailTitle: "Hakuna barua pepe kwenye akaunti yako",
       verifyNoEmailBody: "Ongeza moja ili tuweze kutuma risiti za amana na kuthibitisha ni wewe.",
-      verifyGateFootnote: "Kuvinjari na kuweka dau vinaendelea. Kuthibitisha barua pepe kunahitajika tu ili kuongeza fedha, na uthibitisho wa utambulisho ili kutoa.",
+      verifyGateFootnote: "Kuvinjari na kuweka dau vinaendelea. Kuthibitisha barua pepe kunahitajika tu ili kuongeza fedha — uthibitisho wa utambulisho hauhitajiki ili kutoa pesa.",
       verifyBannerText: "Thibitisha barua pepe yako ili kuweka fedha kwenye akaunti. Tumekutumia kiungo.",
       verifyBannerCta: "Tuma kiungo tena",
       verifyBannerNoEmail: "Ongeza anwani ya barua pepe kwenye akaunti yako — utaihitaji ili kuweka fedha.",
@@ -2796,7 +2811,7 @@ export const dict = {
       idVerified: "Imethibitishwa", inReview: "Inakaguliwa", rejected: "Imekataliwa",
       idSaved: "Taarifa za hati zimehifadhiwa",
       verifyIdentity: "Thibitisha kitambulisho",
-      verifyBody: "Tunathibitisha utambulisho wako kabla ya kutoa pesa. Inachukua dakika 2.",
+      verifyBody: "Tunathibitisha utambulisho wako ili akaunti yako ibaki yako: kitambulisho kimoja, akaunti moja. Hauhitajiki ili kutoa pesa. Inachukua dakika 2.",
       nida: "NIDA", nationalId: "Nambari ya kitambulisho",
       idTypeNida: "NIDA", idTypePassport: "Pasipoti",
       idTypeDriverLicence: "Leseni ya udereva", idTypeVoterCard: "Kadi ya mpiga kura",
@@ -2879,8 +2894,8 @@ export const dict = {
       uploadDocsBody: "Tunahitaji picha safi ya kila kipengele hapa chini, pamoja na picha yako ukishika hati.",
       tapToAttach: "Gusa kila kadi kuambatanisha picha, kisha wasilisha kwa ukaguzi.",
       attachAllThree: "Ambatanisha kila hati iliyoorodheshwa hapo juu kuwasilisha.",
-      kycApprovedBody: "Utambulisho wako umethibitishwa. Sasa unaweza kuomba kutoa pesa kwenda kwenye akaunti yako ya pesa za simu.",
-      kycApprovedPayoutsPaused: "Utambulisho wako umethibitishwa. Kutoa pesa kumesitishwa kwa sasa — mtoa huduma wetu wa malipo hawezi kukamilisha uhamisho. Salio lako ni salama na halibadiliki.",
+      kycApprovedBody: "Utambulisho wako umethibitishwa na kitambulisho hiki sasa kimeunganishwa na akaunti yako.",
+      kycApprovedPayoutsPaused: "Utambulisho wako umethibitishwa na kitambulisho hiki sasa kimeunganishwa na akaunti yako. Kutoa pesa kumesitishwa kwa sasa — mtoa huduma wetu wa malipo hawezi kukamilisha uhamisho. Salio lako ni salama na halibadiliki.",
       kycReviewingBody: "Ufuatiliaji unakagua. Ukaguzi mwingi unakamilika ndani ya masaa 2.",
       documents: "Nyaraka", review: "Ukaguzi", complianceApproval: "Idhini ya ufuatiliaji",
       step1: "Hatua ya 1", step2: "Hatua ya 2", step3: "Hatua ya 3",
@@ -2916,7 +2931,7 @@ export const dict = {
       tryDifferentFilter: "Jaribu kichujio kingine cha aina hapo juu.",
       kycWelcomeCan: "Unaweza",
       kycWelcomeBrowse: "kuvinjari masoko na kuweka dau mara moja",
-      kycWelcomeLater: "Thibitisha kitambulisho chako baadaye — utoaji utafunguliwa mara KYC itakapoidhinishwa.",
+      kycWelcomeLater: "Thibitisha kitambulisho chako baadaye — kutoa pesa hakutegemei hilo.",
       kycMoreInfoBody1: "Timu yetu inahitaji hati iliyo wazi zaidi au ya ziada.",
       kycMoreInfoBody2: "Sasisha hati zilizo hapa chini kisha wasilisha tena — hili si kukataliwa.",
       rejectNidaMismatch: "Taarifa za NIDA hazilingani na rekodi zetu",
@@ -3258,7 +3273,7 @@ export const dict = {
       faq3q: "Nitatoa pesa zangu vipi?",
       faq3a: "Fungua Pochi \u2192 Toa. Weka nambari yako ya M-pesa, kiasi, na msimbo wa OTP. Kutoa chini ya TZS 1,000,000 kunakamilika ndani ya sekunde 60.",
       faq4q: "Kwa nini nathibitisha kitambulisho?",
-      faq4a: "Sheria ya Michezo ya Tanzania + Sheria ya Kuzuia Utakatishaji wa Fedha zinahitaji kuthibitisha utambulisho wa kila mchezaji kabla ya kutoa pesa: namba halali ya NIDA na kitambulisho chenye picha kinachokaguliwa na timu yetu. Tunafanya hii mara moja.",
+      faq4a: "Uthibitisho wa utambulisho hauhitajiki kabla ya kutoa pesa. Unaweza kuthibitisha kwa kutumia mojawapo ya nyaraka nne — Kitambulisho cha Taifa (NIDA), pasipoti, leseni ya udereva au kadi ya mpiga kura — na timu yetu ya uzingatiaji inakagua mara moja; kitambulisho kimoja kinaweza kutumika kwenye akaunti moja tu. Kwa mujibu wa sheria za kuzuia utakatishaji wa fedha, kutoa TZS 1,000,000 au zaidi kunashikiliwa kwa ukaguzi wa maafisa wawili wa uzingatiaji.",
       faq5q: "Nina shida ya kucheza kupita kiasi. Nifanye nini?",
       faq5a: "Fungua Wasifu \u2192 Vikomo. Unaweza kuweka mipaka ya amana na muda, kupumzika, au kujizuia.",
       faq6q: "Nitatoa dau mapema?",
@@ -3346,7 +3361,6 @@ export const dict = {
       errBreakActive: "Akaunti yako iko kwenye mapumziko uliyojiwekea. Miamala ya fedha imesitishwa hadi yaishe — angalia Uchezaji Salama kwenye wasifu wako.",
       errDepositLimit: "Amana hii ingepita kikomo cha amana ulichojiwekea. Unaweza kukagua vikomo vyako chini ya Uchezaji Salama.",
       errSofRequired: "Tunahitaji hati ya chanzo cha fedha kwa kiasi hiki. Wasilisha moja kutoka kwenye wasifu wako, kisha jaribu tena.",
-      errVerifyIdentity: "Thibitisha utambulisho wako (KYC) kwenye wasifu wako ili kutoa fedha.",
       errWithdrawMin: "Kiasi kidogo zaidi tunachoweza kutuma baada ya ada ni {net}. Toa angalau {min}.",
       errInvalid: "Haikufanikiwa. Kagua taarifa kisha jaribu tena.",
       errProposalsPaused: "Mapendekezo yamesitishwa kwa sasa. Jaribu tena baadaye.",
@@ -3797,7 +3811,7 @@ export const dict = {
       highConvictionHint: "更高信念意味着更高投注额和更高的赔付份额（如果您正确的话）。",
       confirmPrediction: "确认预测",
       welcomeTo50pick: "欢迎来到50pick",
-      welcomeNewBody: "您已注册。验证身份即可开始游戏和提现。",
+      welcomeNewBody: "您已注册。您可以立即开始游戏，提现无需验证身份。",
       welcomeBack: "欢迎回来",
       welcomeBackBody: "您已登录。",
       confirmWithdrawal: "确认提现",
@@ -4293,9 +4307,7 @@ export const dict = {
       available: "可用余额",
       holdWarning: "冻结中",
       withdrawFailed: "提现未成功",
-      verifyFirst: "请先验证身份",
-      verifyFirstBody: "坦桑尼亚博彩法要求提现前完成身份验证。",
-      continueKyc: "继续验证 →",
+      // Deleted 2026-08-20 with the EN keys above — see the note there.
       destination: "目的地",
       amount: "金额",
       amountHint: "最低 TZS 1,000 · 最高 TZS 5,000,000。TZS 1,000,000及以上的金额可能需要反洗钱审查（最长24小时）。",
@@ -4306,7 +4318,7 @@ export const dict = {
       chooseProvider: "请先选择支付方式。",
       destinationPhone: "目标手机号",
       securedByKyc: "受KYC和AML保护",
-      securedBody: "提现须经我们的合规团队核验您的身份证件后方可释放，TZS 1,000,000以上的金额将进行反洗钱审查。短信验证将在授权服务商上线后启用。",
+      securedBody: "TZS 1,000,000 及以上的金额须经两名合规专员审核后方可释放。您提交的身份证件将由我们的合规团队核验。短信验证将在授权服务商上线后启用。",
       taxNotice: "提现手续费",
       taxBody: "提现收取 {pct}% 手续费，除此之外别无其他。我们不会从您的资金中预扣税款 — 税款由 50pick 从自己的佣金中缴纳，绝不动用您的余额。",
       bankTransfer: "银行转账",
@@ -4337,7 +4349,7 @@ export const dict = {
       verifyAlreadyDone: "您的邮箱已确认。请重新加载此页面以继续。",
       verifyNoEmailTitle: "您的账户没有邮箱地址",
       verifyNoEmailBody: "请添加一个，以便我们发送存款收据并确认您的身份。",
-      verifyGateFootnote: "浏览和投注不受限制。确认邮箱仅用于充值，身份验证仅用于提现。",
+      verifyGateFootnote: "浏览和投注不受限制。确认邮箱仅用于充值——提现无需身份验证。",
       verifyBannerText: "请确认您的邮箱后才能充值。我们已向您发送验证链接。",
       verifyBannerCta: "重新发送链接",
       verifyBannerNoEmail: "请为账户添加邮箱地址 — 充值时需要使用。",
@@ -4393,7 +4405,7 @@ export const dict = {
       idVerified: "已验证", inReview: "审核中", rejected: "已拒绝",
       idSaved: "证件信息已保存",
       verifyIdentity: "验证您的身份",
-      verifyBody: "我们在提现前验证您的身份。大约需要2分钟。",
+      verifyBody: "我们验证您的身份以确保账户属于您本人：一份证件，一个账户。提现无需验证。大约需要2分钟。",
       nida: "NIDA", nationalId: "国民身份证号",
       idTypeNida: "NIDA", idTypePassport: "护照",
       idTypeDriverLicence: "驾驶执照", idTypeVoterCard: "选民证",
@@ -4476,8 +4488,8 @@ export const dict = {
       uploadDocsBody: "我们需要下列每一项的清晰照片，以及您手持该证件的自拍。",
       tapToAttach: "点击每张卡片附上照片，然后提交合规审核。",
       attachAllThree: "附上上方列出的全部材料后提交。",
-      kycApprovedBody: "您的身份已验证。您现在可以申请提现到您的手机钱包账户。",
-      kycApprovedPayoutsPaused: "您的身份已验证。提现目前已暂停——我们的支付服务商无法完成转账。您的余额安全且不变。",
+      kycApprovedBody: "您的身份已验证，此证件现已与您的账户绑定。",
+      kycApprovedPayoutsPaused: "您的身份已验证，此证件现已与您的账户绑定。提现目前已暂停——我们的支付服务商无法完成转账。您的余额安全且不变。",
       kycReviewingBody: "合规部门正在审核。大多数审核在2小时内完成。",
       documents: "文件", review: "审核", complianceApproval: "合规审批",
       step1: "第1步", step2: "第2步", step3: "第3步",
@@ -4513,7 +4525,7 @@ export const dict = {
       tryDifferentFilter: "请尝试上方其他类别筛选。",
       kycWelcomeCan: "您可以",
       kycWelcomeBrowse: "立即浏览市场并下注",
-      kycWelcomeLater: "稍后再验证身份 — KYC 通过后即可提现。",
+      kycWelcomeLater: "稍后再验证身份 — 提现不依赖于此。",
       kycMoreInfoBody1: "我们的团队需要更清晰或额外的文件。",
       kycMoreInfoBody2: "请更新下方文件并重新提交 — 这不是拒绝。",
       rejectNidaMismatch: "NIDA 信息与我们的记录不符",
@@ -4851,7 +4863,7 @@ export const dict = {
       faq3q: "\u5982\u4f55\u63d0\u73b0\u5956\u91d1\uff1f",
       faq3a: "\u6253\u5f00\u94b1\u5305 \u2192 \u63d0\u73b0\u3002\u8f93\u5165\u79fb\u52a8\u652f\u4ed8\u53f7\u7801\u3001\u91d1\u989d\u548cOTP\u9a8c\u8bc1\u7801\u3002TZS 1,000,000\u4ee5\u4e0b\u7684\u63d0\u73b0\u572860\u79d2\u5185\u5b8c\u6210\u3002",
       faq4q: "\u4e3a\u4ec0\u4e48\u9700\u8981\u9a8c\u8bc1\u8eab\u4efd\uff1f",
-      faq4a: "\u5766\u6851\u5c3c\u4e9a\u535a\u5f69\u6cd5 + \u53cd\u6d17\u94b1\u6cd5\u8981\u6c42\u63d0\u73b0\u524d\u9a8c\u8bc1\u6bcf\u4f4d\u73a9\u5bb6\u7684\u8eab\u4efd\uff1a\u6709\u6548\u7684 NIDA \u53f7\u7801\u53ca\u7531\u5408\u89c4\u56e2\u961f\u5ba1\u6838\u7684\u5e26\u7167\u7247\u8bc1\u4ef6\u3002\u53ea\u9700\u9a8c\u8bc1\u4e00\u6b21\u3002",
+      faq4a: "\u63d0\u73b0\u65e0\u9700\u5148\u9a8c\u8bc1\u8eab\u4efd\u3002\u60a8\u53ef\u4ee5\u4f7f\u7528\u56db\u79cd\u8bc1\u4ef6\u4e4b\u4e00\u8fdb\u884c\u9a8c\u8bc1\u2014\u2014\u56fd\u6c11\u8eab\u4efd\u8bc1\uff08NIDA\uff09\u3001\u62a4\u7167\u3001\u9a7e\u9a76\u8bc1\u6216\u9009\u6c11\u8bc1\u2014\u2014\u7531\u6211\u4eec\u7684\u5408\u89c4\u56e2\u961f\u5ba1\u6838\u4e00\u6b21\uff1b\u4e00\u4efd\u8bc1\u4ef6\u53ea\u80fd\u7528\u4e8e\u4e00\u4e2a\u8d26\u6237\u3002\u53e6\u5916\uff0c\u6839\u636e\u53cd\u6d17\u94b1\u89c4\u5b9a\uff0cTZS 1,000,000 \u53ca\u4ee5\u4e0a\u7684\u63d0\u73b0\u5c06\u7531\u4e24\u540d\u5408\u89c4\u4e13\u5458\u5ba1\u6838\u3002",
       faq5q: "\u6211\u89c9\u5f97\u6211\u6709\u535a\u5f69\u95ee\u9898\u3002\u600e\u4e48\u529e\uff1f",
       faq5a: "\u6253\u5f00\u4e2a\u4eba\u8d44\u6599 \u2192 \u8d1f\u8d23\u4efb\u535a\u5f69\u3002\u60a8\u53ef\u4ee5\u8bbe\u7f6e\u5145\u503c\u548c\u65f6\u95f4\u9650\u989d\u3001\u4f11\u606f\u6216\u81ea\u6211\u6392\u9664\u3002",
       faq6q: "\u53ef\u4ee5\u5728\u7ed3\u7b97\u524d\u5151\u73b0\u5417\uff1f",
@@ -4939,7 +4951,6 @@ export const dict = {
       errBreakActive: "您的账户正处于您设置的休息期。资金操作将暂停至休息期结束 — 请查看个人资料中的负责任博彩设置。",
       errDepositLimit: "此笔存款将超出您设置的存款限额。您可以在负责任博彩中查看您的限额。",
       errSofRequired: "此金额需要资金来源证明文件。请从个人资料提交后重试。",
-      errVerifyIdentity: "请在个人资料中完成身份验证（KYC）后提现。",
       errWithdrawMin: "扣除手续费后我们能发送的最小金额为{net}。请至少提现{min}。",
       errInvalid: "操作未成功。请检查信息后重试。",
       errProposalsPaused: "提议功能暂时停用。请稍后再试。",

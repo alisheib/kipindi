@@ -6,7 +6,6 @@ import { currentSession } from "@/lib/server/auth-service";
 import { withdraw } from "@/lib/server/wallet-service";
 import { lookupPayeeName, type PaymentProvider } from "@/lib/server/payments";
 import { rateCheckAsync } from "@/lib/server/rate-limit";
-import { db } from "@/lib/server/store";
 import type { WithdrawInput } from "@/lib/server/validators";
 import { WITHDRAW_MIN_TZS, WITHDRAW_MAX_TZS } from "@/lib/server/validators";
 import { getPayoutStatus, payoutsAcceptingRequests } from "@/lib/server/payout-status";
@@ -18,9 +17,21 @@ const WITHDRAW_PROVIDERS = new Set(["MPESA", "AIRTEL_MONEY", "HALO_PESA", "MIXX"
 /**
  * Best-effort payee-name lookup for the withdraw confirm screen — resolves the
  * registered account holder for a payee number so the player can verify WHO they are
- * paying before "Send funds". Auth + KYC-gated and rate-limited (a name-lookup could
- * otherwise be abused to enumerate names). Returns { name: null } on any miss; the
- * modal then shows the number alone and the payout is NEVER blocked on this.
+ * paying before "Send funds". Auth-gated and rate-limited. Returns { name: null } on
+ * any miss; the modal then shows the number alone and the payout is NEVER blocked on this.
+ *
+ * ⛔ THE KYC GATE CAME OUT OF HERE ON PURPOSE, AND LEAVING IT WOULD HAVE BEEN THE WORSE
+ * BUG. This is the one control that catches a MISTYPED payout destination — it shows the
+ * player whose account they are about to pay. It used to refuse anyone not APPROVED,
+ * with the comment "only players who can withdraw". After Board comment #1 the players
+ * who can withdraw include everyone, so that refusal would have switched the
+ * mistyped-destination check off for precisely the population the instruction opens up
+ * — silently, because this action fails by returning { name: null } and the modal simply
+ * says less. Nothing would have gone red. See docs/BOARD-DISCLOSURE-B-E.md.
+ *
+ * ⚠️ The rate limit is therefore now the ONLY control against using this to enumerate
+ * subscriber names (`wallet.payee_lookup`). It was always the real one — an APPROVED
+ * account could enumerate just as well — but it no longer has identity in front of it.
  */
 export async function lookupWithdrawPayeeAction(input: { provider: string; msisdn: string }): Promise<{ name: string | null }> {
   const session = await currentSession();
@@ -28,8 +39,6 @@ export async function lookupWithdrawPayeeAction(input: { provider: string; msisd
   if (!WITHDRAW_PROVIDERS.has(input.provider)) return { name: null };
   const digits = String(input.msisdn ?? "").replace(/\D/g, "");
   if (digits.length < 9 || digits.length > 12) return { name: null };
-  const kyc = await db.kyc.findByUserId(session.userId).catch(() => null);
-  if (kyc?.status !== "APPROVED") return { name: null }; // only players who can withdraw
   const rl = await rateCheckAsync(session.userId, "wallet.payee_lookup");
   if (!rl.allowed) return { name: null };
   try {
@@ -65,8 +74,14 @@ export async function withdrawAction(formData: FormData) {
 
   const amount = parseInt(String(formData.get("amount") ?? "0"), 10);
   // Pass the chosen destination through (don't coerce to MPESA). Step-up SMS
-  // verification is gated on the licensed SMS provider; the withdrawal is
-  // protected by KYC + AML in the meantime, so no unenforced OTP is collected.
+  // verification is gated on the licensed SMS provider, so no unenforced OTP is
+  // collected in the meantime.
+  // 🔴 THE JUSTIFICATION FOR THAT WAIT GOT WEAKER ON 2026-08-20 — read this before
+  // deciding the OTP can keep waiting. This comment used to read "the withdrawal is
+  // protected by KYC + AML in the meantime". Identity verification is no longer a
+  // precondition of withdrawal (Board comment #1), so what actually protects a payout
+  // destination now is the AML ≥ TZS 1,000,000 two-officer hold and the best-effort
+  // payee-name lookup above — nothing else. docs/BOARD-DISCLOSURE-B-E.md §5.
   const provider = String(formData.get("provider") ?? "") as WithdrawInput["provider"];
   const msisdn = formData.get("msisdn") ? String(formData.get("msisdn")) : undefined;
 

@@ -26,8 +26,9 @@ Updated 2026-05-17 (Sprint 59.6 — flow-architecture pass).
 
 | Trigger | Behaviour | Source |
 |---|---|---|
-| Withdraw without KYC APPROVED | Service returns `{ ok: false, error: "Verify your identity to withdraw." }` + COMPLIANCE audit `withdraw.kyc_blocked` | `src/lib/server/wallet-service.ts:100-104` |
-| Bet placement (no KYC required) | Allowed pre-KYC (TZ Gaming Board model). KYC only gates withdrawals. | `src/lib/server/market-service.ts:178-250` |
+| Withdraw without identity verification | ✅ **ALLOWED — there is no gate.** The withdrawal proceeds on its money preconditions alone. `withdraw()` still READS the identity status and RECORDS it: `kycStatus` on the `withdraw.initiated` audit for every payout, plus an awaited COMPLIANCE fact `withdraw.unverified_payer` carrying `txnId` when the payer is unverified | `src/lib/server/wallet-service.ts` in `withdraw()` — ⛔ **REMOVED 2026-08-20 on the Gaming Board's instruction** (comment #1, relayed by Ali 2026-08-19), register row `E-175`. The refusal, its `withdraw.kyc_blocked` audit and the `kyc_required` failure reason are all retired. ⚠️ This row cited `:100-104` until 2026-08-20, which is the DEPOSIT email gate, not this one. **Do not re-add the gate by reading an older doc:** the authority is [`BOARD-DISCLOSURE-B-E.md`](BOARD-DISCLOSURE-B-E.md) and [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) |
+| Bet placement (no identity required) | Allowed — `market-service.ts` carries no identity reference at all, and never has | `src/lib/server/market-service.ts:178-250` |
+| Withdraw ≥ TZS 1,000,000 | Held for **two-officer** AML review before any gateway adapter is touched. ⚠️ Unaffected by the row above: it comes from the AML/FIU regime, a different authority, and `payments.ts` contains no identity reference | `src/lib/server/payments.ts:176` (`dispatchWithdrawal`) |
 | Deposit during self-exclusion / cooling-off | Blocked, error names the lockout type + expiry, audit `deposit.lockout_blocked` | `src/lib/server/wallet-service.ts:34-37` |
 | Bet during self-exclusion / cooling-off | Same — `isLockedOut()` check before `buyPosition()` | `src/lib/server/market-service.ts:182-183` |
 | Auth attempt during self-exclusion | `requestLoginOtp()` returns "Your account is in self-exclusion." | `src/lib/server/auth-service.ts:84-86` |

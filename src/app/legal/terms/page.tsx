@@ -46,10 +46,13 @@ const CONTENT: Record<Locale, React.ReactNode> = {
 
       <LegalSection n="3" title="Identity verification (KYC)">
         <p>
-          Before withdrawing winnings you must complete identity verification: a valid NIDA number and
-          photographic ID reviewed by our compliance team. We may request additional documents
-          (proof of address, source-of-funds declaration) if
-          your activity triggers anti-money-laundering thresholds.
+          Identity verification is <strong>not</strong> required in order to withdraw. You may
+          verify at any time with any one of four documents — a National ID (NIDA) number, a
+          passport, a driving licence or a voter&apos;s card — with photographic evidence
+          reviewed by our compliance team. One document may only be used on one account. We may
+          request additional documents (proof of address, source-of-funds declaration) if your
+          activity triggers anti-money-laundering thresholds, and withdrawals of
+          TZS 1,000,000 or more are held for review by two compliance officers.
         </p>
       </LegalSection>
 
@@ -166,10 +169,13 @@ const CONTENT: Record<Locale, React.ReactNode> = {
 
       <LegalSection n="3" title="Uthibitisho wa utambulisho (KYC)">
         <p>
-          Kabla ya kutoa fedha ulizoshinda, ni lazima ukamilishe uthibitisho wa utambulisho: namba halali ya NIDA
-          na kitambulisho chenye picha kinachokaguliwa na timu yetu ya uzingatiaji.
-          Tunaweza kuomba nyaraka za ziada (uthibitisho wa anwani, tamko la chanzo
-          cha fedha) iwapo shughuli zako zitavuka viwango vya kuzuia uoshaji wa fedha.
+          Uthibitisho wa utambulisho <strong>hauhitajiki</strong> ili kutoa fedha. Unaweza
+          kuthibitisha wakati wowote kwa kutumia mojawapo ya nyaraka nne — namba ya NIDA,
+          pasipoti, leseni ya udereva au kadi ya mpiga kura — pamoja na ushahidi wa picha
+          unaokaguliwa na timu yetu ya uzingatiaji. Nyaraka moja inaweza kutumika kwenye
+          akaunti moja pekee. Tunaweza kuomba nyaraka za ziada (uthibitisho wa anwani, tamko la
+          chanzo cha fedha) iwapo shughuli zako zitavuka viwango vya kuzuia uoshaji wa fedha,
+          na kutoa TZS 1,000,000 au zaidi kunashikiliwa kwa ukaguzi wa maafisa wawili.
         </p>
       </LegalSection>
 
@@ -283,9 +289,10 @@ const CONTENT: Record<Locale, React.ReactNode> = {
 
       <LegalSection n="3" title="身份验证（KYC）">
         <p>
-          在提取奖金之前，您必须完成身份验证：提供有效的 NIDA 号码及带照片的身份证件，由我们的合规团队审核。
-          如果您的活动触发反洗钱阈值，我们可能会要求
-          提供额外文件（地址证明、资金来源声明）。
+          提现<strong>无需</strong>完成身份验证。您可随时使用四种证件之一进行验证——国民身份证
+          （NIDA）号码、护照、驾驶证或选民证——并提交由我们的合规团队审核的照片证据。
+          一份证件仅可用于一个账户。如果您的活动触发反洗钱阈值，我们可能会要求提供额外文件
+          （地址证明、资金来源声明）；TZS 1,000,000 及以上的提现须经两名合规专员审核。
         </p>
       </LegalSection>
 

@@ -168,7 +168,14 @@ export async function retryWithdrawalAction(formData: FormData): Promise<Result>
   if (!t || t.type !== "WITHDRAWAL" || t.status !== "FAILED") return { ok: false, error: "Not a retryable failed withdrawal." };
   const { withdraw } = await import("@/lib/server/wallet-service");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const r = await withdraw(t.userId, { provider: (t.provider ?? "MPESA"), amount: Math.abs(t.amount), msisdn: t.msisdn ?? undefined } as any);
+  // ⛔ THE 4th ARGUMENT IS THE OPERATOR, AND IT IS NOT OPTIONAL IN PRACTICE. Identity
+  // verification is no longer a precondition of withdrawal (Board comment #1,
+  // 2026-08-19), so this path can now push a payout for an UNVERIFIED account — which
+  // the identity gate used to stop here as a side effect. `withdraw()` records who
+  // initiated it; without this argument the compliance record would name the PLAYER
+  // for an action an officer took. `undefined` is the idempotencyKey this path has
+  // never passed. See docs/BOARD-DISCLOSURE-B-E.md §6.2.
+  const r = await withdraw(t.userId, { provider: (t.provider ?? "MPESA"), amount: Math.abs(t.amount), msisdn: t.msisdn ?? undefined } as any, undefined, g.userId);
   if (r.ok) {
     await db.txn.update(txnId, { status: "CANCELLED", description: `${t.description ?? "withdrawal failed"} · superseded by retry` });
   } else {
@@ -296,7 +303,10 @@ export async function bulkRetryAction(): Promise<{ ok: true; retried: number; st
       const r = t.type === "DEPOSIT"
         ? await deposit(t.userId, { provider: (t.provider ?? "MPESA") as DepositProvider, amount: Math.abs(t.amount), msisdn: t.msisdn ?? undefined })
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        : await withdraw(t.userId, { provider: (t.provider ?? "MPESA"), amount: Math.abs(t.amount), msisdn: t.msisdn ?? undefined } as any);
+        // 4th argument = the operator who clicked, same reason as retryWithdrawalAction
+        // above. This loop retries up to 50 rows, so an unattributed run would put the
+        // operator's decision behind 50 player names.
+        : await withdraw(t.userId, { provider: (t.provider ?? "MPESA"), amount: Math.abs(t.amount), msisdn: t.msisdn ?? undefined } as any, undefined, g.userId);
       if (r.ok) {
         await db.txn.update(t.id, { status: "CANCELLED", description: `${t.description ?? "failed"} · superseded by bulk retry` });
         retried++;

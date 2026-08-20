@@ -29,11 +29,14 @@ const CONTENT: Record<Locale, React.ReactNode> = {
     <>
       <LegalSection n="1" title="Customer due diligence (CDD)">
         <p>
-          Identity is verified before withdrawal. We collect a 20-digit NIDA number, check its
-          format and that it is unique to a single account, and our compliance team reviews
-          photographic ID (front and back) together with a selfie. Withdrawals are
-          blocked until KYC status is <span className="font-mono text-yes-300">APPROVED</span>.
-          We capture: full name, date of birth, region, NIDA number, and photographic evidence.
+          Identity verification is offered to every player and is <strong>not</strong> a
+          precondition of withdrawal. A player may verify with any one of four documents — a
+          20-digit National ID (NIDA) number, a passport, a driving licence or a voter&apos;s
+          card. We check the number against that document&apos;s format rule, enforce that the
+          document is unique to a single account, and our compliance team reviews the
+          photographic evidence together with a selfie. We capture: full name, date of birth,
+          region, the document type and number, and photographic evidence. Withdrawals of
+          TZS 1,000,000 or more are held for two-officer review regardless of identity status.
         </p>
       </LegalSection>
 
@@ -94,11 +97,14 @@ const CONTENT: Record<Locale, React.ReactNode> = {
     <>
       <LegalSection n="1" title="Uchunguzi wa kina wa mteja (CDD)">
         <p>
-          Utambulisho huthibitishwa kabla ya kutoa fedha. Tunakusanya namba ya NIDA yenye tarakimu 20, tunakagua
-          muundo wake na kwamba inatumika kwenye akaunti moja pekee, na timu yetu ya uzingatiaji hukagua
-          kitambulisho chenye picha (mbele na nyuma) pamoja na selfie.
-          Utoaji wa fedha umezuiwa hadi hadhi ya KYC iwe <span className="font-mono text-yes-300">APPROVED</span>.
-          Tunakusanya: jina kamili, tarehe ya kuzaliwa, mkoa, namba ya NIDA, na ushahidi wa picha.
+          Uthibitisho wa utambulisho unapatikana kwa kila mchezaji na <strong>hauhitajiki</strong>
+          kabla ya kutoa fedha. Mchezaji anaweza kuthibitisha kwa kutumia mojawapo ya nyaraka
+          nne — namba ya NIDA yenye tarakimu 20, pasipoti, leseni ya udereva au kadi ya mpiga
+          kura. Tunakagua namba kwa kanuni ya nyaraka hiyo, tunahakikisha nyaraka inatumika
+          kwenye akaunti moja pekee, na timu yetu ya uzingatiaji hukagua ushahidi wa picha
+          pamoja na selfie. Tunakusanya: jina kamili, tarehe ya kuzaliwa, mkoa, aina na namba
+          ya nyaraka, na ushahidi wa picha. Kutoa TZS 1,000,000 au zaidi kunashikiliwa kwa
+          ukaguzi wa maafisa wawili bila kujali hadhi ya utambulisho.
         </p>
       </LegalSection>
 
@@ -160,10 +166,11 @@ const CONTENT: Record<Locale, React.ReactNode> = {
     <>
       <LegalSection n="1" title="客户尽职调查（CDD）">
         <p>
-          提现前须完成身份验证。我们采集 20 位 NIDA 号码，核对其格式并确认其仅绑定一个账户，
-          由我们的合规团队审核带照片的身份证件（正反面）及自拍照。
-          在 KYC 状态变为 <span className="font-mono text-yes-300">APPROVED</span> 之前，提现将被阻止。
-          我们采集：全名、出生日期、地区、NIDA 号码以及照片证据。
+          我们为每位玩家提供身份验证，但提现<strong>无需</strong>先完成验证。玩家可使用四种证件
+          之一进行验证——20 位国民身份证（NIDA）号码、护照、驾驶证或选民证。我们按该证件的格式
+          规则核对号码，确保一份证件仅绑定一个账户，并由我们的合规团队审核照片证据及自拍照。
+          我们采集：全名、出生日期、地区、证件类型与号码以及照片证据。
+          无论身份验证状态如何，TZS 1,000,000 及以上的提现均须经两名合规专员审核。
         </p>
       </LegalSection>
 

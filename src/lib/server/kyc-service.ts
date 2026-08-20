@@ -578,11 +578,25 @@ export async function listPendingKyc() {
 /**
  * Force an already-APPROVED player to re-verify (audit §9.3 #4) — document
  * expiry, a name mismatch, suspicious activity. Moves KYC APPROVED →
- * ADDITIONAL_INFO_REQUIRED with the officer's reason, which (a) re-locks
- * WITHDRAWALS immediately (the withdraw gate requires kyc.status === "APPROVED")
- * and (b) reopens the document upload + resubmit flow so the player can
- * re-verify. Login/betting are left alone — this targets the money-out gate.
- * COMPLIANCE-audited; an officer cannot force-reverify themselves.
+ * ADDITIONAL_INFO_REQUIRED with the officer's reason, which reopens the document
+ * upload + resubmit flow so the player can re-verify. Login and betting are left
+ * alone. COMPLIANCE-audited; an officer cannot force-reverify themselves.
+ *
+ * 🔴 THIS NO LONGER STOPS A WITHDRAWAL, AND THAT USED TO BE ITS ENTIRE POINT.
+ * Until 2026-08-20 this doc said it "re-locks WITHDRAWALS immediately (the withdraw
+ * gate requires kyc.status === 'APPROVED')". That gate is gone — identity verification
+ * stopped being a precondition of withdrawal on the Gaming Board's instruction (comment
+ * #1, relayed by the owner 2026-08-19). So this call now changes the player's KYC state
+ * and the documents they must resubmit, and NOTHING about their ability to be paid.
+ *
+ * ⛔ AN OFFICER WHO NEEDS TO STOP MONEY LEAVING MUST USE A MONEY CONTROL. There are
+ * three, and they are the whole list:
+ *   · freeze the wallet — `wallet.status !== "ACTIVE"`, the only account-level control
+ *     left inside `wallet-service.withdraw()`;
+ *   · pause payouts — platform-wide, enforced in the withdraw route;
+ *   · the AML hold — gross ≥ TZS 1,000,000 goes to two-officer review, and it never
+ *     read identity status, so it is unaffected by any of this.
+ * Full statement of what remains and what does not: `docs/BOARD-DISCLOSURE-B-E.md` §6.1.
  */
 export async function forceReverifyKyc(officerId: string, userId: string, reason: string): Promise<ServiceResult> {
   if (!userId) return { ok: false, error: "Missing user.", code: "INVALID" };

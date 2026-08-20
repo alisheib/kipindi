@@ -122,8 +122,10 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
       {showCashback && <CashbackPromo percent={bonusCfg.cashbackPercentage} mode={bonusCfg.cashbackMode} compact cta={false} />}
 
       {/* ── EMAIL GATE ────────────────────────────────────────────────────────
-          A confirmed address is required before the FIRST deposit (browse free →
-          verify email to deposit → KYC to withdraw). We render the gate INSTEAD
+          A confirmed address is required before the FIRST deposit. The ladder used to
+          read "browse free → verify email to deposit → KYC to withdraw"; the third rung
+          is gone since 2026-08-20 (Board comment #1), so this is now the ONLY identity-ish
+          gate on the money path in either direction. We render the gate INSTEAD
           of the form rather than letting the player fill everything in and be
           rejected on submit — the server enforces it either way, but being told
           up front, with the action that fixes it, is the difference between a

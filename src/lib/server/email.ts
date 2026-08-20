@@ -1060,8 +1060,13 @@ export function kycApprovedHtml({ name, reference }: { name: string; reference?:
   return wrapGold(`
     ${eyebrow("Identity verified", "Utambulisho umethibitishwa", true)}
     ${heading(`You're fully verified, ${name}`)}
-    ${subtitle("Your identity is confirmed — you can now deposit, place bets, and withdraw.")}
-    ${subtitleSw("Utambulisho wako umethibitishwa — sasa unaweza kuweka pesa, kuweka dau, na kutoa pesa.")}
+    ${/* ⛔ THIS MAY NOT PROMISE A MONEY CONSEQUENCE. It read "you can now deposit, place
+          bets, and withdraw" — wrong on all three. Depositing turns on a confirmed email
+          address, betting was never gated on identity, and withdrawal stopped being gated on
+          it on 2026-08-20 (Board comment #1, 2026-08-19). An email is the one surface a
+          player keeps, so a false promise here outlives the page that made it. */""}
+    ${subtitle("Your identity is confirmed, and this document is now linked to your account.")}
+    ${subtitleSw("Utambulisho wako umethibitishwa, na kitambulisho hiki sasa kimeunganishwa na akaunti yako.")}
     ${reference ? detailRows([{ label: "Reference", value: reference }]) : ""}
     ${ctaButton("/markets", "Browse markets · Tazama masoko")}
   `);

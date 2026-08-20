@@ -142,10 +142,35 @@ const depositPage = read("src/app/wallet/deposit/page.tsx");
 
 ok("withdraw page reads the live status", withdrawPage.includes("getPayoutStatus()"));
 ok("withdraw page renders the notice", withdrawPage.includes("<PayoutStatusNotice"));
+// ⚠️ RE-POINTED 2026-08-20 · this asserted the page contains the literal name `canSubmit`.
+// A local variable's NAME is not a property of the product: renaming it — or inlining it —
+// reddened `test:cert-f1` over a correct change, which teaches the next reader to reintroduce
+// the name to appease the guard. What matters is that the form's disabled state is DERIVED
+// from payout capacity, so that is what is pinned.
 ok("🔴 withdraw form is disabled when payouts cannot be paid",
-  withdrawPage.includes("payoutsAcceptingRequests(") && withdrawPage.includes("canSubmit"),
+  withdrawPage.includes("payoutsAcceptingRequests(") && /<fieldset disabled=\{!/.test(withdrawPage),
   "The form must not invite a request we cannot fulfil.");
-ok("withdraw form no longer gates on KYC alone", !/disabled=\{!kycApproved\}/.test(withdrawPage));
+
+// 🔴 THIS ASSERTION WAS VACUOUS AND IS NOW REAL. It was named "withdraw form no longer gates
+// on KYC alone" and tested `!/disabled=\{!kycApproved\}/` — a literal this page has NEVER
+// contained (it has always been `disabled={!canSubmit}`). It therefore passed identically
+// with the KYC gate fully present and fully removed, and could be cited as coverage for
+// either. ⛔ It must not be cited in either direction; it is replaced.
+//
+// Comments are stripped first, and that is load-bearing here: the page's own comment records
+// what the gate USED to be (`kycApproved && payoutsOpen`) so the next reader knows why it is
+// gone, and an absence check that matched that explanation would go red on a correct tree.
+const withdrawCode = withdrawPage
+  .replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+ok("🔴 the withdraw form does not gate on identity at all",
+  !/kycApproved/.test(withdrawCode) && !/db\.kyc\./.test(withdrawCode),
+  "identity verification stopped being a precondition of withdrawal on 2026-08-20 (Board comment #1)");
+// ⭐ CONTROL · that check is only meaningful if the stripped source still holds the page. A
+// stripper that ate everything, or a failed read, would make the two absences vacuous again —
+// which is the exact defect being repaired here.
+ok("…control · the stripped withdraw page is still the page",
+  withdrawCode.includes("payoutsAcceptingRequests(") && withdrawCode.includes("<fieldset"),
+  "if this fails, the absence assertion above proves nothing");
 
 ok("🔴 DEPOSIT page also warns — before money comes in", depositPage.includes("<PayoutStatusNotice"));
 ok("deposit page reads the live status", depositPage.includes("getPayoutStatus()"));

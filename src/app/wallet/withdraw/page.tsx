@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { BackLink } from "@/components/ui/back-link";
@@ -58,12 +57,16 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
   const prevAmount = sp.amount ?? "";
   const prevMsisdn = sp.msisdn ?? "";
 
-  // B-1: a swallowed wallet read made the form silently unusable (max = 0) and a
-  // swallowed KYC read told an APPROVED player to start KYC. Failed reads throw
-  // to the wallet error boundary instead of fabricating those states.
+  // B-1: a swallowed wallet read made the form silently unusable (max = 0). A failed
+  // read throws to the wallet error boundary instead of fabricating that state.
+  //
+  // ⛔ THE KYC READ IS GONE FROM THIS PAGE, DELIBERATELY — not overlooked. Identity
+  // verification stopped being a precondition of withdrawal (Board comment #1, relayed
+  // by the owner 2026-08-19), so this page has nothing left to decide from it, and a
+  // page-level read with nothing to decide is how the gate gets re-added. The read that
+  // survives is in `wallet-service.withdraw()`, where it RECORDS identity instead of
+  // gating on it. See docs/BOARD-DISCLOSURE-B-E.md.
   const wallet = await db.wallet.findByUserId(session.userId);
-  const kyc = await db.kyc.findByUserId(session.userId);
-  const kycApproved = kyc?.status === "APPROVED";
 
   // Can we actually pay a withdrawal right now? Since 2026-07-29 the honest answer has been no,
   // and until this landed the form said nothing at all. `unavailable` disables the form — taking
@@ -72,7 +75,12 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
   // action for the full note). One gate, everyone, no exceptions.
   const payouts = await getPayoutStatus();
   const payoutsOpen = payoutsAcceptingRequests(payouts.status);
-  const canSubmit = kycApproved && payoutsOpen;
+  // ⛔ PAYOUT CAPACITY IS THE ONLY THING THAT DISABLES THIS FORM NOW. It used to be
+  // `kycApproved && payoutsOpen`; identity came out on the Board's instruction. The
+  // service agrees — it no longer refuses on identity either, which is the point: a
+  // page that promised what the next screen refused is E-5, and this is the same
+  // failure read backwards.
+  const canSubmit = payoutsOpen;
 
   return (
     <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-5">
@@ -109,8 +117,9 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
         </div>
       )}
 
-      {/* Above the KYC gate on purpose: "we cannot pay you" outranks "verify your ID first",
-          because verifying an ID to reach a form that cannot pay is wasted effort. */}
+      {/* "We cannot pay you right now" is the first thing this page says, and after
+          2026-08-20 it is also the ONLY precondition it states — the verify-your-ID
+          panel this used to be ranked against is gone. */}
       <PayoutStatusNotice
         status={payouts.status}
         note={payouts.note}
@@ -124,22 +133,8 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
         }}
       />
 
-      {!kycApproved && (
-        <div className="flex items-start gap-3.5 rounded-xl border border-warning-border bg-warning-bg/30 p-4">
-          <KycLock />
-          <div className="min-w-0">
-            <p className="font-display font-semibold text-text">{t.wallet.verifyFirst}</p>
-            <p className="mt-1 text-[12.5px] text-text-muted leading-snug">
-              {t.wallet.verifyFirstBody}
-            </p>
-            {/* Return the user to Withdraw after verifying (IA review R6);
-                primary not gold — verifying ID isn't a money-in action. */}
-            <Link href="/profile/kyc?next=/wallet/withdraw" className="btn btn-primary btn-sm mt-3">
-              {t.wallet.continueKyc}
-            </Link>
-          </div>
-        </div>
-      )}
+      {/* The verify-first panel stood here until 2026-08-20. It is gone, not hidden:
+          nothing on this page is conditional on identity any more. */}
 
       <form
         action={withdrawAction}
@@ -211,20 +206,6 @@ function NoticeRow({ icon, title, body }: { icon: React.ReactNode; title: string
   );
 }
 
-/** C2e — KYC-lock line-art: a padlock over an ID silhouette, marking that
- *  withdrawal is gated behind identity verification. */
-function KycLock() {
-  return (
-    <svg viewBox="0 0 56 56" width={44} height={44} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-warning-fg" aria-hidden>
-      <rect x="7" y="13" width="34" height="24" rx="3" />
-      <circle cx="17" cy="22" r="3.4" />
-      <path d="M12 30 a5 5 0 0 1 10 0" />
-      <line x1="27" y1="20" x2="36" y2="20" />
-      <line x1="27" y1="25" x2="34" y2="25" />
-      {/* padlock in front (filled with the panel bg so it occludes the card) */}
-      <rect x="30" y="34" width="17" height="13" rx="2.5" fill="var(--warning-bg)" />
-      <path d="M33.5 34 v-3 a4.5 4.5 0 0 1 9 0 v3" />
-      <circle cx="38.5" cy="40.5" r="1.5" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
+// The `KycLock` padlock icon was deleted 2026-08-20 with the panel it marked. It
+// existed to say "withdrawal is gated behind identity verification", which is no
+// longer true of this product.

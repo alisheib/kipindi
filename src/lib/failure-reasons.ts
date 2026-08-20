@@ -90,7 +90,15 @@ export type FailureReason =
   // service and without inventing copy that already exists in three languages.
   | "deposit_limit"
   | "sof_required"
-  | "kyc_required"
+  // ⛔ RETIRED 2026-08-20 — do not re-add. `kyc_required` was the withdrawal
+  // identity refusal, and identity verification stopped being a precondition of
+  // withdrawal on the Gaming Board's instruction (comment #1, relayed by the owner
+  // 2026-08-19; `docs/COMPLIANCE-DECISIONS.md` and `docs/BOARD-DISCLOSURE-B-E.md`).
+  // Its union member, registry row, three dictionary keys and its single emitter in
+  // `wallet-service.withdraw()` went in one commit. What replaced the refusal is a
+  // RECORD, not another code: an identity stamp on every withdrawal's audit entry
+  // and a COMPLIANCE fact when the payer is unverified. A refusal code here would
+  // re-create the gate the Board asked us to remove.
   // ⛔ RENAMED 2026-08-20, and the rename is the point. `nida_taken` /
   // `nida_not_verified` were named for the only document the product accepted.
   // From 2026-08-20 a player proves identity with any ONE of four, so leaving
@@ -248,7 +256,6 @@ export const REASONS: Record<FailureReason, ReasonSpec> = {
   id_number_format:     { severity: "warning", channel: "inline", key: "errIdNumberFormat" },
   id_expired:           { severity: "warning", channel: "inline", key: "errIdExpired" },
   id_expiry_required:   { severity: "warning", channel: "inline", key: "errIdExpiryRequired" },
-  kyc_required:         { severity: "error",   channel: "modal",  key: "errVerifyIdentity" },
   // ⛔ A BREAK THE PLAYER SET THEMSELVES IS NOT A FAULT — it is the tool working. Error
   // severity, because they cannot lift it, but never phrased or coloured as a malfunction.
   break_active:         { severity: "error",   channel: "modal",  key: "errBreakActive" },

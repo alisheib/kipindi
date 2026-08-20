@@ -1052,10 +1052,13 @@ export function notifyKyc(userId: string, status: "APPROVED" | "REJECTED" | "PEN
       titleEn: "Identity verified",
       titleSw: "Kitambulisho kimethibitishwa",
       titleZh: "身份已验证",
-      bodyEn: "You can now withdraw winnings.",
-      bodySw: "Sasa unaweza kutoa pesa zako.",
-      bodyZh: "您现在可以提现奖金了。",
-      href: "/wallet",
+      // ⛔ NOT "You can now withdraw winnings" — that was true until 2026-08-20 and is not
+      // any more (Board comment #1, 2026-08-19). A stored notification is rendered verbatim
+      // long after it is sent, so a superseded promise persists in the player's inbox.
+      bodyEn: "Your identity is verified and this document is now linked to your account.",
+      bodySw: "Utambulisho wako umethibitishwa na kitambulisho hiki sasa kimeunganishwa na akaunti yako.",
+      bodyZh: "您的身份已验证，此证件现已与您的账户绑定。",
+      href: "/profile/kyc",
     });
   }
   if (status === "REJECTED") {

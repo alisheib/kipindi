@@ -1256,7 +1256,15 @@ export async function notifyStillPendingDeposits(olderThanMs = 30 * 60 * 1000): 
  * player's own untouched deposit — deposit 100,000, bet nothing, withdraw, get
  * 85,000. Taxes are only ever on OUR commission (see payments.ts).
  */
-export async function withdraw(userId: string, input: z.input<typeof WithdrawSchema>, idempotencyKey?: string): Promise<ServiceResult<{ txnId: string; status: StoredTxn["status"]; fee: number; net: number }>> {
+/** `actorId` — WHO initiated this payout, when that is not the account holder.
+ *  Two OPERATOR paths call this function directly (`admin/payments/payment-actions.ts`
+ *  `retryWithdrawalAction` and `bulkRetryAction`), and without this the compliance
+ *  record would name the PLAYER as the actor on an operator-initiated payout. Defaults
+ *  to `userId` — a player withdrawing for themselves. The account holder is never lost:
+ *  it is the txn's `userId` and is carried as `onBehalfOf` in both audit payloads. */
+export async function withdraw(userId: string, input: z.input<typeof WithdrawSchema>, idempotencyKey?: string, actorId?: string): Promise<ServiceResult<{ txnId: string; status: StoredTxn["status"]; fee: number; net: number }>> {
+  const actor = actorId ?? userId;
+  const operatorInitiated = !!actorId && actorId !== userId;
   const rl = await rateCheckAsync(userId, "wallet.withdraw");
   if (!rl.allowed) return { ok: false, error: "Too many withdrawal attempts.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
 
@@ -1282,11 +1290,29 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
   const user = await db.user.findById(userId);
   if (!user) return { ok: false, error: "User not found.", code: "NOT_FOUND" };
 
+  // ⛔ IDENTITY IS RECORDED HERE, IT IS NO LONGER ENFORCED — and the read stays for
+  // exactly that reason. Identity verification stopped being a precondition of
+  // withdrawal on the Gaming Board's instruction (comment #1, relayed by the owner
+  // 2026-08-19). Deleting this read would leave the platform unable to answer the one
+  // question the regulator asks: "which payouts went to unverified accounts?"
+  //
+  // What replaced the refusal is a RECORD, in two parts:
+  //   1. `kycStatus` on `withdraw.initiated`, for EVERY payout — so the verified and
+  //      the unverified are distinguishable in the ledger, and only by that stamp.
+  //   2. a COMPLIANCE fact when the payer is unverified, emitted AFTER the txn exists
+  //      and carrying `txnId`, so it can be joined to the payout it explains. It is
+  //      awaited, like every other money/compliance write on this path.
+  //
+  // ⚠️ WHAT REMAINS, because a future reader will ask: the AML ≥ TZS 1,000,000
+  // two-officer hold (`payments.ts`, which contains no identity reference at all and
+  // therefore cannot be weakened by this change), the wallet freeze below, the
+  // per-provider kill-switch, the gateway floor, and the payout pause — the last of
+  // which lives in the ROUTE (`wallet/withdraw/actions.ts`), not here. After this
+  // change `w.status !== "ACTIVE"` is the ONLY account-level control inside this
+  // function: there is no `user.status` check and no self-exclusion check on the
+  // withdraw path. Full statement: `docs/BOARD-DISCLOSURE-B-E.md` §5-§6.
   const kyc = await db.kyc.findByUserId(userId);
-  if (kyc?.status !== "APPROVED") {
-    audit({ category: "COMPLIANCE", action: "withdraw.kyc_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { kycStatus: kyc?.status ?? "NOT_STARTED" } });
-    return { ok: false, error: "Verify your identity to withdraw.", code: "INVALID", reason: "kyc_required" as FailureReason };
-  }
+  const kycStatus = kyc?.status ?? "NOT_STARTED";
 
   const amount = parse.data.amount;
   // The withdrawal fee — the ONLY thing a player is charged here. Admin-tunable,
@@ -1367,7 +1393,10 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
       completedAt: null,
       idempotencyKey: idempotencyKey ?? null,
     });
-    audit({ category: "WALLET", action: "withdraw.initiated", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { provider: parse.data.provider, amount, fee, gatewayShare, net } });
+    // `kycStatus` is stamped on EVERY withdrawal, verified or not. A stamp that only
+    // appeared on unverified payouts would make its own absence ambiguous — indis-
+    // tinguishable from an audit write that failed (see the fail-open note below).
+    audit({ category: "WALLET", action: "withdraw.initiated", actorId: actor, targetType: "Transaction", targetId: txnId, payload: { provider: parse.data.provider, amount, fee, gatewayShare, net, kycStatus, onBehalfOf: userId, operatorInitiated } });
     emit("wallet:balance", { userId, balance: balanceAfter });
     return { ok: true as const, duplicate: null };
   });
@@ -1378,6 +1407,45 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
     const dup = hold.duplicate;
     const f = dup.fee ?? 0;
     return { ok: true, data: { txnId: dup.id, status: dup.status, fee: f, net: Math.abs(dup.amount) - f } };
+  }
+
+  // ── THE COMPLIANCE RECORD THAT REPLACED THE GATE ───────────────────────────
+  // A FACT, not a refusal: this payout is going to an account that has not proved its
+  // identity, the Board instructed that on 2026-08-19, and here is the instance.
+  //
+  // Placed HERE for three reasons, each of which was a way to get it wrong:
+  //   · AFTER the txn exists and carrying `txnId` — an event that cannot be joined to
+  //     the payout it explains answers nothing.
+  //   · AFTER the duplicate check — an idempotent replay is not a second payout, and
+  //     recording it as one would inflate the count the regulator is given.
+  //   · OUTSIDE the wallet lock — this is an awaited write, and this function
+  //     deliberately never holds the lock across I/O.
+  //
+  // ⚠️ FAIL-OPEN, AND THIS IS THE ONE PATH WHERE IT MATTERS. `audit()` keeps the entry
+  // in a per-instance in-memory ring and lets the request proceed if the database write
+  // throws (audit.ts). So under a DB outage this payout can succeed while the record
+  // explaining it does not durably persist. Disclosed to the Board rather than dressed
+  // up as durability we have not built — `docs/BOARD-DISCLOSURE-B-E.md` §6.3.
+  if (kycStatus !== "APPROVED") {
+    await audit({
+      category: "COMPLIANCE",
+      action: "withdraw.unverified_payer",
+      actorId: actor,
+      targetType: "Transaction",
+      targetId: txnId,
+      payload: {
+        kycStatus,
+        onBehalfOf: userId,
+        operatorInitiated,
+        amount,
+        net,
+        provider: parse.data.provider,
+        // The authority of record, in the row itself. An auditor reading this event
+        // should not have to be handed a separate document to learn why it is not a
+        // refusal — and a future engineer should not "fix" it back into one.
+        instruction: "TZ Gaming Board comment #1, relayed by the owner 2026-08-19",
+      },
+    });
   }
 
   // ── Provider dispatch (UNLOCKED): never hold a wallet lock across network I/O.

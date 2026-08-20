@@ -277,7 +277,15 @@ console.log("\n=== C · PLAYER PROTECTION ===");
     await ctx.close();
   }
 
-  // C2 — KYC gate present on /wallet/withdraw
+  // C2 — withdrawal is OPEN to an unverified player, by instruction
+  // 🔴 THIS ASSERTION WAS REVERSED ON 2026-08-20, AND THIS SCRIPT'S OUTPUT GOES TO THE BOARD.
+  // It read "C2 unverified user sees KYC gate on /wallet/withdraw" and tested
+  // /verify|kyc|nida/i over the page body. Identity verification stopped being a precondition
+  // of withdrawal on the Board's own instruction (comment #1, relayed by the owner
+  // 2026-08-19). The page still says "Secured by KYC & AML", so the old line would have kept
+  // reporting a control that had been REMOVED — in the report we hand the regulator. That is
+  // the most expensive false green this campaign could produce, and it would never have
+  // failed. It now states the instructed shape and measures the form's real state.
   {
     const ctx = await browser.newContext();
     await register(ctx, { offset: 3100 });
@@ -285,7 +293,18 @@ console.log("\n=== C · PLAYER PROTECTION ===");
     await p.goto(`${BASE}/wallet/withdraw`, { waitUntil: "domcontentloaded" }).catch(() => {});
     await p.waitForTimeout(800);
     const text = (await p.locator("body").textContent()) ?? "";
-    log("C2 unverified user sees KYC gate on /wallet/withdraw", /verify|kyc|nida|hujahakikishwa/i.test(text));
+    const fieldsetDisabled = (await p.locator("fieldset[disabled]").count()) > 0;
+    const tellsThemToVerifyFirst =
+      /verify\s+your\s+(identity|ID)[^.]{0,40}(to|before)\s+withdraw/i.test(text) ||
+      /thibitisha[^.]{0,40}(kabla|ili)\s+ku(toa|toa pesa)/i.test(text) ||
+      /(提现|提款)[^。]{0,20}(需|须)[^。]{0,10}验证/.test(text);
+    log("C2 withdrawal is not gated on identity (Board comment #1, 2026-08-19)",
+      !tellsThemToVerifyFirst);
+    // Reported separately, because a SHUT payout rail disables this same form for an entirely
+    // different reason and must not be read as an identity gate.
+    log("C2b …and the form is open (or shut only by the payout pause)", !fieldsetDisabled
+      || /payout|malipo|提现/i.test(text));
+    log("C2c control · the withdraw page rendered", text.length > 400);
     await ctx.close();
   }
 
