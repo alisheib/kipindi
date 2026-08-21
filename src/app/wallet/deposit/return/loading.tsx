@@ -19,7 +19,10 @@ export default function DepositReturnLoading() {
   return (
     <PageContainer tier="receipt" className="space-y-5 pb-28 lg:pb-6">
       <div className="rounded-card border border-border bg-bg-elevated p-6 space-y-4 kp-shimmer-track">
-        <div className="mx-auto h-12 w-12 rounded-full bg-bg-overlay" />
+        {/* ⚠️ LITERALS, not `h-12 w-12` — spacing is overridden (tailwind.config.ts:200-215) so
+            `h-12` drew a 128px disc: the first thing a player sees on returning from a real
+            Selcom payment. PLAYER MONEY SURFACE. */}
+        <div className="mx-auto h-[48px] w-[48px] rounded-full bg-bg-overlay" />
         <div className="mx-auto h-5 w-48 rounded bg-bg-overlay" />
         <div className="mx-auto h-3 w-64 rounded bg-bg-overlay" />
       </div>
@@ -31,7 +34,9 @@ export default function DepositReturnLoading() {
           </div>
         ))}
       </div>
-      <div className="h-10 w-full rounded-control bg-bg-overlay kp-shimmer-track" />
+      {/* ⚠️ TOKEN, not `h-10` (80px on the overridden scale) — this ghosts a full-width
+          control, so it takes --h-control-md (44px). */}
+      <div className="h-[var(--h-control-md)] w-full rounded-control bg-bg-overlay kp-shimmer-track" />
     </PageContainer>
   );
 }

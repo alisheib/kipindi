@@ -102,7 +102,11 @@ export function TotpSetupClient({ initiallyEnabled, next }: { initiallyEnabled: 
         placeholder="123 456"
         autoComplete="one-time-code"
         aria-label="Current 6-digit verification code"
-        className="w-40 h-11 px-3 rounded-md bg-bg-inset border border-border text-text font-mono text-title-sm tabular tracking-[0.2em] focus:outline-none admin-focus transition-colors"
+        /* ⚠️ HEIGHT IS A LITERAL, not `h-11` — spacing is overridden (tailwind.config.ts:200-215)
+           so `h-11` was 96px here while the identical field at L213 was `h-12` = 128px: the same
+           control at two heights. 48px, matching the enrolment field. (`w-40` is NOT an
+           overridden key — it is Tailwind's default 160px and is correct as written.) */
+        className="w-40 h-[48px] px-3 rounded-md bg-bg-inset border border-border text-text font-mono text-title-sm tabular tracking-[0.2em] focus:outline-none admin-focus transition-colors"
       />
     </label>
   );
@@ -210,7 +214,9 @@ export function TotpSetupClient({ initiallyEnabled, next }: { initiallyEnabled: 
               placeholder="123 456"
               autoComplete="one-time-code"
               aria-label="6-digit verification code"
-              className="w-40 h-12 px-3 rounded-md bg-bg-inset border border-border text-text font-mono text-title-sm tabular tracking-[0.2em] focus:outline-none admin-focus transition-colors"
+              /* ⚠️ LITERAL, not `h-12` (128px on the overridden scale) — see the step-up field
+                 above. Both TOTP inputs are the same control and now the same height. */
+              className="w-40 h-[48px] px-3 rounded-md bg-bg-inset border border-border text-text font-mono text-title-sm tabular tracking-[0.2em] focus:outline-none admin-focus transition-colors"
             />
           </label>
           <Button variant="primary" size="lg" leading={<I.shieldcheck s={14} />} onClick={verify} loading={busy} disabled={code.length !== 6}>

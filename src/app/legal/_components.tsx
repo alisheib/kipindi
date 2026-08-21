@@ -36,7 +36,9 @@ export function LegalHeader({
       <GiltCorner size={54} rotate={180} className="absolute right-1 bottom-1" />
       <div className="relative z-10 flex items-start gap-3.5">
         {Glyph && (
-          <span className="mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-border bg-bg-overlay text-text-muted">
+          /* ⚠️ LITERALS, not `h-10 w-10` — spacing is overridden (tailwind.config.ts:200-215),
+             so `h-10` was 80px and out-sized the size={54} GiltCorner it sits under. */
+          <span className="mt-0.5 grid h-[40px] w-[40px] shrink-0 place-items-center rounded-lg border border-border bg-bg-overlay text-text-muted">
             <Glyph s={20} />
           </span>
         )}

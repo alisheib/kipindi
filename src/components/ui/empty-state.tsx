@@ -79,7 +79,10 @@ export function ErrorState({
         className,
       )}
     >
-      <div className="mx-auto mb-4 w-12 h-12 grid place-items-center text-no-300" aria-hidden>
+      {/* 48px mark — ARBITRARY LITERAL. The spacing scale is OVERRIDDEN
+          (tailwind.config.ts:200-215), so `w-12 h-12` was a 128px box, nearly a third
+          of this panel's 420px measure. ⛔ Never a scale token here. */}
+      <div className="mx-auto mb-4 w-[48px] h-[48px] grid place-items-center text-no-300" aria-hidden>
         <ErrorMark />
       </div>
       <p className="font-display text-[15px] font-semibold text-text">{resolvedTitle}</p>

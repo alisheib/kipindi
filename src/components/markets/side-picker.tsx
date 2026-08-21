@@ -80,9 +80,14 @@ export function SidePicker({
             type="button"
             onClick={() => setSide(null)}
             aria-label={t.market.changeSide}
-            /* L6: 44px tap target without growing the row — padding for the hit
-               area, negative margin absorbs it so the layout is unchanged. */
-            className="inline-flex items-center gap-1 min-h-11 px-2 -mx-2 -my-2 font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle hover:text-text transition-colors"
+            /* L6: 44px tap target without growing the row — the negative margin
+               absorbs the extra hit area so the layout is unchanged.
+               ⚠️ 44 IS WRITTEN AS AN ARBITRARY LITERAL. The spacing scale is
+               OVERRIDDEN (tailwind.config.ts:200-215): this said `min-h-11`, which
+               is a 96px floor, and `-my-2` is −12px per side (24px total) — so the
+               premise failed and the row grew by ~60px on the bet screen. At 44px
+               the 24px pull-back genuinely covers it. ⛔ Never a scale token here. */
+            className="inline-flex items-center gap-1 min-h-[44px] px-2 -mx-2 -my-2 font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle hover:text-text transition-colors"
           >
             <I.chevronLeft s={10} />
             {t.market.changeSide}

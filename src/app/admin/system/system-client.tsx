@@ -7,6 +7,7 @@ import { useDeferredToast, useToast } from "@/components/ui/toast";
 import { I } from "@/components/ui/glyphs";
 import { Input, Field } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { Toggle } from "@/components/ui/toggle";
 import { verifyChainAction, updateSupportConfigAction, updatePlatformTimezoneAction, setMaintenanceModeAction, setAnnouncementAction } from "./actions";
 import type { SupportConfig } from "@/lib/support-config";
 
@@ -181,17 +182,12 @@ export function AnnouncementForm({
           />
         </label>
         <label className="flex items-center gap-2.5 pb-1.5">
-          <button
-            type="button"
-            role="switch"
-            aria-checked={active}
-            aria-label="Publish banner"
-            onClick={() => setActive((v) => !v)}
-            className="relative shrink-0 h-7 w-12 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand-400)] ring-offset-2 ring-offset-[color:var(--bg-base)]"
-            style={{ background: active ? "var(--brand-500)" : "var(--border-strong)" }}
-          >
-            <span className="absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-[left]" style={{ left: active ? "22px" : "2px" }} />
-          </button>
+          {/* Kit <Toggle> (44×26 track, 20px thumb, 18px travel). This was a hand-rolled
+              `role="switch"` whose `h-7 w-12` track rendered 40×128px on this repo's
+              overridden spacing scale (tailwind.config.ts:200-215) with a 32px knob
+              (`h-6 w-6`) that travelled 2px→22px — a knob crossing a sixth of its own
+              track, so ON and OFF were nearly indistinguishable. */}
+          <Toggle on={active} onClick={() => setActive((v) => !v)} aria-label="Publish banner" />
           <span className="text-[13px] font-semibold text-text">{active ? "Live" : "Off"}</span>
         </label>
       </div>
@@ -250,20 +246,14 @@ export function MaintenanceModeForm({ enabled, note }: { enabled: boolean; note:
               : "Toggle to pause new bets + deposits during a deploy or incident."}
           </p>
         </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={on}
-          aria-label="Maintenance mode"
-          onClick={() => setOn((v) => !v)}
-          className="relative shrink-0 h-7 w-12 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand-400)] ring-offset-2 ring-offset-[color:var(--bg-base)]"
-          style={{ background: on ? "var(--claret-500)" : "var(--border-strong)" }}
-        >
-          <span
-            className="absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-[left]"
-            style={{ left: on ? "22px" : "2px" }}
-          />
-        </button>
+        {/* ⭐ THE KIT <Toggle>, tone="claret" — ON here means STOPPED (new bets and
+            deposits are paused), so a royal "on" would read as healthy while the platform
+            is halted. The tone was added to the kit for this call site rather than forked
+            into it: this switch used to be a hand-rolled copy, and the copy had drifted to
+            an `h-7 w-12` track — 40×128px on this repo's overridden spacing scale — with a
+            32px knob travelling 2px→22px. A knob crossing a sixth of its own track made ON
+            and OFF nearly indistinguishable, on the lever that pauses money-in. */}
+        <Toggle on={on} tone="claret" onClick={() => setOn((v) => !v)} aria-label="Maintenance mode" />
       </div>
       <label className="block">
         <span className="block font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle mb-1.5">

@@ -324,8 +324,12 @@ export function ConfirmModal({
       showClose={!loading}
     >
       <div className="mb-3 flex items-start gap-3">
+        {/* 36px tone medallion — ARBITRARY LITERAL. The spacing scale is OVERRIDDEN
+            (tailwind.config.ts:200-215), so `h-9 w-9` was a 64px disc beside a 15px
+            headline. ⛔ Never a scale token here. (Distinct from the 48px close ✕
+            above, which is deliberately 48 and must not be shrunk to match this.) */}
         <span
-          className="mt-0.5 shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-full"
+          className="mt-0.5 shrink-0 inline-flex h-[36px] w-[36px] items-center justify-center rounded-full"
           style={{
             background: `color-mix(in oklab, ${ink.ring} 15%, transparent)`,
             color: ink.ink,

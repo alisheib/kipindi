@@ -25,7 +25,10 @@ type Props = Omit<React.InputHTMLAttributes<HTMLInputElement>, "size"> & {
   trailing?: React.ReactNode;
   mono?: boolean;
   error?: boolean | string;
-  /** sm 36 · md 44 · lg 48 */
+  /**
+   * Rendered height: sm 36 · md 44 · lg 48 (px). See the warning on `heightCls`
+   * below — these are arbitrary literals, not spacing-scale classes, on purpose.
+   */
   size?: "sm" | "md" | "lg";
   containerClassName?: string;
   /** Force-allow a decimal point (otherwise inferred from inputMode/step). */
@@ -47,10 +50,15 @@ export function sanitizeNumericInput(raw: string, opts: { decimal: boolean; nega
   return (neg ? "-" : "") + s;
 }
 
+// ⚠️ ARBITRARY LITERALS ON PURPOSE. `theme.extend.spacing` is OVERRIDDEN in
+// tailwind.config.ts:200-215, so a scale class here is roughly DOUBLE what it
+// reads as: this table used to say h-9 / h-11 / h-12 and rendered 64 / 96 / 128px
+// against the 36 / 44 / 48 contract above — i.e. every un-sized field in the
+// product was 96px tall. ⛔ Never "tidy" these back into h-9 / h-11 / h-12.
 const heightCls: Record<NonNullable<Props["size"]>, string> = {
-  sm: "h-9",
-  md: "h-11",
-  lg: "h-12",
+  sm: "h-[36px]",
+  md: "h-[var(--h-input)]",   // 44px — the kit input token, globals.css
+  lg: "h-[48px]",
 };
 
 const fontCls: Record<NonNullable<Props["size"]>, string> = {

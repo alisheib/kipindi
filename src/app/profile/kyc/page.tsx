@@ -188,7 +188,9 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
       {rejected && (
         <section role="alert" className="rounded-xl border border-no-700 bg-no-500/[0.08] p-4 lg:p-5">
           <div className="flex items-start gap-3">
-            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-no-500/15 text-no-300">
+            {/* ⚠️ LITERALS, not `h-9 w-9` — spacing is overridden (tailwind.config.ts:200-215),
+                so `h-9` renders 64px. This is the surface that gates every withdrawal. */}
+            <span className="inline-flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full bg-no-500/15 text-no-300">
               <I.alertCircle s={18} />
             </span>
             <div className="min-w-0">
@@ -212,7 +214,8 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
       {needsInfo && (
         <section role="status" className="rounded-xl border border-gold-700 bg-gold-500/[0.08] p-4 lg:p-5">
           <div className="flex items-start gap-3">
-            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gold-500/15 text-gold-300">
+            {/* ⚠️ LITERALS — see the rejected-medallion note above. `h-9` is 64px here. */}
+            <span className="inline-flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full bg-gold-500/15 text-gold-300">
               <I.info s={18} />
             </span>
             <div className="min-w-0">
@@ -573,7 +576,9 @@ function ProgressRail({ nodes }: { nodes: { label: string; glyph: keyof typeof I
         return (
           <div key={i} className="contents">
             <div className="flex w-[64px] shrink-0 flex-col items-center">
-              <span className={`inline-flex h-9 w-9 items-center justify-center rounded-full ${circleCls}`}>
+              {/* ⚠️ LITERALS — `h-9` is 64px on this repo's overridden scale, i.e. edge-to-edge
+                  inside the w-[64px] column with zero gutter. 32px leaves the label room. */}
+              <span className={`inline-flex h-[32px] w-[32px] items-center justify-center rounded-full ${circleCls}`}>
                 {node.done ? <I.check s={16} /> : <Glyph s={16} />}
               </span>
               <span className={`mt-2 text-center font-mono text-[9.5px] font-semibold uppercase leading-tight tracking-[0.08em] ${labelCls}`}>

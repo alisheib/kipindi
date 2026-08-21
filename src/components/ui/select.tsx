@@ -44,8 +44,9 @@ type Props = {
    *  its name from child text (unlike a plain button), so it needs an explicit
    *  label. Falls back to the placeholder / selected label when omitted. */
   ariaLabel?: string;
-  /** Compact size for admin filter bars. `xs` (h-9) matches the kit's compact
-   *  search inputs + btn-sm height so filter rows align flush. */
+  /** Height floor of the trigger: `xs` 32px (dense admin filter bars), `sm` 36px
+   *  (admin forms), `md` 44px (default, player-facing). See the height table near
+   *  the `min-h-*` assignment below — those are literals, not scale classes. */
   size?: "md" | "sm" | "xs";
   /** Disable the whole control. Options already carry a per-option `disabled`; this is the
    *  control-level form, added 2026-08-11 for the admin act gate (finding A1) — a role with
@@ -199,8 +200,13 @@ export function Select({
     return () => window.removeEventListener("mousedown", onClick);
   }, [open]);
 
-  // `xs` is the compact admin filter-row size: neat 32px height, 12.5px label and
-  // md radius so it sits flush with the h-8 search inputs + filter buttons.
+  // `xs` is the compact admin filter-row size: a neat 32px control (== --h-control-xs,
+  // the documented dense MOUSE-ONLY exception to the 40px floor), 12.5px label, md radius.
+  //
+  // ⚠️ ARBITRARY LITERALS, NOT SCALE CLASSES. `theme.extend.spacing` is OVERRIDDEN in
+  // tailwind.config.ts:200-215, so the `min-h-8` / `min-h-9` / `min-h-11` that used to be
+  // here were floors of 48 / 64 / 96px — the 32px this comment claimed had never shipped,
+  // and the whole admin filter rail was uniformly ~50% oversized. ⛔ Never a scale token here.
   //
   // ⛔ `min-h-*`, NOT `h-*` — E-98. These were fixed heights, which forced the label span
   // to `truncate`, which silently destroyed the operator's only readout of what they had
@@ -209,7 +215,7 @@ export function Select({
   // inside a ~230px TABLE CELL — rendered `Inherit · smal…`, hiding 162px of a 307px
   // label on the one control that decides what winning means. A floor lets a short label
   // keep the exact height it has today and lets a long one grow instead of vanish.
-  const h = size === "xs" ? "min-h-8" : size === "sm" ? "min-h-9" : "min-h-11";
+  const h = size === "xs" ? "min-h-[32px]" : size === "sm" ? "min-h-[36px]" : "min-h-[44px]";
   const txt = size === "xs" ? "text-[12.5px]" : "text-[16px]";
   const radius = size === "xs" ? "rounded-md" : "rounded-lg";
 

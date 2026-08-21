@@ -122,7 +122,11 @@ export function AmlActionRow({ txnId, amount }: { txnId: string; amount: number 
             onChange={(e) => setReason(e.target.value)}
             placeholder={mode === "approve" ? "Approval reason (required)" : "Rejection reason (required)"}
             aria-label={mode === "approve" ? "Approval reason" : "Rejection reason"}
-            className="flex-1 h-8 px-2 rounded-md border border-border bg-bg-inset text-text-secondary text-caption font-mono focus:outline-none admin-focus transition-colors"
+            /* ⚠️ LITERAL, not `h-8` — spacing is overridden (tailwind.config.ts:200-215) so `h-8`
+               was 48px. 40px = --tap-min and the height of the `Button size="sm"` beside it;
+               §A2 — money controls are never the tap-floor exception, so this does NOT drop to
+               the 32px dense-admin height the filter rails use. */
+            className="flex-1 h-[40px] px-2 rounded-md border border-border bg-bg-inset text-text-secondary text-caption font-mono focus:outline-none admin-focus transition-colors"
           />
           <Button size="sm" variant={mode === "approve" ? "yes" : "danger"} onClick={() => submit(mode)} loading={busy === mode} disabled={busy !== null}>
             Submit

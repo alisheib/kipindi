@@ -375,7 +375,13 @@ export function BetConfirmModal({
             type="button"
             onClick={onCancel}
             disabled={pending}
-            className="btn btn-ghost btn-md w-full min-h-11"
+            /* `btn-lg` matches the gold confirm above, so the escape hatch and the
+               money commit are the same height. This was `btn-md min-h-11`, and
+               because the spacing scale is OVERRIDDEN (tailwind.config.ts:200-215)
+               `min-h-11` is a 96px floor — cancel shipped at more than twice the
+               height of the confirm it sits under. ⛔ No per-call height here: the
+               --h-control-* token owns it. Twin: sell-confirm-modal.tsx. */
+            className="btn btn-ghost btn-lg w-full"
           >
             {t.common.cancel}
           </button>

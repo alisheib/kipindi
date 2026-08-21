@@ -66,7 +66,10 @@ export function FeedbackSettings() {
           onToggle={toggleMotion}
         />
         <div className="flex items-center gap-3 py-3.5">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md" style={{ background: "color-mix(in oklab, var(--brand-500) 12%, transparent)" }}>
+          {/* ⛔ LITERALS, NOT `h-9 w-9` — the spacing scale is overridden
+              (tailwind.config.ts:200-215) and that pair is 64×64px, taller on its own than
+              the py-3.5 row it sits in. 40px = --tap-min, the kit's glyph-tile size. */}
+          <span className="grid h-[40px] w-[40px] shrink-0 place-items-center rounded-md" style={{ background: "color-mix(in oklab, var(--brand-500) 12%, transparent)" }}>
             <NeedleGlyph />
           </span>
           <div className="min-w-0 flex-1">
@@ -105,7 +108,9 @@ function Row({
 }) {
   return (
     <div className="flex items-center gap-3 py-3.5">
-      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md" style={{ background: "color-mix(in oklab, var(--brand-500) 12%, transparent)" }}>
+      {/* ⛔ LITERALS, NOT `h-9 w-9` (64×64px under the overridden spacing scale,
+          tailwind.config.ts:200-215). 40px = --tap-min. */}
+      <span className="grid h-[40px] w-[40px] shrink-0 place-items-center rounded-md" style={{ background: "color-mix(in oklab, var(--brand-500) 12%, transparent)" }}>
         {icon}
       </span>
       <div className="min-w-0 flex-1">

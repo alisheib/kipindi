@@ -207,7 +207,9 @@ export default async function AdminReportsPage({
               href={cmpHref as never}
               scroll={false}
               className={[
-                "font-mono text-micro px-2.5 h-8 inline-flex items-center rounded-lg border transition-colors",
+                // ⚠️ LITERAL, not `h-8` — spacing is overridden (tailwind.config.ts:200-215) so
+                // `h-8` was 48px on a 10px micro-type chip, 8px above the 40px admin chip standard.
+                "font-mono text-micro px-2.5 h-[40px] inline-flex items-center rounded-lg border transition-colors",
                 compare ? "border-brand-500 text-brand-300 bg-brand-500/10" : "border-border-strong text-text-subtle hover:text-text",
               ].join(" ")}
             >
@@ -404,7 +406,9 @@ export default async function AdminReportsPage({
               <div className="flex items-start gap-3">
                 <span
                   className={[
-                    "h-9 w-9 rounded-md inline-flex items-center justify-center shrink-0",
+                    // ⚠️ LITERALS, not `h-9 w-9` (64px on the overridden scale) — a severity
+                    // glyph tile around a 16px glyph.
+                    "h-[36px] w-[36px] rounded-md inline-flex items-center justify-center shrink-0",
                     t.severity === "critical" ? "bg-danger/15 text-danger-fg" :
                     t.severity === "high"     ? "bg-warning/15 text-warning" :
                                                 "bg-royal/15 text-royal-300",
@@ -452,7 +456,10 @@ export default async function AdminReportsPage({
 
         {/* Generation log */}
         <AdminCard title="Generation log" sw="Kumbukumbu ya kuzalisha" padding={generated.length > 0 ? "p-0" : "p-4"}
-          action={<RefreshButton variant="icon" className="!h-7 !w-7" />}>
+          /* ⛔ NO SIZE OVERRIDE — see admin-proposals-client.tsx. The `!h-7 !w-7` bandage
+             existed only because `variant="icon"` used to render 80×80; it is 40×40 on its
+             own now. */
+          action={<RefreshButton variant="icon" />}>
           {generated.length === 0 ? (
             <EmptyState
               kind="audit"

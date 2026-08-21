@@ -179,7 +179,10 @@ export default async function LoginPage({
                 {errorPanel.cta && (
                   <Link
                     href={errorPanel.cta.href as never}
-                    className="mt-2 inline-flex h-9 items-center px-3.5 rounded-pill border border-gold-700 bg-gold-500/10 font-display font-bold text-[12.5px] text-gold-300 hover:bg-gold-500/20 transition-colors"
+                    /* ⚠️ LITERAL, not `h-9` — spacing is overridden (tailwind.config.ts:200-215),
+                       so `h-9` was a 64px capsule around 12.5px type. 40px = --tap-min.
+                       Twin of auth/register/page.tsx — keep the two in step. */
+                    className="mt-2 inline-flex h-[40px] items-center px-3.5 rounded-pill border border-gold-700 bg-gold-500/10 font-display font-bold text-[12.5px] text-gold-300 hover:bg-gold-500/20 transition-colors"
                   >
                     {errorPanel.cta.label} →
                   </Link>

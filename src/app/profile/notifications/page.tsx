@@ -33,7 +33,9 @@ export default async function NotificationSettingsPage() {
       <section className="rounded-xl glass-panel p-5">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-start gap-3">
-            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-brand-500/10 text-brand-300">
+            {/* ⚠️ LITERALS, not `h-10 w-10` — spacing is overridden (tailwind.config.ts:200-215)
+                and `h-10` renders 80px. */}
+            <span className="inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-md bg-brand-500/10 text-brand-300">
               <I.star s={17} />
             </span>
             <div>

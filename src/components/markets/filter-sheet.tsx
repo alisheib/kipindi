@@ -227,7 +227,12 @@ export function FilterSheet({
             type="button"
             onClick={close}
             aria-label={closeLabel}
-            className="-mr-1 -mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-text-subtle transition-colors hover:bg-bg-overlay hover:text-text"
+            /* ⚠️ 48px AS AN ARBITRARY LITERAL — the ONE close-✕ size in the kit
+               (modal.tsx, toast.tsx and bet-confirm-modal.tsx all render 48×48).
+               This said `h-9 w-9`, which is 64×64px on the OVERRIDDEN spacing
+               scale (tailwind.config.ts:200-215), so the product's close
+               affordance shipped in two sizes. ⛔ Never a scale token here. */
+            className="-mr-1 -mt-1 inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-md text-text-subtle transition-colors hover:bg-bg-overlay hover:text-text"
           >
             <I.x s={16} />
           </button>

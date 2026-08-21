@@ -71,7 +71,9 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
           <section className="rounded-xl glass-panel p-6 space-y-5">
             {/* `/[0.12]` and not `/12` — off Tailwind's 5-step opacity ladder, so the
                 invalid/expired medallion had no fill behind its glyph at all. */}
-            <span className="inline-flex h-12 w-12 items-center justify-center rounded-pill bg-no-500/[0.12] text-no-300">
+            {/* ⚠️ LITERALS, not `h-12 w-12` — spacing is overridden (tailwind.config.ts:200-215),
+                so `h-12` renders a 128px disc around a 22px glyph. */}
+            <span className="inline-flex h-[48px] w-[48px] items-center justify-center rounded-pill bg-no-500/[0.12] text-no-300">
               {state === "expired" ? <I.clock s={22} /> : <I.alertCircle s={22} />}
             </span>
 

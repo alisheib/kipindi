@@ -66,7 +66,9 @@ export function TwoAdminToggle({ enabled }: { enabled: boolean }) {
   return (
     <>
       <div
-        className="inline-flex items-center gap-2.5 rounded-md border px-2.5 h-8"
+        /* ⚠️ LITERAL, not `h-8` — spacing is overridden (tailwind.config.ts:200-215) so `h-8`
+           was 48px on the governance row that arms two-officer settlement. 40px = --tap-min. */
+        className="inline-flex items-center gap-2.5 rounded-md border px-2.5 h-[40px]"
         style={enabled
           ? { borderColor: "var(--border-strong)", background: "var(--bg-inset)" }
           : { borderColor: "var(--warning-border)", background: "var(--warning-bg)" }}

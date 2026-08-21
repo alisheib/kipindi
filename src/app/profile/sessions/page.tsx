@@ -87,7 +87,9 @@ export default async function SessionsPage() {
       <section className="rounded-xl border border-border bg-bg-elevated p-5 border-l-2" style={{ borderLeftColor: "var(--aqua-400)" }}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-aqua-500/15 text-aqua-300">
+            {/* ⚠️ LITERALS, not `h-10 w-10` — spacing is overridden (tailwind.config.ts:200-215),
+                so `h-10` renders an 80px disc and doubles the session list's length. */}
+            <span className="inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full bg-aqua-500/15 text-aqua-300">
               <DeviceGlyph s={18} />
             </span>
             <div className="min-w-0">

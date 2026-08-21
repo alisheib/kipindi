@@ -160,13 +160,16 @@ export function KycDecisionRail({
               <button
                 type="button"
                 disabled={!(canApproveDirect || canApproveAsChecker)}
-                /* btn-lg (46px), not btn-md (38px): these three controls decide a
-                   person's identity and open the withdrawal gate, and officers review
-                   on a phone. 38px is under the 44px WCAG 2.5.5 floor that the
-                   certification programme's G6 requires — measured at 38px on a
-                   Pixel 7 by qa:cert-d2. The global --h-control-md is itself below
-                   the floor ("Phase 3 → 44", globals.css), but raising the token
-                   changes every button on the platform; that belongs to L6. */
+                /* btn-lg (--h-control-lg, 48px) rather than btn-md: these three controls
+                   decide a person's identity and open the withdrawal gate, and officers
+                   review on a phone, so they get the top rung of the ladder.
+                   ⚠️ CORRECTED — this note used to read "btn-lg (46px), not btn-md (38px)"
+                   and argue that btn-md sat under the 44px WCAG 2.5.5 floor. All three
+                   numbers are stale: globals.css now ships 40 / 44 / 48 for
+                   --h-control-sm / -md / -lg, so btn-md IS at the floor and the "raising
+                   the token belongs to L6" caveat is discharged. The CHOICE stands on
+                   consequence, not on a floor violation. ⛔ Values live in globals.css —
+                   do not restate them here again. */
                 className="btn btn-primary btn-lg w-full disabled:opacity-40"
               >
                 <I.shieldcheck s={14} /> {makerCheckerRequired ? "Approve (second officer)" : "Approve identity"}

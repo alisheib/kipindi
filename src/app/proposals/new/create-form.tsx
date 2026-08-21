@@ -144,10 +144,25 @@ export function CreateProposalForm({ rateLimit, openCount, platformTz }: { rateL
                 key={c}
                 type="button"
                 onClick={() => setCategory(c)}
-                className="inline-flex h-[34px] items-center gap-1.5 rounded-pill border px-3.5 text-[12.5px] font-semibold transition-colors"
-                style={active
-                  ? { borderColor: "color-mix(in oklab, var(--gold-500) 40%, transparent)", background: "color-mix(in oklab, var(--gold-500) 14%, transparent)", color: "var(--gold-200)" }
-                  : { borderColor: "var(--border)", color: "var(--text-muted)" }}
+                aria-pressed={active}
+                /* ⭐ THE FILTER-PILL LANGUAGE, at the call site. This rail cannot use
+                   <FilterPill> itself — that primitive is a <Link> and this is a form
+                   control — so it reuses the primitive's geometry and paint verbatim:
+                   `kp-fchip` (globals.css) owns the transition and the selected fill/halo,
+                   `min-h-[44px]` is its arbitrary-literal tap floor, and `border-transparent`
+                   (never "no border") keeps the box identical in both states so selecting
+                   cannot reflow the row.
+                   ⚠️ WAS `h-[34px]` — under §A2's 40px --tap-min floor on a real control.
+                   ⛔ AND WAS GOLD-SELECTED. §M3: struck gold marks money that was EARNED.
+                   Choosing a category for a proposal is not that, so the selected state is
+                   royal, exactly as every other filter rail in the product.
+                   Selection was also colour-only before; `aria-pressed` now states it. */
+                className={`kp-fchip inline-flex min-h-[44px] items-center gap-1.5 rounded-pill border text-[12.5px] font-semibold ${
+                  active
+                    ? "border-brand-400 px-4 text-text"
+                    : "border-transparent px-3 text-text-muted hover:bg-bg-overlay hover:text-text"
+                }`}
+                data-on={active || undefined}
               >
                 <CategoryIcon category={c} size={14} />{categoryLabel(t, c)}
               </button>

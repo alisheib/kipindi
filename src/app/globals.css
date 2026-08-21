@@ -198,39 +198,71 @@
      Inherited from the round-2 design kit (2026-08-13). Derived from --sp-* rather than given
      literals, so the rhythm cannot drift away from the spacing scale it is built on.
 
-     THE RULE, which is why these are named and not typed inline:
-       --rh-tight    24px   inside a group — a heading and the thing it labels
-       --rh-close    48px   between sibling blocks in one section
-       --rh-section  96px   between sections
-       --rh-chapter 144px   at a chapter break, where the page changes subject
+     THE RULE, which is why these are named and not typed inline — now with TWO RUNGS PER
+     TOKEN. The values declared below are the ≤767 (phone) rhythm; the desktop rungs step up
+     at 768 in the `@media` block immediately after this `:root` closes.
+
+                     ≤767   ≥768
+       --rh-tight     24      24   inside a group — a heading and the thing it labels
+       --rh-close     32      48   between sibling blocks in one section
+       --rh-section   64      96   between sections
+       --rh-chapter   96     144   at a chapter break, where the page changes subject
 
      ⚠️ A section's OBSERVED gap is the sum of the two paddings that meet at it
      (A.padding-bottom + B.padding-top). The kit's landing rhythm — 144 · 96 · 96 · 144 — is
      produced that way, from 96/96, 48/48, 48/48 and 48/96 pairs. ⛔ So do NOT also write
      `margin: var(--rh-chapter)` at a boundary whose padding already sums to 144: that is a
      288px gap and a double-count. The kit's own layouts declare --rh-chapter and never consume
-     it, for exactly this reason. */
-  --rh-tight: var(--sp-6);
-  --rh-close: var(--sp-12);
-  --rh-section: calc(var(--sp-12) * 2);
-  --rh-chapter: calc(var(--sp-12) * 3);
+     it, for exactly this reason.
+
+     ⛔ AND, FOR THAT SAME REASON, --rh-chapter STILL HAS ZERO CONSUMERS — re-verified at HEAD
+     by grepping `--rh-chapter` across src/: not one hit outside this block. The 144 CHAPTER gap
+     is PRODUCED as --rh-section + --rh-close where two bands meet. So a spec phrased as "step
+     the chapter rung 144 → 96" must step --rh-section and --rh-close; editing --rh-chapter
+     changes nothing, on any page, at any width. It is kept only so the ladder reads complete.
+
+     ⭐ WHY THE PHONE STEP IS ON THE TOKEN AND NEVER ON THE CLASSES (2026-08-21). The landing
+     page measured 8,514px at 360 with 130–250px voids through its bottom third, because
+     --rh-section (96) reaches 360 unscaled: `.kp-band--closes` declares it OUTSIDE any media
+     query. Two of the ten --rh-close consumers are INLINE STYLES in TSX — src/app/page.tsx and
+     src/components/home/trust-band.tsx, both `style={{ marginTop: "var(--rh-close)" }}` — and
+     no media query can reach an inline style. A per-class mobile block would therefore leave
+     those two at 48 while everything around them dropped to 32: a NEW rhythm inconsistency
+     created in the act of fixing the old one. Stepping the TOKEN reaches every consumer, keeps
+     every value in this file (§0d), and — because both halves of every padding pair scale by
+     the same factor — double-counts nothing and adds no margin anywhere.
+     Observed landing gaps at 360 become 80 · 64 · 64 · 96 · 64 (were 96 · 96 · 96 · 144 · 96).
+     At ≥768 not one pixel moves. */
+  --rh-tight: var(--sp-6);               /* 24 at every width */
+  --rh-close: var(--sp-8);               /* 32 — steps to 48 at 768 */
+  --rh-section: calc(var(--sp-8) * 2);   /* 64 — steps to 96 at 768 */
+  --rh-chapter: calc(var(--sp-8) * 3);   /* 96 — steps to 144 at 768; still consumed by nothing */
 
   /* ---------- Radius — additive +4 rhythm ---------- */
   --r-xs: 4px; --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-xl: 24px; --r-pill: 999px;
 
-  /* ---------- Control heights (UI-consistency program, Phase 0) ----------
+  /* ---------- Control heights (UI-consistency program · PHASE 3 HAS LANDED) ----------
      Interactive control heights live HERE, in ONE place, so the tap-floor is
      enforceable (scripts/token-collision.test.mts checks that every .btn-* height
-     references one of these) instead of being hard-coded per size class. Introduced
-     at the CURRENT pixel values so this step is pixel-stable; the tap-floor bump
-     (--h-control-sm→40, -md→44, -lg→48, and .mcardp-actions 36→40) lands in Phase 3
-     with before/after visual sign-off. --tap-min is the 40px finger/primary/money
-     floor (Law 9); --h-control-xs is the documented dense, MOUSE-ONLY admin exception. */
+     references one of these) instead of being hard-coded per size class. Phase 0
+     introduced them at the THEN-current pixel values so that step was pixel-stable.
+     ⭐ The tap-floor bump has now shipped: sm 30→40, md 38→44, lg 46→48. It is a
+     floor that is INSTRUMENTED, not merely written down — scripts/responsive-audit.mjs
+     raised its soft tap-target threshold from 38 to 40 in the same change, which is
+     the raise its own comment had promised "once the control-height tokens bump".
+     ⚠️ This preamble used to schedule ".mcardp-actions 36→40" alongside the tokens.
+     That shipped SEPARATELY and is DONE — the rule reads `height: var(--tap-min)`
+     further down this file — so the clause is deleted rather than left to invite a
+     future session to "finish" something already finished.
+     --tap-min is the 40px finger/primary/money floor (Law 9). --h-control-xs stays
+     at 32px: it is the documented dense, MOUSE-ONLY admin exception, and all 8 of
+     its call sites are under src/app/admin/ — not one is a finger, primary or money
+     control, which is the only thing §A2's floor governs. */
   --tap-min:      40px;
   --h-control-xs: 32px;   /* dense mouse-only admin inline controls (documented floor exception) */
-  --h-control-sm: 30px;   /* .btn-sm · Phase 3 → 40 */
-  --h-control-md: 38px;   /* .btn-md · Phase 3 → 44 (aligns with --h-input) */
-  --h-control-lg: 46px;   /* .btn-lg · Phase 3 → 48 */
+  --h-control-sm: 40px;   /* .btn-sm — Phase 3 landed: exactly --tap-min (Law 9 / DA §A2) */
+  --h-control-md: 44px;   /* .btn-md — Phase 3 landed: 44, not 40, so it equals --h-input */
+  --h-control-lg: 48px;   /* .btn-lg — Phase 3 landed: closes the +4 ladder 40/44/48 */
   --h-control-xl: 56px;   /* .btn-xl */
   --h-input:      44px;   /* .input / .input-group — already at the tap floor */
 
@@ -740,6 +772,28 @@
   --bar-label-tipping:    var(--text-muted);
 }
 
+/* ---------- Vertical rhythm — THE DESKTOP RUNGS ----------------------------------------------
+   The second half of the two-rung ladder documented on `--rh-*` in §Spacing above. The :root
+   block declares the PHONE rhythm (32 / 64 / 96); this restores the kit's desktop rhythm
+   (48 / 96 / 144) from 768 up, so nothing at or above tablet width changes by a pixel.
+
+   ⭐ 768, not 1024, deliberately: `.kp-band__inner` already changes its `padding-inline` at 768,
+   so 768 is the boundary this composition already turns on. Stepping at 1024 would also compress
+   768–1023, which the tablet width does not need and which was never asked for.
+   ⛔ THIS BLOCK MUST STAY IMMEDIATELY AFTER `:root` CLOSES. `:root` inside `@media` has the same
+   specificity as bare `:root`, so it wins on source order alone — move it above the declarations
+   it overrides and the desktop rhythm silently stops applying.
+   ⛔ Do NOT "simplify" this into per-class media queries: two --rh-close consumers are inline
+   styles in TSX that no media query can reach (see the §Spacing comment for the full argument).
+   --rh-tight is 24 at every width and is deliberately absent here. */
+@media (min-width: 768px) {
+  :root {
+    --rh-close: var(--sp-12);              /* 48 */
+    --rh-section: calc(var(--sp-12) * 2);  /* 96 */
+    --rh-chapter: calc(var(--sp-12) * 3);  /* 144 — still consumed by nothing */
+  }
+}
+
 /* Single dark-royal theme by invariant (DESIGN_AUTHORITY B3 — light mode killed).
    The theme engine is gone; everything renders on the canonical royal canvas. */
 
@@ -861,9 +915,21 @@ body {
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 /* Kit per-size horizontal padding (kit/tokens.css) — sm12/md16/lg20/xl24; xl gets --r-lg. */
-/* Dense, MOUSE-ONLY size for admin filter rows — aligns flush with the h-8 (32px)
-   search inputs + the kit Select `xs`. Replaces the `btn-sm h-8` inline override so
-   the height lives on the --h-control-xs token, not a per-call utility. */
+/* Dense, MOUSE-ONLY size for admin filter rows. Replaces the `btn-sm h-8` inline
+   override so the height lives on the --h-control-xs token, not a per-call utility.
+   ⚠️ CORRECTED — this comment used to justify btn-xs as "aligns flush with the h-8
+   (32px) search inputs + the kit Select `xs`". That is false twice over. `h-8` is
+   48px in this codebase, not 32: tailwind.config.ts REPLACES theme.extend.spacing
+   ("8":"48px"), and Tailwind spreads theme('spacing') into `height` AND `minHeight`.
+   Measured on /admin/markets, that row runs search input 48 · <Select size="xs">
+   48 · btn-xs 32. The input and the Select ARE flush with each other — at 48, the
+   height neither of them intended — and btn-xs is flush with NEITHER. The claim had
+   the right row and the wrong number, which is the worst way to be wrong.
+   ⭐ btn-xs is a SEPARATE DENSE RUNG, not an alignment device. After the Phase-3
+   bump it sits 8px below btn-sm (40px) in those same admin rows, and that gap is the
+   POINT of having a distinct rung — a mouse-only control that deliberately does not
+   pay the finger tax. Making the filter row line up is a <Select> job (it does not
+   read --h-control-* at all), never a reason to move a button token. */
 .btn-xs { height: var(--h-control-xs); padding: 0 12px; font-size: 13px; }
 .btn-sm { height: var(--h-control-sm); padding: 0 12px; font-size: 13px; }
 .btn-md { height: var(--h-control-md); padding: 0 16px; font-size: 14px; }
@@ -2627,9 +2693,13 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
      control on the platform, and the other seven rails are all 44. He was given the trade (40
      already clears Law 9; 44 makes the rail ~48px tall in a chart header whose label is 10px
      mono) and chose consistency. ⛔ The literal is deliberate, exactly as it is on
-     `filter-pill.tsx`: `--tap-min` is 40 and would silently undo this, and there is no
-     `--h-control-*` rung at 44 (`--h-input: 44px` is named for inputs, and borrowing an input's
-     token for a chart button would be a second meaning for one name). */
+     `filter-pill.tsx`: `--tap-min` is 40 and would silently undo this.
+     ⚠️ CORRECTED 2026-08-21 (Phase-3 bump). This used to end "and there is no `--h-control-*`
+     rung at 44". There is one now — `--h-control-md` moved 38 → 44 in the same change. The
+     literal still stands, and for a better reason than scarcity: `--h-control-md` is the
+     BUTTON rung, and this is a filter control that happens to share its number today. Binding
+     to it would mean the next button-height decision silently re-sizes a chart rail. The two
+     values agreeing is a coincidence to leave alone, not a duplication to collapse. */
   min-height: 44px;
 }
 .pchart-range.is-active { color: var(--text); background: var(--pill-active); }
@@ -3134,12 +3204,46 @@ html[data-sheet-open] .route-enter { animation: none; }
 }
 @media (min-width: 561px) {
   .kp-proof { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .kp-proof__num { font-size: var(--type-display-2); }
   .kp-proof__fig:nth-child(3) { border-left: 1px solid var(--border); }
 }
-/* At 360 the third figure sits on its own row under the two above it, so nothing truncates. */
+/* 🔴 THE 44px STEP WAITS FOR 1024, AND IT IS A MONEY FIX, NOT A TASTE ONE (§M4 — money never
+   reflows). It used to ride inside the 561 block above, so from 561 up the gilt pool figure was
+   set in `--type-display-2` inside a track a third of the measure wide, and it WRAPPED at its own
+   space — "TZS" over "1.3M". `.kp-proof__num` is `display: flex` with no `white-space` rule, so
+   the break is a wrap and not an overflow, which is why nothing caught it: `.kp-hero` is
+   `overflow: hidden` so no scrollWidth assertion can fire, and the §A6 matrix is 360/768/1280/1920
+   — 561–767 is never measured.
+   THE ARITHMETIC (mono advance 0.6em; track = (inner − 2×16 gap)/3, less 16 padding-left and the
+   1px hairline) at --type-display-2, 44px → 26.4px per character:
+     W      inner   usable/track   "TZS 1.3M" = 211   "TZS 999.9M" = 264
+      561     529       148.7            WRAPS               WRAPS
+      768     720       212.3        fits by 1.1px           WRAPS
+      940     892       269.7            fits            fits by 5.7px
+     1024     976       297.7            fits           fits by 33.7px
+   768 clears TODAY's figure by a single pixel and still wraps a nine-character one, so the step
+   is at 1024 — which is also where `.kp-hero__headline` takes its own second step. From 561 to
+   1023 the rail stays at --type-h2 (24px → 14.4px/char): 144px for the widest figure this book
+   can print, against 148.7px of track at the narrowest width in that band.
+   ⛔ Do NOT "fix" this with `white-space: nowrap`: that converts a wrap into a clip, and §A5
+   forbids clipping money outright. The size step is the fix. */
+@media (min-width: 1024px) {
+  .kp-proof__num { font-size: var(--type-display-2); }
+}
+/* ONE FIGURE PER ROW at ≤560. It replaces a 2+1 that was correct engineering and read as an
+   accident: figure 3 took the whole 328px measure while 1 and 2 shared it, so "83 OPEN
+   PREDICTIONS" looked orphaned rather than stacked — left-aligned against nothing.
+   ⛔ 3-up at 360 is NOT available and never was; the rule this replaces said as much in words.
+   328px inner − 2×16 gap = three 98.7px tracks, 81.7px usable after padding-left and hairline,
+   against a 115px numeral at --type-h2 and a 134px caption ("OPEN PREDICTIONS" — Swahili "Masoko
+   yaliyo wazi" is wider still). The only two options were 2+1 and 1+1+1. This is 1+1+1: the
+   vertical hairlines become horizontal ones, every figure gets the full measure, and caption
+   wrapping at 360 ends in all three locales.
+   Cost 3 × 44 min-height + 2 × (12 + 1px) = ~182px against ~116px, so ~+66px of hero — repaid
+   about 4× over by the phone rhythm step-down (−288px on this page at 360; see --rh-* §Spacing). */
 @media (max-width: 560.98px) {
-  .kp-proof__fig:nth-child(3) { grid-column: 1 / -1; padding-left: 0; border-left: 0; border-top: 1px solid var(--border); padding-top: var(--sp-3); }
+  .kp-proof { grid-template-columns: minmax(0, 1fr); gap: var(--sp-3); }
+  .kp-proof__fig { padding-left: 0; border-left: 0; }
+  .kp-proof__fig + .kp-proof__fig { border-top: 1px solid var(--border); padding-top: var(--sp-3); }
 }
 
 .kp-conv { max-width: 620px; }
@@ -3376,8 +3480,19 @@ html[data-sheet-open] .route-enter { animation: none; }
 /* 36 → 40px (POLISH-BACKLOG §1.4). These are the product's most-tapped money
    controls and they sat BELOW the 40px tap floor law 9 sets — on a card, on a
    phone, for the two buttons that place a bet. --tap-min is that floor's one
-   definition site, so this reads it rather than restating 40. The kit floor at
-   --h-control-* is deliberately NOT touched: 148 call sites including admin. */
+   definition site, so this reads it rather than restating 40.
+   ⚠️ CORRECTED — this comment used to close with "The kit floor at --h-control-* is
+   deliberately NOT touched: 148 call sites including admin." Both halves are now
+   wrong. The kit floor HAS been touched (Phase 3: sm 40 · md 44 · lg 48), and 148
+   was never the real number — it is what a naive grep for literal `btn-*` class
+   strings returns. Measured at HEAD the true count is 333: 192 literal `btn-*`
+   classNames PLUS 141 <Button>/<SubmitButton> tags that resolve through their own
+   defaults (<Button> defaults to size="md"; <SubmitButton> defaults to "lg" and
+   composes its class as `btn-${size}`), so no text search can ever see them. The
+   decision this line was used to justify was taken on roughly half the truth.
+   ⭐ The card is unaffected by that bump either way: `.mcardp-actions .btn` is
+   (0,2,0) against `.btn-md`'s (0,1,0), so these stay pinned at --tap-min (40px)
+   and MARKET_CARD_H does not move. Verify with `npm run qa:card-geometry`. */
 .mcardp-actions .btn { height: var(--tap-min); font-size: 13px; font-weight: 600; min-width: 0; padding: 0 10px; letter-spacing: 0.04em; border-radius: var(--r-md); transition: transform .12s ease-out, box-shadow .16s ease-out, filter .12s; }
 .mcardp-actions .btn:active:not(:disabled) { transform: translateY(1px) scale(0.96); }
 /* Stats row — single line (no wrap), time + info pinned right. Kept on one line
@@ -3758,18 +3873,41 @@ textarea::-webkit-resizer {
    `A.padding-bottom + B.padding-top` — the tokens' own comment in §Spacing says so, and warns
    that ALSO writing a margin double-counts it. The kit's landing rhythm, top to bottom:
 
-     hero            pad  96 / 96      (--rh-section each side)
-     how it works    pad  48 / 48      -> gap before = 96 + 48 = 144   CHAPTER (+ surface change)
-     pick a side     pad  48 / 48      -> gap before = 48 + 48 =  96   new idea
-       browse topics  internal 48                                       (--rh-close, same surface)
-     up and down     pad  48 / 96      -> gap before = 48 + 48 =  96   new idea
-     why trusted     pad  48 / 96      -> gap before = 96 + 48 = 144   CHAPTER
-     footer                            -> continuous with the trust surface
+     ⚠️ RE-DERIVED FROM THE SHIPPED RULES, 2026-08-21, at both rungs — --rh-close and
+     --rh-section now each step down below 768 (§Spacing). Paddings, per band:
 
-   Observed section gaps: 144 · 96 · 96 · 144, plus one internal 48. At <=1024 the scale
-   compresses because the section padding steps down one rung. Two tinted `--bg-overlay` bands,
-   both at a chapter break, both edged `--claret-edge` — the heraldic thread the footer's claret
-   rule already carries, now running through the page.
+       band              ≤767      ≥768     source
+       hero             48 / 48   64 / 64   --sp-12 / --sp-16 — NOT --rh-*, see (a)
+       how it works     32 / 32   48 / 48   --rh-close  (--tight)
+       pick a side      32 / 32   48 / 48   --rh-close  (--tight)
+         browse topics   int 32    int 48   --rh-close, same surface
+       up and down      32 / 64   48 / 96   --rh-close top, --rh-section bottom (--closes)
+       why trusted      32 / 64   48 / 96   ditto — but 96 / 96 at ≥1024, see (b)
+       footer                               continuous with the trust surface
+
+     OBSERVED gaps, i.e. the sum of the two paddings that meet at each seam:
+
+       seam                      ≤767   768–1023   ≥1024
+       hero → how it works         80       112      112
+       how → pick a side           64        96       96
+       pick a side → up & down     64        96       96
+       up & down → why trusted     96       144      192   CHAPTER
+       why trusted → RG rule       64        96       96
+       RG rule → RG content        32        48       48
+
+   ⚠️ TWO ROWS OF THE ORIGINAL KIT TABLE WERE NEVER TRUE OF THE SHIPPED PAGE. They are corrected
+   above rather than deleted, so that a future reader does not "restore" them:
+     (a) the hero was documented as "pad 96 / 96 (--rh-section each side)", which is what made the
+         first chapter gap read as 144. `.kp-hero__inner` does not consume --rh-* at all — it pads
+         --sp-12 / --sp-16 — so that seam has always been 96 (now 80) at phone and 112 at desktop.
+     (b) `.kp-band--seam` (the trust band) carries --closes but NOT --tight, so at ≥1024 the base
+         `.kp-band { padding-block: var(--rh-section) }` gives it a 96 TOP too, making the chapter
+         gap 192 there rather than the documented 144.
+   Both are PRE-EXISTING and both are design calls, not session calls — correcting either moves the
+   top or the middle of the desktop landing page visibly. Recorded, deliberately not "fixed".
+
+   Two tinted `--bg-overlay` bands, both at a chapter break, both edged `--claret-edge` — the
+   heraldic thread the footer's claret rule already carries, now running through the page.
    ========================================================================================= */
 
 /* ── the band: a full-bleed surface that owns its own vertical padding ───────────────────── */
@@ -3791,12 +3929,19 @@ textarea::-webkit-resizer {
    edge would draw a rule a section's-worth above the footer's own claret rule. It keeps its top
    edge only, and the footer's rule closes the act. */
 .kp-band--seam { border-bottom: 0; }
-/* §4 and §5 close their act with a full section of air below them (the 48 / 96 pairs). */
+/* §4 and §5 close their act with a full section of air below them — the `--rh-close` /
+   `--rh-section` pairs in the table above, at whichever rung the width is on.
+   ⭐ DECLARED OUTSIDE ANY MEDIA QUERY, at every width — which is why the phone step-down had to
+   happen on the TOKEN (§Spacing). This one line is what put an unscaled 96px under two bands at
+   360; it now resolves to 64 there and 96 from 768 up, with no rule change here. */
 .kp-band--closes { padding-bottom: var(--rh-section); }
 @media (min-width: 1024px) {
   .kp-band { padding-block: var(--rh-section); }
   .kp-band--tight { padding-block: var(--rh-close); }
-  .kp-band--closes { padding-bottom: var(--rh-section); }
+  /* ⛔ NO `.kp-band--closes` HERE — deleted 2026-08-21. It was a byte-identical duplicate of the
+     unconditional declaration above, with zero cascade effect, and its only real consequence was
+     to make that declaration READ as desktop-scoped at a glance. That misreading is plausibly how
+     96px survived at 360 for as long as it did. */
 }
 
 /* ── section head: eyebrow + heading + optional right-aligned link ────────────────────────── */
@@ -4097,11 +4242,14 @@ textarea::-webkit-resizer {
    for compliance sign-off. It is one deletion if refused.
 
    ⭐ NO `margin-top` HERE — batch 4. It used to carry `margin-top: var(--rh-close)` ON TOP of the
-   trust band's own `.kp-band--closes` padding-bottom (96px), which is precisely the double-count
-   the `--rh-*` tokens' comment at the top of this file warns about: 96 + 48 = **144px of blank
+   trust band's own `.kp-band--closes` padding-bottom, which is precisely the double-count the
+   `--rh-*` tokens' comment at the top of this file warns about: 96 + 48 = **144px of blank
    measured** above a one-line strip, at all 12 width×locale combinations. The gap above this rule
-   is now the trust band's `--rh-section` and nothing else — ONE definition, one token, identical at
-   every width. ⛔ Do not add a margin here; if this seam ever needs a different gap, change the
+   is now the trust band's `--rh-section` and nothing else — ONE definition, one token.
+   ⚠️ This paragraph used to end "identical at every width", and that clause is DELETED, not
+   softened: since 2026-08-21 `--rh-section` has two rungs (64 at ≤767, 96 from 768 — see §Spacing),
+   so the seam is 64 on a phone and 96 above it. What is identical at every width is that ONE token
+   defines it. ⛔ Do not add a margin here; if this seam ever needs a different gap, change the
    band's padding, not both. */
 .kp-rg {
   display: flex;

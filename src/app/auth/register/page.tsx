@@ -149,7 +149,10 @@ export default async function RegisterPage({
               }}
             >
               <div className="flex items-center gap-3 p-3.5">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[11px] bg-gold-500/15 text-gold-300">
+                {/* ⚠️ LITERALS, not `h-10 w-10` — spacing is overridden (tailwind.config.ts:200-215)
+                    so `h-10` was 80px, while the sibling `rounded-[11px]` was already written for
+                    a 40px tile. Size and radius now agree. */}
+                <span className="grid h-[40px] w-[40px] shrink-0 place-items-center rounded-[11px] bg-gold-500/15 text-gold-300">
                   <I.gift s={20} />
                 </span>
                 <div className="min-w-0 flex-1">
@@ -179,7 +182,9 @@ export default async function RegisterPage({
                 {errorPanel.cta && (
                   <Link
                     href={errorPanel.cta.href as never}
-                    className="mt-2 inline-flex h-9 items-center px-3.5 rounded-pill border border-gold-700 bg-gold-500/10 font-display font-bold text-[12.5px] text-gold-300 hover:bg-gold-500/20 transition-colors"
+                    /* ⚠️ LITERAL, not `h-9` — spacing is overridden (tailwind.config.ts:200-215),
+                       so `h-9` was a 64px capsule around 12.5px type. 40px = --tap-min. */
+                    className="mt-2 inline-flex h-[40px] items-center px-3.5 rounded-pill border border-gold-700 bg-gold-500/10 font-display font-bold text-[12.5px] text-gold-300 hover:bg-gold-500/20 transition-colors"
                   >
                     {errorPanel.cta.label} →
                   </Link>

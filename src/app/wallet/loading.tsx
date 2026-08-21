@@ -10,8 +10,12 @@ export default async function WalletLoading() {
           <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">{t.common.yourFunds}</h1>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <div className="h-10 w-24 rounded-pill bg-bg-overlay kp-shimmer-track" />
-          <div className="h-10 w-24 rounded-pill bg-bg-overlay kp-shimmer-track" />
+          {/* ⚠️ HEIGHTS ARE LITERALS, not `h-10` — spacing is overridden
+              (tailwind.config.ts:200-215) so `h-10` drew an 80px pill for a `btn-md btn-pill`
+              that is 44px. (`w-24` is NOT an overridden key — Tailwind's default 96px — so the
+              widths read as written; only the heights were trapped.) */}
+          <div className="h-[44px] w-24 rounded-pill bg-bg-overlay kp-shimmer-track" />
+          <div className="h-[44px] w-24 rounded-pill bg-bg-overlay kp-shimmer-track" />
         </div>
       </header>
 
@@ -26,7 +30,9 @@ export default async function WalletLoading() {
         >
           <div className="p-5 lg:p-6 space-y-4">
             <div className="h-3 w-20 rounded bg-bg-overlay/30" />
-            <div className="h-10 w-40 rounded bg-bg-overlay/20" />
+            {/* ⚠️ LITERAL, not `h-10` (80px on the overridden scale) — the real balance figure
+                is 38px mono (wallet-client.tsx:74), so that is what the ghost must be. */}
+            <div className="h-[38px] w-40 rounded bg-bg-overlay/20" />
             <div className="grid grid-cols-2 gap-3">
               <div className="h-16 rounded-md bg-bg-overlay/15" />
               <div className="h-16 rounded-md bg-bg-overlay/15" />
@@ -40,7 +46,8 @@ export default async function WalletLoading() {
         >
           <div className="p-5 lg:p-6 space-y-4">
             <div className="h-3 w-24 rounded bg-bg-overlay/30" />
-            <div className="h-10 w-32 rounded bg-bg-overlay/20" />
+            {/* ⚠️ LITERAL, not `h-10` — the bonus balance is also 38px (wallet-client.tsx:162). */}
+            <div className="h-[38px] w-32 rounded bg-bg-overlay/20" />
             <div className="h-16 rounded-md bg-bg-overlay/15" />
           </div>
         </div>
@@ -49,7 +56,10 @@ export default async function WalletLoading() {
       {/* Tab skeleton */}
       <nav className="flex items-center gap-1 border-b border-border" aria-hidden>
         {[t.common.activity, t.common.methods, t.common.limits].map((tab, i) => (
-          <div key={tab} className={`h-9 px-3.5 ${i === 0 ? "border-b-2 border-gold-500" : ""}`}>
+          /* ⚠️ LITERAL, not `h-9` — spacing is overridden (tailwind.config.ts:200-215) so this
+             drew 64px for a tab row that renders at 44px (`Tabs variant="line"`, tabs.tsx),
+             i.e. a guaranteed 20px content jump on every wallet load. PLAYER MONEY SURFACE. */
+          <div key={tab} className={`h-[44px] px-3.5 ${i === 0 ? "border-b-2 border-gold-500" : ""}`}>
             <span className="font-display text-[13px] text-text-subtle">{tab}</span>
           </div>
         ))}

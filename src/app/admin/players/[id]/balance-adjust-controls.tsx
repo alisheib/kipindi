@@ -123,7 +123,11 @@ export function BalanceAdjustControls({
               aria-checked={direction === d}
               onClick={() => setDirection(d)}
               className={
-                "min-h-11 rounded-md border font-mono text-[11px] uppercase tracking-[0.12em] transition-colors " +
+                /* ⚠️ LITERAL, not `min-h-11` — spacing is overridden (tailwind.config.ts:200-215),
+                   so `min-h-11` was 96px: two 96px direction buttons dwarfing the amount field
+                   beneath them, on the one screen where an officer moves real money by hand.
+                   44px is A2's preferred tap size, and money controls are never the exception. */
+                "min-h-[44px] rounded-md border font-mono text-[11px] uppercase tracking-[0.12em] transition-colors " +
                 (direction === d
                   ? (d === "credit" ? "border-yes-700 bg-yes-500/15 text-yes-300" : "border-no-700 bg-no-500/15 text-no-300")
                   : "border-border bg-bg-overlay text-text-subtle hover:text-text")

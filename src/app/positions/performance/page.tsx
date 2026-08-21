@@ -181,7 +181,10 @@ export default async function PerformancePage() {
               <p className="gilt-eyebrow">{t.performance.bestWin}</p>
               <div className="mt-3 flex items-center gap-3.5">
                 <span
-                  className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-gold-500 text-gold-300"
+                  /* ⚠️ LITERALS, not `h-12 w-12` — spacing is overridden (tailwind.config.ts:200-215),
+                     so `h-12` was a 128px gilt disc beside a ~30px money figure: the ornament
+                     outweighed the earned-money number it decorates (gold-budget inversion). */
+                  className="inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-full border-2 border-gold-500 text-gold-300"
                   style={{ background: "radial-gradient(circle at 50% 30%, oklch(45% 0.12 84 / 0.35), oklch(24% 0.06 80 / 0.25))", boxShadow: "0 0 20px -4px color-mix(in oklab, var(--gold-400) 55%, transparent)" }}
                 >
                   <I.trophy s={22} />

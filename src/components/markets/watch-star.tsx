@@ -100,8 +100,11 @@ export function WatchStar({
       aria-label={on ? t.watchlist.unfollow : t.watchlist.follow}
       title={on ? t.watchlist.unfollow : t.watchlist.follow}
       className={cn(
-        // ≥40px tap target (WCAG) even though the glyph is small.
-        "inline-flex h-10 w-10 items-center justify-center rounded-md transition-colors",
+        // 40px tap target (--tap-min, DA §A2) even though the glyph is small.
+        // ⚠️ ARBITRARY LITERAL: the spacing scale is OVERRIDDEN
+        // (tailwind.config.ts:200-215), so `h-10 w-10` — what this line used to
+        // say — is 80×80px, not 40. ⛔ Never a scale token here.
+        "inline-flex h-[40px] w-[40px] items-center justify-center rounded-md transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500",
         // GOLD DISCIPLINE: gold is reserved for earned-money moments. Following a
         // market is not money — the active star is royal/brand, never gilt.

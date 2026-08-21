@@ -111,7 +111,10 @@ export default async function AdminMarketsPage({
                 defaultValue={query}
                 placeholder="Search title (EN / SW) or mkt_… id"
                 aria-label="Search markets"
-                className="h-8 w-full rounded-md border border-border bg-bg-overlay pl-9 pr-3 text-[12.5px] text-text outline-none admin-focus transition-colors placeholder:text-text-subtle"
+                /* ⚠️ LITERAL, not `h-8` — spacing is overridden (tailwind.config.ts:200-215), so
+                   `h-8` was 48px. 32px = --h-control-xs, the documented dense-admin height, and
+                   the height the `Select size="xs"` and `btn-xs` beside it already render. */
+                className="h-[32px] w-full rounded-md border border-border bg-bg-overlay pl-9 pr-3 text-[12.5px] text-text outline-none admin-focus transition-colors placeholder:text-text-subtle"
               />
             </div>
             <div className="w-full sm:w-[160px]">
@@ -126,7 +129,10 @@ export default async function AdminMarketsPage({
               Search
             </button>
             {hasFilter && (
-              <a href="/admin/markets" className="btn btn-ghost btn-sm h-8">
+              /* ⛔ NO `h-8` OVERRIDE. It rendered 48px (overridden scale) and fought
+                 `.btn-sm`'s own --h-control-sm token. `.btn-xs` IS this idiom — 32px,
+                 matching the Search button and the xs Selects in this same rail. */
+              <a href="/admin/markets" className="btn btn-ghost btn-xs">
                 Clear
               </a>
             )}

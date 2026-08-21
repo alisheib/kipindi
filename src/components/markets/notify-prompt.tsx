@@ -105,11 +105,19 @@ export function NotifyPrompt({ marketId, marketTitle }: { marketId: string; mark
       onClick={toggle}
       disabled={pending}
       aria-pressed={watching}
-      className={`btn w-full ${
-        watching
-          ? "btn-yes"
-          : "btn-ghost"
-      }`}
+      /* ⭐ IT NEEDS A SIZE. `.btn` sets no height and no vertical padding, so a
+         sizeless `.btn` is only as tall as its 14px glyph and 14px label — ~21px,
+         far under --tap-min (40px, DA §A2) — on the market detail page right beside
+         the bet controls. This was the only sizeless `.btn` call site in src.
+         ⛔ NOT `btn-yes` WHEN WATCHING. §B2: green means YES/win and "must never be
+         inverted, re-hued, or reused for a NON-MONEY meaning" — a notification
+         opt-in is not a bet, and this rendered a full-width green button directly
+         under the YES/NO controls. The pressed state now wears the platform's ONE
+         selected-control language (--pill-active + --brand-400), the same fill
+         `.kp-fchip[data-on]` uses. §A4 stays satisfied: the glyph and the label
+         both change, so colour is never the only signal. */
+      className="btn btn-ghost btn-md w-full"
+      style={watching ? { background: "var(--pill-active)", borderColor: "var(--brand-400)", color: "var(--text)" } : undefined}
     >
       {/* M5 state morph — bell→ringing swaps through the kit primitive. */}
       <GlyphSwap state={watching}>{watching ? <I.bellRing s={14} /> : <I.bell s={14} />}</GlyphSwap>

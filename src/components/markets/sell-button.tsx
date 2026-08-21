@@ -228,8 +228,13 @@ export function SellButton({
             ? `${t.common.freeExitLabel} — ${formatTzs(value)}`
             : `${t.common.cashOut} ${formatTzs(value)}`
         }
-        className={`btn ${closedNow ? "btn-ghost" : btnVariant} btn-md w-full whitespace-normal h-auto`}
-        style={{ justifyContent: "space-between", minHeight: 44 }}
+        // Height is `.btn-md` (--h-control-md = 44px, globals.css) and nothing else.
+        // The inline `minHeight: 44` that used to sit here existed only because
+        // btn-md capped at 38px; `h-auto` beside it was always inert (no cascade
+        // layers — `.btn-md`'s `height` wins on source order). ⛔ Do not re-add
+        // a per-call height: the token owns it.
+        className={`btn ${closedNow ? "btn-ghost" : btnVariant} btn-md w-full whitespace-normal`}
+        style={{ justifyContent: "space-between" }}
       >
         <span>
           {closedNow ? t.common.sellLocked

@@ -111,7 +111,10 @@ export function PositionShare({
       aria-label={label}
       title={label}
       className={cn(
-        "inline-flex h-10 items-center gap-1.5 rounded-pill border px-3 text-[12px] font-semibold transition-colors",
+        // ⚠️ 40px (--tap-min, DA §A2) AS AN ARBITRARY LITERAL: the spacing scale is
+        // OVERRIDDEN (tailwind.config.ts:200-215), so `h-10` is 80px, not 40.
+        // Matches share-button.tsx's trigger. ⛔ Never a scale token here.
+        "inline-flex h-[40px] items-center gap-1.5 rounded-pill border px-3 text-[12px] font-semibold transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500",
         // GOLD DISCIPLINE: gilt only on the WIN share — that is an earned-money
         // moment. A plain pick share stays neutral.

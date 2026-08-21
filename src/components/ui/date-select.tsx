@@ -214,7 +214,10 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
       <div
         className={cn(
           "field-measure flex items-stretch w-full rounded-lg border overflow-hidden transition-colors",
-          sm ? "h-8" : "h-11",
+          // ⚠️ ARBITRARY LITERALS — the spacing scale is OVERRIDDEN (tailwind.config.ts:200-215),
+          // so the `h-8`/`h-11` that used to be here rendered 48/96px, not 36/44. Matches <Input>.
+          // ⛔ Never a scale token here.
+          sm ? "h-[36px]" : "h-[var(--h-input)]",
           "brand-focus-within",
           invalid ? "border-no-500" : "border-border",
         )}
@@ -306,7 +309,10 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
                     <button key={cell.day} type="button" disabled={cell.disabled}
                       onClick={() => pickDay(viewYear, viewMonth, cell.day)}
                       className={cn(
-                        "h-9 rounded-md font-mono text-[13px] tabular-nums transition-all",
+                        // 36px day cell — arbitrary literal; `h-9` is 64px on this repo's
+                        // overridden spacing scale, which made six rows 384px of day grid
+                        // inside a max-w-[320px] popover. ⛔ Never a scale token here.
+                        "h-[36px] rounded-md font-mono text-[13px] tabular-nums transition-all",
                         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500",
                         isSel ? "bg-brand-500 text-white font-bold shadow-glow-selected"
                           : cell.disabled ? "text-text-subtle/30 cursor-not-allowed"
@@ -353,7 +359,10 @@ function YearGrid({ years, viewYear, selectedYear, onPick }: {
         <button key={y} ref={y === viewYear ? activeRef : undefined} type="button"
           onClick={() => onPick(y)}
           className={cn(
-            "h-8 rounded-md font-mono text-[13px] tabular-nums transition-all",
+            // 32px year cell — arbitrary literal; `h-8` is 48px on this repo's overridden
+            // spacing scale, which showed ~4.5 rows in the max-h-[240px] scroller instead
+            // of the ~7 intended. ⛔ Never a scale token here.
+            "h-[32px] rounded-md font-mono text-[13px] tabular-nums transition-all",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500",
             y === viewYear ? "bg-brand-500 text-white font-bold shadow-glow-selected"
               : y === selectedYear ? "ring-1 ring-brand-500/50 text-brand-300"

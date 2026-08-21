@@ -27,8 +27,8 @@ repo `F:\kipindi-main`, branch `main`):**
 |---|---|---|---|---|
 | 0 | Bootstrap + baseline + this tracker | **DONE** | `stage-0` | n/a (docs only) |
 | 1 | Safety (no visual change) | **DONE** | `99999f99` | ✓ 200 · clean boot · shots read |
-| 2 | The alpha critical (D7) | **DONE** | `stage-2` | pending push |
-| 3 | Sizing (operator's top priority) | NOT STARTED | | |
+| 2 | The alpha critical (D7) | **DONE** | `85bfb075` | ✓ 200 · clean boot · shots read |
+| 3 | Sizing (operator's top priority) | **DONE** | `stage-3` | pending push |
 | 4 | Correctness: time, words, money formatting | NOT STARTED | | |
 | 5 | Focus & accessibility | NOT STARTED | | |
 | 6 | Motion | NOT STARTED | | |
@@ -145,6 +145,51 @@ have to re-derive.
   `\\s` → `s`), producing a probe that reported everything missing. This is
   `50pick-standards` §5b rule 11, paid again. **Write files with the editor, never through a
   shell string.**
+
+**Stage 3**
+
+- 🔴 **EVERY FORM FIELD IN THE PRODUCT WAS 96px TALL.** `input.tsx` set `sm/md/lg` to
+  `h-9/h-11/h-12`, which under the overridden spacing scale is **64 / 96 / 128px** — against
+  its own JSDoc contract of "sm 36 · md 44 · lg 48". 33 files import it, `md` is the default,
+  and `lg` is what the wallet amount field uses. That single line is the audit's "inputs at
+  ~2× normal height", and the true multiple was **2.67×**. `password-input.tsx` carried a
+  byte-identical copy of the same table.
+- ⭐ **ELEVEN COMMENTS STATED A PIXEL COUNT THE CODE CONTRADICTED**, every one of them
+  claiming compliance the render did not have: `conviction-dial`'s two "44 px height (WCAG
+  2.5.5)" over 96px, `top-app-bar`'s "44px-tall hit area … width stays 28px" over 96×40,
+  `watch-star`'s "≥40px tap target" over 80px, `side-picker`'s "44px without growing the row"
+  over 96px with a −24px pull-back, `amount-field`'s "≥44px (was h-8/32px)" where `h-8` was
+  48px and `min-h-11` is 96. **The false comment is how the defect spread** — each one told
+  the next author the trap had already been handled.
+- ⚠️ **The audit said three inline compensating patches; there were five.** The two extra are
+  the `btn-sm h-8` idiom in admin, which `globals.css` claims `btn-xs` already replaced.
+- ⚠️ **`h-auto` is INERT on every `.btn` in this codebase.** No cascade layers, so
+  `.btn-md { height }` beats `.h-auto` on source order. Buttons paired with it are fixed
+  boxes, and `whitespace-normal` on them cannot grow — a two-line Swahili label overflows.
+  Pre-existing, NOT fixed by the bump, and now written down.
+- ⚠️ **`globals.css` said the bump had "148 call sites"; the real number is 333** (192 literal
+  `btn-*` classNames + 141 `<Button>`/`<SubmitButton>` tags resolving through their defaults,
+  which no text search sees). The decision that comment justified — leave the tokens alone —
+  was taken on roughly half the real number.
+- ⭐ **The market card did not move.** `.mcardp-actions .btn` is (0,2,0) and outranks
+  `.btn-md` (0,1,0), so the board's money buttons stayed at 40px: `qa:card-geometry` reports
+  **349px at 360, 1280 and 1920**, identical to `MARKET_CARD_H`. That was the top-flagged risk
+  and it held.
+- ⭐ **`/admin/system`'s maintenance lever was a FORK of the kit Toggle, and it had drifted
+  into a behaviour defect** — an `h-7 w-12` track (40×**128**px) with a 32px knob travelling
+  2px→22px. A knob crossing a sixth of its own track made ON and OFF nearly indistinguishable
+  **on the switch that pauses money-in**. The fork existed for one reason: it wanted claret,
+  and the kit shipped only royal and gold. Fixed by giving the kit a `tone` prop (replacing a
+  `gold` boolean that had ZERO call sites) — extend the kit, never fork it.
+- ⚠️ **The landing page lost ~1000px at 360** (8514 → 7513) once the rhythm stepped down under
+  the breakpoint. The `--rh-*` block's own warning — that an observed gap is the SUM of the two
+  paddings meeting at it — is why the step is on the tokens and not on a margin.
+- ⭐ **`qa:shots` gained a clipped-not-scrolled check**, because the document-level overflow
+  test cannot see it: a child clipped by an intermediate `overflow:hidden` row never reaches
+  the document edge. ⚠️ Two rounds of false positives taught the shape it needs: skip
+  `sr-only` (a 1px clip BY DESIGN), and name the overflowing CHILD rather than the box, keeping
+  only in-flow, non-`aria-hidden` children — otherwise every decorative watermark bleed on
+  every hero reports as a defect, and a guard that cries wolf gets skipped.
 
 **Follow-ups this campaign opened and has not closed**
 

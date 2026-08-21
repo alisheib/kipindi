@@ -18,15 +18,20 @@ import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 type Props = Omit<React.InputHTMLAttributes<HTMLInputElement>, "type" | "size"> & {
+  /** Rendered height: sm 36 · md 44 · lg 48 (px) — matches the Input atom. */
   size?: "sm" | "md" | "lg";
   /** When true, render a strength meter under the field. */
   showStrength?: boolean;
 };
 
+// ⚠️ ARBITRARY LITERALS ON PURPOSE — kept byte-identical to input.tsx's table.
+// `theme.extend.spacing` is OVERRIDDEN in tailwind.config.ts:200-215, so the
+// h-9 / h-11 / h-12 that used to be here rendered 64 / 96 / 128px, not 36 / 44 / 48.
+// ⛔ Never "tidy" these back into scale classes.
 const heightCls: Record<NonNullable<Props["size"]>, string> = {
-  sm: "h-9",
-  md: "h-11",
-  lg: "h-12",
+  sm: "h-[36px]",
+  md: "h-[var(--h-input)]",   // 44px — the kit input token, globals.css
+  lg: "h-[48px]",
 };
 
 export const PasswordInput = React.forwardRef<HTMLInputElement, Props>(function PasswordInput(

@@ -84,7 +84,10 @@ function RewardCard({
         style={{ borderBottom: on ? "1px solid var(--border)" : "none", background: active ? "var(--bg-overlay)" : "transparent" }}
       >
         <span
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-[9px]"
+          /* ⚠️ LITERALS, not `h-9 w-9` — spacing is overridden (tailwind.config.ts:200-215) so
+             `h-9` was 64px. The sibling `rounded-[9px]` is a quarter of 36px: the author was
+             already thinking in 36px and only the size was a scale token. */
+          className="grid h-[36px] w-[36px] shrink-0 place-items-center rounded-[9px]"
           style={{
             background: active ? "color-mix(in oklab, var(--royal-500) 18%, transparent)" : "var(--bg-overlay)",
             color: active ? "var(--royal-300)" : "var(--text-muted)",
@@ -140,7 +143,9 @@ export function AffiliateAdminClient({ config }: { config: AffiliateConfig }) {
         }}
       >
         <span
-          className="grid h-11 w-11 shrink-0 place-items-center rounded-[11px]"
+          /* ⚠️ LITERALS, not `h-11 w-11` (96px on the overridden scale) — `rounded-[11px]` is a
+             quarter of 44px, so 44 is the size this tile was written for. */
+          className="grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[11px]"
           style={{
             background: on ? "color-mix(in oklab, var(--royal-500) 18%, transparent)" : "color-mix(in oklab, var(--warning-500) 20%, transparent)",
             color: on ? "var(--royal-300)" : "var(--warning-fg)",

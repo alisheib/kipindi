@@ -46,7 +46,11 @@ export function KycDocViewer({ userId, slots }: { userId: string; slots: Slot[] 
               key={s.type}
               type="button"
               onClick={() => { setActive(s.type); setRot(0); setImgState("loading"); }}
-              className="inline-flex items-center gap-1.5 rounded-md border px-2.5 h-8 font-mono text-[11px] uppercase tracking-[0.08em] transition-colors"
+              /* ⚠️ LITERAL, not `h-8` — spacing is overridden (tailwind.config.ts:200-215) so
+                 `h-8` was 48px around an 11px label. 40px = --tap-min: this toolbar sits on the
+                 screen where an officer judges whether an identity document is genuine, so it
+                 takes the floor, not the 32px dense-admin exception. */
+              className="inline-flex items-center gap-1.5 rounded-md border px-2.5 h-[40px] font-mono text-[11px] uppercase tracking-[0.08em] transition-colors"
               style={on
                 ? { borderColor: "var(--brand-500)", background: "color-mix(in oklab, var(--brand-500) 14%, transparent)", color: "var(--brand-200)" }
                 : { borderColor: "var(--border)", color: has ? "var(--text-muted)" : "var(--text-subtle)" }}
@@ -61,7 +65,9 @@ export function KycDocViewer({ userId, slots }: { userId: string; slots: Slot[] 
               key={z}
               type="button"
               onClick={() => setZoom(z)}
-              className="rounded-md border px-2 h-8 font-mono text-[11px] uppercase tracking-[0.08em] transition-colors"
+              /* ⚠️ LITERAL, not `h-8` (48px on the overridden scale) — 40px = --tap-min,
+                 matching the document tabs in the same strip. */
+              className="rounded-md border px-2 h-[40px] font-mono text-[11px] uppercase tracking-[0.08em] transition-colors"
               style={zoom === z ? { borderColor: "var(--brand-500)", color: "var(--brand-200)" } : { borderColor: "var(--border)", color: "var(--text-subtle)" }}
             >
               {z === "fit" ? "Fit" : `${z}%`}
@@ -71,7 +77,9 @@ export function KycDocViewer({ userId, slots }: { userId: string; slots: Slot[] 
             type="button"
             onClick={() => setRot((r) => (r + 90) % 360)}
             title="Rotate"
-            className="grid h-8 w-8 place-items-center rounded-md border border-border text-text-subtle hover:text-text transition-colors"
+            /* ⚠️ LITERALS, not `h-8 w-8` (48px on the overridden scale) — a 40×40 square at
+               --tap-min, level with the zoom controls beside it. */
+            className="grid h-[40px] w-[40px] place-items-center rounded-md border border-border text-text-subtle hover:text-text transition-colors"
           >
             <I.rotateCcw s={14} />
           </button>

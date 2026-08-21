@@ -54,7 +54,9 @@ export function EmailVerifyGate({ email }: { email: string | null }) {
       <div className="flex items-start gap-3">
         <span
           aria-hidden
-          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-brand-600/60 bg-brand-500/10 text-brand-300"
+          /* ⛔ LITERALS, NOT SCALE TOKENS — `theme.extend.spacing` is overridden
+             (tailwind.config.ts:200-215), so `h-10 w-10` is 80×80px. 40px = --tap-min. */
+          className="inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full border border-brand-600/60 bg-brand-500/10 text-brand-300"
         >
           <I.mail s={18} />
         </span>

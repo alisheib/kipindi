@@ -10,6 +10,12 @@
  * All three share the same data shape and onChange API; pick the one that
  * fits the host context (line on detail pages, segmented in toolbars,
  * pill for lightweight filter strips).
+ *
+ * ⚠️ EVERY TAB HEIGHT BELOW IS AN ARBITRARY LITERAL ON PURPOSE. `theme.extend.spacing`
+ * is OVERRIDDEN in `tailwind.config.ts:200-215`, so a scale class is ~double what it
+ * reads as (`h-8` = 48px, `h-10` = 80px). All three variants were written in the
+ * default-Tailwind idiom and shipped oversized — `line` put the wallet section rail
+ * in an 80px band. ⛔ Never "tidy" these back into `h-8` / `h-10`.
  */
 import * as React from "react";
 import { cn } from "@/lib/utils";
@@ -53,7 +59,9 @@ export function Tabs({
               type="button"
               onClick={() => onChange(t.value)}
               className={cn(
-                "h-8 px-3 rounded-md text-[12.5px] font-mono font-semibold transition-colors duration-100",
+                // 36px segment inside the `p-1` (4px) capsule above ⇒ a 46px capsule with its
+                // 1px border, in line with the 44px filter rails (was h-8 = 48px ⇒ 58px).
+                "h-[36px] px-3 rounded-md text-[12.5px] font-mono font-semibold transition-colors duration-100",
                 active
                   ? "text-text"
                   : "text-text-muted hover:text-text",
@@ -84,7 +92,8 @@ export function Tabs({
               type="button"
               onClick={() => onChange(t.value)}
               className={cn(
-                "h-8 px-3.5 rounded-pill text-[12px] font-mono font-semibold uppercase tracking-[0.14em] border transition-colors duration-100",
+                // 40px = --tap-min, the chip language every other filter rail uses (was h-8 = 48px).
+                "h-[40px] px-3.5 rounded-pill text-[12px] font-mono font-semibold uppercase tracking-[0.14em] border transition-colors duration-100",
                 active
                   ? "border-brand-500 bg-brand-500/15 text-brand-300"
                   : "border-border bg-bg-elevated text-text-muted hover:border-border-strong hover:text-text",
@@ -112,7 +121,8 @@ export function Tabs({
             type="button"
             onClick={() => onChange(t.value)}
             className={cn(
-              "relative h-10 px-4 text-[13px] font-display font-semibold transition-colors duration-150 whitespace-nowrap",
+              // 44px — A2's mobile-preferred tap height (was h-10 = 80px on the wallet rail).
+              "relative h-[44px] px-4 text-[13px] font-display font-semibold transition-colors duration-150 whitespace-nowrap",
               active ? "text-text" : "text-text-muted hover:text-text",
             )}
           >

@@ -201,7 +201,9 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
             <QualityBadges indicators={poll.qualityIndicators} overall={poll.overallQuality} />
           ) : (
             <div className="flex items-center gap-2 py-3">
-              <div className="h-8 w-8 rounded-pill bg-bg-overlay flex items-center justify-center">
+              {/* ⚠️ LITERALS, not `h-8 w-8` — spacing is overridden (tailwind.config.ts:200-215)
+                  so `h-8` was a 48px disc round a 14px glyph. */}
+              <div className="h-[32px] w-[32px] rounded-pill bg-bg-overlay flex items-center justify-center">
                 <I.shieldAlert size={14} className="text-text-subtle" />
               </div>
               <div>
@@ -241,7 +243,8 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
             </div>
           ) : (
             <div className="flex items-center gap-2 py-3">
-              <div className="h-8 w-8 rounded-pill bg-bg-overlay flex items-center justify-center">
+              {/* ⚠️ LITERALS — see the quality medallion above. `h-8` is 48px here. */}
+              <div className="h-[32px] w-[32px] rounded-pill bg-bg-overlay flex items-center justify-center">
                 <I.fileCheck size={14} className="text-text-subtle" />
               </div>
               <p className="text-[12px] text-text-muted">

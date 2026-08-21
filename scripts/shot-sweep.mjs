@@ -111,6 +111,62 @@ for (const locale of LOCALES) {
         const overflow = await page.evaluate(() =>
           Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth));
         if (overflow > 1) problems.push(`H-OVERFLOW ${route}@${w}(${locale}): ${overflow}px`);
+
+        // ⛔ CLIPPED-NOT-SCROLLED — the bug class the document-level check above CANNOT see.
+        // A child clipped by an intermediate `overflow: hidden` row never reaches the
+        // document's edge, so scrollWidth stays clean over a visibly severed control. The
+        // only honest test is to measure every clipping container against ITS OWN
+        // scrollWidth. ⚠️ An `text-overflow: ellipsis` element is SKIPPED: its hidden tail
+        // IS the "…", and "fixing" it would undo a correct design — but how much is hidden
+        // is reported as a note, because "half the trust line is behind the ellipsis in
+        // Swahili" is a judgement a human should make.
+        const clips = await page.evaluate(() => {
+          const out = [];
+          const label = (el) => (el.tagName.toLowerCase()
+            + (typeof el.className === "string" && el.className.trim()
+              ? "." + el.className.trim().split(/\s+/).slice(0, 2).join(".") : "")).slice(0, 60);
+
+          for (const box of document.querySelectorAll("*")) {
+            // `sr-only` is a 1px clipping box BY DESIGN — that is how the pattern hides
+            // text from sight while keeping it for a screen reader. Every one of them
+            // "clips", and reporting them buries the one finding that matters.
+            if (box.clientWidth <= 1) continue;
+            // <body> is the app shell's own clip; the document-level check above owns that.
+            if (box === document.body || box === document.documentElement) continue;
+            const cs = getComputedStyle(box);
+            if (cs.overflowX !== "hidden" && cs.overflowX !== "clip") continue;
+            if (box.scrollWidth - box.clientWidth <= 1) continue;
+
+            // ⭐ NAME THE CHILD, NOT THE BOX — and only a child that MATTERS.
+            // `position: relative; overflow: hidden` on a hero is the standard way to let a
+            // decorative watermark or radial bleed past an edge; the box "overflows" every
+            // time and none of it is a defect. What IS a defect is in-flow CONTENT running
+            // out of its own container. So: walk the children, keep only the in-flow,
+            // non-decorative ones, and report those.
+            const bR = box.getBoundingClientRect();
+            for (const kid of box.children) {
+              const kcs = getComputedStyle(kid);
+              if (kcs.position === "absolute" || kcs.position === "fixed") continue;  // decoration
+              if (kid.getAttribute("aria-hidden") === "true") continue;               // decoration
+              if (kcs.display === "none" || kcs.visibility === "hidden") continue;
+              const kR = kid.getBoundingClientRect();
+              const over = Math.round(Math.max(0, kR.right - bR.right) + Math.max(0, bR.left - kR.left));
+              if (over <= 1) continue;
+              const ellipsised = getComputedStyle(kid).textOverflow === "ellipsis";
+              out.push({ name: `${label(kid)} in ${label(box)}`, over, ellipsised, w: Math.round(bR.width) });
+            }
+          }
+          return out;
+        });
+        for (const c of clips) {
+          const where = `${route}@${w}(${locale})`;
+          if (c.ellipsised) {
+            const pct = Math.round((c.over / (c.w + c.over)) * 100);
+            if (pct >= 40) console.log(`  · note ${where}: ${pct}% of "${c.name}" is behind its ellipsis`);
+          } else {
+            problems.push(`CLIPPED ${where}: ${c.name} hides ${c.over}px (container ${c.w}px, no ellipsis)`);
+          }
+        }
         if (resp && resp.status() >= 400) problems.push(`HTTP ${resp.status()} ${route}@${w}(${locale})`);
         if (errors.length) problems.push(`CONSOLE ${route}@${w}(${locale}): ${errors.slice(0, 3).join(" | ")}`);
 

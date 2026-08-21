@@ -230,9 +230,18 @@ async function assertCell(page) {
 
     // undersized touch targets — EVERY interactive control family, not just
     // buttons/links (UI-consistency program: also inputs, selects, textareas,
-    // switches, options, filter chips, tabs). Threshold stays <38 in Phase 0 so
-    // .btn-md (38px) doesn't warn; it rises toward the true 40px floor (Law 9)
-    // once the control-height tokens bump in Phase 3. Soft-only — never a hard fail.
+    // switches, options, filter chips, tabs). Threshold WAS <38 through Phase 0 —
+    // deliberately detuned so .btn-md (38px then) would not warn on every surface
+    // forever, with the raise written into this comment as a Phase-3 follow-on.
+    // ⭐ PHASE 3 HAS LANDED (globals.css: --h-control-sm 40 · -md 44 · -lg 48), so
+    // the threshold is now the real --tap-min 40px floor (Law 9 / DA §A2) and this
+    // check finally means what its soft() label below already claimed ("≥40").
+    // ⚠️ Expect NEW warnings from what is genuinely sub-40 and is NOT a .btn-*:
+    // .ticket-chip (30px quick-stake pills — a real sub-floor money control),
+    // .btn-xs (32px, the documented mouse-only admin rung) and the 23px status
+    // chips. Soft-only — never a hard fail: soft() increments `warn` and the exit
+    // code reads `fail` alone, so raising the bar records the debt without ever
+    // blocking a deploy.
     const small = [];
     const sel = 'button, a[href], [role="button"], [role="tab"], [role="menuitem"], [role="option"], [role="switch"], input:not([type="hidden"]), select, textarea';
     const seen = new Set();
@@ -248,7 +257,7 @@ async function assertCell(page) {
       if (inlineLink) continue;
       // multi-line text entry may legitimately exceed a control's min height — a
       // tall textarea is fine; only flag it when it's genuinely too SHORT.
-      if (r.height < 38 || r.width < 24) {
+      if (r.height < 40 || r.width < 24) {
         const label = (el.getAttribute("aria-label") || el.getAttribute("placeholder") || el.textContent || "").trim().slice(0, 24);
         small.push(`${el.tagName.toLowerCase()}[${label}] ${Math.round(r.width)}×${Math.round(r.height)}`);
       }

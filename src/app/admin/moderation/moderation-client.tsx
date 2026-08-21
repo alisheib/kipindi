@@ -38,7 +38,13 @@ function ClientPager({ total, page, onPage, perPage = PER_PAGE }: { total: numbe
     pages.push(totalPages);
   }
 
-  const btnBase = "inline-flex items-center justify-center h-8 min-w-[32px] px-2 rounded-md font-mono text-[11px] tracking-[0.10em] transition-colors";
+  // ⚠️ 44px WRITTEN LITERALLY, NOT `h-8`. The spacing scale is overridden
+  // (tailwind.config.ts:200-215) so `h-8` is 48px: this string shipped a 48×32 PORTRAIT
+  // pill while its own `min-w-[32px]` says the author was drawing a square.
+  // The numbers are `src/components/ui/pagination.tsx`'s verbatim — this is a hand-rolled
+  // copy of that control, and the two must not ship at different sizes. 44px is also A2's
+  // preferred tap size; 32px would put a real page control under --tap-min.
+  const btnBase = "inline-flex items-center justify-center h-[44px] min-w-[44px] px-2 rounded-md font-mono text-[11px] tracking-[0.10em] transition-colors";
   const btnActive = "border border-brand-500 bg-brand-500/15 text-brand-300 font-bold";
   const btnInactive = "border border-border bg-bg-elevated text-text-muted hover:border-border-strong hover:text-text";
   const btnDisabled = "border border-border bg-bg-elevated text-text-subtle/40 pointer-events-none";

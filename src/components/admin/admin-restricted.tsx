@@ -29,7 +29,10 @@ export function AdminRestricted({
       <div className="px-4 lg:px-6 py-5">
         <AdminCard title="Restricted" sw="Imezuiliwa">
           <div className="flex items-start gap-3">
-            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-no-500/10 text-no-300">
+            {/* ⛔ LITERALS, NOT `h-10 w-10` — the spacing scale is overridden
+                (tailwind.config.ts:200-215) and that pair is 80×80px beside 13.5px body
+                copy. 40px = --tap-min, the kit's glyph-tile size. */}
+            <span className="inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-md bg-no-500/10 text-no-300">
               <I.lock s={17} />
             </span>
             <div>

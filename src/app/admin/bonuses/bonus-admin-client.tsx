@@ -75,7 +75,10 @@ function RouteCard({
       style={{ borderColor: on ? "color-mix(in oklab, var(--royal-500) 30%, var(--border))" : "var(--border)" }}
     >
       <span
-        className="grid h-9 w-9 shrink-0 place-items-center rounded-[9px]"
+        /* ⚠️ LITERALS, not `h-9 w-9` (64px on the overridden scale — tailwind.config.ts:200-215).
+           `rounded-[9px]` is a quarter of 36px: the intended size was already in the line.
+           Verbatim twin of affiliate-admin-client.tsx — keep the two in step. */
+        className="grid h-[36px] w-[36px] shrink-0 place-items-center rounded-[9px]"
         style={{
           background: on ? "color-mix(in oklab, var(--royal-500) 18%, transparent)" : "var(--bg-overlay)",
           color: on ? "var(--royal-300)" : "var(--text-muted)",
@@ -124,7 +127,9 @@ export function BonusAdminClient({ config }: { config: BonusConfig }) {
         }}
       >
         <span
-          className="grid h-11 w-11 shrink-0 place-items-center rounded-[11px]"
+          /* ⚠️ LITERALS, not `h-11 w-11` (96px on the overridden scale) — `rounded-[11px]` is a
+             quarter of 44px. Twin of affiliate-admin-client.tsx. */
+          className="grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[11px]"
           style={{
             background: on ? "color-mix(in oklab, var(--royal-500) 18%, transparent)" : "color-mix(in oklab, var(--warning-500) 20%, transparent)",
             color: on ? "var(--royal-300)" : "var(--warning-fg)",
@@ -187,7 +192,9 @@ export function BonusAdminClient({ config }: { config: BonusConfig }) {
           <button
             type="button"
             onClick={() => setC((p) => ({ ...p, cashbackMode: p.cashbackMode === "REQUEST" ? "AUTO" : "REQUEST" }))}
-            className="shrink-0 inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-bg-elevated px-3 font-mono text-[11px] font-bold uppercase tracking-[0.06em] text-text-muted hover:text-text transition-colors"
+            /* ⚠️ LITERAL, not `h-8` (48px on the overridden scale) — 40px = --tap-min. Bonus
+               config mints wallet credit, so this control takes the floor, not the exception. */
+            className="shrink-0 inline-flex h-[40px] items-center gap-1.5 rounded-md border border-border bg-bg-elevated px-3 font-mono text-[11px] font-bold uppercase tracking-[0.06em] text-text-muted hover:text-text transition-colors"
           >
             {c.cashbackMode === "REQUEST" ? <><I.shieldcheck s={12} /> Request</> : <><I.bolt s={12} /> Auto</>}
           </button>

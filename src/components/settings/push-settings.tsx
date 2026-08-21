@@ -113,7 +113,10 @@ export function PushSettings() {
       <p className="mb-4 text-[12.5px] text-text-subtle">{t.push.sectionHint}</p>
       <div className="flex items-start justify-between gap-4 border-t border-border pt-4">
         <div className="flex items-start gap-3 min-w-0">
-          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-brand-500/10 text-brand-300">
+          {/* ⛔ LITERALS, NOT `h-10 w-10` — the spacing scale is overridden
+              (tailwind.config.ts:200-215) and that pair is 80×80px beside a 14px title.
+              40px = --tap-min, the kit's glyph-tile size. */}
+          <span className="inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-md bg-brand-500/10 text-brand-300">
             <I.bellRing s={17} />
           </span>
           <div className="min-w-0">

@@ -78,8 +78,11 @@ export function AmountField({
                 onClick={() => setAmount(String(v))}
                 aria-pressed={active}
                 className={
-                  // L6: ≥44px tap target on a money control (was h-8/32px).
-                  "min-h-11 inline-flex items-center justify-center px-3.5 rounded-pill border font-mono text-[11.5px] font-bold tabular-nums transition-colors disabled:opacity-50 " +
+                  // L6: 44px tap target on a money control (deposit AND withdraw).
+                  // ⛔ ARBITRARY LITERAL ON PURPOSE — `theme.extend.spacing` is overridden
+                  // (tailwind.config.ts:200-215), so `min-h-11` is 96px, not 44px. Never a
+                  // scale token here.
+                  "min-h-[44px] inline-flex items-center justify-center px-3.5 rounded-pill border font-mono text-[11.5px] font-bold tabular-nums transition-colors disabled:opacity-50 " +
                   (active
                     ? "border-brand-500 bg-brand-500/15 text-brand-300"
                     : "border-border bg-bg-overlay text-text-subtle hover:bg-brand-500/10 hover:text-brand-300 hover:border-brand-500/60")

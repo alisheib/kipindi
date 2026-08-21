@@ -83,7 +83,9 @@ function FlowToggle({ provider, providerLabel, kind, paused }: { provider: strin
       disabled={pending || !mayAct}
       title={disabledReason}
       onClick={() => (paused ? apply(false) : setConfirm(true))}
-      className="flex items-center justify-between gap-1.5 rounded-md border px-2.5 h-9 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      /* ⚠️ LITERAL, not `h-9` — spacing is overridden (tailwind.config.ts:200-215), so `h-9`
+         was 64px against a 10px label, in a cluster whose other members are 40px. */
+      className="flex items-center justify-between gap-1.5 rounded-md border px-2.5 h-[40px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       style={paused
         ? { borderColor: "var(--claret-edge)", background: "var(--claret-soft)", color: "var(--claret-200)" }
         : { borderColor: "var(--border)", color: "var(--text-muted)" }}

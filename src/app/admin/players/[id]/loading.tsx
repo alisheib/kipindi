@@ -9,8 +9,10 @@ export default function Loading() {
         sw="Wasifu wa mchezaji"
         actions={
           <>
-            <SkChip className="h-8 w-20" />
-            <SkChip className="h-8 w-24" />
+            {/* ⚠️ LITERALS, not `h-8` (48px on the overridden scale). These ghost
+                export-player-button.tsx and reset-password-button.tsx, both 40px live. */}
+            <SkChip className="h-[40px] w-20" />
+            <SkChip className="h-[40px] w-24" />
           </>
         }
       />

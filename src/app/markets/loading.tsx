@@ -47,7 +47,10 @@ export default async function MarketsLoading() {
 
       {/* Search — full width, with the echo row reserved exactly as the real box reserves it. */}
       <div aria-hidden className="search-box-wrap">
-        <div className="kp-shimmer-track h-11 rounded-lg border border-border bg-bg-inset" />
+        {/* ⚠️ TOKEN, not `h-11` — spacing is overridden (tailwind.config.ts:200-215) so `h-11`
+            drew 96px. This ghosts `<Input size="md">`, which reads --h-input (44px); consume the
+            same token so the ghost and the field can never drift apart. */}
+        <div className="kp-shimmer-track h-[var(--h-input)] rounded-lg border border-border bg-bg-inset" />
         <p className="mt-1.5 min-h-[17px]" />
       </div>
 

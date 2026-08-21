@@ -124,7 +124,11 @@ function ClientPager({ total, page, onPage, perPage = PER_PAGE }: { total: numbe
     pages.push(totalPages);
   }
 
-  const btnBase = "inline-flex items-center justify-center h-8 min-w-[32px] px-2 rounded-md font-mono text-[11px] tracking-[0.10em] transition-colors";
+  // ⚠️ 44px WRITTEN LITERALLY, NOT `h-8` (48px on the overridden scale — tailwind.config.ts:200-215).
+  // Verbatim copy of the moderation pagination and of `src/components/ui/pagination.tsx`;
+  // the three must stay one size. The old `min-w-[32px]` literal beside an `h-8` token is the
+  // tell: a square was intended, a 48×32 portrait pill shipped.
+  const btnBase = "inline-flex items-center justify-center h-[44px] min-w-[44px] px-2 rounded-md font-mono text-[11px] tracking-[0.10em] transition-colors";
   const btnActive = "border border-brand-500 bg-brand-500/15 text-brand-300 font-bold";
   const btnInactive = "border border-border bg-bg-elevated text-text-muted hover:border-border-strong hover:text-text";
   const btnDisabled = "border border-border bg-bg-elevated text-text-subtle/40 pointer-events-none";
@@ -371,7 +375,11 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
                 <button key={f} onClick={() => setQFilter(f)} className="rounded-pill border px-2.5 py-0.5 text-[11px] font-semibold capitalize transition-colors"
                   style={qFilter === f ? { borderColor: "color-mix(in oklab, var(--brand-500) 40%, transparent)", background: "color-mix(in oklab, var(--brand-500) 14%, transparent)", color: "var(--brand-200)" } : { borderColor: "var(--border)", color: "var(--text-muted)" }}>{f}</button>
               ))}
-              <RefreshButton variant="icon" className="!h-7 !w-7" />
+              {/* ⛔ NO SIZE OVERRIDE. This carried `!h-7 !w-7` to bandage a `variant="icon"`
+                  that shipped at 80×80 (`h-10 w-10` on the overridden scale). The atom now
+                  writes its own 40×40 literal, so the bandage is dead weight — and an
+                  `!important` scale token is exactly the trap that caused the defect. */}
+              <RefreshButton variant="icon" />
             </div>
           </div>
           <div className="border-b border-border px-4 py-2.5">
@@ -586,7 +594,10 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
       <div className="overflow-hidden rounded-lg glass-panel">
         <div className="flex flex-col gap-3 border-b border-border px-4 py-3.5 sm:flex-row sm:items-center sm:gap-3.5" style={{ background: meta.selBg }}>
           <div className="flex min-w-0 flex-1 items-start gap-3.5">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px]" style={{ background: "color-mix(in oklab, var(--bg-base) 45%, transparent)", color: meta.fg, border: `1px solid ${meta.selBorder}` }}>
+            {/* ⚠️ LITERALS, not `h-10 w-10` — spacing is overridden (tailwind.config.ts:200-215)
+                so `h-10` was 80px, while the sibling `rounded-[10px]` was already written for a
+                40px tile. Size and radius now agree. */}
+            <span className="grid h-[40px] w-[40px] shrink-0 place-items-center rounded-[10px]" style={{ background: "color-mix(in oklab, var(--bg-base) 45%, transparent)", color: meta.fg, border: `1px solid ${meta.selBorder}` }}>
               <HeaderIcon s={21} />
             </span>
             <div className="min-w-0">

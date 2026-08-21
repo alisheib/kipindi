@@ -83,7 +83,9 @@ export function AiOpsControls({
             <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-muted">
               Fast-scan model · Modeli ya haraka
             </span>
-            <div className="mt-1 flex items-center gap-2 h-9 px-3 rounded-lg border border-border bg-bg-overlay text-[14px] font-mono text-text-subtle">
+            {/* ⚠️ LITERAL, not `h-9` — spacing is overridden (tailwind.config.ts:200-215), so
+                `h-9` was a 64px container around a single 14px mono line. */}
+            <div className="mt-1 flex items-center gap-2 h-[40px] px-3 rounded-lg border border-border bg-bg-overlay text-[14px] font-mono text-text-subtle">
               <I.lock s={12} className="text-text-subtle shrink-0" />
               {triageInfo.label}
               <span className="text-[11px] text-text-subtle ml-auto">{triageInfo.cost}</span>

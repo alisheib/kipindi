@@ -96,7 +96,10 @@ export function SofReviewRow({ userId }: { userId: string }) {
             onChange={(e) => setReason(e.target.value)}
             placeholder={expanded === "MORE_INFO" ? "What info is needed? (required)" : "Rejection reason (required)"}
             aria-label={expanded === "MORE_INFO" ? "More info request" : "Rejection reason"}
-            className="flex-1 h-8 px-2 rounded-md border border-border bg-bg-inset text-text-secondary text-caption font-mono focus:outline-none admin-focus transition-colors"
+            /* ⚠️ LITERAL, not `h-8` (48px on the overridden scale) — 40px = --tap-min and the
+               height of the `Button size="sm"` beside it. Twin of aml-actions-client.tsx;
+               §A2 — money-ops controls are never the tap-floor exception. */
+            className="flex-1 h-[40px] px-2 rounded-md border border-border bg-bg-inset text-text-secondary text-caption font-mono focus:outline-none admin-focus transition-colors"
           />
           <Button size="sm" variant={expanded === "MORE_INFO" ? "ghost" : "danger"} onClick={() => submit(expanded as SofDecision)} loading={busy === expanded} disabled={busy !== null}>
             Send

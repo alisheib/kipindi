@@ -579,7 +579,9 @@ function ResultsSkeleton() {
         {/* Sidebar skeleton */}
         <aside className="lg:w-[208px] lg:shrink-0 space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-8 rounded-md bg-bg-overlay kp-shimmer-track" />
+            /* ⚠️ LITERAL, not `h-8` — spacing is overridden (tailwind.config.ts:200-215) so
+               `h-8` drew 48px for sidebar filter pills that render at FilterPill's 44px. */
+            <div key={i} className="h-[44px] rounded-md bg-bg-overlay kp-shimmer-track" />
           ))}
         </aside>
 
@@ -594,15 +596,20 @@ function ResultsSkeleton() {
               >
                 <div className="p-4 space-y-3">
                   <div className="flex items-center gap-2">
-                    <div className="h-5 w-12 rounded-pill bg-bg-overlay" />
+                    {/* ⚠️ WIDTH IS A LITERAL, not `w-12` (128px on the overridden scale). */}
+                    <div className="h-5 w-[64px] rounded-pill bg-bg-overlay" />
                     <div className="h-5 w-16 rounded-pill bg-bg-overlay" />
                   </div>
                   <div className="h-4 w-3/4 rounded bg-bg-overlay" />
                   <div className="h-4 w-1/2 rounded bg-bg-overlay" />
                   <div className="h-[7px] w-full rounded-pill bg-bg-overlay mt-4" />
                   <div className="flex gap-2 mt-3">
-                    <div className="h-9 flex-1 rounded-md bg-bg-overlay" />
-                    <div className="h-9 flex-1 rounded-md bg-bg-overlay" />
+                    {/* ⚠️ TOKEN, not `h-9` (64px on the overridden scale) — the card's YES/NO
+                        buttons are pinned to `--tap-min` in globals.css
+                        (`.mcardp-actions .btn`). Copy of the markets/page.tsx skeleton; the
+                        two must stay in step. */}
+                    <div className="h-[var(--tap-min)] flex-1 rounded-md bg-bg-overlay" />
+                    <div className="h-[var(--tap-min)] flex-1 rounded-md bg-bg-overlay" />
                   </div>
                 </div>
               </div>

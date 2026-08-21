@@ -259,7 +259,9 @@ export default async function ProfilePage() {
           className="group inline-flex w-full items-center justify-between gap-3 rounded-xl glass-panel px-4 py-3.5 hover:border-no-700 transition-colors"
         >
           <span className="inline-flex items-center gap-3">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-no-500/10 text-no-300 group-hover:bg-no-500/20 transition-colors">
+            {/* ⚠️ LITERALS, not `h-9 w-9` — spacing is overridden (tailwind.config.ts:200-215)
+                and `h-9` renders 64px, setting the whole sign-out row's height. */}
+            <span className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-md bg-no-500/10 text-no-300 group-hover:bg-no-500/20 transition-colors">
               <I.logOut s={16} />
             </span>
             <span className="text-left">
@@ -327,7 +329,9 @@ function SettingRow({ icon: Icon, title, subtitle, href, accent, badge }: { icon
         <span aria-hidden className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full" style={{ background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))" }} />
       )}
       <span
-        className={`inline-flex h-10 w-10 items-center justify-center rounded-md shrink-0 transition-colors ${accent ? "text-gold-fg" : "bg-brand-500/10 text-brand-300 group-hover:bg-brand-500/15"}`}
+        /* ⚠️ LITERALS, not `h-10 w-10` — the overridden scale (tailwind.config.ts:200-215)
+           makes `h-10` 80px, which is what set every profile menu row's height. */
+        className={`inline-flex h-[40px] w-[40px] items-center justify-center rounded-md shrink-0 transition-colors ${accent ? "text-gold-fg" : "bg-brand-500/10 text-brand-300 group-hover:bg-brand-500/15"}`}
         style={accent ? { background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))" } : undefined}
       >
         <Icon s={17} />

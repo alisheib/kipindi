@@ -40,7 +40,10 @@ export default async function ProfileLoading() {
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="flex items-center gap-3 rounded-xl border border-border bg-bg-elevated p-3.5 kp-shimmer-track">
-              <div className="h-10 w-10 rounded-md bg-bg-overlay shrink-0" />
+              {/* ⚠️ LITERALS, not `h-10 w-10` — spacing is overridden
+                  (tailwind.config.ts:200-215) so this drew 80px. It ghosts the profile
+                  menu-row icon tile (profile/page.tsx), which is 40px. Move the two together. */}
+              <div className="h-[40px] w-[40px] rounded-md bg-bg-overlay shrink-0" />
               <div className="flex-1 space-y-1.5">
                 <div className="h-3.5 w-28 rounded bg-bg-overlay" />
                 <div className="h-2.5 w-36 rounded bg-bg-overlay" />

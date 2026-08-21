@@ -117,7 +117,10 @@ export function ReportPackControls({
             value={ackRef}
             onChange={(e) => setAckRef(e.target.value)}
             placeholder="e.g. GBT-ACK-2026-06-0417"
-            className="h-9 w-full rounded-md border border-border bg-bg-overlay px-2.5 font-mono text-[12px] text-text admin-focus placeholder:text-text-subtle"
+            /* ⚠️ TOKEN, not `h-9` — spacing is overridden (tailwind.config.ts:200-215) so `h-9`
+               was 64px. `--h-input` (44px) is the kit's input height and matches the full-width
+               `btn-md` directly beneath this field. */
+            className="h-[var(--h-input)] w-full rounded-md border border-border bg-bg-overlay px-2.5 font-mono text-[12px] text-text admin-focus placeholder:text-text-subtle"
           />
         </label>
         <button type="button" onClick={() => run(acknowledgeReportPack, "Acknowledgement recorded", { reference: ackRef })} className="btn btn-primary btn-md w-full">

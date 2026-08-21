@@ -555,7 +555,10 @@ export function WalletPageClient({
                 <Link
                   key={o}
                   href="/profile/responsible-gambling"
-                  className="inline-flex h-8 items-center px-3 rounded-pill border border-border bg-bg-overlay font-mono text-[11.5px] font-semibold text-text-muted hover:text-text hover:border-no-700 transition-colors"
+                  /* ⚠️ LITERAL, not `h-8` — the spacing scale is overridden
+                     (tailwind.config.ts:200-215) so `h-8` is 48px, 8px above the
+                     40px chip language every other rail speaks. */
+                  className="inline-flex min-h-[40px] items-center px-3 rounded-pill border border-border bg-bg-overlay font-mono text-[11.5px] font-semibold text-text-muted hover:text-text hover:border-no-700 transition-colors"
                 >
                   {o}
                 </Link>

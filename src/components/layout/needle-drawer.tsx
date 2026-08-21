@@ -126,7 +126,10 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label={t("Close", "Funga", "关闭")}
-                className="shrink-0 grid h-9 w-9 place-items-center rounded-lg text-text-subtle transition-colors hover:bg-bg-overlay hover:text-text"
+                /* ⛔ LITERALS, NOT `h-9 w-9` — the spacing scale is overridden
+                   (tailwind.config.ts:200-215) and that pair is 64×64px, 16px larger than
+                   every other ✕ in the kit. 40px = --tap-min. */
+                className="shrink-0 grid h-[40px] w-[40px] place-items-center rounded-lg text-text-subtle transition-colors hover:bg-bg-overlay hover:text-text"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" /></svg>
               </button>

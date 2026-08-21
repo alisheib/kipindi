@@ -14,7 +14,9 @@ export default async function PositionsLoading() {
         {[t.positions.tabAll, t.positions.tabOpen, t.positions.tabSettled].map((tab, i) => (
           <div
             key={tab}
-            className={`h-9 px-3.5 rounded-t-md ${i === 0 ? "bg-bg-overlay" : ""}`}
+            /* ⚠️ LITERAL, not `h-9` — spacing is overridden (tailwind.config.ts:200-215) so
+               this drew 64px for a tab rail that renders at 44px (FilterPill / Tabs). */
+            className={`h-[44px] px-3.5 rounded-t-md ${i === 0 ? "bg-bg-overlay" : ""}`}
             style={{ width: 70 }}
           >
             <span className="font-display text-[13px] text-text-subtle">{tab}</span>
@@ -49,7 +51,9 @@ export default async function PositionsLoading() {
           >
             <div className="space-y-2.5">
               <div className="flex items-center gap-2">
-                <div className="h-5 w-12 rounded-pill bg-bg-overlay" />
+                {/* ⚠️ WIDTH IS A LITERAL, not `w-12` — 128px on the overridden scale, twice
+                    any real chip. */}
+                <div className="h-5 w-[64px] rounded-pill bg-bg-overlay" />
                 <div className="h-4 w-24 rounded bg-bg-overlay" />
               </div>
               <div className="h-4 w-3/4 rounded bg-bg-overlay" />

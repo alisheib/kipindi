@@ -92,7 +92,9 @@ export default async function NotFound() {
       <div className="relative flex flex-col items-center">
         <FiftyMark size={64} />
         <div
-          className="mb-3 mt-5 inline-flex h-11 w-11 items-center justify-center rounded-full border border-brand-600 bg-brand-500/10 text-brand-300"
+          /* ⚠️ LITERALS, not `h-11 w-11` — spacing is overridden (tailwind.config.ts:200-215)
+             so `h-11` renders 96px, i.e. a medallion that rivalled the size={64} mark above it. */
+          className="mb-3 mt-5 inline-flex h-[44px] w-[44px] items-center justify-center rounded-full border border-brand-600 bg-brand-500/10 text-brand-300"
           style={{ boxShadow: "0 0 0 7px color-mix(in oklab, var(--brand-500) 8%, transparent)" }}
         >
           <I.search s={19} />

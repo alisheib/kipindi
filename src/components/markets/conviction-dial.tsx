@@ -1101,7 +1101,11 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
                 <div
                   key={s}
                   aria-hidden
-                  className="relative inline-flex h-11 select-none items-center justify-center gap-1.5 rounded-lg border font-display text-[15px] font-bold tracking-[0.02em]"
+                  /* ⚠️ 44px written as an ARBITRARY LITERAL: the spacing scale is
+                     OVERRIDDEN (tailwind.config.ts:200-215), so `h-11` renders 96px
+                     and these two display tiles pushed the dial itself below the fold
+                     on a 360px phone. ⛔ Never a scale token here. */
+                  className="relative inline-flex h-[44px] select-none items-center justify-center gap-1.5 rounded-lg border font-display text-[15px] font-bold tracking-[0.02em]"
                   style={active ? {
                     color: `oklch(84% 0.13 ${hue})`,
                     borderColor: `oklch(58% 0.16 ${hue})`,
@@ -1445,7 +1449,11 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
             className="text-right font-bold tabular-nums px-2"
             // Fixed outer width + 44 px height (WCAG 2.5.5 touch target)
             // so the stake and multiplier inputs read as a matched pair.
-            containerClassName="ml-auto h-11 w-[172px]"
+            // ⚠️ ARBITRARY LITERAL ON PURPOSE — `theme.extend.spacing` is
+            // OVERRIDDEN (tailwind.config.ts:200-215), so `h-11` is 96px, not
+            // 44px. This line said `h-11` and shipped a 96px stake box while
+            // the comment above claimed 44. ⛔ Never "tidy" it to a scale token.
+            containerClassName="ml-auto h-[44px] w-[172px]"
           />
           {/*
             Range helper line — switches to a corrective hint when the
@@ -1509,7 +1517,10 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
             className="text-right font-bold tabular-nums px-2"
             // Same outer width + 44 px height (WCAG 2.5.5 touch target)
             // as the stake input — matched pair.
-            containerClassName="ml-auto h-11 w-[172px]"
+            // ⚠️ ARBITRARY LITERAL ON PURPOSE — the spacing scale is OVERRIDDEN
+            // (tailwind.config.ts:200-215): `h-11` is 96px here, not 44px.
+            // ⛔ Never "tidy" it back to a scale token.
+            containerClassName="ml-auto h-[44px] w-[172px]"
           />
           {isMultOverMax || isMultUnderMin ? (
             <span className="mt-1 inline-flex items-center gap-1 rounded-pill border border-no-700 bg-no-500/15 px-1.5 py-0.5 font-mono text-[9.5px] font-bold text-no-300 whitespace-nowrap">
@@ -1609,9 +1620,13 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
             : `${t.common.place} ${effectiveSide} ${formatTzs(stake)}`
           }
           className={`${closedNow ? "btn btn-ghost btn-md" : (effectiveSide === "NEUTRAL" ? "btn btn-ghost btn-md" : effectiveSide === "YES" ? "btn btn-yes btn-md" : "btn btn-no btn-md")} whitespace-normal`}
-          // 44 px min-height meets WCAG 2.5.5 tap-target on mobile;
-          // btn-md alone caps at 38 px. T3: drop pill radius — buttons use kit r-sm (8px).
-          style={{ minWidth: 140, minHeight: 44, fontVariantNumeric: "tabular-nums" }}
+          // T3: drop pill radius — buttons use kit r-sm (8px).
+          // The height comes from `.btn-md` (--h-control-md = 44px, globals.css),
+          // which now clears the WCAG 2.5.5 / DA §A2 tap floor on its own — the
+          // inline `minHeight: 44` that used to sit here existed only because
+          // btn-md capped at 38px, and keeping it would pin this one button if
+          // the token is ever retuned. ⛔ Do not re-add a per-call height here.
+          style={{ minWidth: 140, fontVariantNumeric: "tabular-nums" }}
         >
           {closedNow
             ? t.market.closedAwaitingSettlement

@@ -79,7 +79,10 @@ export function PayoutStatusControl({
   return (
     <div className="space-y-3">
       {/* What a player is actually seeing right now — the only figure that matters. */}
-      <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-bg-overlay px-3 h-10">
+      {/* ⚠️ LITERAL, not `h-10` — spacing is overridden (tailwind.config.ts:200-215), so `h-10`
+          was an 80px box around one 9.5px line. This is a readout, not a control, so there is
+          no tap floor to justify the height. */}
+      <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-bg-overlay px-3 h-[44px]">
         <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-subtle">Players are told</span>
         <StatusPill status={effective} />
       </div>

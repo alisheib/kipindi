@@ -23,7 +23,7 @@
  * odds/pool/topic live in `filter-sheet.tsx`.
  *
  * ⚠️ `min-h-[44px]` and `w-[44px]` are arbitrary values on purpose: Tailwind's spacing scale is
- * OVERRIDDEN in this repo (`h-8` = 48px, `h-10` = 80px — `tailwind.config.ts:156-171`), so a
+ * OVERRIDDEN in this repo (`h-8` = 48px, `h-10` = 80px — `tailwind.config.ts:200-215`), so a
  * scale class would silently be the wrong size. 44 is the tap floor and a real constant.
  */
 import { useEffect, useRef } from "react";

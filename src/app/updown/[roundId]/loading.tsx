@@ -25,7 +25,9 @@ export default async function UpDownRoundLoading() {
         {/* header: title block · countdown pod */}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="h-11 w-11 rounded-full bg-bg-elevated kp-shimmer-track" aria-hidden />
+            {/* ⚠️ LITERALS, not `h-11 w-11` — spacing is overridden
+                (tailwind.config.ts:200-215) so this medallion ghost drew 96px. */}
+            <div className="h-[44px] w-[44px] rounded-full bg-bg-elevated kp-shimmer-track" aria-hidden />
             <div>
               <div className="h-6 w-56 rounded-md bg-bg-elevated kp-shimmer-track" aria-hidden />
               <div className="mt-2 h-3 w-32 rounded bg-bg-elevated kp-shimmer-track" aria-hidden />

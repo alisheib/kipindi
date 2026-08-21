@@ -93,11 +93,16 @@ export function SkFormCard({
         {Array.from({ length: fields }).map((_, i) => (
           <div key={i} className="space-y-1.5">
             <SkBar className="h-2.5 w-24" />
-            <SkBar className="h-9 w-full rounded-md" />
+            {/* ⛔ LITERAL, NOT `h-9` — the spacing scale is overridden
+                (tailwind.config.ts:200-215) and `h-9` is 64px, so this placeholder was
+                20px taller than the field it stands in for and the swap jumped on load.
+                44px == --h-input / --h-control-md. */}
+            <SkBar className="h-[44px] w-full rounded-md" />
           </div>
         ))}
       </div>
-      <SkBar className="h-9 w-32 rounded-md" />
+      {/* Submit-button placeholder — 44px == --h-control-md, not `h-9` (64px). */}
+      <SkBar className="h-[44px] w-32 rounded-md" />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { Suspense, cache } from "react";
-import { fill } from "@/lib/utils";
+import { fill, formatTzsCompact } from "@/lib/utils";
 import { timeLeftLabel } from "@/lib/markets/time-left";
 import Link from "next/link";
 import { SignalPip } from "@/components/brand";
@@ -159,7 +159,13 @@ export default async function MarketsPage({ searchParams }: { searchParams: Prom
           <span className="font-semibold text-text">{openMarkets.length}</span>
           <span className="text-text-subtle">{t.market.liveCount}</span>
           <span className="text-border-strong">·</span>
-          <span className="font-semibold text-text">TZS {(openVolume / 1000).toFixed(0)}k</span>
+          {/* ⭐ ONE FIGURE, ONE GRAMMAR. This printed `TZS 1280k` while the landing hero
+              printed the SAME quantity — both sum yesPool+noPool over the open rows from
+              the same `discovery.ts` — as `TZS 1.3M`, on adjacent pages a player moves
+              between in one tap. The local `/1000` also had no magnitude threshold, so a
+              quiet book printed `TZS 0k`. `formatTzsCompact` owns the grammar and emits
+              its own `TZS ` prefix — do not put one back in front of it. */}
+          <span className="font-semibold text-text">{formatTzsCompact(openVolume)}</span>
           <span className="text-text-subtle">{t.market.tzsInPlay}</span>
         </p>
       </div>
@@ -474,7 +480,10 @@ function GridSkeleton() {
         >
           <div className="space-y-3 p-4">
             <div className="flex items-center gap-2">
-              <div className="h-5 w-12 rounded-pill bg-bg-overlay" />
+              {/* ⚠️ WIDTH IS A LITERAL, not `w-12` — spacing is overridden
+                  (tailwind.config.ts:200-215) so `w-12` is 128px, twice any real category chip.
+                  (`h-5` and `w-16` are NOT overridden keys and read as written.) */}
+              <div className="h-5 w-[64px] rounded-pill bg-bg-overlay" />
               <div className="h-5 w-16 rounded-pill bg-bg-overlay" />
             </div>
             <div className="h-4 w-3/4 rounded bg-bg-overlay" />
@@ -482,12 +491,17 @@ function GridSkeleton() {
             {/* The real card carries a probability block, the tipping bar, a trader row and the
                 money buttons between the title and the footer. Reserving them keeps the INTERNAL
                 rhythm honest too, not just the outer box. */}
-            <div className="mt-4 h-8 w-20 rounded bg-bg-overlay" />
+            {/* ⚠️ LITERAL, not `h-8` (48px on the overridden scale) — the probability figure. */}
+            <div className="mt-4 h-[28px] w-20 rounded bg-bg-overlay" />
             <div className="mt-4 h-[7px] w-full rounded-pill bg-bg-overlay" />
             <div className="mt-3 h-5 w-32 rounded bg-bg-overlay" />
             <div className="mt-3 flex gap-2">
-              <div className="h-9 flex-1 rounded-md bg-bg-overlay" />
-              <div className="h-9 flex-1 rounded-md bg-bg-overlay" />
+              {/* ⚠️ TOKEN, not `h-9` — spacing is overridden (tailwind.config.ts:200-215) so
+                  `h-9` drew 64px for the card's YES/NO buttons, which globals.css pins at
+                  exactly `--tap-min` (`.mcardp-actions .btn { height: var(--tap-min) }`).
+                  That was a 24px jump per card on every board load. Consume the SAME token. */}
+              <div className="h-[var(--tap-min)] flex-1 rounded-md bg-bg-overlay" />
+              <div className="h-[var(--tap-min)] flex-1 rounded-md bg-bg-overlay" />
             </div>
             <div className="mt-3 h-4 w-24 rounded bg-bg-overlay" />
           </div>

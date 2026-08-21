@@ -13,7 +13,9 @@ export default async function MarketDetailLoading() {
       <header className="space-y-2" aria-hidden>
         <div className="flex items-center gap-2">
           <div className="h-5 w-16 rounded-pill bg-bg-overlay kp-shimmer-track" />
-          <div className="h-5 w-12 rounded-pill bg-bg-overlay kp-shimmer-track" />
+          {/* ⚠️ WIDTH IS A LITERAL, not `w-12` — spacing is overridden
+              (tailwind.config.ts:200-215) so `w-12` is 128px, twice any real chip. */}
+          <div className="h-5 w-[64px] rounded-pill bg-bg-overlay kp-shimmer-track" />
         </div>
         <div className="h-7 rounded bg-bg-overlay kp-shimmer-track" style={{ width: "min(620px, 90%)" }} />
         <div className="h-5 w-48 rounded bg-bg-overlay kp-shimmer-track" />

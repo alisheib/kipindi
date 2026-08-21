@@ -202,7 +202,9 @@ function QuickLinkCard({
       href={href as never}
       className="flex items-center gap-3 rounded-xl glass-panel p-4 hover:border-brand-400 transition-colors"
     >
-      <span className={`inline-flex h-9 w-9 items-center justify-center rounded-md shrink-0 ${tint}`}>
+      {/* ⚠️ LITERALS, not `h-9 w-9` — spacing is overridden (tailwind.config.ts:200-215), so
+          `h-9` was 64px: 24px larger than the 40px badge on this very same page. */}
+      <span className={`inline-flex h-[40px] w-[40px] items-center justify-center rounded-md shrink-0 ${tint}`}>
         {icon}
       </span>
       <div className="flex-1 min-w-0">

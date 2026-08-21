@@ -193,7 +193,10 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
       <div className="flex items-center gap-3 rounded-xl border border-border bg-bg-elevated/60 px-4 py-3">
         <span
           aria-hidden
-          className="inline-flex h-10 w-10 shrink-0 items-center justify-center border border-dashed border-border text-text-subtle"
+          /* ⚠️ LITERAL, not `h-10 w-10` — `theme.extend.spacing` is overridden
+             (tailwind.config.ts:200-215), so `h-10` renders 80px and made this
+             empty placeholder the loudest object on the deposit screen. */
+          className="inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center border border-dashed border-border text-text-subtle"
           style={{ borderRadius: "var(--r-md)" }}
         >
           <I.shieldcheck s={18} />

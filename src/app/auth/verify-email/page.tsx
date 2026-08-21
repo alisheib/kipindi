@@ -56,7 +56,9 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams?:
               confirmation gates the first deposit, so this chip sits on the money-in
               ladder and has to read at a glance. */}
           <span
-            className={`inline-flex h-12 w-12 items-center justify-center rounded-pill ${
+            /* ⚠️ LITERALS, not `h-12 w-12` — spacing is overridden (tailwind.config.ts:200-215)
+               and `h-12` rendered a 128px disc on the money-in ladder described above. */
+            className={`inline-flex h-[48px] w-[48px] items-center justify-center rounded-pill ${
               good ? "bg-yes-500/[0.12] text-yes-300" : "bg-no-500/[0.12] text-no-300"
             }`}
           >

@@ -318,7 +318,9 @@ export default async function AdminAIPollsPage({
 
           {pageItems.length === 0 ? (
             <div className="px-4 lg:px-5 py-12 flex flex-col items-center gap-3 text-center">
-              <div className="h-10 w-10 rounded-pill bg-bg-overlay flex items-center justify-center">
+              {/* ⚠️ LITERALS, not `h-10 w-10` — spacing is overridden (tailwind.config.ts:200-215)
+                  so `h-10` was an 80px disc round an 18px glyph. */}
+              <div className="h-[40px] w-[40px] rounded-pill bg-bg-overlay flex items-center justify-center">
                 {hasFilters
                   ? <I.search size={18} className="text-text-subtle" />
                   : <I.bot size={18} className="text-text-subtle" />}
@@ -471,8 +473,11 @@ function FilterToolbarSkeleton() {
   return (
     <div className="space-y-3 animate-pulse">
       <div className="flex items-center gap-3">
-        <div className="h-9 flex-1 max-w-[420px] rounded-md bg-bg-overlay" />
-        <div className="h-9 w-[80px] rounded-pill bg-bg-overlay" />
+        {/* ⚠️ LITERALS, not `h-9` (64px on the overridden scale — tailwind.config.ts:200-215).
+            A skeleton must be the size of the thing it stands in for: the live admin filter
+            rail is 32px (--h-control-xs). The widths beside them were already literals. */}
+        <div className="h-[32px] flex-1 max-w-[420px] rounded-md bg-bg-overlay" />
+        <div className="h-[32px] w-[80px] rounded-pill bg-bg-overlay" />
       </div>
       <div className="flex items-center gap-2">
         {Array.from({ length: 5 }).map((_, i) => (

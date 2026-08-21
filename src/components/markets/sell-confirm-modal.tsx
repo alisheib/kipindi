@@ -153,7 +153,10 @@ export function SellConfirmModal({ open, pending, stake, value, positionId, onCo
           type="button"
           onClick={onCancel}
           disabled={pending}
-          className="btn btn-ghost btn-md w-full"
+          /* `btn-lg` matches the gold confirm above and the twin control in
+             bet-confirm-modal.tsx, so the two core money dialogs read identically.
+             It was `btn-md`. ⛔ No per-call height: the --h-control-* token owns it. */
+          className="btn btn-ghost btn-lg w-full"
         >
           {t.dialog.keepPosition}
         </button>

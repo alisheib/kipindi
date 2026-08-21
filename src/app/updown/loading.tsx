@@ -13,10 +13,16 @@ export default async function UpDownLoading() {
         <div className="mt-1 h-7 w-40 rounded-md bg-bg-elevated kp-shimmer-track" aria-hidden />
       </div>
       {/* price tape */}
-      <div className="mt-4 h-10 rounded-xl bg-bg-inset kp-shimmer-track" aria-hidden />
+      {/* ⚠️ LITERAL, not `h-10` — spacing is overridden (tailwind.config.ts:200-215) so the
+          price tape ghost drew 80px. */}
+      <div className="mt-4 h-[44px] rounded-xl bg-bg-inset kp-shimmer-track" aria-hidden />
       {/* asset + duration tabs */}
       <div className="mt-4 flex gap-2" aria-hidden>
-        {Array.from({ length: 2 }).map((_, i) => <div key={i} className="h-9 w-24 rounded-md bg-bg-elevated kp-shimmer-track" />)}
+        {/* ⚠️ LITERAL, not `h-9`. This skeleton was the LAST surviving copy of a bug the code
+            already fixed: the asset tabs migrated to FilterPill's deliberate `min-h-[44px]`,
+            but the ghost still reproduced the old 64px that `h-9` renders on this repo's
+            overridden scale (tailwind.config.ts:200-215). */}
+        {Array.from({ length: 2 }).map((_, i) => <div key={i} className="h-[44px] w-24 rounded-md bg-bg-elevated kp-shimmer-track" />)}
       </div>
       <div className="mt-2 flex gap-1.5" aria-hidden>
         {Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-7 w-16 rounded-md bg-bg-inset kp-shimmer-track" />)}

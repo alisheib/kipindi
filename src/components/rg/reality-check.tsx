@@ -132,7 +132,10 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, user
 
       <div className="space-y-4">
         <div className="flex items-center gap-2.5">
-          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-bg-inset border border-border text-gold-300">
+          {/* ⛔ LITERALS, NOT `h-8 w-8` — the spacing scale is overridden
+              (tailwind.config.ts:200-215) and that pair is 48×48px. 40px = --tap-min, the
+              badge disc every other section heading in the product uses. */}
+          <span className="inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-md bg-bg-inset border border-border text-gold-300">
             <I.clock s={18} />
           </span>
           <h2
@@ -149,6 +152,15 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, user
           {t.rg.mostPlayForFun}
         </p>
 
+        {/* 🔴 LCCP SR CODE 3.4.1 — THE HARM-REDUCTION EXITS ARE NOT THE SMALL PRINT.
+            "Take a break" and "Self-exclude" were `btn-md` at HALF width in a nested
+            `xs:grid-cols-2`, while "Continue playing" was `btn-lg` full width. On a
+            reality-check prompt that is a compliance defect, not a layout preference:
+            the control that CONTINUES the session was the largest target in the dialog
+            and the two that STOP it were the smallest — and btn-md sat under --tap-min.
+            All four are now one rung and one width; the player chooses on the copy, not
+            on the pixel count.
+            ⛔ Do NOT reintroduce a size or width difference between these four. */}
         <div className="grid grid-cols-1 gap-2 pt-1">
           <button type="button" onClick={dismiss} className="btn btn-ghost btn-lg w-full">
             {t.rg.continuePlaying}
@@ -157,16 +169,14 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, user
             <I.clock s={14} />
             {t.rg.setLimits}
           </Link>
-          <div className="grid grid-cols-1 xs:grid-cols-2 gap-2">
-            <Link href="/profile/responsible-gambling#break" onClick={dismiss} className="btn btn-ghost btn-md w-full inline-flex whitespace-normal h-auto min-h-[38px]">
-              <I.pause s={13} />
-              {t.rg.takeABreak}
-            </Link>
-            <Link href="/profile/responsible-gambling#exclude" onClick={dismiss} className="btn btn-claret btn-md w-full inline-flex whitespace-normal h-auto min-h-[38px]">
-              <I.lock s={13} />
-              {t.rg.selfExclude}
-            </Link>
-          </div>
+          <Link href="/profile/responsible-gambling#break" onClick={dismiss} className="btn btn-ghost btn-lg w-full inline-flex">
+            <I.pause s={14} />
+            {t.rg.takeABreak}
+          </Link>
+          <Link href="/profile/responsible-gambling#exclude" onClick={dismiss} className="btn btn-claret btn-lg w-full inline-flex">
+            <I.lock s={14} />
+            {t.rg.selfExclude}
+          </Link>
         </div>
 
         <p className="text-center font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle pt-1">

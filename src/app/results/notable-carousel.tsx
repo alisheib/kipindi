@@ -100,7 +100,9 @@ function Arrow({ dir, onClick, label }: { dir: "prev" | "next"; onClick: () => v
       type="button"
       onClick={onClick}
       aria-label={label}
-      className="grid h-11 w-11 place-items-center rounded-full border transition-colors hover:bg-[color-mix(in_oklab,var(--gold-400)_14%,transparent)]"
+      /* ⚠️ LITERALS, not `h-11 w-11` — spacing is overridden (tailwind.config.ts:200-215),
+         so `h-11` was a 96px round button holding a 16px chevron. 44px = A2's mobile tap size. */
+      className="grid h-[44px] w-[44px] place-items-center rounded-full border transition-colors hover:bg-[color-mix(in_oklab,var(--gold-400)_14%,transparent)]"
       style={{ borderColor: "color-mix(in oklab, var(--gold-400) 55%, transparent)", color: "var(--gold-300)" }}
     >
       <Icon s={16} />

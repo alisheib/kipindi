@@ -203,7 +203,10 @@ export async function AdminTopBar({ crumbs, session, activeKey, viewDomains, isO
             screen in place. Present on every admin page so any grid can be
             refreshed from one predictable spot (screens with a filter bar also
             expose a contextual refresh next to their filters). */}
-        <RefreshButton variant="icon" className="!h-7 !w-7" />
+        {/* No size override: RefreshButton's icon variant is 40px in the component
+            itself now. The `!h-7 !w-7` that used to sit here existed only to defeat the
+            component's own 80×80 default (`h-10 w-10` on the overridden spacing scale). */}
+        <RefreshButton variant="icon" />
         {/* AI toolkit — the ONE place every AI feature is switched on/off (chatbot,
             market resolution, auto-resolve, poll generation). Replaces the old
             per-feature toggles + the removed sentinel countdown, so no AI control
@@ -595,7 +598,11 @@ export function StatusPill({
   return (
     <span
       className={[
-        "h-8 w-8 rounded-pill inline-flex items-center justify-center font-mono font-bold text-body-sm shrink-0",
+        // ⛔ LITERALS, NOT `h-8 w-8` — the spacing scale is overridden
+        // (tailwind.config.ts:200-215) and that pair is a 48px disc for a one-character
+        // label, in health rows whose other chips are 40px. 32px is the dense
+        // mouse-only admin rung (--h-control-xs); this roundel is not a tap target.
+        "h-[32px] w-[32px] rounded-pill inline-flex items-center justify-center font-mono font-bold text-body-sm shrink-0",
         cls,
       ].join(" ")}
     >

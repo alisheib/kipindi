@@ -159,7 +159,17 @@ export function RoundStakePanel(props: {
               onClick={() => bet.setStakeIdx(i)} title={formatTzs(s)}
               className="font-mono text-[11px] font-semibold tabular-nums transition-colors"
               style={{
-                flex: 1, minHeight: 40, // DA-3 (E-112) · the 40px money-control floor borderRadius: "var(--r-sm)",
+                flex: 1,
+                minHeight: 40,           // DA-3 (E-112) · the 40px money-control floor
+                // 🔴 THIS PROPERTY WAS INSIDE THE COMMENT ABOVE UNTIL 2026-08-21, so these
+                // rendered SQUARE on the live site. A `//` comment runs to end of line, and
+                // the radius had been written after the floor's note on the same line — the
+                // one class of design defect no static guard in this repo can see, because
+                // the property is lexically present and simply never parsed.
+                // ⭐ `--r-pill`, not the `--r-sm` the swallowed line named: §S2 gives
+                // `--r-sm` to tabs and filter pills, and `--r-pill` to "chips, quick-stake
+                // pills and split-bar tracks". These are quick-stake pills.
+                borderRadius: "var(--r-pill)",
                 border: `1px solid ${on ? "var(--brand-500)" : "var(--border)"}`,
                 background: on ? "var(--pill-active)" : "color-mix(in oklab, var(--bg-elevated) 60%, transparent)",
                 color: on ? "var(--text)" : "var(--text-muted)",
@@ -174,7 +184,11 @@ export function RoundStakePanel(props: {
           onClick={() => (bet.customMode ? bet.exitCustom() : bet.enterCustom())}
           className="inline-flex items-center justify-center gap-0.5 font-mono text-[11px] font-semibold transition-colors"
           style={{
-            flex: 1, minHeight: 40, // DA-3 (E-112) · the 40px money-control floor borderRadius: "var(--r-sm)",
+            flex: 1,
+            minHeight: 40,           // DA-3 (E-112) · the 40px money-control floor
+            // Same swallowed-radius fix as the preset pills above, and the same rung —
+            // this toggle sits in their row and must share their shape.
+            borderRadius: "var(--r-pill)",
             border: `1px solid ${bet.customMode ? "var(--brand-500)" : "var(--border)"}`,
             background: bet.customMode ? "var(--pill-active)" : "color-mix(in oklab, var(--bg-elevated) 60%, transparent)",
             color: bet.customMode ? "var(--text)" : "var(--text-muted)",

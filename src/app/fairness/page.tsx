@@ -48,7 +48,9 @@ function FairnessChain({ steps }: { steps: { glyph: keyof typeof I; label: strin
           return (
             <li key={i} className="contents">
               <div className="flex w-[104px] shrink-0 flex-col items-center text-center">
-                <span className={`inline-flex h-11 w-11 items-center justify-center rounded-full ${circleCls}`}>
+                {/* ⚠️ LITERALS, not `h-11 w-11` — spacing is overridden (tailwind.config.ts:200-215),
+                    so `h-11` was 96px inside this w-[104px] column: 4px of gutter each side. */}
+                <span className={`inline-flex h-[44px] w-[44px] items-center justify-center rounded-full ${circleCls}`}>
                   <Glyph s={19} />
                 </span>
                 <span className={`mt-2 font-mono text-[10px] font-semibold uppercase leading-tight tracking-[0.06em] ${s.gilt ? "text-gold-300" : "text-text-muted"}`}>

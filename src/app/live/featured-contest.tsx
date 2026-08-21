@@ -154,7 +154,9 @@ function Arrow({ dir, onClick }: { dir: "prev" | "next"; onClick: () => void }) 
       type="button"
       onClick={onClick}
       aria-label={dir === "prev" ? t.market.prevMarket : t.market.nextMarket}
-      className="grid h-11 w-11 place-items-center rounded-full border transition-colors hover:bg-[color-mix(in_oklab,var(--aqua-400)_14%,transparent)]"
+      /* ⚠️ LITERALS, not `h-11 w-11` — spacing is overridden (tailwind.config.ts:200-215),
+         so `h-11` was 96px. Twin of results/notable-carousel.tsx — keep the two in step. */
+      className="grid h-[44px] w-[44px] place-items-center rounded-full border transition-colors hover:bg-[color-mix(in_oklab,var(--aqua-400)_14%,transparent)]"
       style={{ borderColor: "color-mix(in oklab, var(--aqua-400) 55%, transparent)", color: "var(--aqua-300)" }}
     >
       <Icon s={16} />

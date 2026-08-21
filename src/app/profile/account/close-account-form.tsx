@@ -33,7 +33,10 @@ export function CloseAccountForm() {
           name="confirm"
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
-          className="w-full h-10 px-3 rounded-md border border-border bg-bg-overlay font-mono text-[16px] tabular-nums text-text focus:outline-none focus:border-no-700 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--no-500)_25%,transparent)] transition-colors"
+          /* ⚠️ TOKEN, not `h-10` — spacing is overridden (tailwind.config.ts:200-215) so
+             `h-10` rendered an 80px field. `--h-input` is the kit's 44px input height,
+             which is what this hand-rolled input was always meant to match. */
+          className="w-full h-[var(--h-input)] px-3 rounded-md border border-border bg-bg-overlay font-mono text-[16px] tabular-nums text-text focus:outline-none focus:border-no-700 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--no-500)_25%,transparent)] transition-colors"
           autoComplete="off"
         />
       </label>

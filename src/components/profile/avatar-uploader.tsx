@@ -144,7 +144,10 @@ export function AvatarUploader({
         onClick={() => inputRef.current?.click()}
         disabled={pending}
         aria-label={t.common.changeProfilePhoto}
-        className="absolute -bottom-1 -right-1 inline-flex h-8 w-8 items-center justify-center rounded-pill border border-border bg-bg-elevated text-text-muted hover:text-text hover:border-gold-500 transition-colors disabled:opacity-50 shadow-e2"
+        /* ⛔ LITERAL, NOT `h-8 w-8` — the spacing scale is overridden
+           (tailwind.config.ts:200-215) and that pair is 48×48px, 8px larger than the
+           clear badge pinned to the same avatar. 40px = --tap-min; both badges match. */
+        className="absolute -bottom-1 -right-1 inline-flex h-[40px] w-[40px] items-center justify-center rounded-pill border border-border bg-bg-elevated text-text-muted hover:text-text hover:border-gold-500 transition-colors disabled:opacity-50 shadow-e2"
       >
         {pending ? <Spinner size={13} /> : <I.camera s={13} />}
       </button>

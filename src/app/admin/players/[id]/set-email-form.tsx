@@ -52,14 +52,18 @@ export function SetEmailForm({ userId }: { userId: string }) {
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder="player@example.com"
-        className="flex-1 min-w-0 h-8 px-2.5 rounded-md border border-border bg-bg-inset text-text font-mono text-[12px] focus:outline-none focus:border-[var(--brand-500)] transition-colors"
+        /* ⚠️ LITERAL, not `h-8` — spacing is overridden (tailwind.config.ts:200-215) so `h-8`
+           was 48px. 40px = --tap-min; keep this and the Save button beside it identical. */
+        className="flex-1 min-w-0 h-[40px] px-2.5 rounded-md border border-border bg-bg-inset text-text font-mono text-[12px] focus:outline-none focus:border-[var(--brand-500)] transition-colors"
       />
       <ConfirmDialog
         trigger={
           <button
             type="button"
             disabled={pending || !email.trim()}
-            className="h-8 px-3 rounded-md border border-warning-fg/40 bg-warning/10 font-mono text-[11px] font-bold text-warning-fg hover:bg-warning/20 disabled:opacity-40 transition-colors"
+            /* ⚠️ LITERAL, not `h-8` (48px on the overridden scale) — 40px, matching the
+               email field beside it. */
+            className="h-[40px] px-3 rounded-md border border-warning-fg/40 bg-warning/10 font-mono text-[11px] font-bold text-warning-fg hover:bg-warning/20 disabled:opacity-40 transition-colors"
           >
             {pending ? "Saving…" : "Set email"}
           </button>

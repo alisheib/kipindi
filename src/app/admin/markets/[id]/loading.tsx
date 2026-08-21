@@ -7,7 +7,9 @@ export default function Loading() {
       <AdminPageHead
         title="Market predictors"
         sw="Watabiri wa soko"
-        actions={<SkChip className="h-8 w-24" />}
+        /* ⚠️ LITERAL, not `h-8` (48px on the overridden scale) — the admin header action is
+           40px, so an `h-8` ghost cost an 8px shift on every load. */
+        actions={<SkChip className="h-[40px] w-24" />}
       />
       <SkBody>
         {/* Market summary + probability bar */}

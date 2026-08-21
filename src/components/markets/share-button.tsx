@@ -63,7 +63,12 @@ export function ShareButton({
         onClick={() => setOpen(true)}
         aria-label={t.dialog.shareMarket}
         aria-haspopup="dialog"
-        className="inline-flex h-9 items-center gap-1.5 rounded-pill border border-border bg-bg-elevated px-3 text-[12px] font-mono uppercase tracking-[0.14em] text-text-muted hover:border-border-strong hover:text-text transition-colors"
+        /* ⚠️ 40px (--tap-min, DA §A2) AS AN ARBITRARY LITERAL. This said `h-9`,
+           which on the OVERRIDDEN spacing scale (tailwind.config.ts:200-215) is
+           64px — and the 36px the author meant would have been UNDER the floor,
+           so 40 is the target, not the original intent. Matches
+           position-share.tsx. ⛔ Never a scale token here. */
+        className="inline-flex h-[40px] items-center gap-1.5 rounded-pill border border-border bg-bg-elevated px-3 text-[12px] font-mono uppercase tracking-[0.14em] text-text-muted hover:border-border-strong hover:text-text transition-colors"
       >
         {copied ? <I.check s={13} /> : <I.share s={13} />}
         {copied ? t.common.copied : t.common.share}
@@ -81,7 +86,13 @@ export function ShareButton({
                   onClick={onWebShare}
                   className="w-full flex items-center gap-3 px-3 py-3 rounded-md hover:bg-bg-overlay text-left transition-colors"
                 >
-                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-brand-500/15 text-brand-300">
+                  {/* ⚠️ 36px AS ARBITRARY LITERALS on all three share-target tiles.
+                      These said `h-9 w-9`, which is 64×64px on the OVERRIDDEN
+                      spacing scale (tailwind.config.ts:200-215). They are decorative
+                      plates behind a 16px glyph — the whole row is the tap target —
+                      so 36px is right and no tap floor applies to the tile itself.
+                      ⛔ Never scale tokens here. */}
+                  <span className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-md bg-brand-500/15 text-brand-300">
                     <I.share s={16} />
                   </span>
                   <span>
@@ -97,7 +108,7 @@ export function ShareButton({
                 onClick={() => setOpen(false)}
                 className="w-full flex items-center gap-3 px-3 py-3 rounded-md hover:bg-bg-overlay text-left transition-colors"
               >
-                <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-yes-500/15 text-yes-300">
+                <span className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-md bg-yes-500/15 text-yes-300">
                   <WhatsAppMark />
                 </span>
                 <span>
@@ -110,7 +121,7 @@ export function ShareButton({
                 onClick={onCopy}
                 className="w-full flex items-center gap-3 px-3 py-3 rounded-md hover:bg-bg-overlay text-left transition-colors"
               >
-                <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-bg-overlay text-text-muted">
+                <span className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-md bg-bg-overlay text-text-muted">
                   {copied ? <I.check s={16} /> : <LinkMark />}
                 </span>
                 <span>

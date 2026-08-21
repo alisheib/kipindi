@@ -59,7 +59,11 @@ export function RouteError({
       <div className="relative flex flex-col items-center">
         <FiftyMark size={64} />
         <div
-          className="mb-3 mt-5 inline-flex h-11 w-11 items-center justify-center rounded-full border border-no-700 bg-no-500/10 text-no-300"
+          /* 44px medallion — ARBITRARY LITERAL. The spacing scale is OVERRIDDEN
+             (tailwind.config.ts:200-215), so `h-11 w-11` was a 96px disc (110px with
+             the ring) sitting UNDER a size={64} FiftyMark and out-weighing it.
+             ⛔ Never a scale token here. */
+          className="mb-3 mt-5 inline-flex h-[44px] w-[44px] items-center justify-center rounded-full border border-no-700 bg-no-500/10 text-no-300"
           style={{ boxShadow: "0 0 0 7px color-mix(in oklab, var(--no-500) 8%, transparent)" }}
         >
           <I.alertCircle s={19} />

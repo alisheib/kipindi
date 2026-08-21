@@ -84,7 +84,12 @@ export function PullToRefresh() {
         transition: refreshing ? "none" : "opacity var(--t-flick)",
       }}
     >
-      <div className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-bg-elevated shadow-lg">
+      {/* ⚠️ ARBITRARY LITERAL: the spacing scale is OVERRIDDEN (tailwind.config.ts:200-215),
+          so `h-9 w-9` was a 64×64 puck around a 16px spinner. Not a tap target — the whole
+          indicator sits in the pointer-events-none wrapper above — so 36px is the size the
+          author wrote, and it is what the wrapper's `pullY - 20` offset is tuned for.
+          ⛔ Never "tidy" back into h-9 / w-9. */}
+      <div className="flex h-[36px] w-[36px] items-center justify-center rounded-full border border-border bg-bg-elevated shadow-lg">
         <Spinner size={16} />
       </div>
     </div>
