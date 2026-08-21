@@ -1,0 +1,484 @@
+# Design-Perfection Campaign — implementation of the 2026-08-21 full-surface audit
+
+> **Status: ACTIVE.** This file is the campaign's ONLY tracker. When every stage below reads
+> DONE and live-verified, the top of this file is changed to **SPENT** and nothing else is
+> created. Do not open a second tracker.
+
+Audit artifact: <https://claude.ai/code/artifact/19c38906-d3b0-41aa-ba59-37c62b07d34c>
+("The 50pick Design Audit"). Sixteen lenses; the top ten findings adversarially re-verified
+in code.
+
+**Baseline measured at campaign start (2026-08-21, HEAD `937e4d19`, machine `OMEGA-COMPILE01`,
+repo `F:\kipindi-main`, branch `main`):**
+
+- `npx tsc --noEmit` — clean.
+- `npm run test:all` — **230/232 green in 464s.** The only two red are `test:responsive` and
+  `test:motion`, which need a live server on `:3000` and fail without one. That is the
+  documented expected state (`scripts/test-all.mjs` header; `50pick-standards` §5), not a
+  regression. Every stage below is measured against this line.
+- ⚠️ CLAUDE.md's session protocol says "**117** `test:*` scripts". The real count is **232
+  suites**. Filed for the Stage 8 doc-truth commit.
+
+---
+
+## ▶ STATUS BOARD
+
+| Stage | Title | Status | Commit | Live-verified |
+|---|---|---|---|---|
+| 0 | Bootstrap + baseline + this tracker | **DONE** | `stage-0` | n/a (docs only) |
+| 1 | Safety (no visual change) | NOT STARTED | | |
+| 2 | The alpha critical (D7) | NOT STARTED | | |
+| 3 | Sizing (operator's top priority) | NOT STARTED | | |
+| 4 | Correctness: time, words, money formatting | NOT STARTED | | |
+| 5 | Focus & accessibility | NOT STARTED | | |
+| 6 | Motion | NOT STARTED | | |
+| 7 | Performance | NOT STARTED | | |
+| 8 | Dead code & doc truth | NOT STARTED | | |
+| 9 | Consolidations | NOT STARTED | | |
+| 10 | New guards | NOT STARTED | | |
+| 11 | Owner-decision items + exit | NOT STARTED | | |
+
+### Decisions applied by default (Ali may veto — each is a one-line revert of the named commit)
+
+_None yet._
+
+### Deliberately deferred
+
+_None yet._
+
+---
+
+## 0. Bootstrap (do this first, in order)
+
+1. Read CLAUDE.md. Load skills `50pick-standards`, `50pick-audit`, `railway`. `git pull`.
+   `git branch --show-current` must say `main` — every push is a LIVE production deploy of a
+   real-money platform. No staging exists.
+2. Run the baseline: `npx tsc --noEmit`, then `npm run test:all`. It was green at HEAD
+   `937e4d19` (26/26 design guards). If anything is red BEFORE you change anything, stop and
+   tell Ali.
+3. Save the campaign prompt as this file in the first commit and keep the STATUS BOARD above
+   updated after every stage (stage → DONE @ commit). When the campaign completes, mark the
+   file SPENT at the top. Do not create any other tracker file.
+
+## 1. HOW TO INTERPRET THE AUDIT — read before touching anything
+
+- Findings were produced by 16 audit lenses and the top ten were adversarially re-verified in
+  code. Items tagged VERIFIED below are proven at the quoted lines. Everything else was
+  produced by an agent that opened the file — still re-read each file before editing; line
+  numbers may have drifted.
+- **DO NOT "FIX" THESE** — they were checked and are fine (the audit's own corrections):
+  - Modal ✕ and toast dismiss are 48×48 (`h-8` = 48px under the overridden spacing scale).
+    Leave them.
+  - The notifications 5s poll is NOT redundant with SSE (it alone carries cross-device
+    read/dismiss state and covers SSE outages). Fix its cadence and guards (Stage 7); do not
+    delete it.
+  - The first-visit primer's dismissal persistence and Esc handling are correct. Leave it.
+  - The overridden Tailwind spacing scale itself and the legacy numeric radius scale are
+    FROZEN by recorded decision. Never renumber either. Fix call sites, never the scale.
+- **NEVER TOUCH** (verified-good, load-bearing): the deposit CREDIT path; settlement/payout
+  logic; the bet/sell/deposit/withdraw double-fire architecture (pending gate → hold-open
+  confirm → idempotency key); NotifyPoller's self-chaining design; the SSE client's backoff;
+  ToastProvider's memoization; the FilterSheet; the Modal primitive's trap/lock/return (you
+  will ADD an exit phase, not restructure); the conviction dial's keyboard model; the
+  `.mcardp` card system; the glyph set; the brand mark; the landing top half; cold-start
+  honesty rules (B6/B10); the design-system archives under `docs/design-system/` (deliberate
+  duplication — "do not clean up" is written into the manifest).
+- **Money rules**: `docs/RULES.md` is the only source of rates. §M money invariants in the
+  `50pick-audit` skill apply. Any push that touches a file on a money surface requires full
+  `npm run test:all` first.
+- **Design rules**: `docs/DESIGN_AUTHORITY.md` is the only rulebook; values live in
+  `globals.css`/`motion.css` only; new states are props on existing components; no new `.css`
+  files; no new hex/oklch literals in components; extend the kit, never fork it. When a fix
+  needs a new token, the SYSTEM gains the token.
+- **Autonomy contract**: do not stop to ask permission mid-stage. The only decision points are
+  §3 below, and each has a DEFAULT — if Ali hasn't answered inline, apply the default and
+  record "default applied" in the commit message. Work stage → verify → push → next stage
+  until every stage is DONE and live-verified. Do not end the session with unpushed work.
+
+## 2. OPERATING PROTOCOL — every stage, no exceptions
+
+1. Implement the stage's items. Stage the files you touched BY NAME (never `git add -A` /
+   `add .`).
+2. Run the stage's named guard suites + `npx tsc --noEmit` + `npm run build`. Money-adjacent
+   stages: full `npm run test:all`.
+3. Where a stage changes anything visual: boot the local dev server
+   (`SESSION_SECRET=x32chars OTP_PEPPER=x16 npx next dev -p 3009`, in-memory) and screenshot
+   the touched surfaces at 360/768/1280/1920 with Playwright; LOOK at the screenshots. Copy
+   changes: verify EN + SW + ZH.
+4. Commit `"Design-perfection stage NN: <title> — <one-line>"`, push, wait for Railway (2–3
+   min), then live-verify: `curl https://50pick.tz` → 200; `railway logs -s 50pick` clean
+   boot; screenshot the touched live pages. Ali's rule: technical + logical + visual + live
+   verification after every push.
+5. Update the STATUS BOARD and the doc that owns each subject (DESIGN_AUTHORITY corrections
+   belong in DESIGN_AUTHORITY, CLAUDE.md corrections in CLAUDE.md) in the same commit as the
+   code.
+6. If a stage goes sideways: revert that stage cleanly (`git revert`, push), record it on the
+   board, continue with the next stage. Never leave prod broken while you debug.
+
+## 3. OWNER DECISIONS — Ali may answer inline here; otherwise APPLY THE DEFAULT
+
+**D1 Gold confirm ruling** (two contradictory laws live: CLAUDE.md "confirm CTA is btn-gold"
+vs `modal.tsx` "gold is intentionally NOT a confirm tone").
+DEFAULT: deposit/withdraw `ConfirmDialog` commits become tone `"brand"` `btn-lg` (not claret,
+not gold); bet/sell confirms stay gold as shipped; record the ruling in DESIGN_AUTHORITY §M3
+and delete the contradicting CLAUDE.md sentence.
+
+**D2 Success/danger divorce from YES/NO (§B2).**
+DEFAULT: mint `--success` (green, hue ~160, visibly distinct from `--yes-500`'s 152) and keep
+`--danger` (25) for app-state; re-point toast success/danger, `Callout`, `ErrorState`, and the
+six auth pages off yes/no tokens; betting surfaces keep yes/no untouched. Contrast-check every
+new pairing with `test:contrast`.
+
+**D3 Claret.**
+DEFAULT: file the observed convention into §B4 as law — "claret = irreversible operator
+ceremony (kill-switch, emergency void, final reject)" — and migrate the mixed danger/claret
+chip (`poll-actions:891`) to match. No visual sweep beyond that.
+
+**D4 Status-color dictionary.**
+DEFAULT: build the word×surface×tone table into `admin-status-lexicon` (and the player lexicon)
+exactly as shipped today EXCEPT: APPROVED = success green everywhere (proposals loses its gold
+gradient); PENDING/CLOSED = royal everywhere (admin loses amber for these); keep the LIVE split
+(red = player broadcast, green = admin ops health) and write that exception down.
+
+**D5 Wallet gold hierarchy.**
+DEFAULT: the TZS 0 Bonus card and the Cashback promo drop the gold costume (royal panel + gold
+TEXT accents only, no gradient wash, no jackpot glow); the Available card gains the strongest
+elevation on the page; exactly ONE gold Deposit CTA per viewport (the header one wins; the
+others become brand). This is D1-adjacent — do both in one stage.
+
+**D6 Aqua.**
+DEFAULT: re-hue `.chip-signal` (TIPPING) to brand royal (chip-new's family); `/live`'s aqua
+identity (masthead dot, eyebrows, pager) becomes a WRITTEN §B4 exception, one sentence, instead
+of a re-hue; `.btn-aqua-ghost` loses the aqua LABEL (label becomes text on aqua-tinted ghost)
+or is folded into ghost — pick whichever its single consumer tolerates.
+
+**D7 The alpha-utility strategy (the Critical).**
+DEFAULT: Option A — sweep, don't enable. Enabling `<alpha-value>` would restyle ~140 files
+sight-unseen. Instead: replace the ~40 money/compliance-surface usages (`callout.tsx` tones,
+KYC rejection panel, deposit/withdraw alerts, RG panels, login banners, sell/bet accents) with
+the existing pre-mixed `*-bg` tokens or new named tokens minted in `globals.css`; then sweep the
+remaining `/alpha` usages file-by-file to bare tokens or new mixes; finish by adding a
+compile-probe to `test:bridge` that FAILS on any class that doesn't emit, so the class can never
+come back silently.
+
+## 4. THE STAGES — in this order
+
+### Stage 1 — SAFETY (no visual change; ship first) [VERIFIED items marked ✓]
+
+- ✓ `rg/reality-check.tsx:42-83` — wrap all 5 `sessionStorage` calls in try/catch w/ in-memory
+  fallback (keep the check firing).
+- ✓ `lib/i18n.tsx:67` — try/catch the `localStorage` read (the write 20 lines down shows the
+  intended shape).
+- ✓ `wallet/withdraw/withdraw-confirm.tsx:44-51` — seq-guard the payee lookup (copy
+  `vote-control.tsx`'s B-20 pattern); reset payee to idle on dialog close.
+- `withdraw-confirm.tsx` — port `DepositConfirm`'s openGuard/validate/noValidate trio
+  (B-22/V-3): TZS 0 must not be confirmable; kit toast refusals, no native bubbles.
+- ✓ The `useMayAct` hooks-order violation: move `if (!mayAct) return <ActReadOnly/>` BELOW all
+  hooks in the 17+ admin control files (grep `useMayAct`); fix `act-gate.tsx`'s doc comment
+  which prescribes the broken pattern.
+- `conviction-dial.tsx:943-952` + `sell-button.tsx:135-142` — add the `if (r == null) return`
+  revoked-session guard `use-quick-bet.ts:326` already has.
+- `comments-thread.tsx:83,99,119` — B-12 try/catch + errorCopy toast, input preserved.
+- `notify-poller.tsx:235-246` — null the timer id after clearing; add a `tickInFlight`
+  re-entrancy ref; `AbortSignal.timeout` on both fetches; single wake path (visibilitychange
+  only).
+- ✓ `toast.tsx:176-180` — resume only on the `resultModalOpen` true→false EDGE (prev-ref), and
+  never resume toasts in a user-paused set (hover/focus/drag add to it).
+- `sell-button.tsx:127` — `if (pending) return` at the top of `submit()`.
+- `nav-progress.tsx:46,60` — track the completion timeout in a ref; `startBar` clears it and
+  re-arms.
+- `admin/reports/generate-button.tsx:28` — `AbortSignal.timeout(60_000)` → `overlay.fail` with
+  retry.
+- `operation-result-modal` primary: stop double-push ("Keep predicting") — `onPrimary`
+  suppresses the auto `onClose` (mirror the secondary's fixed semantics).
+- `markets/[id]/page.tsx:119` — validate `side` before interpolating (copy `:721`'s guard).
+- `notifications-panel.tsx` refresh — monotonic seq, apply only latest.
+
+Guards: `npm run test:all` (money-adjacent files touched).
+
+### Stage 2 — THE ALPHA CRITICAL (D7 default) [✓ proven by compile]
+
+Execute D7. Verify visually: KYC rejection alert, deposit/withdraw warning panels, all four
+`Callout` tones, login banners — screenshot before/after at 360+1280. New guard: compile-probe
+in `scripts/bridge` (fails on non-emitting class). Guards: `test:bridge`, `test:contrast`,
+`build`.
+
+Also in this stage (same class): fix the dead classes `text-warn` (admin/compliance ×4 →
+`text-warning-fg`), `text-hot-rose-300` (×4 → `text-no-300` or a real token), `text-onBrand`
+(`admin-shell:40` → `text-text-onBrand`).
+
+### Stage 3 — SIZING (the operator's top priority)
+
+- ✓ `round-stake-panel.tsx:162,177` — move `borderRadius` out of the comment; per §S2 stake
+  pills take `--r-pill` (record the choice).
+- The spacing-trap sweep: replace numeric size utilities ≥7 written in default-Tailwind idiom
+  with explicit literals or tokens at: `ui/input.tsx:50-54` (make the atom's real heights match
+  its documented 36/44/48 contract), `conviction-dial.tsx:1434-36` (stake input → 44px),
+  `bet-confirm-modal.tsx:378` (cancel → same height as sell-confirm's, both `btn-lg` per F2),
+  `side-picker.tsx:85`, `wallet/amount-field.tsx:82` (quick chips → `min-h-[44px]`; they must
+  stop being 96px circles), `ui/select.tsx:212`, `markets/watch-star.tsx:104` (→ 44px),
+  `position-share.tsx:114`, `share-button.tsx:66`, `profile/password-section.tsx:131,138`,
+  `ui/tabs.tsx:115` (→ `h-[44px]`; kills the 80px wallet tabs), `ui/pull-to-refresh.tsx:87`.
+  Then grep the whole of `src` for remaining `h-(7|8|9|10|11|12)\b` / `w-(9|10|11|12)\b` /
+  `min-h-(8|9|11)\b` in tsx and adjudicate each hit (some are intentional under the override —
+  decide per site, comment intent).
+- Phase-3 control-height bump: `globals.css` `--h-control-sm` 30→40, `--h-control-md` 38→44
+  (the plan already written at `globals.css:226-228`); DELETE the three inline compensating
+  patches (`conviction-dial:1599-1602` style, `sell-button:194-195`, `reality-check:132,136`)
+  in the same commit; re-verify every button surface visually at 360 — this moves the whole
+  product, look at it.
+- `markets/notify-prompt.tsx:102-118` — add `btn-md`; replace `btn-yes` "watching" state with
+  `aria-pressed` styling (non-semantic).
+- `admin/refresh-button.tsx:62` + `admin/markets/page.tsx:129` — `btn-sm h-8` → `btn-xs`.
+- `reality-check.tsx:124-139` — RG exits sized equal to "Continue playing" (all `btn-lg`
+  full-width grid).
+- `proposals/new/create-form.tsx:140-156` — category chips 34px→44px, selection royal not gold
+  (reuse the KYC `FilterPill` pattern).
+- Landing mobile rhythm: step `--rh-*` down under 768 (144→96, 96→64) in `globals.css`; verify
+  the landing bottom third at 360 no longer has 200px voids.
+- Landing stat row at 360: let the three stats flow 3-up or stack cleanly (kill the 2+1 orphan).
+- One compaction grammar: make landing hero, board header, and ticker all use
+  `formatTzsCompact`'s output for the same figure ("TZS 1.3M" wins; fix the "1279k" producer).
+
+Guards: `test:measure`, `responsive-audit` against local server, tap screenshots at 360. FULL
+`test:all` before push (money surfaces move).
+
+### Stage 4 — CORRECTNESS: time, words, money formatting
+
+- ✓ `admin/players/[id]/page.tsx:488,490,491,549,592,609,618` — all seven →
+  `formatDateTimeSafe`.
+- `profile/responsible-gambling/page.tsx:131` → `formatDateTime` (compliance deadline).
+- `admin/live/page.tsx:161` → `formatTime`; `admin/finance/page.tsx:228` → `formatDate` (EAT
+  day, not UTC slice); `admin/sources:108`, `admin/updown/updown-controls:394` → shared
+  formatters.
+- `withdraw-confirm.tsx:41` + `deposit-confirm.tsx:67` — provider display names from the
+  catalog (the names `PaymentLogo` already receives), not `replace(/_/g," ")`.
+- Raw enums → lexicon sweep (extend `admin-status-lexicon` families): `admin/candidates:294,416`;
+  `ai-polls:357`; `privacy:88,155`; `staff:90` + `staff/[id]:46`; `payments:317`; `players:179`;
+  `transactions:187-258`; `updown/rounds:274-275` (route `voidReason` through
+  `updown-refund-reason.ts`); `updown:493,654`; `audit:100`; `admin-proposals-client:539` (and
+  fix its `.replace` without `/g`).
+- `round-stake-panel.tsx:141` — label the projected payout as TZS via `formatTzs` (+ "est." per
+  §C3 conventions).
+- Money via raw `toLocaleString` → helpers: `round-stake-panel:136`, `admin/config
+  config-form:387,390`, `admin/updown:593`, `invite:241`, `admin-charts` default formatter
+  (money series must pass `formatTzs`).
+- Positions page naming: one word for one destination — nav label and title agree; replace
+  "Polls you've played" with product-neutral copy (it holds Up & Down too; §L1) in all three
+  locales.
+- approvals header "Name (NIDA)" → "Name (ID document)".
+
+Guards: `test:labels` (+ extend it into admin per its §3 skip — new rule), `test:i18n`,
+`test:trilingual`.
+
+### Stage 5 — FOCUS & ACCESSIBILITY
+
+- The forced-colors family: add a real `outline` beside every box-shadow focus ring:
+  `.brand-focus`, `.admin-focus` (and make it `:focus-visible`, and stop it stripping `.btn`'s
+  ring — fix the stacking at `transactions:110,196,197` + `datetime-range-filter:142,145`),
+  `.input:focus`, `textarea`, `.input-group`, `.m-focusable`, chat composer,
+  `close-account-form:36`, `set-email-form:51`.
+- `provider-radio-grid.tsx` + source-of-funds tiles — `peer-focus-visible` ring on the visible
+  tile (`Checkbox.tsx:76` is the recipe).
+- `name-editor.tsx:84` + `email-editor.tsx:90` — remove `focus:outline-none`; brand focus
+  border; `autoFocus` into edit mode, focus return on close; add the missing pending guard in
+  `name-editor`'s `save()`.
+- `notifications-panel.tsx` — `aria-modal` + focus trap + initial focus + return (lift from
+  `Modal`/`filter-sheet`); restructure rows so dismiss is NOT a button inside a button; sr-only
+  "unread" state.
+- `ui/select.tsx` — `aria-controls` + `aria-activedescendant` + option ids; accessible name =
+  label, value = selected text; Home/End; close on Tab.
+- `ui/tabs.tsx` + `probability-chart` tabs — either roving tabindex + arrows or drop the tab
+  roles for `aria-pressed` buttons (`FilterPill` semantics).
+- `market-card.tsx:398,401` — aria built from `sideWord(row product)` via a `"{side}"` template
+  key; delete `backYesAria`/`backNoAria`.
+- `first-visit-primer.tsx:146` + `auth-shell.tsx:47` + `invite-client.tsx:53` +
+  `probability-bar` wrapper — localized labels passed / `aria-hidden` for decorative; primer's
+  baked 7-8px English labels → `t.*` at ≥ nano.
+- `countdown-pill.tsx` — `aria-hidden` the ticking span; sparse announcements
+  (start/30s/10s/ready).
+- `operation-result-modal` — pause auto-close on hover/focus-within (reuse toast pause
+  machinery).
+- `modal.tsx:321` — `initialFocus` = cancel for non-brand tones.
+- `SortTh` — emit `aria-sort` (activates the dead CSS at `globals:3579`).
+- Tap-floor list: `min-h` 40→44 on the 17 admin row actions + `notice-bar:107` +
+  `objection-dialog:84` + `updown-stake-controls:116`; pad the predictors chip and icon-only
+  source link; `featured-contest` pager — real ≥40px hit areas, drop the
+  `aria-hidden`/label contradiction.
+- "@ pct%" `opacity-85` inside YES/NO buttons — measure with the `qa:button-contrast` raster;
+  if <4.5, darken fills per H10 (never lighten labels).
+- `useModalLock` on: `needle-drawer`, chat mobile sheet, `admin-mobile-nav`
+  (notifications/avatar: either lock or remove their full scrims — record which).
+
+Guards: `test:contrast`, `qa:contrast-rendered`, `test:reduce-motion`, manual keyboard walk of
+Select/notifications/dial, screenshots.
+
+### Stage 6 — MOTION
+
+- Modal: add an `exiting` phase (hold one `--t-quick` beat with `.m-out` + scrim fade) —
+  `toast.tsx:374-386` is the model; apply `.m-float-out` the same way to `notifications-panel`,
+  `select`, `avatar-menu`, `ai-toolkit`, `needle-drawer`.
+- `route-transition.tsx` — re-trigger `.route-enter` ONLY on the non-View-Transition path
+  (kills the double entrance); gate `startViewTransition` on the in-app reduce-motion setting
+  (fixes the VT gate-2 hole).
+- `wallet-balance-pill.tsx:56-73` — use the three-gate `motionOff()`/`motionReduced()` check
+  (`win-celebration:64-71` is the model); `needle.tsx:179` — include the in-app pref.
+- Move style-attribute animations into `<style>` blocks and add gate-3 entries or KEPT rows:
+  `lcl-orbit`, `lcl-pulse` (`i18n.tsx`), `pr-pulse` (`brand.tsx` — it renders on `/live`),
+  `spin` (Spinner may be KEPT with reason).
+- `orm-pop` → `var(--m-settle)` (drop the reserved `--m-pivot`).
+- `avatar-menu` `am-rise` → `.m-float-in`; `date-select` `cd-rise` → `.m-dialog-in`; delete both
+  keyframes.
+- Dwell literals → `feedback-timing.ts` constants: `action-overlay:92`, `use-quick-bet:376`,
+  `conviction-dial:1705`.
+- OTP expiry bar + `ai-progress` + primer/wallet/limit-usage fills → `transform:scaleX`
+  (`admin-bar-grow` is the model); narrow the listed `transition-all` sites to explicit
+  properties (dial arm pill first — it animates `font-size` by accident).
+- Drop hover transforms on glyphs (`avatar-menu` arrow, `.mcardp-watermark` scale); normalize
+  card lifts to `var(--m-lift)` at `--t-quick`.
+- `state-tokens.css` — replace the six hand-typed curves/durations with `var(--t-*)`
+  `var(--m-*)`; delete the three dead `--state-*` tokens.
+- Regenerate `motion.css`'s frozen ambient list from the reduce-motion gate's census (24 loops,
+  not 7).
+- Delete or map the dead `tailwind.config` `transitionTimingFunction`/`transitionDuration`
+  vocabulary onto the CSS vars.
+
+Guards: `test:tokens`, `test:keyframes`, `test:reduce-motion`, `test:glyph-motion`,
+`test:motion-ladder`, `qa:calm`; watch a modal close and a route change with your own eyes at
+360.
+
+### Stage 7 — PERFORMANCE
+
+- `notifications-panel` poll: 30s closed-panel cadence (5s only while open), `inFlight` ref,
+  exponential backoff + jitter, keep SSE as primary trigger. (Do NOT remove the poll — see
+  interpretation.)
+- i18n dictionary: per-locale dynamic chunks (initial locale inlined/preloaded; others load on
+  switch); keep `getServerT` server-side. Verify the 259KB chunk is gone from the build output.
+- Up & Down: one shared `useSharedSecond()` ticker + leaf `<TickDigits>` components so
+  per-second re-render is digits only; memoize `lockClock` and the `usd()`/Intl strings (kill
+  the per-tick `Intl.DateTimeFormat` at `updown-card:398`).
+- Fonts: prune to Sora 600/700/800, Inter 400/600, JBM 400/600 (audit usage of dropped weights
+  first).
+- `admin-shell.tsx:119` — replace the persistent `blur(14px)` with an opaque bar (the player top
+  bar's own fix, `globals:2476-2488`); add a `[data-motion=reduced]` branch that zeroes scrim
+  blur and move inline `backdropFilter` styles to classes so the tier can reach them.
+- `countdown-pill` interval churn; `probability-chart` `useMemo` on paths; memoize
+  `I18nProvider` value (copy `ToastProvider`).
+- audit page: DB-side pagination (transactions' count-first take/skip is the model); players
+  page same.
+
+Guards: `build` + compare chunk sizes; `qa:live` local; `test:refresh-cadence`.
+
+### Stage 8 — DEAD CODE & DOC TRUTH (one deletion commit + one docs commit)
+
+- Delete: the `.countdown-ring` block (`globals:1674-1702` + its reduced-motion refs) and
+  correct DESIGN_AUTHORITY §B5's table row (0 usages) and line ~342's "visible delta" list; move
+  the component's inline 0.5s onto the ladder while there.
+- Delete `PriceChart` (keep `VolumeSparkline`, re-tokenised to `var(--aqua-300)`, moved or
+  header corrected) — removes the last teal-215; shrink the design-frozen allowlist
+  accordingly. Delete `BrandLoader`. Delete the ~78 dead classes (mterm/ticket/pool/comment/
+  tpanel/check/pbar-label/num-roll/value-roll/odds-flash/streak/kp-switch/avatar-sm-md-lg/
+  gilt-num/gilt-strong/gold-dot/aqua-focus/chip-politics/settling-bar/skel-fade-out/
+  tab-indicator/countdown--urgent-critical/mat-flat/mat-raised-i + the `glyphs.tsx` shadowed
+  percent/activity) — verify each has zero consumers before deleting; anything with a consumer
+  gets FIXED not deleted.
+- Stale-file deletions (verified safe): `docs/NEXT-SESSION-MATERIAL-VISIBLE.md` (fix
+  `docs/README.md:140` + `design-system/README.md:65` same commit);
+  `docs/ux-audit-2026-08/RUN-EVERYTHING-PROMPT.md`, `UPDOWN-STABILIZATION-PROMPT.md`,
+  `SESSION-A-EDIT-SPECS.md`; `public/icons/favicon-16.png` + `favicon-32.png` (correct
+  CLAUDE.md's favicon line same commit).
+- Doc corrections (one line each): CLAUDE.md "zero rounded-2xl remaining" (false — or fix the 5
+  sites and make it true: needle-drawer → `rounded-modal`, proposals-state-views ×4); CLAUDE.md
+  "50 loading.tsx" → 76; CLAUDE.md "next-themes" line (not installed); CLAUDE.md glyphs "75+
+  @1.85" → 178 @1.9; DESIGN_AUTHORITY §S3's "kit icon strokes 1.5px" parenthetical → 1.9; §0d
+  gains the chat stylesheet row; `docs/README.md:45` MASTER-PLAN → RECORD, `:157`
+  NIDA→IDENTITY-POLICY; `darkMode:"class"` removed from `tailwind.config`; `PageRibbon`'s stale
+  consumer list.
+- Unify the two 64-grid glyph weights (GL 1.9 vs G64 2.2 — pick 1.9, note badges' 2.2 as its own
+  documented tier); fix `glyphs.tsx` mojibake comments.
+- Add the three missing admin `loading.tsx` (staff, staff/[id], roles); fix the 2FA-setup
+  loading cap (mirror the page's `max-w-form` shell); fix `transactions/loading` wrapper
+  (`SkBody`); wrap `staff/[id]`'s table in `ScrollX`.
+
+Guards: `test:design-frozen`, `test:design-one-door`, `test:keyframes`, `test:docs`,
+`test:integrity`, `build`.
+
+### Stage 9 — CONSOLIDATIONS (each = migrate to the named winner, DELETE the forks)
+
+- Chip: one definition site — the React `Chip` consumes the CSS classes (or classes deleted);
+  port the G-7 min-height/wrap fix to whichever survives; promote the market card's 9px override
+  to a real `size="xs"`; migrate the 27 raw `.chip` call sites.
+- Callout ×5: `payout-status-notice`, `proposals-state-views` banner + Unavailable, and the
+  maintenance-amber tint → one `Callout` (mint the gold tone if brand isn't it);
+  ComingSoon/Maintenance share one size dict.
+- Stat: fold `resolution-panel` Row, `markets/[id]` KPI, wallet `SubStat` ×6, `updown-card`
+  pairs, performance `Kpi` + shadow `Stat`, invite `Cap`/`Kpi`, `admin/payments` `Stat`/`Metric`
+  onto `ui/stat.tsx` (add size/boxed variants); fix its overstated header.
+- Money receipt-row: promote withdraw's variant (fee/net/divider) into a `ReceiptRow` used by
+  deposit/withdraw/bet/sell confirms.
+- `CountBadge` (99+ cap, one chrome) for bell/chat/admin sidebar/admin drawer; `Dot` primitive
+  (tone, pulse w/ reduced-motion) replacing the 12 hand-rolled dots — `/live`'s masthead dot
+  color per D6.
+- `AuthPanel`/`PageHeader` on the 7 auth pages; the 6 loading files re-typing `PageHeader` import
+  it instead.
+- `IconPlate` atom (kills the 8 arbitrary radii); admin `AdminBody` + `KpiGrid` helpers (the
+  42-file wrapper stack).
+- Constants: `MAX_DOC_BYTES` one home (server exports, client imports); `report-money` imports
+  `EAT_OFFSET_MS` from `eat-day`; `MAX_QUERY_LEN` one home.
+- `PasswordInput`: `bg-inset` + error prop; `DateSelect`: `lg` size + validatable `required`
+  (sr-only text input, not hidden); `PhoneInput` paste-offset fix + leading-digit pattern on the
+  visible input; autofill override CSS block; search cancel-button suppression; `FormColumn` on
+  the 5 unmeasured admin authoring forms; email `inputMode` fix; reset-password uses
+  `PasswordPair`.
+- Typography backbone: bridge `--type-*` into Tailwind `fontSize` under the ladder's names
+  (freeze-note the legacy keys like the radius ruling); mint `--type-title` (28px); wire
+  `PageHeader`/`AdminPageHead` to it; promote the eyebrow/microlabel to ONE primitive (size from
+  `--type-label`, one tracking 0.14em, one weight) and migrate by family; strip tracking from all
+  money (`wallet:74,162`, `performance:144`, `invite:91`) and delete `.gilt-num`; mono the four
+  Sora-money surfaces (`withdraw:99` balance, `MoneyTile`, profile `Stat`, performance streak);
+  wallet fine-print ≥12.5px on ramp ink; collapse `--text-secondary`/`tertiary` aliases; Firefox
+  `scrollbar-color`; Up&Down gutters → house `px-3 lg:px-6`; unify the three board-grid gaps on
+  one definition; `auth-shell` `max-w-6xl` → `max-w-auth`; `PageLoader` width prop → tier union;
+  migrate the two receipt pages onto `PageContainer`.
+
+Guards after EACH sub-batch: `test:all` relevant subset; visual 4-width pass on every touched
+surface; full `test:all` before each push.
+
+### Stage 10 — NEW GUARDS (make the decay impossible, then re-run everything)
+
+1. `test:bridge` compile-probe (every written class emits) — shipped in Stage 2, extend to
+   unknown families.
+2. `test:type-scale` — ratchet on `text-[..]`/`tracking-[..]`/inline `fontSize`; mono-predicate
+   on `formatTzs` elements; the 12.5px floor.
+3. Numeric-size-utility lint (`h`/`w`/`min-h` ≥7 in tsx) as a `test:ui-consistency` rule (must
+   catch `cn()` and template literals).
+4. Stacking-contract test — effective root z-order of the named surfaces + "no non-portaled
+   `position:fixed` inside route content"; fix the tailwind `z` ladder to state shipped truth
+   (admin drawer BELOW modal tier) while there.
+5. Dead-CSS ratchet (consumption sweep, allowlist may only shrink).
+6. Tap-target gate that FAILS below 44 on player surfaces (current one warns below its own
+   floor).
+7. Motion gates read JSX `style={{animation}}`; keyframe registry stops mislabeling live
+   keyframes dead.
+8. `test:labels` extended into admin + runtime-value provider names.
+9. `design-frozen`: per-property style-object scanning (closes the `var(--` line exemption),
+   geometry props added, `.css` files included.
+
+Each guard ships with a red proof (deliberately reintroduce the bug in a scratch copy, watch it
+fail). Then: FULL `npm run test:all` + every `qa` suite that doesn't need prod creds + one
+complete 4-width × 3-locale visual sweep of player surfaces + admin spot-check. Fix anything
+found. Push.
+
+### Stage 11 — OWNER-DECISION items (D1–D6 defaults unless Ali answered) + exit
+
+Implement D1–D6 as decided. Then write the exit report INTO the STATUS BOARD: every stage →
+commit hash → live-verified ✓; the list of default-applied decisions Ali can still veto;
+anything deliberately deferred with reasons. Mark this prompt file SPENT. Final full `test:all`
++ `build` + push + live verification. You are done only when the board shows every stage DONE
+and <https://50pick.tz> serves the last push cleanly.
+
+## 5. Definition of done
+
+`main` is green (`test:all`, `tsc`, `build`), every stage pushed and live-verified, no unpushed
+work, no stage skipped without a written reason on the board, the new guards red-proven, and the
+product visually verified at 360/768/1280/1920 in EN/SW/ZH on every surface touched.
