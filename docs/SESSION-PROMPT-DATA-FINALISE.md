@@ -1,5 +1,67 @@
 # SESSION PROMPT — finish the data work, completely
 
+## 🟢 HANDOVER — 2026-08-21, the session that finished items 1–4
+
+**Five commits, on `main`, NOT PUSHED.** `2ede42a8 · c72e3ff4 · 49398191 · 1ac955b1 · f8b6e440`.
+
+| # | Item | State |
+|---|---|---|
+| 1 | `anonymizeClosedAccount` | ✅ done, wired, 164 assertions, 16/16 red |
+| 2 | DSAR intake (both doors) | ✅ done, E-33 closed, 36 assertions, 12/12 red |
+| 3 | F-05 dead schema | 🟠 **expand done; the DDL is the NEXT release** — §3 |
+| 4 | F-09 AIPoll payloads | ✅ done, 34 assertions, 9/9 red |
+| 5 | Read paths | 🟠 three done, two left — §5 |
+| 6 | Loose ends | 🟠 one done (`prisma:error`), four left — §6 |
+
+**Gate:** `npx tsc --noEmit` clean · `test-all` **229/229** · four new red harnesses **44/44
+mutations caught** · `red-anchors` **300/300**, ratchet still 67.
+
+### ⛔ THREE THINGS TO DO BEFORE OR AT THE PUSH
+
+1. 🔴 **Pre-apply `20260821140000_kyc_identity_fingerprint` on production.** `start` is
+   `prisma migrate deploy && … && next start`, so a failing migration is a platform-wide
+   sign-in outage. It is expand-only and `IF NOT EXISTS` throughout, so creating the index by
+   hand with `CREATE UNIQUE INDEX CONCURRENTLY` first makes the file a no-op. Verified on
+   production 2026-08-21: **0 duplicate active `(idType, idNumber)` groups**, so the unique
+   index cannot fail on creation, and `idFingerprint` does not exist yet.
+2. **After deploying, run the fingerprint backfill** —
+   `railway run --service 50pick -- npm run ops:backfill-id-fingerprints` (dry) then `--write`.
+   29 rows. Not load-bearing; it makes *"every active submission carries a fingerprint"* true.
+3. ⛔ **Do NOT commit the F-05 contract DDL in the same release as this schema change.** §3 has
+   the SQL ready and the reason spelled out.
+
+### ⭐ TWO THINGS FOR ALI TO DECIDE
+
+- **Identity document IMAGES are held 7 years from closure, not deleted on request.** The
+  2026-08-21 decision says "deleted outright"; `DATA-RETENTION.md` §1 says 7 years under POCA
+  Cap 423 §16. Deleting a passport scan in year 1 is irreversible, holding it is one constant
+  (`KYC_DOCUMENT_HOLD_YEARS`). Flagged, not decided quietly —
+  [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) 2026-08-21 (later), item 2.
+- **`MarketSnapshot`: 13,245 UPDOWN markets hold ~1 snapshot each and one point cannot draw a
+  sparkline.** Both fixes the finding proposed would do nothing (there is no sampling, and the
+  FIFO cap of 800 has never evicted anything — deepest market: 30). Options and numbers in
+  [`DATA-RETENTION.md`](DATA-RETENTION.md) §2c.
+
+### 🔴 WHAT THE MEASUREMENTS CHANGED — the pattern held again
+
+Four findings in this queue were **wrong or understated**, and each was found by measuring
+rather than by reading:
+
+- **Item 1's trap is understated.** Hashing `idNumber` in place does not preserve the
+  collision — a unique index compares stored strings. Proved by building it that way and
+  watching a second account appear on one national ID.
+- **Item 4's `trace` column does not exist** on `AIPoll`, and **both** of its proposed
+  snapshot fixes are no-ops.
+- **Item 5's `/results` is not slow** — 0.65–1.28 s warm, and the sorted/searched variants are
+  inside the noise, so the JS filtering was never the cost.
+- **Item 5's `app-shell` avatar read is not waste** — that surface renders the avatar.
+
+And two defects were found in **my own** new work by driving it red: an erasure that deleted a
+document row whose R2 object had survived, and a "notifications are deleted, not dismissed"
+assertion that read through a door which hides dismissed rows.
+
+---
+
 > **Written 2026-08-21** at the close of the data-handling fixing session, by the session that
 > did the work, for the session that finishes it.
 >
