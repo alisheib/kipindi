@@ -8,7 +8,7 @@
  * STEERED by an event a human already vouched for. Officer approval of the
  * resulting poll is still mandatory before it can become a market.
  */
-import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
+import { AdminPageHead, AdminCard, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
 import { EmptyState } from "@/components/ui/empty-state";
 import { currentSession } from "@/lib/server/auth-service";
@@ -16,6 +16,7 @@ import { canView } from "@/lib/server/rbac";
 import { listUpcomingEvents } from "@/lib/server/events-service";
 import { listSources, listDisabledCategories, seedDefaultSources } from "@/lib/server/source-registry";
 import { EventsClient } from "./events-client";
+import { AdminBody } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Events" };
 export const dynamic = "force-dynamic";
@@ -31,23 +32,40 @@ export default async function AdminEventsPage() {
   // usable. Idempotent (same call the other publish paths make).
   await seedDefaultSources().catch(() => {});
 
+  /**
+   * ⛔ A-5 · A FAILED READ IS NOT AN EMPTY ONE. All three of these used to
+   * `.catch(() => [])`, and the consequence was worst on the first: when the
+   * events read threw, the page rendered a confident **"No upcoming events ·
+   * Add a real, sourced event above"**, over a heading that said `Upcoming (0)`.
+   * An officer would have believed the calendar was empty and started entering
+   * events that already existed — the exact failure `<AdminLoadError>` was
+   * written for, on the one admin surface whose whole job is to say what is
+   * already scheduled.
+   *
+   * `null` is the sentinel. It is NOT interchangeable with `[]`: `[]` means "we
+   * read the table and it is empty", `null` means "we do not know".
+   */
   const [events, sources, disabled] = await Promise.all([
-    listUpcomingEvents(200).catch(() => []),
-    listSources({ enabledOnly: true }).catch(() => []),
-    listDisabledCategories().catch(() => [] as string[]),
+    listUpcomingEvents(200).catch(() => null),
+    listSources({ enabledOnly: true }).catch(() => null),
+    listDisabledCategories().catch(() => null),
   ]);
+  const registryFailed = sources === null || disabled === null;
 
   // Only offer categories that are (a) real market categories and (b) not disabled
   // by the operator, AND that have at least one enabled trusted source — otherwise
   // every event in that category would be rejected by the allowlist anyway.
-  const withSources = new Set(sources.map((s) => s.category));
-  const categories = (["sports", "macro", "weather", "crypto", "culture", "tech", "other"] as const)
-    .filter((c) => !disabled.includes(c) && withSources.has(c));
+  const disabledCats: string[] = disabled ?? [];
+  const withSources = new Set((sources ?? []).map((s) => s.category as string));
+  const categories: string[] = registryFailed
+    ? []
+    : (["sports", "macro", "weather", "crypto", "culture", "tech", "other"] as const)
+        .filter((c) => !disabledCats.includes(c) && withSources.has(c));
 
   return (
     <>
       <AdminPageHead title="Events" sw="Matukio" />
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         <AdminCard title="Why this exists" sw="Kwa nini">
           <p className="text-[12.5px] leading-relaxed text-text-muted">
             Markets scheduled around <strong className="text-text">real moments</strong> (a derby, the rains, a rate
@@ -61,7 +79,13 @@ export default async function AdminEventsPage() {
           </p>
         </AdminCard>
 
-        {categories.length === 0 ? (
+        {/* ⛔ "No usable category" is a CONCLUSION about the registry, so it may
+            only be drawn from a registry we actually read. */}
+        {registryFailed ? (
+          <AdminCard title="Sources &amp; categories" sw="Vyanzo na aina">
+            <AdminLoadError what="the trusted-source registry" />
+          </AdminCard>
+        ) : categories.length === 0 ? (
           <AdminCard title="No usable category" sw="Hakuna aina inayotumika">
             <p className="text-[13px] text-text-muted">
               Every category is either disabled or has no enabled trusted source. Add a source under{" "}
@@ -73,14 +97,19 @@ export default async function AdminEventsPage() {
           <EventsClient categories={categories} />
         )}
 
-        <AdminCard title={`Upcoming (${events.length})`} sw="Yajayo">
-          {events.length === 0 ? (
+        {/* The count in the title is part of the claim: `Upcoming (0)` over an
+            empty-state is a statement about the calendar, so it is withheld too
+            when the read failed. */}
+        <AdminCard title={events === null ? "Upcoming" : `Upcoming (${events.length})`} sw="Yajayo">
+          {events === null ? (
+            <AdminLoadError what="the upcoming-events calendar" />
+          ) : events.length === 0 ? (
             <EmptyState kind="markets" title="No upcoming events" body="Add a real, sourced event above to schedule a market around it." />
           ) : (
             <EventsClient categories={categories} events={events} listOnly />
           )}
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

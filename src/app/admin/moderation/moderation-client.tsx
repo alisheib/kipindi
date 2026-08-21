@@ -11,6 +11,8 @@ import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
 import { Avatar } from "@/components/ui/avatar";
 import { Chip } from "@/components/ui/chip";
+import { AdminPagination } from "@/components/admin/admin-pagination";
+import { SortBtn } from "@/components/admin/admin-sort";
 import { restoreCommentAction, deleteCommentAction } from "@/app/markets/actions";
 import type { ModerationItem } from "@/lib/server/comments-store";
 
@@ -18,73 +20,30 @@ const PER_PAGE = 20;
 type MSort = "reports" | "date" | "author" | "status";
 type SortDir = "asc" | "desc";
 
-/** Client-side pager — visually identical to <AdminPagination> (link-based) but
- *  driven by local state since this queue mutates optimistically client-side. */
-function ClientPager({ total, page, onPage, perPage = PER_PAGE }: { total: number; page: number; onPage: (p: number) => void; perPage?: number }) {
-  const totalPages = Math.max(1, Math.ceil(total / perPage));
-  if (totalPages <= 1) return null;
-  const safePage = Math.min(Math.max(1, page), totalPages);
-  const hasPrev = safePage > 1;
-  const hasNext = safePage < totalPages;
-
-  const pages: (number | "...")[] = [];
-  if (totalPages <= 7) {
-    for (let i = 1; i <= totalPages; i++) pages.push(i);
-  } else {
-    pages.push(1);
-    if (safePage > 3) pages.push("...");
-    for (let i = Math.max(2, safePage - 1); i <= Math.min(totalPages - 1, safePage + 1); i++) pages.push(i);
-    if (safePage < totalPages - 2) pages.push("...");
-    pages.push(totalPages);
-  }
-
-  // ⚠️ 44px WRITTEN LITERALLY, NOT `h-8`. The spacing scale is overridden
-  // (tailwind.config.ts:200-215) so `h-8` is 48px: this string shipped a 48×32 PORTRAIT
-  // pill while its own `min-w-[32px]` says the author was drawing a square.
-  // The numbers are `src/components/ui/pagination.tsx`'s verbatim — this is a hand-rolled
-  // copy of that control, and the two must not ship at different sizes. 44px is also A2's
-  // preferred tap size; 32px would put a real page control under --tap-min.
-  const btnBase = "inline-flex items-center justify-center h-[44px] min-w-[44px] px-2 rounded-md font-mono text-[11px] tracking-[0.10em] transition-colors";
-  const btnActive = "border border-brand-500 bg-brand-500/15 text-brand-300 font-bold";
-  const btnInactive = "border border-border bg-bg-elevated text-text-muted hover:border-border-strong hover:text-text";
-  const btnDisabled = "border border-border bg-bg-elevated text-text-subtle/40 pointer-events-none";
-
-  return (
-    <div className="flex items-center justify-between gap-3 px-4 py-3 border-t border-border">
-      <p className="font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle">
-        {((safePage - 1) * perPage + 1).toLocaleString()}–{Math.min(safePage * perPage, total).toLocaleString()} of {total.toLocaleString()}
-      </p>
-      <div className="flex items-center gap-1">
-        <button type="button" onClick={() => hasPrev && onPage(safePage - 1)} disabled={!hasPrev} className={`${btnBase} ${hasPrev ? btnInactive : btnDisabled}`} aria-label="Previous page">
-          <I.chevronLeft s={14} />
-        </button>
-        {pages.map((p, i) =>
-          p === "..." ? (
-            <span key={`dots-${i}`} className="px-1 text-text-subtle">…</span>
-          ) : (
-            <button type="button" key={p} onClick={() => onPage(p)} className={`${btnBase} ${p === safePage ? btnActive : btnInactive}`}>
-              {p}
-            </button>
-          ),
-        )}
-        <button type="button" onClick={() => hasNext && onPage(safePage + 1)} disabled={!hasNext} className={`${btnBase} ${hasNext ? btnInactive : btnDisabled}`} aria-label="Next page">
-          <I.chevronRight s={14} />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/** Clickable sort control matching <SortTh>'s active/arrow affordance. */
-function SortBtn({ field, label, current, dir, onSort }: { field: MSort; label: string; current: MSort; dir: SortDir; onSort: (f: MSort) => void }) {
-  const isActive = current === field;
-  return (
-    <button type="button" onClick={() => onSort(field)} className={`inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.1em] hover:text-text transition-colors ${isActive ? "text-text" : "text-text-subtle"}`}>
-      {label}
-      <span className={`text-brand-300 ${isActive ? "" : "opacity-0"}`} aria-hidden>{dir === "asc" ? "↑" : "↓"}</span>
-    </button>
-  );
-}
+/**
+ * ⭐ THE HAND-ROLLED PAGER AND SORT BUTTON ARE GONE (stage 9b, 2026-08-21).
+ *
+ * This file used to carry a `ClientPager` whose own comment said it was
+ * "visually identical to <AdminPagination>". It was not, and could not stay so:
+ * it was a verbatim FORK of `ui/pagination.tsx` — same page-window arithmetic,
+ * same four class strings — and the shared component had since grown two things
+ * the copy never received:
+ *
+ *   • `flex-wrap` on both the outer row and the control strip, plus
+ *     `justify-center sm:justify-end`. At 360px seven 44px controls need two
+ *     rows; without the wrap the chevron was pushed out of the strip.
+ *   • `shadow-glow-selected` on the current page, the console's standing
+ *     selected-control signal (`--glow-selected`, globals.css:603).
+ *
+ * The glow is the ONE resting-pixel difference this migration makes, and it is
+ * the fork that was the outlier: every other paginated screen in the product has
+ * had it. Everything else renders identically — `gap-x-3` equals the old `gap-3`
+ * horizontally, and `justify-end`/`justify-center` are no-ops on a
+ * content-width strip that is not wrapping.
+ *
+ * `onNavigate` is the shared pager's client mode, built for exactly this: a
+ * queue that mutates optimistically in local state and so cannot page by URL.
+ */
 
 export function ModerationQueue({ items }: { items: ModerationItem[] }) {
   const [rows, setRows] = useState(items);
@@ -190,7 +149,7 @@ export function ModerationQueue({ items }: { items: ModerationItem[] }) {
         </li>
       ))}
       </ul>
-      <ClientPager total={total} page={safePage} onPage={setPage} />
+      <AdminPagination total={total} page={safePage} perPage={PER_PAGE} onNavigate={setPage} />
     </div>
   );
 }

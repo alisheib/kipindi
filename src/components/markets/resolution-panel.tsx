@@ -274,6 +274,25 @@ export function ResolutionPanel({
   );
 }
 
+/**
+ * ⚠️ STAGE 9b — LOOKED AT FOR THE <Stat> CONSOLIDATION AND DELIBERATELY KEPT.
+ *
+ * It is filed as a "Stat dialect" because it is a label/value pair, but it is not
+ * <Stat>'s SHAPE: <Stat> stacks the label OVER the value, this lays them out on one
+ * line inside a bordered ledger, and no prop turns one into the other.
+ *
+ * `ui/receipt-row.tsx` is the right shape and still the wrong metrics: its label is
+ * 10px UPPERCASE at 0.12em and its figures are fixed at 13/16px, where this row runs
+ * 12.5px sentence-case at 0.02em with a 600-weight figure — inherited from the
+ * container so the whole panel is one type size. Migrating would restyle the
+ * settlement breakdown, which is the one surface where a player checks our
+ * arithmetic against their own. So it stays, and the gap is reported rather than
+ * papered over: the primitive needs a `ledger` emphasis + a plain label style before
+ * this row can move.
+ *
+ * ⛔ No <Cash> here, and that is correct: these are POOL figures — public market
+ * data, not the viewer's balance. The privacy mask covers personal money only.
+ */
 function Row({ label, value, strong, win, muted }: { label: string; value: string; strong?: boolean; win?: boolean; muted?: boolean }) {
   return (
     <div className="flex items-center justify-between gap-3 px-3.5 py-2.5 border-b border-border/50 last:border-b-0">

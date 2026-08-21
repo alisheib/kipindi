@@ -13,6 +13,8 @@ import { AmlActionRow } from "./aml-actions-client";
 import { detectSuspiciousBets } from "@/lib/server/analytics";
 import { TWO_PERSON_THRESHOLD_TZS } from "./constants";
 import { listFirstSignatures } from "./stage1-store";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · AML queue" };
 export const dynamic = "force-dynamic";
@@ -75,13 +77,13 @@ export default async function AdminAmlPage({
         sw="Foleni ya AML"
         actions={<Chip size="md" variant={!amlFailed && inReviewAll.length > 0 ? "warning" : "neutral"}>{amlFailed ? "n/a" : `${inReviewAll.length} pending`}</Chip>}
       />
-      <div className="px-4 lg:px-6 py-5 space-y-4">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <AdminBody>
+        <KpiGrid>
           <AdminKpi label="Pending review" sw="Inasubiri" value={amlFailed ? "" : inReviewAll.length.toLocaleString()} unavailable={amlFailed} pulse={!amlFailed && inReviewAll.length > 0} delta="EDD queue" spark={false} />
           <AdminKpi label="≥ TZS 1M · 2-officer" sw="Zaidi ya 1M" value={amlFailed ? "" : largeCount.toLocaleString()} unavailable={amlFailed} delta="two-person gate" spark={false} />
           <AdminKpi label={CEREMONY.awaitingSecondSignature.en} sw={CEREMONY.awaitingSecondSignature.sw} value={amlFailed ? "" : awaitingSecond.toLocaleString()} unavailable={amlFailed} delta="stage 1 recorded" spark={false} />
           <AdminKpi label="Suspicious-bet flags" sw="Bendera za shaka" value={flagsFailed ? "" : flagsAll.length.toLocaleString()} unavailable={flagsFailed} tone={!flagsFailed && flagsAll.length > 0 ? "danger" : undefined} delta="stake spike / velocity" spark={false} />
-        </div>
+        </KpiGrid>
         <AdminCard padding="p-0">
           {amlFailed ? (
             <div className="p-4"><AdminLoadError what="the AML queue" /></div>
@@ -209,7 +211,7 @@ export default async function AdminAmlPage({
             </>
           )}
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

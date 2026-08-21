@@ -26,6 +26,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
+import { Dot } from "@/components/ui/dot";
 import { cn, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { useUpDownQuickBet, usePlacePulse } from "./use-quick-bet";
@@ -747,7 +748,10 @@ export function UpDownCard(props: UpDownCardProps) {
             <span className="chip" style={{ marginLeft: 6, verticalAlign: "middle" }}>{durationMinutes} {t.market.udMin}</span>
           </h3>
           <div className="mt-1 flex items-center gap-1.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.10em] text-text-subtle">
-            {bettable && <span className="live-dot" />}
+            {/* Stage 9b — kit <Dot pulse>. It IS `.live-dot`: same 6px box, same
+                `--live-400`, same 2600ms breathe, same gating at all three
+                reduced-motion tiers. Nothing about this pip renders differently. */}
+            {bettable && <Dot tone="live" size={6} pulse />}
             {/* 🔴 E-166 · THIS SAID "CLOSED" FOR EVERY NON-BETTABLE STATE, and it was wrong about
                 three of them. Measured on production 2026-08-19: a settled card read
                 **"Closed · BTC"** beside its own "Up wins" result — *closed is not a result* —
@@ -883,6 +887,14 @@ export function UpDownCard(props: UpDownCardProps) {
             </span>
             {openPrice != null && <span className="shrink-0 tabular-nums">± {priceText.margin}</span>}
           </div>
+          {/* ⚠️ STAGE 9b — these two tiles were examined for the <Stat> consolidation and
+              KEPT. They are label-over-value pairs, but not one of them lands on a rung:
+              the label is 9px BOLD at 0.10em (the dictionary has 9px/regular and
+              9.5px/bold, not this), the value is 12.5px (nearest rung is 13.5), and the
+              box is a per-side `color-mix` wash with a matching border that no entry in
+              the BOX dictionary describes. The right-hand tile is additionally
+              right-ALIGNED, which <Stat> has no prop for. Folding them would restyle the
+              two figures that tell a player what price wins — reported instead. */}
           <div className="mt-1 grid grid-cols-2 gap-2">
             <div className="min-w-0 rounded-lg px-2.5 py-1.5"
                  style={{ background: "color-mix(in oklab, var(--yes-500) 10%, transparent)", border: "1px solid color-mix(in oklab, var(--yes-500) 24%, transparent)" }}>

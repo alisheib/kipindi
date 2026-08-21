@@ -6,6 +6,7 @@ import { I } from "@/components/ui/glyphs";
 import { formatDateTimeSafe, formatUsd } from "@/lib/utils";
 import { SELECTION } from "@/lib/admin-status-lexicon";
 import { aiPollStateLabel } from "@/components/admin/status-badge";
+import { AdminBody } from "@/components/admin/admin-body";
 import {
   getAIPoll,
   type AIPollState,
@@ -72,7 +73,7 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
           </Link>
         }
       />
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         {/* Header card */}
         <AdminCard>
           <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -316,7 +317,7 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
             </div>
           )}
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

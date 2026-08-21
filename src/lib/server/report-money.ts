@@ -32,6 +32,7 @@
  * legacy analytics functions returned Stakes/turnover mislabelled "GGR"; that is
  * reconciled — see the batch log entry that flags the changed displayed numbers.)
  */
+import { EAT_OFFSET_MS } from "@/lib/eat-day";
 import { db } from "./store";
 import type { StoredTxn } from "./store";
 import { listMarkets, listPositionsForMarket } from "./market-service";
@@ -41,7 +42,18 @@ import { positionStore, marketStore } from "./market-dal";
 export type ReportPeriod = "today" | "7d" | "30d" | "mtd";
 export const REPORT_PERIODS: ReportPeriod[] = ["today", "7d", "30d", "mtd"];
 
-export const EAT_OFFSET_MS = 3 * 3600_000; // East Africa Time = UTC+3, no DST.
+/**
+ * East Africa Time = UTC+3, no DST — IMPORTED, never re-declared.
+ *
+ * ⛔ This module used to write `3 * 3600_000` itself, so the STATUTORY TAX path and
+ * `lib/eat-day.ts` (whose header calls itself "the one place the platform decides
+ * what a day is" and forbids copying the offset) agreed about the offset only by
+ * coincidence. The two literals happened to be equal; nothing made them stay equal,
+ * and the report that computes the TRA and GBT levies is the last place that should
+ * hold a private opinion about when a Tanzanian day starts. Re-exported because
+ * `date-range.ts` and `scripts/date-range.test.mts` already import it from here.
+ */
+export { EAT_OFFSET_MS };
 const DAY_MS = 24 * 3600_000;
 
 /**

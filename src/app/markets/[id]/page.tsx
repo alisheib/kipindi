@@ -18,6 +18,7 @@ import { ChartToggle } from "@/components/markets/chart-toggle";
 import { SellButton } from "@/components/markets/sell-button";
 import { ResolutionPanel } from "@/components/markets/resolution-panel";
 import { Chip } from "@/components/ui/chip";
+import { Stat } from "@/components/ui/stat";
 import { cashOutValue, getMarket, impliedYesPct, isClosedByTime, isSelectionClosed, listPositionsForUser, ratesFor } from "@/lib/server/market-service";
 import { timeLeftLabel } from "@/lib/markets/time-left";
 import { poolFee } from "@/lib/payout";
@@ -478,8 +479,13 @@ export default async function MarketDetail({
             {/* "TZS 0" is factually true, but on a fresh market it reads as
                 failure rather than as an opening. Same words the card uses, so
                 the two surfaces say the same thing about the same state. */}
-            <KPI label={t.market.volume}     value={freshMarket ? t.market.noPoolYet : formatTzsCompact(m.yesPool + m.noPool)} icon={<I.chart s={14} />} />
-            <KPI label={t.market.predictors} value={String(m.predictorCount)}     icon={<I.users s={14} />} />
+            {/* ⭐ STAGE 9b — the first two are the kit <Stat>: `card` box (rounded-md,
+                border, bg-elevated, p-3), `widest` label (10px semibold 0.14em) and the
+                `xl` rung (18px, mt-1, leading-tight). A pixel-for-pixel mapping.
+                ⚠️ The THIRD is still the local `KPI` and that is deliberate — see the
+                note on the function below. */}
+            <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.volume}     value={freshMarket ? t.market.noPoolYet : formatTzsCompact(m.yesPool + m.noPool)} icon={<I.chart s={14} />} />
+            <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.predictors} value={String(m.predictorCount)}     icon={<I.users s={14} />} />
             <KPI label={t.market.resolves}   value={fmtTime(m.resolutionAt)} mono />
           </div>
 
@@ -884,6 +890,21 @@ function similarTimeLeft(iso: string, t: Awaited<ReturnType<typeof getServerT>>[
   }, fill);
 }
 
+/**
+ * ⚠️ STAGE 9b — THIS FORK IS DOWN TO ONE CONSUMER AND IS NOT DELETED YET.
+ *
+ * Its `mono` branch is the reason. That branch paints the resolution time at **13px,
+ * weight 400**, and `ui/stat` has neither: its nearest rung is `xs` at 13.5px, and it
+ * applies `font-bold` to every value unconditionally. Migrating this call site would
+ * make the timestamp half a pixel larger AND bold — a visible restyle of a live
+ * surface, which is not what a consolidation is allowed to buy.
+ *
+ * ⛔ So the `!mono` branch is now dead code kept ONLY as the record of what the two
+ * migrated tiles above render; do not add a third caller. The fix is one of:
+ *   (a) a `sm-plain` rung in `ui/stat.tsx` (13px mono, weight 400), or
+ *   (b) an owner decision to accept 13.5/bold — at which point this function goes.
+ * Either way it is a change to a file this pass does not own.
+ */
 function KPI({ label, value, icon, mono }: { label: string; value: string; icon?: React.ReactNode; mono?: boolean }) {
   return (
     <div className="rounded-md border border-border bg-bg-elevated p-3">

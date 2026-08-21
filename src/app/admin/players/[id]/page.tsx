@@ -25,6 +25,8 @@ import { ResetPasswordButton } from "./reset-password-button";
 import { BalanceAdjustControls } from "./balance-adjust-controls";
 import { ForceReverifyControls } from "./force-reverify-controls";
 import { ExportPlayerButton } from "./export-player-button";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const dynamic = "force-dynamic";
 
@@ -192,7 +194,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
         }
       />
 
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         {/* §A — Identity card */}
         <AdminCard>
           <div className="flex items-center gap-4 flex-wrap">
@@ -269,12 +271,12 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
         {/* §B — Quick stats strip (money/activity) — accounting-view only, so a
             SUPPORT agent running the desk never sees a player's financials. */}
         {canSeeMoney && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiGrid>
           <AdminKpi label="Lifetime deposit"    sw="Jumla ya amana"        value={txnsFailed ? "" : `TZS ${formatTzsCompact(lifetimeDeposits).replace("TZS ", "")}`} unavailable={txnsFailed} delta={wallet ? `wallet ${formatTzs(wallet.balance)}` : "—"} />
           <AdminKpi label="Lifetime withdrawal" sw="Jumla ya utoaji"       value={txnsFailed ? "" : `TZS ${formatTzsCompact(lifetimeWithdrawals).replace("TZS ", "")}`} unavailable={txnsFailed} delta={`${txns.filter((t) => t.type === "WITHDRAWAL").length} txns`} />
           <AdminKpi label="NGR contribution"    sw="Mchango wa mapato"     value={txnsFailed ? "" : `TZS ${formatTzsCompact(ngr).replace("TZS ", "")}`} unavailable={txnsFailed} delta={`${txns.filter((t) => t.type === "BET_PLACED").length} positions`} />
           <AdminKpi label="Last position"      sw="Nafasi ya mwisho"      value={txnsFailed ? "" : (() => { const lb = txns.filter((t) => t.type === "BET_PLACED").sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]; return lb ? formatDateShort(lb.createdAt) : "never"; })()} unavailable={txnsFailed} delta={`${txns.filter((t) => t.type === "BET_PLACED").length} positions`} />
-        </div>
+        </KpiGrid>
         )}
 
         {/* §C — Tabs */}
@@ -410,7 +412,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
             </div>
           </AdminCard>
         )}
-      </div>
+      </AdminBody>
     </>
   );
 }

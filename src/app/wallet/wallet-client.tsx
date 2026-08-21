@@ -10,6 +10,7 @@ import { Tabs } from "@/components/ui/tabs";
 import { Pagination } from "@/components/ui/pagination";
 import type { Transaction } from "@/lib/ui-stubs";
 import { Cash } from "@/components/ui/cash";
+import { Stat } from "@/components/ui/stat";
 import { CashbackPromo } from "@/components/ui/cashback-promo";
 import { PaymentLogo } from "@/components/wallet/payment-logo";
 import { formatDateTimeSafe, formatTzs, formatNumber } from "@/lib/utils";
@@ -68,10 +69,14 @@ function BalanceCard({
           <I.wallet s={13} />
           <p className="font-mono text-[10.5px] uppercase tracking-[0.16em] font-bold">{t.common.available2}</p>
         </div>
+        {/* ⛔ §M4 — MONEY IS MONO, TABULAR AND NEVER LETTER-SPACED. This figure carried
+            `tracking-[-0.02em]`: negative tracking on a 38px grouped TZS numeral pulls the
+            digits toward the thousands separators, which is precisely the reading the
+            tabular face exists to prevent. The tightening is gone; nothing else moves. */}
         <p
           data-testid="wallet-balance"
           data-balance={balance}
-          className="mt-1.5 font-mono text-[38px] font-bold tabular-nums text-text leading-none tracking-[-0.02em]"
+          className="mt-1.5 font-mono text-[38px] font-bold tabular-nums text-text leading-none"
         >
           <Cash>{formatTzs(balance)}</Cash>
         </p>
@@ -84,9 +89,16 @@ function BalanceCard({
             {t.common.addFunds}
           </Link>
         )}
+        {/* ⭐ Stage 9b — the local `SubStat` is DELETED; this is the kit `<Stat>`.
+            `size="sm"` + `labelStyle="faint"` + `boxed="inset"` are that dialect's own
+            metrics, catalogued in stat.tsx by name, so the box, the 9.5px/0.10em faint
+            label and the 14px mono value are unchanged to the pixel. `money` is what the
+            fork was missing a route to: it puts the figure through <Cash> (balance
+            privacy) AND clamps it to mono/tabular/no-tracking per §M4, so no future
+            caller can reach a tracked or display-face money numeral here. */}
         <div className="mt-5 grid grid-cols-2 gap-3">
-          <SubStat label={t.common.pending} value={formatTzs(pending)} />
-          <SubStat label={t.common.onHold}  value={formatTzs(hold)} hint={hold > 0 ? t.common.pendingHoldHint : undefined} />
+          <Stat size="sm" labelStyle="faint" boxed="inset" money label={t.common.pending} value={formatTzs(pending)} />
+          <Stat size="sm" labelStyle="faint" boxed="inset" money label={t.common.onHold} value={formatTzs(hold)} hint={hold > 0 ? t.common.pendingHoldHint : undefined} />
         </div>
       </div>
     </section>
@@ -156,10 +168,13 @@ function BonusWalletCard({
           </span>
         </div>
 
+        {/* ⛔ §M4 — same rule as the main balance above: the `tracking-[-0.02em]` is gone.
+            Money is never letter-spaced, and the two wallet headline figures must not
+            disagree about it while sitting side by side on one page. */}
         <p
           data-testid="bonus-balance"
           data-bonus={bonusBalance}
-          className="mt-1.5 font-mono text-[38px] font-bold tabular-nums text-text leading-none tracking-[-0.02em]"
+          className="mt-1.5 font-mono text-[38px] font-bold tabular-nums text-text leading-none"
         >
           <Cash>{formatTzs(bonusBalance)}</Cash>
         </p>
@@ -273,16 +288,6 @@ function BonusWalletCard({
         )}
       </div>
     </section>
-  );
-}
-
-function SubStat({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <div className="rounded-md border border-border/60 bg-bg-overlay/40 px-3 py-2.5 backdrop-blur-md">
-      <p className="font-mono text-[9.5px] uppercase tracking-[0.10em] text-text-faint">{label}</p>
-      <p className="font-mono font-bold text-[14px] tabular-nums text-text leading-tight"><Cash>{value}</Cash></p>
-      {hint && <p className="mt-0.5 text-[9.5px] text-text-faint">{hint}</p>}
-    </div>
   );
 }
 

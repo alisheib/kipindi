@@ -8,6 +8,8 @@ import { db } from "@/lib/server/store";
 import { rgRosterCounts } from "@/lib/server/analytics";
 import { maskName } from "@/lib/server/affiliate-service";
 import { formatDateTime } from "@/lib/utils";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Self-exclusions" };
 export const dynamic = "force-dynamic";
@@ -88,14 +90,14 @@ export default async function AdminSelfExclusionsPage({
           </div>
         }
       />
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         {/* KPIs */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiGrid>
           <AdminKpi label="Self-excluded"        sw="Wamejizuia"         value={countsFailed ? "" : counts.selfExcluded.toLocaleString()} unavailable={countsFailed} delta="active roster" />
           <AdminKpi label="Cooling-off"           sw="Kupumzika"          value={countsFailed ? "" : counts.cooledOff.toLocaleString()} unavailable={countsFailed} delta="in progress" />
           <AdminKpi label="Expiring this week"    sw="Inakwisha wiki hii" value={countsFailed ? "" : counts.expiringThisWeek.toLocaleString()} unavailable={countsFailed} delta="follow-up window" />
           <AdminKpi label="Pending limit-increase" sw="Kuongeza kikomo"    value={countsFailed ? "" : counts.pendingLimitIncrease.toLocaleString()} unavailable={countsFailed} delta="24h cool-down" />
-        </div>
+        </KpiGrid>
 
         {/* Roster table */}
         <AdminCard
@@ -168,7 +170,7 @@ export default async function AdminSelfExclusionsPage({
             </p>
           </div>
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

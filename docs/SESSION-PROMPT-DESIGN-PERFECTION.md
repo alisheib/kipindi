@@ -33,8 +33,8 @@ repo `F:\kipindi-main`, branch `main`):**
 | 5 | Focus & accessibility | **DONE** | `dd1dc8ec` | ✓ 200 · clean boot · shots read |
 | 6 | Motion | **DONE** | `b14c749f` + `453f515b` | ✓ 200 · clean boot · shots read |
 | 7 | Performance | **DONE** (one item deferred with a written plan — see below) | `640d45d1` | ✓ 200 · clean boot |
-| 8 | Dead code & doc truth | **DONE** | `stage-8` | pending push |
-| 9 | Consolidations | NOT STARTED | | |
+| 8 | Dead code & doc truth | **DONE** | `f58c3aa1` | ✓ 200 · clean boot |
+| 9 | Consolidations | **DONE** (two sites kept, with reasons) | `stage-9` | pending push |
 | 10 | New guards | NOT STARTED | | |
 | 11 | Owner-decision items + exit | NOT STARTED | | |
 
@@ -411,6 +411,41 @@ stops meaning anything.
   `loading.tsx` Suspense fallback, which React unmounts synchronously, and this codebase has no
   exit-animation coordinator. Its sibling `.content-fade-in` is applied to the LOADER, not the
   arriving content, so the "cross-fade" its comment described never existed in either half.
+
+**Stage 9**
+
+- 🔴 **`EAT_OFFSET_MS` was written THREE times**, not twice — `eat-day.ts`, `report-money.ts`
+  and a function-local copy inside `report-pack.ts`'s `packPeriodBounds`, which bounds the
+  **GBT MONTHLY PACK, the filing an officer signs.** The three agreed by coincidence:
+  `3 * 60 * 60 * 1000` vs `3 * 3600_000` vs `3 * 3600_000` — equal values, independently
+  authored expressions, in defiance of `eat-day.ts`'s own header telling callers to import it.
+- ⚠️ **`MAX_DOC_BYTES` could not live in the server module** — `kyc-service.ts` pulls
+  `node:async_hooks` and `node:crypto` through its imports, so a client import would drag them
+  into the browser graph (the exact break CLAUDE.md records for `hashKey64`). It lives in
+  `id-documents.ts`, which both ends already import.
+- ⚠️ **`PaymentProviderId` was ALREADY TAKEN and meant something else** — the AGGREGATOR
+  (`mock|selcom|azampay`), not the rail. Two different unions under one identifier inside the
+  payments domain is the defect this stage removes, so the new catalogue is
+  `PaymentMethodId`/`PAYMENT_METHODS`. It replaced a **tenth** copy of the same vocabulary.
+- 🔴 **THE NEW PRIMITIVES SHIPPED WITH ESCAPE HATCHES, AND `test:design-frozen` CAUGHT THEM.**
+  `IconPlate` — the atom created to END four arbitrary radii — took a `radius` prop, with a
+  comment apologising for it; no call site ever passed it, so it is gone and the family has
+  its one radius. `CountBadge` took the SHADOW as a string, which put a raw `oklch()` back at
+  a call site: it is now a `lift` boolean, and the shadow is a CLASS keyed by tone in
+  `globals.css`, because §M2 says a surface picks a rung rather than composing one — and that
+  rules out composing it inline in the primitive too, which was the guard's second complaint.
+- ⭐ **TWO SITES WERE DELIBERATELY NOT MIGRATED, with the metrics written into the files.**
+  `bet-confirm-modal` and `sell-confirm-modal` are not receipt ROWS — they are two-column stat
+  PAIRS at 26px/22px and 24px/18px, sizes no `Stat` rung offers; forcing them in would have
+  redesigned the two money-commit dialogs. `ProposalsUnavailable` differs from the Callout
+  stack rung in five metrics including `py-12` vs `p-6 sm:p-8` — a **192px repaint** of a live
+  player page. Both are recorded in place so the next session does not rediscover them.
+- ⚠️ **Two rendered convergences, both the point rather than a side effect**: withdraw's
+  receipt Amount moves 15px/semibold → 16px/bold, converging on deposit's (that drift was on
+  the number a player commits money against); and the maintenance amber's three definitions
+  (14%/38%, 16%/42%, Callout's) collapse onto `--warning-bg`/`--warning-border` at 18%/36%.
+- ⭐ **§M4 enforced where it was being broken**: `tracking-[-0.02em]` stripped from both 38px
+  wallet headline balances. Money is mono, tabular and never letter-spaced.
 
 **Follow-ups this campaign opened and has not closed**
 

@@ -11,6 +11,8 @@ import { db } from "@/lib/server/store";
 import { getAuditPage } from "@/lib/server/audit";
 import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Data retention" };
 export const dynamic = "force-dynamic";
@@ -73,13 +75,13 @@ export default async function AdminRetentionPage() {
         sw="Ratiba ya kuhifadhi data"
         actions={<Chip size="md" variant="neutral">{SCHEDULE.length} categories</Chip>}
       />
-      <div className="px-4 lg:px-6 py-5 space-y-4">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <AdminBody>
+        <KpiGrid>
           <AdminKpi label="Live users"      sw="Watumiaji hai"      value={userCount.toLocaleString()}   delta="active records" />
           <AdminKpi label="Closed accounts" sw="Akaunti zilizofungwa" value={closed.toLocaleString()}    delta="7y retention" />
           <AdminKpi label="Audit entries"   sw="Kumbukumbu"          value={auditEntries.toLocaleString()} delta="HMAC-chained" />
           <AdminKpi label="Default class"   sw="Aina kuu"            value="7y"                        delta="POCA Cap 423 §16" />
-        </div>
+        </KpiGrid>
 
         <AdminCard
           title="Schedule · category × retention × legal basis"
@@ -164,7 +166,7 @@ export default async function AdminRetentionPage() {
             </div>
           </AdminCard>
         </div>
-      </div>
+      </AdminBody>
     </>
   );
 }

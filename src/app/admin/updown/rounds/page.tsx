@@ -14,6 +14,8 @@ import { UPDOWN } from "@/lib/admin-status-lexicon";
 import { updownVoidReasonLabel } from "@/components/admin/status-badge";
 import { VoidRoundControl } from "./void-round-control";
 import { formatTzs } from "@/lib/utils";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Up & Down · Rounds" };
 export const dynamic = "force-dynamic";
@@ -154,12 +156,12 @@ export default async function AdminUpDownRoundsPage({
   return (
     <>
       <AdminPageHead title="Up & Down · Rounds" sw="Raundi za Juu na Chini" />
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         {/* Every figure here counts the whole FILTERED set, not the visible page — the
             one exception names itself ("on this page"), because turnover needs a market
             row per round and reading 1,402 of them to fill a tile is not a trade worth
             making. */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiGrid>
           <AdminKpi label="Settled" sw="Zimekamilika" value={settled.toLocaleString()} delta={`of ${total.toLocaleString()} total`} spark={false} />
           <AdminKpi label="Turnover on this page" sw="Mzunguko (ukurasa huu)" value={formatTzs(pageVol)} spark={false} />
           <AdminKpi label="Voided" sw="Batili" value={voided.toLocaleString()} delta={voided > 0 ? "refunded in full" : "none"} spark={false} />
@@ -170,7 +172,7 @@ export default async function AdminUpDownRoundsPage({
             delta={stuckAll.length > 0 ? `${stuckMoneyLabel} not moving` : "none — all closed on time"}
             spark={false}
           />
-        </div>
+        </KpiGrid>
 
         {stuckAll.length > 0 && (
           <AdminCard title="Rounds past their deadline" sw="Raundi zilizochelewa" padding="p-4">
@@ -333,7 +335,7 @@ export default async function AdminUpDownRoundsPage({
           automatically; <em>Void &amp; refund</em> is the manual remedy for when it has not. Only an unsettled round can
           be voided, and the reason you give is written to the audit trail.
         </p>
-      </div>
+      </AdminBody>
     </>
   );
 }

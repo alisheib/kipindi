@@ -17,6 +17,8 @@ import { CreditControls } from "./credit-controls";
 import { AiOpsControls } from "./ai-ops-controls";
 import { getAiOpsConfig, AVAILABLE_MODELS } from "@/lib/server/ai-ops-config";
 import { ai } from "@/lib/server/ai-config";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin \u00b7 AI usage & credits" };
 export const dynamic = "force-dynamic";
@@ -147,7 +149,7 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
   return (
     <>
       <AdminPageHead title="AI usage & credits" sw="Matumizi ya AI na salio" />
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         {/* Health banner */}
         <div className={`rounded-lg border px-4 py-3 flex items-start gap-3 ${banner.cls}`}>
           {banner.icon}
@@ -158,7 +160,7 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
         </div>
 
         {/* Spend KPIs — real Anthropic data when available, else our estimates */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiGrid>
           <AdminKpi
             label={anthropic ? "Spend today (Anthropic)" : "Spend today"}
             sw="Leo"
@@ -178,7 +180,7 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
             delta={anthropic ? `est. ${usd(s.windows.last30.costUsd)} \u00b7 ${s.windows.last30.calls} calls` : `${s.windows.last30.calls} calls`}
           />
           <AdminKpi label="Stored (180d)" sw="Jumla" value={usd(s.windows.all.costUsd)} delta={`${s.windows.all.calls} calls`} />
-        </div>
+        </KpiGrid>
 
         {/* 30-day spend trend — real Anthropic daily cost. Only rendered when the
             admin Cost API key is set (the estimate-only path has no per-day
@@ -442,7 +444,7 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
             Haiku $1/$5, Sonnet $3/$15, Opus $5/$25 per 1M tokens; web search $0.01/call. Ledger retained 180 days.
           </p>
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

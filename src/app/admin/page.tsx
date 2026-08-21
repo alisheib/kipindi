@@ -6,6 +6,8 @@ import { getAuditPage, type AuditCategory } from "@/lib/server/audit";
 import { activePlayers, grossGamingRevenue, netGamingRevenue, kycFunnel, providerSummary, rgRosterCounts, moneyFlowSeries } from "@/lib/server/analytics";
 import { dailyKpiSeries } from "@/lib/server/report-money";
 import { formatTzsCompact } from "@/lib/utils";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Overview" };
 export const dynamic = "force-dynamic";
@@ -58,14 +60,14 @@ export default async function AdminOverviewPage() {
     <>
       <AdminPageHead title="Overview" sw="Muhtasari" />
 
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         {/* §A — KPI strip */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        <KpiGrid cols="md3-lg4">
           <AdminKpi label="Active players" sw="Wachezaji hai"     value={active24h === null ? "" : active24h.toLocaleString()} unavailable={active24h === null} delta="last 24h" pulse={active24h !== null} series={spark(trends.active)} />
           <AdminKpi label="GGR · 24h"      sw="Mapato ya jumla"   value={ggr === null ? "" : `TZS ${formatTzsCompact(ggr).replace("TZS ", "")}`} unavailable={ggr === null} delta="vs yesterday" series={spark(trends.ggr)} />
           <AdminKpi label="NGR · 24h"      sw="Mapato halisi"     value={ngr === null ? "" : `TZS ${formatTzsCompact(ngr).replace("TZS ", "")}`} unavailable={ngr === null} delta="net of bonus + fees" series={spark(trends.ngr)} />
           <AdminKpi label="AML pending"    sw="Inasubiri ukaguzi" value={amlPending ?? ""} unavailable={amlPending === null} delta="needs review" deltaDir={(amlPending ?? 0) > 0 ? "up" : "flat"} pulse={(amlPending ?? 0) > 0} />
-        </div>
+        </KpiGrid>
 
         {/* §B — Money flow + activity */}
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-3">
@@ -180,7 +182,7 @@ export default async function AdminOverviewPage() {
             <p className="text-caption text-text-tertiary">Monitoring activates when the Sportradar integrity feed is signed (pre-launch blocker).</p>
           </AdminCard>
         </div>
-      </div>
+      </AdminBody>
     </>
   );
 }

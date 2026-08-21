@@ -32,6 +32,8 @@ import { currentSession } from "@/lib/server/auth-service";
 import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { ControlLocked } from "@/components/admin/control-locked";
 import { chainStateLabel, readingStateLabel } from "@/components/admin/status-badge";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Up & Down" };
 export const dynamic = "force-dynamic";
@@ -226,8 +228,8 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
         ) : <ControlLocked what="Add asset" need={CONTROL_DOMAIN.createAsset} />}
       />
 
-      <div className="px-4 lg:px-6 py-5 space-y-4">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <AdminBody>
+        <KpiGrid>
           <AdminKpi label="Enabled assets" sw="Bidhaa hai" value={String(enabledAssets.length)} delta={`${assets.length} total`} spark={false} />
           <AdminKpi label="Running chains" sw="Minyororo hai" value={String(running.length)} delta={`${chains.length} configured`} spark={false} />
           {/* `flat`, not the default `up`: a fee model is a FACT, not good news — and a
@@ -243,7 +245,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
             spark={false}
           />
           <AdminKpi label="Staleness window" sw="Muda wa bei" value={`${cfg.maxStalenessSeconds}s`} delta={`confidence ≥ ${cfg.confidenceThreshold}`} spark={false} />
-        </div>
+        </KpiGrid>
 
         {/* ── This game's economics (Up & Down ONLY) ─────────────────────────
             Sealed from the long-form polls: its own GGR, hold and turnover, beside
@@ -259,12 +261,12 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
           <div className="mb-3">
             <DateTimeRangeFilter defaultPreset="30d" presetIds={["today", "yesterday", "24h", "7d", "30d", "mtd", "all"]} />
           </div>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <KpiGrid>
             <AdminKpi label="GGR · this game" sw="Mapato" value={formatTzs(Math.round(pnl.ggr))} delta={`hold ${pnl.holdPct.toFixed(1)}%`} tone={pnl.ggr >= 0 ? "success" : "danger"} spark={false} gold />
             <AdminKpi label="Staked" sw="Zilizowekwa" value={formatTzs(Math.round(pnl.stakes))} delta={`${pnl.bets.toLocaleString()} bets`} spark={false} />
             <AdminKpi label="Paid out" sw="Zilizolipwa" value={formatTzs(Math.round(pnl.payouts))} delta={`${pnl.players.toLocaleString()} players`} spark={false} />
             <AdminKpi label="AI oracle cost" sw="Gharama ya AI" value={usd(aiCost.last30)} delta={`${aiCost.calls.toLocaleString()} calls · 90d ${usd(aiCost.all)}`} spark={false} />
-          </div>
+          </KpiGrid>
           <p className="mt-3 text-[11.5px] leading-[1.55] text-text-subtle max-w-[80ch]">
             This is <strong>Up &amp; Down alone</strong> — long-form polls are reported separately under Money → Reports.
             GGR is the commission kept on this game (TZS); AI cost is what its price oracle spent (USD). The platform&rsquo;s
@@ -710,7 +712,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
             />
           )}
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

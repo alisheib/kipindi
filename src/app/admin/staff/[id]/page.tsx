@@ -13,6 +13,7 @@ import { displayLabel, displayInitials } from "@/lib/display-label";
 import { formatDate } from "@/lib/utils";
 import { accountStatusLabel } from "@/components/admin/status-badge";
 import { AssignRoleForm } from "../staff-forms";
+import { AdminBody } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Staff member" };
 export const dynamic = "force-dynamic";
@@ -34,7 +35,7 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
   return (
     <>
       <AdminPageHead title="Staff member" sw="Mfanyakazi" />
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         {/* Identity + current role */}
         <AdminCard>
           <div className="flex items-center gap-3 flex-wrap">
@@ -100,7 +101,7 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
             )}
           </div>
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

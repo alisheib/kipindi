@@ -1,4 +1,4 @@
-import { I } from "@/components/ui/glyphs";
+import { StatusFlag } from "@/components/ui/status-flag";
 import { cn } from "@/lib/utils";
 
 /**
@@ -9,6 +9,10 @@ import { cn } from "@/lib/utils";
  * functional (it's informational). Presentational only (no hooks) so it renders
  * in both server and client components; the caller passes the localized label.
  * The gilt sweep lives in `.cs-badge` (globals.css) and honours reduced motion.
+ *
+ * ⭐ The metrics moved to <StatusFlag> (2026-08-21): this file and
+ * maintenance-badge.tsx each carried the SAME size table. Only the skin is local
+ * now. Signature unchanged — no call site moves.
  */
 export function ComingSoonBadge({
   label,
@@ -19,22 +23,5 @@ export function ComingSoonBadge({
   size?: "xs" | "sm";
   className?: string;
 }) {
-  const d =
-    size === "xs"
-      ? { fontSize: 8.5, padding: "3px 8px", gap: 4, icon: 9.5, tracking: "0.08em" }
-      : { fontSize: 9.5, padding: "4px 10px", gap: 5, icon: 11, tracking: "0.11em" };
-  return (
-    <span
-      className={cn(
-        "cs-badge inline-flex items-center rounded-pill font-mono font-bold uppercase whitespace-nowrap leading-none align-middle",
-        className,
-      )}
-      style={{ fontSize: d.fontSize, padding: d.padding, letterSpacing: d.tracking }}
-    >
-      <span className="inline-flex items-center" style={{ gap: d.gap }}>
-        <I.clock s={d.icon} aria-hidden />
-        {label}
-      </span>
-    </span>
-  );
+  return <StatusFlag label={label} glyph="clock" size={size} className={cn("cs-badge", className)} />;
 }

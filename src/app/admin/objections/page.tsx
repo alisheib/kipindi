@@ -14,6 +14,8 @@ import { formatDateTime, formatTzs } from "@/lib/utils";
 import { OBJECTION } from "@/lib/admin-status-lexicon";
 import { ObjectionDecision } from "./objection-decision";
 import Link from "next/link";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const dynamic = "force-dynamic";
 
@@ -62,17 +64,17 @@ export default async function AdminObjectionsPage({ searchParams }: { searchPara
   return (
     <>
       <AdminPageHead title="Objections" sw="Pingamizi" />
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
       <p className="text-[12.5px] leading-relaxed text-text-muted">
         Player disputes against a market verdict. An OPEN objection freezes that market&rsquo;s
         settlement — nobody is paid until you rule.
       </p>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+      <KpiGrid cols="3">
         <AdminKpi label="Open" value={String(open.length)} />
         <AdminKpi label="Money frozen" value={formatTzs(frozenTzs)} />
         <AdminKpi label="Total filed" value={String(rows.length)} />
-      </div>
+      </KpiGrid>
 
       {open.length > 0 && (
         <div className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2.5 text-[12.5px] text-warning-fg">
@@ -178,7 +180,7 @@ export default async function AdminObjectionsPage({ searchParams }: { searchPara
         )}
         {rows.length > 0 && <AdminPagination total={rows.length} page={page} baseHref={base} />}
       </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { AuthShell } from "@/components/auth/auth-shell";
+import { AuthPanel, AuthHeader } from "@/components/auth/auth-panel";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { SUPPORT_EMAIL, HELPLINE, HELPLINE_TEL } from "@/lib/support-config";
@@ -21,7 +22,7 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
   return (
     <AuthShell>
 
-        <section className="rounded-xl glass-panel p-6 space-y-5">
+        <AuthPanel>
           <Link
             href="/auth/login"
             className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.16em] text-text-subtle hover:text-text"
@@ -30,17 +31,11 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
             {t.common.backToSignIn}
           </Link>
 
-          <div>
-            <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-gold-300">
-              {t.auth.forgotPassword}
-            </p>
-            <h1 className="mt-1.5 font-display text-[28px] font-bold leading-tight text-text tracking-[-0.02em]">
-              {t.common.recoverAccount}
-            </h1>
-            <p className="mt-1.5 text-[13.5px] text-text-muted">
-              {t.common.recoverBody}
-            </p>
-          </div>
+          <AuthHeader
+            eyebrow={t.auth.forgotPassword}
+            title={t.common.recoverAccount}
+            subtitle={t.common.recoverBody}
+          />
 
           {sent && (
             <div role="status" className="rounded-md border border-yes-700 bg-yes-500/10 px-3.5 py-3 text-[13px]">
@@ -127,7 +122,7 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
               {t.common.signIn}
             </Link>
           </p>
-        </section>
+        </AuthPanel>
 
     </AuthShell>
   );

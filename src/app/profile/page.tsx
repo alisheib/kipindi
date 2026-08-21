@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { Chip } from "@/components/ui/chip";
+import { Stat } from "@/components/ui/stat";
 import { FiftyMark } from "@/components/brand";
 import { AvatarUploader } from "@/components/profile/avatar-uploader";
 import { ProfileNameEditor } from "@/components/profile/name-editor";
@@ -148,17 +149,43 @@ export default async function ProfilePage() {
 
         {/* Stat strip — wallet + open positions */}
         <div className="relative z-10 grid grid-cols-3 border-t border-border divide-x divide-border">
+          {/* ⭐ STAGE 9b — the kit <Stat>, and the face is the fix, not a side effect.
+              This strip's local fork set its values in SORA. §T5 has no exception for
+              a stat tile ("every numeral is JetBrains Mono with tabular-nums") and §M4
+              says it twice for money, so the balance sat in the display face beside a
+              nav pill that renders the SAME figure in mono — one balance, two faces.
+              `money` also restores the <Cash> path the fork dropped: the balance now
+              masks with the privacy eye like every other personal figure. The two
+              counts take `font="mono"` so the strip reads as one row of numerals. */}
+          {/* ⛔ `money={!!wallet}` — NOT a bare `money`. The no-wallet fallback is an
+              em-dash, and <Cash> masks everything after the first non-digit run, so a
+              masked "—" would render "—•••••": a placeholder dressed up as a hidden
+              figure, which is the opposite of what a dash is for. `font="mono"` holds
+              the face in that branch (§M4 outranks it in the other). */}
           <Stat
+            size="xl"
+            labelStyle="widest"
+            boxed="pad"
+            money={!!wallet}
+            font="mono"
             label={t.profile.balance}
             value={wallet ? formatTzs(wallet.balance) : "—"}
             icon={<I.wallet s={14} />}
           />
           <Stat
+            size="xl"
+            labelStyle="widest"
+            boxed="pad"
+            font="mono"
             label={t.profile.openCount}
             value={String(positions.filter((p) => p.status === "OPEN").length)}
             icon={<I.sparkle s={14} className="text-yes-300" />}
           />
           <Stat
+            size="xl"
+            labelStyle="widest"
+            boxed="pad"
+            font="mono"
             label={t.profile.settledCount}
             value={String(positions.filter((p) => p.status !== "OPEN").length)}
             icon={<I.check s={14} />}
@@ -276,17 +303,11 @@ export default async function ProfilePage() {
   );
 }
 
-function Stat({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
-  return (
-    <div className="px-4 py-3.5">
-      <div className="flex items-center gap-1.5 text-text-subtle">
-        {icon}
-        <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-semibold">{label}</p>
-      </div>
-      <p className="mt-1 font-display text-[18px] font-bold leading-tight tabular-nums text-text">{value}</p>
-    </div>
-  );
-}
+/* ⭐ STAGE 9b — the local `Stat` fork is deleted; the strip above uses `ui/stat`.
+ * Box (`px-4 py-3.5` = `boxed="pad"`), label (10px semibold 0.14em = `widest`), icon
+ * row and value metrics (18px, leading-tight, mt-1) all mapped exactly. The ONE
+ * rendered change is the value FACE — Sora → JetBrains Mono — which is §T5, and the
+ * balance additionally gains the <Cash> privacy mask it never had. */
 
 function Pill({ tone, children }: { tone: "yes" | "no" | "info" | "warning" | "neutral"; children: React.ReactNode }) {
   return (

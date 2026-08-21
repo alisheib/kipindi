@@ -8,6 +8,8 @@ import { matches } from "@/lib/ui-stubs";
 import { activePlayers, moneyFlowSeries, grossGamingRevenue } from "@/lib/server/analytics";
 import { dailyKpiSeries } from "@/lib/server/report-money";
 import { formatTzs, formatTzsCompact, formatTime, formatNumber } from "@/lib/utils";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 type MatchStub = {
   id: string;
@@ -70,13 +72,13 @@ export default async function AdminLivePage() {
         }
       />
 
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         {/* KPI strip */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiGrid>
           <AdminKpi label="Active players · live" sw="Wachezaji hai"   value={active === null ? "" : formatNumber(active)} unavailable={active === null} pulse={active !== null} series={spark(trends.active)} />
           <AdminKpi label="GGR · 24h"             sw="Mapato"           value={ggr === null ? "" : `TZS ${formatTzsCompact(ggr).replace("TZS ", "")}`} unavailable={ggr === null} series={spark(trends.ggr)} />
           <AdminKpi label="Live matches"           sw="Mechi za moja"    value={liveMatches.length} pulse={liveMatches.length > 0} />
-        </div>
+        </KpiGrid>
 
         {/* Active matches — shown ONLY when a signed live feed actually reports
             matches. No perpetual "no live matches" card is rendered (we never build
@@ -170,7 +172,7 @@ export default async function AdminLivePage() {
             ))}
           </div>
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

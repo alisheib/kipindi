@@ -3,6 +3,7 @@ import { I } from "@/components/ui/glyphs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FiftyMark } from "@/components/brand";
 import { AuthShell } from "@/components/auth/auth-shell";
+import { AuthPanel, AuthHeader } from "@/components/auth/auth-panel";
 import { Field, Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { PasswordPair } from "@/components/auth/password-pair";
@@ -101,20 +102,12 @@ export default async function RegisterPage({
   return (
     <AuthShell>
 
-        <section
-          className="rounded-xl glass-panel p-6 space-y-5"
-        >
-          <div>
-            <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-gold-300">
-              {t.auth.signUpTitle}
-            </p>
-            <h1 className="mt-1.5 font-display text-[28px] font-bold leading-tight text-text tracking-[-0.02em]">
-              {t.auth.welcomeTo50pick}
-            </h1>
-            <p className="mt-1.5 text-[13.5px] text-text-muted">
-              {t.auth.tanzaniaMobile18}
-            </p>
-          </div>
+        <AuthPanel>
+          <AuthHeader
+            eyebrow={t.auth.signUpTitle}
+            title={t.auth.welcomeTo50pick}
+            subtitle={t.auth.tanzaniaMobile18}
+          />
 
           {referral && (
             <div
@@ -300,7 +293,7 @@ export default async function RegisterPage({
               {t.auth.signInTitle}
             </Link>
           </p>
-        </section>
+        </AuthPanel>
 
     </AuthShell>
   );

@@ -6,6 +6,7 @@ import { I } from "@/components/ui/glyphs";
 import { GiltCorner } from "@/components/brand";
 import { formatTzsAbs, formatTzsSigned, formatDayShort } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Stat } from "@/components/ui/stat";
 import { PnlChart } from "@/components/positions/pnl-chart";
 import { listPositionsForUser, getMarket } from "@/lib/server/market-service";
 import { currentSession } from "@/lib/server/auth-service";
@@ -151,9 +152,12 @@ export default async function PerformancePage() {
                 </p>
               </div>
               <div className="flex flex-wrap gap-8">
-                <Kpi label={t.performance.winRate} value={`${winRate}%`} />
-                <Kpi label={t.performance.marketsSettled} value={String(totalBets)} />
-                <Kpi label={t.performance.roi} value={`${roi >= 0 ? "+" : "−"}${Math.abs(roi).toFixed(1)}%`} />
+                {/* Stage 9b — the local `Kpi` fork is gone; this is the kit <Stat> at the
+                    same rung. (2xl = 21px mono / leading-none / mt-1.5, `caps` = 9.5px
+                    semibold 0.10em) — a pixel-for-pixel mapping, nothing repainted. */}
+                <Stat size="2xl" labelStyle="caps" label={t.performance.winRate} value={`${winRate}%`} />
+                <Stat size="2xl" labelStyle="caps" label={t.performance.marketsSettled} value={String(totalBets)} />
+                <Stat size="2xl" labelStyle="caps" label={t.performance.roi} value={`${roi >= 0 ? "+" : "−"}${Math.abs(roi).toFixed(1)}%`} />
               </div>
             </div>
           </section>
@@ -205,7 +209,10 @@ export default async function PerformancePage() {
                 <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle tabular-nums">{t.performance.longestStreak} {longestStreak}</p>
               </div>
               <div className="mt-3 flex items-center gap-2">
-                <span className="font-display text-[30px] font-bold leading-none tabular-nums text-text">{currentStreak}</span>
+                {/* §T5 — every numeral is JetBrains Mono, "no exceptions". This one was
+                    set in Sora, which also made the streak the only figure on the page
+                    whose digits did not line up with the P&L above it. */}
+                <span className="font-mono text-[30px] font-bold leading-none tabular-nums text-text">{currentStreak}</span>
                 <StreakChain current={currentStreak} longest={longestStreak} />
               </div>
             </div>
@@ -213,8 +220,13 @@ export default async function PerformancePage() {
 
           {/* ── KPI cards ─────────────────────────────────────────── */}
           <section className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(158px, 1fr))" }}>
-            <Stat label={t.performance.avgStake} value={formatTzsAbs(avgStake)} />
-            <Stat label={t.performance.totalStaked} value={formatTzsAbs(totalStaked)} />
+            {/* ⛔ `money` is not decoration on these two. The local fork this replaces
+                painted a player's own averaged and total stake as a BARE numeral, so the
+                balance-privacy eye did not reach it — a shoulder-surfed screen showed the
+                figures the rest of the app was masking. `money` restores the <Cash> path
+                and pins the face to mono (§M4), which is what it already was here. */}
+            <Stat size="xl" labelStyle="caps" boxed="panel" money label={t.performance.avgStake} value={formatTzsAbs(avgStake)} />
+            <Stat size="xl" labelStyle="caps" boxed="panel" money label={t.performance.totalStaked} value={formatTzsAbs(totalStaked)} />
           </section>
 
           {/* ── Recent settled ledger ─────────────────────────────── */}
@@ -250,23 +262,22 @@ export default async function PerformancePage() {
   );
 }
 
-function Kpi({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.10em] text-text-subtle">{label}</p>
-      <p className="mt-1.5 font-mono text-[21px] font-bold tabular-nums leading-none text-text">{value}</p>
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-border bg-bg-elevated px-4 py-3.5">
-      <p className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.10em] text-text-subtle">{label}</p>
-      <p className="mt-2 font-mono text-[18px] font-bold tabular-nums leading-[1.1] text-text">{value}</p>
-    </div>
-  );
-}
+/* ⭐ STAGE 9b — `Kpi` and a local `Stat` THAT SHADOWED THE KIT'S OWN EXPORT both lived
+ * here and are deleted. The shadow is the part worth remembering: this file imported
+ * nothing from `ui/stat`, so `<Stat>` in this page's JSX resolved to the copy 60 lines
+ * down and every reviewer read it as the kit component. A fork that borrows the
+ * primitive's NAME is invisible to exactly the person looking for forks.
+ *
+ * Mapping (both were exact on label + box; see `ui/stat.tsx`'s dictionaries):
+ *   Kpi   → size="2xl" labelStyle="caps"                       — pixel-identical
+ *   Stat  → size="xl"  labelStyle="caps" boxed="panel" money   — see below
+ *
+ * ⚠️ TWO RESIDUAL DELTAS on the boxed pair, both inside the tile and reported with
+ * this change rather than hidden: the value's leading normalises 1.1 → leading-tight
+ * and its gap under the label 8px → 4px, because the `xl` rung is shared with
+ * profile's strip and the market KPI. The tile is ~7px shorter; nothing moves
+ * horizontally and no type size, weight or colour changes.
+ */
 
 /** C2d streak pip-chain — filled gilt `hot` flames up to the current streak,
  *  muted pips out to the longest streak (your run vs your best). */

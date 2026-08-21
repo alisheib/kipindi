@@ -16,6 +16,8 @@ import { ExportDsarBundleButton, FulfillDsarButton } from "./dsar-controls";
 import { formatDateTime } from "@/lib/utils";
 import { I } from "@/components/ui/glyphs";
 import { DsarStatusBadge, dsarTypeLabel, accountStatusLabel } from "@/components/admin/status-badge";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Privacy / DSAR" };
 export const dynamic = "force-dynamic";
@@ -54,13 +56,13 @@ export default async function AdminPrivacyPage({
         sw="Faragha · Maombi ya data"
         actions={<Chip size="md" variant={pending.length > 0 ? "warning" : "neutral"}>{pending.length} pending · 30d SLA</Chip>}
       />
-      <div className="px-4 lg:px-6 py-5 space-y-4">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <AdminBody>
+        <KpiGrid>
           <AdminKpi label="Pending"  sw="Inasubiri"  value={String(pending.length)}   delta="< 30 days SLA" />
           <AdminKpi label="Fulfilled" sw="Imekamilika" value={String(fulfilled.length)} delta="lifetime" />
           <AdminKpi label="Access"    sw="Kupata"     value={String(requests.filter((r) => r.type === "ACCESS").length)} delta="GDPR Art. 15" />
           <AdminKpi label="Erasure"   sw="Kufuta"     value={String(requests.filter((r) => r.type === "ERASURE").length)} delta="GDPR Art. 17" />
-        </div>
+        </KpiGrid>
 
         <AdminCard
           title="Open requests"
@@ -180,7 +182,7 @@ export default async function AdminPrivacyPage({
             </div>
           </div>
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

@@ -70,6 +70,24 @@ export type KycDocSlot =
   | "SELFIE";
 
 /**
+ * Max DECODED size of one document image, in bytes. 3 MB — legible ID photos,
+ * bounded.
+ *
+ * ⛔ ONE HOME, AND THIS IS IT. This number was written twice: the browser
+ * compressor (`lib/client/kyc-image.ts`) stepped JPEG quality down until it fit,
+ * and the server (`server/kyc-service.ts`) refused anything over it. Two literals
+ * on the two ends of one upload is a drift bomb — raise the client's and every
+ * photo it lets through is rejected by the server after the player has waited for
+ * the encode; raise the server's and the client keeps degrading photos it no
+ * longer needs to. The server module cannot be the home because it is not
+ * importable from a client component (it pulls `./store`, `./locks` and
+ * `./crypto`, i.e. Prisma and `node:` builtins, into the browser graph — the same
+ * break CLAUDE.md records for `hashKey64`). This file is already imported by both
+ * ends and has no imports of its own, so it is.
+ */
+export const MAX_DOC_BYTES = 3 * 1024 * 1024;
+
+/**
  * What we know about a number's shape, and how sure we are.
  *
  * ⭐ THE THREE ARMS ARE THE WHOLE HONESTY OF THIS UNIT, and they behave differently:

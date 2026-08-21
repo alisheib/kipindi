@@ -37,6 +37,8 @@ import {
 } from "./poll-actions";
 import { PollFilterToolbar } from "./poll-filters";
 import { resolveRange } from "@/lib/server/date-range";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · AI poll generation" };
 export const dynamic = "force-dynamic";
@@ -152,9 +154,9 @@ export default async function AdminAIPollsPage({
         title="AI poll generation"
         sw="Uzalishaji wa kura · Claude AI"
       />
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         {/* KPI strip */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiGrid>
           <AdminKpi
             label="Published today"
             sw="Zilizochapishwa leo"
@@ -181,7 +183,7 @@ export default async function AdminAIPollsPage({
             value={fmtUsd(spend.totalUsd)}
             delta={`${spend.totalGenerations} generations · ${(spend.totalTokens / 1000).toFixed(1)}k tokens`}
           />
-        </div>
+        </KpiGrid>
 
         {/* Info banner + generate form */}
         <AdminCard>
@@ -403,7 +405,7 @@ export default async function AdminAIPollsPage({
             </>
           )}
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

@@ -11,6 +11,7 @@ import { Chip } from "@/components/ui/chip";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Stat } from "@/components/ui/stat";
 import { ReferralShare } from "./invite-client";
 import { fill } from "@/lib/utils";
 import { getBonusConfig } from "@/lib/server/bonus-config";
@@ -81,20 +82,22 @@ function Cap({ children, className = "" }: { children: React.ReactNode; classNam
   );
 }
 
-function Kpi({ label, value, sub, gold }: { label: string; value: string; sub: string; gold?: boolean }) {
-  return (
-    <div className="rounded-xl glass-panel p-3.5">
-      <div className="mb-2 flex items-center justify-between">
-        <Cap>{label}</Cap>
-        <span className="text-text-subtle">{gold ? <I.coins s={14} /> : <I.users s={14} />}</span>
-      </div>
-      <div className={`font-mono text-[24px] font-bold leading-none tracking-[-0.02em] ${gold ? "text-gold-300" : "text-text"}`}>
-        {value}
-      </div>
-      <div className="mt-1.5 font-mono text-[10.5px] text-text-subtle">{sub}</div>
-    </div>
-  );
-}
+/* ⭐ STAGE 9b — `Kpi` is deleted; the two tiles are `ui/stat` at the `3xl` rung
+ * (24px mono, leading-none) in the `glass` box, with `strong` labels — the same
+ * 9.5px bold 0.1em metrics `Cap` sets, which is why `Cap` and this fork always
+ * agreed and why the dictionary carries them.
+ *
+ * ⛔ THE VALUE'S `tracking-[-0.02em]` IS DROPPED ON PURPOSE. §M4: "money is mono,
+ * tabular, NEVER letter-spaced — tracking is for identifiers". The earned figure
+ * was the only money on the page wearing negative tracking, and <Stat money>
+ * clears it at source so no caller can put it back.
+ *
+ * ⚠️ Two residual deltas, both vertical and both inside the tile: the gap under the
+ * label row 8px → 6px and the gap above the `sub` line 6px → 2px (the sub is now
+ * the primitive's `hint`, which also gives it leading-tight). The tile is ~6px
+ * shorter; no type size, weight or colour moves.
+ *
+ * `Cap` survives — it still has two standalone caption call sites below. */
 
 export default async function InvitePage() {
   const session = await currentSession();
@@ -237,8 +240,33 @@ export default async function InvitePage() {
 
       {/* Stat tiles */}
       <div className="grid grid-cols-2 gap-2.5">
-        <Kpi label={t.common.invite} value={String(s.recruitCount)} sub={s.recruitCount > 0 ? t.common.allTime : "—"} />
-        <Kpi label={t.proposals.earned} value={formatNumber(s.earnedTzs)} sub="TZS" gold />
+        <Stat
+          size="3xl"
+          labelStyle="strong"
+          boxed="glass"
+          label={t.common.invite}
+          value={String(s.recruitCount)}
+          hint={s.recruitCount > 0 ? t.common.allTime : "—"}
+          icon={<I.users s={14} />}
+          iconAlign="end"
+        />
+        {/* ⛔ `money` is load-bearing here: this is the player's own EARNED referral
+            balance and the fork rendered it as a bare numeral, outside the <Cash>
+            privacy mask that covers every other personal figure in the product.
+            `tone="gold"` stays FLAT rather than `struck` — M3's struck gilt is a
+            separate, visible decision and is not smuggled in by a consolidation. */}
+        <Stat
+          size="3xl"
+          labelStyle="strong"
+          boxed="glass"
+          tone="gold"
+          money
+          label={t.proposals.earned}
+          value={formatNumber(s.earnedTzs)}
+          hint="TZS"
+          icon={<I.coins s={14} />}
+          iconAlign="end"
+        />
       </div>
 
       {/* How it works */}

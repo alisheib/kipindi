@@ -21,9 +21,42 @@
  */
 
 import { I, type GlyphKey } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
 import { cn } from "@/lib/utils";
 
-export type CalloutTone = "warning" | "info" | "brand" | "danger" | "success";
+/**
+ * ⭐ THE ONE MAINTENANCE AMBER (stage 9, 2026-08-21).
+ *
+ * "Temporarily unavailable" was painted in THREE different ambers, none of which
+ * knew about the others:
+ *   • maintenance-badge.tsx    16% fill / 42% edge, over transparent
+ *   • proposals-state-views.tsx 14% fill / 38% edge, over --bg-elevated
+ *   • this file's `warning` tone  --warning-bg / --warning-border (18% / 36%)
+ *
+ * The token pair wins: it is the only one of the three that is already named in
+ * globals.css, which is where a paint value belongs (DESIGN_AUTHORITY §0a). The
+ * other two were literals written twice.
+ *
+ * ⚠️ The two forms are NOT interchangeable and both are needed. `bg`/`border`
+ * composite over whatever is behind them; `panelBg`/`panelBorder` are OPAQUE,
+ * mixed against `--bg-elevated`, which is what a full-width banner on the page
+ * ground needs — swapping one for the other is a visible change, not a tidy-up.
+ */
+export const MAINTENANCE_AMBER = {
+  bg: "var(--warning-bg)",
+  border: "var(--warning-border)",
+  panelBg: "color-mix(in oklab, var(--warning-500) 18%, var(--bg-elevated))",
+  panelBorder: "color-mix(in oklab, var(--warning-500) 36%, var(--border))",
+  fg: "var(--warning-500)",
+} as const;
+
+export type CalloutTone =
+  | "warning" | "info" | "brand" | "danger" | "success"
+  /* ⭐ ADDED 2026-08-21. `gold` is the HONEST name for what `brand` already was —
+   * a gilt box, not a royal one — so the two share one object and `brand` stays
+   * as a documented alias; renaming the call sites is a separate, reviewable
+   * change. `maintenance` and `neutral` arrive from proposals-state-views. */
+  | "gold" | "maintenance" | "neutral";
 
 // `strongBox` is NOT just "the same but 2px". The normal borders are deliberately
 // low-opacity so an inline note sits quietly inside content — and at 2px that
@@ -39,15 +72,80 @@ export type CalloutTone = "warning" | "info" | "brand" | "danger" | "success";
 // already argues. ⛔ Never re-add a modifier to a pre-mixed token — reach for a
 // second token instead. brand/danger/success below sit on OPAQUE tokens
 // (`--gold-500`, `--no-500`, `--yes-500`), so their modifiers are correct.
-const TONE: Record<CalloutTone, { box: string; strongBox: string; icon: string; glyph: GlyphKey }> = {
-  warning: { box: "border-warning-border bg-warning-bg", strongBox: "border-warning-fg bg-warning-bg", icon: "text-warning-fg", glyph: "warning" },
-  info: { box: "border-info-border bg-info-bg", strongBox: "border-info-fg bg-info-bg", icon: "text-info", glyph: "info" },
-  brand: { box: "border-gold-500/30 bg-gold-500/10", strongBox: "border-gold-400 bg-gold-500/15", icon: "text-gold-300", glyph: "shieldcheck" },
-  danger: { box: "border-no-500/40 bg-no-500/10", strongBox: "border-no-500 bg-no-500/15", icon: "text-no-300", glyph: "alertCircle" },
+//
+// `panel` is the OPAQUE form of the same tone — the tint mixed against
+// `--bg-elevated` instead of composited over whatever happens to be behind. A
+// full-bleed banner sitting on the page ground needs it; an inline note inside a
+// panel does not. ⛔ It is a separate rendering, not a second definition of the
+// colour: both forms name the same source token at the same percentage.
+// `fg` is the raw colour for the stacked layout's icon plate, where the glyph is
+// painted by inline `color` rather than by a Tailwind class.
+type ToneSpec = {
+  box: string;
+  strongBox: string;
+  icon: string;
+  glyph: GlyphKey;
+  panel: { bg: string; border: string };
+  fg: string;
+};
+
+// The gilt box. `brand` and `gold` are ONE object so the alias can never drift
+// from the name it aliases.
+const GILT: ToneSpec = {
+  box: "border-gold-500/30 bg-gold-500/10", strongBox: "border-gold-400 bg-gold-500/15", icon: "text-gold-300", glyph: "shieldcheck",
+  panel: { bg: "color-mix(in oklab, var(--gold-500) 10%, var(--bg-elevated))", border: "color-mix(in oklab, var(--gold-500) 30%, var(--border))" },
+  fg: "var(--gold-300)",
+};
+
+const TONE: Record<CalloutTone, ToneSpec> = {
+  warning: {
+    box: "border-warning-border bg-warning-bg", strongBox: "border-warning-fg bg-warning-bg", icon: "text-warning-fg", glyph: "warning",
+    panel: { bg: MAINTENANCE_AMBER.panelBg, border: MAINTENANCE_AMBER.panelBorder }, fg: "var(--warning-fg)",
+  },
+  info: {
+    box: "border-info-border bg-info-bg", strongBox: "border-info-fg bg-info-bg", icon: "text-info", glyph: "info",
+    panel: { bg: "color-mix(in oklab, var(--info-500) 18%, var(--bg-elevated))", border: "color-mix(in oklab, var(--info-500) 36%, var(--border))" },
+    fg: "var(--info)",
+  },
+  brand: GILT,
+  gold: GILT,
+  danger: {
+    box: "border-no-500/40 bg-no-500/10", strongBox: "border-no-500 bg-no-500/15", icon: "text-no-300", glyph: "alertCircle",
+    panel: { bg: "color-mix(in oklab, var(--no-500) 10%, var(--bg-elevated))", border: "color-mix(in oklab, var(--no-500) 40%, var(--border))" },
+    fg: "var(--no-300)",
+  },
   // DS sweep (2026-08-08) — the confirmation family. Several pages hand-rolled
   // this exact green box (RG "limits saved" was the flagged one); one home now.
-  success: { box: "border-yes-700 bg-yes-500/10", strongBox: "border-yes-500 bg-yes-500/15", icon: "text-yes-300", glyph: "checkCircle" },
+  success: {
+    box: "border-yes-700 bg-yes-500/10", strongBox: "border-yes-500 bg-yes-500/15", icon: "text-yes-300", glyph: "checkCircle",
+    panel: { bg: "color-mix(in oklab, var(--yes-500) 10%, var(--bg-elevated))", border: "color-mix(in oklab, var(--yes-500) 40%, var(--border))" },
+    fg: "var(--yes-300)",
+  },
+  // "Back shortly" — deliberately amber and NEVER the NO-rose danger hue, so a
+  // player cannot read a scheduled pause as a failure. The pause glyph (not a
+  // gear, not a warning triangle) carries the same promise.
+  maintenance: {
+    box: "border-warning-border bg-warning-bg", strongBox: "border-warning-fg bg-warning-bg", icon: "text-warning-fg", glyph: "pause",
+    panel: { bg: MAINTENANCE_AMBER.panelBg, border: MAINTENANCE_AMBER.panelBorder }, fg: MAINTENANCE_AMBER.fg,
+  },
+  // Honest "not available", guided elsewhere. Dashed edge because B10.3 makes
+  // dashed the empty-state border, and that is exactly what this state is.
+  neutral: {
+    box: "border-dashed border-border bg-bg-elevated/40", strongBox: "border-dashed border-border-strong bg-bg-elevated/40", icon: "text-text-subtle", glyph: "info",
+    panel: { bg: "var(--bg-overlay)", border: "var(--border)" },
+    fg: "var(--text-subtle)",
+  },
 };
+
+// ⚠️ SIZE IS THE NOTICE'S WEIGHT, NOT ITS ALARM — `emphasis` is the alarm.
+// `sm` is the inline note this component was born as. `md` is the standing
+// page-level notice (payout-status, feature banners): a bigger box, a display
+// title and a body one step lighter, because at `sm` a notice that must be read
+// before money moves reads as a footnote and gets skimmed past.
+const SIZE = {
+  sm: { box: "gap-2.5 rounded-md px-3 py-2.5", icon: 14, title: "font-bold text-text", body: "text-caption leading-snug text-text-secondary", titleGap: "" },
+  md: { box: "gap-3 rounded-xl px-4 py-3.5", icon: 17, title: "font-display font-semibold text-text text-[13.5px]", body: "text-[12.5px] leading-snug text-text-muted", titleGap: "mt-1" },
+} as const;
 
 export function Callout({
   tone = "info",
@@ -57,6 +155,14 @@ export function Callout({
   className,
   emphasis = "normal",
   live = false,
+  size = "sm",
+  surface = "tint",
+  layout = "row",
+  meta,
+  badge,
+  action,
+  role,
+  titleAs: TitleTag = "p",
 }: {
   tone?: CalloutTone;
   /** Optional bold lead line. */
@@ -65,6 +171,39 @@ export function Callout({
   /** Override the tone's default glyph. */
   glyph?: GlyphKey;
   className?: string;
+  /**
+   * `sm` (default) = the inline note. `md` = the standing page-level notice —
+   * bigger box, display title, lighter body. See the note on `SIZE` above.
+   */
+  size?: "sm" | "md";
+  /**
+   * `tint` (default) composites the tone over whatever is behind the box.
+   * `panel` paints it OPAQUE, mixed against `--bg-elevated`.
+   * ⛔ Not interchangeable: a full-width banner on the page ground needs `panel`
+   * or the tint reads at the wrong strength against an un-elevated surface.
+   */
+  surface?: "tint" | "panel";
+  /**
+   * `row` (default) = glyph beside the text. `stack` = the centred BLOCK form:
+   * an <IconPlate>, an optional badge, a display title, body, and an action — the
+   * shape a page uses when the notice IS the page (a blocked composer, a feature
+   * that is switched off). It is the same tone system, not a second component.
+   */
+  layout?: "row" | "stack";
+  /** Mono uppercase sub-line under the body — e.g. "Since 29 Jul, 14:20". */
+  meta?: React.ReactNode;
+  /** `stack` only — a flag between the plate and the title (e.g. a state badge). */
+  badge?: React.ReactNode;
+  /** `stack` only — the way forward. A notice that is a dead end is a defect. */
+  action?: React.ReactNode;
+  /**
+   * Announce as `note` (default), `status` (a passive state change), or `alert`.
+   * Overrides whatever `live` would have chosen; `live` is kept for the callers
+   * that already use it.
+   */
+  role?: "note" | "status" | "alert";
+  /** Heading level for `title`. A page-level `stack` should be a real heading. */
+  titleAs?: "p" | "h1" | "h2" | "h3";
   /**
    * `strong` = a heavier border and a display-sized title. For the small number
    * of callouts describing a condition that is actively costing something right
@@ -82,24 +221,72 @@ export function Callout({
   const tk = TONE[tone];
   const Glyph = I[glyph ?? tk.glyph];
   const strong = emphasis === "strong";
+  const sz = SIZE[size];
+  const panel = surface === "panel";
+  // ⛔ On `panel` the tone's colour arrives as INLINE style, so the class-based
+  // box must not also be applied — a flat class background would sit under the
+  // inline one and the two would disagree the moment either is edited.
+  const panelStyle = panel ? { background: tk.panel.bg, borderColor: tk.panel.border } : undefined;
+  const resolvedRole = role ?? (live ? "alert" : "note");
+
+  const metaLine = meta
+    ? <p className="mt-1.5 font-mono text-[10.5px] uppercase tracking-[0.12em] text-text-subtle">{meta}</p>
+    : null;
+
+  if (layout === "stack") {
+    return (
+      <div
+        role={resolvedRole}
+        className={cn(
+          "flex flex-col items-center rounded-card border p-6 text-center sm:p-8",
+          panel ? null : strong ? tk.strongBox : tk.box,
+          className,
+        )}
+        style={panelStyle}
+      >
+        <IconPlate
+          size={56}
+          fg={tk.fg}
+          bg="color-mix(in oklab, var(--bg-base) 55%, transparent)"
+          border={`1px solid ${panel ? tk.panel.border : "currentColor"}`}
+          aria-hidden
+        >
+          <Glyph s={26} />
+        </IconPlate>
+        {badge ? <div className="mt-3.5">{badge}</div> : null}
+        {title ? (
+          <TitleTag className="mt-3 font-display text-[18px] font-bold leading-snug text-text">{title}</TitleTag>
+        ) : null}
+        {children ? (
+          <div className="mx-auto mt-2 max-w-[42ch] text-[13px] leading-relaxed text-text-muted">{children}</div>
+        ) : null}
+        {metaLine}
+        {action ? <div className="mt-5">{action}</div> : null}
+      </div>
+    );
+  }
+
   return (
     <div
-      role={live ? "alert" : "note"}
+      role={resolvedRole}
       className={cn(
-        "flex items-start gap-2.5 rounded-md border px-3 py-2.5",
+        "flex items-start border",
+        sz.box,
         strong && "border-2 rounded-lg p-3",
-        strong ? tk.strongBox : tk.box,
+        panel ? null : strong ? tk.strongBox : tk.box,
         className,
       )}
+      style={panelStyle}
     >
-      <span aria-hidden className={cn("shrink-0 mt-[1px]", tk.icon)}>
-        <Glyph s={strong ? 18 : 14} />
+      <span aria-hidden className={cn("shrink-0", size === "md" ? "mt-0.5" : "mt-[1px]", tk.icon)}>
+        <Glyph s={strong ? 18 : sz.icon} />
       </span>
-      <div className="text-caption leading-snug text-text-secondary">
+      <div className={cn(sz.body, size === "md" && "min-w-0")}>
         {title
-          ? <p className={cn("font-bold text-text", strong && "font-display text-[15px] mb-1.5")}>{title}</p>
+          ? <TitleTag className={cn(sz.title, strong && "font-display text-[15px] mb-1.5")}>{title}</TitleTag>
           : null}
-        {children}
+        {title && sz.titleGap ? <div className={sz.titleGap}>{children}</div> : children}
+        {metaLine}
       </div>
     </div>
   );

@@ -14,6 +14,8 @@ import { listMarkets, getSettlementHealth, type SettlementHealth } from "@/lib/s
 import { hasDatabase, pingDatabase } from "@/lib/server/prisma";
 import { formatTime, formatTzs } from "@/lib/utils";
 import { getPlatformConfig } from "@/lib/server/platform-config";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · System" };
 export const dynamic = "force-dynamic";
@@ -67,14 +69,14 @@ export default async function AdminSystemPage() {
   return (
     <>
       <AdminPageHead title="System" sw="Mfumo" />
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         {/* Health KPIs */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiGrid>
           <AdminKpi label="Audit chain"   sw="Mlolongo wa ukaguzi" value={chain.valid ? "Valid" : "BROKEN"} delta={`${auditCount.toLocaleString()} entries`} deltaDir={chain.valid ? "up" : "down"} pulse={!chain.valid} />
           <AdminKpi label="Total users"   sw="Watumiaji"            value={totalUsers.toLocaleString()} />
           <AdminKpi label="Markets live"  sw="Soko hai"              value={liveMarkets.toLocaleString()} delta={`${resolvedMarkets} resolved`} />
           <AdminKpi label="SMS provider"  sw="Watoa SMS"            value={smsHealth.sent + smsHealth.failed === 0 ? "Idle" : `${(smsHealth.successRate * 100).toFixed(1)}% ok`} delta={`${smsClient.name} · ${smsHealth.sent} sent`} />
-        </div>
+        </KpiGrid>
 
         {/* Maintenance mode — global pause of new bets + deposits (§9.3 #1) */}
         <AdminCard
@@ -212,7 +214,7 @@ export default async function AdminSystemPage() {
             </p>
           )}
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <KpiGrid>
             <AdminKpi
               label="Ready to settle"
               sw="Tayari kulipwa"
@@ -244,7 +246,7 @@ export default async function AdminSystemPage() {
               }
               deltaDir={settlement.scheduler.armed > 0 ? "up" : undefined}
             />
-          </div>
+          </KpiGrid>
 
           <p className="mt-3 text-caption text-text-secondary">
             A resolved market is <strong>adjudicated, not paid</strong>. Its money stays in the pool
@@ -474,7 +476,7 @@ export default async function AdminSystemPage() {
             </p>
           </div>
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

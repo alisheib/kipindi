@@ -33,6 +33,8 @@
  * Family 3 (two-officer resolution ceremony) is first.
  */
 
+import { PAYMENT_METHODS } from "@/lib/payment-providers";
+
 export type AdminLabel = { en: string; sw?: string };
 
 /** Bilingual inline join: `"English · Kiswahili"` (falls back to English alone
@@ -214,9 +216,11 @@ export const ACCOUNT = {
  * /admin/payments printed a bare `DEPOSIT` / `WITHDRAWAL` chip on its retry queue.
  *
  * ⛔ The provider words are BRAND names, not enum members: they are spelled the way
- * the brand spells itself ("M-Pesa", "HaloPesa", "Mixx by Yas"), lifted verbatim
- * from `payment-ops.ts`'s already-shipped MNO list and the confirmed rail comments
- * in `selcom.ts`. `.replace(/_/g, " ")` on a brand is a misspelling, not a label.
+ * the brand spells itself ("M-Pesa", "HaloPesa", "Mixx by Yas"). ⚠️ They used to be
+ * COPIED here from `payment-ops.ts`'s MNO list and the confirmed rail comments in
+ * `selcom.ts` — one of eight such copies. They are now READ from the one catalogue,
+ * `@/lib/payment-providers`. `.replace(/_/g, " ")` on a brand is a misspelling, not
+ * a label.
  *
  * ⭐ ADJUSTMENT_CREDIT/DEBIT keep the accounting word rather than an in/out word:
  * the sign lives in the amount column beside them (`wallet-service.ts` picks the
@@ -246,17 +250,21 @@ export const MONEY = {
   statusReversed:   { en: "Reversed" },
   statusCancelled:  { en: "Cancelled" },
   // ── Rail / provider (brand spellings) ────────────────────────────────────
-  providerMpesa:        { en: "M-Pesa" },
-  providerTigoPesa:     { en: "Tigo Pesa" },
-  providerAirtelMoney:  { en: "Airtel Money" },
-  providerHaloPesa:     { en: "HaloPesa" },
-  providerMixx:         { en: "Mixx by Yas" },
-  providerTtclPesa:     { en: "TTCL Pesa" },
-  providerCard:         { en: "Card" },
-  providerBankTransfer: { en: "Bank transfer" },
+  // ⛔ READ, NOT RETYPED. The nine spellings live in `@/lib/payment-providers`,
+  // which the wallet, the receipt and the choosers import too — a brand rename
+  // (Tigo Pesa → Mixx by Yas already happened once) is now ONE edit. The keys stay
+  // so every existing call site is untouched, and the strings are byte-identical.
+  providerMpesa:        { en: PAYMENT_METHODS.MPESA.name },
+  providerTigoPesa:     { en: PAYMENT_METHODS.TIGO_PESA.name },
+  providerAirtelMoney:  { en: PAYMENT_METHODS.AIRTEL_MONEY.name },
+  providerHaloPesa:     { en: PAYMENT_METHODS.HALO_PESA.name },
+  providerMixx:         { en: PAYMENT_METHODS.MIXX.name },
+  providerTtclPesa:     { en: PAYMENT_METHODS.TTCL_PESA.name },
+  providerCard:         { en: PAYMENT_METHODS.CARD.name },
+  providerBankTransfer: { en: PAYMENT_METHODS.BANK_TRANSFER.name },
   /** Not a gateway at all — a movement that never left 50pick (stake, payout,
    *  bonus, adjustment). "Internal" is what the ledger calls it. */
-  providerInternal:     { en: "Internal" },
+  providerInternal:     { en: PAYMENT_METHODS.INTERNAL.name },
 } satisfies Record<string, AdminLabel>;
 
 /**

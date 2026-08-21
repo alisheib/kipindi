@@ -39,6 +39,8 @@ import { formatTzs, formatDateTimeSafe } from "@/lib/utils";
 import { txnTypeLabel, txnStatusLabel, txnProviderLabel } from "@/components/admin/status-badge";
 import type { StoredTxn } from "@/lib/server/store";
 import { payoutRailLabel } from "@/lib/server/selcom";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const dynamic = "force-dynamic";
 
@@ -120,9 +122,9 @@ export default async function AdminTransactionsPage({ searchParams }: { searchPa
           went straight from AdminPageHead to the KPI grid, so every row sat flush
           against the sidebar with zero left padding while all 42 sibling routes
           had `px-4 lg:px-6 py-5`. */}
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
       {/* Compliance totals — over the WHOLE filtered set, not this page. */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <KpiGrid>
         <AdminKpi label="Deposits in" sw="Amana zilizoingia" value={formatTzs(summary.depositsConfirmedTzs)} />
         <AdminKpi label="Withdrawals out" sw="Malipo yaliyotoka" value={formatTzs(summary.withdrawalsConfirmedTzs)} />
         <AdminKpi label="Fees & commission" sw="Ada na tume" value={formatTzs(summary.feesTzs)} />
@@ -132,7 +134,7 @@ export default async function AdminTransactionsPage({ searchParams }: { searchPa
           value={summary.unreconciledCount.toLocaleString()}
           pulse={summary.unreconciledCount > 0}
         />
-      </div>
+      </KpiGrid>
 
       {/* The three states an operator must never miss. Each links into its filter. */}
       {(summary.unreconciledCount > 0 || summary.amlCount > 0 || summary.inFlightCount > 0) && (
@@ -302,7 +304,7 @@ export default async function AdminTransactionsPage({ searchParams }: { searchPa
         )}
         <AdminPagination page={page} total={total} baseHref={baseHref} />
       </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

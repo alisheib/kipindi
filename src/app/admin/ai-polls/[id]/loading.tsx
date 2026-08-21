@@ -1,10 +1,11 @@
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
+import { AdminBody } from "@/components/admin/admin-body";
 
 export default function Loading() {
   return (
     <>
       <AdminPageHead title="Poll detail" sw="Maelezo ya kura" />
-      <div className="px-4 lg:px-6 py-5 space-y-4 animate-pulse">
+      <AdminBody className="animate-pulse">
         {/* Header card skeleton */}
         <AdminCard>
           <div className="flex items-start justify-between gap-4">
@@ -66,7 +67,7 @@ export default function Loading() {
             ))}
           </div>
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

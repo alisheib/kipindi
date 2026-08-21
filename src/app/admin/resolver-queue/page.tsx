@@ -22,6 +22,7 @@ import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { ControlLocked } from "@/components/admin/control-locked";
 import { formatDateTime } from "@/lib/utils";
 import { CEREMONY, SELECTION } from "@/lib/admin-status-lexicon";
+import { AdminBody } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Resolver queue" };
 export const dynamic = "force-dynamic";
@@ -155,7 +156,7 @@ export default async function ResolverQueuePage({
           </div>
         }
       />
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         {/* Filters */}
         <AdminCard padding="p-3">
           <form className="flex flex-wrap items-center gap-2">
@@ -397,7 +398,7 @@ export default async function ResolverQueuePage({
           </div>
         )}
         <AdminPagination total={pending.length} page={page} baseHref={baseHref} />
-      </div>
+      </AdminBody>
     </>
   );
 }

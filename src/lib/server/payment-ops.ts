@@ -14,14 +14,18 @@ import { db } from "./store";
 import type { StoredTxn } from "./store";
 import { loadConfig, saveConfig } from "./config-store";
 import { audit } from "./audit";
+import { MOBILE_MONEY_METHODS, type MobileMoneyMethodId } from "@/lib/payment-providers";
 
-export type Mno = "MPESA" | "AIRTEL_MONEY" | "HALO_PESA" | "MIXX";
-export const MNOS: { id: Mno; label: string }[] = [
-  { id: "MPESA", label: "M-Pesa" },
-  { id: "AIRTEL_MONEY", label: "Airtel Money" },
-  { id: "HALO_PESA", label: "HaloPesa" },
-  { id: "MIXX", label: "Mixx by Yas" },
-];
+/**
+ * ⛔ THE RAIL LIST IS NOT WRITTEN HERE. Both the four ids and their brand spellings
+ * come from `@/lib/payment-providers`, which the player surfaces can import too —
+ * this module cannot be their source because it pulls Prisma in, which is exactly
+ * why the literals that used to sit here were copied into six other files instead
+ * of imported. Order and spelling are unchanged.
+ */
+export type Mno = MobileMoneyMethodId;
+export const MNOS: { id: Mno; label: string }[] =
+  MOBILE_MONEY_METHODS.map((m) => ({ id: m.id as Mno, label: m.name }));
 
 const DAY_MS = 24 * 3600_000;
 

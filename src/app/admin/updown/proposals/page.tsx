@@ -17,6 +17,8 @@ import { currentSession } from "@/lib/server/auth-service";
 import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { ControlLocked } from "@/components/admin/control-locked";
 import { updownProposalStateLabel } from "@/components/admin/status-badge";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Up & Down · AI proposals" };
 export const dynamic = "force-dynamic";
@@ -181,8 +183,8 @@ export default async function UpDownProposalsPage({
   return (
     <>
       <AdminPageHead title="Up & Down · AI proposals" sw="Mapendekezo ya AI" />
-      <div className="px-4 lg:px-6 py-5 space-y-4">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <AdminBody>
+        <KpiGrid>
           {/* ⚠️ Keep every `delta` SHORT. AdminKpi renders it `whitespace-nowrap` with no
               truncate, so at 360px a long string is clipped mid-word by the card. Found by
               looking at the xs screenshot — the suite passed, because clipping inside the card
@@ -191,7 +193,7 @@ export default async function UpDownProposalsPage({
           <AdminKpi label="Armed" sw="Zimeanzishwa" value={String(counts.ARMED)} delta="live chains" spark={false} />
           <AdminKpi label="Didn't pass" sw="Hayakupita" value={String(counts.FILTERED + counts.VALIDATION_FAILED)} delta="unreadable" spark={false} />
           <AdminKpi label="AI spend" sw="Matumizi" value={formatUsd(spend)} delta={`${allProposals.length} generation${allProposals.length === 1 ? "" : "s"}`} spark={false} />
-        </div>
+        </KpiGrid>
 
         {/* ── The AI switch lives in ONE place; this page reports it, never mirrors it. ── */}
         {!aiOn && (
@@ -464,7 +466,7 @@ export default async function UpDownProposalsPage({
             </p>
           </div>
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

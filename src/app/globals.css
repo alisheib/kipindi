@@ -1114,6 +1114,22 @@ body {
    chip. Was `style={{ fontWeight: 700 }}` inline on the market card. */
 .chip-strong { font-weight: 700; }
 
+/* ---------- CountBadge's lift ----------
+   §M2: a surface PICKS a rung, it never composes one — and a rung is a CLASS, not an
+   inline `boxShadow`. The kit `<CountBadge>` sets `data-lift="{tone}"`; the shadow lives
+   here, once, per tone.
+   ⭐ Two tones, two answers, and the difference is the point. The BELL's pip sits on the
+   top bar's glass, where a flat drop disappears, so it takes a coloured halo in its own
+   tone; the CHAT pip sits on a flat canvas and wants only the ladder's rung. Before this,
+   the shadow was passed IN as a prop — which put a raw `oklch()` at a call site and made
+   the primitive built to end that drift its own carrier of it. A caller can no longer
+   pass a shadow at all. */
+.count-badge[data-lift="rose"] {
+  box-shadow: 0 0 8px var(--no-500), 0 2px 4px color-mix(in oklab, var(--royal-950) 40%, transparent);
+}
+.count-badge[data-lift="brand"],
+.count-badge[data-lift="pearl"] { box-shadow: var(--shadow-2); }
+
 /* ---------- LiveDot + animations ---------- */
 /* Bright red-orange pulsing dot. Uses opacity animation so it works
    inside overflow:hidden containers (market cards). The dot itself

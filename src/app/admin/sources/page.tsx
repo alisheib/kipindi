@@ -6,6 +6,8 @@ import { formatDate } from "@/lib/utils";
 import { listSources, listDisabledCategories, seedDefaultSources, getGeneratableCategories } from "@/lib/server/source-registry";
 import type { MarketCategory } from "@/lib/server/market-service";
 import { ToggleSource, RemoveSource, ToggleCategory, AddSourceForm } from "./source-controls";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Sources" };
 export const dynamic = "force-dynamic";
@@ -37,13 +39,13 @@ export default async function AdminSourcesPage() {
         sw="Vyanzo na aina"
         actions={<AddSourceForm />}
       />
-      <div className="px-4 lg:px-6 py-5 space-y-4">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <AdminBody>
+        <KpiGrid>
           <AdminKpi label="Trusted sources"     sw="Vyanzo vinavyoaminika" value={String(enabled.length)} delta={`${all.length} total`} />
           <AdminKpi label="Disabled sources"    sw="Vyanzo vimezimwa"      value={String(all.length - enabled.length)} delta="not in use" />
           <AdminKpi label="Generatable categories" sw="Aina zinazozalishwa" value={String(generatable.size)} delta={`of ${CATEGORIES.length} · AI can generate these`} />
           <AdminKpi label="Disabled categories" sw="Aina zilizozimwa"      value={String(disabledCats.size)} />
-        </div>
+        </KpiGrid>
 
         {/* Categories */}
         <AdminCard
@@ -160,7 +162,7 @@ export default async function AdminSourcesPage() {
             </div>
           </div>
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

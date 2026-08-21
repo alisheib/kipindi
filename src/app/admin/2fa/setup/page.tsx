@@ -7,6 +7,7 @@ import { db } from "@/lib/server/store";
 import { hasTotp } from "@/lib/server/totp";
 import { TotpSetupClient } from "./setup-client";
 import { isStaffRole } from "@/lib/server/roles";
+import { AdminBody } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · 2FA setup" };
 export const dynamic = "force-dynamic";
@@ -41,7 +42,7 @@ export default async function TotpSetupPage({ searchParams }: { searchParams?: P
           admin/layout.tsx returns a bare fragment for it: no sidebar, and none of
           the console measure. It was the single widest surface in the product —
           a QR-enrolment form spanning the ENTIRE viewport. It caps itself. */}
-      <div className="mx-auto w-full max-w-form px-4 lg:px-6 py-5 space-y-4" data-measure="form">
+      <AdminBody className="mx-auto w-full max-w-form" data-measure="form">
         <AdminCard>
           <p className="text-body-sm text-text-secondary leading-relaxed">
             Required for all ADMIN, COMPLIANCE, and MODERATOR roles. We use the open TOTP standard (RFC 6238)
@@ -71,7 +72,7 @@ export default async function TotpSetupPage({ searchParams }: { searchParams?: P
             </p>
           </div>
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

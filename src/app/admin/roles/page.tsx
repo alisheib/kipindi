@@ -4,6 +4,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { isAdmin } from "@/lib/server/roles";
 import { getGrantMatrix } from "@/lib/server/rbac";
 import { RolesMatrix } from "./roles-matrix";
+import { AdminBody } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Role permissions" };
 export const dynamic = "force-dynamic";
@@ -18,7 +19,7 @@ export default async function AdminRolesPage() {
   return (
     <>
       <AdminPageHead title="Role permissions" sw="Ruhusa za wajibu" />
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         <AdminCard className="border-info-border bg-info-bg">
           <div className="text-caption text-text-secondary space-y-1">
             <p className="text-text font-bold">What this is</p>
@@ -31,7 +32,7 @@ export default async function AdminRolesPage() {
           </div>
         </AdminCard>
         <RolesMatrix matrix={matrix} />
-      </div>
+      </AdminBody>
     </>
   );
 }

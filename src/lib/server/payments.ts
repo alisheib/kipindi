@@ -27,10 +27,21 @@
 import { audit } from "./audit";
 import { randomId } from "./crypto";
 import { getPaymentProvider, getDemoAsyncEnabled, type PaymentProviderId } from "./payment-control";
+import type { PaymentMethodId } from "@/lib/payment-providers";
 import { isLiveMoneyMode } from "./runtime-mode";
 import { selcomEnv, selcomDisburseEnv, selcomDeposit, selcomCardCheckout, selcomPayout, selcomVerifyOrder, selcomVerifyPayout, selcomCashinNameLookup, selcomFloatBalance, selcomProbeRails, mnoToSelcomCashin, railOf, type SelcomBilling, type SelcomEnv, type PayoutRail, type RailProbe } from "./selcom";
 
-export type PaymentProvider = "MPESA" | "TIGO_PESA" | "AIRTEL_MONEY" | "HALO_PESA" | "MIXX" | "TTCL_PESA" | "CARD" | "BANK_TRANSFER" | "INTERNAL";
+/**
+ * The rail a movement travelled. ⚠️ NOT `PaymentProviderId` above — that one is the
+ * AGGREGATOR (`mock`/`selcom`/`azampay`), imported from `./payment-control`, and the
+ * two have lived in this file under confusingly similar names for a long time.
+ *
+ * ⛔ The nine members are no longer written here: they come from
+ * `@/lib/payment-providers`, the client-safe catalogue that also owns their brand
+ * spellings, so the enum and the labels can never fall out of step. The alias keeps
+ * the exported name every call site already uses.
+ */
+export type PaymentProvider = PaymentMethodId;
 
 export type DepositResult =
   | {

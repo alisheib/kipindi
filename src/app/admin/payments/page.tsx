@@ -22,6 +22,7 @@ import { StuckPayoutControls } from "./stuck-payout-controls";
 import { PayoutStatusControl } from "./payout-status-control";
 import { getPayoutStatus } from "@/lib/server/payout-status";
 import { db } from "@/lib/server/store";
+import { AdminBody } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Payments ops" };
 export const dynamic = "force-dynamic";
@@ -75,7 +76,7 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
         }
       />
 
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         {/* Operations control-plane — mode indicator + runtime payment toggles. */}
         <AdminCard title="Operations control-plane" sw="Udhibiti wa uendeshaji">
           <ControlPlane controls={controls} />
@@ -202,12 +203,10 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
             </span>
             <Stat label="Matched" value={recon.matched.toLocaleString()} />
             <Stat label="Unmatched" value={recon.unmatched.toLocaleString()} tone={recon.unmatched > 0 ? "danger" : "ok"} />
-            <div>
-              <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-subtle">Drift</span>
-              <p className={`font-mono text-[15px] font-bold tabular-nums ${recon.driftTzs !== 0 ? "text-danger" : "text-text"}`}>
-                {formatTzs(recon.driftTzs)}
-              </p>
-            </div>
+            {/* Was a THIRD hand-rolled copy of <Stat> two lines under two uses of
+                it — same span, same 15px mono value, same danger/plain ternary.
+                Identical output, one definition. */}
+            <Stat label="Drift" value={formatTzs(recon.driftTzs)} tone={recon.driftTzs !== 0 ? "danger" : "ok"} />
             {recon.driftTzs !== 0 && (
               <Link href={"/admin/audit?category=WALLET" as Route} className="ml-auto inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-[0.08em] text-claret-300 hover:underline">
                 <I.search s={12} /> Investigate
@@ -336,11 +335,42 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
             A per-MNO settlement-file feed will replace the ref-based reconciliation when the aggregator contract is signed.
           </p>
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }
 
+/**
+ * ⛔ NOT YET FOLDED ONTO `ui/stat.tsx`, AND ON PURPOSE — stage 9b, 2026-08-21.
+ *
+ * `ui/stat.tsx` was widened to absorb these two: its LABEL dictionary names
+ * `quiet` "admin/payments Stat" and `tiny` "admin/payments Metric", and both
+ * labels do match, character for character. The VALUES do not, and folding them
+ * anyway would repaint this strip:
+ *
+ *   Stat · tone      here `text-danger` = --danger-500 = oklch(57% 0.22 25).
+ *                    The kit's nearest tone is `no` = --no-300 = oklch(80% 0.14
+ *                    22) — a far lighter red, on the one figure an officer reads
+ *                    to decide whether the ledger and the PSP disagree. There is
+ *                    no `danger` tone to ask for.
+ *   Stat · leading   here the value inherits body 1.5 (22.5px on a 15px figure);
+ *                    every kit rung hard-codes `leading-tight`/`leading-none`, so
+ *                    the strip would lose ~3.75px of height. No prop reaches it.
+ *   Metric · size    here the value carries NO font-size and NO weight — it
+ *                    inherits the 11px of its `text-[11px]` grid. The kit's
+ *                    smallest rung is 13.5px and it always applies `font-bold`.
+ *                    There is no "inherit" rung.
+ *
+ * A migration that changes what an officer sees is not a migration, so these
+ * stay until `ui/stat.tsx` grows: a `danger` tone, a `lead` escape (or an
+ * `inherit`/`none` rung), and a way to opt out of `font-bold`. That file is not
+ * this group's to edit; this note is the request, and it is the whole remaining
+ * distance.
+ *
+ * ⚠️ Whoever closes it: the third copy of `Stat` — the "Drift" tile — is already
+ * folded into this one, so there are now exactly two definitions to remove, not
+ * three.
+ */
 function Stat({ label, value, tone }: { label: string; value: string; tone?: "ok" | "danger" }) {
   return (
     <div>

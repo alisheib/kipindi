@@ -99,7 +99,8 @@ const FROZEN_ALLOWLIST = new Set<string>([
   "src/app/wallet/loading.tsx",                // 1
   "src/components/chat/messages/RgRedirectCard.tsx", // 1
   "src/components/layout/avatar-menu.tsx",     // 1
-  "src/components/layout/notifications-panel.tsx", // 1
+  // `notifications-panel.tsx` LEFT THIS LIST on 2026-08-21 — its one inline literal was the
+  // hand-styled unread pip, which is now the kit <CountBadge>. The list may only shrink.
   "src/components/ui/empty-state.tsx",         // 1
   "src/components/ui/nav-progress.tsx",        // 1
   "src/components/ui/propose-promo.tsx",       // 1

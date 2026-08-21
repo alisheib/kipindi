@@ -14,6 +14,7 @@
  */
 
 import { HelpMark } from "./HelpMark";
+import { CountBadge } from "@/components/ui/count-badge";
 import { useT } from "@/lib/i18n";
 
 export function ChatBubble({
@@ -38,11 +39,25 @@ export function ChatBubble({
       onClick={onClick}
     >
       <HelpMark size={isMobile ? 30 : 34} />
-      {unread > 0 && (
-        <span className="cm-bubble-pip" aria-label={t.chat.unread.replace("{n}", String(unread))}>
-          {unread > 99 ? "99+" : unread}
-        </span>
-      )}
+      {/* ⭐ STAGE 9b — the kit <CountBadge>, replacing the `.cm-bubble-pip` rule in
+          `src/styles/chat/chat-styles.css`. Same data as the bell's pip, so it must not
+          wear a second chrome: `lg` is this one's box (min-width 20, height 20, 0 6px,
+          11px), `pearl` its inverse fill, `ring`/`glow` its 2px cut-out and drop. The
+          99+ cap it already had is now the primitive's, applied to both pips at once.
+          ⚠️ ONE rendered change, deliberate and documented in `ui/count-badge.tsx`:
+          the weight moves 600 → 700, joining the bell. One chrome, one weight.
+          ⛔ The CSS rule is now dead and should be deleted with the other raw-class
+          removals — that file is outside this pass's ownership. */}
+      <CountBadge
+        count={unread}
+        max={99}
+        tone="pearl"
+        size="lg"
+        ring="var(--chat-canvas)"
+        lift
+        aria-label={t.chat.unread.replace("{n}", String(unread))}
+        style={{ position: "absolute", top: -2, right: -2 }}
+      />
     </button>
   );
 }

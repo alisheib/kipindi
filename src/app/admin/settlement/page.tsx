@@ -8,6 +8,8 @@ import { listSettlementQueue, getSettlementHealth } from "@/lib/server/market-se
 import { formatTzs, formatDateTime } from "@/lib/utils";
 import { SettleButton } from "./settle-button";
 import Link from "next/link";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Settlement" };
 export const dynamic = "force-dynamic";
@@ -24,7 +26,7 @@ export default async function AdminSettlementPage({ searchParams }: { searchPara
   return (
     <>
       <AdminPageHead title="Settlement" sw="Malipo" />
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
 
         {/* The single most important fact on this page: how a market gets paid. */}
         <div
@@ -54,7 +56,7 @@ export default async function AdminSettlementPage({ searchParams }: { searchPara
           )}
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiGrid>
           <AdminKpi
             label="Ready to settle" sw="Tayari kulipwa"
             value={String(ready.length)} delta={formatTzs(readyTzs)}
@@ -75,7 +77,7 @@ export default async function AdminSettlementPage({ searchParams }: { searchPara
             delta={health.scheduler.nextFireAt ? `next ${formatDateTime(health.scheduler.nextFireAt)}` : "none pending"}
             deltaDir={health.scheduler.armed > 0 ? "up" : undefined}
           />
-        </div>
+        </KpiGrid>
 
         <AdminCard title="Payout queue" sw="Foleni ya malipo" padding="p-0">
           {queue.length === 0 ? (
@@ -163,7 +165,7 @@ export default async function AdminSettlementPage({ searchParams }: { searchPara
           actually change the outcome. <strong>Settling is irreversible:</strong> once the money is in
           players&rsquo; wallets it cannot be clawed back, so rule on any objection first.
         </p>
-      </div>
+      </AdminBody>
     </>
   );
 }

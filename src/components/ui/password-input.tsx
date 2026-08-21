@@ -22,6 +22,17 @@ type Props = Omit<React.InputHTMLAttributes<HTMLInputElement>, "type" | "size"> 
   size?: "sm" | "md" | "lg";
   /** When true, render a strength meter under the field. */
   showStrength?: boolean;
+  /**
+   * ⭐ ADDED 2026-08-21. Paints the error border + tint, exactly as <Input> does.
+   *
+   * 🔴 Until this existed, a wrong password could not be shown ON THE FIELD. The
+   * login form had nowhere to put "those credentials don't match" except a
+   * message elsewhere on the page, so the one control the player has to correct
+   * was the one control that never went red. Boolean or string; the string form
+   * is accepted for symmetry with <Input> and is not rendered here (the caller
+   * owns the message copy, which must be localized).
+   */
+  error?: boolean | string;
 };
 
 // ⚠️ ARBITRARY LITERALS ON PURPOSE — kept byte-identical to input.tsx's table.
@@ -38,6 +49,7 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, Props>(function 
   {
     size = "md",
     showStrength = false,
+    error,
     className,
     defaultValue,
     value,
@@ -46,6 +58,7 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, Props>(function 
   },
   forwardedRef,
 ) {
+  const errored = !!error;
   const { t } = useT();
   const [reveal, setReveal] = React.useState(false);
   const [val, setVal] = React.useState<string>(() => String(defaultValue ?? value ?? ""));
@@ -72,9 +85,17 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, Props>(function 
       <span
         className={cn(
           // field-measure — DESIGN_AUTHORITY B7. No-op until a <FormColumn> opts in.
-          "field-measure flex items-stretch rounded-lg border border-border overflow-hidden brand-focus-within transition-colors",
+          "field-measure flex items-stretch rounded-lg border overflow-hidden brand-focus-within transition-colors",
+          errored ? "border-no-500" : "border-border",
           heightCls[size],
         )}
+        /* ⭐ ADDED 2026-08-21 — `--bg-inset`, the same fill <Input> and <DateSelect>
+           carry. This wrapper had NO background at all, which made the password
+           box the one transparent field in the product: on any surface darker or
+           lighter than the form's own, it read as a border floating on nothing
+           while the field above it sat in a well. The errored tint is <Input>'s
+           value, not a new one. */
+        style={errored ? { background: "oklch(58% 0.2 25 / 0.08)" } : { background: "var(--bg-inset)" }}
       >
         <input
           {...rest}

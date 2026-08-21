@@ -9,6 +9,7 @@ import { Chip } from "@/components/ui/chip";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { auditCategoryLabel } from "@/components/admin/status-badge";
 import { formatDateTime } from "@/lib/utils";
+import { AdminBody } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Audit log" };
 export const dynamic = "force-dynamic";
@@ -103,7 +104,7 @@ export default async function AdminAuditPage({
         actions={<GenerateButton id="iso-audit" />}
       />
 
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         {/* Summary KPIs — kit AdminKpi grid, consistent with every other admin
             screen (this page previously used the player-side MarketStats shell). */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -197,7 +198,7 @@ export default async function AdminAuditPage({
           </ScrollX>
           <AdminPagination total={allFiltered.length} page={page} baseHref={baseHref} />
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

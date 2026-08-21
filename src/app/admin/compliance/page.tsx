@@ -17,6 +17,7 @@ import { Chip } from "@/components/ui/chip";
 import { txnTypeLabel } from "@/components/admin/status-badge";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { formatClock, formatDate, formatDateTime } from "@/lib/utils";
+import { AdminBody } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Compliance" };
 export const dynamic = "force-dynamic";
@@ -92,7 +93,7 @@ export default async function AdminCompliancePage({
         }
       />
 
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         {/* §A — Audit chain + backup */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           <AdminCard title="Audit chain · integrity" sw="Mlolongo wa ukaguzi">
@@ -390,7 +391,7 @@ export default async function AdminCompliancePage({
         <p className="text-caption text-text-tertiary text-center pt-3 flex items-center justify-center gap-1.5">
           <I.lock s={11} /> Confidential · screen and contents are subject to operational access logging.
         </p>
-      </div>
+      </AdminBody>
     </>
   );
 }

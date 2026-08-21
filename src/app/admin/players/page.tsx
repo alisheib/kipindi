@@ -13,6 +13,8 @@ import { formatTzs, formatDate } from "@/lib/utils";
 import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { displayLabel, displayInitials } from "@/lib/display-label";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Players" };
 export const dynamic = "force-dynamic";
@@ -134,15 +136,15 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
     <>
       <AdminPageHead title="Players" sw="Wachezaji" />
 
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         {/* Headline KPIs — replaces the header count-chips with the console-standard
             band (matches overview / cohorts). Blocked = suspended + self-excluded. */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiGrid>
           <AdminKpi label="Total players" sw="Jumla ya wachezaji" value={usersFailed ? "" : counts.total.toLocaleString()} unavailable={usersFailed} />
           <AdminKpi label="Active" sw="Hai" value={usersFailed ? "" : counts.active.toLocaleString()} unavailable={usersFailed} tone="success" delta={`${counts.total ? Math.round((counts.active / counts.total) * 100) : 0}%`} deltaDir="up" />
           <AdminKpi label="Pending KYC" sw="Inasubiri KYC" value={usersFailed ? "" : counts.pending_kyc.toLocaleString()} unavailable={usersFailed} delta={counts.pending_kyc > 0 ? "needs review" : "clear"} deltaDir={counts.pending_kyc > 0 ? "up" : "flat"} />
           <AdminKpi label="Blocked" sw="Zimezuiwa" value={usersFailed ? "" : blocked.toLocaleString()} unavailable={usersFailed} tone={blocked > 0 ? "danger" : undefined} delta={`${counts.suspended} susp · ${counts.self_excluded} excl`} deltaDir="flat" />
-        </div>
+        </KpiGrid>
 
         {/* Population status mix — one at-a-glance segmented bar (green Active /
             amber pending / rose blocked / grey closed). Complements the numeric
@@ -264,7 +266,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
             <p>Live today: suspend / restore, KYC decisions, credential changes, and data export — each is ADMIN/COMPLIANCE-tier, requires step-up 2FA, and is recorded in the <code>ADMIN</code>/<code>COMPLIANCE</code> audit category with the reviewer&apos;s user-id and reason. <em>Target architecture (not yet enforced):</em> two-person approval on wallet freeze / transaction reversal / account closure, and IP capture.</p>
           </div>
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

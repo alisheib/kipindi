@@ -4,9 +4,15 @@
  * quality to stay under the 3 MB decoded cap the server enforces) and returns
  * it as a base64 data URL. Browser-only (uses Image/canvas) — import from
  * client components.
+ *
+ * ⛔ The 3 MB cap is NOT declared here. It is the SAME number the server refuses
+ * on, so it has one home (`@/lib/id-documents`) and both ends read it. Re-exported
+ * because the uploader already imports it from this module by that name.
  */
+import { MAX_DOC_BYTES } from "@/lib/id-documents";
+export { MAX_DOC_BYTES };
+
 export const MAX_DOC_DIM = 1400;
-export const MAX_DOC_BYTES = 3 * 1024 * 1024;
 
 export async function fileToDataUrl(file: File): Promise<string> {
   const img = await new Promise<HTMLImageElement>((res, rej) => {

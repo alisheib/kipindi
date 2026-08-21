@@ -23,6 +23,7 @@ import { rateCheckAsync } from "./rate-limit";
 import { DepositSchema, AdminDepositSchema, WithdrawSchema } from "./validators";
 import { checkDepositLimit, isLockedOut } from "./responsible-gambling";
 import type { FailureReason, FailureDetail } from "@/lib/failure-reasons";
+import { paymentMethodName } from "@/lib/payment-providers";
 import { notifyDeposit, notifyWithdraw, notifyAdminsAmlReview } from "./notification-service";
 import { withLock } from "./locks";
 import { emit } from "./event-bus";
@@ -1676,16 +1677,22 @@ export async function adminAdjustBalance(
   });
 }
 
+/**
+ * The rail, spelled the way its owner spells it.
+ *
+ * ⛔ THE SPELLINGS ARE NOT WRITTEN HERE. This was one of eight hand-kept copies of
+ * the same id → brand-name map — the receipt page's version even called itself "a
+ * local mirror of wallet-service's label map", i.e. a mirror of THIS function. The
+ * catalogue is `@/lib/payment-providers`; the wallet surfaces under `src/app/wallet/`
+ * still hold their own copies and are the next to migrate.
+ * ⚠️ Deliberate behaviour change in the tail: the old switch listed six ids and
+ * printed the RAW TOKEN for the rest, so a legacy row said "TIGO_PESA" to a player.
+ * The catalogue knows all nine, so those now read "Tigo Pesa" / "TTCL Pesa" /
+ * "Internal". `"Mobile money"` is kept as this module's own last resort — the other
+ * call sites disagree about that word, which is why the helper returns `null`.
+ */
 function friendlyProvider(p: string | null | undefined): string {
-  switch (p) {
-    case "MPESA": return "M-Pesa";
-    case "AIRTEL_MONEY": return "Airtel Money";
-    case "HALO_PESA": return "HaloPesa";
-    case "MIXX": return "Mixx by Yas";
-    case "CARD": return "Card";
-    case "BANK_TRANSFER": return "Bank transfer";
-    default: return p ?? "Mobile money";
-  }
+  return paymentMethodName(p) ?? p ?? "Mobile money";
 }
 
 function friendlyDepositReason(reason: string): string {

@@ -31,6 +31,8 @@ import { getEffectiveConfig } from "@/lib/server/market-config";
 import { houseAccountBalances, trialBalance } from "@/lib/server/ledger";
 import { Stat } from "@/components/ui/stat";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 /** What each house account actually holds — so the owner doesn't have to guess. */
 const HOUSE_ACCOUNT_NOTE: Record<string, string> = {
@@ -127,15 +129,15 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
         }
       />
 
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         {/* KPI 8-up */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiGrid>
           <AdminKpi label="Deposits in"     sw="Amana"             value={dep ? `TZS ${formatTzsCompact(dep.amount).replace("TZS ", "")}` : ""} unavailable={dep === null} delta={dep ? `${formatNumber(dep.count)} txns` : undefined} />
           <AdminKpi label="Withdrawals out" sw="Utoaji"            value={wd ? `TZS ${formatTzsCompact(wd.amount).replace("TZS ", "")}` : ""}  unavailable={wd === null}  delta={wd ? `${formatNumber(wd.count)} txns` : undefined} />
           <AdminKpi label="GGR"             sw="Mapato ya jumla"    value={ggr === null ? "" : `TZS ${formatTzsCompact(ggr).replace("TZS ", "")}`}        unavailable={ggr === null} delta={range.label} series={spark(trends.ggr)} />
           <AdminKpi label="NGR"             sw="Mapato halisi"      value={ngr === null ? "" : `TZS ${formatTzsCompact(ngr).replace("TZS ", "")}`}        unavailable={ngr === null} delta="net of bonus + fees" series={spark(trends.ngr)} />
-        </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        </KpiGrid>
+        <KpiGrid>
           <AdminKpi
             label="Statutory levies"
             sw="Kodi za kisheria"
@@ -146,7 +148,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
           <AdminKpi label="Operator margin"  sw="Faida"         value={margin === null ? "" : `${margin.toFixed(1)}%`} unavailable={margin === null} delta={feeModelLabel} deltaDir="flat" />
           <AdminKpi label="Wallet liability" sw="Madeni"        value={liability === null ? "" : `TZS ${formatTzsCompact(liability).replace("TZS ", "")}`} unavailable={liability === null} delta="real-time" />
           <AdminKpi label="Active players"   sw="Wachezaji"     value={activePeriod === null ? "" : formatNumber(activePeriod)} unavailable={activePeriod === null} delta={range.label} series={spark(trends.active)} />
-        </div>
+        </KpiGrid>
 
         {/* THE HOUSE ACCOUNTS — straight from the double-entry ledger.
             `houseAccountBalances()` has existed in ledger.ts since the ledger was
@@ -294,7 +296,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
               <code className="font-mono">ledger(BONUS) = bonusBalance = Σ active grants</code>, and{" "}
               <code className="font-mono">Σ all entries = 0</code>. Re-checked nightly; drift raises a compliance alert.
             </p>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <KpiGrid>
               {/* Counts go through `formatNumber`, the same fixed en-US grouping
                   `formatTzs` uses. A bare `toLocaleString()` takes the RUNTIME's default
                   locale, so a count could group with dots while the money beside it
@@ -323,7 +325,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
                 deltaDir={tb.imbalancedGroups.length === 0 ? "up" : "down"}
                 pulse={tb.imbalancedGroups.length > 0}
               />
-            </div>
+            </KpiGrid>
             {tb.drift.length > 0 && (
               <ScrollX label="Drifting wallets" className="-mx-4 px-4 mt-3">
                 <table className="admin-tbl min-w-[560px]">
@@ -448,7 +450,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
             </table>
           </ScrollX>
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

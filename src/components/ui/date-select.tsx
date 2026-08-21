@@ -36,9 +36,28 @@ type Props = {
   defaultValue?: string;
   value?: string;
   onChange?: (iso: string) => void;
-  /** "md" (default, 44px form field) or "sm" (32px — for compact filter
-   *  toolbars like /admin/ai-usage; the calendar popup is unchanged). */
-  size?: "md" | "sm";
+  /** Rendered height: sm 36 · md 44 · lg 48 (px) — the <Input> atom's tiers.
+   *  `sm` is for compact filter toolbars like /admin/ai-usage; `lg` matches an
+   *  <Input size="lg"> beside it. The calendar popup is unchanged at every tier. */
+  size?: "md" | "sm" | "lg";
+};
+
+// ⚠️ ARBITRARY LITERALS ON PURPOSE — kept byte-identical to input.tsx's table.
+// `theme.extend.spacing` is OVERRIDDEN (tailwind.config.ts:200-215), so the
+// h-9 / h-11 / h-12 a reader expects here render 64 / 96 / 128px.
+// ⛔ Never "tidy" these back into scale classes.
+const HEIGHT: Record<NonNullable<Props["size"]>, string> = {
+  sm: "h-[36px]",
+  md: "h-[var(--h-input)]",   // 44px — the kit input token, globals.css
+  lg: "h-[48px]",
+};
+
+// `lg` shares md's 16px type (so does <Input>): the extra 4px is BOX, not text —
+// a taller target beside a taller field, not a bigger date.
+const TYPE: Record<NonNullable<Props["size"]>, string> = {
+  sm: "px-2.5 text-[13px]",
+  md: "px-3.5 text-[16px]",
+  lg: "px-3.5 text-[16px]",
 };
 
 // Widths must comfortably fit the digits in the mono font or the centered text
@@ -64,6 +83,7 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
   const [invalid, setInvalid] = useState(false);
 
   const refs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
+  const mirrorRef = useRef<HTMLInputElement>(null);
   const get = (k: SegKey) => (k === "dd" ? dd : k === "mm" ? mm : yyyy);
   const setSeg = (k: SegKey, v: string) => (k === "dd" ? setDd(v) : k === "mm" ? setMm(v) : setYyyy(v));
 
@@ -87,6 +107,17 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
     setInvalid(false);
     lastEmit.current = value ?? "";
   }, [controlled, value]);
+
+  // The browser's own "please fill this in" is in the BROWSER's language, which on
+  // a Dar es Salaam handset is very often not the language the player chose here.
+  // A custom message keeps the bubble in the app's locale. ⛔ It must be cleared
+  // to "" the moment the field is satisfied, or the control stays permanently
+  // invalid and the form can never submit.
+  useEffect(() => {
+    const el = mirrorRef.current;
+    if (!el) return;
+    el.setCustomValidity(required && !isoValue ? t.common.dateRequired : "");
+  }, [required, isoValue, t]);
 
   const focusSeg = (idx: number) => {
     const el = refs[idx]?.current;
@@ -213,22 +244,30 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
     <>
       <div
         className={cn(
-          "field-measure flex items-stretch w-full rounded-lg border overflow-hidden transition-colors",
-          // ⚠️ ARBITRARY LITERALS — the spacing scale is OVERRIDDEN (tailwind.config.ts:200-215),
-          // so the `h-8`/`h-11` that used to be here rendered 48/96px, not 36/44. Matches <Input>.
-          // ⛔ Never a scale token here.
-          sm ? "h-[36px]" : "h-[var(--h-input)]",
+          // `relative` is load-bearing: the constraint-validation mirror at the
+          // bottom of this element is absolutely positioned so the browser's
+          // validation bubble anchors under the FIELD, not under the page.
+          "field-measure relative flex items-stretch w-full rounded-lg border overflow-hidden transition-colors",
+          HEIGHT[size],
           "brand-focus-within",
           invalid ? "border-no-500" : "border-border",
         )}
         style={{ background: invalid ? "oklch(58% 0.2 25 / 0.08)" : "var(--bg-inset)" }}
       >
-        <div className={cn("flex-1 flex items-center tabular-nums font-mono", sm ? "px-2.5 text-[13px]" : "px-3.5 text-[16px]")}>
+        <div className={cn("flex-1 flex items-center tabular-nums font-mono", TYPE[size])}>
           {SEGMENTS.map((seg, idx) => (
             <span key={seg.key} className="flex items-center">
               {idx > 0 && <span className="text-text-subtle/40 mx-1 select-none" aria-hidden>/</span>}
               <input
                 ref={refs[idx]}
+                /* ⭐ `id` rides the FIRST segment, not the value carrier (2026-08-21).
+                   It used to sit on the `type="hidden"` input, which is not a
+                   labelable element — so every `<label htmlFor="dob">` in the
+                   product was pointing at nothing and clicking it did not focus
+                   the field. On the day segment it focuses exactly where typing
+                   starts. The segment's own `aria-label` ("Day") still wins the
+                   name computation, so nothing is renamed. */
+                id={idx === 0 ? id : undefined}
                 type="text"
                 inputMode="numeric"
                 autoComplete="off"
@@ -258,10 +297,47 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
         >
           <I.calendar s={sm ? 14 : 16} />
         </button>
+
+        {/* ── The constraint-validation mirror ────────────────────────────────
+            🔴 THIS USED TO BE `<input type="hidden" … required>`, AND THAT WAS
+            INERT. Per the HTML spec a hidden input is *barred from constraint
+            validation*, so `required` on it never blocked anything: registration
+            submitted with an EMPTY date of birth, the server rejected it, and the
+            round trip re-rendered the form — losing the password the player had
+            just typed, because a password field never round-trips a value. One
+            dead attribute, and the visible symptom was two screens away.
+
+            ⛔ So it is a TEXT input, not a hidden one, and it is not `readOnly`
+            either — a readonly control is barred from validation too. It is made
+            invisible with opacity and taken out of flow, which leaves it
+            *focusable*: without that Chrome refuses to report validity ("not
+            focusable") and blocks the submit with no message at all — a worse
+            failure than the one being fixed.
+
+            ⚠️ `aria-hidden` + `tabIndex={-1}` is deliberate. The three segments
+            above already carry the real labels; a fourth, unlabelled field
+            reading out an ISO string would be noise. It is never in the tab
+            order, and the browser reaches it programmatically. */}
+        <input
+          ref={mirrorRef}
+          type="text"
+          name={name}
+          value={isoValue}
+          onChange={() => { /* the segments own the value; this only mirrors it */ }}
+          required={required}
+          tabIndex={-1}
+          aria-hidden
+          autoComplete="off"
+          data-1p-ignore
+          data-lpignore="true"
+          /* ⚠️ 1px, not 0. `opacity-0` is what hides it; a zero-SIZED control is
+             where browsers start disagreeing about whether it can take focus, and
+             focus is the whole reason it is not `type="hidden"`. */
+          className="pointer-events-none absolute bottom-0 left-3 h-px w-px border-0 p-0 opacity-0"
+        />
       </div>
 
       {invalid && <p className="mt-1.5 font-mono text-[11px] text-no-300">{t.common.invalidDate}</p>}
-      <input type="hidden" name={name} id={id} value={isoValue} required={required} />
 
       {mounted && calOpen && createPortal(
         <div role="dialog" aria-modal="true" aria-label={t.common.pickDate}

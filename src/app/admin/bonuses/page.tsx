@@ -8,6 +8,8 @@ import { getBonusConfig } from "@/lib/server/bonus-config";
 import { getAdminBonusStats } from "@/lib/server/bonus-service";
 import { formatTzs, formatDateShort } from "@/lib/utils";
 import { BonusAdminClient, GrantBonusForm, CancelGrantButton } from "./bonus-admin-client";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Bonuses · Admin" };
 export const dynamic = "force-dynamic";
@@ -58,14 +60,14 @@ export default async function AdminBonusesPage({
         actions={<Chip size="sm" variant={config.enabled ? "active" : "paused"}>{config.enabled ? "Active" : "Paused"}</Chip>}
       />
 
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         {/* KPIs */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiGrid>
           <AdminKpi label="Outstanding bonus" sw="Bonasi inayodaiwa" value={formatTzs(stats.outstandingTzs)} pulse delta="liability now" deltaDir="flat" />
           <AdminKpi label="Active grants" sw="Bonasi hai" value={stats.activeGrants.toLocaleString()} delta="in play" deltaDir="flat" />
           <AdminKpi label="Total granted" sw="Jumla iliyotolewa" value={formatTzs(stats.totalGrantedTzs)} delta="all-time" deltaDir="flat" />
           <AdminKpi label="Unlocked to cash" sw="Imefunguliwa" value={formatTzs(stats.totalFulfilledTzs)} delta="played through" deltaDir="flat" />
-        </div>
+        </KpiGrid>
 
         {/* Manual grant */}
         <AdminCard title="Grant a bonus" sw="Toa bonasi kwa mchezaji">
@@ -142,7 +144,7 @@ export default async function AdminBonusesPage({
             </>
           )}
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

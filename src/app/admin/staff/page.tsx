@@ -12,6 +12,8 @@ import { STAFF_ROLES, ROLE_LABEL, roleLabel, isAdmin, type Role } from "@/lib/se
 import { staffRoleInfos } from "@/lib/server/rbac";
 import { accountStatusLabel } from "@/components/admin/status-badge";
 import { AddStaffForm } from "./staff-forms";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Staff" };
 export const dynamic = "force-dynamic";
@@ -43,14 +45,14 @@ export default async function AdminStaffPage() {
   return (
     <>
       <AdminPageHead title="Staff" sw="Wafanyakazi" />
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         {/* Headcount by the roles that actually carry authority. */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiGrid>
           <AdminKpi label="Total staff" sw="Jumla" value={failed ? "" : String(staff.length)} unavailable={failed} />
           <AdminKpi label="Owners" sw="Wamiliki" value={failed ? "" : String(byRole.ADMIN ?? 0)} unavailable={failed} gold />
           <AdminKpi label="Compliance + Auditor" value={failed ? "" : String((byRole.COMPLIANCE ?? 0) + (byRole.AUDITOR ?? 0))} unavailable={failed} />
           <AdminKpi label="Finance + Growth + Support + Trading" value={failed ? "" : String((byRole.FINANCE ?? 0) + (byRole.GROWTH ?? 0) + (byRole.SUPPORT ?? 0) + (byRole.MODERATOR ?? 0))} unavailable={failed} />
-        </div>
+        </KpiGrid>
 
         <AdminCard title="Add staff" sw="Ongeza mfanyakazi">
           <p className="text-caption text-text-tertiary mb-3">
@@ -114,7 +116,7 @@ export default async function AdminStaffPage() {
             <p>Each person has <strong>one role</strong>. A role decides which admin sections they can see and which actions they can take. Roles: <strong>{STAFF_ROLES.map((r) => ROLE_LABEL[r as Role]).join(" · ")}</strong>. The Owner can fine-tune exactly what each role may see and do at <a href="/admin/roles" className="text-royal-300 hover:underline">/admin/roles</a>. Changing a role signs the person out so the new access applies immediately.</p>
           </div>
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

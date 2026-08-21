@@ -19,6 +19,8 @@ import { candidateStateLabel } from "@/components/admin/status-badge";
 import { CandidateActions } from "./candidate-actions";
 import { CandidateFilterToolbar } from "./candidate-filters";
 import { resolveRange } from "@/lib/server/date-range";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Market candidates" };
 export const dynamic = "force-dynamic";
@@ -133,8 +135,8 @@ export default async function AdminCandidatesPage({
         title="Market candidates"
         sw="Mapendekezo ya soko · AI-validated"
       />
-      <div className="px-4 lg:px-6 py-5 space-y-4">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <AdminBody>
+        <KpiGrid>
           <AdminKpi
             label="Pending review"
             sw="Inasubiri ukaguzi"
@@ -164,7 +166,7 @@ export default async function AdminCandidatesPage({
             unavailable={spendFailed}
             delta={`${spend.runCount} runs · ${(spend.dailyTokens / 1000).toFixed(1)}k tokens`}
           />
-        </div>
+        </KpiGrid>
 
         <AdminCard>
           <div className="flex items-start gap-3">
@@ -316,7 +318,7 @@ export default async function AdminCandidatesPage({
             </>
           )}
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

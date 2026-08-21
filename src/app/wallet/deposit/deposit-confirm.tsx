@@ -12,6 +12,7 @@ import { useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { useT } from "@/lib/i18n";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ReceiptBox, ReceiptRow } from "@/components/ui/receipt-row";
 import { useToast } from "@/components/ui/toast";
 import { formatNumber, formatTzs } from "@/lib/utils";
 import { DEPOSIT_MIN_TZS, DEPOSIT_MAX_TZS } from "@/lib/server/validators";
@@ -120,22 +121,17 @@ export function DepositConfirm() {
       title={t.common.confirmDeposit}
       body={
         <>
-          <div className="mb-3 rounded-md border border-border bg-bg-overlay/60 p-3 space-y-1.5">
-            <div className="flex items-baseline justify-between">
-              <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle">{t.common.amountLabel}</span>
-              <span className="font-mono text-[16px] font-bold tabular-nums text-text">{formatTzs(summary.amount)}</span>
-            </div>
-            <div className="flex items-baseline justify-between">
-              <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle">{t.common.via}</span>
-              <span className="font-mono text-[13px] font-semibold text-text">{summary.provider}</span>
-            </div>
+          {/* ⭐ Stage 9b — the receipt rows are the shared <ReceiptRow>/<ReceiptBox>
+              primitive, not a fourth hand-rolled copy. This surface is the one the
+              others are converging ON: every row here maps 1:1 onto an emphasis
+              (`amount` = 16px bold, `row` = 13px semibold) and nothing repaints. */}
+          <ReceiptBox className="mb-3">
+            <ReceiptRow emphasis="amount" label={t.common.amountLabel} value={formatTzs(summary.amount)} />
+            <ReceiptRow label={t.common.via} value={summary.provider} />
             {summary.msisdn && (
-              <div className="flex items-baseline justify-between">
-                <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle">{t.auth.phone}</span>
-                <span className="font-mono text-[13px] font-semibold text-text">+255 {summary.msisdn}</span>
-              </div>
+              <ReceiptRow label={t.auth.phone} value={`+255 ${summary.msisdn}`} />
             )}
-          </div>
+          </ReceiptBox>
           <p className="text-[12.5px] text-text-muted">{t.common.depositSendBody}</p>
         </>
       }

@@ -14,6 +14,7 @@
  * only the body is skeletonised.
  */
 import type { ReactNode } from "react";
+import { AdminBody } from "@/components/admin/admin-body";
 
 /** One pulsing placeholder bar. Size via Tailwind className (house style). */
 export function SkBar({ className = "h-3 w-24" }: { className?: string }) {
@@ -25,10 +26,13 @@ export function SkChip({ className = "h-[26px] w-20" }: { className?: string }) 
   return <div className={`rounded-pill bg-bg-overlay ${className}`} />;
 }
 
-/** Body wrapper — matches every admin page's `px-4 lg:px-6 py-5 space-y-4`, and
- *  owns the single pulse so the whole skeleton breathes in phase. */
+/** Body wrapper — the page's own <AdminBody>, plus the single pulse so the whole
+ *  skeleton breathes in phase. ⭐ It USES <AdminBody> rather than re-typing its
+ *  class string: a loader that drifts from its page's gutters is a loader that
+ *  makes the load→loaded swap jump sideways, and that is exactly what two copies
+ *  of one padding value eventually do. */
 export function SkBody({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={`px-4 lg:px-6 py-5 space-y-4 animate-pulse ${className}`}>{children}</div>;
+  return <AdminBody className={`animate-pulse ${className}`}>{children}</AdminBody>;
 }
 
 /** KPI band skeleton — mirrors AdminKpi tiles (glass-panel, min-h-[110px]). */

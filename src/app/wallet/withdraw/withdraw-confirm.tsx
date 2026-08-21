@@ -11,6 +11,7 @@ import { useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { useT } from "@/lib/i18n";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ReceiptBox, ReceiptRow } from "@/components/ui/receipt-row";
 import { useToast } from "@/components/ui/toast";
 import { formatTzs } from "@/lib/utils";
 import { computeWithdrawalFee } from "@/lib/payout";
@@ -148,50 +149,35 @@ export function WithdrawConfirm({ feeRate }: { feeRate: number }) {
     form.requestSubmit();
   };
 
-  const rowLabel = "font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle";
-
   return (
     <ConfirmDialog
       tone="claret"
       title={t.common.confirmWithdrawal}
       body={
         <>
-          <div className="mb-3 rounded-md border border-border bg-bg-overlay/60 p-3 space-y-1.5">
-            <div className="flex items-baseline justify-between">
-              <span className={rowLabel}>{t.common.amountLabel}</span>
-              <span className="font-mono text-[15px] font-semibold tabular-nums text-text">{formatTzs(summary.amount)}</span>
-            </div>
-            <div className="flex items-baseline justify-between text-warning-fg">
-              <span className="font-mono text-[10px] uppercase tracking-[0.12em]">{t.wallet.taxNotice}</span>
-              <span className="font-mono text-[13px] font-semibold tabular-nums">−{formatTzs(fee)}</span>
-            </div>
-            <div className="flex items-baseline justify-between border-t border-border pt-1.5">
-              <span className={rowLabel}>{t.dialog.youReceive}</span>
-              <span className="font-mono text-[16px] font-bold tabular-nums text-gold-300">{formatTzs(net)}</span>
-            </div>
-            <div className="flex items-baseline justify-between">
-              <span className={rowLabel}>{t.common.via}</span>
-              <span className="font-mono text-[13px] font-semibold text-text">{summary.provider}</span>
-            </div>
+          {/* ⭐ Stage 9b — the receipt rows are the shared <ReceiptRow>/<ReceiptBox>
+              primitive. Every row below is pixel-identical to what it replaced EXCEPT
+              the Amount line, which moves 15px/semibold → 16px/bold (`emphasis="amount"`)
+              to match the deposit confirm. That convergence is the point of the exercise,
+              not a side effect: one label, one meaning, one rendering. The hierarchy here
+              survives it — YOU RECEIVE stays the loudest line because it is the only GOLD
+              one, and gold is legitimate there (M3: money about to be received, not a
+              projection). */}
+          <ReceiptBox className="mb-3">
+            <ReceiptRow emphasis="amount" label={t.common.amountLabel} value={formatTzs(summary.amount)} />
+            <ReceiptRow emphasis="fee" tone="warning" label={t.wallet.taxNotice} value={`−${formatTzs(fee)}`} />
+            <ReceiptRow emphasis="total" divider label={t.dialog.youReceive} value={formatTzs(net)} />
+            <ReceiptRow label={t.common.via} value={summary.provider} />
             {summary.msisdn && (
-              <div className="flex items-baseline justify-between">
-                <span className={rowLabel}>{t.auth.phone}</span>
-                <span className="font-mono text-[13px] font-semibold text-text">+255 {summary.msisdn}</span>
-              </div>
+              <ReceiptRow label={t.auth.phone} value={`+255 ${summary.msisdn}`} />
             )}
             {payee.state === "loading" && (
-              <div className="flex items-baseline justify-between">
-                <span className={rowLabel}>{t.common.recipient}</span>
-                <span className="font-mono text-[12px] text-text-subtle">{t.common.recipientChecking}</span>
-              </div>
+              <ReceiptRow emphasis="muted" label={t.common.recipient} value={t.common.recipientChecking} />
             )}
             {payee.state === "done" && payee.name && (
-              <div className="flex items-baseline justify-between border-t border-border pt-1.5">
-                <span className={rowLabel}>{t.common.recipient}</span>
-                <span className="font-mono text-[13px] font-semibold text-text text-right">{payee.name}</span>
-              </div>
+              <ReceiptRow divider alignEnd label={t.common.recipient} value={payee.name} />
             )}
-          </div>
+          </ReceiptBox>
           <p className="text-[12.5px] text-text-muted">
             {t.common.withdrawSendBody}
           </p>

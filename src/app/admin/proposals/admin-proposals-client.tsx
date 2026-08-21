@@ -15,6 +15,8 @@ import { useT } from "@/lib/i18n";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SELECTION, PROPOSAL } from "@/lib/admin-status-lexicon";
 import { ActionOverlay, useActionOverlay } from "@/components/admin/action-overlay";
+import { AdminPagination } from "@/components/admin/admin-pagination";
+import { SortBtn } from "@/components/admin/admin-sort";
 import { RefreshButton } from "@/components/admin/refresh-button";
 import { ControlLocked } from "@/components/admin/control-locked";
 import { StatusBadge } from "@/components/proposals/status-badge";
@@ -120,71 +122,21 @@ const PER_PAGE = 20;
 type QSort = "score" | "age" | "status" | "title";
 type SortDir = "asc" | "desc";
 
-/** Client-side pager — visually identical to <AdminPagination> (link-based) but
- *  driven by local state since the queue list owns interactive filter/selection. */
-function ClientPager({ total, page, onPage, perPage = PER_PAGE }: { total: number; page: number; onPage: (p: number) => void; perPage?: number }) {
-  const totalPages = Math.max(1, Math.ceil(total / perPage));
-  if (totalPages <= 1) return null;
-  const safePage = Math.min(Math.max(1, page), totalPages);
-  const hasPrev = safePage > 1;
-  const hasNext = safePage < totalPages;
-
-  const pages: (number | "...")[] = [];
-  if (totalPages <= 7) {
-    for (let i = 1; i <= totalPages; i++) pages.push(i);
-  } else {
-    pages.push(1);
-    if (safePage > 3) pages.push("...");
-    for (let i = Math.max(2, safePage - 1); i <= Math.min(totalPages - 1, safePage + 1); i++) pages.push(i);
-    if (safePage < totalPages - 2) pages.push("...");
-    pages.push(totalPages);
-  }
-
-  // ⚠️ 44px WRITTEN LITERALLY, NOT `h-8` (48px on the overridden scale — tailwind.config.ts:200-215).
-  // Verbatim copy of the moderation pagination and of `src/components/ui/pagination.tsx`;
-  // the three must stay one size. The old `min-w-[32px]` literal beside an `h-8` token is the
-  // tell: a square was intended, a 48×32 portrait pill shipped.
-  const btnBase = "inline-flex items-center justify-center h-[44px] min-w-[44px] px-2 rounded-md font-mono text-[11px] tracking-[0.10em] transition-colors";
-  const btnActive = "border border-brand-500 bg-brand-500/15 text-brand-300 font-bold";
-  const btnInactive = "border border-border bg-bg-elevated text-text-muted hover:border-border-strong hover:text-text";
-  const btnDisabled = "border border-border bg-bg-elevated text-text-subtle/40 pointer-events-none";
-
-  return (
-    <div className="flex items-center justify-between gap-3 px-4 py-3 border-t border-border">
-      <p className="font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle">
-        {((safePage - 1) * perPage + 1).toLocaleString()}–{Math.min(safePage * perPage, total).toLocaleString()} of {total.toLocaleString()}
-      </p>
-      <div className="flex items-center gap-1">
-        <button type="button" onClick={() => hasPrev && onPage(safePage - 1)} disabled={!hasPrev} className={`${btnBase} ${hasPrev ? btnInactive : btnDisabled}`} aria-label="Previous page">
-          <I.chevronLeft s={14} />
-        </button>
-        {pages.map((p, i) =>
-          p === "..." ? (
-            <span key={`dots-${i}`} className="px-1 text-text-subtle">…</span>
-          ) : (
-            <button type="button" key={p} onClick={() => onPage(p)} className={`${btnBase} ${p === safePage ? btnActive : btnInactive}`}>
-              {p}
-            </button>
-          ),
-        )}
-        <button type="button" onClick={() => hasNext && onPage(safePage + 1)} disabled={!hasNext} className={`${btnBase} ${hasNext ? btnInactive : btnDisabled}`} aria-label="Next page">
-          <I.chevronRight s={14} />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/** Clickable sort control matching <SortTh>'s active/arrow affordance. */
-function SortBtn({ field, label, current, dir, onSort }: { field: QSort; label: string; current: QSort; dir: SortDir; onSort: (f: QSort) => void }) {
-  const isActive = current === field;
-  return (
-    <button type="button" onClick={() => onSort(field)} className={`inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.1em] hover:text-text transition-colors ${isActive ? "text-text" : "text-text-subtle"}`}>
-      {label}
-      <span className={`text-brand-300 ${isActive ? "" : "opacity-0"}`} aria-hidden>{dir === "asc" ? "↑" : "↓"}</span>
-    </button>
-  );
-}
+/**
+ * ⭐ THE HAND-ROLLED PAGER AND SORT BUTTON ARE GONE (stage 9b, 2026-08-21).
+ *
+ * Both were verbatim forks — the pager of `ui/pagination.tsx`, the sort button
+ * of moderation's copy of the same twelve lines — and the pager's own comment
+ * said the three "must stay one size" while nothing in the build could make them.
+ * They had already diverged: the shared pager has since gained `flex-wrap` on
+ * both rows (at 360px seven 44px controls need two) and `shadow-glow-selected`
+ * on the current page, the console's standing selected-control signal.
+ *
+ * The glow is the ONE resting-pixel difference the migration makes, and the fork
+ * was the outlier — every other paginated screen already has it. `onNavigate` is
+ * the shared pager's client mode, built for a queue like this one that pages in
+ * local state because it owns interactive filter/selection.
+ */
 
 /**
  * ⛔ E-27. `/admin/proposals` is a `trading` route, but two of its controls demand other
@@ -437,7 +389,7 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
               </button>
             );
           })}
-          <ClientPager total={totalQueue} page={safePage} onPage={setPage} />
+          <AdminPagination total={totalQueue} page={safePage} perPage={PER_PAGE} onNavigate={setPage} />
         </div>
 
         {/* Review panel */}

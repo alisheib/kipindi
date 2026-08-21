@@ -12,6 +12,8 @@ import { getAuditPage } from "@/lib/server/audit";
 import { listPendingKyc } from "@/lib/server/kyc-service";
 import { SofReviewRow } from "./sof-review-client";
 import { formatDateTime, formatTzs } from "@/lib/utils";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Two-person approvals" };
 export const dynamic = "force-dynamic";
@@ -89,13 +91,13 @@ export default async function AdminApprovalsPage({
         }
       />
 
-      <div className="px-4 lg:px-6 py-5 space-y-4">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <AdminBody>
+        <KpiGrid>
           <AdminKpi label="KYC pending" sw="Vitambulisho" value={kycFailed ? "" : kycPendingAll.length} unavailable={kycFailed} pulse={!kycFailed && kycPendingAll.length > 0} />
           <AdminKpi label="AML pending" sw="Inasubiri ukaguzi" value={amlFailed ? "" : amlAll.length} unavailable={amlFailed} pulse={!amlFailed && amlAll.length > 0} />
           <AdminKpi label="SOF declarations" sw="Asili ya pesa" value={sofFailed ? "" : sofAll.length} unavailable={sofFailed} pulse={!sofFailed && sofAll.length > 0} />
           <AdminKpi label="Avg cosign time" sw="Wastani"      value="—"  delta="last 7d" />
-        </div>
+        </KpiGrid>
 
         {/* KYC review queue */}
         <AdminCard
@@ -273,7 +275,7 @@ export default async function AdminApprovalsPage({
             </div>
           </div>
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

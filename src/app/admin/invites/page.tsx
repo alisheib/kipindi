@@ -8,6 +8,8 @@ import { ScrollX } from "@/components/ui/scroll-x";
 import { listCampaigns, getInviteStats } from "@/lib/server/invite-service";
 import { formatTzs, formatDateShort } from "@/lib/utils";
 import { CreateCampaignForm } from "./invite-admin-client";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Invites · Admin" };
 export const dynamic = "force-dynamic";
@@ -26,13 +28,13 @@ export default async function AdminInvitesPage({ searchParams }: { searchParams:
   return (
     <>
       <AdminPageHead title="Invite campaigns" sw="Kampeni za mialiko" />
-      <div className="px-4 lg:px-6 py-5 space-y-4">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <AdminBody>
+        <KpiGrid>
           <AdminKpi label="Campaigns" sw="Kampeni" value={stats.campaigns.toLocaleString()} delta="all-time" deltaDir="flat" />
           <AdminKpi label="Invites sent" sw="Mialiko" value={stats.totalInvites.toLocaleString()} delta="contacts" deltaDir="flat" />
           <AdminKpi label="Registered" sw="Waliojiunga" value={stats.totalRegistered.toLocaleString()} delta="from invites" deltaDir="flat" />
           <AdminKpi label="Conversion" sw="Ubadilishaji" value={`${stats.conversionPct}%`} delta="registered/invited" deltaDir="flat" />
-        </div>
+        </KpiGrid>
 
         <AdminCard title="New campaign" sw="Kampeni mpya">
           <CreateCampaignForm />
@@ -81,7 +83,7 @@ export default async function AdminInvitesPage({ searchParams }: { searchParams:
             </>
           )}
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

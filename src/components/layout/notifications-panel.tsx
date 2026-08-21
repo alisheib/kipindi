@@ -4,6 +4,8 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
+import { CountBadge } from "@/components/ui/count-badge";
+import { Dot } from "@/components/ui/dot";
 import { useExitPhase } from "@/components/ui/modal";
 import { cn } from "@/lib/utils";
 import { fetchMyNotifications, markNotifReadAction, markAllReadAction, dismissNotifAction, dismissAllAction } from "@/app/_actions/notifications";
@@ -491,39 +493,36 @@ export function NotificationsPanel() {
         <span key={ringSeq} aria-hidden className={cn("inline-flex", ringSeq > 0 && "g-ring")}>
           <I.bell s={20} />
         </span>
-        {unread > 0 && (
-          <span
-            aria-hidden
-            className="notif-badge-pulse"
-            style={{
-              // 40px button with the 20px glyph centred (glyph spans 10–30px);
-              // the badge hugs the glyph's top-right corner.
-              position: "absolute",
-              top: 3,
-              right: 1,
-              minWidth: 18,
-              height: 18,
-              borderRadius: 9,
-              background: "linear-gradient(180deg, var(--no-400), var(--no-600))",
-              border: "2px solid var(--bg-base)",
-              // DS-24 — fully token-composed (the drop half was a raw oklch).
-              boxShadow: "0 0 8px var(--no-500), 0 2px 4px color-mix(in oklab, var(--royal-950) 40%, transparent)",
-              zIndex: 20,
-              pointerEvents: "none",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 10,
-              fontWeight: 700,
-              color: "var(--pearl-50)",
-              fontFamily: "var(--font-mono)",
-              padding: "0 4px",
-              lineHeight: 1,
-            }}
-          >
-            {unread}
-          </span>
-        )}
+        {/* ⭐ STAGE 9b — the kit <CountBadge>. `md` is this pip's own box (min-width 18,
+            height 18, 0 4px, 10px/700) and `rose`/`ring`/`glow` are its own gradient,
+            2px cut-out and halo, carried across unchanged. Only the POSITION stays
+            inline, because where a pip hangs is a fact about the bell, not about pips.
+
+            🔴 AND IT NOW CAPS AT 99+. `unreadCount` is uncapped in the service, so a
+            player back from a fortnight away rendered "1247" inside an 18px circle
+            anchored 1px from the top bar's right edge. That is a rendered change and
+            it is the entire reason this badge has a shared definition. */}
+        <CountBadge
+          count={unread}
+          aria-hidden
+          className="notif-badge-pulse"
+          tone="rose"
+          size="md"
+          ring="var(--bg-base)"
+          // DS-24's halo now lives on the `rose` tone inside the primitive, not here — a
+          // caller can no longer pass a shadow at all, so the raw `oklch()` this line used
+          // to carry cannot come back.
+          lift
+          style={{
+            // 40px button with the 20px glyph centred (glyph spans 10–30px);
+            // the badge hugs the glyph's top-right corner.
+            position: "absolute",
+            top: 3,
+            right: 1,
+            zIndex: 20,
+            pointerEvents: "none",
+          }}
+        />
       </button>
 
       {present && typeof document !== "undefined" && createPortal(
@@ -658,9 +657,10 @@ export function NotificationsPanel() {
                           <p className="font-display text-body-sm font-semibold text-text truncate leading-tight">
                             {pickTitle(n, locale)}
                           </p>
-                          {isUnread && (
-                            <span aria-hidden className="h-1.5 w-1.5 rounded-pill bg-gold-500 shrink-0 mt-1" />
-                          )}
+                          {/* Stage 9b — kit <Dot>. `h-1.5 w-1.5` is 8px on this project's
+                              OVERRIDDEN spacing scale, not 6px, so the size is stated in
+                              pixels here where it cannot be misread. */}
+                          {isUnread && <Dot tone="gold" size={8} className="mt-1" />}
                         </div>
                         <p className="mt-0.5 text-label text-text-muted leading-snug">
                           {pickBody(n, locale)}
