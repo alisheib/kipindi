@@ -45,7 +45,7 @@
  * payment apps use because corner toasts get missed.
  */
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { Modal } from "@/components/ui/modal";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
@@ -182,6 +182,98 @@ export function OperationResultModal({
   // strip can never drift away from the close moment.
   const closeTargetRef = useRef<number | null>(null);
 
+  /* ── 🔴 A5 / WCAG 2.2.1 (2026-08-21) — THE RECEIPT PAUSES WHILE IT IS BEING READ ─────────
+   *
+   * This modal is the bet, sell and withdrawal RECEIPT, and it took itself off the screen
+   * after five seconds with no way to hold it — no pause on hover, no pause on focus, no
+   * extend. Five seconds is the whole reading budget for an eyebrow, a headline, a bilingual
+   * subhead and up to four detail rows including a 25-character gateway reference, in the
+   * player's second or third language. A time limit on the only place a reference is shown is
+   * a time limit on evidence.
+   *
+   * ⭐ SAME MACHINERY AS THE TOAST, deliberately (`ui/toast.tsx` `pause`/`resume`): bank the
+   * remaining time on pause, resume FROM the banked figure rather than restarting. The strip
+   * freezes with it, so the bar never disagrees with the timer — which is the property the
+   * absolute-timestamp anchor above exists to protect and the reason this could not be a
+   * second, independent countdown.
+   *
+   * ⛔ AND THE BACKSTOP MUST BE RE-ARMED, NOT LEFT RUNNING. The `setTimeout` below is what
+   * closes the modal when RAF is throttled (background tab); a pause that only stopped the
+   * RAF loop would freeze the bar and then close anyway, mid-read, with the bar half full.
+   * That is precisely the defect §F1 fixed in the toast, reproduced on the primary signal.
+   *
+   * ⚠️ FOCUS PAUSES ONLY WHEN IT IS `:focus-visible`, and that is not fussiness. <Modal>
+   * moves focus onto `primaryRef` 30 ms after opening, so a plain `focusin` pause would fire
+   * on the modal's own programmatic focus and the receipt would NEVER auto-close for anyone.
+   * `:focus-visible` is false for that programmatic focus after a mouse-driven action and
+   * true after a keyboard-driven one — so a mouse user keeps the 5-second dismissal, and a
+   * keyboard or screen-reader user (who cannot skim while a timer runs) keeps the receipt
+   * until they dismiss it. Both readings are the correct one for their user.
+   */
+  const pausedRef = useRef(false);
+  const remainingRef = useRef<number | null>(null);
+  const backstopRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const pauseAutoClose = useCallback(() => {
+    if (pausedRef.current) return;
+    const target = closeTargetRef.current;
+    if (target === null) return;          // nothing is counting (non-success, or already closed)
+    pausedRef.current = true;
+    remainingRef.current = Math.max(0, target - performance.now());
+    if (backstopRef.current) { clearTimeout(backstopRef.current); backstopRef.current = null; }
+  }, []);
+
+  const resumeAutoClose = useCallback(() => {
+    if (!pausedRef.current) return;
+    pausedRef.current = false;
+    const remaining = remainingRef.current ?? 0;
+    remainingRef.current = null;
+    // Re-anchor from NOW plus what was banked: the absolute target stays the single source
+    // the RAF strip and the backstop both read, exactly as before the pause.
+    closeTargetRef.current = performance.now() + remaining;
+    if (backstopRef.current) clearTimeout(backstopRef.current);
+    backstopRef.current = setTimeout(() => closeRef.current(), remaining + 50);
+  }, []);
+
+  /** Keyboard focus entering the panel holds the receipt; leaving it releases. */
+  const onFocusIn = (e: React.FocusEvent) => {
+    const el = e.target as HTMLElement | null;
+    let visible = false;
+    try { visible = !!el?.matches?.(":focus-visible"); } catch { visible = false; }
+    if (visible) pauseAutoClose();
+  };
+
+  /**
+   * 🔴 THE HOVER HOLD IS ARMED BY MOVEMENT, NOT BY `pointerenter`. This is the difference
+   * between a receipt that dismisses itself and one that never does.
+   *
+   * The receipt opens directly under the cursor that just clicked Confirm — the dialog it
+   * replaces occupied the same middle of the screen. Chromium recomputes hover state when
+   * content appears beneath a STATIONARY pointer and dispatches the boundary events anyway,
+   * so `onPointerEnter` would fire on essentially every desktop bet, with no one hovering
+   * anything: the 5-second auto-dismiss would quietly become "stays until you move the
+   * mouse". That is a product change, not an accessibility fix, and `dial-adversarial-e2e`
+   * §G.2 (which times the receipt's auto-close after a mouse-driven bet) would have caught
+   * it as a failure without ever saying why.
+   *
+   * A pointer that is genuinely being moved over the panel emits a stream of `pointermove`s
+   * with CHANGING coordinates. So: remember the last position, ignore the first sighting
+   * (which is the one a freshly-mounted panel gets for free), and ignore any event that
+   * repeats the same point. Real movement pauses within one frame; a resting cursor never
+   * does. ⛔ The seed must be cleared when the modal closes — see the anchor effect.
+   */
+  const lastPointRef = useRef<{ x: number; y: number } | null>(null);
+  const onPointerMoveHold = (e: React.PointerEvent) => {
+    const last = lastPointRef.current;
+    lastPointRef.current = { x: e.clientX, y: e.clientY };
+    if (!last || (last.x === e.clientX && last.y === e.clientY)) return;
+    pauseAutoClose();
+  };
+  const onPointerLeaveHold = () => {
+    lastPointRef.current = null;
+    resumeAutoClose();
+  };
+
   // Anchor / release the close target as `open` toggles. Separate
   // from the tick effect so closeMs prop changes can't reset the
   // anchor mid-cycle. Also reset the strip transform eagerly so
@@ -189,11 +281,17 @@ export function OperationResultModal({
   useEffect(() => {
     if (open && variant === "success") {
       if (stripRef.current) stripRef.current.style.transform = "scaleX(1)";
-      if (closeTargetRef.current === null) {
+      if (closeTargetRef.current === null && !pausedRef.current) {
         closeTargetRef.current = performance.now() + closeMs;
       }
     } else {
       closeTargetRef.current = null;
+      // A closed modal holds no pause. Without this a receipt dismissed while the pointer
+      // was over it would reopen already-paused, with no pointerleave coming to release it.
+      pausedRef.current = false;
+      remainingRef.current = null;
+      lastPointRef.current = null;
+      if (backstopRef.current) { clearTimeout(backstopRef.current); backstopRef.current = null; }
     }
   }, [open, variant, closeMs]);
 
@@ -216,6 +314,17 @@ export function OperationResultModal({
     if (stripRef.current) stripRef.current.style.transform = "scaleX(1)";
     let rafId: number | null = null;
     const tick = () => {
+      // Held: the strip sits at the banked figure and the loop stays alive waiting for the
+      // release. ⛔ It must NOT fall through — the target is a fixed timestamp, so a paused
+      // tick that kept measuring against it would drain the bar and close the receipt anyway.
+      if (pausedRef.current) {
+        const banked = remainingRef.current ?? 0;
+        if (stripRef.current) {
+          stripRef.current.style.transform = `scaleX(${Math.max(0, Math.min(1, banked / closeMs))})`;
+        }
+        rafId = requestAnimationFrame(tick);
+        return;
+      }
       const target = closeTargetRef.current;
       if (target === null) { rafId = null; return; }
       const remaining = target - performance.now();
@@ -234,9 +343,15 @@ export function OperationResultModal({
     // dep-change re-run can't extend the close past the intended
     // moment. Idempotent with the RAF (both call closeRef.current
     // and parent owns the open state).
-    const target = closeTargetRef.current ?? performance.now() + closeMs;
-    const remainingForBackstop = Math.max(0, target - performance.now()) + 50;
-    const backstop = setTimeout(() => closeRef.current(), remainingForBackstop);
+    // ⚠️ The backstop is held in a REF now, because the pause has to be able to clear it and
+    // the resume has to be able to re-arm it. Armed only while running: a re-run of this
+    // effect during a pause must not resurrect the timer the pause just cancelled.
+    if (!pausedRef.current) {
+      const target = closeTargetRef.current ?? performance.now() + closeMs;
+      const remainingForBackstop = Math.max(0, target - performance.now()) + 50;
+      if (backstopRef.current) clearTimeout(backstopRef.current);
+      backstopRef.current = setTimeout(() => closeRef.current(), remainingForBackstop);
+    }
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Enter") { e.preventDefault(); (onPrimary ?? closeRef.current)(); }
@@ -244,7 +359,7 @@ export function OperationResultModal({
     window.addEventListener("keydown", onKey);
     return () => {
       if (rafId !== null) cancelAnimationFrame(rafId);
-      clearTimeout(backstop);
+      if (backstopRef.current) { clearTimeout(backstopRef.current); backstopRef.current = null; }
       window.removeEventListener("keydown", onKey);
     };
   }, [open, variant, onPrimary, closeMs]);
@@ -285,7 +400,18 @@ export function OperationResultModal({
         </div>
       )}
 
-      <div className="p-6 lg:p-7 text-center">
+      {/* The hold surface. It is this div rather than a new wrapper because it already
+          covers the whole panel below the 4px strip, and every focusable control in the
+          receipt lives inside it — so `onFocusCapture` sees them all without adding a node
+          to the focus trap's `querySelectorAll`. Non-success variants never auto-close, so
+          the handlers no-op there (`pauseAutoClose` returns on a null target). */}
+      <div
+        className="p-6 lg:p-7 text-center"
+        onPointerMove={onPointerMoveHold}
+        onPointerLeave={onPointerLeaveHold}
+        onFocusCapture={onFocusIn}
+        onBlurCapture={resumeAutoClose}
+      >
         {/* Crest — the visual hit. ⭐ A BET COMMIT takes the micro-seal (spec §8's
             "micro-commit .seal-commit" — `seal-place`, the stamp landing) instead of
             the generic pop: `stripTone` yes/no is the modal's own definition of "a

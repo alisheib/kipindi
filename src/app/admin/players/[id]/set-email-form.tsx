@@ -53,8 +53,19 @@ export function SetEmailForm({ userId }: { userId: string }) {
         onChange={(e) => setEmail(e.target.value)}
         placeholder="player@example.com"
         /* ⚠️ LITERAL, not `h-8` — spacing is overridden (tailwind.config.ts:200-215) so `h-8`
-           was 48px. 40px = --tap-min; keep this and the Save button beside it identical. */
-        className="flex-1 min-w-0 h-[40px] px-2.5 rounded-md border border-border bg-bg-inset text-text font-mono text-[12px] focus:outline-none focus:border-[var(--brand-500)] transition-colors"
+           was 48px. 40px = --tap-min; keep this and the Save button beside it identical.
+
+           §A3 / E-129 — focus used to be a 1px BORDER recolour and nothing else: no 2px
+           ring, no halo, and in forced-colors (Windows high-contrast) not even that,
+           because every border there is painted one system colour. This is the field an
+           officer retypes a player's contact address into, so it takes the full house
+           recipe — a real 2px --brand-500 `outline` at offset 2 (outline survives
+           forced-colors where box-shadow does not, same reason `.gilt-metal:focus-visible`
+           keeps one) plus the 4px 25% halo that `.admin-focus` draws. ⛔ Written out
+           rather than left to `focus:outline-none`: Tailwind 3 quietly emits
+           `outline: 2px solid transparent` for that utility and Tailwind 4 emits
+           `outline-style: none`, so relying on it hides the intent and breaks on upgrade. */
+        className="flex-1 min-w-0 h-[40px] px-2.5 rounded-md border border-border bg-bg-inset text-text font-mono text-[12px] focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-[color:var(--brand-500)] focus:border-[var(--brand-500)] focus:shadow-[0_0_0_4px_color-mix(in_oklab,var(--brand-500)_25%,transparent)] transition-colors"
       />
       <ConfirmDialog
         trigger={

@@ -423,6 +423,11 @@ export const dict = {
     auth: {
       signInTitle: "Sign in", signUpTitle: "Create account",
       railTagline: "Predict events. Not chance.",
+      /** The brand lockup's accessible name on the auth screens. It was a hardcoded English
+       *  `aria-label` on a link whose only content is an SVG — so the ONE landmark a
+       *  screen-reader user has for getting off a half-finished sign-up announced itself in
+       *  English on a fully Swahili page. The brand name stays untranslated; the noun does not. */
+      brandHomeAria: "50pick home",
       continueWithPhone: "Continue with your phone",
       enterPhonePassword: "Enter your phone and password.",
       welcomeTo50pick: "Welcome to 50pick",
@@ -1002,6 +1007,13 @@ export const dict = {
        *  and drops only the fabricated percentage — a bare "YES" would tell a screen
        *  reader what the label says but not what the control does. */
       backYesAriaNoPrice: "Back YES", backNoAriaNoPrice: "Back NO",
+      /** ⭐ THE PRODUCT-AWARE PAIR — §L4, and the reason the fixed pair above is not enough.
+       *  A back button's VISIBLE word comes from `sideWord()`, so an Up & Down row reads
+       *  UP / DOWN; the fixed keys say YES / NO whatever the product, so a screen-reader
+       *  user heard a different vocabulary than the eye read — in all three locales.
+       *  `{side}` is filled from the SAME lexicon call that renders the label, so the two
+       *  channels cannot drift apart again. */
+      backSideAria: "Back {side} at {pct}%", backSideAriaNoPrice: "Back {side}",
       notifUnsupported: "Browser notifications not supported here. Add this market to your home screen for the best alerts.",
       watchingTitle: "Watching this market",
       notifBlocked: "Notifications blocked. Enable them in your browser settings to get a ping when this market resolves.",
@@ -1528,6 +1540,11 @@ export const dict = {
       noNotifications: "No notifications yet",
       noNotificationsHint: "We'll buzz here when a bet settles or a market resolves.",
       dismissNotification: "Dismiss notification",
+      /* §A4 — colour is never the only signal. The unread row is a gold wash plus a
+         1.5px gold dot, and the dot is `aria-hidden`, so a screen-reader user had NO
+         way to tell a settled-money notification they had already opened from one they
+         had not. Rendered sr-only beside the title. */
+      unread: "Unread",
     },
     chat: {
       greeting: "Hi.",
@@ -1588,6 +1605,15 @@ export const dict = {
       card3Body: "No fixed odds. Winners share the pool by the size of their stake. Our commission comes only out of the losing side — the winners' stakes are returned in full and never touched — so being right never costs you money. When betting closes we tell you the exact amount you'll receive.",
       poolCaption: "losers fund winners · a correct call never loses",
       dragToCommit: "drag to commit",
+      /* ⭐ THE VISUALS ARE COPY TOO, AND THEY WERE THE LAST ENGLISH LEFT IN THIS COMPONENT.
+         Card 1's YES / or / NO row, card 2's dial annotations and card 3's pool tiles were
+         baked into the JSX and the SVG — on the three cards whose whole job is teaching a
+         first-time player what a side means, in a language they may not read. `dragToCommit`
+         above records the same defect being fixed one caption at a time; these are the rest.
+         The SIDE words are not here: they come from `sideWord()`, so only the frames around
+         them live in the dictionary (§L2 — one definition site for the vocabulary). */
+      dialMin: "{n}× min", dialMax: "{n}× max",
+      poolSide: "{side} pool", poolShare: "share",
       skipPrimer: "Skip primer",
       // === i18n coverage pass ===
       primerLabel: "50pick primer", step: "Step {n}",
@@ -2266,6 +2292,7 @@ export const dict = {
     auth: {
       signInTitle: "Ingia", signUpTitle: "Fungua akaunti",
       railTagline: "Tabiri matukio. Si bahati.",
+      brandHomeAria: "Mwanzo wa 50pick",
       continueWithPhone: "Endelea na simu yako",
       enterPhonePassword: "Weka simu na nenosiri.",
       welcomeTo50pick: "Karibu kwenye 50pick",
@@ -2702,6 +2729,7 @@ export const dict = {
       insufficientDetail: "Unahitaji TZS {need} lakini una TZS {have}. Weka pesa ili kuendelea.",
       backYesAria: "Unga mkono NDIYO kwa {pct}%", backNoAria: "Unga mkono HAPANA kwa {pct}%",
       backYesAriaNoPrice: "Unga mkono NDIYO", backNoAriaNoPrice: "Unga mkono HAPANA",
+      backSideAria: "Unga mkono {side} kwa {pct}%", backSideAriaNoPrice: "Unga mkono {side}",
       notifUnsupported: "Arifa za kivinjari hazitumiki hapa. Ongeza soko hili kwenye skrini yako ya mwanzo kwa arifa bora.",
       watchingTitle: "Unafuatilia soko hili",
       notifBlocked: "Arifa zimezuiwa. Ziwashe katika mipangilio ya kivinjari chako upate arifa soko hili litakapotatuliwa.",
@@ -3177,6 +3205,7 @@ export const dict = {
       noNotifications: "Huna taarifa zozote kwa sasa",
       noNotificationsHint: "Tutakujulisha hapa pale bet itakapomalizika au soko litakapofungwa.",
       dismissNotification: "Ondoa arifa",
+      unread: "Haijasomwa",
     },
     chat: {
       greeting: "Habari.",
@@ -3216,6 +3245,8 @@ export const dict = {
       card3Body: "Hakuna odds. Washindi wanagawana bwawa kulingana na dau lao. Kamisheni yetu inatoka tu kwenye upande ulioshindwa — dau za washindi zinarudishwa zote na haziguswi kamwe — kwa hiyo kuwa sahihi hakukugharimu pesa kamwe. Dau likifungwa tutakuambia kiasi kamili utakachopata.",
       poolCaption: "wapotezao hulipa washindi · jibu sahihi halipotezi",
       dragToCommit: "sogeza kujitolea",
+      dialMin: "{n}× chini", dialMax: "{n}× juu",
+      poolSide: "bwawa la {side}", poolShare: "mgao",
       skipPrimer: "Ruka utangulizi",
       // === i18n coverage pass ===
       primerLabel: "Utangulizi wa 50pick", step: "Hatua {n}",
@@ -3864,6 +3895,7 @@ export const dict = {
     auth: {
       signInTitle: "登录", signUpTitle: "创建账户",
       railTagline: "预测事件，而非运气。",
+      brandHomeAria: "50pick 首页",
       continueWithPhone: "使用手机号继续",
       enterPhonePassword: "输入您的手机号和密码。",
       welcomeTo50pick: "欢迎来到50pick",
@@ -4299,6 +4331,9 @@ export const dict = {
       insufficientDetail: "您需要 TZS {need}，但只有 TZS {have}。请充值以继续。",
       backYesAria: "以 {pct}% 押注「是」", backNoAria: "以 {pct}% 押注「否」",
       backYesAriaNoPrice: "押注「是」", backNoAriaNoPrice: "押注「否」",
+      /** 「 」 sits in the TEMPLATE, not in the word — §L4: the bracket belongs to the
+       *  sentence, so `sideWord()` keeps returning the bare 是 / 否 / 涨 / 跌. */
+      backSideAria: "以 {pct}% 押注「{side}」", backSideAriaNoPrice: "押注「{side}」",
       notifUnsupported: "此处不支持浏览器通知。将此市场添加到主屏幕以获得最佳提醒。",
       watchingTitle: "正在关注此市场",
       notifBlocked: "通知已被阻止。请在浏览器设置中开启，以便此市场结算时收到提醒。",
@@ -4774,6 +4809,7 @@ export const dict = {
       noNotifications: "暂无通知",
       noNotificationsHint: "投注结算或市场结束时我们会在此通知您。",
       dismissNotification: "关闭通知",
+      unread: "未读",
     },
     chat: {
       greeting: "你好。",
@@ -4809,6 +4845,9 @@ export const dict = {
       card3Body: "没有固定赔率。赢家按投注额比例分享奖池。我们的佣金仅从失败一方扣取 — 赢家的本金全额退回，永不被动 — 因此判断正确绝不会让您亏钱。投注关闭时，我们会告知您将收到的确切金额。",
       poolCaption: "输家资助赢家 · 判断正确绝不亏损",
       dragToCommit: "拖动确认",
+      /* 「 」 lives in the TEMPLATE, not in the word — §L4. */
+      dialMin: "下限 {n}×", dialMax: "上限 {n}×",
+      poolSide: "「{side}」奖池", poolShare: "分配",
       skipPrimer: "跳过引导",
       // === i18n coverage pass ===
       primerLabel: "50pick 引导", step: "第 {n} 步",

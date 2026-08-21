@@ -111,8 +111,17 @@
 .m-press:active     { transform: scale(var(--m-press)); }
 
 /* Focus: appears, never grows. Same timing as hover so the two feel identical. */
+/* E-129 — the same forced-colors correction as `.gilt-metal:focus-visible` below, and
+   as the note above `.input:focus` in globals.css spells out in full: `box-shadow` is
+   stripped in Windows high-contrast, `outline` survives, so `outline: none` beside a
+   shadow-only ring means no focus indicator at all there. Transparent keeps the
+   designed look exactly and lets forced-colors substitute a real colour.
+   ⚠️ This class currently has ZERO consumers in `src` — the fix is pre-emptive, and it
+   matters because motion.css is imported LAST (layout.tsx), so the moment someone puts
+   `.m-focusable` on a `.btn` the old `outline: none` would have out-cascaded and erased
+   the kit's ring, silently. */
 .m-focusable        { transition: box-shadow var(--t-flick) linear, border-color var(--t-flick) linear; }
-.m-focusable:focus-visible { outline: none; box-shadow: 0 0 0 3px oklch(63% 0.18 262 / 0.22); border-color: var(--brand-500); }
+.m-focusable:focus-visible { outline: 2px solid transparent; outline-offset: 2px; box-shadow: 0 0 0 3px oklch(63% 0.18 262 / 0.22); border-color: var(--brand-500); }
 
 /* Floating plane: menus, dropdowns, tooltips. Set transform-origin to the trigger corner. */
 .m-float-in         { animation: m-settle-menu var(--t-quick) var(--m-settle) both; transform-origin: top left; }

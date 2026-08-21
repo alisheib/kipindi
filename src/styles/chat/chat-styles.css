@@ -511,6 +511,13 @@
 .cm-composer:focus-within {
   border-color: var(--brand-500);
   box-shadow: inset 0 2px 4px oklch(6% 0.08 268 / 0.4), 0 0 0 3px oklch(63% 0.18 262 / 0.25);
+  /* E-129 · forced-colors strips box-shadow and keeps outline, so a shadow-only ring is
+     INVISIBLE in Windows high-contrast. Transparent here so normal rendering is unchanged
+     and the system substitutes a real colour. The canonical note is in globals.css above
+     `.input:focus`; this stylesheet is a separate file only because the chat layer is
+     namespaced, not because it is exempt. */
+  outline: 2px solid transparent;
+  outline-offset: 2px;
 }
 .cm-composer textarea {
   border: none;
@@ -521,7 +528,14 @@
   line-height: 1.4;
   padding: 8px 0;
   resize: none;
-  outline: none;
+  /* ⛔ NOT `outline: none`. At (0,1,1) this rule OUTRANKS the `:where(…)` focus catch-all
+     in globals.css (0,1,0), so it was deleting the keyboard ring on the chat textarea
+     outright — the catch-all exists precisely so nothing in the long tail is unfocusable,
+     and this was the thing that got out of the tail. The composer shell draws the visible
+     ring on `:focus-within` above; the field itself only needs to not fight it, and to
+     keep a real outline for forced-colors. */
+  outline: 2px solid transparent;
+  outline-offset: 2px;
   max-height: 96px;
   min-height: 24px;
 }

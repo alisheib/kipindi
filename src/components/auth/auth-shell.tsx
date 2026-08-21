@@ -30,7 +30,7 @@ export async function AuthShell({ children }: { children: React.ReactNode }) {
         >
           <BrandTopo id="auth-rail-topo" opacity={0.09} />
           <div className="relative">
-            <Link href="/" aria-label="50pick home" className="inline-block">
+            <Link href="/" aria-label={t.auth.brandHomeAria} className="inline-block">
               <FiftyLockup size={26} />
             </Link>
           </div>
@@ -44,7 +44,18 @@ export async function AuthShell({ children }: { children: React.ReactNode }) {
                 <span className="text-yes-300">{t.common.yes} 64%</span>
                 <span className="text-no-300">36% {t.common.no}</span>
               </div>
-              <TippingBar yesPct={64} height={14} showLabels={false} recastOnHover={false} />
+              {/* 🔴 `aria-hidden`, NOT a translated `probabilityLabel` — and the distinction
+                  matters. This bar is a DECORATIVE SPECIMEN: 64/36 is not a market, it is
+                  brand warmth on the coldest screen a new player sees. `<TippingBar>` carries
+                  `role="progressbar"` with an English-defaulted accessible name, so leaving it
+                  exposed announced "YES probability 64%" — an English figure about a market
+                  that does not exist — to a Swahili or Chinese screen-reader user. The two
+                  numbers a sighted visitor actually reads are the mono row directly above,
+                  which is already localised; hiding the ornament removes a duplicate AND the
+                  English, where naming it would only have translated a fiction. */}
+              <div aria-hidden>
+                <TippingBar yesPct={64} height={14} showLabels={false} recastOnHover={false} />
+              </div>
             </div>
           </div>
 
@@ -61,7 +72,7 @@ export async function AuthShell({ children }: { children: React.ReactNode }) {
           <BrandTopo id="auth-form-topo" opacity={0.09} />
           <div className="relative w-full min-w-0 max-w-md">
             {/* Mobile lockup — the rail carries it on lg. */}
-            <Link href="/" aria-label="50pick home" className="mb-6 inline-block lg:hidden">
+            <Link href="/" aria-label={t.auth.brandHomeAria} className="mb-6 inline-block lg:hidden">
               <FiftyLockup size={22} />
             </Link>
             {children}

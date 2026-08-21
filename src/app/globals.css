@@ -1411,8 +1411,31 @@ body {
 }
 .input::placeholder { color: var(--text-subtle); opacity: 0.7; }
 .input:hover:not(:focus):not(:disabled) { border-color: var(--border-strong); }
+/* ⭐ E-129 · THE FORCED-COLORS RULE — the canonical note; every other focus rule in
+   this file and in motion.css points back here rather than restating it.
+
+   Windows high-contrast / forced-colors mode STRIPS `box-shadow` and KEEPS `outline`.
+   So a focus ring painted with `box-shadow` alone is invisible to exactly the users
+   who need it most, and a rule that writes `outline: none` on top of that leaves them
+   with no focus indicator at all (WCAG 2.4.7 + 1.4.11; DESIGN_AUTHORITY §A3 — "never
+   `outline: none` without a replacement ring").
+
+   The fix is one shape, taken from `.gilt-metal:focus-visible` (motion.css §M3), which
+   has carried a real `outline` beside its box-shadow since E-129 was first found on the
+   Deposit button:
+
+       outline: 2px solid <colour>;   outline-offset: 2px;   … and KEEP the box-shadow
+
+   The colour is `transparent` where the designed look is a border+halo and a second
+   visible ring would change it — transparent paints nothing normally, and forced-colors
+   substitutes a real system colour into it (the same technique Tailwind's own
+   `outline-none` utility uses). It is `var(--brand-500)` where §A3's visible ring is
+   the design, or where the rule stacks onto a `.btn` and would otherwise strip the
+   kit's ring.
+   ⛔ Do not "tidy" any of these back to `outline: none`. */
 .input:focus {
-  outline: none;
+  outline: 2px solid transparent; /* E-129 — forced-colors paints this; see note above */
+  outline-offset: 2px;
   border-color: var(--brand-500);
   box-shadow: 0 0 0 3px oklch(63% 0.18 262 / 0.25);
 }
@@ -1445,7 +1468,13 @@ body {
   transition: border-color var(--dur-micro) var(--ease-micro), box-shadow var(--dur-micro) var(--ease-micro);
   overflow: hidden;
 }
+/* The GROUP draws the ring, not the field — `.input-group .input` zeroes its own
+   box-shadow below. So the group is the element that has to survive forced colors,
+   and the inner `.input:focus` outline lands inside `overflow: hidden` anyway.
+   (An element's own outline is never clipped by its own `overflow`.) */
 .input-group:focus-within {
+  outline: 2px solid transparent; /* E-129 — see the note above `.input:focus` */
+  outline-offset: 2px;
   border-color: var(--brand-500);
   box-shadow: 0 0 0 3px oklch(63% 0.18 262 / 0.25);
 }
@@ -1540,7 +1569,17 @@ textarea {
   outline: none;
   transition: border-color var(--dur-micro) var(--ease-micro), box-shadow var(--dur-micro) var(--ease-micro);
 }
-textarea:focus { border-color: var(--brand-500); box-shadow: 0 0 0 3px oklch(63% 0.18 262 / 0.25); }
+/* E-129 — see the note above `.input:focus`. Two rules, not one, and the split is
+   deliberate: the base rule above already writes `outline: none` at element
+   specificity (0,0,1), which the defensive `:where(…):focus-visible` catch-all
+   further down (0,1,0) OUTRANKS — so a KEYBOARD-focused bare textarea already draws
+   a real `--brand-500` outline today. Giving `:focus` (0,1,1) a flat transparent
+   outline would have outranked the catch-all and DELETED that visible ring, trading
+   one regression for another. So `:focus` gets the transparent outline (which is
+   what forced-colors needs on a mouse focus), and `:focus-visible` immediately
+   recolours it back to brand for the keyboard — HEAD's look, unchanged. */
+textarea:focus { outline: 2px solid transparent; outline-offset: 2px; border-color: var(--brand-500); box-shadow: 0 0 0 3px oklch(63% 0.18 262 / 0.25); }
+textarea:focus-visible { outline-color: var(--brand-500); }
 textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
 
 /* ---------- Avatar ---------- */
@@ -3684,8 +3723,26 @@ html[data-sheet-open] .route-enter { animation: none; }
 
 /* ── Focus rings ─────────────────────────────────────────────────── */
 /* Single source of truth for the brand focus ring on inputs.         */
-.brand-focus:focus, .brand-focus-within:focus-within { outline: none; border-color: var(--brand-500); box-shadow: 0 0 0 4px oklch(63% 0.18 262 / 0.25); }
-.admin-focus:focus { outline: none; border-color: var(--brand-500); box-shadow: 0 0 0 4px oklch(63% 0.18 262 / 0.25); }
+/* E-129 — see the note above `.input:focus`. Both rules wrote `outline: none`, so in
+   forced-colors mode every kit field in the product (Input · Textarea · PasswordInput ·
+   OtpInput · Select · DateSelect · TimeSelect · DurationInput all carry `.brand-focus`
+   or `.brand-focus-within`) and every admin field lost its ring entirely. */
+.brand-focus:focus, .brand-focus-within:focus-within { outline: 2px solid transparent; outline-offset: 2px; border-color: var(--brand-500); box-shadow: 0 0 0 4px oklch(63% 0.18 262 / 0.25); }
+/* ⚠️ `:focus-visible`, NOT `:focus` — corrected here. As `:focus` this fired on a MOUSE
+   click too, so clicking an admin filter chip or a Reset link left a 4px ring behind it.
+   Every one of the 45 call sites is a native <input>/<textarea>/<button>/<a>, and a text
+   field matches `:focus-visible` on pointer focus anyway (the browser knows it takes
+   keyboard input), so nothing that legitimately showed a ring loses one — only the
+   buttons and links stop ringing on click, which is the point. */
+.admin-focus:focus-visible { outline: 2px solid transparent; outline-offset: 2px; border-color: var(--brand-500); box-shadow: 0 0 0 4px oklch(63% 0.18 262 / 0.25); }
+/* ⛔ THE STACKING GUARD. `.admin-focus` lands on a `.btn` at five sites
+   (admin/transactions 111/202/203, ui/datetime-range-filter 142/145). Both rules are
+   (0,2,0) and this file emits `.btn:focus-visible` ~2,800 lines earlier, so the LATER
+   one wins — which is how `outline: none` used to strip the kit's own brand ring off
+   those five buttons. A transparent outline would strip it just as thoroughly, so the
+   combined selector (0,3,0) restores §A3's ring byte-for-byte. Keep this rule adjacent
+   to the one above; separated, the reason for it is unrecoverable. */
+.btn.admin-focus:focus-visible { outline-color: var(--brand-500); }
 
 /* ── Admin tables ─────────────────────────────────────────────────── */
 /* Consistent padding, breathing room, and border treatment for every

@@ -29,8 +29,8 @@ repo `F:\kipindi-main`, branch `main`):**
 | 1 | Safety (no visual change) | **DONE** | `99999f99` | ✓ 200 · clean boot · shots read |
 | 2 | The alpha critical (D7) | **DONE** | `85bfb075` | ✓ 200 · clean boot · shots read |
 | 3 | Sizing (operator's top priority) | **DONE** | `2122067d` | ✓ 200 · clean boot · shots read |
-| 4 | Correctness: time, words, money formatting | **DONE** | `stage-4` | pending push |
-| 5 | Focus & accessibility | NOT STARTED | | |
+| 4 | Correctness: time, words, money formatting | **DONE** | `6882091f` | ✓ 200 · clean boot · shots read |
+| 5 | Focus & accessibility | **DONE** | `stage-5` | pending push |
 | 6 | Motion | NOT STARTED | | |
 | 7 | Performance | NOT STARTED | | |
 | 8 | Dead code & doc truth | NOT STARTED | | |
@@ -225,6 +225,56 @@ have to re-derive.
   omission.
 - ⚠️ **`updown/rounds` printed a raw `voidReason` while `updown-refund-reason.ts` existed
   precisely to phrase it** — a refund explanation an officer reads, bypassing its own module.
+
+**Stage 5**
+
+- ⭐ **HALF THE FORCED-COLORS PREMISE WAS FALSE, AND THE AGENT PROVED IT.** Tailwind 3's
+  `outline-none` UTILITY is not `outline: none` — `corePlugins.js` defines it as
+  `outline: 2px solid transparent; outline-offset: 2px`, i.e. it already IS the
+  forced-colors bridge. So every `focus:outline-none` in a `.tsx` was already covered. The
+  genuine defects were the REAL `outline: none` declarations in the stylesheets
+  (`.brand-focus`, `.admin-focus`, `.input:focus`, `.input-group`, `textarea`, `.m-focusable`,
+  the chat composer) — those had no bridge at all. ⚠️ Tailwind 4 redefines the utility, so
+  this is a trap to remember rather than a reason to relax.
+- 🔴 **`.admin-focus` was stripping the kit's ring off buttons.** Both it and `.btn:focus-visible`
+  are (0,2,0), and `.admin-focus` is emitted ~2,800 lines later — so it won, and its
+  `outline: none` deleted the ring. Closed in CSS with a combined `.btn.admin-focus:focus-visible`
+  selector, so it is safe **regardless of whether the five `.tsx` stacking sites are ever
+  touched**. It was also `:focus`, not `:focus-visible`, so it fired on mouse click; all 45
+  call sites were checked before changing it.
+- ⚠️ **`textarea` needed TWO rules, not one.** The bare `textarea { outline: none }` is (0,0,1)
+  and the `:where(…)` catch-all is (0,1,0), so a keyboard-focused bare textarea ALREADY drew a
+  real brand outline. A flat transparent outline at (0,1,1) would have OUTRANKED the catch-all
+  and deleted it — trading one regression for another.
+- 🔴 **The chat composer's `textarea { outline: none }` at (0,1,1) outranked the catch-all**, so
+  the chat field had no keyboard ring at all. The catch-all exists precisely so nothing in the
+  long tail is unfocusable; this was the thing that got out of the tail.
+- 🔴 **The notifications panel declared `role="dialog"` and provided none of the contract** — no
+  `aria-modal`, no focus-in, no trap, no return, on a PORTALED panel hosting money
+  notifications, so Tab went straight to the page behind the scrim. It also nested a
+  `<button>` inside a `<button>` (dismiss inside the row), which is invalid HTML with undefined
+  AT behaviour.
+- ⭐ **Tabs dropped their `role="tab"` rather than gaining arrow keys**, and the reason is
+  structural: the ARIA tab pattern requires `aria-controls` pointing at a `role="tabpanel"`,
+  and neither component owns its panel — `Tabs`' panel is rendered by its caller, and the
+  chart's "panel" is an SVG that is already `role="img"` with alt text and cannot be both.
+  `aria-pressed` (the `FilterPill` semantics used everywhere else in this product) is the
+  honest description of what these actually are.
+- ⚠️ **`countdown-pill` was announcing every second** via `aria-live` — on the OTP screen, a
+  screen reader counting out loud. Now sparse (start / 30s / 10s / ready).
+- 🔴 **`test:ui-consistency`'s `bare-text-button` rule has been UNDER-reporting for its whole
+  life, by one character.** Its `<button\b([^>]*)>` stops at the FIRST `>` — and an arrow
+  function contains one, so any button written `onClick={() => …}` (i.e. most of them) never
+  had its `className` captured and was silently skipped. Found only because simplifying one
+  handler to `onClick={open}` made a button the rule had never been able to see appear as
+  "new drift". Widened — and the rule now also treats an ICON as paint, since its own words
+  are "painted ONLY with type" and a pencil glyph is exactly what tells a reader that text is
+  pressable. Net 58 → 55 findings: seeing more buttons retired more false positives than it
+  added.
+- ⚠️ **`backYesAria`/`backNoAria` could NOT be deleted**: `side-picker.tsx` still consumes all
+  four, and correctly — it hardcodes `sideWord(t, side, "MARKET")`, so it is poll-only and its
+  aria matches its visible label. The §L4 defect was specific to `market-card`, which renders
+  MIXED books.
 
 **Follow-ups this campaign opened and has not closed**
 

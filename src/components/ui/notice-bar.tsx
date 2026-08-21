@@ -86,7 +86,21 @@ export function NoticeBar({
             type="button"
             onClick={onDismiss}
             aria-label={dismissLabel}
-            className="shrink-0 inline-flex h-6 w-6 items-center justify-center rounded-md opacity-70 hover:opacity-100 transition-opacity"
+            /* ⭐ 40×40 HIT BOX, ZERO LAYOUT COST — and the two halves of that are the point.
+               This was `h-6 w-6`, which on THIS project's overridden spacing scale is 32px,
+               not the 24 the class name suggests (tailwind.config.ts remaps 0.5–12; read it
+               before trusting any numeric spacing class here). 32 is still under the §A2
+               floor, on an icon-only control that is the only way to close a site-wide
+               banner — and `NoticeBarAction` below already documents itself as keeping "the
+               ≥40px tap target the responsiveness matrix requires", so the file stated the
+               standard and this button did not meet it.
+               `-my-1` (4px on that scale) gives back the 8px the box grew, so the button's
+               MARGIN box stays 32px — the height the row was built around — while its BORDER
+               box, which is what a finger and `getBoundingClientRect()` both see, is 40. The
+               bar does not get taller and the X does not get bigger; the target simply reaches
+               into padding the bar already owned. ⛔ Do not drop the negative margin without
+               re-measuring the bar. */
+            className="shrink-0 -my-1 inline-flex h-[40px] w-[40px] items-center justify-center rounded-md opacity-70 hover:opacity-100 transition-opacity"
           >
             <I.x s={14} />
           </button>
@@ -129,8 +143,13 @@ export function NoticeBarAction({
   glyph?: GlyphKey;
 }) {
   const Glyph = glyph ? I[glyph] : null;
+  // 44, not 40 — §A2's "44px preferred on mobile", and this control is the mobile case by
+  // construction: the standing notice bar sits app-wide above the content, and its action is
+  // how a player clears the blocker it announces (confirm the email that gates the first
+  // deposit, resend the code). 40 is the absolute floor, not the target, for a button a
+  // thumb reaches for on a bar that is deliberately never in the reading flow.
   const cls =
-    "inline-flex min-h-[40px] shrink-0 items-center gap-1.5 rounded-pill border border-warning-fg/40 px-3.5 text-[12px] font-semibold transition-colors hover:bg-warning-fg/10 disabled:opacity-50";
+    "inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-pill border border-warning-fg/40 px-3.5 text-[12px] font-semibold transition-colors hover:bg-warning-fg/10 disabled:opacity-50";
   if (href) {
     return (
       <a href={href} className={cls}>

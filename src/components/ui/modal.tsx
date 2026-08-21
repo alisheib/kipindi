@@ -299,6 +299,7 @@ export function ConfirmModal({
   const [typed, setTyped] = React.useState("");
   const inputRef = React.useRef<HTMLInputElement>(null);
   const confirmRef = React.useRef<HTMLButtonElement>(null);
+  const cancelRef = React.useRef<HTMLButtonElement>(null);
   const isHard = tier === "hard" && !!typedWord;
   const armed = !isHard || typed.trim().toUpperCase() === typedWord!.trim().toUpperCase();
 
@@ -318,7 +319,27 @@ export function ConfirmModal({
       role="alertdialog"
       ariaLabel={title}
       maxWidth={maxWidth}
-      initialFocus={isHard ? inputRef : confirmRef}
+      /* 🔴 A5 (2026-08-21) — THE DIALOG OPENS ON CANCEL, NOT ON THE ACTION.
+       *
+       * A medium-tier confirm used to open with focus already ON the confirm button, so the
+       * very next Enter or Space — the key a keyboard user has just pressed to GET here, and
+       * the key a screen-reader user presses to activate anything — committed the action the
+       * dialog exists to slow down. On this platform those actions are settle, emergency-void,
+       * kill-switch and the provider switch: real money, mostly irreversible. A confirmation
+       * that can be satisfied by the same keystroke that opened it has confirmed nothing.
+       * (`modal.tsx`'s own focus-loop comment above records the sibling defect: focus being
+       * DRAGGED onto Confirm once a second on the bet dialog.)
+       *
+       * ⛔ THE HARD TIER IS UNTOUCHED AND THAT IS DELIBERATE. It focuses the typed-word input,
+       * which is not the destructive control at all — it is the arming gate, and the confirm
+       * button behind it is `disabled` until the word matches, so Enter there cannot fire
+       * anything. Flattening the two tiers to one rule would move focus AWAY from the field
+       * the officer must type into, making the safer tier the more awkward one.
+       *
+       * ⚠️ Cancel for every medium tone, including `brand`. A non-destructive confirm is still
+       * a decision someone chose to interrupt the flow for, and one rule is one fact — a
+       * per-tone exception is a second definition of "which button is safe". */
+      initialFocus={isHard ? inputRef : cancelRef}
       ariaBusy={loading}
       closeOnScrim={!loading}
       showClose={!loading}
@@ -386,7 +407,7 @@ export function ConfirmModal({
             confirmLabel ?? t.common.confirm
           )}
         </button>
-        <button type="button" disabled={loading} onClick={onClose} className="btn btn-ghost btn-md w-full disabled:opacity-50">
+        <button ref={cancelRef} type="button" disabled={loading} onClick={onClose} className="btn btn-ghost btn-md w-full disabled:opacity-50">
           {cancelLabel ?? t.common.cancel}
         </button>
       </div>

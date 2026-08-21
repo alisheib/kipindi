@@ -13,6 +13,7 @@
  * Tile: 48×48 PaymentLogo slot + provider name (Inter 500) beneath.
  *   • selected  — 2px royal `--brand-500` ring + check pip (120ms scale-in;
  *                 reduced-motion instant). Royal, NOT gold (gold = earned money).
+ *   • focused   — real `outline` on the TILE (see §A3 note on the label below).
  *   • disabled  — provider down: 40% opacity + "Temporarily unavailable".
  */
 import { I } from "@/components/ui/glyphs";
@@ -37,10 +38,21 @@ export function ProviderRadioGrid({
     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
       {providers.map((p, i) => {
         const checked = defaultProvider ? p.id === defaultProvider : i === firstSelectable;
+        // §A3 — the real control is `sr-only`, and `sr-only` clips to a 1×1 box, so the
+        // catch-all focus outline in globals.css was being drawn on something a player
+        // cannot see: tabbing through HOW THEY GET PAID showed nothing at all. The ring
+        // has to land on the visible tile. `has-[:focus-visible]` rather than
+        // `peer-focus-visible` because the input is this label's CHILD, not its sibling —
+        // Tailwind's `peer-*` compiles to `~`, which could never match here (checkbox.tsx
+        // can use `peer-*` because its box IS a sibling). `:has()` is already load-bearing
+        // in this file for the selection ring, so it adds no new browser requirement.
+        // And it is a real `outline`, not a `box-shadow` ring: forced-colors / Windows
+        // high-contrast strips box-shadow and keeps outline — the same reason
+        // `.gilt-metal:focus-visible` keeps one (E-129).
         return (
           <label
             key={p.id}
-            className={`group/tile relative flex flex-col items-center gap-2 px-2 py-3.5 rounded-md border border-border transition-colors ${
+            className={`group/tile relative flex flex-col items-center gap-2 px-2 py-3.5 rounded-md border border-border transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[color:var(--brand-400)] ${
               p.unavailable ? "opacity-40 cursor-not-allowed" : "cursor-pointer hover:border-border-strong"
             }`}
             style={{ background: "var(--bg-inset)" }}

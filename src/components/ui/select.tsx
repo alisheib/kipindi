@@ -4,11 +4,16 @@
  * Select — kit-themed dropdown replacing native <select>.
  *
  * Dark glass dropdown panel, brand-500 focus ring, mono font.
- * Keyboard navigable (arrows, enter, escape, type-to-search).
+ * Keyboard navigable (arrows, Home/End, enter, escape, Tab-to-close, type-to-search).
  * Hidden input for form submission.
+ *
+ * ⭐ A5 · IT IS AN APG SELECT-ONLY COMBOBOX, not a button that looks like one. The trigger
+ * names the listbox it owns (`aria-controls`), names the row it is on
+ * (`aria-activedescendant`), takes its NAME from a referenced label and leaves its own text
+ * to be the VALUE. Everything below that is marked ⭐/⛔ says which defect it closes.
  */
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useId } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
@@ -42,7 +47,9 @@ type Props = {
   className?: string;
   /** Accessible name for the combobox. A11y: a role="combobox" does NOT take
    *  its name from child text (unlike a plain button), so it needs an explicit
-   *  label. Falls back to the placeholder / selected label when omitted. */
+   *  label. Falls back to the placeholder, then the generic "Select…".
+   *  ⛔ It no longer falls back to the SELECTED LABEL — that is the control's value, and
+   *  naming a control after its own value is how the choice stopped being announced. */
   ariaLabel?: string;
   /** Height floor of the trigger: `xs` 32px (dense admin filter bars), `sm` 36px
    *  (admin forms), `md` 44px (default, player-facing). See the height table near
@@ -72,6 +79,46 @@ export function Select({
   const [open, setOpen] = useState(false);
   const [focusIdx, setFocusIdx] = useState(-1);
   const [mounted, setMounted] = useState(false);
+
+  /**
+   * ⭐ A5 (2026-08-21) — THE IDS THAT MAKE THE LISTBOX EXIST FOR A SCREEN READER.
+   *
+   * Before this, `focusIdx` was purely visual: the highlighted row moved, and nothing in the
+   * accessibility tree moved with it, so an assistive-tech user pressing ArrowDown heard
+   * silence. The APG select-only combobox needs three references, and none of them can be
+   * built without stable ids — `aria-controls` (the trigger owns a listbox), the per-option
+   * id, and `aria-activedescendant` (which of them is current).
+   *
+   * ⚠️ SANITISED. React 19's `useId` emits `«r0»` where React 18 emitted `:r0:`. Both are
+   * legal HTML ids and both are legal IDREFs, but neither survives being written into a
+   * selector — which is exactly why `probability-chart.tsx` already strips its own. One
+   * shape across the kit costs nothing and removes a whole class of later surprise.
+   */
+  const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
+  const listboxId = `sel-${uid}-list`;
+  const labelId = `sel-${uid}-label`;
+  const optionId = (i: number) => `sel-${uid}-opt-${i}`;
+
+  /**
+   * ⭐ THE NAME IS THE LABEL; THE VALUE IS THE SELECTED TEXT. These are two different things
+   * and this control used to collapse them into one: `aria-label` was
+   * `ariaLabel ?? placeholder ?? selectedOption?.label`, so on any Select that carries a
+   * placeholder — which is most of them — the placeholder WON the accessible name and the
+   * player's actual choice was never announced at all. A reader heard "Category, combo box"
+   * and no category, forever.
+   *
+   * ⛔ SO THE LABEL IS REFERENCED, NOT INLINED — `aria-labelledby` at a visually hidden span
+   * rather than `aria-label` on the trigger. This is the W3C APG select-only combobox shape
+   * verbatim, and the reason it is that shape: `aria-label` replaces the element's CONTENT in
+   * the name computation, and the content is precisely what a non-editable combobox exposes
+   * as its VALUE. Pointing the name at an outside element leaves the trigger's own text free
+   * to be the value, in every AT mapping rather than only the forgiving ones.
+   *
+   * ⚠️ The span is a SIBLING of the button, never a child: `sr-only` is `position: absolute`,
+   * so it is out of flow and cannot become a flex/grid item — but text inside the button would
+   * have joined the value and announced "Category Sports" as the choice.
+   */
+  const labelText = ariaLabel ?? placeholder ?? t.common.selectPlaceholder;
   const triggerRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   /** ⛔ G-8. `bottom` is what makes "open above" actually open above — see `openDropdown`.
@@ -139,9 +186,10 @@ export function Select({
     setOpen(true);
   };
 
-  // Keyboard on trigger
+  // Keyboard on trigger. ⭐ `ArrowUp` opens too (APG): a keyboard user reaching a closed
+  // combobox and pressing Up expects the list, not nothing — the same gap Home/End were.
   const onTriggerKey = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
+    if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
       openDropdown();
     }
@@ -164,6 +212,25 @@ export function Select({
       };
       if (e.key === "ArrowDown") { e.preventDefault(); setFocusIdx((i) => step(i, 1)); }
       if (e.key === "ArrowUp") { e.preventDefault(); setFocusIdx((i) => (i <= 0 ? i : step(i, -1))); }
+      // Home / End — the two keys a long list needs most and this control did not answer.
+      // `step` from outside the array walks inward to the first (or last) SELECTABLE option,
+      // so neither key can strand focus on a disabled row the way a bare 0 / length-1 would.
+      if (e.key === "Home") {
+        e.preventDefault();
+        const first = step(-1, 1);
+        if (first >= 0) setFocusIdx(first);
+      }
+      if (e.key === "End") {
+        e.preventDefault();
+        const last = step(options.length, -1);
+        if (last < options.length) setFocusIdx(last);
+      }
+      // ⛔ TAB CLOSES THE PANEL. It used to leave it open and hanging over the next field —
+      // and because the panel is PORTALLED to the end of <body>, the options are not next in
+      // tab order either, so the open list was orphaned from the focus that had left it.
+      // ⚠️ Closing does NOT commit the highlighted option: a keystroke whose job is "leave
+      // this control" must not be able to change a value on the way out. Enter commits.
+      if (e.key === "Tab") { setOpen(false); }
       if (e.key === "Enter") {
         e.preventDefault();
         if (focusIdx >= 0 && !options[focusIdx]?.disabled) pick(options[focusIdx]!.value);
@@ -221,6 +288,8 @@ export function Select({
 
   return (
     <>
+      {/* The name, referenced not inlined — see `labelText` above for why it is a sibling. */}
+      <span id={labelId} className="sr-only">{labelText}</span>
       <button
         ref={triggerRef}
         type="button"
@@ -229,9 +298,16 @@ export function Select({
         onClick={() => open ? setOpen(false) : openDropdown()}
         onKeyDown={onTriggerKey}
         role="combobox"
-        aria-label={ariaLabel ?? placeholder ?? selectedOption?.label ?? t.common.selectPlaceholder}
+        aria-labelledby={labelId}
         aria-expanded={open}
         aria-haspopup="listbox"
+        /* ⛔ EMITTED ONLY WHILE OPEN. The listbox is portalled and does not exist in the DOM
+           when the panel is shut, and an `aria-controls` pointing at an absent id is a
+           dangling IDREF — some ATs report the whole relationship as broken rather than
+           ignoring it. Same reason `aria-activedescendant` is dropped when nothing is
+           highlighted: an empty string is a claim, `undefined` is silence. */
+        aria-controls={open ? listboxId : undefined}
+        aria-activedescendant={open && focusIdx >= 0 ? optionId(focusIdx) : undefined}
         className={cn(
           "field-measure flex items-center justify-between gap-2 w-full px-3 py-1.5 border border-border text-left",
           "focus:outline-none brand-focus",
@@ -264,7 +340,9 @@ export function Select({
       {mounted && open && createPortal(
         <div
           ref={listRef}
+          id={listboxId}
           role="listbox"
+          aria-labelledby={labelId}
           className="m-float-in fixed z-[130] rounded-control border border-border-strong bg-bg-elevated shadow-overlay overflow-y-auto overscroll-contain"
           style={{
             /* G-8: exactly one of these is set. `bottom` is the "open above" case, and
@@ -279,8 +357,14 @@ export function Select({
           {options.map((o, i) => (
             <button
               key={o.value}
+              id={optionId(i)}
               type="button"
               role="option"
+              /* ⛔ OUT OF THE TAB ORDER, deliberately. Focus never leaves the trigger — the
+                 highlighted row is named by `aria-activedescendant`, which is the whole point
+                 of that attribute. Leaving these tabbable would put a stack of buttons at the
+                 END of <body> (the portal) in the middle of the page's tab sequence. */
+              tabIndex={-1}
               aria-selected={o.value === selected}
               // ⛔ `aria-disabled`, NOT the `disabled` attribute. A `disabled` button is removed
               // from the accessibility tree entirely, so a screen-reader user would not hear the

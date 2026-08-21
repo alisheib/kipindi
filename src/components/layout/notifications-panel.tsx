@@ -8,6 +8,12 @@ import { cn } from "@/lib/utils";
 import { fetchMyNotifications, markNotifReadAction, markAllReadAction, dismissNotifAction, dismissAllAction } from "@/app/_actions/notifications";
 import type { StoredNotification } from "@/lib/server/store";
 import { useT } from "@/lib/i18n";
+import { useModalLock } from "@/lib/use-modal-lock";
+
+/** The SAME list `<Modal>` (ui/modal.tsx) and `<FilterSheet>` (markets/filter-sheet.tsx)
+ *  trap against — copied verbatim so the product's three focus traps cannot drift apart. */
+const FOCUSABLE =
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 const iconFor = (k: StoredNotification["kind"]) => {
   switch (k) {
@@ -88,6 +94,14 @@ export function NotificationsPanel() {
   const pathname = usePathname();
   const { t, locale } = useT();
   useEffect(() => { setOpen(false); }, [pathname]);
+
+  /* The third leg of the dialog contract (see the focus effect below for the other two).
+     `overscroll-contain` on the list already stops scroll CHAINING out of the list, but it
+     does nothing for a drag that starts on the scrim, and nothing at all for the Android
+     pinch-zoom case this hook exists to fix — a zoomed visual viewport puts a `fixed` panel
+     off-screen. Every other portaled dialog in the product calls exactly this hook; the
+     panel is behind a full-viewport scrim, so it is one of them. */
+  useModalLock(open);
 
   const unread = items.filter((n) => !n.readAt).length;
 
@@ -180,8 +194,39 @@ export function NotificationsPanel() {
     };
   }, [refresh]);
 
+  /* ⭐ THE DIALOG CONTRACT — it was DECLARED and not PROVIDED.
+   *
+   * 🔴 This panel has carried `role="dialog"` since it was written, behind a full-viewport
+   * scrim, and supplied none of what that promises: no `aria-modal`, no focus-in, no trap,
+   * no focus return. It is PORTALED to `document.body` and rendered LAST, so the very first
+   * Tab left the panel and walked the page BEHIND the scrim — a page the sighted user
+   * cannot see and the pointer cannot reach. This inbox is where the product tells a player
+   * their money moved (WIN · LOSS · DEPOSIT · WITHDRAW rows), so "the keyboard user is
+   * somewhere else now" is a money surface losing its reader mid-sentence.
+   *
+   * The five-part contract is the SHIPPED one, taken from `<Modal>` (ui/modal.tsx) and
+   * `<FilterSheet>` (markets/filter-sheet.tsx), which implement it identically: Escape
+   * closes · focus moves IN on open · Tab is trapped · focus RETURNS to the bell on close ·
+   * the body is scroll/zoom locked (`useModalLock`, the same hook).
+   * ⛔ NOT literally `<Modal>`: modal.tsx says in as many words that slide-over/anchored
+   * panels are a different pattern and out of its scope, and this one hangs off the bell.
+   * So the CONTRACT is reused and the mechanism is not.
+   *
+   * ⚠️ `[open]` IS THE ONLY DEPENDENCY, and that is not tidiness — it is the bug `<Modal>`
+   * paid for. Its focus effect once depended on its callbacks, every caller passed a fresh
+   * inline arrow, so the effect tore down and re-ran on EVERY render: cleanup restored
+   * focus, the body re-captured it, and 30 ms later the timer dragged focus onto the
+   * primary button — once a second on the bet-confirm dialog, whose countdown ticks.
+   * ⛔ Nothing may join this dependency list without being held in a ref first.
+   */
   useEffect(() => {
     if (!open) return;
+    // Captured AT OPEN, not read at cleanup time: a tapped row navigates, so by cleanup the
+    // DOM has moved on. This is the element that actually had focus when the panel opened —
+    // the bell, for a keyboard user.
+    const restoreTo = document.activeElement as HTMLElement | null;
+    const focusables = () =>
+      Array.from(dialogRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? []);
     const onDocClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement | null;
       if (!target) return;
@@ -190,12 +235,39 @@ export function NotificationsPanel() {
       if (target.closest('[role="dialog"], [role="alertdialog"]')) return;
       setOpen(false);
     };
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { e.preventDefault(); setOpen(false); return; }
+      if (e.key !== "Tab") return;
+      const f = focusables();
+      if (f.length === 0) return;
+      const first = f[0], last = f[f.length - 1];
+      const active = document.activeElement;
+      const outside = !dialogRef.current?.contains(active);
+      /* ⚠️ `outside` GUARDS BOTH DIRECTIONS HERE, where `<Modal>` guards only Shift+Tab —
+         a deliberate difference, not a copy error. Modal's content is static; this list
+         DELETES the row under the user (dismiss is optimistic — the row leaves before the
+         round-trip). When the focused ✕ is removed from the DOM the browser drops focus to
+         `<body>`, and a plain Tab from there is the exact leak the trap exists to stop. */
+      if (e.shiftKey && (active === first || outside)) {
+        e.preventDefault(); last.focus();
+      } else if (!e.shiftKey && (active === last || outside)) {
+        e.preventDefault(); first.focus();
+      }
+    };
+    // 30 ms — the same beat `<Modal>` and `<FilterSheet>` wait, so the panel has painted and
+    // `.m-float-in` has started before focus lands. The panel itself is the fallback
+    // (tabIndex -1) for the impossible case of a dialog with nothing focusable in it.
+    const timer = setTimeout(() => {
+      (focusables()[0] ?? dialogRef.current)?.focus();
+    }, 30);
     document.addEventListener("click", onDocClick);
     document.addEventListener("keydown", onKey);
     return () => {
+      clearTimeout(timer);
       document.removeEventListener("click", onDocClick);
       document.removeEventListener("keydown", onKey);
+      // Guard: the bell may have unmounted under a navigation.
+      restoreTo?.focus?.();
     };
   }, [open]);
 
@@ -324,7 +396,16 @@ export function NotificationsPanel() {
           <div
             ref={dialogRef}
             role="dialog"
+            /* ⭐ `aria-modal` is the half of the contract the MARKUP owes; the effect above
+               owes the other half. It tells assistive tech the rest of the document is inert
+               while this is open — which is only honest BECAUSE the trap now holds, and
+               which is why the two shipped together rather than one first. */
+            aria-modal="true"
             aria-label={t.notif.title}
+            /* Focus fallback for a dialog with nothing focusable inside it — never reached
+               today (the ✕ is always there), and excluded from FOCUSABLE so the trap cannot
+               land the user on the container itself. */
+            tabIndex={-1}
             className={cn(
               "fixed left-3 right-3 top-[calc(env(safe-area-inset-top)+72px)] z-[61] rounded-modal border border-border-strong bg-bg-elevated/85 backdrop-blur-xl overflow-hidden shadow-overlay flex flex-col",
               "max-h-[calc(100dvh-env(safe-area-inset-top)-72px-env(safe-area-inset-bottom)-72px)]",
@@ -377,50 +458,88 @@ export function NotificationsPanel() {
                 const Icon = iconFor(n.kind);
                 const isUnread = !n.readAt;
                 return (
-                  <button
+                  /* 🔴 THE ROW USED TO BE A `<button>` WITH THE DISMISS `<button>` INSIDE IT.
+                     Nesting interactive content inside a button is invalid HTML — the parser
+                     is entitled to unnest it, and assistive-technology behaviour is
+                     undefined: some screen readers announce one control, some two, and the
+                     inner ✕ may not be reachable at all. On a row that DELETES a money
+                     notification, "undefined" is not a tolerable spec.
+
+                     ⭐ WHAT WAS CHOSEN, and what was rejected. The dismiss is now a SIBLING
+                     of the row's action inside a plain `<div>`, not a stretched-link overlay.
+                     The overlay (an absolutely-positioned `inset-0` button under the ✕) would
+                     keep the last ~64px of the row clickable, and it costs more than it buys:
+                     the overlay button contains no text, so its accessible name has to be
+                     rebuilt out of `aria-labelledby` per row, and a transparent sheet over
+                     the text kills selection and drag. The sibling split loses only the
+                     16px gutter beside the ✕ — the ✕ itself already owned the rest of that
+                     column — and every control keeps its own real, readable name.
+                     ⚠️ The wash, the border and the hover stay on the CONTAINER so the row
+                     still lights as one object, including when the pointer is on the ✕. */
+                  <div
                     key={n.id}
-                    type="button"
-                    onClick={() => handleClick(n)}
                     className={cn(
-                      "w-full text-left flex items-start gap-3 px-3 py-3 border-b border-border last:border-b-0 hover:bg-bg-overlay transition-colors",
+                      "flex items-start border-b border-border last:border-b-0 hover:bg-bg-overlay transition-colors",
                       isUnread && "bg-gold-500/[0.04]",
                     )}
                   >
-                    <span
-                      className={cn("shrink-0 inline-flex items-center justify-center rounded-lg border", tintFor(n.kind))}
-                      style={{
-                        width: 32, height: 32,
-                      }}
+                    <button
+                      type="button"
+                      onClick={() => handleClick(n)}
+                      /* `px-3 py-3` + `gap-3` reproduce the old geometry exactly: the action's
+                         right padding IS the 16px that used to be the gap before the ✕. */
+                      className="min-w-0 flex-1 text-left flex items-start gap-3 px-3 py-3"
                     >
-                      <Icon s={16} />
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="font-display text-body-sm font-semibold text-text truncate leading-tight">
-                          {pickTitle(n, locale)}
+                      <span
+                        className={cn("shrink-0 inline-flex items-center justify-center rounded-lg border", tintFor(n.kind))}
+                        style={{
+                          width: 32, height: 32,
+                        }}
+                      >
+                        <Icon s={16} />
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          {/* §A4 — colour is never the only signal. Unread was a gold wash plus
+                              the gold dot below, and the dot is (correctly) `aria-hidden`, so a
+                              screen-reader user could not tell a settled-money notification they
+                              had opened from one they had not. Announced BEFORE the title so the
+                              state arrives with the headline, not after it. `sr-only` is
+                              absolutely positioned, so it adds nothing to this flex row. */}
+                          {isUnread && <span className="sr-only">{t.notif.unread}</span>}
+                          <p className="font-display text-body-sm font-semibold text-text truncate leading-tight">
+                            {pickTitle(n, locale)}
+                          </p>
+                          {isUnread && (
+                            <span aria-hidden className="h-1.5 w-1.5 rounded-pill bg-gold-500 shrink-0 mt-1" />
+                          )}
+                        </div>
+                        <p className="mt-0.5 text-label text-text-muted leading-snug">
+                          {pickBody(n, locale)}
                         </p>
-                        {isUnread && (
-                          <span aria-hidden className="h-1.5 w-1.5 rounded-pill bg-gold-500 shrink-0 mt-1" />
-                        )}
+                        <div className="mt-1 flex items-center justify-end">
+                          <span className="font-mono text-[10.5px] tabular-nums text-text-subtle">
+                            {relTime(n.createdAt, t)}
+                          </span>
+                        </div>
                       </div>
-                      <p className="mt-0.5 text-label text-text-muted leading-snug">
-                        {pickBody(n, locale)}
-                      </p>
-                      <div className="mt-1 flex items-center justify-end">
-                        <span className="font-mono text-[10.5px] tabular-nums text-text-subtle">
-                          {relTime(n.createdAt, t)}
-                        </span>
-                      </div>
-                    </div>
+                    </button>
                     <button
                       type="button"
                       aria-label={t.notif.dismissNotification}
+                      /* ⚠️ `stopPropagation` is KEPT even though the ✕ is no longer a
+                         descendant of the row's action. It still matters: the panel closes on
+                         a document-level click listener, and `handleDismiss` reads the event.
+                         `h-8 w-8` is 48×48px on this project's OVERRIDDEN spacing scale
+                         (tailwind.config.ts — 8 → 48px), i.e. above the 44px §A2 preference,
+                         not the 32px the class name suggests. `mt-3 mr-3` puts it where the
+                         old row's `px-3 py-3` did, to the pixel. */
                       onClick={(e) => { e.stopPropagation(); handleDismiss(e, n.id); }}
-                      className="shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:text-text hover:bg-bg-overlay transition-colors"
+                      className="mt-3 mr-3 shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:text-text hover:bg-bg-overlay transition-colors"
                     >
                       <I.x s={13} />
                     </button>
-                  </button>
+                  </div>
                 );
               })}
               {items.length === 0 && (

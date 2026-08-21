@@ -87,7 +87,11 @@ export function ObjectionDialog({ marketId, onFiled }: { marketId: string; onFil
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex min-h-[40px] items-center gap-1.5 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-[12px] font-semibold text-warning-fg transition-colors hover:bg-warning-border brand-focus"
+        /* 44, not 40 (§A2's mobile preference). This is the control a player uses to say a
+           settled result is WRONG — the one route to disputing where their money went — and
+           it sits on the market detail, a phone surface. A dispute button that is fiddly to
+           hit is a dispute that does not get raised. */
+        className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-[12px] font-semibold text-warning-fg transition-colors hover:bg-warning-border brand-focus"
       >
         <I.alertCircle s={13} className="shrink-0" />
         {t.market.objFlag}

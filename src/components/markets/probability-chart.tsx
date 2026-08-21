@@ -129,10 +129,22 @@ export function ProbabilityChart({
           <SignalPip size={7} />
           <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--text-subtle)" }}>{t.market.probOverTime}</span>
         </div>
+        {/* 🔴 A5 (2026-08-21) — PRESSED BUTTONS, NOT AN ARIA TAB WIDGET. The range rail carried
+            `role="tablist"`/`role="tab"`/`aria-selected` with no roving tabindex, no arrow keys
+            and no `aria-controls`, i.e. a tab widget in name only.
+            ⭐ AND THE WIDGET CANNOT BE COMPLETED HERE EVEN IN PRINCIPLE: the thing a range
+            "selects" is the chart below, which is `role="img"` with its own alt text — one
+            element cannot be an image and a tabpanel at the same time, and demoting the chart
+            from `img` would cost a blind reader the only description of it there is.
+            So the rail states what is true: a group of buttons, one of them pressed — the same
+            `aria-pressed` language `filter-pill.tsx` gives the other seven player filter rails,
+            which this control was already aligned with visually (§4 of `test:filter-language`:
+            --pill-active, 44px). ⛔ Not `aria-current`: that is reserved for rails whose
+            options navigate. */}
         {ranges.length > 1 && (
-          <div className="pchart-ranges" role="tablist" aria-label={t.market.timeRange}>
+          <div className="pchart-ranges" role="group" aria-label={t.market.timeRange}>
             {ranges.map((rg) => (
-              <button key={rg} role="tab" aria-selected={rg === range} className={"pchart-range" + (rg === range ? " is-active" : "")} onClick={() => setRange(rg)}>{rg}</button>
+              <button key={rg} type="button" aria-pressed={rg === range} className={"pchart-range" + (rg === range ? " is-active" : "")} onClick={() => setRange(rg)}>{rg}</button>
             ))}
           </div>
         )}
