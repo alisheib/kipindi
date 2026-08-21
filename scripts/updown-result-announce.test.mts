@@ -1,12 +1,26 @@
 /**
  * THE UP & DOWN RESULT MOMENT — Ali's *"perfect popup on win"*, and the decision it must not break.
  *
- * ⛔ THE CONSTRAINT THAT OUTRANKS THE FEATURE. Ali's dated decision of 2026-07-24 suppresses
- * per-round Up & Down notifications (*"forty emails an hour is unusable"*), replaced by the
- * nightly digest E-37 shipped. On 2026-08-05, shown the measured volume — 6.7 messages/hour per
- * player on the board as it actually runs, 15/hour on a 3-minute chain — he chose **in-app only:
- * no email, no push, no inbox row.** §4 below fails if this feature ever grows an outside-the-app
- * channel, because that would silently reverse an owner decision.
+ * ⛔ THE CONSTRAINT THAT OUTRANKS THE FEATURE — AND IT MOVED ON 2026-08-22. READ THIS BEFORE
+ * CITING §4. Ali's decision of 2026-07-24 suppressed per-round Up & Down notifications
+ * (*"forty emails an hour is unusable"*), replaced by the nightly digest E-37 shipped. On
+ * 2026-08-05, shown the measured volume — 6.7 messages/hour per player on the board as it
+ * actually ran, 15/hour on a 3-minute chain — he chose **in-app only: no email, no push, no
+ * inbox row**.
+ *
+ * ⭐ **ON 2026-08-22 HE REVERSED THE INBOX HALF.** Shown the volume again (worst observed
+ * hour: 20 messages to one player; 360/day if a 3-minute chain runs), he chose to put every
+ * terminal outcome in the bell. Wins, losses and both refunds now write a `Notification` row
+ * — `notifyUpDownWin` and friends, guarded by `test:updown-bell` (+ its red proof) and by
+ * `test:updown-push` §2. ⛔ **EMAIL REMAINS SUPPRESSED**: forty emails an hour was the
+ * original objection and it was never withdrawn. `docs/COMPLIANCE-DECISIONS.md` § 2026-08-22.
+ *
+ * ⚠️ **§4 IS UNAFFECTED AND STILL CORRECT, WHICH IS WHY IT DID NOT FAIL WHEN THE BELL ROWS
+ * LANDED.** It is scoped to the ANNOUNCER's own files (the component, the board, the two
+ * pages, the dictionary) — it asserts that *this in-app feature* never grows its own
+ * outside-the-app channel. The bell rows are written by `settleMarket`, a file §4 does not
+ * read, so it passed correctly rather than failing to fire. ⛔ Do not "strengthen" §4 to
+ * cover `market-service.ts`: that would make this suite fail on a decision it does not own.
  *
  * ⭐ WHY THERE WAS NO MOMENT, and it was two silences meeting:
  *  1. the board never SENT the data — `myStakesByMarket` recorded a settled position only when

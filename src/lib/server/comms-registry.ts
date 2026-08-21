@@ -205,6 +205,21 @@ export const NOTIFICATION_EMITTERS: readonly EmitterSpec[] = [
   // The Up & Down daily digest (E-37). `ROUND_RESULT` was declared here, given a
   // bell icon and a tint, and left with no emitter until this shipped.
   { fn: "notifyUpDownDigest",          kind: "ROUND_RESULT",      audience: "player" },
+  // ── Up & Down PER-ROUND result rows (owner decision 2026-08-22, reversing 2026-07-24
+  // and 2026-08-05). ⛔ ALL FOUR OR NONE — E-43 is what happens when one outcome is
+  // missing from this list: refunds were announced and wins and losses were not, so the
+  // only outcome a player ever heard about was the one where nothing happened to their
+  // money. `test:updown-bell` asserts all four exist and are wired.
+  //
+  // ⚠️ The two refunds are filed under DEPOSIT deliberately. `notifyOneSidedRefund`
+  // above files a refund as `WIN`, which is one of the misfilings this file's own header
+  // flags as making the production "top events" numbers wrong. New emitters do not
+  // inherit an old mistake for symmetry's sake — money returning to a wallet is a
+  // deposit-shaped event and renders with the money-in tint rather than a trophy.
+  { fn: "notifyUpDownWin",             kind: "WIN",               audience: "player" },
+  { fn: "notifyUpDownLoss",            kind: "LOSS",              audience: "player" },
+  { fn: "notifyUpDownRefund",          kind: "DEPOSIT",           audience: "player" },
+  { fn: "notifyUpDownOneSidedRefund",  kind: "DEPOSIT",           audience: "player" },
   { fn: "notifyMarketCancelled",       kind: "DEPOSIT",           audience: "player" },
   { fn: "notifyDeposit",               kind: "DEPOSIT",           audience: "player" },
   { fn: "notifyWithdraw",              kind: "WITHDRAW",          audience: "player" },

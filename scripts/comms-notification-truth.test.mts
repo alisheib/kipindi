@@ -97,6 +97,19 @@ const EMITTED: { fn: string; row: StoredNotification | null }[] = [
   { fn: "notifyWatchedSettled",      row: await N.notifyWatchedSettled(U, { marketTitle: { en: "Watched poll", sw: "Kura inayofuatiliwa", zh: "关注的投票" }, marketId: "mkt_8", outcome: "YES" }) },
   { fn: "notifyProposalUnderReview", row: await N.notifyProposalUnderReview(U, { titleEn: "A market idea" }) },
   { fn: "notifyProposalApproved",    row: await N.notifyProposalApproved(U, { titleEn: "A market idea", amountTzs: 5_000, queued: false }) },
+  // ── Up & Down per-round result rows (owner decision 2026-08-22). All four are driven,
+  // because §1's "every emitter is driven by this suite" is what stops a new outcome from
+  // shipping untested — and E-43 is the finding that proves a MISSING outcome is the
+  // failure mode this product actually has.
+  //
+  // ⚠️ Distinct titles per outcome on purpose: §4's dedupe check and the 90-second window
+  // in `notify()` key on the rendered message plus the href, so reusing one stake figure
+  // and one href across all four would have the later three swallowed and the suite would
+  // then assert `row !== null` against a deduped row rather than a fresh one.
+  { fn: "notifyUpDownWin",             row: await N.notifyUpDownWin(U, { payout: 8_700, stake: 5_000, marketTitle: { en: "Bitcoin Up or Down", sw: "Bitcoin Juu au Chini", zh: "比特币涨跌" }, roundHref: "/updown/udr_c3_win", pushTag: "updown-result-mkt_c3_win", positionId: "pos_c3_win" }) },
+  { fn: "notifyUpDownLoss",            row: await N.notifyUpDownLoss(U, { stake: 5_000, marketTitle: { en: "Bitcoin Up or Down", sw: "Bitcoin Juu au Chini", zh: "比特币涨跌" }, roundHref: "/updown/udr_c3_loss", pushTag: "updown-result-mkt_c3_loss", positionId: "pos_c3_loss" }) },
+  { fn: "notifyUpDownRefund",          row: await N.notifyUpDownRefund(U, { stake: 5_000, marketTitle: { en: "Gold Up or Down", sw: "Dhahabu Juu au Chini", zh: "黄金涨跌" }, roundHref: "/updown/udr_c3_void", pushTag: "updown-result-mkt_c3_void", positionId: "pos_c3_void" }) },
+  { fn: "notifyUpDownOneSidedRefund",  row: await N.notifyUpDownOneSidedRefund(U, { stake: 5_000, marketTitle: { en: "Gold Up or Down", sw: "Dhahabu Juu au Chini", zh: "黄金涨跌" }, roundHref: "/updown/udr_c3_one", pushTag: "updown-result-mkt_c3_one", positionId: "pos_c3_one" }) },
   { fn: "notifyProposalListed",      row: await N.notifyProposalListed(U, { titleEn: "A market idea", marketId: "mkt_9" }) },
   { fn: "notifyProposalChanges",     row: await N.notifyProposalChanges(U, { titleEn: "A market idea", note: "Name the source" }) },
   { fn: "notifyProposalDeclined",    row: await N.notifyProposalDeclined(U, { titleEn: "A market idea", reason: "Not verifiable" }) },

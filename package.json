@@ -456,7 +456,10 @@
     "test:updown-handover": "tsx scripts/updown-handover.test.mts",
     "red:updown-handover": "node scripts/updown-handover-red.mjs",
     "qa:updown-handover": "node scripts/live-updown-handover.mjs",
-    "qa:updown-handover-widths": "node scripts/live-updown-handover-widths.mjs"
+    "qa:updown-handover-widths": "node scripts/live-updown-handover-widths.mjs",
+    "test:updown-bell": "tsx scripts/updown-bell.test.mts",
+    "red:updown-bell": "node scripts/updown-bell-red.mjs",
+    "ops:preflight-id-fingerprint": "tsx scripts/ops-preflight-id-fingerprint.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

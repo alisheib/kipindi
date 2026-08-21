@@ -50,7 +50,21 @@ export type NotifyInput = Omit<StoredNotification, "id" | "userId" | "readAt" | 
  */
 const DEDUPE_WINDOW_MS = 90_000;
 
-export async function notify(input: NotifyInput): Promise<StoredNotification | null> {
+/**
+ * Options that shape DELIVERY without being part of the stored row.
+ *
+ * ⛔ `pushTag` is NOT persisted and must never become a column. It is the Web Push
+ * collapse key, and it exists because the default (`n.kind`) is wrong for any product
+ * that can produce several of the same kind in a row. A `tag` tells the device to
+ * REPLACE whatever is already showing under that key — so with the default, two Up &
+ * Down rounds settling minutes apart would have the second result silently overwrite
+ * the first on the lock screen, and a win could be erased by a later loss before the
+ * player ever saw it. Up & Down therefore passes a PER-ROUND key. See
+ * `updownResultPushTag` in `market-service.ts`, which is where the reasoning lives.
+ */
+export type NotifyOptions = { pushTag?: string };
+
+export async function notify(input: NotifyInput, opts?: NotifyOptions): Promise<StoredNotification | null> {
   // Best-effort by contract: notifications are paired with money/auth/compliance
   // flows that have ALREADY committed under a lock. A DB hiccup writing the inbox
   // row must never reject into (and crash) those callers — many fire this without
@@ -149,7 +163,9 @@ export async function notify(input: NotifyInput): Promise<StoredNotification | n
         const loc = (user?.locale ?? "EN").toUpperCase();
         const title = loc === "SW" ? n.titleSw : loc === "ZH" ? (n.titleZh ?? n.titleEn) : n.titleEn;
         const body  = loc === "SW" ? n.bodySw  : loc === "ZH" ? (n.bodyZh  ?? n.bodyEn)  : n.bodyEn;
-        await sendPushToUser(n.userId, { title, body, url: n.href ?? "/", tag: n.kind });
+        // ⛔ `pushTag` OVERRIDES the kind-based default deliberately — see NotifyOptions.
+        // Falling back to `n.kind` keeps every existing caller byte-identical in behaviour.
+        await sendPushToUser(n.userId, { title, body, url: n.href ?? "/", tag: opts?.pushTag ?? n.kind });
       } catch { /* push is a courtesy channel — never surfaces */ }
     })();
     return n;
@@ -330,6 +346,142 @@ export function notifyLoss(userId: string, opts: { stake: number; marketTitle: L
     bodySw: `${opts.marketTitle.sw.slice(0, 70)} · Upande wako haukushinda.${ref}`,
     bodyZh: `${opts.marketTitle.zh.slice(0, 50)} · 您所选的一方未获胜。${ref}`,
     href: `/markets/${opts.marketId}`,
+  });
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * UP & DOWN — THE PER-ROUND RESULT ROW (owner decision 2026-08-22)
+ *
+ * ⭐ THIS REVERSES A DATED DECISION, DELIBERATELY AND ON THE RECORD.
+ *
+ * On 2026-07-24 Ali suppressed per-round Up & Down messages ("forty emails an hour is
+ * unusable") and on 2026-08-05, shown the measured volume, he confirmed *"in-app popup
+ * only — no email, no push, no inbox row"*. On **2026-08-22**, shown the volume again
+ * (worst observed hour: 20 messages to one player; 360/day if a 3-minute chain runs), he
+ * chose to put **every** terminal outcome in the bell. `docs/COMPLIANCE-DECISIONS.md`
+ * 2026-08-22 carries the reasoning. ⛔ EMAIL REMAINS SUPPRESSED — he asked for the bell,
+ * and forty emails an hour was the original complaint. The daily digest also remains.
+ *
+ * ⛔ ALL FOUR OUTCOMES OR NONE. E-43 is the reason this is written as a law rather than a
+ * preference: refunds once leaked through the suppression while wins and losses did not,
+ * so the ONE outcome a player ever heard about was the one where their money came back
+ * unchanged — measured 56/56 refunds notified against 0/13 wins and 0/11 losses. Adding a
+ * fifth outcome later without a row here rebuilds that inversion. `test:updown-bell`
+ * asserts the symmetry and fails if any branch loses its row.
+ *
+ * ⭐ THE ROW AND THE PUSH SAY THE SAME WORDS, BY CONSTRUCTION. These go through `notify()`,
+ * which derives the push from the row it just wrote, so the two channels cannot drift. The
+ * previous design hand-wrote the push copy separately in `market-service.ts` and it HAD
+ * drifted: the loss push shipped `投注失败` — which the `notifyLoss` comment 20 lines above
+ * documents as forbidden because it means the bet FAILED, i.e. never went through, the
+ * opposite money consequence. A Chinese-reading player was told their bet had not been
+ * placed at the moment it was placed and lost. Fixed here by construction.
+ *
+ * ⛔ `pushTag` IS LOAD-BEARING — it must stay PER ROUND. The default collapse key is the
+ * notification KIND, which would make a later loss silently replace an earlier win on the
+ * lock screen before the player ever saw it. See `NotifyOptions`.
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+/** What every Up & Down result row needs. `roundHref` deep-links to THAT round. */
+type UpDownResultOpts = {
+  stake: number;
+  marketTitle: LocalizedText;
+  /** `/updown/<roundId>` — unique per round, which is what keeps the 90s dedupe honest. */
+  roundHref: string;
+  /**
+   * The Web Push collapse key, built by `updownResultPushTag` in `market-service.ts`.
+   *
+   * ⛔ PASSED IN, NOT REBUILT HERE. The format has ONE home (§0a) and it is that function,
+   * where the reasoning for a per-round key lives. Re-deriving `updown-result-${marketId}`
+   * in this file would put the same fact in two places, and `market-service` cannot be
+   * imported here — it imports this module, so the dependency only runs one way.
+   */
+  pushTag: string;
+  positionId?: string;
+};
+
+/**
+ * The one builder. Four thin exports sit on it so `comms-registry` can name each one
+ * and `test:cert-c3` can drive each one, without four copies of the copy drifting apart
+ * — which is exactly how `投注失败` survived in one place after being fixed in another.
+ */
+function notifyUpDownResult(
+  userId: string,
+  kind: NotifyInput["kind"],
+  opts: UpDownResultOpts,
+  copy: { titleEn: string; titleSw: string; titleZh: string; bodyEn: string; bodySw: string; bodyZh: string },
+) {
+  // The position id makes two rounds' rows textually distinct even when stake and
+  // outcome match — belt and braces beside the per-round href, because the 90-second
+  // dedupe compares the rendered message AND the link.
+  const ref = opts.positionId ? ` · ${opts.positionId}` : "";
+  return notify({
+    userId,
+    kind,
+    titleEn: copy.titleEn, titleSw: copy.titleSw, titleZh: copy.titleZh,
+    bodyEn: `${copy.bodyEn}${ref}`,
+    bodySw: `${copy.bodySw}${ref}`,
+    bodyZh: `${copy.bodyZh}${ref}`,
+    href: opts.roundHref,
+  }, { pushTag: opts.pushTag });
+}
+
+/** Up & Down WIN. `payout` is the REALISED amount, never a place-time projection (E-105). */
+export function notifyUpDownWin(userId: string, opts: UpDownResultOpts & { payout: number }) {
+  return notifyUpDownResult(userId, "WIN", opts, {
+    titleEn: `You won ${formatTzs(opts.payout)}`,
+    titleSw: `Umeshinda ${formatTzs(opts.payout)}`,
+    titleZh: `您赢得 ${formatTzs(opts.payout)}`,
+    bodyEn: `${opts.marketTitle.en.slice(0, 70)} · paid to your wallet.`,
+    bodySw: `${opts.marketTitle.sw.slice(0, 50)} · imelipwa kwenye pochi yako.`,
+    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} · 已支付至您的钱包。`,
+  });
+}
+
+/**
+ * Up & Down LOSS. ⛔ Direct in all three languages and it NAMES THE AMOUNT — suppressing
+ * the per-round message never softened a loss and neither does moving it back (LCCP
+ * harm-prevention). ⛔ `投注未中`, never `投注失败`: see the block above.
+ */
+export function notifyUpDownLoss(userId: string, opts: UpDownResultOpts) {
+  return notifyUpDownResult(userId, "LOSS", opts, {
+    titleEn: `Bet lost · ${formatTzs(opts.stake)}`,
+    titleSw: `Dau limepotea · ${formatTzs(opts.stake)}`,
+    titleZh: `投注未中 · ${formatTzs(opts.stake)}`,
+    bodyEn: `${opts.marketTitle.en.slice(0, 70)} · your side didn't win.`,
+    bodySw: `${opts.marketTitle.sw.slice(0, 50)} · upande wako haukushinda.`,
+    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} · 您所选的一方未获胜。`,
+  });
+}
+
+/**
+ * Up & Down VOID refund — the round could not be settled, so the stake returns in full.
+ *
+ * ⚠️ `kind: DEPOSIT` is chosen, not copied. `notifyOneSidedRefund` files a refund under
+ * `WIN`, which `comms-registry` itself flags as one of the misfilings that make the
+ * production "top events" numbers wrong. A refund is money returning to the wallet, so
+ * DEPOSIT is the honest kind and it renders with the money-in tint rather than a trophy.
+ */
+export function notifyUpDownRefund(userId: string, opts: UpDownResultOpts) {
+  return notifyUpDownResult(userId, "DEPOSIT", opts, {
+    titleEn: `Refunded · ${formatTzs(opts.stake)}`,
+    titleSw: `Umerudishiwa · ${formatTzs(opts.stake)}`,
+    titleZh: `已退款 · ${formatTzs(opts.stake)}`,
+    bodyEn: `${opts.marketTitle.en.slice(0, 70)} · the round was voided and your stake came back in full.`,
+    bodySw: `${opts.marketTitle.sw.slice(0, 50)} · raundi ilibatilishwa na dau lako limerudi lote.`,
+    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} · 本回合已作废，您的本金已全额退回。`,
+  });
+}
+
+/** Up & Down ONE-SIDED refund — nobody took the other side, so there was nothing to win. */
+export function notifyUpDownOneSidedRefund(userId: string, opts: UpDownResultOpts) {
+  return notifyUpDownResult(userId, "DEPOSIT", opts, {
+    titleEn: `Refunded · ${formatTzs(opts.stake)}`,
+    titleSw: `Umerudishiwa · ${formatTzs(opts.stake)}`,
+    titleZh: `已退款 · ${formatTzs(opts.stake)}`,
+    bodyEn: `${opts.marketTitle.en.slice(0, 70)} · only one side had bets, so your stake came back in full.`,
+    bodySw: `${opts.marketTitle.sw.slice(0, 50)} · upande mmoja tu ulikuwa na dau, hivyo dau lako limerudi lote.`,
+    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} · 仅一方有投注，您的本金已全额退回。`,
   });
 }
 

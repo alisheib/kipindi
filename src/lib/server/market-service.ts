@@ -38,7 +38,11 @@ import type { FailureReason } from "@/lib/failure-reasons";
 import { getRequireTwoOfficerResolution } from "./resolution-policy";
 import { isMaintenanceMode, maintenanceMessage } from "./platform-config";
 import { recordSnapshot } from "./market-history";
-import { notifyBetPlaced, notifyWin, notifyLoss, notifyRefund, notifyCashout, notifyAdminMarketResolution, notifyMarketCancelled, notifyAdminMarketCancelled, notifyOneSidedRefund, notifySelectionClosed, pushOnly } from "./notification-service";
+import { notifyBetPlaced, notifyWin, notifyLoss, notifyRefund, notifyCashout, notifyAdminMarketResolution, notifyMarketCancelled, notifyAdminMarketCancelled, notifyOneSidedRefund, notifySelectionClosed, pushOnly,
+  // Up & Down per-round result rows (owner decision 2026-08-22 — see the block above
+  // `notifyUpDownWin`). These REPLACE the four `pushOnly` result calls: they write the bell
+  // row AND push it, from one copy, so the two channels can no longer disagree.
+  notifyUpDownWin, notifyUpDownLoss, notifyUpDownRefund, notifyUpDownOneSidedRefund } from "./notification-service";
 import { sendEmailToUser, betPlacedHtml, winNotificationHtml, lossNotificationHtml, cashOutReceiptHtml, oneSidedRefundHtml, marketResolutionAdminHtml, marketCancelledRefundHtml, marketCancelledAdminHtml, bonusFulfilledHtml, selectionClosedHtml } from "./email";
 import { onRecruitBet, onRecruitSettlement } from "./affiliate-service";
 import { postLedgerEntries, stakeEntries, settlementPayoutEntries, refundEntries, cashoutEntries, withMoneyTx } from "./ledger";
@@ -635,25 +639,39 @@ async function armMarketTimer(id: string): Promise<void> {
 }
 
 /**
- * Whether PER-EVENT player notifications and emails are suppressed for this market.
+ * Whether this market takes the UP & DOWN arm of a per-event player message.
  *
- * True for Up & Down rounds. A player running twenty 5-minute rounds an hour would
- * otherwise receive forty emails and forty inbox entries — unusable, and a worse
- * responsible-gambling signal than one readable summary. They are replaced by the
- * result on the round card plus a daily digest (owner decision 2026-07-24,
- * docs/COMPLIANCE-DECISIONS.md).
+ * ⚠️ READ THE NAME AS "IS THIS AN UP & DOWN ROUND", NOT "IS EVERYTHING SILENCED".
+ * It was accurate when written and it is now narrower than it sounds — renaming it
+ * would touch five money-path call sites, so the truth is written here instead:
  *
- * ✅ THE DIGEST NOW EXISTS: `updown-digest.ts`, on the lifecycle ticker. Until
- * 2026-08-03 it did not, and this predicate was therefore deleting the message
- * rather than moving it — 0 of 13 winning and 0 of 11 losing Up & Down positions
- * on production had ever produced a notification (E-37).
+ * | channel        | bet placed          | win / loss / refund / one-sided refund |
+ * |----------------|---------------------|----------------------------------------|
+ * | EMAIL          | suppressed          | **suppressed**                         |
+ * | BELL (inbox)   | suppressed          | **SENT — since 2026-08-22**            |
+ * | WEB PUSH       | sent (chain key)    | sent (per-round key)                   |
+ * | daily digest   | n/a                 | sent, and still the readable account    |
  *
- * ⛔ EVERY per-round player message for Up & Down must be behind this predicate,
- * not just the ones that were behind it first. Refunds were not (E-43), so the
- * ONE outcome a player was ever told about was the one where their money came
- * back unchanged. If you add a new per-round message, gate it here and add the
- * corresponding line to the digest — a message that is suppressed and not
- * digested is a message that was deleted.
+ * ⭐ THE 2026-08-22 OWNER DECISION. Ali suppressed per-round messages on 2026-07-24
+ * ("forty emails an hour is unusable") and reaffirmed *"in-app only — no inbox row"*
+ * on 2026-08-05 when shown the volume. On 2026-08-22, shown it again (worst observed
+ * hour: 20 messages to one player; 360/day if a 3-minute chain runs), he chose to put
+ * every terminal outcome in the bell. ⛔ EMAIL STAYS SUPPRESSED — forty emails an hour
+ * was the original complaint and it was never withdrawn. `docs/COMPLIANCE-DECISIONS.md`
+ * § 2026-08-22 is the record; `notifyUpDownWin`'s block comment carries the mechanics.
+ *
+ * ✅ THE DIGEST STILL EXISTS AND STILL SENDS: `updown-digest.ts`, on the lifecycle
+ * ticker. Until 2026-08-03 it did not, and this predicate was therefore deleting the
+ * message rather than moving it — 0 of 13 winning and 0 of 11 losing Up & Down
+ * positions on production had ever produced a notification (E-37).
+ *
+ * ⛔ EVERY per-round player message for Up & Down must be behind this predicate, not
+ * just the ones that were behind it first. Refunds were not (E-43), so the ONE outcome
+ * a player was ever told about was the one where their money came back unchanged. If
+ * you add a new per-round message, gate it here and give it BOTH a bell row and a
+ * digest line — an outcome that is announced in neither is an outcome that was deleted,
+ * and an outcome announced in only some channels is E-43 wearing a new coat.
+ * `test:updown-push` §2 and `test:updown-bell` both fail if a gate stops announcing.
  *
  * ⛔ THIS SUPPRESSES COMMUNICATION ONLY. The transaction, the ledger entry and the
  * audit-chain row are written for EVERY round exactly as before — never gate a money
@@ -2591,6 +2609,23 @@ export async function settleMarket(
   if (m.settledAt) return { ok: false, error: "Market is already settled.", code: "INVALID" };
   if (!m.resolvedOutcome) return { ok: false, error: "Market has no recorded outcome.", code: "INVALID" };
 
+  // ── The deep link carried by every Up & Down result row (owner decision 2026-08-22).
+  //
+  // Resolved ONCE per settlement, never per position, and never at all for long-form polls
+  // — they have no round. ⭐ It is not decoration: the 90-second dedupe in `notify()`
+  // treats two byte-identical messages with the same href as ONE event, so two rounds of
+  // the same stake settling close together would collapse into a single row if they shared
+  // a link. The round id is what keeps each row its own.
+  //
+  // ⛔ NEVER LET THIS THROW — settlement is money and this is a hyperlink. On any failure it
+  // degrades to `/markets/<id>`, which `markets/[id]/page.tsx` already redirects to the same
+  // round, so the worst case is one extra hop rather than a dead link.
+  let updownRoundHref = `/markets/${m.id}`;
+  if (perEventNotificationsSuppressed(m)) {
+    const round = await roundStore.getByMarketId(m.id).catch(() => null);
+    if (round) updownRoundHref = `/updown/${round.id}`;
+  }
+
   if (!settleOpts.force) {
     // THE GATE. Money does not move while players can still object.
     if (m.objectionsClosedAt && Date.now() < Date.parse(m.objectionsClosedAt)) {
@@ -2741,20 +2776,20 @@ export async function settleMarket(
           tag: "one-sided-refund",
         })).catch(() => {});
       } else {
-        // E-57 · ⛔ THE REFUND PUSHES TOO, AND THIS BRANCH IS THE WHOLE POINT OF E-43.
-        // Pushing wins and losses while staying silent on refunds would rebuild the
-        // exact inversion E-43 fixed — only now in the push channel, where the player
-        // notices. Every terminal outcome of an Up & Down round reaches the device, or
-        // none of them do.
-        pushOnly(p.userId, {
-          titleEn: `Refunded · ${formatTzs(p.stake)}`,
-          titleSw: `Umerudishiwa · ${formatTzs(p.stake)}`,
-          titleZh: `已退款 · ${formatTzs(p.stake)}`,
-          bodyEn: `${m.titleEn.slice(0, 60)} — only one side had bets, so your stake came back in full.`,
-          bodySw: `${m.titleSw.slice(0, 60)} — upande mmoja tu ulikuwa na dau, hivyo dau lako limerudi lote.`,
-          bodyZh: `${(m.titleZh ?? m.titleEn).slice(0, 40)} — 仅一方有投注，您的本金已全额退回。`,
-          url: "/updown",
-          tag: updownResultPushTag(m.id),
+        // E-57 · ⛔ THE REFUND IS ANNOUNCED TOO, AND THIS BRANCH IS THE WHOLE POINT OF E-43.
+        // Announcing wins and losses while staying silent on refunds would rebuild the
+        // exact inversion E-43 fixed. Every terminal outcome of an Up & Down round reaches
+        // the player, or none of them do.
+        //
+        // ⭐ 2026-08-22 — this now writes a BELL ROW as well as pushing (owner decision;
+        // see the block above `notifyUpDownWin`). The push is derived from the row, so the
+        // two channels carry identical words and the per-round collapse key is preserved.
+        notifyUpDownOneSidedRefund(p.userId, {
+          stake: p.stake,
+          marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh),
+          roundHref: updownRoundHref,
+          pushTag: updownResultPushTag(m.id),
+          positionId: p.id,
         });
       }
     }
@@ -2855,20 +2890,18 @@ export async function settleMarket(
       pendingWagerReversals.push({ userId: p.userId, stake: p.stake });
       if (bonusPart > 0) pendingBonusRefunds.push({ userId: p.userId, amount: bonusPart });
       // E-43 — see the one-sided branch above. Same decision, same predicate.
-      // E-57 — and the same push, for the same reason: every terminal outcome reaches
-      // the device or none does.
+      // E-57 / 2026-08-22 — and the same announcement, for the same reason: every terminal
+      // outcome reaches the player or none does. The Up & Down arm writes a bell row and
+      // pushes it from one copy; the long-form arm keeps its own emitter and its email.
       if (!perEventNotificationsSuppressed(m)) {
         notifyRefund(p.userId, { stake: p.stake, marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh), marketId: m.id, positionId: p.id });
       } else {
-        pushOnly(p.userId, {
-          titleEn: `Refunded · ${formatTzs(p.stake)}`,
-          titleSw: `Umerudishiwa · ${formatTzs(p.stake)}`,
-          titleZh: `已退款 · ${formatTzs(p.stake)}`,
-          bodyEn: `${m.titleEn.slice(0, 60)} — the round was voided and your stake came back in full.`,
-          bodySw: `${m.titleSw.slice(0, 60)} — raundi ilibatilishwa na dau lako limerudi lote.`,
-          bodyZh: `${(m.titleZh ?? m.titleEn).slice(0, 40)} — 本回合已作废，您的本金已全额退回。`,
-          url: "/updown",
-          tag: updownResultPushTag(m.id),
+        notifyUpDownRefund(p.userId, {
+          stake: p.stake,
+          marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh),
+          roundHref: updownRoundHref,
+          pushTag: updownResultPushTag(m.id),
+          positionId: p.id,
         });
       }
     }
@@ -2979,17 +3012,16 @@ export async function settleMarket(
             tag: "win",
           })).catch(() => {});
         } else {
-          // E-57 · the win still PUSHES. The digest is the readable account; a push is
-          // how the player learns their money moved while it is still happening.
-          pushOnly(p.userId, {
-            titleEn: `You won ${formatTzs(payout)}`,
-            titleSw: `Umeshinda ${formatTzs(payout)}`,
-            titleZh: `您赢得 ${formatTzs(payout)}`,
-            bodyEn: `${m.titleEn.slice(0, 60)} — paid to your wallet.`,
-            bodySw: `${m.titleSw.slice(0, 60)} — imelipwa kwenye pochi yako.`,
-            bodyZh: `${(m.titleZh ?? m.titleEn).slice(0, 40)} — 已支付至您的钱包。`,
-            url: "/updown",
-            tag: updownResultPushTag(m.id),
+          // E-57 / 2026-08-22 · the win now lands in the BELL and pushes, from one copy.
+          // ⛔ `payout` is the REALISED amount, not the place-time projection — E-105's rule,
+          // and the reason the long-form celebration is still filed as a separate finding.
+          notifyUpDownWin(p.userId, {
+            payout,
+            stake: p.stake,
+            marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh),
+            roundHref: updownRoundHref,
+            pushTag: updownResultPushTag(m.id),
+            positionId: p.id,
           });
         }
       } else {
@@ -3020,19 +3052,24 @@ export async function settleMarket(
             tag: "loss",
           })).catch(() => {});
         } else {
-          // E-57 · the loss pushes too, and it stays DIRECT. ⛔ A push that announced
-          // only wins would be the E-43 failure wearing a new channel — the player would
-          // hear from us exactly when the news was good. The stake is named outright, in
-          // all three languages, exactly as `notifyLoss` does (LCCP harm-prevention).
-          pushOnly(p.userId, {
-            titleEn: `Bet lost · ${formatTzs(p.stake)}`,
-            titleSw: `Dau limepotea · ${formatTzs(p.stake)}`,
-            titleZh: `投注失败 · ${formatTzs(p.stake)}`,
-            bodyEn: `${m.titleEn.slice(0, 60)} — your side didn't win.`,
-            bodySw: `${m.titleSw.slice(0, 60)} — upande wako haukushinda.`,
-            bodyZh: `${(m.titleZh ?? m.titleEn).slice(0, 40)} — 您所选的一方未获胜。`,
-            url: "/updown",
-            tag: updownResultPushTag(m.id),
+          // E-57 / 2026-08-22 · the loss is announced too, and it stays DIRECT. ⛔ Announcing
+          // only wins would be the E-43 failure wearing a new channel — the player would hear
+          // from us exactly when the news was good. The stake is named outright, in all three
+          // languages (LCCP harm-prevention).
+          //
+          // 🔴 THIS CALL ALSO FIXES A LIVE FALSE MONEY STATEMENT. The push it replaces sent
+          // `投注失败` — which `notifyLoss` documents, in a comment, as forbidden precisely
+          // because it means the bet FAILED, i.e. never went through: the opposite money
+          // consequence, told to a Chinese reader at the moment their bet HAD been placed and
+          // lost. The fix had been applied to `notifyLoss` and never propagated to this
+          // hand-written copy. Routing through the emitter makes that class of drift
+          // impossible — there is now one source for the words.
+          notifyUpDownLoss(p.userId, {
+            stake: p.stake,
+            marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh),
+            roundHref: updownRoundHref,
+            pushTag: updownResultPushTag(m.id),
+            positionId: p.id,
           });
         }
       }

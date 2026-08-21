@@ -30,30 +30,38 @@ const restore = () => { for (const [f, src] of originals) writeFileSync(f, src);
 
 const MUTATIONS = [
   {
+    // ⚠️ RETARGETED 2026-08-22 onto the bell-row announcer. The old anchor pointed at the
+    // hand-written loss `pushOnly` block, which no longer exists — and the harness said so
+    // loudly ("anchor not found") instead of reporting a green, which is the only reason
+    // this was caught. ⛔ A mutation that does not apply is a HARNESS ERROR, never a pass.
     name: "only-wins-push",
-    why: "E-43's exact shape — the win pushes, the LOSS goes silent, so we only reach the player with good news",
+    why: "E-43's exact shape — the win is announced, the LOSS goes silent, so we only reach the player with good news",
     file: MS,
-    from: `          pushOnly(p.userId, {
-            titleEn: \`Bet lost · \${formatTzs(p.stake)}\`,`,
-    to: `          void 0 && pushOnly(p.userId, {
-            titleEn: \`Bet lost · \${formatTzs(p.stake)}\`,`,
+    from: `          notifyUpDownLoss(p.userId, {`,
+    to: `          void 0 && notifyUpDownLoss(p.userId, {`,
   },
   {
+    // ⚠️ RETARGETED 2026-08-22 — the copy moved to `notification-service.ts` with the
+    // emitter, so the mutation follows it there. Mutating the words rather than the call
+    // proves the suite pins what the player actually READS, not merely that a function ran.
     name: "refund-goes-silent",
-    why: "the voided-round refund stops pushing, so a player whose stake came back hears nothing",
-    file: MS,
-    from: "          bodyEn: `${m.titleEn.slice(0, 60)} — the round was voided and your stake came back in full.`,",
-    to: "          bodyEn: `${m.titleEn.slice(0, 60)} — settled.`,",
+    why: "the voided-round refund stops stating what happened, so a player whose stake came back is told nothing useful",
+    file: NS,
+    from: "    bodyEn: `${opts.marketTitle.en.slice(0, 70)} · the round was voided and your stake came back in full.`,",
+    to: "    bodyEn: `${opts.marketTitle.en.slice(0, 70)} · settled.`,",
   },
   {
+    // ⚠️ RETARGETED 2026-08-22 — same structural mutation, re-anchored on the rewritten
+    // comment. It severs the one-sided refund gate's `else` into an unreachable `if`, so
+    // the announcement still READS as a statement while no branch can ever reach it.
     name: "gate-loses-its-else",
-    why: "the refund gate's else is severed into a dead `if` — the push still reads as a statement, but no branch of the gate can ever reach it",
+    why: "the refund gate's else is severed into a dead `if` — the announcement still reads as a statement, but no branch of the gate can ever reach it",
     file: MS,
     from: `      } else {
-        // E-57 · ⛔ THE REFUND PUSHES TOO, AND THIS BRANCH IS THE WHOLE POINT OF E-43.`,
+        // E-57 · ⛔ THE REFUND IS ANNOUNCED TOO, AND THIS BRANCH IS THE WHOLE POINT OF E-43.`,
     to: `      }
       if (Math.random() < 0) {
-        // E-57 · ⛔ THE REFUND PUSHES TOO, AND THIS BRANCH IS THE WHOLE POINT OF E-43.`,
+        // E-57 · ⛔ THE REFUND IS ANNOUNCED TOO, AND THIS BRANCH IS THE WHOLE POINT OF E-43.`,
   },
   {
     name: "results-share-the-bet-tag",

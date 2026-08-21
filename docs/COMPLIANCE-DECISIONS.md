@@ -6,6 +6,76 @@
 
 ---
 
+## 2026-08-22 · Up & Down results go into the bell — reversing 2026-07-24 and 2026-08-05
+
+**Ali, verbatim:** *"i want u to fully make all up and down results appear in the bell as well if
+they are not. normal notifications please perfectly made and 100% accurate and functional."*
+
+⛔ **THIS REVERSES TWO DATED DECISIONS AND IT WAS PUT BACK TO HIM BEFORE ANYTHING WAS BUILT**,
+because §0's rule is that a session does not silently reverse one. He confirmed with the numbers
+in front of him.
+
+### What was decided before, and why it is being changed
+
+| Date | Decision | Basis |
+|---|---|---|
+| 2026-07-24 | Per-round Up & Down messages suppressed (inbox **and** email), replaced by an in-app result plus a daily digest | *"forty emails an hour is unusable"* |
+| 2026-08-05 | Reaffirmed when session 30 asked for a win/lose notification: **in-app only — no email, no push, no inbox row** | measured 6.7 msgs/hour per player, 15/hour on a 3-minute chain |
+| **2026-08-22** | **Every terminal outcome writes a bell row. Email stays suppressed.** | measured again — below |
+
+⚠️ **THE FIRST ARGUMENT FOR THE CHANGE WAS WRONG AND IS RECORDED AS WRONG.** I told Ali the
+"forty an hour" premise had expired, because rounds became operator-generated on 2026-08-04
+(E-67) and nothing emits on a timer. **The measurement did not support that.** Auto-generation is
+switched off in DATA, not removed from CODE — `advanceChain` still opens rounds for any chain
+whose `state` is `RUNNING`, and operators do run chains (session 32 recorded two RUNNING 15m
+chains belonging to another admin). The premise had not expired; the volume is simply lower than
+forty and always was.
+
+**The numbers he decided on** (`scripts/s30-notify-volume.mts`, read-only, re-run 2026-08-21
+against production):
+
+| | |
+|---|---|
+| Worst observed hour, one player | **20 bell rows** |
+| Busiest day | 85 rows across 4 players (~21 each) |
+| If a 3-minute chain runs all day | **360/day** to a player who plays every round |
+| What the digest sends instead | ~3/day — 21 rows to 8 players in 7 days |
+
+### What is now true
+
+- **Wins, losses, void refunds and one-sided refunds each write a `Notification` row**, filed
+  `WIN` / `LOSS` / `DEPOSIT` / `DEPOSIT`, deep-linked to **that round** (`/updown/<roundId>`).
+- ⛔ **EMAIL REMAINS SUPPRESSED.** Forty emails an hour was the original objection and it was
+  never withdrawn. Ali asked for the bell.
+- **The daily digest stays**, unchanged. It remains the readable account of a day.
+- **Bet-placed stays push-only.** It is not a result; the card already shows the stake.
+- **Web push is unchanged in behaviour** but is now derived from the row, so the two channels
+  cannot drift apart. Its per-round collapse key is preserved.
+
+### ⛔ All four outcomes or none — this is a law, not a preference
+
+E-43 is why. Refunds once leaked through the suppression while wins and losses did not, so the
+only outcome a player was ever told about was the one where their money came back unchanged —
+**56/56 refunds notified against 0/13 wins and 0/11 losses**, measured on production. A fifth
+outcome added later without a row rebuilds that inversion. `npm run test:updown-bell` and
+`npm run test:updown-push` §2 both fail if any branch stops announcing.
+
+### 🔴 A live false money statement was found while doing this, and fixed
+
+The Up & Down loss push shipped the Chinese title **`投注失败`** — which means *the bet FAILED,
+i.e. never went through*: the opposite money consequence from a bet that was placed and lost. A
+Chinese-reading player was told their bet had not been placed at the exact moment it had been
+placed and lost. `notifyLoss` has carried a comment forbidding that exact string since
+2026-07-31 — **the fix was applied there and never propagated to the hand-written Up & Down
+copy.** It is now `投注未中`, there is one source for the words rather than two, and both the
+suite and its red proof pin the ban with a positive control.
+
+⚠️ **The volume of noise is Ali's to accept and he accepted it.** If it proves too loud in
+practice the cheapest reversal is to route the four emitters back behind
+`perEventNotificationsSuppressed` — one branch each, no schema change, no data migration.
+
+---
+
 ## 2026-08-21 (later) · Erasure, built — one hole in the reasoning, and three calls made in the code
 
 **Origin:** implementing item 3 of the four answers below. The decision itself is unchanged and

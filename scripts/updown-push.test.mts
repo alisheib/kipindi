@@ -94,8 +94,15 @@ const ok = (name: string, cond: boolean, detail = "") => {
       const elseOpen = ifClose + 1 + afterIf.indexOf("{");
       const elseClose = matchBlock(elseOpen);
       const elseBody = MS.slice(elseOpen + 1, elseClose);
-      if (!/^[ \t]*pushOnly\(/m.test(elseBody)) {
-        bareGates.push(`line ${line}: else branch has no reachable pushOnly statement`);
+      // ⛔ RETARGETED 2026-08-22, NOT RELAXED. The assertion has always been *"every
+      // suppressed outcome is announced to the player"* — E-43's shape. Until today the
+      // only channel was `pushOnly`; the owner decision of 2026-08-22 moved the four RESULT
+      // outcomes onto `notifyUpDown*`, which writes the bell row AND pushes it from one
+      // copy. Bet-placed still uses `pushOnly` (it is not a result and gets no bell row).
+      // So the gate now accepts either announcer — and still fails on a gate that announces
+      // NOTHING, which is the only thing this check ever cared about.
+      if (!/^[ \t]*(pushOnly|notifyUpDown\w*)\(/m.test(elseBody)) {
+        bareGates.push(`line ${line}: else branch announces nothing (no pushOnly / notifyUpDown* statement)`);
       }
     }
   }
@@ -108,15 +115,26 @@ const ok = (name: string, cond: boolean, detail = "") => {
   // suite stayed green while the LOSS push was dead code — E-43's exact shape, undetected.
   // Anchoring on statement position (start of line) is what makes the assertion about
   // reachability. Same lesson as E-56 earlier today: assert the value, not the symbol.
+  // ⚠️ 2026-08-22 — the five announcements now split across TWO channels, so the count is
+  // taken over both and the split is asserted explicitly. Counting only the total would let
+  // a result silently fall back to push-only (losing its bell row) without anything failing.
   const pushes = (MS.match(/^[ \t]*pushOnly\(/gm) ?? []).length;
-  const mentions = MS.split("pushOnly(").length - 1;
-  ok("§2 ⭐ every suppressed outcome has a push — bet, win, loss, refund, one-sided refund",
-     pushes === 5, `found ${pushes} pushOnly STATEMENT(s), expected 5`);
+  const bellRows = (MS.match(/^[ \t]*notifyUpDown\w*\(/gm) ?? []).length;
+  ok("§2 ⭐ every suppressed outcome is announced — bet, win, loss, refund, one-sided refund",
+     pushes + bellRows === 5, `found ${pushes} pushOnly + ${bellRows} notifyUpDown* STATEMENT(s), expected 5 total`);
+  ok("§2 ⭐ …and the four RESULTS are the ones carrying a bell row",
+     bellRows === 4, `found ${bellRows} notifyUpDown* statement(s), expected 4 (win, loss, refund, one-sided refund)`);
+  ok("§2 ⭐ …while bet-placed stays push-only (it is not a result)",
+     pushes === 1, `found ${pushes} pushOnly statement(s), expected 1`);
   // Every mention must BE a statement. A mention that is not one is a call sitting behind
-  // an expression — reachable-looking, never reached. (The import names `pushOnly` without
-  // a paren, so it does not count here.)
-  ok("§2 ⭐ …and none of them is short-circuited into dead code",
+  // an expression — reachable-looking, never reached. (The import names each function
+  // without a paren, so imports do not count here.)
+  const mentions = MS.split("pushOnly(").length - 1;
+  ok("§2 ⭐ …and no push is short-circuited into dead code",
      mentions === pushes, `${mentions} mention(s) vs ${pushes} statement(s) — one is guarded by an expression`);
+  const bellMentions = (MS.match(/notifyUpDown\w*\(/g) ?? []).length;
+  ok("§2 ⭐ …and no bell row is short-circuited into dead code",
+     bellMentions === bellRows, `${bellMentions} mention(s) vs ${bellRows} statement(s) — one is guarded by an expression`);
 
   // Name each outcome explicitly, so a removal says WHICH one went missing.
   for (const [outcome, needle] of [
@@ -127,21 +145,59 @@ const ok = (name: string, cond: boolean, detail = "") => {
     // bet-placed outcome pushes, and it additionally fails if anyone puts the poll's
     // vocabulary back on a round. ⛔ Do not relax it to just `Bet placed ·`.
     ["bet placed",        /titleEn: `Bet placed · \$\{sideWordIn\("en", opts\.side, "UPDOWN"\)\}/],
-    ["win",               /titleEn: `You won \$\{formatTzs\(payout\)\}`/],
-    ["loss",              /titleEn: `Bet lost · \$\{formatTzs\(p\.stake\)\}`/],
-    ["refund",            /the round was voided and your stake came back in full/],
-    ["one-sided refund",  /only one side had bets, so your stake came back in full/],
   ] as const) {
     ok(`§2 the ${outcome} outcome pushes`, needle.test(MS));
+  }
+
+  // ⭐ THE FOUR RESULTS ARE NOW A CALL IN ONE FILE AND COPY IN ANOTHER, SO BOTH ARE PINNED.
+  // Asserting only the call would pass over an emitter whose words had been emptied;
+  // asserting only the copy would pass over an emitter nothing calls. Each outcome is
+  // named so a removal says WHICH one went missing — the E-43 requirement.
+  for (const [outcome, call, copy] of [
+    ["win",              /^[ \t]*notifyUpDownWin\(p\.userId, \{/m,             /titleEn: `You won \$\{formatTzs\(opts\.payout\)\}`/],
+    ["loss",             /^[ \t]*notifyUpDownLoss\(p\.userId, \{/m,            /titleEn: `Bet lost · \$\{formatTzs\(opts\.stake\)\}`/],
+    ["refund",           /^[ \t]*notifyUpDownRefund\(p\.userId, \{/m,          /the round was voided and your stake came back in full/],
+    ["one-sided refund", /^[ \t]*notifyUpDownOneSidedRefund\(p\.userId, \{/m,  /only one side had bets, so your stake came back in full/],
+  ] as const) {
+    ok(`§2 the ${outcome} outcome is announced (call site)`, call.test(MS));
+    ok(`§2 the ${outcome} outcome has its copy`, copy.test(NS));
   }
 }
 
 // ── §3 · the loss is not softened, and the good news is not privileged ──────────
 {
   // LCCP harm-prevention: a loss names the amount outright, in all three languages.
-  ok("§3 the loss push names the stake in EN", /titleEn: `Bet lost · \$\{formatTzs\(p\.stake\)\}`/.test(MS));
-  ok("§3 …in SW", /titleSw: `Dau limepotea · \$\{formatTzs\(p\.stake\)\}`/.test(MS));
-  ok("§3 …and in ZH", /titleZh: `投注失败 · \$\{formatTzs\(p\.stake\)\}`/.test(MS));
+  // ⚠️ These moved to `notification-service.ts` on 2026-08-22 with the copy itself.
+  ok("§3 the loss announcement names the stake in EN", /titleEn: `Bet lost · \$\{formatTzs\(opts\.stake\)\}`/.test(NS));
+  ok("§3 …in SW", /titleSw: `Dau limepotea · \$\{formatTzs\(opts\.stake\)\}`/.test(NS));
+  ok("§3 …and in ZH", /titleZh: `投注未中 · \$\{formatTzs\(opts\.stake\)\}`/.test(NS));
+
+  // 🔴 THE STRING THAT WAS LIVE AND WRONG, NOW LOCKED OUT.
+  //
+  // Until 2026-08-22 the Up & Down loss push shipped `投注失败`, which means the bet FAILED
+  // — i.e. never went through — the OPPOSITE money consequence from a bet that was placed
+  // and lost. `notifyLoss` had carried a comment forbidding exactly that string since
+  // 2026-07-31; the fix was applied there and never propagated to the hand-written Up & Down
+  // copy, which is the copy-paste drift this whole refactor removes.
+  //
+  // ⛔ ASSERTED OVER COMMENT-STRIPPED SOURCE, and this suite proved why on its first run:
+  // both checks went RED on a CORRECT tree, because the comments explaining the ban quote
+  // the banned string. That is §0.1a exactly — *never match on words the code's own
+  // documentation will one day contain* — and it is the same shape that first reddened
+  // §4 of `updown-result-announce`. The controls below are not decoration: a stripper that
+  // returned "" would make both absence checks pass over nothing.
+  const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/^\s*\/\/.*$/gm, "");
+  const MS_CODE = strip(MS);
+  const NS_CODE = strip(NS);
+  ok("§3 🔴 the forbidden ZH loss string is absent from market-service CODE", !/投注失败/.test(MS_CODE));
+  ok("§3 🔴 …and from notification-service CODE", !/投注失败/.test(NS_CODE));
+  // Control ①: the stripper did not eat the file.
+  ok("§3 🔴 …control: stripped source is still real code",
+     MS_CODE.length > 10_000 && NS_CODE.length > 10_000 && /export async function settleMarket\(/.test(MS_CODE),
+     `MS_CODE=${MS_CODE.length} NS_CODE=${NS_CODE.length}`);
+  // Control ②: the CORRECT string survives stripping, so the checks above are pointed at
+  // live copy and not at a comment-only region.
+  ok("§3 🔴 …control: the correct ZH loss string IS in the stripped code", /投注未中/.test(NS_CODE));
 
   // ⭐ Symmetry: as many result-tagged pushes as there are money outcomes (win, loss,
   // refund, one-sided refund). A push channel that carried only wins would be E-43 again.
