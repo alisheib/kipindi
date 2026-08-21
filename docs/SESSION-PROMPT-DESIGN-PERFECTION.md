@@ -42,7 +42,7 @@ repo `F:\kipindi-main`, branch `main`):**
 | 8 | Dead code & doc truth | **DONE** | `f58c3aa1` | ✓ 200 · clean boot |
 | 9 | Consolidations | **DONE** (two sites kept, with reasons) | `b1628478` | ✓ 200 · clean boot |
 | 10 | New guards | **DONE** — suite 226 → **230**, each red-proven | `d18e3ecc` | ✓ 200 · clean boot |
-| 11 | Owner decisions D1–D6 + exit | **DONE** | `stage-11` | pending push |
+| 11 | Owner decisions D1–D6 + exit | **DONE** | `910ce16a` | ✓ 9 routes 200 · clean boot · 72 live shots read at 360/768/1280/1920 × EN/SW/ZH |
 
 ### Exit report
 
