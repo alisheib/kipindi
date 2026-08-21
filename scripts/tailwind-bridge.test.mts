@@ -355,5 +355,200 @@ if (written.length) {
   );
 }
 
+// ── 7. THE COMPILE PROBE, PART TWO — an UNKNOWN FAMILY ───────────────────────
+/**
+ * Added 2026-08-21, immediately after section 6, because section 6 closed one half of
+ * the hole and the design audit walked straight through the other half.
+ *
+ * 🔴 SECTION 2 CANNOT FAIL ON A FAMILY IT DOES NOT KNOW. Line ~147 reads:
+ *
+ *     const keys = families.get(fam);
+ *     if (!keys) continue;                  // not one of our families — out of scope
+ *
+ * That `continue` is correct about a Tailwind stock family (`text-red-500`) and
+ * catastrophic about a TYPO. `text-warn`, `text-hot-rose-300` and `text-onBrand` were
+ * each written against a family that has never existed in this config — so `families.get`
+ * returned undefined, the loop moved on, and all three compiled to NOTHING for as long as
+ * they were in the tree. Section 2 is a check that a STEP exists inside a family we
+ * recognise; it was never a check that the family does.
+ *
+ * Section 7 asks Tailwind instead. Same instrument as section 6, aimed at the other half:
+ * every class-shaped token in the app is compiled through the repo's own Tailwind, and one
+ * that produces no rule fails. A key-existence check can be fooled by a family it skips; a
+ * compiler cannot skip anything.
+ *
+ * ⭐ HOW THE CANDIDATE SET IS BOUNDED, AND WHY IT HAD TO BE. Section 6 could afford to be
+ * careless about candidates because `/NN` is an unambiguous shape. `prefix-word` is NOT:
+ * `border-color`, `text-align`, `border-box`, `stroke-dashoffset` and `stroke-width=` all
+ * match it, and all of them are real text in this repo — CSS declarations inside
+ * `transition:` values, an email's inline stylesheet, SVG attributes. Probing them would
+ * report five dead classes that are not classes at all, and a guard that cries wolf is a
+ * guard the next session turns off. Two tiers of evidence, both about the CODE rather than
+ * about a word list:
+ *
+ *   TIER 1 — the token sits inside a `className=` / `class=` attribute or a `className:`
+ *            property. That is a class list BY DEFINITION; nothing else can be in it. No
+ *            CSS-property surface at all. 291 tokens today.
+ *   TIER 2 — the token sits in some other string literal (a tone map, a variant table —
+ *            exactly where the next dead class will hide) AND one of:
+ *              · another candidate in the SAME literal compiles, so the literal is
+ *                demonstrably a class list (`gold: "bg-gold/15 text-gold"` vouches for
+ *                `text-gold`);
+ *              · the token ends in a numeric Tailwind step (`-500`, `-200`). No CSS
+ *                property name does.
+ *
+ * ⛔ WHAT THAT DELIBERATELY LEAVES OUT, stated rather than hidden: a token alone in its own
+ * string literal, with no numeric step and no corroborating sibling anywhere — today that is
+ * `bg-text-muted` and nothing else. It is unreachable evidence, not an oversight, and the
+ * §7c control below asserts the classifier keeps rejecting the CSS-property lookalikes so
+ * the bound cannot quietly widen.
+ */
+{
+  /** A class-shaped token: optional variants, optional `!`, one of our prefixes, then a word. */
+  const CAND = new RegExp(String.raw`^(?:[-a-zA-Z0-9_]+:)*!?(?:${prefixAlt})-[a-zA-Z][-a-zA-Z0-9./[\]%]*$`);
+  const isCand = (t: string) => !t.includes("$") && !t.includes("{") && CAND.test(t);
+  /** `-500`, `-200` — a Tailwind step. No CSS property name ends this way. */
+  const HAS_STEP = /-\d{2,3}(?:\/(?:\[[0-9.]+\]|\d{1,3}))?$/;
+
+  /** Every `className=` / `class=` / `className:` value, brace-balanced. */
+  function classAttrValues(src: string): string[] {
+    const out: string[] = [];
+    for (const m of src.matchAll(/\bclassName\s*=\s*|\bclass\s*=\s*|\bclassName\s*:\s*/g)) {
+      let i = m.index + m[0].length;
+      if (src[i] === "{") {
+        let depth = 0; const start = i;
+        for (; i < src.length; i++) {
+          if (src[i] === "{") depth++;
+          else if (src[i] === "}") { depth--; if (depth === 0) { i++; break; } }
+        }
+        out.push(src.slice(start, i));
+      } else if (src[i] === '"' || src[i] === "'" || src[i] === "`") {
+        const q = src[i]; const start = i; i++;
+        while (i < src.length && src[i] !== q) { if (src[i] === "\\") i++; i++; }
+        out.push(src.slice(start, i + 1));
+      }
+    }
+    return out;
+  }
+  const stringLiterals = (s: string) => [...s.matchAll(/["'`]([^"'`]*)["'`]/g)].map((m) => m[1]);
+
+  const tier1 = new Map<string, Set<string>>();
+  const everyLiteral: Array<{ tokens: string[]; file: string }> = [];
+  for (const file of srcFiles) {
+    const rel = relative(ROOT, file);
+    const src = decomment(readFileSync(file, "utf8"));
+    for (const attr of classAttrValues(src)) {
+      for (const lit of stringLiterals(attr)) {
+        for (const t of lit.split(/\s+/)) {
+          if (!isCand(t)) continue;
+          const rec = tier1.get(t) ?? new Set<string>();
+          rec.add(rel); tier1.set(t, rec);
+        }
+      }
+    }
+    for (const lit of stringLiterals(src)) everyLiteral.push({ tokens: lit.split(/\s+/).filter(Boolean), file: rel });
+  }
+
+  // Compile the WHOLE universe first — corroboration in tier 2 needs to know which
+  // siblings actually emit, and that is a question only the compiler can answer.
+  const universe = new Set<string>(tier1.keys());
+  for (const l of everyLiteral) for (const t of l.tokens) if (isCand(t)) universe.add(t);
+  const all = [...universe].sort();
+  check("§7 collected class-shaped tokens to probe", all.length > 100,
+    `only ${all.length} — the collector is broken, not the app`);
+
+  const postcss7 = (await import("postcss")).default;
+  const tailwind7 = (await import("tailwindcss")).default;
+  const cfgMod7 = await import("../tailwind.config.ts");
+  const cfg7 = ((cfgMod7 as Record<string, unknown>).default ?? cfgMod7) as Record<string, unknown>;
+  const { css: css7 } = await postcss7([
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (tailwind7 as any)({
+      ...cfg7,
+      content: [{ raw: `<div class="${all.join(" ")}"></div>`, extension: "html" }],
+      corePlugins: { preflight: false },
+    }),
+  ]).process("@tailwind utilities;", { from: undefined });
+
+  /**
+   * ⛔ SAME TWO TRAPS AS SECTION 6, AND ONE MORE. The selector is escaped in the SELECTOR
+   * alphabet first and the REGEX alphabet second (doing both at once yields `\\[`, a literal
+   * backslash followed by the start of a character class, and mis-parses in silence). The
+   * right-boundary lookahead stops `.text-warn` from matching inside `.text-warning-fg`.
+   * The third: `!` is part of the class Tailwind emits (`.\!text-x`), so it is escaped, not
+   * stripped — stripping it would ask about a DIFFERENT class than the one written.
+   */
+  const emits7 = (cls: string) => {
+    const selector = "." + cls.replace(/[.:/[\]!%(),#*+~<>&']/g, (ch) => "\\" + ch);
+    const pattern = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(pattern + "(?=[\\s,{:>+~])").test(css7);
+  };
+  const emitting = new Set(all.filter(emits7));
+
+  const tier2 = new Map<string, Set<string>>();
+  for (const l of everyLiteral) {
+    const cands = l.tokens.filter(isCand);
+    for (const t of cands) {
+      if (tier1.has(t)) continue;
+      const corroborated = cands.some((o) => o !== t && emitting.has(o));
+      if (!corroborated && !HAS_STEP.test(t)) continue;
+      const rec = tier2.get(t) ?? new Set<string>();
+      rec.add(l.file); tier2.set(t, rec);
+    }
+  }
+
+  const probed = [...new Set([...tier1.keys(), ...tier2.keys()])].sort();
+  const dead7 = probed.filter((c) => !emitting.has(c));
+  check(
+    "§7 every class-shaped colour token compiles to a real rule",
+    dead7.length === 0,
+    dead7.length ? `${dead7.length} of ${probed.length} emit NOTHING` : "",
+  );
+  for (const c of dead7) {
+    const where = [...(tier1.get(c) ?? tier2.get(c) ?? [])].slice(0, 3).join(", ");
+    log(`    ${c.padEnd(30)} ${where}`);
+  }
+  if (dead7.length) {
+    log("");
+    log("  The FAMILY does not exist in tailwind.config.ts, so Tailwind emits no rule at all");
+    log("  and the element silently inherits its parent. Section 2 cannot see this: it skips");
+    log("  any family it does not recognise, which is exactly what a typo produces.");
+    log("    · meant an existing family?  ->  `text-warn` is `text-warning-fg`");
+    log("    · meant a real token?        ->  `text-onBrand` is `text-text-onBrand`");
+    log("    · the token genuinely exists ->  bridge it in tailwind.config.ts, then use it");
+  }
+
+  // ── §7b/§7c · CONTROLS — the probe must be able to fail, and must not cry wolf ──
+  // A refusal with no positive control is an absent test; a rule that also fails correct
+  // code is worse than no rule, because it teaches the next session to weaken it.
+  check("§7b the probe can detect an unknown FAMILY (negative control)",
+    !emits7("text-warn"),
+    "`warn` is bridged now — pick a new control; this one no longer proves anything");
+  check("§7b …and does not confuse it with its healthy neighbour",
+    emits7("text-warning-fg"),
+    "the right-boundary lookahead has broken: `.text-warn` would match inside `.text-warning-fg`");
+  check("§7b the probe agrees with reality on a class the app relies on",
+    emits7("text-text-subtle"), "732 usages of this compiled to nothing before 2026-07-28");
+  check("§7c the classifier REFUSES a CSS property name",
+    !isCand("border-color;") && !probed.includes("border-color") && !probed.includes("border-box"),
+    "toggle.tsx's `transition: \"… border-color …\"` and email.ts's `box-sizing: border-box` are not classes");
+  check("§7c the classifier REFUSES an SVG attribute fragment",
+    !probed.includes("stroke-width=") && !probed.includes("stroke-dashoffset"),
+    "needle.tsx's markup and countdown-ring's transition are not class lists");
+  // ⛔ STATE THE INVARIANT, NOT A PRESENCE (standards §5b rule 9). The first draft named
+  // `text-gold` — and the RED harness's fourth mutation replaced exactly that token, which
+  // knocked its sibling `bg-gold/15` out of tier 2 too (correctly: a literal whose every
+  // candidate is dead is no longer evidence of a class list). The control then failed on a
+  // mutation it was not testing. What must hold is the MECHANISM: some token, somewhere,
+  // is admitted because a sibling compiled — otherwise tier 2 has silently collapsed into
+  // the numeric-step rule and every word-only class outside a className is unguarded again.
+  const admittedBySibling = [...tier2.keys()].filter((t) => !HAS_STEP.test(t));
+  check("§7c …but ACCEPTS a real class that lives outside a className attribute",
+    admittedBySibling.length > 0,
+    "no token was admitted by a compiling sibling — tier 2 has collapsed to the numeric-step rule alone");
+
+  log(`\n  (§7 probed ${probed.length} class-shaped tokens — ${tier1.size} from className attributes, ${tier2.size} corroborated elsewhere)`);
+}
+
 log(`\n${fail === 0 ? "PASS" : "FAIL"} — ${tsxFiles.length} tsx files, ${families.size} colour families, ${shadowKeys.size} shadow rungs, ${written.length} alpha classes probed`);
 process.exit(fail ? 1 : 0);

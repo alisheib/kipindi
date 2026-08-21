@@ -103,6 +103,33 @@ function classNames(body: string): Array<{ index: number; value: string; raw: st
   return out;
 }
 
+/**
+ * Helper: EVERY string literal in the file, with the index its CONTENT starts at.
+ *
+ * ⭐ Why this exists beside `classNames()`. That helper reads `className="…"`, which
+ * is the one form a drifting class list is NOT written in — `cn(…)`, an array
+ * `.join(" ")` and a template literal all hide their tokens from it. That is
+ * literally how `refresh-button.tsx` and `admin/markets/page.tsx` each carried a
+ * `btn-sm h-8` past every className rule in this file until Stage 3 swept them by
+ * hand. A class token is a class token wherever it is written.
+ *
+ * 🔴 EACH LITERAL IS CLOSED BY ITS OWN DELIMITER. A single character class for all
+ * three quotes — `/["'`]([^"'`]*)["'`]/g` — pairs an opening BACKTICK with the next
+ * DOUBLE quote, so on `` `base ${on ? "h-8" : ""}` `` the interpolated tokens land
+ * in the gap between matches and are never seen. That is standards §5b#6 (the
+ * `test:bridge` one-character blind spot) in a new costume; measured while writing
+ * `scripts/type-scale.test.mts`, where the same bug hid 22 real usages.
+ */
+function stringLiterals(body: string): Array<{ index: number; value: string }> {
+  const out: Array<{ index: number; value: string }> = [];
+  const re = /"((?:\\.|[^"\\\n])*)"|'((?:\\.|[^'\\\n])*)'|`((?:\\.|[^`\\])*)`/g;
+  for (const m of body.matchAll(re)) {
+    const value = m[1] ?? m[2] ?? m[3] ?? "";
+    if (value.trim()) out.push({ index: (m.index ?? 0) + 1, value });
+  }
+  return out;
+}
+
 const RULES: Rule[] = [
   {
     id: "native-select",
@@ -278,6 +305,72 @@ const RULES: Rule[] = [
       classNames(b)
         .filter((c) => /\bbtn\b/.test(c.value) && /(?:^|\s)(h-\d|min-h-\[)/.test(c.value))
         .map((c) => ({ index: c.index, snippet: c.raw.slice(0, 80) })),
+  },
+  {
+    // 🔴 THE NUMERIC-SIZE TRAP · A CLASS THAT MEANS ROUGHLY DOUBLE WHAT IT SAYS.
+    //
+    // `tailwind.config.ts` REPLACES the numeric spacing keys (theme.extend.spacing,
+    // ~line 200): the product's 4px-step scale maps 7→40px, 8→48, 9→64, 10→80,
+    // 11→96, 12→128. Stock Tailwind maps the same keys to 28/32/36/40/44/48. So an
+    // author reaching for the height they have typed a thousand times in other
+    // projects writes `h-8` meaning 32px and ships **48px**, and `h-10` meaning
+    // 40px and ships **80px** — a control twice the size of its neighbours, on a
+    // dense admin row, with nothing in the class name to hint at it.
+    //
+    // ⚠️ This is not theoretical: Stage 3 of this campaign swept ~121 accidental
+    // sites. `src/components/admin/refresh-button.tsx` and
+    // `src/app/admin/markets/page.tsx` both carry a comment where the bug used to
+    // be ("⛔ NO `h-8` OVERRIDE. It rendered 48px (overridden scale) and fought…").
+    // This rule is what stops them coming back — the sweep was manual and a manual
+    // sweep is a one-off.
+    //
+    // ⛔ SCANNED FROM EVERY STRING LITERAL, NOT FROM `className="…"`. Those two
+    // files hid their `h-8` inside `cn()` and a template literal, which is exactly
+    // why no existing rule here could see them. See `stringLiterals` above.
+    //
+    // ⚠️ ~56 OF THE SITES BELOW ARE CORRECT AND ARE BASELINED, NOT "FIXED". The
+    // modal ✕ and the toast dismiss really are 48px; `filter-pill`, `pagination`,
+    // `menu-shell` and `language-menu` carry explicit "never a scale token"
+    // warnings at their call sites; a 40px `h-7 w-7` icon button is the tap-target
+    // floor doing its job. Condemning correct code teaches people to ignore the
+    // detector, which costs exactly as much as missing the defect (standards
+    // §5b#9). The baseline is the honest place for them.
+    //
+    // Scope note: `max-h-`/`max-w-` are included even though the tree has ZERO of
+    // them today — they read from the same overridden scale, so leaving them out
+    // would be an opening rather than an exemption, and including them costs no
+    // baseline entry. The lookahead rejects `w-7/12` (a fraction is a different
+    // class, and `test:bridge` was burned by a terminator list that erased a real
+    // distinction — standards §5b#6).
+    id: "numeric-size-utility",
+    severity: "error",
+    desc: "h-/w-/min-/max- with a numeric key 7–12 — the spacing scale is OVERRIDDEN (h-8 = 48px, h-10 = 80px), so this renders ~double. Use an explicit literal (h-[32px]) or a --h-control-* token",
+    scan: (b) => {
+      const out: Array<{ index: number; snippet: string }> = [];
+      // Built as a plain literal — no runtime-escaped fragments. Standards §5b#7:
+      // escaping in two alphabets at once mis-parses silently.
+      //
+      // ⚠️ THE LEADING BOUNDARY IS NOT JUST WHITESPACE, and the red proof is what
+      // taught it. `` `w-9 ${live ? "h-7" : ""}` `` yielded the `w-9` and swallowed
+      // the `h-7`: inside a template literal the nested token is preceded by a
+      // QUOTE, not a space, so a `(?:^|\s)` boundary walks straight past it — a
+      // half-blind rule that reports the easy half of a defect and looks like it
+      // works. The class below is every character that can legally sit before a
+      // class token in JS/JSX source, minus `-` and word characters (which would
+      // let `foo-h-8` match).
+      const TOKEN = /(?:^|[\s"'`{(,?:])((?:[a-z0-9.-]+:)*)(min-h|min-w|max-h|max-w|h|w)-(7|8|9|10|11|12)(?![\d./a-zA-Z-])/g;
+      for (const lit of stringLiterals(b)) {
+        for (const m of lit.value.matchAll(TOKEN)) {
+          // +offset of the token inside the match (the boundary char is not part of it).
+          const off = (m.index ?? 0) + m[0].length - (m[1].length + m[2].length + m[3].length + 1);
+          out.push({
+            index: lit.index + off,
+            snippet: `${m[1]}${m[2]}-${m[3]}  in  "${lit.value.replace(/\s+/g, " ").trim().slice(0, 70)}"`,
+          });
+        }
+      }
+      return out;
+    },
   },
   {
     id: "table-not-admin-tbl",

@@ -345,8 +345,17 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
           <button type="button" aria-label={t.common.close} onClick={() => setCalOpen(false)}
             className="fixed inset-0 bg-black/50 backdrop-blur-sm" />
           <div
-            className="relative w-[calc(100%-24px)] max-w-[320px] rounded-modal border border-border-strong bg-bg-elevated shadow-overlay overflow-hidden"
-            style={{ animation: "cd-rise var(--t-base) var(--ease-arrive)", marginBottom: "env(safe-area-inset-bottom, 0px)" }}
+            /* 🔴 THIS DIALOG HAD NO ARRIVAL AT ALL. It named `cd-rise` in an inline
+               animation, and there is no `@keyframes cd-rise` anywhere in `src` — so the
+               declaration was inert and the calendar simply appeared. Found 2026-08-21 by
+               the keyframe registry's new JSX reader, which is the whole reason that
+               reader was built: an animation written in a `style` attribute was invisible
+               to every motion gate, so a name could go missing and nothing would say so.
+               ⭐ `.m-dialog-in` is the kit's modal arrival (§M2) — one entrance, already
+               branched for all three reduce-motion gates, which a bespoke keyframe here
+               would have had to re-earn. */
+            className="m-dialog-in relative w-[calc(100%-24px)] max-w-[320px] rounded-modal border border-border-strong bg-bg-elevated shadow-overlay overflow-hidden"
+            style={{ marginBottom: "env(safe-area-inset-bottom, 0px)" }}
           >
             <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
               {calView === "days" ? (<>

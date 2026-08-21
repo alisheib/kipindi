@@ -22,20 +22,67 @@
  *                     "0 30px 80px oklch(...)" was a design decision made in
  *                     the wrong place.
  *
- * This is a RATCHET, not a wall. Everything still carrying inline design lives
- * in FROZEN_ALLOWLIST below, and that list may only ever SHRINK. Enforcement
- * lands now — no NEW inline design value can appear — while the remaining
- * cleanup (overwhelmingly admin surfaces) proceeds at its own pace.
+ * ─────────────────────────────────────────────────────────────────────────────
+ * 🔴 REBUILT 2026-08-21 — THE OLD SHAPE OF THIS GUARD HAD A HOLE THE SIZE OF THE
+ *    RULE IT WAS ENFORCING, AND ONE LINE PUT IT THERE.
+ *
+ *    Every check was LINE-level, and a line was skipped whole if it contained
+ *    `var(--`. Almost every real inline style contains a var — that is the point
+ *    of the system — so almost every real inline style was **exempt from the
+ *    guard by virtue of being partly correct**. Proven, not theorised:
+ *
+ *      · `admin/live/page.tsx:112` carries `borderColor: "oklch(70% 0.12 195 / 0.5)"`
+ *        — hue 195 is AQUA, the superseded kit's colour, which the June-2026
+ *        rebuild records as eliminated — beside three `var(--…)` values on the
+ *        same line. The guard read the line, saw a var, and moved on.
+ *      · a `rounded-[10px]` in a file that has never been on the allowlist was
+ *        confirmed to pass for the same reason.
+ *
+ *    And the whole-line exemption was doing a SECOND job nobody had noticed: the
+ *    old `inline border` rule fired on the *property name plus a quote*, so
+ *    `border: "1px solid var(--border)"` — perfectly correct, token-consuming
+ *    code — only escaped because the line was skipped. Removing the skip without
+ *    changing the rule would have flagged dozens of correct files. That is why
+ *    this is a rebuild and not a patch.
+ *
+ *    THREE CHANGES:
+ *
+ *    1. **Per-PROPERTY, value-judged.** The style object is parsed into its
+ *       `key: value` pairs and each pair is judged on its OWN value. A literal
+ *       beside a var is now seen; a var-consuming border is now correct by rule
+ *       rather than by accident. Four files left the ratchet immediately —
+ *       `operation-result-modal.tsx` (listed at 19), `RgRedirectCard.tsx`,
+ *       `avatar-menu.tsx` and `kyc-review-controls.tsx` were never violating
+ *       anything; the old rule was wrong about them.
+ *    2. **The geometry properties are judged too** — `fontSize`, `letterSpacing`
+ *       and `padding`, which the old rule set did not name at all. A hand-typed
+ *       tracking value is the same defect as a hand-typed shadow: the type scale
+ *       and the spacing scale are system decisions (B2/B4).
+ *    3. **`.css` files are walked.** They were outside EVERY visual-value guard
+ *       in this repo. `chat-styles.css` — imported by `globals.css`, so it ships
+ *       on every page — hand-types **hue 195 aqua ten times**, in a file whose
+ *       own header says it is a "royal-indigo extension … No orphan colors".
  *
  * What counts as a violation (a value the DESIGN chose):
  *   - a raw hex or a raw oklch()/rgb()/hsl() literal
- *   - an inline boxShadow / border / borderRadius / background gradient
- *   - a Tailwind arbitrary value for one of those: shadow-[...] / rounded-[...]
+ *   - a style-object property (shadow / border / radius / colour / geometry)
+ *     whose value is a hand-typed literal
+ *   - a Tailwind arbitrary value for a frozen primitive whose brackets hold a
+ *     literal: `shadow-[0 2px 8px #000]`, `rounded-[10px]`
+ *   - in a component stylesheet, a normal declaration that hand-types a colour
+ *     or a radius/shadow/size instead of reading a token
  *
- * What does NOT count (a value the DATA or the CALLER chose):
- *   - anything containing var(--...) — that IS consuming the system
- *   - a template literal driven by a runtime binding (a computed bar width, a
- *     hue interpolated from live data). Those are data, and data belongs inline.
+ * What does NOT count (a value the DATA, the CALLER or the PLATFORM chose):
+ *   - a value containing var(--...) — that IS consuming the system
+ *   - a value driven by a runtime binding (a computed bar width, a hue
+ *     interpolated from live data). Those are data, and data belongs inline.
+ *   - a CSS keyword: `none`, `transparent`, `currentColor`, `inherit`, `auto`, `0`
+ *   - `env(...)`, `themeColor`, a colour argument handed to a JS library
+ *
+ * This is a RATCHET, not a wall. Everything still carrying inline design lives
+ * in FROZEN_RATCHET below **with a count**, and both the list and every count
+ * may only ever SHRINK. Counts are new: under the old Set, a file already on the
+ * list could accumulate unlimited new violations forever.
  *
  * Run: npm run test:design-frozen
  */
@@ -46,37 +93,63 @@ const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "
 const SRC = join(ROOT, "src");
 
 /**
- * Files that still hold inline design values, as measured on 2026-07-29.
- * THIS LIST MAY ONLY SHRINK. Removing a file from it is the cleanup; adding one
- * is re-opening the hole. If you are about to add an entry, you are about to
- * make a second home for a design truth — put the value in globals.css instead.
+ * ⛔ EXEMPT BY DESIGN, NOT BY BACKLOG — and therefore with no count.
+ * The logo/needle geometry is a byte-identical port of the delivered SVGs. Brand
+ * identity is NOT theme tokens and is allowed to diverge — DESIGN_AUTHORITY B1
+ * says so in as many words. A count here would imply debt that is not debt.
  */
-const FROZEN_ALLOWLIST = new Set<string>([
-  // ── Brand marks: deliberately literal (DESIGN_AUTHORITY B1) ────────────────
-  // The logo/needle geometry is a byte-identical port of the delivered SVGs.
-  // Brand identity is NOT theme tokens and is allowed to diverge — B1 says so
-  // in as many words. These are exempt by DESIGN, not by backlog.
-  "src/components/layout/needle.tsx",          // 34 — vendored physics object
-  "src/components/brand-topo.tsx",             // 4  — topographic brand pattern
-  "src/components/chat/HelpMark.tsx",          // 5  — the chat mark
-  "src/components/ui/identity-avatar.tsx",     // 18 — generative identicon palette
+const BY_DESIGN = new Set<string>([
+  "src/components/layout/needle.tsx",          // vendored physics object
+  "src/components/layout/needle.css",          // …and its stylesheet, same object
+  "src/components/brand-topo.tsx",             // topographic brand pattern
+  "src/components/chat/HelpMark.tsx",          // the chat mark
+  "src/components/ui/identity-avatar.tsx",     // generative identicon palette
+]);
 
+/**
+ * Files that still hold inline design values, with the count measured 2026-08-21.
+ * THIS LIST MAY ONLY SHRINK, AND SO MAY EVERY NUMBER IN IT. Removing a file is the
+ * cleanup; adding one — or raising a number — is re-opening the hole. If you are
+ * about to add an entry, you are about to make a second home for a design truth:
+ * put the value in globals.css instead.
+ *
+ * ⚠️ The counts moved when the rules were rebuilt (see the header). They are not
+ * comparable to the old comment-counts: the old ones included the `border:
+ * "1px solid var(--border)"` false positives and excluded everything that shared
+ * a line with a var. Nothing here regressed; the measurement got honest.
+ */
+const FROZEN_RATCHET = new Map<string, number>([
   // ── Player surfaces still to canonicalize (the real backlog) ──────────────
-  "src/components/onboarding/first-visit-primer.tsx", // 21
-  "src/components/markets/operation-result-modal.tsx", // 19 — the TONE map
-  "src/app/global-error.tsx",                  // 18 — ships without app CSS
-  "src/components/markets/conviction-dial.tsx", // 11
+  ["src/app/global-error.tsx", 24],                          // ships without app CSS
+  ["src/components/onboarding/first-visit-primer.tsx", 19],
+  ["src/components/markets/conviction-dial.tsx", 15],
+  ["src/components/ui/chip.tsx", 14],
+  // ⚠️ 15, not the 13 the first pass of the rebuild measured. Two of them sit on lines
+  // carrying a `${…}` binding — `fill="oklch(50% 0.14 152)"` beside a computed SVG path —
+  // and every previous rule skipped a line the moment it saw a binding anywhere on it.
+  ["src/components/brand.tsx", 15],                          // non-TippingBar marks
+  ["src/app/wallet/wallet-client.tsx", 9],
   // ⭐ `price-chart.tsx` LEFT THIS LIST on 2026-08-21 and the list may only shrink. It held
   // 11 exemptions, ALL of them inside the dead `PriceChart` component — which was unmounted,
   // still carried the BANNED teal 215 in a gradient, and whose file-wide exemption was
   // meanwhile letting the LIVE `VolumeSparkline` beside it re-type a token unguarded. Deleting
   // the dead half made the file clean and the sparkline guarded in one move.
-  "src/components/brand.tsx",                  // 9  — non-TippingBar marks
-  "src/lib/i18n.tsx",                          // 6
-  "src/app/wallet/wallet-client.tsx",          // 5
-  "src/components/ui/chip.tsx",                // 5
-  "src/components/ui/page-hero.tsx",           // 5
-  "src/app/profile/page.tsx",                  // 2
+  ["src/lib/i18n.tsx", 6],
+  ["src/components/ui/cashback-promo.tsx", 5],
+  ["src/components/ui/page-hero.tsx", 5],
+  ["src/app/profile/invite/page.tsx", 3],
+  ["src/app/profile/page.tsx", 3],
+  ["src/app/markets/[id]/page.tsx", 2],
+  ["src/app/wallet/loading.tsx", 2],
+  ["src/components/ui/nav-progress.tsx", 2],
+  ["src/components/ui/toggle.tsx", 2],
+  ["src/app/auth/register/page.tsx", 1],
+  ["src/app/updown/page.tsx", 1],
+  ["src/components/ui/checkbox.tsx", 1],
+  ["src/components/ui/empty-state.tsx", 1],
+  ["src/components/ui/propose-promo.tsx", 1],
+  ["src/components/ui/tabs.tsx", 1],
+  ["src/components/ui/toast.tsx", 1],
   // reward-burst.tsx CLEARED 2026-08-08 — its two borderRadius literals were the
   // heraldic corner brackets, which died with the rays (INTAKE §3b, 45 → 44).
   // bet-confirm-modal + sell-confirm-modal + offline-banner CLEARED 2026-08-08
@@ -89,35 +162,95 @@ const FROZEN_ALLOWLIST = new Set<string>([
   // backdrop-blur capsule for --pill-active on --panel, and nav-more's hand-typed
   // oklch(40% 0.08 264 / 0.4) became --pill-active. language-toggle.tsx is DELETED — one 44x44
   // language menu replaced the 3-pill capsule (41 -> 36).
-  "src/components/ui/cashback-promo.tsx",      // 2
-  "src/components/ui/checkbox.tsx",            // 2
-  "src/components/ui/toggle.tsx",              // 2
-  "src/app/auth/register/page.tsx",            // 1
-  "src/app/markets/[id]/page.tsx",             // 1
-  "src/app/profile/invite/page.tsx",           // 1
-  "src/app/updown/page.tsx",                   // 1
-  "src/app/wallet/loading.tsx",                // 1
-  "src/components/chat/messages/RgRedirectCard.tsx", // 1
-  "src/components/layout/avatar-menu.tsx",     // 1
   // `notifications-panel.tsx` LEFT THIS LIST on 2026-08-21 — its one inline literal was the
-  // hand-styled unread pip, which is now the kit <CountBadge>. The list may only shrink.
-  "src/components/ui/empty-state.tsx",         // 1
-  "src/components/ui/nav-progress.tsx",        // 1
-  "src/components/ui/propose-promo.tsx",       // 1
-  "src/components/ui/tabs.tsx",                // 1
-  "src/components/ui/toast.tsx",               // 1
+  // hand-styled unread pip, which is now the kit <CountBadge>.
+  // operation-result-modal.tsx (19) + RgRedirectCard.tsx + avatar-menu.tsx +
+  // kyc-review-controls.tsx LEFT on 2026-08-21 with the rebuild: they were never
+  // violating anything. Every "violation" was the old rule firing on a *correct*
+  // `border: "1px solid var(--border)"`, which is the system being consumed.
+
+  // ── Newly VISIBLE 2026-08-21 (the rebuild's own findings) ─────────────────
+  // ⛔ These are not new defects. They are old defects the guard could not see:
+  // a literal sharing a line with a var, or a geometry property nothing judged.
+  // Every one was measured on this tree; none was invented to pad the list.
+  ["src/app/updown/[roundId]/page.tsx", 8],                  // padding + letterSpacing on the round page
+  ["src/components/admin/admin-shell.tsx", 4],               // 4× hand-typed letterSpacing
+  ["src/components/updown/round-countdown.tsx", 3],
+  ["src/app/admin/moderation/moderation-client.tsx", 2],
+  ["src/app/positions/performance/page.tsx", 2],             // raw-oklch radial gradients
+  ["src/components/layout/live-ticker.tsx", 2],              // oklch fade beside var(--bg-inset)
+  ["src/components/layout/wallet-balance-pill.tsx", 2],
+  ["src/components/updown/price-hero.tsx", 2],
+  ["src/app/admin/live/page.tsx", 1],
+  ["src/app/admin/payments/control-plane.tsx", 1],
+  ["src/app/admin/proposals/admin-proposals-client.tsx", 1], // rounded-[10px]
+  ["src/app/results/page.tsx", 1],
+  ["src/components/admin/admin-charts.tsx", 1],
+  ["src/components/markets/bet-confirm-modal.tsx", 1],
+  ["src/components/markets/countdown.tsx", 1],
+  ["src/components/markets/probability-chart.tsx", 1],
+  ["src/components/updown/round-action-panel.tsx", 1],
+  ["src/components/updown/round-stake-panel.tsx", 1],
+  ["src/components/updown/updown-card.tsx", 1],
+  // `payment-logo.tsx` is NOT here, and its absence is a result: its
+  // `linear-gradient(135deg, oklch(45% 0.10 ${hue}), …)` is one colour computed from the
+  // provider's own hue. Per-colour binding analysis exonerates it; a value-level
+  // "contains a literal" test would have put it on this list wrongly.
+  // ⭐ ONE VALUE, FIVE COPIES — the kit's error tint. `oklch(58% 0.2 25 / 0.08)` is
+  // typed out identically in five form controls and exists as no token anywhere. It
+  // is the cheapest entry on this list to clear: define it once, delete five lines.
+  ["src/components/ui/date-select.tsx", 1],
+  ["src/components/ui/duration-input.tsx", 1],
+  ["src/components/ui/input.tsx", 1],
+  ["src/components/ui/password-input.tsx", 1],
+  ["src/components/ui/time-select.tsx", 1],
 
   // ── Admin surfaces (deferred: player-facing work ships first) ─────────────
-  "src/components/admin/kyc-review-controls.tsx",     // 5
-  "src/app/admin/affiliate/affiliate-admin-client.tsx", // 2
-  "src/app/admin/bonuses/bonus-admin-client.tsx",     // 2
-  "src/components/admin/admin-sidebar-nav.tsx",       // 2
-  "src/app/admin/kyc/[id]/kyc-doc-viewer.tsx",        // 1
+  ["src/app/admin/affiliate/affiliate-admin-client.tsx", 2],
+  ["src/app/admin/bonuses/bonus-admin-client.tsx", 2],
+  ["src/components/admin/admin-sidebar-nav.tsx", 2],
+  ["src/app/admin/kyc/[id]/kyc-doc-viewer.tsx", 1],
 ]);
 
-/** Strip comments so a documented example never trips the guard. */
+/**
+ * ⛔ THE SYSTEM'S OWN STYLESHEETS. These are the DEFINITION SITE — the files
+ * DESIGN_AUTHORITY names as outranking every document — so a literal in them is
+ * the design decision, made in the right place. Judging them would be asking the
+ * dictionary to look words up in itself.
+ */
+const CSS_SYSTEM = new Set<string>([
+  "src/app/globals.css",
+  "src/app/motion.css",
+  "src/app/state-tokens.css",
+]);
+
+/**
+ * Component stylesheets that still hold raw design values, measured 2026-08-21.
+ * Same law as FROZEN_RATCHET: the list and every count may only shrink.
+ *
+ * ⭐ `chat-styles.css` is the find that justified walking `.css` at all. It is
+ * `@import`ed by globals.css, so it ships on every page, and it hand-types
+ * `oklch(72% 0.11 195)` — **hue 195, aqua** — in ten places: the composer edge,
+ * the streaming shimmer, the typing dots and their keyframes, and the source-pip.
+ * Its own header calls the file a "royal-indigo extension … No orphan colors",
+ * and the June-2026 kit rebuild records aqua as eliminated platform-wide. Both
+ * statements were true of every file a guard was looking at.
+ */
+const CSS_RATCHET = new Map<string, number>([
+  ["src/styles/chat/chat-styles.css", 78],
+]);
+
+/**
+ * Strip comments so a documented example never trips the guard.
+ *
+ * ⛔ OFFSETS ARE PRESERVED — the comment is blanked, not deleted. The old version
+ * removed block comments outright, which swallowed their newlines, so every line
+ * number this guard printed after the first `/* … *\/` was WRONG. A guard that
+ * names the wrong line is a guard the reader stops believing.
+ */
 const decomment = (s: string) =>
-  s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+  s.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\r\n]/g, " "))
+   .replace(/(^|[^:])\/\/[^\r\n]*/g, (m, p1) => p1 + " ".repeat(m.length - p1.length));
 
 function walk(dir: string, ext: RegExp): string[] {
   const out: string[] = [];
@@ -138,9 +271,10 @@ function check(label: string, cond: boolean, detail = "") {
 
 log("Design-frozen guard (DESIGN_AUTHORITY B9/B10)\n");
 
-// A line is exempt when it consumes the system or is driven by runtime data.
+// ── The vocabulary ───────────────────────────────────────────────────────────
+const COLOUR = /(#[0-9a-fA-F]{3,8}\b|\boklch\(|\brgba?\(|\bhsla?\()/;
+/** A value that reads a token IS the system being consumed, wherever it sits. */
 const CONSUMES_SYSTEM = /var\(--/;
-const RUNTIME_DRIVEN = /\$\{/;
 /**
  * Values that CANNOT read a CSS variable, by the platform's rules rather than by
  * our choice. These are not design decisions made in the wrong place — there is
@@ -149,64 +283,208 @@ const RUNTIME_DRIVEN = /\$\{/;
  *     before any stylesheet exists.
  *   - a colour passed into a JS library's option object (the QR encoder) is an
  *     argument, not a style.
+ *   - `env(safe-area-inset-*)` is the DEVICE's number, not ours. `offline-banner`
+ *     computes its top padding from the notch; no token can express that.
  */
-const CANNOT_TOKENIZE = /\bthemeColor\b|QRCode\.|toDataURL\(/;
+const CANNOT_TOKENIZE = /\bthemeColor\b|QRCode\.|toDataURL\(|\benv\(/;
+/** A keyword is not a design value — it is the absence of one. */
+const KEYWORD = /^["'`]\s*(none|transparent|inherit|initial|unset|revert|currentColor|auto|normal|0)\s*["'`]$/i;
+/**
+ * The properties whose value is a SYSTEM decision. The last five are new in the
+ * 2026-08-21 rebuild: the type scale (B2) and the spacing scale (B4) are frozen
+ * exactly as the elevation ladder is, and nothing was judging them.
+ */
+const JUDGED_PROPERTY =
+  /^(boxShadow|border|borderColor|borderTop|borderRight|borderBottom|borderLeft|borderRadius|background|backgroundColor|backgroundImage|color|fill|stroke|outline|textShadow|fontSize|letterSpacing|padding|paddingTop|paddingRight|paddingBottom|paddingLeft)$/;
 
-const RULES: Array<{ name: string; re: RegExp }> = [
-  // A colour typed by hand, in any notation.
-  { name: "raw colour literal", re: /(#[0-9a-fA-F]{3,8}\b|\boklch\(|\brgba?\(|\bhsla?\()/ },
-  // A design property set inline.
-  { name: "inline boxShadow", re: /\bboxShadow\s*:/ },
-  { name: "inline border", re: /\bborder(Color|Top|Right|Bottom|Left)?\s*:\s*["'`]/ },
-  { name: "inline borderRadius", re: /\bborderRadius\s*:/ },
-  // A Tailwind arbitrary value for a frozen primitive.
-  { name: "arbitrary shadow/radius utility", re: /\b(shadow|rounded)-\[/ },
-];
+/** Remove `var(--x)` spans (nesting one level, for `var(--a, var(--b))`). */
+const stripVar = (s: string) => s.replace(/var\(--[^()]*(?:\([^()]*\)[^()]*)*\)/g, " ");
 
-type Hit = { file: string; line: number; rule: string; text: string };
-const hits: Hit[] = [];
-
-for (const file of walk(SRC, /\.tsx$/)) {
-  const rel = relative(ROOT, file).replace(/\\/g, "/");
-  if (FROZEN_ALLOWLIST.has(rel)) continue;
-  // Satori OG images render in a separate engine with no CSS variables at all —
-  // it literally cannot read our tokens, so inline values there are correct.
-  if (rel.startsWith("src/app/api/")) continue;
-
-  const lines = decomment(readFileSync(file, "utf8")).split("\n");
-  lines.forEach((raw, i) => {
-    if (CONSUMES_SYSTEM.test(raw) || RUNTIME_DRIVEN.test(raw) || CANNOT_TOKENIZE.test(raw)) return;
-    for (const r of RULES) {
-      if (r.re.test(raw)) {
-        hits.push({ file: rel, line: i + 1, rule: r.name, text: raw.trim().slice(0, 88) });
-        break;
-      }
-    }
-  });
+/**
+ * Is there a colour in here that a PERSON typed, as opposed to one the data computed?
+ *
+ * ⛔ "CONTAINS `${`" IS TOO BLUNT IN BOTH DIRECTIONS, and the first draft of the rebuild
+ * got it wrong both ways in one expression. `linear-gradient(${dir}, #fff, #000)` is a
+ * hand-typed pair of colours with a runtime *direction* — a violation. `oklch(${l}% 0.1 268)`
+ * is one colour computed from live data — not a violation, and the header of this file has
+ * always said so. A line-level or value-level "has a binding → skip" rule passes the first;
+ * a "strip the bindings then look for a colour" rule fails the second, because `oklch(` is
+ * still sitting there after the strip.
+ *
+ * ⭐ The question is per-COLOUR, not per-value: each binding becomes a sentinel, and a colour
+ * counts as hand-typed only when NO sentinel falls inside it. A hex cannot contain a binding
+ * at all, so it always counts.
+ */
+const BINDING = "\u0000";
+function hasHandTypedColour(text: string): boolean {
+  const s = text.replace(/\$\{[^}]*\}/g, BINDING);
+  if (/#[0-9a-fA-F]{3,8}\b/.test(s)) return true;
+  for (const m of s.matchAll(/\b(?:oklch|rgba?|hsla?)\(([^()]*)\)/g)) {
+    if (!m[1].includes(BINDING)) return true;
+  }
+  return false;
 }
 
-check(
-  "no NEW inline design value outside the ratchet list",
-  hits.length === 0,
-  hits.length ? `${hits.length} violation(s)` : "",
-);
-for (const h of hits.slice(0, 25)) log(`    ${h.file}:${h.line}  [${h.rule}]  ${h.text}`);
-if (hits.length > 25) log(`    … and ${hits.length - 25} more`);
+// ── Parsing a style object into properties ───────────────────────────────────
+/**
+ * Every `style={{ … }}` body, plus every object annotated `CSSProperties`.
+ * ⛔ The second one is not optional: `chip.tsx` declares its tone map as
+ * `const SLATE: React.CSSProperties = { background: "oklch(…)" }` and spreads it
+ * at the call site, so a `style={{` scan alone would miss fourteen literals.
+ */
+function styleObjects(src: string): Array<{ body: string; at: number }> {
+  const out: Array<{ body: string; at: number }> = [];
+  const scan = (re: RegExp, openDepth: number) => {
+    for (const m of src.matchAll(re)) {
+      let depth = openDepth, i = m.index + m[0].length;
+      const start = i;
+      while (i < src.length && depth > 0) {
+        if (src[i] === "{") depth++;
+        else if (src[i] === "}") depth--;
+        i++;
+      }
+      out.push({ body: src.slice(start, i - openDepth), at: start });
+    }
+  };
+  scan(/style=\{\{/g, 2);
+  scan(/(?:React\.)?CSSProperties\s*=\s*\{/g, 1);
+  return out;
+}
 
-// ── The allowlist may only shrink ────────────────────────────────────────────
+/** Split an object body into its TOP-LEVEL `key: value` pairs. */
+function objectPairs(body: string): Array<{ key: string; val: string; off: number }> {
+  const out: Array<{ key: string; val: string; off: number }> = [];
+  let depth = 0, start = 0;
+  const flush = (end: number) => {
+    const seg = body.slice(start, end);
+    const c = seg.indexOf(":");
+    if (c > 0) out.push({ key: seg.slice(0, c).trim().replace(/["']/g, ""), val: seg.slice(c + 1).trim(), off: start });
+  };
+  for (let i = 0; i < body.length; i++) {
+    const ch = body[i];
+    if ("{[(".includes(ch)) depth++;
+    else if ("}])".includes(ch)) depth--;
+    else if (ch === "," && depth === 0) { flush(i); start = i + 1; }
+  }
+  flush(body.length);
+  return out;
+}
+
+/** Is ONE property's value a design decision typed by hand? */
+function propertyOffends(key: string, val: string): boolean {
+  if (!JUDGED_PROPERTY.test(key)) return false;
+  if (CONSUMES_SYSTEM.test(val) || CANNOT_TOKENIZE.test(val) || KEYWORD.test(val)) return false;
+  if (!/^["'`]/.test(val)) return false;              // an expression, not a literal
+  // A template with a runtime binding is DATA — unless a colour inside it was still
+  // typed by hand, in which case that half is a design decision wearing a binding.
+  if (/\$\{/.test(val)) return hasHandTypedColour(val);
+  return true;
+}
+
+// ── The .tsx scan ────────────────────────────────────────────────────────────
+type Hit = { line: number; what: string };
+function scanTsx(src: string): Hit[] {
+  const found = new Map<number, string>();          // one hit per line — the property
+  const at = (i: number) => src.slice(0, i).split("\n").length;    // and the line rule
+  const put = (line: number, what: string) => { if (!found.has(line)) found.set(line, what); };
+
+  for (const o of styleObjects(src)) {
+    for (const p of objectPairs(o.body)) {
+      if (propertyOffends(p.key, p.val)) put(at(o.at + p.off), `${p.key}: ${p.val.slice(0, 60)}`);
+    }
+  }
+  src.split("\n").forEach((raw, i) => {
+    if (CANNOT_TOKENIZE.test(raw)) return;
+    // ⛔ THE VAR SPANS ARE STRIPPED, THE LINE IS NOT SKIPPED. This is the hole the
+    // rebuild closed: `borderColor: "oklch(70% 0.12 195 / 0.5)"` sat on a line with
+    // three vars and was invisible for the life of the old guard.
+    if (hasHandTypedColour(stripVar(raw))) { put(i + 1, `raw colour · ${raw.trim().slice(0, 60)}`); return; }
+    // An arbitrary utility is judged on its BRACKETS: `shadow-[var(--shadow-3)]`
+    // consumes the ladder; `rounded-[10px]` re-decides the radius scale.
+    for (const m of raw.matchAll(/\b(shadow|rounded)-\[([^\]]*)\]/g)) {
+      if (!CONSUMES_SYSTEM.test(m[2])) put(i + 1, `arbitrary utility · ${m[0]}`);
+    }
+  });
+  return [...found.entries()].map(([line, what]) => ({ line, what })).sort((a, b) => a.line - b.line);
+}
+
+// ── The .css scan ────────────────────────────────────────────────────────────
+/** Geometry properties whose value is a system decision (B2/B4/B10). */
+const CSS_GEOMETRY = /^(border-radius|box-shadow|font-size|letter-spacing)$/;
+function scanCss(src: string): Hit[] {
+  const out: Hit[] = [];
+  src.split("\n").forEach((l, i) => {
+    for (const m of l.matchAll(/(^|[;{])\s*(-{0,2}[a-zA-Z][-a-zA-Z0-9]*)\s*:\s*([^;{}]*)/g)) {
+      const prop = m[2], val = m[3];
+      // ⛔ A CUSTOM PROPERTY IS A DEFINITION, NOT A CONSUMPTION. `--chat-canvas:
+      // oklch(15% 0.130 268)` is the token being declared, which is the correct
+      // place for a literal; `background: oklch(…)` beside it is not.
+      if (prop.startsWith("--")) continue;
+      if (CONSUMES_SYSTEM.test(val) || CANNOT_TOKENIZE.test(val)) continue;
+      if (!COLOUR.test(val) && !CSS_GEOMETRY.test(prop)) continue;
+      if (/^\s*(none|inherit|initial|unset|revert|transparent|currentColor|auto|normal|0)\s*$/i.test(val)) continue;
+      out.push({ line: i + 1, what: `${prop}: ${val.trim().slice(0, 60)}` });
+    }
+  });
+  return out;
+}
+
+// ── Run it ───────────────────────────────────────────────────────────────────
+type Report = { over: string[]; stale: string[]; shrunk: string[]; total: number; seen: number };
+function judge(files: string[], ratchet: Map<string, number>, scan: (s: string) => Hit[]): Report {
+  const over: string[] = [], stale: string[] = [], shrunk: string[] = [];
+  const counts = new Map<string, number>();
+  let total = 0;
+  for (const file of files) {
+    const rel = relative(ROOT, file).replace(/\\/g, "/");
+    if (BY_DESIGN.has(rel)) continue;
+    // Satori OG images render in a separate engine with no CSS variables at all —
+    // it literally cannot read our tokens, so inline values there are correct.
+    if (rel.startsWith("src/app/api/")) continue;
+    const hits = scan(decomment(readFileSync(file, "utf8")));
+    if (hits.length === 0) continue;
+    counts.set(rel, hits.length);
+    total += hits.length;
+    const allowed = ratchet.get(rel) ?? 0;
+    if (hits.length > allowed) {
+      over.push(`${rel} — ${hits.length} > ${allowed}`);
+      for (const h of hits.slice(0, 6)) over.push(`      :${h.line}  ${h.what}`);
+    }
+  }
+  for (const [rel, n] of ratchet) {
+    const now = counts.get(rel) ?? 0;
+    if (now === 0) stale.push(`${rel} (now clean — delete the entry)`);
+    else if (now < n) shrunk.push(`${rel} ${n} → ${now}`);
+  }
+  return { over, stale, shrunk, total, seen: counts.size };
+}
+
+const tsx = judge(walk(SRC, /\.tsx$/), FROZEN_RATCHET, scanTsx);
+check("no NEW inline design value beyond the ratchet", tsx.over.length === 0,
+  tsx.over.length ? `${tsx.over.filter((l) => !l.startsWith("   ")).length} file(s) over budget` : "");
+for (const l of tsx.over.slice(0, 40)) log(`    ${l}`);
+
+const cssFiles = walk(SRC, /\.css$/).filter((f) => !CSS_SYSTEM.has(relative(ROOT, f).replace(/\\/g, "/")));
+const css = judge(cssFiles, CSS_RATCHET, scanCss);
+check("no NEW raw design value in a component stylesheet", css.over.length === 0,
+  css.over.length ? `${css.over.filter((l) => !l.startsWith("   ")).length} stylesheet(s) over budget` : "");
+for (const l of css.over.slice(0, 40)) log(`    ${l}`);
+
+// ⛔ AND THE SCANNERS MUST HAVE REACHED SOMETHING. A walk that silently covered
+// nothing prints the same green as a clean tree — the failure mode every other
+// guard in this repo has been bitten by at least once.
+check("the .tsx scanner reached the files it is ratcheting",
+  tsx.seen >= FROZEN_RATCHET.size - 2, `only ${tsx.seen} file(s) produced any hit at all`);
+check("the .css scanner reached a component stylesheet at all",
+  css.seen >= 1 && cssFiles.length >= 2, `${cssFiles.length} non-system stylesheet(s), ${css.seen} with hits`);
+
+// ── The ratchets may only shrink ─────────────────────────────────────────────
 // An entry that no longer violates anything has been cleaned up: drop it, so the
 // ratchet actually tightens instead of silently carrying dead exemptions that
 // would let a NEW violation slip back into an already-clean file.
-const stale: string[] = [];
-for (const rel of FROZEN_ALLOWLIST) {
-  const abs = join(ROOT, rel);
-  let src: string;
-  try { src = decomment(readFileSync(abs, "utf8")); } catch { stale.push(`${rel} (file is gone)`); continue; }
-  const dirty = src.split("\n").some((raw) =>
-    !CONSUMES_SYSTEM.test(raw) && !RUNTIME_DRIVEN.test(raw) && !CANNOT_TOKENIZE.test(raw) && RULES.some((r) => r.re.test(raw)));
-  if (!dirty) stale.push(`${rel} (now clean — remove it)`);
-}
-check("the ratchet holds no stale exemptions", stale.length === 0, stale.join(", "));
+check("the ratchets hold no stale exemptions", tsx.stale.length + css.stale.length === 0,
+  [...tsx.stale, ...css.stale].join(", "));
+for (const s of [...tsx.shrunk, ...css.shrunk]) log(`  NOTE ${s} — lower the number in this file.`);
 
 // ── Popups go through the shared primitive ───────────────────────────────────
 // A hand-rolled createPortal dialog is a popup that skipped the focus trap, the
@@ -250,6 +528,49 @@ check("no hand-rolled createPortal outside the shared primitives", roguePortals.
 // Two copies of one rule is the defect design-system/README §0 exists to forbid,
 // so the narrow one is gone rather than kept in sync.
 
-log(`\n  (ratchet holds ${FROZEN_ALLOWLIST.size} file(s) — the list may only shrink)`);
+// ── POSITIVE CONTROLS — show every scanner input it MUST reject ──────────────
+/**
+ * ⛔ THIS GUARD SHIPPED FOR THREE WEEKS WITH NO POSITIVE CONTROL AT ALL, and that
+ * is how it stayed green over a `rounded-[10px]` and an aqua literal. A scanner
+ * that has gone blind reports "0 violations" in exactly the same words as a clean
+ * tree. Both directions are proved, because a rule that also fails correct code is
+ * worse than no rule: it teaches the next session to weaken it.
+ */
+log("");
+check("PC1 a literal BESIDE a var on the same line is seen",
+  scanTsx('<div style={{ color: "var(--text)", borderColor: "oklch(70% 0.12 195 / 0.5)" }} />').length === 1,
+  "this exact shape (admin/live/page.tsx:112) passed for the life of the old guard");
+check("PC2 a token-consuming border is NOT a violation",
+  scanTsx('<div style={{ border: "1px solid var(--border)" }} />').length === 0,
+  "the old line rule flagged this correct code, and only the line-skip hid it");
+check("PC3 a hand-typed radius is seen",
+  scanTsx('<div style={{ borderRadius: "10px" }} />').length === 1);
+check("PC4 a hand-typed tracking is seen — the type scale is frozen too",
+  scanTsx('<span style={{ letterSpacing: "0.08em" }} />').length === 1);
+check("PC5 `rounded-[10px]` is seen …",
+  scanTsx('<div className="rounded-[10px] border" />').length === 1);
+check("PC6 … and `shadow-[var(--shadow-3)]` is NOT — the brackets read a token",
+  scanTsx('<div className="hover:shadow-[var(--shadow-3)]" />').length === 0);
+check("PC7 a runtime-driven value is data, not design",
+  scanTsx("<div style={{ width: `${pct}%`, background: `oklch(${l}% 0.1 268)` }} />").length === 0);
+check("PC8 … but a literal colour beside a runtime binding still is",
+  scanTsx("<div style={{ background: `linear-gradient(${dir}, #fff, #000)` }} />").length === 1);
+check("PC9 a CSS keyword is the absence of a design value",
+  scanTsx('<div style={{ border: "none", background: "transparent" }} />').length === 0);
+check("PC10 a `CSSProperties` constant is scanned like a style prop",
+  scanTsx('const SLATE: React.CSSProperties = { background: "oklch(34% 0.09 268 / 0.5)" };').length === 1,
+  "chip.tsx holds fourteen literals in exactly this shape, outside any style={{ }}");
+check("PC11 css: a normal declaration hand-typing a colour is seen",
+  scanCss(".cm-dot { background: oklch(72% 0.11 195); }").length === 1,
+  "chat-styles.css does this ten times, in aqua, on every page");
+check("PC12 css: a custom-property DEFINITION is not",
+  scanCss(":root { --chat-canvas: oklch(15% 0.130 268); }").length === 0,
+  "the token being declared is the one place the literal belongs");
+check("PC13 css: a declaration reading a token is not",
+  scanCss(".cm-dot { background: var(--pearl); }").length === 0);
+check("PC14 css: a hand-typed radius is seen",
+  scanCss(".cm-bubble { border-radius: 14px; }").length === 1);
+
+log(`\n  (ratchet holds ${FROZEN_RATCHET.size} tsx file(s) / ${tsx.total} value(s), ${CSS_RATCHET.size} stylesheet(s) / ${css.total} value(s) — every number may only shrink)`);
 log(`\n${fail === 0 ? "PASS" : "FAIL"} — design primitives are frozen`);
 process.exit(fail ? 1 : 0);

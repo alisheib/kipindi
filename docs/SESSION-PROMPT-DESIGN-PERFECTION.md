@@ -34,8 +34,8 @@ repo `F:\kipindi-main`, branch `main`):**
 | 6 | Motion | **DONE** | `b14c749f` + `453f515b` | ✓ 200 · clean boot · shots read |
 | 7 | Performance | **DONE** (one item deferred with a written plan — see below) | `640d45d1` | ✓ 200 · clean boot |
 | 8 | Dead code & doc truth | **DONE** | `f58c3aa1` | ✓ 200 · clean boot |
-| 9 | Consolidations | **DONE** (two sites kept, with reasons) | `stage-9` | pending push |
-| 10 | New guards | NOT STARTED | | |
+| 9 | Consolidations | **DONE** (two sites kept, with reasons) | `b1628478` | ✓ 200 · clean boot |
+| 10 | New guards | **DONE** — suite 226 → **230**, each red-proven | `stage-10` | pending push |
 | 11 | Owner-decision items + exit | NOT STARTED | | |
 
 ### Decisions applied by default (Ali may veto — each is a one-line revert of the named commit)
@@ -446,6 +446,53 @@ stops meaning anything.
   (14%/38%, 16%/42%, Callout's) collapse onto `--warning-bg`/`--warning-border` at 18%/36%.
 - ⭐ **§M4 enforced where it was being broken**: `tracking-[-0.02em]` stripped from both 38px
   wallet headline balances. Money is mono, tabular and never letter-spaced.
+
+**Stage 10**
+
+- ⭐ **Four new guards, suite 226 → 230**: `test:type-scale` (§T had ZERO enforcement and is
+  ~6:1 non-compliant), `test:stacking` (no gate had ever read a z-index), `test:tap-target`
+  (a gate that FAILS rather than warns) and `test:dead-css` (there had been none, which is how
+  ~78 dead classes accumulated). `test:labels`, `test:design-frozen`, `test:bridge`,
+  `test:keyframes` and `test:reduce-motion` were each extended into a blind spot.
+- 🔴 **`test:design-frozen` HAD A HOLE THE SIZE OF THE RULE IT ENFORCED.** Every check was
+  LINE-level and skipped any line containing `var(--` — and almost every real inline style
+  contains a var, *so almost every inline style was exempt by virtue of being partly correct*.
+  Proven, not theorised: `admin/live/page.tsx` carries `borderColor: "oklch(70% 0.12 195 / 0.5)"`
+  — **hue 195 is the superseded kit's AQUA** — beside three vars on the same line, and the guard
+  walked past. It is now per-PROPERTY, judges geometry (`fontSize`, `letterSpacing`, `padding`)
+  and **walks `.css` files**, which were outside every visual-value guard in the repo:
+  `chat-styles.css`, imported by `globals.css` so it ships on every page, hand-types **aqua 195
+  ten times** in a file whose own header says "No orphan colors".
+- ⭐ **Removing the hole ALSO removed four false positives** — the old rule fired on
+  `border: "1px solid var(--border)"`, i.e. perfectly correct token-consuming code, and only
+  escaped because the line-skip hid it. Four files left the ratchet as never having violated
+  anything.
+- 🔴 **A KEYFRAME NAMED FROM JSX WAS DEFINED NOWHERE.** `date-select.tsx` animated the portalled
+  date-picker with `cd-rise`, and there is no `@keyframes cd-rise` anywhere in `src` — so **every
+  DateSelect dialog on the platform had no entrance at all**. Four things that would normally
+  catch a broken animation cannot: `tsc` does not read CSS strings, the build does not resolve
+  keyframe names, a screenshot of a settled dialog looks correct, and until this stage no gate
+  read a JSX `style` attribute. Fixed onto `.m-dialog-in` the same day, and the baseline that
+  recorded it is now EMPTY — check 2.5 fails the moment an entry outlives its defect, which is
+  what told me to empty it rather than leave a stale line behind a green suite.
+- ⭐ **THREE GUARDS CAUGHT THEIR OWN AUTHORS MID-PROOF**, which is the point of demanding a red
+  proof rather than a claim: a class-list scanner used ONE character class for all three quote
+  types, so an opening backtick paired with the next double-quote and **22 real usages fell in
+  the gap between matches** (the `test:bridge` one-character blind spot in a new costume); a
+  numeric-size rule reported 3 of 4 planted violations because its `(?:^|\s)` boundary walked
+  past a token preceded by a quote — *a rule that reports the easy half of a defect and looks
+  like it works*.
+- ⭐ **The mono-money predicate shipped as the NARROW HONEST version.** "Money must CARRY
+  `font-mono`" cannot be asserted truthfully — `font-family` INHERITS and this product leans on
+  it, with ~40 `globals.css` classes setting mono on a CONTAINER; of 121 isolable money elements
+  **49 carry no mono token and render mono from an ancestor**. Demanding the token would condemn
+  49 correct elements. So it asserts the decidable half: an EXPLICIT non-mono family written ON
+  the element beats any inherited mono. Tracking is decidable outright and is a hard rule.
+- ⭐ **`test:type-scale` carries a live SELF-TEST and REACH FLOORS** — it asserts its own
+  scanners still find planted fixtures, that `formatTzs*` still exists by name (a rename would
+  leave the money rules matching nothing and printing ALL PASS), and that it still sees 758
+  files / 121 money elements. **A guard going blind is invisible to any violation count**, which
+  is the §5b failure this repo has hit repeatedly.
 
 **Follow-ups this campaign opened and has not closed**
 
