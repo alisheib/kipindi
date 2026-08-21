@@ -332,11 +332,30 @@ const variantStyles: Record<ToastVariant, { bar: string; icon: React.ReactNode; 
     surface: "mat-tint-brand",
     rail: "bg-brand-300",
   },
+  /**
+   * 🔴 D2 (2026-08-21, owner ruling) — SUCCESS IS NOT `YES`, AND DANGER IS NOT `NO`.
+   * These two variants used to paint `bg-yes-500` / `bg-no-500`: the toast that
+   * says *"Password changed"* wore the ink that means *your money is on YES*, and
+   * *"Couldn't sign you in"* wore the ink that means *your money is gone*. §B2
+   * says the betting pair is never reused for a non-money meaning, and the kit
+   * was the loudest thing breaking it. Both now read the SEMANTIC family
+   * (`--success` / `--danger`, globals.css), which is a jade green at hue 166 —
+   * deliberately not the betting green at 152.
+   * ⛔ The `gold` variant is untouched: it IS a money moment (§M3).
+   * ✅ FINISHED — `.mat-tint-success` / `.mat-tint-danger` now exist in `motion.css` §C
+   * on the same recipe, and these two lines point at them. The 1px inset ring was the
+   * LAST betting-hue trace on an app-state toast, and it is gone.
+   * ⛔ `.mat-tint-yes` / `-no` were DELETED in the same change, not kept. This comment
+   * first argued for keeping them "for a surface that carries a SIDE" — and `test:dead-css`
+   * immediately pointed out that no such surface exists, so that was a claim about a
+   * future consumer, which is how dead CSS accumulates. Add one back with its consumer if
+   * a side ring is ever genuinely wanted.
+   */
   success: {
-    bar: "bg-yes-500",
-    icon: <span className="text-yes-300"><I.checkCircle s={18} /></span>,
-    surface: "mat-tint-yes",
-    rail: "bg-yes-500",
+    bar: "bg-success",
+    icon: <span className="text-success-fg"><I.checkCircle s={18} /></span>,
+    surface: "mat-tint-success",
+    rail: "bg-success",
   },
   warning: {
     bar: "bg-gold-500",
@@ -344,11 +363,15 @@ const variantStyles: Record<ToastVariant, { bar: string; icon: React.ReactNode; 
     surface: "mat-tint-warn",
     rail: "bg-gold-500",
   },
+  /* D2 — see the note on `success` above. `--danger` is hue 25 against `--no-500`'s
+     22: near-identical to the eye, and that is the point. The rose ALARM reading is
+     right for a failure; what was wrong was sourcing it from the token that means a
+     lost bet, so a retune of the betting ramp repainted every error in the product. */
   danger: {
-    bar: "bg-no-500",
-    icon: <span className="text-no-300"><I.alertCircle s={18} /></span>,
-    surface: "mat-tint-no",
-    rail: "bg-no-500",
+    bar: "bg-danger",
+    icon: <span className="text-danger-fg"><I.alertCircle s={18} /></span>,
+    surface: "mat-tint-danger",
+    rail: "bg-danger",
   },
   gold: {
     bar: "bg-gold-500",

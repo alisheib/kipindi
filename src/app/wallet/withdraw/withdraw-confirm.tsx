@@ -151,7 +151,15 @@ export function WithdrawConfirm({ feeRate }: { feeRate: number }) {
 
   return (
     <ConfirmDialog
-      tone="claret"
+      /* ⭐ D1 (Ali's ruling, 2026-08-21) — `tone="claret"` → `tone="brand"`, at the
+         money-commit footprint. Claret is §B4's editorial/destructive weight, and a
+         withdrawal is the player TAKING THEIR OWN MONEY: framing it in the colour the
+         product uses for self-exclusion and account closure discourages the one action
+         a licensed operator must never make feel like a mistake. The confirmation still
+         confirms — the dialog, the receipt rows and the resolved recipient name are all
+         unchanged; only the button's colour and footprint move. */
+      tone="brand"
+      size="lg"
       title={t.common.confirmWithdrawal}
       body={
         <>

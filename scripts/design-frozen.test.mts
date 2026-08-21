@@ -128,19 +128,21 @@ const FROZEN_RATCHET = new Map<string, number>([
   // carrying a `${…}` binding — `fill="oklch(50% 0.14 152)"` beside a computed SVG path —
   // and every previous rule skipped a line the moment it saw a binding anywhere on it.
   ["src/components/brand.tsx", 15],                          // non-TippingBar marks
-  ["src/app/wallet/wallet-client.tsx", 9],
+  ["src/app/wallet/wallet-client.tsx", 4],
   // ⭐ `price-chart.tsx` LEFT THIS LIST on 2026-08-21 and the list may only shrink. It held
   // 11 exemptions, ALL of them inside the dead `PriceChart` component — which was unmounted,
   // still carried the BANNED teal 215 in a gradient, and whose file-wide exemption was
   // meanwhile letting the LIVE `VolumeSparkline` beside it re-type a token unguarded. Deleting
   // the dead half made the file clean and the sparkline guarded in one move.
   ["src/lib/i18n.tsx", 6],
-  ["src/components/ui/cashback-promo.tsx", 5],
+  // `cashback-promo.tsx` LEFT THIS LIST on 2026-08-21 (D5): its 5 inline values WERE the
+  // gold costume — the gradient, the gilt border, the jackpot glow and the bloom. The
+  // panel picks the `.mat-raised` rung now and holds no design value of its own.
   ["src/components/ui/page-hero.tsx", 5],
   ["src/app/profile/invite/page.tsx", 3],
   ["src/app/profile/page.tsx", 3],
   ["src/app/markets/[id]/page.tsx", 2],
-  ["src/app/wallet/loading.tsx", 2],
+  ["src/app/wallet/loading.tsx", 1],
   ["src/components/ui/nav-progress.tsx", 2],
   ["src/components/ui/toggle.tsx", 2],
   ["src/app/auth/register/page.tsx", 1],

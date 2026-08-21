@@ -161,12 +161,14 @@ export default async function RegisterPage({
               role="alert"
               className={
                 "flex items-start gap-2.5 rounded-md border px-3.5 py-3 " +
+                /* D2 (2026-08-21): `--danger-*`, not `--no-*`. Twin of
+                   auth/login/page.tsx — keep the two in step. */
                 (errorPanel.tone === "danger"
-                  ? "border-no-700/60 bg-no-500/[0.10]"
+                  ? "border-danger-500/45 bg-danger-500/[0.10]"
                   : "border-warning-border bg-warning-bg")
               }
             >
-              <span className={"mt-0.5 shrink-0 " + (errorPanel.tone === "danger" ? "text-no-300" : "text-gold-300")}>
+              <span className={"mt-0.5 shrink-0 " + (errorPanel.tone === "danger" ? "text-danger-fg" : "text-gold-300")}>
                 <I.alertCircle s={16} />
               </span>
               <div className="text-[12.5px] leading-snug">

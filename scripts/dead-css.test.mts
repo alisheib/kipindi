@@ -258,7 +258,9 @@ const BASELINE = new Set<string>([
   //    reason to do it deliberately and a real reason not to call it alive.
   "cm-dot", "cm-handoff-meta", "countdown--critical", "countdown--urgent",
   "g-swap", "g-swap-out", "m-ambient", "m-aura", "m-draw", "m-live-pip", "m-urgent",
-  "mark-breathe", "mark-flip", "mark-pending", "mat-float", "mat-inset", "mat-raised",
+    // `mat-raised` LEFT THIS LIST on 2026-08-21 — `ui/cashback-promo.tsx` and the wallet
+  // bonus card both pick that rung now (D5), so it has real consumers and check 1.2 said so.
+  "mark-breathe", "mark-flip", "mark-pending", "mat-float", "mat-inset",
   "pbar", "pbar-no", "pbar-yes", "pnl-val", "skeleton", "stagger-item",
 ]);
 

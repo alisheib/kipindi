@@ -54,7 +54,7 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
           />
 
           {error && (
-            <div id="otp-error" role="alert" className="rounded-md border border-no-700 bg-no-500/10 px-3 py-2.5 text-[13px] text-no-300">
+            <div id="otp-error" role="alert" className="rounded-md border border-danger-500/70 bg-danger-500/10 px-3 py-2.5 text-[13px] text-danger-fg">
               {errorMsg[error] ?? error}
               {error === "rate_limited" && retrySec > 0 && (
                 <> {t.auth.requestCodeIn} <CountdownPill seconds={retrySec} />.</>
@@ -63,7 +63,7 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
           )}
 
           {sent && !error && (
-            <div role="status" className="rounded-md border border-yes-700 bg-yes-500/10 px-3 py-2.5 text-[13px] text-yes-300">
+            <div role="status" className="rounded-md border border-success/65 bg-success/10 px-3 py-2.5 text-[13px] text-success-fg">
               {t.common.newCodeSent}
             </div>
           )}

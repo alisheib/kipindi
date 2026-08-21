@@ -240,6 +240,24 @@ product and must never be inverted, re-hued, or reused for a non-money meaning. 
 two together form the core betting control; their duality (one light-labelled, one
 dark-labelled where contrast requires) must be preserved.
 
+### B2a — Success and danger are APP-STATE colours; the betting pair is never borrowed (D2)
+
+Added 2026-08-21 — **D2, Ali's ruling, applied at its stated default.** Green-for-good and
+rose-for-bad are two *different facts* on this platform, and they sit close enough in hue to
+be mistaken for one:
+
+- **YES / NO are MONEY.** They name the side a player's stake is on. They belong to the
+  betting controls and to the chips that carry a side, and §B2 above makes them untouchable.
+- **Success and danger are the state of the INTERFACE** — saved, healthy, failed, refused.
+  They are app states, they have their own semantic tokens, and they are not money.
+
+⛔ Never reach for the betting pair to express an app state: a surface that says *saved* in
+the YES ink has spent the money vocabulary on chrome, and the next player to see that green
+has one less reason to read it as their side. ⛔ And never re-hue a state token toward the
+betting pair to "match" — that closes the gap from the other end. Each family has its own
+definition site (§0d); ⛔ no value is restated here.
+
+
 ## B3 — Single dark-royal theme. No light mode.
 
 The product has **one theme: dark royal.** Light mode was deliberately killed and
@@ -261,6 +279,108 @@ contrast surface on money screens.
 
 These usage rules are already encoded in the `globals.css` token comments; this is
 the canonical statement of them.
+
+### B4a — Claret is the colour of an irreversible operator ceremony (D3)
+
+Added 2026-08-21 — **D3, Ali's ruling, applied at its stated default.** Editorial weight is
+not claret's only job. **In the operator console, claret marks the act that cannot be taken
+back** — the ceremony an officer performs once and then lives with: a settlement sealed, an
+erasure executed, a market voided and refunded, an objection that is *freezing a market's
+money* while it stands.
+
+⛔ Claret is not "danger" and it is not "error". Rose already says *this failed* / *this was
+refused*, and a recoverable mistake must never borrow the colour reserved for the one that
+cannot be undone — if everything alarming is claret, nothing is. ⛔ And the rule above still
+stands whole: never on a YES/NO money surface, never adjacent to NO-rose.
+
+
+### B4b — The one sanctioned aqua surface (D6)
+
+Added 2026-08-21 — **D6, Ali's ruling, applied at its stated default.** `/admin/live` is the
+single named exception to *"aqua is a finishing pass, never semantic"*: it is an internal
+operations console carrying live telemetry, no player ever reaches it, and it is an exception
+**by name** — ⛔ no other surface inherits it, and citing this line to justify aqua anywhere
+else is a misreading of it.
+
+
+---
+
+## B11 — The status-colour dictionary: one word, one tone, per surface
+
+Added 2026-08-21 — **D4, Ali's ruling, applied at its stated default.**
+
+§L2 gave a status **word** one definition site. Its **colour** had none. So the same word was
+painted differently depending on which file happened to render it — and **not one of the
+divergences was written down**, which is the part that matters: an undocumented difference
+cannot be told apart from a mistake, so the next session "fixes" it in whichever direction it
+read first and the drift simply changes shape.
+
+Measured across the platform on 2026-08-21: **LIVE** was red-rose to a player, success-green
+in the console and royal on `/proposals`; **RESOLVED** was a struck gilt gradient to a player
+and a soft translucent gilt in the console; **CLOSED** and **PENDING** were royal to a player
+and amber in the console; **APPROVED** was green in the KYC queue and a **solid gold
+gradient** on `/proposals`; **REJECTED** was rose, slate or claret depending on the queue;
+**OPEN** was info-royal to a player and claret to an officer.
+
+**THE LAW.** A status word's tone is decided **once, per surface**, in
+`src/lib/status-tone.ts`, and every render site consumes it. ⛔ A chip variant hand-typed
+beside a status label is a second definition of a design fact (§0a, §B9). If a surface
+genuinely needs a different tone for a word, it goes in that file's
+`STATUS_TONE_EXCEPTIONS` **with its reason**, or it does not ship — a divergence written down
+as a decision stops being a drift.
+
+**THE DICTIONARY.** Tones, never values — the paint lives in `src/components/ui/chip.tsx` and
+`globals.css` (§0d). The three *italic* cells are what this ruling changed.
+
+| Word | Player | Console (admin) | `/proposals` |
+|---|---|---|---|
+| **LIVE** | broadcast red | success green | royal |
+| **CLOSED** | royal | *royal* (was amber) | — |
+| **PENDING** | royal | *royal* (was amber) | royal |
+| **RESOLVED** | struck gilt | soft gilt | struck gilt |
+| **APPROVED** | — | success green | *success green* (was struck gilt) |
+| **REJECTED** | — | rose | claret |
+| **OPEN** | royal | claret | — |
+
+**The three corrections.**
+
+1. **APPROVED is success-green everywhere.** `/proposals` was the last surface on the
+   platform painting an approval with the struck gold gradient. §M3: struck gold means money
+   that was **earned** — and an approval is not money, it is permission.
+2. **PENDING is royal everywhere**, and **3. CLOSED is royal everywhere.** The console loses
+   amber for both. A file waiting its turn in a queue, and a market waiting to be resolved,
+   are the *normal* state of a queue and of a market; amber told an officer something was
+   wrong while the player's own screen called the same state royal.
+
+That leaves **amber with exactly one meaning in the console**: *an officer must do something
+that is not simply waiting* — "More information needed", a cooling-off period, a payment
+awaiting a decision. Slate keeps its own: **terminal or inert**.
+
+**⛔ THE ONE KEPT SPLIT — LIVE — AND IT IS A DECISION, NOT A LEFTOVER.** LIVE is two facts
+wearing one word. To a **player** it is a broadcast — *this is open, money is moving, act
+now* — and the red live-pill is the platform's oldest and loudest signal of exactly that. To
+an **officer** it is operational health — *this market is up* — sitting in a column beside
+DRAFT and VOIDED, where red would read as an incident. Painting both the same would make one
+of the two lie about what it is for. `/proposals` keeps royal: a listed proposal is a
+lifecycle step reached, not a market broadcasting that it is taking money.
+
+**The other recorded divergences** — decisions, not drift, each with its reason in
+`STATUS_TONE_EXCEPTIONS`:
+
+- **REJECTED** is rose in KYC/DSAR (a person was refused), claret on `/proposals` (an
+  editorial decline, §B4) and deliberately **slate on the objection queue** — a rejected
+  objection is a closed file, and rose there would read as though the player had done
+  something wrong by objecting.
+- **CLOSED** is royal as a *market lifecycle stage* and stays **slate as a terminal account
+  state**. Royal would give a dead account the tone of a live one. The ruling's operative
+  clause is that the console loses **amber** for CLOSED; slate was never amber.
+
+**Not yet migrated — named so it is not mistaken for done.** The console
+(`components/admin/status-badge.tsx`) and `/proposals`
+(`components/proposals/status-badge.tsx`) read the dictionary today. The player board still
+hard-types its chip classes at the call site (`market-card.tsx`, `results/page.tsx`,
+`updown/history/page.tsx`), so the Player column above is the **measured** state, recorded so
+that migration has something to migrate *to* rather than a fresh opinion.
 
 ---
 
@@ -723,6 +843,11 @@ word it happened to pick. `src/lib/side-label.ts` is the single map from (stored
 `productLine`) to the word; `updown-refund-reason.ts` and `updown-source-label.ts` are the
 same pattern for their families.
 
+⭐ **§B11 is the COLOUR twin of this rule, and it was missing until 2026-08-21.** A status
+word having one definition site says nothing about its *tone* — and seven words were being
+painted differently on different surfaces with no record of why. `src/lib/status-tone.ts` is
+to a status colour what `side-label.ts` is to a status word.
+
 ⛔ **`productLine` has no default and must never be given one.** A default is the bug: it
 lets a caller that does not know its product compile, and answer confidently in the wrong
 vocabulary.
@@ -1076,6 +1201,23 @@ The usage law has teeth: **struck gold appears only where money was earned** (pa
 celebration, resolved seal). A decorative element wearing `--gilt-metal` is a violation, not
 a style choice. And `.gilt-metal:focus-visible` **keeps a real `outline`** (E-129): a
 box-shadow ring is invisible in forced-colors, and this class lands on the Deposit button.
+
+### M3a — Which money commits wear gold, and which do not (D1, D5)
+
+Added 2026-08-21 — **D1 and D5, Ali's rulings, applied at their stated defaults.** §M3 says
+struck gold means **earned**. Two families of surface had been reading it as *"money is
+involved"*, which is not the same claim:
+
+- **D1 — the confirm button.** A **deposit** or a **withdrawal** commit is **brand** — not
+  gold, and not claret. Moving your own money into or out of your own wallet earns nothing,
+  so gold overstates it; and a routine transfer is not an irreversible ceremony (§B4a), so
+  claret overstates it in the other direction. **Bet and sell keep gold**: a stake committed
+  and a position sold are the money moments the gold budget exists for.
+- **D5 — the wallet's promotional cards.** A **zero** bonus balance and a **deposit
+  inducement** are not earned money. A card that says *you have TZS 0 in bonuses*, and a card
+  whose whole purpose is to ask you to pay money in, must not wear the ink this platform uses
+  to say *you won this* — on an inducement, a house colour becomes a marketing claim.
+
 
 ### M4 — Money is mono, and it never reflows
 

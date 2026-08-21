@@ -74,7 +74,9 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
                 invalid/expired medallion had no fill behind its glyph at all. */}
             {/* ⚠️ LITERALS, not `h-12 w-12` — spacing is overridden (tailwind.config.ts:200-215),
                 so `h-12` renders a 128px disc around a 22px glyph. */}
-            <span className="inline-flex h-[48px] w-[48px] items-center justify-center rounded-pill bg-no-500/[0.12] text-no-300">
+            {/* D2 (2026-08-21): `--danger-*`, not `--no-*` — an expired reset link is
+                an app state, and §B2 keeps the betting pair for money. */}
+            <span className="inline-flex h-[48px] w-[48px] items-center justify-center rounded-pill bg-danger-500/[0.12] text-danger-fg">
               {state === "expired" ? <I.clock s={22} /> : <I.alertCircle s={22} />}
             </span>
 
@@ -132,7 +134,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
           </AuthHeader>
 
           {banner && (
-            <div role="alert" className="rounded-md border border-no-700 bg-no-500/10 px-3.5 py-3 text-[13px] text-no-300">
+            <div role="alert" className="rounded-md border border-danger-500/70 bg-danger-500/10 px-3.5 py-3 text-[13px] text-danger-fg">
               {banner.body}
             </div>
           )}

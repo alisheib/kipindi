@@ -53,12 +53,23 @@ function BalanceCard({
         border: "1px solid oklch(78% 0.13 80 / 0.3)",
         /* M1 — the light becomes an EVEN ring: same colour, same alpha, all four sides.
            ⭐ The gold tint STAYS. This is the wallet balance panel, so the warm edge is
-           earned-money identity (M3) rather than decoration, and converting the geometry
-           without touching the colour keeps this diff attributable to M1 alone — the same
-           treatment ATOM 5 gave `.btn-yes` and its family.
-           ⚠️ The outer `0 12px 34px` cast is untouched: M1 says shadows fall straight
-           down, so a directional CAST is the law being obeyed, not broken. */
-        boxShadow: "inset 0 0 0 1px oklch(92% 0.06 84 / 0.15), 0 12px 34px oklch(8% 0.05 264 / 0.5)",
+           earned-money identity (M3) rather than decoration.
+
+           ⭐ D5 (Ali's ruling, 2026-08-21) — THIS CARD NOW CARRIES THE STRONGEST CAST ON
+           THE PAGE, because it holds the only real money on it. The hand-typed
+           `0 12px 34px oklch(8% 0.05 264 / 0.5)` is replaced by `--elev-modal`, the
+           deepest rung in the M2 ladder short of a toast — so the Available balance sits
+           physically above the bonus panel (`--elev-raised`) and the activity/limits
+           panels (`.glass-panel`, a shallower cast), instead of below both as it did when
+           the gold surfaces around it glowed and it did not.
+           ⚠️ Composed, not adopted: the surface keeps its own gilt ring, so it cannot
+           simply wear `.mat-modal` (which would also impose `--wash-modal` and
+           `--border-strong` over the royal gradient and the gold edge). What it must not
+           do — and no longer does — is INVENT a cast; the depth is read from the ladder.
+           ⛔ `--elev-modal` carries no OUTER ring (only the inset `--edge-lit-strong`), so
+           the call-site border stays: the drop-your-border rule in motion.css §C applies to
+           `--elev-float` / `--elev-toast`, which do. Checked, not assumed. */
+        boxShadow: "inset 0 0 0 1px oklch(92% 0.06 84 / 0.15), var(--elev-modal)",
       }}
     >
       <div className="absolute -right-8 -bottom-8 opacity-[0.07]" aria-hidden>
@@ -122,12 +133,27 @@ const BONUS_SOURCE_LABEL: Record<string, string> = {
 };
 
 /**
- * Bonus wallet — the "prize money" counterpart to the royal main balance card.
- * Uses the platform's gold/jackpot accent (--g-jackpot / --glow-jackpot) so it
- * reads as a glowing reward and stays ON-palette, while the warm gold clearly
- * sets it apart from the cool-royal main wallet. A play-through meter (gold →
- * emerald) turns bonus into withdrawable cash. Shown beside the main wallet
- * always (friendly empty state when the player has no bonuses).
+ * Bonus wallet — the locked-money counterpart to the main balance card.
+ *
+ * 🔴 D5 (Ali's ruling, 2026-08-21) — THE GOLD COSTUME IS GONE, AND THE REASON IS §M3.
+ * This panel used to be a full warm-gold gradient wash with `--glow-jackpot` and a
+ * radial gilt bloom behind it. At 1280 that made a **TZS 0** bonus the loudest object
+ * on the wallet while the player's real Available balance was the quietest — struck
+ * gold marking money that was neither earned nor even present. On a licensed
+ * real-money product that is not a styling preference; it is the interface telling a
+ * player the wrong thing about their own money.
+ *
+ * WHAT IT IS NOW: the royal panel rung (`.mat-raised`, M2 rung 1) with GOLD TEXT
+ * ACCENTS ONLY — the eyebrow, the unlock meter, the per-grant figures. No gradient
+ * wash, no jackpot glow, no gilt bloom. The bonus is still unmistakably the warm
+ * column; it simply no longer outranks the balance.
+ *
+ * ⚠️ The old copy of this recipe in `ui/cashback-promo.tsx` is byte-identical and is
+ * NOT this session's file to edit — it is still wearing the costume. See the report.
+ *
+ * A play-through meter (gold → emerald) still turns bonus into withdrawable cash, and
+ * that gold IS legitimate: it measures progress toward money the player will own.
+ * Shown beside the main wallet always (friendly empty state when there are no bonuses).
  */
 function BonusWalletCard({
   bonusBalance, activeCount, grants, currency,
@@ -140,24 +166,28 @@ function BonusWalletCard({
   const hasBonus = bonusBalance > 0 || activeCount > 0;
 
   return (
+    /* ⭐ D5 — THE PANEL PICKS A RUNG INSTEAD OF PAINTING ITSELF. `.mat-raised` (M2 rung 1)
+       carries the royal wash, the neutral border and `--elev-raised` together, so the three
+       inline declarations it replaces — a hand-typed gold gradient, `--border-gold` and a
+       gilt ring + `--glow-jackpot` — are DELETED rather than left beside it. `data-rung` is
+       the adoption ledger the modal primitive established: a surface that picks a rung says
+       which one, in the markup.
+       ⛔ Rung 1, not 2 or 3, and that is the whole point of the ruling: the Available card
+       beside it now sits on `--elev-modal`. Raising this one would put the hierarchy back
+       exactly where it was. */
     <section
-      className="relative overflow-hidden rounded-xl"
-      style={{
-        background: "linear-gradient(135deg, oklch(30% 0.085 80), oklch(18% 0.055 72))",
-        border: "1px solid var(--border-gold)",
-        /* M1 — even ring, colour and alpha unchanged. Second of the two gilt-edged wallet
-           panels; see the note above for why the gold survives the conversion. */
-        boxShadow: "inset 0 0 0 1px oklch(92% 0.10 84 / 0.18), var(--glow-jackpot)",
-      }}
+      data-rung="raised"
+      className="mat-raised relative overflow-hidden rounded-xl"
     >
-      {/* warm gift motif + jackpot glow */}
-      {/* M5 — a decorative glyph does not perform: the gift motif rests still
-          (the infinite pulse was bespoke glyph motion outside the frozen ambient list). */}
-      <div className="absolute -right-6 -top-8 opacity-[0.12] text-gold-300" aria-hidden>
+      {/* The gift motif stays — it is what tells the two columns apart at a glance — but it
+          is NO LONGER GOLD. A 150px gilt glyph washing the panel is the costume, not an
+          accent; `--text-faint` keeps the motif and returns the gold to the words.
+          M5 — a decorative glyph does not perform: it rests still (the infinite pulse was
+          bespoke glyph motion outside the frozen ambient list).
+          ⛔ The radial gilt bloom that used to sit under it is DELETED, not dimmed. */}
+      <div className="absolute -right-6 -top-8 opacity-[0.12] text-text-faint" aria-hidden>
         <I.gift s={150} />
       </div>
-      <div className="absolute -left-10 -bottom-12 h-40 w-40 rounded-full opacity-30" aria-hidden
-        style={{ background: "radial-gradient(circle, oklch(82% 0.16 82 / 0.5), transparent 70%)" }} />
 
       <div className="relative z-10 p-5 lg:p-6">
         <div className="flex items-center gap-1.5 text-gold-300">
@@ -470,7 +500,17 @@ export function WalletPageClient({
         <PageHeader eyebrow={t.common.walletLabel} title={t.common.yourFunds} />
         {isAuthed && (
           <div className="flex items-center gap-2 shrink-0">
-            <Link href="/wallet/deposit" className="btn btn-gold btn-md btn-pill inline-flex">
+            {/* ⭐ D5 — ONE GOLD DEPOSIT CTA PER VIEWPORT, AND IT IS THE HEADER'S.
+                The app header already carries the money-in CTA on struck gilt
+                (`top-app-bar.tsx`, `.gilt-metal` — the control M3/ATOM D-2 names by
+                hand as "Continue / Deposit / earned-money CTA"), and it is on screen
+                on this page at every width. This second gold Deposit sat ~40px below
+                it, and a third waited in the empty state; three struck-gold
+                inducements to add money, none of them marking money the player had
+                earned. This one and the empty-state one become `btn-primary`; the
+                header's gilt is untouched. The action is identical — only its claim on
+                the eye changes. */}
+            <Link href="/wallet/deposit" className="btn btn-primary btn-md btn-pill inline-flex">
               <I.arrowDown s={14} />
               {t.common.deposit}
             </Link>
@@ -526,8 +566,10 @@ export function WalletPageClient({
             title={t.common.noActivityYet}
             body={t.common.firstDepositHint}
             action={
+              /* D5 — the third gold Deposit. Brand, for the reason stated on the
+                 header CTA above: the header's gilt is the one. */
               isAuthed ? (
-                <Link href="/wallet/deposit" className="btn btn-gold btn-md">
+                <Link href="/wallet/deposit" className="btn btn-primary btn-md">
                   {t.common.depositCta}
                 </Link>
               ) : undefined

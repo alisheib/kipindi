@@ -390,8 +390,20 @@ html.kp-reduce-motion *, html.kp-reduce-motion *::before, html.kp-reduce-motion 
    to no ring at all, or forced it to borrow `warn` and read as a caution. One more rule on
    the same recipe is the right answer; inventing a fifth semantic is not. */
 .mat-tint-brand { --mat-tint: inset 0 0 0 1px color-mix(in oklab, var(--brand-400) 32%, transparent); }
-.mat-tint-yes  { --mat-tint: inset 0 0 0 1px color-mix(in oklab, var(--yes-400) 32%, transparent); }
-.mat-tint-no   { --mat-tint: inset 0 0 0 1px color-mix(in oklab, var(--no-400) 32%, transparent); }
+/* ⭐ D2 (2026-08-21) — THE APP-STATE PAIR, and why it REPLACED the betting pair here
+   rather than joining it.
+   `.mat-tint-yes` / `.mat-tint-no` used to be the success/danger toast rings. §B2a now
+   says the betting pair is never borrowed for app state — a toast saying "saved" or "that
+   failed" is not a position — so the toasts moved onto these two.
+   ⛔ AND THE OLD PAIR WAS DELETED, not kept for a future side-carrying surface. Nothing
+   rendered them the moment the toasts moved, `test:dead-css` said so on its first run
+   after the change, and "keep it in case" is exactly the habit that put ~78 dead classes
+   in `globals.css` — several carrying recipes that violated a current law. If a surface
+   ever genuinely needs a side ring, it costs one line to add back, with a consumer.
+   ⛔ `--success` is hue 166 (a jade) against `--yes-500`'s 152: close enough to still read
+   as "good", far enough that the money green is not diluted by every form submit. */
+.mat-tint-success { --mat-tint: inset 0 0 0 1px color-mix(in oklab, var(--success) 32%, transparent); }
+.mat-tint-danger  { --mat-tint: inset 0 0 0 1px color-mix(in oklab, var(--danger) 32%, transparent); }
 .mat-tint-warn { --mat-tint: inset 0 0 0 1px color-mix(in oklab, var(--warning-500) 32%, transparent); }
 /* Earned money ONLY — the payout toast and the celebration. Never decoration (M3). */
 .mat-tint-gilt { --mat-tint: inset 0 0 0 1px color-mix(in oklab, var(--gilt) 40%, transparent); }

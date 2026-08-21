@@ -60,7 +60,11 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams?:
             /* ⚠️ LITERALS, not `h-12 w-12` — spacing is overridden (tailwind.config.ts:200-215)
                and `h-12` rendered a 128px disc on the money-in ladder described above. */
             className={`inline-flex h-[48px] w-[48px] items-center justify-center rounded-pill ${
-              good ? "bg-yes-500/[0.12] text-yes-300" : "bg-no-500/[0.12] text-no-300"
+              /* D2 (2026-08-21): the SEMANTIC families. A confirmed inbox is not a
+                 won bet and an expired link is not a lost one — §B2 keeps `--yes-*`
+                 / `--no-*` for money. The medallion still reads green-vs-rose at a
+                 glance, on the jade green that means "app state" everywhere else. */
+              good ? "bg-success/[0.12] text-success-fg" : "bg-danger-500/[0.12] text-danger-fg"
             }`}
           >
             {good ? <I.mail s={22} /> : <I.alertCircle s={22} />}

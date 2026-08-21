@@ -39,10 +39,14 @@ export default async function WalletLoading() {
             </div>
           </div>
         </div>
-        {/* Bonus wallet card (warm-toned on the real page). */}
+        {/* Bonus wallet card. ⭐ D5 (2026-08-21) — ROYAL, because the real card behind it
+            is royal now. It used to ghost in a warm gold gradient, so the wallet loaded
+            gold-on-the-right and then repainted; a skeleton that lies about the colour of
+            the surface it stands in for is a flash of the exact hierarchy this ruling
+            removed. `.mat-raised` is the same rung the real panel picks. */}
         <div
-          className="rounded-xl border border-border overflow-hidden kp-shimmer-track"
-          style={{ height: 160, background: "linear-gradient(135deg, oklch(21% 0.05 80), oklch(15% 0.03 80))" }}
+          className="mat-raised rounded-xl overflow-hidden kp-shimmer-track"
+          style={{ height: 160 }}
         >
           <div className="p-5 lg:p-6 space-y-4">
             <div className="h-3 w-24 rounded bg-bg-overlay/30" />
@@ -59,7 +63,12 @@ export default async function WalletLoading() {
           /* ⚠️ LITERAL, not `h-9` — spacing is overridden (tailwind.config.ts:200-215) so this
              drew 64px for a tab row that renders at 44px (`Tabs variant="line"`, tabs.tsx),
              i.e. a guaranteed 20px content jump on every wallet load. PLAYER MONEY SURFACE. */
-          <div key={tab} className={`h-[44px] px-3.5 ${i === 0 ? "border-b-2 border-gold-500" : ""}`}>
+          /* ⭐ D5 — brand, not gold. The real rail is `<Tabs variant="line">`, whose active
+             underline is `--brand-500` (tabs.tsx), and `wallet-client.tsx` states the reason
+             in its own comment: section tabs are NAVIGATION, not earned money (§M3). The
+             skeleton was drawing a gold underline that repainted brand a beat later — the
+             one place on this page where the ghost disagreed with the page. */
+          <div key={tab} className={`h-[44px] px-3.5 ${i === 0 ? "border-b-2 border-brand-500" : ""}`}>
             <span className="font-display text-[13px] text-text-subtle">{tab}</span>
           </div>
         ))}
