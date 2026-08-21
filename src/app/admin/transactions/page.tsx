@@ -36,6 +36,7 @@ import { attentionOf, GATEWAY_TYPES, type TxnSearchFilters } from "@/lib/server/
 import { resolveRange } from "@/lib/server/date-range";
 import { DateTimeRangeFilter } from "@/components/ui/datetime-range-filter";
 import { formatTzs, formatDateTimeSafe } from "@/lib/utils";
+import { txnTypeLabel, txnStatusLabel, txnProviderLabel } from "@/components/admin/status-badge";
 import type { StoredTxn } from "@/lib/server/store";
 import { payoutRailLabel } from "@/lib/server/selcom";
 
@@ -184,9 +185,14 @@ export default async function AdminTransactionsPage({ searchParams }: { searchPa
           {sp.from ? <input type="hidden" name="from" value={sp.from} /> : null}
           {sp.to ? <input type="hidden" name="to" value={sp.to} /> : null}
           {q ? <input type="hidden" name="q" value={q} /> : null}
-          <FilterSelect name="type" label="Type · Aina" value={type ?? ""} options={[["", "All"], ...TYPES.map((t) => [t, t.replace(/_/g, " ")] as [string, string])]} />
-          <FilterSelect name="status" label="Status · Hali" value={status ?? ""} options={[["", "All"], ...STATUSES.map((s) => [s, s.replace(/_/g, " ")] as [string, string])]} />
-          <FilterSelect name="provider" label="Provider · Mtoa" value={provider ?? ""} options={[["", "All"], ...PROVIDERS.map((p) => [p, p.replace(/_/g, " ")] as [string, string])]} />
+          {/* The three dropdowns offer WORDS and submit the stored token. They used to
+              offer `value.replace(/_/g, " ")`, so an officer chose between "ADJUSTMENT
+              DEBIT", "AML REVIEW" and "TIGO PESA" — database spelling on the page a
+              gateway reconciliation is done from, and a misspelling of two real MNO
+              brands besides. One lexicon now answers here and in the rows below. */}
+          <FilterSelect name="type" label="Type · Aina" value={type ?? ""} options={[["", "All"], ...TYPES.map((t) => [t, txnTypeLabel(t)] as [string, string])]} />
+          <FilterSelect name="status" label="Status · Hali" value={status ?? ""} options={[["", "All"], ...STATUSES.map((s) => [s, txnStatusLabel(s)] as [string, string])]} />
+          <FilterSelect name="provider" label="Provider · Mtoa" value={provider ?? ""} options={[["", "All"], ...PROVIDERS.map((p) => [p, txnProviderLabel(p)] as [string, string])]} />
           <div className="flex flex-col gap-2 sm:col-span-2 sm:flex-row sm:items-center sm:justify-between lg:col-span-6">
             <label className="flex min-h-[40px] cursor-pointer items-center gap-2 rounded-lg border border-border bg-bg-overlay px-3 text-sm text-text-secondary">
               <Checkbox name="attention" value="1" defaultChecked={attentionOnly} />
@@ -240,11 +246,11 @@ export default async function AdminTransactionsPage({ searchParams }: { searchPa
                   return (
                     <tr key={t.id}>
                       <td className="whitespace-nowrap text-text-secondary">{formatDateTimeSafe(t.createdAt)}</td>
-                      <td className="whitespace-nowrap text-text">{t.type.replace(/_/g, " ")}</td>
+                      <td className="whitespace-nowrap text-text">{txnTypeLabel(t.type)}</td>
                       <td className={["whitespace-nowrap text-right font-mono tabular font-semibold", out ? "text-text-secondary" : "text-text"].join(" ")}>
                         {out ? "−" : "+"}{formatTzs(Math.abs(t.amount))}
                       </td>
-                      <td className="whitespace-nowrap"><Chip size="sm" variant={TXN_STATUS_VARIANT[t.status] ?? "neutral"}>{t.status.replace(/_/g, " ")}</Chip></td>
+                      <td className="whitespace-nowrap"><Chip size="sm" variant={TXN_STATUS_VARIANT[t.status] ?? "neutral"}>{txnStatusLabel(t.status)}</Chip></td>
                       <td className="whitespace-nowrap">
                         {flag
                           ? <span title={flag.sw}><Chip variant={flag.level === "warn" ? "warning" : "info"} size="sm">{flag.label}</Chip></span>
@@ -255,7 +261,7 @@ export default async function AdminTransactionsPage({ searchParams }: { searchPa
                           {t.userId.slice(0, 14)}
                         </Link>
                       </td>
-                      <td className="whitespace-nowrap text-text-secondary">{t.provider?.replace(/_/g, " ") ?? "—"}</td>
+                      <td className="whitespace-nowrap text-text-secondary">{t.provider ? txnProviderLabel(t.provider) : "—"}</td>
                       {/* Only a GATEWAY movement can be "missing" a reference. An
                           internal transfer (stake, payout, bonus) never touched a
                           gateway, so it shows a plain dash — flagging it would be a

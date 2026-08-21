@@ -4,9 +4,13 @@ export default async function PositionsLoading() {
   const { t } = await getServerT();
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
+      {/* Same three strings, in the same order, as the real header — a skeleton that
+          names the page differently is a second name for one destination (§L1), and the
+          subtitle is drawn here too so the tab rail below does not jump when data lands. */}
       <header>
-        <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.positions.title}</p>
-        <h1 className="font-display text-[28px] font-bold text-text">{t.positions.pollsPlayed}</h1>
+        <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.common.positions}</p>
+        <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">{t.positions.headline}</h1>
+        <p className="mt-1 text-[13px] italic text-text-subtle">{t.positions.headlineBody}</p>
       </header>
 
       {/* Tab skeleton */}

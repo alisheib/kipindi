@@ -8,8 +8,12 @@ export default async function PerformanceLoading() {
       <div className="h-4 w-16 rounded bg-bg-overlay kp-shimmer-track" aria-hidden />
 
       <header>
-        <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.performance.title}</p>
-        <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">{t.positions.pollsPlayed}</h1>
+        {/* ⚠️ THE TWO WERE SWAPPED. This skeleton drew the eyebrow "Performance" over the
+            headline "Polls you've played"; the real page renders the parent destination as
+            the eyebrow and "Performance" as the H1, so the words changed places the instant
+            the data arrived. Same pair, same order as `performance/page.tsx`. */}
+        <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.common.positions}</p>
+        <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">{t.performance.title}</h1>
       </header>
 
       {/* Hero stat card skeleton */}

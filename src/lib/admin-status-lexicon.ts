@@ -144,6 +144,13 @@ export const REVIEW = {
   dsarPending:        { en: "Pending" },
   dsarFulfilled:      { en: "Fulfilled" },
   dsarRejected:       { en: "Rejected" },
+  // DSAR request TYPE — what the subject asked for. Added because the queue's Type
+  // column printed the raw `DsarType`, and "ERASURE" in database spelling is the
+  // one word on that page an officer must not misread: it is the irreversible one.
+  dsarTypeAccess:      { en: "Access" },
+  dsarTypeErasure:     { en: "Erasure" },
+  dsarTypeCorrection:  { en: "Correction" },
+  dsarTypePortability: { en: "Portability" },
 } satisfies Record<string, AdminLabel>;
 
 /**
@@ -169,4 +176,214 @@ export const OBJECTION = {
   reasonOther:             { en: "Other" },
   // The thing an officer must understand before they act.
   frozenNotice: { en: "This market's money is frozen while this objection is open", sw: "Fedha za soko hili zimesimamishwa wakati pingamizi hili liko wazi" },
+} satisfies Record<string, AdminLabel>;
+
+/**
+ * FAMILY 6 — account status (players AND staff share one enum).
+ *
+ * The EN words are not invented here either: they are lifted from the two places
+ * /admin/players had ALREADY written them — the status `<Select>` options and the
+ * `MIX_ORDER` legend of the population bar — which is precisely the two-homes-for-
+ * one-word drift §L2 is about. The chips beside them, meanwhile, printed the raw
+ * column: "SELF_EXCLUDED" and "PENDING_KYC" reached an officer verbatim on the
+ * player list, the player detail, the DSAR export list and both staff surfaces.
+ *
+ * SW provenance: "Hai" is the Active KPI on this very page (and /admin/markets),
+ * "Kujitenga" is the dict's `selfExclusion`, "Imefungwa" its `accountClosed`,
+ * "Pumzika kidogo" its `coolingOff`, "Imesitishwa" its `errSuspended`. PENDING_KYC
+ * has no shipped Swahili and is therefore EN-only rather than translated here —
+ * fabricating one would break the rule at the top of this file.
+ */
+export const ACCOUNT = {
+  active:       { en: "Active",        sw: "Hai" },
+  pendingKyc:   { en: "Pending KYC" },
+  suspended:    { en: "Suspended",     sw: "Imesitishwa" },
+  selfExcluded: { en: "Self-excluded", sw: "Kujitenga" },
+  cooledOff:    { en: "Cooled off",    sw: "Pumzika kidogo" },
+  closed:       { en: "Closed",        sw: "Imefungwa" },
+} satisfies Record<string, AdminLabel>;
+
+/**
+ * FAMILY 7 — money movement: what a transaction IS, where it stands, and which
+ * rail carried it (`StoredTxn.type` / `.status` / `.provider`).
+ *
+ * ⚠️ REAL MONEY, so this is the family that mattered most. /admin/transactions
+ * rendered all three columns as `value.replace(/_/g, " ")` — an officer reconciling
+ * against a Selcom statement read "ADJUSTMENT DEBIT", "AML REVIEW" and "TIGO PESA",
+ * and the three filter dropdowns offered the same de-underscored enums as choices.
+ * /admin/payments printed a bare `DEPOSIT` / `WITHDRAWAL` chip on its retry queue.
+ *
+ * ⛔ The provider words are BRAND names, not enum members: they are spelled the way
+ * the brand spells itself ("M-Pesa", "HaloPesa", "Mixx by Yas"), lifted verbatim
+ * from `payment-ops.ts`'s already-shipped MNO list and the confirmed rail comments
+ * in `selcom.ts`. `.replace(/_/g, " ")` on a brand is a misspelling, not a label.
+ *
+ * ⭐ ADJUSTMENT_CREDIT/DEBIT keep the accounting word rather than an in/out word:
+ * the sign lives in the amount column beside them (`wallet-service.ts` picks the
+ * type from `amount >= 0`), and two different words for one direction is how a
+ * balance-adjust audit stops being readable.
+ */
+export const MONEY = {
+  // ── Movement type ────────────────────────────────────────────────────────
+  typeDeposit:          { en: "Deposit",    sw: "Amana" },
+  typeWithdrawal:       { en: "Withdrawal", sw: "Utoaji" },
+  typeBetPlaced:        { en: "Bet placed" },
+  typeBetPayout:        { en: "Bet payout" },
+  typeBetRefund:        { en: "Bet refund" },
+  typeBonusCredit:      { en: "Bonus credit" },
+  typeAdjustmentCredit: { en: "Adjustment · credit" },
+  typeAdjustmentDebit:  { en: "Adjustment · debit" },
+  typeCashout:          { en: "Cash-out" },
+  typeHouseFee:         { en: "House fee" },
+  // ── Movement status ──────────────────────────────────────────────────────
+  statusPending:    { en: "Pending", sw: "Inasubiri" },
+  statusProcessing: { en: "Processing" },
+  /** Held by the anti-money-laundering queue. Kept as the initialism an officer
+   *  actually uses — "AML" is the name of the queue, not an unexpanded enum. */
+  statusAmlReview:  { en: "AML review" },
+  statusConfirmed:  { en: "Confirmed" },
+  statusFailed:     { en: "Failed" },
+  statusReversed:   { en: "Reversed" },
+  statusCancelled:  { en: "Cancelled" },
+  // ── Rail / provider (brand spellings) ────────────────────────────────────
+  providerMpesa:        { en: "M-Pesa" },
+  providerTigoPesa:     { en: "Tigo Pesa" },
+  providerAirtelMoney:  { en: "Airtel Money" },
+  providerHaloPesa:     { en: "HaloPesa" },
+  providerMixx:         { en: "Mixx by Yas" },
+  providerTtclPesa:     { en: "TTCL Pesa" },
+  providerCard:         { en: "Card" },
+  providerBankTransfer: { en: "Bank transfer" },
+  /** Not a gateway at all — a movement that never left 50pick (stake, payout,
+   *  bonus, adjustment). "Internal" is what the ledger calls it. */
+  providerInternal:     { en: "Internal" },
+} satisfies Record<string, AdminLabel>;
+
+/**
+ * FAMILY 8 — the AI content pipeline, and the ONE family in this file that proves
+ * why §L2 says a definition site must be PRODUCT-AWARE.
+ *
+ * THREE products run a generate → filter → review → publish machine, and their
+ * state enums OVERLAP without agreeing:
+ *
+ *   · market candidates      (`CandidateState`,        /admin/candidates)
+ *   · AI polls               (`AIPollState`,           /admin/ai-polls)
+ *   · Up & Down proposals    (`UpDownProposalState`,   /admin/updown/proposals)
+ *
+ * `APPROVED` is the tell. On a poll it means "cleared, publish when you like"; on
+ * an Up & Down proposal it means "cleared, and the next step is ARMING A CHAIN
+ * THAT WILL TAKE REAL MONEY". One word for both would be the §L2 defect, so there
+ * are two words below and the lookup — not the lexicon — picks per product.
+ * `PENDING_REVIEW` is the same shape against a fourth product: it is "Ready for
+ * review" here and "Pending review" in `REVIEW.kycPendingReview`, because a KYC
+ * queue and a content queue are not the same waiting.
+ *
+ * The words themselves are lifted verbatim from the local `STATE_LABEL` maps that
+ * /admin/ai-polls and /admin/updown/proposals had each re-typed (three copies, and
+ * they had already drifted on the apostrophe); /admin/candidates had no map at all
+ * and printed `EXTRACTED` / `FILTERED_OUT` raw in both its table and its card.
+ * EN-only: these are chips, and the Chip atom upper-cases via CSS.
+ */
+export const PIPELINE = {
+  // ── Shared across the three products ─────────────────────────────────────
+  generating:       { en: "Generating…" },
+  validationFailed: { en: "Failed" },
+  /** The model produced something the filters would not pass. Deliberately NOT
+   *  "Rejected": no officer decided it, so it must not read like one did. */
+  filtered:         { en: "Didn’t pass checks" },
+  pendingReview:    { en: "Ready for review" },
+  editing:          { en: "Editing" },
+  approved:         { en: "Approved" },
+  rejected:         { en: "Rejected" },
+  published:        { en: "Published" },
+  // ── Market candidates only — the four-layer pipeline's working states ────
+  extracted:        { en: "Extracted" },
+  verifying:        { en: "Verifying" },
+  scored:           { en: "Scored" },
+  // ── Up & Down proposals only — see the APPROVED note above ───────────────
+  approvedReadyToArm: { en: "Approved · ready to arm" },
+  armed:              { en: "Armed · chain running" },
+} satisfies Record<string, AdminLabel>;
+
+/**
+ * FAMILY 9 — Up & Down operations: a chain's state and a price reading's state.
+ *
+ * ⛔ THE ROUND'S OWN VOID REASON IS NOT HERE, AND MUST NOT BE ADDED. A refund
+ * explanation has exactly one home — `src/lib/updown-refund-reason.ts` — because
+ * the player card, the round page, the settlement proof, the inbox and this
+ * console all have to give the same answer about the same money. The round
+ * explorer used to bypass it and print the stored token (`· source-failed`);
+ * it now calls `refundReasonFor()` like every other surface, and the officer-facing
+ * SHORT form of each reason lives below, keyed by that module's `RefundReason`.
+ * Adding a second decision here would recreate E-65 in the operator console.
+ */
+export const UPDOWN = {
+  // ── Chain state (`ChainState`) ───────────────────────────────────────────
+  chainRunning: { en: "Running" },
+  chainPaused:  { en: "Paused" },
+  chainStopped: { en: "Stopped" },
+  // ── Price-reading state (`ObservationState`) ─────────────────────────────
+  readingPending:   { en: "Awaiting read" },
+  readingConfirmed: { en: "Confirmed" },
+  readingFailed:    { en: "Read failed" },
+  /** ⭐ §C2 — no reading is an ABSENCE, not a state. It gets its own words so the
+   *  cell never borrows a real state's chip and reads as data we do not have. */
+  readingNone:      { en: "No readings yet" },
+  // ── Round outcome, when there is not one yet ─────────────────────────────
+  outcomePending: { en: "Pending" },
+  // ── Officer-side SHORT form of each `RefundReason` (long player copy lives
+  //    in the dict under REFUND_REASON_KEY; this is a table cell) ───────────
+  refundNoMove:         { en: "No move" },
+  refundSourceFailed:   { en: "Price unread" },
+  refundSourceMismatch: { en: "Wrong source" },
+  refundOperator:       { en: "Operator void" },
+  /** A decided round that still refunded: nobody took the other side. NOT a void,
+   *  and the word must never suggest one. */
+  refundUnmatched:      { en: "One-sided" },
+  /** ⛔ Never folded into "No move" — an unrecognised stored reason is the one an
+   *  officer must actually go and look at. */
+  refundUnexplained:    { en: "Reason unrecognised" },
+} satisfies Record<string, AdminLabel>;
+
+/**
+ * FAMILY 10 — audit-log categories (`AuditCategory`).
+ * The filter row rendered the raw token as its chip label, so an officer picked
+ * between "COMPLIANCE" and "SYSTEM" in database spelling. Sentence-case words;
+ * the Chip atom upper-cases them for display, so the row looks unchanged and only
+ * the underlying string stops being an enum.
+ */
+export const AUDIT = {
+  auth:       { en: "Auth" },
+  kyc:        { en: "KYC" },
+  wallet:     { en: "Wallet" },
+  bet:        { en: "Bet" },
+  admin:      { en: "Admin" },
+  compliance: { en: "Compliance" },
+  security:   { en: "Security" },
+  system:     { en: "System" },
+} satisfies Record<string, AdminLabel>;
+
+/**
+ * FAMILY 11 — player proposals, as an officer reads them.
+ *
+ * The chip on this queue already flows through the trilingual player dict
+ * (`components/proposals/status-badge.tsx`), so the STATUS WORD is not redefined
+ * here. What is here is the one place the console put a status into PROSE:
+ * *"This proposal is {status.toLowerCase().replace("_", " ")} — no further
+ * action."* — §L3's exact prohibition, and its `replace` was missing the `/g` flag
+ * so a two-underscore token would have kept the second one.
+ *
+ * ⭐ The fix is not a better word for the enum, it is a sentence per terminal
+ * state. "This proposal is listed" told an officer nothing; the market being LIVE
+ * and taking money is the fact they need. Only three states reach that branch
+ * (LISTED · RESOLVED · DECLINED) — REVIEW/CHANGES_REQUESTED are the actionable
+ * branch above it and APPROVED has its own panel.
+ */
+export const PROPOSAL = {
+  sentenceListed:   { en: "This proposal is live as a market and taking predictions — no further action here." },
+  sentenceResolved: { en: "This proposal’s market has been resolved and paid — no further action." },
+  sentenceDeclined: { en: "This proposal was declined — no further action." },
+  /** Fallback for a state that should not reach the branch. Says what it knows and
+   *  claims nothing more, rather than guessing which of the three it is. */
+  sentenceClosed:   { en: "This proposal is closed — no further action." },
 } satisfies Record<string, AdminLabel>;

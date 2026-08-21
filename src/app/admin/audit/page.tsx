@@ -7,6 +7,7 @@ import { getAuditPage, verifyChain, type AuditCategory } from "@/lib/server/audi
 import { EmptyState } from "@/components/ui/empty-state";
 import { Chip } from "@/components/ui/chip";
 import { ScrollX } from "@/components/ui/scroll-x";
+import { auditCategoryLabel } from "@/components/admin/status-badge";
 import { formatDateTime } from "@/lib/utils";
 
 export const metadata = { title: "Admin · Audit log" };
@@ -97,7 +98,7 @@ export default async function AdminAuditPage({
           </Link>
           {CATEGORIES.map((c) => (
             <Link key={c} href={`/admin/audit?category=${c}`} className="inline-flex items-center min-h-[44px] transition-opacity hover:opacity-80">
-              <Chip size="lg" variant={category === c ? "brand" : "neutral"} selected={category === c}>{c}</Chip>
+              <Chip size="lg" variant={category === c ? "brand" : "neutral"} selected={category === c}>{auditCategoryLabel(c)}</Chip>
             </Link>
           ))}
           {actorId && (
@@ -134,7 +135,7 @@ export default async function AdminAuditPage({
                   <tr key={e.id}>
                     <td className="font-mono whitespace-nowrap text-text-subtle">{formatDateTime(e.createdAt)}</td>
                     <td>
-                      <Chip size="sm" variant={CAT_VARIANT[e.category]}>{e.category}</Chip>
+                      <Chip size="sm" variant={CAT_VARIANT[e.category]}>{auditCategoryLabel(e.category)}</Chip>
                     </td>
                     <td className="font-medium text-text">{e.action}</td>
                     <td className="font-mono">

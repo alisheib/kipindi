@@ -51,7 +51,7 @@ export function BottomNav({ isAuthed = false }: { isAuthed?: boolean }) {
    *  destinations for a visitor, who has no positions or wallet to reach. */
   const moreItems = isAuthed
     ? [
-        { href: "/positions",      label: t.nav.bets },
+        { href: "/positions",      label: t.common.positions },
         { href: "/wallet",         label: t.nav.wallet },
         { href: "/leaderboard",    label: t.nav.leaderboard },
         { href: "/profile/invite", label: t.common.invite },

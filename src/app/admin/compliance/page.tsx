@@ -14,6 +14,7 @@ import { isMonitoringEnabled } from "@/lib/server/monitoring";
 import { kycFunnel, rgRosterCounts } from "@/lib/server/analytics";
 import { detectHarmMarkersForAllUsers } from "@/lib/server/responsible-gambling";
 import { Chip } from "@/components/ui/chip";
+import { txnTypeLabel } from "@/components/admin/status-badge";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { formatClock, formatDate, formatDateTime } from "@/lib/utils";
 
@@ -258,7 +259,7 @@ export default async function AdminCompliancePage({
                   variant="danger"
                   body={
                     <a href={`/admin/aml`} className="hover:underline">
-                      {t.userId.slice(0, 12)}… · {t.type} · {t.amlReason ?? "review"}
+                      {t.userId.slice(0, 12)}… · {txnTypeLabel(t.type)} · {t.amlReason ?? "review"}
                     </a>
                   }
                 />

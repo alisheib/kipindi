@@ -1,11 +1,13 @@
 import { AdminPageHead, AdminCard, AdminKpi, FeedRow, AdminLoadError } from "@/components/admin/admin-shell";
 import { CEREMONY } from "@/lib/admin-status-lexicon";
+import { txnTypeLabel } from "@/components/admin/status-badge";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { db, type StoredTxn, type StoredSourceOfFunds } from "@/lib/server/store";
+import { ID_DOC_SPECS, type IdDocType } from "@/lib/id-documents";
 import { getAuditPage } from "@/lib/server/audit";
 import { listPendingKyc } from "@/lib/server/kyc-service";
 import { SofReviewRow } from "./sof-review-client";
@@ -115,21 +117,37 @@ export default async function AdminApprovalsPage({
                   <tr>
                     <SortTh field="submitted" label="Submitted" current={kyc.sort} dir={kyc.dir} sp={sp} baseHref="/admin/approvals" prefix="kyc" className="py-2 pr-3" />
                     <SortTh field="user" label="User" current={kyc.sort} dir={kyc.dir} sp={sp} baseHref="/admin/approvals" prefix="kyc" className="py-2 pr-3" />
-                    <SortTh field="name" label="Name (NIDA)" current={kyc.sort} dir={kyc.dir} sp={sp} baseHref="/admin/approvals" prefix="kyc" className="py-2 pr-3" />
+                    {/* ⚠️ NOT "Name (NIDA)". A player proves identity with any ONE of four
+                        documents (docs/IDENTITY-POLICY.md) and this queue holds all four, so
+                        naming one of them here told the officer the wrong thing about three
+                        quarters of their own queue. The document a row actually used is on the
+                        workstation screen, where the decision is made. */}
+                    <SortTh field="name" label="Name (ID document)" current={kyc.sort} dir={kyc.dir} sp={sp} baseHref="/admin/approvals" prefix="kyc" className="py-2 pr-3" />
                     <SortTh field="docs" label="Docs" current={kyc.sort} dir={kyc.dir} sp={sp} baseHref="/admin/approvals" prefix="kyc" className="py-2 pr-3" />
                     <th className="text-right py-2 pl-3">Review</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {kycPending.map((k) => (
+                  {kycPending.map((k) => {
+                    // ⚠️ THE DENOMINATOR IS PER DOCUMENT — IT WAS HARD-WRITTEN "/3".
+                    // Three is the NIDA slot count (front · back · selfie). A COMPLETE passport,
+                    // driving-licence or voter's-card file carries TWO (the document · selfie),
+                    // so it was shown to the officer as "2/3" — a finished submission reading as
+                    // one short, on the screen that gates a withdrawal. `requiredSlots` is the
+                    // catalogue's own answer, so a fifth document needs no edit here.
+                    // Where the type is missing we print the count alone rather than assert a
+                    // requirement we cannot name (§C — no invented figure).
+                    const slots = k.idType ? ID_DOC_SPECS[k.idType as IdDocType]?.requiredSlots.length : undefined;
+                    return (
                     <tr key={k.id} className="border-b border-border-subtle/50 last:border-b-0">
                       <td className="py-2 pr-3 font-mono whitespace-nowrap">{formatDateTime(k.submittedAt ?? k.updatedAt)}</td>
                       <td className="py-2 pr-3"><a href={`/admin/players/${k.userId}?tab=kyc`} className="font-mono text-royal-300 hover:underline">{k.userId.slice(0, 14)}…</a></td>
                       <td className="py-2 pr-3 font-medium text-text">{k.fullName ?? "—"}</td>
-                      <td className="py-2 pr-3 font-mono tabular">{k.documents.length}/3</td>
+                      <td className="py-2 pr-3 font-mono tabular">{slots ? `${k.documents.length}/${slots}` : k.documents.length}</td>
                       <td className="py-2 pl-3 text-right"><a href={`/admin/kyc/${k.userId}`} className="font-mono text-micro tracking-[0.10em] uppercase text-royal-300 hover:underline">workstation →</a></td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </ScrollX>
@@ -169,7 +187,7 @@ export default async function AdminApprovalsPage({
                     <tr key={t.id} className="border-b border-border-subtle/50 last:border-b-0">
                       <td className="py-2 pr-3 font-mono whitespace-nowrap">{formatDateTime(t.createdAt)}</td>
                       <td className="py-2 pr-3"><a href={`/admin/players/${t.userId}`} className="font-mono text-royal-300 hover:underline">{t.userId.slice(0, 14)}…</a></td>
-                      <td className="py-2 pr-3 font-medium text-text">{t.type}</td>
+                      <td className="py-2 pr-3 font-medium text-text">{txnTypeLabel(t.type)}</td>
                       <td className="py-2 pr-3 font-mono tabular text-right">{formatTzs(Math.abs(t.amount))}</td>
                       <td className="py-2 pl-3 text-text-secondary">{t.amlReason ?? "review"}</td>
                     </tr>

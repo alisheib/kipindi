@@ -2,6 +2,7 @@ import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-she
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
+import { formatDate } from "@/lib/utils";
 import { listSources, listDisabledCategories, seedDefaultSources, getGeneratableCategories } from "@/lib/server/source-registry";
 import type { MarketCategory } from "@/lib/server/market-service";
 import { ToggleSource, RemoveSource, ToggleCategory, AddSourceForm } from "./source-controls";
@@ -105,7 +106,11 @@ export default async function AdminSourcesPage() {
                     <tr key={s.id} className="border-b border-border-subtle/50 last:border-b-0 align-top">
                       <td className="p-3">
                         <p className="font-display font-semibold text-text">{s.label}</p>
-                        <p className="font-mono text-[10px] text-text-subtle">added {s.addedAt.slice(0, 10)} · by {s.addedBy.slice(0, 14)}…</p>
+                        {/* `addedAt` is a UTC ISO string; slicing its first ten characters
+                            printed the UTC calendar day, which is the previous one for
+                            anything added after 21:00 EAT. `formatDate` stamps the
+                            platform timezone. */}
+                        <p className="font-mono text-[10px] text-text-subtle">added {formatDate(s.addedAt)} · by {s.addedBy.slice(0, 14)}…</p>
                       </td>
                       <td className="p-3">
                         <a

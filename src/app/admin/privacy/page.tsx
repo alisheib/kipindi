@@ -15,7 +15,7 @@ import { maskName } from "@/lib/server/affiliate-service";
 import { ExportDsarBundleButton, FulfillDsarButton } from "./dsar-controls";
 import { formatDateTime } from "@/lib/utils";
 import { I } from "@/components/ui/glyphs";
-import { DsarStatusBadge } from "@/components/admin/status-badge";
+import { DsarStatusBadge, dsarTypeLabel, accountStatusLabel } from "@/components/admin/status-badge";
 
 export const metadata = { title: "Admin · Privacy / DSAR" };
 export const dynamic = "force-dynamic";
@@ -85,7 +85,7 @@ export default async function AdminPrivacyPage({
                     <td className="p-3 font-mono whitespace-nowrap">{formatDateTime(r.requestedAt)}</td>
                     <td className="p-3 font-mono">{r.userId.slice(0, 16)}…</td>
                     <td className="p-3">
-                      <Chip size="sm" variant={r.type === "ERASURE" ? "danger" : "neutral"}>{r.type}</Chip>
+                      <Chip size="sm" variant={r.type === "ERASURE" ? "danger" : "neutral"}>{dsarTypeLabel(r.type)}</Chip>
                     </td>
                     <td className="p-3 text-text-tertiary max-w-[260px] truncate">{r.reason ?? "—"}</td>
                     <td className="p-3">
@@ -152,7 +152,7 @@ export default async function AdminPrivacyPage({
                     </td>
                     <td className="py-2 pr-3 font-mono whitespace-nowrap">{u.phoneE164.length > 6 ? `${u.phoneE164.slice(0, 4)}****${u.phoneE164.slice(-2)}` : u.phoneE164}</td>
                     <td className="py-2 pr-3">
-                      <Chip size="sm" variant={u.status === "ACTIVE" ? "success" : "neutral"}>{u.status}</Chip>
+                      <Chip size="sm" variant={u.status === "ACTIVE" ? "success" : "neutral"}>{accountStatusLabel(u.status)}</Chip>
                     </td>
                     <td className="py-2 pr-3 font-mono whitespace-nowrap">{u.createdAt.slice(0, 10)}</td>
                     <td className="py-2 pl-3">

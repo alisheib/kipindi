@@ -28,8 +28,8 @@ repo `F:\kipindi-main`, branch `main`):**
 | 0 | Bootstrap + baseline + this tracker | **DONE** | `stage-0` | n/a (docs only) |
 | 1 | Safety (no visual change) | **DONE** | `99999f99` | ✓ 200 · clean boot · shots read |
 | 2 | The alpha critical (D7) | **DONE** | `85bfb075` | ✓ 200 · clean boot · shots read |
-| 3 | Sizing (operator's top priority) | **DONE** | `stage-3` | pending push |
-| 4 | Correctness: time, words, money formatting | NOT STARTED | | |
+| 3 | Sizing (operator's top priority) | **DONE** | `2122067d` | ✓ 200 · clean boot · shots read |
+| 4 | Correctness: time, words, money formatting | **DONE** | `stage-4` | pending push |
 | 5 | Focus & accessibility | NOT STARTED | | |
 | 6 | Motion | NOT STARTED | | |
 | 7 | Performance | NOT STARTED | | |
@@ -191,6 +191,41 @@ have to re-derive.
   only in-flow, non-`aria-hidden` children — otherwise every decorative watermark bleed on
   every hero reports as a defect, and a guard that cries wolf gets skipped.
 
+**Stage 4**
+
+- 🔴 **The RG cooling-off deadline was rendered in the SERVER's timezone**, i.e. UTC on
+  Railway — three hours behind EAT — on a **statutory** control shown to a player. It told
+  them a deposit-limit increase lands at 22:00 when it lands at 01:00 the next day. Six more
+  of the same class on `/admin/players/[id]` (KYC decision dates, self-exclusion expiry,
+  cooling-off), the settled-day stamp on the statutory settlement-fee table, and a wallet feed
+  printing a raw UTC ISO slice **directly beneath a correctly-zoned bet feed on the same page**
+  — one screen, two clocks, three hours apart.
+- ⭐ `utils.ts` **already documented this exact defect class** in `formatDayTime`'s own header,
+  from a previous round of the same bug. The helpers were right; the call sites went around
+  them.
+- ⚠️ **`formatDateISO` is the one member of the formatter family that is UTC** (a
+  `toISOString().slice`). Do not reach for it for an EAT calendar day — `eat-day.ts` is "the
+  one place the platform decides what a day is", and the statutory reporting stack already
+  bins on it.
+- ⚠️ **A `.slice(0, 10)` on an ISO string is the same defect as `toLocaleString`** and no
+  `toLocale*` grep finds it. `admin/sources` had one.
+- ⭐ **The brief's premise about `/positions` was FALSE and the agent said so.** It does NOT
+  hold Up & Down positions — `listPositionsForUser(..., "MARKET")` — so "it holds both
+  products" was wrong. The "Polls you've played" defect stands anyway on §L4 grounds and for a
+  better reason: every OTHER string on that page already says "market", so "Polls" was the odd
+  word out inside the single product line the page does hold. The page was named **three
+  ways** (top nav "History", bottom nav "Bets", title "Polls you've played"); all three now
+  read `common.positions`.
+- 🔴 **`qa:live` asserted the two names the rename removed** (`includes("History") ||
+  includes("played")`), so it would have gone RED on a correct page. Re-pointed at the one
+  name AND at the old names being gone, so a partial revert cannot pass it.
+- ⚠️ **The Swahili was left partial ON PURPOSE.** The lexicon's own header forbids inventing
+  Swahili — every `sw` string must be lifted verbatim from an already-shipped source. Families
+  with no shipped source stay EN-only, which is the existing documented convention, not an
+  omission.
+- ⚠️ **`updown/rounds` printed a raw `voidReason` while `updown-refund-reason.ts` existed
+  precisely to phrase it** — a refund explanation an officer reads, bypassing its own module.
+
 **Follow-ups this campaign opened and has not closed**
 
 - Nothing in the repo asserts **storage-safety**. Both Stage-1 storage fixes can regress
@@ -199,6 +234,18 @@ have to re-derive.
   latch. → candidate guard for Stage 10.
 - No assertion pins **`WithdrawConfirm`'s openGuard/validate** trio. → candidate guard for
   Stage 10.
+- **There is no client-safe payment-provider catalog.** Eight sites own their own id →
+  display-name map; Stage 4 could only reach two of them from inside one agent's scope, and a
+  module used by two while six keep copies is a seventh definition, not a consolidation. →
+  Stage 9 (`src/lib/payment-providers.ts`, all eight converted).
+- **`toLocaleString()` on COUNTS is repo-wide in admin** (affiliate, ai-polls ×4, ai-usage,
+  aml, audit, bonuses, candidates …). It takes the runtime locale, so a count can group with
+  dots beside `formatTzs` money grouping with commas on the same KPI row. → Stage 9 sweep.
+- `updown-stake-controls` quick-stake chips use `rounded-md` (8px) while the sibling control
+  for the same job now uses `--r-pill` — same money control, two shapes, §S2 breached on one.
+  → the radius pass.
+- `.ticket-chip` is a **30px** money control that the Phase-3 bump does not reach (it is not
+  on `--h-control-*`). → Stage 9.
 
 ---
 

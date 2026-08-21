@@ -119,8 +119,8 @@ export default async function PerformancePage() {
 
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
-      <BackLink fallbackHref="/positions" label={t.positions.title} />
-      <PageHeader eyebrow={t.positions.title} title={t.performance.title} />
+      <BackLink fallbackHref="/positions" label={t.common.positions} />
+      <PageHeader eyebrow={t.common.positions} title={t.performance.title} />
 
       {totalBets === 0 ? (
         <EmptyState

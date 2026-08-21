@@ -626,7 +626,11 @@ export function ArmAction({
 
 // ── Delete ──────────────────────────────────────────────────────────────────
 
-export function DeleteProposalAction({ id, state }: { id: string; state: string }) {
+/** ⚠️ Only ever rendered for a proposal that is NOT `ARMED` — the queue gates it —
+ *  which is what makes the modal's "has never opened a round" true. It no longer
+ *  takes the state as a prop because it no longer prints it; the gate is the
+ *  caller's, and it is stated at the call site. */
+export function DeleteProposalAction({ id }: { id: string }) {
   const [pending, start] = useTransition();
   const router = useRouter();
   const { deferToast, toast } = useDeferredToast(pending);
@@ -662,10 +666,15 @@ export function DeleteProposalAction({ id, state }: { id: string; state: string 
         tone="claret"
         confirmLabel="Delete"
         body={
+          /* §L3 — the state enum used to be interpolated here ("a validation failed
+             proposal"), and its `replace` had no `/g`, so a two-underscore state
+             would have kept the second underscore. The state was never the point:
+             the delete control is only rendered for a proposal that is NOT armed,
+             so "has never opened a round" is true of every proposal that can reach
+             this modal, and saying it plainly is both shorter and honest. */
           <p>
             It is removed from the queue along with its record of what the feed returned. Nothing that is
-            live is affected — a {state.toLowerCase().replace("_", " ")} proposal has never opened a
-            round.
+            live is affected — this proposal has never opened a round.
           </p>
         }
       />

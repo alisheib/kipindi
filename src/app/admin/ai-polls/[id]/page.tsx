@@ -5,6 +5,7 @@ import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
 import { formatDateTimeSafe, formatUsd } from "@/lib/utils";
 import { SELECTION } from "@/lib/admin-status-lexicon";
+import { aiPollStateLabel } from "@/components/admin/status-badge";
 import {
   getAIPoll,
   type AIPollState,
@@ -36,16 +37,9 @@ const STATE_VARIANT: Record<AIPollState, "success" | "warning" | "danger" | "neu
   PUBLISHED: "success",
 };
 
-const STATE_LABEL: Record<AIPollState, string> = {
-  GENERATING: "Generating\u2026",
-  VALIDATION_FAILED: "Failed",
-  FILTERED: "Didn\u2019t pass checks",
-  PENDING_REVIEW: "Ready for review",
-  EDITING: "Editing",
-  APPROVED: "Approved",
-  REJECTED: "Rejected",
-  PUBLISHED: "Published",
-};
+// The local `STATE_LABEL` map is deleted; see the note on the list page. This
+// copy and that one disagreed on the apostrophe in "Didn't pass checks", which is
+// how you can tell they were two definitions and not one.
 
 const fmtUsd = formatUsd;
 function fmtDate(iso: string) {
@@ -85,7 +79,7 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
             <div className="flex-1 min-w-0">
               {/* State + badges */}
               <div className="flex items-center gap-2 mb-2 flex-wrap">
-                <Chip size="md" variant={STATE_VARIANT[poll.state]}>{STATE_LABEL[poll.state]}</Chip>
+                <Chip size="md" variant={STATE_VARIANT[poll.state]}>{aiPollStateLabel(poll.state)}</Chip>
                 <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{poll.category}</span>
                 <span className="font-mono text-[10.5px] tabular-nums text-text-muted">
                   <I.shieldAlert size={10} className="inline -mt-0.5 mr-0.5" />

@@ -219,10 +219,17 @@ if (LOCAL) {
   const errs = attach(page);
   await page.goto(BASE + "/auth/demo", { waitUntil: "domcontentloaded" }); await page.waitForTimeout(500);
 
-  // History page (was "Positions")
+  // ⭐ ONE NAME FOR ONE DESTINATION (§L1, 2026-08-21). This page was called three things at
+  // once — "History" in the top nav, "Bets" in the bottom nav, and "Polls you've played" as
+  // its own title, the last of which also borrowed the POLL product's word for a page whose
+  // every other string says "market" (§L4). All three now read `common.positions`.
+  // ⚠️ This assertion used to accept "History" OR "played", i.e. exactly the two names the
+  // rename removed — so it would have gone red on a correct page. Assert the ONE name, and
+  // assert the old ones are GONE, so a partial revert cannot pass.
   await page.goto(BASE + "/positions", { waitUntil: "domcontentloaded" }); await page.waitForTimeout(400);
   const posBody = await page.locator("body").innerText();
-  ok(`/positions renders as History`, posBody.includes("History") || posBody.includes("played"), `(no History label)`);
+  ok(`/positions names itself once`, posBody.includes("Positions"), `(no Positions label)`);
+  ok(`/positions drops the two retired names`, !/Polls you've played/i.test(posBody), `(an old name came back)`);
   ok(`/positions no error overlay`, !(await hasErrorOverlay(page)));
 
   // Wallet

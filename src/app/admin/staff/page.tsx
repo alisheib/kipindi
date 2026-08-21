@@ -10,6 +10,7 @@ import { formatDate } from "@/lib/utils";
 import { displayLabel, displayInitials } from "@/lib/display-label";
 import { STAFF_ROLES, ROLE_LABEL, roleLabel, isAdmin, type Role } from "@/lib/server/roles";
 import { staffRoleInfos } from "@/lib/server/rbac";
+import { accountStatusLabel } from "@/components/admin/status-badge";
 import { AddStaffForm } from "./staff-forms";
 
 export const metadata = { title: "Admin · Staff" };
@@ -87,7 +88,7 @@ export default async function AdminStaffPage() {
                       </td>
                       <td className="font-mono whitespace-nowrap">{u.phoneE164.length > 6 ? `${u.phoneE164.slice(0, 4)}****${u.phoneE164.slice(-2)}` : u.phoneE164}</td>
                       <td><Chip size="sm" variant={roleChipVariant(u.role)}>{roleLabel(u.role)}</Chip></td>
-                      <td><Chip size="sm" variant={u.status === "ACTIVE" ? "success" : "neutral"}>{u.status}</Chip></td>
+                      <td><Chip size="sm" variant={u.status === "ACTIVE" ? "success" : "neutral"}>{accountStatusLabel(u.status)}</Chip></td>
                       <td className="font-mono whitespace-nowrap">{u.lastLoginAt ? formatDate(u.lastLoginAt) : "—"}</td>
                       <td>
                         <a href={`/admin/staff/${u.id}`} className="text-royal-300 hover:underline font-medium font-mono text-micro tracking-[0.10em] uppercase">manage →</a>

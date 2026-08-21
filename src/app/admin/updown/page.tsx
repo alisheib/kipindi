@@ -31,6 +31,7 @@ import {
 import { currentSession } from "@/lib/server/auth-service";
 import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { ControlLocked } from "@/components/admin/control-locked";
+import { chainStateLabel, readingStateLabel } from "@/components/admin/status-badge";
 
 export const metadata = { title: "Admin · Up & Down" };
 export const dynamic = "force-dynamic";
@@ -490,7 +491,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                             }
                           >
                             {c.state === "RUNNING" && <span className="live-dot" />}
-                            {c.state}
+                            {chainStateLabel(c.state)}
                           </span>
                         </td>
                         <td className="px-4 py-3 font-mono text-[11.5px] text-text-muted whitespace-nowrap">
@@ -597,8 +598,13 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                           })()}
                         </td>
                         <td className="px-4 py-3 text-right font-mono text-[11.5px] text-text-muted whitespace-nowrap">
+                          {/* The column header is "Stake bounds" — it names no currency, so the
+                              cell has to. This read "1,000 – 100,000" on the one screen where an
+                              officer sets what a player may stake, and a bare `toLocaleString()`
+                              also groups by whatever locale the runtime holds. Both figures take
+                              the unit, as the player-facing stake range does. */}
                           {c.minStake != null || c.maxStake != null
-                            ? `${(c.minStake ?? cfg.defaultMinStake).toLocaleString()} – ${(c.maxStake ?? cfg.defaultMaxStake).toLocaleString()}`
+                            ? `${formatTzs(c.minStake ?? cfg.defaultMinStake)} – ${formatTzs(c.maxStake ?? cfg.defaultMaxStake)}`
                             : "inherit"}
                         </td>
                         <td className="px-4 py-3">
@@ -659,7 +665,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                           : "chip-pending")
                       }
                     >
-                      {last?.state ?? "NO READINGS"}
+                      {readingStateLabel(last?.state)}
                     </span>
                   </div>
                   {/* Real data or nothing: with no confirmed reading we show an em-dash,

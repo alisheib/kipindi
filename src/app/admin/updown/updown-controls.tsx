@@ -34,6 +34,7 @@ import {
   createChainAction, setChainStateAction, updateChainAction, generateRoundAction,
   updateThresholdsAction, updateReadingMethodAction,
 } from "./actions";
+import { formatClock } from "@/lib/utils";
 import { ALLOWED_DURATIONS } from "@/lib/updown-durations";
 // ⛔ Same rule as the durations above: the reading-method dropdown is rendered from the shared
 // provider list, never a literal array in this file. A hand-copied list is how a server comes
@@ -389,9 +390,14 @@ export function ChainStateControls({
         }
         router.refresh();
         deferToast({
+          // ⛔ The close time goes through the shared `formatClock`, never a bare
+          // `toLocaleTimeString()`. That call takes BOTH its locale and its timezone from
+          // whatever machine renders it, so the same round announced a different closing
+          // minute to every operator — and on 5-minute chains the operator uses this number
+          // to decide whether there is still time to void. One clock, the platform's.
           title: `${label} — round open`,
           description: r.openPrice != null
-            ? `Opened at ${r.openPrice}. Closes ${new Date(r.closesAt).toLocaleTimeString()}.`
+            ? `Opened at ${r.openPrice}. Closes ${formatClock(r.closesAt)}.`
             : undefined,
           variant: "success",
         });

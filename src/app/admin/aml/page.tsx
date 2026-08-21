@@ -1,5 +1,6 @@
 import { AdminPageHead, AdminCard, AdminKpi, AdminLoadError } from "@/components/admin/admin-shell";
 import { CEREMONY } from "@/lib/admin-status-lexicon";
+import { txnTypeLabel } from "@/components/admin/status-badge";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
@@ -106,7 +107,7 @@ export default async function AdminAmlPage({
                   return (
                     <tr key={t.id}>
                       <td className="font-mono whitespace-nowrap">{formatDateTime(t.createdAt)}</td>
-                      <td className="font-medium text-text">{t.type}</td>
+                      <td className="font-medium text-text">{txnTypeLabel(t.type)}</td>
                       <td className="font-mono">
                         <a href={`/admin/players?q=${encodeURIComponent(t.userId)}`} className="hover:text-royal-300 hover:underline">
                           {t.userId.slice(0, 16)}

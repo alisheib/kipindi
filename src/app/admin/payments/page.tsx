@@ -14,6 +14,7 @@ import { PAYOUT_RAILS } from "@/lib/server/selcom";
 import { formatTzs, formatTzsCompact, formatDateTime } from "@/lib/utils";
 import { KillSwitch } from "./kill-switch-toggle";
 import { ControlPlane } from "./control-plane";
+import { txnTypeLabel, txnProviderLabel } from "@/components/admin/status-badge";
 import { RetryControls } from "./retry-controls";
 import { ReconcileControls } from "./reconcile-controls";
 import { BulkRetryControls } from "./bulk-retry-controls";
@@ -313,8 +314,8 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
                   {queueRows.map((r) => (
                     <tr key={r.id} className={r.ageMs > 3_600_000 ? "border-l-2 border-no-500" : ""}>
                       <td className="font-mono text-text-subtle">{r.id.slice(0, 14)}…</td>
-                      <td className="font-mono">{r.provider}</td>
-                      <td><Chip size="sm" variant={r.type === "DEPOSIT" ? "info" : "neutral"}>{r.type}</Chip></td>
+                      <td className="font-mono">{txnProviderLabel(r.provider)}</td>
+                      <td><Chip size="sm" variant={r.type === "DEPOSIT" ? "info" : "neutral"}>{txnTypeLabel(r.type)}</Chip></td>
                       <td className="font-mono tabular text-right">{formatTzs(r.amount)}</td>
                       <td className="text-no-300 text-[12px] truncate max-w-[220px]" title={r.reason}>{r.reason}</td>
                       <td className={`font-mono tabular text-right ${r.ageMs > 3_600_000 ? "text-no-300" : "text-text-tertiary"}`}>{ageLabel(r.ageMs)}</td>

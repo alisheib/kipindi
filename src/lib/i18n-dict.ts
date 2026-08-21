@@ -1407,6 +1407,8 @@ export const dict = {
     positions: {
       title: "History",
       pollsPlayed: "Polls you've played",
+      headline: "Your predictions",
+      headlineBody: "Every market you've backed — separate from your Up & Down rounds.",
       tabAll: "All", tabOpen: "Open", tabSettled: "Settled",
       atRisk: "At risk", liveValue: "Live value", unrealised: "unrealised",
       settledPnl: "Settled P&L", winRate: "Win rate",
@@ -3059,6 +3061,8 @@ export const dict = {
     positions: {
       title: "Historia",
       pollsPlayed: "Kura ulizocheza",
+      headline: "Utabiri wako",
+      headlineBody: "Kila soko uliloweka — tofauti na raundi zako za Juu na Chini.",
       tabAll: "Zote", tabOpen: "Hai", tabSettled: "Imekamilika",
       atRisk: "Hatarini", liveValue: "Thamani sasa", unrealised: "haijathibitishwa",
       settledPnl: "Faida ya jumla", winRate: "Asilimia ya ushindi",
@@ -4654,6 +4658,8 @@ export const dict = {
     positions: {
       title: "历史",
       pollsPlayed: "您参与的投票",
+      headline: "您的预测",
+      headlineBody: "您参与过的每一个市场——与涨跌回合分开。",
       tabAll: "全部", tabOpen: "进行中", tabSettled: "已结算",
       atRisk: "风险金额", liveValue: "实时价值", unrealised: "未实现",
       settledPnl: "已结算盈亏", winRate: "胜率",

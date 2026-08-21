@@ -19,6 +19,34 @@ import { lookupWithdrawPayeeAction } from "./actions";
 
 type PayeeState = { state: "idle" | "loading" | "done"; name: string | null };
 
+/**
+ * §L3 · THE WORDS THE PLAYER TAPPED, NOT THE TOKENS WE STORE.
+ *
+ * This dialog rendered `providerRaw.replace(/_/g, " ")`, so the last screen before money
+ * LEAVES the account read "Via AIRTEL MONEY" · "HALO PESA" · "MIXX" — storage enums, shouted,
+ * inside a sentence, on the surface that also carries the registered recipient name. The
+ * names below are the ones the chooser tiles already carry (`PROVIDERS` in `withdraw/page.tsx`,
+ * handed to `PaymentLogo` as `name`), so the confirm echoes the tile the player chose.
+ *
+ * ⚠️ Mirrored rather than imported, and deliberately: the canonical maps sit beside the money
+ * service (`server/payment-ops.ts` `MNOS`, `wallet-service`'s own label map) and both reach
+ * `db` — importing either would drag the money service into a client bundle. Brand names, so
+ * they are NOT translated: "M-Pesa" is "M-Pesa" in all three locales.
+ *
+ * ⚠️ Four entries, not five: payouts run on the mobile-money rails only (`WITHDRAW_PROVIDERS`
+ * in `./actions`). Card is a deposit rail and has no place in a withdrawal's vocabulary.
+ */
+const PROVIDER_NAMES: Record<string, string> = {
+  MPESA: "M-Pesa",
+  AIRTEL_MONEY: "Airtel Money",
+  HALO_PESA: "HaloPesa",
+  MIXX: "Mixx by Yas",
+};
+
+/** An id we don't know is a tampered form, which `withdrawAction` refuses anyway — show it
+ *  verbatim rather than blanking the row, so what was submitted stays visible. */
+const providerLabel = (id: string): string => PROVIDER_NAMES[id] ?? id;
+
 /** `feeRate` is the live `withdrawalFeeRate` from config; the fee shown here is
  *  computed by the SAME function wallet-service charges with, so the confirm
  *  screen and the wallet can never disagree (audit H12). */
@@ -82,7 +110,7 @@ export function WithdrawConfirm({ feeRate }: { feeRate: number }) {
     const amount = parseInt(String(fd.get("amount") ?? "0"), 10) || 0;
     const providerRaw = String(fd.get("provider") ?? "");
     const msisdn = String(fd.get("msisdn") ?? "").trim();
-    setSummary({ amount, provider: providerRaw.replace(/_/g, " "), msisdn });
+    setSummary({ amount, provider: providerLabel(providerRaw), msisdn });
     // Best-effort payee-name lookup (Selcom, when the rail supports it). It never
     // blocks the payout: a miss simply shows the number alone.
     // ⛔ B-20 — take the sequence for THIS open BEFORE the branch, never inside

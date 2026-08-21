@@ -3,8 +3,7 @@ import { AdminPageHead, AdminCard, AdminKpi, AdminLoadError } from "@/components
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { SortTh } from "@/components/admin/admin-sort";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
-import { playerStatusVariant } from "@/components/admin/status-badge";
-import { Chip } from "@/components/ui/chip";
+import { AccountStatusBadge, accountStatusLabel } from "@/components/admin/status-badge";
 import { Avatar } from "@/components/ui/avatar";
 import { Select } from "@/components/ui/select";
 import { db } from "@/lib/server/store";
@@ -115,6 +114,10 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
               />
             </div>
             <div className="w-full sm:w-[180px]">
+              {/* The six words come from the lexicon, not from here: this list and the
+                  population-mix legend below had each hand-typed them, and the chip in
+                  the table beside them printed the raw column instead — three
+                  renderings of one enum, which is the §L2 defect exactly. */}
               <Select
                 name="status"
                 defaultValue={statusFilter}
@@ -122,12 +125,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                 placeholder="All statuses"
                 options={[
                   { value: "", label: "All statuses" },
-                  { value: "ACTIVE", label: "Active" },
-                  { value: "PENDING_KYC", label: "Pending KYC" },
-                  { value: "SUSPENDED", label: "Suspended" },
-                  { value: "SELF_EXCLUDED", label: "Self-excluded" },
-                  { value: "COOLED_OFF", label: "Cooled off" },
-                  { value: "CLOSED", label: "Closed" },
+                  ...ACCOUNT_FILTER.map((s) => ({ value: s, label: accountStatusLabel(s) })),
                 ]}
               />
             </div>
@@ -178,7 +176,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                       </td>
                       {/* Masked in the broad list view — full number only on the detail page (PII minimization). Search still matches the full number. */}
                       <td className="font-mono whitespace-nowrap">{u.phoneE164.length > 6 ? `${u.phoneE164.slice(0, 4)}****${u.phoneE164.slice(-2)}` : u.phoneE164}</td>
-                      <td><Chip size="sm" variant={playerStatusVariant(u.status)}>{u.status}</Chip></td>
+                      <td><AccountStatusBadge status={u.status} /></td>
                       <td className="font-mono tabular text-right whitespace-nowrap">{canSeeMoney && wallet ? formatTzs(wallet.balance) : "—"}</td>
                       <td className="font-mono whitespace-nowrap">{formatDate(u.createdAt)}</td>
                       <td className="font-mono whitespace-nowrap">{u.lastLoginAt ? formatDate(u.lastLoginAt) : "—"}</td>
@@ -221,13 +219,17 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
    semantic status colours (green Active · amber pending/cooling · rose blocked ·
    grey closed). Zero-count statuses are dropped so the bar and legend stay clean. */
 const MIX_ORDER: ReadonlyArray<{ key: string; label: string; color: string }> = [
-  { key: "ACTIVE",        label: "Active",        color: "var(--yes-500)" },
-  { key: "PENDING_KYC",   label: "Pending KYC",   color: "var(--warning-500)" },
-  { key: "COOLED_OFF",    label: "Cooled off",    color: "var(--warning-500)" },
-  { key: "SUSPENDED",     label: "Suspended",     color: "var(--no-500)" },
-  { key: "SELF_EXCLUDED", label: "Self-excluded", color: "var(--no-500)" },
-  { key: "CLOSED",        label: "Closed",        color: "var(--border-strong)" },
-];
+  { key: "ACTIVE",        color: "var(--yes-500)" },
+  { key: "PENDING_KYC",   color: "var(--warning-500)" },
+  { key: "COOLED_OFF",    color: "var(--warning-500)" },
+  { key: "SUSPENDED",     color: "var(--no-500)" },
+  { key: "SELF_EXCLUDED", color: "var(--no-500)" },
+  { key: "CLOSED",        color: "var(--border-strong)" },
+].map((m) => ({ ...m, label: accountStatusLabel(m.key) }));
+
+/* The status filter's closed set, in the order an officer scans it. Same source as
+   the legend above and the chip in the table — the words are the lexicon's. */
+const ACCOUNT_FILTER = ["ACTIVE", "PENDING_KYC", "SUSPENDED", "SELF_EXCLUDED", "COOLED_OFF", "CLOSED"] as const;
 
 function StatusMix({ counts }: { counts: Record<string, number> }) {
   const segs = MIX_ORDER.map((m) => ({ ...m, value: counts[m.key] ?? 0 })).filter((m) => m.value > 0);

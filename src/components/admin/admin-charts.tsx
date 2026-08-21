@@ -8,8 +8,27 @@
  */
 
 import type { ReactNode } from "react";
+import { formatNumber } from "@/lib/utils";
 
 export type SeriesPoint = { x: number; y: number };
+
+/**
+ * ⭐ THE DEFAULT FORMATTER IS A **COUNT** FORMATTER, AND THAT IS THE WHOLE CONTRACT.
+ *
+ * `AdminMeter`, `AdminBarList` and `AdminFunnelChart` each render a bare `value`. Every one
+ * of them was cut with a raw `n.toLocaleString()` — no locale argument, so the grouping is
+ * decided by whatever locale the runtime holds, and a TZS series that forgot to pass
+ * `format` printed money with no unit on it. `formatNumber` is the platform's one unit-free
+ * grouping (`TZ_NUMBER`, pinned en-US), which is exactly right for the three call sites that
+ * rely on the default — player counts by status, by region, by age band.
+ *
+ * ⛔ A MONEY SERIES MUST PASS `format`. `formatTzs` for exact figures, `formatTzsCompact`
+ * where the bar is narrow. Every money call site already does (finance top-players NGR,
+ * insights GGR-by-category and top-markets, reports GGR-by-category, payments 24h volume) —
+ * do not let the next one inherit the default and ship an amount with no shilling on it.
+ * ⛔ And do not "fix" this by defaulting to `formatTzs`: it would stamp TZS onto a headcount.
+ */
+const formatCount = (n: number) => formatNumber(n);
 
 const CHART_W = 1200;
 const CHART_H = 240;
@@ -275,7 +294,9 @@ export function AdminFunnelChart({
                 className="absolute inset-y-0 left-0 bg-royal/70 rounded-sm flex items-center justify-end pr-2 prog-sweep"
                 style={{ width: `${pct}%` }}
               >
-                <span className="font-mono text-micro tabular text-white">{s.value.toLocaleString()}</span>
+                {/* Funnel steps are HEADCOUNTS at every call site (KYC stages, the insights
+                    signup funnel), so this one is unit-free by design — see `formatCount`. */}
+                <span className="font-mono text-micro tabular text-white">{formatCount(s.value)}</span>
               </div>
             </div>
             {/* ⭐ E-103 · the share of the TOP stage, and the header says so. `w-14` is kept:
@@ -343,7 +364,7 @@ export function AdminMeter({
   const pct = cap > 0 ? Math.min(100, (value / cap) * 100) : 0;
   // threshold 0 (or 100) = no danger band; only flag when a real ceiling is set.
   const danger = thresholdPct > 0 && thresholdPct < 100 && pct >= thresholdPct;
-  const fmt = format ?? ((n: number) => n.toLocaleString());
+  const fmt = format ?? formatCount;
   return (
     <div className="space-y-1">
       {label && (
@@ -383,7 +404,7 @@ export function AdminBarList({
   format?: (n: number) => string;
 }) {
   const max = Math.max(...rows.map((r) => r.value), 1);
-  const fmt = format ?? ((n: number) => n.toLocaleString());
+  const fmt = format ?? formatCount;
   // Stacked row: label + value on top, full-width bar below — reads cleanly in
   // narrow (3-up) admin cards where a label/bar/value single line would starve
   // the bar to a few px.

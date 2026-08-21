@@ -149,6 +149,11 @@ for (const locale of LOCALES) {
               if (kcs.position === "absolute" || kcs.position === "fixed") continue;  // decoration
               if (kid.getAttribute("aria-hidden") === "true") continue;               // decoration
               if (kcs.display === "none" || kcs.visibility === "hidden") continue;
+              // A MARQUEE IS A DELIBERATE CLIP. `.ticker-track` is ~20,000px wide inside a
+              // 279px frame and that is the whole design — an animated track has to be
+              // wider than its window or it has nothing to travel through. Keyed on the
+              // animation rather than the class name so any future ticker inherits it.
+              if (kcs.animationName && kcs.animationName !== "none") continue;
               const kR = kid.getBoundingClientRect();
               const over = Math.round(Math.max(0, kR.right - bR.right) + Math.max(0, bR.left - kR.left));
               if (over <= 1) continue;

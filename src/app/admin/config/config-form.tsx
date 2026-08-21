@@ -384,10 +384,15 @@ export function MarketOverrideForm({ globalConfig }: { globalConfig: RateConfig 
         them above, before creating the poll.
       </p>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <Field label="Min stake (TZS)" hint={`Leave blank to inherit ${globalConfig.minStake.toLocaleString()}`}>
+        {/* `formatTzs`, not a bare `toLocaleString()` — the two identical fields in the
+            GLOBAL form above already quote their inherited figure that way ("Current TZS
+            1,000"), and a `toLocaleString()` with no locale argument is cut by whatever
+            locale the runtime happens to hold, so the same number could group two ways on
+            one page. */}
+        <Field label="Min stake (TZS)" hint={`Leave blank to inherit ${formatTzs(globalConfig.minStake)}`}>
           <Input name="minStake" type="number" step="100" min={PLATFORM_MIN_STAKE} max={PLATFORM_MAX_STAKE} placeholder="" mono />
         </Field>
-        <Field label="Max stake (TZS)" hint={`Leave blank to inherit ${globalConfig.maxStake.toLocaleString()}`}>
+        <Field label="Max stake (TZS)" hint={`Leave blank to inherit ${formatTzs(globalConfig.maxStake)}`}>
           <Input name="maxStake" type="number" step="1000" min={PLATFORM_MIN_STAKE} max={PLATFORM_MAX_STAKE} placeholder="" mono />
         </Field>
       </div>

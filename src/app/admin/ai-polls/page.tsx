@@ -9,6 +9,7 @@ import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { formatDateTimeSafe, formatUsd } from "@/lib/utils";
 import { SELECTION } from "@/lib/admin-status-lexicon";
+import { aiPollStateLabel } from "@/components/admin/status-badge";
 import { ScoreBadge } from "@/components/admin/score-badge";
 import {
   listAIPolls,
@@ -51,16 +52,11 @@ const STATE_VARIANT: Record<AIPollState, "success" | "warning" | "danger" | "neu
   PUBLISHED: "success",
 };
 
-const STATE_LABEL: Record<AIPollState, string> = {
-  GENERATING: "Generating…",
-  VALIDATION_FAILED: "Failed",
-  FILTERED: "Didn't pass checks",
-  PENDING_REVIEW: "Ready for review",
-  EDITING: "Editing",
-  APPROVED: "Approved",
-  REJECTED: "Rejected",
-  PUBLISHED: "Published",
-};
+// ⛔ The local `STATE_LABEL` map that stood here is deleted. It was one of THREE
+// copies (this page, /admin/ai-polls/[id], /admin/updown/proposals) and they had
+// already drifted — two spelled "Didn't" with a typewriter apostrophe and one with
+// a typographic one. `aiPollStateLabel` is now the single site, and it is
+// product-aware: the Up & Down queue's `APPROVED` reads differently on purpose.
 
 const fmtUsd = formatUsd;
 function fmtDate(iso: string) {
@@ -356,7 +352,7 @@ export default async function AdminAIPollsPage({
                   <tbody className="text-text-muted">
                     {pageItems.map((p) => (
                       <tr key={p.id} id={`poll-tr-${p.id}`} className="border-b border-border/60 last:border-b-0 hover:bg-bg-overlay/50 group scroll-mt-24">
-                        <td className="p-3"><Chip size="sm" variant={STATE_VARIANT[p.state]}>{p.state}</Chip></td>
+                        <td className="p-3"><Chip size="sm" variant={STATE_VARIANT[p.state]}>{aiPollStateLabel(p.state)}</Chip></td>
                         <td className="p-3 font-mono uppercase tracking-[0.12em] text-[10px]">{p.category || "\u2014"}</td>
                         <td className="p-3 text-text max-w-[360px]">
                           <Link
@@ -505,7 +501,7 @@ function PollRow({ poll, mode }: { poll: StoredAIPoll; mode: "review" | "publish
       <div className="flex-1 min-w-0">
         {/* Header badges */}
         <div className="flex items-center gap-2 mb-1 flex-wrap">
-          <Chip size="sm" variant={STATE_VARIANT[poll.state]}>{STATE_LABEL[poll.state]}</Chip>
+          <Chip size="sm" variant={STATE_VARIANT[poll.state]}>{aiPollStateLabel(poll.state)}</Chip>
           <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{poll.category}</span>
           <span className="font-mono text-[10.5px] tabular-nums text-text-muted">
             <I.shieldAlert size={10} className="inline -mt-0.5 mr-0.5" />

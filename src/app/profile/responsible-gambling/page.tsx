@@ -18,7 +18,7 @@ import { Select } from "@/components/ui/select";
 import { Input, Field as KitField } from "@/components/ui/input";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { FeedbackSettings } from "@/components/settings/feedback-settings";
-import { formatTzs } from "@/lib/utils";
+import { formatTzs, formatDateTime } from "@/lib/utils";
 import { getServerT } from "@/lib/i18n-server";
 import { bannerFor } from "@/lib/failure-banner";
 
@@ -127,8 +127,15 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
               <p className="font-display font-semibold text-text">
                 {t.rg.pendingIncrease}{" "}{await formatTzs(rg.pendingIncreaseTo!)}
               </p>
+              {/* ⚠️ THIS DATE MUST BE ZONED. It is the end of the statutory cooling-off
+                  window on a deposit-limit increase — the moment the player is allowed to
+                  stake more. This page renders on the server, so a bare
+                  `toLocaleString("en-GB")` prints Railway's UTC clock, three hours behind
+                  EAT: the player is told the new limit lands at 22:00 when it lands at
+                  01:00 the next day. On an RG control that is a compliance defect, not a
+                  cosmetic one. `formatDateTime` stamps the platform timezone. */}
               <p className="text-text-muted">
-                {t.rg.effective}{" "}{new Date(rg.pendingIncreaseEffectiveAt!).toLocaleString("en-GB")}{" "}{t.rg.coolingPeriodNote}
+                {t.rg.effective}{" "}{formatDateTime(rg.pendingIncreaseEffectiveAt!)}{" "}{t.rg.coolingPeriodNote}
               </p>
             </div>
           </div>

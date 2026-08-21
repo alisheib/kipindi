@@ -92,7 +92,7 @@ export function TopAppBar({ user, proposalsState }: { user: TopAppBarUser; propo
         { href: "/updown",    label: t.market.udTitle, accent: true },
         { href: "/live",      label: t.nav.live },
         { href: "/results",   label: t.common.results },
-        { href: "/positions", label: t.common.history },
+        { href: "/positions", label: t.common.positions },
         { href: "/wallet",    label: t.nav.wallet },
       ]
     : [

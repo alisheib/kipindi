@@ -16,7 +16,7 @@
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { cn, formatTzs } from "@/lib/utils";
+import { cn, formatNumber, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { useUpDownQuickBet, usePlacePulse } from "./use-quick-bet";
 import { UpDownStakeControls } from "./updown-stake-controls";
@@ -126,19 +126,38 @@ export function RoundStakePanel(props: {
       <p className="mt-2 text-[12px] leading-[1.5] text-text-muted">{t.market.udPickLocked}</p>
 
       {/* Stake field — display of the chosen amount + a neutral projection (a projection
-          is not earned money, so no gold). */}
+          is not earned money, so no gold).
+          ⚠️ `minHeight`, not `height`, and the row may wrap: both figures now carry their
+          unit, and at the platform ceiling (stake 1,000,000) "TZS 1,000,000 → TZS 1,500,000
+          × 1.50" is wider than a 360px viewport leaves this box. A wrap grows the control;
+          a fixed height would have spilled the projection outside its own border. Nothing
+          moves at any ordinary stake. */}
       <div
-        className="mt-3.5 flex items-center justify-between gap-2.5"
-        style={{ height: 46, background: "var(--bg-inset)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "0 12px 0 14px" }}
+        className="mt-3.5 flex flex-wrap items-center justify-between gap-2.5"
+        style={{ minHeight: 46, background: "var(--bg-inset)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "0 12px 0 14px" }}
       >
         <span className="flex min-w-0 items-baseline gap-[7px]">
           <span className="font-mono text-[10.5px] font-semibold tracking-[0.04em] text-text-subtle">TZS</span>
-          <span className="font-mono text-[16px] font-bold tabular-nums text-text">{bet.stakeReady ? bet.stake.toLocaleString("en-US") : "—"}</span>
+          {/* `formatNumber`, never a raw `toLocaleString` — the same `TZ_NUMBER` grouping every
+              other amount on the platform is cut with. NOT `formatTzs` here: the unit is the
+              prefix span to its left (the `Input prefix="TZS"` treatment this row mirrors, and
+              the custom-stake field below uses literally), so formatting it in as well would
+              read "TZS TZS 1,000". */}
+          <span className="font-mono text-[16px] font-bold tabular-nums text-text">{bet.stakeReady ? formatNumber(bet.stake) : "—"}</span>
         </span>
+        {/* ⭐ THE PROJECTION CARRIES ITS UNIT, AND ITS NAME. It rendered as a bare "1,500":
+            no currency anywhere on the row, on a money control, one tap from the commit —
+            the one figure a player reads as "what I get back" was the one figure with no
+            shilling on it. `formatTzs` puts the unit back and `udRcProjected` names the
+            number on hover/long-press.
+            ⛔ No new "est." token. `udEstimateNote` sits directly under this panel and
+            already says the multiple moves with every bet; the dictionary states in as many
+            words that it is REUSED rather than restated so the surfaces cannot drift.
+            ⛔ And it stays muted (§M3 / R2 Q5) — projected money is not earned money. */}
         {projected != null && (
-          <span className="flex shrink-0 items-center gap-1.5">
+          <span className="flex shrink-0 items-center gap-1.5" title={t.market.udRcProjected}>
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-            <span className="font-mono text-[12.5px] font-semibold tabular-nums text-text-muted">{projected.toLocaleString("en-US")}</span>
+            <span className="font-mono text-[12.5px] font-semibold tabular-nums text-text-muted">{formatTzs(projected)}</span>
             {/* The multiple, in the SAME muted ink as the amount — it is the same fact stated
                 twice, and neither statement gets to be louder than the stake control (G5). */}
             {projectedMult != null && (

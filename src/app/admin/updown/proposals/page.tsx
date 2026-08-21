@@ -16,6 +16,7 @@ import { ProposeForm, ReviewActions, ArmAction, DeleteProposalAction, EvidencePa
 import { currentSession } from "@/lib/server/auth-service";
 import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { ControlLocked } from "@/components/admin/control-locked";
+import { updownProposalStateLabel } from "@/components/admin/status-badge";
 
 export const metadata = { title: "Admin · Up & Down · AI proposals" };
 export const dynamic = "force-dynamic";
@@ -42,16 +43,12 @@ const STATE_VARIANT: Record<UpDownProposalState, "success" | "warning" | "danger
   ARMED: "success",
 };
 
-/** Operator language, not enum language — the state name is never shown raw. */
-const STATE_LABEL: Record<UpDownProposalState, string> = {
-  GENERATING: "Generating…",
-  VALIDATION_FAILED: "Failed",
-  FILTERED: "Didn't pass checks",
-  PENDING_REVIEW: "Ready for review",
-  APPROVED: "Approved · ready to arm",
-  REJECTED: "Rejected",
-  ARMED: "Armed · chain running",
-};
+/* Operator language, not enum language — the state name is never shown raw. The map
+   that stood here has moved into `updownProposalStateLabel`, alongside the poll and
+   candidate queues' own maps, because the three shared four tokens and disagreed on
+   two of them: this queue's APPROVED means "ready to arm a chain that will take real
+   stakes", which is not the poll queue's APPROVED, and that difference is now stated
+   in one place instead of implied by three local copies. */
 
 /** Plain-English reason text. The enum value is for counting; this is for reading. */
 const REASON_LABEL: Record<string, string> = {
@@ -237,7 +234,7 @@ export default async function UpDownProposalsPage({
               className="inline-flex items-center min-h-[44px] transition-opacity hover:opacity-80"
             >
               <Chip size="lg" variant={stateFilter === s ? "brand" : "neutral"} selected={stateFilter === s}>
-                {s.replace(/_/g, " ").toLowerCase()} {counts[s] ?? 0}
+                {updownProposalStateLabel(s)} {counts[s] ?? 0}
               </Chip>
             </Link>
           ))}
@@ -367,7 +364,7 @@ export default async function UpDownProposalsPage({
                           )}
                         </td>
                         <td className="whitespace-nowrap">
-                          <Chip size="sm" variant={STATE_VARIANT[p.state]}>{STATE_LABEL[p.state]}</Chip>
+                          <Chip size="sm" variant={STATE_VARIANT[p.state]}>{updownProposalStateLabel(p.state)}</Chip>
                           <div className="mt-1 font-mono text-[10px] text-text-subtle">
                             {formatDateTimeSafe(p.createdAt)}
                           </div>
@@ -415,7 +412,9 @@ export default async function UpDownProposalsPage({
                                 View chain
                               </Link>
                             )}
-                            {p.state !== "ARMED" && <DeleteProposalAction id={p.id} state={p.state} />}
+                            {/* The ARMED gate is here, and the delete modal's copy
+                                ("has never opened a round") depends on it holding. */}
+                            {p.state !== "ARMED" && <DeleteProposalAction id={p.id} />}
                           </div>
                         </td>
                       </tr>

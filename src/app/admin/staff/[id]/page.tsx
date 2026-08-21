@@ -10,6 +10,7 @@ import { isAdmin, roleLabel } from "@/lib/server/roles";
 import { staffRoleInfos } from "@/lib/server/rbac";
 import { displayLabel, displayInitials } from "@/lib/display-label";
 import { formatDate } from "@/lib/utils";
+import { accountStatusLabel } from "@/components/admin/status-badge";
 import { AssignRoleForm } from "../staff-forms";
 
 export const metadata = { title: "Admin · Staff member" };
@@ -43,7 +44,7 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
             </div>
             <div className="ml-auto flex items-center gap-2">
               <Chip size="sm" variant={u.role === "ADMIN" ? "gold" : "info"}>Current: {roleLabel(u.role)}</Chip>
-              <Chip size="sm" variant={u.status === "ACTIVE" ? "success" : "neutral"}>{u.status}</Chip>
+              <Chip size="sm" variant={u.status === "ACTIVE" ? "success" : "neutral"}>{accountStatusLabel(u.status)}</Chip>
             </div>
           </div>
         </AdminCard>

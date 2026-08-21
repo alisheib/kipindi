@@ -14,9 +14,9 @@ import { currentSession } from "@/lib/server/auth-service";
 import { canAct, canView } from "@/lib/server/rbac";
 import { exportUserData } from "@/lib/server/user-service";
 import { I } from "@/components/ui/glyphs";
-import { formatTzs, formatTzsCompact, formatDateTime, formatDateShort } from "@/lib/utils";
+import { formatTzs, formatTzsCompact, formatDateTime, formatDateTimeSafe, formatDateShort } from "@/lib/utils";
 import { displayLabel, displayInitials } from "@/lib/display-label";
-import { KycStatusBadge, kycStatusLabel, kycStatusVariant, playerStatusVariant } from "@/components/admin/status-badge";
+import { KycStatusBadge, kycStatusLabel, kycStatusVariant, AccountStatusBadge, txnTypeLabel, txnStatusLabel, txnProviderLabel } from "@/components/admin/status-badge";
 import { KycReviewControls } from "@/components/admin/kyc-review-controls";
 import { ID_DOC_SPECS, ALL_DOC_SLOTS, type IdDocType, type KycDocSlot } from "@/lib/id-documents";
 import { SuspendControls } from "./suspend-controls";
@@ -210,7 +210,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
                 </p>
               )}
               <div className="flex items-center gap-1.5 flex-wrap mt-2">
-                <Chip size="sm" variant={playerStatusVariant(user.status)}>● {user.status}</Chip>
+                <AccountStatusBadge status={user.status} dot />
                 {kyc && canSeePII && (
                   <a href={`/admin/players/${id}?tab=kyc`} className="inline-block hover:opacity-80 transition-opacity">
                     <Chip size="sm" variant={kycStatusVariant(kyc.status)}>
@@ -353,9 +353,9 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
                     {txRows.map((t) => (
                       <tr key={t.id} className="border-b border-border-subtle/50 last:border-b-0">
                         <td className="py-2 pr-3 font-mono whitespace-nowrap">{formatDateTime(t.createdAt)}</td>
-                        <td className="py-2 pr-3 font-medium text-text">{t.type}</td>
-                        <td className="py-2 pr-3">{t.provider ?? "—"}</td>
-                        <td className="py-2 pr-3"><span className="font-mono text-micro tracking-wider uppercase">{t.status}</span></td>
+                        <td className="py-2 pr-3 font-medium text-text">{txnTypeLabel(t.type)}</td>
+                        <td className="py-2 pr-3">{t.provider ? txnProviderLabel(t.provider) : "—"}</td>
+                        <td className="py-2 pr-3"><span className="font-mono text-micro tracking-wider uppercase">{txnStatusLabel(t.status)}</span></td>
                         <td className={["py-2 pl-3 font-mono tabular text-right", t.amount >= 0 ? "text-text" : "text-text-secondary"].join(" ")}>{formatTzs(t.amount)}</td>
                       </tr>
                     ))}
@@ -485,10 +485,14 @@ function KycTab({ kyc, userEmail, userId, makerCheckerRequired, canActSupport, c
         <Item label="DOB" value={kyc.dob ?? "—"} />
         {/* "verified at" read as a government-confirmation timestamp. It is the
             moment the FORMAT was accepted and the number found unique. */}
-        <Item label="Number format accepted at" value={kyc.idVerifiedAt ? new Date(kyc.idVerifiedAt).toLocaleString("en-GB") : "—"} />
+        {/* ⚠️ EVERY timestamp in this panel goes through the shared formatters, which
+            stamp the platform timezone (EAT, UTC+3). A bare `new Date(x).toLocaleString()`
+            renders in the SERVER's zone — UTC on Railway — so a document submitted at
+            01:00 EAT showed as the previous day to the officer deciding on it. */}
+        <Item label="Number format accepted at" value={formatDateTimeSafe(kyc.idVerifiedAt)} />
         <Item label="Documents" value={kyc.documents.length > 0 ? kyc.documents.map((d: { docType: string }) => d.docType).join(", ") : "none"} />
-        <Item label="Submitted" value={kyc.submittedAt ? new Date(kyc.submittedAt).toLocaleString("en-GB") : "—"} />
-        {decided && <Item label="Reviewed by" value={<span className="font-mono">{kyc.reviewerId ? `${kyc.reviewerId.slice(0, 14)}…` : "—"}{kyc.reviewedAt ? ` · ${new Date(kyc.reviewedAt).toLocaleString("en-GB")}` : ""}</span>} />}
+        <Item label="Submitted" value={formatDateTimeSafe(kyc.submittedAt)} />
+        {decided && <Item label="Reviewed by" value={<span className="font-mono">{kyc.reviewerId ? `${kyc.reviewerId.slice(0, 14)}…` : "—"}{kyc.reviewedAt ? ` · ${formatDateTime(kyc.reviewedAt)}` : ""}</span>} />}
         {kyc.status === "REJECTED" && kyc.rejectReason && <Item label="Reject reason" value={<span className="text-no-300">{kyc.rejectReason}</span>} />}
       </dl>
 
@@ -546,7 +550,7 @@ function KycTab({ kyc, userEmail, userId, makerCheckerRequired, canActSupport, c
                   <div className="min-w-0 flex-1">
                     <p className="text-caption text-text leading-snug">{rq.description}</p>
                     <p className="mt-0.5 font-mono text-micro text-text-tertiary">
-                      {rq.uploadedAt ? `Uploaded · ${new Date(rq.uploadedAt).toLocaleString("en-GB")}` : "Awaiting upload"}
+                      {rq.uploadedAt ? `Uploaded · ${formatDateTime(rq.uploadedAt)}` : "Awaiting upload"}
                     </p>
                   </div>
                   {rq.storageKey ? (
@@ -589,7 +593,7 @@ function LimitsTab({ rg }: { rg: Awaited<ReturnType<typeof db.responsible.get>> 
       {rg.pendingIncreaseTo !== null && (
         <Item label="Pending limit increase" value={
           <span className="text-warning font-medium">
-            {formatTzs(rg.pendingIncreaseTo)} effective {rg.pendingIncreaseEffectiveAt ? new Date(rg.pendingIncreaseEffectiveAt).toLocaleString("en-GB") : "—"}
+            {formatTzs(rg.pendingIncreaseTo)} effective {formatDateTimeSafe(rg.pendingIncreaseEffectiveAt)}
           </span>
         } />
       )}
@@ -606,7 +610,9 @@ function ExclusionTab({ rg }: { rg: Awaited<ReturnType<typeof db.responsible.get
           <I.alertOctagon size={16} className="text-danger shrink-0 mt-0.5" />
           <div className="text-caption text-text-secondary">
             <p className="font-bold text-text">Self-exclusion active</p>
-            <p>Until {new Date(rg.selfExclusionUntil).toLocaleString("en-GB")}. One-way until expiry — only the player can re-enable after the period ends.</p>
+            {/* An exclusion expiry is the one date an officer must never read three hours
+                early: it decides whether a player may be let back in. Zoned, always. */}
+            <p>Until {formatDateTime(rg.selfExclusionUntil)}. One-way until expiry — only the player can re-enable after the period ends.</p>
           </div>
         </div>
       ) : <p className="text-caption text-text-tertiary">No self-exclusion active.</p>}
@@ -615,7 +621,7 @@ function ExclusionTab({ rg }: { rg: Awaited<ReturnType<typeof db.responsible.get
           <I.shieldcheck s={16} />
           <div className="text-caption text-text-secondary">
             <p className="font-bold text-text">Cooling-off period</p>
-            <p>Until {new Date(rg.coolingOffUntil).toLocaleString("en-GB")}.</p>
+            <p>Until {formatDateTime(rg.coolingOffUntil)}.</p>
           </div>
         </div>
       )}

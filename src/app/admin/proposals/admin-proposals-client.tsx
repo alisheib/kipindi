@@ -13,7 +13,7 @@ import { DateSelect } from "@/components/ui/date-select";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { SELECTION } from "@/lib/admin-status-lexicon";
+import { SELECTION, PROPOSAL } from "@/lib/admin-status-lexicon";
 import { ActionOverlay, useActionOverlay } from "@/components/admin/action-overlay";
 import { RefreshButton } from "@/components/admin/refresh-button";
 import { ControlLocked } from "@/components/admin/control-locked";
@@ -21,7 +21,7 @@ import { StatusBadge } from "@/components/proposals/status-badge";
 import { CategoryIcon, CATEGORY_LABEL } from "@/components/proposals/category-icon";
 import type { ProposalsConfig, ProposalsState } from "@/lib/server/proposals-config";
 import type { AdminQueueRow, DeclineReason } from "@/lib/server/proposals-service";
-import type { ProposalCategory } from "@/lib/server/store";
+import type { ProposalCategory, ProposalStatus } from "@/lib/server/store";
 import { saveProposalsConfigAction, approveProposalAction, goLiveProposalAction, declineProposalAction, requestChangesAction, editProposalAction } from "./actions";
 import { formatTzs } from "@/lib/utils";
 
@@ -29,6 +29,22 @@ const DECLINE_REASONS: DeclineReason[] = ["Politics", "Ambiguous outcome", "No o
 const CATEGORIES: ProposalCategory[] = ["sports", "macro", "weather", "crypto", "culture", "infrastructure", "tech", "mixed"];
 const TODAY = () => new Date().toISOString().slice(0, 10);
 const MAX_DATE = () => `${new Date().getFullYear() + 2}-12-31`;
+
+/**
+ * What the officer is told about a proposal there is nothing left to do to.
+ *
+ * ⛔ Deliberately a sentence per state and not a word substituted into one: an
+ * officer standing here wants to know what HAPPENED to it, and "listed" is the
+ * database's word for "it is a live market taking real predictions". Only three
+ * states reach this branch — REVIEW/CHANGES_REQUESTED are the actionable panel and
+ * APPROVED has its own — and the fallback claims nothing rather than guessing.
+ */
+function terminalNote(status: ProposalStatus): string {
+  if (status === "LISTED") return PROPOSAL.sentenceListed.en;
+  if (status === "RESOLVED") return PROPOSAL.sentenceResolved.en;
+  if (status === "DECLINED") return PROPOSAL.sentenceDeclined.en;
+  return PROPOSAL.sentenceClosed.en;
+}
 
 /** The 4-state feature machine — display order + per-state admin metadata. The
  *  tones mirror the player-facing aesthetic system so the console reads the same
@@ -544,7 +560,13 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
                 <p className="text-[10.5px] text-text-subtle">You decide when it goes to market — publishing is a deliberate step, separate from approval.</p>
               </div>
             ) : !open ? (
-              <p className="text-[12.5px] text-text-muted">This proposal is <strong>{sel.status.toLowerCase().replace("_", " ")}</strong> — no further action.</p>
+              // §L3 — an enum used to be interpolated straight into this sentence
+              // (`{sel.status.toLowerCase().replace("_", " ")}`), and its `replace` was
+              // missing the `/g` flag, so a two-underscore state would have kept the
+              // second one. Deleting the interpolation deletes both defects: a status is
+              // storage, and what the officer needs here is the CONSEQUENCE — "listed"
+              // said nothing, "live as a market and taking predictions" is the fact.
+              <p className="text-[12.5px] text-text-muted">{terminalNote(sel.status)}</p>
             ) : !declining ? (
               <div className="space-y-2.5">
                 <div className="flex flex-wrap gap-2">
