@@ -27,6 +27,36 @@ function easeOutQuart(t: number): number {
   return 1 - Math.pow(1 - t, 4);
 }
 
+/**
+ * The two CLAMP gates that mean "snap, don't tween" (§M6), read at the moment
+ * the balance actually moves.
+ *
+ * ⚠️ WHAT THIS REPLACED, AND WHY IT MATTERED. The pill sampled
+ * `matchMedia("(prefers-reduced-motion: reduce)")` ONCE into a ref on mount and
+ * consulted nothing else — gate 1 only, and frozen. So a player who turned
+ * "Reduce motion" ON in Settings → Sound & feedback kept the rolling counter and
+ * the gilt outline pulse for the rest of the session, because this pill lives in
+ * the top bar and never unmounts. Reading live also removes the mount-order race
+ * with `theme-provider.tsx`, which sets the class and the attribute in its own
+ * effect.
+ *
+ * ⚠️ `data-motion="reduced"` is deliberately absent — that tier is a THROTTLE
+ * (ambient loops off, full durations), and a 600ms one-shot count is not an
+ * ambient loop. Same reasoning, same wording, as `motionOff()` in
+ * `components/markets/win-celebration.tsx`, which is the model here. (Three
+ * copies of this predicate now exist across the app; they want one home in
+ * `src/lib`, which is a change that spans files this one does not own.)
+ */
+function motionOff(): boolean {
+  if (typeof window === "undefined") return true;
+  const root = document.documentElement;
+  return (
+    (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false) ||
+    root.classList.contains("kp-reduce-motion") ||
+    root.getAttribute("data-motion") === "minimal"
+  );
+}
+
 export function WalletBalancePill({ balance }: { balance: number }) {
   const { t } = useT();
   // SSE-driven live balance — updates in real-time when wallet:balance
@@ -53,14 +83,6 @@ export function WalletBalancePill({ balance }: { balance: number }) {
   const rafRef = useRef<number | null>(null);
   const hidden = useCashHidden();
 
-  // Detect prefers-reduced-motion once. The tween + flash respect it
-  // by collapsing to an instant snap with no outline pulse.
-  const reducedMotion = useRef(false);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    reducedMotion.current = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
-  }, []);
-
   useEffect(() => {
     const from = previousRef.current;
     const to = effectiveBalance;
@@ -68,7 +90,10 @@ export function WalletBalancePill({ balance }: { balance: number }) {
     previousRef.current = to;
     setDelta(to - from);
 
-    if (reducedMotion.current) {
+    // All three clamp gates, read NOW rather than once at mount. The end state is
+    // identical — the true balance on the resting outline — with no tween and no
+    // pulse, which is what §M6 asks of a count-up.
+    if (motionOff()) {
       setDisplay(to);
       return;
     }
@@ -136,28 +161,40 @@ export function WalletBalancePill({ balance }: { balance: number }) {
       {!hidden && flashing && delta !== 0 && (
         <span
           aria-hidden
-          className="ml-1.5 font-mono text-[9.5px] tabular-nums"
-          style={{
-            color: delta > 0 ? "var(--yes-300)" : "var(--no-300)",
-            animation: "wbp-delta-fade var(--t-max) ease-out forwards",
-          }}
+          className="wbp-delta ml-1.5 font-mono text-[9.5px] tabular-nums"
+          style={{ color: delta > 0 ? "var(--yes-300)" : "var(--no-300)" }}
         >
           {delta > 0 ? "+" : ""}
           {formatNumber(delta)}
         </span>
       )}
       <style>{`
+        /* ⚠️ THE ANIMATION IS DECLARED ON A CLASS, NOT IN THE style ATTRIBUTE.
+           It used to sit in JSX as an inline animation shorthand, and a style
+           attribute is invisible to every motion gate this product has: the
+           reduce-motion gate reads RULES, and the keyframe registry's consumer
+           scan stops dead at the opening quote. So wbp-delta-fade was reported as
+           a name with NO CONSUMER — i.e. as safe to delete. It is not: it is on
+           the top bar of every authed page. */
+        .wbp-delta { animation: wbp-delta-fade var(--t-max) ease-out forwards; }
         @keyframes wbp-delta-fade {
           0%   { opacity: 0; transform: translateY(-2px); }
           15%  { opacity: 1; transform: translateY(0); }
           80%  { opacity: 1; }
           100% { opacity: 0; transform: translateY(-2px); }
         }
+        /* Calm branches. The span only renders while flashing is true, and that is
+           now behind all three clamp gates in JS — so these are the belt to that
+           braces, for a player who flips the switch mid-flash. Not owed a
+           data-motion=reduced entry: the animation is a one-shot (forwards), and
+           the throttle tier exists for ambient loops. */
         @media (prefers-reduced-motion: reduce) {
           @keyframes wbp-delta-fade {
             from, to { opacity: 0; }
           }
         }
+        html.kp-reduce-motion .wbp-delta { animation: none; opacity: 0; }
+        [data-motion="minimal"] .wbp-delta { animation: none; opacity: 0; }
       `}</style>
     </Link>
   );

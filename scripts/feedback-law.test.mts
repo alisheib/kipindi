@@ -504,8 +504,17 @@ console.log("\n§9 · How long a moment stays — one definition site, and the i
 
   // ⛔ "KEEP PLACING BETS POPUPS NORMAL" — the bet path must NOT have moved.
   const QUICK = stripComments(read("src/components/updown/use-quick-bet.ts"));
+  // ⭐ THE RULING IS ABOUT THE DURATION, NOT ABOUT WHERE THE 3000 IS TYPED. This required a
+  // numeric LITERAL at the call site, so it went red when the dwell moved into
+  // `feedback-timing.ts` — which is the module §F8 created to own dwells, and which 9.7 four
+  // lines up ALREADY reads constants from. Resolve the value the same way 9.7 does, so Ali's
+  // "keep it normal" is still enforced as 3 seconds however it is spelled.
+  // Reuses `num()` from 9.0 above — the same reader that already resolves the other dwell
+  // constants, so there is one way to read this module in this file and not two.
+  const betDwellExpr = QUICK.match(/durationMs:\s*([A-Za-z_$][\w$]*|\d+)/)?.[1] ?? "";
+  const betDwellMs = /^\d+$/.test(betDwellExpr) ? Number(betDwellExpr) : (num(betDwellExpr) ?? 0);
   ok("9.8 · the bet-placed toast is untouched at 3s (Ali: keep it normal)",
-    /durationMs:\s*3000/.test(QUICK));
+    betDwellMs === 3000, `${betDwellExpr || "no durationMs"} → ${betDwellMs}ms`);
   ok("9.9 · the shared modal's 5s default is untouched",
     /const DEFAULT_AUTO_CLOSE_MS = 5_000;/.test(read("src/components/markets/operation-result-modal.tsx")));
 

@@ -38,10 +38,36 @@
 
   --m-stagger: 40ms;  /* between siblings; never more than 4 steps */
   --m-tilt: -14deg;   /* THE axis. Same angle as the divider in the mark. */
-  --m-lift: -2px;     /* the only hover displacement in the product */
+  --m-lift: -2px;     /* the hover displacement — see the note below before reusing */
   --m-press: 0.97;    /* the only press scale */
   --m-blur-behind: 7px;
 }
+
+/* ── ⚠️ `--m-lift` SAYS "THE ONLY HOVER DISPLACEMENT" AND THAT IS NOT TRUE TODAY.
+   Measured 2026-08-21 across `src`, four hover displacements exist beside it and
+   three of them are hard-coded Tailwind rather than this token:
+     · `hover:-translate-y-0.5` ×3 (`not-found.tsx`) — -2px, i.e. the RIGHT value
+       written as a literal. Same motion, no link to the token: a retune moves the
+       cards and leaves these three behind.
+     · `hover:-translate-y-[3px]` ×2 (`proposals/page.tsx`, `position-card.tsx`) —
+       a genuine 50% divergence. `.mcardp:hover` was the last card at -3px and its
+       own comment records being brought onto `--m-lift`; these two were not.
+     · `hover:-translate-x-0.5` ×1 (`ui/back-link.tsx`) — -2px HORIZONTAL, on a
+       back link. This one is arguably not a divergence at all: it is the same
+       magnitude moving along the axis the control points down, which is a
+       different gesture from a card rising. It wants a companion token
+       (`--m-lift-x`) or an explicit exemption, not silent coexistence.
+   ⛔ The claim is left in place rather than softened away, because the claim is the
+   design intent and the divergences are the defect. None of the four files is
+   editable from here (they are `.tsx`); they are named so the next pass can finish
+   the job instead of re-measuring it.
+
+   ⚠️ AND `--m-pivot`'S RESERVATION HAS ONE KNOWN BREACH: `orm-pop` in
+   `markets/operation-result-modal.tsx` animates on `var(--m-pivot)`. §M8 reserves
+   that curve for the needle and dials; a result-modal crest is neither, and its
+   keyframe already carries its own 1.06 overshoot at 60%, so the curve only has to
+   arrive — `--m-settle` is the one that says that. Same story: a `.tsx`, named here
+   rather than reached from here. */
 
 /* ── THE LADDER'S TWO STANDING RULES — carried here from the material delivery's
    §D migration map when its last line was struck (2026-08-08) and the map's file
@@ -53,14 +79,57 @@
          else clamps to --t-stage).
 
    2 · AMBIENT LOOPS sit OUTSIDE the ladder by design — a FROZEN list that may
-       only shrink: m-live-pip 2600ms · m-urgent 1000ms · m-aura 1240ms ·
-       mark-breathe 6s · m-ambient 64s · skeleton sweeps 1400/1600ms ·
-       mark-pending-tilt 1240ms (deliberate, designer R2 Q9 — the settling-round
-       anticipation). Nothing joins this list without a token being added
-       deliberately, and ⛔ every entry needs a row in globals.css §6's
-       `[data-motion="reduced"]` list — `test:reduce-motion` rule 2.1 fails
-       without one (the low-end-Android tier is a throttle whose one job is
-       turning these off).
+       only shrink. Nothing joins it without a token being added deliberately, and
+       ⛔ every entry needs a row in globals.css §6's `[data-motion="reduced"]`
+       list — `test:reduce-motion` rule 2.1 fails without one (the low-end-Android
+       tier is a throttle whose one job is turning these off).
+
+       🔴 THE LIST BELOW WAS RE-DERIVED 2026-08-21 AND IT HAD BEEN UNDERSTATING THE
+       CORPUS BY MORE THAN FOUR TIMES: it named SEVEN loops where the product runs
+       THIRTY, over 34 rules. A frozen list is a ratchet, and a ratchet that names a
+       fraction of what it governs is not restraining anything — it is granting
+       silent permission to everything it forgot. Two of its seven entries were also
+       simply wrong: `m-aura` is `2 both`, a two-shot, not a loop at all, and there
+       has been no 1600ms skeleton sweep in this codebase for as long as git
+       remembers (both skeletons run 1.4s).
+
+       ⭐ HOW IT WAS DERIVED, BECAUSE A HAND-LIST IS WHAT WENT STALE. It is a SCAN,
+       not a recollection: the same corpus and the same parser `test:reduce-motion`
+       uses — postcss over every `src` stylesheet AND every inline `<style>` block in
+       every `.tsx` (four of the loops below exist only inside a component, and a
+       stylesheet-only scan is exactly how the previous census reported 15 uncovered
+       loops where there were 16) — filtered to rules whose animation carries
+       `infinite`, minus the third gate's own selectors. Re-derive it the same way;
+       do not extend it by typing.
+
+       THE CENSUS — 30 keyframes, 34 rules, by period:
+         0.8s  pulse-critical            1s     ud-count-pulse
+         1.2s  lcl-pulse                 1.4s   skel · kp-shimmer · pulse-urgent
+                                                 · cm-typing-pulse
+         1400ms m-axis-sweep             1.6s   gold-pulse · gold-shimmer
+                                                 · progSweep · ud-point
+         2s    settling-sweep            2.2s   aqua-pulse · dial-coach-nudge
+                · notif-badge-pulse
+                · pr-pulse
+         2.4s  closing-pulse             2.6s   m-breathe, as .live-dot and
+                · cm-status-pulse                 .m-live-pip
+                · csrf-breathe           1s     m-breathe, as .m-urgent
+                · lcl-orbit
+         3s    cm-bubble-ring            3.6s   needle-wake-breathe
+                · hm-halo-pulse
+         6s    mark-breathe              60s    cd-pulse (steps(1) — a re-trigger
+         64s   m-spin                             tick, not motion)
+         70s   ticker-scroll
+         1240ms mark-pending-tilt (deliberate, designer R2 Q9 — the settling-round
+                anticipation)
+
+       ⚠️ FOUR OF THESE ARE NOT YET GATED ANYWHERE — `.pr-ring`, `.lcl-glyph` and
+       `.lcl-dot` (and `.signal-pip`, now added to globals.css §6). The first three
+       are IN-FLIGHT indicators rather than decoration, so switching them off at the
+       `reduced` tier would freeze a spinner mid-load; their home is
+       `reduce-motion.test.mts`'s KEPT list, with the written reason that list
+       demands. Filed, not silently gated.
+
    Also frozen, recorded rather than migrated: `--dur-stage` stays 820ms for the
    countdown ring only, and `.tooltip-popover` stays on `--dur-quick` (bridged). */
 
@@ -142,6 +211,16 @@
 
 /* Money commit + settlement. */
 .m-seal             { animation: m-seal var(--t-stage) var(--m-settle) both; }
+/* ⚠️ 1240ms IS OFF THE LADDER AND STAYS — with a corrected reason, 2026-08-21. The
+   frozen list above used to file this under AMBIENT LOOPS, and it is not one: `2
+   both` is a two-shot. What it actually is, is a BREATH — one exhale-inhale beat,
+   twice, sharing its 1240ms period with `mark-pending-tilt` and its curve with every
+   other breath in the product. A period is not a duration: the ladder prices how far
+   a surface travels, and this one does not travel, it pulses in place around a
+   settled amount. Clamping it to `--t-max` would make the beat faster than the human
+   one it is imitating. ⛔ It is NOT a third case either — if a third breath is ever
+   needed, it takes 1240ms too, and the number moves into a token before it moves
+   anywhere else. */
 .m-aura             { animation: m-aura 1240ms var(--m-breathe) 2 both; pointer-events: none; }
 .m-needle           { transform-origin: bottom center; transition: transform var(--t-move) var(--m-pivot); }
 

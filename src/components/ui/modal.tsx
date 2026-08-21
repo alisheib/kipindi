@@ -36,6 +36,89 @@ import { useT } from "@/lib/i18n";
 const FOCUSABLE =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   ⭐ THE EXIT PHASE — §M2, "each rung pairs with its arrival and every arrival
+   has its exit".
+
+   🔴 WHAT THIS FIXES. Every portaled surface in the product ARRIVED on an eased
+   kit entrance (`.m-dialog-in` / `.m-sheet-in` / `.m-float-in`) and then left by
+   INSTANT UNMOUNT — `{open && createPortal(…)}`. The kit's three exits
+   (`.m-out`, `.m-float-out`, and the `m-leave-out` keyframe behind both) were
+   DEFINED in motion.css with zero consumers. Half a motion language shipped.
+
+   ⭐ THE MODEL IS `ui/toast.tsx` — a two-phase dismiss that marks the surface
+   exiting, holds one beat, then unmounts. This is that shape, generalised, so
+   six surfaces share ONE implementation instead of six timers that drift.
+
+   ⭐ WHY THE FALLING EDGE IS HANDLED DURING RENDER and not in an effect: an
+   effect runs AFTER the commit, so for one painted frame `open` would be false
+   while `leaving` was still false — the surface would blink out and back in
+   before playing its exit. React's documented "adjust state when a prop
+   changes" pattern re-renders before that frame is ever painted. (The rising
+   edge is free either way: `present` is `open || leaving`.)
+
+   ⛔ §M6, ALL THREE GATES, IN THIS SAME CHANGE. An exit that still runs with
+   motion off is worse than no exit — it DELAYS AN UNMOUNT for someone who asked
+   for no motion. `exitBeatMs` therefore returns 0 for the OS media query (gate
+   1) and for the in-app switch / `minimal` tier (gate 2), which collapses the
+   hold to nothing and unmounts on the spot. Gate 3, `data-motion="reduced"`,
+   is deliberately NOT here: that tier is a THROTTLE (full durations, ambient
+   loops off) and a one-shot 90–140ms exit is not an ambient loop — the same
+   reasoning `win-celebration.tsx` states for its own counter.
+
+   ⛔ THE BEAT IS READ FROM THE TOKEN, NEVER RETYPED (§B5 — one definition site;
+   §0d — values live in globals.css / motion.css and nowhere else). A hard-coded
+   `140` here is a second definition of `--t-quick` that cannot be retuned.
+   A token that fails to resolve yields 0, i.e. an instant unmount: the safe
+   direction, because the failure mode of the other direction is a surface
+   stranded on screen forever.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/** The two exit rungs a surface may hold for: `--t-quick` (modal `.m-out`) and
+ *  `--t-flick` (float `.m-float-out`). Named, so a call site cannot invent a third. */
+export type ExitBeat = "--t-quick" | "--t-flick";
+
+function exitBeatMs(beat: ExitBeat): number {
+  if (typeof window === "undefined") return 0;
+  const root = document.documentElement;
+  if (
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ||
+    root.classList.contains("kp-reduce-motion") ||
+    root.getAttribute("data-motion") === "minimal"
+  ) return 0;
+  const raw = getComputedStyle(root).getPropertyValue(beat).trim();
+  const n = parseFloat(raw);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return raw.endsWith("ms") ? n : n * 1000;
+}
+
+/**
+ * Keeps a surface mounted for one exit beat after `open` goes false.
+ *
+ *   const { present, exiting } = useExitPhase(open);
+ *   if (!present) return null;
+ *   <div className={exiting ? "m-out" : "m-dialog-in"} …>
+ *
+ * `present` is what gates the render; `exiting` is what swaps the arrival class
+ * for its exit. Re-opening mid-exit cancels the hold and re-arms the entrance.
+ */
+export function useExitPhase(open: boolean, beat: ExitBeat = "--t-quick"): { present: boolean; exiting: boolean } {
+  const [prevOpen, setPrevOpen] = React.useState(open);
+  const [leaving, setLeaving] = React.useState(false);
+  if (prevOpen !== open) {
+    setPrevOpen(open);
+    setLeaving(!open); // falling edge → play out; rising edge → cancel any hold
+  }
+  React.useEffect(() => {
+    if (!leaving) return;
+    const ms = exitBeatMs(beat);
+    if (ms <= 0) { setLeaving(false); return; } // motion off → unmount now
+    const tm = setTimeout(() => setLeaving(false), ms);
+    return () => clearTimeout(tm);
+  }, [leaving, beat]);
+  return { present: open || leaving, exiting: leaving };
+}
+
 export type ModalProps = {
   open: boolean;
   onClose: () => void;
@@ -89,6 +172,12 @@ export function Modal({
   const [mounted, setMounted] = React.useState(false);
   const panelRef = React.useRef<HTMLDivElement>(null);
   const prevFocus = React.useRef<HTMLElement | null>(null);
+  /* §M2 — the modal rung's exit is `.m-out` over one `--t-quick` beat.
+     ⛔ `useModalLock`, the focus trap and the focus RETURN all stay keyed to
+     `open`, not to `present`: the dialog must stop being modal the instant it
+     is closed, and the trigger must get focus back then — not a beat later.
+     What lingers is a non-interactive, `aria-hidden` ghost playing its fade. */
+  const { present, exiting } = useExitPhase(open, "--t-quick");
 
   useModalLock(open);
   React.useEffect(() => { setMounted(true); }, []);
@@ -157,26 +246,37 @@ export function Modal({
     };
   }, [open]);
 
-  if (!mounted || !open) return null;
+  if (!mounted || !present) return null;
 
   return createPortal(
     <div
       role={role}
-      aria-modal="true"
-      aria-busy={ariaBusy}
+      /* ⛔ ONCE IT IS LEAVING IT IS NOT A DIALOG ANY MORE. Focus has already been
+         returned to the trigger by the effect above, so the fading ghost must not
+         keep claiming `aria-modal` (which tells AT the rest of the page is inert)
+         and must not be clickable — a scrim that still closes something, or a
+         Confirm still hittable, during the fade is a real mis-click. */
+      aria-modal={exiting ? undefined : "true"}
+      aria-hidden={exiting || undefined}
+      aria-busy={exiting ? undefined : ariaBusy}
       aria-label={labelledBy ? undefined : ariaLabel}
       aria-labelledby={labelledBy}
       className={`fixed inset-0 flex justify-center overflow-y-auto overscroll-contain ${
         sheet ? "items-end sm:items-center px-0 sm:px-3 py-0 sm:py-4" : "px-3 py-4"
-      }`}
+      } ${exiting ? "pointer-events-none" : ""}`}
       style={{ zIndex }}
     >
       <button
         type="button"
         aria-label={t.common.cancel}
         tabIndex={-1}
-        onClick={closeOnScrim ? onClose : undefined}
-        className="m-scrim fixed inset-0 bg-black/60"
+        onClick={exiting ? undefined : closeOnScrim ? onClose : undefined}
+        /* The scrim fades with the panel. `.m-scrim` and `.m-out` are both
+           `animation` shorthands, so they cannot be worn at once — the later
+           declaration would win outright. Swapping the class keeps the blur by
+           naming the same token the utility does; no value is restated. */
+        className={`${exiting ? "m-out" : "m-scrim"} fixed inset-0 bg-black/60`}
+        style={exiting ? { backdropFilter: "blur(var(--m-blur-behind))" } : undefined}
       />
       {/* ⭐ RUNG 3 (M2) — the dialog PICKS a rung instead of composing one. `mat-modal`
           carries the wash, the border and `--elev-modal` together, so the three classes
@@ -204,7 +304,10 @@ export function Modal({
            `data-unread` on the bell and `data-stagger` on a cascade are both selected
            by drivers precisely because a `data-` attribute survives restyling. */
         data-rung="modal"
-        className={`${sheet ? "m-sheet-in kp-modal-sheet" : "m-dialog-in"} mat-modal relative w-full p-5 lg:p-6 ${
+        /* §M2: modal → `.m-dialog-in` or `.m-sheet-in` on the way in, `.m-out` on
+           the way out. The sheet's ≥sm keyframe swap goes with the entrance only —
+           `.m-out` is one exit for both variants, which is what the law names. */
+        className={`${exiting ? "m-out" : sheet ? "m-sheet-in kp-modal-sheet" : "m-dialog-in"} mat-modal relative w-full p-5 lg:p-6 ${
           sheet ? "rounded-t-modal sm:rounded-modal sm:my-auto" : "my-auto rounded-modal"
         } ${panelClassName}`}
         style={{ maxWidth }}

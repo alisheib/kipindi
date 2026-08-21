@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
+import { useExitPhase } from "@/components/ui/modal";
 import { cn } from "@/lib/utils";
 import { fetchMyNotifications, markNotifReadAction, markAllReadAction, dismissNotifAction, dismissAllAction } from "@/app/_actions/notifications";
 import type { StoredNotification } from "@/lib/server/store";
@@ -102,6 +103,13 @@ export function NotificationsPanel() {
      off-screen. Every other portaled dialog in the product calls exactly this hook; the
      panel is behind a full-viewport scrim, so it is one of them. */
   useModalLock(open);
+
+  /* §M2 — the float rung's exit. This panel arrived on `.m-float-in` and left by
+     instant unmount, which is the arrival half of a two-halved rung. ⛔ The five-part
+     dialog contract above stays keyed to `open`, deliberately: focus returns to the
+     bell the moment the panel closes, not one beat later, and the trap/lock release
+     with it. Only the paint lingers, and it lingers `aria-hidden` and unclickable. */
+  const { present, exiting } = useExitPhase(open, "--t-flick");
 
   const unread = items.filter((n) => !n.readAt).length;
 
@@ -386,12 +394,15 @@ export function NotificationsPanel() {
         )}
       </button>
 
-      {open && typeof document !== "undefined" && createPortal(
+      {present && typeof document !== "undefined" && createPortal(
         <>
           <div
             aria-hidden
-            className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-md"
-            onClick={() => setOpen(false)}
+            className={cn(
+              "fixed inset-0 z-[60] bg-black/60 backdrop-blur-md",
+              exiting && "m-float-out pointer-events-none",
+            )}
+            onClick={exiting ? undefined : () => setOpen(false)}
           />
           <div
             ref={dialogRef}
@@ -400,7 +411,12 @@ export function NotificationsPanel() {
                owes the other half. It tells assistive tech the rest of the document is inert
                while this is open — which is only honest BECAUSE the trap now holds, and
                which is why the two shipped together rather than one first. */
-            aria-modal="true"
+            aria-modal={exiting ? undefined : "true"}
+            /* Leaving: focus has already gone back to the bell, so the fading copy
+               must stop claiming the rest of the page is inert, and must stop
+               taking clicks — a row still tappable mid-fade navigates the player
+               somewhere they just chose to leave. */
+            aria-hidden={exiting || undefined}
             aria-label={t.notif.title}
             /* Focus fallback for a dialog with nothing focusable inside it — never reached
                today (the ✕ is always there), and excluded from FOCUSABLE so the trap cannot
@@ -413,7 +429,7 @@ export function NotificationsPanel() {
               // landscape phone (≤360px tall) and scrolls internally instead of
               // running off the bottom.
               "sm:left-auto sm:right-4 sm:top-[64px] sm:w-[380px] sm:max-w-[calc(100vw-24px)] sm:max-h-[min(480px,calc(100dvh-80px))]",
-              "m-float-in",
+              exiting ? "m-float-out pointer-events-none" : "m-float-in",
             )}
             // Anchored (kit law 1): the bell panel hangs off the RIGHT of its trigger,
             // so it grows from that corner, not `.m-float-in`'s default top-left.

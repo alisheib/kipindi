@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useExitPhase } from "@/components/ui/modal";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Avatar } from "@/components/ui/avatar";
@@ -39,6 +40,13 @@ export function AvatarMenu({
   const pathname = usePathname();
   // Close menu on navigation so the portal + scrim don't persist.
   useEffect(() => { setOpen(false); }, [pathname]);
+
+  /* §M2 — this menu is a FLOAT-rung surface, so it takes `.m-float-in` / `.m-float-out`
+     and nothing else. ⛔ It used to arrive on a bespoke `am-rise` keyframe declared in a
+     local <style> tag: "there is no third entrance", and a private keyframe is exactly
+     the second definition of one fact §E6 pins with `test:keyframes`. Both the keyframe
+     and the tag are gone; the kit utility does the same job at the kit's own beat. */
+  const { present, exiting } = useExitPhase(open, "--t-flick");
 
   useEffect(() => {
     if (!open) return;
@@ -106,14 +114,33 @@ export function AvatarMenu({
       >
         <Avatar initials={initials} size="sm" seed={seed ?? initials} src={avatarSrc ?? undefined} />
       </button>
-      {open && typeof document !== "undefined" && createPortal(
+      {present && typeof document !== "undefined" && createPortal(
         <>
-          <div aria-hidden className="fixed inset-0 z-[60] bg-black/45 backdrop-blur-md" onClick={() => setOpen(false)} />
+          <div
+            aria-hidden
+            className={cn("fixed inset-0 z-[60] bg-black/45 backdrop-blur-md", exiting && "m-float-out pointer-events-none")}
+            onClick={exiting ? undefined : () => setOpen(false)}
+          />
           <div
             ref={menuRef}
             role="menu"
-            className="fixed left-3 right-3 top-[calc(env(safe-area-inset-top)+72px)] sm:left-auto sm:right-4 sm:top-[64px] sm:w-[280px] sm:max-w-[calc(100vw-24px)] max-h-[calc(100dvh-env(safe-area-inset-top)-72px-env(safe-area-inset-bottom)-72px)] sm:max-h-[calc(100dvh-100px)] overflow-y-auto overscroll-contain rounded-modal border border-border-strong bg-bg-elevated/85 backdrop-blur-xl shadow-overlay z-[61]"
-            style={{ animation: "am-rise var(--t-base) var(--m-glide)" }}
+            /* Leaving: unclickable. A menu row still hittable through its own fade
+               navigates somewhere the player just dismissed.
+               ⛔ AND NOT `aria-hidden` — deliberately, unlike `<Modal>` and the bell
+               panel, which set it. Those two RETURN FOCUS to their trigger in the same
+               commit that closes them, so their ghost provably holds nothing focused.
+               This menu has no focus-return, so Escape pressed while a row is focused
+               would leave `aria-hidden` over the focused element — the `aria-hidden-focus`
+               violation, bought for 90ms of tidiness. `pointer-events-none` gives the
+               protection that actually matters here without it. */
+            className={cn(
+              "fixed left-3 right-3 top-[calc(env(safe-area-inset-top)+72px)] sm:left-auto sm:right-4 sm:top-[64px] sm:w-[280px] sm:max-w-[calc(100vw-24px)] max-h-[calc(100dvh-env(safe-area-inset-top)-72px-env(safe-area-inset-bottom)-72px)] sm:max-h-[calc(100dvh-100px)] overflow-y-auto overscroll-contain rounded-modal border border-border-strong bg-bg-elevated/85 backdrop-blur-xl shadow-overlay z-[61]",
+              exiting ? "m-float-out pointer-events-none" : "m-float-in",
+            )}
+            // Anchored (kit law 1): the menu hangs off the RIGHT of the avatar, so it
+            // grows from that corner, not `.m-float-in`'s default top-left — the same
+            // note the bell panel and the AI toolkit carry over the identical shape.
+            style={{ transformOrigin: "top right" }}
           >
             <div className="px-3.5 py-3 border-b border-border flex items-center gap-3">
               <Avatar initials={initials} size="md" seed={seed ?? initials} src={avatarSrc ?? undefined} />
@@ -163,7 +190,13 @@ export function AvatarMenu({
                     <span className="block font-display text-body-sm font-semibold text-text leading-tight">{t.common.staffConsole}</span>
                     <span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-gold-300/80 leading-tight mt-0.5">Staff · Internal</span>
                   </span>
-                  <I.arrowRight s={14} className="text-gold-300/70 transition-transform group-hover:translate-x-0.5" aria-hidden />
+                  {/* ⛔ §M5 — "icons respond, they do not perform". This arrow carried
+                      `transition-transform group-hover:translate-x-0.5`, i.e. a glyph moving
+                      on HOVER, which the law names as the one trigger a glyph never takes
+                      (mount, data change and state change are the three that are allowed).
+                      The COLOUR response stays: hover is still answered, on the channel §M5
+                      leaves open. */}
+                  <I.arrowRight s={14} className="text-gold-300/70 transition-colors group-hover:text-gold-300" aria-hidden />
                 </a>
               </div>
             )}
@@ -209,9 +242,6 @@ export function AvatarMenu({
               />
             </div>
           </div>
-          <style>{`
-            @keyframes am-rise { from { transform: translateY(-6px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-          `}</style>
         </>,
         document.body,
       )}

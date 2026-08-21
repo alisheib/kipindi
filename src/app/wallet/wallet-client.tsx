@@ -173,9 +173,34 @@ function BonusWalletCard({
                 </p>
                 <p className="font-mono text-[12px] font-bold text-text tabular-nums">{overallPct}%</p>
               </div>
+              {/* THE UNLOCK FILL SCALES; IT DOES NOT WIDEN. `transition-[width]` animated a
+                  LAYOUT property for 500ms every time the wagering figure moved — on the
+                  wallet, which refreshes after every settled bet. `transform: scaleX()` is
+                  the same picture on the compositor. Model: `.admin-bar-grow`
+                  (state-tokens.css).
+                  ⭐ `.prog-sweep` COMPOSES WITH THE SCALE — checked, not assumed. Its
+                  `::after` is `inset: 0` of this fill and travels in percentages of its OWN
+                  width, so under `width: p%` it was a p·W band crossing p·W, and under a
+                  full-width box scaled by p it is a W band crossing W, scaled by p. The two
+                  are the same sweep on screen. The `::after` also keeps its own three
+                  reduced-motion branches (globals.css) untouched — including the entry in
+                  the §6 `[data-motion="reduced"]` list, which it needs because it is
+                  `infinite` and this transition is not.
+                  ⭐ The gradient reads identically too: a `90deg` ramp is laid out across
+                  the element's own box, so `width: p%` compressed the whole gold → yes ramp
+                  into the drawn length, and a scaled full-width box compresses exactly the
+                  same ramp. (That is why this is scaleX and not a translate, which would
+                  have shown a SLICE of the ramp instead.)
+                  ⚠️ The cap, stated: scaleX squashes this element's 5px radius
+                  horizontally. The track is `rounded-pill overflow-hidden`, so both visible
+                  OUTER ends keep their shape and only the moving right edge flattens. No
+                  child, no label — nothing can be squashed into a distorted word.
+                  §M6 · no new branch is owed: motion.css's universal clamp already zeroes
+                  `transition-duration` under the OS query, `html.kp-reduce-motion` and
+                  `[data-motion="minimal"]`, exactly as it did for the width transition. */}
               <div className="h-2.5 w-full rounded-pill overflow-hidden bg-bg-sunken/70">
-                <div className={`h-full rounded-pill transition-[width] duration-500 ${overallPct > 0 && overallPct < 100 ? "prog-sweep" : ""}`}
-                  style={{ width: `${overallPct}%`, background: "linear-gradient(90deg, var(--gold-500), var(--yes-400))" }} />
+                <div className={`h-full w-full origin-left rounded-pill transition-transform duration-500 ${overallPct > 0 && overallPct < 100 ? "prog-sweep" : ""}`}
+                  style={{ transform: `scaleX(${overallPct / 100})`, background: "linear-gradient(90deg, var(--gold-500), var(--yes-400))" }} />
               </div>
               {totalRemainingWager > 0 && (
                 <p className="mt-2 text-[12px] text-gold-100/90">
@@ -208,8 +233,17 @@ function BonusWalletCard({
                         </p>
                       ) : (
                         <>
+                          {/* The per-grant fill takes the SAME technique as the overall bar
+                              above — one panel must not hold two ways of drawing one thing.
+                              ⚠️ Honest scope: this one never had a transition, so the swap
+                              buys no animation frames. What it removes is the LAYOUT that a
+                              percentage width forces on every wallet refresh, once per
+                              listed grant. `.prog-sweep` and the solid `--gold-400` compose
+                              with the scale exactly as described above; there is no gradient
+                              and no child here, and the 3px radius on this 6px bar means the
+                              moving edge's squash is sub-pixel. */}
                           <div className="mt-1.5 h-1.5 w-full rounded-pill overflow-hidden bg-bg-sunken/70">
-                            <div className={`h-full rounded-pill ${g.progressPct > 0 && g.progressPct < 100 ? "prog-sweep" : ""}`} style={{ width: `${g.progressPct}%`, background: "var(--gold-400)" }} />
+                            <div className={`h-full w-full origin-left rounded-pill ${g.progressPct > 0 && g.progressPct < 100 ? "prog-sweep" : ""}`} style={{ transform: `scaleX(${g.progressPct / 100})`, background: "var(--gold-400)" }} />
                           </div>
                           <div className="mt-1 flex items-center justify-between font-mono text-[9.5px] text-gold-200/55">
                             <span>{formatTzs(g.wageredTzs)} / {formatTzs(g.wagerRequiredTzs)} {t.common.played}</span>

@@ -30,8 +30,8 @@ repo `F:\kipindi-main`, branch `main`):**
 | 2 | The alpha critical (D7) | **DONE** | `85bfb075` | ✓ 200 · clean boot · shots read |
 | 3 | Sizing (operator's top priority) | **DONE** | `2122067d` | ✓ 200 · clean boot · shots read |
 | 4 | Correctness: time, words, money formatting | **DONE** | `6882091f` | ✓ 200 · clean boot · shots read |
-| 5 | Focus & accessibility | **DONE** | `stage-5` | pending push |
-| 6 | Motion | NOT STARTED | | |
+| 5 | Focus & accessibility | **DONE** | `dd1dc8ec` | ✓ 200 · clean boot · shots read |
+| 6 | Motion | **DONE** | `stage-6` | pending push |
 | 7 | Performance | NOT STARTED | | |
 | 8 | Dead code & doc truth | NOT STARTED | | |
 | 9 | Consolidations | NOT STARTED | | |
@@ -275,6 +275,49 @@ have to re-derive.
   four, and correctly — it hardcodes `sideWord(t, side, "MARKET")`, so it is poll-only and its
   aria matches its visible label. The §L4 defect was specific to `market-card`, which renders
   MIXED books.
+
+**Stage 6**
+
+- 🔴 **NOTHING IN THE PRODUCT ANIMATED OUT.** Modal, notifications panel, Select, avatar menu,
+  AI toolkit and needle drawer all arrived on eased kit entrances and were removed by INSTANT
+  UNMOUNT. §M2 says every arrival has its exit — and the exits were already defined with
+  **zero consumers** (`.m-out`, `.m-float-out`, `m-leave-out`). One shared `useExitPhase` hook
+  now carries the toast's two-phase shape across all six, so they cannot drift apart.
+- ⭐ **The JS hold is the part a CSS clamp cannot reach.** An exit implemented only in CSS still
+  delays the unmount for someone who asked for no motion, so `exitBeatMs` collapses the hold to
+  zero on gates 1 and 2. Gate 3 is deliberately EXCLUDED with the reason written down: it is a
+  THROTTLE, not a clamp, and a one-shot 90–140ms exit is not an ambient loop.
+- ⭐ **No duration is retyped in TypeScript** — the beat is read from `--t-quick`/`--t-flick`
+  via `getComputedStyle` at close time, and an unresolvable token yields 0 (instant unmount),
+  which is the safe failure direction.
+- ⚠️ **The needle drawer's PANEL genuinely cannot take `.m-float-out`** — that keyframe sets
+  `transform: translateY(…)`, which would REPLACE the `sm:-translate-x-1/2 -translate-y-1/2`
+  centring and throw the dialog to the corner for the whole fade. The file already documents
+  the identical constraint for its arrival; the exemption was mirrored, not invented, and the
+  keyframe registry names that exact pattern in writing as legitimate.
+- 🔴 **A BACKTICK INSIDE A `<style>{\`…\`}</style>` TEMPLATE LITERAL BROKE THE BUILD.** A CSS
+  comment in `brand.tsx` wrote `` `transform` `` for emphasis; the backtick closed the string
+  and the rest of the file parsed as JSX. Caught by `tsc`, cost one build. A ⛔ note now sits
+  in that block. This is the third backtick/escaping trap this campaign has hit.
+- ⚠️ **`route-transition` gave Chrome a DOUBLE entrance** — the View-Transition cross-fade
+  (180ms) and `.route-enter`'s `m-settle-in` (340ms) replayed together, 520ms of stacked motion
+  on the hottest path. And the in-app "Reduce motion" switch did NOT stop route cross-fades at
+  all, because a universal CSS clamp cannot match a `::view-transition` pseudo-element — the
+  gate has to be applied in JS, at `startViewTransition`.
+- 🔴 **TWO GUARDS AND ONE RED PROOF ASSERTED THE SPELLING, NOT THE VALUE.** Moving the bet
+  dwell into `feedback-timing.ts` — which is the module §F8 created to own dwells — turned
+  `test:feedback-law` §9.8 and `test:updown-bet-feedback` §2.5/2.6 RED over a strictly better
+  shape, because all three required a numeric LITERAL at the call site. Worse, `feedback-law`
+  §9.7 four lines above §9.8 ALREADY read constants from that module, so the file disagreed
+  with itself. All three now RESOLVE the constant and assert the number, which is stronger
+  than the literal check was: it still fails on a missing dwell, and now also fails on a
+  constant that does not exist. ⭐ The red proof's anchor went stale in the same move and
+  said so out loud — *"THIS MUTATION PROVES NOTHING"* — which is the only reason it was
+  noticed. That refusal-to-pass-quietly is worth more than the assertion it guards.
+- ⚠️ **`style={{ animation }}` attributes are invisible to every motion gate**, and three were
+  INFINITE loops with no gate-3 entry — including `pr-pulse`, which renders on `/live`, a
+  player board. The keyframe registry was also mislabelling them "no consumer", which is a
+  DELETION TRAP for a future session.
 
 **Follow-ups this campaign opened and has not closed**
 

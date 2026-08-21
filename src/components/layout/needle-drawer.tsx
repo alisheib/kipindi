@@ -16,6 +16,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Toggle } from "@/components/ui/toggle";
+import { useExitPhase } from "@/components/ui/modal";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { isNeedleHidden, setNeedleHidden, getNeedleMode, setNeedleMode } from "@/lib/needle-bridge";
@@ -52,6 +53,12 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
 
+  /* §M2 — "every arrival has its exit". This drawer arrived on the bespoke pair below
+     and then left by instant unmount. `--t-quick` is the LONGER of the two exits it
+     plays (mobile `--t-quick`, desktop `--t-flick`), so the hold covers both and the
+     desktop panel simply rests on its `both` end frame for the remainder. */
+  const { present, exiting } = useExitPhase(open, "--t-quick");
+
   const t = (en: string, sw: string, zh: string) => (locale === "sw" ? sw : locale === "zh" ? zh : en);
   const shownLabel = hidden ? t("Hidden", "Imefichwa", "已隐藏") : t("Shown", "Inaonekana", "显示");
 
@@ -86,12 +93,24 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
   return (
     <>
       {trigger}
-      {open && typeof document !== "undefined" && createPortal(
+      {present && typeof document !== "undefined" && createPortal(
         <>
-          <div aria-hidden className="fixed inset-0 z-[70] bg-black/50 backdrop-blur-md" onClick={() => setOpen(false)} />
+          {/* The scrim is full-bleed and carries no transform of its own, so it can take
+              the kit's float exit verbatim — its 6px travel is invisible at inset-0. */}
+          <div
+            aria-hidden
+            className={cn("fixed inset-0 z-[70] bg-black/50 backdrop-blur-md", exiting && "m-float-out pointer-events-none")}
+            onClick={exiting ? undefined : () => setOpen(false)}
+          />
           <div
             role="dialog"
-            aria-modal="true"
+            /* Leaving: it stops declaring the rest of the page inert, and stops taking
+               clicks so a toggle cannot be worked through its own fade. ⛔ Not
+               `aria-hidden`: this drawer does not return focus to its trigger, so
+               Escape pressed on a focused Toggle would leave aria-hidden over the
+               focused element. Dropping an attribute is always safe; adding that one
+               is not. */
+            aria-modal={exiting ? undefined : "true"}
             aria-label={t("The Needle controls", "Vidhibiti vya Sindano", "指针玩具控制")}
             className={cn(
               "fixed z-[71] border border-border-strong bg-bg-elevated/95 backdrop-blur-xl",
@@ -103,7 +122,7 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
               "pb-[calc(16px+env(safe-area-inset-bottom))]",
               "sm:left-1/2 sm:right-auto sm:bottom-auto sm:top-1/2 sm:w-[360px] sm:max-w-[calc(100vw-24px)]",
               "sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl sm:p-5 sm:pb-5",
-              "needle-sheet",
+              exiting ? "needle-sheet-out pointer-events-none" : "needle-sheet",
             )}
           >
             {/* grabber (mobile affordance) */}
@@ -186,14 +205,36 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
           {/* Bespoke keyframes on purpose: the desktop panel is centred with
               translate(-50%,-50%), which the kit's translateY-only arrivals would wipe.
               Curve + duration come from the motion layer, so it settles like everything
-              else ("The Settle"); only the transform differs. */}
+              else ("The Settle"); only the transform differs.
+
+              ⛔ THE EXIT IS BESPOKE FOR EXACTLY THE SAME REASON, and this is the one
+              place in this batch that could NOT take `.m-float-out`. That utility plays
+              `m-leave-out`, which sets `transform: translateY(…)` — on the ≥sm centred
+              panel that REPLACES `translate(-50%,-50%)` and throws the dialog to the
+              bottom-right corner for the whole fade. A wrong exit is worse than none.
+              So the exit mirrors the arrival exactly: same curve family (`--m-leave`,
+              the kit's exit curve), durations from the same ladder, only the transform
+              differs. `both` holds the end frame so the panel stays gone until unmount.
+
+              ⚠️ These four names are declared AND consumed inside this one
+              `prefers-reduced-motion: no-preference` block — the pattern
+              `scripts/keyframe-registry.test.mts` names in writing as legitimate
+              (its rule-2.2 note cites `needle-sheet-rise`/`-pop` by name). That
+              wrapper is also §M6 gate 1: with motion off the block never applies, and
+              gate 2 is the universal clamp in motion.css. The JS hold collapses to
+              zero under both, so an exit never delays an unmount for someone who
+              asked for no motion. */}
           <style>{`
             @media (prefers-reduced-motion: no-preference) {
               .needle-sheet { animation: needle-sheet-rise var(--t-base) var(--m-settle); }
               @keyframes needle-sheet-rise { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+              .needle-sheet-out { animation: needle-sheet-fall var(--t-quick) var(--m-leave) both; }
+              @keyframes needle-sheet-fall { from { transform: translateY(0); opacity: 1; } to { transform: translateY(10px); opacity: 0; } }
               @media (min-width: 640px) {
                 .needle-sheet { animation: needle-sheet-pop var(--t-quick) var(--m-settle); }
                 @keyframes needle-sheet-pop { from { transform: translate(-50%, -50%) scale(0.975); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+                .needle-sheet-out { animation: needle-sheet-sink var(--t-flick) var(--m-leave) both; }
+                @keyframes needle-sheet-sink { from { transform: translate(-50%, -50%) scale(1); opacity: 1; } to { transform: translate(-50%, -50%) scale(0.975); opacity: 0; } }
               }
             }
           `}</style>

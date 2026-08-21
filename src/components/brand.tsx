@@ -428,24 +428,72 @@ export function ConfidenceDial({
 
 export function SignalPip({ size = 8, className }: { size?: number; className?: string }) {
   return (
-    <span
-      aria-hidden
-      className={className}
-      style={{
-        display: "inline-block",
-        width: size,
-        height: size,
-        borderRadius: "50%",
-        background: "var(--aqua-300)",
-        boxShadow: "0 0 0 0 var(--aqua-glow)",
-        animation: "aqua-pulse 2.2s ease-in-out infinite",
-      }}
-    />
+    <>
+      <span
+        aria-hidden
+        className={cn("signal-pip", className)}
+        style={{
+          display: "inline-block",
+          width: size,
+          height: size,
+          borderRadius: "50%",
+          background: "var(--aqua-300)",
+          boxShadow: "0 0 0 0 var(--aqua-glow)",
+        }}
+      />
+      <style>{`
+        /* ⚠️ ON A CLASS, NOT IN THE style ATTRIBUTE — the same reason as .pr-ring
+           above. This is an ambient loop that ships on /markets (the main board)
+           and on the probability chart, and as an inline shorthand it was invisible
+           to test:reduce-motion, so it had a calm branch on none of the three
+           gates. The OTHER consumer of this same keyframe, .pchart-dot-halo, has
+           been listed in globals.css §6 all along; this one simply could not be
+           seen to be missing.
+           ⭐ It STOPS at every gate, the throttle included: the pip is explicitly
+           non-semantic by its own doc above ("new", fresh-data glow, sparkline
+           anchor), so nothing is lost when it holds still — unlike .pr-ring, which
+           answers "is it still loading?". The dot stays drawn at full opacity. */
+        .signal-pip { animation: aqua-pulse 2.2s ease-in-out infinite; }
+        /* Stopped, at full opacity, with the flat rest halo the element's own style
+           already carries — nothing here needs restating, because the base state
+           IS the calm state for this one. */
+        @media (prefers-reduced-motion: reduce) {
+          .signal-pip { animation: none; }
+        }
+        html.kp-reduce-motion .signal-pip,
+        [data-motion="minimal"] .signal-pip { animation: none; }
+        [data-motion="reduced"] .signal-pip { animation: none; }
+      `}</style>
+    </>
   );
 }
 
 /* ── PulseRing — for live-market badges + loaders ────────────────────────── */
 
+/**
+ * A ring that breathes outward. Two jobs, and they pull in opposite directions
+ * under §M6: on `/live` it is a permanent ambient LOOP behind the section label,
+ * and inside `BrandSpinner` it is an in-flight indicator on every route's
+ * `loading.tsx`.
+ *
+ * ⚠️ THE ANIMATION IS ON A CLASS, NOT IN THE style ATTRIBUTE, and it has to be.
+ * `pr-pulse` used to be an inline `animation` shorthand, which is invisible to
+ * every motion gate this product has: `test:reduce-motion` reads RULES, so an
+ * infinite loop on a player board was never checked against the third gate and
+ * had no calm branch at all; and `test:keyframes`' consumer scan stops at the
+ * opening quote, so `pr-pulse` was reported as a name with NO CONSUMER — i.e. as
+ * safe to delete.
+ *
+ * ⭐ THE THIRD GATE KEEPS IT, CHEAPLY, AND THAT IS DELIBERATE. At
+ * `data-motion="reduced"` — the low-end Android this product is built for — the
+ * scale-and-fade is replaced by the kit's opacity-only `m-breathe`, the exact
+ * treatment `.live-dot` and `.cm-status-dot` already take in globals.css §6. A
+ * transform-driven ring is what costs that device; "is it still loading?" is what
+ * the player loses if the ring simply stops, and the device on that tier is the
+ * one where loads take longest. The two hard clamps (OS + the in-app switch) DO
+ * stop it — a player who asked for no motion asked for no motion — and it rests
+ * visible at its base opacity, never invisible.
+ */
 export function PulseRing({
   size = 40,
   color = "oklch(58% 0.16 152)",
@@ -463,22 +511,39 @@ export function PulseRing({
       style={{ position: "relative", width: size, height: size }}
     >
       <span
+        className="pr-ring"
         style={{
           position: "absolute",
           inset: 0,
           borderRadius: "50%",
           border: `1.5px solid ${color}`,
           opacity: 0.6,
-          animation: "pr-pulse 2s ease-out infinite",
         }}
       />
       {children}
       <style>{`
+        .pr-ring { animation: pr-pulse 2s ease-out infinite; }
         @keyframes pr-pulse {
           0%   { transform: scale(0.85); opacity: 0.7; }
           70%  { transform: scale(1.25); opacity: 0; }
           100% { transform: scale(1.25); opacity: 0; }
         }
+        /* The two CLAMPS stop it outright. The ring is then drawn at the resting
+           opacity 0.6 its own element style carries — an end frame that RENDERS,
+           never an invisible one. (Only transform is worth neutralising here:
+           opacity lives in the inline style, which a rule cannot outrank.)
+           ⛔ NO BACKTICKS IN THIS BLOCK — it is a template literal, and a backtick
+           inside a CSS comment closes the string and turns the rest of the file
+           into unparseable JSX. Cost one build on 2026-08-21. */
+        @media (prefers-reduced-motion: reduce) {
+          .pr-ring { animation: none; transform: none; }
+        }
+        html.kp-reduce-motion .pr-ring,
+        [data-motion="minimal"] .pr-ring { animation: none; transform: none; }
+        /* The THROTTLE keeps the signal and drops the cost: opacity-only, no
+           transform, on the kit's own symmetric loop curve. Same trade as
+           .live-dot / .cm-status-dot in globals.css §6. */
+        [data-motion="reduced"] .pr-ring { animation: m-breathe 2s var(--m-breathe) infinite; }
       `}</style>
     </div>
   );

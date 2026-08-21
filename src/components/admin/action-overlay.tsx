@@ -35,6 +35,7 @@
 import { useCallback, useState } from "react";
 import { Modal } from "@/components/ui/modal";
 import { OperationResultModal } from "@/components/markets/operation-result-modal";
+import { DWELL_ADMIN_RESULT_MS } from "@/lib/feedback-timing";
 
 export type OverlayState =
   | { phase: "idle" }
@@ -100,7 +101,11 @@ export function ActionOverlay({ state, onDismiss, onRetry, retryLabel }: {
         subtitle={state.phase === "success" ? state.subtitle : undefined}
         primaryLabel="Done · Sawa"
         onClose={onDismiss}
-        autoCloseMs={2000}
+        // §F8 · the dwell is a NAMED constant, not a literal. `2000` at a call site
+        // says nothing about the 3s bet toast or the 5s modal default it has to be
+        // read against; `@/lib/feedback-timing` files all four together and states
+        // the intrusion rule that orders them.
+        autoCloseMs={DWELL_ADMIN_RESULT_MS}
       />
 
       {/* Error — persists until the officer has read it (LCCP pattern). */}

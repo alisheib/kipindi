@@ -332,12 +332,29 @@ export function FirstVisitPrimer() {
           <GiltCorner size={40} rotate={90} />
         </div>
 
-        {/* Gold progress strip at top */}
+        {/* Gold progress strip at top.
+            THE STRIP SCALES; IT DOES NOT WIDEN. `transition-all` on a `width` animated
+            a LAYOUT property for 500ms on every step change, inside a sheet that is the
+            first thing a new player ever sees — on the cheapest phone in the funnel.
+            `transform: scaleX()` draws the identical strip on the compositor. Model:
+            `.admin-bar-grow` (state-tokens.css).
+            ⭐ Nothing is squashed here, and it is worth saying why rather than leaving
+            it to be re-checked: the strip carries NO border-radius (so there is no cap
+            to distort) and NO child (so there is no label to squeeze). The one thing
+            scaleX does reshape is the `90deg` gradient — and it reshapes it exactly the
+            way `width` did, compressing the full gold-500 → gold-300 ramp into the
+            drawn length. Same picture, one less reflow.
+            §M6 · this is a transition, so all three gates already hold: motion.css's
+            universal clamp zeroes `transition-duration` for the OS query,
+            `html.kp-reduce-motion` and `[data-motion="minimal"]`, and the
+            `[data-motion="reduced"]` list in globals.css §6 governs `infinite`
+            animations only. With motion off the strip jumps to the new step — the
+            correct end frame. */}
         <div className="absolute inset-x-0 top-0 h-[2px]" aria-hidden>
           <div
-            className="h-full transition-all duration-500"
+            className="h-full w-full origin-left transition-transform duration-500"
             style={{
-              width: `${((step + 1) / CARDS.length) * 100}%`,
+              transform: `scaleX(${(step + 1) / CARDS.length})`,
               background: "linear-gradient(90deg, var(--gold-500), var(--gold-300))",
             }}
           />

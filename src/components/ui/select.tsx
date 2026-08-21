@@ -15,6 +15,7 @@
 
 import { useState, useEffect, useRef, useCallback, useId } from "react";
 import { createPortal } from "react-dom";
+import { useExitPhase } from "@/components/ui/modal";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 
@@ -79,6 +80,12 @@ export function Select({
   const [open, setOpen] = useState(false);
   const [focusIdx, setFocusIdx] = useState(-1);
   const [mounted, setMounted] = useState(false);
+  /* §M2 — the float rung pairs `.m-float-in` with `.m-float-out`; the panel used to
+     leave by instant unmount, so half the vocabulary was unreachable. `--t-flick`
+     is the beat `.m-float-out` itself plays at (motion.css), read from the token
+     rather than retyped. Every keyboard/ARIA behaviour below stays keyed to `open`,
+     so nothing about the control's contract shifts by a beat — only the paint. */
+  const { present, exiting } = useExitPhase(open, "--t-flick");
 
   /**
    * ⭐ A5 (2026-08-21) — THE IDS THAT MAKE THE LISTBOX EXIST FOR A SCREEN READER.
@@ -337,13 +344,21 @@ export function Select({
 
       {name && <input type="hidden" name={name} value={selected} />}
 
-      {mounted && open && createPortal(
+      {mounted && present && createPortal(
         <div
           ref={listRef}
           id={listboxId}
           role="listbox"
           aria-labelledby={labelId}
-          className="m-float-in fixed z-[130] rounded-control border border-border-strong bg-bg-elevated shadow-overlay overflow-y-auto overscroll-contain"
+          /* Leaving: focus is already back on the trigger and `aria-controls` has
+             been dropped, so the fading copy must stop being announced and stop
+             taking clicks — an option still hittable during the fade would commit
+             a value the user closed the list to avoid. */
+          aria-hidden={exiting || undefined}
+          className={cn(
+            exiting ? "m-float-out pointer-events-none" : "m-float-in",
+            "fixed z-[130] rounded-control border border-border-strong bg-bg-elevated shadow-overlay overflow-y-auto overscroll-contain",
+          )}
           style={{
             /* G-8: exactly one of these is set. `bottom` is the "open above" case, and
                it is what makes the panel grow upward from the trigger instead of

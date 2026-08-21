@@ -5,6 +5,8 @@ import { useToast } from "@/components/ui/toast";
 import { buyPositionAction } from "@/app/markets/actions";
 import { formatTzs } from "@/lib/utils";
 import { haptics } from "@/lib/haptics";
+// §F8 · how long the success toast stands, from the ONE module that owns dwell times.
+import { DWELL_BET_PLACED_MS } from "@/lib/feedback-timing";
 import { quickStakes, parseStake, insufficientFor } from "./stake-math";
 // UD-4 · the ONE code→copy map, shared by every bet surface. The server string is
 // audit truth; the player reads the dictionary.
@@ -373,7 +375,13 @@ export function useUpDownQuickBet(opts: {
             title: copy.placed,
             description: `${side === "UP" ? copy.up : copy.down} · ${formatTzs(amount)}`,
             variant: "success",
-            durationMs: 3000,
+            // §F8 · the dwell is named, not typed. The value is unchanged (3s — Ali:
+            // "keep placing bets popups normal"); what changed is that it is now filed
+            // beside the dwells it has to be read against instead of sitting here as a
+            // bare number. ⚠️ `feedback-law` rule 9.8 pins this value — it must read the
+            // constant from `feedback-timing.ts` the way rules 9.0–9.4 already do,
+            // rather than grepping this file for the literal.
+            durationMs: DWELL_BET_PLACED_MS,
           });
           // Named token from the central vocabulary (respects the master switch,
           // per-token prefs and reduced-motion) — not a raw navigator.vibrate.

@@ -205,9 +205,15 @@ const MUTATIONS = [
     with: `export const DWELL_CELEBRATION_MS = 4_500;`,
   },
   {
+    // ⚠️ ANCHOR MOVED 2026-08-21. The dwell used to be a literal `3000` here; it is now the
+    // named constant §F8 says dwells live as. The mutation therefore points at the CONSTANT,
+    // and 9.8 resolves it through `feedback-timing.ts` — so this still proves exactly what it
+    // proved before: that a retune of the bet dwell is caught. ⛔ A stale anchor here reports
+    // "THIS MUTATION PROVES NOTHING" rather than passing quietly, which is the only reason
+    // this was noticed at all.
     name: "⭐ the bet-placed toast is swept up in the change (Ali: keep it NORMAL)",
     file: QUICK,
-    find: `            durationMs: 3000,`,
+    find: `            durationMs: DWELL_BET_PLACED_MS,`,
     with: `            durationMs: 9000,`,
   },
   {
