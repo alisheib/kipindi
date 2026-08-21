@@ -22,6 +22,7 @@ import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { ControlLocked } from "@/components/admin/control-locked";
 import { formatDateTime } from "@/lib/utils";
 import { CEREMONY, SELECTION } from "@/lib/admin-status-lexicon";
+import { AdminBody } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Resolver queue" };
 export const dynamic = "force-dynamic";
@@ -155,7 +156,7 @@ export default async function ResolverQueuePage({
           </div>
         }
       />
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         {/* Filters */}
         <AdminCard padding="p-3">
           <form className="flex flex-wrap items-center gap-2">
@@ -166,7 +167,9 @@ export default async function ResolverQueuePage({
                 defaultValue={query}
                 placeholder="Search title…"
                 aria-label="Search resolver queue"
-                className="h-8 w-full rounded-md border border-border bg-bg-overlay pl-9 pr-3 text-[12.5px] text-text outline-none admin-focus transition-colors placeholder:text-text-subtle"
+                /* ⚠️ LITERAL, not `h-8` (48px on the overridden scale) — 32px = --h-control-xs,
+                   the one admin-search height, matching the xs Selects beside it. */
+                className="h-[32px] w-full rounded-md border border-border bg-bg-overlay pl-9 pr-3 text-[12.5px] text-text outline-none admin-focus transition-colors placeholder:text-text-subtle"
               />
             </div>
             <div className="w-full sm:w-[160px]">
@@ -395,7 +398,7 @@ export default async function ResolverQueuePage({
           </div>
         )}
         <AdminPagination total={pending.length} page={page} baseHref={baseHref} />
-      </div>
+      </AdminBody>
     </>
   );
 }

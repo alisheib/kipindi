@@ -35,6 +35,7 @@
 import { useCallback, useState } from "react";
 import { Modal } from "@/components/ui/modal";
 import { OperationResultModal } from "@/components/markets/operation-result-modal";
+import { DWELL_ADMIN_RESULT_MS } from "@/lib/feedback-timing";
 
 export type OverlayState =
   | { phase: "idle" }
@@ -54,7 +55,18 @@ export function useActionOverlay() {
   return { state, dismiss, run, succeed, fail };
 }
 
-export function ActionOverlay({ state, onDismiss }: { state: OverlayState; onDismiss: () => void }) {
+export function ActionOverlay({ state, onDismiss, onRetry, retryLabel }: {
+  state: OverlayState;
+  onDismiss: () => void;
+  /**
+   * Optional "try that again" on the FAILURE card — the ghost CTA the result modal
+   * already carries, surfaced here rather than re-implemented. Both props are optional
+   * and absent they render EXACTLY today's single-button error card, so no existing
+   * call site moves. Only a caller whose operation is safely repeatable should pass it.
+   */
+  onRetry?: () => void;
+  retryLabel?: string;
+}) {
   return (
     <>
       {/* Running — a blocking, non-dismissible progress dialog. */}
@@ -89,7 +101,11 @@ export function ActionOverlay({ state, onDismiss }: { state: OverlayState; onDis
         subtitle={state.phase === "success" ? state.subtitle : undefined}
         primaryLabel="Done · Sawa"
         onClose={onDismiss}
-        autoCloseMs={2000}
+        // §F8 · the dwell is a NAMED constant, not a literal. `2000` at a call site
+        // says nothing about the 3s bet toast or the 5s modal default it has to be
+        // read against; `@/lib/feedback-timing` files all four together and states
+        // the intrusion rule that orders them.
+        autoCloseMs={DWELL_ADMIN_RESULT_MS}
       />
 
       {/* Error — persists until the officer has read it (LCCP pattern). */}
@@ -100,6 +116,12 @@ export function ActionOverlay({ state, onDismiss }: { state: OverlayState; onDis
         title={state.phase === "error" ? state.title : ""}
         subtitle={state.phase === "error" ? state.message : undefined}
         primaryLabel="Dismiss · Funga"
+        secondaryLabel={onRetry ? (retryLabel ?? "Try again · Jaribu tena") : undefined}
+        // ⚠️ Dismiss FIRST, then retry. A retry re-enters `overlay.run(...)`, so the other
+        // order would set `running` and then let the queued `idle` land on top of it,
+        // leaving a live operation with no overlay over it. Same reason the dial's
+        // secondary closes before it navigates (conviction-dial.tsx).
+        onSecondary={onRetry ? () => { onDismiss(); onRetry(); } : undefined}
         onClose={onDismiss}
       />
     </>

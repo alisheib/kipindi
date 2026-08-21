@@ -32,7 +32,6 @@ export function StuckPayoutControls({ txnId, amountLabel }: { txnId: string; amo
   // than being offered a button the server will refuse (and logged as a privilege
   // escalation for pressing it). See docs/ADMIN-CONSOLE-FINDINGS.md.
   const mayAct = useMayAct();
-  if (!mayAct) return <ActReadOnly />;
 
   const [pending, start] = useTransition();
   const [open, setOpen] = useState(false);
@@ -40,6 +39,11 @@ export function StuckPayoutControls({ txnId, amountLabel }: { txnId: string; amo
   const router = useRouter();
   // B-28 — success toasts ride the transition's falling edge (data visible when announced)
   const { toast, deferToast } = useDeferredToast(pending);
+
+  // Rules of hooks: read the gate as a hook at the top, ACT on it below every other hook.
+  // Revoking an ACT grant mid-session flips `mayAct` on the next router.refresh(); an early
+  // return above these hooks would render fewer hooks than the last pass and crash the page.
+  if (!mayAct) return <ActReadOnly />;
 
   const valid = reason.trim().length >= 10;
   const close = () => { if (!pending) { setOpen(false); setReason(""); } };

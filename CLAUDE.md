@@ -254,7 +254,12 @@ The one thing worth repeating here, because it is a mechanic and not a number:
 
 - Next.js 16 App Router · React 19 · TypeScript · Turbopack
 - Tailwind CSS 3, design tokens in `src/app/globals.css` + `tailwind.config.ts`
-- next-themes for light/dark
+- **ONE theme: dark royal — there is no light mode and no theme package.** ⚠️ Corrected
+  2026-08-21; this line read *"next-themes for light/dark"* and **both halves were false**.
+  `next-themes` is not in `package.json`, and the light theme was deliberately killed.
+  `npm run test:integrity` fails if either returns: **M11** if the package is re-added,
+  **B3** if `globals.css` grows a `[data-theme="light"]` or `prefers-color-scheme: light`
+  selector.
 - Prisma 6.5 with managed Postgres on Railway. All entities have dedicated
   Prisma tables (`USE_PRISMA_DAL=true`). See `docs/DATA-LAYER.md` for the
   full architecture guide.
@@ -620,7 +625,9 @@ Already shipped (was on this list before):
   arbitrary setTimeout. Error toasts use `toast()` (immediate). Success
   toasts use `deferToast()` (after transition settles). Zero setTimeout
   in the codebase.
-- **Loading states** — 50 loading.tsx files cover every async route. All
+- **Loading states** — every async route has a `loading.tsx`. ⚠️ **79 of them at
+  2026-08-21**; this line said **50** for months. Re-derive rather than quote it:
+  `find src -name loading.tsx | wc -l`. All
   forms use `SubmitButton` (spinner + pending label via `useFormStatus`).
   All admin action buttons wire `loading={pending}` from `useTransition`.
 
@@ -631,10 +638,25 @@ The entire UI was rebuilt from the original design kit (Phase 3 + 3b complete).
 
 - **All tokens** updated: `--panel`, `--bg-inset`, `--bg-elevated2`, `--brand-*`,
   `--live-400`, `--text-faint` added to globals.css
-- **All components** use kit icons from `src/components/ui/glyphs.tsx` (75+ SVGs
-  at 1.85px stroke). Lucide-react removed from all player-facing files.
+- **All components** use kit icons from `src/components/ui/glyphs.tsx` — **178 icons**,
+  drawn by two wrappers that both stroke **1.9**. ⚠️ Corrected 2026-08-21 from
+  *"75+ SVGs at 1.85px"*: both numbers were wrong. The file's own header states 1.9,
+  and its two wrappers agree —
+  `G` (24-grid icons) and `GL` (64-grid empty-state line-arts) both stroke 1.9, after a
+  second 64-grid wrapper at 2.2 was removed for drawing neighbouring empty states 16%
+  apart. The 56-grid badge medallions in `src/components/badges/icons.tsx` are a separate
+  **documented** tier at 2.2. (Six icons override the wrapper on an interior detail —
+  1.3–1.7 on `calendarRange`, `sparkleNew`, `tippingScales`, `ussd`, `attest` and
+  `reconcile` —
+  so "1.9" is the family weight, not a claim about every path in the file.)
+  Lucide-react removed from all player-facing files.
 - **All focus rings** brand-500 (zero aqua-300 remaining)
-- **All border radii** rounded-xl / 16px (zero rounded-2xl remaining)
+- **Border radii** — `rounded-2xl` is gone from the product (verified by grep 2026-08-21:
+  the only occurrence left anywhere in `src/` is a prose sentence inside a `globals.css`
+  comment, describing what a superseded kit did). ⚠️ But *"all border radii 16px"* is not
+  the rule and never was: each family has ONE radius — `--r-lg` cards/modals, `--r-md`
+  inputs/controls, `--r-sm` tabs, `--r-pill` chips. `docs/DESIGN_AUTHORITY.md` §S3 is the
+  law and `globals.css` holds the values; do not read this status line as either.
 - **Buttons** solid fills, r-sm, kit inset highlights + glow
 - **Chips** rebuilt: height-based, 700 weight, 0.06em tracking, uppercase
 - **Inputs** bg-inset, 44px, rounded-lg (12px), brand-500 focus
@@ -744,7 +766,15 @@ signature element — same object as the TippingBar needle + conviction dial.
 - `FiftyTile` — rounded-square royal tile for app icons / on-photo plates
 - `FiftyWordmark` — gilt underline retired; `.tz` suffix via `tz` prop
 - `FiftyLockup` — `layout="horizontal|stacked"`, variant pass-through
-- Full favicon set: `/favicon.svg`, `/favicon.ico`, `/icons/` (16/32/180/192/512/maskable)
+- Icons, as actually **declared**: `/favicon.svg` + `/favicon.ico` (`layout.tsx`
+  `metadata.icons`), `/icons/icon-192.png`, `/icons/apple-touch-180.png`, and via
+  `public/manifest.json` `/icons/mark-color-512.png`, `/icons/maskable-512.png` and the
+  three `/icons/shortcut-*.png`. ⚠️ Corrected 2026-08-21 — this line read
+  *"(16/32/180/192/512/maskable)"*, but **`favicon-16.png` and `favicon-32.png` are cited
+  by nothing**: not `layout.tsx`, not the manifest, not any stylesheet.
+  ⛔ **And only some of these are generated** — which files `npm run build:brand` will and
+  will not restore is stated in `docs/DESIGN_AUTHORITY.md` §B1a. Read it before editing an
+  asset by hand.
 - OG images: `/og/og-1200x630.png`, `/og/twitter-1200x600.png`
 - Master SVGs: `/brand/mark-{color,white,dark,simplified}.svg`
 - Hard rules: full mark ≥ 24px, simplified < 24px, never mirror/re-tint/stretch
@@ -836,7 +866,10 @@ The platform is **feature-complete and hardening for launch**. Read in order:
 4. **[`docs/perfection-plan.md`](docs/perfection-plan.md)** — the 0-issue launch plan.
 
 Session protocol: `git fetch` → `npm install` → `npx prisma generate` →
-`npm run test:all` (**117** `test:*` scripts; `test:responsive` and `test:motion`
+`npm run test:all` (typecheck + **231** `test:*` suites — every `test:*` key in
+`package.json` except the aggregator itself, so **232** reported steps; the figure this
+line carried, **117**, was less than half. Re-derive it, do not quote this one;
+`test:responsive` and `test:motion`
 need a server on `:3000`) → work one item → test + live-drive → **commit AND
 push** (Railway auto-deploys; Ali reviews live). Update the doc that owns the
 subject in the same commit — no new tracker files.

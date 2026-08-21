@@ -12,12 +12,16 @@ export function SetEmailForm({ userId }: { userId: string }) {
   // than being offered a button the server will refuse (and logged as a privilege
   // escalation for pressing it). See docs/ADMIN-CONSOLE-FINDINGS.md.
   const mayAct = useMayAct();
-  if (!mayAct) return <ActReadOnly />;
 
   const [email, setEmail] = useState("");
   const [pending, start] = useTransition();
   const overlay = useActionOverlay();
   const router = useRouter();
+
+  // Rules of hooks: read the gate as a hook at the top, ACT on it below every other hook.
+  // Revoking an ACT grant mid-session flips `mayAct` on the next router.refresh(); an early
+  // return above these hooks would render fewer hooks than the last pass and crash the page.
+  if (!mayAct) return <ActReadOnly />;
 
   const submit = () => {
     if (!email.trim() || pending) return;
@@ -48,14 +52,29 @@ export function SetEmailForm({ userId }: { userId: string }) {
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder="player@example.com"
-        className="flex-1 min-w-0 h-8 px-2.5 rounded-md border border-border bg-bg-inset text-text font-mono text-[12px] focus:outline-none focus:border-[var(--brand-500)] transition-colors"
+        /* ⚠️ LITERAL, not `h-8` — spacing is overridden (tailwind.config.ts:200-215) so `h-8`
+           was 48px. 40px = --tap-min; keep this and the Save button beside it identical.
+
+           §A3 / E-129 — focus used to be a 1px BORDER recolour and nothing else: no 2px
+           ring, no halo, and in forced-colors (Windows high-contrast) not even that,
+           because every border there is painted one system colour. This is the field an
+           officer retypes a player's contact address into, so it takes the full house
+           recipe — a real 2px --brand-500 `outline` at offset 2 (outline survives
+           forced-colors where box-shadow does not, same reason `.gilt-metal:focus-visible`
+           keeps one) plus the 4px 25% halo that `.admin-focus` draws. ⛔ Written out
+           rather than left to `focus:outline-none`: Tailwind 3 quietly emits
+           `outline: 2px solid transparent` for that utility and Tailwind 4 emits
+           `outline-style: none`, so relying on it hides the intent and breaks on upgrade. */
+        className="flex-1 min-w-0 h-[40px] px-2.5 rounded-md border border-border bg-bg-inset text-text font-mono text-[12px] focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-[color:var(--brand-500)] focus:border-[var(--brand-500)] focus:shadow-[0_0_0_4px_color-mix(in_oklab,var(--brand-500)_25%,transparent)] transition-colors"
       />
       <ConfirmDialog
         trigger={
           <button
             type="button"
             disabled={pending || !email.trim()}
-            className="h-8 px-3 rounded-md border border-warning-fg/40 bg-warning/10 font-mono text-[11px] font-bold text-warning-fg hover:bg-warning/20 disabled:opacity-40 transition-colors"
+            /* ⚠️ LITERAL, not `h-8` (48px on the overridden scale) — 40px, matching the
+               email field beside it. */
+            className="h-[40px] px-3 rounded-md border border-warning-fg/40 bg-warning/10 font-mono text-[11px] font-bold text-warning-fg hover:bg-warning/20 disabled:opacity-40 transition-colors"
           >
             {pending ? "Saving…" : "Set email"}
           </button>

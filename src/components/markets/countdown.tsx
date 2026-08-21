@@ -1,8 +1,12 @@
 /** Countdown timer — kit/microstructure.jsx Countdown port. */
 "use client";
 
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { useT } from "@/lib/i18n";
+// ⭐ ONE INTERVAL FOR THE PAGE, not one per clock. This component used to arm its own; see the
+// file header there for what a private timer per clock costs the low-end handset, and for the
+// one thing it deliberately does NOT change (a hidden tab is still left to drift).
+import { subscribeSecond } from "@/lib/use-shared-second";
 
 function diff(toIso: string, offset: number) {
   const ms = Math.max(0, Date.parse(toIso) - (Date.now() + offset));
@@ -35,9 +39,20 @@ export function Countdown({ to, label, serverNow }: { to: string; label?: string
   const [offset] = useState(() => (serverNow != null ? serverNow - Date.now() : 0));
   const [time, set] = useState(() => diff(to, offset));
   useEffect(() => {
-    set(diff(to, offset));
-    const id = setInterval(() => set(diff(to, offset)), 1000);
-    return () => clearInterval(id);
+    // ⛔ STILL A DERIVATION, NEVER A DECREMENT — every tick recomputes the remainder from the
+    // offset-corrected absolute clock, so a throttled or skipped wake-up cannot accumulate drift.
+    // ⭐ AND IT BAILS WHEN NOTHING MOVED. `diff` returns a fresh OBJECT every call, so
+    // `set(diff(…))` re-rendered unconditionally — including for the whole time a clock sits at
+    // `00 00 00 00` after `Math.max(0, …)` has clamped it, which on a closed market is for ever.
+    // Comparing the four fields is what lets an expired clock go quiet. (What stops the
+    // days/hours/minutes CELLS repainting on the other 59 ticks in 60 is the `memo` below.)
+    const apply = () => set((prev) => {
+      const next = diff(to, offset);
+      return prev.d === next.d && prev.h === next.h && prev.m === next.m && prev.s === next.s
+        ? prev : next;
+    });
+    apply();
+    return subscribeSecond(apply);
   }, [to, offset]);
 
   return (
@@ -53,7 +68,15 @@ export function Countdown({ to, label, serverNow }: { to: string; label?: string
   );
 }
 
-function Cell({ v, unit }: { v: number; unit: string }) {
+/**
+ * ⭐ MEMOISED, so a second's passing repaints the SECONDS and not the whole clock.
+ *
+ * Four cells re-rendered every tick to change one digit. `v` and `unit` are both primitives, so
+ * the days/hours/minutes cells now bail out on 59 ticks in 60 — the same "push the tick down to
+ * the digits" rule the Up & Down pod follows. ⛔ Purely a skip: the markup, the
+ * `suppressHydrationWarning` and the padding are untouched.
+ */
+const Cell = memo(function Cell({ v, unit }: { v: number; unit: string }) {
   return (
     <div className="flex flex-col items-center min-w-[56px]">
       <div
@@ -69,4 +92,4 @@ function Cell({ v, unit }: { v: number; unit: string }) {
       <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-subtle mt-1.5">{unit}</div>
     </div>
   );
-}
+});

@@ -176,7 +176,27 @@ function mountNeedle(
 
   function clampN(v: number, lo: number, hi: number) { return v < lo ? lo : v > hi ? hi : v; }
 
+  /* ⭐ ALL THREE CLAMP GATES, READ LIVE — §M6. This was the OS media query ALONE,
+     so a player who switched "Reduce motion" ON in Settings → Sound & feedback
+     still got the full motion trail, the speed glow and the 3D lean. The in-app
+     switch reaches CSS through the universal clamp in motion.css
+     (`html.kp-reduce-motion *`, `[data-motion="minimal"] *`); this engine paints
+     in JS, where no clamp can reach it, so the gate has to be read here.
+     ⚠️ `data-motion="reduced"` (the low-end-Android THROTTLE) is deliberately NOT
+     one of these. That tier keeps full durations and switches ambient LOOPS off,
+     and the needle's one ambient loop — the parked wake halo — is already gated
+     for it in globals.css §6 (`#needle-root #wake.on`). Calming the physics here
+     as well would take the interaction away from the device it was tuned on.
+     ⚠️ Cached, not recomputed: `calmed` is read inside the paint loop, and three
+     documentElement reads per frame at 60fps is not free on that same device. */
   const mq = matchMedia("(prefers-reduced-motion: reduce)");
+  const readCalm = () => {
+    const r = document.documentElement;
+    return mq.matches
+      || r.classList.contains("kp-reduce-motion")
+      || r.getAttribute("data-motion") === "minimal";
+  };
+  let calmed = readCalm();
   let raf: number | null = null, last = 0, pid: number | null = null;
   let samples: Array<{ x: number; y: number; a: number; t: number }> = [];
   let down: { x: number; y: number; t: number } | null = null, wasParked = false;
@@ -248,7 +268,7 @@ function mountNeedle(
     onImpact: (i) => {
       hapticImpact(i.speed);
       squashV -= Math.min(0.09, i.speed * 0.05);
-      if (mq.matches) return;
+      if (calmed) return;
       ring.style.transition = "none";
       ring.style.opacity = String(Math.min(0.55, i.speed * 0.55));
       ring.style.transform = `translate(${-i.nx * 7}px, ${-i.ny * 7}px) scale(1)`;
@@ -274,8 +294,23 @@ function mountNeedle(
     onRecord: (kind, best) => { try { window.dispatchEvent(new CustomEvent("needle:record", { detail: { kind, best } })); } catch { /* ignore */ } },
   };
   const body = new NeedleBody(opts);
-  body.calm = mq.matches ? 0.34 : 1;
-  on(mq, "change", () => { body.calm = mq.matches ? 0.34 : 1; });
+  body.calm = calmed ? 0.34 : 1;
+  /* Re-read on every path that can flip a gate. The OS query fires `change`; the
+     in-app switch (`settings/feedback-settings.tsx` → `toggleMotion`) mutates the
+     documentElement class AND `data-motion` directly and dispatches NO event at
+     all, so the attribute itself is what has to be watched. One repaint on the
+     flip, so the trail, the glow and the lean take the new value immediately
+     instead of waiting for the next interaction to wake the loop. */
+  const applyCalm = () => {
+    const next = readCalm();
+    if (next === calmed) return;
+    calmed = next;
+    body.calm = calmed ? 0.34 : 1;
+    paint(0);
+  };
+  on(mq, "change", applyCalm);
+  const motionGateObserver = new MutationObserver(applyCalm);
+  motionGateObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "data-motion"] });
 
   /* Rest on the LEFT/RIGHT rails only. The object floats ABOVE the nav bars (z-45) and
      passes over them freely during a throw, but it should COME TO REST on a side rail —
@@ -332,13 +367,13 @@ function mountNeedle(
     const bo = Math.min(0.9, Math.max(0, (sp - 0.55) * 0.85));
     if (Math.abs(bo - blendOpa) > 0.015) { blend.setAttribute("opacity", bo.toFixed(3)); blendOpa = bo; }
 
-    const o = mq.matches ? 0 : Math.min(0.66, sp / 2.2);
+    const o = calmed ? 0 : Math.min(0.66, sp / 2.2);
     if (Math.abs(o - trailOpa) > 0.02) { trail.style.opacity = o.toFixed(2); trailOpa = o; }
     if (o > 0.01) trail.style.transform = `rotate(${(body.a * (body.w < 0 ? -1 : 1) * 0.35 + (body.w < 0 ? 180 : 0)).toFixed(1)}deg)`;
-    const wo = mq.matches ? 0 : Math.max(0, (sp / 2.8 - 0.88) / 0.12) * 0.85;
+    const wo = calmed ? 0 : Math.max(0, (sp / 2.8 - 0.88) / 0.12) * 0.85;
     if (Math.abs(wo - wholeOpa) > 0.02) { whole.style.opacity = wo.toFixed(2); wholeOpa = wo; }
 
-    const lean = mq.matches ? 0 : 1;
+    const lean = calmed ? 0 : 1;
     const rx = clampN(-body.vy * 2.6, -7, 7) * lean;
     const ry = clampN(body.vx * 2.6, -7, 7) * lean;
     if (dt) {
@@ -567,6 +602,7 @@ function mountNeedle(
   // ── cleanup: remove EVERY listener, cancel the loop, drop the API, empty the root.
   return () => {
     stop();
+    motionGateObserver.disconnect();
     window.clearInterval(sessionTimer);
     for (const [t, type, h, opts] of listeners) t.removeEventListener(type, h, opts as EventListenerOptions);
     const w = window as unknown as { needle?: unknown; __needle?: unknown };

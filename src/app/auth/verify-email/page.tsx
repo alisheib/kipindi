@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { AuthShell } from "@/components/auth/auth-shell";
+import { AuthPanel, AuthHeader } from "@/components/auth/auth-panel";
 import { SUPPORT_EMAIL, HELPLINE } from "@/lib/support-config";
 import { verifyEmailToken } from "@/lib/server/email-verification";
 import { getServerT } from "@/lib/i18n-server";
@@ -49,26 +50,29 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams?:
   return (
     <AuthShell>
 
-        <section className="rounded-xl glass-panel p-6 space-y-5">
+        <AuthPanel>
+          {/* `/[0.12]` and not `/12`: Tailwind's opacity scale runs in steps of 5, so
+              `/12` was dropped before the mix and BOTH medallions rendered with no fill
+              — confirmed and failed looked identical apart from the glyph tint. Email
+              confirmation gates the first deposit, so this chip sits on the money-in
+              ladder and has to read at a glance. */}
           <span
-            className={`inline-flex h-12 w-12 items-center justify-center rounded-pill ${
-              good ? "bg-yes-500/12 text-yes-300" : "bg-no-500/12 text-no-300"
+            /* ⚠️ LITERALS, not `h-12 w-12` — spacing is overridden (tailwind.config.ts:200-215)
+               and `h-12` rendered a 128px disc on the money-in ladder described above. */
+            className={`inline-flex h-[48px] w-[48px] items-center justify-center rounded-pill ${
+              good ? "bg-yes-500/[0.12] text-yes-300" : "bg-no-500/[0.12] text-no-300"
             }`}
           >
             {good ? <I.mail s={22} /> : <I.alertCircle s={22} />}
           </span>
 
-          <div>
-            <p className={`font-mono text-[11px] uppercase tracking-[0.16em] font-bold ${good ? "text-yes-300" : "text-no-300"}`}>
-              {c.eyebrow}
-            </p>
-            <h1 className="mt-1.5 font-display text-[28px] font-bold leading-tight text-text tracking-[-0.02em]">
-              {c.title}
-            </h1>
-            <p className="mt-2 text-[13.5px] text-text-muted leading-relaxed">
-              {c.body}
-            </p>
-          </div>
+          <AuthHeader
+            tone={good ? "yes" : "no"}
+            eyebrow={c.eyebrow}
+            title={c.title}
+            subtitle={c.body}
+            subtitleLead="relaxed"
+          />
 
           <div className="flex flex-col gap-2.5">
             <Link href="/markets" className="btn btn-primary btn-lg btn-pill w-full">
@@ -88,7 +92,7 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams?:
               {SUPPORT_EMAIL()}
             </a>
           </p>
-        </section>
+        </AuthPanel>
 
     </AuthShell>
   );

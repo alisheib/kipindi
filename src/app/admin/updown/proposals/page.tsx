@@ -16,6 +16,9 @@ import { ProposeForm, ReviewActions, ArmAction, DeleteProposalAction, EvidencePa
 import { currentSession } from "@/lib/server/auth-service";
 import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { ControlLocked } from "@/components/admin/control-locked";
+import { updownProposalStateLabel } from "@/components/admin/status-badge";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Up & Down · AI proposals" };
 export const dynamic = "force-dynamic";
@@ -42,16 +45,12 @@ const STATE_VARIANT: Record<UpDownProposalState, "success" | "warning" | "danger
   ARMED: "success",
 };
 
-/** Operator language, not enum language — the state name is never shown raw. */
-const STATE_LABEL: Record<UpDownProposalState, string> = {
-  GENERATING: "Generating…",
-  VALIDATION_FAILED: "Failed",
-  FILTERED: "Didn't pass checks",
-  PENDING_REVIEW: "Ready for review",
-  APPROVED: "Approved · ready to arm",
-  REJECTED: "Rejected",
-  ARMED: "Armed · chain running",
-};
+/* Operator language, not enum language — the state name is never shown raw. The map
+   that stood here has moved into `updownProposalStateLabel`, alongside the poll and
+   candidate queues' own maps, because the three shared four tokens and disagreed on
+   two of them: this queue's APPROVED means "ready to arm a chain that will take real
+   stakes", which is not the poll queue's APPROVED, and that difference is now stated
+   in one place instead of implied by three local copies. */
 
 /** Plain-English reason text. The enum value is for counting; this is for reading. */
 const REASON_LABEL: Record<string, string> = {
@@ -184,8 +183,8 @@ export default async function UpDownProposalsPage({
   return (
     <>
       <AdminPageHead title="Up & Down · AI proposals" sw="Mapendekezo ya AI" />
-      <div className="px-4 lg:px-6 py-5 space-y-4">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <AdminBody>
+        <KpiGrid>
           {/* ⚠️ Keep every `delta` SHORT. AdminKpi renders it `whitespace-nowrap` with no
               truncate, so at 360px a long string is clipped mid-word by the card. Found by
               looking at the xs screenshot — the suite passed, because clipping inside the card
@@ -194,7 +193,7 @@ export default async function UpDownProposalsPage({
           <AdminKpi label="Armed" sw="Zimeanzishwa" value={String(counts.ARMED)} delta="live chains" spark={false} />
           <AdminKpi label="Didn't pass" sw="Hayakupita" value={String(counts.FILTERED + counts.VALIDATION_FAILED)} delta="unreadable" spark={false} />
           <AdminKpi label="AI spend" sw="Matumizi" value={formatUsd(spend)} delta={`${allProposals.length} generation${allProposals.length === 1 ? "" : "s"}`} spark={false} />
-        </div>
+        </KpiGrid>
 
         {/* ── The AI switch lives in ONE place; this page reports it, never mirrors it. ── */}
         {!aiOn && (
@@ -237,7 +236,7 @@ export default async function UpDownProposalsPage({
               className="inline-flex items-center min-h-[44px] transition-opacity hover:opacity-80"
             >
               <Chip size="lg" variant={stateFilter === s ? "brand" : "neutral"} selected={stateFilter === s}>
-                {s.replace(/_/g, " ").toLowerCase()} {counts[s] ?? 0}
+                {updownProposalStateLabel(s)} {counts[s] ?? 0}
               </Chip>
             </Link>
           ))}
@@ -263,7 +262,7 @@ export default async function UpDownProposalsPage({
           </span>
         </div>
         {badFilter && (
-          <p className="font-mono text-[11px] text-warning-fg bg-warning-bg/15 border border-warning-border rounded-md px-3 py-2">
+          <p className="font-mono text-[11px] text-warning-fg bg-warning-bg border border-warning-border rounded-md px-3 py-2">
             Unknown state or asset &mdash; showing the whole queue. Pick one from the chips above.
           </p>
         )}
@@ -341,7 +340,10 @@ export default async function UpDownProposalsPage({
                           {reasons.length > 0 && (
                             <ul className="mt-1 space-y-0.5">
                               {reasons.map((r) => (
-                                <li key={r} className="text-[10.5px] leading-snug text-hot-rose-300">
+                                // `text-danger-fg` — `hot-rose` is not a bridged family, so
+                                // these refusal reasons rendered in plain body ink. Not
+                                // `no-300`: §B2 keeps YES/NO for money outcomes only.
+                                <li key={r} className="text-[10.5px] leading-snug text-danger-fg">
                                   · {REASON_LABEL[r] ?? r}
                                   {REASON_ADVICE[r] && (
                                     <span className="mt-0.5 block text-text-subtle">{REASON_ADVICE[r]}</span>
@@ -364,7 +366,7 @@ export default async function UpDownProposalsPage({
                           )}
                         </td>
                         <td className="whitespace-nowrap">
-                          <Chip size="sm" variant={STATE_VARIANT[p.state]}>{STATE_LABEL[p.state]}</Chip>
+                          <Chip size="sm" variant={STATE_VARIANT[p.state]}>{updownProposalStateLabel(p.state)}</Chip>
                           <div className="mt-1 font-mono text-[10px] text-text-subtle">
                             {formatDateTimeSafe(p.createdAt)}
                           </div>
@@ -412,7 +414,9 @@ export default async function UpDownProposalsPage({
                                 View chain
                               </Link>
                             )}
-                            {p.state !== "ARMED" && <DeleteProposalAction id={p.id} state={p.state} />}
+                            {/* The ARMED gate is here, and the delete modal's copy
+                                ("has never opened a round") depends on it holding. */}
+                            {p.state !== "ARMED" && <DeleteProposalAction id={p.id} />}
                           </div>
                         </td>
                       </tr>
@@ -462,7 +466,7 @@ export default async function UpDownProposalsPage({
             </p>
           </div>
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

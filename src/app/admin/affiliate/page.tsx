@@ -10,6 +10,8 @@ import { getAffiliateConfig } from "@/lib/server/affiliate-config";
 import { getAdminAffiliateStats } from "@/lib/server/affiliate-service";
 import { AffiliateAdminClient } from "./affiliate-admin-client";
 import { formatDateShort, formatTzs } from "@/lib/utils";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Affiliate · Admin" };
 export const dynamic = "force-dynamic";
@@ -50,14 +52,14 @@ export default async function AdminAffiliatePage({
         actions={<Chip size="sm" variant={config.enabled ? "active" : "paused"}>{config.enabled ? "Active" : "Paused"}</Chip>}
       />
 
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         {/* KPIs */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiGrid>
           <AdminKpi label="Total referrals"   sw="Marafiki wote"   value={stats.totalReferrals.toLocaleString()} delta="all-time" deltaDir="flat" />
           <AdminKpi label="Active affiliates"  sw="Wanaolipwa"      value={stats.activeAffiliates.toLocaleString()} delta="earned a reward" deltaDir="flat" />
           <AdminKpi label="Commission paid"    sw="Tume zilizolipwa" value={formatTzs(stats.commissionPaidTzs)} delta="all-time" />
           <AdminKpi label="Top referrer"       sw="Bingwa"          value={stats.topReferrer?.handle ?? "—"} delta={stats.topReferrer ? `${stats.topReferrer.recruits} recruits` : "none yet"} deltaDir="flat" />
-        </div>
+        </KpiGrid>
 
         {/* Interactive config editor */}
         <AffiliateAdminClient config={config} />
@@ -150,7 +152,7 @@ export default async function AdminAffiliatePage({
             </>
           )}
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

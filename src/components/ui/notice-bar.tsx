@@ -22,11 +22,20 @@ import type { GlyphKey } from "@/components/ui/glyphs";
 
 export type NoticeBarTone = "info" | "warning" | "success" | "maintenance";
 
+// The fills carry no `/NN` (2026-08-21). `--claret-soft`, `--warning-bg` and
+// `--info-bg` are already mixed against `transparent` in globals.css (22% / 18% /
+// 18%), so a modifier multiplied that down — a `/60` on warning meant 10.8%, not
+// 60%. `maintenance` was always written bare and was the only tone on this bar
+// that painted at all; warning and info now match it and render their designed
+// tint. ⛔ Do not re-add a modifier to a pre-mixed token.
 const TONE: Record<NoticeBarTone, { bar: string; accent: string }> = {
   maintenance: { bar: "border-claret-edge bg-claret-soft text-claret-100",       accent: "var(--claret-400)" },
-  warning:     { bar: "border-warning-border bg-warning-bg/60 text-warning-fg",  accent: "var(--warning-fg)" },
-  info:        { bar: "border-info-border bg-info-bg/50 text-info-fg",           accent: "var(--info-fg)" },
-  success:     { bar: "border-yes-700 bg-yes-500/12 text-yes-200",               accent: "var(--yes-400)" },
+  warning:     { bar: "border-warning-border bg-warning-bg text-warning-fg",     accent: "var(--warning-fg)" },
+  info:        { bar: "border-info-border bg-info-bg text-info-fg",              accent: "var(--info-fg)" },
+  // `/[0.12]` and not `/12`: Tailwind's opacity scale is a 5-step ladder, so `/12`
+  // is dropped before the mix and this tone painted nothing. `--yes-500` is opaque,
+  // so unlike the three above it DOES want a modifier — just an on-ladder one.
+  success:     { bar: "border-yes-700 bg-yes-500/[0.12] text-yes-200",           accent: "var(--yes-400)" },
 };
 
 export function NoticeBar({
@@ -77,7 +86,21 @@ export function NoticeBar({
             type="button"
             onClick={onDismiss}
             aria-label={dismissLabel}
-            className="shrink-0 inline-flex h-6 w-6 items-center justify-center rounded-md opacity-70 hover:opacity-100 transition-opacity"
+            /* ⭐ 40×40 HIT BOX, ZERO LAYOUT COST — and the two halves of that are the point.
+               This was `h-6 w-6`, which on THIS project's overridden spacing scale is 32px,
+               not the 24 the class name suggests (tailwind.config.ts remaps 0.5–12; read it
+               before trusting any numeric spacing class here). 32 is still under the §A2
+               floor, on an icon-only control that is the only way to close a site-wide
+               banner — and `NoticeBarAction` below already documents itself as keeping "the
+               ≥40px tap target the responsiveness matrix requires", so the file stated the
+               standard and this button did not meet it.
+               `-my-1` (4px on that scale) gives back the 8px the box grew, so the button's
+               MARGIN box stays 32px — the height the row was built around — while its BORDER
+               box, which is what a finger and `getBoundingClientRect()` both see, is 40. The
+               bar does not get taller and the X does not get bigger; the target simply reaches
+               into padding the bar already owned. ⛔ Do not drop the negative margin without
+               re-measuring the bar. */
+            className="shrink-0 -my-1 inline-flex h-[40px] w-[40px] items-center justify-center rounded-md opacity-70 hover:opacity-100 transition-opacity"
           >
             <I.x s={14} />
           </button>
@@ -87,8 +110,25 @@ export function NoticeBar({
   );
 }
 
-/** The bar's trailing control, styled to sit on any NoticeBar tone. Keeps the
- *  ≥40px tap target the responsiveness matrix requires. */
+/** The bar's trailing control. Keeps the ≥40px tap target the responsiveness
+ *  matrix requires.
+ *
+ *  ⚠️ Tone (2026-08-21). This was written `border-current/40` +
+ *  `hover:bg-current/10` so it would inherit whatever tone the bar set. Neither
+ *  class ever rendered: Tailwind owns the `current` keyword, and its
+ *  `parseColor("currentColor", { loose: true })` returns null exactly as it does
+ *  for a `var(--x)`, so `withAlphaValue` falls through to its undefined default
+ *  and the utility is dropped entirely. So the control has always shipped with
+ *  NO border and NO hover feedback — a 40px tap target with nothing to say it is
+ *  a control. The alpha bridge in tailwind.config.ts cannot reach these; only a
+ *  real token can.
+ *
+ *  `--warning-fg` is what `currentColor` actually resolved to here, because the
+ *  bar's one consumer is `EmailVerifyBanner` on `tone="warning"` (which sets
+ *  `text-warning-fg`), and it is what the two weights below are matched to: a
+ *  40% outline and a 10% hover wash, unchanged from the author's intent.
+ *  ⛔ A future bar on another tone must key this off the tone the way `TONE`
+ *  above does — do NOT reach back for `current/NN`, which cannot ever render. */
 export function NoticeBarAction({
   children,
   onClick,
@@ -103,8 +143,13 @@ export function NoticeBarAction({
   glyph?: GlyphKey;
 }) {
   const Glyph = glyph ? I[glyph] : null;
+  // 44, not 40 — §A2's "44px preferred on mobile", and this control is the mobile case by
+  // construction: the standing notice bar sits app-wide above the content, and its action is
+  // how a player clears the blocker it announces (confirm the email that gates the first
+  // deposit, resend the code). 40 is the absolute floor, not the target, for a button a
+  // thumb reaches for on a bar that is deliberately never in the reading flow.
   const cls =
-    "inline-flex min-h-[40px] shrink-0 items-center gap-1.5 rounded-pill border border-current/40 px-3.5 text-[12px] font-semibold transition-colors hover:bg-current/10 disabled:opacity-50";
+    "inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-pill border border-warning-fg/40 px-3.5 text-[12px] font-semibold transition-colors hover:bg-warning-fg/10 disabled:opacity-50";
   if (href) {
     return (
       <a href={href} className={cls}>

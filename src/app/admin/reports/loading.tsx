@@ -9,9 +9,11 @@ export default function Loading() {
         sw="Ripoti"
         actions={
           <div className="flex items-center gap-2">
-            <SkChip className="h-8 w-40" />
-            <SkChip className="h-8 w-16" />
-            <SkChip className="h-8 w-24" />
+            {/* ⚠️ LITERALS, not `h-8` (48px on the overridden scale). The live report chips
+                (reports/page.tsx:210) are 40px now — these move with them. */}
+            <SkChip className="h-[40px] w-40" />
+            <SkChip className="h-[40px] w-16" />
+            <SkChip className="h-[40px] w-24" />
           </div>
         }
       />

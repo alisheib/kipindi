@@ -363,6 +363,12 @@ ok("7.3 · the ghost CTA owns its own dismissal (it used to fight the primary's 
   /if \(onSecondary\) onSecondary\(\); else onClose\(\)/.test(ORM));
 ok("7.4 · the receipt's ghost CTA is omitted when it would navigate to the current page",
   /onWatchRound \? t\.market\.udRcWatchRound : undefined/.test(RECEIPT));
+// The twin of 7.3. The primary had the SAME defect the ghost CTA was fixed for — and the
+// Enter handler had always been `(onPrimary ?? closeRef.current)()`, so click and keyboard
+// disagreed on what "Keep predicting" does. Both halves are ratcheted here.
+ok("7.5 · the primary CTA owns its own dismissal, and click agrees with Enter",
+  /if \(onPrimary\) onPrimary\(\); else onClose\(\)/.test(ORM) &&
+  /\(onPrimary \?\? closeRef\.current\)\(\)/.test(ORM));
 
 // ───────────────────────────────────────────────────────────────────────────────
 console.log("\n§8 · The OTHER raw-server-string channel — a ratchet on the banners");
@@ -498,8 +504,17 @@ console.log("\n§9 · How long a moment stays — one definition site, and the i
 
   // ⛔ "KEEP PLACING BETS POPUPS NORMAL" — the bet path must NOT have moved.
   const QUICK = stripComments(read("src/components/updown/use-quick-bet.ts"));
+  // ⭐ THE RULING IS ABOUT THE DURATION, NOT ABOUT WHERE THE 3000 IS TYPED. This required a
+  // numeric LITERAL at the call site, so it went red when the dwell moved into
+  // `feedback-timing.ts` — which is the module §F8 created to own dwells, and which 9.7 four
+  // lines up ALREADY reads constants from. Resolve the value the same way 9.7 does, so Ali's
+  // "keep it normal" is still enforced as 3 seconds however it is spelled.
+  // Reuses `num()` from 9.0 above — the same reader that already resolves the other dwell
+  // constants, so there is one way to read this module in this file and not two.
+  const betDwellExpr = QUICK.match(/durationMs:\s*([A-Za-z_$][\w$]*|\d+)/)?.[1] ?? "";
+  const betDwellMs = /^\d+$/.test(betDwellExpr) ? Number(betDwellExpr) : (num(betDwellExpr) ?? 0);
   ok("9.8 · the bet-placed toast is untouched at 3s (Ali: keep it normal)",
-    /durationMs:\s*3000/.test(QUICK));
+    betDwellMs === 3000, `${betDwellExpr || "no durationMs"} → ${betDwellMs}ms`);
   ok("9.9 · the shared modal's 5s default is untouched",
     /const DEFAULT_AUTO_CLOSE_MS = 5_000;/.test(read("src/components/markets/operation-result-modal.tsx")));
 
@@ -567,9 +582,25 @@ console.log("\n§10 · The secondary stands down while the primary is up — and
     !/heldRef/.test(TOAST),
     "a side queue is a second place a money-path refusal can be dropped from");
   ok("10.6 · ⭐ countdowns PAUSE while held and resume after, so nothing expires unseen",
-    /if \(resultModalOpen\) for \(const id of ids\) pause\(id\);/.test(TOAST) &&
-    /else for \(const id of ids\) resume\(id\);/.test(TOAST),
+    /if \(resultModalOpen\) \{\s*if \(!prevModalOpenRef\.current\) userPausedRef\.current\.clear\(\);\s*for \(const id of ids\) pause\(id\);/.test(TOAST) &&
+    /\} else if \(prevModalOpenRef\.current\) \{\s*for \(const id of ids\) if \(!userPausedRef\.current\.has\(id\)\) resume\(id\);/.test(TOAST),
     "reusing the hover machinery gives a held toast its full dwell once it is actually on screen");
+  // 🔴 THE RELEASE IS AN EDGE, AND IT RESPECTS WHO IS HOLDING. The first version of this
+  // effect resumed on every `toasts` change — an ARRIVAL, not a modal closing — so a burst
+  // re-armed the real dismiss timer under a toast the pointer was resting on while
+  // `ToastItem`'s own `paused` state kept its bar frozen. The player watched a half-full bar
+  // and the toast disappeared mid-sentence. Both halves are load-bearing: without the edge a
+  // stack change wakes everything; without the set, the modal closing overrules a hover.
+  // ⚠️ The third clause bans the unconditional release in BOTH its spellings — the original
+  // one-liner AND a braced `} else {` block. A ban on only the shape that happened to ship
+  // is a ban a re-formatter walks straight through.
+  ok("10.6b · ⛔ …and the release is EDGE-driven and never wakes a toast the POINTER is holding",
+    /prevModalOpenRef/.test(TOAST) && /userPausedRef/.test(TOAST) &&
+    !/else\s*\{?\s*for \(const id of ids\) resume\(id\);/.test(TOAST),
+    "resuming on every `toasts` change restarts a hover-paused timer while its bar stays frozen");
+  ok("10.6c · ⛔ the viewport is handed the ATTRIBUTED callbacks, not the raw primitives",
+    /onPause=\{userPause\}/.test(TOAST) && /onResume=\{userResume\}/.test(TOAST),
+    "if the provider cannot tell a pointer-hold from a modal-hold, it cannot honour either");
   ok("10.7 · ⛔ a STICKY money-path failure has no countdown to lose in the first place",
     /Sticky \(durationMs 0\): no countdown at all/.test(TOAST));
 

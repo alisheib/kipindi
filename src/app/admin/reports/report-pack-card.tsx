@@ -48,7 +48,9 @@ export async function ReportPackCard() {
               <li key={step.state} className="contents">
                 <div className="flex flex-col items-center gap-1 shrink-0" style={{ width: 84 }}>
                   <span
-                    className="grid h-8 w-8 place-items-center rounded-full border-2"
+                    /* ⚠️ LITERALS, not `h-8 w-8` — spacing is overridden (tailwind.config.ts:200-215)
+                       so `h-8` was a 48px roundel inside this 84px-wide step column. */
+                    className="grid h-[32px] w-[32px] place-items-center rounded-full border-2"
                     style={{
                       borderColor: nodeColor,
                       background: done ? `color-mix(in oklab, ${nodeColor} 16%, transparent)` : "transparent",

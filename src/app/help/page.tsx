@@ -164,7 +164,7 @@ function ContactCard({
 }) {
   const tintCls =
     tone === "yes"   ? "border-yes-700 bg-yes-500/10 text-yes-300"
-    : tone === "info"  ? "border-info-border bg-info-bg/30 text-info-fg"
+    : tone === "info"  ? "border-info-border bg-info-bg text-info-fg"
     :                    "border-aqua-500/50 bg-aqua-500/10 text-aqua-300";
   const card = (
     <div className="rounded-xl glass-panel p-4 space-y-2 hover:border-brand-400 transition-colors h-full">
@@ -195,14 +195,16 @@ function QuickLinkCard({
   // C2i — tone-coded quick links (never gold; help isn't earned money).
   const tint =
     tone === "yes"  ? "bg-yes-500/10 text-yes-300"
-    : tone === "info" ? "bg-info-bg/40 text-info-fg"
+    : tone === "info" ? "bg-info-bg text-info-fg"
     :                   "bg-aqua-500/10 text-aqua-300";
   return (
     <Link
       href={href as never}
       className="flex items-center gap-3 rounded-xl glass-panel p-4 hover:border-brand-400 transition-colors"
     >
-      <span className={`inline-flex h-9 w-9 items-center justify-center rounded-md shrink-0 ${tint}`}>
+      {/* ⚠️ LITERALS, not `h-9 w-9` — spacing is overridden (tailwind.config.ts:200-215), so
+          `h-9` was 64px: 24px larger than the 40px badge on this very same page. */}
+      <span className={`inline-flex h-[40px] w-[40px] items-center justify-center rounded-md shrink-0 ${tint}`}>
         {icon}
       </span>
       <div className="flex-1 min-w-0">

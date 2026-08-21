@@ -72,7 +72,10 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
         actions={
           <Link
             href={"/admin/resolver-queue" as Route}
-            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-border bg-bg-inset font-mono text-[11px] tracking-[0.08em] uppercase text-text-muted hover:text-text hover:border-border-strong transition-colors"
+            /* ⚠️ LITERAL, not `h-8` (48px on the overridden scale) — 40px = --tap-min, the
+               admin header-chip height, and what this page's own loading.tsx already draws.
+               Twin of admin/kyc/[id]/page.tsx. */
+            className="inline-flex items-center gap-1.5 h-[40px] px-3 rounded-md border border-border bg-bg-inset font-mono text-[11px] tracking-[0.08em] uppercase text-text-muted hover:text-text hover:border-border-strong transition-colors"
           >
             <I.chevronLeft s={13} /> Queue
           </Link>

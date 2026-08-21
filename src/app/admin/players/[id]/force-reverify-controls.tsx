@@ -26,7 +26,6 @@ export function ForceReverifyControls({ userId }: { userId: string }) {
   // than being offered a button the server will refuse (and logged as a privilege
   // escalation for pressing it). See docs/ADMIN-CONSOLE-FINDINGS.md.
   const mayAct = useMayAct();
-  if (!mayAct) return <ActReadOnly />;
 
   const [pending, start] = useTransition();
   const [open, setOpen] = useState(false);
@@ -34,6 +33,11 @@ export function ForceReverifyControls({ userId }: { userId: string }) {
   const router = useRouter();
   const { toast } = useToast();
   const reasonRef = useRef<HTMLTextAreaElement>(null);
+
+  // Rules of hooks: read the gate as a hook at the top, ACT on it below every other hook.
+  // Revoking an ACT grant mid-session flips `mayAct` on the next router.refresh(); an early
+  // return above these hooks would render fewer hooks than the last pass and crash the page.
+  if (!mayAct) return <ActReadOnly />;
 
   const submit = () => {
     if (reason.trim().length < 5) return;
@@ -51,7 +55,7 @@ export function ForceReverifyControls({ userId }: { userId: string }) {
 
   return (
     <>
-      <button type="button" disabled={pending} onClick={() => { setOpen(true); setReason(""); }} className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 py-1.5 rounded-sm border border-border bg-bg-overlay text-text-secondary hover:bg-warning-bg/20 hover:text-warning-fg hover:border-warning-border transition-colors inline-flex items-center gap-1.5">
+      <button type="button" disabled={pending} onClick={() => { setOpen(true); setReason(""); }} className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 py-1.5 rounded-sm border border-border bg-bg-overlay text-text-secondary hover:bg-warning-bg hover:text-warning-fg hover:border-warning-border transition-colors inline-flex items-center gap-1.5">
         <I.shieldcheck s={11} /> Force re-verify KYC
       </button>
 

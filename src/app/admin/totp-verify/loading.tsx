@@ -10,10 +10,14 @@ export default function Loading() {
         </div>
         <div className="rounded-xl border border-brand-500 bg-bg-elevated p-5 lg:p-6 space-y-4">
           <SkBar className="h-4 w-3/4" />
-          <SkBar className="h-11 w-full rounded-md" />
-          <SkBar className="h-10 w-full rounded-md" />
+          {/* ⚠️ LITERALS, not `h-11` / `h-10` — spacing is overridden
+              (tailwind.config.ts:200-215) so these drew 96px and 80px: two different heights
+              for a TOTP code field and its submit button. 48px matches the enrolment code
+              input (admin/2fa/setup); 44px is --h-control-md for the button. */}
+          <SkBar className="h-[48px] w-full rounded-md" />
+          <SkBar className="h-[44px] w-full rounded-md" />
         </div>
-        <div className="rounded-xl border border-info-border bg-info-bg/[0.10] p-3.5">
+        <div className="rounded-xl border border-info-border bg-info-bg p-3.5">
           <SkBar className="h-3 w-full" />
         </div>
       </div>

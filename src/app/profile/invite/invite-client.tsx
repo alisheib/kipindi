@@ -50,7 +50,12 @@ export function ReferralShare({ link, shareText }: { link: string; shareText: st
       </p>
       <div className="flex items-center gap-2 mb-2.5">
         <div className="flex-1 min-w-0">
-          <Input readOnly value={link} mono className="font-medium" aria-label="Referral link" />
+          {/* The accessible name is the SAME key as the visible caption above, not a second
+              English string beside it. It was hardcoded "Referral link", so a Swahili player
+              saw "Kiungo chako cha rufaa" and heard "Referral link" — two names for one
+              field, in two languages. Reusing the caption's key also satisfies the
+              label-in-name expectation: what is read aloud is what is printed. */}
+          <Input readOnly value={link} mono className="font-medium" aria-label={t.profile.yourReferralLink} />
         </div>
         <button
           type="button"

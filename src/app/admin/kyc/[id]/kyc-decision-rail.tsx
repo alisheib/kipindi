@@ -66,7 +66,6 @@ export function KycDecisionRail({
   // than being offered a button the server will refuse (and logged as a privilege
   // escalation for pressing it). See docs/ADMIN-CONSOLE-FINDINGS.md.
   const mayAct = useMayAct();
-  if (!mayAct) return <ActReadOnly />;
 
   const [pending, startTransition] = useTransition();
   const [judg, setJudg] = useState<Record<string, TriState>>(Object.fromEntries(JUDGMENT_CHECKS.map((c) => [c.key, "pending"])));
@@ -76,6 +75,11 @@ export function KycDecisionRail({
   const router = useRouter();
   // B-28 — success toasts ride the transition's falling edge (data visible when announced)
   const { toast, deferToast } = useDeferredToast(pending);
+
+  // Rules of hooks: read the gate as a hook at the top, ACT on it below every other hook.
+  // Revoking an ACT grant mid-session flips `mayAct` on the next router.refresh(); an early
+  // return above these hooks would render fewer hooks than the last pass and crash the page.
+  if (!mayAct) return <ActReadOnly />;
 
   const cycle = (k: string) => setJudg((p) => ({ ...p, [k]: p[k] === "pending" ? "pass" : p[k] === "pass" ? "fail" : "pending" }));
   const allJudged = JUDGMENT_CHECKS.every((c) => judg[c.key] === "pass");
@@ -156,13 +160,16 @@ export function KycDecisionRail({
               <button
                 type="button"
                 disabled={!(canApproveDirect || canApproveAsChecker)}
-                /* btn-lg (46px), not btn-md (38px): these three controls decide a
-                   person's identity and open the withdrawal gate, and officers review
-                   on a phone. 38px is under the 44px WCAG 2.5.5 floor that the
-                   certification programme's G6 requires — measured at 38px on a
-                   Pixel 7 by qa:cert-d2. The global --h-control-md is itself below
-                   the floor ("Phase 3 → 44", globals.css), but raising the token
-                   changes every button on the platform; that belongs to L6. */
+                /* btn-lg (--h-control-lg, 48px) rather than btn-md: these three controls
+                   decide a person's identity and open the withdrawal gate, and officers
+                   review on a phone, so they get the top rung of the ladder.
+                   ⚠️ CORRECTED — this note used to read "btn-lg (46px), not btn-md (38px)"
+                   and argue that btn-md sat under the 44px WCAG 2.5.5 floor. All three
+                   numbers are stale: globals.css now ships 40 / 44 / 48 for
+                   --h-control-sm / -md / -lg, so btn-md IS at the floor and the "raising
+                   the token belongs to L6" caveat is discharged. The CHOICE stands on
+                   consequence, not on a floor violation. ⛔ Values live in globals.css —
+                   do not restate them here again. */
                 className="btn btn-primary btn-lg w-full disabled:opacity-40"
               >
                 <I.shieldcheck s={14} /> {makerCheckerRequired ? "Approve (second officer)" : "Approve identity"}
@@ -207,7 +214,7 @@ export function KycDecisionRail({
             </button>
           </div>
         ) : (
-          <div className="space-y-2 rounded-md border border-claret-edge bg-claret-soft/40 p-2.5">
+          <div className="space-y-2 rounded-md border border-claret-edge bg-claret-soft p-2.5">
             <Select
               value={reasonCode}
               onChange={setReasonCode}

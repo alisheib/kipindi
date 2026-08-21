@@ -33,7 +33,24 @@ export function CloseAccountForm() {
           name="confirm"
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
-          className="w-full h-10 px-3 rounded-md border border-border bg-bg-overlay font-mono text-[16px] tabular-nums text-text focus:outline-none focus:border-no-700 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--no-500)_25%,transparent)] transition-colors"
+          /* ⚠️ TOKEN, not `h-10` — spacing is overridden (tailwind.config.ts:200-215) so
+             `h-10` rendered an 80px field. `--h-input` is the kit's 44px input height,
+             which is what this hand-rolled input was always meant to match.
+
+             §A3 / E-129 — the focus ring here is a `box-shadow`, and forced-colors
+             (Windows high-contrast) STRIPS box-shadow while keeping `outline`; the
+             border recolour goes too, since forced-colors paints every border the same
+             system colour. So the claret ring — deliberate, this is the destructive
+             confirm field, and it stays claret rather than borrowing the brand blue —
+             needs a real `outline` beside it, the same shape `.gilt-metal:focus-visible`
+             uses. ⛔ It is written out rather than left to `focus:outline-none`: in
+             Tailwind 3 that utility silently EMITS `outline: 2px solid transparent`
+             (corePlugins outlineStyle), which happens to be this bridge, but Tailwind 4
+             redefines it as `outline-style: none` — so the accessibility of this field
+             was resting on a version-specific implementation detail nobody had written
+             down. Transparent, so forced-colors substitutes a real colour and normal
+             rendering is unchanged. */
+          className="w-full h-[var(--h-input)] px-3 rounded-md border border-border bg-bg-overlay font-mono text-[16px] tabular-nums text-text focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-transparent focus:border-no-700 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--no-500)_25%,transparent)] transition-colors"
           autoComplete="off"
         />
       </label>

@@ -92,7 +92,7 @@ export function TopAppBar({ user, proposalsState }: { user: TopAppBarUser; propo
         { href: "/updown",    label: t.market.udTitle, accent: true },
         { href: "/live",      label: t.nav.live },
         { href: "/results",   label: t.common.results },
-        { href: "/positions", label: t.common.history },
+        { href: "/positions", label: t.common.positions },
         { href: "/wallet",    label: t.nav.wallet },
       ]
     : [
@@ -191,8 +191,12 @@ export function TopAppBar({ user, proposalsState }: { user: TopAppBarUser; propo
               <WalletBalancePill balance={user.balance} />
               {/* bare eye keeps the compact 14px glyph but takes a 44px-tall hit area
                   (WCAG 2.5.5 AAA). Height only — width stays 28px so the cluster
-                  doesn't reflow horizontally. */}
-              <CashEye bare size={14} className="inline-flex items-center justify-center h-11 w-7 -mx-1 text-[var(--gold-300)]" />
+                  doesn't reflow horizontally.
+                  ⛔ BOTH NUMBERS ARE ARBITRARY LITERALS ON PURPOSE. `theme.extend.spacing`
+                  is overridden (tailwind.config.ts:200-215): `h-11` is 96px and `w-7` is
+                  40px, so this shipped 96×40 and the comment above was false on both
+                  halves until 2026-08-21. Never a scale token here. */}
+              <CashEye bare size={14} className="inline-flex items-center justify-center h-[44px] w-[28px] -mx-1 text-[var(--gold-300)]" />
             </div>
           )}
 

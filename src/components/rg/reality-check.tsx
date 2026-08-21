@@ -23,6 +23,35 @@ import { useT } from "@/lib/i18n";
 
 const DEFAULT_INTERVAL   = 30; // minutes
 
+/**
+ * Storage is a CONVENIENCE here, never a dependency. A browser with storage
+ * blocked (Chrome "block all cookies", some in-app webviews) throws on the
+ * FIRST `sessionStorage` touch — and this host is mounted in the root
+ * AppShell, so an unguarded throw took the whole signed-in app to the root
+ * error page on EVERY route.
+ *
+ * ⛔ The check itself must NOT be conditional on storage. It is an RG /
+ * compliance control (LCCP SR Code 3.4.1), so it keeps firing on schedule
+ * with storage gone: the fallback map holds the same per-user keys for the
+ * life of the tab's JS context, which covers soft navigation and remounts.
+ * What a storage-blocked browser loses is persistence across a HARD reload —
+ * the clock restarts, the prompt does not stop.
+ */
+const memStore = new Map<string, string>();
+
+function readStore(key: string): string | null {
+  try {
+    const v = window.sessionStorage.getItem(key);
+    if (v !== null) return v;
+  } catch { /* storage blocked — fall through to memory */ }
+  return memStore.get(key) ?? null;
+}
+
+function writeStore(key: string, value: string): void {
+  memStore.set(key, value);
+  try { window.sessionStorage.setItem(key, value); } catch { /* storage blocked — memory already holds it */ }
+}
+
 export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, userId }: { enabled: boolean; intervalMin?: number; userId?: string | null }) {
   const [open, setOpen] = React.useState(false);
   const [elapsedMin, setElapsedMin] = React.useState(0);
@@ -39,12 +68,12 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, user
     const SESSION_START_KEY = `kp_session_started_at:${who}`;
     const LAST_PROMPT_KEY = `kp_reality_check_last:${who}`;
 
-    let startedAt = Number(sessionStorage.getItem(SESSION_START_KEY) ?? 0);
+    let startedAt = Number(readStore(SESSION_START_KEY) ?? 0);
     if (!startedAt || Number.isNaN(startedAt)) {
       startedAt = Date.now();
-      sessionStorage.setItem(SESSION_START_KEY, String(startedAt));
+      writeStore(SESSION_START_KEY, String(startedAt));
     }
-    let lastPromptAt = Number(sessionStorage.getItem(LAST_PROMPT_KEY) ?? startedAt);
+    let lastPromptAt = Number(readStore(LAST_PROMPT_KEY) ?? startedAt);
     if (!lastPromptAt || Number.isNaN(lastPromptAt)) lastPromptAt = startedAt;
 
     const intervalMs = Math.max(1, intervalMin) * 60_000;
@@ -65,7 +94,7 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, user
         setElapsedMin(sessionMin);
         setOpen(true);
         lastPromptAt = now;
-        sessionStorage.setItem(LAST_PROMPT_KEY, String(now));
+        writeStore(LAST_PROMPT_KEY, String(now));
       }
     };
     tick();
@@ -80,7 +109,7 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, user
   const dismiss = React.useCallback(() => {
     setOpen(false);
     if (typeof window !== "undefined") {
-      sessionStorage.setItem(`kp_reality_check_last:${userId || "anon"}`, String(Date.now()));
+      writeStore(`kp_reality_check_last:${userId || "anon"}`, String(Date.now()));
     }
   }, [userId]);
 
@@ -103,7 +132,10 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, user
 
       <div className="space-y-4">
         <div className="flex items-center gap-2.5">
-          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-bg-inset border border-border text-gold-300">
+          {/* ⛔ LITERALS, NOT `h-8 w-8` — the spacing scale is overridden
+              (tailwind.config.ts:200-215) and that pair is 48×48px. 40px = --tap-min, the
+              badge disc every other section heading in the product uses. */}
+          <span className="inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-md bg-bg-inset border border-border text-gold-300">
             <I.clock s={18} />
           </span>
           <h2
@@ -120,6 +152,15 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, user
           {t.rg.mostPlayForFun}
         </p>
 
+        {/* 🔴 LCCP SR CODE 3.4.1 — THE HARM-REDUCTION EXITS ARE NOT THE SMALL PRINT.
+            "Take a break" and "Self-exclude" were `btn-md` at HALF width in a nested
+            `xs:grid-cols-2`, while "Continue playing" was `btn-lg` full width. On a
+            reality-check prompt that is a compliance defect, not a layout preference:
+            the control that CONTINUES the session was the largest target in the dialog
+            and the two that STOP it were the smallest — and btn-md sat under --tap-min.
+            All four are now one rung and one width; the player chooses on the copy, not
+            on the pixel count.
+            ⛔ Do NOT reintroduce a size or width difference between these four. */}
         <div className="grid grid-cols-1 gap-2 pt-1">
           <button type="button" onClick={dismiss} className="btn btn-ghost btn-lg w-full">
             {t.rg.continuePlaying}
@@ -128,16 +169,14 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, user
             <I.clock s={14} />
             {t.rg.setLimits}
           </Link>
-          <div className="grid grid-cols-1 xs:grid-cols-2 gap-2">
-            <Link href="/profile/responsible-gambling#break" onClick={dismiss} className="btn btn-ghost btn-md w-full inline-flex whitespace-normal h-auto min-h-[38px]">
-              <I.pause s={13} />
-              {t.rg.takeABreak}
-            </Link>
-            <Link href="/profile/responsible-gambling#exclude" onClick={dismiss} className="btn btn-claret btn-md w-full inline-flex whitespace-normal h-auto min-h-[38px]">
-              <I.lock s={13} />
-              {t.rg.selfExclude}
-            </Link>
-          </div>
+          <Link href="/profile/responsible-gambling#break" onClick={dismiss} className="btn btn-ghost btn-lg w-full inline-flex">
+            <I.pause s={14} />
+            {t.rg.takeABreak}
+          </Link>
+          <Link href="/profile/responsible-gambling#exclude" onClick={dismiss} className="btn btn-claret btn-lg w-full inline-flex">
+            <I.lock s={14} />
+            {t.rg.selfExclude}
+          </Link>
         </div>
 
         <p className="text-center font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle pt-1">

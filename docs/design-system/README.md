@@ -61,11 +61,15 @@ you where to put a **file**, which is how the duplication actually starts.
 | **provenance** (rendered stills, the state something was signed off in) | `.../v2-2026-07-27/07-provenance/` | committed screenshots elsewhere |
 | **evidence** (QA shots, probe output) | nowhere — it is **gitignored** (`.qa-design*/`) | the repo. A checked-in PNG is a claim nobody can re-derive |
 
-⚠️ **`docs/NEXT-SESSION-*.md` is a tolerated exception, not a pattern.** One exists —
-`NEXT-SESSION-MATERIAL-VISIBLE.md` — because a copy-pasteable prompt is a different artefact
-from a tracker section. **There must never be two.** When its work is done, delete it; the
-durable record is §6b. If you are about to create a second one, you are creating the
-redundancy this section exists to stop.
+⚠️ **`docs/NEXT-SESSION-*.md` is a tolerated exception, not a pattern.** A copy-pasteable
+prompt is a different artefact from a tracker section, so **one** may exist — **never two.**
+When its work is done, delete it; the durable record is §6b. If you are about to create a
+second one, you are creating the redundancy this section exists to stop.
+
+✅ **2026-08-21: none exists.** This paragraph named `NEXT-SESSION-MATERIAL-VISIBLE.md` as the
+one instance. Its own delete-condition — *"delete it when the DA/DS sweep closes"* — fired on
+2026-08-10 when the sweep closed at 93/93, and it was still sitting in `docs/` eleven days
+later, which is precisely how a spent prompt gets re-read as live instruction. It is deleted.
 
 ⛔ **THE FIVE PLACES DESIGN FILES LIVE, so nobody invents a sixth** (re-measured 2026-08-11):
 

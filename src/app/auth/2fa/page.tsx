@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AuthShell } from "@/components/auth/auth-shell";
+import { AuthPanel, AuthHeader } from "@/components/auth/auth-panel";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { OtpInput } from "@/components/ui/otp-input";
 import { Input } from "@/components/ui/input";
@@ -28,19 +29,14 @@ export default async function TwoFactorChallengePage({ searchParams }: { searchP
 
   return (
     <AuthShell>
-      <section className="rounded-xl glass-panel p-6 space-y-5">
-        <div>
-          <p className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-brand-300">
-            <I.shieldcheck s={13} />
-            {t.security.eyebrow}
-          </p>
-          <h1 className="mt-1.5 font-display text-[28px] font-bold leading-tight text-text tracking-[-0.02em]">
-            {t.security.challengeTitle}
-          </h1>
-          <p className="mt-1.5 text-[13.5px] text-text-muted">
-            {backup ? t.security.challengeBackupHint : t.security.challengeHint}
-          </p>
-        </div>
+      <AuthPanel>
+        <AuthHeader
+          tone="brand"
+          icon={<I.shieldcheck s={13} />}
+          eyebrow={t.security.eyebrow}
+          title={t.security.challengeTitle}
+          subtitle={backup ? t.security.challengeBackupHint : t.security.challengeHint}
+        />
 
         {error && (
           <div id="tfa-error" role="alert" className="rounded-md border border-no-700 bg-no-500/10 px-3 py-2.5 text-[13px] text-no-300">
@@ -91,7 +87,7 @@ export default async function TwoFactorChallengePage({ searchParams }: { searchP
             {backup ? t.security.useAuthenticator : t.security.useBackupCode}
           </Link>
         </div>
-      </section>
+      </AuthPanel>
 
       <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.16em] text-text-subtle">
         {t.security.challengeFootnote}

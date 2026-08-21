@@ -13,15 +13,17 @@ import { DateSelect } from "@/components/ui/date-select";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { SELECTION } from "@/lib/admin-status-lexicon";
+import { SELECTION, PROPOSAL } from "@/lib/admin-status-lexicon";
 import { ActionOverlay, useActionOverlay } from "@/components/admin/action-overlay";
+import { AdminPagination } from "@/components/admin/admin-pagination";
+import { SortBtn } from "@/components/admin/admin-sort";
 import { RefreshButton } from "@/components/admin/refresh-button";
 import { ControlLocked } from "@/components/admin/control-locked";
 import { StatusBadge } from "@/components/proposals/status-badge";
 import { CategoryIcon, CATEGORY_LABEL } from "@/components/proposals/category-icon";
 import type { ProposalsConfig, ProposalsState } from "@/lib/server/proposals-config";
 import type { AdminQueueRow, DeclineReason } from "@/lib/server/proposals-service";
-import type { ProposalCategory } from "@/lib/server/store";
+import type { ProposalCategory, ProposalStatus } from "@/lib/server/store";
 import { saveProposalsConfigAction, approveProposalAction, goLiveProposalAction, declineProposalAction, requestChangesAction, editProposalAction } from "./actions";
 import { formatTzs } from "@/lib/utils";
 
@@ -29,6 +31,22 @@ const DECLINE_REASONS: DeclineReason[] = ["Politics", "Ambiguous outcome", "No o
 const CATEGORIES: ProposalCategory[] = ["sports", "macro", "weather", "crypto", "culture", "infrastructure", "tech", "mixed"];
 const TODAY = () => new Date().toISOString().slice(0, 10);
 const MAX_DATE = () => `${new Date().getFullYear() + 2}-12-31`;
+
+/**
+ * What the officer is told about a proposal there is nothing left to do to.
+ *
+ * ⛔ Deliberately a sentence per state and not a word substituted into one: an
+ * officer standing here wants to know what HAPPENED to it, and "listed" is the
+ * database's word for "it is a live market taking real predictions". Only three
+ * states reach this branch — REVIEW/CHANGES_REQUESTED are the actionable panel and
+ * APPROVED has its own — and the fallback claims nothing rather than guessing.
+ */
+function terminalNote(status: ProposalStatus): string {
+  if (status === "LISTED") return PROPOSAL.sentenceListed.en;
+  if (status === "RESOLVED") return PROPOSAL.sentenceResolved.en;
+  if (status === "DECLINED") return PROPOSAL.sentenceDeclined.en;
+  return PROPOSAL.sentenceClosed.en;
+}
 
 /** The 4-state feature machine — display order + per-state admin metadata. The
  *  tones mirror the player-facing aesthetic system so the console reads the same
@@ -104,67 +122,21 @@ const PER_PAGE = 20;
 type QSort = "score" | "age" | "status" | "title";
 type SortDir = "asc" | "desc";
 
-/** Client-side pager — visually identical to <AdminPagination> (link-based) but
- *  driven by local state since the queue list owns interactive filter/selection. */
-function ClientPager({ total, page, onPage, perPage = PER_PAGE }: { total: number; page: number; onPage: (p: number) => void; perPage?: number }) {
-  const totalPages = Math.max(1, Math.ceil(total / perPage));
-  if (totalPages <= 1) return null;
-  const safePage = Math.min(Math.max(1, page), totalPages);
-  const hasPrev = safePage > 1;
-  const hasNext = safePage < totalPages;
-
-  const pages: (number | "...")[] = [];
-  if (totalPages <= 7) {
-    for (let i = 1; i <= totalPages; i++) pages.push(i);
-  } else {
-    pages.push(1);
-    if (safePage > 3) pages.push("...");
-    for (let i = Math.max(2, safePage - 1); i <= Math.min(totalPages - 1, safePage + 1); i++) pages.push(i);
-    if (safePage < totalPages - 2) pages.push("...");
-    pages.push(totalPages);
-  }
-
-  const btnBase = "inline-flex items-center justify-center h-8 min-w-[32px] px-2 rounded-md font-mono text-[11px] tracking-[0.10em] transition-colors";
-  const btnActive = "border border-brand-500 bg-brand-500/15 text-brand-300 font-bold";
-  const btnInactive = "border border-border bg-bg-elevated text-text-muted hover:border-border-strong hover:text-text";
-  const btnDisabled = "border border-border bg-bg-elevated text-text-subtle/40 pointer-events-none";
-
-  return (
-    <div className="flex items-center justify-between gap-3 px-4 py-3 border-t border-border">
-      <p className="font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle">
-        {((safePage - 1) * perPage + 1).toLocaleString()}–{Math.min(safePage * perPage, total).toLocaleString()} of {total.toLocaleString()}
-      </p>
-      <div className="flex items-center gap-1">
-        <button type="button" onClick={() => hasPrev && onPage(safePage - 1)} disabled={!hasPrev} className={`${btnBase} ${hasPrev ? btnInactive : btnDisabled}`} aria-label="Previous page">
-          <I.chevronLeft s={14} />
-        </button>
-        {pages.map((p, i) =>
-          p === "..." ? (
-            <span key={`dots-${i}`} className="px-1 text-text-subtle">…</span>
-          ) : (
-            <button type="button" key={p} onClick={() => onPage(p)} className={`${btnBase} ${p === safePage ? btnActive : btnInactive}`}>
-              {p}
-            </button>
-          ),
-        )}
-        <button type="button" onClick={() => hasNext && onPage(safePage + 1)} disabled={!hasNext} className={`${btnBase} ${hasNext ? btnInactive : btnDisabled}`} aria-label="Next page">
-          <I.chevronRight s={14} />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/** Clickable sort control matching <SortTh>'s active/arrow affordance. */
-function SortBtn({ field, label, current, dir, onSort }: { field: QSort; label: string; current: QSort; dir: SortDir; onSort: (f: QSort) => void }) {
-  const isActive = current === field;
-  return (
-    <button type="button" onClick={() => onSort(field)} className={`inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.1em] hover:text-text transition-colors ${isActive ? "text-text" : "text-text-subtle"}`}>
-      {label}
-      <span className={`text-brand-300 ${isActive ? "" : "opacity-0"}`} aria-hidden>{dir === "asc" ? "↑" : "↓"}</span>
-    </button>
-  );
-}
+/**
+ * ⭐ THE HAND-ROLLED PAGER AND SORT BUTTON ARE GONE (stage 9b, 2026-08-21).
+ *
+ * Both were verbatim forks — the pager of `ui/pagination.tsx`, the sort button
+ * of moderation's copy of the same twelve lines — and the pager's own comment
+ * said the three "must stay one size" while nothing in the build could make them.
+ * They had already diverged: the shared pager has since gained `flex-wrap` on
+ * both rows (at 360px seven 44px controls need two) and `shadow-glow-selected`
+ * on the current page, the console's standing selected-control signal.
+ *
+ * The glow is the ONE resting-pixel difference the migration makes, and the fork
+ * was the outlier — every other paginated screen already has it. `onNavigate` is
+ * the shared pager's client mode, built for a queue like this one that pages in
+ * local state because it owns interactive filter/selection.
+ */
 
 /**
  * ⛔ E-27. `/admin/proposals` is a `trading` route, but two of its controls demand other
@@ -371,7 +343,11 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
                 <button key={f} onClick={() => setQFilter(f)} className="rounded-pill border px-2.5 py-0.5 text-[11px] font-semibold capitalize transition-colors"
                   style={qFilter === f ? { borderColor: "color-mix(in oklab, var(--brand-500) 40%, transparent)", background: "color-mix(in oklab, var(--brand-500) 14%, transparent)", color: "var(--brand-200)" } : { borderColor: "var(--border)", color: "var(--text-muted)" }}>{f}</button>
               ))}
-              <RefreshButton variant="icon" className="!h-7 !w-7" />
+              {/* ⛔ NO SIZE OVERRIDE. This carried `!h-7 !w-7` to bandage a `variant="icon"`
+                  that shipped at 80×80 (`h-10 w-10` on the overridden scale). The atom now
+                  writes its own 40×40 literal, so the bandage is dead weight — and an
+                  `!important` scale token is exactly the trap that caused the defect. */}
+              <RefreshButton variant="icon" />
             </div>
           </div>
           <div className="border-b border-border px-4 py-2.5">
@@ -413,7 +389,7 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
               </button>
             );
           })}
-          <ClientPager total={totalQueue} page={safePage} onPage={setPage} />
+          <AdminPagination total={totalQueue} page={safePage} perPage={PER_PAGE} onNavigate={setPage} />
         </div>
 
         {/* Review panel */}
@@ -536,7 +512,13 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
                 <p className="text-[10.5px] text-text-subtle">You decide when it goes to market — publishing is a deliberate step, separate from approval.</p>
               </div>
             ) : !open ? (
-              <p className="text-[12.5px] text-text-muted">This proposal is <strong>{sel.status.toLowerCase().replace("_", " ")}</strong> — no further action.</p>
+              // §L3 — an enum used to be interpolated straight into this sentence
+              // (`{sel.status.toLowerCase().replace("_", " ")}`), and its `replace` was
+              // missing the `/g` flag, so a two-underscore state would have kept the
+              // second one. Deleting the interpolation deletes both defects: a status is
+              // storage, and what the officer needs here is the CONSEQUENCE — "listed"
+              // said nothing, "live as a market and taking predictions" is the fact.
+              <p className="text-[12.5px] text-text-muted">{terminalNote(sel.status)}</p>
             ) : !declining ? (
               <div className="space-y-2.5">
                 <div className="flex flex-wrap gap-2">
@@ -586,7 +568,10 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
       <div className="overflow-hidden rounded-lg glass-panel">
         <div className="flex flex-col gap-3 border-b border-border px-4 py-3.5 sm:flex-row sm:items-center sm:gap-3.5" style={{ background: meta.selBg }}>
           <div className="flex min-w-0 flex-1 items-start gap-3.5">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px]" style={{ background: "color-mix(in oklab, var(--bg-base) 45%, transparent)", color: meta.fg, border: `1px solid ${meta.selBorder}` }}>
+            {/* ⚠️ LITERALS, not `h-10 w-10` — spacing is overridden (tailwind.config.ts:200-215)
+                so `h-10` was 80px, while the sibling `rounded-[10px]` was already written for a
+                40px tile. Size and radius now agree. */}
+            <span className="grid h-[40px] w-[40px] shrink-0 place-items-center rounded-[10px]" style={{ background: "color-mix(in oklab, var(--bg-base) 45%, transparent)", color: meta.fg, border: `1px solid ${meta.selBorder}` }}>
               <HeaderIcon s={21} />
             </span>
             <div className="min-w-0">

@@ -131,9 +131,33 @@ export function AiProgress({
   return (
     <div className="space-y-2" role="status" aria-live="polite">
       <div className="h-2 w-full rounded-pill bg-bg-overlay overflow-hidden">
+        {/* THE FILL SCALES; IT DOES NOT WIDEN. `transition-all` on a `width` meant
+            every phase advance ran a 700ms LAYOUT animation inside a dialog that
+            is deliberately blocking a busy console — and `all` also armed the
+            transition for properties nobody asked to animate. `transform: scaleX()`
+            is the same picture on the compositor. Model: `.admin-bar-grow`
+            (state-tokens.css).
+            ⭐ The gradient reads identically, and that is the reason scaleX was
+            chosen over a translate: a `90deg` gradient is laid out across the
+            element's own box, so the old `width: pct%` showed the FULL brand ramp
+            compressed into the fill — and a full-width box scaled to `pct` shows
+            exactly that same compressed ramp. A translated fill would have shown a
+            slice of the ramp instead, which is a different picture.
+            ⚠️ The cap, stated plainly: scaleX squashes this element's 4px radius
+            horizontally. The track is `rounded-pill overflow-hidden`, so both
+            visible OUTER ends keep their true shape and only the moving right edge
+            flattens — most at low percentages, where the bar is a sliver anyway.
+            There is no child to counter-scale (the label sits OUTSIDE the track,
+            in the row below), so nothing here can be squashed into a distorted
+            word.
+            §M6 · no new branch is owed. This is a transition, and motion.css's
+            universal clamp already zeroes `transition-duration` under the OS query,
+            `html.kp-reduce-motion` and `[data-motion="minimal"]`; the third gate's
+            list in globals.css §6 governs `infinite` animations, which this is not.
+            With motion off the bar jumps between phases — the honest end frame. */}
         <div
-          className="h-full rounded-pill transition-all duration-700 ease-out"
-          style={{ width: `${pct}%`, background: "linear-gradient(90deg, var(--brand-500), var(--brand-400))" }}
+          className="h-full w-full origin-left rounded-pill transition-transform duration-700 ease-out"
+          style={{ transform: `scaleX(${pct / 100})`, background: "linear-gradient(90deg, var(--brand-500), var(--brand-400))" }}
         />
       </div>
       <div className="flex items-baseline justify-between gap-3">

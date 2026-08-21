@@ -148,7 +148,9 @@ export function SecurityClient({ enabled, backupRemaining }: { enabled: boolean;
     <section className="rounded-xl glass-panel p-5 space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
-          <span className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${enabled ? "bg-yes-500/10 text-yes-300" : "bg-brand-500/10 text-brand-300"}`}>
+          {/* ⚠️ LITERALS, not `h-10 w-10` — spacing is overridden (tailwind.config.ts:200-215)
+              and `h-10` renders 80px. */}
+          <span className={`inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-md ${enabled ? "bg-yes-500/10 text-yes-300" : "bg-brand-500/10 text-brand-300"}`}>
             <I.shieldcheck s={18} />
           </span>
           <div>
@@ -212,7 +214,7 @@ function BackupCodes({ codes, onDone, t, toast }: { codes: string[]; onDone: () 
           <code key={c} className="select-all text-center font-mono text-[13px] tracking-[0.06em] text-text">{c}</code>
         ))}
       </div>
-      <div className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg/30 px-3 py-2 text-[12px] text-warning-fg">
+      <div className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-[12px] text-warning-fg">
         <I.warning s={13} className="mt-[1px] shrink-0" />
         <span>{t.security.backupWarn}</span>
       </div>

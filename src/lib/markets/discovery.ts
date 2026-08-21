@@ -17,6 +17,7 @@
  * results and hands them here as `DiscoveryRow`. This file must never re-derive them — that is
  * how two surfaces start disagreeing about what "closed" means.
  */
+import { MAX_QUERY_LEN } from "@/lib/search/query";
 
 /* ─────────────────────────── the row this module reasons about ────────────────────────── */
 
@@ -140,8 +141,19 @@ export const DISCOVERY_STORE_KEY = "50pick.discovery.v1";
 const oneOf = <T extends string>(allowed: readonly T[], raw: unknown, fallback: T): T =>
   typeof raw === "string" && (allowed as readonly string[]).includes(raw) ? (raw as T) : fallback;
 
-/** Max query length — mirrors the shared search parser's clamp. */
-export const MAX_QUERY_LEN = 120;
+/**
+ * Max query length — the shared search parser's clamp itself, not a mirror of it.
+ *
+ * ⛔ This line used to read `export const MAX_QUERY_LEN = 120;` under a comment
+ * saying it "mirrors" `@/lib/search`. A mirror is a second definition: the board's
+ * URL parser and the search box that writes that URL would clamp to different
+ * lengths the moment one of them was retuned, and the player's query would be
+ * truncated by whichever is smaller with no sign that it happened. Re-exported
+ * because it is part of this module's contract. `search/query.ts` has no imports of
+ * its own, so this file's "NO SERVER IMPORTS" rule holds. Imported at the top of
+ * the file with the other module-level bindings.
+ */
+export { MAX_QUERY_LEN };
 
 /**
  * Parse the URL into state. Unknown values fall back to the default rather than throwing:

@@ -7,7 +7,9 @@ export default function Loading() {
       <AdminPageHead
         title="Sources & categories"
         sw="Vyanzo na aina"
-        actions={<SkChip className="h-8 w-28" />}
+        /* ⚠️ LITERAL, not `h-8` (48px on the overridden scale) — source-controls.tsx's live
+           pill is 40px. */
+        actions={<SkChip className="h-[40px] w-28" />}
       />
       <SkBody>
         <SkKpiRow count={4} />

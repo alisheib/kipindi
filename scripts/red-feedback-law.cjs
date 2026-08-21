@@ -17,6 +17,7 @@
  *   · gold on something that was not earned
  *   · the money exit stated as a constant, on rounds where it does not exist
  *   · the client rule and the server rule drifting apart
+ *   · the toast the player is READING resumed by someone else's arrival, bar still frozen
  *
  *   npm run red:feedback-law
  */
@@ -53,9 +54,28 @@ const MUTATIONS = [
     // it. "Held" then means "silently expired", which is the drop this design exists to avoid.
     name: "held toasts keep counting down behind the modal — the dwell burns unseen",
     file: TOAST,
-    find: `    if (resultModalOpen) for (const id of ids) pause(id);
-    else for (const id of ids) resume(id);`,
+    find: `    if (resultModalOpen) {
+      if (!prevModalOpenRef.current) userPausedRef.current.clear();
+      for (const id of ids) pause(id);
+    } else if (prevModalOpenRef.current) {
+      for (const id of ids) if (!userPausedRef.current.has(id)) resume(id);
+    }`,
     with: `    void resultModalOpen; void ids; void pause; void resume;`,
+  },
+  {
+    // 🔴 THE DEFECT THE EDGE CLOSES, RESTORED. Releasing on state rather than on the modal's
+    // true→false EDGE means any stack change — a NEW TOAST ARRIVING — bulk-resumes every
+    // countdown, including one the pointer is holding. `resume` re-arms the real dismiss
+    // timer; `ToastItem`'s own `paused` state keeps the bar frozen. Under a burst the toast
+    // the player is reading vanishes mid-sentence under a bar that still looks half full.
+    name: "the release is state-driven again — a new arrival kills the toast under the pointer",
+    file: TOAST,
+    find: `    } else if (prevModalOpenRef.current) {
+      for (const id of ids) if (!userPausedRef.current.has(id)) resume(id);
+    }`,
+    with: `    } else {
+      for (const id of ids) resume(id);
+    }`,
   },
   {
     // ⚠️ THE LEAK. The count is taken and never released, so after the first result modal the
@@ -185,9 +205,15 @@ const MUTATIONS = [
     with: `export const DWELL_CELEBRATION_MS = 4_500;`,
   },
   {
+    // ⚠️ ANCHOR MOVED 2026-08-21. The dwell used to be a literal `3000` here; it is now the
+    // named constant §F8 says dwells live as. The mutation therefore points at the CONSTANT,
+    // and 9.8 resolves it through `feedback-timing.ts` — so this still proves exactly what it
+    // proved before: that a retune of the bet dwell is caught. ⛔ A stale anchor here reports
+    // "THIS MUTATION PROVES NOTHING" rather than passing quietly, which is the only reason
+    // this was noticed at all.
     name: "⭐ the bet-placed toast is swept up in the change (Ali: keep it NORMAL)",
     file: QUICK,
-    find: `            durationMs: 3000,`,
+    find: `            durationMs: DWELL_BET_PLACED_MS,`,
     with: `            durationMs: 9000,`,
   },
   {

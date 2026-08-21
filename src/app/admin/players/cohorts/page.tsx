@@ -3,6 +3,8 @@ import { AdminBarList, AdminMeter, AdminAreaChart } from "@/components/admin/adm
 import { db } from "@/lib/server/store";
 import { kycFunnel, userStatusCounts } from "@/lib/server/analytics";
 import { Chip } from "@/components/ui/chip";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Player cohorts" };
 export const dynamic = "force-dynamic";
@@ -70,14 +72,14 @@ export default async function AdminCohortsPage() {
     <>
       <AdminPageHead title="Cohorts" sw="Vikundi" />
 
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         {/* Headline KPIs — cumulative registrations feed the A8 spark. */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiGrid>
           <AdminKpi label="Total players" sw="Wachezaji"      value={statusFailed ? "" : total.toLocaleString()} unavailable={statusFailed} series={usersFailed ? undefined : cumulativeSeries(months)} />
           <AdminKpi label="Active"        sw="Hai"             value={statusFailed ? "" : (status.ACTIVE ?? 0).toLocaleString()} unavailable={statusFailed} deltaDir="up" delta={`${total === 0 ? 0 : Math.round(((status.ACTIVE ?? 0) / total) * 100)}%`} />
           <AdminKpi label="Pending KYC"   sw="Inasubiri"       value={statusFailed ? "" : (status.PENDING_KYC ?? 0).toLocaleString()} unavailable={statusFailed} delta="needs follow-up" />
           <AdminKpi label="Self-excluded" sw="Wamejizuia"      value={statusFailed ? "" : (status.SELF_EXCLUDED ?? 0).toLocaleString()} unavailable={statusFailed} delta="active roster" />
-        </div>
+        </KpiGrid>
 
         {/* Cohort health meters (A8) — value-vs-cap gauges, brand fill. */}
         <AdminCard title="Cohort health" sw="Afya ya kundi">
@@ -160,7 +162,7 @@ export default async function AdminCohortsPage() {
             />
           )}
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

@@ -21,7 +21,8 @@ import {
 import { dailyKpiSeries } from "@/lib/server/report-money";
 import { resolveRange } from "@/lib/server/date-range";
 import { DateTimeRangeFilter } from "@/components/ui/datetime-range-filter";
-import { formatTzs, formatTzsCompact } from "@/lib/utils";
+import { formatTzs, formatTzsCompact, formatNumber } from "@/lib/utils";
+import { eatDayKey } from "@/lib/eat-day";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { GenerateButton } from "../reports/generate-button";
 import { currentSession } from "@/lib/server/auth-service";
@@ -30,6 +31,8 @@ import { getEffectiveConfig } from "@/lib/server/market-config";
 import { houseAccountBalances, trialBalance } from "@/lib/server/ledger";
 import { Stat } from "@/components/ui/stat";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 /** What each house account actually holds — so the owner doesn't have to guess. */
 const HOUSE_ACCOUNT_NOTE: Record<string, string> = {
@@ -126,15 +129,15 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
         }
       />
 
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         {/* KPI 8-up */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <AdminKpi label="Deposits in"     sw="Amana"             value={dep ? `TZS ${formatTzsCompact(dep.amount).replace("TZS ", "")}` : ""} unavailable={dep === null} delta={dep ? `${dep.count.toLocaleString()} txns` : undefined} />
-          <AdminKpi label="Withdrawals out" sw="Utoaji"            value={wd ? `TZS ${formatTzsCompact(wd.amount).replace("TZS ", "")}` : ""}  unavailable={wd === null}  delta={wd ? `${wd.count.toLocaleString()} txns` : undefined} />
+        <KpiGrid>
+          <AdminKpi label="Deposits in"     sw="Amana"             value={dep ? `TZS ${formatTzsCompact(dep.amount).replace("TZS ", "")}` : ""} unavailable={dep === null} delta={dep ? `${formatNumber(dep.count)} txns` : undefined} />
+          <AdminKpi label="Withdrawals out" sw="Utoaji"            value={wd ? `TZS ${formatTzsCompact(wd.amount).replace("TZS ", "")}` : ""}  unavailable={wd === null}  delta={wd ? `${formatNumber(wd.count)} txns` : undefined} />
           <AdminKpi label="GGR"             sw="Mapato ya jumla"    value={ggr === null ? "" : `TZS ${formatTzsCompact(ggr).replace("TZS ", "")}`}        unavailable={ggr === null} delta={range.label} series={spark(trends.ggr)} />
           <AdminKpi label="NGR"             sw="Mapato halisi"      value={ngr === null ? "" : `TZS ${formatTzsCompact(ngr).replace("TZS ", "")}`}        unavailable={ngr === null} delta="net of bonus + fees" series={spark(trends.ngr)} />
-        </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        </KpiGrid>
+        <KpiGrid>
           <AdminKpi
             label="Statutory levies"
             sw="Kodi za kisheria"
@@ -144,8 +147,8 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
           />
           <AdminKpi label="Operator margin"  sw="Faida"         value={margin === null ? "" : `${margin.toFixed(1)}%`} unavailable={margin === null} delta={feeModelLabel} deltaDir="flat" />
           <AdminKpi label="Wallet liability" sw="Madeni"        value={liability === null ? "" : `TZS ${formatTzsCompact(liability).replace("TZS ", "")}`} unavailable={liability === null} delta="real-time" />
-          <AdminKpi label="Active players"   sw="Wachezaji"     value={activePeriod === null ? "" : activePeriod.toLocaleString()} unavailable={activePeriod === null} delta={range.label} series={spark(trends.active)} />
-        </div>
+          <AdminKpi label="Active players"   sw="Wachezaji"     value={activePeriod === null ? "" : formatNumber(activePeriod)} unavailable={activePeriod === null} delta={range.label} series={spark(trends.active)} />
+        </KpiGrid>
 
         {/* THE HOUSE ACCOUNTS — straight from the double-entry ledger.
             `houseAccountBalances()` has existed in ledger.ts since the ledger was
@@ -225,7 +228,15 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
                     {feeRows.map((r) => (
                       <tr key={r.marketId}>
                         <td className="text-left max-w-[280px] truncate" title={r.title}>{r.title}</td>
-                        <td className="text-left whitespace-nowrap">{new Date(r.settledAt).toISOString().slice(0, 10)}</td>
+                        {/* ⛔ Was `new Date(r.settledAt).toISOString().slice(0, 10)` — a UTC
+                            day stamp on a STATUTORY fee table. EAT is UTC+3, so anything
+                            settled after 21:00 EAT fell on the previous calendar day here
+                            and a period total reconciled against the wrong day. `eatDayKey`
+                            is the platform's single definition of a calendar day (see
+                            `src/lib/eat-day.ts`) and is what the rest of the reporting
+                            stack bins by, so this column now agrees with the report packs.
+                            Kept in `YYYY-MM-DD` so the column stays sortable and compact. */}
+                        <td className="text-left whitespace-nowrap">{eatDayKey(Date.parse(r.settledAt))}</td>
                         <td className="text-left">
                           <span
                             className={`inline-block rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] ${
@@ -272,7 +283,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
           <AdminCard
             title="Ledger trial balance"
             sw="Ulinganifu wa daftari"
-            className={tb.ok ? undefined : "border-danger-border bg-danger-bg/20"}
+            className={tb.ok ? undefined : "border-danger-border bg-danger-bg"}
             action={
               <span className={["font-mono text-[10px] tracking-[0.10em] uppercase", tb.ok ? "text-success" : "text-danger-fg"].join(" ")}>
                 {tb.ok ? "✓ reconciles" : "✗ drift detected"}
@@ -285,12 +296,16 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
               <code className="font-mono">ledger(BONUS) = bonusBalance = Σ active grants</code>, and{" "}
               <code className="font-mono">Σ all entries = 0</code>. Re-checked nightly; drift raises a compliance alert.
             </p>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <AdminKpi label="Wallets checked" sw="Pochi zilizokaguliwa" value={tb.checkedWallets.toLocaleString()} />
+            <KpiGrid>
+              {/* Counts go through `formatNumber`, the same fixed en-US grouping
+                  `formatTzs` uses. A bare `toLocaleString()` takes the RUNTIME's default
+                  locale, so a count could group with dots while the money beside it
+                  grouped with commas on the very same KPI row. */}
+              <AdminKpi label="Wallets checked" sw="Pochi zilizokaguliwa" value={formatNumber(tb.checkedWallets)} />
               <AdminKpi
                 label="Drifting wallets"
                 sw="Pochi zenye tofauti"
-                value={tb.driftingWallets.toLocaleString()}
+                value={formatNumber(tb.driftingWallets)}
                 delta={tb.driftingWallets === 0 ? "all reconcile" : `${formatTzs(tb.totalAbsDrift)} total`}
                 deltaDir={tb.driftingWallets === 0 ? "up" : "down"}
                 pulse={tb.driftingWallets > 0}
@@ -306,11 +321,11 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
               <AdminKpi
                 label="Imbalanced groups"
                 sw="Makundi yasiyolingana"
-                value={tb.imbalancedGroups.length.toLocaleString()}
+                value={formatNumber(tb.imbalancedGroups.length)}
                 deltaDir={tb.imbalancedGroups.length === 0 ? "up" : "down"}
                 pulse={tb.imbalancedGroups.length > 0}
               />
-            </div>
+            </KpiGrid>
             {tb.drift.length > 0 && (
               <ScrollX label="Drifting wallets" className="-mx-4 px-4 mt-3">
                 <table className="admin-tbl min-w-[560px]">
@@ -420,9 +435,9 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
                   <tr key={p.provider}>
                     <td className="font-medium text-text whitespace-nowrap">{p.provider}</td>
                     <td className="font-mono tabular text-right">{formatTzs(p.deposits)}</td>
-                    <td className="font-mono tabular text-right text-text-secondary">{p.depositCount.toLocaleString()}</td>
+                    <td className="font-mono tabular text-right text-text-secondary">{formatNumber(p.depositCount)}</td>
                     <td className="font-mono tabular text-right">{formatTzs(p.withdrawals)}</td>
-                    <td className="font-mono tabular text-right text-text-secondary">{p.withdrawalCount.toLocaleString()}</td>
+                    <td className="font-mono tabular text-right text-text-secondary">{formatNumber(p.withdrawalCount)}</td>
                     <td className={["font-mono tabular text-right font-semibold", p.net >= 0 ? "text-text" : "text-text-tertiary"].join(" ")}>
                       {p.net >= 0 ? "+" : ""}{formatTzsCompact(p.net)}
                     </td>
@@ -435,7 +450,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
             </table>
           </ScrollX>
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

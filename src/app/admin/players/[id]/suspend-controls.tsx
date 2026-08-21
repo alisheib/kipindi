@@ -31,7 +31,6 @@ export function SuspendControls({
   // than being offered a button the server will refuse (and logged as a privilege
   // escalation for pressing it). See docs/ADMIN-CONSOLE-FINDINGS.md.
   const mayAct = useMayAct();
-  if (!mayAct) return <ActReadOnly />;
 
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -39,6 +38,11 @@ export function SuspendControls({
   const [mode, setMode] = useState<"suspend" | "restore" | null>(null);
   const [reason, setReason] = useState("");
   const reasonRef = useRef<HTMLTextAreaElement>(null);
+
+  // Rules of hooks: read the gate as a hook at the top, ACT on it below every other hook.
+  // Revoking an ACT grant mid-session flips `mayAct` on the next router.refresh(); an early
+  // return above these hooks would render fewer hooks than the last pass and crash the page.
+  if (!mayAct) return <ActReadOnly />;
 
   const isSuspended = currentStatus === "SUSPENDED";
   const isClosed = currentStatus === "CLOSED";

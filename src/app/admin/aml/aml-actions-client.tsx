@@ -16,7 +16,6 @@ export function AmlActionRow({ txnId, amount }: { txnId: string; amount: number 
   // than being offered a button the server will refuse (and logged as a privilege
   // escalation for pressing it). See docs/ADMIN-CONSOLE-FINDINGS.md.
   const mayAct = useMayAct();
-  if (!mayAct) return <ActReadOnly />;
 
   const [busy, setBusy] = useState<"approve" | "reject" | null>(null);
   const [mode, setMode] = useState<"approve" | "reject" | null>(null);
@@ -25,6 +24,11 @@ export function AmlActionRow({ txnId, amount }: { txnId: string; amount: number 
   const overlay = useActionOverlay();
   const { toast } = useToast();
   const router = useRouter();
+
+  // Rules of hooks: read the gate as a hook at the top, ACT on it below every other hook.
+  // Revoking an ACT grant mid-session flips `mayAct` on the next router.refresh(); an early
+  // return above these hooks would render fewer hooks than the last pass and crash the page.
+  if (!mayAct) return <ActReadOnly />;
 
   const submit = (kind: "approve" | "reject") => {
     // Both approve (releasing funds) and reject (returning funds) require a recorded
@@ -118,7 +122,11 @@ export function AmlActionRow({ txnId, amount }: { txnId: string; amount: number 
             onChange={(e) => setReason(e.target.value)}
             placeholder={mode === "approve" ? "Approval reason (required)" : "Rejection reason (required)"}
             aria-label={mode === "approve" ? "Approval reason" : "Rejection reason"}
-            className="flex-1 h-8 px-2 rounded-md border border-border bg-bg-inset text-text-secondary text-caption font-mono focus:outline-none admin-focus transition-colors"
+            /* ⚠️ LITERAL, not `h-8` — spacing is overridden (tailwind.config.ts:200-215) so `h-8`
+               was 48px. 40px = --tap-min and the height of the `Button size="sm"` beside it;
+               §A2 — money controls are never the tap-floor exception, so this does NOT drop to
+               the 32px dense-admin height the filter rails use. */
+            className="flex-1 h-[40px] px-2 rounded-md border border-border bg-bg-inset text-text-secondary text-caption font-mono focus:outline-none admin-focus transition-colors"
           />
           <Button size="sm" variant={mode === "approve" ? "yes" : "danger"} onClick={() => submit(mode)} loading={busy === mode} disabled={busy !== null}>
             Submit

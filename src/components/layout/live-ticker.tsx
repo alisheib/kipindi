@@ -15,6 +15,7 @@
  */
 
 import { useState } from "react";
+import { Dot } from "@/components/ui/dot";
 import { useT } from "@/lib/i18n";
 import { sideWord } from "@/lib/side-label";
 import { formatTzsCompact } from "@/lib/utils";
@@ -55,7 +56,10 @@ function Items({ events, prefix, verbs, sides }: { events: TickerEvent[]; prefix
             </>
           )}
           <span className="text-text-muted"> {verbs.on} {ev.title}</span>
-          <span className="inline-block w-[3px] h-[3px] rounded-full bg-gold-400 opacity-40 shrink-0 ml-2" />
+          {/* Stage 9b — kit <Dot>. `color` rather than `tone="gold"`: the separator is
+              gold-400, one stop lighter than the tone's gold-500, and a consolidation
+              does not get to change a hue on the way past. */}
+          <Dot color="var(--gold-400)" size={3} className="opacity-40 ml-2" />
         </span>
       ))}
     </>
@@ -111,7 +115,10 @@ export function LiveTicker({ events }: { events: TickerEvent[] }) {
         background: "linear-gradient(90deg, var(--bg-inset) 0%, var(--bg-inset) 70%, oklch(11% 0.11 268 / 0) 100%)",
       }}>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-          <span className="live-dot" style={{ width: 6, height: 6 }} />
+          {/* Stage 9b — kit <Dot pulse>, which IS `.live-dot`: same 6px, same
+              `--live-400`, same 2600ms breathe, and the same gating at all three
+              reduced-motion tiers. */}
+          <Dot tone="live" size={6} pulse />
           <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[var(--live-400)]">
             {t.common.live}
           </span>

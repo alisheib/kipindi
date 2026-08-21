@@ -31,6 +31,7 @@ import { KycIdentitySchema } from "./validators";
 import {
   ID_DOC_SPECS,
   ALL_DOC_SLOTS,
+  MAX_DOC_BYTES,
   MIN_AGE_YEARS,
   ageOn,
   isExpired,
@@ -396,8 +397,9 @@ export function isIdUniqueViolation(err: unknown): boolean {
     || asText.includes(ID_UNIQUE_INDEX) || asText.includes(ID_FINGERPRINT_UNIQUE_INDEX);
 }
 
-/** Max decoded size of a document image, and the accepted data-URL shape. */
-export const MAX_DOC_BYTES = 3 * 1024 * 1024; // 3 MB decoded — legible ID photos, bounded
+/** The accepted data-URL shape. The size cap is `MAX_DOC_BYTES`, imported above —
+ *  ⛔ do not re-declare it here: the browser compressor targets the same number and
+ *  the two ends of one upload must not drift. */
 const DOC_DATAURL_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
 /** Validate an uploaded document image data URL. Returns decoded byte size. */
 export function validateDocImage(s: string): { ok: true; bytes: number; mimeType: string } | { ok: false; error: string; reason: FailureReason } {

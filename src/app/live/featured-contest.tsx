@@ -118,25 +118,55 @@ export function FeaturedContest({
         <TippingBar yesPct={m.yesPct} height={32} showLabels
           probabilityLabel={t.market.probBarAria.replace("{side}", sideWord(t, "YES", m.productLine))}
           labels={{ yes: sideWord(t, "YES", m.productLine), no: sideWord(t, "NO", m.productLine), tipping: t.market.tipping, leansYes: t.market.leansYes, leansNo: t.market.leansNo }} />
-        <div className="mt-4 flex items-center gap-3">
+        {/* `flex-wrap` (2026-08-21): the dot rail below grew from ~88px to 144px when its dots
+            gained real hit areas (six slides at 24px, against six 6/18px dots on 8px gaps), so
+            at 360 — where this panel has ~296px of content width — it can no longer be certain
+            of sharing a line with the CTA. Wrapping is the correct yield: §A6 forbids
+            horizontal overflow, and a squeezed rail would re-create the tiny targets the
+            padding just removed. */}
+        <div className="mt-4 flex flex-wrap items-center gap-3">
           <Link href={`/markets/${m.id}` as Route} className="btn btn-primary btn-md inline-flex">
             {openLabel}
           </Link>
+          {/* 🔴 THE PAGER SAID TWO OPPOSITE THINGS ABOUT ITSELF, AND SHIPPED BOTH.
+              The rail was `aria-hidden` — "there is nothing here" — while every dot inside it
+              carried an `aria-label` and an `onClick`, which is a claim that each one is a
+              named control. Written together, those cancel: the labels were unreachable (an
+              aria-hidden subtree is removed from the tree wholesale, `tabIndex={-1}` or not),
+              so a screen-reader user exploring by touch on a phone landed on six live buttons
+              that announced nothing at all. The dots are REAL — they jump the carousel — so
+              the contradiction is resolved in the direction of the truth: the subtree is
+              exposed, the labels do their job, and `aria-current` carries the selected state
+              that was previously signalled by colour and width alone (§A4).
+
+              ⭐ THE HIT AREA IS PADDING, NOT A BIGGER DOT (§A2). The dot keeps its drawn size —
+              6px wide, 18px when active — because a 40px dot is a different design. The BUTTON
+              around it is 40px tall and 24px wide, which is the floor this repo actually
+              instruments (`responsive-audit.mjs`: `height < 40 || width < 24`). The row's `gap`
+              is dropped because the padding now provides the separation; ⛔ do not re-add one,
+              it would stack on top of the padding and widen the rail a second time.
+              ⚠️ `results/notable-carousel.tsx` is this component's declared twin and still
+              carries the old shape; it is out of this change's scope, so the two are knowingly
+              out of step until it gets the same treatment. */}
           {multi && (
-            <div className="flex items-center gap-1.5" aria-hidden>
+            <div className="flex items-center">
               {markets.map((mm, i) => (
                 <button
                   key={mm.id}
                   type="button"
                   onClick={() => setIdx(i)}
-                  className="h-1.5 rounded-full transition-all"
-                  style={{
-                    width: i === idx ? 18 : 6,
-                    background: i === idx ? "var(--aqua-400)" : "var(--border-strong)",
-                  }}
-                  tabIndex={-1}
+                  className="grid h-[40px] w-[24px] place-items-center rounded-md"
+                  aria-current={i === idx ? "true" : undefined}
                   aria-label={t.market.showMarketN.replace("{n}", String(i + 1))}
-                />
+                >
+                  <span
+                    className="block h-1.5 rounded-full transition-all"
+                    style={{
+                      width: i === idx ? 18 : 6,
+                      background: i === idx ? "var(--aqua-400)" : "var(--border-strong)",
+                    }}
+                  />
+                </button>
               ))}
             </div>
           )}
@@ -154,7 +184,9 @@ function Arrow({ dir, onClick }: { dir: "prev" | "next"; onClick: () => void }) 
       type="button"
       onClick={onClick}
       aria-label={dir === "prev" ? t.market.prevMarket : t.market.nextMarket}
-      className="grid h-11 w-11 place-items-center rounded-full border transition-colors hover:bg-[color-mix(in_oklab,var(--aqua-400)_14%,transparent)]"
+      /* ⚠️ LITERALS, not `h-11 w-11` — spacing is overridden (tailwind.config.ts:200-215),
+         so `h-11` was 96px. Twin of results/notable-carousel.tsx — keep the two in step. */
+      className="grid h-[44px] w-[44px] place-items-center rounded-full border transition-colors hover:bg-[color-mix(in_oklab,var(--aqua-400)_14%,transparent)]"
       style={{ borderColor: "color-mix(in oklab, var(--aqua-400) 55%, transparent)", color: "var(--aqua-300)" }}
     >
       <Icon s={16} />

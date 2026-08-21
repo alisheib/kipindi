@@ -3,8 +3,7 @@ import { AdminPageHead, AdminCard, AdminKpi, AdminLoadError } from "@/components
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { SortTh } from "@/components/admin/admin-sort";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
-import { playerStatusVariant } from "@/components/admin/status-badge";
-import { Chip } from "@/components/ui/chip";
+import { AccountStatusBadge, accountStatusLabel } from "@/components/admin/status-badge";
 import { Avatar } from "@/components/ui/avatar";
 import { Select } from "@/components/ui/select";
 import { db } from "@/lib/server/store";
@@ -14,6 +13,8 @@ import { formatTzs, formatDate } from "@/lib/utils";
 import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { displayLabel, displayInitials } from "@/lib/display-label";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Players" };
 export const dynamic = "force-dynamic";
@@ -44,12 +45,22 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
   });
 
   // Sort
+  // `sortBalances` deliberately OUTLIVES the branch below: when the balance sort runs it
+  // has already loaded every wallet, and the table further down used to go and fetch the
+  // twenty it needs all over again. See the balance resolution after pagination.
+  let sortBalances: Map<string, number> | null = null;
   if (sortField === "balance") {
     // Batch-load all wallets in one query instead of N+1 per-user lookups.
     let allWallets: Awaited<ReturnType<typeof db.wallet.listAll>> = [];
-    try { allWallets = await db.wallet.listAll(); } catch { /* graceful */ }
+    let walletsOk = true;
+    try { allWallets = await db.wallet.listAll(); } catch { walletsOk = false; }
     const balanceMap = new Map<string, number>();
     for (const w of allWallets) balanceMap.set(w.userId, w.balance);
+    // Only publish the map for REUSE if the read actually succeeded. On failure the map is
+    // empty, and treating "empty" as "everyone has no wallet" would silently print "—" down
+    // the whole money column — a failed read rendering as a fact, which is the A-5 defect.
+    // The per-row path below is left to try again instead.
+    if (walletsOk) sortBalances = balanceMap;
     filtered.sort((a, b) => {
       const cmp = (balanceMap.get(a.id) ?? 0) - (balanceMap.get(b.id) ?? 0);
       return sortDir === "asc" ? cmp : -cmp;
@@ -68,6 +79,46 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
   const paged = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
   const baseHref = buildBaseHref("/admin/players", { q: sp.q, status: sp.status, sort: sp.sort, dir: sp.dir });
 
+  /**
+   * ⚡ WALLET BALANCES ARE RESOLVED ONCE, HERE, FOR THE VISIBLE PAGE ONLY — 2026-08-21.
+   *
+   * The table body used to be `await Promise.all(paged.map(async (u) => { const wallet =
+   * await db.wallet.findByUserId(u.id); … }))` — a query per rendered row, inside JSX.
+   * Two things were wrong with that, and both are removed without changing a single
+   * rendered character:
+   *
+   *  1. 🔴 IT RAN FOR VIEWERS WHO ARE NOT ALLOWED TO SEE THE ANSWER. The cell is
+   *     `canSeeMoney && wallet ? … : "—"`, so for a SUPPORT officer — whose whole point
+   *     is roster-without-money (RBAC, above) — the page fired twenty wallet reads per
+   *     load and threw every one of them away. The gate is now asked BEFORE the query,
+   *     not after it, which is also the right shape for a money read on a licensed
+   *     platform: privileged data that is never fetched cannot leak.
+   *
+   *  2. IT RE-FETCHED WHAT THE BALANCE SORT HAD JUST LOADED. Sorting by Wallet pulls
+   *     every wallet into `sortBalances`; the rows then queried twenty of them again,
+   *     one at a time. Reusing the map also makes the column self-consistent — the
+   *     figure a row shows is now from the same snapshot the ordering was computed from,
+   *     where before the two could be read milliseconds apart and disagree.
+   *
+   * When neither shortcut applies the point queries still run, in parallel, for the
+   * ≤20 visible rows — deliberately NOT `listAll()`, which would trade twenty indexed
+   * reads for the entire wallet table and get worse with every player who signs up.
+   * (`Promise.resolve` per the §9 gotcha: the dev in-memory store returns these values
+   * synchronously while tsc only ever sees Prisma's async types.)
+   */
+  const pageBalances = new Map<string, number>();
+  if (canSeeMoney) {
+    if (sortBalances) {
+      for (const u of paged) {
+        const b = sortBalances.get(u.id);
+        if (b !== undefined) pageBalances.set(u.id, b);
+      }
+    } else {
+      const wallets = await Promise.all(paged.map((u) => Promise.resolve(db.wallet.findByUserId(u.id))));
+      for (const w of wallets) if (w) pageBalances.set(w.userId, w.balance);
+    }
+  }
+
   // One pass over the population → the status→count map that feeds both the KPI
   // band and the status-mix bar (was seven separate .filter() passes).
   const statusCounts: Record<string, number> = {};
@@ -85,15 +136,15 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
     <>
       <AdminPageHead title="Players" sw="Wachezaji" />
 
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         {/* Headline KPIs — replaces the header count-chips with the console-standard
             band (matches overview / cohorts). Blocked = suspended + self-excluded. */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiGrid>
           <AdminKpi label="Total players" sw="Jumla ya wachezaji" value={usersFailed ? "" : counts.total.toLocaleString()} unavailable={usersFailed} />
           <AdminKpi label="Active" sw="Hai" value={usersFailed ? "" : counts.active.toLocaleString()} unavailable={usersFailed} tone="success" delta={`${counts.total ? Math.round((counts.active / counts.total) * 100) : 0}%`} deltaDir="up" />
           <AdminKpi label="Pending KYC" sw="Inasubiri KYC" value={usersFailed ? "" : counts.pending_kyc.toLocaleString()} unavailable={usersFailed} delta={counts.pending_kyc > 0 ? "needs review" : "clear"} deltaDir={counts.pending_kyc > 0 ? "up" : "flat"} />
           <AdminKpi label="Blocked" sw="Zimezuiwa" value={usersFailed ? "" : blocked.toLocaleString()} unavailable={usersFailed} tone={blocked > 0 ? "danger" : undefined} delta={`${counts.suspended} susp · ${counts.self_excluded} excl`} deltaDir="flat" />
-        </div>
+        </KpiGrid>
 
         {/* Population status mix — one at-a-glance segmented bar (green Active /
             amber pending / rose blocked / grey closed). Complements the numeric
@@ -109,10 +160,16 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                 defaultValue={query}
                 placeholder="Phone (+255…), display name, or usr_…"
                 aria-label="Search players"
-                className="h-8 w-full rounded-md border border-border bg-bg-overlay pl-9 pr-3 text-[12.5px] text-text outline-none admin-focus transition-colors placeholder:text-text-subtle"
+                /* ⚠️ LITERAL, not `h-8` (48px on the overridden scale) — 32px = --h-control-xs,
+                   the one admin-search height, matching the xs Selects beside it. */
+                className="h-[32px] w-full rounded-md border border-border bg-bg-overlay pl-9 pr-3 text-[12.5px] text-text outline-none admin-focus transition-colors placeholder:text-text-subtle"
               />
             </div>
             <div className="w-full sm:w-[180px]">
+              {/* The six words come from the lexicon, not from here: this list and the
+                  population-mix legend below had each hand-typed them, and the chip in
+                  the table beside them printed the raw column instead — three
+                  renderings of one enum, which is the §L2 defect exactly. */}
               <Select
                 name="status"
                 defaultValue={statusFilter}
@@ -120,12 +177,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                 placeholder="All statuses"
                 options={[
                   { value: "", label: "All statuses" },
-                  { value: "ACTIVE", label: "Active" },
-                  { value: "PENDING_KYC", label: "Pending KYC" },
-                  { value: "SUSPENDED", label: "Suspended" },
-                  { value: "SELF_EXCLUDED", label: "Self-excluded" },
-                  { value: "COOLED_OFF", label: "Cooled off" },
-                  { value: "CLOSED", label: "Closed" },
+                  ...ACCOUNT_FILTER.map((s) => ({ value: s, label: accountStatusLabel(s) })),
                 ]}
               />
             </div>
@@ -158,8 +210,8 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                 </tr>
               </thead>
               <tbody className="text-text-secondary">
-                {await Promise.all(paged.map(async (u) => {
-                  const wallet = await db.wallet.findByUserId(u.id);
+                {paged.map((u) => {
+                  const balance = pageBalances.get(u.id);
                   const label = displayLabel(u);
                   const initials = displayInitials(u);
                   const isAutoHandle = !((u.displayName ?? "").trim().length > 0);
@@ -176,8 +228,12 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                       </td>
                       {/* Masked in the broad list view — full number only on the detail page (PII minimization). Search still matches the full number. */}
                       <td className="font-mono whitespace-nowrap">{u.phoneE164.length > 6 ? `${u.phoneE164.slice(0, 4)}****${u.phoneE164.slice(-2)}` : u.phoneE164}</td>
-                      <td><Chip size="sm" variant={playerStatusVariant(u.status)}>{u.status}</Chip></td>
-                      <td className="font-mono tabular text-right whitespace-nowrap">{canSeeMoney && wallet ? formatTzs(wallet.balance) : "—"}</td>
+                      <td><AccountStatusBadge status={u.status} /></td>
+                      {/* `pageBalances` is empty unless the viewer passed the accounting
+                          gate, so this stays exactly the old `canSeeMoney && wallet` cell:
+                          a player with no wallet row, and a viewer with no money rights,
+                          both read "—". */}
+                      <td className="font-mono tabular text-right whitespace-nowrap">{balance !== undefined ? formatTzs(balance) : "—"}</td>
                       <td className="font-mono whitespace-nowrap">{formatDate(u.createdAt)}</td>
                       <td className="font-mono whitespace-nowrap">{u.lastLoginAt ? formatDate(u.lastLoginAt) : "—"}</td>
                       <td>
@@ -185,7 +241,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                       </td>
                     </tr>
                   );
-                }))}
+                })}
                 {filtered.length === 0 && (
                   usersFailed ? (
                     <tr><td colSpan={7} className="p-4"><AdminLoadError what="the player list" /></td></tr>
@@ -204,13 +260,13 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
           <AdminPagination total={filtered.length} page={page} baseHref={baseHref} />
         </AdminCard>
 
-        <AdminCard className="border-info-border bg-info-bg/15">
+        <AdminCard className="border-info-border bg-info-bg">
           <div className="text-caption text-text-secondary space-y-1">
             <p className="text-text font-bold">Privileged actions</p>
             <p>Live today: suspend / restore, KYC decisions, credential changes, and data export — each is ADMIN/COMPLIANCE-tier, requires step-up 2FA, and is recorded in the <code>ADMIN</code>/<code>COMPLIANCE</code> audit category with the reviewer&apos;s user-id and reason. <em>Target architecture (not yet enforced):</em> two-person approval on wallet freeze / transaction reversal / account closure, and IP capture.</p>
           </div>
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }
@@ -219,13 +275,17 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
    semantic status colours (green Active · amber pending/cooling · rose blocked ·
    grey closed). Zero-count statuses are dropped so the bar and legend stay clean. */
 const MIX_ORDER: ReadonlyArray<{ key: string; label: string; color: string }> = [
-  { key: "ACTIVE",        label: "Active",        color: "var(--yes-500)" },
-  { key: "PENDING_KYC",   label: "Pending KYC",   color: "var(--warning-500)" },
-  { key: "COOLED_OFF",    label: "Cooled off",    color: "var(--warning-500)" },
-  { key: "SUSPENDED",     label: "Suspended",     color: "var(--no-500)" },
-  { key: "SELF_EXCLUDED", label: "Self-excluded", color: "var(--no-500)" },
-  { key: "CLOSED",        label: "Closed",        color: "var(--border-strong)" },
-];
+  { key: "ACTIVE",        color: "var(--yes-500)" },
+  { key: "PENDING_KYC",   color: "var(--warning-500)" },
+  { key: "COOLED_OFF",    color: "var(--warning-500)" },
+  { key: "SUSPENDED",     color: "var(--no-500)" },
+  { key: "SELF_EXCLUDED", color: "var(--no-500)" },
+  { key: "CLOSED",        color: "var(--border-strong)" },
+].map((m) => ({ ...m, label: accountStatusLabel(m.key) }));
+
+/* The status filter's closed set, in the order an officer scans it. Same source as
+   the legend above and the chip in the table — the words are the lexicon's. */
+const ACCOUNT_FILTER = ["ACTIVE", "PENDING_KYC", "SUSPENDED", "SELF_EXCLUDED", "COOLED_OFF", "CLOSED"] as const;
 
 function StatusMix({ counts }: { counts: Record<string, number> }) {
   const segs = MIX_ORDER.map((m) => ({ ...m, value: counts[m.key] ?? 0 })).filter((m) => m.value > 0);

@@ -10,8 +10,12 @@ import { marketStore } from "@/lib/server/market-dal";
 import { currentSession } from "@/lib/server/auth-service";
 import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { ControlLocked } from "@/components/admin/control-locked";
+import { UPDOWN } from "@/lib/admin-status-lexicon";
+import { updownVoidReasonLabel } from "@/components/admin/status-badge";
 import { VoidRoundControl } from "./void-round-control";
 import { formatTzs } from "@/lib/utils";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Up & Down · Rounds" };
 export const dynamic = "force-dynamic";
@@ -152,12 +156,12 @@ export default async function AdminUpDownRoundsPage({
   return (
     <>
       <AdminPageHead title="Up & Down · Rounds" sw="Raundi za Juu na Chini" />
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         {/* Every figure here counts the whole FILTERED set, not the visible page — the
             one exception names itself ("on this page"), because turnover needs a market
             row per round and reading 1,402 of them to fill a tile is not a trade worth
             making. */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiGrid>
           <AdminKpi label="Settled" sw="Zimekamilika" value={settled.toLocaleString()} delta={`of ${total.toLocaleString()} total`} spark={false} />
           <AdminKpi label="Turnover on this page" sw="Mzunguko (ukurasa huu)" value={formatTzs(pageVol)} spark={false} />
           <AdminKpi label="Voided" sw="Batili" value={voided.toLocaleString()} delta={voided > 0 ? "refunded in full" : "none"} spark={false} />
@@ -168,7 +172,7 @@ export default async function AdminUpDownRoundsPage({
             delta={stuckAll.length > 0 ? `${stuckMoneyLabel} not moving` : "none — all closed on time"}
             spark={false}
           />
-        </div>
+        </KpiGrid>
 
         {stuckAll.length > 0 && (
           <AdminCard title="Rounds past their deadline" sw="Raundi zilizochelewa" padding="p-4">
@@ -221,7 +225,7 @@ export default async function AdminUpDownRoundsPage({
           </span>
         </div>
         {badFilter && (
-          <p className="font-mono text-[11px] text-warning-fg bg-warning-bg/15 border border-warning-border rounded-md px-3 py-2">
+          <p className="font-mono text-[11px] text-warning-fg bg-warning-bg border border-warning-border rounded-md px-3 py-2">
             Unknown asset or outcome &mdash; showing every round. Pick one from the chips above.
           </p>
         )}
@@ -256,6 +260,10 @@ export default async function AdminUpDownRoundsPage({
                 <tbody>
                   {enriched.map(({ r, asset, durationMinutes, volume, players, decimals }) => {
                     const moved = r.openPrice != null && r.closePrice != null ? r.closePrice - r.openPrice : null;
+                    // Why the stakes went back, decided by the module that owns that
+                    // question for every surface — see the chip below. `null` for a
+                    // round that decided and paid, so nothing is appended.
+                    const why = updownVoidReasonLabel(r.outcome, r.voidReason);
                     return (
                       <tr key={r.id} className="border-b border-border-subtle/60 last:border-0">
                         <td className="px-4 py-3 whitespace-nowrap">
@@ -270,9 +278,20 @@ export default async function AdminUpDownRoundsPage({
                           {usd(r.openPrice as number, decimals)} → {usd(r.closePrice as number, decimals)}
                         </td>
                         <td className="px-4 py-3">
+                          {/* 🔴 THE REASON A ROUND REFUNDED IS DECIDED IN ONE PLACE, AND
+                              THIS CELL USED TO NOT BE IN IT. It appended the stored token
+                              (`VOID · source-failed`) — a refund explanation, in database
+                              spelling, on the console an officer answers a player's
+                              "where is my money" from, and the ONE surface that was not
+                              asking `updown-refund-reason.ts`. That module exists because
+                              five surfaces each deciding for themselves is how a player
+                              was told the price had not moved on a round that had decided
+                              against them (E-65). Now this asks it too, via
+                              `updownVoidReasonLabel`, and gets the officer's short form of
+                              the same answer the player is given in full. */}
                           <span className={"chip " + (r.outcome === "UP" ? "chip-yes" : r.outcome === "DOWN" ? "chip-no" : r.outcome === "VOID" ? "chip-pending" : "chip-pending")}>
-                            {r.outcome ?? (r.resolvedAt ? "—" : "PENDING")}
-                            {r.outcome === "VOID" && r.voidReason ? ` · ${r.voidReason}` : ""}
+                            {r.outcome ?? (r.resolvedAt ? "—" : UPDOWN.outcomePending.en)}
+                            {why ? ` · ${why}` : ""}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right font-mono text-[11.5px] tabular-nums text-text-muted">{formatTzs(volume)}</td>
@@ -316,7 +335,7 @@ export default async function AdminUpDownRoundsPage({
           automatically; <em>Void &amp; refund</em> is the manual remedy for when it has not. Only an unsettled round can
           be voided, and the reason you give is written to the audit trail.
         </p>
-      </div>
+      </AdminBody>
     </>
   );
 }

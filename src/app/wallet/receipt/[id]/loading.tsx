@@ -21,7 +21,9 @@ export default async function ReceiptLoading() {
       </p>
       <div className="rounded-card border border-border bg-bg-elevated p-5 space-y-4 kp-shimmer-track">
         <div className="h-3 w-24 rounded bg-bg-overlay" />
-        <div className="h-9 w-40 rounded bg-bg-overlay" />
+        {/* ⚠️ LITERAL, not `h-9` — spacing is overridden (tailwind.config.ts:200-215) so this
+            "title" bar drew 64px on a receipt whose rows are text lines. */}
+        <div className="h-[28px] w-40 rounded bg-bg-overlay" />
         <div className="h-px w-full bg-border" />
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="flex items-center justify-between gap-4">
@@ -30,7 +32,9 @@ export default async function ReceiptLoading() {
           </div>
         ))}
       </div>
-      <div className="h-10 w-full rounded-control bg-bg-overlay kp-shimmer-track" />
+      {/* ⚠️ TOKEN, not `h-10` (80px on the overridden scale) — a full-width control ghost,
+          so --h-control-md (44px). */}
+      <div className="h-[var(--h-control-md)] w-full rounded-control bg-bg-overlay kp-shimmer-track" />
     </PageContainer>
   );
 }

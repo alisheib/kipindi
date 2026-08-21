@@ -1,9 +1,28 @@
 /* 50pick — unified interaction-state tokens (spec Part D)
-   One recipe for every interactive element. Gold = earned-money only. */
+   One recipe for every interactive element. Gold = earned-money only.
+
+   ⛔ THIS FILE DECLARES NO MOTION VALUE OF ITS OWN. Every duration and every curve
+   below reads `var(--t-*)` / `var(--m-*)` from `motion.css`, which is the ONE
+   definition site (§B5). Until 2026-08-21 five rules here hand-typed
+   `cubic-bezier(.2,.8,.2,1)` and raw millisecond literals — a THIRD motion
+   vocabulary standing beside the ladder, which is exactly the pattern the comment
+   below records DELETING `.is-interactive` for. The file was carrying the defect it
+   had already written the obituary of.
+
+   ⚠️ AMBIENT LOOPS KEEP THEIR RAW PERIOD (`closing-pulse` 2.4s, `cd-pulse` 60s,
+   `live-pulse` 1.6/1.2s): loops sit outside the ladder by design — see the frozen
+   census in `motion.css`. What they do NOT get to keep is a hand-typed CURVE. */
 :root {
-  --state-hover-filter: brightness(1.06) saturate(1.05);
-  --state-focus-ring: 0 0 0 2px var(--bg-canvas, #0A0E33), 0 0 0 4px var(--brand-300, #6CA2FF);
-  --state-active-scale: .98;
+  /* ⛔ THREE SIBLINGS DELETED 2026-08-21 — `--state-hover-filter`,
+     `--state-focus-ring` and `--state-active-scale` had ZERO consumers anywhere in
+     `src/`, for the life of the project (measured, not assumed). The comment below
+     kept all four on the grounds that "the kit's spec Part D references them"; a
+     spec reference is not a consumer, and a dead token that looks canonical is the
+     precise failure mode `.is-interactive` was deleted for. Focus rings come from
+     `.btn:focus-visible` / `:where(a,button,…):focus-visible` in globals.css; the
+     press scale is `--m-press`; the hover recipe is `.m-raise` / `.mat-raised-i`.
+     ⭐ `--state-disabled-opacity` STAYS: it has a live reader
+     (`updown-board-tabs.tsx`). One survivor of four is the honest count. */
   --state-disabled-opacity: .45;
 }
 /* ⚠️ `.is-interactive` was DELETED 2026-07-29 (design freeze, B10).
@@ -23,10 +42,16 @@
    comment — writing them with a star-slash between the two names would close
    the comment early. That trap has bitten this repo before.) */
 
-/* Countdown escalation — calm → urgent → critical (spec Part D.4) */
+/* Countdown escalation — calm → urgent → critical (spec Part D.4).
+   ⚠️ THE PERIODS STAY: `cd-pulse` 60s `steps(1)` is a re-trigger TICK, not motion
+   (one recomputation a minute — which is the written reason it sits on
+   `reduce-motion.test.mts`'s KEPT list rather than in globals.css §6), and
+   `live-pulse` 1.6/1.2s is that tick's ambient heartbeat. `live-pulse`'s keyframe
+   is 0.3 → 1 → 0.3, symmetric, so its curve is `--m-breathe` like every other
+   breath in the product; `ease-in-out` was the same shape spelled as a keyword. */
 .countdown         { color: var(--aqua-400, #36BABA); }
-.countdown--urgent { color: var(--gold-300, #FEC766); animation: cd-pulse 60s steps(1) infinite, live-pulse 1.6s ease-in-out 1; }
-.countdown--critical { color: var(--no-400, #E6424C); animation: cd-pulse 60s steps(1) infinite, live-pulse 1.2s ease-in-out 1; }
+.countdown--urgent { color: var(--gold-300, #FEC766); animation: cd-pulse 60s steps(1) infinite, live-pulse 1.6s var(--m-breathe) 1; }
+.countdown--critical { color: var(--no-400, #E6424C); animation: cd-pulse 60s steps(1) infinite, live-pulse 1.2s var(--m-breathe) 1; }
 @keyframes cd-pulse { 0% { opacity: 1 } } /* re-triggers the one-shot pulse each minute */
 
 /* Reward burst (spec A5) — DELETED 2026-08-08 with the struck-seal celebration.
@@ -47,15 +72,25 @@
   60%  { transform: translateY(0) rotate(6deg); opacity: 1 }
   100% { transform: translateY(0) rotate(0deg); opacity: 1 }
 }
-.podium-crown { display: inline-block; animation: podium-crown 520ms cubic-bezier(.2,.8,.2,1) 180ms both; transform-origin: 50% 90%; }
+/* 520ms IS `--t-stage` exactly, and the 180ms wait takes the nearest rung DOWN,
+   `--t-quick` (140). The crown is an ARRIVAL, so its curve is `--m-settle` — the
+   signature — not the hand-typed `cubic-bezier(.2,.8,.2,1)` this rule carried.
+   ⚠️ The overshoot is in the KEYFRAME (the 6° rotate at 60%), which is why the
+   curve does not need to be `--m-pivot`; that one is reserved (§M8). */
+.podium-crown { display: inline-block; animation: podium-crown var(--t-stage) var(--m-settle) var(--t-quick) both; transform-origin: 50% 90%; }
 
-/* Admin bars (spec A8) — grow in from the left once on mount */
+/* Admin bars (spec A8) — grow in from the left once on mount.
+   ⭐ THIS IS THE IN-REPO MODEL FOR A GROWING BAR: it animates `scaleX`, not
+   `width`, so the browser composites it instead of laying it out every frame.
+   Copy this shape, not a width transition. 240ms takes the nearest rung down,
+   `--t-base` (220); the arrival curve is `--m-settle`. */
 @keyframes admin-bar-grow { from { transform: scaleX(0) } to { transform: scaleX(1) } }
-.admin-bar-grow { transform-origin: left center; animation: admin-bar-grow 240ms cubic-bezier(.2,.8,.2,1) both; }
+.admin-bar-grow { transform-origin: left center; animation: admin-bar-grow var(--t-base) var(--m-settle) both; }
 
 /* /live featured-contest swap — a subtle fade-in as the carousel changes market. */
 @keyframes contest-fade { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: none } }
-.contest-fade { animation: contest-fade 220ms cubic-bezier(.2,.8,.2,1) both; }
+/* 220ms IS `--t-base` exactly — the literal was the rung, written the long way. */
+.contest-fade { animation: contest-fade var(--t-base) var(--m-settle) both; }
 
 /* Market-detail hero (C1a) — a slim gilt hairline "seal of the real": 1px of
    gold-deep at 40%, edge-faded, framing the market question. Sanctioned gilt
@@ -70,11 +105,17 @@
 
 /* Closing-soon pill (C1a, <1h to the next deadline) — pulses aqua→gold to signal
    urgency. Base (and reduced-motion) state is the gold end of the pulse so the
-   "urgent" meaning survives with the animation off. */
+   "urgent" meaning survives with the animation off.
+   ⚠️ 2.4s STAYS RAW and that is the rule, not an exception: ambient loops sit
+   OUTSIDE the ladder by design (the frozen census in `motion.css`), and this one is
+   named there. What changes is the CURVE — `ease-in-out` becomes `--m-breathe`, the
+   token whose entire job is "symmetric loops", so the pill breathes on the same
+   curve as `.live-dot`, `.m-live-pip` and `.mark-pending` instead of a bare
+   keyword that happens to look like it. */
 .closing-pill { color: var(--gold-300);
   border-color: color-mix(in oklab, var(--gold-500) 55%, transparent);
   background: color-mix(in oklab, var(--gold-500) 15%, transparent);
-  animation: closing-pulse 2.4s ease-in-out infinite; }
+  animation: closing-pulse 2.4s var(--m-breathe) infinite; }
 @keyframes closing-pulse {
   0%, 100% { color: var(--aqua-300);
     border-color: color-mix(in oklab, var(--aqua-400) 55%, transparent);
@@ -90,7 +131,12 @@
   0%, 100% { transform: scale(1);    box-shadow: 0 0 0 0 color-mix(in oklab, var(--brand-500) 0%, transparent); }
   35%      { transform: scale(1.09); box-shadow: 0 0 0 4px color-mix(in oklab, var(--brand-500) 38%, transparent); }
 }
-.dial-unlock-hint { animation: dial-unlock-nudge 0.5s ease-out 2; }
+/* 500ms takes the nearest rung down, `--t-stage` (520) — and the curve is
+   `--m-breathe`, not an ease-out: the keyframe leaves at scale(1) and RETURNS to
+   scale(1), i.e. it is symmetric, and `--m-breathe` is the token for exactly that.
+   ⛔ NOT `--m-pivot`, tempting as an overshoot on a dial control looks: §M8 reserves
+   that curve for the needle and the dial ITSELF, and this is the button beside it. */
+.dial-unlock-hint { animation: dial-unlock-nudge var(--t-stage) var(--m-breathe) 2; }
 
 /* Button inline spinner — `.btn-spin` DELETED 2026-07-29 (B10): zero consumers,
    and its `--spin-duration` token went with it (that token had exactly one

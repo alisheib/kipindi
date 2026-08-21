@@ -9,6 +9,7 @@ import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { formatDateTimeSafe, formatUsd } from "@/lib/utils";
 import { SELECTION } from "@/lib/admin-status-lexicon";
+import { aiPollStateLabel } from "@/components/admin/status-badge";
 import { ScoreBadge } from "@/components/admin/score-badge";
 import {
   listAIPolls,
@@ -36,6 +37,8 @@ import {
 } from "./poll-actions";
 import { PollFilterToolbar } from "./poll-filters";
 import { resolveRange } from "@/lib/server/date-range";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · AI poll generation" };
 export const dynamic = "force-dynamic";
@@ -51,16 +54,11 @@ const STATE_VARIANT: Record<AIPollState, "success" | "warning" | "danger" | "neu
   PUBLISHED: "success",
 };
 
-const STATE_LABEL: Record<AIPollState, string> = {
-  GENERATING: "Generating…",
-  VALIDATION_FAILED: "Failed",
-  FILTERED: "Didn't pass checks",
-  PENDING_REVIEW: "Ready for review",
-  EDITING: "Editing",
-  APPROVED: "Approved",
-  REJECTED: "Rejected",
-  PUBLISHED: "Published",
-};
+// ⛔ The local `STATE_LABEL` map that stood here is deleted. It was one of THREE
+// copies (this page, /admin/ai-polls/[id], /admin/updown/proposals) and they had
+// already drifted — two spelled "Didn't" with a typewriter apostrophe and one with
+// a typographic one. `aiPollStateLabel` is now the single site, and it is
+// product-aware: the Up & Down queue's `APPROVED` reads differently on purpose.
 
 const fmtUsd = formatUsd;
 function fmtDate(iso: string) {
@@ -156,9 +154,9 @@ export default async function AdminAIPollsPage({
         title="AI poll generation"
         sw="Uzalishaji wa kura · Claude AI"
       />
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         {/* KPI strip */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiGrid>
           <AdminKpi
             label="Published today"
             sw="Zilizochapishwa leo"
@@ -185,7 +183,7 @@ export default async function AdminAIPollsPage({
             value={fmtUsd(spend.totalUsd)}
             delta={`${spend.totalGenerations} generations · ${(spend.totalTokens / 1000).toFixed(1)}k tokens`}
           />
-        </div>
+        </KpiGrid>
 
         {/* Info banner + generate form */}
         <AdminCard>
@@ -318,7 +316,9 @@ export default async function AdminAIPollsPage({
 
           {pageItems.length === 0 ? (
             <div className="px-4 lg:px-5 py-12 flex flex-col items-center gap-3 text-center">
-              <div className="h-10 w-10 rounded-pill bg-bg-overlay flex items-center justify-center">
+              {/* ⚠️ LITERALS, not `h-10 w-10` — spacing is overridden (tailwind.config.ts:200-215)
+                  so `h-10` was an 80px disc round an 18px glyph. */}
+              <div className="h-[40px] w-[40px] rounded-pill bg-bg-overlay flex items-center justify-center">
                 {hasFilters
                   ? <I.search size={18} className="text-text-subtle" />
                   : <I.bot size={18} className="text-text-subtle" />}
@@ -354,7 +354,7 @@ export default async function AdminAIPollsPage({
                   <tbody className="text-text-muted">
                     {pageItems.map((p) => (
                       <tr key={p.id} id={`poll-tr-${p.id}`} className="border-b border-border/60 last:border-b-0 hover:bg-bg-overlay/50 group scroll-mt-24">
-                        <td className="p-3"><Chip size="sm" variant={STATE_VARIANT[p.state]}>{p.state}</Chip></td>
+                        <td className="p-3"><Chip size="sm" variant={STATE_VARIANT[p.state]}>{aiPollStateLabel(p.state)}</Chip></td>
                         <td className="p-3 font-mono uppercase tracking-[0.12em] text-[10px]">{p.category || "\u2014"}</td>
                         <td className="p-3 text-text max-w-[360px]">
                           <Link
@@ -405,7 +405,7 @@ export default async function AdminAIPollsPage({
             </>
           )}
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }
@@ -471,8 +471,11 @@ function FilterToolbarSkeleton() {
   return (
     <div className="space-y-3 animate-pulse">
       <div className="flex items-center gap-3">
-        <div className="h-9 flex-1 max-w-[420px] rounded-md bg-bg-overlay" />
-        <div className="h-9 w-[80px] rounded-pill bg-bg-overlay" />
+        {/* ⚠️ LITERALS, not `h-9` (64px on the overridden scale — tailwind.config.ts:200-215).
+            A skeleton must be the size of the thing it stands in for: the live admin filter
+            rail is 32px (--h-control-xs). The widths beside them were already literals. */}
+        <div className="h-[32px] flex-1 max-w-[420px] rounded-md bg-bg-overlay" />
+        <div className="h-[32px] w-[80px] rounded-pill bg-bg-overlay" />
       </div>
       <div className="flex items-center gap-2">
         {Array.from({ length: 5 }).map((_, i) => (
@@ -500,7 +503,7 @@ function PollRow({ poll, mode }: { poll: StoredAIPoll; mode: "review" | "publish
       <div className="flex-1 min-w-0">
         {/* Header badges */}
         <div className="flex items-center gap-2 mb-1 flex-wrap">
-          <Chip size="sm" variant={STATE_VARIANT[poll.state]}>{STATE_LABEL[poll.state]}</Chip>
+          <Chip size="sm" variant={STATE_VARIANT[poll.state]}>{aiPollStateLabel(poll.state)}</Chip>
           <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{poll.category}</span>
           <span className="font-mono text-[10.5px] tabular-nums text-text-muted">
             <I.shieldAlert size={10} className="inline -mt-0.5 mr-0.5" />

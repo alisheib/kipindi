@@ -10,7 +10,10 @@ import { formatDate } from "@/lib/utils";
 import { displayLabel, displayInitials } from "@/lib/display-label";
 import { STAFF_ROLES, ROLE_LABEL, roleLabel, isAdmin, type Role } from "@/lib/server/roles";
 import { staffRoleInfos } from "@/lib/server/rbac";
+import { accountStatusLabel } from "@/components/admin/status-badge";
 import { AddStaffForm } from "./staff-forms";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Staff" };
 export const dynamic = "force-dynamic";
@@ -42,14 +45,14 @@ export default async function AdminStaffPage() {
   return (
     <>
       <AdminPageHead title="Staff" sw="Wafanyakazi" />
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         {/* Headcount by the roles that actually carry authority. */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiGrid>
           <AdminKpi label="Total staff" sw="Jumla" value={failed ? "" : String(staff.length)} unavailable={failed} />
           <AdminKpi label="Owners" sw="Wamiliki" value={failed ? "" : String(byRole.ADMIN ?? 0)} unavailable={failed} gold />
           <AdminKpi label="Compliance + Auditor" value={failed ? "" : String((byRole.COMPLIANCE ?? 0) + (byRole.AUDITOR ?? 0))} unavailable={failed} />
           <AdminKpi label="Finance + Growth + Support + Trading" value={failed ? "" : String((byRole.FINANCE ?? 0) + (byRole.GROWTH ?? 0) + (byRole.SUPPORT ?? 0) + (byRole.MODERATOR ?? 0))} unavailable={failed} />
-        </div>
+        </KpiGrid>
 
         <AdminCard title="Add staff" sw="Ongeza mfanyakazi">
           <p className="text-caption text-text-tertiary mb-3">
@@ -87,7 +90,7 @@ export default async function AdminStaffPage() {
                       </td>
                       <td className="font-mono whitespace-nowrap">{u.phoneE164.length > 6 ? `${u.phoneE164.slice(0, 4)}****${u.phoneE164.slice(-2)}` : u.phoneE164}</td>
                       <td><Chip size="sm" variant={roleChipVariant(u.role)}>{roleLabel(u.role)}</Chip></td>
-                      <td><Chip size="sm" variant={u.status === "ACTIVE" ? "success" : "neutral"}>{u.status}</Chip></td>
+                      <td><Chip size="sm" variant={u.status === "ACTIVE" ? "success" : "neutral"}>{accountStatusLabel(u.status)}</Chip></td>
                       <td className="font-mono whitespace-nowrap">{u.lastLoginAt ? formatDate(u.lastLoginAt) : "—"}</td>
                       <td>
                         <a href={`/admin/staff/${u.id}`} className="text-royal-300 hover:underline font-medium font-mono text-micro tracking-[0.10em] uppercase">manage →</a>
@@ -107,13 +110,13 @@ export default async function AdminStaffPage() {
           </ScrollX>
         </AdminCard>
 
-        <AdminCard className="border-info-border bg-info-bg/15">
+        <AdminCard className="border-info-border bg-info-bg">
           <div className="text-caption text-text-secondary space-y-1">
             <p className="text-text font-bold">How roles work</p>
             <p>Each person has <strong>one role</strong>. A role decides which admin sections they can see and which actions they can take. Roles: <strong>{STAFF_ROLES.map((r) => ROLE_LABEL[r as Role]).join(" · ")}</strong>. The Owner can fine-tune exactly what each role may see and do at <a href="/admin/roles" className="text-royal-300 hover:underline">/admin/roles</a>. Changing a role signs the person out so the new access applies immediately.</p>
           </div>
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

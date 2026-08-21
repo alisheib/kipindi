@@ -136,15 +136,22 @@ None of these is a rulebook. Each carries a header saying so.
 | The measure (`--w-console/board/reading/form/receipt/auth`, field measure) | `src/app/globals.css` — see §B7 |
 | Motion ladder `--t-*`, materials `--m-*`, easings | `src/app/motion.css` (imported LAST, so at equal specificity it outranks `globals.css`) |
 | Elevation rungs `--elev-*`, `--shadow-*`, `--wash-*`, `--edge-lit*` | `src/app/globals.css` — guarded family, a second definition site is a hard `test:tokens` failure |
+| Chat's own namespaced vocabulary (`--cm-*`) | `src/styles/chat/chat-tokens.css` + `src/styles/chat/chat-styles.css`, both `@import`ed by `globals.css`. ⚠️ **Added to this map 2026-08-21** — the chat layer is the one place §B5 rule 1 licenses a private scale, and a session reading only this table would not have known the vocabulary exists. It **namespaces**, never redeclares a global token |
 | Tailwind aliases | `tailwind.config.ts` — a bridge only; it never originates a value |
 | Glyph geometry | `src/components/ui/glyphs.tsx` |
 | Dial / needle / chart geometry | the component file (`brand.tsx`, `pnl-chart.tsx`, `updown-card.tsx`) |
 | Haptic patterns | `src/lib/haptics.ts` (product) and `src/lib/needle-haptics.js` (needle) — see §H |
 
-### 0e — The tolerated exception
+### 0e — The tolerated exception (currently unused)
 
 `docs/NEXT-SESSION-*.md` is a **tolerated exception, not a pattern**. There must never
 be two. When its work is done, delete it.
+
+✅ **2026-08-21: there are none.** The single instance, `NEXT-SESSION-MATERIAL-VISIBLE.md`,
+carried its own delete-condition — *"delete it when the DA/DS sweep closes"* — and that
+condition fired on 2026-08-10, when the sweep closed at 93/93. It sat there for eleven days
+after it was spent, which is exactly how a finished prompt gets re-read as live instruction.
+It is deleted; the durable record is `LIVE-QA-CAMPAIGN.md` §6b.
 
 ---
 
@@ -191,10 +198,25 @@ top leans **left** of centre. ⚠️ `@keyframes m-axis-sweep` in `motion.css` w
 **literally** — `skewX()` cannot take a custom property in every engine we support — so it is
 the one place the number is duplicated and it must move with the axis.
 
-⛔ **Never hand-edit a brand asset.** Every SVG and PNG under `public/brand/` and
-`public/icons/` is generated from `brand-mark.ts` by `scripts/build-brand-assets.mts`. Editing
-one directly is how the PWA icon and every outbound email once shipped the superseded round-1
-logo. **Change the source, regenerate.**
+⛔ **Never hand-edit a GENERATED brand asset.** `scripts/build-brand-assets.mts`
+(`npm run build:brand`) writes exactly eleven files from `brand-mark.ts`, and its own header
+lists them: `public/brand/mark-{color,white,dark,simplified}.svg`, plus
+`public/icons/{mark-color,mark-white,mark-dark,maskable,tile}-512.png`, `icon-192.png` and
+`apple-touch-180.png`. Editing one of **those** directly is how the PWA icon and every outbound
+email once shipped the superseded round-1 logo. **Change the source, regenerate.**
+
+⚠️ **Corrected 2026-08-21, and the error ran in the dangerous direction.** This rule read
+*"Every SVG and PNG under `public/brand/` and `public/icons/` is generated"* — which promises a
+session that a regeneration will undo whatever it breaks. It will not. Six of the files in
+those folders are **held, not generated**, and `build:brand` never writes one of them:
+`lockup-horizontal.svg` and `lockup-stacked.svg` (the delivered lockups named two paragraphs
+above), `email-signature.png` (`docs/EMAIL-SIGNATURES.md` serves it from the live domain), and
+the three `icons/shortcut-*.png` cited by `public/manifest.json`. `favicon.svg` / `favicon.ico`
+sit at `public/` root and are outside the generator too, as is anything else that has ever been
+dropped into `public/icons/` by hand. An edit to any of them is unrecoverable by rerunning the
+script — so for those the instruction is the opposite: **there is no source to change; keep the
+file.** ⭐ The reliable test is not the folder, it is the script: if a filename is not in
+`build-brand-assets.mts`, `build:brand` will not produce it.
 
 ⚠️ **And the mark's gold stays `#E3BC66`.** Any satin/material recipe adopted for *surfaces*
 does not apply to the trademark — that is this rule's parent, B1, applied to the one place it
@@ -332,14 +354,39 @@ repaired rule reaches a user — several are dead CSS with zero component usages
 | Repaired rule | Component usages | User-visible? |
 |---|---|---|
 | chat easings (`--cm-*`) | whole chat panel | **yes** — panel had *zero* motion |
-| `.countdown-ring .ring-arc` | 3 | **yes** — 240ms → 820ms sweep |
+| ~~`.countdown-ring .ring-arc`~~ | **0** | ⚠️ **no — the row was wrong when written, and the class is now gone.** See the correction below |
 | `.pchart-*` (draw-in, crosshair) | 2 | **yes** — draw 240→820ms, crosshair 0s→120ms |
 | `.input` / `.select` CSS classes | 3 / 2 | partly — the `Input` **atom** uses Tailwind `transition-all duration-150`, not `.input`, so most fields were never affected |
 | `.pbar-yes` / `.pbar-no` | **0** | no — dead CSS |
 | `.win-seal`, `.badge-unlock-coin`, `.win-card-rare` | **0** | no — dead CSS (the `--ease-celebrate` phantom 600ms delay was real but unreachable) |
 
 Do not cite this fix as "restored motion everywhere". It restored the token *contract*; the
-visible delta is the chat panel, the countdown ring and the probability chart.
+visible delta measured in 2026-07 was the chat panel and the probability chart — the third
+item this sentence named for a year, the countdown ring, was never in it. See below.
+
+⚠️ **CORRECTED 2026-08-21 — a law doc was asserting a measurement that HEAD contradicts.**
+Two rows above have moved, and one of them was never true:
+
+- **`.countdown-ring .ring-arc` had ZERO consumers, not 3, for the life of the project**, so it
+  was never part of the visible delta. The shipped ring is
+  `src/components/positions/countdown-ring.tsx`, which composes its own inline SVG and has never
+  touched these classes. The `.countdown-ring` block is **deleted** from `globals.css` in the
+  dead-CSS sweep, and the comment above `--dur-stage` records the same correction. What actually
+  consumes the 820ms rung now is `.badge-ring-arc`'s `stroke-dashoffset` transition, plus
+  `.badge-unlock-rays` and `.m-draw`. ⛔ Do not restore a `.countdown-ring` rule to "support" the
+  component — the component does not read CSS classes for its arc.
+- **`.win-seal` and `.win-card-rare` are deleted** (E-128 / DA-8, 2026-08-07, with the rest of
+  the dead `win-*` family). The row is kept because its *lesson* is the point — an unreachable
+  `--ease-celebrate` delay measured as real — but the class names in it no longer exist.
+  `.badge-unlock-coin` survives and still has zero consumers.
+
+The remaining rows were re-verified at HEAD and stand: `.pchart-*` is live
+(`probability-chart.tsx`), and `.pbar-yes` / `.pbar-no` are still 0-consumer dead CSS, kept
+deliberately because `.pbar` is a documented kit atom with its own spec page and preview.
+
+⭐ The general lesson, since this is the second measurement table in this file to rot: **a
+usage count is a measurement of a moment.** Date it, name the file that would prove it, and
+re-derive before citing it — never copy the number forward.
 
 ---
 
@@ -533,9 +580,18 @@ Values: the `--type-*` ladder in `globals.css`. Laws:
 1. **The scale is closed.** Sizes come from the ladder. A hand-typed `text-[13.7px]` is
    a violation even if it looks right — the next screen will pick a different number and
    the product loses its rhythm one component at a time.
-2. **`--type-h1` is the market-question size (`.mterm-q`), NOT a page-title token.**
-   Page and section `<h1>`s use the 28px page-title step. The token is held at its value
-   so Markets is not restyled; reading it as "the heading size" restyles the wrong thing.
+2. **`--type-h1` (32px) is NOT a page-title token.** Page and section `<h1>`s use the 28px
+   page-title step; reading `--type-h1` as "the heading size" restyles the wrong thing.
+   ⚠️ **Corrected 2026-08-21:** this law cited **`.mterm-q`** as the token's consumer and
+   called it "the market-question size". **`.mterm-q` does not exist in `src/`** — it is a
+   class from the v2 kit archive under `docs/design-system/`, and it was never shipped, so
+   the law was pointing at a surface no player has ever seen. At HEAD the token's real
+   consumers are three landing classes in `globals.css`: `.kp-hero__headline`, `.kp-shead__h`
+   and `.kp-claim` — which is why the token is held at 32, so the landing is not restyled.
+   🔴 **And the market question itself is off the ladder:** `src/app/markets/[id]/page.tsx`
+   renders it as a hand-typed `text-[26px] md:text-[34px]`. That is a live violation of
+   rule 1 above, filed here rather than fixed silently — the fix is to move the question
+   onto the ladder, **never** to re-tune `--type-h1` to match it.
 3. **`--type-label` and `--type-nano` are the blessed sub-`micro` tier** — UPPERCASE mono
    tracking microlabels only. They sit below the reading floor deliberately.
    ⛔ **Never reading copy.**
@@ -563,10 +619,15 @@ Values: `--sp-*`, `--r-*` in `globals.css`. Laws:
    radius, except `btn-xl`, which takes `--r-lg`.
    ⛔ **No one-off `rounded-[…]`.** An arbitrary radius is a second definition site.
 3. **Border weights are semantic, not decorative:** 1px is structure (`--border`,
-   `--border-strong` for emphasis, dashed for empty states); 1.5px is instrument (dial
-   rings, line-art, kit icon strokes); 2–2.4px is brand (the mark's ring and divider); the
-   needle is heaviest. A weight chosen for looks rather than for what the line *is* will
-   contradict the next one.
+   `--border-strong` for emphasis, dashed for empty states); **1.5–1.9px is instrument** —
+   dial rings at 1.5 (`brand.tsx`), and **the kit glyph family and the 64-grid empty-state
+   line-arts at 1.9** (`glyphs.tsx`'s `G` and `GL` wrappers, 178 icons); 2–2.4px is brand
+   (the mark's ring and divider, and the 56-grid badge medallions in
+   `src/components/badges/icons.tsx` at 2.2, a separate documented tier); the needle is
+   heaviest. A weight chosen for looks rather than for what the line *is* will contradict
+   the next one. ⚠️ **Corrected 2026-08-21** — this rule said kit icon strokes were 1.5px.
+   They are 1.9, and have been since the second 64-grid wrapper (at 2.2) was removed for
+   drawing neighbouring empty states 16% apart in weight.
 4. ⚠️ **The legacy numeric Tailwind radius scale is NOT the `--r-*` scale** (`rounded-md`
    is 8px, `--r-md` is 12px). Both are frozen; do not renumber (Ali deferred, 2026-07-29).
    Use the semantic keys.
@@ -625,7 +686,9 @@ The platform's hardest-won rules. Most were bought with an incident.
 6. ⛔ **NO EMOJI IN UI COPY. ANYWHERE.** Glyphs are stroke SVG from the kit, or typographic
    marks. Reasons, in order: tone on a licensed money product; rendering on cheap Android;
    and localisation, because an emoji is not translatable.
-7. **Illustration idiom: gilt line-art / etched SVG, 1.5px stroke, a single gold accent.**
+7. **Illustration idiom: gilt line-art / etched SVG, 1.9 stroke, a single gold accent.**
+   (⚠️ said 1.5px until 2026-08-21; the shipped line-arts come from `glyphs.tsx`'s `GL`
+   64-grid wrapper, which strokes 1.9 — same weight as the icon family, by design.)
    ⛔ No mascots. ⛔ **No baked-in text in reusable art** — it cannot be translated.
 
 ---

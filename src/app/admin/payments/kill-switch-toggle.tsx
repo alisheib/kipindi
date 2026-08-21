@@ -66,7 +66,7 @@ function FlowToggle({ provider, providerLabel, kind, paused }: { provider: strin
   if (confirm) {
     const armed = word.trim().toUpperCase() === "PAUSE";
     return (
-      <div className="rounded-md border border-claret-edge bg-claret-soft/50 p-2 space-y-1.5">
+      <div className="rounded-md border border-claret-edge bg-claret-soft p-2 space-y-1.5">
         <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] font-bold text-claret-300">Type PAUSE to stop {flowLabel.toLowerCase()}</p>
         <input value={word} onChange={(e) => setWord(e.target.value)} placeholder="PAUSE" autoComplete="off" className="h-7 w-full rounded-sm border border-claret-edge bg-bg-overlay px-2 font-mono text-[12px] uppercase tracking-[0.2em] text-text admin-focus placeholder:text-text-subtle" />
         <div className="grid grid-cols-2 gap-1.5">
@@ -83,7 +83,9 @@ function FlowToggle({ provider, providerLabel, kind, paused }: { provider: strin
       disabled={pending || !mayAct}
       title={disabledReason}
       onClick={() => (paused ? apply(false) : setConfirm(true))}
-      className="flex items-center justify-between gap-1.5 rounded-md border px-2.5 h-9 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      /* ⚠️ LITERAL, not `h-9` — spacing is overridden (tailwind.config.ts:200-215), so `h-9`
+         was 64px against a 10px label, in a cluster whose other members are 40px. */
+      className="flex items-center justify-between gap-1.5 rounded-md border px-2.5 h-[40px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       style={paused
         ? { borderColor: "var(--claret-edge)", background: "var(--claret-soft)", color: "var(--claret-200)" }
         : { borderColor: "var(--border)", color: "var(--text-muted)" }}

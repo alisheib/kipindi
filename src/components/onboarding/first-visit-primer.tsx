@@ -16,6 +16,7 @@ import { usePathname } from "next/navigation";
 import { Modal } from "@/components/ui/modal";
 import { I } from "@/components/ui/glyphs";
 import { FiftyMark, TippingBar, GiltCorner } from "@/components/brand";
+import { sideWord } from "@/lib/side-label";
 import { useT } from "@/lib/i18n";
 
 const STORAGE_KEY = "50pick-primer-seen";
@@ -54,7 +55,14 @@ type Card = {
 };
 
 /* ── Card 1 visual: the 50pick mark flanked by YES/NO paths ────────────── */
-function VisualWhatIs() {
+/**
+ * 🔴 THE SIDE WORDS WERE BAKED ENGLISH, ON THE CARD THAT TEACHES WHAT A SIDE IS.
+ * Same defect as `dragToCommit` and `poolCaption` before them, one row further down:
+ * a Swahili or Chinese player's very first screen spelled out "YES or NO" in a
+ * language they may not read. The words now come from the lexicon (`sideWord`), which
+ * also makes the vocabulary product-aware for free — see `src/lib/side-label.ts`.
+ */
+function VisualWhatIs({ yes, no, or }: { yes: string; no: string; or: string }) {
   return (
     <div className="relative flex flex-col items-center gap-3 py-2">
       {/* The real brand mark — exact SVG used in the app bar */}
@@ -76,11 +84,11 @@ function VisualWhatIs() {
             className="inline-block h-[6px] w-[6px] rounded-full"
             style={{ background: "oklch(58% 0.16 152)", boxShadow: "0 0 8px oklch(58% 0.16 152 / 0.6)" }}
           />
-          <span style={{ color: "oklch(80% 0.14 152)" }}>YES</span>
+          <span style={{ color: "oklch(80% 0.14 152)" }}>{yes}</span>
         </span>
-        <span className="font-mono text-[9px] text-text-subtle tracking-[0.2em]">or</span>
+        <span className="font-mono text-[9px] text-text-subtle tracking-[0.2em]">{or}</span>
         <span className="flex items-center gap-1.5">
-          <span style={{ color: "oklch(80% 0.16 22)" }}>NO</span>
+          <span style={{ color: "oklch(80% 0.16 22)" }}>{no}</span>
           <span
             className="inline-block h-[6px] w-[6px] rounded-full"
             style={{ background: "oklch(60% 0.18 22)", boxShadow: "0 0 8px oklch(60% 0.18 22 / 0.6)" }}
@@ -92,7 +100,22 @@ function VisualWhatIs() {
 }
 
 /* ── Card 2 visual: a real TippingBar + miniature dial ─────────────────── */
-function VisualDial({ dragLabel }: { dragLabel: string }) {
+/**
+ * ⚠️ TWO FIXES LIVE IN THE SVG BELOW, AND NEITHER IS COSMETIC.
+ *
+ * 1. `dragToCommit` was fixed here once; the other four annotations were left English —
+ *    the knob's side word, both end labels and the min/max pair. They now come from the
+ *    dictionary and, for the sides, from the lexicon.
+ * 2. They were also drawn at `fontSize` 6 and 8, BELOW the 8.5px `--type-nano` floor
+ *    (§T3), on a card a first-time player reads once. Raised to the floor — which is
+ *    what forces the two geometry changes: the knob is wider because "HAPANA" at 8.5px
+ *    does not fit a 32px squircle, and the right-hand end label is `text-anchor="end"`
+ *    at the track's edge because a start-anchored Swahili word ran off the viewBox.
+ *    ⛔ Do not shrink these back to make a long locale fit — widen the frame instead.
+ */
+function VisualDial({ dragLabel, yes, no, minLabel, maxLabel }: {
+  dragLabel: string; yes: string; no: string; minLabel: string; maxLabel: string;
+}) {
   return (
     <div className="space-y-3 py-1 w-full">
       {/* Miniature conviction dial — SVG with knob at 3.2x NO side */}
@@ -115,49 +138,71 @@ function VisualDial({ dragLabel }: { dragLabel: string }) {
           <line x1="140" x2="140" y1="16" y2="36" stroke="oklch(34% 0.130 268)" strokeWidth="0.75" />
           {/* Knob — squircle shape via rounded rect */}
           <g transform="translate(202 26)">
-            <rect x="-16" y="-16" width="32" height="32" rx="10"
+            <rect x="-27" y="-16" width="54" height="32" rx="10"
               fill="oklch(28% 0.110 268)" stroke="oklch(60% 0.18 22)" strokeWidth="1.5" />
-            <text x="0" y="2" textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontWeight="700" fontSize="10" fill="oklch(96% 0.005 240)">3.2x</text>
-            <text x="0" y="11" textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontWeight="500" fontSize="6" fill="oklch(80% 0.16 22)" letterSpacing="0.12em">NO</text>
+            <text x="0" y="1" textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontWeight="700" fontSize="10" fill="oklch(96% 0.005 240)">3.2×</text>
+            <text x="0" y="11.5" textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontWeight="500" fontSize="8.5" fill="oklch(80% 0.16 22)" letterSpacing="0.08em">{no}</text>
           </g>
-          {/* Side labels */}
-          <text x="12" y="50" fontFamily="JetBrains Mono, monospace" fontWeight="600" fontSize="8" fill="oklch(70% 0.12 152)" letterSpacing="0.08em">YES</text>
-          <text x="255" y="50" fontFamily="JetBrains Mono, monospace" fontWeight="600" fontSize="8" fill="oklch(70% 0.14 22)" letterSpacing="0.08em">NO</text>
+          {/* Side labels — anchored to the two ENDS of the track, not offset from them,
+              so a longer locale grows inward instead of off the edge of the viewBox. */}
+          <text x="6" y="50" fontFamily="JetBrains Mono, monospace" fontWeight="600" fontSize="8.5" fill="oklch(70% 0.12 152)" letterSpacing="0.08em">{yes}</text>
+          <text x="274" y="50" textAnchor="end" fontFamily="JetBrains Mono, monospace" fontWeight="600" fontSize="8.5" fill="oklch(70% 0.14 22)" letterSpacing="0.08em">{no}</text>
         </svg>
       </div>
       {/* Annotation labels */}
       <div className="flex items-center justify-between px-2 font-mono text-[9px] tracking-[0.12em] uppercase text-text-subtle">
-        <span>1x min</span>
+        <span>{minLabel}</span>
         {/* Was the hardcoded English "drag to commit", rendered to Swahili and Chinese players
-            alike — inside an SVG annotation row, where no i18n sweep was looking. */}
+            alike — inside an SVG annotation row, where no i18n sweep was looking. The two
+            multiplier bounds either side of it were exactly the same defect, left behind. */}
         <span style={{ color: "var(--gilt)" }}>{dragLabel}</span>
-        <span>200x max</span>
+        <span>{maxLabel}</span>
       </div>
     </div>
   );
 }
 
 /* ── Card 3 visual: real TippingBar showing the pool split ─────────────── */
-function VisualPools({ caption }: { caption: string }) {
+/**
+ * 🔴 `<TippingBar>` DEFAULTS `showLabels` TO TRUE, AND ITS FIVE LABEL DEFAULTS ARE ENGLISH.
+ * The primitive is deliberately dict-free (see its prop docs in `brand.tsx`), so a caller
+ * that omits `labels` does not render "no labels" — it renders the English fallbacks. Every
+ * other TippingBar in the product passes them; this one, on the first screen a new player
+ * ever sees, did not, so the SW and ZH primer read "YES 62% · leans yes · 38% NO".
+ * ⛔ Never mount this primitive without `labels` + `probabilityLabel` from a dictionary.
+ */
+function VisualPools({ caption, poolYes, poolNo, share, barLabels, barAria }: {
+  caption: string;
+  poolYes: string; poolNo: string; share: string;
+  barLabels: { yes: string; no: string; tipping: string; leansYes: string; leansNo: string };
+  barAria: string;
+}) {
   return (
     <div className="space-y-4 py-1 w-full">
       {/* Real TippingBar component — 62% YES / 38% NO */}
       <div className="px-1">
-        <TippingBar yesPct={62} height={24} recastOnHover={false} />
+        <TippingBar yesPct={62} height={24} recastOnHover={false} labels={barLabels} probabilityLabel={barAria} />
       </div>
       {/* Payout flow annotation */}
+      {/* `/[0.08]` and not `/8` (2026-08-21): Tailwind's opacity scale is a 5-step
+          ladder, so `/8` is dropped before the colour is ever mixed. Both tiles
+          rendered with NO fill — on the one screen that teaches a new player what a
+          side means, the green/YES and red/NO wash was absent while it was being
+          taught. The arbitrary form keeps the author's exact 8%. */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-1">
-        <div className="rounded-lg border border-yes-700/40 bg-yes-500/8 px-3 py-2 text-center">
-          <p className="font-mono text-[8px] uppercase tracking-[0.14em] font-bold" style={{ color: "oklch(70% 0.12 152)" }}>YES pool</p>
+        {/* 8.5px, not 8 and 7 — `--type-nano` is the floor for a mono uppercase microlabel
+            (§T3), and "share" at 7px was the smallest type in the entire product. */}
+        <div className="rounded-lg border border-yes-700/40 bg-yes-500/[0.08] px-3 py-2 text-center">
+          <p className="font-mono text-[8.5px] uppercase tracking-[0.14em] font-bold" style={{ color: "oklch(70% 0.12 152)" }}>{poolYes}</p>
           <p className="font-display text-[15px] font-bold text-text">TZS 12k</p>
         </div>
         <div className="flex flex-col items-center gap-0.5">
           <span className="inline-block h-[2px] w-5 rounded-pill" style={{ background: "var(--gilt)" }} />
-          <span className="font-mono text-[7px] uppercase tracking-[0.14em]" style={{ color: "var(--gilt)" }}>share</span>
+          <span className="font-mono text-[8.5px] uppercase tracking-[0.14em]" style={{ color: "var(--gilt)" }}>{share}</span>
           <span className="inline-block h-[2px] w-5 rounded-pill" style={{ background: "var(--gilt)" }} />
         </div>
-        <div className="rounded-lg border border-no-700/40 bg-no-500/8 px-3 py-2 text-center">
-          <p className="font-mono text-[8px] uppercase tracking-[0.14em] font-bold" style={{ color: "oklch(70% 0.14 22)" }}>NO pool</p>
+        <div className="rounded-lg border border-no-700/40 bg-no-500/[0.08] px-3 py-2 text-center">
+          <p className="font-mono text-[8.5px] uppercase tracking-[0.14em] font-bold" style={{ color: "oklch(70% 0.14 22)" }}>{poolNo}</p>
           <p className="font-display text-[15px] font-bold text-text">TZS 18k</p>
         </div>
       </div>
@@ -165,7 +210,7 @@ function VisualPools({ caption }: { caption: string }) {
           and Chinese player — and it said "small operator margin", which is the
           old model. It now states the actual promise, in the player's language,
           from the ONE place that copy lives (`t.primer.poolCaption`). */}
-      <p className="text-center font-mono text-[8px] uppercase tracking-[0.14em] text-text-subtle">
+      <p className="text-center font-mono text-[8.5px] uppercase tracking-[0.14em] text-text-subtle">
         {caption}
       </p>
     </div>
@@ -185,15 +230,39 @@ export function FirstVisitPrimer() {
   const [step, setStep] = useState(0);
   const { t } = useT();
 
+  /* The primer teaches the LONG-FORM product — its three cards are about a question with a
+     YES/NO answer, not a price round — so the vocabulary is asked for as "MARKET". The lexicon
+     refuses to default the product line on purpose (`side-label.ts`), and this is a call site
+     that genuinely knows which one it is holding. */
+  const yesWord = sideWord(t, "YES", "MARKET");
+  const noWord = sideWord(t, "NO", "MARKET");
+
   /* The three cards, from the ONE home their copy has. Built here rather than at module scope
      because they read the active dict. */
   const CARDS: Card[] = [
     { eyebrow: t.primer.card1Eyebrow, title: t.primer.card1Title, body: t.primer.card1Body,
-      visual: () => <VisualWhatIs /> },
+      visual: () => <VisualWhatIs yes={yesWord} no={noWord} or={t.common.or} /> },
     { eyebrow: t.primer.card2Eyebrow, title: t.primer.card2Title, body: t.primer.card2Body,
-      visual: () => <VisualDial dragLabel={t.primer.dragToCommit} /> },
+      visual: () => (
+        <VisualDial
+          dragLabel={t.primer.dragToCommit}
+          yes={yesWord}
+          no={noWord}
+          minLabel={t.primer.dialMin.replace("{n}", "1")}
+          maxLabel={t.primer.dialMax.replace("{n}", "200")}
+        />
+      ) },
     { eyebrow: t.primer.card3Eyebrow, title: t.primer.card3Title, body: t.primer.card3Body,
-      visual: () => <VisualPools caption={t.primer.poolCaption} /> },
+      visual: () => (
+        <VisualPools
+          caption={t.primer.poolCaption}
+          poolYes={t.primer.poolSide.replace("{side}", yesWord)}
+          poolNo={t.primer.poolSide.replace("{side}", noWord)}
+          share={t.primer.poolShare}
+          barLabels={{ yes: yesWord, no: noWord, tipping: t.market.tipping, leansYes: t.market.leansYes, leansNo: t.market.leansNo }}
+          barAria={t.market.probBarAria.replace("{side}", yesWord)}
+        />
+      ) },
   ];
 
   useEffect(() => {
@@ -263,18 +332,46 @@ export function FirstVisitPrimer() {
           <GiltCorner size={40} rotate={90} />
         </div>
 
-        {/* Gold progress strip at top */}
+        {/* Gold progress strip at top.
+            THE STRIP SCALES; IT DOES NOT WIDEN. `transition-all` on a `width` animated
+            a LAYOUT property for 500ms on every step change, inside a sheet that is the
+            first thing a new player ever sees — on the cheapest phone in the funnel.
+            `transform: scaleX()` draws the identical strip on the compositor. Model:
+            `.admin-bar-grow` (state-tokens.css).
+            ⭐ Nothing is squashed here, and it is worth saying why rather than leaving
+            it to be re-checked: the strip carries NO border-radius (so there is no cap
+            to distort) and NO child (so there is no label to squeeze). The one thing
+            scaleX does reshape is the `90deg` gradient — and it reshapes it exactly the
+            way `width` did, compressing the full gold-500 → gold-300 ramp into the
+            drawn length. Same picture, one less reflow.
+            §M6 · this is a transition, so all three gates already hold: motion.css's
+            universal clamp zeroes `transition-duration` for the OS query,
+            `html.kp-reduce-motion` and `[data-motion="minimal"]`, and the
+            `[data-motion="reduced"]` list in globals.css §6 governs `infinite`
+            animations only. With motion off the strip jumps to the new step — the
+            correct end frame. */}
         <div className="absolute inset-x-0 top-0 h-[2px]" aria-hidden>
           <div
-            className="h-full transition-all duration-500"
+            className="h-full w-full origin-left transition-transform duration-500"
             style={{
-              width: `${((step + 1) / CARDS.length) * 100}%`,
+              transform: `scaleX(${(step + 1) / CARDS.length})`,
               background: "linear-gradient(90deg, var(--gold-500), var(--gold-300))",
             }}
           />
         </div>
 
         {/* Step indicators + close */}
+        {/* ⭐ THE TARGET IS PADDED; THE BAR IS NOT THICKENED (§A2). Each step indicator was a
+            3px-TALL `<button>` — a real control, with a real `aria-label`, that no finger can
+            land on. It now presents a 40px box and keeps its 3px hairline drawn inside, so the
+            graphic is unchanged and only the row's height moves (32 → 40, set by the close
+            button beside it, which was already at the floor: `h-7` is 40px on this project's
+            remapped spacing scale, not 28 — it is spelled in pixels here only so the two
+            controls in this row state the same number the same way).
+            ⛔ Do not "fix" the indicator by making the bar thicker: the three hairlines ARE the
+            design, and a 40px bar is a progress bar, not a step rail. `aria-current` is added
+            for the reason the /live pager has it — the active step was distinguished by colour
+            and a glow alone (§A4). */}
         <div className="flex items-center gap-1.5 px-5 pt-5">
           {CARDS.map((_, i) => (
             <button
@@ -282,25 +379,30 @@ export function FirstVisitPrimer() {
               type="button"
               onClick={() => setStep(i)}
               aria-label={t.primer.step.replace("{n}", String(i + 1))}
-              className="h-[3px] flex-1 rounded-pill transition-all duration-300 hover:opacity-80"
-              // DS-13 — UI chrome composes from tokens (the SVG brand art keeps
-              // its literals; chrome must not).
-              style={{
-                background:
-                  i < step
-                    ? "var(--gold-400)"
-                    : i === step
-                      ? "var(--gold-300)"
-                      : "var(--royal-700)",
-                boxShadow: i === step ? "0 0 8px color-mix(in oklab, var(--gold-400) 40%, transparent)" : "none",
-              }}
-            />
+              aria-current={i === step ? "true" : undefined}
+              className="flex h-[40px] flex-1 items-center hover:opacity-80"
+            >
+              <span
+                className="block h-[3px] w-full rounded-pill transition-all duration-300"
+                // DS-13 — UI chrome composes from tokens (the SVG brand art keeps
+                // its literals; chrome must not).
+                style={{
+                  background:
+                    i < step
+                      ? "var(--gold-400)"
+                      : i === step
+                        ? "var(--gold-300)"
+                        : "var(--royal-700)",
+                  boxShadow: i === step ? "0 0 8px color-mix(in oklab, var(--gold-400) 40%, transparent)" : "none",
+                }}
+              />
+            </button>
           ))}
           <button
             type="button"
             onClick={dismiss}
             aria-label={t.primer.skipPrimer}
-            className="ml-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
+            className="ml-2 inline-flex h-[40px] w-[40px] items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
           >
             <I.x s={14} />
           </button>

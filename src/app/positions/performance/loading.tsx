@@ -8,8 +8,12 @@ export default async function PerformanceLoading() {
       <div className="h-4 w-16 rounded bg-bg-overlay kp-shimmer-track" aria-hidden />
 
       <header>
-        <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.performance.title}</p>
-        <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">{t.positions.pollsPlayed}</h1>
+        {/* ⚠️ THE TWO WERE SWAPPED. This skeleton drew the eyebrow "Performance" over the
+            headline "Polls you've played"; the real page renders the parent destination as
+            the eyebrow and "Performance" as the H1, so the words changed places the instant
+            the data arrived. Same pair, same order as `performance/page.tsx`. */}
+        <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.common.positions}</p>
+        <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">{t.performance.title}</h1>
       </header>
 
       {/* Hero stat card skeleton */}
@@ -17,7 +21,9 @@ export default async function PerformanceLoading() {
         <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
           <div>
             <div className="h-3 w-16 rounded bg-bg-overlay" />
-            <div className="mt-2 h-9 w-48 rounded bg-bg-overlay" />
+            {/* ⚠️ LITERAL, not `h-9` — 64px on the overridden scale (tailwind.config.ts:200-215)
+                for a headline stat figure. */}
+            <div className="mt-2 h-[36px] w-48 rounded bg-bg-overlay" />
           </div>
           <div>
             <div className="h-3 w-14 rounded bg-bg-overlay" />
@@ -25,7 +31,9 @@ export default async function PerformanceLoading() {
           </div>
           <div>
             <div className="h-3 w-20 rounded bg-bg-overlay" />
-            <div className="mt-2 h-7 w-12 rounded bg-bg-overlay" />
+            {/* ⚠️ WIDTH IS A LITERAL, not `w-12` — 128px on the overridden scale, wider than
+                the stat bar beside it. The h-7 HEIGHT is deliberate (40px stat bar). */}
+            <div className="mt-2 h-7 w-[64px] rounded bg-bg-overlay" />
           </div>
         </div>
       </div>
@@ -64,7 +72,9 @@ export default async function PerformanceLoading() {
               </div>
               <div className="space-y-1.5 text-right">
                 <div className="h-4 w-20 rounded bg-bg-overlay ml-auto" />
-                <div className="h-2.5 w-10 rounded bg-bg-overlay ml-auto" />
+                {/* ⚠️ WIDTH IS A LITERAL, not `w-10` — 80px on the overridden scale for a
+                    2.5px-tall micro label. */}
+                <div className="h-2.5 w-[40px] rounded bg-bg-overlay ml-auto" />
               </div>
             </div>
           ))}

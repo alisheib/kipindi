@@ -50,16 +50,35 @@ export function PhoneInput({ defaultValue, value, onChange, name, ...rest }: Pro
     onChange?.(synthetic as unknown as React.ChangeEvent<HTMLInputElement>);
   };
 
+  /**
+   * Count the DIGITS in the formatted string up to a caret offset.
+   *
+   * 🔴 THE BUG THIS FIXES. The old handler took `selectionStart` — an index into
+   * the FORMATTED value, "712 345 678" — and sliced the RAW digits with it. Those
+   * two strings only line up before the first space: paste into the middle of a
+   * filled field and the splice landed one digit off for every space to its left,
+   * so a corrected phone number silently became a different phone number. On a
+   * withdrawal form that is the number the money goes to.
+   */
+  const digitsBefore = (formatted: string, caret: number) =>
+    stripDigits(formatted.slice(0, caret)).length;
+
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     const text = e.clipboardData.getData("text") ?? "";
     if (text === stripDigits(text)) return;       // already clean
     e.preventDefault();
     const cleaned = stripDigits(text);
-    const target = e.target as HTMLInputElement;
-    const start = target.selectionStart ?? target.value.length;
-    const end = target.selectionEnd ?? target.value.length;
-    const merged = (stripDigits(target.value).slice(0, start) + cleaned + stripDigits(target.value).slice(end)).slice(0, 9);
+    const target = e.currentTarget;
+    const raw = stripDigits(target.value);
+    const start = digitsBefore(target.value, target.selectionStart ?? target.value.length);
+    const end = digitsBefore(target.value, target.selectionEnd ?? target.value.length);
+    const merged = (raw.slice(0, start) + cleaned + raw.slice(end)).slice(0, 9);
     setV(merged);
+    // ⛔ The old handler stopped at `setV`, so a CONTROLLED caller never heard
+    // about a paste at all: its state kept the pre-paste number while the field
+    // showed the pasted one. Same synthetic shape `handle` emits.
+    const synthetic = { ...e, target: { ...target, value: merged, name: name ?? "" } };
+    onChange?.(synthetic as unknown as React.ChangeEvent<HTMLInputElement>);
   };
 
   // The visible input must NOT carry the form name — otherwise it
@@ -74,7 +93,17 @@ export function PhoneInput({ defaultValue, value, onChange, name, ...rest }: Pro
         type="tel"
         inputMode="numeric"
         autoComplete="tel-national"
-        pattern="[0-9 ]{9,11}"
+        /* 🔴 THE LEADING-DIGIT RULE LIVES HERE NOW, ON THE VISIBLE FIELD.
+           It used to sit on the hidden input below as `pattern="[67]\d{8}"` — and
+           a hidden input is *barred from constraint validation* per spec, so that
+           attribute never ran. The rule the player was told about in
+           `phoneInputTitle` ("…starting with 6 or 7") was, in fact, unenforced in
+           the browser; only the server caught it, one round trip later.
+           ⚠️ Written against the FORMATTED value, because that is what this input
+           holds: "712 345 678". It now also enforces completeness, which the old
+           `[0-9 ]{9,11}` did not — that one accepted "12 345 678" quite happily. */
+        pattern="[67][0-9]{2} [0-9]{3} [0-9]{3}"
+        title={t.common.phoneInputTitle}
         maxLength={11}
         mono
         prefix="+255"
@@ -83,7 +112,12 @@ export function PhoneInput({ defaultValue, value, onChange, name, ...rest }: Pro
         onChange={handle}
         onPaste={handlePaste}
       />
-      {name && <input type="hidden" name={name} value={v} required pattern="[67]\d{8}" title={t.common.phoneInputTitle} />}
+      {/* Value carrier ONLY — the canonical raw 9 digits under the form's name.
+          ⛔ No `required` / `pattern` here: both were inert (see above), and the
+          appearance of validation where there is none is worse than none. The
+          caller's own `required` reaches the VISIBLE input through `visibleRest`,
+          which is where it can actually fire. */}
+      {name && <input type="hidden" name={name} value={v} />}
     </>
   );
 }

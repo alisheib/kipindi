@@ -24,7 +24,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Toggle } from "@/components/ui/toggle";
-import { ConfirmModal } from "@/components/ui/modal";
+import { ConfirmModal, useExitPhase } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { I } from "@/components/ui/glyphs";
 import type { AiToolkitStatus } from "@/lib/server/ai-controls";
@@ -42,6 +42,10 @@ export function AiToolkit({ status, canAct = true }: { status: AiToolkitStatus; 
   const router = useRouter();
   const { toast } = useToast();
   const boxRef = useRef<HTMLDivElement>(null);
+  /* §M2 — float rung: `.m-float-in` in, `.m-float-out` out. The dropdown arrived on
+     the kit entrance and left by instant unmount; the exit half of the rung had zero
+     consumers anywhere in the product. Outside-click and Escape stay keyed to `open`. */
+  const { present, exiting } = useExitPhase(open, "--t-flick");
 
   // Close on outside-click / Escape (same behaviour the old sentinel widget had).
   useEffect(() => {
@@ -116,7 +120,7 @@ export function AiToolkit({ status, canAct = true }: { status: AiToolkitStatus; 
           !hasKey
             ? "border-border bg-bg-inset text-text-subtle"
             : anyPaused
-              ? "border-warning-border bg-warning-bg/40 text-warning-fg"
+              ? "border-warning-border bg-warning-bg text-warning-fg"
               : "border-border bg-bg-elevated text-text hover:border-brand-500/60"
         }`}
       >
@@ -126,18 +130,26 @@ export function AiToolkit({ status, canAct = true }: { status: AiToolkitStatus; 
         <I.chevronDown s={10} className="opacity-50" />
       </button>
 
-      {open && (
+      {present && (
         <div
           // Mobile: pin to the viewport's right edge (fixed, anchored to the
           // backdrop-filtered bar) so a 300px panel never runs off the LEFT edge when
           // the button sits mid-bar. Desktop (≥sm): drop under the button as usual.
-          className="m-float-in fixed right-3 top-[58px] sm:absolute sm:right-0 sm:top-full sm:mt-2 w-[300px] max-w-[calc(100vw-24px)] rounded-lg glass-panel p-3.5 shadow-e4 z-50"
+          // Leaving: unclickable, so a switch cannot be worked through its own fade —
+          // every control in here is a compliance decision. ⛔ Not `aria-hidden`: this
+          // dropdown does not return focus to its trigger, so Escape pressed on a
+          // focused Toggle would put aria-hidden over the focused element. `<Modal>`
+          // and the bell panel DO return focus, which is why they may set it and this
+          // may not.
+          className={`${exiting ? "m-float-out pointer-events-none" : "m-float-in"} fixed right-3 top-[58px] sm:absolute sm:right-0 sm:top-full sm:mt-2 w-[300px] max-w-[calc(100vw-24px)] rounded-lg glass-panel p-3.5 shadow-e4 z-50`}
           // Anchored (kit law 1): this panel hangs off the RIGHT of its trigger, so it
           // grows from that corner rather than the utility's default top-left.
           style={{ transformOrigin: "top right" }}
         >
           <div className="flex items-center gap-2 mb-3">
-            <span className="grid h-7 w-7 place-items-center rounded-md bg-brand-500/12 text-brand-300"><I.sparkle s={15} /></span>
+            {/* `/[0.12]` and not `/12` — off Tailwind's 5-step opacity ladder, so this
+                glyph tile had no brand wash behind it. */}
+            <span className="grid h-7 w-7 place-items-center rounded-md bg-brand-500/[0.12] text-brand-300"><I.sparkle s={15} /></span>
             <div className="min-w-0">
               <p className="font-display text-[13px] font-semibold text-text leading-tight">AI toolkit</p>
               <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-subtle">Every AI feature · one place</p>
@@ -145,7 +157,7 @@ export function AiToolkit({ status, canAct = true }: { status: AiToolkitStatus; 
           </div>
 
           {!hasKey ? (
-            <div className="rounded-md border border-warning-border bg-warning-bg/30 px-3 py-2.5 text-[11.5px] text-warning-fg leading-snug">
+            <div className="rounded-md border border-warning-border bg-warning-bg px-3 py-2.5 text-[11.5px] text-warning-fg leading-snug">
               <strong>No ANTHROPIC_API_KEY on this deployment.</strong> Every AI feature below is
               inert regardless of these switches — set the key in Railway to enable AI.
             </div>

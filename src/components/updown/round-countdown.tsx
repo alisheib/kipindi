@@ -4,6 +4,10 @@ import { useEffect, useRef, useState } from "react";
 // E-104 · the pod derives its phase from the SHARED rule, with a live clock the server cannot give it.
 // E-166 · and the same for the HANDOVER, so board and round page cannot describe one settle differently.
 import { resultClock, handoverClock } from "@/lib/updown-card-phase";
+// ⭐ ONE TIMER FOR THE WHOLE PAGE. Every clock below used to arm its own `setInterval`; they now
+// share a single wake-up and each applies its own server offset to it. See the file header there
+// for what that costs a low-end handset and what it deliberately does NOT change.
+import { subscribeSecond, secondsUntil } from "@/lib/use-shared-second";
 
 /**
  * Seconds remaining until `targetMs`, ticking client-side.
@@ -19,8 +23,35 @@ import { resultClock, handoverClock } from "@/lib/updown-card-phase";
  * ONE implementation — two countdowns drifting apart by a second reads as broken.
  */
 export function useCountdown(targetMs: number, serverNowMs?: number): number | null {
-  const [left, setLeft] = useState<number | null>(null);
+  return useTickSeconds(targetMs, serverNowMs, true, null);
+}
+
+/**
+ * The engine under `useCountdown`, with the two knobs only a leaf digit component needs.
+ *
+ * `enabled` — a branch that is showing `—:—` is not counting anything, and used to keep a timer
+ * armed to prove it. Disabled, this subscribes to nothing.
+ *
+ * `seedNowMs` — ⛔ WHAT MAKES A LEAF SAFE TO REMOUNT. The board card keys its digits on the
+ * PHASE, so every phase change remounts them; a countdown that starts at `null` would paint one
+ * frame of `--:--` in the middle of the kit's dip-and-land before the first effect ran. Seeded
+ * with the instant the parent already holds, the very first paint of a remounted leaf is the
+ * right number. `null` on the server and on the first client render, so hydration still matches.
+ *
+ * ⚠️ `useCountdown` passes `true, null` — i.e. exactly the behaviour it had before this split.
+ * Neither knob changes anything for an existing caller.
+ */
+export function useTickSeconds(
+  targetMs: number,
+  serverNowMs: number | undefined,
+  enabled: boolean,
+  seedNowMs: number | null,
+): number | null {
+  const [left, setLeft] = useState<number | null>(() =>
+    enabled && seedNowMs != null ? secondsUntil(targetMs, seedNowMs) : null,
+  );
   useEffect(() => {
+    if (!enabled) return;
     // ⛔ ANCHOR TO THE SERVER'S CLOCK WHEN WE HAVE IT (E-72).
     //
     // `Date.now()` is the DEVICE clock, and a handset running 40 seconds fast showed a
@@ -33,11 +64,13 @@ export function useCountdown(targetMs: number, serverNowMs?: number): number | n
     // The offset is captured ONCE, on mount, against the instant the server rendered — not
     // re-measured per tick, which would make the digits jitter by the network latency.
     const offset = serverNowMs != null ? serverNowMs - Date.now() : 0;
-    const compute = () => Math.max(0, Math.floor((targetMs - (Date.now() + offset)) / 1000));
-    setLeft(compute());
-    const id = setInterval(() => setLeft(compute()), 1000);
-    return () => clearInterval(id);
-  }, [targetMs, serverNowMs]);
+    // ⛔ STILL A DERIVATION, NEVER A DECREMENT. The shared ticker says *when* to recompute; the
+    // remainder is re-derived from the server-anchored instant on every one of them, which is
+    // what keeps this stale-proof by construction across a throttled or skipped tick.
+    const apply = (raw: number) => setLeft(secondsUntil(targetMs, raw + offset));
+    apply(Date.now());
+    return subscribeSecond(apply);
+  }, [targetMs, serverNowMs, enabled]);
   return left;
 }
 
@@ -73,7 +106,6 @@ export function useServerNow(serverNowMs?: number): number | null {
     const offset = serverNowMs != null ? serverNowMs - Date.now() : 0;
     const tick = () => setNow(Date.now() + offset);
     tick();
-    const id = setInterval(tick, 1000);
     // ⭐ E-166 · RECOMPUTE THE MOMENT THE TAB COMES BACK, and never trust elapsed ticks.
     //
     // 🔴 Chrome throttles `setInterval` in a hidden tab — to roughly once a minute, and it may
@@ -90,9 +122,17 @@ export function useServerNow(serverNowMs?: number): number | null {
     // ⚠️ A hidden tab is DELIBERATELY left to drift. The handover navigates a page the player is
     // looking at; moving one they are not is pointless work on the low-end Android over 2G, and
     // this listener is what makes it correct the instant they look again.
+    // ⛔ THE LISTENER STAYS THIS HOOK'S OWN, and is deliberately NOT folded into the shared
+    // ticker's reveal set. `red:updown-handover` mutates exactly this statement to `void
+    // onVisible;` to prove the recovery is real; a shared reveal-broadcast behind it would keep
+    // the clock recovering after the mutation, and the proof would go quietly green over a
+    // clock that no longer works. A guard whose RED cannot fail is not a guard.
+    // ⚠️ THE **INTERVAL** IS SHARED, which is where the cost was: one 1s wake-up for the page
+    // instead of one per clock per card. Cadence, anchor and recovery are all unchanged.
     const onVisible = () => { if (document.visibilityState === "visible") tick(); };
     document.addEventListener("visibilitychange", onVisible);
-    return () => { clearInterval(id); document.removeEventListener("visibilitychange", onVisible); };
+    const stop = subscribeSecond(tick);
+    return () => { stop(); document.removeEventListener("visibilitychange", onVisible); };
   }, [serverNowMs]);
   return now;
 }
@@ -229,6 +269,12 @@ export function RoundCountdownPod({
 }) {
   // ⭐ E-104 · DERIVE THE PHASE FROM THE INSTANTS, ON THE TICK. `now` is null until the first
   // client effect, so the server render is untouched and hydration matches.
+  // ⚠️ NOT GATED, AND THAT IS DELIBERATE — see the note on `useServerNowGated`'s call site in
+  // `updown-card.tsx`. This pod is ONE instance on a page, its whole body is a caption and a
+  // number, and its per-second render is the cheapest thing on the screen; the board card is
+  // 60 elements × N cards, which is where the gate earns its complexity. What the pod DOES get
+  // is the shared ticker underneath `useServerNow` and `useCountdown` — three private intervals
+  // become three subscriptions to the page's one.
   const now = useServerNow(serverNowMs);
   // ⛔ ONE RULE, NOT A SECOND COPY. `resultClock` already decides "are we waiting for a price,
   // and is there an honest instant to count to" — it is pure precisely so it can be reached

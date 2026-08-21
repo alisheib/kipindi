@@ -169,11 +169,27 @@ const RULES: Rule[] = [
     scan: (b, f) => {
       if (isKitFile(f)) return [];
       const out: Array<{ index: number; snippet: string }> = [];
-      for (const m of b.matchAll(/<button\b([^>]*)>/gs)) {
+      // ⚠️ `[^>]*` STOPS AT THE FIRST `>`, AND AN ARROW FUNCTION CONTAINS ONE. Any button
+      // written `onClick={() => …}` — which is most of them — ends its match at the `=>`,
+      // so `className` is never captured and the button is silently skipped. Found
+      // 2026-08-21 when simplifying one handler to `onClick={open}` made a button the rule
+      // had never been able to see appear as "new drift". ⛔ The rule has therefore been
+      // UNDER-reporting for its whole life, and the lazy match below is the fix.
+      // (Measured: seeing those buttons at last did NOT raise the count — the icon
+      // exemption below retired more false positives than the wider match added, 58 → 55.)
+      for (const m of b.matchAll(/<button\b((?:[^>]|=>)*?)>/gs)) {
         const cm = m[1].match(/className=\{?["'`]([^"'`]+)["'`]/);
         if (!cm) continue;                                   // no className at all → unstyled by intent
         const cls = cm[1];
         if (/\b(btn|bg-|border|ring-|shadow|chip|rounded-full|underline)/.test(cls)) continue;
+        // ⭐ AN ICON IS PAINT. The rule's own words are "painted ONLY with type" — a button
+        // carrying a kit glyph or an inline SVG is not that. `<span>text</span><I.edit/>` is
+        // the product's edit-in-place affordance, and a pencil is precisely what tells a
+        // reader the text is pressable. Flagging it would push authors toward a `btn` on a
+        // control the design deliberately keeps quiet.
+        const body = b.slice((m.index ?? 0) + m[0].length, (m.index ?? 0) + m[0].length + 600);
+        const end = body.indexOf("</button>");
+        if (/<(?:I\.|svg\b|Glyph)/.test(end >= 0 ? body.slice(0, end) : body)) continue;
         out.push({ index: m.index ?? 0, snippet: m[0].slice(0, 90) });
       }
       return out;

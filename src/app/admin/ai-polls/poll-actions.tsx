@@ -454,7 +454,11 @@ export function GenerateForm({ generatable }: { generatable: string[] }) {
                 {result.state === "PENDING_REVIEW" ? (
                   <>
                     <div className="flex items-center gap-2.5">
-                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-yes-500/15 text-yes-300 shrink-0"><I.check s={18} /></span>
+                      {/* ⚠️ LITERALS, not `h-8 w-8` — spacing is overridden (tailwind.config.ts:200-215)
+                          so `h-8` was a 48px disc round an 18px glyph, while the sibling result
+                          medallion at L659 was `h-9` = 64px: the same object at two sizes. All
+                          four are 36px now. Decorative, so no tap floor applies. */}
+                      <span className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-full bg-yes-500/15 text-yes-300 shrink-0"><I.check s={18} /></span>
                       <div>
                         <p className="font-display text-[15px] font-semibold text-text">Poll ready for review</p>
                         <p className="font-mono text-[11px] text-yes-300">Quality: {result.quality}%</p>
@@ -467,7 +471,8 @@ export function GenerateForm({ generatable }: { generatable: string[] }) {
                 ) : result.state === "FILTERED" ? (
                   <>
                     <div className="flex items-center gap-2.5">
-                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-warning-bg text-warning-fg shrink-0"><I.warning s={18} /></span>
+                      {/* ⚠️ LITERALS — see the pass medallion above. `h-8` is 48px here. */}
+                      <span className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-full bg-warning-bg text-warning-fg shrink-0"><I.warning s={18} /></span>
                       <div>
                         <p className="font-display text-[15px] font-semibold text-text">Didn&apos;t pass quality checks</p>
                         <p className="font-mono text-[11px] text-warning-fg">Try generating again</p>
@@ -475,14 +480,15 @@ export function GenerateForm({ generatable }: { generatable: string[] }) {
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {result.reasons.map((r, i) => (
-                        <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-pill text-[10px] font-mono border border-warning-border bg-warning-bg/30 text-warning-fg">{r}</span>
+                        <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-pill text-[10px] font-mono border border-warning-border bg-warning-bg text-warning-fg">{r}</span>
                       ))}
                     </div>
                   </>
                 ) : (
                   <>
                     <div className="flex items-center gap-2.5">
-                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-no-500/15 text-no-300 shrink-0"><I.x s={18} /></span>
+                      {/* ⚠️ LITERALS — see the pass medallion above. `h-8` is 48px here. */}
+                      <span className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-full bg-no-500/15 text-no-300 shrink-0"><I.x s={18} /></span>
                       <div>
                         <p className="font-display text-[15px] font-semibold text-text">Generation failed</p>
                         <p className="font-mono text-[11px] text-no-300">AI provider error</p>
@@ -656,7 +662,9 @@ export function BatchGenerateForm({ maxBatch, remaining, generatable }: { maxBat
             ) : (
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full ${error ? "bg-no-500/15 text-no-300" : "bg-yes-500/15 text-yes-300"}`}>
+                  {/* ⚠️ LITERALS, not `h-9 w-9` (64px on the overridden scale) — 36px, the same
+                      as the three result medallions above in this same component. */}
+                  <span className={`grid h-[36px] w-[36px] shrink-0 place-items-center rounded-full ${error ? "bg-no-500/15 text-no-300" : "bg-yes-500/15 text-yes-300"}`}>
                     {error ? <I.x s={18} /> : <I.check s={18} />}
                   </span>
                   <p className="font-display text-[15px] font-semibold text-text">
@@ -886,9 +894,11 @@ export function FilterReasonChips({ reasons }: { reasons: FilterReason[] }) {
   return (
     <div className="flex flex-wrap gap-1.5">
       {reasons.map((r, i) => (
+        // `/[0.08]` and not `/8` — off Tailwind's 5-step opacity ladder, so these
+        // refusal-reason pills rendered as bare outlines with no danger wash.
         <span
           key={i}
-          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-pill text-[10px] font-mono border border-danger-500/30 bg-danger-500/8 text-claret-300"
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-pill text-[10px] font-mono border border-danger-500/30 bg-danger-500/[0.08] text-claret-300"
         >
           {REASON_LABELS[r] ?? r}
         </span>

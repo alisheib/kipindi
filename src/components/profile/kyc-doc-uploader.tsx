@@ -105,7 +105,10 @@ export function KycDocUploader({
           // below reads as "working on this photo", not "done".
           <img src={showThumb} alt={label} className={`mx-auto mb-1.5 h-16 w-auto rounded object-contain transition-opacity ${working ? "opacity-40" : ""}`} />
         ) : (
-          <span className={`mx-auto mb-1.5 h-8 w-8 inline-flex items-center justify-center rounded-full ${
+          // ⛔ LITERAL, NOT `h-8 w-8` — `theme.extend.spacing` is overridden
+          // (tailwind.config.ts:200-215), so that pair renders 48×48px. 40px is the
+          // kit's badge disc (= --tap-min) around a 14px glyph.
+          <span className={`mx-auto mb-1.5 h-[40px] w-[40px] inline-flex items-center justify-center rounded-full ${
             done ? "bg-yes-500 text-yes-950" : "bg-bg-overlay text-text-subtle border border-border"
           }`}>
             {/* C1b — per-slot silhouette line-art: ID card for NIDA front/back,
@@ -190,7 +193,10 @@ export function KycExtraDocUploader({
         onChange={(e) => { onFile(e.target.files?.[0] ?? null); e.target.value = ""; }}
       />
       <div className="flex items-center gap-3">
-        <span className={`shrink-0 h-9 w-9 inline-flex items-center justify-center rounded-pill ${
+        {/* ⛔ LITERALS, NOT `h-9 w-9` / `h-12 w-12` — the spacing scale is overridden
+            (tailwind.config.ts:200-215): those render 64×64 and 128×128. 40px badge disc,
+            48px ID thumbnail, against a two-line 12.5px/10.5px text block. */}
+        <span className={`shrink-0 h-[40px] w-[40px] inline-flex items-center justify-center rounded-pill ${
           done ? "bg-yes-500 text-yes-950" : "bg-bg-overlay text-text-subtle border border-border"
         }`}>
           {working ? <Spinner size={14} /> : done ? <I.check s={14} className="g-settle" /> : <I.plus s={14} />}
@@ -201,7 +207,7 @@ export function KycExtraDocUploader({
             {pending ? t.common.uploading : busy ? t.common.preparing : done ? t.profile.docTapReplace : t.profile.docTapAttachPhoto}
           </p>
         </div>
-        {preview && <img src={preview} alt={description} className="h-12 w-12 shrink-0 rounded object-cover border border-border" />}
+        {preview && <img src={preview} alt={description} className="h-[48px] w-[48px] shrink-0 rounded object-cover border border-border" />}
         <button
           type="button"
           onClick={() => !working && inputRef.current?.click()}

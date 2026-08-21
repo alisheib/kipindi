@@ -1,4 +1,4 @@
-import { I } from "@/components/ui/glyphs";
+import { Callout } from "@/components/ui/callout";
 import type { PayoutStatus } from "@/lib/server/payout-status";
 
 /**
@@ -49,30 +49,47 @@ export function PayoutStatusNotice({
         ? labels.unavailableBody
         : labels.delayedBody);
 
-  // `unavailable` is a hard stop, so it takes the "no" tone; `delayed` is a caution. Both are
-  // existing semantic token pairs — no new colour is introduced (design is frozen).
-  const tone = unavailable
-    ? "border-no-700/60 bg-no-500/[0.10]"
-    : "border-warning-border bg-warning-bg/30";
-
+  // ⭐ STAGE 9b — THIS BOX IS <Callout size="md">, NOT A FOURTH HAND-ROLLED ONE.
+  //
+  // Everything this file used to type by hand is the primitive's `md` rung, byte for
+  // byte: the `gap-3 rounded-xl px-4 py-3.5` box, the 17px glyph at `mt-0.5`, the
+  // `font-display font-semibold text-[13.5px]` title, the `mt-1 text-[12.5px]
+  // leading-snug text-text-muted` body, and the `mt-1.5 font-mono text-[10.5px]
+  // uppercase tracking-[0.12em] text-text-subtle` since-line (= `meta`).
+  //
+  // `unavailable` is a hard stop, so it takes the "no" tone; `delayed` is a caution.
+  // Both are existing semantic token pairs — no new colour is introduced.
+  //
+  // ⚠️ NOTHING REPAINTS, AND THE ONE EDGE THAT WOULD HAVE IS PINNED. `delayed` matches
+  // the `warning` tone exactly (`--warning-bg` / `--warning-border` on both sides) and
+  // the unavailable FILL matches too (`bg-no-500/[0.10]` == the tone's `bg-no-500/10`).
+  // The unavailable EDGE does not: this file paints `border-no-700/60`, the kit's
+  // `danger` tone paints `border-no-500/40`.
+  //
+  // ⛔ AND `border-no-700/60` IS THE ONE THAT STAYS, WHICH IS THE OPPOSITE OF WHAT
+  // "this file drifted" would predict. It is the platform's prevailing danger edge —
+  // twelve call sites, including the `role="alert"` failure box rendered DIRECTLY ABOVE
+  // this component on both of its own pages (wallet/deposit/page.tsx · wallet/withdraw/
+  // page.tsx). Taking the kit's edge here would have put two red alerts with two
+  // different borders on one screen, on the surface that tells a player we cannot pay
+  // them. So the tone is the kit's and the edge is pinned through `className` (twMerge
+  // drops the tone's border-colour for the later one).
+  // 📋 The real question — whether `Callout`'s `danger` edge should move to `no-700/60`
+  // or the twelve sites should move to `no-500/40` — is one decision for the design
+  // owner, and it is a one-line change here whichever way it goes.
+  // ⛔ Never put a `/NN` modifier back on `--warning-bg`: it is already
+  // `color-mix(… 18%, transparent)`, so a modifier multiplies against that 18%.
   return (
-    <div role="alert" className={`flex items-start gap-3 rounded-xl border px-4 py-3.5 ${tone}`}>
-      <span className="mt-0.5 shrink-0">
-        {unavailable ? (
-          <I.alertCircle s={17} className="text-no-300" />
-        ) : (
-          <I.clock s={17} className="text-warning-fg" />
-        )}
-      </span>
-      <div className="min-w-0">
-        <p className="font-display font-semibold text-text text-[13.5px]">{title}</p>
-        <p className="mt-1 text-[12.5px] leading-snug text-text-muted">{body}</p>
-        {since && (
-          <p className="mt-1.5 font-mono text-[10.5px] uppercase tracking-[0.12em] text-text-subtle">
-            {since}
-          </p>
-        )}
-      </div>
-    </div>
+    <Callout
+      role="alert"
+      size="md"
+      tone={unavailable ? "danger" : "warning"}
+      glyph={unavailable ? "alertCircle" : "clock"}
+      className={unavailable ? "border-no-700/60" : undefined}
+      title={title}
+      meta={since}
+    >
+      {body}
+    </Callout>
   );
 }

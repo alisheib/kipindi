@@ -14,6 +14,8 @@
  */
 import { getAuditPage } from "./audit";
 import { officerLabel } from "./actor-label";
+// The ONE place the platform decides what a day is — see `packPeriodBounds`.
+import { EAT_OFFSET_MS } from "@/lib/eat-day";
 
 export type PackState = "draft" | "prepared" | "approved" | "submitted" | "acknowledged";
 
@@ -69,7 +71,12 @@ export function packPeriodLabel(period: string): string {
  *  month — not a rolling 28-day window — so the pack's numbers match its label. */
 export function packPeriodBounds(period: string): { start: number; end: number } {
   const [y, m] = period.split("-").map(Number);
-  const EAT_OFFSET_MS = 3 * 3600_000;
+  // ⛔ THE OFFSET IS IMPORTED, NOT RETYPED. This was a function-local
+  // `const EAT_OFFSET_MS = 3 * 3600_000` — the THIRD independent literal of the same
+  // number, on the GBT MONTHLY PACK, which is the filing an officer signs. `eat-day.ts`
+  // says it in its own header: "If you need EAT day maths anywhere else, import it; do
+  // not copy the offset." Three copies agreeing is a coincidence, not a control — and
+  // the one that drifts moves a month boundary on a statutory return.
   return { start: Date.UTC(y, m - 1, 1) - EAT_OFFSET_MS, end: Date.UTC(y, m, 1) - EAT_OFFSET_MS };
 }
 

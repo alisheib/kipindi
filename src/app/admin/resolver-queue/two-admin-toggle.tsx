@@ -27,13 +27,17 @@ export function TwoAdminToggle({ enabled }: { enabled: boolean }) {
   // than being offered a button the server will refuse (and logged as a privilege
   // escalation for pressing it). See docs/ADMIN-CONSOLE-FINDINGS.md.
   const mayAct = useMayAct();
-  if (!mayAct) return <ActReadOnly />;
 
   const [pending, start] = useTransition();
   const [confirmOff, setConfirmOff] = useState(false);
   const router = useRouter();
   // B-28 — success toasts ride the transition's falling edge (data visible when announced)
   const { toast, deferToast } = useDeferredToast(pending);
+
+  // Rules of hooks: read the gate as a hook at the top, ACT on it below every other hook.
+  // Revoking an ACT grant mid-session flips `mayAct` on the next router.refresh(); an early
+  // return above these hooks would render fewer hooks than the last pass and crash the page.
+  if (!mayAct) return <ActReadOnly />;
 
   const apply = (next: boolean) => {
     start(async () => {
@@ -62,7 +66,9 @@ export function TwoAdminToggle({ enabled }: { enabled: boolean }) {
   return (
     <>
       <div
-        className="inline-flex items-center gap-2.5 rounded-md border px-2.5 h-8"
+        /* ⚠️ LITERAL, not `h-8` — spacing is overridden (tailwind.config.ts:200-215) so `h-8`
+           was 48px on the governance row that arms two-officer settlement. 40px = --tap-min. */
+        className="inline-flex items-center gap-2.5 rounded-md border px-2.5 h-[40px]"
         style={enabled
           ? { borderColor: "var(--border-strong)", background: "var(--bg-inset)" }
           : { borderColor: "var(--warning-border)", background: "var(--warning-bg)" }}

@@ -128,14 +128,17 @@ export function PasswordSection({ hasPassword }: { hasPassword: boolean }) {
           type="button"
           onClick={submit}
           disabled={pending || next.length < 8}
-          className="h-9 px-4 rounded-md border border-gold-700 bg-gold-500/10 font-mono text-[11px] font-bold text-gold-300 hover:bg-gold-500/20 disabled:opacity-40 transition-colors"
+          /* ⛔ LITERAL, NOT `h-9` — the spacing scale is overridden
+             (tailwind.config.ts:200-215) and `h-9` renders 64px. 40px = --tap-min, the
+             §A2 floor these two hand-rolled buttons must still clear. */
+          className="h-[40px] px-4 rounded-md border border-gold-700 bg-gold-500/10 font-mono text-[11px] font-bold text-gold-300 hover:bg-gold-500/20 disabled:opacity-40 transition-colors"
         >
           {pending ? t.common.saving : hasPassword ? t.common.updatePassword : t.common.setPassword}
         </button>
         <button
           type="button"
           onClick={() => { setOpen(false); setCurrent(""); setNext(""); setConfirm(""); }}
-          className="h-9 px-4 rounded-md border border-border font-mono text-[11px] text-text-subtle hover:text-text transition-colors"
+          className="h-[40px] px-4 rounded-md border border-border font-mono text-[11px] text-text-subtle hover:text-text transition-colors"
         >
           {t.common.cancel}
         </button>

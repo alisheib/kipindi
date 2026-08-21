@@ -58,6 +58,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   // Per-toast countdown bookkeeping so hover/touch can PAUSE then RESUME the
   // auto-dismiss with the correct remaining time (not restart from full).
   const metaRef = React.useRef(new Map<string, { remaining: number; start: number }>());
+  // ⭐ WHO paused it. A countdown held by the POINTER is a person reading; a countdown held
+  // by a result modal is the product standing the secondary signal down (§F1). They are not
+  // the same pause and they must not be released by the same event — the §F1 effect below
+  // used to release BOTH on any stack change, so a burst of arrivals silently re-armed the
+  // real timer under a toast the player was hovering, with its progress bar still frozen.
+  const userPausedRef = React.useRef(new Set<string>());
 
   const remove = React.useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -65,6 +71,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     const tm = timersRef.current.get(id);
     if (tm) { clearTimeout(tm); timersRef.current.delete(id); }
     metaRef.current.delete(id);
+    userPausedRef.current.delete(id);
   }, []);
 
   // Two-phase dismiss: mark exiting (plays the 200ms slide/fade-out) then remove,
@@ -95,6 +102,18 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     timersRef.current.set(id, setTimeout(() => dismiss(id), meta.remaining));
   }, [dismiss]);
 
+  // The USER's pause — pointer over, focused, or mid-swipe. Same primitive, but it records
+  // the hold so the §F1 release cannot overrule a person who is still reading.
+  const userPause = React.useCallback((id: string) => {
+    userPausedRef.current.add(id);
+    pause(id);
+  }, [pause]);
+
+  const userResume = React.useCallback((id: string) => {
+    userPausedRef.current.delete(id);
+    resume(id);
+  }, [resume]);
+
   /**
    * Put a toast on screen: stack it, punctuate it, arm its countdown.
    *
@@ -114,6 +133,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           const tm = timersRef.current.get(d.id);
           if (tm) { clearTimeout(tm); timersRef.current.delete(d.id); }
           metaRef.current.delete(d.id);
+          userPausedRef.current.delete(d.id);
         }
         return merged.slice(-MAX_VISIBLE);
       }
@@ -170,13 +190,43 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   // lifetime would be torn down by the very unmount it needs to react to.
   React.useEffect(() => subscribeResultModal(setResultModalOpen), []);
 
-  // Pause every countdown while the modal is up; resume them all when it closes. Reusing the
-  // hover machinery means a held toast gets its FULL dwell once it is actually on screen —
-  // banking the remaining time is exactly what `pause` already does.
+  /* Pause every countdown while the modal is up; release them when it closes. Reusing the
+   * hover machinery means a held toast gets its FULL dwell once it is actually on screen —
+   * banking the remaining time is exactly what `pause` already does.
+   *
+   * 🔴 THE RELEASE IS AN EDGE, NOT A STATE. This effect re-runs on every `toasts` identity
+   * change — a new arrival, a removal — and the old `else` branch therefore bulk-RESUMED
+   * every countdown on any of them, with no modal involved at all. On a toast the pointer
+   * was resting on that re-armed the real dismiss timer while `ToastItem`'s own `paused`
+   * state kept the progress bar frozen: under a burst the toast the player was reading
+   * vanished mid-sentence, under a bar that still looked half full. `prevModalOpenRef` makes
+   * the release fire only on the modal's true→false edge.
+   *
+   * ⭐ THE PAUSE SIDE STILL TRACKS THE STACK, deliberately: a toast that ARRIVES while a
+   * result modal is up must be held too, and only an effect that re-runs on `toasts` can
+   * catch it. Only the release is edge-driven.
+   *
+   * ⛔ AND A USER-HELD TOAST IS NEVER WOKEN BY THE MODAL CLOSING. That is their pause, and
+   * the primary signal going away is not permission to start counting down on it.
+   *
+   * ⚠️ The set is cleared on the RISING edge because `ToastViewport` returns null while
+   * held — every `ToastItem` unmounts, so no pointerleave/blur will ever fire, and a hover
+   * recorded before the modal opened would otherwise stick forever and the toast would
+   * never dismiss at all.
+   *
+   * ⛔ KEEP THE BODY BELOW COMMENT-FREE — `feedback-law.test.mts` 10.6 pins its exact shape
+   * across the line breaks, which is why every word of explanation is hoisted up here.
+   */
+  const prevModalOpenRef = React.useRef(false);
   React.useEffect(() => {
     const ids = toasts.map((t) => t.id);
-    if (resultModalOpen) for (const id of ids) pause(id);
-    else for (const id of ids) resume(id);
+    if (resultModalOpen) {
+      if (!prevModalOpenRef.current) userPausedRef.current.clear();
+      for (const id of ids) pause(id);
+    } else if (prevModalOpenRef.current) {
+      for (const id of ids) if (!userPausedRef.current.has(id)) resume(id);
+    }
+    prevModalOpenRef.current = resultModalOpen;
   }, [resultModalOpen, toasts, pause, resume]);
 
   const toast = React.useCallback((input: ToastInput) => {
@@ -195,10 +245,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     const timers = timersRef.current;
     const meta = metaRef.current;
+    const userPaused = userPausedRef.current;
     return () => {
       for (const tm of timers.values()) clearTimeout(tm);
       timers.clear();
       meta.clear();
+      userPaused.clear();
     };
   }, []);
 
@@ -207,7 +259,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastCtx.Provider value={value}>
       {children}
-      <ToastViewport toasts={toasts} exiting={exiting} held={resultModalOpen} onDismiss={dismiss} onPause={pause} onResume={resume} />
+      <ToastViewport toasts={toasts} exiting={exiting} held={resultModalOpen} onDismiss={dismiss} onPause={userPause} onResume={userResume} />
     </ToastCtx.Provider>
   );
 }

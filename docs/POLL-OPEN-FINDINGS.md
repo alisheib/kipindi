@@ -796,7 +796,7 @@ situations apart.
 |---|---|---|---|
 | OP1 | Two LIVE polls carry no Chinese title | — | ⚪ **NOT A DEFECT — closed 2026-08-11.** See below |
 | OP2 | `mkt_fdf70a0704dc1789f404` (TCRA Q2) CLOSED awaiting an officer's verdict since **2026-08-09 21:00** | officers | ~46h as of 2026-08-11. Needs a human verdict, not code |
-| OP3 | Owner console password rotation | **Ali** | 🔴 `Admin@1234` was in this repo in plaintext from 2026-08-04 to 2026-08-11 on a pushed branch. Redacted in `3bc5d60b`; **redaction does not un-publish**. Rotation is the only remedy, plus 2FA re-enrol |
+| OP3 | Owner console password rotation | **Ali** | 🔴 **the owner console password** (value redacted 2026-08-20 — an incident record does not need the credential to be a record) was in this repo in plaintext from 2026-08-04 to 2026-08-11 on a pushed branch. Redacted in `3bc5d60b`; **redaction does not un-publish**. Rotation is the only remedy, plus 2FA re-enrol |
 
 ### OP1 · "two LIVE polls have no Chinese title" — ⚪ NOT A DEFECT, closed 2026-08-11
 

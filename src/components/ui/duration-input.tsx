@@ -7,7 +7,7 @@
  * The component always stores and emits a value in MINUTES internally so
  * every consumer works with one canonical unit — no conversion ambiguity.
  *
- * Visual design matches TimeSelect: same h-9/h-11 height, same rounded-lg
+ * Visual design matches TimeSelect: same 36px (sm) / 44px height, same rounded-lg
  * border, same bg-bg-inset/bg-bg-elevated chrome, same font-mono. The unit
  * selector sits in a right-hand cell with tiny chevron arrows stacked above
  * and below to signal it's clickable — each click cycles d → h → m → d.
@@ -133,7 +133,10 @@ export function DurationInput({
     setUnitAndConvert(UNITS[(idx + 1) % UNITS.length]);
   };
 
-  const h = size === "sm" ? "h-9" : "h-11";
+  // ⚠️ ARBITRARY LITERALS — the spacing scale is OVERRIDDEN (tailwind.config.ts:200-215),
+  // so the `h-9`/`h-11` that used to be here rendered 64/96px, not 36/44. Matches TimeSelect.
+  // ⛔ Never a scale token here.
+  const h = size === "sm" ? "h-[36px]" : "h-[var(--h-input)]";
   const fs = size === "sm" ? "text-[13px]" : "text-[16px]";
   const errored = !!error;
   const totalMin = clampMinutes(Math.round(Number(display) * UNIT_TO_MINUTES[unit]), min, max);

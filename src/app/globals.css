@@ -198,39 +198,71 @@
      Inherited from the round-2 design kit (2026-08-13). Derived from --sp-* rather than given
      literals, so the rhythm cannot drift away from the spacing scale it is built on.
 
-     THE RULE, which is why these are named and not typed inline:
-       --rh-tight    24px   inside a group — a heading and the thing it labels
-       --rh-close    48px   between sibling blocks in one section
-       --rh-section  96px   between sections
-       --rh-chapter 144px   at a chapter break, where the page changes subject
+     THE RULE, which is why these are named and not typed inline — now with TWO RUNGS PER
+     TOKEN. The values declared below are the ≤767 (phone) rhythm; the desktop rungs step up
+     at 768 in the `@media` block immediately after this `:root` closes.
+
+                     ≤767   ≥768
+       --rh-tight     24      24   inside a group — a heading and the thing it labels
+       --rh-close     32      48   between sibling blocks in one section
+       --rh-section   64      96   between sections
+       --rh-chapter   96     144   at a chapter break, where the page changes subject
 
      ⚠️ A section's OBSERVED gap is the sum of the two paddings that meet at it
      (A.padding-bottom + B.padding-top). The kit's landing rhythm — 144 · 96 · 96 · 144 — is
      produced that way, from 96/96, 48/48, 48/48 and 48/96 pairs. ⛔ So do NOT also write
      `margin: var(--rh-chapter)` at a boundary whose padding already sums to 144: that is a
      288px gap and a double-count. The kit's own layouts declare --rh-chapter and never consume
-     it, for exactly this reason. */
-  --rh-tight: var(--sp-6);
-  --rh-close: var(--sp-12);
-  --rh-section: calc(var(--sp-12) * 2);
-  --rh-chapter: calc(var(--sp-12) * 3);
+     it, for exactly this reason.
+
+     ⛔ AND, FOR THAT SAME REASON, --rh-chapter STILL HAS ZERO CONSUMERS — re-verified at HEAD
+     by grepping `--rh-chapter` across src/: not one hit outside this block. The 144 CHAPTER gap
+     is PRODUCED as --rh-section + --rh-close where two bands meet. So a spec phrased as "step
+     the chapter rung 144 → 96" must step --rh-section and --rh-close; editing --rh-chapter
+     changes nothing, on any page, at any width. It is kept only so the ladder reads complete.
+
+     ⭐ WHY THE PHONE STEP IS ON THE TOKEN AND NEVER ON THE CLASSES (2026-08-21). The landing
+     page measured 8,514px at 360 with 130–250px voids through its bottom third, because
+     --rh-section (96) reaches 360 unscaled: `.kp-band--closes` declares it OUTSIDE any media
+     query. Two of the ten --rh-close consumers are INLINE STYLES in TSX — src/app/page.tsx and
+     src/components/home/trust-band.tsx, both `style={{ marginTop: "var(--rh-close)" }}` — and
+     no media query can reach an inline style. A per-class mobile block would therefore leave
+     those two at 48 while everything around them dropped to 32: a NEW rhythm inconsistency
+     created in the act of fixing the old one. Stepping the TOKEN reaches every consumer, keeps
+     every value in this file (§0d), and — because both halves of every padding pair scale by
+     the same factor — double-counts nothing and adds no margin anywhere.
+     Observed landing gaps at 360 become 80 · 64 · 64 · 96 · 64 (were 96 · 96 · 96 · 144 · 96).
+     At ≥768 not one pixel moves. */
+  --rh-tight: var(--sp-6);               /* 24 at every width */
+  --rh-close: var(--sp-8);               /* 32 — steps to 48 at 768 */
+  --rh-section: calc(var(--sp-8) * 2);   /* 64 — steps to 96 at 768 */
+  --rh-chapter: calc(var(--sp-8) * 3);   /* 96 — steps to 144 at 768; still consumed by nothing */
 
   /* ---------- Radius — additive +4 rhythm ---------- */
   --r-xs: 4px; --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-xl: 24px; --r-pill: 999px;
 
-  /* ---------- Control heights (UI-consistency program, Phase 0) ----------
+  /* ---------- Control heights (UI-consistency program · PHASE 3 HAS LANDED) ----------
      Interactive control heights live HERE, in ONE place, so the tap-floor is
      enforceable (scripts/token-collision.test.mts checks that every .btn-* height
-     references one of these) instead of being hard-coded per size class. Introduced
-     at the CURRENT pixel values so this step is pixel-stable; the tap-floor bump
-     (--h-control-sm→40, -md→44, -lg→48, and .mcardp-actions 36→40) lands in Phase 3
-     with before/after visual sign-off. --tap-min is the 40px finger/primary/money
-     floor (Law 9); --h-control-xs is the documented dense, MOUSE-ONLY admin exception. */
+     references one of these) instead of being hard-coded per size class. Phase 0
+     introduced them at the THEN-current pixel values so that step was pixel-stable.
+     ⭐ The tap-floor bump has now shipped: sm 30→40, md 38→44, lg 46→48. It is a
+     floor that is INSTRUMENTED, not merely written down — scripts/responsive-audit.mjs
+     raised its soft tap-target threshold from 38 to 40 in the same change, which is
+     the raise its own comment had promised "once the control-height tokens bump".
+     ⚠️ This preamble used to schedule ".mcardp-actions 36→40" alongside the tokens.
+     That shipped SEPARATELY and is DONE — the rule reads `height: var(--tap-min)`
+     further down this file — so the clause is deleted rather than left to invite a
+     future session to "finish" something already finished.
+     --tap-min is the 40px finger/primary/money floor (Law 9). --h-control-xs stays
+     at 32px: it is the documented dense, MOUSE-ONLY admin exception, and all 8 of
+     its call sites are under src/app/admin/ — not one is a finger, primary or money
+     control, which is the only thing §A2's floor governs. */
   --tap-min:      40px;
   --h-control-xs: 32px;   /* dense mouse-only admin inline controls (documented floor exception) */
-  --h-control-sm: 30px;   /* .btn-sm · Phase 3 → 40 */
-  --h-control-md: 38px;   /* .btn-md · Phase 3 → 44 (aligns with --h-input) */
-  --h-control-lg: 46px;   /* .btn-lg · Phase 3 → 48 */
+  --h-control-sm: 40px;   /* .btn-sm — Phase 3 landed: exactly --tap-min (Law 9 / DA §A2) */
+  --h-control-md: 44px;   /* .btn-md — Phase 3 landed: 44, not 40, so it equals --h-input */
+  --h-control-lg: 48px;   /* .btn-lg — Phase 3 landed: closes the +4 ladder 40/44/48 */
   --h-control-xl: 56px;   /* .btn-xl */
   --h-input:      44px;   /* .input / .input-group — already at the tap floor */
 
@@ -740,6 +772,28 @@
   --bar-label-tipping:    var(--text-muted);
 }
 
+/* ---------- Vertical rhythm — THE DESKTOP RUNGS ----------------------------------------------
+   The second half of the two-rung ladder documented on `--rh-*` in §Spacing above. The :root
+   block declares the PHONE rhythm (32 / 64 / 96); this restores the kit's desktop rhythm
+   (48 / 96 / 144) from 768 up, so nothing at or above tablet width changes by a pixel.
+
+   ⭐ 768, not 1024, deliberately: `.kp-band__inner` already changes its `padding-inline` at 768,
+   so 768 is the boundary this composition already turns on. Stepping at 1024 would also compress
+   768–1023, which the tablet width does not need and which was never asked for.
+   ⛔ THIS BLOCK MUST STAY IMMEDIATELY AFTER `:root` CLOSES. `:root` inside `@media` has the same
+   specificity as bare `:root`, so it wins on source order alone — move it above the declarations
+   it overrides and the desktop rhythm silently stops applying.
+   ⛔ Do NOT "simplify" this into per-class media queries: two --rh-close consumers are inline
+   styles in TSX that no media query can reach (see the §Spacing comment for the full argument).
+   --rh-tight is 24 at every width and is deliberately absent here. */
+@media (min-width: 768px) {
+  :root {
+    --rh-close: var(--sp-12);              /* 48 */
+    --rh-section: calc(var(--sp-12) * 2);  /* 96 */
+    --rh-chapter: calc(var(--sp-12) * 3);  /* 144 — still consumed by nothing */
+  }
+}
+
 /* Single dark-royal theme by invariant (DESIGN_AUTHORITY B3 — light mode killed).
    The theme engine is gone; everything renders on the canonical royal canvas. */
 
@@ -794,8 +848,6 @@ body {
    =========================================================================== */
 
 .gilt        { color: var(--gilt); }
-.gilt-strong { color: var(--gilt-strong); }
-.gilt-num    { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--gilt); letter-spacing: -0.01em; }
 
 .gilt-rule {
   height: 1px;
@@ -861,9 +913,21 @@ body {
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 /* Kit per-size horizontal padding (kit/tokens.css) — sm12/md16/lg20/xl24; xl gets --r-lg. */
-/* Dense, MOUSE-ONLY size for admin filter rows — aligns flush with the h-8 (32px)
-   search inputs + the kit Select `xs`. Replaces the `btn-sm h-8` inline override so
-   the height lives on the --h-control-xs token, not a per-call utility. */
+/* Dense, MOUSE-ONLY size for admin filter rows. Replaces the `btn-sm h-8` inline
+   override so the height lives on the --h-control-xs token, not a per-call utility.
+   ⚠️ CORRECTED — this comment used to justify btn-xs as "aligns flush with the h-8
+   (32px) search inputs + the kit Select `xs`". That is false twice over. `h-8` is
+   48px in this codebase, not 32: tailwind.config.ts REPLACES theme.extend.spacing
+   ("8":"48px"), and Tailwind spreads theme('spacing') into `height` AND `minHeight`.
+   Measured on /admin/markets, that row runs search input 48 · <Select size="xs">
+   48 · btn-xs 32. The input and the Select ARE flush with each other — at 48, the
+   height neither of them intended — and btn-xs is flush with NEITHER. The claim had
+   the right row and the wrong number, which is the worst way to be wrong.
+   ⭐ btn-xs is a SEPARATE DENSE RUNG, not an alignment device. After the Phase-3
+   bump it sits 8px below btn-sm (40px) in those same admin rows, and that gap is the
+   POINT of having a distinct rung — a mouse-only control that deliberately does not
+   pay the finger tax. Making the filter row line up is a <Select> job (it does not
+   read --h-control-* at all), never a reason to move a button token. */
 .btn-xs { height: var(--h-control-xs); padding: 0 12px; font-size: 13px; }
 .btn-sm { height: var(--h-control-sm); padding: 0 12px; font-size: 13px; }
 .btn-md { height: var(--h-control-md); padding: 0 16px; font-size: 14px; }
@@ -1031,7 +1095,6 @@ body {
 .chip-resolved { height: 23px; padding: 0 9px; font-size: 11px; background: linear-gradient(180deg, var(--gold-300), var(--gold-500)); color: oklch(24% 0.06 80); border-color: oklch(60% 0.10 78); }
 .chip-pending  { height: 23px; padding: 0 9px; font-size: 11px; background: oklch(54% 0.165 262 / 0.26); color: var(--brand-300); border-color: oklch(63% 0.18 262 / 0.55); }
 .chip-objection{ height: 23px; padding: 0 9px; font-size: 11px; background: oklch(72% 0.13 80 / 0.22); color: var(--gold-300); border-color: oklch(80% 0.13 80 / 0.5); }
-.chip-politics { background: var(--claret-soft); color: var(--claret-200); border-color: var(--claret-edge); }
 .chip-signal   { background: oklch(74% 0.11 195 / 0.20); color: var(--aqua-300); border-color: oklch(78% 0.10 195 / 0.5); }
 .chip-hot-rose { height: 23px; padding: 0 9px; font-size: 11px; background: oklch(50% 0.19 25 / 0.22); color: var(--no-300); border-color: oklch(58% 0.2 25 / 0.5); }
 /* NEW market badge (cold-start, 2026-07-29). Brand blue: it is CHROME — "this
@@ -1051,6 +1114,22 @@ body {
    chip. Was `style={{ fontWeight: 700 }}` inline on the market card. */
 .chip-strong { font-weight: 700; }
 
+/* ---------- CountBadge's lift ----------
+   §M2: a surface PICKS a rung, it never composes one — and a rung is a CLASS, not an
+   inline `boxShadow`. The kit `<CountBadge>` sets `data-lift="{tone}"`; the shadow lives
+   here, once, per tone.
+   ⭐ Two tones, two answers, and the difference is the point. The BELL's pip sits on the
+   top bar's glass, where a flat drop disappears, so it takes a coloured halo in its own
+   tone; the CHAT pip sits on a flat canvas and wants only the ladder's rung. Before this,
+   the shadow was passed IN as a prop — which put a raw `oklch()` at a call site and made
+   the primitive built to end that drift its own carrier of it. A caller can no longer
+   pass a shadow at all. */
+.count-badge[data-lift="rose"] {
+  box-shadow: 0 0 8px var(--no-500), 0 2px 4px color-mix(in oklab, var(--royal-950) 40%, transparent);
+}
+.count-badge[data-lift="brand"],
+.count-badge[data-lift="pearl"] { box-shadow: var(--shadow-2); }
+
 /* ---------- LiveDot + animations ---------- */
 /* Bright red-orange pulsing dot. Uses opacity animation so it works
    inside overflow:hidden containers (market cards). The dot itself
@@ -1066,37 +1145,6 @@ body {
      unattended. Calmer and slower than the old 1.4s 0.3↔1 blink: on a real-money
      board a hard blink reads as an alarm, not as "this is live". */
   animation: m-breathe 2600ms var(--m-breathe) infinite;
-}
-/* Same technique as .live-dot but in the brand gold — used for the
-   notification-bell unread indicator. The earlier dot used Tailwind's
-   `animate-ping`, which scales a translucent ring to 0 opacity. At a
-   6px size that rendered as a fuzzy smudge rather than a crisp
-   pulsing circle. The box-shadow approach keeps a real halo around
-   the dot at all times, so it always reads as a circle, and only the
-   outer ring breathes. */
-.gold-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: oklch(82% 0.15 86);
-  box-shadow:
-    0 0 0 0 color-mix(in oklab, oklch(82% 0.15 86) 70%, transparent),
-    0 0 10px 1px color-mix(in oklab, oklch(82% 0.15 86) 55%, transparent);
-  animation: gold-pulse 1.6s ease-in-out infinite;
-}
-@keyframes gold-pulse {
-  0%, 100% {
-    opacity: 0.92;
-    box-shadow:
-      0 0 0 0 color-mix(in oklab, oklch(82% 0.15 86) 70%, transparent),
-      0 0 8px 1px color-mix(in oklab, oklch(82% 0.15 86) 55%, transparent);
-  }
-  50% {
-    opacity: 1;
-    box-shadow:
-      0 0 0 6px color-mix(in oklab, oklch(82% 0.15 86) 0%, transparent),
-      0 0 14px 2px color-mix(in oklab, oklch(82% 0.15 86) 75%, transparent);
-  }
 }
 @keyframes live-pulse {
   0%, 100% { opacity: 0.3; }
@@ -1162,7 +1210,15 @@ body {
    the design system's own `02-components/progress-bars/preview.html`.
    ⚠️ They are converted rather than DELETED because `.pbar` is a documented kit
    atom with a spec page and a preview, and deleting a documented atom is a
-   design-system decision, not an M1 conversion. Filed, not acted on. */
+   design-system decision, not an M1 conversion. Filed, not acted on.
+   ⚠️ 2026-08-21, MOTION PASS — the same verdict, for the same reason. Both fills
+   transition `width` (a layout property) on the LEGACY `--dur-quick` / `--ease-stage`
+   pair rather than the ladder, so on paper they are two defects each. They are left
+   exactly as they are because the rule above still holds: this is dead CSS with a
+   spec page, and rewriting an atom nothing renders buys a cleaner grep and nothing
+   else — while quietly making the shipped preview disagree with the atom it
+   documents. If `.pbar` is ever revived it takes `scaleX` off
+   `admin-bar-grow`'s model and the `--t-` ladder, in one deliberate change. */
 .pbar-yes {
   position: absolute;
   inset: 0 auto 0 0;
@@ -1233,6 +1289,21 @@ body {
    a curve the kit had already named and a duration off its scale. */
 .tipbar-anim .tipbar-fill,
 .tipbar-anim .tipbar-needle {
+  /* ⚠️ THESE ARE LAYOUT PROPERTIES AND THEY ARE STAYING — for two reasons, both
+     measured rather than assumed, so the next pass does not spend an afternoon
+     rediscovering them:
+       1 · `width` and `left` are written INLINE from `brand.tsx` (`style={{ width:
+           `${yes}%` }}`, and the needle's `left`). Converting this rule to
+           `transform: scaleX(var(--x))` without changing that component leaves the
+           inline width in charge and the transform doing nothing to it — a silent
+           no-op, which is worse than the layout cost.
+       2 · A `scaleX` on `.tipbar-fill` would squash its rounded END CAP
+           (`border-radius: calc(var(--tb-h) / 2)`) and stretch `--bar-glow-yes/-no`
+           with it. `admin-bar-grow` in state-tokens.css is the correct in-repo
+           model for a growing bar precisely because it has neither.
+     ⭐ `--m-pivot` here is WITHIN its §M8 reservation, not a breach of it: this is
+     the TippingBar's needle — the same object as the mark's needle and the
+     conviction dial — which is what the curve is reserved for. */
   transition: width var(--t-stage) var(--m-pivot), left var(--t-stage) var(--m-pivot), transform var(--t-stage) var(--m-pivot);
 }
 .tipbar-yes {
@@ -1345,8 +1416,31 @@ body {
 }
 .input::placeholder { color: var(--text-subtle); opacity: 0.7; }
 .input:hover:not(:focus):not(:disabled) { border-color: var(--border-strong); }
+/* ⭐ E-129 · THE FORCED-COLORS RULE — the canonical note; every other focus rule in
+   this file and in motion.css points back here rather than restating it.
+
+   Windows high-contrast / forced-colors mode STRIPS `box-shadow` and KEEPS `outline`.
+   So a focus ring painted with `box-shadow` alone is invisible to exactly the users
+   who need it most, and a rule that writes `outline: none` on top of that leaves them
+   with no focus indicator at all (WCAG 2.4.7 + 1.4.11; DESIGN_AUTHORITY §A3 — "never
+   `outline: none` without a replacement ring").
+
+   The fix is one shape, taken from `.gilt-metal:focus-visible` (motion.css §M3), which
+   has carried a real `outline` beside its box-shadow since E-129 was first found on the
+   Deposit button:
+
+       outline: 2px solid <colour>;   outline-offset: 2px;   … and KEEP the box-shadow
+
+   The colour is `transparent` where the designed look is a border+halo and a second
+   visible ring would change it — transparent paints nothing normally, and forced-colors
+   substitutes a real system colour into it (the same technique Tailwind's own
+   `outline-none` utility uses). It is `var(--brand-500)` where §A3's visible ring is
+   the design, or where the rule stacks onto a `.btn` and would otherwise strip the
+   kit's ring.
+   ⛔ Do not "tidy" any of these back to `outline: none`. */
 .input:focus {
-  outline: none;
+  outline: 2px solid transparent; /* E-129 — forced-colors paints this; see note above */
+  outline-offset: 2px;
   border-color: var(--brand-500);
   box-shadow: 0 0 0 3px oklch(63% 0.18 262 / 0.25);
 }
@@ -1379,7 +1473,13 @@ body {
   transition: border-color var(--dur-micro) var(--ease-micro), box-shadow var(--dur-micro) var(--ease-micro);
   overflow: hidden;
 }
+/* The GROUP draws the ring, not the field — `.input-group .input` zeroes its own
+   box-shadow below. So the group is the element that has to survive forced colors,
+   and the inner `.input:focus` outline lands inside `overflow: hidden` anyway.
+   (An element's own outline is never clipped by its own `overflow`.) */
 .input-group:focus-within {
+  outline: 2px solid transparent; /* E-129 — see the note above `.input:focus` */
+  outline-offset: 2px;
   border-color: var(--brand-500);
   box-shadow: 0 0 0 3px oklch(63% 0.18 262 / 0.25);
 }
@@ -1431,6 +1531,18 @@ body {
   18%  { box-shadow: inset 0 0 0 2px var(--gilt), 0 0 18px 1px oklch(78% 0.13 86 / 0.4); background-color: color-mix(in oklab, var(--gilt) 9%, transparent); }
   100% { box-shadow: inset 0 0 0 0 transparent; background-color: transparent; }
 }
+/* ⛔ 2s IS DELIBERATELY OFF THE LADDER AND IT STAYS — read the rule above before
+   "fixing" it. This is an ATTENTION HOLD, not travel: the operator's list refreshes
+   AND scrolls, and the ring has to still be lit when their eye arrives. The ladder
+   prices DISTANCE, and its ceiling (`--t-max`, 620ms) is reserved for settlement and
+   celebration — clamping the ring to it would make it plausible for the flash to be
+   over before the scroll that caused it has finished. The keyframe spends only 18%
+   of the 2s arriving; the rest is the hold, which is the whole point.
+   ⚠️ Admin-only, one row, one shot, and switched off at the `reduced` tier below.
+   The CURVE is a token's business even when the duration is not, but `ease-out` is
+   correct here and none of the four named curves is an ease-out: `--m-settle` and
+   `--m-glide` both carry the kit's arrival shape, which would put a signature on a
+   utility flash. Left as the bare keyword, on purpose, and now said out loud. */
 .poll-flash { animation: poll-flash 2s ease-out 1; border-radius: var(--r-md); }
 [data-motion="reduced"] .poll-flash { animation: none; }
 
@@ -1474,24 +1586,18 @@ textarea {
   outline: none;
   transition: border-color var(--dur-micro) var(--ease-micro), box-shadow var(--dur-micro) var(--ease-micro);
 }
-textarea:focus { border-color: var(--brand-500); box-shadow: 0 0 0 3px oklch(63% 0.18 262 / 0.25); }
+/* E-129 — see the note above `.input:focus`. Two rules, not one, and the split is
+   deliberate: the base rule above already writes `outline: none` at element
+   specificity (0,0,1), which the defensive `:where(…):focus-visible` catch-all
+   further down (0,1,0) OUTRANKS — so a KEYBOARD-focused bare textarea already draws
+   a real `--brand-500` outline today. Giving `:focus` (0,1,1) a flat transparent
+   outline would have outranked the catch-all and DELETED that visible ring, trading
+   one regression for another. So `:focus` gets the transparent outline (which is
+   what forced-colors needs on a mouse focus), and `:focus-visible` immediately
+   recolours it back to brand for the keyboard — HEAD's look, unchanged. */
+textarea:focus { outline: 2px solid transparent; outline-offset: 2px; border-color: var(--brand-500); box-shadow: 0 0 0 3px oklch(63% 0.18 262 / 0.25); }
+textarea:focus-visible { outline-color: var(--brand-500); }
 textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
-
-/* ---------- Avatar ---------- */
-.avatar {
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-display);
-  font-weight: 600;
-  color: var(--pearl-50);
-  background: linear-gradient(135deg, var(--royal-500), var(--royal-800));
-  flex-shrink: 0;
-}
-.avatar-sm { width: 28px; height: 28px; font-size: 11px; }
-.avatar-md { width: 40px; height: 40px; font-size: 14px; }
-.avatar-lg { width: 56px; height: 56px; font-size: 19px; }
 
 /* ---------- Tier badge ---------- */
 .tier-badge {
@@ -1576,7 +1682,16 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 150ms ease-out, visibility 0s linear 150ms, transform 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* ⭐ ON THE LADDER 2026-08-21. Was `150ms` three times plus a hand-typed
+     `cubic-bezier(0.2, 0.8, 0.2, 1)` — a fourth curve beside the four the law
+     allows. 150 takes the nearest rung down, `--t-quick` (140), and the tooltip is
+     an arrival on the floating plane, so the curve is `--m-settle`.
+     ⛔ THE `visibility` LEG IS NOT A TYPO AND ITS DELAY MUST TRACK THE DURATION:
+     `visibility` cannot interpolate, so it flips at the END of its own delay — which
+     has to equal the opacity duration or the popover is either clickable while
+     invisible or clipped away mid-fade. Both now read the same token, so they cannot
+     drift apart the way two hand-typed 150s can. */
+  transition: opacity var(--t-quick) var(--m-settle), visibility 0s linear var(--t-quick), transform var(--t-quick) var(--m-settle);
   z-index: 1600;
   box-shadow: 0 8px 24px -4px oklch(6% 0.08 268 / 0.6);
 }
@@ -1594,20 +1709,18 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
   opacity: 1;
   visibility: visible;
   transform: translateX(-50%) translateY(0) scale(1);
+  /* ⛔ 300ms STAYS RAW, DELIBERATELY, AND IT IS NOT A LADDER MISS. This is HOVER
+     INTENT, not motion: the wait exists so a pointer crossing the control on its way
+     somewhere else never fires the tooltip. It is the worked example named in
+     `motion.css`'s clamp block for why `transition-delay` is the one timing the
+     reduced-motion gates must NOT zero — clamping it would turn every hover-intent
+     wait in the product into a hair trigger. A rung would say "how far the surface
+     travels"; this number says "how long the user has to mean it". */
   transition-delay: 300ms, 300ms, 300ms;
 }
 
 /* Win celebration animations are co-located in the component's inline
    <style> tag (same pattern as OperationResultModal / BetConfirmModal). */
-
-/* Brand focus ring opt-in for inputs / ghost buttons that aren't using the
-   `.input` class directly. */
-.aqua-focus:focus-visible,
-.aqua-focus:focus-within {
-  outline: 2px solid var(--brand-500);
-  outline-offset: 2px;
-  box-shadow: 0 0 0 4px oklch(63% 0.18 262 / 0.25);
-}
 
 /* Defensive baseline — any keyboard-focusable element that doesn't
    set its own focus-visible style still gets an aqua ring. The kit's
@@ -1620,12 +1733,16 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
 :where(a, button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])):focus-visible {
   outline: 2px solid var(--brand-500);
   outline-offset: 2px;
-  transition: outline-offset 120ms ease-out;
+  /* 120ms → `--t-quick` (140), the nearest rung. A focus ring appears, it never
+     grows — same timing as `.m-focusable` in motion.css so the two feel identical. */
+  transition: outline-offset var(--t-quick) var(--m-glide);
 }
 
 /* Smooth anchor hover transitions for all text links */
 :where(a):not(.btn):not([class*="mcardp"]) {
-  transition: color 150ms ease-out, opacity 150ms ease-out;
+  /* 150ms → `--t-quick` (140). A colour crossfade travels nowhere, so it takes
+     `linear`: an eased colour ramp reads as a lag, not a curve. */
+  transition: color var(--t-quick) linear, opacity var(--t-quick) linear;
 }
 
 /* ===========================================================================
@@ -1661,47 +1778,20 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
   --dur-arrive: var(--t-stage);        /* was 520ms → 520ms, exact */
 
   /* 🛑 DELIBERATE EXCEPTION to the kit's 620ms ceiling — do not "fix" this to --t-max.
-     Its only consumers are the two countdown rings' `stroke-dashoffset` transition and
-     two reveal animations. The rings are driven by a 1-SECOND tick, so this value is
-     progress SMOOTHING, not a transition: at 820ms the arc glides almost continuously
-     between ticks, whereas at 620ms it would finish early and sit frozen for ~380ms of
-     every second — visibly steppier. The kit's ceiling governs transitions; a
-     continuously-updating progress arc is a third case it does not cover. */
+     ⚠️ CORRECTED 2026-08-21: this said "the two countdown rings". There is one ring
+     left. The `.countdown-ring` block was DELETED in the dead-CSS sweep — zero className
+     consumers for the life of the project, and the shipped `CountdownRing`
+     (positions/countdown-ring.tsx) composes its own inline SVG and never touched these
+     classes. The consumers now are `.badge-ring-arc`'s `stroke-dashoffset` transition
+     and two reveal animations (`.badge-unlock-rays`, `.m-draw`).
+     The 820ms itself is unchanged and still deliberate: an arc stepped by a 1-SECOND
+     tick needs progress SMOOTHING, not a transition — at 820ms it glides almost
+     continuously between ticks, whereas at 620ms it would finish early and sit frozen
+     for ~380ms of every second, visibly steppier. The kit's ceiling governs
+     transitions; a continuously-updating progress arc is a third case it does not
+     cover. */
   --dur-stage:  820ms;
 }
-
-/* ---------- Countdown ring ---------- */
-.countdown-ring          { position: relative; display: inline-grid; place-items: center; }
-.countdown-ring svg      { display: block; }
-.countdown-ring .ring-track { stroke: var(--border); fill: none; }
-.countdown-ring .ring-arc {
-  stroke: var(--royal-300);
-  fill: none;
-  stroke-linecap: round;
-  transform: rotate(-90deg);
-  transform-origin: center;
-  transition: stroke-dashoffset var(--dur-stage) var(--ease-conduct), stroke 600ms var(--ease-glide);
-  filter: drop-shadow(0 0 4px color-mix(in oklab, var(--royal-300) 35%, transparent));
-}
-.countdown-ring.urgent .ring-arc {
-  stroke: var(--gold-400);
-  filter: drop-shadow(0 0 8px color-mix(in oklab, var(--gold-300) 60%, transparent));
-  animation: pulse-urgent 1.4s var(--ease-conduct) infinite;
-}
-.countdown-ring.critical .ring-arc {
-  stroke: var(--no-500);
-  filter: drop-shadow(0 0 10px color-mix(in oklab, var(--no-400) 70%, transparent));
-  animation: pulse-critical 0.8s var(--ease-conduct) infinite;
-}
-.countdown-ring .ring-label {
-  position: absolute; inset: 0;
-  display: grid; place-items: center; text-align: center;
-  font-variant-numeric: tabular-nums; letter-spacing: 0.02em; color: var(--text);
-}
-.countdown-ring .ring-num { font-family: var(--font-display); font-weight: 600; line-height: 1; }
-.countdown-ring .ring-cap { font-size: 10px; text-transform: uppercase; letter-spacing: 0.18em; color: var(--text-muted); margin-top: 4px; }
-@keyframes pulse-urgent  { 0%, 100% { opacity: 1; } 50% { opacity: 0.65; } }
-@keyframes pulse-critical { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.55; transform: scale(0.97); } }
 
 /* ---------- Toast auto-dismiss hairline ----------
    DA-1 (2026-08-07): `.toast-anim` (+ its ::after and the `toast-slide`
@@ -1788,27 +1878,6 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
               oklch(99% 0.02 95 / 0.15) 26deg, transparent 56deg);
 }
 
-/* ---------- Settling shimmer ---------- */
-@keyframes settling-sweep { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
-.settling-bar {
-  position: relative; overflow: hidden; border-radius: var(--r-pill);
-  background: color-mix(in oklab, var(--gold-500) 12%, var(--bg-elevated));
-  border: 1px solid color-mix(in oklab, var(--gold-400) 30%, var(--border));
-}
-.settling-bar::before {
-  content: ''; position: absolute; inset: 0;
-  background: linear-gradient(90deg, transparent 30%, color-mix(in oklab, var(--gold-300) 60%, transparent) 50%, transparent 70%);
-  animation: settling-sweep 2s var(--ease-conduct) infinite;
-}
-
-/* ---------- Live odds flash on change ---------- */
-@keyframes odds-flash-up   { 0% { background: color-mix(in oklab, var(--yes-500) 40%, transparent); } 100% { background: transparent; } }
-@keyframes odds-flash-down { 0% { background: color-mix(in oklab, var(--no-500)  40%, transparent); } 100% { background: transparent; } }
-/* §D strike (2026-08-08): 600ms var(--ease-sink) → --t-stage + --m-leave (the map's
-   own row). The flash is an exit of emphasis, so the leave curve is the right voice. */
-.odds-flash-up   { animation: odds-flash-up   var(--t-stage) var(--m-leave); }
-.odds-flash-down { animation: odds-flash-down var(--t-stage) var(--m-leave); }
-
 /* ---------- Up & Down quick-bet success pulse ----------
    Non-intrusive confirmation for a placed bet (replaces the happy-path toast).
    A brief ring pulse on the card + a flash on the side just tapped. Kept short so
@@ -1818,13 +1887,17 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
   0%   { box-shadow: 0 0 0 0 color-mix(in oklab, var(--yes-500) 55%, transparent); }
   100% { box-shadow: 0 0 0 8px color-mix(in oklab, var(--yes-500) 0%, transparent); }
 }
-.ud-place-pulse { animation: ud-place-pulse 240ms var(--ease-sink); }
+/* 240ms → `--t-base` (220), the nearest rung down. The ring expands and is gone —
+   a one-shot arrival — so `--m-settle`, not the legacy `--ease-sink`. */
+.ud-place-pulse { animation: ud-place-pulse var(--t-base) var(--m-settle); }
 @keyframes ud-side-flash {
   0%   { transform: scale(1); filter: brightness(1); }
   30%  { transform: scale(1.035); filter: brightness(1.28); }
   100% { transform: scale(1); filter: brightness(1); }
 }
-.ud-side-flash { animation: ud-side-flash 220ms var(--ease-sink); }
+/* 220ms IS `--t-base` exactly. The keyframe leaves at scale(1) and returns to it,
+   so the curve is `--m-breathe` — symmetric shape, symmetric curve. */
+.ud-side-flash { animation: ud-side-flash var(--t-base) var(--m-breathe); }
 @media (prefers-reduced-motion: reduce) {
   .ud-place-pulse, .ud-side-flash { animation: none !important; }
 }
@@ -1916,13 +1989,6 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
   35%  { transform: translateY(0) scale(0.98); }
   50%  { transform: translateY(0) scale(1); }
   100% { transform: translateY(0) scale(1); }
-}
-
-/* ---------- Rolling number scaffolding ---------- */
-.num-roll       { display: inline-flex; font-variant-numeric: tabular-nums; font-family: var(--font-display); }
-.num-roll-digit {
-  display: inline-block; width: 0.62em; text-align: center;
-  transition: transform var(--dur-glide) var(--ease-glide), opacity var(--dur-quick) var(--ease-glide);
 }
 
 /* ---------- Modal / dialog / sheet entrance — RETIRED 2026-07-28 ------------
@@ -2054,27 +2120,6 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
   animation-delay: calc(min(var(--i, 0), 4) * var(--m-stagger));
 }
 
-/* 1.3 — Sliding tab / filter indicator. The gold underline TRANSLATES
-   between tabs instead of cutting. JS measures the active tab and sets
-   `--x` (px) + `--w` (px). transform + width-via-scale-free: we animate
-   left/transform only by positioning a fixed element and translating it. */
-.tab-indicator {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  height: 2px;
-  background: var(--brand-500);
-  border-radius: var(--r-pill);
-  box-shadow: 0 0 8px color-mix(in oklab, var(--brand-500) 55%, transparent);
-  width: var(--w, 0px);
-  transform: translateX(var(--x, 0px));
-  /* The kit's travelling-indicator timing (`.m-indicator`): one object glides,
-     never a cross-fade. Same tier as tabs/filters/bottom-nav everywhere else. */
-  transition: transform var(--t-base) var(--m-glide),
-              width var(--t-base) var(--m-glide);
-  will-change: transform, width;
-}
-
 /* 1.4 — Optimistic vote: arrow press pop + count flash.
    Arrow uses press-pop (above). The count reuses kit `count-up-flash`. */
 @keyframes vote-pop {
@@ -2084,50 +2129,12 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
 }
 .vote-pop { animation: vote-pop var(--dur-quick) var(--ease-arrive); }
 
-/* 1.5 — Toggle thumb travel + gold "turning ON" glow.
-   Thumb travel is transform-only. The glow is a one-shot box-shadow pulse. */
-@keyframes toggle-glow {
-  0%   { box-shadow: 0 0 0 0 color-mix(in oklab, var(--gold-400) 60%, transparent); }
-  100% { box-shadow: 0 0 0 7px color-mix(in oklab, var(--gold-400) 0%, transparent); }
-}
-.kp-switch {
-  --tw: 18px;
-  position: relative;
-  width: 42px; height: 24px;
-  border-radius: var(--r-pill);
-  border: 1px solid var(--border-strong);
-  background: var(--bg-overlay);
-  cursor: pointer;
-  transition: background-color var(--dur-quick) var(--ease-glide),
-              border-color var(--dur-quick) var(--ease-glide);
-  flex-shrink: 0;
-}
-.kp-switch .kp-thumb {
-  position: absolute;
-  top: 50%; left: 3px;
-  width: 18px; height: 18px;
-  margin-top: -9px;
-  border-radius: 50%;
-  background: var(--pearl-200);
-  transition: transform var(--dur-quick) var(--ease-arrive),
-              background-color var(--dur-quick) var(--ease-glide);
-}
-.kp-switch[aria-checked="true"] {
-  background: color-mix(in oklab, var(--gold-500) 30%, var(--bg-overlay));
-  border-color: var(--border-gold);
-}
-.kp-switch[aria-checked="true"] .kp-thumb {
-  transform: translateX(var(--tw));
-  background: var(--gilt);
-  animation: toggle-glow var(--dur-arrive) var(--ease-glide);
-}
-.kp-switch:focus-visible { outline: 2px solid var(--brand-500); outline-offset: 2px; }
-
-/* 1.6 — Value-changed: generalize the wallet pill's number-roll + delta-flash.
-   `.value-roll` is the wrapper; `.value-flash` flashes the gilt outline on any
-   TZS figure that changes (balance, pool, payout estimate). Reuses the kit
-   `count-up-flash` for the digits and mirrors `wbp-delta-fade` for the delta. */
-.value-roll { font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
+/* 1.6 — Value-changed: the wallet pill's delta-flash.
+   `.value-flash` flashes the gilt outline on any TZS figure that changes (balance,
+   pool, payout estimate). Reuses the kit `count-up-flash` for the digits and mirrors
+   `wbp-delta-fade` for the delta.
+   ⚠️ `.value-roll` — the wrapper this comment used to name FIRST, as though it were
+   the main event — was deleted 2026-08-21 with zero consumers. Only the flash shipped. */
 .value-flash { animation: count-up-flash var(--dur-glide) var(--ease-glide); }
 @keyframes value-delta-fade {
   0%   { opacity: 0; transform: translateY(-2px); }
@@ -2135,27 +2142,12 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
   80%  { opacity: 1; }
   100% { opacity: 0; transform: translateY(-2px); }
 }
-.value-delta { animation: value-delta-fade 800ms var(--ease-glide) forwards; }
-
-/* 1.7 — Success checkmark stroke-draw. Gilt. Pairs with confirm/success.
-   Animates stroke-dashoffset (a presentation attr on the path → compositor
-   friendly enough on mid-range Android at this scale). */
-@keyframes check-draw {
-  from { stroke-dashoffset: var(--len, 48); }
-  to   { stroke-dashoffset: 0; }
-}
-@keyframes check-pop {
-  0%   { transform: scale(0.7); opacity: 0; }
-  60%  { transform: scale(1.05); opacity: 1; }
-  100% { transform: scale(1); }
-}
-.check-draw .check-ring { animation: check-pop var(--dur-glide) var(--ease-arrive) both; transform-origin: center; }
-.check-draw .check-tick {
-  stroke-dasharray: var(--len, 48);
-  stroke-dashoffset: var(--len, 48);
-  animation: check-draw var(--dur-glide) var(--ease-glide) forwards;
-  animation-delay: 120ms;
-}
+/* ⚠️ 800ms → `--t-stage` (520), AND THE HOLD SHORTENS WITH IT — say so rather than
+   let a later session discover it. The keyframe is in at 15%, out from 80%, so the
+   readable plateau goes 520ms → 338ms. `--t-max` (620) would have been the nearer
+   rung by arithmetic, but the ladder reserves it for settlement and celebration and
+   sends everything else to `--t-stage`; a live value delta is neither. */
+.value-delta { animation: value-delta-fade var(--t-stage) var(--m-glide) forwards; }
 
 /* 1.8 — Page / route transition. Light shared entrance — content rises a
    hair on navigate. Fast (quick) so it never delays perceived load. */
@@ -2172,7 +2164,6 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
   to   { opacity: 1; transform: translateY(0); }
 }
 .content-fade-in { animation: content-fade-in var(--dur-quick) var(--ease-glide) both; }
-.skel-fade-out { animation: m-leave-out var(--dur-quick) var(--ease-sink) forwards; }
 
 /* ---------------------------------------------------------------------------
    §2  BADGES & ACHIEVEMENTS  (sibling system to .tier-*)
@@ -2285,30 +2276,6 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
 .badge-unlock-rays { animation: badge-seal-rays var(--dur-stage) var(--ease-glide) both; transform-origin: center; }
 
 /* ---------------------------------------------------------------------------
-   §3  STREAK / LEVEL FURNITURE (supporting the celebration ladder + Hot Streak)
-   --------------------------------------------------------------------------- */
-.streak-rail {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 10px 4px 8px;
-  border-radius: var(--r-pill);
-  background: color-mix(in oklab, var(--gold-500) 12%, var(--bg-elevated));
-  border: 1px solid color-mix(in oklab, var(--gold-400) 30%, var(--border));
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  font-size: 12px;
-  color: var(--gilt);
-}
-@keyframes streak-tick {
-  0%   { transform: scale(1); }
-  45%  { transform: scale(1.22); }
-  100% { transform: scale(1); }
-}
-.streak-tick { animation: streak-tick var(--dur-quick) var(--ease-arrive); transform-origin: center; }
-
-/* ---------------------------------------------------------------------------
    §4  WIN CELEBRATION LADDER
    --------------------------------------------------------------------------- */
 /* All three tiers reuse EXISTING kit keyframes (count-up-flash, win-burst,
@@ -2350,19 +2317,15 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
   /* presses / votes / streaks: no transform, just the resting state */
   @keyframes press-pop   { from, to { transform: none; } }
   @keyframes vote-pop    { from, to { transform: none; } }
-  @keyframes streak-tick { from, to { transform: none; } }
-  @keyframes toggle-glow { from, to { box-shadow: none; } }
 
   /* stagger: everything arrives at once. ⛔ The two per-class `animation-delay: 0ms`
      resets that used to sit here are GONE — the calm clamp in motion.css now zeroes
      `animation-delay` universally, which covers these two AND the four sites they
-     never covered (`.win-seal` 160ms, `.check-tick` 120ms, `.cm-empty-starter`
-     100–340ms, `.cm-typing span` 180/360ms). Keeping them would be a second answer
+     never covered (`.win-seal` 160ms, `.check-tick` 120ms — that rule was deleted
+     2026-08-21 with the rest of the dead `.check-draw` family, so the measurement
+     stands but the selector no longer exists — `.cm-empty-starter` 100–340ms,
+     `.cm-typing span` 180/360ms). Keeping them would be a second answer
      to a question that now has one. */
-
-  /* checkmark: show drawn, no draw */
-  .check-draw .check-tick { stroke-dashoffset: 0 !important; animation: none !important; }
-  .check-draw .check-ring { animation: none !important; transform: none; opacity: 1; }
 
   /* value change: snap, keep the gilt flash subtle (color only, no shadow) */
   @keyframes count-up-flash { from, to { color: var(--text); text-shadow: none; } }
@@ -2377,9 +2340,6 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
      selector that no longer exists is dead weight one layer down. `.win-aura-anim`
      went the same way (DA-8/E-128, 2026-08-07). */
   .badge-unlock-rays { animation: none !important; opacity: 0.4; }
-
-  /* tab indicator: jump, don't slide */
-  .tab-indicator { transition: none !important; }
 
   /* live wall: arrive at once, fully visible — never invisible */
   .kp-rise { animation: none !important; }
@@ -2426,23 +2386,22 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
 [data-motion="reduced"] .prog-sweep::after,
 [data-motion="reduced"] .pbar-resolved::after,
 [data-motion="reduced"] .mark-breathe,
-[data-motion="reduced"] .gold-dot,
 [data-motion="reduced"] .pchart-dot-halo,
 [data-motion="reduced"] .notif-badge-pulse,
 [data-motion="reduced"] .csrf-rest-ring,
 [data-motion="reduced"] .skeleton,
-[data-motion="reduced"] .settling-bar::before,
-/* ⬇ ADDED 2026-08-07 — the 11 loops the tier had never switched off. Each one is
-   `animation: none`, never a colour change: the state has to survive the calm. */
+/* ⬇ ADDED 2026-08-07 — the loops the tier had never switched off. Each one is
+   `animation: none`, never a colour change: the state has to survive the calm.
+   ⚠️ This read "the 11 loops" until 2026-08-21, when the two `.countdown-ring`
+   entries left with the dead rule they named. ⛔ The count is deliberately NOT
+   restated here — a number written twice disagrees with itself, and this list already
+   has a reader that prints the live one: `npm run test:reduce-motion`, whose rule 2.2
+   FAILS the moment an entry outlives the selector it names. */
 [data-motion="reduced"] .kp-shimmer-track::after,   /* loading shimmer            */
 [data-motion="reduced"] .m-skeleton::after,         /* the kit's loading sweep    */
 [data-motion="reduced"] .m-ambient,                 /* 64s spin + will-change: a
                                     permanently promoted layer is precisely what a
                                     low-end device cannot afford, "free" or not    */
-[data-motion="reduced"] .countdown-ring.urgent .ring-arc,   /* the stroke colour +
-                                    drop-shadow carry urgent/critical statically,
-                                    so stopping the pulse loses no meaning (M6)    */
-[data-motion="reduced"] .countdown-ring.critical .ring-arc,
 [data-motion="reduced"] .closing-pill,              /* its base IS the gold urgent
                                     end of the pulse, by its own design comment    */
 [data-motion="reduced"] .ud-count-pulse,            /* Up & Down live counters      */
@@ -2456,11 +2415,20 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
                                     motion.css and refused to pass without this line.
                                     ⭐ That is ATOM A's gate doing its job on ATOM C —
                                     which is the whole reason the gate came first       */
-[data-motion="reduced"] .dial-coach                 /* the conviction dial's coach
+[data-motion="reduced"] .dial-coach,                /* the conviction dial's coach
                                     nudge. ⭐ It lives in an inline <style> block, so
                                     the FIRST census of this list — which read .css
                                     only — never saw it and reported 15 uncovered
                                     loops where there are 16                        */
+[data-motion="reduced"] .signal-pip                 /* the "new / fresh data" pip
+                                    (brand.tsx). ⭐ ADDED 2026-08-21 from a re-scan of
+                                    the whole corpus, not from memory — and its own
+                                    source comment had ALREADY decided it belonged
+                                    here ("it STOPS at every gate, the throttle
+                                    included"; the pip is explicitly non-semantic, so
+                                    nothing is lost when it holds still). The entry
+                                    was simply never written. It stays drawn at full
+                                    opacity, which its base style already gives it.   */
                                               { animation: none !important; }
 /* The needle's wake halo. ⛔ Gated from HERE and never in needle.css: that file is a
    vendored port whose header pins behaviour, geometry and timing. `opacity: 0.8` is
@@ -2627,9 +2595,13 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
      control on the platform, and the other seven rails are all 44. He was given the trade (40
      already clears Law 9; 44 makes the rail ~48px tall in a chart header whose label is 10px
      mono) and chose consistency. ⛔ The literal is deliberate, exactly as it is on
-     `filter-pill.tsx`: `--tap-min` is 40 and would silently undo this, and there is no
-     `--h-control-*` rung at 44 (`--h-input: 44px` is named for inputs, and borrowing an input's
-     token for a chart button would be a second meaning for one name). */
+     `filter-pill.tsx`: `--tap-min` is 40 and would silently undo this.
+     ⚠️ CORRECTED 2026-08-21 (Phase-3 bump). This used to end "and there is no `--h-control-*`
+     rung at 44". There is one now — `--h-control-md` moved 38 → 44 in the same change. The
+     literal still stands, and for a better reason than scarcity: `--h-control-md` is the
+     BUTTON rung, and this is a filter control that happens to share its number today. Binding
+     to it would mean the next button-height decision silently re-sizes a chart rail. The two
+     values agreeing is a coincidence to leave alone, not a duplication to collapse. */
   min-height: 44px;
 }
 .pchart-range.is-active { color: var(--text); background: var(--pill-active); }
@@ -2668,9 +2640,26 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
    `--edge-lit` — the same ring `--elev-raised` gives every card.
    ⚠️ The old comment claimed a "top-lit gradient" this rule has never had: the
    background is one flat colour. Corrected rather than preserved. */
-.glass-panel {
-  background: var(--bg-elevated);
+/* 🔴 THE COLOURS SIT IN `:where()` SO A TONE UTILITY CAN BEAT THEM. Found 2026-08-21,
+   while fixing the alpha bridge, and it is a SEPARATE defect with the same symptom.
+   `.glass-panel` is (0,1,0) and lives at this line; `@tailwind utilities` is emitted at
+   the top of this file. Equal specificity, so SOURCE ORDER decides — and this rule wins.
+   `AdminCard` composes `glass-panel` internally and appends the caller's `className`, so
+   all 22 `<AdminCard className="border-warning-border bg-warning-bg">` tone cards across
+   the console were painted plain: the officer's warning card looked exactly like an
+   ordinary one, and no amount of fixing the bridge would have changed that. ⚠️ The
+   `background` and `border` SHORTHANDS were half the trap — a shorthand overwrites the
+   colour a longhand utility sets even when you expect only width and style to apply.
+   `:where()` contributes ZERO specificity, so `bg-*`/`border-*` now win while the
+   defaults still apply to every panel that names no tone. The four `hover:border-*`
+   call sites were already winning at (0,2,0) and are unaffected. ⛔ Keep the cast and
+   the radius OUT of `:where()`: those are the rung (§M2), not a default to be overridden
+   — a surface picks a rung, it never composes a shadow. */
+:where(.glass-panel) {
+  background-color: var(--bg-elevated);
   border: 1px solid var(--border);
+}
+.glass-panel {
   box-shadow: var(--edge-lit), 0 8px 24px -6px oklch(6% 0.08 268 / 0.45);
   border-radius: var(--r-lg);
 }
@@ -2808,7 +2797,10 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
    `btn-inline-height-override` rule matches `\bbtn\b` in a class VALUE — where `-` is a word
    boundary, so `kp-fsheet-btn` read as a `.btn` carrying a height override and the linter
    reported drift that did not exist. The accurate name is also the one that does not lie. */
-.kp-fsheet-trigger { transition: background 140ms ease-out, border-color 140ms ease-out, color 140ms ease-out, box-shadow 140ms ease-out; }
+/* 140ms IS `--t-quick` — the rung, written four times as a literal. None of these
+   four properties travels, so all four take `linear` (the same recipe `.m-raise`
+   and `.mat-raised-i` use for border-color and box-shadow). */
+.kp-fsheet-trigger { transition: background var(--t-quick) linear, border-color var(--t-quick) linear, color var(--t-quick) linear, box-shadow var(--t-quick) linear; }
 .kp-fsheet-trigger[data-on] { background: var(--pill-active); border-color: var(--brand-400); color: var(--text); box-shadow: var(--glow-selected); }
 .kp-fsheet[open] > summary { border-color: var(--brand-400); color: var(--text); }
 
@@ -2932,24 +2924,33 @@ html[data-sheet-open] .route-enter { animation: none; }
   color: var(--text-subtle);
 }
 /* v2 Dark Glass — staggered card entrance on page load. Each child gets a
-   rising fade-in with staggered delay, capped at 8 items (45ms each) so large
-   grids never feel sluggish. Cards end at opacity:1 + transform:none as the
-   keyframe's `to` state, so nothing is hidden if animation fails. */
+   rising fade-in with staggered delay. Cards end at opacity:1 + transform:none as
+   the keyframe's `to` state, so nothing is hidden if animation fails.
+
+   ⭐ ON THE STAGGER LAW 2026-08-21. This cascade ran a RAW 45ms over EIGHT steps to
+   360ms, against `--m-stagger: 40ms` whose own definition reads "between siblings;
+   never more than 4 steps". Two defects in one block: the step was a literal that
+   could not follow a retune of the token, and the CAP was double the law's.
+   ⚠️ THE LAST CARD NOW ARRIVES 200ms EARLIER (360 → 160), which is the point — this
+   is the busiest surface in the product and the clamp block in `motion.css` names
+   exactly this cascade as the worst offender it measured when a reduced-motion user
+   was holding an invisible first frame for the length of the delay.
+   ⭐ Written as `calc(var(--m-stagger) * n)`, the same shape `.seal-cascade` and
+   `[data-stagger="1..3"]` use, so retuning the token moves all three at once.
+   (`[data-motion="reduced"]` zeroes these delays outright — globals.css §6.) */
 .market-grid > * {
   /* §D strike (2026-08-08): 420ms cubic-bezier(.2,.8,.2,1) → the ladder's nearest
      rung, --t-move + --m-settle. qa:calm's low-end ceiling (600ms) still holds —
      the entrance got SHORTER, and the probe reads the animation from outside. */
   animation: kp-rise var(--t-move) var(--m-settle) both;
 }
-.market-grid > *:nth-child(1)  { animation-delay: 0ms; }
-.market-grid > *:nth-child(2)  { animation-delay: 45ms; }
-.market-grid > *:nth-child(3)  { animation-delay: 90ms; }
-.market-grid > *:nth-child(4)  { animation-delay: 135ms; }
-.market-grid > *:nth-child(5)  { animation-delay: 180ms; }
-.market-grid > *:nth-child(6)  { animation-delay: 225ms; }
-.market-grid > *:nth-child(7)  { animation-delay: 270ms; }
-.market-grid > *:nth-child(8)  { animation-delay: 315ms; }
-.market-grid > *:nth-child(n+9) { animation-delay: 360ms; }
+.market-grid > *:nth-child(1)   { animation-delay: 0ms; }
+.market-grid > *:nth-child(2)   { animation-delay: calc(var(--m-stagger) * 1); }
+.market-grid > *:nth-child(3)   { animation-delay: calc(var(--m-stagger) * 2); }
+.market-grid > *:nth-child(4)   { animation-delay: calc(var(--m-stagger) * 3); }
+/* The fifth card and everything after it arrive together on the fourth step —
+   that IS the stagger law's cap, not a shortcut taken to save rules. */
+.market-grid > *:nth-child(n+5) { animation-delay: calc(var(--m-stagger) * 4); }
 
 /* Card entrance for the live wall. CSS-only with a short capped stagger, so a
    card ALWAYS ends visible even if JS / the observer never runs — no more
@@ -3117,12 +3118,46 @@ html[data-sheet-open] .route-enter { animation: none; }
 }
 @media (min-width: 561px) {
   .kp-proof { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .kp-proof__num { font-size: var(--type-display-2); }
   .kp-proof__fig:nth-child(3) { border-left: 1px solid var(--border); }
 }
-/* At 360 the third figure sits on its own row under the two above it, so nothing truncates. */
+/* 🔴 THE 44px STEP WAITS FOR 1024, AND IT IS A MONEY FIX, NOT A TASTE ONE (§M4 — money never
+   reflows). It used to ride inside the 561 block above, so from 561 up the gilt pool figure was
+   set in `--type-display-2` inside a track a third of the measure wide, and it WRAPPED at its own
+   space — "TZS" over "1.3M". `.kp-proof__num` is `display: flex` with no `white-space` rule, so
+   the break is a wrap and not an overflow, which is why nothing caught it: `.kp-hero` is
+   `overflow: hidden` so no scrollWidth assertion can fire, and the §A6 matrix is 360/768/1280/1920
+   — 561–767 is never measured.
+   THE ARITHMETIC (mono advance 0.6em; track = (inner − 2×16 gap)/3, less 16 padding-left and the
+   1px hairline) at --type-display-2, 44px → 26.4px per character:
+     W      inner   usable/track   "TZS 1.3M" = 211   "TZS 999.9M" = 264
+      561     529       148.7            WRAPS               WRAPS
+      768     720       212.3        fits by 1.1px           WRAPS
+      940     892       269.7            fits            fits by 5.7px
+     1024     976       297.7            fits           fits by 33.7px
+   768 clears TODAY's figure by a single pixel and still wraps a nine-character one, so the step
+   is at 1024 — which is also where `.kp-hero__headline` takes its own second step. From 561 to
+   1023 the rail stays at --type-h2 (24px → 14.4px/char): 144px for the widest figure this book
+   can print, against 148.7px of track at the narrowest width in that band.
+   ⛔ Do NOT "fix" this with `white-space: nowrap`: that converts a wrap into a clip, and §A5
+   forbids clipping money outright. The size step is the fix. */
+@media (min-width: 1024px) {
+  .kp-proof__num { font-size: var(--type-display-2); }
+}
+/* ONE FIGURE PER ROW at ≤560. It replaces a 2+1 that was correct engineering and read as an
+   accident: figure 3 took the whole 328px measure while 1 and 2 shared it, so "83 OPEN
+   PREDICTIONS" looked orphaned rather than stacked — left-aligned against nothing.
+   ⛔ 3-up at 360 is NOT available and never was; the rule this replaces said as much in words.
+   328px inner − 2×16 gap = three 98.7px tracks, 81.7px usable after padding-left and hairline,
+   against a 115px numeral at --type-h2 and a 134px caption ("OPEN PREDICTIONS" — Swahili "Masoko
+   yaliyo wazi" is wider still). The only two options were 2+1 and 1+1+1. This is 1+1+1: the
+   vertical hairlines become horizontal ones, every figure gets the full measure, and caption
+   wrapping at 360 ends in all three locales.
+   Cost 3 × 44 min-height + 2 × (12 + 1px) = ~182px against ~116px, so ~+66px of hero — repaid
+   about 4× over by the phone rhythm step-down (−288px on this page at 360; see --rh-* §Spacing). */
 @media (max-width: 560.98px) {
-  .kp-proof__fig:nth-child(3) { grid-column: 1 / -1; padding-left: 0; border-left: 0; border-top: 1px solid var(--border); padding-top: var(--sp-3); }
+  .kp-proof { grid-template-columns: minmax(0, 1fr); gap: var(--sp-3); }
+  .kp-proof__fig { padding-left: 0; border-left: 0; }
+  .kp-proof__fig + .kp-proof__fig { border-top: 1px solid var(--border); padding-top: var(--sp-3); }
 }
 
 .kp-conv { max-width: 620px; }
@@ -3139,7 +3174,15 @@ html[data-sheet-open] .route-enter { animation: none; }
   padding: var(--sp-3) 0;
   border-bottom: 1px solid var(--border);
   position: relative;
-  transition: background var(--t-quick) ease-out, padding-inline var(--t-quick) ease-out;
+  /* ⚠️ `padding-inline` IS A LAYOUT PROPERTY and it animates on hover — a reflow of
+     a three-column grid row, four rows deep, every time a pointer crosses the hero
+     board. Kept, and said out loud, because the alternative is worse than the cost:
+     the gesture is the row's CONTENT indenting inside a fixed rail, and a
+     `translateX` on the row would slide its background and its bottom border with
+     it, which is a different effect wearing the same name. `--t-quick` over 8px is
+     one short reflow, not a scroll-linked one.
+     `ease-out` → `linear` on the background: a colour crossfade travels nowhere. */
+  transition: background var(--t-quick) linear, padding-inline var(--t-quick) var(--m-glide);
 }
 .kp-qrow:hover { background: var(--bg-overlay); padding-inline: var(--sp-4); }
 .kp-qrow__glyph { grid-area: i; color: var(--text-faint); display: flex; }
@@ -3304,12 +3347,24 @@ html[data-sheet-open] .route-enter { animation: none; }
      the product, and this was the last surface not using it. */
   .mcardp:hover { transform: translateY(var(--m-lift)); border-color: var(--brand-500); box-shadow: 0 0 0 1px var(--brand-500), var(--elev-raised-hover); }
 }
-/* Category glyph watermark — bottom-right bleed, brightens on hover. */
+/* Category glyph watermark — bottom-right bleed, brightens on hover.
+   🔴 THE `transform: scale(1.06)` ON HOVER IS DELETED — §M5, 2026-08-21. This is a
+   GLYPH (`<CatIco/>`, market-card.tsx), and the law is one sentence long: triggers
+   are mount, data change or state change, NEVER hover — "icons respond, they do not
+   perform." The distinction the rule was on the wrong side of is worth stating,
+   because the opacity and colour legs STAY: brightening 0.055 → 0.22 is the
+   watermark RESPONDING to the pointer being on the card, and it is the card's own
+   hover state reaching a child. Swelling 6% is the glyph doing a turn of its own on
+   a surface where the card is already lifting `--m-lift` — two objects performing
+   one hover.
+   `transform` also leaves the transition list with it: a transition naming a
+   property nothing changes is a promise the next reader will try to keep.
+   ⚠️ `.2s` ×3 → `--t-base` (220), the nearest rung to 200. */
 .mcardp-watermark { position: absolute; bottom: -18px; right: -14px; color: var(--border-strong); opacity: 0.055; pointer-events: none; z-index: 0;
-  transition: opacity .2s ease-out, color .2s ease-out, transform .2s ease-out; }
+  transition: opacity var(--t-base) linear, color var(--t-base) linear; }
 .mcardp-watermark svg { width: 140px; height: 140px; }
 @media (hover: hover) {
-  .mcardp:hover .mcardp-watermark { opacity: 0.22; color: var(--brand-400); transform: scale(1.06); }
+  .mcardp:hover .mcardp-watermark { opacity: 0.22; color: var(--brand-400); }
 }
 .mcardp > *:not(.mcardp-watermark) { position: relative; z-index: 1; }
 .mcardp-top { display: flex; align-items: center; flex-wrap: nowrap; gap: 5px; min-height: 20px; }
@@ -3359,9 +3414,24 @@ html[data-sheet-open] .route-enter { animation: none; }
 /* 36 → 40px (POLISH-BACKLOG §1.4). These are the product's most-tapped money
    controls and they sat BELOW the 40px tap floor law 9 sets — on a card, on a
    phone, for the two buttons that place a bet. --tap-min is that floor's one
-   definition site, so this reads it rather than restating 40. The kit floor at
-   --h-control-* is deliberately NOT touched: 148 call sites including admin. */
-.mcardp-actions .btn { height: var(--tap-min); font-size: 13px; font-weight: 600; min-width: 0; padding: 0 10px; letter-spacing: 0.04em; border-radius: var(--r-md); transition: transform .12s ease-out, box-shadow .16s ease-out, filter .12s; }
+   definition site, so this reads it rather than restating 40.
+   ⚠️ CORRECTED — this comment used to close with "The kit floor at --h-control-* is
+   deliberately NOT touched: 148 call sites including admin." Both halves are now
+   wrong. The kit floor HAS been touched (Phase 3: sm 40 · md 44 · lg 48), and 148
+   was never the real number — it is what a naive grep for literal `btn-*` class
+   strings returns. Measured at HEAD the true count is 333: 192 literal `btn-*`
+   classNames PLUS 141 <Button>/<SubmitButton> tags that resolve through their own
+   defaults (<Button> defaults to size="md"; <SubmitButton> defaults to "lg" and
+   composes its class as `btn-${size}`), so no text search can ever see them. The
+   decision this line was used to justify was taken on roughly half the truth.
+   ⭐ The card is unaffected by that bump either way: `.mcardp-actions .btn` is
+   (0,2,0) against `.btn-md`'s (0,1,0), so these stay pinned at --tap-min (40px)
+   and MARKET_CARD_H does not move. Verify with `npm run qa:card-geometry`. */
+/* `.12s` / `.16s` / `.12s` → `--t-quick` (140): 120 and 160 both land on that one
+   rung, so what looked like two tuned speeds was one. The `filter` leg had a
+   duration and NO easing at all (B5 rule 3 wants the pair stated); neither it nor
+   the shadow travels, so both take `linear`. */
+.mcardp-actions .btn { height: var(--tap-min); font-size: 13px; font-weight: 600; min-width: 0; padding: 0 10px; letter-spacing: 0.04em; border-radius: var(--r-md); transition: transform var(--t-quick) var(--m-glide), box-shadow var(--t-quick) linear, filter var(--t-quick) linear; }
 .mcardp-actions .btn:active:not(:disabled) { transform: translateY(1px) scale(0.96); }
 /* Stats row — single line (no wrap), time + info pinned right. Kept on one line
    so the footer height is identical on every card (a previous double margin-auto
@@ -3453,71 +3523,6 @@ html[data-sheet-open] .route-enter { animation: none; }
    4 · Market detail — calm trading terminal
    --------------------------------------------------------------------------- */
 
-.mterm { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: var(--sp-6); align-items: start; }
-@media (max-width: 880px) { .mterm { grid-template-columns: minmax(0, 1fr); } }
-
-.mterm-main { display: flex; flex-direction: column; gap: var(--sp-5); min-width: 0; }
-.mterm-rail { position: sticky; top: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-4); }
-@media (max-width: 880px) { .mterm-rail { position: static; } }
-
-.tpanel {
-  border-radius: var(--r-lg);
-  border: 1px solid var(--border);
-  background: var(--bg-elevated);
-  box-shadow: var(--shadow-card);
-}
-.tpanel-pad { padding: var(--sp-5); }
-.tpanel-head { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-4) var(--sp-5); border-bottom: 1px solid var(--border); }
-.tpanel-title { font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gilt); }
-
-/* Question header */
-.mterm-q { font-family: var(--font-display); font-size: var(--type-h1); line-height: 1.14; letter-spacing: -0.02em; color: var(--text); text-wrap: balance; }
-.mterm-q-sw { margin-top: 6px; font-size: var(--type-h4); font-style: italic; color: var(--text-subtle); }
-
-/* Big % beside the chart */
-.mterm-hero { display: flex; align-items: baseline; gap: var(--sp-4); flex-wrap: wrap; }
-.mterm-pct { font-family: var(--font-display); font-weight: 800; font-size: var(--type-display-2); line-height: 0.9; letter-spacing: -0.03em; color: var(--yes-300); font-variant-numeric: tabular-nums; }
-.mterm-pct .unit { font-size: 0.5em; color: var(--yes-400); }
-.mterm-pct-cap { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-subtle); }
-
-/* Two-sided pool */
-.pool { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; border-radius: var(--r-md); overflow: hidden; border: 1px solid var(--border); }
-.pool-side { padding: var(--sp-4); display: flex; flex-direction: column; gap: 3px; }
-.pool-yes { background: color-mix(in oklab, var(--yes-500) 12%, var(--bg-elevated)); }
-.pool-no  { background: color-mix(in oklab, var(--no-500)  12%, var(--bg-elevated)); }
-.pool-cap { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; }
-.pool-yes .pool-cap { color: var(--yes-300); }
-.pool-no  .pool-cap { color: var(--no-300); }
-.pool-amt { font-family: var(--font-display); font-weight: 700; font-size: var(--type-h3); font-variant-numeric: tabular-nums; color: var(--text); }
-.pool-sub { font-family: var(--font-mono); font-size: 11px; color: var(--text-subtle); }
-
-/* Bet ticket rail */
-.ticket-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
-.ticket-tab {
-  appearance: none; cursor: pointer;
-  border-radius: var(--r-md); border: 1px solid var(--border);
-  background: var(--bg-overlay); color: var(--text-muted);
-  font-family: var(--font-body); font-weight: 700; font-size: 14px;
-  height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  transition: border-color var(--dur-micro) var(--ease-micro), color var(--dur-micro) var(--ease-micro), background-color var(--dur-micro) var(--ease-micro);
-}
-.ticket-tab .t-pct { font-family: var(--font-mono); font-size: 12px; opacity: 0.8; }
-.ticket-tab.is-yes-active { border-color: color-mix(in oklab, var(--yes-500) 60%, transparent); background: color-mix(in oklab, var(--yes-500) 18%, transparent); color: var(--yes-200); }
-.ticket-tab.is-no-active  { border-color: color-mix(in oklab, var(--no-500)  60%, transparent); background: color-mix(in oklab, var(--no-500)  18%, transparent); color: var(--no-200); }
-
-.ticket-row { display: flex; align-items: center; justify-content: space-between; font-size: 13px; }
-.ticket-row .label { color: var(--text-muted); }
-.ticket-row .val { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--text); }
-.ticket-row .val-gilt { color: var(--gilt); }
-.ticket-quick { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-2); }
-.ticket-chip {
-  appearance: none; cursor: pointer; border-radius: var(--r-sm); border: 1px solid var(--border);
-  background: var(--bg-overlay); color: var(--text-muted);
-  font-family: var(--font-mono); font-size: 11px; font-weight: 600; height: 30px;
-  transition: border-color var(--dur-micro) var(--ease-micro), color var(--dur-micro) var(--ease-micro);
-}
-.ticket-chip:hover { border-color: var(--gilt); color: var(--gilt); background: color-mix(in oklab, var(--gilt) 8%, var(--bg-overlay)); }
-
 /* Position / P&L */
 .pnl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
 .pnl-cell { padding: var(--sp-3); border-radius: var(--r-md); background: var(--bg-overlay); border: 1px solid var(--border); }
@@ -3525,18 +3530,6 @@ html[data-sheet-open] .route-enter { animation: none; }
 .pnl-val { margin-top: 4px; font-family: var(--font-mono); font-weight: 600; font-size: 17px; font-variant-numeric: tabular-nums; color: var(--text); }
 .pnl-val.up { color: var(--yes-300); }
 .pnl-val.down { color: var(--no-300); }
-
-/* Comments slot */
-.comment-slot { display: flex; flex-direction: column; gap: var(--sp-4); }
-.comment { display: flex; gap: var(--sp-3); }
-.comment-body { min-width: 0; }
-.comment-head { display: flex; align-items: center; gap: var(--sp-2); font-size: 12px; }
-.comment-name { font-weight: 600; color: var(--text); }
-.comment-time { font-family: var(--font-mono); font-size: 11px; color: var(--text-subtle); }
-.comment-text { margin-top: 3px; font-size: 13px; line-height: 1.5; color: var(--text-muted); }
-.comment-side { font-family: var(--font-mono); font-size: 10px; padding: 1px 6px; border-radius: var(--r-pill); }
-.comment-side-yes { color: var(--yes-300); background: color-mix(in oklab, var(--yes-500) 16%, transparent); }
-.comment-side-no  { color: var(--no-300);  background: color-mix(in oklab, var(--no-500)  16%, transparent); }
 
 /* Trust strip */
 .trust { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-4); padding: var(--sp-4) var(--sp-5); border-radius: var(--r-md); border: 1px solid var(--border); background: var(--bg-overlay); }
@@ -3552,8 +3545,26 @@ html[data-sheet-open] .route-enter { animation: none; }
 
 /* ── Focus rings ─────────────────────────────────────────────────── */
 /* Single source of truth for the brand focus ring on inputs.         */
-.brand-focus:focus, .brand-focus-within:focus-within { outline: none; border-color: var(--brand-500); box-shadow: 0 0 0 4px oklch(63% 0.18 262 / 0.25); }
-.admin-focus:focus { outline: none; border-color: var(--brand-500); box-shadow: 0 0 0 4px oklch(63% 0.18 262 / 0.25); }
+/* E-129 — see the note above `.input:focus`. Both rules wrote `outline: none`, so in
+   forced-colors mode every kit field in the product (Input · Textarea · PasswordInput ·
+   OtpInput · Select · DateSelect · TimeSelect · DurationInput all carry `.brand-focus`
+   or `.brand-focus-within`) and every admin field lost its ring entirely. */
+.brand-focus:focus, .brand-focus-within:focus-within { outline: 2px solid transparent; outline-offset: 2px; border-color: var(--brand-500); box-shadow: 0 0 0 4px oklch(63% 0.18 262 / 0.25); }
+/* ⚠️ `:focus-visible`, NOT `:focus` — corrected here. As `:focus` this fired on a MOUSE
+   click too, so clicking an admin filter chip or a Reset link left a 4px ring behind it.
+   Every one of the 45 call sites is a native <input>/<textarea>/<button>/<a>, and a text
+   field matches `:focus-visible` on pointer focus anyway (the browser knows it takes
+   keyboard input), so nothing that legitimately showed a ring loses one — only the
+   buttons and links stop ringing on click, which is the point. */
+.admin-focus:focus-visible { outline: 2px solid transparent; outline-offset: 2px; border-color: var(--brand-500); box-shadow: 0 0 0 4px oklch(63% 0.18 262 / 0.25); }
+/* ⛔ THE STACKING GUARD. `.admin-focus` lands on a `.btn` at five sites
+   (admin/transactions 111/202/203, ui/datetime-range-filter 142/145). Both rules are
+   (0,2,0) and this file emits `.btn:focus-visible` ~2,800 lines earlier, so the LATER
+   one wins — which is how `outline: none` used to strip the kit's own brand ring off
+   those five buttons. A transparent outline would strip it just as thoroughly, so the
+   combined selector (0,3,0) restores §A3's ring byte-for-byte. Keep this rule adjacent
+   to the one above; separated, the reason for it is unrecoverable. */
+.btn.admin-focus:focus-visible { outline-color: var(--brand-500); }
 
 /* ── Admin tables ─────────────────────────────────────────────────── */
 /* Consistent padding, breathing room, and border treatment for every
@@ -3563,7 +3574,10 @@ html[data-sheet-open] .route-enter { animation: none; }
 .admin-tbl thead { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-subtle); background: var(--bg-overlay); border-bottom: 1px solid var(--border); }
 .admin-tbl th { padding: 10px 16px; font-weight: 500; white-space: nowrap; }
 .admin-tbl td { padding: 12px 16px; vertical-align: middle; }
-.admin-tbl tbody tr { border-bottom: 1px solid color-mix(in oklab, var(--border) 50%, transparent); transition: background 120ms; }
+/* ⚠️ This transition had a duration and NO easing at all — B5 rule 3 wants the pair
+   stated, and an omitted timing function silently means `ease`. 120ms → `--t-quick`
+   (140); a row-background change travels nowhere, so `linear`. */
+.admin-tbl tbody tr { border-bottom: 1px solid color-mix(in oklab, var(--border) 50%, transparent); transition: background var(--t-quick) linear; }
 .admin-tbl tbody tr:last-child { border-bottom: none; }
 .admin-tbl tbody tr:hover { background: color-mix(in oklab, var(--bg-overlay) 50%, transparent); }
 .admin-tbl tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--brand-500); }
@@ -3587,8 +3601,11 @@ textarea::-webkit-resizer {
    =========================================================================== */
 ::view-transition-old(root),
 ::view-transition-new(root) {
-  animation-duration: 180ms;
-  animation-timing-function: var(--ease-glide);
+  /* 180ms → `--t-quick` (140), the rung it sits on. ⚠️ This cross-fade is the
+     NATIVE half of the same route entrance `.route-enter` renders elsewhere, so the
+     two must not drift; both now read tokens rather than one reading a literal. */
+  animation-duration: var(--t-quick);
+  animation-timing-function: var(--m-glide);
 }
 ::view-transition-old(root) {
   animation-name: vt-fade-out;
@@ -3741,18 +3758,41 @@ textarea::-webkit-resizer {
    `A.padding-bottom + B.padding-top` — the tokens' own comment in §Spacing says so, and warns
    that ALSO writing a margin double-counts it. The kit's landing rhythm, top to bottom:
 
-     hero            pad  96 / 96      (--rh-section each side)
-     how it works    pad  48 / 48      -> gap before = 96 + 48 = 144   CHAPTER (+ surface change)
-     pick a side     pad  48 / 48      -> gap before = 48 + 48 =  96   new idea
-       browse topics  internal 48                                       (--rh-close, same surface)
-     up and down     pad  48 / 96      -> gap before = 48 + 48 =  96   new idea
-     why trusted     pad  48 / 96      -> gap before = 96 + 48 = 144   CHAPTER
-     footer                            -> continuous with the trust surface
+     ⚠️ RE-DERIVED FROM THE SHIPPED RULES, 2026-08-21, at both rungs — --rh-close and
+     --rh-section now each step down below 768 (§Spacing). Paddings, per band:
 
-   Observed section gaps: 144 · 96 · 96 · 144, plus one internal 48. At <=1024 the scale
-   compresses because the section padding steps down one rung. Two tinted `--bg-overlay` bands,
-   both at a chapter break, both edged `--claret-edge` — the heraldic thread the footer's claret
-   rule already carries, now running through the page.
+       band              ≤767      ≥768     source
+       hero             48 / 48   64 / 64   --sp-12 / --sp-16 — NOT --rh-*, see (a)
+       how it works     32 / 32   48 / 48   --rh-close  (--tight)
+       pick a side      32 / 32   48 / 48   --rh-close  (--tight)
+         browse topics   int 32    int 48   --rh-close, same surface
+       up and down      32 / 64   48 / 96   --rh-close top, --rh-section bottom (--closes)
+       why trusted      32 / 64   48 / 96   ditto — but 96 / 96 at ≥1024, see (b)
+       footer                               continuous with the trust surface
+
+     OBSERVED gaps, i.e. the sum of the two paddings that meet at each seam:
+
+       seam                      ≤767   768–1023   ≥1024
+       hero → how it works         80       112      112
+       how → pick a side           64        96       96
+       pick a side → up & down     64        96       96
+       up & down → why trusted     96       144      192   CHAPTER
+       why trusted → RG rule       64        96       96
+       RG rule → RG content        32        48       48
+
+   ⚠️ TWO ROWS OF THE ORIGINAL KIT TABLE WERE NEVER TRUE OF THE SHIPPED PAGE. They are corrected
+   above rather than deleted, so that a future reader does not "restore" them:
+     (a) the hero was documented as "pad 96 / 96 (--rh-section each side)", which is what made the
+         first chapter gap read as 144. `.kp-hero__inner` does not consume --rh-* at all — it pads
+         --sp-12 / --sp-16 — so that seam has always been 96 (now 80) at phone and 112 at desktop.
+     (b) `.kp-band--seam` (the trust band) carries --closes but NOT --tight, so at ≥1024 the base
+         `.kp-band { padding-block: var(--rh-section) }` gives it a 96 TOP too, making the chapter
+         gap 192 there rather than the documented 144.
+   Both are PRE-EXISTING and both are design calls, not session calls — correcting either moves the
+   top or the middle of the desktop landing page visibly. Recorded, deliberately not "fixed".
+
+   Two tinted `--bg-overlay` bands, both at a chapter break, both edged `--claret-edge` — the
+   heraldic thread the footer's claret rule already carries, now running through the page.
    ========================================================================================= */
 
 /* ── the band: a full-bleed surface that owns its own vertical padding ───────────────────── */
@@ -3774,12 +3814,19 @@ textarea::-webkit-resizer {
    edge would draw a rule a section's-worth above the footer's own claret rule. It keeps its top
    edge only, and the footer's rule closes the act. */
 .kp-band--seam { border-bottom: 0; }
-/* §4 and §5 close their act with a full section of air below them (the 48 / 96 pairs). */
+/* §4 and §5 close their act with a full section of air below them — the `--rh-close` /
+   `--rh-section` pairs in the table above, at whichever rung the width is on.
+   ⭐ DECLARED OUTSIDE ANY MEDIA QUERY, at every width — which is why the phone step-down had to
+   happen on the TOKEN (§Spacing). This one line is what put an unscaled 96px under two bands at
+   360; it now resolves to 64 there and 96 from 768 up, with no rule change here. */
 .kp-band--closes { padding-bottom: var(--rh-section); }
 @media (min-width: 1024px) {
   .kp-band { padding-block: var(--rh-section); }
   .kp-band--tight { padding-block: var(--rh-close); }
-  .kp-band--closes { padding-bottom: var(--rh-section); }
+  /* ⛔ NO `.kp-band--closes` HERE — deleted 2026-08-21. It was a byte-identical duplicate of the
+     unconditional declaration above, with zero cascade effect, and its only real consequence was
+     to make that declaration READ as desktop-scoped at a glance. That misreading is plausibly how
+     96px survived at 360 for as long as it did. */
 }
 
 /* ── section head: eyebrow + heading + optional right-aligned link ────────────────────────── */
@@ -3942,7 +3989,15 @@ textarea::-webkit-resizer {
   height: 2px;
   background: var(--bar-fill-yes);
   opacity: 0.6;
-  transition: width var(--t-move) var(--m-glide), opacity var(--t-quick) ease-out;
+  /* ⚠️ A `width` TRANSITION, AND THE BEST `scaleX` CANDIDATE IN THE FILE — flat
+     2px, no radius, no glow, anchored `left: 0`, so `transform-origin: left` would
+     be visually identical and composited. It is NOT converted here for one reason
+     only: the width is written inline by `home/topic-tiles.tsx`
+     (`style={{ width: `${tp.leanYesPct}%` }}`), so the CSS half cannot move without
+     the component half, and that file is not this pass's to edit. The two changes
+     have to land together or the bar stops drawing the crowd's lean at all.
+     `ease-out` → `linear`: an opacity fade travels nowhere. */
+  transition: width var(--t-move) var(--m-glide), opacity var(--t-quick) linear;
 }
 .kp-topic:hover .kp-topic__lean { opacity: 1; }
 
@@ -4080,11 +4135,14 @@ textarea::-webkit-resizer {
    for compliance sign-off. It is one deletion if refused.
 
    ⭐ NO `margin-top` HERE — batch 4. It used to carry `margin-top: var(--rh-close)` ON TOP of the
-   trust band's own `.kp-band--closes` padding-bottom (96px), which is precisely the double-count
-   the `--rh-*` tokens' comment at the top of this file warns about: 96 + 48 = **144px of blank
+   trust band's own `.kp-band--closes` padding-bottom, which is precisely the double-count the
+   `--rh-*` tokens' comment at the top of this file warns about: 96 + 48 = **144px of blank
    measured** above a one-line strip, at all 12 width×locale combinations. The gap above this rule
-   is now the trust band's `--rh-section` and nothing else — ONE definition, one token, identical at
-   every width. ⛔ Do not add a margin here; if this seam ever needs a different gap, change the
+   is now the trust band's `--rh-section` and nothing else — ONE definition, one token.
+   ⚠️ This paragraph used to end "identical at every width", and that clause is DELETED, not
+   softened: since 2026-08-21 `--rh-section` has two rungs (64 at ≤767, 96 from 768 — see §Spacing),
+   so the seam is 64 on a phone and 96 above it. What is identical at every width is that ONE token
+   defines it. ⛔ Do not add a margin here; if this seam ever needs a different gap, change the
    band's padding, not both. */
 .kp-rg {
   display: flex;
@@ -4234,13 +4292,21 @@ textarea::-webkit-resizer {
   to   { opacity: 1; }
 }
 
-/* The four hero steps. Only ever applied under `.js`, so no-JS renders them at rest. */
+/* The four hero steps. Only ever applied under `.js`, so no-JS renders them at rest.
+   ⭐ ON `--m-stagger` 2026-08-21. The delays were a hand-tuned 0 / 80 / 150 / 210 —
+   a DECELERATING cascade (gaps of 80, 70, 60), which is a real design idea and also
+   the only stagger in the product that had one. The block above says the delay is
+   what a call site may vary; it may vary WHICH rung, not invent a scale. The step is
+   now `--m-stagger` (40ms), four steps, exactly as `.market-grid` and `.seal-cascade`
+   count. ⚠️ The cascade shortens 210ms → 120ms and loses its deceleration; the old
+   figures are written here so the choice can be re-taken deliberately rather than
+   rediscovered. The 4-item cap was already correct and is unchanged. */
 .js .kp-hero__inner > *:nth-child(1) { animation: kp-rise var(--t-move) var(--m-glide) 0ms both; }
-.js .kp-hero__inner > *:nth-child(2) { animation: kp-rise var(--t-move) var(--m-glide) 80ms both; }
-.js .kp-hero__inner > *:nth-child(3) { animation: kp-rise var(--t-move) var(--m-glide) 150ms both; }
-.js .kp-hero__inner > *:nth-child(4) { animation: kp-rise var(--t-move) var(--m-glide) 210ms both; }
+.js .kp-hero__inner > *:nth-child(2) { animation: kp-rise var(--t-move) var(--m-glide) calc(var(--m-stagger) * 1) both; }
+.js .kp-hero__inner > *:nth-child(3) { animation: kp-rise var(--t-move) var(--m-glide) calc(var(--m-stagger) * 2) both; }
+.js .kp-hero__inner > *:nth-child(4) { animation: kp-rise var(--t-move) var(--m-glide) calc(var(--m-stagger) * 3) both; }
 /* Anything after the fourth block rises with it rather than extending the budget. */
-.js .kp-hero__inner > *:nth-child(n+5) { animation: kp-rise var(--t-move) var(--m-glide) 210ms both; }
+.js .kp-hero__inner > *:nth-child(n+5) { animation: kp-rise var(--t-move) var(--m-glide) calc(var(--m-stagger) * 3) both; }
 .js .app-topbar { animation: kp-fade var(--t-base) linear 0ms both; }
 
 /* Below the fold: revealed on first intersection by `section-reveal.tsx`, which sets

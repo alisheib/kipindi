@@ -15,9 +15,12 @@ import {
   type Candidate,
   type CandidateState,
 } from "@/lib/server/market-candidate";
+import { candidateStateLabel } from "@/components/admin/status-badge";
 import { CandidateActions } from "./candidate-actions";
 import { CandidateFilterToolbar } from "./candidate-filters";
 import { resolveRange } from "@/lib/server/date-range";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Market candidates" };
 export const dynamic = "force-dynamic";
@@ -132,8 +135,8 @@ export default async function AdminCandidatesPage({
         title="Market candidates"
         sw="Mapendekezo ya soko · AI-validated"
       />
-      <div className="px-4 lg:px-6 py-5 space-y-4">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <AdminBody>
+        <KpiGrid>
           <AdminKpi
             label="Pending review"
             sw="Inasubiri ukaguzi"
@@ -163,7 +166,7 @@ export default async function AdminCandidatesPage({
             unavailable={spendFailed}
             delta={`${spend.runCount} runs · ${(spend.dailyTokens / 1000).toFixed(1)}k tokens`}
           />
-        </div>
+        </KpiGrid>
 
         <AdminCard>
           <div className="flex items-start gap-3">
@@ -257,7 +260,9 @@ export default async function AdminCandidatesPage({
           </div>
           {pageItems.length === 0 ? (
             <div className="px-4 lg:px-5 py-12 flex flex-col items-center gap-3 text-center">
-              <div className="h-10 w-10 rounded-pill bg-bg-overlay flex items-center justify-center">
+              {/* ⚠️ LITERALS, not `h-10 w-10` (80px on the overridden scale). Twin of
+                  admin/ai-polls/page.tsx's empty-state medallion. */}
+              <div className="h-[40px] w-[40px] rounded-pill bg-bg-overlay flex items-center justify-center">
                 {hasFilters
                   ? <I.search size={18} className="text-text-subtle" />
                   : <I.brain size={18} className="text-text-subtle" />}
@@ -291,7 +296,7 @@ export default async function AdminCandidatesPage({
                   <tbody className="text-text-muted">
                     {pageItems.map((c) => (
                       <tr key={c.id} className="border-b border-border/60 last:border-b-0 hover:bg-bg-overlay/50">
-                        <td className="p-3"><Chip size="sm" variant={STATE_VARIANT[c.state]}>{c.state}</Chip></td>
+                        <td className="p-3"><Chip size="sm" variant={STATE_VARIANT[c.state]}>{candidateStateLabel(c.state)}</Chip></td>
                         <td className="p-3 font-mono uppercase tracking-[0.12em] text-[10px]">{c.category}</td>
                         <td className="p-3 text-text max-w-[420px] truncate">{c.proposedTitleEn}</td>
                         <td className="p-3 font-mono tabular-nums text-right">
@@ -313,7 +318,7 @@ export default async function AdminCandidatesPage({
             </>
           )}
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }
@@ -379,8 +384,11 @@ function FilterToolbarSkeleton() {
   return (
     <div className="space-y-3 animate-pulse">
       <div className="flex items-center gap-3">
-        <div className="h-9 flex-1 max-w-[420px] rounded-md bg-bg-overlay" />
-        <div className="h-9 w-[80px] rounded-pill bg-bg-overlay" />
+        {/* ⚠️ LITERALS, not `h-9` (64px on the overridden scale). The live admin filter rail
+            is 32px (--h-control-xs), and a skeleton must be the size of what it replaces.
+            Verbatim twin of admin/ai-polls/page.tsx's FilterToolbarSkeleton. */}
+        <div className="h-[32px] flex-1 max-w-[420px] rounded-md bg-bg-overlay" />
+        <div className="h-[32px] w-[80px] rounded-pill bg-bg-overlay" />
       </div>
       <div className="flex items-center gap-2">
         {Array.from({ length: 5 }).map((_, i) => (
@@ -413,7 +421,7 @@ function CandidateRow({
     <div className="px-4 lg:px-5 py-4 flex items-start gap-4">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
-          <Chip size="sm" variant={STATE_VARIANT[c.state]}>{c.state}</Chip>
+          <Chip size="sm" variant={STATE_VARIANT[c.state]}>{candidateStateLabel(c.state)}</Chip>
           <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{c.category}</span>
           <span className="font-mono text-[10.5px] tabular-nums text-text-muted">
             <I.shieldAlert size={10} className="inline -mt-0.5 mr-0.5" />

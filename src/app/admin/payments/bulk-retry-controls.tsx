@@ -16,7 +16,6 @@ export function BulkRetryControls() {
   // than being offered a button the server will refuse (and logged as a privilege
   // escalation for pressing it). See docs/ADMIN-CONSOLE-FINDINGS.md.
   const mayAct = useMayAct();
-  if (!mayAct) return <ActReadOnly />;
 
   const [pending, start] = useTransition();
   const [confirm, setConfirm] = useState(false);
@@ -27,6 +26,11 @@ export function BulkRetryControls() {
   // exactly the primitive for a long money operation: blocks double-clicks,
   // shows progress, ends in an unambiguous result card.
   const overlay = useActionOverlay();
+
+  // Rules of hooks: read the gate as a hook at the top, ACT on it below every other hook.
+  // Revoking an ACT grant mid-session flips `mayAct` on the next router.refresh(); an early
+  // return above these hooks would render fewer hooks than the last pass and crash the page.
+  if (!mayAct) return <ActReadOnly />;
 
   const run = () => {
     overlay.run("Retrying all failed payments…", "Up to 50 gateway calls — this can take a minute. Don't navigate away.");

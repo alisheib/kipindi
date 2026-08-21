@@ -11,6 +11,8 @@ import { getCampaignDetail } from "@/lib/server/invite-service";
 import { smsConfigured } from "@/lib/server/sms";
 import { formatTzs, formatDateShort } from "@/lib/utils";
 import { CampaignControls } from "../invite-admin-client";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Campaign · Admin" };
 export const dynamic = "force-dynamic";
@@ -43,17 +45,17 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
         sw={`Code ${campaign.code}`}
         actions={<Chip size="sm" variant={STATUS_CHIP[campaign.status] ?? "paused"}>{campaign.status.toLowerCase()}</Chip>}
       />
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         <Link href={"/admin/invites" as Route} className="inline-flex items-center gap-1 text-caption text-text-tertiary hover:text-text transition-colors">
           <I.chevronLeft s={13} /> All campaigns
         </Link>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiGrid>
           <AdminKpi label="Bonus per invitee" sw="Bonasi" value={formatTzs(campaign.bonusAmountTzs)} delta={`${campaign.wagerMultiplier}× wagering`} deltaDir="flat" />
           <AdminKpi label="Invited" sw="Walioalikwa" value={campaign.totalInvites.toLocaleString()} delta={`${queued} queued`} deltaDir="flat" />
           <AdminKpi label="Registered" sw="Waliojiunga" value={campaign.totalRegistered.toLocaleString()} delta={`${counts.SENT ?? 0} sent`} deltaDir="flat" />
           <AdminKpi label="Expiry" sw="Muda" value={`${campaign.expiresInDays}d`} delta="bonus validity" deltaDir="flat" />
-        </div>
+        </KpiGrid>
 
         {!smsLive && queuedPhone > 0 && (
           <div className="flex items-start gap-2.5 rounded-lg border border-warning-fg/40 bg-warning/10 px-3.5 py-3 text-[12.5px] text-text-muted">
@@ -108,7 +110,7 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
             </>
           )}
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

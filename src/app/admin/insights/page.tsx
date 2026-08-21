@@ -22,6 +22,8 @@ import { categoryBreakdown } from "@/lib/server/report-money";
 import { formatTzs, formatNumber } from "@/lib/utils";
 // E-103 · one rule for the share beside a funnel stage, and for the bar width.
 import { funnelShares, stagesAreNested } from "@/lib/funnel-share";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Insights" };
 export const dynamic = "force-dynamic";
@@ -74,14 +76,14 @@ export default async function InsightsPage() {
     <>
       <AdminPageHead title="Insights" sw="Maarifa" />
 
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         {/* Headline KPIs — all real, all derived from the ledger. */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiGrid>
           <AdminKpi label="Players" sw="Wachezaji" value={formatNumber(totals.players)} spark={false} />
           <AdminKpi label="Have bet" sw="Wamecheza" value={formatNumber(totals.bettors)} spark={false} />
           <AdminKpi label="Lifetime GGR" sw="GGR ya jumla" value={formatTzs(totals.ltvTotal)} gold spark={false} />
           <AdminKpi label="GGR per player" sw="GGR kwa mchezaji" value={formatTzs(totals.ltvPerPlayer)} spark={false} />
-        </div>
+        </KpiGrid>
 
         {/* Funnel — 4 REAL stages. The missing 5th is called out, not hidden. */}
         <AdminCard title="Acquisition funnel" sw="Njia ya usajili">
@@ -209,7 +211,7 @@ export default async function InsightsPage() {
           Registered players: {formatNumber(registered)} · computed {data.cached ? "from a ≤60s cache" : "live"} at{" "}
           {new Date(data.generatedAt).toISOString().replace("T", " ").slice(0, 19)} UTC.
         </p>
-      </div>
+      </AdminBody>
     </>
   );
 }

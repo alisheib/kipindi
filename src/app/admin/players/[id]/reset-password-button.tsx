@@ -13,12 +13,18 @@ export function ResetPasswordButton({ userId }: { userId: string }) {
   // than being offered a button the server will refuse (and logged as a privilege
   // escalation for pressing it). See docs/ADMIN-CONSOLE-FINDINGS.md.
   const mayAct = useMayAct();
-  if (!mayAct) return <ActReadOnly />;
 
   const [result, setResult] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const overlay = useActionOverlay();
   const { toast } = useToast();
+
+  // Rules of hooks: read the gate as a hook at the top, ACT on it below every other hook.
+  // Revoking an ACT grant mid-session flips `mayAct` on the next router.refresh(); an early
+  // return above these hooks would render fewer hooks than the last pass and crash the page.
+  // ⛔ It also has to sit ABOVE the `if (result)` panel below, so a viewer downgraded to
+  // read-only mid-ceremony is never shown the temporary password.
+  if (!mayAct) return <ActReadOnly />;
 
   const reset = () => {
     if (pending) return;

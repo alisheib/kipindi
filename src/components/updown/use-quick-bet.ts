@@ -5,12 +5,14 @@ import { useToast } from "@/components/ui/toast";
 import { buyPositionAction } from "@/app/markets/actions";
 import { formatTzs } from "@/lib/utils";
 import { haptics } from "@/lib/haptics";
+// §F8 · how long the success toast stands, from the ONE module that owns dwell times.
+import { DWELL_BET_PLACED_MS } from "@/lib/feedback-timing";
 import { quickStakes, parseStake, insufficientFor } from "./stake-math";
 // UD-4 · the ONE code→copy map, shared by every bet surface. The server string is
 // audit truth; the player reads the dictionary.
 import { udBetErrorCopy, type UdBetFailure } from "./updown-bet-errors";
 // UD-2 · the server-anchored clock, the same one the card's phase runs on.
-import { useServerNow } from "./round-countdown";
+import { useServerNowGated } from "@/lib/use-shared-second";
 
 // Re-exported so existing importers of these helpers keep working.
 export { quickStakes, parseStake } from "./stake-math";
@@ -219,7 +221,17 @@ export function useUpDownQuickBet(opts: {
   // A tap that cannot succeed must never look like a placed bet: these gates refuse
   // BEFORE the optimistic apply and before any network call. They are UX only —
   // `buyPosition` re-validates every one of them — exactly like `stake-math`'s bounds.
-  const serverNow = useServerNow(opts.serverNowMs);
+  // ⭐ GATED, because this hook is called unconditionally by EVERY UpDownCard on the board.
+  // It reads the clock to derive ONE boolean — has the selection window shut — and an
+  // ungated `useServerNow` returns a new number every second, so every card on the board
+  // re-rendered once a second for a value that changes ONCE per round. That single line was
+  // the last per-second whole-card render left after the ticker consolidation.
+  // The key IS the boolean, so a render is requested only on the flip.
+  const closesAt = opts.selectionClosesAtMs;
+  const serverNow = useServerNowGated(
+    opts.serverNowMs,
+    (nowMs) => (closesAt != null && nowMs >= closesAt ? "shut" : "open"),
+  );
   /** The lock has passed on the server-anchored clock — betting is over on this round. */
   const lockPassed =
     opts.selectionClosesAtMs != null && serverNow != null && serverNow >= opts.selectionClosesAtMs;
@@ -373,7 +385,13 @@ export function useUpDownQuickBet(opts: {
             title: copy.placed,
             description: `${side === "UP" ? copy.up : copy.down} · ${formatTzs(amount)}`,
             variant: "success",
-            durationMs: 3000,
+            // §F8 · the dwell is named, not typed. The value is unchanged (3s — Ali:
+            // "keep placing bets popups normal"); what changed is that it is now filed
+            // beside the dwells it has to be read against instead of sitting here as a
+            // bare number. ⚠️ `feedback-law` rule 9.8 pins this value — it must read the
+            // constant from `feedback-timing.ts` the way rules 9.0–9.4 already do,
+            // rather than grepping this file for the literal.
+            durationMs: DWELL_BET_PLACED_MS,
           });
           // Named token from the central vocabulary (respects the master switch,
           // per-token prefs and reduced-motion) — not a raw navigator.vibrate.

@@ -96,9 +96,14 @@ export async function withdrawAction(formData: FormData) {
     redirect(("/wallet/withdraw?error=" + encodeURIComponent(t.wallet.amountHint) + carryParams) as never);
   }
   // The payee mobile number is where the money is sent — required for every
-  // (mobile-money) payout. A clean message here; the exact format is validated
-  // by the WithdrawSchema (tzPhone) inside withdraw().
-  if (!msisdn) redirect(("/wallet/withdraw?error=" + encodeURIComponent(t.wallet.destinationPhone) + carryParams) as never);
+  // (mobile-money) payout. The exact format is validated by the WithdrawSchema
+  // (tzPhone) inside withdraw().
+  // ⚠️ ONE RULE, ONE SENTENCE. This used to refuse with `t.wallet.destinationPhone`,
+  // which is the FIELD LABEL ("Destination phone") — a noun where §F4 wants a reason
+  // and a next step. Now that `WithdrawConfirm.validate()` refuses the same input on
+  // the client, the two surfaces would have stated one rule two ways: a player who
+  // beat the client guard would read a different sentence than the one who did not.
+  if (!msisdn) redirect(("/wallet/withdraw?error=" + encodeURIComponent(t.wallet.payeeMsisdnRequired) + carryParams) as never);
   const idempotencyKey = formData.get("idempotencyKey") ? String(formData.get("idempotencyKey")) : undefined;
   const result = await withdraw(session.userId, {
     provider,

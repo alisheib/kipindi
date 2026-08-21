@@ -10,6 +10,7 @@ import { Tabs } from "@/components/ui/tabs";
 import { Pagination } from "@/components/ui/pagination";
 import type { Transaction } from "@/lib/ui-stubs";
 import { Cash } from "@/components/ui/cash";
+import { Stat } from "@/components/ui/stat";
 import { CashbackPromo } from "@/components/ui/cashback-promo";
 import { PaymentLogo } from "@/components/wallet/payment-logo";
 import { formatDateTimeSafe, formatTzs, formatNumber } from "@/lib/utils";
@@ -68,10 +69,14 @@ function BalanceCard({
           <I.wallet s={13} />
           <p className="font-mono text-[10.5px] uppercase tracking-[0.16em] font-bold">{t.common.available2}</p>
         </div>
+        {/* ⛔ §M4 — MONEY IS MONO, TABULAR AND NEVER LETTER-SPACED. This figure carried
+            `tracking-[-0.02em]`: negative tracking on a 38px grouped TZS numeral pulls the
+            digits toward the thousands separators, which is precisely the reading the
+            tabular face exists to prevent. The tightening is gone; nothing else moves. */}
         <p
           data-testid="wallet-balance"
           data-balance={balance}
-          className="mt-1.5 font-mono text-[38px] font-bold tabular-nums text-text leading-none tracking-[-0.02em]"
+          className="mt-1.5 font-mono text-[38px] font-bold tabular-nums text-text leading-none"
         >
           <Cash>{formatTzs(balance)}</Cash>
         </p>
@@ -84,9 +89,16 @@ function BalanceCard({
             {t.common.addFunds}
           </Link>
         )}
+        {/* ⭐ Stage 9b — the local `SubStat` is DELETED; this is the kit `<Stat>`.
+            `size="sm"` + `labelStyle="faint"` + `boxed="inset"` are that dialect's own
+            metrics, catalogued in stat.tsx by name, so the box, the 9.5px/0.10em faint
+            label and the 14px mono value are unchanged to the pixel. `money` is what the
+            fork was missing a route to: it puts the figure through <Cash> (balance
+            privacy) AND clamps it to mono/tabular/no-tracking per §M4, so no future
+            caller can reach a tracked or display-face money numeral here. */}
         <div className="mt-5 grid grid-cols-2 gap-3">
-          <SubStat label={t.common.pending} value={formatTzs(pending)} />
-          <SubStat label={t.common.onHold}  value={formatTzs(hold)} hint={hold > 0 ? t.common.pendingHoldHint : undefined} />
+          <Stat size="sm" labelStyle="faint" boxed="inset" money label={t.common.pending} value={formatTzs(pending)} />
+          <Stat size="sm" labelStyle="faint" boxed="inset" money label={t.common.onHold} value={formatTzs(hold)} hint={hold > 0 ? t.common.pendingHoldHint : undefined} />
         </div>
       </div>
     </section>
@@ -156,10 +168,13 @@ function BonusWalletCard({
           </span>
         </div>
 
+        {/* ⛔ §M4 — same rule as the main balance above: the `tracking-[-0.02em]` is gone.
+            Money is never letter-spaced, and the two wallet headline figures must not
+            disagree about it while sitting side by side on one page. */}
         <p
           data-testid="bonus-balance"
           data-bonus={bonusBalance}
-          className="mt-1.5 font-mono text-[38px] font-bold tabular-nums text-text leading-none tracking-[-0.02em]"
+          className="mt-1.5 font-mono text-[38px] font-bold tabular-nums text-text leading-none"
         >
           <Cash>{formatTzs(bonusBalance)}</Cash>
         </p>
@@ -173,9 +188,34 @@ function BonusWalletCard({
                 </p>
                 <p className="font-mono text-[12px] font-bold text-text tabular-nums">{overallPct}%</p>
               </div>
+              {/* THE UNLOCK FILL SCALES; IT DOES NOT WIDEN. `transition-[width]` animated a
+                  LAYOUT property for 500ms every time the wagering figure moved — on the
+                  wallet, which refreshes after every settled bet. `transform: scaleX()` is
+                  the same picture on the compositor. Model: `.admin-bar-grow`
+                  (state-tokens.css).
+                  ⭐ `.prog-sweep` COMPOSES WITH THE SCALE — checked, not assumed. Its
+                  `::after` is `inset: 0` of this fill and travels in percentages of its OWN
+                  width, so under `width: p%` it was a p·W band crossing p·W, and under a
+                  full-width box scaled by p it is a W band crossing W, scaled by p. The two
+                  are the same sweep on screen. The `::after` also keeps its own three
+                  reduced-motion branches (globals.css) untouched — including the entry in
+                  the §6 `[data-motion="reduced"]` list, which it needs because it is
+                  `infinite` and this transition is not.
+                  ⭐ The gradient reads identically too: a `90deg` ramp is laid out across
+                  the element's own box, so `width: p%` compressed the whole gold → yes ramp
+                  into the drawn length, and a scaled full-width box compresses exactly the
+                  same ramp. (That is why this is scaleX and not a translate, which would
+                  have shown a SLICE of the ramp instead.)
+                  ⚠️ The cap, stated: scaleX squashes this element's 5px radius
+                  horizontally. The track is `rounded-pill overflow-hidden`, so both visible
+                  OUTER ends keep their shape and only the moving right edge flattens. No
+                  child, no label — nothing can be squashed into a distorted word.
+                  §M6 · no new branch is owed: motion.css's universal clamp already zeroes
+                  `transition-duration` under the OS query, `html.kp-reduce-motion` and
+                  `[data-motion="minimal"]`, exactly as it did for the width transition. */}
               <div className="h-2.5 w-full rounded-pill overflow-hidden bg-bg-sunken/70">
-                <div className={`h-full rounded-pill transition-[width] duration-500 ${overallPct > 0 && overallPct < 100 ? "prog-sweep" : ""}`}
-                  style={{ width: `${overallPct}%`, background: "linear-gradient(90deg, var(--gold-500), var(--yes-400))" }} />
+                <div className={`h-full w-full origin-left rounded-pill transition-transform duration-500 ${overallPct > 0 && overallPct < 100 ? "prog-sweep" : ""}`}
+                  style={{ transform: `scaleX(${overallPct / 100})`, background: "linear-gradient(90deg, var(--gold-500), var(--yes-400))" }} />
               </div>
               {totalRemainingWager > 0 && (
                 <p className="mt-2 text-[12px] text-gold-100/90">
@@ -195,7 +235,7 @@ function BonusWalletCard({
                         <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-gold-200/80 flex items-center gap-1.5">
                           {BONUS_SOURCE_LABEL[g.source] ?? g.source}
                           {isQueued && (
-                            <span className="inline-flex items-center rounded-pill px-1.5 py-px text-[8px] font-bold bg-warning-bg/40 border border-warning-border text-warning-fg">
+                            <span className="inline-flex items-center rounded-pill px-1.5 py-px text-[8px] font-bold bg-warning-bg border border-warning-border text-warning-fg">
                               {t.common.queued}
                             </span>
                           )}
@@ -208,8 +248,17 @@ function BonusWalletCard({
                         </p>
                       ) : (
                         <>
+                          {/* The per-grant fill takes the SAME technique as the overall bar
+                              above — one panel must not hold two ways of drawing one thing.
+                              ⚠️ Honest scope: this one never had a transition, so the swap
+                              buys no animation frames. What it removes is the LAYOUT that a
+                              percentage width forces on every wallet refresh, once per
+                              listed grant. `.prog-sweep` and the solid `--gold-400` compose
+                              with the scale exactly as described above; there is no gradient
+                              and no child here, and the 3px radius on this 6px bar means the
+                              moving edge's squash is sub-pixel. */}
                           <div className="mt-1.5 h-1.5 w-full rounded-pill overflow-hidden bg-bg-sunken/70">
-                            <div className={`h-full rounded-pill ${g.progressPct > 0 && g.progressPct < 100 ? "prog-sweep" : ""}`} style={{ width: `${g.progressPct}%`, background: "var(--gold-400)" }} />
+                            <div className={`h-full w-full origin-left rounded-pill ${g.progressPct > 0 && g.progressPct < 100 ? "prog-sweep" : ""}`} style={{ transform: `scaleX(${g.progressPct / 100})`, background: "var(--gold-400)" }} />
                           </div>
                           <div className="mt-1 flex items-center justify-between font-mono text-[9.5px] text-gold-200/55">
                             <span>{formatTzs(g.wageredTzs)} / {formatTzs(g.wagerRequiredTzs)} {t.common.played}</span>
@@ -239,16 +288,6 @@ function BonusWalletCard({
         )}
       </div>
     </section>
-  );
-}
-
-function SubStat({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <div className="rounded-md border border-border/60 bg-bg-overlay/40 px-3 py-2.5 backdrop-blur-md">
-      <p className="font-mono text-[9.5px] uppercase tracking-[0.10em] text-text-faint">{label}</p>
-      <p className="font-mono font-bold text-[14px] tabular-nums text-text leading-tight"><Cash>{value}</Cash></p>
-      {hint && <p className="mt-0.5 text-[9.5px] text-text-faint">{hint}</p>}
-    </div>
   );
 }
 
@@ -555,7 +594,10 @@ export function WalletPageClient({
                 <Link
                   key={o}
                   href="/profile/responsible-gambling"
-                  className="inline-flex h-8 items-center px-3 rounded-pill border border-border bg-bg-overlay font-mono text-[11.5px] font-semibold text-text-muted hover:text-text hover:border-no-700 transition-colors"
+                  /* ⚠️ LITERAL, not `h-8` — the spacing scale is overridden
+                     (tailwind.config.ts:200-215) so `h-8` is 48px, 8px above the
+                     40px chip language every other rail speaks. */
+                  className="inline-flex min-h-[40px] items-center px-3 rounded-pill border border-border bg-bg-overlay font-mono text-[11.5px] font-semibold text-text-muted hover:text-text hover:border-no-700 transition-colors"
                 >
                   {o}
                 </Link>

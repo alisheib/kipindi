@@ -7,7 +7,9 @@ import { getAuditPage } from "@/lib/server/audit";
 import { matches } from "@/lib/ui-stubs";
 import { activePlayers, moneyFlowSeries, grossGamingRevenue } from "@/lib/server/analytics";
 import { dailyKpiSeries } from "@/lib/server/report-money";
-import { formatTzs, formatTzsCompact, formatTime } from "@/lib/utils";
+import { formatTzs, formatTzsCompact, formatTime, formatNumber } from "@/lib/utils";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 type MatchStub = {
   id: string;
@@ -70,13 +72,13 @@ export default async function AdminLivePage() {
         }
       />
 
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         {/* KPI strip */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <AdminKpi label="Active players · live" sw="Wachezaji hai"   value={active === null ? "" : active.toLocaleString()} unavailable={active === null} pulse={active !== null} series={spark(trends.active)} />
+        <KpiGrid>
+          <AdminKpi label="Active players · live" sw="Wachezaji hai"   value={active === null ? "" : formatNumber(active)} unavailable={active === null} pulse={active !== null} series={spark(trends.active)} />
           <AdminKpi label="GGR · 24h"             sw="Mapato"           value={ggr === null ? "" : `TZS ${formatTzsCompact(ggr).replace("TZS ", "")}`} unavailable={ggr === null} series={spark(trends.ggr)} />
           <AdminKpi label="Live matches"           sw="Mechi za moja"    value={liveMatches.length} pulse={liveMatches.length > 0} />
-        </div>
+        </KpiGrid>
 
         {/* Active matches — shown ONLY when a signed live feed actually reports
             matches. No perpetual "no live matches" card is rendered (we never build
@@ -158,7 +160,11 @@ export default async function AdminLivePage() {
             ) : walletEvents.map((e) => (
               <FeedRow
                 key={e.id}
-                ts={e.createdAt.split("T")[1]?.slice(0, 8) ?? ""}
+                // ⛔ Was `createdAt.split("T")[1].slice(0, 8)` — the raw UTC field, sliced.
+                // The bet feed directly above uses `formatTime` (platform zone), so one
+                // screen carried two clocks three hours apart, and an operator correlating
+                // a bet with the wallet movement behind it saw them in different hours.
+                ts={formatTime(e.createdAt)}
                 category="WALLET"
                 variant="royal"
                 body={`${e.action} · ${e.targetType ?? ""} ${e.targetId?.slice(0, 12) ?? ""}`}
@@ -166,7 +172,7 @@ export default async function AdminLivePage() {
             ))}
           </div>
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

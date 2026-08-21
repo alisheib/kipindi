@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { I } from "@/components/ui/glyphs";
 import { AuthShell } from "@/components/auth/auth-shell";
+import { AuthPanel, AuthHeader } from "@/components/auth/auth-panel";
 import { Field } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { LoginIdentifier } from "@/components/auth/login-identifier";
@@ -143,20 +144,12 @@ export default async function LoginPage({
   return (
     <AuthShell>
 
-        <section
-          className="rounded-xl glass-panel p-6 space-y-5"
-        >
-          <div>
-            <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-gold-300">
-              {t.auth.signInTitle}
-            </p>
-            <h1 className="mt-1.5 font-display text-[28px] font-bold leading-tight text-text tracking-[-0.02em]">
-              {t.auth.welcomeBack}
-            </h1>
-            <p className="mt-1.5 text-[13.5px] text-text-muted">
-              {t.auth.emailOrPhoneHint}
-            </p>
-          </div>
+        <AuthPanel>
+          <AuthHeader
+            eyebrow={t.auth.signInTitle}
+            title={t.auth.welcomeBack}
+            subtitle={t.auth.emailOrPhoneHint}
+          />
 
           {errorPanel && (
             <div
@@ -167,7 +160,7 @@ export default async function LoginPage({
                   ? "border-yes-700/60 bg-yes-500/[0.10]"
                   : errorPanel.tone === "danger"
                     ? "border-no-700/60 bg-no-500/[0.10]"
-                    : "border-warning-border bg-warning-bg/30")
+                    : "border-warning-border bg-warning-bg")
               }
             >
               <span className={"mt-0.5 shrink-0 " + (errorPanel.tone === "success" ? "text-yes-300" : errorPanel.tone === "danger" ? "text-no-300" : "text-gold-300")}>
@@ -179,7 +172,10 @@ export default async function LoginPage({
                 {errorPanel.cta && (
                   <Link
                     href={errorPanel.cta.href as never}
-                    className="mt-2 inline-flex h-9 items-center px-3.5 rounded-pill border border-gold-700 bg-gold-500/10 font-display font-bold text-[12.5px] text-gold-300 hover:bg-gold-500/20 transition-colors"
+                    /* ⚠️ LITERAL, not `h-9` — spacing is overridden (tailwind.config.ts:200-215),
+                       so `h-9` was a 64px capsule around 12.5px type. 40px = --tap-min.
+                       Twin of auth/register/page.tsx — keep the two in step. */
+                    className="mt-2 inline-flex h-[40px] items-center px-3.5 rounded-pill border border-gold-700 bg-gold-500/10 font-display font-bold text-[12.5px] text-gold-300 hover:bg-gold-500/20 transition-colors"
                   >
                     {errorPanel.cta.label} →
                   </Link>
@@ -243,7 +239,7 @@ export default async function LoginPage({
               {t.auth.createOne}
             </Link>
           </p>
-        </section>
+        </AuthPanel>
 
     </AuthShell>
   );

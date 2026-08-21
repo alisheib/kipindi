@@ -16,6 +16,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Toggle } from "@/components/ui/toggle";
+import { useExitPhase } from "@/components/ui/modal";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { isNeedleHidden, setNeedleHidden, getNeedleMode, setNeedleMode } from "@/lib/needle-bridge";
@@ -52,6 +53,12 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
 
+  /* §M2 — "every arrival has its exit". This drawer arrived on the bespoke pair below
+     and then left by instant unmount. `--t-quick` is the LONGER of the two exits it
+     plays (mobile `--t-quick`, desktop `--t-flick`), so the hold covers both and the
+     desktop panel simply rests on its `both` end frame for the remainder. */
+  const { present, exiting } = useExitPhase(open, "--t-quick");
+
   const t = (en: string, sw: string, zh: string) => (locale === "sw" ? sw : locale === "zh" ? zh : en);
   const shownLabel = hidden ? t("Hidden", "Imefichwa", "已隐藏") : t("Shown", "Inaonekana", "显示");
 
@@ -86,12 +93,24 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
   return (
     <>
       {trigger}
-      {open && typeof document !== "undefined" && createPortal(
+      {present && typeof document !== "undefined" && createPortal(
         <>
-          <div aria-hidden className="fixed inset-0 z-[70] bg-black/50 backdrop-blur-md" onClick={() => setOpen(false)} />
+          {/* The scrim is full-bleed and carries no transform of its own, so it can take
+              the kit's float exit verbatim — its 6px travel is invisible at inset-0. */}
+          <div
+            aria-hidden
+            className={cn("fixed inset-0 z-[70] bg-black/50 backdrop-blur-md", exiting && "m-float-out pointer-events-none")}
+            onClick={exiting ? undefined : () => setOpen(false)}
+          />
           <div
             role="dialog"
-            aria-modal="true"
+            /* Leaving: it stops declaring the rest of the page inert, and stops taking
+               clicks so a toggle cannot be worked through its own fade. ⛔ Not
+               `aria-hidden`: this drawer does not return focus to its trigger, so
+               Escape pressed on a focused Toggle would leave aria-hidden over the
+               focused element. Dropping an attribute is always safe; adding that one
+               is not. */
+            aria-modal={exiting ? undefined : "true"}
             aria-label={t("The Needle controls", "Vidhibiti vya Sindano", "指针玩具控制")}
             className={cn(
               "fixed z-[71] border border-border-strong bg-bg-elevated/95 backdrop-blur-xl",
@@ -99,11 +118,11 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
               // centred panel and takes the dialog rung like every other centred panel.
               "shadow-overlay-up sm:shadow-modal",
               // mobile: bottom sheet · desktop: small centred panel
-              "left-0 right-0 bottom-0 rounded-t-2xl px-4 pt-4",
+              "left-0 right-0 bottom-0 rounded-t-modal px-4 pt-4",
               "pb-[calc(16px+env(safe-area-inset-bottom))]",
               "sm:left-1/2 sm:right-auto sm:bottom-auto sm:top-1/2 sm:w-[360px] sm:max-w-[calc(100vw-24px)]",
-              "sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl sm:p-5 sm:pb-5",
-              "needle-sheet",
+              "sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-modal sm:p-5 sm:pb-5",
+              exiting ? "needle-sheet-out pointer-events-none" : "needle-sheet",
             )}
           >
             {/* grabber (mobile affordance) */}
@@ -126,7 +145,10 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label={t("Close", "Funga", "关闭")}
-                className="shrink-0 grid h-9 w-9 place-items-center rounded-lg text-text-subtle transition-colors hover:bg-bg-overlay hover:text-text"
+                /* ⛔ LITERALS, NOT `h-9 w-9` — the spacing scale is overridden
+                   (tailwind.config.ts:200-215) and that pair is 64×64px, 16px larger than
+                   every other ✕ in the kit. 40px = --tap-min. */
+                className="shrink-0 grid h-[40px] w-[40px] place-items-center rounded-lg text-text-subtle transition-colors hover:bg-bg-overlay hover:text-text"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" /></svg>
               </button>
@@ -159,7 +181,11 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
                       aria-pressed={active}
                       className={cn(
                         "rounded-lg border px-3 py-2.5 text-left transition-colors",
-                        active ? "border-brand-400 bg-brand-500/12 text-text" : "border-border bg-bg-overlay text-text-subtle hover:text-text",
+                        // `/[0.12]`, not `/12`: Tailwind's opacity scale runs in steps of 5, so a
+                        // `/12` modifier is dropped before the colour is ever mixed and the ACTIVE
+                        // mode button rendered with no fill at all while the inactive ones (bare
+                        // `bg-bg-overlay`) painted. The arbitrary form keeps the intended 12%.
+                        active ? "border-brand-400 bg-brand-500/[0.12] text-text" : "border-border bg-bg-overlay text-text-subtle hover:text-text",
                       )}
                     >
                       <span className="flex items-center gap-1.5 font-display text-[13px] font-semibold">
@@ -179,14 +205,36 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
           {/* Bespoke keyframes on purpose: the desktop panel is centred with
               translate(-50%,-50%), which the kit's translateY-only arrivals would wipe.
               Curve + duration come from the motion layer, so it settles like everything
-              else ("The Settle"); only the transform differs. */}
+              else ("The Settle"); only the transform differs.
+
+              ⛔ THE EXIT IS BESPOKE FOR EXACTLY THE SAME REASON, and this is the one
+              place in this batch that could NOT take `.m-float-out`. That utility plays
+              `m-leave-out`, which sets `transform: translateY(…)` — on the ≥sm centred
+              panel that REPLACES `translate(-50%,-50%)` and throws the dialog to the
+              bottom-right corner for the whole fade. A wrong exit is worse than none.
+              So the exit mirrors the arrival exactly: same curve family (`--m-leave`,
+              the kit's exit curve), durations from the same ladder, only the transform
+              differs. `both` holds the end frame so the panel stays gone until unmount.
+
+              ⚠️ These four names are declared AND consumed inside this one
+              `prefers-reduced-motion: no-preference` block — the pattern
+              `scripts/keyframe-registry.test.mts` names in writing as legitimate
+              (its rule-2.2 note cites `needle-sheet-rise`/`-pop` by name). That
+              wrapper is also §M6 gate 1: with motion off the block never applies, and
+              gate 2 is the universal clamp in motion.css. The JS hold collapses to
+              zero under both, so an exit never delays an unmount for someone who
+              asked for no motion. */}
           <style>{`
             @media (prefers-reduced-motion: no-preference) {
               .needle-sheet { animation: needle-sheet-rise var(--t-base) var(--m-settle); }
               @keyframes needle-sheet-rise { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+              .needle-sheet-out { animation: needle-sheet-fall var(--t-quick) var(--m-leave) both; }
+              @keyframes needle-sheet-fall { from { transform: translateY(0); opacity: 1; } to { transform: translateY(10px); opacity: 0; } }
               @media (min-width: 640px) {
                 .needle-sheet { animation: needle-sheet-pop var(--t-quick) var(--m-settle); }
                 @keyframes needle-sheet-pop { from { transform: translate(-50%, -50%) scale(0.975); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+                .needle-sheet-out { animation: needle-sheet-sink var(--t-flick) var(--m-leave) both; }
+                @keyframes needle-sheet-sink { from { transform: translate(-50%, -50%) scale(1); opacity: 1; } to { transform: translate(-50%, -50%) scale(0.975); opacity: 0; } }
               }
             }
           `}</style>

@@ -90,7 +90,10 @@ Two accounts, one national ID. Since there is no authority check, uniqueness is 
 *entire* machine-side control — so this defeated the identity policy by timing alone.
 
 **Closed by a PARTIAL unique index** (partial because a REJECTED submission
-deliberately frees the number):
+deliberately frees the number). ⚠️ **HISTORY — the index below no longer exists**; it was dropped
+with its column on 2026-08-20 and superseded by the four-document tuple index further down. Kept
+because it is the record of what closed the race, and because the `CONCURRENTLY` + `IF NOT EXISTS`
+shape is the one to copy:
 
 ```sql
 CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS "KycSubmission_nidaNumber_active_key"
@@ -136,7 +139,7 @@ Guarded by `npm run test:cert-d1` (the migrations, both index names, and the vio
 handler) and `npm run test:id-documents` (the rule itself, for each of the four types,
 each beside a positive control). Proved red by `npm run red:id-documents`.
 
-### 🔄 `nidaNumber` IS BEING REMOVED IN TWO RELEASES — and the ORDER is the reusable part
+### ✅ `nidaNumber` WAS REMOVED IN TWO RELEASES — and the ORDER is the reusable part
 
 `nidaNumber` / `nidaVerifiedAt` and their two indexes existed for exactly one release as
 a rolling-deploy mirror. They are removed in **two steps, in this order**:

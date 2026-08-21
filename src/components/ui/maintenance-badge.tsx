@@ -1,5 +1,5 @@
-import { I } from "@/components/ui/glyphs";
-import { cn } from "@/lib/utils";
+import { StatusFlag } from "@/components/ui/status-flag";
+import { MAINTENANCE_AMBER } from "@/components/ui/callout";
 
 /**
  * MaintenanceBadge — the amber "temporarily unavailable" flag.
@@ -10,6 +10,16 @@ import { cn } from "@/lib/utils";
  * the two states are unmistakable at a glance and never confused with each other
  * or with the NO-rose danger hue. Presentational only (no hooks) so it renders in
  * both server and client components; the caller passes the localized label.
+ *
+ * ⭐ CONSOLIDATION (stage 9, 2026-08-21). Two things left this file:
+ *  • the size table → <StatusFlag> (it was byte-identical to coming-soon's);
+ *  • the amber itself → `MAINTENANCE_AMBER` in callout.tsx, because there were
+ *    THREE drifted maintenance ambers in the product (this one at 16%/42%,
+ *    proposals-state-views at 14%/38%, and Callout's `--warning-bg`/`-border`
+ *    at 18%/36%). ⚠️ This badge now paints the 18%/36% token pair — a small,
+ *    deliberate shift, and the ONLY rendered change in the amber consolidation.
+ *    Its FOREGROUND is unchanged: `--warning-500`, not `--warning-fg`, because a
+ *    flat tag needs the amber itself, not the gilt the Callout icon uses.
  */
 export function MaintenanceBadge({
   label,
@@ -20,29 +30,17 @@ export function MaintenanceBadge({
   size?: "xs" | "sm";
   className?: string;
 }) {
-  const d =
-    size === "xs"
-      ? { fontSize: 8.5, padding: "3px 8px", gap: 4, icon: 9.5, tracking: "0.08em" }
-      : { fontSize: 9.5, padding: "4px 10px", gap: 5, icon: 11, tracking: "0.11em" };
   return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-pill font-mono font-bold uppercase whitespace-nowrap leading-none align-middle",
-        className,
-      )}
+    <StatusFlag
+      label={label}
+      glyph="pause"
+      size={size}
+      className={className}
       style={{
-        fontSize: d.fontSize,
-        padding: d.padding,
-        letterSpacing: d.tracking,
         color: "var(--warning-500)",
-        background: "color-mix(in oklab, var(--warning-500) 16%, transparent)",
-        border: "1px solid color-mix(in oklab, var(--warning-500) 42%, transparent)",
+        background: MAINTENANCE_AMBER.bg,
+        border: `1px solid ${MAINTENANCE_AMBER.border}`,
       }}
-    >
-      <span className="inline-flex items-center" style={{ gap: d.gap }}>
-        <I.pause s={d.icon} aria-hidden />
-        {label}
-      </span>
-    </span>
+    />
   );
 }

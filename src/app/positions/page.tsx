@@ -21,7 +21,7 @@ import { pickLocalized } from "@/lib/localized";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
-  return { title: t.positions.title };
+  return { title: t.common.positions };
 }
 export const dynamic = "force-dynamic";
 
@@ -34,8 +34,10 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
 
   // Fetch the full history (no silent 100-cap), then paginate the settled
   // archive with the shared player page size so older positions stay reachable.
-  // MARKET only — the Bets page is the long-form-poll portfolio. Up & Down bets are a
-  // separate game with their own history at /updown/history (Ali, 2026-07-25).
+  // MARKET only — Positions is the long-form-poll portfolio. Up & Down bets are a
+  // separate game with their own history at /updown/history (Ali, 2026-07-25). The
+  // page's own subtitle states that split to the player, so this scope is not a secret
+  // the reader has to infer from the third argument.
   // B-1: a failed read must NOT render as "No open positions yet" — held money
   // vanishing on a DB blip reads as theft. Throw to positions/error.tsx instead.
   const positions = await listPositionsForUser(session.userId, 5_000, "MARKET");
@@ -123,7 +125,16 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
       {/* Positions is a primary destination (bottom-nav + top-nav tab), not a
           leaf — no Back-to-markets link (IA review R3). */}
       <header className="flex items-start justify-between gap-3">
-        <PageHeader eyebrow={t.positions.title} title={t.positions.pollsPlayed} />
+        {/* §L1 — ONE NAME FOR ONE DESTINATION. The eyebrow is the same word the top nav,
+            the bottom-nav overflow and the avatar menu use (`common.positions`); it used to
+            be `positions.title` ("History"), which was a third name for a page whose primary
+            section is LIVE, at-risk money — not history.
+            §L4 — and the headline used to read "Polls you've played". "Poll" is the poll
+            product's own word, so it cannot serve as the name of a portfolio page, and this
+            page's every other string already says "market". `headline` is the cross-product
+            noun; `headlineBody` states the scope out loud, mirroring /updown/history, which
+            says the same split from its side. */}
+        <PageHeader eyebrow={t.common.positions} title={t.positions.headline} subtitle={t.positions.headlineBody} />
         {positions.length > 0 && (
           <Link href={"/positions/performance" as never} className="btn btn-ghost btn-sm inline-flex items-center gap-1.5 shrink-0 mt-1">
             <I.chart s={13} />
@@ -346,7 +357,15 @@ function Section({ title, count, children }: { title: string; count: number; chi
     <section>
       <h2 className="mb-3 flex items-baseline gap-2">
         <span className="font-display text-[20px] font-semibold text-text">{title}</span>
-        <span className="ml-auto font-mono text-[12px] text-text-subtle">{count}</span>
+        {/* ⚠️ `ml-auto` used to fling this number to the far right edge of the 1080px
+            container, a whole screen-width away from the word it counts — at which distance
+            a lone "0" reads as a stray character, not as a quantity. A count belongs beside
+            its noun. And at zero it is suppressed entirely: the empty state directly below
+            already says "No open positions yet" in words, so the digit adds nothing but the
+            question of what it refers to. `tabular-nums` keeps 9 and 10 the same width. */}
+        {count > 0 && (
+          <span className="font-mono text-[12px] tabular-nums text-text-subtle">{count}</span>
+        )}
       </h2>
       {children}
     </section>

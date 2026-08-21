@@ -18,12 +18,17 @@ import { ChartToggle } from "@/components/markets/chart-toggle";
 import { SellButton } from "@/components/markets/sell-button";
 import { ResolutionPanel } from "@/components/markets/resolution-panel";
 import { Chip } from "@/components/ui/chip";
+import { Stat } from "@/components/ui/stat";
 import { cashOutValue, getMarket, impliedYesPct, isClosedByTime, isSelectionClosed, listPositionsForUser, ratesFor } from "@/lib/server/market-service";
 import { timeLeftLabel } from "@/lib/markets/time-left";
 import { poolFee } from "@/lib/payout";
 import { getEffectiveConfig } from "@/lib/server/market-config";
 import { getProbabilityChart } from "@/lib/server/market-history";
 import { roundStore } from "@/lib/server/updown-dal";
+// ⛔ The ONE place UP/DOWN ↔ YES/NO is mapped — `updown-service.ts` says so in its header,
+// and "if a second translation appears anywhere, delete it". The UPDOWN bounce below needs
+// the YES→UP direction; a hand-written ternary here would be exactly that second copy.
+import { sideToOutcome } from "@/lib/server/updown-service";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { ensureAffiliateAccount } from "@/lib/server/affiliate-service";
@@ -116,7 +121,16 @@ export default async function MarketDetail({
   // the ones we remembered to special-case.
   if (m.productLine === "UPDOWN") {
     const round = await roundStore.getByMarketId(m.id).catch(() => null);
-    redirect(round ? `/updown/${round.id}${side ? `?side=${side}` : ""}` : "/updown");
+    // The SAME guard the SidePicker below takes (`initialSide`). `side` is TYPED
+    // "YES" | "NO", but that is a compile-time claim about a URL — at runtime it is
+    // whatever the query string carried, and it was being interpolated into the
+    // redirect target raw. And translating it is the other half of the fix: Up & Down
+    // speaks UP/DOWN, so `/updown/[roundId]` locks a side only on "UP" or "DOWN" and an
+    // untranslated `?side=YES` was silently discarded there — a player who tapped YES on
+    // an Up & Down card landed on the unlocked, both-ways dial the betting-flow
+    // invariant forbids. Validate, then translate through the single mapping.
+    const lockedSide = side === "YES" || side === "NO" ? sideToOutcome(side) : null;
+    redirect(round ? `/updown/${round.id}${lockedSide ? `?side=${lockedSide}` : ""}` : "/updown");
   }
 
   const yesPct = impliedYesPct(m);
@@ -395,7 +409,7 @@ export default async function MarketDetail({
           )}
           {heroState === "waiting" && (
             <span className={`inline-flex items-center gap-1.5 rounded-full border h-[26px] px-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.10em] ${
-              settling ? "border-warning-border bg-warning-bg/30 text-warning-fg" : "border-gold-500/40 bg-gold-500/10 text-gold-300"
+              settling ? "border-warning-border bg-warning-bg text-warning-fg" : "border-gold-500/40 bg-gold-500/10 text-gold-300"
             }`}>
               <I.hourglassOff s={13} />
               {settling ? t.market.closedAwaitingSettlement : t.market.selectionClosedWaiting}
@@ -465,8 +479,13 @@ export default async function MarketDetail({
             {/* "TZS 0" is factually true, but on a fresh market it reads as
                 failure rather than as an opening. Same words the card uses, so
                 the two surfaces say the same thing about the same state. */}
-            <KPI label={t.market.volume}     value={freshMarket ? t.market.noPoolYet : formatTzsCompact(m.yesPool + m.noPool)} icon={<I.chart s={14} />} />
-            <KPI label={t.market.predictors} value={String(m.predictorCount)}     icon={<I.users s={14} />} />
+            {/* ⭐ STAGE 9b — the first two are the kit <Stat>: `card` box (rounded-md,
+                border, bg-elevated, p-3), `widest` label (10px semibold 0.14em) and the
+                `xl` rung (18px, mt-1, leading-tight). A pixel-for-pixel mapping.
+                ⚠️ The THIRD is still the local `KPI` and that is deliberate — see the
+                note on the function below. */}
+            <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.volume}     value={freshMarket ? t.market.noPoolYet : formatTzsCompact(m.yesPool + m.noPool)} icon={<I.chart s={14} />} />
+            <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.predictors} value={String(m.predictorCount)}     icon={<I.users s={14} />} />
             <KPI label={t.market.resolves}   value={fmtTime(m.resolutionAt)} mono />
           </div>
 
@@ -493,7 +512,7 @@ export default async function MarketDetail({
 
           {/* 3a. One-sided disclaimer — shown when all bets are on one side */}
           {isOneSided && (
-            <div className="rounded-lg border border-warning-border bg-warning-bg/30 px-4 py-3 flex items-start gap-2.5">
+            <div className="rounded-lg border border-warning-border bg-warning-bg px-4 py-3 flex items-start gap-2.5">
               <I.warning s={15} className="shrink-0 mt-0.5 text-warning-fg" />
               <div>
                 <p className="font-mono text-[10.5px] font-bold uppercase tracking-[0.14em] text-warning-fg mb-1">
@@ -680,7 +699,7 @@ export default async function MarketDetail({
               <>
               {/* Hedge warning — shown when player already has a position */}
               {openPositions.length > 0 && (
-                <div className="rounded-lg border border-warning-border bg-warning-bg/30 px-3.5 py-2.5">
+                <div className="rounded-lg border border-warning-border bg-warning-bg px-3.5 py-2.5">
                   <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-warning-fg">
                     {t.market.youAlreadyHold} {heldLabel} {t.market.here}
                   </p>
@@ -702,7 +721,7 @@ export default async function MarketDetail({
                       different fact about a different thing — one is what the market will do,
                       this is what their bonus will not do. */}
                   {bonusWagerWarning && (
-                    <p className="mt-2 pt-2 border-t border-warning-border/50 text-[12px] leading-snug font-semibold text-warning-fg">
+                    <p className="mt-2 pt-2 border-t border-warning-border text-[12px] leading-snug font-semibold text-warning-fg">
                       {bonusWagerWarning}
                     </p>
                   )}
@@ -775,7 +794,7 @@ export default async function MarketDetail({
               </p>
             </div>
           ) : closedByTime ? (
-            <div className="rounded-xl border border-warning-border bg-warning-bg/30 p-6 text-center">
+            <div className="rounded-xl border border-warning-border bg-warning-bg p-6 text-center">
               <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-warning-fg">
                 {t.market.closedAwaitingSettlement}
               </p>
@@ -871,6 +890,21 @@ function similarTimeLeft(iso: string, t: Awaited<ReturnType<typeof getServerT>>[
   }, fill);
 }
 
+/**
+ * ⚠️ STAGE 9b — THIS FORK IS DOWN TO ONE CONSUMER AND IS NOT DELETED YET.
+ *
+ * Its `mono` branch is the reason. That branch paints the resolution time at **13px,
+ * weight 400**, and `ui/stat` has neither: its nearest rung is `xs` at 13.5px, and it
+ * applies `font-bold` to every value unconditionally. Migrating this call site would
+ * make the timestamp half a pixel larger AND bold — a visible restyle of a live
+ * surface, which is not what a consolidation is allowed to buy.
+ *
+ * ⛔ So the `!mono` branch is now dead code kept ONLY as the record of what the two
+ * migrated tiles above render; do not add a third caller. The fix is one of:
+ *   (a) a `sm-plain` rung in `ui/stat.tsx` (13px mono, weight 400), or
+ *   (b) an owner decision to accept 13.5/bold — at which point this function goes.
+ * Either way it is a change to a file this pass does not own.
+ */
 function KPI({ label, value, icon, mono }: { label: string; value: string; icon?: React.ReactNode; mono?: boolean }) {
   return (
     <div className="rounded-md border border-border bg-bg-elevated p-3">

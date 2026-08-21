@@ -80,9 +80,24 @@ export function CommentsThread({
     fd.set("marketId", marketId);
     fd.set("body", text);
     startTransition(async () => {
-      const r = await postCommentAction(fd);
+      // B-12 — a flaky network mid-post THROWS inside the transition, and an uncaught
+      // throw replaces the whole page (with the typed comment) with error.tsx. Caught,
+      // the draft stays in the box — `setBody("")` is inside the success branch only —
+      // and the toast takes the same localized path a refusal takes.
+      let r: Awaited<ReturnType<typeof postCommentAction>>;
+      try {
+        r = await postCommentAction(fd);
+      } catch {
+        // No code on purpose: errorCopy's no-code path renders this localized string
+        // as-is — the network truth, not a server refusal.
+        r = { ok: false, error: t.error.somethingDidntWork };
+      }
       if (r.ok && "comment" in r) {
-        setComments((prev) => [r.comment, ...prev]);
+        // Held in a const because `r` is a `let` now: TypeScript drops the narrowing of
+        // a reassignable binding once it is read inside a nested closure, and the updater
+        // below is one.
+        const posted = r.comment;
+        setComments((prev) => [posted, ...prev]);
         setBody("");
         haptics.confirm();
       } else {
@@ -96,7 +111,13 @@ export function CommentsThread({
     fd.set("marketId", marketId);
     fd.set("commentId", id);
     startTransition(async () => {
-      const r = await reportCommentAction(fd);
+      // B-12 — guarded like the post path above.
+      let r: Awaited<ReturnType<typeof reportCommentAction>>;
+      try {
+        r = await reportCommentAction(fd);
+      } catch {
+        r = { ok: false, error: t.error.somethingDidntWork };
+      }
       if (r.ok) {
         haptics.warning();
         setComments((prev) =>
@@ -116,7 +137,13 @@ export function CommentsThread({
     fd.set("marketId", marketId);
     fd.set("commentId", id);
     startTransition(async () => {
-      const r = await deleteCommentAction(fd);
+      // B-12 — guarded like the post path above.
+      let r: Awaited<ReturnType<typeof deleteCommentAction>>;
+      try {
+        r = await deleteCommentAction(fd);
+      } catch {
+        r = { ok: false, error: t.error.somethingDidntWork };
+      }
       if (r.ok) {
         haptics.confirm();
         setComments((prev) => prev.filter((c) => c.id !== id));

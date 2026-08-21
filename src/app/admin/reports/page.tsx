@@ -18,6 +18,8 @@ import { resolveRange } from "@/lib/server/date-range";
 import { currentSession } from "@/lib/server/auth-service";
 import { canView } from "@/lib/server/rbac";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Reports" };
 export const dynamic = "force-dynamic";
@@ -207,7 +209,9 @@ export default async function AdminReportsPage({
               href={cmpHref as never}
               scroll={false}
               className={[
-                "font-mono text-micro px-2.5 h-8 inline-flex items-center rounded-lg border transition-colors",
+                // ⚠️ LITERAL, not `h-8` — spacing is overridden (tailwind.config.ts:200-215) so
+                // `h-8` was 48px on a 10px micro-type chip, 8px above the 40px admin chip standard.
+                "font-mono text-micro px-2.5 h-[40px] inline-flex items-center rounded-lg border transition-colors",
                 compare ? "border-brand-500 text-brand-300 bg-brand-500/10" : "border-border-strong text-text-subtle hover:text-text",
               ].join(" ")}
             >
@@ -218,7 +222,7 @@ export default async function AdminReportsPage({
         }
       />
 
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         {/* Freshness stamp + normative money definitions (one source of truth) */}
         <div className="flex flex-wrap items-center justify-between gap-2 -mt-1">
           <p className="font-mono text-[10.5px] text-text-tertiary">generated {eatStamp(generatedAt)} EAT · {range.label}</p>
@@ -226,14 +230,14 @@ export default async function AdminReportsPage({
         </div>
 
         {/* KPI strip — 6 tiles, real aggregates, spark-fed (no gold in admin) */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+        <KpiGrid cols="lg3-xl6">
           <AdminKpi label="GGR" sw="Mapato ya jumla" value={formatTzsCompact(current.ggr)} tone={current.ggr < 0 ? "danger" : undefined} series={ggrSpark} spark {...deltaProps(current.ggr, prior.ggr, compare, "money")} />
           <AdminKpi label="NGR" sw="Mapato halisi" value={formatTzsCompact(current.ngr)} tone={current.ngr < 0 ? "danger" : undefined} series={ngrSpark} spark {...deltaProps(current.ngr, prior.ngr, compare, "money")} />
           <AdminKpi label="Deposits" sw="Amana" value={formatTzsCompact(current.deposits)} spark={false} {...deltaProps(current.deposits, prior.deposits, compare, "money")} />
           <AdminKpi label="Withdrawals" sw="Utoaji" value={formatTzsCompact(current.withdrawals)} spark={false} {...deltaProps(current.withdrawals, prior.withdrawals, compare, "money")} />
           <AdminKpi label="Hold %" sw="Ushikaji" value={`${current.holdPct.toFixed(1)}%`} series={holdSpark} spark {...deltaProps(current.holdPct, prior.holdPct, compare, "pct")} />
           <AdminKpi label="Active players" sw="Wachezaji" value={current.activePlayers.toLocaleString()} spark={false} {...deltaProps(current.activePlayers, prior.activePlayers, compare, "count")} />
-        </div>
+        </KpiGrid>
 
         {/* Daily P&L + category breakdown. minmax(0,1fr) lets the P&L track
             shrink so its inner overflow-x-auto scrolls instead of pushing the
@@ -404,7 +408,9 @@ export default async function AdminReportsPage({
               <div className="flex items-start gap-3">
                 <span
                   className={[
-                    "h-9 w-9 rounded-md inline-flex items-center justify-center shrink-0",
+                    // ⚠️ LITERALS, not `h-9 w-9` (64px on the overridden scale) — a severity
+                    // glyph tile around a 16px glyph.
+                    "h-[36px] w-[36px] rounded-md inline-flex items-center justify-center shrink-0",
                     t.severity === "critical" ? "bg-danger/15 text-danger-fg" :
                     t.severity === "high"     ? "bg-warning/15 text-warning" :
                                                 "bg-royal/15 text-royal-300",
@@ -452,7 +458,10 @@ export default async function AdminReportsPage({
 
         {/* Generation log */}
         <AdminCard title="Generation log" sw="Kumbukumbu ya kuzalisha" padding={generated.length > 0 ? "p-0" : "p-4"}
-          action={<RefreshButton variant="icon" className="!h-7 !w-7" />}>
+          /* ⛔ NO SIZE OVERRIDE — see admin-proposals-client.tsx. The `!h-7 !w-7` bandage
+             existed only because `variant="icon"` used to render 80×80; it is 40×40 on its
+             own now. */
+          action={<RefreshButton variant="icon" />}>
           {generated.length === 0 ? (
             <EmptyState
               kind="audit"
@@ -484,7 +493,7 @@ export default async function AdminReportsPage({
           )}
         </AdminCard>
 
-        <AdminCard className="border-info-border bg-info-bg/15">
+        <AdminCard className="border-info-border bg-info-bg">
           <div className="text-caption text-text-secondary space-y-1">
             <p className="text-text font-bold">Generation pipeline (production)</p>
             <p>
@@ -495,7 +504,7 @@ export default async function AdminReportsPage({
             </p>
           </div>
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

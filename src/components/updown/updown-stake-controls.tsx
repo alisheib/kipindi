@@ -107,14 +107,19 @@ export function UpDownStakeControls({
     fn();
   };
 
-  // ⛔ DA-3 (E-112) · MIN-HEIGHT 40px, both sizes. These chips DECIDE HOW MUCH A PLAYER
+  // ⛔ DA-3 (E-112) · MIN-HEIGHT 44px, both sizes. These chips DECIDE HOW MUCH A PLAYER
   // STAKES, and they rendered 26px tall against the platform's own 40px money-control
   // floor — the smallest tap targets on the money path, on the surface most bets are
   // placed from. The floor is a class on the chip, not a padding retune, so a font or
   // padding change cannot silently sink it again.
+  // ⭐ RAISED 40 → 44: §A2 sets 40 as the floor and 44 as the mobile preference, and adds
+  // that "money controls are never the exception". An Up & Down round is the most
+  // time-pressured money decision in the product — the chip is tapped against a running
+  // countdown, one-handed — so it takes the preferred size, not the minimum survivable one.
+  // ⚠️ `compact` is a DENSITY, not a licence to drop below the floor: both arms carry 44.
   const chipBase = compact
-    ? "shrink-0 whitespace-nowrap rounded-md px-2 py-1 min-h-[40px] inline-flex items-center justify-center font-mono text-[10.5px] font-semibold tabular-nums transition-colors"
-    : "shrink-0 whitespace-nowrap rounded-md px-2.5 py-1.5 min-h-[40px] inline-flex items-center justify-center font-mono text-[11.5px] font-semibold tabular-nums transition-colors";
+    ? "shrink-0 whitespace-nowrap rounded-md px-2 py-1 min-h-[44px] inline-flex items-center justify-center font-mono text-[10.5px] font-semibold tabular-nums transition-colors"
+    : "shrink-0 whitespace-nowrap rounded-md px-2.5 py-1.5 min-h-[44px] inline-flex items-center justify-center font-mono text-[11.5px] font-semibold tabular-nums transition-colors";
   const chipStyle = (on: boolean) => ({
     border: `1px solid ${on ? "var(--border-strong)" : "transparent"}`,
     background: on ? "var(--bg-inset)" : "color-mix(in oklab, var(--bg-inset) 45%, transparent)",

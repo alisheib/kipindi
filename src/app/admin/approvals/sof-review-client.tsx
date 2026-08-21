@@ -17,7 +17,6 @@ export function SofReviewRow({ userId }: { userId: string }) {
   // than being offered a button the server will refuse (and logged as a privilege
   // escalation for pressing it). See docs/ADMIN-CONSOLE-FINDINGS.md.
   const mayAct = useMayAct();
-  if (!mayAct) return <ActReadOnly />;
 
   const [busy, setBusy] = useState<SofDecision | null>(null);
   const [expanded, setExpanded] = useState<"REJECT" | "MORE_INFO" | false>(false);
@@ -26,6 +25,11 @@ export function SofReviewRow({ userId }: { userId: string }) {
   const overlay = useActionOverlay();
   const { toast } = useToast();
   const router = useRouter();
+
+  // Rules of hooks: read the gate as a hook at the top, ACT on it below every other hook.
+  // Revoking an ACT grant mid-session flips `mayAct` on the next router.refresh(); an early
+  // return above these hooks would render fewer hooks than the last pass and crash the page.
+  if (!mayAct) return <ActReadOnly />;
 
   const LABELS: Record<SofDecision, { running: string; detail: string; done: string; doneDetail: string }> = {
     ACCEPT: { running: "Accepting declaration…", detail: "Clearing the deposit gate for this player.", done: "Source of funds accepted", doneDetail: "Player can deposit normally." },
@@ -92,7 +96,10 @@ export function SofReviewRow({ userId }: { userId: string }) {
             onChange={(e) => setReason(e.target.value)}
             placeholder={expanded === "MORE_INFO" ? "What info is needed? (required)" : "Rejection reason (required)"}
             aria-label={expanded === "MORE_INFO" ? "More info request" : "Rejection reason"}
-            className="flex-1 h-8 px-2 rounded-md border border-border bg-bg-inset text-text-secondary text-caption font-mono focus:outline-none admin-focus transition-colors"
+            /* ⚠️ LITERAL, not `h-8` (48px on the overridden scale) — 40px = --tap-min and the
+               height of the `Button size="sm"` beside it. Twin of aml-actions-client.tsx;
+               §A2 — money-ops controls are never the tap-floor exception. */
+            className="flex-1 h-[40px] px-2 rounded-md border border-border bg-bg-inset text-text-secondary text-caption font-mono focus:outline-none admin-focus transition-colors"
           />
           <Button size="sm" variant={expanded === "MORE_INFO" ? "ghost" : "danger"} onClick={() => submit(expanded as SofDecision)} loading={busy === expanded} disabled={busy !== null}>
             Send

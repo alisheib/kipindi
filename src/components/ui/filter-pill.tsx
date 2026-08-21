@@ -14,7 +14,7 @@
  * contradicts the reasoning the current design exists to embody.
  *
  * ⚠️ `min-h-[44px]` IS AN ARBITRARY VALUE ON PURPOSE. Tailwind's spacing scale is OVERRIDDEN in
- * this repo (`h-8` = 48px, `h-9` = 64px, `h-10` = 80px — `tailwind.config.ts:162-177`), so a
+ * this repo (`h-8` = 48px, `h-9` = 64px, `h-10` = 80px — `tailwind.config.ts:200-215`), so a
  * scale class here would silently be the wrong size. That override is exactly how `/updown`'s
  * asset tabs ended up 64px tall from an `h-9` that reads like 36. ⛔ Never "tidy" it into `h-11`.
  * There is no `--h-control-*` rung at 44px (`globals.css:229-235` stops at `--h-input: 44px`,

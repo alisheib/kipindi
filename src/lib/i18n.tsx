@@ -7,6 +7,8 @@ import {
   useTransition,
   type ReactNode,
   useEffect,
+  useCallback,
+  useMemo,
 } from "react";
 import { useRouter } from "next/navigation";
 import { dict, type Locale, type Dict } from "./i18n-dict";
@@ -64,7 +66,8 @@ export function I18nProvider({ children, initial = "en" }: { children: ReactNode
       return;
     }
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("kp-locale") as Locale | null;
+      let saved: string | null = null;
+      try { saved = localStorage.getItem("kp-locale"); } catch { /* storage blocked — the cookie above is the fallback */ }
       if (saved && isLocale(saved) && saved !== locale) {
         setLocaleState(saved);
         writeCookie(COOKIE_NAME, saved);
@@ -80,7 +83,7 @@ export function I18nProvider({ children, initial = "en" }: { children: ReactNode
     }
   }, [isPending, isChangingLocale]);
 
-  const setLocale = (l: Locale) => {
+  const setLocale = useCallback((l: Locale) => {
     if (l === locale) return;
     setIsChangingLocale(true);
     setLocaleState(l);
@@ -92,10 +95,38 @@ export function I18nProvider({ children, initial = "en" }: { children: ReactNode
     startTransition(() => {
       router.refresh();
     });
-  };
+  }, [locale, router, startTransition]);
+
+  /**
+   * ⭐ THE CONTEXT VALUE IS MEMOISED, AND THAT IS A RENDER BUDGET, NOT TIDINESS.
+   *
+   * This provider sits above the whole app, and `useT()` is called by ~120 client
+   * files. A context whose value is a fresh object literal notifies EVERY one of
+   * those consumers on EVERY render of this component — React's context
+   * propagation deliberately walks past the `children` bail-out, so the fact that
+   * `children` is a stable element from ThemeProvider saves nothing.
+   *
+   * This component re-renders more often than it changes anything. One language
+   * switch is up to five renders — `setIsChangingLocale(true)`, `setLocaleState`,
+   * `isPending` true, `isPending` false, `setIsChangingLocale(false)` — and the
+   * two driven by `useTransition` carry no change to `locale`, `t` or the flag at
+   * all. Unmemoised, each of those was a full re-render of every mounted consumer
+   * on the target device, at the exact moment `router.refresh()` already has it
+   * busy re-rendering the server tree.
+   *
+   * ⚠️ `isChangingLocale` stays IN this value on purpose. It is read only by
+   * `LocaleChangeOverlay` below, so a second context would spare consumers the
+   * two flips — but `useT()`'s return shape is depended on by those ~120 files
+   * and a consumer that read both contexts would re-render just the same. The
+   * shape is the contract; do not split it for a two-render saving.
+   */
+  const value = useMemo(
+    () => ({ locale, t: dict[locale] as Dict, setLocale, isChangingLocale }),
+    [locale, setLocale, isChangingLocale],
+  );
 
   return (
-    <I18nContext.Provider value={{ locale, t: dict[locale] as Dict, setLocale, isChangingLocale }}>
+    <I18nContext.Provider value={value}>
       {children}
     </I18nContext.Provider>
   );
@@ -114,6 +145,15 @@ export function useT() {
  *
  * Glyphs: Hi / Go (EN), Habari / Sawa (SW), and the Chinese characters
  * for "language" and "hello".
+ *
+ * ⚠️ EVERY ANIMATION HERE IS DECLARED ON A CLASS, NOT IN A style ATTRIBUTE, and
+ * that is a motion-gate requirement rather than a preference (§M6). Both loops
+ * used to be inline `animation` shorthands, and a style attribute is invisible to
+ * every gate this product has: `test:reduce-motion` reads RULES, so neither loop
+ * was ever checked against the third gate and neither had a calm branch of any
+ * kind; and `test:keyframes`' consumer scan stops dead at the opening quote, so
+ * `lcl-orbit` and `lcl-pulse` were both reported as names with NO CONSUMER —
+ * which is to say, as safe to delete.
  */
 const GLYPHS = [
   { char: "Hi",  color: "oklch(78% 0.16 152)" },    // yes-green
@@ -130,12 +170,11 @@ export function LocaleChangeOverlay() {
   const n = GLYPHS.length;
   return (
     <div
-      className="fixed inset-0 z-[9000] flex items-center justify-center"
+      className="lcl-scrim fixed inset-0 z-[9000] flex items-center justify-center"
       style={{
         background: "color-mix(in oklab, var(--bg-base) 90%, transparent)",
         backdropFilter: "blur(16px) saturate(1.2)",
         WebkitBackdropFilter: "blur(16px) saturate(1.2)",
-        animation: "lcl-fade 180ms ease-out",
       }}
     >
       <div className="flex flex-col items-center gap-5">
@@ -144,12 +183,17 @@ export function LocaleChangeOverlay() {
           {GLYPHS.map((g, i) => (
             <span
               key={i}
-              className="absolute left-1/2 top-1/2 font-display font-bold select-none pointer-events-none"
+              className="lcl-glyph absolute left-1/2 top-1/2 font-display font-bold select-none pointer-events-none"
               style={{
                 fontSize: 20,
                 color: g.color,
                 textShadow: `0 0 18px ${g.color}`,
-                animation: `lcl-orbit 2.4s linear infinite`,
+                // This glyph's share of the ring, in degrees. It does two jobs from
+                // ONE number: the negative delay below phases it while the ring
+                // turns, and the calm branches pin it at exactly this angle when
+                // motion is off — so the still ring cannot drift from the moving
+                // one, and adding a seventh glyph re-spaces both at once.
+                ["--lcl-a" as string]: `${((i / n) * 360).toFixed(1)}deg`,
                 animationDelay: `${-(i / n) * 2.4}s`,
                 transformOrigin: "center center",
               }}
@@ -159,13 +203,12 @@ export function LocaleChangeOverlay() {
           ))}
           {/* Centre dot — a soft gold pulse */}
           <span
-            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+            className="lcl-dot absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
             style={{
               width: 6,
               height: 6,
               background: "var(--brand-400)",
               boxShadow: "0 0 12px var(--brand-400), 0 0 24px var(--brand-500)",
-              animation: "lcl-pulse 1.2s ease-in-out infinite",
             }}
           />
         </div>
@@ -174,6 +217,9 @@ export function LocaleChangeOverlay() {
         </p>
       </div>
       <style>{`
+        .lcl-scrim { animation: lcl-fade 180ms ease-out; }
+        .lcl-glyph { animation: lcl-orbit 2.4s linear infinite; }
+        .lcl-dot   { animation: lcl-pulse 1.2s ease-in-out infinite; }
         @keyframes lcl-fade {
           from { opacity: 0 }
           to   { opacity: 1 }
@@ -196,6 +242,40 @@ export function LocaleChangeOverlay() {
           0%, 100% { transform: translate(-50%, -50%) scale(1);   opacity: 0.7 }
           50%      { transform: translate(-50%, -50%) scale(1.5); opacity: 1   }
         }
+
+        /* ⭐ THE CALM BRANCHES — AND WHY THEY ARE NOT A BARE "animation: none".
+           The ring POSITION lives inside lcl-orbit; the base style carries no
+           transform at all. Stopping the animation therefore stacks all six
+           glyphs on one point at the centre of the box — a broken end frame, which
+           is the exact failure M6 names. Each glyph is pinned at its own --lcl-a
+           instead, so the ring still reads as a ring, just still.
+           Written THREE times because CSS cannot union a media query with a
+           selector: gate 1 (the OS), gate 2 (the in-app switch and the minimal
+           tier), gate 3 (the low-end-Android throttle, whose whole contract is
+           "ambient loops off" — and a 2.4s orbit under a full-screen scrim is the
+           definition of one). Keep the three in step; they are one branch. */
+        @media (prefers-reduced-motion: reduce) {
+          .lcl-glyph {
+            animation: none;
+            opacity: 1;
+            transform: translate(-50%, -50%) rotate(var(--lcl-a)) translateY(-44px) rotate(calc(-1 * var(--lcl-a)));
+          }
+          .lcl-dot { animation: none; opacity: 0.9; }
+        }
+        html.kp-reduce-motion .lcl-glyph,
+        [data-motion="minimal"] .lcl-glyph {
+          animation: none;
+          opacity: 1;
+          transform: translate(-50%, -50%) rotate(var(--lcl-a)) translateY(-44px) rotate(calc(-1 * var(--lcl-a)));
+        }
+        html.kp-reduce-motion .lcl-dot,
+        [data-motion="minimal"] .lcl-dot { animation: none; opacity: 0.9; }
+        [data-motion="reduced"] .lcl-glyph {
+          animation: none;
+          opacity: 1;
+          transform: translate(-50%, -50%) rotate(var(--lcl-a)) translateY(-44px) rotate(calc(-1 * var(--lcl-a)));
+        }
+        [data-motion="reduced"] .lcl-dot { animation: none; opacity: 0.9; }
       `}</style>
     </div>
   );

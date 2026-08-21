@@ -17,6 +17,8 @@ import { EmergencyVoidControl } from "./emergency-void-control";
 import { currentSession } from "@/lib/server/auth-service";
 import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { ControlLocked } from "@/components/admin/control-locked";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Markets curation" };
 export const dynamic = "force-dynamic";
@@ -94,13 +96,13 @@ export default async function AdminMarketsPage({
           </Link>
         }
       />
-      <div className="px-4 lg:px-6 py-5 space-y-4">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <AdminBody>
+        <KpiGrid>
           <AdminKpi label="Live"      sw="Hai"           value={String(live.length)} />
           <AdminKpi label="Awaiting resolution" sw="Inangoja" value={String(closed.length)} />
           <AdminKpi label="Resolved"  sw="Imetatuliwa"   value={String(resolved.length)} />
           <AdminKpi label="Total pool" sw="Jumla ya dimbwi" value={formatTzs(totalPool)} />
-        </div>
+        </KpiGrid>
 
         <AdminCard padding="p-3">
           <form className="flex flex-wrap items-center gap-2">
@@ -111,7 +113,10 @@ export default async function AdminMarketsPage({
                 defaultValue={query}
                 placeholder="Search title (EN / SW) or mkt_… id"
                 aria-label="Search markets"
-                className="h-8 w-full rounded-md border border-border bg-bg-overlay pl-9 pr-3 text-[12.5px] text-text outline-none admin-focus transition-colors placeholder:text-text-subtle"
+                /* ⚠️ LITERAL, not `h-8` — spacing is overridden (tailwind.config.ts:200-215), so
+                   `h-8` was 48px. 32px = --h-control-xs, the documented dense-admin height, and
+                   the height the `Select size="xs"` and `btn-xs` beside it already render. */
+                className="h-[32px] w-full rounded-md border border-border bg-bg-overlay pl-9 pr-3 text-[12.5px] text-text outline-none admin-focus transition-colors placeholder:text-text-subtle"
               />
             </div>
             <div className="w-full sm:w-[160px]">
@@ -126,7 +131,10 @@ export default async function AdminMarketsPage({
               Search
             </button>
             {hasFilter && (
-              <a href="/admin/markets" className="btn btn-ghost btn-sm h-8">
+              /* ⛔ NO `h-8` OVERRIDE. It rendered 48px (overridden scale) and fought
+                 `.btn-sm`'s own --h-control-sm token. `.btn-xs` IS this idiom — 32px,
+                 matching the Search button and the xs Selects in this same rail. */
+              <a href="/admin/markets" className="btn btn-ghost btn-xs">
                 Clear
               </a>
             )}
@@ -246,7 +254,7 @@ export default async function AdminMarketsPage({
           </ScrollX>
           <AdminPagination total={filtered.length} page={page} baseHref={baseHref} />
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

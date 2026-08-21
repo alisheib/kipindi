@@ -1,10 +1,11 @@
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
+import { AdminBody } from "@/components/admin/admin-body";
 
 export default function Loading() {
   return (
     <>
       <AdminPageHead title="Poll detail" sw="Maelezo ya kura" />
-      <div className="px-4 lg:px-6 py-5 space-y-4 animate-pulse">
+      <AdminBody className="animate-pulse">
         {/* Header card skeleton */}
         <AdminCard>
           <div className="flex items-start justify-between gap-4">
@@ -17,7 +18,10 @@ export default function Loading() {
               <div className="h-5 w-3/4 rounded bg-bg-overlay" />
               <div className="h-3.5 w-1/2 rounded bg-bg-overlay" />
             </div>
-            <div className="h-9 w-[120px] rounded-pill bg-bg-overlay" />
+            {/* ⚠️ HEIGHT IS A LITERAL, not `h-9` — spacing is overridden
+                (tailwind.config.ts:200-215) so `h-9` drew 64px for a 40px pill. The WIDTH
+                beside it was already an arbitrary literal; only the height was trapped. */}
+            <div className="h-[40px] w-[120px] rounded-pill bg-bg-overlay" />
           </div>
         </AdminCard>
 
@@ -37,8 +41,9 @@ export default function Loading() {
           <AdminCard>
             <div className="h-3 w-24 rounded bg-bg-overlay mb-3" />
             <div className="space-y-2">
-              <div className="h-10 w-full rounded-md bg-bg-overlay" />
-              <div className="h-10 w-full rounded-md bg-bg-overlay" />
+              {/* ⚠️ LITERALS, not `h-10` (80px on the overridden scale) — option field bars. */}
+              <div className="h-[44px] w-full rounded-md bg-bg-overlay" />
+              <div className="h-[44px] w-full rounded-md bg-bg-overlay" />
             </div>
           </AdminCard>
         </div>
@@ -62,7 +67,7 @@ export default function Loading() {
             ))}
           </div>
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

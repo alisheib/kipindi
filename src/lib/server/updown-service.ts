@@ -148,9 +148,11 @@ export function outcomeToSide(o: RoundOutcome): "YES" | "NO" | "VOID" {
   return o === "UP" ? "YES" : o === "DOWN" ? "NO" : "VOID";
 }
 
-/** The inverse, used ONLY to copy a market's already-recorded verdict back onto a
- *  round row that never received it (see `healStuckRounds`). Not a second mapping —
- *  it is `outcomeToSide` read backwards, and it never decides anything. */
+/** The inverse. Not a second mapping — it is `outcomeToSide` read backwards, and it
+ *  never decides anything. Two callers: `healStuckRounds`, which copies a market's
+ *  already-recorded verdict back onto a round row that never received it; and the
+ *  UPDOWN bounce in `markets/[id]/page.tsx`, which translates the side a player tapped
+ *  on a card into the vocabulary the round page locks on. */
 export function sideToOutcome(s: "YES" | "NO" | "VOID"): RoundOutcome {
   return s === "YES" ? "UP" : s === "NO" ? "DOWN" : "VOID";
 }

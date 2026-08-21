@@ -38,12 +38,16 @@ export function ReportPackControls({
   // than being offered a button the server will refuse (and logged as a privilege
   // escalation for pressing it). See docs/ADMIN-CONSOLE-FINDINGS.md.
   const mayAct = useMayAct();
-  if (!mayAct) return <ActReadOnly />;
 
   const [pending, startTransition] = useTransition();
   const [ackRef, setAckRef] = useState("");
   const router = useRouter();
   const { toast } = useToast();
+
+  // Rules of hooks: read the gate as a hook at the top, ACT on it below every other hook.
+  // Revoking an ACT grant mid-session flips `mayAct` on the next router.refresh(); an early
+  // return above these hooks would render fewer hooks than the last pass and crash the page.
+  if (!mayAct) return <ActReadOnly />;
 
   const run = (
     fn: (fd: FormData) => Promise<{ ok: boolean; error?: string }>,
@@ -113,7 +117,10 @@ export function ReportPackControls({
             value={ackRef}
             onChange={(e) => setAckRef(e.target.value)}
             placeholder="e.g. GBT-ACK-2026-06-0417"
-            className="h-9 w-full rounded-md border border-border bg-bg-overlay px-2.5 font-mono text-[12px] text-text admin-focus placeholder:text-text-subtle"
+            /* ⚠️ TOKEN, not `h-9` — spacing is overridden (tailwind.config.ts:200-215) so `h-9`
+               was 64px. `--h-input` (44px) is the kit's input height and matches the full-width
+               `btn-md` directly beneath this field. */
+            className="h-[var(--h-input)] w-full rounded-md border border-border bg-bg-overlay px-2.5 font-mono text-[12px] text-text admin-focus placeholder:text-text-subtle"
           />
         </label>
         <button type="button" onClick={() => run(acknowledgeReportPack, "Acknowledgement recorded", { reference: ackRef })} className="btn btn-primary btn-md w-full">

@@ -15,6 +15,8 @@ import {
 } from "./config-form";
 import { FormColumn } from "@/components/ui/form-column";
 import { formatTzs, formatDateTime } from "@/lib/utils";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Market config" };
 export const dynamic = "force-dynamic";
@@ -51,9 +53,9 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
           </Chip>
         }
       />
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         {/* Snapshot KPIs */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+        <KpiGrid cols="3">
           <AdminKpi
             label="Fee model (new polls)"
             sw="Modeli ya ada"
@@ -80,7 +82,7 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
           <AdminKpi label="Cash-out fee"      sw="Ada ya kuuza" value={`${(config.cashOutFeeRate * 100).toFixed(1)}%`} delta={`free for ${config.freeExitGraceMinutes} min`} />
           <AdminKpi label="Withdrawal fee"    sw="Ada ya kutoa" value={`${(config.withdrawalFeeRate * 100).toFixed(2)}%`} delta={`${(config.withdrawalGatewayShareRate * 100).toFixed(2)}% to gateway`} />
           <AdminKpi label="TRA + GBT"         sw="TRA + GBT" value={`${((config.traTaxOnCommissionRate + config.gbtLevyOnCommissionRate) * 100).toFixed(0)}%`} delta="of OUR fee, not the player's" />
-        </div>
+        </KpiGrid>
 
         {/* The model, stated correctly. The old copy here documented
             `netPool = grossPool × (1 − tax − commission − reserve − aggregator)` and
@@ -88,7 +90,7 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
             yield … a small net loss after fees". That edge case is the bug; it is
             gone, and so is the paragraph that normalised it. */}
         {config.feeModel === "loser-share" ? (
-          <AdminCard className="border-warning-border bg-warning-bg/15">
+          <AdminCard className="border-warning-border bg-warning-bg">
             <div className="flex items-start gap-3">
               <I.warning size={18} className="text-warning shrink-0 mt-0.5" />
               <div className="text-caption text-text-secondary space-y-1.5">
@@ -110,7 +112,7 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
             </div>
           </AdminCard>
         ) : null}
-        <AdminCard className="border-info-border bg-info-bg/15">
+        <AdminCard className="border-info-border bg-info-bg">
           <div className="flex items-start gap-3">
             <I.settings size={18} className="text-info shrink-0 mt-0.5" />
             <div className="text-caption text-text-secondary space-y-1.5">
@@ -304,7 +306,7 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
           )}
         </AdminCard>
 
-        <AdminCard className="border-warning-border bg-warning-bg/15">
+        <AdminCard className="border-warning-border bg-warning-bg">
           <div className="flex items-start gap-3">
             <I.alertCircle s={18} />
             <div className="text-caption text-text-secondary">
@@ -325,7 +327,7 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
         </AdminCard>
 
 
-      </div>
+      </AdminBody>
     </>
   );
 }

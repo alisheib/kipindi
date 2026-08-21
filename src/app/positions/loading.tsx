@@ -4,9 +4,13 @@ export default async function PositionsLoading() {
   const { t } = await getServerT();
   return (
     <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
+      {/* Same three strings, in the same order, as the real header — a skeleton that
+          names the page differently is a second name for one destination (§L1), and the
+          subtitle is drawn here too so the tab rail below does not jump when data lands. */}
       <header>
-        <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.positions.title}</p>
-        <h1 className="font-display text-[28px] font-bold text-text">{t.positions.pollsPlayed}</h1>
+        <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.common.positions}</p>
+        <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">{t.positions.headline}</h1>
+        <p className="mt-1 text-[13px] italic text-text-subtle">{t.positions.headlineBody}</p>
       </header>
 
       {/* Tab skeleton */}
@@ -14,7 +18,9 @@ export default async function PositionsLoading() {
         {[t.positions.tabAll, t.positions.tabOpen, t.positions.tabSettled].map((tab, i) => (
           <div
             key={tab}
-            className={`h-9 px-3.5 rounded-t-md ${i === 0 ? "bg-bg-overlay" : ""}`}
+            /* ⚠️ LITERAL, not `h-9` — spacing is overridden (tailwind.config.ts:200-215) so
+               this drew 64px for a tab rail that renders at 44px (FilterPill / Tabs). */
+            className={`h-[44px] px-3.5 rounded-t-md ${i === 0 ? "bg-bg-overlay" : ""}`}
             style={{ width: 70 }}
           >
             <span className="font-display text-[13px] text-text-subtle">{tab}</span>
@@ -49,7 +55,9 @@ export default async function PositionsLoading() {
           >
             <div className="space-y-2.5">
               <div className="flex items-center gap-2">
-                <div className="h-5 w-12 rounded-pill bg-bg-overlay" />
+                {/* ⚠️ WIDTH IS A LITERAL, not `w-12` — 128px on the overridden scale, twice
+                    any real chip. */}
+                <div className="h-5 w-[64px] rounded-pill bg-bg-overlay" />
                 <div className="h-4 w-24 rounded bg-bg-overlay" />
               </div>
               <div className="h-4 w-3/4 rounded bg-bg-overlay" />

@@ -13,6 +13,7 @@ import { BackLink } from "@/components/ui/back-link";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Cash } from "@/components/ui/cash";
+import { Stat } from "@/components/ui/stat";
 import { FilterPill } from "@/components/ui/filter-pill";
 import { getSession } from "@/lib/server/session";
 import { getActivitySummary, getRgUsage, type ActivityPeriod } from "@/lib/server/activity-summary";
@@ -85,11 +86,21 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
             <p className="gilt-eyebrow mb-1">{t.activity.moneyEyebrow}</p>
             <p className="mb-3 text-[11.5px] text-text-subtle">{t.activity.forPeriod} {periodLabel[period].toLowerCase()}.</p>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-              <MoneyTile label={t.activity.deposits}    value={summary.deposits}    icon={<I.arrowDown s={14} />} />
-              <MoneyTile label={t.activity.withdrawals} value={summary.withdrawals} icon={<I.arrowUp s={14} />} />
-              <MoneyTile label={t.activity.staked}       value={summary.staked}       icon={<I.coins s={14} />} />
-              <MoneyTile label={t.activity.won}          value={summary.won}          icon={<I.trophy s={14} />} tone="yes" />
-              <MoneyTile label={t.activity.net}          value={summary.net}          icon={<I.activity s={14} />} tone={summary.net >= 0 ? "yes" : "no"} signed />
+              {/* ⭐ STAGE 9b — was a local `MoneyTile`; now the kit <Stat> at the `lg`
+                  rung (17px, mt-1, leading-tight) in the `tile` box (rounded-lg,
+                  border/60, bg-overlay/40, px-3.5 py-3) with the `wide` label (10px
+                  semibold 0.12em). Box, label, icon row and the yes/no label tint are
+                  carried across unchanged. `money` keeps the <Cash> mask this tile was
+                  the ONE fork that never dropped — and pins the face to mono, which
+                  fixes the one thing it got wrong: it painted TZS in Sora (§M4/§T5). */}
+              <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.deposits}    value={formatTzs(summary.deposits)}    icon={<I.arrowDown s={14} />} />
+              <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.withdrawals} value={formatTzs(summary.withdrawals)} icon={<I.arrowUp s={14} />} />
+              <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.staked}      value={formatTzs(summary.staked)}      icon={<I.coins s={14} />} />
+              <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.won}         value={formatTzs(summary.won)}         icon={<I.trophy s={14} />} labelTone="yes" />
+              {/* The signed net keeps its explicit "+" — <Cash> masks from the first
+                  DIGIT, so the sign and the TZS prefix survive the blur exactly as they
+                  did in the fork. */}
+              <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.net}         value={summary.net >= 0 ? `+${formatTzs(summary.net)}` : formatTzs(summary.net)} icon={<I.activity s={14} />} labelTone={summary.net >= 0 ? "yes" : "no"} />
             </div>
             <p className="mt-3 text-[11px] leading-relaxed text-text-subtle">{t.activity.netNote}</p>
           </section>
@@ -113,20 +124,9 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
   );
 }
 
-function MoneyTile({ label, value, icon, tone, signed }: { label: string; value: number; icon: React.ReactNode; tone?: "yes" | "no"; signed?: boolean }) {
-  const display = signed ? (value >= 0 ? `+${formatTzs(value)}` : formatTzs(value)) : formatTzs(value);
-  return (
-    <div className="rounded-lg border border-border/60 bg-bg-overlay/40 px-3.5 py-3">
-      <div className={cn("flex items-center gap-1.5", tone === "yes" ? "text-yes-300" : tone === "no" ? "text-no-300" : "text-text-subtle")}>
-        {icon}
-        <p className="font-mono text-[10px] uppercase tracking-[0.12em] font-semibold">{label}</p>
-      </div>
-      <p className="mt-1 font-display text-[17px] font-bold leading-tight tabular-nums text-text">
-        <Cash>{display}</Cash>
-      </p>
-    </div>
-  );
-}
+/* ⭐ STAGE 9b — `MoneyTile` is deleted; the tiles above are `ui/stat`. It was the only
+ * one of the ten Stat forks that kept the <Cash> privacy path, which is precisely why
+ * the primitive makes that path a PROP rather than a thing each copy remembers. */
 
 /**
  * "Used X of Y" meter. No cap set → shows the used figure with a "no limit set"

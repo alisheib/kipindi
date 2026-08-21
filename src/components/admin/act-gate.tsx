@@ -104,16 +104,30 @@ export function ActGuard({
 /**
  * The chip that stands where an act control would be.
  *
- * ⭐ Use it as an EARLY RETURN in a control component whose entire output is the control:
+ * ⭐ Use it as the LAST-LINE RETURN in a control component whose entire output is the control:
  *
  *     const mayAct = useMayAct();
- *     if (!mayAct) return <ActReadOnly />;
+ *     const [open, setOpen] = useState(false);
+ *     const [pending, start] = useTransition();
+ *     // …every other hook…
+ *     if (!mayAct) return <ActReadOnly />;   // ⛔ BELOW the hooks, never above them
  *
- * That is one line, and it is unambiguous in review — which matters more here than
+ * ⛔ THE RETURN MUST SIT BELOW EVERY HOOK, AND THIS COMMENT PRESCRIBED THE OPPOSITE UNTIL
+ * 2026-08-21 — 18 control components copied it. `mayAct` is a LIVE value: the Owner revokes
+ * an ACT grant at `/admin/roles`, `canAct()` reads that grant from the DB on the next layout
+ * render, and a `router.refresh()` streams `false` into a control that is still mounted.
+ * Returning above the hooks then renders fewer hooks than the previous pass and React throws
+ * "Rendered fewer hooks than expected" — the officer gets a crashed money page instead of the
+ * read-only downgrade this component exists to give. There is no lint net to catch it:
+ * `npm run lint` is `tsc --noEmit` and the repo has no ESLint, so `react-hooks/rules-of-hooks`
+ * never runs.
+ *
+ * It is still one line, and it is unambiguous in review — which matters more here than
  * elegance, because the alternative is hunting every nested button in a component that
  * renders three confirm states. ⚠️ It is only correct when the component carries **no read
  * affordance**; where a control also filters, sorts or reveals data, disable the acting
- * button with `useMayAct()` instead and leave the reading alone.
+ * button with `useMayAct()` instead and leave the reading alone (`control-plane.tsx` is the
+ * worked example).
  */
 export function ActReadOnly({ note }: { note?: string }) {
   const reason = useActDisabledReason();

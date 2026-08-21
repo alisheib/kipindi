@@ -29,7 +29,6 @@ export function BalanceAdjustControls({
   // than being offered a button the server will refuse (and logged as a privilege
   // escalation for pressing it). See docs/ADMIN-CONSOLE-FINDINGS.md.
   const mayAct = useMayAct();
-  if (!mayAct) return <ActReadOnly />;
 
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -41,6 +40,11 @@ export function BalanceAdjustControls({
   const [confirmWord, setConfirmWord] = useState("");
   const [stage1Msg, setStage1Msg] = useState<string | null>(null);
   const amountRef = useRef<HTMLInputElement>(null);
+
+  // Rules of hooks: read the gate as a hook at the top, ACT on it below every other hook.
+  // Revoking an ACT grant mid-session flips `mayAct` on the next router.refresh(); an early
+  // return above these hooks would render fewer hooks than the last pass and crash the page.
+  if (!mayAct) return <ActReadOnly />;
 
   const amt = Number(amount.replace(/[,\s]/g, ""));
   // Hard-tier ceremony (B-4): at/above the two-person threshold the officer must
@@ -119,7 +123,11 @@ export function BalanceAdjustControls({
               aria-checked={direction === d}
               onClick={() => setDirection(d)}
               className={
-                "min-h-11 rounded-md border font-mono text-[11px] uppercase tracking-[0.12em] transition-colors " +
+                /* ⚠️ LITERAL, not `min-h-11` — spacing is overridden (tailwind.config.ts:200-215),
+                   so `min-h-11` was 96px: two 96px direction buttons dwarfing the amount field
+                   beneath them, on the one screen where an officer moves real money by hand.
+                   44px is A2's preferred tap size, and money controls are never the exception. */
+                "min-h-[44px] rounded-md border font-mono text-[11px] uppercase tracking-[0.12em] transition-colors " +
                 (direction === d
                   ? (d === "credit" ? "border-yes-700 bg-yes-500/15 text-yes-300" : "border-no-700 bg-no-500/15 text-no-300")
                   : "border-border bg-bg-overlay text-text-subtle hover:text-text")

@@ -4,6 +4,10 @@
  * OtpExpiryCountdown — live countdown showing how much time the player
  * has left before their OTP expires. Includes a slim progress bar that
  * drains from full to empty over the TTL window.
+ *
+ * ⛔ THE BAR DRAINS BY TRANSFORM, NEVER BY WIDTH. It re-renders every second for
+ * up to five minutes; a width transition made that a five-minute layout loop on
+ * the sign-in path. See the note at the fill.
  */
 
 import { useEffect, useState } from "react";
@@ -55,9 +59,33 @@ export function OtpExpiryCountdown({ initialRemainingSec }: { initialRemainingSe
         aria-valuemax={OTP_TTL_SEC}
         aria-label={t.auth.codeExpiresIn}
       >
+        {/* 🔴 THE FILL IS SCALED, NOT WIDENED — and on this surface that is not a
+            micro-optimisation. The interval above re-renders once a SECOND for the
+            whole 5-minute TTL, and the bar used to carry `transition-[width]
+            duration-1000`: every tick started a fresh one-second animation of a
+            LAYOUT property, so the sign-in page ran continuous layout + paint for
+            five minutes on the one screen a player reaches on a cold, cheap phone.
+            `transform: scaleX()` produces the identical drain on the compositor —
+            no layout, no reflow of the hint line below it.
+            The in-repo model is `.admin-bar-grow` (state-tokens.css): full width,
+            `transform-origin: left`, scale the fill.
+            ⚠️ scaleX squashes the element's own corner radius horizontally, so the
+            cap is stated honestly: the TRACK is `rounded-full overflow-hidden`, so
+            both visible OUTER ends keep their true shape; only the moving right
+            edge is affected, and on a 3px bar that radius is 1.5px — the squash is
+            sub-pixel and there is no child to counter-scale (no label, no cap art).
+            §M6 · all three gates hold WITHOUT a new branch, and that is a property
+            of the swap rather than an omission: this is a TRANSITION, and the
+            universal clamp in motion.css already zeroes `transition-duration` for
+            the OS query, `html.kp-reduce-motion` and `[data-motion="minimal"]`
+            alike — it did so for the width transition and does so for this one. The
+            third gate (`[data-motion="reduced"]`) is a THROTTLE whose list in
+            globals.css §6 governs `infinite` animations; a one-shot transition has
+            nothing to list there. With motion off the bar simply jumps each second,
+            which is the truthful end frame. */}
         <div
-          className="h-full rounded-full transition-[width] duration-1000 ease-linear"
-          style={{ width: `${pct}%`, background: barColor }}
+          className="h-full w-full origin-left rounded-full transition-transform duration-1000 ease-linear"
+          style={{ transform: `scaleX(${pct / 100})`, background: barColor }}
         />
       </div>
       <p id="otp-hint" aria-live="polite" className={`text-[11px] tabular-nums ${expired ? "text-no-300 font-semibold" : warning ? "text-warning-fg" : "text-text-subtle"}`}>

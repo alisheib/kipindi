@@ -138,10 +138,18 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {SOURCES.map((s, i) => {
                 const Glyph = I[s.glyph];
+                // §A3 — the real radio is `sr-only`, which clips to a 1×1 box, so the
+                // catch-all focus outline in globals.css was painted on something no
+                // player can see and tabbing this fieldset showed nothing. The ring
+                // lands on the visible tile instead. `has-[:focus-visible]`, not
+                // `peer-focus-visible`: the input is this label's CHILD and Tailwind's
+                // `peer-*` compiles to `~`, which cannot match a parent. A real
+                // `outline` rather than a shadow ring — forced-colors strips
+                // box-shadow and keeps outline (E-129, `.gilt-metal:focus-visible`).
                 return (
                   <label
                     key={s.id}
-                    className="group relative flex flex-col items-center gap-1.5 px-2 py-3 rounded-md border border-border bg-bg-overlay hover:border-brand-400 cursor-pointer transition-colors has-[:checked]:border-brand-500 has-[:checked]:bg-brand-500/10"
+                    className="group relative flex flex-col items-center gap-1.5 px-2 py-3 rounded-md border border-border bg-bg-overlay hover:border-brand-400 cursor-pointer transition-colors has-[:checked]:border-brand-500 has-[:checked]:bg-brand-500/10 has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[color:var(--brand-400)]"
                   >
                     <input
                       type="radio"
@@ -184,10 +192,12 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
               {t.profile.annualIncome}
             </FieldLegend>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {/* §A3 — same sr-only-radio blind spot as the source tiles above; the
+                  focus ring has to land on the visible tile, as a real `outline`. */}
               {BANDS.map((b, i) => (
                 <label
                   key={b.id}
-                  className="relative flex items-center justify-center gap-1 px-2 py-3 rounded-md border border-border bg-bg-overlay hover:border-brand-400 cursor-pointer transition-colors has-[:checked]:border-brand-500 has-[:checked]:bg-brand-500/10"
+                  className="relative flex items-center justify-center gap-1 px-2 py-3 rounded-md border border-border bg-bg-overlay hover:border-brand-400 cursor-pointer transition-colors has-[:checked]:border-brand-500 has-[:checked]:bg-brand-500/10 has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[color:var(--brand-400)]"
                 >
                   <input
                     type="radio"
@@ -218,7 +228,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
           </div>
 
           {/* C2g — declaration with signature line-art. */}
-          <div className="flex items-start gap-2.5 rounded-md border border-warning-border bg-warning-bg/30 p-3.5">
+          <div className="flex items-start gap-2.5 rounded-md border border-warning-border bg-warning-bg p-3.5">
             <I.fileSignature s={18} className="shrink-0 mt-0.5 text-warning-fg" />
             <div className="space-y-1">
               <p className="font-display text-[12.5px] font-semibold text-text">{t.profile.bySubmitting}</p>

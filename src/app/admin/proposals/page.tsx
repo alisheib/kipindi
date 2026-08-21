@@ -6,6 +6,8 @@ import { formatTzs, formatNumber } from "@/lib/utils";
 import { AdminProposalsClient } from "./admin-proposals-client";
 import { currentSession } from "@/lib/server/auth-service";
 import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Proposals · Admin" };
 export const dynamic = "force-dynamic";
@@ -45,14 +47,14 @@ export default async function AdminProposalsPage() {
         actions={<Chip size="sm" variant={STATE_CHIP[config.state].variant}>{STATE_CHIP[config.state].label}</Chip>}
       />
 
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         {/* KPIs */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiGrid>
           <AdminKpi label="Pending review"         sw="Yanasubiri"   value={formatNumber(stats.pending)} delta="awaiting review" deltaDir="flat" />
           <AdminKpi label="Approved · to publish"  sw="Yamekubaliwa" value={formatNumber(stats.approvedAwaitingLive)} delta="ready to go live" deltaDir="flat" />
           <AdminKpi label="Bonuses granted"        sw="Bonasi zilizolipwa" value={formatTzs(stats.bonusesGrantedTzs)} delta="all-time" />
           <AdminKpi label="Top proposer"           sw="Bingwa"       value={stats.topProposer?.handle ?? "—"} delta={stats.topProposer ? `${stats.topProposer.listed} listed` : "none yet"} deltaDir="flat" />
-        </div>
+        </KpiGrid>
 
         {/* Interactive queue + review + config editor */}
         <AdminProposalsClient
@@ -63,7 +65,7 @@ export default async function AdminProposalsPage() {
           needSaveConfig={CONTROL_DOMAIN.saveProposalsConfig}
           needApprove={CONTROL_DOMAIN.approveProposal}
         />
-      </div>
+      </AdminBody>
     </>
   );
 }

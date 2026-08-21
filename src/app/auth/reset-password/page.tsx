@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { AuthShell } from "@/components/auth/auth-shell";
+import { AuthPanel, AuthHeader } from "@/components/auth/auth-panel";
 import { PasswordInput } from "@/components/ui/password-input";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { HELPLINE, SUPPORT_EMAIL } from "@/lib/support-config";
@@ -68,22 +69,22 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
     return (
       <AuthShell>
 
-          <section className="rounded-xl glass-panel p-6 space-y-5">
-            <span className="inline-flex h-12 w-12 items-center justify-center rounded-pill bg-no-500/12 text-no-300">
+          <AuthPanel>
+            {/* `/[0.12]` and not `/12` — off Tailwind's 5-step opacity ladder, so the
+                invalid/expired medallion had no fill behind its glyph at all. */}
+            {/* ⚠️ LITERALS, not `h-12 w-12` — spacing is overridden (tailwind.config.ts:200-215),
+                so `h-12` renders a 128px disc around a 22px glyph. */}
+            <span className="inline-flex h-[48px] w-[48px] items-center justify-center rounded-pill bg-no-500/[0.12] text-no-300">
               {state === "expired" ? <I.clock s={22} /> : <I.alertCircle s={22} />}
             </span>
 
-            <div>
-              <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-no-300">
-                {c.eyebrow}
-              </p>
-              <h1 className="mt-1.5 font-display text-[28px] font-bold leading-tight text-text tracking-[-0.02em]">
-                {c.title}
-              </h1>
-              <p className="mt-2 text-[13.5px] text-text-muted leading-relaxed">
-                {c.body}
-              </p>
-            </div>
+            <AuthHeader
+              tone="no"
+              eyebrow={c.eyebrow}
+              title={c.title}
+              subtitle={c.body}
+              subtitleLead="relaxed"
+            />
 
             <div className="flex flex-col gap-2.5">
               <Link href="/auth/forgot-password" className="btn btn-primary btn-lg btn-pill w-full">
@@ -100,7 +101,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
                 {SUPPORT_EMAIL()}
               </a>
             </p>
-          </section>
+          </AuthPanel>
 
       </AuthShell>
     );
@@ -110,7 +111,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
   return (
     <AuthShell>
 
-        <section className="rounded-xl glass-panel p-6 space-y-5">
+        <AuthPanel>
           <Link
             href="/auth/login"
             className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.16em] text-text-subtle hover:text-text"
@@ -119,21 +120,16 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
             {t.common.backToSignIn}
           </Link>
 
-          <div>
-            <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-gold-300">
-              {t.common.resetPassword}
-            </p>
-            <h1 className="mt-1.5 font-display text-[28px] font-bold leading-tight text-text tracking-[-0.02em]">
-              {t.common.setNewPassword}
-            </h1>
-            <p className="mt-1.5 text-[13.5px] text-text-muted">
-              {t.common.strongPassword}
-            </p>
+          <AuthHeader
+            eyebrow={t.common.resetPassword}
+            title={t.common.setNewPassword}
+            subtitle={t.common.strongPassword}
+          >
             <p className="mt-1.5 flex items-center gap-1.5 text-[11.5px] text-gold-300">
               <I.clock s={12} />
               {t.common.thisLinkExpires}
             </p>
-          </div>
+          </AuthHeader>
 
           {banner && (
             <div role="alert" className="rounded-md border border-no-700 bg-no-500/10 px-3.5 py-3 text-[13px] text-no-300">
@@ -190,7 +186,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
               {t.common.requestNewOne}
             </Link>
           </p>
-        </section>
+        </AuthPanel>
 
     </AuthShell>
   );

@@ -9,8 +9,15 @@ import { formatTzs } from "@/lib/utils";
  * Colour is the neutral→warning→danger status ramp, NOT yes/no: a usage meter
  * is not a bet outcome, so green/rose (DESIGN_AUTHORITY B2) must not be reused
  * here. Fills are the AA-darkened status tokens; the value text sits above the
- * bar (never on the fill), so contrast is unaffected. Reduced-motion safe — the
- * only transition is width, and it renders server-side at its final width.
+ * bar (never on the fill), so contrast is unaffected.
+ *
+ * Reduced-motion safe, and now cheap as well: the only transition is `transform`
+ * (it was `width`, which reflowed the panel on every refresh), and the meter still
+ * renders server-side at its final length. §M6 · all three gates hold without a new
+ * branch — motion.css's universal clamp already zeroes `transition-duration` for the
+ * OS query, `html.kp-reduce-motion` and `[data-motion="minimal"]`, and the third
+ * gate's list in globals.css §6 governs `infinite` animations, which a one-shot
+ * transition is not. With motion off the bar renders at its final length instantly.
  */
 export function LimitUsageMeter({
   label,
@@ -47,9 +54,20 @@ export function LimitUsageMeter({
         aria-valuetext={`${formatTzs(used)} / ${formatTzs(cap)}`}
         className="mt-1.5 h-2 w-full overflow-hidden rounded-pill bg-bg-sunken"
       >
+        {/* THE FILL SCALES; IT DOES NOT WIDEN. Same technique as the wallet's unlock
+            bar and the OTP drain — one way to draw a fill, everywhere. The 3% floor is
+            unchanged and still applied to the drawn length: a player at 0.4% of a
+            deposit cap must still see a mark, or the meter reads as "no limit set".
+            ⚠️ The cap, stated: scaleX squashes this element's 4px radius horizontally,
+            so the moving right edge flattens — most at the 3% floor, where the mark is
+            a sliver by design. Both visible OUTER ends keep their true shape because
+            the track is `rounded-pill overflow-hidden`. There is no child to
+            counter-scale: the figures sit ABOVE the bar, never on the fill, which is
+            the same decision that keeps this meter's contrast independent of the fill
+            colour. §M6 · no new branch is owed — see the header note. */}
         <div
-          className="h-full rounded-pill transition-[width] duration-500"
-          style={{ width: `${Math.max(3, clamped)}%`, background: fill }}
+          className="h-full w-full origin-left rounded-pill transition-transform duration-500"
+          style={{ transform: `scaleX(${Math.max(3, clamped) / 100})`, background: fill }}
         />
       </div>
       {reached && <p className="mt-1 text-[11px] font-medium text-danger-fg">{overLabel}</p>}

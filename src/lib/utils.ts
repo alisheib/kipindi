@@ -12,6 +12,28 @@ export function formatTzs(value: number): string {
   return `TZS ${sign}${TZ_NUMBER.format(Math.abs(value))}`;
 }
 
+/** ⭐ THE ONE COMPACTION GRAMMAR FOR MONEY ON THIS PLATFORM. Every player surface that shortens a
+ *  TZS figure calls THIS — never a local `(x / 1000).toFixed(0)`, never a hand-written suffix.
+ *
+ *  The contract, so a caller can size a control without reading the body:
+ *    ≥ 1e9  → "TZS 1.2B"   (1 dp)
+ *    ≥ 1e6  → "TZS 1.3M"   (1 dp below 10M, 0 dp at or above it)
+ *    ≥ 1e3  → "TZS 17K"    (rounded, UPPERCASE K)
+ *    else   → "TZS 1,234"
+ *  Negatives carry the real minus glyph "−" (U+2212), never a hyphen. The widest output is ten
+ *  characters, "TZS 999.9M" — the width the landing hero's proof rail sizes its type steps
+ *  against (see `.kp-proof__num` in globals.css).
+ *
+ *  ⚠️ WHY THIS EARNS A DOC BLOCK. The landing hero prints Σ open pools through this helper as
+ *  "TZS 1.3M", while `/markets` printed the SAME quantity — same predicate, same book, both
+ *  filtered by the same `discovery.ts` — as "TZS 1280k", because that one call site divided by
+ *  1000 itself. Two adjacent player surfaces, one figure, two grammars. The A10 money-format
+ *  guard only matches `.toLocaleString`, so a bare division walks straight past it.
+ *  ⛔ Lowercase "k" is NOT this grammar. Four other sites compact numbers with their own
+ *  thresholds (positions/pnl-chart, markets/conviction-dial, admin/admin-charts,
+ *  updown/stake-math) and two of them are lowercase. Unifying those needs a unit-free SIBLING of
+ *  this function, not a quiet edit here — they render different quantities, one of them is the
+ *  betting dial, and changing this function's suffixes would move money copy on every surface. */
 export function formatTzsCompact(value: number): string {
   const abs = Math.abs(value);
   const sign = value < 0 ? "−" : "";

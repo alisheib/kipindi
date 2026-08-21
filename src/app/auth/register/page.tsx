@@ -3,6 +3,7 @@ import { I } from "@/components/ui/glyphs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FiftyMark } from "@/components/brand";
 import { AuthShell } from "@/components/auth/auth-shell";
+import { AuthPanel, AuthHeader } from "@/components/auth/auth-panel";
 import { Field, Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { PasswordPair } from "@/components/auth/password-pair";
@@ -101,20 +102,12 @@ export default async function RegisterPage({
   return (
     <AuthShell>
 
-        <section
-          className="rounded-xl glass-panel p-6 space-y-5"
-        >
-          <div>
-            <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-gold-300">
-              {t.auth.signUpTitle}
-            </p>
-            <h1 className="mt-1.5 font-display text-[28px] font-bold leading-tight text-text tracking-[-0.02em]">
-              {t.auth.welcomeTo50pick}
-            </h1>
-            <p className="mt-1.5 text-[13.5px] text-text-muted">
-              {t.auth.tanzaniaMobile18}
-            </p>
-          </div>
+        <AuthPanel>
+          <AuthHeader
+            eyebrow={t.auth.signUpTitle}
+            title={t.auth.welcomeTo50pick}
+            subtitle={t.auth.tanzaniaMobile18}
+          />
 
           {referral && (
             <div
@@ -149,7 +142,10 @@ export default async function RegisterPage({
               }}
             >
               <div className="flex items-center gap-3 p-3.5">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[11px] bg-gold-500/15 text-gold-300">
+                {/* ⚠️ LITERALS, not `h-10 w-10` — spacing is overridden (tailwind.config.ts:200-215)
+                    so `h-10` was 80px, while the sibling `rounded-[11px]` was already written for
+                    a 40px tile. Size and radius now agree. */}
+                <span className="grid h-[40px] w-[40px] shrink-0 place-items-center rounded-[11px] bg-gold-500/15 text-gold-300">
                   <I.gift s={20} />
                 </span>
                 <div className="min-w-0 flex-1">
@@ -167,7 +163,7 @@ export default async function RegisterPage({
                 "flex items-start gap-2.5 rounded-md border px-3.5 py-3 " +
                 (errorPanel.tone === "danger"
                   ? "border-no-700/60 bg-no-500/[0.10]"
-                  : "border-warning-border bg-warning-bg/30")
+                  : "border-warning-border bg-warning-bg")
               }
             >
               <span className={"mt-0.5 shrink-0 " + (errorPanel.tone === "danger" ? "text-no-300" : "text-gold-300")}>
@@ -179,7 +175,9 @@ export default async function RegisterPage({
                 {errorPanel.cta && (
                   <Link
                     href={errorPanel.cta.href as never}
-                    className="mt-2 inline-flex h-9 items-center px-3.5 rounded-pill border border-gold-700 bg-gold-500/10 font-display font-bold text-[12.5px] text-gold-300 hover:bg-gold-500/20 transition-colors"
+                    /* ⚠️ LITERAL, not `h-9` — spacing is overridden (tailwind.config.ts:200-215),
+                       so `h-9` was a 64px capsule around 12.5px type. 40px = --tap-min. */
+                    className="mt-2 inline-flex h-[40px] items-center px-3.5 rounded-pill border border-gold-700 bg-gold-500/10 font-display font-bold text-[12.5px] text-gold-300 hover:bg-gold-500/20 transition-colors"
                   >
                     {errorPanel.cta.label} →
                   </Link>
@@ -295,7 +293,7 @@ export default async function RegisterPage({
               {t.auth.signInTitle}
             </Link>
           </p>
-        </section>
+        </AuthPanel>
 
     </AuthShell>
   );

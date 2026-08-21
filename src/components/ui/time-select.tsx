@@ -108,7 +108,10 @@ export function TimeSelect({ value, defaultValue, onChange, error, size = "md", 
   };
 
   const errored = !!error || invalid;
-  const h = size === "sm" ? "h-9" : "h-11";
+  // ⚠️ ARBITRARY LITERALS — the spacing scale is OVERRIDDEN (tailwind.config.ts:200-215),
+  // so the `h-9`/`h-11` that used to be here rendered 64/96px, not 36/44. Matches <Input>.
+  // ⛔ Never a scale token here.
+  const h = size === "sm" ? "h-[36px]" : "h-[var(--h-input)]";
   const fs = size === "sm" ? "text-[13px]" : "text-[16px]";
   const preview = to12Hour(strValue);
 

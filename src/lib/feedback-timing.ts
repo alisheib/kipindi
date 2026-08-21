@@ -100,3 +100,58 @@ export const DWELL_RESULT_MS = 8_000;
  * anything, which is a hold that exists in the code and nowhere else.
  */
 export const DWELL_HANDOVER_HOLD_MS = 2_500;
+
+/**
+ * ⭐ A ROUTINE CONFIRMATION — "that worked", nothing earned, nothing to read twice.
+ *
+ * The two constants below are the OTHER end of the ladder from the three above. A
+ * settlement is news the player did not ask for and may have missed; a routine
+ * confirmation answers a tap they just made, while their eye is still on the control
+ * they pressed. It needs long enough to register and no longer — the acknowledgement is
+ * the point, not the dwelling.
+ *
+ * ⛔ THEY LIVE HERE FOR THE SAME REASON THE OTHER THREE DO. Both were written out as
+ * literals at their call sites, which is the defect §F8 already records re-accumulating:
+ * a duration a MOMENT chose deliberately, typed as a bare number, is invisible to anyone
+ * comparing it against the moment beside it. `2000` and `3000` say nothing about each
+ * other at a call site; named and filed together they state a ladder.
+ *
+ * ⭐ AND THEY OBEY THE SAME INTRUSION RULE — the blocking surface gets LESS unattended
+ * time than the corner one, exactly as `DWELL_CELEBRATION_MS < DWELL_RESULT_MS`. The
+ * admin confirmation is a centred `<Modal>` over the screen an officer is working on; the
+ * bet-placed toast blocks nothing. So 2s < 3s is not an accident of two independent
+ * guesses — it is the same law applied one rung down.
+ */
+
+/**
+ * The admin ActionOverlay's SUCCESS card — "Approved", "Published", "Saved".
+ *
+ * **2s.** An officer is mid-queue and already looking at the dialog they opened; the card
+ * confirms and gets out of the way so the next item can be worked. It is the shortest
+ * dwell on the platform because it is the most interruptive surface with the least to
+ * read: an eyebrow, a title, and a subtitle the officer wrote the inputs for.
+ *
+ * ⛔ FAILURE IS NOT TIMED AND MUST NEVER BE. The error card is `autoCloseMs` UNSET —
+ * sticky until dismissed — because an officer must be able to read why a money operation
+ * did not happen. Same rule as a player-facing refusal, one desk over.
+ * ⚠️ This is NOT the `<OperationResultModal>` default (`DEFAULT_AUTO_CLOSE_MS`, 5s). That
+ * default answers *"nobody said, so pick something sane"*; this says *"this moment is
+ * worth exactly this long"*. Different questions — see the header note.
+ */
+export const DWELL_ADMIN_RESULT_MS = 2_000;
+
+/**
+ * A placed Up & Down bet, announced in the corner.
+ *
+ * **3s.** Ali's standing instruction on the 2026-08-15 retune was *"keep placing bets
+ * popups normal"* — the settlement dwells were lengthened and this one was deliberately
+ * NOT. It is also the value that made the toast viable at all: the toast had been removed
+ * because it piled up on rapid taps, leaving four quiet channels a sighted player does not
+ * notice, so a real bet was silent while a FAILED one shouted. The pile-up was a DURATION
+ * problem; 3s is the answer to it. Longer and rapid taps stack again; shorter and the tap
+ * that placed money is a flicker.
+ *
+ * ⛔ NOT A CEILING ON READING — a refusal on this same path is `durationMs: 0`, sticky
+ * until dismissed. Only the good news is timed.
+ */
+export const DWELL_BET_PLACED_MS = 3_000;

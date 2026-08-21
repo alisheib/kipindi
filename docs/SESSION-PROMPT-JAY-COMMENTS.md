@@ -174,9 +174,14 @@ promising what the next screen refuses, which landed on the celebration screen l
 
 ⛔ **THREE THINGS MUST SURVIVE, each for a different reason:**
 
-1. **The KYC system.** `docs/NIDA-POLICY.md`: *"Uniqueness — one NIDA, one account"*, audited as
-   `kyc.nida.duplicate_blocked`, and *"Document review by a human — this is the real identity
-   control."* Jay is removing a **gate on a payout**, not the identity system.
+1. **The KYC system.** [`docs/IDENTITY-POLICY.md`](IDENTITY-POLICY.md) — ⚠️ **this row said
+   `NIDA-POLICY.md`, which no longer exists** (renamed 2026-08-20 when identity stopped being one
+   document): *"Uniqueness — one document, one account"*, audited as `kyc.id.duplicate_blocked`
+   (⚠️ **also renamed** from `kyc.nida.duplicate_blocked`), and *"Document review by a human —
+   this is the real identity control."* Jay is removing a **gate on a payout**, not the identity
+   system. ⛔ **And do not tell the Board "one NIDA, one account":** uniqueness is now the tuple
+   `(idType, idNumber)` across FOUR documents, so one human holding several documents is a gap
+   only the human reviewer closes — overstating it is the failure this row exists to prevent.
 2. **The AML controls.** `/admin/aml` reasons in thresholds (`TWO_PERSON_THRESHOLD_TZS`, two-person
    review over a limit). ⚠️ **Those come from the AML/FIU regime, a different authority** — a Gaming
    Board instruction about KYC-on-withdrawal does not repeal them. **Do not touch them in this unit.**

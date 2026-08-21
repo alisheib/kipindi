@@ -37,9 +37,14 @@ export const dynamic = "force-dynamic";
  * directly under the hero, which put a second product line in front of a visitor who had not yet
  * seen a single market of the first one.
  *
- * Section gaps are 144 · 96 · 96 · 144 and they come from PAIRS OF PADDING, never a margin — see
- * the `.kp-band` block in `globals.css` and the `--rh-*` comment in §Spacing. Batch 3 is the first
- * consumer those four tokens have ever had.
+ * Section gaps come from PAIRS OF PADDING, never a margin — see the `.kp-band` block in
+ * `globals.css` and the `--rh-*` comment in §Spacing, which now carry the measured per-band and
+ * per-seam tables for BOTH rungs of the rhythm (the phone rungs step down below 768, 2026-08-21).
+ * ⚠️ This line used to assert a flat "144 · 96 · 96 · 144". That was the KIT's rhythm, not this
+ * page's: `.kp-hero__inner` pads `--sp-12` / `--sp-16` and never consumes `--rh-section`, so the
+ * first gap has never been 144 at any width. The numbers are deliberately NOT restated here —
+ * they are measured, they differ per width band, and a number written twice disagrees with
+ * itself. Batch 3 is the first consumer those four tokens have ever had.
  *
  * ── WHAT WAS DELETED ──────────────────────────────────────────────────────────────────────────
  * `StatsBand` (the two zero-counters, gated `settledCount > 0`) is GONE, component and call. Its
@@ -251,7 +256,8 @@ export default async function LandingPage() {
           container so the band above can close its own padding.
           ⭐ NO `paddingBottom` HERE — batch 4. `<PublicFooter>` (rendered by `app-shell.tsx`,
           outside this page) opens with `mt-12`, and on THIS project's spacing scale that is
-          **128px**, not the 48px the Tailwind default would suggest (`tailwind.config.ts:176`).
+          **128px**, not the 48px the Tailwind default would suggest (`tailwind.config.ts:200-215`,
+          where `"12": "128px"` is the last row — this citation said `:176` and had drifted).
           A `--rh-close` here stacked on top of it, giving 176px of measured blank below a
           one-line strip. The gap into the footer is the footer's own margin, on every page. */}
       <div className="kp-band kp-band--overlay kp-band--seam" style={{ paddingBlock: 0, borderTop: 0 }}>

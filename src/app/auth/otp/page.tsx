@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AuthShell } from "@/components/auth/auth-shell";
+import { AuthPanel, AuthHeader } from "@/components/auth/auth-panel";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { OtpInput } from "@/components/ui/otp-input";
 import { FieldLegend } from "@/components/ui/field-legend";
@@ -45,20 +46,12 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
   return (
     <AuthShell>
 
-        <section
-          className="rounded-xl glass-panel p-6 space-y-5"
-        >
-          <div>
-            <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-gold-300">
-              {t.common.verification}
-            </p>
-            <h1 className="mt-1.5 font-display text-[28px] font-bold leading-tight text-text tracking-[-0.02em]">
-              {t.common.enterCode}
-            </h1>
-            <p className="mt-1.5 text-[13.5px] text-text-muted">
-              {t.common.codeSent} <span className="font-mono text-text font-semibold">{masked}</span>.
-            </p>
-          </div>
+        <AuthPanel>
+          <AuthHeader
+            eyebrow={t.common.verification}
+            title={t.common.enterCode}
+            subtitle={<>{t.common.codeSent} <span className="font-mono text-text font-semibold">{masked}</span>.</>}
+          />
 
           {error && (
             <div id="otp-error" role="alert" className="rounded-md border border-no-700 bg-no-500/10 px-3 py-2.5 text-[13px] text-no-300">
@@ -122,7 +115,7 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
               </form>
             )}
           </div>
-        </section>
+        </AuthPanel>
 
         <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.16em] text-text-subtle">
           {t.common.wrongAttemptsHint}

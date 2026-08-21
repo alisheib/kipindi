@@ -23,17 +23,22 @@
  *  · The footer shows the timestamp THE SOURCE published, never our boundary.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
+import { Dot } from "@/components/ui/dot";
 import { cn, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { useUpDownQuickBet, usePlacePulse } from "./use-quick-bet";
 import { UpDownStakeControls } from "./updown-stake-controls";
 import { Button } from "@/components/ui/button";
-import { useCountdown, mmss, useHoldAnchor, useServerNow } from "./round-countdown";
+import { mmss, useHoldAnchor, useTickSeconds } from "./round-countdown";
+// ⭐ ONE TIMER FOR THE WHOLE BOARD, and a card that only re-renders when its PHASE moves.
+// See `use-shared-second.ts` — a board of eight cards used to arm 32 unaligned intervals and
+// re-create every card once a second to re-derive a handful of booleans.
+import { secondsUntil, useServerNowGated } from "@/lib/use-shared-second";
 import { SOURCE_CLASS_KEY } from "@/lib/updown-source-label";
-import { roundPhase, resultClock, handoverClock } from "@/lib/updown-card-phase";
+import { roundPhase, resultClock, handoverClock, type HandoverClock } from "@/lib/updown-card-phase";
 import type { RoundSuccessor } from "@/lib/server/updown-board";
 // ⛔ ONE RULE FOR "why did this stake come back", shared with the round page, the settlement
 // proof, the push and the inbox. Five copies is five chances to disagree about someone money.
@@ -174,10 +179,61 @@ export type UpDownCardProps = {
 };
 
 
+/**
+ * ⭐ THE FORMATTERS ARE BUILT ONCE, NOT PER CALL — the same discipline `formatTzs` already
+ * keeps with its module-scope `TZ_NUMBER` in `@/lib/utils`.
+ *
+ * 🔴 WHY THIS IS A DEVICE PROBLEM AND NOT A TIDINESS ONE. `n.toLocaleString("en-US", {…})`
+ * constructs a fresh `Intl.NumberFormat` on **every call** — the single most expensive thing
+ * this card did. A card renders up to five of them (live price, open price, both targets, the
+ * margin, and a close price once settled), and the card used to re-render once a second, per
+ * card, for the whole life of a round. Eight cards on a board is forty `Intl` constructions a
+ * second on a handset that has to build one from the ICU locale data each time.
+ *
+ * Keyed by `decimals`, because that is the only thing that varies — a chain quotes BTC to 2 and
+ * gold to 2 but FX to 4, and the board can show several assets' cards in one session.
+ * ⛔ Output is byte-identical to what it replaced; this is a caching change, not a format one.
+ */
+const USD_FORMATS = new Map<number, Intl.NumberFormat>();
+function usdFormat(decimals: number): Intl.NumberFormat {
+  let f = USD_FORMATS.get(decimals);
+  if (f === undefined) {
+    f = new Intl.NumberFormat("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+    USD_FORMATS.set(decimals, f);
+  }
+  return f;
+}
+
 /** Asset prices are quoted in USD because that is what the source publishes. Player
  *  money is ALWAYS TZS via formatTzs — the two must never be confusable. */
 function usd(n: number, decimals: number): string {
-  return `$${n.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
+  return `$${usdFormat(decimals).format(n)}`;
+}
+
+/**
+ * The player count, in the DEVICE's own locale — exactly what `players.toLocaleString()` gave,
+ * built once instead of once per render. ⛔ Not `formatNumber` from `@/lib/utils`: that one is
+ * pinned to `en-US`, and swapping the locale under a rendered figure is a copy change wearing a
+ * performance label.
+ * ⚠️ Lazy, so importing this module does not pay for a formatter a page may never draw.
+ */
+let COUNT_FORMAT: Intl.NumberFormat | null = null;
+function formatCount(n: number): string {
+  if (COUNT_FORMAT === null) COUNT_FORMAT = new Intl.NumberFormat();
+  return COUNT_FORMAT.format(n);
+}
+
+/**
+ * The wall-clock time the lock happened, in the player's own locale — the identical output of
+ * `new Date(ms).toLocaleTimeString(undefined, { hour, minute, second })`, from one formatter.
+ * ⚠️ Lazy for the same reason: most cards never render the locked branch.
+ */
+let CLOCK_FORMAT: Intl.DateTimeFormat | null = null;
+function formatClock(ms: number): string {
+  if (CLOCK_FORMAT === null) {
+    CLOCK_FORMAT = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  }
+  return CLOCK_FORMAT.format(new Date(ms));
 }
 
 function hhmmss(iso: string | null): string | null {
@@ -235,6 +291,171 @@ export function AssetMark({ icon, ticker, size = 40 }: { icon: string; ticker: s
     >
       {markFor(icon, ticker)}
     </span>
+  );
+}
+
+/**
+ * ⭐ EVERYTHING THIS CARD DERIVES FROM THE CLOCK, IN ONE PURE CALL.
+ *
+ * 🔴 WHAT IT EXISTS FOR. The card used to hold a ticking `useServerNow` at the TOP of its body,
+ * so a second's passing re-rendered the WHOLE card — header, price, the pool bar, both target
+ * tiles, the action row and the footer — to re-derive a handful of booleans that had not
+ * changed. On an open round every one of those renders produced byte-identical output, once a
+ * second, per card, for the entire life of the round.
+ *
+ * ⭐ Pure, so the SAME call decides the render and gates it (`useServerNowGated`). Writing the
+ * phase test twice — once to draw and once to compare — is the two-definitions drift
+ * `roundPhase`, `resultClock` and `handoverClock` were extracted to stop, and here the two
+ * copies would be one render apart from each other.
+ *
+ * ⛔ NOT A NEW RULE. Every line below is the arithmetic that stood in the card body, moved
+ * verbatim; the shared pure rules are still the ones being called.
+ */
+type CardClock = {
+  locked: boolean;
+  settledNow: boolean;
+  awaitingResult: boolean;
+  resultTarget: number | null;
+  resultRunning: boolean;
+  countdownTarget: number;
+  handover: HandoverClock;
+  inHandover: boolean;
+  running: boolean;
+  bettable: boolean;
+  podPhase: string;
+};
+
+function cardClock(p: {
+  state: UpDownCardState;
+  selectionClosesAtMs: number | null;
+  closesAtMs: number;
+  expectedResultAtMs: number | null;
+  successorExists: boolean;
+  successorOpensAtMs: number | null;
+  chainRunning: boolean;
+  holdAnchor: number | null;
+  /**
+   * The instant to evaluate at — the caller's `serverNow ?? serverNowMs ?? closesAtMs`.
+   * ⛔ PASSED IN, NOT RE-DERIVED HERE, so the card's own `nowMs` line stays the single place
+   * this product decides what "now" is on this surface (E-166's frozen-clock defect lived on
+   * exactly that line, and `red:updown-handover` mutates it to prove the freeze stays fixed).
+   */
+  nowMs: number;
+  /** ⛔ `null` IS THE PRE-HYDRATION TICK, not "unknown". It is what makes the server and the
+   *  client render the same markup — see the `--:--` convention below. */
+  serverNow: number | null;
+}): CardClock {
+  const { state, closesAtMs, selectionClosesAtMs, holdAnchor, nowMs } = p;
+  const { locked, bettable: phaseBettable } = roundPhase({
+    state, selectionClosesAtMs, closesAtMs, nowMs,
+  });
+  const settledNow = state === "resolved" || state === "void";
+  const clock = resultClock({ state, closesAtMs, expectedResultAtMs: p.expectedResultAtMs, nowMs });
+  const awaitingResult = clock.awaiting;
+  const resultTarget = clock.targetMs;
+  const countdownTarget = resultTarget
+    ?? (locked || selectionClosesAtMs == null ? closesAtMs : selectionClosesAtMs);
+  // ⛔ `secondsUntil` IS THE FUNCTION THE DIGITS USE. `running` was read off `useCountdown`'s
+  // CLAMPED return (`secondsLeft > 0`, i.e. `now <= target − 1000`); a gate that instead asked
+  // `now < target` would disagree with the number on screen for a full second at every
+  // boundary — and `running` decides whether the BET BUTTONS are offered.
+  const secondsLeft = p.serverNow == null ? null : secondsUntil(countdownTarget, p.serverNow);
+  // The pre-hydration tick renders `--:--` on both sides; treat it as still counting so the
+  // server and client markup agree (the same rule `running` uses below).
+  const resultRunning = resultTarget != null && (secondsLeft == null || clock.counting);
+  const handover = handoverClock({
+    state,
+    settledAtMs: holdAnchor,
+    successorExists: p.successorExists,
+    successorOpensAtMs: p.successorOpensAtMs,
+    chainRunning: p.chainRunning,
+    nowMs,
+  });
+  // The pod speaks only once the hold has passed — before that the result stands alone.
+  const inHandover = handover.phase !== "none" && handover.phase !== "hold";
+  // `secondsLeft === null` is the pre-hydration tick. Treat it as "not yet expired" so
+  // the server renders the same action row the client will, and only the digits differ
+  // (they read `--:--`, which is identical on both sides).
+  const running = secondsLeft == null || secondsLeft > 0;
+  // ⛔ `phaseBettable` already excludes the result phase — see the note in `roundPhase`. The
+  // pre-hydration tick (`secondsLeft == null`) still has to render the same action row the
+  // client will, or the server and client markup disagree.
+  const bettable = phaseBettable && running;
+  /**
+   * ⭐ E-166 · the pod reads as ONE object changing state. `.m-tick` is the kit's own
+   * dip-and-land for a changing value (`--t-base` / `--m-glide`), keyed on the PHASE so the
+   * per-second digits never animate — see the twin of this block in `round-countdown.tsx` for
+   * the full reasoning, including why reduced motion needs no branch of its own.
+   */
+  const podPhase = inHandover ? `h:${handover.phase}`
+    : settledNow ? "settled" : awaitingResult ? (resultRunning ? "result" : "spent")
+    : locked ? "locked" : running ? "open" : "idle";
+
+  // ⛔ THE INSTANT ITSELF IS DELIBERATELY NOT RETURNED. It changes every second by definition,
+  // and `cardKey` is built from this whole struct — leaking `nowMs` into it would put a
+  // per-second value in the gate's comparison and undo the entire point of the gate.
+  return {
+    locked, settledNow, awaitingResult, resultTarget, resultRunning,
+    countdownTarget, handover, inHandover, running, bettable, podPhase,
+  };
+}
+
+/** The card's whole clock-derived output as one string — what the gate compares tick to tick. */
+function cardKey(c: CardClock): string {
+  return [
+    c.podPhase, c.locked ? 1 : 0, c.bettable ? 1 : 0, c.running ? 1 : 0,
+    c.awaitingResult ? 1 : 0, c.resultRunning ? 1 : 0, c.resultTarget ?? "-", c.countdownTarget,
+    c.settledNow ? 1 : 0, c.inHandover ? 1 : 0, c.handover.phase,
+    c.handover.counting ? 1 : 0, c.handover.ready ? 1 : 0, c.handover.targetMs ?? "-",
+  ].join("|");
+}
+
+/**
+ * ⭐ THE LEAF — the ONE part of this card allowed to re-render every second.
+ *
+ * The card owns the pod's box, its caption and its ink; this owns the digit. That split is what
+ * lets `useServerNowGated` hold the card still for a whole round while the number inside it
+ * still moves. ⛔ `urgent` is decided HERE, off the same `left` the digits are drawn from — read
+ * from a second sampling of the clock upstairs it could cross the 30-second line a tick either
+ * side of the number the player is looking at, and paint a rose "last seconds" pulse on `0:31`.
+ */
+function CardCountdownDigits({
+  digits, targetMs, serverNowMs, seedNowMs, urgentEligible, tone,
+}: {
+  /** A fixed readout to show verbatim, or `null` to COUNT `targetMs` down. */
+  digits: string | null;
+  targetMs: number; serverNowMs?: number; seedNowMs: number | null;
+  urgentEligible: boolean; tone: string;
+}) {
+  const counting = digits === null;
+  const left = useTickSeconds(targetMs, serverNowMs, counting, seedNowMs);
+  const urgent = urgentEligible && left != null && left <= 30;
+  return (
+    <div
+      className={cn("m-tick font-mono font-bold tabular-nums leading-none", urgent && "ud-count-pulse")}
+      style={{
+        fontSize: 28, letterSpacing: "0.05em",
+        // Three states, three inks: rose = your last seconds to bet · brand = the
+        // result is coming · subtle = nothing is counting. Never rose for the wait —
+        // `confirming` is CALM by design (see this file's header), not an alarm.
+        // ⭐ E-166 · a COUNTING handover is brand too — the same "something is coming"
+        // ink, for the same reason. ⛔ And never rose, on any handover branch: a void
+        // hands over exactly like a win does, and the next match is not an alarm.
+        color: urgent ? "var(--no-300)" : tone,
+        // ⛔ The ladder, not a typed number — see the twin of this line in
+        // `round-countdown.tsx` for why `--t-base` and not `--t-flick`.
+        transition: "color var(--t-base) var(--m-glide)",
+      }}
+    >
+      {/* ⛔ An em-dash pair, not `0:00`. A zeroed clock reads as "it should have happened
+          and did not"; `—:—` reads as "we are not counting this", which is the truth in
+          both the overrun and the never-measured case. It also matches the pre-hydration
+          `--:--` convention already used here, so the shape is familiar.
+          🔴 AND THE SETTLED BRANCH USED TO FALL THROUGH TO `mmss(0)` — a dead `00:00`,
+          measured on production 2026-08-19 on both this card and the round page. The
+          handover branch is what removes it. */}
+      {digits ?? mmss(left)}
+    </div>
   );
 }
 
@@ -301,11 +522,33 @@ export function UpDownCard(props: UpDownCardProps) {
   // ⭐ `useServerNow` is the tool that already exists for this and the round page's pod already
   // uses it: a real, ticking, SERVER-ANCHORED instant that does not stop at any boundary. The
   // pre-hydration value is the server's own clock, so the markup matches on both sides.
-  const serverNow = useServerNow(serverNowMs);
-  const nowMs = serverNow ?? serverNowMs ?? closesAtMs;
-  const { locked, bettable: phaseBettable } = roundPhase({
-    state, selectionClosesAtMs: selectionClosesAtMs ?? null, closesAtMs, nowMs,
+  // ⭐ AND IT NO LONGER RE-RENDERS THE CARD ONCE A SECOND TO DO IT. `useServerNowGated` keeps
+  // the ticking instant in a ref and asks for a render only when `cardKey` — the card's whole
+  // clock-derived output — actually moves. An open round costs ZERO renders a second; the
+  // boundary it is waiting for still lands on the very tick it happens. The digits keep moving
+  // in their own leaf (`CardCountdownDigits`), which is the only thing that has to.
+  // ⛔ THE HOLD ANCHOR IS READ THROUGH A REF because the gate's closure runs on the ticker,
+  // after this render has assigned it. `useHoldAnchor` still stamps during render, on the
+  // observed settle, exactly as before.
+  const holdAnchorRef = useRef<number | null>(null);
+  const clockOf = (n: number | null, at: number): CardClock => cardClock({
+    state, selectionClosesAtMs: selectionClosesAtMs ?? null, closesAtMs, expectedResultAtMs,
+    successorExists: successor?.roundId != null,
+    successorOpensAtMs: successor?.opensAtMs ?? null,
+    chainRunning: successor?.chainRunning ?? false,
+    holdAnchor: holdAnchorRef.current, nowMs: at, serverNow: n,
   });
+  const serverNow = useServerNowGated(serverNowMs, (n) => cardKey(clockOf(n, n ?? serverNowMs ?? closesAtMs)));
+  // ⛔ THE HOLD IS OWED FROM WHEN THIS CARD LEARNED THE RESULT. The board polls every 20s, so a
+  // hold measured from the server's `resolvedAt` would be spent before the card ever rendered
+  // the outcome — the result would flash and be replaced in one paint. See `useHoldAnchor`.
+  const settledNow = state === "resolved" || state === "void";
+  const holdAnchor = useHoldAnchor(roundId, settledNow, resolvedAtMs, serverNow);
+  holdAnchorRef.current = holdAnchor;
+  const nowMs = serverNow ?? serverNowMs ?? closesAtMs;
+  const c = clockOf(serverNow, nowMs);
+  const { locked, awaitingResult, resultRunning, countdownTarget,
+          handover, inHandover, running, bettable, podPhase } = c;
   // ⭐ E-99 · THE THIRD TIMER — Ali, 2026-08-05: *"we agreed that we want a timer called
   // results and put a new timer for results… so users would wait for results."*
   //
@@ -322,17 +565,7 @@ export function UpDownCard(props: UpDownCardProps) {
   // countdown is a promise, and a fabricated promise on a money surface is exactly A-5.
   // ⛔ THE RULE LIVES IN `resultClock`, NOT HERE. Inlining it would put the logic somewhere no
   // suite can reach, which is precisely why `roundPhase` was extracted after E-82.
-  const settledNow = state === "resolved" || state === "void";
-  const clock = resultClock({ state, closesAtMs, expectedResultAtMs, nowMs });
-  const awaitingResult = clock.awaiting;
-  const resultTarget = clock.targetMs;
-  const countdownTarget = resultTarget
-    ?? (locked || selectionClosesAtMs == null ? closesAtMs : selectionClosesAtMs);
-  const secondsLeft = useCountdown(countdownTarget, serverNowMs);
-  // The pre-hydration tick renders `--:--` on both sides; treat it as still counting so the
-  // server and client markup agree (the same rule `running` uses below).
-  const resultRunning = resultTarget != null && (secondsLeft == null || clock.counting);
-
+  //
   // ── ⭐ E-166 · THE HANDOVER — what a FINISHED round says about the one that follows ──────
   //
   // 🔴 WHAT THIS REPLACES, read off production 2026-08-19: this card's header said **"Closed ·
@@ -346,24 +579,9 @@ export function UpDownCard(props: UpDownCardProps) {
   // ⛔ AND ITS INSTANTS ARE THE SERVER'S. `successor` carries the chain's own `opensAt` and the
   // market's own lock — never arithmetic done on this side, which would give the screen a second
   // answer to a deadline the money path already owns.
-  // ⛔ THE HOLD IS OWED FROM WHEN THIS CARD LEARNED THE RESULT. The board polls every 20s, so a
-  // hold measured from the server's `resolvedAt` would be spent before the card ever rendered
-  // the outcome — the result would flash and be replaced in one paint. See `useHoldAnchor`.
-  const holdAnchor = useHoldAnchor(roundId, settledNow, resolvedAtMs, serverNow);
-  const handover = handoverClock({
-    state,
-    settledAtMs: holdAnchor,
-    successorExists: successor?.roundId != null,
-    successorOpensAtMs: successor?.opensAtMs ?? null,
-    chainRunning: successor?.chainRunning ?? false,
-    nowMs,
-  });
-  // The pod speaks only once the hold has passed — before that the result stands alone.
-  const inHandover = handover.phase !== "none" && handover.phase !== "hold";
-  // ⛔ THE HOOK IS UNCONDITIONAL. `useCountdown` cannot sit behind an `if`, so it is always
-  // armed and the target falls back to the close; `handover.counting` is what decides whether
-  // the digits are shown at all.
-  const handoverLeft = useCountdown(handover.targetMs ?? closesAtMs, serverNowMs);
+  //
+  // ⚠️ ALL THREE RULES NOW LIVE IN `cardClock` ABOVE — moved verbatim, not rewritten, so the
+  // gate and the render cannot hold two opinions about which phase this round is in.
   const handoverCaption =
     handover.phase === "counting" ? t.market.udNextMatchIn
     : handover.phase === "live" ? t.market.udNextMatchLive
@@ -372,31 +590,17 @@ export function UpDownCard(props: UpDownCardProps) {
     : null;
   // ⛔ `—:—`, NEVER A DEAD `0:00`, on every branch that is not counting (E-99 rule 3). The
   // pre-hydration tick renders `--:--` on both sides, which is the same shape and matches.
-  const handoverDigits = handover.counting ? mmss(handoverLeft) : "—:—";
-
-  // `secondsLeft === null` is the pre-hydration tick. Treat it as "not yet expired" so
-  // the server renders the same action row the client will, and only the digits differ
-  // (they read `--:--`, which is identical on both sides).
-  const running = secondsLeft == null || secondsLeft > 0;
-  // ⛔ `phaseBettable` already excludes the result phase — see the note in `roundPhase`. The
-  // pre-hydration tick (`secondsLeft == null`) still has to render the same action row the
-  // client will, or the server and client markup disagree.
-  const bettable = phaseBettable && running;
-  const urgent = bettable && secondsLeft != null && secondsLeft <= 30;
-  /**
-   * ⭐ E-166 · the pod reads as ONE object changing state. `.m-tick` is the kit's own
-   * dip-and-land for a changing value (`--t-base` / `--m-glide`), keyed on the PHASE so the
-   * per-second digits never animate — see the twin of this block in `round-countdown.tsx` for
-   * the full reasoning, including why reduced motion needs no branch of its own.
-   */
-  const podPhase = inHandover ? `h:${handover.phase}`
-    : settledNow ? "settled" : awaitingResult ? (resultRunning ? "result" : "spent")
-    : locked ? "locked" : running ? "open" : "idle";
+  // ⚠️ `null` NOW MEANS "COUNT IT" — the leaf owns the ticking number, and a string here is a
+  // fixed readout it shows verbatim. The four branches are the same four they always were.
+  const handoverDigits = handover.counting ? null : "—:—";
   // The exact time the lock happened (or will), for the reason line. Local-time formatting is
   // deliberate — the player's own clock is what they will compare it against.
-  const lockClock = selectionClosesAtMs != null
-    ? new Date(selectionClosesAtMs).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" })
-    : null;
+  // ⚠️ `formatClock` reuses ONE `Intl.DateTimeFormat`; this used to build a fresh one on every
+  // render, and this card used to render every second.
+  const lockClock = useMemo(
+    () => (selectionClosesAtMs != null ? formatClock(selectionClosesAtMs) : null),
+    [selectionClosesAtMs],
+  );
   // ⭐ THE LOCK IS WHAT LETS US STOP ESTIMATING. Once betting closes the pool is frozen, so a
   // payout stops being a projection and becomes arithmetic — `× 1.4 est.` can become a real
   // number. That deletes an estimate from a screen about someone's money, which is the shape
@@ -430,7 +634,27 @@ export function UpDownCard(props: UpDownCardProps) {
   const downPct = Math.max(0, 100 - upPct);
   const dir = movePct == null ? null : movePct > 0 ? "up" : movePct < 0 ? "down" : "flat";
   const priceColor = dir === "up" ? "var(--yes-300)" : dir === "down" ? "var(--no-300)" : "var(--text-muted)";
-  const quoted = hhmmss(sourceQuotedAt);
+  /**
+   * ⭐ EVERY FORMATTED STRING ON THIS CARD, COMPUTED ONCE PER CHANGE — not once per render.
+   *
+   * The prices move when the poller brings a new quote (~20s); the player count and the
+   * quoted-at stamp move less often than that. They were all being re-derived on every render,
+   * and this card rendered every second. One `useMemo` per group is one dependency compare in
+   * place of five `Intl` calls, a `Date` parse and a `toISOString`.
+   * ⛔ SAME OUTPUT, SAME RULES. `livePrice == null` is still an em-dash and "awaiting price"
+   * (A-5); nothing here invents a figure for a value the source has not given us.
+   */
+  const priceText = useMemo(() => ({
+    live: livePrice == null ? null : usd(livePrice, decimals),
+    open: openPrice == null ? null : usd(openPrice, decimals),
+    close: closePrice == null ? null : usd(closePrice, decimals),
+    up: upTarget == null ? null : usd(upTarget, decimals),
+    down: downTarget == null ? null : usd(downTarget, decimals),
+    margin: upTarget == null || openPrice == null ? null : usd(upTarget - openPrice, decimals),
+    move: movePct == null ? null : `${movePct > 0 ? "+" : ""}${movePct.toFixed(2)}%`,
+  }), [livePrice, openPrice, closePrice, upTarget, downTarget, decimals, movePct]);
+  const playersText = useMemo(() => formatCount(players), [players]);
+  const quoted = useMemo(() => hhmmss(sourceQuotedAt), [sourceQuotedAt]);
 
   // ── Quick-bet ──────────────────────────────────────────────────────────────
   // One-tap bet that keeps the card in place (see useUpDownQuickBet — the SHARED
@@ -524,7 +748,10 @@ export function UpDownCard(props: UpDownCardProps) {
             <span className="chip" style={{ marginLeft: 6, verticalAlign: "middle" }}>{durationMinutes} {t.market.udMin}</span>
           </h3>
           <div className="mt-1 flex items-center gap-1.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.10em] text-text-subtle">
-            {bettable && <span className="live-dot" />}
+            {/* Stage 9b — kit <Dot pulse>. It IS `.live-dot`: same 6px box, same
+                `--live-400`, same 2600ms breathe, same gating at all three
+                reduced-motion tiers. Nothing about this pip renders differently. */}
+            {bettable && <Dot tone="live" size={6} pulse />}
             {/* 🔴 E-166 · THIS SAID "CLOSED" FOR EVERY NON-BETTABLE STATE, and it was wrong about
                 three of them. Measured on production 2026-08-19: a settled card read
                 **"Closed · BTC"** beside its own "Up wins" result — *closed is not a result* —
@@ -551,11 +778,11 @@ export function UpDownCard(props: UpDownCardProps) {
               <div className="flex items-center justify-end gap-1 font-mono text-[15.5px] font-bold tabular-nums" style={{ color: priceColor }}>
                 {dir === "up" && <I.trendingUp s={11} />}
                 {dir === "down" && <I.trendingDown s={11} />}
-                {usd(livePrice, decimals)}
+                {priceText.live}
               </div>
-              {movePct != null && (
+              {priceText.move != null && (
                 <div className="font-mono text-[11px] font-semibold tabular-nums" style={{ color: priceColor }}>
-                  {movePct > 0 ? "+" : ""}{movePct.toFixed(2)}%
+                  {priceText.move}
                 </div>
               )}
             </>
@@ -592,36 +819,25 @@ export function UpDownCard(props: UpDownCardProps) {
             : locked ? t.market.udResultIn
             : running ? t.market.udBetsCloseIn : t.market.udSelectionsClosed}
         </div>
-        <div key={`d-${podPhase}`}
-             className={cn("m-tick font-mono font-bold tabular-nums leading-none", urgent && "ud-count-pulse")}
-             style={{
-               fontSize: 28, letterSpacing: "0.05em",
-               // Three states, three inks: rose = your last seconds to bet · brand = the
-               // result is coming · subtle = nothing is counting. Never rose for the wait —
-               // `confirming` is CALM by design (see this file's header), not an alarm.
-               // ⭐ E-166 · a COUNTING handover is brand too — the same "something is coming"
-               // ink, for the same reason. ⛔ And never rose, on any handover branch: a void
-               // hands over exactly like a win does, and the next match is not an alarm.
-               color: urgent ? "var(--no-300)"
-                 : inHandover ? (handover.counting ? "var(--brand-300)" : "var(--text-subtle)")
-                 : resultRunning ? "var(--brand-300)"
-                 : running ? "var(--text)" : "var(--text-subtle)",
-               // ⛔ The ladder, not a typed number — see the twin of this line in
-               // `round-countdown.tsx` for why `--t-base` and not `--t-flick`.
-               transition: "color var(--t-base) var(--m-glide)",
-             }}>
-          {/* ⛔ An em-dash pair, not `0:00`. A zeroed clock reads as "it should have happened
-              and did not"; `—:—` reads as "we are not counting this", which is the truth in
-              both the overrun and the never-measured case. It also matches the pre-hydration
-              `--:--` convention already used here, so the shape is familiar.
-              🔴 AND THE SETTLED BRANCH USED TO FALL THROUGH TO `mmss(0)` — a dead `00:00`,
-              measured on production 2026-08-19 on both this card and the round page. The
-              handover branch is what removes it. */}
-          {inHandover ? handoverDigits
+        {/* ⛔ THE PHASE KEY STAYS ON THE ELEMENT THAT WEARS `.m-tick` — the leaf IS that
+            element, so the kit's dip-and-land is unchanged. `seedNowMs` is what makes the
+            remount safe: without it the first paint of a new phase would be `--:--` for a
+            frame, in the middle of the very animation the key exists to trigger.
+            ⛔ THE FOUR BRANCHES ARE THE SAME FOUR — "is anything being counted, and to what". */}
+        <CardCountdownDigits
+          key={`d-${podPhase}`}
+          digits={inHandover ? handoverDigits
             : settledNow ? "—:—"
             : awaitingResult && !resultRunning ? "—:—"
-            : mmss(secondsLeft)}
-        </div>
+            : null}
+          targetMs={inHandover ? (handover.targetMs ?? closesAtMs) : countdownTarget}
+          serverNowMs={serverNowMs}
+          seedNowMs={serverNow}
+          urgentEligible={bettable}
+          tone={inHandover ? (handover.counting ? "var(--brand-300)" : "var(--text-subtle)")
+            : resultRunning ? "var(--brand-300)"
+            : running ? "var(--text)" : "var(--text-subtle)"}
+        />
       </div>
 
       {/* ── Stats (mandatory: VOLUME · PLAYERS) ────────────────────────── */}
@@ -631,7 +847,7 @@ export function UpDownCard(props: UpDownCardProps) {
           {formatTzs(volumeTzs)}
         </span>
         <span className="inline-flex items-center gap-1 font-mono text-[11.5px] font-semibold tabular-nums text-text-muted">
-          <I.users s={11} />{players.toLocaleString()}
+          <I.users s={11} />{playersText}
         </span>
       </div>
 
@@ -667,10 +883,18 @@ export function UpDownCard(props: UpDownCardProps) {
               honest size of the band, and at the tick floor it is reassuringly tiny. */}
           <div className="flex items-center justify-between gap-2 font-mono text-[8px] font-semibold uppercase tracking-[0.12em] text-text-faint">
             <span className="truncate">
-              {t.market.udWinTarget}{openPrice != null ? ` ${usd(openPrice, decimals)}` : ""}
+              {t.market.udWinTarget}{openPrice != null ? ` ${priceText.open ?? ""}` : ""}
             </span>
-            {openPrice != null && <span className="shrink-0 tabular-nums">± {usd(upTarget - openPrice, decimals)}</span>}
+            {openPrice != null && <span className="shrink-0 tabular-nums">± {priceText.margin}</span>}
           </div>
+          {/* ⚠️ STAGE 9b — these two tiles were examined for the <Stat> consolidation and
+              KEPT. They are label-over-value pairs, but not one of them lands on a rung:
+              the label is 9px BOLD at 0.10em (the dictionary has 9px/regular and
+              9.5px/bold, not this), the value is 12.5px (nearest rung is 13.5), and the
+              box is a per-side `color-mix` wash with a matching border that no entry in
+              the BOX dictionary describes. The right-hand tile is additionally
+              right-ALIGNED, which <Stat> has no prop for. Folding them would restyle the
+              two figures that tell a player what price wins — reported instead. */}
           <div className="mt-1 grid grid-cols-2 gap-2">
             <div className="min-w-0 rounded-lg px-2.5 py-1.5"
                  style={{ background: "color-mix(in oklab, var(--yes-500) 10%, transparent)", border: "1px solid color-mix(in oklab, var(--yes-500) 24%, transparent)" }}>
@@ -678,7 +902,7 @@ export function UpDownCard(props: UpDownCardProps) {
                 <I.trendingUp s={10} />{t.market.udUp}
               </div>
               <div className="mt-0.5 font-mono text-[12.5px] font-bold tabular-nums leading-tight" style={{ color: "var(--yes-300)" }}>
-                ≥ {usd(upTarget, decimals)}
+                ≥ {priceText.up}
               </div>
             </div>
             <div className="min-w-0 rounded-lg px-2.5 py-1.5 text-right"
@@ -687,7 +911,7 @@ export function UpDownCard(props: UpDownCardProps) {
                 {t.market.udDown}<I.trendingDown s={10} />
               </div>
               <div className="mt-0.5 font-mono text-[12.5px] font-bold tabular-nums leading-tight" style={{ color: "var(--no-300)" }}>
-                ≤ {usd(downTarget, decimals)}
+                ≤ {priceText.down}
               </div>
             </div>
           </div>
@@ -832,7 +1056,7 @@ export function UpDownCard(props: UpDownCardProps) {
             </span>
             {openPrice != null && closePrice != null && (
               <span className="text-right font-mono text-[10.5px] tabular-nums text-text-muted">
-                {usd(openPrice, decimals)} → {usd(closePrice, decimals)}
+                {priceText.open} → {priceText.close}
               </span>
             )}
           </div>
@@ -905,7 +1129,7 @@ export function UpDownCard(props: UpDownCardProps) {
           {t.market[SOURCE_CLASS_KEY[sourceClass]]}{quoted ? ` · ${t.market.udQuoted} ${quoted}` : ""}
         </span>
         {openPrice != null && (
-          <span className="shrink-0 tabular-nums">{t.market.udOpenPrice} {usd(openPrice, decimals)}</span>
+          <span className="shrink-0 tabular-nums">{t.market.udOpenPrice} {priceText.open}</span>
         )}
       </div>
     </article>

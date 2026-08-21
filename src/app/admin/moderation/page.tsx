@@ -1,6 +1,8 @@
 import { AdminPageHead, AdminCard, AdminKpi, AdminLoadError } from "@/components/admin/admin-shell";
 import { listForModeration } from "@/lib/server/comments-store";
 import { ModerationQueue } from "./moderation-client";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Comment moderation" };
 export const dynamic = "force-dynamic";
@@ -15,18 +17,18 @@ export default async function AdminModerationPage() {
   return (
     <>
       <AdminPageHead title="Comment moderation" sw="Usimamizi wa maoni" />
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         {/* KPI band — the page was previously just one card with these counts
             buried in a subtitle; surface them so the queue has a hierarchy. */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+        <KpiGrid cols="3">
           <AdminKpi label="In queue" sw="Kwenye foleni" value={failed ? "" : items.length} unavailable={failed} delta="awaiting review" deltaDir="flat" pulse={!failed && items.length > 0} />
           <AdminKpi label="Auto-hidden" sw="Zimefichwa" value={failed ? "" : hidden} unavailable={failed} delta="held by the filter" deltaDir="flat" />
           <AdminKpi label="Reported" sw="Zimeripotiwa" value={failed ? "" : reported} unavailable={failed} delta="visible · flagged" deltaDir="flat" />
-        </div>
+        </KpiGrid>
         <AdminCard title="Review queue" sw="Foleni ya ukaguzi">
           {failed ? <AdminLoadError what="the moderation queue" /> : <ModerationQueue items={items} />}
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

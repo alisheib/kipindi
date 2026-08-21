@@ -14,6 +14,7 @@
  * only the body is skeletonised.
  */
 import type { ReactNode } from "react";
+import { AdminBody } from "@/components/admin/admin-body";
 
 /** One pulsing placeholder bar. Size via Tailwind className (house style). */
 export function SkBar({ className = "h-3 w-24" }: { className?: string }) {
@@ -25,10 +26,13 @@ export function SkChip({ className = "h-[26px] w-20" }: { className?: string }) 
   return <div className={`rounded-pill bg-bg-overlay ${className}`} />;
 }
 
-/** Body wrapper — matches every admin page's `px-4 lg:px-6 py-5 space-y-4`, and
- *  owns the single pulse so the whole skeleton breathes in phase. */
+/** Body wrapper — the page's own <AdminBody>, plus the single pulse so the whole
+ *  skeleton breathes in phase. ⭐ It USES <AdminBody> rather than re-typing its
+ *  class string: a loader that drifts from its page's gutters is a loader that
+ *  makes the load→loaded swap jump sideways, and that is exactly what two copies
+ *  of one padding value eventually do. */
 export function SkBody({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={`px-4 lg:px-6 py-5 space-y-4 animate-pulse ${className}`}>{children}</div>;
+  return <AdminBody className={`animate-pulse ${className}`}>{children}</AdminBody>;
 }
 
 /** KPI band skeleton — mirrors AdminKpi tiles (glass-panel, min-h-[110px]). */
@@ -76,28 +80,38 @@ export function SkCard({
   );
 }
 
-/** A form-card skeleton — a label+field stack (settings / grant / config pages). */
+/** A form-card skeleton — a label+field stack (settings / grant / config pages).
+ *  `cols` mirrors the REAL form's grid: a 3-up form skeletoned at the 2-up
+ *  default wraps to a second row that the page does not have, and the swap then
+ *  jumps by a whole field row (~76px). Pass the page's own grid classes. */
 export function SkFormCard({
   fields = 3,
   titleW = "w-36",
+  cols = "sm:grid-cols-2",
   className = "",
 }: {
   fields?: number;
   titleW?: string;
+  cols?: string;
   className?: string;
 }) {
   return (
     <div className={`rounded-lg glass-panel p-4 space-y-4 ${className}`}>
       <SkBar className={`h-3.5 ${titleW}`} />
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className={`grid gap-4 ${cols}`}>
         {Array.from({ length: fields }).map((_, i) => (
           <div key={i} className="space-y-1.5">
             <SkBar className="h-2.5 w-24" />
-            <SkBar className="h-9 w-full rounded-md" />
+            {/* ⛔ LITERAL, NOT `h-9` — the spacing scale is overridden
+                (tailwind.config.ts:200-215) and `h-9` is 64px, so this placeholder was
+                20px taller than the field it stands in for and the swap jumped on load.
+                44px == --h-input / --h-control-md. */}
+            <SkBar className="h-[44px] w-full rounded-md" />
           </div>
         ))}
       </div>
-      <SkBar className="h-9 w-32 rounded-md" />
+      {/* Submit-button placeholder — 44px == --h-control-md, not `h-9` (64px). */}
+      <SkBar className="h-[44px] w-32 rounded-md" />
     </div>
   );
 }
@@ -144,6 +158,58 @@ export function SkTableCard({
             </div>
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Row-list card skeleton — a titled glass-panel holding N bordered rows, each a
+ * two-line label on the left and `controls` control-sized placeholders on the
+ * right. This is the shape of every toggle/grant list in the console (the role
+ * matrix at /admin/roles, the source toggles), and it is NOT <SkCard>: a
+ * <SkCard> line is a 12px bar, while one of these rows is a ~50px bordered box,
+ * so ghosting a 7-row list with SkCard(lines=7) is ~240px short PER CARD.
+ *
+ * `rowH` is the real row height in px — measure it, don't guess: it is the
+ * content height (e.g. body-sm 18 + micro 14) plus the row's own padding and
+ * borders, and `min-h` is border-box here.
+ */
+export function SkRowCard({
+  rows = 6,
+  rowH = 50,
+  controls = 0,
+  titleW = "w-40",
+  className = "",
+}: {
+  rows?: number;
+  rowH?: number;
+  controls?: number;
+  titleW?: string;
+  className?: string;
+}) {
+  return (
+    <div className={`rounded-lg glass-panel p-4 ${className}`}>
+      <SkBar className={`h-3.5 ${titleW} mb-3`} />
+      <div className="grid grid-cols-1 gap-2">
+        {Array.from({ length: rows }).map((_, i) => (
+          <div
+            key={i}
+            className="flex items-center justify-between gap-3 rounded-md border border-border bg-bg-overlay px-3"
+            style={{ minHeight: rowH }}
+          >
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <SkBar className="h-3 w-32" />
+              <SkBar className="h-2.5 w-full max-w-[280px]" />
+            </div>
+            <div className="flex shrink-0 items-center gap-4">
+              {Array.from({ length: controls }).map((_, c) => (
+                /* 44×26 == the Toggle's own box (ui/toggle.tsx), not a guess. */
+                <SkBar key={c} className="h-[26px] w-[44px] rounded-pill" />
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

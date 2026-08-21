@@ -397,6 +397,7 @@ export const dict = {
       offline: "You’re offline", offlineHint: "Some features may not work",
       phoneInputTitle: "9-digit Tanzania mobile number starting with 6 or 7",
       openCalendar: "Open calendar", invalidDate: "Invalid date", pickDate: "Pick a date",
+      dateRequired: "Enter a date",
       prevMonth: "Previous month", nextMonth: "Next month", pickYear: "Pick a year",
       backToCalendar: "Back to calendar",
       time24: "Time, 24-hour", duration: "Duration", durationValue: "Duration value",
@@ -423,6 +424,11 @@ export const dict = {
     auth: {
       signInTitle: "Sign in", signUpTitle: "Create account",
       railTagline: "Predict events. Not chance.",
+      /** The brand lockup's accessible name on the auth screens. It was a hardcoded English
+       *  `aria-label` on a link whose only content is an SVG — so the ONE landmark a
+       *  screen-reader user has for getting off a half-finished sign-up announced itself in
+       *  English on a fully Swahili page. The brand name stays untranslated; the noun does not. */
+      brandHomeAria: "50pick home",
       continueWithPhone: "Continue with your phone",
       enterPhonePassword: "Enter your phone and password.",
       welcomeTo50pick: "Welcome to 50pick",
@@ -1002,6 +1008,13 @@ export const dict = {
        *  and drops only the fabricated percentage — a bare "YES" would tell a screen
        *  reader what the label says but not what the control does. */
       backYesAriaNoPrice: "Back YES", backNoAriaNoPrice: "Back NO",
+      /** ⭐ THE PRODUCT-AWARE PAIR — §L4, and the reason the fixed pair above is not enough.
+       *  A back button's VISIBLE word comes from `sideWord()`, so an Up & Down row reads
+       *  UP / DOWN; the fixed keys say YES / NO whatever the product, so a screen-reader
+       *  user heard a different vocabulary than the eye read — in all three locales.
+       *  `{side}` is filled from the SAME lexicon call that renders the label, so the two
+       *  channels cannot drift apart again. */
+      backSideAria: "Back {side} at {pct}%", backSideAriaNoPrice: "Back {side}",
       notifUnsupported: "Browser notifications not supported here. Add this market to your home screen for the best alerts.",
       watchingTitle: "Watching this market",
       notifBlocked: "Notifications blocked. Enable them in your browser settings to get a ping when this market resolves.",
@@ -1028,6 +1041,10 @@ export const dict = {
       amount: "Amount",
       amountHint: "Min TZS 1,000 · Max TZS 5,000,000 per withdrawal. Amounts ≥ TZS 1,000,000 may require AML review (up to 24 hours).",
       destinationPhone: "Destination phone",
+      // B-22 · withdraw confirm-guard refusal. The payee number is where the
+      // money GOES, so this is not `msisdnRequired` (which says "payment
+      // prompt" — a deposit concept; there is no prompt on a withdrawal).
+      payeeMsisdnRequired: "Enter the 9-digit mobile-money number that will receive the money.",
       // B-7 · deposit action refusals, previously hardcoded English.
       depositBounds: "Enter an amount between TZS {min} and TZS {max}.",
       billingIncomplete: "Complete every billing field to pay by card.",
@@ -1413,6 +1430,8 @@ export const dict = {
     positions: {
       title: "History",
       pollsPlayed: "Polls you've played",
+      headline: "Your predictions",
+      headlineBody: "Every market you've backed — separate from your Up & Down rounds.",
       tabAll: "All", tabOpen: "Open", tabSettled: "Settled",
       atRisk: "At risk", liveValue: "Live value", unrealised: "unrealised",
       settledPnl: "Settled P&L", winRate: "Win rate",
@@ -1532,6 +1551,11 @@ export const dict = {
       noNotifications: "No notifications yet",
       noNotificationsHint: "We'll buzz here when a bet settles or a market resolves.",
       dismissNotification: "Dismiss notification",
+      /* §A4 — colour is never the only signal. The unread row is a gold wash plus a
+         1.5px gold dot, and the dot is `aria-hidden`, so a screen-reader user had NO
+         way to tell a settled-money notification they had already opened from one they
+         had not. Rendered sr-only beside the title. */
+      unread: "Unread",
     },
     chat: {
       greeting: "Hi.",
@@ -1592,6 +1616,15 @@ export const dict = {
       card3Body: "No fixed odds. Winners share the pool by the size of their stake. Our commission comes only out of the losing side — the winners' stakes are returned in full and never touched — so being right never costs you money. When betting closes we tell you the exact amount you'll receive.",
       poolCaption: "losers fund winners · a correct call never loses",
       dragToCommit: "drag to commit",
+      /* ⭐ THE VISUALS ARE COPY TOO, AND THEY WERE THE LAST ENGLISH LEFT IN THIS COMPONENT.
+         Card 1's YES / or / NO row, card 2's dial annotations and card 3's pool tiles were
+         baked into the JSX and the SVG — on the three cards whose whole job is teaching a
+         first-time player what a side means, in a language they may not read. `dragToCommit`
+         above records the same defect being fixed one caption at a time; these are the rest.
+         The SIDE words are not here: they come from `sideWord()`, so only the frames around
+         them live in the dictionary (§L2 — one definition site for the vocabulary). */
+      dialMin: "{n}× min", dialMax: "{n}× max",
+      poolSide: "{side} pool", poolShare: "share",
       skipPrimer: "Skip primer",
       // === i18n coverage pass ===
       primerLabel: "50pick primer", step: "Step {n}",
@@ -2246,6 +2279,7 @@ export const dict = {
       offline: "Hauko mtandaoni", offlineHint: "Baadhi ya vipengele huenda visifanye kazi",
       phoneInputTitle: "Nambari ya simu ya Tanzania yenye tarakimu 9 inayoanza na 6 au 7",
       openCalendar: "Fungua kalenda", invalidDate: "Tarehe si sahihi", pickDate: "Chagua tarehe",
+      dateRequired: "Weka tarehe",
       prevMonth: "Mwezi uliopita", nextMonth: "Mwezi ujao", pickYear: "Chagua mwaka",
       backToCalendar: "Rudi kwenye kalenda",
       time24: "Muda, saa 24", duration: "Muda", durationValue: "Thamani ya muda",
@@ -2270,6 +2304,7 @@ export const dict = {
     auth: {
       signInTitle: "Ingia", signUpTitle: "Fungua akaunti",
       railTagline: "Tabiri matukio. Si bahati.",
+      brandHomeAria: "Mwanzo wa 50pick",
       continueWithPhone: "Endelea na simu yako",
       enterPhonePassword: "Weka simu na nenosiri.",
       welcomeTo50pick: "Karibu kwenye 50pick",
@@ -2706,6 +2741,7 @@ export const dict = {
       insufficientDetail: "Unahitaji TZS {need} lakini una TZS {have}. Weka pesa ili kuendelea.",
       backYesAria: "Unga mkono NDIYO kwa {pct}%", backNoAria: "Unga mkono HAPANA kwa {pct}%",
       backYesAriaNoPrice: "Unga mkono NDIYO", backNoAriaNoPrice: "Unga mkono HAPANA",
+      backSideAria: "Unga mkono {side} kwa {pct}%", backSideAriaNoPrice: "Unga mkono {side}",
       notifUnsupported: "Arifa za kivinjari hazitumiki hapa. Ongeza soko hili kwenye skrini yako ya mwanzo kwa arifa bora.",
       watchingTitle: "Unafuatilia soko hili",
       notifBlocked: "Arifa zimezuiwa. Ziwashe katika mipangilio ya kivinjari chako upate arifa soko hili litakapotatuliwa.",
@@ -2733,6 +2769,7 @@ export const dict = {
       msisdnRequired: "Weka namba ya simu ya pesa mtandaoni itakayopokea ombi la malipo.",
       chooseProvider: "Chagua njia ya malipo kwanza.",
       destinationPhone: "Simu ya mpokeaji",
+      payeeMsisdnRequired: "Weka namba ya simu ya pesa mtandaoni yenye tarakimu 9 itakayopokea pesa.",
       securedByKyc: "Imelindwa na KYC & AML",
       securedBody: "Kiasi cha TZS 1,000,000 na zaidi kinashikiliwa kwa ukaguzi wa maafisa wawili wa uzingatiaji kabla ya kutolewa. Nyaraka za utambulisho zinakaguliwa na timu yetu ya uzingatiaji unapoziwasilisha. Uthibitisho wa SMS utaongezwa mtoa huduma wa SMS aliyeidhinishwa atakapoanza kazi.",
       taxNotice: "Ada ya kutoa pesa",
@@ -3074,6 +3111,8 @@ export const dict = {
     positions: {
       title: "Historia",
       pollsPlayed: "Kura ulizocheza",
+      headline: "Utabiri wako",
+      headlineBody: "Kila soko uliloweka — tofauti na raundi zako za Juu na Chini.",
       tabAll: "Zote", tabOpen: "Hai", tabSettled: "Imekamilika",
       atRisk: "Hatarini", liveValue: "Thamani sasa", unrealised: "haijathibitishwa",
       settledPnl: "Faida ya jumla", winRate: "Asilimia ya ushindi",
@@ -3188,6 +3227,7 @@ export const dict = {
       noNotifications: "Huna taarifa zozote kwa sasa",
       noNotificationsHint: "Tutakujulisha hapa pale bet itakapomalizika au soko litakapofungwa.",
       dismissNotification: "Ondoa arifa",
+      unread: "Haijasomwa",
     },
     chat: {
       greeting: "Habari.",
@@ -3227,6 +3267,8 @@ export const dict = {
       card3Body: "Hakuna odds. Washindi wanagawana bwawa kulingana na dau lao. Kamisheni yetu inatoka tu kwenye upande ulioshindwa — dau za washindi zinarudishwa zote na haziguswi kamwe — kwa hiyo kuwa sahihi hakukugharimu pesa kamwe. Dau likifungwa tutakuambia kiasi kamili utakachopata.",
       poolCaption: "wapotezao hulipa washindi · jibu sahihi halipotezi",
       dragToCommit: "sogeza kujitolea",
+      dialMin: "{n}× chini", dialMax: "{n}× juu",
+      poolSide: "bwawa la {side}", poolShare: "mgao",
       skipPrimer: "Ruka utangulizi",
       // === i18n coverage pass ===
       primerLabel: "Utangulizi wa 50pick", step: "Hatua {n}",
@@ -3851,6 +3893,7 @@ export const dict = {
       offline: "您已离线", offlineHint: "部分功能可能无法使用",
       phoneInputTitle: "9 位坦桑尼亚手机号，以 6 或 7 开头",
       openCalendar: "打开日历", invalidDate: "日期无效", pickDate: "选择日期",
+      dateRequired: "请输入日期",
       prevMonth: "上个月", nextMonth: "下个月", pickYear: "选择年份",
       backToCalendar: "返回日历",
       time24: "时间（24 小时制）", duration: "时长", durationValue: "时长数值",
@@ -3875,6 +3918,7 @@ export const dict = {
     auth: {
       signInTitle: "登录", signUpTitle: "创建账户",
       railTagline: "预测事件，而非运气。",
+      brandHomeAria: "50pick 首页",
       continueWithPhone: "使用手机号继续",
       enterPhonePassword: "输入您的手机号和密码。",
       welcomeTo50pick: "欢迎来到50pick",
@@ -4310,6 +4354,9 @@ export const dict = {
       insufficientDetail: "您需要 TZS {need}，但只有 TZS {have}。请充值以继续。",
       backYesAria: "以 {pct}% 押注「是」", backNoAria: "以 {pct}% 押注「否」",
       backYesAriaNoPrice: "押注「是」", backNoAriaNoPrice: "押注「否」",
+      /** 「 」 sits in the TEMPLATE, not in the word — §L4: the bracket belongs to the
+       *  sentence, so `sideWord()` keeps returning the bare 是 / 否 / 涨 / 跌. */
+      backSideAria: "以 {pct}% 押注「{side}」", backSideAriaNoPrice: "押注「{side}」",
       notifUnsupported: "此处不支持浏览器通知。将此市场添加到主屏幕以获得最佳提醒。",
       watchingTitle: "正在关注此市场",
       notifBlocked: "通知已被阻止。请在浏览器设置中开启，以便此市场结算时收到提醒。",
@@ -4337,6 +4384,7 @@ export const dict = {
       msisdnRequired: "请输入接收付款提示的移动支付手机号。",
       chooseProvider: "请先选择支付方式。",
       destinationPhone: "目标手机号",
+      payeeMsisdnRequired: "请输入将收到这笔款项的9位移动支付手机号。",
       securedByKyc: "受KYC和AML保护",
       securedBody: "TZS 1,000,000 及以上的金额须经两名合规专员审核后方可释放。您提交的身份证件将由我们的合规团队核验。短信验证将在授权服务商上线后启用。",
       taxNotice: "提现手续费",
@@ -4678,6 +4726,8 @@ export const dict = {
     positions: {
       title: "历史",
       pollsPlayed: "您参与的投票",
+      headline: "您的预测",
+      headlineBody: "您参与过的每一个市场——与涨跌回合分开。",
       tabAll: "全部", tabOpen: "进行中", tabSettled: "已结算",
       atRisk: "风险金额", liveValue: "实时价值", unrealised: "未实现",
       settledPnl: "已结算盈亏", winRate: "胜率",
@@ -4792,6 +4842,7 @@ export const dict = {
       noNotifications: "暂无通知",
       noNotificationsHint: "投注结算或市场结束时我们会在此通知您。",
       dismissNotification: "关闭通知",
+      unread: "未读",
     },
     chat: {
       greeting: "你好。",
@@ -4827,6 +4878,9 @@ export const dict = {
       card3Body: "没有固定赔率。赢家按投注额比例分享奖池。我们的佣金仅从失败一方扣取 — 赢家的本金全额退回，永不被动 — 因此判断正确绝不会让您亏钱。投注关闭时，我们会告知您将收到的确切金额。",
       poolCaption: "输家资助赢家 · 判断正确绝不亏损",
       dragToCommit: "拖动确认",
+      /* 「 」 lives in the TEMPLATE, not in the word — §L4. */
+      dialMin: "下限 {n}×", dialMax: "上限 {n}×",
+      poolSide: "「{side}」奖池", poolShare: "分配",
       skipPrimer: "跳过引导",
       // === i18n coverage pass ===
       primerLabel: "50pick 引导", step: "第 {n} 步",

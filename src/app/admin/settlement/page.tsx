@@ -8,6 +8,8 @@ import { listSettlementQueue, getSettlementHealth } from "@/lib/server/market-se
 import { formatTzs, formatDateTime } from "@/lib/utils";
 import { SettleButton } from "./settle-button";
 import Link from "next/link";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Settlement" };
 export const dynamic = "force-dynamic";
@@ -24,13 +26,13 @@ export default async function AdminSettlementPage({ searchParams }: { searchPara
   return (
     <>
       <AdminPageHead title="Settlement" sw="Malipo" />
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
 
         {/* The single most important fact on this page: how a market gets paid. */}
         <div
           className={
             ready.length > 0
-              ? "flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg/25 px-3 py-2.5 text-[12.5px] text-warning-fg"
+              ? "flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2.5 text-[12.5px] text-warning-fg"
               : "flex items-start gap-2 rounded-md border border-brand-500 bg-brand-500/10 px-3 py-2.5 text-[12.5px] text-text-muted"
           }
         >
@@ -54,7 +56,7 @@ export default async function AdminSettlementPage({ searchParams }: { searchPara
           )}
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiGrid>
           <AdminKpi
             label="Ready to settle" sw="Tayari kulipwa"
             value={String(ready.length)} delta={formatTzs(readyTzs)}
@@ -75,7 +77,7 @@ export default async function AdminSettlementPage({ searchParams }: { searchPara
             delta={health.scheduler.nextFireAt ? `next ${formatDateTime(health.scheduler.nextFireAt)}` : "none pending"}
             deltaDir={health.scheduler.armed > 0 ? "up" : undefined}
           />
-        </div>
+        </KpiGrid>
 
         <AdminCard title="Payout queue" sw="Foleni ya malipo" padding="p-0">
           {queue.length === 0 ? (
@@ -138,7 +140,7 @@ export default async function AdminSettlementPage({ searchParams }: { searchPara
                         ) : r.state === "FROZEN" ? (
                           <Link
                             href={"/admin/objections" as never}
-                            className="inline-flex min-h-[40px] items-center gap-1.5 rounded-md border border-warning-border bg-warning-bg/20 px-3 py-2 font-mono text-[10.5px] font-bold uppercase tracking-[0.08em] text-warning-fg hover:bg-warning-bg/40 transition-colors brand-focus"
+                            className="inline-flex min-h-[40px] items-center gap-1.5 rounded-md border border-warning-border bg-warning-bg px-3 py-2 font-mono text-[10.5px] font-bold uppercase tracking-[0.08em] text-warning-fg hover:bg-warning-border transition-colors brand-focus"
                           >
                             Rule on it
                           </Link>
@@ -163,7 +165,7 @@ export default async function AdminSettlementPage({ searchParams }: { searchPara
           actually change the outcome. <strong>Settling is irreversible:</strong> once the money is in
           players&rsquo; wallets it cannot be clawed back, so rule on any objection first.
         </p>
-      </div>
+      </AdminBody>
     </>
   );
 }

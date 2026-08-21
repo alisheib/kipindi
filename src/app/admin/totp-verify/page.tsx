@@ -69,7 +69,7 @@ export default async function AdminTotpVerifyPage({ searchParams }: { searchPara
           </div>
         </section>
 
-        <section className="flex items-start gap-2.5 rounded-xl border border-info-border bg-info-bg/[0.10] p-3.5">
+        <section className="flex items-start gap-2.5 rounded-xl border border-info-border bg-info-bg p-3.5">
           <I.shieldcheck s={14} />
           <p className="text-[12px] text-text-muted">
             The admin session lasts 8 hours after this verification. Every admin sign-in (success + fail)

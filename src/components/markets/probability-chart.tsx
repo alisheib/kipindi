@@ -8,11 +8,22 @@
  * point, range tabs + hover crosshair. Styling lives in globals.css (.pchart
  * / .spark). Dependency-free SVG.
  */
-import { useState, useRef, useId, useEffect } from "react";
+import { useState, useRef, useId, useEffect, useMemo, useCallback } from "react";
 import { SignalPip } from "@/components/brand";
 import { useT } from "@/lib/i18n";
 
 export type ProbPoint = { t: string; p: number };
+
+/**
+ * Plot padding — MODULE SCOPE ON PURPOSE (2026-08-21). These are four fixed literals,
+ * and hoisting them out of the component body is what lets the geometry below memoise
+ * with an honest, lint-clean dependency list instead of one that re-derives every render.
+ */
+const padL = 34, padR = 14, padT = 16, padB = 24;
+
+/** Stable identity for "this range has no points" — a fresh `[]` per render would
+ *  invalidate the geometry memo on every hover frame, which is the bug it exists to fix. */
+const NO_POINTS: ProbPoint[] = [];
 
 /** Light Catmull-Rom smoothing → cubic beziers. Low tension: reads as data. */
 function smoothPath(pts: number[][]): string {
@@ -64,20 +75,46 @@ export function ProbabilityChart({
 
   const width = widthProp ?? measuredWidth;
 
-  const data = series[range] || [];
-  const padL = 34, padR = 14, padT = 16, padB = 24;
+  const data = series[range] || NO_POINTS;
   const W = width - padL - padR, H = height - padT - padB;
   const n = data.length;
 
-  const x = (i: number) => padL + (n <= 1 ? 0 : (i / (n - 1)) * W);
-  const y = (p: number) => padT + (1 - p / 100) * H;
+  const x = useCallback((i: number) => padL + (n <= 1 ? 0 : (i / (n - 1)) * W), [n, W]);
+  const y = useCallback((p: number) => padT + (1 - p / 100) * H, [H]);
   const baseline = y(50);
 
-  const pts = data.map((d, i) => [x(i), y(d.p)]);
-  const linePath = smoothPath(pts);
-  const areaPath = pts.length
-    ? `${linePath} L ${x(n - 1).toFixed(2)} ${baseline.toFixed(2)} L ${x(0).toFixed(2)} ${baseline.toFixed(2)} Z`
-    : "";
+  /**
+   * ⚡ THE GEOMETRY IS MEMOISED — 2026-08-21, and the trigger is the HOVER, not the mount.
+   *
+   * `pts`, `linePath` and `areaPath` were plain render-body expressions, so they were
+   * rebuilt on EVERY render of this component — including every single
+   * `onPointerMove`, which calls `setHover(idx)` and therefore re-renders at the
+   * pointer's event rate (~60/s while a finger drags across the chart, and this chart
+   * is explicitly built for touch scrubbing: `touch-action: pan-y`).
+   *
+   * That was not a cheap expression. Per frame it was: one `.map` allocating N
+   * two-element arrays, then `smoothPath` walking all N points building a cubic-bezier
+   * string with FOUR `toFixed(2)` calls each — `toFixed` is a number→string conversion,
+   * the single most expensive thing in the whole render — then a fifth string concat for
+   * the area. On an "ALL" range that is hundreds of points of string building per frame,
+   * on the low-end Android this product is built for, to produce a path that had not
+   * changed at all: moving the pointer does not move the line.
+   *
+   * The deps are exactly what the shape depends on — the points, the plot box, and the
+   * two coordinate mappers (themselves `useCallback`-stable on `n`/`W`/`H`). `hover` is
+   * deliberately NOT among them, which is the whole point: the crosshair, the readout and
+   * the value flag still re-render on every frame, because those genuinely do move.
+   */
+  const { linePath, areaPath } = useMemo(() => {
+    const p = data.map((d, i) => [x(i), y(d.p)]);
+    const line = smoothPath(p);
+    return {
+      linePath: line,
+      areaPath: p.length
+        ? `${line} L ${x(n - 1).toFixed(2)} ${baseline.toFixed(2)} L ${x(0).toFixed(2)} ${baseline.toFixed(2)} Z`
+        : "",
+    };
+  }, [data, n, x, y, baseline]);
 
   useEffect(() => {
     const el = lineRef.current;
@@ -129,10 +166,22 @@ export function ProbabilityChart({
           <SignalPip size={7} />
           <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--text-subtle)" }}>{t.market.probOverTime}</span>
         </div>
+        {/* 🔴 A5 (2026-08-21) — PRESSED BUTTONS, NOT AN ARIA TAB WIDGET. The range rail carried
+            `role="tablist"`/`role="tab"`/`aria-selected` with no roving tabindex, no arrow keys
+            and no `aria-controls`, i.e. a tab widget in name only.
+            ⭐ AND THE WIDGET CANNOT BE COMPLETED HERE EVEN IN PRINCIPLE: the thing a range
+            "selects" is the chart below, which is `role="img"` with its own alt text — one
+            element cannot be an image and a tabpanel at the same time, and demoting the chart
+            from `img` would cost a blind reader the only description of it there is.
+            So the rail states what is true: a group of buttons, one of them pressed — the same
+            `aria-pressed` language `filter-pill.tsx` gives the other seven player filter rails,
+            which this control was already aligned with visually (§4 of `test:filter-language`:
+            --pill-active, 44px). ⛔ Not `aria-current`: that is reserved for rails whose
+            options navigate. */}
         {ranges.length > 1 && (
-          <div className="pchart-ranges" role="tablist" aria-label={t.market.timeRange}>
+          <div className="pchart-ranges" role="group" aria-label={t.market.timeRange}>
             {ranges.map((rg) => (
-              <button key={rg} role="tab" aria-selected={rg === range} className={"pchart-range" + (rg === range ? " is-active" : "")} onClick={() => setRange(rg)}>{rg}</button>
+              <button key={rg} type="button" aria-pressed={rg === range} className={"pchart-range" + (rg === range ? " is-active" : "")} onClick={() => setRange(rg)}>{rg}</button>
             ))}
           </div>
         )}

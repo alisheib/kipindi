@@ -2,9 +2,12 @@ import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-she
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
+import { formatDate } from "@/lib/utils";
 import { listSources, listDisabledCategories, seedDefaultSources, getGeneratableCategories } from "@/lib/server/source-registry";
 import type { MarketCategory } from "@/lib/server/market-service";
 import { ToggleSource, RemoveSource, ToggleCategory, AddSourceForm } from "./source-controls";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Sources" };
 export const dynamic = "force-dynamic";
@@ -36,13 +39,13 @@ export default async function AdminSourcesPage() {
         sw="Vyanzo na aina"
         actions={<AddSourceForm />}
       />
-      <div className="px-4 lg:px-6 py-5 space-y-4">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <AdminBody>
+        <KpiGrid>
           <AdminKpi label="Trusted sources"     sw="Vyanzo vinavyoaminika" value={String(enabled.length)} delta={`${all.length} total`} />
           <AdminKpi label="Disabled sources"    sw="Vyanzo vimezimwa"      value={String(all.length - enabled.length)} delta="not in use" />
           <AdminKpi label="Generatable categories" sw="Aina zinazozalishwa" value={String(generatable.size)} delta={`of ${CATEGORIES.length} · AI can generate these`} />
           <AdminKpi label="Disabled categories" sw="Aina zilizozimwa"      value={String(disabledCats.size)} />
-        </div>
+        </KpiGrid>
 
         {/* Categories */}
         <AdminCard
@@ -75,7 +78,7 @@ export default async function AdminSourcesPage() {
               <span className={`font-mono text-[10px] tracking-[0.12em] uppercase px-2 py-0.5 rounded-pill border ${
                 isGeneratable
                   ? "border-yes-700/40 bg-yes-500/10 text-yes-300"
-                  : "border-warning-border bg-warning-bg/30 text-warning-fg"
+                  : "border-warning-border bg-warning-bg text-warning-fg"
               }`}>
                 {isGeneratable ? "AI can generate" : catEnabled ? "No enabled source · not generatable" : "category disabled"}
               </span>
@@ -105,7 +108,11 @@ export default async function AdminSourcesPage() {
                     <tr key={s.id} className="border-b border-border-subtle/50 last:border-b-0 align-top">
                       <td className="p-3">
                         <p className="font-display font-semibold text-text">{s.label}</p>
-                        <p className="font-mono text-[10px] text-text-subtle">added {s.addedAt.slice(0, 10)} · by {s.addedBy.slice(0, 14)}…</p>
+                        {/* `addedAt` is a UTC ISO string; slicing its first ten characters
+                            printed the UTC calendar day, which is the previous one for
+                            anything added after 21:00 EAT. `formatDate` stamps the
+                            platform timezone. */}
+                        <p className="font-mono text-[10px] text-text-subtle">added {formatDate(s.addedAt)} · by {s.addedBy.slice(0, 14)}…</p>
                       </td>
                       <td className="p-3">
                         <a
@@ -134,7 +141,7 @@ export default async function AdminSourcesPage() {
           );
         })}
 
-        <AdminCard className="border-info-border bg-info-bg/15">
+        <AdminCard className="border-info-border bg-info-bg">
           <div className="flex items-start gap-3">
             <I.shieldcheck s={18} />
             <div className="text-caption text-text-secondary space-y-1">
@@ -155,7 +162,7 @@ export default async function AdminSourcesPage() {
             </div>
           </div>
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

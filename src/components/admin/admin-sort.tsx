@@ -55,6 +55,43 @@ export function applySort<T>(
 }
 
 /**
+ * SortBtn — the CLIENT twin of <SortTh>, for a queue that sorts in local state
+ * because its rows mutate optimistically (moderation, proposals).
+ *
+ * ⭐ CONSOLIDATION NOTE (stage 9b, 2026-08-21). This was typed out twice —
+ * `moderation-client.tsx` and `admin-proposals-client.tsx` held byte-identical
+ * copies differing only in the name of their field union — each carrying the
+ * same comment claiming to match <SortTh>. Two copies of "matches SortTh" is two
+ * things that can stop matching it. The generic parameter is what let one
+ * definition serve both.
+ *
+ * ⛔ The arrow keeps its `opacity-0` (not `hidden`) on the inactive column: the
+ * glyph still occupies its box, so the header does not jump sideways when the
+ * sort moves — same reason <SortTh> does it.
+ */
+export function SortBtn<K extends string>({
+  field,
+  label,
+  current,
+  dir,
+  onSort,
+}: {
+  field: K;
+  label: string;
+  current: K;
+  dir: SortDir;
+  onSort: (f: K) => void;
+}) {
+  const isActive = current === field;
+  return (
+    <button type="button" onClick={() => onSort(field)} className={`inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.1em] hover:text-text transition-colors ${isActive ? "text-text" : "text-text-subtle"}`}>
+      {label}
+      <span className={`text-brand-300 ${isActive ? "" : "opacity-0"}`} aria-hidden>{dir === "asc" ? "↑" : "↓"}</span>
+    </button>
+  );
+}
+
+/**
  * Sortable table header cell. Clicking toggles dir on the active column (and
  * resets to the page-1 view by dropping ?page). Preserves all other query
  * params (filters) so sorting composes with filtering.
@@ -93,8 +130,31 @@ export function SortTh({
   }
   params.set(sortKey, field);
   params.set(dirKey, nextDir);
+  /**
+   * ⭐ `aria-sort` (stage 9b, 2026-08-21). It was never emitted, and two things
+   * depended on it:
+   *   1. A screen-reader user had NO way to know which column a sorted admin
+   *      table was sorted by, or in which direction. The arrow glyph below is
+   *      `aria-hidden` (correctly — it is a picture of the state, not the
+   *      state), so that information existed on screen and nowhere else.
+   *   2. `globals.css` styles `.admin-tbl th[aria-sort]` — pointer cursor, hover
+   *      ink, brand-300 on the sorted column — and all four of those rules were
+   *      DEAD CSS, matching nothing in the product, because no `<th>` in the
+   *      console carried the attribute.
+   *
+   * `"none"` on the unsorted columns is deliberate: it is what makes the first
+   * of those rules (the whole header cell reads as sortable) apply at all.
+   * ⛔ It does NOT repaint the sorted column — `th[aria-sort="descending"]` sets
+   * the TH's `color`, and the anchor inside already carries `text-text` when
+   * active, so the anchor's own colour still wins. The only visible change is
+   * the cursor, and hovering the cell's padding now lifting the label the same
+   * way hovering the label already did.
+   */
   return (
-    <th className={`${align === "right" ? "text-right" : "text-left"} ${className ?? ""}`}>
+    <th
+      aria-sort={isActive ? (dir === "asc" ? "ascending" : "descending") : "none"}
+      className={`${align === "right" ? "text-right" : "text-left"} ${className ?? ""}`}
+    >
       <Link
         href={`${baseHref}?${params.toString()}` as never}
         className={`inline-flex min-h-[44px] items-center gap-1 hover:text-text transition-colors ${isActive ? "text-text" : ""}`}

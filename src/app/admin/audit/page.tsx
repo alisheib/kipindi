@@ -7,7 +7,9 @@ import { getAuditPage, verifyChain, type AuditCategory } from "@/lib/server/audi
 import { EmptyState } from "@/components/ui/empty-state";
 import { Chip } from "@/components/ui/chip";
 import { ScrollX } from "@/components/ui/scroll-x";
+import { auditCategoryLabel } from "@/components/admin/status-badge";
 import { formatDateTime } from "@/lib/utils";
+import { AdminBody } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Audit log" };
 export const dynamic = "force-dynamic";
@@ -42,8 +44,39 @@ export default async function AdminAuditPage({
   // actorId: shape-check (usr_…) so the panel doesn't try to render a
   // hostile string back into the page.
   const actorId = typeof sp.actorId === "string" && /^[a-zA-Z0-9_]{4,40}$/.test(sp.actorId) ? sp.actorId : undefined;
-  const allFiltered = getAuditPage({ limit: 100_000, category, actorId });
+  /**
+   * ⚡ ONE READ OF THE LOG, NOT TWO — 2026-08-21.
+   *
+   * ⚠️ FIRST, THE CORRECTION, because the obvious fix here is the wrong one:
+   * `getAuditPage` IS NOT A DATABASE QUERY. It serves the in-process append-only ring
+   * (`audit.ts`, capped at MAX_IN_MEM = 10,000), so there is no SQL to push a LIMIT into
+   * and `limit: 100_000` never issued a 100,000-row read. What it did do was
+   * `[...ring]` → `.filter()` → `.slice()` → `.reverse()`, and this page ran that whole
+   * pipeline TWICE per render: once filtered for the table, once unfiltered for the KPIs.
+   * On a warm container that is two copies and two reversals of a 10,000-element array
+   * on every single load of the page, and in the DEFAULT view — no category, no actor —
+   * the two calls returned byte-identical results.
+   *
+   * So the second call is gone and the filter is derived from the first result. Filtering
+   * preserves relative order, so `filter(reverse(ring))` is exactly `reverse(filter(ring))`
+   * — the rows, their order and the counts are unchanged. The `limit` is still passed so
+   * the ring's own cap semantics are preserved if MAX_IN_MEM ever moves.
+   *
+   * ⭐ AND IT IS MORE HONEST, WHICH ON THIS PAGE MATTERS MORE THAN THE MICROSECONDS. The
+   * ring is appended to by live traffic, so the two calls sampled it at two different
+   * instants: "Total entries" and the filtered "N entries" beside it could legitimately
+   * disagree on a busy console. One snapshot cannot.
+   *
+   * 🔴 NOT FIXED HERE, AND IT IS THE BIGGER COST ON THIS PAGE: `verifyChain()` below
+   * recomputes an HMAC for every one of the ≤10,000 ring entries on EVERY render. That
+   * lives in `src/lib/server/audit.ts` and its result is the "Chain integrity" KPI, which
+   * must stay truthful — so it wants a caching decision from whoever owns that module,
+   * not a quiet edit from here.
+   */
   const allEntries = getAuditPage({ limit: 100_000 });
+  const allFiltered = category || actorId
+    ? allEntries.filter((e) => (!category || e.category === category) && (!actorId || e.actorId === actorId))
+    : allEntries;
   const { sort, dir } = parseSort(sp, ["time", "category", "action", "actor"] as const, "time", "desc");
   const sortedFiltered = applySort(allFiltered, sort, dir, {
     time: (e) => e.createdAt,
@@ -71,7 +104,7 @@ export default async function AdminAuditPage({
         actions={<GenerateButton id="iso-audit" />}
       />
 
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         {/* Summary KPIs — kit AdminKpi grid, consistent with every other admin
             screen (this page previously used the player-side MarketStats shell). */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -97,7 +130,7 @@ export default async function AdminAuditPage({
           </Link>
           {CATEGORIES.map((c) => (
             <Link key={c} href={`/admin/audit?category=${c}`} className="inline-flex items-center min-h-[44px] transition-opacity hover:opacity-80">
-              <Chip size="lg" variant={category === c ? "brand" : "neutral"} selected={category === c}>{c}</Chip>
+              <Chip size="lg" variant={category === c ? "brand" : "neutral"} selected={category === c}>{auditCategoryLabel(c)}</Chip>
             </Link>
           ))}
           {actorId && (
@@ -111,7 +144,7 @@ export default async function AdminAuditPage({
           </span>
         </div>
         {invalidCategory && (
-          <p className="font-mono text-[11px] text-warning-fg bg-warning-bg/15 border border-warning-border rounded-md px-3 py-2">
+          <p className="font-mono text-[11px] text-warning-fg bg-warning-bg border border-warning-border rounded-md px-3 py-2">
             Unknown audit category &mdash; showing all entries. Pick one from the chip row above.
           </p>
         )}
@@ -134,7 +167,7 @@ export default async function AdminAuditPage({
                   <tr key={e.id}>
                     <td className="font-mono whitespace-nowrap text-text-subtle">{formatDateTime(e.createdAt)}</td>
                     <td>
-                      <Chip size="sm" variant={CAT_VARIANT[e.category]}>{e.category}</Chip>
+                      <Chip size="sm" variant={CAT_VARIANT[e.category]}>{auditCategoryLabel(e.category)}</Chip>
                     </td>
                     <td className="font-medium text-text">{e.action}</td>
                     <td className="font-mono">
@@ -165,7 +198,7 @@ export default async function AdminAuditPage({
           </ScrollX>
           <AdminPagination total={allFiltered.length} page={page} baseHref={baseHref} />
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

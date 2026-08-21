@@ -77,7 +77,11 @@ export function LoginIdentifier({
               tabIndex={active ? 0 : -1}
               onClick={() => setMethod(o.id)}
               className={cn(
-                "brand-focus inline-flex h-10 items-center justify-center gap-2 rounded-md border text-[13.5px] font-display font-semibold transition-colors duration-100",
+                // ⛔ LITERAL, NOT `h-10` — `theme.extend.spacing` is overridden
+                // (tailwind.config.ts:200-215), so `h-10` is 80px and made the identifier
+                // chooser taller than the field it introduces. 44px = --h-input, the
+                // height of the phone/email field directly below.
+                "brand-focus inline-flex h-[44px] items-center justify-center gap-2 rounded-md border text-[13.5px] font-display font-semibold transition-colors duration-100",
                 active
                   ? "border-brand-500/60 bg-brand-500/15 text-brand-200"
                   : "border-transparent text-text-muted hover:text-text",

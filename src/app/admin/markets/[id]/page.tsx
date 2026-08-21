@@ -21,6 +21,8 @@ import { displayLabel, displayInitials } from "@/lib/display-label";
 import { formatTzs, formatDateTime } from "@/lib/utils";
 import { SELECTION } from "@/lib/admin-status-lexicon";
 import { MarketStatusBadge } from "@/components/admin/status-badge";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const dynamic = "force-dynamic";
 
@@ -168,7 +170,7 @@ export default async function MarketPredictorsPage({
         }
       />
 
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
 
         {/* Market summary */}
         <AdminCard padding="p-4">
@@ -305,12 +307,12 @@ export default async function MarketPredictorsPage({
         </AdminCard>
 
         {/* KPIs */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiGrid>
           <AdminKpi label="Predictors"     sw="Watabiri"   value={String(m.predictorCount)} />
           <AdminKpi label="Open positions" sw="Wazi"       value={String(openCount)} />
           <AdminKpi label="YES staked"     sw="Dau la NDIO"  value={formatTzs(yesStaked)} />
           <AdminKpi label="NO staked"      sw="Dau la HAPANA" value={formatTzs(noStaked)} />
-        </div>
+        </KpiGrid>
 
         {/* Filters */}
         <AdminCard padding="p-3">
@@ -322,7 +324,10 @@ export default async function MarketPredictorsPage({
                 defaultValue={query}
                 placeholder="Phone, display name or usr_…"
                 aria-label="Search predictors"
-                className="w-full h-9 pl-9 pr-3 rounded-md bg-bg-inset border border-border text-text font-mono text-body-sm focus:outline-none admin-focus transition-colors"
+                /* ⚠️ LITERAL, not `h-9` — spacing is overridden (tailwind.config.ts:200-215), so
+                   `h-9` was 64px: a third size for one control. 32px = --h-control-xs, the same
+                   as every other admin search input and as the xs Selects beside it. */
+                className="w-full h-[32px] pl-9 pr-3 rounded-md bg-bg-inset border border-border text-text font-mono text-body-sm focus:outline-none admin-focus transition-colors"
               />
             </div>
             <div className="w-full sm:w-[140px]">
@@ -441,7 +446,7 @@ export default async function MarketPredictorsPage({
           </ScrollX>
           <AdminPagination total={filtered.length} page={page} baseHref={baseHref} />
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

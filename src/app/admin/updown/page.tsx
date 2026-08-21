@@ -31,6 +31,9 @@ import {
 import { currentSession } from "@/lib/server/auth-service";
 import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { ControlLocked } from "@/components/admin/control-locked";
+import { chainStateLabel, readingStateLabel } from "@/components/admin/status-badge";
+import { AdminBody } from "@/components/admin/admin-body";
+import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Up & Down" };
 export const dynamic = "force-dynamic";
@@ -225,8 +228,8 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
         ) : <ControlLocked what="Add asset" need={CONTROL_DOMAIN.createAsset} />}
       />
 
-      <div className="px-4 lg:px-6 py-5 space-y-4">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <AdminBody>
+        <KpiGrid>
           <AdminKpi label="Enabled assets" sw="Bidhaa hai" value={String(enabledAssets.length)} delta={`${assets.length} total`} spark={false} />
           <AdminKpi label="Running chains" sw="Minyororo hai" value={String(running.length)} delta={`${chains.length} configured`} spark={false} />
           {/* `flat`, not the default `up`: a fee model is a FACT, not good news — and a
@@ -242,7 +245,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
             spark={false}
           />
           <AdminKpi label="Staleness window" sw="Muda wa bei" value={`${cfg.maxStalenessSeconds}s`} delta={`confidence ≥ ${cfg.confidenceThreshold}`} spark={false} />
-        </div>
+        </KpiGrid>
 
         {/* ── This game's economics (Up & Down ONLY) ─────────────────────────
             Sealed from the long-form polls: its own GGR, hold and turnover, beside
@@ -258,12 +261,12 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
           <div className="mb-3">
             <DateTimeRangeFilter defaultPreset="30d" presetIds={["today", "yesterday", "24h", "7d", "30d", "mtd", "all"]} />
           </div>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <KpiGrid>
             <AdminKpi label="GGR · this game" sw="Mapato" value={formatTzs(Math.round(pnl.ggr))} delta={`hold ${pnl.holdPct.toFixed(1)}%`} tone={pnl.ggr >= 0 ? "success" : "danger"} spark={false} gold />
             <AdminKpi label="Staked" sw="Zilizowekwa" value={formatTzs(Math.round(pnl.stakes))} delta={`${pnl.bets.toLocaleString()} bets`} spark={false} />
             <AdminKpi label="Paid out" sw="Zilizolipwa" value={formatTzs(Math.round(pnl.payouts))} delta={`${pnl.players.toLocaleString()} players`} spark={false} />
             <AdminKpi label="AI oracle cost" sw="Gharama ya AI" value={usd(aiCost.last30)} delta={`${aiCost.calls.toLocaleString()} calls · 90d ${usd(aiCost.all)}`} spark={false} />
-          </div>
+          </KpiGrid>
           <p className="mt-3 text-[11.5px] leading-[1.55] text-text-subtle max-w-[80ch]">
             This is <strong>Up &amp; Down alone</strong> — long-form polls are reported separately under Money → Reports.
             GGR is the commission kept on this game (TZS); AI cost is what its price oracle spent (USD). The platform&rsquo;s
@@ -490,7 +493,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                             }
                           >
                             {c.state === "RUNNING" && <span className="live-dot" />}
-                            {c.state}
+                            {chainStateLabel(c.state)}
                           </span>
                         </td>
                         <td className="px-4 py-3 font-mono text-[11.5px] text-text-muted whitespace-nowrap">
@@ -553,8 +556,16 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                             // a pricing conversation, and they must never look the same again.
                             const paidPct = s.paidRate! * 100;
                             const health = chainHealth(s);
+                            // `text-danger-fg`, not `text-hot-rose-300` (2026-08-21): there is
+                            // no `hot-rose` colour family in tailwind.config.ts, so the WORST
+                            // rung of this ladder rendered in the same muted ink as the healthy
+                            // one while the middle rung (`text-warning-fg`) painted — a feed
+                            // outage read quieter than a low pay rate, inverting the whole
+                            // point of the comment above. `danger-fg` is this ladder's real top
+                            // rung and pairs with the `warning-fg` beneath it. ⛔ Not `no-300`:
+                            // DESIGN_AUTHORITY §B2 — a feed outage is not a money outcome.
                             const ink =
-                              health === "feed-failing" ? "text-hot-rose-300"
+                              health === "feed-failing" ? "text-danger-fg"
                                 : health === "low-payout" ? "text-warning-fg"
                                 : "text-text-muted";
                             const parts = [
@@ -589,8 +600,13 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                           })()}
                         </td>
                         <td className="px-4 py-3 text-right font-mono text-[11.5px] text-text-muted whitespace-nowrap">
+                          {/* The column header is "Stake bounds" — it names no currency, so the
+                              cell has to. This read "1,000 – 100,000" on the one screen where an
+                              officer sets what a player may stake, and a bare `toLocaleString()`
+                              also groups by whatever locale the runtime holds. Both figures take
+                              the unit, as the player-facing stake range does. */}
                           {c.minStake != null || c.maxStake != null
-                            ? `${(c.minStake ?? cfg.defaultMinStake).toLocaleString()} – ${(c.maxStake ?? cfg.defaultMaxStake).toLocaleString()}`
+                            ? `${formatTzs(c.minStake ?? cfg.defaultMinStake)} – ${formatTzs(c.maxStake ?? cfg.defaultMaxStake)}`
                             : "inherit"}
                         </td>
                         <td className="px-4 py-3">
@@ -651,7 +667,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                           : "chip-pending")
                       }
                     >
-                      {last?.state ?? "NO READINGS"}
+                      {readingStateLabel(last?.state)}
                     </span>
                   </div>
                   {/* Real data or nothing: with no confirmed reading we show an em-dash,
@@ -696,7 +712,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
             />
           )}
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

@@ -62,7 +62,10 @@ export function SearchHelp({
         type="button"
         aria-label={t.common.searchHelpTitle}
         aria-expanded={open}
-        className="inline-flex h-8 w-8 items-center justify-center text-text-subtle hover:text-text transition-colors"
+        // 40px = --tap-min, the size of the chips this sits among. ARBITRARY LITERAL:
+        // the spacing scale is OVERRIDDEN (tailwind.config.ts:200-215), so `h-8 w-8`
+        // was 48px. ⛔ Never a scale token here.
+        className="inline-flex h-[40px] w-[40px] items-center justify-center text-text-subtle hover:text-text transition-colors"
         onClick={() => setOpen((v) => !v)}
       >
         <I.info s={15} aria-hidden />

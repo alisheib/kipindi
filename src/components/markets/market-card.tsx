@@ -395,10 +395,16 @@ export function MarketCard({
 
       {live ? (
         <div className="mcardp-actions">
-          <button type="button" aria-label={noPrice ? t.market.backYesAriaNoPrice : t.market.backYesAria.replace("{pct}", String(yesPct))} onClick={go("YES")} className="btn btn-yes btn-md">
+          {/* 🔴 THE ARIA NAME IS BUILT FROM THE SAME `sideWord()` CALL AS THE VISIBLE LABEL.
+              It used to come from the fixed `backYesAria` / `backNoAria` keys, which say
+              YES / NO whatever the product — so on an Up & Down row the eye read UP and the
+              screen reader heard "Back YES", in all three locales. That is §L4 reaching the
+              ARIA channel: one control, two vocabularies. Interpolating the lexicon's own
+              word makes the two channels a single source, so they cannot drift again. */}
+          <button type="button" aria-label={(noPrice ? t.market.backSideAriaNoPrice : t.market.backSideAria.replace("{pct}", String(yesPct))).replace("{side}", sideWord(t, "YES", productLine))} onClick={go("YES")} className="btn btn-yes btn-md">
             {sideWord(t, "YES", productLine)}{!noPrice && <span className="font-mono text-[11.5px] opacity-85"> @ {yesPct}%</span>}
           </button>
-          <button type="button" aria-label={noPrice ? t.market.backNoAriaNoPrice : t.market.backNoAria.replace("{pct}", String(100 - yesPct))} onClick={go("NO")} className="btn btn-no btn-md">
+          <button type="button" aria-label={(noPrice ? t.market.backSideAriaNoPrice : t.market.backSideAria.replace("{pct}", String(100 - yesPct))).replace("{side}", sideWord(t, "NO", productLine))} onClick={go("NO")} className="btn btn-no btn-md">
             {sideWord(t, "NO", productLine)}{!noPrice && <span className="font-mono text-[11.5px] opacity-85"> @ {100 - yesPct}%</span>}
           </button>
         </div>

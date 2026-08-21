@@ -5,6 +5,8 @@ import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
 import { formatDateTimeSafe, formatUsd } from "@/lib/utils";
 import { SELECTION } from "@/lib/admin-status-lexicon";
+import { aiPollStateLabel } from "@/components/admin/status-badge";
+import { AdminBody } from "@/components/admin/admin-body";
 import {
   getAIPoll,
   type AIPollState,
@@ -36,16 +38,9 @@ const STATE_VARIANT: Record<AIPollState, "success" | "warning" | "danger" | "neu
   PUBLISHED: "success",
 };
 
-const STATE_LABEL: Record<AIPollState, string> = {
-  GENERATING: "Generating\u2026",
-  VALIDATION_FAILED: "Failed",
-  FILTERED: "Didn\u2019t pass checks",
-  PENDING_REVIEW: "Ready for review",
-  EDITING: "Editing",
-  APPROVED: "Approved",
-  REJECTED: "Rejected",
-  PUBLISHED: "Published",
-};
+// The local `STATE_LABEL` map is deleted; see the note on the list page. This
+// copy and that one disagreed on the apostrophe in "Didn't pass checks", which is
+// how you can tell they were two definitions and not one.
 
 const fmtUsd = formatUsd;
 function fmtDate(iso: string) {
@@ -78,14 +73,14 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
           </Link>
         }
       />
-      <div className="px-4 lg:px-6 py-5 space-y-4">
+      <AdminBody>
         {/* Header card */}
         <AdminCard>
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div className="flex-1 min-w-0">
               {/* State + badges */}
               <div className="flex items-center gap-2 mb-2 flex-wrap">
-                <Chip size="md" variant={STATE_VARIANT[poll.state]}>{STATE_LABEL[poll.state]}</Chip>
+                <Chip size="md" variant={STATE_VARIANT[poll.state]}>{aiPollStateLabel(poll.state)}</Chip>
                 <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{poll.category}</span>
                 <span className="font-mono text-[10.5px] tabular-nums text-text-muted">
                   <I.shieldAlert size={10} className="inline -mt-0.5 mr-0.5" />
@@ -201,7 +196,9 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
             <QualityBadges indicators={poll.qualityIndicators} overall={poll.overallQuality} />
           ) : (
             <div className="flex items-center gap-2 py-3">
-              <div className="h-8 w-8 rounded-pill bg-bg-overlay flex items-center justify-center">
+              {/* ⚠️ LITERALS, not `h-8 w-8` — spacing is overridden (tailwind.config.ts:200-215)
+                  so `h-8` was a 48px disc round a 14px glyph. */}
+              <div className="h-[32px] w-[32px] rounded-pill bg-bg-overlay flex items-center justify-center">
                 <I.shieldAlert size={14} className="text-text-subtle" />
               </div>
               <div>
@@ -241,7 +238,8 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
             </div>
           ) : (
             <div className="flex items-center gap-2 py-3">
-              <div className="h-8 w-8 rounded-pill bg-bg-overlay flex items-center justify-center">
+              {/* ⚠️ LITERALS — see the quality medallion above. `h-8` is 48px here. */}
+              <div className="h-[32px] w-[32px] rounded-pill bg-bg-overlay flex items-center justify-center">
                 <I.fileCheck size={14} className="text-text-subtle" />
               </div>
               <p className="text-[12px] text-text-muted">
@@ -319,7 +317,7 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
             </div>
           )}
         </AdminCard>
-      </div>
+      </AdminBody>
     </>
   );
 }

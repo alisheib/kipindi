@@ -37,7 +37,15 @@ export async function ConfidentialBand({ session }: { session: AdminSession }) {
   const officer = await db.user.findById(session.userId);
   const email = officer?.displayName ?? session.phoneE164;
   return (
-    <div className="bg-bg-sunken text-onBrand border-b border-border-strong flex items-center justify-between px-4 lg:px-6 h-7 text-micro font-mono uppercase tracking-[0.18em]">
+    // `text-text`, not `text-onBrand` (2026-08-21). There is no `onBrand` colour
+    // family in tailwind.config.ts, so the band has always had no inherited colour
+    // at all — invisible only because both spans below set their own. The tempting
+    // repair is the real key `text-text-onBrand`, and it would be WRONG here:
+    // `--text-on-brand` is oklch(15%), an inverse for text sitting on a gold/brand
+    // FILL, and this band is `bg-bg-sunken` (oklch 11%) — near-black on near-black.
+    // The band renders light-on-dark, so its inherited default is the ordinary
+    // primary text token; the two spans still override it with pure white.
+    <div className="bg-bg-sunken text-text border-b border-border-strong flex items-center justify-between px-4 lg:px-6 h-7 text-micro font-mono uppercase tracking-[0.18em]">
       <span className="flex items-center gap-2">
         {/* Claret "restricted" dot — admin gold-discipline: gold is only the resolved seal. */}
         <span className="inline-block h-1.5 w-1.5 rounded-pill" style={{ background: "var(--claret-200)" }} />
@@ -115,14 +123,41 @@ export async function AdminTopBar({ crumbs, session, activeKey, viewDomains, isO
     <div className="relative z-40 border-b border-border"
       style={{
         height: 56,
-        background: "color-mix(in oklab, var(--panel) 78%, transparent)",
-        backdropFilter: "blur(14px) saturate(1.3)",
-        WebkitBackdropFilter: "blur(14px) saturate(1.3)",
+        background: "var(--panel)",
       }}>
-      {/* relative z-40: `backdrop-filter` above makes this bar its own stacking
-          context, which would otherwise TRAP the AI-toolkit dropdown's z-50 below
-          the page content (the search input painted over it at 360). Elevating the
-          whole bar lets the dropdown overlay the page. Stays below portaled modals (z-100). */}
+      {/* 🔴 THE FROSTED BLUR IS DELETED — 2026-08-21. It was
+          `color-mix(in oklab, var(--panel) 78%, transparent)` plus
+          `backdrop-filter: blur(14px) saturate(1.3)`, on the top bar of all 47 admin routes.
+
+          ⚠️ AND THE USUAL REASON GIVEN FOR REMOVING ONE DOES NOT APPLY HERE — checked, not
+          assumed. This bar is NOT sticky: `admin/layout.tsx` renders it in normal flow
+          inside the `<main>` column (the SIDEBAR is the sticky element, not this), so it
+          scrolls away with the content and does not re-blur a moving backdrop every frame.
+          If you are here because a plan said "sticky admin top bar", that part was wrong.
+
+          ⭐ IT IS STILL WORTH DELETING, FOR THE OTHER REASON. `backdrop-filter` forces the
+          element onto its own compositing layer and re-runs a full-width 14px blur +
+          saturate pass on every REPAINT of the region — and the admin shell repaints that
+          region constantly without anyone scrolling: the `animate-pulse` live dots on the
+          KPI tiles sit directly beneath it, `RefreshButton` re-renders the grid in place,
+          and the AI-toolkit dropdown opens over it. That is continuous GPU work, on every
+          admin screen, to soften a strip that has data directly behind it.
+
+          ⛔ THE SEE-THROUGH BAR IS REMOVED, NOT TUNED — this is the SAME fix, for the same
+          reason, that the PLAYER top bar already took in batch 3 (see `top-app-bar.tsx`
+          and the "THE STICKY TOP-BAR FROSTED BLUR IS DELETED" note in `globals.css`).
+          A translucent bar over scrolling data cannot be made legible by raising a mix
+          percentage; `--panel` is opaque, and the 1px `--border` bottom edge is the
+          boundary. Do not reintroduce a translucent header here either.
+
+          ⭐ `relative z-40` STAYS, AND IS STILL LOAD-BEARING — read this before "cleaning"
+          it up. The comment it replaces justified z-40 by the blur ("backdrop-filter makes
+          this bar its own stacking context"), so removing the blur reads like removing the
+          reason. It is not: a positioned element with a z-index forms a stacking context
+          on its own, and what actually matters is that the bar is ELEVATED ABOVE THE PAGE
+          BODY so the AI-toolkit dropdown (z-50) overlays the content instead of the search
+          input painting over it at 360. Drop the z-40 and that bug comes straight back.
+          Stays below portaled modals (z-100). */}
       {/* DESIGN_AUTHORITY B7 — the bar's BACKGROUND stays full-bleed (it is chrome,
           and a boxed blur strip would look broken against the sidebar), but its
           CONTENT is capped to the same console measure as the page body below it.
@@ -195,7 +230,10 @@ export async function AdminTopBar({ crumbs, session, activeKey, viewDomains, isO
             screen in place. Present on every admin page so any grid can be
             refreshed from one predictable spot (screens with a filter bar also
             expose a contextual refresh next to their filters). */}
-        <RefreshButton variant="icon" className="!h-7 !w-7" />
+        {/* No size override: RefreshButton's icon variant is 40px in the component
+            itself now. The `!h-7 !w-7` that used to sit here existed only to defeat the
+            component's own 80×80 default (`h-10 w-10` on the overridden spacing scale). */}
+        <RefreshButton variant="icon" />
         {/* AI toolkit — the ONE place every AI feature is switched on/off (chatbot,
             market resolution, auto-resolve, poll generation). Replaces the old
             per-feature toggles + the removed sentinel countdown, so no AI control
@@ -416,7 +454,7 @@ export function AdminKpi({
    Pair with AdminKpi `unavailable` on the matching count tile. */
 export function AdminLoadError({ what }: { what?: string }) {
   return (
-    <div className="flex items-start gap-3 rounded-md border border-warning-border bg-warning-bg/20 px-4 py-3">
+    <div className="flex items-start gap-3 rounded-md border border-warning-border bg-warning-bg px-4 py-3">
       <span aria-hidden className="mt-1 h-2 w-2 shrink-0 rounded-pill" style={{ background: "var(--warning-500)" }} />
       <div className="text-caption text-text-secondary">
         <p className="font-semibold text-warning-fg">Couldn&apos;t load{what ? ` ${what}` : ""}</p>
@@ -587,7 +625,11 @@ export function StatusPill({
   return (
     <span
       className={[
-        "h-8 w-8 rounded-pill inline-flex items-center justify-center font-mono font-bold text-body-sm shrink-0",
+        // ⛔ LITERALS, NOT `h-8 w-8` — the spacing scale is overridden
+        // (tailwind.config.ts:200-215) and that pair is a 48px disc for a one-character
+        // label, in health rows whose other chips are 40px. 32px is the dense
+        // mouse-only admin rung (--h-control-xs); this roundel is not a tap target.
+        "h-[32px] w-[32px] rounded-pill inline-flex items-center justify-center font-mono font-bold text-body-sm shrink-0",
         cls,
       ].join(" ")}
     >
