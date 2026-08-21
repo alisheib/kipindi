@@ -553,8 +553,16 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                             // a pricing conversation, and they must never look the same again.
                             const paidPct = s.paidRate! * 100;
                             const health = chainHealth(s);
+                            // `text-danger-fg`, not `text-hot-rose-300` (2026-08-21): there is
+                            // no `hot-rose` colour family in tailwind.config.ts, so the WORST
+                            // rung of this ladder rendered in the same muted ink as the healthy
+                            // one while the middle rung (`text-warning-fg`) painted — a feed
+                            // outage read quieter than a low pay rate, inverting the whole
+                            // point of the comment above. `danger-fg` is this ladder's real top
+                            // rung and pairs with the `warning-fg` beneath it. ⛔ Not `no-300`:
+                            // DESIGN_AUTHORITY §B2 — a feed outage is not a money outcome.
                             const ink =
-                              health === "feed-failing" ? "text-hot-rose-300"
+                              health === "feed-failing" ? "text-danger-fg"
                                 : health === "low-payout" ? "text-warning-fg"
                                 : "text-text-muted";
                             const parts = [

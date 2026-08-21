@@ -30,7 +30,7 @@ export default async function AdminSettlementPage({ searchParams }: { searchPara
         <div
           className={
             ready.length > 0
-              ? "flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg/25 px-3 py-2.5 text-[12.5px] text-warning-fg"
+              ? "flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2.5 text-[12.5px] text-warning-fg"
               : "flex items-start gap-2 rounded-md border border-brand-500 bg-brand-500/10 px-3 py-2.5 text-[12.5px] text-text-muted"
           }
         >
@@ -138,7 +138,7 @@ export default async function AdminSettlementPage({ searchParams }: { searchPara
                         ) : r.state === "FROZEN" ? (
                           <Link
                             href={"/admin/objections" as never}
-                            className="inline-flex min-h-[40px] items-center gap-1.5 rounded-md border border-warning-border bg-warning-bg/20 px-3 py-2 font-mono text-[10.5px] font-bold uppercase tracking-[0.08em] text-warning-fg hover:bg-warning-bg/40 transition-colors brand-focus"
+                            className="inline-flex min-h-[40px] items-center gap-1.5 rounded-md border border-warning-border bg-warning-bg px-3 py-2 font-mono text-[10.5px] font-bold uppercase tracking-[0.08em] text-warning-fg hover:bg-warning-border transition-colors brand-focus"
                           >
                             Rule on it
                           </Link>

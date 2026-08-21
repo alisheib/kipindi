@@ -29,9 +29,19 @@ export type CalloutTone = "warning" | "info" | "brand" | "danger" | "success";
 // low-opacity so an inline note sits quietly inside content — and at 2px that
 // same 30–40% alpha reads as a pale grey frame, which is the opposite of alarm.
 // Strong callouts therefore take the tone at full opacity.
+//
+// ⚠️ The warning/info FILLS carry no `/NN` (2026-08-21). `--warning-bg` and
+// `--info-bg` are already `color-mix(… 18%, transparent)` in globals.css, so a
+// modifier multiplies against that 18% — a `/30` on it meant 5.4%, below any
+// usable contrast, and it was never what the author meant. What renders now is
+// the designed 18% tint on both emphases; the box/strongBox distinction is
+// carried by the BORDER (`-border` vs `-fg`), which is what the note above
+// already argues. ⛔ Never re-add a modifier to a pre-mixed token — reach for a
+// second token instead. brand/danger/success below sit on OPAQUE tokens
+// (`--gold-500`, `--no-500`, `--yes-500`), so their modifiers are correct.
 const TONE: Record<CalloutTone, { box: string; strongBox: string; icon: string; glyph: GlyphKey }> = {
-  warning: { box: "border-warning-border bg-warning-bg/30", strongBox: "border-warning-fg bg-warning-bg/60", icon: "text-warning-fg", glyph: "warning" },
-  info: { box: "border-info-border bg-info-bg/20", strongBox: "border-info-fg bg-info-bg/50", icon: "text-info", glyph: "info" },
+  warning: { box: "border-warning-border bg-warning-bg", strongBox: "border-warning-fg bg-warning-bg", icon: "text-warning-fg", glyph: "warning" },
+  info: { box: "border-info-border bg-info-bg", strongBox: "border-info-fg bg-info-bg", icon: "text-info", glyph: "info" },
   brand: { box: "border-gold-500/30 bg-gold-500/10", strongBox: "border-gold-400 bg-gold-500/15", icon: "text-gold-300", glyph: "shieldcheck" },
   danger: { box: "border-no-500/40 bg-no-500/10", strongBox: "border-no-500 bg-no-500/15", icon: "text-no-300", glyph: "alertCircle" },
   // DS sweep (2026-08-08) — the confirmation family. Several pages hand-rolled

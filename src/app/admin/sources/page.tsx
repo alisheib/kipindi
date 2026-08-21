@@ -75,7 +75,7 @@ export default async function AdminSourcesPage() {
               <span className={`font-mono text-[10px] tracking-[0.12em] uppercase px-2 py-0.5 rounded-pill border ${
                 isGeneratable
                   ? "border-yes-700/40 bg-yes-500/10 text-yes-300"
-                  : "border-warning-border bg-warning-bg/30 text-warning-fg"
+                  : "border-warning-border bg-warning-bg text-warning-fg"
               }`}>
                 {isGeneratable ? "AI can generate" : catEnabled ? "No enabled source · not generatable" : "category disabled"}
               </span>
@@ -134,7 +134,7 @@ export default async function AdminSourcesPage() {
           );
         })}
 
-        <AdminCard className="border-info-border bg-info-bg/15">
+        <AdminCard className="border-info-border bg-info-bg">
           <div className="flex items-start gap-3">
             <I.shieldcheck s={18} />
             <div className="text-caption text-text-secondary space-y-1">

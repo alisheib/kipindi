@@ -218,7 +218,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
           </div>
 
           {/* C2g — declaration with signature line-art. */}
-          <div className="flex items-start gap-2.5 rounded-md border border-warning-border bg-warning-bg/30 p-3.5">
+          <div className="flex items-start gap-2.5 rounded-md border border-warning-border bg-warning-bg p-3.5">
             <I.fileSignature s={18} className="shrink-0 mt-0.5 text-warning-fg" />
             <div className="space-y-1">
               <p className="font-display text-[12.5px] font-semibold text-text">{t.profile.bySubmitting}</p>

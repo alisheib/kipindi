@@ -159,7 +159,11 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
                       aria-pressed={active}
                       className={cn(
                         "rounded-lg border px-3 py-2.5 text-left transition-colors",
-                        active ? "border-brand-400 bg-brand-500/12 text-text" : "border-border bg-bg-overlay text-text-subtle hover:text-text",
+                        // `/[0.12]`, not `/12`: Tailwind's opacity scale runs in steps of 5, so a
+                        // `/12` modifier is dropped before the colour is ever mixed and the ACTIVE
+                        // mode button rendered with no fill at all while the inactive ones (bare
+                        // `bg-bg-overlay`) painted. The arbitrary form keeps the intended 12%.
+                        active ? "border-brand-400 bg-brand-500/[0.12] text-text" : "border-border bg-bg-overlay text-text-subtle hover:text-text",
                       )}
                     >
                       <span className="flex items-center gap-1.5 font-display text-[13px] font-semibold">

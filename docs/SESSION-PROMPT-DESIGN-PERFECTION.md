@@ -26,8 +26,8 @@ repo `F:\kipindi-main`, branch `main`):**
 | Stage | Title | Status | Commit | Live-verified |
 |---|---|---|---|---|
 | 0 | Bootstrap + baseline + this tracker | **DONE** | `stage-0` | n/a (docs only) |
-| 1 | Safety (no visual change) | **DONE** | `stage-1` | pending push |
-| 2 | The alpha critical (D7) | NOT STARTED | | |
+| 1 | Safety (no visual change) | **DONE** | `99999f99` | ✓ 200 · clean boot · shots read |
+| 2 | The alpha critical (D7) | **DONE** | `stage-2` | pending push |
 | 3 | Sizing (operator's top priority) | NOT STARTED | | |
 | 4 | Correctness: time, words, money formatting | NOT STARTED | | |
 | 5 | Focus & accessibility | NOT STARTED | | |
@@ -40,7 +40,26 @@ repo `F:\kipindi-main`, branch `main`):**
 
 ### Decisions applied by default (Ali may veto — each is a one-line revert of the named commit)
 
-_None yet._
+**D7 — the alpha Critical. DEFAULT NOT APPLIED AS WRITTEN; a per-group ruling was taken
+instead, on evidence D7 did not have.** D7's default was "Option A — sweep, don't enable",
+because enabling `<alpha-value>` "would restyle ~140 files sight-unseen". Measuring the 577
+usages split them in two, and one half makes Option A *destructive*:
+
+- **Group A — 83 usages / 19 classes, on tokens ALREADY pre-mixed with `transparent`**
+  (`--warning-bg` is `color-mix(… 18%, transparent)`). Here D7's sweep is exactly right:
+  `bg-warning-bg/30` would render 18% × 30% = **5.4%**, which nobody meant. The modifier was
+  dropped. ✅ Option A applied.
+- **Group B — 494 usages / 125 classes, on OPAQUE tokens.** Here "sweep to bare tokens" paints
+  a **solid crimson panel** where `bg-no-500/10` asked for a faint tint. The only
+  non-destructive alternative to fixing the bridge is minting ~125 new named tokens, which is
+  a worse breach of §0a "one fact, one home" than the disease. The bridge was fixed. ⚠️ Option
+  B applied.
+
+**What Ali sees change:** tints and tone-borders that were written but have NEVER rendered now
+appear at their designed strength — `<Callout>`'s four tones, the standing unconfirmed-email
+`<NoticeBar>`, `PayoutStatusNotice`, the KYC rejection panel, the deposit/withdraw money
+alerts, the RG panels, the auth banners, and 22 admin tone cards. Verified by screenshot at
+360 and 1280: the result is subtle, not garish. **To veto: revert the `stage-2` commit.**
 
 ### Deliberately deferred
 
@@ -83,6 +102,49 @@ have to re-derive.
   guard used a literal regex that the accompanying mutation never matched — it would have
   proven only the re-pin, not the guard. Widened before shipping. This is the
   `50pick-standards` §5b class, found again.
+
+**Stage 2**
+
+- 🔴 **`.glass-panel` was swallowing the tone on 22 admin cards, and no bridge fix could have
+  helped.** It set `background` and `border` as SHORTHANDS at (0,1,0) — equal specificity to a
+  utility, but later in source order than `@tailwind utilities`, so it won. `AdminCard`
+  composes it and appends the caller's `className`, so every
+  `<AdminCard className="border-warning-border bg-warning-bg">` in the console painted plain:
+  an officer's warning card looked exactly like an ordinary one. Found only because the sweep
+  agent checked whether its own edit would actually be visible. The colour declarations now sit
+  in `:where()` (zero specificity); the cast and radius stay at full specificity, because those
+  are the rung (§M2) and not a default to override.
+- ⭐ **The bridge is fixed by making it carry alpha, not by minting tokens.** Every colour is
+  wrapped in one `alpha()` helper emitting `color-mix(in oklab, var(--x) calc(<alpha-value> *
+  100%), transparent)`. The bare class is unchanged — `<alpha-value>` defaults to 1, and a
+  `color-mix` at 100% is the colour itself. `globals.css` already used `color-mix(in oklab, …)`
+  in 84 places, so this added no browser requirement.
+- ⚠️ **Tailwind's stock `theme.opacity` runs in steps of 5**, so `/8` and `/12` stay dead even
+  with the bridge fixed — `asColor` bails before alpha is applied. The nine such usages were
+  rewritten to the arbitrary form `/[0.08]` and `/[0.12]`, which bypasses the scale entirely.
+  ⛔ Deliberately NOT fixed by extending `theme.opacity`: an opacity step is a value, and §0d
+  says this file is a bridge that never originates one.
+- ⚠️ **`bg-current/10` and `border-current/40` cannot be fixed by any bridge** — Tailwind owns
+  the `current` keyword and `parseColor('currentColor')` fails exactly as `var(--x)` does. Both
+  were rewritten to real tokens at the call site.
+- 🔴 **`test:bridge` — the guard written after the 1,325-dead-class incident — could not see
+  this, by one character.** Its `classRe` lookahead lists `/` as a legal TERMINATOR, so
+  `bg-brand-500/10` was captured as `bg-brand-500`, found in the theme, and PASSED. It also
+  skipped unknown families forever (that is how `text-warn` survived) and walked `.tsx` only.
+- ⭐ **The new §6 compile probe stops asking the proxy question.** It compiles every
+  alpha-modified class through the repo's own Tailwind and fails on any that produces no rule —
+  a key-existence check can be fooled, a compiler cannot. It carries a NEGATIVE CONTROL that
+  fails loudly if the probe ever loses the ability to detect anything.
+- 🔴 **Two ways to write the probe's predicate wrong, both hit within ten minutes, both making
+  a DEAD class look alive:** (1) `css.includes("." + cls)` is a substring test — `.text-warn`
+  matches inside `.text-warning-fg`, and it made me briefly report the audit wrong when the
+  audit was right; (2) the selector is escaped in two alphabets (Tailwind's, then the regex's)
+  and collapsing them yields `\\[` in regex source — a literal backslash followed by the start
+  of a character class — which silently reports every `/[0.08]` class missing.
+- ⚠️ **A shell heredoc ate a backslash layer** while drafting that predicate (`\\.` → `.`,
+  `\\s` → `s`), producing a probe that reported everything missing. This is
+  `50pick-standards` §5b rule 11, paid again. **Write files with the editor, never through a
+  shell string.**
 
 **Follow-ups this campaign opened and has not closed**
 

@@ -92,11 +92,17 @@ export function ObjectionDecision({ objectionId, canReverse, canDecide = true }:
 
   return (
     <>
+      {/* Rest and hover are two TOKENS, not one token at two opacities (2026-08-21).
+          `--warning-bg` is already `color-mix(… 18%, transparent)` and
+          `--warning-border` `… 36%`, so `/20` and `/40` multiplied against those and
+          asked for 3.6% / 7.2% — no amber reached the officer on either state. These
+          void and reverse a settled market, so the caution tone has to be legible:
+          18% at rest, 36% on hover. ⛔ Never re-add a `/NN` to a pre-mixed token. */}
       <div className="flex flex-wrap gap-1.5">
         <button
           type="button"
           onClick={() => setMode("UPHOLD_VOID")}
-          className="inline-flex min-h-[40px] items-center gap-1 rounded-md border border-warning-border bg-warning-bg/20 px-2.5 py-1.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.08em] text-warning-fg hover:bg-warning-bg/40 transition-colors brand-focus"
+          className="inline-flex min-h-[40px] items-center gap-1 rounded-md border border-warning-border bg-warning-bg px-2.5 py-1.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.08em] text-warning-fg hover:bg-warning-border transition-colors brand-focus"
         >
           Void
         </button>
@@ -104,7 +110,7 @@ export function ObjectionDecision({ objectionId, canReverse, canDecide = true }:
           <button
             type="button"
             onClick={() => setMode("UPHOLD_REVERSE")}
-            className="inline-flex min-h-[40px] items-center gap-1 rounded-md border border-warning-border bg-warning-bg/20 px-2.5 py-1.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.08em] text-warning-fg hover:bg-warning-bg/40 transition-colors brand-focus"
+            className="inline-flex min-h-[40px] items-center gap-1 rounded-md border border-warning-border bg-warning-bg px-2.5 py-1.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.08em] text-warning-fg hover:bg-warning-border transition-colors brand-focus"
           >
             Reverse
           </button>
@@ -136,7 +142,7 @@ export function ObjectionDecision({ objectionId, canReverse, canDecide = true }:
             <p
               className={
                 copy.danger
-                  ? "flex items-start gap-2 rounded-md border border-danger-border bg-danger-bg/20 px-3 py-2 text-[12px] leading-relaxed text-danger-fg"
+                  ? "flex items-start gap-2 rounded-md border border-danger-border bg-danger-bg px-3 py-2 text-[12px] leading-relaxed text-danger-fg"
                   : "flex items-start gap-2 rounded-md border border-border bg-bg-overlay px-3 py-2 text-[12px] leading-relaxed text-text-muted"
               }
             >

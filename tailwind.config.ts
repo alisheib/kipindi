@@ -1,5 +1,43 @@
 import type { Config } from "tailwindcss";
 
+/**
+ * 🔴 THE BRIDGE HAS TO CARRY THE ALPHA, OR HALF OF WHAT WE WRITE IS NOT CSS.
+ *
+ * Every colour below is a CSS custom property. Written bare — `"var(--no-500)"` — the
+ * plain utility `bg-no-500` works and the alpha-modified one, `bg-no-500/10`, emits
+ * **nothing at all**. Not a wrong colour: no rule, no class, no declaration.
+ *
+ * The mechanism, so nobody has to rediscover it: Tailwind 3 resolves `bg-no-500/10`
+ * through `pluginUtils.asColor` → `withAlphaValue`, which calls
+ * `parseColor(color, { loose: true })`. A `var(--x)` string does not parse, so
+ * `parseColor` returns null, `withAlphaValue` returns its `defaultValue` — and `asColor`
+ * passes no default, so that is `undefined` — and `matchUtilities` then emits nothing.
+ * The bare class survives only because it never enters that branch. ⚠️ So the failure is
+ * SILENT AND INVISIBLE: the class name sits in the JSX looking correct, and the browser
+ * has never heard of it.
+ *
+ * The one placeholder Tailwind honours is `<alpha-value>`. `parseColorFormat` turns any
+ * string containing it into `({ opacityValue = 1 }) => …`, which `withAlphaValue` calls
+ * instead of trying to parse. The `= 1` default is why the BARE class still renders at
+ * full strength through this wrapper — `calc(1 * 100%)` is 100%, and a `color-mix` at
+ * 100% is the colour itself. Proven by compile, not by reading: `npm run test:bridge`
+ * now asserts every written class actually emits a rule.
+ *
+ * ⭐ MEASURED COST OF NOT DOING THIS (2026-08-21 audit, lens 6's Critical): **577 usages,
+ * 144 distinct classes, 155 files** compiling to nothing — including the tone tints and
+ * borders of `<Callout>`, `<NoticeBar>` and `<PayoutStatusNotice>`, the KYC rejection
+ * panel, the deposit and withdraw money alerts, the RG limit panels and the auth banners.
+ * A danger callout fell back to the NEUTRAL `--border` and was indistinguishable from
+ * ordinary structure. On a real-money product, that is the notice a player most needs to
+ * be able to tell apart from a container.
+ *
+ * ⛔ Do NOT "simplify" this back to a bare `var()` string. `globals.css` already depends
+ * on `color-mix(in oklab, …)` in 84 places, so this adds no browser requirement — and
+ * this file stays a BRIDGE (§0d): it carries a value from `globals.css` to a utility, it
+ * does not originate one.
+ */
+const alpha = (v: string) => `color-mix(in oklab, ${v} calc(<alpha-value> * 100%), transparent)`;
+
 const config: Config = {
   darkMode: "class",
   content: ["./src/**/*.{ts,tsx}"],
@@ -7,137 +45,137 @@ const config: Config = {
     extend: {
       colors: {
         teal: {
-          50:  "var(--teal-50)", 100: "var(--teal-100)", 200: "var(--teal-200)", 300: "var(--teal-300)", 400: "var(--teal-400)",
-          500: "var(--teal-500)", 600: "var(--teal-600)", 700: "var(--teal-700)", 800: "var(--teal-800)", 900: "var(--teal-900)", 950: "var(--teal-950)",
+          50:  alpha("var(--teal-50)"), 100: alpha("var(--teal-100)"), 200: alpha("var(--teal-200)"), 300: alpha("var(--teal-300)"), 400: alpha("var(--teal-400)"),
+          500: alpha("var(--teal-500)"), 600: alpha("var(--teal-600)"), 700: alpha("var(--teal-700)"), 800: alpha("var(--teal-800)"), 900: alpha("var(--teal-900)"), 950: alpha("var(--teal-950)"),
         },
         yes: {
-          50:  "var(--yes-50)", 100: "var(--yes-100)", 200: "var(--yes-200)", 300: "var(--yes-300)", 400: "var(--yes-400)",
-          500: "var(--yes-500)", 600: "var(--yes-600)", 700: "var(--yes-700)", 800: "var(--yes-800)", 900: "var(--yes-900)", 950: "var(--yes-950)",
+          50:  alpha("var(--yes-50)"), 100: alpha("var(--yes-100)"), 200: alpha("var(--yes-200)"), 300: alpha("var(--yes-300)"), 400: alpha("var(--yes-400)"),
+          500: alpha("var(--yes-500)"), 600: alpha("var(--yes-600)"), 700: alpha("var(--yes-700)"), 800: alpha("var(--yes-800)"), 900: alpha("var(--yes-900)"), 950: alpha("var(--yes-950)"),
         },
         no: {
-          50:  "var(--no-50)", 100: "var(--no-100)", 200: "var(--no-200)", 300: "var(--no-300)", 400: "var(--no-400)",
-          500: "var(--no-500)", 600: "var(--no-600)", 700: "var(--no-700)", 800: "var(--no-800)", 900: "var(--no-900)", 950: "var(--no-950)",
+          50:  alpha("var(--no-50)"), 100: alpha("var(--no-100)"), 200: alpha("var(--no-200)"), 300: alpha("var(--no-300)"), 400: alpha("var(--no-400)"),
+          500: alpha("var(--no-500)"), 600: alpha("var(--no-600)"), 700: alpha("var(--no-700)"), 800: alpha("var(--no-800)"), 900: alpha("var(--no-900)"), 950: alpha("var(--no-950)"),
         },
         // Heraldic chord additions — claret (editorial weight) + aqua (finishing pass).
         // See `globals.css` for the design rules. Never use claret on YES/NO money
         // surfaces. Aqua is non-semantic and is capped at ~8% surface coverage.
         claret: {
-          DEFAULT:    "var(--claret)",
-          soft:       "var(--claret-soft)",
-          edge:       "var(--claret-edge)",
-          50:  "var(--claret-50)", 100: "var(--claret-100)", 200: "var(--claret-200)", 300: "var(--claret-300)", 400: "var(--claret-400)",
-          500: "var(--claret-500)", 600: "var(--claret-600)", 700: "var(--claret-700)", 800: "var(--claret-800)", 900: "var(--claret-900)", 950: "var(--claret-950)",
+          DEFAULT:    alpha("var(--claret)"),
+          soft:       alpha("var(--claret-soft)"),
+          edge:       alpha("var(--claret-edge)"),
+          50:  alpha("var(--claret-50)"), 100: alpha("var(--claret-100)"), 200: alpha("var(--claret-200)"), 300: alpha("var(--claret-300)"), 400: alpha("var(--claret-400)"),
+          500: alpha("var(--claret-500)"), 600: alpha("var(--claret-600)"), 700: alpha("var(--claret-700)"), 800: alpha("var(--claret-800)"), 900: alpha("var(--claret-900)"), 950: alpha("var(--claret-950)"),
         },
         aqua: {
-          DEFAULT:    "var(--aqua)",
-          glow:       "var(--aqua-glow)",
-          edge:       "var(--aqua-edge)",
-          50:  "var(--aqua-50)", 100: "var(--aqua-100)", 200: "var(--aqua-200)", 300: "var(--aqua-300)", 400: "var(--aqua-400)",
-          500: "var(--aqua-500)", 600: "var(--aqua-600)", 700: "var(--aqua-700)", 800: "var(--aqua-800)", 900: "var(--aqua-900)", 950: "var(--aqua-950)",
+          DEFAULT:    alpha("var(--aqua)"),
+          glow:       alpha("var(--aqua-glow)"),
+          edge:       alpha("var(--aqua-edge)"),
+          50:  alpha("var(--aqua-50)"), 100: alpha("var(--aqua-100)"), 200: alpha("var(--aqua-200)"), 300: alpha("var(--aqua-300)"), 400: alpha("var(--aqua-400)"),
+          500: alpha("var(--aqua-500)"), 600: alpha("var(--aqua-600)"), 700: alpha("var(--aqua-700)"), 800: alpha("var(--aqua-800)"), 900: alpha("var(--aqua-900)"), 950: alpha("var(--aqua-950)"),
         },
         accent: {
-          soft: "var(--accent-soft)",
-          300: "var(--accent-300)", 400: "var(--accent-400)", 500: "var(--accent-500)", 600: "var(--accent-600)",
+          soft: alpha("var(--accent-soft)"),
+          300: alpha("var(--accent-300)"), 400: alpha("var(--accent-400)"), 500: alpha("var(--accent-500)"), 600: alpha("var(--accent-600)"),
         },
         brand: {
-          soft: "var(--brand-soft)",
-          200: "var(--brand-200)", 300: "var(--brand-300)", 400: "var(--brand-400)", 500: "var(--brand-500)", 600: "var(--brand-600)",
+          soft: alpha("var(--brand-soft)"),
+          200: alpha("var(--brand-200)"), 300: alpha("var(--brand-300)"), 400: alpha("var(--brand-400)"), 500: alpha("var(--brand-500)"), 600: alpha("var(--brand-600)"),
         },
         slate: {
-          50: "var(--slate-50)", 100: "var(--slate-100)", 200: "var(--slate-200)", 300: "var(--slate-300)", 400: "var(--slate-400)",
-          500: "var(--slate-500)", 600: "var(--slate-600)", 700: "var(--slate-700)", 800: "var(--slate-800)", 850: "var(--slate-850)", 900: "var(--slate-900)", 950: "var(--slate-950)",
+          50: alpha("var(--slate-50)"), 100: alpha("var(--slate-100)"), 200: alpha("var(--slate-200)"), 300: alpha("var(--slate-300)"), 400: alpha("var(--slate-400)"),
+          500: alpha("var(--slate-500)"), 600: alpha("var(--slate-600)"), 700: alpha("var(--slate-700)"), 800: alpha("var(--slate-800)"), 850: alpha("var(--slate-850)"), 900: alpha("var(--slate-900)"), 950: alpha("var(--slate-950)"),
         },
         bg: {
-          DEFAULT: "var(--bg)",
-          base: "var(--bg-base)",
-          subtle: "var(--bg-subtle)",
-          inset: "var(--bg-inset)",
-          sunken: "var(--bg-sunken)",
-          elevated: "var(--bg-elevated)",
-          overlay: "var(--bg-overlay)",
+          DEFAULT: alpha("var(--bg)"),
+          base: alpha("var(--bg-base)"),
+          subtle: alpha("var(--bg-subtle)"),
+          inset: alpha("var(--bg-inset)"),
+          sunken: alpha("var(--bg-sunken)"),
+          elevated: alpha("var(--bg-elevated)"),
+          overlay: alpha("var(--bg-overlay)"),
         },
         surface: {
-          DEFAULT: "var(--surface)",
-          hover: "var(--surface-hover)",
-          pressed: "var(--surface-pressed)",
-          selected: "var(--surface-selected)",
-          disabled: "var(--surface-disabled)",
+          DEFAULT: alpha("var(--surface)"),
+          hover: alpha("var(--surface-hover)"),
+          pressed: alpha("var(--surface-pressed)"),
+          selected: alpha("var(--surface-selected)"),
+          disabled: alpha("var(--surface-disabled)"),
         },
         border: {
-          DEFAULT: "var(--border)",
-          subtle: "var(--border-subtle)",
-          strong: "var(--border-strong)",
-          focus: "var(--border-focus)",
-          divider: "var(--border-divider)",
+          DEFAULT: alpha("var(--border)"),
+          subtle: alpha("var(--border-subtle)"),
+          strong: alpha("var(--border-strong)"),
+          focus: alpha("var(--border-focus)"),
+          divider: alpha("var(--border-divider)"),
           // WCAG 1.4.11 (audit H10): --border is DECORATIVE-only at 36% L. A border that is a
           // control's ONLY boundary must reach 3:1, which is what --border-control is for
           // (globals.css:316, 3.45:1 on --bg). The token existed with no bridge, so
           // `border-border-control` compiled to NOTHING at two call sites on the discovery bar
           // — the same silent-dead-class defect that once left 1,325 classes emitting no CSS.
-          control: "var(--border-control)",
+          control: alpha("var(--border-control)"),
         },
         text: {
-          DEFAULT: "var(--text-primary)",
-          secondary: "var(--text-secondary)",
-          tertiary: "var(--text-tertiary)",
-          disabled: "var(--text-disabled)",
-          inverse: "var(--text-inverse)",
-          link: "var(--text-link)",
-          linkHover: "var(--text-link-hover)",
-          onBrand: "var(--text-on-brand)",
+          DEFAULT: alpha("var(--text-primary)"),
+          secondary: alpha("var(--text-secondary)"),
+          tertiary: alpha("var(--text-tertiary)"),
+          disabled: alpha("var(--text-disabled)"),
+          inverse: alpha("var(--text-inverse)"),
+          link: alpha("var(--text-link)"),
+          linkHover: alpha("var(--text-link-hover)"),
+          onBrand: alpha("var(--text-on-brand)"),
           // DESIGN_AUTHORITY B8 — the ink ramp's three quiet steps. These were defined
           // in globals.css from the start but NEVER bridged here, so `text-text-subtle`
           // (732 uses), `text-text-muted` (433) and `text-text-faint` (59) compiled to
           // NOTHING: a four-step hierarchy rendered as two, and every element meant to
           // recede inherited its parent's ink instead. Guarded by `npm run test:bridge`.
-          muted: "var(--text-muted)",
-          subtle: "var(--text-subtle)",
-          faint: "var(--text-faint)",
+          muted: alpha("var(--text-muted)"),
+          subtle: alpha("var(--text-subtle)"),
+          faint: alpha("var(--text-faint)"),
         },
         royal: {
-          DEFAULT: "var(--royal)",
-          hover: "var(--royal-hover)",
-          active: "var(--royal-active)",
-          subtle: "var(--royal-subtle)",
-          subtleHover: "var(--royal-subtle-hover)",
-          fg: "var(--royal-fg)",
+          DEFAULT: alpha("var(--royal)"),
+          hover: alpha("var(--royal-hover)"),
+          active: alpha("var(--royal-active)"),
+          subtle: alpha("var(--royal-subtle)"),
+          subtleHover: alpha("var(--royal-subtle-hover)"),
+          fg: alpha("var(--royal-fg)"),
           // The numeric ramp exists in globals.css (50–950) but was never exposed here,
           // unlike `gold` below. `text-royal-300` (56 uses) + `text-royal-200` (13) were dead.
-          50:  "var(--royal-50)", 100: "var(--royal-100)", 200: "var(--royal-200)", 300: "var(--royal-300)", 400: "var(--royal-400)",
-          500: "var(--royal-500)", 600: "var(--royal-600)", 700: "var(--royal-700)", 800: "var(--royal-800)", 900: "var(--royal-900)", 950: "var(--royal-950)",
+          50:  alpha("var(--royal-50)"), 100: alpha("var(--royal-100)"), 200: alpha("var(--royal-200)"), 300: alpha("var(--royal-300)"), 400: alpha("var(--royal-400)"),
+          500: alpha("var(--royal-500)"), 600: alpha("var(--royal-600)"), 700: alpha("var(--royal-700)"), 800: alpha("var(--royal-800)"), 900: alpha("var(--royal-900)"), 950: alpha("var(--royal-950)"),
         },
         // The gilt — the brand needle's own colour (Brand Kit v2). It had NO entry here
         // at all, so `text-gilt` / `border-gilt` were dead. The CSS classes `.gilt` /
         // `.gilt-strong` (globals.css) are the older way in; both are valid.
-        gilt: { DEFAULT: "var(--gilt)", strong: "var(--gilt-strong)" },
+        gilt: { DEFAULT: alpha("var(--gilt)"), strong: alpha("var(--gilt-strong)") },
         gold: {
-          DEFAULT: "var(--gold)",
-          hover: "var(--gold-hover)",
-          active: "var(--gold-active)",
-          subtle: "var(--gold-subtle)",
-          subtleHover: "var(--gold-subtle-hover)",
-          fg: "var(--gold-fg)",
-          50:  "var(--gold-50)", 100: "var(--gold-100)", 200: "var(--gold-200)", 300: "var(--gold-300)", 400: "var(--gold-400)",
-          500: "var(--gold-500)", 600: "var(--gold-600)", 700: "var(--gold-700)", 800: "var(--gold-800)", 900: "var(--gold-900)", 950: "var(--gold-950)",
+          DEFAULT: alpha("var(--gold)"),
+          hover: alpha("var(--gold-hover)"),
+          active: alpha("var(--gold-active)"),
+          subtle: alpha("var(--gold-subtle)"),
+          subtleHover: alpha("var(--gold-subtle-hover)"),
+          fg: alpha("var(--gold-fg)"),
+          50:  alpha("var(--gold-50)"), 100: alpha("var(--gold-100)"), 200: alpha("var(--gold-200)"), 300: alpha("var(--gold-300)"), 400: alpha("var(--gold-400)"),
+          500: alpha("var(--gold-500)"), 600: alpha("var(--gold-600)"), 700: alpha("var(--gold-700)"), 800: alpha("var(--gold-800)"), 900: alpha("var(--gold-900)"), 950: alpha("var(--gold-950)"),
         },
         // The `500` steps are the base hue each semantic token is mixed from
         // (globals.css:159-161). They exist as vars but were unreachable, so
         // `bg-danger-500` / `border-danger-500` / `bg-info-500` compiled to nothing.
         // There is deliberately no 300/700 step — the ramp has exactly one rung.
-        success: { DEFAULT: "var(--success)", bg: "var(--success-bg)", border: "var(--success-border)", fg: "var(--success-fg)" },
-        warning: { DEFAULT: "var(--warning)", bg: "var(--warning-bg)", border: "var(--warning-border)", fg: "var(--warning-fg)", 500: "var(--warning-500)" },
-        danger:  { DEFAULT: "var(--danger)",  bg: "var(--danger-bg)",  border: "var(--danger-border)",  fg: "var(--danger-fg)",  500: "var(--danger-500)" },
-        info:    { DEFAULT: "var(--info)",    bg: "var(--info-bg)",    border: "var(--info-border)",    fg: "var(--info-fg)",    500: "var(--info-500)" },
+        success: { DEFAULT: alpha("var(--success)"), bg: alpha("var(--success-bg)"), border: alpha("var(--success-border)"), fg: alpha("var(--success-fg)") },
+        warning: { DEFAULT: alpha("var(--warning)"), bg: alpha("var(--warning-bg)"), border: alpha("var(--warning-border)"), fg: alpha("var(--warning-fg)"), 500: alpha("var(--warning-500)") },
+        danger:  { DEFAULT: alpha("var(--danger)"),  bg: alpha("var(--danger-bg)"),  border: alpha("var(--danger-border)"),  fg: alpha("var(--danger-fg)"),  500: alpha("var(--danger-500)") },
+        info:    { DEFAULT: alpha("var(--info)"),    bg: alpha("var(--info-bg)"),    border: alpha("var(--info-border)"),    fg: alpha("var(--info-fg)"),    500: alpha("var(--info-500)") },
         bet: {
-          win: "var(--bet-win)",
-          lose: "var(--bet-lose)",
-          draw: "var(--bet-draw)",
-          pool: "var(--bet-pool)",
-          stake: "var(--bet-stake)",
-          jackpot: "var(--bet-jackpot)",
-          streak: "var(--bet-streak)",
-          hot: "var(--bet-hot)",
-          cold: "var(--bet-cold)",
+          win: alpha("var(--bet-win)"),
+          lose: alpha("var(--bet-lose)"),
+          draw: alpha("var(--bet-draw)"),
+          pool: alpha("var(--bet-pool)"),
+          stake: alpha("var(--bet-stake)"),
+          jackpot: alpha("var(--bet-jackpot)"),
+          streak: alpha("var(--bet-streak)"),
+          hot: alpha("var(--bet-hot)"),
+          cold: alpha("var(--bet-cold)"),
         },
       },
       fontFamily: {

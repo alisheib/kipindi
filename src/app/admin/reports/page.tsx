@@ -484,7 +484,7 @@ export default async function AdminReportsPage({
           )}
         </AdminCard>
 
-        <AdminCard className="border-info-border bg-info-bg/15">
+        <AdminCard className="border-info-border bg-info-bg">
           <div className="text-caption text-text-secondary space-y-1">
             <p className="text-text font-bold">Generation pipeline (production)</p>
             <p>

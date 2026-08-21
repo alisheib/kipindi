@@ -34,19 +34,19 @@ const tintFor = (k: StoredNotification["kind"]) => {
   switch (k) {
     case "WIN":          return "border-gold-700 bg-gold-500/10 text-gold-300";
     case "LOSS":         return "border-border bg-bg-overlay text-text-muted";
-    case "BET_PLACED":   return "border-info-border bg-info-bg/30 text-info-fg";
-    case "SELECTION_CLOSED": return "border-info-border bg-info-bg/30 text-info-fg";
+    case "BET_PLACED":   return "border-info-border bg-info-bg text-info-fg";
+    case "SELECTION_CLOSED": return "border-info-border bg-info-bg text-info-fg";
     case "ROUND_RESULT": return "border-border bg-bg-overlay text-text-muted";
     case "DEPOSIT":      return "border-yes-700 bg-yes-500/10 text-yes-300";
-    case "WITHDRAW":     return "border-warning-border bg-warning-bg/30 text-warning-fg";
-    case "KYC":          return "border-info-border bg-info-bg/30 text-info-fg";
-    case "RG":           return "border-info-border bg-info-bg/30 text-info-fg";
+    case "WITHDRAW":     return "border-warning-border bg-warning-bg text-warning-fg";
+    case "KYC":          return "border-info-border bg-info-bg text-info-fg";
+    case "RG":           return "border-info-border bg-info-bg text-info-fg";
     case "SECURITY":     return "border-no-700 bg-no-500/10 text-no-300";
     case "MATCH_START":  return "border-border bg-bg-overlay text-text-muted";
     case "AFFILIATE":    return "border-gold-700 bg-gold-500/10 text-gold-300";
     case "PROPOSAL":     return "border-gold-700 bg-gold-500/10 text-gold-300";
     // Informational, never a "bet now" nudge → royal/info, never gold.
-    case "WATCHLIST":    return "border-info-border bg-info-bg/30 text-info-fg";
+    case "WATCHLIST":    return "border-info-border bg-info-bg text-info-fg";
     default:             return "border-border bg-bg-overlay text-text-muted";
   }
 };

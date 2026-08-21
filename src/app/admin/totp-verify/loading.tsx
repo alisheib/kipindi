@@ -13,7 +13,7 @@ export default function Loading() {
           <SkBar className="h-11 w-full rounded-md" />
           <SkBar className="h-10 w-full rounded-md" />
         </div>
-        <div className="rounded-xl border border-info-border bg-info-bg/[0.10] p-3.5">
+        <div className="rounded-xl border border-info-border bg-info-bg p-3.5">
           <SkBar className="h-3 w-full" />
         </div>
       </div>

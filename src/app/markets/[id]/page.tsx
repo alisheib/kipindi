@@ -408,7 +408,7 @@ export default async function MarketDetail({
           )}
           {heroState === "waiting" && (
             <span className={`inline-flex items-center gap-1.5 rounded-full border h-[26px] px-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.10em] ${
-              settling ? "border-warning-border bg-warning-bg/30 text-warning-fg" : "border-gold-500/40 bg-gold-500/10 text-gold-300"
+              settling ? "border-warning-border bg-warning-bg text-warning-fg" : "border-gold-500/40 bg-gold-500/10 text-gold-300"
             }`}>
               <I.hourglassOff s={13} />
               {settling ? t.market.closedAwaitingSettlement : t.market.selectionClosedWaiting}
@@ -506,7 +506,7 @@ export default async function MarketDetail({
 
           {/* 3a. One-sided disclaimer — shown when all bets are on one side */}
           {isOneSided && (
-            <div className="rounded-lg border border-warning-border bg-warning-bg/30 px-4 py-3 flex items-start gap-2.5">
+            <div className="rounded-lg border border-warning-border bg-warning-bg px-4 py-3 flex items-start gap-2.5">
               <I.warning s={15} className="shrink-0 mt-0.5 text-warning-fg" />
               <div>
                 <p className="font-mono text-[10.5px] font-bold uppercase tracking-[0.14em] text-warning-fg mb-1">
@@ -693,7 +693,7 @@ export default async function MarketDetail({
               <>
               {/* Hedge warning — shown when player already has a position */}
               {openPositions.length > 0 && (
-                <div className="rounded-lg border border-warning-border bg-warning-bg/30 px-3.5 py-2.5">
+                <div className="rounded-lg border border-warning-border bg-warning-bg px-3.5 py-2.5">
                   <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-warning-fg">
                     {t.market.youAlreadyHold} {heldLabel} {t.market.here}
                   </p>
@@ -715,7 +715,7 @@ export default async function MarketDetail({
                       different fact about a different thing — one is what the market will do,
                       this is what their bonus will not do. */}
                   {bonusWagerWarning && (
-                    <p className="mt-2 pt-2 border-t border-warning-border/50 text-[12px] leading-snug font-semibold text-warning-fg">
+                    <p className="mt-2 pt-2 border-t border-warning-border text-[12px] leading-snug font-semibold text-warning-fg">
                       {bonusWagerWarning}
                     </p>
                   )}
@@ -788,7 +788,7 @@ export default async function MarketDetail({
               </p>
             </div>
           ) : closedByTime ? (
-            <div className="rounded-xl border border-warning-border bg-warning-bg/30 p-6 text-center">
+            <div className="rounded-xl border border-warning-border bg-warning-bg p-6 text-center">
               <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-warning-fg">
                 {t.market.closedAwaitingSettlement}
               </p>

@@ -57,7 +57,7 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
             </div>
           )}
           {sp.error === "rate_limited" && (
-            <div role="alert" className="rounded-md border border-warning-border bg-warning-bg/20 px-3.5 py-3 text-[13px] text-gold-300">
+            <div role="alert" className="rounded-md border border-warning-border bg-warning-bg px-3.5 py-3 text-[13px] text-gold-300">
               {t.common.tooManyAttempts}
             </div>
           )}

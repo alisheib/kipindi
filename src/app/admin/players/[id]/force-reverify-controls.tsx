@@ -55,7 +55,7 @@ export function ForceReverifyControls({ userId }: { userId: string }) {
 
   return (
     <>
-      <button type="button" disabled={pending} onClick={() => { setOpen(true); setReason(""); }} className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 py-1.5 rounded-sm border border-border bg-bg-overlay text-text-secondary hover:bg-warning-bg/20 hover:text-warning-fg hover:border-warning-border transition-colors inline-flex items-center gap-1.5">
+      <button type="button" disabled={pending} onClick={() => { setOpen(true); setReason(""); }} className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 py-1.5 rounded-sm border border-border bg-bg-overlay text-text-secondary hover:bg-warning-bg hover:text-warning-fg hover:border-warning-border transition-colors inline-flex items-center gap-1.5">
         <I.shieldcheck s={11} /> Force re-verify KYC
       </button>
 

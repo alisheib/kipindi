@@ -272,7 +272,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
           <AdminCard
             title="Ledger trial balance"
             sw="Ulinganifu wa daftari"
-            className={tb.ok ? undefined : "border-danger-border bg-danger-bg/20"}
+            className={tb.ok ? undefined : "border-danger-border bg-danger-bg"}
             action={
               <span className={["font-mono text-[10px] tracking-[0.10em] uppercase", tb.ok ? "text-success" : "text-danger-fg"].join(" ")}>
                 {tb.ok ? "✓ reconciles" : "✗ drift detected"}

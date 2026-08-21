@@ -475,7 +475,7 @@ export function GenerateForm({ generatable }: { generatable: string[] }) {
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {result.reasons.map((r, i) => (
-                        <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-pill text-[10px] font-mono border border-warning-border bg-warning-bg/30 text-warning-fg">{r}</span>
+                        <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-pill text-[10px] font-mono border border-warning-border bg-warning-bg text-warning-fg">{r}</span>
                       ))}
                     </div>
                   </>
@@ -886,9 +886,11 @@ export function FilterReasonChips({ reasons }: { reasons: FilterReason[] }) {
   return (
     <div className="flex flex-wrap gap-1.5">
       {reasons.map((r, i) => (
+        // `/[0.08]` and not `/8` — off Tailwind's 5-step opacity ladder, so these
+        // refusal-reason pills rendered as bare outlines with no danger wash.
         <span
           key={i}
-          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-pill text-[10px] font-mono border border-danger-500/30 bg-danger-500/8 text-claret-300"
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-pill text-[10px] font-mono border border-danger-500/30 bg-danger-500/[0.08] text-claret-300"
         >
           {REASON_LABELS[r] ?? r}
         </span>

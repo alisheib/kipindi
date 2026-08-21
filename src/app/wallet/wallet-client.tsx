@@ -195,7 +195,7 @@ function BonusWalletCard({
                         <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-gold-200/80 flex items-center gap-1.5">
                           {BONUS_SOURCE_LABEL[g.source] ?? g.source}
                           {isQueued && (
-                            <span className="inline-flex items-center rounded-pill px-1.5 py-px text-[8px] font-bold bg-warning-bg/40 border border-warning-border text-warning-fg">
+                            <span className="inline-flex items-center rounded-pill px-1.5 py-px text-[8px] font-bold bg-warning-bg border border-warning-border text-warning-fg">
                               {t.common.queued}
                             </span>
                           )}

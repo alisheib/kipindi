@@ -88,7 +88,7 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
             yield … a small net loss after fees". That edge case is the bug; it is
             gone, and so is the paragraph that normalised it. */}
         {config.feeModel === "loser-share" ? (
-          <AdminCard className="border-warning-border bg-warning-bg/15">
+          <AdminCard className="border-warning-border bg-warning-bg">
             <div className="flex items-start gap-3">
               <I.warning size={18} className="text-warning shrink-0 mt-0.5" />
               <div className="text-caption text-text-secondary space-y-1.5">
@@ -110,7 +110,7 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
             </div>
           </AdminCard>
         ) : null}
-        <AdminCard className="border-info-border bg-info-bg/15">
+        <AdminCard className="border-info-border bg-info-bg">
           <div className="flex items-start gap-3">
             <I.settings size={18} className="text-info shrink-0 mt-0.5" />
             <div className="text-caption text-text-secondary space-y-1.5">
@@ -304,7 +304,7 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
           )}
         </AdminCard>
 
-        <AdminCard className="border-warning-border bg-warning-bg/15">
+        <AdminCard className="border-warning-border bg-warning-bg">
           <div className="flex items-start gap-3">
             <I.alertCircle s={18} />
             <div className="text-caption text-text-secondary">

@@ -158,7 +158,7 @@ export default async function AdminSelfExclusionsPage({
           {!rosterFailed && <AdminPagination total={roster.length} page={page} baseHref="/admin/self-exclusions" />}
         </AdminCard>
 
-        <AdminCard className="border-info-border bg-info-bg/15">
+        <AdminCard className="border-info-border bg-info-bg">
           <div className="text-caption text-text-secondary space-y-1">
             <p className="text-text font-bold">Cross-operator register (planned, Q3 2026)</p>
             <p>

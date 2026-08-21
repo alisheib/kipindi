@@ -146,8 +146,13 @@ function VisualPools({ caption }: { caption: string }) {
         <TippingBar yesPct={62} height={24} recastOnHover={false} />
       </div>
       {/* Payout flow annotation */}
+      {/* `/[0.08]` and not `/8` (2026-08-21): Tailwind's opacity scale is a 5-step
+          ladder, so `/8` is dropped before the colour is ever mixed. Both tiles
+          rendered with NO fill — on the one screen that teaches a new player what a
+          side means, the green/YES and red/NO wash was absent while it was being
+          taught. The arbitrary form keeps the author's exact 8%. */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-1">
-        <div className="rounded-lg border border-yes-700/40 bg-yes-500/8 px-3 py-2 text-center">
+        <div className="rounded-lg border border-yes-700/40 bg-yes-500/[0.08] px-3 py-2 text-center">
           <p className="font-mono text-[8px] uppercase tracking-[0.14em] font-bold" style={{ color: "oklch(70% 0.12 152)" }}>YES pool</p>
           <p className="font-display text-[15px] font-bold text-text">TZS 12k</p>
         </div>
@@ -156,7 +161,7 @@ function VisualPools({ caption }: { caption: string }) {
           <span className="font-mono text-[7px] uppercase tracking-[0.14em]" style={{ color: "var(--gilt)" }}>share</span>
           <span className="inline-block h-[2px] w-5 rounded-pill" style={{ background: "var(--gilt)" }} />
         </div>
-        <div className="rounded-lg border border-no-700/40 bg-no-500/8 px-3 py-2 text-center">
+        <div className="rounded-lg border border-no-700/40 bg-no-500/[0.08] px-3 py-2 text-center">
           <p className="font-mono text-[8px] uppercase tracking-[0.14em] font-bold" style={{ color: "oklch(70% 0.14 22)" }}>NO pool</p>
           <p className="font-display text-[15px] font-bold text-text">TZS 18k</p>
         </div>

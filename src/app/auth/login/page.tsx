@@ -167,7 +167,7 @@ export default async function LoginPage({
                   ? "border-yes-700/60 bg-yes-500/[0.10]"
                   : errorPanel.tone === "danger"
                     ? "border-no-700/60 bg-no-500/[0.10]"
-                    : "border-warning-border bg-warning-bg/30")
+                    : "border-warning-border bg-warning-bg")
               }
             >
               <span className={"mt-0.5 shrink-0 " + (errorPanel.tone === "success" ? "text-yes-300" : errorPanel.tone === "danger" ? "text-no-300" : "text-gold-300")}>

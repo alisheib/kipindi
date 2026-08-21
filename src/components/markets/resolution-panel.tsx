@@ -178,7 +178,7 @@ export function ResolutionPanel({
       {/* Settlement state. While the window is open the pool is UNTOUCHED — say so
           plainly, because it is the fact that makes an objection worth filing. */}
       {held && objectionsClosedAt ? (
-        <div className="rounded-md border border-warning-border bg-warning-bg/30 px-3 py-2 space-y-1.5 text-[12px] text-warning-fg">
+        <div className="rounded-md border border-warning-border bg-warning-bg px-3 py-2 space-y-1.5 text-[12px] text-warning-fg">
           <p className="flex items-start gap-2">
             <I.hourglassHalf s={13} className="mt-[1px] shrink-0" />
             <span>
@@ -251,7 +251,7 @@ export function ResolutionPanel({
         {!isVoid && <p className="text-[11.5px] leading-relaxed text-text-subtle">{t.market.resYourPayoutNote}</p>}
 
         {objection?.state === "OPEN" ? (
-          <p className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg/20 px-3 py-2 text-[11.5px] leading-relaxed text-warning-fg">
+          <p className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-[11.5px] leading-relaxed text-warning-fg">
             <I.hourglassHalf s={13} className="mt-[1px] shrink-0" />
             {t.market.objOpenNotice}
           </p>

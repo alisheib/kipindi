@@ -212,7 +212,7 @@ function BackupCodes({ codes, onDone, t, toast }: { codes: string[]; onDone: () 
           <code key={c} className="select-all text-center font-mono text-[13px] tracking-[0.06em] text-text">{c}</code>
         ))}
       </div>
-      <div className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg/30 px-3 py-2 text-[12px] text-warning-fg">
+      <div className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-[12px] text-warning-fg">
         <I.warning s={13} className="mt-[1px] shrink-0" />
         <span>{t.security.backupWarn}</span>
       </div>

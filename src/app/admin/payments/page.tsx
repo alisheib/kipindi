@@ -328,7 +328,7 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
           {queue.length > 0 && <AdminPagination total={queue.length} page={page} baseHref={base} />}
         </AdminCard>
 
-        <AdminCard className="border-info-border bg-info-bg/15">
+        <AdminCard className="border-info-border bg-info-bg">
           <p className="text-caption text-text-secondary">
             <span className="text-text font-bold">Live telemetry.</span> Success rate, latency, failures and reconciliation are computed from the real
             transaction record over the last 24h — no data is fabricated. Latency percentiles come only from movements that recorded a settlement time.

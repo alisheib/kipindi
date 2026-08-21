@@ -50,9 +50,14 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams?:
     <AuthShell>
 
         <section className="rounded-xl glass-panel p-6 space-y-5">
+          {/* `/[0.12]` and not `/12`: Tailwind's opacity scale runs in steps of 5, so
+              `/12` was dropped before the mix and BOTH medallions rendered with no fill
+              — confirmed and failed looked identical apart from the glyph tint. Email
+              confirmation gates the first deposit, so this chip sits on the money-in
+              ladder and has to read at a glance. */}
           <span
             className={`inline-flex h-12 w-12 items-center justify-center rounded-pill ${
-              good ? "bg-yes-500/12 text-yes-300" : "bg-no-500/12 text-no-300"
+              good ? "bg-yes-500/[0.12] text-yes-300" : "bg-no-500/[0.12] text-no-300"
             }`}
           >
             {good ? <I.mail s={22} /> : <I.alertCircle s={22} />}

@@ -37,7 +37,15 @@ export async function ConfidentialBand({ session }: { session: AdminSession }) {
   const officer = await db.user.findById(session.userId);
   const email = officer?.displayName ?? session.phoneE164;
   return (
-    <div className="bg-bg-sunken text-onBrand border-b border-border-strong flex items-center justify-between px-4 lg:px-6 h-7 text-micro font-mono uppercase tracking-[0.18em]">
+    // `text-text`, not `text-onBrand` (2026-08-21). There is no `onBrand` colour
+    // family in tailwind.config.ts, so the band has always had no inherited colour
+    // at all — invisible only because both spans below set their own. The tempting
+    // repair is the real key `text-text-onBrand`, and it would be WRONG here:
+    // `--text-on-brand` is oklch(15%), an inverse for text sitting on a gold/brand
+    // FILL, and this band is `bg-bg-sunken` (oklch 11%) — near-black on near-black.
+    // The band renders light-on-dark, so its inherited default is the ordinary
+    // primary text token; the two spans still override it with pure white.
+    <div className="bg-bg-sunken text-text border-b border-border-strong flex items-center justify-between px-4 lg:px-6 h-7 text-micro font-mono uppercase tracking-[0.18em]">
       <span className="flex items-center gap-2">
         {/* Claret "restricted" dot — admin gold-discipline: gold is only the resolved seal. */}
         <span className="inline-block h-1.5 w-1.5 rounded-pill" style={{ background: "var(--claret-200)" }} />
@@ -416,7 +424,7 @@ export function AdminKpi({
    Pair with AdminKpi `unavailable` on the matching count tile. */
 export function AdminLoadError({ what }: { what?: string }) {
   return (
-    <div className="flex items-start gap-3 rounded-md border border-warning-border bg-warning-bg/20 px-4 py-3">
+    <div className="flex items-start gap-3 rounded-md border border-warning-border bg-warning-bg px-4 py-3">
       <span aria-hidden className="mt-1 h-2 w-2 shrink-0 rounded-pill" style={{ background: "var(--warning-500)" }} />
       <div className="text-caption text-text-secondary">
         <p className="font-semibold text-warning-fg">Couldn&apos;t load{what ? ` ${what}` : ""}</p>

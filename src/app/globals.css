@@ -2668,9 +2668,26 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
    `--edge-lit` — the same ring `--elev-raised` gives every card.
    ⚠️ The old comment claimed a "top-lit gradient" this rule has never had: the
    background is one flat colour. Corrected rather than preserved. */
-.glass-panel {
-  background: var(--bg-elevated);
+/* 🔴 THE COLOURS SIT IN `:where()` SO A TONE UTILITY CAN BEAT THEM. Found 2026-08-21,
+   while fixing the alpha bridge, and it is a SEPARATE defect with the same symptom.
+   `.glass-panel` is (0,1,0) and lives at this line; `@tailwind utilities` is emitted at
+   the top of this file. Equal specificity, so SOURCE ORDER decides — and this rule wins.
+   `AdminCard` composes `glass-panel` internally and appends the caller's `className`, so
+   all 22 `<AdminCard className="border-warning-border bg-warning-bg">` tone cards across
+   the console were painted plain: the officer's warning card looked exactly like an
+   ordinary one, and no amount of fixing the bridge would have changed that. ⚠️ The
+   `background` and `border` SHORTHANDS were half the trap — a shorthand overwrites the
+   colour a longhand utility sets even when you expect only width and style to apply.
+   `:where()` contributes ZERO specificity, so `bg-*`/`border-*` now win while the
+   defaults still apply to every panel that names no tone. The four `hover:border-*`
+   call sites were already winning at (0,2,0) and are unaffected. ⛔ Keep the cast and
+   the radius OUT of `:where()`: those are the rung (§M2), not a default to be overridden
+   — a surface picks a rung, it never composes a shadow. */
+:where(.glass-panel) {
+  background-color: var(--bg-elevated);
   border: 1px solid var(--border);
+}
+.glass-panel {
   box-shadow: var(--edge-lit), 0 8px 24px -6px oklch(6% 0.08 268 / 0.45);
   border-radius: var(--r-lg);
 }

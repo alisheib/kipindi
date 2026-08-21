@@ -19,7 +19,7 @@ export default async function AdminRolesPage() {
     <>
       <AdminPageHead title="Role permissions" sw="Ruhusa za wajibu" />
       <div className="px-4 lg:px-6 py-5 space-y-4">
-        <AdminCard className="border-info-border bg-info-bg/15">
+        <AdminCard className="border-info-border bg-info-bg">
           <div className="text-caption text-text-secondary space-y-1">
             <p className="text-text font-bold">What this is</p>
             <p>

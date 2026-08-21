@@ -107,7 +107,7 @@ export default async function AdminStaffPage() {
           </ScrollX>
         </AdminCard>
 
-        <AdminCard className="border-info-border bg-info-bg/15">
+        <AdminCard className="border-info-border bg-info-bg">
           <div className="text-caption text-text-secondary space-y-1">
             <p className="text-text font-bold">How roles work</p>
             <p>Each person has <strong>one role</strong>. A role decides which admin sections they can see and which actions they can take. Roles: <strong>{STAFF_ROLES.map((r) => ROLE_LABEL[r as Role]).join(" · ")}</strong>. The Owner can fine-tune exactly what each role may see and do at <a href="/admin/roles" className="text-royal-300 hover:underline">/admin/roles</a>. Changing a role signs the person out so the new access applies immediately.</p>

@@ -221,7 +221,7 @@ export default async function AdminUpDownRoundsPage({
           </span>
         </div>
         {badFilter && (
-          <p className="font-mono text-[11px] text-warning-fg bg-warning-bg/15 border border-warning-border rounded-md px-3 py-2">
+          <p className="font-mono text-[11px] text-warning-fg bg-warning-bg border border-warning-border rounded-md px-3 py-2">
             Unknown asset or outcome &mdash; showing every round. Pick one from the chips above.
           </p>
         )}

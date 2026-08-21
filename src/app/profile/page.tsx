@@ -168,7 +168,7 @@ export default async function ProfilePage() {
 
       {/* ── KYC banner if not approved */}
       {kycLevel !== "APPROVED" && (
-        <section className="rounded-xl border border-warning-border bg-warning-bg/30 p-5">
+        <section className="rounded-xl border border-warning-border bg-warning-bg p-5">
           <div className="flex items-start gap-3">
             <I.shieldcheck s={20} />
             <div className="min-w-0">
@@ -197,7 +197,7 @@ export default async function ProfilePage() {
 
       {/* ── SoF banner when declaration is pending or rejected */}
       {sofNeedsBanner && (
-        <section className="rounded-xl border border-warning-border bg-warning-bg/30 p-5">
+        <section className="rounded-xl border border-warning-border bg-warning-bg p-5">
           <div className="flex items-start gap-3">
             <I.fileSignature s={20} />
             <div className="min-w-0">

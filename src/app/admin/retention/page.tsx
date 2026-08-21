@@ -120,7 +120,7 @@ export default async function AdminRetentionPage() {
         </AdminCard>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          <AdminCard className="border-info-border bg-info-bg/15">
+          <AdminCard className="border-info-border bg-info-bg">
             <div className="flex items-start gap-3">
               <I.archive size={18} className="text-info shrink-0 mt-0.5" />
               <div className="text-caption text-text-secondary space-y-1">
@@ -149,7 +149,7 @@ export default async function AdminRetentionPage() {
               </div>
             </div>
           </AdminCard>
-          <AdminCard className="border-warning-border bg-warning-bg/15">
+          <AdminCard className="border-warning-border bg-warning-bg">
             <div className="flex items-start gap-3">
               <I.alertCircle s={18} />
               <div className="text-caption text-text-secondary space-y-1">

@@ -80,7 +80,7 @@ export default async function AdminSystemPage() {
         <AdminCard
           title="Maintenance mode"
           sw="Hali ya matengenezo"
-          className={platform.maintenanceMode ? "border-claret-edge bg-claret-soft/30" : undefined}
+          className={platform.maintenanceMode ? "border-claret-edge bg-claret-soft" : undefined}
         >
           <p className="text-caption text-text-secondary mb-3">
             A global switch to pause <strong>new bets and new deposits</strong> during a deploy or incident.
@@ -188,7 +188,7 @@ export default async function AdminSystemPage() {
             reconciler re-arms it, and /admin/settlement is the human fallback. */}
         <AdminCard title="Settlement" sw="Malipo">
           {settlement.readyToSettle.count > 0 ? (
-            <div className="flex items-start gap-2 rounded-md border border-danger-border bg-danger-bg/25 px-3 py-2.5 mb-3 text-[12.5px] text-danger-fg">
+            <div className="flex items-start gap-2 rounded-md border border-danger-border bg-danger-bg px-3 py-2.5 mb-3 text-[12.5px] text-danger-fg">
               <I.alertCircle size={15} className="mt-[1px] shrink-0" />
               <div>
                 <p className="font-semibold">
@@ -455,7 +455,7 @@ export default async function AdminSystemPage() {
           <SupportConfigForm config={getSupportConfig()} />
         </AdminCard>
 
-        <AdminCard className="border-info-border bg-info-bg/15">
+        <AdminCard className="border-info-border bg-info-bg">
           <div className="text-caption text-text-secondary space-y-1">
             <p className="text-text font-bold">Production posture — TARGET, not current state</p>
             <p className="text-warning-fg">

@@ -240,7 +240,7 @@ export default async function AdminApprovalsPage({
           </div>
         </AdminCard>
 
-        <AdminCard className="border-warning-border bg-warning-bg/15">
+        <AdminCard className="border-warning-border bg-warning-bg">
           <div className="flex items-start gap-3">
             <I.warning s={18} />
             <div className="text-caption text-text-secondary space-y-1">

@@ -77,7 +77,10 @@ export function EvidencePanel({
 }) {
   if (observedPrice == null || !observedQuotedAt) {
     return (
-      <div className="text-[10.5px] leading-snug text-hot-rose-300">
+      // `text-danger-fg` — `hot-rose` is not a bridged colour family, so the
+      // unreadable-feed state painted in ordinary body ink, indistinguishable
+      // from a healthy evidence reading. Not `no-300`: §B2 reserves YES/NO.
+      <div className="text-[10.5px] leading-snug text-danger-fg">
         <span className="font-mono text-[13px] font-bold">—</span>
         <div>nothing readable on that page</div>
       </div>
@@ -461,7 +464,9 @@ export function ReviewActions({
           </Field>
 
           {localError && (
-            <p className="text-[11.5px] text-hot-rose-300">{localError}</p>
+            // `text-danger-fg` — see EvidencePanel above; `hot-rose` never rendered,
+            // so this validation error looked like ordinary hint text.
+            <p className="text-[11.5px] text-danger-fg">{localError}</p>
           )}
 
           <div className="flex flex-wrap items-center gap-2 pt-1">

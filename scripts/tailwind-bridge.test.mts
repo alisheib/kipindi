@@ -233,5 +233,127 @@ for (const key of ["card", "modal", "overlay", "overlay-up", "card-top", "e1", "
   check(`boxShadow.${key} is bridged`, shadowKeys.has(key));
 }
 
-log(`\n${fail === 0 ? "PASS" : "FAIL"} — ${tsxFiles.length} tsx files, ${families.size} colour families, ${shadowKeys.size} shadow rungs`);
+// ── 6. THE COMPILE PROBE — does the class actually EMIT? ─────────────────────
+/**
+ * Added 2026-08-21, after the design audit found a defect this file was written to
+ * prevent and structurally could not see.
+ *
+ * Sections 1–5 ask "does the key exist in the config?". That is a proxy for the real
+ * question, and the proxy has now been wrong twice:
+ *
+ *   · `bg-brand-500/10` — the KEY exists, and the class still compiles to nothing,
+ *     because a bare `var(--x)` bridge cannot carry an alpha modifier. Section 2 never
+ *     even saw the modifier: `/` is a legal TERMINATOR in its `classRe` lookahead, so it
+ *     captured `bg-brand-500`, found the key, and PASSED. **577 usages, 144 distinct
+ *     classes, 155 files** — the whole of `<Callout>`'s tone tints among them.
+ *   · `bg-yes-500/8` — key exists, bridge now carries alpha, and it STILL emits nothing,
+ *     because Tailwind's stock `theme.opacity` runs in steps of 5 and `asColor` bails
+ *     before alpha is applied.
+ *
+ * So section 6 stops asking the proxy question and asks Tailwind. It compiles every
+ * alpha-modified colour class in the app through the repo's OWN Tailwind and config, and
+ * fails on any that produces no rule. A key-existence check can be fooled; a compiler
+ * cannot.
+ *
+ * ⭐ SCOPE IS DELIBERATE — alpha-modified classes ONLY. A colour class with a `/NN` or
+ * `/[0.NN]` modifier is unambiguous: no CSS property name, prose fragment or identifier
+ * has that shape, so the candidate set is exactly the set of real classes and the probe
+ * has no false-positive surface. Widening it to every `prefix-word` token would sweep in
+ * `border-color`, `text-decoration` and every `to-do` in a JSX string, and a guard that
+ * cries wolf is a guard that gets skipped. Family-and-step coverage stays with section 2,
+ * which already does it exhaustively and for free.
+ *
+ * ⚠️ AND IT WALKS `.ts` AS WELL AS `.tsx` (sections 2 and 5 are tsx-only). That costs
+ * nothing today — there are no colour classes in `.ts` files — but a variants map or a
+ * tone dictionary extracted to a `.ts` helper is exactly where the next dead class will
+ * hide, invisible to every other section here.
+ */
+const srcFiles = walk(SRC, /\.tsx?$/);
+/** `bg-no-500/10`, `border-border/60`, `text-text-subtle/[0.4]` — prefix, family, optional step, modifier. */
+const alphaRe = new RegExp(
+  String.raw`\b(?:${prefixAlt})-[a-zA-Z][a-zA-Z0-9]*(?:-[a-zA-Z0-9]+)?/(?:\[[0-9.]+\]|[0-9]{1,3})(?=[\s"'\`\]]|$)`,
+  "g",
+);
+
+/** class -> where it is written */
+const alphaClasses = new Map<string, Set<string>>();
+for (const file of srcFiles) {
+  const src = decomment(readFileSync(file, "utf8"));
+  for (const m of src.matchAll(alphaRe)) {
+    const rec = alphaClasses.get(m[0]) ?? new Set<string>();
+    rec.add(relative(ROOT, file));
+    alphaClasses.set(m[0], rec);
+  }
+}
+
+const written = [...alphaClasses.keys()].sort();
+check("found alpha-modified colour classes to probe", written.length > 0,
+  "none found — the collector is broken, not the app");
+
+if (written.length) {
+  // Imported lazily and inside the branch: this is the only part of the guard that is
+  // not dependency-free, and the header above promises the rest stays fast.
+  const postcss = (await import("postcss")).default;
+  const tailwindcss = (await import("tailwindcss")).default;
+  const cfgMod = await import("../tailwind.config.ts");
+  const cfg = ((cfgMod as Record<string, unknown>).default ?? cfgMod) as Record<string, unknown>;
+
+  const { css } = await postcss([
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (tailwindcss as any)({
+      ...cfg,
+      content: [{ raw: `<div class="${written.join(" ")}"></div>`, extension: "html" }],
+      corePlugins: { preflight: false },
+    }),
+  ]).process("@tailwind utilities;", { from: undefined });
+
+  /**
+   * ⛔ TWO WAYS TO WRITE THIS PREDICATE WRONG, BOTH OF WHICH REPORT A DEAD CLASS AS LIVE
+   * OR A LIVE ONE AS DEAD. Both were hit while building this, within ten minutes:
+   *
+   * 1. `css.includes("." + cls)` is a SUBSTRING test. `.text-warn` matches inside
+   *    `.text-warning-fg`, so a genuinely dead class passes on its healthy neighbour's
+   *    back. Hence the right-boundary lookahead.
+   * 2. The selector is escaped in TWO alphabets — Tailwind backslash-escapes `.` `/` `[`
+   *    `]` in the SELECTOR, and that text must then be escaped again for the REGEX.
+   *    Doing both in one pass yields `\\[` in regex source, which is a literal backslash
+   *    followed by the START OF A CHARACTER CLASS; it mis-parses silently and reports
+   *    every `/[0.08]` class missing. Build the literal selector first, escape second.
+   */
+  const emits = (cls: string) => {
+    const selector = "." + cls.replace(/[./[\]]/g, (ch) => "\\" + ch);
+    const pattern = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(pattern + "(?=[\\s,{:>+~])").test(css);
+  };
+
+  const nonEmitting = written.filter((c) => !emits(c));
+  check(
+    "every alpha-modified colour class compiles to a real rule",
+    nonEmitting.length === 0,
+    nonEmitting.length ? `${nonEmitting.length} of ${written.length} emit NOTHING` : "",
+  );
+  for (const c of nonEmitting) {
+    log(`    ${c.padEnd(30)} ${[...(alphaClasses.get(c) ?? [])].slice(0, 3).join(", ")}`);
+  }
+  if (nonEmitting.length) {
+    log("");
+    log("  A class that emits nothing is not a wrong colour — it is no rule at all, and");
+    log("  the element silently inherits its parent. Three causes, three different fixes:");
+    log("    · the bridge cannot carry alpha      -> the value needs the alpha() wrapper");
+    log("    · the step is off Tailwind's scale   -> write it as /[0.08], not /8");
+    log("    · the family is `current`/`inherit`  -> Tailwind owns those; use a real token");
+  }
+
+  // The probe must be able to FAIL, or it is decoration. `bg-yes-500/8` is off Tailwind's
+  // stock opacity scale and is the shape the call sites were swept off; if a future config
+  // edit extends `theme.opacity`, this stops being a valid negative control and the line
+  // below fails loudly rather than leaving the probe quietly unable to detect anything.
+  check(
+    "the probe can still detect a non-emitting class (negative control)",
+    !emits("bg-yes-500/8"),
+    "bg-yes-500/8 now emits — pick a new negative control; this one no longer proves anything",
+  );
+}
+
+log(`\n${fail === 0 ? "PASS" : "FAIL"} — ${tsxFiles.length} tsx files, ${families.size} colour families, ${shadowKeys.size} shadow rungs, ${written.length} alpha classes probed`);
 process.exit(fail ? 1 : 0);

@@ -211,7 +211,7 @@ export function KycDecisionRail({
             </button>
           </div>
         ) : (
-          <div className="space-y-2 rounded-md border border-claret-edge bg-claret-soft/40 p-2.5">
+          <div className="space-y-2 rounded-md border border-claret-edge bg-claret-soft p-2.5">
             <Select
               value={reasonCode}
               onChange={setReasonCode}

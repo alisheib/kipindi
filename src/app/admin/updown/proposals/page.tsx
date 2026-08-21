@@ -263,7 +263,7 @@ export default async function UpDownProposalsPage({
           </span>
         </div>
         {badFilter && (
-          <p className="font-mono text-[11px] text-warning-fg bg-warning-bg/15 border border-warning-border rounded-md px-3 py-2">
+          <p className="font-mono text-[11px] text-warning-fg bg-warning-bg border border-warning-border rounded-md px-3 py-2">
             Unknown state or asset &mdash; showing the whole queue. Pick one from the chips above.
           </p>
         )}
@@ -341,7 +341,10 @@ export default async function UpDownProposalsPage({
                           {reasons.length > 0 && (
                             <ul className="mt-1 space-y-0.5">
                               {reasons.map((r) => (
-                                <li key={r} className="text-[10.5px] leading-snug text-hot-rose-300">
+                                // `text-danger-fg` — `hot-rose` is not a bridged family, so
+                                // these refusal reasons rendered in plain body ink. Not
+                                // `no-300`: §B2 keeps YES/NO for money outcomes only.
+                                <li key={r} className="text-[10.5px] leading-snug text-danger-fg">
                                   · {REASON_LABEL[r] ?? r}
                                   {REASON_ADVICE[r] && (
                                     <span className="mt-0.5 block text-text-subtle">{REASON_ADVICE[r]}</span>

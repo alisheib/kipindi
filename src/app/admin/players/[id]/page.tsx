@@ -433,7 +433,7 @@ function KycTab({ kyc, userEmail, userId, makerCheckerRequired, canActSupport, c
         </div>
       )}
       {kyc.status === "ADDITIONAL_INFO_REQUIRED" && (
-        <div className="rounded-lg border border-warning-border bg-warning-bg/20 px-4 py-3 flex items-start gap-3">
+        <div className="rounded-lg border border-warning-border bg-warning-bg px-4 py-3 flex items-start gap-3">
           <I.alertCircle s={16} className="text-warning-fg shrink-0 mt-0.5" />
           <div>
             <p className="font-display font-semibold text-warning-fg text-[13px]">Awaiting player response</p>
@@ -457,7 +457,7 @@ function KycTab({ kyc, userEmail, userId, makerCheckerRequired, canActSupport, c
         </div>
       )}
       {/* Email status — critical for KYC notifications. Warn if missing. */}
-      <div className={`rounded-md px-3 py-2.5 flex items-start gap-2.5 text-caption ${userEmail ? "border border-border bg-bg-inset/30" : "border-2 border-warning-border bg-warning-bg/20"}`}>
+      <div className={`rounded-md px-3 py-2.5 flex items-start gap-2.5 text-caption ${userEmail ? "border border-border bg-bg-inset/30" : "border-2 border-warning-border bg-warning-bg"}`}>
         <I.mail s={14} className={userEmail ? "text-text-tertiary mt-0.5" : "text-warning-fg mt-0.5"} />
         <div className="flex-1 min-w-0">
           <p className="font-mono text-micro tracking-[0.12em] uppercase text-text-tertiary">Player email</p>
@@ -602,7 +602,7 @@ function ExclusionTab({ rg }: { rg: Awaited<ReturnType<typeof db.responsible.get
   return (
     <div className="space-y-3">
       {rg.selfExclusionUntil ? (
-        <div className="rounded-md border-2 border-danger/40 bg-danger-bg/15 p-4 flex items-start gap-2.5">
+        <div className="rounded-md border-2 border-danger/40 bg-danger-bg p-4 flex items-start gap-2.5">
           <I.alertOctagon size={16} className="text-danger shrink-0 mt-0.5" />
           <div className="text-caption text-text-secondary">
             <p className="font-bold text-text">Self-exclusion active</p>
@@ -611,7 +611,7 @@ function ExclusionTab({ rg }: { rg: Awaited<ReturnType<typeof db.responsible.get
         </div>
       ) : <p className="text-caption text-text-tertiary">No self-exclusion active.</p>}
       {rg.coolingOffUntil && (
-        <div className="rounded-md border border-warning-border bg-warning-bg/20 p-4 flex items-start gap-2.5">
+        <div className="rounded-md border border-warning-border bg-warning-bg p-4 flex items-start gap-2.5">
           <I.shieldcheck s={16} />
           <div className="text-caption text-text-secondary">
             <p className="font-bold text-text">Cooling-off period</p>

@@ -85,7 +85,7 @@ export function PayoutStatusControl({
       </div>
 
       {derivedOverrodeDeclared && (
-        <p className="flex items-start gap-1.5 rounded-md border border-warning-border bg-warning-bg/30 px-2.5 py-2 text-[11px] leading-snug text-text-muted">
+        <p className="flex items-start gap-1.5 rounded-md border border-warning-border bg-warning-bg px-2.5 py-2 text-[11px] leading-snug text-text-muted">
           <I.alertCircle s={13} className="mt-px shrink-0 text-warning-fg" />
           <span>
             The withdrawal queue is worse than what you declared, so <b>reality wins</b> — players see{" "}

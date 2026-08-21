@@ -164,7 +164,7 @@ function ContactCard({
 }) {
   const tintCls =
     tone === "yes"   ? "border-yes-700 bg-yes-500/10 text-yes-300"
-    : tone === "info"  ? "border-info-border bg-info-bg/30 text-info-fg"
+    : tone === "info"  ? "border-info-border bg-info-bg text-info-fg"
     :                    "border-aqua-500/50 bg-aqua-500/10 text-aqua-300";
   const card = (
     <div className="rounded-xl glass-panel p-4 space-y-2 hover:border-brand-400 transition-colors h-full">
@@ -195,7 +195,7 @@ function QuickLinkCard({
   // C2i — tone-coded quick links (never gold; help isn't earned money).
   const tint =
     tone === "yes"  ? "bg-yes-500/10 text-yes-300"
-    : tone === "info" ? "bg-info-bg/40 text-info-fg"
+    : tone === "info" ? "bg-info-bg text-info-fg"
     :                   "bg-aqua-500/10 text-aqua-300";
   return (
     <Link

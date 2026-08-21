@@ -116,7 +116,7 @@ export function AiToolkit({ status, canAct = true }: { status: AiToolkitStatus; 
           !hasKey
             ? "border-border bg-bg-inset text-text-subtle"
             : anyPaused
-              ? "border-warning-border bg-warning-bg/40 text-warning-fg"
+              ? "border-warning-border bg-warning-bg text-warning-fg"
               : "border-border bg-bg-elevated text-text hover:border-brand-500/60"
         }`}
       >
@@ -137,7 +137,9 @@ export function AiToolkit({ status, canAct = true }: { status: AiToolkitStatus; 
           style={{ transformOrigin: "top right" }}
         >
           <div className="flex items-center gap-2 mb-3">
-            <span className="grid h-7 w-7 place-items-center rounded-md bg-brand-500/12 text-brand-300"><I.sparkle s={15} /></span>
+            {/* `/[0.12]` and not `/12` — off Tailwind's 5-step opacity ladder, so this
+                glyph tile had no brand wash behind it. */}
+            <span className="grid h-7 w-7 place-items-center rounded-md bg-brand-500/[0.12] text-brand-300"><I.sparkle s={15} /></span>
             <div className="min-w-0">
               <p className="font-display text-[13px] font-semibold text-text leading-tight">AI toolkit</p>
               <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-subtle">Every AI feature · one place</p>
@@ -145,7 +147,7 @@ export function AiToolkit({ status, canAct = true }: { status: AiToolkitStatus; 
           </div>
 
           {!hasKey ? (
-            <div className="rounded-md border border-warning-border bg-warning-bg/30 px-3 py-2.5 text-[11.5px] text-warning-fg leading-snug">
+            <div className="rounded-md border border-warning-border bg-warning-bg px-3 py-2.5 text-[11.5px] text-warning-fg leading-snug">
               <strong>No ANTHROPIC_API_KEY on this deployment.</strong> Every AI feature below is
               inert regardless of these switches — set the key in Railway to enable AI.
             </div>

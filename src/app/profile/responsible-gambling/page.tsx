@@ -121,7 +121,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
           {t.rg.limitsDescription}
         </p>
         {hasPendingIncrease && (
-          <div className="flex items-start gap-2.5 rounded-md border border-warning-border bg-warning-bg/30 p-3 text-[12px]">
+          <div className="flex items-start gap-2.5 rounded-md border border-warning-border bg-warning-bg p-3 text-[12px]">
             <I.warning s={14} />
             <div>
               <p className="font-display font-semibold text-text">

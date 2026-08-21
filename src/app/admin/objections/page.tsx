@@ -75,7 +75,7 @@ export default async function AdminObjectionsPage({ searchParams }: { searchPara
       </div>
 
       {open.length > 0 && (
-        <div className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg/25 px-3 py-2.5 text-[12.5px] text-warning-fg">
+        <div className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2.5 text-[12.5px] text-warning-fg">
           <I.hourglassHalf s={14} className="mt-[1px] shrink-0" />
           <p>
             {OBJECTION.frozenNotice.en}. {formatTzs(frozenTzs)} is held across {open.length}{" "}

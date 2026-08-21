@@ -160,7 +160,12 @@ export default async function AdminCompliancePage({
                   <p className="font-mono text-micro text-danger mt-1 break-words">{backup.run.error}</p>
                 ) : null}
                 {backup.kind === "unverified" ? (
-                  <p className="font-mono text-micro text-warn mt-1">
+                  // `text-warning-fg`, not `text-warn` (2026-08-21): there is no `warn`
+                  // colour family in tailwind.config.ts, so this line and the three below
+                  // it rendered in the inherited body colour — a backup nobody restored
+                  // read as ordinary prose. Same token the RG tiles at the foot of this
+                  // page already use.
+                  <p className="font-mono text-micro text-warning-fg mt-1">
                     a dump nobody restored is not a backup — run db:verify-backup
                   </p>
                 ) : null}
@@ -172,12 +177,12 @@ export default async function AdminCompliancePage({
                     the finding outlives whichever backup surfaced it. */}
                 {backup.kind !== "none" && backup.run.sourceWarnings?.length ? (
                   <div className="mt-2 pt-2 border-t border-border-subtle">
-                    <p className="font-mono text-micro tracking-[0.10em] uppercase text-warn">
+                    <p className="font-mono text-micro tracking-[0.10em] uppercase text-warning-fg">
                       Source database — found while verifying
                     </p>
                     <ul className="mt-1 space-y-0.5">
                       {backup.run.sourceWarnings.map((w) => (
-                        <li key={w} className="font-mono text-micro text-warn break-words">· {w}</li>
+                        <li key={w} className="font-mono text-micro text-warning-fg break-words">· {w}</li>
                       ))}
                     </ul>
                     <p className="font-mono text-micro text-text-tertiary mt-1">
@@ -208,7 +213,7 @@ export default async function AdminCompliancePage({
                     : "audit chain only · set SENTRY_DSN to activate the off-box mirror"}
                 </p>
                 {!alerting ? (
-                  <p className="font-mono text-micro text-warn mt-1">
+                  <p className="font-mono text-micro text-warning-fg mt-1">
                     every server error is recorded and survives a log roll — but you have to come and look
                   </p>
                 ) : null}
@@ -363,7 +368,7 @@ export default async function AdminCompliancePage({
         </div>
 
         {/* §E — Operational notes */}
-        <AdminCard className="border-info-border bg-info-bg/15">
+        <AdminCard className="border-info-border bg-info-bg">
           <div className="flex items-start gap-3">
             <I.warning s={18} />
             <div className="text-caption text-text-secondary space-y-1">

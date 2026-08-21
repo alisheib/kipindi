@@ -51,9 +51,14 @@ export function PayoutStatusNotice({
 
   // `unavailable` is a hard stop, so it takes the "no" tone; `delayed` is a caution. Both are
   // existing semantic token pairs — no new colour is introduced (design is frozen).
+  // The `delayed` fill carries no `/NN` (2026-08-21): `--warning-bg` is already
+  // `color-mix(… 18%, transparent)`, so `/30` asked for 5.4% — a caution the player
+  // could not see on the surface that tells him his withdrawal is held up. It now
+  // paints the designed 18% amber. `--no-500` is opaque, so `unavailable` keeps its
+  // modifier. ⛔ Never put a modifier back on a pre-mixed token.
   const tone = unavailable
     ? "border-no-700/60 bg-no-500/[0.10]"
-    : "border-warning-border bg-warning-bg/30";
+    : "border-warning-border bg-warning-bg";
 
   return (
     <div role="alert" className={`flex items-start gap-3 rounded-xl border px-4 py-3.5 ${tone}`}>
