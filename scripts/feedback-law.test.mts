@@ -363,6 +363,12 @@ ok("7.3 · the ghost CTA owns its own dismissal (it used to fight the primary's 
   /if \(onSecondary\) onSecondary\(\); else onClose\(\)/.test(ORM));
 ok("7.4 · the receipt's ghost CTA is omitted when it would navigate to the current page",
   /onWatchRound \? t\.market\.udRcWatchRound : undefined/.test(RECEIPT));
+// The twin of 7.3. The primary had the SAME defect the ghost CTA was fixed for — and the
+// Enter handler had always been `(onPrimary ?? closeRef.current)()`, so click and keyboard
+// disagreed on what "Keep predicting" does. Both halves are ratcheted here.
+ok("7.5 · the primary CTA owns its own dismissal, and click agrees with Enter",
+  /if \(onPrimary\) onPrimary\(\); else onClose\(\)/.test(ORM) &&
+  /\(onPrimary \?\? closeRef\.current\)\(\)/.test(ORM));
 
 // ───────────────────────────────────────────────────────────────────────────────
 console.log("\n§8 · The OTHER raw-server-string channel — a ratchet on the banners");
@@ -567,9 +573,25 @@ console.log("\n§10 · The secondary stands down while the primary is up — and
     !/heldRef/.test(TOAST),
     "a side queue is a second place a money-path refusal can be dropped from");
   ok("10.6 · ⭐ countdowns PAUSE while held and resume after, so nothing expires unseen",
-    /if \(resultModalOpen\) for \(const id of ids\) pause\(id\);/.test(TOAST) &&
-    /else for \(const id of ids\) resume\(id\);/.test(TOAST),
+    /if \(resultModalOpen\) \{\s*if \(!prevModalOpenRef\.current\) userPausedRef\.current\.clear\(\);\s*for \(const id of ids\) pause\(id\);/.test(TOAST) &&
+    /\} else if \(prevModalOpenRef\.current\) \{\s*for \(const id of ids\) if \(!userPausedRef\.current\.has\(id\)\) resume\(id\);/.test(TOAST),
     "reusing the hover machinery gives a held toast its full dwell once it is actually on screen");
+  // 🔴 THE RELEASE IS AN EDGE, AND IT RESPECTS WHO IS HOLDING. The first version of this
+  // effect resumed on every `toasts` change — an ARRIVAL, not a modal closing — so a burst
+  // re-armed the real dismiss timer under a toast the pointer was resting on while
+  // `ToastItem`'s own `paused` state kept its bar frozen. The player watched a half-full bar
+  // and the toast disappeared mid-sentence. Both halves are load-bearing: without the edge a
+  // stack change wakes everything; without the set, the modal closing overrules a hover.
+  // ⚠️ The third clause bans the unconditional release in BOTH its spellings — the original
+  // one-liner AND a braced `} else {` block. A ban on only the shape that happened to ship
+  // is a ban a re-formatter walks straight through.
+  ok("10.6b · ⛔ …and the release is EDGE-driven and never wakes a toast the POINTER is holding",
+    /prevModalOpenRef/.test(TOAST) && /userPausedRef/.test(TOAST) &&
+    !/else\s*\{?\s*for \(const id of ids\) resume\(id\);/.test(TOAST),
+    "resuming on every `toasts` change restarts a hover-paused timer while its bar stays frozen");
+  ok("10.6c · ⛔ the viewport is handed the ATTRIBUTED callbacks, not the raw primitives",
+    /onPause=\{userPause\}/.test(TOAST) && /onResume=\{userResume\}/.test(TOAST),
+    "if the provider cannot tell a pointer-hold from a modal-hold, it cannot honour either");
   ok("10.7 · ⛔ a STICKY money-path failure has no countdown to lose in the first place",
     /Sticky \(durationMs 0\): no countdown at all/.test(TOAST));
 

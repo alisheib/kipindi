@@ -17,7 +17,6 @@ export function SofReviewRow({ userId }: { userId: string }) {
   // than being offered a button the server will refuse (and logged as a privilege
   // escalation for pressing it). See docs/ADMIN-CONSOLE-FINDINGS.md.
   const mayAct = useMayAct();
-  if (!mayAct) return <ActReadOnly />;
 
   const [busy, setBusy] = useState<SofDecision | null>(null);
   const [expanded, setExpanded] = useState<"REJECT" | "MORE_INFO" | false>(false);
@@ -26,6 +25,11 @@ export function SofReviewRow({ userId }: { userId: string }) {
   const overlay = useActionOverlay();
   const { toast } = useToast();
   const router = useRouter();
+
+  // Rules of hooks: read the gate as a hook at the top, ACT on it below every other hook.
+  // Revoking an ACT grant mid-session flips `mayAct` on the next router.refresh(); an early
+  // return above these hooks would render fewer hooks than the last pass and crash the page.
+  if (!mayAct) return <ActReadOnly />;
 
   const LABELS: Record<SofDecision, { running: string; detail: string; done: string; doneDetail: string }> = {
     ACCEPT: { running: "Accepting declaration…", detail: "Clearing the deposit gate for this player.", done: "Source of funds accepted", doneDetail: "Player can deposit normally." },

@@ -103,6 +103,11 @@ type SettledPosition = {
 // burn the server.
 const ACTIVE_POLL_MS = 2_000;
 const IDLE_POLL_MS = 60_000;
+/** ⛔ A POLL WITH NO CEILING IS A POLL THAT CAN HANG. A request left open past the next
+ *  cadence tick holds the whole chain: nothing is scheduled, `onWake` finds a tick already
+ *  in flight, and the poller is silently dead until the tab is reloaded. An abort throws
+ *  into the existing `catch` and the chain re-arms on the next line. */
+const POLL_TIMEOUT_MS = 8_000;
 
 export function NotifyPoller() {
   const { toast } = useToast();
@@ -118,24 +123,32 @@ export function NotifyPoller() {
     // drops to the idle cadence instead; a genuine sign-in re-mounts the component.
     let sessionLapsed = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
+    // 🔴 RE-ENTRANCY. `onWake` clears the pending timer and re-ticks — and alt-tabbing back
+    // fires `visibilitychange` AND `focus` back to back, so two wakes landed on one tick.
+    // Each started its own chain, each re-armed at the end, and `timer` can only hold the
+    // LAST id: the other chain ran untracked, uncancellable by the cleanup below, doubling
+    // on every refocus. Two chains also both read `readSeen()` before either writes it,
+    // which is how one settled row got celebrated twice.
+    // ⛔ The self-chaining design is correct and is NOT touched — only entry is serialised.
+    let tickInFlight = false;
 
     const tick = async () => {
       if (cancelled) return;
       // B-17 — a hidden tab does not poll at the 2s cadence. The visibility handler below
       // re-ticks the moment the user comes back, so nothing is lost.
       if (document.hidden) {
-        timer = setTimeout(tick, IDLE_POLL_MS);
+        timer = setTimeout(pollNow, IDLE_POLL_MS);
         return;
       }
       const watch = readWatch();
       if (watch.length === 0) {
-        timer = setTimeout(tick, IDLE_POLL_MS);
+        timer = setTimeout(pollNow, IDLE_POLL_MS);
         return;
       }
       try {
-        const r = await fetch("/api/fairness/recent", { cache: "no-store" });
+        const r = await fetch("/api/fairness/recent", { cache: "no-store", signal: AbortSignal.timeout(POLL_TIMEOUT_MS) });
         if (!r.ok) {
-          timer = setTimeout(tick, IDLE_POLL_MS);
+          timer = setTimeout(pollNow, IDLE_POLL_MS);
           return;
         }
         const j = (await r.json()) as { attestations: Attestation[] };
@@ -145,7 +158,7 @@ export function NotifyPoller() {
 
         if (adjudicated.length > 0) {
           const ids = adjudicated.map((a) => a.marketId);
-          const pr = await fetch(`/api/positions/settled?markets=${encodeURIComponent(ids.join(","))}`, { cache: "no-store" });
+          const pr = await fetch(`/api/positions/settled?markets=${encodeURIComponent(ids.join(","))}`, { cache: "no-store", signal: AbortSignal.timeout(POLL_TIMEOUT_MS) });
           // 401 = the session lapsed. Say nothing; a signed-out browser has no money news —
           // but DO remember it, so the cadence below stops behaving as if news were imminent.
           if (pr.status === 401) sessionLapsed = true;
@@ -227,28 +240,48 @@ export function NotifyPoller() {
       // reflected in the cadence decision.
       const stillWatching = readWatch().length > 0 && !sessionLapsed;
       if (cancelled) return;
-      timer = setTimeout(tick, stillWatching ? ACTIVE_POLL_MS : IDLE_POLL_MS);
+      timer = setTimeout(pollNow, stillWatching ? ACTIVE_POLL_MS : IDLE_POLL_MS);
     };
 
-    // Tab focus / visibility — fire a tick so an alt-tabbed user sees the result the
-    // moment they refocus.
+    /** The ONLY way into `tick` — the chain, the wake and the first run all come through
+     *  here, so a second chain cannot exist. Dropping a re-entrant call is safe: the tick
+     *  already running re-arms the timer at its end, so the chain is never left dead.
+     *  ⛔ `finally`, not a flag cleared at each of the four returns — a future early return
+     *  that forgot one would kill the poller permanently and silently. */
+    const pollNow = async () => {
+      if (cancelled || tickInFlight) return;
+      tickInFlight = true;
+      try {
+        await tick();
+      } finally {
+        tickInFlight = false;
+      }
+    };
+
+    // Tab visibility — fire a tick so a returning user sees the result the moment the tab
+    // is on screen again.
+    // ⛔ ONE WAKE PATH. `window.focus` was a SECOND one, and it fires in the same instant as
+    // `visibilitychange` on alt-tab-back — the two wakes were the duplicate-chain bug. It
+    // also covered nothing: a visible tab that merely loses WINDOW focus keeps
+    // `document.hidden === false`, so the 2s chain never stopped and there was nothing to
+    // wake. Do not add it back.
     const onWake = () => {
       if (cancelled) return;
       // visibilitychange fires on HIDE too — waking on hide is the opposite of the
       // intent (B-17). Only a visible tab re-ticks.
       if (document.hidden) return;
       if (timer) clearTimeout(timer);
-      tick();
+      timer = null;
+      void pollNow();
     };
     document.addEventListener("visibilitychange", onWake);
-    window.addEventListener("focus", onWake);
 
-    tick();
+    void pollNow();
     return () => {
       cancelled = true;
       if (timer) clearTimeout(timer);
+      timer = null;
       document.removeEventListener("visibilitychange", onWake);
-      window.removeEventListener("focus", onWake);
     };
   }, [toast, t]);
 

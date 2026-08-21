@@ -24,6 +24,10 @@ import { poolFee } from "@/lib/payout";
 import { getEffectiveConfig } from "@/lib/server/market-config";
 import { getProbabilityChart } from "@/lib/server/market-history";
 import { roundStore } from "@/lib/server/updown-dal";
+// ⛔ The ONE place UP/DOWN ↔ YES/NO is mapped — `updown-service.ts` says so in its header,
+// and "if a second translation appears anywhere, delete it". The UPDOWN bounce below needs
+// the YES→UP direction; a hand-written ternary here would be exactly that second copy.
+import { sideToOutcome } from "@/lib/server/updown-service";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { ensureAffiliateAccount } from "@/lib/server/affiliate-service";
@@ -116,7 +120,16 @@ export default async function MarketDetail({
   // the ones we remembered to special-case.
   if (m.productLine === "UPDOWN") {
     const round = await roundStore.getByMarketId(m.id).catch(() => null);
-    redirect(round ? `/updown/${round.id}${side ? `?side=${side}` : ""}` : "/updown");
+    // The SAME guard the SidePicker below takes (`initialSide`). `side` is TYPED
+    // "YES" | "NO", but that is a compile-time claim about a URL — at runtime it is
+    // whatever the query string carried, and it was being interpolated into the
+    // redirect target raw. And translating it is the other half of the fix: Up & Down
+    // speaks UP/DOWN, so `/updown/[roundId]` locks a side only on "UP" or "DOWN" and an
+    // untranslated `?side=YES` was silently discarded there — a player who tapped YES on
+    // an Up & Down card landed on the unlocked, both-ways dial the betting-flow
+    // invariant forbids. Validate, then translate through the single mapping.
+    const lockedSide = side === "YES" || side === "NO" ? sideToOutcome(side) : null;
+    redirect(round ? `/updown/${round.id}${lockedSide ? `?side=${lockedSide}` : ""}` : "/updown");
   }
 
   const yesPct = impliedYesPct(m);

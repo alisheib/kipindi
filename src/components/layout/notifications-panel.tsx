@@ -104,6 +104,21 @@ export function NotificationsPanel() {
    * never be negative; it read like a condition and tested nothing.)
    */
   const prevUnreadRef = useRef<number | null>(null);
+  /**
+   * Monotonic per-request sequence — the stale-response guard (the B-20 pattern from
+   * `vote-control.tsx`, applied to a poller instead of a click).
+   *
+   * EIGHT sources call `refresh()`: mount, the 5s interval, the visibilitychange resume,
+   * the `50pick:refresh-notifications` broadcast, the `50pick:sse:notification` push, and
+   * the three optimistic handlers (dismiss / mark-all / clear-all), which each `await
+   * refresh()` right after mutating `items` locally. Applied in ARRIVAL order, a poll
+   * issued before an optimistic dismiss and answered after it puts the dismissed row back
+   * — and rewrites `prevUnreadRef` from that stale payload, so the NEXT honest poll reads
+   * as an arrival and rings the bell for nothing.
+   *
+   * ⚠️ Not `ringSeq` below: that is a CSS keyframe-restart counter, not a request number.
+   */
+  const refreshSeq = useRef(0);
   /* M5 alert primitive — the bell takes `.g-ring` on the arrival of a NEW unread,
      single-shot; the key bump restarts the keyframe on each fresh arrival. Never on
      hover, never looping.
@@ -123,10 +138,14 @@ export function NotificationsPanel() {
      double signal rather than leaving the moment silent. */
   const [ringSeq, setRingSeq] = useState(0);
   const refresh = useCallback(async () => {
+    const seq = ++refreshSeq.current;
     // B-15 — offline, this rejected every 5s as an unhandled promise. A poll
     // that cannot reach the server simply skips its beat.
     let r: Awaited<ReturnType<typeof fetchMyNotifications>>;
+    // ⛔ The catch returns WITHOUT rewinding `refreshSeq`, on purpose: a failed request
+    // must not re-open the window for an older one still in flight.
     try { r = await fetchMyNotifications(); } catch { return; }
+    if (seq !== refreshSeq.current) return; // a newer request owns the state now
     setItems(r.items);
     const clientUnread = r.items.filter((n: StoredNotification) => !n.readAt).length;
     if (prevUnreadRef.current !== null && clientUnread > prevUnreadRef.current) {

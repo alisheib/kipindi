@@ -29,7 +29,6 @@ export function BalanceAdjustControls({
   // than being offered a button the server will refuse (and logged as a privilege
   // escalation for pressing it). See docs/ADMIN-CONSOLE-FINDINGS.md.
   const mayAct = useMayAct();
-  if (!mayAct) return <ActReadOnly />;
 
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -41,6 +40,11 @@ export function BalanceAdjustControls({
   const [confirmWord, setConfirmWord] = useState("");
   const [stage1Msg, setStage1Msg] = useState<string | null>(null);
   const amountRef = useRef<HTMLInputElement>(null);
+
+  // Rules of hooks: read the gate as a hook at the top, ACT on it below every other hook.
+  // Revoking an ACT grant mid-session flips `mayAct` on the next router.refresh(); an early
+  // return above these hooks would render fewer hooks than the last pass and crash the page.
+  if (!mayAct) return <ActReadOnly />;
 
   const amt = Number(amount.replace(/[,\s]/g, ""));
   // Hard-tier ceremony (B-4): at/above the two-person threshold the officer must

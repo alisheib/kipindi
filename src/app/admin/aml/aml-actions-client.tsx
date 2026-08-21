@@ -16,7 +16,6 @@ export function AmlActionRow({ txnId, amount }: { txnId: string; amount: number 
   // than being offered a button the server will refuse (and logged as a privilege
   // escalation for pressing it). See docs/ADMIN-CONSOLE-FINDINGS.md.
   const mayAct = useMayAct();
-  if (!mayAct) return <ActReadOnly />;
 
   const [busy, setBusy] = useState<"approve" | "reject" | null>(null);
   const [mode, setMode] = useState<"approve" | "reject" | null>(null);
@@ -25,6 +24,11 @@ export function AmlActionRow({ txnId, amount }: { txnId: string; amount: number 
   const overlay = useActionOverlay();
   const { toast } = useToast();
   const router = useRouter();
+
+  // Rules of hooks: read the gate as a hook at the top, ACT on it below every other hook.
+  // Revoking an ACT grant mid-session flips `mayAct` on the next router.refresh(); an early
+  // return above these hooks would render fewer hooks than the last pass and crash the page.
+  if (!mayAct) return <ActReadOnly />;
 
   const submit = (kind: "approve" | "reject") => {
     // Both approve (releasing funds) and reject (returning funds) require a recorded

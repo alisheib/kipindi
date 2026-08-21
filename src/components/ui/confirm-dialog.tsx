@@ -52,6 +52,12 @@ type Props = {
   onConfirm: () => void | boolean;
   /** Fires right before the dialog opens — use to snapshot form data. */
   onOpen?: () => void;
+  /** Fires on the open true→false edge, WHEREVER the close came from (cancel ·
+   *  scrim · Esc · refused pre-flight · the hold-open falling edge). Use it to
+   *  drop state a closed dialog has no business keeping — e.g. a resolved payee
+   *  name that must not be waiting on screen the next time it opens. Optional:
+   *  omit it and the dialog behaves exactly as it always has. */
+  onClose?: () => void;
   /** B-22 — pre-flight gate: return `false` to REFUSE opening (invalid input).
    *  The caller surfaces its own kit-styled error (inline/toast) — never the
    *  native browser bubble. Omit for always-openable dialogs. */
@@ -72,6 +78,7 @@ export function ConfirmDialog({
   tone = "claret",
   onConfirm,
   onOpen,
+  onClose,
   openGuard,
   pending,
 }: Props) {
@@ -95,6 +102,19 @@ export function ConfirmDialog({
       setOpen(false);
     }
   }, [pending, awaiting]);
+
+  // `onClose` as ONE edge-detector rather than a call at each of the three close
+  // sites (cancel/scrim/Esc, refused pre-flight, the hold-open falling edge), so
+  // a close path added later cannot forget to fire it. The ref keeps the
+  // callback fresh without making it an effect dependency — callers pass an
+  // inline arrow, which would otherwise re-run this on every render.
+  const onCloseRef = React.useRef(onClose);
+  React.useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+  const wasOpenRef = React.useRef(false);
+  React.useEffect(() => {
+    if (wasOpenRef.current && !open) onCloseRef.current?.();
+    wasOpenRef.current = open;
+  }, [open]);
 
   // Clone the trigger so clicking it opens the dialog, but it can't
   // submit the surrounding form directly. While a held-open mutation is in

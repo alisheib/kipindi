@@ -64,7 +64,8 @@ export function I18nProvider({ children, initial = "en" }: { children: ReactNode
       return;
     }
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("kp-locale") as Locale | null;
+      let saved: string | null = null;
+      try { saved = localStorage.getItem("kp-locale"); } catch { /* storage blocked — the cookie above is the fallback */ }
       if (saved && isLocale(saved) && saved !== locale) {
         setLocaleState(saved);
         writeCookie(COOKIE_NAME, saved);

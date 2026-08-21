@@ -54,7 +54,18 @@ export function useActionOverlay() {
   return { state, dismiss, run, succeed, fail };
 }
 
-export function ActionOverlay({ state, onDismiss }: { state: OverlayState; onDismiss: () => void }) {
+export function ActionOverlay({ state, onDismiss, onRetry, retryLabel }: {
+  state: OverlayState;
+  onDismiss: () => void;
+  /**
+   * Optional "try that again" on the FAILURE card — the ghost CTA the result modal
+   * already carries, surfaced here rather than re-implemented. Both props are optional
+   * and absent they render EXACTLY today's single-button error card, so no existing
+   * call site moves. Only a caller whose operation is safely repeatable should pass it.
+   */
+  onRetry?: () => void;
+  retryLabel?: string;
+}) {
   return (
     <>
       {/* Running — a blocking, non-dismissible progress dialog. */}
@@ -100,6 +111,12 @@ export function ActionOverlay({ state, onDismiss }: { state: OverlayState; onDis
         title={state.phase === "error" ? state.title : ""}
         subtitle={state.phase === "error" ? state.message : undefined}
         primaryLabel="Dismiss · Funga"
+        secondaryLabel={onRetry ? (retryLabel ?? "Try again · Jaribu tena") : undefined}
+        // ⚠️ Dismiss FIRST, then retry. A retry re-enters `overlay.run(...)`, so the other
+        // order would set `running` and then let the queued `idle` land on top of it,
+        // leaving a live operation with no overlay over it. Same reason the dial's
+        // secondary closes before it navigates (conviction-dial.tsx).
+        onSecondary={onRetry ? () => { onDismiss(); onRetry(); } : undefined}
         onClose={onDismiss}
       />
     </>

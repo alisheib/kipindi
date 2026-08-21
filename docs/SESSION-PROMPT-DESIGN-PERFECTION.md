@@ -26,7 +26,7 @@ repo `F:\kipindi-main`, branch `main`):**
 | Stage | Title | Status | Commit | Live-verified |
 |---|---|---|---|---|
 | 0 | Bootstrap + baseline + this tracker | **DONE** | `stage-0` | n/a (docs only) |
-| 1 | Safety (no visual change) | NOT STARTED | | |
+| 1 | Safety (no visual change) | **DONE** | `stage-1` | pending push |
 | 2 | The alpha critical (D7) | NOT STARTED | | |
 | 3 | Sizing (operator's top priority) | NOT STARTED | | |
 | 4 | Correctness: time, words, money formatting | NOT STARTED | | |
@@ -45,6 +45,53 @@ _None yet._
 ### Deliberately deferred
 
 _None yet._
+
+### Findings the campaign produced that the audit did not have
+
+Recorded as they are measured, because each one is a claim a later session would otherwise
+have to re-derive.
+
+**Stage 1**
+
+- ⭐ **The audit's "17+ admin controls" with the `useMayAct` hooks-order violation is exactly
+  18** — and six other consumers (8 component instances) already use the CORRECT shape
+  (`disabled={!mayAct}`, no early return): `config-form.tsx` ×3, `control-plane.tsx`,
+  `kill-switch-toggle.tsx`, `payout-status-control.tsx`, `dsar-controls.tsx` ×2,
+  `settle-button.tsx`. ⛔ Those must not be "fixed".
+- 🔴 **The failure is reachable, not theoretical.** `mayAct` is not a mount-time constant:
+  `admin/layout.tsx` resolves it through `canAct()` from LIVE DB grant overrides, and every
+  one of the 18 controls calls `router.refresh()` after a successful action — which re-runs
+  the layout RSC and streams a new `mayAct` into a control that is still mounted. Revoking an
+  officer's ACT grant mid-session crashed the page instead of downgrading it.
+- 🔴 **There is no ESLint in this repo at all** — `"lint"` is `tsc --noEmit`, there is no
+  eslint config and no eslint dependency, so `react-hooks/rules-of-hooks` has never run. That
+  is why an 18-file copied violation survived.
+- ⚠️ **`markets/[id]` → Up & Down needed a MAP, not just a validation.** `/updown/[roundId]`
+  locks a side only on `UP`/`DOWN`, so an untranslated `?side=YES` was silently discarded at
+  the destination: a player who tapped YES on an Up & Down card landed on the unlocked
+  both-ways dial that CLAUDE.md's betting-flow invariant forbids. Routed through
+  `sideToOutcome`, the single mapping.
+- ⚠️ **The repo's line endings are MIXED, not CRLF.** A sample of 300 `src/**/*.tsx` splits
+  ~76 pure-LF / ~224 CRLF. Do not tell a session "the repo is CRLF" — it will write the wrong
+  anchors.
+- ⚠️ **Two guards pin `toast.tsx` byte-for-byte** (`test:feedback-law` §10.6 and
+  `red-feedback-law.cjs` mutation #2), and one pins `notify-poller.tsx`'s
+  `const tick = async () => {` as a >400-char slice (`market-result-announce.test.mts`, a hard
+  `process.exit(1)` refusal gate). Any future edit to either file must carry its companion
+  guard edit in the SAME commit.
+- 🔴 **A red proof can pass under its own mutation.** The spec'd assertion for the new toast
+  guard used a literal regex that the accompanying mutation never matched — it would have
+  proven only the re-pin, not the guard. Widened before shipping. This is the
+  `50pick-standards` §5b class, found again.
+
+**Follow-ups this campaign opened and has not closed**
+
+- Nothing in the repo asserts **storage-safety**. Both Stage-1 storage fixes can regress
+  silently. → candidate guard for Stage 10.
+- No assertion pins the two new **revoked-session `r == null` guards** or the sell `inFlight`
+  latch. → candidate guard for Stage 10.
+- No assertion pins **`WithdrawConfirm`'s openGuard/validate** trio. → candidate guard for
+  Stage 10.
 
 ---
 

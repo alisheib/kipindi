@@ -1028,6 +1028,10 @@ export const dict = {
       amount: "Amount",
       amountHint: "Min TZS 1,000 · Max TZS 5,000,000 per withdrawal. Amounts ≥ TZS 1,000,000 may require AML review (up to 24 hours).",
       destinationPhone: "Destination phone",
+      // B-22 · withdraw confirm-guard refusal. The payee number is where the
+      // money GOES, so this is not `msisdnRequired` (which says "payment
+      // prompt" — a deposit concept; there is no prompt on a withdrawal).
+      payeeMsisdnRequired: "Enter the 9-digit mobile-money number that will receive the money.",
       // B-7 · deposit action refusals, previously hardcoded English.
       depositBounds: "Enter an amount between TZS {min} and TZS {max}.",
       billingIncomplete: "Complete every billing field to pay by card.",
@@ -2723,6 +2727,7 @@ export const dict = {
       msisdnRequired: "Weka namba ya simu ya pesa mtandaoni itakayopokea ombi la malipo.",
       chooseProvider: "Chagua njia ya malipo kwanza.",
       destinationPhone: "Simu ya mpokeaji",
+      payeeMsisdnRequired: "Weka namba ya simu ya pesa mtandaoni yenye tarakimu 9 itakayopokea pesa.",
       securedByKyc: "Imelindwa na KYC & AML",
       securedBody: "Kiasi cha TZS 1,000,000 na zaidi kinashikiliwa kwa ukaguzi wa maafisa wawili wa uzingatiaji kabla ya kutolewa. Nyaraka za utambulisho zinakaguliwa na timu yetu ya uzingatiaji unapoziwasilisha. Uthibitisho wa SMS utaongezwa mtoa huduma wa SMS aliyeidhinishwa atakapoanza kazi.",
       taxNotice: "Ada ya kutoa pesa",
@@ -4317,6 +4322,7 @@ export const dict = {
       msisdnRequired: "请输入接收付款提示的移动支付手机号。",
       chooseProvider: "请先选择支付方式。",
       destinationPhone: "目标手机号",
+      payeeMsisdnRequired: "请输入将收到这笔款项的9位移动支付手机号。",
       securedByKyc: "受KYC和AML保护",
       securedBody: "TZS 1,000,000 及以上的金额须经两名合规专员审核后方可释放。您提交的身份证件将由我们的合规团队核验。短信验证将在授权服务商上线后启用。",
       taxNotice: "提现手续费",

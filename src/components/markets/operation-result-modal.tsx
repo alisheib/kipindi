@@ -370,7 +370,13 @@ export function OperationResultModal({
           <button
             ref={primaryRef}
             type="button"
-            onClick={() => { onPrimary?.(); onClose(); }}
+            // 🔴 THE PRIMARY OWNS ITS OWN DISMISSAL — the same defect the ghost CTA below
+            // was fixed for, in the same component, on the same modal. This was
+            // `onPrimary?.(); onClose();`, and on the dial's bet receipt BOTH push the
+            // board, so "Keep predicting" pushed /markets twice on every click. The Enter
+            // handler above has always been `(onPrimary ?? closeRef.current)()`; click and
+            // keyboard now agree. Callers that pass no `onPrimary` still get plain dismissal.
+            onClick={() => { if (onPrimary) onPrimary(); else onClose(); }}
             className={`btn ${effectiveBtn} btn-lg w-full`}
           >
             {primaryLabel ?? t.common.doneSawa}

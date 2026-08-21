@@ -23,6 +23,35 @@ import { useT } from "@/lib/i18n";
 
 const DEFAULT_INTERVAL   = 30; // minutes
 
+/**
+ * Storage is a CONVENIENCE here, never a dependency. A browser with storage
+ * blocked (Chrome "block all cookies", some in-app webviews) throws on the
+ * FIRST `sessionStorage` touch — and this host is mounted in the root
+ * AppShell, so an unguarded throw took the whole signed-in app to the root
+ * error page on EVERY route.
+ *
+ * ⛔ The check itself must NOT be conditional on storage. It is an RG /
+ * compliance control (LCCP SR Code 3.4.1), so it keeps firing on schedule
+ * with storage gone: the fallback map holds the same per-user keys for the
+ * life of the tab's JS context, which covers soft navigation and remounts.
+ * What a storage-blocked browser loses is persistence across a HARD reload —
+ * the clock restarts, the prompt does not stop.
+ */
+const memStore = new Map<string, string>();
+
+function readStore(key: string): string | null {
+  try {
+    const v = window.sessionStorage.getItem(key);
+    if (v !== null) return v;
+  } catch { /* storage blocked — fall through to memory */ }
+  return memStore.get(key) ?? null;
+}
+
+function writeStore(key: string, value: string): void {
+  memStore.set(key, value);
+  try { window.sessionStorage.setItem(key, value); } catch { /* storage blocked — memory already holds it */ }
+}
+
 export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, userId }: { enabled: boolean; intervalMin?: number; userId?: string | null }) {
   const [open, setOpen] = React.useState(false);
   const [elapsedMin, setElapsedMin] = React.useState(0);
@@ -39,12 +68,12 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, user
     const SESSION_START_KEY = `kp_session_started_at:${who}`;
     const LAST_PROMPT_KEY = `kp_reality_check_last:${who}`;
 
-    let startedAt = Number(sessionStorage.getItem(SESSION_START_KEY) ?? 0);
+    let startedAt = Number(readStore(SESSION_START_KEY) ?? 0);
     if (!startedAt || Number.isNaN(startedAt)) {
       startedAt = Date.now();
-      sessionStorage.setItem(SESSION_START_KEY, String(startedAt));
+      writeStore(SESSION_START_KEY, String(startedAt));
     }
-    let lastPromptAt = Number(sessionStorage.getItem(LAST_PROMPT_KEY) ?? startedAt);
+    let lastPromptAt = Number(readStore(LAST_PROMPT_KEY) ?? startedAt);
     if (!lastPromptAt || Number.isNaN(lastPromptAt)) lastPromptAt = startedAt;
 
     const intervalMs = Math.max(1, intervalMin) * 60_000;
@@ -65,7 +94,7 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, user
         setElapsedMin(sessionMin);
         setOpen(true);
         lastPromptAt = now;
-        sessionStorage.setItem(LAST_PROMPT_KEY, String(now));
+        writeStore(LAST_PROMPT_KEY, String(now));
       }
     };
     tick();
@@ -80,7 +109,7 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, user
   const dismiss = React.useCallback(() => {
     setOpen(false);
     if (typeof window !== "undefined") {
-      sessionStorage.setItem(`kp_reality_check_last:${userId || "anon"}`, String(Date.now()));
+      writeStore(`kp_reality_check_last:${userId || "anon"}`, String(Date.now()));
     }
   }, [userId]);
 

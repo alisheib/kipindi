@@ -949,6 +949,18 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
       // Whether success or failure, the modal MUST close — leaving it
       // open with the same locked quote was racing into double-place.
       setConfirmOpen(false);
+      // AUTH LOSS IS NOT A FAILED BET (the model is `use-quick-bet.ts`). A session
+      // revoked in another tab makes `buyPositionAction` `redirect("/auth/login")`,
+      // and a Server Action that redirects RESOLVES TO NOTHING — the router is already
+      // navigating by the time we get here and there is no verdict object at all.
+      // Reading `.ok` off that undefined throws a TypeError the try/catch above cannot
+      // see (the throw is BELOW it), so the rejection escapes the transition and the
+      // error boundary flashes on top of the login navigation — two contradictory
+      // stories about one tap, on a money control. Return silently; the nav speaks.
+      // Nothing else needs unwinding: the confirm modal is already closed above,
+      // `pending` clears when this callback returns, and `betIdempotencyKey.current`
+      // is deliberately reusable, so the same tap can be finished after signing in.
+      if (r == null) return;
       if (!r.ok) {
         const mapped = errorToToast((r as { code?: string }).code, r.error, r as { reason?: string; detail?: FailureDetail; retryAfterSec?: number });
         // Centered failure modal — a corner toast alone is too easy to miss

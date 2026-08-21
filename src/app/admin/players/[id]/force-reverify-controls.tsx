@@ -26,7 +26,6 @@ export function ForceReverifyControls({ userId }: { userId: string }) {
   // than being offered a button the server will refuse (and logged as a privilege
   // escalation for pressing it). See docs/ADMIN-CONSOLE-FINDINGS.md.
   const mayAct = useMayAct();
-  if (!mayAct) return <ActReadOnly />;
 
   const [pending, start] = useTransition();
   const [open, setOpen] = useState(false);
@@ -34,6 +33,11 @@ export function ForceReverifyControls({ userId }: { userId: string }) {
   const router = useRouter();
   const { toast } = useToast();
   const reasonRef = useRef<HTMLTextAreaElement>(null);
+
+  // Rules of hooks: read the gate as a hook at the top, ACT on it below every other hook.
+  // Revoking an ACT grant mid-session flips `mayAct` on the next router.refresh(); an early
+  // return above these hooks would render fewer hooks than the last pass and crash the page.
+  if (!mayAct) return <ActReadOnly />;
 
   const submit = () => {
     if (reason.trim().length < 5) return;

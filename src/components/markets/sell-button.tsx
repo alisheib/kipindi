@@ -10,7 +10,7 @@
  * by second; the value displayed here is the moment we render — the
  * server re-runs the math when the action fires.
  */
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
@@ -124,47 +124,84 @@ export function SellButton({
     setConfirmOpen(true);
   };
 
+  // ONE SALE PER CONFIRM. `openConfirm` guards on `pending` and the confirm button is
+  // `disabled={pending}` — but the modal's Enter-to-confirm is a WINDOW keydown listener
+  // reading a `pendingRef` that an effect syncs one commit late (sell-confirm-modal.tsx:55-65),
+  // so two fast Enters both pass it and both land here. No money can move twice — the
+  // server re-reads the position inside `withLock(wallet:{userId})` and refuses the second
+  // with `position_not_open` — but that refusal writes the SAME `resultData` as the success,
+  // and whichever reply lands last wins. So the player can be told "Couldn't cash out"
+  // after their money has correctly moved. That is a truthfulness defect on a money
+  // control, which is the one thing a cash-out screen must never be.
+  //
+  // BOTH latches below are needed, because they close different windows. `pending` is
+  // `useTransition` state read from the closure of the render that built this `submit`,
+  // and the modal invokes it through its own one-commit-late `onConfirmRef` — so in the
+  // same tick, before React has flushed passive effects, `pending` is still false and the
+  // second call walks straight through. `inFlight` is set SYNCHRONOUSLY on the first call,
+  // so it is the only one that closes that tick. `pending` stays because it is the
+  // in-repo precedent (`conviction-dial.tsx`'s `submit` opens with exactly it) and it
+  // refuses a repeat arriving from any surface that never armed the ref.
+  const inFlight = useRef(false);
+
   const submit = () => {
+    if (inFlight.current || pending) return;
+    inFlight.current = true;
     start(async () => {
-      const fd = new FormData();
-      fd.set("positionId", positionId);
-      // A throw here was as silent as it was on the bet path (see conviction-dial):
-      // the rejection escaped the transition, the confirm dialog dismissed itself, and
-      // no toast, modal or error state ever mounted — leaving the player unsure whether
-      // their position had been sold. Mapped to a refusal the copy layer can render.
-      let r: Awaited<ReturnType<typeof cashOutPositionAction>>;
       try {
-        r = await cashOutPositionAction(fd);
-      } catch {
-        r = { ok: false as const, error: "", code: "BUSY" } as Awaited<ReturnType<typeof cashOutPositionAction>>;
-      }
-      setConfirmOpen(false);
-      if (!r.ok) {
-        // B-7 — the refusal is rendered as toast body AND modal title, so it must
-        // be the localized line, never the raw service string.
-        const msg = errorCopy(t, r);
-        toast({ title: t.toast.couldntCashOut, description: msg, variant: "danger" });
-        setResultData({ variant: "danger", value: value, net, error: msg });
+        const fd = new FormData();
+        fd.set("positionId", positionId);
+        // A throw here was as silent as it was on the bet path (see conviction-dial):
+        // the rejection escaped the transition, the confirm dialog dismissed itself, and
+        // no toast, modal or error state ever mounted — leaving the player unsure whether
+        // their position had been sold. Mapped to a refusal the copy layer can render.
+        let r: Awaited<ReturnType<typeof cashOutPositionAction>>;
+        try {
+          r = await cashOutPositionAction(fd);
+        } catch {
+          r = { ok: false as const, error: "", code: "BUSY" } as Awaited<ReturnType<typeof cashOutPositionAction>>;
+        }
+        setConfirmOpen(false);
+        // AUTH LOSS IS NOT A FAILED SALE — same shape as the bet path, same model
+        // (`use-quick-bet.ts`). A session revoked in another tab makes
+        // `cashOutPositionAction` `redirect("/auth/login")`, and a Server Action that
+        // redirects RESOLVES TO NOTHING. Reading `.ok` off that undefined throws a
+        // TypeError below the catch above, so the rejection escapes the transition and
+        // the error boundary flashes while the login page loads — leaving the player
+        // unable to tell whether the position was sold. Return silently; the nav speaks.
+        if (r == null) return;
+        if (!r.ok) {
+          // B-7 — the refusal is rendered as toast body AND modal title, so it must
+          // be the localized line, never the raw service string.
+          const msg = errorCopy(t, r);
+          toast({ title: t.toast.couldntCashOut, description: msg, variant: "danger" });
+          setResultData({ variant: "danger", value: value, net, error: msg });
+          setResultOpen(true);
+          return;
+        }
+        const realisedValue = r.data!.value;
+        const realisedFee = Math.max(0, stake - realisedValue); // 0 inside the free-exit window
+        deferToast({
+          title: `${t.dialog.sellLabel} · ${formatTzs(realisedValue)} ${t.toast.soldReturned}`,
+          description: realisedFee <= 0
+            ? t.toast.fullStakeRefunded
+            : `${formatTzs(realisedFee)} ${t.toast.earlyExitFeeApplied}`,
+          variant: "success",
+        });
+        // net is stored as −fee so the result modal can surface the fee row.
+        setResultData({ variant: "success", value: realisedValue, net: -realisedFee });
         setResultOpen(true);
-        return;
+        window.dispatchEvent(new Event("50pick:refresh"));
+        window.dispatchEvent(new Event("50pick:refresh-notifications"));
+        // B-16 — both SellButton hosts (/markets/[id], /positions) mount a
+        // RefreshPoller on the "50pick:refresh" event; a direct refresh beside
+        // the dispatch was a guaranteed double fetch.
+      } finally {
+        // Disarmed only once the whole body has run — including every early `return`
+        // above — so the latch can never outlive the request it is guarding, and a
+        // retry after a genuine refusal is never blocked by a stuck ref.
+        inFlight.current = false;
       }
-      const realisedValue = r.data!.value;
-      const realisedFee = Math.max(0, stake - realisedValue); // 0 inside the free-exit window
-      deferToast({
-        title: `${t.dialog.sellLabel} · ${formatTzs(realisedValue)} ${t.toast.soldReturned}`,
-        description: realisedFee <= 0
-          ? t.toast.fullStakeRefunded
-          : `${formatTzs(realisedFee)} ${t.toast.earlyExitFeeApplied}`,
-        variant: "success",
-      });
-      // net is stored as −fee so the result modal can surface the fee row.
-      setResultData({ variant: "success", value: realisedValue, net: -realisedFee });
-      setResultOpen(true);
-      window.dispatchEvent(new Event("50pick:refresh"));
-      window.dispatchEvent(new Event("50pick:refresh-notifications"));
-      // B-16 — both SellButton hosts (/markets/[id], /positions) mount a
-      // RefreshPoller on the "50pick:refresh" event; a direct refresh beside
-      // the dispatch was a guaranteed double fetch.
     });
   };
 

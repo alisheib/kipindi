@@ -22,7 +22,6 @@ export function ReconcileControls({ txnId }: { txnId: string }) {
   // than being offered a button the server will refuse (and logged as a privilege
   // escalation for pressing it). See docs/ADMIN-CONSOLE-FINDINGS.md.
   const mayAct = useMayAct();
-  if (!mayAct) return <ActReadOnly />;
 
   const [pending, start] = useTransition();
   const [mode, setMode] = useState<"match" | "writeoff" | null>(null);
@@ -32,6 +31,11 @@ export function ReconcileControls({ txnId }: { txnId: string }) {
   // B-28 — success toasts ride the transition's falling edge (data visible when announced)
   const { toast, deferToast } = useDeferredToast(pending);
   const firstFieldRef = useRef<HTMLElement | null>(null);
+
+  // Rules of hooks: read the gate as a hook at the top, ACT on it below every other hook.
+  // Revoking an ACT grant mid-session flips `mayAct` on the next router.refresh(); an early
+  // return above these hooks would render fewer hooks than the last pass and crash the page.
+  if (!mayAct) return <ActReadOnly />;
 
   const valid = mode === "match" ? ref.trim().length > 0 : reason.trim().length >= 3;
 

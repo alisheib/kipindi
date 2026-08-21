@@ -11,8 +11,10 @@ import { useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { useT } from "@/lib/i18n";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast";
 import { formatTzs } from "@/lib/utils";
 import { computeWithdrawalFee } from "@/lib/payout";
+import { WITHDRAW_MIN_TZS, WITHDRAW_MAX_TZS } from "@/lib/server/validators";
 import { lookupWithdrawPayeeAction } from "./actions";
 
 type PayeeState = { state: "idle" | "loading" | "done"; name: string | null };
@@ -23,13 +25,55 @@ type PayeeState = { state: "idle" | "loading" | "done"; name: string | null };
 export function WithdrawConfirm({ feeRate }: { feeRate: number }) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const { t } = useT();
+  const { toast } = useToast();
   const [summary, setSummary] = useState({ amount: 0, provider: "", msisdn: "" });
   const [payee, setPayee] = useState<PayeeState>({ state: "idle", name: null });
+  /** Monotonic per-open sequence — the stale-response guard (B-20, the pattern
+   *  `vote-control.tsx` uses). Cancel → correct the number → reopen fires a
+   *  SECOND lookup, and on a slow link the FIRST can land last: applied in
+   *  arrival order it labels a money-commit dialog with the WRONG registered
+   *  name. Only the latest open may write. */
+  const payeeSeq = useRef(0);
   // DS-4 / B-6 — read the surrounding form's in-flight state and hold the
   // confirm dialog open (spinner, buttons disabled, no dismissal) until the
   // withdrawal action settles. Money leaving an account is the last place a
   // player should be staring at a page that looks idle.
   const { pending } = useFormStatus();
+
+  // B-22 / V-3 — ported from DepositConfirm. The confirm dialog no longer opens
+  // for input the server will refuse (a blank form opened a money-commit dialog
+  // reading "Amount TZS 0 · You receive TZS 0", and it was confirmable), and the
+  // refusal is a KIT toast, never the OS-styled native validation bubble (which
+  // read as broken on the dark surface). The bounds are `withdrawAction`'s own,
+  // so this refuses exactly what the server refuses, in the server's own words.
+  // Returns the error copy, or null when the form is sound.
+  const validate = (form: HTMLFormElement): string | null => {
+    const fd = new FormData(form);
+    const amount = parseInt(String(fd.get("amount") ?? "0"), 10) || 0;
+    const provider = String(fd.get("provider") ?? "");
+    const msisdn = String(fd.get("msisdn") ?? "").trim();
+    if (!provider) return t.wallet.chooseProvider;
+    if (!Number.isFinite(amount) || amount < WITHDRAW_MIN_TZS || amount > WITHDRAW_MAX_TZS) {
+      return t.wallet.amountHint;
+    }
+    // ⚠️ The 9-digit shape is the SAME rule the field's own `pattern="\d{9}"`
+    // enforced. It is restated here because `noValidate` switches the native
+    // check off at commit — dropping it would make this port a LOOSENING of a
+    // money-DESTINATION check, not a tightening.
+    if (!/^\d{9}$/.test(msisdn)) return t.wallet.payeeMsisdnRequired;
+    return null;
+  };
+
+  const guardOpen = () => {
+    const form = buttonRef.current?.closest("form");
+    if (!form) return false;
+    const err = validate(form);
+    if (err) {
+      toast({ title: err, variant: "warning" });
+      return false;
+    }
+    return true;
+  };
 
   const openConfirm = () => {
     const form = buttonRef.current?.closest("form");
@@ -41,11 +85,17 @@ export function WithdrawConfirm({ feeRate }: { feeRate: number }) {
     setSummary({ amount, provider: providerRaw.replace(/_/g, " "), msisdn });
     // Best-effort payee-name lookup (Selcom, when the rail supports it). It never
     // blocks the payout: a miss simply shows the number alone.
+    // ⛔ B-20 — take the sequence for THIS open BEFORE the branch, never inside
+    // it. Reopening with a CLEARED number takes the else-branch, and a lookup
+    // still in flight from the previous open would otherwise resolve into a
+    // dialog that shows no phone row at all — a recipient name attached to
+    // nothing.
+    const seq = ++payeeSeq.current;
     if (providerRaw && msisdn) {
       setPayee({ state: "loading", name: null });
       lookupWithdrawPayeeAction({ provider: providerRaw, msisdn })
-        .then((r) => setPayee({ state: "done", name: r.name }))
-        .catch(() => setPayee({ state: "done", name: null }));
+        .then((r) => { if (seq === payeeSeq.current) setPayee({ state: "done", name: r.name }); })
+        .catch(() => { if (seq === payeeSeq.current) setPayee({ state: "done", name: null }); });
     } else {
       setPayee({ state: "idle", name: null });
     }
@@ -57,9 +107,16 @@ export function WithdrawConfirm({ feeRate }: { feeRate: number }) {
   const submitForm = () => {
     const form = buttonRef.current?.closest("form");
     if (!form) return false;
-    // Refused pre-flight: release the dialog so the field errors show, rather
-    // than holding a spinner for a submission that never started (see DS-4).
-    if (!form.reportValidity()) return false;
+    // Re-check at commit time (the player can still edit the form behind the
+    // dialog); release the dialog on refusal rather than holding a spinner for a
+    // submission that never started (see DS-4). JS + server validation own
+    // correctness — native bubbles are suppressed (V-3).
+    const err = validate(form);
+    if (err) {
+      toast({ title: err, variant: "warning" });
+      return false;
+    }
+    form.noValidate = true;
     form.requestSubmit();
   };
 
@@ -116,6 +173,12 @@ export function WithdrawConfirm({ feeRate }: { feeRate: number }) {
       cancelLabel={t.common.cancel}
       onConfirm={submitForm}
       onOpen={openConfirm}
+      openGuard={guardOpen}
+      // A closed dialog keeps no resolved payee: bump the sequence so a lookup
+      // still in flight can never write into the next open, and drop the name so
+      // the next open cannot flash the PREVIOUS recipient before its own lookup
+      // has answered.
+      onClose={() => { payeeSeq.current++; setPayee({ state: "idle", name: null }); }}
       pending={pending}
       trigger={
         <button

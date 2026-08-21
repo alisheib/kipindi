@@ -33,6 +33,11 @@ export function NavProgress() {
   const rafRef = useRef<number | null>(null);
   const startRef = useRef<number>(0);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // ⛔ THE FADE-OUT TIMER MUST BE CANCELLABLE. It was the one `setTimeout` in this file whose
+  // handle was thrown away, and for 300ms after every landing it owned `active` — so a second
+  // tap inside that window got no bar at all (`startBar` returned early on `active`) and then
+  // had its state torn down by a timer nothing could reach.
+  const completeRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const routeRef = useRef(pathname + "?" + searchParams?.toString());
 
   // Force-complete the bar (used by both route-landed and auto-timeout).
@@ -43,7 +48,12 @@ export function NavProgress() {
     timeoutRef.current = null;
     if (barRef.current) barRef.current.style.transform = "scaleX(1)";
     setCompleting(true);
-    setTimeout(() => { setActive(false); setCompleting(false); }, 300);
+    if (completeRef.current) clearTimeout(completeRef.current);
+    completeRef.current = setTimeout(() => {
+      completeRef.current = null;
+      setActive(false);
+      setCompleting(false);
+    }, 300);
   }, []);
 
   // When pathname or search params change, the route has landed — complete the bar.
@@ -57,7 +67,12 @@ export function NavProgress() {
 
   // Animate the bar from 0 → ~85% with diminishing speed
   const startBar = useCallback(() => {
-    if (active) return;
+    // A bar already CRAWLING is left alone — a second click during one navigation is not a
+    // second navigation. A bar in its 300ms FADE-OUT is taken over: `active` is still true
+    // there, so the old `if (active) return` swallowed the next navigation entirely and the
+    // pending hide then cleared the state underneath it. Cancel the hide, restart the crawl.
+    if (active && !completing) return;
+    if (completeRef.current) { clearTimeout(completeRef.current); completeRef.current = null; }
     setActive(true);
     setCompleting(false);
     startRef.current = performance.now();
@@ -81,7 +96,7 @@ export function NavProgress() {
     // (e.g. same-page link click, cancelled navigation, network timeout).
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     timeoutRef.current = setTimeout(completeBar, 8000);
-  }, [active, completeBar]);
+  }, [active, completing, completeBar]);
 
   // Listen for clicks on internal links
   useEffect(() => {
@@ -121,10 +136,11 @@ export function NavProgress() {
     return () => window.removeEventListener("50pick:navigating", onNav);
   }, [startBar]);
 
-  // Cleanup RAF + timeout on unmount
+  // Cleanup RAF + both timeouts on unmount
   useEffect(() => () => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    if (completeRef.current) clearTimeout(completeRef.current);
   }, []);
 
   if (!active) return null;

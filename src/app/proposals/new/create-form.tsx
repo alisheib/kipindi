@@ -203,7 +203,9 @@ export function CreateProposalForm({ rateLimit, openCount, platformTz }: { rateL
         subtitle={t.common.officerWillReview}
         footnote={t.common.weWillNotify}
         primaryLabel={t.common.gotIt}
-        onPrimary={() => router.push("/proposals?f=mine" as never)}
+        // Owns its own dismissal, per the primary-CTA contract in OperationResultModal —
+        // without `setDone(false)` the modal stays mounted over the route transition.
+        onPrimary={() => { setDone(false); router.push("/proposals?f=mine" as never); }}
         onClose={() => { setDone(false); router.push("/proposals?f=mine" as never); }}
       />
     </div>
