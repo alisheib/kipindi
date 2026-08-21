@@ -272,18 +272,43 @@ const config: Config = {
         "g-aurora": "var(--g-aurora)",
         "g-pool": "var(--g-pool)",
       },
+      /* ⭐ THE MOTION LADDER, BRIDGED — AND IT IS ONLY A BRIDGE (§0d: this config
+         never originates a value). Until 2026-08-21 these two blocks were a SECOND,
+         DEAD motion vocabulary: four hand-typed curves and five durations that
+         disagreed with `--t-*` at every single rung, with ZERO consumers anywhere in
+         `src/` (measured, not assumed — no `ease-standard`, `duration-medium` or any
+         sibling appears in a className, a .css file or a script).
+           standard/decelerate/accelerate  — three curves the four-curve law has no
+                                             room for ("Curves. Four. There is no fifth.")
+           spring cubic-bezier(0.34,1.56,…) — a 56% overshoot. `--m-pivot` is the
+                                             product's ONE overshoot and §M8 reserves
+                                             it for the needle and dials
+           micro 80 / short 160 / medium 240 / long 420 — off every rung
+           celebration 1200ms              — ~2× `--t-max` (620), which is itself
+                                             settlement-and-celebration ONLY
+         ⛔ Dead config that looks canonical is what gets copied by accident, so it is
+         not kept "just in case": it is REPLACED by the ladder's own rungs, under the
+         ladder's own names. `ease-settle` and `duration-base` cannot drift from
+         `motion.css` because they contain no value — they are the var() spelled as a
+         utility, for the call sites that were writing `duration-[var(--t-flick)]` by
+         hand (provider-radio-grid.tsx does, twice).
+         ⛔ `--m-pivot` IS DELIBERATELY NOT BRIDGED. §M8 reserves it for the needle and
+         dials, both of which are authored in CSS; exposing it as `ease-pivot` would
+         make the reservation one autocomplete away from being broken, and a bridge
+         that leaks a reserved token is worse than no bridge. */
       transitionTimingFunction: {
-        standard: "cubic-bezier(0.2, 0, 0, 1)",
-        decelerate: "cubic-bezier(0, 0, 0.2, 1)",
-        accelerate: "cubic-bezier(0.4, 0, 1, 1)",
-        spring: "cubic-bezier(0.34, 1.56, 0.64, 1)",
+        settle: "var(--m-settle)",   // arrivals — the signature
+        glide: "var(--m-glide)",     // neutral travel, no overshoot
+        leave: "var(--m-leave)",     // exits — accelerate away
+        breathe: "var(--m-breathe)", // symmetric loops
       },
       transitionDuration: {
-        micro: "80ms",
-        short: "160ms",
-        medium: "240ms",
-        long: "420ms",
-        celebration: "1200ms",
+        flick: "var(--t-flick)",     // 90ms  — state only, no travel
+        quick: "var(--t-quick)",     // 140ms — < 40px
+        base: "var(--t-base)",       // 220ms — 40–200px
+        move: "var(--t-move)",       // 340ms — > 200px, or a container resize
+        stage: "var(--t-stage)",     // 520ms — a new surface owns the screen
+        max: "var(--t-max)",         // 620ms — settlement + celebration only
       },
       zIndex: {
         base: "0",
