@@ -117,7 +117,13 @@ export function DepositConfirm() {
 
   return (
     <ConfirmDialog
+      /* ⭐ D1 (Ali's ruling, 2026-08-21) — brand, at the money-commit footprint.
+         A deposit is money ARRIVING: it is neither destructive (claret) nor earned
+         (gold), and both of those were live answers for this one button at some
+         point. `size="lg"` is the other half of the ruling — the last control
+         before money moves takes the large footprint, not the dialog default. */
       tone="brand"
+      size="lg"
       title={t.common.confirmDeposit}
       body={
         <>

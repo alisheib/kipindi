@@ -38,8 +38,8 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
           />
 
           {sent && (
-            <div role="status" className="rounded-md border border-yes-700 bg-yes-500/10 px-3.5 py-3 text-[13px]">
-              <p className="font-display font-semibold text-yes-300">{t.common.checkEmail}</p>
+            <div role="status" className="rounded-md border border-success/65 bg-success/10 px-3.5 py-3 text-[13px]">
+              <p className="font-display font-semibold text-success-fg">{t.common.checkEmail}</p>
               <p className="mt-0.5 text-text-muted">
                 {t.common.checkEmailBody}
               </p>
@@ -47,7 +47,7 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
           )}
 
           {sp.error === "phone_required" && (
-            <div role="alert" className="rounded-md border border-no-700 bg-no-500/10 px-3.5 py-3 text-[13px] text-no-300">
+            <div role="alert" className="rounded-md border border-danger-500/70 bg-danger-500/10 px-3.5 py-3 text-[13px] text-danger-fg">
               {t.common.enterPhone}
             </div>
           )}

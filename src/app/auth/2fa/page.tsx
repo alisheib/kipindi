@@ -38,8 +38,11 @@ export default async function TwoFactorChallengePage({ searchParams }: { searchP
           subtitle={backup ? t.security.challengeBackupHint : t.security.challengeHint}
         />
 
+        {/* D2 (2026-08-21): the SEMANTIC danger family below, not `--no-*`. A failed
+            2FA challenge is an app state, and §B2 keeps the betting pair for money.
+            The border alpha holds the old opaque `border-no-700` weight (2.37 vs 2.38). */}
         {error && (
-          <div id="tfa-error" role="alert" className="rounded-md border border-no-700 bg-no-500/10 px-3 py-2.5 text-[13px] text-no-300">
+          <div id="tfa-error" role="alert" className="rounded-md border border-danger-500/70 bg-danger-500/10 px-3 py-2.5 text-[13px] text-danger-fg">
             {errorMsg[error] ?? error}
           </div>
         )}

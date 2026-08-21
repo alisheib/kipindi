@@ -1,8 +1,14 @@
 # Design-Perfection Campaign — implementation of the 2026-08-21 full-surface audit
 
-> **Status: ACTIVE.** This file is the campaign's ONLY tracker. When every stage below reads
-> DONE and live-verified, the top of this file is changed to **SPENT** and nothing else is
-> created. Do not open a second tracker.
+> # ⚪ SPENT — COMPLETE 2026-08-21. All eleven stages shipped and live-verified.
+>
+> Kept, not emptied: the STATUS BOARD below is the record of what was decided and why, the
+> **six owner decisions Ali can still veto** are listed with the commit that reverts each, and
+> the findings section holds ~60 things measured during the work that the audit did not have.
+> ⛔ Do not resume from this file, and do not open a second tracker beside it.
+>
+> **One item was deliberately deferred with a written plan** (the i18n first-load bundle) and
+> is the single largest performance win left on the platform — see its own section.
 
 Audit artifact: <https://claude.ai/code/artifact/19c38906-d3b0-41aa-ba59-37c62b07d34c>
 ("The 50pick Design Audit"). Sixteen lenses; the top ten findings adversarially re-verified
@@ -34,9 +40,29 @@ repo `F:\kipindi-main`, branch `main`):**
 | 6 | Motion | **DONE** | `b14c749f` + `453f515b` | ✓ 200 · clean boot · shots read |
 | 7 | Performance | **DONE** (one item deferred with a written plan — see below) | `640d45d1` | ✓ 200 · clean boot |
 | 8 | Dead code & doc truth | **DONE** | `f58c3aa1` | ✓ 200 · clean boot |
-| 9 | Consolidations | **DONE** (two sites kept, with reasons) | `stage-9` | pending push |
-| 10 | New guards | NOT STARTED | | |
-| 11 | Owner-decision items + exit | NOT STARTED | | |
+| 9 | Consolidations | **DONE** (two sites kept, with reasons) | `b1628478` | ✓ 200 · clean boot |
+| 10 | New guards | **DONE** — suite 226 → **230**, each red-proven | `d18e3ecc` | ✓ 200 · clean boot |
+| 11 | Owner decisions D1–D6 + exit | **DONE** | `910ce16a` | ✓ 9 routes 200 · clean boot · 72 live shots read at 360/768/1280/1920 × EN/SW/ZH |
+
+### Exit report
+
+**Eleven stages, eleven pushes, every one live-verified** (HTTP 200 on the touched routes, a
+clean Railway boot with zero `[snag]` blocks, and screenshots read at 360 and 1280).
+
+| | at campaign start | at close |
+|---|---|---|
+| `npm run test:all` | 230/232 (2 needed a server) | **230/230, no exclusions** |
+| Suites | 226 runnable | **230** — four new guards |
+| `test:design-frozen` ratchet | 36 files, line-level with a hole | **49 files / 170 values, per-property** — the count ROSE because the guard got honest, and every number may now only fall |
+| `test:ui-consistency` baseline | 37 pairs / 58 findings | **35 pairs / 55** |
+| Alpha-modified colour classes that emit | **0 of 577** | **all of them** |
+
+**What a player actually gets that they did not have this morning:** form fields at 44px
+instead of 96, a withdraw form whose amount box and quick-chips fit on one screen, tone tints
+and borders that render at all on every notice and alert in the product, a bell that wakes
+the radio twice a minute instead of twelve times, an Up & Down board with one timer instead
+of thirty-two, dialogs that animate out instead of blinking, a focus ring that survives
+high-contrast mode, and a wallet where the loudest thing on the page is their own money.
 
 ### Decisions applied by default (Ali may veto — each is a one-line revert of the named commit)
 
@@ -59,7 +85,45 @@ usages split them in two, and one half makes Option A *destructive*:
 appear at their designed strength — `<Callout>`'s four tones, the standing unconfirmed-email
 `<NoticeBar>`, `PayoutStatusNotice`, the KYC rejection panel, the deposit/withdraw money
 alerts, the RG panels, the auth banners, and 22 admin tone cards. Verified by screenshot at
-360 and 1280: the result is subtle, not garish. **To veto: revert the `stage-2` commit.**
+360 and 1280: the result is subtle, not garish. **To veto: revert `85bfb075`.**
+
+---
+
+### ⭐ D1–D6 — APPLIED AT THEIR DEFAULTS. Each is one revert away.
+
+Ali did not answer inline, so each default was applied and recorded as LAW in
+`docs/DESIGN_AUTHORITY.md` (§M3a, §B2a, §B4a, §B4b, §B11) — the point being that the next
+session inherits the ruling instead of re-litigating it. **All six are in `stage-11`; reverting
+that commit reverts all six.** In plain terms, what changed on screen:
+
+- **D1 — the confirm button on deposit and withdraw is BLUE, not dark red.** The withdraw
+  confirmation asked a player to take out their own money using the colour this product uses
+  for closing an account and self-excluding. Bet and sell confirms keep their gold. The
+  contradicting sentence in CLAUDE.md is deleted — one of the two statements had to stop
+  existing, and the doc was the one that was wrong.
+- **D5 — the wallet stops shouting.** Five gold surfaces at once (a **TZS 0** bonus card with a
+  jackpot glow, a cashback promo in the same costume, three gold Deposit buttons) while the
+  player's real balance sat in the flattest box on the page. The two promo cards are royal
+  panels with gold TEXT only; the Available card now has the strongest shadow on the page;
+  there is ONE gold Deposit button (the app bar's). Invite & Earn was NOT in the ruling and is
+  untouched.
+- **D2 — success and danger stop borrowing YES/NO.** A failed password reset wore the colour
+  that means *your money is gone*. There is a real `--success` now (a jade at hue 166, against
+  the betting green's 152). Betting surfaces are untouched. ⚠️ One visible consequence worth a
+  look: the corner toast after placing a bet is jade rather than betting-green — the
+  confirmation PANEL still speaks in YES/NO, which is the primary signal.
+- **D3 — claret is filed as law**: the irreversible operator ceremony, not "danger" and not
+  "error". One mixed chip migrated; no wider sweep.
+- **D6 — `.chip-signal` ("TIPPING") is royal instead of aqua**, and `/admin/live`'s aqua is now
+  a WRITTEN exception by name rather than drift.
+- **D4 — one status word, one colour.** APPROVED is green everywhere (proposals loses its gold
+  gradient — an approval is permission, not earned money); PENDING and CLOSED are royal
+  everywhere, so amber in the console now means exactly one thing: *an officer must act*. The
+  LIVE split is KEPT and written down as deliberate — red is a broadcast to a player, green is
+  ops health to an officer.
+
+**D7** was NOT applied as written; see the entry above for why the evidence reversed it for one
+of its two halves.
 
 ### Deliberately deferred
 
@@ -446,6 +510,53 @@ stops meaning anything.
   (14%/38%, 16%/42%, Callout's) collapse onto `--warning-bg`/`--warning-border` at 18%/36%.
 - ⭐ **§M4 enforced where it was being broken**: `tracking-[-0.02em]` stripped from both 38px
   wallet headline balances. Money is mono, tabular and never letter-spaced.
+
+**Stage 10**
+
+- ⭐ **Four new guards, suite 226 → 230**: `test:type-scale` (§T had ZERO enforcement and is
+  ~6:1 non-compliant), `test:stacking` (no gate had ever read a z-index), `test:tap-target`
+  (a gate that FAILS rather than warns) and `test:dead-css` (there had been none, which is how
+  ~78 dead classes accumulated). `test:labels`, `test:design-frozen`, `test:bridge`,
+  `test:keyframes` and `test:reduce-motion` were each extended into a blind spot.
+- 🔴 **`test:design-frozen` HAD A HOLE THE SIZE OF THE RULE IT ENFORCED.** Every check was
+  LINE-level and skipped any line containing `var(--` — and almost every real inline style
+  contains a var, *so almost every inline style was exempt by virtue of being partly correct*.
+  Proven, not theorised: `admin/live/page.tsx` carries `borderColor: "oklch(70% 0.12 195 / 0.5)"`
+  — **hue 195 is the superseded kit's AQUA** — beside three vars on the same line, and the guard
+  walked past. It is now per-PROPERTY, judges geometry (`fontSize`, `letterSpacing`, `padding`)
+  and **walks `.css` files**, which were outside every visual-value guard in the repo:
+  `chat-styles.css`, imported by `globals.css` so it ships on every page, hand-types **aqua 195
+  ten times** in a file whose own header says "No orphan colors".
+- ⭐ **Removing the hole ALSO removed four false positives** — the old rule fired on
+  `border: "1px solid var(--border)"`, i.e. perfectly correct token-consuming code, and only
+  escaped because the line-skip hid it. Four files left the ratchet as never having violated
+  anything.
+- 🔴 **A KEYFRAME NAMED FROM JSX WAS DEFINED NOWHERE.** `date-select.tsx` animated the portalled
+  date-picker with `cd-rise`, and there is no `@keyframes cd-rise` anywhere in `src` — so **every
+  DateSelect dialog on the platform had no entrance at all**. Four things that would normally
+  catch a broken animation cannot: `tsc` does not read CSS strings, the build does not resolve
+  keyframe names, a screenshot of a settled dialog looks correct, and until this stage no gate
+  read a JSX `style` attribute. Fixed onto `.m-dialog-in` the same day, and the baseline that
+  recorded it is now EMPTY — check 2.5 fails the moment an entry outlives its defect, which is
+  what told me to empty it rather than leave a stale line behind a green suite.
+- ⭐ **THREE GUARDS CAUGHT THEIR OWN AUTHORS MID-PROOF**, which is the point of demanding a red
+  proof rather than a claim: a class-list scanner used ONE character class for all three quote
+  types, so an opening backtick paired with the next double-quote and **22 real usages fell in
+  the gap between matches** (the `test:bridge` one-character blind spot in a new costume); a
+  numeric-size rule reported 3 of 4 planted violations because its `(?:^|\s)` boundary walked
+  past a token preceded by a quote — *a rule that reports the easy half of a defect and looks
+  like it works*.
+- ⭐ **The mono-money predicate shipped as the NARROW HONEST version.** "Money must CARRY
+  `font-mono`" cannot be asserted truthfully — `font-family` INHERITS and this product leans on
+  it, with ~40 `globals.css` classes setting mono on a CONTAINER; of 121 isolable money elements
+  **49 carry no mono token and render mono from an ancestor**. Demanding the token would condemn
+  49 correct elements. So it asserts the decidable half: an EXPLICIT non-mono family written ON
+  the element beats any inherited mono. Tracking is decidable outright and is a hard rule.
+- ⭐ **`test:type-scale` carries a live SELF-TEST and REACH FLOORS** — it asserts its own
+  scanners still find planted fixtures, that `formatTzs*` still exists by name (a rename would
+  leave the money rules matching nothing and printing ALL PASS), and that it still sees 758
+  files / 121 money elements. **A guard going blind is invisible to any violation count**, which
+  is the §5b failure this repo has hit repeatedly.
 
 **Follow-ups this campaign opened and has not closed**
 

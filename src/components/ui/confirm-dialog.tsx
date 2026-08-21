@@ -43,8 +43,16 @@ type Props = {
   body: React.ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
-  /** Tone of the confirm button. claret = irreversible / destructive (default). */
+  /** Tone of the confirm button. claret = irreversible / destructive (default).
+   *  ⚠️ D1 (2026-08-21) — the DEFAULT is the trap this ruling closed. Deposit and
+   *  withdraw reached this wrapper without naming a tone and inherited `claret`,
+   *  so the last screen before a DEPOSIT wore the destructive colour §B4 reserves
+   *  for editorial weight. Both now pass `tone="brand"` explicitly. A money commit
+   *  that is not destructive must SAY it is not; silence here means claret. */
   tone?: Tone;
+  /** D1 — button footprint for the dialog's stacked pair, forwarded to
+   *  <ConfirmModal>. Default "md"; the two money commits take "lg". */
+  size?: "md" | "lg";
   /** In hold-open mode (`pending` provided), return `false` to signal the
    *  mutation did NOT start (e.g. `form.reportValidity()` refused) — the dialog
    *  releases immediately instead of waiting for a round-trip that will never
@@ -76,6 +84,7 @@ export function ConfirmDialog({
   confirmLabel,
   cancelLabel,
   tone = "claret",
+  size = "md",
   onConfirm,
   onOpen,
   onClose,
@@ -151,6 +160,7 @@ export function ConfirmDialog({
         title={title}
         body={body}
         tone={tone}
+        size={size}
         confirmLabel={confirmLabel}
         cancelLabel={cancelLabel}
         loading={holdOpen && awaiting}

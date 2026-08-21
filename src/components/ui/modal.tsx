@@ -337,8 +337,20 @@ export function Modal({
   );
 }
 
-// Gold is intentionally NOT a confirm-button tone — gold-discipline reserves it
-// for the resolved-seal / earned-money language, never a destructive/confirm CTA.
+/* ⭐ D1 (Ali's ruling, 2026-08-21) — THE CONTRADICTION IS RESOLVED IN FAVOUR OF THIS FILE.
+   Two laws were live at once: CLAUDE.md's gold-budget list said "Confirm CTA → `btn-gold`
+   (the actual money commit)", and the comment that used to stand here said the opposite.
+   The ruling keeps THIS one for the shared dialog and deletes the sentence in CLAUDE.md.
+
+   Gold is NOT a `ConfirmModal` tone. Gold-discipline (§M3) reserves struck gold for the
+   resolved-seal / earned-money language, never for a generic confirm CTA — and this
+   primitive is the generic one: it carries settle, emergency-void, kill-switch, the
+   provider switch, deposit and withdraw. `bet-confirm-modal.tsx` and `sell-confirm-modal.tsx`
+   are NOT this component and keep their own gold commit button, unchanged: they are the
+   two surfaces gold was actually reserved for.
+
+   ⛔ Do not add a fourth tone here to bring gold back. The next session that wants a gold
+   confirm wants one of those two bespoke modals, or it wants §M3 amended — not a tone. */
 type Tone = "claret" | "warning" | "brand";
 
 export type ConfirmModalProps = {
@@ -352,6 +364,12 @@ export type ConfirmModalProps = {
   confirmLabel?: string;
   cancelLabel?: string;
   tone?: Tone;
+  /** D1 — the button pair's footprint. "md" is the dialog default; "lg" is the
+   *  money-commit footprint the deposit and withdraw confirms take. BOTH stacked
+   *  buttons move together: a large Confirm over a medium Cancel would make the
+   *  size itself an argument for one of the two answers, which is the opposite of
+   *  what a confirmation is for. */
+  size?: "md" | "lg";
   /** "medium" = one explicit confirm. "hard" = must type `typedWord` to arm. */
   tier?: "medium" | "hard";
   /** The word the officer must type verbatim to enable confirm (tier="hard"). */
@@ -392,6 +410,7 @@ export function ConfirmModal({
   confirmLabel,
   cancelLabel,
   tone = "claret",
+  size = "md",
   tier = "medium",
   typedWord,
   icon,
@@ -410,6 +429,9 @@ export function ConfirmModal({
   React.useEffect(() => { if (open) setTyped(""); }, [open]);
 
   const ink = TONE_INK[tone];
+  // D1 — one size for the pair (see the `size` prop note). Named from the kit's
+  // button scale; never a hand-typed height.
+  const btnSize = size === "lg" ? "btn-lg" : "btn-md";
   const effectiveEyebrow = eyebrow ?? t.common.confirm;
   const typeLabel = typedWord ? `${t.common.type} ${typedWord} ${t.common.typeToConfirm}` : "";
 
@@ -502,7 +524,7 @@ export function ConfirmModal({
           disabled={!armed || loading}
           aria-busy={loading || undefined}
           onClick={() => { haptics.warning(); onConfirm(); }}
-          className={`${TONE_BTN[tone]} btn-md w-full`}
+          className={`${TONE_BTN[tone]} ${btnSize} w-full`}
         >
           {loading ? (
             <span className="inline-flex items-center gap-2"><Spinner size={14} />{t.common.working}</span>
@@ -510,7 +532,7 @@ export function ConfirmModal({
             confirmLabel ?? t.common.confirm
           )}
         </button>
-        <button ref={cancelRef} type="button" disabled={loading} onClick={onClose} className="btn btn-ghost btn-md w-full disabled:opacity-50">
+        <button ref={cancelRef} type="button" disabled={loading} onClick={onClose} className={`btn btn-ghost ${btnSize} w-full disabled:opacity-50`}>
           {cancelLabel ?? t.common.cancel}
         </button>
       </div>

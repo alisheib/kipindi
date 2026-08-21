@@ -156,6 +156,24 @@
   --royal-ink-3: oklch(64% 0.060 268);
 
   /* Semantic */
+  /* 🔴 D2 (2026-08-21, owner ruling) — SUCCESS IS NOT `YES`.
+     `--success` used to ALIAS `--yes-500`, so a saved password, a confirmed
+     e-mail and a settled RG limit all wore the exact ink that means *your money
+     is on this side of a market* — and its partner `--danger` was `--no-500`,
+     the ink that means *your money is gone*. §B2 says the YES/NO pair is never
+     reused for a non-money meaning, and the kit itself was the thing breaking
+     it: a failed password reset was painted in the losing-bet colour.
+     So APP STATE gets its own green, minted here and NEVER borrowed from the
+     betting ramp. Hue 166 against `--yes-500`'s 152, and 0.12 chroma against its
+     0.17 — a calm jade beside a vivid signal green, distinguishable side by side.
+     ⛔ Betting surfaces (the card's YES/NO buttons, the conviction dial, the
+     split bars, `--bet-win`/`--bet-lose`) keep `--yes-*`/`--no-*` untouched.
+     Those ARE the money meaning; this token is not for them, ever.
+     Measured before it shipped, worst stop of every surface it lands on:
+     `--success-fg` on an 18% `--success` tint reads 9.23:1 (floor 4.5) over
+     `--wash-raised`, 9.55 over `--wash-float`, 9.77 over `--bg-elevated`; the
+     fill itself reads 4.98:1 against ground (floor 3.0 non-text). */
+  --success-500: oklch(62% 0.12 166);
   --danger-500:  oklch(57% 0.22 25); /* audit H10: white label → 4.85:1 (was 60% = 4.28, fail) */
   --info-500:    oklch(64% 0.17 268);
   --warning-500: oklch(78% 0.13 86);
@@ -491,10 +509,14 @@
   --royal-subtle-hover:  color-mix(in oklab, var(--teal-500) 30%, transparent);
   --royal-fg:            var(--pearl-50);
 
-  --success:        var(--yes-500);
-  --success-bg:     color-mix(in oklab, var(--yes-500) 18%, transparent);
-  --success-border: color-mix(in oklab, var(--yes-500) 36%, transparent);
-  --success-fg:     var(--yes-200);
+  /* ⛔ D2: this family reads `--success-500`, never `--yes-*`. See the ruling at
+     the `--success-500` definition. `--success-fg` is a literal for the same
+     reason `--danger-fg` and `--info-fg` two rows down are: the ink is a step
+     the base ramp does not carry, and this file is its definition site. */
+  --success:        var(--success-500);
+  --success-bg:     color-mix(in oklab, var(--success-500) 18%, transparent);
+  --success-border: color-mix(in oklab, var(--success-500) 36%, transparent);
+  --success-fg:     oklch(84% 0.11 166);
   --warning:        var(--warning-500);
   --warning-bg:     color-mix(in oklab, var(--warning-500) 18%, transparent);
   --warning-border: color-mix(in oklab, var(--warning-500) 36%, transparent);
@@ -1062,14 +1084,27 @@ body {
   background: oklch(40% 0.07 264 / 0.25);
 }
 
+/* 🔴 D6 (2026-08-21, owner ruling) — THE LABEL IS NORMAL TEXT NOW.
+   §B4 forbids aqua as "a chip, a button label, or anything semantic", and this
+   rule painted its label `--aqua-200` (and `--aqua-100` on hover) — an aqua
+   label on a button, which is the banned case stated outright.
+   ⭐ KEPT AS A TINTED GHOST rather than folded into `.btn-ghost`, because of
+   what its SINGLE consumer does with it: `admin/invites` uses it for "Send
+   invites", the one committing action on a screen whose other controls are all
+   plain ghosts. Folding it in would have flattened the only affordance telling
+   an officer which button does the thing — a real loss, to fix a rule the tint
+   never broke. What §B4 bans is aqua carrying MEANING; a tinted plate with an
+   ordinary label is aqua doing exactly the finishing-pass job it is allowed.
+   Measured: `--text` on the 12% plate = 13.37:1 worst surface, 10.69:1 on the
+   22% hover plate (floor 4.5). */
 .btn-aqua-ghost {
   background: color-mix(in oklab, var(--aqua-300) 12%, transparent);
-  color: var(--aqua-200);
+  color: var(--text);
   border: 1px solid var(--aqua-edge);
 }
 .btn-aqua-ghost:hover:not(:disabled) {
   background: color-mix(in oklab, var(--aqua-300) 22%, transparent);
-  color: var(--aqua-100);
+  color: var(--text);
   box-shadow: 0 0 0 3px var(--aqua-glow);
 }
 
@@ -1095,7 +1130,22 @@ body {
 .chip-resolved { height: 23px; padding: 0 9px; font-size: 11px; background: linear-gradient(180deg, var(--gold-300), var(--gold-500)); color: oklch(24% 0.06 80); border-color: oklch(60% 0.10 78); }
 .chip-pending  { height: 23px; padding: 0 9px; font-size: 11px; background: oklch(54% 0.165 262 / 0.26); color: var(--brand-300); border-color: oklch(63% 0.18 262 / 0.55); }
 .chip-objection{ height: 23px; padding: 0 9px; font-size: 11px; background: oklch(72% 0.13 80 / 0.22); color: var(--gold-300); border-color: oklch(80% 0.13 80 / 0.5); }
-.chip-signal   { background: oklch(74% 0.11 195 / 0.20); color: var(--aqua-300); border-color: oklch(78% 0.10 195 / 0.5); }
+/* 🔴 D6 (2026-08-21, owner ruling) — TIPPING WAS AN AQUA CHIP, AND §B4 BANS ONE
+   IN SO MANY WORDS: aqua is a finishing pass at ≤8% coverage, "never a chip, a
+   button label, or anything semantic". The ban is written 900-odd lines above
+   this rule, in this same file, and TIPPING sat under it on the player board.
+   It now joins the ROYAL family — the same family `.chip-new` argues for two
+   rules down, because "this market is at its tipping point" is CHROME, a fact
+   about the board, and chrome is royal here.
+   ⭐ It takes the family's BRIGHTEST step (`--brand-200` ink on a 22% fill), so
+   the three royal chips stay tellable apart on one board: NEW is the quietest
+   (16%), SOON/`.chip-pending` sits in the middle (26% on `--brand-300`), and
+   TIPPING — the loudest thing a market can say short of LIVE — is the brightest
+   ink. ⛔ It reads its colour through `color-mix()` on the brand ramp rather
+   than re-typing an oklch, so a brand retune carries it along.
+   Measured: `--brand-200` on the fill over `--wash-raised` = 8.88:1 (was 7.00
+   in aqua), 9.39 over `--bg-elevated`, 10.71 over `--bg`. */
+.chip-signal   { background: color-mix(in oklab, var(--brand-500) 22%, transparent); color: var(--brand-200); border-color: color-mix(in oklab, var(--brand-400) 50%, transparent); }
 .chip-hot-rose { height: 23px; padding: 0 9px; font-size: 11px; background: oklch(50% 0.19 25 / 0.22); color: var(--no-300); border-color: oklch(58% 0.2 25 / 0.5); }
 /* NEW market badge (cold-start, 2026-07-29). Brand blue: it is CHROME — "this
    just opened" — not a betting semantic and NEVER gold. 01-foundations/colour.md

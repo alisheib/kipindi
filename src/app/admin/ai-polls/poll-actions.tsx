@@ -815,8 +815,15 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
 /* ─── Quality indicators display ─── */
 
 export function QualityBadges({ indicators, overall }: { indicators: QualityIndicator[]; overall: number }) {
+  /* 🔴 D2 + D3 (2026-08-21, owner ruling) — this triad broke BOTH laws in one line.
+     `good` was `--yes-300`, the ink that means a player's money is on YES (§B2:
+     the betting pair is never reused for a non-money meaning), and `bad` was
+     `--claret-300`, which §B4 reserves for the IRREVERSIBLE OPERATOR CEREMONY —
+     the kill-switch, the emergency void, the final reject. A quality indicator
+     reading "criterion is vague" is neither: it is app state, and app state is
+     the `--success` / `--warning` / `--danger` families. */
   const statusColor = (s: "good" | "warning" | "bad") =>
-    s === "good" ? "var(--yes-300)" : s === "warning" ? "var(--warning-fg)" : "var(--claret-300)";
+    s === "good" ? "var(--success-fg)" : s === "warning" ? "var(--warning-fg)" : "var(--danger-fg)";
   const overallBand = band(overall, { good: 80, warn: 50 });
 
   return (
@@ -896,9 +903,18 @@ export function FilterReasonChips({ reasons }: { reasons: FilterReason[] }) {
       {reasons.map((r, i) => (
         // `/[0.08]` and not `/8` — off Tailwind's 5-step opacity ladder, so these
         // refusal-reason pills rendered as bare outlines with no danger wash.
+        //
+        // 🔴 D3 (2026-08-21, owner ruling) — THE INK NOW MATCHES THE BOX. This pill
+        // was the one mixed chip in the product: a `--danger-500` border and wash
+        // carrying `--claret-300` TEXT, i.e. two different refusal vocabularies in
+        // one 10px capsule. §B4 files claret as the IRREVERSIBLE OPERATOR CEREMONY
+        // — kill-switch, emergency void, final reject — and a filter-reason label
+        // is the opposite of a ceremony: it is a diagnostic, printed by the machine,
+        // that no officer acted on. So it is danger end to end, and claret is left
+        // to mean the thing an officer cannot take back.
         <span
           key={i}
-          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-pill text-[10px] font-mono border border-danger-500/30 bg-danger-500/[0.08] text-claret-300"
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-pill text-[10px] font-mono border border-danger-500/30 bg-danger-500/[0.08] text-danger-fg"
         >
           {REASON_LABELS[r] ?? r}
         </span>

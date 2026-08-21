@@ -37,29 +37,31 @@ export function CashbackPromo({
   const { t } = useT();
   const isRequest = mode === "REQUEST";
   return (
+    /* ⭐ D5 (Ali's default, 2026-08-21) — THE GOLD COSTUME IS OFF THIS PANEL.
+       It wore a gold gradient, a gold border and a jackpot glow: §M3 reserves struck gold
+       for money that was EARNED, and an inducement to deposit is the opposite of earned.
+       On a wallet page the effect was measured and inverted — five gold surfaces shouting
+       at once (a TZS 0 bonus, this promo, three Deposit CTAs) while the player's REAL
+       balance sat in the quietest box on the screen. On an RG-licensed product that is not
+       a style question.
+       ⭐ It keeps its gold TEXT — the eyebrow, the ON REQUEST tag, the coins motif — so it
+       still reads as the money-in column; it simply stops outshouting the balance.
+       ⛔ The byte-identical twin this panel used to share with `wallet-client.tsx`'s bonus
+       card is gone: BOTH were converted in the same change, which is the only way a
+       two-file recipe stops drifting. */
     <section
-      className={cn("relative overflow-hidden rounded-xl", className)}
-      style={{
-        background: "linear-gradient(135deg, oklch(30% 0.085 80), oklch(18% 0.055 72))",
-        border: "1px solid var(--border-gold)",
-        /* M1 — even ring, colour and alpha unchanged.
-           ⚠️ NOTE FOR THE §3b SWEEP: this panel's `background`, `border` and `boxShadow`
-           are BYTE-IDENTICAL to the second wallet panel (`wallet-client.tsx`). One recipe
-           in two files is the drift design-system/README §0 forbids, and it means a future
-           edit to one will silently diverge from the other — as it nearly did here, since
-           both needed this same M1 conversion. Extracting it is a refactor, not an M1
-           change, so it is recorded rather than done inside this atom. */
-        boxShadow: "inset 0 0 0 1px oklch(92% 0.10 84 / 0.18), var(--glow-jackpot)",
-      }}
+      className={cn("mat-raised relative overflow-hidden rounded-xl", className)}
+      data-rung="raised"
     >
-      {/* warm coins motif + jackpot glow — same treatment as the bonus card */}
-      {/* M5 — a decorative glyph does not perform: the coins motif rests still
-          (the infinite pulse was bespoke glyph motion outside the frozen ambient list). */}
-      <div className="absolute -right-5 -top-7 opacity-[0.12] text-gold-300" aria-hidden>
+      {/* The coins motif stays — it is the panel's subject, and a watermark at 12% opacity
+          is a motif rather than a costume. It drops to `--text-faint` for the same reason
+          the bonus card's gift watermark did: gold ink at 150px IS the gold wash by another
+          route. M5 — a decorative glyph does not perform; the coins rest still. */}
+      <div className="absolute -right-5 -top-7 opacity-[0.12] text-text-faint" aria-hidden>
         <I.coins s={compact ? 110 : 140} />
       </div>
-      <div className="absolute -left-10 -bottom-12 h-40 w-40 rounded-full opacity-30" aria-hidden
-        style={{ background: "radial-gradient(circle, oklch(82% 0.16 82 / 0.5), transparent 70%)" }} />
+      {/* ⛔ THE GILT BLOOM IS DELETED, not dimmed. §M3: "No bloom — radial glow dilutes the
+          financial texture." It was the jackpot-glow half of the costume D5 removes. */}
 
       <div className={cn("relative z-10", compact ? "p-4" : "p-5 lg:p-6")}>
         <div className="flex items-center gap-1.5 text-gold-300">

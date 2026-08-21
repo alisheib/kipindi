@@ -38,6 +38,10 @@ import type { Config } from "tailwindcss";
  */
 const alpha = (v: string) => `color-mix(in oklab, ${v} calc(<alpha-value> * 100%), transparent)`;
 
+/* The drawer rung, named once so `drawer` and its legacy alias `popover` cannot drift
+   into two values. See the zIndex block below for why the alias still exists. */
+const DRAWER = "70";
+
 const config: Config = {
   darkMode: "class",
   content: ["./src/**/*.{ts,tsx}"],
@@ -310,17 +314,60 @@ const config: Config = {
         stage: "var(--t-stage)",     // 520ms — a new surface owns the screen
         max: "var(--t-max)",         // 620ms — settlement + celebration only
       },
+      /* 🔴 THE LADDER STATED FICTION FOR ITS WHOLE LIFE — REWRITTEN 2026-08-21 AGAINST
+         WHAT THE PRODUCT ACTUALLY PAINTS. It used to read:
+
+             dropdown 1000 · sticky 1100 · drawer 1200 · modal 1300
+             popover 1400  · toast 1500  · tooltip 1600 · celebration 1700
+
+         Six of those eight numbers are not painted anywhere in `src/`. The real Modal
+         is **100** (`ui/modal.tsx`, `zIndex = 100`), the real toast viewport is
+         **1800** (`ui/toast.tsx`), and the real dropdowns are **20–130**. Only
+         `tooltip` and `celebration` happened to be right.
+
+         ⛔ AND THE ONE CONSUMER MADE IT A LIVE DEFECT, not a tidy-up. `z-popover` is
+         written twice in `admin/admin-mobile-nav.tsx` — the admin navigation DRAWER
+         and its scrim — so the drawer resolved to **1400**, i.e. ABOVE every admin
+         `<Modal>` at 100. On this platform an admin Modal is where an officer types
+         SEAL to settle a market and where a payout is released: a mis-tapped
+         hamburger could cover the dialog that moves money. `popover` is now pinned to
+         the drawer rung, and it is the SAME CONST as `drawer` rather than a second
+         copy of "70" — two names may share one rung, they may not own two values that
+         drift.
+
+         ⭐ THIS FILE IS A BRIDGE (§0d): it never originates a value. Every rung here
+         is read off a shipping surface, and `npm run test:stacking` re-reads them —
+         `modal` against `modal.tsx`, `toast` against `toast.tsx`, `tooltip` against
+         `globals.css`, `celebration` against `win-celebration.tsx` — so the ladder
+         cannot drift from the product again. That guard also refuses any rung nothing
+         paints at, which is exactly the check the old ladder would have failed.
+
+         ⚠️ `50` IS DELIBERATELY NOT A RUNG. Four anchored menus declare `z-50`, and
+         not one of them ever lands there: each is sealed inside its bar's stacking
+         context (nav-more → 40 and 30, the admin AI toolkit → 40). Naming it would
+         hand the next session a number that reads like a promise and is not one.
+         In-card stickies use `raised`; there is no `sticky` rung for the same reason. */
       zIndex: {
-        base: "0",
-        raised: "10",
-        dropdown: "1000",
-        sticky: "1100",
-        drawer: "1200",
-        modal: "1300",
-        popover: "1400",
-        toast: "1500",
+        base: "0",                    // .mcardp-watermark — the floor of a card's own context
+        raised: "10",                 // in-card stickies (sticky table heads, pinned aside)
+        discovery: "20",              // the board's filter rail
+        topbar: "30",                 // the player top app bar
+        nav: "40",                    // bottom nav · admin top bar
+        needle: "45",                 // the Needle: over both bars, under every menu
+        menu: "60",                   // bell / avatar / chat FAB (panels take +1)
+        drawer: DRAWER,               // needle-drawer · desktop chat panel (panels take +1)
+        popover: DRAWER,              // ⚠️ LEGACY ALIAS — admin-mobile-nav.tsx only. Migrate it to `z-drawer`.
+        modal: "100",                 // THE dialog rung — <Modal>'s default
+        "date-select": "120",         // above modals on purpose: a picker in a dialog opens OVER it
+        select: "130",                // above date-select on purpose
+        primer: "150",                // first-visit primer — never pierced by a picker
+        banner: "200",                // offline banner
         tooltip: "1600",
-        celebration: "1700",
+        celebration: "1700",          // win celebration · RG reality check
+        toast: "1800",                // above modals on purpose — see operation-result-modal.tsx
+        progress: "2000",             // NavProgress — above toasts on purpose
+        overlay: "9000",              // locale-change overlay
+        skip: "9999",                 // skip-to-content
       },
       screens: {
         xs: "360px",

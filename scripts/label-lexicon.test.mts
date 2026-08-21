@@ -13,6 +13,7 @@
  *   §3  no enum is interpolated into a sentence
  *   §4  the lexicon is the only definition site, and the count only ever goes DOWN
  *   §5  ⭐ THE POSITIVE CONTROL — every scanner is shown input it MUST reject
+ *   §11 ⭐ THE OFFICER CONSOLE IS A SURFACE TOO — and a RUNTIME enum is still an enum
  *
  * ⭐ §5 IS NOT CEREMONY. A scanner that has gone blind — a bad path, a regex that stopped
  * matching, a locale block that resolved to -1 — prints "0 violations" in exactly the same
@@ -208,6 +209,15 @@ function exprCarriesEnum(expr: string): boolean {
 
 /** Tailwind class lists read like prose to a regex and are not prose. */
 const CLASSY = /\b(text|font|bg|btn|chip|border|rounded|tracking|uppercase|inline|flex|gap|opacity|leading)-?\[?\w/;
+/**
+ * A CSS VALUE is not prose either, and it is the shape CLASSY cannot see: an inline
+ * `style={{ background: … }}` interpolates a computed colour rather than a class list.
+ * `poll-actions.tsx` builds `color-mix(in oklab, ${statusColor(q.status)} 8%, transparent)` —
+ * the expression names `status`, so the enum test fires, and the template is a paint
+ * instruction with no reader. A tone is not a word (the same distinction §4's PRIVATE_MAP
+ * draws for ternaries), so it is judged the same way: not copy, not this guard's business.
+ */
+const CSS_VALUE = /\b(?:color-mix|oklch|rgba?|hsla?|calc|clamp|linear-gradient|radial-gradient|translate[XYZ]?|rotate|scale)\s*\(|var\(--/;
 
 /**
  * Is this template a SENTENCE a player reads, rather than a path, a class list, a cache key,
@@ -224,6 +234,7 @@ function isProseTemplate(lit: string, before = ""): boolean {
   const outside = lit.replace(/\$\{[^}]*\}/g, " ");
   if (/:\/\/|href|^`\/|\/[a-z-]+\/|[?&]\w+=/.test(lit)) return false;   // URL / path / query
   if (CLASSY.test(outside)) return false;                                // a class list
+  if (CSS_VALUE.test(lit)) return false;                                 // a paint instruction
   if (/\b\w+En\b/.test(lit)) return false;                               // English-only by construction
   if (/(assert\w*|throw|new Error)\s*\(?[^;]*$/.test(before)) return false; // developer diagnostic
   if (!/\s/.test(outside)) return false;                                 // no spaces → not prose
@@ -345,7 +356,11 @@ const PRIVATE_MAP = /===\s*"(YES|NO|UP|DOWN)"\s*\?\s*t\./;
  * itself the fifteenth private word-map, because this scanner reads raw lines and cannot tell
  * code from prose about code. Describe the old shape; do not paste it.
  */
-const PRIVATE_MAP_RATCHET = 14;
+const PRIVATE_MAP_RATCHET = 11;
+// ⭐ 14 → 11 on 2026-08-21. The three that left are not a decision taken here: the campaign's
+// earlier stages folded them into the lexicon, and this file printed "NOTE §4 ratchet can be
+// tightened to 11" on every run since. A ratchet that reports slack and never takes it up is
+// not a ratchet — it is a number that once meant something.
 
 const privateMaps: string[] = [];
 for (const f of walk(SRC)) {
@@ -643,6 +658,371 @@ check("§5j private-map matcher ACCEPTS a tone ternary (a colour is not a word)"
   check("§10b the scanner actually saw the mixed-book surfaces",
     files.some((f) => MIXED_READ.test(readFileSync(f, "utf8"))),
     "no file in the scan declares productLine \"ALL\" — the locator has drifted");
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// §11 · THE OFFICER CONSOLE IS A SURFACE TOO — AND A RUNTIME ENUM IS STILL AN ENUM
+// ───────────────────────────────────────────────────────────────────────────
+/**
+ * 🔴 §3 CARRIES `if (f.includes("app/admin") || f.includes("components/admin")) continue;`
+ * AND THAT ONE LINE IS WHY THIRTEEN OFFICER SURFACES PRINTED DATABASE SPELLING.
+ *
+ * The skip is not wrong about what it says — the console IS English by design, so §3's
+ * *trilingual* question genuinely does not apply there. It is wrong about what it was read to
+ * mean. "This file speaks one language" got treated as "this file has no label rules", and
+ * under that reading `<Chip>{kyc.status}</Chip>` shouted **PENDING_REVIEW** at a compliance
+ * officer, the player list printed **SELF_EXCLUDED** and **PENDING_KYC**, /admin/transactions
+ * rendered all three money columns as `value.replace(/_/g, " ")` — so the officer reconciling
+ * against a Selcom statement read *"ADJUSTMENT DEBIT"*, *"AML REVIEW"* and *"TIGO PESA"* —
+ * and the DSAR queue offered **ERASURE**, the one word on that page that must not be misread.
+ * Stage 4 routed all of it through `src/lib/admin-status-lexicon.ts`. This section is what
+ * stops it coming back.
+ *
+ * ⭐ AND THE HARDER HALF: TWO OF THOSE WERE INVISIBLE TO EVERY STRING SCAN IN THIS FILE.
+ * The withdraw and deposit confirm dialogs rendered `provider.replace(/_/g, " ")` — the last
+ * screen a player sees before money moves, naming the rail in database spelling — and the
+ * token never appears as a literal anywhere. §1–§10 all match on TEXT; a value that arrives
+ * through a variable has none. So §11a guards the **shape** instead:
+ *
+ *   ⛔ DE-UNDERSCORING IS NOT LOCALISATION. There is exactly one reason to turn `A_B` into
+ *   "A B" at a render site: the value is SCREAMING_SNAKE and a human is about to read it.
+ *   Stripping the underscore does not make it a word — it makes a misspelling ("Aml review",
+ *   "TIGO PESA"). The fix is a lexicon entry, never a `.replace`.
+ *
+ * The one non-label use of `_` in this repo is base64url decoding, and it is excluded by
+ * VALUE rather than by filename: it replaces `_` with `/`, never with whitespace.
+ */
+{
+  // ── §11a · the de-underscore shape ───────────────────────────────────────
+  /**
+   * `x.replace(/_/g, " ")` · `x.replaceAll("_", " ")` · `x.split("_")` · `x.split(/_/)`.
+   * The replacement is CAPTURED so base64url (`_` → `/`) is judged on what it produces
+   * rather than on where it lives — `register-sw.ts` and `proxy.ts` are decoding, not
+   * labelling, and a filename exemption would have gone stale the first time either moved.
+   */
+  const DEUNDER =
+    /\.(?:replace\s*\(\s*\/_\/g\s*,|replaceAll\s*\(\s*["']_["']\s*,)\s*(["'`])([^"'`]*)\1\s*\)|\.split\s*\(\s*(?:\/_\/|["']_["'])\s*\)/g;
+  /** A replacement that produces a human-readable gap. `/` or `+` is a codec, not a label. */
+  const HUMANISING = (repl: string | undefined) => repl === undefined || /^[\s·.-]*$/.test(repl);
+
+  /** The predicate, named so §11d can aim known input at THIS code and not at a copy. */
+  function deUnderscoreHits(src: string): string[] {
+    const out: string[] = [];
+    const clean = stripComments(src);
+    for (const m of clean.matchAll(DEUNDER)) {
+      if (!HUMANISING(m[2])) continue;                       // codec, not a label
+      out.push(clean.slice(0, m.index).split("\n").length.toString());
+    }
+    return out;
+  }
+
+  /**
+   * ⛔ BY DESIGN, NOT BY BACKLOG — one entry, and it is the lexicon's OWN last resort.
+   * `status-badge.tsx`'s `humanise()` exists so a value no map knows degrades to something
+   * readable instead of shouting at an officer. It is the floor under the lexicon, so the
+   * one place de-underscoring is the right answer is the place that owns the labels.
+   */
+  const DEUNDER_BY_DESIGN = new Map<string, string>([
+    ["src/components/admin/status-badge.tsx",
+     "humanise() — the lexicon's documented last resort for an unmapped value"],
+  ]);
+
+  /**
+   * ⛔ THE BACKLOG, MEASURED 2026-08-21. THIS MAP MAY ONLY EVER SHRINK.
+   * Both are real: an officer and a player respectively read database spelling today.
+   *   · `admin/page.tsx` — the Provider-mix bar labels its segments `provider.split("_")[0]`,
+   *     so the 28-day deposit share reads TIGO / HALO / TTCL / BANK instead of the brand
+   *     spellings the lexicon already holds (`MONEY.providerTigoPesa`, …).
+   *   · `email.ts` — `kycSubmittedHtml` maps three doc codes by hand and de-underscores the
+   *     rest. IDENTITY-POLICY widened identity to FOUR documents on 2026-08-20, so every
+   *     passport / driving-licence / voter's-card code now falls through to the fallback and
+   *     reaches the player's inbox as de-underscored database spelling.
+   */
+  const DEUNDER_RATCHET = new Map<string, number>([
+    ["src/app/admin/page.tsx", 1],
+    ["src/lib/server/email.ts", 1],
+  ]);
+
+  const over: string[] = [];
+  const stale: string[] = [];
+  const seen = new Map<string, number>();
+  for (const f of walk(SRC)) {
+    const rel = f.slice(ROOT.length + 1).replace(/\\/g, "/");
+    if (DEUNDER_BY_DESIGN.has(rel)) continue;
+    const lines = deUnderscoreHits(readFileSync(f, "utf8"));
+    if (lines.length === 0) continue;
+    seen.set(rel, lines.length);
+    const allowed = DEUNDER_RATCHET.get(rel) ?? 0;
+    if (lines.length > allowed) over.push(`${rel}:${lines.join(",")} (${lines.length} > ${allowed})`);
+  }
+  for (const [rel, n] of DEUNDER_RATCHET) {
+    const now = seen.get(rel) ?? 0;
+    if (now === 0) stale.push(`${rel} (now clean — delete the entry)`);
+    else if (now < n) log(`  NOTE §11a ${rel} is down to ${now} — lower its ratchet entry.`);
+  }
+  check("§11a no NEW site de-underscores an enum on its way to a human",
+    over.length === 0,
+    over.length ? `${over.join(" · ")} — de-underscoring is not localisation; add a lexicon entry` : "");
+  check("§11a the de-underscore ratchet holds no stale entries", stale.length === 0, stale.join(", "));
+  // ⛔ AND IT MUST HAVE SCANNED SOMETHING. A walk that silently covered nothing reports the
+  // same green as a clean tree — §5's whole reason for existing, and rule 3 of standards §5b:
+  // prove the thing you found is the thing you meant.
+  check("§11a the scanner actually reached the ratcheted files",
+    [...DEUNDER_RATCHET.keys()].every((rel) => seen.has(rel)),
+    `expected a hit in ${[...DEUNDER_RATCHET.keys()].filter((r) => !seen.has(r)).join(", ")} — the walk has drifted`);
+
+  // ── §11b · a known enum ARM as literal display text ──────────────────────
+  /**
+   * The second shape: the token typed out by hand where a human reads it.
+   *
+   * ⛔ THE TOKEN SET IS READ FROM `prisma/schema.prisma`, NEVER HAND-LISTED — the same rule
+   * §1 follows. A new underscored arm on any enum is covered on the next run, with no edit
+   * here. And ONLY underscored arms are judged: `SPORTS`, `YES` and `LIVE` are legitimate
+   * words in an English console, while `A_B` in database spelling never is. That single
+   * restriction is what keeps this rule from crying wolf on correct copy.
+   *
+   * ⚠️ IT IS ALSO WHY THE FIRST DRAFT WAS USELESS. A blanket "no SCREAMING_SNAKE in admin
+   * display text" found 18 hits and every single one was an ENVIRONMENT VARIABLE —
+   * `DATABASE_URL`, `SMS_PROVIDER`, `ANTHROPIC_API_KEY` — which the ops pages must name
+   * exactly. Asserting the VALUE (an arm that really exists in the schema) instead of the
+   * SHAPE (anything shouty) drops all 18 without an exemption list.
+   */
+  const underscoredArms = new Set<string>();
+  for (const m of schema.matchAll(/enum\s+\w+\s*\{([^}]*)\}/g)) {
+    for (const l of m[1].split(/\r?\n/)) {
+      const t = l.replace(/\/\/.*$/, "").trim();
+      if (/^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+$/.test(t)) underscoredArms.add(t);
+    }
+  }
+  check("§11b the schema yielded underscored enum arms to look for",
+    underscoredArms.size > 30, `only ${underscoredArms.size} — the schema parse has drifted`);
+  const ARM = new RegExp(`\\b(?:${[...underscoredArms].join("|")})\\b`);
+
+  /**
+   * ⛔ DISPLAY POSITIONS ONLY. `status === "PENDING_REVIEW"` and `<option value="ERASURE">`
+   * are the enum doing its job; the defect is the token in the place a person READS.
+   * Two positions carry that: a JSX text child, and a label-shaped object field or
+   * display attribute.
+   */
+  function literalArmHits(src: string): string[] {
+    const clean = stripComments(src);
+    const out: string[] = [];
+    const at = (i: number) => clean.slice(0, i).split("\n").length.toString();
+    // ⛔ NEWLINES ARE PART OF A JSX TEXT CHILD, and the first draft excluded them — which made
+    // this whole section decoration. The red harness typed the token into the player drill-in's
+    // KYC chip, where the text sits on its own line between a `/>` and a `</Chip>`, and the
+    // scanner did not see it. `<`, `>`, `{` and `}` are what bound a text run; a line break is
+    // not one of them.
+    //
+    // ⚠️ AND ALLOWING THE NEWLINE ALONE OVER-CORRECTED, IMMEDIATELY: an arrow function's `=>`
+    // supplies a `>` and the next JSX tag supplies a `<`, so `useState<KycDocSlot>(… ??
+    // "NIDA_FRONT"); const [zoom, setZoom] = useState<` read as one long "text child" and four
+    // perfectly correct files were flagged. `;` and `=` are what separate the two: they end
+    // statements and bind names, and JSX display text does neither.
+    for (const m of clean.matchAll(/>([^<>{}=;]{2,160})</g)) if (ARM.test(m[1])) out.push(at(m.index));
+    // ⚠️ AND THE RUN MUST ALSO BE ALLOWED TO START AFTER A `}`. The red harness's token sat one
+    // line below a `{cond ? <A/> : <B/>}` expression child, so the nearest preceding character
+    // was a closing brace, not a `>` — and a `>`-only opener missed the SAME mutation twice.
+    // `{expr}Text<` is ordinary JSX.
+    //
+    // ⛔ BUT `}` … `{` IS ALSO THE COMMONEST SHAPE IN PLAIN CODE, and letting it close on `{`
+    // flagged six correct files in one run — a union type's arms, the receipt's chip map, the
+    // provider catalogue, `notifyKyc`'s signature. So this second pass closes on `<` ONLY, and
+    // refuses a run carrying `:` `"` or `'`: an object key, a type annotation and a string
+    // literal all need one of those, and JSX display text needs none of them.
+    for (const m of clean.matchAll(/\}([^<>{}=;:"']{2,160})</g)) if (ARM.test(m[1])) out.push(at(m.index));
+    for (const m of clean.matchAll(
+      /\b(?:label|title|sw|heading|placeholder|aria-label|subtitle|caption|hint|help|message|detail|body|summary)\s*[:=]\s*(["'])([^"']{2,200})\1/g,
+    )) if (ARM.test(m[2])) out.push(at(m.index));
+    return out;
+  }
+
+  /**
+   * ⛔ DECIDED, WITH ITS REASON — this is not a place to park a defect.
+   *
+   * The AML policy tells a regulator, in all three locales, that a held withdrawal sits in
+   * `AML_REVIEW` status, in the `font-mono` code voice. That is a QUOTED IDENTIFIER, not a
+   * label: the whole point is that the word in the policy matches the word in the console, so
+   * translating it would break the match the document exists to make. One file, three lines
+   * (en · sw · zh), and the list may only shrink.
+   */
+  const LITERAL_ARM_OK = new Map<string, string>([
+    ["src/app/legal/aml/page.tsx",
+     "the AML policy quotes the system's own withdrawal status so a regulator can match policy to console"],
+  ]);
+
+  const armHits: string[] = [];
+  let armExempt = 0;
+  for (const f of walk(SRC)) {
+    const rel = f.slice(ROOT.length + 1).replace(/\\/g, "/");
+    const lines = literalArmHits(readFileSync(f, "utf8"));
+    if (lines.length === 0) continue;
+    if (LITERAL_ARM_OK.has(rel)) { armExempt += lines.length; continue; }
+    armHits.push(`${rel}:${lines.join(",")}`);
+  }
+  check("§11b no enum arm is typed out where a person reads it",
+    armHits.length === 0,
+    armHits.length ? `${armHits.join(" · ")} — put the word in admin-status-lexicon.ts` : "");
+  check("§11b the exemption list is not carrying a file that is already clean",
+    armExempt > 0 || LITERAL_ARM_OK.size === 0,
+    "an entry in LITERAL_ARM_OK no longer matches anything — delete it so the list keeps shrinking");
+
+  // ── §11c · §3's prose rule, extended into the console ────────────────────
+  /**
+   * §3 refuses to scan `app/admin` / `components/admin`. §11c scans exactly those, with the
+   * SAME predicate — so an enum interpolated into an officer's sentence fails here.
+   *
+   * ⛔ AND IT STOPS AT `.tsx`, DELIBERATELY. §3's own header says why: a single-language
+   * server-action refusal (`Cannot suspend — the account is ${target.status}.`) belongs to
+   * `FAILURE-INVENTORY.md` §1.5's raw-server-string ratchet, and two guards owning one rule is
+   * how they drift apart. `.tsx` under those two trees is what an officer READS on a screen;
+   * `actions.ts` is what they read in a toast, and that one already has an owner.
+   */
+  /**
+   * ⛔ A `fetch` RESPONSE'S `.status` IS AN HTTP NUMBER, NOT A DOMAIN ENUM, and this one is
+   * the reason the exclusion is proved rather than assumed. `ENUM_WORD` matches the *word*
+   * `status`, so `` `Server returned ${res.status}` `` read as an enum in a sentence — and it
+   * is a 500, which is precisely the right thing to put in that sentence.
+   *
+   * ⚠️ A BLANKET `res.status` EXCLUSION WOULD BE A BLIND SPOT, and the repo proves it:
+   * `updown-result-announcer.tsx` writes `res.status === "WIN"` and
+   * `stress-regulator-grade/route.ts` writes `res.status === "fulfilled"` — the same receiver
+   * name carrying a real enum. So the exclusion is not on the NAME: the identifier must be
+   * bound to a `fetch(` call in the same file. That is a fact about the code, checkable, and
+   * it goes stale loudly (the binding disappears) rather than quietly.
+   */
+  const httpResponseIds = (src: string) => {
+    const ids = new Set<string>();
+    for (const m of src.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*await\s+fetch\s*\(/g)) ids.add(m[1]);
+    return ids;
+  };
+  const onlyHttpStatus = (lit: string, ids: Set<string>) => {
+    if (ids.size === 0) return false;
+    const exprs = [...lit.replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, '""').matchAll(/\$\{([^}]*)\}/g)].map((m) => m[1]);
+    const enumish = exprs.filter(exprCarriesEnum);
+    return enumish.length > 0 && enumish.every((e) => {
+      const m = /^\s*([A-Za-z_$][\w$]*)\.status\s*$/.exec(e);
+      return !!m && ids.has(m[1]);
+    });
+  };
+
+  /**
+   * ⛔ MEASURED 2026-08-21, AND THE NUMBER MAY ONLY EVER FALL. Five sites, each with its
+   * verdict — a ratchet that does not say WHY an entry is here becomes a list nobody dares
+   * shrink:
+   *   · `config/fee-simulator.tsx` — `Stake on ${side}` where `side` is a local
+   *     `useState<"YES" | "NO">` on a provably poll-only simulator (`yesPool`/`noPool`).
+   *     Correct English today. It is here because the token and the word coincide for
+   *     `MarketSide` in EN, which is a coincidence, not a rule (§8's whole lesson).
+   *   · `insights/page.tsx` — the volume-chart tooltip appends `${m.status}`, so an officer
+   *     hovering a bar reads "· RESOLVED" in database spelling. LIFECYCLE already holds the
+   *     word. A live, visible defect.
+   *   · the RESOLVER, 7 sites across 4 files — the seal chip, the settled banner, the stage-1
+   *     and stage-2 toasts, the result modal, the queue's "confirm …" hint and the confirm
+   *     button's own verb all interpolate the raw verdict ("SEALED · YES", "Sealed NO",
+   *     "Verdict recorded · VOIDED", "Settle YES"). Latent while the resolver serves polls
+   *     only; wrong the day it serves an Up & Down round, where the word is UP/DOWN and
+   *     never YES/NO.
+   *
+   * ⚠️ THE FIRST DRAFT OF THIS LIST HELD FIVE ENTRIES, NOT NINE, AND THE MISSING FOUR WERE MY
+   * OWN REPORTING BUG: the section printed `hits.slice(0, 8)` and I built the ratchet from what
+   * I could see. Truncated output is not an inventory. The grouping below prints every file
+   * that exceeds its entry, with no cap.
+   */
+  const ADMIN_PROSE_RATCHET = new Map<string, number>([
+    ["src/app/admin/config/fee-simulator.tsx", 1],
+    ["src/app/admin/insights/page.tsx", 1],
+    ["src/app/admin/resolver/[id]/page.tsx", 2],
+    ["src/app/admin/resolver/[id]/resolution-ceremony.tsx", 1],
+    ["src/app/admin/resolver-queue/page.tsx", 1],
+    ["src/app/admin/resolver-queue/resolve-controls.tsx", 4],
+  ]);
+
+  const adminProse = new Map<string, string[]>();
+  let adminFilesScanned = 0;
+  for (const f of files) {
+    const rel = f.slice(ROOT.length + 1).replace(/\\/g, "/");
+    if (!/^src\/(app\/admin|components\/admin)\//.test(rel) || !rel.endsWith(".tsx")) continue;
+    adminFilesScanned++;
+    const src = stripComments(readFileSync(f, "utf8"));
+    const httpIds = httpResponseIds(src);
+    for (const m of src.matchAll(/`(?:[^`\\]|\\.)*`/g)) {
+      const before = src.slice(Math.max(0, m.index - 90), m.index);
+      if (!templateInterpolatesEnum(m[0], before)) continue;
+      if (onlyHttpStatus(m[0], httpIds)) continue;
+      const rec = adminProse.get(rel) ?? [];
+      rec.push(src.slice(0, m.index).split("\n").length.toString());
+      adminProse.set(rel, rec);
+    }
+  }
+  const proseOver: string[] = [];
+  const proseStale: string[] = [];
+  for (const [rel, lines] of adminProse) {
+    const allowed = ADMIN_PROSE_RATCHET.get(rel) ?? 0;
+    if (lines.length > allowed) proseOver.push(`${rel}:${lines.join(",")} (${lines.length} > ${allowed})`);
+  }
+  for (const [rel, n] of ADMIN_PROSE_RATCHET) {
+    const now = adminProse.get(rel)?.length ?? 0;
+    if (now === 0) proseStale.push(`${rel} (now clean — delete the entry)`);
+    else if (now < n) log(`  NOTE §11c ${rel} is down to ${now} — lower its ratchet entry.`);
+  }
+  check("§11c the console is scanned at all — the gap this section closes",
+    adminFilesScanned > 40, `only ${adminFilesScanned} admin tsx files reached`);
+  check("§11c no NEW enum is interpolated into a sentence an officer reads",
+    proseOver.length === 0, proseOver.join(" · "));
+  check("§11c the console-prose ratchet holds no stale entries", proseStale.length === 0, proseStale.join(", "));
+  const proseTotal = [...adminProse.values()].reduce((n, l) => n + l.length, 0);
+  log(`  NOTE §11c ${proseTotal} enum-in-a-sentence site(s) remain in the console, across ${adminProse.size} file(s) — the number may only fall.`);
+
+  // ── §11d · POSITIVE CONTROLS, both directions ────────────────────────────
+  log("");
+  check("§11d de-underscore scanner rejects the withdraw dialog's old `provider.replace(/_/g, \" \")`",
+    deUnderscoreHits('const label = providerRaw.replace(/_/g, " ");').length === 1);
+  check("§11d …and the `.split(\"_\")` spelling of the same defect",
+    deUnderscoreHits('segments.push({ label: p.provider.split("_")[0] });').length === 1);
+  check("§11d …and `replaceAll`, which no earlier draft matched",
+    deUnderscoreHits('const l = t.replaceAll("_", " ");').length === 1);
+  check("§11d de-underscore scanner ACCEPTS base64url decoding (`_` → `/`, a codec)",
+    deUnderscoreHits('const std = s.replace(/-/g, "+").replace(/_/g, "/");').length === 0);
+  check("§11d de-underscore scanner ACCEPTS a comment that quotes the defect it removed",
+    deUnderscoreHits('// this used to render provider.replace(/_/g, " ") — see §11a').length === 0);
+
+  check("§11d literal-arm scanner rejects `<Chip>PENDING_REVIEW</Chip>`",
+    literalArmHits("<Chip size=\"sm\">PENDING_REVIEW</Chip>").length === 1);
+  check("§11d literal-arm scanner rejects an arm in a label field",
+    literalArmHits('{ label: "SELF_EXCLUDED", value: n }').length === 1);
+  check("§11d literal-arm scanner rejects a token on its OWN LINE inside a chip",
+    literalArmHits("<Chip size=\"sm\" variant={v}>\n  KYC · PENDING_REVIEW\n</Chip>").length === 1,
+    "the newline-spanning text child is the shape that made the first draft of §11b decoration");
+  check("§11d literal-arm scanner ACCEPTS a generic + arrow run that merely spans a `>` and a `<`",
+    literalArmHits('const [a, setA] = useState<Slot>(first?.type ?? "NIDA_FRONT");\n  const b = xs.map((p) => p.n);\n  return (\n    <>').length === 0,
+    "four correct files were flagged by exactly this before `=` and `;` bounded the run");
+  check("§11d literal-arm scanner ACCEPTS an env var name — an ops page must spell it exactly",
+    literalArmHits("<code>DATABASE_URL</code> is not set").length === 0);
+  check("§11d literal-arm scanner ACCEPTS the enum doing its job in code",
+    literalArmHits('if (kyc.status === "PENDING_REVIEW") return null;').length === 0);
+  check("§11d literal-arm scanner ACCEPTS an <option value> carrying the arm",
+    literalArmHits('<option value="ADDITIONAL_INFO_REQUIRED">More information needed</option>').length === 0);
+
+  check("§11d prose scanner ACCEPTS a color-mix() paint instruction naming `status`",
+    !templateInterpolatesEnum("`color-mix(in oklab, ${statusColor(q.status)} 8%, transparent)`"),
+    "poll-actions.tsx paints its status pill this way — a tone is not a word");
+  check("§11d prose scanner still REJECTS the same enum in an actual sentence",
+    templateInterpolatesEnum("`Verdict sealed · ${m.resolvedOutcome} on this market`"),
+    "if this passes, the CSS exclusion has swallowed the rule it was carved out of");
+  {
+    const ids = httpResponseIds("const res = await fetch(`/api/admin/reports/${id}`);");
+    check("§11d the fetch binding is found, so the HTTP exclusion has a premise",
+      ids.has("res"), "no binding found — the exclusion below would be vacuous");
+    check("§11d HTTP exclusion fires on `Server returned ${res.status}` when `res` IS a fetch",
+      onlyHttpStatus("`Server returned ${res.status}`", ids));
+    check("§11d …and does NOT fire when the same name was never bound to fetch",
+      !onlyHttpStatus("`Server returned ${res.status}`", new Set<string>()),
+      "the exclusion must rest on the binding, not on the identifier's name");
+    check("§11d …and does NOT fire on a real enum beside an HTTP status",
+      !onlyHttpStatus("`Server returned ${res.status} for ${m.resolvedOutcome}`", ids),
+      "one excusable expression must not launder the sentence it sits in");
+  }
 }
 
 log(`\n${fail === 0 ? "ALL PASS" : `${fail} FAILED`} — ${LOCALES.length} locales × ${LINES.length} products, ${files.length} files scanned, ${privateMaps.length}/${PRIVATE_MAP_RATCHET} private maps`);

@@ -78,6 +78,82 @@ for (const rel of [...CSS_FILES, ...TSX_FILES]) {
   }
 }
 
+/**
+ * Identifiers that can appear in an `animation` shorthand and are NEVER a keyframe
+ * name. Declared HERE rather than beside check 2.2 (which is its other consumer)
+ * because the JSX reader below runs first and would hit its temporal dead zone.
+ */
+const ANIM_KEYWORDS = new Set([
+  "none", "infinite", "alternate", "alternate-reverse", "reverse", "normal",
+  "forwards", "backwards", "both", "running", "paused",
+  "linear", "ease", "ease-in", "ease-out", "ease-in-out", "step-start", "step-end",
+  "initial", "inherit", "unset", "revert", "revert-layer",
+]);
+
+/* ═══ THE BLIND SPOT THIS FILE DOCUMENTED AND DID NOT READ ═══════════════════
+ * ⛔ `src/components/ui/spinner.tsx`'s own header states the defect in as many
+ * words: *"`test:keyframes` finds consumers by scanning for `animation:` followed
+ * by a name, and its capture class excludes the quote character — so an animation
+ * written in a JSX style attribute registers as NO consumer at all."* It was
+ * right, and it stayed right. Measured on 2026-08-21 the registry reported FOUR
+ * names as having no consumer and THREE of them were rendering at that moment:
+ *
+ *     spin       every SubmitButton on the platform — deposit and withdraw included
+ *     toast-bar  the countdown hairline under every toast
+ *     orm-pop    the OperationResultModal crest, i.e. every money confirmation
+ *
+ * ⭐ A "no consumer" line is a DELETION INVITATION, so this was not untidiness: the
+ * registry's standing advice was to delete the spinner every pending button uses.
+ *
+ * ⭐ WHY THE OLD SCAN COULD NOT SEE THEM, precisely — and it is one character.
+ * Its capture class is `[^;}"'` + backtick + `]`, which stops at the first quote.
+ * A CSS declaration (`animation: spin 0.7s linear infinite;`) has no quote after
+ * the colon; a JSX one (`animation: "spin 0.7s linear infinite"`) is nothing BUT
+ * a quote after the colon. The corpus split cleanly in two and half of it was
+ * invisible — the same shape as `test:bridge`'s class regex listing `/` as a legal
+ * terminator, which hid 577 usages for its whole life.
+ */
+type JsxAnim = { file: string; line: number; raw: string; name: string | null; infinite: boolean };
+
+/**
+ * Every `animation:` / `animationName:` written as a QUOTED value — i.e. in a JSX
+ * style object rather than in CSS. Both string forms and the template-literal form
+ * are read, because `toast.tsx` interpolates the duration into its.
+ *
+ * ⛔ COMMENTS ARE BLANKED FIRST AND THAT IS CORRECTNESS, NOT TIDINESS. `spinner.tsx`
+ * explains this very defect inside its JSDoc and writes "`animation:`" followed by a
+ * backtick while doing so; read raw, that sentence parses as a template literal and
+ * the reader invents a keyframe called "` followed by". Blanking preserves byte
+ * offsets so a reported line number still points at the real line.
+ */
+function readJsxAnimations(file: string, text: string): JsxAnim[] {
+  const src = text
+    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "))
+    .replace(/(^|[^:])\/\/[^\n]*/g, (m, p: string) => p + " ".repeat(m.length - p.length));
+  const out: JsxAnim[] = [];
+  for (const m of src.matchAll(/\banimation(Name)?\s*:\s*(`[^`]*`|"[^"]*"|'[^']*')/g)) {
+    const raw = m[2].slice(1, -1);
+    // `${…}` is data (toast durations); `var(…)` / `cubic-bezier(…)` are not names.
+    const flat = raw.replace(/\$\{[^}]*\}/g, " ").replace(/\b[\w-]*\([^()]*\)/g, " ");
+    const words = flat.split(/\s+/).filter(Boolean);
+    const name = m[1] === "Name"
+      ? (words[0] ?? null)
+      : (words.find((w) => /^[A-Za-z_-][\w-]*$/.test(w) && !ANIM_KEYWORDS.has(w)) ?? null);
+    out.push({
+      file,
+      line: src.slice(0, m.index!).split("\n").length,
+      raw,
+      name,
+      infinite: /\binfinite\b/.test(raw),
+    });
+  }
+  return out;
+}
+
+const jsxAnims: JsxAnim[] = [];
+for (const rel of TSX_FILES) jsxAnims.push(...readJsxAnimations(rel, readFileSync(`${ROOT}/${rel}`, "utf8")));
+for (const a of jsxAnims) if (a.name) referenced.add(a.name);
+
 let failed = parseFailures;
 const say = (ok: boolean, msg: string) => { console.log(`  ${ok ? "ok  " : "FAIL"} ${msg}`); if (!ok) failed++; };
 
@@ -128,15 +204,10 @@ for (const d of badOverrides) console.log(`         ${d.file}:${d.line}  ${d.nam
  * never run. ⛔ A filter written to avoid false positives had bought a false negative.
  *
  * ⭐ The fix is to name the KEYWORDS instead of the names. Every identifier in an
- * `animation` shorthand is either one of the fixed set below, or it is a keyframe name —
- * and a keyframe name referenced at top level must be DEFINED at top level.
+ * `animation` shorthand is either one of `ANIM_KEYWORDS` — declared at the top of this
+ * file, because the JSX reader needs the same set and runs earlier — or it is a keyframe
+ * name, and a keyframe name referenced at top level must be DEFINED at top level.
  */
-const ANIM_KEYWORDS = new Set([
-  "none", "infinite", "alternate", "alternate-reverse", "reverse", "normal",
-  "forwards", "backwards", "both", "running", "paused",
-  "linear", "ease", "ease-in", "ease-out", "ease-in-out", "step-start", "step-end",
-  "initial", "inherit", "unset", "revert", "revert-layer",
-]);
 const topLevelDefined = new Set(topLevel.map((d) => d.name));
 const topLevelRefs: { name: string; file: string; line: number }[] = [];
 for (const rel of CSS_FILES) {
@@ -165,6 +236,81 @@ for (const r of unplayable) {
     : "is not defined ANYWHERE — this animation can never run";
   console.log(`         ${r.file}:${r.line}  "${r.name}" ${where}`);
 }
+
+/**
+ * 2.3 — ⭐ THE JSX READER FOUND THE THING IT MEANT TO FIND.
+ *
+ * ⛔ THIS CHECK EXISTS BECAUSE OF E-108's LESSON, NOT BECAUSE OF A TIDINESS URGE:
+ * *a guard and its own red proof can agree with each other and both be wrong.* Two
+ * guards once located the current handoff with a pattern no handoff had used since
+ * session 23, validated a block from session ~16, and stayed green — while the RED
+ * harness mutated the same dead block. A reader that silently matches NOTHING passes
+ * every downstream check it feeds, and 2.4 below would report "all clear" over a
+ * corpus it never opened.
+ *
+ * So the reader is PINNED to sites measured on 2026-08-21. Each pin is a file plus the
+ * keyframe name that file's inline style must still name. If a regex here is ever
+ * loosened or tightened by accident, the pins vanish and this line goes red naming the
+ * file, instead of 2.4 quietly agreeing that everything is fine.
+ *
+ * ⚠️ A PIN IS A RATCHET ENTRY, NOT A LAW. If a site legitimately moves onto a class
+ * (which is the direction this campaign wants — a class is gateable, an inline style is
+ * not), DELETE its pin in the same change. The list may shrink; it may not silently rot.
+ */
+const JSX_PINS: { file: string; name: string; why: string }[] = [
+  { file: "src/components/ui/spinner.tsx", name: "spin", why: "every SubmitButton on the platform" },
+  { file: "src/components/ui/toast.tsx", name: "toast-bar", why: "the countdown hairline under every toast" },
+  { file: "src/components/markets/operation-result-modal.tsx", name: "orm-pop", why: "every money confirmation's crest" },
+  // `date-select.tsx::cd-rise` LEFT THIS LIST on 2026-08-21 — the site moved onto the kit
+  // class `.m-dialog-in`, which is what a pin leaving is supposed to look like.
+];
+const missedPins = JSX_PINS.filter((p) => !jsxAnims.some((a) => a.file === p.file && a.name === p.name));
+say(missedPins.length === 0, `2.3 ⭐ the JSX inline-style reader still finds all ${JSX_PINS.length} pinned sites (a reader that matches nothing passes everything)`);
+for (const p of missedPins) {
+  console.log(`         ${p.file} no longer yields "${p.name}" — ${p.why}`);
+  console.log(`             either the reader's regex broke, or the site moved onto a class. If it moved, DELETE this pin.`);
+}
+
+/**
+ * 2.4 — 🔴 A KEYFRAME NAMED FROM JSX MUST BE DEFINED AT TOP LEVEL. Same law as 2.2,
+ * over the half of the corpus 2.2 cannot see. An inline `style` attribute is the most
+ * top-level context there is — it carries no media query and no `[data-motion]` — so a
+ * name it references that exists only inside a reduced-motion branch plays for reduce
+ * users and nobody else, and a name that exists nowhere plays for nobody at all.
+ *
+ * ⛔ AND IT FOUND ONE ON ITS FIRST RUN, IN A LIVE DIALOG. `date-select.tsx:349` renders
+ * the portalled date-picker with `style={{ animation: "cd-rise var(--t-base)
+ * var(--ease-arrive)" }}` and there is **no `@keyframes cd-rise` anywhere in `src/`** —
+ * the only other occurrence of the name in the whole repo is a line in
+ * `docs/SESSION-PROMPT-DESIGN-PERFECTION.md` proposing that `cd-rise` be replaced by
+ * `.m-dialog-in` and *"delete both"*. Half of that instruction was carried out. So the
+ * dialog every DateSelect on the platform opens has no entrance at all, and the four
+ * things that would normally catch a broken animation cannot: `tsc` does not read CSS
+ * strings, the build does not resolve keyframe names, a screenshot of a settled dialog
+ * looks correct, and until this line existed no gate read a JSX style attribute.
+ *
+ * ✅ AND IT WAS FIXED THE SAME DAY IT WAS FOUND. The dialog now carries `.m-dialog-in`,
+ * the kit's modal arrival — one entrance, already branched for all three reduce-motion
+ * gates, which a bespoke keyframe would have had to re-earn. The baseline below is
+ * EMPTY, which is the state it is supposed to reach: it may only shrink, and check 2.5
+ * fails the moment an entry outlives the defect it names — that is what told me to
+ * empty it rather than leaving a stale line behind a passing suite.
+ */
+const JSX_UNDEFINED_BASELINE = new Set<string>([]);
+const jsxUnplayable = jsxAnims.filter((a) => a.name && !topLevelDefined.has(a.name));
+const jsxNew = jsxUnplayable.filter((a) => !JSX_UNDEFINED_BASELINE.has(`${a.file}::${a.name}`));
+say(jsxNew.length === 0, `2.4 ⭐ every keyframe named by a JSX inline style is DEFINED at top level (baseline: ${JSX_UNDEFINED_BASELINE.size}, may only shrink)`);
+for (const a of jsxNew) {
+  const where = names.has(a.name!)
+    ? "exists ONLY inside an at-rule branch — an inline style is in no branch, so it never plays"
+    : "is not defined ANYWHERE — this animation can never run";
+  console.log(`         ${a.file}:${a.line}  "${a.name}" ${where}   (value: ${a.raw})`);
+}
+const staleJsxBaseline = [...JSX_UNDEFINED_BASELINE].filter(
+  (k) => !jsxUnplayable.some((a) => `${a.file}::${a.name}` === k),
+);
+say(staleJsxBaseline.length === 0, `2.5 the 2.4 baseline holds no stale entries (a fixed site must leave the list)`);
+for (const k of staleJsxBaseline) console.log(`         "${k}" is no longer undefined — delete it from JSX_UNDEFINED_BASELINE`);
 
 /* ═══ 3 · THE MATERIAL COMMISSION'S OWN NAMES ════════════════════════════════
    ⭐ Pinned by NAME, so this gate says which atom regressed rather than "a
@@ -219,9 +365,23 @@ say(sgOk, `3.3 ⭐ shimmer-gilt writes a background-position PER LAYER (one valu
    consumers arrive with §C — INTAKE §3 step 2 asks for exactly that — so failing on
    "no consumer" would fail the integration ORDER the playbook prescribes. It is
    printed instead, and the number must fall as §C and the component atoms land. */
+/* ⭐ AND THIS LINE IS ONLY TRUSTWORTHY BECAUSE `referenced` NOW INCLUDES THE JSX
+   CORPUS. Before 2026-08-21 it read 4 and three of the four were live — see the
+   block comment above `readJsxAnimations`. If a name below surprises you, check
+   whether it is written into a `style` attribute before you delete anything. */
 const dead = [...names].filter((n) => !referenced.has(n)).sort();
 console.log(`\n  names with no consumer yet: ${dead.length}  (⚠️ printed, not failed — §B lands before §C by design)`);
 for (const n of dead) console.log(`      · ${n}${ATOM_B_NEW.includes(n) ? "   ← ATOM B, consumer arrives with §C" : ""}`);
+
+/* ⚠️ THE JSX HALF OF THE CORPUS, NAMED. An inline `style` animation cannot be reached
+   by `[data-motion="reduced"]` — there is no selector to hang the override on — so it
+   is only ever stopped by the two universal clamps. `test:reduce-motion` §2.4 is the
+   gate that holds that line; this is the inventory. */
+console.log(`\n  animations written in a JSX style attribute: ${jsxAnims.length}` +
+  `  (invisible to every motion gate in this repo until 2026-08-21)`);
+for (const a of jsxAnims.sort((x, y) => x.file.localeCompare(y.file))) {
+  console.log(`      · ${a.file}:${a.line}  ${a.name ?? "⛔ no name parsed"}${a.infinite ? "   ← INFINITE" : ""}`);
+}
 const perFile = new Map<string, number>();
 for (const d of defs) perFile.set(d.file, (perFile.get(d.file) ?? 0) + 1);
 console.log(`\n  definitions per file:`);

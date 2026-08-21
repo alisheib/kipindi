@@ -71,7 +71,7 @@ export type CalloutTone =
 // carried by the BORDER (`-border` vs `-fg`), which is what the note above
 // already argues. ⛔ Never re-add a modifier to a pre-mixed token — reach for a
 // second token instead. brand/danger/success below sit on OPAQUE tokens
-// (`--gold-500`, `--no-500`, `--yes-500`), so their modifiers are correct.
+// (`--gold-500`, `--danger-500`, `--success`), so their modifiers are correct.
 //
 // `panel` is the OPAQUE form of the same tone — the tint mixed against
 // `--bg-elevated` instead of composited over whatever happens to be behind. A
@@ -109,17 +109,33 @@ const TONE: Record<CalloutTone, ToneSpec> = {
   },
   brand: GILT,
   gold: GILT,
+  // 🔴 D2 (2026-08-21, owner ruling) — THESE TWO USED TO BE THE BETTING PAIR.
+  // `danger` was `--no-500` and `success` was `--yes-500`, so a Callout reading
+  // "We couldn't verify that document" was painted in the ink that means A LOST
+  // BET, and "Limits saved" in the ink that means money is riding on YES. §B2
+  // forbids reusing the betting pair for a non-money meaning; the kit's own
+  // notice component was the widest breach of it in the product.
+  // ⛔ Both now read the SEMANTIC families, which is what every other tone here
+  // already did (`warning` → `--warning-*`, `info` → `--info-*`). The rose stays
+  // rose and the green is a jade at hue 166, not the betting 152 — the change a
+  // player SEES is a calmer, cooler confirmation box; an error box barely moves.
+  // ⛔ A Callout is never the right home for a betting outcome. If you need to
+  // say "your YES bet won", that is a money surface and it keeps `--yes-*`.
+  // Border alphas were picked to HOLD the old weights, not inherited blindly:
+  // `border-success/60` reads 2.47:1 against `--bg-elevated` where the old
+  // opaque `border-yes-700` read 2.53; `border-danger-500/50` holds the old
+  // `border-no-500/40`. Ink on the tint: success 9.23:1 worst, danger 7.68:1.
   danger: {
-    box: "border-no-500/40 bg-no-500/10", strongBox: "border-no-500 bg-no-500/15", icon: "text-no-300", glyph: "alertCircle",
-    panel: { bg: "color-mix(in oklab, var(--no-500) 10%, var(--bg-elevated))", border: "color-mix(in oklab, var(--no-500) 40%, var(--border))" },
-    fg: "var(--no-300)",
+    box: "border-danger-500/50 bg-danger-500/10", strongBox: "border-danger-500 bg-danger-500/15", icon: "text-danger-fg", glyph: "alertCircle",
+    panel: { bg: "color-mix(in oklab, var(--danger-500) 10%, var(--bg-elevated))", border: "color-mix(in oklab, var(--danger-500) 40%, var(--border))" },
+    fg: "var(--danger-fg)",
   },
   // DS sweep (2026-08-08) — the confirmation family. Several pages hand-rolled
   // this exact green box (RG "limits saved" was the flagged one); one home now.
   success: {
-    box: "border-yes-700 bg-yes-500/10", strongBox: "border-yes-500 bg-yes-500/15", icon: "text-yes-300", glyph: "checkCircle",
-    panel: { bg: "color-mix(in oklab, var(--yes-500) 10%, var(--bg-elevated))", border: "color-mix(in oklab, var(--yes-500) 40%, var(--border))" },
-    fg: "var(--yes-300)",
+    box: "border-success/60 bg-success/10", strongBox: "border-success bg-success/15", icon: "text-success-fg", glyph: "checkCircle",
+    panel: { bg: "color-mix(in oklab, var(--success) 10%, var(--bg-elevated))", border: "color-mix(in oklab, var(--success) 40%, var(--border))" },
+    fg: "var(--success-fg)",
   },
   // "Back shortly" — deliberately amber and NEVER the NO-rose danger hue, so a
   // player cannot read a scheduled pause as a failure. The pause glyph (not a

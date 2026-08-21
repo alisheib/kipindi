@@ -116,6 +116,70 @@ for (const rel of TSX_FILES) {
   }
 }
 
+/* ═══ THE THIRD HALF OF THE CORPUS — A JSX `style` ATTRIBUTE ═════════════════
+ * ⛔ THE HEADER ABOVE ALREADY CELEBRATED READING `<style>` BLOCKS AND THAT WAS STILL
+ * ONLY TWO THIRDS OF THE PROBLEM. Three infinite loops once lived in inline `style`
+ * attributes — one of them rendering on `/live`, a player board — and no motion gate
+ * in this repo could see any of them, because every one of them parses CSS. Stage 6
+ * moved those three onto classes inside `<style>` blocks, which fixed the three and
+ * left the HOLE exactly as wide as it was: the next inline loop hides the same way.
+ *
+ * ⭐ AND AN INLINE LOOP IS NOT MERELY UNSEEN — IT IS UNGATEABLE. The third gate works
+ * by selector (`[data-motion="reduced"] .thing { animation: none }`). An inline style
+ * has no selector to hang an override on, and specificity puts it above any class rule
+ * that tried. So on a low-end Android — the device this product is built for — an
+ * inline `infinite` keeps running no matter what §6's list says. The only two things
+ * that reach it are the universal `!important` clamps, i.e. the OS media query and the
+ * explicit "Reduce motion" switch. `reduced` cannot touch it.
+ *
+ * ⚠️ THIS READER IS A DELIBERATE SECOND COPY of the one in `keyframe-registry.test.mts`,
+ * and the duplication is recorded rather than hidden. `scripts/` may not gain a shared
+ * module in this change (file ownership), and the E-108 repair — four copies of one
+ * locator, each fixed once and handing the bug back to the others — is why BOTH copies
+ * carry pinned sites (§2.5 here, §2.3 there). A copy that silently stops matching goes
+ * red on its own pins instead of quietly agreeing that all is well.
+ */
+type JsxAnim = { file: string; line: number; raw: string; name: string | null; infinite: boolean };
+
+const ANIM_KEYWORDS = new Set([
+  "none", "infinite", "alternate", "alternate-reverse", "reverse", "normal",
+  "forwards", "backwards", "both", "running", "paused",
+  "linear", "ease", "ease-in", "ease-out", "ease-in-out", "step-start", "step-end",
+  "initial", "inherit", "unset", "revert", "revert-layer",
+]);
+
+/**
+ * Every `animation:` / `animationName:` written as a QUOTED value — which is exactly
+ * what distinguishes a JSX style object from CSS. A CSS declaration has no quote after
+ * the colon; a JSX one is nothing but a quote after the colon.
+ *
+ * ⛔ COMMENTS ARE BLANKED FIRST, AND NOT FOR TIDINESS. `spinner.tsx` explains this very
+ * defect inside its JSDoc and writes "`animation:`" followed by a backtick while doing
+ * so; read raw, that sentence parses as a template literal and the reader invents a
+ * keyframe called "` followed by". Blanking preserves byte offsets, so a reported line
+ * number still points at the real line — this is the same lesson as §2.2's corpus, where
+ * a class named in an EXPLANATION made a dead gate entry read as live.
+ */
+function readJsxAnimations(file: string, text: string): JsxAnim[] {
+  const src = text
+    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "))
+    .replace(/(^|[^:])\/\/[^\n]*/g, (m, p: string) => p + " ".repeat(m.length - p.length));
+  const out: JsxAnim[] = [];
+  for (const m of src.matchAll(/\banimation(Name)?\s*:\s*(`[^`]*`|"[^"]*"|'[^']*')/g)) {
+    const raw = m[2].slice(1, -1);
+    const flat = raw.replace(/\$\{[^}]*\}/g, " ").replace(/\b[\w-]*\([^()]*\)/g, " ");
+    const words = flat.split(/\s+/).filter(Boolean);
+    const name = m[1] === "Name"
+      ? (words[0] ?? null)
+      : (words.find((w) => /^[A-Za-z_-][\w-]*$/.test(w) && !ANIM_KEYWORDS.has(w)) ?? null);
+    out.push({ file, line: src.slice(0, m.index!).split("\n").length, raw, name, infinite: /\binfinite\b/.test(raw) });
+  }
+  return out;
+}
+
+const jsxAnims: JsxAnim[] = [];
+for (const rel of TSX_FILES) jsxAnims.push(...readJsxAnimations(rel, readFileSync(`${ROOT}/${rel}`, "utf8")));
+
 let failed = parseFailures;
 const say = (ok: boolean, msg: string) => { console.log(`  ${ok ? "ok  " : "FAIL"} ${msg}`); if (!ok) failed++; };
 console.log(`\nM6 — three gates · ${CSS_FILES.length} stylesheet(s) + ${TSX_FILES.length} component file(s) · ${rules.length} rules\n`);
@@ -356,6 +420,79 @@ const staleKept = KEPT.filter((k) => !loops.some((r) => namedBy([k.sel], r.sel))
 say(staleKept.length === 0, `2.3 the KEPT list holds no stale entries (it may only SHRINK)`);
 for (const k of staleKept) console.log(`         "${k.sel}" no longer names an infinite loop; delete the exemption`);
 
+/* ═══ RULE 2b — THE HALF OF THE CORPUS NO SELECTOR CAN REACH ════════════════ */
+
+/**
+ * 2.4 — ⭐ THE JSX READER FOUND THE THING IT MEANT TO FIND, and this line comes FIRST
+ * on purpose. E-108's lesson is that a guard and its own red proof can agree with each
+ * other and both be wrong: two guards located a handoff with a pattern nothing had used
+ * since session 23, validated a block from session ~16, and stayed green — while the RED
+ * harness mutated the same dead block. A reader that matches NOTHING makes 2.5 below
+ * report a clean sweep over a corpus it never opened.
+ *
+ * So the reader is PINNED to sites measured 2026-08-21, file plus keyframe name. If a
+ * regex is ever loosened or tightened by accident the pins vanish and this line names
+ * the file. ⚠️ A pin is a RATCHET ENTRY, not a law: moving a site onto a class is the
+ * direction this campaign wants (a class is gateable, an inline style is not), and doing
+ * so means DELETING its pin in the same change. The list may shrink; it may not rot.
+ */
+const JSX_PINS: { file: string; name: string; why: string }[] = [
+  { file: "src/components/ui/spinner.tsx", name: "spin", why: "the one inline loop we keep — see JSX_KEPT" },
+  { file: "src/components/ui/toast.tsx", name: "toast-bar", why: "one-shot: the countdown hairline under every toast" },
+  { file: "src/components/markets/operation-result-modal.tsx", name: "orm-pop", why: "one-shot: every money confirmation's crest" },
+  { file: "src/components/ui/date-select.tsx", name: "cd-rise", why: "one-shot: the date-picker dialog's entrance" },
+];
+const missedPins = JSX_PINS.filter((p) => !jsxAnims.some((a) => a.file === p.file && a.name === p.name));
+say(missedPins.length === 0, `2.4 ⭐ the JSX inline-style reader still finds all ${JSX_PINS.length} pinned sites (a reader that matches nothing passes everything)`);
+for (const p of missedPins) {
+  console.log(`         ${p.file} no longer yields "${p.name}" — ${p.why}`);
+  console.log(`             either the reader's regex broke, or the site moved onto a class. If it moved, DELETE this pin.`);
+}
+
+/**
+ * 2.5 — ⛔ NO NEW INFINITE ANIMATION MAY BE WRITTEN INTO A JSX `style` ATTRIBUTE.
+ *
+ * This is the gate the blind spot needed. `KEPT` above is an exemption from being
+ * *switched off*; this list is an exemption from being *reachable at all*, which is a
+ * strictly worse thing to be, so it is kept separately and starts at ONE.
+ *
+ * ⭐ WHY THE ONE ENTRY STAYS, IN THE FILE'S OWN WORDS (`spinner.tsx`, §M5/§M6):
+ * the kit Spinner IS the in-flight indicator — the answer to "did my tap land?" — and
+ * it exists only while a real operation is outstanding. The third gate is a THROTTLE for
+ * AMBIENT loops on low-end Android, which is exactly the device where a submit takes
+ * longest; stopping the spinner there turns a slow deposit into a frozen button. The two
+ * hard clamps still reach it (`animation-duration: 0.01ms !important` beats an inline
+ * style), and the stopped ring stays VISIBLE — 0.25 stroke-opacity plus a 90° arc — so
+ * the pending state is never conveyed by motion alone.
+ *
+ * ⛔ AND `button.tsx`'s OWN SPINNER IS NOT AN EXEMPTION AND MUST NOT BECOME ONE. It
+ * spins via Tailwind's `animate-spin` CLASS and sets only `animationDuration` inline,
+ * so it is reachable by a selector and does not appear here. That is the pattern any
+ * new looping element must copy: put the loop on a class, keep the numbers inline.
+ */
+const JSX_KEPT: { file: string; name: string; why: string }[] = [
+  {
+    file: "src/components/ui/spinner.tsx",
+    name: "spin",
+    why: "§M5 names this atom as THE in-flight indicator. Not ambient, not decoration — it exists only while an operation is outstanding, and silence is the wrong answer to \"still working\" on the slowest device. Both universal clamps still reach it and the stopped ring stays visible.",
+  },
+];
+const jsxLoops = jsxAnims.filter((a) => a.infinite);
+const jsxUngated = jsxLoops.filter((a) => !JSX_KEPT.some((k) => k.file === a.file && k.name === a.name));
+say(jsxUngated.length === 0, `2.5 ⭐ no infinite animation is written into a JSX style attribute (${JSX_KEPT.length} kept, list may only SHRINK)`);
+for (const a of jsxUngated) {
+  console.log(`         ${a.file}:${a.line}  animation: "${a.raw}"`);
+  console.log(`             ⛔ an inline style carries no selector, so [data-motion="reduced"] can NEVER stop this.`);
+  console.log(`                Move the loop onto a class and add that class to globals.css §6 — or, if it must`);
+  console.log(`                keep running on a low-end device, add it to JSX_KEPT with the reason written out.`);
+}
+
+// 2.6 — the same ratchet rule as 2.3: an exemption that outlives its loop is how a
+// list quietly stops ratcheting, and it reads exactly like a list that is still true.
+const staleJsxKept = JSX_KEPT.filter((k) => !jsxLoops.some((a) => a.file === k.file && a.name === k.name));
+say(staleJsxKept.length === 0, `2.6 the JSX_KEPT list holds no stale entries (it may only SHRINK)`);
+for (const k of staleJsxKept) console.log(`         ${k.file} no longer runs an inline infinite "${k.name}"; delete the exemption`);
+
 /* ═══ REPORTED, NEVER SILENT ═════════════════════════════════════════════════ */
 // ⚠️ "NAMED BY", NOT "SWITCHED OFF" — and the distinction is not pedantry. Two of
 // these (.live-dot, .cm-status-dot) are named by the third gate in order to be
@@ -371,6 +508,17 @@ const fromTsx = loops.filter((r) => r.file.endsWith(".tsx"));
 console.log(`  found only in an inline <style> block: ${fromTsx.length}` +
   (fromTsx.length ? `  ⭐ a .css-only gate would have called these unlisted` : ""));
 for (const r of fromTsx) console.log(`      · ${r.file}:${r.line}  ${r.sel}`);
+
+/* ⚠️ AND THE THIRD CORPUS, NAMED SEPARATELY BECAUSE IT OBEYS DIFFERENT RULES. These
+   are not rules with selectors; nothing in globals.css §6 can reach them. The count of
+   INFINITE ones is the number that matters, and it is the one 2.5 ratchets. */
+console.log(`\n  animations in a JSX style attribute:    ${jsxAnims.length}` +
+  `  (no selector — only the two universal clamps reach these)`);
+for (const a of jsxAnims.sort((x, y) => x.file.localeCompare(y.file))) {
+  console.log(`      · ${a.file}:${a.line}  ${a.name ?? "⛔ no name parsed"}${a.infinite ? "   ← INFINITE, ungateable at \"reduced\"" : ""}`);
+}
+console.log(`  of those, INFINITE:                    ${jsxLoops.length}  (${JSX_KEPT.length} kept with a reason — the list may only shrink)`);
+for (const k of JSX_KEPT) console.log(`      · ${k.file}  ${k.name}\n          ${k.why}`);
 console.log("");
 console.log(failed ? `M6 — ${failed} check(s) FAILED\n` : `M6 — all checks passed\n`);
 process.exit(failed ? 1 : 0);

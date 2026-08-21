@@ -156,14 +156,19 @@ export default async function LoginPage({
               role="alert"
               className={
                 "flex items-start gap-2.5 rounded-md border px-3.5 py-3 " +
+                /* D2 (2026-08-21): the SEMANTIC families. This panel says "signed out
+                   on another device" / "couldn't sign you in" — app state, never money —
+                   and it used to wear the YES and NO betting inks to say it. The third
+                   arm already read `--warning-*`, which is the pattern the other two
+                   now follow. Alphas hold the old weights within 0.1 of a contrast point. */
                 (errorPanel.tone === "success"
-                  ? "border-yes-700/60 bg-yes-500/[0.10]"
+                  ? "border-success/45 bg-success/[0.10]"
                   : errorPanel.tone === "danger"
-                    ? "border-no-700/60 bg-no-500/[0.10]"
+                    ? "border-danger-500/45 bg-danger-500/[0.10]"
                     : "border-warning-border bg-warning-bg")
               }
             >
-              <span className={"mt-0.5 shrink-0 " + (errorPanel.tone === "success" ? "text-yes-300" : errorPanel.tone === "danger" ? "text-no-300" : "text-gold-300")}>
+              <span className={"mt-0.5 shrink-0 " + (errorPanel.tone === "success" ? "text-success-fg" : errorPanel.tone === "danger" ? "text-danger-fg" : "text-gold-300")}>
                 <I.alertCircle s={16} />
               </span>
               <div className="text-[12.5px] leading-snug">
@@ -211,7 +216,7 @@ export default async function LoginPage({
                 aria-describedby={sp.error === "wrong_credentials" ? "login-error" : undefined}
               />
               {sp.error === "wrong_credentials" && (
-                <p id="login-error" className="mt-1.5 flex items-center gap-1.5 text-[12px] text-no-300 font-medium">
+                <p id="login-error" className="mt-1.5 flex items-center gap-1.5 text-[12px] text-danger-fg font-medium">
                   <I.alertCircle s={13} />
                   {t.auth.wrongCredentials}
                 </p>

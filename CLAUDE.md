@@ -814,7 +814,12 @@ admin config. See `docs/F6-LIQUIDITY-DESIGN.md` §6.1 and the decision doc.
 
 Gold is reserved for **earned money moments only** (kit invariant #2):
 - Place CTA → side-coloured (`btn-yes`/`btn-no`), not gold
-- Confirm CTA → `btn-gold` (the actual money commit)
+- ⚠️ **The line that used to sit here — "Confirm CTA → `btn-gold` (the actual money commit)"
+  — is DELETED (2026-08-21, Ali's ruling D1).** It was a second, contradicting definition of
+  a design fact: `modal.tsx` recorded the exact opposite ("gold is intentionally NOT a
+  confirm-button tone") and the two had been live side by side. **Which confirm wears gold is
+  now stated once, in [`docs/DESIGN_AUTHORITY.md`](docs/DESIGN_AUTHORITY.md) §M3, and nowhere
+  else — including here.** Do not restate it.
 - OperationResultModal strip + button → `stripTone` prop:
   `"gold"` = sell/settlement, `"yes"|"no"` = bet placed, `"brand"` = admin (default)
 - BetConfirmModal quote-hold strip → brand-blue, not gold

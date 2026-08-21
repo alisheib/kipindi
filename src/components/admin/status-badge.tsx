@@ -28,6 +28,7 @@
  */
 import { Chip } from "@/components/ui/chip";
 import { LIFECYCLE, REVIEW, OBJECTION, ACCOUNT, MONEY, PIPELINE, UPDOWN, AUDIT } from "@/lib/admin-status-lexicon";
+import { STATUS_TONE, TONE_CHIP, type StatusChipVariant } from "@/lib/status-tone";
 import { refundReasonFor, type RefundReason } from "@/lib/updown-refund-reason";
 import type { MarketStatus } from "@/lib/server/market-service";
 import type { StoredKyc, StoredTxn, ObjectionStatus } from "@/lib/server/store";
@@ -38,14 +39,30 @@ import type { UpDownProposalState } from "@/lib/server/updown-proposal";
 import type { ChainState, ObservationState } from "@/lib/server/updown-dal";
 import type { AuditCategory } from "@/lib/server/audit";
 
-type ChipVariant = "success" | "gold" | "warning" | "neutral";
-
-/** Canonical variant per lifecycle state (byte-identical to the prior inline
- *  ternary: LIVE→success, RESOLVED→gold, CLOSED→warning, DRAFT/VOIDED→neutral). */
-const VARIANT: Record<MarketStatus, ChipVariant> = {
-  LIVE: "success",
-  RESOLVED: "gold",
-  CLOSED: "warning",
+/**
+ * ⭐ D4 — THE COLOUR COMES FROM THE DICTIONARY, NOT FROM THIS FILE.
+ *
+ * The words already had one definition site (`admin-status-lexicon.ts`); their COLOURS
+ * did not, so the same word was a different colour depending on which file rendered it
+ * — LIVE was red to a player and green here, CLOSED was royal to a player and amber
+ * here — and none of it was written down. `@/lib/status-tone` is now that one site, and
+ * DESIGN_AUTHORITY §B11 is the law. ⛔ Do not re-type a variant below; add the word to
+ * the dictionary.
+ */
+const VARIANT: Record<MarketStatus, StatusChipVariant> = {
+  /** ⛔ GREEN, NOT THE PLAYER'S RED — the ONE kept split, and it is deliberate:
+   *  `STATUS_TONE_EXCEPTIONS.LIVE`. Red in a column beside DRAFT and VOIDED reads as
+   *  an incident; here LIVE means "this market is up". */
+  LIVE: TONE_CHIP[STATUS_TONE.LIVE.admin],
+  /** Soft gilt, not the player's struck seal: an officer reading a hundred rows is not
+   *  being congratulated (§M3/§M7). */
+  RESOLVED: TONE_CHIP[STATUS_TONE.RESOLVED.admin],
+  /** 🔴 WAS AMBER (Ali's ruling, 2026-08-21). Betting is shut and the market is waiting
+   *  to be resolved — nothing is wrong, and amber told an officer otherwise while the
+   *  player's own card called the same state royal. */
+  CLOSED: TONE_CHIP[STATUS_TONE.CLOSED.admin],
+  /** Terminal / not yet begun. Slate is the "inert" tone and is not in the dictionary
+   *  because no other surface disagrees about it. */
   VOIDED: "neutral",
   DRAFT: "neutral",
 };
@@ -76,10 +93,24 @@ export function MarketStatusBadge({
 
 type KycStatus = StoredKyc["status"];
 
-/** Byte-identical to the prior inline ternary: APPROVED→success, REJECTED→danger,
- *  everything mid-review→warning. */
-export function kycStatusVariant(status: KycStatus): "success" | "danger" | "warning" {
-  return status === "APPROVED" ? "success" : status === "REJECTED" ? "danger" : "warning";
+/**
+ * D4. APPROVED → green and REJECTED → rose come from the dictionary; the officer's
+ * decision on a person reads the same word and the same colour everywhere.
+ *
+ * 🔴 `PENDING_REVIEW` WAS AMBER AND IS NOW ROYAL (Ali's ruling, 2026-08-21). A file
+ * sitting in the queue is not a warning — it is the normal state of a queue, and the
+ * player's own KYC card had always called it royal.
+ *
+ * ⚠️ AMBER SURVIVES for the other three, and that is the distinction the ruling draws:
+ * amber now means "an officer must DO something that is not simply waiting" —
+ * `ADDITIONAL_INFO_REQUIRED` (go and ask), `IN_PROGRESS` / `NOT_STARTED` (the player
+ * has not finished, so nothing is queued for review at all).
+ */
+export function kycStatusVariant(status: KycStatus): StatusChipVariant {
+  return status === "APPROVED" ? TONE_CHIP[STATUS_TONE.APPROVED.admin]
+    : status === "REJECTED" ? TONE_CHIP[STATUS_TONE.REJECTED.admin]
+    : status === "PENDING_REVIEW" ? TONE_CHIP[STATUS_TONE.PENDING.admin]
+    : "warning";
 }
 
 /** Human label for a KYC status (replaces the raw screaming enum). */
@@ -101,32 +132,58 @@ export function KycStatusBadge({ status, size = "sm" }: { status: KycStatus; siz
 
 /* ── Player account status (players list + player detail) ────────────────── */
 
-/** Canonical variant per player account status — byte-identical to the map that
- *  was duplicated in `players/page` and `players/[id]`: ACTIVE→success,
- *  PENDING_KYC/COOLED_OFF→warning, SUSPENDED/SELF_EXCLUDED→danger, CLOSED (and any
- *  unknown) → neutral. The two call sites still render their own label (the detail
- *  page prefixes a ● dot), so only the variant map is shared. */
-export function playerStatusVariant(status: string): "success" | "warning" | "danger" | "neutral" {
+/** Canonical variant per player account status, shared by `players/page` and
+ *  `players/[id]`. The two call sites still render their own label (the detail page
+ *  prefixes a ● dot), so only the variant map is shared.
+ *
+ *  🔴 `PENDING_KYC` WAS AMBER AND IS NOW ROYAL (D4, Ali's ruling 2026-08-21) — the
+ *  console painted a PENDING word amber while every player surface painted it royal,
+ *  and amber made a perfectly ordinary un-verified account look like a problem.
+ *
+ *  ⛔ `CLOSED` STAYS SLATE and is NOT swept into "CLOSED is royal": that clause is
+ *  about the market lifecycle stage. A closed ACCOUNT is terminal and inert, and royal
+ *  would give a dead account the tone of a live one — `STATUS_TONE_EXCEPTIONS.CLOSED`.
+ *  `COOLED_OFF` keeps amber: a cooling-off period is a restriction an officer must
+ *  honour, not a queue position. */
+export function playerStatusVariant(status: string): StatusChipVariant {
   return status === "ACTIVE" ? "success"
-    : status === "PENDING_KYC" || status === "COOLED_OFF" ? "warning"
+    : status === "PENDING_KYC" ? TONE_CHIP[STATUS_TONE.PENDING.admin]
+    : status === "COOLED_OFF" ? "warning"
     : status === "SUSPENDED" || status === "SELF_EXCLUDED" ? "danger"
     : "neutral";
 }
 
 /* ── DSAR / privacy-request status (Family 4) ────────────────────────────── */
 
-/** Byte-identical to privacy/page's prior ternary: PENDING→warning,
- *  FULFILLED→success, REJECTED→danger. */
+/** 🔴 `PENDING` WAS AMBER AND IS NOW ROYAL (D4, Ali's ruling 2026-08-21) — the same
+ *  correction as the KYC queue, for the same reason: a request waiting its turn is the
+ *  normal state of a queue, not a warning. FULFILLED→green and REJECTED→rose come from
+ *  the dictionary. */
 export function DsarStatusBadge({ status, size = "sm" }: { status: DsarStatus; size?: "sm" | "md" | "lg" }) {
-  // ⛔ `PARTIAL` HAD TO BE ADDED HERE IN THE SAME COMMIT AS THE STATUS ITSELF. This chain
-  // ended in a bare `: "danger"` / `: REVIEW.dsarRejected.en`, so a request the platform had
-  // partially fulfilled would have rendered as **Rejected** — telling an officer the opposite
-  // of what happened, on the compliance queue, in the one colour that means refused.
-  const variant =
-    status === "PENDING" ? "warning"
-    : status === "PARTIAL" ? "warning"
-    : status === "FULFILLED" ? "success"
-    : "danger";
+  // ⚠️ MERGE RESOLUTION 2026-08-22 — TWO LANES WERE BOTH RIGHT AND NEITHER WAS COMPLETE.
+  //
+  // The design-perfection lane moved this chain onto the status lexicon (D4: PENDING is
+  // ROYAL, not amber — "waiting is not a warning"). The data lane added the `PARTIAL`
+  // status. Each was written without the other, and taking either side alone breaks
+  // something real:
+  //
+  //  · design side alone — `PARTIAL` is not in its chain, so it falls through to the final
+  //    branch and a partially-fulfilled request renders **rose/REJECTED** while the label
+  //    two lines below correctly reads "Partially fulfilled". A chip that says refused over
+  //    a label that says partly done, on the compliance queue, is a false statement about a
+  //    statutory decision — the exact defect the data lane's comment was added to prevent.
+  //  · data side alone — reverts Ali's D4 ruling and puts amber back on a queue.
+  //
+  // Resolved as: the LEXICON is the mechanism (design lane), and `PARTIAL` keeps a branch
+  // (data lane). ⛔ `PARTIAL` takes PENDING's tone deliberately — there is no `PARTIAL` key
+  // in `STATUS_TONE` and it should not be minted for one call site. A partially-fulfilled
+  // DSAR **stays in the queue** (COMPLIANCE-DECISIONS 2026-08-21, item 4), and PENDING is
+  // defined as exactly that: "waiting on a queue".
+  const variant: StatusChipVariant =
+    status === "PENDING" ? TONE_CHIP[STATUS_TONE.PENDING.admin]
+    : status === "PARTIAL" ? TONE_CHIP[STATUS_TONE.PENDING.admin]
+    : status === "FULFILLED" ? TONE_CHIP[STATUS_TONE.APPROVED.admin]
+    : TONE_CHIP[STATUS_TONE.REJECTED.admin];
   const label =
     status === "PENDING" ? REVIEW.dsarPending.en
     : status === "PARTIAL" ? REVIEW.dsarPartial.en
@@ -139,11 +196,16 @@ export function DsarStatusBadge({ status, size = "sm" }: { status: DsarStatus; s
 
 /** OPEN is claret, not neutral: an open objection is FREEZING a market's money,
  *  and the queue must read that way at a glance. Never `objection` (gold) — gold
- *  is earned money only. */
+ *  is earned money only.
+ *
+ *  ⛔ REJECTED IS SLATE HERE AND ROSE IN THE KYC/DSAR QUEUES, AND THAT IS DELIBERATE —
+ *  `STATUS_TONE_EXCEPTIONS.REJECTED`. A rejected objection is a closed file; rose would
+ *  read as though the player had done something wrong by objecting. Do not "harmonise"
+ *  it without reading that entry first. */
 export function ObjectionStatusBadge({ status, size = "sm" }: { status: ObjectionStatus; size?: "sm" | "md" | "lg" }) {
-  const variant =
-    status === "OPEN" ? "claret"
-    : status === "UPHELD" ? "success"
+  const variant: StatusChipVariant =
+    status === "OPEN" ? TONE_CHIP[STATUS_TONE.OPEN.admin]
+    : status === "UPHELD" ? TONE_CHIP[STATUS_TONE.APPROVED.admin]
     : "neutral";
   const label =
     status === "OPEN" ? OBJECTION.open.en

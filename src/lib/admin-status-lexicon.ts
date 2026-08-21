@@ -44,6 +44,20 @@ export function bi(label: AdminLabel): string {
 }
 
 /**
+ * ⭐ THE WORDS ARE HERE. THE COLOURS ARE NOT — THEY ARE IN `@/lib/status-tone` (D4).
+ *
+ * This module gave a status WORD one definition site. Nothing did the same for its
+ * COLOUR, so the same word was painted differently depending on which file happened
+ * to render it — LIVE was red to a player and green in this console, CLOSED and
+ * PENDING were royal to a player and amber here, APPROVED was green in the KYC queue
+ * and a solid gold gradient on /proposals — and not one of the divergences was written
+ * down, so a reader could not tell a decision from a drift.
+ *
+ * `src/lib/status-tone.ts` is now the one home for word × surface × tone, and
+ * DESIGN_AUTHORITY §B11 is the law. ⛔ Do not hand-type a chip variant beside a label
+ * from this file: add the word to that dictionary, and let both surfaces read it.
+ */
+/**
  * FAMILY 3 — two-officer resolution ceremony.
  * Spans ADM1 regulator packs (maker-checker), ADM2 resolver queue + ceremony,
  * and the KYC/AML co-sign gates. All share the same "one officer stages, a
