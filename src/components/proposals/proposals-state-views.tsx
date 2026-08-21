@@ -86,9 +86,9 @@ export function ProposalsBlockedComposer({
 }) {
   const { bg, border, fg, Icon } = toneFor(state);
   return (
-    <div className="flex flex-col items-center rounded-2xl border p-6 text-center sm:p-8" style={{ background: bg, borderColor: border }}>
+    <div className="flex flex-col items-center rounded-card border p-6 text-center sm:p-8" style={{ background: bg, borderColor: border }}>
       <span
-        className="grid h-14 w-14 place-items-center rounded-2xl"
+        className="grid h-14 w-14 place-items-center rounded-control"
         style={{ color: fg, background: "color-mix(in oklab, var(--bg-base) 55%, transparent)", border: `1px solid ${border}` }}
       >
         <Icon s={26} aria-hidden />
@@ -123,8 +123,8 @@ export function ProposalsUnavailable({
   browseLabel: string;
 }) {
   return (
-    <div className="mx-auto flex max-w-[440px] flex-col items-center rounded-2xl border border-dashed border-border bg-bg-elevated/40 px-6 py-12 text-center">
-      <span className="grid h-14 w-14 place-items-center rounded-2xl border border-border text-text-subtle" style={{ background: "var(--bg-overlay)" }}>
+    <div className="mx-auto flex max-w-[440px] flex-col items-center rounded-card border border-dashed border-border bg-bg-elevated/40 px-6 py-12 text-center">
+      <span className="grid h-14 w-14 place-items-center rounded-control border border-border text-text-subtle" style={{ background: "var(--bg-overlay)" }}>
         <I.info s={26} aria-hidden />
       </span>
       <h1 className="mt-4 font-display text-[19px] font-bold leading-snug text-text">{title}</h1>

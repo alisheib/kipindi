@@ -1,8 +1,12 @@
 ﻿/**
- * 50pick custom line-icon family â€” 24px grid Â· 1.9 stroke Â· round joins.
+ * 50pick custom line-icon family — 24px grid · 1.9 stroke · round joins.
  * Ported from Claude Design's Identity Sprint. One coherent heraldic set:
- * categories Â· actions Â· nav Â· status Â· trust + decoratives (crown/shield/seal).
+ * categories · actions · nav · status · trust + decoratives (crown/shield/seal).
  * Pure SVG, dependency-free, currentColor. Use `<I.crypto s={14} />`.
+ *
+ * TWO grids, ONE weight: `G` draws the 24-grid icons, `GL` the 64-grid
+ * empty-state line-arts, and both stroke at 1.9. (The 56-grid badge medallions
+ * in `src/components/badges/icons.tsx` are a separate documented tier at 2.2.)
  */
 import type { SVGProps } from "react";
 
@@ -14,13 +18,19 @@ const G = ({ children, s, size, ...p }: GlyphProps & { children: React.ReactNode
   <svg viewBox="0 0 24 24" width={s ?? size ?? 24} height={s ?? size ?? 24} fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden {...p}>{children}</svg>
 );
 
+/* The ONE 64-grid wrapper — every empty-state line-art uses it.
+ *
+ * ⚠️ There used to be two (`GL` at 1.9 and `G64` at 2.2), so neighbouring empty
+ * states were drawn 16% apart in weight: the markets/positions/leaderboard arts
+ * at 1.9 and the proposals/KYC/fairness/RG/admin arts at 2.2. The kit's own
+ * empty-state note (the BONUS block below) specifies 1.9 — the same weight as
+ * the 24-grid family — so 1.9 is the tier and `G64` is gone.
+ *
+ * The 56-grid BADGE set (`src/components/badges/icons.tsx`) is a DIFFERENT,
+ * deliberate tier at 2.2: those are filled medallions read at ~32–56px, not
+ * line-arts, and they are not neighbours of anything drawn here. */
 const GL = ({ children, s, size, ...p }: GlyphProps & { children: React.ReactNode }) => (
   <svg viewBox="0 0 64 64" width={s ?? size ?? 64} height={s ?? size ?? 64} fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden {...p}>{children}</svg>
-);
-
-/* 64-grid wrapper for the kit's empty-state art (2.2 stroke per glyphs-additions). */
-const G64 = ({ children, s, size, ...p }: GlyphProps & { children: React.ReactNode }) => (
-  <svg viewBox="0 0 64 64" width={s ?? size ?? 64} height={s ?? size ?? 64} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden {...p}>{children}</svg>
 );
 
 const Ibase = {
@@ -65,7 +75,7 @@ const Ibase = {
   sparkle: (p: GlyphProps) => <G {...p}><path d="M12 3.5Q13.1 9.9 19.5 11Q13.1 12.1 12 18.5Q10.9 12.1 4.5 11Q10.9 9.9 12 3.5Z" /><circle cx="18.5" cy="5" r="1.2" fill="currentColor" stroke="none" /></G>,
   star: (p: GlyphProps) => <G {...p}><path d="M12 3L14.3 9.3L21 9.6L15.7 13.7L17.6 20.2L12 16.4L6.4 20.2L8.3 13.7L3 9.6L9.7 9.3Z" /></G>,
   flame2: (p: GlyphProps) => <G {...p}><path d="M12 3c1 3 3 4.5 3 8a3 3 0 1 1-6 0c0-1 .3-1.8.8-2.4C9 11 10 12.5 11 12c-.5-2 .5-7 1-9z" /></G>,
-  /* ---- kit50.jsx extended set â€” replaces lucide-react for consistency ---- */
+  /* ---- kit50.jsx extended set — replaces lucide-react for consistency ---- */
   check: (p: GlyphProps) => <G {...p}><path d="M5 12.5l4.5 4.5L19 7" /></G>,
   x: (p: GlyphProps) => <G {...p}><path d="M6 6l12 12M18 6L6 18" /></G>,
   info: (p: GlyphProps) => <G {...p}><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></G>,
@@ -109,112 +119,108 @@ const Ibase = {
   gift: (p: GlyphProps) => <G {...p}><rect x="3" y="8" width="18" height="4" rx="1" /><path d="M12 8v13M3 12h18v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7" /><path d="M7.5 8C7.5 6 9 4.5 10.5 4.5S12 6 12 8M16.5 8c0-2-1.5-3.5-3-3.5S12 6 12 8" /></G>,
   receipt: (p: GlyphProps) => <G {...p}><path d="M4 2v20l3-2 3 2 3-2 3 2 3-2V2l-3 2-3-2-3 2-3-2z" /><path d="M8 10h8M8 14h5" /></G>,
   coins: (p: GlyphProps) => <G {...p}><circle cx="10" cy="10" r="6" /><path d="M14.5 13.5a6 6 0 1 0 0-7" /><path d="M10 8v4M8.5 10.5h3" /></G>,
-  activity: (p: GlyphProps) => <G {...p}><path d="M3 12h4l3-8 4 16 3-8h4" /></G>,
   ticket: (p: GlyphProps) => <G {...p}><path d="M2 9a3 3 0 0 1 0 6v4h20v-4a3 3 0 0 1 0-6V5H2z" /><path d="M13 5v2M13 17v2M13 11v2" /></G>,
-  /* aliases â€” map lucide naming to kit naming */
+  /* aliases — map lucide naming to kit naming */
   listChecks: (p: GlyphProps) => <G {...p}><path d="M3 6h2.5M3 12h2.5M3 18h2.5M8 6h13M8 12h13M8 18h13" /><path d="M1 5.5l1 1 2-2M1 11.5l1 1 2-2M1 17.5l1 1 2-2" /></G>,
   layoutGrid: (p: GlyphProps) => <G {...p}><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></G>,
   radio: (p: GlyphProps) => <G {...p}><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none" /><path d="M7.5 7.5a6 6 0 0 0 0 9M16.5 7.5a6 6 0 0 1 0 9M5 5a9 9 0 0 0 0 14M19 5a9 9 0 0 1 0 14" /></G>,
   pause: (p: GlyphProps) => <G {...p}><rect x="7" y="5" width="3" height="14" rx="1" /><rect x="14" y="5" width="3" height="14" rx="1" /></G>,
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ A1 Â· player-facing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ───────────────────────── A1 · player-facing ─────────────────────────
 
-  /* Mail â€” help, forgot-password, account */
+  /* Mail — help, forgot-password, account */
   mail: (p: GlyphProps) => <G {...p}><rect x="2.5" y="4.5" width="19" height="15" rx="2.5" /><path d="M3 7l8.4 5.4a1.9 1.9 0 0 0 2 0L22 7" /></G>,
 
-  /* Calendar â€” proposals/new, account (DOB) */
+  /* Calendar — proposals/new, account (DOB) */
   calendar: (p: GlyphProps) => <G {...p}><rect x="3" y="4.5" width="18" height="16.5" rx="2.5" /><path d="M3 9.5h18" /><path d="M8 2.5v4M16 2.5v4" /></G>,
 
-  /* MonitorSmartphone â€” a logged-in device (profile Â· sessions) */
+  /* MonitorSmartphone — a logged-in device (profile · sessions) */
   device: (p: GlyphProps) => <G {...p}><rect x="2.5" y="4" width="12" height="9.5" rx="2" /><path d="M6 17.5h5" /><path d="M8.5 13.5V17.5" /><rect x="16" y="9" width="5.5" height="11.5" rx="1.6" /><path d="M18.4 18h.7" /></G>,
 
-  /* Vibrate â€” haptics toggle (settings Â· sound & feedback) */
+  /* Vibrate — haptics toggle (settings · sound & feedback) */
   vibrate: (p: GlyphProps) => <G {...p}><rect x="9" y="5" width="6" height="14" rx="1.6" /><path d="M5.5 8.5l-1.5 3.5 1.5 3.5" /><path d="M18.5 8.5l1.5 3.5-1.5 3.5" /></G>,
 
-  /* Smartphone â€” mobile handset (distinct from `phone` call-handset) */
+  /* Smartphone — mobile handset (distinct from `phone` call-handset) */
   smartphone: (p: GlyphProps) => <G {...p}><rect x="5.5" y="2.5" width="13" height="19" rx="2.6" /><path d="M10 18.5h4" /></G>,
 
-  /* ShieldQuestion â€” recovery / "why we ask" (uses kit shield path) */
+  /* ShieldQuestion — recovery / "why we ask" (uses kit shield path) */
   shieldQuestion: (p: GlyphProps) => <G {...p}><path d="M12 2.8L20 5.8V11.5C20 16.8 16.7 20 12 21.6C7.3 20 4 16.8 4 11.5V5.8Z" /><path d="M9.7 9.6a2.6 2.6 0 0 1 4.4 1.6c0 1.6-2.1 1.7-2.1 3" /><path d="M12 16.4h.01" /></G>,
 
-  /* FileSignature â€” SOF declaration (document being signed) */
+  /* FileSignature — SOF declaration (document being signed) */
   fileSignature: (p: GlyphProps) => <G {...p}><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2" /><path d="M14 3v5h5" /><path d="M8 16.5c.8-1.3 1.5-1.3 2 0 .4-1.4 1.1-1.7 1.9-.8" /><path d="M8 19.5h6.5" /></G>,
 
-  /* Percent â€” affiliate commission */
-  percent: (p: GlyphProps) => <G {...p}><path d="M19 5L5 19" /><circle cx="7" cy="7" r="2.3" /><circle cx="17" cy="17" r="2.3" /></G>,
-
-  /* Link2 â€” referral link */
+  /* Link2 — referral link */
   link: (p: GlyphProps) => <G {...p}><path d="M9 17H7.4a5 5 0 0 1 0-10H9" /><path d="M15 7h1.6a5 5 0 0 1 0 10H15" /><path d="M8 12h8" /></G>,
 
-  /* WhatsApp share â€” profile Â· invite (replaces today's MessageCircle) */
+  /* WhatsApp share — profile · invite (replaces today's MessageCircle) */
   messageWhatsapp: (p: GlyphProps) => <G {...p}><path d="M4 12a8 8 0 1 1 3.3 6.45L4 19.5l1.1-3.2A7.9 7.9 0 0 1 4 12z" /><path d="M9.4 9c-.2 0-.5.1-.6.4-.3.5-.6 1.1-.5 1.8.2 1.6 1.3 3 2.8 3.8.7.4 1.4.5 2 .4.4 0 .9-.4 1-.8.1-.3 0-.5-.2-.7l-1-.7c-.2-.1-.4-.1-.6.1l-.4.4c-.7-.4-1.3-1-1.6-1.7l.4-.4c.2-.2.2-.4.1-.6l-.6-1c-.1-.2-.3-.3-.5-.3z" /></G>,
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ A2 Â· admin â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ───────────────────────────── A2 · admin ─────────────────────────────
 
-  /* KeyRound â€” API key / TOTP */
+  /* KeyRound — API key / TOTP */
   keyRound: (p: GlyphProps) => <G {...p}><circle cx="7.5" cy="15.5" r="4" /><path d="M10.4 12.7L20 3.1" /><path d="M16.5 6.6l2.4 2.4M14.6 8.5l1.9 1.9" /></G>,
 
-  /* Megaphone â€” affiliate / promotion */
+  /* Megaphone — affiliate / promotion */
   megaphone: (p: GlyphProps) => <G {...p}><path d="M4 11l15-4.5v11L4 13z" /><path d="M11 16.5a2.7 2.7 0 0 1-5.2-1.4" /><path d="M19 9.5a2.5 2.5 0 0 1 0 4" /></G>,
 
-  /* Database â€” data / snapshot */
+  /* Database — data / snapshot */
   database: (p: GlyphProps) => <G {...p}><ellipse cx="12" cy="5.5" rx="7.5" ry="3" /><path d="M4.5 5.5v13c0 1.66 3.36 3 7.5 3s7.5-1.34 7.5-3v-13" /><path d="M4.5 12c0 1.66 3.36 3 7.5 3s7.5-1.34 7.5-3" /></G>,
 
-  /* Server â€” system / infra */
+  /* Server — system / infra */
   server: (p: GlyphProps) => <G {...p}><rect x="3" y="3.5" width="18" height="7" rx="2" /><rect x="3" y="13.5" width="18" height="7" rx="2" /><path d="M6.5 7h.01M6.5 17h.01" /><path d="M10.5 7h6.5M10.5 17h6.5" /></G>,
 
-  /* Landmark â€” civic building / treasury. B9 optical redraw: the old apex-roof
+  /* Landmark — civic building / treasury. B9 optical redraw: the old apex-roof
      + a separate entablature line ~1px below it merged into a blur at 12/14px.
      Redrawn to the kit's canonical geometry (same as `bank`): one closed pediment
      (no redundant entablature) + a breathing gap before the columns start. */
   landmark: (p: GlyphProps) => <G {...p}><path d="M12 3 3.5 8.5h17z" /><path d="M5.5 12v6.5M10 12v6.5M14 12v6.5M18.5 12v6.5" /><path d="M3.5 21h17" /></G>,
 
-  /* FileText â€” report / document */
+  /* FileText — report / document */
   fileText: (p: GlyphProps) => <G {...p}><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5" /><path d="M8.5 12.5h7M8.5 16h5" /></G>,
 
-  /* FileCheck â€” verified document / candidate approved */
+  /* FileCheck — verified document / candidate approved */
   fileCheck: (p: GlyphProps) => <G {...p}><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5" /><path d="M8.6 14.6l1.8 1.8 3.5-3.9" /></G>,
 
-  /* FileSpreadsheet â€” XLSX export */
+  /* FileSpreadsheet — XLSX export */
   fileSpreadsheet: (p: GlyphProps) => <G {...p}><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5" /><path d="M8 13h8M8 17h8M12 13v4" /></G>,
 
-  /* Brain â€” AI market generation */
+  /* Brain — AI market generation */
   brain: (p: GlyphProps) => <G {...p}><path d="M12 4.5A3 3 0 0 0 9 7 3 3 0 0 0 6.5 11 2.8 2.8 0 0 0 6.5 15.5 3 3 0 0 0 9.5 19 2.6 2.6 0 0 0 12 20.5" /><path d="M12 4.5A3 3 0 0 1 15 7 3 3 0 0 1 17.5 11 2.8 2.8 0 0 1 17.5 15.5 3 3 0 0 1 14.5 19 2.6 2.6 0 0 1 12 20.5" /><path d="M12 4.5V20.5" /><path d="M9.3 10.2c1 .4 1.5 1.2 1.5 2.3M14.7 10.2c-1 .4-1.5 1.2-1.5 2.3" /></G>,
 
-  /* Bot â€” AI assistant / poll bot */
+  /* Bot — AI assistant / poll bot */
   bot: (p: GlyphProps) => <G {...p}><path d="M12 8V4.5H8.5" /><circle cx="12" cy="3.5" r="1.1" fill="currentColor" stroke="none" /><rect x="4" y="8" width="16" height="12" rx="2.5" /><path d="M2 14h2M20 14h2" /><path d="M9 13v2M15 13v2" /></G>,
 
-  /* ShieldAlert â€” compliance alert (uses kit shield path) */
+  /* ShieldAlert — compliance alert (uses kit shield path) */
   shieldAlert: (p: GlyphProps) => <G {...p}><path d="M12 2.8L20 5.8V11.5C20 16.8 16.7 20 12 21.6C7.3 20 4 16.8 4 11.5V5.8Z" /><path d="M12 8.5v4.2M12 16h.01" /></G>,
 
-  /* ShieldOff â€” suspended / unprotected (uses kit shield path + slash) */
+  /* ShieldOff — suspended / unprotected (uses kit shield path + slash) */
   shieldOff: (p: GlyphProps) => <G {...p}><path d="M12 2.8L20 5.8V11.5C20 16.8 16.7 20 12 21.6C7.3 20 4 16.8 4 11.5V5.8Z" /><path d="M4.8 4.5l14.4 14.4" /></G>,
 
-  /* HeartPulse â€” responsible-gambling health */
+  /* HeartPulse — responsible-gambling health */
   heartPulse: (p: GlyphProps) => <G {...p}><path d="M19 14c1.5-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7z" /><path d="M3.4 12h6l.6-1.2 2 4.6 2-7 1.5 3.6h5.2" /></G>,
 
-  /* RotateCcw â€” restore / undo (moderation) */
+  /* RotateCcw — restore / undo (moderation) */
   rotateCcw: (p: GlyphProps) => <G {...p}><path d="M3 12a9 9 0 1 0 2.6-6.3L3 8" /><path d="M3 3.5V8h4.5" /></G>,
 
-  /* Archive â€” retention / archive */
+  /* Archive — retention / archive */
   archive: (p: GlyphProps) => <G {...p}><rect x="3" y="4" width="18" height="4.6" rx="1.5" /><path d="M4.5 8.6V18a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V8.6" /><path d="M9.5 12.2h5" /></G>,
 
-  /* XCircle â€” declined / reject (circle variant) */
+  /* XCircle — declined / reject (circle variant) */
   xCircle: (p: GlyphProps) => <G {...p}><circle cx="12" cy="12" r="9" /><path d="M15 9l-6 6M9 9l6 6" /></G>,
 
-  /* AlertOctagon â€” stop / critical (octagon) */
+  /* AlertOctagon — stop / critical (octagon) */
   alertOctagon: (p: GlyphProps) => <G {...p}><path d="M8.4 2.5h7.2L21.5 8.4v7.2L15.6 21.5H8.4L2.5 15.6V8.4z" /><path d="M12 8v4.5M12 16h.01" /></G>,
 
-  /* ArrowUpFromLine â€” withdraw / payout out */
+  /* ArrowUpFromLine — withdraw / payout out */
   arrowUpFromLine: (p: GlyphProps) => <G {...p}><path d="M18 9l-6-6-6 6" /><path d="M12 3v13.5" /><path d="M5 21h14" /></G>,
 
-  /* ArrowDownToLine â€” deposit / funds in */
+  /* ArrowDownToLine — deposit / funds in */
   arrowDownToLine: (p: GlyphProps) => <G {...p}><path d="M12 3v13.5" /><path d="M6 10.5l6 6 6-6" /><path d="M5 21h14" /></G>,
 
-  /* ScrollText â€” legal / terms */
+  /* ScrollText — legal / terms */
   scrollText: (p: GlyphProps) => <G {...p}><path d="M15 12h-5M15 8h-5" /><path d="M19 17V5a2 2 0 0 0-2-2H4" /><path d="M8 21h11a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1h-9a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3" /></G>,
 
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ BONUS Â· empty-state line-arts (Part C) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+/* ─────────────────── BONUS · empty-state line-arts (Part C) ───────────────────
  * Larger viewBox (0 0 64 64) so they read at ~64px in an empty panel.
  * Same 1.9 stroke + round joins; render with a dedicated wrapper, e.g.:
  *
@@ -230,16 +236,19 @@ const Ibase = {
 /* markets — nothing live in this category */
   emptyMarkets: (p: GlyphProps) => <GL {...p}><path d="M32 6v20" /><path d="M16 11h32" /><path d="M16 11l-6.5 15a6.5 6.5 0 0 0 13 0z" /><path d="M48 11l-6.5 15a6.5 6.5 0 0 0 13 0z" /><path d="M22 52h20" /><path d="M32 26v26" /><circle cx="50" cy="50" r="2" fill="currentColor" stroke="none" /></GL>,
 
-  /* positions â€” you haven't staked anything */
+  /* positions — you haven't staked anything */
   emptyPositions: (p: GlyphProps) => <GL {...p}><rect x="8" y="18" width="48" height="34" rx="4" /><path d="M22 18v-3a4 4 0 0 1 4-4h12a4 4 0 0 1 4 4v3" /><path d="M8 32h48" /><path d="M37 32v6h-10v-6" /><path d="M24 45h7" /></GL>,
 
-  /* leaderboard â€” no players ranked this round */
+  /* leaderboard — no players ranked this round */
   emptyLeaderboard: (p: GlyphProps) => <GL {...p}><path d="M19 12h26v9a13 13 0 0 1-26 0z" /><path d="M19 16h-7v3a7 7 0 0 0 7 7M45 16h7v3a7 7 0 0 1-7 7" /><path d="M32 34v6M25 52h14M27 52l1.5-8h7l1.5 8" /><path d="M32 20l1.4 2.9 3.2.4-2.3 2.2.6 3.1L32 29.3l-2.9 1.3.6-3.1-2.3-2.2 3.2-.4z" fill="currentColor" stroke="none" /></GL>,
 };
 
 /* ── Controlled-Poll glyph additions ──
-   Spread last so the three redraws (percent, activity) and the final
-   controlled-poll geometry win over any interim originals in Ibase. */
+   Spread last into `I`, so anything named here wins over `Ibase`.
+   ⚠️ `percent` and `activity` used to be defined in BOTH objects — the Ibase copy
+   of each was shadowed by the redraw below and could never render, so a fix
+   applied to the wrong one would have looked like a no-op. Both dead copies are
+   deleted; every key now has exactly ONE definition across the two objects. */
 const Iplus = {
 
   // ── Controlled Poll ──
@@ -319,11 +328,11 @@ const Iplus = {
   catOther: (p: GlyphProps) => <G {...p}><circle cx="5.5" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="18.5" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="8.6"/></G>,
 
   // ── Empty-state illustrations (64-grid) ──
-  emptyProposals: (p: GlyphProps) => <G64 {...p}><path d="M10 32l4-6h36l4 6"/><rect x="10" y="32" width="44" height="20" rx="4"/><path d="M26 29h12"/><path d="M26 23v-9a3 3 0 0 1 3-3h8l7 7v5"/><path d="M37 11v6h7"/><path d="M29.5 17.5l2.7 2.7 4.3-5"/></G64>,
-  kycRail: (p: GlyphProps) => <G64 {...p}><rect x="18" y="8" width="28" height="18" rx="3"/><circle cx="26" cy="15" r="2.6"/><path d="M22.5 21.5a3.6 3.6 0 0 1 7 0"/><path d="M36 13h7M36 18h5"/><path d="M8 46h48"/><circle cx="14" cy="46" r="4" fill="currentColor" stroke="none"/><circle cx="28" cy="46" r="4" fill="currentColor" stroke="none"/><circle cx="42" cy="46" r="4"/><circle cx="56" cy="46" r="4"/></G64>,
-  fairnessChain: (p: GlyphProps) => <G64 {...p}><circle cx="13" cy="34" r="8"/><circle cx="32" cy="34" r="8"/><circle cx="51" cy="34" r="8"/><path d="M21 34h3M40 34h3"/><path d="M28.5 34l2.5 2.5 4.5-5"/><path d="M32 23v-4"/></G64>,
-  rgSelfCare: (p: GlyphProps) => <G64 {...p}><path d="M8 46h48"/><path d="M20 46a12 12 0 0 1 24 0"/><path d="M32 24v-7M17.5 29.5l-5-5M46.5 29.5l5-5M12 38H5M59 38h-7"/></G64>,
-  adminGeneric: (p: GlyphProps) => <G64 {...p}><rect x="16" y="9" width="28" height="44" rx="4"/><rect x="24" y="5" width="12" height="7" rx="2.5"/><path d="M22 22h16M22 30h16M22 38h9"/><circle cx="43" cy="43" r="7.5"/><path d="M48.5 48.5l6.5 6.5"/></G64>,
+  emptyProposals: (p: GlyphProps) => <GL {...p}><path d="M10 32l4-6h36l4 6"/><rect x="10" y="32" width="44" height="20" rx="4"/><path d="M26 29h12"/><path d="M26 23v-9a3 3 0 0 1 3-3h8l7 7v5"/><path d="M37 11v6h7"/><path d="M29.5 17.5l2.7 2.7 4.3-5"/></GL>,
+  kycRail: (p: GlyphProps) => <GL {...p}><rect x="18" y="8" width="28" height="18" rx="3"/><circle cx="26" cy="15" r="2.6"/><path d="M22.5 21.5a3.6 3.6 0 0 1 7 0"/><path d="M36 13h7M36 18h5"/><path d="M8 46h48"/><circle cx="14" cy="46" r="4" fill="currentColor" stroke="none"/><circle cx="28" cy="46" r="4" fill="currentColor" stroke="none"/><circle cx="42" cy="46" r="4"/><circle cx="56" cy="46" r="4"/></GL>,
+  fairnessChain: (p: GlyphProps) => <GL {...p}><circle cx="13" cy="34" r="8"/><circle cx="32" cy="34" r="8"/><circle cx="51" cy="34" r="8"/><path d="M21 34h3M40 34h3"/><path d="M28.5 34l2.5 2.5 4.5-5"/><path d="M32 23v-4"/></GL>,
+  rgSelfCare: (p: GlyphProps) => <GL {...p}><path d="M8 46h48"/><path d="M20 46a12 12 0 0 1 24 0"/><path d="M32 24v-7M17.5 29.5l-5-5M46.5 29.5l5-5M12 38H5M59 38h-7"/></GL>,
+  adminGeneric: (p: GlyphProps) => <GL {...p}><rect x="16" y="9" width="28" height="44" rx="4"/><rect x="24" y="5" width="12" height="7" rx="2.5"/><path d="M22 22h16M22 30h16M22 38h9"/><circle cx="43" cy="43" r="7.5"/><path d="M48.5 48.5l6.5 6.5"/></GL>,
 };
 
 export const I = { ...Ibase, ...Iplus } as const;

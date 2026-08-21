@@ -102,13 +102,18 @@
        `infinite`, minus the third gate's own selectors. Re-derive it the same way;
        do not extend it by typing.
 
-       THE CENSUS — 30 keyframes, 34 rules, by period:
-         0.8s  pulse-critical            1s     ud-count-pulse
-         1.2s  lcl-pulse                 1.4s   skel · kp-shimmer · pulse-urgent
+       THE CENSUS — by period. ⚠️ The "30 keyframes, 34 rules" head count that used
+       to open this line is GONE (2026-08-21): a count restated in prose disagrees with
+       itself, and `npm run test:reduce-motion` already prints the live one. FOUR names
+       left this census the same day, each with the dead rule that carried it —
+       `pulse-critical` and `pulse-urgent` (the `.countdown-ring` block), `gold-pulse`
+       (`.gold-dot`) and `settling-sweep` (`.settling-bar`). Re-derive, do not retype.
+                                   1s     ud-count-pulse
+         1.2s  lcl-pulse                 1.4s   skel · kp-shimmer
                                                  · cm-typing-pulse
-         1400ms m-axis-sweep             1.6s   gold-pulse · gold-shimmer
+         1400ms m-axis-sweep             1.6s   gold-shimmer
                                                  · progSweep · ud-point
-         2s    settling-sweep            2.2s   aqua-pulse · dial-coach-nudge
+                                         2.2s   aqua-pulse · dial-coach-nudge
                 · notif-badge-pulse
                 · pr-pulse
          2.4s  closing-pulse             2.6s   m-breathe, as .live-dot and
@@ -264,7 +269,9 @@
    `both`/`backwards` fill that first frame is usually `opacity: 0`, i.e. the
    surface is INVISIBLE for the delay: measured before the fix, on a user who had
    switched Reduce motion ON — `.market-grid > *` up to 360ms (nth-child cascade),
-   `.stagger-item` up to 4 × --m-stagger, `.win-seal` 160ms, `.check-tick` 120ms.
+   `.stagger-item` up to 4 × --m-stagger, `.win-seal` 160ms, `.check-tick` 120ms
+   (that last rule was deleted 2026-08-21 as dead CSS — the measurement stands, the
+   selector no longer exists; do not go looking for it).
    The delivery's own `.needle-sweep` (600ms) and `.crest-ring-reveal` (340ms)
    would have joined them, which is why this lands before any animation atom.
 

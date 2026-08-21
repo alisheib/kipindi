@@ -23,11 +23,14 @@
 >
 > ### ⏳ WHAT IS **NOT** DONE, AND IS NOT PRETENDED TO BE
 >
-> 1. 🔴 **THE CONTRACT MIGRATION.** This shipped **EXPAND ONLY**: `nidaNumber` /
->    `nidaVerifiedAt` and the legacy index survive one release, written by one site and read
->    by nothing (`test:id-documents` §9 fails if that changes). Dropping them in the same
->    migration would have 500'd every KYC read on the previous container for the length of a
->    rolling deploy. **The drop is the next session's first job** — see the `RESUME AT` block.
+> 1. ✅ **THE CONTRACT MIGRATION — DONE 2026-08-20 (session 52), register row `E-174`.** It
+>    shipped in **TWO releases**, because the order this note implied was backwards: the fields
+>    left `schema.prisma` first with no DDL, and the columns left the database in the release
+>    after. ⚠️ **And two claims here were wrong.** "Read by nothing" was true of PRODUCT code
+>    only — `prisma-dal.findByNida`/`findActiveByNida` read the column with zero callers, and
+>    §9, cited here as proof, **allowlisted the file those reads lived in**. "Written by one
+>    site" omitted three deployed dev-test routes. And the 500 was not "every KYC read":
+>    `createSession` reads KYC on all three login paths, so it was **sign-in, platform-wide**.
 > 2. ⚠️ **§7 step 4 measures something else than this file expected, and the difference is
 >    real.** An oversize image **cannot reach the server through the form**: `fileToDataUrl`
 >    downscales every pick to 1400px first, so a 12000×60 PNG is accepted, downscaled. That is
@@ -67,7 +70,7 @@ to use."* There is no partial delivery of an identity control.
 > number**. After this, **any ONE** of four Tanzanian identity documents is enough: **NIDA**,
 > **passport** (+ bio page image), **driving licence** (+ front image), or **voter's card** (+ image).
 >
-> ⛔ **AND ONE LINE ABOUT WHAT IT MUST NOT CHANGE.** `docs/NIDA-POLICY.md` states the two controls
+> ⛔ **AND ONE LINE ABOUT WHAT IT MUST NOT CHANGE.** `docs/IDENTITY-POLICY.md` (this file was cited as `NIDA-POLICY.md`, renamed 2026-08-20) states the two controls
 > that actually do the work: **"Uniqueness — one NIDA, one account"** and **"Document review by a
 > human — this is the real identity control."** Widening *which document* is accepted must not
 > widen *how many accounts one human can hold*, and must not remove the human.
@@ -76,7 +79,7 @@ to use."* There is no partial delivery of an identity control.
 
 ## §0 · READ THESE FIRST, IN THIS ORDER
 
-1. `docs/NIDA-POLICY.md` — the uniqueness rule and the human-review rule. Both survive.
+1. `docs/IDENTITY-POLICY.md` (cited here as `NIDA-POLICY.md`, renamed 2026-08-20) — the uniqueness rule and the human-review rule. Both survive.
 2. `docs/COMPLIANCE-DECISIONS.md` — where a dated instruction from an authority gets recorded.
 3. `docs/FLOWS.md` — the withdrawal/deposit gates, and ⚠️ **check whether Unit B of
    `SESSION-PROMPT-JAY-COMMENTS.md` has landed**: the Gaming Board instructed that KYC stop being a
@@ -132,7 +135,7 @@ new attachment through `putKycDocument` / `readKycDocument`. Do not add a second
 
 ⛔ **A REGEX ON A NATIONAL ID IS A COMPLIANCE CONTROL, AND A WRONG ONE LOCKS A REAL CITIZEN OUT OF
 THEIR OWN MONEY.** That failure is worse than a permissive field, because the human review is the
-real control (`NIDA-POLICY.md`) and a rejected format never reaches a human at all. This repo already
+real control (`IDENTITY-POLICY.md`, cited here under its old name) and a rejected format never reaches a human at all. This repo already
 has the pattern for this exact problem: `src/lib/server/updown-symbols.ts` gives gold a measured
 `minMoveTicks: 40` and deliberately gives silver and platinum **no** minimum, because *"nobody has
 measured their seams — and inventing one from gold's would be exactly the guess this file exists to

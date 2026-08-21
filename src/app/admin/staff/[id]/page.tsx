@@ -3,6 +3,7 @@ import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
 import { Avatar } from "@/components/ui/avatar";
 import { Chip } from "@/components/ui/chip";
+import { ScrollX } from "@/components/ui/scroll-x";
 import { db } from "@/lib/server/store";
 import { currentSession } from "@/lib/server/auth-service";
 import { getAuditForTarget } from "@/lib/server/audit";
@@ -66,29 +67,36 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
             {roleChanges.length === 0 ? (
               <p className="text-caption text-text-tertiary py-3">No role changes recorded for this account.</p>
             ) : (
-              <table className="admin-tbl">
-                <thead>
-                  <tr>
-                    <th className="text-left">When</th>
-                    <th className="text-left">Change</th>
-                    <th className="text-left">By</th>
-                    <th className="text-left">Reason</th>
-                  </tr>
-                </thead>
-                <tbody className="text-text-secondary">
-                  {roleChanges.map((e) => {
-                    const p = (e.payload ?? {}) as { prevRole?: string; newRole?: string; reason?: string };
-                    return (
-                      <tr key={e.id}>
-                        <td className="font-mono whitespace-nowrap text-micro">{formatDate(e.createdAt)}</td>
-                        <td className="whitespace-nowrap">{roleLabel(p.prevRole)} → <strong className="text-text">{roleLabel(p.newRole)}</strong></td>
-                        <td className="font-mono text-micro truncate">{(e.actorId ?? "—").slice(0, 14)}…</td>
-                        <td className="text-caption">{p.reason ?? "—"}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              /* ⚠️ This was the ONE admin table of 52 not wrapped in <ScrollX>. Every
+                 cell here is `whitespace-nowrap` or a 14-char mono id, so below ~600px
+                 the four columns pushed the CARD wider than the page instead of
+                 scrolling inside it. `-mx-4 px-4` lets the scroll edge reach the card
+                 edge (the same idiom as /admin/transactions). */
+              <ScrollX label="Role history" className="-mx-4 px-4">
+                <table className="admin-tbl">
+                  <thead>
+                    <tr>
+                      <th className="text-left">When</th>
+                      <th className="text-left">Change</th>
+                      <th className="text-left">By</th>
+                      <th className="text-left">Reason</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-text-secondary">
+                    {roleChanges.map((e) => {
+                      const p = (e.payload ?? {}) as { prevRole?: string; newRole?: string; reason?: string };
+                      return (
+                        <tr key={e.id}>
+                          <td className="font-mono whitespace-nowrap text-micro">{formatDate(e.createdAt)}</td>
+                          <td className="whitespace-nowrap">{roleLabel(p.prevRole)} → <strong className="text-text">{roleLabel(p.newRole)}</strong></td>
+                          <td className="font-mono text-micro truncate">{(e.actorId ?? "—").slice(0, 14)}…</td>
+                          <td className="text-caption">{p.reason ?? "—"}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </ScrollX>
             )}
           </div>
         </AdminCard>

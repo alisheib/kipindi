@@ -570,13 +570,11 @@ export function SectionLoader({ height = 240 }: { height?: number }) {
   );
 }
 
-export function BrandLoader({ caption }: { caption?: string }) {
-  return (
-    <div className="fixed inset-0 z-[100] grid place-items-center bg-bg/80 backdrop-blur-sm">
-      <div className="flex flex-col items-center gap-4">
-        <BrandSpinner size={80} />
-        {caption && <p className="font-mono text-[12px] uppercase tracking-[0.18em] text-text-muted">{caption}</p>}
-      </div>
-    </div>
-  );
-}
+/* ⛔ `BrandLoader` was DELETED 2026-08-21 — a full-screen blocking overlay with
+   zero call sites. It held a hand-typed `z-[100]` outside the z-ladder and its
+   own scrim, and it was NOT portaled: mounted inside a route it would have been
+   a `position: fixed` element under whichever ancestor carried a transform or a
+   route-enter animation, so the "full-screen" overlay would have been clipped to
+   that ancestor's box. Route loading is `PageLoader` (`ui/page-loader.tsx`) and
+   in-panel loading is `SectionLoader` above; blocking overlays go through
+   `Modal`, which owns the scrim, the focus trap and the scroll lock. */

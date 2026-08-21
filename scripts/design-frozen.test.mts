@@ -66,7 +66,11 @@ const FROZEN_ALLOWLIST = new Set<string>([
   "src/components/markets/operation-result-modal.tsx", // 19 — the TONE map
   "src/app/global-error.tsx",                  // 18 — ships without app CSS
   "src/components/markets/conviction-dial.tsx", // 11
-  "src/components/markets/price-chart.tsx",    // 11
+  // ⭐ `price-chart.tsx` LEFT THIS LIST on 2026-08-21 and the list may only shrink. It held
+  // 11 exemptions, ALL of them inside the dead `PriceChart` component — which was unmounted,
+  // still carried the BANNED teal 215 in a gradient, and whose file-wide exemption was
+  // meanwhile letting the LIVE `VolumeSparkline` beside it re-type a token unguarded. Deleting
+  // the dead half made the file clean and the sparkline guarded in one move.
   "src/components/brand.tsx",                  // 9  — non-TippingBar marks
   "src/lib/i18n.tsx",                          // 6
   "src/app/wallet/wallet-client.tsx",          // 5

@@ -118,10 +118,10 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
               // centred panel and takes the dialog rung like every other centred panel.
               "shadow-overlay-up sm:shadow-modal",
               // mobile: bottom sheet · desktop: small centred panel
-              "left-0 right-0 bottom-0 rounded-t-2xl px-4 pt-4",
+              "left-0 right-0 bottom-0 rounded-t-modal px-4 pt-4",
               "pb-[calc(16px+env(safe-area-inset-bottom))]",
               "sm:left-1/2 sm:right-auto sm:bottom-auto sm:top-1/2 sm:w-[360px] sm:max-w-[calc(100vw-24px)]",
-              "sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl sm:p-5 sm:pb-5",
+              "sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-modal sm:p-5 sm:pb-5",
               exiting ? "needle-sheet-out pointer-events-none" : "needle-sheet",
             )}
           >

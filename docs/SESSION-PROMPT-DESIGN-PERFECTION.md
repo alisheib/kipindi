@@ -32,8 +32,8 @@ repo `F:\kipindi-main`, branch `main`):**
 | 4 | Correctness: time, words, money formatting | **DONE** | `6882091f` | ✓ 200 · clean boot · shots read |
 | 5 | Focus & accessibility | **DONE** | `dd1dc8ec` | ✓ 200 · clean boot · shots read |
 | 6 | Motion | **DONE** | `b14c749f` + `453f515b` | ✓ 200 · clean boot · shots read |
-| 7 | Performance | **DONE** (one item deferred with a written plan — see below) | `stage-7` | pending push |
-| 8 | Dead code & doc truth | NOT STARTED | | |
+| 7 | Performance | **DONE** (one item deferred with a written plan — see below) | `640d45d1` | ✓ 200 · clean boot |
+| 8 | Dead code & doc truth | **DONE** | `stage-8` | pending push |
 | 9 | Consolidations | NOT STARTED | | |
 | 10 | New guards | NOT STARTED | | |
 | 11 | Owner-decision items + exit | NOT STARTED | | |
@@ -378,6 +378,39 @@ compile-checked against it (hence the existing `as Dict` cast); parity is enforc
 `test:i18n` comparing flattened leaf-key sets. Any split must reproduce that exact arrangement —
 one canonical type from EN, runtime parity for the other two — or the 1880-key count silently
 stops meaning anything.
+
+**Stage 8**
+
+- ⭐ **73 dead classes and 10 dead keyframes gone from `globals.css` (−334 lines)** — and the
+  ones that mattered were TRAPS, not merely unused: `.gilt-num` put `letter-spacing` on a MONEY
+  ink class, contradicting §M4 and a comment thirty lines above it in the same file;
+  `.countdown-ring`/`.ring-num` was a **Sora** block for a countdown whose real component is
+  mono; `.mterm-*`/`.pool-amt` rendered a pool AMOUNT in Sora; `.gold-dot` carried a FALSE
+  comment claiming the notification bell used it. Each would have handed its violation to
+  whoever found it first.
+- ⭐ **FOUR "DEAD" ITEMS WERE REFUTED WITH EVIDENCE AND LEFT ALONE.** `.ticket-target` /
+  `-scope` / `-anchor` are LIVE deep-link classes on four pages plus `hash-focus.tsx` (the
+  audit's "ticket ×17" conflated 4 live with 13 dead — only the 13 went). `.pbar-*` carries a
+  RECORDED decision that deleting it is a design-system call, "filed, not acted on", and has
+  spec pages. `.mat-flat`/`.mat-raised-i` are rungs of a documented 6-rung ladder whose
+  siblings ship. `.countdown--urgent`/`--critical` HAVE a consumer — the KEPT list inside
+  `reduce-motion.test.mts` — so deleting the CSS alone would have broken that suite.
+- ⚠️ **The audit's claim that `.pbar-resolved` was "an ungated ambient loop" was FALSE** — it
+  was already in the third gate.
+- 🔴 **`PriceChart` was unmounted, still carried the BANNED teal 215**, and its file-wide
+  ratchet exemption was meanwhile letting the LIVE `VolumeSparkline` beside it re-type a token
+  unguarded. Deleting the dead half made the file clean and the sparkline guarded in one move;
+  the ratchet shrank 36 → 35.
+- ⭐ **`rounded-2xl` is now genuinely ZERO in `src`**, so CLAUDE.md's long-standing claim is
+  true for the first time rather than merely corrected.
+- ⚠️ **Every count CLAUDE.md stated was wrong**: "50 loading.tsx" (79), "75+ SVGs at 1.85px"
+  stroke (both numbers wrong — the glyph file's own header says 1.9), "117 `test:*` scripts"
+  (less than half the real number), and a `next-themes` line where **both halves were false**.
+  The corrections say *how to re-derive* rather than restating a new number to go stale.
+- ⚠️ **`.skel-fade-out` was UNWIREABLE, not merely unused** — it would have to play on a Next
+  `loading.tsx` Suspense fallback, which React unmounts synchronously, and this codebase has no
+  exit-animation coordinator. Its sibling `.content-fade-in` is applied to the LOADER, not the
+  arriving content, so the "cross-fade" its comment described never existed in either half.
 
 **Follow-ups this campaign opened and has not closed**
 

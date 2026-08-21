@@ -848,8 +848,6 @@ body {
    =========================================================================== */
 
 .gilt        { color: var(--gilt); }
-.gilt-strong { color: var(--gilt-strong); }
-.gilt-num    { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--gilt); letter-spacing: -0.01em; }
 
 .gilt-rule {
   height: 1px;
@@ -1097,7 +1095,6 @@ body {
 .chip-resolved { height: 23px; padding: 0 9px; font-size: 11px; background: linear-gradient(180deg, var(--gold-300), var(--gold-500)); color: oklch(24% 0.06 80); border-color: oklch(60% 0.10 78); }
 .chip-pending  { height: 23px; padding: 0 9px; font-size: 11px; background: oklch(54% 0.165 262 / 0.26); color: var(--brand-300); border-color: oklch(63% 0.18 262 / 0.55); }
 .chip-objection{ height: 23px; padding: 0 9px; font-size: 11px; background: oklch(72% 0.13 80 / 0.22); color: var(--gold-300); border-color: oklch(80% 0.13 80 / 0.5); }
-.chip-politics { background: var(--claret-soft); color: var(--claret-200); border-color: var(--claret-edge); }
 .chip-signal   { background: oklch(74% 0.11 195 / 0.20); color: var(--aqua-300); border-color: oklch(78% 0.10 195 / 0.5); }
 .chip-hot-rose { height: 23px; padding: 0 9px; font-size: 11px; background: oklch(50% 0.19 25 / 0.22); color: var(--no-300); border-color: oklch(58% 0.2 25 / 0.5); }
 /* NEW market badge (cold-start, 2026-07-29). Brand blue: it is CHROME — "this
@@ -1132,37 +1129,6 @@ body {
      unattended. Calmer and slower than the old 1.4s 0.3↔1 blink: on a real-money
      board a hard blink reads as an alarm, not as "this is live". */
   animation: m-breathe 2600ms var(--m-breathe) infinite;
-}
-/* Same technique as .live-dot but in the brand gold — used for the
-   notification-bell unread indicator. The earlier dot used Tailwind's
-   `animate-ping`, which scales a translucent ring to 0 opacity. At a
-   6px size that rendered as a fuzzy smudge rather than a crisp
-   pulsing circle. The box-shadow approach keeps a real halo around
-   the dot at all times, so it always reads as a circle, and only the
-   outer ring breathes. */
-.gold-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: oklch(82% 0.15 86);
-  box-shadow:
-    0 0 0 0 color-mix(in oklab, oklch(82% 0.15 86) 70%, transparent),
-    0 0 10px 1px color-mix(in oklab, oklch(82% 0.15 86) 55%, transparent);
-  animation: gold-pulse 1.6s ease-in-out infinite;
-}
-@keyframes gold-pulse {
-  0%, 100% {
-    opacity: 0.92;
-    box-shadow:
-      0 0 0 0 color-mix(in oklab, oklch(82% 0.15 86) 70%, transparent),
-      0 0 8px 1px color-mix(in oklab, oklch(82% 0.15 86) 55%, transparent);
-  }
-  50% {
-    opacity: 1;
-    box-shadow:
-      0 0 0 6px color-mix(in oklab, oklch(82% 0.15 86) 0%, transparent),
-      0 0 14px 2px color-mix(in oklab, oklch(82% 0.15 86) 75%, transparent);
-  }
 }
 @keyframes live-pulse {
   0%, 100% { opacity: 0.3; }
@@ -1617,22 +1583,6 @@ textarea:focus { outline: 2px solid transparent; outline-offset: 2px; border-col
 textarea:focus-visible { outline-color: var(--brand-500); }
 textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
 
-/* ---------- Avatar ---------- */
-.avatar {
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-display);
-  font-weight: 600;
-  color: var(--pearl-50);
-  background: linear-gradient(135deg, var(--royal-500), var(--royal-800));
-  flex-shrink: 0;
-}
-.avatar-sm { width: 28px; height: 28px; font-size: 11px; }
-.avatar-md { width: 40px; height: 40px; font-size: 14px; }
-.avatar-lg { width: 56px; height: 56px; font-size: 19px; }
-
 /* ---------- Tier badge ---------- */
 .tier-badge {
   display: inline-flex;
@@ -1756,15 +1706,6 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
 /* Win celebration animations are co-located in the component's inline
    <style> tag (same pattern as OperationResultModal / BetConfirmModal). */
 
-/* Brand focus ring opt-in for inputs / ghost buttons that aren't using the
-   `.input` class directly. */
-.aqua-focus:focus-visible,
-.aqua-focus:focus-within {
-  outline: 2px solid var(--brand-500);
-  outline-offset: 2px;
-  box-shadow: 0 0 0 4px oklch(63% 0.18 262 / 0.25);
-}
-
 /* Defensive baseline — any keyboard-focusable element that doesn't
    set its own focus-visible style still gets an aqua ring. The kit's
    .btn / .input / link patterns override locally; this catches the
@@ -1821,57 +1762,20 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
   --dur-arrive: var(--t-stage);        /* was 520ms → 520ms, exact */
 
   /* 🛑 DELIBERATE EXCEPTION to the kit's 620ms ceiling — do not "fix" this to --t-max.
-     Its only consumers are the two countdown rings' `stroke-dashoffset` transition and
-     two reveal animations. The rings are driven by a 1-SECOND tick, so this value is
-     progress SMOOTHING, not a transition: at 820ms the arc glides almost continuously
-     between ticks, whereas at 620ms it would finish early and sit frozen for ~380ms of
-     every second — visibly steppier. The kit's ceiling governs transitions; a
-     continuously-updating progress arc is a third case it does not cover. */
+     ⚠️ CORRECTED 2026-08-21: this said "the two countdown rings". There is one ring
+     left. The `.countdown-ring` block was DELETED in the dead-CSS sweep — zero className
+     consumers for the life of the project, and the shipped `CountdownRing`
+     (positions/countdown-ring.tsx) composes its own inline SVG and never touched these
+     classes. The consumers now are `.badge-ring-arc`'s `stroke-dashoffset` transition
+     and two reveal animations (`.badge-unlock-rays`, `.m-draw`).
+     The 820ms itself is unchanged and still deliberate: an arc stepped by a 1-SECOND
+     tick needs progress SMOOTHING, not a transition — at 820ms it glides almost
+     continuously between ticks, whereas at 620ms it would finish early and sit frozen
+     for ~380ms of every second, visibly steppier. The kit's ceiling governs
+     transitions; a continuously-updating progress arc is a third case it does not
+     cover. */
   --dur-stage:  820ms;
 }
-
-/* ---------- Countdown ring ---------- */
-.countdown-ring          { position: relative; display: inline-grid; place-items: center; }
-.countdown-ring svg      { display: block; }
-.countdown-ring .ring-track { stroke: var(--border); fill: none; }
-.countdown-ring .ring-arc {
-  stroke: var(--royal-300);
-  fill: none;
-  stroke-linecap: round;
-  transform: rotate(-90deg);
-  transform-origin: center;
-  /* ⚠️ TWO DIFFERENT DECISIONS ON ONE LINE, AND ONLY ONE OF THEM CHANGES.
-     `--dur-stage` (820ms) STAYS: the frozen note at the top of `motion.css` records
-     it as kept at 820 for the countdown ring and nothing else — it is the sweep the
-     player reads a deadline off, and B5's own worked example is this arc being
-     silently retimed 820 → 240 by a token collision.
-     The `stroke` leg was a RAW 600ms, above the ladder's 570 ceiling, and `--t-max`
-     (620) is settlement-and-celebration ONLY — an escalation colour change is
-     neither — so by the ladder's own rule it clamps to `--t-stage` (520). The colour
-     crossing calm → urgent → critical is now 100ms brisker; the SWEEP is untouched,
-     which is the leg that carries the time. */
-  transition: stroke-dashoffset var(--dur-stage) var(--ease-conduct), stroke var(--t-stage) var(--m-glide);
-  filter: drop-shadow(0 0 4px color-mix(in oklab, var(--royal-300) 35%, transparent));
-}
-.countdown-ring.urgent .ring-arc {
-  stroke: var(--gold-400);
-  filter: drop-shadow(0 0 8px color-mix(in oklab, var(--gold-300) 60%, transparent));
-  animation: pulse-urgent 1.4s var(--ease-conduct) infinite;
-}
-.countdown-ring.critical .ring-arc {
-  stroke: var(--no-500);
-  filter: drop-shadow(0 0 10px color-mix(in oklab, var(--no-400) 70%, transparent));
-  animation: pulse-critical 0.8s var(--ease-conduct) infinite;
-}
-.countdown-ring .ring-label {
-  position: absolute; inset: 0;
-  display: grid; place-items: center; text-align: center;
-  font-variant-numeric: tabular-nums; letter-spacing: 0.02em; color: var(--text);
-}
-.countdown-ring .ring-num { font-family: var(--font-display); font-weight: 600; line-height: 1; }
-.countdown-ring .ring-cap { font-size: 10px; text-transform: uppercase; letter-spacing: 0.18em; color: var(--text-muted); margin-top: 4px; }
-@keyframes pulse-urgent  { 0%, 100% { opacity: 1; } 50% { opacity: 0.65; } }
-@keyframes pulse-critical { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.55; transform: scale(0.97); } }
 
 /* ---------- Toast auto-dismiss hairline ----------
    DA-1 (2026-08-07): `.toast-anim` (+ its ::after and the `toast-slide`
@@ -1957,27 +1861,6 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
   background: conic-gradient(from 300deg, transparent 0deg,
               oklch(99% 0.02 95 / 0.15) 26deg, transparent 56deg);
 }
-
-/* ---------- Settling shimmer ---------- */
-@keyframes settling-sweep { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
-.settling-bar {
-  position: relative; overflow: hidden; border-radius: var(--r-pill);
-  background: color-mix(in oklab, var(--gold-500) 12%, var(--bg-elevated));
-  border: 1px solid color-mix(in oklab, var(--gold-400) 30%, var(--border));
-}
-.settling-bar::before {
-  content: ''; position: absolute; inset: 0;
-  background: linear-gradient(90deg, transparent 30%, color-mix(in oklab, var(--gold-300) 60%, transparent) 50%, transparent 70%);
-  animation: settling-sweep 2s var(--ease-conduct) infinite;
-}
-
-/* ---------- Live odds flash on change ---------- */
-@keyframes odds-flash-up   { 0% { background: color-mix(in oklab, var(--yes-500) 40%, transparent); } 100% { background: transparent; } }
-@keyframes odds-flash-down { 0% { background: color-mix(in oklab, var(--no-500)  40%, transparent); } 100% { background: transparent; } }
-/* §D strike (2026-08-08): 600ms var(--ease-sink) → --t-stage + --m-leave (the map's
-   own row). The flash is an exit of emphasis, so the leave curve is the right voice. */
-.odds-flash-up   { animation: odds-flash-up   var(--t-stage) var(--m-leave); }
-.odds-flash-down { animation: odds-flash-down var(--t-stage) var(--m-leave); }
 
 /* ---------- Up & Down quick-bet success pulse ----------
    Non-intrusive confirmation for a placed bet (replaces the happy-path toast).
@@ -2090,13 +1973,6 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
   35%  { transform: translateY(0) scale(0.98); }
   50%  { transform: translateY(0) scale(1); }
   100% { transform: translateY(0) scale(1); }
-}
-
-/* ---------- Rolling number scaffolding ---------- */
-.num-roll       { display: inline-flex; font-variant-numeric: tabular-nums; font-family: var(--font-display); }
-.num-roll-digit {
-  display: inline-block; width: 0.62em; text-align: center;
-  transition: transform var(--dur-glide) var(--ease-glide), opacity var(--dur-quick) var(--ease-glide);
 }
 
 /* ---------- Modal / dialog / sheet entrance — RETIRED 2026-07-28 ------------
@@ -2228,27 +2104,6 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
   animation-delay: calc(min(var(--i, 0), 4) * var(--m-stagger));
 }
 
-/* 1.3 — Sliding tab / filter indicator. The gold underline TRANSLATES
-   between tabs instead of cutting. JS measures the active tab and sets
-   `--x` (px) + `--w` (px). transform + width-via-scale-free: we animate
-   left/transform only by positioning a fixed element and translating it. */
-.tab-indicator {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  height: 2px;
-  background: var(--brand-500);
-  border-radius: var(--r-pill);
-  box-shadow: 0 0 8px color-mix(in oklab, var(--brand-500) 55%, transparent);
-  width: var(--w, 0px);
-  transform: translateX(var(--x, 0px));
-  /* The kit's travelling-indicator timing (`.m-indicator`): one object glides,
-     never a cross-fade. Same tier as tabs/filters/bottom-nav everywhere else. */
-  transition: transform var(--t-base) var(--m-glide),
-              width var(--t-base) var(--m-glide);
-  will-change: transform, width;
-}
-
 /* 1.4 — Optimistic vote: arrow press pop + count flash.
    Arrow uses press-pop (above). The count reuses kit `count-up-flash`. */
 @keyframes vote-pop {
@@ -2258,50 +2113,12 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
 }
 .vote-pop { animation: vote-pop var(--dur-quick) var(--ease-arrive); }
 
-/* 1.5 — Toggle thumb travel + gold "turning ON" glow.
-   Thumb travel is transform-only. The glow is a one-shot box-shadow pulse. */
-@keyframes toggle-glow {
-  0%   { box-shadow: 0 0 0 0 color-mix(in oklab, var(--gold-400) 60%, transparent); }
-  100% { box-shadow: 0 0 0 7px color-mix(in oklab, var(--gold-400) 0%, transparent); }
-}
-.kp-switch {
-  --tw: 18px;
-  position: relative;
-  width: 42px; height: 24px;
-  border-radius: var(--r-pill);
-  border: 1px solid var(--border-strong);
-  background: var(--bg-overlay);
-  cursor: pointer;
-  transition: background-color var(--dur-quick) var(--ease-glide),
-              border-color var(--dur-quick) var(--ease-glide);
-  flex-shrink: 0;
-}
-.kp-switch .kp-thumb {
-  position: absolute;
-  top: 50%; left: 3px;
-  width: 18px; height: 18px;
-  margin-top: -9px;
-  border-radius: 50%;
-  background: var(--pearl-200);
-  transition: transform var(--dur-quick) var(--ease-arrive),
-              background-color var(--dur-quick) var(--ease-glide);
-}
-.kp-switch[aria-checked="true"] {
-  background: color-mix(in oklab, var(--gold-500) 30%, var(--bg-overlay));
-  border-color: var(--border-gold);
-}
-.kp-switch[aria-checked="true"] .kp-thumb {
-  transform: translateX(var(--tw));
-  background: var(--gilt);
-  animation: toggle-glow var(--dur-arrive) var(--ease-glide);
-}
-.kp-switch:focus-visible { outline: 2px solid var(--brand-500); outline-offset: 2px; }
-
-/* 1.6 — Value-changed: generalize the wallet pill's number-roll + delta-flash.
-   `.value-roll` is the wrapper; `.value-flash` flashes the gilt outline on any
-   TZS figure that changes (balance, pool, payout estimate). Reuses the kit
-   `count-up-flash` for the digits and mirrors `wbp-delta-fade` for the delta. */
-.value-roll { font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
+/* 1.6 — Value-changed: the wallet pill's delta-flash.
+   `.value-flash` flashes the gilt outline on any TZS figure that changes (balance,
+   pool, payout estimate). Reuses the kit `count-up-flash` for the digits and mirrors
+   `wbp-delta-fade` for the delta.
+   ⚠️ `.value-roll` — the wrapper this comment used to name FIRST, as though it were
+   the main event — was deleted 2026-08-21 with zero consumers. Only the flash shipped. */
 .value-flash { animation: count-up-flash var(--dur-glide) var(--ease-glide); }
 @keyframes value-delta-fade {
   0%   { opacity: 0; transform: translateY(-2px); }
@@ -2315,32 +2132,6 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
    rung by arithmetic, but the ladder reserves it for settlement and celebration and
    sends everything else to `--t-stage`; a live value delta is neither. */
 .value-delta { animation: value-delta-fade var(--t-stage) var(--m-glide) forwards; }
-
-/* 1.7 — Success checkmark stroke-draw. Gilt. Pairs with confirm/success.
-   Animates stroke-dashoffset (a presentation attr on the path → compositor
-   friendly enough on mid-range Android at this scale). */
-@keyframes check-draw {
-  from { stroke-dashoffset: var(--len, 48); }
-  to   { stroke-dashoffset: 0; }
-}
-@keyframes check-pop {
-  0%   { transform: scale(0.7); opacity: 0; }
-  60%  { transform: scale(1.05); opacity: 1; }
-  100% { transform: scale(1); }
-}
-.check-draw .check-ring { animation: check-pop var(--dur-glide) var(--ease-arrive) both; transform-origin: center; }
-.check-draw .check-tick {
-  stroke-dasharray: var(--len, 48);
-  stroke-dashoffset: var(--len, 48);
-  animation: check-draw var(--dur-glide) var(--ease-glide) forwards;
-  /* 120ms → `--t-quick` (140). This is a CHOREOGRAPHY offset — the tick waits for
-     the ring to pop — and the ladder's rule of thumb says an offset takes its nearest
-     rung down exactly like a duration. ⭐ `animation-delay` is one of the two timings
-     the reduced-motion clamp DOES zero (`motion.css`), which is why this line is
-     named there: unclamped, the tick held `stroke-dashoffset: var(--len)` — an
-     invisible tick — for the whole wait. */
-  animation-delay: var(--t-quick);
-}
 
 /* 1.8 — Page / route transition. Light shared entrance — content rises a
    hair on navigate. Fast (quick) so it never delays perceived load. */
@@ -2357,7 +2148,6 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
   to   { opacity: 1; transform: translateY(0); }
 }
 .content-fade-in { animation: content-fade-in var(--dur-quick) var(--ease-glide) both; }
-.skel-fade-out { animation: m-leave-out var(--dur-quick) var(--ease-sink) forwards; }
 
 /* ---------------------------------------------------------------------------
    §2  BADGES & ACHIEVEMENTS  (sibling system to .tier-*)
@@ -2470,30 +2260,6 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
 .badge-unlock-rays { animation: badge-seal-rays var(--dur-stage) var(--ease-glide) both; transform-origin: center; }
 
 /* ---------------------------------------------------------------------------
-   §3  STREAK / LEVEL FURNITURE (supporting the celebration ladder + Hot Streak)
-   --------------------------------------------------------------------------- */
-.streak-rail {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 10px 4px 8px;
-  border-radius: var(--r-pill);
-  background: color-mix(in oklab, var(--gold-500) 12%, var(--bg-elevated));
-  border: 1px solid color-mix(in oklab, var(--gold-400) 30%, var(--border));
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  font-size: 12px;
-  color: var(--gilt);
-}
-@keyframes streak-tick {
-  0%   { transform: scale(1); }
-  45%  { transform: scale(1.22); }
-  100% { transform: scale(1); }
-}
-.streak-tick { animation: streak-tick var(--dur-quick) var(--ease-arrive); transform-origin: center; }
-
-/* ---------------------------------------------------------------------------
    §4  WIN CELEBRATION LADDER
    --------------------------------------------------------------------------- */
 /* All three tiers reuse EXISTING kit keyframes (count-up-flash, win-burst,
@@ -2535,19 +2301,15 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
   /* presses / votes / streaks: no transform, just the resting state */
   @keyframes press-pop   { from, to { transform: none; } }
   @keyframes vote-pop    { from, to { transform: none; } }
-  @keyframes streak-tick { from, to { transform: none; } }
-  @keyframes toggle-glow { from, to { box-shadow: none; } }
 
   /* stagger: everything arrives at once. ⛔ The two per-class `animation-delay: 0ms`
      resets that used to sit here are GONE — the calm clamp in motion.css now zeroes
      `animation-delay` universally, which covers these two AND the four sites they
-     never covered (`.win-seal` 160ms, `.check-tick` 120ms, `.cm-empty-starter`
-     100–340ms, `.cm-typing span` 180/360ms). Keeping them would be a second answer
+     never covered (`.win-seal` 160ms, `.check-tick` 120ms — that rule was deleted
+     2026-08-21 with the rest of the dead `.check-draw` family, so the measurement
+     stands but the selector no longer exists — `.cm-empty-starter` 100–340ms,
+     `.cm-typing span` 180/360ms). Keeping them would be a second answer
      to a question that now has one. */
-
-  /* checkmark: show drawn, no draw */
-  .check-draw .check-tick { stroke-dashoffset: 0 !important; animation: none !important; }
-  .check-draw .check-ring { animation: none !important; transform: none; opacity: 1; }
 
   /* value change: snap, keep the gilt flash subtle (color only, no shadow) */
   @keyframes count-up-flash { from, to { color: var(--text); text-shadow: none; } }
@@ -2562,9 +2324,6 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
      selector that no longer exists is dead weight one layer down. `.win-aura-anim`
      went the same way (DA-8/E-128, 2026-08-07). */
   .badge-unlock-rays { animation: none !important; opacity: 0.4; }
-
-  /* tab indicator: jump, don't slide */
-  .tab-indicator { transition: none !important; }
 
   /* live wall: arrive at once, fully visible — never invisible */
   .kp-rise { animation: none !important; }
@@ -2611,23 +2370,22 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
 [data-motion="reduced"] .prog-sweep::after,
 [data-motion="reduced"] .pbar-resolved::after,
 [data-motion="reduced"] .mark-breathe,
-[data-motion="reduced"] .gold-dot,
 [data-motion="reduced"] .pchart-dot-halo,
 [data-motion="reduced"] .notif-badge-pulse,
 [data-motion="reduced"] .csrf-rest-ring,
 [data-motion="reduced"] .skeleton,
-[data-motion="reduced"] .settling-bar::before,
-/* ⬇ ADDED 2026-08-07 — the 11 loops the tier had never switched off. Each one is
-   `animation: none`, never a colour change: the state has to survive the calm. */
+/* ⬇ ADDED 2026-08-07 — the loops the tier had never switched off. Each one is
+   `animation: none`, never a colour change: the state has to survive the calm.
+   ⚠️ This read "the 11 loops" until 2026-08-21, when the two `.countdown-ring`
+   entries left with the dead rule they named. ⛔ The count is deliberately NOT
+   restated here — a number written twice disagrees with itself, and this list already
+   has a reader that prints the live one: `npm run test:reduce-motion`, whose rule 2.2
+   FAILS the moment an entry outlives the selector it names. */
 [data-motion="reduced"] .kp-shimmer-track::after,   /* loading shimmer            */
 [data-motion="reduced"] .m-skeleton::after,         /* the kit's loading sweep    */
 [data-motion="reduced"] .m-ambient,                 /* 64s spin + will-change: a
                                     permanently promoted layer is precisely what a
                                     low-end device cannot afford, "free" or not    */
-[data-motion="reduced"] .countdown-ring.urgent .ring-arc,   /* the stroke colour +
-                                    drop-shadow carry urgent/critical statically,
-                                    so stopping the pulse loses no meaning (M6)    */
-[data-motion="reduced"] .countdown-ring.critical .ring-arc,
 [data-motion="reduced"] .closing-pill,              /* its base IS the gold urgent
                                     end of the pulse, by its own design comment    */
 [data-motion="reduced"] .ud-count-pulse,            /* Up & Down live counters      */
@@ -3749,71 +3507,6 @@ html[data-sheet-open] .route-enter { animation: none; }
    4 · Market detail — calm trading terminal
    --------------------------------------------------------------------------- */
 
-.mterm { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: var(--sp-6); align-items: start; }
-@media (max-width: 880px) { .mterm { grid-template-columns: minmax(0, 1fr); } }
-
-.mterm-main { display: flex; flex-direction: column; gap: var(--sp-5); min-width: 0; }
-.mterm-rail { position: sticky; top: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-4); }
-@media (max-width: 880px) { .mterm-rail { position: static; } }
-
-.tpanel {
-  border-radius: var(--r-lg);
-  border: 1px solid var(--border);
-  background: var(--bg-elevated);
-  box-shadow: var(--shadow-card);
-}
-.tpanel-pad { padding: var(--sp-5); }
-.tpanel-head { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-4) var(--sp-5); border-bottom: 1px solid var(--border); }
-.tpanel-title { font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gilt); }
-
-/* Question header */
-.mterm-q { font-family: var(--font-display); font-size: var(--type-h1); line-height: 1.14; letter-spacing: -0.02em; color: var(--text); text-wrap: balance; }
-.mterm-q-sw { margin-top: 6px; font-size: var(--type-h4); font-style: italic; color: var(--text-subtle); }
-
-/* Big % beside the chart */
-.mterm-hero { display: flex; align-items: baseline; gap: var(--sp-4); flex-wrap: wrap; }
-.mterm-pct { font-family: var(--font-display); font-weight: 800; font-size: var(--type-display-2); line-height: 0.9; letter-spacing: -0.03em; color: var(--yes-300); font-variant-numeric: tabular-nums; }
-.mterm-pct .unit { font-size: 0.5em; color: var(--yes-400); }
-.mterm-pct-cap { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-subtle); }
-
-/* Two-sided pool */
-.pool { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; border-radius: var(--r-md); overflow: hidden; border: 1px solid var(--border); }
-.pool-side { padding: var(--sp-4); display: flex; flex-direction: column; gap: 3px; }
-.pool-yes { background: color-mix(in oklab, var(--yes-500) 12%, var(--bg-elevated)); }
-.pool-no  { background: color-mix(in oklab, var(--no-500)  12%, var(--bg-elevated)); }
-.pool-cap { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; }
-.pool-yes .pool-cap { color: var(--yes-300); }
-.pool-no  .pool-cap { color: var(--no-300); }
-.pool-amt { font-family: var(--font-display); font-weight: 700; font-size: var(--type-h3); font-variant-numeric: tabular-nums; color: var(--text); }
-.pool-sub { font-family: var(--font-mono); font-size: 11px; color: var(--text-subtle); }
-
-/* Bet ticket rail */
-.ticket-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
-.ticket-tab {
-  appearance: none; cursor: pointer;
-  border-radius: var(--r-md); border: 1px solid var(--border);
-  background: var(--bg-overlay); color: var(--text-muted);
-  font-family: var(--font-body); font-weight: 700; font-size: 14px;
-  height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  transition: border-color var(--dur-micro) var(--ease-micro), color var(--dur-micro) var(--ease-micro), background-color var(--dur-micro) var(--ease-micro);
-}
-.ticket-tab .t-pct { font-family: var(--font-mono); font-size: 12px; opacity: 0.8; }
-.ticket-tab.is-yes-active { border-color: color-mix(in oklab, var(--yes-500) 60%, transparent); background: color-mix(in oklab, var(--yes-500) 18%, transparent); color: var(--yes-200); }
-.ticket-tab.is-no-active  { border-color: color-mix(in oklab, var(--no-500)  60%, transparent); background: color-mix(in oklab, var(--no-500)  18%, transparent); color: var(--no-200); }
-
-.ticket-row { display: flex; align-items: center; justify-content: space-between; font-size: 13px; }
-.ticket-row .label { color: var(--text-muted); }
-.ticket-row .val { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--text); }
-.ticket-row .val-gilt { color: var(--gilt); }
-.ticket-quick { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-2); }
-.ticket-chip {
-  appearance: none; cursor: pointer; border-radius: var(--r-sm); border: 1px solid var(--border);
-  background: var(--bg-overlay); color: var(--text-muted);
-  font-family: var(--font-mono); font-size: 11px; font-weight: 600; height: 30px;
-  transition: border-color var(--dur-micro) var(--ease-micro), color var(--dur-micro) var(--ease-micro);
-}
-.ticket-chip:hover { border-color: var(--gilt); color: var(--gilt); background: color-mix(in oklab, var(--gilt) 8%, var(--bg-overlay)); }
-
 /* Position / P&L */
 .pnl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
 .pnl-cell { padding: var(--sp-3); border-radius: var(--r-md); background: var(--bg-overlay); border: 1px solid var(--border); }
@@ -3821,18 +3514,6 @@ html[data-sheet-open] .route-enter { animation: none; }
 .pnl-val { margin-top: 4px; font-family: var(--font-mono); font-weight: 600; font-size: 17px; font-variant-numeric: tabular-nums; color: var(--text); }
 .pnl-val.up { color: var(--yes-300); }
 .pnl-val.down { color: var(--no-300); }
-
-/* Comments slot */
-.comment-slot { display: flex; flex-direction: column; gap: var(--sp-4); }
-.comment { display: flex; gap: var(--sp-3); }
-.comment-body { min-width: 0; }
-.comment-head { display: flex; align-items: center; gap: var(--sp-2); font-size: 12px; }
-.comment-name { font-weight: 600; color: var(--text); }
-.comment-time { font-family: var(--font-mono); font-size: 11px; color: var(--text-subtle); }
-.comment-text { margin-top: 3px; font-size: 13px; line-height: 1.5; color: var(--text-muted); }
-.comment-side { font-family: var(--font-mono); font-size: 10px; padding: 1px 6px; border-radius: var(--r-pill); }
-.comment-side-yes { color: var(--yes-300); background: color-mix(in oklab, var(--yes-500) 16%, transparent); }
-.comment-side-no  { color: var(--no-300);  background: color-mix(in oklab, var(--no-500)  16%, transparent); }
 
 /* Trust strip */
 .trust { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-4); padding: var(--sp-4) var(--sp-5); border-radius: var(--r-md); border: 1px solid var(--border); background: var(--bg-overlay); }
