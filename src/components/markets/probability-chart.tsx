@@ -8,11 +8,22 @@
  * point, range tabs + hover crosshair. Styling lives in globals.css (.pchart
  * / .spark). Dependency-free SVG.
  */
-import { useState, useRef, useId, useEffect } from "react";
+import { useState, useRef, useId, useEffect, useMemo, useCallback } from "react";
 import { SignalPip } from "@/components/brand";
 import { useT } from "@/lib/i18n";
 
 export type ProbPoint = { t: string; p: number };
+
+/**
+ * Plot padding — MODULE SCOPE ON PURPOSE (2026-08-21). These are four fixed literals,
+ * and hoisting them out of the component body is what lets the geometry below memoise
+ * with an honest, lint-clean dependency list instead of one that re-derives every render.
+ */
+const padL = 34, padR = 14, padT = 16, padB = 24;
+
+/** Stable identity for "this range has no points" — a fresh `[]` per render would
+ *  invalidate the geometry memo on every hover frame, which is the bug it exists to fix. */
+const NO_POINTS: ProbPoint[] = [];
 
 /** Light Catmull-Rom smoothing → cubic beziers. Low tension: reads as data. */
 function smoothPath(pts: number[][]): string {
@@ -64,20 +75,46 @@ export function ProbabilityChart({
 
   const width = widthProp ?? measuredWidth;
 
-  const data = series[range] || [];
-  const padL = 34, padR = 14, padT = 16, padB = 24;
+  const data = series[range] || NO_POINTS;
   const W = width - padL - padR, H = height - padT - padB;
   const n = data.length;
 
-  const x = (i: number) => padL + (n <= 1 ? 0 : (i / (n - 1)) * W);
-  const y = (p: number) => padT + (1 - p / 100) * H;
+  const x = useCallback((i: number) => padL + (n <= 1 ? 0 : (i / (n - 1)) * W), [n, W]);
+  const y = useCallback((p: number) => padT + (1 - p / 100) * H, [H]);
   const baseline = y(50);
 
-  const pts = data.map((d, i) => [x(i), y(d.p)]);
-  const linePath = smoothPath(pts);
-  const areaPath = pts.length
-    ? `${linePath} L ${x(n - 1).toFixed(2)} ${baseline.toFixed(2)} L ${x(0).toFixed(2)} ${baseline.toFixed(2)} Z`
-    : "";
+  /**
+   * ⚡ THE GEOMETRY IS MEMOISED — 2026-08-21, and the trigger is the HOVER, not the mount.
+   *
+   * `pts`, `linePath` and `areaPath` were plain render-body expressions, so they were
+   * rebuilt on EVERY render of this component — including every single
+   * `onPointerMove`, which calls `setHover(idx)` and therefore re-renders at the
+   * pointer's event rate (~60/s while a finger drags across the chart, and this chart
+   * is explicitly built for touch scrubbing: `touch-action: pan-y`).
+   *
+   * That was not a cheap expression. Per frame it was: one `.map` allocating N
+   * two-element arrays, then `smoothPath` walking all N points building a cubic-bezier
+   * string with FOUR `toFixed(2)` calls each — `toFixed` is a number→string conversion,
+   * the single most expensive thing in the whole render — then a fifth string concat for
+   * the area. On an "ALL" range that is hundreds of points of string building per frame,
+   * on the low-end Android this product is built for, to produce a path that had not
+   * changed at all: moving the pointer does not move the line.
+   *
+   * The deps are exactly what the shape depends on — the points, the plot box, and the
+   * two coordinate mappers (themselves `useCallback`-stable on `n`/`W`/`H`). `hover` is
+   * deliberately NOT among them, which is the whole point: the crosshair, the readout and
+   * the value flag still re-render on every frame, because those genuinely do move.
+   */
+  const { linePath, areaPath } = useMemo(() => {
+    const p = data.map((d, i) => [x(i), y(d.p)]);
+    const line = smoothPath(p);
+    return {
+      linePath: line,
+      areaPath: p.length
+        ? `${line} L ${x(n - 1).toFixed(2)} ${baseline.toFixed(2)} L ${x(0).toFixed(2)} ${baseline.toFixed(2)} Z`
+        : "",
+    };
+  }, [data, n, x, y, baseline]);
 
   useEffect(() => {
     const el = lineRef.current;

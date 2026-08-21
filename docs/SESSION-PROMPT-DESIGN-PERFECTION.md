@@ -31,8 +31,8 @@ repo `F:\kipindi-main`, branch `main`):**
 | 3 | Sizing (operator's top priority) | **DONE** | `2122067d` | ✓ 200 · clean boot · shots read |
 | 4 | Correctness: time, words, money formatting | **DONE** | `6882091f` | ✓ 200 · clean boot · shots read |
 | 5 | Focus & accessibility | **DONE** | `dd1dc8ec` | ✓ 200 · clean boot · shots read |
-| 6 | Motion | **DONE** | `stage-6` | pending push |
-| 7 | Performance | NOT STARTED | | |
+| 6 | Motion | **DONE** | `b14c749f` + `453f515b` | ✓ 200 · clean boot · shots read |
+| 7 | Performance | **DONE** (one item deferred with a written plan — see below) | `stage-7` | pending push |
 | 8 | Dead code & doc truth | NOT STARTED | | |
 | 9 | Consolidations | NOT STARTED | | |
 | 10 | New guards | NOT STARTED | | |
@@ -318,6 +318,66 @@ have to re-derive.
   INFINITE loops with no gate-3 entry — including `pr-pulse`, which renders on `/live`, a
   player board. The keyframe registry was also mislabelling them "no consumer", which is a
   DELETION TRAP for a future session.
+
+**Stage 7**
+
+- ⭐ **THE FONT BRIEF'S PREMISE WAS WRONG, AND ACTING ON IT WOULD HAVE COST FIVE REGRESSIONS
+  FOR ZERO BYTES.** All three families are **VARIABLE** fonts: every weight of a family points
+  at the SAME woff2 (Sora 400–800 → one 25,240 B file; Inter 400–700 → one 48,432 B; JBM
+  400–600 → one 31,340 B). Pruning a weight saves nothing but ~200 bytes of CSS, and the census
+  says every declared weight is genuinely referenced. ⛔ Do not "prune the font weights" — the
+  suggestion is in the audit and it is wrong.
+- ⭐ **The notifications bell went from ~720 requests/hour to ~120** — 30s closed, 5s only while
+  open, self-chaining so ticks cannot overlap, with `use-event-stream.ts`'s exact backoff policy
+  (1s→30s, ±30% jitter, reset earned by a real answer) rather than a second one. Opening the
+  panel now fires an immediate refresh, so the list a player actually looks at is FRESHER than
+  before, not staler — without that the change would have been a user-visible regression.
+- ⭐ **An 8-card Up & Down board armed 32 unaligned 1-second timers; it now has ONE.** The
+  per-render `Intl` construction is gone (`usd()` built a fresh `Intl.NumberFormat` on each of
+  ~5 calls per card per second) and the second is pushed down into a digits leaf, so a tick
+  re-renders the digits rather than the card.
+- 🔴 **The last per-second whole-card render was one line in `use-quick-bet`**, which every card
+  calls unconditionally: it read the clock to derive ONE boolean — has the selection window shut
+  — through an ungated `useServerNow` that returns a new number every second. Gated on the
+  boolean itself, so a render is requested once per round instead of once per second.
+- ⚠️ **`admin-shell` carried a PERSISTENT `backdrop-filter: blur(14px)`** on its sticky top bar
+  — continuous compositing for the whole session, on the console an operator leaves open all
+  day. The player top bar had already deleted its own for exactly this reason and `globals.css`
+  records why.
+
+### 🔴 DEFERRED WITH A PLAN — the i18n first-load bundle (Stage 7's biggest single win)
+
+**The premise is CONFIRMED and measured:** `src/lib/i18n-dict.ts` is 340,197 B of EN + SW + ZH,
+imported by a client provider mounted in the root layout, and it lands in first-load JS as a
+**267,096 B chunk** — the second-largest. At least two thirds is dead weight per visitor, and
+this product's players are on low-end Android over Tanzanian mobile data.
+
+**Why it was NOT split, on evidence rather than caution.** That file is not only a module — it
+is a **test fixture read as SOURCE TEXT by 19 wired gate scripts, 7 of which REWRITE it**
+(`red-labels.mjs` mutates exact ZH string literals; `red-feedback-law`, `failure-reasons-red`,
+`rate-copy-red`, `ticker-honesty-red`, `updown-source-class-red`, `updown-void-copy-red`). Two
+assertion shapes make the split self-contradictory: `label-lexicon.test.mts` locates the locale
+blocks by the regex `^  en: \{` and **deliberately hard-fails rather than scan nothing**, while
+the only form that would tree-shake — three top-level `export const en/sw/zh` — cannot also be a
+two-space-indented object property. And `I18nProvider` is mounted from a `"use client"` file, so
+there is no server component in its path to hand the active dict down from.
+
+**The unblock, ready to execute** (needs ownership of `src/app/layout.tsx`,
+`src/components/theme-provider.tsx` and `scripts/`): `layout.tsx` already derives `lang` from the
+`kp-locale` cookie — have it call `getServerT()` and pass the active dict down as `initialDict`.
+The client bundle then carries **no dictionary at all** (the whole 267 KB leaves first-load JS,
+not just two thirds), the active locale arrives inline with no waterfall and no wrong-language
+flash, `useT()` stays synchronous, and the other two locales load only on a real switch — covered
+by the `isChangingLocale` overlay that already exists for exactly that moment. The scripts pass is
+mechanical: one shared helper replacing `read("src/lib/i18n-dict.ts")` with a read-and-concatenate
+of the per-locale files, plus repointing the 7 RED harnesses' mutation targets — ⚠️ if those are
+missed their mutations become silent no-ops and they will report "the gate did not catch it",
+which looks like a broken gate rather than a broken harness.
+⚠️ **Type safety to preserve:** `Dict = typeof dict.en` with `as const`, so `sw`/`zh` are NOT
+compile-checked against it (hence the existing `as Dict` cast); parity is enforced at RUNTIME by
+`test:i18n` comparing flattened leaf-key sets. Any split must reproduce that exact arrangement —
+one canonical type from EN, runtime parity for the other two — or the 1880-key count silently
+stops meaning anything.
 
 **Follow-ups this campaign opened and has not closed**
 

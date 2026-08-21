@@ -123,14 +123,41 @@ export async function AdminTopBar({ crumbs, session, activeKey, viewDomains, isO
     <div className="relative z-40 border-b border-border"
       style={{
         height: 56,
-        background: "color-mix(in oklab, var(--panel) 78%, transparent)",
-        backdropFilter: "blur(14px) saturate(1.3)",
-        WebkitBackdropFilter: "blur(14px) saturate(1.3)",
+        background: "var(--panel)",
       }}>
-      {/* relative z-40: `backdrop-filter` above makes this bar its own stacking
-          context, which would otherwise TRAP the AI-toolkit dropdown's z-50 below
-          the page content (the search input painted over it at 360). Elevating the
-          whole bar lets the dropdown overlay the page. Stays below portaled modals (z-100). */}
+      {/* 🔴 THE FROSTED BLUR IS DELETED — 2026-08-21. It was
+          `color-mix(in oklab, var(--panel) 78%, transparent)` plus
+          `backdrop-filter: blur(14px) saturate(1.3)`, on the top bar of all 47 admin routes.
+
+          ⚠️ AND THE USUAL REASON GIVEN FOR REMOVING ONE DOES NOT APPLY HERE — checked, not
+          assumed. This bar is NOT sticky: `admin/layout.tsx` renders it in normal flow
+          inside the `<main>` column (the SIDEBAR is the sticky element, not this), so it
+          scrolls away with the content and does not re-blur a moving backdrop every frame.
+          If you are here because a plan said "sticky admin top bar", that part was wrong.
+
+          ⭐ IT IS STILL WORTH DELETING, FOR THE OTHER REASON. `backdrop-filter` forces the
+          element onto its own compositing layer and re-runs a full-width 14px blur +
+          saturate pass on every REPAINT of the region — and the admin shell repaints that
+          region constantly without anyone scrolling: the `animate-pulse` live dots on the
+          KPI tiles sit directly beneath it, `RefreshButton` re-renders the grid in place,
+          and the AI-toolkit dropdown opens over it. That is continuous GPU work, on every
+          admin screen, to soften a strip that has data directly behind it.
+
+          ⛔ THE SEE-THROUGH BAR IS REMOVED, NOT TUNED — this is the SAME fix, for the same
+          reason, that the PLAYER top bar already took in batch 3 (see `top-app-bar.tsx`
+          and the "THE STICKY TOP-BAR FROSTED BLUR IS DELETED" note in `globals.css`).
+          A translucent bar over scrolling data cannot be made legible by raising a mix
+          percentage; `--panel` is opaque, and the 1px `--border` bottom edge is the
+          boundary. Do not reintroduce a translucent header here either.
+
+          ⭐ `relative z-40` STAYS, AND IS STILL LOAD-BEARING — read this before "cleaning"
+          it up. The comment it replaces justified z-40 by the blur ("backdrop-filter makes
+          this bar its own stacking context"), so removing the blur reads like removing the
+          reason. It is not: a positioned element with a z-index forms a stacking context
+          on its own, and what actually matters is that the bar is ELEVATED ABOVE THE PAGE
+          BODY so the AI-toolkit dropdown (z-50) overlays the content instead of the search
+          input painting over it at 360. Drop the z-40 and that bug comes straight back.
+          Stays below portaled modals (z-100). */}
       {/* DESIGN_AUTHORITY B7 — the bar's BACKGROUND stays full-bleed (it is chrome,
           and a boxed blur strip would look broken against the sidebar), but its
           CONTENT is capped to the same console measure as the page body below it.

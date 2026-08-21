@@ -43,12 +43,22 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
   });
 
   // Sort
+  // `sortBalances` deliberately OUTLIVES the branch below: when the balance sort runs it
+  // has already loaded every wallet, and the table further down used to go and fetch the
+  // twenty it needs all over again. See the balance resolution after pagination.
+  let sortBalances: Map<string, number> | null = null;
   if (sortField === "balance") {
     // Batch-load all wallets in one query instead of N+1 per-user lookups.
     let allWallets: Awaited<ReturnType<typeof db.wallet.listAll>> = [];
-    try { allWallets = await db.wallet.listAll(); } catch { /* graceful */ }
+    let walletsOk = true;
+    try { allWallets = await db.wallet.listAll(); } catch { walletsOk = false; }
     const balanceMap = new Map<string, number>();
     for (const w of allWallets) balanceMap.set(w.userId, w.balance);
+    // Only publish the map for REUSE if the read actually succeeded. On failure the map is
+    // empty, and treating "empty" as "everyone has no wallet" would silently print "—" down
+    // the whole money column — a failed read rendering as a fact, which is the A-5 defect.
+    // The per-row path below is left to try again instead.
+    if (walletsOk) sortBalances = balanceMap;
     filtered.sort((a, b) => {
       const cmp = (balanceMap.get(a.id) ?? 0) - (balanceMap.get(b.id) ?? 0);
       return sortDir === "asc" ? cmp : -cmp;
@@ -66,6 +76,46 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
   const page = parsePage(sp.page, filtered.length);
   const paged = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
   const baseHref = buildBaseHref("/admin/players", { q: sp.q, status: sp.status, sort: sp.sort, dir: sp.dir });
+
+  /**
+   * ⚡ WALLET BALANCES ARE RESOLVED ONCE, HERE, FOR THE VISIBLE PAGE ONLY — 2026-08-21.
+   *
+   * The table body used to be `await Promise.all(paged.map(async (u) => { const wallet =
+   * await db.wallet.findByUserId(u.id); … }))` — a query per rendered row, inside JSX.
+   * Two things were wrong with that, and both are removed without changing a single
+   * rendered character:
+   *
+   *  1. 🔴 IT RAN FOR VIEWERS WHO ARE NOT ALLOWED TO SEE THE ANSWER. The cell is
+   *     `canSeeMoney && wallet ? … : "—"`, so for a SUPPORT officer — whose whole point
+   *     is roster-without-money (RBAC, above) — the page fired twenty wallet reads per
+   *     load and threw every one of them away. The gate is now asked BEFORE the query,
+   *     not after it, which is also the right shape for a money read on a licensed
+   *     platform: privileged data that is never fetched cannot leak.
+   *
+   *  2. IT RE-FETCHED WHAT THE BALANCE SORT HAD JUST LOADED. Sorting by Wallet pulls
+   *     every wallet into `sortBalances`; the rows then queried twenty of them again,
+   *     one at a time. Reusing the map also makes the column self-consistent — the
+   *     figure a row shows is now from the same snapshot the ordering was computed from,
+   *     where before the two could be read milliseconds apart and disagree.
+   *
+   * When neither shortcut applies the point queries still run, in parallel, for the
+   * ≤20 visible rows — deliberately NOT `listAll()`, which would trade twenty indexed
+   * reads for the entire wallet table and get worse with every player who signs up.
+   * (`Promise.resolve` per the §9 gotcha: the dev in-memory store returns these values
+   * synchronously while tsc only ever sees Prisma's async types.)
+   */
+  const pageBalances = new Map<string, number>();
+  if (canSeeMoney) {
+    if (sortBalances) {
+      for (const u of paged) {
+        const b = sortBalances.get(u.id);
+        if (b !== undefined) pageBalances.set(u.id, b);
+      }
+    } else {
+      const wallets = await Promise.all(paged.map((u) => Promise.resolve(db.wallet.findByUserId(u.id))));
+      for (const w of wallets) if (w) pageBalances.set(w.userId, w.balance);
+    }
+  }
 
   // One pass over the population → the status→count map that feeds both the KPI
   // band and the status-mix bar (was seven separate .filter() passes).
@@ -158,8 +208,8 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                 </tr>
               </thead>
               <tbody className="text-text-secondary">
-                {await Promise.all(paged.map(async (u) => {
-                  const wallet = await db.wallet.findByUserId(u.id);
+                {paged.map((u) => {
+                  const balance = pageBalances.get(u.id);
                   const label = displayLabel(u);
                   const initials = displayInitials(u);
                   const isAutoHandle = !((u.displayName ?? "").trim().length > 0);
@@ -177,7 +227,11 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                       {/* Masked in the broad list view — full number only on the detail page (PII minimization). Search still matches the full number. */}
                       <td className="font-mono whitespace-nowrap">{u.phoneE164.length > 6 ? `${u.phoneE164.slice(0, 4)}****${u.phoneE164.slice(-2)}` : u.phoneE164}</td>
                       <td><AccountStatusBadge status={u.status} /></td>
-                      <td className="font-mono tabular text-right whitespace-nowrap">{canSeeMoney && wallet ? formatTzs(wallet.balance) : "—"}</td>
+                      {/* `pageBalances` is empty unless the viewer passed the accounting
+                          gate, so this stays exactly the old `canSeeMoney && wallet` cell:
+                          a player with no wallet row, and a viewer with no money rights,
+                          both read "—". */}
+                      <td className="font-mono tabular text-right whitespace-nowrap">{balance !== undefined ? formatTzs(balance) : "—"}</td>
                       <td className="font-mono whitespace-nowrap">{formatDate(u.createdAt)}</td>
                       <td className="font-mono whitespace-nowrap">{u.lastLoginAt ? formatDate(u.lastLoginAt) : "—"}</td>
                       <td>
@@ -185,7 +239,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                       </td>
                     </tr>
                   );
-                }))}
+                })}
                 {filtered.length === 0 && (
                   usersFailed ? (
                     <tr><td colSpan={7} className="p-4"><AdminLoadError what="the player list" /></td></tr>

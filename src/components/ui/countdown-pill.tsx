@@ -45,11 +45,38 @@ export function CountdownPill({
   const { t } = useT();
   const [left, setLeft] = React.useState(Math.max(0, Math.floor(seconds)));
   const expiredRef = React.useRef(false);
+  /**
+   * ⚡ ONE INTERVAL FOR THE WHOLE COUNTDOWN — 2026-08-21.
+   *
+   * This effect used to depend on `left`, which changes every second. So every single
+   * tick tore the interval down and built a new one: on a 90-second cool-off that is 90
+   * `clearInterval` + 90 `setInterval` calls, plus 90 effect cleanups, to do the work of
+   * one timer. It also meant the clock re-based itself on each React commit, so the
+   * countdown accumulated one commit's latency of drift per second.
+   *
+   * The dependency is now `running`, which flips true → false EXACTLY ONCE, at zero. The
+   * interval is therefore created once and cleared once, and it ticks on a fixed 1000 ms
+   * cadence instead of a re-based one. The displayed number and the moment `onExpire`
+   * fires are unchanged — this is the same countdown, costing one timer instead of N.
+   *
+   * ⛔ DO NOT PUT `left` BACK IN THE DEPENDENCY ARRAY. The updater form
+   * `setLeft((v) => …)` is what makes that unnecessary: it reads the freshest value from
+   * React rather than closing over a stale one, so the effect never needs to re-subscribe.
+   *
+   * ⚠️ NO VISIBILITY GATE, DELIBERATELY. Pausing on `document.hidden` looks like a free
+   * win and is not: the only correct way to resume a COOL-OFF is to re-derive it from a
+   * wall-clock deadline, and that changes the second at which a locked-out player is told
+   * they may retry — a compliance-adjacent decision, not a performance one. It would also
+   * buy almost nothing here: both call sites (`/auth/otp` and `rate-limit-banner`) are
+   * foreground auth screens the player is sitting and watching, and the pill unmounts
+   * when the wait ends.
+   */
+  const running = left > 0;
   React.useEffect(() => {
-    if (left <= 0) return;
+    if (!running) return;
     const id = setInterval(() => setLeft((v) => Math.max(0, v - 1)), 1000);
     return () => clearInterval(id);
-  }, [left]);
+  }, [running]);
   React.useEffect(() => {
     if (left <= 0 && !expiredRef.current) {
       expiredRef.current = true;

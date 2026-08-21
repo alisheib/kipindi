@@ -7,6 +7,8 @@ import {
   useTransition,
   type ReactNode,
   useEffect,
+  useCallback,
+  useMemo,
 } from "react";
 import { useRouter } from "next/navigation";
 import { dict, type Locale, type Dict } from "./i18n-dict";
@@ -81,7 +83,7 @@ export function I18nProvider({ children, initial = "en" }: { children: ReactNode
     }
   }, [isPending, isChangingLocale]);
 
-  const setLocale = (l: Locale) => {
+  const setLocale = useCallback((l: Locale) => {
     if (l === locale) return;
     setIsChangingLocale(true);
     setLocaleState(l);
@@ -93,10 +95,38 @@ export function I18nProvider({ children, initial = "en" }: { children: ReactNode
     startTransition(() => {
       router.refresh();
     });
-  };
+  }, [locale, router, startTransition]);
+
+  /**
+   * ⭐ THE CONTEXT VALUE IS MEMOISED, AND THAT IS A RENDER BUDGET, NOT TIDINESS.
+   *
+   * This provider sits above the whole app, and `useT()` is called by ~120 client
+   * files. A context whose value is a fresh object literal notifies EVERY one of
+   * those consumers on EVERY render of this component — React's context
+   * propagation deliberately walks past the `children` bail-out, so the fact that
+   * `children` is a stable element from ThemeProvider saves nothing.
+   *
+   * This component re-renders more often than it changes anything. One language
+   * switch is up to five renders — `setIsChangingLocale(true)`, `setLocaleState`,
+   * `isPending` true, `isPending` false, `setIsChangingLocale(false)` — and the
+   * two driven by `useTransition` carry no change to `locale`, `t` or the flag at
+   * all. Unmemoised, each of those was a full re-render of every mounted consumer
+   * on the target device, at the exact moment `router.refresh()` already has it
+   * busy re-rendering the server tree.
+   *
+   * ⚠️ `isChangingLocale` stays IN this value on purpose. It is read only by
+   * `LocaleChangeOverlay` below, so a second context would spare consumers the
+   * two flips — but `useT()`'s return shape is depended on by those ~120 files
+   * and a consumer that read both contexts would re-render just the same. The
+   * shape is the contract; do not split it for a two-render saving.
+   */
+  const value = useMemo(
+    () => ({ locale, t: dict[locale] as Dict, setLocale, isChangingLocale }),
+    [locale, setLocale, isChangingLocale],
+  );
 
   return (
-    <I18nContext.Provider value={{ locale, t: dict[locale] as Dict, setLocale, isChangingLocale }}>
+    <I18nContext.Provider value={value}>
       {children}
     </I18nContext.Provider>
   );

@@ -16,6 +16,17 @@ import { useModalLock } from "@/lib/use-modal-lock";
 const FOCUSABLE =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+/** Poll cadence. 5s is what a player WATCHING the open list needs; 30s is all a closed
+ *  bell needs, because `50pick:sse:notification` — not this poll — is what makes an
+ *  arrival appear. See the poll effect for why the poll still exists at all. */
+const POLL_OPEN_MS = 5_000;
+const POLL_CLOSED_MS = 30_000;
+/** Failure ladder, the SAME shape as `src/lib/use-event-stream.ts` (B-18): start at 1s,
+ *  double to a 30s ceiling, ±30% jitter, and only a real answer earns the reset. One
+ *  backoff policy in this product, not two. */
+const POLL_BACKOFF_BASE_MS = 1_000;
+const POLL_BACKOFF_MAX_MS = 30_000;
+
 const iconFor = (k: StoredNotification["kind"]) => {
   switch (k) {
     case "WIN":          return I.trophy;
@@ -130,7 +141,7 @@ export function NotificationsPanel() {
    * Monotonic per-request sequence — the stale-response guard (the B-20 pattern from
    * `vote-control.tsx`, applied to a poller instead of a click).
    *
-   * EIGHT sources call `refresh()`: mount, the 5s interval, the visibilitychange resume,
+   * EIGHT sources call `refresh()`: mount, the poll beat, the visibilitychange resume,
    * the `50pick:refresh-notifications` broadcast, the `50pick:sse:notification` push, and
    * the three optimistic handlers (dismiss / mark-all / clear-all), which each `await
    * refresh()` right after mutating `items` locally. Applied in ARRIVAL order, a poll
@@ -141,6 +152,31 @@ export function NotificationsPanel() {
    * ⚠️ Not `ringSeq` below: that is a CSS keyframe-restart counter, not a request number.
    */
   const refreshSeq = useRef(0);
+  /**
+   * In-flight REQUEST count — a flag, not a mutex. Written by `refresh()` around its one
+   * await; read ONLY by the poll beat, which yields rather than stack a second request
+   * behind one already crawling over a 2G radio.
+   * ⛔ It must never gate `refresh()` itself: the three optimistic handlers `await
+   * refresh()` the instant after they mutate `items`, and a refusal there would leave the
+   * optimistic state unreconciled against the server.
+   */
+  const inFlightRef = useRef(0);
+  /** The single armed poll beat — a self-chaining `setTimeout`, never a `setInterval`. */
+  const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Consecutive-failure ladder; reset by a real answer. See the poll effect. */
+  const pollBackoff = useRef(POLL_BACKOFF_BASE_MS);
+  /** Live mirror of `open` for the scheduler, which must NOT take `open` as a dependency
+   *  (that would tear the chain and both listeners down on every toggle). */
+  const openRef = useRef(false);
+  /** `null` until the cadence effect's first run. It compares against the PREVIOUS value
+   *  rather than latching a "mounted" bool, because React's dev double-invoke re-runs the
+   *  effect with `open` unchanged — and a latch would let that second run re-time the
+   *  mount beat out to 30s, leaving the bell empty for half a minute in dev and in QA. */
+  const prevOpenRef = useRef<boolean | null>(null);
+  /** Handles the poll effect publishes so the cadence effect can pull the next beat
+   *  forward, or push it out, without owning the timer itself. */
+  const pollNowRef = useRef<(() => void) | null>(null);
+  const pollRetimeRef = useRef<(() => void) | null>(null);
   /* M5 alert primitive — the bell takes `.g-ring` on the arrival of a NEW unread,
      single-shot; the key bump restarts the keyframe on each fresh arrival. Never on
      hover, never looping.
@@ -159,48 +195,144 @@ export function NotificationsPanel() {
      own variant haptic, and the win celebration), so removing this also removes a
      double signal rather than leaving the moment silent. */
   const [ringSeq, setRingSeq] = useState(0);
-  const refresh = useCallback(async () => {
+  /**
+   * Resolves `true` when the round-trip COMPLETED — including one the seq guard then
+   * discarded, because a superseded answer still proves the path is healthy — and `false`
+   * only when the request itself failed. The poll beat is the only caller that reads it,
+   * to choose between its cadence and the backoff ladder; every other caller ignores it.
+   */
+  const refresh = useCallback(async (): Promise<boolean> => {
     const seq = ++refreshSeq.current;
-    // B-15 — offline, this rejected every 5s as an unhandled promise. A poll
+    // B-15 — offline, this rejected on every beat as an unhandled promise. A poll
     // that cannot reach the server simply skips its beat.
     let r: Awaited<ReturnType<typeof fetchMyNotifications>>;
     // ⛔ The catch returns WITHOUT rewinding `refreshSeq`, on purpose: a failed request
     // must not re-open the window for an older one still in flight.
-    try { r = await fetchMyNotifications(); } catch { return; }
-    if (seq !== refreshSeq.current) return; // a newer request owns the state now
+    inFlightRef.current += 1;
+    try { r = await fetchMyNotifications(); }
+    catch { return false; }
+    finally { inFlightRef.current -= 1; }
+    if (seq !== refreshSeq.current) return true; // a newer request owns the state now
     setItems(r.items);
     const clientUnread = r.items.filter((n: StoredNotification) => !n.readAt).length;
     if (prevUnreadRef.current !== null && clientUnread > prevUnreadRef.current) {
       setRingSeq((s) => s + 1);
     }
     prevUnreadRef.current = clientUnread;
+    return true;
   }, []);
 
+  /* ⏱ THE POLL — CADENCE, OVERLAP, BACKOFF.
+   *
+   * 🔴 This was `setInterval(refresh, 5_000)`, alive for as long as the tab was visible,
+   * in GLOBAL CHROME, on every authed page, whether or not the panel was open — ~720
+   * Server-Action POSTs an hour per signed-in tab, each one a `currentSession()` +
+   * `listForUser(userId, 30)` + `unreadCount(userId)`, each one ending in a fresh array
+   * identity for `items`. On the device this product is actually used on — a low-end
+   * Android on Tanzanian mobile data — that is a radio wake-up every five seconds,
+   * forever, for a panel nobody has opened.
+   *
+   * ⛔ THE POLL IS NOT DELETED AND IS NOT REDUNDANT WITH SSE. The stream pushes the
+   * ARRIVAL of a notification; this poll alone carries cross-device read/dismiss state,
+   * and it alone covers a stream that is down. What changed is the cadence and the guards:
+   *
+   *  · 5s while the panel is OPEN (someone is reading the list), 30s while it is CLOSED.
+   *    Arrival latency is untouched — `50pick:sse:notification` still refreshes instantly,
+   *    which is the whole reason the closed cadence is allowed to be slow.
+   *  · A SELF-CHAINING `setTimeout`, not an interval: the next beat is armed only once the
+   *    previous one has ANSWERED, so two beats can never be in flight together. An
+   *    interval on 2G stacks requests that then land out of ORDER — precisely the hazard
+   *    `refreshSeq` was written to survive, now prevented instead of merely detected.
+   *    (`refreshSeq` and the `prevUnreadRef` baseline stay exactly as they were: the other
+   *    seven callers are still unordered, and the seq guard is what keeps a late answer
+   *    from resurrecting a dismissed row or faking an arrival.)
+   *  · `inFlightRef` extends the same guard across those other callers — a beat that would
+   *    race an SSE push, the broadcast, or an optimistic handler yields instead.
+   *  · Exponential backoff with ±30% jitter on failure: the same ladder, ceiling and
+   *    earn-the-reset rule as `src/lib/use-event-stream.ts` (B-18), which is one file away
+   *    and already owns this policy. A completed round-trip is the analogue of its
+   *    `onmessage` — the only thing that resets the ladder.
+   *    ⭐ The jitter is the load-bearing part here. Every signed-in tab in the country
+   *    loses the server on the SAME instant of a Railway deploy; a jitterless ladder marches
+   *    the whole fleet back in lockstep at the worst possible moment.
+   */
   useEffect(() => {
-    let id: ReturnType<typeof setInterval> | null = null;
-    const startPolling = () => {
-      if (id) return;
-      id = setInterval(refresh, 5_000);
+    let stopped = false;
+    const clear = () => {
+      if (pollTimer.current) { clearTimeout(pollTimer.current); pollTimer.current = null; }
     };
-    const stopPolling = () => { if (id) { clearInterval(id); id = null; } };
+    const baseDelay = () => (openRef.current ? POLL_OPEN_MS : POLL_CLOSED_MS);
+    /* One beat, armed `ms` from now, which re-arms itself only after it has answered.
+       `arm(0)` is therefore also how "poll right now" is spelled — same guards, same
+       bookkeeping, one code path. */
+    const arm = (ms: number) => {
+      clear();
+      // A hidden tab arms nothing at all; `visibilitychange` restarts the chain.
+      if (stopped || document.hidden) return;
+      pollTimer.current = setTimeout(async () => {
+        pollTimer.current = null;
+        if (stopped || document.hidden) return;
+        if (inFlightRef.current > 0) { arm(baseDelay()); return; }
+        const ok = await refresh();
+        if (stopped) return;
+        const base = baseDelay();
+        if (ok) {
+          pollBackoff.current = POLL_BACKOFF_BASE_MS; // earned by a real answer
+          arm(base);
+          return;
+        }
+        // Never faster than the cadence the panel state asks for — the ladder is a
+        // penalty on top of it, not a replacement for it.
+        const delay = Math.max(base, pollBackoff.current);
+        pollBackoff.current = Math.min(pollBackoff.current * 2, POLL_BACKOFF_MAX_MS);
+        arm(Math.round(delay * (0.7 + Math.random() * 0.6)));
+      }, ms);
+    };
+
+    pollNowRef.current = () => arm(0);
+    pollRetimeRef.current = () => arm(baseDelay());
+
     const onVisibility = () => {
-      if (document.hidden) { stopPolling(); }
-      else { refresh(); startPolling(); }
+      if (document.hidden) { clear(); return; }
+      arm(0); // resume: answer now, then re-chain
     };
-    refresh();
-    startPolling();
+    const onRefresh = () => { void refresh(); };
+
+    arm(0); // mount: the first read, on the same path as every later one
     document.addEventListener("visibilitychange", onVisibility);
-    const onRefresh = () => { refresh(); };
     window.addEventListener("50pick:refresh-notifications", onRefresh);
-    // SSE: instant refresh when a new notification arrives via the event stream
+    // SSE stays the PRIMARY trigger — instant refresh when a notification arrives on the
+    // stream. The beat underneath it is the fallback and the cross-device carrier, never
+    // what the bell is waiting on.
     window.addEventListener("50pick:sse:notification", onRefresh);
     return () => {
-      stopPolling();
+      stopped = true;
+      clear();
+      pollNowRef.current = null;
+      pollRetimeRef.current = null;
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("50pick:refresh-notifications", onRefresh);
       window.removeEventListener("50pick:sse:notification", onRefresh);
     };
   }, [refresh]);
+
+  /* The cadence follows the panel — kept OUT of the effect above so that effect can keep
+     its stable `[refresh]` dependency list; taking `open` there would tear down the chain
+     and both listeners on every toggle. Opening pulls the next beat to now (cross-device
+     read/dismiss state is the one thing the stream never pushes, so a list the player has
+     just opened is worth re-reading); closing only re-times the pending beat out to 30s,
+     and spends no request doing it. */
+  useEffect(() => {
+    openRef.current = open;
+    const prev = prevOpenRef.current;
+    prevOpenRef.current = open;
+    // The mount beat belongs to the effect above; re-timing it from here would cancel the
+    // first read, in whichever order the two effects happen to run. `prev === open` covers
+    // the dev double-invoke, which re-runs this with nothing actually toggled.
+    if (prev === null || prev === open) return;
+    if (open) pollNowRef.current?.();
+    else pollRetimeRef.current?.();
+  }, [open]);
 
   /* ⭐ THE DIALOG CONTRACT — it was DECLARED and not PROVIDED.
    *

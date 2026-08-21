@@ -110,6 +110,18 @@ export function UpDownHandover({
   // ⛔ THE SAME SERVER-ANCHORED CLOCK THE POD RUNS ON (E-72). `Date.now()` alone is the device
   // clock, and a handset minutes out would advance a player while the server still calls the
   // round open — the screen and the money path disagreeing about the only deadline that matters.
+  //
+  // ⛔ AND THIS ONE IS NOT GATED, DELIBERATELY — do not "optimise" it into `useServerNowGated`
+  // the way the board card and the pod were. Those two only need a render when their PHASE
+  // moves; this component needs a fresh `now` in its dependency list **every second**, because
+  // the effect below re-tests the five deferral gates on each one. Gates 3, 4 and 5 are the
+  // whole reason: an open modal, a bet in flight and a player who has scrolled into the proof
+  // all DEFER rather than cancel, and it is precisely this per-second re-evaluation that picks
+  // the handover back up "the next clock tick (≤1s)" after the modal closes or they scroll
+  // back. Gate it and a deferred handover would never resume.
+  // ⚠️ It costs one interval no longer: `useServerNow` now rides the page's single shared
+  // ticker (`@/lib/use-shared-second`) instead of arming a private `setInterval` plus its own
+  // `visibilitychange` listener. The cadence and the reveal-recompute are unchanged.
   const now = useServerNow(serverNowMs);
 
   /** null until the first render has seeded. `true` ⇒ it was ALREADY settled when we arrived. */
