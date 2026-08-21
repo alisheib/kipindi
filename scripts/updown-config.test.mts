@@ -21,6 +21,7 @@
  */
 process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-min-aaaa";
 
+import { readFileSync } from "node:fs";
 import {
   boundaryAfter, boundaryAtOrBefore, cleanGridAnchor,
   createAsset, updateAsset, setAssetEnabled, listAssets,
@@ -418,6 +419,35 @@ let goldId = "";
   ]);
   ok("6.2 · three concurrent ensures on one boundary yield ONE observation",
      c1.id === c2.id && c2.id === c3.id);
+
+  /**
+   * ⛔ 6.2b — THE PRISMA HALF, WHICH THIS SUITE CANNOT EXECUTE. `ensure` became an `upsert` on
+   * 2026-08-21 because the losing racer's unique violation was printed as `prisma:error` on
+   * production BEFORE the catch could handle it — a healthy write-once control reading as a
+   * defect, many times a day, on a money product. Same class as the audit-chain verifier that
+   * cried "BROKEN LINK" over an intact chain: a control that cries wolf gets scrolled past.
+   *
+   * 🔴 AND THE `update: {}` MUST STAY EMPTY. On conflict that row may already be CONFIRMED,
+   * holding the price that settled real money — anything in that object overwrites a settled
+   * price, which is precisely what `confirm`'s `state: "PENDING"` guard exists to prevent.
+   * There is no database here, so the shape is READ.
+   */
+  {
+    const dal = readFileSync("src/lib/server/updown-dal.ts", "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+    const upsertBlock = /upDownObservation\.upsert\(\{[\s\S]{0,400}?\}\);/.exec(dal)?.[0] ?? "";
+    ok("6.2b · CONTROL · the observation upsert was located in the DAL", upsertBlock.length > 0,
+       "Without it every assertion below passes over an empty string.");
+    ok("6.2c · 🔴 the losing racer takes the existing row via UPSERT, so a healthy control no " +
+       "longer prints `prisma:error`",
+       /where:\s*\{\s*assetId_boundaryAt/.test(upsertBlock), upsertBlock.slice(0, 120));
+    ok("6.2d · ⛔⛔ and its `update` is EMPTY — anything there overwrites a SETTLED price",
+       /update:\s*\{\s*\}/.test(upsertBlock),
+       "On conflict this row may already be CONFIRMED. `confirm` guards on state PENDING "
+       + "for exactly this reason; an upsert that writes fields walks straight around it.");
+    ok("6.2e · …and the unique-violation recovery is still there as a belt",
+       /isUniqueViolation\(e\)/.test(dal));
+  }
 
   const won = await observationStore.confirm(a.id, {
     price: 2417.6, sourceUrl: GOLD.priceSourceUrl,

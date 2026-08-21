@@ -27,6 +27,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { marketStore } from "../src/lib/server/market-dal.ts";
 import { listMarkets, type StoredMarket } from "../src/lib/server/market-service.ts";
+import { TERMINAL_TTL_MS, TERMINAL_TTL_CEILING_MS } from "../src/lib/server/market-service.ts";
 
 const ROOT = process.cwd();
 let pass = 0, fail = 0;
@@ -295,6 +296,36 @@ const ids = (rows: Array<{ id: string }>) => rows.map((r) => r.id).filter((i) =>
 }
 
 // ── Result ──────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// C · THE ARCHIVE MEMO'S TTL IS BOUNDED, NOT CHOSEN
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * `listTerminalMarkets` is the memo that stopped `/results` making Postgres seq-scan a growing
+ * table on every anonymous request (audit F-08). Its TTL was raised 60 s → 5 min on 2026-08-21
+ * after re-measuring the page: at 60 s a low-traffic archive is COLD for almost every real
+ * visitor, so the number that mattered was 1.3–2.4 s and not 0.7 s.
+ *
+ * ⛔ The bound is the OBJECTION WINDOW. A few minutes of staleness on an archive of already-paid
+ * markets is not a fact anyone can act on differently; a day of it would hide a market a player
+ * is disputing. This asserts the relationship rather than the number, so raising the TTL "for
+ * performance" past the point where the argument holds fails the build.
+ */
+{
+  const okC = (label: string, cond: boolean, extra = "") => {
+    if (cond) { pass++; } else { fail++; console.log(`FAIL ${label}${extra ? ` — ${extra}` : ""}`); }
+  };
+  okC("C1 the archive memo TTL is far below the objection window",
+    TERMINAL_TTL_MS * 12 <= TERMINAL_TTL_CEILING_MS,
+    `${TERMINAL_TTL_MS}ms vs ceiling ${TERMINAL_TTL_CEILING_MS}ms — an archive that lags the ` +
+    "objection window can hide a market a player is disputing.");
+  okC("C2 …and it is long enough to actually be warm between two ordinary visits",
+    TERMINAL_TTL_MS >= 120_000,
+    `${TERMINAL_TTL_MS}ms. Measured 2026-08-21: cold 1.29-2.42s, warm 0.65-1.28s. A 60s TTL ` +
+    "expires between visits on a low-traffic page, so every visitor paid the cold path.");
+  okC("C3 CONTROL · the ceiling really is the 24-hour objection window",
+    TERMINAL_TTL_CEILING_MS === 24 * 60 * 60 * 1000);
+}
+
 console.log(`\nproduct-line: ${pass} passed, ${fail} failed`);
 if (fail > 0) {
   console.error(

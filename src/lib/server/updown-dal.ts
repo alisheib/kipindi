@@ -746,18 +746,51 @@ const prismaObservations: ObservationStore = {
     });
     return r ? toObservation(r) : null;
   },
+  /**
+   * Get or create the one observation for this `(asset, boundary)`.
+   *
+   * ── 🔴 WHY THIS IS AN `upsert` AND NOT A `create` IN A TRY/CATCH ──────────────
+   * Two chains on the same asset race to create the same boundary. The unique index makes one
+   * lose, which is the write-once guarantee WORKING — and the old code handled it correctly:
+   * catch, re-read, share the winner's row.
+   *
+   * ⛔ BUT PRISMA LOGS THE VIOLATION AT `error` LEVEL BEFORE THE CATCH EVER SEES IT. `prisma.ts`
+   * configures `log: ["error"]` in production, so a healthy control printed `prisma:error` on a
+   * live money product — many times a day, from the mechanism that PROVES the price cannot be
+   * rewritten. Found in the production logs on 2026-08-20, right after the F-08 deploy.
+   *
+   * That is not a cosmetic problem. It is the same defect as the audit-chain verifier that cried
+   * *"BROKEN LINK"* about an intact chain, and as the Redis health line that read *"ARMED BUT
+   * UNREACHABLE"* about a working connection: **a control that cries wolf is a control that has
+   * been switched off**, because the operator learns to scroll past `prisma:error`. Fixing the
+   * message is not the fix; not producing it is.
+   *
+   * An `upsert` compiles to a conflict-tolerant write, so the losing racer takes the existing
+   * row without an exception and without a log line. Same semantics — both callers end up on one
+   * observation — with the noise gone.
+   *
+   * ⛔⛔ `update: {}` IS LOAD-BEARING AND MUST STAY EMPTY. On conflict this row may already be
+   * CONFIRMED, carrying the price that settled real money. Anything in that object would
+   * overwrite a settled price — which is exactly what `confirm`'s `state: "PENDING"` guard below
+   * exists to make impossible. `test:updown-config` §6 asserts it stays empty.
+   * (`UpDownObservation` has no `@updatedAt`, so an empty update touches nothing at all.)
+   *
+   * ⚠️ The try/catch stays as a belt. `upsert` is conflict-tolerant, not conflict-proof under
+   * every driver path, and if a violation does surface the old recovery is still the right one.
+   */
   async ensure(assetId, boundaryAt) {
     const found = await prismaObservations.find(assetId, boundaryAt);
     if (found) return found;
     try {
-      const r = await pc().upDownObservation.create({
-        data: { assetId, boundaryAt: new Date(boundaryAt), state: "PENDING" },
+      const r = await pc().upDownObservation.upsert({
+        where: { assetId_boundaryAt: { assetId, boundaryAt: new Date(boundaryAt) } },
+        create: { assetId, boundaryAt: new Date(boundaryAt), state: "PENDING" },
+        update: {}, // ⛔ EMPTY, FOR EVER. See the note above — a settled price lives here.
       });
       return toObservation(r);
     } catch (e) {
-      // Lost the race — another chain created the row for this same boundary between
-      // our find and our create. That is the DESIGNED behaviour of the unique index,
-      // not an error: re-read and use theirs, so both callers share one observation.
+      // Lost the race in a way the upsert did not absorb. Still the DESIGNED behaviour of the
+      // unique index, not an error: re-read and use theirs, so both callers share one row.
       if (!isUniqueViolation(e)) throw e;
       const again = await prismaObservations.find(assetId, boundaryAt);
       if (!again) throw e; // genuinely unexpected — do not paper over it

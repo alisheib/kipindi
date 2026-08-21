@@ -199,7 +199,29 @@ for the statutory 7 years from closure rather than deleted on request.
   one snapshot cannot draw a sparkline at all — one point is not a line — so those rows are kept
   for a garnish they cannot render. Not changed here: it touches a rendered surface and the
   measurement changes what the right fix is. **Ali's call.**
-- **F-11** the small placements.
+- 🟠 **F-11 the small placements — two of four done 2026-08-21, and the numbers matter:**
+  - ✅ **F-11b** phone numbers in `SystemConfig` key NAMES. **2 rows, not 3** — the third grep hit
+    was a false positive of the pattern (`chat.daily.usr_f5edd2a2255997a262…` has "255" inside a
+    cuid). `bootstrap.login_promoted:` is keyed on `user.id` now, still reads the legacy key, and
+    **deletes** it once carried over. ⛔ A new key with no fallback would have re-promoted a
+    demoted admin on their next login — the exact hole that one-shot record exists to close.
+  - ✅ **F-11c** `avatarDataUrl` is `omit`-ed from `db.user.list()`. Measured: **1 of 100 users
+    has one, 39 kB** — so this is shape, not cost, and the audit said so. ⚠️ But the finding's
+    other half was wrong: `app-shell` does not *drag* the avatar, it **renders** it. That read is
+    `findById` and is untouched; the real fix there is a cacheable route and is still open.
+  - 🟠 **F-11e** `/wallet` pulls 1,000 txns per render — the busiest account on the platform holds
+    **485** (2,028 rows total, 46 average). Shape only.
+- ✅ **`prisma:error` for a healthy control — FIXED 2026-08-21.** `observationStore.ensure` is an
+  `upsert` now, so the losing racer on `@@unique([assetId, boundaryAt])` takes the existing row
+  with no exception and no log line. ⛔⛔ Its `update: {}` must stay empty: on conflict that row
+  may already be CONFIRMED and holding a price that settled money. `test:updown-config` §6.2b–e.
+- ✅ **`/results` — RE-MEASURED, and "~3.7 s" does not reproduce.** From the public internet,
+  2026-08-21, 21 samples: warm **0.65–1.28 s**, cold **1.29–2.42 s**, against `/api/health` on the
+  same host at **1.30–1.44 s**. The `?sort=volume` and `?q=<no match>` variants — which force the
+  full filter and sort over 13,013 rows — measured **0.67–1.01 s**, inside the noise of the plain
+  page. **So the JS filtering was never the cost** and paginating it would have bought nothing
+  while making every count on the page wrong. `TERMINAL_TTL_MS` went 60 s → 5 min instead: at 60 s
+  a low-traffic archive expires between visits, so every real visitor paid the cold path.
   ⛔ **F-09's snapshot-skip must NOT be done as written** — an adversarial check returned
   **NOT_SAFE**; verify the readers first.
 - **F-07's remaining sites** — insights, catalogue, analytics, the admin user lists. The boot

@@ -616,9 +616,34 @@ export const prismaDb = {
       const row = await pc().user.update({ where: { id }, data });
       return toStoredUser(row);
     },
+    /**
+     * 🔴 EVERY USER ROW, WITHOUT THE AVATARS (audit F-11c).
+     *
+     * ⛔ WHY `omit` AND NOT A `select`. A select is an allowlist, and on a table that gains
+     * columns that is the wrong failure mode here: a new column would be silently MISSING from
+     * every one of the nineteen call sites below. `omit` names the one column being left out, so
+     * a new column arrives included — the boring failure.
+     *
+     * ── THE SCALE ARGUMENT, WITH TODAY'S MEASUREMENT ─────────────────────────
+     * Measured on production 2026-08-21: **1 of 100 users has an avatar, 39 kB.** So this saves
+     * 39 kB today and the finding is about shape, not cost — exactly as the audit said. But
+     * `avatarDataUrl` is capped at 96 kB per row and this method is called by `analytics.ts`,
+     * `insights.ts`, `reports/catalogue.ts`, `responsible-gambling.ts`, `kyc-service.ts`,
+     * `affiliate-service.ts` and six admin pages. At 10,000 users with a third of them uploading
+     * one, a single admin page render pulls ~320 MB out of Postgres. That is not a slow page,
+     * that is a connection pool on fire — the shape that already took `/leaderboard` down once.
+     *
+     * ── ⚠️ AND THE PART THAT COULD HAVE BEEN A SILENT LIE ────────────────────
+     * A row read this way reports `avatarDataUrl: null`, which is INDISTINGUISHABLE from "this
+     * player has no avatar". If a caller ever rendered it, one player's picture would quietly
+     * disappear and nothing would fail. Measured before doing this: only THREE sites read the
+     * field at all — `/profile` and `app-shell` (both `findById`, both untouched) and
+     * `/profile/actions` (a write). `test:erasure` §11.14 asserts that stays true, so the
+     * silent-lie risk is a build failure rather than a bug report.
+     */
     list: async (): Promise<StoredUser[]> => {
-      const rows = await pc().user.findMany();
-      return rows.map(toStoredUser);
+      const rows = await pc().user.findMany({ omit: { avatarDataUrl: true } });
+      return rows.map((r) => toStoredUser({ ...r, avatarDataUrl: null }));
     },
     /** COUNT(*) — no rows materialised (audit H4/M5). */
     count: async (): Promise<number> => pc().user.count(),

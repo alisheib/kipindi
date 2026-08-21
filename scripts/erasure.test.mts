@@ -37,7 +37,7 @@
 process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-min-aaaa";
 process.env.OTP_PEPPER ??= "test-only-pepper";
 
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { db } from "../src/lib/server/store.ts";
 import {
   anonymizeClosedAccount, erasedPhoneTombstone, isErasedPhone,
@@ -666,6 +666,106 @@ section("11 · the DATABASE half — what a unit run cannot execute, it can stil
       && svc.includes("msg.includes(ID_FINGERPRINT_UNIQUE_INDEX)"));
   ok("11.11 …and the migration and the code agree on that name",
     mig.includes("KycSubmission_idFingerprint_active_key"));
+
+  /**
+   * 🔴 THE ONE PLACE ERASURE CAN NEVER REACH: A KEY NAME (audit F-11b).
+   *
+   * `SystemConfig.key` is a PRIMARY KEY. Everything this session built works on rows and
+   * columns — the retention pass prunes rows, `anonymizeClosedAccount` rewrites columns, the
+   * DSAR export projects fields — and not one of them can rename a key. So a phone number
+   * inside a key is personal data with no erasure path at all, and §8's sweep cannot see it
+   * either (it walks the store, and `SystemConfig` is not on it).
+   *
+   * Measured on production 2026-08-21: **2** such rows, `bootstrap.login_promoted:+255…`.
+   * (A third grep hit was a FALSE POSITIVE of my own — `chat.daily.usr_f5edd2a2255997a262…`
+   * contains "255" inside a cuid, not a country code. Worth recording: the naive pattern for
+   * this defect over-reports.)
+   *
+   * ⛔ The assertion is on the WRITE SITE, not on the data, because the data is what the write
+   * site produces and only one of the two can be checked without a database.
+   */
+  /**
+   * ⚠️ THE FIRST VERSION OF THIS CHECK FORBADE THE FIX. It asserted that no `*Config` call
+   * anywhere near a `phoneE164` — and went red on the migration itself, which MUST name the
+   * phone-derived key in order to read it and delete it. Forbidding the only path that removes
+   * the PII is not a stricter guard, it is a wrong one.
+   *
+   * The property that matters is narrower and is about direction: a phone-derived key may be
+   * READ and DELETED; it may never be WRITTEN again.
+   */
+  const auth = readFileSync("src/lib/server/auth-service.ts", "utf8");
+  const authCode = stripTs(auth);
+  ok("11.11b ⛔ nothing WRITES a phone-derived config key any more",
+    !/saveConfig\(\s*legacyKey/.test(authCode)
+      && !/saveConfig\(\s*`[^`]*phoneE164/.test(authCode),
+    "A phone number in `SystemConfig.key` is PII with no erasure path — the value can be\n" +
+    "       rewritten, the key cannot, and §8's sweep cannot even see it.");
+  ok("11.11c …the one-shot promotion record is keyed on the USER ID",
+    /bootstrap\.login_promoted:\$\{user\.id\}/.test(auth));
+  ok("11.11d ⛔ …while STILL reading the legacy key, or the next login of a demoted admin " +
+     "whose phone is still in ADMIN_BOOTSTRAP_PHONES re-promotes them",
+    /legacyKey/.test(authCode) && /loadConfig<boolean>\(legacyKey\)/.test(authCode),
+    "That record's whole purpose is that a leaked or mis-set env var cannot re-promote a\n" +
+    "       demoted admin. A new key with no fallback makes the old record invisible and\n" +
+    "       reopens exactly the hole it closes.");
+  ok("11.11e …and DELETES it once carried over, so the phone number actually leaves",
+    /deleteConfig\(legacyKey\)/.test(authCode),
+    "Reading the legacy key without removing it migrates the lookup and leaves the PII.");
+  ok("11.11f ⛔ …in that ORDER — save the new key BEFORE deleting the old one",
+    authCode.indexOf("saveConfig(key, carried)") < authCode.indexOf("deleteConfig(legacyKey)"),
+    "The other order can lose the record between the two calls and re-promote on next login.");
+  ok("11.11g ⭐ CONTROL — `deleteConfig` exists at all; without it the third step is impossible",
+    /export async function deleteConfig/.test(readFileSync("src/lib/server/config-store.ts", "utf8")));
+
+  /**
+   * 🔴 F-11c — `db.user.list()` no longer carries the avatars, and a row read that way reports
+   * `avatarDataUrl: null`. That value is INDISTINGUISHABLE from "this player has no avatar", so
+   * the moment any list caller renders it, one player's picture disappears and nothing fails.
+   *
+   * ⛔ This is the assertion that turns that into a build failure. It enumerates every reader of
+   * the field in `src/` and requires the set to stay exactly the three that use `findById` or
+   * write. Adding a fourth is fine — adding a fourth on a LIST path is the bug.
+   */
+  {
+    const AVATAR_READERS_ALLOWED = [
+      "src/app/profile/page.tsx",              // findById — the player's own profile
+      "src/components/layout/app-shell.tsx",   // findById — the shell renders it
+      "src/app/profile/actions.ts",            // the write path
+      "src/lib/server/auth-service.ts",        // sets null on create
+      "src/lib/server/store.ts",               // the type + in-memory store
+      "src/lib/server/prisma-dal.ts",          // the mapper and this omit
+      "src/lib/server/privacy.ts",             // deliberately NOT in the DSAR projection
+      "src/lib/server/erasure.ts",             // nulls it
+    ];
+    const srcFiles: string[] = [];
+    (function walk(d: string) {
+      for (const e of readdirSync(d)) {
+        const full = `${d}/${e}`;
+        if (statSync(full).isDirectory()) walk(full);
+        else if (/\.(ts|tsx)$/.test(e)) srcFiles.push(full);
+      }
+    })("src");
+    const hits = srcFiles.filter((f) => /\bavatarDataUrl\b/.test(readFileSync(f, "utf8")));
+    const offenders: string[] = [];
+    for (const f of hits) {
+      const rel = f.replace(/\\/g, "/");
+      if (rel.includes("/dev-test/") || rel.includes("/auth/demo/")) continue; // seed fixtures
+      if (AVATAR_READERS_ALLOWED.some((a) => rel.endsWith(a))) continue;
+      offenders.push(rel);
+    }
+    ok("11.14 🔴 no NEW reader of `avatarDataUrl` — `db.user.list()` omits it and reports null",
+      offenders.length === 0,
+      `${offenders.slice(0, 4).join(", ")}\n` +
+      "       ⛔ If one of these reads a user from `db.user.list()`, it will render 'no avatar'\n" +
+      "       for a player who has one, and nothing will fail. Read through `findById`, or\n" +
+      "       serve the image from a cacheable route.");
+    ok("11.15 ⭐ CONTROL — the scan can see the field at all, so 11.14's empty result means " +
+       "'no offenders' and not 'nothing was read'",
+      srcFiles.length > 300 && hits.length >= 3, `${srcFiles.length} files, ${hits.length} hits`);
+    ok("11.16 …and the DAL omits it rather than selecting around it",
+      /omit:\s*\{\s*avatarDataUrl:\s*true\s*\}/.test(readFileSync("src/lib/server/prisma-dal.ts", "utf8")),
+      "A `select` allowlist would silently drop the NEXT column somebody adds to User.");
+  }
 
   const era = stripTs(readFileSync("src/lib/server/erasure.ts", "utf8"));
   ok("11.12 ⛔ erasure names no money table — it cannot reach one",

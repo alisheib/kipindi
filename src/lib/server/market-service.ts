@@ -330,19 +330,37 @@ export async function listMarkets(filter?: {
  * ⚠️ MEASURED AFTER SHIPPING, and it is narrower than it sounds: this removes DATABASE load,
  * not page latency. Ten consecutive requests to `/results` on production moved
  * `pg_stat_user_tables.seq_scan` for `PredictionMarket` by **zero** — before, each request cost
- * two sequential scans of 13,013 rows. But the page took the same ~3.7 s each time, because
- * the remaining cost is the JS filtering, sorting and counting of 13,013 rows per render, and
- * caching the read does nothing about that.
+ * two sequential scans of 13,013 rows.
  *
- * That is still the right fix for the right problem — an unauthenticated page can no longer
- * make Postgres scan a growing table on demand, and that table's lifetime counters read
- * 13.4M sequential scans and 960M tuples. But if `/results` needs to be FAST, that is separate
- * work: paginate the filtering, or move the counts to SQL aggregates.
+ * ── ⚠️ AND THE SENTENCE THAT USED TO FOLLOW THAT ONE WAS WRONG ────────────────
+ * It read *"the page took the same ~3.7 s each time, because the remaining cost is the JS
+ * filtering, sorting and counting of 13,013 rows per render"* — and that is what put
+ * *"/results is still slow"* at the top of the next session's queue. **Re-measured from the
+ * public internet on 2026-08-21, 21 samples: it does not reproduce.**
  *
- * So the read stays complete and stops being repeated. The TTL matches `platform-stats.ts`,
- * whose own ALL read is memoised the same way, on the same table, for the same reason —
- * and settlement is a process with a 24-hour objection window, so a minute of staleness on
- * an archive of already-paid markets is not a fact anyone can act on differently.
+ *   · warm (inside this TTL)   0.65 – 1.28 s
+ *   · cold (memo expired)      1.29 – 2.42 s
+ *   · `/api/health`, same host 1.30 – 1.44 s  ← a page that reads NO market list, and is SLOWER
+ *   · `?cat=sports&sort=volume` and `?q=<no match>`, which force the full filter and sort over
+ *     the whole set: **0.67 – 1.01 s, inside the noise of the plain page**
+ *
+ * That last line is the one that settles it. If the JS filtering of 13,013 rows were the cost,
+ * the sorted and searched variants would be measurably worse than the unfiltered one. They are
+ * not. **The remaining cost is the cold hydration of the archive, not the work done on it** —
+ * so the lever is this TTL, and paginating the filtering (the fix the audit proposed) would
+ * have bought nothing while making every count on the page a lie.
+ *
+ * ── SO THE TTL IS 5 MINUTES, NOT 1 ───────────────────────────────────────────
+ * At 60 s a low-traffic archive page is COLD for almost every real visitor: the memo expires
+ * between visits, so the number that matters was the 1.3–2.4 s one, not the 0.7 s one. Five
+ * minutes moves the ordinary visit into the warm band.
+ *
+ * ⛔ THE CEILING IS THE OBJECTION WINDOW, AND IT IS NOT A FREE CHOICE. Settlement carries a
+ * 24-hour objection window, so staleness on an archive of already-paid markets is not a fact
+ * anyone can act on differently — but that argument stops holding somewhere, and this constant
+ * must stay far below it. `test:product-line` asserts the bound so nobody "optimises" it to a
+ * day. (`platform-stats.ts` memoises its own ALL read on the same table for the same reason;
+ * the two no longer share a number, and that is fine — it serves a dashboard, not an archive.)
  *
  * ⚠️ Cache the READ, never the filtered output: the callers filter by URL parameters, and
  * keying on those would multiply the entries without reducing a single query.
@@ -351,7 +369,16 @@ declare global {
   // eslint-disable-next-line no-var
   var __50PICK_TERMINAL_MARKETS: Map<string, { at: number; value: Awaited<ReturnType<typeof listMarkets>> }> | undefined;
 }
-const TERMINAL_TTL_MS = 60_000;
+/** 5 minutes. ⛔ Bounded from ABOVE by the 24-hour objection window — see the note above and
+ *  `TERMINAL_TTL_CEILING_MS`. Exported so the bound can be asserted rather than remembered. */
+export const TERMINAL_TTL_MS = 300_000;
+
+/**
+ * The staleness this page may never approach: the objection window inside which a settlement
+ * can still be disputed. The archive being a few minutes behind is not actionable; the archive
+ * being a day behind would hide a market a player is arguing about.
+ */
+export const TERMINAL_TTL_CEILING_MS = 24 * 60 * 60 * 1000;
 
 export async function listTerminalMarkets(
   productLine: ProductLineFilter = DEFAULT_PRODUCT_LINE,

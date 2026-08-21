@@ -255,7 +255,23 @@ real fix.
 
 ---
 
-## 5 · Read paths and hygiene
+## 5 · 🟠 Read paths and hygiene — **THREE DONE, TWO LEFT, AND ONE ITEM'S PREMISE WAS WRONG**
+
+> **Measured on production 2026-08-21 before touching anything, because the numbers changed
+> what the work was.**
+>
+> | Item | State | What the measurement said |
+> |---|---|---|
+> | `/results` is still slow | ✅ **re-scoped and improved** | 🔴 **"~3.7 s" does not reproduce.** 21 samples from the public internet: **warm 0.65–1.28 s, cold 1.29–2.42 s**, against `/api/health` on the same host at **1.30–1.44 s**. And `?cat=…&sort=volume` and `?q=<no match>` — which force the whole filter and sort — came in at **0.67–1.01 s, inside the noise of the plain page.** So the JS filtering of 13,013 rows is **not** the cost, and paginating it (the proposed fix) would have bought nothing while making every count on the page a lie. The cost is the **cold hydration**, so `TERMINAL_TTL_MS` went 60 s → **5 min**: at 60 s a low-traffic archive expires between visits, so every real visitor was paying the cold path. Bounded above by the 24-hour objection window, asserted in `test:product-line` §C, both directions driven red. |
+> | F-11b SystemConfig phone-in-key | ✅ **done** | 2 rows, not 3 — the third grep hit (`chat.daily.usr_f5edd2a2255997a262…`) was a **false positive of my own pattern**: "255" inside a cuid. `bootstrap.login_promoted:` is now keyed on `user.id`, still reads the legacy key, and **deletes** it once carried over. ⛔ A new key with no fallback would have re-promoted a demoted admin on their next login — the exact hole that record exists to close. `deleteConfig` was added for it; `test:erasure` §11.11b–g, three defects driven red. |
+> | F-11c `avatarDataUrl` | ✅ **done for `db.user.list()`** | **1 of 100 users has an avatar, 39 kB.** So this is shape, not cost — but the column caps at 96 kB and `list()` has 19 callers including 6 admin pages, so 10,000 users at a third adoption is ~320 MB per render. Now `omit`-ed (a `select` allowlist would silently drop the next column added to `User`). ⚠️ A row read that way reports `avatarDataUrl: null`, indistinguishable from "no avatar" — `test:erasure` §11.14 enumerates every reader in `src/` and fails the build if a list path ever reads it. **The `app-shell` read is untouched and still `findById`** — it RENDERS the avatar, so the "select-exclude it there" half of the finding was wrong; the real fix there is a cacheable route, and that is still open. |
+> | F-11e `/wallet` 1,000 txns | 🟠 **open** | The cap is 1,000 and **the busiest account on the platform holds 485** (2,028 rows total, 46 average). Shape only, today. |
+> | F-07 remaining report paths | 🟠 **open** | `insights.ts`, `reports/catalogue.ts`, `analytics.ts`, `responsible-gambling.ts`, `kyc-service.ts`, `affiliate-service.ts` and 6 admin pages all call `db.user.list()`. The avatars are out of it now, which was the part that scaled worst; the unbounded row count is not. Bounded at 100 users. |
+
+<details>
+<summary>The original work order (kept as written, for the record)</summary>
+
+### Read paths and hygiene
 
 | Item | Note |
 |---|---|
@@ -267,7 +283,24 @@ real fix.
 
 ---
 
+</details>
+
+---
+
 ## 6 · Loose ends worth ten minutes each
+
+> **State after 2026-08-21:**
+>
+> | Item | State |
+> |---|---|
+> | `prisma:error` fires for a healthy control | ✅ **DONE.** `observationStore.ensure` was a `create` in a try/catch — correct, but Prisma logged the unique violation at `error` level **before the catch could see it**, on a money product, many times a day. It is an `upsert` now: the losing racer takes the existing row with no exception and no log line. ⛔⛔ Its `update: {}` **must stay empty** — on conflict that row may already be CONFIRMED and holding the price that settled real money, which is what `confirm`'s `state: "PENDING"` guard exists to prevent. `test:updown-config` §6.2b–e, both defects driven red. |
+> | `PHONE_EMAIL_MAP` still set in production | 🟠 **open.** Step 5 of `LAUNCH-GO-NO-GO.md` §5. Untouched — the warning in the item below is right: `resolvePhoneEmail` is consulted when `user.email` is absent, so removing it blind turns a live persona's mail into a silent no-address send. |
+> | The live KYC read drive | 🟠 **open.** Needs current QA credentials; personas are stale. `verify:kyc-storage` (202 assertions) stands in. |
+> | Redis SSE fan-out unverified | 🟠 **open.** Rate limiting is proven cross-container (`qa:redis-armed` 8/8); the pub/sub half is not driven. |
+> | Two inert controls | 🟠 **open**, recorded in `COMPLIANCE-DECISIONS.md` and outside this audit. |
+
+<details>
+<summary>The original list (kept as written, for the record)</summary>
 
 - **`PHONE_EMAIL_MAP` is still set in production.** Now step 5 of
   [`LAUNCH-GO-NO-GO.md`](LAUNCH-GO-NO-GO.md) §5. ⚠️ Read every use before removing —
@@ -286,6 +319,10 @@ real fix.
 - **Two inert controls**, recorded in COMPLIANCE-DECISIONS and outside this audit: the shared-IP
   affiliate check reads a global nothing populates and is permanently `false`; the
   `SESSION_OVERRUN` responsible-gambling detector has no caller supplying its input.
+
+---
+
+</details>
 
 ---
 

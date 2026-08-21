@@ -845,9 +845,38 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
   // re-promote a demoted admin or grant standing admin to a stranger.
   let effectiveRole = user.role;
   if (effectiveRole !== "ADMIN" && adminBootstrapPhones().has(user.phoneE164)) {
-    const { loadConfig, saveConfig } = await import("./config-store");
-    const key = `bootstrap.login_promoted:${user.phoneE164}`;
-    const alreadyPromoted = await loadConfig<boolean>(key);
+    const { loadConfig, saveConfig, deleteConfig } = await import("./config-store");
+    /**
+     * 🔴 THE KEY USED TO BE THE PHONE NUMBER (audit F-11b, fixed 2026-08-21).
+     *
+     * `bootstrap.login_promoted:+255772619619` put a real MSISDN into `SystemConfig.key` — a
+     * PRIMARY KEY. That is the one place personal data can hide from everything built to find
+     * it: a retention pass prunes rows, an erasure routine rewrites columns, the DSAR export
+     * projects fields — and none of them can rename a key. Two such rows existed on
+     * production, measured 2026-08-21.
+     *
+     * ⛔ THE MIGRATION CANNOT JUST CHANGE THE KEY. This value is a ONE-SHOT idempotency
+     * record whose entire purpose is that "a leaked or mis-set env var can never re-promote a
+     * demoted admin". Switching to a new key with no fallback makes the old record invisible,
+     * so the very next login of a demoted admin whose phone is still in
+     * `ADMIN_BOOTSTRAP_PHONES` re-promotes them — reintroducing the hole the record exists to
+     * close. So: read BOTH, write the NEW one, and delete the legacy row once it is safely
+     * carried over.
+     *
+     * ⚠️ The legacy row survives until that account next signs in. Two rows, both Ali's own
+     * admin phones; `docs/DATA-RETENTION.md` §2d records it rather than leaving it silent.
+     */
+    const key = `bootstrap.login_promoted:${user.id}`;
+    const legacyKey = `bootstrap.login_promoted:${user.phoneE164}`;
+    const carried = await loadConfig<boolean>(legacyKey);
+    const alreadyPromoted = (await loadConfig<boolean>(key)) ?? carried;
+    if (carried !== null) {
+      // Carry it over under the user id, THEN drop the phone-bearing key. In this order: a
+      // failure between the two leaves the record intact under both keys, which is harmless.
+      // The other order could lose it and re-promote on the next login.
+      await saveConfig(key, carried);
+      await deleteConfig(legacyKey);
+    }
     if (!alreadyPromoted) {
       await db.user.update(user.id, { role: "ADMIN", status: "ACTIVE" });
       effectiveRole = "ADMIN";
