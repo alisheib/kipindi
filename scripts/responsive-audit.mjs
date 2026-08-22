@@ -529,6 +529,33 @@ async function main() {
     const c = await browser.newContext();
     await c.request.get(`${BASE}/auth/demo`);
     await c.addCookies(localeCookie(locale));
+    // ⛔ `/auth/demo` IS DEV-ONLY AND 404s IN ANY PRODUCTION BUILD — its own header
+    // says so (`src/app/auth/demo/route.ts`). So this factory silently yields a
+    // GUEST context against production AND against a local `next build && next
+    // start` — which is the boot this file's own header recommends for CSS
+    // fidelity. Every gated route then redirects to /auth/login and the sweep
+    // measures THE AUTH SHELL while reporting a green cell named `/wallet`.
+    // Measured 2026-08-22 on production: /wallet, /profile, /positions,
+    // /notifications, /profile/security and /wallet/deposit all landed on
+    // /auth/login with a clean pass.
+    //
+    // ⚠️ That is not a fail — a guest hitting /wallet SHOULD see the sign-in page,
+    // and auditing it is worth doing. It is a COVERAGE claim the run must not make
+    // silently, which is the same defect the admin probe below already guards
+    // against. For real signed-in coverage on production use the QA fleet
+    // (`scripts/live/harness.mjs` → `loginOnce(b, "fleet:07")`).
+    try {
+      const probe = await c.request.get(`${BASE}/wallet`);
+      const p = new URL(probe.url()).pathname;
+      if (/\/auth\//.test(p)) {
+        console.warn(`\n  ⚠️  PLAYER COVERAGE IS GUEST-ONLY — /wallet redirected to ${p}.`);
+        console.warn(`      /auth/demo is dev-only and 404s in any production build, so every`);
+        console.warn(`      gated route below is measuring the AUTH SHELL, not the page.`);
+        console.warn(`      A green /wallet cell here is a green /auth/login cell.`);
+        console.warn(`      For signed-in coverage use the QA fleet:`);
+        console.warn(`        scripts/live/harness.mjs → loginOnce(b, "fleet:07")\n`);
+      }
+    } catch { /* server down / probe failed — the sweep itself will surface it */ }
     return c;
   };
   const adminCtxFactory = async (locale) => {
