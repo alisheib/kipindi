@@ -741,15 +741,19 @@ export function NotificationsPanel() {
                   </span>
                 </span>
                 <span className="flex items-center gap-1 shrink-0">
-                  {unread > 0 && (
-                    <button
-                      type="button"
-                      onClick={handleMarkAll}
-                      className="inline-flex items-center min-h-[44px] px-2 rounded-md font-mono text-micro font-bold uppercase text-text-subtle hover:text-text hover:bg-bg-overlay transition-colors whitespace-nowrap"
-                    >
-                      {t.common.readAll}
-                    </button>
-                  )}
+                  {/* ⛔ NO `READ ALL` HERE — IT LIVES IN THE HEADER, AND IT LIVES THERE ONCE.
+                      The first build put one in both places: the same command twice on one
+                      card, a few hundred pixels apart, which reads as two different actions
+                      until you try them. Removed on sight (2026-08-22).
+
+                      ⭐ THE SPLIT THAT REPLACED IT is worth keeping deliberately:
+                        · the HEADER is identity + the two BULK ACTIONS (Read all · Clear all)
+                          + close — the things that act on the whole list, grouped;
+                        · this FOOTER is STATUS + the WAY OUT — how many are unread, and the
+                          one link to everything the 30-row list cannot hold.
+                      Two rows, two jobs, no command in both. It also leaves `SEE ALL` as the
+                      single accent-coloured control down here, so the primary action on the
+                      strip is unambiguous rather than competing with a bulk action beside it. */}
                   {/* ⛔ A REAL LINK, not `router.push`. It middle-clicks, it opens in a new
                       tab, and a screen reader announces it as a link — none of which a
                       button does. `setOpen(false)` so the panel is not left hanging over
