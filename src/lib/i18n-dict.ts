@@ -1556,6 +1556,32 @@ export const dict = {
          way to tell a settled-money notification they had already opened from one they
          had not. Rendered sr-only beside the title. */
       unread: "Unread",
+      /* ── The bell's footer strip + the /notifications screen ──────────────────
+         ⛔ SINGULAR AND PLURAL ARE SEPARATE KEYS, not one string with a count glued on.
+         Swahili inflects the verb for plurality (haijasomwa → hazijasomwa) and Chinese
+         puts the measure word between number and noun, so "1 " + word is wrong in two of
+         the three languages. Same discipline as `oneResult`/`nResults` above. */
+      unreadOne: "1 unread",
+      unreadN: "{n} unread",
+      seeAll: "See all",
+      eyebrow: "Your inbox",
+      showLabel: "Show",
+      sortLabel: "Sort",
+      filterAll: "All",
+      filterUnread: "Unread",
+      filterMoney: "Money",
+      filterAccount: "Account & security",
+      filterCleared: "Cleared",
+      sortNewest: "Newest first",
+      sortOldest: "Oldest first",
+      restore: "Restore",
+      /* ⛔ States the truth a player needs before they trust "Clear all": clearing HIDES,
+         it does not delete. Without this sentence the button reads as destructive. */
+      clearedHint: "Cleared notifications stay here. Nothing is deleted.",
+      emptyUnread: "Everything here is read",
+      emptyMoney: "No money notifications yet",
+      emptyAccount: "No account or security notices",
+      emptyCleared: "You haven't cleared anything",
     },
     chat: {
       greeting: "Hi.",
@@ -3228,6 +3254,27 @@ export const dict = {
       noNotificationsHint: "Tutakujulisha hapa pale bet itakapomalizika au soko litakapofungwa.",
       dismissNotification: "Ondoa arifa",
       unread: "Haijasomwa",
+      /* ⚠️ `haijasomwa` (singular) vs `hazijasomwa` (plural) — the verb agrees with the
+         noun class, so one string with a number in front of it is wrong for every n > 1. */
+      unreadOne: "1 haijasomwa",
+      unreadN: "{n} hazijasomwa",
+      seeAll: "Ona zote",
+      eyebrow: "Kikasha chako",
+      showLabel: "Onyesha",
+      sortLabel: "Panga",
+      filterAll: "Zote",
+      filterUnread: "Hazijasomwa",
+      filterMoney: "Pesa",
+      filterAccount: "Akaunti na usalama",
+      filterCleared: "Zilizoondolewa",
+      sortNewest: "Mpya kwanza",
+      sortOldest: "Za zamani kwanza",
+      restore: "Rudisha",
+      clearedHint: "Arifa ulizoondoa zinabaki hapa. Hakuna kinachofutwa.",
+      emptyUnread: "Kila kitu hapa kimesomwa",
+      emptyMoney: "Hakuna arifa za pesa bado",
+      emptyAccount: "Hakuna taarifa za akaunti au usalama",
+      emptyCleared: "Hujaondoa arifa yoyote",
     },
     chat: {
       greeting: "Habari.",
@@ -4843,6 +4890,27 @@ export const dict = {
       noNotificationsHint: "投注结算或市场结束时我们会在此通知您。",
       dismissNotification: "关闭通知",
       unread: "未读",
+      /* ⚠️ 条 is the measure word and sits BETWEEN the number and the noun, so the count
+         cannot be prefixed to a bare word the way English allows. */
+      unreadOne: "1 条未读",
+      unreadN: "{n} 条未读",
+      seeAll: "查看全部",
+      eyebrow: "您的收件箱",
+      showLabel: "显示",
+      sortLabel: "排序",
+      filterAll: "全部",
+      filterUnread: "未读",
+      filterMoney: "资金",
+      filterAccount: "账户与安全",
+      filterCleared: "已清除",
+      sortNewest: "最新优先",
+      sortOldest: "最早优先",
+      restore: "恢复",
+      clearedHint: "已清除的通知仍保留在此处，不会被删除。",
+      emptyUnread: "这里的通知都已读",
+      emptyMoney: "暂无资金通知",
+      emptyAccount: "暂无账户或安全通知",
+      emptyCleared: "您尚未清除任何通知",
     },
     chat: {
       greeting: "你好。",

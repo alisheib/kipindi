@@ -1,7 +1,8 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { currentSession } from "@/lib/server/auth-service";
-import { listForUser, unreadCount, markRead, markAllRead, dismiss, dismissAll } from "@/lib/server/notification-service";
+import { listForUser, unreadCount, markRead, markAllRead, dismiss, dismissAll, restore } from "@/lib/server/notification-service";
 import type { StoredNotification } from "@/lib/server/store";
 
 export async function fetchMyNotifications(): Promise<{ items: StoredNotification[]; unread: number }> {
@@ -39,6 +40,43 @@ export async function dismissAllAction() {
   if (!session) return { ok: false as const, count: 0 };
   const count = await dismissAll(session.userId);
   return { ok: true as const, count };
+}
+
+/**
+ * Undo a dismissal, from the `/notifications` screen's **Cleared** lens.
+ *
+ * 🔴 The other half of `dismissAllAction`. Clearing the bell stamps `dismissedAt` and every
+ * read door filters those rows out, so without this a player who tidied their bell had
+ * permanently hidden their own money history with no way back.
+ *
+ * ⛔ Owner-scoped in the SERVICE, not here: `restore` narrows on `{ id, userId }` so a
+ * notification id alone is never proof of ownership. Same shape as `markRead`/`dismiss`.
+ * `revalidatePath` so the list and every pill count re-read rather than showing a row that
+ * has just moved out of the lens the player is looking at.
+ */
+export async function restoreNotifAction(id: string) {
+  const session = await currentSession();
+  if (!session) return { ok: false as const };
+  if (!id) return { ok: false as const };
+  await restore(id, session.userId);
+  revalidatePath("/notifications");
+  return { ok: true as const };
+}
+
+/**
+ * Mark one notification read from the `/notifications` screen.
+ *
+ * ⚠️ Distinct from `markNotifReadAction` only in that it revalidates the page — the bell is a
+ * client list that refetches itself, the screen is server-rendered and would otherwise keep
+ * showing the row as unread until a navigation.
+ */
+export async function markNotifReadOnPageAction(id: string) {
+  const session = await currentSession();
+  if (!session) return { ok: false as const };
+  if (!id) return { ok: false as const };
+  await markRead(id, session.userId);
+  revalidatePath("/notifications");
+  return { ok: true as const };
 }
 
 // ── Web push (F4) ───────────────────────────────────────────────────────────

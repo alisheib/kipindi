@@ -1,17 +1,22 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import Link from "next/link";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { CountBadge } from "@/components/ui/count-badge";
 import { Dot } from "@/components/ui/dot";
+import { IconPlate } from "@/components/ui/icon-plate";
 import { useExitPhase } from "@/components/ui/modal";
 import { cn } from "@/lib/utils";
 import { fetchMyNotifications, markNotifReadAction, markAllReadAction, dismissNotifAction, dismissAllAction } from "@/app/_actions/notifications";
 import type { StoredNotification } from "@/lib/server/store";
 import { useT } from "@/lib/i18n";
 import { useModalLock } from "@/lib/use-modal-lock";
+// ⛔ ONE HOME for how a kind looks (§0a). The page renders the same rows; a second map here
+// would let a win be gold in the bell and grey on the page, and nothing would say so.
+import { iconFor, tintFor } from "@/lib/notification-appearance";
 
 /** The SAME list `<Modal>` (ui/modal.tsx) and `<FilterSheet>` (markets/filter-sheet.tsx)
  *  trap against — copied verbatim so the product's three focus traps cannot drift apart. */
@@ -28,48 +33,6 @@ const POLL_CLOSED_MS = 30_000;
  *  backoff policy in this product, not two. */
 const POLL_BACKOFF_BASE_MS = 1_000;
 const POLL_BACKOFF_MAX_MS = 30_000;
-
-const iconFor = (k: StoredNotification["kind"]) => {
-  switch (k) {
-    case "WIN":          return I.trophy;
-    case "LOSS":         return I.trendingDown;
-    case "BET_PLACED":   return I.ticket;
-    case "SELECTION_CLOSED": return I.calendarClock;
-    case "DEPOSIT":      return I.arrowDown;
-    case "WITHDRAW":     return I.arrowUp;
-    case "KYC":          return I.shieldcheck;
-    case "ROUND_RESULT": return I.activity;
-    case "MATCH_START":  return I.coins;
-    case "RG":           return I.heartPulse;
-    case "SECURITY":     return I.keyRound;
-    case "AFFILIATE":    return I.megaphone;
-    case "PROPOSAL":     return I.fileCheck;
-    case "WATCHLIST":    return I.star;
-    default:             return I.coins;
-  }
-};
-
-/** Kit-tinted swatch per notification kind (OKLCH-tuned for dark + light). */
-const tintFor = (k: StoredNotification["kind"]) => {
-  switch (k) {
-    case "WIN":          return "border-gold-700 bg-gold-500/10 text-gold-300";
-    case "LOSS":         return "border-border bg-bg-overlay text-text-muted";
-    case "BET_PLACED":   return "border-info-border bg-info-bg text-info-fg";
-    case "SELECTION_CLOSED": return "border-info-border bg-info-bg text-info-fg";
-    case "ROUND_RESULT": return "border-border bg-bg-overlay text-text-muted";
-    case "DEPOSIT":      return "border-yes-700 bg-yes-500/10 text-yes-300";
-    case "WITHDRAW":     return "border-warning-border bg-warning-bg text-warning-fg";
-    case "KYC":          return "border-info-border bg-info-bg text-info-fg";
-    case "RG":           return "border-info-border bg-info-bg text-info-fg";
-    case "SECURITY":     return "border-no-700 bg-no-500/10 text-no-300";
-    case "MATCH_START":  return "border-border bg-bg-overlay text-text-muted";
-    case "AFFILIATE":    return "border-gold-700 bg-gold-500/10 text-gold-300";
-    case "PROPOSAL":     return "border-gold-700 bg-gold-500/10 text-gold-300";
-    // Informational, never a "bet now" nudge → royal/info, never gold.
-    case "WATCHLIST":    return "border-info-border bg-info-bg text-info-fg";
-    default:             return "border-border bg-bg-overlay text-text-muted";
-  }
-};
 
 /** Relative age of a notification.
  *
@@ -103,6 +66,8 @@ export function NotificationsPanel() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<StoredNotification[]>([]);
+  /** The server's honest unread total. `null` until the first poll lands. See `unread` below. */
+  const [serverUnread, setServerUnread] = useState<number | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
@@ -124,7 +89,24 @@ export function NotificationsPanel() {
      with it. Only the paint lingers, and it lingers `aria-hidden` and unclickable. */
   const { present, exiting } = useExitPhase(open, "--t-flick");
 
-  const unread = items.filter((n) => !n.readAt).length;
+  /**
+   * 🔴 THE COUNT COMES FROM THE SERVER, NOT FROM THE LIST — fixed 2026-08-22.
+   *
+   * This read `items.filter((n) => !n.readAt).length`, and `items` is capped at **30**
+   * (`fetchMyNotifications` → `listForUser(userId, 30)`). So a player holding 40 unread rows
+   * saw a badge of 30, and the action had been computing the honest `unreadCount()` and
+   * throwing the answer away on the next line the whole time.
+   *
+   * It became reachable when Up & Down began writing a row per settled round (E-178):
+   * measured on production at 20 rows to one player in an hour, and 360/day if a 3-minute
+   * chain runs. A badge that silently saturates is a badge that lies about money.
+   *
+   * ⛔ ONE SOURCE. The bell's badge and the footer strip both render THIS value — if they
+   * could disagree, one of them would be wrong and nothing would say which.
+   * `serverUnread` is adjusted optimistically by the handlers below and corrected by the
+   * next poll, so the number never freezes behind a round-trip.
+   */
+  const unread = serverUnread ?? items.filter((n) => !n.readAt).length;
 
   /**
    * `null` until the FIRST poll has landed — the baseline, not a count.
@@ -216,6 +198,8 @@ export function NotificationsPanel() {
     finally { inFlightRef.current -= 1; }
     if (seq !== refreshSeq.current) return true; // a newer request owns the state now
     setItems(r.items);
+    // ⛔ The list is capped at 30; this is not. Keep them separate.
+    setServerUnread(r.unread);
     const clientUnread = r.items.filter((n: StoredNotification) => !n.readAt).length;
     if (prevUnreadRef.current !== null && clientUnread > prevUnreadRef.current) {
       setRingSeq((s) => s + 1);
@@ -440,12 +424,16 @@ export function NotificationsPanel() {
     // reads as a dead ✕ on 2G). On failure the snapshot comes back — the row
     // reappearing IS the failure notice, honest without inventing copy.
     const prev = items;
+    const wasUnread = !items.find((n) => n.id === id)?.readAt;
     setItems((cur) => cur.filter((n) => n.id !== id));
+    // Dismissing an UNREAD row removes it from the unread total too; a read one does not.
+    if (wasUnread) setServerUnread((n) => (n === null ? n : Math.max(0, n - 1)));
     try {
       await dismissNotifAction(id);
       await refresh();
     } catch {
       setItems(prev);
+      if (wasUnread) setServerUnread((n) => (n === null ? n : n + 1));
     }
   };
 
@@ -453,24 +441,32 @@ export function NotificationsPanel() {
     if (items.length === 0) return;
     // Optimistic + rollback, same contract as a single dismiss (B-15).
     const prev = items;
+    const prevUnread = serverUnread;
     setItems((cur) => cur.map((n) => (n.readAt ? n : { ...n, readAt: new Date().toISOString() })));
+    setServerUnread(0);
     try {
       await markAllReadAction();
       await refresh();
     } catch {
+      // The list AND the count roll back together — a restored row that still reads as
+      // read is the same lie in a smaller place.
       setItems(prev);
+      setServerUnread(prevUnread);
     }
   };
 
   const handleClearAll = async () => {
     if (items.length === 0) return;
     const prev = items;
+    const prevUnreadAll = serverUnread;
     setItems([]);
+    setServerUnread(0);
     try {
       await dismissAllAction();
       await refresh();
     } catch {
       setItems(prev);
+      setServerUnread(prevUnreadAll);
     }
   };
 
@@ -576,7 +572,7 @@ export function NotificationsPanel() {
                     <button
                       type="button"
                       onClick={handleMarkAll}
-                      className="h-7 px-1.5 rounded-md font-mono text-[9.5px] font-bold uppercase tracking-[0.10em] text-text-subtle hover:text-text hover:bg-bg-overlay transition-colors whitespace-nowrap"
+                      className="inline-flex items-center min-h-[44px] px-2 rounded-md font-mono text-micro font-bold uppercase text-text-subtle hover:text-text hover:bg-bg-overlay transition-colors whitespace-nowrap"
                     >
                       {t.common.readAll}
                     </button>
@@ -637,14 +633,15 @@ export function NotificationsPanel() {
                          right padding IS the 16px that used to be the gap before the ✕. */
                       className="min-w-0 flex-1 text-left flex items-start gap-3 px-3 py-3"
                     >
-                      <span
-                        className={cn("shrink-0 inline-flex items-center justify-center rounded-lg border", tintFor(n.kind))}
-                        style={{
-                          width: 32, height: 32,
-                        }}
-                      >
+                      {/* ⭐ THE PLATE IS THE ATOM (stage 9's `IconPlate`), not a tenth
+                          hand-rolled copy. `rounded-lg` and `rounded-control` are BOTH 12px,
+                          so this is a zero-pixel change — what it buys is that the bell and
+                          `/notifications` now render one plate, at one size, from one place.
+                          ⚠️ The size stays an inline literal inside the atom: `theme.spacing`
+                          is overridden, so `h-8` would render 48px, not 32. */}
+                      <IconPlate size={32} className={cn("border", tintFor(n.kind))}>
                         <Icon s={16} />
-                      </span>
+                      </IconPlate>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
                           {/* §A4 — colour is never the only signal. Unread was a gold wash plus
@@ -717,6 +714,57 @@ export function NotificationsPanel() {
                 </div>
               )}
             </div>
+            {/* ── THE FOOTER STRIP ──────────────────────────────────────────────────
+                Pinned under the scrolling list, so the way OUT of the 30-row window is
+                always visible rather than something you find by scrolling to the end.
+
+                ⛔ WHY IT EXISTS. This panel shows the newest 30 rows, ordered purely by
+                time with no priority by kind. Once Up & Down began writing a row per
+                settled round (E-178) a busy player could push a SECURITY alert or a KYC
+                decision out of the only door that showed it — 20 rows to one player in an
+                hour, measured on production. `/notifications` is that door; this is its
+                handle.
+
+                ⛔ `shrink-0`, and a SIBLING of the `flex-1 overflow-y-auto` list above —
+                not inside it. Inside, it would scroll away with the rows.
+
+                ⚠️ Hidden when there is nothing: the empty state already speaks, and a
+                strip reading "0 unread" under it is furniture. */}
+            {items.length > 0 && (
+              <div className="shrink-0 flex items-center justify-between gap-2 border-t border-border bg-bg-overlay/40 px-3 py-2">
+                <span className="inline-flex items-center gap-1.5 min-w-0">
+                  {/* ⛔ Colour is never the only signal (§A4) — the dot is decorative and the
+                      COUNT is the message, so the dot is aria-hidden and the text carries it. */}
+                  {unread > 0 && <Dot tone="gold" aria-hidden />}
+                  <span className="font-mono text-micro font-bold uppercase text-text-subtle truncate">
+                    {unread === 1 ? t.notif.unreadOne : t.notif.unreadN.replace("{n}", String(unread))}
+                  </span>
+                </span>
+                <span className="flex items-center gap-1 shrink-0">
+                  {unread > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleMarkAll}
+                      className="inline-flex items-center min-h-[44px] px-2 rounded-md font-mono text-micro font-bold uppercase text-text-subtle hover:text-text hover:bg-bg-overlay transition-colors whitespace-nowrap"
+                    >
+                      {t.common.readAll}
+                    </button>
+                  )}
+                  {/* ⛔ A REAL LINK, not `router.push`. It middle-clicks, it opens in a new
+                      tab, and a screen reader announces it as a link — none of which a
+                      button does. `setOpen(false)` so the panel is not left hanging over
+                      the page it just navigated to. */}
+                  <Link
+                    href={"/notifications" as never}
+                    onClick={() => setOpen(false)}
+                    className="inline-flex items-center gap-0.5 min-h-[44px] px-2 rounded-md font-mono text-micro font-bold uppercase text-accent-400 hover:text-text hover:bg-bg-overlay transition-colors whitespace-nowrap"
+                  >
+                    {t.notif.seeAll}
+                    <I.chevronRight s={11} />
+                  </Link>
+                </span>
+              </div>
+            )}
           </div>
           {/* `np-rise` was ALSO defined here, duplicating globals.css — the panel arrival
               now uses the kit's `.m-float-in`, so the local copy is gone. One fact, one home. */}

@@ -27,6 +27,12 @@ import {
   type TxnSearchFilters, type TxnSearchResult,
 } from "./txn-filters";
 import { sniffBase64ImageMime } from "./image-signature";
+// ⛔ The lens definitions have ONE home. Re-listing MONEY_KINDS here is how a kind added to
+// the registry later stops appearing under the filter a player would look for it under.
+import {
+  kindsFor, showsCleared, MONEY_FILTER_KINDS, ACCOUNT_FILTER_KINDS,
+  type NotificationFilter, type NotificationSort,
+} from "@/lib/notification-filters";
 import type {
   StoredUser,
   StoredKyc,
@@ -1390,6 +1396,75 @@ export const prismaDb = {
       return pc().notification.count({
         where: { userId, readAt: null, dismissedAt: null },
       });
+    },
+    /**
+     * The `/notifications` screen: one filtered, sorted, paginated page PLUS the count for
+     * every lens, in one call.
+     *
+     * ⛔ THE COUNTS ARE COMPUTED, NEVER ESTIMATED. `FilterPill`'s own contract says *"Omit
+     * where no honest count exists. Never invent one — A-5, no fabrication."* So each pill's
+     * number is a real `count()` over the same predicate its page would use. If a count and
+     * its page ever disagree, the count is the lie.
+     *
+     * ⛔ `page` is 1-indexed to match the shared `Pagination` atom's `?page=` contract.
+     * Passing a 0-indexed value here silently skips the first page of a player's money
+     * history and nothing throws.
+     */
+    page: async (q: {
+      userId: string;
+      filter: NotificationFilter;
+      sort: NotificationSort;
+      page: number;
+      perPage: number;
+    }): Promise<{ items: StoredNotification[]; total: number; counts: Record<NotificationFilter, number> }> => {
+      const kinds = kindsFor(q.filter);
+      // Every lens except `cleared` hides dismissed rows; `cleared` shows only them.
+      const dismissed = showsCleared(q.filter) ? { not: null } : null;
+      const where = {
+        userId: q.userId,
+        dismissedAt: dismissed,
+        ...(q.filter === "unread" ? { readAt: null } : {}),
+        ...(kinds ? { kind: { in: [...kinds] } } : {}),
+      };
+      const skip = Math.max(0, (q.page - 1) * q.perPage);
+      const [items, total, cAll, cUnread, cMoney, cAccount, cCleared] = await Promise.all([
+        pc().notification.findMany({
+          where,
+          orderBy: { createdAt: q.sort === "oldest" ? "asc" : "desc" },
+          skip,
+          take: q.perPage,
+        }),
+        pc().notification.count({ where }),
+        pc().notification.count({ where: { userId: q.userId, dismissedAt: null } }),
+        pc().notification.count({ where: { userId: q.userId, dismissedAt: null, readAt: null } }),
+        pc().notification.count({ where: { userId: q.userId, dismissedAt: null, kind: { in: [...MONEY_FILTER_KINDS] } } }),
+        pc().notification.count({ where: { userId: q.userId, dismissedAt: null, kind: { in: [...ACCOUNT_FILTER_KINDS] } } }),
+        pc().notification.count({ where: { userId: q.userId, dismissedAt: { not: null } } }),
+      ]);
+      return {
+        items: items.map(toStoredNotification),
+        total,
+        counts: { all: cAll, unread: cUnread, money: cMoney, account: cAccount, cleared: cCleared },
+      };
+    },
+    /**
+     * Undo a dismissal — the other half of `CLEAR ALL`.
+     *
+     * Scoped to the owner exactly as `markRead`/`dismiss` are: a notification id alone is not
+     * proof of ownership, and `update` on an id would restore any user's row.
+     */
+    restore: async (id: string, userId: string): Promise<StoredNotification | null> => {
+      try {
+        const res = await pc().notification.updateMany({
+          where: { id, userId },
+          data: { dismissedAt: null },
+        });
+        if (res.count === 0) return null;
+        const row = await pc().notification.findUnique({ where: { id } });
+        return row ? toStoredNotification(row) : null;
+      } catch {
+        return null;
+      }
     },
     markRead: async (id: string, userId: string): Promise<StoredNotification | null> => {
       try {

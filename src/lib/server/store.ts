@@ -9,6 +9,12 @@ import { prismaDb } from "./prisma-dal";
 import { hasDatabase } from "./prisma";
 import { randomId } from "./crypto";
 import { matchesFilters, sortAndPage, summarise, type TxnSearchFilters, type TxnSearchResult } from "./txn-filters";
+// ⛔ The same lens definitions the Prisma DAL reads — one home (§0a), so the two
+// implementations of this contract cannot drift apart about what "Money" means.
+import {
+  kindsFor, showsCleared, MONEY_FILTER_KINDS, ACCOUNT_FILTER_KINDS,
+  type NotificationFilter, type NotificationSort,
+} from "@/lib/notification-filters";
 
 export type StoredUser = {
   id: string;
@@ -980,6 +986,55 @@ const memoryDb = {
         .slice(0, limit),
     countUnread: (userId: string) =>
       Array.from(store.notifications.values()).filter((n) => n.userId === userId && !n.readAt && !n.dismissedAt).length,
+    /**
+     * Mirror of the Prisma DAL's `page` — the `/notifications` screen's one read.
+     *
+     * ⛔ BOTH HALVES EXIST OR NEITHER DOES. The in-memory store is what every unit test and
+     * every local boot runs against, so a Prisma-only method throws there and the suite that
+     * was supposed to prove the screen proves nothing. Same contract, same ordering, same
+     * count semantics — if these two ever disagree, the tests are measuring a product that
+     * does not ship.
+     */
+    page: (q: {
+      userId: string;
+      filter: NotificationFilter;
+      sort: NotificationSort;
+      page: number;
+      perPage: number;
+    }) => {
+      const mine = Array.from(store.notifications.values()).filter((n) => n.userId === q.userId);
+      const live = mine.filter((n) => !n.dismissedAt);
+      const kinds = kindsFor(q.filter);
+      const base = showsCleared(q.filter) ? mine.filter((n) => !!n.dismissedAt) : live;
+      const matched = base
+        .filter((n) => (q.filter === "unread" ? !n.readAt : true))
+        .filter((n) => (kinds ? kinds.includes(n.kind as never) : true));
+      const sorted = [...matched].sort((a, b) =>
+        q.sort === "oldest"
+          ? a.createdAt.localeCompare(b.createdAt)
+          : b.createdAt.localeCompare(a.createdAt));
+      const skip = Math.max(0, (q.page - 1) * q.perPage);
+      const inKinds = (n: StoredNotification, ks: readonly string[]) => ks.includes(n.kind as never);
+      return {
+        items: sorted.slice(skip, skip + q.perPage),
+        total: sorted.length,
+        counts: {
+          all: live.length,
+          unread: live.filter((n) => !n.readAt).length,
+          money: live.filter((n) => inKinds(n, MONEY_FILTER_KINDS)).length,
+          account: live.filter((n) => inKinds(n, ACCOUNT_FILTER_KINDS)).length,
+          cleared: mine.filter((n) => !!n.dismissedAt).length,
+        } as Record<NotificationFilter, number>,
+      };
+    },
+    /** Mirror of the Prisma DAL's `restore` — owner-scoped, undoes a dismissal. */
+    restore: (id: string, userId: string) => {
+      const n = store.notifications.get(id);
+      if (!n || n.userId !== userId) return null; // owner-scoped
+      const next = { ...n, dismissedAt: null };
+      store.notifications.set(id, next);
+      return next;
+    },
     markRead: (id: string, userId: string) => {
       const n = store.notifications.get(id);
       if (!n || n.userId !== userId) return null; // owner-scoped

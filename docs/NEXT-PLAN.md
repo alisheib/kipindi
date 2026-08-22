@@ -1,3 +1,55 @@
+> # ⭐ SESSION 56 — `/notifications`, THE DOOR THE BELL CANNOT BE (2026-08-22)
+>
+> ## What shipped
+>
+> A **footer strip in the bell card** — unread count · Read all · **See all ›** — and the
+> screen it opens: server-rendered, URL-driven (`?filter=&sort=&page=`), on the shared
+> `Pagination` atom, with five lenses: **All · Unread · Money · Account & security · Cleared**.
+>
+> ⛔ **`all` and `cleared` are disjoint AND exhaustive.** A row in both reads as two events —
+> the duplicate-notification shape that once put 28 byte-identical rows on production. And
+> **money and account do not overlap** (`WITHDRAW` lives in money alone), so each pill's count
+> is a number of things rather than a number of things counted twice.
+>
+> ## Why it exists — two measured gaps, not a design wish
+>
+> | | |
+> |---|---|
+> | **The window** | The bell reads the newest **30** rows with **no priority by kind**. After session 55 put a row on every settled Up & Down round, a player could push a **SECURITY alert or a KYC decision** out of the only door that showed it — 20 rows to one player in an hour, measured on production. |
+> | **The trapdoor** | 🔴 `CLEAR ALL` stamps `dismissedAt`, and **every** read door filters `dismissedAt: null`. One tap permanently hid a player's whole money history with no way back. **Cleared + Restore** is that way back; `restore` is owner-scoped, because an id alone is never proof of ownership. |
+>
+> ## 🔴 E-183 — the badge was saturating at 30
+>
+> `NotificationsPanel` derived its unread badge from the **capped 30-row list**, while the
+> action beside it computed an honest uncapped `unreadCount()` and had that answer discarded
+> one line later. A player with 40 unread was shown 30. Now server-sourced, adjusted
+> optimistically so it never freezes behind a round-trip, and **rolled back with the list**
+> when an action fails.
+>
+> ## ⚠️ Built to the design law, and the gates said so before I did
+>
+> The first draft **failed** `type-scale` (+5 arbitrary sizes, +4 tracking) and
+> `ui-consistency` (+2 numeric size utilities). Corrected to: the closed type scale
+> (`text-micro`), **B7's `<PageContainer tier="reading">`** with its skeleton at the same tier,
+> and px literals for control heights — `theme.spacing` is overridden, so `h-7` renders
+> **40px**, below the 44px player tap target. ⭐ Both notification plates are now the
+> `IconPlate` atom: `rounded-lg` and `rounded-control` are both 12px, so it was a **zero-pixel
+> change that deleted a hand-rolled variant**, and `iconFor`/`tintFor` live in one module both
+> surfaces import — a second map is how a win becomes gold in one place and grey in the other.
+>
+> ## Evidence
+>
+> `test:notifications-page` **41/0** (the lenses are DRIVEN, not read) · `red:notifications-page`
+> **10/10** with the tree byte-identical and anchors in a sidecar so the red-anchors ceiling
+> holds at 67 · `test:i18n` 1918×3 · every design gate green · index migration
+> `20260822100000_notification_user_created_idx` pre-flighted **GO** on production
+> (2,521 rows / 1.9 MB) via `npm run ops:preflight-notification-idx`.
+>
+> ⭐ **Two of the ten mutations found real gaps in my own suite before it shipped** — the
+> fixture had no `WITHDRAW` row, so the overlap check was asserting over a population where
+> the defect could not appear; and an insert-shaped mutation left its own anchor on disk.
+> A control that cannot fail is not a control.
+
 > # ⭐ SESSION 55 — UP & DOWN RESULTS IN THE BELL (2026-08-22)
 >
 > ✅ **PUSHED, DEPLOYED AND DRIVEN LIVE WITH REAL MONEY.** `3b440867..` — the data lane's six

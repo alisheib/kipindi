@@ -758,6 +758,12 @@ model Notification {
 
   @@index([userId, readAt])
   @@index([channel, sentAt])
+  /// The `/notifications` screen's ordering. Every lens on that page is
+  /// `WHERE userId = … ORDER BY createdAt` with a `skip`/`take`, and neither index above
+  /// covers the sort — `(userId, readAt)` gets the userId prefix and then Postgres sorts.
+  /// Fine for the bell's 30 rows; not for a deep page over a table that now takes a row per
+  /// settled Up & Down round (E-178 — up to 360/day for one player on a 3-minute chain).
+  @@index([userId, createdAt])
 }
 
 // ============================================================================

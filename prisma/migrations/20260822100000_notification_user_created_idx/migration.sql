@@ -1,0 +1,28 @@
+-- THE ORDERING THE `/notifications` SCREEN READS BY.
+--
+-- Every lens on that page is `WHERE "userId" = … ORDER BY "createdAt" <dir>` with a
+-- skip/take. `Notification` carried `(userId, readAt)` and `(channel, sentAt)`, and neither
+-- covers that sort: the first gets the `userId` prefix and then Postgres sorts the whole
+-- matching set. That is nothing for the bell's 30 rows, and it is the wrong shape for a deep
+-- page over a table that now takes a row per settled Up & Down round (E-178 — measured at 20
+-- rows to one player in an hour, and up to 360/day on a 3-minute chain).
+--
+-- ⛔ EXPAND ONLY. Nothing is dropped, renamed, or rewritten. Adding an index is safe to ship
+-- in ONE release: the previously-deployed container never names it, and an index it does not
+-- know about cannot break a query it already runs.
+--
+-- ⛔ NO `CONCURRENTLY`. `prisma migrate deploy` wraps a migration in a transaction, and
+-- CREATE INDEX CONCURRENTLY cannot run inside one (25001). `start` is
+-- `prisma migrate deploy && … && next start`, so a migration that aborts is not a failed
+-- deploy — it is a platform-wide sign-in outage, because `next start` is never reached.
+--
+-- ⛔ `IF NOT EXISTS`, because CI replays each migration exactly once against a fresh database
+-- while production may already carry the index (it MAY be pre-created by hand with
+-- CONCURRENTLY first, the practice recorded in 20260731120000's commit body). A file that is
+-- not re-runnable is GREEN in CI and fatal on production.
+--
+-- ⚠️ THE LOCK. A plain CREATE INDEX takes ACCESS EXCLUSIVE for the duration. Measured
+-- read-only on production before shipping — see `npm run ops:preflight-notification-idx`,
+-- which refuses to say GO if the table has grown to a size where that stops being microseconds.
+CREATE INDEX IF NOT EXISTS "Notification_userId_createdAt_idx"
+    ON "Notification" ("userId", "createdAt");

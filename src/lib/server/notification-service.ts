@@ -26,6 +26,7 @@ import type { StoredNotification } from "./store";
 import { formatTzs } from "@/lib/utils";
 import type { LocalizedText } from "@/lib/localized";
 import { sideWordIn, outcomeWordIn, type StoredSide, type StoredOutcome } from "@/lib/side-label";
+import type { NotificationFilter, NotificationSort } from "@/lib/notification-filters";
 
 export type NotifyInput = Omit<StoredNotification, "id" | "userId" | "readAt" | "dismissedAt" | "createdAt"> & {
   userId: string;
@@ -177,6 +178,40 @@ export async function notify(input: NotifyInput, opts?: NotifyOptions): Promise<
 
 export async function listForUser(userId: string, limit = 30) {
   return await db.notification.findByUser(userId, limit);
+}
+
+/**
+ * ONE PAGE of the `/notifications` screen, plus the honest count for every lens.
+ *
+ * ⭐ WHY THIS EXISTS AND `listForUser` STAYS UNTOUCHED. The bell reads the newest 30 rows,
+ * ordered purely by time, with no priority by kind. Once Up & Down began writing a row per
+ * settled round (E-178), a busy player could push a SECURITY alert or a KYC decision out of
+ * that 30-row window — measured on production at 20 rows to one player in an hour, and 360/day
+ * if a 3-minute chain runs. This is the door that has no window.
+ *
+ * ⛔ The bell's behaviour must not change. `listForUser` is left exactly as it was.
+ */
+export async function pageForUser(q: {
+  userId: string;
+  filter: NotificationFilter;
+  sort: NotificationSort;
+  page: number;
+  perPage: number;
+}) {
+  return await db.notification.page(q);
+}
+
+/**
+ * Undo a dismissal.
+ *
+ * 🔴 THE REASON THIS IS NOT OPTIONAL. `dismissAll` (the bell's CLEAR ALL) stamps
+ * `dismissedAt`, and every read door in the product filters `dismissedAt: null` — so before
+ * the `/notifications` screen existed, one tap permanently hid every money record a player
+ * had, with nothing anywhere able to show them again. Clearing is meant to tidy a bell, not
+ * to destroy a receipt. Owner-scoped, exactly like `markRead` and `dismiss`.
+ */
+export async function restore(id: string, userId: string) {
+  return await db.notification.restore(id, userId);
 }
 
 export async function unreadCount(userId: string) {
