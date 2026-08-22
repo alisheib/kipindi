@@ -33,12 +33,19 @@ const MUTATIONS = [
     // 🔴 A SECOND DEFINITION OF ONE MOTION. The last `@keyframes` of a name wins for the
     // whole document, wherever it sits — so this does not shadow one rule, it retunes
     // every consumer of `seal-impress` in the product, with nothing to notice.
+    // ⚠️ RE-ANCHORED 2026-08-22. This pointed at the comment `/* ---------- Settling shimmer
+    // ---------- */`, which stage 08 deleted along with 73 unrendered classes — so the
+    // mutation stopped applying and this check silently stopped being proven. The harness
+    // reported "anchor missing", not a pass, which is the only reason it surfaced.
+    // ⛔ Anchored on the DEFINITION the rule is about, not on decoration near it: if
+    // `seal-impress` is ever renamed or retuned, this mutation SHOULD fail loudly rather
+    // than quietly stop testing anything.
     name: "define seal-impress a second time — the LAST one silently wins document-wide",
     check: "1.1",
     file: "src/app/globals.css",
-    from: `/* ---------- Settling shimmer ---------- */`,
+    from: `@keyframes seal-impress { 0% { transform: scale(2.2);`,
     to: `@keyframes seal-impress { 0% { transform: scale(1); } 100% { transform: scale(1); } }
-/* ---------- Settling shimmer ---------- */`,
+@keyframes seal-impress { 0% { transform: scale(2.2);`,
   },
   {
     // ⛔ An at-rule override that is NOT a calm branch is rule 1.1's drift wearing a

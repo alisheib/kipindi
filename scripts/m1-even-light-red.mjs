@@ -133,9 +133,17 @@ const MUTATIONS = [
     // whose first version was broken (a JSX value is a JS string, so the leading quote came out
     // as part of the token), and it had no live proof left.
     // Re-aimed at a `.tsx` that really does carry an inline shadow today.
-    file: "src/components/layout/notifications-panel.tsx",
-    from: `              boxShadow: "0 0 8px var(--no-500), 0 2px 4px color-mix(in oklab, var(--royal-950) 40%, transparent)",`,
-    to: `              boxShadow: "inset 0 1px 0 oklch(100% 0 0 / 0.16), 0 2px 4px color-mix(in oklab, var(--royal-950) 40%, transparent)",`,
+    // ⚠️ RE-ANCHORED AGAIN 2026-08-22, for the SAME reason as 2026-08-15 and it is worth
+    // saying out loud: this mutation keeps rotting because it targets whichever `.tsx` still
+    // carries an inline shadow, and the design campaign keeps converting those to tokens —
+    // stage 09 removed `boxShadow` from `notifications-panel.tsx` entirely. ⛔ That is
+    // PROGRESS, not breakage, but it silently left the `.tsx` half of this gate unproven.
+    // ⭐ Verified before re-aiming: 30 `.tsx` files still carry an inline `boxShadow`, so the
+    // corpus is healthy and this gate still has real work to do. Re-aimed at a MONEY surface,
+    // which is the half of the corpus most worth proving.
+    file: "src/app/wallet/wallet-client.tsx",
+    from: `        boxShadow: "inset 0 0 0 1px oklch(92% 0.06 84 / 0.15), var(--elev-modal)",`,
+    to: `        boxShadow: "inset 0 1px 0 oklch(100% 0 0 / 0.16), var(--elev-modal)",`,
   },
   {
     /**
@@ -156,9 +164,14 @@ const MUTATIONS = [
     // string and requires the gate to stay SILENT. The gate's first `.tsx` run flagged exactly
     // this shape, because a JSX value is a JS string and the leading quote came out as part of
     // the token — a false positive on the three sites that had just been converted CORRECTLY.
-    file: "src/components/layout/notifications-panel.tsx",
-    from: `              boxShadow: "0 0 8px var(--no-500), 0 2px 4px color-mix(in oklab, var(--royal-950) 40%, transparent)",`,
-    to: `              boxShadow: "inset 0 0 0 1px oklch(96% 0.04 268 / 0.09), 0 2px 4px color-mix(in oklab, var(--royal-950) 40%, transparent)",`,
+    // ⚠️ RE-ANCHORED 2026-08-22 alongside the case above — same file converted away, same
+    // money surface picked up. ⭐ And now it genuinely IS concatenated, which is what this
+    // case's own comment has always claimed to test: a JSX value is a JS expression, so the
+    // gate must read the STRING and not the source text around it. Written as a real `+`
+    // join, the leading quote and the seam both sit where the old false positive lived.
+    file: "src/app/wallet/wallet-client.tsx",
+    from: `        boxShadow: "inset 0 0 0 1px oklch(92% 0.06 84 / 0.15), var(--elev-modal)",`,
+    to: `        boxShadow: "inset 0 0 0 1px oklch(96% 0.04 268 / 0.09), " + "var(--elev-modal)",`,
   },
 ];
 
