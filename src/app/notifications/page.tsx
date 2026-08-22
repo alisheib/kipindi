@@ -145,7 +145,15 @@ export default async function NotificationsPage({
       {/* â”€â”€ Lenses. â›” Every count is a real count over the same predicate its page uses
           (`FilterPill`: "Omit where no honest count exists. Never invent one â€” A-5"). */}
       <div className="space-y-2">
-        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+        {/* â›” `flex-wrap`, NOT a horizontal scroller â€” the pattern `/results` uses, and it
+            removed a scroller from exactly this spot with a comment saying why: a rail that
+            wraps never engages the scroller, and the bleed it needs pushes the wrapper past
+            its own container at 360.
+            í ½í´´ AND HERE IT WOULD HAVE HIDDEN THE SAFETY LENS. At 360 the first draft scrolled,
+            so **Account & security** and **Cleared** were off-screen with no affordance that
+            anything followed â€” and `Cleared` is the only route back to a notification that
+            `CLEAR ALL` hid. A filter a player cannot see is a filter they do not have. */}
+        <nav aria-label={t.notif.showLabel} className="flex flex-wrap items-center gap-1.5">
           <FilterGroupKey>{t.notif.showLabel}</FilterGroupKey>
           {NOTIFICATION_FILTERS.map((f) => (
             <FilterPill
@@ -157,8 +165,8 @@ export default async function NotificationsPage({
               testId={`notif-filter-${f}`}
             />
           ))}
-        </div>
-        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+        </nav>
+        <nav aria-label={t.notif.sortLabel} className="flex flex-wrap items-center gap-1.5">
           <FilterGroupKey>{t.notif.sortLabel}</FilterGroupKey>
           {NOTIFICATION_SORTS.map((s) => (
             <FilterPill
@@ -170,7 +178,7 @@ export default async function NotificationsPage({
               testId={`notif-sort-${s}`}
             />
           ))}
-        </div>
+        </nav>
       </div>
 
       {/* â›” Says out loud that clearing HIDES rather than deletes. Without this sentence a

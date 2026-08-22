@@ -468,7 +468,8 @@
     "ops:updown-bell-live-check": "tsx scripts/ops-updown-bell-live-check.mts",
     "ops:preflight-notification-idx": "tsx scripts/ops-preflight-notification-idx.mts",
     "test:notifications-page": "tsx scripts/notifications-page.test.mts",
-    "red:notifications-page": "node scripts/notifications-page-red.mjs"
+    "red:notifications-page": "node scripts/notifications-page-red.mjs",
+    "qa:notifications-page": "node scripts/live-notifications-page.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",
