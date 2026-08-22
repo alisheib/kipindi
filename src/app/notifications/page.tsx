@@ -149,7 +149,7 @@ export default async function NotificationsPage({
             removed a scroller from exactly this spot with a comment saying why: a rail that
             wraps never engages the scroller, and the bleed it needs pushes the wrapper past
             its own container at 360.
-            í ½í´´ AND HERE IT WOULD HAVE HIDDEN THE SAFETY LENS. At 360 the first draft scrolled,
+            ðŸ”´ AND HERE IT WOULD HAVE HIDDEN THE SAFETY LENS. At 360 the first draft scrolled,
             so **Account & security** and **Cleared** were off-screen with no affordance that
             anything followed â€” and `Cleared` is the only route back to a notification that
             `CLEAR ALL` hid. A filter a player cannot see is a filter they do not have. */}

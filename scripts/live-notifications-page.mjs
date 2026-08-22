@@ -136,7 +136,7 @@ for (const locale of ["en", "sw", "zh"]) {
         if (!ok(`${cell} Â· the ${k} pill is rendered`, n > 0)) continue;
         const label = ((await pill.innerText().catch(() => "")) || "").replace(/\s+/g, " ").trim();
         ok(`${cell} Â· the ${k} pill is localised`, re.test(label), `pill reads "${label}"`);
-        // í ½í´´ PRESENT IN THE DOM IS NOT THE SAME AS REACHABLE. The first build scrolled this rail
+        // ðŸ”´ PRESENT IN THE DOM IS NOT THE SAME AS REACHABLE. The first build scrolled this rail
         // horizontally, so at 360 the **Account & security** and **Cleared** pills sat off-screen
         // with no affordance that anything followed â€” and `Cleared` is the ONLY route back to a
         // notification that `CLEAR ALL` hid. Every pill must be inside the viewport, not merely
