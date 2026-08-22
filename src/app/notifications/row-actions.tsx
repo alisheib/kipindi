@@ -14,7 +14,7 @@
  */
 import { useState, useTransition } from "react";
 import { I } from "@/components/ui/glyphs";
-import { restoreNotifAction, markNotifReadOnPageAction } from "@/app/_actions/notifications";
+import { restoreNotifAction, markNotifReadOnPageAction, dismissNotifOnPageAction } from "@/app/_actions/notifications";
 
 export function NotificationRowActions({
   id,
@@ -22,6 +22,7 @@ export function NotificationRowActions({
   cleared,
   restoreLabel,
   readLabel,
+  dismissLabel,
 }: {
   id: string;
   unread: boolean;
@@ -29,6 +30,7 @@ export function NotificationRowActions({
   /** Localised in the server component — this file mints no copy of its own. */
   restoreLabel: string;
   readLabel: string;
+  dismissLabel: string;
 }) {
   const [pending, startTransition] = useTransition();
   /* Optimistic hide of the control only — never of the ROW. The row is the server's to
@@ -62,17 +64,34 @@ export function NotificationRowActions({
     );
   }
 
-  if (!unread) return null;
-
+  /* ⭐ TWO CONTROLS, AND THE ORDER IS THE POINT. Mark-read first because it is the
+     ordinary action; dismiss second because it REMOVES the row from view. Both are ≥44px
+     and both are icon-only with an `aria-label`, matching the bell's own ✕.
+     ⛔ Dismiss is offered on the ARCHIVE only because it is reversible: it stamps
+     `dismissedAt`, and the **Cleared** lens plus Restore are the way back. Without that
+     lens this control would be a delete button wearing a tidy-up label. */
   return (
-    <button
-      type="button"
-      disabled={pending}
-      aria-label={readLabel}
-      onClick={() => run(() => markNotifReadOnPageAction(id))}
-      className="shrink-0 inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-md text-text-subtle hover:text-text hover:bg-bg-overlay transition-colors disabled:opacity-50"
-    >
-      <I.check s={14} />
-    </button>
+    <span className="shrink-0 inline-flex items-center gap-0.5">
+      {unread && (
+        <button
+          type="button"
+          disabled={pending}
+          aria-label={readLabel}
+          onClick={() => run(() => markNotifReadOnPageAction(id))}
+          className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-md text-text-subtle hover:text-text hover:bg-bg-overlay transition-colors disabled:opacity-50"
+        >
+          <I.check s={14} />
+        </button>
+      )}
+      <button
+        type="button"
+        disabled={pending}
+        aria-label={dismissLabel}
+        onClick={() => run(() => dismissNotifOnPageAction(id))}
+        className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-md text-text-subtle hover:text-no-300 hover:bg-bg-overlay transition-colors disabled:opacity-50"
+      >
+        <I.x s={13} />
+      </button>
+    </span>
   );
 }

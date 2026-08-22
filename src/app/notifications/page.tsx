@@ -50,6 +50,7 @@ import {
   type NotificationFilter, type NotificationSort,
 } from "@/lib/notification-filters";
 import { NotificationRowActions } from "./row-actions";
+import { NotificationsBulkBar } from "./bulk-bar";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -188,6 +189,14 @@ export default async function NotificationsPage({
         <p className="text-label text-text-muted leading-snug">{t.notif.clearedHint}</p>
       )}
 
+      {/* The one bulk control. ⛔ There is deliberately no CLEAR ALL here — see `bulk-bar.tsx`:
+          a bulk hide over a PAGINATED list would act on rows the player has never seen. */}
+      <NotificationsBulkBar
+        unread={counts.unread}
+        label={t.common.readAll}
+        countLabel={counts.unread === 1 ? t.notif.unreadOne : t.notif.unreadN.replace("{n}", String(counts.unread))}
+      />
+
       {items.length === 0 ? (
         <EmptyState
           title={EMPTY[filter].title}
@@ -243,6 +252,7 @@ export default async function NotificationsPage({
                     cleared={!!n.dismissedAt}
                     restoreLabel={t.notif.restore}
                     readLabel={t.common.readAll}
+                    dismissLabel={t.notif.dismissNotification}
                   />
                 </div>
               </li>

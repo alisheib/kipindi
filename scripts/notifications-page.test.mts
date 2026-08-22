@@ -259,6 +259,48 @@ section("7 · B7 — the page states its width once, and its skeleton agrees");
   ok("§7 ⭐ the skeleton states the same tier", /width=\{1080\}/.test(loading), loading.slice(0, 120));
 }
 
+// ── §8 · the controls, and the one that is deliberately absent ─────────────────
+section("8 · the page can act in bulk — and cannot bulk-hide");
+{
+  const bulk = strip(read("src/app/notifications/bulk-bar.tsx"));
+  const actions = strip(read("src/app/_actions/notifications.ts"));
+  const rowActions = strip(read("src/app/notifications/row-actions.tsx"));
+  const page = strip(read(PAGE));
+
+  // Control first — an absence check over an emptied string passes over nothing.
+  ok("§8 control: stripped sources are still real code",
+     bulk.length > 400 && actions.length > 1_000 && rowActions.length > 400,
+     `bulk=${bulk.length} actions=${actions.length} rows=${rowActions.length}`);
+
+  // The bell had READ ALL from the start; the fuller surface must not be weaker than the
+  // glance it exists to replace.
+  ok("§8 the page has a bulk mark-all-read control", /markAllReadOnPageAction/.test(bulk));
+  ok("§8 …and the page renders it", /<NotificationsBulkBar/.test(page));
+  // ⛔ It acts on EVERYTHING unread, not on the open lens. "All" is the word on the button.
+  ok("§8 ⭐ the bulk action marks all, not the current filter",
+     /export async function markAllReadOnPageAction\(\)/.test(actions) &&
+     /markAllRead\(session\.userId\)/.test(actions));
+
+  // Parity with the bell, which has always had a per-row ✕.
+  // ⛔ THE CALL, NOT THE IMPORT. The first version tested for the symbol and a mutation that
+  // deleted only the import still passed — the name survived in the call below it. An import
+  // is not a control; the wiring is.
+  ok("§8 rows can be dismissed from the page",
+     /run\(\(\) => dismissNotifOnPageAction\(id\)\)/.test(rowActions));
+  ok("§8 …and dismissal is reversible from here", /restoreNotifAction/.test(rowActions));
+
+  // 🔴 THE DELIBERATE ABSENCE, PINNED SO IT IS NOT "FIXED" LATER BY SOMEONE ADDING SYMMETRY.
+  // A bulk hide over a PAGINATED list acts on rows the player has never seen — twelve are on
+  // screen, the action would take all of them. `CLEAR ALL` belongs to the bell, which is a
+  // glance at the newest thirty; it does not belong on the archive.
+  ok("§8 ⭐ the page has NO bulk clear/dismiss-all control",
+     !/dismissAllAction/.test(bulk) && !/dismissAllAction/.test(page) && !/dismissAllAction/.test(rowActions),
+     "a bulk hide over a paginated list clears rows the player never saw");
+  // …while the BELL still has it, so this is a placement decision and not a removal.
+  ok("§8 …and the bell still has it (this is placement, not removal)",
+     /dismissAllAction/.test(strip(read(PANEL))));
+}
+
 const label = "notifications page (the door the bell cannot be)";
 if (fails.length) {
   console.error(`\n${label} — ${pass} passed, ${fails.length} FAILED\n`);

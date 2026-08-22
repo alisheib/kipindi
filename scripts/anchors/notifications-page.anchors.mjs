@@ -121,6 +121,28 @@ export const MUTATIONS = [
     to: "  return <PageLoader width={720} rows={6} />;",
   },
   {
+    // 🔴 THE DELIBERATE ABSENCE, MUTATED. Someone adding "symmetry" later would put a bulk
+    // clear on the archive, and it would look like an improvement. It is not: a bulk hide
+    // over a PAGINATED list acts on rows the player has never seen — twelve are on screen.
+    name: "page-grows-a-bulk-clear",
+    why: "the archive gains a bulk hide, so one tap clears rows the player never saw — the bell is a glance at thirty, this is the record",
+    file: "src/app/notifications/bulk-bar.tsx",
+    suite: "notifications-page",
+    from: `import { markAllReadOnPageAction } from "@/app/_actions/notifications";`,
+    to: `import { markAllReadOnPageAction, dismissAllAction } from "@/app/_actions/notifications";`,
+  },
+  {
+    name: "rows-lose-their-dismiss",
+    why: "the page can no longer tidy a single row, so a player can dismiss from the bell but not from the record — the asymmetry this closed",
+    file: "src/app/notifications/row-actions.tsx",
+    suite: "notifications-page",
+    // ⚠️ MUTATES THE WIRING, NOT THE IMPORT. Written against the import first, this was NOT
+    // caught — the guard tested for the symbol and the symbol survived in the call. Both were
+    // corrected: the guard now pins the call, and so does this.
+    from: `onClick={() => run(() => dismissNotifOnPageAction(id))}`,
+    to: `onClick={() => run(() => markNotifReadOnPageAction(id))}`,
+  },
+  {
     name: "page-declares-its-own-tint-map",
     why: "the page grows a second appearance map, so a win can be gold in the bell and grey here — E-179's shape",
     file: PAGE,

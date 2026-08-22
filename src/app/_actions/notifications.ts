@@ -79,6 +79,41 @@ export async function markNotifReadOnPageAction(id: string) {
   return { ok: true as const };
 }
 
+/**
+ * Mark every unread notification read, from the `/notifications` screen.
+ *
+ * ⛔ ACTS ON EVERYTHING UNREAD, NOT ON THE CURRENT LENS — the same rows `markAllRead`
+ * already touches from the bell. "All" is the word on the control, so scoping it silently to
+ * whichever filter happens to be open would be the surprise: a player on **Money** pressing
+ * "Read all" and finding their KYC row still unread has been told something untrue by a
+ * button. One meaning, both surfaces.
+ */
+export async function markAllReadOnPageAction() {
+  const session = await currentSession();
+  if (!session) return { ok: false as const, count: 0 };
+  const count = await markAllRead(session.userId);
+  revalidatePath("/notifications");
+  return { ok: true as const, count };
+}
+
+/**
+ * Dismiss ONE notification from the `/notifications` screen.
+ *
+ * ⚠️ Parity with the bell, which has had a per-row ✕ all along. Being able to tidy a row
+ * from the glance but not from the record was an asymmetry with no reason behind it.
+ * ⛔ Reversible by construction: this stamps `dismissedAt`, and the **Cleared** lens plus
+ * `restoreNotifAction` are the way back. That is the only thing that makes a dismiss on the
+ * ARCHIVE acceptable at all.
+ */
+export async function dismissNotifOnPageAction(id: string) {
+  const session = await currentSession();
+  if (!session) return { ok: false as const };
+  if (!id) return { ok: false as const };
+  await dismiss(id, session.userId);
+  revalidatePath("/notifications");
+  return { ok: true as const };
+}
+
 // ── Web push (F4) ───────────────────────────────────────────────────────────
 
 /** Persist a browser push subscription for the signed-in user (explicit opt-in). */
