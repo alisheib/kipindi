@@ -49,6 +49,37 @@
 > fixture had no `WITHDRAW` row, so the overlap check was asserting over a population where
 > the defect could not appear; and an insert-shaped mutation left its own anchor on disk.
 > A control that cannot fail is not a control.
+>
+> ## Driven live on production
+>
+> `qa:notifications-page` **210/0** — 3 widths × 3 locales, every pill read by its own
+> `data-chip` and its **bounding box asserted inside the viewport**; and
+> `qa:notifications-restore` **11/0** — a row dismissed **through the real bell control** is
+> reachable under **Cleared**, has left **All**, and **Restore** puts it back.
+>
+> ⚠️ **The matrix drive could not have proven that.** The fleet player had never cleared
+> anything, so `Cleared` rendered an honest empty state and the one safety property on the
+> screen went untested until it was driven deliberately. An empty state proves neither half.
+>
+> ## 🔴 E-184 — my own edit wrote invalid UTF-8 and production caught it
+>
+> `Turbopack build failed … invalid utf-8 sequence of 1 bytes from index 7443`. A Python
+> heredoc containing `🔴` is **two lone surrogates**, and `errors="surrogatepass"` wrote them
+> as CESU-8. ⛔ **`tsc` passed, all 238 suites passed, and an earlier local `build` passed** —
+> because I ran it before the corrupting edit and never again after. Production was never at
+> risk: a failed build leaves the previous good deploy serving.
+>
+> ⭐ **`test:encoding` now closes that blind spot** — all 1,831 tracked text files, invalid
+> UTF-8 **and** 0-byte files, so E-181's truncation and E-184's corruption are one gate. It
+> uses `TextDecoder({fatal:true})` rather than `toString("utf8")`, which silently substitutes
+> U+FFFD and would "succeed" on exactly the input it exists to reject.
+>
+> ## ⚠️ Observed, not fixed, not mine
+>
+> `PageContainer` renders `<main>` while the app shell already provides
+> `<main id="main-content">` — so player pages nest two `<main>` elements. Product-wide
+> (`/markets` is identical) and the atom already has `as="div"` for it. Flagged rather than
+> diverged from mid-session.
 
 > # ⭐ SESSION 55 — UP & DOWN RESULTS IN THE BELL (2026-08-22)
 >
