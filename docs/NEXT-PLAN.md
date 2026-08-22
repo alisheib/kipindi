@@ -1,3 +1,45 @@
+> # ⭐ SESSION 55 — UP & DOWN RESULTS IN THE BELL (2026-08-22)
+>
+> ✅ **PUSHED, DEPLOYED AND DRIVEN LIVE WITH REAL MONEY.** `3b440867..` — the data lane's six
+> commits, the design lane's eleven stages and this session's work all landed in one push after
+> a clean merge. Full gate **237/237**. Production answers `/api/health` with `ok: true` on a
+> fresh instance, and the pending KYC migration applied cleanly
+> (`finished`, `rolled_back: null`, 0 unfinished).
+>
+> ## What shipped
+>
+> **Every Up & Down terminal outcome now writes a bell row** — win, loss, void refund and
+> one-sided refund — deep-linked to its own round, in all three languages, with email still
+> suppressed and the daily digest untouched. ⛔ **It reverses two of Ali's own dated decisions**
+> (2026-07-24 and 2026-08-05) and he confirmed with the re-measured volume in front of him.
+> [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) § *2026-08-22* is the record;
+> `LIVE-QA-CAMPAIGN.md` §6b's session-55 block is the handoff.
+>
+> **Proven on production, not inferred:** 4 of 4 positions settled after the deploy produced a
+> row — WIN *"You won TZS 1,870"*, LOSS *"Bet lost · TZS 1,000"*, two one-sided refunds — each
+> pointing at its own round, 0 carrying the forbidden Chinese string. `qa:updown-bell` 48/0
+> twice across 3 widths × 3 locales, frames opened rather than merely captured.
+>
+> ## 🔴 Three defects found on the way, none of them the thing I was asked to build
+>
+> | | |
+> |---|---|
+> | **E-179** | The Up & Down loss push shipped `投注失败` — *the bet FAILED, never went through* — the opposite money consequence from a bet placed and lost. `notifyLoss` had forbidden that exact string in a comment since 2026-07-31; the fix was never propagated to the hand-written copy. The words now have ONE home. |
+> | **E-180** | `live-updown-money-pair.mjs` had **never placed an UP bet**: `/^up\b/i` matched the chip "UP & DOWN" before the stake button. ⛔ My first repair was wrong the same way — the visible `×` is not the accessible name, the `aria-label` is. |
+> | **E-181** | I truncated `LIVE-QA-CAMPAIGN.md` to **0 bytes** with a Python read-modify-write. Recovered from git in one command because the previous edit had been committed minutes earlier. ⛔ Never rewrite that file with Python. |
+>
+> ## ⚠️ Two claims of mine that the measurements refused
+>
+> 1. **"The forty-an-hour premise expired because rounds are operator-generated."** It had not.
+>    Auto-generation is off in DATA, not removed from CODE, and **16 of 19 chains were RUNNING**
+>    on the night this shipped. Corrected to Ali before he decided.
+> 2. **The design lane's two red guards were not mine and not theirs-in-spirit** — they are what
+>    happens when two lanes merge. `reduce-motion` pinned a bug its own commit had fixed;
+>    `red:reduce-motion` was 11/12 with a **harness error** on their own tree. Both fixed, 12/12.
+>
+> ▶ **NEXT:** unchanged — Unit C (#2c) then D–M in
+> [`SESSION-PROMPT-JAY-COMMENTS.md`](SESSION-PROMPT-JAY-COMMENTS.md) §1 order.
+
 > # ⭐ SESSION 54 — THE DATA-HANDLING FIXING SESSION (2026-08-20 evening)
 >
 > ✅ **PUSHED AND DEPLOYED.** `a3ac21c4..8bba442d`, 12 commits, on Ali's instruction after the

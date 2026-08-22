@@ -464,7 +464,8 @@
     "test:updown-bell": "tsx scripts/updown-bell.test.mts",
     "red:updown-bell": "node scripts/updown-bell-red.mjs",
     "ops:preflight-id-fingerprint": "tsx scripts/ops-preflight-id-fingerprint.mts",
-    "qa:updown-bell": "node scripts/live-updown-bell.mjs"
+    "qa:updown-bell": "node scripts/live-updown-bell.mjs",
+    "ops:updown-bell-live-check": "tsx scripts/ops-updown-bell-live-check.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",
