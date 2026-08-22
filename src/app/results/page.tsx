@@ -18,6 +18,7 @@ import { formatTzsCompact } from "@/lib/utils";
 import { pickLocalized } from "@/lib/localized";
 import { getServerT } from "@/lib/i18n-server";
 import { outcomeWord, sideWord, type LabelProductLine } from "@/lib/side-label";
+import { PageContainer } from "@/components/layout/page-container";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -69,7 +70,7 @@ export default async function ResultsPage({
   const pageNum = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
 
   return (
-    <main className="mx-auto max-w-[1280px] px-3 lg:px-6 py-6">
+    <PageContainer tier="board">
       <h1 className="sr-only">{t.results.title}</h1>
       {/* Refresh every 60s — new resolutions should appear without F5 */}
       <RefreshPoller intervalMs={60_000} />
@@ -84,7 +85,7 @@ export default async function ResultsPage({
           pageNum={pageNum}
         />
       </Suspense>
-    </main>
+    </PageContainer>
   );
 }
 

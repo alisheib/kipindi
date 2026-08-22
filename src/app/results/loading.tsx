@@ -1,10 +1,11 @@
 import { getServerT } from "@/lib/i18n-server";
+import { PageContainer } from "@/components/layout/page-container";
 
 export default async function ResultsLoading() {
   const { t } = await getServerT();
   // Width MUST match results/page.tsx (1280) — a mismatch reflows on every route transition.
   return (
-    <main className="mx-auto max-w-[1280px] px-3 lg:px-6 py-6 space-y-5">
+    <PageContainer tier="board" className="space-y-5">
       <header aria-hidden>
         <div className="h-3 w-16 rounded bg-bg-overlay kp-shimmer-track" />
         <div className="mt-1 h-7 w-48 rounded bg-bg-overlay kp-shimmer-track" />
@@ -43,6 +44,6 @@ export default async function ResultsLoading() {
           </div>
         ))}
       </div>
-    </main>
+    </PageContainer>
   );
 }

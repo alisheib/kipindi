@@ -547,6 +547,47 @@ So width was a hand-typed string (`mx-auto max-w-[1280px] px-3 lg:px-6`) repeate
    still flexes. Six atoms carry `.field-measure`; `OtpInput`,
    `DateTimeRangeFilter` and `TimeSelect` are documented exemptions and the guard
    asserts they *stay* exempt.
+5. ⛔ **A page never renders its own `<main>`. The shell owns that landmark.**
+   Added 2026-08-22. `AppShell` renders `<main id="main-content">` in the ROOT
+   layout, so every route already has one — admin, auth and legal included. The
+   only exemptions are `app-shell.tsx` itself and `app/global-error.tsx`, which
+   renders its own `<html>`/`<body>` because the root layout never ran and so has
+   no shell above it. `PageContainer` **cannot** render a `main`: `"main"` is not
+   in its `as` union, so `tsc` is the guard at every call site.
+
+**Rule 5's measured defect, because it is the reason rules 2 and 5 are one rule.**
+Measured on production 2026-08-22, signed in, at 1280: **six of eight sampled
+routes rendered TWO `<main>` elements, one nested inside the other** — `/markets`,
+`/notifications`, `/results`, `/wallet`, `/profile`, `/legal/privacy`. A behavioural
+sweep the same day put it at **17 of 17** player routes. Nested `main` is invalid
+HTML, gives a screen reader two "main content" landmarks to choose between, and
+the skip-link (`#main-content`) resolves to the OUTER one while the page's real
+content begins inside the inner one. `landmark-no-duplicate-main` and
+`landmark-main-is-top-level` are default axe rules and both fired.
+
+⭐ **The 44 files doing it were exactly the population rule 2 was still migrating.**
+A page that hand-typed `mx-auto max-w-[1080px] px-3 lg:px-6 py-6` on a `<main>` was
+simultaneously a nested landmark, a hand-typed width, and a page whose `loading.tsx`
+tier parity nothing could check — so ONE `<PageContainer tier>` edit closed all
+three, and the ratchet falling is the proof it happened: **59 → 12**. The 12 that
+remain are held back by **padding, not width** (`py-10`, `py-12`, `lg:py-8`,
+`px-4`, and four full-height centring compositions); each is named with its reason
+in `scripts/measure-system.test.mts`, and finishing them is a design decision, not
+a rename.
+
+⚠️ **Two guards were found asserting less than they claimed, both by the red
+harness rather than by review** — the finding worth keeping:
+- `decomment()` stripped **block comments before line comments**, so a `/*` inside
+  a `//` comment (`// … deep links to /proposals/* are`) swallowed everything to
+  the next `*/`: **7,581 characters across five files invisible** to the ratchet,
+  the parity check and the call-site check, all of which reported PASS. Fixed by
+  ordering. **18 other `scripts/*.test.mts` still carry the old order** and are
+  blind over the same five files — filed, not silently half-fixed.
+- The page/`loading.tsx` tier-parity check **compared 29 of 80 pairs and skipped
+  51 in silence**, because a route that delegates its body to a sibling client
+  component (`/wallet` → `./wallet-client`) stated no tier the check could read.
+  It now follows one hop through same-directory imports and **prints its coverage**,
+  so it can never again claim more than it measured.
 
 **Why it survived every QA cycle, which is the part worth remembering:**
 `scripts/responsive-audit.mjs` asserted `scrollWidth ≤ clientWidth`, tap targets
@@ -554,15 +595,35 @@ and off-screen overlays. **Every one of those is a lower bound**, and the sweep
 stopped at 1920. A 2,400px form scored a clean pass. A gate that can only detect
 *too narrow* will never report *too wide*.
 
-Two enforcement layers:
+Three enforcement layers:
 - **`npm run test:measure`** — static. Tokens defined once with the expected
   values; no new hand-typed width ≥500px outside a ratchet list that may only
-  shrink; page/loading tier parity; the admin cap present; the field atoms and
-  their exemptions.
-- **`scripts/responsive-audit.mjs`** — behavioural, now **two-sided**: a 2560
-  breakpoint, and per page "exactly one measure root, within its tier". Verified
-  to fail on the reintroduced bug (`console 2344px > 1600px` on every admin route)
-  and to pass on the fix.
+  shrink; page/loading tier parity **plus its coverage count**; the admin cap
+  present; the field atoms and their exemptions; and (rule 5) **no file under
+  `src` renders a `<main>` except the two named exemptions**, with the shell's
+  skip-link target asserted still to exist so a sweep cannot delete the right one.
+- **`npm run red:measure`** — the RED harness for the above. Five mutations,
+  **5/5 proven** on 2026-08-22: the nested `<main>` put back, the shell's `<main>`
+  demoted, a hand-typed width re-added to a migrated page, a page and its skeleton
+  disagreeing on the tier, and the old comment-stripper restored (that one is
+  *inverted* — it must WRONGLY pass, which is what makes the blindness visible).
+  It mutates a **copy** of the tree in the OS temp dir and aims the gate at it with
+  `MEASURE_ROOT`; it never writes to `src/`.
+- **`scripts/responsive-audit.mjs`** — behavioural, now **three-sided**: a 2560
+  breakpoint, per page "exactly one measure root, within its tier", and **exactly
+  one `<main>`, which must be `#main-content`**. Verified to fail on the
+  reintroduced bug (`console 2344px > 1600px` on every admin route) and to pass on
+  the fix; the landmark check was red-proven **against production** — 17 of 17
+  player routes reporting `2 <main>: #main-content | #(no id) NESTED` — before a
+  single page was migrated.
+
+⛔ **A Git Bash trap that cost a wrong measurement here.** `ONLY=/markets node
+scripts/responsive-audit.mjs` silently becomes `ONLY=C:/Program Files/Git/markets`
+— MSYS rewrites a lone leading-slash value into a filesystem path, so the FIRST
+entry of any `ONLY`/`WIDTHS` list matches nothing and **the route is skipped while
+the run still reports a clean pass**. That is how `/markets` first appeared to be
+the one healthy route. Export `MSYS_NO_PATHCONV=1` (or run it from PowerShell), and
+treat "0 passed · 0 failed" as a skipped sweep, never as a green one.
 
 ## B8 — A token class must resolve, or it is a typo
 

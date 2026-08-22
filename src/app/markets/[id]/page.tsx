@@ -46,6 +46,7 @@ import { sideWord, outcomeWord } from "@/lib/side-label";
 import { renderFailure } from "@/lib/failure-reasons";
 import { getBonusSummary } from "@/lib/server/bonus-service";
 import { pickLocalized, pickCriterion, marketCategoryLabel } from "@/lib/localized";
+import { PageContainer } from "@/components/layout/page-container";
 
 
 export const dynamic = "force-dynamic";
@@ -369,7 +370,7 @@ export default async function MarketDetail({
   };
 
   return (
-    <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6">
+    <PageContainer tier="reading">
       {/* Escape `<` → <: JSON.stringify does NOT escape it, so a proposal
           title containing `</script>` would break out of this block (stored XSS,
           audit H1). Titles also reject `<`/`>` at submission (proposals-service). */}
@@ -872,7 +873,7 @@ export default async function MarketDetail({
         canPost={!!session}
         signInHref={`/auth/login?next=${encodeURIComponent("/markets/" + m.id)}`}
       />
-    </main>
+    </PageContainer>
   );
 }
 

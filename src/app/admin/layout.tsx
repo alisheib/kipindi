@@ -199,7 +199,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <ConfidentialBand session={adminSession} />
       <div className="flex">
         <AdminSidebar activeKey={activeKey} viewDomains={viewDomains} isOwner={isOwner} />
-        <main className="flex-1 min-w-0 flex flex-col">
+        <div className="flex-1 min-w-0 flex flex-col">
           <AdminTopBar crumbs={crumbs} session={adminSession} activeKey={activeKey} viewDomains={viewDomains} isOwner={isOwner} />
           {/* DESIGN_AUTHORITY B7 — the console measure.
               This div had NO max-width, so all 43 admin pages rendered at
@@ -225,7 +225,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               </AdminActProvider>
             )}
           </div>
-        </main>
+        </div>
       </div>
     </div>
   );

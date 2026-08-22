@@ -20,6 +20,7 @@ import { getActivitySummary, getRgUsage, type ActivityPeriod } from "@/lib/serve
 import { formatTzs, cn } from "@/lib/utils";
 import { getServerT, type Dict } from "@/lib/i18n-server";
 import Link from "next/link";
+import { PageContainer } from "@/components/layout/page-container";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Your activity", which a Swahili player saw in their browser tab and history.
@@ -51,7 +52,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
   };
 
   return (
-    <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-5">
+    <PageContainer tier="reading" className="space-y-5">
       <BackLink fallbackHref="/profile" label={t.profile.title} />
       <PageHeader tone="info" icon={<I.chart s={22} />} eyebrow={t.activity.eyebrow} title={t.activity.title} />
 
@@ -120,7 +121,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
           </section>
         </>
       )}
-    </main>
+    </PageContainer>
   );
 }
 

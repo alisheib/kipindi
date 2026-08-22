@@ -1,9 +1,10 @@
 import { getServerT } from "@/lib/i18n-server";
+import { PageContainer } from "@/components/layout/page-container";
 
 export default async function ProfileLoading() {
   const { t } = await getServerT();
   return (
-    <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
+    <PageContainer tier="reading" className="space-y-6">
       <h1 className="sr-only">{t.profile.title}</h1>
 
       {/* Hero card skeleton */}
@@ -52,6 +53,6 @@ export default async function ProfileLoading() {
           ))}
         </div>
       </section>
-    </main>
+    </PageContainer>
   );
 }

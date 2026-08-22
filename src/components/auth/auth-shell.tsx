@@ -21,7 +21,7 @@ import { HELPLINE } from "@/lib/support-config";
 export async function AuthShell({ children }: { children: React.ReactNode }) {
   const { t } = await getServerT();
   return (
-    <main className="relative min-h-[calc(100vh-44px)] overflow-hidden">
+    <div className="relative min-h-[calc(100vh-44px)] overflow-hidden">
       <div className="mx-auto grid min-h-[calc(100vh-44px)] w-full max-w-6xl grid-cols-1 lg:grid-cols-2">
         {/* Brand side-rail — lg+ only. */}
         <aside
@@ -66,7 +66,7 @@ export async function AuthShell({ children }: { children: React.ReactNode }) {
 
         {/* Form column. Uses flex (not `grid place-items-center`): a centered grid
             track auto-sizes to the form's max-content width (~398px from the big
-            heading) and, with `overflow:clip` on <main>, silently clips the form
+            heading) and, with `overflow:clip` on this wrapper, silently clips the form
             off a 320px phone. Flex sizes the child to the column width instead. */}
         <div className="relative flex items-center justify-center px-3 py-8">
           <BrandTopo id="auth-form-topo" opacity={0.09} />
@@ -83,6 +83,6 @@ export async function AuthShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

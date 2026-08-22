@@ -24,7 +24,7 @@ export default async function MarketNotFound() {
   const t = dict[locale];
 
   return (
-    <main className="mx-auto flex min-h-[80svh] max-w-[640px] flex-col items-center justify-center px-5 py-10 text-center">
+    <div className="mx-auto flex min-h-[80svh] max-w-[640px] flex-col items-center justify-center px-5 py-10 text-center">
       <div className="mb-5">
         <FiftyMark size={64} />
       </div>
@@ -65,6 +65,6 @@ export default async function MarketNotFound() {
         {t.error.browseOpenMarkets}
         <I.arrowRight s={12} />
       </Link>
-    </main>
+    </div>
   );
 }

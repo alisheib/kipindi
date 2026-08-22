@@ -13,6 +13,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
 import { sideWord } from "@/lib/side-label";
+import { PageContainer } from "@/components/layout/page-container";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -119,7 +120,7 @@ export default async function PerformancePage() {
   });
 
   return (
-    <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
+    <PageContainer tier="reading" className="space-y-6">
       <BackLink fallbackHref="/positions" label={t.common.positions} />
       <PageHeader eyebrow={t.common.positions} title={t.performance.title} />
 
@@ -258,7 +259,7 @@ export default async function PerformancePage() {
           )}
         </>
       )}
-    </main>
+    </PageContainer>
   );
 }
 

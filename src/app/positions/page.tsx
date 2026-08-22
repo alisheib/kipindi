@@ -18,6 +18,7 @@ import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
+import { PageContainer } from "@/components/layout/page-container";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -119,7 +120,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
   const cashOuts = settled.filter((p) => p.status === "CASHED_OUT").length;
 
   return (
-    <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
+    <PageContainer tier="reading" className="space-y-6">
       <RefreshPoller intervalMs={20_000} />
       <HashFocus />
       {/* Positions is a primary destination (bottom-nav + top-nav tab), not a
@@ -348,7 +349,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
           </>
         )}
       </Section>}
-    </main>
+    </PageContainer>
   );
 }
 

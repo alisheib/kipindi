@@ -15,6 +15,7 @@ import { RewardBurst } from "@/components/brand/reward-burst";
 import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
 import { formatTzsSigned } from "@/lib/utils";
+import { PageContainer } from "@/components/layout/page-container";
 
 export const dynamic = "force-dynamic";
 
@@ -48,7 +49,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
   const showBonus = (p.status === "APPROVED" || p.status === "LISTED" || p.status === "RESOLVED") && p.bonusGrantedTzs > 0 && p.isMine;
 
   return (
-    <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-5">
+    <PageContainer tier="form" className="space-y-5">
       {/* Head card */}
       <section className="rounded-xl glass-panel p-4">
         <div className="mb-2.5 flex flex-wrap items-center gap-2">
@@ -138,6 +139,6 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
       )}
 
       <Link href={"/proposals" as never} className="block text-center text-[12px] text-text-subtle hover:text-text-muted">{`\u2190 ${t.common.backToProposals}`}</Link>
-    </main>
+    </PageContainer>
   );
 }

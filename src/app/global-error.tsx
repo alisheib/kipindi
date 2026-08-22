@@ -21,6 +21,16 @@
  *
  * i18n: Since the root layout (with I18nProvider) never ran, we read
  * the kp-locale cookie directly and use an inline mini-dict.
+ *
+ * ⛔ THE `<main>` BELOW IS CORRECT AND MUST STAY. On 2026-08-22 every other
+ * `<main>` under src/app was removed, because `AppShell` renders
+ * `<main id="main-content">` in the root layout and 44 files were nesting a
+ * second one inside it. This file is the ONE exception, and the reason is three
+ * lines up: the root layout never ran, so there is no AppShell and no shell
+ * `<main>`. Remove this one and the last-resort error page becomes the only page
+ * on the platform with no main landmark at all. The same reasoning exempts its
+ * inline `maxWidth: 520` from B7 — this file deliberately imports nothing, so
+ * `PageContainer` is not reachable from here by design.
  */
 
 import { useEffect, useMemo } from "react";

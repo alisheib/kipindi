@@ -6,5 +6,5 @@ import { PageLoader } from "@/components/ui/page-loader";
  * once shipped 1232 against a 1080 skeleton: a 152px jump on every load that no test could see.
  */
 export default function Loading() {
-  return <PageLoader width={1080} rows={6} />;
+  return <PageLoader tier="reading" rows={6} />;
 }

@@ -21,6 +21,7 @@ import { FeedbackSettings } from "@/components/settings/feedback-settings";
 import { formatTzs, formatDateTime } from "@/lib/utils";
 import { getServerT } from "@/lib/i18n-server";
 import { bannerFor } from "@/lib/failure-banner";
+import { PageContainer } from "@/components/layout/page-container";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Responsible gambling", which a Swahili player saw in their browser tab and history.
@@ -72,7 +73,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
   const banner = bannerFor(sp.reason, t.error as unknown as Record<string, string>);
 
   return (
-    <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-5">
+    <PageContainer tier="reading" className="space-y-5">
       <BackLink fallbackHref="/profile" label={t.common.profile} />
 
       {/* DS-26 — the kit Callout, not a bespoke box, for the outcome of a
@@ -214,7 +215,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
           <RgConfirmSubmit label={t.common.selfExclude} body={t.rg.selfExcludeDescription} icon={<I.lock s={13} />} buttonClass="btn btn-claret btn-md" />
         </form>
       </section>
-    </main>
+    </PageContainer>
   );
 }
 

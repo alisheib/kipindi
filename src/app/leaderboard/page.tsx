@@ -22,6 +22,7 @@ import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { getServerT, type Dict } from "@/lib/i18n-server";
+import { PageContainer } from "@/components/layout/page-container";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -204,7 +205,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
   const tierDisplayName = (tier: Tier) => t.leaderboard[`tier${tier.charAt(0).toUpperCase()}${tier.slice(1)}` as keyof typeof t.leaderboard].split(" ")[0];
 
   return (
-    <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
+    <PageContainer tier="reading" className="space-y-6">
       <RefreshPoller intervalMs={30_000} />
       <PageHeader eyebrow={t.leaderboard.title} title={t.leaderboard.topPredictors} />
 
@@ -291,7 +292,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
       )}
         </>
       )}
-    </main>
+    </PageContainer>
   );
 }
 

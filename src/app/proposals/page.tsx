@@ -20,6 +20,7 @@ import { CategoryIcon, categoryLabel } from "@/components/proposals/category-ico
 import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
 import { formatTzs, formatNumber } from "@/lib/utils";
+import { PageContainer } from "@/components/layout/page-container";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -44,7 +45,7 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
   const active = isProposalsActive(cfg);
   if (state === "DISABLED") {
     return (
-      <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-12">
+      <div className="mx-auto max-w-[1080px] px-3 lg:px-6 py-12">
         <h1 className="sr-only">{t.proposals.title}</h1>
         <ProposalsUnavailable
           title={t.proposals.unavailableTitle}
@@ -52,7 +53,7 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
           browseHref="/markets"
           browseLabel={t.proposals.browseMarkets}
         />
-      </main>
+      </div>
     );
   }
 
@@ -85,7 +86,7 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
   const proposalsBaseHref = `/proposals?f=${filter}`;
 
   return (
-    <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
+    <PageContainer tier="reading" className="space-y-6">
       <h1 className="sr-only">{t.proposals.title}</h1>
 
       <PageHero glow="gold" contentClassName="relative z-10 p-5 lg:p-6 flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
@@ -169,7 +170,7 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
           }
         />
       )}
-    </main>
+    </PageContainer>
   );
 }
 

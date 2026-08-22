@@ -1,12 +1,13 @@
 import { BrandSpinner } from "@/components/brand";
 import { getServerT } from "@/lib/i18n-server";
+import { PageContainer } from "@/components/layout/page-container";
 
 export default async function LeaderboardLoading() {
   const { t } = await getServerT();
   // Width MUST match leaderboard/page.tsx (1080). It was 1280, so the skeleton was
   // 200px wider than the board that replaced it — a visible snap on every visit.
   return (
-    <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
+    <PageContainer tier="reading" className="space-y-6">
       <header>
         <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">
           {t.leaderboard.title}
@@ -32,6 +33,6 @@ export default async function LeaderboardLoading() {
           />
         ))}
       </section>
-    </main>
+    </PageContainer>
   );
 }

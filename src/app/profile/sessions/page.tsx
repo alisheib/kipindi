@@ -11,6 +11,7 @@ import { formatDateTime } from "@/lib/utils";
 import { getServerT, type Dict } from "@/lib/i18n-server";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { logoutAction } from "@/app/auth/logout/actions";
+import { PageContainer } from "@/components/layout/page-container";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Active sessions", which a Swahili player saw in their browser tab and history.
@@ -67,7 +68,7 @@ export default async function SessionsPage() {
   const DeviceGlyph = isTablet ? I.deviceTablet : isMobile ? I.devicePhone : I.deviceDesktop;
 
   return (
-    <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-5">
+    <PageContainer tier="form" className="space-y-5">
       <BackLink fallbackHref="/profile" label={t.common.profile} />
 
       <PageHero glow="info">
@@ -136,6 +137,6 @@ export default async function SessionsPage() {
           </p>
         </div>
       </section>
-    </main>
+    </PageContainer>
   );
 }

@@ -25,6 +25,7 @@ import { getServerT } from "@/lib/i18n-server";
 import { ProviderRadioGrid } from "@/components/wallet/provider-radio-grid";
 import { getPayoutStatus, payoutsAcceptingRequests } from "@/lib/server/payout-status";
 import { PayoutStatusNotice } from "@/components/wallet/payout-status-notice";
+import { PageContainer } from "@/components/layout/page-container";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -83,7 +84,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
   const canSubmit = payoutsOpen;
 
   return (
-    <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-5">
+    <PageContainer tier="form" className="space-y-5">
       <BackLink fallbackHref="/wallet" label={t.wallet.title} />
 
       <PageHero glow="rose" contentClassName="relative z-10 p-5 lg:p-6 flex items-end justify-between gap-4">
@@ -189,7 +190,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
 
         {canSubmit ? <WithdrawConfirm feeRate={wcfg.withdrawalFeeRate} /> : <SubmitButton label={t.common.confirm} pendingLabel={t.common.loading} disabled={!canSubmit} />}
       </form>
-    </main>
+    </PageContainer>
   );
 }
 

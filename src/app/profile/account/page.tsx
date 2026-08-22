@@ -21,6 +21,7 @@ import { PrivacyRequestForm } from "./privacy-request-form";
 import { SUPPORT_EMAIL, SUPPORT_PHONE } from "@/lib/support-config";
 import { getServerT } from "@/lib/i18n-server";
 import { bannerFor } from "@/lib/failure-banner";
+import { PageContainer } from "@/components/layout/page-container";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "My account", which a Swahili player saw in their browser tab and history.
@@ -72,7 +73,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
     : "no";
 
   return (
-    <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-5">
+    <PageContainer tier="reading" className="space-y-5">
       {banner && (
         <div role="alert" className="rounded-xl border border-no-700 bg-no-500/10 px-4 py-3 text-[13px] text-no-300">
           {banner.body}
@@ -258,7 +259,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
         </p>
         </div>
       </section>
-    </main>
+    </PageContainer>
   );
 }
 

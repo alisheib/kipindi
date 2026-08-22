@@ -1,11 +1,12 @@
 import { getServerT } from "@/lib/i18n-server";
+import { PageContainer } from "@/components/layout/page-container";
 
 export default async function MarketDetailLoading() {
   const { t } = await getServerT();
   // Width MUST match markets/[id]/page.tsx (1080). It was 1100, so every navigation
   // to a market detail page reflowed by 20px the moment the real page took over.
   return (
-    <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-5">
+    <PageContainer tier="reading" className="space-y-5">
       {/* Back link skeleton */}
       <div className="h-3 w-16 rounded bg-bg-overlay kp-shimmer-track" aria-hidden />
 
@@ -65,6 +66,6 @@ export default async function MarketDetailLoading() {
           </div>
         </div>
       </div>
-    </main>
+    </PageContainer>
   );
 }

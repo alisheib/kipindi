@@ -131,7 +131,7 @@ export async function AdminTopBar({ crumbs, session, activeKey, viewDomains, isO
 
           ⚠️ AND THE USUAL REASON GIVEN FOR REMOVING ONE DOES NOT APPLY HERE — checked, not
           assumed. This bar is NOT sticky: `admin/layout.tsx` renders it in normal flow
-          inside the `<main>` column (the SIDEBAR is the sticky element, not this), so it
+          inside the content column (the SIDEBAR is the sticky element, not this), so it
           scrolls away with the content and does not re-blur a moving backdrop every frame.
           If you are here because a plan said "sticky admin top bar", that part was wrong.
 

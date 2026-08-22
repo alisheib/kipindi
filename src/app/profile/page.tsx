@@ -14,6 +14,7 @@ import { BadgeShelf } from "@/components/badges/Badge";
 import { computeAchievementShelf } from "@/lib/server/achievements";
 import { getServerT } from "@/lib/i18n-server";
 import { formatTzs } from "@/lib/utils";
+import { PageContainer } from "@/components/layout/page-container";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -73,7 +74,7 @@ export default async function ProfilePage() {
           : { tone: "warning", label: t.common.verifyId, glyph: I.shieldQuestion };
 
   return (
-    <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
+    <PageContainer tier="reading" className="space-y-6">
       {/* Screen-reader-only h1 — gives the page proper landmark
           structure without disturbing the visual hierarchy (the
           display name + ProfileNameEditor sit prominently inside the
@@ -299,7 +300,7 @@ export default async function ProfilePage() {
           <I.chevronRight s={16} />
         </button>
       </form>
-    </main>
+    </PageContainer>
   );
 }
 

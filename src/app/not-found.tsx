@@ -87,7 +87,7 @@ export default async function NotFound() {
     // BrandTopo, a glyph badge, neutral chrome. A 404 is "not found", not an
     // error — so the badge is royal/info (not the RouteError rose alert tint),
     // and there's no gold here (404 isn't earned-money).
-    <main className="relative mx-auto flex min-h-[80svh] max-w-[640px] flex-col items-center justify-center overflow-hidden px-5 py-10 text-center">
+    <div className="relative mx-auto flex min-h-[80svh] max-w-[640px] flex-col items-center justify-center overflow-hidden px-5 py-10 text-center">
       <BrandTopo id="notfound-topo" opacity={0.09} />
       <div className="relative flex flex-col items-center">
         <FiftyMark size={64} />
@@ -146,6 +146,6 @@ export default async function NotFound() {
           <I.arrowRight s={12} />
         </Link>
       </div>
-    </main>
+    </div>
   );
 }

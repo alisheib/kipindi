@@ -28,7 +28,7 @@ export default async function LegalLayout({ children }: { children: React.ReactN
   const h = await headers();
   const pathname = h.get("x-pathname") ?? "";
   return (
-    <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 lg:py-8 grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6 lg:gap-10">
+    <div className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 lg:py-8 grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6 lg:gap-10">
       <aside className="lg:sticky lg:top-[76px] self-start space-y-3">
         <div className="relative overflow-hidden rounded-xl border border-border bg-bg-elevated p-4">
           <div
@@ -69,6 +69,6 @@ export default async function LegalLayout({ children }: { children: React.ReactN
       <article className="space-y-5 min-w-0">
         {children}
       </article>
-    </main>
+    </div>
   );
 }

@@ -1,9 +1,10 @@
 import { getServerT } from "@/lib/i18n-server";
+import { PageContainer } from "@/components/layout/page-container";
 
 export default async function WalletLoading() {
   const { t } = await getServerT();
   return (
-    <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
+    <PageContainer tier="reading" className="space-y-6">
       <header className="flex items-end justify-between gap-3">
         <div>
           <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.wallet.title}</p>
@@ -96,6 +97,6 @@ export default async function WalletLoading() {
           </div>
         ))}
       </div>
-    </main>
+    </PageContainer>
   );
 }

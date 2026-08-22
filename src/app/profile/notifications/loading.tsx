@@ -1,4 +1,4 @@
 import { PageLoader } from "@/components/ui/page-loader";
 export default function Loading() {
-  return <PageLoader width={640} rows={3} />;
+  return <PageLoader tier="form" rows={3} />;
 }

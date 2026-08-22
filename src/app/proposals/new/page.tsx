@@ -11,6 +11,7 @@ import { getPlatformTimezone } from "@/lib/server/platform-config";
 import { db } from "@/lib/server/store";
 import { CreateProposalForm } from "./create-form";
 import { getServerT } from "@/lib/i18n-server";
+import { PageContainer } from "@/components/layout/page-container";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -37,7 +38,7 @@ export default async function NewProposalPage() {
   const openCount = proposals.filter((p) => p.status === "REVIEW" || p.status === "CHANGES_REQUESTED").length;
 
   return (
-    <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-5">
+    <PageContainer tier="form" className="space-y-5">
       <BackLink fallbackHref="/proposals" label={t.proposals.title} />
       <PageHero glow="gold">
         <div className="flex flex-col items-start gap-2">
@@ -58,6 +59,6 @@ export default async function NewProposalPage() {
           backLabel={t.common.backToProposals}
         />
       )}
-    </main>
+    </PageContainer>
   );
 }

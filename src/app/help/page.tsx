@@ -7,6 +7,7 @@ import { getServerT } from "@/lib/i18n-server";
 import { getEffectiveConfig } from "@/lib/server/market-config";
 import { isChatbotEnabled } from "@/lib/server/ai-controls";
 import { fill, fmtRate, pctNum } from "@/lib/utils";
+import { PageContainer } from "@/components/layout/page-container";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -39,7 +40,7 @@ export default async function HelpPage() {
   // channel the other did not mount. E-123.
   const chatEnabled = await isChatbotEnabled().catch(() => true);
   return (
-    <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-5">
+    <PageContainer tier="reading" className="space-y-5">
       <PageHero glow="info">
         <PageHeader tone="info" eyebrow={t.help.pageTitle} title={t.help.heading} />
       </PageHero>
@@ -148,7 +149,7 @@ export default async function HelpPage() {
       <p className="pt-2 text-center font-mono text-[11px] tabular-nums text-text-subtle">
         {t.help.disclaimer}
       </p>
-    </main>
+    </PageContainer>
   );
 }
 

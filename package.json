@@ -469,6 +469,8 @@
     "ops:preflight-notification-idx": "tsx scripts/ops-preflight-notification-idx.mts",
     "test:notifications-page": "tsx scripts/notifications-page.test.mts",
     "red:notifications-page": "node scripts/notifications-page-red.mjs",
+    "red:measure": "node scripts/measure-red.mjs",
+    "qa:measure-parity": "node scripts/measure-parity-check.mjs",
     "qa:notifications-page": "node scripts/live-notifications-page.mjs",
     "test:encoding": "tsx scripts/encoding.test.mts",
     "qa:notifications-restore": "node scripts/live-notifications-restore.mjs"

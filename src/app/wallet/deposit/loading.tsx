@@ -1,4 +1,5 @@
 import { getServerT } from "@/lib/i18n-server";
+import { PageContainer } from "@/components/layout/page-container";
 
 /**
  * B-29 / V-2 — the skeleton mirrors the FORM the page actually renders
@@ -8,7 +9,7 @@ import { getServerT } from "@/lib/i18n-server";
 export default async function DepositLoading() {
   const { t } = await getServerT();
   return (
-    <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6">
+    <PageContainer tier="form">
       <header className="mb-6">
         <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.common.deposit}</p>
         <h1 className="font-display text-[28px] font-bold text-text">{t.common.loading}</h1>
@@ -48,6 +49,6 @@ export default async function DepositLoading() {
             `btn-lg`, whose height is --h-control-lg (48px). */}
         <div className="h-[var(--h-control-lg)] w-full rounded-md bg-gold-500/25 kp-shimmer-track" />
       </div>
-    </main>
+    </PageContainer>
   );
 }

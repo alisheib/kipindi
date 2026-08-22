@@ -1,7 +1,7 @@
 import { SkBar } from "@/components/admin/admin-skeletons";
 export default function Loading() {
   return (
-    <main className="mx-auto grid min-h-[calc(100vh-44px)] place-items-center px-3 py-6">
+    <div className="mx-auto grid min-h-[calc(100vh-44px)] place-items-center px-3 py-6">
       <div className="w-full max-w-md space-y-4 animate-pulse">
         <div className="flex flex-col items-center gap-2 text-center">
           <SkBar className="h-7 w-44 rounded-pill" />
@@ -21,6 +21,6 @@ export default function Loading() {
           <SkBar className="h-3 w-full" />
         </div>
       </div>
-    </main>
+    </div>
   );
 }

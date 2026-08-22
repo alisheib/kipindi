@@ -17,6 +17,7 @@ import { formatDateTimeSafe, formatTzs, formatNumber } from "@/lib/utils";
 // E-101 · one rule for "where does this ticket live", shared with the round page and the emails.
 import { positionPermalinkHref } from "@/lib/position-permalink";
 import { useT } from "@/lib/i18n";
+import { PageContainer } from "@/components/layout/page-container";
 
 const TXNS_PER_PAGE = 12;
 
@@ -495,7 +496,7 @@ export function WalletPageClient({
   const selfExclusionOptions = ["24h", "7d", "30d", "6m", t.common.permanent];
 
   return (
-    <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
+    <PageContainer tier="reading" className="space-y-6">
       <header className="flex flex-col items-start gap-3 sm:flex-row sm:items-end sm:justify-between">
         <PageHeader eyebrow={t.common.walletLabel} title={t.common.yourFunds} />
         {isAuthed && (
@@ -648,6 +649,6 @@ export function WalletPageClient({
           </div>
         </section>
       )}
-    </main>
+    </PageContainer>
   );
 }

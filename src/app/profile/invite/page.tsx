@@ -17,6 +17,7 @@ import { fill } from "@/lib/utils";
 import { getBonusConfig } from "@/lib/server/bonus-config";
 import { formatDateShort as fmtDate, formatNumber } from "@/lib/utils";
 import { getServerT } from "@/lib/i18n-server";
+import { PageContainer } from "@/components/layout/page-container";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Invite & Earn", which a Swahili player saw in their browser tab and history.
@@ -136,7 +137,7 @@ export default async function InvitePage() {
   }
 
   return (
-    <div className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-5">
+    <PageContainer tier="form" className="space-y-5">
       <BackLink fallbackHref="/profile" label={t.common.profile} />
       <h1 className="sr-only">{t.profile.inviteEarn}</h1>
 
@@ -355,6 +356,6 @@ export default async function InvitePage() {
       <p className="pt-1 text-center text-[10.5px] leading-relaxed text-text-subtle">
         {t.profile.rewardsDisclaimer}
       </p>
-    </div>
+    </PageContainer>
   );
 }

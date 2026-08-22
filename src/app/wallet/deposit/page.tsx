@@ -21,6 +21,7 @@ import { CardBillingFields } from "@/components/wallet/card-billing-fields";
 import { EmailVerifyGate } from "@/components/wallet/email-verify-gate";
 import { getPayoutStatus } from "@/lib/server/payout-status";
 import { PayoutStatusNotice } from "@/components/wallet/payout-status-notice";
+import { PageContainer } from "@/components/layout/page-container";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Deposit", which a Swahili player saw in their browser tab and history.
@@ -80,7 +81,7 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
   const showCashback = bonusCfg.enabled && bonusCfg.cashbackEnabled && bonusCfg.cashbackPercentage > 0;
 
   return (
-    <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-5">
+    <PageContainer tier="form" className="space-y-5">
       <BackLink fallbackHref="/wallet" label={t.wallet.title} />
 
       <PageHero glow="gold">
@@ -205,6 +206,6 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
           {t.wallet.securedBody}
         </p>
       </div>
-    </main>
+    </PageContainer>
   );
 }

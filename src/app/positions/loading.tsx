@@ -1,9 +1,10 @@
 import { getServerT } from "@/lib/i18n-server";
+import { PageContainer } from "@/components/layout/page-container";
 
 export default async function PositionsLoading() {
   const { t } = await getServerT();
   return (
-    <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
+    <PageContainer tier="reading" className="space-y-6">
       {/* Same three strings, in the same order, as the real header — a skeleton that
           names the page differently is a second name for one destination (§L1), and the
           subtitle is drawn here too so the tab rail below does not jump when data lands. */}
@@ -69,6 +70,6 @@ export default async function PositionsLoading() {
           </div>
         ))}
       </div>
-    </main>
+    </PageContainer>
   );
 }

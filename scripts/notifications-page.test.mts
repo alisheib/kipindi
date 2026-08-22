@@ -256,7 +256,13 @@ section("7 · B7 — the page states its width once, and its skeleton agrees");
   ok("§7 the page uses PageContainer, not a hand-typed width",
      /<PageContainer tier="reading"/.test(page) && !/max-w-\[/.test(page));
   // ⛔ B7 rule 3 — a page and its loading.tsx state the SAME tier. `reading` is 1080.
-  ok("§7 ⭐ the skeleton states the same tier", /width=\{1080\}/.test(loading), loading.slice(0, 120));
+  // ⚠️ It asserts the TIER NAME, not the number. Until 2026-08-22 `PageLoader` took
+  // `width={1080}` — a raw number, the very escape hatch `PageContainer`'s header says
+  // must not exist, and one the measure ratchet could not count because it greps for
+  // `max-w-[Npx]` CLASSES and this was an inline style. The prop is now a `MeasureTier`,
+  // so the page and its skeleton state their width in the same vocabulary and `tsc`
+  // rejects an invented one.
+  ok("§7 ⭐ the skeleton states the same tier", /tier="reading"/.test(loading), loading.slice(0, 120));
 }
 
 // ── §8 · the controls, and the one that is deliberately absent ─────────────────

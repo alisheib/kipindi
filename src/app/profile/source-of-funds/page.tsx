@@ -15,6 +15,7 @@ import { submitSourceOfFundsAction } from "./actions";
 import { formatDate } from "@/lib/utils";
 import { getServerT } from "@/lib/i18n-server";
 import { bannerFor } from "@/lib/failure-banner";
+import { PageContainer } from "@/components/layout/page-container";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Source of funds", which a Swahili player saw in their browser tab and history.
@@ -65,7 +66,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
   const bandLabel = existing ? (BANDS.find((b) => b.id === existing.declaredAnnualIncomeBand)?.label ?? existing.declaredAnnualIncomeBand) : "";
 
   return (
-    <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-5">
+    <PageContainer tier="form" className="space-y-5">
       <BackLink fallbackHref="/profile" label={t.common.profile} />
 
       {banner && (
@@ -241,7 +242,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
           <SubmitButton label={t.common.confirm} pendingLabel={t.common.loading} />
         </form>
       </section>
-    </main>
+    </PageContainer>
   );
 }
 

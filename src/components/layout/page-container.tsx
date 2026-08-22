@@ -21,6 +21,11 @@ import { cn } from "@/lib/utils";
  *   3. It owns the page padding and never `space-y-*`. Pages keep their own
  *      vertical rhythm via `className`, so migrating a call site is a pure
  *      rename with no visual delta.
+ *   4. It CANNOT render a `<main>`. The shell owns that landmark (see `as` below).
+ *      Added 2026-08-22, when the DOM — not the source — showed that six of eight
+ *      production routes were rendering two `<main>` elements, one nested in the
+ *      other, because this component defaulted to `as="main"` and 44 files under
+ *      `src/app` hand-wrote one besides.
  *
  * Server-component safe (no "use client") — it renders a plain element, and the
  * overwhelming majority of route files that need it are server components.
@@ -59,8 +64,23 @@ const TIER_CLASS: Record<MeasureTier, string> = {
 
 type Props = {
   tier: MeasureTier;
-  /** Defaults to `main`. Use `div` when the page already sits inside a `<main>`. */
-  as?: "main" | "div" | "section" | "article";
+  /**
+   * ⛔ `"main"` IS NOT IN THIS UNION, AND ITS ABSENCE IS THE GUARD.
+   *
+   * `AppShell` renders `<main id="main-content">` in the ROOT layout, so EVERY
+   * route already sits inside a `<main>` — admin, auth and legal included. A page
+   * that adds its own produces nested `main`: invalid HTML, two "main content"
+   * landmarks for a screen reader to choose between, and a skip-link that resolves
+   * to the outer one while the content begins inside the inner one.
+   *
+   * This used to default to `"main"`, which is how six of eight production routes
+   * came to render two (measured 2026-08-22). The fix is a COMPILE ERROR rather
+   * than a changed default, for the same reason `tier` is a union and not a
+   * number: the shell owns the landmark, so a page asking for one is *always*
+   * wrong, and a default can be overridden back by anyone who thinks they are the
+   * exception. Nobody is the exception. Need a landmark? Fix the shell.
+   */
+  as?: "div" | "section" | "article";
   /**
    * `page` (default) = the house padding `px-3 lg:px-6 py-6`.
    * `none` = the container centres and caps but adds no padding — for full-bleed
@@ -74,7 +94,7 @@ type Props = {
   children: React.ReactNode;
 };
 
-export function PageContainer({ tier, as = "main", pad = "page", className, id, children }: Props) {
+export function PageContainer({ tier, as = "div", pad = "page", className, id, children }: Props) {
   const Tag = as;
   return (
     <Tag

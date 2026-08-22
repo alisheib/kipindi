@@ -24,6 +24,7 @@ import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { roundStore } from "@/lib/server/updown-dal";
 import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
+import { PageContainer } from "@/components/layout/page-container";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -118,7 +119,7 @@ export default async function LivePage() {
       <RefreshPoller intervalMs={15_000} />
       <BrandTopo opacity={0.09} />
 
-      <div className="relative mx-auto max-w-[1280px] px-3 lg:px-6 py-6 space-y-5">
+      <PageContainer tier="board" className="relative space-y-5">
         {/* Accessible page heading (WCAG 1.3.1 / 2.4.6). Visually hidden — the
             design uses a slim live header, not a marketing H1. */}
         <h1 className="sr-only">{t.common.live} {t.common.markets}</h1>
@@ -174,7 +175,7 @@ export default async function LivePage() {
             </section>
           </>
         )}
-      </div>
+      </PageContainer>
     </div>
   );
 }

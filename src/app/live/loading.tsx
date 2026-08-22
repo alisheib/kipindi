@@ -1,10 +1,11 @@
 import { BrandSpinner } from "@/components/brand";
 import { getServerT } from "@/lib/i18n-server";
+import { PageContainer } from "@/components/layout/page-container";
 
 export default async function LiveLoading() {
   const { t } = await getServerT();
   return (
-    <main className="mx-auto max-w-[1280px] px-3 lg:px-6 py-6 space-y-5">
+    <PageContainer tier="board" className="space-y-5">
       {/* Slim header — matches the live page so the questions-first layout
           doesn't jump when the real content swaps in. */}
       <div className="flex items-center justify-between gap-3">
@@ -25,6 +26,6 @@ export default async function LiveLoading() {
       <div className="grid place-items-center pt-4">
         <BrandSpinner size={48} />
       </div>
-    </main>
+    </PageContainer>
   );
 }

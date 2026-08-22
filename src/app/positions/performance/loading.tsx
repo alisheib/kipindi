@@ -1,9 +1,10 @@
 import { getServerT } from "@/lib/i18n-server";
+import { PageContainer } from "@/components/layout/page-container";
 
 export default async function PerformanceLoading() {
   const { t } = await getServerT();
   return (
-    <main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">
+    <PageContainer tier="reading" className="space-y-6">
       {/* BackLink placeholder */}
       <div className="h-4 w-16 rounded bg-bg-overlay kp-shimmer-track" aria-hidden />
 
@@ -80,6 +81,6 @@ export default async function PerformanceLoading() {
           ))}
         </div>
       </div>
-    </main>
+    </PageContainer>
   );
 }

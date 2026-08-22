@@ -28,6 +28,7 @@ import type { StoredTxn } from "@/lib/server/store";
 import { getServerT } from "@/lib/i18n-server";
 import { formatTzs, formatDateTime } from "@/lib/utils";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
+import { PageContainer } from "@/components/layout/page-container";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Receipt", which a Swahili player saw in their browser tab and history.
@@ -88,7 +89,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
   const isCredit = txn.amount > 0;
 
   return (
-    <main className="mx-auto max-w-[560px] px-3 lg:px-6 py-6 space-y-5">
+    <PageContainer tier="receipt" className="space-y-5">
       <RefreshPoller intervalMs={10_000} enabled={inFlight} />
       <BackLink fallbackHref="/wallet" label={t.wallet.title} />
 
@@ -156,7 +157,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
       </div>
 
       <p className="text-[11.5px] leading-relaxed text-text-subtle">{t.wallet.receiptFootnote}</p>
-    </main>
+    </PageContainer>
   );
 }
 

@@ -17,6 +17,7 @@ import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { getServerT } from "@/lib/i18n-server";
 import { outcomeWord } from "@/lib/side-label";
 import { formatDateTime } from "@/lib/utils";
+import { PageContainer } from "@/components/layout/page-container";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Watchlist", which a Swahili player saw in their browser tab and history.
@@ -44,7 +45,7 @@ export default async function WatchlistPage() {
   const markets = ids.map((id) => byId.get(id)).filter((m): m is NonNullable<typeof m> => !!m);
 
   return (
-    <main className="mx-auto max-w-[1280px] px-3 lg:px-6 py-6 space-y-5">
+    <PageContainer tier="board" className="space-y-5">
       {/* B-17 — the watchlist is a "what's moving" surface; it polled never.
           Same cadence as wallet/positions (pauses when the tab is hidden). */}
       <RefreshPoller intervalMs={20_000} />
@@ -89,6 +90,6 @@ export default async function WatchlistPage() {
           })}
         </section>
       )}
-    </main>
+    </PageContainer>
   );
 }

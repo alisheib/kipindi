@@ -36,6 +36,7 @@ import { getServerT } from "@/lib/i18n-server";
 import { formatTzs, formatDateTime } from "@/lib/utils";
 import { settleDepositFromReturn } from "@/lib/server/wallet-service";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
+import { PageContainer } from "@/components/layout/page-container";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Deposit result", which a Swahili player saw in their browser tab and history.
@@ -82,7 +83,7 @@ export default async function DepositReturnPage({
     // every payment with the gateway before the balance moves — reassurance on a
     // money screen, and it was unreadable on a phone. Reverts at lg, where the
     // nav is not fixed.
-    <main className="mx-auto max-w-[560px] px-3 lg:px-6 py-6 pb-28 lg:pb-6 space-y-5">
+    <PageContainer tier="receipt" className="pb-28 lg:pb-6 space-y-5">
       <PageHero glow={outcome.state === "PAID" ? "gold" : undefined}>
         <PageHeader
           tone={tone === "gold" ? "gold" : undefined}
@@ -182,7 +183,7 @@ export default async function DepositReturnPage({
       </div>
 
       <p className="text-[11.5px] leading-relaxed text-text-subtle">{t.wallet.returnFootnote}</p>
-    </main>
+    </PageContainer>
   );
 }
 

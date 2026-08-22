@@ -1,5 +1,36 @@
 # SESSION PROMPT — one `<main>` per page, and the B7 migration that finishes with it
 
+> ## ✅ SPENT — DONE 2026-08-22 (session 57). Kept as the reasoning, not as work.
+>
+> The record is **`E-185`** and **`E-186`** in [`LIVE-QA-CAMPAIGN.md`](LIVE-QA-CAMPAIGN.md) §6,
+> and the handoff at the top of its §6b. The law it produced is **`DESIGN_AUTHORITY` B7
+> rule 5**. Every item in §8's definition of done is closed:
+>
+> | §8 asked for | outcome |
+> |---|---|
+> | `PageContainer` cannot render a `<main>`; `tsc` proves the call sites | ✅ `"main"` removed from the `as` union — `tsc`: *Type '"main"' is not assignable to type '"div" \| "section" \| "article"'* |
+> | The behavioural guard reports exactly one `<main>`, `#main-content`, everywhere — **and was observed RED first** | ✅ RED on **production**, 17/17 player routes, *before* a single page was migrated → after: `responsive-audit` **4,992 passed, 0 landmark failures** |
+> | Raw `<main` under `src/app` is 0, or ratcheted with the remainder named | ✅ **0**, with two exemptions pinned in the gate (`app-shell.tsx`, `global-error.tsx` — the latter has no shell above it) |
+> | `test:measure`'s ratchet has fallen, new number pasted in | ✅ **59 → 12**, each survivor named with its reason |
+> | Full `test:all` green, build compiles, pushed, guard re-run against production | ✅ **242/242**, build clean, pushed, re-verified on production |
+> | A register row and a §6b handoff in the same pass | ✅ `E-185` + `E-186`, handoff is the topmost `RESUME AT` |
+>
+> ⭐ **What §9's estimate got wrong, for whoever writes the next one of these.** It budgeted
+> the sweep as the bulk and the guards as "under an hour". The sweep *was* mechanical — 33 of
+> the 44 files fell to one codemod. **The time went into two things this document could not
+> have known**: `PageLoader` turned out to be a 16-route population living outside `src/app`
+> that no grep in §1 could see, and **two of the guards being ratcheted were themselves
+> asserting less than they claimed** (`E-186`). §5's instruction to red-prove every guard is
+> what found both — and one of them was found by a mutation that **MISSED**, not by one that
+> caught. ⛔ The three rejected alternatives in §4 were all correctly rejected; the mechanical
+> `<main>`→`<div>` sweep would have left 44 hand-typed widths, both blind guards, and the
+> `PageLoader` population entirely untouched.
+>
+> ⚠️ **Two things it asked for were deliberately NOT done, and both are recorded rather than
+> quietly absorbed:** the 12 remaining ratchet files are blocked on **padding, not width**
+> (changing it is a design decision — §4.2's own rule), and the **18 other `scripts/*.test.mts`
+> carrying the blind `decomment` copy** are filed at the constant instead of half-fixed.
+
 > **Written 2026-08-22 (session 56)** by the session that found it, for the session that fixes it.
 > ⛔ Read this whole file before opening a component. The work looks like a find-and-replace
 > and is not one — the interesting half is that two separate backlogs turn out to be the same

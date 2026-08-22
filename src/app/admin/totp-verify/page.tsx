@@ -35,7 +35,7 @@ export default async function AdminTotpVerifyPage({ searchParams }: { searchPara
   const next = nextRaw.startsWith("/admin") && !nextRaw.startsWith("//") && !nextRaw.startsWith("/admin/totp-verify") ? nextRaw : "";
 
   return (
-    <main className="mx-auto grid min-h-[calc(100vh-44px)] place-items-center px-3 py-6">
+    <div className="mx-auto grid min-h-[calc(100vh-44px)] place-items-center px-3 py-6">
       <div className="w-full max-w-md space-y-4">
         <header className="text-center space-y-1.5">
           <div className="flex w-fit mx-auto items-center gap-2 px-3 h-7 rounded-pill border border-brand-500 bg-brand-500/10">
@@ -77,6 +77,6 @@ export default async function AdminTotpVerifyPage({ searchParams }: { searchPara
           </p>
         </section>
       </div>
-    </main>
+    </div>
   );
 }

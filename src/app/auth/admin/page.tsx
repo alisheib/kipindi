@@ -42,7 +42,7 @@ export default async function AdminLoginPage({ searchParams }: { searchParams?: 
   // form's max-content width and, with overflow:clip, clips the form off a 320–390px
   // phone (esp. the wider ZH strings). Flex sizes the child to the column instead.
   return (
-    <main className="mx-auto flex min-h-[calc(100vh-44px)] items-center justify-center px-3 py-6">
+    <div className="mx-auto flex min-h-[calc(100vh-44px)] items-center justify-center px-3 py-6">
       {/* B7 — was max-w-lg (512) where every sibling auth form is max-w-md (448). */}
       <div className="w-full min-w-0 max-w-md space-y-4">
         <header className="text-center space-y-1.5">
@@ -134,6 +134,6 @@ export default async function AdminLoginPage({ searchParams }: { searchParams?: 
           Lost device or codes? Contact <span className="text-text-muted">{SUPPORT_EMAIL()}</span> with your AML lead in copy.
         </p>
       </div>
-    </main>
+    </div>
   );
 }

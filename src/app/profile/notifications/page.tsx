@@ -7,6 +7,7 @@ import { PushSettings } from "@/components/settings/push-settings";
 import { getSession } from "@/lib/server/session";
 import { listWatchedMarketIds } from "@/lib/server/watchlist-service";
 import { getServerT } from "@/lib/i18n-server";
+import { PageContainer } from "@/components/layout/page-container";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Notifications", which a Swahili player saw in their browser tab and history.
@@ -23,7 +24,7 @@ export default async function NotificationSettingsPage() {
   const watched = await listWatchedMarketIds(session.userId).catch(() => [] as string[]);
 
   return (
-    <main className="mx-auto max-w-[640px] px-3 lg:px-6 py-6 space-y-5">
+    <PageContainer tier="form" className="space-y-5">
       <BackLink fallbackHref="/profile" label={t.profile.title} />
       <PageHeader tone="info" icon={<I.bellRing s={22} />} eyebrow={t.push.eyebrow} title={t.push.pageTitle} />
 
@@ -49,6 +50,6 @@ export default async function NotificationSettingsPage() {
           </Link>
         </div>
       </section>
-    </main>
+    </PageContainer>
   );
 }

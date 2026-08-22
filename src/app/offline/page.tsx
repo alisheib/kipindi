@@ -14,7 +14,7 @@ import { useT } from "@/lib/i18n";
 export default function OfflinePage() {
   const { t } = useT();
   return (
-    <main className="relative isolate flex min-h-[calc(100vh-44px)] items-center justify-center overflow-hidden px-4 py-10">
+    <div className="relative isolate flex min-h-[calc(100vh-44px)] items-center justify-center overflow-hidden px-4 py-10">
       <BrandTopo opacity={0.09} />
       <div className="relative z-10 flex max-w-[400px] flex-col items-center text-center">
         <FiftyMark size={64} />
@@ -34,6 +34,6 @@ export default function OfflinePage() {
           {t.error.tryAgain}
         </button>
       </div>
-    </main>
+    </div>
   );
 }

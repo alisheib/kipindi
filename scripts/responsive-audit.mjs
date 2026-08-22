@@ -10,6 +10,7 @@
  *   3. nothing off-screen              (fixed/sticky overlays fully within the viewport)
  *   4. touch targets ≥ 40×40           (buttons / nav / chips-as-buttons — reported)
  *   5. no console/page errors
+ *   6. exactly ONE <main>, and it is #main-content   (B7 / WCAG landmarks, 2026-08-22)
  * It ALSO opens each overlay (notifications, avatar menu, language, bet dial +
  * confirm, admin filter/menu) at the phone + landscape widths and asserts the
  * dialog/menu fits the viewport with its primary action reachable.
@@ -228,6 +229,28 @@ async function assertCell(page) {
       w: Math.round(el.getBoundingClientRect().width),
     }));
 
+    // DESIGN_AUTHORITY B7 / WCAG landmark navigation — EXACTLY ONE <main>, and it
+    // is the shell's own #main-content.
+    //
+    // Measured on production 2026-08-22: SIX of eight sampled routes rendered TWO
+    // <main> elements, one nested inside the other. `AppShell` renders
+    // <main id="main-content"> in the ROOT layout, so every route inherits it, and
+    // 44 files under src/app — plus `PageLoader` and `PageContainer`'s `as="main"`
+    // default — rendered their own INSIDE it. Nested main is invalid HTML, it gives
+    // a screen reader two "main content" landmarks to choose between, and the
+    // skip-link (href="#main-content") resolves to the OUTER one while the page's
+    // real content begins inside the inner one. The axe rules
+    // `landmark-no-duplicate-main` and `landmark-main-is-top-level` both fire on it.
+    //
+    // ⭐ This reads the DOM, which is the whole point: the static guards in
+    // `test:measure` read SOURCE, and source cannot see a <main> that arrives
+    // through a shared component. That is exactly how `PageLoader` put one on 17
+    // further routes that no grep of `src/app` would ever have found.
+    const mains = [...document.querySelectorAll("main")].map((el) => ({
+      id: el.id || "(no id)",
+      nested: !!(el.parentElement && el.parentElement.closest("main")),
+    }));
+
     // undersized touch targets — EVERY interactive control family, not just
     // buttons/links (UI-consistency program: also inputs, selects, textareas,
     // switches, options, filter chips, tabs). Threshold WAS <38 through Phase 0 —
@@ -263,7 +286,7 @@ async function assertCell(page) {
       }
     }
 
-    return { overflowPx, widestName, widestRight: Math.round(widestRight), vw, vh, offscreen, clipped: clipped.slice(0, 6), clippedCount: clipped.length, small: small.slice(0, 6), smallCount: small.length, measured };
+    return { overflowPx, widestName, widestRight: Math.round(widestRight), vw, vh, offscreen, clipped: clipped.slice(0, 6), clippedCount: clipped.length, small: small.slice(0, 6), smallCount: small.length, measured, mains };
   });
 }
 
@@ -311,6 +334,24 @@ async function sweep(browser, label, paths, contextFactory, guestContextFactory)
             over.map((m) => `${m.tier} ${m.w}px > ${TIER_MAX[m.tier]}px`).join(" | "));
           ok(`${cell} exactly one measure root`, r.measured.length <= 1,
             r.measured.length > 1 ? `${r.measured.length} nested: ${r.measured.map((m) => m.tier).join(",")}` : "");
+
+          // ── The LANDMARK bound ─────────────────────────────────────────────
+          // Exactly one <main>, and it is the shell's #main-content — the element
+          // the skip-link actually points at. Three ways this breaks and all three
+          // are caught: a page adding its own (the 2026-08-22 defect, 6 of 8
+          // routes), the shell's disappearing so a route has NO landmark, and the
+          // right count on the wrong element (a page's own <main> surviving while
+          // the shell's is gone, which would leave the skip-link dangling).
+          const nested = r.mains.filter((m) => m.nested);
+          ok(`${cell} exactly one <main>`, r.mains.length === 1,
+            r.mains.length === 0
+              ? "no <main> at all — the skip-link target is gone"
+              : `${r.mains.length} <main>: ${r.mains.map((m) => `#${m.id}${m.nested ? " NESTED" : ""}`).join(" | ")}`);
+          ok(`${cell} the <main> is #main-content`,
+            r.mains.length === 1 && r.mains[0].id === "main-content" && nested.length === 0,
+            r.mains.length === 1 && r.mains[0].id !== "main-content"
+              ? `the only <main> is #${r.mains[0].id}, not the skip-link target`
+              : "");
           const real = errs.filter((e) => !/fonts\.googleapis|fonts\.gstatic|Failed to load resource.*font|vibrate|webpack-hmr|WebSocket connection|_next\/static|hot-reloader/i.test(e));
           ok(`${cell} zero console errors`, real.length === 0, real.slice(0, 2).join(" | "));
           if (SHOTS_ALL || bp.tag === "xs" || bp.tag === "desktop" || bp.tag === "land") {
