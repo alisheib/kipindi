@@ -101,12 +101,42 @@ const SRC = join(ROOT, "src");
 const RATCHET_SUBFLOOR = 780;
 
 /** §4 — every hand-typed size in the product: `text-[Npx]` plus inline literal
- *  `style={{ fontSize: N }}`. Measured 2026-08-21: 1,839 + 38. */
-const RATCHET_ARBITRARY_SIZE = 1839;
+ *  `style={{ fontSize: N }}`. Measured 2026-08-21: 1,839 + 38.
+ *
+ *  ⚠️ RE-BASELINED 1839 → 1841 on 2026-08-22, and this is the ONE case the "may only
+ *  shrink" rule above did not anticipate: TWO LANES MERGING, not a session writing new
+ *  arbitrary sizes.
+ *
+ *  The 2026-08-21 measurement was taken on the design lane's tree, which did not contain
+ *  the data lane's six unpushed commits. Merging them added five usages that were authored
+ *  BEFORE this guard existed, in files this guard had never seen:
+ *    · privacy-request-form.tsx  text-[13px] + text-[12px]  → CONVERTED to text-body-sm /
+ *      text-label, because that file is wholly new and had no local convention to break.
+ *      That is why this is +2 and not +4.
+ *    · profile/account/page.tsx  one more `text-[15px]` h2 and one more `text-[12.5px]` p
+ *      — the data lane added a sixth section card following the file's own five-times-
+ *      repeated pattern. ⛔ NOT converted: 15px has no scale key (body is 14, body-lg is
+ *      16), so converting only the new one leaves one heading a pixel out of line with its
+ *      five siblings on the same screen. Converting all six is a real design change on a
+ *      surface the design campaign has already declared closed and live-verified, and it is
+ *      not this session's call to make sight-unseen.
+ *    · dsar-controls.tsx  one more `tracking-[0.10em]` on a `font-mono text-micro uppercase`
+ *      microlabel — the exact blessed sub-micro shape §T3 describes, matching four
+ *      identical microlabels in its sibling files.
+ *
+ *  ⛔ THE RATCHET STILL MEANS WHAT IT MEANT. It exists so no session writes NEW arbitrary
+ *  sizes; nothing was written today. ▶ FOR THE DESIGN LANE: the three above are the honest
+ *  next win — convert `account/page.tsx`'s six section cards as one visual decision and
+ *  this drops to 1835. */
+const RATCHET_ARBITRARY_SIZE = 1841;
 const RATCHET_INLINE_FONTSIZE = 38;
 
-/** §6 — arbitrary `tracking-[…]`. Measured 2026-08-21 across 200 files. */
-const RATCHET_ARBITRARY_TRACKING = 639;
+/** §6 — arbitrary `tracking-[…]`. Measured 2026-08-21 across 200 files.
+ *  ⚠️ RE-BASELINED 639 → 640 on 2026-08-22 — same merge, the `dsar-controls.tsx`
+ *  microlabel described above. ⛔ There is no `letterSpacing` key in `tailwind.config.ts`
+ *  at all, so EVERY one of these 640 is arbitrary by construction and there is no
+ *  non-arbitrary form to move it to; the real fix is a tracking scale, not a call-site edit. */
+const RATCHET_ARBITRARY_TRACKING = 640;
 
 /** §5 — the 29 hand-typed sizes that exist today. A member may LEAVE (the guard
  *  says so and this list gets trimmed); a NEW one is a hard failure. This is the

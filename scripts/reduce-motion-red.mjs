@@ -175,8 +175,14 @@ const MUTATIONS = [
     name: "drop .dial-coach from the third gate — an inline-<style> loop goes unlisted",
     check: "2.1",
     file: "src/app/globals.css",
-    from: `[data-motion="reduced"] .dial-coach `,
-    to: `[data-motion="reduced"] .dial-coach-was-here `,
+    // ⚠️ RE-ANCHORED 2026-08-22. This read `.dial-coach ` — with a TRAILING SPACE — and
+    // stage 11 reformatted the rule to `.dial-coach,` with a comma, so the anchor stopped
+    // matching and this mutation silently stopped being applied. The harness reported
+    // "anchor missing" rather than a green, which is the only reason it was noticed.
+    // ⛔ Anchored on the comma now: it is part of the selector list's syntax, not whitespace,
+    // so a reformat cannot move it without changing what the rule MEANS.
+    from: `[data-motion="reduced"] .dial-coach,`,
+    to: `[data-motion="reduced"] .dial-coach-was-here,`,
   },
   {
     // 🔴 `.wc-rays` FOR REAL: an entry naming a class nothing carries any more. The

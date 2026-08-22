@@ -440,7 +440,16 @@ const JSX_PINS: { file: string; name: string; why: string }[] = [
   { file: "src/components/ui/spinner.tsx", name: "spin", why: "the one inline loop we keep — see JSX_KEPT" },
   { file: "src/components/ui/toast.tsx", name: "toast-bar", why: "one-shot: the countdown hairline under every toast" },
   { file: "src/components/markets/operation-result-modal.tsx", name: "orm-pop", why: "one-shot: every money confirmation's crest" },
-  { file: "src/components/ui/date-select.tsx", name: "cd-rise", why: "one-shot: the date-picker dialog's entrance" },
+  // ⛔ `date-select.tsx` / `cd-rise` WAS PINNED HERE AND IS DELETED, 2026-08-22, exactly as
+  // this check's own failure message prescribes: *"if it moved onto a class, DELETE this pin."*
+  //
+  // It moved. Stage 10 pinned it and, IN THE SAME COMMIT, fixed the site it pinned — the
+  // dialog named `cd-rise` in an inline style and no `@keyframes cd-rise` existed anywhere,
+  // so the declaration was inert and the calendar simply appeared. The repair replaced it
+  // with the kit's `.m-dialog-in`, which is a CLASS, so the JSX inline-style reader can never
+  // see it again and 2.4 went red on a tree that was strictly more correct than the one the
+  // pin was written against. Keeping the pin would mean holding a guard permanently red to
+  // commemorate a bug that was fixed.
 ];
 const missedPins = JSX_PINS.filter((p) => !jsxAnims.some((a) => a.file === p.file && a.name === p.name));
 say(missedPins.length === 0, `2.4 ⭐ the JSX inline-style reader still finds all ${JSX_PINS.length} pinned sites (a reader that matches nothing passes everything)`);

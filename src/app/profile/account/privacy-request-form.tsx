@@ -73,7 +73,7 @@ export function PrivacyRequestForm() {
             <label
               key={value}
               className={[
-                "inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[13px] cursor-pointer transition-colors",
+                "inline-flex items-center gap-2 rounded-md border px-3 py-2 text-body-sm cursor-pointer transition-colors",
                 kind === value
                   ? "border-royal-700 bg-royal-500/[0.10] text-text"
                   : "border-border bg-bg-overlay/40 text-text-muted hover:text-text",
@@ -94,7 +94,7 @@ export function PrivacyRequestForm() {
       </fieldset>
 
       {kind === "ERASURE" && (
-        <p className="rounded-md border border-warning-border bg-warning-bg/15 px-3 py-2 text-[12px] leading-snug text-text-secondary">
+        <p className="rounded-md border border-warning-border bg-warning-bg/15 px-3 py-2 text-label text-text-secondary">
           {t.profile.privacyRequestErasureNote}
         </p>
       )}
