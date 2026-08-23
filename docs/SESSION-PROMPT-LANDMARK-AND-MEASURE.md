@@ -41,8 +41,13 @@
 > a SHAPE, not a string.** And the prescribed repair — flip the two `replace` calls — is
 > blind in the opposite direction (a `//` inside a block comment eats that block's
 > terminator; ~7.7k characters of `criterion-i18n.test.mts`, which `pii-in-logs` §3 reads).
-> The fix is a single-pass **scanner**: `scripts/lib/decomment.mts`, 27 importers,
-> `test:decomment` 19/19, `red:decomment` 8/8. **14 remain on a shrink-only ratchet.**
+> The fix is a single-pass **scanner** that also tracks STRING and TEMPLATE literals —
+> the first version did not, and that was a shipped regression (`E-189`) caught the same
+> day by adversarial review: a `/*` inside a template opened a block comment that ran to
+> EOF and flipped a live `pii-in-logs` verdict. `scripts/lib/decomment.mts`, 27 importers,
+> `test:decomment` **22/22**, `red:decomment` **12/12**, `test:red-anchors` **383/383**.
+> ⚠️ **55 private strippers remain** — the earlier "14" counted only DECLARATIONS named
+> `decomment`/`stripComments` and missed inline copies inside converted files.
 
 > **Written 2026-08-22 (session 56)** by the session that found it, for the session that fixes it.
 > ⛔ Read this whole file before opening a component. The work looks like a find-and-replace

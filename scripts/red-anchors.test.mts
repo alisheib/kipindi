@@ -105,9 +105,23 @@ const declFiles = existsSync(declaredDir) ? readdirSync(declaredDir).filter((f) 
 {
   ok("3.0 · fixture · at least one harness declares its anchors", declFiles.length >= 1, `${declFiles.length} declaration file(s)`);
   for (const f of declFiles) {
-    const mod = await import(`./anchors/${f}`) as { MUTATIONS: Array<{ name: string; file: string; from: string }> };
+    const mod = await import(`./anchors/${f}`) as { MUTATIONS: Array<{ name: string; file: string; from: string; combineInto?: string }> };
     const muts = mod.MUTATIONS ?? [];
     ok(`3.${f} · declares mutations`, muts.length > 0, `${muts.length}`);
+
+    // ⛔ A `combineInto` THAT NAMES NOTHING IS A SILENTLY DETACHED MUTATION.
+    // `measure-red.mjs` pairs entries with `DECLARED.filter(x => x.combineInto === m.name)`,
+    // so a typo in that string does not error — the paired edit simply stops being applied,
+    // and the mutation it belonged to keeps reporting success while testing half of what it
+    // claims. That is precisely the shape of an anchor rotting in silence, which is what this
+    // file exists to prevent, and until 2026-08-23 nothing checked the link at all.
+    const names = new Set(muts.map((m) => m.name));
+    for (const m of muts.filter((x) => x.combineInto)) {
+      const linked = names.has(m.combineInto as string);
+      ok(`3.${f}:${m.name.slice(0, 40)} · combineInto names a real mutation`, linked,
+         linked ? "" : `"${m.combineInto}" matches no mutation in this file — the pairing is dead`);
+    }
+
     for (const m of muts) {
       const path = `${ROOT}/${m.file}`;
       if (!ok(`3.${f}:${m.name.slice(0, 44)} · target file exists`, existsSync(path), m.file)) continue;

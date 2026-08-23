@@ -603,13 +603,31 @@ harness rather than by review** — the finding worth keeping:
     lookbehind, or add a JSX clause. ⭐ **A stripper is a SHAPE, not a string** — both
     counts keyed on the BODY, so both missed. `test:decomment` §2.2 looks for the
     declaration instead.
-  · **NOW:** one shared scanner with **27 importers**, `test:decomment` **19/19**,
-    `red:decomment` **8/8 proven**. ⚠️ **14 strippers remain on a shrink-only ratchet
-    with a reason each** — six pad with SPACES to preserve byte offsets they later
-    slice by and need a `blankComments()` on the same scanner (not written yet), five
-    substitute `" "` so tokens cannot fuse, two strip deliberately less, and one is
-    plain `.mjs` that cannot import a `.mts` module. ⛔ Do not tidy any of them into
-    `decomment` without capturing that gate's full output before and after.
+  · 🔴 **AND THE FIRST SCANNER SHIPPED WITH A REGRESSION OF ITS OWN (`E-189`), found
+    the same day by adversarially reviewing the commit.** It had **no string-literal
+    state**, so a `/*` inside a STRING or TEMPLATE opened a block comment running to
+    the next terminator or to EOF — `full-flow-audit.mjs` decommented to **11% of
+    itself**, and the identical planted violation was FOUND at line 425 and INVISIBLE
+    at line 374 of `comms-email-truth.test.mts`. ⛔ **That was a REGRESSION, not an
+    inherited limit:** the old regex is non-greedy and needs a closing terminator, so
+    with none it simply does not match and the code survives. The scanner now tracks
+    literals, KEEPS an unterminated block rather than swallowing it (text wrongly kept
+    is a loud false positive; text wrongly removed is a silent false negative), and
+    preserves newlines so line numbers do not move.
+  · ⭐ **`test:decomment` §4 compares the shipped scanner against an INDEPENDENTLY
+    WRITTEN reference tokeniser over all 1,498 files** — the only automatic way to
+    catch a whole state the author forgot existed. It found two more real bugs the
+    moment it existed.
+  · **NOW:** one shared, literal-aware scanner with **27 importers**, `test:decomment`
+    **22/22**, `red:decomment` **12/12 proven**, `test:red-anchors` **383/383**.
+    ⚠️ **The migration is roughly a third done and the honest count is 55, not 14** —
+    the first number came from looking for a DECLARATION named `decomment`/
+    `stripComments`, and several converted files carry a SECOND, INLINE stripper
+    further down (`outcome-display.test.mts:143`, `feedback-law.test.mts:123`). §2
+    ratchets the shape-count, which no rename or inlining can dodge. ⛔ **One reason
+    published here was false — "a plain `.mjs` cannot import a `.mts` module". Node 24,
+    which this repo pins, does it fine.** ⛔ Do not tidy any of them into `decomment`
+    without capturing that gate's full output before and after.
 - The page/`loading.tsx` tier-parity check **compared 29 of 80 pairs and skipped
   51 in silence**, because a route that delegates its body to a sibling client
   component (`/wallet` → `./wallet-client`) stated no tier the check could read.
