@@ -283,6 +283,19 @@ export const MUTATIONS = [
     check: "16.1 ⛔ a zero projection floor is clamped, never divided by",
   },
   {
+    name: "a-subject-type-loses-its-operator-label",
+    why: "🔴 The guard a COMMENT once only claimed. Without a label the ledger's \"For\" column "
+       + "shows a raw `poll_ideation` and the filter silently omits it — and `page.tsx` said "
+       + "§15 checked this when §15 is the retention section and no such check existed. "
+       + "⚠️ It targets 17.4, not a 'every type has a label' check: the TYPE is derived from the "
+       + "label map, so deleting a label deletes the type too and such a check can never fail. "
+       + "17.4 compares against an INDEPENDENT list of what the call sites actually write.",
+    file: RULES,
+    from: '  poll_ideation: "POLL IDEATION",         // the sweep that precedes generation\n',
+    to: "",
+    check: "17.4 🔴 every subject type the METER writes is labelled",
+  },
+  {
     name: "the-meter-clamp-lets-a-zero-size-through",
     why: "§10b. A size of 0 means infinitely many cycles and a divide-by-zero everywhere "
        + "downstream. The form refuses it; this is the last line of defence.",

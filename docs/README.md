@@ -9,7 +9,14 @@ the **AI spend cycles**: what a $100 cycle is, the red bar that pauses the AI an
 it, and what a market actually costs. Everything else in here is for whoever builds and runs
 the platform.
 
-There are **67 files** at this level — this index plus 66 documents — and five
+⚠️ **This sentence used to state a file count. It said 67; there were 70.**
+Two of the three were added by the session that noticed — but it was already wrong by one
+before that, which is the point: a count written in prose is a count that drifts the next
+time anyone adds a document, and nobody re-runs `find` to check. **Derive it, never quote
+it:** `find docs -maxdepth 1 -type f | wc -l`. This is the same correction the
+`docs/README.md` row in `CLAUDE.md` already records, applied to this file's own opening.
+
+At this level there is this index plus the documents beside it, and five
 subdirectories with their own indexes: [`design-system/`](design-system/README.md) (the index of
 the delivered design archive — **record, not rule**; the design rule book is
 [`DESIGN_AUTHORITY.md`](DESIGN_AUTHORITY.md) and nothing else is needed to build correctly),

@@ -34,7 +34,7 @@ import {
   projectCyclesPerYear, yearsFrom, safeRatio, suggestedPriceUsd, tzs, decorate, LINE_FEATURES,
   getCycleReadModel,
 } from "../src/lib/server/ai-cycles.ts";
-import { parseCycleForm, CYCLE_BOUNDS } from "../src/lib/ai-cycle-rules.ts";
+import { parseCycleForm, CYCLE_BOUNDS, AI_SUBJECT_LABEL, AI_SUBJECT_TYPES } from "../src/lib/ai-cycle-rules.ts";
 
 const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
 
@@ -705,6 +705,47 @@ section("16 · THE CLAMPS THAT KEEP A HAND-EDITED CONFIG FROM PRINTING Infinity"
   );
   check("16.10 🔴 a zero-length history yields NO projection — never Infinity/year",
     !degenerate.ok, JSON.stringify(degenerate));
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+section("17 · EVERY SUBJECT TYPE HAS A LABEL — the guard a comment once only CLAIMED");
+// ════════════════════════════════════════════════════════════════════════════════
+{
+  // 🔴 THIS CHECK EXISTS BECAUSE A COMMENT SAID IT ALREADY DID.
+  // `page.tsx` declared the label map with "⛔ Mirrors AiSubjectType — test:ai-cycles §15
+  // asserts the two agree". §15 is the RETENTION section. No such check existed, and the
+  // map sat in a Next.js server component where nothing could have imported it anyway.
+  // ⭐ A comment claiming a guard is worse than no guard: it stops anyone writing the real
+  // one. The list is isomorphic now, and this is the check.
+  // ⛔ THERE IS DELIBERATELY NO "every type has a label" CHECK, AND THAT IS THE STRONGER
+  // GUARANTEE. `AiSubjectType` is derived from `AI_SUBJECT_LABEL`'s own keys, so a type
+  // WITHOUT a label cannot be expressed — the compiler refuses it. A test for it would be a
+  // tautology: `red:ai-cycles` proved exactly that, reporting WRONG CHECK when deleting a
+  // label removed the type along with it.
+  // ⭐ Make an invariant impossible where you can, and test it only where you cannot.
+  check("17.0 ⭐ CONTROL: there are subject types and labels to compare",
+    AI_SUBJECT_TYPES.length >= 6 && Object.keys(AI_SUBJECT_LABEL).length >= 6,
+    `${AI_SUBJECT_TYPES.length} types`);
+
+  check("17.3 no label is blank — a blank one renders an empty cell, not a name",
+    Object.values(AI_SUBJECT_LABEL).every((v) => typeof v === "string" && v.trim().length > 0));
+
+  // ⭐ AND THE ONE THAT ACTUALLY BITES: every type the METER writes must be labelled. These
+  // are the literals threaded through the 12 `recordAiUsage()` call sites; if one is added
+  // to a call site and not to the list, the ledger shows a raw string and the filter omits it.
+  const WRITTEN_BY_CALL_SITES = [
+    "market", "updown_observation", "updown_proposal",
+    "poll_generation", "poll_ideation", "chat_session",
+  ];
+  const labelled = Object.keys(AI_SUBJECT_LABEL);
+  const unlabelled = WRITTEN_BY_CALL_SITES.filter((t) => !labelled.includes(t));
+  check("17.4 🔴 every subject type the METER writes is labelled", unlabelled.length === 0, unlabelled.join(", "));
+
+  // …and the reverse: the fixture above must itself stay in step with the real list, or 17.4
+  // silently stops covering a new type.
+  const uncovered = AI_SUBJECT_TYPES.filter((t) => !WRITTEN_BY_CALL_SITES.includes(t));
+  check("17.5 ⭐ CONTROL: the call-site fixture covers the whole list — it cannot go stale silently",
+    uncovered.length === 0, uncovered.join(", "));
 }
 
 // ════════════════════════════════════════════════════════════════════════════════

@@ -20,6 +20,32 @@
  * cycles and a divide-by-zero on every figure downstream.
  */
 
+/**
+ * WHAT A METERED AI CALL WAS FOR — the list, and how an operator reads each one.
+ *
+ * ⛔ THE LIST LIVES HERE, ISOMORPHIC, FOR ONE REASON: both the meter (`ai-usage.ts`) and the
+ * admin ledger's "For" column need it, and `test:ai-cycles` §17 has to be able to import it
+ * without pulling in a Next.js server component. When the label map lived in `page.tsx` it
+ * could not be checked at all — and the comment beside it claimed a guard that did not exist.
+ *
+ * ⛔ ADD A SUBJECT TYPE HERE AND NOWHERE ELSE. Miss the label and the ledger shows a raw
+ * `poll_ideation` instead of a name, and the filter silently omits it. §17 fails if the two
+ * ever disagree, in either direction.
+ */
+export const AI_SUBJECT_LABEL = {
+  market: "MARKET",                       // a specific PredictionMarket — the Sentinel's check
+  updown_observation: "U&D OBSERVATION",  // ⚠️ an observation, NOT a round: one call serves several
+  updown_proposal: "U&D PROPOSAL",        // proposing a chain; the id is the asset key
+  poll_generation: "POLL GENERATION",     // no candidate row exists yet, so the id is null
+  poll_ideation: "POLL IDEATION",         // the sweep that precedes generation
+  chat_session: "CHAT",                   // the help chatbot; the id is the player's userId
+} as const;
+
+/** Enumerable, so the coverage can be checked. A hand-written union cannot be. */
+export const AI_SUBJECT_TYPES = Object.keys(AI_SUBJECT_LABEL) as (keyof typeof AI_SUBJECT_LABEL)[];
+
+export type AiSubjectType = keyof typeof AI_SUBJECT_LABEL;
+
 export const CYCLE_BOUNDS = {
   sizeUsd: { min: 0.001, max: 1000, decimals: 6 },
   targetMarginPct: { min: 0, max: 500 },

@@ -305,6 +305,43 @@ producing `period.Top up` — a comment is not invisible to the text flow.
 found all three in one pass.
 
 ---
+## §G5 · THE STALE SWEEP — four questions worth asking at the end of any session
+
+| | Question | Result |
+|---|---|---|
+| ① | Does every `§n` a comment cites actually exist in that guard? | 🔴 **One did not** |
+| ② | Does every path a doc names still resolve? | ✅ clean |
+| ③ | Does every npm script point at a file that exists? | ✅ all four |
+| ④ | Is any COUNT stated in prose still true? | 🔴 **One was not** |
+
+### 🔴 ① A comment claimed a guard that did not exist
+
+`page.tsx` declared the ledger's subject-label map with *"⛔ Mirrors `AiSubjectType` —
+`test:ai-cycles` §15 asserts the two agree."* **§15 is the RETENTION section**, no such check
+existed, and the map sat inside a server component where nothing could import it to write one.
+
+⛔ **A comment claiming a guard is worse than no guard: it stops the next person writing the
+real one.** Fixed by making it true — the list moved to `src/lib/ai-cycle-rules.ts`
+(isomorphic), `AiSubjectType` is DERIVED from the label map's keys, and **§17** is the check.
+
+⭐⭐ **And the red fleet then caught the FIX being vacuous, which is the more useful half.**
+Deleting a label reported **WRONG CHECK**: because the type is derived from the map, deleting
+a label deletes the type with it, so *"every type has a label"* can never fail. Two of the four
+new checks were tautologies. They are gone — **the invariant is impossible rather than tested**,
+which is stronger — and §17.4 compares against an INDEPENDENT list of what the 12 call sites
+write, with §17.5 as the control that the fixture itself cannot go stale.
+
+> ⭐ **Make an invariant impossible where you can; test it only where you cannot.**
+
+### 🔴 ④ A count this repo has already been burned by
+
+`docs/README.md` opened with *"There are **67 files** at this level"*. There are **70** — two
+added by this session, and **already wrong by one before it**. That file's own history records
+the identical defect (*"this row used to say 42 docs and the index said 45; the real number was
+59"*), and the fix there was to stop stating one. It no longer states a count either: it says
+`find docs -maxdepth 1 -type f | wc -l` and explains why.
+
+---
 ## §H · THE BUG THE RED FLEET FOUND, WHICH IS THE MOST REUSABLE PART OF THIS
 
 🔴 **THE CHECKPOINT ALI ASKED FOR WOULD HAVE FIRED ZERO TIMES.**

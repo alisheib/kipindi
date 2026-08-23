@@ -60,7 +60,7 @@ import { audit } from "./audit";
 // resolves `@/` through the tsconfig paths of the CWD — which is the real repo — so an
 // aliased import would quietly load the ORIGINAL module while the harness reported it had
 // mutated one. A red proof that reads the wrong tree is worse than no red proof.
-import { CYCLE_BOUNDS } from "../ai-cycle-rules";
+import { CYCLE_BOUNDS, type AiSubjectType } from "../ai-cycle-rules";
 
 // One bucket per distinct AI spend line. `updown` is the Up & Down price oracle,
 // kept SEPARATE from `sentinel` (normal-market resolution) so the admin AI-usage page
@@ -121,13 +121,11 @@ export const PRICE_REV: string = (() => {
  * over-stating it by that factor. The read model divides a product LINE's spend by that
  * line's settled markets, which is correct however the calls are shared.
  */
-export type AiSubjectType =
-  | "market"              // a specific PredictionMarket — the sentinel's per-market check
-  | "updown_observation"  // a specific UpDownObservation — see the warning above
-  | "updown_proposal"     // proposing a chain; subjectId is the asset key, no row exists yet
-  | "poll_generation"     // generating one poll for a category; no candidate row yet
-  | "poll_ideation"       // the ideation sweep that precedes generation
-  | "chat_session";       // the help chatbot; subjectId is the player's userId
+// ⛔ THE LIST IS IN `src/lib/ai-cycle-rules.ts`, ISOMORPHIC, so the admin ledger's label map
+// and this type cannot drift apart — `test:ai-cycles` §17 proves they agree. A second
+// hand-written union here was exactly the shape that let a comment claim a guard that did
+// not exist.
+export type { AiSubjectType };
 
 function priceFor(model: string): { in: number; out: number } {
   const m = (model || "").toLowerCase();

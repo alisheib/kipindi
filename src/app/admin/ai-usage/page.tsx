@@ -14,6 +14,7 @@ import { DateTimeRangeFilter } from "@/components/ui/datetime-range-filter";
 import { resolveRange } from "@/lib/server/date-range";
 import { getAiUsageSummary, listAiUsage, type AiFeature, type UsageBucket, type AiUsageFilter, type AiUsageEventRecord } from "@/lib/server/ai-usage";
 import { getCycleReadModel, listCycles, suggestedPriceUsd, tzs } from "@/lib/server/ai-cycles";
+import { AI_SUBJECT_LABEL, AI_SUBJECT_TYPES } from "@/lib/ai-cycle-rules";
 import { CycleSettings, StartCycleControl, CloseCycleControl } from "./cycle-controls";
 import { currentSession } from "@/lib/server/auth-service";
 import { canAct } from "@/lib/server/rbac";
@@ -62,18 +63,12 @@ const FEATURES: AiFeature[] = ["updown", "sentinel", "polls", "chat", "other"];
 // move both tables at once.
 const CYCLES_PER_PAGE = 12;
 
-/** The subject types the meter writes, and how an operator reads them. ⛔ Mirrors
- *  `AiSubjectType` in ai-usage.ts — `test:ai-cycles` §15 asserts the two agree, so this
- *  cannot quietly fall behind the meter. */
-const SUBJECT_LABEL: Record<string, string> = {
-  market: "MARKET",
-  updown_observation: "U&D OBSERVATION",
-  updown_proposal: "U&D PROPOSAL",
-  poll_generation: "POLL GENERATION",
-  poll_ideation: "POLL IDEATION",
-  chat_session: "CHAT",
-};
-const SUBJECT_TYPES = Object.keys(SUBJECT_LABEL);
+// ⛔ THE LABEL MAP IS IMPORTED, NOT RE-TYPED. It used to be declared here with a comment
+// claiming `test:ai-cycles` §15 checked it against the meter — §15 is the retention
+// section and no such check existed. It lives in `ai-cycle-rules.ts` now, where §17 can
+// import it and genuinely prove the two agree.
+const SUBJECT_LABEL: Record<string, string> = AI_SUBJECT_LABEL;
+const SUBJECT_TYPES: string[] = [...AI_SUBJECT_TYPES];
 
 const LINE_LABEL: Record<"polls" | "updown" | "chat" | "other", string> = {
   polls: "Polls (generation + Sentinel)",
