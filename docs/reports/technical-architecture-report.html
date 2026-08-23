@@ -1,0 +1,1109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>50pick · Technical architecture report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1D2433;          /* body text */
+    --navy:#16264A;         /* headings */
+    --muted:#8A93A8;        /* labels, footers */
+    --faint:#B8BFCD;        /* section numerals */
+    --rule:#DCE0E8;         /* hairlines */
+    --rule-strong:#141A28;  /* the heavy rule under a section title */
+    --gold:#8C6A2A;         /* monospace figures */
+    --green:#1EA362;
+    --claret:#B03A3E;
+    --panel:#F6F7F9;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:"Source Serif 4",Georgia,"Times New Roman",serif;
+    color:var(--ink); font-size:10.2pt; line-height:1.45;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ── the sheet ────────────────────────────────────────────────────────── */
+  /* ⛔ 296mm, NOT 297. An element of exactly one page height spills onto a second page on
+     sub-pixel rounding, which is what turned 16 sheets into 26 pages on the first render.
+     ⛔ AND NOT display:flex WITH A STRETCHED BODY EITHER — the footer margin was then ADDED
+     on top of a body that had already grown to fill the sheet. Content and footer flow
+     naturally from the top; mkreport.mjs fails the build if any sheet exceeds the page. */
+  .sheet{
+    width:210mm; height:296mm; padding:15mm 20mm 10mm;
+    page-break-after:always; position:relative;
+  }
+  .sheet:last-child{page-break-after:auto}
+  .sheet.cover{display:flex; flex-direction:column}
+
+  .runhead{
+    display:flex; align-items:center; gap:7px;
+    padding-bottom:7px; margin-bottom:8mm; border-bottom:1px solid var(--rule);
+  }
+  .runhead .mark{width:11px;height:11px;flex:none}
+  .runhead span{
+    font-family:Poppins,"Segoe UI",sans-serif; font-weight:600;
+    font-size:7.6pt; letter-spacing:.09em; text-transform:uppercase; color:var(--navy);
+  }
+
+  .foot{
+    margin-top:9mm; padding-top:6px; border-top:1px solid var(--rule);
+    display:flex; justify-content:space-between; gap:10px;
+    font-family:"JetBrains Mono",Consolas,monospace; font-size:7pt;
+    letter-spacing:.05em; color:var(--muted);
+  }
+  .foot b{color:var(--navy); font-weight:500}
+
+  /* ── section furniture ────────────────────────────────────────────────── */
+  .snum{
+    font-family:"JetBrains Mono",Consolas,monospace; font-size:22pt; font-weight:400;
+    color:var(--faint); line-height:1; margin-bottom:2px; letter-spacing:.02em;
+  }
+  h1.stitle{
+    font-family:Poppins,"Segoe UI",sans-serif; font-weight:700; font-size:19pt;
+    color:var(--navy); margin:0 0 7px; line-height:1.14; letter-spacing:-.012em;
+  }
+  .standfirst{
+    font-style:italic; font-size:10.6pt; color:var(--ink); margin:0 0 9px; line-height:1.4;
+  }
+  .rule-strong{border:0; border-top:2px solid var(--rule-strong); margin:0 0 12px}
+
+  h2{
+    font-family:Poppins,"Segoe UI",sans-serif; font-weight:600; font-size:11pt;
+    color:var(--navy); margin:13px 0 5px; letter-spacing:-.005em;
+  }
+  h3{
+    font-family:Poppins,"Segoe UI",sans-serif; font-weight:600; font-size:9.4pt;
+    color:var(--navy); margin:11px 0 4px;
+  }
+  p{margin:0 0 6px}
+  strong{font-weight:600; color:var(--navy)}
+  em.q{font-style:italic}
+  ul{margin:0 0 8px; padding-left:16px}
+  li{margin-bottom:4px}
+  a{color:var(--navy); text-decoration:none}
+
+  code,.m{
+    font-family:"JetBrains Mono",Consolas,monospace; font-size:8.7pt;
+    color:var(--gold); font-weight:500; letter-spacing:-.01em;
+  }
+  .m-plain{font-family:"JetBrains Mono",Consolas,monospace; font-size:8.5pt; color:var(--ink)}
+
+  /* ── tables ───────────────────────────────────────────────────────────── */
+  .tcap{
+    font-family:"JetBrains Mono",Consolas,monospace; font-size:7.6pt; letter-spacing:.06em;
+    color:var(--navy); font-weight:700; margin:12px 0 4px;
+  }
+  .tcap em{font-family:"Source Serif 4",Georgia,serif; font-style:italic; font-weight:400;
+    color:var(--muted); letter-spacing:0; font-size:8.6pt}
+  table{width:100%; border-collapse:collapse; margin-bottom:7px}
+  thead th{
+    font-family:"JetBrains Mono",Consolas,monospace; font-weight:400; font-size:7.2pt;
+    letter-spacing:.07em; text-transform:uppercase; color:var(--muted);
+    text-align:left; padding:0 8px 5px 0; border-bottom:1.4px solid var(--rule-strong);
+    vertical-align:bottom;
+  }
+  tbody td{
+    padding:4.5px 8px 4.5px 0; border-bottom:1px solid var(--rule);
+    vertical-align:top; font-size:9.3pt; line-height:1.36;
+  }
+  tbody tr:last-child td{border-bottom:1.4px solid var(--rule-strong)}
+  td.k{color:var(--navy); width:31%}
+  td.n{font-family:"JetBrains Mono",Consolas,monospace; font-size:8.6pt; color:var(--ink); white-space:nowrap}
+  td.g{font-family:"JetBrains Mono",Consolas,monospace; font-size:8.6pt; color:var(--gold); font-weight:500; white-space:nowrap}
+
+  /* ── note block ───────────────────────────────────────────────────────── */
+  .note{border-top:1.6px solid var(--rule-strong); border-bottom:1.6px solid var(--rule-strong);
+    padding:8px 0 9px; margin:12px 0}
+  .note .lbl{
+    font-family:"JetBrains Mono",Consolas,monospace; font-size:7.2pt; letter-spacing:.09em;
+    color:var(--muted); text-transform:uppercase; margin-bottom:5px;
+  }
+  .note p{font-style:italic; margin:0; font-size:9.5pt; line-height:1.42}
+  .note p strong{font-style:normal}
+
+  /* ── two-column split ─────────────────────────────────────────────────── */
+  .split{display:flex; gap:22px; margin:13px 0}
+  .split > div{flex:1; border-top:1.6px solid var(--rule-strong); padding-top:8px}
+  .split h4{
+    font-family:"JetBrains Mono",Consolas,monospace; font-size:7.4pt; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--navy); margin:0 0 6px; font-weight:400;
+  }
+  .split p{font-size:9.6pt; margin:0}
+
+  /* ── numbered steps ───────────────────────────────────────────────────── */
+  ol.steps{list-style:none; margin:10px 0; padding:0; counter-reset:s}
+  ol.steps li{counter-increment:s; position:relative; padding-left:22px; margin-bottom:6px}
+  ol.steps li::before{
+    content:counter(s); position:absolute; left:0; top:1px;
+    font-family:"JetBrains Mono",Consolas,monospace; font-size:7.6pt; color:var(--muted);
+  }
+
+  /* ── cover ────────────────────────────────────────────────────────────── */
+  .cover{justify-content:flex-start}
+  .classbar{
+    display:flex; justify-content:space-between;
+    font-family:"JetBrains Mono",Consolas,monospace; font-size:7.4pt;
+    letter-spacing:.08em; color:var(--muted); text-transform:uppercase;
+    padding-bottom:8px; border-bottom:1px solid var(--rule); margin-bottom:40mm;
+  }
+  .coverlogo{display:flex; align-items:center; gap:9px; margin-bottom:12px}
+  .coverlogo svg{width:30px;height:30px}
+  .coverlogo .wm{font-family:Poppins,sans-serif; font-weight:700; font-size:20pt;
+    color:var(--navy); letter-spacing:-.02em}
+  .coverlogo .tz{font-family:"JetBrains Mono",monospace; font-size:8.5pt; color:var(--muted);
+    letter-spacing:.02em; margin-left:-2px}
+  .cover h1{
+    font-family:Poppins,sans-serif; font-weight:700; font-size:31pt; color:var(--navy);
+    margin:0 0 10px; letter-spacing:-.022em; line-height:1.05;
+    border-top:2.5px solid var(--rule-strong); padding-top:14px;
+  }
+  .cover .sub{font-style:italic; font-size:11.5pt; color:var(--ink); max-width:118mm;
+    line-height:1.42; margin:0 0 26px}
+  .meta{width:100%; border-collapse:collapse; margin-bottom:34px}
+  .meta td{padding:8px 0; border-bottom:1px solid var(--rule); font-size:10pt; vertical-align:top}
+  .meta td:first-child{
+    font-family:"JetBrains Mono",Consolas,monospace; font-size:7.4pt; letter-spacing:.09em;
+    color:var(--muted); text-transform:uppercase; width:44mm; padding-top:11px;
+  }
+  .meta tr:first-child td{border-top:2px solid var(--rule-strong)}
+  .issuer{
+    margin-top:auto; padding-top:12px; border-top:2px solid var(--rule-strong);
+    display:flex; align-items:flex-start; gap:14px;
+  }
+  .issuer .txt{font-family:"JetBrains Mono",Consolas,monospace; font-size:7.6pt;
+    line-height:1.62; color:var(--muted)}
+  .issuer .txt b{color:var(--navy); font-weight:500}
+  .oceanmark{
+    flex:none; width:23mm; text-align:center; font-family:Poppins,sans-serif;
+    border-right:1px solid var(--rule); padding-right:12px;
+  }
+  .oceanmark .o{font-weight:700; font-size:13pt; color:#1B4F8A; letter-spacing:.04em; line-height:1}
+  .oceanmark .e{font-size:5.4pt; letter-spacing:.22em; color:var(--muted); margin-top:3px}
+
+  /* ── contents ─────────────────────────────────────────────────────────── */
+  table.toc td{padding:7px 0; border-bottom:1px solid var(--rule); font-size:10pt}
+  table.toc td:first-child{
+    font-family:"JetBrains Mono",Consolas,monospace; font-size:8.4pt; color:var(--muted); width:16mm;
+  }
+  table.toc td:nth-child(2){font-family:Poppins,sans-serif; font-weight:600;
+    font-size:9.6pt; color:var(--navy)}
+  table.toc tr:first-child td{border-top:2px solid var(--rule-strong)}
+
+  .kv{display:flex; gap:8px; margin-bottom:4px; font-size:9.3pt}
+  .kv .kk{font-family:"JetBrains Mono",monospace; font-size:7.6pt; letter-spacing:.06em;
+    color:var(--muted); text-transform:uppercase; width:34mm; flex:none; padding-top:2px}
+
+  @page{size:A4; margin:0}
+  @media print{.sheet{margin:0}}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════ COVER ══════════════════════════════ -->
+<section class="sheet cover">
+  <div class="classbar">
+    <span>Classification: Confidential — Regulatory Submission</span>
+    <span>Ref 50P-TR-2026-01</span>
+  </div>
+
+  <div class="coverlogo">
+    <svg viewBox="0 0 100 100" aria-label="50pick">
+      <path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63 Z" fill="#1EA362"/>
+      <path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63 Z" fill="#B03A3E"/>
+      <line x1="38.39" y1="3.43" x2="61.61" y2="96.57" stroke="#E3BC66" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="50" cy="50" r="5" fill="#E3BC66"/>
+      <circle cx="50" cy="50" r="1.7" fill="#1A2140"/>
+    </svg>
+    <span class="wm">50pick</span><span class="tz">.tz</span>
+  </div>
+
+  <h1>TECHNICAL ARCHITECTURE REPORT</h1>
+  <p class="sub">The platform's application framework, hosting, data layer, runtime,
+  engineering practice and real-time delivery, stated with the versions actually in service.</p>
+
+  <table class="meta">
+    <tr><td>Prepared by</td><td>Ocean Entertainment Limited</td></tr>
+    <tr><td>Prepared for</td><td>Gaming Board of Tanzania</td></tr>
+    <tr><td>Platform</td><td>50pick · 50pick.tz</td></tr>
+    <tr><td>Date</td><td class="m-plain">24 August 2026</td></tr>
+    <tr><td>Version</td><td class="m-plain">1.0</td></tr>
+    <tr><td>Classification</td><td>Confidential — regulatory submission</td></tr>
+  </table>
+
+  <div class="issuer">
+    <div class="oceanmark">
+      <div class="o">OCEAN</div>
+      <div class="e">ENTERTAINMENT</div>
+    </div>
+    <div class="txt">
+      <b>Ocean Entertainment Limited</b> · TIN 184-764-059<br>
+      Amverton Office Park, Ground Floor, Lugalo Street, P.O. Box<br>
+      5036, Upanga, Dar es Salaam, Tanzania
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════ CONTENTS ══════════════════════════════ -->
+<section class="sheet">
+  <div class="runhead">
+    <svg class="mark" viewBox="0 0 100 100"><path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63 Z" fill="#1EA362"/><path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63 Z" fill="#B03A3E"/></svg>
+    <span>Contents</span>
+  </div>
+  <div class="body">
+    <div class="snum">&nbsp;</div>
+    <h1 class="stitle">CONTENTS</h1>
+    <p class="standfirst">Twelve sections and two appendices. Sections 02 to 08 answer the
+    Board's technical schedule directly; 09 to 12 cover the controls that surround it.</p>
+    <hr class="rule-strong">
+    <table class="toc">
+      <tr><td>01</td><td>Scope &amp; summary of the stack</td></tr>
+      <tr><td>02</td><td>Application framework</td></tr>
+      <tr><td>03</td><td>Cloud hosting provider</td></tr>
+      <tr><td>04</td><td>Database technology</td></tr>
+      <tr><td>05</td><td>Server &amp; runtime</td></tr>
+      <tr><td>06</td><td>Programming languages</td></tr>
+      <tr><td>07</td><td>Development &amp; quality assurance</td></tr>
+      <tr><td>08</td><td>Real-time messaging</td></tr>
+      <tr><td>09</td><td>Security architecture</td></tr>
+      <tr><td>10</td><td>Data residency, protection &amp; retention</td></tr>
+      <tr><td>11</td><td>Resilience, backup &amp; continuity</td></tr>
+      <tr><td>12</td><td>Observability &amp; monitoring</td></tr>
+      <tr><td>A</td><td>Component version register</td></tr>
+      <tr><td>B</td><td>Glossary of technical terms</td></tr>
+    </table>
+  </div>
+  <div class="foot"><span>Confidential — regulatory submission</span><span><b>50PICK TECHNICAL ARCHITECTURE REPORT</b></span></div>
+</section>
+
+<!-- ══════════════════════════════ 01 ══════════════════════════════ -->
+<section class="sheet">
+  <div class="runhead">
+    <svg class="mark" viewBox="0 0 100 100"><path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63 Z" fill="#1EA362"/><path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63 Z" fill="#B03A3E"/></svg>
+    <span>Scope &amp; summary</span>
+  </div>
+  <div class="body">
+    <div class="snum">01</div>
+    <h1 class="stitle">SCOPE &amp; SUMMARY OF THE STACK</h1>
+    <p class="standfirst">What this report covers, and the Board's technical schedule answered
+    in a single table before each item is expanded.</p>
+    <hr class="rule-strong">
+
+    <p>This report describes the technology on which 50pick runs. It is written from the
+    system in service rather than from a design document: every version, count and
+    configuration value in it was read from the running platform or from the source
+    repository on the date on the cover.</p>
+
+    <p>It accompanies the <em class="q">50pick Platform Profile</em> (ref 50P-PP-2026-01), which
+    covers registration, identity verification, funds movement, game mechanics and
+    operational controls. Where that document explains what the platform does, this one
+    explains what it is built on.</p>
+
+    <div class="tcap">TABLE 1 <em>— The Board's technical schedule, answered</em></div>
+    <table>
+      <thead><tr><th style="width:31%">Item</th><th>Answer in service</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Framework</td><td>Next.js <span class="m">16.2.4</span> (App Router) with React <span class="m">19.2.5</span> and Tailwind CSS <span class="m">3.4.19</span>. §02</td></tr>
+        <tr><td class="k">Cloud hosting provider</td><td>Railway for the application, database and cache; Cloudflare for domain routing and encrypted object storage. §03</td></tr>
+        <tr><td class="k">Database technology</td><td>PostgreSQL <span class="m">18.6</span>, managed, accessed exclusively through the Prisma <span class="m">6.19.3</span> ORM. §04</td></tr>
+        <tr><td class="k">Server</td><td>Node.js <span class="m">24 LTS</span> running the Next.js production server, with Redis for coordination between instances. §05</td></tr>
+        <tr><td class="k">Programming languages</td><td>TypeScript <span class="m">5.9.3</span> for the application, SQL for schema and migrations, HTML and CSS for presentation. §06</td></tr>
+        <tr><td class="k">Development</td><td>Continuous delivery on Git and GitHub, with <span class="m">243</span> automated test suites and <span class="m">79</span> mutation harnesses gating every change. §07</td></tr>
+        <tr><td class="k">Real-time messaging</td><td>Server-Sent Events over HTTPS, fanned out across instances by Redis publish/subscribe. §08</td></tr>
+      </tbody>
+    </table>
+
+  </div>
+  <div class="foot"><span>Confidential — regulatory submission</span><span><b>SECTION 01 OF 12</b></span></div>
+</section>
+
+<section class="sheet">
+  <div class="runhead">
+    <svg class="mark" viewBox="0 0 100 100"><path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63 Z" fill="#1EA362"/><path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63 Z" fill="#B03A3E"/></svg>
+    <span>Scope &amp; summary</span>
+  </div>
+  <div class="body">
+    <h2>The shape of the system</h2>
+    <p>50pick is a single application. One codebase renders the player-facing site, serves the
+    administration console and exposes the platform's programmatic endpoints, which means
+    there is one place where a rule about money is written and one place it is enforced.
+    The application is stateless: every instance is interchangeable, and all state lives in
+    the database, the cache or the object store.</p>
+
+    <div class="tcap">TABLE 2 <em>— The platform by size, as at the date of this report</em></div>
+    <table>
+      <thead><tr><th style="width:52%">Measure</th><th>Count</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Application source files</td><td class="n">774</td></tr>
+        <tr><td class="k">Player and console page routes</td><td class="n">94</td></tr>
+        <tr><td class="k">Programmatic endpoints</td><td class="n">49</td></tr>
+        <tr><td class="k">Database tables</td><td class="n">43</td></tr>
+        <tr><td class="k">Enumerated types</td><td class="n">36</td></tr>
+        <tr><td class="k">Versioned schema migrations</td><td class="n">62</td></tr>
+        <tr><td class="k">Interface strings, per language</td><td class="n">1,918 × 3</td></tr>
+        <tr><td class="k">Automated test suites</td><td class="n">243</td></tr>
+        <tr><td class="k">Mutation harnesses</td><td class="n">79</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="foot"><span>Confidential — regulatory submission</span><span><b>SECTION 01 OF 12</b></span></div>
+</section>
+
+<!-- ══════════════════════════════ 02 ══════════════════════════════ -->
+<section class="sheet">
+  <div class="runhead">
+    <svg class="mark" viewBox="0 0 100 100"><path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63 Z" fill="#1EA362"/><path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63 Z" fill="#B03A3E"/></svg>
+    <span>Application framework</span>
+  </div>
+  <div class="body">
+    <div class="snum">02</div>
+    <h1 class="stitle">APPLICATION FRAMEWORK</h1>
+    <p class="standfirst">Next.js 16 on the App Router, with React 19 server components. Pages
+    are assembled on the server, so a player's device is never trusted with a decision.</p>
+    <hr class="rule-strong">
+
+    <div class="tcap">TABLE 3 <em>— Framework components</em></div>
+    <table>
+      <thead><tr><th style="width:31%">Component</th><th>Version</th><th>Role</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Next.js</td><td class="g">16.2.4</td><td>Application framework, routing, server rendering, server actions</td></tr>
+        <tr><td class="k">React</td><td class="g">19.2.5</td><td>Component model, server components</td></tr>
+        <tr><td class="k">Tailwind CSS</td><td class="g">3.4.19</td><td>Styling, bound to a fixed set of design tokens</td></tr>
+        <tr><td class="k">Zod</td><td class="g">3.25.76</td><td>Schema validation at every trust boundary</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Why server rendering matters for a gambling platform</h2>
+    <p>Every page that shows money, and every action that moves it, is produced on the server.
+    A player's browser receives finished output; it is never the authority on a balance, a
+    stake limit, a market's status or a payout. An altered request from a modified browser
+    reaches the same server-side rule as an unaltered one and is refused by it.</p>
+
+    <p>The same principle governs the administration console. A member of staff whose role
+    does not permit an action is prevented from taking it by a check that runs on the server
+    for that specific action, not by hiding the button. A control that is not shown and a
+    control that is not permitted are two different things, and the platform enforces the
+    second.</p>
+
+    <h2>One interface, three languages</h2>
+    <p>The platform is delivered in English, Swahili and Chinese. Interface text is held in a
+    single dictionary of <span class="m">1,918</span> keys per language rather than written
+    into individual screens, and an automated check refuses any change that leaves the three
+    languages out of step. A player's language governs every screen, notification and email
+    they receive, not only the page they chose it on.</p>
+
+    <h2>Design consistency is enforced, not encouraged</h2>
+    <p>Typography, spacing, colour and component usage are held to a closed set of tokens.
+    Automated checks reject a change that introduces a value outside that set, so the interface
+    cannot drift screen by screen into inconsistency as it grows. The same checks confirm that
+    each page declares its width from the shared scale and that no page duplicates a structural
+    landmark, which is what keeps the platform navigable on a screen reader.</p>
+
+    <div class="note">
+      <div class="lbl">Note — §02</div>
+      <p><strong>Mobile first.</strong> The platform is built for the handset first and verified at
+      three widths in all three languages before any interface change is released. Tanzanian
+      players reach 50pick predominantly by phone, and the narrow layout is the one that is
+      designed rather than the one that is inherited.</p>
+    </div>
+  </div>
+  <div class="foot"><span>Confidential — regulatory submission</span><span><b>SECTION 02 OF 12</b></span></div>
+</section>
+
+<!-- ══════════════════════════════ 03 ══════════════════════════════ -->
+<section class="sheet">
+  <div class="runhead">
+    <svg class="mark" viewBox="0 0 100 100"><path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63 Z" fill="#1EA362"/><path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63 Z" fill="#B03A3E"/></svg>
+    <span>Cloud hosting provider</span>
+  </div>
+  <div class="body">
+    <div class="snum">03</div>
+    <h1 class="stitle">CLOUD HOSTING PROVIDER</h1>
+    <p class="standfirst">Railway hosts the application, its database and its cache. Cloudflare
+    provides domain routing and the encrypted object storage that holds identity documents
+    and backups.</p>
+    <hr class="rule-strong">
+
+    <div class="tcap">TABLE 4 <em>— Infrastructure providers and what each carries</em></div>
+    <table>
+      <thead><tr><th style="width:24%">Provider</th><th style="width:26%">Role</th><th>What it holds</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Railway</td><td>Application, database, cache</td><td>The Next.js application instances, the managed PostgreSQL database, and the Redis instance used for coordination</td></tr>
+        <tr><td class="k">Cloudflare</td><td>Domain routing, object storage</td><td>DNS for 50pick.tz; encrypted identity documents and encrypted database backups, held in separate stores under separate credentials</td></tr>
+        <tr><td class="k">Selcom</td><td>Payment aggregator</td><td>Mobile-money collections and disbursements across M-Pesa, Airtel Money, HaloPesa and Mixx by Yas</td></tr>
+        <tr><td class="k">Postmark</td><td>Transactional email</td><td>Account, security and money-movement messages</td></tr>
+        <tr><td class="k">Sentry</td><td>Error monitoring</td><td>Application error and performance telemetry, in a European region</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Transport security</h2>
+    <p>The platform is served over HTTPS only. Strict Transport Security is declared with a
+    two-year maximum age, applied to every subdomain, and submitted to the browser preload
+    list — so a browser that has never visited 50pick.tz will still refuse to make an
+    unencrypted first request. Connections between the application and its database are
+    encrypted with TLS 1.3.</p>
+
+    <div class="kv"><span class="kk">HSTS</span><span class="m-plain">max-age=63072000; includeSubDomains; preload</span></div>
+    <div class="kv"><span class="kk">Database transport</span><span class="m-plain">TLS 1.3</span></div>
+
+    <h2>Deployment</h2>
+    <p>A release is produced from a commit in the source repository, built into an immutable
+    container image and started only after its database migrations have applied successfully.
+    Nothing is edited in place on a running server, and no change reaches production without
+    passing through the automated checks described in Section 07.</p>
+
+    <p>The platform runs as more than one instance. Instances are interchangeable and hold no
+    state of their own, so one can be replaced without a player noticing. Work that must not
+    happen twice is coordinated as described in Section 11.</p>
+
+    <h2>Separation of credentials</h2>
+    <p>Credentials exist only in the deployment environment and never in source code. The
+    document store and the backup store use different credentials, so a key that reached one
+    would not open the other. Application errors are reported to a monitoring service that is
+    configured to receive diagnostic context, not player records.</p>
+  </div>
+  <div class="foot"><span>Confidential — regulatory submission</span><span><b>SECTION 03 OF 12</b></span></div>
+</section>
+
+<!-- ══════════════════════════════ 04 ══════════════════════════════ -->
+<section class="sheet">
+  <div class="runhead">
+    <svg class="mark" viewBox="0 0 100 100"><path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63 Z" fill="#1EA362"/><path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63 Z" fill="#B03A3E"/></svg>
+    <span>Database technology</span>
+  </div>
+  <div class="body">
+    <div class="snum">04</div>
+    <h1 class="stitle">DATABASE TECHNOLOGY</h1>
+    <p class="standfirst">PostgreSQL 18.6, managed and encrypted in transit, reached only
+    through a typed data-access layer. Every movement of money is written twice and
+    reconciled against itself.</p>
+    <hr class="rule-strong">
+
+    <div class="tcap">TABLE 5 <em>— Database configuration in service</em></div>
+    <table>
+      <thead><tr><th style="width:40%">Property</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Engine</td><td class="g">PostgreSQL 18.6</td></tr>
+        <tr><td class="k">Character encoding</td><td class="n">UTF-8</td></tr>
+        <tr><td class="k">Collation</td><td class="n">en_US.utf8</td></tr>
+        <tr><td class="k">Connection transport</td><td class="n">TLS 1.3</td></tr>
+        <tr><td class="k">Access layer</td><td class="g">Prisma ORM 6.19.3</td></tr>
+        <tr><td class="k">Tables</td><td class="n">43</td></tr>
+        <tr><td class="k">Applied migrations</td><td class="n">62</td></tr>
+        <tr><td class="k">Connection pool ceiling</td><td class="n">40</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Schema change control</h2>
+    <p>The schema is versioned. Each change is a numbered, immutable migration held in the
+    source repository, reviewed before merge and applied automatically when the release that
+    needs it starts. Migrations move forward only and none is edited after it has been applied,
+    so the sequence of <span class="m">62</span> is a complete, dated history of how the data
+    model reached its present state.</p>
+
+    <h2>How money is written</h2>
+    <p>A player's balance is a recorded liability, not a running total that is simply adjusted.
+    Every stake, payout, refund, deposit and withdrawal is written twice: once against the
+    wallet balance and once as a balanced set of double-entry ledger postings. The two are
+    reconciled against each other continuously, so a balance that disagrees with its own
+    history is detected rather than carried forward.</p>
+
+    <p>Each of those writes happens inside a single database transaction. A transaction either
+    completes in full or leaves no trace, which is what makes a partial settlement impossible
+    rather than merely unlikely.</p>
+
+    <h2>Preventing two things happening at once</h2>
+    <p>Where two operations could touch the same money at once — two bets on one market, a
+    settlement running while a player cashes out — the platform takes a database-level advisory
+    lock keyed to that wallet or market. The lock is held by the database, so it is honoured
+    across every application instance rather than only within one. Requests arriving while it is
+    held are queued and served in order: load presents as a short wait, never as a lost or
+    duplicated transaction.</p>
+
+    <div class="note">
+      <div class="lbl">Note — §04</div>
+      <p><strong>Verified under load.</strong> The concurrency design has been measured rather than
+      assumed: two hundred simultaneous bets placed on a single market all succeeded, the pool
+      balanced exactly against the sum of stakes, and no money was created or lost.</p>
+    </div>
+  </div>
+  <div class="foot"><span>Confidential — regulatory submission</span><span><b>SECTION 04 OF 12</b></span></div>
+</section>
+
+<!-- ══════════════════════════════ 05 ══════════════════════════════ -->
+<section class="sheet">
+  <div class="runhead">
+    <svg class="mark" viewBox="0 0 100 100"><path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63 Z" fill="#1EA362"/><path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63 Z" fill="#B03A3E"/></svg>
+    <span>Server &amp; runtime</span>
+  </div>
+  <div class="body">
+    <div class="snum">05</div>
+    <h1 class="stitle">SERVER &amp; RUNTIME</h1>
+    <p class="standfirst">Node.js 24 LTS running the Next.js production server, with Redis
+    coordinating the instances behind it.</p>
+    <hr class="rule-strong">
+
+    <div class="tcap">TABLE 6 <em>— Runtime components</em></div>
+    <table>
+      <thead><tr><th style="width:31%">Component</th><th>Version</th><th>Role</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Node.js</td><td class="g">24 LTS</td><td>JavaScript runtime; the same major version is pinned in continuous integration</td></tr>
+        <tr><td class="k">Next.js server</td><td class="g">16.2.4</td><td>Serves every page, endpoint and server action</td></tr>
+        <tr><td class="k">Redis (ioredis)</td><td class="g">5.11.1</td><td>Cross-instance messaging, rate-limit counters, coordination</td></tr>
+        <tr><td class="k">PostgreSQL driver</td><td class="g">pg 8.22.0</td><td>Direct database access for operational tooling</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Long-lived state does not live in the server</h2>
+    <p>Application instances hold nothing that matters. Sessions are carried in signed cookies
+    and validated against the database; counters and locks live in Redis and PostgreSQL. An
+    instance can therefore be replaced, restarted or added at any moment without interrupting
+    a player mid-action, and without any single machine becoming irreplaceable.</p>
+
+    <h2>Scheduled work runs exactly once</h2>
+    <p>Some work is time-driven rather than player-driven: settling a market when its objection
+    window closes, reconciling a payment the network has confirmed, closing an expired round.
+    With several instances running, such a task must not be performed more than once.</p>
+    <p>The platform elects a single instance to hold a time-limited lease. Only the leaseholder
+    performs scheduled money work, and the lease expires by itself, so if that instance stops,
+    another takes over without intervention and without any risk of both acting at once.</p>
+
+    <h2>Capacity</h2>
+    <p>Database connections are pooled with a ceiling of <span class="m">40</span> per instance,
+    and requests that would exceed the ceiling wait in an orderly queue rather than failing.
+    The design decision throughout is that pressure should present as latency, never as an
+    error shown to a player and never as a transaction in an uncertain state.</p>
+
+    <h2>Health reporting</h2>
+    <p>The platform exposes an internal health endpoint that reports the live state of the
+    database, the email provider, the payment subsystem, the cache and which instance currently
+    holds the scheduling lease. A failed dependency is therefore visible immediately rather
+    than being discovered through a player complaint.</p>
+  </div>
+  <div class="foot"><span>Confidential — regulatory submission</span><span><b>SECTION 05 OF 12</b></span></div>
+</section>
+
+<!-- ══════════════════════════════ 06 ══════════════════════════════ -->
+<section class="sheet">
+  <div class="runhead">
+    <svg class="mark" viewBox="0 0 100 100"><path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63 Z" fill="#1EA362"/><path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63 Z" fill="#B03A3E"/></svg>
+    <span>Programming languages</span>
+  </div>
+  <div class="body">
+    <div class="snum">06</div>
+    <h1 class="stitle">PROGRAMMING LANGUAGES</h1>
+    <p class="standfirst">TypeScript throughout the application, SQL for the data model, and
+    HTML and CSS for presentation. One language on both sides of the network.</p>
+    <hr class="rule-strong">
+
+    <div class="tcap">TABLE 7 <em>— Languages in use</em></div>
+    <table>
+      <thead><tr><th style="width:24%">Language</th><th style="width:16%">Version</th><th>Where it is used</th></tr></thead>
+      <tbody>
+        <tr><td class="k">TypeScript</td><td class="g">5.9.3</td><td>The entire application — server logic, money arithmetic, interface, administration console and automated tests</td></tr>
+        <tr><td class="k">SQL</td><td class="n">PostgreSQL 18</td><td>Schema definition, the 62 versioned migrations, and reporting queries</td></tr>
+        <tr><td class="k">HTML &amp; CSS</td><td class="n">—</td><td>Presentation, generated from components rather than authored per page</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Why a typed language was chosen</h2>
+    <p>TypeScript checks the shape of every value before the code runs. A payout calculated in
+    shillings cannot be passed where a percentage is expected; a market that may not have been
+    settled cannot be treated as though it certainly has. These are not warnings — the build
+    fails and the release does not proceed.</p>
+
+    <p>The practical consequence for a gambling platform is that a whole class of arithmetic and
+    null-value defects is eliminated before any code is executed, rather than discovered by a
+    player whose balance is wrong.</p>
+
+    <h2>One definition of the money rules</h2>
+    <p>The arithmetic that decides a payout is written once, in a single module, and imported by
+    both the server that settles a market and the screen that shows a player what they stand to
+    win. It is not possible for the figure quoted before a bet and the figure paid after it to
+    be produced by two different pieces of code, because there is only one.</p>
+
+    <h2>Validation at the boundary</h2>
+    <p>Every value that enters the platform from outside — a form submission, a payment
+    notification, an administrative action — is parsed against an explicit schema before it is
+    used. Anything that does not match the declared shape is rejected at the boundary with a
+    stated reason, rather than being allowed part-way in and failing later somewhere less
+    obvious.</p>
+  </div>
+  <div class="foot"><span>Confidential — regulatory submission</span><span><b>SECTION 06 OF 12</b></span></div>
+</section>
+
+<!-- ══════════════════════════════ 07 ══════════════════════════════ -->
+<section class="sheet">
+  <div class="runhead">
+    <svg class="mark" viewBox="0 0 100 100"><path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63 Z" fill="#1EA362"/><path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63 Z" fill="#B03A3E"/></svg>
+    <span>Development &amp; quality assurance</span>
+  </div>
+  <div class="body">
+    <div class="snum">07</div>
+    <h1 class="stitle">DEVELOPMENT &amp; QUALITY ASSURANCE</h1>
+    <p class="standfirst">Continuous delivery, with every change gated by an automated suite
+    that includes tests written specifically to attack the platform's own safety checks.</p>
+    <hr class="rule-strong">
+
+    <h2>How a change reaches players</h2>
+    <ol class="steps">
+      <li><strong>Written and reviewed.</strong> Every change is made against the source repository
+      on GitHub and reviewed before it is merged.</li>
+      <li><strong>Checked automatically.</strong> Continuous integration runs on every commit: type
+      checking, the test suites, interface-consistency checks, translation parity and file
+      encoding.</li>
+      <li><strong>Verified in a browser.</strong> Browser tests drive the real application the way a
+      player would, at three screen widths and in all three languages.</li>
+      <li><strong>Released.</strong> A passing commit is built into an immutable image, its database
+      migrations applied, and the instance started only if they succeeded.</li>
+      <li><strong>Confirmed live.</strong> The release is exercised against the running platform
+      before the change is considered delivered.</li>
+    </ol>
+
+    <div class="tcap">TABLE 8 <em>— The automated gate</em></div>
+    <table>
+      <thead><tr><th style="width:34%">Check</th><th style="width:14%">Count</th><th>What it protects</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Automated test suites</td><td class="g">243</td><td>Money conservation, settlement arithmetic, fee models, identity rules, access control, responsible-gambling limits</td></tr>
+        <tr><td class="k">Mutation harnesses</td><td class="g">79</td><td>Prove each safety check is capable of failing — see below</td></tr>
+        <tr><td class="k">End-to-end suites</td><td class="n">3</td><td>Complete player journeys against a real database</td></tr>
+        <tr><td class="k">Live verification drivers</td><td class="n">79</td><td>Exercise the running platform in a real browser</td></tr>
+        <tr><td class="k">Operational tooling</td><td class="n">40</td><td>Audited, read-only or single-purpose administrative procedures</td></tr>
+      </tbody>
+    </table>
+
+  </div>
+  <div class="foot"><span>Confidential — regulatory submission</span><span><b>SECTION 07 OF 12</b></span></div>
+</section>
+
+<section class="sheet">
+  <div class="runhead">
+    <svg class="mark" viewBox="0 0 100 100"><path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63 Z" fill="#1EA362"/><path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63 Z" fill="#B03A3E"/></svg>
+    <span>Development &amp; quality assurance</span>
+  </div>
+  <div class="body">
+    <h2>Mutation testing</h2>
+    <p>A test that passes proves only that the system behaves correctly today. It does not prove
+    the test would notice if the system stopped behaving correctly. A check that can no longer
+    fail is indistinguishable from a check that is working, and it is the more dangerous of the
+    two because it is trusted.</p>
+
+    <p>50pick therefore maintains <span class="m">79</span> mutation harnesses. Each one takes a
+    copy of the platform, deliberately introduces a specific defect into it — removes a limit,
+    inverts a comparison, disables a lock — and then requires that the corresponding safety
+    check detects it, by name. A defect that goes undetected is treated as a finding against
+    the check, not against the experiment.</p>
+
+    <p>This is applied to the controls that matter most: that a pool always balances to zero, that
+    a fee is never taken from a refunded stake, that a bet after the close is refused, that a
+    withdrawal above the review threshold cannot be released by one officer, and that a limit a
+    player has set is enforced by the server.</p>
+
+    <div class="note">
+      <div class="lbl">Note — §07</div>
+      <p><strong>Every figure in a released document is re-derived.</strong> Counts, versions and
+      financial figures quoted in operator documentation are read from the running system when
+      the document is produced, rather than carried forward from a previous issue. A number
+      restated from memory is a number that eventually disagrees with the system it describes.</p>
+    </div>
+  </div>
+  <div class="foot"><span>Confidential — regulatory submission</span><span><b>SECTION 07 OF 12</b></span></div>
+</section>
+
+<!-- ══════════════════════════════ 08 ══════════════════════════════ -->
+<section class="sheet">
+  <div class="runhead">
+    <svg class="mark" viewBox="0 0 100 100"><path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63 Z" fill="#1EA362"/><path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63 Z" fill="#B03A3E"/></svg>
+    <span>Real-time messaging</span>
+  </div>
+  <div class="body">
+    <div class="snum">08</div>
+    <h1 class="stitle">REAL-TIME MESSAGING</h1>
+    <p class="standfirst">Server-Sent Events over HTTPS deliver live updates to the player's
+    screen; Redis publish/subscribe carries them between application instances.</p>
+    <hr class="rule-strong">
+
+    <div class="tcap">TABLE 9 <em>— The real-time channel</em></div>
+    <table>
+      <thead><tr><th style="width:34%">Property</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Transport to the browser</td><td>Server-Sent Events over HTTPS</td></tr>
+        <tr><td class="k">Content type</td><td class="n">text/event-stream</td></tr>
+        <tr><td class="k">Authentication</td><td>Session validated before the stream opens; refused without one</td></tr>
+        <tr><td class="k">Keep-alive</td><td class="n">15-second heartbeat</td></tr>
+        <tr><td class="k">Between instances</td><td>Redis publish/subscribe on a dedicated channel</td></tr>
+        <tr><td class="k">Reconnection</td><td>Automatic, by the browser</td></tr>
+      </tbody>
+    </table>
+
+    <h2>What travels over it</h2>
+    <p>Live market and round prices as stakes join either side; the result of a round the moment
+    it settles; a player's own wallet balance when it changes; and notifications addressed to
+    that player. Messages are typed, and the channel accepts only the fixed set of message types
+    the platform defines.</p>
+
+    <p>Messages are scoped. A balance update is delivered to the account it belongs to and to no
+    other; market and round updates are public information and are broadcast. A connected
+    browser cannot subscribe to another player's private stream.</p>
+
+    <h2>Why Server-Sent Events rather than WebSockets</h2>
+    <p>The platform's live data flows in one direction: from the server to the player. Every
+    action that flows the other way — placing a stake, cashing out, requesting a withdrawal —
+    is a separate authenticated request that must be validated, rate-limited and audited in its
+    own right, and would be neither safer nor faster over a persistent socket.</p>
+
+    <p>For one-way delivery, Server-Sent Events are the more robust choice on the networks
+    Tanzanian players actually use. The channel is ordinary HTTPS, so it passes through
+    corporate proxies and mobile network intermediaries that interfere with socket upgrades; the
+    browser reconnects on its own after a signal drop without the platform maintaining
+    reconnection logic; and it inherits the same transport security, the same authentication and
+    the same rate limiting as every other request rather than requiring a parallel set.</p>
+
+  </div>
+  <div class="foot"><span>Confidential — regulatory submission</span><span><b>SECTION 08 OF 12</b></span></div>
+</section>
+
+<section class="sheet">
+  <div class="runhead">
+    <svg class="mark" viewBox="0 0 100 100"><path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63 Z" fill="#1EA362"/><path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63 Z" fill="#B03A3E"/></svg>
+    <span>Real-time messaging</span>
+  </div>
+  <div class="body">
+    <h2>Delivery across instances</h2>
+    <p>A player's browser is connected to one application instance, but the event that concerns
+    them may be produced by another — a settlement, for example, is performed by whichever
+    instance holds the scheduling lease. Each instance therefore publishes its events to a Redis
+    channel, and every instance subscribes to it and forwards what is relevant to the players
+    connected to it.</p>
+
+    <p>The design accounts for the fact that a publisher also receives its own message: an event
+    is emitted locally once and relayed once, and a message arriving back from the channel is
+    not republished. A settled round therefore reaches every connected player exactly once,
+    whichever instance settled it.</p>
+
+    <div class="note">
+      <div class="lbl">Note — §08</div>
+      <p><strong>The channel is a convenience, never an authority.</strong> A live update tells a
+      player's screen that something has changed; it never decides what changed. Balances,
+      results and payouts are read from the database and settled by the server, so a player who
+      loses connectivity sees the same outcome on reload as one who stayed connected throughout.</p>
+    </div>
+  </div>
+  <div class="foot"><span>Confidential — regulatory submission</span><span><b>SECTION 08 OF 12</b></span></div>
+</section>
+
+<!-- ══════════════════════════════ 09 ══════════════════════════════ -->
+<section class="sheet">
+  <div class="runhead">
+    <svg class="mark" viewBox="0 0 100 100"><path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63 Z" fill="#1EA362"/><path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63 Z" fill="#B03A3E"/></svg>
+    <span>Security architecture</span>
+  </div>
+  <div class="body">
+    <div class="snum">09</div>
+    <h1 class="stitle">SECURITY ARCHITECTURE</h1>
+    <p class="standfirst">Independent layers, each addressing a different way an account or a
+    transaction could be misused.</p>
+    <hr class="rule-strong">
+
+    <div class="tcap">TABLE 10 <em>— Technical security controls</em></div>
+    <table>
+      <thead><tr><th style="width:31%">Control</th><th>Implementation</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Password storage</td><td>scrypt with a unique per-account salt. The password itself is never stored and the stored value cannot be reversed.</td></tr>
+        <tr><td class="k">Session integrity</td><td>Cookies signed with HMAC-SHA-256, marked HTTP-only and rotated on each sign-in. An altered cookie fails verification and is refused.</td></tr>
+        <tr><td class="k">One-time codes</td><td>Stored hashed with a server-side pepper; never held in readable form.</td></tr>
+        <tr><td class="k">Rate limiting</td><td>Token-bucket throttling applied per account and per action across sign-in, one-time codes and other sensitive operations.</td></tr>
+        <tr><td class="k">Timing safety</td><td>Sign-in performs equivalent work whether or not an account exists, so response time does not reveal which phone numbers are registered.</td></tr>
+        <tr><td class="k">Two-factor authentication</td><td>One-time-code verification available to players and to staff using the administration console.</td></tr>
+        <tr><td class="k">Role-based access</td><td>Staff permissions are granted per role and per domain and are checked on the server for each action.</td></tr>
+        <tr><td class="k">Audit chain</td><td>Every privileged action is appended to a record in which each entry is cryptographically linked to the one before it, so a later edit or deletion is detectable.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Browser-level protections</h2>
+    <p>The platform sets security headers on every response. A content security policy constrains
+    where the page may load resources from and where it may submit to; framing is refused
+    outright, which prevents the site being embedded in a deceptive page; content-type sniffing
+    is disabled; referrer information is limited; and device capabilities the platform does not
+    use — microphone, geolocation, payment handlers, USB — are switched off at the browser level.</p>
+
+    <div class="kv"><span class="kk">Framing</span><span class="m-plain">frame-ancestors 'none' · X-Frame-Options: DENY</span></div>
+    <div class="kv"><span class="kk">Form submission</span><span class="m-plain">form-action 'self' · base-uri 'self'</span></div>
+    <div class="kv"><span class="kk">Content sniffing</span><span class="m-plain">X-Content-Type-Options: nosniff</span></div>
+    <div class="kv"><span class="kk">Referrer</span><span class="m-plain">strict-origin-when-cross-origin</span></div>
+    <div class="kv"><span class="kk">Transport</span><span class="m-plain">upgrade-insecure-requests</span></div>
+
+  </div>
+  <div class="foot"><span>Confidential — regulatory submission</span><span><b>SECTION 09 OF 12</b></span></div>
+</section>
+
+<section class="sheet">
+  <div class="runhead">
+    <svg class="mark" viewBox="0 0 100 100"><path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63 Z" fill="#1EA362"/><path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63 Z" fill="#B03A3E"/></svg>
+    <span>Security architecture</span>
+  </div>
+  <div class="body">
+    <h2>Separation of duties</h2>
+    <p>The platform's most consequential actions are structured so that one person acting alone
+    is not sufficient. A withdrawal at or above the review threshold requires two different
+    compliance officers to approve it before any payment instruction is created, and a stricter
+    two-officer market-resolution mode is available as a configurable option. Both are enforced
+    by the server, not by procedure.</p>
+
+    <h2>Secrets</h2>
+    <p>Credentials and signing keys exist only in the deployment environment, never in source
+    code or in a build artefact, and are separated by purpose so that a single exposed key does
+    not open an unrelated system.</p>
+  </div>
+  <div class="foot"><span>Confidential — regulatory submission</span><span><b>SECTION 09 OF 12</b></span></div>
+</section>
+
+<!-- ══════════════════════════════ 10 ══════════════════════════════ -->
+<section class="sheet">
+  <div class="runhead">
+    <svg class="mark" viewBox="0 0 100 100"><path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63 Z" fill="#1EA362"/><path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63 Z" fill="#B03A3E"/></svg>
+    <span>Data residency &amp; retention</span>
+  </div>
+  <div class="body">
+    <div class="snum">10</div>
+    <h1 class="stitle">DATA RESIDENCY, PROTECTION &amp; RETENTION</h1>
+    <p class="standfirst">Where data is held, how it is protected, and how long each kind of
+    record is kept.</p>
+    <hr class="rule-strong">
+
+    <h2>Where data is held</h2>
+    <p>The application and its database run in a United States region. Identity documents and
+    database backups are held in a Western European region, in two separate stores under
+    separate credentials. Both are encrypted at rest.</p>
+
+    <h2>Identity documents</h2>
+    <p>Document images are stored as encrypted objects and are never served directly. A
+    compliance officer viewing one receives a signed link valid for a short, fixed period, and
+    every view or download is written to the permanent record with the officer's identity and a
+    timestamp.</p>
+
+    <div class="tcap">TABLE 11 <em>— Retention periods</em></div>
+    <table>
+      <thead><tr><th style="width:52%">Record</th><th>Retained</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Transactions, ledger entries, bet history</td><td class="n">7 years</td></tr>
+        <tr><td class="k">Identity documents and decisions</td><td class="n">7 years from account closure</td></tr>
+        <tr><td class="k">The permanent action log</td><td class="n">7 years, not editable or deletable early</td></tr>
+        <tr><td class="k">In-app notifications</td><td class="n">180 days, then purged automatically</td></tr>
+        <tr><td class="k">Marketing-consent records</td><td class="n">2 years from last activity</td></tr>
+      </tbody>
+    </table>
+
+    <h2>A player's own data</h2>
+    <p>A player can export a complete copy of their own data from their profile at any time.
+    Requests to correct or erase personal data are submitted the same way and reach a compliance
+    officer within the statutory period.</p>
+
+    <p>Erasure is handled so that it does not defeat a control that exists to protect other
+    players. Because the identity-document number is what prevents one person opening several
+    accounts, a closed account's number is irreversibly transformed into a value that can still
+    be compared against a future submission but can no longer be read. The document images
+    themselves are deleted outright.</p>
+
+    <div class="note">
+      <div class="lbl">Note — §10</div>
+      <p><strong>Retention is enforced by mechanism, not by policy alone.</strong> Records subject to
+      the seven-year requirement are held in structures that no automated process is permitted to
+      delete, and the permanent action log is append-only by construction rather than by
+      convention.</p>
+    </div>
+  </div>
+  <div class="foot"><span>Confidential — regulatory submission</span><span><b>SECTION 10 OF 12</b></span></div>
+</section>
+
+<!-- ══════════════════════════════ 11 ══════════════════════════════ -->
+<section class="sheet">
+  <div class="runhead">
+    <svg class="mark" viewBox="0 0 100 100"><path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63 Z" fill="#1EA362"/><path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63 Z" fill="#B03A3E"/></svg>
+    <span>Resilience &amp; continuity</span>
+  </div>
+  <div class="body">
+    <div class="snum">11</div>
+    <h1 class="stitle">RESILIENCE, BACKUP &amp; CONTINUITY</h1>
+    <p class="standfirst">The platform is designed to lose a component without losing a
+    transaction, and every backup is proven by restoring it.</p>
+    <hr class="rule-strong">
+
+    <h2>Backups</h2>
+    <p>The database is backed up nightly on an automated schedule, encrypted, and shipped to
+    storage separate from the live system. Each backup is then restored into a disposable
+    database and checked against the original before it is trusted. A backup that has never been
+    restored is an assumption; one that has been restored and verified is a fact, and the
+    platform treats the distinction as material.</p>
+
+    <p>The restore procedure has been rehearsed end to end against a full production-scale copy,
+    so recovery is a practised operation rather than a first attempt made under pressure.</p>
+
+    <div class="tcap">TABLE 12 <em>— Continuity measures</em></div>
+    <table>
+      <thead><tr><th style="width:34%">Measure</th><th>How it works</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Multiple instances</td><td>The application runs as more than one interchangeable instance; any one can be replaced without interrupting play.</td></tr>
+        <tr><td class="k">Single execution of scheduled work</td><td>Time-driven money work is claimed by one instance under a self-expiring lease, so it runs exactly once and resumes automatically if that instance stops.</td></tr>
+        <tr><td class="k">Forward-only migrations</td><td>An instance starts only after its schema migrations have applied successfully, so a release can never serve traffic against a schema it does not expect.</td></tr>
+        <tr><td class="k">Nightly verified backup</td><td>Encrypted, stored separately, and restore-checked before being trusted.</td></tr>
+        <tr><td class="k">Payment-route health</td><td>A route that cannot be reached is closed to players in their own language rather than accepting a request the platform cannot fulfil.</td></tr>
+        <tr><td class="k">Uncertain payouts held open</td><td>A payout the network can neither confirm nor deny is never assumed failed; the position is held rather than risking a double payment.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Degrading safely</h2>
+    <p>Where a dependency is unavailable, the platform's response is to refuse clearly rather
+    than to proceed uncertainly. A withdrawal cannot be requested against a payment route that
+    is down. A market cannot be published against a source that has not been approved. A
+    settlement that cannot be completed in full is not completed at all.</p>
+
+    <p>The principle behind each of these is the same: in a system holding players' money, an
+    honest refusal is always preferable to an action whose outcome is unknown.</p>
+  </div>
+  <div class="foot"><span>Confidential — regulatory submission</span><span><b>SECTION 11 OF 12</b></span></div>
+</section>
+
+<!-- ══════════════════════════════ 12 ══════════════════════════════ -->
+<section class="sheet">
+  <div class="runhead">
+    <svg class="mark" viewBox="0 0 100 100"><path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63 Z" fill="#1EA362"/><path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63 Z" fill="#B03A3E"/></svg>
+    <span>Observability &amp; monitoring</span>
+  </div>
+  <div class="body">
+    <div class="snum">12</div>
+    <h1 class="stitle">OBSERVABILITY &amp; MONITORING</h1>
+    <p class="standfirst">Faults are surfaced by instrumentation rather than by players
+    reporting them.</p>
+    <hr class="rule-strong">
+
+    <div class="tcap">TABLE 13 <em>— Monitoring surfaces</em></div>
+    <table>
+      <thead><tr><th style="width:31%">Surface</th><th>What it reports</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Error monitoring</td><td>Application errors and performance telemetry, captured by Sentry and tagged by environment. Hosted in a European region.</td></tr>
+        <tr><td class="k">Internal health endpoint</td><td>Live state of the database, cache, email provider and payment subsystem, plus which instance holds the scheduling lease.</td></tr>
+        <tr><td class="k">Audit chain</td><td>A durable, tamper-evident record of every privileged action, which doubles as the forensic trail for any later investigation.</td></tr>
+        <tr><td class="k">Operator alerts</td><td>Administrators are notified automatically when a monitored threshold is approached and again when it is reached.</td></tr>
+        <tr><td class="k">Payment reconciliation</td><td>Deposits and withdrawals are re-checked against the payment network on a repeating cycle, so a payment left in an uncertain state is resolved rather than stranded.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Diagnosing a failure after the fact</h2>
+    <p>When a deposit fails, the payment network's own reason code and message are recorded in
+    the audit payload rather than discarded. This matters because a failure that leaves no
+    explanation cannot be investigated later; the record survives log rotation and can be
+    produced for a specific player and a specific transaction on request.</p>
+
+    <h2>What monitoring does not receive</h2>
+    <p>Error telemetry carries the technical context needed to diagnose a fault. It is not a
+    channel for player records, identity documents or financial history, all of which remain
+    within the platform's own database and object storage under the controls described in
+    Section 10.</p>
+
+    <div class="note">
+      <div class="lbl">Note — §12</div>
+      <p><strong>Reconciliation is continuous, not periodic.</strong> The double-entry ledger and the
+      wallet balances are checked against each other on a running basis rather than in an
+      end-of-day batch, so a discrepancy is detected close to the moment it would have arisen
+      rather than after a day of activity has been layered on top of it.</p>
+    </div>
+  </div>
+  <div class="foot"><span>Confidential — regulatory submission</span><span><b>SECTION 12 OF 12</b></span></div>
+</section>
+
+<!-- ══════════════════════════════ APPENDIX A ══════════════════════════════ -->
+<section class="sheet">
+  <div class="runhead">
+    <svg class="mark" viewBox="0 0 100 100"><path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63 Z" fill="#1EA362"/><path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63 Z" fill="#B03A3E"/></svg>
+    <span>Appendix A</span>
+  </div>
+  <div class="body">
+    <div class="snum">A</div>
+    <h1 class="stitle">COMPONENT VERSION REGISTER</h1>
+    <p class="standfirst">The exact version of every principal component in service on the date
+    of this report, read from the running platform and from the deployed dependency tree.</p>
+    <hr class="rule-strong">
+
+    <div class="tcap">TABLE 14 <em>— Principal components</em></div>
+    <table>
+      <thead><tr><th style="width:34%">Component</th><th style="width:20%">Version</th><th>Layer</th></tr></thead>
+      <tbody>
+        <tr><td class="k">PostgreSQL</td><td class="g">18.6</td><td>Database engine</td></tr>
+        <tr><td class="k">Node.js</td><td class="g">24 LTS</td><td>Server runtime</td></tr>
+        <tr><td class="k">Next.js</td><td class="g">16.2.4</td><td>Application framework</td></tr>
+        <tr><td class="k">React</td><td class="g">19.2.5</td><td>Component model</td></tr>
+        <tr><td class="k">TypeScript</td><td class="g">5.9.3</td><td>Language</td></tr>
+        <tr><td class="k">Prisma ORM</td><td class="g">6.19.3</td><td>Data access</td></tr>
+        <tr><td class="k">Tailwind CSS</td><td class="g">3.4.19</td><td>Styling</td></tr>
+        <tr><td class="k">ioredis</td><td class="g">5.11.1</td><td>Cache and messaging client</td></tr>
+        <tr><td class="k">node-postgres</td><td class="g">8.22.0</td><td>Database driver</td></tr>
+        <tr><td class="k">Zod</td><td class="g">3.25.76</td><td>Input validation</td></tr>
+        <tr><td class="k">AWS S3 client</td><td class="g">3.1089.0</td><td>Object storage access</td></tr>
+        <tr><td class="k">Postmark client</td><td class="g">4.0.7</td><td>Transactional email</td></tr>
+        <tr><td class="k">Sentry</td><td class="g">10.69.0</td><td>Error monitoring</td></tr>
+        <tr><td class="k">Playwright</td><td class="g">1.59.1</td><td>Browser-based verification</td></tr>
+      </tbody>
+    </table>
+
+    <div class="note">
+      <div class="lbl">Note — Appendix A</div>
+      <p><strong>This register is version-controlled with the platform.</strong> Dependency versions are
+      pinned in the source repository and resolved identically on every build, so the components
+      listed above are the components that run. The register is reissued whenever a principal
+      component changes.</p>
+    </div>
+  </div>
+  <div class="foot"><span>Confidential — regulatory submission</span><span><b>APPENDIX A</b></span></div>
+</section>
+
+<!-- ══════════════════════════════ APPENDIX B ══════════════════════════════ -->
+<section class="sheet">
+  <div class="runhead">
+    <svg class="mark" viewBox="0 0 100 100"><path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63 Z" fill="#1EA362"/><path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63 Z" fill="#B03A3E"/></svg>
+    <span>Appendix B</span>
+  </div>
+  <div class="body">
+    <div class="snum">B</div>
+    <h1 class="stitle">GLOSSARY OF TECHNICAL TERMS</h1>
+    <p class="standfirst">Definitions of the technical terms used in this report.</p>
+    <hr class="rule-strong">
+
+    <div class="tcap">TABLE 15 <em>— Glossary</em></div>
+    <table>
+      <tbody>
+        <tr><td class="k">Framework</td><td>The foundation an application is built on, providing routing, rendering and structure so that each feature is not built from first principles.</td></tr>
+        <tr><td class="k">Server rendering</td><td>Producing a page's finished content on the server before sending it, rather than assembling it on the player's device.</td></tr>
+        <tr><td class="k">ORM</td><td>Object-relational mapper. A typed layer between application code and the database that removes hand-written query strings and the errors they carry.</td></tr>
+        <tr><td class="k">Migration</td><td>A numbered, immutable change to the database structure, applied in sequence and recorded permanently.</td></tr>
+        <tr><td class="k">Transaction</td><td>A set of database changes that either all succeed or all fail, leaving no partial state.</td></tr>
+        <tr><td class="k">Advisory lock</td><td>A lock held by the database on a named resource, honoured by every application instance, so two operations cannot act on the same money at once.</td></tr>
+        <tr><td class="k">Double-entry ledger</td><td>An accounting record in which every movement is written as balanced entries, so the books can be proven to reconcile.</td></tr>
+        <tr><td class="k">Server-Sent Events</td><td>A standard HTTP mechanism for a server to push a continuous stream of updates to a browser, with automatic reconnection.</td></tr>
+        <tr><td class="k">Publish/subscribe</td><td>A messaging pattern in which one component publishes an event and every interested component receives it, used here to carry events between instances.</td></tr>
+        <tr><td class="k">scrypt</td><td>A password-hashing function designed to be expensive to attack in bulk. Recommended by OWASP for password storage.</td></tr>
+        <tr><td class="k">HMAC</td><td>A keyed cryptographic signature. Used here to sign session cookies and to link each audit entry to the one before it.</td></tr>
+        <tr><td class="k">Continuous integration</td><td>Automated checks that run on every change before it can be merged or released.</td></tr>
+        <tr><td class="k">Mutation testing</td><td>Deliberately introducing a defect to confirm that the test intended to catch it actually does.</td></tr>
+        <tr><td class="k">Lease</td><td>A time-limited claim held by one instance, expiring by itself, used to guarantee scheduled work runs exactly once.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="note">
+      <div class="lbl">Document control</div>
+      <p><strong>50pick Technical Architecture Report, version 1.0, reference 50P-TR-2026-01,
+      issued 24 August 2026.</strong> Prepared by Ocean Entertainment Limited for the Gaming Board
+      of Tanzania. This report is reissued whenever a principal component or an architectural
+      control it describes materially changes; the version and reference on the cover identify
+      this issue.</p>
+    </div>
+  </div>
+  <div class="foot"><span>Confidential — regulatory submission</span><span><b>APPENDIX B</b></span></div>
+</section>
+
+</body>
+</html>

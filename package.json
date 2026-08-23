@@ -282,6 +282,7 @@
     "test:updown-symbols": "tsx scripts/updown-symbol-catalogue.test.mts",
     "runbook:updown": "node docs/runbooks/mkpdf.mjs updown-runbook.html 50pick-updown-runbook.pdf",
     "runbook:markets": "node docs/runbooks/mkpdf.mjs markets-runbook.html 50pick-markets-runbook.pdf",
+    "report:technical": "node docs/reports/mkreport.mjs technical-architecture-report.html 50pick-technical-architecture-report.pdf",
     "test:proof-privacy": "tsx scripts/proof-evidence-privacy.test.mts",
     "red:aipoll-reap": "node scripts/aipoll-reap-red.mjs",
     "red:aipoll-publish": "node scripts/aipoll-publish-red.mjs",
