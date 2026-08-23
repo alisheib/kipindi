@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>50pick · AI Spend Cycles — Admin Guide</title>
+<style>
+  /* Self-contained: no web fonts, no network. A PDF must render identically offline. */
+  @page { size: A4; margin: 14mm 13mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", Arial, Helvetica, sans-serif;
+    font-size: 9.8pt; line-height: 1.42; color: #16233d; margin: 0;
+  }
+  h1 { font-size: 21pt; margin: 0 0 1mm; letter-spacing: -0.4pt; }
+  h2 {
+    font-size: 12.5pt; margin: 6mm 0 2.2mm; padding-bottom: 1.2mm;
+    border-bottom: 1.1pt solid #1e3a8a; color: #1e3a8a; page-break-after: avoid;
+  }
+  h3 { font-size: 10.2pt; margin: 4mm 0 1.2mm; page-break-after: avoid; color: #1e3a8a; }
+  p { margin: 0 0 1.9mm; }
+  ul, ol { margin: 0 0 2.2mm; padding-left: 5.2mm; }
+  li { margin-bottom: 0.9mm; }
+  .sub { color: #5a6577; font-size: 9.4pt; margin-bottom: 4mm; }
+  code {
+    font-family: "Consolas", "Courier New", monospace; font-size: 8.7pt;
+    background: #eef2fb; padding: 0.2mm 1mm; border-radius: 1mm;
+  }
+  table { width: 100%; border-collapse: collapse; margin: 0 0 3mm; page-break-inside: avoid; }
+  th, td { text-align: left; vertical-align: top; padding: 1.5mm 2mm; border-bottom: 0.5pt solid #ccd5e6; }
+  th { background: #eef2fb; font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.3pt; color: #1e3a8a; }
+  td { font-size: 9.1pt; }
+  td.n, th.n { text-align: right; font-family: "Consolas", monospace; }
+  .box {
+    border: 0.7pt solid #1e3a8a; background: #f5f8ff;
+    padding: 2.3mm 2.8mm; margin: 0 0 3mm; border-radius: 1.2mm; page-break-inside: avoid;
+  }
+  .warn { border-color: #a2600a; background: #fdf6e9; }
+  .stop { border-color: #9b1c2e; background: #fdf0f1; }
+  .good { border-color: #146c43; background: #eef8f2; }
+  .box p:last-child { margin-bottom: 0; }
+  .box b.lead { display: block; margin-bottom: 0.8mm; }
+  figure { margin: 0 0 3mm; page-break-inside: avoid; }
+  figure img { width: 100%; display: block; border: 0.5pt solid #b9c4da; border-radius: 1.2mm; }
+  figcaption { font-size: 8.4pt; color: #5a6577; margin-top: 1.1mm; line-height: 1.35; }
+  figcaption b { color: #1e3a8a; }
+  .flow { display: flex; gap: 1.6mm; margin: 0 0 3mm; page-break-inside: avoid; }
+  .flow div {
+    flex: 1; border: 0.5pt solid #ccd5e6; border-radius: 1.2mm;
+    padding: 2mm; font-size: 8.5pt; background: #fbfcff;
+  }
+  .flow b { display: block; color: #1e3a8a; font-size: 8.8pt; margin-bottom: 0.6mm; }
+  footer { margin-top: 5mm; padding-top: 1.6mm; border-top: 0.5pt solid #ccd5e6; font-size: 8.4pt; color: #6b7688; }
+  .pb { page-break-before: always; }
+  .steps { counter-reset: r; }
+  .steps > div {
+    position: relative; padding: 1.9mm 2.6mm 1.9mm 8.4mm; margin-bottom: 1.6mm;
+    border: 0.5pt solid #ccd5e6; border-radius: 1.2mm; background: #fbfcff;
+    page-break-inside: avoid; font-size: 9.2pt;
+  }
+  .steps > div::before {
+    counter-increment: r; content: counter(r);
+    position: absolute; left: 2.4mm; top: 1.9mm;
+    font-family: "Consolas", monospace; font-weight: bold; font-size: 10.5pt; color: #1e3a8a;
+  }
+  .steps em { color: #5a6577; font-style: normal; display: block; margin-top: 0.5mm; font-size: 8.6pt; }
+</style>
+</head>
+<body>
+
+<h1>AI Spend Cycles — Admin Guide</h1>
+<p class="sub">For 50pick staff who run the platform. No technical knowledge required.
+Everything here lives on one screen: <b>Admin → AI usage</b>.</p>
+
+<h2 style="margin-top:2mm">What a cycle is</h2>
+
+<p>50pick pays Anthropic for every AI call it makes — writing polls, resolving markets, answering
+the help chatbot. A <b>cycle</b> is simply a fixed amount of that spend, so it can be counted.</p>
+
+<div class="box">
+  <b class="lead">One cycle = $100 of Claude spend.</b>
+  <p>Top up $1,000 and that is <b>10 cycles</b>. Top up $10,000 and that is <b>100 cycles</b>.
+  The size is a setting — you can change it — but $100 is what 50pick uses today.</p>
+</div>
+
+<p>A cycle is <b>an amount, not a length of time</b>. It does not end on a Monday or at month end.
+It ends when $100 has been spent — which might take two weeks or two months, depending on how
+busy the platform is. <b>How long each one lasted is recorded</b>, so you can see that pattern.</p>
+
+<div class="flow">
+  <div><b>Cycles are counted</b>Cycle 7 is always cycle 7. The numbering never resets, so
+  &ldquo;cycles this year&rdquo; is a figure you can compare year to year.</div>
+  <div><b>Cycles are divisible</b>Because they are countable, they can be divided by the markets
+  resolved — which is how the platform answers &ldquo;what does one poll cost us?&rdquo;</div>
+  <div><b>Cycles are a checkpoint</b>When one ends, the AI stops and waits for you. That is
+  deliberate: it is the moment to look at the spend before more is committed.</div>
+</div>
+
+<h2>The main panel</h2>
+
+<figure>
+  <img src="guide-img/cyc-running.png" alt="The Spend cycles panel">
+  <figcaption><b>Admin → AI usage → Spend cycles.</b> The four figures across the top are the whole
+  story: how many cycles have finished, how full the current one is, how many your Anthropic credit
+  has paid for, and the projected rate per year.</figcaption>
+</figure>
+
+<table>
+  <tr><th style="width:34mm">Figure</th><th>What it means</th></tr>
+  <tr><td><b>Cycles closed</b></td><td>How many complete $100 cycles the platform has spent since it
+  started. An exact count — not an estimate.</td></tr>
+  <tr><td><b>This cycle</b></td><td>How much of the current $100 has gone. The bar underneath shows
+  the same thing. At 100% it closes and the AI pauses.</td></tr>
+  <tr><td><b>Funded cycles</b></td><td>How many cycles your Anthropic credit limit will pay for.
+  <b>If this is below 1, your credit limit is smaller than one cycle</b> — see <b>Before you press Start</b>.</td></tr>
+  <tr><td><b>Cycles per year</b></td><td>The projected annual rate. Withheld until there is enough
+  history — if it says &ldquo;not enough data&rdquo;, that is the platform refusing to guess.</td></tr>
+</table>
+
+<div class="box good">
+  <b class="lead">Reconciliation — the line at the bottom of the panel.</b>
+  <p>It compares the cycle ledger against the record of individual API calls. It should say
+  <b>&ldquo;They agree exactly.&rdquo;</b> If it ever reports a difference, the figures on this page
+  should not be used for pricing until someone has looked into it.</p>
+</div>
+
+<h2 class="pb">When a cycle ends — the one thing you must act on</h2>
+
+<p>When the current cycle reaches $100 it closes, and <b>AI poll posting and AI market resolving
+stop</b>. A red bar appears at the top of the page:</p>
+
+<figure>
+  <img src="guide-img/cyc-paused.png" alt="The AI paused bar">
+  <figcaption><b>This is the bar to watch for.</b> Nothing is broken and nothing is lost — markets
+  simply wait. Press <b>Start cycle 4</b> to continue.</figcaption>
+</figure>
+
+<figure>
+  <img src="guide-img/cyc-start-dialog.png" alt="The start cycle confirmation">
+  <figcaption>You are asked to confirm, because starting a cycle commits another $100 of spend.
+  The platform records <b>who</b> started it.</figcaption>
+</figure>
+
+<div class="box warn">
+  <b class="lead">Before you press Start, check two things.</b>
+  <p><b>1 · Is there still credit at Anthropic?</b> A cycle is 50pick's own checkpoint. It does not
+  know your Anthropic balance. If the balance is empty, starting a cycle will not help — top up
+  first, then use <b>New top-up window</b> in the Credit budget panel below.</p>
+  <p><b>2 · Does the spend look normal?</b> Compare how long this cycle lasted against the ones
+  before it in <b>Every cycle</b>. A cycle that finished far quicker than usual is worth a question
+  before you commit the next $100.</p>
+</div>
+
+<h3>Closing a cycle early</h3>
+<p>The <b>Close cycle early</b> button ends the current cycle before it reaches $100 — useful for
+closing the books at the end of a month. <b>It also pauses the AI</b>, exactly as a natural ending
+does, and you then start the next one as normal.</p>
+
+<div class="box">
+  <p>⚠️ Closing early records a short cycle in the ledger. That is fine and it is honest — the
+  yearly projection is worked out from <b>spend</b>, not from how many cycles are in the list, so
+  closing early does not distort it.</p>
+</div>
+
+<h2>The cycle history</h2>
+
+<figure>
+  <img src="guide-img/cyc-ledger.png" alt="The Every cycle ledger">
+  <figcaption><b>Every cycle, oldest at the bottom.</b> <b>Lasted</b> is the figure to watch — it
+  tells you how quickly the platform is spending. <b>Size</b> is the amount that cycle was opened
+  with, so changing the setting later never rewrites history.</figcaption>
+</figure>
+
+<p>In the example above, cycle 1 lasted 24 days and cycle 2 lasted 25 days. That is the platform's
+real burn rate: roughly <b>$100 every three and a half weeks</b>, so a $1,000 top-up would last
+about eight months.</p>
+
+<figure>
+  <img src="guide-img/cyc-year.png" alt="Cycles by year">
+  <figcaption><b>Cycles by year.</b> The yearly total. A year still running is marked
+  <b>PART YEAR</b>, so a partial total is never mistaken for a full one.</figcaption>
+</figure>
+
+<h2 class="pb">What a market costs us</h2>
+
+<figure>
+  <img src="guide-img/cyc-cost.png" alt="Cost per resolution">
+  <figcaption><b>Cost per resolution.</b> Each product line's AI spend divided by the markets that
+  line actually settled.</figcaption>
+</figure>
+
+<table>
+  <tr><th style="width:34mm">Column</th><th>What it means</th></tr>
+  <tr><td><b>Settled</b></td><td>Markets that finished <b>and paid out</b>. A market that has a
+  verdict but is still inside its objection window is not counted — it has not been delivered yet.</td></tr>
+  <tr><td><b>Cost each</b></td><td>The AI cost of one settled market on that line.</td></tr>
+  <tr><td><b>Suggested</b></td><td>That cost plus the margin setting. <b>This is a cost floor for
+  comparison, not a price 50pick charges.</b></td></tr>
+  <tr><td><b>Unattributed</b></td><td>Spend on that line that could not be tied to one specific
+  market — mostly writing polls that were never published. Shown rather than hidden, because
+  leaving it out would make the product look cheaper than it is.</td></tr>
+</table>
+
+<div class="box stop">
+  <b class="lead">⛔ 50pick charges a pool commission, not a flat fee.</b>
+  <p>TZS 1,000 is the <b>minimum stake</b> a player can place. It is not a price we charge per
+  market. The &ldquo;Suggested&rdquo; column is there to be compared against the commission a
+  market actually earns — never to be quoted to anyone as a price.</p>
+</div>
+
+<div class="box warn">
+  <b class="lead">Two things this table is not.</b>
+  <p><b>The Up &amp; Down line is history.</b> Up &amp; Down stopped using AI to read prices on
+  3 August 2026 — it uses a price feed now. Its figure describes a period that has ended.</p>
+  <p><b>Shillings need a rate.</b> Every TZS figure shows &ldquo;—&rdquo; until someone enters the
+  USD→TZS rate and the date it was taken. There is deliberately no default: a converted figure with
+  no rate behind it is a number nobody can check.</p>
+</div>
+
+<h2>Settings</h2>
+
+<figure>
+  <img src="guide-img/cyc-settings.png" alt="Cycle settings">
+  <figcaption><b>Admin → AI usage → Cycle settings.</b> Changes are confirmed before they save, and
+  every change records who made it and what the value was before.</figcaption>
+</figure>
+
+<table>
+  <tr><th style="width:38mm">Setting</th><th>What it does</th></tr>
+  <tr><td><b>Cycle size</b></td><td>The amount one cycle represents. <b>Not retroactive</b> —
+  cycles already closed keep the size they were opened with, so past counts never move. The new
+  size applies to the next cycle opened.</td></tr>
+  <tr><td><b>Target margin</b></td><td>Added to the AI cost to produce the &ldquo;Suggested&rdquo;
+  column. 100% means the suggested figure is twice the cost.</td></tr>
+  <tr><td><b>Min days before projecting</b></td><td>How much history is needed before a yearly
+  figure is shown at all. Below this, the platform says so instead of guessing.</td></tr>
+  <tr><td><b>USD → TZS rate + date</b></td><td>Needed before any shilling figure appears. The rate
+  and its date are printed next to every converted figure, and a rate over 30 days old is flagged.</td></tr>
+  <tr><td><b>When a cycle ends</b></td><td>Leave this on <b>Pause and wait</b>. Turning it off means
+  the AI never stops — the checkpoint disappears.</td></tr>
+</table>
+
+<h2 class="pb">Cycles vs. top-up windows — two different things</h2>
+
+<p>These are easy to confuse and they are not the same. Both appear on the AI usage page.</p>
+
+<table>
+  <tr><th style="width:38mm"></th><th>Spend cycle</th><th>Top-up window</th></tr>
+  <tr><td><b>What it is</b></td><td>An <b>amount</b> — $100 of spend</td><td>A <b>period</b> — since you
+  last bought Anthropic credit</td></tr>
+  <tr><td><b>Where</b></td><td>The <b>Spend cycles</b> panel</td><td>The <b>Credit budget</b> panel</td></tr>
+  <tr><td><b>What ends it</b></td><td>Spending $100</td><td>You, after topping up</td></tr>
+  <tr><td><b>Numbering</b></td><td>Never resets — cycle 7 stays cycle 7</td><td>Has no number; it just
+  restarts</td></tr>
+  <tr><td><b>The button</b></td><td><b>Start cycle N</b></td><td><b>New top-up window</b></td></tr>
+</table>
+
+<div class="box">
+  <p>Put simply: <b>the top-up window is how much credit you have bought. The cycle is the $100
+  unit that credit is counted in.</b> Starting a new top-up window does not touch the cycles, and
+  starting a cycle does not add credit.</p>
+</div>
+
+<h2>The routine</h2>
+
+<div class="steps">
+<div><b>Top up Anthropic when the credit is low.</b> The Credit budget panel emails all admins at
+80% and again at 100% of your limit.
+<em>Then press <b>New top-up window</b> so the &ldquo;spent this window&rdquo; counter starts again.</em></div>
+
+<div><b>Set the limit to match what you actually bought.</b> Otherwise <b>Funded cycles</b> is wrong,
+and it is the figure that tells you how long the money will last.
+<em>Bought $1,000? Set the limit to 1000. That reads as 10 funded cycles.</em></div>
+
+<div><b>When the red bar appears, check the two things under <b>Before you press Start</b>, then start the next cycle.</b>
+<em>Poll posting and AI resolving are stopped until you do. Nothing is lost while it waits.</em></div>
+
+<div><b>Once a month, read &ldquo;Every cycle&rdquo;.</b> How long each cycle lasted is the burn rate.
+If cycles are getting shorter, spending is accelerating.
+<em>Compare it against &ldquo;Cost per resolution&rdquo; to see whether markets are costing more, or
+whether there are simply more of them.</em></div>
+
+<div><b>Keep the exchange rate current.</b> A rate more than 30 days old is flagged on the page.
+<em>A stale rate is a pricing error, not a cosmetic one.</em></div>
+</div>
+
+<div class="box stop">
+  <b class="lead">⛔ Never</b>
+  <p><b>Never turn off &ldquo;Pause and wait&rdquo;</b> without a decision from Ali — it removes the
+  checkpoint entirely.</p>
+  <p><b>Never quote the &ldquo;Suggested&rdquo; column as a price.</b> It is a cost floor for internal
+  comparison.</p>
+  <p><b>Never read a figure that says &ldquo;—&rdquo; as zero.</b> It means the platform does not have
+  what it needs to answer honestly — usually a missing exchange rate or too little history.</p>
+</div>
+
+<footer>
+  50pick · AI Spend Cycles — Admin Guide · Admin → AI usage · Screenshots taken from the live
+  admin screen. Figures shown are examples; your screen shows real numbers.
+</footer>
+
+</body>
+</html>

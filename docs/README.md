@@ -2,9 +2,12 @@
 
 Written 2026-07-31. **Read this before opening anything else in here.**
 
-⭐ **If you are an ADMIN rather than a developer, you want exactly one file:**
+⭐ **If you are an ADMIN rather than a developer, you want exactly two files:**
 [`50pick-updown-operator-guide.pdf`](50pick-updown-operator-guide.pdf) — the Up & Down operator
-contract. Everything else in here is for whoever builds and runs the platform.
+contract — and [`50pick-ai-cycles-admin-guide.pdf`](50pick-ai-cycles-admin-guide.pdf), which explains
+the **AI spend cycles**: what a $100 cycle is, the red bar that pauses the AI and how to resume
+it, and what a market actually costs. Everything else in here is for whoever builds and runs
+the platform.
 
 There are **67 files** at this level — this index plus 66 documents — and five
 subdirectories with their own indexes: [`design-system/`](design-system/README.md) (the index of
@@ -116,6 +119,7 @@ to teal and resurrects the killed light theme.
 | [`UPDOWN-PRICING.md`](UPDOWN-PRICING.md) | 🟢 LAW | The margin / winning-boundary math. Money-critical. |
 | [`UPDOWN-FINAL-DESIGN.md`](UPDOWN-FINAL-DESIGN.md) | 🟢 LAW | **The settled Up & Down design, written from production measurements.** §4 names what must NOT be re-opened (the settlement proof, refund-reason copy, the result moment); §3b carries G1–G6. |
 | [`FINDING-GOLD-CHAINS-STALLED.md`](FINDING-GOLD-CHAINS-STALLED.md) | 🟠 **OPEN — CLEARED TO FIX (Ali, 2026-08-14: ship it first)** | ⛔ **All three XAU chains read `RUNNING` and have opened NO round since their last session close** — 15m for ~17h, 30m/60m for ~4 days (measured 2026-08-14). `advanceChain`'s session gate returns BEFORE the re-arm, so the chain stays pinned to a boundary inside the closed session and the gate is re-evaluated at that same stale instant forever: a deadlock by construction, immune only for crypto. Mechanism, one-line fix, and the red-first plan are all in the file. |
+| [`ai-cycles-admin-guide.html`](ai-cycles-admin-guide.html) → [`50pick-ai-cycles-admin-guide.pdf`](50pick-ai-cycles-admin-guide.pdf) | 🟢 **LAW — THE ADMIN CONTRACT FOR AI SPEND** | ⭐ **7 pages, handed to the admins.** What a $100 cycle is and why it is an AMOUNT rather than a period; the four figures on the Spend-cycles panel; **the red "AI is paused" bar and the two things to check before pressing Start**; the cycle history and what "Lasted" tells you; what a market costs and why the "Suggested" column is a cost floor and **never a price** (TZS 1,000 is the minimum STAKE); every setting; **cycles vs. top-up windows**, which are different things people confuse; and the monthly routine. ⛔ Edit the **HTML**, then regenerate with `node scripts/generate-pdfs.mjs`, then **verify by rasterising** — never by trusting the render. ⚠️ Screenshots in `docs/guide-img/cyc-*.png` are captured from the real admin screen by a driver; re-shoot them if the page changes. |
 | [`updown-operator-guide.html`](updown-operator-guide.html) → [`50pick-updown-operator-guide.pdf`](50pick-updown-operator-guide.pdf) | 🟢 **LAW — THE OPERATOR CONTRACT** | ⭐ **The document the admins are handed.** 14 sections: what the game is, every field and what to enter, the **Feed record** and the measured round-length gate (§8.5), the first live round (§9), the **six refund reasons and what to say to a player** (§10), the daily check (§11), troubleshooting (§12), and **every element on the player's card and when it is visible** (§13). ⛔ Edit the **HTML**, then regenerate with `node scripts/generate-pdfs.mjs`, then **verify by rasterising** — never by trusting the render. |
 
 ## Up & Down — ops scripts (there is deliberately no delete in the console, E-59)

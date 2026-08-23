@@ -21,6 +21,7 @@ const root = resolve(__dirname, "..");
 // it looks like those documents are still being produced.
 const TARGETS = [
   { in: "docs/updown-operator-guide.html", out: "docs/50pick-updown-operator-guide.pdf" },
+  { in: "docs/ai-cycles-admin-guide.html", out: "docs/50pick-ai-cycles-admin-guide.pdf" },
 ];
 
 const browser = await chromium.launch();

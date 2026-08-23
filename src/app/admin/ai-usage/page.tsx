@@ -324,9 +324,16 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
           sw="Mizunguko ya matumizi"
           action={<span className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">${cyc.config.sizeUsd.toLocaleString()} per cycle · rates {cyc.priceRev}</span>}
         >
+          {/* ⚠️ EVERY SPACE AROUND AN EXPRESSION HERE IS EXPLICIT `{" "}`, AND BOTH HALVES OF
+              THAT WERE PAID FOR. Written as `${expr} and`, the space after the expression was
+              dropped and the page read "Top up $1,000and that is 10 cycles." — caught by
+              screenshotting the card for the admin guide, not by any assertion. Then the JSX
+              COMMENT explaining the fix, placed between the two lines, ate the space before
+              it and produced "period.Top up". A comment is not invisible to the text flow.
+              Never rely on implicit whitespace next to a JSX expression or comment. */}
           <p className="text-caption text-text-secondary mb-4">
-            A cycle is a fixed <strong>${cyc.config.sizeUsd.toLocaleString()}</strong> of Claude spend — a denomination, not a period.
-            Top up ${(cyc.config.sizeUsd * 10).toLocaleString()} and that is 10 cycles. Cycles are numbered for ever and never reset,
+            A cycle is a fixed <strong>${cyc.config.sizeUsd.toLocaleString()}</strong> of Claude spend — a denomination, not a period.{" "}
+            Top up ${(cyc.config.sizeUsd * 10).toLocaleString()}{" "}and that is 10 cycles. Cycles are numbered for ever and never reset,
             which is what makes &ldquo;cycles this year&rdquo; a number you can divide by markets resolved.
           </p>
 
@@ -487,7 +494,9 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
 
           <div className="mt-3 space-y-1.5 text-caption text-text-tertiary leading-snug">
             <p>
-              ⛔ <strong>What 50pick actually charges is a pool commission, not a flat fee.</strong> The &ldquo;suggested&rdquo; column is
+              {/* ⚠️ `{" "}` after </strong> — see the note above the Spend-cycles copy. Without it
+                  this rendered "not a flat fee.The". */}
+              ⛔ <strong>What 50pick actually charges is a pool commission, not a flat fee.</strong>{" "}The &ldquo;suggested&rdquo; column is
               what this AI cost plus a {cyc.config.targetMarginPct}% margin would come to per market — it is a cost floor to compare
               against real commission earned, not a price we charge. TZS 1,000 is the <em>minimum stake</em>, not a price.
             </p>
@@ -554,7 +563,7 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
             </table>
           </ScrollX>
           <p className="px-4 py-3 text-caption text-text-tertiary leading-snug border-t border-border">
-            Counted from the ledger, in the platform timezone — each closed cycle at the size it was <strong>opened</strong> with, never
+            Counted from the ledger, in the platform timezone — each closed cycle at the size it was <strong>opened</strong>{" "}with, never
             re-derived from today&rsquo;s size. A part year is marked, because a part-year total read as a full one understates the rate.
           </p>
         </AdminCard>
