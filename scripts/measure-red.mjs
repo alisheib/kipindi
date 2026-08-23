@@ -18,6 +18,13 @@
  * ⛔ An unmatched anchor is a BROKEN HARNESS, reported as such and never as a
  * MISS. And "it exited non-zero" is not evidence: the run must name the CHECK
  * that failed and prove it read the mutant.
+ *
+ * ⚠️ RUNNING `tsc` IMMEDIATELY AFTER THIS CAN FAIL SPURIOUSLY ON WINDOWS. Each
+ * mutation copies `src/` and `scripts/` into the OS temp dir and spawns `npx tsx`,
+ * so a `tsc --noEmit` started in the same breath can hit file contention and exit
+ * non-zero with no diagnostics. Observed once on 2026-08-23; three clean re-runs
+ * immediately after were exit 0. If `tsc` fails right after this harness and
+ * prints nothing, re-run it before believing it.
  */
 import { readFileSync, writeFileSync, mkdtempSync, cpSync, existsSync } from "node:fs";
 import { execSync } from "node:child_process";

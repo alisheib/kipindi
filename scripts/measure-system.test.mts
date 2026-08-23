@@ -122,12 +122,28 @@ const EXEMPT_ATOMS = ["otp-input.tsx", "datetime-range-filter.tsx", "time-select
  *
  *     grep -rlF 's.replace(/\/\*[\s\S]*?\*\//g, "").replace(' scripts/
  *
+ * ⚠️ That grep returns **23** — it matches THIS FILE on the comment you are
+ * reading. Discount this one; the other 22 are the real population.
+ *
  * They include `type-scale`, `ui-consistency`, `tailwind-bridge`,
  * `settle-atomicity`, `id-documents`, `pii-in-logs` and six `kyc-cert-*` suites.
- * Left unchanged here deliberately: fixing them may turn ratchets red, which is
- * correct but is a separate piece of work, and it is filed rather than half-done.
- * This is the same shape as E-108 — one helper, copy-pasted, repaired one place
- * at a time.
+ *
+ * ⭐ MEASURED 2026-08-23, BEFORE ASSUMING THE WORST: flipping the order in a
+ * temp copy and re-running each gate changes NOTHING for the six that could be
+ * compared cleanly — **`type-scale` and `ui-consistency` included**, which are the
+ * two whose ratchets sit at their floor and were the reason to worry. So the blind
+ * spot is currently hiding **no** violation those gates would flag. The other 17
+ * could not be compared: 11 error in both states (they need env/args, or derive
+ * their own ROOT with no override), and 6 spell the statement in a shape a
+ * mechanical rewrite could not flip.
+ *
+ * ⛔ That is a reason to do the work CALMLY, not to skip it — "hides nothing
+ * today" is a fact about today's source, and the next `/*` inside a `//` comment
+ * silently re-opens the hole. The real obstacle is that most of those gates cannot
+ * be aimed at a mutated tree at all, which is exactly what `MEASURE_ROOT` above
+ * fixes for this one. Left unchanged here deliberately and filed rather than
+ * half-done — same shape as E-108: one helper, copy-pasted, repaired one place at
+ * a time.
  */
 const decomment = (s: string) =>
   s.replace(/(^|[^:])\/\/[^\n]*/g, "$1").replace(/\/\*[\s\S]*?\*\//g, "");

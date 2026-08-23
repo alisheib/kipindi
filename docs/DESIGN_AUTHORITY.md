@@ -586,9 +586,17 @@ harness rather than by review** — the finding worth keeping:
   not by the name `decomment`**: several spell it differently or inline it, so a
   name-based grep UNDERCOUNTS — it reported 18 on the day and 18 was wrong.
   Search for the ordering as a FIXED string — the two `replace` calls in sequence,
-  block-strip first — with `grep -rlF … scripts/`. On 2026-08-23 that returned **22**
-  files, among them `type-scale`, `ui-consistency`, `tailwind-bridge`,
+  block-strip first — with `grep -rlF … scripts/`. On 2026-08-23 that returned **23**,
+  of which one is `measure-system.test.mts` matching its own doc comment; **22** is
+  the real population, among them `type-scale`, `ui-consistency`, `tailwind-bridge`,
   `settle-atomicity`, `id-documents`, `pii-in-logs` and six `kyc-cert-*` suites.
+  ⭐ **The risk was measured, not assumed:** flipping the order in a temp copy
+  changes **nothing** for the six gates that can be compared cleanly — `type-scale`
+  and `ui-consistency` among them, the two whose ratchets sit at their floor. So the
+  blind spot hides no violation those gates would flag *today*. ⛔ That de-escalates
+  it; it does not close it — the next `/*` inside a `//` re-opens the hole in
+  silence. The obstacle is that most of those gates cannot be aimed at a mutated
+  tree at all; giving each a root override (as `MEASURE_ROOT` did here) is the work.
 - The page/`loading.tsx` tier-parity check **compared 29 of 80 pairs and skipped
   51 in silence**, because a route that delegates its body to a sibling client
   component (`/wallet` → `./wallet-client`) stated no tier the check could read.
