@@ -42,7 +42,8 @@ import { readFileSync } from "node:fs";
 import { observePrice, describeRefusal, type RefusalReason } from "../src/lib/server/updown-oracle.ts";
 import { deepCheckMarket } from "../src/lib/server/market-sentinel.ts";
 import {
-  assertAiBudget, setCreditLimit, resetCreditCycle, recordAiUsage, featureCostWindows,
+  assertAiBudget, setCreditLimit, startNewTopUpWindow, recordAiUsage, featureCostWindows,
+  saveCycleConfig, CYCLE_DEFAULTS, describeAiBudgetBlock,
   getCreditConfig,
 } from "../src/lib/server/ai-usage.ts";
 import type { StoredAsset } from "../src/lib/server/updown-dal.ts";
@@ -67,14 +68,24 @@ const MARKET = {
 /** Burn well past any cap: Sonnet input is ~$3/MTok, so 20M tokens ≈ $60. */
 const burn = (feature: string) => recordAiUsage({
   feature, model: "claude-sonnet-4-6", inputTokens: 20_000_000, outputTokens: 0, webSearches: 0, ok: true,
+  subjectType: "market", subjectId: "mkt_budget_fixture",
 });
+
+// ⛔ THIS SUITE EXERCISES THE MONEY CEILING, NOT THE CYCLE CHECKPOINT — and the two are
+// deliberately separate controls, so a suite about one must not be silently decided by the
+// other. A $60 burn fills a $100 cycle in two calls; with the shipped default (pause when a
+// cycle ends) the third call would be refused for a reason this file never asserts, and
+// every "blocked" check below would pass for the wrong reason. Continuous running removes
+// the checkpoint so what is measured here is the budget gate alone.
+// `test:ai-cycles` is where the checkpoint itself is proven.
+await saveCycleConfig({ ...CYCLE_DEFAULTS, autoRoll: true });
 
 // ── 1 · Baseline: with headroom, neither gate blocks ────────────────────────
 // Proves the gates are not simply always-refusing, which would pass every
 // over-budget assertion below for the wrong reason.
 {
   await setCreditLimit(1000);
-  await resetCreditCycle();
+  await startNewTopUpWindow();
   const b = await assertAiBudget("updown");
   ok("under budget → assertAiBudget allows", b.ok);
 
@@ -91,7 +102,7 @@ const burn = (feature: string) => recordAiUsage({
 // ── 2 · THE ORACLE refuses when the budget is exhausted ─────────────────────
 {
   await setCreditLimit(1);
-  await resetCreditCycle();
+  await startNewTopUpWindow();
   await burn("updown");
 
   const before = (await featureCostWindows("updown")).calls;
@@ -114,7 +125,7 @@ const burn = (feature: string) => recordAiUsage({
 // ── 3 · THE SENTINEL refuses when the budget is exhausted ───────────────────
 {
   await setCreditLimit(1);
-  await resetCreditCycle();
+  await startNewTopUpWindow();
   await burn("sentinel");
 
   const before = (await featureCostWindows("sentinel")).calls;
@@ -137,7 +148,7 @@ const burn = (feature: string) => recordAiUsage({
 // credit and raises the ceiling must get the platform back without a deploy.
 {
   await setCreditLimit(1);
-  await resetCreditCycle();
+  await startNewTopUpWindow();
   await burn("updown");
   ok("still blocked at the low limit", !(await assertAiBudget("updown")).ok);
 
@@ -167,7 +178,7 @@ const burn = (feature: string) => recordAiUsage({
 // actually happens, so the contradiction cannot quietly deepen.
 {
   await setCreditLimit(0);
-  await resetCreditCycle();
+  await startNewTopUpWindow();
   const cfg = await getCreditConfig();
   ok("[E-14] a stored limit of 0 reads back as the $20 default, NOT as uncapped",
     cfg.limitUsd === 20, `limitUsd=${cfg.limitUsd}`);
@@ -180,14 +191,33 @@ const burn = (feature: string) => recordAiUsage({
 // An operator watching rounds VOID must be able to tell a spend ceiling they can
 // raise from a price source that is broken. Those need different actions.
 {
-  // `?? ""` so a MISSING switch case fails an assertion instead of throwing and
-  // aborting the run — a red proof has to reach the end to be readable.
-  const msg = describeRefusal("budget-exhausted" as RefusalReason,
-    "AI credit limit reached ($21.35 of $20.00 this cycle)") ?? "";
-  ok("describeRefusal names the credit limit", /credit limit/i.test(msg), msg);
-  ok("describeRefusal carries the numbers through", msg.includes("21.35") && msg.includes("20.00"), msg);
-  ok("describeRefusal does NOT blame the price source",
-    !/source|domain|stale/i.test(msg), msg);
+  // 🔴 THIS BLOCK USED TO HAND `describeRefusal` A STRING IT HAD WRITTEN ITSELF, then assert
+  // that the string came back — a check that could not fail, and which pinned the wording
+  // *"this cycle"* that stopped being true when a spend cycle became a different thing.
+  // It now feeds the message the PRODUCT actually builds, for BOTH reasons a call can be
+  // refused, and asserts each names its own control and not the other one.
+
+  const budgetMsg = describeRefusal("budget-exhausted" as RefusalReason,
+    describeAiBudgetBlock({ ok: false, reason: "budget", spentUsd: 21.35, limitUsd: 20 }));
+  ok("a BUDGET refusal names the credit limit", /credit limit/i.test(budgetMsg), budgetMsg);
+  ok("…and carries the real numbers through", budgetMsg.includes("21.35") && budgetMsg.includes("20.00"), budgetMsg);
+  ok("…and does NOT blame the price source", !/source|domain|stale/i.test(budgetMsg), budgetMsg);
+  ok("…and says TOP-UP WINDOW, not \"cycle\" — they are different things now",
+    /top-up window/i.test(budgetMsg) && !/cycle/i.test(budgetMsg), budgetMsg);
+
+  const cycleMsg = describeRefusal("budget-exhausted" as RefusalReason,
+    describeAiBudgetBlock({ ok: false, reason: "cycle", spentUsd: 5, limitUsd: 20, lastClosedIndex: 7 }));
+  ok("a CYCLE refusal names the finished cycle and the next one",
+    /cycle 7/i.test(cycleMsg) && /cycle 8/i.test(cycleMsg), cycleMsg);
+  ok("…and does NOT claim the credit limit was reached — it was not",
+    !/credit limit/i.test(cycleMsg), cycleMsg);
+  ok("…and does NOT blame the price source", !/source|domain|stale/i.test(cycleMsg), cycleMsg);
+
+  // ⭐ THE CONTROL. Two different causes that produce one sentence is the whole defect:
+  // it sends an operator to raise a limit that was never the problem. If these two ever
+  // collapse into the same string, every assertion above passes and the page still lies.
+  ok("⭐ CONTROL: the two refusals are DIFFERENT sentences", budgetMsg !== cycleMsg,
+    `${budgetMsg.slice(0, 40)}… vs ${cycleMsg.slice(0, 40)}…`);
 }
 
 // ── 6 · STRUCTURAL: every SPEND PATH is gated, and a new one cannot appear ───
@@ -232,7 +262,7 @@ const burn = (feature: string) => recordAiUsage({
 
 // Leave the live-ish default behind rather than a $0/uncapped cycle.
 await setCreditLimit(20);
-await resetCreditCycle();
+await startNewTopUpWindow();
 
 console.log(`\nai-budget-enforcement: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

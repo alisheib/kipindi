@@ -34,7 +34,7 @@
  */
 import Anthropic from "@anthropic-ai/sdk";
 import { ai } from "./ai-config";
-import { assertAiBudget, recordAiUsage } from "./ai-usage";
+import { assertAiBudget, describeAiBudgetBlock, recordAiUsage } from "./ai-usage";
 import { getAiOpsConfig } from "./ai-ops-config";
 import { getUpDownConfig } from "./updown-config";
 import { normalizeDomain } from "./source-registry";
@@ -191,7 +191,14 @@ function hashOutput(raw: unknown): string {
  * price settles real money incorrectly and is not recoverable, whereas a void returns
  * every stake.
  */
-export async function observePrice(asset: StoredAsset, boundaryAtIso: string): Promise<OracleReading> {
+/**
+ * `observationId` is the row this reading is FOR, threaded in purely so the metered spend
+ * can be ATTRIBUTED to it. ⚠️ An observation is UNIQUE on (assetId, boundaryAt) and is SHARED
+ * by every round crossing that instant — measured at 2.353 rounds per observation on
+ * production, 2026-08-23 — so this id identifies the paid CALL, never a single round.
+ * Optional because `readPrice` is also used for source PROBES that have no observation row.
+ */
+export async function observePrice(asset: StoredAsset, boundaryAtIso: string, observationId?: string | null): Promise<OracleReading> {
   const cfg = await getUpDownConfig();
   const model = await getOracleModel();
   const refuse = (reason: RefusalReason, detail: string): OracleReading => ({ ok: false, reason, detail });
@@ -221,12 +228,7 @@ export async function observePrice(asset: StoredAsset, boundaryAtIso: string): P
   // else: a boundary that will not confirm VOIDS its rounds and refunds every stake
   // in full. An exhausted budget must never become a settled bet on a guessed price.
   const budget = await assertAiBudget("updown");
-  if (!budget.ok) {
-    return refuse(
-      "budget-exhausted",
-      `AI credit limit reached ($${budget.spentUsd.toFixed(2)} of $${budget.limitUsd.toFixed(2)} this cycle)`,
-    );
-  }
+  if (!budget.ok) return refuse("budget-exhausted", describeAiBudgetBlock(budget));
 
   const boundaryMs = Date.parse(boundaryAtIso);
   if (!Number.isFinite(boundaryMs)) return refuse("error", `Invalid boundary "${boundaryAtIso}"`);
@@ -297,6 +299,7 @@ the platform can judge how close the reading actually is to the target instant.`
       ok: true,
       latencyMs: Date.now() - started,
       detail: `updown-oracle · ${asset.key} @ ${boundaryAtIso}`,
+      subjectType: "updown_observation", subjectId: observationId ?? null,
     });
 
     const toolUse = response.content.find((b) => b.type === "tool_use" && b.name === "report_price");
@@ -377,6 +380,7 @@ the platform can judge how close the reading actually is to the target instant.`
       latencyMs: Date.now() - started,
       errorType: (err as Error).message?.slice(0, 200),
       detail: `updown-oracle · ${asset.key} @ ${boundaryAtIso}`,
+      subjectType: "updown_observation", subjectId: observationId ?? null,
     });
     return refuse("error", (err as Error).message?.slice(0, 300) ?? "unknown error");
   }
@@ -396,9 +400,13 @@ export function describeRefusal(reason: RefusalReason, detail: string): string {
     // part that says which variable to set, so it wins whenever there is one.
     case "no-api-key": return detail || "Price source key not configured";
     case "ai-paused": return detail || "Resolution AI is paused";
-    // Names the CAUSE and the number, because an operator seeing rounds void needs to
-    // know this is a spend ceiling they can raise — not a broken price source.
-    case "budget-exhausted": return `AI credit limit reached — ${detail}`;
+    // ⚠️ THE PREFIX IS GONE, AND THAT IS THE FIX, NOT A TIDY-UP. `detail` now arrives from
+    // `describeAiBudgetBlock`, which names WHICH control refused — a spend ceiling that can
+    // be raised, or a completed spend cycle waiting for an officer to start the next one.
+    // Re-stating "AI credit limit reached" in front of it would announce the wrong control
+    // for one of the two cases and send the operator to raise a limit that is not the
+    // problem, which is the same mistake `no-api-key` above already records paying for.
+    case "budget-exhausted": return detail || "AI spend is paused";
     case "no-tool-call": return "Model returned no structured reading";
     case "unparseable-price": return `No usable price — ${detail}`;
     case "wrong-source": return `Wrong source — ${detail}`;

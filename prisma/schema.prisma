@@ -1878,9 +1878,63 @@ model AiUsageEvent {
   latencyMs    Int?
   detail       String? // optional context, e.g. market title / poll category
 
+  /// STRUCTURED ATTRIBUTION. `detail` is free text, so nothing could divide spend by
+  /// "resolutions" — which is the whole reason the cycle ledger exists. Every
+  /// `recordAiUsage()` call site names a subjectType; `subjectId` is null only where no
+  /// id exists yet (a poll is generated BEFORE its candidate row), and that bucket is
+  /// rendered explicitly rather than dropped — dropping it makes the product look cheaper.
+  ///
+  /// SOFT REFS, NO FOREIGN KEY, deliberately. Metering must survive a retention delete of
+  /// the thing it points at, and an FK would let a metering row block a market delete.
+  subjectType  String?
+  subjectId    String?
+
   @@index([createdAt])
   @@index([feature, createdAt])
   @@index([ok, createdAt])
+  @@index([subjectType, subjectId])
+}
+
+/// THE CYCLE LEDGER — AI spend counted in a CUSTOM DENOMINATION, so it can be divided.
+///
+/// A cycle is not a period. It is a quantum of spend: at $100/cycle, $243.32 is 2 closed
+/// cycles and 0.43 of an open one. "We burned N cycles this year" divides by markets
+/// resolved, by month, by revenue — "$243.32" does not, because it carries no unit tied
+/// to the thing we sell.
+///
+/// ⛔ NEVER PRUNED. `AiUsageEvent` is the perishable detail (180 days); this is the durable
+/// aggregate. That is why a cycle carries its OWN `costUsd` instead of being recomputed on
+/// read: once the events behind it are pruned, a recomputed cycle would under-count for ever.
+///
+/// ⛔ IT NEVER BLOCKS A CALL. `assertAiBudget()` is the one money authority (E-108's lesson:
+/// two caps disagree, and the argument gets settled at 2am against real money). This ledger
+/// COUNTS; the funded allowance is the same USD limit, expressed in cycles.
+model AiSpendCycle {
+  id       String @id
+  /// Monotonic, 1-based, no gaps, and it NEVER resets — that is what makes "cycles per
+  /// year" a countable number. Topping up Anthropic credit starts a new TOP-UP WINDOW
+  /// (`CreditConfig.topUpWindowStartIso`), never a new cycle numbering.
+  index    Int    @unique
+  /// ⛔ STAMPED AT OPEN, never looked up. If a size change rewrote history, "cycles per
+  /// year" would silently change for every past year the moment Ali retunes it, and the
+  /// number would be unfalsifiable. A new size applies to the NEXT cycle opened.
+  sizeUsd  Float
+  /// Which pricing table this cycle was costed at — a content hash of PRICE_PER_MTOK, so a
+  /// rate change moves it automatically and history stays interpretable.
+  priceRev String
+
+  openedAt DateTime
+  closedAt DateTime?
+  costUsd  Float     @default(0)
+  /// "OPEN" | "CLOSED". Exactly one OPEN at a time; `@@unique` on index is what makes a
+  /// lost lock LOUD (constraint error) instead of silent (a duplicate cycle).
+  status   String
+  /// null = rolled automatically by the meter; set = opened by a named officer.
+  openedBy String?
+  note     String?
+
+  @@index([closedAt])
+  @@index([status])
 }
 
 // ============================================================================

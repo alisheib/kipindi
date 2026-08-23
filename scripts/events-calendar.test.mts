@@ -19,7 +19,7 @@ process.env.OTP_PEPPER ??= "test-only-otp-pepper-16chars";
 
 import { addEvent, listUpcomingEvents, listPendingEvents, markEventGenerated, removeEvent, eventSteer, getEvent } from "../src/lib/server/events-service.ts";
 import { seedDefaultSources, isSourceTrusted, setCategoryEnabled, addSource } from "../src/lib/server/source-registry.ts";
-import { assertAiBudget, setCreditLimit, resetCreditCycle, recordAiUsage, getCreditConfig } from "../src/lib/server/ai-usage.ts";
+import { assertAiBudget, setCreditLimit, startNewTopUpWindow, recordAiUsage, getCreditConfig, saveCycleConfig, CYCLE_DEFAULTS } from "../src/lib/server/ai-usage.ts";
 
 let pass = 0, fail = 0;
 const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"} ${l} ${x}`); };
@@ -126,14 +126,18 @@ await seedDefaultSources();
 
 // ── 8. DEFECT 2 — the AI budget now BLOCKS, it doesn't just alert ─────────
 {
-  await setCreditLimit(1); // $1 cycle cap
-  await resetCreditCycle();
+  // ⛔ Continuous running: this block proves the BUDGET gate blocks. The cycle checkpoint
+  // is a separate control with its own suite, and letting it decide the outcome here would
+  // make these assertions pass for a reason they do not name.
+  await saveCycleConfig({ ...CYCLE_DEFAULTS, autoRoll: true });
+  await setCreditLimit(1); // $1 top-up-window cap
+  await startNewTopUpWindow();
 
   const before = await assertAiBudget("polls");
   ok("[defect-2] under budget → call allowed", before.ok);
 
   // Burn the budget: Sonnet at ~$3/MTok in — 1M input tokens ≈ $3 > $1 limit.
-  await recordAiUsage({ feature: "polls", model: "claude-sonnet-4-6", inputTokens: 1_000_000, outputTokens: 0, webSearches: 0, actorId: OFFICER });
+  await recordAiUsage({ feature: "polls", model: "claude-sonnet-4-6", inputTokens: 1_000_000, outputTokens: 0, webSearches: 0, ok: true, subjectType: "poll_generation", subjectId: null });
 
   const after = await assertAiBudget("polls");
   ok("[defect-2] OVER budget → call is BLOCKED (not merely alerted)", !after.ok, JSON.stringify(after));
@@ -147,9 +151,9 @@ await seedDefaultSources();
   ok("[defect-2] limit 0 = uncapped (does not brick generation)", uncapped.ok);
 
   await setCreditLimit(20);
-  await resetCreditCycle();
+  await startNewTopUpWindow();
   const restored = await assertAiBudget("polls");
-  ok("[defect-2] fresh cycle re-allows calls", restored.ok);
+  ok("[defect-2] a fresh top-up window re-allows calls", restored.ok);
   const cfg = await getCreditConfig();
   ok("[defect-2] limit persisted", cfg.limitUsd === 20);
 }

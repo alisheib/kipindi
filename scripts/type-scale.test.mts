@@ -102,7 +102,7 @@ const SRC = join(ROOT, "src");
 
 /** §3 — `text-[Npx]` below the 12.5px reading floor that is NOT a blessed
  *  UPPERCASE tracked microlabel. Measured 2026-08-21 across 175 files. */
-const RATCHET_SUBFLOOR = 780;
+const RATCHET_SUBFLOOR = 771;
 
 /** §4 — every hand-typed size in the product: `text-[Npx]` plus inline literal
  *  `style={{ fontSize: N }}`. Measured 2026-08-21: 1,839 + 38.
@@ -132,7 +132,7 @@ const RATCHET_SUBFLOOR = 780;
  *  sizes; nothing was written today. ▶ FOR THE DESIGN LANE: the three above are the honest
  *  next win — convert `account/page.tsx`'s six section cards as one visual decision and
  *  this drops to 1835. */
-const RATCHET_ARBITRARY_SIZE = 1841;
+const RATCHET_ARBITRARY_SIZE = 1823;
 const RATCHET_INLINE_FONTSIZE = 38;
 
 /** §6 — arbitrary `tracking-[…]`. Measured 2026-08-21 across 200 files.
@@ -140,7 +140,7 @@ const RATCHET_INLINE_FONTSIZE = 38;
  *  microlabel described above. ⛔ There is no `letterSpacing` key in `tailwind.config.ts`
  *  at all, so EVERY one of these 640 is arbitrary by construction and there is no
  *  non-arbitrary form to move it to; the real fix is a tracking scale, not a call-site edit. */
-const RATCHET_ARBITRARY_TRACKING = 640;
+const RATCHET_ARBITRARY_TRACKING = 639;
 
 /** §5 — the 29 hand-typed sizes that exist today. A member may LEAVE (the guard
  *  says so and this list gets trimmed); a NEW one is a hard failure. This is the

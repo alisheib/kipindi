@@ -29,7 +29,7 @@
 
 import { prisma, hasDatabase } from "./prisma";
 import { audit } from "./audit";
-import { assertAiBudget } from "./ai-usage";
+import { assertAiBudget, describeAiBudgetBlock } from "./ai-usage";
 import { getAIProvider } from "./ai-provider";
 import { isSourceTrusted, normalizeDomain } from "./source-registry";
 import type { MarketCategory } from "./market-service";
@@ -537,13 +537,7 @@ export async function generateProposal(opts: {
   }
 
   const budget = await assertAiBudget("updown");
-  if (!budget.ok) {
-    return {
-      ok: false,
-      error: `AI credit limit reached ($${budget.spentUsd.toFixed(2)} of $${budget.limitUsd.toFixed(2)} this cycle). ` +
-        `Raise the limit or start a new cycle under Admin → AI usage.`,
-    };
-  }
+  if (!budget.ok) return { ok: false, error: describeAiBudgetBlock(budget) };
 
   const asset = await getAsset(opts.assetId);
   if (!asset) return { ok: false, error: "Asset not found. Register it under Admin → Up & Down first." };

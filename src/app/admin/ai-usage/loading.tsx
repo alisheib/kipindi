@@ -10,6 +10,17 @@ export default function Loading() {
         <SkCard lines={1} titleW="w-56" />
         {/* Spend KPIs */}
         <SkKpiRow count={4} />
+        {/* Spend cycles — KPIs, meter, reconciliation */}
+        <SkKpiRow count={4} />
+        <SkCard lines={4} titleW="w-36" />
+        {/* Cost per resolution */}
+        <SkTableCard cols={8} rows={3} minWidth={860} />
+        {/* Cycles by year */}
+        <SkTableCard cols={5} rows={3} minWidth={640} />
+        {/* Every cycle */}
+        <SkTableCard cols={9} rows={6} minWidth={860} />
+        {/* Cycle settings */}
+        <SkCard lines={4} titleW="w-40" />
         {/* Credit budget + meter */}
         <SkCard lines={4} titleW="w-40" />
         {/* AI operations */}

@@ -48,7 +48,7 @@ if (!process.env.ANTHROPIC_API_KEY) {
 const cfg = await getCreditConfig();
 console.log("── PRODUCTION credit config, read live ──");
 console.log(`  limitUsd      $${cfg.limitUsd}`);
-console.log(`  cycleStartIso ${cfg.cycleStartIso}`);
+console.log(`  topUpWindowStartIso ${cfg.topUpWindowStartIso}`);
 console.log(`  alertedLevel  ${cfg.alertedLevel}`);
 
 const verdict = await assertAiBudget("updown");

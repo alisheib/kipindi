@@ -8,17 +8,59 @@
  *   time, model, token counts, web-search count, cost, and success/error.
  * - Cost is computed deterministically from token counts × public per-model
  *   pricing (Anthropic exposes no "credits remaining" API).
- * - A configurable spend limit (default $20 per cycle) emails all admins when
- *   spend nears, then reaches, the limit.
+ * - A configurable spend limit (default $20 per TOP-UP WINDOW) emails all admins
+ *   when spend nears, then reaches, the limit.
  *
  * Best-effort everywhere: a metering failure must never break an AI call.
+ *
+ * ── ⛔ TWO THINGS USED TO BE CALLED "CYCLE" IN THIS FILE ─────────────────────────
+ *
+ * They are different, and they are now spelled differently, because two meanings of
+ * one word in one file is how `E-179` happened:
+ *
+ *   · A **TOP-UP WINDOW** (`CreditConfig.topUpWindowStartIso`) is a PERIOD — "since Ali
+ *     last bought Anthropic credit". It is what `assertAiBudget()` measures spend
+ *     against, and it is the ONLY thing that can refuse a call. Topping up starts a
+ *     new window. This used to be called `cycleStartIso`.
+ *
+ *   · A **SPEND CYCLE** (`AiSpendCycle`, below) is a DENOMINATION — a fixed quantum of
+ *     spend, custom and settable. At $100/cycle, $243.32 is 2 closed cycles and 0.43 of
+ *     an open one. Cycles are COUNTABLE, which is the whole point: "we burned N cycles
+ *     this year" divides by markets resolved, by month, by revenue. "$243.32" does not.
+ *     ⛔ The cycle index NEVER resets — that is what makes "cycles per year" a real
+ *     number. A top-up starts a new WINDOW, never a new cycle numbering.
+ *
+ * ── ⛔ THERE IS STILL EXACTLY ONE MONEY AUTHORITY ────────────────────────────────
+ *
+ * A cycle DOES stop the AI — Ali, 2026-08-23: *"when a cycle ends we have to start a new one
+ * to proceed, or posting / AI resolving is blocked"* — and that is deliberately NOT a second
+ * cap on money:
+ *
+ *   · `limitUsd` is the only thing that says HOW MUCH may be spent. Unchanged.
+ *   · A cycle boundary says WHEN AN OFFICER MUST LOOK. It has no opinion about totals.
+ *
+ * Two controls that cannot disagree about an amount, because only one of them is about an
+ * amount. That is what keeps this out of the "two caps argue at 2am against real money"
+ * failure — the funded allowance is still just `limitUsd`, shown in cycles as
+ * `limitUsd / sizeUsd`.
+ *
+ * ⛔ AND THE GATE FAILS OPEN. `assertAiBudget` returns `ok` on any internal error, exactly as
+ * before: a broken meter must never be able to stop the Market Sentinel from resolving a
+ * real-money market.
  */
 import { aiUsageDal, type AiUsageEventRecord, type AiUsageFilter } from "./ai-usage-dal";
+import { aiCycleDal, DuplicateCycleIndexError, type AiSpendCycleRecord } from "./ai-cycle-dal";
 import { loadConfig, saveConfig } from "./config-store";
 import { hasDatabase } from "./prisma";
 import { withLock } from "./locks";
 import { randomId } from "./crypto";
 import { audit } from "./audit";
+// ⛔ RELATIVE, NOT THE `@/` ALIAS, AND THAT IS LOAD-BEARING. `red:ai-cycles` proves each
+// check by copying the tree, mutating one file and running the gate from the copy. `tsx`
+// resolves `@/` through the tsconfig paths of the CWD — which is the real repo — so an
+// aliased import would quietly load the ORIGINAL module while the harness reported it had
+// mutated one. A red proof that reads the wrong tree is worse than no red proof.
+import { CYCLE_BOUNDS } from "../ai-cycle-rules";
 
 // One bucket per distinct AI spend line. `updown` is the Up & Down price oracle,
 // kept SEPARATE from `sentinel` (normal-market resolution) so the admin AI-usage page
@@ -37,6 +79,49 @@ const PRICE_PER_MTOK: Record<string, { in: number; out: number }> = {
   "claude-fable": { in: 10, out: 50 },
 };
 const WEB_SEARCH_USD = 0.01;
+
+/**
+ * The pricing table's own revision — a content hash, not a hand-bumped constant.
+ *
+ * ⛔ IT IS DERIVED SO IT CANNOT GO STALE. Every closed cycle stamps the revision it was
+ * costed at, so when Anthropic changes a rate, history stays interpretable instead of
+ * becoming "costed at rates nobody recorded". A hand-maintained `"v3"` is a number written
+ * twice — it disagrees with the table the first time someone edits a rate and forgets.
+ */
+export const PRICE_REV: string = (() => {
+  const canon = JSON.stringify({ m: PRICE_PER_MTOK, w: WEB_SEARCH_USD });
+  // FNV-1a, 32-bit. Not cryptographic — it only has to CHANGE when the table changes.
+  let h = 0x811c9dc5;
+  for (let i = 0; i < canon.length; i++) {
+    h ^= canon.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return `p${h.toString(36)}`;
+})();
+
+/**
+ * WHAT A METERED CALL WAS FOR. `detail` is free text — you cannot divide free text by
+ * "resolutions", which is exactly what a cycle count has to be divisible by.
+ *
+ * ⛔ EVERY CALL SITE NAMES ONE. `subjectId` may be null (a poll is generated BEFORE its
+ * candidate row exists, so there is no id to name), but the TYPE never is: an event with no
+ * subjectType at all is the half-threaded attribution the whole design is built to avoid,
+ * and an under-count here reads as "cheaper than it is".
+ *
+ * ⚠️ `updown_observation` IS NOT A ROUND. `UpDownObservation` is UNIQUE on
+ * (assetId, boundaryAt), so ONE paid oracle call serves EVERY round sitting on that
+ * boundary — measured at **2.353 rounds per observation** on production, 2026-08-23.
+ * Anyone dividing oracle spend by observations and calling the result a per-round cost is
+ * over-stating it by that factor. The read model divides a product LINE's spend by that
+ * line's settled markets, which is correct however the calls are shared.
+ */
+export type AiSubjectType =
+  | "market"              // a specific PredictionMarket — the sentinel's per-market check
+  | "updown_observation"  // a specific UpDownObservation — see the warning above
+  | "updown_proposal"     // proposing a chain; subjectId is the asset key, no row exists yet
+  | "poll_generation"     // generating one poll for a category; no candidate row yet
+  | "poll_ideation"       // the ideation sweep that precedes generation
+  | "chat_session";       // the help chatbot; subjectId is the player's userId
 
 function priceFor(model: string): { in: number; out: number } {
   const m = (model || "").toLowerCase();
@@ -69,6 +154,10 @@ export async function recordAiUsage(input: {
   errorType?: string | null;
   latencyMs?: number | null;
   detail?: string | null;
+  /** ⛔ REQUIRED at every call site. See `AiSubjectType`. */
+  subjectType: AiSubjectType;
+  /** The soft ref, where one exists at the moment of the call. Null is a real answer. */
+  subjectId?: string | null;
 }): Promise<void> {
   try {
     const inTok = Math.max(0, Math.round(input.inputTokens ?? 0));
@@ -87,8 +176,17 @@ export async function recordAiUsage(input: {
       errorType: input.ok ? null : (input.errorType ?? "error"),
       latencyMs: input.latencyMs ?? null,
       detail: input.detail ?? null,
+      subjectType: input.subjectType,
+      subjectId: input.subjectId ?? null,
     };
     await aiUsageDal.create(ev);
+
+    // Denominate the same spend in cycles. Runs INSIDE the existing try/catch, so a broken
+    // cycle meter can no more break an AI call than a broken usage write can — and it runs
+    // AFTER the usage row, so the event ledger is always the senior record. The
+    // reconciliation gate (`test:ai-cycles` §1) is what stops "best-effort" quietly meaning
+    // "nobody checks", which is this repo's single most repeated defect.
+    await accrueSpendToCycles(ev.costUsd, ev.createdAt);
 
     // Opportunistic retention prune (every ~250 records) — bounds table growth
     // without a cron.
@@ -106,7 +204,8 @@ export async function recordAiUsage(input: {
 // Credit limit + alerting
 // ---------------------------------------------------------------------------
 
-export type CreditConfig = { limitUsd: number; cycleStartIso: string; alertedLevel: "none" | "warn" | "limit" };
+/** ⚠️ `topUpWindowStartIso` was called `cycleStartIso` until 2026-08-23 — see the header. */
+export type CreditConfig = { limitUsd: number; topUpWindowStartIso: string; alertedLevel: "none" | "warn" | "limit" };
 const CREDIT_KEY = "ai_credit_config";
 const DEFAULT_LIMIT_USD = 20;
 const WARN_FRACTION = 0.8;
@@ -129,26 +228,46 @@ async function saveCredit(c: CreditConfig): Promise<void> {
 
 export async function getCreditConfig(): Promise<CreditConfig> {
   const c = await loadCredit();
-  if (c && typeof c.limitUsd === "number" && c.cycleStartIso) {
-    return { limitUsd: c.limitUsd > 0 ? c.limitUsd : DEFAULT_LIMIT_USD, cycleStartIso: c.cycleStartIso, alertedLevel: c.alertedLevel ?? "none" };
+  // 🔴 THE LEGACY KEY IS READ, AND THAT IS LOAD-BEARING, NOT TIDINESS.
+  // The stored JSON on production carries `cycleStartIso` (measured 2026-08-23:
+  // `{"limitUsd":20,"alertedLevel":"none","cycleStartIso":"2026-08-22T17:17:54.323Z"}`).
+  // Renaming the field WITHOUT this fallback would make the first read after deploy see no
+  // window at all, write a fresh one starting NOW, and thereby ZERO the "spent this window"
+  // counter — silently re-opening a budget that may be genuinely exhausted. A rename that
+  // un-blocks the live money gate is not a rename, it is an outage with a tidy diff.
+  const legacy = (c as (CreditConfig & { cycleStartIso?: string }) | null)?.cycleStartIso;
+  const started = c?.topUpWindowStartIso ?? legacy;
+  if (c && typeof c.limitUsd === "number" && started) {
+    return {
+      limitUsd: c.limitUsd > 0 ? c.limitUsd : DEFAULT_LIMIT_USD,
+      topUpWindowStartIso: started,
+      alertedLevel: c.alertedLevel ?? "none",
+    };
   }
-  // First read — persist defaults so the cycle start is stable from here on.
-  const fresh: CreditConfig = { limitUsd: DEFAULT_LIMIT_USD, cycleStartIso: new Date().toISOString(), alertedLevel: "none" };
+  // First read — persist defaults so the window start is stable from here on.
+  const fresh: CreditConfig = { limitUsd: DEFAULT_LIMIT_USD, topUpWindowStartIso: new Date().toISOString(), alertedLevel: "none" };
   await saveCredit(fresh);
   return fresh;
 }
 
-/** Set the spend limit (USD) per cycle. Keeps the current cycle + alert state. */
+/** Set the spend limit (USD) for the top-up window. Keeps the window + alert state. */
 export async function setCreditLimit(limitUsd: number): Promise<void> {
   const cur = await getCreditConfig();
   await saveCredit({ ...cur, limitUsd: Math.max(0, limitUsd) });
 }
 
-/** Start a new spend cycle now (call after topping up credit on Anthropic).
- *  Resets the "spent this cycle" counter and re-arms the alerts. */
-export async function resetCreditCycle(): Promise<void> {
+/**
+ * Start a new TOP-UP WINDOW now (call after topping up credit on Anthropic).
+ * Resets the "spent this window" counter and re-arms the alerts.
+ *
+ * ⛔ THIS DOES NOT TOUCH THE CYCLE LEDGER. Ali asked whether a recharge should "reset the
+ * cycle or start a new cycle": neither. The cycle index is monotonic for ever — reset it and
+ * "cycles per year" stops being a number you can divide by anything. A recharge starts a new
+ * WINDOW; the open cycle keeps accruing straight through it.
+ */
+export async function startNewTopUpWindow(): Promise<void> {
   const cur = await getCreditConfig();
-  await saveCredit({ ...cur, cycleStartIso: new Date().toISOString(), alertedLevel: "none" });
+  await saveCredit({ ...cur, topUpWindowStartIso: new Date().toISOString(), alertedLevel: "none" });
 }
 
 /**
@@ -162,22 +281,72 @@ export async function resetCreditCycle(): Promise<void> {
  * Fails OPEN on an internal error (a broken meter must not brick poll generation),
  * but fails CLOSED on a genuine over-limit.
  */
-export async function assertAiBudget(feature: string): Promise<{ ok: true } | { ok: false; spentUsd: number; limitUsd: number }> {
+export async function assertAiBudget(
+  feature: string,
+): Promise<{ ok: true } | { ok: false; reason: "budget" | "cycle"; spentUsd: number; limitUsd: number; lastClosedIndex?: number }> {
   try {
     const cfg = await getCreditConfig();
-    if (cfg.limitUsd <= 0) return { ok: true }; // 0 = no cap configured
-    const spent = await aiUsageDal.sumCostSince(cfg.cycleStartIso);
-    if (spent < cfg.limitUsd) return { ok: true };
-    audit({
-      category: "ADMIN",
-      action: "ai.call_blocked.budget_exhausted",
-      actorId: null, targetType: "AiUsage", targetId: feature,
-      payload: { spentUsd: round6(spent), limitUsd: cfg.limitUsd },
-    });
-    return { ok: false, spentUsd: round6(spent), limitUsd: cfg.limitUsd };
+
+    // ⛔ THE MONEY CEILING FIRST, AND IT IS UNCHANGED. This is the only condition that is
+    // about an AMOUNT, and it stays exactly as it was — Ali called it perfect.
+    if (cfg.limitUsd > 0) {
+      const spent = await aiUsageDal.sumCostSince(cfg.topUpWindowStartIso);
+      if (spent >= cfg.limitUsd) {
+        audit({
+          category: "ADMIN",
+          action: "ai.call_blocked.budget_exhausted",
+          actorId: null, targetType: "AiUsage", targetId: feature,
+          payload: { spentUsd: round6(spent), limitUsd: cfg.limitUsd },
+        });
+        return { ok: false, reason: "budget", spentUsd: round6(spent), limitUsd: cfg.limitUsd };
+      }
+    }
+
+    // ⛔ THEN THE CYCLE CHECKPOINT (Ali, 2026-08-23): "when a cycle ends we have to start a
+    // new one to proceed, or posting / AI resolving is blocked." It refuses only when a
+    // cycle has genuinely been closed and nobody has started its successor. `targetId` is
+    // the FEATURE, so the audit trail says which purpose was stopped — the same shape the
+    // budget block already had.
+    const gate = await cycleGate();
+    if (gate.blocked) {
+      audit({
+        category: "ADMIN",
+        action: "ai.call_blocked.cycle_ended",
+        actorId: null, targetType: "AiUsage", targetId: feature,
+        payload: { lastClosedIndex: gate.lastClosedIndex },
+      });
+      const spent = cfg.limitUsd > 0 ? round6(await aiUsageDal.sumCostSince(cfg.topUpWindowStartIso)) : 0;
+      return { ok: false, reason: "cycle", spentUsd: spent, limitUsd: cfg.limitUsd, lastClosedIndex: gate.lastClosedIndex };
+    }
+
+    return { ok: true };
   } catch {
     return { ok: true }; // never let a broken meter block the platform
   }
+}
+
+export type AiBudgetBlock = Extract<Awaited<ReturnType<typeof assertAiBudget>>, { ok: false }>;
+
+/**
+ * ONE sentence for a refused AI call, defined ONCE.
+ *
+ * ⛔ WHY THIS IS A SHARED FUNCTION. All four call sites used to build the identical string
+ * by hand — *"AI credit limit reached ($x of $y this cycle)"* — and the moment a second
+ * reason existed, every one of them would have said the credit limit was reached when it
+ * was not. A refusal that names the wrong cause sends an operator to raise a limit that was
+ * never the problem. Four copies of one sentence is four chances to be wrong about money.
+ *
+ * ⚠️ It also corrects the old wording: what those messages called "this cycle" was the
+ * TOP-UP WINDOW. A cycle is now a different thing, and the two must never be confused on an
+ * operator's screen.
+ */
+export function describeAiBudgetBlock(b: AiBudgetBlock): string {
+  if (b.reason === "cycle") {
+    const done = b.lastClosedIndex ?? 0;
+    return `AI spend cycle ${done} is complete — AI is paused. Start cycle ${done + 1} under Admin → AI usage to continue.`;
+  }
+  return `AI credit limit reached ($${b.spentUsd.toFixed(2)} of $${b.limitUsd.toFixed(2)} this top-up window). ` +
+    `Raise the limit, or start a new top-up window after adding credit, under Admin → AI usage.`;
 }
 
 const LEVEL_ORDER: Record<CreditConfig["alertedLevel"], number> = { none: 0, warn: 1, limit: 2 };
@@ -188,7 +357,7 @@ const LEVEL_ORDER: Record<CreditConfig["alertedLevel"], number> = { none: 0, war
 async function checkLimitAndAlert(): Promise<void> {
   await withLock("ai-credit-alert", async () => {
     const cfg = await getCreditConfig();
-    const spent = await aiUsageDal.sumCostSince(cfg.cycleStartIso);
+    const spent = await aiUsageDal.sumCostSince(cfg.topUpWindowStartIso);
     // Small epsilon so an exact-boundary spend (e.g. $16.00 of a $20 limit, where
     // 20*0.8 is 16.000000000000004 in float) reliably trips the threshold.
     const EPS = 1e-6;
@@ -230,7 +399,7 @@ export type AiUsageSummary = {
   byFeature: Record<AiFeature, UsageBucket>;
   recent24h: UsageBucket;
   health: "ok" | "failing" | "idle";
-  credit: { limitUsd: number; cycleStartIso: string; spentThisCycleUsd: number; remainingUsd: number; alertedLevel: CreditConfig["alertedLevel"] };
+  credit: { limitUsd: number; topUpWindowStartIso: string; spentThisWindowUsd: number; remainingUsd: number; alertedLevel: CreditConfig["alertedLevel"] };
 };
 
 export async function getAiUsageSummary(): Promise<AiUsageSummary> {
@@ -264,15 +433,15 @@ export async function getAiUsageSummary(): Promise<AiUsageSummary> {
   else if (recent24h.ok === 0 && recent24h.err > 0) health = "failing";
 
   const cfg = await getCreditConfig();
-  const spentThisCycleUsd = await aiUsageDal.sumCostSince(cfg.cycleStartIso);
+  const spentThisWindowUsd = await aiUsageDal.sumCostSince(cfg.topUpWindowStartIso);
 
   return {
     windows, byFeature, recent24h, health,
     credit: {
       limitUsd: cfg.limitUsd,
-      cycleStartIso: cfg.cycleStartIso,
-      spentThisCycleUsd: round6(spentThisCycleUsd),
-      remainingUsd: round6(Math.max(0, cfg.limitUsd - spentThisCycleUsd)),
+      topUpWindowStartIso: cfg.topUpWindowStartIso,
+      spentThisWindowUsd: round6(spentThisWindowUsd),
+      remainingUsd: round6(Math.max(0, cfg.limitUsd - spentThisWindowUsd)),
       alertedLevel: cfg.alertedLevel,
     },
   };
@@ -306,4 +475,310 @@ export async function listAiUsage(filter: AiUsageFilter, page: number, pageSize:
   return aiUsageDal.list(filter, Math.max(1, page), Math.min(200, Math.max(1, pageSize)));
 }
 
+// ---------------------------------------------------------------------------
+// SPEND CYCLES — the denomination, its config, and the meter
+// ---------------------------------------------------------------------------
+
+/**
+ * The cycle settings Ali tunes. Persisted in `SystemConfig` exactly like `CreditConfig`.
+ *
+ * ⛔ `fxTzsPerUsd` DEFAULTS TO 0, MEANING "NOT SET", AND THAT IS DELIBERATE. A shilling
+ * figure converted at a rate nobody entered is a fabricated number wearing a currency
+ * symbol — the platform's own A-5 no-fabrication rule. Until an officer enters a rate and
+ * its date, every TZS figure on the page renders `—`.
+ */
+export type CycleConfig = {
+  /** The denomination. Custom and settable; stamped onto each cycle at open. */
+  sizeUsd: number;
+  /**
+   * ⛔ THIS IS THE CHECKPOINT SWITCH, AND ALI'S ANSWER IS `false`.
+   *
+   * `false` (default, Ali 2026-08-23) — when a cycle is used up it CLOSES and the next one
+   * does NOT open by itself. AI calls are then BLOCKED — "poll posting or AI resolving
+   * blocked", in his words — until an officer clicks *Start cycle N+1*. That deliberate
+   * pause is the whole point: a $1,000 top-up becomes ten $100 decisions, and each one
+   * records how long it lasted before the next was needed.
+   *
+   * `true` — the next cycle opens automatically and nothing ever pauses. The denomination
+   * still counts; it just never asks permission.
+   *
+   * ⛔ Both settings preserve conservation. There is no mode in which metered spend goes
+   * anywhere but into a cycle — including the call that overshoots a boundary, which is
+   * split across cycles by the `while` loop rather than being rounded away.
+   */
+  autoRoll: boolean;
+  /** Margin added to AI cost to produce the SUGGESTED price. 100 = price is 2× cost. */
+  targetMarginPct: number;
+  /** 0 = not set. See the note above — this is never guessed. */
+  fxTzsPerUsd: number;
+  /** "" when the rate is unset. Dated so staleness is visible; staleness is a money error. */
+  fxAsOfIso: string;
+  /** Refuse to project a year from less observed history than this. */
+  minDaysForProjection: number;
+};
+
+const CYCLE_KEY = "ai_cycle_config";
+
+/**
+ * Ali's decisions, 2026-08-23: $100 per cycle, price at 2× AI cost, and a cycle that ENDS
+ * stops the AI until he starts the next one.
+ */
+export const CYCLE_DEFAULTS: CycleConfig = {
+  sizeUsd: 100,
+  autoRoll: false,
+  targetMarginPct: 100,
+  fxTzsPerUsd: 0,
+  fxAsOfIso: "",
+  minDaysForProjection: 14,
+};
+
+// ⛔ THE BOUNDS LIVE IN ONE ISOMORPHIC FILE (`src/lib/ai-cycle-rules.ts`) and are re-exported
+// here for server callers. A second copy is a number written twice, and this repo has a
+// standing record of what that costs — see `docs/RULES.md` §7.
+export { CYCLE_BOUNDS };
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __50PICK_AI_CYCLE_CFG: CycleConfig | undefined;
+}
+
+export async function getCycleConfig(): Promise<CycleConfig> {
+  const raw = hasDatabase()
+    ? await loadConfig<Partial<CycleConfig>>(CYCLE_KEY)
+    : (globalThis.__50PICK_AI_CYCLE_CFG ?? null);
+  if (!raw) return { ...CYCLE_DEFAULTS };
+  const num = (v: unknown, d: number) => (typeof v === "number" && Number.isFinite(v) ? v : d);
+  return {
+    sizeUsd: clampCycleSize(num(raw.sizeUsd, CYCLE_DEFAULTS.sizeUsd)),
+    autoRoll: typeof raw.autoRoll === "boolean" ? raw.autoRoll : CYCLE_DEFAULTS.autoRoll,
+    targetMarginPct: num(raw.targetMarginPct, CYCLE_DEFAULTS.targetMarginPct),
+    fxTzsPerUsd: num(raw.fxTzsPerUsd, CYCLE_DEFAULTS.fxTzsPerUsd),
+    fxAsOfIso: typeof raw.fxAsOfIso === "string" ? raw.fxAsOfIso : CYCLE_DEFAULTS.fxAsOfIso,
+    minDaysForProjection: num(raw.minDaysForProjection, CYCLE_DEFAULTS.minDaysForProjection),
+  };
+}
+
+export async function saveCycleConfig(cfg: CycleConfig): Promise<void> {
+  const safe: CycleConfig = { ...cfg, sizeUsd: clampCycleSize(cfg.sizeUsd) };
+  if (!hasDatabase()) { globalThis.__50PICK_AI_CYCLE_CFG = safe; return; }
+  await saveConfig(CYCLE_KEY, safe);
+}
+
+/**
+ * ⛔ THE LAST LINE OF DEFENCE AT THE METER, not a substitute for validation.
+ * A size of 0 or below means "infinitely many cycles" and a divide-by-zero everywhere
+ * downstream (§10b). The form refuses it; this makes it impossible even if a value reaches
+ * the store by some other route — a hand-edited `SystemConfig` row, say.
+ */
+export function clampCycleSize(sizeUsd: number): number {
+  if (!Number.isFinite(sizeUsd) || sizeUsd <= 0) return CYCLE_DEFAULTS.sizeUsd;
+  return Math.min(CYCLE_BOUNDS.sizeUsd.max, Math.max(CYCLE_BOUNDS.sizeUsd.min, sizeUsd));
+}
+
+/** The same float guard `checkLimitAndAlert` uses — `20 * 0.8` is `16.000000000000004`. */
+export const CYCLE_EPS = 1e-6;
+
+/**
+ * ⛔ A CIRCUIT-BREAKER, NOT A CAP ON THE COUNT. At the $0.001 floor a $2 call legitimately
+ * spans 2,000 cycles; past that the config is a typo, and looping is a self-inflicted flood
+ * of writes on a connection pool the betting path shares. When it trips, the remainder is
+ * still accrued to the open cycle — conservation is never broken — and the event is audited,
+ * because an under-count that nobody can see is the failure mode this whole file guards.
+ */
+const MAX_ROLLS_PER_CALL = 2_000;
+
+async function openNextCycle(
+  sizeUsd: number,
+  atIso: string,
+  openedBy: string | null,
+  note: string | null,
+): Promise<AiSpendCycleRecord> {
+  const next = (await aiCycleDal.maxIndex()) + 1;
+  const row: AiSpendCycleRecord = {
+    id: `aic_${randomId(14)}`,
+    index: next,
+    // ⛔ STAMPED HERE AND NEVER RE-READ. A retroactive size change would rewrite what "a
+    // cycle" meant for every past year the moment Ali retunes it (§10a).
+    sizeUsd,
+    priceRev: PRICE_REV,
+    openedAt: atIso,
+    closedAt: null,
+    costUsd: 0,
+    status: "OPEN",
+    openedBy,
+    note,
+  };
+  await aiCycleDal.create(row);
+  return row;
+}
+
+/**
+ * THE METER. Denominate one call's cost into cycles.
+ *
+ * ⛔ THE `while` IS NOT OPTIONAL. One call can cross several cycles — at $0.01 a size, a
+ * $0.30 Opus call is 30 of them. A single `if` silently caps the count, and every downstream
+ * number is then too low, which reads as "cheaper than it is".
+ *
+ * ⛔ `withLock` AND the unique index on `index`, together. The lock serialises; the unique
+ * index is what makes a LOST lock loud (constraint error → audited) instead of silent. That
+ * is `E-108`'s lesson: never let the only protection be the one you cannot observe failing.
+ */
+export async function accrueSpendToCycles(costUsd: number, atIso: string): Promise<void> {
+  // A zero-cost call opens nothing. Measured on production 2026-08-23: 1,432 of 4,271 events
+  // are failures recorded with no token counts and therefore $0. They are real calls and they
+  // stay in the event ledger and in every call count — they simply move no money.
+  if (!(costUsd > CYCLE_EPS)) return;
+
+  const cfg = await getCycleConfig();
+  const size = clampCycleSize(cfg.sizeUsd);
+
+  await withLock("ai-spend-cycle", async () => {
+    // ⛔ THE VERY FIRST CYCLE OPENS ITSELF. Only a cycle that has been CLOSED needs an
+    // officer to open its successor. If this opened nothing on an empty ledger, deploying
+    // the checkpoint gate would block every AI call on the platform at once.
+    let cycle = (await aiCycleDal.openCycle()) ?? (await openNextCycle(size, atIso, null, "first cycle"));
+    let remaining = round6(costUsd);
+    let rolls = 0;
+
+    while (remaining > CYCLE_EPS) {
+      const room = round6(cycle.sizeUsd - cycle.costUsd);
+      const take = Math.min(room, remaining);
+      let newCost = round6(cycle.costUsd + take);
+      await aiCycleDal.update(cycle.id, { costUsd: newCost });
+      cycle = { ...cycle, costUsd: newCost };
+      remaining = round6(remaining - take);
+
+      if (newCost < cycle.sizeUsd - CYCLE_EPS) continue; // room left — nothing to close
+
+      // 🔴 THE STRADDLING CALL, AND WHY THE CHECKPOINT WOULD OTHERWISE NEVER FIRE.
+      //
+      // A call almost never lands exactly on a boundary. Filling a $100 cycle with a $0.05
+      // call leaves ~$0.03 over — and if that remainder opens the successor, there is never
+      // a moment with no open cycle, so `cycleGate` never blocks and Ali's pause never
+      // happens. Measured: it fired 0 times out of 6 in the first drive of this suite.
+      //
+      // So in PAUSE mode the cycle that just filled ABSORBS the rest of that one call. The
+      // overshoot is bounded by a single call's cost and is shown honestly on the page as
+      // "used > 100%" — a visible, tiny imprecision instead of a control that silently does
+      // nothing.
+      //
+      // ⛔ ONLY WHEN THE REMAINDER IS SMALLER THAN A WHOLE CYCLE. A call genuinely worth
+      // several cycles must still be SPLIT into several, or the denomination — the entire
+      // point of the feature — is destroyed by one large call.
+      if (!cfg.autoRoll && remaining > CYCLE_EPS && remaining < cycle.sizeUsd) {
+        const absorbed = round6(newCost + remaining);
+        await aiCycleDal.update(cycle.id, { costUsd: absorbed });
+        cycle = { ...cycle, costUsd: absorbed };
+        newCost = absorbed;
+        remaining = 0;
+      }
+
+      // ⛔ ORDERING ASSERTED AT CLOSE (§10r). A clock that has gone backwards would
+      // otherwise write a cycle that closed before it opened, and every duration derived
+      // from it — including "how long did this cycle last", which is the number Ali asked
+      // for by name — would be negative.
+      const closedAt = Date.parse(atIso) >= Date.parse(cycle.openedAt) ? atIso : cycle.openedAt;
+      await aiCycleDal.update(cycle.id, { status: "CLOSED", closedAt });
+      audit({
+        category: "ADMIN", action: "ai.cycle_closed",
+        actorId: null, targetType: "AiSpendCycle", targetId: String(cycle.index),
+        payload: {
+          index: cycle.index, sizeUsd: cycle.sizeUsd, costUsd: newCost, priceRev: cycle.priceRev,
+          openedAt: cycle.openedAt, closedAt, lastedMs: Date.parse(closedAt) - Date.parse(cycle.openedAt),
+        },
+      });
+      rolls++;
+
+      if (remaining > CYCLE_EPS) {
+        // ⛔ FORCED, AND NOT A POLICY CHOICE. This call's money has already been spent and
+        // it has to land somewhere; refusing to open the next cycle here would simply lose
+        // it. The checkpoint is about the NEXT call, never about un-metering this one.
+        if (rolls >= MAX_ROLLS_PER_CALL) {
+          const spill = await openNextCycle(size, closedAt, null, "roll breaker");
+          await aiCycleDal.update(spill.id, { costUsd: remaining });
+          audit({
+            category: "ADMIN", action: "ai.cycle_roll_breaker",
+            actorId: null, targetType: "AiSpendCycle", targetId: String(spill.index),
+            payload: { sizeUsd: size, rolls, remainderUsd: remaining, callCostUsd: round6(costUsd) },
+          });
+          return;
+        }
+        cycle = await openNextCycle(size, closedAt, null, null);
+        continue;
+      }
+
+      // Exactly spent. THIS is where the checkpoint lives.
+      if (cfg.autoRoll) {
+        cycle = await openNextCycle(size, closedAt, null, null);
+      }
+      // autoRoll === false → no open cycle remains. `assertAiBudget` refuses the next call
+      // until an officer starts cycle N+1. That is Ali's "when a cycle ends we have to start
+      // a new one to proceed, or posting / AI resolving is blocked".
+      return;
+    }
+  });
+}
+
+/**
+ * OFFICER CONTROL — start the next cycle, which is what un-blocks the AI after a cycle ends.
+ *
+ * Returns the cycle that was opened, or null when one is already open (starting a second
+ * would put two OPEN rows in a ledger whose whole invariant is that there is exactly one).
+ */
+export async function startNextCycle(officerId: string | null, note: string | null): Promise<AiSpendCycleRecord | null> {
+  return withLock("ai-spend-cycle", async () => {
+    if (await aiCycleDal.openCycle()) return null;
+    const cfg = await getCycleConfig();
+    // ⛔ The size is read HERE, at open, and stamped. This is the one moment a size change
+    // takes effect — never retroactively (§8.4).
+    return openNextCycle(clampCycleSize(cfg.sizeUsd), new Date().toISOString(), officerId, note);
+  });
+}
+
+/**
+ * OFFICER CONTROL — close the open cycle early, before it has spent its full size.
+ * Deliberately does NOT open the successor: closing is "stop here", and starting the next
+ * one is the separate, explicit decision Ali asked for.
+ */
+export async function closeOpenCycleNow(officerId: string | null, note: string | null): Promise<AiSpendCycleRecord | null> {
+  return withLock("ai-spend-cycle", async () => {
+    const cycle = await aiCycleDal.openCycle();
+    if (!cycle) return null;
+    const nowIso = new Date().toISOString();
+    const closedAt = Date.parse(nowIso) >= Date.parse(cycle.openedAt) ? nowIso : cycle.openedAt;
+    await aiCycleDal.update(cycle.id, { status: "CLOSED", closedAt });
+    audit({
+      category: "ADMIN", action: "ai.cycle_closed_early",
+      actorId: officerId, targetType: "AiSpendCycle", targetId: String(cycle.index),
+      payload: {
+        index: cycle.index, sizeUsd: cycle.sizeUsd, costUsd: cycle.costUsd,
+        openedAt: cycle.openedAt, closedAt, lastedMs: Date.parse(closedAt) - Date.parse(cycle.openedAt), note,
+      },
+    });
+    return { ...cycle, status: "CLOSED", closedAt };
+  });
+}
+
+/**
+ * IS THE AI ALLOWED TO SPEND RIGHT NOW, in cycle terms?
+ *
+ * ⛔ THIS IS A CHECKPOINT, NOT A SECOND MONEY CAP, and the distinction is what keeps §8.6
+ * satisfied. It has no opinion about how much may be spent in total — `limitUsd` is still
+ * the only ceiling. It answers one question: has an officer acknowledged the last completed
+ * $100 by starting the next cycle? Two gates that cannot disagree about an amount, because
+ * only one of them is about an amount.
+ *
+ * Returns `blocked` ONLY when a cycle has actually been closed and nothing succeeded it. An
+ * empty ledger is never blocked — the meter opens cycle 1 on the first spend.
+ */
+export async function cycleGate(): Promise<{ blocked: false } | { blocked: true; lastClosedIndex: number }> {
+  const open = await aiCycleDal.openCycle();
+  if (open) return { blocked: false };
+  const highest = await aiCycleDal.maxIndex();
+  if (highest === 0) return { blocked: false }; // nothing has ever been metered
+  return { blocked: true, lastClosedIndex: highest };
+}
+
+export { DuplicateCycleIndexError };
+export type { AiSpendCycleRecord };
 export type { AiUsageEventRecord, AiUsageFilter };

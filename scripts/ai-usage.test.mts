@@ -31,11 +31,15 @@ near("unknown model falls back to Sonnet", usage.costOf("mystery", 1_000_000, 0,
 
 console.log("\n2) Recording + summary aggregation");
 clear();
-await usage.setCreditLimit(1000); await usage.resetCreditCycle(); // high limit → no alerts here
-await usage.recordAiUsage({ feature: "sentinel", model: "claude-sonnet-4-6", inputTokens: 1000, outputTokens: 500, webSearches: 1, ok: true, detail: "check · Messi WC" });
-await usage.recordAiUsage({ feature: "polls", model: "claude-sonnet-4-6", inputTokens: 2000, outputTokens: 800, webSearches: 2, ok: true, detail: "generate · sports" });
-await usage.recordAiUsage({ feature: "chat", model: "claude-haiku-4-5", inputTokens: 300, outputTokens: 120, ok: true });
-await usage.recordAiUsage({ feature: "sentinel", model: "claude-sonnet-4-6", ok: false, errorType: "credit balance too low" });
+// ⛔ Continuous running. This suite measures SUMMARY arithmetic, not the cycle checkpoint;
+// letting a filled cycle pause the meter here would make the totals depend on a control this
+// file never asserts. `test:ai-cycles` proves the checkpoint.
+await usage.saveCycleConfig({ ...usage.CYCLE_DEFAULTS, autoRoll: true });
+await usage.setCreditLimit(1000); await usage.startNewTopUpWindow(); // high limit → no alerts here
+await usage.recordAiUsage({ feature: "sentinel", model: "claude-sonnet-4-6", inputTokens: 1000, outputTokens: 500, webSearches: 1, ok: true, detail: "check · Messi WC", subjectType: "market", subjectId: "mkt_fixture" });
+await usage.recordAiUsage({ feature: "polls", model: "claude-sonnet-4-6", inputTokens: 2000, outputTokens: 800, webSearches: 2, ok: true, detail: "generate · sports", subjectType: "poll_generation", subjectId: null });
+await usage.recordAiUsage({ feature: "chat", model: "claude-haiku-4-5", inputTokens: 300, outputTokens: 120, ok: true, subjectType: "chat_session", subjectId: "usr_fixture" });
+await usage.recordAiUsage({ feature: "sentinel", model: "claude-sonnet-4-6", ok: false, errorType: "credit balance too low", subjectType: "market", subjectId: "mkt_fixture" });
 {
   const s = await usage.getAiUsageSummary();
   eq("all calls = 4", s.windows.all.calls, 4);
@@ -50,7 +54,7 @@ await usage.recordAiUsage({ feature: "sentinel", model: "claude-sonnet-4-6", ok:
 
 console.log("\n3) Health = failing when every recent call errors");
 clear();
-await usage.recordAiUsage({ feature: "sentinel", model: "claude-sonnet-4-6", ok: false, errorType: "credit balance too low" });
+await usage.recordAiUsage({ feature: "sentinel", model: "claude-sonnet-4-6", ok: false, errorType: "credit balance too low", subjectType: "market", subjectId: "mkt_fixture" });
 {
   const s = await usage.getAiUsageSummary();
   eq("health failing", s.health, "failing");
@@ -59,8 +63,8 @@ await usage.recordAiUsage({ feature: "sentinel", model: "claude-sonnet-4-6", ok:
 console.log("\n4) Filters + pagination");
 clear();
 for (let i = 0; i < 5; i++) await usage.recordAiUsage({ feature: "sentinel", model: "claude-sonnet-4-6", webSearches: 1, ok: true, detail: `check · match ${i}` });
-for (let i = 0; i < 3; i++) await usage.recordAiUsage({ feature: "polls", model: "claude-sonnet-4-6", ok: true, detail: "generate · crypto" });
-for (let i = 0; i < 2; i++) await usage.recordAiUsage({ feature: "chat", model: "claude-haiku-4-5", ok: false, errorType: "overloaded" });
+for (let i = 0; i < 3; i++) await usage.recordAiUsage({ feature: "polls", model: "claude-sonnet-4-6", ok: true, detail: "generate · crypto", subjectType: "poll_generation", subjectId: null });
+for (let i = 0; i < 2; i++) await usage.recordAiUsage({ feature: "chat", model: "claude-haiku-4-5", ok: false, errorType: "overloaded", subjectType: "chat_session", subjectId: "usr_fixture" });
 {
   eq("filter feature=sentinel → 5", (await usage.listAiUsage({ feature: "sentinel" }, 1, 100)).total, 5);
   eq("filter status=error → 2", (await usage.listAiUsage({ status: "error" }, 1, 100)).total, 2);
@@ -79,29 +83,29 @@ for (let i = 0; i < 2; i++) await usage.recordAiUsage({ feature: "chat", model: 
 console.log("\n5) Credit limit escalation (warn at 80%, limit at 100%, debounced, re-armed on reset)");
 clear();
 await usage.setCreditLimit(0.10);
-await usage.resetCreditCycle();
+await usage.startNewTopUpWindow();
 eq("starts at none", (await usage.getCreditConfig()).alertedLevel, "none");
-await usage.recordAiUsage({ feature: "sentinel", model: "claude-sonnet-4-6", webSearches: 4, ok: true }); // $0.04 (40%)
+await usage.recordAiUsage({ feature: "sentinel", model: "claude-sonnet-4-6", webSearches: 4, ok: true, subjectType: "market", subjectId: "mkt_fixture" }); // $0.04 (40%)
 eq("40% → still none", (await usage.getCreditConfig()).alertedLevel, "none");
-await usage.recordAiUsage({ feature: "sentinel", model: "claude-sonnet-4-6", webSearches: 4, ok: true }); // $0.08 (80%)
+await usage.recordAiUsage({ feature: "sentinel", model: "claude-sonnet-4-6", webSearches: 4, ok: true, subjectType: "market", subjectId: "mkt_fixture" }); // $0.08 (80%)
 eq("80% → warn", (await usage.getCreditConfig()).alertedLevel, "warn");
-await usage.recordAiUsage({ feature: "sentinel", model: "claude-sonnet-4-6", webSearches: 4, ok: true }); // $0.12 (>100%)
+await usage.recordAiUsage({ feature: "sentinel", model: "claude-sonnet-4-6", webSearches: 4, ok: true, subjectType: "market", subjectId: "mkt_fixture" }); // $0.12 (>100%)
 eq("120% → limit", (await usage.getCreditConfig()).alertedLevel, "limit");
-await usage.recordAiUsage({ feature: "sentinel", model: "claude-sonnet-4-6", webSearches: 4, ok: true }); // more
+await usage.recordAiUsage({ feature: "sentinel", model: "claude-sonnet-4-6", webSearches: 4, ok: true, subjectType: "market", subjectId: "mkt_fixture" }); // more
 eq("stays limit (no regress)", (await usage.getCreditConfig()).alertedLevel, "limit");
 {
   const s = await usage.getAiUsageSummary();
-  near("spent this cycle ≈ $0.16", s.credit.spentThisCycleUsd, 0.16, 1e-6);
+  near("spent this window ≈ $0.16", s.credit.spentThisWindowUsd, 0.16, 1e-6);
   eq("remaining clamped to 0", s.credit.remainingUsd, 0);
 }
 // In production a reset always lands well after prior calls; the test runs
 // sub-millisecond, so wait so the new cycle start is strictly after them.
 await new Promise((r) => setTimeout(r, 5));
-await usage.resetCreditCycle();
+await usage.startNewTopUpWindow();
 {
   const s = await usage.getAiUsageSummary();
   eq("after reset → none", s.credit.alertedLevel, "none");
-  near("after reset spent ≈ 0", s.credit.spentThisCycleUsd, 0, 1e-6);
+  near("after a new top-up window spent ≈ 0", s.credit.spentThisWindowUsd, 0, 1e-6);
 }
 
 console.log(`\n=== AI usage tests: ${pass} passed, ${fail} failed ===\n`);

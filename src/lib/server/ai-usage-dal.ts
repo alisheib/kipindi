@@ -20,6 +20,10 @@ export type AiUsageEventRecord = {
   errorType: string | null;
   latencyMs: number | null;
   detail: string | null;
+  /** Structured attribution — see `AiSubjectType` in ai-usage.ts. Never null in new rows;
+   *  null only on the pre-2026-08-23 backlog, which the read model shows as its own bucket. */
+  subjectType: string | null;
+  subjectId: string | null;
 };
 
 export type AiUsageFilter = {
@@ -27,7 +31,8 @@ export type AiUsageFilter = {
   status?: "ok" | "error";
   since?: string; // ISO
   until?: string; // ISO
-  search?: string; // matches model / errorType / detail (case-insensitive)
+  search?: string; // matches model / errorType / detail / subjectId (case-insensitive)
+  subjectType?: string;
 };
 
 export interface AiUsageDal {
@@ -54,13 +59,14 @@ const mem: AiUsageEventRecord[] = globalThis.__50PICK_AI_USAGE ?? (globalThis.__
 
 function matches(e: AiUsageEventRecord, f: AiUsageFilter): boolean {
   if (f.feature && e.feature !== f.feature) return false;
+  if (f.subjectType && e.subjectType !== f.subjectType) return false;
   if (f.status === "ok" && !e.ok) return false;
   if (f.status === "error" && e.ok) return false;
   if (f.since && e.createdAt < f.since) return false;
   if (f.until && e.createdAt > f.until) return false;
   if (f.search) {
     const q = f.search.toLowerCase();
-    const hay = `${e.model} ${e.errorType ?? ""} ${e.detail ?? ""}`.toLowerCase();
+    const hay = `${e.model} ${e.errorType ?? ""} ${e.detail ?? ""} ${e.subjectId ?? ""}`.toLowerCase();
     if (!hay.includes(q)) return false;
   }
   return true;
@@ -108,12 +114,15 @@ function toRecord(r: any): AiUsageEventRecord {
     errorType: r.errorType ?? null,
     latencyMs: r.latencyMs ?? null,
     detail: r.detail ?? null,
+    subjectType: r.subjectType ?? null,
+    subjectId: r.subjectId ?? null,
   };
 }
 
 function whereFromFilter(f: AiUsageFilter): any {
   const w: any = {};
   if (f.feature) w.feature = f.feature;
+  if (f.subjectType) w.subjectType = f.subjectType;
   if (f.status === "ok") w.ok = true;
   else if (f.status === "error") w.ok = false;
   if (f.since || f.until) {
@@ -126,6 +135,7 @@ function whereFromFilter(f: AiUsageFilter): any {
       { model: { contains: f.search, mode: "insensitive" } },
       { errorType: { contains: f.search, mode: "insensitive" } },
       { detail: { contains: f.search, mode: "insensitive" } },
+      { subjectId: { contains: f.search, mode: "insensitive" } },
     ];
   }
   return w;
@@ -149,6 +159,8 @@ const prismaDal: AiUsageDal = {
         errorType: e.errorType,
         latencyMs: e.latencyMs,
         detail: e.detail,
+        subjectType: e.subjectType,
+        subjectId: e.subjectId,
       },
     });
   },

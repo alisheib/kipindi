@@ -291,7 +291,7 @@ export class ClaudeProvider implements AIProvider {
       const costUsd = costOf(activeModel, inTok, outTok, searches);
 
       // Meter the spend (best-effort) regardless of how parsing goes below.
-      await recordAiUsage({ feature: "polls", model: activeModel, inputTokens: inTok, outputTokens: outTok, webSearches: searches, ok: true, latencyMs, detail: `generate · ${category}` });
+      await recordAiUsage({ feature: "polls", model: activeModel, inputTokens: inTok, outputTokens: outTok, webSearches: searches, ok: true, latencyMs, detail: `generate · ${category}`, subjectType: "poll_generation", subjectId: null });
 
       const content = resp.content as Array<{ type: string; name?: string; input?: unknown; text?: string }>;
       const rawResponse = JSON.stringify(content, null, 2).slice(0, 8000);
@@ -329,7 +329,7 @@ export class ClaudeProvider implements AIProvider {
       };
     } catch (err) {
       console.error("[50pick-polls] Claude API error:", err);
-      await recordAiUsage({ feature: "polls", model: activeModel, ok: false, latencyMs: Date.now() - start, errorType: (err as Error).message?.slice(0, 200), detail: `generate · ${category}` });
+      await recordAiUsage({ feature: "polls", model: activeModel, ok: false, latencyMs: Date.now() - start, errorType: (err as Error).message?.slice(0, 200), detail: `generate · ${category}`, subjectType: "poll_generation", subjectId: null });
       return {
         ok: false,
         error: `Claude API error: ${(err as Error).message}`,
@@ -366,7 +366,7 @@ export class ClaudeProvider implements AIProvider {
       const inTok = usage?.input_tokens ?? 0;
       const outTok = usage?.output_tokens ?? 0;
       const costUsd = costOf(IDEATION_MODEL, inTok, outTok, 0);
-      await recordAiUsage({ feature: "polls", model: IDEATION_MODEL, inputTokens: inTok, outputTokens: outTok, webSearches: 0, ok: true, latencyMs, detail: `ideate · ${count}` });
+      await recordAiUsage({ feature: "polls", model: IDEATION_MODEL, inputTokens: inTok, outputTokens: outTok, webSearches: 0, ok: true, latencyMs, detail: `ideate · ${count}`, subjectType: "poll_ideation", subjectId: null });
 
       const content = resp.content as Array<{ type: string; name?: string; input?: unknown }>;
       const toolCall = content.find((b) => b.type === "tool_use" && b.name === "submit_ideas");
@@ -384,7 +384,7 @@ export class ClaudeProvider implements AIProvider {
         : [];
       return { ok: true, ideas, tokensUsed: inTok + outTok, costUsd, latencyMs };
     } catch (err) {
-      await recordAiUsage({ feature: "polls", model: IDEATION_MODEL, ok: false, latencyMs: Date.now() - start, errorType: (err as Error).message?.slice(0, 200), detail: "ideate" });
+      await recordAiUsage({ feature: "polls", model: IDEATION_MODEL, ok: false, latencyMs: Date.now() - start, errorType: (err as Error).message?.slice(0, 200), detail: "ideate", subjectType: "poll_ideation", subjectId: null });
       return { ok: false, ideas: [], error: `Ideation error: ${(err as Error).message}`, tokensUsed: 0, costUsd: 0, latencyMs: Date.now() - start };
     }
   }
@@ -492,6 +492,7 @@ ON THE MARGIN, which is the part that decides whether this product works at all.
       await recordAiUsage({
         feature: "updown", model: activeModel, inputTokens: inTok, outputTokens: outTok,
         webSearches: fetches, ok: true, latencyMs, detail: `propose · ${req.assetKey} ${req.durationMinutes}m`,
+        subjectType: "updown_proposal", subjectId: req.assetKey,
       });
 
       const content = resp.content as Array<{ type: string; name?: string; input?: unknown; text?: string }>;
@@ -524,6 +525,7 @@ ON THE MARGIN, which is the part that decides whether this product works at all.
       await recordAiUsage({
         feature: "updown", model: activeModel, ok: false, latencyMs,
         errorType: (err as Error).message?.slice(0, 200), detail: `propose · ${req.assetKey}`,
+        subjectType: "updown_proposal", subjectId: req.assetKey,
       });
       return { ok: false, error: `Proposal error: ${(err as Error).message}`, tokensUsed: 0, costUsd: 0, latencyMs };
     }

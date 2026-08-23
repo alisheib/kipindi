@@ -173,6 +173,7 @@ export async function chatWithClaude(
       inputTokens: usage?.input_tokens ?? 0,
       outputTokens: usage?.output_tokens ?? 0,
       ok: true,
+      subjectType: "chat_session", subjectId: session.userId,
     });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const text = (resp.content as any[])
@@ -184,7 +185,7 @@ export async function chatWithClaude(
     console.error("[50pick-chat] Claude API error:", err);
     try {
       const { recordAiUsage } = await import("@/lib/server/ai-usage");
-      await recordAiUsage({ feature: "chat", model: "claude-haiku-4-5-20251001", ok: false });
+      await recordAiUsage({ feature: "chat", model: "claude-haiku-4-5-20251001", ok: false, subjectType: "chat_session", subjectId: session.userId });
     } catch { /* best-effort */ }
     return { text: TROUBLE_MESSAGES[locale] ?? TROUBLE_MESSAGES.en };
   }

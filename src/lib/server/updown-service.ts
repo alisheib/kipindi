@@ -185,6 +185,9 @@ export async function readPrice(
   asset: StoredAsset,
   boundaryAtIso: string,
   cfg: UpDownConfig,
+  /** The observation row this read is for, so AI spend can be attributed to it. Absent on
+   *  source probes, which read a price without any observation existing. */
+  observationId?: string | null,
 ): Promise<OracleReading> {
   // ── E-36 · IS THIS MARKET EVEN TRADING? ────────────────────────────────────
   // FIRST, before either method and before a single provider credit is spent.
@@ -207,7 +210,7 @@ export async function readPrice(
     return { ok: false, reason: "no-api-key", detail: describeClosure(session) };
   }
 
-  if (cfg.observationMethod === "ai") return observePrice(asset, boundaryAtIso);
+  if (cfg.observationMethod === "ai") return observePrice(asset, boundaryAtIso, observationId);
 
   const q = await quoteAsset(feedFromId(cfg.feedProvider), {
     symbol: asset.symbol,
@@ -564,7 +567,7 @@ export async function acquireObservation(
     }
   }
 
-  const reading = await readPrice(asset, boundaryAtIso, cfg);
+  const reading = await readPrice(asset, boundaryAtIso, cfg, obs.id);
   if (!reading.ok) {
     const detail = describeRefusal(reading.reason, reading.detail);
     // ⛔ WHETHER A REFUSAL COSTS AN ATTEMPT IS A MONEY DECISION, and it lives in ONE pure

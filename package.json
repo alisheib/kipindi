@@ -78,6 +78,7 @@
     "test:config": "tsx scripts/config-persist.test.mts",
     "test:ai-usage": "tsx scripts/ai-usage.test.mts",
     "test:ai-budget": "tsx scripts/ai-budget-enforcement.test.mts",
+    "test:ai-cycles": "tsx scripts/ai-cycles.test.mts",
     "test:ai-polls": "tsx scripts/ai-poll-ideas.test.mts",
     "test:ai-source-allowlist": "tsx scripts/ai-poll-source-allowlist.test.mts",
     "test:ai-coordination": "tsx scripts/ai-poll-coordination.test.mts",
@@ -476,7 +477,10 @@
     "qa:landmark-seal": "node scripts/landmark-seal.mjs",
     "qa:notifications-page": "node scripts/live-notifications-page.mjs",
     "test:encoding": "tsx scripts/encoding.test.mts",
-    "qa:notifications-restore": "node scripts/live-notifications-restore.mjs"
+    "qa:notifications-restore": "node scripts/live-notifications-restore.mjs",
+    "red:ai-cycles": "node scripts/ai-cycles-red.mjs",
+    "ops:preflight-ai-cycles": "tsx scripts/ops-preflight-ai-cycles.mts",
+    "ops:backfill-ai-cycles": "tsx scripts/ops-backfill-ai-cycles.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

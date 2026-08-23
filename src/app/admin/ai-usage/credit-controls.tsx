@@ -6,7 +6,7 @@ import { useDeferredToast } from "@/components/ui/toast";
 import { Input, Field } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { setCreditLimitAction, resetCreditCycleAction } from "./actions";
+import { setCreditLimitAction, startTopUpWindowAction } from "./actions";
 
 export function CreditControls({ limitUsd }: { limitUsd: number }) {
   const [pending, start] = useTransition();
@@ -25,30 +25,35 @@ export function CreditControls({ limitUsd }: { limitUsd: number }) {
 
   const onReset = () => {
     start(async () => {
-      const r = await resetCreditCycleAction();
-      if (!r.ok) toast({ title: "Couldn't reset", description: r.error, variant: "danger" });
-      else { router.refresh(); deferToast({ title: "New cycle started", variant: "success" }); }
+      const r = await startTopUpWindowAction();
+      if (!r.ok) toast({ title: "Couldn't start the window", description: r.error, variant: "danger" });
+      else { router.refresh(); deferToast({ title: "New top-up window started", variant: "success" }); }
     });
   };
 
   return (
     <div className="flex flex-wrap items-center gap-3">
       <form onSubmit={onSetLimit} className="flex items-center gap-3 flex-1 min-w-[200px]">
-        <Field label="Spend limit per cycle (USD)" className="flex-1 min-w-[140px]">
+        <Field label="Spend limit per top-up window (USD)" className="flex-1 min-w-[140px]">
           <Input name="limitUsd" type="number" step="0.01" min="0.01" inputMode="decimal" defaultValue={String(limitUsd)} placeholder="20" mono />
         </Field>
         <Button type="submit" loading={pending}>Set limit</Button>
       </form>
       <ConfirmDialog
         tone="warning"
-        title="Start a new spend cycle?"
-        body={<p>Use this right after you top up Anthropic credit — it resets &lsquo;spent this cycle&rsquo; to $0 and re-arms the alerts.</p>}
-        confirmLabel="Start new cycle"
+        title="Start a new top-up window?"
+        body={
+          <div className="space-y-2">
+            <p>Use this right after you top up Anthropic credit — it resets &lsquo;spent this window&rsquo; to $0 and re-arms the 80% / 100% alerts.</p>
+            <p>⛔ This is <strong>not</strong> a spend cycle. It does not touch the cycle ledger, and cycle numbering carries straight on.</p>
+          </div>
+        }
+        confirmLabel="Start new window"
         cancelLabel="Cancel"
         onConfirm={onReset}
         trigger={
           <Button type="button" variant="secondary" disabled={pending}>
-            Reset cycle (after top-up)
+            New top-up window
           </Button>
         }
       />

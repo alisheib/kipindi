@@ -1,11 +1,275 @@
-# SESSION PROMPT — AI SPEND IN **CYCLES**, AND WHAT IT TELLS US TO CHARGE
+# AI SPEND IN **CYCLES** — SHIPPED 2026-08-23 (session 59)
+
+> **Status: 🟢 LIVE.** Built, proven and driven on production. The plan that produced it is
+> preserved below from §0 down, unchanged, because §10's twenty-row table is still the
+> reference for how this number can go wrong — every row is now a check in `test:ai-cycles`.
+>
+> **Authority for what exists today:** `src/lib/server/ai-usage.ts` (the meter),
+> `src/lib/server/ai-cycles.ts` (the read model), `src/lib/ai-cycle-rules.ts` (validation).
+
+---
+
+## §A · WHAT A CYCLE IS, AS ALI DEFINED IT
+
+Ali, 2026-08-23, in his own words:
+
+> *"I will charge Claude API with maybe 1k and if a cycle is 100$ so each cycle would be 100
+> and the 1k will last 10 cycles, maybe I need 1 cycle every 2 months maybe not etc, we see
+> each cycle how much it lasted, and when a cycle ends we have to start a new one to proceed
+> or posting or AI resolving blocked."*
+> *"Then I top up and put 10k, I want to divide it on 100s, I see how much they last before I
+> start a new cycle of another 100."*
+
+So a cycle is **a $100 tranche of Claude spend**, and it is a **checkpoint**:
+
+| | |
+|---|---|
+| **Denomination** | `$100` by default, custom and settable. A $1,000 top-up is 10 cycles; $10,000 is 100. |
+| **Numbering** | Monotonic, 1-based, **never resets**. That is what makes "cycles this year" divisible by anything. |
+| **When one ends** | It CLOSES, and **AI poll posting and AI resolving stop** until an officer starts the next one. |
+| **What is recorded** | Opened, closed, **how long it lasted**, what it cost, the size it was stamped with, and the pricing revision. |
+
+⛔ **A recharge is NOT a new cycle.** Topping up Anthropic credit starts a new **top-up
+window** — a different thing, now spelled differently (§C). The cycle ledger runs straight
+through it.
+
+---
+
+## §B · THE FIVE ANSWERS (§14, answered by Ali 2026-08-23)
+
+| # | Question | Ali's answer | Where it lives |
+|---|---|---|---|
+| 1 | The billable event | **Per resolved market, with Up & Down priced separately** | `LINE_FEATURES` in `ai-cycles.ts` |
+| 2 | Default cycle size | **$100** | `CYCLE_DEFAULTS.sizeUsd` |
+| 3 | Target margin | **100% — price at 2× AI cost** | `CYCLE_DEFAULTS.targetMarginPct` |
+| 4 | Does Up & Down price separately | **Yes, its own line and its own suggested price** | the cost-per-resolution table |
+| 5 | May a cycle BLOCK calls | **Yes** — "when a cycle ends we have to start a new one to proceed" | `cycleGate()` → `assertAiBudget()` |
+
+⛔ **AND THERE IS STILL EXACTLY ONE MONEY AUTHORITY, WHICH §8.6 DEMANDS.** The trick is that
+the two controls are about different things and therefore cannot disagree:
+
+- `limitUsd` is the only thing that says **how much** may be spent. Untouched.
+- A cycle boundary says **when an officer must look**. It has no opinion about totals.
+
+The budget is checked FIRST, so an exhausted balance is never mis-reported as a cycle
+boundary — an operator would otherwise start a cycle when what they needed was credit.
+`test:ai-cycles` §6.9 pins that ordering.
+
+---
+
+## §C · THE RENAME (§1), AND THE TRAP INSIDE IT
+
+`CreditConfig.cycleStartIso` → **`topUpWindowStartIso`**. `resetCreditCycle()` →
+**`startNewTopUpWindow()`**. The audit action `ai.credit_cycle_reset` →
+**`ai.topup_window_started`**. Every operator string that said *"this cycle"* now says
+*"this top-up window"*.
+
+🔴 **THE RENAME COULD HAVE RE-OPENED THE LIVE MONEY GATE, AND ALMOST DID.** The stored JSON on
+production carries the OLD key — measured 2026-08-23:
+`{"limitUsd":20,"alertedLevel":"none","cycleStartIso":"2026-08-22T17:17:54.323Z"}`. Renaming
+the TypeScript field without reading the legacy key would have made the first read after
+deploy find no window, write a fresh one starting **now**, and thereby **zero the
+"spent this window" counter** — silently re-opening a budget that may be genuinely
+exhausted. `getCreditConfig()` reads `topUpWindowStartIso ?? cycleStartIso` for exactly that
+reason, and the fallback is commented as load-bearing so nobody tidies it away.
+
+---
+
+## §D · THE PREREQUISITE THAT BLOCKED EVERYTHING: ATTRIBUTION
+
+`AiUsageEvent` gained `subjectType` + `subjectId` — soft refs, **no foreign key**, so a
+retention delete of a market can never break metering and a metering row can never block a
+market delete.
+
+**All 12 `recordAiUsage()` call sites were threaded in one commit**, because a half-threaded
+attribution under-counts and an under-count reads as *cheaper than it is*:
+
+| Site | subjectType | subjectId |
+|---|---|---|
+| `market-sentinel.ts` ×2 | `market` | `market.id` |
+| `updown-oracle.ts` ×2 | `updown_observation` | the observation row, threaded down from `readPrice` |
+| `ai-provider-claude.ts` generate ×2 | `poll_generation` | `null` — the candidate row does not exist yet |
+| `ai-provider-claude.ts` ideate ×2 | `poll_ideation` | `null` |
+| `ai-provider-claude.ts` proposeUpDown ×2 | `updown_proposal` | the asset key |
+| `chat.ts` ×2 | `chat_session` | the player's `userId` |
+
+⭐ **A NULL `subjectId` IS A REAL ANSWER, NOT A GAP** — a poll is generated *before* its
+candidate row exists. The type is never null, and the page shows the unattributed spend as
+its own column rather than folding it in.
+
+⚠️ **AND ONE OBSERVATION IS NOT ONE ROUND.** `UpDownObservation` is `@@unique([assetId,
+boundaryAt])`, so a single paid oracle call serves every round on that boundary — **measured
+at 2.353 rounds per observation on production**. Dividing oracle spend by observations and
+calling it a per-round cost overstates it by that factor. The read model divides a product
+LINE's spend by that line's settled markets, which is correct however calls are shared.
+
+---
+
+## §E · WHAT PRODUCTION ACTUALLY SAYS (measured 2026-08-23, not quoted)
+
+Re-derive with `npm run ops:preflight-ai-cycles`. Every figure below came from that run.
+
+| | |
+|---|---|
+| Metered calls | **4,271** (2,839 with a non-zero cost) |
+| Total AI spend | **$243.32**, from 2026-06-25 |
+| Failed calls | **1,432 — costing $0**, because the failure path records no token counts (§F) |
+| By feature | polls **$105.10** · sentinel **$75.48** · updown **$62.73** · chat **$0.02** |
+| Model mix | Sonnet 2,500 calls / **$240.75** · Haiku 1,771 calls / **$2.56** |
+| Settled poll markets | **68** (12 VOID) |
+| Settled Up & Down rounds | **18,165** (937 VOID) |
+| Commission actually earned | polls **TZS 1,737/market** · Up & Down **TZS 1,086/round** |
+
+**The backfilled ledger, live on production:**
+
+| Cycle | Cost | Opened → closed | Lasted |
+|---|---|---|---|
+| 1 | $100.00 | 2026-06-26 → 2026-07-09 | **12.82 days** |
+| 2 | $100.00 | 2026-07-09 → 2026-07-30 | **20.88 days** |
+| 3 | $43.32 | 2026-07-30 → OPEN | — |
+
+⭐ **SO THE ANSWER TO ALI'S "MAYBE ONE CYCLE EVERY TWO MONTHS?" IS: NO — about one every two
+to three weeks** at the current burn. A $1,000 top-up is roughly six to eight months.
+
+🔴 **AND THE NUMBER HE ASKED FOR, WITH ITS TEETH IN:** the polls line has spent **$180.57**
+(generation + Sentinel) to settle **68 markets** — about **$2.66 of AI per resolution**.
+50pick earns **TZS 1,737** per settled poll. Those two are only comparable once a USD→TZS
+rate is entered on the page, which is deliberately **not** pre-filled (§G), but at any
+plausible rate the AI cost per resolution is **several times the commission the market
+earns**. That is the finding the whole build existed to produce, and it is now on a screen
+Ali can watch move.
+
+⚠️ **Three things that number is NOT, stated so nobody over-reads it:**
+1. It is **all-in**, including generation of candidates that never became markets. That is
+   the honest cost of running the product, not the marginal cost of one more market.
+2. **Up & Down's AI line is historical.** `observationMethod` is `"feed"`
+   (`twelvedata-bars`) — measured on production — so its rounds have been settled by a price
+   feed since 2026-08-03 and cost **nothing** in this table. Its per-round figure describes a
+   period that has ended.
+3. The **Sentinel is the dominant spender** on the polls line and it re-checks a market on a
+   4-hour interval. Cost per resolution therefore scales with how long a market waits, not
+   only with how many there are.
+
+---
+
+## §F · THE HONEST LIMITS, MEASURED RATHER THAN ASSUMED
+
+- **A failed call is recorded at $0.** 1,432 of 4,271 events. The failure path passes no
+  token counts, so a call that consumed input tokens before erroring is under-counted. The
+  call COUNT is right; the cost of failures is a floor, not a total. §9.7 asked for failed
+  calls to be included — they are, and this is what including them actually yields.
+- **`priceRev` is a content hash of the price table**, so a rate change moves it
+  automatically. It records what a cycle can be reconciled against — it is not a claim about
+  what Anthropic charged historically, which is not recoverable.
+- **The backfilled rows are stamped** `note = "backfilled from usage history"` and carry
+  today's `priceRev`, so they can never be mistaken for cycles the live meter observed.
+- **Overshoot is real and visible.** In pause mode the cycle that fills absorbs the rest of
+  the straddling call, so "used" can read slightly over 100%. It is bounded by one call's
+  cost and shown rather than smoothed away — see §H, which explains why.
+
+---
+
+## §G · WHAT ALI STILL HAS TO DO (one thing)
+
+⛔ **Enter the USD→TZS rate and its date** in *Admin → AI usage → Cycle settings*. Until
+then every shilling figure on the page renders `—`, deliberately: the platform's own A-5
+no-fabrication rule means a converted number with no visible, dated rate behind it is a
+claim nobody can check. There is **no default rate** and one must never be invented.
+
+Once set, the page shows a suggested price at 2× AI cost beside what the line actually earns.
+
+---
+
+## §H · THE BUG THE RED FLEET FOUND, WHICH IS THE MOST REUSABLE PART OF THIS
+
+🔴 **THE CHECKPOINT ALI ASKED FOR WOULD HAVE FIRED ZERO TIMES.**
+
+A call almost never lands exactly on a cycle boundary. The first meter split the straddling
+call — the cycle filled, closed, and the leftover **opened the successor**. So there was never
+a moment with no open cycle, `cycleGate()` never blocked, and the pause never happened.
+Measured on the first drive of the suite: **0 pauses across 6 boundaries.** On a $100 cycle
+with $0.05 calls it would have rolled over every single time, for ever, silently.
+
+⭐ **It was found because a fixture's float dust made §6 fail for what looked like the wrong
+reason.** The temptation was to fix the fixture and move on. The "wrong reason" was the
+product. **A red that misses, or lands oddly, is a finding** — the same lesson `E-186` and
+`E-189` are made of, arriving a third time.
+
+**The fix:** in pause mode the cycle that just filled absorbs the remainder of that one call —
+but **only when the remainder is smaller than a whole cycle**, so a call genuinely worth
+several cycles is still split into several and the denomination survives.
+
+**Three more things the red fleet taught, each of which had made it certify nothing:**
+
+1. ⛔ **A mutant tree in `%TEMP%` cannot resolve `node_modules`.** The gate imports the
+   product, which imports `@prisma/client` — a bare specifier. Every run died before printing
+   a line and reported *23/23 broken harness*. The tree now lives under `node_modules/`.
+2. ⛔ **The gate's own location does not prove the product was mutated.** `tsx` resolves a
+   `@/…` import through the CWD's tsconfig paths — the real repo — so the gate could sit in
+   the mutant tree while loading the **original** module. The gate now prints
+   `import.meta.resolve()` for every module under test and the harness requires each to be
+   inside the mutated tree. `ai-usage.ts` and `ai-cycles.ts` were converted to relative
+   imports for the same reason.
+3. ⛔ **A mutation that does not COMPILE proves nothing.** Replacing the meter's `while` with
+   an `if` left a `continue` outside a loop — a syntax error. The harness correctly called it
+   BROKEN rather than CAUGHT.
+
+**And two of the gate's own checks were too weak, exposed by mutations that missed:**
+
+- Deleting the empty-field guard left "empty size is refused" GREEN, because `Number("")` is
+  `0` and a zero SIZE is caught a line later by the `> 0` rule — on the same field. The check
+  was proving the size bound, not the guard. ⛔ The field where it actually bites is
+  **margin**, where `0` is legal: a blank box would silently mean "0% margin" and the
+  suggested price would collapse to bare cost. §11.30 now checks that.
+- Reading the switch as truthiness landed on the fixture's CONTROL, not on the named check.
+  What was never asserted is that a legitimate `"false"` / `"off"` / `"0"` is **accepted and
+  means off**. §11.32 now checks that.
+
+---
+
+## §I · HOW IT IS PROVEN
+
+| Command | What it says |
+|---|---|
+| `npm run test:ai-cycles` | **115 checks.** Conservation, contiguity, the unique index, size stamping, one-call-spans-N, concurrency, the checkpoint, projections, div-by-zero, FX honesty, the timezone year boundary, 30 validation refusals, and a best-effort meter that cannot break an AI call. |
+| `npm run red:ai-cycles` | **23/23 proven · 0 missed · 0 broken.** Every check watched to fail against a real defect. |
+| `npm run test:red-anchors` | 431/431 — every anchor resolves exactly once. |
+| `npm run ops:preflight-ai-cycles` | Read-only. Re-measures the migration's safety AND the divisors. Refuses GO if either moved. |
+| `npm run ops:backfill-ai-cycles` | Idempotent. **Refuses** if the ledger is not empty; verifies conservation before writing and reads back after. |
+
+⛔ **Every count-based check carries a control that the corpus was non-empty.** A conservation
+assertion over zero rows passes vacuously, and this repo has shipped exactly that more than
+once. §1.0, §1.3, §2.0, §4.0, §5.0, §6.0, §7.0, §8.6, §9.4, §10.0, §11.0, §12.5, §12.8 and
+§13.2 are those controls; none of them is padding.
+
+---
+
+## §J · OPERATING IT
+
+1. **Top up Anthropic**, then *Admin → AI usage → **New top-up window*** — this zeroes
+   "spent this window" and re-arms the 80% / 100% alerts. It does **not** touch the cycles.
+2. **Watch the cycle meter.** When a cycle fills, the AI pauses and a red bar appears at the
+   top of the page naming the finished cycle.
+3. **Click *Start cycle N+1*** to resume. It is audited with who did it.
+4. **Read "Cycles by year"** for the yearly counts, and "Every cycle" for how long each one
+   lasted.
+5. To close the books early — end of month, say — use ***Close cycle early***. ⛔ It pauses
+   the AI too, deliberately: closing is "stop here", starting the next one is a separate
+   decision.
+
+---
+---
+
+*The original plan follows, unchanged.*
+
+## SESSION PROMPT (the original plan) — AI SPEND IN **CYCLES**
 
 > **Written 2026-08-23 (session 58) for the session that builds it.**
 > ⛔ Read this whole file before opening a component. The work looks like "add a
 > counter" and is not — the hard part is that a cycle count is a **business number
 > Ali will price from**, so every way it can quietly be wrong is a defect, not a nit.
 >
-> **Status:** NOT STARTED. Nothing below exists yet.
+> **Status:** ⚠️ SUPERSEDED — this said NOT STARTED. It shipped 2026-08-23; read the record above.
 > **Authority for what exists today:** `src/lib/server/ai-usage.ts`.
 
 ---

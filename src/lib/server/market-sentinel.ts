@@ -36,7 +36,7 @@ import { ai } from "./ai-config";
 // ONE host rule on the platform — the same function the price feed and the Up & Down
 // settlement check use. Two copies is two answers to one question.
 import { hostMatchesDomain } from "./updown-feed";
-import { assertAiBudget, recordAiUsage } from "./ai-usage";
+import { assertAiBudget, describeAiBudgetBlock, recordAiUsage } from "./ai-usage";
 import { getAiOpsConfig } from "./ai-ops-config";
 import { getPlatformTimezone } from "./platform-config";
 import { loadConfig, saveConfig } from "./config-store";
@@ -263,11 +263,7 @@ export async function deepCheckMarket(market: MarketInput, sentinelModel?: strin
   // other sentinel error. It is reported as an `error` action, not as "not settled",
   // so nothing reads a spend ceiling as a verdict about the world.
   const budget = await assertAiBudget("sentinel");
-  if (!budget.ok) {
-    return fail(
-      `AI credit limit reached ($${budget.spentUsd.toFixed(2)} of $${budget.limitUsd.toFixed(2)} this cycle)`,
-    );
-  }
+  if (!budget.ok) return fail(describeAiBudgetBlock(budget));
 
   const now = new Date().toISOString();
   const criterion = market.resolutionCriterion?.trim() || "Not specified";
@@ -332,6 +328,7 @@ Search the web for the latest data, work through the steps, then call report_out
       webSearches: u?.server_tool_use?.web_search_requests ?? 0,
       ok: true, latencyMs: Date.now() - started,
       detail: `deep · ${market.titleEn.slice(0, 80)}`,
+      subjectType: "market", subjectId: market.id,
     });
 
     // Extract the report_outcome tool call from the response.
@@ -373,6 +370,7 @@ Search the web for the latest data, work through the steps, then call report_out
       latencyMs: Date.now() - started,
       errorType: (err as Error).message?.slice(0, 200),
       detail: `deep · ${market.titleEn.slice(0, 80)}`,
+      subjectType: "market", subjectId: market.id,
     });
     return fail((err as Error).message);
   }
