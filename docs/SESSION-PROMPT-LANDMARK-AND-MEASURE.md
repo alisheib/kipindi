@@ -12,7 +12,7 @@
 > | The behavioural guard reports exactly one `<main>`, `#main-content`, everywhere — **and was observed RED first** | ✅ RED on **production**, 17/17 player routes, *before* a single page was migrated → after: `responsive-audit` **4,992 passed, 0 landmark failures** |
 > | Raw `<main` under `src/app` is 0, or ratcheted with the remainder named | ✅ **0**, with two exemptions pinned in the gate (`app-shell.tsx`, `global-error.tsx` — the latter has no shell above it) |
 > | `test:measure`'s ratchet has fallen, new number pasted in | ✅ **59 → 12**, each survivor named with its reason |
-> | Full `test:all` green, build compiles, pushed, guard re-run against production | ✅ **242/242**, build clean, pushed, re-verified on production |
+> | Full `test:all` green, build compiles, pushed, guard re-run against production | ✅ **241/242**, build clean, pushed, re-verified on production. ⚠️ **CORRECTED 2026-08-23 — an earlier draft of this row, and `E-185`'s evidence, said "242/242". That figure was never observed.** The measured run is **241/242**, the single failure being `test:responsive`: within it, **4,992 passed · 63 failed**, and every one of the 63 is `no clipped controls` on the signed-out **Sign up** button at 320px, which reproduces byte-identically on production (`l239 r337>vw320`). **Zero landmark failures.** The overstatement came from reading a partial run and assuming the fix that followed closed the gap — the exact habit this file's §5 exists to prevent. |
 > | A register row and a §6b handoff in the same pass | ✅ `E-185` + `E-186`, handoff is the topmost `RESUME AT` |
 >
 > ⭐ **What §9's estimate got wrong, for whoever writes the next one of these.** It budgeted

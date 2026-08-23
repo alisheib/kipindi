@@ -613,6 +613,14 @@ Already shipped (was on this list before):
   eight tiers — which is exactly why it now points instead of repeating.
   Guarded by `npm run test:measure` + the upper-bound assertions in
   `scripts/responsive-audit.mjs`.
+- ⛔ **A page NEVER renders its own `<main>`** (B7 rule 5, added 2026-08-22).
+  `AppShell` renders `<main id="main-content">` in the ROOT layout, so every route
+  already has its landmark — admin, auth and legal included. Until this rule
+  existed, **17 of 17 sampled production routes rendered two, one nested inside
+  the other**, and the skip-link resolved to the outer one. `PageContainer`
+  **cannot** render a `main` — `"main"` is not in its `as` union, so `tsc` is the
+  guard. The only exemptions are `app-shell.tsx` (it *is* the landmark) and
+  `app/global-error.tsx` (its own `<html>`/`<body>`; the root layout never ran).
 - **Positions page** — All/Open/Settled tab filter via URL params.
 - **Account activity** — category filter chips (dynamic from actual data).
 - **Bottom nav** — `aria-label` on every link.

@@ -1,14 +1,34 @@
 /**
- * ZERO-PIXEL PROOF for the 2026-08-22 landmark + B7 migration.
+ * MEASURE PARITY — does the content column render at the same geometry on two
+ * deployments?                                     `npm run qa:measure-parity`
  *
- *   BEFORE=https://50pick.tz AFTER=http://localhost:3000 node scripts/measure-parity-check.mjs
+ *   BEFORE=<url-without-the-change> AFTER=<url-with-it> node scripts/measure-parity-check.mjs
  *
- * ⭐ WHY THIS EXISTS. The migration's whole claim is that replacing
+ * ⛔⛔ **PRODUCTION IS NO LONGER A "BEFORE". READ THIS BEFORE TRUSTING A GREEN.**
+ * This was written on 2026-08-22 to prove the landmark + B7 migration moved
+ * nothing, at a moment when production still ran the OLD code — so the defaults
+ * (`BEFORE=https://50pick.tz`, `AFTER=http://localhost:3000`) were a real
+ * before/after. **That migration is now deployed.** Run it with the defaults today
+ * and you are comparing the fix against itself: it will print "pixel-identical"
+ * and prove precisely nothing, which is the assertion-that-cannot-fail this repo
+ * keeps shipping. To use it as a before/after again, point `BEFORE` at a build
+ * that genuinely predates the change (a branch deploy, or a local server on the
+ * old commit) — not at whatever production happens to be serving.
+ *
+ * It remains useful unchanged for what it now is: **a two-deployment geometry
+ * diff.** Point it at any two URLs to prove a refactor, a Tailwind bump or a
+ * container change moved no page's content column.
+ *
+ * ⭐ WHY IT EXISTED. The migration's claim was that replacing
  * `<main className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 space-y-6">` with
  * `<PageContainer tier="reading" className="space-y-6">` is a PURE RENAME with no
  * visual delta. That is a claim about rendered geometry, and "it looks the same in
  * a screenshot" is not a measurement — a 4px inset or a lost `space-y` reads as
  * identical at a glance and is a real regression on a money page.
+ *
+ * 📌 THE HISTORICAL RESULT, so nobody has to re-derive it: **52 cells across 13
+ * routes × 4 widths, pixel-identical, 0 moved**, every route going `main 2 → 1`
+ * (`/live` was already 1). Recorded as `E-185` in `LIVE-QA-CAMPAIGN.md`.
  *
  * So this measures the CAPPED CONTENT COLUMN — the first descendant of
  * `#main-content` whose computed `max-width` is a real length ≥500px — on the
