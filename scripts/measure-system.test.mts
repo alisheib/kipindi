@@ -115,13 +115,19 @@ const EXEMPT_ATOMS = ["otp-input.tsx", "datetime-range-filter.tsx", "time-select
  * invisible to every check in this file**. Stripping line comments first removes
  * the `/*` before it can be mistaken for an opener.
  *
- * ⚠️ 18 OTHER `scripts/*.test.mts` CARRY THEIR OWN COPY OF THIS HELPER WITH THE
- * OLD ORDER (`design-frozen`, `type-scale`, `ui-consistency`, `tailwind-bridge`,
- * `tap-target`, `token-collision`, … — `grep -rln decomment scripts/`). They are
- * blind over the same five files. Left unchanged here deliberately: fixing them
- * may turn ratchets red, which is correct but is a separate piece of work, and it
- * is filed rather than half-done. This is the same shape as E-108 — one helper,
- * copy-pasted, repaired in one place at a time.
+ * ⚠️ **22 OTHER SCRIPTS CARRY THE OLD ORDER AND ARE BLIND OVER THE SAME FIVE
+ * FILES.** Count them with a FIXED-STRING search for the ordering itself, not by
+ * grepping the NAME `decomment` — several spell it differently or inline it, and
+ * a name-based grep undercounts (it said 18 on 2026-08-22, and 18 is wrong):
+ *
+ *     grep -rlF 's.replace(/\/\*[\s\S]*?\*\//g, "").replace(' scripts/
+ *
+ * They include `type-scale`, `ui-consistency`, `tailwind-bridge`,
+ * `settle-atomicity`, `id-documents`, `pii-in-logs` and six `kyc-cert-*` suites.
+ * Left unchanged here deliberately: fixing them may turn ratchets red, which is
+ * correct but is a separate piece of work, and it is filed rather than half-done.
+ * This is the same shape as E-108 — one helper, copy-pasted, repaired one place
+ * at a time.
  */
 const decomment = (s: string) =>
   s.replace(/(^|[^:])\/\/[^\n]*/g, "$1").replace(/\/\*[\s\S]*?\*\//g, "");

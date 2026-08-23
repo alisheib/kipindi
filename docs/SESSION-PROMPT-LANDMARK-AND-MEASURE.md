@@ -28,8 +28,10 @@
 >
 > ⚠️ **Two things it asked for were deliberately NOT done, and both are recorded rather than
 > quietly absorbed:** the 12 remaining ratchet files are blocked on **padding, not width**
-> (changing it is a design decision — §4.2's own rule), and the **18 other `scripts/*.test.mts`
-> carrying the blind `decomment` copy** are filed at the constant instead of half-fixed.
+> (changing it is a design decision — §4.2's own rule), and the **22 other scripts carrying
+> the blind `decomment` copy** are filed at the constant instead of half-fixed. ⚠️ **That
+> figure was first written as 18** — a name-based `grep decomment` undercounts, because
+> several suites spell the helper differently or inline it. Count the ORDERING, not the name.
 
 > **Written 2026-08-22 (session 56)** by the session that found it, for the session that fixes it.
 > ⛔ Read this whole file before opening a component. The work looks like a find-and-replace

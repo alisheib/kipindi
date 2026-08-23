@@ -581,8 +581,14 @@ harness rather than by review** — the finding worth keeping:
   a `//` comment (`// … deep links to /proposals/* are`) swallowed everything to
   the next `*/`: **7,581 characters across five files invisible** to the ratchet,
   the parity check and the call-site check, all of which reported PASS. Fixed by
-  ordering. **18 other `scripts/*.test.mts` still carry the old order** and are
-  blind over the same five files — filed, not silently half-fixed.
+  ordering. ⚠️ **22 other scripts still carry the old order** and are blind over the
+  same five files — filed, not silently half-fixed. ⛔ **Count them by the ORDERING,
+  not by the name `decomment`**: several spell it differently or inline it, so a
+  name-based grep UNDERCOUNTS — it reported 18 on the day and 18 was wrong.
+  Search for the ordering as a FIXED string — the two `replace` calls in sequence,
+  block-strip first — with `grep -rlF … scripts/`. On 2026-08-23 that returned **22**
+  files, among them `type-scale`, `ui-consistency`, `tailwind-bridge`,
+  `settle-atomicity`, `id-documents`, `pii-in-logs` and six `kyc-cert-*` suites.
 - The page/`loading.tsx` tier-parity check **compared 29 of 80 pairs and skipped
   51 in silence**, because a route that delegates its body to a sibling client
   component (`/wallet` → `./wallet-client`) stated no tier the check could read.
