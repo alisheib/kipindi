@@ -276,6 +276,35 @@ again, **639 → 636**.
 
 ---
 
+## §G4 · THE ADMIN GUIDE
+
+**`docs/50pick-ai-cycles-admin-guide.pdf` — 7 pages**, generated from
+`docs/ai-cycles-admin-guide.html` by `node scripts/generate-pdfs.mjs`. ⛔ Edit the HTML,
+never the PDF, and verify by RASTERISING rather than by trusting the render.
+
+Screenshots live in `docs/guide-img/cyc-*.png` and are captured from the REAL admin screen
+by a driver, against a production build on a real Postgres seeded to mirror production
+(two closed 00 cycles, one open at 2.67, cycles lasting 24-25 days). ⛔ **Re-shoot them
+if the page changes**, or the guide quietly describes a screen that no longer exists.
+
+🔴 **AND SHOOTING THEM FOUND THREE COPY DEFECTS THAT 140 CHECKS, A 28/28 RED FLEET AND TWO
+LIVE DRIVES HAD ALL MISSED:**
+
+| Rendered | Cause |
+|---|---|
+| `Top up ,000and that is 10 cycles.` | React dropped the space after a JSX expression |
+| `not a flat fee.The suggested column` | …and after a `</strong>` |
+| `at the size it was openedwith` | …the same again |
+
+The space is present in the source and gone in the DOM, so every one is now an explicit
+`{" "}`. ⚠️ **And the JSX COMMENT written to explain the first fix ate the space BEFORE it**,
+producing `period.Top up` — a comment is not invisible to the text flow.
+
+⭐ **The cheap check worth repeating on any copy-heavy screen:** sweep the rendered
+`innerText` for a letter glued to a digit or to a full stop. It comes back clean now, and it
+found all three in one pass.
+
+---
 ## §H · THE BUG THE RED FLEET FOUND, WHICH IS THE MOST REUSABLE PART OF THIS
 
 🔴 **THE CHECKPOINT ALI ASKED FOR WOULD HAVE FIRED ZERO TIMES.**
