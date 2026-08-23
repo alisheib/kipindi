@@ -51,12 +51,30 @@ export function CycleSettings(p: Props) {
   const router = useRouter();
   const { deferToast, toast } = useDeferredToast(pending);
 
-  const save = () => {
+  /** The form as FormData, with the toggle's real value. One reader, two callers. */
+  const readForm = (): FormData | null => {
     const form = formRef.current;
-    if (!form) return;
+    if (!form) return null;
     const fd = new FormData(form);
     fd.set("autoRoll", pauseOnEnd ? "false" : "true");
+    return fd;
+  };
 
+  /**
+   * 🔴 THE PRE-FLIGHT GATE, AND IT IS NOT OPTIONAL — found by driving the real page.
+   *
+   * Validation used to run inside `onConfirm`. Passing `pending` to `ConfirmDialog` opts into
+   * its HOLD-OPEN contract: confirm no longer closes the dialog, the falling edge of `pending`
+   * does. So a confirm that rejected client-side and returned WITHOUT starting a transition
+   * left the dialog open for ever — and `confirm-dialog.tsx` also disables the trigger while
+   * `awaiting`, so the Save button became permanently dead until a reload.
+   *
+   * `openGuard` is the kit's answer: refuse to OPEN on invalid input and surface the error
+   * inline. Never ask "are you sure?" about something already known to be refused.
+   */
+  const guard = (): boolean => {
+    const fd = readForm();
+    if (!fd) return false;
     // Same parser as the server. A failure here never reaches the network; a failure THERE
     // is still the one that decides.
     const check = parseCycleForm(
@@ -73,9 +91,16 @@ export function CycleSettings(p: Props) {
     if (!check.ok) {
       setErr({ field: check.field, message: check.error });
       toast({ title: "Couldn't save", description: check.error, variant: "danger" });
-      return;
+      return false;
     }
     setErr(null);
+    return true;
+  };
+
+  /** Runs only past `guard`, so it ALWAYS starts a transition and the dialog always closes. */
+  const save = () => {
+    const fd = readForm();
+    if (!fd) return;
 
     start(async () => {
       const r = await setCycleConfigAction(fd);
@@ -181,6 +206,7 @@ export function CycleSettings(p: Props) {
           }
           confirmLabel="Save settings"
           cancelLabel="Cancel"
+          openGuard={guard}
           onConfirm={save}
           trigger={<Button type="button" disabled={pending}>Save settings</Button>}
         />

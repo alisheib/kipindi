@@ -44,7 +44,12 @@ if (!Number.isFinite(SIZE_USD) || SIZE_USD <= 0) { console.error(`CYCLE_SIZE_USD
 const EPS = 1e-6;
 const round6 = (n: number) => Math.round(n * 1_000_000) / 1_000_000;
 
-const c = new Client({ connectionString: url, ssl: { rejectUnauthorized: false } });
+// SSL is required by the Railway proxy and REFUSED by a plain local Postgres. Deciding by
+// host keeps this script runnable against a local database — which is the only way to
+// exercise it without pointing it at production, and an ops script nobody can rehearse is
+// an ops script whose first run is on the real thing.
+const isLocal = /(?:127[.]0[.]0[.]1|localhost)/.test(url);
+const c = new Client({ connectionString: url, ssl: isLocal ? undefined : { rejectUnauthorized: false } });
 await c.connect();
 
 console.log(`── backfill AI spend cycles ── ${APPLY ? "APPLY" : "DRY RUN"} · $${SIZE_USD}/cycle`);

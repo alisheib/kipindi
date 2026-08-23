@@ -180,6 +180,68 @@ Once set, the page shows a suggested price at 2× AI cost beside what the line a
 
 ---
 
+## §G2 · WHAT THE LIVE DRIVE FOUND THAT NOTHING ELSE COULD
+
+⛔ **WHERE EACH HALF WAS DRIVEN, STATED RATHER THAN BLURRED.** `/admin/ai-usage` is
+ADMIN-only — measured, with a control: `RoleDomainGrant` holds **zero** override rows and no
+non-ADMIN role has `ops` under `DEFAULT_GRANTS` — and `.env.qa.local` carries no
+`QA_ADMIN_PASSWORD`. So no driver can reach the console page on production, and **that was
+not worked around by changing production RBAC or promoting an account.**
+
+| Half | Where | Evidence |
+|---|---|---|
+| Data + behaviour | **production** | expand-only DDL pre-applied after `ops:preflight-ai-cycles` said GO · backfill applied, verified, and proven to REFUSE a second run · 🟢 **the live meter observed accruing: cycle 3 moved $43.32 → $43.52 on real Sentinel traffic after the deploy** |
+| UI | **a production build on a real Postgres** (`C:/pg-loadtest`, `next start`, `NODE_ENV=production`) | **64 passed, 0 failed**, run twice to prove repeatability · 11 screenshots at 360/768/1280 × EN/SW/ZH, `<html lang>` verified per cell, 0px overflow in all nine |
+
+### 🔴 Defect 1 — the Save button could be permanently killed on a money screen
+
+Passing `pending` to `ConfirmDialog` opts into its **hold-open contract**: confirm no longer
+closes the dialog, the falling edge of `pending` does. Validation ran inside `onConfirm`, so a
+client-side rejection returned **without starting a transition** — the dialog stayed open for
+ever, and `confirm-dialog.tsx` also disables the trigger while `awaiting`. **Save was dead
+until a page reload.**
+
+The kit already had the answer: **`openGuard`** refuses to OPEN on invalid input. Never ask
+"are you sure?" about something already known to be refused. Five reachable bad values now
+each assert three things — the dialog does not open, the message explains why, **and Save
+still works afterwards.**
+
+### 🔴 Defect 2 — the page contradicted itself, and only the image showed it
+
+A green **"AI is healthy"** banner rendered directly above the red **"AI is paused"** bar.
+Both true — health measures whether calls ERROR, the gate measures whether they are ALLOWED —
+and together they told an operator nothing. **No assertion could have caught it; every check
+was green.** The banner now leads with *"AI is paused — this is a spend-cycle checkpoint, not
+a fault"*, and still reports the 24h error count underneath.
+
+### ⭐ And the product was better than the test assumed
+
+The form does **not** refuse `"0.1.2"` — the shared `Input` atom sanitises at the keystroke.
+Measured live: `"0.1.2"→"0.12"`, `"1,000"→"1000"`, `"-5"→"5"`, `"12abc"→"12"`. Those states
+are **unreachable from the UI**, so a driver "proving" they are rejected tests something no
+operator can do. The parser still refuses them because a **forged** request can carry
+anything, and that half is proven in `test:ai-cycles` §11. The drive asserts what the field
+can actually produce: empty, zero, below floor, above ceiling, too many decimals — plus a
+control that a valid value still saves.
+
+### ⚠️ Three traps paid for on the way
+
+1. **An assertion that only holds on a virgin database gets deleted, not trusted.** The drive
+   pinned `5` closed cycles and `$71.05` and went red on its third run — because the drive
+   itself opens cycles. It reads the index off the page now, and normalises a paused ledger
+   before starting.
+2. **An ops script nobody can rehearse is one whose first run is on the real thing.** Both
+   ops scripts hardcoded `ssl` for the Railway proxy, which a plain local Postgres refuses.
+   They decide by host now, and the backfill was rehearsed locally before it touched 50pick.
+3. **Always read `git diff --numstat` before believing an edit was small.** An in-place editor
+   that computes the block end from `locateHandoff().text.length` slices **inside a `\r\n`
+   pair**; the single bare LF that leaves makes the file MIXED, git stops normalising it, and
+   a two-line append reports as *8,978 deleted, 8,995 added*. Insert on an `eol + eol`
+   boundary found in the real string. (And in ESM, `process.argv[1]` is the script — reading
+   it appended the editor's own source into the campaign document.)
+
+---
+
 ## §H · THE BUG THE RED FLEET FOUND, WHICH IS THE MOST REUSABLE PART OF THIS
 
 🔴 **THE CHECKPOINT ALI ASKED FOR WOULD HAVE FIRED ZERO TIMES.**

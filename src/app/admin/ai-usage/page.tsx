@@ -184,8 +184,24 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
     : "border-success/40 bg-success/10";
 
   const health = s.health;
+  // 🔴 THE HEALTH BANNER MUST NOT SAY "HEALTHY" WHILE THE AI IS PAUSED.
+  // Caught by looking at the screenshot: the green "AI is healthy" bar rendered directly
+  // above the red "AI is paused — cycle 6 is complete" bar. Both statements were true —
+  // health measures whether calls ERROR, the gate measures whether they are ALLOWED — but an
+  // operator glancing at two stacked bars that contradict each other learns nothing, and on
+  // an admin money surface that is the defect, not the wording.
+  //
+  // Health is still reported, because "are calls erroring?" stays a real question while
+  // paused. It just stops being the headline, and the headline stops being wrong.
   const banner =
-    health === "failing"
+    cyc.gate.blocked
+      ? {
+          cls: "border-border bg-bg-overlay",
+          icon: <I.clock s={16} className="text-text-tertiary shrink-0 mt-0.5" />,
+          title: "AI is paused — this is a spend-cycle checkpoint, not a fault",
+          body: `Cycle ${cyc.gate.lastClosedIndex} spent its full size, so poll posting and AI resolving are stopped until cycle ${cyc.gate.lastClosedIndex + 1} is started. Of the last 24h of calls, ${s.recent24h.ok} succeeded and ${s.recent24h.err} errored — nothing is broken.`,
+        }
+      : health === "failing"
       ? { cls: "border-no-700/60 bg-no-500/10", icon: <I.warning s={16} className="text-no-300 shrink-0 mt-0.5" />, title: "AI calls are FAILING", body: `Every AI call in the last 24h errored (${s.recent24h.err} failed). The Up & Down oracle, market resolution, poll generation and chatbot are all down \u2014 almost always an exhausted Anthropic balance or a bad key. Top up and start a new top-up window below.` }
       : health === "idle"
       ? { cls: "border-border bg-bg-overlay", icon: <I.clock s={16} className="text-text-tertiary shrink-0 mt-0.5" />, title: "AI idle", body: "No AI calls in the last 24h \u2014 normal during quiet periods." }

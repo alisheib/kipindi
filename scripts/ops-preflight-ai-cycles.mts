@@ -21,7 +21,12 @@ const url = (process.env.DATABASE_URL || "")
   .replace(/@postgres\.railway\.internal(:\d+)?/, "@turntable.proxy.rlwy.net:40357");
 if (!url) { console.error("DATABASE_URL empty — run through `railway run`."); process.exit(1); }
 
-const c = new Client({ connectionString: url, ssl: { rejectUnauthorized: false } });
+// SSL is required by the Railway proxy and REFUSED by a plain local Postgres. Deciding by
+// host keeps this script runnable against a local database — which is the only way to
+// exercise it without pointing it at production, and an ops script nobody can rehearse is
+// an ops script whose first run is on the real thing.
+const isLocal = /(?:127[.]0[.]0[.]1|localhost)/.test(url);
+const c = new Client({ connectionString: url, ssl: isLocal ? undefined : { rejectUnauthorized: false } });
 await c.connect();
 
 const problems: string[] = [];
