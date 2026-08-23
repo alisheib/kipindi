@@ -471,6 +471,7 @@
     "red:notifications-page": "node scripts/notifications-page-red.mjs",
     "red:measure": "node scripts/measure-red.mjs",
     "qa:measure-parity": "node scripts/measure-parity-check.mjs",
+    "qa:landmark-seal": "node scripts/landmark-seal.mjs",
     "qa:notifications-page": "node scripts/live-notifications-page.mjs",
     "test:encoding": "tsx scripts/encoding.test.mts",
     "qa:notifications-restore": "node scripts/live-notifications-restore.mjs"

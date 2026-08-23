@@ -617,6 +617,16 @@ Three enforcement layers:
   player routes reporting `2 <main>: #main-content | #(no id) NESTED` — before a
   single page was migrated.
 
+- **`npm run qa:landmark-seal`** — the live, **signed-in** seal, added 2026-08-23
+  because `test:responsive` cannot be one. That audit signs in with `/auth/demo`,
+  which is dev-only and 404s in any production build, so against production it runs
+  as a GUEST and prints a green cell named `/wallet` that measured `/auth/login`
+  (`E-187`). This uses a real QA-fleet session and **asserts each gated route
+  resolved to itself**, so a redirect can never read as a pass. Per cell: one
+  `<main>`, id `main-content`, not nested, skip-link + target present, `<html lang>`
+  matching the locale, zero overflow. First green **171 cells · 0 problems**
+  (10 public + 9 gated × 360/768/1280 × EN/SW/ZH). Read-only — it moves no money.
+
 ⛔ **A Git Bash trap that cost a wrong measurement here.** `ONLY=/markets node
 scripts/responsive-audit.mjs` silently becomes `ONLY=C:/Program Files/Git/markets`
 — MSYS rewrites a lone leading-slash value into a filesystem path, so the FIRST
