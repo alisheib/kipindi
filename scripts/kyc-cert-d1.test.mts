@@ -43,12 +43,11 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+/** Comments describe the trap; they are not the control. Strip before asserting. */
+import { decomment as stripComments } from "./lib/decomment.mts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p: string) => readFileSync(join(root, p), "utf8");
-/** Comments describe the trap; they are not the control. Strip before asserting. */
-const stripComments = (s: string) =>
-  s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
 
 let pass = 0, fail = 0;
 const ok = (label: string, cond: boolean, extra?: string) => {

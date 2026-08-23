@@ -37,6 +37,8 @@
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
+/** Strip comments + block-comment JSX so commented-out examples never trip the guard. */
+import { decomment } from "./lib/decomment.mts";
 
 const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
 const SRC = join(ROOT, "src");
@@ -66,10 +68,6 @@ const COLOR_PREFIXES = [
 const BUILTIN_KEYWORDS = new Set([
   "white", "black", "transparent", "current", "inherit", "none", "auto",
 ]);
-
-/** Strip comments + block-comment JSX so commented-out examples never trip the guard. */
-const decomment = (s: string) =>
-  s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
 
 function walk(dir: string, ext: RegExp): string[] {
   const out: string[] = [];

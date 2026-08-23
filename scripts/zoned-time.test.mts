@@ -21,6 +21,7 @@ import {
   isBareWallClock, tzOffsetMsAt, wallClockToUtcIso, toUtcIso,
 } from "../src/lib/zoned-time.ts";
 import { readFileSync } from "node:fs";
+import { decomment } from "./lib/decomment.mts";
 
 let pass = 0, fail = 0;
 const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"} ${l}${x ? ` — ${x}` : ""}`); };
@@ -108,7 +109,6 @@ ok("5: empty is null", toUtcIso("", EAT) === null);
 // not the symbol.
 {
   const wizard = readFileSync(new URL("../src/app/admin/markets/new/wizard.tsx", import.meta.url), "utf8");
-  const decomment = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
   const w = decomment(wizard);
 
   ok("6: the wizard no longer builds the instant with new Date(...).toISOString()",

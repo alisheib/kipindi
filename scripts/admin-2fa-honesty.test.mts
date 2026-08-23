@@ -23,6 +23,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, relative } from "node:path";
+import { decomment as stripComments } from "./lib/decomment.mts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p: string) => readFileSync(join(root, p), "utf8");
@@ -72,7 +73,6 @@ const walk = (dir: string): string[] => {
  * That is the third time in this session a guard of mine read prose instead of code — the same
  * mistake as a contrast audit hardcoding the values it was meant to check.
  */
-const stripComments = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
 const ENV_READ = /process\.env(?:\.DISABLE_ADMIN_TOTP|\[\s*["'`]DISABLE_ADMIN_TOTP["'`]\s*\])/;
 const readers = walk("src").filter((f) => ENV_READ.test(stripComments(read(f))));
 for (const f of readers) {

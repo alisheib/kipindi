@@ -47,6 +47,8 @@ import {
 import { dict } from "../src/lib/i18n-dict.ts";
 import { startKyc, submitIdentityStep, attachDocument, submitForReview, getKycStatus } from "../src/lib/server/kyc-service.ts";
 import { db } from "../src/lib/server/store.ts";
+/** Comments describe the trap; they are not the control. Strip before asserting. */
+import { decomment as stripComments } from "./lib/decomment.mts";
 
 /**
  * 🔴 THE REPORTER IS CAPTURED BEFORE ANYTHING SILENCES `console.log`, AND THAT IS NOT
@@ -67,9 +69,6 @@ const ok = (label: string, cond: boolean, extra?: string) => {
 const section = (s: string) => LOG(`\n── ${s} ${"─".repeat(Math.max(0, 58 - s.length))}`);
 
 const read = (p: string) => readFileSync(p, "utf8");
-/** Comments describe the trap; they are not the control. Strip before asserting. */
-const stripComments = (s: string) =>
-  s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
 
 const now = new Date().toISOString();
 const origLog = console.log;

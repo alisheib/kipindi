@@ -18,6 +18,7 @@
  * review and is absent on the wire.
  */
 import { readFileSync } from "node:fs";
+import { decomment as stripComments } from "./lib/decomment.mts";
 import {
   KYC_ATTESTATIONS,
   KYC_ATTESTATION_KEYS,
@@ -34,8 +35,6 @@ const section = (s: string) => console.log(`\n── ${s} ${"─".repeat(Math.ma
 const read = (p: string) => readFileSync(new URL(p, import.meta.url), "utf8");
 const RAIL = read("../src/app/admin/kyc/[id]/kyc-decision-rail.tsx");
 const ACTIONS = read("../src/app/admin/kyc/[id]/kyc-actions.ts");
-const stripComments = (s: string) =>
-  s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
 const R = stripComments(RAIL);
 const A = stripComments(ACTIONS);
 

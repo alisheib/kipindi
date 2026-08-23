@@ -45,11 +45,10 @@ import { dirname, join } from "node:path";
 import { validateDocImage } from "../src/lib/server/kyc-service.ts";
 import { sniffImageMime, sniffBase64ImageMime } from "../src/lib/server/image-signature.ts";
 import { kycStorageMode, assertStorageModeIntended } from "../src/lib/server/storage.ts";
+import { decomment as stripComments } from "./lib/decomment.mts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p: string) => readFileSync(join(root, p), "utf8");
-const stripComments = (s: string) =>
-  s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
 
 let pass = 0, fail = 0;
 const ok = (label: string, cond: boolean, extra?: string) => {

@@ -24,6 +24,7 @@
  */
 import { readFileSync } from "node:fs";
 import { formatDate, formatDateTime } from "../src/lib/utils.ts";
+import { decomment as stripComments } from "./lib/decomment.mts";
 
 let pass = 0, fail = 0;
 const ok = (label: string, cond: boolean, extra?: string) => {
@@ -35,8 +36,6 @@ const section = (s: string) => console.log(`\n── ${s} ${"─".repeat(Math.ma
 const read = (p: string) => readFileSync(new URL(p, import.meta.url), "utf8");
 const VIEWER = read("../src/app/admin/kyc/[id]/kyc-doc-viewer.tsx");
 const PAGE = read("../src/app/admin/kyc/[id]/page.tsx");
-const stripComments = (s: string) =>
-  s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
 
 const V = stripComments(VIEWER);
 const P = stripComments(PAGE);

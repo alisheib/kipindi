@@ -26,14 +26,13 @@ import {
 } from "../src/lib/localized.ts";
 import type { Locale } from "../src/lib/i18n-dict.ts";
 import { readFileSync } from "node:fs";
+/** Comments are prose, not behaviour — a claim in a `//` line must never satisfy a check. */
+import { decomment } from "./lib/decomment.mts";
 
 let pass = 0, fail = 0;
 const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"} ${l}${x ? ` — ${x}` : ""}`); };
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
-/** Comments are prose, not behaviour — a claim in a `//` line must never satisfy a check. */
-const decomment = (s: string) =>
-  s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
 
 const EN = "Resolves YES if the BoT mid-rate on the last business day is below the first.";
 const SW = "Inatatuliwa NDIYO iwapo kiwango cha BoT siku ya mwisho ya kazi kiko chini.";

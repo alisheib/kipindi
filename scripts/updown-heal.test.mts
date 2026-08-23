@@ -76,6 +76,7 @@ import { db } from "../src/lib/server/store.ts";
 import { readFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { decomment as stripComments } from "./lib/decomment.mts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p: string) => (existsSync(join(ROOT, p)) ? readFileSync(join(ROOT, p), "utf8") : "");
@@ -662,7 +663,6 @@ let strandedMarketId = "";
   // rule, quoting the field it names. A structural guard that a correct explanation can
   // turn red teaches the next session to delete the explanation, which is the opposite of
   // what this guard is for. It must measure code, so it reads code.
-  const stripComments = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
   const readers = ["src/lib/server/updown-config.ts", "src/lib/server/updown-service.ts", "src/lib/server/updown-scheduler.ts"]
     .filter((f) => /cfg\.retryBackoffSeconds|config\.retryBackoffSeconds/.test(stripComments(read(f))));
   ok("10.4 · …and by exactly one module, so the ladder cannot be half-honoured", readers.length === 1, readers.join(","));

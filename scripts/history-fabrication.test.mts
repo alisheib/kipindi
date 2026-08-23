@@ -32,6 +32,8 @@
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
+/** Strip comments — the deletion note deliberately names seedHistory in prose. */
+import { decomment } from "./lib/decomment.mts";
 
 const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
 const SRC = join(ROOT, "src");
@@ -45,9 +47,6 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 const rel = (f: string) => relative(ROOT, f).replace(/\\/g, "/");
-/** Strip comments — the deletion note deliberately names seedHistory in prose. */
-const decomment = (s: string) =>
-  s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
 let fail = 0;
 const log = (m: string) => console.log(m);

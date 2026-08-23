@@ -29,11 +29,10 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { SOF_SINGLE_TXN_TZS, SOF_ROLLING_30D_TZS } from "../src/lib/server/wallet-service.ts";
+import { decomment as stripComments } from "./lib/decomment.mts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p: string) => readFileSync(join(root, p), "utf8");
-const stripComments = (s: string) =>
-  s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
 
 let pass = 0, fail = 0;
 const ok = (label: string, cond: boolean, extra?: string) => {

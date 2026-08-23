@@ -46,11 +46,20 @@ const WALLET_LOADING = "src/app/wallet/loading.tsx";
 const SHELL = "src/components/layout/app-shell.tsx";
 const GATE = "scripts/measure-system.test.mts";
 
-/** The two orderings of the comment stripper, spelled out once. */
-export const NEW_STRIPPER =
-  '  s.replace(/(^|[^:])\\/\\/[^\\n]*/g, "$1").replace(/\\/\\*[\\s\\S]*?\\*\\//g, "");';
-export const OLD_STRIPPER =
-  '  s.replace(/\\/\\*[\\s\\S]*?\\*\\//g, "").replace(/(^|[^:])\\/\\/[^\\n]*/g, "$1");';
+const STRIPPER = "scripts/lib/decomment.mts";
+
+/**
+ * ⛔ THE STRIPPER IS NO LONGER IN THIS GATE — it is the shared scanner in
+ * `scripts/lib/decomment.mts`, which 27 scripts import. So this mutation aims
+ * there, and `measure-red.mjs` runs the MUTANT's copy of the gate for any edit
+ * under `scripts/`; running the repo's copy would import the repo's stripper and
+ * the mutation would land on nothing while still reporting PROVEN BLIND.
+ *
+ * Reverting to block-comments-first is `E-186` exactly: a `/*` inside a `//` line
+ * opens a comment nobody wrote and eats to the next terminator.
+ */
+export const NEW_STRIPPER = "export function decomment(s: string): string {\n  let out = \"\";";
+export const OLD_STRIPPER = "export function decomment(s: string): string {\n  return BLIND.blockFirst(s);\n  let out = \"\";";
 
 /** @type {RedMutation[]} */
 export const MUTATIONS = [
@@ -92,8 +101,8 @@ export const MUTATIONS = [
   },
   {
     name: "stripper-order-restored",
-    why: "decomment strips block comments FIRST again, so a /* inside a // comment swallows 7,581 characters across five files and the gate goes blind",
-    file: GATE,
+    why: "the SHARED decomment strips block comments FIRST again, so a /* inside a // comment swallows 7,581 characters across five files and the gate goes blind",
+    file: STRIPPER,
     suite: "measure",
     check: "no NEW hand-typed page width",
     from: NEW_STRIPPER,

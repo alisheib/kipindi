@@ -23,6 +23,8 @@
  *   npm run test:feedback-law      ·      npm run red:feedback-law
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
+/** Source with comments removed — a comment cannot fire a haptic or open a dialog. */
+import { decomment as stripComments } from "./lib/decomment.mts";
 
 let pass = 0;
 const fails: string[] = [];
@@ -51,9 +53,6 @@ function sliceBraces(text: string, open: string): string | null {
   }
   return null;
 }
-
-/** Source with comments removed — a comment cannot fire a haptic or open a dialog. */
-const stripComments = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
 const DICT = read("src/lib/i18n-dict.ts");
 

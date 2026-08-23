@@ -24,6 +24,7 @@
  * paired with a positive control proving the file was actually read and understood.
  */
 import { readFileSync } from "node:fs";
+import { decomment as stripComments } from "./lib/decomment.mts";
 
 let pass = 0;
 const fails: string[] = [];
@@ -49,11 +50,6 @@ const DICT = "src/lib/i18n-dict.ts";
  * ⚠️ The `(?<!:)` guard keeps `https://` intact, which would otherwise swallow the rest of
  * any line carrying a URL.
  */
-function stripComments(src: string): string {
-  return src
-    .replace(/\/\*[\s\S]*?\*\//g, "")   // block + JSX {/* … */} comments
-    .replace(/(?<!:)\/\/[^\n]*/g, "");  // line comments, but never a URL's "//"
-}
 
 const history = stripComments(readFileSync(HISTORY, "utf8"));
 const round = stripComments(readFileSync(ROUND, "utf8"));

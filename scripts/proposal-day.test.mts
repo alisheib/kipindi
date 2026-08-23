@@ -25,6 +25,7 @@ process.env.OTP_PEPPER ??= "test-only-otp-pepper-16chars";
 import { readFileSync } from "node:fs";
 import { endOfProposalDayIso, endOfProposalDayMs } from "../src/lib/server/proposals-service.ts";
 import { getPlatformTimezone } from "../src/lib/server/platform-config.ts";
+import { decomment } from "./lib/decomment.mts";
 
 let pass = 0, fail = 0;
 const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"} ${l}${x ? ` — ${x}` : ""}`); };
@@ -64,7 +65,6 @@ ok("2: NaN cannot masquerade as a future date", !(endOfProposalDayMs("bogus") > 
 // ── 3 · STRUCTURAL — the sixth copy must not appear ──────────────────────────
 // This is the half that actually holds. Rule 5b: assert the call site, not the symbol.
 {
-  const decomment = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
   const FILES = [
     "src/lib/server/proposals-service.ts",
     "src/app/proposals/new/create-form.tsx",

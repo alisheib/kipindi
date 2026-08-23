@@ -580,23 +580,36 @@ harness rather than by review** — the finding worth keeping:
 - `decomment()` stripped **block comments before line comments**, so a `/*` inside
   a `//` comment (`// … deep links to /proposals/* are`) swallowed everything to
   the next `*/`: **7,581 characters across five files invisible** to the ratchet,
-  the parity check and the call-site check, all of which reported PASS. Fixed by
-  ordering. ⚠️ **22 other scripts still carry the old order** and are blind over the
-  same five files — filed, not silently half-fixed. ⛔ **Count them by the ORDERING,
-  not by the name `decomment`**: several spell it differently or inline it, so a
-  name-based grep UNDERCOUNTS — it reported 18 on the day and 18 was wrong.
-  Search for the ordering as a FIXED string — the two `replace` calls in sequence,
-  block-strip first — with `grep -rlF … scripts/`. On 2026-08-23 that returned **23**,
-  of which one is `measure-system.test.mts` matching its own doc comment; **22** is
-  the real population, among them `type-scale`, `ui-consistency`, `tailwind-bridge`,
-  `settle-atomicity`, `id-documents`, `pii-in-logs` and six `kyc-cert-*` suites.
-  ⭐ **The risk was measured, not assumed:** flipping the order in a temp copy
-  changes **nothing** for the six gates that can be compared cleanly — `type-scale`
-  and `ui-consistency` among them, the two whose ratchets sit at their floor. So the
-  blind spot hides no violation those gates would flag *today*. ⛔ That de-escalates
-  it; it does not close it — the next `/*` inside a `//` re-opens the hole in
-  silence. The obstacle is that most of those gates cannot be aimed at a mutated
-  tree at all; giving each a root override (as `MEASURE_ROOT` did here) is the work.
+  the parity check and the call-site check, all of which reported PASS.
+  🔴 **CLOSED 2026-08-23 (`E-188`) — AND BOTH HALVES OF WHAT WAS WRITTEN HERE ON THE
+  DAY TURNED OUT TO BE WRONG. Read this part, not the paragraph it replaced.**
+  · **THE FIX IS NOT AN ORDER.** Flipping the two `replace` calls does not remove the
+    blindness, it MOVES it: line-comments-first means a `//` *inside* a block comment
+    eats that block's terminator, the opener runs on to the next one, and the code
+    between vanishes. Measured across `scripts/`: **5 sites**, the worst costing
+    **~7.7k characters of `criterion-i18n.test.mts`** — which `pii-in-logs.test.mts`
+    §3 genuinely reads, because it strips comments from every top-level `scripts/*.mts`.
+    ⭐ **A pair of regexes cannot know it is standing inside a comment, so every
+    ORDER is a choice of which blindness to have.** The fix is a **single-pass
+    scanner** — `scripts/lib/decomment.mts`, walk once, first delimiter wins — which
+    is **byte-identical to the flipped version across all 770 files of `src/`**, so
+    adopting it changed no verdict. `test:decomment` §4.1 re-derives that equivalence
+    rather than quoting it.
+  · **THE POPULATION WAS AN UNDERCOUNT TWICE OVER.** A name-based grep said 18 and was
+    wrong; counting the ORDERING as a fixed string says 22 and is **also** wrong. The
+    real number of private strippers was **39**. `orphan-actions.test.mts` carried the
+    identical two-regex ordering and hid from the fixed-string count purely by naming
+    its parameter `src` instead of `s`; the other 16 pad comments with spaces, use a
+    lookbehind, or add a JSX clause. ⭐ **A stripper is a SHAPE, not a string** — both
+    counts keyed on the BODY, so both missed. `test:decomment` §2.2 looks for the
+    declaration instead.
+  · **NOW:** one shared scanner with **27 importers**, `test:decomment` **19/19**,
+    `red:decomment` **8/8 proven**. ⚠️ **14 strippers remain on a shrink-only ratchet
+    with a reason each** — six pad with SPACES to preserve byte offsets they later
+    slice by and need a `blankComments()` on the same scanner (not written yet), five
+    substitute `" "` so tokens cannot fuse, two strip deliberately less, and one is
+    plain `.mjs` that cannot import a `.mts` module. ⛔ Do not tidy any of them into
+    `decomment` without capturing that gate's full output before and after.
 - The page/`loading.tsx` tier-parity check **compared 29 of 80 pairs and skipped
   51 in silence**, because a route that delegates its body to a sibling client
   component (`/wallet` → `./wallet-client`) stated no tier the check could read.

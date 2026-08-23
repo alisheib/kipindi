@@ -21,6 +21,7 @@
  */
 import { readFileSync, readdirSync, statSync, writeFileSync, existsSync } from "node:fs";
 import { join, relative, basename } from "node:path";
+import { decomment } from "./lib/decomment.mts";
 
 const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
 const SRC = join(ROOT, "src");
@@ -43,9 +44,6 @@ function walk(dir: string): string[] {
 const rel = (f: string) => relative(ROOT, f).replace(/\\/g, "/");
 
 // Strip JS/TS/JSX comments so commented-out examples never trip a rule.
-function decomment(s: string): string {
-  return s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
-}
 
 type Finding = { rule: string; file: string; line: number; snippet: string };
 

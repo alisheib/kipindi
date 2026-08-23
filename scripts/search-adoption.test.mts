@@ -24,6 +24,7 @@
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
+import { decomment } from "./lib/decomment.mts";
 
 const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
 const SRC = join(ROOT, "src");
@@ -41,8 +42,6 @@ const ALLOWLIST = new Set<string>([
 /** Player routes must never enable regex. */
 const PLAYER_ROUTE_RE = /^src[\\/]app[\\/](markets|results|live|proposals|positions|wallet|profile|leaderboard|watchlist|updown|help|fairness|legal|auth)[\\/]/;
 
-const decomment = (s: string) =>
-  s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
 
 function walk(dir: string, re: RegExp): string[] {
   const out: string[] = [];

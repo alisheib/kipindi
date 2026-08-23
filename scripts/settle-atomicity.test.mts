@@ -45,6 +45,8 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+/** Strip comments: this file's own prose quotes the buggy forms on purpose. */
+import { decomment } from "./lib/decomment.mts";
 
 const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
 const FILE = join(ROOT, "src/lib/server/market-service.ts");
@@ -57,9 +59,6 @@ function check(label: string, cond: boolean, detail = "") {
 }
 
 const src = readFileSync(FILE, "utf8");
-/** Strip comments: this file's own prose quotes the buggy forms on purpose. */
-const decomment = (s: string) =>
-  s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
 // ── Isolate a function's body ──────────────────────────────────────────────────
 // From its declaration to the next top-level `export ` — brace-matching would be

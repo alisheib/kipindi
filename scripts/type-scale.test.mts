@@ -86,6 +86,10 @@
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
+/** Strip JS/TS/JSX comments — a guard that greps for a defect otherwise matches
+ *  the comment explaining the fix. (`admin/markets/page.tsx` documents the `h-8`
+ *  trap in prose; `ui-consistency` learned this the hard way, twice in a day.) */
+import { decomment } from "./lib/decomment.mts";
 
 const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
 const SRC = join(ROOT, "src");
@@ -181,13 +185,6 @@ const RATCHET_MONEY: Record<string, number> = {
 // ───────────────────────────────────────────────────────────────────────────────
 // Scanners. Pure functions over (body) so §0 can run them on fixtures.
 // ───────────────────────────────────────────────────────────────────────────────
-
-/** Strip JS/TS/JSX comments — a guard that greps for a defect otherwise matches
- *  the comment explaining the fix. (`admin/markets/page.tsx` documents the `h-8`
- *  trap in prose; `ui-consistency` learned this the hard way, twice in a day.) */
-function decomment(s: string): string {
-  return s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
-}
 
 /**
  * Every string literal in the file.

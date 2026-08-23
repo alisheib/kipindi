@@ -32,6 +32,17 @@
 > the blind `decomment` copy** are filed at the constant instead of half-fixed. ⚠️ **That
 > figure was first written as 18** — a name-based `grep decomment` undercounts, because
 > several suites spell the helper differently or inline it. Count the ORDERING, not the name.
+>
+> 🔴 **UPDATE 2026-08-23 (`E-188`) — THE STRIPPER HALF IS CLOSED, AND THE ADVICE IN THE
+> PARAGRAPH ABOVE IS ITSELF WRONG.** "Count the ORDERING, not the name" is right that the
+> name undercounts and wrong that the ordering is the answer: the fixed string finds **22**,
+> the real population was **39**. `orphan-actions.test.mts` had the identical ordering and
+> was invisible to it because it spells the parameter `src` instead of `s`. **A stripper is
+> a SHAPE, not a string.** And the prescribed repair — flip the two `replace` calls — is
+> blind in the opposite direction (a `//` inside a block comment eats that block's
+> terminator; ~7.7k characters of `criterion-i18n.test.mts`, which `pii-in-logs` §3 reads).
+> The fix is a single-pass **scanner**: `scripts/lib/decomment.mts`, 27 importers,
+> `test:decomment` 19/19, `red:decomment` 8/8. **14 remain on a shrink-only ratchet.**
 
 > **Written 2026-08-22 (session 56)** by the session that found it, for the session that fixes it.
 > ⛔ Read this whole file before opening a component. The work looks like a find-and-replace

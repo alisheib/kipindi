@@ -27,6 +27,7 @@
  */
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { join, relative, dirname, basename } from "node:path";
+import { decomment } from "./lib/decomment.mts";
 
 /**
  * `MEASURE_ROOT` lets `scripts/measure-red.mjs` aim this gate at a COPY of the
@@ -97,56 +98,27 @@ const MEASURED_ATOMS = [
 const EXEMPT_ATOMS = ["otp-input.tsx", "datetime-range-filter.tsx", "time-select.tsx"];
 
 /**
- * ⛔ LINE COMMENTS FIRST, THEN BLOCK COMMENTS. THE ORDER IS THE WHOLE POINT.
+ * ⛔ THE COMMENT STRIPPER IS SHARED, AND IT IS A SCANNER — `scripts/lib/decomment.mts`.
  *
- * This used to strip block comments first, and that made the guard BLIND over
- * arbitrary stretches of real source. `src/app/proposals/page.tsx` carries the
- * line comment:
+ * This file used to carry its own copy. On 2026-08-22 that copy was found to strip
+ * BLOCK comments before LINE comments, so a `/*` written inside a `//` comment opened
+ * a block nobody wrote: 5 files, 7,581 characters of `src` invisible to §2's ratchet,
+ * §3's tier parity and §6's call-site check, all reporting PASS over the hole (`E-186`).
  *
- *     // an honest, guided "not available" state — deep links to /proposals/* are
+ * ⛔ THE REPAIR APPLIED THAT DAY — FLIP THE TWO REPLACES — WAS NOT THE FIX, AND THE
+ * MEASUREMENT THAT SHOWED IT IS RECORDED IN THE SHARED MODULE. Line-comments-first is
+ * blind in the OTHER direction: a `//` inside a block comment eats that block's own
+ * terminator, the opener runs on to the next one, and everything between vanishes.
+ * Measured across `scripts`: 5 sites, the worst costing ~7.7k characters of
+ * `criterion-i18n.test.mts` — which `pii-in-logs.test.mts` §3 really does read.
+ * `test:decomment` §5.2 re-derives that number and prints it; do not quote it.
  *
- * `/proposals/*` contains a literal `/*`, so a block-comment stripper run first
- * treats it as the START of a comment and eats everything up to the next `*​/`
- * — 2,359 characters of that file, including the `max-w-[1080px]` on the very
- * next line. So §2's hand-typed-width ratchet, §3's page/loading tier parity and
- * §6's call-site padding check all silently skipped that region and reported PASS.
- *
- * Measured across `src` on 2026-08-22: FIVE files, **7,581 characters of source
- * invisible to every check in this file**. Stripping line comments first removes
- * the `/*` before it can be mistaken for an opener.
- *
- * ⚠️ **22 OTHER SCRIPTS CARRY THE OLD ORDER AND ARE BLIND OVER THE SAME FIVE
- * FILES.** Count them with a FIXED-STRING search for the ordering itself, not by
- * grepping the NAME `decomment` — several spell it differently or inline it, and
- * a name-based grep undercounts (it said 18 on 2026-08-22, and 18 is wrong):
- *
- *     grep -rlF 's.replace(/\/\*[\s\S]*?\*\//g, "").replace(' scripts/
- *
- * ⚠️ That grep returns **23** — it matches THIS FILE on the comment you are
- * reading. Discount this one; the other 22 are the real population.
- *
- * They include `type-scale`, `ui-consistency`, `tailwind-bridge`,
- * `settle-atomicity`, `id-documents`, `pii-in-logs` and six `kyc-cert-*` suites.
- *
- * ⭐ MEASURED 2026-08-23, BEFORE ASSUMING THE WORST: flipping the order in a
- * temp copy and re-running each gate changes NOTHING for the six that could be
- * compared cleanly — **`type-scale` and `ui-consistency` included**, which are the
- * two whose ratchets sit at their floor and were the reason to worry. So the blind
- * spot is currently hiding **no** violation those gates would flag. The other 17
- * could not be compared: 11 error in both states (they need env/args, or derive
- * their own ROOT with no override), and 6 spell the statement in a shape a
- * mechanical rewrite could not flip.
- *
- * ⛔ That is a reason to do the work CALMLY, not to skip it — "hides nothing
- * today" is a fact about today's source, and the next `/*` inside a `//` comment
- * silently re-opens the hole. The real obstacle is that most of those gates cannot
- * be aimed at a mutated tree at all, which is exactly what `MEASURE_ROOT` above
- * fixes for this one. Left unchanged here deliberately and filed rather than
- * half-done — same shape as E-108: one helper, copy-pasted, repaired one place at
- * a time.
+ * ⭐ So there is no safe ORDER; a pair of regexes cannot know it is standing inside a
+ * comment. The shared helper walks the text once and lets whichever delimiter it meets
+ * first win. It is byte-identical to the flipped version across all 770 files of `src`,
+ * so adopting it changed no verdict here — `test:decomment` re-derives that rather than
+ * quoting it, and `red:decomment` proves both blindnesses on fixtures.
  */
-const decomment = (s: string) =>
-  s.replace(/(^|[^:])\/\/[^\n]*/g, "$1").replace(/\/\*[\s\S]*?\*\//g, "");
 
 function walk(dir: string, re: RegExp): string[] {
   const out: string[] = [];

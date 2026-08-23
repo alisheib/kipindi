@@ -38,6 +38,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { decomment as stripComments } from "./lib/decomment.mts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SRC = join(ROOT, "src");
@@ -98,8 +99,6 @@ const files: string[] = [];
  * guard of mine read prose instead of code" and strips comments for the same reason. A guard
  * that cannot be written about is a guard that stops being documented.
  */
-const stripComments = (src: string) =>
-  src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
 const text = new Map(files.map((f) => [f, stripComments(readFileSync(f, "utf8"))]));
 const actionFiles = files.filter((f) => /[\\/]admin[\\/].*action.*\.ts$/i.test(f));
 

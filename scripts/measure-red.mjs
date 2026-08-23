@@ -79,9 +79,12 @@ for (const [i, m] of MUTATIONS.entries()) {
     continue;
   }
 
-  // For the stripper mutation the gate UNDER TEST is the mutant's own copy;
-  // otherwise the repo's, with MEASURE_ROOT aiming its file walk at the copy.
-  const gatePath = m.file === GATE ? join(root, GATE) : join(cwd, GATE);
+  // ⛔ ANY edit under `scripts/` needs the MUTANT's copy of the gate — the gate
+  // itself, or now `scripts/lib/decomment.mts`, the shared stripper it imports.
+  // Running the repo's copy would import the repo's stripper, so the mutation
+  // would land on nothing while the inverted proof still reported PROVEN BLIND.
+  const touchesScripts = edits.some((e) => e.file.startsWith("scripts/"));
+  const gatePath = touchesScripts ? join(root, GATE) : join(cwd, GATE);
   let out = "";
   let exit = 0;
   try {

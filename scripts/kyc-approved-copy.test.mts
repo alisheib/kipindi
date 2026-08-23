@@ -32,6 +32,7 @@
 import { readFileSync } from "node:fs";
 import { dict } from "../src/lib/i18n-dict.ts";
 import { payoutsAcceptingRequests } from "../src/lib/server/payout-status.ts";
+import { decomment as stripComments } from "./lib/decomment.mts";
 
 let pass = 0, fail = 0;
 const ok = (label: string, cond: boolean, extra?: string) => {
@@ -46,8 +47,6 @@ const DEPOSIT_RAW = read("../src/app/wallet/deposit/page.tsx");
 const WALLET = read("../src/lib/server/wallet-service.ts");     // the enforcement, not the page
 const MARKET = read("../src/lib/server/market-service.ts");
 const RAIL_RAW = read("../src/app/admin/kyc/[id]/kyc-decision-rail.tsx");
-const stripComments = (s: string) =>
-  s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
 const KYC_PAGE = stripComments(KYC_PAGE_RAW);
 const DEPOSIT = stripComments(DEPOSIT_RAW);
 // 🔴 THE RAIL IS NOW STRIPPED TOO, AND IT SHOULD HAVE BEEN ALL ALONG. §7's "dead promise"

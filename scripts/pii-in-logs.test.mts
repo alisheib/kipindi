@@ -25,6 +25,9 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+/** Read CODE, not prose. A guard that matches comments reports the explanation as the bug —
+ *  the exact mistake the DISABLE_ADMIN_TOTP guard had to be corrected for. */
+import { decomment as stripComments } from "./lib/decomment.mts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p: string) => readFileSync(join(root, p), "utf8");
@@ -45,11 +48,6 @@ const walk = (dir: string): string[] => {
   }
   return out;
 };
-
-/** Read CODE, not prose. A guard that matches comments reports the explanation as the bug —
- *  the exact mistake the DISABLE_ADMIN_TOTP guard had to be corrected for. */
-const stripComments = (s: string) =>
-  s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
 
 // ── 1 · The masker exists and is honest ──────────────────────────────────────────────────
 section("1 · maskEmail exists and reveals nothing identifying");
