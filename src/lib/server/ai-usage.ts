@@ -67,7 +67,13 @@ import { CYCLE_BOUNDS } from "../ai-cycle-rules";
 // can say exactly what each game costs (Ali, 2026-07-25 — Up & Down is its own game).
 // Historical rows the oracle wrote as `sentinel` (the one pre-separation seeded chain)
 // stay attributed there; everything new lands in `updown`.
-export type AiFeature = "polls" | "chat" | "sentinel" | "updown" | "other";
+// ⛔ THE LIST IS THE TYPE, not a comment beside it. A hand-written union cannot be
+// enumerated at runtime, so nothing could check that every feature is filed under a product
+// line — and `other` was silently filed under NONE, leaving spend that appeared in the total
+// and in no line. `test:ai-cycles` §14 now asserts the coverage, which is only possible
+// because the features can be listed.
+export const AI_FEATURES = ["polls", "chat", "sentinel", "updown", "other"] as const;
+export type AiFeature = (typeof AI_FEATURES)[number];
 
 // Per-MTok USD pricing by model family + web-search per-call price. Matches the
 // public Anthropic rates; unknown models fall back to Sonnet-tier so an estimate
@@ -137,7 +143,10 @@ export function costOf(model: string, inputTokens: number, outputTokens: number,
   return round6((inputTokens * p.in + outputTokens * p.out) / 1_000_000 + webSearches * WEB_SEARCH_USD);
 }
 
-const RETAIN_DAYS = 180;
+/** ⛔ EXPORTED because the CYCLE ledger is never pruned and the EVENT ledger is. Anything
+ *  comparing the two has to know where the events stop existing, or it reports a drift that
+ *  is really just retention doing its job. */
+export const RETAIN_DAYS = 180;
 let sinceLastPrune = 0;
 
 // ---------------------------------------------------------------------------
@@ -551,10 +560,10 @@ export async function getCycleConfig(): Promise<CycleConfig> {
   return {
     sizeUsd: clampCycleSize(num(raw.sizeUsd, CYCLE_DEFAULTS.sizeUsd)),
     autoRoll: typeof raw.autoRoll === "boolean" ? raw.autoRoll : CYCLE_DEFAULTS.autoRoll,
-    targetMarginPct: num(raw.targetMarginPct, CYCLE_DEFAULTS.targetMarginPct),
+    targetMarginPct: clampMargin(num(raw.targetMarginPct, CYCLE_DEFAULTS.targetMarginPct)),
     fxTzsPerUsd: num(raw.fxTzsPerUsd, CYCLE_DEFAULTS.fxTzsPerUsd),
     fxAsOfIso: typeof raw.fxAsOfIso === "string" ? raw.fxAsOfIso : CYCLE_DEFAULTS.fxAsOfIso,
-    minDaysForProjection: num(raw.minDaysForProjection, CYCLE_DEFAULTS.minDaysForProjection),
+    minDaysForProjection: clampMinDays(num(raw.minDaysForProjection, CYCLE_DEFAULTS.minDaysForProjection)),
   };
 }
 
@@ -573,6 +582,27 @@ export async function saveCycleConfig(cfg: CycleConfig): Promise<void> {
 export function clampCycleSize(sizeUsd: number): number {
   if (!Number.isFinite(sizeUsd) || sizeUsd <= 0) return CYCLE_DEFAULTS.sizeUsd;
   return Math.min(CYCLE_BOUNDS.sizeUsd.max, Math.max(CYCLE_BOUNDS.sizeUsd.min, sizeUsd));
+}
+
+/**
+ * ⛔ THE SAME LAST-LINE-OF-DEFENCE ARGUMENT AS `clampCycleSize`, and it was missing.
+ *
+ * `minDaysForProjection` reaching the read model as 0 makes `observedDays < minDays` false
+ * for a zero-length history, and the very next line divides by `observedDays` — putting
+ * **Infinity cycles per year** on the one figure Ali prices from. The form cannot produce a
+ * 0 (§7 forces 1–365), but a hand-edited `SystemConfig` row can, and guarding the size while
+ * leaving this open is an inconsistency that only looks safe.
+ */
+export function clampMinDays(days: number): number {
+  if (!Number.isFinite(days)) return CYCLE_DEFAULTS.minDaysForProjection;
+  return Math.min(CYCLE_BOUNDS.minDaysForProjection.max,
+    Math.max(CYCLE_BOUNDS.minDaysForProjection.min, Math.round(days)));
+}
+
+/** Same reasoning: a margin of -100% would price at zero, and NaN would poison every cell. */
+export function clampMargin(pct: number): number {
+  if (!Number.isFinite(pct)) return CYCLE_DEFAULTS.targetMarginPct;
+  return Math.min(CYCLE_BOUNDS.targetMarginPct.max, Math.max(CYCLE_BOUNDS.targetMarginPct.min, pct));
 }
 
 /** The same float guard `checkLimitAndAlert` uses — `20 * 0.8` is `16.000000000000004`. */

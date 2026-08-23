@@ -160,6 +160,16 @@ export const MUTATIONS = [
     check: "8.2 ⛔ 2 days observed against a 14-day floor → refused, and it says how many days it has",
   },
   {
+    name: "the-yearly-rate-counts-ROWS-instead-of-SPEND",
+    why: "🔴 REAL. An officer closing the books early leaves a CLOSED ROW with nothing in it. "
+       + "Counting rows lets bookkeeping triple the number Ali prices from without a cent more "
+       + "being spent — the live drive's own close/start left five $0.00 cycles in the ledger.",
+    file: CYCLES,
+    from: "  const cyclesPerDay = cyclesConsumed / observedDays;",
+    to: "  const cyclesPerDay = closed.length / observedDays;",
+    check: "8.6 🔴 three EMPTY hand-closed cycles do NOT raise the rate — spend drives it, not rows",
+  },
+  {
     name: "the-open-cycle-drags-the-rate-down",
     why: "§9.2. Measuring the span to NOW instead of to the last close counts the open cycle's "
        + "elapsed time without its spend — a rate biased low, in the direction that flatters us.",
@@ -231,6 +241,46 @@ export const MUTATIONS = [
     from: "    if (asOfMs > nowMs) {",
     to: "    if (false) {",
     check: "11.23 ⛔ a rate dated in the FUTURE is refused, on the right field",
+  },
+  // ── the second adversarial pass: defects found by re-reading my own work ────────
+  {
+    name: "a-feature-falls-between-the-product-lines",
+    why: "🔴 REAL. `other` was in NO line, so spend under it counted toward the page total and "
+       + "toward conservation while appearing in no row of the cost table — the lines silently "
+       + "failed to sum to the total and nothing said so.",
+    file: CYCLES,
+    from: "  chat: [\"chat\"],\n  other: [\"other\"],",
+    to: "  chat: [\"chat\"],",
+    check: "14.1 ⛔ every AiFeature appears in some product line",
+  },
+  {
+    name: "a-feature-is-counted-under-two-lines",
+    why: "The other direction: double-counting a feature makes Σ(lines) exceed Σ(spend), which "
+       + "reads as the product costing more than it does.",
+    file: CYCLES,
+    from: "  updown: [\"updown\"],",
+    to: "  updown: [\"updown\", \"chat\"],",
+    check: "14.2 ⛔ …and in exactly ONE — a feature in two lines is counted twice",
+  },
+  {
+    name: "conservation-goes-back-to-comparing-unequal-spans",
+    why: "🔴 REAL, and DATED. Cycles are never pruned; events are, at 180 days. The naive "
+       + "comparison would have reported a growing false drift from 2026-12-23 on the ledger "
+       + "backfilled 2026-08-23 — a reconciliation that cries wolf on a schedule.",
+    file: CYCLES,
+    from: "  const anchor = cycles.slice().sort((a, b) => a.index - b.index).find((c) => c.openedAt >= retentionCutoffIso);",
+    to: "  const anchor = cycles.slice().sort((a, b) => a.index - b.index)[0];",
+    check: "15.3 🔴 the PRODUCT reconciles to zero — retention no longer looks like drift",
+  },
+  {
+    name: "the-projection-floor-stops-being-clamped",
+    why: "A hand-edited SystemConfig of 0 makes `observedDays < minDays` false for a zero-length "
+       + "history, and the next line divides by it — Infinity cycles per year, on the one figure "
+       + "Ali prices from.",
+    file: METER,
+    from: "  return Math.min(CYCLE_BOUNDS.minDaysForProjection.max,\n    Math.max(CYCLE_BOUNDS.minDaysForProjection.min, Math.round(days)));",
+    to: "  return Math.round(days);",
+    check: "16.1 ⛔ a zero projection floor is clamped, never divided by",
   },
   {
     name: "the-meter-clamp-lets-a-zero-size-through",

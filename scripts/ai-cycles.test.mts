@@ -25,12 +25,14 @@ process.env.OTP_PEPPER ??= "test-only-otp-pepper-16chars";
 import {
   recordAiUsage, assertAiBudget, setCreditLimit, startNewTopUpWindow,
   getCycleConfig, saveCycleConfig, startNextCycle, closeOpenCycleNow, cycleGate,
-  CYCLE_DEFAULTS, CYCLE_EPS, clampCycleSize, PRICE_REV, costOf,
+  CYCLE_DEFAULTS, CYCLE_EPS, clampCycleSize, clampMinDays, clampMargin, PRICE_REV, costOf,
+  AI_FEATURES, RETAIN_DAYS, type AiFeature,
 } from "../src/lib/server/ai-usage.ts";
 import { aiCycleDal, DuplicateCycleIndexError } from "../src/lib/server/ai-cycle-dal.ts";
 import { aiUsageDal } from "../src/lib/server/ai-usage-dal.ts";
 import {
-  projectCyclesPerYear, yearsFrom, safeRatio, suggestedPriceUsd, tzs, decorate,
+  projectCyclesPerYear, yearsFrom, safeRatio, suggestedPriceUsd, tzs, decorate, LINE_FEATURES,
+  getCycleReadModel,
 } from "../src/lib/server/ai-cycles.ts";
 import { parseCycleForm, CYCLE_BOUNDS } from "../src/lib/ai-cycle-rules.ts";
 
@@ -44,6 +46,7 @@ function check(label: string, cond: boolean, detail = ""): boolean {
   else { fail++; log(`  FAIL ${label}${detail ? ` — ${detail}` : ""}`); }
   return cond;
 }
+const round6 = (n: number) => Math.round(n * 1_000_000) / 1_000_000;
 const near = (label: string, a: number, b: number, eps = CYCLE_EPS) =>
   check(label, Math.abs(a - b) <= eps, `${a} vs ${b} (eps ${eps})`);
 
@@ -342,11 +345,28 @@ section("8 · PROJECTION — it refuses a year from too little history");
       Math.abs(long.observedDays - 30) < 0.01, String(long.observedDays));
   }
 
+  // 🔴 AN EMPTY CYCLE CLOSED BY HAND MUST NOT INFLATE THE YEARLY FIGURE.
+  // An officer closing the books early leaves a CLOSED ROW with little or nothing in it.
+  // Counting rows would let bookkeeping triple the number Ali prices from without a cent
+  // more being spent — seen for real: the live drive's own close/start left five $0.00
+  // cycles in the ledger.
+  const withEmpties = projectCyclesPerYear(
+    [mk(1, 40, 30), mk(2, 30, 20), mk(3, 20, 10), mk(4, 10, null),
+     // three hand-closed, spent nothing
+     { ...mk(5, 10, 10), costUsd: 0 }, { ...mk(6, 10, 10), costUsd: 0 }, { ...mk(7, 10, 10), costUsd: 0 }],
+    14,
+  );
+  check("8.6 🔴 three EMPTY hand-closed cycles do NOT raise the rate — spend drives it, not rows",
+    withEmpties.ok && long.ok && Math.abs(withEmpties.cyclesPerYear - long.cyclesPerYear) < 0.01,
+    withEmpties.ok && long.ok ? `${withEmpties.cyclesPerYear} vs ${long.cyclesPerYear}` : "n/a");
+  check("8.7 ⭐ CONTROL: …but they DO count as closed cycles, so nothing is hidden",
+    withEmpties.ok && withEmpties.closedCycles === 6, withEmpties.ok ? String(withEmpties.closedCycles) : "n/a");
+
   // ⭐ CONTROL: the projector can actually produce different answers — a function returning
   // a constant would satisfy 8.3 and 8.4 by luck.
   const denser = projectCyclesPerYear(
     [mk(1, 40, 35), mk(2, 35, 30), mk(3, 30, 25), mk(4, 25, 20), mk(5, 20, 15), mk(6, 15, 10)], 14);
-  check("8.6 ⭐ CONTROL: a denser history projects a HIGHER rate",
+  check("8.8 ⭐ CONTROL: a denser history projects a HIGHER rate",
     denser.ok && long.ok && denser.cyclesPerYear > long.cyclesPerYear,
     denser.ok && long.ok ? `${denser.cyclesPerYear} vs ${long.cyclesPerYear}` : "n/a");
 }
@@ -547,6 +567,144 @@ section("13 · A BROKEN METER MUST NOT BREAK AN AI CALL");
     (await aiUsageDal.recent("1970-01-01T00:00:00.000Z", 10)).length === 1);
   check("13.3 the budget gate still fails OPEN, so the Sentinel keeps resolving",
     (await assertAiBudget("sentinel")).ok);
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+section("14 · EVERY FEATURE IS FILED UNDER A PRODUCT LINE — no silent gap");
+// ════════════════════════════════════════════════════════════════════════════════
+{
+  // 🔴 `other` was in NO line. Spend recorded under it counted toward the page total and
+  // toward conservation, and appeared in no row of the cost-per-resolution table — so the
+  // lines silently failed to sum to the total, and nothing said so. This is the same
+  // shape as an unattributed bucket, one level up: a population the consumer reads that
+  // the producer never covered.
+  const covered = Object.values(LINE_FEATURES).flat();
+  check("14.0 ⭐ CONTROL: there are features and lines to check", AI_FEATURES.length >= 5 && covered.length >= 5,
+    `${AI_FEATURES.length} features, ${covered.length} filings`);
+
+  const missing = AI_FEATURES.filter((f) => !covered.includes(f));
+  check("14.1 ⛔ every AiFeature appears in some product line", missing.length === 0, missing.join(", "));
+
+  const dupes = covered.filter((f, i) => covered.indexOf(f) !== i);
+  check("14.2 ⛔ …and in exactly ONE — a feature in two lines is counted twice", dupes.length === 0, dupes.join(", "));
+
+  const bogus = covered.filter((f) => !AI_FEATURES.includes(f));
+  check("14.3 …and no line claims a feature that does not exist", bogus.length === 0, bogus.join(", "));
+
+  // ⭐ THE CONSEQUENCE, not just the mapping: the lines must SUM to the total.
+  await reset({ sizeUsd: 1000, autoRoll: true });
+  const perFeature = 0.25;
+  for (const f of AI_FEATURES) {
+    await recordAiUsage({
+      feature: f, model: "claude-sonnet-4-6", inputTokens: 0, outputTokens: 0,
+      webSearches: Math.round(perFeature * 100), ok: true, subjectType: "market", subjectId: `mkt_${f}`,
+    });
+  }
+  const evTotal = await sumEvents();
+  near("14.4 ⭐ one call per feature was recorded", evTotal, AI_FEATURES.length * perFeature, 1e-6);
+  const byLine = (Object.keys(LINE_FEATURES) as (keyof typeof LINE_FEATURES)[]).map((line) => {
+    const feats = LINE_FEATURES[line];
+    return (globalThis.__50PICK_AI_USAGE as { feature: string; costUsd: number }[])
+      .filter((e) => feats.includes(e.feature as AiFeature))
+      .reduce((sc, e) => sc + e.costUsd, 0);
+  });
+  near("14.5 🔴 Σ(product lines) equals Σ(all spend) — nothing falls between the lines",
+    round6(byLine.reduce((a, b) => a + b, 0)), evTotal, 1e-6);
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+section("15 · CONSERVATION SURVIVES RETENTION — the reconciliation must not cry wolf");
+// ════════════════════════════════════════════════════════════════════════════════
+{
+  // 🔴 `AiSpendCycle` is NEVER pruned; `AiUsageEvent` is, at RETAIN_DAYS. Comparing "all
+  // cycles" against "all surviving events" therefore reports a drift that grows for ever
+  // once pruning starts — on the production ledger backfilled 2026-08-23, from 2026-12-23.
+  // A reconciliation that cries wolf on a schedule is one nobody reads when it finally
+  // means something.
+  // 🔴 AND THIS SECTION IS DRIVEN THROUGH `getCycleReadModel()`, NOT RE-IMPLEMENTED HERE.
+  // The first version computed the scoped sums inside the test and compared them to each
+  // other — so it proved the TEST's arithmetic and mutating the PRODUCT changed nothing.
+  // `red:ai-cycles` reported it MISSED, which is the only reason it was caught: a check
+  // that restates the implementation cannot fail when the implementation is wrong.
+  check("15.0 ⭐ CONTROL: the retention window is a real, non-trivial number",
+    Number.isFinite(RETAIN_DAYS) && RETAIN_DAYS > 30, String(RETAIN_DAYS));
+
+  const DAY = 86_400_000;
+  const iso = (daysAgo: number) => new Date(Date.now() - daysAgo * DAY).toISOString();
+
+  // Build the state that retention eventually produces: an OLD cycle whose events have been
+  // pruned, and a RECENT one whose events survive. Written straight into the store because
+  // no test can wait 400 days for the meter to create it.
+  // ⚠️ CAPTURED ONCE. Calling iso(30) twice yields two instants milliseconds apart, and the
+  // check below compares the span the product reported against the one that was seeded.
+  const retainedOpenedAt = iso(30);
+  await reset({ sizeUsd: 100, autoRoll: true });
+  (globalThis.__50PICK_AI_CYCLES as unknown[]).push(
+    { id: "aic_old", index: 1, sizeUsd: 100, priceRev: "p", openedAt: iso(400), closedAt: iso(380), costUsd: 100, status: "CLOSED", openedBy: null, note: null },
+    { id: "aic_new", index: 2, sizeUsd: 100, priceRev: "p", openedAt: retainedOpenedAt, closedAt: null, costUsd: 40, status: "OPEN", openedBy: null, note: null },
+  );
+  (globalThis.__50PICK_AI_USAGE as unknown[]).push(
+    // Only the RECENT events survive; the old cycle's are gone, exactly as pruning leaves it.
+    { id: "aiu_new", createdAt: iso(20), feature: "sentinel", model: "claude-sonnet-4-6", inputTokens: 0, outputTokens: 0, webSearches: 4000, costUsd: 40, ok: true, errorType: null, latencyMs: 1, detail: null, subjectType: "market", subjectId: "mkt_r" },
+  );
+
+  const model = await getCycleReadModel();
+
+  check("15.1 ⭐ CONTROL: the state really is the post-pruning one",
+    model.closedCount === 1 && model.open?.index === 2,
+    `closed=${model.closedCount} open=${model.open?.index}`);
+
+  // What the NAIVE comparison would have said — computed here only to prove the scenario
+  // has teeth, never as the assertion itself.
+  const naiveDrift = 140 - 40;
+  check("15.2 ⭐ CONTROL: unscoped, this scenario really would have cried wolf",
+    naiveDrift > 99, `naive drift $${naiveDrift}`);
+
+  near("15.3 🔴 the PRODUCT reconciles to zero — retention no longer looks like drift",
+    model.conservation.driftUsd, 0, 1e-6);
+  check("15.4 …and it names the span it compared, which starts at the retained cycle",
+    model.conservation.comparable && model.conservation.sinceIso === retainedOpenedAt,
+    `sinceIso=${model.conservation.sinceIso}`);
+  near("15.5 …counting only the retained cycle's cost", model.conservation.cyclesUsd, 40, 1e-6);
+
+  // And when NOTHING opened inside the window it must say "not comparable", never zero-drift.
+  await reset({ sizeUsd: 100, autoRoll: true });
+  (globalThis.__50PICK_AI_CYCLES as unknown[]).push(
+    { id: "aic_ancient", index: 1, sizeUsd: 100, priceRev: "p", openedAt: iso(400), closedAt: iso(380), costUsd: 100, status: "CLOSED", openedBy: null, note: null },
+  );
+  const stale = await getCycleReadModel();
+  check("15.6 ⛔ with no cycle inside the window the PRODUCT says NOT comparable, never 'agreed'",
+    stale.conservation.comparable === false && stale.conservation.sinceIso === null,
+    JSON.stringify(stale.conservation));
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+section("16 · THE CLAMPS THAT KEEP A HAND-EDITED CONFIG FROM PRINTING Infinity");
+// ════════════════════════════════════════════════════════════════════════════════
+{
+  // The form forces 1–365 (§11), but a hand-edited `SystemConfig` row can carry anything,
+  // and `observedDays < 0` is false — so the very next line divides by zero and puts
+  // **Infinity cycles per year** on the one figure Ali prices from. `clampCycleSize` had
+  // this guard; these two did not.
+  check("16.1 ⛔ a zero projection floor is clamped, never divided by", clampMinDays(0) >= 1);
+  check("16.2 a negative floor is clamped", clampMinDays(-5) >= 1);
+  check("16.3 NaN is clamped", clampMinDays(Number.NaN) === CYCLE_DEFAULTS.minDaysForProjection);
+  check("16.4 a floor beyond a year is clamped", clampMinDays(10_000) === CYCLE_BOUNDS.minDaysForProjection.max);
+  check("16.5 ⭐ CONTROL: a legitimate floor passes through", clampMinDays(14) === 14);
+
+  check("16.6 a NaN margin is clamped", clampMargin(Number.NaN) === CYCLE_DEFAULTS.targetMarginPct);
+  check("16.7 a negative margin is clamped to zero", clampMargin(-500) === 0);
+  check("16.8 an absurd margin is clamped to the ceiling", clampMargin(1e9) === CYCLE_BOUNDS.targetMarginPct.max);
+  check("16.9 ⭐ CONTROL: a legitimate margin passes through", clampMargin(100) === 100);
+
+  // ⭐ AND THE CONSEQUENCE: with the floor clamped, a zero-length history can never project.
+  const sameInstant = new Date().toISOString();
+  const degenerate = projectCyclesPerYear(
+    [{ id: "a", index: 1, sizeUsd: 100, priceRev: "p", openedAt: sameInstant, closedAt: sameInstant, costUsd: 100, status: "CLOSED", openedBy: null, note: null }],
+    clampMinDays(0),
+  );
+  check("16.10 🔴 a zero-length history yields NO projection — never Infinity/year",
+    !degenerate.ok, JSON.stringify(degenerate));
 }
 
 // ════════════════════════════════════════════════════════════════════════════════

@@ -140,7 +140,7 @@ const RATCHET_INLINE_FONTSIZE = 38;
  *  microlabel described above. ⛔ There is no `letterSpacing` key in `tailwind.config.ts`
  *  at all, so EVERY one of these 640 is arbitrary by construction and there is no
  *  non-arbitrary form to move it to; the real fix is a tracking scale, not a call-site edit. */
-const RATCHET_ARBITRARY_TRACKING = 639;
+const RATCHET_ARBITRARY_TRACKING = 636;
 
 /** §5 — the 29 hand-typed sizes that exist today. A member may LEAVE (the guard
  *  says so and this list gets trimmed); a NEW one is a hard failure. This is the

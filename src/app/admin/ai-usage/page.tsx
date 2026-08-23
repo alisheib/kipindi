@@ -1,3 +1,4 @@
+import type * as React from "react";
 import Link from "next/link";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { AdminAreaChart, AdminMeter } from "@/components/admin/admin-charts";
@@ -61,10 +62,26 @@ const FEATURES: AiFeature[] = ["updown", "sentinel", "polls", "chat", "other"];
 // move both tables at once.
 const CYCLES_PER_PAGE = 12;
 
-const LINE_LABEL: Record<"polls" | "updown" | "chat", string> = {
+/** The subject types the meter writes, and how an operator reads them. ⛔ Mirrors
+ *  `AiSubjectType` in ai-usage.ts — `test:ai-cycles` §15 asserts the two agree, so this
+ *  cannot quietly fall behind the meter. */
+const SUBJECT_LABEL: Record<string, string> = {
+  market: "MARKET",
+  updown_observation: "U&D OBSERVATION",
+  updown_proposal: "U&D PROPOSAL",
+  poll_generation: "POLL GENERATION",
+  poll_ideation: "POLL IDEATION",
+  chat_session: "CHAT",
+};
+const SUBJECT_TYPES = Object.keys(SUBJECT_LABEL);
+
+const LINE_LABEL: Record<"polls" | "updown" | "chat" | "other", string> = {
   polls: "Polls (generation + Sentinel)",
   updown: "Up & Down oracle",
   chat: "Help chatbot",
+  // ⛔ Present so the lines SUM to the total. Spend filed as `other` used to appear in the
+  // page total and in NO line, and nothing said so.
+  other: "Other / unclassified",
 };
 
 /** ms → "4d 3h" / "6h 12m" / "48m". Null while a cycle is still open. */
@@ -90,6 +107,17 @@ function tzsFmt(n: number | null): string {
   return n === null ? "—" : `TZS ${Math.round(n).toLocaleString()}`;
 }
 
+/**
+ * The filter rail's label. ⛔ ONE definition, not five copies of the same class string —
+ * `test:type-scale` §6 ratchets every hand-typed `tracking-[…]`, and adding a fifth filter
+ * would otherwise have raised it. The tracking is hand-typed because the closed scale's
+ * `text-micro` carries 0.4px and this rail is set at 0.14em to match the table headers
+ * beside it; keeping the two in step matters more than shaving one arbitrary value, and
+ * now there is exactly one place to change if that ever stops being true.
+ */
+function FilterLabel({ children }: { children: React.ReactNode }) {
+  return <span className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">{children}</span>;
+}
 type SP = Record<string, string | string[] | undefined>;
 function one(v: string | string[] | undefined): string {
   return Array.isArray(v) ? (v[0] ?? "") : (v ?? "");
@@ -100,6 +128,7 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
   const feature = one(sp.feature);
   const status = one(sp.status);
   const q = one(sp.q).trim();
+  const subjectType = one(sp.subject);
   const sortRaw = one(sp.sort);
   const dirRaw = one(sp.dir);
   const pageRaw = one(sp.page);
@@ -112,6 +141,9 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
 
   const filter: AiUsageFilter = {
     feature: FEATURES.includes(feature as AiFeature) ? feature : undefined,
+    // ⛔ WIRED, not speculative. The DAL gained this filter with the attribution and nothing
+    // used it — dead surface on a money screen is the same defect as a dead control.
+    subjectType: SUBJECT_TYPES.includes(subjectType as (typeof SUBJECT_TYPES)[number]) ? subjectType : undefined,
     status: status === "ok" || status === "error" ? status : undefined,
     since: win ? new Date(win.start).toISOString() : undefined,
     until: win ? new Date(win.end).toISOString() : undefined,
@@ -137,7 +169,7 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
   const s = summary;
 
   // Sort
-  const SORT_KEYS = ["time", "feature", "model", "in", "out", "search", "cost", "ms", "status"] as const;
+  const SORT_KEYS = ["time", "feature", "model", "in", "out", "search", "cost", "ms", "subject", "status"] as const;
   const { sort, dir } = parseSort(
     { sort: sortRaw, dir: dirRaw },
     SORT_KEYS,
@@ -154,6 +186,8 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
     cost: (e: AiUsageEventRecord) => e.costUsd,
     ms: (e: AiUsageEventRecord) => e.latencyMs ?? 0,
     status: (e: AiUsageEventRecord) => e.ok ? "ok" : "error",
+    // Sorts unattributed rows together — "" ranks before any real subject type.
+    subject: (e: AiUsageEventRecord) => `${e.subjectType ?? ""} ${e.subjectId ?? ""}`,
   });
 
   // Paginate
@@ -166,6 +200,7 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
     feature: filter.feature,
     status,
     q: q || undefined,
+    subject: filter.subjectType,
     range: rangeId || undefined,
     from: one(sp.from) || undefined,
     to: one(sp.to) || undefined,
@@ -326,7 +361,12 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
                   ? "no cycle has closed yet"
                   : `not enough data — ${cyc.projection.observedDays}d of ${cyc.projection.minDays}`
               }
-              unavailable={!cyc.projection.ok}
+              /* 🔴 NOT `unavailable`. That prop renders "n/a · couldn't compute" with the
+                 tooltip "a data read failed", and DISCARDS both the value and the delta —
+                 so a projection the platform deliberately WITHHELD would claim a failure
+                 that never happened, and throw away the sentence explaining why. Nothing
+                 failed here: there is simply not enough history yet, which is a different
+                 fact and the delta above says so. `unavailable` is for a read that broke. */
             />
           </KpiGrid>
 
@@ -371,15 +411,31 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
           <div className="mt-4 rounded-md border border-border bg-bg-overlay px-4 py-3">
             <div className="text-micro uppercase tracking-[0.14em] text-text-tertiary mb-1">Reconciliation</div>
             <p className="text-label text-text-secondary leading-snug">
-              Cycles hold <strong className="tabular-nums">{usd(cyc.conservation.cyclesUsd)}</strong>; the call ledger over the same
-              span holds <strong className="tabular-nums">{usd(cyc.conservation.eventsUsd)}</strong>.
-              {" "}
-              {Math.abs(cyc.conservation.driftUsd) < 0.000002 ? (
-                <span className="text-success">They agree exactly.</span>
+              {!cyc.conservation.comparable ? (
+                <>
+                  Not comparable yet — no cycle has opened inside the retained call window, so there is no span both
+                  ledgers cover. The cycle ledger is complete regardless; only this cross-check is waiting.
+                </>
               ) : (
-                <span className="text-warning-fg">They differ by {usd(cyc.conservation.driftUsd)} — investigate before pricing from this page.</span>
+                <>
+                  Cycles hold <strong className="tabular-nums">{usd(cyc.conservation.cyclesUsd)}</strong>; the call ledger over the same
+                  span holds <strong className="tabular-nums">{usd(cyc.conservation.eventsUsd)}</strong>.
+                  {" "}
+                  {Math.abs(cyc.conservation.driftUsd) < 0.000002 ? (
+                    <span className="text-success">They agree exactly.</span>
+                  ) : (
+                    <span className="text-warning-fg">They differ by {usd(cyc.conservation.driftUsd)} — investigate before pricing from this page.</span>
+                  )}
+                  {" "}
+                  {/* ⛔ THE SPAN IS NAMED, because the two ledgers do not cover the same time.
+                      Cycles are never pruned; calls are, at 180 days. Comparing "all cycles"
+                      against "all surviving calls" would report a growing drift that is only
+                      retention doing its job — a reconciliation that cries wolf on a schedule
+                      is one nobody reads when it finally means something. */}
+                  Compared from <strong>{(cyc.conservation.sinceIso ?? "").slice(0, 10)}</strong>, the first cycle opened inside the
+                  180-day call-retention window — the only span both ledgers cover.
+                </>
               )}
-              {cyc.conservation.sinceIso ? <> Span begins {cyc.conservation.sinceIso.slice(0, 10)}, when the first cycle opened.</> : null}
             </p>
           </div>
         </AdminCard>
@@ -710,7 +766,7 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
           <div className="px-4 lg:px-5 pt-4 pb-3">
             <form method="get" className="flex flex-wrap items-center gap-3">
               <div className="flex flex-col gap-1">
-                <span className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">Feature</span>
+                <FilterLabel>Feature</FilterLabel>
                 <div className="w-[160px]">
                   <Select
                     name="feature"
@@ -725,7 +781,7 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
                 </div>
               </div>
               <div className="flex flex-col gap-1">
-                <span className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">Status</span>
+                <FilterLabel>Status</FilterLabel>
                 <div className="w-[140px]">
                   <Select
                     name="status"
@@ -746,11 +802,26 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
               {one(sp.from) ? <input type="hidden" name="from" value={one(sp.from)} /> : null}
               {one(sp.to) ? <input type="hidden" name="to" value={one(sp.to)} /> : null}
               <div className="flex flex-col gap-1">
-                <span className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">Window</span>
+                <FilterLabel>For</FilterLabel>
+                <div className="w-[190px]">
+                  <Select
+                    name="subject"
+                    defaultValue={filter.subjectType ?? ""}
+                    size="xs"
+                    placeholder="All subjects"
+                    options={[
+                      { value: "", label: "All subjects" },
+                      ...SUBJECT_TYPES.map((t) => ({ value: t, label: SUBJECT_LABEL[t] })),
+                    ]}
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col gap-1">
+                <FilterLabel>Window</FilterLabel>
                 <DateTimeRangeFilter defaultPreset="all" presetIds={["today", "yesterday", "24h", "7d", "30d", "all"]} />
               </div>
               <label className="flex flex-col gap-1 flex-1 min-w-[180px]">
-                <span className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">Search</span>
+                <FilterLabel>Search</FilterLabel>
                 <div className="relative">
                   <I.search size={14} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-subtle" />
                   {/* ⚠️ LITERAL, not `h-8` (48px on the overridden scale) — 32px = --h-control-xs,
@@ -760,7 +831,7 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
               </label>
               <div className="flex items-center gap-2 pt-4">
                 <Button type="submit" size="sm">Filter</Button>
-                {(filter.feature || status || q || hasWin) && (
+                {(filter.feature || status || q || hasWin || filter.subjectType) && (
                   <a href="/admin/ai-usage" className="btn btn-ghost btn-sm">Clear</a>
                 )}
               </div>
@@ -779,13 +850,19 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
                   <SortTh field="search" label="Search" current={sort} dir={dir} sp={spFlat} baseHref="/admin/ai-usage" align="right" />
                   <SortTh field="cost" label="Cost" current={sort} dir={dir} sp={spFlat} baseHref="/admin/ai-usage" align="right" />
                   <SortTh field="ms" label="ms" current={sort} dir={dir} sp={spFlat} baseHref="/admin/ai-usage" align="right" />
+                  {/* 🔴 THE ATTRIBUTION WAS THREADED THROUGH ALL 12 CALL SITES AND SHOWN NOWHERE.
+                      Dividing spend by resolutions is the whole point of the build, and an
+                      operator who cannot see what a single call was FOR cannot check the
+                      division — only take it on trust. Sortable, so the unattributed rows
+                      group together. */}
+                  <SortTh field="subject" label="For" current={sort} dir={dir} sp={spFlat} baseHref="/admin/ai-usage" />
                   <SortTh field="status" label="Status" current={sort} dir={dir} sp={spFlat} baseHref="/admin/ai-usage" />
                 </tr>
               </thead>
               <tbody className="text-text-muted">
                 {rows.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="!p-0">
+                    <td colSpan={10} className="!p-0">
                       <EmptyState
                         kind="audit"
                         title="No calls match these filters"
@@ -808,6 +885,16 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
                     <td className="p-3 font-mono tabular-nums text-right text-text-tertiary">{e.webSearches || ""}</td>
                     <td className="p-3 font-mono tabular-nums text-right text-text">{usd(e.costUsd)}</td>
                     <td className="p-3 font-mono tabular-nums text-right text-text-tertiary">{e.latencyMs ?? ""}</td>
+                    <td className="p-3 whitespace-nowrap">
+                      {e.subjectType
+                        ? <>
+                            <Chip size="sm" variant="neutral">{SUBJECT_LABEL[e.subjectType] ?? e.subjectType}</Chip>
+                            {e.subjectId
+                              ? <span className="font-mono text-text-tertiary ml-1.5 text-caption">{e.subjectId.slice(0, 22)}</span>
+                              : <span className="text-text-subtle ml-1.5 text-caption italic">no id yet</span>}
+                          </>
+                        : <span className="text-text-subtle text-caption italic">pre-2026-08-23</span>}
+                    </td>
                     <td className="p-3 text-label">
                       {e.ok
                         ? <Chip size="sm" variant="success">OK</Chip>

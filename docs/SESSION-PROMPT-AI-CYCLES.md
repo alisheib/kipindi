@@ -242,6 +242,40 @@ control that a valid value still saves.
 
 ---
 
+## §G3 · THE SECOND ADVERSARIAL PASS — six more defects, found by re-reading my own work
+
+Ali asked for everything to be re-validated after it shipped. Every one of these was in code
+that had already passed 115 checks, a 23/23 red fleet and a 64/64 live drive.
+
+| # | Defect | Why it survived the first pass |
+|---|---|---|
+| 1 | 🔴 **The reconciliation would have started crying wolf on 2026-12-23** | Cycles are never pruned; calls are, at `RETAIN_DAYS = 180`. Comparing "all cycles" against "all surviving calls" reports a drift that grows for ever once pruning starts — on the ledger backfilled 2026-08-23, from **2026-12-23** exactly. A reconciliation that cries wolf on a schedule is one nobody reads when it finally means something. Now scoped to the first cycle that opened **inside** the retained window, and the page names that span. |
+| 2 | 🔴 **`other` belonged to no product line** | Spend filed under it counted toward the page total and toward conservation and appeared in **no row** of the cost table, so the lines silently failed to sum to the total. `AiFeature` was a hand-written union — not enumerable, so nothing could check the coverage. It is now `AI_FEATURES as const` with the type derived from it, and §14 asserts every feature is in exactly one line. |
+| 3 | 🔴 **The attribution was invisible** | `subjectType`/`subjectId` were threaded through all 12 call sites — the blocking prerequisite of the whole build — and shown **nowhere**. An operator could not look at a call and see what it was for, only take the division on trust. The ledger now has a sortable **For** column, and the `subjectType` filter (which the DAL had gained and nothing used) is wired to a real control. |
+| 4 | 🔴 **A withheld projection claimed a read failure** | The KPI passed `unavailable`, which renders *"n/a · couldn't compute"* with the tooltip *"a data read failed"* — and **discards the value and the delta**. Nothing had failed: the platform was deliberately declining to extrapolate, and the sentence explaining that was thrown away. |
+| 5 | 🔴 **An empty cycle closed by hand inflated "cycles per year"** | The rate counted CLOSED ROWS. An officer closing the books early leaves a row with nothing in it, so three empty closes in an afternoon would triple the figure Ali prices from without a cent more being spent. Seen for real — the live drive's own close/start left five `$0.00` cycles. The rate is now driven by **spend ÷ the size each cycle was opened with**, which is identical when cycles close naturally and immune to bookkeeping. |
+| 6 | ⚠️ **`minDaysForProjection` was not clamped** | `clampCycleSize` existed; this did not. A hand-edited `SystemConfig` of `0` makes `observedDays < minDays` false for a zero-length history, and the next line divides by it — **Infinity cycles per year**, on the one figure Ali prices from. Guarding one and not the other only looked safe. |
+
+**Also removed, because Ali asked for nothing stale to remain:** four fields computed and
+rendered nowhere (`windows.today/7d/30d/all` — the KPI band already shows those from
+`getAiUsageSummary`, and a second computation is a second chance to disagree),
+`gate.openIndex`, two dead exports, and five copies of one filter-label class string.
+
+⭐ **AND THE MOST IMPORTANT ONE WAS FOUND BY THE RED FLEET, NOT BY ME.** My first §15 computed
+the retention-scoped sums *inside the test* and compared them to each other — so it proved the
+TEST's arithmetic, and mutating the PRODUCT changed nothing. `red:ai-cycles` reported **MISSED**.
+**A check that restates the implementation cannot fail when the implementation is wrong.**
+It now drives `getCycleReadModel()` itself.
+
+**Proof after this pass:** `test:ai-cycles` **140/140** · `red:ai-cycles` **28/28 proven, 0
+missed, 0 broken** · `test:red-anchors` **441/441** · a consolidated live drive **63/63** and a
+second drive of the previously-untested paths **25/25** — the subject filter, both pagers
+moving independently, and the FX rate round-tripping (set → shown with its date → flagged when
+stale → cleared back to `—`). `test:type-scale` ALL PASS with the tracking ratchet lowered
+again, **639 → 636**.
+
+---
+
 ## §H · THE BUG THE RED FLEET FOUND, WHICH IS THE MOST REUSABLE PART OF THIS
 
 🔴 **THE CHECKPOINT ALI ASKED FOR WOULD HAVE FIRED ZERO TIMES.**

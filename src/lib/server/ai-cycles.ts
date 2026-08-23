@@ -33,7 +33,7 @@ import { aiUsageDal } from "./ai-usage-dal";
 import { getPlatformTimezone } from "./platform-config";
 import { tzOffsetMsAt } from "../zoned-time"; // relative — see the note in ai-usage.ts
 import {
-  getCycleConfig, getCreditConfig, clampCycleSize, CYCLE_EPS, PRICE_REV,
+  getCycleConfig, getCreditConfig, clampCycleSize, CYCLE_EPS, PRICE_REV, RETAIN_DAYS,
   type CycleConfig, type AiFeature,
 } from "./ai-usage";
 
@@ -60,16 +60,6 @@ function zonedDayStartMs(atMs: number, tz: string): number {
   // across a DST edge. Tanzania has no DST, but this must not be wrong if the platform
   // timezone is ever changed to one that does.
   return guess - tzOffsetMsAt(tz, guess);
-}
-
-/** UTC instant of local midnight starting the given local calendar YEAR. */
-function zonedYearStartMs(year: number, tz: string): number {
-  const guess = Date.UTC(year, 0, 1, 0, 0, 0, 0);
-  return guess - tzOffsetMsAt(tz, guess);
-}
-
-export function platformYearOf(iso: string, tz = getPlatformTimezone()): number {
-  return zonedParts(Date.parse(iso), tz).year;
 }
 
 // ── types ─────────────────────────────────────────────────────────────────────────────
@@ -100,7 +90,7 @@ export type ProjectionResult =
   | { ok: true; cyclesPerYear: number; usdPerYear: number; observedDays: number; closedCycles: number; cyclesPerDay: number };
 
 export type LineCost = {
-  line: "polls" | "updown" | "chat";
+  line: "polls" | "updown" | "chat" | "other";
   features: AiFeature[];
   spendUsd: number;
   calls: number;
@@ -117,20 +107,24 @@ export type CycleReadModel = {
   config: CycleConfig;
   priceRev: string;
   /** ⛔ `blocked` means a cycle has ended and nobody has started the next: AI is paused. */
-  gate: { blocked: boolean; lastClosedIndex: number; openIndex: number | null };
+  gate: { blocked: boolean; lastClosedIndex: number };
   open: CycleRow | null;
   closedCount: number;
   /** Cycles funded by the current top-up limit, and how much of it is gone. */
   funded: { limitUsd: number; cycles: number | null; consumedCycles: number | null; spentUsd: number };
-  /** Spend windows, expressed in cycles AT THE CURRENT SIZE — labelled as such on screen. */
-  windows: { todayUsd: number; last7Usd: number; last30Usd: number; allUsd: number };
   years: YearRow[];
   projection: ProjectionResult;
   lines: LineCost[];
   modelMix: { model: string; calls: number; usd: number; pct: number }[];
-  /** Σ cycle.costUsd vs Σ event.costUsd since the ledger began — the reconciliation the
-   *  page shows and `test:ai-cycles` §1 asserts. */
-  conservation: { cyclesUsd: number; eventsUsd: number; driftUsd: number; sinceIso: string | null };
+  /**
+   * Σ cycle.costUsd vs Σ event.costUsd over a span BOTH ledgers genuinely cover — the
+   * reconciliation the page shows and `test:ai-cycles` §1 asserts.
+   *
+   * ⛔ `sinceIso` is null (and `comparable` false) when no cycle has opened inside the
+   * retained window yet. The page then says the reconciliation is not comparable, rather
+   * than showing a drift that is really just retention pruning the event ledger.
+   */
+  conservation: { cyclesUsd: number; eventsUsd: number; driftUsd: number; sinceIso: string | null; comparable: boolean };
   fx: { rate: number; asOfIso: string; ageDays: number | null; usable: boolean; stale: boolean };
 };
 
@@ -210,7 +204,19 @@ export function projectCyclesPerYear(cycles: AiSpendCycleRecord[], minDays: numb
   if (observedDays < minDays) {
     return { ok: false, reason: "too-little-history", observedDays: round2(observedDays), closedCycles: closed.length, minDays };
   }
-  const cyclesPerDay = closed.length / observedDays;
+  // 🔴 THE RATE IS DRIVEN BY SPEND, NOT BY THE NUMBER OF ROWS — and that is not a detail.
+  //
+  // An officer can close a cycle early ("close the books at month end"), and a cycle closed
+  // with little or nothing in it is still a CLOSED ROW. Counting rows would let bookkeeping
+  // inflate "cycles per year": three empty closes in an afternoon would triple the figure
+  // Ali prices from, while not a cent more had been spent. Seen for real — the live drive's
+  // own close/start actions left five $0.00 cycles in the ledger.
+  //
+  // Σ(cost ÷ the size THAT cycle was opened with) is "how many cycles' worth of spend", which
+  // is what the question actually means. When cycles close naturally at their full size the
+  // two are identical, so nothing is lost — only the distortion.
+  const cyclesConsumed = closed.reduce((s, c) => s + (c.sizeUsd > 0 ? c.costUsd / c.sizeUsd : 0), 0);
+  const cyclesPerDay = cyclesConsumed / observedDays;
   const usdPerDay = closed.reduce((s, c) => s + c.costUsd, 0) / observedDays;
   return {
     ok: true,
@@ -248,13 +254,22 @@ export async function settledCounts(sinceIso: string | null): Promise<{ polls: n
   return { polls: Number(polls), updown: Number(updown) };
 }
 
-const LINE_FEATURES: Record<LineCost["line"], AiFeature[]> = {
+/**
+ * ⛔ EVERY `AiFeature` MUST APPEAR HERE EXACTLY ONCE, and `test:ai-cycles` §14 proves it.
+ *
+ * 🔴 `other` was missing. Spend recorded under it counted toward the page total and toward
+ * conservation, and appeared in NO product line — so the line table silently failed to sum
+ * to the total, and nothing said so. That is the same silent-gap shape as an unattributed
+ * bucket, one level up: a population the consumer reads that the producer never covered.
+ */
+export const LINE_FEATURES: Record<LineCost["line"], AiFeature[]> = {
   // ⛔ `sentinel` is the POLLS line. It is the per-market resolution check for long-form
   // polls, and its 3,004 calls are the largest single input to what a poll costs. Filing it
   // anywhere else — or leaving it out — is the under-count this whole build exists to stop.
   polls: ["polls", "sentinel"],
   updown: ["updown"],
   chat: ["chat"],
+  other: ["other"],
 };
 
 // ── the whole page, in one read ───────────────────────────────────────────────────────
@@ -280,16 +295,9 @@ export async function getCycleReadModel(): Promise<CycleReadModel> {
 
   const events = await aiUsageDal.recent(sinceIso ?? new Date(now - 400 * DAY_MS).toISOString(), 500_000);
 
-  const todayStart = new Date(zonedDayStartMs(now, tz)).toISOString();
-  const d7 = new Date(now - 7 * DAY_MS).toISOString();
-  const d30 = new Date(now - 30 * DAY_MS).toISOString();
-  let todayUsd = 0, last7Usd = 0, last30Usd = 0, allUsd = 0;
-  for (const e of events) {
-    allUsd = round6(allUsd + e.costUsd);
-    if (e.createdAt >= d30) last30Usd = round6(last30Usd + e.costUsd);
-    if (e.createdAt >= d7) last7Usd = round6(last7Usd + e.costUsd);
-    if (e.createdAt >= todayStart) todayUsd = round6(todayUsd + e.costUsd);
-  }
+  // ⚠️ NO today/7d/30d SUMS HERE. They were computed and rendered NOWHERE — the KPI band at
+  // the top of the page already shows those windows from . A second
+  // computation of the same figures is a second chance for them to disagree.
 
   // ── product lines ───────────────────────────────────────────────────────────────────
   const counts = await settledCounts(sinceIso);
@@ -300,6 +308,9 @@ export async function getCycleReadModel(): Promise<CycleReadModel> {
     // construction, not by accident — the chatbot is not billed per market and pretending
     // otherwise would fold $0.02 of chat into the price of a poll.
     chat: 0,
+    // Same for anything filed as `other`: it exists so the lines SUM to the total, and it
+    // has no divisor of its own.
+    other: 0,
   };
 
   const lines: LineCost[] = (Object.keys(LINE_FEATURES) as LineCost["line"][]).map((line) => {
@@ -330,8 +341,30 @@ export async function getCycleReadModel(): Promise<CycleReadModel> {
     .sort((a, b) => b.usd - a.usd);
 
   // ── conservation ────────────────────────────────────────────────────────────────────
-  const cyclesUsd = round6(cycles.reduce((s, c) => s + c.costUsd, 0));
-  const eventsUsd = round6(events.reduce((s, e) => s + e.costUsd, 0));
+  //
+  // 🔴 THE TWO LEDGERS DO NOT COVER THE SAME SPAN, AND COMPARING THEM NAIVELY IS A
+  // GUARANTEED FALSE ALARM ON A DATE YOU CAN NAME.
+  //
+  // `AiSpendCycle` is NEVER pruned; `AiUsageEvent` is pruned at `RETAIN_DAYS` (180). So from
+  // 180 days after the first cycle opened — 2026-12-23, for the ledger backfilled on
+  // 2026-08-23 — the events behind cycle 1 start vanishing while cycle 1 keeps its $100.
+  // Summing "all cycles" against "all surviving events" would then show a drift that grows
+  // to hundreds of dollars, and the page would tell an operator to investigate retention
+  // doing exactly its job. A reconciliation that cries wolf on a schedule gets ignored, and
+  // then the real drift it exists to catch goes unseen too.
+  //
+  // So the comparison is scoped to a span BOTH sides genuinely cover: it starts at the first
+  // cycle that OPENED at or after the retention cutoff, and counts only cycles from there.
+  // A cycle straddling the cutoff is excluded from both sides rather than half-counted.
+  const retentionCutoffIso = new Date(now - RETAIN_DAYS * DAY_MS).toISOString();
+  const anchor = cycles.slice().sort((a, b) => a.index - b.index).find((c) => c.openedAt >= retentionCutoffIso);
+  const conservationSince = anchor ? anchor.openedAt : null;
+  const cyclesUsd = conservationSince === null
+    ? 0
+    : round6(cycles.filter((c) => c.openedAt >= conservationSince).reduce((s, c) => s + c.costUsd, 0));
+  const eventsUsd = conservationSince === null
+    ? 0
+    : round6(events.filter((e) => e.createdAt >= conservationSince).reduce((s, e) => s + e.costUsd, 0));
 
   // ── FX honesty ──────────────────────────────────────────────────────────────────────
   const fxAgeDays = cfg.fxAsOfIso ? Math.max(0, (now - Date.parse(cfg.fxAsOfIso)) / DAY_MS) : null;
@@ -345,7 +378,6 @@ export async function getCycleReadModel(): Promise<CycleReadModel> {
     gate: {
       blocked: !open && maxIndex > 0,
       lastClosedIndex: maxIndex,
-      openIndex: open ? open.index : null,
     },
     open: open ? decorate(open) : null,
     closedCount: closed.length,
@@ -355,12 +387,14 @@ export async function getCycleReadModel(): Promise<CycleReadModel> {
       consumedCycles: credit.limitUsd > 0 ? round2(spentThisWindow / size) : null,
       spentUsd: spentThisWindow,
     },
-    windows: { todayUsd, last7Usd, last30Usd, allUsd },
     years: yearsFrom(cycles, tz, now),
     projection: projectCyclesPerYear(cycles, cfg.minDaysForProjection),
     lines,
     modelMix,
-    conservation: { cyclesUsd, eventsUsd, driftUsd: round6(cyclesUsd - eventsUsd), sinceIso },
+    conservation: {
+      cyclesUsd, eventsUsd, driftUsd: round6(cyclesUsd - eventsUsd),
+      sinceIso: conservationSince, comparable: conservationSince !== null,
+    },
     fx: {
       rate: cfg.fxTzsPerUsd,
       asOfIso: cfg.fxAsOfIso,
@@ -377,4 +411,3 @@ export async function listCycles(page: number, pageSize: number): Promise<{ rows
   return { rows: rows.map(decorate), total };
 }
 
-export { zonedDayStartMs, zonedYearStartMs };
