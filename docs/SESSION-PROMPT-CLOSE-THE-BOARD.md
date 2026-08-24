@@ -91,6 +91,94 @@ feature were absent?"* If yes, it is not a guard.
 
 ---
 
+## §1b · THE STANDARDS EVERY UNIT IS BUILT TO — ⛔ not optional, and not a matter of taste
+
+> **Ali, 2026-08-24:** *"development needs to stick to our design kit and standards of the
+> project, with all respect to our structure and architecture."*
+>
+> ⭐ **Read [`../.claude/skills/50pick-standards/SKILL.md`](../.claude/skills/50pick-standards/SKILL.md)
+> at session start — it is the always-on repo skill and it distils all of this.** ⚠️ It is not
+> covered by `test:design-one-door`, which does not read `.claude/**` — that is exactly why its
+> §3 pointer rotted for five days. **If it disagrees with the files below, the files win and you
+> fix the skill in the same commit.**
+
+### One door, and everything else is a record
+
+⛔ **[`DESIGN_AUTHORITY.md`](DESIGN_AUTHORITY.md) is the ONLY design rulebook.** Its §0 is the
+filing law. Everything under `docs/design-system/**`, `docs/design-brief/**` and
+`design-master-brief.md` is **RECORD, never rule** — the Authority says so twice, at §0 and at
+*"Related — all RECORD, none of it rule"*.
+
+⚠️ **But a record the CODE CITES BY NAME cannot be diverged from silently.** On 2026-08-24 the
+round page's rail moved from `xl` to `lg` and the D3 record now carries a divergence note saying
+so, because `page.tsx` cites D3 in its own header. **Diverge if the measurement says so — then
+re-record it where the next reader will look.**
+
+⛔ **A value in two places is a bug: delete one, do not sync both.**
+
+### The kit, and the scales that are already closed
+
+- **UI-kit only** — build from `src/components/ui/*` and `src/components/admin/*`. **Extend the
+  kit; never hand-roll a one-off that duplicates a primitive.** ⚠️ `E-196` is what the other
+  outcome looks like: one control with **two implementations**, so the defect lived in the copy
+  nobody was editing and the first two repairs missed it entirely.
+- **The type scale is CLOSED** — `text-micro` (10) · `caption` (11) · `label` (12) · `body-sm`
+  (13) · `body` (14) · `body-lg` (16) · `title-*` · `display-*`. ⛔ **No `text-[Npx]`.** The
+  ratchets are at **1823 arbitrary / 364 semantic** and **may only shrink**. §3's floor: **below
+  12.5px is a LABEL, not prose** — lift it onto the ladder or make it a real microlabel
+  (UPPERCASE + tracking).
+- **The spacing scale is OVERRIDDEN and will surprise you** — `gap-2` is **12px**, `--sp-3` is
+  **12px**, and `h-7` renders **40px**, *below* the tap floor. ⛔ Never assume a Tailwind default.
+- ⚠️ **Two radius scales disagree on purpose** — `rounded-md` is 8px while `--r-md` is 12px.
+  Ali deliberately deferred bridging them; do not "tidy" it.
+- **Tap floor `--tap-min` = 40px**, and money controls carry **44**. A density change may never
+  drop below it.
+
+### One home per fact — the rules with a single definition
+
+| the fact | its ONE home | ⛔ never |
+|---|---|---|
+| money formatting | `formatTzs` / `formatTzsCompact` | a local `toLocaleString()` — that is `E-192` ② |
+| the side words | `src/lib/side-label.ts` (`outcomeWord`) | a local `side === "YES" ? …` ternary, or omitting `productLine` |
+| a rate or a limit | [`RULES.md`](RULES.md) | restating a rate anywhere else |
+| filtering | the kit's `FilterPill` | a ninth hand-rolled rail |
+| "is this control reachable" | `scripts/live/clip.mjs` | a second overflow rule |
+| the round's phase | `roundPhase` / `handoverClock` / `resultClock` | re-deriving from instants at a call site |
+
+### Architecture — where a decision is allowed to live
+
+⭐ **A rule a suite must hold must be a PURE, EXPORTED function.** `roundPhase`, `handoverClock`,
+`chainDurationCaution` and `CLIP_PROBE` all exist for that reason. ⛔ **A decision that lives only
+inside a server component's render is a decision nothing can drive** — that is why
+`chainDurationCaution()` was lifted out of `admin/updown/page.tsx` on 2026-08-24 before it was
+guarded.
+
+- **Persistence goes through the DAL** (`src/lib/server/*-dal.ts`). Read
+  [`DATA-LAYER.md`](DATA-LAYER.md) before touching any of it.
+- **The console and the write path must agree.** `createChain` refuses what the form greys, from
+  the same function — *"a console that greys an option the server would still accept is the
+  defect, not the fix."*
+- **B7 landmarks** — exactly one `<main>`, id `main-content`, width through `PageContainer tier`.
+  ⚠️ `/admin` is exempt from the measure tiers; its width is capped once in `admin/layout.tsx`.
+- **i18n** — every PLAYER string through the dict (**1918 keys × 3 locales**). ⚠️ **The admin
+  console is deliberately NOT dict-driven** — measured, 4 of 149 admin `.tsx` use `useT`, against
+  385 uses of the `sw=` bilingual prop. **Do not create a second convention inside one directory.**
+
+### The gates that police all of it
+
+`test:design-frozen` · `test:design-one-door` · `test:type-scale` · `test:ui-consistency` ·
+`test:measure` · `test:tap-target` · `test:labels` · `test:i18n` · `test:integrity` ·
+`test:rule-honesty` · `test:rate-copy` · `test:admin-act-gate`
+
+⛔ **When one of these goes red, the product is wrong until proven otherwise.** Three times on
+2026-08-24 a gate was right and the instinct was wrong. ⚠️ **And when a gate is red because a
+defect was FIXED, invert the gate — never delete it** (`test:design-one-door`, `E-192` ①).
+
+⭐ **Finally, the five lenses, before you call anything done:** integration · UI/UX · architect ·
+manager · player. A change that satisfies four and fails the fifth is not finished.
+
+---
+
 ## §2 · UNIT A · E-200 — THE POOLS THAT DID NOT RETURN TO ZERO
 
 **Measured on production 2026-08-24**, by `node scripts/live/ops/pool-residual.cjs`:
