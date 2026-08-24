@@ -45,16 +45,27 @@
  * once would inject into each other's snapshots and restore each other's mutations, and the
  * verdicts would depend on scheduling. Slow and true beats fast and meaningless.
  *
- * ⚠️ ONE HARNESS NEEDS AN ENVIRONMENT, AND ITS FAILURE IS EXPECTED WITHOUT ONE — the same
- * shape `test-all.mjs` documents for `test:responsive` / `test:motion`. `red:results-filter`
- * drives a real browser against a running board and needs **≥2 settled markets in ≥1 category**:
- * on an empty board every promise/delivery pair is `0 ≤ 0` and proves nothing, so the guard
- * refuses on the absent premise. Point it at a populated server:
- *     npm run red:results-filter -- http://localhost:3017
- * or drop it from a serverless run:
- *     npm run red:all -- --skip results-filter
- * ⛔ It is NOT silently excused here. A runner that hides an unrunnable guard is the disease
- * this file exists to cure; it fails, and it says why.
+ * ⚠️ SOME HARNESSES NEED AN ENVIRONMENT, AND THEIR FAILURE IS EXPECTED WITHOUT ONE — the same
+ * shape `test-all.mjs` documents for `test:responsive` / `test:motion`. ⛔ Do not write the
+ * number of them here; it drifted the first time this note was updated. They are the ones whose
+ * defect is only observable in a laid-out page, and each refuses on its absent premise rather
+ * than guessing:
+ *
+ *   · `red:results-filter` drives a real browser against a running board and needs **≥2 settled
+ *     markets in ≥1 category** — on an empty board every promise/delivery pair is `0 ≤ 0` and
+ *     proves nothing.
+ *         npm run red:results-filter -- http://localhost:3017
+ *   · `red:header-fit` (E-190) rewrites the top app bar and asks a real 1024px viewport whether
+ *     a control went off the screen. It needs a **DEV** server on this working tree, because it
+ *     signs in through `/auth/demo` — the header renders the bell and the avatar only when
+ *     signed in, and those are the two controls the mutation severs.
+ *         DATABASE_URL="" npx next dev -p 3011
+ *         BASE=http://localhost:3011 npm run red:header-fit
+ *
+ * Or drop them from a serverless run:
+ *     npm run red:all -- --skip results-filter,header-fit
+ * ⛔ They are NOT silently excused here. A runner that hides an unrunnable guard is the disease
+ * this file exists to cure; they fail, and they say why.
  */
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";

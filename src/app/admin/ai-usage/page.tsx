@@ -16,8 +16,8 @@ import { getAiUsageSummary, listAiUsage, type AiFeature, type UsageBucket, type 
 import { getCycleReadModel, listCycles, suggestedPriceUsd, tzs } from "@/lib/server/ai-cycles";
 import { AI_SUBJECT_LABEL, AI_SUBJECT_TYPES } from "@/lib/ai-cycle-rules";
 import { CycleSettings, StartCycleControl, CloseCycleControl } from "./cycle-controls";
-import { currentSession } from "@/lib/server/auth-service";
-import { canAct } from "@/lib/server/rbac";
+// ⛔ THE ONE MONEY FORMATTER. See `tzsFmt` below for why a local `toLocaleString` is a defect.
+import { formatTzs } from "@/lib/utils";
 import { getAnthropicSpend } from "@/lib/server/anthropic-billing";
 import { CreditControls } from "./credit-controls";
 import { AiOpsControls } from "./ai-ops-controls";
@@ -98,8 +98,20 @@ function cycles(n: number): string {
   return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
 }
 
+/**
+ * ⛔ `formatTzs`, NOT `toLocaleString`. `test:integrity` A10 caught this and it was right to:
+ * a bare `toLocaleString()` groups digits by whatever default locale the RENDERING PROCESS
+ * happens to carry, and writes a hyphen for a negative where every other money figure on this
+ * platform writes the real minus glyph "−" (U+2212). A money screen that formats its own
+ * numbers is a second money vocabulary, and the drift only shows up somewhere else.
+ *
+ * ⭐ THE `null` ARM STAYS, AND IT IS THE LOAD-BEARING HALF. `null` here means *"no USD→TZS rate
+ * has been entered"* — not zero, not unavailable. It renders `—` deliberately: there is no
+ * default rate and one must never be invented, because a converted figure with no visible dated
+ * rate is a number nobody can check (the platform's own no-fabrication rule).
+ */
 function tzsFmt(n: number | null): string {
-  return n === null ? "—" : `TZS ${Math.round(n).toLocaleString()}`;
+  return n === null ? "—" : formatTzs(Math.round(n));
 }
 
 /**
@@ -148,19 +160,25 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
   // Fetch all matching rows for in-memory sort (the DAL returns newest-first;
   // we re-sort client-side so SortTh column headers work). Cap at 10k to keep
   // memory bounded; the 180-day retention + filters keeps this well under.
-  const [summary, listed, anthropic, aiOps, cyc, cycleList, session] = await Promise.all([
+  // ⚠️ `currentSession()` AND `canAct()` ARE GONE FROM THIS LIST, not merely unused. They were
+  // fetched solely to compute the act permission this page now takes from the shell — leaving
+  // a session read here would be one more thing the next reader has to work out is dead.
+  const [summary, listed, anthropic, aiOps, cyc, cycleList] = await Promise.all([
     getAiUsageSummary(),
     listAiUsage(filter, 1, 10_000),
     getAnthropicSpend(),
     getAiOpsConfig(),
     getCycleReadModel(),
     listCycles(parsePage(one(sp.cpage), 1_000_000, CYCLES_PER_PAGE), CYCLES_PER_PAGE),
-    currentSession(),
   ]);
-  // ⛔ VIEW ≠ ACT. `canView` without `canAct` is a real, reachable state under the default
-  // grants, and a role that may read the cost figures must not be able to retune the
-  // denomination they are expressed in. ADMIN bypasses, exactly as the layout does.
-  const mayTune = !!session && (session.role === "ADMIN" || (await canAct(session.role, "ops")));
+  // ⛔ VIEW ≠ ACT — and the answer comes from the SHELL, not from here. `canView` without
+  // `canAct` is a real, reachable state under the default grants, and a role that may read the
+  // cost figures must not be able to retune the denomination they are expressed in. This page
+  // used to compute that itself with `canAct(session.role, "ops")` and hand it down as a prop;
+  // `test:admin-act-gate` §3 refused, correctly — the admin layout already resolves it for this
+  // route's domain and publishes it through `AdminActProvider`, so a private second computation
+  // is a second answer that can silently drift the day `/admin/ai-usage` changes domain. The
+  // three controls read `useMayAct()` now; see `cycle-controls.tsx`.
   const s = summary;
 
   // Sort
@@ -310,7 +328,7 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
                 Nothing is lost while it is paused; markets simply wait.
               </p>
             </div>
-            <StartCycleControl nextIndex={cyc.gate.lastClosedIndex + 1} sizeUsd={cyc.config.sizeUsd} canAct={mayTune} />
+            <StartCycleControl nextIndex={cyc.gate.lastClosedIndex + 1} sizeUsd={cyc.config.sizeUsd} />
           </div>
         ) : null}
 
@@ -401,7 +419,7 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
                 format={(n) => usd(n)}
               />
               <div className="mt-3 flex flex-wrap items-center gap-3">
-                <CloseCycleControl index={cyc.open.index} costUsd={cyc.open.costUsd} sizeUsd={cyc.open.sizeUsd} canAct={mayTune} />
+                <CloseCycleControl index={cyc.open.index} costUsd={cyc.open.costUsd} sizeUsd={cyc.open.sizeUsd} />
                 <span className="text-caption text-text-tertiary">
                   Opened {ts(cyc.open.openedAt)} · size stamped at ${cyc.open.sizeUsd.toLocaleString()} · rates {cyc.open.priceRev}
                 </span>
@@ -642,7 +660,6 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
             fxTzsPerUsd={cyc.config.fxTzsPerUsd}
             fxAsOfIso={cyc.config.fxAsOfIso}
             minDaysForProjection={cyc.config.minDaysForProjection}
-            canAct={mayTune}
           />
         </AdminCard>
 

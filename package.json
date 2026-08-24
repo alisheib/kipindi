@@ -476,6 +476,7 @@
     "red:decomment": "node scripts/decomment-red.mjs",
     "qa:measure-parity": "node scripts/measure-parity-check.mjs",
     "qa:landmark-seal": "node scripts/landmark-seal.mjs",
+    "red:header-fit": "node scripts/header-fit-red.mjs",
     "qa:notifications-page": "node scripts/live-notifications-page.mjs",
     "test:encoding": "tsx scripts/encoding.test.mts",
     "qa:notifications-restore": "node scripts/live-notifications-restore.mjs",

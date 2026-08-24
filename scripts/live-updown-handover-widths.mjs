@@ -76,8 +76,20 @@ const waitPast = async (iso) => {
 /**
  * Per-element overflow inside a scope, measured against EACH element's own box.
  * Returns `{ clipped, ellipsis }` — the second is a note, never a failure (trap 4).
+ *
+ * 🔴 ⛔ IT IS A FUNCTION, AND IT WAS A TEMPLATE STRING UNTIL 2026-08-24 (E-191). Playwright
+ * evaluates a string `pageFunction` strictly as an EXPRESSION, so `page.evaluate("(sel) => …")`
+ * returns the FUNCTION OBJECT, which does not serialise, and the caller gets **`undefined`** —
+ * no throw, no warning. Measured on playwright 1.59.1: `page.evaluate('(x) => 1 + 2', 'body')`
+ * → `undefined`, while `page.evaluate('1 + 2')` → `3`. Only a bare expression works.
+ *
+ * ⭐ AND THE CHECK BELOW WAS WRITTEN `!m || m.clipped.length === 0`, so `undefined` made it
+ * pass — this driver reported *"nothing clipped"* green at 5 widths × 3 locales while measuring
+ * nothing at all, for as long as the installed playwright behaved this way. A defensive
+ * fallback on a measurement is how a check stops being one: it reads as care and behaves as an
+ * unconditional pass. The guard now REFUSES an absent measurement instead of excusing it.
  */
-const MEASURE = `(sel) => {
+const MEASURE = (sel) => {
   const root = document.querySelector(sel);
   if (!root) return null;
   const clipped = [], ellipsis = [];
@@ -85,7 +97,7 @@ const MEASURE = `(sel) => {
     const over = el.scrollWidth - el.clientWidth;
     if (over <= 1 || el.clientWidth === 0) continue;
     const cs = getComputedStyle(el);
-    const label = (el.textContent || "").replace(/\\s+/g, " ").trim().slice(0, 46);
+    const label = (el.textContent || "").replace(/\s+/g, " ").trim().slice(0, 46);
     if (cs.textOverflow === "ellipsis") {
       ellipsis.push({ label, hiddenPct: Math.round((over / el.scrollWidth) * 100) });
       continue;
@@ -94,7 +106,7 @@ const MEASURE = `(sel) => {
     clipped.push({ label, over, w: el.clientWidth, cls: (el.className || "").toString().slice(0, 40) });
   }
   return { clipped, ellipsis };
-}`;
+};
 
 (async () => {
   console.log(`\n── stand up one real settle on ${BASE} ──`);
@@ -158,7 +170,11 @@ const MEASURE = `(sel) => {
 
         // 2 · nothing clipped inside the content, measured per element (trap 3).
         const m = await page.evaluate(MEASURE, "main, #main-content, body");
-        ok(`${tag} · nothing clipped`, !m || m.clipped.length === 0,
+        // ⛔ `!m` IS A FAILURE, NOT AN EXCUSE (E-191). An absent measurement means this cell was
+        // never measured; calling that "nothing clipped" is the check lying about its own scope.
+        ok(`${tag} · the clipping sweep actually measured something`, m != null,
+          m == null ? "evaluate returned nothing — the scope selector matched no element, or the probe is a string again" : "");
+        ok(`${tag} · nothing clipped`, m != null && m.clipped.length === 0,
           (m?.clipped ?? []).slice(0, 3).map((c) => `"${c.label}" +${c.over}px in ${c.w}px`).join(" | "));
         for (const e of m?.ellipsis ?? []) {
           if (e.hiddenPct >= 20) notes.push(`${tag} · "${e.label}" — ${e.hiddenPct}% behind the ellipsis`);

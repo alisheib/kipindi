@@ -205,18 +205,34 @@ if (authorityCopies.length === 0) {
     bad(`§6 could not list tracked docs (${(e as Error).message.split("\n")[0]}) — the count is UNKNOWN, not zero`);
   }
   const readme = readFileSync("docs/README.md", "utf8");
-  const claimed = /There are \*\*(\d+) files\*\* at this level — this index plus (\d+) documents/.exec(readme);
-  if (atLevel < 0) {
-    // already reported above; do not also fail the prose for a listing we never got.
-  } else if (!claimed) {
-    bad("docs/README.md no longer states its file count in the form this guard reads — change the guard WITH the prose, never one without the other");
+
+  // 🔴 THIS CHECK USED TO DEMAND THE COUNT, AND THAT IS WHY IT WENT RED WHEN THE COUNT WAS
+  // CORRECTLY REMOVED (2026-08-23, session 59e). It read `There are **N files** at this level`
+  // and compared N to git — a reasonable check while the prose quoted a number. Session 59e
+  // then found the number wrong again (it said 67; git tracked 70), applied this repo's own
+  // remedy — *derive it, never quote it* — and deleted the sentence. The guard failed **because
+  // the defect had been fixed**, which is a shape this campaign has a name for: an assertion
+  // phrased as the defect goes red the day you repair it.
+  //
+  // ⭐ SO IT IS INVERTED RATHER THAN DELETED. The property worth holding is no longer *"does the
+  // quoted number match?"* but *"is there a quoted number at all, and does the file hand the
+  // reader a derivation that gives the SAME answer everywhere?"* Both halves matter: `find` was
+  // the first derivation offered here and it counts UNTRACKED files, so it answers differently
+  // on each machine — the very drift the sentence was replaced to end.
+  const quoted = /There are \*\*(\d+) files\*\* at this level/.exec(readme);
+  if (quoted) {
+    bad(`docs/README.md quotes a file count again ("${quoted[1]}") — derive it, never quote it; a number in prose drifts the next time anyone adds a document`);
   } else {
-    const total = Number(claimed[1]);
-    const docs = Number(claimed[2]);
-    if (total !== atLevel) bad(`docs/README.md claims ${total} files at its level; git tracks ${atLevel} — update the prose`);
-    else ok(`docs/README.md's count is derived-checkable and agrees with git (${atLevel} tracked files)`);
-    if (docs !== atLevel - 1) bad(`docs/README.md says "plus ${docs} documents", but ${atLevel} files means ${atLevel - 1} besides the index`);
-    else ok("…and its index-plus-documents arithmetic is self-consistent");
+    ok("docs/README.md quotes no file count — it is derived, not written down");
+  }
+
+  // ⛔ AND THE DERIVATION IT NAMES MUST BE THE TRACKED ONE. See the long note above this block:
+  // an untracked-file count is red on one laptop and green on another with no edit in between.
+  const DERIVATION = "git ls-files docs | grep -c '^docs/[^/]*$'";
+  if (readme.includes(DERIVATION)) {
+    ok(`docs/README.md names the tracked-file derivation (git tracks ${atLevel < 0 ? "?" : atLevel} at this level)`);
+  } else {
+    bad(`docs/README.md must name the derivation \`${DERIVATION}\` — a reader told to run \`find\` gets a different number on every machine, which is the same defect as a quoted count`);
   }
 }
 

@@ -12,8 +12,19 @@ the platform.
 ⚠️ **This sentence used to state a file count. It said 67; there were 70.**
 Two of the three were added by the session that noticed — but it was already wrong by one
 before that, which is the point: a count written in prose is a count that drifts the next
-time anyone adds a document, and nobody re-runs `find` to check. **Derive it, never quote
-it:** `find docs -maxdepth 1 -type f | wc -l`. This is the same correction the
+time anyone adds a document, and nobody re-runs the count to check. **Derive it, never quote
+it:**
+
+```bash
+git ls-files docs | grep -c '^docs/[^/]*$'
+```
+
+⛔ **Count TRACKED files, not what happens to be on disk.** The first version of this line said
+`find docs -maxdepth 1 -type f | wc -l`, and `find` counts untracked leftovers too — a stray
+export, a `.env`, an unpushed PDF — so it gives a different answer on this laptop, on the other
+laptop and in CI. `test:design-one-door` §6 holds this file to the tracked count and has already
+been red for days over two untracked PDFs; a derivation whose answer depends on the room it runs
+in is the same defect as a quoted number, one level up. This is the same correction the
 `docs/README.md` row in `CLAUDE.md` already records, applied to this file's own opening.
 
 At this level there is this index plus the documents beside it, and five

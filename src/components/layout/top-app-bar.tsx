@@ -124,7 +124,13 @@ export function TopAppBar({ user, proposalsState }: { user: TopAppBarUser; propo
         borderBottom: "1px solid var(--border)",
       }}
     >
-      <div className="mx-auto max-w-board flex items-center h-full gap-2 px-3 sm:gap-4 sm:px-5">
+      {/* ⛔ THE GAP YIELDS AT THE lg–xl BAND TOO (E-190). `sm:gap-4` is 12px→20px under the
+          overridden spacing scale, and it is charged THREE times across logo | nav | spacer |
+          cluster — 60px of air at the one band where the bar is 65px short in Swahili. Dropping
+          back to the `gap-2` this row already uses below `sm` returns 24px of it. ⚠️ The nav
+          keeps its own `ml-2.5`, so the logo never touches the first link. Both values are the
+          two the row already carries; no new step enters the scale. */}
+      <div className="mx-auto max-w-board flex items-center h-full gap-2 px-3 sm:gap-4 sm:px-5 lg:gap-2 xl:gap-4">
         {/* Brand lockup — kit COMPONENTS §14: "inside a `min-height: 44px` link".
             ⚠️ It was 136×33, i.e. UNDER the 44px floor on the control that takes a reader back to
             the board from anywhere in the product. Pre-existing rather than introduced here, and
@@ -231,7 +237,17 @@ export function TopAppBar({ user, proposalsState }: { user: TopAppBarUser; propo
               className="btn gilt-metal btn-md btn-pill"
             >
               <I.plus s={14} />
-              <span className="hidden sm:inline">
+              {/* ⛔ THE LABEL YIELDS AT THE lg–xl BAND (1024–1279), AND IT IS THE SAME RULE AS
+                  BELOW `sm` ONE LINE ABOVE — not a new idea, the existing one applied to the
+                  second band where the bar does not fit. E-190: with the desktop nav on and
+                  the balance pill already yielded there, the right cluster still ran 31px past
+                  1024 in EN and 65px in SW, and what fell off the end was the ACCOUNT MENU —
+                  the only desktop path to profile and sign-out — with the bell severed beside
+                  it in Swahili. ⚠️ The control itself never goes: the `+` glyph and its
+                  `aria-label` stay, exactly as they do on a phone, so nothing becomes
+                  unnameable or unreachable. Measured, not assumed: the label is 108px in EN,
+                  103px in SW, 84px in ZH. */}
+              <span className="hidden sm:inline lg:hidden xl:inline">
                 {t.common.deposit}
               </span>
             </Link>

@@ -27,6 +27,22 @@ import { Toggle } from "@/components/ui/toggle";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { parseCycleForm, CYCLE_BOUNDS } from "@/lib/ai-cycle-rules";
 import { setCycleConfigAction, startNextCycleAction, closeCycleNowAction } from "./actions";
+/**
+ * ⛔ THE SHELL'S GATE, NOT A SECOND ONE. These controls shipped reading a `canAct` prop the
+ * page computed for itself with `canAct(role, "ops")` — a correct answer arrived at by a
+ * private route, which is exactly what `test:admin-act-gate` §3 refuses: *"add a control to
+ * the gate, never a name to the list."* The admin layout already resolves the viewer's right
+ * to ACT on this route's domain and publishes it through `AdminActProvider`, keyed off the
+ * same `domainForPath()` the VIEW gate uses. Two computations of one permission are two
+ * chances to disagree the day a domain moves — and the disagreement would be silent, because
+ * both would still render something plausible.
+ *
+ * ⭐ AND THE REFUSAL SENTENCE IMPROVES BY BEING SHARED. `useActDisabledReason()` names the
+ * viewer's ROLE and the DOMAIN — *"the AUDITOR role can view operations but not change it"* —
+ * where the hand-written copy said only "Only an operations officer can…", which does not
+ * answer the officer's actual next question: then who can, and who changes that?
+ */
+import { useMayAct, useActDisabledReason } from "@/components/admin/act-gate";
 
 type Props = {
   sizeUsd: number;
@@ -35,11 +51,12 @@ type Props = {
   fxTzsPerUsd: number;
   fxAsOfIso: string;
   minDaysForProjection: number;
-  /** Read-only for a role that may VIEW ops but not ACT on it. */
-  canAct: boolean;
 };
 
 export function CycleSettings(p: Props) {
+  // ⛔ FROM THE SHELL, NOT FROM A PROP. See the import note above.
+  const mayAct = useMayAct();
+  const actReason = useActDisabledReason();
   const [pending, start] = useTransition();
   // ⛔ THE SWITCH IS PHRASED AS THE SAFE STATE. It asks "pause when a cycle ends?", which is
   // ON by default, rather than "run continuously?", which would be OFF by default. A toggle
@@ -130,7 +147,7 @@ export function CycleSettings(p: Props) {
           hint={`One cycle = this much Claude spend. $${CYCLE_BOUNDS.sizeUsd.min}–$${CYCLE_BOUNDS.sizeUsd.max.toLocaleString()}.`}
           error={fieldErr("sizeUsd")}
         >
-          <Input name="sizeUsd" inputMode="decimal" defaultValue={String(p.sizeUsd)} placeholder="100" mono disabled={!p.canAct} error={!!fieldErr("sizeUsd")} />
+          <Input name="sizeUsd" inputMode="decimal" defaultValue={String(p.sizeUsd)} placeholder="100" mono disabled={!mayAct} error={!!fieldErr("sizeUsd")} />
         </Field>
 
         <Field
@@ -138,7 +155,7 @@ export function CycleSettings(p: Props) {
           hint="100 = the suggested price is twice the AI cost."
           error={fieldErr("targetMarginPct")}
         >
-          <Input name="targetMarginPct" inputMode="decimal" defaultValue={String(p.targetMarginPct)} placeholder="100" mono disabled={!p.canAct} error={!!fieldErr("targetMarginPct")} />
+          <Input name="targetMarginPct" inputMode="decimal" defaultValue={String(p.targetMarginPct)} placeholder="100" mono disabled={!mayAct} error={!!fieldErr("targetMarginPct")} />
         </Field>
 
         <Field
@@ -146,7 +163,7 @@ export function CycleSettings(p: Props) {
           hint="A yearly figure is withheld until there is at least this much history."
           error={fieldErr("minDaysForProjection")}
         >
-          <Input name="minDaysForProjection" inputMode="numeric" defaultValue={String(p.minDaysForProjection)} placeholder="14" mono disabled={!p.canAct} error={!!fieldErr("minDaysForProjection")} />
+          <Input name="minDaysForProjection" inputMode="numeric" defaultValue={String(p.minDaysForProjection)} placeholder="14" mono disabled={!mayAct} error={!!fieldErr("minDaysForProjection")} />
         </Field>
 
         <Field
@@ -154,7 +171,7 @@ export function CycleSettings(p: Props) {
           hint={`${CYCLE_BOUNDS.fxTzsPerUsd.min.toLocaleString()}–${CYCLE_BOUNDS.fxTzsPerUsd.max.toLocaleString()}. Leave blank and shilling figures show “—”.`}
           error={fieldErr("fxTzsPerUsd")}
         >
-          <Input name="fxTzsPerUsd" inputMode="decimal" defaultValue={p.fxTzsPerUsd > 0 ? String(p.fxTzsPerUsd) : ""} placeholder="e.g. 2600" mono disabled={!p.canAct} error={!!fieldErr("fxTzsPerUsd")} />
+          <Input name="fxTzsPerUsd" inputMode="decimal" defaultValue={p.fxTzsPerUsd > 0 ? String(p.fxTzsPerUsd) : ""} placeholder="e.g. 2600" mono disabled={!mayAct} error={!!fieldErr("fxTzsPerUsd")} />
         </Field>
 
         <Field
@@ -162,7 +179,7 @@ export function CycleSettings(p: Props) {
           hint="Shown beside every shilling figure, so a stale rate is visible."
           error={fieldErr("fxAsOfIso")}
         >
-          <Input name="fxAsOfIso" type="text" defaultValue={p.fxAsOfIso ? p.fxAsOfIso.slice(0, 10) : ""} placeholder="YYYY-MM-DD" mono disabled={!p.canAct} error={!!fieldErr("fxAsOfIso")} />
+          <Input name="fxAsOfIso" type="text" defaultValue={p.fxAsOfIso ? p.fxAsOfIso.slice(0, 10) : ""} placeholder="YYYY-MM-DD" mono disabled={!mayAct} error={!!fieldErr("fxAsOfIso")} />
         </Field>
 
         {/* ⛔ THE REAL `Field` ATOM, not a hand-built copy of its label. A second label style
@@ -174,8 +191,8 @@ export function CycleSettings(p: Props) {
           <span className="flex items-center gap-3 rounded-lg border border-border bg-bg-overlay px-3 min-h-[44px]">
             <Toggle
               on={pauseOnEnd}
-              onClick={p.canAct ? () => setPauseOnEnd((v) => !v) : undefined}
-              disabled={!p.canAct}
+              onClick={mayAct ? () => setPauseOnEnd((v) => !v) : undefined}
+              disabled={!mayAct}
               aria-label="Pause the AI when a cycle ends"
             />
             <span className="text-label text-text-secondary leading-snug py-2">
@@ -189,7 +206,7 @@ export function CycleSettings(p: Props) {
 
       {err && !err.field && <p className="text-caption text-no-300">{err.message}</p>}
 
-      {p.canAct ? (
+      {mayAct ? (
         <ConfirmDialog
           tone="warning"
           title="Save cycle settings?"
@@ -211,18 +228,28 @@ export function CycleSettings(p: Props) {
           trigger={<Button type="button" disabled={pending}>Save settings</Button>}
         />
       ) : (
-        <p className="text-caption text-text-tertiary">You can view these settings but not change them.</p>
+        // ⭐ The shared sentence names the ROLE and the DOMAIN, so the reader's next question
+        // ("then who can?") is answered rather than raised. The fallback keeps the control
+        // explained even if the provider is ever absent — an unexplained dead form is worse
+        // than a wrong explanation, because nothing tells the operator to go and ask.
+        <p className="text-caption text-text-tertiary">{actReason ?? "You can view these settings but not change them."}</p>
       )}
     </form>
   );
 }
 
 /** Start the next cycle — the control that un-pauses the AI. */
-export function StartCycleControl({ nextIndex, sizeUsd, canAct }: { nextIndex: number; sizeUsd: number; canAct: boolean }) {
+export function StartCycleControl({ nextIndex, sizeUsd }: { nextIndex: number; sizeUsd: number }) {
+  // ⛔ FROM THE SHELL, NOT FROM A PROP. See the import note above.
+  const canAct = useMayAct();
+  const actReason = useActDisabledReason();
   const [pending, start] = useTransition();
   const router = useRouter();
   const { deferToast, toast } = useDeferredToast(pending);
-  if (!canAct) return <p className="text-caption text-text-tertiary">Only an operations officer can start the next cycle.</p>;
+  // ⚠️ THIS CONTROL EXPLAINS ITSELF RATHER THAN DISAPPEARING, deliberately: the AI is PAUSED
+  // when this renders, and a viewer who cannot see why the platform has stopped posting has no
+  // way to know who to ask. `useActDisabledReason()` names the role and the domain.
+  if (!canAct) return <p className="text-caption text-text-tertiary">{actReason ?? "Only an operations officer can start the next cycle."}</p>;
 
   const go = () => {
     start(async () => {
@@ -253,10 +280,16 @@ export function StartCycleControl({ nextIndex, sizeUsd, canAct }: { nextIndex: n
 }
 
 /** Close the open cycle early. Deliberately pauses the AI. */
-export function CloseCycleControl({ index, costUsd, sizeUsd, canAct }: { index: number; costUsd: number; sizeUsd: number; canAct: boolean }) {
+export function CloseCycleControl({ index, costUsd, sizeUsd }: { index: number; costUsd: number; sizeUsd: number }) {
+  // ⛔ FROM THE SHELL, NOT FROM A PROP. See the import note above.
+  const canAct = useMayAct();
   const [pending, start] = useTransition();
   const router = useRouter();
   const { deferToast, toast } = useDeferredToast(pending);
+  // ⚠️ THIS ONE RETURNS NULL RATHER THAN EXPLAINING, and the asymmetry with `StartCycleControl`
+  // above is on purpose: closing a cycle early is an OPTIONAL bookkeeping action, so a
+  // read-only viewer loses nothing by not being told it exists. Starting one un-pauses the
+  // platform's AI, which is a state they can see and need explained.
   if (!canAct) return null;
 
   const go = () => {
