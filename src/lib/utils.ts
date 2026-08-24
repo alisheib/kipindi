@@ -103,6 +103,40 @@ export function formatDayTime(iso: string): string {
   });
 }
 
+/**
+ * THE DATE BESIDE A COUNTDOWN — day + clock, plus the YEAR when the deadline is
+ * not in the year the reader is in.
+ *
+ * Jay (Gaming Board) item #6: every timer must name its absolute instant, so a
+ * player reading "170 DAYS" does not have to do the arithmetic. `formatDayTime`
+ * alone would have been the obvious fix and it is not enough:
+ * ⚠️ MEASURED ON PRODUCTION 2026-08-25 — **3 of 49 LIVE markets resolve in 2027**,
+ * the furthest at 170 days out (`mkt_0d271bde3ae784abe12b`, 2027-02-10). Beside a
+ * three-digit DAYS cell, a bare "10 Feb" is exactly the arithmetic the item exists
+ * to remove, and DESIGN_AUTHORITY §A5 forbids clipping a timestamp — not stating
+ * only half of one.
+ *
+ * ⛔ It adds NO third format: both branches are formatters that already exist, so
+ * the cross-year string is the same-year string plus a year. The choice is the only
+ * new fact, and it lives here once.
+ *
+ * PURE and EXPORTED (`now` is a parameter, not a hidden `Date.now()`) because a rule
+ * a suite has to hold cannot live inside a render — see SESSION-PROMPT-CLOSE-THE-BOARD
+ * §1b. Guard: `npm run test:timer-date`.
+ */
+export function formatDeadline(iso: string, now: number = Date.now()): string {
+  return sameZonedYear(iso, now) ? formatDayTime(iso) : formatDateTime(iso);
+}
+
+/** Do these two instants fall in the same year ON THE PLATFORM CLOCK? Asked through
+ *  Intl in `tz()`, never `getFullYear()` — a New Year boundary is exactly where the
+ *  host's zone and the platform's disagree, and that is the one moment this decides. */
+function sameZonedYear(iso: string, now: number): boolean {
+  const year = (d: Date) =>
+    new Intl.DateTimeFormat("en-GB", { year: "numeric", timeZone: tz() }).format(d);
+  return year(new Date(iso)) === year(new Date(now));
+}
+
 /** "11 Jun" — day + month, no year, timezone-correct. */
 export function formatDayShort(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: tz() });

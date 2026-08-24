@@ -3,6 +3,7 @@
 
 import { memo, useEffect, useState } from "react";
 import { useT } from "@/lib/i18n";
+import { I } from "@/components/ui/glyphs";
 // ⭐ ONE INTERVAL FOR THE PAGE, not one per clock. This component used to arm its own; see the
 // file header there for what a private timer per clock costs the low-end handset, and for the
 // one thing it deliberately does NOT change (a hidden tab is still left to drift).
@@ -30,7 +31,7 @@ function diff(toIso: string, offset: number) {
  * apart by construction, and a minute/hour boundary can legally flip any cell
  * between the two paints.
  */
-export function Countdown({ to, label, serverNow }: { to: string; label?: string; serverNow?: number }) {
+export function Countdown({ to, label, serverNow, at }: { to: string; label?: string; serverNow?: number; at?: string }) {
   const { t } = useT();
   const resolvedLabel = label ?? t.common.closesIn;
   // Captured ONCE (server render: offset ≈ 0 against its own clock; client
@@ -57,7 +58,26 @@ export function Countdown({ to, label, serverNow }: { to: string; label?: string
 
   return (
     <div>
-      <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-warning-fg mb-2">{resolvedLabel}</div>
+      {/* ⭐ THE LABEL ROW NAMES THE INSTANT — Jay (Gaming Board) item #6. A player reading
+          "170 DAYS" should not have to work out which day that is.
+          ⚠️ `flex-wrap` IS the design, not a fallback. Swahili's "Uchaguzi unafungwa baada ya"
+          is 27 characters against English's 19, so label + date exceeds a 360px panel and the
+          date drops to its own line — which is the layout the date would have had anyway.
+          At 393 in EN/ZH the two share one line. Measured, not assumed.
+          ⛔ Both spans read `text-micro`, never `text-[10px]`: `test:type-scale` §4's
+          arbitrary-size ratchet may only SHRINK, so this row RETURNS one rather than
+          spending two. `text-micro` IS 10px, and `tracking-[0.12em]` overrides its built-in
+          0.4px exactly as before — the label renders pixel-for-pixel what it did. The date
+          takes the ladder's own spacing and so adds no `tracking-` utility either (§6). */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-2">
+        <span className="font-mono text-micro uppercase tracking-[0.12em] text-warning-fg">{resolvedLabel}</span>
+        {at && (
+          <span className="inline-flex items-center gap-1 font-mono text-micro text-text-subtle" suppressHydrationWarning>
+            <I.calendarClock s={11} className="shrink-0" />
+            {at}
+          </span>
+        )}
+      </div>
       <div className="flex gap-2">
         <Cell v={time.d} unit={t.common.days} />
         <Cell v={time.h} unit={t.common.hours} />

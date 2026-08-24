@@ -39,7 +39,7 @@ import { RefreshPoller } from "@/components/ui/refresh-poller";
 // which no longer interpolates a rate. An import kept "just in case" is how a deleted rate
 // quietly comes back. ⚠️ `fill` STAYS: `similarTimeLeft` passes it to `timeLeftLabel`, a use
 // tsc caught the moment the import was removed on the strength of a grep for `fill(`.
-import { formatDateTime, formatDayTime, formatTzsCompact, formatTzs, fill } from "@/lib/utils";
+import { formatDateTime, formatDeadline, formatTzsCompact, formatTzs, fill } from "@/lib/utils";
 import { appUrl } from "@/lib/app-url";
 import { getServerT } from "@/lib/i18n-server";
 import { sideWord, outcomeWord } from "@/lib/side-label";
@@ -530,7 +530,7 @@ export default async function MarketDetail({
           {!isResolved && (
             <div className="glass-panel p-4 space-y-2.5">
               {m.selectionClosedAt && !isSelectionClosed(m) && (
-                <Countdown to={m.selectionClosedAt} label={t.market.selectionClosesIn} serverNow={Date.now()} />
+                <Countdown to={m.selectionClosedAt} label={t.market.selectionClosesIn} serverNow={Date.now()} at={formatDeadline(m.selectionClosedAt)} />
               )}
               {m.selectionClosedAt && isSelectionClosed(m) && m.status === "LIVE" && (
                 <div className="flex items-center gap-2 text-[12.5px] font-semibold" style={{ color: "var(--gold-300)" }}>
@@ -538,7 +538,7 @@ export default async function MarketDetail({
                   {t.market.selectionClosedWaiting}
                 </div>
               )}
-              <Countdown to={m.resolutionAt} label={m.selectionClosedAt ? t.market.resultsIn : t.market.closesIn} serverNow={Date.now()} />
+              <Countdown to={m.resolutionAt} label={m.selectionClosedAt ? t.market.resultsIn : t.market.closesIn} serverNow={Date.now()} at={formatDeadline(m.resolutionAt)} />
             </div>
           )}
 
@@ -791,7 +791,7 @@ export default async function MarketDetail({
               <h3 className="mt-1.5 font-display text-[15px] font-bold text-text">{t.market.waitingForResultsAside}</h3>
               <p className="mt-3 text-[12px] text-text-muted leading-snug">
                 {t.market.newPredictionsNotAccepted}
-                {m.resolutionAt && ` ${t.market.resultsExpectedBy} ${formatDayTime(m.resolutionAt)}.`}
+                {m.resolutionAt && ` ${t.market.resultsExpectedBy} ${formatDeadline(m.resolutionAt)}.`}
               </p>
             </div>
           ) : closedByTime ? (

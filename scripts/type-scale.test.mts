@@ -132,7 +132,14 @@ const RATCHET_SUBFLOOR = 771;
  *  sizes; nothing was written today. ▶ FOR THE DESIGN LANE: the three above are the honest
  *  next win — convert `account/page.tsx`'s six section cards as one visual decision and
  *  this drops to 1835. */
-const RATCHET_ARBITRARY_SIZE = 1823;
+/*  ⬇️ 1823 → 1821 on 2026-08-25. ⚠️ ONLY ONE OF THE TWO IS THIS COMMIT'S: the countdown's
+ *  timer label moved to `text-micro` when the date was added beside it (Jay item #6), which
+ *  is −1. The other −1, and the tracking −1 below, were ALREADY TRUE ON HEAD — an earlier
+ *  session shrank them and did not lower the ceiling, so the ratchet had been sitting one
+ *  step above the real count and would have accepted a new arbitrary size for free.
+ *  ⛔ That is the failure mode §4.2 of `test:red-anchors` names for its own ceiling: a
+ *  ratchet above the real number has stopped being a ratchet. Re-measured, then locked. */
+const RATCHET_ARBITRARY_SIZE = 1821;
 const RATCHET_INLINE_FONTSIZE = 38;
 
 /** §6 — arbitrary `tracking-[…]`. Measured 2026-08-21 across 200 files.
@@ -140,7 +147,10 @@ const RATCHET_INLINE_FONTSIZE = 38;
  *  microlabel described above. ⛔ There is no `letterSpacing` key in `tailwind.config.ts`
  *  at all, so EVERY one of these 640 is arbitrary by construction and there is no
  *  non-arbitrary form to move it to; the real fix is a tracking scale, not a call-site edit. */
-const RATCHET_ARBITRARY_TRACKING = 636;
+/*  ⬇️ 636 → 635 on 2026-08-25 — pre-existing slack on HEAD, not this commit's doing; see
+ *  the note on RATCHET_ARBITRARY_SIZE above. The countdown's date span takes `text-micro`'s
+ *  own 0.4px letter-spacing and adds no `tracking-` utility, so this commit is +0 here. */
+const RATCHET_ARBITRARY_TRACKING = 635;
 
 /** §5 — the 29 hand-typed sizes that exist today. A member may LEAVE (the guard
  *  says so and this list gets trimmed); a NEW one is a hard failure. This is the
