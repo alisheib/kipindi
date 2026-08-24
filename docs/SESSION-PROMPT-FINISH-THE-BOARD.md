@@ -207,7 +207,24 @@ changes materially:
 railway volume list         # postgres-volume
 ```
 
-At the measured **19.12 MB/day** against 4,542 MB free, the next horizon is **≈237 days**.
+🔴 **AND RE-READ THE VOLUME, NOT THE DATABASE — this was got wrong the same evening it was
+written, which is why it is spelled out.** The first estimate was "19.12 MB/day of database
+growth against 4,542 MB free ⇒ ≈237 days". Four hours later the volume read **734 MB**, up
+276 MB. **The database had not grown 276 MB — it went 315 → 320 MB, exactly the ~19 MB/day
+predicted.** WAL was unchanged at 48 MB and `pgsql_tmp` was empty. What grew was the part
+Postgres cannot see from inside itself: the gap between `pg_database_size + WAL` and what
+the volume reports went from **~95 MB to ~366 MB** across the resize.
+
+⛔ **So a runway computed from database growth is a number about the wrong thing.** The
+data directory carries more than your database — other databases, transaction state, server
+logs — and a Railway resize appears to leave artefacts on the volume too. **The only figure
+that predicts a full disk is the one `railway volume list` prints.** Use the API as a second
+source (`VolumeInstance.sizeMB` / `currentSizeMB`); the CLI and the API agreed both times.
+
+At **734 MB / 5000 MB** there is no urgency — but ⚠️ **if the gap keeps growing without the
+database growing, that is its own finding**, and the first place to look is the **Backups**
+tab on the Postgres service.
+
 ⛔ **Never prune `AuditLog` to reclaim disk** — it is the hash-chained compliance record;
 its 195 MB is the asset, not the waste.
 
