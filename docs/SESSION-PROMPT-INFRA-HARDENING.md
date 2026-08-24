@@ -36,10 +36,23 @@ days, and `predeploy` ends with `qa:live`. The selector was repaired — not the
 the gauntlet now returns 146/146. Verified as NOT edge-related first, by running the identical
 gauntlet against the still-unproxied apex and watching it fail the same way.
 
-🔴 **THE ONE THING LEFT WATCHING ITSELF: ACME renewal through the new proxy.** Origin certs
+🔴 **ACME renewal through the new proxy — the one deadline this work created.** Origin certs
 expire **2026-10-15** and Railway renews by answering a challenge at the origin, which now
-arrives via Cloudflare for `www`. No renewal has been observed through this path. Check
-mid-September — an expired origin cert under `Full (strict)` is a total outage with no warning.
+arrives via Cloudflare for `www`. No renewal has been observed through that path, and an expired
+origin cert under `Full (strict)` is a total outage with no warning.
+
+⭐ **So it is a gate, not a note.** `qa:live` §[F] fails at **21 days** left — a check that goes
+red the day the site dies is a headstone, not a gate — and `qa:live` is the last step of
+`predeploy`. Tracked as **`E-191`** in [`NEXT-PLAN.md`](NEXT-PLAN.md) → ⏰ DATED.
+
+⛔ **Its first version was green on the wrong certificate.** Since the flip, dialling
+`www.50pick.tz` returns CLOUDFLARE'S cert (`CN=50pick.tz`, Google Trust Services, expiry
+`Oct 15 12:26:23`) — which Cloudflare renews itself and which is never at risk. Railway's origin
+cert is a different one (`CN=www.50pick.tz`, Let's Encrypt, `Oct 15 14:49:57`). The gate now
+dials Railway's domain target with the hostname as SNI, and carries a positive control that goes
+red if it ever reads the edge's certificate again. Both assertions were driven red before being
+trusted: the control by pointing `CERT_ORIGIN_HOST` at the proxied name, the expiry by raising
+the threshold past the real value.
 
 ⛔ **AND ONE THE COMMISSION NEVER LISTED, WHICH IS THE MONEY ONE.**
 `PAYMENT_WEBHOOK_URL` is `https://www.50pick.tz/api/webhooks/payments` — the exact host §3 asks

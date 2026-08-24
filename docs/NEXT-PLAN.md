@@ -263,6 +263,58 @@
 >
 > ⭐ **Unit A (#10 + #4) is DONE** — `E-170`, settled Up & Down rounds reach `/results`.
 >
+> ## ⏰ DATED — this one has a deadline, and nobody is holding it
+>
+> Everything else on this page waits for a session. This waits for a **date**, and it arrives
+> whether or not anyone opens the repo.
+>
+> - 🔴 **`E-191` — WATCH THE FIRST CERTIFICATE RENEWAL THROUGH CLOUDFLARE. Check from
+>   ~2026-09-15; the certificates expire 2026-10-15.**
+>
+>   On **2026-08-24** `www.50pick.tz` was flipped to **Proxied** with SSL/TLS at
+>   **`Full (strict)`**. Railway renews the origin certificates by answering an ACME challenge
+>   **at the origin** — and for `www` that challenge now arrives **through Cloudflare**. That path
+>   has never carried a renewal. Both certificates (`CN=www.50pick.tz`, `CN=50pick.tz`,
+>   Let's Encrypt) were issued 2026-07-17 and expire **2026-10-15**; the renewal window opens
+>   around **2026-09-15**.
+>
+>   ⛔ **The failure is total and silent.** Under `Full (strict)` Cloudflare refuses to serve a
+>   hostname whose origin certificate is invalid — so an unrenewed cert is not a warning banner,
+>   it is the whole site down, arriving on a date, with no deploy and no commit to blame. The
+>   apex is unaffected while it stays DNS-only, which means `50pick.tz` may keep working while
+>   `www` — the host in `NEXT_PUBLIC_APP_URL` **and** `PAYMENT_WEBHOOK_URL` — does not. Deposits
+>   confirm on that host.
+>
+>   ✅ **`qa:live` §[F] now watches this** (added with this entry, so it is a gate and not a
+>   reminder). It fails at **21 days**, not at 0 — a check that goes red the day the site dies is
+>   a headstone, not a gate. Renewal is normally ~30 days out, so 21 means "it was due and did not
+>   happen", with weeks left to act. `qa:live` is the last step of `predeploy`.
+>
+>   ⛔⛔ **IT MUST READ THE *ORIGIN* CERTIFICATE, AND THE FIRST VERSION DID NOT.** Connecting to
+>   `www.50pick.tz` now returns **Cloudflare's own** certificate (`CN=50pick.tz`, Google Trust
+>   Services), which Cloudflare renews by itself and which is never at risk — a different
+>   certificate with a different expiry from Railway's (`CN=www.50pick.tz`, Let's Encrypt). The
+>   check was green reading the one that renews itself. It now dials Railway's domain target with
+>   the hostname as SNI, and carries a **positive control** that fails if it ever reads the edge's
+>   certificate again. Both assertions were proven able to fail before being trusted.
+>
+>   **By hand, if you want it without the suite** — note the host is Railway's target, not `www`:
+>
+>   ```bash
+>   echo | openssl s_client -connect 3hwa21jh.up.railway.app:443 -servername www.50pick.tz \
+>     2>/dev/null | openssl x509 -noout -subject -issuer -dates
+>   ```
+>
+>   ⚠️ Expect `CN=www.50pick.tz` / `Let's Encrypt`. If you see `CN=50pick.tz` / `Google Trust
+>   Services` you are reading Cloudflare and learning nothing. ⛔ And do not read a working site
+>   as proof: the current certificate keeps working right up to the minute it expires, so the
+>   site looks perfectly healthy for the entire month in which this is fixable.
+>
+>   **If it has not renewed:** set the `www` record back to `proxied:false` (seconds, no deploy —
+>   `PATCH /zones/99ca5dd0799461d35c6297f34d1e04d1/dns_records/99cd3e4661641ec2c5a41671120998cb`
+>   with `{"proxied":false}`), let Railway renew against the direct origin, then re-proxy. Full
+>   context in [`LIVE-HOSTING-STATUS.md`](LIVE-HOSTING-STATUS.md) → **EDGE POSTURE**.
+>
 > ## PLATFORM DEBT, worth a session of its own
 >
 > - 🔴 **`E-161` — `tsc` does not typecheck `.mts`.** Sized 2026-08-20: **297 files, 1,007 errors**,

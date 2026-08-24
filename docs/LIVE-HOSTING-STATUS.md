@@ -89,11 +89,26 @@ reaches the app; Cloudflare is not standing in front of it.
 limit on this zone.** Those are precisely the settings that would start challenging it, and the
 symptom is silent.
 
-🔴 **THE ONE THING STILL TO WATCH: ACME RENEWAL.** The origin certs were issued 2026-07-17 and
-expire **2026-10-15**, and Railway renews them by answering a challenge at the origin. That
-challenge now arrives through Cloudflare for `www`. Nobody has watched a renewal happen through
-this proxy yet. Check in **mid-September**, when the renewal window opens — an expired origin cert
-under `Full (strict)` is a total outage, and it would arrive without warning.
+🔴 **THE ONE THING STILL TO WATCH: ACME RENEWAL — now with a gate on it.** The origin certs were
+issued 2026-07-17 and expire **2026-10-15**, and Railway renews them by answering a challenge at
+the origin. That challenge now arrives through Cloudflare for `www`, and no renewal has yet been
+observed on that path. An expired origin cert under `Full (strict)` is a total outage arriving
+without warning, so it is **`qa:live` §[F]** rather than a note in a file: it fails at 21 days
+left, not at 0. Tracked as **`E-191`** in [`NEXT-PLAN.md`](NEXT-PLAN.md).
+
+⛔ **That check reads the ORIGIN certificate, and it has to.** Since the flip, connecting to
+`www.50pick.tz` returns **Cloudflare's** certificate — `CN=50pick.tz`, Google Trust Services,
+which Cloudflare renews itself and which is never at risk. Railway's is a different certificate
+with a different expiry:
+
+| dialled | subject | issuer | expires |
+|---|---|---|---|
+| `www.50pick.tz` (the edge) | `CN=50pick.tz` | Google Trust Services | Oct 15 **12:26:23** |
+| `3hwa21jh.up.railway.app` w/ SNI `www.50pick.tz` (**the origin**) | `CN=www.50pick.tz` | Let's Encrypt | Oct 15 **14:49:57** |
+
+The first cut of the gate read the top row and went green — measuring the certificate that
+renews itself while the one that can fail sat behind it. It now dials the origin and carries a
+positive control that goes red if it ever reads the edge's certificate again.
 
 ⚠️ **A local resolver will lie to you for a while.** Minutes after the flip, 1.1.1.1 and 8.8.8.8
 returned the Cloudflare anycast addresses while this laptop still returned Railway's
