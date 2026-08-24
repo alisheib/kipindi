@@ -18,6 +18,9 @@ import { audit } from "./audit";
 import { sendEmail, sendEmailToUser, passwordResetHtml, passwordChangedHtml } from "./email";
 import { resolvePhoneEmail } from "./email-map";
 import { validatePasswordStrength } from "./password-policy";
+// ⭐ ONE definition of "is this an email or a phone", shared with sign-in. See
+// requestPasswordReset — a second parser here would be a second answer.
+import { resolveLoginIdentifier } from "./auth-service";
 import { notifyPasswordChanged } from "./notification-service";
 import type { FailureReason } from "@/lib/failure-reasons";
 
@@ -34,6 +37,18 @@ function alertPasswordChanged(userId: string, method: string): void {
 }
 
 const RESET_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+/** Mirrors `EMAIL_CANDIDATE_CAP` in auth-service: this is an UNAUTHENTICATED
+ *  endpoint, so the work one request can cause must be bounded by a constant
+ *  rather than by how many accounts happen to share an address. */
+const RESET_EMAIL_CANDIDATE_CAP = 5;
+
+/** Masked address for audit rows — never persist a raw player address (F-06).
+ *  `maria.k@hotmail.com` → `ma***@hotmail.com`. */
+function maskEmailForReset(email: string): string {
+  const [local = "", domain = ""] = email.split("@");
+  return `${local.slice(0, 2)}***@${domain}`;
+}
 const BASE_URL = () => process.env.NEXT_PUBLIC_APP_URL || "https://kipindi-production.up.railway.app";
 
 type ResetTokenPayload = {
@@ -72,30 +87,98 @@ function buildResetUrl(userId: string, email: string, passwordHash: string | nul
  * reset link. Returns a generic "if an account exists…" message to avoid
  * phone enumeration.
  */
-export async function requestPasswordReset(phone: string): Promise<{ ok: true }> {
-  const user = await db.user.findByPhone(phone);
-  if (!user) {
-    // Don't leak whether the phone exists.
-    return { ok: true };
-  }
-  const email = user.email || resolvePhoneEmail(user.phoneE164);
-  if (!email) {
-    // No email on file — can't send a reset link. The UI tells the user to
-    // contact support. Still return ok to avoid phone enumeration.
-    audit({ category: "AUTH", action: "password_reset.no_email", actorId: user.id, targetType: "User", targetId: user.id });
+/**
+ * Send a reset link for whichever account(s) the identifier names.
+ *
+ * ⭐ PHONE **OR** EMAIL, and the discrimination is NOT decided here. It reuses
+ * `resolveLoginIdentifier` — the same exported, pure function sign-in uses — so
+ * the two doors can never disagree about what counts as an email or a valid
+ * MSISDN. A second parser in this file would be a second answer to one question.
+ *
+ * 🔴 WHY EMAIL WAS ADDED (2026-08-25). This function took a PHONE and nothing
+ * else, so a player who had registered with an email and remembered only that
+ * had no route back into their account at all — the sign-in page offered them a
+ * Phone/Email switcher and the recovery page then demanded the one credential
+ * they had come to recover. Measured on production: **66 of 100 accounts carry
+ * an email.**
+ *
+ * ⚠️ AN ADDRESS CAN NAME MORE THAN ONE ACCOUNT, and on this platform it does —
+ * one production address is on **4** accounts. `db.user.email` is not unique and
+ * the DAL says so beside `findByEmail`. Sign-in resolves that ambiguity with the
+ * PASSWORD (`resolveEmailAccount`); recovery has no password to resolve it with,
+ * so it sends a link for EVERY matching account, capped. Each token is bound to
+ * its own `userId` and its own password fingerprint, so the links are
+ * independent, individually single-use, and one being spent does not spend the
+ * others. The alternative — picking "the first" account — would silently strand
+ * every other owner of that address.
+ *
+ * ⛔ ENUMERATION-NEUTRAL, ON EVERY BRANCH. Unknown phone, unknown address, known
+ * account with no email on file: all return `{ ok: true }` and the page says the
+ * same sentence. A caller must never be able to tell which happened. That is why
+ * this returns no count and no status.
+ */
+export async function requestPasswordReset(identifier: string): Promise<{ ok: true }> {
+  const resolved = resolveLoginIdentifier(identifier);
+  // Not a valid phone OR address. Say nothing — the action has already decided
+  // what the player sees, and an error here would be an existence oracle.
+  if (!resolved) return { ok: true };
+
+  const users =
+    resolved.kind === "email"
+      ? await db.user.findAllByEmail(resolved.value, RESET_EMAIL_CANDIDATE_CAP)
+      : [await db.user.findByPhone(resolved.value)].filter(Boolean as unknown as (u: unknown) => boolean);
+
+  if (!users.length) {
+    // Don't leak whether the phone or the address exists.
     return { ok: true };
   }
 
-  const resetLink = buildResetUrl(user.id, email, user.passwordHash);
-  await sendEmail({
-    to: email,
-    subject: "Reset your password · 50pick",
-    html: passwordResetHtml({ resetLink }),
-    tag: "password-reset",
-    trackLinks: false, // don't rewrite the reset link through Postmark tracking
-  }).catch((err) => console.error("[password-reset] send failed:", (err as Error)?.message));
+  if (resolved.kind === "email" && users.length > 1) {
+    // A shared address is a data defect an operator should be able to SEE rather
+    // than infer from support tickets. Masked — never the raw address (audit F-06).
+    audit({
+      category: "AUTH",
+      action: "password_reset.email_ambiguous",
+      actorId: null,
+      targetType: "Email",
+      targetId: maskEmailForReset(resolved.value),
+      payload: { candidates: users.length },
+    });
+  }
 
-  audit({ category: "AUTH", action: "password_reset.requested", actorId: user.id, targetType: "User", targetId: user.id });
+  for (const user of users as NonNullable<Awaited<ReturnType<typeof db.user.findById>>>[]) {
+    // ⚠️ When the player typed an ADDRESS, send to THAT address — not to
+    // `resolvePhoneEmail`, whose job is to find a fallback address for a
+    // phone-only account. Sending a link somewhere the player did not name
+    // would be a link they never receive.
+    const email = resolved.kind === "email" ? resolved.value : (user.email || resolvePhoneEmail(user.phoneE164));
+    if (!email) {
+      // No email on file — can't send a link. The page already states this
+      // precondition ("if an account WITH an email exists…"), so the player is
+      // not told a link is on its way with no qualification. Still ok: silence
+      // here and silence for an unknown number must be indistinguishable.
+      audit({ category: "AUTH", action: "password_reset.no_email", actorId: user.id, targetType: "User", targetId: user.id });
+      continue;
+    }
+
+    const resetLink = buildResetUrl(user.id, email, user.passwordHash);
+    await sendEmail({
+      to: email,
+      subject: "Reset your password · 50pick",
+      html: passwordResetHtml({ resetLink }),
+      tag: "password-reset",
+      trackLinks: false, // don't rewrite the reset link through Postmark tracking
+    }).catch((err) => console.error("[password-reset] send failed:", (err as Error)?.message));
+
+    audit({
+      category: "AUTH",
+      action: "password_reset.requested",
+      actorId: user.id,
+      targetType: "User",
+      targetId: user.id,
+      payload: { via: resolved.kind },
+    });
+  }
   return { ok: true };
 }
 

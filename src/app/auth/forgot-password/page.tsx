@@ -2,7 +2,7 @@ import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { AuthPanel, AuthHeader } from "@/components/auth/auth-panel";
-import { PhoneInput } from "@/components/ui/phone-input";
+import { LoginIdentifier } from "@/components/auth/login-identifier";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { SUPPORT_EMAIL, HELPLINE, HELPLINE_TEL } from "@/lib/support-config";
 import { requestResetAction } from "./actions";
@@ -13,11 +13,28 @@ export async function generateMetadata() {
   return { title: t.auth.forgotPassword };
 }
 
-export default async function ForgotPasswordPage({ searchParams }: { searchParams?: Promise<{ sent?: string; phone?: string; error?: string }> }) {
+export default async function ForgotPasswordPage({ searchParams }: { searchParams?: Promise<{ sent?: string; identifier?: string; phone?: string; error?: string }> }) {
   const { t } = await getServerT();
   const sp = (await searchParams) ?? {};
   const sent = sp.sent === "1";
-  const phoneDefault = (sp.phone ?? "").replace(/^\+255/, "").replace(/\D+/g, "").slice(0, 9);
+
+  // Round-trip whatever the player typed. `?phone=` is still read so an older
+  // cached page (or a bookmarked link) refills correctly — the same allowance
+  // the action makes for the legacy field name.
+  const typed = (sp.identifier ?? sp.phone ?? "").trim().slice(0, 254);
+
+  // ⭐ THE DISTINCTION ALI ASKED FOR, AND IT IS A REAL ONE RATHER THAN A STYLE.
+  // The two entry paths do not carry the same guarantee, so they must not make
+  // the same promise:
+  //   · an ADDRESS was typed → we have somewhere to send to, by construction.
+  //   · a NUMBER was typed   → the account behind it may carry no email at all
+  //     (34 of 100 production accounts do not), and for those players the link
+  //     can never arrive. Saying "check your email" flatly would be false for
+  //     them, so that branch keeps the qualifier AND raises the support route.
+  // Both sentences stay enumeration-neutral: each says "IF an account…", so
+  // neither confirms that this number or address is registered.
+  const viaEmail = typed.includes("@");
+  const defaultMethod: "email" | "phone" = viaEmail ? "email" : "phone";
 
   return (
     <AuthShell>
@@ -41,14 +58,14 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
             <div role="status" className="rounded-md border border-success/65 bg-success/10 px-3.5 py-3 text-[13px]">
               <p className="font-display font-semibold text-success-fg">{t.common.checkEmail}</p>
               <p className="mt-0.5 text-text-muted">
-                {t.common.checkEmailBody}
+                {viaEmail ? t.common.checkEmailBodyAddress : t.common.checkEmailBody}
               </p>
             </div>
           )}
 
-          {sp.error === "phone_required" && (
+          {sp.error === "identifier_required" && (
             <div role="alert" className="rounded-md border border-danger-500/70 bg-danger-500/10 px-3.5 py-3 text-[13px] text-danger-fg">
-              {t.common.enterPhone}
+              {t.common.enterPhoneOrEmail}
             </div>
           )}
           {sp.error === "rate_limited" && (
@@ -59,21 +76,20 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
 
           {!sent && (
             <form action={requestResetAction} className="space-y-4">
-              <div>
-                <label
-                  htmlFor="phone"
-                  className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5"
-                >
-                  {t.auth.phone}
-                </label>
-                <PhoneInput
-                  id="phone"
-                  name="phone"
-                  required
-                  defaultValue={phoneDefault}
-                  size="lg"
-                />
-              </div>
+              {/* ⭐ THE SAME CONTROL THE SIGN-IN PAGE USES, not a second one built
+                  to look like it. `LoginIdentifier` already owns the segmented
+                  Phone/Email switcher, the morphing field, the label and hint
+                  swap, the 44px height that matches --h-input, radiogroup
+                  keyboard semantics, and all three locales — and it already
+                  submits under `identifier`, which is exactly what the action
+                  reads. Recovery asking for a credential in a different shape
+                  from the page that asks for the same credential one click away
+                  is the inconsistency this removes. */}
+              <LoginIdentifier
+                defaultMethod={defaultMethod}
+                defaultValue={typed}
+                invalid={sp.error === "identifier_required"}
+              />
               <SubmitButton label={t.common.sendResetLink} pendingLabel={t.common.sending} />
             </form>
           )}
