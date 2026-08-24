@@ -94,16 +94,38 @@ const MEASURE = (sel) => {
   if (!root) return null;
   const clipped = [], ellipsis = [];
   for (const el of root.querySelectorAll("*")) {
+    // ⛔ SVG HAS NO HTML BOX MODEL HERE. `clientWidth`/`scrollWidth` on an `<svg>` child are not
+    // the quantities this rule is about — the price chart's `<text>` labels reported
+    // *"OPEN $3,757.23 +9px in 91×51px"* on a chart that renders perfectly, and the giveaway was
+    // `className` printing as `[object SVGAnimatedString]`. Found the day the probe started
+    // returning real data (E-191): a check that had been vacuous came back red on its own
+    // instrument, not on the product.
+    if (el.ownerSVGElement || el.tagName.toLowerCase() === "svg") continue;
+    // ⛔ A VISUALLY-HIDDEN ELEMENT IS *BUILT* TO OVERFLOW. The `sr-only` skip link is a 1×1 box
+    // holding "Skip to content" — 106px of text in 1px, by design, on every page. Reading that
+    // as a clipped control condemns the accessibility pattern the same sweep asserts elsewhere.
+    if (el.clientWidth <= 1 || el.clientHeight <= 1) continue;
     const over = el.scrollWidth - el.clientWidth;
-    if (over <= 1 || el.clientWidth === 0) continue;
+    // ⚠️ 3px, not 1. Round controls (the chat bubble is a 50×50 circle) report 2–3px of
+    // sub-pixel on a box nothing is clipped out of. Measured across 30 cells before the
+    // threshold moved, and the number is stated here so the next person can re-measure rather
+    // than re-guess.
+    if (over <= 3 || el.clientWidth === 0) continue;
     const cs = getComputedStyle(el);
     const label = (el.textContent || "").replace(/\s+/g, " ").trim().slice(0, 46);
+    // ⛔ THIS RULE IS ABOUT TEXT BEING CUT, so an element with no text is out of scope — and
+    // saying so is what stopped it burying a real finding. The chat FAB is a 50×50 circle whose
+    // only child is an icon; it reported a steady 4px on every page and every width, and three
+    // of those lines sat directly above the one that mattered. ⭐ A control that escapes the
+    // VIEWPORT is a different defect with its own rule (`scripts/live/clip.mjs`, E-190); this
+    // one asks whether a label fits the box that holds it.
+    if (!label) continue;
     if (cs.textOverflow === "ellipsis") {
       ellipsis.push({ label, hiddenPct: Math.round((over / el.scrollWidth) * 100) });
       continue;
     }
     if (cs.overflowX === "auto" || cs.overflowX === "scroll") continue;   // scrolls on purpose
-    clipped.push({ label, over, w: el.clientWidth, cls: (el.className || "").toString().slice(0, 40) });
+    clipped.push({ label, over, w: el.clientWidth, h: el.clientHeight, tag: el.tagName.toLowerCase(), cls: (el.className || "").toString().trim().split(/\s+/).slice(0, 3).join(".").slice(0, 44) });
   }
   return { clipped, ellipsis };
 };
@@ -175,7 +197,7 @@ const MEASURE = (sel) => {
         ok(`${tag} · the clipping sweep actually measured something`, m != null,
           m == null ? "evaluate returned nothing — the scope selector matched no element, or the probe is a string again" : "");
         ok(`${tag} · nothing clipped`, m != null && m.clipped.length === 0,
-          (m?.clipped ?? []).slice(0, 3).map((c) => `"${c.label}" +${c.over}px in ${c.w}px`).join(" | "));
+          (m?.clipped ?? []).slice(0, 3).map((c) => `<${c.tag}${c.cls ? `.${c.cls}` : ""}> "${c.label}" +${c.over}px in ${c.w}×${c.h}px`).join(" | "));
         for (const e of m?.ellipsis ?? []) {
           if (e.hiddenPct >= 20) notes.push(`${tag} · "${e.label}" — ${e.hiddenPct}% behind the ellipsis`);
         }
