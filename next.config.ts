@@ -2,6 +2,10 @@ import type { NextConfig } from "next";
 
 const config: NextConfig = {
   reactStrictMode: true,
+  // Framework and version disclosure on every response, and the first line of
+  // most scanner reports. The security headers that must STAY are set in
+  // src/proxy.ts — this removes one header without touching those.
+  poweredByHeader: false,
   typedRoutes: true,
   // Types are enforced at build (tsc --noEmit is clean as of 2026-06-06).
   // If Next 16's stricter server-action return-type checking trips the build,

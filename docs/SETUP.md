@@ -22,9 +22,10 @@ Read that sentence twice before you run anything.
 
 ## 1 · Prerequisites
 
-- **Node 24.** CI pins `node-version: 24` and local development runs 24.x. `package.json`
-  declares no `engines` field, so nothing will stop you on an older major — it will just fail
-  strangely. Check with `node -v`.
+- **Node 24.** CI pins `node-version: 24`, local development runs 24.x, and `package.json`
+  declares `"engines": { "node": "24.x" }` so the Railway builder installs the same major in
+  production. ⛔ Do not lower any of the three: under Node 22 `tsx` dual-instantiates modules
+  and the seam-patching suites (`late-bet`, `settlement-gate`) fail falsely. Check with `node -v`.
 - **npm** (no `packageManager` field; do not switch to pnpm/yarn).
 - **git**, and a GitHub account with push access to `alisheib/kipindi`.
 - **Railway CLI** — `npm i -g @railway/cli`, then `railway login`, then `railway link` and pick
