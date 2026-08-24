@@ -487,7 +487,8 @@
     "red:ai-cycles": "node scripts/ai-cycles-red.mjs",
     "ops:preflight-ai-cycles": "tsx scripts/ops-preflight-ai-cycles.mts",
     "ops:backfill-ai-cycles": "tsx scripts/ops-backfill-ai-cycles.mts",
-    "red:payout-alloc": "node scripts/payout-alloc-red.mjs"
+    "red:payout-alloc": "node scripts/payout-alloc-red.mjs",
+    "ops:reset-password": "tsx scripts/ops-reset-password.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",
