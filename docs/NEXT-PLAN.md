@@ -22,7 +22,7 @@
 > - 💵 **The USD→TZS rate and its date** in *Admin → AI usage → Cycle settings* (owed since session 59; every shilling figure renders `—` until then, deliberately).
 > - ⏰ **`E-195`** — ⛔ **check from ~2026-09-15.** `www` behind Cloudflare at `Full (strict)` renews its origin certificate through a path that has never carried one; it **expires 2026-10-15**, and under `strict` that is the whole site, on a date, with no deploy to blame.
 >
-> ▶ **NEXT: Unit D (#6) in [`SESSION-PROMPT-JAY-COMMENTS.md`](SESSION-PROMPT-JAY-COMMENTS.md) §1** — its ledger is backfilled and honest now (**A · B · C ✅**), so tick your row in the commit that ships it.
+> ▶ **NEXT SESSION STARTS AT [`SESSION-PROMPT-CLOSE-THE-BOARD.md`](SESSION-PROMPT-CLOSE-THE-BOARD.md)** — the six open items, ordered money-first, each with its measurement and its guard. Then Unit D (#6) in [`SESSION-PROMPT-JAY-COMMENTS.md`](SESSION-PROMPT-JAY-COMMENTS.md) §1** — its ledger is backfilled and honest now (**A · B · C ✅**), so tick your row in the commit that ships it.
 
 > # ⭐ SESSION 56 — `/notifications`, THE DOOR THE BELL CANNOT BE (2026-08-22)
 >
