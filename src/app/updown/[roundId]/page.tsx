@@ -417,8 +417,22 @@ export default async function UpDownRoundPage({
           }}
         />
 
-        {/* ── Grid: price hero (left) · pool + stake/result (right) ───────── */}
-        <div className="grid grid-cols-1 items-start gap-4 xl:[grid-template-columns:minmax(0,1.55fr)_minmax(300px,1fr)]">
+        {/* ── Grid: price hero (left) · pool + stake/result (right) ─────────
+            ⭐ THE RAIL STARTS AT `lg` (1024), NOT `xl` (1280) — E-193, and it was measured on
+            production before it was moved. At 1024×768 this page was still single-column, so
+            the price hero — an SVG at `width: 100%` on a 640×220 viewBox, i.e. a card whose
+            HEIGHT is a function of the page's WIDTH — rendered **425px tall** and consumed the
+            entire viewport below the countdown. The frame shows a laptop-shaped screen holding
+            one flat chart and nothing to do: the pool and both bet controls sat at y=1069,
+            **301px below a 768px fold**, on the game whose rounds are reachable for 89 seconds.
+            ⛔ The two-column layout already existed and already solved it — it was simply gated
+            one breakpoint too high. At 1280 the same control sits at y=623. Same reasoning as
+            E-190 one component up: 1024 is a desktop-shaped viewport being handed a
+            phone-shaped layout. ⚠️ The right column keeps its `minmax(300px,1fr)` floor, so it
+            can still refuse to squeeze: at 1024 the split is ~581/375 and the hero drops to
+            ~200px, which is why the control comes back above the fold rather than merely
+            moving. Below `lg` the page is single-column exactly as before. */}
+        <div className="grid grid-cols-1 items-start gap-4 lg:[grid-template-columns:minmax(0,1.55fr)_minmax(300px,1fr)]">
           <PriceHero
             openPrice={round.openPrice}
             upTarget={round.upTarget}

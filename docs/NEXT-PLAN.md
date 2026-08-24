@@ -268,7 +268,7 @@
 > Everything else on this page waits for a session. This waits for a **date**, and it arrives
 > whether or not anyone opens the repo.
 >
-> - 🔴 **`E-191` — WATCH THE FIRST CERTIFICATE RENEWAL THROUGH CLOUDFLARE. Check from
+> - 🔴 **`E-195` — WATCH THE FIRST CERTIFICATE RENEWAL THROUGH CLOUDFLARE. Check from
 >   ~2026-09-15; the certificates expire 2026-10-15.**
 >
 >   On **2026-08-24** `www.50pick.tz` was flipped to **Proxied** with SSL/TLS at

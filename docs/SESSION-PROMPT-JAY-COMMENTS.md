@@ -74,10 +74,19 @@ Order is dependency-driven, not importance-driven. **Do not reorder without read
 
 | Order | Unit | Item(s) | Why here | Status |
 |---|---|---|---|---|
-| 0 | **Pre-flight** | — | The 3m chains and the fleet are the instrument for A, C and J | ⬜ |
-| A | Results page: UD rounds + product split | #10 · #4 | Everything else about "where do I see my bet" depends on this surface existing once | ⬜ |
-| B | Withdrawal KYC gate removed | #1 | Independent, high-visibility, and its paper trail must be right | ⬜ |
-| C | Next round visibly playable | #2c | Needs A's fleet + the 3m chains; engine already done | ⬜ |
+> 🔴 **THIS LEDGER SAT ENTIRELY BLANK FOR EIGHT SESSIONS WHILE FOUR OF ITS ROWS SHIPPED**, and
+> §0 rule 6 — *"the completion ledger in §1 is ticked"* — is one of the six conditions this
+> document defines "DONE" by. Every session since has read the same all-⬜ table and had to
+> reconstruct the real state from `LIVE-QA-CAMPAIGN.md` §6b instead. **A tracker nobody updates
+> is a tracker that costs more than it saves**, and it is the same defect shape as the stale
+> `ux-audit` index row `docs/README.md` records. Backfilled 2026-08-24 (session 60) **from
+> evidence, not from memory** — each ✅ below names where the proof is. Tick your row in the
+> commit that ships it.
+
+| 0 | **Pre-flight** | — | The 3m chains and the fleet are the instrument for A, C and J | ✅ **2026-08-24, re-verified live.** `chain-stall-census.cjs`: 19 chains, **16 RUNNING**, none past its own span; **BTC/USD 3m and ETH/USD 3m are both RUNNING** (2,520 and ~2,490 rounds). The 3 not RUNNING are operator decisions (BTC 30m/60m, SOL 15m). Fleet: **20 accounts, TZS 1,592,983**, locales spread EN/SW/ZH — `ops-qa-fleet.mts list`. |
+| A | Results page: UD rounds + product split | #10 · #4 | Everything else about "where do I see my bet" depends on this surface existing once | ✅ **SHIPPED.** `results/page.tsx` resolves `outcomeWord` **per row from that row's own `productLine`** — the literal `"MARKET"` trap §3 warned about is gone — and the product split is the kit's **`FilterPill`**, not a ninth hand-rolled rail. Census in the file: **UPDOWN 11,112 · MARKET 65** on production. |
+| B | Withdrawal KYC gate removed | #1 | Independent, high-visibility, and its paper trail must be right | ✅ **SHIPPED, session 53** — see §6b *"UNIT B SHIPPED: A GATE REMOVED, A RECORD PUT IN ITS PLACE"*, and `BOARD-DISCLOSURE-B-E.md` for what was told to the Gaming Board. `E-175`. |
+| C | Next round visibly playable | #2c | Needs A's fleet + the 3m chains; engine already done | ✅ **SHIPPED, session 60 — DRIVEN, not asserted.** `npm run qa:updown-next-playable`: real money on **both sides** of a real 3-minute round on production, **15 viewports** held through the real settle, all 15 carried by the real auto-advance, **66 assertions**. ⭐ **The question passes at every width: the live "betting closes in" pod is above the fold in 15/15 cells, in all three languages.** Fixed what the frames showed — **`E-193`**, the round page's two-column rail was gated at `xl` so at 1024×768 the price hero rendered **425px tall** and the bet controls sat **301px below the fold**; the rail now starts at `lg` and the control is at 483..531. ⚠️ 393 and 768 are measured and **filed for Ali** rather than fixed: raising them means putting the stake panel above the price hero, which reverses the D3 spec's reading order on a money page. 🟡 **`E-194` came out of the same drive and is a decision, not a bug:** a "3-minute" round is reachable for **89 of its 180 advertised seconds** (measured over 5,479 rounds). |
 | D | Date beside every timer | #6 | Independent; touches a shared formatter, so land it before more surfaces exist | ⬜ |
 | E | Phone prefilled from the account | #8 | Independent, small | ⬜ |
 | F | Cash Back removed | #5 | **Before J** — it changes what the bonus drive must test | ⬜ |
@@ -117,6 +126,23 @@ E-119, then E-161, before landing on **E-167** — two ids were taken while it r
 ```bash
 grep -ohE "\*\*E-[0-9]+\*\*" docs/LIVE-QA-CAMPAIGN.md | grep -oE "[0-9]+" | sort -n | tail -3
 ```
+
+🔴 **AND RE-GREPPING IS NOT ENOUGH WHEN TWO SESSIONS SHARE THE CHECKOUT — IT HAPPENED ON
+2026-08-24.** Two sessions both grepped, both correctly saw `E-189` as the highest, and both
+filed **`E-191`** within the hour: one for a vacuous clipping check, one for a dated certificate
+renewal. Neither did anything wrong; the ids were free when each looked.
+
+⭐ **THE TIE-BREAK, so the next collision resolves itself without a negotiation:**
+
+> **`docs/LIVE-QA-CAMPAIGN.md` §6 IS THE AUTHORITY. Whichever finding has a ROW there keeps the
+> id; the other moves.** An id recorded only in `NEXT-PLAN.md`, a session prompt or a code
+> comment is not filed — it is announced. So the loser of a tie is decided by a `grep` anyone
+> can run, and the fix is a rename plus a row, never a discussion.
+
+⛔ **And renumber the CITATIONS in the same edit** — a finding is usually cited from three or
+four places, and a rename applied to the register alone leaves the old id pointing at somebody
+else's defect. ⚠️ **A pushed commit message cannot be renamed**, so the register row that
+inherits the id must say which commit still carries the old one (see `E-195`).
 
 **④ Read these three, in order:** `docs/HANDOVER-E166-NEXT-SESSION.md` §5 (the celebration/handover
 coupling you can break), `docs/FAILURE-INVENTORY.md` §7.4 (why a chain bricks), and

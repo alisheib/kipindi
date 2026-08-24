@@ -94,7 +94,7 @@ issued 2026-07-17 and expire **2026-10-15**, and Railway renews them by answerin
 the origin. That challenge now arrives through Cloudflare for `www`, and no renewal has yet been
 observed on that path. An expired origin cert under `Full (strict)` is a total outage arriving
 without warning, so it is **`qa:live` §[F]** rather than a note in a file: it fails at 21 days
-left, not at 0. Tracked as **`E-191`** in [`NEXT-PLAN.md`](NEXT-PLAN.md).
+left, not at 0. Tracked as **`E-195`** in [`NEXT-PLAN.md`](NEXT-PLAN.md).
 
 ⛔ **That check reads the ORIGIN certificate, and it has to.** Since the flip, connecting to
 `www.50pick.tz` returns **Cloudflare's** certificate — `CN=50pick.tz`, Google Trust Services,

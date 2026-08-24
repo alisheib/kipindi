@@ -43,7 +43,7 @@ origin cert under `Full (strict)` is a total outage with no warning.
 
 ⭐ **So it is a gate, not a note.** `qa:live` §[F] fails at **21 days** left — a check that goes
 red the day the site dies is a headstone, not a gate — and `qa:live` is the last step of
-`predeploy`. Tracked as **`E-191`** in [`NEXT-PLAN.md`](NEXT-PLAN.md) → ⏰ DATED.
+`predeploy`. Tracked as **`E-195`** in [`NEXT-PLAN.md`](NEXT-PLAN.md) → ⏰ DATED.
 
 ⛔ **Its first version was green on the wrong certificate.** Since the flip, dialling
 `www.50pick.tz` returns CLOUDFLARE'S cert (`CN=50pick.tz`, Google Trust Services, expiry

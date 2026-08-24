@@ -479,6 +479,7 @@
     "qa:measure-parity": "node scripts/measure-parity-check.mjs",
     "qa:landmark-seal": "node scripts/landmark-seal.mjs",
     "red:header-fit": "node scripts/header-fit-red.mjs",
+    "qa:updown-next-playable": "node scripts/live-updown-next-playable.mjs",
     "qa:notifications-page": "node scripts/live-notifications-page.mjs",
     "test:encoding": "tsx scripts/encoding.test.mts",
     "qa:notifications-restore": "node scripts/live-notifications-restore.mjs",

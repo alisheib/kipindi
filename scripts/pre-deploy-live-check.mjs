@@ -308,7 +308,7 @@ if (LOCAL) {
 await browser.close();
 
 // ── [F] The certificate behind the proxy ──────────────────────────────────────
-// 🔴 E-191. On 2026-08-24 `www` was put behind Cloudflare with SSL/TLS `Full (strict)`, and
+// 🔴 E-195. On 2026-08-24 `www` was put behind Cloudflare with SSL/TLS `Full (strict)`, and
 // under `strict` Cloudflare REFUSES to serve a hostname whose origin certificate is invalid.
 // Railway renews by answering an ACME challenge at the origin, which now arrives through the
 // proxy — a path that has never carried a renewal.
@@ -372,7 +372,7 @@ if (!LOCAL) {
       ok(`${host} ORIGIN certificate has more than 21 days left (${daysLeft}d, expires ${cert.valid_to})`,
          daysLeft > 21,
          daysLeft > 0
-           ? "RENEWAL IS OVERDUE. Under Full (strict) an expired ORIGIN cert takes the site down with no warning — NEXT-PLAN E-191."
+           ? "RENEWAL IS OVERDUE. Under Full (strict) an expired ORIGIN cert takes the site down with no warning — NEXT-PLAN E-195."
            : "EXPIRED — the site is down or about to be.");
     } catch (e) {
       // ⛔ Never pass on an unreadable certificate: "could not check" is not "fine".
