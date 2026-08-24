@@ -30,7 +30,7 @@ import { Dot } from "@/components/ui/dot";
 import { cn, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { useUpDownQuickBet, usePlacePulse } from "./use-quick-bet";
-import { UpDownStakeControls, SIDE_BTN_COMPACT } from "./updown-stake-controls";
+import { UpDownStakeControls, GLYPH_NO_SHRINK } from "./updown-stake-controls";
 import { Button } from "@/components/ui/button";
 import { mmss, useHoldAnchor, useTickSeconds } from "./round-countdown";
 // ⭐ ONE TIMER FOR THE WHOLE BOARD, and a card that only re-renders when its PHASE moves.
@@ -958,15 +958,15 @@ export function UpDownCard(props: UpDownCardProps) {
                   went into the authed copy, which was never the broken one. ⭐ One padding
                   definition, imported, so on this axis at least the two cannot drift again. */}
               <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={go("UP")} className="btn btn-yes btn-lg" style={SIDE_BTN_COMPACT}
+                <button type="button" onClick={go("UP")} className="btn btn-yes btn-lg"
                         aria-label={`${t.market.udUp} — ${assetName}`}>
-                  <I.trendingUp s={14} /> {t.market.udUp}
-                  {outMultUp != null && <span className="font-mono text-[12.5px] opacity-85">× {formatMultiplier(outMultUp)} est.</span>}
+                  <I.trendingUp s={14} className={GLYPH_NO_SHRINK} /> {t.market.udUp}
+                  {outMultUp != null && <span className="font-mono text-[12.5px] opacity-85">× {formatMultiplier(outMultUp)}</span>}
                 </button>
-                <button type="button" onClick={go("DOWN")} className="btn btn-no btn-lg" style={SIDE_BTN_COMPACT}
+                <button type="button" onClick={go("DOWN")} className="btn btn-no btn-lg"
                         aria-label={`${t.market.udDown} — ${assetName}`}>
-                  <I.trendingDown s={14} /> {t.market.udDown}
-                  {outMultDown != null && <span className="font-mono text-[12.5px] opacity-85">× {formatMultiplier(outMultDown)} est.</span>}
+                  <I.trendingDown s={14} className={GLYPH_NO_SHRINK} /> {t.market.udDown}
+                  {outMultDown != null && <span className="font-mono text-[12.5px] opacity-85">× {formatMultiplier(outMultDown)}</span>}
                 </button>
               </div>
               {/* ⭐ D2 · the empty-side state — the same sentence the signed-in control shows,
@@ -1058,7 +1058,7 @@ export function UpDownCard(props: UpDownCardProps) {
           <div className="flex items-center justify-between gap-2 rounded-xl px-3.5 py-3" style={{ background: "var(--bg-inset)" }}>
             <span className="inline-flex items-center gap-1.5 font-mono text-[14px] font-bold tracking-[0.04em]"
                   style={{ color: outcome === "UP" ? "var(--yes-300)" : "var(--no-300)" }}>
-              {outcome === "UP" ? <I.trendingUp s={14} /> : <I.trendingDown s={14} />}
+              {outcome === "UP" ? <I.trendingUp s={14} className={GLYPH_NO_SHRINK} /> : <I.trendingDown s={14} className={GLYPH_NO_SHRINK} />}
               {outcome === "UP" ? t.market.udUpWins : t.market.udDownWins}
             </span>
             {openPrice != null && closePrice != null && (

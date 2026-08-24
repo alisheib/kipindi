@@ -74,6 +74,15 @@ const widths = WIDTH_FILTER
 
 // ---- surfaces --------------------------------------------------------------
 const PLAYER = [
+  // 🔴 `/updown` AND `/updown/history` WERE NEVER IN THIS LIST — the PLAYER surface of an entire
+  // second product line, unaudited at every width since it was built. Added 2026-08-24 (E-196).
+  // ⚠️ THE EXACT SAME OMISSION WAS FOUND AND FIXED FOR THE ADMIN SIDE ON 2026-07-30 — the note
+  // in the ADMIN list below says so in its own words — and the player half was left open, which
+  // is why nobody has been looking at the board's card widths. The defect that surfaced it
+  // (a bet button clipping its own payout figure at 320-390 and 980-1147) was found by a
+  // DIFFERENT driver entirely, on a width this sweep does cover, purely by luck.
+  // ⛔ A second product line is not an edge case; it is half the product.
+  "/updown", "/updown/history",
   "/", "/markets", "/positions", "/positions/performance", "/leaderboard",
   "/proposals", "/proposals/new", "/results", "/live", "/wallet",
   "/wallet/deposit", "/wallet/withdraw", "/profile", "/profile/account",

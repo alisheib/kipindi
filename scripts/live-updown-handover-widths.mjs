@@ -50,7 +50,11 @@ const SHOT = process.env.SHOT_DIR ?? ".50pick-shots/handover-widths";
 const DUR = 3;
 mkdirSync(SHOT, { recursive: true });
 
-const WIDTHS = [393, 768, 1024, 1280, 1440];
+// ⚠️ 360 IS IN THIS LIST BECAUSE ITS ABSENCE HID A DEFECT (E-196). This drive sampled 393 as
+// its phone width, and 393 turns out to be the ONE phone width where the board card's bet
+// buttons measure exactly 0 overflow — they are 9px over at 360 and 14px at 320. A width set
+// that happens to sample the single clean cell of a broken band reports the band as clean.
+const WIDTHS = [360, 393, 768, 1024, 1280, 1440];
 const LOCALES = [
   { code: "en", lang: "en" },
   { code: "sw", lang: "sw" },

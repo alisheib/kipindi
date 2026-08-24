@@ -41,32 +41,48 @@ import { impliedMultiplier, emptySideOf, formatMultiplier, type UpDownPricing } 
 type Bet = ReturnType<typeof useUpDownQuickBet>;
 
 /**
- * ⭐ E-196 · THE SIDE BUTTONS' PADDING FOLLOWS THE DENSITY, ON THE CARD ONLY.
+ * ⭐ E-196 · WHY THESE BUTTONS FIT NOW, AND THE TWO WRONG ANSWERS THAT CAME FIRST.
  *
- * 🔴 THE DEFECT, measured on production 2026-08-24 as a SIGNED-OUT visitor at 1024px: the DOWN
- * button clipped its own payout figure. `Down × 1.00 est.` is **144px of content in a 133px
- * box**; Swahili `Chini × 1.00 est.` was +9px; English was still +4px at 1100. Clean at 768 and
- * 1280+, clean in ZH (short words), and clean SIGNED IN — a player with a position sees a
- * different card. So the population it hit was the one deciding whether to sign up.
+ * 🔴 THE DEFECT, driven on production as a SIGNED-OUT visitor: the DOWN button clipped its own
+ * payout figure — `Down × 1.00 est.` needing **144px of content in a 133px box** at 1024, +9px
+ * in Swahili, and **+9/+7 at 360**, which is the width most players are on.
  *
- * ⛔ THE CLIPPED TEXT IS A MONEY FIGURE. `× 1.00 est.` is the estimated payout multiple, and the
- * D2 note above calls the UP/DOWN asymmetry (`× 1.00` against `× 16.6`) the whole point of the
- * control. Truncating it paints a shorter number; hiding it on a narrow card removes the one
- * thing the button is there to say. Neither is available.
+ * ⛔ WRONG ANSWER 1 — "the padding is too generous". It is not the binding constraint at all.
+ * `.btn` is `justify-content: center`, so once the content is wider than the box it has ALREADY
+ * overflowed the padding box symmetrically: shrinking the padding moves the box edges, not the
+ * glyphs. Proven by driving it on the live page — `.btn-lg` padding 20px → 12px moved
+ * `scrollWidth − clientWidth` from **11 to 11**. A whole deploy bought zero pixels.
  *
- * ⭐ SO THE PADDING YIELDS, AND `compact` IS ALREADY THE NAME FOR THAT. This component's density
- * knob already drives the icon size, the chip sizes and every text step — it simply never
- * reached the padding, while `.btn-lg`'s `0 20px` is sized for a full-width control and the
- * board's card gives these two grid children 133px each. 20px → `--sp-3` (12px) returns **16px
- * per button**, against the 11px English needed and the 9px Swahili needed.
+ * ⛔ WRONG ANSWER 2 — fixing it here. The signed-out card does not use this component; it renders
+ * its own pair in `updown-card.tsx`. The first repair landed in the copy that was never broken.
  *
- * ⛔ IT IS AN INLINE STYLE ON THIS COMPONENT, NOT A NEW KIT CLASS, and that is the point: it
- * changes nothing about `.btn-lg` anywhere else in the product, adds no arbitrary Tailwind
- * utility for `test:type-scale` to ratchet, and spends an existing token rather than a new
- * number. ⚠️ The height is untouched, so the 44px tap floor is unaffected (the control measures
- * 133×46 today).
+ * ⭐ WHAT THE MEASUREMENT ACTUALLY SAID, once the button was dissected child by child:
+ *
+ *     box 133  ·  needs 144  ·  padding 24  ·  gap 8  ·  "Down" ~36  ·  chip **92**  ·  icon **0**
+ *
+ * Two facts fall out. **The chip is two thirds of the button** — and 5 of its 11 characters are
+ * the suffix ` est.`. And **the icon is 0px wide at EVERY width, including 1920**, where the
+ * button has zero spare: flexbox had been crushing the un-shrink-protected `<svg>` to nothing,
+ * which is why the deficit read as 11px instead of the ~21px it really is. The icon was the
+ * shock absorber, and it had already been spent everywhere.
+ *
+ * ✅ THE FIX IS BOTH HALVES TOGETHER, and neither works alone. `shrink-0` restores the arrow
+ * (+14px of need), and dropping ` est.` from the chip returns ~37px — so the button ends up
+ * ~12px inside its box at 1024 and ~14px at 360, with the arrow visible for the first time.
+ *
+ * ⛔ AND THE MONEY FIGURE IS UNTOUCHED: `× 1.00` stays exactly as it was. What goes is a
+ * five-character ABBREVIATION of a qualifier this same component already states in full, one
+ * line below, in all three languages — `udEstimateNote`: *"× moves with every bet — it is this
+ * pool right now, not fixed odds. When betting closes it becomes your exact payout."* Saying it
+ * twice, once in prose and once in a control too small to hold it, was the redundancy; the
+ * number was never the problem.
  */
-export const SIDE_BTN_COMPACT = { paddingInline: "var(--sp-3)" } as const;
+/**
+ * ⚠️ Applied to the settled-outcome arrow on the card too (`updown-card.tsx`), not only to the
+ * two side buttons — it is an icon in a flex row, which is the same crush, and naming the
+ * constant for what it DOES rather than where it started keeps that honest.
+ */
+export const GLYPH_NO_SHRINK = "shrink-0";
 
 export function UpDownStakeControls({
   bet,
@@ -233,20 +249,20 @@ export function UpDownStakeControls({
         <button
           type="button" onClick={guard(() => bet.place("UP"))} disabled={!bet.stakeReady || bet.insufficient || bet.locallyLocked}
           className={cn("btn btn-yes btn-lg", !compact && "justify-center", flash && flashSide === "UP" && "ud-side-flash")}
-          style={compact ? SIDE_BTN_COMPACT : undefined}
+         
           aria-label={`${t.market.udUp} — ${assetName}${bet.stakeReady ? ` · ${formatTzs(bet.stake)}` : ""}`}
         >
-          {bet.pendingSide === "UP" ? <Spinner size={12} /> : <I.trendingUp s={compact ? 14 : 15} />} {t.market.udUp}
-          {multUp != null && <span className="font-mono text-[12.5px] opacity-85">× {formatMultiplier(multUp)} est.</span>}
+          {bet.pendingSide === "UP" ? <Spinner size={12} /> : <I.trendingUp s={compact ? 14 : 15} className={GLYPH_NO_SHRINK} />} {t.market.udUp}
+          {multUp != null && <span className="font-mono text-[12.5px] opacity-85">× {formatMultiplier(multUp)}</span>}
         </button>
         <button
           type="button" onClick={guard(() => bet.place("DOWN"))} disabled={!bet.stakeReady || bet.insufficient || bet.locallyLocked}
           className={cn("btn btn-no btn-lg", !compact && "justify-center", flash && flashSide === "DOWN" && "ud-side-flash")}
-          style={compact ? SIDE_BTN_COMPACT : undefined}
+         
           aria-label={`${t.market.udDown} — ${assetName}${bet.stakeReady ? ` · ${formatTzs(bet.stake)}` : ""}`}
         >
-          {bet.pendingSide === "DOWN" ? <Spinner size={12} /> : <I.trendingDown s={compact ? 14 : 15} />} {t.market.udDown}
-          {multDown != null && <span className="font-mono text-[12.5px] opacity-85">× {formatMultiplier(multDown)} est.</span>}
+          {bet.pendingSide === "DOWN" ? <Spinner size={12} /> : <I.trendingDown s={compact ? 14 : 15} className={GLYPH_NO_SHRINK} />} {t.market.udDown}
+          {multDown != null && <span className="font-mono text-[12.5px] opacity-85">× {formatMultiplier(multDown)}</span>}
         </button>
       </div>
 
