@@ -71,11 +71,17 @@ export function Countdown({ to, label, serverNow, at }: { to: string; label?: st
           takes the ladder's own spacing and so adds no `tracking-` utility either (§6). */}
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-2">
         <span className="font-mono text-micro uppercase tracking-[0.12em] text-warning-fg">{resolvedLabel}</span>
+        {/* ⭐ A <time> WITH THE MACHINE-READABLE INSTANT, not a styled span. `dateTime` carries
+            the SAME `to` the clock counts down to, which is what lets a live driver assert the
+            date NAMES the right moment rather than merely that some date is present — a date
+            that is correct in every way except which deadline it is about reads as completely
+            right. It is also the semantically correct element for a timestamp, so a screen
+            reader gets the instant rather than an abbreviation. */}
         {at && (
-          <span className="inline-flex items-center gap-1 font-mono text-micro text-text-subtle" suppressHydrationWarning>
+          <time dateTime={to} data-testid="timer-date" className="inline-flex items-center gap-1 font-mono text-micro text-text-subtle" suppressHydrationWarning>
             <I.calendarClock s={11} className="shrink-0" />
             {at}
-          </span>
+          </time>
         )}
       </div>
       <div className="flex gap-2">

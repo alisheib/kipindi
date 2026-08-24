@@ -110,11 +110,20 @@ export function formatDayTime(iso: string): string {
  * Jay (Gaming Board) item #6: every timer must name its absolute instant, so a
  * player reading "170 DAYS" does not have to do the arithmetic. `formatDayTime`
  * alone would have been the obvious fix and it is not enough:
- * ⚠️ MEASURED ON PRODUCTION 2026-08-25 — **3 of 49 LIVE markets resolve in 2027**,
- * the furthest at 170 days out (`mkt_0d271bde3ae784abe12b`, 2027-02-10). Beside a
- * three-digit DAYS cell, a bare "10 Feb" is exactly the arithmetic the item exists
- * to remove, and DESIGN_AUTHORITY §A5 forbids clipping a timestamp — not stating
- * only half of one.
+ * ⚠️ MEASURED ON PRODUCTION 2026-08-25 — **7 of 51 LIVE markets resolve in a later
+ * year on the platform clock**, the furthest at 170 days out
+ * (`mkt_0d271bde3ae784abe12b`, 2027-02-10). Beside a three-digit DAYS cell, a bare
+ * "10 Feb" is exactly the arithmetic the item exists to remove, and
+ * DESIGN_AUTHORITY §A5 forbids clipping a timestamp — not stating only half of one.
+ *
+ * 🔴 THE FIRST CENSUS SAID **3 of 49**, AND IT WAS WRONG IN THE EXACT WAY THIS
+ * FUNCTION EXISTS TO PREVENT. `resolutionAt` is `timestamp WITHOUT time zone`
+ * holding UTC, and Postgres's `naive AT TIME ZONE 'Africa/Dar_es_Salaam'`
+ * INTERPRETS a naive value as EAT wall time instead of converting it — the opposite
+ * direction. It therefore missed every market sitting ON the boundary: four resolve
+ * at 2026-12-31T21:00Z or later, which is 1 Jan 2027 in Dar. Those four are the
+ * whole point. Re-derived the way the product does it — read as UTC, then ask Intl
+ * for the year in `tz()` — which is what the number above now is.
  *
  * ⛔ It adds NO third format: both branches are formatters that already exist, so
  * the cross-year string is the same-year string plus a year. The choice is the only

@@ -479,6 +479,7 @@
     "red:measure": "node scripts/measure-red.mjs",
     "red:decomment": "node scripts/decomment-red.mjs",
     "qa:measure-parity": "node scripts/measure-parity-check.mjs",
+    "qa:timer-date": "node scripts/timer-date-shots.mjs",
     "qa:landmark-seal": "node scripts/landmark-seal.mjs",
     "red:header-fit": "node scripts/header-fit-red.mjs",
     "qa:updown-next-playable": "node scripts/live-updown-next-playable.mjs",

@@ -59,7 +59,7 @@ export const MUTATIONS = [
   },
   {
     name: "year-blind",
-    why: "⚠️ THE DEFECT THE OBVIOUS FIX WOULD HAVE SHIPPED: the date always omits the year, so the 3 LIVE markets measured resolving in 2027 show a bare '10 Feb' beside a 170-DAYS cell — the arithmetic item #6 exists to remove",
+    why: "⚠️ THE DEFECT THE OBVIOUS FIX WOULD HAVE SHIPPED: the date always omits the year, so the 7 LIVE markets measured resolving in a later platform-clock year show a bare '10 Feb' beside a 170-DAYS cell — the arithmetic item #6 exists to remove",
     file: UTILS,
     suite: "timer-date",
     from: `  return sameZonedYear(iso, now) ? formatDayTime(iso) : formatDateTime(iso);`,

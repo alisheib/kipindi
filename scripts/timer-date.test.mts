@@ -6,10 +6,13 @@
  * only one of them is obvious:
  *
  *  1. the date is missing, or is not the instant the clock counts to;
- *  2. the date is AMBIGUOUS. ⚠️ MEASURED ON PRODUCTION 2026-08-25: **3 of 49 LIVE
- *     markets resolve in 2027**, the furthest 170 days out. A bare "10 Feb" beside a
- *     three-digit DAYS cell is the arithmetic item #6 exists to remove. So the year
- *     appears exactly when the deadline leaves the reader's own year.
+ *  2. the date is AMBIGUOUS. ⚠️ MEASURED ON PRODUCTION 2026-08-25: **7 of 51 LIVE
+ *     markets resolve in a later year on the platform clock**, the furthest 170 days
+ *     out. A bare "10 Feb" beside a three-digit DAYS cell is the arithmetic item #6
+ *     exists to remove. So the year appears exactly when the deadline leaves the
+ *     reader's own year. ⚠️ The first census said 3 of 49 and undercounted the four
+ *     markets ON the boundary — see the note on `formatDeadline`; the census had made
+ *     the very zone error the function prevents.
  *
  * ⛔ WHY THE RULE IS A PURE EXPORTED FUNCTION. `SESSION-PROMPT-CLOSE-THE-BOARD.md`
  * §1b: a decision that lives inside a render is a decision nothing can drive. The
@@ -96,6 +99,13 @@ ok("1: the platform zone resolves to a real IANA zone", /^[A-Za-z]+\/[A-Za-z_]+$
   const countdown = read("../src/components/markets/countdown.tsx");
   ok("3: Countdown accepts the absolute date as a prop", /\bat\??\s*:\s*string/.test(countdown));
   ok("3: and renders it", /\{at\}/.test(countdown));
+  // ⭐ AND RENDERS IT AS A <time> CARRYING THE INSTANT THE CLOCK COUNTS TO. Without
+  // `dateTime={to}` a live driver can only assert "a date is present"; with it, the
+  // driver can assert the date names the RIGHT deadline — which is the one thing a
+  // human reading the page cannot check.
+  ok("3: the date is a <time> whose dateTime is the countdown's own target",
+     /<time[^>]*\bdateTime=\{to\}/.test(countdown));
+  ok("3: and it is addressable by a live driver", /data-testid="timer-date"/.test(countdown));
   // ⛔ It must NOT format for itself: it is a client component and the platform zone
   // is a server fact. A local toLocaleString here IS the three-hour-slip defect.
   ok("3: Countdown derives no format of its own",
