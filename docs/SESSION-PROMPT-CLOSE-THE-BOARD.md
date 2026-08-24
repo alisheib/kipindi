@@ -1,4 +1,14 @@
-STATUS: 🔵 **LIVE** — the commission that closes every item left open on 2026-08-24 (session 60).
+STATUS: 🟡 **SUPERSEDED 2026-08-25 by `SESSION-PROMPT-FINISH-THE-BOARD.md`** — go there.
+Unit A (E-200) shipped and Unit E was ruled closed; every other unit is carried forward
+there with its state RE-DERIVED rather than copied, plus two dated watches (E-195, E-201)
+and Unit B's precondition measured and unblocked.
+
+⛔ **This file is NOT dead and must not be deleted: it remains the ONE HOME of the §1b
+standards**, which the newer commission deliberately points at rather than restates — a
+second copy of the standards is the duplication those standards forbid, and the copy
+would rot first. Read §1b here; take the work list from there.
+
+STATUS (historical): 🔵 the commission that closed every item left open on 2026-08-24 (session 60).
 Written by the session that opened them, for the session that finishes them.
 
 # CLOSE THE BOARD — the six that are left, and nothing skipped

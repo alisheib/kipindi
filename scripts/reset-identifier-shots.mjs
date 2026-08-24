@@ -94,13 +94,22 @@ for (const locale of LOCALES) {
 
   // ── the TWO confirmations must differ ───────────────────────────────────
   await page.setViewportSize({ width: 393, height: 900 });
-  await page.goto(`${BASE}/auth/forgot-password?sent=1&identifier=712345678`, { waitUntil: "domcontentloaded" });
-  const byPhone = (await page.locator('[role="status"]').innerText().catch(() => "")).trim();
-  await page.screenshot({ path: `${SHOTS}/reset-${locale}-sent-phone.png` });
-
-  await page.goto(`${BASE}/auth/forgot-password?sent=1&identifier=a%40b.tz`, { waitUntil: "domcontentloaded" });
-  const byEmail = (await page.locator('[role="status"]').innerText().catch(() => "")).trim();
-  await page.screenshot({ path: `${SHOTS}/reset-${locale}-sent-email.png` });
+  // ⚠️ WAIT FOR THE PANEL, don't just wait for the document. Against production
+  // `domcontentloaded` returns while the route's loading skeleton is still on
+  // screen, so the read came back EMPTY and the frame was a spinner — reported
+  // once as "[sw] the phone confirmation is present" FAILED, which looked like a
+  // missing Swahili string and was a slow network. `.catch(() => "")` on the read
+  // is what would have turned that into a silent pass, so the wait is the fix and
+  // the empty-string guard below stays as the backstop.
+  const sentText = async (qs, shot) => {
+    await page.goto(`${BASE}/auth/forgot-password?sent=1&identifier=${qs}`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector('[role="status"]', { timeout: 30000 });
+    const txt = (await page.locator('[role="status"]').innerText()).trim();
+    await page.screenshot({ path: `${SHOTS}/${shot}` });
+    return txt;
+  };
+  const byPhone = await sentText("712345678", `reset-${locale}-sent-phone.png`);
+  const byEmail = await sentText("a%40b.tz", `reset-${locale}-sent-email.png`);
 
   ok(`[${locale}] the phone confirmation is present`, byPhone.length > 0);
   ok(`[${locale}] the email confirmation is present`, byEmail.length > 0);
