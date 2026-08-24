@@ -33,10 +33,31 @@ Delete any imported A/AAAA records (they point at the Apache parking). Add:
 | TXT   | `_railway-verify`     | `railway-verify=5a2ae218422d38d9c358ffaa0e6e559cb1244d1daebe2e8af197a05b461cdd13`   | —     |
 | TXT   | `_railway-verify.www` | `railway-verify=b159edaa5b8003bc7267e79f780838a320f9d186ad733a1aa3d049d10bf2306c`   | —     |
 
+> 🔴 **CORRECTION, 2026-08-24 — THE TWO CNAME TARGETS ABOVE ARE DEAD.** That table is a true
+> record of 2026-07-16 and a false instruction today. On 2026-07-18 both custom domains were
+> deleted and re-added to break a stuck Railway verification, and Railway issued **new** CNAME
+> targets (`LIVE-HOSTING-STATUS.md` → DOMAIN CUTOVER). Rebuilding the zone from those rows
+> would point the site at hostnames that no longer serve it.
+>
+> **What the Cloudflare API returns today, read 2026-08-24:**
+>
+> | Type | Name | Content | Proxy |
+> |---|---|---|---|
+> | CNAME | `50pick.tz` | `ggze9tup.up.railway.app` | DNS only (grey) |
+> | CNAME | `www.50pick.tz` | `3hwa21jh.up.railway.app` | **Proxied (orange)** — flipped 2026-08-24, SSL/TLS `Full (strict)` |
+>
+> The two `_railway-verify` TXT values were **unchanged** by the re-add, so those rows still
+> stand. ⛔ Do not repair this by editing the historical table — re-read the zone before
+> rebuilding anything: `GET /zones/{zone}/dns_records`, zone `99ca5dd0799461d35c6297f34d1e04d1`.
+
 ⚠️ Each hostname has its OWN Railway target — do NOT point both at
 `kipindi-production.up.railway.app` (the old Step 4 table below is superseded).
 The two TXT records are Railway's domain verification — without them the domains
 stay `Verified: no` and certificates stay stuck in ISSUING.
+
+⛔ **"Grey-cloud first" (§ below) is still right for a REBUILD** — Railway cannot verify a
+domain or issue its certificate through the proxy. Proxy only after `Verified: yes` and a valid
+cert, and set SSL/TLS to `Full (strict)` before you do.
 
 ### C2. ⚠️ CARRY OVER THE MAIL RECORDS — or ali.sheib@50pick.tz + Postmark BREAK
 

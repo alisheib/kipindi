@@ -373,6 +373,7 @@
     "test:dead-css": "tsx scripts/dead-css.test.mts",
     "qa:bundle-css": "node scripts/bundle-css-probe.mjs",
     "qa:calm": "node scripts/live-calm-probe.mjs",
+    "qa:sse-edge": "node scripts/live/sse-edge-probe.mjs",
     "qa:sweep": "node scripts/live-s29-sweep.mjs",
     "qa:win-popup": "node scripts/live-s31-win-popup.mjs",
     "qa:material-probe": "node scripts/live-material-probe.mjs",

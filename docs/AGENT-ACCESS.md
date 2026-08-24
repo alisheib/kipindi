@@ -217,7 +217,7 @@ What *is* known, enough to confirm you are in the right account:
 |---|---|
 | Cloudflare account ID | `e6e5f86245721a28fea6fe1170feba12` (visible in the dashboard URL) |
 | Assigned nameservers | `ollie.ns.cloudflare.com` / `yadiel.ns.cloudflare.com` |
-| Zone | `50pick.tz` — 31 records, 0 proxied, mail records carried over from Netpoa |
+| Zone | `50pick.tz` — 31 records, **1 proxied since 2026-08-24** (`www` only; the apex and every mail record are still DNS-only). SSL/TLS mode `Full (strict)`. Zone id `99ca5dd0799461d35c6297f34d1e04d1`. Mail records carried over from Netpoa. See `LIVE-HOSTING-STATUS.md` → EDGE POSTURE |
 | R2 buckets | `50pick-kyc` (WEUR) exists; `50pick-backups` **does not** |
 | Login email | ❌ **unknown — fill this in** |
 

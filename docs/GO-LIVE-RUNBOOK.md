@@ -20,8 +20,9 @@
   account `alisheib07@gmail.com`. Every push to `main` = a LIVE deploy
   (`prisma migrate deploy && … && next start`).
 - **DNS:** Cloudflare (Free plan), account `Ali.sheib@50pick.tz's Account`
-  (`e6e5f86245721a28fea6fe1170feba12`). Grey-cloud (DNS-only) at launch; proxy/WAF is a
-  post-launch flip.
+  (`e6e5f86245721a28fea6fe1170feba12`). Grey-cloud (DNS-only) at launch; the proxy/WAF flip was
+  the post-launch step and **`www` was flipped 2026-08-24** (SSL/TLS `Full (strict)` first).
+  The apex is still DNS-only on purpose, and the mail records must stay that way — see §3.
 - **Domain registrar:** Netpoa (`netpoa.com`), owner contact "Ocean Entertainment Limited /
   Jaykishan Kaba". Domain registered 2026-05-05, renews 2027-05-05.
 - **Mailbox email:** cPanel hosting at **`157.180.76.142`** (mailbox `ali.sheib@50pick.tz`,
@@ -100,7 +101,11 @@ Railway (Railway needs a CNAME at the apex, which only Cloudflare's CNAME-flatte
 ## 3. Final Cloudflare DNS zone (authoritative — rebuild from this if ever lost)
 
 **Nameservers (set at Netpoa):** `ollie.ns.cloudflare.com` · `yadiel.ns.cloudflare.com`
-**All records grey-cloud / DNS-only until post-launch.**
+**Proxy state, current as of 2026-08-24:** every record is grey-cloud / DNS-only **except
+`www`**, which was flipped to orange-cloud (Proxied) on 2026-08-24 with SSL/TLS at
+`Full (strict)`. ⛔ If you rebuild this zone from the table below, `www` must be re-proxied
+afterwards, and ⛔ **every mail record must stay grey** — proxying those breaks email (§ the
+2026-07-16 incident above).
 
 ### Web → Railway
 | Type | Name | Value |

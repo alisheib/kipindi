@@ -119,7 +119,16 @@ console.log("\n[B] Date field — clipping, typing order, validation, junk");
   await page.goto(BASE + "/auth/register", { waitUntil: "domcontentloaded" });
   const day = page.getByLabel("Day"); await day.waitFor({ state: "visible" }); await page.waitForTimeout(400);
   const clr = async () => { for (const l of ["Day", "Month", "Year"]) { await page.getByLabel(l).click(); await page.keyboard.press("Control+A"); await page.keyboard.press("Backspace"); } };
-  const hidden = () => page.locator('input[type=hidden][name=dob]').inputValue();
+  // ⛔ NOT `input[type=hidden][name=dob]`. It was, from 2026-06-11 until 2026-08-24, and from
+  // 2026-08-21 it matched NOTHING: `DateSelect`'s mirror stopped being a hidden input in
+  // b1628478, deliberately. A hidden input is BARRED from constraint validation, so its
+  // `required` was inert and registration submitted with an empty date of birth. The mirror is
+  // now a focusable text input made invisible with opacity — read the long comment in
+  // src/components/ui/date-select.tsx before narrowing this selector again.
+  // ⚠️ The SELECTOR went stale, not the assertion — the value checked below is unchanged.
+  // For three days this crashed the gauntlet at section [B], so C onward never ran at all,
+  // and `predeploy` ends with `qa:live`. A harness that dies mid-run reads as "not green yet".
+  const hidden = () => page.locator('input[name=dob]').inputValue();
 
   // Hydration-robust: the hidden dob only updates once React has attached its
   // onChange (a slow prod cold-start can otherwise accept keystrokes into the
