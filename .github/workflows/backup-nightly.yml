@@ -33,6 +33,18 @@ jobs:
       # service container is simpler and is thrown away with the runner. It must match
       # production's major version — a restore is only evidence if it happens on the
       # version that would actually be recovering.
+      #
+      # 🔴 `--shm-size=1g` IS LOAD-BEARING, AND ITS ABSENCE KILLED SEVEN NIGHTLY RUNS
+      # (2026-08-14 → 2026-08-20). Docker gives a container 64 MB of /dev/shm by default,
+      # and Postgres puts parallel-query and large sort segments there. The verify step
+      # restores the whole production database and re-runs the trial balance over it, which
+      # asked for a 70,190,496-byte segment and died with
+      #   `could not resize shared memory segment "/PostgreSQL.849538176" ... No space left
+      #    on device`
+      # ⚠️ THAT MESSAGE NAMES A DISK AND MEANS SHARED MEMORY. The runner had plenty of disk;
+      # it was 64 MB of /dev/shm against a 67 MB request. The failure also grows with the
+      # database, so it arrived on its own one night with nothing changed — which is why it
+      # was read as flakiness rather than as a fixed, findable cause.
       postgres:
         image: postgres:18
         env:
@@ -41,6 +53,7 @@ jobs:
         ports:
           - 5433:5432
         options: >-
+          --shm-size=1g
           --health-cmd "pg_isready -U postgres"
           --health-interval 5s
           --health-timeout 5s

@@ -37,7 +37,7 @@ import {
   ident,
   maskUrl,
   isSealed,
-  orderUndeclared,
+  orderAllTables,
   sealBackup,
   openBackup,
 } from "../src/lib/server/backup/core.ts";
@@ -181,6 +181,7 @@ ok("an unparseable timestamp is treated as stale, never ok",
 console.log("\n── 7 · Only the verifier may record health ─────────────────────");
 
 const backup = readFileSync(new URL("./db-backup.mts", import.meta.url), "utf8");
+const { decomment } = await import("./lib/decomment.mts");
 const verify = readFileSync(new URL("./db-verify-backup.mts", import.meta.url), "utf8");
 const restore = readFileSync(new URL("./db-restore.mts", import.meta.url), "utf8");
 
@@ -313,33 +314,75 @@ console.log("\n── 12b · A database ahead of the schema is still backed up �
 // Undeclared tables are now dumped by introspection and named in the manifest. The rule
 // was never "only declared tables"; it was "never omit data silently".
 const noEdges: Array<{ child: string; parent: string }> = [];
-const plainCase = orderUndeclared(["UpDownProposal"], noEdges);
+const plainCase = orderAllTables([], ["UpDownProposal"], noEdges);
 ok("an undeclared table is placed, not refused",
-  plainCase.order?.length === 1 && plainCase.order[0] === "UpDownProposal",
+  plainCase.length === 1 && plainCase[0] === "UpDownProposal",
   "refusing to dump a table you can read and enumerate protects nothing");
 
-const twoCase = orderUndeclared(["Child", "Parent"], [{ child: "Child", parent: "Parent" }]);
+const twoCase = orderAllTables([], ["Child", "Parent"], [{ child: "Child", parent: "Parent" }]);
 ok("undeclared parents are ordered before their children",
-  (twoCase.order ?? []).indexOf("Parent") < (twoCase.order ?? []).indexOf("Child"),
+  twoCase.indexOf("Parent") < twoCase.indexOf("Child"),
   "a plain INSERT replay has to satisfy FKs without deferring them");
 // ⚠️ indexOf(a) < indexOf(b) is TRUE when a is missing (-1). Assert both are present, or
 // this passes for an order that dropped one of them entirely.
-ok("…and both are actually present", (twoCase.order ?? []).length === 2, (twoCase.order ?? []).join(", "));
+ok("…and both are actually present", twoCase.length === 2, twoCase.join(", "));
 
-const blocked = orderUndeclared(["Ghost"], [{ child: "Wallet", parent: "Ghost" }]);
-ok("🔴 a DECLARED table with an FK into an undeclared one still aborts",
-  (blocked.blocking ?? []).length === 1,
-  "the parent must be inserted first and undeclared tables are dumped last — no append order fixes it");
-ok("…and the blocking edge is named", blocked.blocking?.[0]?.parent === "Ghost");
+// ⛔ GATE INVERTED 2026-08-25, NOT DELETED. This case used to assert that a DECLARED table
+// holding an FK into an UNDECLARED one ABORTS the dump. That was true of the old
+// `[...declared, ...undeclared]` assembly and it is the reason the nightly backup died for
+// four nights on `Session → Device` — a table the F-05 expand step deliberately left in
+// place. The ordering constraint belongs to the FK graph, not to which branch declares
+// what, so the case must now ORDER rather than refuse.
+const wasBlocked = orderAllTables(["Wallet"], ["Ghost"], [{ child: "Wallet", parent: "Ghost" }]);
+ok("🔴 a DECLARED table with an FK into an undeclared one is ORDERED, not refused",
+  wasBlocked.indexOf("Ghost") < wasBlocked.indexOf("Wallet") && wasBlocked.length === 2,
+  wasBlocked.join(" → "));
 
-const selfRef = orderUndeclared(["Loop"], [{ child: "Loop", parent: "Loop" }]);
+// ⭐ THE REGRESSION ITSELF, with the real names. Every nightly run from 2026-08-21 to
+// 2026-08-24 aborted here.
+const sessionDevice = orderAllTables(
+  ["User", "Session"], ["Device"],
+  [{ child: "Session", parent: "Device" }, { child: "Session", parent: "User" }],
+);
+ok("🔴 Session → Device orders instead of aborting (the four dead nights)",
+  sessionDevice.indexOf("Device") < sessionDevice.indexOf("Session"),
+  sessionDevice.join(" → "));
+ok("…and every table is still in the dump", sessionDevice.length === 3, sessionDevice.join(", "));
+
+// ⭐ AND THE DECLARED ORDER IS NOT DISTURBED WHERE NOTHING FORCES IT. A backup that
+// reorders itself between two identical databases is impossible to diff, so this is a
+// property worth pinning rather than a nicety.
+// ⚠️ DELIBERATELY NOT IN ALPHABETICAL ORDER. The first draft of this fixture was
+// ["A","B","C","D"], and `red:backup-order` proved the assertion could not fail: sorting
+// an already-sorted list changes nothing, so a mutation that re-sorts the declared tables
+// passed straight through it. A fixture that cannot distinguish the correct answer from
+// the wrong one is not a fixture.
+const declaredOnly = ["D", "A", "C", "B"];
+ok("the declared order survives byte-for-byte when nothing undeclared intrudes",
+  orderAllTables(declaredOnly, [], []).join(",") === declaredOnly.join(","),
+  orderAllTables(declaredOnly, [], []).join(","));
+const oneIntruder = orderAllTables(declaredOnly, ["Zed"], [{ child: "C", parent: "Zed" }]);
+ok("…and an undeclared parent lands just before the table that needs it, not at the end",
+  oneIntruder.join(",") === "D,A,Zed,C,B", oneIntruder.join(","));
+
+const selfRef = orderAllTables([], ["Loop"], [{ child: "Loop", parent: "Loop" }]);
 ok("a self-referencing undeclared table does not hang or vanish",
-  selfRef.order?.length === 1,
+  selfRef.length === 1,
   "row order inside a table is already fixed by the dump's own ORDER BY");
 
-ok("db:backup dumps undeclared tables after the declared ones",
-  /\[\.\.\.known, \.\.\.undeclared, "_prisma_migrations"\]/.test(backup),
-  "declared parents first, then introspected tables, then Prisma's bookkeeping");
+const cycle = orderAllTables(["P", "Q"], [], [{ child: "P", parent: "Q" }, { child: "Q", parent: "P" }]);
+ok("a true cycle still emits both tables rather than withholding the dump",
+  cycle.length === 2, `${cycle.join(", ")} — refusing would leave the operator with nothing at all`);
+
+// ⚠️ DECOMMENTED FOR THIS ONE CHECK. The rule is about CODE, and the code's own comment
+// names the old assembly in order to explain why it is gone — so a raw-source `!test`
+// fails on the explanation rather than on the thing. That is not a hypothetical: it went
+// red exactly that way while being written.
+const backupCode = decomment(backup);
+ok("db:backup orders the whole graph rather than appending undeclared tables",
+  /orderAllTables\(known, undeclared, fkEdges\)/.test(backupCode) &&
+  !/\[\.\.\.known, \.\.\.undeclared/.test(backupCode),
+  "the append assumption is what turned a deliberate expand-step into an outage");
 ok("db:backup records them in the manifest", /undeclaredTables: undeclared/.test(backup),
   "a table dumped by introspection has to be visible as such to whoever restores it");
 

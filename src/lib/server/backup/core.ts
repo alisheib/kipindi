@@ -289,33 +289,66 @@ export const NON_ASCII_FINGERPRINT_SQL = `
 export type FkEdge = { child: string; parent: string };
 
 /**
- * Where to dump tables the schema does not declare, or why they cannot be dumped.
+ * THE FULL DUMP ORDER — declared and undeclared tables together, over the REAL foreign-key
+ * graph Postgres reports.
  *
- * Declared tables are written first, in `tableOrder()`. Undeclared ones are appended,
- * which is safe unless a DECLARED table holds a foreign key INTO an undeclared one — the
- * parent would then be inserted after its child and the replay would fail. That case is
- * reported instead of ordered, because no append position fixes it.
+ * 🔴 WHY THIS REPLACED `orderUndeclared`, 2026-08-25. That function sorted the UNDECLARED
+ * tables among themselves and then had to REFUSE whenever a DECLARED table held a foreign
+ * key into an undeclared one — because the dump was assembled as `[...declared,
+ * ...undeclared]`, so the parent would be inserted after its child and the replay would
+ * fail. The refusal was correct about the ordering it was given. It was the ordering that
+ * was wrong.
+ *
+ * ⛔ AND IT TOOK THE NIGHTLY BACKUP DOWN FOR FOUR NIGHTS. On 2026-08-21 the F-05 expand
+ * step removed `Device` from `prisma/schema.prisma` and deliberately LEFT the table on
+ * production — the correct expand/contract order — but `Session` still holds
+ * `Session_deviceId_fkey` into it. Every run from 2026-08-21 to 2026-08-24 aborted with
+ * `Session → Device`, and the platform went eleven nights with no verified backup (the
+ * first seven were a different cause, a CI `/dev/shm` exhaustion). **A guard that refuses
+ * because of an assumption it makes itself is a guard reporting its own limitation as the
+ * product's defect.**
+ *
+ * ⭐ THE ORDERING CONSTRAINT IS A PROPERTY OF THE FK GRAPH, NOT OF WHICH BRANCH DECLARES
+ * WHAT. So the whole set is sorted at once and the refusal disappears — there is no
+ * remaining case where a dump has to be withheld.
+ *
+ * ⚠️ IT PRESERVES `tableOrder()` EXACTLY where nothing forces a change. `declared` is
+ * visited in its own order and its declared parents are already emitted by construction,
+ * so the declared subsequence comes out byte-identical; an undeclared parent is emitted
+ * JUST BEFORE the first declared table that needs it, and an undeclared table nothing
+ * references is appended at the end, sorted. That is deliberate: a backup that reorders
+ * itself between two identical databases is impossible to diff.
+ *
+ * A true cycle emits anyway and lets the restore be the judge — the same choice
+ * `tableOrder()` documents, for the same reason: refusing to dump would leave the
+ * operator with nothing at all, which is strictly worse than a dump that may need a
+ * deferred constraint.
  *
  * Extracted from `db-backup.mts` so `test:backup` can drive it. The version of this logic
  * that lived inline was a bare `if (unknown.length) fail(...)`, and it took a real drill
  * against production to find out what that cost.
  */
-export function orderUndeclared(
-  unknown: string[],
+export function orderAllTables(
+  declared: readonly string[],
+  undeclared: readonly string[],
   edges: readonly FkEdge[],
-): { order: string[]; blocking?: undefined } | { blocking: FkEdge[]; order?: undefined } {
-  const unknownSet = new Set(unknown);
-
-  const blocking = edges.filter((e) => !unknownSet.has(e.child) && unknownSet.has(e.parent));
-  if (blocking.length) return { blocking };
-
-  const parentsOf = new Map<string, Set<string>>(unknown.map((t) => [t, new Set<string>()]));
+): string[] {
+  const all = new Set<string>([...declared, ...undeclared]);
+  const parentsOf = new Map<string, Set<string>>();
+  for (const t of all) parentsOf.set(t, new Set<string>());
   for (const e of edges) {
     // A self-reference depends on itself; row order within a table is already fixed by
     // the dump's own ORDER BY, so that edge is dropped exactly as tableOrder() drops it.
-    if (unknownSet.has(e.child) && unknownSet.has(e.parent) && e.child !== e.parent) {
-      parentsOf.get(e.child)!.add(e.parent);
-    }
+    // ⚠️ DEFENCE-IN-DEPTH, NOT LOAD-BEARING, and this is measured rather than assumed:
+    // `red:backup-order` mutated this line to `if (false)` and the gate stayed GREEN,
+    // because `visit()` already refuses a node that is `onStack`, which absorbs a self-edge
+    // and emits the table exactly once either way. The line stays because it says what it
+    // means at the point the edge is read; the mutation was DELETED rather than kept as a
+    // permanent NOT CAUGHT (see the note at the foot of the anchors sidecar).
+    if (e.child === e.parent) continue;
+    // An edge touching a table this dump does not carry cannot constrain its order.
+    if (!all.has(e.child) || !all.has(e.parent)) continue;
+    parentsOf.get(e.child)!.add(e.parent);
   }
 
   const order: string[] = [];
@@ -329,9 +362,11 @@ export function orderUndeclared(
     done.add(t);
     order.push(t);
   };
-  // Sorted first so two dumps of the same database order themselves identically.
-  for (const t of [...unknown].sort()) visit(t);
-  return { order };
+  // Declared first, in tableOrder()'s order, so that order survives untouched. Then the
+  // undeclared leftovers, sorted, so two dumps of one database agree.
+  for (const t of declared) visit(t);
+  for (const t of [...undeclared].sort()) visit(t);
+  return order;
 }
 
 /* ── DDL fragments Prisma owns but no migration creates ──────────────────── */

@@ -49,6 +49,62 @@ R2 credentials, so anything that reads it gets both the key and the bucket. The 
 was a key on one laptop, where losing the laptop loses every backup. Put a copy in a password
 manager too — that is the version with no single point of failure.
 
+## 🔴 THE ELEVEN NIGHTS — found 2026-08-25, and the part that matters is not the bugs
+
+**The nightly failed on eleven consecutive nights (2026-08-14 → 2026-08-24). The last
+verified, restorable artifact was 2026-08-13 — 11.8 days old, on a licensed real-money
+platform.** Two unrelated causes wearing the same red X:
+
+| Nights | Cause | Fix |
+|---|---|---|
+| 2026-08-14 → 08-20 (7) | `could not resize shared memory segment "/PostgreSQL.849538176" to 70190496 bytes: **No space left on device**` in the VERIFY step | `--shm-size=1g` on the CI Postgres service. Docker gives a container **64 MB** of `/dev/shm`; the restore asked for **67 MB**. ⚠️ **The message names a disk and means shared memory** — the runner had plenty of disk. It also grows with the database, so it arrived one night with nothing changed, which is why it read as flakiness rather than as a fixed, findable cause. |
+| 2026-08-21 → 08-24 (4) | `ABORT — 1 declared table(s) hold a foreign key into a table this branch's schema does not declare: **Session → Device**` | `orderAllTables` — the dump is now ordered over the whole FK graph. See below. |
+
+⭐ **`db:backup` WAS RIGHT TO REFUSE, GIVEN THE ORDER IT WAS GIVEN.** On 2026-08-21 the F-05
+expand step (`49398191`) removed `Device` from `prisma/schema.prisma` and deliberately left
+the table on production — the correct expand/contract order — but `Session` still holds
+`Session_deviceId_fkey` into it. The dump was assembled as `[...declared, ...undeclared]`,
+so the parent would have been inserted after its child and the artifact would not replay.
+**The refusal was correct about the ordering. It was the ordering that was wrong** — the
+constraint belongs to the foreign-key graph, not to which branch declares what. The whole
+set is now sorted at once, `tableOrder()` is preserved exactly where nothing forces a
+change, and an undeclared parent is emitted just before the first declared table that needs
+it. There is no remaining case where a dump has to be withheld.
+
+⛔ **THE REAL DEFECT IS THAT NOBODY WAS TOLD, AND IT IS NOT THAT THE ALARM WAS BROKEN.**
+`/admin/compliance` had been showing the amber **stale** state for ten of those days,
+exactly as `BACKUP_STALE_AFTER_MS` (36 h) intends. The alarm was correct and nobody was
+looking at it — a different failure, needing a different instrument: one you **run**, like
+`census.cjs`, rather than one that waits to be noticed.
+
+```
+npm run ops:backup-status      # exits NON-ZERO when the last verified backup is stale
+```
+
+It reports the last recorded run, its age against the product's own staleness window, and
+the source warnings the manifest carries. ⛔ **It writes nothing.** In particular it does
+**not** record a failure into `__BACKUP_LAST_RUN__`: that row holds the last GOOD run, and
+overwriting it with a failure would destroy the single most useful fact in an incident —
+the date of the newest artifact known to restore. *A status tool that erases the status is
+not a status tool.*
+
+⚠️ **This file predicted it, for the other cause.** *"On the schedule there is no human
+watching at 00:15 UTC. It would have failed in four seconds, every night, looking exactly
+like a transient network blip in a log nobody reads."* That paragraph was written about
+`ENOTFOUND postgres.railway.internal` in July. **The prediction was right and the cause was
+a different one**, which is the argument for a run-it-yourself check rather than for
+guessing the next cause.
+
+⚠️ **And the manifest has carried `the SOURCE's audit chain has a broken link` since at
+least 2026-08-13.** That is a statement about the DATABASE, not the artifact — a faithful
+copy of an unhealthy database is a GOOD backup and a BAD situation. It is **not** part of
+this repair and is **not** closed; it is named here so it is not mistaken for fallout.
+
+**Guards:** `test:backup` **117/0** (the case asserting the old ABORT was **inverted, not
+deleted**) · `red:backup-order` **4/4 caught, 0 missed**, anchors declared as data.
+
+---
+
 ## The four commands
 
 | Command | Does | Safe? |

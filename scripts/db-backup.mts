@@ -66,7 +66,7 @@ import {
   isLocalHost,
   lit,
   maskUrl,
-  orderUndeclared,
+  orderAllTables,
   sealBackup,
   sequenceResetSql,
   tableOrder,
@@ -184,6 +184,8 @@ async function main(): Promise<void> {
   // silently", and refusing to dump a table you can read and enumerate does not serve
   // it. They are dumped by introspection, counted in the manifest, and named loudly.
   const undeclared: string[] = [];
+  /** Live FK edges, read only when there is something undeclared whose place they decide. */
+  let fkEdges: { child: string; parent: string }[] = [];
   if (unknown.length) {
     // Foreign keys among the live tables, from Postgres rather than from the schema —
     // the schema cannot describe a table it does not know about.
@@ -197,21 +199,13 @@ async function main(): Promise<void> {
     const strip = (s: string): string => s.replace(/^public\./, "").replace(/"/g, "");
     const edges = fkRows.map((r) => ({ child: strip(r.child), parent: strip(r.parent) }));
 
-    // 🔴 THE ONE CASE THAT STILL CANNOT BE WRITTEN. A declared table whose FK points at
-    // an undeclared one must be inserted AFTER it, but declared tables are dumped first.
-    // No append order fixes that, so the model genuinely has to be declared.
-    const placed = orderUndeclared(unknown, edges);
-    if (placed.blocking) {
-      fail(
-        `ABORT — ${placed.blocking.length} declared table(s) hold a foreign key into a table this\n` +
-          `   branch's schema does not declare:\n` +
-          placed.blocking.map((e) => `     - ${e.child} → ${e.parent}`).join("\n") +
-          `\n\n   The parent has to be inserted first, and undeclared tables are dumped last, so\n` +
-          `   this dump would not replay. Add the model to prisma/schema.prisma (or check out\n` +
-          `   the branch that declares it) and re-run.`,
-      );
-    }
-    undeclared.push(...placed.order);
+    // ⭐ THE ORDER IS COMPUTED OVER THE WHOLE GRAPH, so a declared table whose FK points
+    // at an undeclared one is no longer a refusal — the undeclared parent is simply
+    // emitted before it. See `orderAllTables`. This used to ABORT, and that abort took
+    // the nightly backup down for four nights over `Session → Device`, a table the F-05
+    // expand step had deliberately left in place.
+    undeclared.push(...unknown);
+    fkEdges = edges;
 
     console.warn(
       `\n   ⚠️  ${undeclared.length} table(s) exist in this DATABASE but not in this branch's\n` +
@@ -444,10 +438,15 @@ async function main(): Promise<void> {
   const tables: Record<string, number> = {};
   let totalRows = 0;
 
-  // Declared tables first (parents before children), then any undeclared ones, then
-  // Prisma's own bookkeeping. `_prisma_migrations` stays last: it has no foreign keys
-  // and putting it after the data keeps the restore's failure modes in one place.
-  for (const table of [...known, ...undeclared, "_prisma_migrations"]) {
+  // ⭐ ONE ORDER OVER THE WHOLE GRAPH — parents before children whether or not this
+  // branch's schema declares them. It preserves `tableOrder()` exactly where nothing
+  // forces a change, and slots an undeclared parent in just before the first declared
+  // table that needs it. ⛔ It is NOT `[...known, ...undeclared]` any more: that
+  // assumption is what made `Session → Device` an abort rather than an ordering.
+  // `_prisma_migrations` stays last: it has no foreign keys and putting it after the
+  // data keeps the restore's failure modes in one place.
+  const dumpOrder = orderAllTables(known, undeclared, fkEdges);
+  for (const table of [...dumpOrder, "_prisma_migrations"]) {
     if (!liveTables.includes(table)) continue;
 
     const cols = await q<{ column_name: string }[]>(
