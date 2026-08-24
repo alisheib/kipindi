@@ -158,7 +158,15 @@ check this card first.</div>
 <h3>Step 4 · Create the chain <span class="who">Trading</span></h3>
 <div class="path">Up &amp; Down → Overview → <strong>Chains</strong> card → “+ Add chain”</div>
 <ul>
-  <li><strong>Asset</strong> and <strong>Duration</strong> — 5, 15 or 30 minutes.</li>
+  <li><strong>Asset</strong> and <strong>Duration</strong> — <strong>3, 5, 10, 15, 30 or 60 minutes</strong>.
+      <em>Corrected 2026-08-24: this said “5, 15 or 30”, which is half the list. The real one is
+      <code>ALLOWED_DURATIONS</code> in <code>src/lib/updown-durations.ts</code>, and an operator
+      following the old sentence would not have known that 3, 10 and 60 exist — 3 and 10 are
+      running on production today.</em>
+      ⛔ <strong>The form greys the ones this asset cannot support</strong>, from that asset’s own
+      measured record, and the server refuses the same pairings — so a greyed option is a
+      measurement, not a preference. If a duration you expect is unavailable, read the note
+      beside it rather than working around it.</li>
   <li><strong>Margin %</strong> — leave <em>blank</em>. Blank inherits the measured value for that
       asset class and duration, and the placeholder shows you what that is.</li>
   <li><strong>Min / max stake</strong> — blank inherits the platform defaults.</li>

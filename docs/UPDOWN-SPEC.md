@@ -27,9 +27,21 @@ evenly into 1440 — the minutes in a day — so every round starts on the same 
   final 20%, floored at 30s) had to ship in the same change: without it a player could bet against a
   price they can already watch moving.
 
-⚠️ **Chains no longer run back-to-back by default. They are MANUAL** — an operator presses
-**Generate round** (Ali's decision, 2026-08-04). The scheduler and Start/Stop still exist; nothing
-produces rounds unattended.
+🔴 **CORRECTED 2026-08-24. This paragraph said chains were MANUAL and that "nothing produces
+rounds unattended". Both halves are false, and the paragraph four lines below in this same file
+already said the opposite** — *"Chains regenerate themselves, so the product never runs dry"*.
+Two statements in one document, contradicting each other across four lines, on the question of
+whether this product runs by itself.
+
+**Measured on production 2026-08-24: 19 chains, 16 of them RUNNING and emitting rounds
+unattended.** The BTC/USD 3-minute chain alone has produced **2,520 rounds**. `Generate round`
+exists and an operator can still use it; it is not how rounds are normally made.
+
+⚠️ **Where the 2026-08-04 decision still holds:** auto-generation is off **in DATA for the chains
+an operator has stopped** — three are STOPPED today (BTC 30m/60m, SOL 15m) and those genuinely
+produce nothing. That is a per-chain state, not a product-wide mode, and reading it as one is
+what put this sentence here. ⛔ **A chain's state is a fact about that chain; never quote it as a
+fact about the product.**
 
 Live assets: **BTC** and **ETH** ready · **XAU** (gold) ready at 15m+ · **SOL** enabled but never
 proven to pay · **BNB**, **SNP500** and a duplicate **GOLD** row disabled. The asset list is an
