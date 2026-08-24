@@ -45,7 +45,7 @@ file is worthless the moment it describes an intention as a fact.
 | **Maximum stake** | **TZS 1,000,000 — PER BET**, not per player per market | Both |
 | **Positions per market** | **Unlimited, either or both sides** | Both |
 | **Bonus wagering** | Only **one side** of a market counts toward a bonus requirement | Both |
-| Free cancellation | 5 minutes, full refund, then locked | Both |
+| Free cancellation | 5 minutes, full refund, then locked — **but only if the bet had 5 minutes of betting time still ahead of it when it was placed**, so it is **unreachable on Up & Down 3- and 5-minute rounds** (§2.6) | Long-form: yes · Up & Down: **10 minutes and longer only** |
 | Withdrawal fee | 1.5% of the amount withdrawn (0.5% of it is the gateway's) | Platform |
 | Failure messages | State the reason and the next step; severity must match — a fixable problem is a **warning**, not a red error | Whole player UI |
 
@@ -245,11 +245,49 @@ confirming, and may proceed** — it is a warning, not a refusal (see §2.9).
 | **Guarded by** | `npm run test:bonus-one-side` (22 checks) · `npm run red:bonus-one-side` (6/6, incl. both pre-fix sources verbatim AND three over-corrections) |
 | **Audited** | `bonus.wagering_skipped_opposite_side` on the suppressed stake · `bonus.wagering_reversed` on the cancellation |
 
-### 2.6 · Free cancellation — 5 minutes
+### 2.6 · Free cancellation — 5 minutes, and the two conditions this section used to omit
 
 Full refund inside 5 minutes of placing the bet; after that the position locks and rides to
 settlement. There is no paid-exit window (`paidExitWindowMinutes: 0`). Configured in
 `market.config` (`freeExitGraceMinutes`); enforced in `cashOutPosition`.
+
+🔴 **CORRECTED 2026-08-24 (`E-197`). This section stated ONE of the three conditions, and the
+table above said the right applied to "Both" products. `cashOutValue` requires all three:**
+
+```
+sellable = hadRunway && withinWindow && !bonusFunded
+```
+
+| | |
+|---|---|
+| **WINDOW** | you act within 5 minutes of placing — the only condition this section used to state |
+| **RUNWAY** | ⛔ **when you bet, at least 5 minutes of BETTING TIME still remained.** A last-moment bet never gets an exit. This is what stops an ending-soon market being sold at the wire, and it is a different rule from the window above |
+| **NOT BONUS-FUNDED** | a bonus-funded position is never sellable — cash-out pays into the real wallet, which would launder non-withdrawable bonus into withdrawable cash |
+
+⛔ **THE CONSEQUENCE, AND IT IS WHY THIS IS A CORRECTION RATHER THAN AN ADDITION: on Up & Down,
+RUNWAY makes free cancellation UNREACHABLE at 3 and 5 minutes — always, by construction.** A
+round's betting closes `durationMinutes` after its boundary, and the round does not exist until
+its opening price confirms. Measured on production 2026-08-24 over 9,320 confirmed readings, the
+**best confirmation ever observed** was boundary + 72.4s (median 91.3s), so the largest runway a
+bet can ever have is:
+
+| chain | best-case runway | needs | free cancellation |
+|---|---|---|---|
+| **3 min** | 180 − 72.4 = **107.6s** | 300s | ⛔ **never** |
+| **5 min** | 300 − 72.4 = **227.6s** | 300s | ⛔ **never** |
+| 10 min | 600 − 72.4 = 527.6s | 300s | ✅ if you bet in the first ~228s |
+| 15 / 30 / 60 min | comfortably over | 300s | ✅ |
+
+📊 **And production agrees: `CASHED_OUT` positions — long-form 5, Up & Down 0 of 688, ever.**
+
+⚠️ **This is not a defect in `cashOutValue`** — the RUNWAY rule is deliberate and correct, and
+`market-service.ts` says so in its own words: *"On a 5-minute Up & Down round under a 5-minute
+free-exit grace that is not an edge case — it is the ORDINARY branch."* **The defect was that
+this document, which calls itself the only statement of the money rules, promised a right on a
+product where it cannot be exercised.** Overstating what a player gets is the same failure class
+as overstating a control to the Gaming Board, which `BOARD-DISCLOSURE-B-E.md` exists to prevent.
+⛔ Anyone quoting the 5-minute cancellation to a player, an auditor or the Board must say which
+product and which round length.
 
 ### 2.7 · Withdrawal fee — 1.5%
 

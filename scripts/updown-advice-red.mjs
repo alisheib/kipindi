@@ -67,6 +67,30 @@ const MUTATIONS = [
     to: `    if (left >= MIN_BETTING_SECONDS) return d;`,
   },
   {
+    // ⭐ E-194 · THE CAUTION GOES SILENT ON THE CHAIN IT IS ABOUT. This is the defect exactly as
+    // it stood on production until 2026-08-24: the advice was computed, the advice was rendered
+    // on the ASSET row, and the CHAIN row said nothing — so both live 3-minute chains ran 1.3s
+    // over this engine's own caution line with nobody told.
+    name: "chain-caution-silenced — a chain shorter than its asset's advised minimum says nothing",
+    from: `  if (durationMinutes >= advisedMinDurationMinutes) return null;`,
+    to: `  if (durationMinutes >= 0) return null;`,
+  },
+  {
+    // ⛔ The other direction, and the one that would make it NOISE rather than a control: caution
+    // every chain, including the sound ones. A warning on a healthy 15m chain is how an operator
+    // learns to stop reading warnings.
+    name: "chain-caution-always-fires — a sound chain is cautioned too",
+    from: `  if (unmeasured) return null;`,
+    to: `  if (false) return null;`,
+  },
+  {
+    // ⚠️ The seconds-left figure re-derived by hand instead of through the round shape's own
+    // arithmetic — the mistake E-84 was, one function along. It reads plausibly and is 60s wrong.
+    name: "chain-caution-rederives-the-window — seconds-left computed by hand, off by the result phase",
+    from: `    bettingSecondsLeft: bettingSecondsAfterLag(durationMinutes, medianLagSeconds),`,
+    to: `    bettingSecondsLeft: durationMinutes * 60 + 60 - medianLagSeconds,`,
+  },
+  {
     name: "money-consequence-dropped — a flaky asset is refused with a bare percentage",
     from: `      \`\${h.assetKey} has produced a usable price in only \${okPct.toFixed(0)}% of \` +
       \`\${h.readings} readings here. Rounds on it will refund often, and a refunded round earns \` +

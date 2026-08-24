@@ -28,6 +28,32 @@ Order per §5.4: visual → redlines → contract → notes.
 - 360: single column, order price → pool → stake/result → proof
 - proof panel spans the full content width beneath the grid at every size
 
+> 🔴 **THE LIVE PAGE DIVERGES FROM THIS BLOCK IN ONE WAY, RECORDED 2026-08-24 (`E-193`).**
+> This file is **RECORD, not rule** — `DESIGN_AUTHORITY.md` §0 says no `spec.md` is needed to
+> build correctly and files the whole `design-system/` tree as record — but the round page cites
+> it by name in its own header, so a divergence has to be written down here or the next reader
+> is misled by a document the code points at.
+>
+> **The two-column rail now starts at `lg` (1024), not `xl` (1280).** Measured on production
+> from the frames of a real settle: at **1024×768** the page was still single-column, and the
+> price hero — an `<svg viewBox="0 0 640 220" width="100%">`, i.e. a card whose HEIGHT is a
+> function of the page's WIDTH — rendered **425px tall** and pushed both bet controls to
+> **y 1069, 301px below a 768px fold**. The frame is a laptop-shaped screen holding one flat
+> chart and nothing to do. With the rail at `lg` the hero is 292px and the control sits at 483.
+> ⚠️ Below `lg` nothing changed, so the `360: single column` line above still describes the
+> product exactly.
+>
+> ⭐ **THE ORDER IN THAT SECOND LINE WAS CHALLENGED AND IS KEPT.** The obvious way to lift the
+> bet control above the fold at 393 is to put the stake panel above the hero — reversing
+> `price → pool → stake`. It was rejected, because the reason this order exists is that the hero
+> is *"the reference line the bet is measured against"* (§ Price panel below), and the honest
+> reading of the measurement is that **the line was not readable, not that it was in the wrong
+> place**: the winning boundaries rendered at **4.34 CSS px at 393**. They are now also drawn as
+> HTML text in the hero's header (`E-198`), so the line can actually be read before the stake —
+> which is what this order was for. ⛔ At 393 the bet control is still below the fold and that is
+> deliberate; it is one scroll, and the round's live countdown and its winning boundaries are
+> both above it.
+
 ### Price panel (the hero)
 - shell: `--bg-elevated`, border 1px `--border`, radius `--r-lg`, `--shadow-card`, padding 16px 16px 10px
 - label mono 8.5px/600 ls 0.12em uppercase `--text-faint` — "LIVE PRICE" / "CLOSE PRICE"

@@ -17,7 +17,7 @@
  * that fails if the fix is reverted.
  */
 import {
-  adviseFromHistory, advisedMinDuration, bettingSecondsAfterLag,
+  adviseFromHistory, advisedMinDuration, bettingSecondsAfterLag, chainDurationCaution,
   MIN_SAMPLES_FOR_ADVICE, MIN_BETTING_SECONDS, type FeedHistory,
 } from "../src/lib/server/updown-feed-advice.ts";
 import { ALLOWED_DURATIONS, selectionClosesAt, roundSpanMinutes } from "../src/lib/updown-durations.ts";
@@ -204,6 +204,67 @@ const A = (h: FeedHistory, durationMinutes?: number, abandonAfterSeconds = 390) 
   ok("6.8 · ⭐ the deadline is not the staleness window — 132s vs 90s must not condemn Bitcoin",
      A(BTC, 5, 390).level !== 3 && A(BTC, 5, 90).level === 3,
      "if both are non-3 the deadline is being ignored; if both are 3 the wrong one is in use");
+}
+
+// ── §7 · E-194 · the caution a RUNNING chain carries about its own length ───────────────────
+//
+// ⭐ WHY THIS SECTION EXISTS. The advice engine has computed `advisedMinDurationMinutes` since
+// E-84, and `/admin/updown` has rendered it on the ASSET row for just as long. The CHAIN rows
+// said nothing — so a 3-minute chain running on an asset whose own advised minimum is 5 minutes
+// was visible only to an operator who held two tables in their head. Measured on production
+// 2026-08-24: BTC/USD and ETH/USD confirm a median 91.3s after the boundary, so both live
+// 3-minute chains leave 88.7s of a 180s window, against this module's own 90s caution line.
+//
+// ⛔ THE RULE IS TESTED HERE AND NOT IN THE PAGE, which is the whole reason it was extracted:
+// a decision that exists only inside a server component's render is one no suite can hold to.
+{
+  console.log("\n§7 · the running-chain caution (E-194)");
+  const C = (durationMinutes: number, advisedMinDurationMinutes: number | null, medianLagSeconds: number | null, unmeasured = false) =>
+    chainDurationCaution({ durationMinutes, advisedMinDurationMinutes, unmeasured, medianLagSeconds });
+
+  // ⭐ THE REAL PRODUCTION CASE, with the real measured numbers.
+  const btc3 = C(3, 5, 91);
+  ok("7.1 · ⭐ a 3-minute chain on a 5m-advised asset is cautioned",
+     btc3 !== null, btc3 === null ? "null — the chain that prompted this finding would say nothing" : JSON.stringify(btc3));
+  ok("7.2 · …and it carries the measured lag, not a restatement of it",
+     btc3?.lagSeconds === 91, String(btc3?.lagSeconds));
+  ok("7.3 · …and the betting seconds LEFT, which is the number an operator acts on",
+     btc3?.bettingSecondsLeft === 89, String(btc3?.bettingSecondsLeft));
+  ok("7.4 · …and what was advertised, so the two can be compared without arithmetic",
+     btc3?.advertisedSeconds === 180, String(btc3?.advertisedSeconds));
+  ok("7.5 · …and the advised minimum itself",
+     btc3?.advisedMinMinutes === 5, String(btc3?.advisedMinMinutes));
+
+  // ⛔ THE CONTROLS. Each of these is a way the check could pass for the wrong reason, and every
+  // one of them is a state that really occurs on this board today.
+  ok("7.6 · ⛔ a chain AT its advised minimum is silent — a caution on a sound chain is noise",
+     C(5, 5, 91) === null);
+  ok("7.7 · ⛔ a chain LONGER than advised is silent",
+     C(15, 5, 91) === null);
+  ok("7.8 · ⛔ an UNMEASURED asset says nothing — two readings make a median as readily as two thousand (A-5)",
+     C(3, 5, 91, true) === null);
+  ok("7.9 · ⛔ no advice means no caution, never a caution with a blank number",
+     C(3, null, 91) === null);
+  ok("7.10 · ⛔ a null median never renders as a number",
+     C(3, 5, null) === null);
+
+  // ⭐ AND THE ONE THAT MAKES IT A GUARD RATHER THAN A RESTATEMENT: the caution must agree with
+  // `advisedMinDuration`, which is what `createChain` refuses from. If the two ever disagree the
+  // console would caution a pairing the server allows, or stay quiet about one it would refuse.
+  const lag = 91;
+  const advised = advisedMinDuration(lag);
+  let agrees = true;
+  for (const d of ALLOWED_DURATIONS) {
+    const said = C(d, advised, lag) !== null;
+    const shouldSay = advised != null && d < advised;
+    if (said !== shouldSay) agrees = false;
+  }
+  ok("7.11 · ⭐ the caution agrees with advisedMinDuration at every allowed length",
+     agrees && advised === 5, `advised=${advised}`);
+
+  // ⚠️ AND IT IS DERIVED FROM THE SAME ARITHMETIC THE ROUND SHAPE USES, not a second copy.
+  ok("7.12 · the seconds-left figure IS bettingSecondsAfterLag, not a re-derivation",
+     C(3, 5, 91)?.bettingSecondsLeft === bettingSecondsAfterLag(3, 91));
 }
 
 console.log(`\n${fail === 0 ? "✅" : "🔴"} updown-feed-advice: ${pass} passed, ${fail} failed`);

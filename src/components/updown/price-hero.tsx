@@ -147,6 +147,31 @@ export function PriceHero({
         <div className="text-right">
           <p className="m-0 font-mono text-[8.5px] font-semibold uppercase tracking-[0.12em] text-text-faint">{copy.openLabel}</p>
           <p className="mt-[5px] mb-0 font-mono text-[13px] font-bold tabular-nums text-text-muted">{usd(openPrice)}</p>
+          {/* ⭐ E-198 · THE TWO NUMBERS THAT DECIDE THE BET, IN TEXT, WHILE THEY STILL MATTER.
+              🔴 They were rendered in ONE place on a live round — inside the chart below, in
+              viewBox units. That svg is `width: 100%` on a `0 0 640 220` box, so its type scales
+              with the PAGE WIDTH, and measured on production 2026-08-24 the winning boundaries
+              rendered at **4.34 CSS px at 393** and **7.14px at 1024**. The page's HTML copy of
+              these figures lives in the settlement proof, which renders only once the round is
+              DECIDED — so the numbers a player needs to choose a side were legible only after
+              choosing was over.
+              ⛔ THIS IS NOT A SECOND SOURCE OF TRUTH. Same props, same `usd()` formatter, same
+              `dec` precision as the chart labels and the proof panel — one round, one pair of
+              frozen targets, three renderings of it.
+              ⭐ AND IT IS WHY THE D3 ORDER DID NOT NEED INVERTING. That record puts the price
+              hero first because it is "the reference line the bet is measured against" — a
+              rationale that simply did not survive at 4.34px. Making the line READABLE honours
+              the intent; moving the buttons above it would have abandoned the intent to work
+              around unreadable text. ⚠️ It costs ~2 lines of height and is deliberately in the
+              existing right-hand block rather than a new panel, so the bet control below does
+              not move further down the page. */}
+          {upTarget != null && downTarget != null && (
+            <p className="mt-[6px] mb-0 font-mono text-body-sm font-semibold tabular-nums">
+              <span style={{ color: "var(--yes-300)" }}>{(copy.upLabel ?? "UP").toUpperCase()} ≥ {usd(upTarget)}</span>
+              <br />
+              <span style={{ color: "var(--no-300)" }}>{(copy.downLabel ?? "DOWN").toUpperCase()} ≤ {usd(downTarget)}</span>
+            </p>
+          )}
         </div>
       </div>
 

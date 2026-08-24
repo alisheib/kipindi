@@ -100,10 +100,19 @@ single instant, and by up to <b>$0.87</b> across a minute boundary — comparabl
 five minutes — so a short gold round would be decided by which reading arrived rather than by the
 market. <em>Crypto may run any length: 3, 5, 10, 15, 30 or 60 minutes.</em></div>
 
-<div><b>The round length IS the betting time, and the result phase is added after it.</b>
-A <b>5-minute</b> round takes bets for a full five minutes, then runs a <b>1-minute result
-phase</b> in which the closing price is read — six minutes in total. Nothing is taken off the
-advertised time.
+<div><b>The round length IS the betting window, and the result phase is added after it.</b>
+A <b>5-minute</b> round’s betting window is a full five minutes, then a <b>1-minute result
+phase</b> runs in which the closing price is read — six minutes in total. Nothing is taken off
+the advertised time by the result phase.
+<em><b>But a player cannot use all of it, and you should know the real number.</b> A round is not
+created until its <i>opening</i> price exists, and that price is the completed minute at the
+boundary, which the source does not publish until it has closed. Measured on production
+2026-08-24 over 9,320 readings: the opening price lands a median <b>91 seconds</b> after the
+boundary (never sooner than 60, best ever 72). Those seconds come out of the front of the betting
+window. So the window a player can actually reach is roughly <b>the advertised length minus 91
+seconds</b> — about <b>89s of a 3-minute round</b>, 209s of a 5-minute one, and 509s of a
+10-minute one. Slower assets are worse: XRP’s reading lands at 137s, SOL’s at 122s. The admin
+console now says so on any chain running below its asset’s advised minimum.</em>
 <em>Near the close the result is largely known, so bets must stop before the closing price is
 read: without that, a player watching the price could bet on an outcome already visible and take
 money from those who bet at the start. The player’s card shows both parts — the countdown
@@ -160,7 +169,7 @@ three appear harmless.</p>
 
 <div class="flow">
   <div><b>1 · Round opens</b>The price of the last completed minute is read and frozen as the opening price.</div>
-  <div><b>2 · Players bet</b>UP or DOWN, for the whole advertised length — a “5 min” round takes bets for five minutes.</div>
+  <div><b>2 · Players bet</b>UP or DOWN. The betting window is the whole advertised length, but it opens only once the opening price lands — a median 91s after the boundary — so a “5 min” round is reachable for about 209 of its 300 seconds, and a “3 min” round for about 89 of 180.</div>
   <div><b>3 · Result phase</b>Betting stops and the countdown runs on under “result in” while the closing minute arrives.</div>
   <div><b>4 · Round closes</b>The price for the closing minute is read the same way.</div>
   <div><b>5 · Settlement</b>UP wins, DOWN wins, or nobody wins and every stake is returned.</div>
@@ -393,7 +402,10 @@ so the player is never left watching a clock at zero.</p>
 <i>out</i> of the advertised time: a “3 min” round ran three minutes end to end and stopped taking
 bets after 2m24s, so a player got less game than the name promised. Ali’s decision was to add the
 time rather than remove it. The fairness rule is unchanged — nobody can bet in the final stretch
-before the closing price is read — but the advertised length is now honest. One consequence worth
+before the closing price is read — but the advertised length is now honest <i>about the result
+phase</i>. It is not the whole story: the wait for the OPENING price still comes out of the front
+of the window (a median 91s — see §2), which is why a “3 min” round is reachable for about 89
+seconds. That is recorded as E-194 and the console now states it per chain. One consequence worth
 knowing: rounds are longer, so a chain produces fewer of them per day (a 3-minute chain now runs
 360 rounds rather than 480). Every length except 3 minutes gives players <i>more</i> total betting
 time per day; 3-minute chains give about 6% less, because their 36-second lead has to round up to
@@ -910,7 +922,7 @@ an operator answering a player can say exactly what they should be seeing and wh
 <table>
   <tr><th>Stage</th><th>What the card says</th><th>What is happening</th></tr>
   <tr><td><b>OPEN</b></td><td><i>Betting closes in</i> + a countdown</td>
-      <td>Bets are being taken. This lasts the <b>whole advertised length</b> — a “5 min” round takes bets for five minutes.</td></tr>
+      <td>Bets are being taken. The window is the <b>whole advertised length</b>, less the wait for the opening price — a median 91s, so a “5 min” round is reachable for about 209 of its 300 seconds.</td></tr>
   <tr><td><b>LOCKED</b></td><td><i>Result in</i> + a countdown, and <b>🔒 Bets closed</b></td>
       <td>The result phase. No more bets; the closing minute has not arrived yet.</td></tr>
   <tr><td><b>CONFIRMING</b></td><td><i>Reading the closing price…</i></td>

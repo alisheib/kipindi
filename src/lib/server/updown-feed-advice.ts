@@ -145,6 +145,56 @@ export function advisedMinDuration(
 }
 
 /**
+ * ⭐ E-194 · IS THIS RUNNING CHAIN SHORTER THAN ITS OWN ASSET'S ADVISED MINIMUM?
+ *
+ * 🔴 THE PLATFORM ALREADY MEASURED THIS AND ALREADY SAID IT — just never about a chain.
+ * `advisedMinDuration` has been computing the shortest supportable length since E-84, and
+ * `/admin/updown` has been rendering it on the ASSET row ("+91s typical · 5m+ advised"). The
+ * CHAIN rows said nothing, so a 3-minute chain running on an asset whose own advised minimum is
+ * 5 minutes was visible only to an operator who held two tables in their head and compared them.
+ *
+ * 📊 MEASURED ON PRODUCTION 2026-08-24, and it is not hypothetical: BTC/USD and ETH/USD confirm a
+ * reading a median **91.3s** after the boundary, so their live 3-minute chains leave **88.7s** of
+ * a 180s betting window — against this module's own caution line of 90s (`durationMinutes × 60 ×
+ * BETTING_WINDOW_CAUTION_FRACTION`). Over the line, by 1.3 seconds, on both. At p95 (106.8s) it
+ * is 73.2s, or 40.7% of the advertised window.
+ *
+ * ⛔ IT IS A PURE FUNCTION AND NOT A JSX EXPRESSION, deliberately. The first version of this rule
+ * lived inline in the admin page, where nothing could drive it: a decision that only exists
+ * inside a server component's render is a decision no suite can hold to, and this repo has a
+ * name for what happens next. `roundPhase`, `handoverClock` and `resultClock` are all here for
+ * the same reason.
+ *
+ * ⚠️ IT IS A CAUTION, NEVER A BLOCK. These chains are live, they settle correctly and 88.7
+ * seconds is a real betting window. What was wrong was that nobody was told. Refusing them here
+ * would also disagree with `createChain`, which is a REFUSAL path — two answers to one question.
+ *
+ * @returns null when there is nothing to say (unmeasured, no advice, or the chain is long
+ *          enough), otherwise the three numbers an operator needs to act.
+ */
+export function chainDurationCaution(input: {
+  durationMinutes: number;
+  advisedMinDurationMinutes: number | null;
+  unmeasured: boolean;
+  medianLagSeconds: number | null;
+}): { advisedMinMinutes: number; lagSeconds: number; bettingSecondsLeft: number; advertisedSeconds: number } | null {
+  const { durationMinutes, advisedMinDurationMinutes, unmeasured, medianLagSeconds } = input;
+  // ⛔ UNMEASURED IS SILENCE, NOT SAFETY — and not a warning either. Below
+  // `MIN_SAMPLES_FOR_ADVICE` two readings produce a median as readily as two thousand, and A-5
+  // forbids showing the two as though they were the same claim.
+  if (unmeasured) return null;
+  if (advisedMinDurationMinutes == null) return null;
+  if (medianLagSeconds == null) return null;
+  if (durationMinutes >= advisedMinDurationMinutes) return null;
+  return {
+    advisedMinMinutes: advisedMinDurationMinutes,
+    lagSeconds: medianLagSeconds,
+    bettingSecondsLeft: bettingSecondsAfterLag(durationMinutes, medianLagSeconds),
+    advertisedSeconds: durationMinutes * 60,
+  };
+}
+
+/**
  * Turn one asset's measured history into advice for a specific duration.
  *
  * `abandonAfterSeconds` is the live derived deadline (`abandonAfterSeconds(cfg)`), not a

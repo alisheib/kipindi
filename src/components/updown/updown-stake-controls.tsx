@@ -40,6 +40,34 @@ import { impliedMultiplier, emptySideOf, formatMultiplier, type UpDownPricing } 
 
 type Bet = ReturnType<typeof useUpDownQuickBet>;
 
+/**
+ * ⭐ E-196 · THE SIDE BUTTONS' PADDING FOLLOWS THE DENSITY, ON THE CARD ONLY.
+ *
+ * 🔴 THE DEFECT, measured on production 2026-08-24 as a SIGNED-OUT visitor at 1024px: the DOWN
+ * button clipped its own payout figure. `Down × 1.00 est.` is **144px of content in a 133px
+ * box**; Swahili `Chini × 1.00 est.` was +9px; English was still +4px at 1100. Clean at 768 and
+ * 1280+, clean in ZH (short words), and clean SIGNED IN — a player with a position sees a
+ * different card. So the population it hit was the one deciding whether to sign up.
+ *
+ * ⛔ THE CLIPPED TEXT IS A MONEY FIGURE. `× 1.00 est.` is the estimated payout multiple, and the
+ * D2 note above calls the UP/DOWN asymmetry (`× 1.00` against `× 16.6`) the whole point of the
+ * control. Truncating it paints a shorter number; hiding it on a narrow card removes the one
+ * thing the button is there to say. Neither is available.
+ *
+ * ⭐ SO THE PADDING YIELDS, AND `compact` IS ALREADY THE NAME FOR THAT. This component's density
+ * knob already drives the icon size, the chip sizes and every text step — it simply never
+ * reached the padding, while `.btn-lg`'s `0 20px` is sized for a full-width control and the
+ * board's card gives these two grid children 133px each. 20px → `--sp-3` (12px) returns **16px
+ * per button**, against the 11px English needed and the 9px Swahili needed.
+ *
+ * ⛔ IT IS AN INLINE STYLE ON THIS COMPONENT, NOT A NEW KIT CLASS, and that is the point: it
+ * changes nothing about `.btn-lg` anywhere else in the product, adds no arbitrary Tailwind
+ * utility for `test:type-scale` to ratchet, and spends an existing token rather than a new
+ * number. ⚠️ The height is untouched, so the 44px tap floor is unaffected (the control measures
+ * 133×46 today).
+ */
+const SIDE_BTN_COMPACT = { paddingInline: "var(--sp-3)" } as const;
+
 export function UpDownStakeControls({
   bet,
   pricing,
@@ -205,6 +233,7 @@ export function UpDownStakeControls({
         <button
           type="button" onClick={guard(() => bet.place("UP"))} disabled={!bet.stakeReady || bet.insufficient || bet.locallyLocked}
           className={cn("btn btn-yes btn-lg", !compact && "justify-center", flash && flashSide === "UP" && "ud-side-flash")}
+          style={compact ? SIDE_BTN_COMPACT : undefined}
           aria-label={`${t.market.udUp} — ${assetName}${bet.stakeReady ? ` · ${formatTzs(bet.stake)}` : ""}`}
         >
           {bet.pendingSide === "UP" ? <Spinner size={12} /> : <I.trendingUp s={compact ? 14 : 15} />} {t.market.udUp}
@@ -213,6 +242,7 @@ export function UpDownStakeControls({
         <button
           type="button" onClick={guard(() => bet.place("DOWN"))} disabled={!bet.stakeReady || bet.insufficient || bet.locallyLocked}
           className={cn("btn btn-no btn-lg", !compact && "justify-center", flash && flashSide === "DOWN" && "ud-side-flash")}
+          style={compact ? SIDE_BTN_COMPACT : undefined}
           aria-label={`${t.market.udDown} — ${assetName}${bet.stakeReady ? ` · ${formatTzs(bet.stake)}` : ""}`}
         >
           {bet.pendingSide === "DOWN" ? <Spinner size={12} /> : <I.trendingDown s={compact ? 14 : 15} />} {t.market.udDown}

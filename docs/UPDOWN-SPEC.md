@@ -88,10 +88,32 @@ OPEN ──────────────► CLOSING ──────►
 4. **Resolved.** Outcome sealed, winners paid immediately (§6).
 5. **Void.** Full refund at zero fee (§4).
 
-**A stalled round never stalls the chain.** The next round opens on schedule while the
-previous one is still confirming. This is what makes the management requirement — *"no
-need for the AI to rush; show regenerating, then confirm with 100% sources"* —
-compatible with a continuous product.
+**A stalled round never stalls the chain** — the grid is derived from `gridAnchorAt`, so a slow
+round cannot drift the boundaries that follow it.
+
+🔴 **CORRECTED 2026-08-24 (`E-194`). This paragraph used to continue: *"The next round opens on
+schedule while the previous one is still confirming."* It cannot, and never could.** `advanceChain`
+closes the round that ENDS at a boundary and opens the round that STARTS at it **inside one call,
+both gated on the same confirmed observation** — so the successor is not merely late, it is
+*created by* its predecessor's settle. Measured on production over 9,320 confirmed readings: the
+successor is born **0.1–0.2s after** the observation confirms, and the observation confirms a
+median **91.3s** after the boundary (best ever 72.4s; never under 60s, because the price is the
+open of the 1-minute bar labelled with the boundary and that bar is not published until it has
+closed).
+
+**So the honest statement of the shape is:**
+
+| | |
+|---|---|
+| the boundary grid | never drifts — derived, not accumulated |
+| the next round's `opensAt` | the boundary, always |
+| when that round can first be BET ON | ~91s later, when its opening price exists |
+| what a player sees in between | the settled card and its next-match pod (E-166), not a dead end |
+
+⚠️ **The consequence is a real one and it is recorded in `E-194`:** on the 3-minute chain the
+reachable betting window is **88.7s of 180** — 49.3% at the median, 40.7% at p95. The console now
+says so on any chain running below its own asset's advised minimum
+(`chainDurationCaution`, `test:updown-advice` §7).
 
 ---
 

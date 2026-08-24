@@ -11,7 +11,7 @@ import { marketSessionAt, nextOpenAfter } from "@/lib/server/market-calendar";
 // ⭐ E-84 / the dynamic gate — each asset's measured record, and the advice derived from it.
 import { feedAdviceLookup } from "@/lib/server/updown-feed-history";
 import { playbookLookup, toReadinessAdvice } from "@/lib/server/updown-playbook-store";
-import { MIN_SAMPLES_FOR_ADVICE } from "@/lib/server/updown-feed-advice";
+import { MIN_SAMPLES_FOR_ADVICE, chainDurationCaution } from "@/lib/server/updown-feed-advice";
 import { observationStore, roundStore } from "@/lib/server/updown-dal";
 // E-90 · the pools decide whether a decided round actually paid anybody.
 import { marketStore } from "@/lib/server/market-dal";
@@ -484,6 +484,47 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                         <td className="px-4 py-3 whitespace-nowrap">
                           <div className="font-mono font-bold text-text">{label}</div>
                           <div className="font-mono text-[10.5px] text-text-subtle">{a?.nameEn ?? "unknown asset"}</div>
+                          {/* ⭐ E-194 · THE ADVICE, ON THE CHAIN IT IS ABOUT.
+                              🔴 The platform already measured this and already said it — just not
+                              here. The ASSET table above renders "+91s typical · 5m+ advised" from
+                              `feedAdviceLookup()`, and the CHAIN table rendered nothing, so a
+                              3-minute chain running on an asset whose own advised minimum is 5
+                              minutes was invisible unless an operator held two tables in their
+                              head and did the comparison themselves. Measured on production
+                              2026-08-24: BTC/USD and ETH/USD 3m leave **88.7s** of a 180s window
+                              once the reading lands, against this engine's own 50% caution line
+                              of 90s — over the line, by 1.3 seconds, on both live 3m chains.
+                              ⛔ THE NUMBERS ARE NOT RE-DERIVED HERE. `advisedMinDurationMinutes`
+                              and `bettingSecondsAfterLag` are the same functions `createChain`
+                              refuses with, so the console and the write path cannot come to
+                              disagree about whether a pairing is sound — which is the defect this
+                              file's own asset-table comment already warns about in the other
+                              direction. ⚠️ It is a CAUTION, never a block: these chains are live,
+                              they settle correctly, and 88.7 seconds is a real betting window.
+                              What was wrong was that nobody was told. */}
+                          {(() => {
+                            if (!a || !feed) return null;
+                            const adv = feed.advise(a.key, c.durationMinutes);
+                            // ⛔ THE LAG COMES FROM THE RECORD, NOT FROM THE ADVICE. `FeedAdvice`
+                            // carries the verdict; `FeedRecord.history` carries the measurement.
+                            // Reading a median off the advice would render `undefined` as a
+                            // number — the shape of a probe that returns nothing and is read as a
+                            // pass (E-191).
+                            const caution = chainDurationCaution({
+                              durationMinutes: c.durationMinutes,
+                              advisedMinDurationMinutes: adv.advisedMinDurationMinutes,
+                              unmeasured: adv.unmeasured,
+                              medianLagSeconds: feed.record(a.key).history.medianLagSeconds,
+                            });
+                            if (!caution) return null;
+                            return (
+                              <div className="mt-1 font-mono text-body-sm text-warning-fg whitespace-normal max-w-[24rem]">
+                                {caution.advisedMinMinutes}m+ advised on {a.key} — its reading typically lands{" "}
+                                {caution.lagSeconds}s after the boundary, leaving {caution.bettingSecondsLeft}s of a{" "}
+                                {caution.advertisedSeconds}s betting window
+                              </div>
+                            );
+                          })()}
                         </td>
                         <td className="px-4 py-3">
                           <span
