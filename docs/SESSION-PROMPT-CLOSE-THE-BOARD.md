@@ -78,7 +78,7 @@ feature were absent?"* If yes, it is not a guard.
 
 | Order | Unit | What | Why here | Status |
 |---|---|---|---|---|
-| A | **E-200** · pool residuals | 13 of 19,972 settled pools non-zero | Money path. Do it first, while you are fresh | ⬜ |
+| A | **E-200** · pool residuals | 13 of 19,972 settled pools non-zero | Money path. Do it first, while you are fresh | ✅ **2026-08-24 (s61)** — not a rounding rule: `market-service.ts:2925` fed the allocator a winner set filtered by SIDE ONLY, so a CASHED_OUT position whose stake had left the pool was counted as a winner, `remainder` went negative and the largest-remainder top-up was **skipped in silence**. Now `winnersForAllocation` (pure, exported). `test:payout-alloc` 31/0 · `red:payout-alloc` 3 caught / 0 missed. ⛔ No tolerance widened. The five `+1`s are STRUCTURAL (proven over 9,504 settlements, residuals `{0,1}`); the 7 negatives pre-date the 2026-08-11 fix |
 | B | **E-177** · the unverified-payer seal | Nobody has watched an unverified player be PAID | Zero-money variant exists; it is the oldest open item | ⬜ |
 | C | **Jay Unit D (#6)** | The date beside every timer | The commission's own next unit | ⬜ |
 | D | **The two guide frames** | `cyc-paused.png` · `cyc-start-dialog.png` | ✅ **Ruled §5: scratch Postgres, never a live pause.** Build `--allow-paused`, localhost-only | ⬜ |

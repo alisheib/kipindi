@@ -590,6 +590,60 @@ export function settledPayoutFor(
 }
 
 /**
+ * WHICH positions the largest-remainder allocators must be fed — the winning
+ * side, narrowed to the positions whose stake is STILL IN the winning pool.
+ *
+ * ⭐ THIS IS A FUNCTION BECAUSE IT IS A RULE, NOT A FILTER. Both allocators below
+ * document one precondition — `Σ(stake over winners) == winningPool` — and every
+ * guarantee they make rests on it. Nothing enforced it, because the decision lived
+ * inline in `settleMarket`'s render of its own position list, where no suite could
+ * reach it. It is exported so `test:payout-alloc` can drive the real decision.
+ *
+ * 🔴 E-200, measured on production 2026-08-24. The call site read
+ * `allMarketPositions.filter((wp) => wp.side === opts.outcome)` — side only, ANY
+ * status — so a **CASHED_OUT** position on the winning side was counted as a winner.
+ * Its stake had already left the pool when the player exited, so the winner set
+ * summed to MORE than `winningPool`:
+ *
+ *     mkt_c97209dbe6e1fa584472 — winningPool 184,505, winner set 189,505 (Δ +5,000)
+ *
+ * ⛔ AND THE FAILURE IS SILENT, WHICH IS WHY IT SURVIVED. An oversized winner set
+ * makes `allocated` overshoot, so `remainder = floor(netPool) - allocated` goes
+ * NEGATIVE and `for (…; remainder > 0; …)` simply never runs — the largest-remainder
+ * top-up is skipped ENTIRELY, on the payouts and on the fee alike. Thirteen winners
+ * were paid 185,498 instead of 185,505 and the house collected 492 instead of 499;
+ * the 14 TZS stayed in escrow. ⚠️ The overall ledger still summed to zero, so
+ * `test:trial-balance` and `test:money-invariants` were green over it — the same
+ * self-cancelling shape that hid the 2026-08-11 commission defect.
+ *
+ * ⚠️ `settleMarket` already SAYS this, three lines above where it failed to do it:
+ * *"A CASHED_OUT (or otherwise already-settled) position has already paid out and
+ * had its stake removed from the pool"*. The comment was right; the filter was not.
+ *
+ * ⛔ ALLOWLIST, NOT DENYLIST — deliberately. `WIN` and `OPEN` are the only two states
+ * in which a position is still owed money out of `netPool`: OPEN is about to be paid,
+ * WIN was paid on an earlier pass and must receive the IDENTICAL amount if settlement
+ * resumes (the determinism `allocateWinnerPayouts` promises). Every other status —
+ * CASHED_OUT, VOID, LOSS — has already had its stake settled or refunded out of the
+ * pool. A status added later is excluded until someone proves it belongs, which is
+ * the safe direction: including a stranger overpays nobody but strands money, while
+ * excluding a genuine winner would trip `assertWinnerFloor` loudly.
+ *
+ * ⚠️ Takes `status` as a plain string so this file stays isomorphic — importing the
+ * Prisma `PositionStatus` enum here would drag the server into the client bundle.
+ */
+export const ALLOCATABLE_WINNER_STATUSES: readonly string[] = ["WIN", "OPEN"];
+
+export function winnersForAllocation<T extends { side: Side; status: string }>(
+  positions: readonly T[],
+  outcome: Side,
+): T[] {
+  // ⚠️ ONE LINE ON PURPOSE — `red:payout-alloc` anchors on this statement, and a
+  // multi-line anchor cannot match a CRLF tree from an LF declaration. Keep it single-line.
+  return positions.filter((p) => p.side === outcome && ALLOCATABLE_WINNER_STATUSES.includes(p.status));
+}
+
+/**
  * LARGEST-REMAINDER payout allocation across ALL winners of a settled poll
  * (audit M2). `settledPayoutFor` rounds each winner independently, so the sum can
  * drift a few TZS from `netPool` (bounded, but the operator's fee then differs

@@ -486,7 +486,8 @@
     "qa:notifications-restore": "node scripts/live-notifications-restore.mjs",
     "red:ai-cycles": "node scripts/ai-cycles-red.mjs",
     "ops:preflight-ai-cycles": "tsx scripts/ops-preflight-ai-cycles.mts",
-    "ops:backfill-ai-cycles": "tsx scripts/ops-backfill-ai-cycles.mts"
+    "ops:backfill-ai-cycles": "tsx scripts/ops-backfill-ai-cycles.mts",
+    "red:payout-alloc": "node scripts/payout-alloc-red.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

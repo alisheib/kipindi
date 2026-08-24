@@ -33,7 +33,7 @@ import { normaliseCriterionTranslation } from "../localized";
 import { getEffectiveConfig, getEffectiveResolutionMode, snapshotFromConfig, snapshotOrLegacy, type RateConfig } from "./market-config";
 import { stakeBoundsForUpDownMarket } from "./updown-config";
 import { localizedText } from "@/lib/localized";
-import { payoutFor, settledPayoutFor, allocateWinnerPayouts, allocateFeeShares, poolFee, levySplit, leanFor, resolveFeeModel, THIN_SMALLER_SIDE_SHARE, type FeeSnapshot } from "@/lib/payout";
+import { payoutFor, settledPayoutFor, allocateWinnerPayouts, allocateFeeShares, winnersForAllocation, poolFee, levySplit, leanFor, resolveFeeModel, THIN_SMALLER_SIDE_SHARE, type FeeSnapshot } from "@/lib/payout";
 import type { FailureReason } from "@/lib/failure-reasons";
 import { getRequireTwoOfficerResolution } from "./resolution-policy";
 import { isMaintenanceMode, maintenanceMessage } from "./platform-config";
@@ -2700,8 +2700,12 @@ export async function settleMarket(
   // Settle only OPEN positions. A CASHED_OUT (or otherwise already-settled)
   // position has already paid out and had its stake removed from the pool —
   // re-settling it here would double-credit the player. (The full list is also
-  // used for the M2 largest-remainder allocation, which must see ALL winning-side
-  // positions — WIN + OPEN — to stay correct across a resume.)
+  // used for the M2 largest-remainder allocation, which must see WIN + OPEN to
+  // stay correct across a resume — `winnersForAllocation` in payout.ts is that
+  // rule, and it is the ONLY place the winner set is decided.)
+  // ⚠️ E-200: this note was already correct on 2026-08-24 while the allocation
+  // below filtered on `side` alone and counted the CASHED_OUT row anyway. A
+  // comment is not a control; the rule is a function now so a suite can drive it.
   const allMarketPositions = await listPositionsForMarket(m.id);
   const myPositions = allMarketPositions.filter((p) => p.status === "OPEN");
 
@@ -2922,7 +2926,15 @@ export async function settleMarket(
     // (deterministic, so a resumed settlement reproduces each amount) so the sum is
     // EXACTLY floor(netPool): no per-winner rounding drift, the operator's fee is
     // exact. assertWinnerFloor runs per allocation inside allocateWinnerPayouts.
-    const winningSidePositions = allMarketPositions.filter((wp) => wp.side === opts.outcome);
+    // 🔴 E-200 — `winnersForAllocation`, NOT a `side` filter. This read
+    // `allMarketPositions.filter((wp) => wp.side === opts.outcome)`: side only, ANY
+    // status, so a CASHED_OUT position on the winning side was counted as a winner
+    // even though its stake left the pool when the player exited. The winner set then
+    // summed to MORE than `winningPool`, `remainder` went negative, and the
+    // largest-remainder top-up below was skipped in silence — 13 winners short 7 TZS
+    // and the house short 7 more. The rule now lives in ONE exported function that
+    // `test:payout-alloc` drives directly; the note at :2700 already said why.
+    const winningSidePositions = winnersForAllocation(allMarketPositions, opts.outcome);
     const payoutByPos = allocateWinnerPayouts(
       winningSidePositions.map((wp) => ({ id: wp.id, stake: wp.stake })),
       winningPool,
