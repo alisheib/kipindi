@@ -1,3 +1,29 @@
+> # ⭐ SESSION 60 — A CONTROL THAT WAS OFF THE SCREEN, A CHECK THAT COULD NOT FAIL (2026-08-24)
+>
+> ⛔ **THIS BLOCK IS A POINTER, NOT THE RECORD.** The campaign lane's full handoff is the topmost
+> `⏭️ RESUME AT` block in [`LIVE-QA-CAMPAIGN.md`](LIVE-QA-CAMPAIGN.md) §6b, and the findings are
+> rows `E-190`…`E-196` in §6. Read those; this exists so a session starting here is not sent to
+> a four-session-old page.
+>
+> ## Shipped and verified on production
+>
+> | | |
+> |---|---|
+> | **`E-190`** | The signed-in header **severed the account menu** at 1024–1090px on **every page** — in Swahili the bell too, and the menu entirely off-screen. Production seal **36 problems → 0**. |
+> | **`E-191`** | A clipping check that **could not fail**: `page.evaluate` does not call a *string*, so the probe returned `undefined` and a defensive `!m \|\|` passed it unconditionally at 15 cells. |
+> | **`E-192`** | `test:all` on freshly pulled `main` was **239/244**; three were real, and all three came from a session that closed green **having listed fourteen suites, none of them `test:all`**. |
+> | **`E-193`** | Unit C: at 1024×768 the round page's rail was gated at `xl`, so the price hero rendered **425px tall** and the bet controls sat **301px below the fold**. Rail moved to `lg`; verified live at **623, visible**. |
+> | **`E-196`** | Repairing E-191 immediately found a real one: at 1024 a **guest** sees the DOWN button **clip its own payout figure**. 🟡 **Filed, not fixed** — every remedy touches the frozen button kit. |
+>
+> ## Open, and each needs Ali rather than a session
+>
+> - 🟡 **`E-194`** — a **"3-minute" round is reachable for 89 of its 180 advertised seconds** (measured over 5,479 rounds). A naming decision; ⛔ the obvious remedy voided 175 rounds once (E-83).
+> - 🟡 **`E-196`** — three costed options in its register row.
+> - 💵 **The USD→TZS rate and its date** in *Admin → AI usage → Cycle settings* (owed since session 59; every shilling figure renders `—` until then, deliberately).
+> - ⏰ **`E-195`** — ⛔ **check from ~2026-09-15.** `www` behind Cloudflare at `Full (strict)` renews its origin certificate through a path that has never carried one; it **expires 2026-10-15**, and under `strict` that is the whole site, on a date, with no deploy to blame.
+>
+> ▶ **NEXT: Unit D (#6) in [`SESSION-PROMPT-JAY-COMMENTS.md`](SESSION-PROMPT-JAY-COMMENTS.md) §1** — its ledger is backfilled and honest now (**A · B · C ✅**), so tick your row in the commit that ships it.
+
 > # ⭐ SESSION 56 — `/notifications`, THE DOOR THE BELL CANNOT BE (2026-08-22)
 >
 > ## What shipped
