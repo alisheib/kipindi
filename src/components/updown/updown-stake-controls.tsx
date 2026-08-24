@@ -66,7 +66,7 @@ type Bet = ReturnType<typeof useUpDownQuickBet>;
  * number. ⚠️ The height is untouched, so the 44px tap floor is unaffected (the control measures
  * 133×46 today).
  */
-const SIDE_BTN_COMPACT = { paddingInline: "var(--sp-3)" } as const;
+export const SIDE_BTN_COMPACT = { paddingInline: "var(--sp-3)" } as const;
 
 export function UpDownStakeControls({
   bet,

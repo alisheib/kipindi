@@ -30,7 +30,7 @@ import { Dot } from "@/components/ui/dot";
 import { cn, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { useUpDownQuickBet, usePlacePulse } from "./use-quick-bet";
-import { UpDownStakeControls } from "./updown-stake-controls";
+import { UpDownStakeControls, SIDE_BTN_COMPACT } from "./updown-stake-controls";
 import { Button } from "@/components/ui/button";
 import { mmss, useHoldAnchor, useTickSeconds } from "./round-countdown";
 // ⭐ ONE TIMER FOR THE WHOLE BOARD, and a card that only re-renders when its PHASE moves.
@@ -950,13 +950,20 @@ export function UpDownCard(props: UpDownCardProps) {
             // Signed-out / display-only → the buttons route to the round detail, where
             // the sign-in gate lives. No stake control, no money path from here.
             <>
+              {/* ⛔ E-196 · THE SAME PADDING OBJECT THE AUTHED CONTROL USES, IMPORTED.
+                  🔴 These two buttons are a SECOND COPY of the pair in `updown-stake-controls.tsx`
+                  — same classes, same content shape, different file — because the signed-out card
+                  navigates instead of betting. That duplication is exactly why the clipped payout
+                  figure appeared ONLY to signed-out visitors, and why the first repair MISSED: it
+                  went into the authed copy, which was never the broken one. ⭐ One padding
+                  definition, imported, so on this axis at least the two cannot drift again. */}
               <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={go("UP")} className="btn btn-yes btn-lg"
+                <button type="button" onClick={go("UP")} className="btn btn-yes btn-lg" style={SIDE_BTN_COMPACT}
                         aria-label={`${t.market.udUp} — ${assetName}`}>
                   <I.trendingUp s={14} /> {t.market.udUp}
                   {outMultUp != null && <span className="font-mono text-[12.5px] opacity-85">× {formatMultiplier(outMultUp)} est.</span>}
                 </button>
-                <button type="button" onClick={go("DOWN")} className="btn btn-no btn-lg"
+                <button type="button" onClick={go("DOWN")} className="btn btn-no btn-lg" style={SIDE_BTN_COMPACT}
                         aria-label={`${t.market.udDown} — ${assetName}`}>
                   <I.trendingDown s={14} /> {t.market.udDown}
                   {outMultDown != null && <span className="font-mono text-[12.5px] opacity-85">× {formatMultiplier(outMultDown)} est.</span>}
