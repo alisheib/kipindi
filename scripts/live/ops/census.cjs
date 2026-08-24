@@ -48,8 +48,34 @@ const q = (c, sql, params) => c.query(sql, params).then((r) => r.rows);
            (select count(*) from "PredictionMarket" where status='LIVE')::int as markets_live,
            (select count(*) from "PredictionMarket" where status='RESOLVED')::int as markets_resolved`);
   console.log("\n=== CROSS-CHECK vs /api/health ===");
-  console.log(`users=${counts.users}  markets_live=${counts.markets_live}  markets_resolved=${counts.markets_resolved}`);
-  console.log(`(health at 06:09Z said users=71 marketsLive=41 marketsResolved=744)`);
+  console.log(`db:     users=${counts.users}  markets_live=${counts.markets_live}  markets_resolved=${counts.markets_resolved}`);
+  // 🔴 THIS LINE USED TO BE A HARDCODED STRING — `(health at 06:09Z said users=71 marketsLive=41
+  // marketsResolved=744)`. This file's own README calls this cross-check the thing that
+  // *"proves you read production and not a default"*, and it was comparing against a frozen
+  // snapshot from a past run: it could never fail, and by 2026-08-24 it was printing 71/41/744
+  // beside a live read of 100/54/18991 — three numbers that look like a 🔴 discrepancy and are
+  // only a stale literal. A check that cannot fail, on the instrument whose whole job is to
+  // prove you are not looking at defaults.
+  // ⛔ It FETCHES now, and says PASS or MISMATCH. ⚠️ `marketsResolved` is deliberately compared
+  // with a tolerance: rounds settle continuously, so the DB read and the HTTP read are taken
+  // seconds apart and an exact match would flap. `users` and `marketsLive` move rarely enough
+  // to pin exactly.
+  try {
+    const base = process.env.HEALTH_BASE || "https://50pick.tz";
+    const r = await fetch(`${base}/api/health`, { signal: AbortSignal.timeout(15_000) });
+    const h = await r.json();
+    const s = h.store || {};
+    const drift = Math.abs((s.marketsResolved ?? -1) - counts.markets_resolved);
+    const ok = s.users === counts.users && s.marketsLive === counts.markets_live && drift <= 25;
+    console.log(`health: users=${s.users}  markets_live=${s.marketsLive}  markets_resolved=${s.marketsResolved}   (${base})`);
+    console.log(ok
+      ? `✅ MATCH — this is production, not a default. (resolved differs by ${drift}, within the 25 tolerance)`
+      : `🔴 MISMATCH — the DB read and ${base} disagree. Either the URL is not production, or the read is hitting a default. Resolve this BEFORE believing anything below.`);
+  } catch (e) {
+    // ⛔ Unreachable health is UNKNOWN, never "fine". Everything below is a DB read whose
+    // provenance is now unproven, and saying so is the whole point of this section.
+    console.log(`⚠️  could not reach /api/health (${String(e.message).slice(0, 60)}) — the cross-check did NOT run, so nothing below is proven to be production`);
+  }
 
   const mkt = await q(c, `select status, count(*)::int as n from "PredictionMarket" group by status order by n desc`);
   console.log(`market status spread: ${mkt.map((r) => `${r.status}=${r.n}`).join("  ")}`);

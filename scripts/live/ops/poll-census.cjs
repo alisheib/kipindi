@@ -19,7 +19,13 @@
  */
 const fs = require("node:fs");
 const path = require("node:path");
-const { Client } = require(path.join(process.env.KP_REPO || "C:/kipindi-main", "node_modules", "pg"));
+// ⚠️ PLAIN require, resolved from THIS file's directory upward — never a machine's checkout
+// path and never an env var that has to be remembered. This read
+// `require(path.join(process.env.KP_REPO || "C:/kipindi-main", "node_modules", "pg"))`, so on a
+// checkout at F:kipindi-main it threw MODULE_NOT_FOUND unless KP_REPO happened to be set.
+// `scripts/live/q.cjs` already carries the full note; the fix was applied there and propagated
+// to nothing else.
+const { Client } = require("pg");
 
 for (const line of fs.readFileSync(path.join(__dirname, ".env"), "utf8").split("\n")) {
   const i = line.indexOf("=");

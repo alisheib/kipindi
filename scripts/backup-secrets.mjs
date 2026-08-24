@@ -20,10 +20,19 @@
 import { spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 const REPO = process.env.BACKUP_SECRETS_REPO || "alisheib/kipindi";
 const SET = process.argv.includes("--set");
-const KEY_FILE = "C:/kipindi-main/.env.backup.local";
+// ⚠️ DERIVED FROM THIS FILE, NEVER A MACHINE'S CHECKOUT PATH. This read
+// `"C:/kipindi-main/.env.backup.local"` — one laptop's path — so on the other, where the repo
+// lives at `F:\kipindi-main`, `existsSync` returned false and the script behaved as though the
+// backup key had never been created. 🔴 That is the worst possible failure for THIS file: a
+// missing key here reads as "no key yet", and the fix is to mint one — which would have
+// replaced the key the existing backups are encrypted with. Same defect `scripts/live/q.cjs`
+// records for its `pg` import; the fix was applied there in isolation and eight other scripts
+// kept the hardcoded path until 2026-08-24.
+const KEY_FILE = fileURLToPath(new URL("../.env.backup.local", import.meta.url));
 
 const isInternal = (url) => {
   try { return /\.railway\.internal$/.test(new URL(url).hostname); } catch { return false; }

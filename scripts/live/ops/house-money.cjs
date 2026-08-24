@@ -23,7 +23,15 @@
  *                       sitting in escrow until the market settles.
  */
 const fs = require("node:fs");
-const { Client } = require("C:/kipindi-main/node_modules/pg");
+// ⚠️ PLAIN `require`, resolved from THIS file's directory upward — never a machine's checkout
+// path. This line read `require("C:/kipindi-main/node_modules/pg")`, and `scripts/live/q.cjs`
+// already carries the note explaining why that is wrong: the repo lives at `F:\kipindi-main` on
+// the other laptop, so the script threw MODULE_NOT_FOUND there and *"the DB half of every live
+// claim was simply unavailable"*. 🔴 The fix was applied to `q.cjs` and to nothing else, so
+// three of the four money instruments — this one, `pool-residual.cjs` and `poll-census.cjs` —
+// still could not run on half the machines that own this repo. ⛔ This one was the worst of the
+// three: it had no `KP_REPO` fallback at all, so no environment variable could rescue it.
+const { Client } = require("pg");
 for (const l of fs.readFileSync(require("node:path").join(__dirname, ".env"), "utf8").split("\n")) {
   const i = l.indexOf("="); if (i > 0) process.env[l.slice(0, i)] = l.slice(i + 1).trim();
 }

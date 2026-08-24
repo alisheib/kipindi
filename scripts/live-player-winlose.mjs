@@ -26,6 +26,13 @@ import { execFileSync } from "node:child_process";
 import { writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+// ⚠️ THE REPO ROOT IS DERIVED, NEVER A MACHINE'S PATH. This file passed
+// `cwd: REPO_ROOT` to the query runner, which is one laptop's checkout — on the other
+// it is `F:\kipindi-main` and every call silently ran in the wrong directory. Same defect
+// `scripts/live/q.cjs` records for its `pg` import, and the fix was never propagated.
+const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
 
 const STAKE = "TZS 5,000";
 const MAX_ROUNDS = Number(process.env.MAX_ROUNDS ?? 4);
@@ -47,7 +54,7 @@ function sql(query) {
   try {
     const out = execFileSync(
       "railway", ["run", "-s", "50pick", "--", "node", "scripts/live/q.cjs", `"${f}"`],
-      { cwd: "C:/kipindi-main", encoding: "utf8", timeout: 120_000, shell: true },
+      { cwd: REPO_ROOT, encoding: "utf8", timeout: 120_000, shell: true },
     );
     const line = out.trim().split("\n").filter((l) => l.trim().startsWith("[")).pop();
     if (!line) throw new Error(`no JSON from query runner: ${out.slice(-300)}`);
