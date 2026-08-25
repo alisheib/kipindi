@@ -39,7 +39,16 @@ function LinkField({ value, label }: { value: string; label: string }) {
       // Collapse first: `scrollHeight` never shrinks below the current height, so
       // measuring without this makes the field grow monotonically and never come back.
       el.style.height = "0px";
-      el.style.height = `${el.scrollHeight}px`;
+      // ⛔ PLUS THE BORDERS, AND THIS IS NOT A ROUNDING GUESS. Tailwind's preflight sets
+      // `box-sizing: border-box` on everything, so assigning `height` sets the BORDER box —
+      // while `scrollHeight` measures the CONTENT box (padding in, border out). Assigning
+      // one to the other leaves the field exactly `borderTop + borderBottom` too short, and
+      // `overflow: hidden` then shaves the bottom of the last line. Measured on production
+      // by the guard that exists for this: 72 vs 70 at 393, 48 vs 46 at 768, 44 vs 42 at
+      // 1440 — the same 2px everywhere, which is what a constant border looks like.
+      const cs = getComputedStyle(el);
+      const border = parseFloat(cs.borderTopWidth || "0") + parseFloat(cs.borderBottomWidth || "0");
+      el.style.height = `${el.scrollHeight + border}px`;
     };
     fit();
     const ro = new ResizeObserver(fit);

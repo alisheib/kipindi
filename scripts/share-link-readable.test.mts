@@ -61,8 +61,21 @@ const share = decomment(readFileSync(join(ROOT, "src/components/markets/share-bu
   ok("2: …re-measuring on every width change, not once on mount", /ResizeObserver/.test(invite));
   // ⛔ `scrollHeight` never reports less than the current height, so a fit that does not
   // collapse first grows monotonically and never comes back.
-  ok("2: ⛔ …and it collapses before measuring, or the field can only ever grow",
-     /height = "0px"[\s\S]{0,120}scrollHeight/.test(invite));
+  // ⚠️ ANCHORED ON ORDER, NOT ON DISTANCE. This read `height = "0px"[\s\S]{0,120}scrollHeight`
+  // and went RED the moment the code gained a comment longer than 120 characters — over a
+  // fit that was entirely correct. A guard whose verdict depends on how much prose sits
+  // between two statements is measuring the prose.
+  const collapseAt = invite.indexOf(`height = "0px"`);
+  const measureAt = invite.indexOf("el.scrollHeight");
+  ok("2: ⛔ …and it collapses BEFORE measuring, or the field can only ever grow",
+     collapseAt >= 0 && measureAt > collapseAt, `collapse@${collapseAt} measure@${measureAt}`);
+  // ⛔ AND THE BORDERS ARE ADDED BACK. Tailwind's preflight sets `box-sizing: border-box`, so
+  // assigning `height` sets the BORDER box while `scrollHeight` measures the CONTENT box.
+  // Assigning one to the other leaves the field exactly `borderTop + borderBottom` short and
+  // `overflow: hidden` shaves the last line. Measured on production at 72 vs 70 / 48 vs 46 /
+  // 44 vs 42 — the same 2px at every width, which is what a constant border looks like.
+  ok("2: ⛔ …and it adds the borders back, because height sets the BORDER box",
+     /borderTopWidth/.test(invite) && /borderBottomWidth/.test(invite) && /scrollHeight \+ border/.test(invite));
   ok("2: …with its own scrollbar suppressed, since the box always fits the text",
      /overflow-hidden/.test(invite) && /resize-none/.test(invite));
 }
