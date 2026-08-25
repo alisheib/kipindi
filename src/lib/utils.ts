@@ -43,6 +43,38 @@ export function formatTzsCompact(value: number): string {
   return `TZS ${sign}${TZ_NUMBER.format(abs)}`;
 }
 
+/**
+ * THE TOP-BAR BALANCE — exact while it is short enough to ROLL, letters once it
+ * would outgrow the bar. Ali's rule, 2026-08-25.
+ *
+ * ⭐ WHY A THRESHOLD AND NOT SIMPLY `formatTzsCompact`. The pill's whole purpose is
+ * to make a change VISIBLE: it rolls the digits and pulses gilt so a player sees
+ * their money move. Compact ROUNDS to the nearest thousand, so a 500 TZS bet
+ * against "TZS 195K" would change nothing on screen — the exact defect the pill was
+ * built to fix, reintroduced on the device most players use. Rounding only where
+ * rolling was never going to read anyway keeps both properties.
+ *
+ * ⭐ AND IT BOUNDS THE WIDTH, WHICH IS THE OTHER HALF. `formatTzs` grows with the
+ * balance, so the pill is as wide as the player is rich and a bar that fits a small
+ * balance can break for a big one. Above the threshold the string is ~6-8 characters
+ * whatever the magnitude, so the widest the pill can EVER be is `TZS 999,999` — 11
+ * characters, at any balance, for ever.
+ *
+ * ⚠️ THE THRESHOLD IS 1,000,000 AND IT WAS MEASURED, not chosen for roundness.
+ * Production, 2026-08-25: 100 wallets, median TZS 0, p95 **TZS 886,854**, MAX
+ * **TZS 1,000,000**; 4 wallets at or above 1M, none above 10M. So the rolling
+ * counter keeps working for effectively every real player, and the compact branch
+ * exists for the balances that would otherwise break the layout.
+ *
+ * ⛔ NO THIRD FORMAT IS INVENTED — both branches are formatters that already exist,
+ * so this adds a CHOICE, not a spelling.
+ */
+export const BALANCE_COMPACT_ABOVE = 1_000_000;
+
+export function formatBalancePill(value: number): string {
+  return Math.abs(value) >= BALANCE_COMPACT_ABOVE ? formatTzsCompact(value) : formatTzs(value);
+}
+
 /** Absolute magnitude, no sign: "TZS 1,234" (rounds). For P&L cells that carry
  *  their own sign/colour and only need the number. */
 export function formatTzsAbs(value: number): string {

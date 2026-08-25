@@ -181,7 +181,12 @@ const FROZEN_RATCHET = new Map<string, number>([
   ["src/app/admin/moderation/moderation-client.tsx", 2],
   ["src/app/positions/performance/page.tsx", 2],             // raw-oklch radial gradients
   ["src/components/layout/live-ticker.tsx", 2],              // oklch fade beside var(--bg-inset)
-  ["src/components/layout/wallet-balance-pill.tsx", 2],
+  // ⬇️ 2 → 1 on 2026-08-25. The capsule rebuild added a hairline seam and an eye hover
+  // tint, and this gate caught them as RAW colours — correctly. Both now read
+  // `color-mix(in oklab, var(--gold-300) N%, transparent)`, i.e. they CONSUME the token
+  // rather than restating a colour, which is exactly what B10 asks for. Re-measuring
+  // afterwards showed the file needs only one, so the budget follows the code down.
+  ["src/components/layout/wallet-balance-pill.tsx", 1],
   ["src/components/updown/price-hero.tsx", 2],
   ["src/app/admin/live/page.tsx", 1],
   ["src/app/admin/payments/control-plane.tsx", 1],

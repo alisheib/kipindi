@@ -140,7 +140,11 @@ const RATCHET_SUBFLOOR = 771;
  *  ⛔ That is the failure mode §4.2 of `test:red-anchors` names for its own ceiling: a
  *  ratchet above the real number has stopped being a ratchet. Re-measured, then locked. */
 const RATCHET_ARBITRARY_SIZE = 1821;
-const RATCHET_INLINE_FONTSIZE = 38;
+/*  ⬇️ 38 → 37 on 2026-08-25. The wallet balance pill carried `fontSize: 12.5` inline — an
+ *  off-ladder literal AND invisible to every class-based gate. It now reads `text-caption`
+ *  below `sm` and `text-label` from there, both ON the closed ladder (§T1), which is also
+ *  what let the pill get denser on a phone without inventing a size. */
+const RATCHET_INLINE_FONTSIZE = 37;
 
 /** §6 — arbitrary `tracking-[…]`. Measured 2026-08-21 across 200 files.
  *  ⚠️ RE-BASELINED 639 → 640 on 2026-08-22 — same merge, the `dsar-controls.tsx`

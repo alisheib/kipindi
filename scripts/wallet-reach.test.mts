@@ -1,28 +1,27 @@
 /**
- * THE WALLET IS REACHABLE AT EVERY WIDTH — Ali, 2026-08-25:
- * *"a player should reach their wallet easily, not buried in the kebab."*
- * Ruled: a WALLET ICON BUTTON next to Deposit. ⛔ Not a balance readout, ⛔ not a
- * bottom-nav change.
+ * THE BALANCE IS VISIBLE AT EVERY WIDTH, AND IT IS THE WALLET DOOR.
  *
- * ⭐ THE RULE IS NOT "THERE IS A WALLET BUTTON". It is **every width has exactly one
- * obvious wallet door, and no width has two**. Stating it that way is what makes the
- * guard able to fail in BOTH directions — a missing door on a phone, and redundant
- * chrome at 1024 where the desktop nav already names Wallet. A presence check could
- * only ever see the first.
+ * Ali, 2026-08-25: *"find a way to always show balance on all types of screens, for mobile
+ * and widescreens, and the eye"* — and, separately, *"remove the wallet from the top navbar,
+ * it got rejected by votes of players."*
  *
- * The doors, measured 2026-08-25:
- *   < 640      the new icon button        (the pill is hidden here: ~109px + the eye
- *                                          cannot coexist with deposit/bell/avatar)
- *   640–1023   WalletBalancePill          (itself a <Link href="/wallet">)
- *   1024–1279  the desktop nav's Wallet   (the E-190 band — the pill yields here)
- *   1280–1535  nav + pill
- *   ≥ 1536     nav                        (8 links go inline; the pill yields again)
+ * ⛔ THIS FILE REPLACED ITS OWN EARLIER RULE, IT DID NOT LOSE IT. The first version pinned a
+ * phone-only wallet ICON and asserted the balance pill was ABSENT below `sm`. Both were
+ * correct for the ruling of that morning and both are wrong now. The history is kept in §3
+ * as anti-regressions, because the shape that was removed is the shape most likely to come
+ * back by accident.
  *
- * 🔴 AND THIS IS THE EXACT CLUSTER `E-190` SEVERED. At 1024 in Swahili the account menu
- * ran entirely off-screen and the bell was cut, on every page, with three instruments
- * green over it. This suite pins the SOURCE rule that keeps the new control off that
- * band; `qa:wallet-reach` measures the rendered bar there, because a class name is not
- * a measurement.
+ * ── WHAT WAS ACTUALLY WRONG, AND IT WAS NOT "THE PILL WAS HIDDEN" ────────────
+ * The old ladder read `hidden sm:flex lg:hidden xl:flex 2xl:hidden` — shown, hidden, shown,
+ * hidden as the window WIDENS. Every branch had a reason and the SEQUENCE had none, so the
+ * same account on the same build showed a balance on a 1440 laptop and none on a 1920
+ * monitor. ⭐ **A responsive rule a player experiences as randomness is a defect even when
+ * every branch is deliberate**, and §2 is written so that shape cannot return.
+ *
+ * ── THE RULE, IN ONE LINE ────────────────────────────────────────────────────
+ * **Exactly one wallet door at every width, it is the balance capsule, and the eye is inside
+ * it.** Stating it that way is what lets the guard fail in BOTH directions — a missing
+ * balance, and a second door beside it.
  *
  * Run: npm run test:wallet-reach
  */
@@ -39,95 +38,132 @@ const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log
 const bar = decomment(readFileSync(join(ROOT, "src/components/layout/top-app-bar.tsx"), "utf8"));
 const pill = decomment(readFileSync(join(ROOT, "src/components/layout/wallet-balance-pill.tsx"), "utf8"));
 const rail = decomment(readFileSync(join(ROOT, "src/components/layout/bottom-nav.tsx"), "utf8"));
-const glyphs = decomment(readFileSync(join(ROOT, "src/components/ui/glyphs.tsx"), "utf8"));
 
-/** The wallet link block in the top bar, isolated so a match cannot come from the nav array. */
-const control = (() => {
-  const i = bar.indexOf('href="/wallet"');
-  if (i < 0) return "";
-  // From the enclosing `<Link` back-edge to the closing tag.
-  const start = bar.lastIndexOf("<Link", i);
-  const end = bar.indexOf("</Link>", i);
-  return start < 0 || end < 0 ? "" : bar.slice(start, end);
-})();
+const { formatBalancePill, formatTzs, formatTzsCompact, BALANCE_COMPACT_ABOVE } =
+  await import("../src/lib/utils.ts");
 
-// ── 1 · The control exists, and is the kind of thing that was ruled ──────────
-ok("1: the top bar carries a direct wallet link", control.length > 0);
-ok("1: it is phone-only — `sm:hidden`", /\bsm:hidden\b/.test(control), control.slice(0, 200));
-// ⛔ An icon-only control MUST be named, in all three locales, or it is an unnamed control.
-ok("1: it is named from the dict, not a hardcoded string", /aria-label=\{t\.nav\.wallet\}/.test(control));
-ok("1: it uses the kit's existing wallet glyph", /I\.wallet\b/.test(control));
-// ⛔ A HOOK SO ITS *ABSENCE* IS TESTABLE LIVE. Three elements link to /wallet across the
-// width range, so `qa:pager-wallet` cannot tell them apart by href — and the assertion that
-// matters at 1024 is that THIS one is not rendered.
-ok("1: it carries a testid so a live driver can assert its absence, not just its presence",
-   /data-testid="wallet-door"/.test(control));
-ok("1: …and the kit defines it", /\bwallet:\s*\(p: GlyphProps\)/.test(glyphs));
-// The utility tier: bordered, --r-sm, 44×44 (the header's own three-tier model).
-ok("1: it meets the 44px tap floor as a literal, not a scale token",
-   /min-h-\[44px\]/.test(control) && /minWidth:\s*44/.test(control), control.slice(0, 400));
-ok("1: it takes the UTILITY tier — bordered + rounded-md, like LanguageMenu beside it",
-   /border-border-control/.test(control) && /rounded-md/.test(control));
-
-// ── 2 · Signed-in only, and not a door to the room you are standing in ───────
-ok("2: guests do not get it — they have no wallet", /user\.isAuthed && pathname !== "\/wallet"/.test(bar));
-// ⚠️ `!==`, not startsWith: on /wallet/deposit and /wallet/withdraw this is the way back UP.
-ok("2: it hides on /wallet itself and NOWHERE else",
-   /pathname !== "\/wallet"/.test(bar) && !/pathname\.startsWith\("\/wallet"\)/.test(bar));
-
-// ── 3 · ⛔ NO WIDTH GETS TWO DOORS — the half a presence check cannot see ────
+// ── 1 · ONE CAPSULE: the number and its eye are a single control ─────────────
 {
-  // The pill is a link in its own right, so it IS a wallet door wherever it renders.
-  // ⚠️ THE NEGATIVE LOOKBEHIND IS LOAD-BEARING. `/href="\/wallet"/` also matches
-  // `data-href="/wallet"`, so the first draft of this assertion stayed GREEN while
-  // `red:wallet-reach` case 5 turned the pill from a link into an inert div. A substring
-  // match on an attribute name is not an attribute check.
-  ok("3: the balance pill is itself a link to /wallet", /(?<![-\w])href="\/wallet"/.test(pill));
-  // Its visibility ladder, read from the bar rather than restated here.
-  // ⚠️ `<WalletBalancePill`, WITH the angle bracket. Searching for the bare name finds the
-  // IMPORT on line 10 and slices 600 characters of file header, where the visibility ladder
-  // obviously is not — which is how the first draft of this assertion failed against
-  // correct code. Ask for the JSX, not for the identifier.
-  const usage = bar.indexOf("<WalletBalancePill");
-  const pillBlock = usage < 0 ? "" : bar.slice(Math.max(0, usage - 600), usage);
-  ok("3: the pill starts at `sm` — so the new control must stop there",
-     /hidden sm:flex/.test(pillBlock), pillBlock.slice(-120));
-  // ⭐ THE ASSERTION WITH TEETH. The icon is `sm:hidden` and the pill is `hidden sm:flex`,
-  // so the two are exact complements: below 640 exactly one exists, from 640 exactly one
-  // exists. A control that merely "has sm:hidden" could still overlap if the pill's own
-  // breakpoint moved, so this pins them AGAINST EACH OTHER.
-  ok("3: ⭐ the icon and the pill are complements — never both, never neither",
-     /\bsm:hidden\b/.test(control) && /hidden sm:flex/.test(pillBlock));
-  // And the desktop nav names Wallet from `lg`, which is why the icon must not reach 1024.
-  ok("3: the desktop nav names Wallet outright, so the icon at 1024 would be redundant",
-     /\{ href: "\/wallet",\s+label: t\.nav\.wallet \}/.test(bar));
+  ok("1: the pill renders a capsule wrapper", /data-testid="wallet-balance-capsule"/.test(pill));
+  ok("1: the number inside it links to /wallet", /href="\/wallet"/.test(pill));
+  ok("1: the eye lives INSIDE the capsule, not beside it", /<CashEye\b/.test(pill));
+  // ⛔ A <button> nested inside an <a> is invalid HTML and neither control is reliably
+  // operable. The capsule must hold the two as SIBLINGS.
+  const capsuleOpen = pill.slice(pill.indexOf("wallet-balance-capsule"));
+  ok("1: the eye is a SIBLING of the link, never nested inside it",
+     capsuleOpen.indexOf("</Link>") < capsuleOpen.indexOf("<CashEye"),
+     "a <button> inside an <a> is invalid HTML");
+  // ⚠️ The testid is the LAST attribute on the capsule, so the border sits BEFORE it —
+  // a forward-only window found nothing and failed on correct code. Read the whole
+  // element, not the text after its name.
+  const capsuleEl = pill.slice(pill.lastIndexOf("<div", pill.indexOf("wallet-balance-capsule")),
+                               pill.indexOf("wallet-balance-capsule"));
+  ok("1: the capsule owns the border, so the pair is not two chips",
+     /border: flashing/.test(capsuleEl) && /rounded-pill/.test(capsuleEl));
+  ok("1: it holds the 44px tap height", /height: 44/.test(pill));
+  // ⛔ The top bar consumes ONE component — no wrapper div, no second CashEye out there.
+  ok("1: the top bar renders the capsule as a single control",
+     /<WalletBalancePill balance=\{user\.balance\}\s*\/>/.test(bar));
+  ok("1: …and no longer mounts its own CashEye beside it", !/<CashEye\b/.test(bar));
 }
 
-// ── 4 · The bottom rail is UNCHANGED, and that is deliberate ─────────────────
+// ── 2 · ⭐ VISIBLE AT EVERY WIDTH — the assertion with teeth ─────────────────
 {
-  // Ali ruled: not a bottom-nav change. Nothing is removed and Live keeps its slot.
+  const i = bar.indexOf("<WalletBalancePill");
+  const guardBlock = bar.slice(Math.max(0, i - 500), i);
+  // ⛔ DISPLAY classes only. A first draft matched every `sm:`-prefixed utility and failed
+  // on the cluster's own `sm:gap-2` — a GAP does not gate visibility, and a rule that
+  // cannot tell spacing from display would block any future spacing tweak while missing
+  // `sm:block`. Ask for what actually hides a thing.
+  const responsive = guardBlock.match(/\b(?:hidden|(?:sm|md|lg|xl|2xl):(?:hidden|flex|block|inline|inline-flex|grid))\b/g) ?? [];
+  ok("2: ⭐ nothing responsive gates the balance — it renders at EVERY width",
+     responsive.length === 0, responsive.join(" "));
+  ok("2: it is still signed-in only — a guest has no wallet",
+     /user\.isAuthed && user\.balance !== null/.test(bar));
+}
+
+// ── 3 · ANTI-REGRESSIONS: the shapes that were removed ──────────────────────
+{
+  ok("3: ⛔ the old non-monotonic ladder has not come back",
+     !/hidden sm:flex lg:hidden xl:flex 2xl:hidden/.test(bar));
+  ok("3: ⛔ the rejected phone-only wallet icon is gone", !/wallet-door/.test(bar));
+  ok("3: …and nothing renders I.wallet in the bar", !/I\.wallet\b/.test(bar));
+  // ⛔ ONE DOOR PER WIDTH. The capsule is a /wallet link at every width, so an inline nav
+  // item pointing at the same room is a SECOND door from `lg` up — and it was the wider of
+  // the two, which is what pushed the row 77px past 1024 in Swahili.
+  const core = bar.slice(bar.indexOf("const CORE_ITEMS"), bar.indexOf("const MORE_ITEMS"));
+  ok("3: ⭐ /wallet is NOT an inline nav link — the capsule is the door",
+     !/href: "\/wallet"/.test(core), "two doors to one room");
+  const more = bar.slice(bar.indexOf("const MORE_ITEMS"), bar.indexOf("return ("));
+  ok("3: …but it keeps a NAMED text entry in More, for readers not scanners",
+     /href: "\/wallet"/.test(more));
+  ok("3: the overflow links no longer promote inline at 2xl",
+     !/hidden 2xl:inline-flex/.test(bar) && /<NavMore items=\{MORE_ITEMS\}/.test(bar));
+}
+
+// ── 4 · WHAT YIELDS INSTEAD, and the trap that made one of them not work ─────
+{
+  // 🔴 `hidden sm:inline-flex` ON a `.btn` DOES NOTHING. `.btn { display: inline-flex }`
+  // sits at globals.css:911, AFTER `@tailwind utilities` (line 19), so at equal specificity
+  // the component class wins. The first attempt put the classes on the <Link> and the CTA
+  // still rendered at 360, 33px past the edge. The hide must be on a WRAPPER.
+  const at = bar.indexOf('href="/wallet/deposit"');
+  const dep = bar.slice(Math.max(0, at - 400), at + 400);
+  ok("4: the Deposit CTA is hidden by a WRAPPER, not by classes on the .btn",
+     /<span className="hidden sm:inline-flex">\s*<Link/.test(dep));
+  ok("4: ⛔ and the hide is NOT on the button itself, where `.btn` would beat it",
+     !/className="btn[^"]*\bhidden\b/.test(bar));
+  ok("4: the mark carries the brand below xl", /mark-flip-i inline-flex xl:hidden/.test(bar));
+  ok("4: …and the full lockup returns at xl", /hidden xl:inline-flex"><FiftyLockup/.test(bar));
+  ok("4: ⛔ the brand is never absent — one of the two always renders",
+     /inline-flex xl:hidden/.test(bar) && /hidden xl:inline-flex/.test(bar));
+}
+
+// ── 5 · THE THRESHOLD RULE — pure, exported, and driven ─────────────────────
+{
+  ok("5: the threshold is exported, not buried in a render", typeof formatBalancePill === "function");
+  ok("5: it is 1,000,000, the measured production maximum", BALANCE_COMPACT_ABOVE === 1_000_000);
+
+  // ⭐ BELOW the threshold the figure is EXACT, because the pill's whole purpose is to roll
+  // the digits so a player sees their money move. Compact would round a 500 TZS bet away.
+  ok("5: a normal balance is exact, so the rolling counter still reads",
+     formatBalancePill(194_740) === formatTzs(194_740), formatBalancePill(194_740));
+  ok("5: …and a 500 TZS move CHANGES the rendered string",
+     formatBalancePill(194_740) !== formatBalancePill(194_240),
+     `${formatBalancePill(194_740)} vs ${formatBalancePill(194_240)}`);
+
+  // ⭐ AT and ABOVE it, letters — which is what BOUNDS the width.
+  ok("5: a huge balance compacts to letters",
+     formatBalancePill(12_345_678) === formatTzsCompact(12_345_678), formatBalancePill(12_345_678));
+  ok("5: the boundary itself compacts", /[KMB]/.test(formatBalancePill(BALANCE_COMPACT_ABOVE)));
+  ok("5: one shilling below it does not", !/[KMB]/.test(formatBalancePill(BALANCE_COMPACT_ABOVE - 1)));
+
+  // ⛔ NO THIRD FORMAT — both branches must BE formatters that already existed.
+  ok("5: both branches are existing formatters, so no new spelling was invented",
+     formatBalancePill(1_000) === formatTzs(1_000) && formatBalancePill(5_000_000) === formatTzsCompact(5_000_000));
+
+  // ⭐ THE WIDTH IS BOUNDED, WHICH IS THE POINT. `formatTzs` grows with the balance, so a
+  // bar that fits a small one can break for a big one — and it breaks for exactly the
+  // players who look at it most. Sweep the magnitudes and pin the longest possible string.
+  let longest = "";
+  for (let v = 0; v <= 5_000_000_000; v = v < 1000 ? v + 137 : Math.round(v * 1.37)) {
+    const s = formatBalancePill(v);
+    if (s.length > longest.length) longest = s;
+  }
+  ok("5: ⭐ the widest string this pill can EVER render is bounded",
+     longest.length <= 11, `longest = "${longest}" (${longest.length} chars)`);
+  ok("5: …and a negative cannot smuggle in extra characters",
+     formatBalancePill(-999_999).length <= 12, formatBalancePill(-999_999));
+}
+
+// ── 6 · The bottom rail is untouched — Ali ruled it out of scope ─────────────
+{
   const items = rail.slice(rail.indexOf("const items = ["), rail.indexOf("];", rail.indexOf("const items = [")));
   const hrefs = [...items.matchAll(/href: "([^"]+)"/g)].map((m) => m[1]);
-  ok("4: the bottom rail still has exactly four primary slots + More",
-     hrefs.length === 4, hrefs.join(", "));
-  ok("4: …and Live still holds one of them — nothing was displaced for the wallet",
-     hrefs.includes("/live"), hrefs.join(", "));
-  // ⛔ Wallet STAYS under More. That is the named TEXT entry for anyone who navigates by
-  // reading rather than by icon, and removing it would trade one audience for another.
+  ok("6: the bottom rail still has exactly four primary slots", hrefs.length === 4, hrefs.join(", "));
+  ok("6: …and Live still holds one of them", hrefs.includes("/live"), hrefs.join(", "));
   const more = rail.slice(rail.indexOf("moreItems"), rail.indexOf("moreActive"));
-  ok("4: Wallet is STILL the named text entry under More", /href: "\/wallet"/.test(more));
-}
-
-// ── 5 · E-190: the band this control must not touch ──────────────────────────
-{
-  // The deposit label and the balance pill both yield across 1024–1279 because the cluster
-  // has no slack there. A new 44px control that reached that band would re-open E-190.
-  ok("5: the deposit label still yields at the lg–xl band", /hidden sm:inline lg:hidden xl:inline/.test(bar));
-  ok("5: the balance pill still yields there too", /hidden sm:flex lg:hidden xl:flex 2xl:hidden/.test(bar));
-  // ⭐ The rule, stated as a rule: nothing added to the right cluster may be visible at lg
-  // without saying why. `sm:hidden` is the strongest possible form of that.
-  ok("5: ⭐ the new control cannot exist at 1024 — it stops at 640",
-     /\bsm:hidden\b/.test(control) && !/\blg:/.test(control) && !/\bxl:/.test(control), control.slice(0, 300));
+  ok("6: Wallet is STILL the named text entry under More on phones", /href: "\/wallet"/.test(more));
 }
 
 console.log(`\nwallet-reach: ${pass} passed, ${fail} failed`);

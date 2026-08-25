@@ -9,7 +9,6 @@ import { AvatarMenu } from "@/components/layout/avatar-menu";
 import { NavMore } from "@/components/layout/nav-more";
 import { WalletBalancePill } from "@/components/layout/wallet-balance-pill";
 import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
-import { CashEye } from "@/components/ui/cash";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
 import type { ProposalsState } from "@/lib/server/proposals-config";
@@ -93,7 +92,16 @@ export function TopAppBar({ user, proposalsState }: { user: TopAppBarUser; propo
         { href: "/live",      label: t.nav.live },
         { href: "/results",   label: t.common.results },
         { href: "/positions", label: t.common.positions },
-        { href: "/wallet",    label: t.nav.wallet },
+        /* ⛔ `/wallet` LEFT THE INLINE NAV ON 2026-08-25 — it is a DUPLICATE now, not a
+           loss. The balance capsule in the right cluster is itself a `<Link href="/wallet">`
+           at EVERY width, so from `lg` up this row rendered two doors to one room and the
+           wider of the two was the one costing the bar its remaining space.
+           ⭐ Measured: with the capsule present and Wallet still inline, the row ran 101px
+           past 1024 in EN and 139px in SW — i.e. `E-190` re-created, the exact band where
+           the account menu was severed once before. Removing the duplicate is what pays for
+           the balance being visible here at all.
+           ⚠️ It keeps a NAMED text entry in `More` below, for anyone who navigates by
+           reading rather than by recognising a figure. */
       ]
     : [
         { href: "/markets",     label: t.common.markets },
@@ -109,6 +117,7 @@ export function TopAppBar({ user, proposalsState }: { user: TopAppBarUser; propo
         ...(proposalsState !== "DISABLED"
           ? [{ href: "/proposals", label: t.common.propose, proposalsBadge: proposalsState } as NavItem]
           : []),
+        { href: "/wallet",         label: t.nav.wallet },
         { href: "/profile/invite", label: t.common.invite },
         { href: "/leaderboard",    label: t.nav.leaderboard },
       ]
@@ -146,8 +155,21 @@ export function TopAppBar({ user, proposalsState }: { user: TopAppBarUser; propo
           {/* M8 — the mark performs: one flip on its own needle axis per hover
               (.mark-flip-i), on the LOGO only. Wrapped on the mark span, not the
               lockup, so the wordmark never rotates with it. */}
-          <span className="mark-flip-i inline-flex sm:hidden"><FiftyMark size={26} /></span>
-          <span className="hidden sm:inline-flex"><FiftyLockup size={22} markClassName="mark-flip-i" /></span>
+          {/* ⭐ THE MARK CARRIES THE BRAND BELOW `xl`; THE FULL LOCKUP RETURNS AT 1280.
+              This is the SAME call Ali made at `2xl` — when the row is over-subscribed,
+              the money wins the room — applied at the other band where it is over-
+              subscribed, so the rule is one rule and not two exceptions.
+              ⚠️ Measured on the real page, not reasoned: with the balance capsule present
+              the row ran 35px past 1024 in EN and **77px in Swahili**, which is `E-190`'s
+              band and `E-190`'s failure mode — the account menu leaving the screen. The
+              lockup is 136px and the mark is 26px, so yielding it returns 110px, the only
+              single change that clears Swahili with room to spare.
+              ⛔ The brand does not disappear — the mark IS the brand, it keeps the same
+              44px home link and the same hover performance, and the wordmark comes back
+              the moment the row can afford it. A wordmark is decoration; a balance is
+              information a player came for. */}
+          <span className="mark-flip-i inline-flex xl:hidden"><FiftyMark size={26} /></span>
+          <span className="hidden xl:inline-flex"><FiftyLockup size={22} markClassName="mark-flip-i" /></span>
         </Link>
 
         {/* Nav links — primary nav shows from `lg` (IA review R1). Core links
@@ -157,23 +179,20 @@ export function TopAppBar({ user, proposalsState }: { user: TopAppBarUser; propo
           {CORE_ITEMS.map((it) => (
             <NavLink key={it.href} it={it} pathname={pathname} />
           ))}
-          {/* Overflow links inline only at 2xl — at xl the verbose locales (SW/ZH)
-              can't fit 8 links + the right cluster in 1280, so they stay in "More"
-              until 1536. */}
-          {MORE_ITEMS.map((it) => (
-            <span key={it.href} className="hidden 2xl:inline-flex">
-              <NavLink it={it} pathname={pathname} />
-            </span>
-          ))}
-          {/* "More" menu — visible lg→2xl (2xl shows the items inline above) */}
-          <span className="2xl:hidden">
-            <NavMore items={MORE_ITEMS} label={t.common.more} />
-          </span>
+          {/* ⛔ THE OVERFLOW LINKS STAY IN "MORE" AT EVERY WIDTH — Ali, 2026-08-25.
+              They used to promote inline at `2xl`, and that is what took the balance
+              pill's room on the widest screens: the container is capped at
+              `max-w-board` (1480), so past 1536 the bar gains NO width — it only gains
+              three more links. ⭐ Measured in Swahili at 1536 the row was ALREADY 46px
+              over its own container with the links inline and no pill at all.
+              **The money wins the room.** Nothing is hidden that was not already
+              hidden at 1024–1535, where these same three have always lived in `More`. */}
+          <NavMore items={MORE_ITEMS} label={t.common.more} />
         </nav>
 
         <div className="flex-1" />
 
-        <div className="shrink-0 flex items-center gap-2">
+        <div className="shrink-0 flex items-center gap-1 sm:gap-2">
           {/* ⭐ ONE 44×44 LANGUAGE CONTROL, AT EVERY WIDTH — kit §2. The 3-pill capsule this
               replaces was hidden below 640 AND hidden again across 1024–1279 (the band where the
               desktop nav turns on and the cluster overflowed 1024), so the control a trilingual
@@ -183,69 +202,38 @@ export function TopAppBar({ user, proposalsState }: { user: TopAppBarUser; propo
           <LanguageMenu />
 
           {user.isAuthed && user.balance !== null && user.balance !== undefined && (
-            // Balance glance-pill visibility follows available width:
-            //  • < sm (phones): hidden — pill(~109) + eye can't coexist with the
-            //    deposit/bell/avatar cluster; the account menu MUST stay reachable
-            //    on a 320px phone. Balance is one tap away on the Wallet tab.
-            //  • sm–lg (tablet portrait): shown — no desktop nav competing.
-            //  • lg–xl (1024–1279): hidden — the desktop nav turns on at lg and
-            //    leaves no room; keeping the pill here clipped the avatar off-screen.
-            //  • xl–2xl (1280–1535): shown — nav is 5 links (More menu), room fits.
-            //  • ≥ 2xl (1536): hidden — the 3 overflow links go inline here (8 links),
-            //    which in SW/ZH would exceed the 1280 max-w container alongside the pill.
-            <div className="hidden sm:flex lg:hidden xl:flex 2xl:hidden items-center gap-2">
-              <WalletBalancePill balance={user.balance} />
-              {/* bare eye keeps the compact 14px glyph but takes a 44px-tall hit area
-                  (WCAG 2.5.5 AAA). Height only — width stays 28px so the cluster
-                  doesn't reflow horizontally.
-                  ⛔ BOTH NUMBERS ARE ARBITRARY LITERALS ON PURPOSE. `theme.extend.spacing`
-                  is overridden (tailwind.config.ts:200-215): `h-11` is 96px and `w-7` is
-                  40px, so this shipped 96×40 and the comment above was false on both
-                  halves until 2026-08-21. Never a scale token here. */}
-              <CashEye bare size={14} className="inline-flex items-center justify-center h-[44px] w-[28px] -mx-1 text-[var(--gold-300)]" />
-            </div>
+            // ⭐ THE BALANCE IS VISIBLE AT EVERY WIDTH — Ali, 2026-08-25, after players
+            // voted DOWN the phone-only wallet icon that used to stand in for it.
+            //
+            // 🔴 WHAT THIS REPLACED, AND WHY IT READ AS A BUG. The old ladder was
+            // `hidden sm:flex lg:hidden xl:flex 2xl:hidden` — shown, hidden, shown, hidden
+            // as the window WIDENS. Non-monotonic, so the same account on the same build
+            // showed a balance on a 1440 laptop and none on a 1920 monitor, and the only
+            // way to explain it was to read this comment. **A responsive rule a player
+            // experiences as randomness is a defect even when every branch is deliberate.**
+            //
+            // ⚠️ EACH BRANCH HAD A REAL REASON, and none of them was "there is no room" —
+            // they were all "something else won the room". Below `sm` the deposit CTA and
+            // the eye won it; at `lg` the desktop nav did; at `2xl` three overflow links
+            // (Propose · Invite · Top) promoted inline and won it. The bar's container is
+            // capped at `max-w-board` (1480), so widening past 1536 adds NO room — it only
+            // adds links. ⭐ **Ali's call: the money wins.** Those three stay in `More` at
+            // every width now (see MORE_ITEMS above), which is exactly where they already
+            // live at 1024–1535, so nothing is hidden that was not already there.
+            //
+            // ⛔ AND THE PILL IS NOW THE WALLET DOOR AT EVERY WIDTH — it has always been a
+            // `<Link href="/wallet">`. That is why removing the icon costs nothing: the
+            // door did not go away, the DUPLICATE did.
+            <WalletBalancePill balance={user.balance} />
           )}
 
-          {/* ⭐ THE WALLET DOOR, ON PHONES ONLY — Ali, 2026-08-25: a player should reach
-              their wallet easily, not out of the kebab. Ruled: an ICON BUTTON next to
-              Deposit; ⛔ NOT a balance readout, and ⛔ NOT a bottom-nav change.
-
-              ⚠️ `sm:hidden` IS THE WHOLE POINT, and it is measured rather than assumed.
-              `/wallet` is ALREADY reachable at every other width: from `sm` up the balance
-              pill beside it is itself a `<Link href="/wallet">` (wallet-balance-pill.tsx:136),
-              and from `lg` up the desktop nav names Wallet outright (CORE_ITEMS above). The
-              ONLY band with no wallet door is the phone, where the pill is hidden because it
-              (~109px) plus the eye cannot coexist with the deposit/bell/avatar cluster on a
-              320px screen. Adding this control anywhere else would be redundant chrome.
-
-              🔴 AND THIS IS THE EXACT CLUSTER E-190 SEVERED — at 1024 in Swahili the account
-              menu ran off-screen and the bell was cut, on every page, with three instruments
-              green over it. `sm:hidden` means this control does not exist at 1024, so that
-              band is untouched by construction; `qa:wallet-reach` proves it at 768/1024/1280
-              rather than taking the class name's word for it.
-
-              ⛔ Wallet STAYS under "more" in the bottom rail. That is not duplication — it is
-              the named TEXT entry for anyone who navigates by reading rather than by icon.
-
-              Hidden on `/wallet` itself: never offer a door to the room you are standing in.
-              ⚠️ `!==`, not `startsWith`: on /wallet/deposit and /wallet/withdraw this is the
-              way BACK UP to the overview, and Deposit has already yielded its own slot there. */}
-          {user.isAuthed && pathname !== "/wallet" && (
-            <Link
-              href="/wallet"
-              aria-label={t.nav.wallet}
-              /* ⭐ A HOOK SO ITS *ABSENCE* IS TESTABLE. Three different elements link to
-                 /wallet across the width range (this icon, the balance pill, the desktop
-                 nav item), so a live driver cannot tell them apart by href — and the
-                 assertion that matters at 1024 is that THIS one is not there. */
-              data-testid="wallet-door"
-              className="sm:hidden inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-md border border-border-control px-2 text-text-muted transition-colors hover:text-text"
-              style={{ minWidth: 44 }}
-            >
-              <I.wallet s={16} />
-            </Link>
-          )}
-
+          {/* ⛔ THE WRAPPER SPAN IS LOAD-BEARING — `hidden sm:inline-flex` ON the button
+              DOES NOT WORK. `.btn` sets `display: inline-flex` at globals.css:911, which is
+              AFTER `@tailwind utilities` (line 19), so at equal specificity the component
+              class wins and `.hidden` is simply ignored. Measured, not reasoned: the first
+              attempt put the classes on the <Link> and the CTA still rendered at 360, 33px
+              past the viewport edge. The span is not a `.btn`, so the utility applies to it.
+              ⚠️ This is the idiom this file already uses for the same reason. */}
           {user.isAuthed && !pathname.startsWith("/wallet/deposit") && (
             // ⭐ THE MONEY-IN CTA, ON STRUCK GILT — M3, 2026-08-07 (ATOM D-2).
             //
@@ -271,6 +259,26 @@ export function TopAppBar({ user, proposalsState }: { user: TopAppBarUser; propo
             // Measured, not assumed: `--gold-fg` on the struck ramp's worst stop reads
             // 7.25 against a 4.5 floor (`test:contrast`), so the change costs nothing in
             // legibility. Pill shape; label hidden < sm.
+            /* 🔴 THE DEPOSIT CTA YIELDS BELOW `sm`, AND IT IS FORCED BY MEASUREMENT, NOT
+               PREFERENCE. Production, 2026-08-25: at 360 the row's content box is 328px,
+               and after the logo (26) and two 12px row gaps the whole right cluster gets
+               exactly **278px** — which is precisely what the cluster measured, i.e. the
+               bar was already at 100% capacity with ZERO slack, in all three locales.
+               With the balance capsule present the five controls need 321px. Three ways
+               out were costed and only one survives:
+                 · K/M compact always ................ 301px  ✗ still over, and it kills
+                                                              the rolling counter
+                 · compact AND no eye ................ 273px  ✗ fits, but drops the eye
+                 · Deposit yields below `sm` ......... 269px  ✓ 9px slack
+               ⭐ It is also the only one of the five with a near alternative: the capsule
+               beside it IS a link to `/wallet`, where Deposit is the primary action — one
+               extra tap, against a balance a player can finally see at a glance.
+               ⛔ The other four have none. The avatar menu is the only path to profile and
+               sign-out (`E-190` severed it once); the bell carries the unread count; the
+               language control is the one a trilingual product cannot do without, and it
+               was deliberately made always-present after living in two places.
+               ⚠️ ONE CLASS REVERSES THIS if the commercial call goes the other way. */
+            <span className="hidden sm:inline-flex">
             <Link
               href="/wallet/deposit"
               aria-label={t.common.deposit}
@@ -291,6 +299,7 @@ export function TopAppBar({ user, proposalsState }: { user: TopAppBarUser; propo
                 {t.common.deposit}
               </span>
             </Link>
+            </span>
           )}
 
           {/* Signed-in only. A notification bell shown to a visitor with no
@@ -305,18 +314,30 @@ export function TopAppBar({ user, proposalsState }: { user: TopAppBarUser; propo
           {/* ⭐ AUTH IS IN THE HEADER AT EVERY WIDTH — kit §2, and the reason the bottom rail is
               destinations only. `Sign in` is the ghost action, `Sign up` the filled one; both take
               `--r-pill`, which now means "account action" and nothing else.
-              ⚠️ The label is hidden below `sm` on `Sign in` only: at 360 the two pills plus the
-              language control and the avatar do not fit, and of the two, the one a NEW visitor
-              needs is Sign up. `aria-label` keeps the shortened control named. */}
+              ⚠️ `Sign in` yields below `sm`: at 360 the two pills plus the language control
+              and the avatar do not fit, and of the two, the one a NEW visitor needs is
+              Sign up. `aria-label` keeps the shortened control named.
+              🔴 AND IT WAS NOT ACTUALLY YIELDING — FOUND 2026-08-25 BY A GUARD WRITTEN FOR A
+              DIFFERENT CONTROL. `hidden sm:inline-flex` sat ON the `.btn`, and
+              `.btn { display: inline-flex }` is declared at globals.css:911, AFTER
+              `@tailwind utilities` (line 19) — so at equal specificity the component class
+              wins and `.hidden` is ignored. Measured on a real guest at 360: the control
+              rendered at **91px wide**, i.e. the paragraph above has been false since it was
+              written. ⚠️ It never overflowed only because a GUEST has no balance capsule and
+              no bell, so the slack it was meant to create was never needed — a latent
+              defect, not a visible one. The wrapper span is not a `.btn`, so the utility
+              applies to it. Same trap, same fix, as the Deposit CTA above. */}
           {!user.isAuthed && (
             <>
+              <span className="hidden sm:inline-flex">
               <Link
                 href={"/auth/login" as never}
                 aria-label={t.common.signIn}
-                className="btn btn-ghost btn-lg btn-pill hidden sm:inline-flex"
+                className="btn btn-ghost btn-lg btn-pill"
               >
                 {t.common.signIn}
               </Link>
+              </span>
               <Link
                 href={"/auth/register" as never}
                 aria-label={t.common.signUp}
