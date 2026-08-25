@@ -33,6 +33,11 @@
 import { chromium } from "playwright";
 import { mkdirSync } from "node:fs";
 import { clippedControls } from "./live/clip.mjs";
+// ⭐ THE SHARED SIGN-IN, NOT A HAND-ROLLED ONE. `loginOnce` returns a storageState to reuse
+// across every cell — the harness warns that signing in per cell trips the server's attempt
+// limiting partway through a matrix and reports product failures that are not. It also
+// carries the trilingual button/success patterns a ZH driver needs (E-106's neighbour).
+import { loginOnce } from "./live/harness.mjs";
 
 const BASE = process.env.BASE || "https://50pick.tz";
 const WIDTHS = (process.env.WIDTHS || "360,393,768,1024,1280").split(",").map(Number);
@@ -48,8 +53,22 @@ const host = new URL(BASE).hostname;
 const browser = await chromium.launch();
 console.log(`driving ${BASE} · ${WIDTHS.length} widths × ${LOCALES.length} locales\n`);
 
+// 🔴 THE WALLET DOOR IS SIGNED-IN ONLY — a guest has no wallet, so all three doors (icon,
+// balance pill, nav link) are absent for one. The first run of this file drove SIGNED OUT
+// and reported 27 failures against a completely correct product. That is the premise being
+// absent, not the feature being broken, and a driver that cannot tell the difference is
+// worse than no driver. Sign in once, reuse the state, and REFUSE below if it did not take.
+// ⚠️ A QA-FLEET PLAYER, NOT `alpha`. On 2026-08-25 `alpha` and `echo` both failed to sign in
+// from this checkout — their secrets in `.env.qa.local` are whatever the laptop that last
+// re-minted them left behind, and that file cannot travel by git. The fleet shares ONE
+// secret with a documented in-repo fallback, so it is the persona a driver can rely on.
+// Override with QA_PERSONA when a specific account is the point.
+const WHO = process.env.QA_PERSONA || "fleet:01";
+const storageState = await loginOnce(browser, WHO);
+console.log(`signed in as ${WHO}\n`);
+
 for (const locale of LOCALES) {
-  const ctx = await browser.newContext();
+  const ctx = await browser.newContext({ storageState });
   // ⛔ The locale comes from the `kp-locale` COOKIE — there is no /api/locale route (E-106).
   await ctx.addCookies([{ name: "kp-locale", value: locale, domain: host, path: "/" }]);
   const page = await ctx.newPage();
@@ -67,6 +86,19 @@ for (const locale of LOCALES) {
     // is worse than one that fails, because its output looks like evidence.
     const lang = await page.getAttribute("html", "lang");
     if (lang !== locale) { fails.push(`${cell} <html lang>="${lang}", expected "${locale}" — refusing to capture`); console.log(`FAIL ${cell} lang=${lang}`); continue; }
+
+    // ⛔ REFUSE WHEN THE PREMISE IS ABSENT. Everything in §C is about a signed-in player;
+    // driven signed OUT, every wallet assertion fails and every one of those failures is
+    // about this driver rather than about the product. The avatar menu renders only for a
+    // session, so its absence is the tell — and it is checked BEFORE anything is judged.
+    const signedIn = await page.evaluate(() =>
+      !!document.querySelector("header") &&
+      !document.querySelector('header a[href="/auth/register"], header a[href="/auth/login"]'));
+    if (!signedIn) {
+      console.error(`\n⛔ REFUSING: ${cell} is signed OUT. The wallet door is signed-in only, so this`);
+      console.error(`   run would report the session as a product defect. Check .env.qa.local.`);
+      process.exit(2);
+    }
 
     // ── §A · the pager's control row ────────────────────────────────────────
     const row = page.locator("div.flex.flex-wrap.items-center.justify-center").first();
@@ -131,8 +163,14 @@ for (const locale of LOCALES) {
       const r = (n) => (n ? n.getBoundingClientRect() : null);
       const bw = r(wallet), ba = r(avatar);
       return {
-        walletDoors: header.querySelectorAll('a[href="/wallet"]').length,
-        doorCount: header.querySelectorAll('[data-testid="wallet-door"]').length,
+        walletDoors: [...header.querySelectorAll('a[href="/wallet"]')]
+          .filter((n) => { const b = n.getBoundingClientRect(); return b.width > 0 && b.height > 0; }).length,
+        // ⛔ VISIBLE ones, not DOM ones. `sm:hidden` is `display: none`, so the element is
+        // still in the tree at 1024 — a `querySelectorAll(...).length` counts it and reports
+        // a correct product as broken at nine cells. It did exactly that on the first run.
+        // Presence in the DOM is not presence on the screen.
+        doorCount: [...header.querySelectorAll('[data-testid="wallet-door"]')]
+          .filter((n) => { const b = n.getBoundingClientRect(); return b.width > 0 && b.height > 0; }).length,
         walletVisible: !!bw && bw.width > 0 && bw.height > 0,
         walletBox: bw ? { l: Math.round(bw.left), r: Math.round(bw.right), w: Math.round(bw.width), h: Math.round(bw.height) } : null,
         avatarBox: ba ? { l: Math.round(ba.left), r: Math.round(ba.right) } : null,
