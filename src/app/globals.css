@@ -4391,3 +4391,41 @@ textarea::-webkit-resizer {
    it drops is the WAIT, exactly as `[data-motion="reduced"] .stagger-item` already does. */
 [data-motion="reduced"] .kp-hero__inner > * { animation-delay: 0ms; }
 [data-motion="reduced"] [data-reveal] { opacity: 1; transform: none; transition: none; }
+
+/* ⭐ THE CARD'S SHARE TRIGGER — a 13px glyph that reaches 40px without moving anything.
+   Ali, 2026-08-25: *"a tiny share icon on each market card, not very bulky."*
+
+   ⛔ IT PAINTS INSIDE THE 17px FOOTER ROW AND MUST KEEP DOING SO. `MARKET_CARD_H` (349,
+   card-geometry.ts) is derived from that row and BOTH /markets skeletons consume the number,
+   so a taller control re-derives card geometry on /markets, /live, /watchlist and the landing
+   at once. The glyph is 13px; the row is unchanged.
+
+   The 40px reach is the SAME out-of-flow pseudo-element `.mcardp-details` uses eight rules
+   above — grow the TARGET, not the box. `.mcardp > *` (globals.css:3149) already supplies the
+   positioning context, so this deliberately does not restate it.
+
+   ⚠️ AND IT PARTITIONS THE ROW RATHER THAN OVERLAPPING IT. `.mcardp-details::after` spans
+   `left:0; right:0` of its own box, and once both controls are flex children of one row those
+   boxes sit side by side — no overlay steals the other's clicks, which is the failure
+   `.mcardp-info` is called out for one rule above. ⛔ Details' reach does shrink from the whole
+   row to its own box, and that costs nothing: the CARD BODY is already clickable and opens the
+   same market, so the vacated space still leads exactly where it led before.
+
+   ⚠️ A bounding-box measurement CANNOT see this — drivers correctly report 17px. The hit area
+   is provable only by `elementFromPoint`. */
+.mcardp-share {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-subtle);
+  transition: color var(--dur-micro) var(--ease-micro);
+}
+.mcardp-share:hover { color: var(--accent-400); }
+.mcardp-share::after {
+  content: "";
+  position: absolute;
+  left: -6px;
+  right: -6px;
+  top: -9px;
+  bottom: -14px;
+}

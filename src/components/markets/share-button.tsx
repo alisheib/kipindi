@@ -18,11 +18,32 @@ export function ShareButton({
   marketId,
   title,
   refCode,
+  compact,
 }: {
   marketId: string;
   title: string;
   /** Player's referral code — appended as ?ref= so shares track referrals. */
   refCode?: string;
+  /**
+   * ⭐ THE CARD VARIANT — a bare 13px glyph instead of a 40px labelled pill.
+   *
+   * Ali, 2026-08-25: *"a tiny share icon on each market card, not very bulky."* The
+   * market card's footer row **paints 17px and must keep painting 17px** —
+   * `MARKET_CARD_H` (card-geometry.ts) is derived from it and BOTH `/markets` skeletons
+   * consume that number, so a 40px pill in that row would re-derive card geometry on
+   * `/markets`, `/live`, `/watchlist` and the landing at once.
+   *
+   * ⛔ SO THIS IS A VARIANT, NOT A SECOND COMPONENT. Everything below the trigger — the
+   * WhatsApp deep link, the native share sheet, the clipboard fallback, the referral
+   * `?ref=` and the OG preview — is shared verbatim. A second share control would be
+   * `E-196` again: one control with two implementations, where the defect lives in the
+   * copy nobody is editing.
+   *
+   * The 40px tap reach comes from `.mcardp-share`, which uses the same out-of-flow
+   * pseudo-element `.mcardp-details` uses, for the same reason: grow the TARGET, not the
+   * box, so nothing moves.
+   */
+  compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -60,7 +81,11 @@ export function ShareButton({
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        /* ⛔ `stopPropagation` IS LOAD-BEARING IN THE COMPACT VARIANT. The market CARD is
+           itself a click target that navigates to the market, so without this every share
+           tap would open the market and the dialog would never be seen. Harmless on the
+           detail page, where nothing is listening above it. */
+        onClick={(e) => { e.stopPropagation(); setOpen(true); }}
         aria-label={t.dialog.shareMarket}
         aria-haspopup="dialog"
         /* ⚠️ 40px (--tap-min, DA §A2) AS AN ARBITRARY LITERAL. This said `h-9`,
@@ -68,10 +93,17 @@ export function ShareButton({
            64px — and the 36px the author meant would have been UNDER the floor,
            so 40 is the target, not the original intent. Matches
            position-share.tsx. ⛔ Never a scale token here. */
-        className="inline-flex h-[40px] items-center gap-1.5 rounded-pill border border-border bg-bg-elevated px-3 text-[12px] font-mono uppercase tracking-[0.14em] text-text-muted hover:border-border-strong hover:text-text transition-colors"
+        className={
+          compact
+            ? "mcardp-share"
+            : "inline-flex h-[40px] items-center gap-1.5 rounded-pill border border-border bg-bg-elevated px-3 text-[12px] font-mono uppercase tracking-[0.14em] text-text-muted hover:border-border-strong hover:text-text transition-colors"
+        }
       >
         {copied ? <I.check s={13} /> : <I.share s={13} />}
-        {copied ? t.common.copied : t.common.share}
+        {/* ⛔ NO LABEL IN THE COMPACT VARIANT — the row is 17px and a word would raise it.
+            The control is still NAMED: `aria-label={t.dialog.shareMarket}` is on the button
+            above, in all three locales, so an icon-only trigger is never an unnamed one. */}
+        {!compact && (copied ? t.common.copied : t.common.share)}
       </button>
 
       {/* DA-10 / DS-25 — the kit <Modal> replaced a hand-rolled portal + scrim +

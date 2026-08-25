@@ -7,6 +7,7 @@ import { TippingBar } from "@/components/brand";
 import { I, categoryGlyph } from "@/components/ui/glyphs";
 import { Avatar } from "@/components/ui/avatar";
 import { Modal } from "@/components/ui/modal";
+import { ShareButton } from "@/components/markets/share-button";
 import { cn, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { pickLocalized, marketCategoryLabel } from "@/lib/localized";
@@ -436,21 +437,34 @@ export function MarketCard({
       {/* Footer row on every card (card-height parity live vs resolved). Live is a
           real link (card body uses onClick nav); the resolved card is already a
           full <Link>, so its footer is a decorative span to avoid a nested anchor. */}
-      {live ? (
-        <Link
-          href={`/markets/${id}` as never}
-          onClick={(e) => e.stopPropagation()}
-          className="mcardp-details"
-        >
-          {t.market.details}
-          <I.chevronRight s={11} />
-        </Link>
-      ) : (
-        <span className="mcardp-details" aria-hidden>
-          {t.market.details}
-          <I.chevronRight s={11} />
-        </span>
-      )}
+      {/* ⭐ SHARE SITS BESIDE DETAILS — Ali, 2026-08-25, and this is the footer rather than
+          the card's top-right because the top-right is already occupied by the conviction
+          readout (`YES 0%` / the resolved mark). The footer is the card's action zone.
+          ⛔ THE ROW STILL PAINTS 17px. `MARKET_CARD_H` is derived from it and both /markets
+          skeletons consume that number, so this wrapper adds no height: a 13px glyph and an
+          11.5px label both sit inside the existing line box. Both controls reach 40px through
+          their own out-of-flow pseudo-element (see `.mcardp-share` in globals.css).
+          ⚠️ `stopPropagation` on the share trigger is load-bearing: the whole card is a click
+          target that opens the market, so without it every share tap would navigate away
+          before the dialog could open. */}
+      <div className="flex items-center justify-end gap-2">
+        <ShareButton compact marketId={id} title={title} />
+        {live ? (
+          <Link
+            href={`/markets/${id}` as never}
+            onClick={(e) => e.stopPropagation()}
+            className="mcardp-details"
+          >
+            {t.market.details}
+            <I.chevronRight s={11} />
+          </Link>
+        ) : (
+          <span className="mcardp-details" aria-hidden>
+            {t.market.details}
+            <I.chevronRight s={11} />
+          </span>
+        )}
+      </div>
     </>
   );
 
