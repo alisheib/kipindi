@@ -339,6 +339,8 @@ async function DiscoveryBoard({ searchParams }: { searchParams: Promise<SP> }) {
             ofLabel={t.common.of}
             prevLabel={t.common.previousPage}
             nextLabel={t.common.nextPage}
+firstLabel={t.common.firstPage}
+lastLabel={t.common.lastPage}
           />
         </div>
       )}

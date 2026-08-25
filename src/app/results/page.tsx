@@ -472,7 +472,7 @@ async function ResultsContent({
               {/* Pagination — shared platform pager */}
               {totalPages > 1 && (
                 <div className="mt-6 rounded-lg border border-border bg-bg-elevated/40 overflow-hidden">
-                  <Pagination total={totalCount} page={safePage} perPage={PER_PAGE} baseHref={resultsBaseHref} ofLabel={t.common.of} prevLabel={t.common.previousPage} nextLabel={t.common.nextPage} />
+                  <Pagination total={totalCount} page={safePage} perPage={PER_PAGE} baseHref={resultsBaseHref} ofLabel={t.common.of} prevLabel={t.common.previousPage} nextLabel={t.common.nextPage} firstLabel={t.common.firstPage} lastLabel={t.common.lastPage} />
                 </div>
               )}
             </>

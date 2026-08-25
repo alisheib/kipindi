@@ -142,7 +142,7 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
           </div>
           {matchedCount > PLAYER_PER_PAGE && (
             <div className="rounded-lg border border-border bg-bg-elevated/40 overflow-hidden">
-              <Pagination total={matchedCount} page={page} perPage={PLAYER_PER_PAGE} baseHref={proposalsBaseHref} ofLabel={t.common.of} prevLabel={t.common.previousPage} nextLabel={t.common.nextPage} />
+              <Pagination total={matchedCount} page={page} perPage={PLAYER_PER_PAGE} baseHref={proposalsBaseHref} ofLabel={t.common.of} prevLabel={t.common.previousPage} nextLabel={t.common.nextPage} firstLabel={t.common.firstPage} lastLabel={t.common.lastPage} />
             </div>
           )}
         </>

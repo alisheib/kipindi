@@ -207,7 +207,7 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
         )}
         {totalPages > 1 && (
           <div className="mt-4 rounded-lg border border-border bg-bg-elevated/40 overflow-hidden">
-            <Pagination total={allResolved.length} page={safePage} perPage={PLAYER_PER_PAGE} baseHref="/fairness" ofLabel={t.common.of} prevLabel={t.common.previousPage} nextLabel={t.common.nextPage} />
+            <Pagination total={allResolved.length} page={safePage} perPage={PLAYER_PER_PAGE} baseHref="/fairness" ofLabel={t.common.of} prevLabel={t.common.previousPage} nextLabel={t.common.nextPage} firstLabel={t.common.firstPage} lastLabel={t.common.lastPage} />
           </div>
         )}
       </section>

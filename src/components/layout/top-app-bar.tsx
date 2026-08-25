@@ -206,6 +206,46 @@ export function TopAppBar({ user, proposalsState }: { user: TopAppBarUser; propo
             </div>
           )}
 
+          {/* ⭐ THE WALLET DOOR, ON PHONES ONLY — Ali, 2026-08-25: a player should reach
+              their wallet easily, not out of the kebab. Ruled: an ICON BUTTON next to
+              Deposit; ⛔ NOT a balance readout, and ⛔ NOT a bottom-nav change.
+
+              ⚠️ `sm:hidden` IS THE WHOLE POINT, and it is measured rather than assumed.
+              `/wallet` is ALREADY reachable at every other width: from `sm` up the balance
+              pill beside it is itself a `<Link href="/wallet">` (wallet-balance-pill.tsx:136),
+              and from `lg` up the desktop nav names Wallet outright (CORE_ITEMS above). The
+              ONLY band with no wallet door is the phone, where the pill is hidden because it
+              (~109px) plus the eye cannot coexist with the deposit/bell/avatar cluster on a
+              320px screen. Adding this control anywhere else would be redundant chrome.
+
+              🔴 AND THIS IS THE EXACT CLUSTER E-190 SEVERED — at 1024 in Swahili the account
+              menu ran off-screen and the bell was cut, on every page, with three instruments
+              green over it. `sm:hidden` means this control does not exist at 1024, so that
+              band is untouched by construction; `qa:wallet-reach` proves it at 768/1024/1280
+              rather than taking the class name's word for it.
+
+              ⛔ Wallet STAYS under "more" in the bottom rail. That is not duplication — it is
+              the named TEXT entry for anyone who navigates by reading rather than by icon.
+
+              Hidden on `/wallet` itself: never offer a door to the room you are standing in.
+              ⚠️ `!==`, not `startsWith`: on /wallet/deposit and /wallet/withdraw this is the
+              way BACK UP to the overview, and Deposit has already yielded its own slot there. */}
+          {user.isAuthed && pathname !== "/wallet" && (
+            <Link
+              href="/wallet"
+              aria-label={t.nav.wallet}
+              /* ⭐ A HOOK SO ITS *ABSENCE* IS TESTABLE. Three different elements link to
+                 /wallet across the width range (this icon, the balance pill, the desktop
+                 nav item), so a live driver cannot tell them apart by href — and the
+                 assertion that matters at 1024 is that THIS one is not there. */
+              data-testid="wallet-door"
+              className="sm:hidden inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-md border border-border-control px-2 text-text-muted transition-colors hover:text-text"
+              style={{ minWidth: 44 }}
+            >
+              <I.wallet s={16} />
+            </Link>
+          )}
+
           {user.isAuthed && !pathname.startsWith("/wallet/deposit") && (
             // ⭐ THE MONEY-IN CTA, ON STRUCK GILT — M3, 2026-08-07 (ATOM D-2).
             //

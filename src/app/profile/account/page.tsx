@@ -198,6 +198,8 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
           ofLabel={t.common.of}
           prevLabel={t.common.previousPage}
           nextLabel={t.common.nextPage}
+firstLabel={t.common.firstPage}
+lastLabel={t.common.lastPage}
         />
       </section>
 

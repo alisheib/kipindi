@@ -96,6 +96,13 @@ const Ibase = {
   chevronUp: (p: GlyphProps) => <G {...p}><path d="M6 15l6-6 6 6" /></G>,
   chevronRight: (p: GlyphProps) => <G {...p}><path d="M9 6l6 6-6 6" /></G>,
   chevronLeft: (p: GlyphProps) => <G {...p}><path d="M15 6l-6 6 6 6" /></G>,
+  /* Double chevrons — "jump to the first/last page", the pager's edge controls.
+     Two copies of the single chevron above, six units apart, so the pair spans 6..18 and
+     reads as the SAME mark doubled rather than as a new one. ⛔ They live here because the
+     kit is extended, never hand-rolled: an inline <svg> in `pagination.tsx` would be a
+     second icon family inside one component, at whatever stroke that file felt like. */
+  chevronsLeft: (p: GlyphProps) => <G {...p}><path d="M18 6l-6 6 6 6" /><path d="M12 6l-6 6 6 6" /></G>,
+  chevronsRight: (p: GlyphProps) => <G {...p}><path d="M6 6l6 6-6 6" /><path d="M12 6l6 6-6 6" /></G>,
   checkCircle: (p: GlyphProps) => <G {...p}><circle cx="12" cy="12" r="9" /><path d="M8.4 12.4l2.5 2.5 4.7-5.2" /></G>,
   bellRing: (p: GlyphProps) => <G {...p}><path d="M7 10a5 5 0 0 1 10 0c0 4 1.5 5 2 6H5c.5-1 2-2 2-6z" /><path d="M10.5 20a1.7 1.7 0 0 0 3 0" /><path d="M3.6 6.4A6 6 0 0 1 6 3M20.4 6.4A6 6 0 0 0 18 3" /></G>,
   bellOff: (p: GlyphProps) => <G {...p}><path d="M8.6 4.2A5 5 0 0 1 17 8c0 2.6.6 4 1.2 5M16.5 16.5H5c.5-1 2-2 2-6 0-.4 0-.7.05-1M10.5 20a1.7 1.7 0 0 0 3 0M3 3l18 18" /></G>,

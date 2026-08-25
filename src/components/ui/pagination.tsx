@@ -15,6 +15,54 @@ export const PER_PAGE = 20;
  *  results, leaderboard, positions, proposals. */
 export const PLAYER_PER_PAGE = 12;
 
+/**
+ * The numbered window: at most 7 page buttons around the current one, with `"..."`
+ * standing in for the pages between.
+ *
+ * ⭐ PURE AND EXPORTED because it was inline in the render, and a decision that lives
+ * only inside a render is a decision nothing can drive (SESSION-PROMPT-CLOSE-THE-BOARD
+ * §1b). Extracting it is what lets `test:pager-reach` sweep every (page, totalPages)
+ * pair rather than eyeball three of them.
+ */
+export function pageWindow(page: number, totalPages: number): (number | "...")[] {
+  const out: (number | "...")[] = [];
+  if (totalPages <= 7) {
+    for (let i = 1; i <= totalPages; i++) out.push(i);
+    return out;
+  }
+  out.push(1);
+  if (page > 3) out.push("...");
+  for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) out.push(i);
+  if (page < totalPages - 2) out.push("...");
+  out.push(totalPages);
+  return out;
+}
+
+/**
+ * Every page this control row can reach in ONE interaction from `page` — the numbered
+ * window plus first, previous, next and last.
+ *
+ * ⚠️ AND THE HONEST NOTE ABOUT WHAT first/last CHANGED, 2026-08-25. The window has
+ * ALWAYS carried `1` and `totalPages`, so both edges were already reachable in one
+ * click by number. **The arrows did not fix a reachability defect and this file must
+ * not pretend they did.** What they fix is the AFFORDANCE: a numbered button moves as
+ * the window slides, so "jump to the end" is a different target on every page and is
+ * indistinguishable from an ordinary page number; a `»` at a fixed end of the row is
+ * one target that always means the same thing. That is what Ali asked for — *"arrow
+ * controls, not only numbers"*.
+ *
+ * The invariant is still worth pinning, because it is the thing a future simplification
+ * of `pageWindow` would silently break.
+ */
+export function reachablePages(page: number, totalPages: number): number[] {
+  const safe = Math.min(Math.max(1, page), Math.max(1, totalPages));
+  const set = new Set<number>([1, totalPages]);
+  if (safe > 1) set.add(safe - 1);
+  if (safe < totalPages) set.add(safe + 1);
+  for (const p of pageWindow(safe, totalPages)) if (p !== "...") set.add(p);
+  return [...set].sort((a, b) => a - b);
+}
+
 export function Pagination({
   total,
   page,
@@ -25,6 +73,8 @@ export function Pagination({
   ofLabel = "of",
   prevLabel = "Previous page",
   nextLabel = "Next page",
+  firstLabel = "First page",
+  lastLabel = "Last page",
 }: {
   total: number;
   page: number;
@@ -45,6 +95,11 @@ export function Pagination({
   ofLabel?: string;
   prevLabel?: string;
   nextLabel?: string;
+  /** ⛔ An icon-only control MUST be named, and a double chevron is not self-describing.
+   *  These follow prev/next exactly: the caller passes them from its own `t`, because this
+   *  component is shared by server AND client trees and so cannot call getServerT/useT. */
+  firstLabel?: string;
+  lastLabel?: string;
 }) {
   const totalPages = Math.max(1, Math.ceil(total / perPage));
   if (totalPages <= 1) return null;
@@ -59,17 +114,7 @@ export function Pagination({
     return `${base}${sep}${param}=${p}`;
   };
 
-  // Show at most 7 page buttons around the current page.
-  const pages: (number | "...")[] = [];
-  if (totalPages <= 7) {
-    for (let i = 1; i <= totalPages; i++) pages.push(i);
-  } else {
-    pages.push(1);
-    if (safePage > 3) pages.push("...");
-    for (let i = Math.max(2, safePage - 1); i <= Math.min(totalPages - 1, safePage + 1); i++) pages.push(i);
-    if (safePage < totalPages - 2) pages.push("...");
-    pages.push(totalPages);
-  }
+  const pages = pageWindow(safePage, totalPages);
 
   // ⚠️ 44px WRITTEN LITERALLY, NOT `h-10` (campaign finding G-2, 2026-08-02).
   // This project overrides Tailwind's spacing scale in `tailwind.config.ts`, where the
@@ -113,11 +158,26 @@ export function Pagination({
       <p className="font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle">
         {((safePage - 1) * perPage + 1).toLocaleString()}–{Math.min(safePage * perPage, total).toLocaleString()} {ofLabel} {total.toLocaleString()}
       </p>
-      {/* Centred while wrapped, right-aligned once it fits on one line. At 360 seven
-          44px controls need two rows, and `justify-end` left the overflowing chevron
-          hanging alone against the right edge, which reads as a broken layout rather
-          than a wrapped one. */}
+      {/* Centred while wrapped, right-aligned once it fits on one line. `justify-end` once
+          left the overflowing chevron hanging alone against the right edge, which reads as a
+          broken layout rather than a wrapped one.
+          ⭐ THE WRAP IS THE DESIGN, AND FIRST/LAST COST NOTHING — MEASURED ON PRODUCTION,
+          2026-08-25, before and after. Eight 44px controls are 380px with gaps against a
+          326px container at 360 and a 359px one at 393, so the row ALREADY wrapped to two
+          lines on both. Six controls fit a row at 360 and seven at 393, so going from 8 to
+          10 (or 11, the worst case where `totalPages === 7`) still lands on TWO rows and the
+          block stays 92px tall. ⛔ So the trade-off this change was expected to force —
+          "hide the numbers on a phone and keep only first/prev/next/last" — was NOT taken,
+          because the measurement says it is not needed. Nothing is hidden at any width.
+          ⚠️ Re-measure before adding a ninth kind of control; the next one is not free. */}
       <div className="flex flex-wrap items-center justify-center sm:justify-end gap-1">
+        {/* ⛔ FIRST and LAST are the point of this control existing: a player on page 40 of
+            60 could otherwise only step one page at a time. They are disabled exactly as
+            prev/next are — a `<span aria-disabled>` in URL mode, so a dead control is never
+            a link — and they keep the same 44px box, so the row's rhythm does not change. */}
+        <Control to={1} disabled={!hasPrev} cls={`${btnBase} ${hasPrev ? btnInactive : btnDisabled}`} aria={firstLabel}>
+          <I.chevronsLeft s={14} />
+        </Control>
         <Control to={safePage - 1} disabled={!hasPrev} cls={`${btnBase} ${hasPrev ? btnInactive : btnDisabled}`} aria={prevLabel}>
           <I.chevronLeft s={14} />
         </Control>
@@ -132,6 +192,9 @@ export function Pagination({
         )}
         <Control to={safePage + 1} disabled={!hasNext} cls={`${btnBase} ${hasNext ? btnInactive : btnDisabled}`} aria={nextLabel}>
           <I.chevronRight s={14} />
+        </Control>
+        <Control to={totalPages} disabled={!hasNext} cls={`${btnBase} ${hasNext ? btnInactive : btnDisabled}`} aria={lastLabel}>
+          <I.chevronsRight s={14} />
         </Control>
       </div>
     </div>

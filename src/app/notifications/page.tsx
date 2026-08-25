@@ -261,6 +261,11 @@ export default async function NotificationsPage({
         </ul>
       )}
 
+      {/* ⚠️ FOUND WHILE ADDING first/last, 2026-08-25, and PRE-EXISTING: this
+          player-facing pager passed `ofLabel` and nothing else, so its prev/next controls
+          fell back to the component's English defaults and a Swahili or Chinese reader's
+          screen reader announced "Previous page". Every other player pager already passed
+          them. Leaving it would have made it worse — four English labels instead of two. */}
       {total > PLAYER_PER_PAGE && (
         <Pagination
           total={total}
@@ -268,6 +273,10 @@ export default async function NotificationsPage({
           perPage={PLAYER_PER_PAGE}
           baseHref={baseHref}
           ofLabel={t.common.of}
+          prevLabel={t.common.previousPage}
+          nextLabel={t.common.nextPage}
+          firstLabel={t.common.firstPage}
+          lastLabel={t.common.lastPage}
         />
       )}
     </PageContainer>

@@ -287,7 +287,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
 
       {totalPages > 1 && (
         <div className="rounded-lg border border-border bg-bg-elevated/40 overflow-hidden">
-          <Pagination total={rows.length} page={safePage} perPage={PLAYER_PER_PAGE} baseHref="/leaderboard" ofLabel={t.common.of} prevLabel={t.common.previousPage} nextLabel={t.common.nextPage} />
+          <Pagination total={rows.length} page={safePage} perPage={PLAYER_PER_PAGE} baseHref="/leaderboard" ofLabel={t.common.of} prevLabel={t.common.previousPage} nextLabel={t.common.nextPage} firstLabel={t.common.firstPage} lastLabel={t.common.lastPage} />
         </div>
       )}
         </>
