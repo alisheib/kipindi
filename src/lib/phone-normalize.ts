@@ -17,6 +17,37 @@
  * nor a leading `255` can be part of it; stripping them is unambiguous.
  */
 
+/**
+ * WHAT THE MONEY FORMS SHOULD SHOW IN THE NUMBER FIELD — Jay (Gaming Board) item #8.
+ *
+ * The deposit and withdraw pages used to open with an EMPTY field behind the placeholder
+ * `712 345 678`, so every player retyped their own number every time. ⛔ A placeholder must
+ * never become a value (finding A-5), so the fix is a real default, not a greyed hint.
+ *
+ * ⭐ THE SUBTLETY IS THE ERROR ROUND-TRIP, AND A NAIVE `??` GETS IT WRONG. Both actions
+ * carry the submitted values back on failure, but only when they are truthy —
+ * `withdraw/actions.ts:90` and `deposit/actions.ts:46` both omit an EMPTY msisdn. So
+ * `sp.msisdn ?? account` would silently replace a field the player had deliberately
+ * CLEARED with their account number, on the screen where the number decides where money
+ * goes. Keying on the error instead is exact: a fresh visit prefills, a returning one shows
+ * precisely what came back.
+ *
+ * ⚠️ WITHDRAWALS ARE THE SENSITIVE HALF. A defaulted payout destination is a CONVENIENCE,
+ * never an assumption — this changes what is displayed and nothing else. Every destination
+ * validation the action already runs still runs, and the field stays editable.
+ *
+ * PURE and EXPORTED so a suite can drive it; a decision inside a render is one nothing can
+ * drive. Guard: `npm run test:msisdn-prefill`.
+ */
+export function moneyFormMsisdn(
+  accountPhoneE164: string,
+  submitted: string | undefined,
+  hadError: boolean,
+): string {
+  if (hadError) return normalizeTzLocalDigits(submitted ?? "");
+  return normalizeTzLocalDigits(accountPhoneE164);
+}
+
 /** Canonical 9-digit local part, or as much of it as has been typed so far. */
 export function normalizeTzLocalDigits(raw: string): string {
   let d = (raw ?? "").replace(/\D+/g, "");

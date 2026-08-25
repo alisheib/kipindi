@@ -19,6 +19,7 @@ import { minWithdrawalForRate } from "@/lib/payout";
 // account's withdrawable max (min(cap, balance)), so small balances show fewer.
 const WITHDRAW_QUICK = [5_000, 10_000, 25_000, 50_000, 100_000, 500_000];
 import { currentSession } from "@/lib/server/auth-service";
+import { moneyFormMsisdn } from "@/lib/phone-normalize";
 import { db } from "@/lib/server/store";
 import { withdrawAction } from "./actions";
 import { getServerT } from "@/lib/i18n-server";
@@ -56,7 +57,12 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
   // Restore form values on error redirect so the player doesn't re-enter everything
   const prevProvider = sp.provider ?? "";
   const prevAmount = sp.amount ?? "";
-  const prevMsisdn = sp.msisdn ?? "";
+  // ⭐ Jay item #8 — the field opens with the player's OWN registered number instead of an
+  // empty box behind a placeholder. The rule lives in `moneyFormMsisdn` (one home, driven by
+  // `test:msisdn-prefill`) because it is not `sp.msisdn ?? account`: this action omits an
+  // EMPTY msisdn from its carry params (line 90), so that form would replace a deliberately
+  // CLEARED field with the account number — on the screen that decides where money goes.
+  const prevMsisdn = moneyFormMsisdn(session.phoneE164, sp.msisdn, errorMsg != null);
 
   // B-1: a swallowed wallet read made the form silently unusable (max = 0). A failed
   // read throws to the wallet error boundary instead of fabricating that state.

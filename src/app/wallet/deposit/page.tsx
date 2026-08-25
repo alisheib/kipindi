@@ -8,6 +8,7 @@ import { FieldLegend } from "@/components/ui/field-legend";
 import { Input } from "@/components/ui/input";
 import { CashbackPromo } from "@/components/ui/cashback-promo";
 import { currentSession } from "@/lib/server/auth-service";
+import { moneyFormMsisdn } from "@/lib/phone-normalize";
 import { db } from "@/lib/server/store";
 import { getBonusConfig } from "@/lib/server/bonus-config";
 import { getServerT } from "@/lib/i18n-server";
@@ -57,7 +58,9 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
   const errorMsg = sp.error ? decodeURIComponent(sp.error) : null;
   const prevProvider = sp.provider ?? "";
   const prevAmount = sp.amount ?? "";
-  const prevMsisdn = sp.msisdn ?? "";
+  // ⭐ Jay item #8 — see the note in `moneyFormMsisdn`. Same rule, same reason: this action
+  // also omits an empty msisdn from its carry params (`deposit/actions.ts:46`).
+  const prevMsisdn = moneyFormMsisdn(session.phoneE164, sp.msisdn, errorMsg != null);
   // Billing values round-tripped through the error redirect so a rejected card
   // deposit never makes the player retype their address.
   const prevBilling = {
