@@ -115,8 +115,12 @@ try {
     return { amount: parseTzs(t), text: t };
   };
 
-  const moneyIn = await figureUnder("Money in \\(deposits\\)");
-  const moneyOut = await figureUnder("Money out \\(withdrawals\\)");
+  // ⚠️ PLAIN TEXT, NOT A REGEX. `figureUnder` escapes what it is given; a first version
+  // passed pre-escaped captions ("Money in \\(deposits\\)") and the escaper escaped the
+  // backslashes again, so the locator hunted for `Money in \\\(deposits\\\)` and timed out
+  // against a card that was rendering perfectly. The harness lying, not the product — again.
+  const moneyIn = await figureUnder("Money in (deposits)");
+  const moneyOut = await figureUnder("Money out (withdrawals)");
   const net = await figureUnder("Net across the rail");
   const inWallet = await figureUnder("Winnings credited in-wallet");
 
@@ -168,9 +172,18 @@ try {
   // ── ⑤ the page still works at a phone width ────────────────────────────────────────
   await page.setViewportSize({ width: 393, height: 900 });
   await page.waitForTimeout(500);
-  const narrow = (await card.innerText()).replace(/\s+/g, " ");
+  // ⚠️ LOWERCASED. §3's oldest trap: Chrome's `innerText` applies `text-transform`, and
+  // these captions are `uppercase`, so a case-sensitive `indexOf("Money in")` returns −1 and
+  // the slice that follows reads the last character of the card. It reported a PERFECT card
+  // as having dropped every figure at 393 — the seventh time this campaign has been lied to
+  // by its own harness rather than by the product. The desktop reads above survived only
+  // because their locators were built case-insensitively.
+  const narrow = (await card.innerText()).replace(/\s+/g, " ").toLowerCase();
+  const afterMoneyIn = narrow.slice(narrow.indexOf("money in"));
   rec.check("⑤ every figure survives 393 — nothing is dropped by the layout",
-    parseTzs(narrow.slice(narrow.indexOf("Money in"))) === db.DEPOSIT.amount && /not published by selcom/i.test(narrow));
+    narrow.includes("money in") && parseTzs(afterMoneyIn.toUpperCase()) === db.DEPOSIT.amount
+      && narrow.includes("not published by selcom") && parseTzs(narrow.slice(narrow.indexOf("winnings credited")).toUpperCase()) === db.BET_PAYOUT.amount,
+    `found "money in": ${narrow.includes("money in")} · first figure after it: ${parseTzs(afterMoneyIn.toUpperCase())}`);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   rec.check("⑤ …and it adds no horizontal overflow at 393", overflow <= 0, `${overflow}px`);
   await card.screenshot({ path: `${SHOT}/selcom-card-393.png` });
