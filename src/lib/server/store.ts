@@ -924,6 +924,30 @@ const memoryDb = {
       }
       return sum;
     },
+    /**
+     * Per-type CONFIRMED count and ABSOLUTE sum — in-memory twin of the Prisma
+     * GROUP BY. Powers the Selcom statement (`selcom-statement.ts`), which must not
+     * walk a 20,000-row ledger to print three numbers.
+     *
+     * ⚠️ ABSOLUTE, unlike `sumConfirmedByTypes` above, and that is the whole reason
+     * this is a separate method rather than a parameter on that one. Withdrawals are
+     * stored NEGATIVE, so a signed sum prints a negative "money out" and makes a
+     * `net` that adds when it should subtract. A statement wants magnitudes and a
+     * direction it decides itself; the landing's "paid out" band wants the signed
+     * sum. Two questions, two methods.
+     */
+    totalsByType: (types: StoredTxn["type"][]): Record<string, { amount: number; count: number }> => {
+      const out: Record<string, { amount: number; count: number }> = {};
+      for (const t of types) out[t] = { amount: 0, count: 0 };
+      for (const t of store.txns.values()) {
+        if (t.status !== "CONFIRMED") continue;
+        const slot = out[t.type];
+        if (!slot) continue;
+        slot.amount += Math.abs(t.amount);
+        slot.count += 1;
+      }
+      return out;
+    },
     /** Transactions since `sinceMs` (optionally filtered to `types`) — in-memory
      *  twin of the windowed Prisma query. */
     listSince: (sinceMs: number, opts?: { types?: StoredTxn["type"][] }): StoredTxn[] => {

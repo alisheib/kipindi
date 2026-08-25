@@ -23,6 +23,8 @@ import { PayoutStatusControl } from "./payout-status-control";
 import { getPayoutStatus } from "@/lib/server/payout-status";
 import { db } from "@/lib/server/store";
 import { AdminBody } from "@/components/admin/admin-body";
+import { SelcomStatementCard } from "./selcom-statement-card";
+import { buildSelcomStatement, asRailTotals, TALLY_TYPES } from "@/lib/server/selcom-statement";
 
 export const metadata = { title: "Admin · Payments ops" };
 export const dynamic = "force-dynamic";
@@ -50,8 +52,13 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
     refreshRailProbes().catch(() => null),
     getPayoutStatus(),
   ]);
-  // Warn below one max-withdrawal of headroom — a dry float fails every payout.
-  const FLOAT_LOW_TZS = 1_000_000;
+  // ⭐ THREE DB-SIDE TALLIES, NOT A LEDGER WALK. `report-money.ts` records what walking
+  // this table costs — 3,176 ms and 333 MB of heap — and the Transaction table already
+  // holds 20,000+ rows. B-1: a failed read is an explicit `null`, so the card renders the
+  // honest load-error branch instead of a statement full of fabricated zeros, which on a
+  // regulator-facing page would read as "no money has ever moved".
+  const railTotalsRaw = await db.txn.totalsByType([...TALLY_TYPES]).catch(() => null);
+  const railTotals = railTotalsRaw === null ? null : asRailTotals(railTotalsRaw);
   // Payouts frozen in PROCESSING. A withdrawal whose provider call was refused
   // outright (e.g. Selcom's 403 "endpoint not enabled") never becomes terminal, so
   // nothing automatic can resolve it and the player's money stays held. Surfaced
@@ -96,29 +103,16 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
           />
         </AdminCard>
 
-        {/* Disbursement float — payouts debit this Selcom float account; a dry float
-            fails every withdrawal. Null when Selcom isn't the active provider or the
-            float PIN isn't set yet (no fabricated zero). */}
-        <AdminCard>
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">Disbursement float · Salio la malipo</span>
-            {floatBal === null ? (
-              <span className="font-mono text-[11px] text-text-tertiary">Unavailable — select Selcom and set the float PIN to read the live balance.</span>
-            ) : (
-              <>
-                <div>
-                  <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-subtle">Available</span>
-                  <p className={`font-mono text-[15px] font-bold tabular-nums ${floatBal.balance < FLOAT_LOW_TZS ? "text-danger" : "text-text"}`}>{formatTzs(floatBal.balance)}</p>
-                </div>
-                {floatBal.balance < FLOAT_LOW_TZS && (
-                  <span className="inline-flex items-center gap-1.5 font-mono text-[11px] text-danger">
-                    <I.alertCircle s={13} /> Low float — top up; payouts fail when it runs dry.
-                  </span>
-                )}
-              </>
-            )}
-          </div>
-          <p className="mt-2 font-mono text-[10px] text-text-tertiary">Live from Selcom vendor/balance — read fresh on each load.</p>
+        {/* ⭐ THE SELCOM SURFACE — Jay's #7. Both balances (one live, one honestly absent
+            because Selcom does not publish it) plus the statement of what actually crossed
+            the rail. ⛔ It REPLACED a bare disbursement-float strip rather than sitting
+            beside it: two Selcom money cards on one page is how an officer ends up reading
+            the wrong one. Every provenance label is derived from the figure it sits under —
+            see `selcom-statement-card.tsx`. */}
+        <AdminCard title="Selcom" sw="Selcom">
+          {railTotals === null
+            ? <AdminLoadError what="the Selcom statement tallies" />
+            : <SelcomStatementCard statement={buildSelcomStatement(railTotals, floatBal?.balance ?? null)} />}
         </AdminCard>
 
         {/* Payout rails — which Selcom disbursement products are actually provisioned

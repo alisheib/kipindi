@@ -1239,6 +1239,45 @@ export const prismaDb = {
     /** Transactions created since `sinceMs` (optionally filtered to `types`) — a
      *  windowed DB query so time-bounded analytics (MNO health, reconciliation)
      *  load only the window, not every row. */
+    /**
+     * Per-type CONFIRMED count and ABSOLUTE sum, computed in the database. Powers the
+     * Selcom statement, which prints three numbers off a ledger that already holds
+     * 20,000+ rows — `report-money.ts` records what loading that costs (3,176 ms and
+     * 333 MB of heap).
+     *
+     * ⚠️ `abs()` IN SQL, not in JavaScript, and the in-memory twin in `store.ts` does the
+     * same. Withdrawals are stored negative; a signed sum prints a negative "money out"
+     * and a `net` that adds when it should subtract.
+     *
+     * ⚠️ `groupBy`, so a type with no confirmed rows is ABSENT from the result — the
+     * caller seeds every requested type at zero first. A statement that silently omitted
+     * "withdrawals" because there had been none would read as a missing section rather
+     * than as a true zero.
+     */
+    totalsByType: async (types: StoredTxn["type"][]): Promise<Record<string, { amount: number; count: number }>> => {
+      const out: Record<string, { amount: number; count: number }> = {};
+      for (const t of types) out[t] = { amount: 0, count: 0 };
+      if (types.length === 0) return out;
+      // ⛔ ONE PARAMETERISED QUERY PER TYPE, not one `= any($1::text[])`. The types are a
+      // module constant of length 3 and the column is indexed, so three scalar-parameter
+      // reads cost nothing — while an ARRAY parameter is precisely the shape of raw-SQL
+      // binding that has failed on production and only on production in this repo before
+      // (`$queryRaw` binds a JS number as bigint; an int4-only function then answers 42883).
+      // A scalar text parameter cannot be mis-bound.
+      const rows = await Promise.all(types.map((t) =>
+        pc().$queryRaw<Array<{ n: bigint; total: unknown }>>`
+          select count(*)::bigint as n, coalesce(sum(abs("amount")), 0) as total
+            from "Transaction"
+           where "status" = 'CONFIRMED' and "type"::text = ${t}`,
+      ));
+      types.forEach((t, i) => {
+        const r = rows[i]?.[0];
+        // A `Decimal(18,2)` sum comes back as a Prisma Decimal or a string depending on
+        // driver version; `Number(...)` handles both, and `?? 0` covers the no-rows case.
+        out[t] = { amount: Number(r?.total ?? 0), count: Number(r?.n ?? 0) };
+      });
+      return out;
+    },
     listSince: async (sinceMs: number, opts?: { types?: StoredTxn["type"][] }): Promise<StoredTxn[]> => {
       const rows = await pc().transaction.findMany({
         where: {
