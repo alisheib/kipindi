@@ -1,0 +1,89 @@
+/**
+ * THE ANCHORS `red:chain-removal` MUTATES — declared, as DATA, importable without running.
+ *
+ * ⛔ A SIDECAR: `test:red-anchors` audits that every anchor still resolves exactly once
+ * WITHOUT executing a harness that rewrites real source. ⚠️ NO SIDE EFFECTS, data only.
+ *
+ * ── WHAT THESE MUTATIONS ARE ─────────────────────────────────────────────────
+ * Jay (Gaming Board) item #3 — removing a chain must not be able to erase the settlement
+ * record. `UpDownRound.chain` is `onDelete: Cascade`, and this platform has already lost
+ * 1,915 rounds that way (`e63-window.cjs`).
+ *
+ * ⭐ THE FIRST IS THE CATASTROPHE ITSELF — the guard is removed and a chain carrying real
+ * settlement history deletes cleanly, taking its rounds with it and reporting success.
+ *
+ * ⭐ THE LAST IS THE POSITIVE CONTROL, and it is the half people forget: it makes
+ * `deleteChain` refuse EVERYTHING. Every refusal assertion passes harder, the audit trail is
+ * perfectly safe, and the control the Board asked for does not work at all. **A control that
+ * never works is not a safe control, it is a broken one.**
+ *
+ * ⚠️ SINGLE-LINE ANCHORS (CRLF tree); no replacement may CONTAIN its own anchor.
+ */
+
+/** @typedef {{ name: string, file: string, suite: string, from: string, to: string, why: string, expect: string }} RedMutation */
+
+const CFG = "src/lib/server/updown-config.ts";
+const PAGE = "src/app/admin/updown/page.tsx";
+const ACT = "src/app/admin/updown/actions.ts";
+
+/** @type {RedMutation[]} */
+export const MUTATIONS = [
+  {
+    name: "delete-stops-counting-rounds",
+    why: "⭐ THE CATASTROPHE: the round count is never taken, so a chain carrying real settlement history deletes cleanly and CASCADES its rounds away — reporting success. This is the shape that already cost this platform 1,915 rounds",
+    file: CFG,
+    suite: "chain-removal",
+    from: `  const rounds = await roundStore.count({ chainId: id });`,
+    to: `  const rounds = 0;`,
+    expect: "2: 🔴 deleting a chain WITH rounds is refused",
+  },
+  {
+    name: "refusal-hides-the-count",
+    why: "the refusal stops naming how many rounds are at stake, so an operator is told 'no' without being told what they nearly destroyed or what to do instead — the refusal becomes a wall rather than a remedy",
+    file: CFG,
+    suite: "chain-removal",
+    from: `      error: \`This chain has \${rounds.toLocaleString()} round\${rounds === 1 ? "" : "s"} and cannot be deleted — deleting it would erase their settlement record. Archive it instead.\`,`,
+    to: `      error: "This chain cannot be deleted.",`,
+    expect: "2: …and the refusal states the COUNT",
+  },
+  {
+    name: "archive-loses-the-rounds",
+    why: "🔴 archive is implemented as a DELETE, which is the exact trade the whole item exists to prevent: the chain leaves the list, the operator sees success, and every round it ever ran goes with it",
+    file: CFG,
+    suite: "chain-removal",
+    from: `  return setChainState(id, "ARCHIVED", officerId);`,
+    to: `  await chainStore.delete(id); return { ok: true, data: cur };`,
+    // ⚠️ It goes red on "it lands in ARCHIVED" first, which is the honest EARLIER signature:
+    // a chain that was deleted cannot be in any state, so its disappearance is detected
+    // before its rounds can be counted. Naming the round-count assertion would have been
+    // naming a later symptom of the same one act.
+    expect: "4: …and it lands in ARCHIVED",
+  },
+  {
+    name: "running-chain-can-be-archived",
+    why: "a RUNNING chain can be filed away while it is still opening rounds — the board disappears from the operator's list and keeps taking bets, which is the opposite of a safe control",
+    file: CFG,
+    suite: "chain-removal",
+    from: `  if (cur.state === "RUNNING") {\n    return { ok: false, error: "Stop the chain before archiving it — a running chain is still opening rounds." };\n  }`,
+    to: `  if (false) {\n    return { ok: false, error: "Stop the chain before archiving it — a running chain is still opening rounds." };\n  }`,
+    expect: "4: 🔴 a RUNNING chain is refused, with the reason",
+  },
+  {
+    name: "archived-chains-vanish-from-admin",
+    why: "archived chains stop being listed for admins at all, so there is no way back to a board filed by mistake — a filing state that cannot be un-filed is a deletion with extra steps, and it would LOOK like a tidier console",
+    file: PAGE,
+    suite: "chain-removal",
+    from: `  const archived = allChains.filter((c) => c.state === "ARCHIVED");`,
+    to: `  const archived: typeof allChains = [];`,
+    expect: "5: ⭐ …and they are still listed for admins",
+  },
+  {
+    name: "control-delete-refuses-everything",
+    why: "⭐ POSITIVE CONTROL — `deleteChain` refuses every chain, including one that never opened a round. Every refusal assertion passes HARDER and the audit trail is perfectly safe, while the control the Gaming Board asked for does not work at all. A control that never works is not a safe control, it is a broken one",
+    file: CFG,
+    suite: "chain-removal",
+    from: `  if (rounds > 0) {`,
+    to: `  if (rounds >= 0) {`,
+    expect: "3: ⭐ a chain that never opened a round IS deleted",
+  },
+];

@@ -348,6 +348,9 @@ export const UPDOWN = {
   chainRunning: { en: "Running" },
   chainPaused:  { en: "Paused" },
   chainStopped: { en: "Stopped" },
+  /** ⭐ ARCHIVED is a resting state, not a deletion — the chain leaves the operator's working
+   *  list and every round it ever ran is kept. "Archived" says that; "Removed" would not. */
+  chainArchived: { en: "Archived" },
   // ── Price-reading state (`ObservationState`) ─────────────────────────────
   readingPending:   { en: "Awaiting read" },
   readingConfirmed: { en: "Confirmed" },

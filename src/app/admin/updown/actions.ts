@@ -14,6 +14,7 @@ import {
   createChain, updateChain, setChainState,
   setUpDownConfig,
   ALLOWED_DURATIONS, type Duration,
+  archiveChain, unarchiveChain, deleteChain,
 } from "@/lib/server/updown-config";
 import { voidRoundByOperator, generateRoundNow } from "@/lib/server/updown-service";
 import type { ChainState } from "@/lib/server/updown-dal";
@@ -181,6 +182,59 @@ export async function setChainStateAction(formData: FormData) {
     return { ok: true as const };
   } catch (err) {
     return { ok: false as const, error: safeError(err, "Chain state change failed") };
+  }
+}
+
+/**
+ * ⭐ ARCHIVE / UNARCHIVE / DELETE — Jay (Gaming Board) item #3.
+ *
+ * ⛔ `setChainStateAction` above deliberately REFUSES "ARCHIVED": archiving is not a run-state
+ * change an operator makes with the start/pause/stop control, it is a filing decision with its
+ * own precondition (the chain must not be running) and its own audit action. Letting it in
+ * through that door would have made a fourth radio button out of a different kind of act.
+ */
+export async function archiveChainAction(formData: FormData) {
+  const session = await ensureOps();
+  const id = String(formData.get("id") ?? "");
+  try {
+    const r = await archiveChain(id, session.userId);
+    if (!r.ok) return { ok: false as const, error: r.error };
+    refresh();
+    return { ok: true as const };
+  } catch (err) {
+    return { ok: false as const, error: safeError(err, "Archive failed") };
+  }
+}
+
+export async function unarchiveChainAction(formData: FormData) {
+  const session = await ensureOps();
+  const id = String(formData.get("id") ?? "");
+  try {
+    const r = await unarchiveChain(id, session.userId);
+    if (!r.ok) return { ok: false as const, error: r.error };
+    refresh();
+    return { ok: true as const };
+  } catch (err) {
+    return { ok: false as const, error: safeError(err, "Restore failed") };
+  }
+}
+
+/**
+ * 🔴 THE REFUSAL IS THE POINT OF THIS ACTION, NOT AN EDGE CASE. `UpDownRound.chain` is
+ * `onDelete: Cascade`, so a chain with rounds cannot be deleted without erasing their
+ * settlement record — the thing the Gaming Board audits. `deleteChain` counts the rounds,
+ * refuses with the count and the remedy, and audits the ATTEMPT.
+ */
+export async function deleteChainAction(formData: FormData) {
+  const session = await ensureOps();
+  const id = String(formData.get("id") ?? "");
+  try {
+    const r = await deleteChain(id, session.userId);
+    if (!r.ok) return { ok: false as const, error: r.error };
+    refresh();
+    return { ok: true as const };
+  } catch (err) {
+    return { ok: false as const, error: safeError(err, "Delete failed") };
   }
 }
 

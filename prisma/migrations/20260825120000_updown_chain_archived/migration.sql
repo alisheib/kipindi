@@ -1,0 +1,11 @@
+-- Jay (Gaming Board) item #3 — the SAFE form of "remove a chain".
+--
+-- 🔴 A HARD DELETE IS NOT SAFE AND HAS ALREADY COST THIS PLATFORM ONCE.
+-- "UpDownRound"."chainId" is ON DELETE CASCADE, so deleting a chain deletes every round
+-- it ever ran — the settlement record for real money. scripts/live/ops/e63-window.cjs
+-- exists because 1,915 "failures" turned out to be rounds deleted along with their board.
+--
+-- ARCHIVED is a fourth resting state, not a deletion. It is ADDITIVE: no existing row
+-- changes value, nothing is dropped, and the player board already filters on RUNNING so an
+-- archived chain is invisible to players by construction.
+ALTER TYPE "UpDownChainState" ADD VALUE IF NOT EXISTS 'ARCHIVED';

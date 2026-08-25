@@ -1317,10 +1317,25 @@ model Position {
 //      itself between two adjacent rounds, because it is never asked twice.
 // `@@unique([assetId, boundaryAt])` is what enforces both.
 
+/// ⭐ ARCHIVED added 2026-08-25 — Jay (Gaming Board) item #3, the SAFE form of "remove a chain".
+///
+/// 🔴 A HARD DELETE IS NOT SAFE AND IT HAS ALREADY COST THIS PLATFORM ONCE. `UpDownRound.chain`
+/// is `onDelete: Cascade`, so deleting a chain deletes EVERY ROUND IT EVER RAN — the settlement
+/// record for real money. `scripts/live/ops/e63-window.cjs` exists because 1,915 "failures"
+/// turned out to be rounds that had been deleted along with their board.
+///
+/// ⭐ The Board's own interest argues for the safer form: it audits settlement history, so the
+/// control it asked for must not be able to erase that history.
+///
+/// ARCHIVED is a fourth resting state, not a deletion: the chain leaves the operator's working
+/// list and every round it ever ran stays exactly where it is. ⚠️ It needs NO player-side change
+/// — the board filters on `state === "RUNNING"`, so an archived chain is invisible to players by
+/// construction, the same way STOPPED already is.
 enum UpDownChainState {
   RUNNING
   PAUSED
   STOPPED
+  ARCHIVED
 }
 
 enum UpDownRoundOutcome {

@@ -1152,6 +1152,92 @@ export async function setChainState(id: string, state: ChainState, officerId: st
 }
 
 /**
+ * ⭐ THE SAFE REMOVAL — Jay (Gaming Board) item #3, and the reason it is TWO operations.
+ *
+ * 🔴 A HARD DELETE IS NOT SAFE, AND IT HAS ALREADY COST THIS PLATFORM ONCE.
+ * `UpDownRound.chain` is `onDelete: Cascade`, so deleting a chain deletes **every round it
+ * ever ran** — the settlement record for real money. `scripts/live/ops/e63-window.cjs` exists
+ * because **1,915 "failures" turned out to be rounds deleted along with their board.** ⭐ The
+ * Board's own interest argues for the safer form: it audits settlement history, so the
+ * control it asked for must not be able to erase that history.
+ *
+ * So: **ARCHIVE is the answer for a chain that has run**, and a hard delete is permitted only
+ * for the case that actually motivated the request — the mistyped chain, minutes old, that
+ * has never opened a round.
+ *
+ * ⚠️ ARCHIVING NEEDS NO PLAYER-SIDE CHANGE, which is why it is safe to add. The board filters
+ * on `state === "RUNNING"` (`updown-board.ts:297`, `:544`, `:749`), so an archived chain is
+ * invisible to players by construction — exactly as STOPPED already is — and the healer still
+ * reads its rounds, because the healer reads ROUNDS and ignores chain state by design
+ * (`healStuckRounds`, E-24: "switching the game off must not trap stakes").
+ */
+export async function archiveChain(id: string, officerId: string): Promise<ServiceResult<StoredChain>> {
+  const cur = await chainStore.get(id);
+  if (!cur) return { ok: false, error: "Chain not found." };
+  if (cur.state === "ARCHIVED") return { ok: true, data: cur };
+  // ⛔ A RUNNING chain is opening rounds. Archiving it silently would take a live board off
+  // the operator's list while it kept taking bets, which is the opposite of a safe control.
+  if (cur.state === "RUNNING") {
+    return { ok: false, error: "Stop the chain before archiving it — a running chain is still opening rounds." };
+  }
+  return setChainState(id, "ARCHIVED", officerId);
+}
+
+/** Bring an archived chain back to the working list. It returns to STOPPED, never straight
+ *  to RUNNING: restoring a board and starting it are two decisions, and `setChainState`'s
+ *  start path re-checks the asset and its trusted source before either. */
+export async function unarchiveChain(id: string, officerId: string): Promise<ServiceResult<StoredChain>> {
+  const cur = await chainStore.get(id);
+  if (!cur) return { ok: false, error: "Chain not found." };
+  if (cur.state !== "ARCHIVED") return { ok: true, data: cur };
+  return setChainState(id, "STOPPED", officerId);
+}
+
+/**
+ * ⛔ HARD DELETE — permitted ONLY when the chain has never opened a round.
+ *
+ * ⚠️ THE COUNT IS THE WHOLE CONTROL, so it is read from the round store rather than inferred
+ * from anything on the chain row. A chain's own fields cannot tell you what its rounds did;
+ * only the rounds can.
+ *
+ * ⭐ BOTH OUTCOMES ARE AUDITED. A refusal is the more interesting record of the two: it is
+ * the evidence that an operator tried to remove a board carrying settlement history, which is
+ * precisely what the Gaming Board would want to see.
+ */
+export async function deleteChain(id: string, officerId: string): Promise<ServiceResult<{ id: string }>> {
+  const cur = await chainStore.get(id);
+  if (!cur) return { ok: false, error: "Chain not found." };
+
+  const rounds = await roundStore.count({ chainId: id });
+  if (rounds > 0) {
+    audit({
+      category: "ADMIN",
+      action: "updown.chain.delete_refused",
+      actorId: officerId, targetType: "UpDownChain", targetId: id,
+      payload: {
+        rounds, state: cur.state,
+        reason: "A chain with rounds cannot be deleted — UpDownRound.chain is ON DELETE CASCADE, so the settlement record would go with it.",
+        remedy: "Archive it instead: the chain leaves the working list and every round is kept.",
+      },
+    });
+    return {
+      ok: false,
+      error: `This chain has ${rounds.toLocaleString()} round${rounds === 1 ? "" : "s"} and cannot be deleted — deleting it would erase their settlement record. Archive it instead.`,
+    };
+  }
+
+  await chainStore.delete(id);
+  audit({
+    category: "ADMIN",
+    action: "updown.chain.deleted",
+    actorId: officerId, targetType: "UpDownChain", targetId: id,
+    payload: { rounds: 0, state: cur.state, durationMinutes: cur.durationMinutes, assetId: cur.assetId,
+      note: "Permitted only because the chain had never opened a round." },
+  });
+  return { ok: true, data: { id } };
+}
+
+/**
  * The stake bounds in force for a chain — its own override, else the product default.
  * The product default is the FLOOR: a per-chain override may raise the minimum but never
  * drop it below `defaultMinStake` (the platform stake floor, currently 1,000). This

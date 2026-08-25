@@ -25,7 +25,7 @@ import type { Prisma } from "@prisma/client";
 // works but keeps the two modules mutually entangled; there is no reason to repeat
 // that in new code.
 
-export type ChainState = "RUNNING" | "PAUSED" | "STOPPED";
+export type ChainState = "RUNNING" | "PAUSED" | "STOPPED" | "ARCHIVED";
 export type RoundOutcome = "UP" | "DOWN" | "VOID";
 export type ObservationState = "PENDING" | "CONFIRMED" | "FAILED";
 

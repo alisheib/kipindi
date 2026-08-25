@@ -54,7 +54,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
   const sp = await searchParams;
   // The economics card's window — presets + custom date+hour+minute, EAT-safe (default 30d).
   const range = resolveRange(sp, Date.now(), "30d");
-  const [assets, chains, cfg, feed, book] = await Promise.all([
+  const [assets, allChains, cfg, feed, book] = await Promise.all([
     listAssets().catch(() => []),
     listChains().catch(() => []),
     getUpDownConfig(),
@@ -72,6 +72,22 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
   ]);
 
   const enabledAssets = assets.filter((a) => a.enabled);
+  /**
+   * ⭐ ARCHIVED CHAINS LEAVE THE WORKING LIST — Jay (Gaming Board) item #3.
+   *
+   * The whole value of ARCHIVE is that a finished board stops competing for the operator's
+   * attention, so it is filtered out of `chains` here rather than styled differently in the
+   * table. ⛔ It is FETCHED, not excluded at the query — the count below has to be able to say
+   * how many are filed, or "archive" would look like "vanish" and an operator would have no
+   * way back to a board they filed by mistake.
+   *
+   * ⚠️ Players never needed a change: the board filters on `state === "RUNNING"`
+   * (`updown-board.ts`), so an archived chain is invisible to them by construction, exactly as
+   * STOPPED already is.
+   */
+  const archived = allChains.filter((c) => c.state === "ARCHIVED");
+  const chains = allChains.filter((c) => c.state !== "ARCHIVED");
+
   const running = chains.filter((c) => c.state === "RUNNING");
   const assetById = new Map(assets.map((a) => [a.id, a]));
 
@@ -672,6 +688,50 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
             </ScrollX>
           )}
         </AdminCard>
+
+        {/* ⭐ ARCHIVED CHAINS — Jay (Gaming Board) item #3, the half that makes ARCHIVE safe.
+            ⛔ A filing state that cannot be un-filed is a deletion with extra steps, so the
+            archived boards are listed here with the one control that matters. They are out of
+            the working table above and off the player board, and every round they ever ran is
+            untouched — which is the entire difference between this and the hard delete that
+            once took 1,915 rounds' settlement record with it (`e63-window.cjs`).
+            ⚠️ The card renders only when something is archived: an empty card on every visit
+            would be chrome teaching operators to ignore it. */}
+        {archived.length > 0 && (
+          <AdminCard title="Archived chains" sw="Minyororo iliyohifadhiwa">
+            <p className="px-4 pt-3 text-[12.5px] text-text-muted">
+              Filed away and hidden from players. Every round they ran is kept — restore one to bring it back as a stopped chain.
+            </p>
+            <ScrollX label="Archived Up & Down chains">
+              <table className="admin-tbl min-w-[560px]">
+                <thead>
+                  <tr className="text-left font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle">
+                    <th className="px-4 py-2.5 font-semibold">Chain</th>
+                    <th className="px-4 py-2.5 font-semibold">State</th>
+                    <th className="px-4 py-2.5 font-semibold">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {archived.map((c) => {
+                    const a = assets.find((x) => x.id === c.assetId);
+                    const label = `${a?.key ?? c.assetId} ${c.durationMinutes}m`;
+                    return (
+                      <tr key={c.id}>
+                        <td className="px-4 py-2.5 font-mono text-[12px]">{label}</td>
+                        {/* The same label the working table uses (line 553) — one lexicon, so
+                            "Archived" cannot come to mean two different things on one page. */}
+                        <td className="px-4 py-2.5 font-mono text-[12px] text-text-muted">{chainStateLabel(c.state)}</td>
+                        <td className="px-4 py-2.5">
+                          <ChainStateControls id={c.id} state={c.state} label={label} />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </ScrollX>
+          </AdminCard>
+        )}
 
         {/* ── Reading method ─────────────────────────────────────────────── */}
         <AdminCard title="Price reading method" sw="Njia ya kusoma bei">

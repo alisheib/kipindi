@@ -27,11 +27,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Toggle } from "@/components/ui/toggle";
+import type { ChainState } from "@/lib/server/updown-dal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ConfirmModal } from "@/components/ui/modal";
 import {
   createAssetAction, toggleAssetAction, updateAssetAction,
   createChainAction, setChainStateAction, updateChainAction, generateRoundAction,
+  archiveChainAction, unarchiveChainAction, deleteChainAction,
   updateThresholdsAction, updateReadingMethodAction,
 } from "./actions";
 import { formatClock } from "@/lib/utils";
@@ -330,7 +332,7 @@ export function EditChainForm({
 
 export function ChainStateControls({
   id, state, label,
-}: { id: string; state: "RUNNING" | "PAUSED" | "STOPPED"; label: string }) {
+}: { id: string; state: ChainState; label: string }) {
   const [pending, start] = useTransition();
   const router = useRouter();
   const { deferToast, toast } = useDeferredToast(pending);
@@ -354,6 +356,37 @@ export function ChainStateControls({
         });
       } catch {
         toast({ title: "Couldn't change chain state", variant: "danger" });
+      }
+    });
+  };
+
+  /**
+   * ⭐ ONE RUNNER FOR ARCHIVE / RESTORE / DELETE — three controls, one shape.
+   *
+   * ⛔ The refusal is shown VERBATIM, exactly as `generate` below does. `deleteChain` answers a
+   * chain that has rounds with the COUNT and the remedy ("Archive it instead"), and that
+   * sentence is the whole value of the control: paraphrasing it into "Couldn't delete" would
+   * throw away the only thing that tells an operator what to do next.
+   */
+  const run = (
+    kind: string,
+    action: (fd: FormData) => Promise<{ ok: boolean; error?: string }>,
+    okTitle: string,
+    okBody?: string,
+  ) => {
+    start(async () => {
+      try {
+        const fd = new FormData();
+        fd.set("id", id);
+        const r = await action(fd);
+        if (!r.ok) {
+          toast({ title: `Couldn't ${kind} ${label}`, description: r.error, variant: "danger" });
+          return;
+        }
+        router.refresh();
+        deferToast({ title: okTitle, description: okBody, variant: "success" });
+      } catch {
+        toast({ title: `Couldn't ${kind} ${label}`, variant: "danger" });
       }
     });
   };
@@ -445,6 +478,45 @@ export function ChainStateControls({
           confirmLabel="Stop chain"
           tone="claret"
           onConfirm={() => go("STOPPED")}
+        />
+      )}
+
+      {/* ⭐ JAY (GAMING BOARD) ITEM #3 — "remove a chain", in the only two forms that are safe.
+          🔴 `UpDownRound.chain` is `onDelete: Cascade`, so deleting a chain deletes EVERY ROUND
+          IT EVER RAN — the settlement record for real money. `e63-window.cjs` exists because
+          1,915 "failures" turned out to be rounds deleted along with their board. So the
+          everyday control is ARCHIVE, and delete is offered only for the case that actually
+          motivated the request: a chain that has never opened a round.
+          ⛔ Archive is offered only once the chain is STOPPED — the service refuses a RUNNING
+          chain, and a control that offers what the server will refuse is the defect, not the
+          fix ("a console that greys an option the server would still accept is the defect"). */}
+      {state === "STOPPED" && (
+        <ConfirmDialog
+          trigger={<Button type="button" variant="ghost" size="sm" disabled={pending}>Archive</Button>}
+          title={`Archive ${label}?`}
+          body="It leaves this list and disappears from the player board. Every round it ever ran is kept — nothing is deleted — and you can restore it at any time."
+          confirmLabel="Archive chain"
+          onConfirm={() => run("archive", archiveChainAction, `${label} archived`, "Kept every round. Restore it from the Archived filter.")}
+        />
+      )}
+      {state === "ARCHIVED" && (
+        <Button type="button" onClick={() => run("restore", unarchiveChainAction, `${label} restored`, "It is stopped — start it when you are ready.")} loading={pending} variant="ghost" size="sm">
+          Restore
+        </Button>
+      )}
+      {/* ⛔ DELETE IS ALWAYS OFFERED AND USUALLY REFUSED, AND THAT IS DELIBERATE. Hiding it
+          when rounds exist would teach an operator that the control is missing; showing it and
+          answering with the COUNT and the remedy teaches them why it cannot be used, and
+          leaves an audit row recording that a board carrying settlement history was nearly
+          removed — which is precisely what the Gaming Board would want to see. */}
+      {state !== "RUNNING" && (
+        <ConfirmDialog
+          trigger={<Button type="button" variant="ghost" size="sm" disabled={pending}>Delete</Button>}
+          title={`Delete ${label}?`}
+          body="Only possible if this chain has never opened a round. If it has, the deletion is refused — deleting it would erase those rounds' settlement record. Archive it instead."
+          confirmLabel="Delete chain"
+          tone="claret"
+          onConfirm={() => run("delete", deleteChainAction, `${label} deleted`, "It had never opened a round.")}
         />
       )}
     </div>

@@ -367,6 +367,7 @@ export function chainStateLabel(state: ChainState): string {
     RUNNING: UPDOWN.chainRunning.en,
     PAUSED: UPDOWN.chainPaused.en,
     STOPPED: UPDOWN.chainStopped.en,
+    ARCHIVED: UPDOWN.chainArchived.en,
   };
   return L[state] ?? humanise(state);
 }
