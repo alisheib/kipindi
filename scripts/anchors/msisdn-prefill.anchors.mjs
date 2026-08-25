@@ -25,7 +25,7 @@
 /** @typedef {{ name: string, file: string, suite: string, from: string, to: string, why: string, expect: string }} RedMutation */
 
 const NORM = "src/lib/phone-normalize.ts";
-const WPAGE = "src/app/wallet/withdraw/page.tsx";
+const DPAGE = "src/app/wallet/deposit/page.tsx";
 const WACT = "src/app/wallet/withdraw/actions.ts";
 
 /** @type {RedMutation[]} */
@@ -58,12 +58,20 @@ export const MUTATIONS = [
     expect: "5: ⛔ the action takes the destination from the FORM, never from the session",
   },
   {
+    // 🔴 RE-POINTED 2026-08-25, AND THE MOVE IS THE RECORD. This control mutated the
+    // WITHDRAW page, which was correct until `E-215` gave withdrawals a stated destination
+    // instead of an editable field — at which point the anchor named a line that no longer
+    // exists and `test:red-anchors` said so: *"anchor missing — cannot inject"*. ⛔ That is
+    // the sidecar earning its keep. Had the anchors lived inside the harness, this case would
+    // simply have stopped being provable and the harness would still have printed a tidy
+    // count — the `board-discovery-red` failure, which is why `red-anchor.mjs` exists.
+    // DEPOSIT is now the only page this rule governs, so the control belongs there.
     name: "control-page-ignores-the-rule",
-    why: "⭐ POSITIVE CONTROL — the withdraw page goes back to an empty field. §1 and §2 drive the pure function and are untouched, so they all still pass; only the CALL-SITE assertions stand between that and a green report on a form that prefills nothing",
-    file: WPAGE,
+    why: "⭐ POSITIVE CONTROL — the deposit page goes back to an empty field. §1 and §2 drive the pure function and are untouched, so they all still pass; only the CALL-SITE assertions stand between that and a green report on a form that prefills nothing",
+    file: DPAGE,
     suite: "msisdn-prefill",
     from: `  const prevMsisdn = moneyFormMsisdn(session.phoneE164, sp.msisdn, errorMsg != null);`,
     to: `  const prevMsisdn = sp.msisdn ?? "";`,
-    expect: "3: withdraw seeds the field through the shared rule",
+    expect: "3: deposit seeds the field through the shared rule",
   },
 ];

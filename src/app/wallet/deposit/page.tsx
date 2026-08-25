@@ -8,7 +8,8 @@ import { FieldLegend } from "@/components/ui/field-legend";
 import { Input } from "@/components/ui/input";
 import { CashbackPromo } from "@/components/ui/cashback-promo";
 import { currentSession } from "@/lib/server/auth-service";
-import { moneyFormMsisdn } from "@/lib/phone-normalize";
+import { moneyFormMsisdn, normalizeTzLocalDigits } from "@/lib/phone-normalize";
+import { DepositNumberChoice } from "@/components/wallet/deposit-number-choice";
 import { db } from "@/lib/server/store";
 import { getBonusConfig } from "@/lib/server/bonus-config";
 import { getServerT } from "@/lib/i18n-server";
@@ -169,6 +170,16 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
             defaultValue={prevMsisdn}
           />
           <p className="mt-1.5 text-[11.5px] text-text-subtle">{t.wallet.mobileMoneyNumberHint}</p>
+          {/* 🔴 `E-215`'s OTHER HALF. Withdrawal states its destination and refuses any
+              other; deposit OFFERS one, because money arriving from a friend's handset is
+              ordinary and blocking it would break real top-ups. The prefill alone was not
+              enough: a box that already holds your own number reads as settled rather than
+              editable, so the player who needs a different number never thinks to try. */}
+          <DepositNumberChoice
+            registered={normalizeTzLocalDigits(session.phoneE164)}
+            current={prevMsisdn}
+            copy={{ useAnother: t.wallet.useAnotherNumber, useMine: t.wallet.useMyNumber }}
+          />
         </div>
 
         {/* Billing details — CARD only. Selcom rejects card orders without them. */}

@@ -90,6 +90,13 @@ export type FailureReason =
   // service and without inventing copy that already exists in three languages.
   | "deposit_limit"
   | "sof_required"
+  /**
+   * `E-215` · the payout destination is not the number on the account. ⛔ NOT a
+   * validation failure — the number may be perfectly well-formed and belong to
+   * somebody else. The copy names the registered last four so the refusal says WHERE
+   * the money may go, not merely that it may not go here.
+   */
+  | "payout_destination_not_registered"
   // ⛔ RETIRED 2026-08-20 — do not re-add. `kyc_required` was the withdrawal
   // identity refusal, and identity verification stopped being a precondition of
   // withdrawal on the Gaming Board's instruction (comment #1, relayed by the owner
@@ -153,7 +160,7 @@ export interface ReasonSpec {
   /** The dictionary key under `t.fail`. */
   key: string;
   /** Figures this reason's copy interpolates. Declared so the guard can check them. */
-  needs?: readonly ("min" | "max" | "balance" | "needed" | "retryAfterSec" | "until" | "remaining" | "net")[];
+  needs?: readonly ("min" | "max" | "balance" | "needed" | "retryAfterSec" | "until" | "remaining" | "net" | "last4")[];
 }
 
 /**
@@ -212,6 +219,13 @@ export const REASONS: Record<FailureReason, ReasonSpec> = {
   //
   // Fixable by the player, right now → warning:
   deposit_limit:        { severity: "warning", channel: "inline", key: "errDepositLimit" },
+  // 🔴 `E-215` · ERROR and INLINE. An error rather than a warning because the player
+  // cannot fix it by changing the amount or by waiting — the destination is fixed by the
+  // account. Inline rather than a toast because it belongs beside the destination it is
+  // about, and ⛔ a warning-severity money refusal may not be a gold toast at all (see
+  // `Channel` above: gold means EARNED MONEY on this platform).
+  payout_destination_not_registered:
+                        { severity: "error",   channel: "inline", key: "failPayoutDestination", needs: ["last4"] },
   sof_required:         { severity: "warning", channel: "inline", key: "errSofRequired" },
   // ⚠️  DECLARES BOTH FIGURES, and the guard is why.  interpolates
   // {net} AND {min}; declaring only one leaves a literal placeholder on screen — the exact
@@ -361,6 +375,13 @@ export interface FailureDetail {
   remaining?: number;
   /** What would actually land after the withdrawal fee — the NET, beside the minimum. */
   net?: number;
+  /**
+   * `E-215` · the last four digits of the account’s REGISTERED number — never of the
+   * number that was submitted. A string, and it must stay one: `"0044"` is a real suffix
+   * on production and a number would render it `44`, naming a different phone on a
+   * refusal whose whole job is to name the right one.
+   */
+  last4?: string;
 }
 
 /** What every refusing service returns. `code` is unchanged; `reason`/`detail` are additive. */
@@ -438,6 +459,10 @@ export function renderFailure(
     net: d.net != null ? money(d.net) : "—",
     sec: String(Math.max(1, Math.ceil((r as ReasonedFailure).retryAfterSec ?? d.retryAfterSec ?? 60))),
     until: d.until ?? "—",
+    // ⚠️ Passed through as a STRING with no formatting at all. Every other value here goes
+    // through `money()` or `String(Math…)`; a phone suffix is neither a quantity nor a
+    // currency, and `"0044"` — a real suffix on production — must survive as `0044`.
+    last4: d.last4 ?? "—",
   };
   // 🔴 A GLOBAL SUBSTITUTION, AND IT HAS TO BE. This was a chain of `String.replace(str, …)`
   // calls, and `replace` with a STRING pattern substitutes only the FIRST occurrence — so

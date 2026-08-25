@@ -30,6 +30,7 @@ import { emit } from "./event-bus";
 import { postLedgerEntries, depositEntries, rgSuspenseEntries, withdrawalEntries, internalCreditEntries, adjustmentEntries, withMoneyTx } from "./ledger";
 import { getEffectiveConfig } from "./market-config";
 import { computeWithdrawalFee, minWithdrawalForRate, PROVIDER_MIN_PAYOUT_TZS } from "@/lib/payout";
+import { payoutDestinationFor } from "@/lib/payout-destination";
 import type { z } from "zod";
 import type { ServiceResult } from "./auth-service";
 import { formatTzs } from "@/lib/utils";
@@ -1290,6 +1291,56 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
 
   const user = await db.user.findById(userId);
   if (!user) return { ok: false, error: "User not found.", code: "NOT_FOUND" };
+
+  // 🔴 `E-215` · THE PAYOUT MAY ONLY GO TO THE NUMBER ON THE ACCOUNT. This is the
+  // owner’s law (2026-08-25) and until this line existed NOTHING enforced it: `phoneE164`
+  // appeared exactly once anywhere on the withdrawal path — in the form PREFILL — while this
+  // function stored and dispatched whatever the form sent, uncompared. Re-derived from
+  // production the day it was written: 7 of 25 lifetime withdrawals went elsewhere, 6
+  // CONFIRMED, and one pair (`…979354` → `…939754`) is a DIGIT TRANSPOSITION — a player who
+  // almost certainly mistyped their own number and paid a stranger. See
+  // `src/lib/payout-destination.ts` for the full census and why it refuses rather than
+  // corrects.
+  //
+  // ⛔ IT SITS HERE, BEFORE THE HOLD, AND THE ORDER IS THE POINT. Everything below this
+  // line moves money: `db.wallet.adjust` takes the balance into `hold` and `db.txn.create`
+  // writes the ledger row. Refusing after either would leave a player debited for a payout
+  // that was never allowed to leave — the stranded-funds shape `reconcileStalePayments`
+  // exists to clean up. Nothing has moved when this returns.
+  //
+  // ⚠️ IT BINDS THE OPERATOR PATHS TOO, and that is deliberate rather than overlooked.
+  // `admin/payments` `retryWithdrawalAction` and `bulkRetryAction` replay the ORIGINAL
+  // `t.msisdn`, so retrying one of the historical mismatched rows is now refused — which is
+  // correct: a retry of a payout to a non-registered number is the very act the law
+  // forbids, and it does not strand anything, because a refused retry creates no
+  // replacement txn and the money comes back through *Return to player* as it always did.
+  const destination = payoutDestinationFor(user.phoneE164, parse.data.msisdn);
+  if (!destination.ok) {
+    // ⛔ THE AUDIT FACT IS WRITTEN BEFORE THE RETURN, and it carries the SUBMITTED number.
+    // A refusal nobody can count is how `E-215` stayed invisible for 25 withdrawals: the
+    // rows were all in the ledger and no query asked whether the destination matched.
+    // ⚠️ There is no txnId to join to — the point is that no transaction exists — so this
+    // is keyed on the USER, and `submittedMsisdn` is recorded in full because "somebody
+    // tried to send this account’s money to THAT number" is exactly the fact a regulator
+    // asks for. The player never sees it; `failPayoutDestination` names only the last four.
+    audit({
+      category: "WALLET", action: "withdraw.destination_refused", actorId: actor,
+      targetType: "User", targetId: userId,
+      payload: {
+        refusal: destination.refusal, amount: parse.data.amount, provider: parse.data.provider,
+        submittedMsisdn: parse.data.msisdn ?? null, onBehalfOf: userId, operatorInitiated,
+      },
+    });
+    return {
+      ok: false,
+      // The English service string is audit/API truth; the player reads
+      // `failPayoutDestination` in their own language, minted from the reason below.
+      error: `Payouts may only be sent to the number registered on this account (ending ${destination.last4}).`,
+      code: "INVALID",
+      reason: "payout_destination_not_registered" as const,
+      detail: { last4: destination.last4 },
+    };
+  }
 
   // ⛔ IDENTITY IS RECORDED HERE, IT IS NO LONGER ENFORCED — and the read stays for
   // exactly that reason. Identity verification stopped being a precondition of

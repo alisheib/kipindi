@@ -6,6 +6,7 @@ import { PageHero } from "@/components/ui/page-hero";
 import { FieldLegend } from "@/components/ui/field-legend";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Input, Field as KitField } from "@/components/ui/input";
+import { Chip } from "@/components/ui/chip";
 import { Cash } from "@/components/ui/cash";
 import { AmountField } from "@/components/wallet/amount-field";
 import { formatTzs, fill, pctNum } from "@/lib/utils";
@@ -19,7 +20,7 @@ import { minWithdrawalForRate } from "@/lib/payout";
 // account's withdrawable max (min(cap, balance)), so small balances show fewer.
 const WITHDRAW_QUICK = [5_000, 10_000, 25_000, 50_000, 100_000, 500_000];
 import { currentSession } from "@/lib/server/auth-service";
-import { moneyFormMsisdn } from "@/lib/phone-normalize";
+import { normalizeTzLocalDigits } from "@/lib/phone-normalize";
 import { db } from "@/lib/server/store";
 import { withdrawAction } from "./actions";
 import { getServerT } from "@/lib/i18n-server";
@@ -57,12 +58,24 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
   // Restore form values on error redirect so the player doesn't re-enter everything
   const prevProvider = sp.provider ?? "";
   const prevAmount = sp.amount ?? "";
-  // ⭐ Jay item #8 — the field opens with the player's OWN registered number instead of an
-  // empty box behind a placeholder. The rule lives in `moneyFormMsisdn` (one home, driven by
-  // `test:msisdn-prefill`) because it is not `sp.msisdn ?? account`: this action omits an
-  // EMPTY msisdn from its carry params (line 90), so that form would replace a deliberately
-  // CLEARED field with the account number — on the screen that decides where money goes.
-  const prevMsisdn = moneyFormMsisdn(session.phoneE164, sp.msisdn, errorMsg != null);
+  // 🔴 `E-215` · ON WITHDRAWAL THE DESTINATION IS THE ACCOUNT'S NUMBER, FULL STOP —
+  // so it is read from the SESSION and never from the query string.
+  //
+  // ⭐ THIS LINE USED TO BE `moneyFormMsisdn(session.phoneE164, sp.msisdn, errorMsg != null)`,
+  // which was exactly right for Jay item #8 (E-210) and is exactly wrong now, for a reason
+  // worth stating: that rule ROUND-TRIPS WHAT WAS SUBMITTED on a validation error. The form
+  // can no longer submit anything else — the field is gone — but a hand-crafted POST can, and
+  // the action carries `msisdn` back in its error redirect. So the old call would take an
+  // attacker's number straight out of `?msisdn=` and render it on this page under the words
+  // "Registered number". ⛔ A FALSE STATEMENT ABOUT WHERE MONEY IS GOING, on the screen whose
+  // entire job is to state that correctly — the E-5 shape, and worse, because it would be
+  // reassuring rather than merely wrong.
+  //
+  // ⛔ `moneyFormMsisdn` IS NOT CHANGED and is still the rule on DEPOSIT, where a player may
+  // legitimately choose another number and must not lose it to a validation error. The two
+  // screens want different behaviour because the two directions carry different risk; that
+  // asymmetry IS the law, not an inconsistency. `test:msisdn-prefill` pins both halves.
+  const registeredMsisdn = normalizeTzLocalDigits(session.phoneE164);
 
   // B-1: a swallowed wallet read made the form silently unusable (max = 0). A failed
   // read throws to the wallet error boundary instead of fabricating that state.
@@ -170,22 +183,34 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
           disabled={!canSubmit}
         />
 
-        <KitField label={t.wallet.destinationPhone}>
-          <Input
-            id="msisdn"
-            name="msisdn"
-            type="tel"
-            inputMode="numeric"
-            pattern="\d{9}"
-            maxLength={9}
-            required
-            placeholder="712 345 678"
-            defaultValue={prevMsisdn || undefined}
-            disabled={!canSubmit}
-            prefix="+255"
-            mono
-          />
-        </KitField>
+        {/* 🔴 `E-215` · THE DESTINATION IS STATED, NOT TYPED — and it is not a disabled
+            input either. Until 2026-08-25 this was a free-text field and the server compared
+            it to nothing: 7 of 25 lifetime withdrawals went to a number other than the
+            account's, 6 CONFIRMED, one of them a DIGIT TRANSPOSITION (`…979354` → `…939754`)
+            — a player who mistyped their own number and paid a stranger.
+
+            ⛔ NOT `disabled`, ON THE OWNER'S EXPLICIT INSTRUCTION. A greyed-out box says
+            *you may not* without ever saying *why*, so the player is left to guess whether
+            the form is broken. This shows the number, names it as the registered one, and
+            states the rule in the player's own language.
+
+            ⚠️ THE HIDDEN INPUT IS NOT THE CONTROL. `WithdrawConfirm.validate()` reads
+            `fd.get("msisdn")` and the payee-name lookup posts it, so the form must still
+            carry the value; but nothing here is what makes the rule true. The seal is
+            `payoutDestinationFor` inside `wallet-service.withdraw()`, which refuses a
+            mismatch before a shilling is moved — this markup is manners, the server is the
+            law. Rewriting the hidden value in devtools changes nothing. */}
+        <div className="rounded-xl border border-border bg-bg-inset/60 px-3.5 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <FieldLegend>{t.wallet.destinationPhone}</FieldLegend>
+            <Chip variant="neutral" size="sm">{t.wallet.destinationRegistered}</Chip>
+          </div>
+          <p className="mt-1.5 font-mono text-[15px] tabular-nums text-text tracking-[0.02em]">
+            +255 {registeredMsisdn.replace(/(\d{3})(?=\d)/g, "$1 ")}
+          </p>
+          <p className="mt-1.5 text-[11.5px] leading-snug text-text-muted">{t.wallet.destinationLockedBody}</p>
+          <input type="hidden" name="msisdn" value={registeredMsisdn} />
+        </div>
 
         {/* C2e — the withdraw notices merged into ONE iconized panel (was two
             separate info/warning strips). */}

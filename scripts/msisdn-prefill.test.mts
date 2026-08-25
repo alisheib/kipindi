@@ -70,18 +70,29 @@ const depositAct = decomment(readFileSync(join(ROOT, "src/app/wallet/deposit/act
      moneyFormMsisdn("+255712000101", "0788123456", true));
 }
 
-// ── 3 · Both pages use it, and neither re-derives it ────────────────────────
+// ── 3 · DEPOSIT uses the shared rule — and after `E-215`, only deposit does ─
+//
+// 🔴 THIS SECTION USED TO LOOP OVER BOTH PAGES, AND SPLITTING IT IS THE POINT.
+// Jay item #8 (`E-210`) prefilled a free-text number field on BOTH money screens, and that
+// was right for both at the time. `E-215` changed one of them: a withdrawal may now only be
+// paid to the account's registered number, so the withdraw screen has no editable
+// destination left to prefill — §6 pins what it has instead. Leaving the old loop here would
+// have kept a guard asserting a decision the owner has since replaced, which is the
+// "one finding, one truth" failure (§0.1a) wearing a green tick.
 {
-  for (const [name, src] of [["withdraw", withdrawPage], ["deposit", depositPage]] as const) {
-    ok(`3: ${name} seeds the field through the shared rule`,
-       /moneyFormMsisdn\(session\.phoneE164, sp\.msisdn, errorMsg != null\)/.test(src));
-    // ⛔ The old form is the defect. If it comes back, so does the cleared-field bug.
-    ok(`3: ⛔ ${name} no longer uses the naive fallback`, !/sp\.msisdn \?\? ""/.test(src));
-    ok(`3: ${name} still renders the value as the field's default, not a placeholder`,
-       /defaultValue=\{prevMsisdn/.test(src));
-    // A-5: the hint stays a hint.
-    ok(`3: ${name} keeps the placeholder as a placeholder`, /placeholder="712 345 678"/.test(src));
-  }
+  const src = depositPage;
+  ok("3: deposit seeds the field through the shared rule",
+     /moneyFormMsisdn\(session\.phoneE164, sp\.msisdn, errorMsg != null\)/.test(src));
+  // ⛔ The old form is the defect. If it comes back, so does the cleared-field bug.
+  ok('3: ⛔ deposit no longer uses the naive fallback', !/sp\.msisdn \?\? ""/.test(src));
+  ok("3: deposit still renders the value as the field's default, not a placeholder",
+     /defaultValue=\{prevMsisdn/.test(src));
+  // A-5: the hint stays a hint.
+  ok('3: deposit keeps the placeholder as a placeholder', /placeholder="712 345 678"/.test(src));
+  // ⭐ `E-215` · and deposit gained a REAL affordance for the other number, because a box
+  // that already holds your own number reads as settled rather than editable.
+  ok("3: ⭐ deposit offers a working \"use another number\" control",
+     /<DepositNumberChoice/.test(src) && /useAnother: t\.wallet\.useAnotherNumber/.test(src));
 }
 
 // ── 4 · ⭐ THE ASSUMPTION THIS RULE RESTS ON, PINNED ────────────────────────
@@ -100,11 +111,33 @@ const depositAct = decomment(readFileSync(join(ROOT, "src/app/wallet/deposit/act
   // display only, and on a payout screen that distinction is the whole safety argument.
   ok("5: withdraw still refuses a missing destination", /msisdnRequired|!msisdn/.test(withdrawAct));
   ok("5: deposit still refuses a missing destination", /!msisdn/.test(depositAct));
-  ok("5: the withdraw field is still `required`", /required/.test(withdrawPage.slice(withdrawPage.indexOf('name="msisdn"'), withdrawPage.indexOf('name="msisdn"') + 400)));
-  // ⛔ And the page must not have started TRUSTING the prefill — the action reads the form,
-  // never the session, for the destination.
+  // ⛔ The ACTION still reads the FORM, not the session — unchanged by `E-215` and worth
+  // keeping green. The seal is in the SERVICE, one layer below, where it cannot be skipped
+  // by a caller that builds its own FormData. If the action started reading the session
+  // instead, the rule would look enforced while `withdraw()` — which the two operator retry
+  // paths call DIRECTLY, with no action and no form at all — went on comparing nothing.
   ok("5: ⛔ the action takes the destination from the FORM, never from the session",
      /formData\.get\("msisdn"\)/.test(withdrawAct) && !/session\.phoneE164/.test(withdrawAct));
+}
+
+// ── 6 · 🔴 `E-215` · WITHDRAW NO LONGER HAS AN EDITABLE DESTINATION AT ALL ────
+{
+  const src = withdrawPage;
+  // The destination comes from the SESSION on this page, and must not be recoverable from
+  // the query string: the action carries `msisdn` back on an error redirect, so seeding from
+  // `sp.msisdn` would let a hand-crafted POST put an attacker's number on screen under the
+  // words "Registered number" — a false statement about where money is going.
+  ok("6: 🔴 withdraw seeds the destination from the SESSION, not the query string",
+     /normalizeTzLocalDigits\(session\.phoneE164\)/.test(src) && !/moneyFormMsisdn\(/.test(src));
+  ok("6: withdraw carries the value in a hidden input the confirm step can read",
+     /<input type="hidden" name="msisdn" value=\{registeredMsisdn\} \/>/.test(src));
+  // ⛔ THE OWNER'S EXPLICIT INSTRUCTION: not a greyed box. A `disabled` field says "you may
+  // not" and never says why, so the player cannot tell it from a broken form.
+  ok("6: ⛔ the destination is NOT a disabled input",
+     !/name="msisdn"[\s\S]{0,300}?disabled/.test(src));
+  // …and it says WHY, in the player's own language rather than in English prose.
+  ok("6: ⭐ the screen states the rule, localized",
+     /t\.wallet\.destinationLockedBody/.test(src) && /t\.wallet\.destinationRegistered/.test(src));
 }
 
 console.log(`\nmsisdn-prefill: ${pass} passed, ${fail} failed`);

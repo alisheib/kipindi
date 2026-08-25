@@ -162,7 +162,13 @@ function auditReason(reason: FailureReason, dict: Record<string, string>): strin
   // ⭐ AND EVERY REASON, IN EVERY LANGUAGE, MUST RENDER A FINISHED SENTENCE — with every
   // figure supplied. This is §1.5b generalised: it is the check that catches a placeholder
   // used twice, a placeholder the renderer does not know, or a new one added to the copy.
-  const FULL_DETAIL = { min: 1_000, max: 1_000_000, balance: 500, needed: 2_000, remaining: 40_000, until: "2026-09-01" };
+  // ⚠️ EVERY FIGURE THE REGISTRY CAN INTERPOLATE MUST BE IN HERE. `2.*.figures` renders each
+  // reason with this object and again with `{}` and requires the two to DIFFER — so a figure
+  // missing from this fixture makes both renders identical and reports a correct sentence as
+  // "declared but never interpolated". `last4` (`E-215`) was added 2026-08-25 and did exactly
+  // that on all three locales. ⛔ A fixture that cannot distinguish the right answer from the
+  // wrong one is not a fixture.
+  const FULL_DETAIL = { min: 1_000, max: 1_000_000, balance: 500, needed: 2_000, remaining: 40_000, until: "2026-09-01", last4: "9354" };
   for (const loc of LOCALES) {
     const dict = DICT[loc].error as unknown as Record<string, string>;
     const render = (r: FailureReason, detail: object) =>

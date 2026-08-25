@@ -1043,6 +1043,16 @@ export const dict = {
       amount: "Amount",
       amountHint: "Min TZS 1,000 · Max TZS 5,000,000 per withdrawal. Amounts ≥ TZS 1,000,000 may require AML review (up to 24 hours).",
       destinationPhone: "Destination phone",
+      // 🔴 `E-215` · the withdrawal destination is STATED, not typed. ⛔ These three keys
+      // exist so the screen can say WHY the number is fixed. A `disabled` input says "you may
+      // not" and never says "because it is the number your account is registered to, and
+      // payouts may only go there" — the owner's explicit instruction, 2026-08-25.
+      destinationRegistered: "Registered number",
+      destinationLockedBody: "Payouts can only go to the number registered on this account. Contact support if this number has changed.",
+      // Deposit is the OPPOSITE rule and needs its own affordance: money arriving from a
+      // friend’s handset is ordinary, so the prefill must be visibly optional.
+      useAnotherNumber: "Use another number",
+      useMyNumber: "Use my registered number",
       // B-22 · withdraw confirm-guard refusal. The payee number is where the
       // money GOES, so this is not `msisdnRequired` (which says "payment
       // prompt" — a deposit concept; there is no prompt on a withdrawal).
@@ -1806,6 +1816,12 @@ export const dict = {
       failSelfExcluded: "You’re on a self-exclusion break until {until}. Betting stays off until then.",
       failWalletFrozen: "Your wallet is frozen, so bets can’t be placed. Contact support to resolve it.",
       failWalletMissing: "We couldn’t reach your wallet. Refresh and try again — nothing has been charged.",
+      // 🔴 `E-215` · the payout-destination law. ⚠️ THE NEXT STEP IS "contact support" BECAUSE
+      // THAT IS THE ONLY ONE THAT EXISTS. There is no self-service phone change on this
+      // platform — `profile/account/page.tsx` renders `phoneE164` as a masked, display-only
+      // `Item` — so "change it in your profile first" would send a player to a control that
+      // is not there, on the screen that decides where their money goes. Same shape as E-5.
+      failPayoutDestination: "For your safety, payouts can only go to the number registered on this account, ending {last4}. Contact support if that number has changed.",
       failNotYourPosition: "That bet isn’t on your account.",
       failPositionNotOpen: "This bet is no longer open, so there’s nothing to sell.",
       failBonusFundedNoExit: "Bonus-funded bets can’t be sold early — they play through to the result.",
@@ -2799,6 +2815,10 @@ export const dict = {
       msisdnRequired: "Weka namba ya simu ya pesa mtandaoni itakayopokea ombi la malipo.",
       chooseProvider: "Chagua njia ya malipo kwanza.",
       destinationPhone: "Simu ya mpokeaji",
+      destinationRegistered: "Namba iliyosajiliwa",
+      destinationLockedBody: "Malipo yanaweza kwenda tu kwenye namba iliyosajiliwa kwenye akaunti hii. Wasiliana na msaada ikiwa namba hii imebadilika.",
+      useAnotherNumber: "Tumia namba nyingine",
+      useMyNumber: "Tumia namba yangu iliyosajiliwa",
       payeeMsisdnRequired: "Weka namba ya simu ya pesa mtandaoni yenye tarakimu 9 itakayopokea pesa.",
       securedByKyc: "Imelindwa na KYC & AML",
       securedBody: "Kiasi cha TZS 1,000,000 na zaidi kinashikiliwa kwa ukaguzi wa maafisa wawili wa uzingatiaji kabla ya kutolewa. Nyaraka za utambulisho zinakaguliwa na timu yetu ya uzingatiaji unapoziwasilisha. Uthibitisho wa SMS utaongezwa mtoa huduma wa SMS aliyeidhinishwa atakapoanza kazi.",
@@ -3457,6 +3477,7 @@ export const dict = {
       failSelfExcluded: "Uko kwenye mapumziko ya kujizuia hadi {until}. Uwekaji dau utabaki umezimwa hadi wakati huo.",
       failWalletFrozen: "Pochi yako imegandishwa, hivyo dau haziwezi kuwekwa. Wasiliana na msaada kutatua hili.",
       failWalletMissing: "Hatukuweza kufikia pochi yako. Onyesha upya kisha jaribu tena — hakuna kilichotozwa.",
+      failPayoutDestination: "Kwa usalama wako, malipo yanaweza kwenda tu kwenye namba iliyosajiliwa kwenye akaunti hii, inayoishia {last4}. Wasiliana na msaada ikiwa namba hiyo imebadilika.",
       failNotYourPosition: "Dau hilo si la akaunti yako.",
       failPositionNotOpen: "Dau hili halipo wazi tena, hivyo hakuna cha kuuza.",
       failBonusFundedNoExit: "Dau la bonasi haliwezi kuuzwa mapema — linaenda hadi matokeo.",
@@ -4437,6 +4458,10 @@ export const dict = {
       msisdnRequired: "请输入接收付款提示的移动支付手机号。",
       chooseProvider: "请先选择支付方式。",
       destinationPhone: "目标手机号",
+      destinationRegistered: "注册号码",
+      destinationLockedBody: "提现只能汇入本账户注册的号码。如该号码已变更，请联系客服。",
+      useAnotherNumber: "使用其他号码",
+      useMyNumber: "使用我的注册号码",
       payeeMsisdnRequired: "请输入将收到这笔款项的9位移动支付手机号。",
       securedByKyc: "受KYC和AML保护",
       securedBody: "TZS 1,000,000 及以上的金额须经两名合规专员审核后方可释放。您提交的身份证件将由我们的合规团队核验。短信验证将在授权服务商上线后启用。",
@@ -5092,6 +5117,7 @@ export const dict = {
       failSelfExcluded: "您处于自我排除期，至 {until}。在此之前投注保持关闭。",
       failWalletFrozen: "您的钱包已冻结，无法投注。请联系客服处理。",
       failWalletMissing: "无法读取您的钱包。请刷新后重试 — 未扣除任何费用。",
+      failPayoutDestination: "为保障您的资金安全，提现只能汇入本账户注册的号码（尾号 {last4}）。如该号码已变更，请联系客服。",
       failNotYourPosition: "该投注不属于您的账户。",
       failPositionNotOpen: "此投注已不再持仓，无可卖出。",
       failBonusFundedNoExit: "奖金投注不可提前卖出 — 必须持至结果。",
