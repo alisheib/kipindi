@@ -843,6 +843,16 @@ export const dict = {
       // the pool, the note owns the other half of the truth: pari-mutuel odds move with every
       // later bet, and the LOCK is where the estimate stops being one.
       udEstimateNote: "× moves with every bet — it is this pool right now, not fixed odds. When betting closes it becomes your exact payout.",
+      // 🔴 UD-13b · the phone filter sheet. ⚠️ The trigger NAMES THE ACTIVE SELECTION
+      // rather than saying "Filters": a collapsed filter whose trigger does
+      // not say what is selected is WORSE than visible chips, because the player loses the
+      // answer to "what am I looking at?". `{asset}` and `{duration}` are always both set on
+      // this board, so there is nothing to be vague about. ⛔ The trigger TEXT itself is composed
+      // in the component (`${asset} · ${duration}`) and is deliberately NOT a dictionary key:
+      // it would be `"{asset} · {duration}"` in all three languages, i.e. a string with nothing
+      // to translate, and `test:i18n`’s untranslated-values check correctly rejected it.
+      udFilterTitle: "Filter the board",
+      udFilterAria: "Filters — showing {asset}, {duration}",
       // ⭐ D2 · the empty-side state, said BEFORE the bet. A one-sided round refunds everyone
       // whichever way the price goes (E-65), and until now the only place that was ever said
       // was the refund notice, after the round. `{side}` is the side nobody has backed.
@@ -2670,6 +2680,8 @@ export const dict = {
       udTickNote: "Bei inahitaji kusogea hatua moja tu upande wowote.",
       udAwaitingRead: "Inasubiri bei",
       udEstimateNote: "× hubadilika kwa kila dau jipya — ni bwawa la sasa hivi, si odds zisizobadilika. Dau zikifungwa, inakuwa malipo yako kamili.",
+      udFilterTitle: "Chuja ubao",
+      udFilterAria: "Vichujio — inaonyesha {asset}, {duration}",
       udNobodyBacked: "Hakuna aliyeweka dau {side} bado — kama hali hii haitabadilika, dau lako litarudi.",
       udNobodyBackedEither: "Hakuna dau bado — kama upande mmoja tu utawekewa dau wakati dau zinafungwa, kila dau litarudi.",
       udSource: "Chanzo", udQuoted: "imenukuliwa",
@@ -4310,6 +4322,8 @@ export const dict = {
       udTickNote: "价格只需向任一方向变动一档即可。",
       udAwaitingRead: "等待价格",
       udEstimateNote: "× 会随每一笔新投注变动——它是此刻的奖池，并非固定赔率。投注截止时，它将变为您的确切派彩。",
+      udFilterTitle: "筛选看板",
+      udFilterAria: "筛选 — 正在显示 {asset}、{duration}",
       udNobodyBacked: "目前还没有人投注{side}——若情况不变，您的投注将全额退回。",
       udNobodyBackedEither: "目前尚无投注——若投注截止时只有一方有人下注，所有投注都将全额退回。",
       udSource: "来源", udQuoted: "报价时间",

@@ -21,6 +21,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { FilterPill } from "@/components/ui/filter-pill";
+import { FilterSheet, FilterSheetGroup } from "@/components/markets/filter-sheet";
 
 export type BoardTab = { key: string; href: string; label: string };
 
@@ -32,6 +33,10 @@ export function UpDownBoardTabs({
   assetsLabel,
   durationsLabel,
   minLabel,
+  sheetTitle,
+  sheetAria,
+  sheetClose,
+  sheetDone,
   children,
 }: {
   assetTabs: BoardTab[];
@@ -41,6 +46,11 @@ export function UpDownBoardTabs({
   assetsLabel: string;
   durationsLabel: string;
   minLabel: string;
+  /** UD-13b · the phone sheet's own copy, from the dictionary. */
+  sheetTitle: string;
+  sheetAria: string;
+  sheetClose: string;
+  sheetDone: string;
   children: React.ReactNode;
 }) {
   const router = useRouter();
@@ -62,8 +72,81 @@ export function UpDownBoardTabs({
   const durationOn = (t: { d: number; href: string }) =>
     pendingHref != null ? pendingHref === t.href : t.d === activeDuration;
 
+  /* ── UD-13b · WHAT THE PHONE SHOWS INSTEAD ────────────────────────────────────────────
+     🔴 THE DEFECT, MEASURED ON PRODUCTION 2026-08-25 BEFORE ANY CODE MOVED. At 360 and 414
+     these two rails wrap to FOUR rows of chips — 100px of assets over 96px of durations,
+     **196px** — and the first game card sits at **top 652 of a 900px viewport**. Seventy-two
+     percent of the first screen is spent on filters before a single round is visible. At 768
+     and 1280 both rails are a single 44px row (88px total) and there is nothing wrong with
+     them, which is why the split below is at `sm` and not at `lg`.
+
+     ⭐ THIS INVENTS NOTHING. `FilterSheet` already exists and is already the phone home for the
+     /markets filters; the pills inside are the same `FilterPill` the rails render. The only new
+     thing is the composition — and the trigger's label.
+
+     ⚠️ THE TRIGGER NAMES THE ACTIVE SELECTION, and that is the requirement, not decoration. A
+     collapsed filter whose trigger says only "Filters" is WORSE than four rows of visible chips,
+     because the player loses the answer to "what am I looking at?". Both axes always carry a
+     value on this board, so the trigger always reads e.g. `Bitcoin · 3 min`.
+
+     ⛔ `count={0}` ON PURPOSE, so no badge renders. `FilterSheet`'s badge counts NON-DEFAULT
+     axes; here both axes are always set, so a badge would read `2` on every board for ever — a
+     number announcing its own irrelevance, which is the same argument that file's own comment
+     makes against a `0` badge. The state is carried by the label, where it is legible.
+
+     ⛔ AND THE SHEET IS NOT RE-STYLED. `FilterSheet` carries `lg:hidden` itself; the wrapper
+     below narrows that to `sm:hidden` so tablets keep the chips they already handle well.
+     Motion, material and the focus contract come from the sheet unchanged — no `--ease-*`, no
+     new keyframe, nothing at this call site. */
+  const activeAsset = assetTabs.find((a) => assetOn(a));
+  const activeDur = durationTabs.find((d) => durationOn(d));
+  // ⛔ Composed here, not in the dictionary: `"{asset} · {duration}"` has nothing to translate,
+  // and `test:i18n`'s untranslated-values check correctly refused it as a key.
+  const activeAssetText = activeAsset?.label ?? assetsLabel;
+  const activeDurText = activeDur ? `${activeDur.d} ${minLabel}` : durationsLabel;
+
   return (
     <>
+      {/* ── The phone sheet — ONE trigger, naming what the board is showing ───────────── */}
+      <div className="mt-4 sm:hidden">
+        <FilterSheet
+          label={`${activeAssetText} · ${activeDurText}`}
+          title={sheetTitle}
+          ariaLabel={sheetAria.replace("{asset}", activeAssetText).replace("{duration}", activeDurText)}
+          closeLabel={sheetClose}
+          applyLabel={sheetDone}
+          count={0}
+        >
+          <FilterSheetGroup label={assetsLabel}>
+            {assetTabs.map((tab) => (
+              <FilterPill
+                key={tab.key}
+                href={tab.href}
+                label={tab.label}
+                on={assetOn(tab)}
+                semantics="tab"
+                onClick={go(tab.href)}
+              />
+            ))}
+          </FilterSheetGroup>
+          {durationTabs.length > 0 && (
+            <FilterSheetGroup label={durationsLabel}>
+              {durationTabs.map((tItem) => (
+                <FilterPill
+                  key={tItem.d}
+                  href={tItem.href}
+                  label={`${tItem.d} ${minLabel}`}
+                  on={durationOn(tItem)}
+                  semantics="tab"
+                  rank="secondary"
+                  onClick={go(tItem.href)}
+                />
+              ))}
+            </FilterSheetGroup>
+          )}
+        </FilterSheet>
+      </div>
+
       {/* ── Asset tabs (primary) ─────────────────────────────────────────────────────────
           🔴 THESE WERE THE WORST DIVERGENCE IN THE PRODUCT — measured on production
           2026-08-14, not argued: `h-9` reads like 36px and renders **64px** on this repo's
@@ -72,7 +155,7 @@ export function UpDownBoardTabs({
           filter rail. ⛔ No count: `BoardAsset` carries none and the board reads rounds for the
           ACTIVE chain only, so a number here would be invented — A-5 forbids that, and
           `durations.length` is a count of chains wearing the costume of a count of games. */}
-      <nav aria-label={assetsLabel} data-filter-rail className="mt-4 flex flex-wrap gap-2">
+      <nav aria-label={assetsLabel} data-filter-rail className="mt-4 hidden flex-wrap gap-2 sm:flex">
         {assetTabs.map((tab) => (
           <FilterPill
             key={tab.key}
@@ -96,7 +179,7 @@ export function UpDownBoardTabs({
           These were the only genuinely sub-floor controls in the product at **40px** (`h-7`);
           they are 44px now, so this is a hit-area fix as well as a shape one. */}
       {durationTabs.length > 0 && (
-        <nav aria-label={durationsLabel} data-filter-rail className="mt-2 flex flex-wrap gap-1.5">
+        <nav aria-label={durationsLabel} data-filter-rail className="mt-2 hidden flex-wrap gap-1.5 sm:flex">
           {durationTabs.map((tItem) => (
             <FilterPill
               key={tItem.d}

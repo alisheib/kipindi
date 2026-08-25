@@ -118,6 +118,10 @@ export default async function UpDownPage({
         assetsLabel={t.market.udAssets}
         durationsLabel={t.market.udDurations}
         minLabel={t.market.udMin}
+        sheetTitle={t.market.udFilterTitle}
+        sheetAria={t.market.udFilterAria}
+        sheetClose={t.market.filtersClose}
+        sheetDone={t.common.done}
       >
 
       {/* ── Heartbeat: real outcomes only; hidden entirely when there are none ── */}

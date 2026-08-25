@@ -1,0 +1,98 @@
+/**
+ * THE ANCHORS `red:updown-filter-sheet` MUTATES — declared, as DATA, importable without running.
+ *
+ * ⛔ A SIDECAR: `test:red-anchors` audits that every anchor still resolves exactly once WITHOUT
+ * executing a harness that rewrites real source. ⚠️ NO SIDE EFFECTS, data only.
+ *
+ * ── WHAT THESE MUTATIONS ARE ─────────────────────────────────────────────────
+ * UD-13b — the Up & Down board's asset and duration chips collapse behind the kit's existing
+ * `FilterSheet` below the `sm` band. Measured first: at 360 the two rails wrap to four rows,
+ * 196px, and the first game card sits at top 652 of a 900px viewport.
+ *
+ * ⭐ `trigger-says-filters` IS THE POSITIVE CONTROL AND IT IS THE WHOLE POINT OF THE SUITE.
+ * It collapses the filters *perfectly* — one tidy button, 196px of chips gone, the board four
+ * rows higher — and the trigger reads "Filters" instead of "Bitcoin · 3 min". Every
+ * space-saving claim anyone would make about this unit still holds, and the player has lost
+ * the answer to *"what am I looking at?"*. If §2 ever stops catching that, this unit's guard
+ * is measuring furniture instead of meaning.
+ *
+ * ⭐ `split-at-lg` is the other one worth reading: it widens the disclosure to `lg`, which
+ * looks like more of a good thing and removes working controls from tablets, where the rails
+ * measured a single clean 44px row. **The defect had a band; the fix has to have the same one.**
+ *
+ * ⚠️ Anchors are resolved through `red-anchor.mjs`, which normalises line endings.
+ * ⛔ No replacement may CONTAIN its own anchor.
+ */
+
+/** @typedef {{ name: string, file: string, suite: string, from: string, to: string, why: string, expect: string }} RedMutation */
+
+const TABS = "src/components/updown/updown-board-tabs.tsx";
+const PAGE = "src/app/updown/page.tsx";
+
+/** @type {RedMutation[]} */
+export const MUTATIONS = [
+  {
+    // ⭐ THE POSITIVE CONTROL.
+    name: "trigger-says-filters",
+    why: "⭐ POSITIVE CONTROL · the filters collapse PERFECTLY and the trigger stops naming the selection — it reads 'Filters' instead of 'Bitcoin · 3 min'. Every space-saving claim about this unit still holds, and the player loses the answer to \"what am I looking at?\". A collapsed filter that does not say what is selected is worse than the four rows of chips it replaced",
+    file: TABS,
+    suite: "updown-filter-sheet",
+    from: "          label={`${activeAssetText} · ${activeDurText}`}",
+    to: "          label={sheetTitle}",
+    expect: "2: ⭐ the trigger label is composed from the active ASSET and the active DURATION",
+  },
+  {
+    name: "duration-dropped-from-trigger",
+    why: "half the answer: the trigger names the ASSET and forgets the DURATION, so a player on `Bitcoin` cannot tell a 3-minute board from a 60-minute one — and the two play completely differently",
+    file: TABS,
+    suite: "updown-filter-sheet",
+    from: "          label={`${activeAssetText} · ${activeDurText}`}",
+    to: "          label={`${activeAssetText}`}",
+    expect: "2: ⭐ the trigger label is composed from the active ASSET and the active DURATION",
+  },
+  {
+    name: "split-at-lg",
+    why: "⭐ the disclosure widens from `sm` to `lg`, which reads like more of a good thing. It removes working controls from tablets, where BOTH rails measured a single clean 44px row — the defect had a band and the fix has to have the same one",
+    file: TABS,
+    suite: "updown-filter-sheet",
+    from: '      <div className="mt-4 sm:hidden">',
+    to: '      <div className="mt-4 lg:hidden">',
+    expect: "1: …inside a wrapper that hides it from `sm` up",
+  },
+  {
+    name: "chips-deleted-not-disclosed",
+    why: "⛔ the asset rail is hidden at EVERY width instead of below `sm`, so the chips are not disclosed progressively — they are gone. The sheet still exists and every 'is there a sheet' assertion stays green, but desktop has silently lost its filter rail",
+    file: TABS,
+    suite: "updown-filter-sheet",
+    from: '      <nav aria-label={assetsLabel} data-filter-rail className="mt-4 hidden flex-wrap gap-2 sm:flex">',
+    to: '      <nav aria-label={assetsLabel} data-filter-rail className="mt-4 hidden flex-wrap gap-2">',
+    expect: "1: the asset rail still exists and is shown from `sm` up",
+  },
+  {
+    name: "second-drawer",
+    why: "⛔ NOTHING OUTSIDE THE KIT, in the form it actually arrives in: a local component that looks and behaves like the sheet. It would photograph identically and would drift from `FilterSheet`'s focus trap, scroll lock and focus-return contract the first time either changed",
+    file: TABS,
+    suite: "updown-filter-sheet",
+    from: "export type BoardTab = { key: string; href: string; label: string };",
+    to: "export type BoardTab = { key: string; href: string; label: string };\nfunction BoardFilterDrawer() { return null; }",
+    expect: "4: ⛔ no locally-declared sheet/drawer component",
+  },
+  {
+    name: "aria-loses-the-selection",
+    why: "the visible label still names both axes and the ACCESSIBLE name goes generic, so the regression is invisible in a screenshot and lands only on the players who cannot see the screenshot",
+    file: TABS,
+    suite: "updown-filter-sheet",
+    from: '          ariaLabel={sheetAria.replace("{asset}", activeAssetText).replace("{duration}", activeDurText)}',
+    to: "          ariaLabel={sheetTitle}",
+    expect: "2: the accessible name interpolates both axes too",
+  },
+  {
+    name: "copy-not-from-the-dictionary",
+    why: "the sheet's title is hardcoded English at the call site, so a Swahili or Chinese player opens a drawer headed in a language they did not choose. ⚠️ `test:i18n` counts KEYS and stays green — the key still exists, it is simply no longer used",
+    file: PAGE,
+    suite: "updown-filter-sheet",
+    from: "        sheetTitle={t.market.udFilterTitle}",
+    to: '        sheetTitle={"Filter the board"}',
+    expect: "5: the page passes the sheet's copy from the dictionary",
+  },
+];
