@@ -57,7 +57,10 @@ async function shape(w, shot) {
         overflowX: document.documentElement.scrollWidth > document.documentElement.clientWidth,
       };
     });
-    if (shot) await p.screenshot({ path: `${SHOTS}/${shot}.png` });
+    // ⚠️ A SHOT IS EVIDENCE, NOT AN ASSERTION. Left un-caught, a font-loading timeout in
+    // `page.screenshot` aborts the whole driver and prints as a product failure — which is
+    // this campaign's single most repeated defect, wearing yet another costume.
+    if (shot) await p.screenshot({ path: `${SHOTS}/${shot}.png`, timeout: 15_000 }).catch(() => {});
     return { m, p, ctx };
   } catch (e) {
     await ctx.close();
@@ -117,7 +120,7 @@ try {
       r.check("3: the sheet opens", opened.open === true, JSON.stringify(opened));
       r.check("3: …with both filter groups inside", opened.groups === 2, `${opened.groups} group(s)`);
       r.check("3: …and every option is a real link", (opened.options ?? 0) >= 6, `${opened.options} option(s)`);
-      await p.screenshot({ path: `${SHOTS}/updown-360-sheet-open.png` });
+      await p.screenshot({ path: `${SHOTS}/updown-360-sheet-open.png`, timeout: 15_000 }).catch(() => {});
 
       // Pick a DIFFERENT asset than the one currently on, then confirm the trigger followed.
       const picked = await p.evaluate(() => {
