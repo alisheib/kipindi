@@ -71,6 +71,7 @@
     "qa:redis-armed": "node scripts/live-redis-armed-drive.mjs",
     "qa:personas": "node scripts/live-personas-prove.mjs",
     "qa:payout-destination": "railway run -s 50pick -- node scripts/live-payout-destination.mjs",
+    "qa:card-grid": "node scripts/live-card-grid-census.mjs",
     "test:updown-quickbet": "tsx scripts/updown-quickbet.test.mts",
     "test:updown-heal": "tsx scripts/updown-heal.test.mts",
     "test:updown-rearm": "tsx scripts/updown-rearm.test.mts",
