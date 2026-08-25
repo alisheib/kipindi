@@ -1,11 +1,66 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useLayoutEffect } from "react";
 import { I } from "@/components/ui/glyphs";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
+
+/**
+ * A referral link the player can actually READ — every character of it, at every width.
+ *
+ * 🔴 ALI, FROM THE LIVE PRODUCT: *"the copy link gets out of the isolated input field —
+ * maybe we should make it take multiple lines."* Measured on production at 393 before
+ * anything changed: the field was a single-line `<Input readOnly>` holding
+ * `https://50pick.tz/auth/register?ref=QAFLC8R2` at **scrollWidth 454 against clientWidth
+ * 255**. ⭐ **44% of the link was unreachable, and the hidden 44% was the `?ref=` code —
+ * the only part that makes it a REFERRAL link at all.** The wrapper carries
+ * `overflow: hidden`, so nothing spilled onto the page and no overflow check could ever
+ * have seen it; the clipping was silent and complete.
+ *
+ * ⛔ A SINGLE-LINE `<input>` CANNOT WRAP — that is the element, not the styling, so no
+ * class fixes it. This is a `<textarea readOnly>`: literally *"an input field that takes
+ * multiple lines"*, which keeps the form-control semantics, the focus ring, the
+ * `aria-label` and the ability to select the value with a keyboard. A `<div>` would have
+ * dropped all four.
+ *
+ * ⚠️ AND IT SIZES ITSELF, because a fixed `rows` is wrong at BOTH ends: `rows={2}` shows an
+ * empty second line on a desktop where the link fits on one, and clips a long market URL on
+ * a narrow phone. A `ResizeObserver` re-measures on every width change, so the field is
+ * exactly as tall as its content wherever it is rendered.
+ */
+function LinkField({ value, label }: { value: string; label: string }) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const fit = () => {
+      // Collapse first: `scrollHeight` never shrinks below the current height, so
+      // measuring without this makes the field grow monotonically and never come back.
+      el.style.height = "0px";
+      el.style.height = `${el.scrollHeight}px`;
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [value]);
+
+  return (
+    <textarea
+      ref={ref}
+      readOnly
+      rows={1}
+      value={value}
+      aria-label={label}
+      // ⛔ `break-all`, not the default word wrap. A URL has no spaces, so without it the
+      // browser keeps the whole thing on one line and the textarea scrolls instead of
+      // wrapping — the same defect in a taller box.
+      className="field-measure w-full resize-none overflow-hidden rounded-lg border border-border bg-bg-inset px-3 py-2 font-mono text-[13px] font-medium leading-[1.5] text-text break-all brand-focus hover:border-border-strong transition-colors"
+    />
+  );
+}
 
 /**
  * Referral link + share controls. Client-only: clipboard + Web Share API.
@@ -55,7 +110,7 @@ export function ReferralShare({ link, shareText }: { link: string; shareText: st
               saw "Kiungo chako cha rufaa" and heard "Referral link" — two names for one
               field, in two languages. Reusing the caption's key also satisfies the
               label-in-name expectation: what is read aloud is what is printed. */}
-          <Input readOnly value={link} mono className="font-medium" aria-label={t.profile.yourReferralLink} />
+          <LinkField value={link} label={t.profile.yourReferralLink} />
         </div>
         <button
           type="button"

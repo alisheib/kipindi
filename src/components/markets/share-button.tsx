@@ -153,12 +153,23 @@ export function ShareButton({
                 onClick={onCopy}
                 className="w-full flex items-center gap-3 px-3 py-3 rounded-md hover:bg-bg-overlay text-left transition-colors"
               >
-                <span className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-md bg-bg-overlay text-text-muted">
+                <span className="inline-flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-md bg-bg-overlay text-text-muted">
                   {copied ? <I.check s={16} /> : <LinkMark />}
                 </span>
-                <span>
+                {/* ⚠️ `min-w-0` — a flex child defaults to `min-width: auto`, so an unbreakable
+                    URL sets the FLOOR for this column and pushes the tile wider than the
+                    dialog. The plate beside it is `shrink-0` for the same reason, from the
+                    other direction: without it the 36px plate is what yields instead. */}
+                <span className="min-w-0">
                   <span className="block text-[14px] font-semibold text-text">{copied ? t.common.copied : t.common.copyLink}</span>
-                  <span className="block font-mono text-[11px] text-text-subtle truncate max-w-full">{url.replace(/^https?:\/\//, "")}</span>
+                  {/* 🔴 WAS `truncate`, WHICH IS A CLIPPED LINK WEARING AN ELLIPSIS. Ali, on
+                      the invite page's twin of this: *"the copy link gets out of the isolated
+                      input field — maybe we should make it take multiple lines."* A link the
+                      player is being shown so they can read it must be readable; `break-all`
+                      wraps a URL, which has no spaces to wrap at. ⚠️ Nothing here is derived
+                      from `MARKET_CARD_H` — that constant is the CARD's footer row, not this
+                      dialog, so a tile that grows a line costs nothing. */}
+                  <span className="block font-mono text-[11px] text-text-subtle break-all">{url.replace(/^https?:\/\//, "")}</span>
                 </span>
               </button>
         </div>
