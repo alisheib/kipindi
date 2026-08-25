@@ -28,6 +28,7 @@
 
 const TABS = "src/components/updown/updown-board-tabs.tsx";
 const PAGE = "src/app/updown/page.tsx";
+const CSS = "src/app/globals.css";
 
 /** @type {RedMutation[]} */
 export const MUTATIONS = [
@@ -85,6 +86,24 @@ export const MUTATIONS = [
     from: '          ariaLabel={sheetAria.replace("{asset}", activeAssetText).replace("{duration}", activeDurText)}',
     to: "          ariaLabel={sheetTitle}",
     expect: "2: the accessible name interpolates both axes too",
+  },
+  {
+    name: "sheet-back-under-the-nav",
+    why: "\u2b50 THE LATENT DEFECT THIS UNIT EXPOSED, restored: the sheet stops lifting itself and goes back to relying on `.kp-discovery-bar` — which the Up & Down board is not inside. It then opens at `z-index: 2` beneath a `z-40` bottom nav, VISIBLE and correctly laid out and correctly translated, with its dismiss button unpressable. \u26d4 Byte-identical geometry to the working surface, so only `elementFromPoint` can tell them apart",
+    file: CSS,
+    suite: "updown-filter-sheet",
+    from: `.kp-fsheet[open] { position: relative; z-index: 100; }`,
+    to: `.kp-fsheet[open] { position: relative; }`,
+    expect: "6: \u{1F534} the sheet lifts ITSELF, so any host inherits the fix",
+  },
+  {
+    name: "bar-lift-deleted",
+    why: "the other half: the discovery-bar lift is removed on the theory that the sheet now lifts itself. It does not help there \u2014 `.kp-discovery-bar` is a `z-20` STACKING CONTEXT, so a sheet inside it cannot escape by raising its own z-index; the BAR has to rise. Deleting this re-breaks /markets while /updown stays perfect",
+    file: CSS,
+    suite: "updown-filter-sheet",
+    from: `.kp-discovery-bar:has(.kp-fsheet[open]),`,
+    to: `.kp-discovery-bar:has(.kp-fsheet-never-matches[open]),`,
+    expect: "6: \u26a0\uFE0F \u2026and the discovery-bar lift is still there, because it solves the other half",
   },
   {
     name: "copy-not-from-the-dictionary",

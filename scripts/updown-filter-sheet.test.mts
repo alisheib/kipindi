@@ -39,6 +39,9 @@ const TABS = "src/components/updown/updown-board-tabs.tsx";
 const PAGE = "src/app/updown/page.tsx";
 const tabs = decomment(readFileSync(join(ROOT, TABS), "utf8"));
 const page = decomment(readFileSync(join(ROOT, PAGE), "utf8"));
+// ⛔ NOT decommented: §6 asserts on CSS SELECTORS, and stripping comments from a
+// stylesheet would also strip the reasoning that explains why each rule exists.
+const css = readFileSync(join(ROOT, "src/app/globals.css"), "utf8");
 const { dict } = await import("../src/lib/i18n-dict.ts");
 
 // ── 1 · THE SHEET EXISTS, AND ONLY BELOW `sm` ──────────────────────────────
@@ -118,6 +121,30 @@ const { dict } = await import("../src/lib/i18n-dict.ts");
     (l) => (dict as Record<string, Record<string, Record<string, string>>>)[l].market.udFilterTitle);
   ok("5: ⭐ the title is genuinely translated, not one string three times",
      new Set(titles).size === 3, titles.join(" / "));
+}
+
+// ── 6 · 🔴 THE SHEET LIFTS ITSELF — the latent defect this unit exposed ──
+{
+  // 🔴 FOUND THE FIRST TIME `FilterSheet` GAINED A SECOND CALL SITE. The only stacking rule
+  // was `.kp-discovery-bar:has(.kp-fsheet[open]) { z-index: 100 }` — scoped to ONE component —
+  // so the sheet was safe only because its single host happened to BE that component. On
+  // `/updown` it opened at `z-index: 2` beneath a `z-40` bottom nav: visible, correctly laid
+  // out, correctly translated, and its dismiss button UNPRESSABLE.
+  //
+  // ⭐ Caught by `elementFromPoint` on production, and it could not have been caught any other
+  // way: the two surfaces had byte-identical geometry (panel bottom 900, footer 841→899, nav
+  // top 835). At the footer's centre /markets returned the dismiss BUTTON and /updown returned
+  // the nav's `svg`. A bounding box reports both as fine. Same family as the share control that
+  // shipped "visible, named, translated and unclickable".
+  ok("6: \u{1F534} the sheet lifts ITSELF, so any host inherits the fix",
+     /\.kp-fsheet\[open\]\s*\{[^}]*z-index:\s*100/.test(css));
+  ok("6: \u2026and is positioned, or z-index would not apply to a <details> at all",
+     /\.kp-fsheet\[open\]\s*\{[^}]*position:\s*relative/.test(css));
+  // ⚠️ The bar rule must STAY. `.kp-discovery-bar` is itself a `z-20` stacking context, so a
+  // sheet inside it cannot escape by raising its own z-index — the BAR has to rise. The two
+  // rules solve different halves; deleting either re-opens one of them.
+  ok("6: \u26a0\uFE0F \u2026and the discovery-bar lift is still there, because it solves the other half",
+     /\.kp-discovery-bar:has\(\.kp-fsheet\[open\]\)/.test(css));
 }
 
 console.log(`\nupdown-filter-sheet: ${pass} passed, ${fail} failed`);

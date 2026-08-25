@@ -2874,6 +2874,32 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
 .kp-discovery-bar:has(.kp-fsheet[open]),
 html[data-sheet-open] .kp-discovery-bar { z-index: 100; }
 
+/* 🔴 AND THE LIFT ABOVE NAMES A COMPONENT, WHICH IS NOT WHERE THE RULE LIVES — found 2026-08-25
+   the first time this sheet gained a SECOND call site (UD-13b, the Up & Down board's phone
+   filters). The rule above lifts `.kp-discovery-bar`, so the sheet was only ever safe because
+   its one call site happened to sit inside that component. Anywhere else it opens with
+   `z-index: 2` against a bottom nav at `z-40` — which is precisely the failure the comment
+   above describes, still true, just not prevented.
+
+   ⭐ MEASURED WITH `elementFromPoint`, ON PRODUCTION, NOT FROM A BOUNDING BOX — and the two
+   surfaces had byte-identical geometry, which is why nothing else could have caught it. Panel
+   `bottom: 900`, footer `841→899`, nav top `835` on BOTH. At the centre of the footer:
+     · /markets  → `button.btn.btn-primary` — the dismiss control, reachable
+     · /updown   → `svg` — THE BOTTOM NAV'S ICON, painted over it
+   The sheet was visible, correctly laid out, correctly translated, and its dismiss button could
+   not be pressed. A box measurement reports both as identical and both as fine.
+
+   ⛔ THE FIX BELONGS TO THE SHEET, NOT TO EACH HOST. Lifting `.kp-fsheet[open]` itself puts the
+   dialog on the shared `<Modal>` rung wherever it is mounted, so the next call site inherits the
+   fix instead of re-discovering the bug. `position: relative` is what makes `z-index` apply at
+   all on a `<details>`; ⚠️ it creates a STACKING context and deliberately NOT a containing block
+   for `position: fixed` (only transform/filter/perspective/contain do that), so the panel stays
+   pinned to the viewport and the `.route-enter` note above still governs that half.
+   ⚠️ The `.kp-discovery-bar` rule stays and is still load-bearing: that bar is itself a `z-20`
+   stacking context, so a sheet inside it cannot escape by raising its own z-index — the BAR has
+   to rise. The two rules solve different halves and neither replaces the other. */
+.kp-fsheet[open] { position: relative; z-index: 100; }
+
 /* 🔴 AND `position: fixed` DOES NOT MEAN "RELATIVE TO THE VIEWPORT" INSIDE PAGE CONTENT.
    MEASURED 2026-08-15, batch 6, on the first build of this sheet: the panel reported
    `top: -32px, bottom: 608px` in a 780px viewport — the heading cut off the top of the screen
