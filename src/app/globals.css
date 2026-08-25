@@ -4460,9 +4460,47 @@ textarea::-webkit-resizer {
   align-items: center;
   justify-content: center;
   color: var(--text-subtle);
-  transition: color var(--dur-micro) var(--ease-micro);
+  /* ⚠️ The canonical motion tokens, not the `--dur-*` / `--ease-*` ALIASES this line used to
+     carry. Both still resolve here (`--dur-micro` → `--t-quick`, `--ease-micro` → `--m-glide`)
+     and neither may ever be restored to a literal — `test:motion` guards that family. */
+  transition: color var(--t-quick) var(--m-glide), filter var(--t-quick) var(--m-glide);
 }
-.mcardp-share:hover { color: var(--accent-400); }
+
+/* 🔴 SHARE'S HOVER IS ITS OWN, AND IT USED TO BE DETAILS' RESTING COLOUR.
+   Ali, 2026-08-25: *"the glow on the share button should have an aesthetically different glow
+   on hover, because the details next to it also has the same colour."* He is exactly right, and
+   it is provable from the stylesheet rather than by eye: this rule said
+   `color: var(--accent-400)` and `.mcardp-details` (eight hundred lines above) rests at
+   `color: var(--accent-400)`. **The identical token.** So on hover the share glyph became
+   precisely the colour of the link sitting beside it in the same 17px row, and two distinct
+   controls read as one.
+
+   ⭐ THE COLOUR CHOSEN IS THE CONTROL'S OWN, NOT A NEW ONE. `share-button.tsx`'s NON-compact
+   variant already hovers `text-text` — so "share brightens toward full text" is a hover
+   language this control speaks elsewhere in the product, and adopting it here makes one
+   control say one thing rather than inventing a third vocabulary for a 13px glyph.
+
+   ⛔ AND `--aqua-400` WOULD HAVE BEEN A FAKE FIX, which is why `test:card-share` §6 compares
+   RESOLVED VALUES rather than token names: `--aqua-400` and `--accent-400` are both
+   `oklch(72% 0.110 195)`. Swapping one for the other renames the defect and changes nothing a
+   player can see — the "counted by its spelling" mistake this campaign has now made three times.
+
+   ⛔ IT ADDS NO HEIGHT. `filter` and `color` are both paint-only, so the 17px footer row — and
+   therefore `MARKET_CARD_H = 349`, and therefore card geometry on /markets, /live, /watchlist
+   and the landing — is untouched. `qa:card-geometry` is re-run before and after to prove it
+   rather than to assert it.
+
+   ⚠️ THE `filter` DOES CREATE A STACKING CONTEXT WHILE HOVERED, and that was checked rather
+   than assumed: `.mcardp-share::after` spans only `left:-6px; right:-6px` of its OWN box and
+   the footer row's gap is wider than that, so the reach cannot overlap `Details` however it is
+   stacked. ⛔ `position: relative` above stays load-bearing regardless — without it the
+   `::after` resolves against the ROW and covers Details, which is how this control originally
+   shipped visible, named, translated and UNCLICKABLE. Re-proven with `elementFromPoint` on
+   production, because a bounding box cannot see any of it. */
+.mcardp-share:hover {
+  color: var(--text);
+  filter: drop-shadow(0 0 5px color-mix(in oklab, var(--royal-300) 55%, transparent));
+}
 .mcardp-share::after {
   content: "";
   position: absolute;

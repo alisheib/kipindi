@@ -142,5 +142,63 @@ const css = decomment(readFileSync(join(ROOT, "src/app/globals.css"), "utf8"));
   ok("5: 🔴 the trigger stops the card's own click", /e\.stopPropagation\(\);\s*setOpen\(true\)/.test(share));
 }
 
+// ── 6 · 🔴 SHARE AND DETAILS MUST NOT BE THE SAME COLOUR ───────────────
+//
+// Ali, 2026-08-25: *"the glow on the share button should have an aesthetically different glow
+// on hover, because the details next to it also has the same colour."* Provable from the
+// stylesheet rather than by eye: `.mcardp-share:hover` said `var(--accent-400)` and
+// `.mcardp-details` rests at `var(--accent-400)` — the identical token, on two controls in the
+// same 17px row.
+//
+// ⛔ THE COMPARISON IS ON THE RESOLVED VALUE, NOT ON THE TOKEN NAME, AND THAT IS THE WHOLE
+// POINT OF THIS SECTION. `--aqua-400` and `--accent-400` are BOTH `oklch(72% 0.110 195)`, so
+// "fix" this by swapping one for the other and a name check goes green over a card that has
+// not changed by one pixel. Counting a thing by its spelling is a mistake this campaign has
+// made three separate times; here the spelling is exactly what a plausible wrong fix changes.
+{
+  /** Resolve `var(--x)` against the `:root` block, one level, and normalise whitespace. */
+  const tokens = new Map<string, string>();
+  for (const [, name, value] of css.matchAll(/(--[a-z0-9-]+):\s*([^;]+);/gi)) {
+    if (!tokens.has(name)) tokens.set(name, value.trim());
+  }
+  const resolve = (v: string, depth = 0): string => {
+    const t = v.trim();
+    const varRef = /^var\((--[a-z0-9-]+)\)$/i.exec(t);
+    if (varRef && depth < 6) {
+      const next = tokens.get(varRef[1]);
+      return next ? resolve(next, depth + 1) : t;
+    }
+    return t.replace(/\s+/g, " ");
+  };
+  const colourOf = (rule: string) => {
+    const body = new RegExp(`${rule.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\{([^}]*)\\}`).exec(css)?.[1] ?? "";
+    const c = /(?:^|[;{\s])color:\s*([^;]+)/.exec(body)?.[1];
+    return c ? resolve(c) : null;
+  };
+
+  const detailsColour = colourOf(".mcardp-details");
+  const shareHover = colourOf(".mcardp-share:hover");
+  ok("6: both colours were found in the stylesheet", !!detailsColour && !!shareHover,
+     `details=${detailsColour} shareHover=${shareHover}`);
+  ok("6: \u{1F534} share's HOVER colour is not Details' colour",
+     !!detailsColour && !!shareHover && detailsColour !== shareHover,
+     `details=${detailsColour} · share:hover=${shareHover}`);
+  // ⭐ The control's own language, not a third vocabulary: the NON-compact share variant
+  // already hovers `text-text`, so the compact one brightening to `--text` makes one control
+  // say one thing.
+  ok("6: \u2b50 \u2026and it is the control's own hover language (`--text`)",
+     /\.mcardp-share:hover\s*\{[^}]*color:\s*var\(--text\)/.test(css));
+  ok("6: share still has a distinct hover at all (it is not simply unstyled)",
+     /\.mcardp-share:hover\s*\{/.test(css));
+  // Ali asked for a GLOW, and a glow must not be able to raise the row.
+  ok("6: the glow is paint-only \u2014 a filter, never a box that could raise the 17px row",
+     /\.mcardp-share:hover\s*\{[^}]*filter:\s*drop-shadow/.test(css));
+  ok("6: \u26d4 \u2026and it introduces no height, margin or padding on hover",
+     !/\.mcardp-share:hover\s*\{[^}]*(height|padding|margin|font-size|line-height)\s*:/.test(css));
+  // ⚠️ The load-bearing line, restated here because §6 is what a future editor reads.
+  ok("6: \u26a0\uFE0F `.mcardp-share` still declares its own positioning context",
+     /\.mcardp-share\s*\{[^}]*position:\s*relative/.test(css));
+}
+
 console.log(`\ncard-share: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);
