@@ -97,6 +97,25 @@ export type FailureReason =
    * the money may go, not merely that it may not go here.
    */
   | "payout_destination_not_registered"
+  /**
+   * 🔴 `E-223` · the two ways a payout can be short of funds, and they are DIFFERENT
+   * SENTENCES because they have different next steps.
+   *
+   * `withdraw_balance_insufficient` is the ordinary shortfall: the player asked for more
+   * than they hold. ⛔ It is NOT `balance_insufficient`, whose copy reads *"this BET needs
+   * {needed}. Top up under Wallet → Deposit"* — the wrong noun and the wrong instruction on
+   * a screen whose whole purpose is taking money OUT.
+   *
+   * `withdraw_bonus_locked` is the one this platform actually needed. A player holding
+   * TZS 194,740 of cash and TZS 10,000 of bonus sees ONE total on their wallet, asks for it,
+   * and is refused — and the honest answer is not "you don't have that", because they can
+   * see that they do. It is that a bonus is not withdrawable until its wagering requirement
+   * is met. ⚠️ THE FIGURE IN BOTH SENTENCES IS `w.balance` ALONE. Naming
+   * `balance + bonusBalance` would state a number the player cannot have, on a money screen,
+   * which is the defect class the Player-View Audit already shipped five blockers for.
+   */
+  | "withdraw_balance_insufficient"
+  | "withdraw_bonus_locked"
   // ⛔ RETIRED 2026-08-20 — do not re-add. `kyc_required` was the withdrawal
   // identity refusal, and identity verification stopped being a precondition of
   // withdrawal on the Gaming Board's instruction (comment #1, relayed by the owner
@@ -226,6 +245,14 @@ export const REASONS: Record<FailureReason, ReasonSpec> = {
   // `Channel` above: gold means EARNED MONEY on this platform).
   payout_destination_not_registered:
                         { severity: "error",   channel: "inline", key: "failPayoutDestination", needs: ["last4"] },
+  // 🔴 `E-223` · both INLINE and both WARNING: the player CAN fix either by changing the
+  // amount, which is the difference between these and the destination refusal above.
+  // ⚠️ Both declare `balance` AND `needed`; declaring one leaves a literal `{needed}` on a
+  // money screen, which is the `withdraw_below_min` defect noted a few lines down.
+  withdraw_balance_insufficient:
+                        { severity: "warning", channel: "inline", key: "failWithdrawBalance", needs: ["balance", "needed"] },
+  withdraw_bonus_locked:
+                        { severity: "warning", channel: "inline", key: "failWithdrawBonusLocked", needs: ["balance", "needed"] },
   sof_required:         { severity: "warning", channel: "inline", key: "errSofRequired" },
   // ⚠️  DECLARES BOTH FIGURES, and the guard is why.  interpolates
   // {net} AND {min}; declaring only one leaves a literal placeholder on screen — the exact

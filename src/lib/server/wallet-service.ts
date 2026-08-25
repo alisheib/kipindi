@@ -1258,6 +1258,41 @@ export async function notifyStillPendingDeposits(olderThanMs = 30 * 60 * 1000): 
  * player's own untouched deposit — deposit 100,000, bet nothing, withdraw, get
  * 85,000. Taxes are only ever on OUR commission (see payments.ts).
  */
+/**
+ * 🔴 `E-223` · ONE SENTENCE FOR "there isn't enough", minted at both places that can say it.
+ *
+ * `withdraw()` refuses a short payout in TWO places — the explicit balance check and the
+ * atomic `requireBalanceGte` debit that catches a concurrent spend — and both used to return
+ * a bare `INVALID` with no `reason`, which `errorCopy` renders as the generic *"That didn't
+ * go through. Check the details and try again."* on the money-out screen.
+ *
+ * ⭐ AND THE SHORTFALL HAS TWO CAUSES THAT NEED DIFFERENT SENTENCES. A player holding cash
+ * AND an unfulfilled bonus sees one total in their wallet and is refused when they ask for
+ * it — "you don't have that" is not an answer they can act on, because they can see that
+ * they do. When the gap is exactly the locked bonus, the refusal says so and points at the
+ * wagering requirement; otherwise it is the ordinary shortfall.
+ *
+ * ⚠️ THE FIGURE IS `w.balance` IN BOTH. Never `balance + bonusBalance`: that is a number the
+ * player cannot withdraw, and stating it on a money screen is the defect class the
+ * Player-View Audit shipped five blockers for.
+ */
+function shortOfFunds(w: { balance: number; bonusBalance?: number | null }, amount: number) {
+  const bonus = w.bonusBalance ?? 0;
+  // Only claim the bonus explains the gap when it actually closes it. A player asking for far
+  // more than cash + bonus is simply short, and blaming the wagering requirement would be a
+  // confident wrong answer.
+  const bonusExplainsIt = bonus > 0 && amount <= w.balance + bonus;
+  return {
+    ok: false as const,
+    // The English service string stays the audit/API truth; the player reads the localized
+    // line minted from the reason (same split as `payout_destination_not_registered`).
+    error: "Insufficient balance.",
+    code: "INVALID" as const,
+    reason: bonusExplainsIt ? ("withdraw_bonus_locked" as const) : ("withdraw_balance_insufficient" as const),
+    detail: { balance: w.balance, needed: amount },
+  };
+}
+
 /** `actorId` — WHO initiated this payout, when that is not the account holder.
  *  Two OPERATOR paths call this function directly (`admin/payments/payment-actions.ts`
  *  `retryWithdrawalAction` and `bulkRetryAction`), and without this the compliance
@@ -1415,13 +1450,26 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
     const w = await db.wallet.findByUserId(userId);
     if (!w) return { ok: false as const, error: "Wallet not found.", code: "NOT_FOUND" as const };
     if (w.status !== "ACTIVE") return { ok: false as const, error: "Wallet frozen.", code: "SUSPENDED" as const };
-    if (w.balance < amount) return { ok: false as const, error: "Insufficient balance.", code: "INVALID" as const };
+    // 🔴 `E-223` · THIS REFUSAL USED TO SAY NOTHING. It returned `INVALID` with no `reason`,
+    // so `errorCopy` fell through to the generic `errInvalid` — *"That didn't go through.
+    // Check the details and try again."* — on the most common refusal of the money-out
+    // screen. Measured on production 2026-08-26 by replaying the real server action with the
+    // amount rewritten to `balance + 1`: that generic sentence is what came back.
+    // ⚠️ THE FIGURE IS `w.balance`, NOT `w.balance + w.bonusBalance`. The player's wallet
+    // shows one total; the withdrawable part is only the first half, and naming the sum would
+    // promise money they cannot have.
+    if (w.balance < amount) return shortOfFunds(w, amount);
 
     // Move funds from spendable balance into `hold` while in flight — atomic and
     // overdraw-guarded (WHERE balance >= amount) so concurrent debits on the same
     // wallet can't double-spend even across instances.
     const updated = await db.wallet.adjust(w.id, { balance: -amount, hold: amount }, { requireBalanceGte: amount });
-    if (!updated) return { ok: false as const, error: "Insufficient balance.", code: "INVALID" as const };
+    // ⭐ THE SECOND CONTROL, and it must say the SAME thing as the first. This is the atomic
+    // `WHERE balance >= amount` guard catching a concurrent debit that landed between the
+    // check above and this write. A player who loses that race is in exactly the situation
+    // the sentence above describes, so leaving this one on the generic copy would make one
+    // refusal speak with two voices depending on a race they cannot see.
+    if (!updated) return shortOfFunds(w, amount);
     const balanceAfter = updated.balance;
     await db.txn.create({
       id: txnId,

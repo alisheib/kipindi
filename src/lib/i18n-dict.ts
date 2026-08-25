@@ -1832,6 +1832,8 @@ export const dict = {
       // `Item` — so "change it in your profile first" would send a player to a control that
       // is not there, on the screen that decides where their money goes. Same shape as E-5.
       failPayoutDestination: "For your safety, payouts can only go to the number registered on this account, ending {last4}. Contact support if that number has changed.",
+      failWithdrawBalance: "You can withdraw up to {balance}. You asked for {needed} — enter {balance} or less and try again.",
+      failWithdrawBonusLocked: "You can withdraw {balance} right now. You asked for {needed}: the rest is bonus, and a bonus only becomes withdrawable once you have met its wagering requirement. See Wallet → Bonus.",
       failNotYourPosition: "That bet isn’t on your account.",
       failPositionNotOpen: "This bet is no longer open, so there’s nothing to sell.",
       failBonusFundedNoExit: "Bonus-funded bets can’t be sold early — they play through to the result.",
@@ -3490,6 +3492,8 @@ export const dict = {
       failWalletFrozen: "Pochi yako imegandishwa, hivyo dau haziwezi kuwekwa. Wasiliana na msaada kutatua hili.",
       failWalletMissing: "Hatukuweza kufikia pochi yako. Onyesha upya kisha jaribu tena — hakuna kilichotozwa.",
       failPayoutDestination: "Kwa usalama wako, malipo yanaweza kwenda tu kwenye namba iliyosajiliwa kwenye akaunti hii, inayoishia {last4}. Wasiliana na msaada ikiwa namba hiyo imebadilika.",
+      failWithdrawBalance: "Unaweza kutoa hadi {balance}. Umeomba {needed} — weka {balance} au chini yake kisha jaribu tena.",
+      failWithdrawBonusLocked: "Kwa sasa unaweza kutoa {balance}. Umeomba {needed}: kiasi kilichobaki ni bonasi, na bonasi inaweza kutolewa tu baada ya kutimiza sharti la uchezaji. Angalia Pochi → Bonasi.",
       failNotYourPosition: "Dau hilo si la akaunti yako.",
       failPositionNotOpen: "Dau hili halipo wazi tena, hivyo hakuna cha kuuza.",
       failBonusFundedNoExit: "Dau la bonasi haliwezi kuuzwa mapema — linaenda hadi matokeo.",
@@ -5132,6 +5136,8 @@ export const dict = {
       failWalletFrozen: "您的钱包已冻结，无法投注。请联系客服处理。",
       failWalletMissing: "无法读取您的钱包。请刷新后重试 — 未扣除任何费用。",
       failPayoutDestination: "为保障您的资金安全，提现只能汇入本账户注册的号码（尾号 {last4}）。如该号码已变更，请联系客服。",
+      failWithdrawBalance: "您最多可提现 {balance}。您申请了 {needed} — 请输入 {balance} 或更少后重试。",
+      failWithdrawBonusLocked: "您当前可提现 {balance}。您申请了 {needed}：其余为奖金，奖金需先完成流水要求才可提现。详见钱包 → 奖金。",
       failNotYourPosition: "该投注不属于您的账户。",
       failPositionNotOpen: "此投注已不再持仓，无可卖出。",
       failBonusFundedNoExit: "奖金投注不可提前卖出 — 必须持至结果。",

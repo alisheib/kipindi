@@ -68,7 +68,13 @@ restore();
 }
 console.log("  ✓ CONTROL  the unmutated tree is GREEN — a red below is caused by the mutation\n");
 
-const BALANCE_CHECK = `    if (w.balance < amount) return { ok: false as const, error: "Insufficient balance.", code: "INVALID" as const };`;
+// ⚠️ THIS ANCHOR HAS ALREADY MOVED ONCE, AND THE HARNESS CAUGHT IT RATHER THAN LYING.
+// `E-223` rewrote the refusal to `return shortOfFunds(w, amount)`, so the previous literal —
+// the inline `{ ok: false … "Insufficient balance." }` object — stopped existing. Both
+// mutations that used it reported **HARNESS ERROR: anchor not found** instead of quietly
+// editing nothing and calling the guard weak. That is the whole point of re-reading the file
+// after a write, and it is `E-108` one layer down.
+const BALANCE_CHECK = `    if (w.balance < amount) return shortOfFunds(w, amount);`;
 const ATOMIC_DEBIT = `    const updated = await db.wallet.adjust(w.id, { balance: -amount, hold: amount }, { requireBalanceGte: amount });`;
 const WALLET_FROZEN = `    if (w.status !== "ACTIVE") return { ok: false as const, error: "Wallet frozen.", code: "SUSPENDED" as const };`;
 
@@ -79,7 +85,7 @@ const MUTATIONS = [
     why: "⭐ THE DEFECT THIS FILE EXISTS FOR — 'the wallet shows 13,000, let them take 13,000'. Both controls move to balance+bonus, so every grant is cash on arrival and the wagering requirement is repealed platform-wide",
     from: `${BALANCE_CHECK}`,
     to: `    const spendable = w.balance + (w.bonusBalance ?? 0);\n`
-      + `    if (spendable < amount) return { ok: false as const, error: "Insufficient balance.", code: "INVALID" as const };`,
+      + `    if (spendable < amount) return shortOfFunds(w, amount);`,
     also: {
       from: ATOMIC_DEBIT,
       to: `    const updated = await db.wallet.adjust(w.id, { balance: -Math.min(amount, w.balance), bonusBalance: -Math.max(0, amount - w.balance), hold: amount });`,
@@ -105,6 +111,34 @@ const MUTATIONS = [
     why: "the money moves but the ledger calls it something else — the balance is right and the platform can no longer say WHY it changed, which is the provenance rule I-7 states for the Selcom page one product over",
     from: `          type: "BONUS_CREDIT",`,
     to: `          type: "ADJUSTMENT",`,
+  },
+  {
+    file: WALLET,
+    name: "the-refusal-says-nothing-again",
+    why: "⭐ `E-223` VERBATIM — the reason is dropped, `errorCopy` falls through to the generic *\"That didn't go through. Check the details and try again.\"*, and the most common refusal on the money-out screen explains nothing. This is what production actually answered on 2026-08-26",
+    from: `    reason: bonusExplainsIt ? ("withdraw_bonus_locked" as const) : ("withdraw_balance_insufficient" as const),`,
+    to: `    /* reason removed */`,
+  },
+  {
+    file: WALLET,
+    name: "the-refusal-names-the-wallet-total",
+    why: "🔴 THE WORST VERSION OF THE FIX — the sentence offers `balance + bonusBalance`, so a player holding 3,000 of cash and 10,000 of locked bonus is told they may withdraw 13,000. A false money figure, stated confidently, on a money screen",
+    from: `    detail: { balance: w.balance, needed: amount },`,
+    to: `    detail: { balance: w.balance + bonus, needed: amount },`,
+  },
+  {
+    file: WALLET,
+    name: "every-shortfall-blames-the-bonus",
+    why: "⚠️ THE OVER-CORRECTION — the bonus branch drops its \"does it actually close the gap\" test, so a player asking for far more than cash AND bonus is lectured about a wagering requirement that is not why they were refused",
+    from: `  const bonusExplainsIt = bonus > 0 && amount <= w.balance + bonus;`,
+    to: `  const bonusExplainsIt = bonus > 0;`,
+  },
+  {
+    file: WALLET,
+    name: "the-two-sentences-swap",
+    why: "★ the branches invert, so a player with a locked bonus gets the plain shortfall and a player with none is told about a wagering requirement they do not have — green on any check that only asks whether SOME reason was returned",
+    from: `    reason: bonusExplainsIt ? ("withdraw_bonus_locked" as const) : ("withdraw_balance_insufficient" as const),`,
+    to: `    reason: bonusExplainsIt ? ("withdraw_balance_insufficient" as const) : ("withdraw_bonus_locked" as const),`,
   },
   {
     file: WALLET,

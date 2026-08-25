@@ -52,6 +52,14 @@ import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { withdraw } from "../src/lib/server/wallet-service.ts";
 import { creditBonus, recordWagering } from "../src/lib/server/bonus-service.ts";
 import { createMarket, buyPosition } from "../src/lib/server/market-service.ts";
+import { errorCopy } from "../src/lib/error-copy.ts";
+import { dict as DICT } from "../src/lib/i18n-dict.ts";
+
+/** What a refused `withdraw()` looks like once it carries a reason (E-223). */
+type ReasonedResult = {
+  ok: boolean; error?: string; code?: string;
+  reason?: string; detail?: { balance?: number; needed?: number };
+};
 
 let pass = 0, fail = 0;
 const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"} ${l}${x ? ` — ${x}` : ""}`); };
@@ -245,6 +253,53 @@ console.log("\n§6 · B × J — the player who is paid has no KYC submission at
   const r = await tryWithdraw("bw_unverified", 12_000);
   ok("6.2 · ★★ …and an account with no identity record at all is still paid",
      r.ok === true, r.ok ? "" : `refused: ${(r as { error: string }).error}`);
+}
+
+// ── §7 · E-223 · the refusal has to SAY something, and say the right number ──
+console.log("\n§7 · E-223 — what the player is actually told when the bonus cannot cover it");
+{
+  // 🔴 FOUND BY DRIVING IT, NOT BY READING IT. Replaying the real withdrawal server action on
+  // production with the amount rewritten to `balance + 1` came back with
+  // *"That didn't go through. Check the details and try again."* — the generic `errInvalid`,
+  // because this refusal returned `INVALID` with no `reason` at all. The most common refusal
+  // on the money-out screen explained nothing.
+  await player("bw_copy_bonus", 3_000);
+  await creditBonus("bw_copy_bonus", { amountTzs: 10_000, source: "ADMIN", wagerMultiplier: 5 });
+  const r = await tryWithdraw("bw_copy_bonus", 5_000) as ReasonedResult;
+  ok("7.1 · ★★ the refusal carries a machine reason, so it can be minted in the player's language",
+     r.ok === false && !!r.reason, `reason=${r.reason ?? "(none — falls through to errInvalid)"}`);
+  ok("7.2 · ★ …and it is the BONUS one, because the locked bonus is exactly what closes the gap",
+     r.reason === "withdraw_bonus_locked", `reason=${r.reason}`);
+  // ⛔ THE FIGURE IS THE WITHDRAWABLE BALANCE. 13,000 is what the wallet holds; 3,000 is what
+  // the player may have. Stating the total on a money screen promises money that is not theirs.
+  ok("7.3 · ★★ the figure offered is the WITHDRAWABLE balance, not the wallet total",
+     r.detail?.balance === 3_000, `balance=${r.detail?.balance} (wallet total is 13,000)`);
+  ok("7.4 · …and it repeats what was asked for, so the player can see the gap",
+     r.detail?.needed === 5_000, `needed=${r.detail?.needed}`);
+
+  // The sentence itself, minted exactly as `withdrawAction` mints it.
+  const body = errorCopy(DICT.en as never, r as never);
+  ok("7.5 · ★★ the rendered sentence names 3,000 and is not the generic 'that didn\\'t go through'",
+     body.includes("3,000") && !/didn't go through/i.test(body), body);
+  ok("7.6 · ★★ …and it never shows the player the 13,000 they cannot withdraw",
+     !body.includes("13,000"), body);
+  // ⚠️ A placeholder that survives to the screen is this file's sibling defect —
+  // `withdraw_below_min` shipped a literal `{min}` in all three languages once.
+  ok("7.7 · no unresolved placeholder survived interpolation", !/\{\w+\}/.test(body), body);
+
+  // ⭐ THE OTHER BRANCH, in the same run. Without it, "the bonus explains the gap" would be
+  // indistinguishable from "every shortfall blames a bonus", including for players who have none.
+  await player("bw_copy_plain", 3_000);
+  const p = await tryWithdraw("bw_copy_plain", 5_000) as ReasonedResult;
+  ok("7.8 · ★ CONTROL — a player with NO bonus gets the plain shortfall, not a wagering lecture",
+     p.reason === "withdraw_balance_insufficient", `reason=${p.reason}`);
+  const pbody = errorCopy(DICT.en as never, p as never);
+  ok("7.9 · …and that sentence names the same withdrawable figure",
+     pbody.includes("3,000") && !/wagering/i.test(pbody), pbody);
+  // ⭐ AND THE FAR-SHORT CASE: asking for more than cash + bonus is not the bonus's fault.
+  const far = await tryWithdraw("bw_copy_bonus", 50_000) as ReasonedResult;
+  ok("7.10 · ★ CONTROL — asking beyond cash+bonus is the plain shortfall; the bonus is not blamed for it",
+     far.reason === "withdraw_balance_insufficient", `reason=${far.reason}`);
 }
 
 console.log(`\nbonus-withdrawable: ${pass} passed, ${fail} failed`);
