@@ -64,7 +64,31 @@ export const DEFAULT_BONUS_CONFIG: BonusConfig = {
   affiliateToBonus: true,
   proposalToBonus: true,
   monthlyCapTzs: 0,
-  cashbackEnabled: true,
+  /**
+   * ⛔ OFF — Jay (Gaming Board) item #5, Ali's words: *"disabled/hidden for now until
+   * further notice."* **A FEATURE-STATE, NOT A DELETION.**
+   *
+   * ⚠️ AND THE DEFAULT IS WHAT PRODUCTION ACTUALLY RUNS ON. Measured 2026-08-25: there is
+   * **no bonus row in `SystemConfig` at all**, so the value below IS the live value — the
+   * promo was rendering on `/wallet` AND `/wallet/deposit` offering *"a 10% cash back
+   * bonus"*. That is exactly the precedent Jay's brief warns about: a switch reads
+   * differently in production than a reader assumes from the repo. ⭐ **Check the live
+   * state, not the file.**
+   *
+   * ⛔ NO LEDGER PATH WAS DELETED, and the blast radius is small enough to state in full.
+   * `cashbackEnabled` is read in exactly THREE places: the two display gates
+   * (`wallet/page.tsx`, `wallet/deposit/page.tsx`) and ONE grant branch in
+   * `wallet-service.ts`, which additionally requires `cashbackMode === "AUTO"` — and the
+   * live mode is `REQUEST`, so that branch was already inert. There is no server action a
+   * player can call: the promo is INFORMATIONAL, and a grant is made by an operator, which
+   * is why both live `BonusGrant` rows read `source=ADMIN`.
+   *
+   * ⭐ SO EVERYTHING THAT MUST KEEP WORKING KEEPS WORKING: an operator can still grant, the
+   * two existing ACTIVE grants keep their remaining balance and wagering requirement, and
+   * every grant stays visible in the player's own history. Turning this back on is one
+   * value in `/admin/config`, which writes the row this default stands in for.
+   */
+  cashbackEnabled: false,
   cashbackPercentage: 10,
   cashbackMode: "REQUEST",
   sequentialBonuses: true,
