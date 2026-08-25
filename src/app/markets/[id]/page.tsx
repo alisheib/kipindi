@@ -448,7 +448,7 @@ export default async function MarketDetail({
 
         {/* ══ LEFT — market information & analysis ══
             order-2 on mobile (below the bet widget), order-1 on desktop (left col) */}
-        <section className="order-2 lg:order-1 lg:col-start-1 lg:row-start-1 lg:row-span-2 min-w-0 space-y-5">
+        <section className="order-2 lg:order-1 lg:col-start-1 lg:row-start-1 min-w-0 space-y-5">
 
           {/* 1. Probability bar — current crowd signal, or an honest empty rail.
               COLD-START (2026-07-29): with an empty pool `impliedYesPct()` returns
@@ -811,9 +811,28 @@ export default async function MarketDetail({
             </div>
           )}
         </aside>
-        {/* ══ RIGHT, SECOND BLOCK — related markets (Step 4) ══
-            Fills the column under the sticky bet widget, which was dead space
-            from `lg:` up while the left column ran on for another 1,500px.
+        {/* ══ RELATED MARKETS — FULL WIDTH, BELOW BOTH COLUMNS ══
+            🔴 THIS MOVED BACK ON 2026-08-25, AND THE REASON IS THAT ITS OWN PREMISE HAD
+            STOPPED BEING TRUE. It sat in the right column, under the sticky bet widget,
+            justified by the sentence that used to be here: *"dead space from `lg:` up while
+            the left column ran on for another 1,500px."* Measured on production, that is
+            false for every live market: the bet panel is **209px** and this rail is
+            **1,127px**, so the right column totalled **1,360px** against a left column of
+            **842–989px**. The rail ALONE was taller than the whole left column.
+            ⭐ So the void did not go away in 2026-08-06 — it MOVED, from the right column to
+            the LEFT one, which is the primary reading column and therefore the conspicuous
+            place to leave a hole. Measured 2026-08-25 across 8 LIVE markets at 1536: **8 of
+            8 left a 371–518px void**, and nothing guarded it, which is why nobody noticed.
+            ⛔ THE LESSON IS THE PREMISE, NOT THE PLACEMENT. "The left column runs long" was
+            true of the markets that existed when it was written and was never re-measured.
+            A layout decision resting on a content measurement has to say which measurement,
+            so this one does: the numbers above, and `test:market-columns` drives the rule.
+            ⭐ Full width also fixes what the 360px rail was doing to the CARDS — each one now
+            gets ~470px in the shared board grid instead of a column that truncated titles
+            mid-word.
+            ⚠️ MOBILE IS UNCHANGED, which is the constraint the original move also respected:
+            this section is `order-3`, so on a phone it still renders exactly where it did —
+            after the two columns, before comments.
 
             This is the SAME similar-markets rail that used to sit full-width
             below both columns — MOVED, never duplicated. On mobile it keeps the
@@ -826,7 +845,7 @@ export default async function MarketDetail({
             would have been exactly the mobile change this step forbids. */}
         {similar.length > 0 && (
           <section
-            className="order-3 lg:col-start-2 lg:row-start-2 min-w-0"
+            className="order-3 lg:col-span-2 lg:row-start-2 min-w-0"
             aria-labelledby="similar-markets-heading"
           >
             <div className="mb-3 flex items-center gap-2">
@@ -836,8 +855,10 @@ export default async function MarketDetail({
               </h2>
             </div>
             <p className="mb-4 text-[12.5px] text-text-muted">{t.market.similarMarketsBody}</p>
-            {/* One column inside the 360px rail; the shared grid everywhere else. */}
-            <div className="market-grid lg:!grid-cols-1">
+            {/* The shared board grid at EVERY width now. It used to be forced to
+                `lg:!grid-cols-1` because this block lived inside the 360px rail, which is
+                also why the titles truncated mid-word. Full width, each card gets ~470px. */}
+            <div className="market-grid">
               {similar.map((s) => (
                 <MarketCard
                   productLine={"MARKET"}
