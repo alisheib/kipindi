@@ -1,4 +1,6 @@
 import { parseQuery, matchesQuery, fieldNames, USER_SEARCH } from "@/lib/search";
+import { RecategoriseControl } from "@/app/admin/markets/recategorise-control";
+import { MARKET_CATEGORIES } from "@/lib/server/market-service";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
@@ -179,6 +181,12 @@ export default async function MarketPredictorsPage({
               <div className="flex items-center gap-2 mb-1.5">
                 <MarketStatusBadge status={m.status} />
                 <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{m.category}</span>
+                {/* ⭐ Jay (Gaming Board) item #14 — the category is editable here now. It used to
+                    be set once at creation and read-only everywhere else, so a mis-filed market
+                    could only be corrected by re-creating it. ⛔ The choices come from
+                    `MARKET_CATEGORIES`, which excludes politics BY LICENCE, and the server
+                    validates against the same list — one list, both ends. */}
+                <RecategoriseControl marketId={m.id} current={m.category} categories={MARKET_CATEGORIES} titleEn={m.titleEn} />
               </div>
               <h2 className="font-display text-[17px] font-semibold text-text leading-snug">{m.titleEn}</h2>
               {m.titleSw && <p className="mt-0.5 text-[12px] italic text-text-subtle">{m.titleSw}</p>}

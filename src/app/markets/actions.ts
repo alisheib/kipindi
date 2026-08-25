@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
-import { buyPosition, cashOutPosition, resolveMarket, emergencyVoidMarket, adminReopenMarket, createMarket, listPositionsForUser, type CreateMarketInput, type Side } from "@/lib/server/market-service";
+import { buyPosition, cashOutPosition, resolveMarket, emergencyVoidMarket, adminReopenMarket, createMarket, listPositionsForUser, type CreateMarketInput, type Side, recategoriseMarket, MARKET_CATEGORIES } from "@/lib/server/market-service";
 import { addComment, reportComment, deleteComment, restoreComment, type CommentSide } from "@/lib/server/comments-store";
 import { isSourceTrusted, seedDefaultSources } from "@/lib/server/source-registry";
 import { db, type ObjectionReason } from "@/lib/server/store";
@@ -134,6 +134,42 @@ export async function resolveMarketAction(formData: FormData) {
     revalidatePath("/markets");
     revalidatePath(`/markets/${marketId}`);
     revalidatePath("/positions");
+  }
+  return r;
+}
+
+/**
+ * ⭐ RE-CATEGORISE — Jay (Gaming Board) item #14.
+ *
+ * Category was set once, at creation, so a mis-filed market could only be corrected by
+ * re-creating it — which on a market that already holds stakes is not a correction at all.
+ *
+ * ⛔ NO 2FA STEP-UP HERE, and the omission is deliberate rather than an oversight.
+ * `requireAdminTotp` guards the actions that move or lock MONEY — resolving a market, reopening
+ * betting. This one changes the label a market is filed under: no pool, no stake, no status and
+ * no resolution moves. Demanding a step-up for a filing correction would train operators to
+ * treat the step-up as noise, which is how a real one gets clicked through.
+ *
+ * 🔴 The licence exclusion is enforced in `recategoriseMarket`, structurally, against
+ * `MARKET_CATEGORY_SET` — there is no string this action can pass that becomes `politics`.
+ */
+export async function recategoriseMarketAction(formData: FormData) {
+  const session = await currentSession();
+  if (!session) redirect("/auth/login");
+  await requireAdminOrThrow(session.userId, "recategoriseMarketAction");
+  const marketId = String(formData.get("marketId") ?? "");
+  const category = String(formData.get("category") ?? "");
+  const r = await recategoriseMarket({ marketId, category, officerId: session.userId });
+  if (r.ok) {
+    revalidatePath("/admin/markets");
+    revalidatePath(`/admin/markets/${marketId}`);
+    revalidatePath("/markets");
+    revalidatePath(`/markets/${marketId}`);
+    // ⚠️ `/results` GROUPS BY CATEGORY — the A×H interaction. It is `force-dynamic`, so it
+    // re-reads the category on every request and cannot show a re-filed market in two groups or
+    // none. This line is the belt to that braces: it also clears the client router cache, and it
+    // means the day someone makes `/results` static the surface is already named here.
+    revalidatePath("/results");
   }
   return r;
 }

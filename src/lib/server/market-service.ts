@@ -104,6 +104,67 @@ export function resolvePublishCategory(category: string): MarketCategory {
   return "other";
 }
 
+/**
+ * ⭐ RE-CATEGORISE AN EXISTING MARKET — Jay (Gaming Board) item #14.
+ *
+ * Category was set ONCE, at creation (`admin/markets/new/wizard.tsx`). Everywhere else in
+ * `/admin/markets` it is only filtered and sorted, so a market in the wrong category could
+ * only be fixed by **re-creating it** — which is Jay's problem exactly, and on a market that
+ * already holds stakes it is not a fix at all.
+ *
+ * 🔴 THE LICENCE EXCLUSION IS THE RISK HERE, AND IT IS STRUCTURAL RATHER THAN A CHECK.
+ * `MarketCategory` has no `politics` member and `MARKET_CATEGORIES` is the canonical list, so
+ * validating against `MARKET_CATEGORY_SET` makes the excluded category **unreachable by this
+ * path by construction** — there is no string an operator can send that becomes it. ⛔ AND
+ * `resolvePublishCategory` IS DELIBERATELY NOT USED: it is a COERCER that maps anything
+ * unrecognised to `other`, which is right when publishing a generated poll and wrong here,
+ * because it would silently turn a typed `politics` into a successful re-categorisation to
+ * `other` and report success. **An operator who asks for something forbidden must be told
+ * no, not quietly given something else.** If the carve-out is ever granted, that is its own
+ * instruction and its own change.
+ *
+ * ⚠️ It does not touch money, pools, status or resolution — only the label a market is filed
+ * under. The audit row carries `before` and `after` so the correction is itself reviewable.
+ */
+export async function recategoriseMarket(opts: {
+  marketId: string;
+  category: string;
+  officerId: string;
+}): Promise<ServiceResult<{ before: MarketCategory; after: MarketCategory }>> {
+  const raw = (opts.category ?? "").trim().toLowerCase();
+  if (!MARKET_CATEGORY_SET.has(raw)) {
+    // ⛔ The refusal names what IS allowed. A bare "invalid category" would leave an operator
+    // guessing, and would not distinguish a typo from the licence-excluded case.
+    return {
+      ok: false,
+      error: `"${opts.category}" is not a category this licence permits. Choose one of: ${MARKET_CATEGORIES.join(", ")}.`,
+    };
+  }
+  const after = raw as MarketCategory;
+
+  const m = await marketStore.get(opts.marketId);
+  if (!m) return { ok: false, error: "Market not found." };
+  const before = m.category as MarketCategory;
+  if (before === after) return { ok: true, data: { before, after } };
+
+  await marketStore.set({ ...m, category: after });
+
+  audit({
+    category: "ADMIN",
+    action: "market.recategorised",
+    actorId: opts.officerId,
+    targetType: "Market",
+    targetId: opts.marketId,
+    payload: {
+      before, after,
+      titleEn: m.titleEn,
+      status: m.status,
+      note: "Filing label only — pools, stakes, status and resolution are untouched.",
+    },
+  });
+  return { ok: true, data: { before, after } };
+}
+
 export type MarketStatus = "DRAFT" | "LIVE" | "CLOSED" | "RESOLVED" | "VOIDED";
 export type Side = "YES" | "NO";
 
