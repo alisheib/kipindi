@@ -539,6 +539,45 @@
   max-height: 96px;
   min-height: 24px;
 }
+/* 🔴 E-219 — THE FIELD TOOK THE RING BACK THE MOMENT IT WAS FOCUSED, AND THE PARAGRAPH
+   ABOVE PROMISED IT WOULD NOT. Ali, from the live product: *"in chatbot we got double
+   borders on highlighting of input text"*. Measured on production before anything was
+   changed, at rest AND on focus (the panel AUTOFOCUSES the composer, so a reading taken
+   straight after opening is the FOCUS state wearing the label "rest"):
+
+     rest   .cm-composer  border 1px --chat-border-strong · inset shadow only
+            textarea      border 0 · box-shadow NONE · outline 2px solid transparent   ✅
+     focus  .cm-composer  border 1px --brand-500 · 0 0 0 3px --brand-500/.25   ← ring 1
+            textarea      box-shadow 0 0 0 3px --brand-500/.25                 ← ring 2
+                          outline 2px SOLID --brand-500                        ← ring 3
+
+   Three concentric brand rings inside a 50px composer, not two — the photograph showed
+   the two that are separated by the shell's 14px padding.
+
+   ⭐ THE MECHANISM IS THE `@import`, AND IT IS WHY THE RULE ABOVE LOOKS SUFFICIENT AND IS
+   NOT. `.cm-composer textarea` is (0,1,1) and so is the site-wide `textarea:focus` in
+   globals.css — a TIE, broken by source order, and this file is `@import`ed at
+   globals.css line 15, i.e. ABOVE every rule globals declares. So no same-specificity
+   rule written here can ever win a tie against globals, and the rule above survives at
+   rest only because nothing competes with it at rest. ⛔ Do not "fix" a chat-layer
+   conflict by restating a declaration at equal specificity; it lands earlier and loses.
+
+   ⭐ AND THE KIT ALREADY HAD THE ANSWER, 100 LINES FROM THE RULE THAT CAUSED THIS:
+   `.input-group .input:focus { box-shadow: none; }` (globals.css), under a comment
+   reading *"The GROUP draws the ring, not the field."* Same shape, same remedy. This
+   composer is the one shell in the product where the second half was never written.
+
+   ⛔ THE OUTLINE STAYS `2px solid transparent` RATHER THAN `none` — E-129. Forced-colors
+   strips box-shadow and keeps outline, so `none` here would delete the substituted ring
+   in Windows high-contrast, which is the exact defect E-129 existed to repair. Colour
+   only. ⚠️ `border-color` is deliberately NOT restated: measured, the border resolves to
+   `0px`, so the `--brand-500` the global rule sets paints nothing. A declaration that
+   changes no pixel is noise in a file whose job is to be readable. */
+.cm-composer textarea:focus,
+.cm-composer textarea:focus-visible {
+  box-shadow: none;
+  outline-color: transparent;
+}
 .cm-composer textarea::placeholder { color: var(--chat-text-subtle); }
 .cm-send {
   width: 36px;

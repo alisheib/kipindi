@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "description": "Licensed pool-based time-window sports betting platform — Tanzania first.",
-  "engines": { "node": "24.x" },
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -74,6 +76,7 @@
     "qa:card-grid": "node scripts/live-card-grid-census.mjs",
     "qa:updown-filters": "node scripts/live-updown-filters.mjs",
     "qa:card-share-glow": "node scripts/live-card-share-glow.mjs",
+    "qa:chat-focus-ring": "node scripts/live-chat-focus-ring.mjs",
     "qa:recategorise": "node scripts/live-recategorise.mjs",
     "test:updown-quickbet": "tsx scripts/updown-quickbet.test.mts",
     "test:updown-heal": "tsx scripts/updown-heal.test.mts",
@@ -186,6 +189,7 @@
     "test:search": "tsx scripts/search-grammar.test.mts",
     "test:search-adoption": "tsx scripts/search-adoption.test.mts",
     "test:card-share": "tsx scripts/card-share.test.mts",
+    "test:chat-focus-ring": "tsx scripts/chat-focus-ring.test.mts",
     "test:msisdn-prefill": "tsx scripts/msisdn-prefill.test.mts",
     "test:payout-destination": "tsx scripts/payout-destination.test.mts",
     "test:updown-filter-sheet": "tsx scripts/updown-filter-sheet.test.mts",
@@ -466,6 +470,7 @@
     "red:backup-order": "node scripts/red-backup-order.mjs",
     "red:wallet-reach": "node scripts/red-wallet-reach.mjs",
     "red:card-share": "node scripts/red-card-share.mjs",
+    "red:chat-focus-ring": "node scripts/red-chat-focus-ring.mjs",
     "red:recategorise": "node scripts/red-recategorise.mjs",
     "red:chain-removal": "node scripts/red-chain-removal.mjs",
     "red:cashback-hidden": "node scripts/red-cashback-hidden.mjs",
