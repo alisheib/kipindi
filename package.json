@@ -74,6 +74,7 @@
     "qa:card-grid": "node scripts/live-card-grid-census.mjs",
     "qa:updown-filters": "node scripts/live-updown-filters.mjs",
     "qa:card-share-glow": "node scripts/live-card-share-glow.mjs",
+    "qa:recategorise": "node scripts/live-recategorise.mjs",
     "test:updown-quickbet": "tsx scripts/updown-quickbet.test.mts",
     "test:updown-heal": "tsx scripts/updown-heal.test.mts",
     "test:updown-rearm": "tsx scripts/updown-rearm.test.mts",
