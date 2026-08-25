@@ -3510,7 +3510,14 @@ html[data-sheet-open] .route-enter { animation: none; }
   .mcardp-info:not([data-open]):hover { color: var(--text); border-color: var(--brand-400); }
 }
 /* Details link — its own constant 1-line row so it never shifts card height. */
-.mcardp-details { display:inline-flex; align-items:center; justify-content:flex-end; gap:4px; font-family: var(--font-display); font-weight:600; font-size:11.5px; text-decoration:none; color: var(--accent-400); }
+/* ⚠️ `position: relative` ADDED 2026-08-25, AND IT IS LOAD-BEARING — see the note below.
+   The rule beneath used to rely on `.mcardp > *` (globals.css:3149) for its positioning
+   context, which was correct while this link WAS a direct child of the card. It is now a
+   flex child of a footer row, so the context became the ROW and `left:0; right:0` spanned
+   the whole of it — putting this element's invisible overlay on top of the share trigger
+   beside it. Measured on production by hit-testing: the share button's own centre returned
+   `a.mcardp-details`. It reached NOTHING a player could click while looking perfectly fine. */
+.mcardp-details { position:relative; display:inline-flex; align-items:center; justify-content:flex-end; gap:4px; font-family: var(--font-display); font-weight:600; font-size:11.5px; text-decoration:none; color: var(--accent-400); }
 /* ⭐ THE TAP FLOOR, REACHED WITHOUT MOVING LAYOUT — batch 4, §4e. Deferred twice because the row
    PAINTS 17px and must keep painting 17px: `MARKET_CARD_H` (349, card-geometry.ts) is derived from
    it and BOTH /markets skeletons consume that number, so raising the row re-derives card geometry
@@ -3524,8 +3531,12 @@ html[data-sheet-open] .route-enter { animation: none; }
    14 below (the card's 13px padding-bottom plus the gap). 9 + 17 + 14 = 40px = `--tap-min`, Law 9's
    floor, leaving 1px clear beneath the info button. If `--tap-min` is ever raised, this cannot
    simply consume the difference upward — re-measure the neighbour first.
-   The positioning context is `.mcardp > *` at globals.css:3149, which already makes every direct
-   child `position: relative`; this deliberately does not restate it.
+   ⚠️ THE POSITIONING CONTEXT USED TO COME FROM `.mcardp > *` (globals.css:3149) and this note
+   used to say it deliberately did not restate it. That stopped being true on 2026-08-25, when a
+   share trigger joined this row and both controls became flex children of a wrapper: `.mcardp > *`
+   reaches DIRECT children only, so the context silently became the ROW and this overlay spanned
+   it. `position: relative` is now declared on the rule itself. ⭐ **A comment asserting where a
+   positioning context comes from is a comment that goes false the moment someone adds a wrapper.**
    ⚠️ A bounding-box measurement CANNOT see this fix — the drivers keep reporting the row at 17px,
    which is correct. The hit area is provable only by hit-testing (`elementFromPoint`), which is
    what `.qa-design-round4/details-hit-test.mjs` does. */
@@ -4414,6 +4425,11 @@ textarea::-webkit-resizer {
    ⚠️ A bounding-box measurement CANNOT see this — drivers correctly report 17px. The hit area
    is provable only by `elementFromPoint`. */
 .mcardp-share {
+  /* ⛔ ITS OWN POSITIONING CONTEXT, restated deliberately. `.mcardp > *` only reaches DIRECT
+     children of the card, and this control is a flex child of the footer row — so without
+     this its `::after` would resolve against the row and cover `Details` instead, which is
+     the same defect in the opposite direction. */
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;

@@ -40,7 +40,12 @@ const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log
 
 const card = decomment(readFileSync(join(ROOT, "src/components/markets/market-card.tsx"), "utf8"));
 const share = decomment(readFileSync(join(ROOT, "src/components/markets/share-button.tsx"), "utf8"));
-const css = readFileSync(join(ROOT, "src/app/globals.css"), "utf8");
+// ⛔ DECOMMENTED. These rules are explained by comments that NAME the declarations they are
+// about — "`position: relative` ADDED 2026-08-25", "sets no height" — so a raw-source scan
+// reads the explanation as the code. Measured, not theorised: `red:card-share` case 6 stayed
+// GREEN over a rule that had genuinely lost `position: relative`, because the paragraph above
+// it still said the words. The rule is about CSS, so read CSS.
+const css = decomment(readFileSync(join(ROOT, "src/app/globals.css"), "utf8"));
 
 // ── 1 · It exists, on the card, beside Details ──────────────────────────────
 {
@@ -109,6 +114,20 @@ const css = readFileSync(join(ROOT, "src/app/globals.css"), "utf8");
   // ⛔ It must NOT span the whole row. `.mcardp-details::after` is `left:0; right:0` of its
   // OWN box; once both are flex children those boxes sit side by side. A full-width overlay
   // here would sit over Details — the exact failure `.mcardp-info` is called out for.
+  // 🔴 THE ONE THE FIRST VERSION OF THIS FILE MISSED, AND IT SHIPPED BECAUSE OF IT.
+  // `::after { position: absolute }` resolves against the nearest POSITIONED ancestor. Both
+  // controls used to be direct children of `.mcardp`, which supplies `position: relative` —
+  // but they are flex children of a footer wrapper now, so the context silently became the
+  // ROW, `left:0; right:0` spanned the whole of it, and `.mcardp-details`'s invisible overlay
+  // sat on top of the share trigger. Measured live: the share button's own centre returned
+  // `a.mcardp-details`. A visible, correctly named control that could not be clicked anywhere.
+  // ⛔ So each control must declare its OWN context. A source scan cannot see a stacking
+  // failure — `qa:card-share-hit` hit-tests it — but it CAN see the missing declaration.
+  const detailsRule = css.slice(css.indexOf(".mcardp-details {"), css.indexOf(".mcardp-details::after"));
+  ok("4: 🔴 `.mcardp-details` declares its own positioning context",
+     /position:\s*relative/.test(detailsRule), detailsRule.slice(0, 120));
+  const shareRule = css.slice(css.indexOf(".mcardp-share {"), css.indexOf(".mcardp-share::after"));
+  ok("4: 🔴 …and so does `.mcardp-share`", /position:\s*relative/.test(shareRule));
   ok("4: ⛔ it does not span the row and swallow Details' clicks",
      !/left:\s*0;\s*\n?\s*right:\s*0;/.test(after), after.slice(0, 160));
 }

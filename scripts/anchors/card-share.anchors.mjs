@@ -68,4 +68,13 @@ export const MUTATIONS = [
     to: `        {null}`,
     expect: "1: …in its COMPACT variant",
   },
+  {
+    name: "details-loses-its-context",
+    why: "🔴 THE DEFECT THAT SHIPPED AND WAS CAUGHT ONLY BY HIT-TESTING. `.mcardp-details` drops its own `position: relative`, so its absolute overlay resolves against the footer ROW instead of itself, `left:0; right:0` spans the whole row, and the invisible layer sits on top of the share trigger. Both controls still render, both are still correctly named, and the share button becomes unclickable at every point including its centre",
+    file: CSS,
+    suite: "card-share",
+    from: `.mcardp-details { position:relative; display:inline-flex;`,
+    to: `.mcardp-details { display:inline-flex;`,
+    expect: "4: 🔴 `.mcardp-details` declares its own positioning context",
+  },
 ];
