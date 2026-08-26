@@ -551,6 +551,57 @@ rendered and hidden) · `admin-exempted` (the ADMIN bypass re-introduced) ·
 
 ---
 
+### 5a · ✅ AS PROVEN — `qa:read-tiers` **18/0 on production**, 2026-08-26
+
+⭐ **D5 IS CLOSED, AND IT WAS NEVER A WALL.** `ops:mint-read-tier-personas` created the two
+personas the acceptance needs, **through the real flow, not the database**: each was REGISTERED on
+the real sign-up form and then PROMOTED by a real ADMIN session through `/admin/staff` with a
+reason, leaving a `staff.role_changed` audit row the Board can read. Measured: **SUPPORT 0 → 1,
+AUDITOR 0 → 1**, and neither persona acquired a role it was not granted.
+
+**What §5 asked for, and what answers it:**
+
+| §5 requirement | the assertion that satisfies it |
+|---|---|
+| 1 · a refusal | SUPPORT sees `a••••@…`, is given **no reveal control**, and the region is **absent entirely** |
+| 2 · positive control, same run, same page | ADMIN, on that same page, **is** given `Reveal Email address` / `Reveal Region` |
+| 3 · positive control on the SAME role | SUPPORT reaches the page, keeps their desk, and `history.activity` still reads in full |
+| 4 · not merely hidden in CSS | the raw address is **absent from the SERVER'S HTML** — 101,269 bytes of it — for SUPPORT *and* for ADMIN |
+| 5 · a drift detector | `test:read-tiers` 4.4 (no `.tsx` may import the resolver) + the field registry |
+
+⭐ **AND THE SEAL §5 DID NOT ASK FOR, WHICH IS THE ONE THAT MATTERS MOST.** An absent button proves
+the CONSOLE is safe; it says nothing about a modified client. So the drive **captures ADMIN's real
+reveal request and replays it from SUPPORT's own session**. The server answers **HTTP 200** and
+refuses: *"Your role cannot reveal email address (identity.contact)."* — ⛔ **naming the class**, so
+a refused operator can tell their manager which grant they lack, and **the address appears nowhere
+in that response.**
+
+⭐ **THE AUDIT TRAIL TELLS THE TRUTH IN BOTH DIRECTIONS.** ADMIN's reveal is on the record; the
+REFUSED attempt wrote **no** `pii.revealed` row — *a refusal is not a read*, and if it were logged
+as one, the count that answers *"who read this?"* would lie. No payload anywhere carries the value
+it protects.
+
+#### 🔴 The leg that was wrong, because it is the more useful half of this section
+
+Leg 3 first asserted that **AUDITOR** sees the region *masked* where SUPPORT sees nothing — a real
+difference in §3.2's grid. **AUDITOR holds no `support` grant, and `/admin/players` is a `support`
+route, so AUDITOR never reaches the page at all.** ⛔ **Worse, the leg's second assertion — "AUDITOR
+is given no reveal control" — PASSED, vacuously**, because there was no page to carry one. *A
+refusal satisfied by an empty page is precisely the defect this suite exists to catch, and it had
+appeared inside the suite itself.*
+
+⭐ **Rewritten, it proves something better: §1a's INTERSECTION RULE, live.** AUDITOR is stopped by
+the DOMAIN gate before any read cell applies — with a positive control in the same run showing the
+**same AUDITOR session** reaching `/admin/insights`, an accounting route it does hold. Without that
+control, "AUDITOR sees nothing" would be satisfied by a broken account, a bad password, or a
+persona that was never actually promoted.
+
+⚠️ **STILL NOT BUILT, and unit K is NOT complete:** the **ticket system** (#12's larger half) and
+**`msaada@50pick.tz`** (#13). §7 keeps both out of this design deliberately, and D2 binds them —
+#13 is not DONE until its ticket view resolves `identity.contact` through `canRead`.
+
+---
+
 ## 6. What this must NOT become
 
 - ⛔ **Not a new hardcoded check.** Unit K says so in as many words. If the answer to *"can

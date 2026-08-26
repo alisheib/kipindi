@@ -37,6 +37,13 @@ export const PERSONA = {
   trading:  { phone: "712000104", secret: "QA_TRADING_PASSWORD",  label: "TRADING officer" },
   growth:   { phone: "712000102", secret: "QA_GROWTH_PASSWORD",   label: "GROWTH officer" },
   finance:  { phone: "712000107", secret: "QA_FINANCE_PASSWORD",  label: "FINANCE officer" },
+  // ⭐ MINTED 2026-08-26 FOR JAY UNIT K (ruling D5). Before these two existed, SUPPORT and
+  // AUDITOR held NO account on production at all, so READ_TIERS could not be proven the only
+  // way that counts — by a session that is actually REFUSED. `ops:mint-read-tier-personas`
+  // created them through the real sign-up form and the Owner's real /admin/staff promotion.
+  // ⚠️ They are QA instruments, named so they can never be mistaken for a real hire.
+  support:  { phone: "712000108", secret: "QA_SUPPORT_PASSWORD",  label: "SUPPORT desk (QA)" },
+  auditor:  { phone: "712000109", secret: "QA_AUDITOR_PASSWORD",  label: "AUDITOR read-only (QA)" },
   // ⛔ Ali's own console login. Use ONLY for something genuinely ADMIN-only, and say so
   // in the finding — ADMIN bypasses every domain check, so a sweep run as ADMIN measures
   // nothing about RBAC. NEVER re-mint this password.
@@ -209,7 +216,7 @@ export async function login(page, who) {
   // staff account to the PLAYER form, which renders `#identifier` rather than `#phone`
   // and lands on the player shell — the sign-in "succeeds" and the driver then measures
   // the wrong surface entirely.
-  const staff = ["officer", "trading", "growth", "finance", "admin"].includes(who)
+  const staff = ["officer", "trading", "growth", "finance", "admin", "support", "auditor"].includes(who)
     || (typeof who === "string" && who.startsWith("local:"));
   // 🔴 `networkidle`, NOT `domcontentloaded`. PhoneInput is a React component that mirrors
   // the visible field into a hidden input on change. Fill it before hydration and the DOM
