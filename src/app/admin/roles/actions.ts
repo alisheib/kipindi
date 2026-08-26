@@ -13,8 +13,14 @@ import { revalidatePath } from "next/cache";
 import { audit } from "@/lib/server/audit";
 import { safeError } from "@/lib/server/safe-error";
 import { requireOwner } from "@/lib/server/rbac-guard";
-import { setRoleGrant, resetRoleGrantsToDefaults, invalidateGrantsCache } from "@/lib/server/rbac";
-import { ADMIN_DOMAINS, EDITABLE_ROLES, type AdminDomain, type Role } from "@/lib/server/roles";
+import {
+  setRoleGrant, resetRoleGrantsToDefaults, invalidateGrantsCache,
+  setRoleReadGrant, resetRoleReadGrantsToDefaults, invalidateReadGrantsCache,
+} from "@/lib/server/rbac";
+import {
+  ADMIN_DOMAINS, EDITABLE_ROLES, STAFF_ROLES, READ_CLASSES, READ_CLASS_LABEL, isMaskable,
+  type AdminDomain, type Role, type ReadClass, type ReadCell,
+} from "@/lib/server/roles";
 
 export async function setRoleGrantAction(formData: FormData): Promise<{ ok: true } | { ok: false; error: string }> {
   const officerId = (await requireOwner("setRoleGrant")).userId;
@@ -62,6 +68,82 @@ export async function resetRoleGrantsAction(): Promise<{ ok: true } | { ok: fals
       payload: {},
     });
     revalidatePath("/admin/roles");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: safeError(err, "Reset failed") };
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * READ_TIERS edits — the SECOND axis (docs/READ-TIERS.md). Same shape as the grant
+ * edits above, with ONE deliberate difference.
+ *
+ * ⛔ ADMIN IS EDITABLE HERE. `setRoleGrantAction` refuses it, and correctly: the Owner
+ * bypasses the DOMAIN table so a bad grant could never lock them out of the console.
+ * Ruling D3 makes the READ axis the opposite — ADMIN resolves through the table like
+ * everyone else, because ADMIN is the only account that exists on production and a
+ * masking rule ADMIN skipped would have no possible witness. ⚠️ The Owner still cannot
+ * lock itself out: the worst a bad READ edit does is put dots where a figure was, and
+ * `/admin/roles` is reached through the DOMAIN axis, which still bypasses.
+ * ──────────────────────────────────────────────────────────────────────────── */
+export async function setRoleReadGrantAction(
+  formData: FormData,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const officerId = (await requireOwner("setRoleReadGrant")).userId;
+  const role = String(formData.get("role") ?? "");
+  const readClass = String(formData.get("readClass") ?? "");
+  const cell = String(formData.get("cell") ?? "");
+
+  if (!(STAFF_ROLES as readonly string[]).includes(role)) return { ok: false, error: "Unknown role." };
+  if (!(READ_CLASSES as readonly string[]).includes(readClass)) return { ok: false, error: "Unknown read class." };
+  if (!["read", "masked", "none"].includes(cell)) return { ok: false, error: "Unknown read level." };
+  // ⛔ Refuse `masked` on a class with no masked form, and NAME the alternatives rather than
+  // saying "invalid" — the same rule E-213's category refusal follows: an operator who is
+  // refused must be able to tell a typo from a policy.
+  if (cell === "masked" && !isMaskable(readClass as ReadClass)) {
+    return {
+      ok: false,
+      error: `"${READ_CLASS_LABEL[readClass as ReadClass]}" has no masked form — choose Can reveal or Hidden.`,
+    };
+  }
+
+  try {
+    await setRoleReadGrant(role as Role, readClass as ReadClass, cell as ReadCell, officerId);
+    invalidateReadGrantsCache();
+    audit({
+      category: "COMPLIANCE",
+      action: "rbac.read_grant_changed",
+      actorId: officerId,
+      targetType: "Role",
+      targetId: role,
+      payload: { readClass, cell },
+    });
+    revalidatePath("/admin/roles");
+    // ⚠️ The player page is where the change is actually VISIBLE. Without this the officer
+    // flips a cell, opens a player, and sees the old masking from the router cache — and
+    // concludes the matrix does not work.
+    revalidatePath("/admin/players/[id]", "page");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: safeError(err, "Read grant update failed") };
+  }
+}
+
+export async function resetRoleReadGrantsAction(): Promise<{ ok: true } | { ok: false; error: string }> {
+  const officerId = (await requireOwner("resetRoleReadGrants")).userId;
+  try {
+    await resetRoleReadGrantsToDefaults();
+    invalidateReadGrantsCache();
+    audit({
+      category: "COMPLIANCE",
+      action: "rbac.read_grants_reset",
+      actorId: officerId,
+      targetType: "Role",
+      targetId: "*",
+      payload: {},
+    });
+    revalidatePath("/admin/roles");
+    revalidatePath("/admin/players/[id]", "page");
     return { ok: true };
   } catch (err) {
     return { ok: false, error: safeError(err, "Reset failed") };

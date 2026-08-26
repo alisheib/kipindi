@@ -45,6 +45,7 @@
 const ROLES = "src/lib/server/roles.ts";
 const RBAC = "src/lib/server/rbac.ts";
 const PLAYER_PAGE = "src/app/admin/players/[id]/page.tsx";
+const ROLES_ACTIONS = "src/app/admin/roles/actions.ts";
 
 /** @type {RedMutation[]} */
 export const MUTATIONS = [
@@ -137,5 +138,32 @@ export const MUTATIONS = [
     from: `{user.region ? <Sensitive field="region" subjectId={id} value={user.region} /> : "\u2014"}`,
     to: `{user.region ?? "\u2014"}`,
     expect: "1.9 \u2b50 \u2026and so does the region",
+  },
+  {
+    name: "read-action-refuses-admin",
+    why: "\ud83d\udd34 ruling D3 undone at the THIRD layer \u2014 the editor. The model and the runtime are both guarded, but an author looking only at this file sees the DOMAIN action a few lines above refusing ADMIN and adds the same line here \u201cfor consistency\u201d. The Owner's read row then becomes uneditable, the matrix acquires a permanently exempt role, and \u00a74c's \u201cmasked at rest for everyone\u201d is untrue for the only account on production",
+    file: ROLES_ACTIONS,
+    suite: "read-tiers",
+    from: `  const cell = String(formData.get("cell") ?? "");`,
+    to: `  const cell = String(formData.get("cell") ?? "");\n  if (role === "ADMIN") return { ok: false, error: "The Owner's reads are fixed." };`,
+    expect: "6.2 \u2b50 D3 \u00b7 the DOMAIN action refuses ADMIN and the READ action does NOT",
+  },
+  {
+    name: "editor-forgets-player-revalidate",
+    why: "\u26a0\ufe0f the save stops revalidating the surface it governs. The officer flips a cell, opens a player, sees the OLD masking from the router cache, and concludes the feature does not work \u2014 a bug that presents as a broken permission model and is really a stale route. The editor and the page it controls are different routes",
+    file: ROLES_ACTIONS,
+    suite: "read-tiers",
+    from: `    // concludes the matrix does not work.\n    revalidatePath("/admin/players/[id]", "page");`,
+    to: `    // concludes the matrix does not work.`,
+    expect: "6.4 \u26a0\ufe0f saving a read cell revalidates the PLAYER page too",
+  },
+  {
+    name: "server-trusts-the-greying",
+    why: "the server stops refusing \u2018masked\u2019 on a class with no masked form, leaving only the greyed-out option in the UI to prevent it. A control that greys what the server would still accept is the defect, not the fix \u2014 and a modified client reaches the server directly",
+    file: ROLES_ACTIONS,
+    suite: "read-tiers",
+    from: `  if (cell === "masked" && !isMaskable(readClass as ReadClass)) {`,
+    to: `  if (false) {`,
+    expect: "6.6 \u26d4 the SERVER refuses `masked` on a class with no masked form",
   },
 ];

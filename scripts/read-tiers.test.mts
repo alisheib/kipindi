@@ -19,7 +19,7 @@
  */
 process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-min-aaaa";
 
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { decomment } from "./lib/decomment.mts";
@@ -277,6 +277,56 @@ ok("5.12 ⛔ the DB-row validator accepts every legal pair and NOTHING else",
 ok("5.13 …and the WRITER refuses exactly what the LOADER discards — one decision, never two",
    (await throws(() => RT.setRoleReadGrant("SUPPORT", "money.figurez" as any, "read", "t")))
    === !RT.isStorableReadOverride("money.figurez", "read"));
+
+
+console.log("\n§6 · the editor surface");
+
+const rolesActions = decomment(readFileSync(join(ROOT, "src/app/admin/roles/actions.ts"), "utf8"));
+const rolesPage = decomment(readFileSync(join(ROOT, "src/app/admin/roles/page.tsx"), "utf8"));
+
+// ⛔ §6 of the design: "two permission screens is how two permission models are born."
+ok("6.1 ⛔ the read matrix is a TAB on /admin/roles, not a page of its own",
+   /ReadTiersMatrix/.test(rolesPage) && /RolesMatrix/.test(rolesPage)
+   && !existsSync(join(ROOT, "src/app/admin/read-tiers"))
+   && !existsSync(join(ROOT, "src/app/admin/roles/reads")),
+   "both matrices render from one page, and no sibling route exists");
+
+// ⭐ THE D3 CONTRAST, ASSERTED AS A PAIR. Either half alone is a claim; together they are the
+// ruling. The DOMAIN action must refuse ADMIN (the Owner can never be locked out of a route);
+// the READ action must NOT (the Owner is subject to masking, or the rule has no witness).
+const domainFn = rolesActions.slice(rolesActions.indexOf("export async function setRoleGrantAction"),
+                                   rolesActions.indexOf("export async function resetRoleGrantsAction"));
+const readFn = rolesActions.slice(rolesActions.indexOf("export async function setRoleReadGrantAction"),
+                                  rolesActions.indexOf("export async function resetRoleReadGrantsAction"));
+ok("6.2 ⭐ D3 · the DOMAIN action refuses ADMIN and the READ action does NOT — the pair IS the ruling",
+   /role === "ADMIN"/.test(domainFn) && !/role === "ADMIN"/.test(readFn),
+   `domain refuses=${/role === "ADMIN"/.test(domainFn)} · read refuses=${/role === "ADMIN"/.test(readFn)}`);
+
+ok("6.3 …and the READ action accepts every STAFF role, ADMIN included",
+   /STAFF_ROLES as readonly string\[\]\)\.includes\(role\)/.test(readFn));
+
+// ⚠️ Without this the officer flips a cell, opens a player, sees the OLD masking from the router
+// cache, and concludes the matrix does not work. The editor and the surface it governs are
+// different routes; revalidating only the editor is the bug that looks like a broken feature.
+ok("6.4 ⚠️ saving a read cell revalidates the PLAYER page too, not just the editor",
+   /revalidatePath\("\/admin\/players\/\[id\]", "page"\)/.test(readFn));
+
+ok("6.5 the edit is audited under its own action name, distinct from the domain one",
+   /action: "rbac\.read_grant_changed"/.test(readFn) && /action: "rbac\.grant_changed"/.test(domainFn));
+
+// ⛔ The server must refuse what the control greys out, or the greying is decoration.
+ok("6.6 ⛔ the SERVER refuses `masked` on a class with no masked form — the greyed option is a real rule",
+   /cell === "masked" && !isMaskable/.test(readFn));
+
+// ⭐ E-225, one layer up: the kit Select takes `ariaLabel`. A hyphenated attribute compiles clean
+// and is dropped, and this editor is exactly the kind of screen where that goes unnoticed.
+const readMatrixSrc = decomment(readFileSync(join(ROOT, "src/app/admin/roles/read-tiers-matrix.tsx"), "utf8"));
+ok("6.7 ⭐ the editor's Selects are named with `ariaLabel`, never the hyphenated attribute (E-225)",
+   /ariaLabel=\{/.test(readMatrixSrc) && !/aria-label=/.test(readMatrixSrc));
+
+// ⚠️ Ali, 2026-08-04: greyed WITH ITS REASON, never hidden.
+ok("6.8 ⚠️ an unavailable level is OFFERED and disabled WITH A REASON, not removed from the list",
+   /disabled: !isMaskable\(cls\)/.test(readMatrixSrc) && /hint:/.test(readMatrixSrc));
 
 console.log(`\nread-tiers: ${pass} passed, ${fail} failed`);
 process.exit(fail > 0 ? 1 : 0);

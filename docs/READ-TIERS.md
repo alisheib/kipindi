@@ -303,6 +303,39 @@ for ADMIN and COMPLIANCE it is masked-at-rest and costs a click. That is faithfu
 prove to be more friction than the field is worth — **a cell to flip in `/admin/roles`, not a
 special case to code.**
 
+### 3.6 · AS BUILT — the editor is a TAB, and the Owner is listed on it
+
+`/admin/roles` now carries two tabs — **Access** (role × domain, "may this role reach this ROUTE?")
+and **Reads** (role × class, "may this role read this FIELD?"). ⛔ **A tab, not a page**, per §6:
+*"two permission screens is how two permission models are born."* Only the matrix the active tab
+renders is loaded, so a tab most visits never open costs no round trip.
+
+⭐ **THE OWNER IS LISTED ON `Reads` AND NOT ON `Access`, AND THE TAB SAYS WHY ON SCREEN.** That
+looks like an inconsistency between two halves of one screen, which is exactly how a rule gets
+"tidied away" by someone making things uniform. It is ruling **D3**: the Owner bypasses the DOMAIN
+table so a bad grant can never lock them out of a route, while the READ axis resolves ADMIN through
+the table like every other role. ⚠️ **The Owner still cannot lock itself out** — the worst a read
+edit does is show dots where a value was, and `/admin/roles` is reached through the DOMAIN axis.
+
+📌 **D3 CAN NOW BE UNDONE AT THREE LAYERS, AND ALL THREE ARE ATTACKED BY `red:read-tiers`:** the
+pure model (`admin-exempted`), the runtime resolver (`runtime-admin-bypass`), and the editor action
+(`read-action-refuses-admin`). ⚠️ **The third is the most likely of the three**, because an author
+working in `roles/actions.ts` sees the DOMAIN action a few lines above refusing ADMIN and adds the
+same line "for consistency". The suite asserts the two actions as a **PAIR** — domain refuses,
+read does not — because either half alone is a claim and only together are they the ruling.
+
+⚠️ **A read edit revalidates `/admin/players/[id]` as well as the editor**, and that has its own
+mutation. Without it an officer flips a cell, opens a player, sees the OLD masking from the router
+cache, and concludes the matrix does not work — **a stale route presenting as a broken permission
+model.**
+
+⭐ **An unavailable level is OFFERED AND DISABLED WITH ITS REASON, never removed** (Ali,
+2026-08-04). `Masked only` on `history.activity` is greyed with *"this class has no masked form — a
+partial reveal would identify it"*, and ⛔ **the server refuses it too**: a control that greys what
+the server would still accept is the defect, not the fix, and a modified client reaches the server
+directly.
+
+
 ---
 
 ## 4. THE DECISIONS ONLY ALI COULD MAKE — ✅ **ANSWERED, SEE §4a**
