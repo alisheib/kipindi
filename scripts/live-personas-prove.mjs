@@ -1,5 +1,5 @@
 /**
- * E-214 — PROVE THE SIX QA PERSONAS OPEN THE FRONT DOOR, ON PRODUCTION.
+ * E-214 — PROVE THE EIGHT QA PERSONAS OPEN THE FRONT DOOR, ON PRODUCTION.
  *
  *   npm run qa:personas
  *
@@ -53,9 +53,16 @@ const EXPECT = [
   { who: "trading", staff: true,  label: "Trading",     phone: "+255712000104" },
   { who: "officer", staff: true,  label: "Compliance",  phone: "+255712000106" },
   { who: "finance", staff: true,  label: "Finance",     phone: "+255712000107" },
+  // ⭐ MINTED 2026-08-26 FOR RULING D5 (READ_TIERS). Before these existed, SUPPORT and AUDITOR
+  // held NO account on production at all, so the read tier could not be proven the only way that
+  // counts — by a session that is actually REFUSED. ⚠️ They were added HERE because the
+  // machine-readiness check in SESSION-PROMPT-BONUS-AND-CARE-DESK.md §0d claims this driver proves
+  // "every persona"; it proved six of eight, so the claim was made true rather than softened.
+  { who: "support", staff: true,  label: "Support",     phone: "+255712000108" },
+  { who: "auditor", staff: true,  label: "Auditor",     phone: "+255712000109" },
 ];
 
-const r = recorder(`E-214 · the six QA personas, driven on ${BASE}`);
+const r = recorder(`E-214 · the eight QA personas, driven on ${BASE}`);
 
 const { b, ctx: bootCtx } = await browser({});
 await bootCtx.close();   // `browser()` hands back a starter context this driver does not use

@@ -73,6 +73,99 @@ runner that enumerates them.**
 
 ---
 
+### §0d · ⛔ RUNNING THIS ON A DIFFERENT MACHINE — read before anything else
+
+**Everything in the repo travels with `git pull`. Five things do not, and one of them will silently
+make every live drive lie to you.**
+
+#### 🔑 1 · `.env.qa.local` — the only thing that CANNOT be pushed
+
+It is gitignored (`.gitignore:9`) and holds **13 keys**. ⚠️ **An older note in
+`docs/LIVE-QA-CAMPAIGN.md` §2 said "seven lines" — it has been corrected; count them, do not quote.**
+
+```
+ADMIN_LOGIN_PHONE          ADMIN_LOGIN_PASSWORD
+QA_ADMIN_PASSWORD          ⛔ Ali's own console login — NEVER re-minted
+QA_ALPHA_PASSWORD          QA_ECHO_PASSWORD
+QA_GROWTH_PASSWORD         QA_TRADING_PASSWORD
+QA_OFFICER_PASSWORD        QA_FINANCE_PASSWORD
+QA_SUPPORT_PASSWORD        QA_AUDITOR_PASSWORD      ⭐ NEW 2026-08-26 (ruling D5)
+PROD_DATABASE_PUBLIC_URL   ⛔ stored under THIS name, never as DATABASE_URL
+RAILWAY_WORKSPACE_TOKEN
+```
+
+🔴 **THE SIX PERSONA PASSWORDS WERE RE-MINTED ON 2026-08-26, ON THE `F:` MACHINE, WITH ALI'S
+EXPLICIT OK. EVERY OLDER COPY IS DEAD.** If the other machine still holds a file from before that
+date, `alpha` / `echo` / `growth` / `trading` / `officer` / `finance` will all refuse.
+⛔ **DO NOT RE-MINT TO FIX IT.** `ops-remint-qa-passwords.mts` ignores its arguments and re-mints
+**all six**, so a second re-mint just moves the breakage back to the first machine and the two take
+turns. ⭐ **Copy the one file.**
+
+⚠️ **`QA_SUPPORT_PASSWORD` and `QA_AUDITOR_PASSWORD` are NOT in the re-mint tool's list**, so a
+future re-mint leaves them alone — but it also cannot recreate them. They only exist in that file.
+
+#### 2 · The rest of the setup, in order
+
+```bash
+git clone https://github.com/alisheib/kipindi && cd kipindi
+npm install                       # postinstall runs `prisma generate`
+npx playwright install chromium   # the live drivers drive a real browser
+railway login && railway link     # pick: 50pick · production
+# then copy .env.qa.local into the repo root — see above
+railway run -s 50pick -- node scripts/live/ops/mkenv.cjs   # writes scripts/live/ops/.env
+```
+
+⚠️ **Node 24.x** (`engines` pins it; production runs 24.19.0).
+⚠️ **`scripts/live/ops/.env` is gitignored and machine-local** — `mkenv.cjs` rewrites the DB host
+onto the public TCP proxy and **asserts the rewrite happened**, refusing to write a file that still
+points at the internal host. ⛔ The `DATABASE_URL` Railway injects is `postgres.railway.internal`
+and resolves nowhere off-platform — **every read through it silently returns DEFAULTS.**
+⚠️ **Saved Playwright sessions do not travel.** They regenerate on first sign-in.
+
+#### 3 · ⭐ PROVE THE MACHINE IS READY — do not assume it
+
+Run these four and read the answers. **Each one fails loudly rather than quietly.**
+
+```bash
+node -v                                    # 24.x
+node scripts/live/ops/census.cjs           # must print ✅ MATCH — three numbers agreeing with /api/health
+npm run qa:personas                        # every persona signs in, or names the one that does not
+npm run test:read-tiers                    # 52/0
+```
+
+⛔ **`census.cjs` printing ✅ MATCH is the check that matters**, because it cross-checks
+`users`/`marketsLive`/`marketsResolved` against `/api/health`. **Three matching numbers is what
+proves you read production and not a default.** A silent default-read has cost this campaign a whole
+session before.
+
+⚠️ **If a persona refuses, the diagnosis costs ONE attempt and no database:** production puts the
+reason in the URL — `…/auth/login?identifier=712000101&error=wrong_credentials`. That means the file
+is stale — **copy it, do not re-mint.**
+
+#### 4 · ⛔ AND CHECK THE SCHEMA, NOT THE LOCK FILE
+
+Covered in §0c and repeated here because it is the trap a fresh machine hits differently: a clone
+runs `npm install` so `prisma generate` fires. **A PULL does not.** After any pull:
+
+```bash
+git diff --stat HEAD@{1}..HEAD -- prisma/schema.prisma   # moved? then:
+npx prisma generate
+```
+
+#### 5 · Which machine you are on changes what you can do
+
+| | `F:\kipindi-main` | `C:\kipindi-main` |
+|---|---|---|
+| the six persona passwords | ✅ **current** (re-minted 2026-08-26) | ❌ dead until the file is copied |
+| `QA_ADMIN_PASSWORD` | ✅ present | ⚠️ was absent — confirm before relying on it |
+| worktrees | `kipindi-liveqa` exists here | none; `qa/live-experience` checked out directly |
+
+⭐ **Before believing a gap is a defect, ask whether the credential simply lives on the other
+machine.** E-213's five "NOT RUN" legs were honestly marked for a day and were never blocked on the
+product — they were blocked on a machine, and closed at **13/0** the moment they ran from the right one.
+
+---
+
 ## §1 · THE COMPLETION LEDGER — tick your row in the commit that ships it
 
 | # | Unit | Origin | Why it is next | State |

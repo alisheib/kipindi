@@ -412,7 +412,7 @@ the errors name a DAL file and a Prisma type, so the instinct is to read the dif
 that is in fact perfectly correct.
 
 3. **Copy `.env.qa.local` into the repo root** — it is gitignored (`.gitignore:9`) and is the
-   ONLY thing that does not travel. Seven lines, one per persona (§1 table above). If it is
+   ONLY thing that does not travel. ⚠️ **THIRTEEN keys as of 2026-08-26, not seven** — this said "Seven lines, one per persona" and was written when that was true; `QA_SUPPORT_PASSWORD` and `QA_AUDITOR_PASSWORD` joined it with ruling D5, alongside `ADMIN_LOGIN_*`, `PROD_DATABASE_PUBLIC_URL` and `RAILWAY_WORKSPACE_TOKEN`. **Count them; do not quote this line.** 🔴 **And the six persona passwords were RE-MINTED 2026-08-26 on the `F:` machine — every older copy is DEAD.** Full machine-setup procedure: `SESSION-PROMPT-BONUS-AND-CARE-DESK.md` §0d. If it is
    lost, every QA persona except ADMIN can be re-minted with **`npx tsx
    scripts/ops-remint-qa-passwords.mts`** — the COMMITTED tool. ⚠️ It **ignores its arguments
    and re-mints all six**, so it cannot be scoped to one persona. (`live/mkpw.cjs`, which this
