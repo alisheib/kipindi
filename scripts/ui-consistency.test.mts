@@ -128,7 +128,51 @@ function stringLiterals(body: string): Array<{ index: number; value: string }> {
   return out;
 }
 
+/**
+ * ⛔ COMPONENTS WHOSE ACCESSIBLE-NAME PROP IS camelCase AND CANNOT RECEIVE THE HYPHENATED ONE.
+ *
+ * 🔴 TypeScript CANNOT see this mistake. A JSX attribute whose name contains a hyphen is exempt
+ * from excess-property checking — TS assumes `aria-*`/`data-*` passthrough — so
+ * `<Select aria-label="Category">` compiles clean, is dropped on the floor by a component whose
+ * prop is `ariaLabel`, and the control ships with the generic fallback name. Found 2026-08-26 on
+ * production: the re-categorise combobox announced itself as "Select…", and the live driver that
+ * was supposed to prove the feature located it by that same attribute — so it matched nothing,
+ * every leg was unrunnable, and the one leg that did run asserted an ABSENCE and passed vacuously.
+ *
+ * ⭐ THE LIST IS DERIVED, NEVER TYPED OUT. A hand-written list rots the moment a kit component
+ * gains or loses a rest spread. A component qualifies when its source names `ariaLabel`, does NOT
+ * declare the quoted `"aria-label"` prop (Toggle does, and is correctly exempt), and spreads no
+ * rest props (TimeSelect reads `rest["aria-label"]` and PhoneInput spreads it — both forward fine).
+ */
+const ARIA_LABEL_CAMEL_ONLY: Set<string> = (() => {
+  const out = new Set<string>();
+  for (const f of walk(join(SRC, "components", "ui"))) {
+    if (!f.endsWith(".tsx")) continue;
+    const b = readFileSync(f, "utf8");
+    if (!/\bariaLabel\b/.test(b)) continue;
+    if (/["']aria-label["']\s*[?:]/.test(b)) continue;
+    if (/\.\.\.(rest|props|other)\b/.test(b)) continue;
+    for (const m of b.matchAll(/export function ([A-Z][A-Za-z0-9]*)/g)) out.add(m[1]);
+  }
+  return out;
+})();
+
 const RULES: Rule[] = [
+  {
+    id: "dropped-aria-label-prop",
+    severity: "error",
+    desc: "hyphenated aria-label passed to a kit component whose prop is ariaLabel — tsc cannot see it and it is silently DROPPED, shipping the generic fallback name",
+    scan: (b, f) => {
+      if (isKitFile(f)) return [];
+      const out: Array<{ index: number; snippet: string }> = [];
+      for (const m of b.matchAll(/<([A-Z][A-Za-z0-9]*)\s([^<>]*?)\/?>/g)) {
+        if (!ARIA_LABEL_CAMEL_ONLY.has(m[1])) continue;
+        if (!/\baria-label\s*=/.test(m[2] ?? "")) continue;
+        out.push({ index: m.index ?? 0, snippet: `<${m[1]} aria-label=…> should be ariaLabel` });
+      }
+      return out;
+    },
+  },
   {
     id: "native-select",
     severity: "error",

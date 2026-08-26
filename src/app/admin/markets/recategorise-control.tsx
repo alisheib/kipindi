@@ -58,7 +58,7 @@ export function RecategoriseControl({
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Select
-        aria-label="Category"
+        ariaLabel="Category"
         value={next}
         onChange={setNext}
         disabled={pending}

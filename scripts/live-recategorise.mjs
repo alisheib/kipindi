@@ -44,7 +44,7 @@ async function readCategory(page) {
 
 async function openAdminMarket(page) {
   await page.goto(`${BASE}/admin/markets/${MARKET}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
-  await page.waitForSelector('[aria-label="Category"]', { timeout: 45_000 });
+  await categoryBox(page).first().waitFor({ state: "visible", timeout: 45_000 });
   await page.waitForTimeout(1_500);
 }
 
@@ -64,12 +64,12 @@ try {
     const res = await p2.goto(`${BASE}/admin/markets/${MARKET}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
     await p2.waitForTimeout(2_500);
     const body = await p2.evaluate(() => (document.body.innerText || "").replace(/\s+/g, " ").trim());
-    const hasControl = await p2.evaluate(() => Boolean(document.querySelector('[aria-label="Category"]')));
+    const hasControl = (await categoryBox(p2).count()) > 0;
     // 🔴 A non-ADMIN must not be handed the control. Refusing the page outright and rendering
     // it without the control are both correct; being OFFERED it is not.
     ok("RBAC: 🔴 a non-admin is not handed the re-categorise control on production",
        !hasControl, `http=${res?.status()} · url=${p2.url()} · ${body.slice(0, 110)}`);
-    notRun = 5;
+    notRun = 6;
   } else {
     const state = await loginOnce(b, "admin");
     const ctx = await b.newContext({ storageState: state, viewport: { width: 1440, height: 1000 } });
@@ -80,7 +80,7 @@ try {
     const original = await readCategory(page);
     ok("1: the re-categorise control renders on production", original !== null, `current=${original}`);
 
-    await page.click('[aria-label="Category"]');
+    await categoryBox(page).first().click();
     await page.waitForTimeout(700);
     const offered = await page.evaluate(() =>
       Array.from(document.querySelectorAll('[role="listbox"] [role="option"]'))
@@ -136,7 +136,7 @@ try {
     ok("4: ⭐ the market appears under its NEW category on the player board", grouped, `/markets?cat=${target}`);
 
     // ── 5 · PUT IT BACK ────────────────────────────────────────────────────────
-    await page.click('[aria-label="Category"]');
+    await categoryBox(page).first().click();
     await page.waitForTimeout(700);
     await page.click(`[role="listbox"] [role="option"]:has-text("${original}")`);
     await page.waitForTimeout(400);
@@ -144,6 +144,27 @@ try {
     await page.waitForTimeout(5_000);
     await openAdminMarket(page);
     ok("5: the market is restored to where it started", (await readCategory(page)) === original, `back to ${original}`);
+
+    // ── 6 · RBAC, WITH THE POSITIVE CONTROL THAT MAKES IT EVIDENCE ─────────────
+    // 🔴 This leg used to run ONLY when the admin credential was missing, and it asserted the
+    // ABSENCE of a control using a selector that could never match anything. It passed for
+    // that reason alone. A negative assertion is worth nothing unless the same locator is
+    // shown to FIND the thing in the same run — so the control is read for BOTH accounts here.
+    const adminSees = (await categoryBox(page).count()) > 0;
+    ok("6: POSITIVE CONTROL — the locator finds the control for ADMIN in this same run",
+       adminSees, `admin count=${adminSees ? "≥1" : 0}`);
+
+    const pState = await loginOnce(b, "fleet:01");
+    const pCtx = await b.newContext({ storageState: pState, viewport: { width: 1440, height: 1000 } });
+    const pPage = await pCtx.newPage();
+    const pRes = await pPage.goto(`${BASE}/admin/markets/${MARKET}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
+    await pPage.waitForTimeout(2_500);
+    const playerSees = (await categoryBox(pPage).count()) > 0;
+    // Refusing the page outright and rendering it without the control are both correct;
+    // being OFFERED it is not.
+    ok("6: 🔴 a non-admin is NOT handed the re-categorise control on production",
+       adminSees && !playerSees, `http=${pRes?.status()} · url=${pPage.url()} · player count=${playerSees ? "≥1" : 0}`);
+    await pCtx.close();
   }
 } catch (err) {
   fail++;
