@@ -133,6 +133,12 @@ able to *confirm* a detail the player reads out to them without being able to *h
 | GROWTH | — | masked | — | read |
 | MODERATOR | — | — | — | read |
 
+> ⛔ **READ `read` AS "MAY REVEAL", NOT AS "SEES IT" — the cell is DEFINED in §4c and this grid is
+> unreadable without it.** Every sensitive cell above is **masked at rest for the role in it,
+> ADMIN included** (ruling D3). `read` grants the *reveal*, `masked` is the ceiling, `—` renders
+> nothing. ⚠️ Taking `read` to mean "sees the raw value" makes this table contradict §2.3 and D3
+> outright — which is exactly what it did until the build tripped over it.
+
 ⭐ **`SUPPORT` reads `money.figures` as `masked`, not `—`, and that is the whole design in one
 cell.** A support agent must be able to say *"I can see a withdrawal of TZS 2,000 on the 26th
 that failed"* — the **event** — without reading the player's balance. So `masked` on a money
@@ -152,9 +158,18 @@ balance renders as `••••`.
 
 ---
 
-## 4. ⛔ THE DECISIONS ONLY ALI CAN MAKE
+## 4. THE DECISIONS ONLY ALI COULD MAKE — ✅ **ANSWERED, SEE §4a**
 
-Nothing gets built until these are answered. They are money-and-privacy calls, not engineering
+> ✅ **RULED 2026-08-26 (session 66). The questions below are kept VERBATIM as the record of what
+> was asked; the answers are in §4a and §4c.** ⛔ **They are not open — do not re-decide them here.**
+> Ali delegated them the same day: *"you decide based on how the overall platform works and how it
+> behaves and according to our direction."*
+>
+> ⚠️ **This heading used to read "THE DECISIONS ONLY ALI CAN MAKE" and the paragraph below said
+> "nothing gets built until these are answered".** Both were true when written and both would now
+> be false left alone — the campaign's one-finding-one-truth rule applied to a design document.
+
+Nothing was built until these were answered. They are money-and-privacy calls, not engineering
 ones, and guessing them is how a permission surface acquires a private opinion.
 
 **D1 · Does a support agent see a player's wallet balance at all?**
