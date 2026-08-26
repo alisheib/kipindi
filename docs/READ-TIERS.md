@@ -5,8 +5,14 @@
 > in `docs/` first and get it agreed, then build it through the data-driven matrix at
 > `/admin/roles` — never a new hardcoded check."*
 >
-> **Author** session 65 (2026-08-26) · **Status** ⛔ **awaiting Ali's ruling on §4** · **Blocks**
-> Jay unit K (#12 customer-care surface, #13 `msaada@50pick.tz`).
+> **Author** session 65 (2026-08-26) · **Status** ✅ **§4 RULED 2026-08-26 (session 66) — see §4a**
+> · **Blocks** Jay unit K (#12 customer-care surface, #13 `msaada@50pick.tz`).
+>
+> ⭐ **HOW THE RULING WAS MADE, because that matters as much as the answers.** Ali's instruction
+> (2026-08-26) was to decide *"based on how the overall platform works and how it behaves and
+> according to our direction"*. So every ruling in §4a is argued from something this platform
+> ALREADY does, measured — and where there was no precedent to read, the ruling says so instead
+> of inventing one.
 
 ---
 
@@ -180,6 +186,135 @@ Either a real support hire, or a QA SUPPORT persona created on production the wa
 
 ---
 
+## 4a. ✅ THE RULINGS — 2026-08-26 (session 66)
+
+Ali delegated these with *"you decide based on how the overall platform works and how it behaves
+and according to our direction"*. Each ruling therefore cites the precedent it is read from.
+⛔ **A ruling with no precedent behind it is marked as such** — those are the ones to revisit first.
+
+### D1 · Does a support agent see a player's wallet balance? → **MASKED** (as designed)
+
+**The precedent is already on the page, and it was set for everybody.** The phone number
+(`:205`) and the KYC document number (`:484`) are **already masked for ADMIN too**. So this page
+does not treat masking as a junior-role concession — it treats identity data as masked at rest and
+lets seniority *reveal*, not *bypass*. A money total is the same shape of datum, and §1 shows it is
+the one that never got audited.
+
+⭐ **And the platform has already been told this once, in the other direction.** The Final Audit
+remediation blocks `MODERATOR` from money outright, and §6's standing finding is *"a read-only
+AUDITOR was offered the payment kill-switches"* — a role scoped to one domain handed another
+domain's facts because they shared a route. **The reads are that same defect, unfixed.**
+
+⚠️ **The cost is real and accepted:** the first support hire cannot answer *"how much do I have?"*
+without a reveal. That is the correct trade — the player can read their own balance, and the agent
+can see every movement.
+
+### D2 · Does a support agent see the email address? → **MASKED — and the mailbox INHERITS the rule**
+
+The design is right that D2 and the mailbox are one decision. **Ruling: masked in the console, and
+the ticket view is bound by the same class when it is built.**
+
+⛔ **The objection in §4 is correct and does not change the answer — it changes the ORDER.** Masking
+the address in the console while the same address sits in an unmasked inbox *is* theatre. But the
+inbox **does not exist yet** (#13 is unbuilt), so ruling `masked` now sets the constraint the inbox
+must satisfy rather than inheriting a leak from it. ⭐ **Deciding the tier first is the only order in
+which the ticket system can be built correctly** — §7 already says a ticket view is *"just another
+surface that will have to ask `canRead`"*. **This ruling makes that binding, not advisory.**
+
+📌 **Written into §7 as an acceptance condition of #13:** the mailbox is not DONE until its ticket
+view resolves `identity.contact` through `canRead`. A ticket UI that renders a raw `from:` address
+fails this design regardless of what the console does.
+
+### D3 · Is ADMIN subject to masking? → **YES**
+
+⭐ **This is the ruling the campaign's own history decides, not a philosophy.** ADMIN is the ONLY
+account that exists on production. An exempt ADMIN makes the rule **untestable by the only session
+anyone can open** — and this campaign has already paid for exactly that failure more than once:
+sweeps run as ADMIN that *"measured nothing about RBAC"*, and `E-190`, where three guards stayed
+green because their POPULATION was blind. **Today's `E-225` is the same shape one layer down:** a
+leg asserting an absence, satisfied by a selector that could never match anything.
+
+**A rule the top role skips is a rule with no witness.** ADMIN sees `••••` and gets an explicit
+reveal, which is D4.
+
+⚠️ **Accepted cost, stated plainly for Ali:** on `/admin/players/[id]` you will see `••••` where you
+see figures today, and one click to reveal. ⛔ **`ops` and money-movement pages are NOT in scope** —
+READ_TIERS only ever subtracts on the surfaces §3.3 names; it does not touch `/admin/payments`,
+settlement or the ledger, where ADMIN reads stay as they are.
+
+### D4 · Is a reveal audited? → **YES**
+
+`audit({ category: "COMPLIANCE", action: "pii.revealed" })` carrying the **class**, the **target
+player** and the **actor**. **Precedent:** the platform already writes `market.recategorised` with
+actor/before/after (E-213), and the audit chain is already the thing the Board reads. ⭐ The
+distinction this buys is the one a regulator actually asks for: not *"support could have read it"*
+but *"support did read it, at 14:02, for player X"*.
+
+⚠️ **The audit row must be written SERVER-side at the reveal, never from the client** — a client
+that can render the value can decline to report that it did.
+
+### D5 · Who is the first SUPPORT account? → **MINT QA PERSONAS ON PRODUCTION — `support` AND `auditor`**
+
+⛔ **This was called a hard blocker, and it is not one — it is a state that has to be CREATED.**
+`rbac-census.cjs` reports AUDITOR and SUPPORT hold no account on production, so the refusal test has
+no population. **Ali's standing rule covers exactly this case:** *if a rule cannot be proven, create
+the state* — the QA fleet on production exists for that reason.
+
+**Both roles, not just SUPPORT**, because §3.2 grants AUDITOR a different row (`money.figures: read`,
+`identity.personal: masked`) and a matrix proven at one row is a matrix proven nowhere. ⭐ Two
+personas make §5's *"positive control on the SAME ROLE"* and the cross-role control possible in one
+run.
+
+⚠️ **A real support hire, when there is one, gets a real account** — these personas are QA
+instruments and are named so they can never be mistaken for staff.
+
+---
+
+### 4c · ⛔ THE CONTRADICTION THE BUILD FOUND, AND HOW IT IS RESOLVED
+
+**Found while implementing, 2026-08-26.** §2.3 and D3 say *ADMIN is not exempt from masking*.
+§3.2's grid gives ADMIN **`read`** on all four classes. **Those cannot both be true while `read`
+means "sees the raw value".** The design was agreed with an undefined term at its centre, and a
+`canRead()` written against it would have silently picked one meaning.
+
+⭐ **RESOLVED BY DEFINING THE CELL, NOT BY CHANGING THE GRID.** The grid is right; `read` was
+under-specified. The three values mean:
+
+| cell | at rest | may reveal? | audit on reveal |
+|---|---|---|---|
+| **`read`** | **masked** (`••••`) | ✅ **yes** | ✅ D4 |
+| **`masked`** | **masked** (`••••`) | ⛔ **no** — this is the ceiling | n/a |
+| **`—`** | **not rendered at all** | ⛔ no | n/a |
+
+So **every sensitive field is masked at rest for EVERY role including ADMIN** — D3 satisfied,
+literally — and `read` is not *"sees it"* but *"is permitted to reveal it"*. ⭐ **`masked` becomes
+the genuinely interesting cell it was always described as:** the difference between SUPPORT and
+COMPLIANCE on a money figure is no longer *what is on screen* — both see `••••` — but **whether
+the reveal control exists at all**. That is a far stronger property to test than a rendering
+difference, because a reveal that is absent cannot be reached by a modified client either.
+
+⚠️ **`history.activity` IS EXEMPT FROM MASKING-AT-REST, and this is a rule, not an exception.**
+A masked form only exists for a datum with a *shape* to preserve — a balance, an address, a date
+of birth. A list of a player's own bets has no masked form that is both useful and safe, and
+§3.2's own text calls it *"the one a support agent genuinely needs"*. For `history.activity`,
+`read` renders in full and `—` renders nothing. **A class declares whether it is maskable; only
+maskable classes get the three-value cell.**
+
+⛔ **CONSEQUENCE FOR THE SUITE, and it is the point of §5.4.** Since ADMIN and SUPPORT now render
+the SAME masked text at rest, a suite that only compares rendered strings proves nothing. **The
+refusal must be asserted on the absence of the reveal control AND on the raw value's absence from
+the server's HTML** — which is what §5.4 already demands for a different reason. The two now
+reinforce each other.
+
+### 4b · What is deliberately NOT ruled here
+
+- **The masked RENDERING of a money figure** (`••••` vs a range vs a count) is an implementation
+  detail of `<Sensitive>`, decided in the build, not a policy call.
+- **Whether GROWTH keeps `identity.contact: masked`** — §3.2 proposes it; growth's actual job
+  (invites, affiliates) may not need contact at all. ⛔ **No precedent to read**, so it ships as
+  designed and is the first cell to revisit.
+- **The ticket system** stays out of scope per §7, bound only by D2's inheritance rule above.
+
 ## 5. How it gets proven — and why the obvious test is not enough
 
 ⛔ **THE TIER MUST BE PROVEN BY REFUSAL, WITH A POSITIVE CONTROL IN THE SAME RUN.** Unit K's
@@ -234,3 +369,8 @@ rendered and hidden) · `admin-exempted` (the ADMIN bypass re-introduced) ·
 - **`msaada@50pick.tz`** (#13) is DNS + Postmark + a mailbox group, and ⚠️ its brief warns *"the
   mail key dies silently — verify a real inbound and a real reply, not configuration."* It has
   no dependency on this design except through **D2**.
+- ⭐ **BOUND BY D2 (§4a), AND THIS IS AN ACCEPTANCE CONDITION, NOT A NOTE.** `msaada@50pick.tz` is
+  **not DONE** until its ticket view resolves `identity.contact` through `canRead` like any other
+  surface. A ticket UI that renders a raw `from:` address defeats the console masking entirely, and
+  the two would then disagree about the same field — which is how a permission model acquires a
+  second, private opinion (§6). ⛔ **Whoever builds #13 does not get to re-decide D2.**

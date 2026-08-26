@@ -314,3 +314,190 @@ export const OWNER_ONLY_PREFIXES = ["/admin/staff", "/admin/roles"] as const;
 export function isOwnerOnlyPath(path: string): boolean {
   return OWNER_ONLY_PREFIXES.some((p) => path === p || path.startsWith(p + "/"));
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * READ_TIERS — the SECOND axis: not "may this role reach this ROUTE?" but
+ * "may this role read this FIELD?"  Design + rulings: docs/READ-TIERS.md.
+ *
+ * ⭐ IT COMPOSES WITH THE DOMAIN AXIS, IT NEVER REPLACES IT. A role must still hold
+ * the domain to reach the route at all; READ_TIERS can only ever SUBTRACT from what
+ * it finds there. A field being readable is never a reason to grant a route.
+ *
+ * ⛔ AND IT DOES NOT EXEMPT ADMIN — that is ruling D3, and it is the only reason the
+ * rule is testable. ADMIN is the ONLY account that exists on production, so a masking
+ * rule ADMIN skipped could not be witnessed by any session anyone can open. Note that
+ * `defaultGrant` above DOES short-circuit ADMIN to all-true; `defaultReadGrant` below
+ * deliberately does NOT, and the difference is the whole point.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** The four field classes. ⚠️ FOUR IS A DESIGN LIMIT, NOT AN ACCIDENT (§3.1): every
+ *  class is a column somebody fills in for seven roles, and a matrix nobody can hold
+ *  in their head is edited wrongly. A fifth must DISPLACE one of these. */
+export const READ_CLASSES = [
+  "money.figures",
+  "identity.contact",
+  "identity.personal",
+  "history.activity",
+] as const;
+export type ReadClass = (typeof READ_CLASSES)[number];
+
+/**
+ * ⭐ THE CELL, DEFINED (§4c — the build found §3.2 and D3 contradicting each other):
+ *
+ *   read   → masked AT REST, and this role may REVEAL it (audited, D4)
+ *   masked → masked at rest, and this role may NEVER reveal — this is the ceiling
+ *   none   → not rendered at all
+ *
+ * So `read` is not "sees it", it is "is permitted to reveal it". Every sensitive
+ * field is masked at rest for EVERY role, ADMIN included.
+ */
+export type ReadCell = "read" | "masked" | "none";
+
+/**
+ * ⚠️ WHICH CLASSES HAVE A MASKED FORM AT ALL — a rule, not an exception list.
+ * A masked form only exists for a datum with a SHAPE worth preserving: a balance, an
+ * address, a date of birth. A list of a player's own bets has no masked form that is
+ * both useful and safe, and §3.2 calls `history.activity` "the one a support agent
+ * genuinely needs". For a non-maskable class, `read` renders IN FULL and `none`
+ * renders nothing — there is no middle value to reach.
+ */
+export const MASKABLE_CLASSES = new Set<ReadClass>([
+  "money.figures",
+  "identity.contact",
+  "identity.personal",
+]);
+
+export function isMaskable(cls: ReadClass): boolean {
+  return MASKABLE_CLASSES.has(cls);
+}
+
+/**
+ * The seed grid (docs/READ-TIERS.md §3.2), ruled 2026-08-26.
+ *
+ * ⭐ THE ONE CELL THAT IS THE WHOLE DESIGN: SUPPORT reads `money.figures` as
+ * `masked`, not `none`. A support agent must be able to say "I can see a withdrawal
+ * of TZS 2,000 on the 26th that failed" — the EVENT — without reading the standing
+ * balance. Movements yes, totals no.
+ *
+ * ⛔ ADMIN IS LISTED EXPLICITLY rather than short-circuited, so that flipping a cell
+ * here is the ONLY way ADMIN's reads change. There is no code path that grants ADMIN
+ * a read this table does not.
+ */
+export const DEFAULT_READ_GRANTS: Record<
+  Exclude<Role, "PLAYER" | "AGENT">,
+  Record<ReadClass, ReadCell>
+> = {
+  ADMIN: {
+    "money.figures": "read",
+    "identity.contact": "read",
+    "identity.personal": "read",
+    "history.activity": "read",
+  },
+  COMPLIANCE: {
+    "money.figures": "read",
+    "identity.contact": "read",
+    "identity.personal": "read",
+    "history.activity": "read",
+  },
+  FINANCE: {
+    "money.figures": "read",
+    "identity.contact": "masked",
+    "identity.personal": "none",
+    "history.activity": "read",
+  },
+  AUDITOR: {
+    "money.figures": "read",
+    "identity.contact": "masked",
+    "identity.personal": "masked",
+    "history.activity": "read",
+  },
+  SUPPORT: {
+    "money.figures": "masked",
+    "identity.contact": "masked",
+    "identity.personal": "none",
+    "history.activity": "read",
+  },
+  GROWTH: {
+    "money.figures": "none",
+    "identity.contact": "masked",
+    "identity.personal": "none",
+    "history.activity": "read",
+  },
+  MODERATOR: {
+    "money.figures": "none",
+    "identity.contact": "none",
+    "identity.personal": "none",
+    "history.activity": "read",
+  },
+};
+
+/** The default cell for (role, class). ⛔ Unknown / non-staff roles get `none` —
+ *  a read tier must FAIL CLOSED. A PLAYER reading their OWN record is not governed
+ *  by this axis at all (§6: "not applied to the player's own view of themselves"). */
+export function defaultReadGrant(role: Role | string | null | undefined, cls: ReadClass): ReadCell {
+  const row = (DEFAULT_READ_GRANTS as Record<string, Record<ReadClass, ReadCell>>)[
+    String(role ?? "")
+  ];
+  return row?.[cls] ?? "none";
+}
+
+/**
+ * THE ONE HELPER every surface asks (§3.3). A page must never decide this for itself —
+ * §6: "if the answer to 'can support see X?' ever lives in a .tsx file, the matrix has
+ * stopped being the authority."
+ *
+ * `override` is the resolved `RoleReadGrant` row when one exists, mirroring exactly how
+ * `RoleDomainGrant` overrides `DEFAULT_GRANTS`. Passing `undefined` yields the default,
+ * so a caller that has not loaded overrides still fails closed rather than open.
+ */
+export function canRead(
+  role: Role | string | null | undefined,
+  cls: ReadClass,
+  override?: ReadCell | null,
+): ReadCell {
+  return override ?? defaultReadGrant(role, cls);
+}
+
+/** May this role reveal the raw value? ⭐ This is the property the suite asserts,
+ *  because at rest ADMIN and SUPPORT render the SAME masked text — the difference
+ *  between them is whether the reveal control exists at all (§4c). */
+export function canReveal(
+  role: Role | string | null | undefined,
+  cls: ReadClass,
+  override?: ReadCell | null,
+): boolean {
+  return canRead(role, cls, override) === "read";
+}
+
+/** Is the field rendered at all (in any form)? */
+export function isReadable(
+  role: Role | string | null | undefined,
+  cls: ReadClass,
+  override?: ReadCell | null,
+): boolean {
+  return canRead(role, cls, override) !== "none";
+}
+
+export const READ_CLASS_LABEL: Record<ReadClass, string> = {
+  "money.figures": "Money figures",
+  "identity.contact": "Contact details",
+  "identity.personal": "Personal details",
+  "history.activity": "Activity history",
+};
+
+/** What each class covers, in the words the /admin/roles editor shows. Kept beside the
+ *  class list so a new class cannot be added without saying what it means. */
+export const READ_CLASS_SUMMARY: Record<ReadClass, string> = {
+  "money.figures":
+    "wallet balance, bonus balance, lifetime deposits and withdrawals — any TZS total attributable to one named player",
+  "identity.contact": "email address and unmasked phone number — the account-recovery set",
+  "identity.personal":
+    "date of birth, region, full document number and document images — the KYC set",
+  "history.activity": "positions, bets, notification and login history",
+};
+
+export const READ_CELL_LABEL: Record<ReadCell, string> = {
+  read: "Can reveal",
+  masked: "Masked only",
+  none: "Hidden",
+};

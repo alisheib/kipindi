@@ -24,6 +24,8 @@
     "test:late-bet": "tsx scripts/late-bet.test.mts",
     "test:payments": "tsx scripts/payment-webhook.test.mts",
     "test:recategorise": "tsx scripts/recategorise.test.mts",
+    "test:read-tiers": "tsx scripts/read-tiers.test.mts",
+    "red:read-tiers": "node scripts/red-read-tiers.mjs",
     "test:chain-removal": "tsx scripts/chain-removal.test.mts",
     "test:cashback-hidden": "tsx scripts/cashback-hidden.test.mts",
     "test:cashback": "tsx scripts/deposit-cashback.test.mts",
