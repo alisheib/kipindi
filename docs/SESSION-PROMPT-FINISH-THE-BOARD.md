@@ -1,5 +1,13 @@
 # FINISH THE BOARD — what is left, and why each one is still open
 
+> ⚠️ **SUPERSEDED 2026-08-26 by [`SESSION-PROMPT-BONUS-AND-CARE-DESK.md`](SESSION-PROMPT-BONUS-AND-CARE-DESK.md).**
+> ✅ **Unit B (`E-177`) is SHIPPED and driven on production** — the unverified-payer seal was
+> watched firing for the first time, both audit rows on the same transaction, and nothing left
+> the platform. ⛔ **Do not re-run §2 as if it were open.** Everything still outstanding is
+> carried forward there with its state RE-DERIVED, not copied.
+> ⭐ **This file is kept for its §2 method** — Ali's *CONSOLIDATE, never mint* ruling and the
+> exact amounts — because that is the pattern any future zero-money money drive should follow.
+
 > **Supersedes `SESSION-PROMPT-CLOSE-THE-BOARD.md`.** That commission's Unit A is
 > shipped and its Unit E was ruled closed; everything else is carried here with its
 > state re-derived rather than copied. If the two disagree, **this file is newer and
