@@ -321,12 +321,156 @@ ok("6.6 ⛔ the SERVER refuses `masked` on a class with no masked form — the g
 // ⭐ E-225, one layer up: the kit Select takes `ariaLabel`. A hyphenated attribute compiles clean
 // and is dropped, and this editor is exactly the kind of screen where that goes unnoticed.
 const readMatrixSrc = decomment(readFileSync(join(ROOT, "src/app/admin/roles/read-tiers-matrix.tsx"), "utf8"));
+
+// ⛔ D4 HAD NO OFFLINE GUARD AT ALL, AND ITS ONLY LIVE CHECK WAS UNBOUNDED. §5 names
+// `reveal-is-not-audited` as a required RED anchor and it was never written, so deleting the
+// audit write would have left every suite green. The live drive now asserts on THIS RUN's rows,
+// and this pair gives the mutation something to fail offline.
+const revealSrc = decomment(readFileSync(join(ROOT, "src/app/admin/players/actions.ts"), "utf8"));
+ok("6.9 ⛔ D4 · the reveal AWAITS an audit row, and does so BEFORE returning the value",
+   // ⚠️ LINE-ANCHORED, AND THE HARNESS IS WHY. The first version matched `await audit({`
+   // anywhere in the file, so the RED mutation `if (false) await audit({` sailed through it and
+   // red:read-tiers reported NOT CAUGHT. The call must be an unconditional STATEMENT, not merely
+   // present — a guard on D4 that a one-word disable can satisfy is not a guard.
+   /^\s*await audit\(\{[\s\S]{0,400}?action: "pii\.revealed"/m.test(revealSrc)
+   && revealSrc.indexOf("pii.revealed") < revealSrc.indexOf("return { ok: true, value: raw }"),
+   "awaited, and ordered before the return");
+
+// ⭐ …and the row must never carry the value it protects — an audit trail that records the
+// secret is the leak one layer down.
+ok("6.10 ⛔ D4 · the audit payload names the class and the field, never the value",
+   /payload: \{ field, readClass: spec\.readClass, role \}/.test(revealSrc)
+   && !/payload:[^}]*\braw\b/.test(revealSrc));
 ok("6.7 ⭐ the editor's Selects are named with `ariaLabel`, never the hyphenated attribute (E-225)",
    /ariaLabel=\{/.test(readMatrixSrc) && !/aria-label=/.test(readMatrixSrc));
 
 // ⚠️ Ali, 2026-08-04: greyed WITH ITS REASON, never hidden.
 ok("6.8 ⚠️ an unavailable level is OFFERED and disabled WITH A REASON, not removed from the list",
    /disabled: !isMaskable\(cls\)/.test(readMatrixSrc) && /hint:/.test(readMatrixSrc));
+
+
+console.log("\n§7 · the DRIFT DETECTOR — the ratchet §5.5 asked for");
+
+/**
+ * ⛔ THIS SECTION EXISTS BECAUSE IT WAS MISSING, AND ITS ABSENCE HID THREE REAL HOLES.
+ *
+ * §5.5 asks for "a drift detector — every field declared in a class must be reachable through
+ * <Sensitive>, and a new money figure added to a page without one fails the suite", and warns:
+ * "a count of masked fields would pass by never growing; the ratchet has to be on UNCLASSIFIED
+ * fields, the way test:orphans and test:red-anchors already do it."
+ *
+ * It was not built. An adversarial audit then found the axis wired to ONE surface while three
+ * other staff surfaces rendered governed fields in the clear — two of them to roles whose CEILING
+ * is `masked`, which is a real permission violation and not a cosmetic gap:
+ *   /admin/kyc/[id]      compliance route  → AUDITOR (identity.personal: masked) read region + DOB raw
+ *   /admin/invites       growth route      → GROWTH (identity.contact: masked) read player emails raw
+ *   players/[id] KYC tab compliance-gated  → ADMIN/COMPLIANCE read the email with NO audit row (D4)
+ *
+ * ⭐ THE LESSON IS THE SHAPE OF THE MISS. Every OTHER guard in this suite asks "is the wired
+ * surface correct?" — and every one of them was green while the axis governed one page out of four.
+ * A permission axis needs a guard whose POPULATION IS THE WHOLE APP, not the part you remembered.
+ */
+const GOVERNED_ACCESSORS: Array<{ prop: string; cls: string }> = [
+  { prop: "email", cls: "identity.contact" },
+  { prop: "region", cls: "identity.personal" },
+  { prop: "dob", cls: "identity.personal" },
+  { prop: "idNumber", cls: "identity.personal" },
+];
+
+/**
+ * ⛔ EVERY SITE IS EITHER WIRED OR REVIEWED-WITH-A-REASON. There is no third state, and that is
+ * what makes this a ratchet rather than a lint anyone can ignore: a NEW site is neither, so it
+ * fails. ⚠️ The first version of this detector just counted matches and reported 13 — of which
+ * NINE were false positives (already-masked `.slice(0,4)` tails, the platform's own support
+ * address, a region AGGREGATION that renders no player). A detector that cries wolf gets deleted;
+ * the reviewed list is how it stays precise AND honest about what it chose not to police.
+ *
+ * ⭐ THE KEYS ARE `file::fragment`, so a reason survives a line moving but NOT the code changing.
+ */
+const GOVERNED_REVIEWED = new Map<string, string>([
+  ["src/app/admin/kyc/[id]/page.tsx::kyc.idNumber.slice",
+   "already masked first-4…last-4 at the call site; masking predates this axis and is correct"],
+  ["src/app/admin/players/[id]/page.tsx::kyc.idNumber.slice",
+   "already masked first-4…last-4; same pre-existing rule"],
+  ["src/app/admin/players/cohorts/page.tsx::u.region",
+   "an AGGREGATION — counts players per region and renders no player's value; §6 governs reading a PLAYER'S record"],
+  ["src/app/admin/system/page.tsx::getSupportConfig().email",
+   "the PLATFORM's own support address, not a player's — outside the axis entirely"],
+  ["src/app/admin/system/system-client.tsx::config.email",
+   "the same platform support address, rendered in the settings form"],
+  ["src/app/admin/invites/invite-admin-client.tsx::{row.email}",
+   "a StagedRow is the OPERATOR'S OWN typed input — addresses they are about to invite, not a player's record being read. §6 scopes this axis to a staff member reading a PLAYER's record"],
+  ["src/app/admin/players/[id]/page.tsx::{user.email}",
+   "a PROP carrying the value into KycTab, which renders it through <Sensitive> — the render is wired, and the prop is how it gets there"],
+  ["src/app/admin/invites/invite-admin-client.tsx::email: row.email",
+   "an object literal shaping a payload, not a render — the render is the separate {row.email} entry"],
+]);
+
+// ⚠️ Deliberate structural exemptions (whole files), each with a reason. May only SHRINK.
+const GOVERNED_ALLOW = new Map<string, string>([
+  ["src/components/ui/sensitive.tsx", "the primitive itself — it is what every other site resolves through"],
+  ["src/app/admin/staff/[id]/page.tsx", "a STAFF member's own address on an Owner-only page — §6 scopes this axis to a staff member reading a PLAYER's record"],
+]);
+
+const adminTsx = walk(join(ROOT, "src", "app", "admin"));
+type Offender = { file: string; prop: string; cls: string; snippet: string };
+const governedOffenders: Offender[] = [];
+for (const f of adminTsx) {
+  const relf = rel(f);
+  if (GOVERNED_ALLOW.has(relf)) continue;
+  // ⭐ Strip every <Sensitive …> element first, so a CORRECTLY wired field cannot be reported.
+  // Its own `value={user.email}` prop otherwise matches the very pattern being hunted — the same
+  // trap that made check 1.8 fail against a correctly wired page.
+  const body = decomment(readFileSync(f, "utf8")).replace(/<Sensitive[\s\S]*?\/>/g, "");
+  for (const g of GOVERNED_ACCESSORS) {
+    const re = new RegExp("\\{[^{}]*\\.\\b" + g.prop + "\\b[^{}]*\\}", "g");
+    for (const m of body.match(re) ?? []) {
+      const snippet = m.replace(/\s+/g, " ").slice(0, 70);
+      // A reviewed site is keyed by a FRAGMENT of its own text, so the reason dies with the code.
+      const reviewed = [...GOVERNED_REVIEWED.keys()].some((k) => {
+        const [kf, frag] = k.split("::");
+        return kf === relf && m.includes(frag);
+      });
+      if (reviewed) continue;
+      // A bare presence check renders nothing: `{user.email && (`.
+      if (/^\{[^{}]*&&\s*\($/.test(m.replace(/\s+/g, " ").trim())) continue;
+      // ⚠️ AND SKIP OUR OWN RESIDUE. Stripping `<Sensitive …/>` out of `{x.dob ? <Sensitive/> : "—"}`
+      // leaves `{x.dob ? : "—"}` — an empty ternary branch that exists ONLY because the field is
+      // correctly wired. Reporting it would condemn exactly the fix this ratchet is asking for,
+      // which is how a detector earns a reputation for crying wolf and then gets deleted.
+      if (/\?\s*:/.test(m)) continue;
+      // ⭐ A value already run through one of the registry's OWN mask functions is WIRED. Not every
+      // site can host <Sensitive>: `AutoCheck.detail` is a plain string on a CLIENT component, so
+      // /admin/kyc/[id]'s checklist masks at source with `maskDob`. Treating that as an offender
+      // would push the next author toward the raw value to silence the check.
+      if (/\bmask[A-Z]\w*\s*\(/.test(m)) continue;
+      governedOffenders.push({ file: relf, prop: g.prop, cls: g.cls, snippet });
+    }
+  }
+}
+
+// ⛔ THE RATCHET IS ON UNREVIEWED USES AND MAY ONLY SHRINK (§5.5). A count that may only shrink is
+// the only shape that survives someone adding a page: it cannot be satisfied by not growing.
+const GOVERNED_CEILING = 0;
+ok(`7.1 ⛔ RATCHET · every governed field on an admin surface is wired or reviewed (ceiling ${GOVERNED_CEILING})`,
+   governedOffenders.length <= GOVERNED_CEILING,
+   governedOffenders.length === 0
+     ? "0 unreviewed"
+     : governedOffenders.map((o) => `${o.file} [${o.cls}] ${o.snippet}`).join(" | "));
+
+// ⭐ POSITIVE CONTROL ON THE DETECTOR ITSELF. A ratchet whose population is empty reads exactly
+// like a ratchet with nothing to find — the failure that let this gap exist for a whole delivery.
+ok("7.2 ⭐ POSITIVE CONTROL · the population is the WHOLE admin tree, not a remembered list",
+   adminTsx.length > 50, `${adminTsx.length} admin .tsx files scanned`);
+
+ok("7.3 ⭐ …and it CAN still match: the wired page holds the accessors, inside <Sensitive>",
+   /<Sensitive field="email"/.test(readFileSync(join(ROOT, "src/app/admin/players/[id]/page.tsx"), "utf8")),
+   "stripping <Sensitive> is what makes 7.1 zero, not the absence of the fields");
+
+ok("7.4 every exemption and every reviewed site carries a reason, and both lists may only shrink",
+   [...GOVERNED_ALLOW.values()].every((r) => r.length > 30)
+   && [...GOVERNED_REVIEWED.values()].every((r) => r.length > 30),
+   `${GOVERNED_ALLOW.size} file exemptions · ${GOVERNED_REVIEWED.size} reviewed sites`);
 
 console.log(`\nread-tiers: ${pass} passed, ${fail} failed`);
 process.exit(fail > 0 ? 1 : 0);

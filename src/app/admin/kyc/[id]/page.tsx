@@ -11,6 +11,8 @@ import { kycRiskScore, getApprovalRecommendation, KYC_MAKER_CHECKER_THRESHOLD } 
 import { currentSession } from "@/lib/server/auth-service";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import { KycDocViewer } from "./kyc-doc-viewer";
+import { Sensitive } from "@/components/ui/sensitive";
+import { maskDob } from "@/lib/server/sensitive-fields";
 import { KycDecisionRail } from "./kyc-decision-rail";
 import {
   ID_DOC_SPECS,
@@ -114,6 +116,13 @@ export default async function KycWorkstationPage({ params }: { params: Promise<{
   const dobAgrees = nidaDob && statedDob ? nidaDob === statedDob : null;
 
   const expired = isExpired(kyc.idExpiry ?? null, new Date());
+  // ⛔ THE CHECKLIST MASKS ITS DATES UNCONDITIONALLY, AND THAT IS DELIBERATE.
+  // `AutoCheck.detail` is a plain STRING on a CLIENT component (kyc-decision-rail.tsx), so
+  // <Sensitive> cannot go here — it is a server component. Masking at the source is the honest
+  // alternative: the checklist's job is the VERDICT ("18 or older: pass"), which the masked year
+  // still supports, and the revealable copy lives in the DOB Field above for a role permitted to
+  // reveal it. ⚠️ `maskDob` is the registry's own mask, imported as a pure function — §6 keeps the
+  // ANSWER (canRead/mayReveal) out of pages, not the masking itself.
   const autoChecks = [
     // POLICY (Ali, 2026-07-19, extended 2026-08-19): the control is FORMAT +
     // UNIQUENESS only — one document, one account. There is deliberately no
@@ -128,9 +137,9 @@ export default async function KycWorkstationPage({ params }: { params: Promise<{
     // says so in the officer's own words, so the weight of the decision sits
     // visibly on the DOCUMENT IMAGE, which is where it has always actually been.
     { label: idType ? `${ID_TYPE_LABEL[idType]} number` : "Identity number", state: (kyc.idNumber ? "pass" : "pending") as "pass" | "fail" | "pending", detail: kyc.idNumber ? formatDetail : "not recorded" },
-    { label: "18 or older", state: (age18 === null ? "pending" : age18 ? "pass" : "fail") as "pass" | "fail" | "pending", detail: kyc.dob ? `DOB ${formatDate(kyc.dob)} — declared, and gated for every document type` : "no DOB" },
+    { label: "18 or older", state: (age18 === null ? "pending" : age18 ? "pass" : "fail") as "pass" | "fail" | "pending", detail: kyc.dob ? `DOB ${maskDob(kyc.dob)} — declared, and gated for every document type` : "no DOB" },
     ...(idType === "NIDA"
-      ? [{ label: "NIDA date of birth agrees", state: (dobAgrees === null ? "pending" : dobAgrees ? "pass" : "fail") as "pass" | "fail" | "pending", detail: dobAgrees === null ? "not derivable" : `number says ${nidaDob}, account says ${statedDob}` }]
+      ? [{ label: "NIDA date of birth agrees", state: (dobAgrees === null ? "pending" : dobAgrees ? "pass" : "fail") as "pass" | "fail" | "pending", detail: dobAgrees === null ? "not derivable" : `number says ${maskDob(String(nidaDob))}, account says ${maskDob(String(statedDob))}` }]
       : []),
     ...(spec?.expires
       ? [{ label: "Document in date", state: (!kyc.idExpiry ? "pending" : expired ? "fail" : "pass") as "pass" | "fail" | "pending", detail: kyc.idExpiry ? `expires ${kyc.idExpiry}${expired ? " — EXPIRED" : ""}` : "no expiry recorded" }]
@@ -212,8 +221,11 @@ export default async function KycWorkstationPage({ params }: { params: Promise<{
                     whose other dates are formatted (§6 E-2). formatDate renders in
                     the platform zone, which is also what keeps a DOB stored at
                     midnight from reading as the previous day. */}
-                <Field label="DOB" value={<span className="font-mono">{kyc.dob ? formatDate(kyc.dob) : "—"}</span>} />
-                <Field label="Region" value={user?.region ?? "—"} />
+                {/* 🔴 AUDITOR holds `compliance: view`, so this page is theirs — and their
+                    identity.personal cell is `masked`, a ceiling they were reading straight past.
+                    Found by the drift ratchet (test:read-tiers §7), not by looking. */}
+                <Field label="DOB" value={<span className="font-mono">{kyc.dob ? <Sensitive field="dob" subjectId={id} value={kyc.dob} /> : "—"}</span>} />
+                <Field label="Region" value={user?.region ? <Sensitive field="region" subjectId={id} value={user.region} /> : "—"} />
                 <Field label="Submitted" value={<span className="font-mono">{kyc.submittedAt ? formatDateTime(kyc.submittedAt) : "—"}</span>} />
                 <Field label="Phone" value={<span className="font-mono">{user ? `${user.phoneE164.slice(0, 4)}••••${user.phoneE164.slice(-2)}` : "—"}</span>} />
               </dl>

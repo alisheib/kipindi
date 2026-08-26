@@ -161,19 +161,35 @@ try {
   // by a broken account, a bad password, or a persona that was never actually promoted.
   const audCtx2 = await b.newContext({ storageState: await loginOnce(b, "auditor"), viewport: { width: 1440, height: 1000 } });
   const audPage2 = await audCtx2.newPage();
-  const audRes2 = await audPage2.goto(BASE + "/admin/insights", { waitUntil: "domcontentloaded", timeout: 90_000 });
+  // ⚠️ /admin/insights was the first choice and it TIMED OUT at 90s — a heavy analytics page.
+  // A positive control must not depend on the slowest route in the console: when it flakes, the
+  // refusal it underwrites stops meaning anything and the run reads as a product failure.
+  // /admin/self-exclusions is the same COMPLIANCE domain AUDITOR holds, and it is a short list.
+  // 26a0Fe0f /admin/kyc was tried first and 404s — it has only a [id] route, no index.
+  const audRes2 = await audPage2.goto(BASE + "/admin/self-exclusions", { waitUntil: "domcontentloaded", timeout: 120_000 });
   await audPage2.waitForTimeout(3_500);
   const audOk2 = await audPage2.evaluate(() => {
     const t = (document.body.innerText || "").replace(/\s+/g, " ");
     return { restricted: /restricted|not authoris|not authoriz/i.test(t), head: t.slice(0, 80) };
   });
-  ok("3: ⭐ POSITIVE CONTROL · the SAME AUDITOR session DOES reach an accounting route it holds",
+  ok("3: ⭐ POSITIVE CONTROL · the SAME AUDITOR session DOES reach a compliance route it holds",
      audRes2.status() === 200 && !audOk2.restricted,
      `http=${audRes2.status()} · ${audOk2.head}`);
   await audCtx2.close();
   // ── 4 · THE HOSTILE CLIENT — the seal ──────────────────────────────────────
   // ⛔ The absent button proves the CONSOLE is safe. The licence is not protected by a widget:
   // capture ADMIN's real reveal request and replay it from SUPPORT's own session.
+  // ⛔ SNAPSHOT BEFORE THE REVEAL, OR THIS LEG GOES VACUOUS AFTER ITS FIRST GREEN.
+  // The audit log is append-only and HMAC-chained — rows never age out by design. An unbounded
+  // "does a pii.revealed row exist for this player?" query therefore passes for ever on the row
+  // the FIRST run wrote, even with the audit write deleted from the action. And this is D4's ONLY
+  // executable guard, so that would have left the ruling unprotected while the suite read 18/0.
+  const auditBefore = await client.query(
+    `select id from "AuditLog" where action = 'pii.revealed' and "targetId" = $1`,
+    [player.id],
+  );
+  const seenAuditIds = new Set(auditBefore.rows.map((r) => r.id));
+
   let action = null;
   adm.page.on("request", (req) => {
     if (req.method() === "POST" && req.headers()["next-action"]) {
@@ -220,12 +236,16 @@ try {
   // ── 5 · THE AUDIT TRAIL TELLS THE TRUTH ────────────────────────────────────
   const supUser = await client.query('select id from "User" where "phoneE164" = $1', ["+255712000108"]);
   const supId = supUser.rows[0]?.id;
-  const rows = await client.query(
-    `select "actorId", payload from "AuditLog" where action = 'pii.revealed' and "targetId" = $1`,
+  const rowsAll = await client.query(
+    `select id, "actorId", payload from "AuditLog" where action = 'pii.revealed' and "targetId" = $1`,
     [player.id],
   );
-  ok("5: ⭐ ADMIN's reveal IS on the record — the row is the product, not a side effect",
-     rows.rows.some((r) => r.payload?.role === "ADMIN"), `${rows.rowCount} pii.revealed rows for this player`);
+  // ⭐ ONLY the rows THIS RUN created. Everything below is asserted against the delta, so a
+  // historical row can neither satisfy the positive nor mask the negative.
+  const rows = { rows: rowsAll.rows.filter((r) => !seenAuditIds.has(r.id)) };
+  rows.rowCount = rows.rows.length;
+  ok("5: ⭐ THIS RUN's reveal wrote a NEW audit row — asserted on the delta, not on history",
+     rows.rows.some((r) => r.payload?.role === "ADMIN"), `${rows.rowCount} NEW row(s) this run · ${auditBefore.rowCount} pre-existing`);
   // ⛔ A refusal must not be logged as a read, or the count that answers "who read this?" lies.
   ok("5: ⛔ …and SUPPORT's REFUSED attempt wrote NO pii.revealed row — a refusal is not a read",
      !rows.rows.some((r) => r.actorId === supId),

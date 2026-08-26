@@ -1,9 +1,17 @@
 # READ_TIERS — what a support agent may READ, and how that becomes data rather than a habit
 
-> 🟠 **THIS IS A DESIGN FOR AGREEMENT, NOT SHIPPED CODE.** Nothing in §3 exists yet. It is
-> written first on purpose: `docs/SESSION-PROMPT-JAY-COMMENTS.md` unit K says *"design the tier
-> in `docs/` first and get it agreed, then build it through the data-driven matrix at
-> `/admin/roles` — never a new hardcoded check."*
+> ✅ **BUILT AND PROVEN ON PRODUCTION — `qa:read-tiers` 18/0. Read §1a FIRST.**
+> ⚠️ **This masthead used to read "THIS IS A DESIGN FOR AGREEMENT, NOT SHIPPED CODE. Nothing
+> in §3 exists yet."** That was true when the design was written and false the moment §3.4
+> landed — and it sat above four “AS BUILT / AS PROVEN” sections for a whole delivery, found
+> by an adversarial audit rather than by anyone reading the file. ⛔ **The door to a document
+> is the sentence most people never get past; correcting every section but the masthead is
+> the same defect as a tracker that lags the work.**
+>
+> The design was still written first on purpose, and that is why it survived contact:
+> `docs/SESSION-PROMPT-JAY-COMMENTS.md` unit K says *"design the tier in `docs/` first and get
+> it agreed, then build it through the data-driven matrix at `/admin/roles` — never a new
+> hardcoded check."*
 >
 > **Author** session 65 (2026-08-26) · **Status** ✅ **§4 RULED 2026-08-26 (session 66) — see §4a**
 > · **Blocks** Jay unit K (#12 customer-care surface, #13 `msaada@50pick.tz`).
@@ -295,8 +303,8 @@ sites already sit inside a domain-gated block; pass it explicitly anywhere the f
 (§1a).** For SUPPORT that means the email becomes `a••••@…` with **no reveal control**, and the
 region **disappears**. Everything else in §3.2 is a dormant ceiling, as §1a says.
 
-⚠️ **NOT YET BUILT:** the `/admin/roles` tab (§3.3), and the **live proof by refusal** (§5), which
-needs the SUPPORT and AUDITOR personas from ruling D5.
+✅ **BOTH OF THESE ARE NOW BUILT — see §3.6 (the tab) and §5a (the live proof).** ⚠️ This paragraph
+read "NOT YET BUILT" for eight lines above §3.6, which describes the tab it said did not exist.
 
 📌 **First cell to revisit, alongside §4b's GROWTH note:** `region` sits in `identity.personal`, so
 for ADMIN and COMPLIANCE it is masked-at-rest and costs a click. That is faithful to §3.1 and may

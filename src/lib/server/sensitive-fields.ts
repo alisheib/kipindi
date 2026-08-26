@@ -61,6 +61,17 @@ export function maskRegion(): string {
   return "••••";
 }
 
+/**
+ * A date of birth masks to its YEAR only. ⭐ That is the useful shape: it still answers the
+ * question an officer actually has — "is this person plausibly the age they claim?" — while a
+ * year alone is not the identity token a full DOB is. ⚠️ Not the year of a null/garbage value:
+ * an unparseable date masks to dots rather than to "NaN", which would read as data.
+ */
+export function maskDob(raw: string): string {
+  const y = /^(\d{4})-\d{2}-\d{2}/.exec(raw)?.[1] ?? (/(\d{4})/.exec(raw)?.[1] ?? null);
+  return y ? `${y}-••-••` : "••••";
+}
+
 export const SENSITIVE_FIELDS = {
   email: {
     readClass: "identity.contact",
@@ -73,6 +84,14 @@ export const SENSITIVE_FIELDS = {
     label: "Region",
     mask: maskRegion,
     read: async (subjectId) => (await db.user.findById(subjectId))?.region ?? null,
+  },
+  dob: {
+    readClass: "identity.personal",
+    label: "Date of birth",
+    mask: maskDob,
+    // ⚠️ DOB lives on the KYC submission, not on the user row — the registry is the one place
+    // that difference is allowed to matter, so no page has to know it.
+    read: async (subjectId) => (await db.kyc.findByUserId(subjectId))?.dob ?? null,
   },
 } as const satisfies Record<string, SensitiveField>;
 

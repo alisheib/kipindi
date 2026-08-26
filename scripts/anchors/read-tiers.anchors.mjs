@@ -31,11 +31,18 @@
  * One function stands between a bad row (a migration, a console edit, an importer) and a granted
  * read, and it is shared by the loader and the writer so the two can never disagree.
  *
- * ── THE EIGHT, BY LAYER ──────────────────────────────────────────────────────
- *   roles.ts (pure model) support-reads-money · admin-exempted · nothing-is-readable ·
- *                         fails-open · everything-is-maskable
- *   rbac.ts  (runtime)    runtime-admin-bypass · validator-accepts-anything ·
- *                         masked-on-unmaskable-allowed
+ * ── THE FOURTEEN, BY LAYER ─────────────────────────────────────────
+ * ⚠️ This list said EIGHT while the file carried fourteen — a header that counts its own data
+ * and then stops being maintained. Keep it in step or delete it; a stale census is worse than none.
+ *
+ *   roles.ts (pure model)   support-reads-money · admin-exempted · nothing-is-readable ·
+ *                           fails-open · everything-is-maskable
+ *   rbac.ts  (runtime)      runtime-admin-bypass · validator-accepts-anything ·
+ *                           masked-on-unmaskable-allowed
+ *   player page (surface)   email-rendered-raw · region-rendered-raw
+ *   roles editor            read-action-refuses-admin · editor-forgets-player-revalidate ·
+ *                           server-trusts-the-greying
+ *   reveal action (D4)      reveal-is-not-audited
  *
  * ⚠️ SINGLE-LINE ANCHORS; no replacement may CONTAIN its own anchor.
  */
@@ -46,6 +53,7 @@ const ROLES = "src/lib/server/roles.ts";
 const RBAC = "src/lib/server/rbac.ts";
 const PLAYER_PAGE = "src/app/admin/players/[id]/page.tsx";
 const ROLES_ACTIONS = "src/app/admin/roles/actions.ts";
+const PLAYER_ACTIONS = "src/app/admin/players/actions.ts";
 
 /** @type {RedMutation[]} */
 export const MUTATIONS = [
@@ -165,5 +173,14 @@ export const MUTATIONS = [
     from: `  if (cell === "masked" && !isMaskable(readClass as ReadClass)) {`,
     to: `  if (false) {`,
     expect: "6.6 \u26d4 the SERVER refuses `masked` on a class with no masked form",
+  },
+  {
+    name: "reveal-is-not-audited",
+    why: "\ud83d\udd34 ruling D4 deleted. The reveal still returns the address and every other assertion stays green \u2014 this is the mutation \u00a75 named and nobody wrote, so until now the ONLY thing standing behind D4 was a live query with no run boundary, which passed on a row an earlier run had written",
+    file: PLAYER_ACTIONS,
+    suite: "read-tiers",
+    from: `  await audit({`,
+    to: `  if (false) await audit({`,
+    expect: "6.9 \u26d4 D4 \u00b7 the reveal AWAITS an audit row",
   },
 ];

@@ -465,7 +465,7 @@ function KycTab({ kyc, userEmail, userId, makerCheckerRequired, canActSupport, c
         <div className="flex-1 min-w-0">
           <p className="font-mono text-micro tracking-[0.12em] uppercase text-text-tertiary">Player email</p>
           {userEmail ? (
-            <p className="text-body-sm font-medium text-text break-all">{userEmail}</p>
+            <p className="text-body-sm font-medium text-text break-all"><Sensitive field="email" subjectId={userId} value={userEmail} /></p>
           ) : (
             <>
               <p className="text-body-sm font-semibold text-warning-fg">No email on file — KYC notifications will not reach this player</p>
@@ -485,7 +485,9 @@ function KycTab({ kyc, userEmail, userId, makerCheckerRequired, canActSupport, c
         <Item label="Document number" value={<span className="font-mono">{kyc.idNumber ? `${kyc.idNumber.slice(0, 4)}…${kyc.idNumber.slice(-4)}` : "—"}</span>} />
         {kyc.idExpiry && <Item label="Expiry" value={<span className="font-mono">{kyc.idExpiry}</span>} />}
         <Item label="Full name" value={kyc.fullName ?? "—"} />
-        <Item label="DOB" value={kyc.dob ?? "—"} />
+        {/* ⛔ Was the raw date. identity.personal, and the same rule as the header: masked at
+            rest for EVERY role, revealed only by one that may — with an audit row. */}
+        <Item label="DOB" value={kyc.dob ? <Sensitive field="dob" subjectId={userId} value={kyc.dob} /> : "—"} />
         {/* "verified at" read as a government-confirmation timestamp. It is the
             moment the FORMAT was accepted and the number found unique. */}
         {/* ⚠️ EVERY timestamp in this panel goes through the shared formatters, which
