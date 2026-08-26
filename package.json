@@ -84,6 +84,7 @@
     "qa:recategorise": "node scripts/live-recategorise.mjs",
     "ops:mint-read-tier-personas": "node scripts/live-mint-read-tier-personas.mjs",
     "qa:read-tiers": "node scripts/live-read-tiers.mjs",
+    "qa:e177": "node scripts/live-e177-unverified-payer.mjs",
     "qa:selcom-statement": "node scripts/live-selcom-statement.mjs",
     "test:updown-quickbet": "tsx scripts/updown-quickbet.test.mts",
     "test:updown-heal": "tsx scripts/updown-heal.test.mts",

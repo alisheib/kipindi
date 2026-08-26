@@ -91,5 +91,13 @@ thing a provenance folder must not suffer. Do not "clean this up" in a later ses
 - The unreferenced 8-key glyph family inside `glyphs.tsx` — a design decision, not cleanup.
 - `docs/design-system/v3-2026-08-11-landing-discovery/` in its entirety, including the
   `prototype/brand/` duplication above — the delivered record, provenance not scratch.
-- `scripts/live/ops/house-money-census.cjs` — another session's in-flight untracked file. Three
-  sessions have now independently confirmed it is not ours to stage.
+- ~~`scripts/live/ops/house-money-census.cjs`~~ — ✅ **DECIDED AND COMMITTED 2026-08-26 (session 66).**
+  ⚠️ This entry read *"another session's in-flight untracked file. Three sessions have now
+  independently confirmed it is not ours to stage"* — and it sat untracked for **15 days** while
+  each session dutifully left it alone and **nobody asked Ali**. He was asked, and said decide it.
+  ⭐ **It is a read-only production probe answering a question no other tool answers** — how much
+  the house OWNS (equity) versus merely HOLDS and owes (players, escrow, TRA, the Gaming Board,
+  the gateway), never adding the two together. `scripts/live/ops/README.md`'s own rule settles it:
+  *"a tool named in a handoff has to exist in the repo, or the handoff is fiction."*
+  📌 **The lesson is the fifteen days, not the file:** "not mine to touch" is a reason to ASK,
+  not a reason to leave something in limbo across three sessions.
