@@ -266,6 +266,43 @@ property is asserted as a positive control in the same run (`test:read-tiers` 5.
 excludes it — for the same reason: a permanently-exempt role would make §4c's *"masked at rest for
 everyone"* untrue for the only account that exists on production.
 
+### 3.5 · AS BUILT — the primitive, the reveal, and the one surface wired
+
+**`<Sensitive>` is a SERVER component** (`src/components/ui/sensitive.tsx`) and is the only file in
+`src/` permitted to import the resolver — `test:read-tiers` 4.4 enforces it by looking for an
+IMPORT of `canRead`/`readCell`/`mayReveal`, not for a class NAME. ⚠️ **The first version of that
+guard forbade the name**, which would have failed the moment the axis was used, because §3.3
+specifies exactly that at call sites. **Naming which class a field belongs to is a classification;
+the ANSWER is what §6 keeps out of pages.**
+
+**The raw value never reaches the client at rest.** The server renders only the masked string. A
+reveal is a round trip (`revealSensitiveAction`) that re-reads the value through the field registry,
+checks `mayReveal` — **the same matrix the UI consulted, so the absent button and a refused forged
+request are one rule rather than two that can drift** — and **awaits** an audit row before
+returning. ⛔ The payload names the class and the field and **never the value**: an audit trail that
+records the secret it protects is the leak, one layer down.
+
+**The registry** (`src/lib/server/sensitive-fields.ts`) holds field → class, its masked form, and
+how to re-read it. `email` masks to `a••••@gmail.com` — enough shape to CONFIRM what a caller reads
+out, useless for harvesting. ⭐ **`region` masks to `••••` with no shape at all, and that is the
+honest answer:** a region comes from a small closed vocabulary, so any partial reveal identifies it,
+and a fake mask would be exactly the theatre D2 ruled out.
+
+**`domainAllows` implements §1a's intersection rule.** It defaults to `true` because most call
+sites already sit inside a domain-gated block; pass it explicitly anywhere the field is not.
+
+**Wired so far: the two header fields on `/admin/players/[id]` — the whole of the real exposure
+(§1a).** For SUPPORT that means the email becomes `a••••@…` with **no reveal control**, and the
+region **disappears**. Everything else in §3.2 is a dormant ceiling, as §1a says.
+
+⚠️ **NOT YET BUILT:** the `/admin/roles` tab (§3.3), and the **live proof by refusal** (§5), which
+needs the SUPPORT and AUDITOR personas from ruling D5.
+
+📌 **First cell to revisit, alongside §4b's GROWTH note:** `region` sits in `identity.personal`, so
+for ADMIN and COMPLIANCE it is masked-at-rest and costs a click. That is faithful to §3.1 and may
+prove to be more friction than the field is worth — **a cell to flip in `/admin/roles`, not a
+special case to code.**
+
 ---
 
 ## 4. THE DECISIONS ONLY ALI COULD MAKE — ✅ **ANSWERED, SEE §4a**

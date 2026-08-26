@@ -27,7 +27,7 @@ let pass = 0, fail = 0;
 const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"} ${l}${x ? ` — ${x}` : ""}`); };
 
 const { canView, canAct, __resetGrantsForTest } = await import("../src/lib/server/rbac.ts");
-const { STAFF_ROLES } = await import("../src/lib/server/roles.ts");
+const { STAFF_ROLES, canRead, canReveal } = await import("../src/lib/server/roles.ts");
 __resetGrantsForTest();
 
 const PAGE = join(ROOT, "src/app/admin/players/[id]/page.tsx");
@@ -52,14 +52,28 @@ ok("1.6 canSeePII wraps the KYC panel",          /tab === "kyc" && canSeePII/.te
 ok("1.7 both gate the TAB LIST too, so a hidden tab is not merely an empty one",
    /t\.id !== "kyc" \|\| canSeePII/.test(src) && /t\.id !== "transactions" \|\| canSeeMoney/.test(src));
 
-// ⚠️ The header block — email + region — carries NO gate. This is the assertion that says the
-// remaining exposure is real rather than assumed. If someone gates it later, this must go RED so
-// the doc gets corrected rather than silently over-claiming.
+// 🔴 1.8 WAS PHRASED AS THE DEFECT, AND THAT IS A TRAP THIS REPO HAS PAID FOR BEFORE.
+// It read "the header's email + region are rendered with NO read gate — this is the real
+// exposure". A check written as the defect goes RED the moment you FIX the defect, which trains
+// the next person to delete it. ⚠️ Worse, this one did NOT go red: it only looked for a
+// `canSee*` guard, and the fix used <Sensitive> instead — so after the fix it passed for the
+// same reason it passed before, measuring nothing in either state.
+//
+// ⭐ Phrase the check as the PROPERTY YOU WANT TO HOLD FOREVER: these two fields resolve through
+// the kit primitive. That is true after the fix, false before it, and false again if anyone
+// inlines the raw value back into the header.
 const header = src.slice(src.indexOf("<Avatar initials={initials}"), src.indexOf("<AccountStatusBadge"));
-ok("1.8 ⛔ the header's email + region are rendered with NO read gate — this is the real exposure",
-   /user\.email &&/.test(header) && /user\.region/.test(header)
-   && !/canSee(PII|Money)/.test(header),
-   "header block contains no canSee* guard");
+// ⚠️ STRIP PROPS BEFORE ASKING "is the raw value rendered?" — the first version of this check
+// failed against a CORRECTLY wired page, because <Sensitive value={user.email} /> literally
+// contains the string it was searching for. The question is whether the value is rendered as a
+// CHILD, not whether those characters appear anywhere.
+const headerBody = header.replace(/\w+=\{[^}]*\}/g, "");
+ok("1.8 ⭐ the header's email resolves through <Sensitive>, not a raw render",
+   /<Sensitive field="email"/.test(header) && !/\{user\.email\}/.test(headerBody),
+   /<Sensitive field="email"/.test(header) ? "wired" : "RAW — the exposure is open");
+ok("1.9 ⭐ …and so does the region",
+   /<Sensitive field="region"/.test(header) && !/\{user\.region\}/.test(headerBody),
+   /<Sensitive field="region"/.test(header) ? "wired" : "RAW — the exposure is open");
 
 console.log("\n§2 · what each role therefore sees");
 
@@ -89,8 +103,14 @@ ok("2.3 🔴 SUPPORT does NOT see the date of birth — it lives in the KYC pane
 // ⭐ AND THE PART OF §1 THAT WAS RIGHT.
 ok("2.4 ⭐ SUPPORT DOES run the desk — suspend / reset are theirs",
    support.desk === true);
-ok("2.5 ⭐ …and the email + region ARE exposed to them, because the header has no gate at all",
-   support.desk === true, "see 1.8 — the header renders user.email and user.region unconditionally");
+// ⭐ AND WHAT SUPPORT ACTUALLY GETS NOW, resolved through the matrix rather than read off source.
+// This is the pair the unit exists to change: the email drops to a confirmable-but-not-harvestable
+// form, and the region — a small closed vocabulary with no useful masked shape — goes entirely.
+ok("2.5 ⭐ SUPPORT now sees the email MASKED and the region NOT AT ALL",
+   canRead("SUPPORT", "identity.contact") === "masked"
+   && canReveal("SUPPORT", "identity.contact") === false
+   && canRead("SUPPORT", "identity.personal") === "none",
+   "contact=masked (no reveal) · personal=none");
 
 // ⛔ THE CONSEQUENCE FOR THE DESIGN, ASSERTED SO IT CANNOT BE FORGOTTEN.
 // §2.2 says READ_TIERS "can only ever subtract". §3.2 gives SUPPORT money.figures = masked,

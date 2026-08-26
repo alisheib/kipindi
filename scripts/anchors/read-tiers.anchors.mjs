@@ -44,6 +44,7 @@
 
 const ROLES = "src/lib/server/roles.ts";
 const RBAC = "src/lib/server/rbac.ts";
+const PLAYER_PAGE = "src/app/admin/players/[id]/page.tsx";
 
 /** @type {RedMutation[]} */
 export const MUTATIONS = [
@@ -118,5 +119,23 @@ export const MUTATIONS = [
     from: `  if (cell === "masked" && !isMaskable(cls)) {`,
     to: `  if (false) {`,
     expect: "5.9 ⛔ `masked` is refused on a class with NO masked form",
+  },
+  {
+    name: "email-rendered-raw",
+    why: "\u26d4 the header goes back to rendering the address itself. This is the ONLY exposure unit K actually closes on this page (\u00a71a: three of \u00a71's five claims were already gated by the DOMAIN axis), so if this mutation is not caught, the unit's entire delivered value is unguarded",
+    file: PLAYER_PAGE,
+    suite: "player-page-reads",
+    from: `                  <Sensitive field="email" subjectId={id} value={user.email} />`,
+    to: `                  {user.email}`,
+    expect: "1.8 \u2b50 the header's email resolves through <Sensitive>",
+  },
+  {
+    name: "region-rendered-raw",
+    why: "the region goes back to a bare render. \u26a0\ufe0f It is the quieter of the two and the likelier to be reintroduced by someone tidying a ternary they read as noise \u2014 and for SUPPORT the cell is 'none', so the correct behaviour is that the field VANISHES rather than being masked",
+    file: PLAYER_PAGE,
+    suite: "player-page-reads",
+    from: `{user.region ? <Sensitive field="region" subjectId={id} value={user.region} /> : "\u2014"}`,
+    to: `{user.region ?? "\u2014"}`,
+    expect: "1.9 \u2b50 \u2026and so does the region",
   },
 ];
