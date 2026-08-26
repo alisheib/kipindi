@@ -182,7 +182,13 @@ try {
   });
   const revealBtn = adm.page.getByRole("button", { name: /^Reveal Email address$/ });
   await revealBtn.first().click();
-  await adm.page.waitForTimeout(5_000);
+  // ⛔ WAIT FOR THE SIGNAL, NEVER FOR A FIXED SLEEP. A 5s sleep passed on a warm server and
+  // FAILED on the first run after a deploy — a cold start made the first server action slower than
+  // the wait, and the POSITIVE CONTROL reported the product broken when the instrument was merely
+  // impatient. A flaky positive control is worse than none: it teaches you to re-run until green.
+  await adm.page
+    .waitForFunction((needle) => (document.body.innerText || "").includes(needle), player.email, { timeout: 45_000 })
+    .catch(() => {});
   const admAfter = await adm.page.evaluate(() => (document.body.innerText || "").replace(/\s+/g, " "));
   ok("4: ⭐ POSITIVE CONTROL · ADMIN's reveal actually returns the address",
      admAfter.includes(player.email), action ? "captured the server-action POST" : "no POST captured");
