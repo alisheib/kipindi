@@ -27,9 +27,15 @@ import {
   DOMAIN_SUMMARY,
   ROLE_LABEL,
   defaultGrant,
+  isStaffRole,
+  READ_CLASSES,
+  canRead,
+  isMaskable,
   type AdminDomain,
   type Grant,
   type Role,
+  type ReadClass,
+  type ReadCell,
 } from "./roles";
 
 type GrantKey = `${Role}:${AdminDomain}`;
@@ -174,5 +180,162 @@ export async function resetRoleGrantsToDefaults(): Promise<void> {
         console.error("[rbac] reset grants failed:", (err as Error)?.message ?? err);
       }
     }
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * READ_TIERS runtime — the DB-backed half of the SECOND axis (docs/READ-TIERS.md).
+ *
+ * ⭐ IT LIVES HERE, BESIDE THE DOMAIN GRANTS, AND NOT IN A MODULE OF ITS OWN. The
+ * design's §6 says two permission SCREENS is how two permission MODELS are born; the
+ * same is true of two permission modules. One loader, one cache, one invalidation
+ * path — so `rbac-census.cjs` can print both matrices and neither can drift.
+ *
+ * ⛔ THE ONE DELIBERATE DIFFERENCE FROM `roleGrants` ABOVE: there is NO ADMIN
+ * short-circuit. `roleGrants` bypasses the table for ADMIN so a bad grant edit can
+ * never lock the Owner out of the console — correct, because that is about REACHING a
+ * route. Ruling D3 makes the READ axis the opposite: ADMIN resolves through the table
+ * like everyone else, because ADMIN is the only account that exists on production and a
+ * masking rule ADMIN skipped would have no possible witness. ⚠️ An ADMIN cannot lock
+ * itself out with a bad READ edit either — the worst case is dots where a figure was,
+ * and `/admin/roles` is reached through the DOMAIN axis, which still bypasses.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+type ReadKey = `${Role}:${ReadClass}`;
+
+/** See the file header: cache in DB mode, authoritative store in no-DB mode. */
+let readOverrides: Map<ReadKey, ReadCell> | null = null;
+
+const READ_CLASS_SET = new Set<string>(READ_CLASSES);
+const READ_CELL_SET = new Set<string>(["read", "masked", "none"]);
+
+/**
+ * Is this (readClass, cell) pair one the axis recognises?
+ *
+ * ⭐ ONE DEFINITION, TWO CALL SITES — the DB loader and the writer. They must agree: a value
+ * the writer refuses but the loader accepts would let a row written by any other means (a
+ * migration, a console, a future importer) grant a read the code would never have stored.
+ * ⛔ Exported so it can be TESTED DIRECTLY. The loader's copy of this decision only runs when
+ * DATABASE_URL is set, so a suite that could not reach it would leave the DB path unguarded —
+ * and the DB path is the one an attacker or a bad migration actually reaches.
+ */
+export function isStorableReadOverride(readClass: string, cell: string): boolean {
+  return READ_CLASS_SET.has(readClass) && READ_CELL_SET.has(cell);
+}
+
+async function loadReadOverrides(): Promise<Map<ReadKey, ReadCell>> {
+  if (readOverrides) return readOverrides;
+  const m = new Map<ReadKey, ReadCell>();
+  if (hasDatabase()) {
+    const client = prisma();
+    if (client) {
+      try {
+        const rows = await client.roleReadGrant.findMany();
+        for (const r of rows) {
+          // ⛔ FAIL CLOSED ON ANYTHING UNRECOGNISED. `readClass` and `cell` are TEXT
+          // columns (see the schema comment for why they are not enums), so the DB
+          // cannot reject a typo for us. A row naming a class we do not know, or a cell
+          // value we do not know, is DISCARDED — the role then falls back to the code
+          // default for that class. ⚠️ Discarding is the safe direction: keeping it
+          // would mean an unrecognised string decided whether a balance is readable.
+          if (!isStorableReadOverride(r.readClass, r.cell)) continue;
+          m.set(`${r.role}:${r.readClass}` as ReadKey, r.cell as ReadCell);
+        }
+      } catch (err) {
+        // A load failure must not open the axis — an empty map means every role falls
+        // back to DEFAULT_READ_GRANTS, which is the safe seed matrix.
+        console.error("[rbac] load read grants failed:", (err as Error)?.message ?? err);
+      }
+    }
+  }
+  readOverrides = m;
+  return m;
+}
+
+/** Drop the read-grant cache so the next read re-hydrates from the DB. NO-OP with no
+ *  DB, where the in-memory map is the store and must survive. */
+export function invalidateReadGrantsCache(): void {
+  if (hasDatabase()) readOverrides = null;
+}
+
+/** Test-only reset (no-DB): clears the in-memory read store back to pure defaults. */
+export function __resetReadGrantsForTest(): void {
+  readOverrides = new Map();
+}
+
+/** The resolved row for a role: every class, override-or-default. */
+export async function roleReadGrants(role: Role): Promise<Record<ReadClass, ReadCell>> {
+  const store = await loadReadOverrides();
+  const out = {} as Record<ReadClass, ReadCell>;
+  for (const cls of READ_CLASSES) {
+    out[cls] = canRead(role, cls, store.get(`${role}:${cls}` as ReadKey) ?? null);
+  }
+  return out;
+}
+
+/** THE question a surface asks. ⚠️ Async because it may hydrate the cache — the pure
+ *  `canRead` in roles.ts is the same decision without the DB, for unit tests and for
+ *  a caller that has already loaded the row. */
+export async function readCell(role: Role, cls: ReadClass): Promise<ReadCell> {
+  const store = await loadReadOverrides();
+  return canRead(role, cls, store.get(`${role}:${cls}` as ReadKey) ?? null);
+}
+
+/** May this role reveal the raw value? ⭐ The property that actually separates roles —
+ *  at rest they all render the same dots (§4c). */
+export async function mayReveal(role: Role, cls: ReadClass): Promise<boolean> {
+  return (await readCell(role, cls)) === "read";
+}
+
+/** The whole matrix for the /admin/roles editor. */
+export async function getReadMatrix(): Promise<Record<string, Record<ReadClass, ReadCell>>> {
+  const out: Record<string, Record<ReadClass, ReadCell>> = {};
+  for (const role of STAFF_ROLES) out[role] = await roleReadGrants(role);
+  return out;
+}
+
+/**
+ * Set one cell. ⚠️ ADMIN IS EDITABLE HERE, unlike the domain matrix (`EDITABLE_ROLES`
+ * excludes it). That is ruling D3 again: if ADMIN's read row could not be changed, the
+ * axis would have a permanently-exempt role and §4c's "masked at rest for everyone"
+ * would be untrue for the one account that exists.
+ */
+export async function setRoleReadGrant(
+  role: Role,
+  cls: ReadClass,
+  cell: ReadCell,
+  actorId?: string,
+): Promise<void> {
+  // ⚠️ `isStaffRole` rather than `STAFF_ROLES.includes` — tsc rejected the latter because
+  // `Role` is wider than the staff tuple, and the narrowing helper already exists in roles.ts.
+  // A hand-rolled cast here would have silenced a correct complaint.
+  if (!isStaffRole(role)) throw new Error(`not a staff role: ${role}`);
+  if (!isStorableReadOverride(cls, cell)) throw new Error(`not a storable read grant: ${cls}=${cell}`);
+  // ⛔ A class with no masked form cannot be set to `masked` — that cell would be legal,
+  // mean nothing, and hide a support agent's own working data behind dots.
+  if (cell === "masked" && !isMaskable(cls)) {
+    throw new Error(`"${cls}" has no masked form — use "read" or "none"`);
+  }
+  const store = await loadReadOverrides();
+  store.set(`${role}:${cls}` as ReadKey, cell);
+  if (hasDatabase()) {
+    const client = prisma();
+    if (client) {
+      await client.roleReadGrant.upsert({
+        where: { role_readClass: { role, readClass: cls } },
+        create: { role, readClass: cls, cell, updatedBy: actorId },
+        update: { cell, updatedBy: actorId },
+      });
+    }
+  }
+}
+
+/** Reset the read matrix to code defaults (delete every override row). */
+export async function resetRoleReadGrantsToDefaults(): Promise<void> {
+  const store = await loadReadOverrides();
+  store.clear();
+  if (hasDatabase()) {
+    const client = prisma();
+    if (client) await client.roleReadGrant.deleteMany({});
   }
 }

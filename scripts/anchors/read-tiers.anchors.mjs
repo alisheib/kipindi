@@ -10,11 +10,12 @@
  * software to assert vacuously — so each mutation below is a way the axis could look correct
  * and protect nothing.
  *
- * ⭐ `admin-exempted` IS THE ONE THAT MATTERS MOST, and it is ruling D3 made executable. ADMIN
- * is the ONLY account that exists on production. A masking rule ADMIN skipped could never be
- * witnessed by any session anyone can open — it would be a rule with no possible observer. The
- * mutation re-introduces exactly the short-circuit `defaultGrant` (the DOMAIN axis) legitimately
- * has, and the suite must reject it HERE.
+ * ⭐ RULING D3 IS ATTACKED TWICE, ON PURPOSE, BECAUSE IT CAN BE UNDONE AT TWO LAYERS.
+ * `admin-exempted` puts the bypass in the pure model (`roles.ts`); `runtime-admin-bypass` puts
+ * it in the DB-backed resolver (`rbac.ts`). ⚠️ The second is the likelier accident: the DOMAIN
+ * resolver a few lines above it legitimately DOES short-circuit ADMIN — so a bad reviewer would
+ * see the read resolver "missing" that line and helpfully add it. ADMIN is the only account that
+ * exists on production, so either version leaves the masking rule with no possible observer.
  *
  * ⭐ AND `nothing-is-readable` IS THE POSITIVE CONTROL, in mutation form. A tier where no role
  * can read anything satisfies every refusal in the suite. If §2's same-role controls were ever
@@ -24,12 +25,25 @@
  * ⚠️ `fails-open` is the one that is invisible in review: `?? "none"` and `?? "read"` differ by
  * one word, and the second turns an unknown role into a fully-privileged one.
  *
+ * ⚠️ `validator-accepts-anything` guards the path nothing else can reach. `readClass` and `cell`
+ * are TEXT columns — a Prisma enum cannot hold the dot in `money.figures`, and inventing
+ * MONEY_FIGURES beside it would give one class two names — so the DATABASE cannot reject a typo.
+ * One function stands between a bad row (a migration, a console edit, an importer) and a granted
+ * read, and it is shared by the loader and the writer so the two can never disagree.
+ *
+ * ── THE EIGHT, BY LAYER ──────────────────────────────────────────────────────
+ *   roles.ts (pure model) support-reads-money · admin-exempted · nothing-is-readable ·
+ *                         fails-open · everything-is-maskable
+ *   rbac.ts  (runtime)    runtime-admin-bypass · validator-accepts-anything ·
+ *                         masked-on-unmaskable-allowed
+ *
  * ⚠️ SINGLE-LINE ANCHORS; no replacement may CONTAIN its own anchor.
  */
 
 /** @typedef {{ name: string, file: string, suite: string, from: string, to: string, why: string, expect: string }} RedMutation */
 
 const ROLES = "src/lib/server/roles.ts";
+const RBAC = "src/lib/server/rbac.ts";
 
 /** @type {RedMutation[]} */
 export const MUTATIONS = [
@@ -77,5 +91,32 @@ export const MUTATIONS = [
     from: `export function isMaskable(cls: ReadClass): boolean {`,
     to: `export function isMaskable(cls: ReadClass): boolean {\n  if (cls) return true;`,
     expect: "1.4 `history.activity` is NOT maskable",
+  },
+  {
+    name: "runtime-admin-bypass",
+    why: "🔴 ruling D3 undone at the RUNTIME layer rather than the model layer, which is the likelier place for it to be reintroduced by accident — the DOMAIN resolver a few lines above legitimately DOES short-circuit ADMIN, so copying that pattern down looks like consistency. It makes ADMIN's read row unreachable and the masking rule unwitnessable by the only account on production",
+    file: RBAC,
+    suite: "read-tiers",
+    from: `  return canRead(role, cls, store.get(\`\${role}:\${cls}\` as ReadKey) ?? null);`,
+    to: `  if (role === "ADMIN") return "read";\n  return canRead(role, cls, store.get(\`\${role}:\${cls}\` as ReadKey) ?? null);`,
+    expect: "5.3 D3 · ⭐ ADMIN's read row is EDITABLE",
+  },
+  {
+    name: "validator-accepts-anything",
+    why: "⛔ the shared validator returns true for every pair, so a `readClass` of any string at all is loaded from the DB and honoured. `readClass` and `cell` are TEXT columns — a Prisma enum cannot hold a dot — so nothing between a bad row and a granted read except this function",
+    file: RBAC,
+    suite: "read-tiers",
+    from: `  return READ_CLASS_SET.has(readClass) && READ_CELL_SET.has(cell);`,
+    to: `  return true;`,
+    expect: "5.12 ⛔ the DB-row validator accepts every legal pair and NOTHING else",
+  },
+  {
+    name: "masked-on-unmaskable-allowed",
+    why: "the guard that refuses `masked` on a class with no masked form is disabled, so `history.activity` can be set to a value that is legal, means nothing, and hides a support agent's own working data behind dots — the over-correction arriving one cell at a time instead of all at once",
+    file: RBAC,
+    suite: "read-tiers",
+    from: `  if (cell === "masked" && !isMaskable(cls)) {`,
+    to: `  if (false) {`,
+    expect: "5.9 ⛔ `masked` is refused on a class with NO masked form",
   },
 ];

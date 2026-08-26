@@ -158,6 +158,45 @@ balance renders as `••••`.
 
 ---
 
+### 3.4 · AS BUILT — where the implementation differs from §3.3, and why
+
+⭐ **§3.3 said "shaped exactly like `RoleDomainGrant`". It is, with two deliberate differences.
+Both are recorded here so the doc and the code cannot drift apart.**
+
+**① `readClass` is `TEXT`, not an enum — and it must stay TEXT.**
+The classes are `money.figures`, `identity.contact`, `identity.personal`, `history.activity`.
+**Neither a Prisma enum nor a Postgres enum can hold a dot**, so making this an enum would force
+a SECOND vocabulary — `MONEY_FIGURES` beside `money.figures` — for classes that already have
+names. ⛔ **Two names for one class is how a permission model acquires two opinions**, which §6
+forbids in the UI and is no better in the schema. The cost is that **the database cannot reject a
+typo**, so the code must: `isStorableReadOverride(readClass, cell)` in `rbac.ts` is shared by the
+loader and the writer — ⭐ **one definition, both call sites**, because a value the writer refuses
+but the loader accepts would let a row written by any other means (a migration, a console, an
+importer) grant a read the code would never have stored. An unrecognised row is **discarded**, so
+it fails closed. `red:read-tiers`'s `validator-accepts-anything` is the proof that guard is real.
+
+**② It lives in `rbac.ts`, beside the domain grants — not in a module of its own.**
+§6 says two permission *screens* is how two permission *models* are born; the same is true of two
+permission *modules*. One loader, one cache, one invalidation path, so `rbac-census.cjs` can print
+both matrices and neither can drift from the other.
+
+⛔ **AND ONE THING THAT IS DELIBERATELY *NOT* MIRRORED: the ADMIN bypass.**
+`roleGrants` (the DOMAIN axis) short-circuits ADMIN to all-true so a bad grant edit can never lock
+the Owner out of the console — correct, because that axis is about *reaching a route*. Ruling **D3**
+makes the READ axis the opposite: **ADMIN resolves through the table like everyone else.** ⚠️ **This
+is the likeliest thing for a future change to "fix"**, because the read resolver looks like it is
+*missing* a line the domain resolver has. It is not missing; it is the ruling. `red:read-tiers`
+attacks it at **both layers** (`admin-exempted` in the model, `runtime-admin-bypass` in the runtime).
+⭐ **An ADMIN still cannot lock itself out:** the worst a bad READ edit does is put dots where a
+figure was, and `/admin/roles` is reached through the DOMAIN axis, which still bypasses. That
+property is asserted as a positive control in the same run (`test:read-tiers` 5.4).
+
+📌 **`ADMIN` is editable in the READ matrix**, unlike the domain matrix where `EDITABLE_ROLES`
+excludes it — for the same reason: a permanently-exempt role would make §4c's *"masked at rest for
+everyone"* untrue for the only account that exists on production.
+
+---
+
 ## 4. THE DECISIONS ONLY ALI COULD MAKE — ✅ **ANSWERED, SEE §4a**
 
 > ✅ **RULED 2026-08-26 (session 66). The questions below are kept VERBATIM as the record of what

@@ -175,5 +175,88 @@ const offenders = walk(join(ROOT, "src"))
 ok("4.4 ⛔ a read class is named in NO .tsx outside the kit primitive — the matrix stays the authority (§6)",
    offenders.length === 0, offenders.join(", ") || "0 offenders");
 
+
+console.log("\n§5 · the runtime — override resolution, and what it refuses to store");
+
+// ⚠️ With no DATABASE_URL the in-memory map is the AUTHORITATIVE store rather than a cache,
+// which is exactly the contract these assertions need: an edit takes effect for the process.
+const RT = await import("../src/lib/server/rbac.ts");
+RT.__resetReadGrantsForTest();
+
+const rowNow = await RT.roleReadGrants("SUPPORT");
+ok("5.1 with NO overrides the runtime returns the code defaults — the seed matrix IS the live one",
+   rowNow["money.figures"] === "masked" && rowNow["history.activity"] === "read",
+   JSON.stringify(rowNow));
+
+ok("5.2 `readCell` and the pure `canRead` agree when there is no override — one decision, two entry points",
+   (await RT.readCell("SUPPORT", "money.figures")) === canRead("SUPPORT", "money.figures"));
+
+// ── ruling D3, at the runtime layer ────────────────────────────────────────────
+// 🔴 THE DOMAIN AXIS BYPASSES THE TABLE FOR ADMIN ON PURPOSE (so a bad grant edit cannot lock
+// the Owner out). If that bypass had been copied here, ADMIN's read row would be unreachable
+// and the masking rule would have no witness. This asserts the bypass was NOT copied.
+await RT.setRoleReadGrant("ADMIN", "money.figures", "masked", "test");
+ok("5.3 D3 · ⭐ ADMIN's read row is EDITABLE and the override is honoured — no ADMIN bypass here",
+   (await RT.readCell("ADMIN", "money.figures")) === "masked"
+   && (await RT.mayReveal("ADMIN", "money.figures")) === false,
+   "ADMIN set to masked ⇒ cannot reveal");
+
+// ⭐ POSITIVE CONTROL in the same run: the DOMAIN axis still bypasses for ADMIN, so the Owner
+// cannot lock itself out of /admin/roles while its READ row says masked.
+ok("5.4 ⭐ POSITIVE CONTROL · the DOMAIN axis still bypasses for ADMIN — the Owner cannot lock itself out",
+   (await RT.canView("ADMIN", "ops")) === true && (await RT.canAct("ADMIN", "ops")) === true);
+
+RT.__resetReadGrantsForTest();
+ok("5.5 reset returns every cell to the code default",
+   (await RT.readCell("ADMIN", "money.figures")) === "read");
+
+// ── what the store REFUSES ─────────────────────────────────────────────────────
+// ⛔ `readClass` and `cell` are TEXT columns (a Prisma enum cannot hold a dot, and inventing
+// MONEY_FIGURES beside money.figures would give one class two names). The DB therefore cannot
+// reject a typo — the code must.
+const throws = async (fn: () => Promise<unknown>) => {
+  try { await fn(); return false; } catch { return true; }
+};
+
+ok("5.6 ⛔ an unknown read CLASS is refused rather than stored — TEXT columns cannot reject a typo",
+   await throws(() => RT.setRoleReadGrant("SUPPORT", "money.figurez" as any, "read", "test")));
+
+ok("5.7 ⛔ an unknown CELL value is refused rather than stored",
+   await throws(() => RT.setRoleReadGrant("SUPPORT", "money.figures", "sometimes" as any, "test")));
+
+ok("5.8 ⛔ a non-staff role is refused — PLAYER can never acquire a read grant",
+   await throws(() => RT.setRoleReadGrant("PLAYER" as any, "money.figures", "read", "test")));
+
+// ⚠️ The cell that would be legal, mean nothing, and hide a support agent's own working data.
+ok("5.9 ⛔ `masked` is refused on a class with NO masked form (history.activity)",
+   await throws(() => RT.setRoleReadGrant("SUPPORT", "history.activity", "masked", "test")));
+
+ok("5.10 ⭐ POSITIVE CONTROL · a LEGAL edit on that same class still succeeds — 5.9 is not a blanket refusal",
+   !(await throws(() => RT.setRoleReadGrant("SUPPORT", "history.activity", "none", "test")))
+   && (await RT.readCell("SUPPORT", "history.activity")) === "none");
+
+RT.__resetReadGrantsForTest();
+
+// ⭐ THE MATRIX THE EDITOR RENDERS must be complete for every staff role — a missing row would
+// render an empty column that reads as "nothing granted" rather than as "not loaded".
+const matrix = await RT.getReadMatrix();
+ok("5.11 the editor matrix covers every staff role × every class",
+   STAFF_ROLES.every((r: string) => matrix[r] && READ_CLASSES.every((c: string) => typeof matrix[r][c] === "string")),
+   `${Object.keys(matrix).length} roles`);
+// ⭐ THE DB PATH, REACHED DIRECTLY. `loadReadOverrides` only runs with DATABASE_URL set, so
+// without this the row-validation decision would be untestable — and it is the one a bad
+// migration, a console edit or an importer actually reaches. Same predicate, both call sites.
+ok("5.12 ⛔ the DB-row validator accepts every legal pair and NOTHING else",
+   READ_CLASSES.every((c: string) =>
+     ["read", "masked", "none"].every((v) => RT.isStorableReadOverride(c, v)))
+   && !RT.isStorableReadOverride("money.figurez", "read")
+   && !RT.isStorableReadOverride("money.figures", "sometimes")
+   && !RT.isStorableReadOverride("", "")
+   && !RT.isStorableReadOverride("__proto__", "read"));
+
+ok("5.13 …and the WRITER refuses exactly what the LOADER discards — one decision, never two",
+   (await throws(() => RT.setRoleReadGrant("SUPPORT", "money.figurez" as any, "read", "t")))
+   === !RT.isStorableReadOverride("money.figurez", "read"));
+
 console.log(`\nread-tiers: ${pass} passed, ${fail} failed`);
 process.exit(fail > 0 ? 1 : 0);

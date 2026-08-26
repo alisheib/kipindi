@@ -1864,6 +1864,31 @@ model RoleDomainGrant {
   @@id([role, domain])
 }
 
+// READ_TIERS overrides — the SECOND permission axis (docs/READ-TIERS.md).
+// Shaped exactly like RoleDomainGrant above: same override-or-default resolution,
+// same (role, key) primary key, same updatedAt/updatedBy audit columns.
+//
+// ⛔ `readClass` IS A STRING AND MUST STAY ONE — this is the one place the shape
+// deliberately differs from RoleDomainGrant, and the reason matters. The classes are
+// `money.figures`, `identity.contact`, `identity.personal`, `history.activity`.
+// A Prisma enum cannot hold a dot, so making this an enum would force a SECOND
+// vocabulary (MONEY_FIGURES …) for classes that already have names — and two names
+// for one thing is how a permission model acquires two opinions. The resolver
+// validates every row against READ_CLASSES in roles.ts and DISCARDS anything it does
+// not recognise, so an unknown string fails closed rather than granting a read.
+//
+// `cell` is "read" | "masked" | "none" — see docs/READ-TIERS.md §4c for what each
+// means. ⚠️ `read` is "masked at rest, MAY reveal", NOT "sees the raw value".
+model RoleReadGrant {
+  role      UserRole
+  readClass String
+  cell      String
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  @@id([role, readClass])
+}
+
 // Single-active-session registry. One row per user = their ONE valid session.
 // A new login overwrites it (revoking prior devices); logout/suspend/self-
 // exclude delete it. Durable so the single-session invariant + server-side
