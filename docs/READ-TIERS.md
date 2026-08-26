@@ -48,6 +48,13 @@ one surface, which is the surface unit K is about.
 
 ## 1. What a SUPPORT agent can see and do TODAY — measured, not inferred
 
+> 🔴 **THIS SECTION IS SUPERSEDED IN PART — READ §1a FIRST.** Three of the five reads it calls
+> open are **already closed** by the DOMAIN axis, measured 2026-08-26 by
+> `npm run test:player-page-reads` (14/0): the wallet balance and lifetime deposits sit inside
+> `{canSeeMoney && …}` and the date of birth inside `{tab === "kyc" && canSeePII && …}`, and
+> SUPPORT holds neither domain. **The email and region are the real exposure, and they are real.**
+> The table below is kept as the record of what was believed when the design was written.
+
 `ROUTE_DOMAINS` maps `/admin/players` → **`support`**, and SUPPORT holds **`view+act`** there.
 So the whole player drill-down is already open to them. Read from
 `src/app/admin/players/[id]/page.tsx` rather than from memory:
@@ -81,6 +88,70 @@ identity set an attacker wants.
 read-only AUDITOR being offered the payment kill-switches"*. The same shape is here in the
 reads: a role scoped to *support* is handed *accounting* and *compliance* facts because they
 happen to sit on a `support`-domain route.
+
+---
+
+### 1a · 🔴 §1 IS WRONG ON THREE OF ITS FIVE CLAIMS — CORRECTED BY MEASUREMENT, 2026-08-26
+
+⛔ **§1 above is the measured basis this whole unit rests on, and the rulings in §4a cite it. It
+over-states the exposure.** The correction is asserted, not narrated: **`npm run
+test:player-page-reads`** models the page's own gate expressions and resolves them through the
+real `canView`/`canAct`. **14/0.**
+
+**What §1 missed:** the page ALREADY gates reads by the DOMAIN axis. `canSeeMoney =
+canView(role, "accounting")` wraps the money KPI block **and** the transactions tab; `canSeePII =
+canView(role, "compliance")` wraps the KYC panel — and both also filter the **tab list**, so a
+hidden tab is not merely an empty one. SUPPORT holds neither domain.
+
+| §1 claimed SUPPORT reads | measured | why |
+|---|---|---|
+| exact wallet balance | 🔴 **NO** | money KPI block is inside `{canSeeMoney && …}` |
+| lifetime deposits | 🔴 **NO** | same block |
+| date of birth | 🔴 **NO** | KYC panel is inside `{tab === "kyc" && canSeePII && …}` |
+| full email address | ✅ **yes** | rendered in the header with **no gate at all** |
+| region | ✅ **yes** | same header line, no gate |
+
+⭐ **THE REAL EXPOSURE IS TWO FIELDS, ONE ROLE — and it is still worth closing.** Only ADMIN,
+COMPLIANCE and SUPPORT can reach `/admin/players` at all (it is a `support`-domain route).
+Of those, **SUPPORT is the only one that reads the email and region without also holding PII
+rights.** The email is the account-recovery set; that is a real finding. It is not the five-field
+harvest §1 described.
+
+⚠️ **AND THE SIZE OF THE JOB CHANGES AGAIN, IN BOTH DIRECTIONS.** Smaller, because three of the
+five reads are already closed. Larger, because the fix is not "mask five fields on one page" but
+"the header renders PII with no read gate at all", which is a **shared header block**, not a leaf.
+
+#### 🔴 The consequence for §3.2's central cell — this is the important part
+
+§2.2 states the composition rule: *"A role must still hold the domain to reach the route at all.
+READ_TIERS can only ever **subtract**."* §3.2's headline cell gives SUPPORT `money.figures:
+masked`, whose stated purpose is that an agent can say *"a TZS 2,000 withdrawal failed on the
+26th"* — the **event**, without the total.
+
+⛔ **That cell cannot deliver its own motivating example.** The transactions tab is gated by the
+**DOMAIN** axis, which SUPPORT fails, and §6 forbids READ_TIERS from widening a route:
+*"if a support agent needs a route they cannot reach, that is a domain-matrix change and it gets
+argued on its own."* So today, `masked` and `—` are **indistinguishable for SUPPORT on this page**:
+both render nothing, because the domain gate closes first.
+
+⭐ **THE RULING STANDS; ITS EFFECT IS DEFERRED, AND SAYING SO IS THE POINT.** D1's `masked` is the
+**ceiling** — it guarantees that if SUPPORT is ever granted `accounting: view` for the transactions
+list, they get **movements without totals** rather than everything. ⚠️ **It is not, today, a
+narrowing of anything.** Recording that honestly is the difference between a design and a claim:
+the alternative was to ship `masked`, observe dots where there had been dots, and report a fix.
+
+📌 **THE COMPOSITION RULE, MADE EXPLICIT SO THE BUILD CANNOT GET IT WRONG:**
+**effective = the INTERSECTION of the domain gate and the read cell.** `<Sensitive>` narrows what
+the domain already permits; it never renders a field the domain would have hidden. ⛔ A `masked`
+cell is **not** permission to show a masked value where the domain shows nothing — that would make
+READ_TIERS *widen*, which §2.2 forbids in as many words.
+
+#### What actually changes on the page, then
+
+1. **`identity.contact` (email) and `identity.personal` (region) in the header** — the real work,
+   and the only cells with an effect today.
+2. Every other cell is a **ceiling for later**, correct to define now and honest to describe as
+   dormant.
 
 ---
 
@@ -247,6 +318,16 @@ and according to our direction"*. Each ruling therefore cites the precedent it i
 ⛔ **A ruling with no precedent behind it is marked as such** — those are the ones to revisit first.
 
 ### D1 · Does a support agent see a player's wallet balance? → **MASKED** (as designed)
+
+⚠️ **CORRECTED 2026-08-26, AFTER MEASUREMENT — the ruling stands, its stated EFFECT did not.**
+This ruling was written believing §1's claim that a support agent reads the balance today. **They
+do not** (§1a, `test:player-page-reads` 14/0): the money block is domain-gated and SUPPORT holds no
+`accounting` grant. So `masked` **narrows nothing today** — it is a **CEILING**, guaranteeing that
+if SUPPORT is ever granted the transactions list they get *movements without totals* rather than
+everything. ⛔ **And it is not permission to render a masked figure where the domain shows nothing:
+effective = the INTERSECTION of the domain gate and the read cell** (§1a), because §2.2 says
+READ_TIERS may only ever subtract. **The reasoning below is unchanged and still decides the cell;
+only the sentence about what a support hire can do today was wrong.**
 
 **The precedent is already on the page, and it was set for everybody.** The phone number
 (`:205`) and the KYC document number (`:484`) are **already masked for ADMIN too**. So this page

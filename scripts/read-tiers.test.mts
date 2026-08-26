@@ -151,14 +151,33 @@ ok("4.3 drift · no class is missing from any staff row, and no row carries a cl
 
 // ⛔ §6: "if the answer to 'can support see X?' ever lives in a .tsx file, the matrix has
 // stopped being the authority." This is that rule, enforced.
-// ⚠️ THIS CHECK WAS WRITTEN AS `ok(..., true, "asserted elsewhere")` FIRST, AND THAT IS THE
-// defect this campaign names most often: it would pass with the whole axis deleted. It now walks
-// the tree. ALLOWED holds the kit primitive and the matrix editor — the only two places a class
-// name may legitimately appear — and it may only ever SHRINK.
-const ALLOWED = new Set<string>([
-  "src/components/ui/sensitive.tsx",
-  "src/app/admin/roles/read-tiers-tab.tsx",
-]);
+// ⛔ 4.4 IS THE §6 RULE — AND IT WAS WRONG THE FIRST TIME, IN THE DANGEROUS DIRECTION.
+// It first forbade a read-class NAME from appearing in any .tsx. That would have failed the
+// moment the axis was actually used, because §3.3 specifies exactly that at call sites:
+// <Sensitive readClass="money.figures">. A guard that forbids the intended usage is not strict,
+// it is wrong — and it would have been "fixed" by weakening it, which is how a guard dies.
+//
+// ⭐ §6 says: "if the ANSWER to 'can support see X?' ever lives in a .tsx file, the matrix has
+// stopped being the authority." The ANSWER is canRead/readCell/mayReveal. WHICH CLASS a field
+// belongs to is a CLASSIFICATION, not an answer, and it belongs at the call site — that is the
+// whole point of the primitive. So the rule is: no page may ASK the question; only the kit
+// primitive may. A page that imports the resolver has started keeping its own opinion.
+// ⚠️ THE DETECTION IS AN IMPORT OF THE RESOLVER, NOT A BARE IDENTIFIER — the first version
+// matched any word and immediately condemned src/components/profile/ip-reveal.tsx, whose
+// `canReveal` is a local boolean about IPv4 octets and has nothing to do with this axis.
+// A page "asks the question" by IMPORTING the decider; that is the thing to look for.
+//
+// 📌 ip-reveal.tsx is worth knowing about for a different reason: the platform ALREADY has a
+// mask-and-reveal vocabulary (dots at rest, tap to reveal). <Sensitive> should LOOK like it.
+// ⛔ But it must NOT work like it: ip-reveal holds the full value in the DOM and unhides it
+// client-side, which is correct for a player viewing their OWN address (§6 puts that out of
+// scope) and is exactly what §5.4 forbids for staff viewing a PLAYER.
+const DECIDERS = ["canRead", "readCell", "mayReveal", "canReveal", "defaultReadGrant", "DEFAULT_READ_GRANTS"];
+const IMPORTS_DECIDER = new RegExp(
+  "import\\s*(?:type\\s*)?\\{[^}]*\\b(?:" + DECIDERS.join("|") + ")\\b[^}]*\\}\\s*from\\s*[\"'][^\"']*server/(?:roles|rbac)[\"']",
+  "s",
+);
+const ALLOWED = new Set<string>(["src/components/ui/sensitive.tsx"]);
 const walk = (dir: string): string[] => {
   const out: string[] = [];
   for (const e of readdirSync(dir, { withFileTypes: true })) {
@@ -168,11 +187,12 @@ const walk = (dir: string): string[] => {
   }
   return out;
 };
+const rel = (f: string) => f.slice(ROOT.length + 1).split("\\").join("/");
 const offenders = walk(join(ROOT, "src"))
-  .filter((f) => !ALLOWED.has(f.slice(ROOT.length + 1).replace(/\\/g, "/")))
-  .filter((f) => READ_CLASSES.some((c: string) => decomment(readFileSync(f, "utf8")).includes(`"${c}"`)))
-  .map((f) => f.slice(ROOT.length + 1).replace(/\\/g, "/"));
-ok("4.4 ⛔ a read class is named in NO .tsx outside the kit primitive — the matrix stays the authority (§6)",
+  .filter((f) => !ALLOWED.has(rel(f)))
+  .filter((f) => IMPORTS_DECIDER.test(decomment(readFileSync(f, "utf8"))))
+  .map(rel);
+ok("4.4 ⛔ NO .tsx asks the question — only the kit primitive may resolve a read cell (§6)",
    offenders.length === 0, offenders.join(", ") || "0 offenders");
 
 
