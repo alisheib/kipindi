@@ -34,12 +34,35 @@ const ok = (label, cond, extra = "") => {
   console.log(`${cond ? "PASS" : "FAIL"} ${label}${extra ? ` — ${extra}` : ""}`);
 };
 
-/** The category the admin page currently shows, read off the Select's own button. */
+/**
+ * ⛔ THE LOCATOR IS THE ARIA QUESTION, NOT THE DOM QUESTION — and getting that wrong made every
+ * leg of this driver unrunnable while the one leg that DID run reported a vacuous PASS.
+ *
+ * This file used to locate the control with the attribute selector `[aria-label=…]`. That
+ * attribute is never on the page. `Select` (src/components/ui/select.tsx) is an APG select-only
+ * combobox: it takes its name from a REFERENCED label — `aria-labelledby` at a visually hidden
+ * span — and deliberately never emits the inline one, because that would replace the trigger's
+ * CONTENT, which is the control's VALUE. So the selector matched zero elements on a page where
+ * the control was fully present and working. See E-225.
+ *
+ * 🔴 AND THE HALF THAT LIED. The RBAC leg asserts `!hasControl` — "a non-admin is not handed the
+ * control". With a selector that can never match, that leg passes for EVERYBODY, an ADMIN holding
+ * the control included. Ali's standard catches it in one question: would this still pass if the
+ * feature were absent? Yes — and also if it were present and wide open. ⭐ So the RBAC leg now
+ * carries its own POSITIVE CONTROL: the same locator must FIND the control for the ADMIN in the
+ * same run, or the negative result is not evidence.
+ *
+ * ⭐ getByRole("combobox", { name }) is the right question because it is the ACCESSIBLE NAME —
+ * what a screen-reader user actually gets. It fails when the name is wrong, which is exactly the
+ * defect that hid here.
+ */
+const categoryBox = (page) => page.getByRole("combobox", { name: "Category" });
+
+/** The category the admin page currently shows, read off the Select trigger's own text. */
 async function readCategory(page) {
-  return await page.evaluate(() => {
-    const btn = document.querySelector('[aria-label="Category"]');
-    return btn ? (btn.innerText || "").replace(/\s+/g, " ").trim().toLowerCase() : null;
-  });
+  const box = categoryBox(page);
+  if (!(await box.count())) return null;
+  return ((await box.first().innerText()) || "").replace(/\s+/g, " ").trim().toLowerCase();
 }
 
 async function openAdminMarket(page) {
@@ -128,13 +151,30 @@ try {
     ok("3: 🔴 …and the market did NOT move to the licence-excluded category",
        stillThere === target, `now=${stillThere}, expected still ${target}`);
 
-    // ── 4 · A × H — the player board groups by category ─────────────────────────
-    const grouped = await page.evaluate(async ({ base, id, cat }) => {
-      const res = await fetch(`${base}/markets?cat=${cat}`, { credentials: "include" });
-      return (await res.text()).includes(id);
-    }, { base: BASE, id: MARKET, cat: target });
-    ok("4: ⭐ the market appears under its NEW category on the player board", grouped, `/markets?cat=${target}`);
-
+    // ── 4 · A × H — the player board REGROUPS ─────────────────────────────────
+    // ⛔ THIS LEG WAS WRONG TWICE, AND BOTH TIMES IT ACCUSED A PRODUCT THAT WAS CORRECT.
+    // ① It queried `/markets?cat=…`. The board's category parameter is `topic` (parsed by
+    //    `parseDiscoveryParams`, src/lib/markets/discovery.ts) — `cat` is not read at all, so
+    //    every category returned byte-identical HTML and the leg could never pass. Measured:
+    //    cat=culture and cat=sports both returned 24 ids, though culture holds ONE live market.
+    // ② It then grepped page 1 for the id. The board pages at PLAYER_PER_PAGE server-side, so
+    //    whether a market appears on page 1 is a fact about SORT ORDER, not about its category.
+    // ⭐ So the leg now pages through `?topic=` until it finds the market, and — the part that
+    // makes it about REGROUPING rather than mere presence — asserts it is GONE from the topic
+    // it came from. A market that appears under both has not moved.
+    const onTopic = async (topic) => await page.evaluate(async ({ base, t, id }) => {
+      for (let p = 1; p <= 12; p++) {
+        const html = await (await fetch(`${base}/markets?topic=${t}&page=${p}`, { credentials: "include" })).text();
+        if (html.includes(id)) return p;
+      }
+      return 0;
+    }, { base: BASE, t: topic, id: MARKET });
+    const foundUnderNew = await onTopic(target);
+    const foundUnderOld = await onTopic(original);
+    ok("4: ⭐ the market appears under its NEW category on the player board",
+       foundUnderNew > 0, `/markets?topic=${target} → page ${foundUnderNew || "not found in 12 pages"}`);
+    ok("4: ⭐ …and it is GONE from the category it came from — it moved, it was not copied",
+       foundUnderOld === 0, `/markets?topic=${original} → ${foundUnderOld ? `still on page ${foundUnderOld}` : "absent"}`);
     // ── 5 · PUT IT BACK ────────────────────────────────────────────────────────
     await categoryBox(page).first().click();
     await page.waitForTimeout(700);
