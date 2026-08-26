@@ -158,6 +158,11 @@ shots/*.png
 .qa-s3*.txt
 .qa-s3*.log
 /s3?-*.png
+# Jay unit J's drive (`qa:bonus-j`) writes its shots to the repo ROOT, because that is what
+# every live drive does — `harness.mjs` defaults SHOT_DIR to "." and no npm script overrides
+# it. ⚠️ ROOT-ANCHORED, for the reason the paragraph below spells out: unanchored, `j-*.png`
+# would match at any depth and could claim committed evidence under `shots/<FINDING>/`.
+/j-*.png
 # 🔴 THE LEADING SLASH IS LOAD-BEARING (2026-08-08, session 37). Unanchored, `s2?-*.png`
 # matches at ANY depth — so it silently claimed `shots/S27/s27-add-chain.png`, which is
 # COMMITTED EVIDENCE cited by LIVE-QA-CAMPAIGN §E-89 and checked by `npm run test:docs`.

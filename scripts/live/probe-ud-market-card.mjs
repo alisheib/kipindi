@@ -28,9 +28,18 @@ try {
 
   const map = await page.evaluate(() => {
     const vis = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+    // ⛔ PRINT THE EXPLICIT ROLE, AND THE FIRST VERSION OF THIS PROBE DID NOT.
+    // `querySelectorAll("button")` is a DOM question. A driver that reads this output and
+    // writes `getByRole("button", { name: "2K" })` is asking an ARIA question — and Playwright
+    // resolves roles through the accessibility tree, where an explicit `role` beats the tag.
+    // The stake presets are `<button type="button" role="radio">`, so they appeared here as
+    // ordinary buttons and were UNREACHABLE by the locator this output suggested: the driver
+    // timed out for 30 seconds on a control that was visible the whole time and reported the
+    // bet form as missing. A probe that hides the role invites that every single time.
     const btns = [...document.querySelectorAll("button")].filter(vis).map((x) => ({
       text: (x.innerText || "").replace(/\s+/g, " ").trim().slice(0, 70),
       aria: x.getAttribute("aria-label"),
+      role: x.getAttribute("role"),
       disabled: x.disabled,
     }));
     const inputs = [...document.querySelectorAll("input")].map((x) => ({
@@ -41,7 +50,7 @@ try {
   });
   console.log("TITLE:", map.title);
   console.log("\nBUTTONS:");
-  for (const x of map.btns) console.log(`  ${x.disabled ? "[disabled] " : ""}"${x.text}"  aria=${x.aria ?? "-"}`);
+  for (const x of map.btns) console.log(`  ${x.disabled ? "[disabled] " : ""}"${x.text}"  aria=${x.aria ?? "-"}  role=${x.role ?? "(button — the tag)"}`);
   console.log("\nINPUTS:");
   for (const x of map.inputs) console.log(`  name=${x.name || "-"} id=${x.id || "-"} type=${x.type} inputmode=${x.inputmode ?? "-"} aria=${x.aria ?? "-"} value="${x.value}" visible=${x.visible}`);
   console.log("\nTEXT:", map.text);

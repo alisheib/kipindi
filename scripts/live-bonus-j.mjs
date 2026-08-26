@@ -251,7 +251,10 @@ async function locked() {
     // instrument bugs, one honest product. Decode each `%XX` individually — a whole-string
     // `decodeURIComponent` throws on the stray `%` characters a flight payload contains — and
     // read the WHOLE response.
-    const decoded = hostile.text.replace(/%[0-9A-Fa-f]{2}/g, (m) => { try { return decodeURIComponent(m); } catch { return m; } });
+    // ⚠️ RUNS, not single pairs. Decoding %XX one at a time cannot reassemble a multi-byte UTF-8
+    // character, so the arrow in "Wallet → Bonus" printed as a raw %E2%86%92 in this drive's own
+    // evidence and read like a product defect. It was the decoder. Match consecutive escapes.
+    const decoded = hostile.text.replace(/(?:%[0-9A-Fa-f]{2})+/g, (m) => { try { return decodeURIComponent(m); } catch { return m; } });
     const err = /[?&]error=([^&"\\]+)/.exec(decoded);
     const sentence = err ? err[1] : "";
     rec.note(`the refusal the product actually sent: "${sentence || "(no error param found)"}"`);
@@ -468,6 +471,18 @@ async function settle() {
   const before = await state();
   const gBefore = await grants();
   const g0 = gBefore.find((g) => g.status === "ACTIVE");
+
+  // ⛔ NEVER BET TWICE. The first run of this leg placed a REAL 2,000 stake, unlocked the
+  // grant, and then crashed on a read-back query — `Position` has `placedAt`, not `createdAt`.
+  // Re-running it blindly would have staked another 2,000 into a grant that was already
+  // FULFILLED, buying nothing. ⭐ A money leg has to be safe to re-run after it half-fails,
+  // because half-failing is exactly when somebody re-runs it. If the work is already done,
+  // verify instead of repeating.
+  if (!g0 && gBefore.some((g) => g.status === "FULFILLED")) {
+    rec.note("an ACTIVE grant no longer exists and a FULFILLED one does — the stake has already been placed.");
+    rec.note(`verifying instead of betting again. To watch a specific round settle: MKT=<id> node scripts/live-bonus-j.mjs verify`);
+    return verify();
+  }
   rec.check("0: there is exactly one ACTIVE grant, and one legal stake completes it",
     !!g0 && g0.required === STAKE, g0 ? describe(g0) : "(no ACTIVE grant)");
   // ⛔ THE PRECONDITION THAT DECIDES WHETHER THIS PROOF MEANS ANYTHING. Cash is spent first,
@@ -496,15 +511,34 @@ async function settle() {
     await page.waitForTimeout(7_000);
 
     // The preset ladder speaks in K. 2,000 is "2K".
+    //
+    // 🔴 `getByRole("button")` CANNOT MATCH THESE, AND THE PROBE IS WHY I BELIEVED IT COULD.
+    // The chips are `<button type="button" role="radio">` (`round-stake-panel.tsx:176-177`) —
+    // a real `<button>` element carrying an EXPLICIT radio role, inside a `radiogroup`.
+    // `scripts/live/probe-ud-market-card.mjs` enumerated them with
+    // `document.querySelectorAll("button")` and duly printed `"2K"`, so the ladder looked
+    // reachable; Playwright resolves roles through the ACCESSIBILITY TREE, where an explicit
+    // `role` wins over the tag. The first run timed out for 30s on a control that was visible
+    // the whole time and reported it as a missing bet form.
+    // ⭐ THE PROBE AND THE DRIVER WERE ASKING TWO DIFFERENT QUESTIONS OF ONE ELEMENT — the DOM
+    // question and the ARIA question — and §3's rule is exactly this: ask for a control by
+    // what it IS. The probe now prints the explicit role for this reason.
     const preset = `${STAKE / 1000}K`;
-    const chip = page.getByRole("button", { name: new RegExp(`^${preset}$`) }).first();
+    const chip = page.getByRole("radio", { name: new RegExp(`^${preset}$`) }).first();
     await chip.waitFor({ state: "visible", timeout: 30_000 });
     await chip.click({ timeout: 20_000 });
     await page.waitForTimeout(1_000);
 
     // ⛔ READ THE CONTROL BEFORE CLICKING IT. There is no confirm dialog on this surface — the
     // gold button IS the money commit — so the only chance to check the amount is now.
-    const confirm = page.locator('button[aria-label*="TZS" i]').first();
+    // ⚠️ And require it to be the ONLY one. `.first()` on a money control is an ordering guess,
+    // which is the mistake that cost a real withdrawal in `live-payout-destination.mjs`.
+    const confirms = page.locator('button[aria-label*="TZS" i]');
+    const nConfirm = await confirms.count();
+    rec.check("2: exactly ONE button on the page names a TZS amount — no ordering guess",
+      nConfirm === 1, `${nConfirm} candidate control(s)`);
+    if (nConfirm !== 1) throw new Error(`refusing to click: ${nConfirm} money controls match`);
+    const confirm = confirms.first();
     const label = await confirm.getAttribute("aria-label");
     const wants = new RegExp(`TZS\\s*${STAKE.toLocaleString("en-US")}\\s*$`);
     rec.check("2: ★★ the one-click commit names the intended stake before it is clicked",
@@ -518,19 +552,38 @@ async function settle() {
     rec.note(`page after commit: ${(await bodyText(page)).slice(0, 180)}`);
   } finally { await ctx.close(); await b.close(); }
 
+  // Hand the round to the verifier, which is also reachable on its own after a half-failure.
+  return verifyRound(round.mkt, round.boundary_s, before, g0);
+}
+
+/**
+ * Everything `settle` asserts AFTER the stake lands — split out because the first live run
+ * placed a real 2,000 bet, unlocked the grant, and then DIED on a read-back query, leaving the
+ * money moved and the proof unwritten.
+ * ⛔ A verification step that can only run as the tail of a money step is a step you cannot
+ * repeat, and the only way to re-reach it was to bet again.
+ * ⚠️ `before` and `g0` are optional. Without them the ABSOLUTE facts are asserted rather than
+ * the deltas — and those are the stronger claims anyway: a grant that is FULFILLED with
+ * `remaining = 0`, exactly one CONFIRMED `BONUS_CREDIT` for its full amount, and a bonus wallet
+ * at zero do not depend on remembering what the wallet held ten minutes ago.
+ */
+async function verifyRound(mkt, boundarySecs, before, g0) {
   // ── 3 · the position, read from production ───────────────────────────────
+  // ⚠️ `placedAt`, NOT `createdAt`. `Position` has no `createdAt` column, and the first live
+  // run found that out by throwing 42703 one statement after a real stake was accepted.
   const pos = (await sql.query(`
     select p.id, p.side, p.stake::numeric stake, p."bonusStakeTzs"::numeric bonus_stake, p.status
       from "Position" p join "User" u on u.id = p."userId"
-     where u."phoneE164" = $1 and p."marketId" = $2 order by p."createdAt" desc limit 1`,
-    [E164, round.mkt])).rows[0];
+     where u."phoneE164" = $1 and p."marketId" = $2 order by p."placedAt" desc limit 1`,
+    [E164, mkt])).rows[0];
   rec.check("3: the stake reached production as a real Position", !!pos && N(pos.stake) === STAKE,
     pos ? `${pos.id} ${pos.side} ${pos.stake} status=${pos.status}` : "no position row");
   rec.check("3: ★ and it was funded from CASH — `bonusStakeTzs` is 0, so the grant's remainder survived",
     !!pos && N(pos.bonus_stake) === 0, pos ? `bonusStakeTzs=${pos.bonus_stake}` : "");
 
   // ── 4 · the unlock, off the grant row ────────────────────────────────────
-  const gAfter = (await grants()).find((g) => g.id === g0.id);
+  const all = await grants();
+  const gAfter = g0 ? all.find((g) => g.id === g0.id) : all.find((g) => g.status === "FULFILLED");
   rec.check("4: ★★ turnover met and the grant FULFILLED — at BET PLACEMENT, not at settlement",
     gAfter?.status === "FULFILLED" && gAfter?.wagered >= gAfter?.required,
     gAfter ? describe(gAfter) : "gone");
@@ -544,48 +597,87 @@ async function settle() {
      where u."phoneE164" = $1 and t.type::text = 'BONUS_CREDIT' order by t."createdAt" desc limit 1`,
     [E164])).rows[0];
   const after = await state();
+  const grantAmount = gAfter?.amount ?? g0?.amount ?? 0;
+  // ⚠️ THE ABSOLUTE CLAIM FIRST, because it does not depend on remembering the wallet's earlier
+  // state — and after a half-failed run there IS no earlier state to remember.
   rec.check("5: ★★ a CONFIRMED BONUS_CREDIT was written for the unspent remainder",
-    after.credits === before.credits + 1 && credit?.status === "CONFIRMED" && N(credit?.amount) === g0.amount,
+    credit?.status === "CONFIRMED" && N(credit?.amount) === grantAmount && /bonus unlocked/i.test(credit?.description ?? ""),
     credit ? `${credit.id} ${credit.status} ${credit.amount} "${credit.description}"` : "no BONUS_CREDIT row");
-  rec.check("5: ★★ the money changed BUCKET — bonusBalance emptied into the withdrawable balance",
-    after.bonus === before.bonus - g0.amount && after.balance === before.balance - STAKE + g0.amount,
-    `bonus ${before.bonus}→${after.bonus} (−${g0.amount}) · balance ${before.balance}→${after.balance} (−${STAKE} stake +${g0.amount} unlock)`);
-  // ⚠️ AND THE HONEST FOOTNOTE, because a reader will otherwise draw the wrong conclusion.
-  rec.note(`a 1× bonus unlocks for exactly what it costs to unlock: the withdrawable ceiling is ` +
-           `${before.balance} → ${after.balance}, unchanged. The bonus did not make the player richer — ` +
-           `it moved ${g0.amount} from a wallet they could not withdraw from into one they can.`);
+  rec.check("5: ★★ the bonus wallet is EMPTY — every shilling of the grant left it",
+    after.bonus === 0, `bonusBalance=${after.bonus}`);
+  if (before && g0) {
+    // The deltas, when this ran as one continuous drive.
+    rec.check("5: ★★ …into the withdrawable balance, and the counter moved by exactly one",
+      after.credits === before.credits + 1 &&
+      after.bonus === before.bonus - g0.amount && after.balance === before.balance - STAKE + g0.amount,
+      `bonus ${before.bonus}→${after.bonus} (−${g0.amount}) · balance ${before.balance}→${after.balance} (−${STAKE} stake +${g0.amount} unlock) · credits ${before.credits}→${after.credits}`);
+    // ⚠️ AND THE HONEST FOOTNOTE, because a reader will otherwise draw the wrong conclusion.
+    rec.note(`a 1× bonus unlocks for exactly what it costs to unlock: the withdrawable ceiling is ` +
+             `${before.balance} → ${after.balance}, unchanged. The bonus did not make the player richer — ` +
+             `it moved ${g0.amount} from a wallet they could not withdraw from into one they can.`);
+  } else {
+    rec.note(`verified without a before-snapshot (the stake was placed in an earlier run): ` +
+             `balance ${after.balance} · bonus ${after.bonus} · ${after.credits} BONUS_CREDIT row(s) lifetime.`);
+    // ⚠️ SCOPED TO THE UNLOCK, deliberately. An earlier wording said "the withdrawable ceiling
+    // is unchanged", which is true of the unlock in isolation and MISLEADING once the round
+    // settles — this run's stake was refunded, so the ceiling ended 2,000 higher. Anything else
+    // that moves the balance is reported at §6, where it is actually known.
+    rec.note(`the UNLOCK itself is net-zero: a 1× bonus costs exactly what it releases — the player ` +
+             `staked ${grantAmount} to free ${grantAmount}, moving it from a wallet they could not ` +
+             `withdraw from into one they can. What the round then did to the stake is §6's business.`);
+  }
 
   // ── 6 · and now the round settles, watched rather than asserted ──────────
-  const deadlineMs = Date.now() + (round.boundary_s + 420) * 1000;
+  const waitS = Math.max(60, (boundarySecs ?? 0) + 420);
+  const deadlineMs = Date.now() + waitS * 1000;
   let settled = null;
   while (Date.now() < deadlineMs) {
     const r = (await sql.query(`
       select m.status, r.outcome, r."settledAt"::text settled, r."voidReason" void_reason,
              r."openPrice"::numeric op, r."closePrice"::numeric cp
         from "UpDownRound" r join "PredictionMarket" m on m.id = r."marketId"
-       where r."marketId" = $1`, [round.mkt])).rows[0];
+       where r."marketId" = $1`, [mkt])).rows[0];
     if (r && r.settled) { settled = r; break; }
     await new Promise((s) => setTimeout(s, 15_000));
   }
   rec.check("6: ★★ the round SETTLED on production while this drive watched",
     !!settled, settled ? `${settled.status} outcome=${settled.outcome} at ${settled.settled}`
-                       : `still unsettled ${Math.round((round.boundary_s + 420) / 60)} min after the boundary`);
+                       : `still unsettled after waiting ${Math.round(waitS / 60)} min`);
   if (settled) {
-    rec.note(`outcome ${settled.outcome}${settled.void_reason ? ` (${settled.void_reason})` : ""} · open ${settled.op} → close ${settled.cp}`);
+    rec.note(`round outcome ${settled.outcome}${settled.void_reason ? ` (${settled.void_reason})` : ""} · open ${settled.op} → close ${settled.cp}`);
     const end = await state();
-    // ⛔ A VOID REFUNDS THE STAKE AND LEAVES THE GRANT FULFILLED — deliberately.
-    // `reverseWagering`'s own docstring: "a grant that already FULFILLED from legitimate
-    // turnover is left untouched (its cash is real)". Recorded because it is the one branch
-    // where a player clears a 1× bonus at no cost at all, and the Board should know it exists.
-    if (settled.outcome === "VOID") {
-      const g = (await grants()).find((x) => x.id === g0.id);
-      rec.check("6: a VOID refunded the stake and left the fulfilment standing — documented behaviour, not a defect",
+
+    // 🔴 ASK THE POSITION, NOT THE ROUND — and the first version of this block asked the round.
+    // It compared `settled.outcome` against the side held and printed *"position lost"*, on a
+    // run where the player had in fact been REFUNDED IN FULL and was 2,000 up. The round really
+    // did resolve DOWN; the position was still VOIDed, because nobody took the other side and a
+    // one-sided market refunds everyone. **The round's outcome and the position's fate are two
+    // different facts**, and a drive that derives one from the other reports the opposite of
+    // what happened to the money. Read `Position.status` / `finalPayout`, which is where the
+    // player's own result lives.
+    const settledPos = (await sql.query(`
+      select p.status, p."finalPayout"::numeric payout, p.stake::numeric stake
+        from "Position" p where p.id = $1`, [pos?.id ?? ""])).rows[0];
+    const fate = settledPos?.status === "VOID" ? "REFUNDED"
+               : N(settledPos?.payout) > 0 ? "WON" : "LOST";
+    rec.note(`the POSITION's own fate: ${settledPos?.status} · finalPayout ${settledPos?.payout} on a stake of ${settledPos?.stake} → ${fate}`);
+    rec.note(`balance across settlement ${after.balance} → ${end.balance}`);
+
+    // ⛔ `E-224` · THE ZERO-RISK CLEAR, CAUGHT IN THE ACT. Any refund path — a VOID, or a
+    // one-sided market like this one — returns the stake, and `reverseWagering` CANNOT
+    // un-fulfil a grant that has already fulfilled ("its cash is real", per its own docstring).
+    // So the bet that CROSSES the requirement can be refunded and the unlock still stands.
+    // ⚠️ The magnitude is the multiplier: at the platform default of 5× the player still had to
+    // put 5×A of real turnover at risk and only the final bet is free, but at 1× the entire
+    // bonus is free. Reported, not fixed — the bonus economics are the owner's call.
+    if (fate === "REFUNDED") {
+      const g = (await grants()).find((x) => x.id === (gAfter?.id ?? g0?.id));
+      rec.check("6: ⚠️ `E-224` · the stake was REFUNDED and the fulfilment still stands — documented behaviour, and an exposure",
         g?.status === "FULFILLED", g ? describe(g) : "");
-      rec.note(`⚠️ this round VOIDED, so the stake came back AND the bonus stayed unlocked: ` +
-               `balance ${after.balance} → ${end.balance}. At 1× that is a zero-cost clear, and it is ` +
-               `what reverseWagering's docstring says will happen. Worth the Board's attention.`);
-    } else {
-      rec.note(`balance after settlement ${after.balance} → ${end.balance} (position ${settled.outcome === (pos?.side === "YES" ? "UP" : "DOWN") ? "won" : "lost"})`);
+      rec.note(`⚠️ E-224 MEASURED HERE: the stake came back AND the bonus stayed unlocked, so this ` +
+               `player cleared a ${grantAmount} bonus having risked nothing. reverseWagering leaves a ` +
+               `FULFILLED grant alone by design; the refund it cannot reverse is the one that crossed ` +
+               `the line. ⛔ Ali's call, not a unilateral fix.`);
     }
   }
 }
@@ -667,8 +759,17 @@ async function withdraw() {
   rec.check("3: ★★ the payout was ACCEPTED — a WITHDRAWAL row exists that did not before",
     mid.withdrawals === before.withdrawals + 1 && N(row?.amount) === -amount,
     row ? `${row.id} ${row.status} ${row.amount} fee ${row.fee} → ${row.msisdn} via ${row.provider}` : "no row");
+  // ⚠️ COMPARE THE NUMBER, NOT ITS SPELLING. The first version asserted
+  // `row.msisdn === me.phone` and went RED against a perfectly correct payout: the form submits
+  // the 9-digit local part `799000001`, and `tzPhone` (`validators.ts:31-37`) NORMALISES it to
+  // `+255799000001` before `withdraw()` stores it. Both are the same number; only one is
+  // canonical, and the product picked the canonical one. ⭐ Same family as §3's whole theme —
+  // the harness accusing a working money screen — and the fix is to compare the last nine
+  // digits, exactly as `normalizeTzLocalDigits` does inside `payoutDestinationFor`.
+  const digits = (s) => String(s ?? "").replace(/\D/g, "").slice(-9);
   rec.check("3: ★★ …and it is addressed to the account's OWN registered number",
-    row?.msisdn === me.phone, `msisdn=${row?.msisdn} registered=${me.phone}`);
+    digits(row?.msisdn) === digits(me.phone) && digits(me.phone).length === 9,
+    `stored=${row?.msisdn} → ${digits(row?.msisdn)} · registered=${me.phone}`);
 
   // ⭐ THE RAILS ARE EXPECTED TO REFUSE THIS NUMBER, AND THAT IS WHY IT IS SAFE — but the
   // assertion is about the PLATFORM's behaviour either way: whatever the rail answers, the
@@ -693,7 +794,72 @@ async function withdraw() {
   }
 }
 
-const CMDS = { locked, queue, promote, settle, withdraw };
+/**
+ * The verification half of `settle`, reachable on its own.
+ *
+ * ⭐ IT EXISTS BECAUSE THE FIRST LIVE RUN NEEDED IT. `settle` placed a real 2,000 stake, the
+ * grant fulfilled, a CONFIRMED `BONUS_CREDIT` was written — and then the drive threw 42703 on
+ * a read-back column that does not exist, so every money event had happened and none of it was
+ * asserted. ⛔ Without this command the only route back to the proof was to bet again.
+ *
+ * `MKT=<roundId>` picks the round; with no `MKT` it finds this player's most recent OPEN or
+ * settled position and uses that round.
+ */
+async function verify() {
+  let mkt = process.env.MKT ?? "";
+  if (!mkt) {
+    const { rows } = await sql.query(`
+      select p."marketId" mkt from "Position" p join "User" u on u.id = p."userId"
+       where u."phoneE164" = $1 order by p."placedAt" desc limit 1`, [E164]);
+    mkt = rows[0]?.mkt ?? "";
+  }
+  rec.check("0: a round to verify was identified", !!mkt, mkt || "no position found for this player");
+  if (!mkt) return;
+  // How long to keep watching: whatever is left until this round's boundary, from the DATABASE's
+  // clock rather than this laptop's, which runs ~93s slow.
+  const { rows } = await sql.query(`
+    select extract(epoch from (r."boundaryAt" - (now() at time zone 'utc')))::int secs
+      from "UpDownRound" r where r."marketId" = $1`, [mkt]);
+  const secs = Math.max(0, rows[0]?.secs ?? 0);
+  rec.note(`verifying ${mkt} — boundary ${secs > 0 ? `in ${secs}s` : `${-secs}s ago`}`);
+  return verifyRound(mkt, secs, null, null);
+}
+
+/**
+ * Re-assert the payout WITHOUT making another one.
+ *
+ * ⭐ WHY THIS IS NOT JUST "RUN `withdraw` AGAIN". The `withdraw` leg's own assertion about the
+ * destination was written wrong — it compared the stored msisdn against the 9-digit local part
+ * while `tzPhone` had canonicalised it to E.164 — and re-running the leg to prove the CORRECTED
+ * assertion would have pushed a second real payout through production to fix a bug in a string
+ * comparison. ⛔ An instrument's own repair must not cost a money movement.
+ */
+async function payout() {
+  const s = await state();
+  assertUnverified(s);
+  const row = (await sql.query(`
+    select t.id, t.status::text status, t.amount::numeric amount, t.fee::numeric fee, t.msisdn,
+           t.provider::text provider, t."createdAt"::text created
+      from "Transaction" t join "User" u on u.id = t."userId"
+     where u."phoneE164" = $1 and t.type::text = 'WITHDRAWAL' order by t."createdAt" desc limit 1`,
+    [E164])).rows[0];
+  rec.check("0: this account has a payout to inspect", !!row,
+    row ? `${row.id} ${row.status} ${row.amount} → ${row.msisdn} (${row.created})` : "no WITHDRAWAL row");
+  if (!row) return;
+  const digits = (v) => String(v ?? "").replace(/\D/g, "").slice(-9);
+  rec.check("1: ★★ it is addressed to the account's OWN registered number, compared as a NUMBER not a spelling",
+    digits(row.msisdn) === digits(me.phone) && digits(me.phone).length === 9,
+    `stored=${row.msisdn} → ${digits(row.msisdn)} · registered=${me.phone}`);
+  rec.check("2: ★★ it reached a terminal state — nothing stuck in flight",
+    row.status === "CONFIRMED" || row.status === "FAILED", `status=${row.status}`);
+  rec.check("3: ★★ nothing is stranded in `hold`", s.hold === 0, `hold=${s.hold}`);
+  const g = (await grants()).find((x) => x.status === "FULFILLED");
+  rec.check("4: ★ and the grant behind it is still FULFILLED with nothing left to unlock",
+    g?.status === "FULFILLED" && g?.remaining === 0, g ? describe(g) : "no fulfilled grant");
+  rec.note(`payout ${row.id} · ${row.status} · ${row.amount} fee ${row.fee} via ${row.provider} · wallet balance ${s.balance} bonus ${s.bonus} hold ${s.hold}`);
+}
+
+const CMDS = { locked, queue, promote, settle, verify, withdraw, payout };
 if (!CMDS[CMD]) throw new Error(`unknown command "${CMD}" — ${Object.keys(CMDS).join(" | ")}`);
 try {
   await CMDS[CMD]();
