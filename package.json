@@ -387,6 +387,7 @@
     "test:shell-boundary": "tsx scripts/shell-boundary.test.mts",
     "test:layout-staleness": "tsx scripts/layout-staleness.test.mts",
     "test:install-invite": "tsx scripts/install-invite.test.mts",
+    "test:popup-fit": "tsx scripts/popup-fit.test.mts",
     "red:install-invite": "node scripts/red-install-invite.mjs",
     "qa:install-first": "node scripts/live-install-invite.mjs first",
     "qa:install-shown": "node scripts/live-install-invite.mjs shown",

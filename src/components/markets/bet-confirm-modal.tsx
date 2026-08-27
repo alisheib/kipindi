@@ -244,7 +244,19 @@ export function BetConfirmModal({
               {t.common.confirmPrediction}
             </p>
             {marketTitle && (
-              <p className="mt-1 font-display text-[15px] font-semibold text-text leading-snug line-clamp-2">
+              /* 🔴 `line-clamp-2` REMOVED (E-236). This is the MARKET TITLE — the sentence the
+                 payout turns on — inside the dialog where the player commits money, and it was
+                 clamped to two lines. Measured live in this very dialog: *"Will the USD/TZS
+                 exchange rate close above 2,650 on any day before 30 September 2026, per Bank of
+                 Tanzania official rates?"* — and Swahili and Chinese are longer than English.
+                 ⛔ Ali's rule is that no text leaves its allocated location "no matter the amount
+                 of lines needed", and the highest-stakes popup in the product was the one
+                 breaching it. ⚠️ SAFE BECAUSE THE MODAL SCROLLS: `modal.tsx:264` gives the
+                 container `overflow-y-auto overscroll-contain`, and the panel's own
+                 `overflow-hidden` exists for the gilt strip's rounded corners on a panel with no
+                 fixed height. A taller title grows the panel and the container scrolls; it does
+                 not push the confirm button out of reach. */
+              <p className="mt-1 font-display text-[15px] font-semibold text-text leading-snug">
                 {marketTitle}
               </p>
             )}
