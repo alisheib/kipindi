@@ -569,7 +569,9 @@
     "qa:rg-cool": "node scripts/live-rg-break.mjs cool",
     "qa:rg-refused": "node scripts/live-rg-break.mjs refused",
     "qa:rg-state": "node scripts/live-rg-break.mjs state",
-    "qa:rg-expired": "node scripts/live-rg-break.mjs expired"
+    "qa:rg-expired": "node scripts/live-rg-break.mjs expired",
+    "qa:rg-session": "node scripts/live-rg-break.mjs session",
+    "qa:rg-excluded": "node scripts/live-rg-break.mjs excluded"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

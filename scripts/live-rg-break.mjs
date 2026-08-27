@@ -33,7 +33,7 @@
  * fold for its whole life while every grep was green.
  */
 import { readFileSync } from "node:fs";
-import { BASE, browser, login, shot, recorder, fleetPersona } from "./live/harness.mjs";
+import { BASE, browser, login, shot, recorder, fleetPersona, bodyText } from "./live/harness.mjs";
 import { connect } from "./live/db.cjs";
 
 const CMD = process.argv[2] ?? "state";
@@ -450,7 +450,257 @@ async function expired() {
   } finally { await ctx.close(); await b.close(); }
 }
 
-const CMDS = { cool, refused, state, expired };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// session — `E-235` · THE PLAYER'S OWN SESSION LIMIT, ENFORCED, ON PRODUCTION
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * 🔴 `E-235` · A LIMIT THAT WAS SETTABLE, REPORTED AND ENFORCED NOWHERE.
+ *
+ * `sessionTimeLimitMin` could be set on `/profile/responsible-gambling`, was shown to officers
+ * on the player page, and was COUNTED AS A LIMIT by `buildRgEngagement` — the report headed
+ * *"RESPONSIBLE-GAMBLING ENGAGEMENT (internal · RG audit)"* that a Board reviewer reads. Nothing
+ * on any code path consulted it. A player could set 30 minutes and play six hours.
+ *
+ * ⭐ THE LIMIT IS SET THROUGH THE REAL FORM, NOT WRITTEN INTO THE DATABASE. The thing under
+ * test is what the product does; a seeded row proves nothing about a flow. The clamp is proven
+ * the same way — 1 is typed and 15 is what comes back.
+ *
+ * ⭐ AND THE CONTROL BET COMES FIRST. Without a bet that SUCCEEDS on the same market, with the
+ * same account, minutes earlier, a refusal at the end proves only that something is broken.
+ *
+ * ⚠️ IT REALLY WAITS. The play clock starts when the session is minted, the floor is 15 minutes,
+ * so this leg takes ~16 minutes of wall clock. There is no way to fake it that would still be a
+ * live proof — the whole defect was a value nobody ever consulted.
+ */
+async function session() {
+  const LIMIT_MIN = 15;                       // the platform's own floor, and the fastest real proof
+  const market = (await sql.query(`
+    select m.id from "PredictionMarket" m
+     where m.status = 'LIVE' and m."productLine"::text <> 'UPDOWN'
+       and coalesce(m."selectionClosedAt", m."resolutionAt") > (now() at time zone 'utc') + interval '90 minutes'
+     limit 1`)).rows[0];
+  rec.check("0: a LIVE poll exists, open long enough for a 16-minute drive", !!market, market?.id ?? "none");
+  if (!market) { rec.done(); return; }
+
+  const before = (await sql.query(
+    `select w.balance::text b from "Wallet" w join "User" u on u.id = w."userId" where u."phoneE164" = $1`,
+    [E164])).rows[0];
+  rec.note(`balance before: ${before?.b ?? "?"}`);
+
+  const { b, ctx } = await browser();
+  const page = await ctx.newPage();
+  try {
+    await login(page, `fleet:${PLAYER}`);
+    const signedInAt = Date.now();
+    rec.check("1: signed in — the play clock starts here, server-side, in the signed cookie",
+      !/\/auth\/login/.test(page.url()), `landed on ${page.url().replace(BASE, "")}`);
+
+    // ── set the limit through the REAL form ────────────────────────────────
+    await page.goto(`${BASE}/profile/responsible-gambling`, { waitUntil: "networkidle" });
+    const field = page.locator('input[name="sessionTimeLimitMin"]');
+    rec.check("2: the session-limit field is on the page", (await field.count()) === 1);
+    await field.click();
+    await page.keyboard.press("ControlOrMeta+A");
+    await page.keyboard.press("Delete");
+    // ⭐ TYPE 1, NOT 15 — this proves the CLAMP as well as the write. An unbounded field would
+    // store 1 and stop this account betting a minute into every session it ever has.
+    await page.keyboard.type("1", { delay: 30 });
+    await page.locator('form:has(input[name="sessionTimeLimitMin"]) button[type="submit"]').first().click();
+    await page.waitForTimeout(3_000);
+
+    const stored = (await sql.query(
+      `select r."sessionTimeLimitMin" m from "ResponsibleGambling" r
+        join "User" u on u.id = r."userId" where u."phoneE164" = $1`, [E164])).rows[0];
+    rec.check(`3: ⭐ typing 1 stored ${LIMIT_MIN} — the platform's stated floor, applied for the first time`,
+      Number(stored?.m) === LIMIT_MIN, `stored=${stored?.m ?? "null"}`);
+
+    // ── CONTROL: a bet UNDER the limit is accepted ─────────────────────────
+    const posBefore = (await sql.query(`
+      select count(*)::int n from "Position" p join "User" u on u.id = p."userId"
+       where u."phoneE164" = $1 and p."marketId" = $2`, [E164, market.id])).rows[0].n;
+    const ok1 = await placeBet(page, market.id);
+    const posMid = (await sql.query(`
+      select count(*)::int n from "Position" p join "User" u on u.id = p."userId"
+       where u."phoneE164" = $1 and p."marketId" = $2`, [E164, market.id])).rows[0].n;
+    rec.check("4: ⭐ CONTROL — minutes into a 15-minute limit, a real bet is ACCEPTED",
+      posMid > posBefore, `positions ${posBefore} → ${posMid}${ok1.modal ? ` · modal: ${ok1.modal.slice(0, 140)}` : ""}`);
+
+    // ── wait out the limit ─────────────────────────────────────────────────
+    const targetMs = signedInAt + (LIMIT_MIN + 1) * 60_000;
+    rec.note(`waiting until the play session passes ${LIMIT_MIN} min — ~${Math.ceil((targetMs - Date.now()) / 60_000)} min`);
+    while (Date.now() < targetMs) {
+      await page.waitForTimeout(30_000);
+      // Keep the session warm the way a player would, without betting.
+      await page.goto(`${BASE}/markets`, { waitUntil: "domcontentloaded" }).catch(() => {});
+    }
+
+    // ── the proof ──────────────────────────────────────────────────────────
+    const ok2 = await placeBet(page, market.id);
+    const posAfter = (await sql.query(`
+      select count(*)::int n from "Position" p join "User" u on u.id = p."userId"
+       where u."phoneE164" = $1 and p."marketId" = $2`, [E164, market.id])).rows[0].n;
+    rec.note(`what the player is told: ${ok2.modal ?? "(nothing on screen)"}`);
+    rec.check("5: ★★ `E-235` · past their own limit, the bet is REFUSED — no new position",
+      posAfter === posMid, `positions ${posMid} → ${posAfter}`);
+    rec.check("6: ★ and the refusal NAMES the limit rather than blaming the platform",
+      /session|limit|kikomo|kipindi|上限|时长/i.test(ok2.modal ?? ""), (ok2.modal ?? "").slice(0, 200));
+    await shot(page, "rg-session-limit");
+
+    // ── leave the account as it was found ──────────────────────────────────
+    await page.goto(`${BASE}/profile/responsible-gambling`, { waitUntil: "networkidle" });
+    const f2 = page.locator('input[name="sessionTimeLimitMin"]');
+    await f2.click();
+    await page.keyboard.press("ControlOrMeta+A");
+    await page.keyboard.press("Delete");
+    await page.keyboard.type("0", { delay: 30 });
+    await page.locator('form:has(input[name="sessionTimeLimitMin"]) button[type="submit"]').first().click();
+    await page.waitForTimeout(3_000);
+    const cleared = (await sql.query(
+      `select r."sessionTimeLimitMin" m from "ResponsibleGambling" r
+        join "User" u on u.id = r."userId" where u."phoneE164" = $1`, [E164])).rows[0];
+    rec.check("7: the limit is removed again through the same form — the account is left as found",
+      cleared?.m === null, `stored=${cleared?.m ?? "null"}`);
+  } finally { await ctx.close(); await b.close(); }
+}
+
+/** Place one real bet on `marketId`; returns whatever dialog the product put on screen. */
+async function placeBet(page, marketId) {
+  await page.setViewportSize({ width: 360, height: 780 });
+  await page.goto(`${BASE}/markets/${marketId}?side=YES`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector("main", { timeout: 45_000 });
+  await page.waitForTimeout(1_500);
+  const box = page.locator('input[inputmode="numeric"]').first();
+  if (!(await box.count())) return { submitted: false, modal: null };
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await box.click();
+    await page.keyboard.press("ControlOrMeta+A");
+    await page.keyboard.press("Delete");
+    await page.keyboard.type(String(STAKE), { delay: 25 });
+    await page.waitForTimeout(700);
+    if ((await box.inputValue()).replace(/[^0-9]/g, "") === String(STAKE)) break;
+  }
+  const commit = page.locator('button[aria-label*="YES"][aria-label*="TZS"]').first();
+  if (!(await commit.count())) return { submitted: false, modal: null };
+  await commit.click();
+  await page.waitForTimeout(1_200);
+  // A confirm dialog may stand between the dial and the wager.
+  const confirm = page.locator('[role="dialog"] button, [role="alertdialog"] button');
+  const n = await confirm.count().catch(() => 0);
+  for (let i = 0; i < n; i++) {
+    const t = (await confirm.nth(i).innerText().catch(() => "")).trim();
+    if (/confirm|weka|place|确认/i.test(t)) { await confirm.nth(i).click(); break; }
+  }
+  await page.waitForTimeout(4_000);
+  const modal = await page.evaluate(() => {
+    const d = document.querySelector('[role="dialog"],[role="alertdialog"]');
+    return d ? (d.innerText || "").replace(/\s+/g, " ").trim() : null;
+  });
+  return { submitted: true, modal };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// excluded — `E-240` · THE SIGN-IN GATE, AND WHAT A SERVED EXCLUSION IS TOLD
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * 🔴 `E-240` · FOUR DOORS MINT A SESSION AND THE BUSIEST ONE READ NO STATUS AT ALL.
+ *
+ * ⛔ WHY THE STATE IS CREATED RATHER THAN TAKEN THROUGH THE FORM, and it is the one place this
+ * driver departs from the rule its own header states. Ali ruled on 2026-08-27 that a
+ * self-exclusion period is a MINIMUM: the shortest the form offers is 24 HOURS, and the account
+ * cannot be reopened before it. Driving the real form would put a fleet account beyond reach
+ * for a day and prove nothing extra — the state under test is *"the minimum has been served"*,
+ * which is what that account looks like 24 hours later. So the served state is written directly,
+ * and everything that MATTERS — the refusal, its wording, and the reopen — goes through the
+ * product.
+ *
+ * ⚠️ THE ACCOUNT IS RESTORED IN A `finally`. A leg that leaves a fleet account excluded is worse
+ * than one that never ran.
+ */
+async function excluded() {
+  const u = (await sql.query(
+    `select u.id, u.status, w.status wstatus from "User" u
+      left join "Wallet" w on w."userId" = u.id where u."phoneE164" = $1`, [E164])).rows[0];
+  rec.check("0: the fleet account exists and is not already excluded", !!u && u.status !== "SELF_EXCLUDED",
+    `status=${u?.status ?? "missing"}`);
+  if (!u || u.status === "SELF_EXCLUDED") { rec.done(); return; }
+  const priorStatus = u.status;
+  const priorWallet = u.wstatus;
+
+  let armed = false;
+  const { b, ctx } = await browser();
+  const page = await ctx.newPage();
+  try {
+    // ── arm: the state a 24-hour self-exclusion reaches once it has been served ──
+    await sql.query(`update "User" set status = 'SELF_EXCLUDED' where id = $1`, [u.id]);
+    await sql.query(`update "Wallet" set status = 'FROZEN' where "userId" = $1`, [u.id]);
+    await sql.query(`
+      insert into "ResponsibleGambling" (id, "userId", "selfExclusionUntil", "selfExclusionStartedAt", "realityCheckIntervalMin")
+      values (gen_random_uuid()::text, $1, (now() at time zone 'utc') - interval '1 hour',
+              (now() at time zone 'utc') - interval '25 hours', 30)
+      on conflict ("userId") do update set
+        "selfExclusionUntil" = (now() at time zone 'utc') - interval '1 hour',
+        "selfExclusionStartedAt" = (now() at time zone 'utc') - interval '25 hours'`, [u.id]);
+    armed = true;
+    rec.check("1: armed — SELF_EXCLUDED with a period that ran out an hour ago, wallet FROZEN", true);
+
+    // ── the door ───────────────────────────────────────────────────────────
+    let refusedAtDoor = false, doorMsg = "";
+    try {
+      await login(page, `fleet:${PLAYER}`);
+    } catch { /* the harness throws when sign-in does not land */ }
+    refusedAtDoor = /\/auth\/login/.test(page.url());
+    doorMsg = (await bodyText(page)).replace(/\s+/g, " ").slice(0, 400);
+    rec.check("2: ★★ `E-240` · a self-excluded account is REFUSED at the sign-in door",
+      refusedAtDoor, `landed on ${page.url().replace(BASE, "")}`);
+    rec.check("3: ★ and a SERVED period is told it ended and how to come back — not just 'unavailable'",
+      /self-exclu/i.test(doorMsg) && /(support|contact|reopen|\+255)/i.test(doorMsg),
+      doorMsg.slice(0, 240));
+    await shot(page, "rg-excluded-door");
+
+    // ── the way back, through the officer's own control ────────────────────
+    let reopened = false;
+    try {
+      const admin = await ctx.newPage();
+      await login(admin, "admin");
+      await admin.goto(`${BASE}/admin/players/${u.id}`, { waitUntil: "networkidle" });
+      const btn = admin.locator('button:has-text("Reopen after self-exclusion")');
+      const present = (await btn.count()) > 0;
+      rec.check("4: ★ the officer is OFFERED a reopen, because the minimum has been served", present,
+        present ? "" : "no reopen control rendered");
+      if (present) {
+        await btn.first().click();
+        await admin.waitForTimeout(800);
+        await admin.locator('textarea').first().fill("Live drive: reopening after a served self-exclusion (E-240 / E-238).");
+        await admin.locator('[role="alertdialog"] button:has-text("Restore"), [role="dialog"] button:has-text("Restore")').first().click();
+        await admin.waitForTimeout(4_000);
+        const after = (await sql.query(
+          `select u.status, w.status wstatus from "User" u left join "Wallet" w on w."userId" = u.id where u.id = $1`,
+          [u.id])).rows[0];
+        reopened = after.status !== "SELF_EXCLUDED";
+        rec.check("5: ★★ the reopen restores the account through the product, not a migration",
+          reopened, `status=${after.status}`);
+        rec.check("6: ★★ AND THE WALLET IS UNFROZEN — nothing in this codebase had ever unfrozen one",
+          after.wstatus === "ACTIVE", `wallet=${after.wstatus}`);
+      }
+      await admin.close();
+    } catch (e) {
+      rec.note(`the officer leg could not be driven: ${String(e).slice(0, 160)}`);
+      rec.note("⚠️ QA staff passwords are known-stale (E-214). The gate above is still proven; the reopen is owed.");
+    }
+    if (reopened) armed = false;
+  } finally {
+    if (armed) {
+      await sql.query(`update "User" set status = $2 where id = $1`, [u.id, priorStatus]);
+      await sql.query(`update "Wallet" set status = $2 where "userId" = $1`, [u.id, priorWallet ?? "ACTIVE"]);
+      await sql.query(`update "ResponsibleGambling" set "selfExclusionUntil" = null, "selfExclusionStartedAt" = null where "userId" = $1`, [u.id]);
+      rec.note("restored the fleet account from the finally block — nothing is left excluded");
+    }
+    await ctx.close(); await b.close();
+  }
+}
+
+const CMDS = { cool, refused, state, expired, session, excluded };
 if (!CMDS[CMD]) throw new Error(`unknown command "${CMD}" — ${Object.keys(CMDS).join(" | ")}`);
 try { await CMDS[CMD](); } finally { await sql.end(); }
 rec.done();
