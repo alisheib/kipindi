@@ -341,7 +341,24 @@ date, with no deploy and no commit to blame** — and every page, suite and heal
 through the entire month in which it is still fixable. ⚠️ `www` is the host in
 `NEXT_PUBLIC_APP_URL` **and** `PAYMENT_WEBHOOK_URL`, so deposits are in the blast radius.
 
-✅ **Guarded** by §F of `scripts/pre-deploy-live-check.mjs`, which fails at **21 days** — *"a check
+🔴 **CORRECTED 2026-08-27 (`E-227`): IT WAS NEVER A GATE — §[F] HAD NEVER EXECUTED ONCE.**
+`predeploy` invokes `qa:live` with no `BASE`; `BASE` defaults to `http://localhost:3009`;
+`LOCAL` is therefore true; and the whole certificate block sat inside `if (!LOCAL)`. `qa:live`
+appeared nowhere in `.github/`. Apply the house test — *would it pass with an expired
+certificate?* **Yes, silently, every time.** ⚠️ **And the one documented prod invocation failed it
+every time it was used:** `CLAUDE.md` said to run
+`BASE=https://kipindi-production.up.railway.app npm run qa:live`, a hostname absent from
+`ORIGIN_OF`, so §[F] failed on *"no known origin"* and never on the certificate.
+✅ **REPLACED by `npm run qa:cert-expiry` (`scripts/cert-expiry-watch.mjs`), running twice weekly
+in `.github/workflows/cert-expiry.yml`.** It iterates **BOTH** origin hosts (§[F] selected ONE by
+`new URL(BASE).hostname`, so a single run could structurally never cover both), **asserts its own
+population** so losing a host cannot quietly reduce coverage to nothing, takes its threshold from
+`CERT_MIN_DAYS` so it is provable RED **without editing the file**, and treats an unreadable
+certificate as a FAILURE rather than a skip. `red:cert-expiry` **3/3**. §[F] has been **deleted**
+from `pre-deploy-live-check.mjs` — two copies of one threshold drift apart, and that was the copy
+that could not run.
+
+✅ **Guarded** by ~~§F of `scripts/pre-deploy-live-check.mjs`~~ **`npm run qa:cert-expiry`**, which fails at **21 days** — *"a check
 that goes red the day the site dies is a headstone, not a gate"* — and dials the **ORIGIN**, not
 the hostname, because once `www` is proxied the certificate that answers is Cloudflare's own and
 is never at risk.

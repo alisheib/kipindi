@@ -89,11 +89,32 @@ reaches the app; Cloudflare is not standing in front of it.
 limit on this zone.** Those are precisely the settings that would start challenging it, and the
 symptom is silent.
 
-🔴 **THE ONE THING STILL TO WATCH: ACME RENEWAL — now with a gate on it.** The origin certs were
+🔴 **THE ONE THING STILL TO WATCH: ACME RENEWAL — and until 2026-08-27 THE GATE ON IT WAS
+FICTION (`E-227`).** The origin certs were
 issued 2026-07-17 and expire **2026-10-15**, and Railway renews them by answering a challenge at
 the origin. That challenge now arrives through Cloudflare for `www`, and no renewal has yet been
 observed on that path. An expired origin cert under `Full (strict)` is a total outage arriving
-without warning, so it is **`qa:live` §[F]** rather than a note in a file: it fails at 21 days
+🔴 **CORRECTED 2026-08-27 (`E-227`): IT WAS NEVER A GATE — §[F] HAD NEVER EXECUTED ONCE.**
+`predeploy` invokes `qa:live` with no `BASE`; `BASE` defaults to `http://localhost:3009`;
+`LOCAL` is therefore true; and the whole certificate block sat inside `if (!LOCAL)`. `qa:live`
+appeared nowhere in `.github/`. Apply the house test — *would it pass with an expired
+certificate?* **Yes, silently, every time.** ⚠️ **And the one documented prod invocation failed it
+every time it was used:** `CLAUDE.md` said to run
+`BASE=https://kipindi-production.up.railway.app npm run qa:live`, a hostname absent from
+`ORIGIN_OF`, so §[F] failed on *"no known origin"* and never on the certificate.
+✅ **REPLACED by `npm run qa:cert-expiry` (`scripts/cert-expiry-watch.mjs`), running twice weekly
+in `.github/workflows/cert-expiry.yml`.** It iterates **BOTH** origin hosts (§[F] selected ONE by
+`new URL(BASE).hostname`, so a single run could structurally never cover both), **asserts its own
+population** so losing a host cannot quietly reduce coverage to nothing, takes its threshold from
+`CERT_MIN_DAYS` so it is provable RED **without editing the file**, and treats an unreadable
+certificate as a FAILURE rather than a skip. `red:cert-expiry` **3/3**. §[F] has been **deleted**
+from `pre-deploy-live-check.mjs` — two copies of one threshold drift apart, and that was the copy
+that could not run. ⚠️ **MEASURED 2026-08-27 by the new watch:** www origin expires
+**Oct 15 14:49:57 2026 GMT** and the apex **Oct 15 14:50:00 GMT** — **49 days**, both
+**Let's Encrypt**. ⛔ **The note elsewhere that the two hosts have "different CAs" is wrong** —
+different intermediates, same CA.
+
+without warning, so it is ~~**`qa:live` §[F]**~~ **`qa:cert-expiry`** rather than a note in a file: it fails at 21 days
 left, not at 0. Tracked as **`E-195`** in [`NEXT-PLAN.md`](NEXT-PLAN.md).
 
 ⛔ **That check reads the ORIGIN certificate, and it has to.** Since the flip, connecting to

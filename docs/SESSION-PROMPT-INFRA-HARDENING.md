@@ -41,7 +41,26 @@ expire **2026-10-15** and Railway renews by answering a challenge at the origin,
 arrives via Cloudflare for `www`. No renewal has been observed through that path, and an expired
 origin cert under `Full (strict)` is a total outage with no warning.
 
-⭐ **So it is a gate, not a note.** `qa:live` §[F] fails at **21 days** left — a check that goes
+🔴 **CORRECTED 2026-08-27 (`E-227`): IT WAS NEVER A GATE — §[F] HAD NEVER EXECUTED ONCE.**
+`predeploy` invokes `qa:live` with no `BASE`; `BASE` defaults to `http://localhost:3009`;
+`LOCAL` is therefore true; and the whole certificate block sat inside `if (!LOCAL)`. `qa:live`
+appeared nowhere in `.github/`. Apply the house test — *would it pass with an expired
+certificate?* **Yes, silently, every time.** ⚠️ **And the one documented prod invocation failed it
+every time it was used:** `CLAUDE.md` said to run
+`BASE=https://kipindi-production.up.railway.app npm run qa:live`, a hostname absent from
+`ORIGIN_OF`, so §[F] failed on *"no known origin"* and never on the certificate.
+✅ **REPLACED by `npm run qa:cert-expiry` (`scripts/cert-expiry-watch.mjs`), running twice weekly
+in `.github/workflows/cert-expiry.yml`.** It iterates **BOTH** origin hosts (§[F] selected ONE by
+`new URL(BASE).hostname`, so a single run could structurally never cover both), **asserts its own
+population** so losing a host cannot quietly reduce coverage to nothing, takes its threshold from
+`CERT_MIN_DAYS` so it is provable RED **without editing the file**, and treats an unreadable
+certificate as a FAILURE rather than a skip. `red:cert-expiry` **3/3**. §[F] has been **deleted**
+from `pre-deploy-live-check.mjs` — two copies of one threshold drift apart, and that was the copy
+that could not run. ⭐ **THE RED METHOD RECORDED BELOW DID WORK AND WAS REUSED VERBATIM** — pointing
+`CERT_ORIGIN_HOST` at the proxied name still turns the positive control red, reading
+`CN=50pick.tz` / Google Trust Services instead of Railway's `CN=www.50pick.tz` / Let's Encrypt.
+
+~~⭐ **So it is a gate, not a note.**~~ `qa:cert-expiry` fails at **21 days** left — a check that goes
 red the day the site dies is a headstone, not a gate — and `qa:live` is the last step of
 `predeploy`. Tracked as **`E-195`** in [`NEXT-PLAN.md`](NEXT-PLAN.md) → ⏰ DATED.
 

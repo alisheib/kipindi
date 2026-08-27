@@ -1,0 +1,65 @@
+name: Origin certificate watch
+
+# ⛔ THIS FILE EXISTS BECAUSE FOUR TRACKED DOCUMENTS CALLED A CHECK "A GATE AND NOT A
+# REMINDER" AND IT HAD NEVER EXECUTED ONCE.
+#
+# `qa:live` section [F] read the Railway ORIGIN certificate and failed at 21 days left.
+# It could not ever have run: `predeploy` invokes `qa:live` with no BASE, BASE defaults to
+# http://localhost:3009, LOCAL is therefore true, and the whole certificate block sits
+# inside `if (!LOCAL)`. `qa:live` appeared nowhere in .github/. Apply the house test —
+# would it pass with an expired certificate? Yes, silently, every time.
+#   docs/NEXT-PLAN.md:314-315 · docs/SESSION-PROMPT-INFRA-HARDENING.md:44
+#   docs/LIVE-HOSTING-STATUS.md:92,96 · docs/SESSION-PROMPT-CLOSE-THE-BOARD.md:344-347
+#
+# WHAT IS AT STAKE. www.50pick.tz sits behind Cloudflare at Full (strict). Reading the
+# certificate at the public hostname reads CLOUDFLARE's, which renews itself and can never
+# be the outage. The one that can silently fail is Railway's ORIGIN certificate. When it
+# expires the whole site goes down — on a date, with no deploy to blame.
+#
+# ⭐ THIS WORKFLOW CANNOT SILENTLY NO-OP, AND THAT IS ITS MOST IMPORTANT PROPERTY. It needs
+# NO secrets, so unlike backup-nightly.yml it has no secrets preflight to get wrong and no
+# way to "succeed" because a credential was missing. And it runs NO `npm ci`: the script
+# imports `node:tls` and nothing else, so neither the npm registry nor a lockfile is a
+# dependency of the certificate check. The only thing that can make it green is two real
+# TLS handshakes.
+#
+# ⛔ AND IT IS `qa:cert-expiry`, NOT `test:cert-expiry`. scripts/test-all.mjs enumerates
+# every `test:*` in package.json STRUCTURALLY and ci.yml runs that aggregator on every push
+# to main and every pull request — a `test:` prefix would put a live TLS call to two Railway
+# hosts into every merge, making CI flaky on network reachability and blocking unrelated PRs
+# on a 21-day certificate condition.
+#
+# TWICE WEEKLY, NOT WEEKLY. A 21-day threshold under a weekly cron gives three warnings
+# before expiry; GitHub also delays or drops scheduled runs under load, and disables
+# schedules entirely after 60 days of repository inactivity. Twice weekly costs nothing and
+# gives six. 06:00 UTC = 09:00 EAT, Mondays and Thursdays.
+#
+# ⚠️ GitHub runs `schedule` only on the default branch, so this file is only live once it is
+# on main.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1,4"
+  workflow_dispatch:
+
+concurrency:
+  group: cert-expiry
+  cancel-in-progress: false
+
+jobs:
+  cert-expiry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          # No `cache: npm` and no install step — see the header. `node:tls` is the only import.
+
+      # Prints both hosts, both expiry dates, the positive control for each, and asserts its
+      # own POPULATION — it fails if fewer than two hosts were checked, so losing a host from
+      # ORIGIN_OF cannot quietly reduce coverage to nothing while the job stays green.
+      # Proven RED on all three failure modes by `npm run red:cert-expiry`.
+      - name: Check both origin certificates
+        run: node scripts/cert-expiry-watch.mjs

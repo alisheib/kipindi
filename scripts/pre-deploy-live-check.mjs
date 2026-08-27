@@ -307,79 +307,25 @@ if (LOCAL) {
 
 await browser.close();
 
-// ── [F] The certificate behind the proxy ──────────────────────────────────────
-// 🔴 E-195. On 2026-08-24 `www` was put behind Cloudflare with SSL/TLS `Full (strict)`, and
-// under `strict` Cloudflare REFUSES to serve a hostname whose origin certificate is invalid.
-// Railway renews by answering an ACME challenge at the origin, which now arrives through the
-// proxy — a path that has never carried a renewal.
+// ── [F] The certificate behind the proxy — MOVED OUT 2026-08-27 (E-227) ──
 //
-// ⛔ THIS IS THE ONLY CHECK IN THE REPO THAT LOOKS AT EXPIRY, and it exists because the failure
-// has no other warning: the current certificate works perfectly right up to the minute it
-// expires, so every page, every suite and every health probe stays green through the whole
-// month in which the problem is still fixable. Then the site is simply gone, on a date, with no
-// deploy and no commit to blame.
+// ⛔ THIS BLOCK USED TO LIVE HERE AND HAD NEVER EXECUTED ONCE. `predeploy` invokes `qa:live`
+// with no `BASE`; `BASE` defaults to `http://localhost:3009`; `LOCAL` is therefore true; and the
+// whole certificate block sat inside `if (!LOCAL)`. `qa:live` appeared nowhere in `.github/`.
+// FOUR tracked documents called it "a gate and not a reminder" while it could not run at all.
 //
-// ⚠️ It fails at 21 days, not at 0 — a check that goes red the day the site dies is a headstone,
-// not a gate. Renewal normally happens around 30 days out, so 21 means "renewal was due and did
-// not happen", with weeks left to act (revert `www` to DNS-only, let Railway renew direct,
-// re-proxy). Skipped for localhost, which has no certificate to speak of.
-// ⛔⛔ AND IT MUST DIAL THE ORIGIN, NOT THE HOSTNAME. The first cut of this check connected to
-// `www.50pick.tz` and read whatever certificate came back. Once `www` is proxied that is
-// CLOUDFLARE'S OWN certificate — `CN=50pick.tz`, issued by Google Trust Services, which
-// Cloudflare renews by itself and which is never at risk. Measured 2026-08-24, the two are
-// different certificates with different expiries:
+// ⚠️ AND THE ONE DOCUMENTED PROD INVOCATION FAILED IT EVERY TIME: `CLAUDE.md` said to run
+// `BASE=https://kipindi-production.up.railway.app npm run qa:live`, a hostname absent from
+// `ORIGIN_OF`, so it failed on "no known origin" and never on the certificate.
 //
-//     through the proxy   CN=50pick.tz      Google Trust Services   Oct 15 12:26:23
-//     the actual origin   CN=www.50pick.tz  Let's Encrypt           Oct 15 14:49:57
+// ▶ IT NOW LIVES IN `scripts/cert-expiry-watch.mjs` (`npm run qa:cert-expiry`), which iterates
+// BOTH origin hosts rather than selecting one by `new URL(BASE).hostname`, asserts its own
+// population, takes the threshold from `CERT_MIN_DAYS` so it is provable RED without editing
+// the file, and runs twice weekly in `.github/workflows/cert-expiry.yml`. Proven RED on all
+// three failure modes by `npm run red:cert-expiry`.
 //
-// So the check went green reading a certificate that renews itself, while the one that can
-// silently fail sat behind it unmeasured. It would have stayed green through the outage.
-// Dial Railway's domain target with the hostname as SNI — that is the certificate Cloudflare
-// validates under `Full (strict)`, and the only one that matters here.
-const ORIGIN_OF = {
-  // ⚠️ Railway re-issues these targets whenever a custom domain is removed and re-added (it did
-  // on 2026-07-18). They are NOT discoverable from public DNS once a name is proxied — Cloudflare
-  // flattens it to its own anycast addresses — so they have to be written down. If this check
-  // starts failing to connect, re-read them from `railway domain status` before assuming a
-  // certificate problem. Override with CERT_ORIGIN_HOST.
-  "www.50pick.tz": "3hwa21jh.up.railway.app",
-  "50pick.tz": "ggze9tup.up.railway.app",
-};
-if (!LOCAL) {
-  console.log("\n[F] ORIGIN certificate — expiry, because nothing else in this repo watches it");
-  const host = new URL(BASE).hostname;
-  const origin = process.env.CERT_ORIGIN_HOST || ORIGIN_OF[host];
-  if (!origin) {
-    ok(`a Railway origin is known for ${host}`, false,
-       `add it to ORIGIN_OF or set CERT_ORIGIN_HOST — refusing to read the edge cert and call it the origin`);
-  } else {
-    try {
-      const { connect } = await import("node:tls");
-      const cert = await new Promise((resolve, reject) => {
-        const s = connect({ host: origin, port: 443, servername: host, timeout: 15000 }, () => {
-          const c = s.getPeerCertificate(); s.end(); resolve(c);
-        });
-        s.on("error", reject);
-        s.on("timeout", () => { s.destroy(); reject(new Error("TLS timeout")); });
-      });
-      const issuer = cert.issuer?.O ?? "?";
-      const daysLeft = Math.floor((new Date(cert.valid_to) - Date.now()) / 86_400_000);
-      // ⛔ A positive control in the same run: if this ever reads Cloudflare's certificate again,
-      // the subject stops being the hostname and the whole check has silently changed meaning.
-      ok(`[control] ${origin} serves the ORIGIN cert for ${host}, not the edge's (CN=${cert.subject?.CN}, ${issuer})`,
-         cert.subject?.CN === host && !/cloudflare|google/i.test(issuer),
-         "this is Cloudflare's certificate, not Railway's — the expiry below would be meaningless");
-      ok(`${host} ORIGIN certificate has more than 21 days left (${daysLeft}d, expires ${cert.valid_to})`,
-         daysLeft > 21,
-         daysLeft > 0
-           ? "RENEWAL IS OVERDUE. Under Full (strict) an expired ORIGIN cert takes the site down with no warning — NEXT-PLAN E-195."
-           : "EXPIRED — the site is down or about to be.");
-    } catch (e) {
-      // ⛔ Never pass on an unreadable certificate: "could not check" is not "fine".
-      ok(`${host} ORIGIN certificate is readable at ${origin}`, false, String(e?.message ?? e));
-    }
-  }
-}
+// ⛔ DO NOT RE-ADD A CERTIFICATE CHECK HERE. Two copies of one threshold drift apart, and this
+// is the copy that cannot run.
 
 console.log(`\n${failures.length === 0 ? "✅ ALL PASS" : "❌ FAILURES"} — ${pass} passed, ${failures.length} failed`);
 if (failures.length) { console.log("\nFAILED:\n" + failures.map((f) => "  - " + f).join("\n")); process.exit(1); }

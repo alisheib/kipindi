@@ -311,8 +311,25 @@
 >   `www` — the host in `NEXT_PUBLIC_APP_URL` **and** `PAYMENT_WEBHOOK_URL` — does not. Deposits
 >   confirm on that host.
 >
->   ✅ **`qa:live` §[F] now watches this** (added with this entry, so it is a gate and not a
->   reminder). It fails at **21 days**, not at 0 — a check that goes red the day the site dies is
+>   🔴 **CORRECTED 2026-08-27 (`E-227`): IT WAS NEVER A GATE — §[F] HAD NEVER EXECUTED ONCE.**
+>   `predeploy` invokes `qa:live` with no `BASE`; `BASE` defaults to `http://localhost:3009`;
+>   `LOCAL` is therefore true; and the whole certificate block sat inside `if (!LOCAL)`. `qa:live`
+>   appeared nowhere in `.github/`. Apply the house test — *would it pass with an expired
+>   certificate?* **Yes, silently, every time.** ⚠️ **And the one documented prod invocation failed it
+>   every time it was used:** `CLAUDE.md` said to run
+>   `BASE=https://kipindi-production.up.railway.app npm run qa:live`, a hostname absent from
+>   `ORIGIN_OF`, so §[F] failed on *"no known origin"* and never on the certificate.
+>   ✅ **REPLACED by `npm run qa:cert-expiry` (`scripts/cert-expiry-watch.mjs`), running twice weekly
+>   in `.github/workflows/cert-expiry.yml`.** It iterates **BOTH** origin hosts (§[F] selected ONE by
+>   `new URL(BASE).hostname`, so a single run could structurally never cover both), **asserts its own
+>   population** so losing a host cannot quietly reduce coverage to nothing, takes its threshold from
+>   `CERT_MIN_DAYS` so it is provable RED **without editing the file**, and treats an unreadable
+>   certificate as a FAILURE rather than a skip. `red:cert-expiry` **3/3**. §[F] has been **deleted**
+>   from `pre-deploy-live-check.mjs` — two copies of one threshold drift apart, and that was the copy
+>   that could not run.
+>
+>   ~~✅ **`qa:live` §[F] now watches this** (added with this entry, so it is a gate and not a
+>   reminder).~~ It fails at **21 days**, not at 0 — a check that goes red the day the site dies is
 >   a headstone, not a gate. Renewal is normally ~30 days out, so 21 means "it was due and did not
 >   happen", with weeks left to act. `qa:live` is the last step of `predeploy`.
 >

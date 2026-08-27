@@ -747,6 +747,19 @@ A strict Playwright gauntlet guards releases: `scripts/pre-deploy-live-check.mjs
   subset against prod (auto-skips the local-only authed section). Run on a WARM
   server — the gauntlet warms up, but a just-restarted instance can still race.
 - `npm run predeploy` — typecheck + `test:date` + build + `qa:live`.
+  ⛔ **`predeploy` passes no `BASE`, so `qa:live` ALWAYS runs against localhost and `LOCAL` is
+  always true.** For its whole life that meant the certificate block — `if (!LOCAL)`, §[F] — never
+  executed once, while four documents called it "a gate and not a reminder" (`E-227`, corrected
+  2026-08-27). ⚠️ And the prod invocation above names a hostname absent from that block's
+  `ORIGIN_OF`, so on the one occasion anyone ran it, §[F] failed on *"no known origin"* rather than
+  on the certificate.
+- `npm run qa:cert-expiry` — **the certificate watch, which actually runs.**
+  `scripts/cert-expiry-watch.mjs` replaced §[F] (now deleted). Needs no `BASE` and no secrets;
+  imports only `node:tls`. Checks **both** origin hosts behind Cloudflare — reading the public
+  hostname would read Cloudflare's cert, which renews itself and can never be the outage — carries
+  a positive control per host, **asserts its own population**, and takes its threshold from
+  `CERT_MIN_DAYS` (default 21) so it is provable RED without editing the file. Runs twice weekly in
+  `.github/workflows/cert-expiry.yml`. Proven by `npm run red:cert-expiry` (3/3).
 - `npm run test:date` — pure keystroke unit tests for the segmented date field
   (`scripts/date-mask.test.mts`; logic lives in `src/components/ui/date-mask.ts`).
 
