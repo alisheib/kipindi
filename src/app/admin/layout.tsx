@@ -15,7 +15,7 @@ import { isStaffRole, isAdmin, isOwnerOnlyPath, domainForPath, DOMAIN_LABEL, DOM
 import { canView, canAct, viewableDomains } from "@/lib/server/rbac";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
 import { AdminActProvider, ActReadOnlyBanner } from "@/components/admin/act-gate";
-import { activeKeyFromPath } from "@/components/admin/admin-nav-groups";
+import { crumbsFromPath, activeKeyFromPath } from "@/components/admin/admin-nav-groups";
 
 /**
  * RBAC VIEW gate (2026-07-28). Console admission below admits any STAFF role; this
@@ -45,27 +45,6 @@ const TOTP_EXEMPT = new Set<string>([
 // and the two had already drifted — the sidebar copy was missing /admin/payments,
 // /admin/kyc and the /admin/resolver detail route, so those pages highlighted
 // nothing. One definition now, guarded by `npm run test:admin-nav`.
-
-/** Segments whose title-cased form is wrong or unreadable. Title-casing turns
- *  "updown" into "Updown", which is not the product's name — the game is "Up & Down"
- *  everywhere it is written. Add a segment here rather than accepting a mangled crumb. */
-const CRUMB_LABELS: Record<string, string> = {
-  updown: "Up & Down",
-  aml: "AML",
-  kyc: "KYC",
-  "ai-polls": "AI polls",
-  "ai-usage": "AI usage",
-  "2fa": "2FA",
-  dsar: "DSAR",
-};
-
-function crumbsFromPath(path: string): string[] {
-  const parts = path.replace(/^\/admin\/?/, "").split("/").filter(Boolean);
-  if (parts.length === 0) return ["Admin", "Overview"];
-  // Title-case + drop dynamic segments like ids
-  return ["Admin", ...parts.map((p) =>
-    CRUMB_LABELS[p] ?? p.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()))];
-}
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await currentSession();
@@ -103,6 +82,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // Full destination incl. query (e.g. ?tab=kyc) so the TOTP gate can return the
   // officer to the exact page after verifying — e.g. a deep link from an email.
   const href = h.get("x-href") ?? path;
+  // ⚠️ BOTH OF THESE ARE NOW FALLBACKS, NOT ANSWERS, AND THE DISTINCTION IS THE BUG.
+  // `path` comes from the `x-pathname` REQUEST HEADER, and this is a LAYOUT — not re-executed
+  // on a client-side soft navigation. Every admin page shares it and the sidebar is all
+  // `<Link>`s, so these two values freeze on whatever route the last HARD load saw.
+  // `AdminSidebarNav` has always re-derived the key from `usePathname()`; the breadcrumb and
+  // the MOBILE nav did not, so the trail read "Admin / Players" on the markets page.
+  // They are handed down as first-paint fallbacks and re-derived on the client.
   const activeKey = activeKeyFromPath(path);
   const crumbs = crumbsFromPath(path);
 

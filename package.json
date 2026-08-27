@@ -384,6 +384,8 @@
     "test:updown-bet-feedback": "tsx scripts/updown-bet-feedback.test.mts",
     "red:updown-bet-feedback": "node scripts/red-e64.cjs",
     "test:shell-boundary": "tsx scripts/shell-boundary.test.mts",
+    "test:layout-staleness": "tsx scripts/layout-staleness.test.mts",
+    "red:layout-staleness": "node scripts/red-layout-staleness.mjs",
     "red:shell-boundary": "node scripts/red-e70.cjs",
     "test:updown-result-announce": "tsx scripts/updown-result-announce.test.mts",
     "red:updown-result-announce": "node scripts/red-result-announce.cjs",
@@ -549,7 +551,10 @@
     "test:bonus-withdrawable": "tsx scripts/bonus-withdrawable.test.mts",
     "red:bonus-withdrawable": "node scripts/bonus-withdrawable-red.mjs",
     "qa:bonus-j": "node scripts/live-bonus-j.mjs",
-    "qa:bonus-relock": "node scripts/live-bonus-j.mjs relock"
+    "qa:bonus-relock": "node scripts/live-bonus-j.mjs relock",
+    "qa:e70-legal": "node scripts/live-e70-values.mjs legal",
+    "qa:e70-balance": "node scripts/live-e70-values.mjs balance",
+    "qa:e70-settled": "node scripts/live-e70-values.mjs settled"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

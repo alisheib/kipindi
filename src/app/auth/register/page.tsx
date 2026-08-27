@@ -10,6 +10,7 @@ import { PasswordPair } from "@/components/auth/password-pair";
 import { DateSelect } from "@/components/ui/date-select";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { resolveReferralPreview } from "@/lib/server/affiliate-service";
+import { bounceIfAuthed } from "../bounce-authed";
 import { getInvitePreview } from "@/lib/server/invite-service";
 import { startRegisterAction } from "./actions";
 import { HELPLINE } from "@/lib/support-config";
@@ -39,9 +40,10 @@ export default async function RegisterPage({
 }: {
   searchParams: Promise<{ phone?: string; email?: string; error?: string; message?: string; ref?: string; invite?: string; next?: string }>;
 }) {
-  // Bounce-authed-users guard lives in src/app/auth/layout.tsx so the
-  // redirect happens before any page hooks run (avoids a Next.js 16
-  // dev-mode hook-count mismatch on hot reload).
+  // ⛔ IN THE PAGE, NOT THE LAYOUT — a layout is not re-executed on a soft navigation, so the
+  // old placement stopped bouncing anyone who reached this page from another `/auth` route.
+  // `bounce-authed.ts` carries the measurement and the middleware loop it rules out.
+  await bounceIfAuthed();
   const { t } = await getServerT();
   const sp = await searchParams;
   const phoneDefault = (sp.phone ?? "").replace(/^\+255/, "").replace(/\D+/g, "").slice(0, 9);

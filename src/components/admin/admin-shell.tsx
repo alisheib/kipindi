@@ -10,6 +10,7 @@ import { db } from "@/lib/server/store";
 import { FiftyMark } from "@/components/brand";
 import { I } from "@/components/ui/glyphs";
 import { AdminMobileNavTrigger } from "./admin-mobile-nav";
+import { AdminCrumbs } from "./admin-crumbs";
 import { AdminSidebarNav } from "./admin-sidebar-nav";
 import { RefreshButton } from "./refresh-button";
 import { AiToolkit } from "./ai-toolkit";
@@ -179,7 +180,9 @@ export async function AdminTopBar({ crumbs, session, activeKey, viewDomains, isO
             · the role chip below hides under `sm`, which is what frees the width. */}
       <div className="flex items-center gap-2 min-w-0">
         <div className="shrink-0">
-          <AdminMobileNavTrigger groups={groups} badges={badges} activeKey={activeKey} roleLabel={roleLabel(session.role)} />
+          {/* ⚠️ fallbackKey, not activeKey — the drawer re-derives it from usePathname(), because
+              this value was computed in a LAYOUT and freezes across soft navigations (E-70). */}
+          <AdminMobileNavTrigger groups={groups} badges={badges} fallbackKey={activeKey} roleLabel={roleLabel(session.role)} />
         </div>
       {/* ⛔ E-30, second surface, SAME root cause as the AdminKpi delta below: a flex item
           defaults to `min-width: auto`, which refuses to shrink below its content. The
@@ -188,17 +191,13 @@ export async function AdminTopBar({ crumbs, session, activeKey, viewDomains, isO
           shrink and `truncate` could never engage. Measured at 768: "Admin / Up & Down /
           Proposals" ran 34px past the nav, in all three locales.
           `shrink-0` on the separator keeps "/" from being the thing that collapses. */}
-      <nav aria-label="Breadcrumb" className="hidden md:flex items-center gap-2 text-body-sm text-text-tertiary min-w-0 overflow-hidden">
-        {crumbs.map((c, i) => {
-          const isLast = i === crumbs.length - 1;
-          return (
-            <span key={i} className="flex items-center gap-2 min-w-0">
-              {i > 0 && <span className="text-text-tertiary opacity-50 shrink-0">/</span>}
-              <span className={isLast ? "font-semibold text-text truncate" : "truncate"}>{c}</span>
-            </span>
-          );
-        })}
-      </nav>
+      {/* 🔴 E-70 · THE TRAIL IS DERIVED ON THE CLIENT. It used to be built here from the
+          `crumbs` prop, which `app/admin/layout.tsx` computed from the `x-pathname` REQUEST
+          HEADER — in a layout, which is NOT re-executed on a soft navigation. Clicking from
+          /admin/players to /admin/markets left this reading "Admin / Players". The clipping
+          fixes measured at 768 moved WITH the markup into `admin-crumbs.tsx`; read that file
+          before touching the box model. */}
+      <AdminCrumbs fallback={crumbs} />
       </div>
       <div className="flex items-center gap-2 shrink-0">
         {/* Back to the player app — lands on the landing/home ("/"), the app's

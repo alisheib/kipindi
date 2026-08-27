@@ -11,6 +11,7 @@ import { RateLimitBanner } from "@/components/auth/rate-limit-banner";
 import { startLoginAction } from "./actions";
 import { SUPPORT_EMAIL, HELPLINE } from "@/lib/support-config";
 import { getServerT } from "@/lib/i18n-server";
+import { bounceIfAuthed } from "../bounce-authed";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -22,10 +23,14 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<{ phone?: string; identifier?: string; error?: string; retry?: string; next?: string; closed?: string; excluded?: string; cooled?: string; reset?: string; revoked?: string }>;
 }) {
-  // Note: the "bounce authed users away from this page" check lives in
-  // src/app/auth/layout.tsx so the redirect happens before the page renders.
-  // Avoiding redirect() inside the page itself sidesteps a Next.js 16 dev-mode
-  // hook-count mismatch on hot reload.
+  // ⛔ THE BOUNCE RUNS HERE, IN THE PAGE, AND IT MOVED OUT OF `auth/layout.tsx` BECAUSE A
+  // LAYOUT IS NOT RE-EXECUTED ON A CLIENT-SIDE SOFT NAVIGATION. The layout compared the
+  // `x-pathname` header it captured on the last HARD load, so an authed player who entered
+  // `/auth` on a route outside the bounce set (`/auth/otp`, `/auth/verify-email`,
+  // `/auth/forgot-password`) and then clicked through to this page was never bounced at all.
+  // See `bounce-authed.ts` — it also records why moving this to the middleware would have
+  // shipped an infinite redirect loop against B-13's revoked-device flow.
+  await bounceIfAuthed();
   const { t } = await getServerT();
   const sp = await searchParams;
   // Detect session-revoked flash (another device signed in). B-13: `?revoked=1`

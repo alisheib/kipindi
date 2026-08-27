@@ -1305,6 +1305,13 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
     const c: CommittedBet = committed;
     recordSnapshot(opts.marketId, c.yesPool, c.noPool);
     emit("market:odds", { marketId: opts.marketId, yesPct: impliedYesPct({ ...market, yesPool: c.yesPool, noPool: c.noPool }) });
+    // ⭐ AND THE PLAYER'S OWN BALANCE, WHICH THIS BLOCK PUSHED THE ODDS WITHOUT EVER PUSHING.
+    // Ali's navbar report. It sits HERE, under `result.ok && committed`, for the reason this
+    // block's own header gives: everything below runs only after the lock's transaction actually
+    // committed, so no subscriber can be told about a bet that rolled back.
+    // ⛔ Not awaited — a live update must not add latency to the bet's response — and
+    // `emitWalletBalances` re-reads the committed wallet rather than trusting `c`.
+    void emitWalletBalances([userId]);
 
     // Deferred from spendBonusLocked in tx mode (see there): raised only after
     // the transaction committed, so the audit can never narrate a rolled-back spend.
@@ -2075,9 +2082,60 @@ export async function resolveDueMarket(
  * exactly once. Running this on every boot is safe because the second
  * pass finds no orphans.
  */
+/**
+ * ⭐ THE TOP BAR'S BALANCE, AND THE LIVE FEED THAT HAD NEVER BEEN CONNECTED TO PLAY.
+ *
+ * 🔴 ALI, 2026-08-27: *"the money amount in the top navbar is different from that inside the
+ * wallet page after playing a poll. A massive bug."* The work order read it as `E-70`'s shape —
+ * in the App Router a layout is NOT re-executed on a client-side soft navigation, so the balance
+ * `AppShell` computed on the last HARD load stays frozen while the player clicks around. That is
+ * TRUE, and it is why the FALLBACK cannot save the pill. ⛔ **It is not the cause.**
+ *
+ * ⛔ THE CAUSE IS THAT NOTHING EVER TOLD THE PILL THE MONEY MOVED — and the whole live path was
+ * already built, shipped and even hardened. `WalletBalancePill` listens for
+ * `50pick:sse:wallet-balance`; `use-event-stream.ts` bridges `wallet:balance` onto that window
+ * event; `/api/events` allow-lists it and scopes it to the user; `event-bus.ts` fans it out
+ * across containers over Redis so a bet committed on one instance reaches an EventSource pinned
+ * to another. Every piece works. ⭐ AND `emit("wallet:balance")` WAS CALLED FROM
+ * `wallet-service.ts` ONLY — deposits, withdrawals, admin adjustments. Measured before this fix:
+ * THIS file mutates `Wallet.balance` at TEN sites — the bet debit and its rollback, the cash-out
+ * credit, three settlement payouts, the void refunds, the orphan repair — and emitted
+ * `wallet:balance` at NONE of them. **The one event the whole pipeline exists for was never
+ * emitted by the code that moves money when a player PLAYS.** A perfect read path with a write
+ * that never happens is this platform's most repeated defect, and it had reached the navbar.
+ *
+ * ⛔ IT READS THE COMMITTED WALLET AND NEVER A CAPTURED INTERMEDIATE, AND THAT IS NOT
+ * FASTIDIOUSNESS. `buyPosition`'s `newBalance` is captured at the debit — but a stake that
+ * COMPLETES a bonus wagering requirement credits the real balance AGAIN, afterwards, in the same
+ * transaction (`recordWageringLocked` → the fulfilment conversion, measured live at 2,000 on
+ * 2026-08-27). Emitting the captured figure would put the pill exactly one converted bonus BELOW
+ * the truth and leave it there until the next hard load: a wrong number, pushed live, over a bug
+ * about a wrong number.
+ *
+ * ⚠️ AND IT IS TOTAL — it cannot throw into a money path, for the same reason `emit` itself is
+ * documented as total. A missed live update costs a stale pill until the next navigation;
+ * throwing here would cost a settled bet.
+ */
+async function emitWalletBalances(userIds: Iterable<string>): Promise<void> {
+  const seen = new Set<string>();
+  for (const userId of userIds) {
+    if (!userId || seen.has(userId)) continue;
+    seen.add(userId);
+    try {
+      const w = await db.wallet.findByUserId(userId);
+      if (w) emit("wallet:balance", { userId, balance: w.balance });
+    } catch {
+      // Silent, and deliberately PER USER: one unreadable wallet must not stop the other
+      // winners of the same market from seeing their own money arrive.
+    }
+  }
+}
+
 export async function repairOrphanedPositions(): Promise<{ repaired: number; refundedTzs: number }> {
   let repaired = 0;
   let refundedTzs = 0;
+  /** Whose pill needs telling — this runs on every boot, and a player may be connected. */
+  const touchedWallets = new Set<string>();
   // ⭐ `listOpen()`, not `values()` (audit F-07). This runs on EVERY BOOT, so on every
   // deploy, and it used to load the whole Position table and filter in JS: 921 rows to reach
   // 131 on production 2026-08-20, on a table that grows by one row per bet forever. The
@@ -2096,6 +2154,7 @@ export async function repairOrphanedPositions(): Promise<{ repaired: number; ref
     // Reverse this bet's turnover (it never settled) and return the bonus portion
     // to the bonus wallet — never to real (no active grant → bonus is forfeit).
     await reverseWagering(p.userId, p.stake);
+    touchedWallets.add(p.userId);
     if (bonusPart > 0) {
       const { refundedToBonus } = await refundBonusToActive(p.userId, bonusPart);
       if (refundedToBonus < bonusPart) {
@@ -2135,6 +2194,7 @@ export async function repairOrphanedPositions(): Promise<{ repaired: number; ref
     repaired++;
     refundedTzs += p.stake;
   }
+  await emitWalletBalances(touchedWallets);
   return { repaired, refundedTzs };
 }
 
@@ -2490,6 +2550,11 @@ export async function cashOutPosition(
       },
     });
 
+    // ⭐ THE EXIT MOVES MONEY AND THE PILL NEVER HEARD ABOUT IT EITHER. Safe to emit from
+    // inside the lock here: every write in this function is SELF-COMMITTING (see the note in
+    // `bonus-service.ts`'s `reverseWageringLocked` — that is why the reversal is deliberately
+    // NOT threaded into a transaction), so the money has already moved by this line.
+    void emitWalletBalances([userId]);
     return { ok: true as const, data: { value: paid, balance: newBalance } };
     });
   });
@@ -2656,6 +2721,14 @@ export async function settleMarket(
   // Referral commission — a share of the fee we ACTUALLY charged. Applied after
   // the market lock releases, because it takes the REFERRER's wallet lock.
   const pendingReferralAccruals: Array<{ userId: string; operatorFee: number }> = [];
+  /**
+   * ⭐ Whose top-bar balance this settlement changed. WINNERS are collected below; REFUNDED
+   * players are already enumerated by `pendingWagerReversals`, so they are not collected twice.
+   * ⛔ LOSERS are deliberately absent: their balance did not move at settlement (the stake left
+   * at PLACEMENT), so an emit for them would be a wallet read per losing position on every
+   * settlement to tell a player a number he already has.
+   */
+  const paidWallets = new Set<string>();
 
   // `lockTx` is the transaction `withLock` opened for this scope. It is threaded to
   // `persistResolution` below so the settledAt stamp commits WITH the payouts —
@@ -3030,6 +3103,7 @@ export async function settleMarket(
         // winner floor asserted in allocateWinnerPayouts) instead of an independent
         // per-winner round that could drift the operator's fee by a few TZS.
         const payout = payoutByPos.get(p.id) ?? 0;
+        paidWallets.add(p.userId);
         const payoutTxnId = `txn_${randomId(12)}`;
         // ATOMIC (audit C3): the wallet credit, the position → WIN mark, the
         // BET_PAYOUT txn row, and the ledger settlement group all commit in ONE
@@ -3265,6 +3339,12 @@ export async function settleMarket(
       audit({ category: "WALLET", action: "bonus.refund_forfeited", actorId: r.userId, targetType: "User", targetId: r.userId, payload: { requested: r.amount, refundedToBonus, forfeited: r.amount - refundedToBonus, reason: "no active grant to hold refunded bonus" } });
     }
   }
+
+  // ⭐ NOW the top-bar balance, and only now: AFTER the wagering reversals and the bonus
+  // principal have been applied above. Emitting inside the lock would push a figure that the
+  // very next line changes — a re-locked bonus moves cash out of `balance` — so the pill would
+  // land on an intermediate and stay there. One emit per player, from the committed wallet.
+  await emitWalletBalances([...paidWallets, ...pendingWagerReversals.map((r) => r.userId)]);
 
   // Referral commission, on the fee we ACTUALLY charged. Outside the market lock
   // for the same reason as the bonus work above: onRecruitSettlement takes the
@@ -3684,6 +3764,9 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
       audit({ category: "WALLET", action: "bonus.refund_forfeited", actorId: r.userId, targetType: "User", targetId: r.userId, payload: { requested: r.amount, refundedToBonus, forfeited: r.amount - refundedToBonus, reason: "emergency void, no active grant" } });
     }
   }
+  // An emergency void refunds EVERY position, so `pendingWagerReversals` already names every
+  // player whose balance moved — there is no winner set to collect here.
+  await emitWalletBalances(pendingWagerReversals.map((r) => r.userId));
   // Voided + settled in one action — no further time-based transition. Disarm.
   if (result.ok) void disarmMarketTimer(opts.marketId);
   return result;

@@ -13,6 +13,38 @@
  */
 import type { AdminDomain } from "@/lib/server/roles";
 
+/** Segments whose title-cased form is wrong or unreadable. Title-casing turns
+ *  "updown" into "Updown", which is not the product's name — the game is "Up & Down"
+ *  everywhere it is written. Add a segment here rather than accepting a mangled crumb. */
+const CRUMB_LABELS: Record<string, string> = {
+  updown: "Up & Down",
+  aml: "AML",
+  kyc: "KYC",
+  "ai-polls": "AI polls",
+  "ai-usage": "AI usage",
+  "2fa": "2FA",
+  dsar: "DSAR",
+};
+
+/**
+ * The breadcrumb trail for an admin route.
+ *
+ * ⭐ IT LIVES HERE FOR THE SAME REASON `activeKeyFromPath` DOES, AND IT ARRIVED FOR A BETTER
+ * ONE. It used to be private to `app/admin/layout.tsx`, which is a LAYOUT — so the trail it
+ * produced was computed once per HARD load and then preserved across every soft navigation
+ * inside the console (`E-70`). Moving it here lets `admin-crumbs.tsx` re-derive it from
+ * `usePathname()` on the client, exactly as `admin-sidebar-nav.tsx` already did for the
+ * highlight. ⚠️ Keep it PURE and free of server imports — two client components import from
+ * this module.
+ */
+export function crumbsFromPath(path: string): string[] {
+  const parts = path.replace(/^\/admin\/?/, "").split("/").filter(Boolean);
+  if (parts.length === 0) return ["Admin", "Overview"];
+  // Title-case + drop dynamic segments like ids
+  return ["Admin", ...parts.map((p) =>
+    CRUMB_LABELS[p] ?? p.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()))];
+}
+
 /** A nav item carries the RBAC `domain` it belongs to (drives visibility). Two
  *  flags override the domain check: `allStaff` (always shown to any staff — e.g.
  *  2FA setup) and `ownerOnly` (only ADMIN — e.g. staff/roles). See `filterNavGroups`. */

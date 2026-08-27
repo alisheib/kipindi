@@ -3,13 +3,25 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { activeKeyFromPath } from "./admin-nav-groups";
 import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 
 type NavItem = { href: string; label: string; key: string; badge?: string };
 type NavGroup = { group: { en: string; sw: string }; items: ReadonlyArray<NavItem> };
 
-export function AdminMobileNavTrigger({ groups, badges, activeKey, roleLabel }: { groups: ReadonlyArray<NavGroup>; badges: Record<string, string | undefined>; activeKey: string; roleLabel?: string }) {
+/**
+ * ⚠️ `fallbackKey`, NOT `activeKey`. The value the server hands down is computed in
+ * `app/admin/layout.tsx` from the `x-pathname` request header — and a LAYOUT is not
+ * re-executed on a client-side soft navigation, so it freezes on whatever route the last HARD
+ * load saw (`E-70`). `admin-sidebar-nav.tsx` has always re-derived the key from
+ * `usePathname()`; this drawer did not, so the desktop sidebar highlighted the right item while
+ * the mobile drawer beside it highlighted the previous page. Same resolver, one definition.
+ */
+export function AdminMobileNavTrigger({ groups, badges, fallbackKey, roleLabel }: { groups: ReadonlyArray<NavGroup>; badges: Record<string, string | undefined>; fallbackKey: string; roleLabel?: string }) {
+  const pathname = usePathname();
+  const activeKey = pathname ? activeKeyFromPath(pathname) : fallbackKey;
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
