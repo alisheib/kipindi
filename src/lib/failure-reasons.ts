@@ -85,13 +85,20 @@ export type FailureReason =
   /**
    * 🔴 ADDED 2026-08-27 (E-235). The player’s OWN session time limit, finally enforced.
    *
-   * ⛔ `error` + `modal`, matching `self_excluded` and `cooling_off` beside it — and I reached
-   * for `warning` first, which §6.2 correctly refused. Read this file's own definitions: a
-   * `warning` is something THE PLAYER CAN FIX. They cannot fix this one now. Raising a limit is
-   * deferred 24 hours by `setLimits`, exactly so a player cannot lift their own protection in
-   * the moment they most want to — so at the point of refusal this is a hard block they cannot
-   * lift themselves, which is the definition of `error`. The break they take is the fix, and it
-   * takes time by design.
+   * ⛔ `warning` + `toast`, and getting here took two corrections worth recording. I first wrote
+   * `warning` + `modal`; §6.2 refused it, because a warning may not seize the screen. I then
+   * wrote `error` + `modal` and justified it with a claim I had not checked — that `setLimits`
+   * defers every increase 24 hours, so the player could not lift this in the moment. **That is
+   * false for THIS field.** `responsible-gambling.ts:189` writes `sessionTimeLimitMin`
+   * immediately in both directions; only the three DEPOSIT caps are deferred (`dailyLossLimit`
+   * is immediate too). A player who hits this can raise their own limit and bet again at once.
+   *
+   * ⭐ SO `warning` IS THE HONEST ROW, BY THIS FILE'S OWN DEFINITION: the player CAN fix it and
+   * their money did not move. `toast` is sticky and stays until it is read, which is the
+   * interruption this control is for. ⚠️ Whether an INCREASE here should be deferred the way
+   * LCCP SR 3.4.3 defers deposit-limit increases is an open product question — a limit you can
+   * wave away in the moment is a weaker control than it looks. It needs a column, so it is
+   * filed rather than smuggled in here.
    */
   | "session_limit_reached"
   | "wallet_frozen"
@@ -242,7 +249,7 @@ export const REASONS: Record<FailureReason, ReasonSpec> = {
   account_blocked:      { severity: "error",   channel: "modal",  key: "failAccountBlocked" },
   self_excluded:        { severity: "error",   channel: "modal",  key: "failSelfExcluded", needs: ["until"] },
   cooling_off:          { severity: "error",   channel: "modal",  key: "failCoolingOff", needs: ["until"] },
-  session_limit_reached: { severity: "error",   channel: "modal",  key: "failSessionLimit", needs: ["limitMin"] },
+  session_limit_reached: { severity: "warning", channel: "toast",  key: "failSessionLimit", needs: ["limitMin"] },
   // 🔴 FAILURE-INVENTORY §3.1 · a FROZEN wallet used to return NOT_FOUND, which `errorCopy`
   // renders as "We couldn't find that. Refresh and try again." — so a player whose wallet had
   // been frozen was told to refresh the page. Wrong reason, wrong severity, wrong next step.
