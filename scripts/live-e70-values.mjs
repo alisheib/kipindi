@@ -444,7 +444,86 @@ async function settled() {
   } finally { await ctx.close(); await b.close(); }
 }
 
-const CMDS = { legal, balance, settled };
+// ─────────────────────────────────────────────────────────────────────────────
+// admin — the instance NOBODY reported: the breadcrumb trail across 47 pages
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * ⭐ THIS LEG EXISTS BECAUSE THE POPULATION WAS ENUMERATED FROM SOURCE RATHER THAN FROM ALI'S
+ * REPORT. `app/admin/layout.tsx` built the breadcrumb trail — and the mobile drawer's active key —
+ * from the `x-pathname` REQUEST HEADER, in the LAYOUT. Every admin page shares that layout and the
+ * sidebar is all `<Link>`s, so the trail read the PREVIOUS page after every soft navigation.
+ * ⛔ AND THE SIDEBAR BESIDE IT WAS ALREADY CORRECT: `admin-sidebar-nav.tsx` has re-derived its
+ * highlight from `usePathname()` since it was written. Two controls answering the same question,
+ * one from the client and one from a stale header, and only the wrong one looked authoritative —
+ * which is exactly why nobody reported it.
+ * ⚠️ THE ASSERTION IS THE PAIR, NOT THE TRAIL ALONE. A trail that merely CHANGES proves nothing;
+ * it must agree with the sidebar's own highlight AND name the page actually on screen.
+ */
+async function admin() {
+  const { b, ctx } = await browser();
+  const page = await ctx.newPage();
+  try {
+    await login(page, "admin");
+    const read = () => page.evaluate(() => {
+      const trail = document.querySelector('nav[aria-label="Breadcrumb"]');
+      // ⛔ THE ARIA QUESTION, NOT THE PAINT QUESTION. The first version of this probe located
+      // the active item by `a[style*="oklch"]` and matched an unrelated link — reporting a FAIL
+      // against a breadcrumb that was working. It also found the real gap: this nav signalled the
+      // current page by COLOUR ALONE, with no `aria-current`, so there was no correct question to
+      // ask. The attribute is there now (added in the same commit) and this asks for it.
+      const active = document.querySelector('a[aria-current="page"]');
+      return {
+        crumbs: trail ? (trail.innerText ?? "").replace(/\s*\n\s*/g, " ").trim() : null,
+        sidebar: active ? (active.textContent ?? "").trim() : null,
+        heading: (document.querySelector("h1")?.textContent ?? "").trim().slice(0, 40),
+      };
+    });
+
+    await page.goto(`${BASE}/admin/players`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector('nav[aria-label="Breadcrumb"]', { timeout: 45_000 });
+    await page.waitForTimeout(2_000);
+    const first = await read();
+    rec.check("1: a HARD load of /admin/players names Players in the trail (this was never in doubt)",
+      /players/i.test(first.crumbs ?? ""), `trail: ${first.crumbs} · sidebar: ${first.sidebar}`);
+
+    await plant(page);
+    // ⛔ A REAL SIDEBAR <Link>, which is what makes this a soft navigation inside the shared layout.
+    const link = page.locator('aside a[href="/admin/markets"], nav a[href="/admin/markets"]').first();
+    await link.waitFor({ state: "visible", timeout: 20_000 });
+    await link.click({ timeout: 20_000 });
+    await page.waitForURL("**/admin/markets", { timeout: 30_000 }).catch(() => {});
+    await page.waitForTimeout(2_500);
+    rec.check("2: ⛔ the click was a SOFT navigation — the admin layout was preserved, which is the condition",
+      await survived(page), `url ${page.url().replace(BASE, "")}`);
+    const second = await read();
+    rec.check("3: ★★ the breadcrumb trail followed the click — it used to keep reading the page you came FROM",
+      /markets/i.test(second.crumbs ?? "") && !/players/i.test(second.crumbs ?? ""),
+      `trail: ${second.crumbs} · url ${page.url().replace(BASE, "")}`);
+    rec.check("3: ★ …and it agrees with the sidebar highlight, which was already right — the pair is the assertion",
+      /markets/i.test(second.crumbs ?? "") && /markets/i.test(second.sidebar ?? ""),
+      `trail: ${second.crumbs} · sidebar: ${second.sidebar}`);
+    await shot(page, "e70-admin-crumbs-after-click");
+
+    // One more hop, to a route whose crumb label is REWRITTEN (Up & Down, not "Updown") — so the
+    // client resolver is proven to be the same one, not a re-implementation that lost the map.
+    await plant(page);
+    const ud = page.locator('aside a[href="/admin/updown"], nav a[href="/admin/updown"]').first();
+    if (await ud.isVisible().catch(() => false)) {
+      await ud.click({ timeout: 20_000 });
+      await page.waitForURL("**/admin/updown", { timeout: 30_000 }).catch(() => {});
+      await page.waitForTimeout(2_500);
+      const third = await read();
+      rec.check("4: ★ the CLIENT resolver still carries the label map — the crumb reads \"Up & Down\", never \"Updown\"",
+        /up & down/i.test(third.crumbs ?? ""), `trail: ${third.crumbs}`);
+      rec.check("4: ⛔ …and that hop was soft too", await survived(page), `url ${page.url().replace(BASE, "")}`);
+      await shot(page, "e70-admin-crumbs-updown");
+    } else {
+      rec.note("4: no /admin/updown link visible for this role — label-map half skipped, not scored.");
+    }
+  } finally { await ctx.close(); await b.close(); }
+}
+
+const CMDS = { legal, balance, settled, admin };
 if (!CMDS[CMD]) throw new Error(`unknown command "${CMD}" — ${Object.keys(CMDS).join(" | ")}`);
 try { await CMDS[CMD](); } finally { await sql.end(); }
 rec.done();

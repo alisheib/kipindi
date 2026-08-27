@@ -240,6 +240,7 @@
     "load:nida-race": "tsx scripts/load/s14-kyc-nida-race.mts",
     "load:kyc-race": "tsx scripts/load/s15-kyc-decision-race.mts",
     "ops:admin-2fa-readiness": "node scripts/admin-2fa-readiness.mjs",
+    "ops:deposit-failures": "node scripts/live/ops/deposit-failures.cjs",
     "ops:backup-status": "node scripts/live/ops/backup-status.cjs",
     "ops:selcom-statement-census": "node scripts/live/ops/selcom-statement-census.cjs",
     "ops:backup-verify-offbox": "node scripts/backup-verify-offbox.mjs",
@@ -554,7 +555,8 @@
     "qa:bonus-relock": "node scripts/live-bonus-j.mjs relock",
     "qa:e70-legal": "node scripts/live-e70-values.mjs legal",
     "qa:e70-balance": "node scripts/live-e70-values.mjs balance",
-    "qa:e70-settled": "node scripts/live-e70-values.mjs settled"
+    "qa:e70-settled": "node scripts/live-e70-values.mjs settled",
+    "qa:e70-admin": "node scripts/live-e70-values.mjs admin"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

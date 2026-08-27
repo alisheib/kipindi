@@ -116,6 +116,9 @@ export function AdminMobileNavTrigger({ groups, badges, fallbackKey, roleLabel }
                         key={it.key}
                         href={it.href as never}
                         onClick={() => setOpen(false)}
+                        // Same reason as admin-sidebar-nav: the current page was signalled by
+                        // colour and weight alone, in a drawer whose whole purpose is orientation.
+                        aria-current={active ? "page" : undefined}
                         className={[
                           "flex items-center justify-between rounded-md px-2.5 py-2 text-body-sm transition-colors",
                           active

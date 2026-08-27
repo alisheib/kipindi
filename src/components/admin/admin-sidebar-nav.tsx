@@ -27,6 +27,12 @@ export function AdminSidebarNav({ groups, badges, fallbackKey }: { groups: Reado
               <Link
                 key={it.key}
                 href={it.href as never}
+                // ⛔ THE CURRENT PAGE WAS COMMUNICATED BY COLOUR ALONE. This nav marked the active
+                // item with a background and a font weight and nothing else — so a screen reader
+                // had no way to know where it was, and no probe could assert it without asking a
+                // question about paint. The legal sidebar has always carried this attribute; this
+                // one had not. WCAG 1.4.1 (use of colour) and 2.4.8 (location).
+                aria-current={active ? "page" : undefined}
                 className={[
                   "flex items-center justify-between rounded-md px-2.5 py-2 text-body-sm transition-colors",
                   active

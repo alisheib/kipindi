@@ -177,6 +177,22 @@ for (const [f, what, consumes] of CLIENT_DERIVERS) {
      "naming it `activeKey` is what made a stale value look authoritative for a year");
 }
 
+{
+  // ⛔ AND THE CURRENT PAGE MUST BE SAYABLE, NOT ONLY PAINTABLE. Both admin navs used to mark the
+  // active item with a background and a font weight and NOTHING ELSE — so a screen reader had no
+  // way to know where it was, and a probe could only ask a question about paint. The first version
+  // of `qa:e70-admin` did exactly that: it matched an unrelated link and reported a FAIL against
+  // a breadcrumb that was working. WCAG 1.4.1 / 2.4.8, and it is what makes §3 assertable at all.
+  for (const [f, what] of [
+    ["src/components/admin/admin-sidebar-nav.tsx", "the admin sidebar"],
+    ["src/components/admin/admin-mobile-nav.tsx", "the admin mobile drawer"],
+    ["src/app/legal/legal-nav.tsx", "the legal nav"],
+  ] as const) {
+    ok(`3.5 ${what} announces the current page with aria-current, not with colour alone`,
+       /aria-current=\{active \? "page" : undefined\}/.test(read(f)), f);
+  }
+}
+
 // ── §4 · THE AUTH BOUNCE RE-EXECUTES, AND KEEPS THE PROPERTY THAT MAKES IT SAFE ────────────
 console.log("\n§4 · the bounce off login/register runs in the PAGES, which do re-execute");
 {
