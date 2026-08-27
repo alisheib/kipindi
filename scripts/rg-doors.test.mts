@@ -293,6 +293,17 @@ console.log("\n§6 · the screen shows the refusal the server computed (E-240, m
   // ⚠️ A bookmarked or stale link must keep working rather than silently showing nothing.
   ok("6.6 the old `?excluded=1` link still renders the serving panel",
     /excluded === "1"/.test(PAGE));
+  // ⭐ …BUT THE COMMON PATH MUST NOT BE THE COMPATIBILITY SHIM. A player who self-excludes lands
+  // on this screen immediately, so that redirect is the route real people take; leaving it on
+  // `=1` meant the named branch was reached only from a FAILED sign-in — the rarest route
+  // exercising the code and the commonest one on the fallback. It carries the end date too,
+  // because this is the moment the player is told how long the break they chose actually lasts.
+  {
+    const RG_ACTION = decomment(readFileSync("src/app/profile/responsible-gambling/actions.ts", "utf8").replace(/\r\n/g, "\n"));
+    ok("6.9 self-excluding sends the player to the NAMED serving panel, with the end date",
+      /excluded=serving/.test(RG_ACTION) && /until=/.test(RG_ACTION),
+      "the real path must not ride the stale-link alias");
+  }
 
   // 🔴 AND THE COOL-OFF BANNER WAS TELLING THE OPPOSITE LIE. `?cooled=1` is set right after a
   // player takes a break (profile/responsible-gambling/actions.ts) and its copy said "you will

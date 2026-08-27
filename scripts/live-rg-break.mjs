@@ -497,7 +497,12 @@ async function session() {
       !/\/auth\/login/.test(page.url()), `landed on ${page.url().replace(BASE, "")}`);
 
     // ── set the limit through the REAL form ────────────────────────────────
-    await page.goto(`${BASE}/profile/responsible-gambling`, { waitUntil: "networkidle" });
+    // ⛔ NOT `networkidle`, AND THE FIRST RUN DIED ON IT. A signed-in page on this platform
+    // never goes network-idle: the shell runs a 2-second notification poller, so the condition
+    // can only ever time out — 30s of waiting that photographs exactly like a broken page.
+    // Wait for the CONTROL under test instead; that is the thing whose absence would matter.
+    await page.goto(`${BASE}/profile/responsible-gambling`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector('input[name="sessionTimeLimitMin"]', { timeout: 60_000 });
     const field = page.locator('input[name="sessionTimeLimitMin"]');
     rec.check("2: the session-limit field is on the page", (await field.count()) === 1);
     await field.click();
@@ -548,7 +553,8 @@ async function session() {
     await shot(page, "rg-session-limit");
 
     // ── leave the account as it was found ──────────────────────────────────
-    await page.goto(`${BASE}/profile/responsible-gambling`, { waitUntil: "networkidle" });
+    await page.goto(`${BASE}/profile/responsible-gambling`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector('input[name="sessionTimeLimitMin"]', { timeout: 60_000 });
     const f2 = page.locator('input[name="sessionTimeLimitMin"]');
     await f2.click();
     await page.keyboard.press("ControlOrMeta+A");
@@ -670,7 +676,9 @@ async function excluded() {
     try {
       const admin = await ctx.newPage();
       await login(admin, "admin");
-      await admin.goto(`${BASE}/admin/players/${u.id}`, { waitUntil: "networkidle" });
+      // Same reason as the player page above: the admin shell polls, so networkidle never fires.
+      await admin.goto(`${BASE}/admin/players/${u.id}`, { waitUntil: "domcontentloaded" });
+      await admin.waitForSelector("main", { timeout: 60_000 });
       const btn = admin.locator('button:has-text("Reopen after self-exclusion")');
       const present = (await btn.count()) > 0;
       rec.check("4: ★ the officer is OFFERED a reopen, because the minimum has been served", present,

@@ -42,9 +42,18 @@ export async function selfExcludeAction(formData: FormData) {
   if (!(period in SELF_EXCLUSION_PERIODS_SEC)) {
     redirect(`/profile/responsible-gambling?reason=rg_period_invalid`);
   }
-  await selfExclude(session.userId, period as keyof typeof SELF_EXCLUSION_PERIODS_SEC);
+  const res = await selfExclude(session.userId, period as keyof typeof SELF_EXCLUSION_PERIODS_SEC);
   await destroySession();
-  redirect("/auth/login?excluded=1");
+  // ⭐ `serving`, EXPLICITLY, AND WITH THE END DATE — not the `?excluded=1` alias.
+  //
+  // This is the path a REAL player takes: they press the button and land here immediately. The
+  // alias still renders the serving panel so a bookmarked link keeps working, but leaving the
+  // common path on a compatibility shim meant the named branch was reached only from a failed
+  // sign-in — the rarest route exercising the code, the commonest route on the fallback.
+  // The date matters here more than anywhere: this is the moment the player is told how long
+  // the break they just chose actually lasts.
+  const until = res?.data?.until ? `&until=${encodeURIComponent(res.data.until.slice(0, 10))}` : "";
+  redirect(`/auth/login?excluded=serving${until}`);
 }
 
 export async function coolOffAction(formData: FormData) {
