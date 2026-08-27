@@ -1682,7 +1682,23 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
           subtitle={
             resultData.variant === "success"
               ? (marketTitle ?? t.common.positionOpenNotify)
-              : t.common.stakeHasntMoved
+              // 🔴 E-234 · THE REASON WAS COMPUTED AND THEN GUARANTEED UNREAD. This subtitle was
+              // the constant `t.common.stakeHasntMoved`, and the failure path passes the reason
+              // copy in as `error` (`error: mapped.body`) while ALSO setting `title` — so the
+              // `title ?? error` precedence on the line above meant `error` could never be
+              // reached. **Every refusal on this card showed the same two lines**: a generic
+              // headline and a hardcoded claim. The whole failure registry — the severity, the
+              // three languages, the interpolated figures — was assembled and dropped.
+              // ⛔ MEASURED ON PRODUCTION, and it is what sent me looking: a player inside a
+              // self-imposed cooling-off break tapped Confirm and was told *"Could not place ·
+              // Your stake hasn't moved."* Nothing about the break, nothing about when it lifts,
+              // no route to the Responsible Gambling page. The correct sentence existed, in his
+              // language, and this line threw it away.
+              // ⚠️ AND THE OLD CONSTANT WAS A CLAIM WE CANNOT ALWAYS SUPPORT. `failure-reasons.ts`
+              // §C4 says so in as many words about `system_error`: *"telling that player 'we're
+              // busy, your stake hasn't moved' is a claim we cannot support."* It stays only as
+              // the fallback for a failure that arrived with no reason at all.
+              : (resultData.error ?? t.common.stakeHasntMoved)
           }
           details={resultData.variant === "success" ? [
             ...(resultData.positionId ? [{ label: t.common.ticket, value: resultData.positionId }] : []),

@@ -1008,6 +1008,52 @@ console.log("\n§9d · every reason in the registry is emitted by something");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// §9e · ⛔ THE REASON MUST REACH THE SCREEN, NOT MERELY BE COMPUTED
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// 🔴 E-234. Every section above this one proves the reason is CHOSEN correctly: the row exists,
+// the copy exists in three languages, the severity and channel are right, the service emits it,
+// `renderFailure` interpolates the figures. **And on the poll bet card none of that reached the
+// player.** `conviction-dial.tsx` passed the reason copy into the result modal as `error` while
+// also setting `title`, and the modal renders `title ?? error` — so `error` could never be read.
+// The subtitle beneath it was the CONSTANT `t.common.stakeHasntMoved`.
+//
+// ⛔ MEASURED ON PRODUCTION 2026-08-27: a player inside a self-imposed cooling-off break tapped
+// Confirm and was told *"Could not place · Your stake hasn't moved."* — a generic headline and a
+// hardcoded claim, identical for every refusal the card can produce, with the correct sentence
+// sitting one variable away. ⚠️ And that constant is itself a claim `failure-reasons.ts` §C4 says
+// we cannot always support.
+//
+// ⭐ THE THREE FAILURE SURFACES ARE CHECKED TOGETHER because two of them were already right —
+// `sell-button.tsx` renders the reason as its TITLE and `updown-bet-blocked-modal.tsx` renders it
+// as its SUBTITLE. The bet card was the odd one out, which is exactly why nothing caught it: the
+// contract was honoured everywhere a reader was likely to look.
+console.log("\n§9e · the chosen reason actually reaches the player's screen");
+{
+  const SURFACES = [
+    ["src/components/markets/conviction-dial.tsx", "the poll bet card", /subtitle=\{[\s\S]{0,2600}?resultData\.error/],
+    ["src/components/markets/sell-button.tsx", "the cash-out button", /title=\{[\s\S]{0,400}?resultData\.error/],
+    ["src/components/updown/updown-bet-blocked-modal.tsx", "the Up & Down blocked modal", /subtitle=\{blocked\?\.body\}/],
+  ] as const;
+  for (const [file, what, re] of SURFACES) {
+    const src = readFileSync(file, "utf8").replace(/\r\n/g, "\n");
+    ok(`9e.${what} · the reason copy is RENDERED, not just handed in`, re.test(src),
+       `${file} — the reason is computed and discarded, which is E-234's exact shape`);
+  }
+  // ⭐ CONTROL · the patterns must be able to say NO, or all three pass vacuously.
+  ok("9e.control · the same check reads a surface that does NOT render a reason as absent",
+     !/subtitle=\{[\s\S]{0,2600}?resultData\.error/.test("<X subtitle={t.common.stakeHasntMoved} />"));
+  // ⛔ AND THE CONSTANT MAY NOT COME BACK AS THE UNCONDITIONAL SUBTITLE. It survives ONLY as the
+  // fallback for a failure that arrived with no reason at all.
+  {
+    const dial = readFileSync("src/components/markets/conviction-dial.tsx", "utf8").replace(/\r\n/g, "\n");
+    ok("9e.constant · stakeHasntMoved appears only as a FALLBACK, never as the whole subtitle",
+       !/:\s*t\.common\.stakeHasntMoved\s*\n\s*\}/.test(dial) || /resultData\.error \?\? t\.common\.stakeHasntMoved/.test(dial),
+       "the hardcoded claim is back in front of every refusal");
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // §10 · THE RAW-SERVER-STRING RATCHET — the count may only go down
 // ═══════════════════════════════════════════════════════════════════════════
 // `docs/FAILURE-INVENTORY.md` §1.5 counts the surfaces that put `r.error` — the server's
