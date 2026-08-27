@@ -33,7 +33,7 @@ import { computeWithdrawalFee, minWithdrawalForRate, PROVIDER_MIN_PAYOUT_TZS } f
 import { payoutDestinationFor } from "@/lib/payout-destination";
 import type { z } from "zod";
 import type { ServiceResult } from "./auth-service";
-import { formatTzs } from "@/lib/utils";
+import { formatTzs, formatDateTime } from "@/lib/utils";
 
 /**
  * Source-of-Funds thresholds (AML Act 2006 + LCCP SR 9.2). An accepted SoF
@@ -144,7 +144,18 @@ export async function deposit(
   const lockout = await isLockedOut(userId);
   if (lockout.locked) {
     await audit({ category: "COMPLIANCE", action: "deposit.lockout_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { reason: lockout.reason, until: lockout.until } });
-    return { ok: false, error: `You are in a ${lockout.reason === "self_exclusion" ? "self-exclusion" : "cooling-off"} period until ${new Date(lockout.until!).toLocaleString("en-GB")}.`, code: "SUSPENDED" };
+    // 🔴 E-232 · THIS ONE WAS LOCALISED, BUT ONLY BY LUCK OF WORDING. `error-copy.ts` matched
+    // the English words "self-exclusion|cooling-off" in this very sentence to reach
+    // `errBreakActive` — so the player's language depended on a server string nobody was
+    // treating as an interface. Its sibling on the betting path had already drifted out of that
+    // match and was telling self-excluded players to try again shortly. **A reason beats prose**
+    // (this file's own §7 rule), and the reason carries the END DATE the phrase test dropped.
+    const until = formatDateTime(lockout.until!);
+    // Two branches for the same reason as the betting gate — see the note there.
+    if (lockout.reason === "cooling_off") {
+      return { ok: false, error: `You are in a cooling-off period until ${until}.`, code: "SUSPENDED", reason: "cooling_off", detail: { until } };
+    }
+    return { ok: false, error: `You are in a self-exclusion period until ${until}.`, code: "SUSPENDED", reason: "self_excluded", detail: { until } };
   }
 
   // ── Atomic reservation: RG deposit-cap + SOF gate + PROCESSING row (audit C4) ──

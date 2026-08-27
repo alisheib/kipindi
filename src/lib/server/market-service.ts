@@ -50,7 +50,7 @@ import type { ServiceResult } from "./auth-service";
 import { marketStore, positionStore } from "./market-dal";
 // E-94 · a void refund names the reason the player was already given everywhere else.
 import { roundStore } from "./updown-dal";
-import { formatTzs } from "@/lib/utils";
+import { formatTzs, formatDateTime } from "@/lib/utils";
 import { sideWordIn, outcomeWordIn } from "@/lib/side-label";
 // E-101 · one rule for "where does this ticket live", shared with the wallet, the round page
 // and the emails.
@@ -868,8 +868,32 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
     return { ok: false, error: await maintenanceMessage(), code: "SUSPENDED", reason: "maintenance" as const };
   }
 
+  // 🔴 E-232 · THIS REFUSAL USED TO TELL A SELF-EXCLUDED PLAYER TO COME BACK SOON.
+  // It returned `{ error: "Locked until 27/08/2026, 19:41:00.", code: "SUSPENDED" }` and NO
+  // `reason`. `error-copy.ts`'s SUSPENDED arm disambiguates by phrase-matching the English
+  // prose for "self-exclusion|cooling-off" — words this sentence does not contain — so it fell
+  // through to `errSuspended`: **"This service is temporarily paused. Try again shortly."**
+  // ⛔ On the responsible-gambling path that is the worst sentence available: it reads as an
+  // operator outage rather than the player's own protective choice, it hides the route to the
+  // RG page, and it INVITES THEM BACK. Measured on `f0521356`; the branch immediately above
+  // this one (maintenance) already emitted a reason, so the pattern was in front of us.
+  // ⭐ AND THE COPY ALREADY EXISTED, IN THREE LANGUAGES, WITH THE DATE AS DATA — `self_excluded`
+  // / `failSelfExcluded` has been in the registry since C2 and NOTHING HAS EVER EMITTED IT.
+  // ⚠️ `formatDateTime`, not `toLocaleString("en-GB")`: the platform's timezone is
+  // admin-configured, and the old call rendered the end of a player's break in whatever zone
+  // the container happened to be in.
   const lockout = await isLockedOut(userId);
-  if (lockout.locked) return { ok: false, error: `Locked until ${new Date(lockout.until!).toLocaleString("en-GB")}.`, code: "SUSPENDED" };
+  if (lockout.locked) {
+    const until = formatDateTime(lockout.until!);
+    // ⛔ TWO BRANCHES, NOT A TERNARY, AND THAT IS A GUARD REQUIREMENT RATHER THAN A STYLE.
+    // `test:failure-reasons` §8c pins a service's reasons on the LITERAL `reason: "x"` — the
+    // token a refactor drops silently — and a ternary hides it from that pin. Measured:
+    // `red:failure-reasons` reported this very mutation as NOT CAUGHT while the ternary stood.
+    if (lockout.reason === "cooling_off") {
+      return { ok: false, error: `Cooling-off until ${until}.`, code: "SUSPENDED", reason: "cooling_off", detail: { until } };
+    }
+    return { ok: false, error: `Self-exclusion until ${until}.`, code: "SUSPENDED", reason: "self_excluded", detail: { until } };
+  }
 
   // Account-level status check — a suspended or closed user must not
   // be able to place bets even if their wallet is still nominally
@@ -890,12 +914,27 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
       targetId: userId,
       payload: { status: u.status },
     });
+    // 🔴 E-232 · A SECOND, INDEPENDENT ROUTE TO THE SAME WRONG SENTENCE, and measuring it is
+    // what showed the phrase test could never have worked. `error-copy.ts`'s SUSPENDED arm
+    // matches `/self-exclusion|cooling-off/i` — and these strings say **"self-excluded"** and
+    // **"cool-off"**, neither of which that pattern matches. So a player whose STATUS says
+    // SELF_EXCLUDED was ALSO told *"This service is temporarily paused. Try again shortly."*
+    // ⛔ Two routes to one refusal, and the disambiguator matched NEITHER of them. That is
+    // `error-copy.ts` §7's own prediction, arrived at from both directions at once.
+    // ⚠️ AND THESE WERE EN·SW ONLY — a Chinese player got two languages, neither of them theirs.
+    // ⭐ IT EMITS `account_blocked` FOR ALL FOUR STATUSES, AND THAT IS DELIBERATE RATHER THAN
+    // LAZY. This branch exists only for the case where the RG TIMER and the account STATUS have
+    // DIVERGED (the comment above says so), so there is no trustworthy end date to state — and
+    // `failSelfExcluded` needs one. Naming a break while being unable to say when it lifts is
+    // worse than routing the player to someone who can look: *"Your account can't place bets at
+    // the moment. Contact support and we'll explain why."* The English `error` string keeps the
+    // status for the audit record, where the distinction does matter.
     const blockedMsg =
       u.status === "SUSPENDED" ? "Account suspended. Contact support." :
       u.status === "CLOSED" ? "Account closed." :
-      u.status === "SELF_EXCLUDED" ? "You're self-excluded — betting is disabled. · Umejizuia kucheza." :
-      "You're on a cool-off break — betting is paused. · Uko kwenye mapumziko.";
-    return { ok: false, error: blockedMsg, code: "SUSPENDED" };
+      u.status === "SELF_EXCLUDED" ? "Self-excluded (status set without a live RG timer) — betting is disabled." :
+      "Cooled off (status set without a live RG timer) — betting is paused.";
+    return { ok: false, error: blockedMsg, code: "SUSPENDED", reason: "account_blocked" as const };
   }
 
   const market = await marketStore.get(opts.marketId);

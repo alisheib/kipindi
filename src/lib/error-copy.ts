@@ -82,9 +82,22 @@ export function errorCopy(t: Dict, r: ActionFailure): string {
     case "VOTING_CLOSED":
       return t.error.errVotingClosed;
     case "SUSPENDED": {
-      // Three families share this code: an RG break the player set, a frozen
-      // wallet, and an operator pause. Different next actions → disambiguate.
-      if (/self-exclusion|cooling-off/i.test(err)) return t.error.errBreakActive;
+      // Three families share this code: an RG break the player set, a frozen wallet, and an
+      // operator pause. The frozen-wallet phrase test remains; the RG one is GONE.
+      //
+      // 🔴 E-232 · THE DELETED TEST WAS `/self-exclusion|cooling-off/i`, AND IT WAS ALREADY
+      // FAILING ON EVERY ROUTE BUT ONE. Measured 2026-08-27: of the THREE places that refuse a
+      // locked-out player, the deposit gate said "self-exclusion period" and matched; the
+      // betting gate said "Locked until <date>." and matched nothing; the account-status branch
+      // said "self-excluded" and "cool-off", which this pattern does not match either. **Two of
+      // the three fell through to `errSuspended` — "This service is temporarily paused. Try
+      // again shortly." — which reads as an operator outage, hides the route to the
+      // Responsible Gambling page, and invites a self-excluded player back.**
+      // ⭐ All three now emit `self_excluded` / `cooling_off` / `account_blocked`, so the
+      // registry answers before this switch is reached, with the END DATE as data and copy in
+      // three languages. ⛔ Per this file's §7, the prose route is DELETED rather than left
+      // beside its replacement: two routes to one refusal is how they drift, and this pair had
+      // already drifted before anybody looked.
       if (/frozen/i.test(err)) return t.error.errWalletFrozen;
       return t.error.errSuspended;
     }

@@ -68,6 +68,17 @@ console.log("  ✓ CONTROL  the unmutated tree is GREEN — a red below is cause
 
 const MUTATIONS = [
   {
+    name: "rg-lockout-loses-its-reason",
+    why: "🔴 E-232, PUT BACK. The betting gate stops emitting a reason for a locked-out player, so " +
+         "the refusal falls through error-copy.ts to errSuspended — *This service is temporarily " +
+         "paused. Try again shortly.* — an operator outage in place of the player own protective " +
+         "choice, with no route to the RG page and an invitation to come back. §9d must catch it: " +
+         "the row keeps its copy in three languages and loses the only thing that reaches it.",
+    file: MARKET,
+    from: `    return { ok: false, error: \`Self-exclusion until \${until}.\`, code: "SUSPENDED", reason: "self_excluded", detail: { until } };`,
+    to: `    return { ok: false, error: \`Self-exclusion until \${until}.\`, code: "SUSPENDED" };`,
+  },
+  {
     name: "bounds-refusal-carries-no-reason",
     why: "⭐ THE SHIPPED SOURCE — the stake-bounds refusal with no reason and no detail. RULES.md §2.3 is unmet on BOTH products: the server names the minimum and neither surface shows it",
     file: MARKET,

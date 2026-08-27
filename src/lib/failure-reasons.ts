@@ -70,6 +70,18 @@ export type FailureReason =
   | "maintenance"
   | "account_blocked"
   | "self_excluded"
+  /**
+   * 🔴 ADDED 2026-08-27 (E-232). `self_excluded` and `break_active` were already here, with
+   * copy in three languages — and `isLockedOut` distinguishes TWO states: a self-exclusion and
+   * a COOLING-OFF period. There was no row for the second, so a cooled-off player could only
+   * ever be told about a self-exclusion they had not chosen. The two are different lengths,
+   * different commitments and different conversations, and the player set one of them
+   * deliberately; calling it by the other name is not a rounding error.
+   * ⛔ Severity `error` and channel `modal` deliberately match `self_excluded`: by this file's
+   * own definitions a cooling-off is "a hard block they cannot lift themselves", and a
+   * compliance block is the one case `modal` exists for.
+   */
+  | "cooling_off"
   | "wallet_frozen"
   | "wallet_missing"
   // ── cashOutPosition ──────────────────────────────────────────────────────
@@ -157,7 +169,11 @@ export type FailureReason =
   | "password_weak"
   | "voting_closed"
   | "proposals_paused"
-  | "break_active"
+  // ⛔ `break_active` WAS DELETED HERE (E-232, 2026-08-27) AND MUST NOT COME BACK.
+  // It said "a break you set" without saying WHICH break or WHEN it lifts, and nothing had
+  // ever emitted it. `self_excluded` and `cooling_off` say both, carry the end date as data,
+  // and are emitted by all three refusal sites. A generic row beside two specific ones is a
+  // second plausible destination for a reader — the shape §9b already deleted six codes over.
   | "account_suspended"
   | "not_found"
   | "signin_required"
@@ -213,6 +229,7 @@ export const REASONS: Record<FailureReason, ReasonSpec> = {
   maintenance:          { severity: "error",   channel: "toast",  key: "failMaintenance" },
   account_blocked:      { severity: "error",   channel: "modal",  key: "failAccountBlocked" },
   self_excluded:        { severity: "error",   channel: "modal",  key: "failSelfExcluded", needs: ["until"] },
+  cooling_off:          { severity: "error",   channel: "modal",  key: "failCoolingOff", needs: ["until"] },
   // 🔴 FAILURE-INVENTORY §3.1 · a FROZEN wallet used to return NOT_FOUND, which `errorCopy`
   // renders as "We couldn't find that. Refresh and try again." — so a player whose wallet had
   // been frozen was told to refresh the page. Wrong reason, wrong severity, wrong next step.
@@ -299,7 +316,6 @@ export const REASONS: Record<FailureReason, ReasonSpec> = {
   id_expiry_required:   { severity: "warning", channel: "inline", key: "errIdExpiryRequired" },
   // ⛔ A BREAK THE PLAYER SET THEMSELVES IS NOT A FAULT — it is the tool working. Error
   // severity, because they cannot lift it, but never phrased or coloured as a malfunction.
-  break_active:         { severity: "error",   channel: "modal",  key: "errBreakActive" },
   account_suspended:    { severity: "error",   channel: "modal",  key: "errSuspended" },
   signin_required:      { severity: "warning", channel: "toast",  key: "errSignIn" },
 

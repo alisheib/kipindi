@@ -409,7 +409,11 @@ console.log("\n§8 · the phrase tests still match the server's own words");
     // second wording for a refusal the registry already words better.
     // ⛔ What is LEFT is the honest remainder, and it is NOT an INVALID: both survivors sit under
     // `SUSPENDED`, which is deliberately unmapped because it means four different things.
-    { name: "self-exclusion",       code: "SUSPENDED", re: /self-exclusion|cooling-off/i,       expect: t.error.errBreakActive },
+    // ⛔ E-232 · REMOVED FROM §8, WHICH TESTS THE PHRASE-TEST ROUTE, BECAUSE THAT ROUTE IS GONE.
+    // It is NOT deleted coverage: §8b/§8c below assert the RG refusals on the REASON route, which
+    // is where all three of them travel now, and §9d asserts that every one of those rows really
+    // has an emitter. Leaving the row here would have asserted the DEFECT — the phrase test that
+    // two of the three refusals never matched.
     { name: "wallet frozen",        code: "SUSPENDED", re: /frozen/i,                           expect: t.error.errWalletFrozen },
   ];
 
@@ -564,14 +568,24 @@ console.log("\n§8c · the services still emit the reasons that replaced the phr
     // asserted separately below rather than left implicit. It was retired on 2026-08-20
     // with the withdrawal identity gate (Board comment #1, 2026-08-19): union member,
     // registry row, three dictionary keys and this pin went together.
+    // ⭐ E-232 · THE TWO RG BREAK REFUSALS ARE PINNED PER SITE, and that is not redundant with
+    // §9d. §9d asks whether a ROW is reachable AT ALL; these ask whether THIS PATH still says
+    // why. `red:failure-reasons` proved the difference: removing the reason from the betting
+    // gate alone left §9d green, because the deposit gate still emitted it — and a self-excluded
+    // player trying to BET was back to "This service is temporarily paused. Try again shortly."
     { file: "src/lib/server/wallet-service.ts", reasons: [
       "deposit_limit", "sof_required", "withdraw_below_min",
+      "self_excluded", "cooling_off",
     ] },
     // ⭐ THE ONE THAT CLOSED `docs/RULES.md` §2.9's ⏳. `checkLossLimit` has exactly ONE caller
     // — `buyPosition` — and it is the sole route by which an RG daily-loss refusal can reach a
     // player on either product. If this token goes, both surfaces fall to their generic line
     // and the LCCP acknowledge-modal silently becomes a toast.
-    { file: "src/lib/server/market-service.ts", reasons: ["loss_limit_daily"] },
+    { file: "src/lib/server/market-service.ts", reasons: [
+      "loss_limit_daily",
+      // E-232 · the lockout gate and the account-status divergence branch beneath it.
+      "self_excluded", "cooling_off", "account_blocked",
+    ] },
   ];
   for (const e of EMITTERS) {
     const src = readFileSync(e.file, "utf8");
@@ -618,8 +632,13 @@ console.log("\n§8c · the services still emit the reasons that replaced the phr
   // that changed. Prove they can still SEE a live reason and a live key.
   ok("8c.retired.control · the same checks still detect a reason that IS present",
      /\bwithdraw_below_min\s*:/.test(REASONS_CODE) && /reason:\s*"withdraw_below_min"/.test(WALLET_CODE));
+  // ⚠️ RE-POINTED 2026-08-27 (E-232). This control probed `errBreakActive`, and that key was
+  // deleted with the generic `break_active` row it served — so the control started failing on a
+  // correct tree, which is precisely the "guard that cries wolf" it was written to prevent one
+  // layer down. ⭐ It now probes `failSelfExcluded`: a key that is not merely PRESENT but
+  // genuinely REACHABLE, since E-232 gave its row an emitter on all three refusal paths.
   ok("8c.retired.control · …and still detect a dictionary key that IS present",
-     "errBreakActive" in ((DICT as Record<string, { error: Record<string, string> }>).en.error));
+     "failSelfExcluded" in ((DICT as Record<string, { error: Record<string, string> }>).en.error));
 
   // ⭐ 8c.loss-limit · AND THE ONE-CALLER CLAIM IS ASSERTED, NOT ASSUMED.
   // ⛔ The pin above proves `buyPosition` still says why. It does NOT prove that `buyPosition`
@@ -658,11 +677,13 @@ console.log("\n§8c · the services still emit the reasons that replaced the phr
   ok("8c.banner · ⛔ an UNKNOWN reason renders NOTHING, rather than echoing itself",
      bannerFor("Your account is suspended, call +255000000", dict) === null);
   ok("8c.banner · …and an absent reason renders nothing", bannerFor(undefined, dict) === null);
-  // Re-pointed 2026-08-20: this measured severity→tone through `kyc_required`, which no
-  // longer exists. `break_active` is the nearest equivalent still in the registry — same
-  // `error` severity, same `modal` channel — so the assertion measures what it always did
-  // rather than being deleted along with its subject.
-  ok("8c.banner · severity drives the tone", bannerFor("break_active", dict)?.tone === "danger");
+  // Re-pointed 2026-08-20 (from `kyc_required`) and AGAIN 2026-08-27 (from `break_active`,
+  // deleted by E-232 as a generic row standing beside two specific ones). `self_excluded` is
+  // the nearest equivalent still in the registry — same `error` severity, same `modal` channel
+  // — so the assertion measures what it always did rather than being deleted with its subject.
+  // ⭐ AND IT IS NOW POINTED AT A ROW SOMETHING ACTUALLY EMITS, which the previous two targets
+  // were not: `kyc_required` was retired and `break_active` had never had an emitter at all.
+  ok("8c.banner · severity drives the tone", bannerFor("self_excluded", dict)?.tone === "danger");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -847,6 +868,142 @@ console.log("\n§9c · loudness is pinned on the reason route, not only the code
     ok(`9c.${reason} · …on the ${channel} channel`, r.channel === channel, r.channel);
     ok(`9c.${reason} · …and shows neither the server prose nor the generic line`,
        r.body !== "GENERIC" && !r.body.includes("audit prose"), r.body.slice(0, 50));
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §9d · ⛔ EVERY REASON IN THE REGISTRY IS EMITTED BY SOMETHING
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// 🔴 THIS SECTION EXISTS BECAUSE §9b GUARDED THE CODE ROUTE AND NOTHING GUARDED THE REASON
+// ROUTE — and E-232 is what walked through the gap. Measured 2026-08-27, on production code:
+// THREE rows had severity, channel and copy in all three languages, and **no emitter anywhere
+// in the application**: `self_excluded`, `break_active` and `account_blocked`. `grep -rn
+// '"self_excluded"' src/` returned exactly ONE hit — its own type declaration.
+//
+// ⛔ AND THE COST WAS NOT A TIDY-UP. The refusal a self-excluded player actually received when
+// they tried to place a bet was `errSuspended`: *"This service is temporarily paused. Try again
+// shortly."* An operator outage, in place of the player's own protective choice, with no route
+// to the Responsible Gambling page and an invitation to come back — while the correct sentence,
+// carrying the end date and translated into Swahili and Chinese, sat in the registry unused.
+//
+// ⭐ SO THE RULE IS THE SAME AS §9b's, ON THE OTHER ROUTE: a row that nothing sends is not
+// dormant, it is a promise the product is not keeping. If a row is deliberately unemitted it
+// goes in `UNEMITTED_BY_DESIGN` with a written reason, and that list is a RATCHET.
+console.log("\n§9d · every reason in the registry is emitted by something");
+{
+  const { REASONS, reasonForCode, REASON_BY_CODE_KEYS: CODE_KEYS } = await import("../src/lib/failure-reasons.ts");
+  const walkR = (dir: string, out: string[] = []): string[] => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const p = `${dir}/${e.name}`;
+      if (e.isDirectory()) walkR(p, out);
+      else if (/\.(ts|tsx)$/.test(e.name)) out.push(p);
+    }
+    return out;
+  };
+  // ⛔ The registry and the mapper are excluded for §9b's reason: a row citing itself is not an
+  // emitter, and neither is a `case` in the copy layer. An emitter RETURNS it.
+  // ⛔ THE WHOLE OF `src`, AND THE NARROWER VERSION IS WHY THIS SECTION LIED ONCE MORE.
+  // Copied from §9b, it walked only `src/lib/server` and `src/app` — so `src/lib/failure-banner.ts`,
+  // which uses `unknown_failure` as the library's OWN fallback (`reasonForCode(code) ?? "unknown_failure"`),
+  // was outside the population and the row read as dead. ⭐ A guard whose POPULATION is blind is
+  // this platform's most repeated defect and I had just written another one. §9b inherits the
+  // same narrow roots for codes and is left alone deliberately: widening it is a separate change
+  // with its own RED proof, and it is recorded in E-233 rather than done here by the way.
+  const rsources = walkR("src")
+    .filter((f) => !f.endsWith("failure-reasons.ts") && !f.endsWith("error-copy.ts"))
+    .map((f) => readFileSync(f, "utf8").replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:])\/\/.*$/gm, "$1"));
+  ok("9d.0 · fixture · the emitting tree was walked and read", rsources.length > 100, `${rsources.length} files`);
+
+  /**
+   * Does anything RETURN this reason?
+   *
+   * ⛔ COMMENTS ARE STRIPPED BEFORE THE SEARCH, and that is load-bearing rather than tidy: the
+   * commit that fixed E-232 wrote long comments NAMING `self_excluded` and `account_blocked` at
+   * the very sites that now emit them. A guard matching the raw file would have gone green on
+   * its own prose — the same trap that made three separate checks lie earlier in this session.
+   * ⛔ AND IT MUST SIT IN A `reason:` POSITION, never be a bare token: `isLockedOut` returns
+   * `reason: "self_exclusion"` (a different string) and the RG module has its own vocabulary.
+   * A type-union member (`reason: "a" | "b"`) declares what a reason may be, not that one is
+   * sent — §9b learned that from `MAINTENANCE` and the same exclusion applies here.
+   */
+  const emitsReason = (reason: string) => rsources.some((s2) => {
+    // ⛔ THREE ROUTES, NOT TWO — AND THE THIRD ONE CAUGHT THIS CHECK OUT AS WELL. The RG form
+    // does not RETURN a reason, it REDIRECTS with one — `redirect(`…?reason=rg_limit_invalid`)`
+    // — and the page renders it through the registry. A matcher written for `reason:` reported
+    // BOTH RG form refusals as unreachable when they work perfectly. So the object-property
+    // form and the query-parameter form both count.
+    // ⭐ That is the THIRD time in one session that one of my own checks matched a SYNTAX
+    // instead of the meaning, and the third time the run said so before I did.
+    const re = new RegExp(`\\breason:\\s*[^;\\n]{0,200}?["']${reason}["']([^\\n]*)|[?&]reason=${reason}\\b()|\\?\\?\\s*["']${reason}["']()`, "g");
+    for (const m of s2.matchAll(re)) {
+      const whole = m[0];
+      const after = m[1] ?? "";
+      const before = whole.slice(0, whole.lastIndexOf(reason) - 1);
+      if (/\|\s*["']?$/.test(before)) continue;
+      if (/^\s*["']?\s*\|/.test(after)) continue;
+      return true;
+    }
+    return false;
+  });
+
+  /**
+   * ⛔ A RATCHET, AND EVERY ENTRY NEEDS A WRITTEN REASON. It may only SHRINK.
+   * ⚠️ Being on this list is not absolution — it means somebody decided, in writing, that the
+   * product does not currently refuse for that reason.
+   */
+  const UNEMITTED_BY_DESIGN: Record<string, string> = {
+    account_suspended:
+      "DEBT (E-233). Its COPY is reachable — `errSuspended` is what `error-copy.ts`'s SUSPENDED "
+      + "arm falls back to — but the ROW is not, because `SUSPENDED` is deliberately absent from "
+      + "REASON_BY_CODE (four families share that code, so mapping it would mistranslate three of "
+      + "them). Wiring it means teaching the operator-pause path to emit its own reason, which is "
+      + "a separate change from E-232's RG one.",
+    sof_incomplete:
+      "DEBT (E-233). The wallet emits only the coarse `sof_required`; these two finer "
+      + "source-of-funds refusals have copy in three languages and no emitter. Wiring them is a "
+      + "money-path change in `wallet-service.withdraw`, with its own live proof.",
+    sof_locked:
+      "DEBT (E-233). See `sof_incomplete` — same emitter, same tranche.",
+  };
+
+  /**
+   * ⛔ THERE ARE TWO LEGITIMATE ROUTES TO A REASON, AND THE FIRST DRAFT OF THIS SECTION KNEW
+   * ONLY ONE — so it reported NINETEEN failures, most of them against rows that work perfectly.
+   * A guard that fails without the defect gets deleted, and this one nearly earned it.
+   *   · DIRECT — a service returns `reason: "x"`. The betting and cash-out paths do this.
+   *   · BY CODE — `REASON_BY_CODE` maps a server CODE to the reason, and `reasonForCode`
+   *     resolves it. §9's own header says the second tranche was built exactly this way,
+   *     "without changing a single service". `§9b` already proves every code in that map is
+   *     really emitted, so a row reachable this way is reachable, full stop.
+   * ⭐ A row is a FINDING only when NEITHER route reaches it. That is the set E-232 lived in.
+   */
+  const codeRouteFor = (reason: string) => CODE_KEYS.filter((c: string) => reasonForCode(c) === reason);
+  for (const reason of Object.keys(REASONS)) {
+    const direct = emitsReason(reason);
+    const viaCode = codeRouteFor(reason);
+    if (UNEMITTED_BY_DESIGN[reason]) {
+      ok(`9d.${reason} · declared unreachable BY DESIGN, with a reason`, !direct && viaCode.length === 0,
+         `it is reachable now — delete its UNEMITTED_BY_DESIGN entry: ${UNEMITTED_BY_DESIGN[reason]}`);
+      continue;
+    }
+    ok(`9d.${reason} · a player can actually reach this row`, direct || viaCode.length > 0,
+       `NEITHER route reaches "${reason}": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape`);
+  }
+  // ⭐ AND THE TWO ROUTES ARE COUNTED, so this section cannot quietly become a test of the code
+  // map alone the day somebody deletes a direct emitter.
+  {
+    const direct = Object.keys(REASONS).filter((r) => emitsReason(r));
+    ok("9d.routes · both routes are in use — direct emitters exist and the code map is populated",
+       direct.length >= 20 && CODE_KEYS.length >= 10,
+       `${direct.length} reasons emitted directly · ${CODE_KEYS.length} codes mapped`);
+  }
+  // ⭐ CONTROL · the walk must be able to say NO, or every line above passes vacuously.
+  ok("9d.control · a reason nothing emits reads as absent", !emitsReason("never_emitted_anywhere_xyz"));
+  // ⭐ AND THE LIVE CONTROL, ON THE REAL FINDING: the three rows E-232 wired must STAY wired.
+  for (const wired of ["self_excluded", "cooling_off", "account_blocked"]) {
+    ok(`9d.e232.${wired} · E-232's wiring is still in place`, emitsReason(wired),
+       `"${wired}" lost its emitter — a self-excluded player is being told "try again shortly" again`);
   }
 }
 
