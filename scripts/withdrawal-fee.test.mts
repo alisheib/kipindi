@@ -34,10 +34,23 @@ function ok(label: string, cond: boolean, extra?: string) {
 const now = () => new Date().toISOString();
 let seq = 0;
 
+/**
+ * The local digits of each fixture's REGISTERED number.
+ *
+ * E-215: a payout may only go to the number on the account, so a fixture that
+ * withdraws to a literal it never registered is proving a refusal, not a fee.
+ */
+const localDigits = new Map<string, string>();
+
 /** A player with a wallet AND an approved KYC (withdrawals are KYC-gated). */
 async function kycdUser(id: string, balance: number): Promise<void> {
+  // `7...`, NOT `96...`. RegisterSchema.phone is tzPhone ([67] + 8 digits), so `+25596...`
+  // is a number no real account can hold - and withdraw() re-parses the submitted msisdn
+  // through the same rule, so such a fixture could never withdraw at all.
+  const local = `75${String(++seq).padStart(7, "0")}`;
+  localDigits.set(id, local);
   await db.user.create({
-    id, phoneE164: `+25596${String(++seq).padStart(7, "0")}`, passwordHash: null, passwordSalt: null,
+    id, phoneE164: `+255${local}`, passwordHash: null, passwordSalt: null,
     failedLoginCount: 0, lockedUntil: null, role: "PLAYER", status: "ACTIVE", locale: "EN",
     displayName: null, dob: null, region: null, acceptedTermsVersion: null, acceptedTermsAt: null,
     marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null,
@@ -73,7 +86,7 @@ const bal = async (uid: string) => (await db.wallet.findByUserId(uid))?.balance 
 {
   await kycdUser("wd_neverbet", 100_000);
 
-  const r = await withdraw("wd_neverbet", { amount: 100_000, provider: "MPESA", msisdn: "+255700000001" });
+  const r = await withdraw("wd_neverbet", { amount: 100_000, provider: "MPESA", msisdn: localDigits.get("wd_neverbet")! });
   ok("★ withdrawal succeeded", r.ok, r.ok ? "" : (r as { error?: string }).error);
 
   if (r.ok) {
@@ -93,7 +106,7 @@ const bal = async (uid: string) => (await db.wallet.findByUserId(uid))?.balance 
 
   await setGlobalConfig({ withdrawalFeeRate: 0.02, withdrawalGatewayShareRate: 0.005 }, "officer_test");
   await kycdUser("wd_tuned", 50_000);
-  const r = await withdraw("wd_tuned", { amount: 50_000, provider: "MPESA", msisdn: "+255700000002" });
+  const r = await withdraw("wd_tuned", { amount: 50_000, provider: "MPESA", msisdn: localDigits.get("wd_tuned")! });
   ok("the withdrawal fee is admin-tunable (2% → 1,000 on 50,000)", r.ok && r.data.fee === 1_000, r.ok ? `fee=${r.data.fee}` : "");
   ok("…and the player receives the rest", r.ok && r.data.net === 49_000, r.ok ? `net=${r.data.net}` : "");
 
@@ -114,7 +127,7 @@ const bal = async (uid: string) => (await db.wallet.findByUserId(uid))?.balance 
   await setGlobalConfig({ withdrawalFeeRate: 0, withdrawalGatewayShareRate: 0 }, "officer_test");
 
   await kycdUser("wd_free", 20_000);
-  const r = await withdraw("wd_free", { amount: 20_000, provider: "MPESA", msisdn: "+255700000003" });
+  const r = await withdraw("wd_free", { amount: 20_000, provider: "MPESA", msisdn: localDigits.get("wd_free")! });
   ok("a 0% fee returns the whole amount", r.ok && r.data.fee === 0 && r.data.net === 20_000, r.ok ? `net=${r.data.net}` : "");
 
   await setGlobalConfig({

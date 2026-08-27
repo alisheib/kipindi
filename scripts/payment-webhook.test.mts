@@ -30,9 +30,32 @@ const now = new Date().toISOString();
  * in-memory Map. Awaiting everything makes it valid on BOTH stores, so the
  * webhook guarantees are now proven where multi-instance races can occur.
  */
+/**
+ * 🔴 E-215 · THE REGISTERED NUMBER IS THE FIXTURE'S JOB, AND THIS SUITE HAD NEVER DONE IT.
+ *
+ * `withdraw()` refuses any destination that is not the account's own number
+ * (`wallet-service.ts` → `payoutDestinationFor`), shipped 2026-08-25 in 27e17d38 — a commit
+ * that touched 17 files and NOT this one. 24 of this suite's 47 assertions have been red on
+ * every CI run since, each preceded by `[audit] WALLET withdraw.destination_refused`.
+ *
+ * ⛔ AND THE OLD PHONE COULD NEVER HAVE BEEN REGISTERED AT ALL. `id.slice(-4)` on ids that are
+ * WORDS yields LETTERS — "usr_wd" → "r_wd" → `+25571000r_wd` — which `normalizeTzLocalDigits`
+ * reduces to 5 digits, so the refusal was `no_registered_number`, not even a mismatch. It also
+ * collided: usr_aml2 and usr_selaml2 both produced `+25571000aml2`, two accounts on one number.
+ * A sequence fixes both, and `7` + 8 digits is the subscriber shape `tzPhone` actually accepts.
+ *
+ * ⭐ THE GUARD IS SATISFIED THE WAY A REAL PLAYER SATISFIES IT — by withdrawing to the number
+ * the account is registered to — never by relaxing it, stubbing it, or passing `phoneE164`
+ * straight through. Proven still load-bearing inside this suite: point one fixture at a
+ * well-formed but UNREGISTERED number and 7 assertions go red again.
+ */
+const localDigits = new Map<string, string>();
+let phoneSeq = 0;
 async function makePlayer(id: string, opts: { balance?: number; kyc?: "APPROVED" } = {}) {
+  const local = `7${String(++phoneSeq).padStart(8, "0")}`;
+  localDigits.set(id, local);
   await db.user.create({
-    id, phoneE164: `+25571000${id.slice(-4)}`, passwordHash: null, passwordSalt: null,
+    id, phoneE164: `+255${local}`, passwordHash: null, passwordSalt: null,
     failedLoginCount: 0, lockedUntil: null, role: "PLAYER", status: "ACTIVE", locale: "EN",
     displayName: null, dob: "1990-01-01", region: "TZ", acceptedTermsVersion: "v1", acceptedTermsAt: now,
     marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null, email: `${id}@t.tz`, emailVerifiedAt: now,
@@ -90,7 +113,7 @@ ok("sync deposit credits immediately", await bal("usr_sync") === 12_000);
 // ── WITHDRAWAL: async hold → webhook CONFIRMED releases ────────────────────
 process.env.PAYMENTS_DEMO_ASYNC = "true";
 await makePlayer("usr_wd", { balance: 100_000, kyc: "APPROVED" });
-const wd1 = await withdraw("usr_wd", { provider: "MPESA", amount: 20_000, msisdn: "0712345678" });
+const wd1 = await withdraw("usr_wd", { provider: "MPESA", amount: 20_000, msisdn: localDigits.get("usr_wd")! });
 ok("async withdrawal returns PROCESSING", wd1.ok && wd1.data!.status === "PROCESSING");
 ok("withdrawal moves funds into hold", await bal("usr_wd") === 80_000 && await hold("usr_wd") === 20_000);
 const wdTxn = wd1.ok ? wd1.data!.txnId : "";
@@ -99,7 +122,7 @@ ok("confirmed payout releases the hold", await hold("usr_wd") === 0 && await bal
 ok("withdrawal txn CONFIRMED", await st(wdTxn) === "CONFIRMED");
 
 // ── WITHDRAWAL: async → webhook FAILED returns the funds ───────────────────
-const wd2 = await withdraw("usr_wd", { provider: "MPESA", amount: 20_000, msisdn: "0712345678" });
+const wd2 = await withdraw("usr_wd", { provider: "MPESA", amount: 20_000, msisdn: localDigits.get("usr_wd")! });
 const wd2Txn = wd2.ok ? wd2.data!.txnId : "";
 ok("2nd withdrawal holds again", await bal("usr_wd") === 60_000 && await hold("usr_wd") === 20_000);
 await settlePaymentWebhook({ providerRef: await ref(wd2Txn), status: "FAILED" });
@@ -122,12 +145,12 @@ delete process.env.PAYMENTS_DEMO_ASYNC;
 // A gross 1,000,000 withdrawal nets 990,000 after the 1% fee. Evaluating AML on
 // net let it slip the mandatory second-officer hold. Must be AML_REVIEW on gross.
 await makePlayer("usr_aml", { balance: 2_000_000, kyc: "APPROVED" });
-const amlWd = await withdraw("usr_aml", { provider: "MPESA", amount: 1_000_000, msisdn: "0712345678" });
+const amlWd = await withdraw("usr_aml", { provider: "MPESA", amount: 1_000_000, msisdn: localDigits.get("usr_aml")! });
 const amlWdTxn = amlWd.ok ? amlWd.data!.txnId : "";
 ok("gross-1M withdrawal → AML_REVIEW (net 990k must NOT slip the hold)", amlWd.ok === true && amlWd.data!.status === "AML_REVIEW");
 ok("AML-held funds stay in hold, not disbursed", await hold("usr_aml") === 1_000_000 && await bal("usr_aml") === 1_000_000);
 await makePlayer("usr_aml2", { balance: 600_000, kyc: "APPROVED" });
-const belowWd = await withdraw("usr_aml2", { provider: "MPESA", amount: 500_000, msisdn: "0712345678" });
+const belowWd = await withdraw("usr_aml2", { provider: "MPESA", amount: 500_000, msisdn: localDigits.get("usr_aml2")! });
 ok("below-threshold withdrawal is not AML-held", belowWd.ok === true && belowWd.data!.status !== "AML_REVIEW");
 
 // ── AML APPROVE → DISPATCH: the payout half of the review flow ──────────────
@@ -173,7 +196,7 @@ globalThis.fetch = (async (url: unknown) => {
 }) as typeof fetch;
 
 await makePlayer("usr_sel", { balance: 100_000, kyc: "APPROVED" });
-const selWd = await withdraw("usr_sel", { provider: "MPESA", amount: 30_000, msisdn: "0712345678" });
+const selWd = await withdraw("usr_sel", { provider: "MPESA", amount: 30_000, msisdn: localDigits.get("usr_sel")! });
 const selWdTxn = selWd.ok ? selWd.data!.txnId : "";
 ok("selcom payout accepted → PROCESSING + held", selWd.ok === true && selWd.data!.status === "PROCESSING" && await hold("usr_sel") === 30_000);
 ok("selcom payout persisted a providerRef for re-query", !!await ref(selWdTxn));
@@ -192,7 +215,7 @@ ok("reconcile counted a withdrawal confirmed", sweep2.withdrawalsConfirmed >= 1)
 // Approving a reviewed ≥1M payout must DISPATCH it (PROCESSING + real ref, hold
 // kept) — never mark it sent without the gateway — then settle via re-query.
 await makePlayer("usr_selaml", { balance: 3_000_000, kyc: "APPROVED" });
-const selAml = await withdraw("usr_selaml", { provider: "MPESA", amount: 1_500_000, msisdn: "0712345678" });
+const selAml = await withdraw("usr_selaml", { provider: "MPESA", amount: 1_500_000, msisdn: localDigits.get("usr_selaml")! });
 const selAmlTxn = selAml.ok ? selAml.data!.txnId : "";
 ok("selcom ≥1M withdrawal → AML_REVIEW held", selAml.ok === true && selAml.data!.status === "AML_REVIEW" && await hold("usr_selaml") === 1_500_000);
 cashinQueryStatus = "111"; // gateway accepts but is still pending after dispatch
@@ -206,7 +229,7 @@ ok("approved selcom payout settles via re-query (hold released)", await st(selAm
 // Provider refusal (float PIN not yet set) must NOT auto-refund a just-approved
 // payout — it reverts to AML_REVIEW (hold intact) for the officer to retry/reject.
 await makePlayer("usr_selaml2", { balance: 3_000_000, kyc: "APPROVED" });
-const selAml2 = await withdraw("usr_selaml2", { provider: "MPESA", amount: 1_200_000, msisdn: "0712345678" });
+const selAml2 = await withdraw("usr_selaml2", { provider: "MPESA", amount: 1_200_000, msisdn: localDigits.get("usr_selaml2")! });
 const selAml2Txn = selAml2.ok ? selAml2.data!.txnId : "";
 const savedPin = process.env.PAYMENT_VENDOR_PIN;
 delete process.env.PAYMENT_VENDOR_PIN; // simulate the float PIN not yet configured

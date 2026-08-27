@@ -45,9 +45,23 @@ const ok = (label: string, cond: boolean, detail = "") => {
 };
 
 const now = new Date().toISOString();
+
+// 🔴 `E-215` - A PAYOUT MAY ONLY GO TO THE NUMBER THE ACCOUNT IS REGISTERED TO, so the
+// fixture has to register one the way a real player does: on `User.phoneE164`. There is no
+// separate destination table - `payoutDestinationFor(user.phoneE164, submitted)` IS the
+// registration check - and the old fixture here failed it twice over. `+25571900${id.slice(-4)}`
+// is `+25571900134a` for `usr_e134a`: a LETTER inside a phone number, which normalises to the
+// 8 digits `71900134` and therefore trips the FAIL-CLOSED `no_registered_number` branch - and
+// `usr_e134b` normalised to the SAME 8 digits. Precedent: `scripts/bonus-withdrawable.test.mts:70-95`.
+let seq = 0;
+/** local 9 digits of each fixture phone - `withdraw()` refuses any other destination. */
+const localDigits = new Map<string, string>();
+
 async function makePlayer(id: string, balance: number) {
+  const local = `71900${String(++seq).padStart(4, "0")}`;
+  localDigits.set(id, local);
   await db.user.create({
-    id, phoneE164: `+25571900${id.slice(-4)}`, passwordHash: null, passwordSalt: null,
+    id, phoneE164: `+255${local}`, passwordHash: null, passwordSalt: null,
     failedLoginCount: 0, lockedUntil: null, role: "PLAYER", status: "ACTIVE", locale: "EN",
     displayName: null, dob: "1990-01-01", region: "TZ", acceptedTermsVersion: "v1", acceptedTermsAt: now,
     marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null, email: `${id}@t.tz`, emailVerifiedAt: now,
@@ -75,7 +89,8 @@ const announcements = async (txnId: string) => {
  * That is the row the sweep refuses to auto-reverse, and the one that repeated 1,329 times.
  */
 async function stuckWithdrawalWithNoRef(uid: string, amount: number): Promise<string> {
-  const w = await withdraw(uid, { provider: "MPESA", amount, msisdn: "0712345678" });
+  // E-215: the destination must be the account's own registered number, not a literal.
+  const w = await withdraw(uid, { provider: "MPESA", amount, msisdn: localDigits.get(uid)! });
   if (!w.ok) throw new Error(`withdraw failed for ${uid}: ${JSON.stringify(w)}`);
   const txnId = w.data!.txnId;
   // The provider reference is what the sweep keys its refusal on; production's row had none.

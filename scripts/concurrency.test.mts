@@ -31,9 +31,17 @@ function ok(label: string, cond: boolean, extra?: string) {
 const now = () => new Date().toISOString();
 let seq = 0;
 
+/** Local digits of the fixture phone — `withdraw()` refuses any other destination (E-215). */
+const localDigits = new Map<string, string>();
+
 async function fundedUser(id: string, balance: number): Promise<void> {
+  // A REGISTRABLE number. `tzPhone` — the schema the real registration path goes through —
+  // only accepts `[67]\d{8}`, so the old `97…` fixtures were numbers no player could own
+  // and no `WithdrawSchema` would accept as a destination.
+  const local = `77${String(++seq).padStart(7, "0")}`;
+  localDigits.set(id, local);
   await db.user.create({
-    id, phoneE164: `+25597${String(++seq).padStart(7, "0")}`, passwordHash: null, passwordSalt: null,
+    id, phoneE164: `+255${local}`, passwordHash: null, passwordSalt: null,
     failedLoginCount: 0, lockedUntil: null, role: "PLAYER", status: "ACTIVE", locale: "EN",
     displayName: null, dob: null, region: null, acceptedTermsVersion: null, acceptedTermsAt: null,
     marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null,
@@ -223,13 +231,18 @@ async function makeMarket(): Promise<string> {
   } as never);
   const key = "cc-wd-key";
   const amount = 20_000;
+  // ⛔ E-215: the destination must be the number REGISTERED on this account. A fixture that
+  // sent a stranger's number would be asserting the race on a path the product refuses.
+  const dest = localDigits.get(uid)!;
   const [w1, w2, w3] = await Promise.all([
-    withdraw(uid, { provider: "MPESA", amount, msisdn: "0712345678" }, key),
-    withdraw(uid, { provider: "MPESA", amount, msisdn: "0712345678" }, key),
-    withdraw(uid, { provider: "MPESA", amount, msisdn: "0712345678" }, key),
+    withdraw(uid, { provider: "MPESA", amount, msisdn: dest }, key),
+    withdraw(uid, { provider: "MPESA", amount, msisdn: dest }, key),
+    withdraw(uid, { provider: "MPESA", amount, msisdn: dest }, key),
   ]);
   ok("E: all three withdrawal calls ok", w1.ok && w2.ok && w3.ok, `${w1.ok}/${w2.ok}/${w3.ok}`);
-  const ids = [w1, w2, w3].map((r) => (r.ok ? r.data!.txnId : "?"));
+  // A DISTINCT sentinel per failed call. Mapping every failure to one "?" made this
+  // assertion PASS while all three withdrawals were refused — green measuring nothing.
+  const ids = [w1, w2, w3].map((r, i) => (r.ok ? r.data!.txnId : `fail-${i}`));
   ok("E: all resolve to ONE txn (idempotent)", ids[0] === ids[1] && ids[1] === ids[2], ids.join(","));
   const wtxns = (await db.txn.findByUser(uid, 100)).filter((t) => t.type === "WITHDRAWAL");
   ok("E: exactly one withdrawal txn (no double-debit)", wtxns.length === 1, `count=${wtxns.length}`);
