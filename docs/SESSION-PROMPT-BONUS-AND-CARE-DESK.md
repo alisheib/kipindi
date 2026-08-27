@@ -1,5 +1,13 @@
 # THE BONUS GAP AND THE CARE DESK — what is left, and why each one is still open
 
+> 🔴 **RE-SCOPED 2026-08-27 BY A MEASURED AUDIT. THE LEDGER IN §1 IS THE ONLY LEDGER; §0e IS THE
+> REASONING. TWO OF THE FIVE UNITS BELOW ARE DROPPED AND THEIR SECTIONS ARE STAMPED "DO NOT
+> BUILD".** Every unit was re-measured on production and adversarially challenged. **Not one
+> survived at the size it was written**, and the two items worth most — `E-226` and `E-227` — were
+> **not on the ledger at all**; they were found by checking whether the ledger was true. ⛔ **The
+> unit sections §2–§6 were written BEFORE that audit and several of their claims are now known to
+> be false — the banner under each heading says which.** Read §1 and §0e before any section.
+
 > **Supersedes `SESSION-PROMPT-FINISH-THE-BOARD.md`.** Its Unit B (**E-177**) is **SHIPPED and
 > driven on production** — see §8. Everything still open is carried here with its state
 > **re-derived, not copied**. If the two disagree, **this file is newer and this file wins** — but
@@ -166,19 +174,117 @@ product — they were blocked on a machine, and closed at **13/0** the moment th
 
 ---
 
+### §0e · ⛔ THE AUDIT THAT RE-SCOPED THIS FILE — 2026-08-27
+
+**Ali asked one question: *"are they all worth it, or should we throw any away?"*** Five units were
+each investigated against **production**, then each finding was handed to an independent agent whose
+job was to refute it. Every number below is a `SELECT` or a `curl` run in a session that proved its
+own identity first — `current_database()=railway`, `inet_server_addr()=10.167.150.169`, and
+`users` / `marketsLive` / `marketsResolved` matching `https://50pick.tz/api/health` in the same run.
+
+⭐ **THE HEADLINE: THE TWO ITEMS WORTH MOST WERE NOT ON THE LEDGER — THEY WERE FOUND BY CHECKING
+WHETHER THE LEDGER WAS TRUE.** Both are guards-or-readers that do not exist while a document says
+they do. That is this project's oldest recurring shape, and it caught us twice more here.
+
+#### What was BINNED, and the measurement that killed it
+
+| Binned | The number that killed it |
+|---|---|
+| **Unit D entire** — per-bet UD notifications | `COMPLIANCE-DECISIONS.md` § **2026-08-22** already ruled *"bet-placed stays push-only"*; §5 was written **four days later** and never cites it. **E-178** (2026-08-22) already writes a bell row for **every** terminal UD outcome — measured **34/34** on production. And the channel that ruling "preserved" is dead: `PushSubscription` holds **0 rows, ever** |
+| **Unit C's four exotic FX symbols + SPX** | Demand premise **false**. Last 7 days the engine emitted **13,166 rounds; 22 carried a bet — 0.17%**. All-time **25,338 rounds, ~289 ever bet (1.1%)**. The two assets added most recently (BNB, LTC, 2026-08-20) still have **zero chains**. ⛔ **No real player has bet Up & Down since 2026-08-22** |
+| **Unit C's GBP/USD and USD/JPY** | Not binned — **they need no code at all.** Both are already in `SYMBOL_CATALOGUE` with decimals and ticks set; they are one operator click away in the admin dropdown |
+| **Unit B's ticket store + inbound pipeline** | No queue exists. Of **16** failed withdrawals, **13 are one ADMIN account and 3 are fleet** — no genuine player has ever had one. Total platform correspondence fits in a paragraph, on **102** users |
+| **Unit A's obligation-field migration** | The branch it serves cannot occur — **12 confirmed withdrawals in the platform's entire history**, none against a bonus |
+| **Unit E's dated 2026-09-15 manual check** | Superseded by a cron. Both origin certs are valid **49 more days** (expiry **2026-10-15 14:49:57 GMT**, verified by direct `node:tls` handshake, serial `0593A74B…` on www and `05085C2D…` on apex) |
+
+#### The doc-vs-reality contradictions this turned up — worth more than the recommendations
+
+1. ⛔ **§2 understates its own defect.** It calls the exposure *"a bounded edge whose size an operator
+   sets when they choose a multiplier"*. **False.** Turnover accrues on the **full stake** with no
+   per-bet cap, funding is real-first, and the free exit is fee-free — live `market.config` gives
+   `maxStake: 1000000`, `freeExitGraceMinutes: 5`, `cashOutFeeRate: 0`. **Raising the multiplier
+   bounds nothing.**
+2. ⛔ **§2 lists four mechanics; THREE already shipped** (B1b, 2026-08-14 — `bonus.wagering_reversed`
+   has fired **3 times** on production). Read as a work order it rebuilds live code.
+3. ⛔ **The E-224 ruling says the grant returns to `IN_PROGRESS`. That status does not exist**
+   (`ACTIVE|QUEUED|FULFILLED|EXPIRED|CANCELLED|FORFEITED`). **A guard written against that word
+   stays green for ever.**
+4. ⛔ **`scripts/live-bonus-j.mjs:675` asserts the DEFECT** (`g?.status === "FULFILLED"`) — it goes
+   **RED when the fix is correct.** Invert it in the same commit. *(the "assertion the fix
+   invalidates" shape, again)*
+5. ⛔ **§3 says "msaada@50pick.tz does not exist". It has been the saved production support address
+   since 2026-08-19 09:50:24.** What does not exist is a **reader** — see **E-226**.
+6. ⛔ **Two code comments assert a boot hydration that is not there** (`support-config.ts:22-24`,
+   `admin/system/actions.ts:56-58`) — and the second was written **as the fix for this exact bug**.
+   `src/lib/server/define-config.ts` already exists as "the ONE factory" with eager hydration and
+   four modules use it; support-config never adopted it. **The fix is a port, not a design.**
+7. ⛔ **§4 guards the LAST lesson.** It cites SOL as the cautionary tale; SOL is now the healthiest
+   board on the platform (30m: 35 voids, all `no-move`, **zero** source failures in 14 days). The
+   live failure is **XRP** and it appears nowhere in the file's warnings.
+8. ⚠️ **XAU/15m's 33% void rate is not a defect** — it is the only chain on the platform with
+   `marginBps` ≠ 0 (it is **5**), and 14-day voids are **235 `no-move` of 237**. A house band.
+9. ⛔ **Three tracked docs call `qa:live` §[F] "a gate and not a reminder."** It has never executed —
+   see **E-227**.
+
+#### The re-aimed survivor of Unit C — file it as its own row, NOT as "new markets"
+
+**XRP is refunding rounds because its price source fails.** Last 14 days: **XRP/USD 30m voided 50 of
+317 with 45 `source-failed`**; **60m voided 35 of 136 with 33 `source-failed`**. XRP/**15m** is
+healthy — **1** source failure — so the failure appears only **above** the short chain, which is why
+a minimum-duration floor cannot touch it. ⚠️ **A zero-code mitigation an operator can run today:**
+two chains share `gridAnchorAt 2026-08-18 09:15`; stop one and re-measure over 24h. ⛔ **Priority is
+low while no real player has bet Up & Down since 2026-08-22** — it is a correctness row, not growth.
+
+#### What the audit could NOT settle
+
+| Open question | How to settle it |
+|---|---|
+| Does `msaada@50pick.tz` actually **deliver**? (587 answers `220 r6.netpoa.com Exim`, but auth is required and port 25 is blocked here) | ⛔ **Send one real mail and reply to it — 15 minutes, BEFORE publishing the address** |
+| Does Railway renew via **HTTP-01** (proven to traverse Cloudflare) or **TLS-ALPN-01** (which the proxy would break)? | Ask Railway, **or** simply flip `www` to DNS-only for the mid-September window and re-proxy after — removes the question at zero cost |
+| Are the 38 failed deposits money-taken-not-credited, or abandoned pushes? | Read the provider failure reasons against the Selcom console |
+| Is E-224 really *"the only OPEN money defect on the board"*? | **Not audited** — this was a five-unit review, not a platform sweep |
+| Jay's verbatim comment #9 | `50pick_website_comments-2.pdf` is genuinely **not in the repo** — everything about what he asked is a paraphrase |
+
+---
+
 ## §1 · THE COMPLETION LEDGER — tick your row in the commit that ships it
 
-| # | Unit | Origin | Why it is next | State |
+⛔ **THIS LEDGER WAS RE-SCOPED ON 2026-08-27 BY A MEASURED AUDIT. READ §0e BEFORE §2.**
+Every unit was re-measured on production and then adversarially challenged. **Not one survived at
+the size it was written.** One died outright, one died as written and was replaced by a different
+job, one split, and the two that remain are smaller than their sections claim — in two cases **the
+surviving half is not the half the section is about.** Roughly **3 sessions**, down from the ~10–14
+the five units imply. §0e lists every binned item with the number that killed it, so no future
+session re-derives it.
+
+| # | Unit | Origin | Verdict — 2026-08-27 audit | State |
 |---|---|---|---|---|
-| A | **E-224** · a bonus cleared at zero risk | §6 register | **RULED, not built.** Ali delegated the call; the answer is written and waiting. It is the only OPEN money defect on the board | ⬜ |
-| B | **Jay unit K's other half** · the care desk + mailbox | Jay #12 · #13 | READ_TIERS is shipped and proven; the ticket system is the larger half and **D2 binds it** | ⬜ |
-| C | **Jay unit L** · new markets | Jay §1 | ⛔ **one asset per commit**, each carrying its own measurement | ⬜ |
-| D | **Jay unit M** · per-bet UD notifications | Jay §1 | behind a switch, **default OFF** | ⬜ |
-| E | **E-195** ⏰ the certificate | infra | ⚠️ **a DATE, not a task** — see §6 | ⬜ |
+| **A** | **E-224** · a bonus cleared at zero risk | §6 register | ✅ **KEEP · ~1 session.** Zero occurrences ever — **and armed.** Four proposals sit in `REVIEW`, two from real players, and **both logged in on 2026-08-27**; approving either puts a live 5× grant on a real account. ⛔ **INTERIM CONTROL, FREE AND TOTAL: approve no proposal and grant no bonus to a non-fleet account until this ships.** Shrunk — **no migration, no obligation field**; three of §2's four mechanics already shipped | ⬜ |
+| **B1** | 🔴 **E-226** · the support address nobody reads | **NEW — found by this audit** | ✅ **KEEP · <1 session — the ONLY item here that is WRONG ON PRODUCTION RIGHT NOW.** `/help` serves `support@50pick.tz` ×6 and `0800 11 0011`, while production has held `msaada@50pick.tz` / `+255 769 777 877` since **2026-08-19 09:50:24**. A writer with **no reader**. ⛔ **Send a real message to the address and reply to it BEFORE publishing it**, or step one makes things worse | ⬜ |
+| **B2** | the ticket store + inbound pipeline | Jay #12 · #13 | ⏸️ **DEFERRED behind a named trigger** — the licence-review date, **or** >20 inbound messages in a calendar month. There is no queue to drain: of 16 failed withdrawals, 13 are one ADMIN account and 3 are fleet — **no genuine player has ever had one** | ⬜ |
+| **C** | **Jay unit L** · new markets | Jay §1 | ❌ **DROPPED AS WRITTEN — the demand premise is false.** Re-aimed at XRP's feed failures, filed as its own row. GBP/USD and USD/JPY need **no code at all** | ❌ |
+| **D** | **Jay unit M** · per-bet UD notifications | Jay §1 | ❌ **DROPPED.** It reverses a dated owner ruling in order to add a receipt **E-178 already delivers**. Closed by one email and two doc corrections, not by code | ❌ |
+| **E** | 🔴 **E-227** · the certificate gate that has never run | **NEW — found by this audit** (absorbs **E-195**) | ✅ **SHRUNK to ~45 min of YAML.** The certificate is fine for **49 days**. The defect is that **three tracked documents call `qa:live` §[F] "a gate and not a reminder" — and it has never executed once** | ⬜ |
+
+⚠️ **AND THE LARGEST THING MEASURED IS NOT ON THIS LEDGER AT ALL.** Lifetime deposits are
+**52 CONFIRMED (TZS 646,000) against 38 FAILED (TZS 630,500)** — 42% by count, **49% by value**.
+Last 7 days: **1 confirmed against 4 failed.** Nine genuine player accounts are affected; one
+player alone carries 4 failures totalling **TZS 311,000**. Separately `/api/health` reports
+`sms.provider: "console"` — **no real SMS has ever been sent.** ⛔ **This was not audited and is
+not ruled on here — it is flagged because it outranks all five units above.**
 
 ---
 
 ## §2 · UNIT A · E-224 — A BONUS CLEARED HAVING RISKED NOTHING
+
+> ✅ **VERDICT 2026-08-27 · KEEP — but SMALLER than this section, and this section is WRONG in
+> three places. Read §0e first.** ⛔ Three of the four mechanics below **already shipped** (B1b,
+> 2026-08-14). ⛔ The ruling's `IN_PROGRESS` **is not a real status** — a guard written against that
+> word stays green for ever. ⛔ The "bounded by the multiplier" claim is **false**: turnover accrues
+> on the full stake, uncapped. ⛔ `scripts/live-bonus-j.mjs:675` **asserts the defect** and goes RED
+> when you fix it — invert it in the same commit. ⛔ **No migration, no obligation field.**
+> 🔴 **INTERIM CONTROL UNTIL THIS SHIPS: approve no proposal and grant no bonus to a non-fleet
+> account.** Two real players' proposals sit in `REVIEW` and both logged in on 2026-08-27.
 
 ### What it is, in one real example
 
@@ -250,6 +356,17 @@ one and can never fulfil. Cancel the stale grant and let `activateNextQueued` pr
 
 ## §3 · UNIT B · JAY UNIT K'S OTHER HALF — THE CARE DESK AND THE MAILBOX
 
+> ⚠️ **VERDICT 2026-08-27 · SPLIT. Read §0e first.**
+> ✅ **B1 — BUILD THIS (`E-226`, <1 session):** the support config has a **writer and no reader**.
+> `/help` serves `support@50pick.tz` ×6 and `0800 11 0011` while production has held
+> `msaada@50pick.tz` / `+255 769 777 877` since **2026-08-19 09:50:24**. ⛔ **This section's claim
+> that "msaada@50pick.tz does not exist" is FALSE.** The fix is a **port** to
+> `src/lib/server/define-config.ts`, not a design. ⛔ **Send and reply to a real message BEFORE
+> publishing the address.**
+> ⏸️ **B2 — DEFERRED (ticket store + inbound pipeline)** behind a named trigger: the licence-review
+> date, **or** >20 inbound messages in a calendar month. There is no queue — of 16 failed
+> withdrawals, **13 are one ADMIN account and 3 are fleet**.
+
 ⭐ **READ_TIERS IS DONE AND PROVEN — do not rebuild it.** `qa:read-tiers` **18/0** on production:
 the axis, the `RoleReadGrant` table, `<Sensitive>`, the audited reveal, the `/admin/players/[id]`
 wiring, and the **Reads tab** on `/admin/roles`. Both personas exist (`support` `712000108`,
@@ -278,6 +395,16 @@ it** (§4b).
 
 ## §4 · UNIT C · JAY UNIT L — NEW MARKETS
 
+> ❌ **VERDICT 2026-08-27 · DROPPED AS WRITTEN — DO NOT BUILD THIS SECTION. Read §0e first.**
+> The demand premise is **false**: last 7 days the engine emitted **13,166 rounds and 22 carried a
+> bet — 0.17%**; the two assets added on 2026-08-20 still have **zero chains**; **no real player has
+> bet Up & Down since 2026-08-22**. ⛔ **GBP/USD and USD/JPY need NO CODE** — they are already in
+> `SYMBOL_CATALOGUE` and are one operator click away. The four exotics and SPX are **deferred behind
+> a named trigger**: one ISO week with ≥50 non-staff UD positions.
+> ⚠️ **This section also guards the LAST lesson** — it cites SOL, which is now the *healthiest*
+> board (zero source failures in 14 days). ▶ **The live failure is XRP**, and it is re-filed as its
+> own correctness row in §0e — not as "new markets".
+
 ⛔ **ONE ASSET PER COMMIT**, each carrying its own measurement.
 ⚠️ **Watch the refund rate.** SOL/USD is already in the catalogue as exactly that lesson — see
 `updown-source-pinning-and-proposals`. A market nobody takes the other side of is not a market; it
@@ -287,12 +414,34 @@ is the E-224 gap's supply line.
 
 ## §5 · UNIT D · JAY UNIT M — PER-BET UP & DOWN NOTIFICATIONS
 
+> ❌ **VERDICT 2026-08-27 · DROPPED — DO NOT BUILD THIS SECTION. Read §0e first.**
+> It **reverses a dated owner ruling without citing it**: `COMPLIANCE-DECISIONS.md` § **2026-08-22**
+> says *"bet-placed stays push-only"*, and this section was written **four days later**. The receipt
+> it asks for **already exists** — **E-178** writes a bell row for every terminal UD outcome,
+> measured **34/34** on production. ⚠️ And the channel that ruling "preserved" is **dead**:
+> `PushSubscription` holds **0 rows, ever**.
+> ▶ **Closed by ANSWERING, not building:** one paragraph to Jay describing what E-178 delivers, one
+> amendment to `COMPLIANCE-DECISIONS.md` so it stops asserting a channel with zero subscribers, and
+> one line here pointing at that ruling.
+
 Behind a switch, **default OFF**. ⚠️ The comms rules apply in full: `docs/` comms certification —
 ⛔ an unescaped `heading()` once put a player's name into the inbox **as markup**.
 
 ---
 
 ## §6 · THE DATED WATCH — ⏰ not a task you can finish today
+
+> 🔴 **VERDICT 2026-08-27 · THE DATE IS FINE; THE GATE IS DEAD. Re-filed as `E-227`. Read §0e.**
+> Both origin certificates are valid **49 more days** (expiry **2026-10-15 14:49:57 GMT**, verified
+> by direct `node:tls` handshake). ⛔ **The real defect is that three tracked documents call
+> `qa:live` §[F] "a gate and not a reminder" — and it has NEVER EXECUTED ONCE.** `predeploy` runs
+> `qa:live` with no `BASE`; `BASE` defaults to `http://localhost:3009`; `LOCAL` is therefore true;
+> the whole cert block sits inside `if (!LOCAL)`; and `qa:live` appears **nowhere in `.github/`**.
+> Apply the house test — *would this pass with an expired certificate?* **Yes, silently, every
+> time.** ▶ **~45 min:** lift §[F] into a NEW standalone cert-watch script under `scripts/` (it does not exist yet), run it weekly in CI against
+> **both** hosts, prove it RED, and correct the three documents.
+> ⭐ **A free risk-eliminator that costs no code:** flip `www` to DNS-only for the mid-September
+> renewal window, let Railway renew on the path that has always worked, then re-proxy.
 
 **E-195 · the certificate.** `www` sits behind Cloudflare at `Full (strict)`; the origin cert
 renews through a path that **has never carried a renewal** and expires **2026-10-15**.
