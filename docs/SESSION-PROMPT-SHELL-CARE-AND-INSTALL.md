@@ -4,12 +4,15 @@
 > PUSHED AND DRIVEN.** This file is now HISTORY — read `docs/LIVE-QA-CAMPAIGN.md`'s topmost
 > `RESUME AT (session 71)` instead, and `docs/RG-AUDIT-2026-08-27.md` for item 2.
 >
-> ⛔ **EXACTLY ONE THING IN HERE IS STILL OUTSTANDING AND IT NEEDS ALI, NOT A SESSION: §0.2, the
-> cert workflow, has never been OBSERVED running.** Verified rather than assumed on 2026-08-27:
-> no `gh` on this machine, `GITHUB_TOKEN` and `GH_TOKEN` both ABSENT, no GitHub token in
-> `.env.qa.local`. ▶ **ONE CLICK: Actions → "Origin certificate watch" → Run workflow.** The
-> script is re-proven today (`qa:cert-expiry` **5/5 live, 48 days**, both origin hosts), and the
-> cron `0 6 * * 1,4` means **Mon 2026-08-31 06:00 UTC observes itself** if nobody clicks.
+> ✅ **§0.2 IS NOW CLOSED — 2026-08-28 (session 71). THE CERT WORKFLOW HAS BEEN OBSERVED RUNNING
+> ON GITHUB ACTIONS FOR THE FIRST TIME: 5/5 PASS, both origin hosts, 48 days, expiring Oct 15.**
+> ⛔ **AND THE REASON IT SAT OPEN IS WORTH KEEPING: the blocker was recorded as a fact about the
+> PROJECT when it was a fact about ONE MACHINE.** This file said *"no `gh` on this machine,
+> `GITHUB_TOKEN` and `GH_TOKEN` both ABSENT"* — true where it was written, and false on
+> `C:\kipindi-main`, where `gh` is installed and authenticated as `alisheib` with the `workflow`
+> scope. **One session verified its own environment and wrote the answer down as though it were
+> the platform's.** Nothing was needed from Ali at all. ⚠️ Check WHICH machine a "cannot" was
+> measured on before carrying it forward; this campaign runs on two.
 >
 > 🔴 **AND THE HEADLINE THIS FILE DID NOT PREDICT: EVERY CONTROL WORKED AND EVERY DEFECT WAS ONE
 > LAYER DOWNSTREAM OF IT.** The RG gates were all wired and the WORDS were wrong (`E-232`); the
