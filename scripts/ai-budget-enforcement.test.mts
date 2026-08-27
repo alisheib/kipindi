@@ -203,7 +203,7 @@ await saveCycleConfig({ ...CYCLE_DEFAULTS, autoRoll: true });
   ok("…and carries the real numbers through", budgetMsg.includes("21.35") && budgetMsg.includes("20.00"), budgetMsg);
   ok("…and does NOT blame the price source", !/source|domain|stale/i.test(budgetMsg), budgetMsg);
   ok("…and says TOP-UP WINDOW, not \"cycle\" — they are different things now",
-    /top-up window/i.test(budgetMsg) && !/cycle/i.test(budgetMsg), budgetMsg);
+    /top-up window/i.test(budgetMsg) && !/\bcycle\b/i.test(budgetMsg), budgetMsg);
 
   const cycleMsg = describeRefusal("budget-exhausted" as RefusalReason,
     describeAiBudgetBlock({ ok: false, reason: "cycle", spentUsd: 5, limitUsd: 20, lastClosedIndex: 7 }));

@@ -42,6 +42,13 @@ let pass = 0, fail = 0;
 const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"} ${l}${x ? ` — ${x}` : ""}`); };
 
 const shell = read("src/components/admin/admin-shell.tsx");
+/**
+ * ⚠️ E-70 (c83fe83a, session 70) moved the breadcrumb markup VERBATIM out of the shell into its
+ * own client component, so the trail re-derives from usePathname() instead of freezing on a
+ * layout-computed header. The E-30 box-model fixes travelled WITH it — so this guard follows the
+ * MARKUP, not the file it used to live in. Nothing about what §2 measures changes.
+ */
+const crumbsSrc = read("src/components/admin/admin-crumbs.tsx");
 
 /** The class list of the single element matching `anchor`, for precise assertions. */
 function classesNear(src: string, anchor: string, window = 400): string {
@@ -75,8 +82,14 @@ console.log("\n── 1 · AdminKpi's delta cannot be clipped by a long string �
 // ── 2 · The breadcrumb ───────────────────────────────────────────────────────
 console.log("\n── 2 · the breadcrumb truncates instead of running past its nav ──");
 {
-  const nav = classesNear(shell, 'aria-label="Breadcrumb"', 700);
-  ok("2.0 · the breadcrumb was found", nav.length > 0);
+  const nav = classesNear(crumbsSrc, 'aria-label="Breadcrumb"', 700);
+  // ⭐ AND THAT THE SHELL STILL MOUNTS IT. Following the markup into its own file opened a hole
+  // the old single-file check did not have: delete <AdminCrumbs> from the shell and leave the
+  // component orphaned, and every assertion below would still pass — against a file nothing
+  // renders. A guard that reads correct markup no page shows is measuring nothing.
+  ok("2.0 · the breadcrumb was found AND is still mounted in the shell",
+     nav.length > 0 && /<AdminCrumbs\b/.test(shell),
+     "a correct component the shell no longer renders is a guard measuring nothing");
   ok("2.1 · the nav itself can shrink and hides the excess",
      /min-w-0/.test(nav) && /overflow-hidden/.test(nav));
   ok("2.2 · ⛔ the per-crumb WRAPPER can shrink — this is the bit that was missing",
@@ -96,7 +109,10 @@ console.log("\n── 3 · no nowrap text in the shell that cannot shrink ──
 {
   // Strip comments: prose describing the rule must never fail the rule (the house trap,
   // paid for by test:updown-heal 10.4 and again by test:control-gates §5).
-  const src = shell.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  // The admin chrome is TWO files since E-70; scan both, or the rule stops covering the half
+  // that moved.
+  const src = `${shell}
+${crumbsSrc}`.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
   /**
    * ⚠️ Read the WHOLE className expression, not one string literal.
    *
