@@ -54,3 +54,62 @@ Push to main — Railway's build step runs `prisma migrate deploy` automatically
 ## Data layer
 
 See `docs/DATA-LAYER.md` for the full architecture guide.
+
+---
+
+## Reaching Railway from a developer machine — what works, and what the tooling refuses
+
+⭐ **THE WORKSPACE TOKEN + THE GRAPHQL API IS THE ROUTE THAT WORKS.** Verified 2026-08-20.
+The token Ali issues is a **workspace** token, and that matters, because it fails the two checks
+a reader reaches for first and those failures look like a dead token:
+
+| probe | result with a workspace token |
+|---|---|
+| `railway whoami` / `railway status` with `RAILWAY_TOKEN` set | ❌ *"Unauthorized"* / *"Invalid RAILWAY_TOKEN"* |
+| GraphQL `query { me { name email } }` | ❌ *"Not Authorized"* — `me` is account-scoped by design |
+| GraphQL `query { projectToken { … } }` with `Project-Access-Token` | ❌ *"Project Token not found"* — wrong token class |
+| GraphQL `query { project(id: "…") { name id } }` with `Authorization: Bearer` | ✅ **works** |
+
+```bash
+# endpoint + shape (the token itself lives in .env.qa.local as RAILWAY_WORKSPACE_TOKEN)
+curl -s --request POST --url https://backboard.railway.com/graphql/v2 \
+  --header "Authorization: Bearer $RAILWAY_WORKSPACE_TOKEN" \
+  --header 'Content-Type: application/json' \
+  --data '{"query":"query { project(id: \"5e87353c-1d59-433d-a683-a32b9149f74c\") { services { edges { node { id name } } } environments { edges { node { id name } } } } }"}'
+```
+
+**Ids, so nobody has to re-discover them:** project `5e87353c-1d59-433d-a683-a32b9149f74c` ·
+environment `production` = `372d937a-4bf1-43fc-919c-9c75a599067d` · services: **Postgres**
+`21ab039c-a4ad-45cc-b825-938a57bdd9a8`, **Redis** `7fcd442e-53ba-4b85-86cd-08328251b5d2`,
+**50pick** `baba8802-7f79-4306-9706-1e19a4b95e7c`.
+
+⚠️ **The LINKED CLI session is a second, independent route** and it works without any token —
+`railway whoami` returns the account and `railway status` resolves the project. ⛔ Setting
+`RAILWAY_TOKEN` to a workspace token **breaks** that route for the same command, so an
+"Unauthorized" answer may mean *the env var is set*, not *the token is bad*.
+
+⚠️ **THAT FETCH IS GATED, AND THE GATE IS NOT A PERMISSION RULE.** Fetching the Postgres
+service's `DATABASE_PUBLIC_URL` — `railway variables --service Postgres`, or the GraphQL
+`variables` query — is refused by Claude Code's **auto-mode safety classifier**, and so is editing
+that classifier's own configuration. ⛔ **`permissions.allow` does not cover it:** this machine
+already allows `Edit(**)` and `Bash(railway:*)` and the calls were still refused. The lever is
+`autoMode.allow` in `~/.claude/settings.json`, and an agent cannot widen it for itself — that is
+the design, not a bug.
+
+✅ **Ali granted it on 2026-08-20** and the scoped `autoMode.allow` rules are in place (two
+entries: `src/lib/server/**` edits for the Board's withdrawal-gate instruction, and this variables
+read for the 50pick project). The public URL is stored in `.env.qa.local` as
+**`PROD_DATABASE_PUBLIC_URL`**.
+
+⛔ **STORED UNDER THAT NAME ON PURPOSE — NOT AS `DATABASE_URL`.** `test:all` must run with
+`DATABASE_URL` UNSET (with it set, ~50 suites go red against the local cluster and read as a
+regression), and `prisma migrate dev` with it set points at **live production**. A script that
+wants production opts in explicitly:
+
+```bash
+PROBE_DB_URL=$(grep '^PROD_DATABASE_PUBLIC_URL=' .env.qa.local | cut -d= -f2-) node scripts/…
+```
+
+⛔ **Secrets go only to `.env.qa.local` / `.env*.local` (gitignored) or a scratch file outside the
+repo — never a tracked file, a commit, a document or a screenshot.** ⚠️ A suffix *after* `.local`
+escapes the whole ignore family: `.env.qa.local.bak` is NOT ignored by `.env.*.local`.
