@@ -67,6 +67,13 @@ const MULT = Number(process.env.MULT ?? 1);
 const STAKE = GRANT_TZS * MULT;
 /** How much selection window a browser drive needs to finish inside. */
 const MIN_WINDOW_S = Number(process.env.MIN_WINDOW_S ?? 300);
+/**
+ * The `relock` leg needs a poll it can bet into AND exit from inside the free grace, so it
+ * wants hours of betting time rather than the 5 minutes a settle-and-watch drive needs.
+ * ⛔ Below `freeExitGraceMinutes` of runway AT THE MOMENT OF THE BET, `cashOutValue` returns
+ * `sellable: false` with reason `TOO_SHORT` and no exit is ever offered.
+ */
+const RELOCK_MIN_WINDOW_S = Number(process.env.RELOCK_MIN_WINDOW_S ?? 1_800);
 
 const rec = recorder(`LIVE BONUS · J · ${CMD} · ${me.label} (${E164})`);
 
@@ -105,6 +112,7 @@ async function grants() {
     select g.id, g.status, g."amountTzs"::numeric amount, g."wagerMultiplier"::numeric mult,
            g."wagerRequiredTzs"::numeric required, g."wageredTzs"::numeric wagered,
            g."remainingTzs"::numeric remaining, g."fulfilledAt"::text fulfilled,
+           g."expiresAt"::text expires,
            g."createdAt"::text created, g.note
       from "BonusGrant" g join "User" u on u.id = g."userId"
      where u."phoneE164" = $1 order by g."createdAt" asc`, [E164]);
@@ -289,21 +297,21 @@ async function locked() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// queue — a second grant must QUEUE, and production has never seen one
+// the grant form — ONE driver, because two legs mint through it
 // ─────────────────────────────────────────────────────────────────────────────
 /**
- * ⭐ THE SEQUENTIAL RULE HAS NEVER RUN ON PRODUCTION. Both live grants were issued to players
- * who held nothing, so both went straight to ACTIVE and `shouldQueue` has never been true here.
- * This leg is the first time §6 of the Management Bonus Rules is exercised in a real wallet.
- * ⚠️ It is also a precondition of `settle`: a fresh grant behind an ACTIVE one cannot fulfil.
+ * ⭐ EXTRACTED FROM `queue` RATHER THAN COPIED, and the reason is a rule this campaign has
+ * paid for repeatedly: a duplicated money form gets its guards fixed in ONE copy. Every
+ * check here was learned on the live page — the fields are addressed BY ARIA-LABEL (this page
+ * carries SIX numeric inputs, three of them the platform's own bonus CONFIG), and the typed
+ * amount and multiplier are read back BEFORE the commit, because a multiplier that silently
+ * stayed at its default would mint a requirement 5× what the caller intended while every
+ * later assertion still looked plausible.
+ * ⚠️ GROWTH, not ADMIN — `grantBonusToPlayerAction` calls `requireStaff("growth")`, and ADMIN
+ * bypasses every domain check, so a grant issued as ADMIN proves nothing about the real path.
+ * `tag` names the screenshots, so two callers cannot overwrite one another's evidence.
  */
-async function queue() {
-  const before = await state();
-  const gBefore = await grants();
-  const active = gBefore.filter((g) => g.status === "ACTIVE");
-  rec.check("0: the player already holds exactly one ACTIVE grant — the condition being tested",
-    active.length === 1, gBefore.map(describe).join(" | ") || "(none)");
-
+async function mintGrantViaGrowth(tag) {
   const { b, ctx } = await browser();
   const page = await ctx.newPage();
   try {
@@ -337,7 +345,7 @@ async function queue() {
     rec.check("1: ★ the form really carries the intended amount and multiplier before the commit",
       N(typed.amount) === GRANT_TZS && N(typed.mult) === MULT,
       `amount="${typed.amount}" multiplier="${typed.mult}" · wanted ${GRANT_TZS} x${MULT}`);
-    await shot(page, "j-queue-grant-form");
+    await shot(page, `${tag}-grant-form`);
 
     // "Grant bonus" only OPENS the confirm dialog — deliberately, because a manual grant is
     // real liability the player must play through.
@@ -348,11 +356,30 @@ async function queue() {
     await page.waitForTimeout(800);
     const dlg = page.locator('[role="dialog"], [role="alertdialog"]').first();
     await dlg.waitFor({ state: "visible", timeout: 15_000 });
-    await shot(page, "j-queue-confirm");
+    await shot(page, `${tag}-confirm`);
     await dlg.getByRole("button", { name: /yes, grant/i }).first().click({ timeout: 20_000 });
     await page.waitForTimeout(4_000);
-    await shot(page, "j-queue-after");
+    await shot(page, `${tag}-after`);
   } finally { await ctx.close(); await b.close(); }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// queue — a second grant must QUEUE, and production has never seen one
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * ⭐ THE SEQUENTIAL RULE HAS NEVER RUN ON PRODUCTION. Both live grants were issued to players
+ * who held nothing, so both went straight to ACTIVE and `shouldQueue` has never been true here.
+ * This leg is the first time §6 of the Management Bonus Rules is exercised in a real wallet.
+ * ⚠️ It is also a precondition of `settle`: a fresh grant behind an ACTIVE one cannot fulfil.
+ */
+async function queue() {
+  const before = await state();
+  const gBefore = await grants();
+  const active = gBefore.filter((g) => g.status === "ACTIVE");
+  rec.check("0: the player already holds exactly one ACTIVE grant — the condition being tested",
+    active.length === 1, gBefore.map(describe).join(" | ") || "(none)");
+
+  await mintGrantViaGrowth("j-queue");
 
   const gAfter = await grants();
   const fresh = gAfter.filter((g) => !gBefore.some((o) => o.id === g.id));
@@ -688,6 +715,409 @@ async function verifyRound(mkt, boundarySecs, before, g0) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// relock — `E-224` DRIVEN ON PRODUCTION: a refunded wager does not discharge the obligation
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * ⛔ WHY THIS LEG HAD TO EXIST, AND WHY `settle` COULD NEVER HAVE PROVEN IT.
+ * `settle`'s check 6 — the E-224 assertion — fires only when the round it bet into VOIDS
+ * (`fate === "REFUNDED"`). On production that is reachable only by WAITING for a `no-move` or
+ * a `source-failed` round: about one in three on XAU/15m, and effectively never on a healthy
+ * chain. So E-224 shipped guarded (`test:bonus-relock` 62/0, `red:bonus-relock` 13/13) and
+ * deployed (`f0521356`, serving inside `d3818929`) with its live proof left to chance — and by
+ * §0's own definition it was NOT DONE: a money control that has never executed against
+ * production is a hypothesis with a test suite attached.
+ * ⭐ THIS LEG MAKES THE REFUND HAPPEN ON PURPOSE.
+ *
+ * ⭐ AND THE ROUTE IS THE FREE EXIT, NOT A VOID — which is the STRONGER proof, because the
+ * free exit is `B1b`'s own exploit path: the PLAYER decides to undo the bet, not the platform.
+ *   grant 2,000 ×1  →  ONE cash-funded 2,000 stake (turnover accrues at PLACEMENT —
+ *   `market-service.ts:1266` — so the grant FULFILS immediately and 2,000 of locked bonus
+ *   becomes withdrawable cash)  →  the free exit inside the 5-minute grace, a full refund at
+ *   zero fee  →  the obligation is NOT discharged: the grant returns to ACTIVE and the 2,000
+ *   moves back out of `balance` into `bonusBalance`.
+ * Before `f0521356` that last arrow did not exist: `reverseWageringCore` read
+ * `listActiveByUser`, whose DAL filter is `status: "ACTIVE"`, so the FULFILLED grant was not
+ * skipped by a visible condition — it was INVISIBLE TO THE QUERY, and the player kept 2,000 of
+ * withdrawable cash having risked nothing, repeatably, as fast as the rate limiter allows.
+ *
+ * ⛔ THE PLAYER MUST END EXACTLY WHERE HE STARTED, TO THE SHILLING. Ali's ruling (2026-08-26)
+ * is "re-locked, not TAKEN", so the whole round trip is a NO-OP on holdings: `balance` back to
+ * its opening figure and `bonusBalance` back to the grant. Check 6.1 asserts that equality and
+ * it IS the ruling, not a proxy for it.
+ *
+ * ⚠️ FOUR PRECONDITIONS DECIDE WHETHER ANY OF THIS MEANS ANYTHING, SO EACH IS ASSERTED:
+ *  · `sequentialBonuses` is TRUE on production — and not because a file says so. `SystemConfig`
+ *    holds no `bonus.config` row, so `DEFAULT_BONUS_CONFIG` IS the live value, re-measured in
+ *    this run. A fresh grant to a player who already holds an ACTIVE one lands QUEUED and can
+ *    never fulfil, so this leg REFUSES to start unless the player holds neither ACTIVE nor
+ *    QUEUED. ⛔ That is the trap the work order warned about: the obvious plan produces a
+ *    QUEUED row and a drive waiting for a fulfilment that cannot happen.
+ *  · Cash is spent FIRST (`market-service.ts:1034`), so the real balance must exceed the stake.
+ *    Below it the bet would spend the BONUS, `remainingTzs` would reach 0, and the unlock would
+ *    move nothing while still reporting FULFILLED.
+ *  · The position must be cash-funded for a second, independent reason: `cashOutPosition`
+ *    REFUSES a bonus-funded bet outright (`bonus_funded_no_exit`), so a bonus-funded stake
+ *    cannot even reach the exit this leg drives.
+ *  · `hadRunway` — the market must have at least `freeExitGraceMinutes` of BETTING time left
+ *    when the stake lands, or no exit is ever offered. That is why this leg uses a poll with
+ *    hours of window and not an Up & Down round, where TOO_SHORT is the ordinary branch.
+ *
+ * ⛔ AND IT PICKS A MARKET NOBODY ELSE IS IN. A cash-out debits the player's OWN side of the
+ * pool, so betting into a poll holding other players' money would move their odds twice for
+ * nothing. The picker requires `count(Position) = 0` and both pools at zero.
+ *
+ * ⛔ THE DOM IS NOT THE PROOF, here least of all. Every figure below is read from `Wallet`,
+ * `BonusGrant`, `Position`, `Transaction`, `LedgerEntry` and `AuditLog` on production.
+ */
+async function pickEmptyPoll() {
+  const { rows } = await sql.query(`
+    select m.id, m."titleEn" title,
+           extract(epoch from (coalesce(m."selectionClosedAt", m."resolutionAt") - (now() at time zone 'utc')))::int window_s
+      from "PredictionMarket" m
+     where m.status = 'LIVE' and m."productLine"::text <> 'UPDOWN'
+       and coalesce(m."selectionClosedAt", m."resolutionAt") > (now() at time zone 'utc') + ($1 || ' seconds')::interval
+       and m."yesPool" = 0 and m."noPool" = 0
+       and (select count(*) from "Position" p where p."marketId" = m.id) = 0
+     order by window_s asc limit 1`, [String(RELOCK_MIN_WINDOW_S)]);
+  return rows[0] ?? null;
+}
+
+/** The newest transaction of a type for this player — the row the player's own wallet renders. */
+async function lastTxn(type) {
+  return (await sql.query(`
+    select t.id, t.status::text status, t.amount::numeric amount, t.fee::numeric fee,
+           t.description, t."balanceAfter"::numeric balance_after, t."createdAt"::text created
+      from "Transaction" t join "User" u on u.id = t."userId"
+     where u."phoneE164" = $1 and t.type::text = $2 order by t."createdAt" desc limit 1`,
+    [E164, type])).rows[0] ?? null;
+}
+
+async function relock() {
+  // ── 0 · the live config, re-measured, and the grants that would block the drive ──────────
+  const cfgRow = (await sql.query(`select key, value from "SystemConfig" where key = 'bonus.config'`)).rows[0];
+  rec.check("0: ★ `sequentialBonuses` is DEFAULT_BONUS_CONFIG's `true` because production holds NO `bonus.config` row — measured in this run, not read off a comment",
+    !cfgRow, cfgRow ? `SystemConfig['bonus.config'] = ${JSON.stringify(cfgRow.value).slice(0, 200)}` : "no row — the code defaults are live");
+
+  const g0all = await grants();
+  const queued = g0all.filter((x) => x.status === "QUEUED");
+  // Re-entry after a half-run: an ACTIVE grant of exactly this shape with ZERO turnover is one
+  // this leg minted and did not get to spend. Reuse it rather than minting a second.
+  let g = g0all.find((x) => x.status === "ACTIVE" && x.required === STAKE && x.wagered === 0 && x.remaining === GRANT_TZS);
+  const otherActive = g0all.filter((x) => x.status === "ACTIVE" && x.id !== g?.id);
+  rec.check("0: no QUEUED grant is in the way — under `sequentialBonuses` a queued grant can never fulfil, so a drive that waits on one waits for ever",
+    queued.length === 0, g0all.map(describe).join(" | ") || "(no grants)");
+  rec.check("0: no OTHER ACTIVE grant exists — a fresh grant would land QUEUED behind it",
+    otherActive.length === 0, otherActive.map(describe).join(" | ") || "(none)");
+  if (queued.length || otherActive.length) { rec.done(); return; }
+
+  const preMint = await state();
+  rec.check("0: ★ the real balance exceeds the stake — so the bet is CASH-funded and the bonus survives to be converted",
+    preMint.balance > STAKE, `balance ${preMint.balance} · stake ${STAKE}`);
+  if (!(preMint.balance > STAKE)) { rec.done(); return; }
+
+  // ── 1 · one ACTIVE grant, minted through the officer path ────────────────────────────────
+  if (g) {
+    rec.note(`re-entering: an ACTIVE ${GRANT_TZS}x${MULT} grant with zero turnover already exists (${g.id}) — not minting a second one.`);
+  } else {
+    await mintGrantViaGrowth("j-relock");
+    const gAfter = await grants();
+    const fresh = gAfter.filter((x) => !g0all.some((o) => o.id === x.id));
+    rec.check("1: exactly one new grant row exists", fresh.length === 1, fresh.map(describe).join(" | ") || "(none created)");
+    g = fresh[0];
+    rec.check("1: ★★ it landed ACTIVE, not QUEUED — with nothing ahead of it the sequential rule does not defer it",
+      g?.status === "ACTIVE", g ? describe(g) : "no grant");
+    rec.check("1: …carrying the requirement ONE legal stake completes, with its full amount still locked",
+      g?.required === STAKE && g?.remaining === GRANT_TZS, g ? describe(g) : "");
+    const s1 = await state();
+    rec.check("1: the bonus wallet took the grant and the REAL balance did not move",
+      s1.bonus === preMint.bonus + GRANT_TZS && s1.balance === preMint.balance,
+      `bonus ${preMint.bonus}→${s1.bonus} · balance ${preMint.balance}→${s1.balance}`);
+  }
+  if (!g || g.status !== "ACTIVE" || g.required !== STAKE) { rec.done(); return; }
+
+  // ⭐ THE BASELINE FOR THE RULING. Read AFTER the grant exists, so it is the same figure in
+  // both the fresh and the re-entered path, and check 6.1 compares against exactly this.
+  const opening = await state();
+  rec.check("1: ★ the opening position is clean — the bonus wallet holds exactly this grant and nothing else",
+    opening.bonus === GRANT_TZS, `bonusBalance ${opening.bonus} · grant ${GRANT_TZS}`);
+  rec.note(`OPENING: balance ${opening.balance} · bonus ${opening.bonus} · hold ${opening.hold} · ${describe(g)} · expires ${g.expires ?? "never"}`);
+
+  // ── 2 · one cash-funded qualifying stake, into a poll nobody else is in ──────────────────
+  const market = process.env.MKT ? { id: process.env.MKT, title: "(MKT from env)", window_s: null } : await pickEmptyPoll();
+  rec.check("2: a LIVE poll with hours of betting left and NOBODY else in it — an empty pool means the exit moves no other player's odds",
+    !!market, market ? `${market.id} · window ${market.window_s == null ? "?" : Math.round(market.window_s / 60) + "m"} · ${String(market.title ?? "").slice(0, 60)}`
+                     : `no empty LIVE poll with >= ${RELOCK_MIN_WINDOW_S}s of betting left`);
+  if (!market) { rec.done(); return; }
+  rec.note(`staking ${STAKE} (cash) on ${market.id}, then taking the FREE EXIT inside the grace`);
+
+  const { b, ctx } = await browser();
+  const page = await ctx.newPage();
+  let sold = false;
+  let expiresAtFulfilment = null;
+  try {
+    await login(page, `fleet:${PLAYER}`);
+
+    // ⛔ NAVIGATE TO THE SIDE, DO NOT CLICK FOR IT — the selected side is a SEARCH PARAM, and
+    // clicking `Back YES at 50%` races a client transition. Learned in `live-bonus-live-proof`.
+    await page.goto(`${BASE}/markets/${market.id}?side=YES`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("main", { timeout: 45_000 });
+    await page.waitForTimeout(1_500);
+
+    // ⚠️ BY ITS ARIA LABEL. This panel carries TWO numeric inputs — the stake and the
+    // conviction multiplier — and `.first()` on a bare `inputmode` selector is a coin toss
+    // between them, on a form that commits money.
+    const box = page.locator('input[aria-label*="Stake amount" i]').first();
+    await box.waitFor({ timeout: 30_000 });
+    await box.click();
+    await page.keyboard.press("ControlOrMeta+A");
+    await page.keyboard.press("Delete");
+    await page.waitForTimeout(200);
+    await page.keyboard.type(String(STAKE), { delay: 30 });
+    await page.waitForTimeout(400);
+    // ⛔ READ IT BACK BEFORE COMMITTING. `fill` has raced this masked input's default before
+    // and produced "1000100" — on a control that stakes real money.
+    const typed = (await box.inputValue()).replace(/[^\d]/g, "");
+    rec.check("2: ★ the stake box really reads the intended amount before the commit",
+      typed === String(STAKE), `box reads "${typed}" · wanted ${STAKE}`);
+    if (typed !== String(STAKE)) throw new Error(`refusing to bet: stake box reads "${typed}"`);
+    await shot(page, "j-relock-before-bet");
+
+    await page.getByRole("button", { name: /Place YES/i }).first().click({ timeout: 20_000 });
+    await page.waitForTimeout(1_200);
+    await page.locator('[role="dialog"], [role="alertdialog"]').locator("button")
+      .filter({ hasText: /^(Confirm|Place)/i }).last().click({ timeout: 20_000 });
+    await page.waitForTimeout(4_000);
+    await shot(page, "j-relock-after-bet");
+    rec.note(`page after the stake: ${(await bodyText(page)).slice(0, 160)}`);
+
+    // ── 3 · the fulfilment, read from production while the grace clock runs ───────────────
+    const pos = (await sql.query(`
+      select p.id, p.side, p.stake::numeric stake, p."bonusStakeTzs"::numeric bonus_stake,
+             p.status::text status, p."placedAt"::text placed
+        from "Position" p join "User" u on u.id = p."userId"
+       where u."phoneE164" = $1 and p."marketId" = $2 order by p."placedAt" desc limit 1`,
+      [E164, market.id])).rows[0];
+    rec.check("3: the stake landed as a real OPEN position for the intended amount",
+      !!pos && pos.status === "OPEN" && N(pos.stake) === STAKE,
+      pos ? `${pos.id} ${pos.side} ${pos.stake} ${pos.status} placed ${pos.placed}` : "no position row");
+    rec.check("3: ★★ it is CASH-funded — `bonusStakeTzs = 0`, so the bonus was NOT consumed by the bet, and a `bonus_funded_no_exit` refusal cannot be what this leg ends up measuring",
+      !!pos && N(pos.bonus_stake) === 0, pos ? `bonusStakeTzs ${pos.bonus_stake}` : "");
+    if (!pos || pos.status !== "OPEN") throw new Error("no OPEN position to exit — aborting before the exit step");
+
+    const gFul = (await grants()).find((x) => x.id === g.id);
+    rec.check("3: ★★ the grant FULFILLED on PLACEMENT — turnover accrues when the stake is accepted, not at settlement",
+      gFul?.status === "FULFILLED" && N(gFul?.wagered) >= N(gFul?.required), gFul ? describe(gFul) : "grant gone");
+    // ⭐ THE FIELD THE PRE-FIX CODE ZEROED. It is the ONLY record of how much cash this
+    // fulfilment converted, and the re-lock has nothing to move back without it. `amountTzs`
+    // is not a substitute: spendBonus/refundBonus move `remainingTzs` before fulfilment.
+    rec.check("3: ★★ `remainingTzs` was PRESERVED at the converted figure — `E-224`'s first half, and the number the re-lock will move back",
+      N(gFul?.remaining) === GRANT_TZS, gFul ? `remainingTzs ${gFul.remaining} · converted ${GRANT_TZS}` : "");
+    rec.check("3: …and `fulfilledAt` is stamped", !!gFul?.fulfilled, `fulfilledAt=${gFul?.fulfilled ?? "null"}`);
+    expiresAtFulfilment = gFul?.expires ?? null;
+
+    const mid = await state();
+    rec.check("3: ★★ the conversion really moved — the bonus wallet is empty, and the real balance shows the stake leaving and the unlocked bonus arriving",
+      mid.bonus === 0 && mid.balance === opening.balance - STAKE + GRANT_TZS,
+      `bonus ${opening.bonus}→${mid.bonus} · balance ${opening.balance}→${mid.balance} · expected ${opening.balance - STAKE + GRANT_TZS}`);
+    const credit = await lastTxn("BONUS_CREDIT");
+    rec.check("3: the player is TOLD, in a CONFIRMED row the wallet page renders — not only in a column",
+      credit?.status === "CONFIRMED" && N(credit?.amount) === GRANT_TZS && /wagering completed/i.test(credit?.description ?? ""),
+      credit ? `${credit.id} ${credit.status} ${credit.amount} "${credit.description}" (${credit.created})` : "no BONUS_CREDIT row");
+    rec.note(`AT FULFILMENT: this ${GRANT_TZS} is now WITHDRAWABLE cash · grant expires ${expiresAtFulfilment ?? "never"}`);
+
+    // ── 4 · the free exit, inside the grace ───────────────────────────────────────────────
+    // ⚠️ THE CONTROL IS CALLED "FREE EXIT", NOT "CANCEL" — read off the live page: the label is
+    // a COUNTDOWN (`FREE EXIT 4:12 · No fee`) and once it lapses the button becomes
+    // `Selling closed`, DISABLED. A probe matching only /cancel/ reports the feature missing.
+    await page.goto(`${BASE}/markets/${market.id}`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("main", { timeout: 45_000 });
+    await page.waitForTimeout(1_500);
+    const btn = page.getByRole("button", { name: /free exit|cancel|ghairi|取消/i }).first();
+    const there = await btn.isVisible().catch(() => false);
+    rec.check("4: the free-exit control is offered inside the window — `hadRunway` held, so the exit exists at all",
+      there, there ? (await btn.getAttribute("aria-label").catch(() => "")) ?? "" : "no free-exit control on the page");
+    if (!there) throw new Error("no free-exit control — the position would ride to settlement and this leg cannot prove the re-lock");
+
+    // 🔴 THE QUOTE INSIDE THE DIALOG EXPIRES, AND A SCREENSHOT IS ENOUGH TO BURN IT — measured
+    // in `live-bonus-live-proof.mjs`, where the first attempt shot the page, reached a modal
+    // reading "This quote has expired", and reported success over a position still OPEN.
+    // So: click through with nothing in the way, and reopen if the quote lapses.
+    for (let attempt = 0; attempt < 3 && !sold; attempt++) {
+      await btn.click({ timeout: 20_000 });
+      const dlg = page.locator('[role="dialog"], [role="alertdialog"]').first();
+      await dlg.waitFor({ state: "visible", timeout: 15_000 });
+      const sell = dlg.getByRole("button", { name: /^Sell\b/i }).first();
+      await sell.waitFor({ state: "visible", timeout: 10_000 }).catch(() => {});
+      if (await sell.isEnabled().catch(() => false)) { await sell.click({ timeout: 15_000 }); sold = true; }
+      else {
+        await dlg.getByRole("button", { name: /keep position|close/i }).first().click({ timeout: 10_000 }).catch(() => {});
+        await page.waitForTimeout(600);
+      }
+    }
+    rec.check("4: the Sell control was live, not an expired quote", sold);
+    await page.waitForTimeout(6_000);
+    await shot(page, "j-relock-after-exit");
+  } finally { await ctx.close(); await b.close(); }
+  if (!sold) { rec.done(); return; }
+
+  // ── 5 · the refund itself ───────────────────────────────────────────────────────────────
+  const posOut = (await sql.query(`
+    select p.id, p.status::text status, p."finalPayout"::numeric payout, p.stake::numeric stake
+      from "Position" p join "User" u on u.id = p."userId"
+     where u."phoneE164" = $1 and p."marketId" = $2 order by p."placedAt" desc limit 1`,
+    [E164, market.id])).rows[0];
+  rec.check("5: the position is CASHED_OUT and the FULL stake came back — a free exit inside the grace is a refund at zero fee",
+    posOut?.status === "CASHED_OUT" && N(posOut?.payout) === STAKE,
+    posOut ? `${posOut.id} ${posOut.status} finalPayout ${posOut.payout} on a stake of ${posOut.stake}` : "no position");
+  const cashout = await lastTxn("CASHOUT");
+  rec.check("5: …and its transaction charged nothing", N(cashout?.fee) === 0 && N(cashout?.amount) === STAKE,
+    cashout ? `${cashout.id} ${cashout.amount} fee ${cashout.fee} (${cashout.created})` : "no CASHOUT row");
+
+  const gEnd = (await grants()).find((x) => x.id === g.id);
+  const end = await state();
+
+  // ── 6 · ⭐⭐ THE RULING ITSELF, AND IT IS ONE EQUALITY: nothing was taken ────────────────
+  rec.check("6: ★★ `E-224` · NOTHING WAS CLAWED BACK — balance and bonus are back at their OPENING figures, to the shilling",
+    end.balance === opening.balance && end.bonus === opening.bonus,
+    `balance ${opening.balance}→${end.balance} · bonus ${opening.bonus}→${end.bonus}`);
+  rec.check("6: ★★ the obligation was NOT discharged — the grant is ACTIVE again, not FULFILLED",
+    gEnd?.status === "ACTIVE", gEnd ? describe(gEnd) : "grant gone");
+  rec.check("6: …and `fulfilledAt` was cleared with it", !gEnd?.fulfilled, `fulfilledAt=${gEnd?.fulfilled ?? "null"}`);
+  rec.check("6: ★★ the wagering progress fell BACK BELOW the requirement — that is WHY it re-locked, and it is the condition a refund must produce",
+    N(gEnd?.wagered) < N(gEnd?.required), gEnd ? `wagered ${gEnd?.wagered} / required ${gEnd?.required}` : "");
+  rec.check("6: ★ the re-locked amount is on the row AND in the wallet — `bonusBalance` == Σ ACTIVE `remainingTzs`, the invariant the reconciler reads",
+    N(gEnd?.remaining) === GRANT_TZS && end.bonus === N(gEnd?.remaining),
+    gEnd ? `remainingTzs ${gEnd.remaining} · bonusBalance ${end.bonus}` : "");
+
+  // ── 7 · ⛔ THE EXPIRY TRAP — a clawback by the back door, found by adversarially re-reading
+  // the fix rather than by designing it. A grant re-locked after its original expiry date would
+  // return to ACTIVE carrying a DEAD expiry, and `expireActiveGrants` selects exactly
+  // `status = ACTIVE AND expiresAt < now` — the very next sweep would REMOVE the re-locked
+  // money, and the player would end with NEITHER the cash NOR the bonus.
+  const nowUtc = (await sql.query(`select (now() at time zone 'utc')::text t`)).rows[0].t;
+  const msLeft = gEnd?.expires ? Date.parse(gEnd.expires + "Z") - Date.parse(nowUtc + "Z") : null;
+  rec.check("7: ★★ the expiry clock RESTARTED — the re-locked grant carries at least one full default window (30d) from now, so the next sweep cannot take it",
+    msLeft != null && msLeft > 29.5 * 86_400_000,
+    gEnd?.expires ? `expiresAt ${gEnd.expires} · now ${nowUtc} · ${(msLeft / 86_400_000).toFixed(2)} days left (was ${expiresAtFulfilment ?? "never"})` : "no expiry on the row");
+  rec.check("7: ★ …and never SHORTER than what was already there — the restart may only ever lean the player's way",
+    !expiresAtFulfilment || !gEnd?.expires || Date.parse(gEnd.expires + "Z") >= Date.parse(expiresAtFulfilment + "Z"),
+    `was ${expiresAtFulfilment ?? "never"} · now ${gEnd?.expires ?? "never"}`);
+  // ⭐ POSITIVE CONTROL IN THE SAME RUN: the sweep's own predicate, run over the WHOLE table.
+  // A green above means little if some other ACTIVE grant is already sweepable — and if one is,
+  // that is a finding, not a pass.
+  const sweepable = (await sql.query(`
+    select count(*)::int n from "BonusGrant"
+     where status::text = 'ACTIVE' and "expiresAt" is not null and "expiresAt" < (now() at time zone 'utc')`)).rows[0].n;
+  rec.check("7: ★ POSITIVE CONTROL · `expireActiveGrants`'s own predicate finds NOTHING to sweep anywhere on production — asserted over the whole table, not just this row",
+    sweepable === 0, `ACTIVE grants with expiresAt in the past: ${sweepable}`);
+
+  // ── 8 · the player-facing record, and the books ─────────────────────────────────────────
+  const debit = await lastTxn("ADJUSTMENT_DEBIT");
+  rec.check("8: the player is TOLD what happened, in the row the wallet page renders — an OUTGOING ADJUSTMENT_DEBIT, deliberately not a negative BONUS_CREDIT",
+    debit?.status === "CONFIRMED" && N(debit?.amount) === -GRANT_TZS && /re-locked/i.test(debit?.description ?? ""),
+    debit ? `${debit.id} ${debit.status} ${debit.amount} "${debit.description}" (${debit.created})` : "no ADJUSTMENT_DEBIT row");
+  const led = (await sql.query(`
+    select "groupId", count(*)::int n, sum(amount)::numeric total,
+           string_agg(account || ' ' || amount::text, ' | ' order by amount) lines
+      from "LedgerEntry" where "txnId" = $1 group by "groupId"`, [debit?.id ?? ""])).rows[0];
+  rec.check("9: ★★ the double-entry group for the re-lock BALANCES TO ZERO — two lines, cash out of PLAYER and into PLAYER_BONUS",
+    !!led && led.n === 2 && N(led.total) === 0,
+    led ? `${led.groupId} · ${led.n} entries · sum ${led.total} · ${led.lines}` : "no ledger entries for the re-lock txn");
+
+  // ⛔ THE PAYLOAD AS AN OBJECT, NOT AS TEXT. `payload::text` on a jsonb column renders
+  // `{"shortfallTzs": 0}` WITH A SPACE, so a /"shortfallTzs":0/ regex can never match — and
+  // that is exactly how the first live run of this leg reported two FAILs while printing the
+  // correct values in its own detail line. ⭐ Assert the VALUE, never its spelling. `text` is
+  // kept alongside, for evidence only.
+  const auds = (await sql.query(`
+    select action, payload, payload::text text, "createdAt"::text created from "AuditLog"
+     where "actorId" = $1 and action in ('bonus.relocked','bonus.wagering_reversed','bonus.fulfilled')
+       and "createdAt" > (now() at time zone 'utc') - interval '30 minutes'
+     order by "createdAt" desc`, [opening.uid])).rows;
+  const relocked = auds.find((a) => a.action === "bonus.relocked");
+  const reversed = auds.find((a) => a.action === "bonus.wagering_reversed");
+  const pr = relocked?.payload ?? null;
+  const pv = reversed?.payload ?? null;
+  rec.check("10: `bonus.relocked` was written, and it NAMES the shortfall rather than rounding it away — nothing was owed and unpaid",
+    !!pr && Number(pr.owedTzs) === GRANT_TZS && Number(pr.relockedTzs) === GRANT_TZS && Number(pr.shortfallTzs) === 0,
+    relocked ? relocked.text.slice(0, 320) : `only: ${auds.map((a) => a.action).join(", ") || "(none)"}`);
+  // ⭐ NOT "the two keys are present" — that a re-lock RECORDS an expiry proves nothing. The
+  // finding was that a re-lock can inherit a DEAD expiry and be swept away, so the audit row
+  // must show the date MOVING FORWARD, which is the only version of this check that would go
+  // red if the restart were removed.
+  rec.check("10: …and the expiry it recorded MOVED FORWARD — the back-door clawback, closed and witnessed in the log",
+    !!pr && !!pr.expiresAtWas && !!pr.expiresAtNow && Date.parse(pr.expiresAtNow) > Date.parse(pr.expiresAtWas),
+    pr ? `expiresAtWas ${pr.expiresAtWas} → expiresAtNow ${pr.expiresAtNow}` : "");
+  rec.check("10: `bonus.wagering_reversed` records the turnover that came back off the grant, and that exactly ONE grant re-locked",
+    !!pv && Number(pv.reversed) === STAKE && Number(pv.relockedGrants) === 1 && Number(pv.relockedTzs) === GRANT_TZS,
+    reversed ? reversed.text.slice(0, 260) : "no bonus.wagering_reversed row");
+
+  await relockControl(gEnd);
+
+  rec.note(`CLOSE: balance ${end.balance} · bonus ${end.bonus} · hold ${end.hold} · ${gEnd ? describe(gEnd) : "no grant"} · expires ${gEnd?.expires ?? "never"}`);
+  rec.note(`✅ E-224 DRIVEN LIVE: a bonus that HAD been converted into withdrawable cash was RE-LOCKED when the ` +
+           `bet behind it was refunded. The grant is ACTIVE, its clock restarted, and the player holds exactly what ` +
+           `he held before — ${GRANT_TZS} of it locked again. Before f0521356 the FULFILLED grant was invisible to ` +
+           `reverseWagering's query and this ${GRANT_TZS} would have stayed withdrawable, repeatably.`);
+}
+
+/**
+ * ⭐ THE CONTROL THAT PROVES SECTION 6 CAN FAIL — WITHOUT DEPLOYING THE DEFECT.
+ *
+ * ⛔ A live drive cannot be made RED the way a suite can. The only way to make the platform
+ * wrong again is to ship the wrong code to production, and that is not a thing anyone should
+ * do to prove a point. `red:bonus-relock` (13/13) mutates the FIX offline and is the mutation
+ * proof; this is the part that offline cannot give: evidence that THESE predicates, run against
+ * PRODUCTION's own rows, distinguish a re-locked grant from one that was not.
+ *
+ * ⭐ AND THE DEFECT IS STILL ON PRODUCTION — AS DATA. A grant that FULFILLED before `f0521356`
+ * had its `remainingTzs` zeroed on fulfilment and, when the bet behind it was refunded, stayed
+ * FULFILLED because the row was invisible to `reverseWagering`'s query. Such a row is exactly
+ * the state section 6 forbids, and it is sitting in the table. Run section 6's OWN predicates
+ * against it: every one must come back FALSE.
+ *
+ * ⛔ PHRASED AS THE DISCRIMINATION, NOT AS THE DEFECT — which is the whole reason this reads the
+ * way it does. "that grant is still broken" is an assertion a future clean-up INVALIDATES: it
+ * would go red when somebody made the platform tidier, which is the exact shape of the check
+ * that went red when E-224 was fixed. So the claim is about the PREDICATES, and if no such row
+ * exists any more the leg prints INCONCLUSIVE rather than scoring an unproven negative green —
+ * this campaign has already had one refusal-check pass because the page it examined was empty.
+ */
+async function relockControl(gLive) {
+  const pre = (await sql.query(`
+    select g.id, g.status::text status, g."amountTzs"::numeric amount,
+           g."wagerRequiredTzs"::numeric required, g."wageredTzs"::numeric wagered,
+           g."remainingTzs"::numeric remaining, g."fulfilledAt"::text fulfilled,
+           g."createdAt"::text created
+      from "BonusGrant" g
+     where g.status::text = 'FULFILLED' and g."remainingTzs" = 0
+     order by g."createdAt" asc limit 1`)).rows[0];
+
+  // Section 6's four predicates, as data, so the same code judges both rows.
+  const P = [
+    ["the grant is ACTIVE again, not FULFILLED", (x) => x.status === "ACTIVE"],
+    ["`fulfilledAt` was cleared", (x) => !x.fulfilled],
+    ["progress fell back below the requirement", (x) => N(x.wagered) < N(x.required)],
+    ["the converted figure survived on the row", (x) => N(x.remaining) > 0],
+  ];
+
+  if (!pre) {
+    rec.note("11: ⚠️ CONTROL INCONCLUSIVE — production no longer holds a FULFILLED grant with " +
+             "remainingTzs = 0, so there is no pre-fix row to discriminate against. NOT scored as a pass.");
+  } else {
+    const falses = P.filter(([, f]) => !f(pre));
+    rec.check("11: ★★ CONTROL · every predicate section 6 asserts comes back FALSE on a grant that fulfilled under the OLD code — so section 6's green is a fact about the re-lock, not a tautology",
+      falses.length === P.length,
+      `${pre.id} (created ${pre.created}) ${pre.status} wagered ${pre.wagered}/${pre.required} remaining ${pre.remaining} → ${falses.length}/${P.length} predicates false`);
+  }
+  if (gLive) {
+    const trues = P.filter(([, f]) => f(gLive));
+    rec.check("11: ★ POSITIVE HALF, IN THE SAME RUN · and all four come back TRUE on the grant this drive re-locked",
+      trues.length === P.length, `${describe(gLive)} → ${trues.length}/${P.length} predicates true`);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // withdraw — the unverified payout, to the registered number
 // ─────────────────────────────────────────────────────────────────────────────
 /**
@@ -864,7 +1294,7 @@ async function payout() {
   rec.note(`payout ${row.id} · ${row.status} · ${row.amount} fee ${row.fee} via ${row.provider} · wallet balance ${s.balance} bonus ${s.bonus} hold ${s.hold}`);
 }
 
-const CMDS = { locked, queue, promote, settle, verify, withdraw, payout };
+const CMDS = { locked, queue, promote, settle, verify, relock, "relock-control": () => relockControl(null), withdraw, payout };
 if (!CMDS[CMD]) throw new Error(`unknown command "${CMD}" — ${Object.keys(CMDS).join(" | ")}`);
 try {
   await CMDS[CMD]();

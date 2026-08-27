@@ -548,7 +548,8 @@
     "qa:reset-identifier": "node scripts/reset-identifier-shots.mjs",
     "test:bonus-withdrawable": "tsx scripts/bonus-withdrawable.test.mts",
     "red:bonus-withdrawable": "node scripts/bonus-withdrawable-red.mjs",
-    "qa:bonus-j": "node scripts/live-bonus-j.mjs"
+    "qa:bonus-j": "node scripts/live-bonus-j.mjs",
+    "qa:bonus-relock": "node scripts/live-bonus-j.mjs relock"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",
