@@ -131,6 +131,13 @@ ok("6.1 ⛔ no truncate / line-clamp / nowrap anywhere in the card — the box g
    "clipping player copy is the defect; wrapping is the fix");
 ok("6.2 the flex child that holds the copy carries min-w-0, or `truncate` could never engage and the text runs past the card",
    /min-w-0 flex-1/.test(inv), "measured shape of every clipping bug on this platform");
+// ⛔ A NEGATIVE MARGIN IS HOW A CONTROL LEAVES ITS BOX, and this card shipped with two of
+// them for exactly one live run: `-mt-1 -mr-1` on the dismiss button put the row 4px past its
+// own content box — `div 302x137 in 298x137`, at every width and in all three languages.
+// A screenshot cannot see 4px; `qa:install-shown`'s arithmetic caught it on the first drive.
+ok("6.4 ⛔ no negative margins in the card — that is how a control leaves its box",
+   !/-m[trblxy]?-[0-9]/.test(code("src/components/pwa/install-invite.tsx")),
+   "measured live: -mt-1 -mr-1 overflowed the row by exactly 4px");
 ok("6.3 the dismiss control meets the 44px tap floor",
    /h-11 w-11/.test(inv), "a dismiss a player cannot hit is a trap");
 

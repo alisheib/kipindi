@@ -216,8 +216,14 @@ export function InstallInvite() {
           type="button"
           onClick={dismiss}
           aria-label={t.common.installLater}
-          /* 44px, the kit's tap floor — a dismiss control the player cannot hit is a trap. */
-          className="shrink-0 -mt-1 -mr-1 inline-flex h-11 w-11 items-center justify-center rounded-md text-text-subtle hover:text-text"
+          /* 44px, the kit's tap floor — a dismiss control the player cannot hit is a trap.
+             🔴 THE NEGATIVE MARGINS ARE GONE, AND THEY WERE A REAL BREACH OF ALI'S OWN RULE ON THE
+             CARD BUILT TO HONOUR IT. `-mt-1 -mr-1` pulled this 44px button 4px outside the padded
+             content box, so the row's `scrollWidth` exceeded its `clientWidth` by exactly 4 —
+             measured by `qa:install-shown` as `div 302x137 in 298x137`, at EVERY width and in ALL
+             THREE languages. ⛔ Four pixels is invisible in a screenshot; arithmetic caught it on
+             the first run. A negative margin is precisely how text and controls leave their box. */
+          className="shrink-0 inline-flex h-11 w-11 items-center justify-center rounded-md text-text-subtle hover:text-text"
         >
           <I.x s={15} aria-hidden />
         </button>
