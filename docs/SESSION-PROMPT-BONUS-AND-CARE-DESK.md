@@ -259,7 +259,7 @@ session re-derives it.
 
 | # | Unit | Origin | Verdict — 2026-08-27 audit | State |
 |---|---|---|---|---|
-| **A** | **E-224** · a bonus cleared at zero risk | §6 register | ✅ **KEEP · ~1 session.** Zero occurrences ever — **and armed.** Four proposals sit in `REVIEW`, two from real players, and **both logged in on 2026-08-27**; approving either puts a live 5× grant on a real account. ⛔ **INTERIM CONTROL, FREE AND TOTAL: approve no proposal and grant no bonus to a non-fleet account until this ships.** Shrunk — **no migration, no obligation field**; three of §2's four mechanics already shipped | ⬜ |
+| **A** | **E-224** · a bonus cleared at zero risk | §6 register | ✅ **KEEP · ~1 session.** Zero occurrences ever — **and armed.** Four proposals sit in `REVIEW`, two from real players, and **both logged in on 2026-08-27**; approving either puts a live 5× grant on a real account. ⛔ **INTERIM CONTROL, FREE AND TOTAL: approve no proposal and grant no bonus to a non-fleet account until this ships.** Shrunk — **no migration, no obligation field**; three of §2's four mechanics already shipped. ⭐ **THE DESIGN IS DONE AND MEASURED — START AT §2a, NOT AT §2 PROSE** | ⬜ |
 | **B1** | 🔴 **E-226** · the support address nobody reads | **NEW — found by this audit** | ✅ **KEEP · <1 session — the ONLY item here that is WRONG ON PRODUCTION RIGHT NOW.** `/help` serves `support@50pick.tz` ×6 and `0800 11 0011`, while production has held `msaada@50pick.tz` / `+255 769 777 877` since **2026-08-19 09:50:24**. A writer with **no reader**. ⛔ **Send a real message to the address and reply to it BEFORE publishing it**, or step one makes things worse | ⬜ |
 | **B2** | the ticket store + inbound pipeline | Jay #12 · #13 | ⏸️ **DEFERRED behind a named trigger** — the licence-review date, **or** >20 inbound messages in a calendar month. There is no queue to drain: of 16 failed withdrawals, 13 are one ADMIN account and 3 are fleet — **no genuine player has ever had one** | ⬜ |
 | **C** | **Jay unit L** · new markets | Jay §1 | ❌ **DROPPED AS WRITTEN — the demand premise is false.** Re-aimed at XRP's feed failures, filed as its own row. GBP/USD and USD/JPY need **no code at all** | ❌ |
@@ -285,6 +285,79 @@ not ruled on here — it is flagged because it outranks all five units above.**
 > when you fix it — invert it in the same commit. ⛔ **No migration, no obligation field.**
 > 🔴 **INTERIM CONTROL UNTIL THIS SHIPS: approve no proposal and grant no bonus to a non-fleet
 > account.** Two real players' proposals sit in `REVIEW` and both logged in on 2026-08-27.
+
+### §2a · ⭐ THE MECHANISM, READ OFF THE CODE 2026-08-27 — start here, not at the prose below
+
+**The prose in this section describes the DEFECT. This subsection describes the CODE, and where the
+two disagree the code wins.** Every line reference was read on `2c952dd1`.
+
+#### The root cause, exactly
+
+`reverseWageringCore` (`src/lib/server/bonus-service.ts:365`) iterates
+`db.bonusGrant.listActiveByUser(userId)`, and that DAL method
+(`src/lib/server/prisma-dal.ts:2057`) is literally `where: { userId, status: "ACTIVE" }`.
+⛔ **A FULFILLED grant is therefore unreachable from the reversal path — not skipped by a condition
+you can see, but invisible to the query.** The doc-comment above it asserts that a fulfilled grant
+*"already FULFILLED from legitimate turnover is left untouched (its cash is real)"* — **and that is
+precisely the assumption that fails**, because the bet which COMPLETED the wagering may be the very
+one later refunded.
+
+#### 🔴 THE CRUX, AND IT IS NOT IN THE PROSE BELOW: FULFILMENT ERASES THE NUMBER THE FIX NEEDS
+
+`recordWageringCore` fulfils at `bonus-service.ts:259-302`:
+```
+const moved = g.remainingTzs;                                   // :259
+await db.wallet.adjust(g.walletId, { bonusBalance: -moved, balance: moved }, …);
+await db.bonusGrant.update(g.id, { …, remainingTzs: 0, status: "FULFILLED", fulfilledAt });  // :302
+```
+⛔ **`moved` is written nowhere. After fulfilment `remainingTzs` is 0, so "how much cash did this
+grant unlock?" is unanswerable from the grant** — and the audit ruled out a migration, so it cannot
+simply be stored in a new column. `amountTzs` is NOT a substitute: `spendBonus` and `refundBonus`
+move `remainingTzs` up and down before fulfilment, so the unlocked figure is generally smaller.
+
+#### ✅ THE DECISION — stop zeroing `remainingTzs` on FULFILMENT ONLY
+
+`remainingTzs` becomes *"the portion of this grant that is locked bonus money, or that WAS converted
+to real and returns to bonus if the grant is re-locked."* ⭐ **This is safe, and it was verified by
+reading every reader rather than by reasoning about it:**
+
+| Reader | Filter | Effect of a non-zero `remainingTzs` on a FULFILLED row |
+|---|---|---|
+| the ledger reconciler, `ledger.ts:708` | `WHERE status = 'ACTIVE'` | **none** — this is the source of truth for `bonusBalance` and the invariant is ACTIVE-scoped |
+| the invariant comment, `bonus-service.ts:8` · `ledger.ts:573,592,706` | ACTIVE-scoped in all four | **none** |
+| the player wallet page, `src/app/wallet/page.tsx:92` | `.filter(status === "ACTIVE" \|\| "QUEUED")` | **none — invisible to the player** |
+| ⚠️ **the ADMIN bonus ledger**, `bonus-service.ts:~751` | **NO status filter** | 🔴 **would render a "remaining" figure against a FULFILLED grant.** ⛔ **Suppress it to `—` for non-ACTIVE in the SAME commit** |
+
+⛔ **EXPIRED (`:567`) and CANCELLED (`:602`) MUST KEEP ZEROING IT.** The asymmetry is the point and
+needs a comment saying so: on expiry/cancellation the remainder is **removed**, on fulfilment it is
+**converted** — and only a conversion is reversible.
+
+#### The re-lock, precisely
+
+Reverse turnover on ACTIVE grants first (unchanged), then on FULFILLED ones. When a FULFILLED
+grant's `wageredTzs` drops below `wagerRequiredTzs`: move `moved = g.remainingTzs` back with
+`db.wallet.adjust(walletId, { balance: -moved, bonusBalance: +moved })`, set
+`{ status: "ACTIVE", fulfilledAt: null }` (`remainingTzs` already holds the figure), write the
+reversing transaction and ledger entries, and audit it. ⛔ **The status it returns to is `ACTIVE` —
+the ruling's `IN_PROGRESS` DOES NOT EXIST in `BonusGrantStatus`** (`ACTIVE|QUEUED|FULFILLED|
+EXPIRED|CANCELLED|FORFEITED`), and a guard written against that word would stay green for ever.
+
+#### ⚠️ THE SHORT RE-LOCK — do not let this be rounded away
+
+If the player already spent or withdrew the unlocked cash, `balance < moved`. §0e's audit waved this
+off as *"cannot occur — 12 confirmed withdrawals in history"*, but **that is a statement about
+today's DATA, not about the CODE.** ▶ **Re-lock what exists, audit the shortfall explicitly by name,
+and do NOT invent an obligation field** — the ruling says nothing is ever clawed back, so the gap
+must be VISIBLE rather than silently absorbed. A re-lock that quietly moves less than it claims is
+the same class of defect as the one being fixed.
+
+#### The two instruments
+
+⛔ **`scripts/live-bonus-j.mjs:675` ASSERTS THE DEFECT** (`g?.status === "FULFILLED"`) — it goes
+**RED when the fix is correct.** Invert it in the same commit, or the drive will report the repair
+as a regression. ⭐ **And the RED proof must mutate the FIX, not the defect:** re-point
+`reverseWageringCore` at `listActiveByUser` again and the suite must go red — a proof that passes
+with the FULFILLED branch deleted is measuring nothing.
 
 ### What it is, in one real example
 
