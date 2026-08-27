@@ -21,6 +21,7 @@
  */
 import { db } from "../src/lib/server/store.ts";
 import { registerWithPassword, loginWithPassword } from "../src/lib/server/auth-service.ts";
+import { selfExclude } from "../src/lib/server/responsible-gambling.ts";
 
 let pass = 0, fail = 0;
 const ok = (label: string, cond: boolean, extra?: string) => {
@@ -71,7 +72,19 @@ ok(
 
 // ── 2. Status must not be discoverable without the password ────────────────
 const excluded = await db.user.findByPhone(REGISTERED);
-await db.user.update(excluded!.id, { status: "SELF_EXCLUDED" });
+// 🔴 SELF-EXCLUDE THE WAY THE PRODUCT DOES, NOT BY WRITING THE STATUS.
+//
+// This used to be `db.user.update(..., { status: "SELF_EXCLUDED" })` with no RG row behind it
+// — a status with NO END DATE, which `selfExclude()` cannot produce: it always writes
+// `selfExclusionUntil` alongside the status. The sign-in gate treats a break status with no
+// timer as a genuine DIVERGENCE (an officer cleared a timer, a migration wrote a status) and
+// routes it to support rather than naming a break it cannot date, so this fixture was asking
+// the platform to state an end date it had deliberately not been given.
+//
+// ⚠️ It matters beyond this suite: the fixture made the CORRECT-password branch assert on the
+// one shape a real self-exclusion never has, so §2's headline check was passing against a case
+// production cannot reach.
+await selfExclude(excluded!.id, "24h");
 
 const gatedWrongPw = await loginWithPassword({ identifier: REGISTERED, password: "still-wrong" });
 ok(
@@ -91,11 +104,22 @@ ok(
   !gatedRightPw.ok && (gatedRightPw as { code?: string }).code === "SUSPENDED",
   `code=${(gatedRightPw as { code?: string }).code}`,
 );
-ok(
-  "…and the owner IS told why",
-  /exclusion/i.test((gatedRightPw as { error?: string }).error ?? ""),
-  (gatedRightPw as { error?: string }).error,
-);
+// ⛔ MATCH THE PROPERTY, NOT ONE SPELLING. This asserted `/exclusion/i` and the gate's copy
+// says "self-excluded" — so a correct, more informative message failed a check whose intent it
+// satisfied. That is `E-232` exactly: `error-copy.ts`'s SUSPENDED arm matched
+// `/self-exclusion|cooling-off/i` against strings that say "self-excluded" and "cool-off", and
+// a player whose status said SELF_EXCLUDED was told "try again shortly". **A phrase test on
+// English prose breaks on the next rewording, in the direction that looks green.**
+// ⭐ Two clauses, because either alone is weak: it must NAME the exclusion (both spellings
+// pass), and it must NOT be the generic support line the no-timer divergence branch returns.
+{
+  const msg = (gatedRightPw as { error?: string }).error ?? "";
+  ok(
+    "…and the owner IS told why",
+    /self-exclu/i.test(msg) && !/^Account unavailable/.test(msg),
+    msg,
+  );
+}
 
 // ── 3. Timing: an unknown identifier must still cost a password verify ─────
 const t = async (fn: () => Promise<unknown>) => {

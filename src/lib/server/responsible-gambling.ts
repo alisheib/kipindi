@@ -186,7 +186,27 @@ export async function setLimits(userId: string, input: SetLimitInput) {
     }
   }
   if ("dailyLossLimit" in input)       next.dailyLossLimit = input.dailyLossLimit ?? null;
-  if ("sessionTimeLimitMin" in input)  next.sessionTimeLimitMin = input.sessionTimeLimitMin ?? null;
+  // 🔴 BOUNDED — AND IT WAS NOT, UNTIL THIS FIELD STARTED TO BITE (E-235).
+  //
+  // `validators.ts:219` has declared `sessionMin: z.number().int().min(15).max(480)` since
+  // `ResponsibleLimitsSchema` was written — and NOTHING HAS EVER USED THAT SCHEMA. `grep -rn
+  // sessionMin src/` finds the declaration, a report column and an unrelated local, and no
+  // caller. The RG form goes straight from `actions.ts:25` to here, so the only validation the
+  // field ever had was "a non-negative integer".
+  //
+  // ⭐ THAT WAS HARMLESS WHILE NOTHING ENFORCED THE VALUE, AND IS NOT HARMLESS NOW. Enforcement
+  // shipped this session, so an unbounded field means a player can type 1, and stop themselves
+  // betting a minute into every session. The platform already stated the range it meant; this
+  // applies it, using the same clamp `realityCheckIntervalMin` uses two lines down rather than
+  // wiring a second validation mechanism.
+  //
+  // ⚠️ `null` / `0` STILL MEAN "NO LIMIT" AND ARE NOT CLAMPED UP TO 15. Removing a limit must
+  // stay possible; clamping a removal into a 15-minute limit would trap a player inside a
+  // control they had just switched off.
+  if ("sessionTimeLimitMin" in input) {
+    const v = input.sessionTimeLimitMin ?? null;
+    next.sessionTimeLimitMin = v === null || v <= 0 ? null : Math.max(15, Math.min(480, v));
+  }
   if ("realityCheckIntervalMin" in input && input.realityCheckIntervalMin !== undefined) {
     next.realityCheckIntervalMin = Math.max(5, Math.min(120, input.realityCheckIntervalMin));
   }

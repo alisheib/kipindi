@@ -19,7 +19,7 @@
  */
 import { db, type StoredWallet, type StoredResponsibleGambling } from "../src/lib/server/store.ts";
 import { buyPosition, createMarket } from "../src/lib/server/market-service.ts";
-import { selfExclusionStanding, checkSessionTimeLimit } from "../src/lib/server/responsible-gambling.ts";
+import { selfExclusionStanding, checkSessionTimeLimit, setLimits } from "../src/lib/server/responsible-gambling.ts";
 import { readFileSync } from "node:fs";
 import { decomment } from "./lib/decomment.mts";
 
@@ -212,6 +212,32 @@ console.log("\n§4 · and the money path actually refuses (E-235)\n");
   });
   ok("4.4 control: a player who set NO limit bets freely after ten hours", rC.ok,
     rC.ok ? "" : `refused: ${(rC as { reason?: string }).reason}`);
+}
+
+console.log("\n§5 · the limit a player may set is bounded (E-235, and the schema nobody wired)\n");
+{
+  // `validators.ts:219` has declared min(15).max(480) for this field since ResponsibleLimitsSchema
+  // was written, and nothing has ever used that schema — the RG form goes straight to setLimits,
+  // whose only check was "a non-negative integer". Harmless while nothing enforced the value;
+  // not harmless now that it refuses bets.
+  const setAndRead = async (id: string, v: number | null) => {
+    await player(id);
+    await setLimits(id, { sessionTimeLimitMin: v });
+    return (await db.responsible.get(id))?.sessionTimeLimitMin ?? null;
+  };
+  ok("5.1 a 1-minute limit is raised to the platform's stated floor of 15",
+    (await setAndRead("lim_tiny", 1)) === 15);
+  ok("5.2 a 600-minute limit is lowered to the stated ceiling of 480",
+    (await setAndRead("lim_huge", 600)) === 480);
+  // ⛔ REMOVING A LIMIT MUST STAY POSSIBLE. Clamping 0 up to 15 would trap a player inside a
+  // control they had just switched off — the opposite of what the control is for.
+  ok("5.3 ⛔ zero means NO LIMIT and is not clamped up to 15",
+    (await setAndRead("lim_zero", 0)) === null);
+  ok("5.4 ⛔ null means NO LIMIT too", (await setAndRead("lim_null", null)) === null);
+  // ⭐ CONTROL — without this, a clamp that flattened every input to 15 would pass 5.1 and prove
+  // nothing. An in-range value must survive untouched.
+  ok("5.5 control: an in-range value is stored exactly as the player typed it",
+    (await setAndRead("lim_ok", 45)) === 45);
 }
 
 console.log(`\nrg-doors: ${pass} passed, ${fail} failed`);

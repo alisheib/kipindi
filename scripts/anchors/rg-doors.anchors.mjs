@@ -101,6 +101,17 @@ export const MUTATIONS = [
     check: "4.1 ⭐ forty-five minutes into a thirty-minute limit, the bet is REFUSED",
   },
   {
+    name: "the-session-limit-becomes-unbounded-again",
+    why: "⭐ THE STATE THIS FIELD WAS IN UNTIL ENFORCEMENT SHIPPED. `ResponsibleLimitsSchema` has "
+       + "declared min(15).max(480) for it the whole time and NOTHING EVER USED THAT SCHEMA, so "
+       + "the only check was 'a non-negative integer'. Harmless while nothing enforced the value; "
+       + "now it lets a player set 1 and stop themselves betting a minute into every session.",
+    file: RG,
+    from: `    next.sessionTimeLimitMin = v === null || v <= 0 ? null : Math.max(15, Math.min(480, v));`,
+    to: `    next.sessionTimeLimitMin = v === null || v <= 0 ? null : v;`,
+    check: "5.1 a 1-minute limit is raised to the platform's stated floor of 15",
+  },
+  {
     name: "the-bet-path-stops-consulting-the-session-limit",
     why: "The other half of family 3, and the one a merge conflict resolves badly: the check "
        + "still works perfectly, the money path just stops asking it. Same defect class as E-240, "
