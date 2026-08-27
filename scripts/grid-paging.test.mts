@@ -307,15 +307,35 @@ ok("3.5 · the trap is written down where the next editor will read it",
 // ─────────────────────────────────────────────────────────────────────────────
 console.log("\n§4 · the admin top bar keeps its nav trigger and role visible on a phone");
 
+/**
+ * ⛔ LINE COMMENTS FIRST, AND THE ORDER IS LOAD-BEARING RATHER THAN TIDY.
+ * `admin-shell.tsx:78` contains `/admin/*` inside a `//` comment. Strip BLOCK comments first
+ * and that `/*` opens a block comment nobody wrote, swallowing ~5,780 characters — including
+ * the mobile-nav trigger this section asserts on. The suite then fails against correct source.
+ * This is E-186 exactly, one file over; `scripts/lib/decomment.mts` exists because of it.
+ */
+const stripComments = (s: string) => s
+  .replace(/^\s*\/\/.*$/gm, "")
+  .replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, "")
+  .replace(/\/\*[\s\S]*?\*\//g, "");
+
 const shellSrc = readFileSync(join(ROOT, "src/components/admin/admin-shell.tsx"), "utf8");
-const shellCode = shellSrc.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+const shellCode = stripComments(shellSrc);
 const mobileSrc = readFileSync(join(ROOT, "src/components/admin/admin-mobile-nav.tsx"), "utf8");
+/**
+ * ⚠️ E-70 (c83fe83a, session 70) moved the breadcrumb markup out of the shell into its own
+ * client component so the trail re-derives from `usePathname()`. §4.2 follows the MARKUP.
+ */
+const crumbsSrc = readFileSync(join(ROOT, "src/components/admin/admin-crumbs.tsx"), "utf8");
+const crumbsCode = stripComments(crumbsSrc);
 
 ok("4.1 · ⛔ the mobile nav trigger is shrink-0 — the tap target is never what gives",
-   /shrink-0"?>\s*<AdminMobileNavTrigger/s.test(shellCode.replace(/\s+/g, " ").replace(/" >/g, '">')) ||
    /<div className="shrink-0">\s*<AdminMobileNavTrigger/.test(shellCode));
+// ⭐ BOTH HALVES ARE NEEDED. Asserting only the class inside admin-crumbs.tsx would stay green
+// if the shell stopped rendering the component at all — a correct file nothing mounts, which is
+// the "green while measuring the wrong thing" shape this suite exists to catch.
 ok("4.2 · the breadcrumb is hidden below md rather than collapsing to 0px",
-   /aria-label="Breadcrumb" className="hidden md:flex/.test(shellCode));
+   /aria-label="Breadcrumb" className="hidden md:flex/.test(crumbsCode) && /<AdminCrumbs\b/.test(shellCode));
 ok("4.3 · the role chip yields the width below sm", /hidden sm:inline-flex[^"]*uppercase/.test(shellCode));
 // ⛔ …but it must not simply VANISH. "Which role am I operating as" is a safety
 // affordance on a licensed platform. The first draft of this fix hid the chip and left a
@@ -328,7 +348,7 @@ ok("4.5 · the AdminKpi VALUE truncates — E-30 fixed the delta and left this a
 // which made the hamburger the biggest single consumer of a 320px bar.
 // ⚠️ Comments stripped first — the THIRD time in this suite that a scan matched the fix's
 // own explanation of the bug (see 2.4). A structural check must read code, not prose.
-const mobileCode = mobileSrc.replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+const mobileCode = stripComments(mobileSrc);
 // G-5 — the same starvation shape one component over.
 ok("4.7 · ⛔ the AdminCard header wraps rather than starving its own title to 0px",
    /flex flex-wrap items-start justify-between gap-3/.test(shellCode) && /min-w-0 basis-\[14rem\] grow/.test(shellCode));

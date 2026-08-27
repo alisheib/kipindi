@@ -21,6 +21,7 @@
  */
 import { db } from "./store";
 import type { ReadClass } from "./roles";
+import { formatDate } from "@/lib/utils";
 
 export type SensitiveField = {
   /** Which class governs it — the ONLY place this mapping lives. */
@@ -91,7 +92,19 @@ export const SENSITIVE_FIELDS = {
     mask: maskDob,
     // ⚠️ DOB lives on the KYC submission, not on the user row — the registry is the one place
     // that difference is allowed to matter, so no page has to know it.
-    read: async (subjectId) => (await db.kyc.findByUserId(subjectId))?.dob ?? null,
+    read: async (subjectId) => {
+      const raw = (await db.kyc.findByUserId(subjectId))?.dob ?? null;
+      // ⚠️ FORMATTED, NOT RAW — THIS IS A DISPLAY VALUE. `revealSensitiveAction` hands what this
+      // returns straight to `<SensitiveReveal>`, which prints it verbatim beside "Submitted
+      // 31 Jul 2026, 17:11". `prisma-dal.toStoredKyc` stores a full instant for `dob`
+      // (`iso(row.dob)`) — unlike `idExpiry`, which it slices to a day — so returning it raw put
+      // "1995-04-12T00:00:00.000Z" back on the applicant card the moment an officer revealed it.
+      // That is the exact E-2 defect `scripts/kyc-workstation-time.test.mts` exists to prevent:
+      // a raw ISO instant carries a TIME and a ZONE that a date of birth does not have.
+      // ⛔ THIS CHANGES RENDERING ONLY AND CANNOT WEAKEN THE REVEAL'S ACCOUNTABILITY — the D4
+      // audit row records field, class and role, never the value.
+      return raw ? formatDate(raw) : null;
+    },
   },
 } as const satisfies Record<string, SensitiveField>;
 

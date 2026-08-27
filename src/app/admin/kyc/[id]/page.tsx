@@ -9,7 +9,7 @@ import { db } from "@/lib/server/store";
 import { listPendingKyc } from "@/lib/server/kyc-service";
 import { kycRiskScore, getApprovalRecommendation, KYC_MAKER_CHECKER_THRESHOLD } from "@/lib/server/kyc-risk";
 import { currentSession } from "@/lib/server/auth-service";
-import { formatDate, formatDateTime } from "@/lib/utils";
+import { formatDateTime } from "@/lib/utils";
 import { KycDocViewer } from "./kyc-doc-viewer";
 import { Sensitive } from "@/components/ui/sensitive";
 import { maskDob } from "@/lib/server/sensitive-fields";
@@ -217,10 +217,13 @@ export default async function KycWorkstationPage({ params }: { params: Promise<{
                     }
                   />
                 )}
-                {/* Was the raw ISO string — "1995-04-12T00:00:00.000Z" — on a card
-                    whose other dates are formatted (§6 E-2). formatDate renders in
-                    the platform zone, which is also what keeps a DOB stored at
-                    midnight from reading as the previous day. */}
+                {/* Was the raw ISO string — "1995-04-12T00:00:00.000Z" — on a card whose other
+                    dates are formatted (§6 E-2). ⚠️ THAT GUARANTEE NOW LIVES IN THE REGISTRY,
+                    NOT HERE: `sensitive-fields.ts` formats on the way out, both for the masked
+                    render and for a permitted reveal. It has to be there rather than at the call
+                    site, because `revealSensitiveAction` returns the value straight to
+                    `<SensitiveReveal>` and never passes back through this page — so formatting
+                    here would have left the REVEALED value as a raw instant. */}
                 {/* 🔴 AUDITOR holds `compliance: view`, so this page is theirs — and their
                     identity.personal cell is `masked`, a ceiling they were reading straight past.
                     Found by the drift ratchet (test:read-tiers §7), not by looking. */}

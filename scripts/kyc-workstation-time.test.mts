@@ -55,8 +55,30 @@ ok("🔴 no ISO slicing survives on the document strip",
 ok("🔴 no raw-ISO date rendering survives on the workstation page",
   !/\{kyc\.dob \?\? "—"\}/.test(P) && !/`DOB \$\{kyc\.dob\}`/.test(P),
   "the raw value reads 1995-04-12T00:00:00.000Z to an officer");
-ok("DOB goes through formatDate on the applicant card", /kyc\.dob \? formatDate\(kyc\.dob\) : "—"/.test(P));
-ok("…and in the auto-check detail line", /DOB \$\{formatDate\(kyc\.dob\)\}/.test(P));
+// ⚠️ RE-AIMED 2026-08-28. These two used to pin `formatDate(kyc.dob)` as SOURCE TEXT, and
+// 0ab31eb9 replaced both renderings with the READ_TIERS masking primitive — because AUDITOR
+// holds `compliance: view`, so this page is theirs, and AUDITOR's `identity.personal` cell is
+// `masked` (roles.ts:411). The page had been rendering a date of birth straight past that
+// ceiling. ⛔ RESTORING `formatDate` HERE TO GO GREEN WOULD HAVE REVERTED A LIVE ACCESS CONTROL
+// — the shape this file's own §1 header warns about. The PROPERTY is unchanged (no unformatted
+// date of birth reaches an officer's screen); only the mechanism it names has moved, and the
+// formatting now happens at the registry, in `sensitive-fields.ts`, where the field's shape is
+// known. The ban above on raw-ISO rendering is untouched and still the primary check.
+ok("DOB on the applicant card is wired through the registry, not rendered raw",
+  /<Sensitive field="dob" subjectId=\{id\} value=\{kyc\.dob\} \/>/.test(P),
+  "0ab31eb9 replaced formatDate here: AUDITOR's identity.personal cell is `masked`");
+ok("…and the auto-check detail line masks at source, because it is a plain string on a CLIENT component",
+  /DOB \$\{maskDob\(kyc\.dob\)\}/.test(P),
+  "<Sensitive> is server-only and cannot travel into kyc-decision-rail.tsx");
+// ⭐ AND THE REVEAL ITSELF MUST NOT HAND BACK AN INSTANT. The registry's `read` is what an
+// officer actually sees after clicking reveal; `toStoredKyc` stores `dob` as a full instant, so
+// an unformatted read puts "1995-04-12T00:00:00.000Z" on the card — E-2, one layer further in.
+{
+  const REG = read("../src/lib/server/sensitive-fields.ts");
+  ok("the dob REVEAL returns a formatted date, not the stored instant",
+    /return raw \? formatDate\(raw\) : null;/.test(REG),
+    "revealSensitiveAction hands this straight to <SensitiveReveal>, which prints it verbatim");
+}
 
 // ── 2 · The formatters actually render the platform zone ───────────────────
 section("2 · the helpers are zone-aware, not just named that way");
