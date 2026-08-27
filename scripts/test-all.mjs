@@ -47,7 +47,25 @@ let suites = Object.keys(pkg.scripts)
 
 if (only) suites = suites.filter((s) => s.key.includes(only));
 if (filterList) suites = suites.filter((s) => filterList.some((f) => s.key.includes(f)));
-if (skipList) suites = suites.filter((s) => !skipList.some((f) => s.key.includes(f)));
+// 🔴 `--skip` IS AN EXACT MATCH. `--only` and `--filter` stay substring matches on purpose —
+// they are exploratory and a too-wide net just runs more tests. `--skip` is the opposite: a too
+// wide net SILENTLY DISABLES GATES, and this one did. Under the old `includes(f)`,
+// `--skip motion` also dropped `test:motion-ladder`, `test:glyph-motion` and
+// `test:reduce-motion` — three suites that need no server and were never meant to be skipped —
+// while the run still printed a clean pass. That is the reason CI could not simply be given the
+// invocation this file's own header recommends.
+// ⛔ AND A TERM THAT MATCHES NOTHING IS A HARD ERROR, because the failure it prevents is a typo
+// in CI skipping zero suites, or a renamed suite quietly coming back into a serverless run.
+if (skipList) {
+  const keys = new Set(suites.map((s) => s.key));
+  const unmatched = skipList.filter((f) => !keys.has(f) && !keys.has(`test:${f}`));
+  if (unmatched.length) {
+    console.error(`--skip named ${unmatched.length} suite(s) that do not exist: ${unmatched.join(", ")}`);
+    console.error("Refusing to run: a skip term that matches nothing means the pipeline is not skipping what it thinks it is.");
+    process.exit(1);
+  }
+  suites = suites.filter((s) => !skipList.some((f) => s.key === f || s.key === `test:${f}`));
+}
 
 const npmCli = process.platform === "win32" ? "npm.cmd" : "npm";
 const results = [];

@@ -57,10 +57,22 @@ jobs:
       - name: Content integrity
         run: npm run test:integrity
 
-      # In-memory suite (no DATABASE_URL). test:responsive needs a live :3000
-      # server and is exercised by the visual sweep, not CI — skip it here.
+      # In-memory suite (no DATABASE_URL).
+      #
+      # 🔴 TWO suites need a live :3000 server and CI has none: test:responsive (the 9-width
+      # sweep) and test:motion (which proves the motion layer's tokens RESOLVE in a real
+      # browser — a green unit suite cannot see a dead var(), which is how the B5 outage
+      # killed all motion silently). Both are exercised by the pre-deploy/visual sweep.
+      # Only `responsive` was skipped here, so test:motion failed on EVERY push — and since
+      # this aggregator is the only place all 265 suites run, that is why CI had not been
+      # green in 200 runs. This is the invocation scripts/test-all.mjs's own header has
+      # recommended all along.
+      #
+      # ⛔ THE MATCH IS EXACT (scripts/test-all.mjs). It must NOT catch test:motion-ladder,
+      # test:glyph-motion or test:reduce-motion — three serverless gates a substring skip
+      # would have silently disabled while still printing a clean pass.
       - name: Test suite (in-memory)
-        run: node scripts/test-all.mjs --skip responsive
+        run: node scripts/test-all.mjs --skip responsive,motion
 
       - name: Build
         run: npm run build
