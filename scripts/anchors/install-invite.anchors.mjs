@@ -68,8 +68,8 @@ export const MUTATIONS = [
        + "make a card look tidier. Swahili is the longest of the three languages and 360 is the "
        + "narrowest width, so this is precisely where the platform's worst clipping has always been.",
     file: INV,
-    from: `          <p className="mt-1 text-[12px] leading-snug text-text-muted">`,
-    to: `          <p className="mt-1 text-[12px] leading-snug text-text-muted truncate">`,
+    from: `          <p className="mt-1 text-label leading-snug text-text-muted">`,
+    to: `          <p className="mt-1 text-label leading-snug text-text-muted truncate">`,
     check: "6.1 ⛔ no truncate / line-clamp / nowrap anywhere in the card — the box grows, the words stay whole",
   },
   {

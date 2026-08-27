@@ -40,17 +40,17 @@ function SourcedFigure({
   const prov = provenanceLabel(figure.source);
   return (
     <div className="min-w-[150px]">
-      <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-subtle">
+      <span className="font-mono text-micro uppercase text-text-subtle">
         {caption} · {sw}
       </span>
       <p
-        className={`font-mono text-[15px] font-bold tabular-nums ${
+        className={`font-mono text-body-lg font-bold tabular-nums ${
           tone === "danger" ? "text-danger" : tone === "muted" ? "text-text-tertiary" : "text-text"
         }`}
       >
         {formatTzs(figure.amount)}
       </p>
-      <p className="font-mono text-[9.5px] text-text-tertiary">
+      <p className="font-mono text-caption text-text-tertiary">
         {figure.count.toLocaleString()} confirmed · {prov.short} · {prov.sw}
       </p>
     </div>
@@ -66,45 +66,45 @@ export function SelcomStatementCard({ statement }: { statement: SelcomStatement 
     <div className="space-y-4">
       {/* ── The two balances, both answered honestly ─────────────────────────── */}
       <div>
-        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">
+        <p className="font-mono text-micro uppercase text-text-subtle">
           Selcom balances · Salio la Selcom
         </p>
         <div className="mt-2 flex flex-wrap items-start gap-x-8 gap-y-3">
           {/* B2C — the one balance the vendor API exposes. */}
           <div className="min-w-[150px]">
-            <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-subtle">
+            <span className="font-mono text-micro uppercase text-text-subtle">
               Disbursement float (B2C) · Salio la malipo
             </span>
             {float.available ? (
               <>
                 <p
-                  className={`font-mono text-[15px] font-bold tabular-nums ${
+                  className={`font-mono text-body-lg font-bold tabular-nums ${
                     float.balance < FLOAT_LOW_TZS ? "text-danger" : "text-text"
                   }`}
                 >
                   {formatTzs(float.balance)}
                 </p>
-                <p className="font-mono text-[9.5px] text-text-tertiary">
+                <p className="font-mono text-caption text-text-tertiary">
                   {floatProv.short} · {floatProv.sw}
                 </p>
               </>
             ) : (
-              <p className="mt-0.5 font-mono text-[11px] text-text-tertiary">Unavailable — {float.reason}</p>
+              <p className="mt-0.5 font-mono text-caption text-text-tertiary">Unavailable — {float.reason}</p>
             )}
           </div>
 
           {/* C2B — ⛔ there is no such balance in Selcom's contract, and the page says so
               rather than computing one from our ledger and captioning it "Selcom" (A-5). */}
           <div className="min-w-[220px] max-w-[420px]">
-            <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-subtle">
+            <span className="font-mono text-micro uppercase text-text-subtle">
               Collections balance (C2B) · Salio la makusanyo
             </span>
-            <p className="mt-0.5 font-mono text-[13px] font-bold text-text-tertiary">Not published by Selcom</p>
-            <p className="font-mono text-[9.5px] leading-relaxed text-text-tertiary">{rail.collectionsBalance.reason}</p>
+            <p className="mt-0.5 font-mono text-body-sm font-bold text-text-tertiary">Not published by Selcom</p>
+            <p className="font-mono text-body-sm leading-relaxed text-text-tertiary">{rail.collectionsBalance.reason}</p>
           </div>
         </div>
         {float.available && float.balance < FLOAT_LOW_TZS && (
-          <p className="mt-2 inline-flex items-center gap-1.5 font-mono text-[11px] text-danger">
+          <p className="mt-2 inline-flex items-center gap-1.5 font-mono text-body-sm text-danger">
             <I.alertCircle s={13} /> Low float — top up; payouts fail when it runs dry.
           </p>
         )}
@@ -112,7 +112,7 @@ export function SelcomStatementCard({ statement }: { statement: SelcomStatement 
 
       {/* ── The statement: what actually crossed the rail ────────────────────── */}
       <div className="border-t border-border-subtle pt-3">
-        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">
+        <p className="font-mono text-micro uppercase text-text-subtle">
           Statement · Taarifa ya miamala · all confirmed movements
         </p>
         <div className="mt-2 flex flex-wrap items-start gap-x-8 gap-y-3">
@@ -125,7 +125,7 @@ export function SelcomStatementCard({ statement }: { statement: SelcomStatement 
             tone={s.net.amount < 0 ? "danger" : "ok"}
           />
         </div>
-        <p className="mt-2 font-mono text-[10px] leading-relaxed text-text-tertiary">
+        <p className="mt-2 font-mono text-body-sm leading-relaxed text-text-tertiary">
           Counted from confirmed <span className="text-text-secondary">DEPOSIT</span> and{" "}
           <span className="text-text-secondary">WITHDRAWAL</span> transactions only — the two movements that
           reach Selcom. Reconciles to <span className="text-text-secondary">scripts/live/ops/payments-now.cjs</span>.
@@ -141,7 +141,7 @@ export function SelcomStatementCard({ statement }: { statement: SelcomStatement 
             figure={internalCredits}
             tone="muted"
           />
-          <p className="max-w-[520px] font-mono text-[10px] leading-relaxed text-text-tertiary">
+          <p className="max-w-prose font-mono text-body-sm leading-relaxed text-text-tertiary">
             <span className="text-warning">This did not touch Selcom.</span> A winner is credited inside their
             50pick wallet; the money only reaches the rail if they later withdraw it.
             {conflationRatio !== null && conflationRatio > 1 && (

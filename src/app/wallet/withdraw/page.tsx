@@ -205,10 +205,10 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
             <FieldLegend>{t.wallet.destinationPhone}</FieldLegend>
             <Chip variant="neutral" size="sm">{t.wallet.destinationRegistered}</Chip>
           </div>
-          <p className="mt-1.5 font-mono text-[15px] tabular-nums text-text tracking-[0.02em]">
+          <p className="mt-1.5 font-mono text-body-lg tabular-nums text-text">
             +255 {registeredMsisdn.replace(/(\d{3})(?=\d)/g, "$1 ")}
           </p>
-          <p className="mt-1.5 text-[11.5px] leading-snug text-text-muted">{t.wallet.destinationLockedBody}</p>
+          <p className="mt-1.5 text-body-sm leading-snug text-text-muted">{t.wallet.destinationLockedBody}</p>
           <input type="hidden" name="msisdn" value={registeredMsisdn} />
         </div>
 

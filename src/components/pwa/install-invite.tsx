@@ -56,6 +56,7 @@ import { usePathname } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
 import { isCommitSurface } from "@/lib/surfaces";
+import { Button } from "@/components/ui/button";
 
 const MIN_VISITS = 2;
 const MIN_ENGAGE_MS = 45_000;
@@ -189,27 +190,27 @@ export function InstallInvite() {
             runs past the card at 360 — the measured shape of every clipping bug on this
             platform, and the reason `min-w-0` sits on the breadcrumb wrapper too. */}
         <div className="min-w-0 flex-1">
-          <p id="install-invite-title" className="font-display text-[13.5px] font-semibold leading-tight text-text">
+          <p id="install-invite-title" className="font-display text-body font-semibold leading-tight text-text">
             {t.common.installTitle}
           </p>
           {/* ⛔ NO `truncate` AND NO LINE CLAMP ANYWHERE IN THIS CARD. Ali's rule is that no text
               leaves its box "no matter the amount of lines needed" — so the box grows and the
               words stay whole. Swahili is the longest of the three and 360 is the narrowest
               width; both are driven by `qa:install-invite`. */}
-          <p className="mt-1 text-[12px] leading-snug text-text-muted">
+          <p className="mt-1 text-label leading-snug text-text-muted">
             {mode === "prompt" ? t.common.installBody
               : mode === "ios" ? t.common.installIosHow
               : t.common.installOtherHow}
           </p>
           <div className="mt-2.5 flex flex-wrap items-center gap-2">
             {mode === "prompt" && (
-              <button type="button" onClick={install} className="btn btn-primary btn-sm">
+              <Button type="button" onClick={install} variant="primary" size="sm">
                 {t.common.installCta}
-              </button>
+              </Button>
             )}
-            <button type="button" onClick={dismiss} className="btn btn-ghost btn-sm">
+            <Button type="button" onClick={dismiss} variant="ghost" size="sm">
               {t.common.installLater}
-            </button>
+            </Button>
           </div>
         </div>
         <button
@@ -223,7 +224,7 @@ export function InstallInvite() {
              measured by `qa:install-shown` as `div 302x137 in 298x137`, at EVERY width and in ALL
              THREE languages. ⛔ Four pixels is invisible in a screenshot; arithmetic caught it on
              the first run. A negative margin is precisely how text and controls leave their box. */
-          className="shrink-0 inline-flex h-11 w-11 items-center justify-center rounded-md text-text-subtle hover:text-text"
+          className="shrink-0 inline-flex h-[44px] w-[44px] items-center justify-center rounded-md text-text-subtle hover:text-text"
         >
           <I.x s={15} aria-hidden />
         </button>

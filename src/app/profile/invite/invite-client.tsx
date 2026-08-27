@@ -66,7 +66,7 @@ function LinkField({ value, label }: { value: string; label: string }) {
       // ⛔ `break-all`, not the default word wrap. A URL has no spaces, so without it the
       // browser keeps the whole thing on one line and the textarea scrolls instead of
       // wrapping — the same defect in a taller box.
-      className="field-measure w-full resize-none overflow-hidden rounded-lg border border-border bg-bg-inset px-3 py-2 font-mono text-[13px] font-medium leading-[1.5] text-text break-all brand-focus hover:border-border-strong transition-colors"
+      className="field-measure w-full resize-none overflow-hidden rounded-lg border border-border bg-bg-inset px-3 py-2 font-mono text-body-sm font-medium leading-[1.5] text-text break-all brand-focus hover:border-border-strong transition-colors"
     />
   );
 }

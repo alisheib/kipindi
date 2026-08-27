@@ -136,8 +136,17 @@ ok("6.2 the flex child that holds the copy carries min-w-0, or `truncate` could 
 ok("6.4 ⛔ no negative margins in the card — that is how a control leaves its box",
    !/-m[trblxy]?-[0-9]/.test(code("src/components/pwa/install-invite.tsx")),
    "measured live: -mt-1 -mr-1 overflowed the row by exactly 4px");
+// 🔴 THIS CHECK WAS ITSELF A GREEN MEASURING THE WRONG THING, and test:ui-consistency is what
+// caught it. It pinned the SPELLING `h-11 w-11` and called it "the 44px tap floor" — but
+// `tailwind.config.ts:204-219` overrides `theme.extend.spacing` and there are no height/width
+// extend keys, so spacing feeds both and **`h-11` renders 96px, not 44px**. The label said 44,
+// the assertion enforced 96, and it passed. At 360px in Swahili that stole 52px from the copy
+// column of the one card whose stated purpose is that no text leaves its box.
+// ⛔ LITERALS, NOT `h-11 w-11`. Twelve other call sites in src/ carry a comment recording this
+// exact fix; this is the thirteenth.
 ok("6.3 the dismiss control meets the 44px tap floor",
-   /h-11 w-11/.test(inv), "a dismiss a player cannot hit is a trap");
+   /h-\[44px\] w-\[44px\]/.test(inv),
+   "a dismiss a player cannot hit is a trap — and `h-11` is 96px here, not 44px");
 
 // ── §7 · STORAGE MAY THROW, AND THE ABSENT CASE MUST RENDER CORRECTLY ───────────────────────
 console.log("\n§7 · every localStorage touch is wrapped");

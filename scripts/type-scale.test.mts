@@ -102,7 +102,7 @@ const SRC = join(ROOT, "src");
 
 /** §3 — `text-[Npx]` below the 12.5px reading floor that is NOT a blessed
  *  UPPERCASE tracked microlabel. Measured 2026-08-21 across 175 files. */
-const RATCHET_SUBFLOOR = 771;
+const RATCHET_SUBFLOOR = 768;   // 2026-08-28: -3, the selcom card + withdraw panel prose lifted onto the ladder
 
 /** §4 — every hand-typed size in the product: `text-[Npx]` plus inline literal
  *  `style={{ fontSize: N }}`. Measured 2026-08-21: 1,839 + 38.
@@ -139,7 +139,7 @@ const RATCHET_SUBFLOOR = 771;
  *  step above the real count and would have accepted a new arbitrary size for free.
  *  ⛔ That is the failure mode §4.2 of `test:red-anchors` names for its own ceiling: a
  *  ratchet above the real number has stopped being a ratchet. Re-measured, then locked. */
-const RATCHET_ARBITRARY_SIZE = 1821;
+const RATCHET_ARBITRARY_SIZE = 1813;   // 2026-08-28: -8, five files moved onto fontSize keys
 /*  ⬇️ 38 → 37 on 2026-08-25. The wallet balance pill carried `fontSize: 12.5` inline — an
  *  off-ladder literal AND invisible to every class-based gate. It now reads `text-caption`
  *  below `sm` and `text-label` from there, both ON the closed ladder (§T1), which is also
@@ -154,7 +154,7 @@ const RATCHET_INLINE_FONTSIZE = 37;
 /*  ⬇️ 636 → 635 on 2026-08-25 — pre-existing slack on HEAD, not this commit's doing; see
  *  the note on RATCHET_ARBITRARY_SIZE above. The countdown's date span takes `text-micro`'s
  *  own 0.4px letter-spacing and adds no `tracking-` utility, so this commit is +0 here. */
-const RATCHET_ARBITRARY_TRACKING = 635;
+const RATCHET_ARBITRARY_TRACKING = 634;   // 2026-08-28: -1, text-micro carries its own 0.4px
 
 /** §5 — the 29 hand-typed sizes that exist today. A member may LEAVE (the guard
  *  says so and this list gets trimmed); a NEW one is a hard failure. This is the

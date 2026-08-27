@@ -307,7 +307,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
             <ScrollX label="Up & Down assets">
               <table className="admin-tbl min-w-[820px]">
                 <thead>
-                  <tr className="text-left font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle border-b border-border-subtle">
+                  <tr className="text-left font-mono text-micro uppercase tracking-[0.12em] text-text-subtle border-b border-border-subtle">
                     <th className="px-4 py-2.5 font-semibold">Key</th>
                     <th className="px-4 py-2.5 font-semibold">Name</th>
                     <th className="px-4 py-2.5 font-semibold">Source</th>
@@ -480,7 +480,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                     squeezes the others inside the ScrollX rather than widening it (the E-30 class). */}
               <table className="admin-tbl min-w-[960px]">
                 <thead>
-                  <tr className="text-left font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle border-b border-border-subtle">
+                  <tr className="text-left font-mono text-micro uppercase tracking-[0.12em] text-text-subtle border-b border-border-subtle">
                     <th className="px-4 py-2.5 font-semibold">Chain</th>
                     <th className="px-4 py-2.5 font-semibold">State</th>
                     <th className="px-4 py-2.5 font-semibold">Next boundary</th>
@@ -699,13 +699,13 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
             would be chrome teaching operators to ignore it. */}
         {archived.length > 0 && (
           <AdminCard title="Archived chains" sw="Minyororo iliyohifadhiwa">
-            <p className="px-4 pt-3 text-[12.5px] text-text-muted">
+            <p className="px-4 pt-3 text-body-sm text-text-muted">
               Filed away and hidden from players. Every round they ran is kept — restore one to bring it back as a stopped chain.
             </p>
             <ScrollX label="Archived Up & Down chains">
               <table className="admin-tbl min-w-[560px]">
                 <thead>
-                  <tr className="text-left font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle">
+                  <tr className="text-left font-mono text-micro uppercase tracking-[0.12em] text-text-subtle">
                     <th className="px-4 py-2.5 font-semibold">Chain</th>
                     <th className="px-4 py-2.5 font-semibold">State</th>
                     <th className="px-4 py-2.5 font-semibold">Actions</th>
@@ -717,10 +717,10 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                     const label = `${a?.key ?? c.assetId} ${c.durationMinutes}m`;
                     return (
                       <tr key={c.id}>
-                        <td className="px-4 py-2.5 font-mono text-[12px]">{label}</td>
+                        <td className="px-4 py-2.5 font-mono text-label">{label}</td>
                         {/* The same label the working table uses (line 553) — one lexicon, so
                             "Archived" cannot come to mean two different things on one page. */}
-                        <td className="px-4 py-2.5 font-mono text-[12px] text-text-muted">{chainStateLabel(c.state)}</td>
+                        <td className="px-4 py-2.5 font-mono text-label text-text-muted">{chainStateLabel(c.state)}</td>
                         <td className="px-4 py-2.5">
                           <ChainStateControls id={c.id} state={c.state} label={label} />
                         </td>
