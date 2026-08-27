@@ -14,6 +14,7 @@ import { setUserEmail } from "@/lib/server/email-verification";
 import { loadConfig, saveConfig } from "@/lib/server/config-store";
 import { TWO_PERSON_THRESHOLD_TZS } from "../../aml/constants";
 import { maskEmail } from "@/lib/server/email";
+import { selfExclusionStanding } from "@/lib/server/responsible-gambling";
 
 /**
  * Privileged player-management actions. Each one:
@@ -138,22 +139,76 @@ export async function restorePlayerAction(formData: FormData) {
 
   const target = await db.user.findById(userId);
   if (!target) return { ok: false as const, error: "Player not found." };
-  if (target.status !== "SUSPENDED") {
+
+  // 🔴 E-238 · REOPENING A SELF-EXCLUSION IS AN OFFICER ACTION, AND THIS IS THE ONLY DOOR.
+  //
+  // Ali ruled on 2026-08-27 that the period a player picks (24h / 1w / 1m / 6m) is the
+  // MINIMUM the exclusion lasts, not an expiry: the account never reinstates itself, and the
+  // player must ASK. LCCP SR 3.5.5 — a self-exclusion that lifts on a timer is not a
+  // self-exclusion. `assertSignInAllowed` refuses them at every sign-in door until an officer
+  // acts here, and tells them the date from which they may ask.
+  //
+  // ⛔ THE MINIMUM IS CHECKED, NOT ASSUMED. An officer cannot shorten a self-exclusion by
+  // pressing this early — that would hand the one control a struggling player has to whoever
+  // they can talk into it.
+  let selfExcluded = false;
+  if (target.status === "SELF_EXCLUDED") {
+    const standing = await selfExclusionStanding(userId);
+    if (standing.state === "serving") {
+      return {
+        ok: false as const,
+        error: standing.permanent
+          ? "This is a PERMANENT self-exclusion and cannot be reopened."
+          : `Cannot reopen yet — the self-exclusion runs until ${standing.until.slice(0, 10)}.`,
+      };
+    }
+    if (standing.state !== "minimum_served") {
+      // SELF_EXCLUDED with no end date at all — a genuine divergence, not a served period.
+      return { ok: false as const, error: "Cannot reopen — this exclusion has no recorded end date. Escalate to compliance." };
+    }
+    selfExcluded = true;
+  } else if (target.status !== "SUSPENDED") {
     return { ok: false as const, error: `Cannot restore — current status is ${target.status}.` };
   }
 
   try {
-    await db.user.update(userId, { status: "ACTIVE" });
+    // ⛔ DO NOT HARD-CODE "ACTIVE" HERE. E-238's bet-path fix is read-only precisely because
+    // restoring a status needs to know what it was BEFORE — and a PENDING_KYC player promoted
+    // to ACTIVE would walk through the identity gate they had not passed. It is derivable
+    // without a column: `kyc-service.ts:735` promotes PENDING_KYC → ACTIVE on approval, so
+    // approved KYC is exactly the condition for ACTIVE and everything else lands back on
+    // PENDING_KYC.
+    const kyc = await db.kyc.findByUserId(userId);
+    const nextStatus = kyc?.status === "APPROVED" ? "ACTIVE" as const : "PENDING_KYC" as const;
+    await db.user.update(userId, { status: nextStatus });
+
+    // ⭐ AND THE WALLET HAS TO COME BACK WITH THE ACCOUNT. `selfExclude()` freezes it
+    // (responsible-gambling.ts:224) and — measured — NOTHING in the codebase has ever
+    // unfrozen one, so before this the money stayed frozen even for an account an officer
+    // had "restored". Self-exclusion is the only writer of FROZEN, so an unfreeze here
+    // cannot be releasing some other hold.
+    if (selfExcluded) {
+      const wallet = await db.wallet.findByUserId(userId);
+      if (wallet && wallet.status === "FROZEN") {
+        await db.wallet.update(wallet.id, { status: "ACTIVE" });
+      }
+    }
+
+    // ⚠️ `selfExclusionUntil` IS DELIBERATELY LEFT AS IT IS. It is the cross-operator
+    // register's record that the exclusion happened; /admin/self-exclusions and
+    // reports/catalogue.ts both compare it against `now`, so a past date already reads as
+    // ended. Clearing it would erase the history to change the gate.
     audit({
-      category: "ADMIN",
-      action: "player.restored",
+      category: selfExcluded ? "COMPLIANCE" : "ADMIN",
+      action: selfExcluded ? "rg.self_exclusion.reopened" : "player.restored",
       actorId: officerId,
       targetType: "User",
       targetId: userId,
-      payload: { reason },
+      payload: { reason, restoredTo: nextStatus, ...(selfExcluded ? { wasSelfExcluded: true } : {}) },
     });
     revalidatePath(`/admin/players/${userId}`);
     revalidatePath("/admin/players");
+    revalidatePath("/admin/self-exclusions");
     return { ok: true as const };
   } catch (err) {
     return { ok: false as const, error: safeError(err, "Restore failed") };

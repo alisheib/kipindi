@@ -11,6 +11,7 @@ import { Chip } from "@/components/ui/chip";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { db, type StoredTxn } from "@/lib/server/store";
 import { getAuditForActor, getAuditForTarget, audit as recordAudit, type AuditCategory } from "@/lib/server/audit";
+import { selfExclusionStanding } from "@/lib/server/responsible-gambling";
 import { currentSession } from "@/lib/server/auth-service";
 import { canAct, canView } from "@/lib/server/rbac";
 import { exportUserData } from "@/lib/server/user-service";
@@ -102,6 +103,13 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
   try { kyc = await db.kyc.findByUserId(id); } catch { /* graceful */ }
   let rg: Awaited<ReturnType<typeof db.responsible.get>> = null;
   try { rg = await db.responsible.get(id); } catch { /* graceful */ }
+  // E-238 — whether a self-exclusion has served its MINIMUM decides whether the officer is
+  // offered a Reopen control at all. Computed here rather than in the client component so the
+  // "permanent" rule lives in exactly one place (selfExclusionStanding).
+  let seStanding: Awaited<ReturnType<typeof selfExclusionStanding>> | null = null;
+  if (user?.status === "SELF_EXCLUDED") {
+    try { seStanding = await selfExclusionStanding(id); } catch { /* graceful */ }
+  }
   // A-5: distinguish a FAILED transaction read from a genuinely empty history.
   // On failure the money KPIs + risk gauge + txn table show an explicit
   // "unavailable" state — never a fabricated "TZS 0" lifetime figure.
@@ -402,7 +410,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
         {(capSupport || capMoney || capCompliance) && (
           <AdminCard title="Account actions" sw="Vitendo vya akaunti">
             <div className="flex items-center gap-3 flex-wrap">
-              {capSupport && <SuspendControls userId={data.user!.id} currentStatus={data.user!.status} />}
+              {capSupport && <SuspendControls userId={data.user!.id} currentStatus={data.user!.status} selfExclusion={seStanding} />}
               {capSupport && <ResetPasswordButton userId={data.user!.id} />}
               {capMoney && <BalanceAdjustControls userId={data.user!.id} currentBalance={wallet?.balance ?? 0} />}
               {kyc?.status === "APPROVED" && capCompliance && <ForceReverifyControls userId={data.user!.id} />}

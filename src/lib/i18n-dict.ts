@@ -1703,7 +1703,8 @@ export const dict = {
       limitReached: "Limit reached",
       breakDescription: "A short, one-way pause. You cannot bet, deposit, or sign in until it ends.",
       breakLength: "Break length",
-      selfExcludeDescription: "Self-exclusion cannot be reversed until the period ends. Account frozen, wallet locked, no marketing.",
+      selfExcludeDescription: "Self-exclusion cannot be reversed before the period you choose ends — and it does not reopen by itself afterwards. To come back you must ask us. Account frozen, wallet locked, no marketing.",
+      minimumPeriod: "Minimum period",
       exclusionPeriod: "Exclusion period",
       // === i18n coverage pass ===
       dur1hour: "1 hour", dur24h: "24 hours", dur1week: "1 week",
@@ -1831,6 +1832,7 @@ export const dict = {
       failAccountBlocked: "Your account can’t place bets at the moment. Contact support and we’ll explain why.",
       failSelfExcluded: "You’re on a self-exclusion break until {until}. Betting stays off until then.",
       failCoolingOff: "You’re on a cooling-off break until {until}. Betting stays off until then — there is nothing you need to do.",
+      failSessionLimit: "You set yourself a {limitMin}-minute session limit and this session has reached it. Betting is off until you take a break — come back later and it starts again.",
       failWalletFrozen: "Your wallet is frozen, so bets can’t be placed. Contact support to resolve it.",
       failWalletMissing: "We couldn’t reach your wallet. Refresh and try again — nothing has been charged.",
       // 🔴 `E-215` · the payout-destination law. ⚠️ THE NEXT STEP IS "contact support" BECAUSE
@@ -3390,7 +3392,8 @@ export const dict = {
       limitReached: "Kikomo kimefikiwa",
       breakDescription: "Mapumziko mafupi. Hutaweza kuweka dau, amana au kuingia hadi itakapomalizika.",
       breakLength: "Urefu wa mapumziko",
-      selfExcludeDescription: "Kujizuia hakuwezi kubadilishwa hadi kipindi kimalize. Akaunti itagandishwa, pochi itafungwa.",
+      selfExcludeDescription: "Kujizuia hakuwezi kubadilishwa kabla ya kipindi ulichochagua kumalizika — na hakufunguki chenyewe baadaye. Ili kurudi lazima utuombe. Akaunti itagandishwa, pochi itafungwa.",
+      minimumPeriod: "Kipindi cha chini",
       exclusionPeriod: "Kipindi cha kujizuia",
       // === i18n coverage pass ===
       dur1hour: "Saa 1", dur24h: "Saa 24", dur1week: "Wiki 1",
@@ -3502,6 +3505,7 @@ export const dict = {
       failAccountBlocked: "Akaunti yako haiwezi kuweka dau kwa sasa. Wasiliana na msaada tutakueleza sababu.",
       failSelfExcluded: "Uko kwenye mapumziko ya kujizuia hadi {until}. Uwekaji dau utabaki umezimwa hadi wakati huo.",
       failCoolingOff: "Uko kwenye mapumziko ya kupoa hadi {until}. Uwekaji dau utabaki umezimwa hadi wakati huo — hakuna kitu unachohitaji kufanya.",
+      failSessionLimit: "Ulijiwekea kikomo cha dakika {limitMin} kwa kipindi kimoja, na kipindi hiki kimefika. Uwekaji dau umezimwa hadi upumzike — rudi baadaye na kitaanza upya.",
       failWalletFrozen: "Pochi yako imegandishwa, hivyo dau haziwezi kuwekwa. Wasiliana na msaada kutatua hili.",
       failWalletMissing: "Hatukuweza kufikia pochi yako. Onyesha upya kisha jaribu tena — hakuna kilichotozwa.",
       failPayoutDestination: "Kwa usalama wako, malipo yanaweza kwenda tu kwenye namba iliyosajiliwa kwenye akaunti hii, inayoishia {last4}. Wasiliana na msaada ikiwa namba hiyo imebadilika.",
@@ -5040,7 +5044,8 @@ export const dict = {
       limitReached: "已达上限",
       breakDescription: "短暂暂停。在结束前您无法投注、充值或登录。",
       breakLength: "休息时长",
-      selfExcludeDescription: "自我排除在期限结束前无法撤销。账户冻结、钱包锁定、停止营销。",
+      selfExcludeDescription: "自我排除在您选择的期限结束前无法撤销，期限结束后也不会自动恢复。若要回来，必须向我们提出申请。账户冻结、钱包锁定、停止营销。",
+      minimumPeriod: "最短期限",
       exclusionPeriod: "排除期限",
       // === i18n coverage pass ===
       dur1hour: "1 小时", dur24h: "24 小时", dur1week: "1 周",
@@ -5152,6 +5157,7 @@ export const dict = {
       failAccountBlocked: "您的账户目前无法投注。请联系客服了解原因。",
       failSelfExcluded: "您处于自我排除期，至 {until}。在此之前投注保持关闭。",
       failCoolingOff: "您处于冷静期，至 {until}。在此之前投注保持关闭 — 您无需做任何操作。",
+      failSessionLimit: "您为自己设定了 {limitMin} 分钟的单次时长上限，本次已达到。投注已关闭，请先休息 — 稍后回来将重新计时。",
       failWalletFrozen: "您的钱包已冻结，无法投注。请联系客服处理。",
       failWalletMissing: "无法读取您的钱包。请刷新后重试 — 未扣除任何费用。",
       failPayoutDestination: "为保障您的资金安全，提现只能汇入本账户注册的号码（尾号 {last4}）。如该号码已变更，请联系客服。",

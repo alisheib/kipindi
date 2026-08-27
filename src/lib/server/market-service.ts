@@ -24,7 +24,7 @@ import { withTransientRetry } from "./retry";
 import { emit } from "./event-bus";
 import { spendBonusLocked, recordWageringLocked, reverseWagering, reverseWageringLocked, refundBonusToActive, refundBonusLocked, expireActiveGrants, type BonusAllocation } from "./bonus-service";
 import { notifyBonusFulfilled } from "./notification-service";
-import { isLockedOut, checkLossLimit } from "./responsible-gambling";
+import { isLockedOut, checkLossLimit, checkSessionTimeLimit } from "./responsible-gambling";
 import { rateCheck } from "./rate-limit";
 // The storage half of the criterion-translation rule. ⛔ Defence in depth: even a
 // caller that skipped the action's validation cannot write the English into a
@@ -787,7 +787,19 @@ class BetAbort extends Error {
   constructor(readonly reason: "NO_FUNDS") { super(`bet aborted: ${reason}`); }
 }
 
-type BuyOpts = { marketId: string; side: Side; stake: number; idempotencyKey?: string };
+type BuyOpts = {
+  marketId: string;
+  side: Side;
+  stake: number;
+  idempotencyKey?: string;
+  /**
+   * E-235 · ms epoch this PLAY SESSION began, from the signed session cookie. Passed in
+   * rather than read here so the service stays callable without a request context — and so
+   * a suite can drive the limit without forging a cookie. Absent ⇒ no session clock ⇒ the
+   * limit has no opinion (see `checkSessionTimeLimit`), never "exceeded".
+   */
+  playStartedAt?: number;
+};
 /**
  * ⭐ `placedAt` and `bonusStakeTzs` are here for the BET RECEIPT, and both are load-bearing.
  * The Up & Down receipt states whether this bet has a free cancellation, and that answer is
@@ -895,6 +907,36 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
     return { ok: false, error: `Self-exclusion until ${until}.`, code: "SUSPENDED", reason: "self_excluded", detail: { until } };
   }
 
+  // 🔴 E-235 · THE PLAYER'S OWN SESSION TIME LIMIT, ENFORCED — IT NEVER WAS BEFORE.
+  //
+  // `sessionTimeLimitMin` was settable, shown to officers, and COUNTED AS A LIMIT by the RG
+  // engagement report a Board reviewer reads, while nothing on any code path consulted it. A
+  // player could set 30 minutes and play six hours. Ali ruled on 2026-08-27 that it is
+  // enforced rather than dropped, and this is the only place that can enforce it: the money.
+  //
+  // ⛔ IT SITS AFTER THE LOCKOUT CHECK ON PURPOSE. A self-exclusion or a live cool-off is the
+  // stronger and more urgent statement, and a player in one of those must be told THAT, not
+  // that their session ran long. Reordering these would bury a compliance block behind a
+  // self-imposed one.
+  const sessionLimit = await checkSessionTimeLimit(userId, opts.playStartedAt);
+  if (sessionLimit?.exceeded) {
+    audit({
+      category: "COMPLIANCE",
+      action: "rg.session_limit.enforced",
+      actorId: userId,
+      targetType: "User",
+      targetId: userId,
+      payload: { limitMin: sessionLimit.limitMin, playedMin: sessionLimit.playedMin },
+    });
+    return {
+      ok: false,
+      error: `Session time limit of ${sessionLimit.limitMin} minutes reached.`,
+      code: "SUSPENDED",
+      reason: "session_limit_reached",
+      detail: { limitMin: sessionLimit.limitMin, playedMin: sessionLimit.playedMin },
+    };
+  }
+
   // Account-level status check — a suspended or closed user must not
   // be able to place bets even if their wallet is still nominally
   // ACTIVE. This is the "ban hammer" path the admin operator uses
@@ -926,11 +968,29 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
   // BEFORE the break (a `PENDING_KYC` player would be silently upgraded), and recording that means
   // a column and a migration. Consulting the timer needs neither, and it keeps the guard's real
   // purpose: a break status with NO timer at all is still a genuine divergence and STILL blocks.
-  const breakStatus = u.status === "SELF_EXCLUDED" || u.status === "COOLED_OFF";
-  const breakTimerLive = !!lockout.locked
-    || (u.status === "COOLED_OFF" && !lockout.coolingUntil)
-    || (u.status === "SELF_EXCLUDED" && !lockout.exclusionUntil);
-  if (u.status === "SUSPENDED" || u.status === "CLOSED" || (breakStatus && breakTimerLive)) {
+  // 🔴 THE TWO BREAK STATUSES ARE NOT SYMMETRICAL, AND E-238's FIRST PASS TREATED THEM AS IF
+  // THEY WERE. It made BOTH follow their timer, which is right for a cool-off and wrong for a
+  // self-exclusion. Ali ruled on 2026-08-27 that the period a player picks when they
+  // self-exclude is the MINIMUM it lasts: it does NOT reinstate itself when the timer passes —
+  // the player must ask, and an officer reopens the account (`restorePlayerAction`). So:
+  //
+  //   COOLED_OFF     the TIMER decides. It ends by itself, on the clock, and after E-238 an
+  //                  expired cool-off lets the player bet again with no officer involved.
+  //   SELF_EXCLUDED  the STATUS decides. Nothing clears it but a positive act, so an expired
+  //                  timer means only that the player is now allowed to ASK.
+  //
+  // ⛔ DO NOT "SIMPLIFY" THESE BACK INTO ONE TIMER RULE. Under LCCP SR 3.5.5 a self-exclusion
+  // that lifts on a clock is not a self-exclusion, and this is the money path — the one place
+  // where getting it wrong lets an excluded player stake again. `assertSignInAllowed` already
+  // stops them at every door; this is the second lock, for a session minted before the
+  // exclusion or held open some way nobody has thought of yet.
+  //
+  // ⚠️ A COOLED_OFF status with NO TIMER AT ALL still blocks — an officer cleared a timer, a
+  // migration wrote a status — which is the divergence this branch was originally written for.
+  const selfExcludedBlocks = u.status === "SELF_EXCLUDED";
+  const cooledOffBlocks = u.status === "COOLED_OFF"
+    && (!lockout.coolingUntil || new Date(lockout.coolingUntil).getTime() > Date.now());
+  if (u.status === "SUSPENDED" || u.status === "CLOSED" || selfExcludedBlocks || cooledOffBlocks) {
     audit({
       category: "COMPLIANCE",
       action: "bet.account_blocked",
@@ -948,8 +1008,10 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
     // `error-copy.ts` §7's own prediction, arrived at from both directions at once.
     // ⚠️ AND THESE WERE EN·SW ONLY — a Chinese player got two languages, neither of them theirs.
     // ⭐ IT EMITS `account_blocked` FOR ALL FOUR STATUSES, AND THAT IS DELIBERATE RATHER THAN
-    // LAZY. This branch exists only for the case where the RG TIMER and the account STATUS have
-    // DIVERGED (the comment above says so), so there is no trustworthy end date to state — and
+    // LAZY. It is reached only when there is no live timer to quote — either the timer and the
+    // status have DIVERGED, or (since the 2026-08-27 ruling) a self-exclusion has served its
+    // minimum and is waiting on an officer. A live timer returns further up, with its date. So
+    // in every case that lands here there is no trustworthy end date to state — and
     // `failSelfExcluded` needs one. Naming a break while being unable to say when it lifts is
     // worse than routing the player to someone who can look: *"Your account can't place bets at
     // the moment. Contact support and we'll explain why."* The English `error` string keeps the

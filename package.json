@@ -45,6 +45,8 @@
     "test:bet-retry": "tsx scripts/bet-retry.test.mts",
     "test:redis-failopen": "tsx scripts/redis-failopen.test.mts",
     "test:rg-race": "tsx scripts/rg-limit-race.test.mts",
+    "test:rg-doors": "tsx scripts/rg-doors.test.mts",
+    "red:rg-doors": "node scripts/red-rg-doors.mjs",
     "test:webhook-sec": "tsx scripts/webhook-security.test.mts",
     "test:lock-hash": "tsx scripts/lock-hash.test.mts",
     "test:contrast": "tsx scripts/contrast-audit.mts",

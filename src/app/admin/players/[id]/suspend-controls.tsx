@@ -23,9 +23,12 @@ import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 export function SuspendControls({
   userId,
   currentStatus,
+  selfExclusion = null,
 }: {
   userId: string;
   currentStatus: string;
+  /** E-238 — present only when the player is SELF_EXCLUDED; decides whether Reopen shows. */
+  selfExclusion?: { state: "none" } | { state: "serving"; until: string; permanent: boolean } | { state: "minimum_served"; until: string } | null;
 }) {
   // A1 — this control only ACTS, so a role holding VIEW without ACT is shown why rather
   // than being offered a button the server will refuse (and logged as a privilege
@@ -46,6 +49,13 @@ export function SuspendControls({
 
   const isSuspended = currentStatus === "SUSPENDED";
   const isClosed = currentStatus === "CLOSED";
+  // 🔴 E-238 — a self-exclusion may be reopened only once its MINIMUM period has been served,
+  // and never if it is permanent. The server re-checks this in restorePlayerAction; showing the
+  // control only when it can succeed is what stops an officer promising a player something the
+  // action will refuse. While the period is still running we say WHEN, rather than going quiet.
+  const isSelfExcluded = currentStatus === "SELF_EXCLUDED";
+  const mayReopen = isSelfExcluded && selfExclusion?.state === "minimum_served";
+  const stillServing = isSelfExcluded && selfExclusion?.state === "serving" ? selfExclusion : null;
 
   const submit = () => {
     if (!mode || reason.trim().length < 5) return;
@@ -100,6 +110,25 @@ export function SuspendControls({
           Restore player
         </button>
       )}
+      {mayReopen && (
+        <button
+          type="button"
+          onClick={() => { setMode("restore"); setReason(""); }}
+          disabled={pending}
+          className={`${btnBase} border-yes-700 bg-yes-500/15 text-yes-300 hover:bg-yes-500/25 transition-colors`}
+        >
+          <I.shieldcheck s={11} />
+          Reopen after self-exclusion
+        </button>
+      )}
+      {stillServing && (
+        <span className={`${btnBase} border-border bg-bg-inset text-text-subtle`}>
+          <I.lock s={11} />
+          {stillServing.permanent
+            ? "Permanent self-exclusion — cannot reopen"
+            : `Self-excluded until ${stillServing.until.slice(0, 10)}`}
+        </span>
+      )}
 
       <Modal
         open={!!mode}
@@ -123,7 +152,9 @@ export function SuspendControls({
         <p className="mt-1 text-[12.5px] italic text-text-subtle">
           {mode === "suspend"
             ? "Login + bets + deposits will be blocked until restored."
-            : "Login + bets + deposits will be re-enabled."}
+            : isSelfExcluded
+              ? "The player asked to come back after serving their self-exclusion. Login, bets and deposits are re-enabled and the wallet is unfrozen. The exclusion stays on the register."
+              : "Login + bets + deposits will be re-enabled."}
         </p>
         <label className="mt-3 block">
           <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle">

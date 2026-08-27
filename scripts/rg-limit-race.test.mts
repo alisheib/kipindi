@@ -159,14 +159,26 @@ async function seedDepositCap(userId: string, dailyDepositLimit: number): Promis
     ok("E-238: an EXPIRED cooling-off ACCEPTS the bet — a one-hour break is not permanent",
       r.ok, r.ok ? "" : `refused: ${(r as { reason?: string; error?: string }).reason ?? (r as { error?: string }).error}`);
   }
+  // 🔴 REVERSED 2026-08-27 BY ALI'S RULING, AND THE REVERSAL IS THE POINT.
+  //
+  // This case used to assert that an EXPIRED self-exclusion ACCEPTS the bet, on the reasoning
+  // that "the form offers 24h, so it must end". Ali ruled the other way, and more strictly: the
+  // period a player picks is the MINIMUM the exclusion lasts. It never reinstates itself — the
+  // player asks, and an officer reopens the account. LCCP SR 3.5.5.
+  //
+  // ⛔ SO THE TWO BREAK STATUSES ARE NOT SYMMETRICAL AND MUST NOT BE MADE SO. A cool-off follows
+  // its TIMER (the case above). A self-exclusion follows its STATUS. Anyone tempted to collapse
+  // these back into one rule is about to let an excluded player stake real money again.
   {
     const uid = "rg_excl_expired";
     await fundedUser(uid, 500_000);
     await setBreak(uid, "SELF_EXCLUDED", past);
     const m = await mkMarket("E-238 expired exclusion");
     const r = await buyPosition(uid, { marketId: m.id, side: "YES", stake: 2_000 });
-    ok("E-238: an EXPIRED self-exclusion ACCEPTS the bet too — the form offers 24h, so it must end",
-      r.ok, r.ok ? "" : `refused: ${(r as { reason?: string; error?: string }).reason ?? (r as { error?: string }).error}`);
+    ok("E-238/ruling: an EXPIRED self-exclusion STILL REFUSES — the period is a minimum, not an expiry",
+      !r.ok, r.ok ? "an expired self-exclusion let a bet through; only an officer reopen may do that" : "");
+    ok("E-238/ruling: …and it routes to support, which is exactly how the player gets reopened",
+      !r.ok && (r as { reason?: string }).reason === "account_blocked", !r.ok ? String((r as { reason?: string }).reason) : "");
   }
 
   // ⛔ AND THE DIVERGENCE THE BRANCH WAS WRITTEN FOR IS PRESERVED: a break status with NO timer.

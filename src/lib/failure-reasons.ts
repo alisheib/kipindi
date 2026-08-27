@@ -82,6 +82,18 @@ export type FailureReason =
    * compliance block is the one case `modal` exists for.
    */
   | "cooling_off"
+  /**
+   * 🔴 ADDED 2026-08-27 (E-235). The player’s OWN session time limit, finally enforced.
+   *
+   * ⛔ `error` + `modal`, matching `self_excluded` and `cooling_off` beside it — and I reached
+   * for `warning` first, which §6.2 correctly refused. Read this file's own definitions: a
+   * `warning` is something THE PLAYER CAN FIX. They cannot fix this one now. Raising a limit is
+   * deferred 24 hours by `setLimits`, exactly so a player cannot lift their own protection in
+   * the moment they most want to — so at the point of refusal this is a hard block they cannot
+   * lift themselves, which is the definition of `error`. The break they take is the fix, and it
+   * takes time by design.
+   */
+  | "session_limit_reached"
   | "wallet_frozen"
   | "wallet_missing"
   // ── cashOutPosition ──────────────────────────────────────────────────────
@@ -195,7 +207,7 @@ export interface ReasonSpec {
   /** The dictionary key under `t.fail`. */
   key: string;
   /** Figures this reason's copy interpolates. Declared so the guard can check them. */
-  needs?: readonly ("min" | "max" | "balance" | "needed" | "retryAfterSec" | "until" | "remaining" | "net" | "last4")[];
+  needs?: readonly ("min" | "max" | "balance" | "needed" | "retryAfterSec" | "until" | "remaining" | "net" | "last4" | "limitMin" | "playedMin")[];
 }
 
 /**
@@ -230,6 +242,7 @@ export const REASONS: Record<FailureReason, ReasonSpec> = {
   account_blocked:      { severity: "error",   channel: "modal",  key: "failAccountBlocked" },
   self_excluded:        { severity: "error",   channel: "modal",  key: "failSelfExcluded", needs: ["until"] },
   cooling_off:          { severity: "error",   channel: "modal",  key: "failCoolingOff", needs: ["until"] },
+  session_limit_reached: { severity: "error",   channel: "modal",  key: "failSessionLimit", needs: ["limitMin"] },
   // 🔴 FAILURE-INVENTORY §3.1 · a FROZEN wallet used to return NOT_FOUND, which `errorCopy`
   // renders as "We couldn't find that. Refresh and try again." — so a player whose wallet had
   // been frozen was told to refresh the page. Wrong reason, wrong severity, wrong next step.
@@ -425,6 +438,10 @@ export interface FailureDetail {
    * refusal whose whole job is to name the right one.
    */
   last4?: string;
+  /** `E-235` · the session time limit the player set for themselves, in minutes. */
+  limitMin?: number;
+  /** `E-235` · how long this play session has actually run, in minutes. */
+  playedMin?: number;
 }
 
 /** What every refusing service returns. `code` is unchanged; `reason`/`detail` are additive. */
@@ -506,6 +523,11 @@ export function renderFailure(
     // through `money()` or `String(Math…)`; a phone suffix is neither a quantity nor a
     // currency, and `"0044"` — a real suffix on production — must survive as `0044`.
     last4: d.last4 ?? "—",
+    // ⚠️ MINUTES, NOT MONEY — and that is why they are not routed through `money()` like every
+    // numeric above them. `money(30)` renders "TZS 30", which on a sentence about a thirty-minute
+    // session limit reads as a stake. `E-235`.
+    limitMin: d.limitMin != null ? String(d.limitMin) : "—",
+    playedMin: d.playedMin != null ? String(d.playedMin) : "—",
   };
   // 🔴 A GLOBAL SUBSTITUTION, AND IT HAS TO BE. This was a chain of `String.replace(str, …)`
   // calls, and `replace` with a STRING pattern substitutes only the FIRST occurrence — so

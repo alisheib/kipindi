@@ -305,6 +305,82 @@ export async function isLockedOut(userId: string) {
 }
 
 /**
+ * What a self-exclusion means once its chosen period has run out (E-238, login half).
+ *
+ * 🔴 THE PERIOD IS A MINIMUM, NOT AN EXPIRY, AND THAT IS THE WHOLE RULING.
+ * `selfExclude()` offers 24h / 1w / 1m / 6m / permanent, and until now the account was simply
+ * refused at login for ever — the periods were decoration beside a `One-way` chip. Ali ruled on
+ * 2026-08-27: **the chosen period is the MINIMUM the exclusion lasts, and when it ends the
+ * account is still NOT reinstated by itself.** The player must ASK to come back, and an officer
+ * restores them.
+ *
+ * ⛔ DO NOT "TIDY THIS UP" INTO AN AUTOMATIC LIFT THE WAY COOLING-OFF HAS. Under LCCP SR 3.5.5
+ * a self-exclusion must never reinstate itself: a positive action by the customer after the
+ * minimum period is the entire control. Cooling-off carries no such rule, which is why
+ * `market-service` may consult the cool-off TIMER to let a bet through, but sign-in may never
+ * consult this one to let somebody back in. The timer here decides only whether they may ASK.
+ *
+ * ⚠️ `selfExclusionUntil` IS NEVER CLEARED — not here, and not by the officer restore. It is the
+ * cross-operator register's record that the exclusion happened, and `/admin/self-exclusions` and
+ * `reports/catalogue.ts` both compare it against `now`, so a past value already renders as ended.
+ * Nulling it would erase the history in order to change the gate.
+ */
+export type SelfExclusionStanding =
+  | { state: "none" }
+  | { state: "serving"; until: string; permanent: boolean }
+  | { state: "minimum_served"; until: string };
+
+export async function selfExclusionStanding(userId: string): Promise<SelfExclusionStanding> {
+  const r = await getRgSettings(userId);
+  if (!r.selfExclusionUntil) return { state: "none" };
+  const until = r.selfExclusionUntil;
+  const untilMs = new Date(until).getTime();
+  if (Number.isNaN(untilMs)) return { state: "none" };
+  if (untilMs > Date.now()) {
+    // "perm" is stored as now + 100 years rather than as a null, so a far-future end date is
+    // how a permanent exclusion is represented. Ten years is well past the longest real period
+    // offered (6 months) and well short of the 100 stored.
+    const permanent = untilMs - Date.now() > 10 * 365 * 24 * 3600_000;
+    return { state: "serving", until, permanent };
+  }
+  return { state: "minimum_served", until };
+}
+
+/**
+ * Has this play session run past the limit the player set for themselves? (E-235)
+ *
+ * 🔴 WHY THIS EXISTS: `sessionTimeLimitMin` was settable on /profile/responsible-gambling,
+ * shown to officers on the player page, AND COUNTED AS A LIMIT by `buildRgEngagement` — the
+ * report headed "RESPONSIBLE-GAMBLING ENGAGEMENT (internal · RG audit)" that a Board reviewer
+ * reads — and it was enforced NOWHERE. A player could set 30 minutes, play six hours, and be
+ * listed as having set a limit. The report was not incomplete; it was WRONG. Ali ruled on
+ * 2026-08-27: enforce it.
+ *
+ * ⭐ THE CLOCK IS THE SERVER'S, NOT THE BROWSER'S. `playStartedAt` comes out of the signed
+ * session cookie (`session.ts`), so clearing site data does not reset it. The reality-check
+ * prompt's `sessionStorage` clock is a nudge and may be cleared; a limit that refuses money
+ * may not be.
+ *
+ * ⛔ IT REFUSES BETS ONLY — NOT SIGN-IN, NOT WITHDRAWALS, NOT THE ACCOUNT. A session limit is
+ * a limit on PLAY. Locking the account would trap a player's money behind a control they set
+ * to play less, which is the opposite of the protection.
+ *
+ * ⚠️ `null` means "no opinion": no limit set, or no play clock available (a script or test
+ * calling the service with no request context). It must never mean "exceeded".
+ */
+export async function checkSessionTimeLimit(
+  userId: string,
+  playStartedAt: number | null | undefined,
+): Promise<{ exceeded: boolean; limitMin: number; playedMin: number } | null> {
+  if (!playStartedAt) return null;
+  const r = await getRgSettings(userId);
+  const limitMin = r.sessionTimeLimitMin;
+  if (limitMin === null || limitMin === undefined || limitMin <= 0) return null;
+  const playedMin = Math.floor((Date.now() - playStartedAt) / 60_000);
+  return { exceeded: playedMin >= limitMin, limitMin, playedMin };
+}
+
+/**
  * Check whether a deposit of `amount` would exceed any active deposit limit.
  * Sums confirmed DEPOSIT transactions inside each rolling window.
  *

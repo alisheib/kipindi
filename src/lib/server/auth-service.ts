@@ -24,6 +24,11 @@ import { resolvePhoneEmail } from "./email-map";
 import { validatePasswordStrength } from "./password-policy";
 import { is2faEnabled } from "./player-2fa";
 import { isLiveMoneyMode } from "./runtime-mode";
+// Runtime (not type-only) import. Safe: responsible-gambling.ts imports ONLY
+// `type ServiceResult` back from this module, and a type-only import is erased at
+// compile time — there is no runtime cycle.
+import { selfExclusionStanding } from "./responsible-gambling";
+import { SUPPORT_PHONE } from "@/lib/support-config";
 
 /** Mask a phone for an audit payload — keep country code + last 2 (e.g.
  *  "+25570*****19"). The audit entry already carries actorId, so the full number
@@ -84,6 +89,86 @@ export type ServiceResult<T = void> =
   // ⚠️ A service that has not been converted simply omits both and renders exactly as before.
   | { ok: false; error: string; code?: "RATE_LIMITED" | "INVALID" | "EXPIRED" | "ALREADY_EXISTS" | "EMAIL_EXISTS" | "NOT_FOUND" | "TOO_MANY_ATTEMPTS" | "SUSPENDED" | "SELECTION_CLOSED" | "CONFLICT" | "TOO_EARLY" | "OBJECTION_OPEN" | "EMAIL_UNVERIFIED" | "BUSY"; retryAfterSec?: number; reason?: FailureReason; detail?: FailureDetail };
 
+/**
+ * THE ONE ACCOUNT-STATUS GATE EVERY SIGN-IN PATH MUST PASS (E-240, E-238).
+ *
+ * 🔴 FOUR PLACES MINT A SESSION — OTP verify, password login, 2FA completion and
+ * registration — and they carried THREE different, hand-copied gates between them.
+ * (Registration is the one that needs no gate and never calls this: it refuses an existing
+ * phone with ALREADY_EXISTS before it writes anything, so it can only ever mint for a user
+ * created microseconds earlier. The other three all call this function.)
+ * `verifyOtpAndAuth` carried NONE: it minted a session for an existing user without reading
+ * `status` at all, so **the OTP door let a self-excluded player straight back in** while the
+ * password door refused them. A gate duplicated by hand is a gate that drifts. This function
+ * exists so there is exactly one copy to keep right; call it from every path that mints.
+ *
+ * ⛔ COOLED_OFF IS DELIBERATELY ABSENT AND MUST STAY ABSENT. A cooling-off break stops
+ * BETTING, not access — the player must still be able to sign in to see their balance, read
+ * the break's end date and withdraw. `market-service` is where a cool-off refuses, and after
+ * E-238 it refuses by consulting the TIMER. Adding COOLED_OFF here would lock a player out of
+ * the account for the duration of a break they took to protect themselves.
+ *
+ * ⛔ AND A SELF-EXCLUSION IS NEVER LIFTED HERE, however long ago it ended. Ali ruled on
+ * 2026-08-27 that the chosen period is a MINIMUM: once served, the player may ASK to return
+ * and an officer restores them (`restorePlayerAction`). `selfExclusionStanding()` decides only
+ * which of the three things we say. See its doc comment for why an automatic lift — the shape
+ * cooling-off legitimately has — is a compliance breach for this status.
+ */
+type SignInRefusal = { ok: false; error: string; code: "SUSPENDED" };
+
+async function assertSignInAllowed(user: { id: string; status: string }): Promise<SignInRefusal | null> {
+  if (user.status === "SUSPENDED" || user.status === "CLOSED") {
+    return { ok: false, error: "Account unavailable. Contact support.", code: "SUSPENDED" };
+  }
+  if (user.status !== "SELF_EXCLUDED") return null;
+
+  const standing = await selfExclusionStanding(user.id);
+  audit({
+    category: "COMPLIANCE",
+    action: "auth.blocked_self_excluded",
+    actorId: user.id,
+    targetType: "User",
+    targetId: user.id,
+    payload: { standing: standing.state },
+  });
+
+  if (standing.state === "serving" && standing.permanent) {
+    return {
+      ok: false,
+      error: `Your account is permanently self-excluded and cannot be reopened. Support: ${SUPPORT_PHONE()}`,
+      code: "SUSPENDED",
+    };
+  }
+  if (standing.state === "serving") {
+    return {
+      ok: false,
+      error: `You are self-excluded until ${fmtExclusionDate(standing.until)}. We cannot reopen the account before then · Umejizuia hadi ${fmtExclusionDate(standing.until)}.`,
+      code: "SUSPENDED",
+    };
+  }
+  if (standing.state === "minimum_served") {
+    return {
+      ok: false,
+      error: `Your self-exclusion period ended on ${fmtExclusionDate(standing.until)}. It does not reopen by itself — call ${SUPPORT_PHONE()} to ask us to reopen your account.`,
+      code: "SUSPENDED",
+    };
+  }
+  // ⛔ SELF_EXCLUDED with NO end date at all is a genuine divergence — an officer cleared a
+  // timer, or a migration wrote a status without one — and it MUST still refuse. This is the
+  // same reasoning that keeps the no-timer case blocking in `market-service` after E-238.
+  return { ok: false, error: "Account unavailable. Contact support.", code: "SUSPENDED" };
+}
+
+/** Date for a player-facing exclusion message — EAT, the timezone every other date uses. */
+function fmtExclusionDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-GB", {
+    timeZone: "Africa/Dar_es_Salaam",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 /** Step 1: request OTP for login (existing user). */
 export async function requestLoginOtp(input: z.input<typeof LoginRequestSchema>): Promise<ServiceResult<{ otpId: string; expiresAt: string }>> {
   const parse = LoginRequestSchema.safeParse(input);
@@ -107,13 +192,23 @@ export async function requestLoginOtp(input: z.input<typeof LoginRequestSchema>)
     audit({ category: "SECURITY", action: "otp.send_to_unknown_phone", actorId: null, targetType: "Phone", targetId: maskPhoneForAudit(phone), ip: meta.ip, userAgent: meta.ua });
     return { ok: false, error: "No account with that phone. Create one to get started.", code: "NOT_FOUND" };
   }
-  if (user.status === "SELF_EXCLUDED") {
-    audit({ category: "COMPLIANCE", action: "auth.blocked_self_excluded", actorId: user.id, targetType: "User", targetId: user.id });
-    return { ok: false, error: "Your account is in self-exclusion.", code: "SUSPENDED" };
-  }
-  if (user.status === "SUSPENDED" || user.status === "CLOSED") {
-    return { ok: false, error: "Account unavailable. Contact support.", code: "SUSPENDED" };
-  }
+  // ⛔ THE ACCOUNT-STATUS GATE DELIBERATELY DOES NOT RUN HERE — IT RUNS AT VERIFY.
+  //
+  // It used to answer "Your account is in self-exclusion." to ANY caller who typed a phone
+  // number, because on the OTP door there is no password step: the code IS the proof of
+  // ownership, so a refusal at request time is a refusal to a stranger. That told an
+  // unauthenticated prober that a given Tanzanian mobile belongs to somebody who
+  // self-excluded — a gambling-harm status, and the single most sensitive thing this
+  // product knows about a person. The password door already reasons exactly this way (see
+  // the note above its own gate); this one did not.
+  //
+  // ⚠️ Account EXISTENCE stays public here, on purpose — see the "No account with that
+  // phone" branch above and its comment. What moved is the STATUS, and only that.
+  //
+  // The cost is one transactional SMS to an account that will then be refused, which the
+  // otp.send burst cap and the 30-second resend spacing below already bound. The gain is
+  // that a self-excluded player learns where they stand only after proving the number is
+  // theirs — and learns it with the date and the way back, instead of a bare sentence.
 
   // Hard ~30s spacing between sends, on top of the otp.send burst cap. Protects
   // against SMS-pumping / toll fraud on a paid provider and drives the resend
@@ -331,6 +426,12 @@ export async function verifyOtpAndAuth(input: z.input<typeof OtpVerifySchema>): 
       tag: "welcome",
     })).catch(() => {});
   } else {
+    // 🔴 E-240 — THIS IS THE PATH THAT HAD NO GATE AT ALL. Everything below mints a session
+    // for an EXISTING user, and until now it never read `status`, so the OTP door readmitted a
+    // self-excluded player that the password door refused. Nothing above this line has minted
+    // anything; refusing here is refusing before the session exists.
+    const otpGate = await assertSignInAllowed(user);
+    if (otpGate) return otpGate;
     await db.user.update(user.id, { lastLoginAt: new Date().toISOString() });
     audit({ category: "AUTH", action: "user.login", actorId: user.id, targetType: "User", targetId: user.id, ip: meta.ip, userAgent: meta.ua });
     // New sign-in security email — parity with the password login path.
@@ -824,13 +925,8 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
   // gambling-harm status, and answering it to an unauthenticated prober would
   // leak that a given Tanzanian mobile belongs to someone who self-excluded.
   // NOTE: no session is minted below this point for a gated account.
-  if (freshUser.status === "SELF_EXCLUDED") {
-    audit({ category: "COMPLIANCE", action: "auth.blocked_self_excluded", actorId: user.id, targetType: "User", targetId: user.id });
-    return { ok: false, error: "Your account is in self-exclusion.", code: "SUSPENDED" };
-  }
-  if (freshUser.status === "SUSPENDED" || freshUser.status === "CLOSED") {
-    return { ok: false, error: "Account unavailable. Contact support.", code: "SUSPENDED" };
-  }
+  const passwordGate = await assertSignInAllowed(freshUser);
+  if (passwordGate) return passwordGate;
 
   // Successful login — clear the brute-force counter + lockout.
   await db.user.update(user.id, {
@@ -956,9 +1052,8 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
 export async function completeTwoFactorLogin(userId: string): Promise<ServiceResult<{ role: string }>> {
   const user = await db.user.findById(userId);
   if (!user) return { ok: false, error: "Account not found.", code: "NOT_FOUND" };
-  if (user.status === "SELF_EXCLUDED" || user.status === "SUSPENDED" || user.status === "CLOSED") {
-    return { ok: false, error: "Account not available.", code: "SUSPENDED" };
-  }
+  const twoFactorGate = await assertSignInAllowed(user);
+  if (twoFactorGate) return twoFactorGate;
   const meta = await clientMeta();
 
   // Read-only fallback — see the note on the password-login path above. Writing

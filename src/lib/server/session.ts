@@ -36,12 +36,31 @@ export type SessionData = {
   iat: number;       // issued at (ms epoch)
   exp: number;       // absolute expiry (ms epoch) — hard cap, not extended on activity
   lastSeenAt: number; // ms epoch — refreshed on activity, drives the idle-timeout check
+  /**
+   * E-235 · ms epoch this PLAY SESSION began — the clock `sessionTimeLimitMin` is measured
+   * against. NOT `iat`: a signed-in player may hold a cookie for the full 7-day cap, so
+   * measuring from login would put everyone instantly past a 30-minute limit. A gap in
+   * activity of `PLAY_SESSION_GAP_MIN` ends one play session and starts the next, which is
+   * what a player means by "a session".
+   *
+   * ⭐ IT LIVES IN THE SIGNED COOKIE, AND THAT IS THE POINT. The reality-check prompt keeps
+   * its own clock in `sessionStorage`, where the player can clear it — fine for a nudge,
+   * useless for a limit that refuses bets. This value is signed by the server, so the limit
+   * cannot be reset by clearing site data.
+   *
+   * Optional only for cookies minted before this existed; `getSession` stamps those on
+   * first read rather than treating a missing value as "started at the epoch".
+   */
+  playStartedAt?: number;
 };
 
 const COOKIE_NAME = "kp_session";
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;            // 7-day absolute cap
 const IDLE_TIMEOUT_MS = 24 * 60 * 60 * 1000;               // 24 h since last activity
 const REFRESH_THROTTLE_MS = 5 * 60 * 1000;                 // resign cookie at most every 5 min
+/** E-235 — a gap this long ends one play session and begins the next. */
+export const PLAY_SESSION_GAP_MIN = 30;
+const PLAY_SESSION_GAP_MS = PLAY_SESSION_GAP_MIN * 60 * 1000;
 
 // ── Server-side session registry ─────────────────────────────────────
 // One active sessionId per userId. A new login replaces it, invalidating ALL
@@ -59,6 +78,7 @@ export async function createSession(data: Omit<SessionData, "iat" | "exp" | "ses
     iat: now,
     exp: now + SESSION_TTL_MS,
     lastSeenAt: now,
+    playStartedAt: now,
   };
   const token = signSession(session);
   const jar = await cookies();
@@ -157,10 +177,28 @@ export async function getSession(): Promise<SessionData | null> {
     return null;
   }
 
+  // ── E-235 · WHERE ONE PLAY SESSION ENDS AND THE NEXT BEGINS ──────────────
+  // The same `lastSeen` the idle timeout uses answers this too, so it costs no extra read.
+  // A gap of PLAY_SESSION_GAP_MIN means the player went away and came back: that is a new
+  // session, and their time limit starts again. Anything shorter is the same sitting.
+  //
+  // ⚠️ A cookie minted before this field existed is stamped NOW rather than defaulting to
+  // `iat`. Defaulting to `iat` would have every already-signed-in player land mid-deploy
+  // with hours on the clock and be refused their next bet by a limit they had not reached.
+  let playStartedAt = session.playStartedAt ?? 0;
+  let playReset = false;
+  if (!playStartedAt || now - lastSeen > PLAY_SESSION_GAP_MS) {
+    playStartedAt = now;
+    playReset = true;
+  }
+
   // Refresh the lastSeenAt cookie at most every REFRESH_THROTTLE_MS so
   // we don't re-sign on every single request (cheap but not free).
-  if (now - lastSeen > REFRESH_THROTTLE_MS) {
-    const refreshed: SessionData = { ...session, lastSeenAt: now };
+  // ⛔ `playReset` forces a re-sign regardless of the throttle: a reset that is computed and
+  // then not persisted would be recomputed identically on every request inside the throttle
+  // window, so the clock would never actually start.
+  if (playReset || now - lastSeen > REFRESH_THROTTLE_MS) {
+    const refreshed: SessionData = { ...session, lastSeenAt: now, playStartedAt };
     try {
       const token2 = signSession(refreshed);
       jar.set(COOKIE_NAME, token2, {
@@ -177,7 +215,7 @@ export async function getSession(): Promise<SessionData | null> {
     }
     return refreshed;
   }
-  return session;
+  return { ...session, playStartedAt };
 }
 
 export async function destroySession() {

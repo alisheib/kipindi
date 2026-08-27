@@ -198,7 +198,12 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
         <div className="flex items-center gap-2">
           <I.lock s={16} />
           <h2 className="font-display text-[15px] font-semibold text-text">{t.rg.selfExclude}</h2>
-          <Chip variant="no" size="sm" className="ml-auto">{t.common.oneWay}</Chip>
+          {/* 🔴 E-238 — THIS CHIP SAID "One-way" BESIDE A FORM OFFERING 24h/1w/1m/6m.
+              Either the periods meant something or the chip did. Ali ruled the periods do:
+              each is the MINIMUM the exclusion lasts, and the account still never reopens by
+              itself. ⛔ Do not put `oneWay` back — it is true only of account CLOSURE
+              (profile/account), which is where that key belongs. */}
+          <Chip variant="no" size="sm" className="ml-auto">{t.rg.minimumPeriod}</Chip>
         </div>
         <p className="text-[12px] text-text-muted leading-snug max-w-prose">
           {t.rg.selfExcludeDescription}

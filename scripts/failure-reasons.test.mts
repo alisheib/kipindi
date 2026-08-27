@@ -168,7 +168,7 @@ function auditReason(reason: FailureReason, dict: Record<string, string>): strin
   // "declared but never interpolated". `last4` (`E-215`) was added 2026-08-25 and did exactly
   // that on all three locales. ⛔ A fixture that cannot distinguish the right answer from the
   // wrong one is not a fixture.
-  const FULL_DETAIL = { min: 1_000, max: 1_000_000, balance: 500, needed: 2_000, remaining: 40_000, until: "2026-09-01", last4: "9354" };
+  const FULL_DETAIL = { min: 1_000, max: 1_000_000, balance: 500, needed: 2_000, remaining: 40_000, until: "2026-09-01", last4: "9354", limitMin: 30, playedMin: 45 };
   for (const loc of LOCALES) {
     const dict = DICT[loc].error as unknown as Record<string, string>;
     const render = (r: FailureReason, detail: object) =>
