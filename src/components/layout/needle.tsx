@@ -25,14 +25,16 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { getPrefs } from "@/lib/haptics";
+import { isMoneySurface } from "@/lib/surfaces";
 import type { NeedleOptions } from "@/lib/needle-physics";
 import "./needle.css";
 
-/** Money surfaces where a fidget must never appear (CLAUDE-CODE-BRIEF §4.1). */
-const MONEY_ROUTE = /^\/wallet(\/|$)/;
-function isMoneySurface(path: string | null): boolean {
-  return !!path && MONEY_ROUTE.test(path);
-}
+// ⭐ ONE HOME. `isMoneySurface` moved to `@/lib/surfaces` UNCHANGED — same regex, same answer —
+// when the install invitation needed the same class of judgement. Copying it would have given the
+// platform two definitions of "a money surface" to drift apart, which is the shape this repo has
+// now filed for the nav-key resolver, the crumb resolver and the campaign-handoff locator (four
+// times). ⚠️ The invitation uses the WIDER `isCommitSurface` from the same file; read the note
+// there before assuming the two are interchangeable.
 
 /* Verbatim body markup from the playground (the #safe + #needle tree), with the
    SVG paint-def ids namespaced `ndl-*` so `url(#faceL)` etc. can never resolve to

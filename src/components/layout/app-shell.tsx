@@ -16,6 +16,9 @@ const LazyNotifyPoller = lazy(() =>
 const LazyEventStream = lazy(() =>
   import("./event-stream-provider").then((m) => ({ default: m.EventStreamProvider })),
 );
+const LazyInstallInvite = lazy(() =>
+  import("@/components/pwa/install-invite").then((m) => ({ default: m.InstallInvite })),
+);
 const LazyWinCelebration = lazy(() =>
   import("@/components/markets/win-celebration").then((m) => ({ default: m.WinCelebrationHost })),
 );
@@ -198,6 +201,14 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           is authed-only). Hides itself on money surfaces and when toggled off. Not
           rendered on /admin (that branch returns early). */}
       {session && <Needle />}
+      {/* THE INSTALL INVITATION, AND IT IS NOT SESSION-GATED — a visitor who has not signed up is
+          exactly who benefits from a home-screen icon. Its own eligibility rules do the gating (a
+          second visit, 45 seconds in, never on a money-commit surface, dismissal remembered 14
+          days, three refusals and it stops asking) and it renders NOTHING when the app is already
+          installed. See install-invite.tsx for the numbers and why each is what it is.
+          It is deliberately the LAST child: it is fixed-positioned, so its place in the stacking
+          order is the thing that keeps it off the bottom nav and the Needle. */}
+      <Suspense fallback={null}><LazyInstallInvite /></Suspense>
     </div>
   );
 }
