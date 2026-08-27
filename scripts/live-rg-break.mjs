@@ -627,21 +627,28 @@ async function excluded() {
   const priorStatus = u.status;
   const priorWallet = u.wstatus;
 
-  let armed = false;
+  // ⛔ ARMED BEFORE THE FIRST WRITE, NOT AFTER THE LAST ONE. The first run of this leg set the
+  // flag after all three statements, the third one threw on a NOT NULL column, and the `finally`
+  // therefore skipped the restore — leaving a fleet account SELF_EXCLUDED with a FROZEN wallet
+  // on production. A cleanup flag that is only true once cleanup is unnecessary is not a flag.
+  let armed = true;
   const { b, ctx } = await browser();
   const page = await ctx.newPage();
   try {
     // ── arm: the state a 24-hour self-exclusion reaches once it has been served ──
     await sql.query(`update "User" set status = 'SELF_EXCLUDED' where id = $1`, [u.id]);
     await sql.query(`update "Wallet" set status = 'FROZEN' where "userId" = $1`, [u.id]);
+    // ⚠️ `updatedAt` is `@updatedAt` in Prisma, which is an ORM-side default and NOT a database
+    // default — raw SQL must supply it, and the first run learned that the hard way.
     await sql.query(`
-      insert into "ResponsibleGambling" (id, "userId", "selfExclusionUntil", "selfExclusionStartedAt", "realityCheckIntervalMin")
+      insert into "ResponsibleGambling" (id, "userId", "selfExclusionUntil", "selfExclusionStartedAt", "realityCheckIntervalMin", "createdAt", "updatedAt")
       values (gen_random_uuid()::text, $1, (now() at time zone 'utc') - interval '1 hour',
-              (now() at time zone 'utc') - interval '25 hours', 30)
+              (now() at time zone 'utc') - interval '25 hours', 30,
+              (now() at time zone 'utc'), (now() at time zone 'utc'))
       on conflict ("userId") do update set
         "selfExclusionUntil" = (now() at time zone 'utc') - interval '1 hour',
-        "selfExclusionStartedAt" = (now() at time zone 'utc') - interval '25 hours'`, [u.id]);
-    armed = true;
+        "selfExclusionStartedAt" = (now() at time zone 'utc') - interval '25 hours',
+        "updatedAt" = (now() at time zone 'utc')`, [u.id]);
     rec.check("1: armed — SELF_EXCLUDED with a period that ran out an hour ago, wallet FROZEN", true);
 
     // ── the door ───────────────────────────────────────────────────────────

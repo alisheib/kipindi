@@ -114,7 +114,7 @@ export type ServiceResult<T = void> =
  * which of the three things we say. See its doc comment for why an automatic lift — the shape
  * cooling-off legitimately has — is a compliance breach for this status.
  */
-type SignInRefusal = { ok: false; error: string; code: "SUSPENDED" };
+type SignInRefusal = { ok: false; error: string; code: "SUSPENDED"; detail?: FailureDetail };
 
 async function assertSignInAllowed(user: { id: string; status: string }): Promise<SignInRefusal | null> {
   if (user.status === "SUSPENDED" || user.status === "CLOSED") {
@@ -132,11 +132,15 @@ async function assertSignInAllowed(user: { id: string; status: string }): Promis
     payload: { standing: standing.state },
   });
 
+  // ⛔ EVERY BRANCH CARRIES `detail.standing`, AND THE CALLER MUST SWITCH ON THAT, NEVER ON THE
+  // PROSE. The login screen picks its banner from this token; matching the sentence is how a
+  // served exclusion came to be shown "you cannot sign in until the period ends".
   if (standing.state === "serving" && standing.permanent) {
     return {
       ok: false,
       error: `Your account is permanently self-excluded and cannot be reopened. Support: ${SUPPORT_PHONE()}`,
       code: "SUSPENDED",
+      detail: { standing: "permanent" },
     };
   }
   if (standing.state === "serving") {
@@ -144,6 +148,7 @@ async function assertSignInAllowed(user: { id: string; status: string }): Promis
       ok: false,
       error: `You are self-excluded until ${fmtExclusionDate(standing.until)}. We cannot reopen the account before then · Umejizuia hadi ${fmtExclusionDate(standing.until)}.`,
       code: "SUSPENDED",
+      detail: { standing: "serving", until: standing.until },
     };
   }
   if (standing.state === "minimum_served") {
@@ -151,12 +156,13 @@ async function assertSignInAllowed(user: { id: string; status: string }): Promis
       ok: false,
       error: `Your self-exclusion period ended on ${fmtExclusionDate(standing.until)}. It does not reopen by itself — call ${SUPPORT_PHONE()} to ask us to reopen your account.`,
       code: "SUSPENDED",
+      detail: { standing: "minimum_served", until: standing.until },
     };
   }
   // ⛔ SELF_EXCLUDED with NO end date at all is a genuine divergence — an officer cleared a
   // timer, or a migration wrote a status without one — and it MUST still refuse. This is the
   // same reasoning that keeps the no-timer case blocking in `market-service` after E-238.
-  return { ok: false, error: "Account unavailable. Contact support.", code: "SUSPENDED" };
+  return { ok: false, error: "Account unavailable. Contact support.", code: "SUSPENDED", detail: { standing: "diverged" } };
 }
 
 /** Date for a player-facing exclusion message — EAT, the timezone every other date uses. */

@@ -23,6 +23,8 @@
 const AUTH = "src/lib/server/auth-service.ts";
 const RG = "src/lib/server/responsible-gambling.ts";
 const MARKET = "src/lib/server/market-service.ts";
+const LOGIN_ACTION = "src/app/auth/login/actions.ts";
+const LOGIN_PAGE = "src/app/auth/login/page.tsx";
 
 export const MUTATIONS = [
   // ── 1 · a door stops calling the gate ────────────────────────────────────────────────────
@@ -99,6 +101,43 @@ export const MUTATIONS = [
     to: `  const playedMin = Math.floor((Date.now() - playStartedAt) / 60_000);
   return { exceeded: false, limitMin, playedMin };`,
     check: "4.1 ⭐ forty-five minutes into a thirty-minute limit, the bet is REFUSED",
+  },
+  {
+    name: "the-login-screen-goes-back-to-matching-prose",
+    why: "🔴 MEASURED ON PRODUCTION 2026-08-28. Choosing the banner with `/self-exclusion/i` over "
+       + "the refusal's English sentence showed a player whose period had ENDED *\"you will not be "
+       + "able to sign in until the period ends\"*, and dropped a player still SERVING onto the "
+       + "generic blocked screen — because their sentence says \"self-excluded\". One regex, two "
+       + "wrong answers, in opposite directions. This is the `E-234` shape at the auth door.",
+    file: LOGIN_ACTION,
+    from: `    const standing = result.detail?.standing;
+    if (result.code === "SUSPENDED" && standing && standing !== "diverged") {`,
+    to: `    const standing = /self-exclusion/i.test(result.error) ? "1" : undefined;
+    if (result.code === "SUSPENDED" && standing && standing !== "diverged") {`,
+    check: "6.1 ⛔ the password door does NOT phrase-match",
+  },
+  {
+    name: "the-otp-door-flattens-an-exclusion-into-that-didnt-work",
+    why: "⛔ THE REGRESSION `E-240`'s OWN FIX INTRODUCED, and the one a checkup found rather than "
+       + "a test. Moving the exclusion check off the OTP REQUEST onto the VERIFY is right — the "
+       + "code is the proof of ownership — but the verify hop maps unknown codes to "
+       + "`error=failed`, so the player who had JUST proved the number was theirs was told only "
+       + "*\"that didn't work\"*: no exclusion, no end date, no way back. Fixing one screen must "
+       + "not darken the one beside it.",
+    file: LOGIN_ACTION,
+    from: `    if (result.code === "SUSPENDED") {`,
+    to: `    if (result.code === "__never__") {`,
+    check: "6.8 a SUSPENDED refusal on the OTP door routes to the exclusion panels",
+  },
+  {
+    name: "a-served-exclusion-is-told-to-wait-for-a-date-that-has-passed",
+    why: "⛔ ALI'S RULING ERASED FROM THE ONE SCREEN THE PLAYER ACTUALLY SEES. Collapsing the "
+       + "three panels back into one leaves somebody who has served their period waiting for a "
+       + "date that is already behind them, with no way back offered.",
+    file: LOGIN_PAGE,
+    from: `    if (sp.excluded === "minimum_served") return {`,
+    to: `    if (sp.excluded === "__never__") return {`,
+    check: "6.4 the screen has a distinct panel for a period that has ENDED",
   },
   {
     name: "the-session-limit-becomes-unbounded-again",

@@ -46,8 +46,21 @@ export async function startLoginAction(formData: FormData) {
     //    as ordinary rate-limiting, hiding the "reset your password" way out.
     // The service's code union is shared platform-wide, so the refinement reads
     // the refusal's own stable phrase — the UD-4 doctrine.
-    if (result.code === "SUSPENDED" && /self-exclusion/i.test(result.error)) {
-      redirect(`/auth/login?excluded=1${safeNext ? `&next=${encodeURIComponent(safeNext)}` : ""}`);
+    // 🔴 SWITCH ON THE MACHINE TOKEN, NOT ON THE SENTENCE (`E-240`).
+    //
+    // This read `/self-exclusion/i` over the refusal's English prose, and the comment above
+    // called that "the UD-4 doctrine" — but `failure-reasons.ts` is explicit that a phrase test
+    // on prose is the thing being retired, and this one broke the moment the gate's wording
+    // improved. Measured on production before the fix: a player whose period had ENDED matched,
+    // and was shown *"you will not be able to sign in until the period ends"* about a period
+    // that ended an hour earlier; a player still SERVING did NOT match (their sentence says
+    // "self-excluded", not "self-exclusion") and fell through to the generic blocked screen.
+    // Both wrong, in opposite directions, from one regex.
+    const standing = result.detail?.standing;
+    if (result.code === "SUSPENDED" && standing && standing !== "diverged") {
+      const until = standing === "serving" && result.detail?.until
+        ? `&until=${encodeURIComponent(result.detail.until.slice(0, 10))}` : "";
+      redirect(`/auth/login?excluded=${standing}${until}${safeNext ? `&next=${encodeURIComponent(safeNext)}` : ""}`);
     }
     const isLockout = result.code === "RATE_LIMITED" && /locked/i.test(result.error);
     const params = new URLSearchParams({
@@ -177,6 +190,23 @@ export async function verifyLoginOtpAction(formData: FormData) {
   const safeNext = /^\/(?![/\\])/.test(nextRaw) && !nextRaw.startsWith("/auth/") ? nextRaw : "";
   const result = await verifyOtpAndAuth({ phone, code, purpose });
   if (!result.ok) {
+    // 🔴 `E-244` · AN ACCOUNT-STATUS REFUSAL IS NOT AN OTP ERROR, AND THIS HOP USED TO FLATTEN
+    // IT INTO ONE. `E-240` moved the self-exclusion check off the OTP REQUEST (where it was
+    // answering a gambling-harm status to anyone who typed a phone number) onto the VERIFY,
+    // where ownership has been proven. That is right — but everything below maps an unknown
+    // code to `error=failed`, so the player who had just proved the number was theirs was told
+    // only *"that didn't work"*, with no mention of the exclusion, no end date, and no way back.
+    // ⛔ THE FIX FOR ONE SCREEN MUST NOT DARKEN THE ONE BESIDE IT. A SUSPENDED refusal goes to
+    // the same three banners the password door uses, off the same machine token.
+    if (result.code === "SUSPENDED") {
+      const standing = result.detail?.standing;
+      if (standing && standing !== "diverged") {
+        const until = standing === "serving" && result.detail?.until
+          ? `&until=${encodeURIComponent(result.detail.until.slice(0, 10))}` : "";
+        redirect(`/auth/login?excluded=${standing}${until}${safeNext ? `&next=${encodeURIComponent(safeNext)}` : ""}`);
+      }
+      redirect(`/auth/login?error=blocked${safeNext ? `&next=${encodeURIComponent(safeNext)}` : ""}`);
+    }
     // Surface OTP errors back on the OTP page via query-param flash so
     // the user sees what went wrong (wrong code / expired / rate-limited).
     const params = new URLSearchParams({

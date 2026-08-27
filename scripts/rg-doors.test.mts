@@ -240,5 +240,77 @@ console.log("\n§5 · the limit a player may set is bounded (E-235, and the sche
     (await setAndRead("lim_ok", 45)) === 45);
 }
 
+console.log("\n§6 · the screen shows the refusal the server computed (E-240, measured on production)\n");
+{
+  const ACTION = decomment(readFileSync("src/app/auth/login/actions.ts", "utf8").replace(/\r\n/g, "\n"));
+  const PAGE = decomment(readFileSync("src/app/auth/login/page.tsx", "utf8").replace(/\r\n/g, "\n"));
+  const GATE = decomment(readFileSync("src/lib/server/auth-service.ts", "utf8").replace(/\r\n/g, "\n"));
+
+  // 🔴 MEASURED ON PRODUCTION 2026-08-28, and it is why this section exists. The login action
+  // chose its banner by running /self-exclusion/i over the refusal's ENGLISH PROSE. A player
+  // whose period had ENDED matched, and was shown "you will not be able to sign in until the
+  // period ends" — about a period that ended an hour earlier. A player still SERVING did NOT
+  // match, because their sentence says "self-excluded", and fell through to a generic blocked
+  // screen. One regex, two wrong answers, in opposite directions.
+  /**
+   * ⛔ SLICE THE FILE BY FUNCTION. THE FIRST DRAFT OF §6 DID NOT, AND `red:rg-doors` CAUGHT IT.
+   *
+   * Both of this section's password-door checks were file-wide greps, and this file has TWO
+   * doors in it. When the harness mutated the PASSWORD hop back to a prose match, the checks
+   * stayed green — because the OTP hop below still contained `detail?.standing` and still
+   * contained `result.code === "SUSPENDED"`. **A guard satisfied by a call site other than the
+   * one it is about is the exact defect this whole session keeps finding**, and it appeared in
+   * the check written to prevent it. Two mutations reported MISS; that is the harness earning
+   * its keep, and the misses were correct.
+   */
+  const fnBody = (name: string) => {
+    const at = ACTION.indexOf(`export async function ${name}(`);
+    if (at < 0) return "";
+    const next = ACTION.indexOf("export async function ", at + 10);
+    return ACTION.slice(at, next < 0 ? undefined : next);
+  };
+  const PASSWORD_DOOR = fnBody("startLoginAction");
+  const OTP_DOOR = fnBody("verifyLoginOtpAction");
+  // ⭐ REACH FLOOR — if either function is renamed the slices go empty and every check below
+  // would pass against nothing.
+  ok("6.0 control: both door functions were located in the file",
+    PASSWORD_DOOR.length > 400 && OTP_DOOR.length > 400,
+    `password=${PASSWORD_DOOR.length} otp=${OTP_DOOR.length}`);
+
+  ok("6.1 ⛔ the password door does NOT phrase-match the refusal's prose to pick a banner",
+    !/\/self-exclusion\/i\.test|\/exclusion\/i\.test/.test(PASSWORD_DOOR),
+    "matching English prose is the thing failure-reasons.ts exists to retire");
+  ok("6.2 …it switches on the machine token instead", /detail\?\.standing/.test(PASSWORD_DOOR));
+  ok("6.3 the gate actually EMITS that token, or 6.2 reads a field nobody sets",
+    /standing: "serving"/.test(GATE) && /standing: "minimum_served"/.test(GATE) && /standing: "permanent"/.test(GATE));
+
+  // ⛔ A SERVED EXCLUSION MUST NOT BE TOLD TO WAIT FOR A DATE THAT HAS PASSED. Ali ruled the
+  // period is a MINIMUM, so "until the period ends" is false for two of the three states.
+  ok("6.4 the screen has a distinct panel for a period that has ENDED",
+    /excluded === "minimum_served"/.test(PAGE) && /selfExclusionEndedBody/.test(PAGE));
+  ok("6.5 …and one for a PERMANENT exclusion, which never reopens",
+    /excluded === "permanent"/.test(PAGE) && /selfExclusionPermanentBody/.test(PAGE));
+  // ⚠️ A bookmarked or stale link must keep working rather than silently showing nothing.
+  ok("6.6 the old `?excluded=1` link still renders the serving panel",
+    /excluded === "1"/.test(PAGE));
+
+  // 🔴 AND THE COOL-OFF BANNER WAS TELLING THE OPPOSITE LIE. `?cooled=1` is set right after a
+  // player takes a break (profile/responsible-gambling/actions.ts) and its copy said "you will
+  // not be able to sign in until it ends" — but a cool-off has NEVER blocked sign-in. It stops
+  // BETTING. The banner was turning a working protection into a lockout the player then feared.
+  const EN = readFileSync("src/lib/i18n-dict.ts", "utf8");
+  // ⛔ AND THE OTP DOOR MUST REACH THE SAME PANELS. E-240 moved the exclusion check off the OTP
+  // REQUEST onto the VERIFY — correct, because the code is the proof of ownership — but the
+  // verify hop mapped every unrecognised code to `error=failed`, so the player who had just
+  // proved the number was theirs was told only "that didn't work". Fixing one screen must not
+  // darken the one beside it.
+  ok("6.8 a SUSPENDED refusal on the OTP door routes to the exclusion panels, not `error=failed`",
+    /result\.code === "SUSPENDED"/.test(OTP_DOOR) && /excluded=\$\{standing\}/.test(OTP_DOOR),
+    "an account-status refusal is not an OTP error");
+  ok("6.7 ⛔ the cooling-off banner no longer claims the player cannot sign in",
+    !/coolingOffBody: "Your cooling-off period is now active\. You will not be able to sign in/.test(EN),
+    "a cool-off stops betting, not access — saying otherwise scares a player off their own money");
+}
+
 console.log(`\nrg-doors: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

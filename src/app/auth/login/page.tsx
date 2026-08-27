@@ -21,7 +21,7 @@ export async function generateMetadata() {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ phone?: string; identifier?: string; error?: string; retry?: string; next?: string; closed?: string; excluded?: string; cooled?: string; reset?: string; revoked?: string }>;
+  searchParams: Promise<{ phone?: string; identifier?: string; error?: string; retry?: string; next?: string; closed?: string; excluded?: string; until?: string; cooled?: string; reset?: string; revoked?: string }>;
 }) {
   // ⛔ THE BOUNCE RUNS HERE, IN THE PAGE, AND IT MOVED OUT OF `auth/layout.tsx` BECAUSE A
   // LAYOUT IS NOT RE-EXECUTED ON A CLIENT-SIDE SOFT NAVIGATION. The layout compared the
@@ -69,10 +69,31 @@ export default async function LoginPage({
       body: t.auth.accountClosedBody,
       cta: null,
     };
-    if (sp.excluded === "1") return {
+    // 🔴 THREE STATES, NOT ONE (`E-240`). `?excluded=1` said the same thing to every
+    // self-excluded player, and after Ali's 2026-08-27 ruling that sentence is FALSE for two of
+    // the three: the chosen period is a MINIMUM, so an exclusion that has run its course does
+    // NOT reopen by itself, and a permanent one never reopens at all. Telling somebody who has
+    // served their period "you cannot sign in until the period ends" leaves them waiting for a
+    // date that has passed, with no way back offered.
+    // ⚠️ `=1` is still accepted so a stale link or a bookmarked URL keeps working.
+    if (sp.excluded === "minimum_served") return {
+      tone: "danger" as const,
+      title: t.auth.selfExclusionEnded,
+      body: t.auth.selfExclusionEndedBody,
+      cta: null,
+    };
+    if (sp.excluded === "permanent") return {
       tone: "danger" as const,
       title: t.auth.selfExclusionActive,
-      body: t.auth.selfExclusionBody,
+      body: t.auth.selfExclusionPermanentBody,
+      cta: null,
+    };
+    if (sp.excluded === "serving" || sp.excluded === "1") return {
+      tone: "danger" as const,
+      title: t.auth.selfExclusionActive,
+      body: sp.until
+        ? t.auth.selfExclusionUntilBody.replace("{date}", sp.until)
+        : t.auth.selfExclusionBody,
       cta: null,
     };
     if (sp.cooled === "1") return {

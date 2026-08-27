@@ -445,6 +445,17 @@ export interface FailureDetail {
    * refusal whose whole job is to name the right one.
    */
   last4?: string;
+  /**
+   * `E-240` · WHICH self-exclusion state a sign-in refusal is about, as a MACHINE TOKEN.
+   *
+   * 🔴 The login action used to choose its banner by running `/self-exclusion/i` over the
+   * refusal's English prose. That is the defect `failure-reasons.ts` exists to retire, and it
+   * mis-fired the moment the gate's wording improved: a player still SERVING their period got
+   * the generic "blocked · contact support" screen (their message says "self-excluded"), while
+   * a player whose period had ENDED got a banner reading *"you will not be able to sign in
+   * until the period ends"* — about a period that ended an hour earlier.
+   */
+  standing?: "serving" | "minimum_served" | "permanent" | "diverged";
   /** `E-235` · the session time limit the player set for themselves, in minutes. */
   limitMin?: number;
   /** `E-235` · how long this play session has actually run, in minutes. */
