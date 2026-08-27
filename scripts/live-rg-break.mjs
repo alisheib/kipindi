@@ -39,6 +39,8 @@ const E164 = `+255${me.phone}`;
 const STAKE = Number(process.env.STAKE ?? 2_000);
 const WIDTHS = (process.env.WIDTHS ?? "360,393,768,1024,1280").split(",").map(Number);
 const LOCALES = (process.env.LOCALES ?? "en,sw,zh").split(",");
+/** Milliseconds to wait before each cell, so a burst cap does not shed the attempt under test. */
+const PAUSE_MS = Number(process.env.PAUSE_MS ?? 0);
 
 const rec = recorder(`LIVE RG BREAK · ${CMD} · ${me.label} (${E164})`);
 
@@ -189,6 +191,14 @@ async function refused() {
     for (const loc of LOCALES) {
       await ctx.addCookies([{ name: "kp-locale", value: loc, url: BASE }]);
       for (const w of WIDTHS) {
+        // ⛔ SPACE THE ATTEMPTS. `rateCheck(userId, "bet.place")` sheds a burst, and the first
+        // full run of this leg drove 15 cells back to back: EN×5 and the first SW and ZH cell
+        // passed, then every remaining cell reported "nothing was submitted". That was the
+        // PLATFORM behaving correctly and the INSTRUMENT reading it as a product defect — the
+        // failures began at the 7th attempt regardless of width, which is state and not layout.
+        // ⭐ The check that caught it is the one that refuses to score anything unless the bet was
+        // actually SUBMITTED; without it the run would have reported eight green cells it never drove.
+        if (PAUSE_MS > 0) await page.waitForTimeout(PAUSE_MS);
         await page.setViewportSize({ width: w, height: w < 500 ? 780 : 900 });
         await page.goto(`${BASE}/markets/${market.id}?side=YES`, { waitUntil: "domcontentloaded" });
         await page.waitForSelector("main", { timeout: 45_000 });
@@ -213,39 +223,78 @@ async function refused() {
           nBoxes === 1, `${nBoxes} numeric input(s)`);
         if (nBoxes !== 1) continue;
         const box = boxes.first();
-        await box.click();
-        await page.keyboard.press("ControlOrMeta+A");
-        await page.keyboard.press("Delete");
-        await page.keyboard.type(String(STAKE), { delay: 20 });
-        await page.waitForTimeout(400);
+        // ⛔ TYPE, READ BACK, RETRY. The dial hydrates and re-mounts, and a first attempt at 768
+        // and 1024 landed in an input that was replaced under it — the box read EMPTY afterwards.
+        // Retrying is honest here; pretending a single blind type is deterministic is not.
+        for (let attempt = 0; attempt < 3; attempt++) {
+          await box.click();
+          await page.keyboard.press("ControlOrMeta+A");
+          await page.keyboard.press("Delete");
+          await page.keyboard.type(String(STAKE), { delay: 25 });
+          await page.waitForTimeout(700);
+          if ((await box.inputValue()).replace(/[^d]/g, "") === String(STAKE)) break;
+          // ⚠️ SECOND MECHANISM, NOT A SECOND TRY OF THE SAME ONE. Keyboard typing landed nothing
+          // at all in the SW and ZH cells above 393px; `fill` writes the value directly. The repo
+          // warns `fill` can race a masked input, which is exactly why it runs INSIDE a loop that
+          // reads the value back rather than assuming either mechanism worked.
+          await box.fill(String(STAKE)).catch(() => {});
+          await page.waitForTimeout(700);
+          if ((await box.inputValue()).replace(/[^d]/g, "") === String(STAKE)) break;
+          await page.waitForTimeout(1_200);
+        }
+        // ⛔ READ THE BOX BACK BEFORE COMMITTING — the rule every other driver in this repo
+        // follows, and skipping it here cost a whole run. Eight cells reported "no confirm button
+        // naming the stake" and the cause was upstream: the typed figure had not stuck, so the
+        // control was enabled for a DIFFERENT amount and the dialog named that one instead.
+        const typed = (await box.inputValue()).replace(/[^d]/g, "");
+        rec.check(`2: ${loc}@${w} · ★ the stake box really reads the intended amount`,
+          typed === String(STAKE), `box reads "${typed}" · wanted ${STAKE}`);
+        if (typed !== String(STAKE)) { await shot(page, `rg-stake-not-set-${loc}-${w}`); continue; }
         const commit = page.locator('button[aria-label*="YES" i][aria-label*="TZS" i]').first();
         const canCommit = await commit.isEnabled().catch(() => false);
         rec.check(`2: ${loc}@${w} · the commit control is reachable and enabled`, canCommit,
           canCommit ? "" : `aria-label="${await commit.getAttribute("aria-label").catch(() => "(absent)")}"`);
         if (!canCommit) continue;
         await commit.click({ timeout: 20_000 });
-        await page.waitForTimeout(1_000);
-        // The confirm dialog's button is translated; take the dialog's LAST button, which is the
-        // affirmative one in this kit's ConfirmDialog, and fall back to any button naming the side.
-        const cdlg = page.locator('[role="dialog"], [role="alertdialog"]').first();
-        if (await cdlg.isVisible().catch(() => false)) {
-          const btns = cdlg.locator("button");
-          const n = await btns.count().catch(() => 0);
-          if (n > 0) await btns.nth(n - 1).click({ timeout: 15_000 }).catch(() => {});
-        }
-        await page.waitForTimeout(4_000);
-
-        const body = (await page.evaluate(() => document.body.innerText)).replace(/\s+/g, " ");
+        await page.waitForTimeout(1_200);
         /**
-         * ⛔ THE CHECK THAT STOPS EVERY CHECK BELOW FROM PASSING VACUOUSLY, and it is here because
-         * the first run of this leg passed *"the refusal is NOT the generic line"* on a page that
-         * carried NO REFUSAL AT ALL. An absence satisfies a negative assertion, which is the
-         * exact defect this campaign has now filed four times.
+         * ⛔ THE AFFIRMATIVE BUTTON IS FOUND BY THE STAKE FIGURE, NOT BY POSITION OR BY ENGLISH.
+         * The confirm dialog holds FOUR buttons — two unlabelled, then `Confirm · TZS 2,000`, then
+         * `Cancel` — so "the last button" is CANCEL. The first version of this leg clicked it, the
+         * bet was never submitted, and the leg then passed *"the refusal is not the generic line"*
+         * over a page with no refusal on it at all. ⭐ The stake figure appears in the affirmative
+         * button's own label in every locale, because a number is not translated.
          */
-        const anyRefusal = /break|mapumziko|休息|冷静|paused|imesitishwa|暂时|excluded|kujizuia|排除/i.test(body);
-        rec.check(`3: ${loc}@${w} · ⛔ a refusal was actually RENDERED — otherwise every check below passes over an absence`,
-          anyRefusal, body.slice(0, 200));
-        if (!anyRefusal) { await shot(page, `rg-refused-NOTHING-${loc}-${w}`); continue; }
+        const cdlg = page.locator('[role="dialog"], [role="alertdialog"]').first();
+        let submitted = false;
+        if (await cdlg.isVisible().catch(() => false)) {
+          const fig = STAKE.toLocaleString("en-US");
+          const yes = cdlg.locator("button").filter({ hasText: new RegExp(fig.replace(",", "[,\\s]?")) }).first();
+          if (await yes.count().then((n) => n > 0).catch(() => false)) {
+            await yes.click({ timeout: 15_000 });
+            submitted = true;
+          }
+        }
+        rec.check(`2: ${loc}@${w} · ⛔ the bet was actually SUBMITTED — the affirmative button was found by its stake figure, not by position`,
+          submitted, submitted ? "" : "no confirm button naming the stake — nothing was submitted, so nothing below would mean anything");
+        if (!submitted) { await shot(page, `rg-nosubmit-${loc}-${w}`); continue; }
+        await page.waitForTimeout(3_500);
+
+        /**
+         * ⛔ READ THE REFUSAL SURFACE, NOT THE WHOLE PAGE. The first version tested
+         * `document.body.innerText` against a loose word list, and a market board full of
+         * ordinary copy satisfied it — so the check reported a refusal that was not there. The
+         * refusal is a MODAL (`self_excluded` / `cooling_off` are `channel: "modal"`), so the
+         * modal's own text is the only evidence.
+         */
+        const modal = await page.evaluate(() => {
+          const d = document.querySelector('[role="dialog"],[role="alertdialog"]');
+          return d ? (d.innerText || "").replace(/\s+/g, " ").trim() : null;
+        });
+        rec.check(`3: ${loc}@${w} · ⛔ a refusal MODAL is on screen — otherwise every check below passes over an absence`,
+          !!modal && modal.length > 10, modal ?? "no dialog on screen after the refused bet");
+        if (!modal) { await shot(page, `rg-refused-NOTHING-${loc}-${w}`); continue; }
+        const body = modal;
         // ⛔ THE DEFECT, NAMED, SO THIS CHECK CANNOT PASS OVER IT. Every locale's "temporarily
         // paused / try again shortly" line is the sentence E-232 removed from this path.
         const inviteBack = /try again shortly|jaribu tena baadaye|请稍后重试/i.test(body);
