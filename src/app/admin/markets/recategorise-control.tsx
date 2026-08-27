@@ -21,10 +21,17 @@ import { useDeferredToast } from "@/components/ui/toast";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { recategoriseMarketAction } from "@/app/markets/actions";
+import { useMayAct, useActDisabledReason } from "@/components/admin/act-gate";
 
 export function RecategoriseControl({
   marketId, current, categories, titleEn,
 }: { marketId: string; current: string; categories: readonly string[]; titleEn: string }) {
+  // A1 · `/admin/markets` is the `trading` domain and `recategoriseMarketAction` gates on
+  // `canAct(role, "trading")`. No role holds trading VIEW without ACT under DEFAULT_GRANTS —
+  // but the Owner can create one live at /admin/roles, and that role must see a stated refusal
+  // rather than a Save button whose click lands in the log as `privilege_escalation_blocked`.
+  const mayAct = useMayAct();
+  const actReason = useActDisabledReason();
   const [pending, start] = useTransition();
   const [next, setNext] = useState(current);
   const router = useRouter();
@@ -61,10 +68,18 @@ export function RecategoriseControl({
         ariaLabel="Category"
         value={next}
         onChange={setNext}
-        disabled={pending}
+        disabled={pending || !mayAct}
         options={categories.map((c) => ({ value: c, label: c }))}
       />
-      <Button type="button" size="sm" variant="ghost" onClick={save} loading={pending} disabled={next === current}>
+      <Button
+        type="button"
+        size="sm"
+        variant="ghost"
+        onClick={save}
+        loading={pending}
+        disabled={next === current || !mayAct}
+        title={actReason}
+      >
         Save category
       </Button>
     </div>

@@ -37,10 +37,19 @@ import {
   type ReadCell,
   type Role,
 } from "@/lib/server/roles";
+import { useMayAct, useActDisabledReason } from "@/components/admin/act-gate";
 
 type Matrix = Record<string, Record<ReadClass, ReadCell>>;
 
 export function ReadTiersMatrix({ matrix: initial }: { matrix: Matrix }) {
+  // A1 · `/admin/roles` is OWNER-ONLY, so the layout computes `mayAct = isAdmin(viewerRole)`
+  // and it is `true` for anyone who can open this tab at all — the gate is inert here TODAY.
+  // It is consulted anyway: `roles-matrix.tsx` and `staff-forms.tsx` sit behind the same
+  // owner-only argument, and an ungated control is one OWNER_ONLY_PREFIXES edit away from
+  // being the offer A1 is about. The grid still READS for anyone who reaches it; only the
+  // writes are gated.
+  const mayAct = useMayAct();
+  const actReason = useActDisabledReason();
   const [matrix, setMatrix] = useState<Matrix>(initial);
   const [pending, start] = useTransition();
   const router = useRouter();
@@ -96,7 +105,15 @@ export function ReadTiersMatrix({ matrix: initial }: { matrix: Matrix }) {
           past them. <strong className="text-text">Hidden</strong> removes the field entirely. Saves instantly and
           applies on that staffer&apos;s next request.
         </p>
-        <Button type="button" variant="ghost" size="sm" onClick={() => setResetting(true)} loading={pending}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => setResetting(true)}
+          loading={pending}
+          disabled={!mayAct}
+          title={actReason}
+        >
           Reset to defaults
         </Button>
       </div>
@@ -132,7 +149,7 @@ export function ReadTiersMatrix({ matrix: initial }: { matrix: Matrix }) {
                     size="sm"
                     value={matrix[role][cls]}
                     onChange={(v) => save(role, cls, v as ReadCell)}
-                    disabled={pending}
+                    disabled={pending || !mayAct}
                     options={options(cls)}
                   />
                 </div>
