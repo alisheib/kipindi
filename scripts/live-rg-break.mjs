@@ -6,9 +6,13 @@
  *   node scripts/live-rg-break.mjs state     # just print the RG row and the account status
  *
  * ⛔ WHY COOLING-OFF AND NOT SELF-EXCLUSION, AND IT IS THE FINDING RATHER THAN A CONVENIENCE.
- * `auth-service.ts:110,827,959` **refuse login outright for `SELF_EXCLUDED`** — so a
+ * `assertSignInAllowed` (auth-service) **refuses login outright for `SELF_EXCLUDED`** — so a
  * self-excluded player can never reach a bet card, and the `self_excluded` refusal on the
- * betting path is unreachable for them. Login does **not** refuse `COOLED_OFF`. **So the only RG
+ * betting path is unreachable for them.
+ * ⚠️ UPDATED 2026-08-28 (`E-240`): this cited `auth-service.ts:110,827,959`, and those three line
+ * numbers WERE the defect — three hand-copied gates, which is how a fourth door
+ * (`verifyOtpAndAuth`) carried none at all. Cite the gate by NAME; a line number rots silently.
+ * Login does **not** refuse `COOLED_OFF`. **So the only RG
  * lockout a player can actually hit while signed in is the cooling-off one** — which is exactly
  * the state that had no registry row at all until E-232, and therefore the one that fell through
  * to *"This service is temporarily paused. Try again shortly."*
