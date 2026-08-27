@@ -281,16 +281,27 @@ export async function coolOff(userId: string, period: keyof typeof COOLING_OFF_P
 /**
  * True if the user is currently self-excluded or in a cooling-off period.
  */
+/**
+ * ⭐ E-238 · THE RAW TIMERS ARE RETURNED ALONGSIDE THE VERDICT, AND THAT IS NOT DECORATION.
+ * `coolOff` and `selfExclude` also set `User.status`, and **nothing anywhere clears that status**
+ * — so a caller that wants to know *"is this break OVER, or was a status set with no timer at
+ * all?"* needs the dates, not just the boolean. Measured on production: a ONE-HOUR cooling-off
+ * left the account permanently unable to bet, because the status branch in `market-service` had no
+ * way to tell an expired break from a genuine divergence. It has one now.
+ * ⚠️ Additive: every existing caller reads only `locked` / `until` / `reason` and is unaffected.
+ * ⭐ And it costs no extra query — the settings row is already loaded here.
+ */
 export async function isLockedOut(userId: string) {
   const r = await getRgSettings(userId);
   const now = Date.now();
+  const timers = { coolingUntil: r.coolingOffUntil ?? null, exclusionUntil: r.selfExclusionUntil ?? null };
   if (r.selfExclusionUntil && new Date(r.selfExclusionUntil).getTime() > now) {
-    return { locked: true, until: r.selfExclusionUntil, reason: "self_exclusion" };
+    return { locked: true, until: r.selfExclusionUntil, reason: "self_exclusion", ...timers };
   }
   if (r.coolingOffUntil && new Date(r.coolingOffUntil).getTime() > now) {
-    return { locked: true, until: r.coolingOffUntil, reason: "cooling_off" };
+    return { locked: true, until: r.coolingOffUntil, reason: "cooling_off", ...timers };
   }
-  return { locked: false, until: null, reason: null };
+  return { locked: false, until: null, reason: null, ...timers };
 }
 
 /**

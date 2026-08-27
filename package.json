@@ -566,7 +566,8 @@
     "qa:e70-admin": "node scripts/live-e70-values.mjs admin",
     "qa:rg-cool": "node scripts/live-rg-break.mjs cool",
     "qa:rg-refused": "node scripts/live-rg-break.mjs refused",
-    "qa:rg-state": "node scripts/live-rg-break.mjs state"
+    "qa:rg-state": "node scripts/live-rg-break.mjs state",
+    "qa:rg-expired": "node scripts/live-rg-break.mjs expired"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

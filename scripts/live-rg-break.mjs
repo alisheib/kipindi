@@ -346,7 +346,107 @@ async function state() {
   rec.check("the RG row exists for this account", true, "");
 }
 
-const CMDS = { cool, refused, state };
+// ─────────────────────────────────────────────────────────────────────────────
+// expired — 🔴 THE BREAK THAT NEVER ENDS
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * 🔴 `E-238` · A COOLING-OFF BREAK HAS NO END, AND THIS LEG IS THE PROOF.
+ *
+ * `coolOff` does two things: it writes `coolingOffUntil` on the RG row, and it sets
+ * `User.status = "COOLED_OFF"` (`responsible-gambling.ts:260`). **Nothing anywhere ever clears
+ * that status** — `grep -rn COOLED_OFF src/lib/server` returns the write, the type and one
+ * comment, and no sweep, no reset, no expiry path.
+ *
+ * ⛔ SO WHEN THE TIMER PASSES, THE TWO RECORDS DIVERGE PERMANENTLY. `isLockedOut` correctly
+ * reports the break as over — and `market-service.ts`'s account-status branch, three lines
+ * further down, refuses every bet from that account for ever. **A player who chooses the
+ * gentlest self-care option on the platform — one hour — is locked out of betting
+ * permanently**, can still sign in, can still see their balance, and is told *"Your account
+ * can't place bets at the moment. Contact support and we'll explain why."*
+ *
+ * ⭐ AND THE BELT-AND-SUSPENDERS COMMENT ABOVE THAT BRANCH IS THE TELL. It says the status
+ * check exists in case the timer and the status *"ever diverge"*. **They diverge by design, on
+ * every cooling-off, the moment it expires.**
+ *
+ * ⚠️ THE SELF-EXCLUSION HALF IS WORSE AND IS NOT DRIVEN HERE. `selfExclude` sets
+ * `SELF_EXCLUDED`, which `auth-service.ts` refuses at LOGIN — so a player who picks the 24-hour
+ * self-exclusion the form offers cannot sign in to discover that it never ended. That is the
+ * same mechanism and it needs an owner's ruling, not a QA fix.
+ */
+async function expired() {
+  const st = await rgState();
+  const past = st.cooling_until && Date.parse(st.cooling_until + "Z") <= Date.parse(st.now + "Z");
+  rec.check("0: the cooling-off period has ENDED — the timer is in the past",
+    !!past, `coolingOffUntil=${st.cooling_until ?? "null"} now=${st.now}`);
+  if (!past) { rec.note("run `cool` and wait out the hour first."); rec.done(); return; }
+  // ⭐ THE DIVERGENCE, READ FROM PRODUCTION'S OWN TWO RECORDS.
+  rec.check("1: 🔴 …and yet User.status is STILL the break state — the two records have diverged",
+    st.status === "COOLED_OFF",
+    `status=${st.status} — if this is ACTIVE the platform now heals itself and E-238 is fixed`);
+
+  const market = (await sql.query(`
+    select m.id from "PredictionMarket" m
+     where m.status = 'LIVE' and m."productLine"::text <> 'UPDOWN'
+       and coalesce(m."selectionClosedAt", m."resolutionAt") > (now() at time zone 'utc') + interval '30 minutes'
+     limit 1`)).rows[0];
+  if (!market) { rec.check("1: a LIVE poll exists", false, "none"); rec.done(); return; }
+
+  const { b, ctx } = await browser();
+  const page = await ctx.newPage();
+  try {
+    await login(page, `fleet:${PLAYER}`);
+    rec.check("2: the player can still SIGN IN — login does not refuse COOLED_OFF, so they can see a wallet they can no longer bet from",
+      !/\/auth\/login/.test(page.url()), `landed on ${page.url().replace(BASE, "")}`);
+    await page.setViewportSize({ width: 393, height: 820 });
+    await page.goto(`${BASE}/markets/${market.id}?side=YES`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("main", { timeout: 45_000 });
+    await page.waitForTimeout(2_000);
+
+    const boxes = page.locator('input[inputmode="numeric"]');
+    if (await boxes.count() !== 1) { rec.check("3: one numeric stake input", false, "layout changed"); rec.done(); return; }
+    const box = boxes.first();
+    for (let i = 0; i < 3; i++) {
+      await box.click();
+      await page.keyboard.press("ControlOrMeta+A");
+      await page.keyboard.press("Delete");
+      await page.keyboard.type(String(STAKE), { delay: 25 });
+      await page.waitForTimeout(700);
+      if ((await box.inputValue()).replace(/[^\d]/g, "") === String(STAKE)) break;
+      await box.fill(String(STAKE)).catch(() => {});
+      await page.waitForTimeout(700);
+      if ((await box.inputValue()).replace(/[^\d]/g, "") === String(STAKE)) break;
+    }
+    rec.check("3: ★ the stake box reads the intended amount",
+      (await box.inputValue()).replace(/[^\d]/g, "") === String(STAKE), await box.inputValue());
+    await page.locator('button[aria-label*="YES" i][aria-label*="TZS" i]').first().click({ timeout: 20_000 });
+    await page.waitForTimeout(1_200);
+    const cdlg = page.locator('[role="dialog"], [role="alertdialog"]').first();
+    const fig = STAKE.toLocaleString("en-US");
+    const yes = cdlg.locator("button").filter({ hasText: new RegExp(fig.replace(",", "[,\\s]?")) }).first();
+    const submitted = await yes.count().then((n) => n > 0).catch(() => false);
+    rec.check("4: ⛔ the bet was actually SUBMITTED", submitted, submitted ? "" : "no confirm button naming the stake");
+    if (!submitted) { rec.done(); return; }
+    await yes.click({ timeout: 15_000 });
+    await page.waitForTimeout(4_000);
+
+    const modal = await page.evaluate(() => {
+      const d = document.querySelector('[role="dialog"],[role="alertdialog"]');
+      return d ? (d.innerText || "").replace(/\s+/g, " ").trim() : null;
+    });
+    const pos = (await sql.query(`
+      select count(*)::int n from "Position" p join "User" u on u.id = p."userId"
+       where u."phoneE164" = $1 and p."marketId" = $2`, [E164, market.id])).rows[0].n;
+    rec.note(`what the player is told: ${modal ?? "(nothing on screen)"}`);
+    // ⭐⭐ THE ASSERTION IS PHRASED AS THE FIXED STATE, so it goes GREEN when the platform heals
+    // itself and RED while the break is permanent. ⛔ Phrasing it as the defect would have made
+    // it fail the day somebody fixed this, which is a shape this repo has already paid for.
+    rec.check("5: ★★ `E-238` · the break is OVER, so the bet is ACCEPTED — a one-hour break must not be permanent",
+      pos > 0, `positions on this market: ${pos} · modal: ${(modal ?? "").slice(0, 160)}`);
+    await shot(page, "rg-expired-break");
+  } finally { await ctx.close(); await b.close(); }
+}
+
+const CMDS = { cool, refused, state, expired };
 if (!CMDS[CMD]) throw new Error(`unknown command "${CMD}" — ${Object.keys(CMDS).join(" | ")}`);
 try { await CMDS[CMD](); } finally { await sql.end(); }
 rec.done();

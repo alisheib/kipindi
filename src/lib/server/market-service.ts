@@ -905,7 +905,32 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
   // account status are set together, but if they ever diverge (admin clears a
   // timer, a data migration sets status without the timestamp) we must still
   // refuse a bet from a self-excluded / cooled-off / suspended / closed player.
-  if (u.status === "SUSPENDED" || u.status === "CLOSED" || u.status === "SELF_EXCLUDED" || u.status === "COOLED_OFF") {
+  // 🔴 E-238 · A BREAK STATUS ONLY BLOCKS WHILE ITS TIMER SAYS SO, AND THAT ONE WORD IS THE FIX.
+  //
+  // `coolOff` writes `coolingOffUntil` AND sets `User.status = "COOLED_OFF"`
+  // (`responsible-gambling.ts:260`) — and **nothing anywhere ever clears that status.** So when
+  // the timer passed, `isLockedOut` above correctly reported the break as over and this branch
+  // went on refusing every bet from that account for ever.
+  //
+  // ⛔ MEASURED ON PRODUCTION 2026-08-27: a fleet account took the platform's SHORTEST break — one
+  // hour — through the real form. Eight minutes after it expired the player could still sign in,
+  // still see their balance, and was told *"Your account can't place bets at the moment. Contact
+  // support and we'll explain why."* **A one-hour self-care break was permanent.** The same is
+  // true of the 24-hour and one-week options.
+  //
+  // ⭐ AND THE COMMENT BELOW WAS THE TELL ALL ALONG. It says this branch exists in case the timer
+  // and the status *"ever diverge"*. They diverge BY DESIGN, on every cooling-off, the moment it
+  // expires — so the belt-and-suspenders check had become the whole block.
+  //
+  // ⭐ THE FIX IS READ-ONLY BY CHOICE. Restoring `status` to ACTIVE would need to know what it was
+  // BEFORE the break (a `PENDING_KYC` player would be silently upgraded), and recording that means
+  // a column and a migration. Consulting the timer needs neither, and it keeps the guard's real
+  // purpose: a break status with NO timer at all is still a genuine divergence and STILL blocks.
+  const breakStatus = u.status === "SELF_EXCLUDED" || u.status === "COOLED_OFF";
+  const breakTimerLive = !!lockout.locked
+    || (u.status === "COOLED_OFF" && !lockout.coolingUntil)
+    || (u.status === "SELF_EXCLUDED" && !lockout.exclusionUntil);
+  if (u.status === "SUSPENDED" || u.status === "CLOSED" || (breakStatus && breakTimerLive)) {
     audit({
       category: "COMPLIANCE",
       action: "bet.account_blocked",
