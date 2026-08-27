@@ -30,6 +30,7 @@
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { decomment } from "./lib/decomment.mts";
 
 let pass = 0;
 const fails: string[] = [];
@@ -44,10 +45,7 @@ const read = (p: string) => readFileSync(p, "utf8").replace(/\r\n/g, "\n");
  * vocabulary would fire on its own documentation, which happened four separate times in the
  * session that wrote this file. A word is not a control.
  */
-const code = (p: string) => read(p)
-  .replace(/\/\*[\s\S]*?\*\//g, " ")
-  .replace(/\{\/\*[\s\S]*?\*\/\}/g, " ")
-  .replace(/^\s*\/\/.*$/gm, " ");
+const code = (p: string) => decomment(read(p));
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const e of readdirSync(dir)) {

@@ -18,6 +18,7 @@
  *   npm run test:install-invite
  */
 import { readFileSync, existsSync } from "node:fs";
+import { decomment } from "./lib/decomment.mts";
 
 let pass = 0;
 const fails: string[] = [];
@@ -34,10 +35,7 @@ const read = (p: string) => readFileSync(p, "utf8").replace(/\r\n/g, "\n");
  * session that one of my own checks matched a VOCABULARY instead of a control: a word is not a
  * control, and prose about a rule is not a breach of it.
  */
-const code = (p: string) => read(p)
-  .replace(/\/\*[\s\S]*?\*\//g, " ")      // block comments, JSDoc included
-  .replace(/\{\/\*[\s\S]*?\*\/\}/g, " ")  // JSX comments
-  .replace(/^\s*\/\/.*$/gm, " ");         // whole-line // comments
+const code = (p: string) => decomment(read(p));
 
 console.log("\n§3 · the install invitation — installable, non-disturbing, and out of the way\n");
 

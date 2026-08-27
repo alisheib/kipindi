@@ -177,8 +177,18 @@ ok("🔴 …and EVERY withdrawal is stamped with it",
 ok("🔴 …and an unverified payer produces an AWAITED compliance fact carrying the txn",
   /await audit\(\{[\s\S]{0,600}?action:\s*"withdraw\.unverified_payer"[\s\S]{0,600}?targetId:\s*txnId/.test(WALLET_CODE),
   "not awaited, or not carrying txnId, and the record cannot be joined to the payout it explains");
+// 🔴 STRIPPED 2026-08-27, NOT RELAXED. This read the RAW file, and the E-238 cooling-off fix
+// (`f52a357a`, 2026-08-27) added a COMMENT at `market-service.ts:926` explaining why that fix is
+// read-only — *"a `PENDING_KYC` player would be silently upgraded"*. One word of prose, inside the
+// paragraph documenting an unrelated repair, reddened the money-copy suite. That is precisely
+// `decomment.mts`'s own stated reason for existing: a guard that greps raw text matches the
+// paragraph explaining the fix instead of the fix. What must not exist is a KYC GATE on play,
+// never a documented mention of a status enum — the distinction §7's rail already draws.
+// ⭐ CONTROLLED, not assumed: with comments stripped this still goes RED for a
+// `db.kyc.findByUserId` read AND for `u.status === "PENDING_KYC"` joining the blocked-status
+// branch — the two ways play could actually become identity-gated. It lost reach over prose only.
 ok("play is not gated on identity at all",
-  !/kyc/i.test(MARKET),
+  !/kyc/i.test(stripComments(MARKET)),
   "market-service carries no KYC reference; if it gains one, every 'what approval unlocks' string moves");
 
 // ── 7 · The officer is told the same truth as the player (E-9) ──────────────
