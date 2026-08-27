@@ -218,8 +218,13 @@ console.log("\n§5 · the long way round — a real stake, and a CONFIRMED BONUS
      bet.ok ? `bonusStakeTzs=${bet.data.bonusStakeTzs}` : "");
 
   const g = await grant("bw_real");
-  ok("5.3 · the grant FULFILLED off a single real bet, with nothing left in it",
-     g.status === "FULFILLED" && g.wageredTzs === 10_000 && g.remainingTzs === 0,
+  // ⛔ E-224 · THIS ASSERTION USED TO READ `g.remainingTzs === 0`, AND IT WAS ENCODING THE
+  // DEFECT. Fulfilment no longer zeroes the field: it keeps the figure it converted to real
+  // cash, because that number is the only record of the conversion and the re-lock path needs
+  // it to move the money back when a refund shows the wager never happened. The bonusBalance
+  // invariant is unaffected — it sums ACTIVE grants only, and this grant is FULFILLED.
+  ok("5.3 · the grant FULFILLED off a single real bet, and remainingTzs KEEPS the converted figure",
+     g.status === "FULFILLED" && g.wageredTzs === 10_000 && g.remainingTzs === 10_000,
      `status=${g.status} wagered=${g.wageredTzs} remaining=${g.remainingTzs}`);
 
   // ⛔ THE LEDGER, NOT THE BALANCE. A balance that moved is consistent with a dozen causes;

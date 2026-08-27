@@ -476,6 +476,24 @@ export function bonusCreditEntries(opts: {
   ];
 }
 
+/**
+ * Bonus RE-LOCK (E-224): a refunded wager did not discharge the wagering requirement, so the
+ * cash a fulfilment had converted returns to the locked bonus account. The exact MIRROR of
+ * `bonusCreditEntries` — player balance → bonus account.
+ * ⭐ NOTHING IS CLAWED BACK. The two lines sum to zero and the player's TOTAL holdings do not
+ * move; only the withdrawable portion does. That is the whole of Ali's ruling, in two rows.
+ */
+export function bonusRelockEntries(opts: {
+  txnId: string;
+  userId: string;
+  amount: number;
+}): LedgerLine[] {
+  return [
+    { account: acct.player(opts.userId), entryType: "BONUS_CREDIT", amount: -opts.amount, txnId: opts.txnId, userId: opts.userId, memo: "Bonus re-locked — refunded wager" },
+    { account: acct.playerBonus(opts.userId), entryType: "BONUS_CREDIT", amount: opts.amount, txnId: opts.txnId, userId: opts.userId, memo: "Bonus returned to wagering" },
+  ];
+}
+
 /** Bonus expiry: bonus account → void */
 export function bonusExpireEntries(opts: {
   userId: string;

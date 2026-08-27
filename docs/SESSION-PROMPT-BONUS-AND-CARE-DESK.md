@@ -259,7 +259,7 @@ session re-derives it.
 
 | # | Unit | Origin | Verdict — 2026-08-27 audit | State |
 |---|---|---|---|---|
-| **A** | **E-224** · a bonus cleared at zero risk | §6 register | ✅ **KEEP · ~1 session.** Zero occurrences ever — **and armed.** Four proposals sit in `REVIEW`, two from real players, and **both logged in on 2026-08-27**; approving either puts a live 5× grant on a real account. ⛔ **INTERIM CONTROL, FREE AND TOTAL: approve no proposal and grant no bonus to a non-fleet account until this ships.** Shrunk — **no migration, no obligation field**; three of §2's four mechanics already shipped. ⭐ **THE DESIGN IS DONE AND MEASURED — START AT §2a, NOT AT §2 PROSE** | ⬜ |
+| **A** | **E-224** · a bonus cleared at zero risk | §6 register | ✅ **KEEP · ~1 session.** Zero occurrences ever — **and armed.** Four proposals sit in `REVIEW`, two from real players, and **both logged in on 2026-08-27**; approving either puts a live 5× grant on a real account. ⛔ **INTERIM CONTROL, FREE AND TOTAL: approve no proposal and grant no bonus to a non-fleet account until this ships.** Shrunk — **no migration, no obligation field**; three of §2's four mechanics already shipped. ⭐ **THE DESIGN IS DONE AND MEASURED — START AT §2a, NOT AT §2 PROSE** ✅ **SHIPPED 2026-08-27 (session 69): `test:bonus-relock` 62/0 · `red:bonus-relock` 13/13 · `test:red-anchors` 795/0 · `tsc` 0 · `build` 0 · `test:all` 253/263 with the 10 reds proven byte-identical at HEAD. ⛔ THE LIVE DRIVE IS THE ONE THING OUTSTANDING, so the interim control STANDS until `qa:bonus-j` runs.** ⭐ **Two defects in the fix itself were caught by adversarially re-reading it: a SECOND unfiltered reader (`getBonusSummary`, which §2a denied existed) and a CLAWBACK BY THE BACK DOOR (a re-lock inheriting a dead `expiresAt` would be swept away by `expireActiveGrants`).** | ☑️ |
 | **B1** | 🔴 **E-226** · the support address nobody reads | **NEW — found by this audit** | ✅ **KEEP · <1 session — the ONLY item here that is WRONG ON PRODUCTION RIGHT NOW.** `/help` serves `support@50pick.tz` ×6 and `0800 11 0011`, while production has held `msaada@50pick.tz` / `+255 769 777 877` since **2026-08-19 09:50:24**. A writer with **no reader**. ⛔ **Send a real message to the address and reply to it BEFORE publishing it**, or step one makes things worse | ⬜ |
 | **B2** | the ticket store + inbound pipeline | Jay #12 · #13 | ⏸️ **DEFERRED behind a named trigger** — the licence-review date, **or** >20 inbound messages in a calendar month. There is no queue to drain: of 16 failed withdrawals, 13 are one ADMIN account and 3 are fleet — **no genuine player has ever had one** | ⬜ |
 | **C** | **Jay unit L** · new markets | Jay §1 | ❌ **DROPPED AS WRITTEN — the demand premise is false.** Re-aimed at XRP's feed failures, filed as its own row. GBP/USD and USD/JPY need **no code at all** | ❌ |
@@ -277,6 +277,26 @@ not ruled on here — it is flagged because it outranks all five units above.**
 
 ## §2 · UNIT A · E-224 — A BONUS CLEARED HAVING RISKED NOTHING
 
+> ✅ **SHIPPED 2026-08-27 (session 69). THE CODE IS IN; THE LIVE DRIVE IS NOT.** `test:bonus-relock`
+> **62/0** · `red:bonus-relock` **13/13** · `test:red-anchors` **795/0**. The design in §2a was
+> followed and it was **right about the mechanism and wrong about the reader inventory** — see the
+> §6 register row in `docs/LIVE-QA-CAMPAIGN.md` for both corrections.
+> ⛔ **TWO THINGS §2a GOT WRONG, AND BOTH WOULD HAVE SHIPPED:**
+> ① **`getBonusSummary` IS A SECOND UNFILTERED READER.** §2a's table says the admin ledger is the
+> only one. It is not — `getBonusSummary` maps `listByUser` (no status filter) through
+> `toGrantView`, which spread `remainingTzs` straight through to the **player**. Suppressed at the
+> source now.
+> ② 🔴 **A RE-LOCK INHERITING A DEAD `expiresAt` IS A CLAWBACK.** `expireActiveGrants` selects
+> `status = ACTIVE AND expiresAt < now`, so a grant fulfilled near its 30-day expiry and re-locked
+> after it would have had the re-locked money **swept away** — the player left with neither the
+> cash nor the bonus. The re-lock now restarts the clock.
+> ⚠️ **AND ONE SMALLER CORRECTION:** §2a says the admin ledger "would render a remaining figure".
+> The table **never paints `remainingTzs`** — the suppression is right, but it guards a payload
+> field with no current renderer. Stated so nobody reads it as a fixed visible defect.
+> 🔴 **THE INTERIM CONTROL STILL STANDS** — approve no proposal and grant no bonus to a non-fleet
+> account **until the live drive runs**. Four proposals sit in `REVIEW`; two are real players.
+>
+> ── the pre-ship verdict, kept for the reasoning ──
 > ✅ **VERDICT 2026-08-27 · KEEP — but SMALLER than this section, and this section is WRONG in
 > three places. Read §0e first.** ⛔ Three of the four mechanics below **already shipped** (B1b,
 > 2026-08-14). ⛔ The ruling's `IN_PROGRESS` **is not a real status** — a guard written against that

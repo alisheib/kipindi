@@ -2061,6 +2061,23 @@ export const prismaDb = {
       });
       return rows.map(toStoredBonusGrant);
     },
+    /**
+     * ACTIVE **and FULFILLED** grants for a user, OLDEST first — the population the wagering
+     * REVERSAL path must see (E-224). ⛔ `listActiveByUser` is literally `status: "ACTIVE"`,
+     * so a FULFILLED grant was never "left untouched by a condition you can see" — it was
+     * INVISIBLE TO THE QUERY, and the bet that COMPLETED the wagering is precisely the one a
+     * void / one-sided / cash-out refund gives back.
+     * ⛔ DO NOT widen `listActiveByUser` instead. spendBonus, refundBonusToActive and the
+     * expiry sweep must keep seeing ACTIVE only, and the bonusBalance invariant is
+     * ACTIVE-scoped — widening it would put fulfilled money back in play.
+     */
+    listReversibleByUser: async (userId: string, tx?: Prisma.TransactionClient | null): Promise<StoredBonusGrant[]> => {
+      const rows = await (tx ?? pc()).bonusGrant.findMany({
+        where: { userId, status: { in: ["ACTIVE", "FULFILLED"] } },
+        orderBy: { createdAt: "asc" }, // FIFO — the caller groups by status and reverses
+      });
+      return rows.map(toStoredBonusGrant);
+    },
     listExpired: async (nowIso: string): Promise<StoredBonusGrant[]> => {
       const rows = await pc().bonusGrant.findMany({
         where: { status: "ACTIVE", expiresAt: { lt: new Date(nowIso) } },

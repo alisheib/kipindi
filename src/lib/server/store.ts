@@ -1324,6 +1324,16 @@ const memoryDb = {
       Array.from(store.bonusGrants.values())
         .filter((g) => g.userId === userId && g.status === "ACTIVE")
         .sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+    /** ACTIVE **and FULFILLED** grants, OLDEST first — the wagering-REVERSAL population
+     *  (E-224). Mirrors prisma-dal.listReversibleByUser; see the note there for why
+     *  listActiveByUser is deliberately NOT widened instead.
+     *  ⛔ THIS MIRROR IS NOT OPTIONAL AND tsc CANNOT SEE IT MISSING: this module exports
+     *  `db` as `memoryDb as unknown as typeof prismaDb` — a blind cast — so an absent
+     *  method here is a runtime TypeError in every in-memory suite, not a compile error. */
+    listReversibleByUser: (userId: string): StoredBonusGrant[] =>
+      Array.from(store.bonusGrants.values())
+        .filter((g) => g.userId === userId && (g.status === "ACTIVE" || g.status === "FULFILLED"))
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
     /** ACTIVE grants whose expiry has passed — for the expiry sweep. */
     listExpired: (nowIso: string): StoredBonusGrant[] =>
       Array.from(store.bonusGrants.values())

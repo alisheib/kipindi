@@ -94,7 +94,11 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
     .map((g) => ({
       id: g.id,
       amountTzs: g.amountTzs,
-      remainingTzs: g.remainingTzs,
+      // ⛔ E-224 · `BonusGrantView.remainingTzs` is NULLABLE now — toGrantView suppresses it for
+      // any status where the figure is not locked bonus money. This list is already filtered to
+      // ACTIVE||QUEUED just above, so it is never null in practice; the coalesce makes that
+      // reasoning explicit to tsc rather than assumed.
+      remainingTzs: g.remainingTzs ?? 0,
       source: g.source,
       progressPct: g.progressPct,
       wageredTzs: g.wageredTzs,

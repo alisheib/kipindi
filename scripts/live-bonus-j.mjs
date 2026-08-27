@@ -663,21 +663,26 @@ async function verifyRound(mkt, boundarySecs, before, g0) {
     rec.note(`the POSITION's own fate: ${settledPos?.status} · finalPayout ${settledPos?.payout} on a stake of ${settledPos?.stake} → ${fate}`);
     rec.note(`balance across settlement ${after.balance} → ${end.balance}`);
 
-    // ⛔ `E-224` · THE ZERO-RISK CLEAR, CAUGHT IN THE ACT. Any refund path — a VOID, or a
-    // one-sided market like this one — returns the stake, and `reverseWagering` CANNOT
-    // un-fulfil a grant that has already fulfilled ("its cash is real", per its own docstring).
-    // So the bet that CROSSES the requirement can be refunded and the unlock still stands.
-    // ⚠️ The magnitude is the multiplier: at the platform default of 5× the player still had to
-    // put 5×A of real turnover at risk and only the final bet is free, but at 1× the entire
-    // bonus is free. Reported, not fixed — the bonus economics are the owner's call.
+    // ✅ `E-224` · FIXED 2026-08-27, AND THIS CHECK IS NOW THE PROOF RATHER THAN THE REPORT.
+    // ⛔ IT USED TO ASSERT THE DEFECT (`g?.status === "FULFILLED"`), which means it went RED the
+    // moment the platform became correct. That is the "assertion the fix invalidates" shape and
+    // it is inverted here in the same commit as the fix.
+    // The rule: a returned stake does not discharge a wagering obligation, and nothing is ever
+    // clawed back — the grant is RE-LOCKED to ACTIVE, the player keeps every shilling, and only
+    // the withdrawable portion moves back into the locked bonus wallet.
     if (fate === "REFUNDED") {
       const g = (await grants()).find((x) => x.id === (gAfter?.id ?? g0?.id));
-      rec.check("6: ⚠️ `E-224` · the stake was REFUNDED and the fulfilment still stands — documented behaviour, and an exposure",
-        g?.status === "FULFILLED", g ? describe(g) : "");
-      rec.note(`⚠️ E-224 MEASURED HERE: the stake came back AND the bonus stayed unlocked, so this ` +
-               `player cleared a ${grantAmount} bonus having risked nothing. reverseWagering leaves a ` +
-               `FULFILLED grant alone by design; the refund it cannot reverse is the one that crossed ` +
-               `the line. ⛔ Ali's call, not a unilateral fix.`);
+      rec.check("6: ★★ `E-224` · the stake was REFUNDED, so the fulfilment was REVERSED — the grant is ACTIVE again, not FULFILLED",
+        g?.status === "ACTIVE", g ? describe(g) : "");
+      rec.check("6: ★★ …and the wagering progress fell BACK BELOW the requirement — that is why it re-locked",
+        N(g?.wagered) < N(g?.required), g ? `wagered ${g?.wagered} · required ${g?.required}` : "");
+      rec.check("6: ★ NOTHING WAS CLAWED BACK — total holdings are unchanged to the shilling across the re-lock",
+        N(end.balance) + N(end.bonus) === N(after.balance) + N(after.bonus),
+        `before balance+bonus ${N(after.balance) + N(after.bonus)} · after ${N(end.balance) + N(end.bonus)}`);
+      rec.note(`✅ E-224 CLOSED HERE: the stake came back and the bonus RE-LOCKED. The grant returned ` +
+               `to ACTIVE with its converted cash moved out of withdrawable balance and back into the ` +
+               `bonus wallet, so a ${grantAmount} bonus can no longer be cleared having risked nothing. ` +
+               `The player lost no money — only the WITHDRAWABLE portion moved.`);
     }
   }
 }
