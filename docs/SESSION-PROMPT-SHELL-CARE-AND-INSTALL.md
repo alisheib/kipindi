@@ -1,5 +1,25 @@
 # THE SHELL, THE CARE SYSTEM, AND THE INSTALL INVITATION — session 70's work order
 
+> ✅ **CLOSED 2026-08-27 (session 70). ALL FOUR OF ALI'S ITEMS ARE ANSWERED AND EVERY ONE IS
+> PUSHED AND DRIVEN.** This file is now HISTORY — read `docs/LIVE-QA-CAMPAIGN.md`'s topmost
+> `RESUME AT (session 71)` instead, and `docs/RG-AUDIT-2026-08-27.md` for item 2.
+>
+> ⛔ **EXACTLY ONE THING IN HERE IS STILL OUTSTANDING AND IT NEEDS ALI, NOT A SESSION: §0.2, the
+> cert workflow, has never been OBSERVED running.** Verified rather than assumed on 2026-08-27:
+> no `gh` on this machine, `GITHUB_TOKEN` and `GH_TOKEN` both ABSENT, no GitHub token in
+> `.env.qa.local`. ▶ **ONE CLICK: Actions → "Origin certificate watch" → Run workflow.** The
+> script is re-proven today (`qa:cert-expiry` **5/5 live, 48 days**, both origin hosts), and the
+> cron `0 6 * * 1,4` means **Mon 2026-08-31 06:00 UTC observes itself** if nobody clicks.
+>
+> 🔴 **AND THE HEADLINE THIS FILE DID NOT PREDICT: EVERY CONTROL WORKED AND EVERY DEFECT WAS ONE
+> LAYER DOWNSTREAM OF IT.** The RG gates were all wired and the WORDS were wrong (`E-232`); the
+> words were right and the MODAL threw them away (`E-234`); the break blocked correctly and never
+> ENDED (`E-238` — **a one-hour cooling-off was permanent**); the balance pill's live feed was
+> built, hardened and fanned across containers and **nothing emitted into it from the play path**
+> (`E-229`). ⚠️ **Item 1's premise did not survive measurement** — four scenarios were driven on
+> production and all four were GREEN before any fix, so the navbar divergence is **not** claimed
+> fixed and needs Ali's reproduction. See the register row.
+
 > 📌 **WRITTEN 2026-08-27 (end of session 69) FROM FOUR ITEMS ALI RAISED DIRECTLY.** Two of them
 > already have their **root cause read off the code** and are recorded below with file:line, so
 > nobody re-derives them. Two are genuinely open work.
@@ -24,8 +44,8 @@
 | # | Carried item | State |
 |---|---|---|
 | **0.1** | ✅ **`qa:bonus-j` LIVE DRIVE OF THE E-224 RE-LOCK — DONE** | ✅ **DONE 2026-08-27 (session 70) — `qa:bonus-relock` 33/0 ON PRODUCTION, AND THE INTERIM CONTROL IS LIFTED.** ⭐ **`settle`'s check 6 could not have done it: it fires only on a VOIDED round.** The new `relock` leg drives the refund ON PURPOSE through the FREE EXIT — grant 2,000×1 ACTIVE → one cash-funded 2,000 stake into an EMPTY live poll → FULFILLED at placement with `remainingTzs` preserved → free exit, full refund → grant **ACTIVE** again, `balance` and `bonusBalance` back to their opening figures **to the shilling**. Ledger group sums to 0, `bonus.relocked` shows `shortfall 0` and the expiry **moving forward**, and check 11 proves the predicates DISCRIMINATE by returning 4/4 FALSE on the pre-fix grant still sitting on production. 🔴 **Both failures in the first run were in the INSTRUMENT** — `payload::text` on `jsonb` renders `"shortfallTzs": 0` with a space. *(the original work order follows, and is superseded by the verdict above — it is kept because it carries the reasoning that chose the route)* ⛔ **DO THIS FIRST.** The code is shipped, guarded and deployed (`f0521356`), but **it has never run on production**, so by §0's own definition E-224 is not done. 🔴 **THE INTERIM CONTROL STANDS UNTIL IT DOES: approve NO proposal and grant NO bonus to a non-fleet account.** Four proposals sit in `REVIEW`; two are real players who both logged in on 2026-08-27. ⚠️ `sequentialBonuses` is `true` on production, so a fresh grant lands **QUEUED** behind an existing one and can never fulfil — cancel the stale grant and let `activateNextQueued` promote it. |
-| **0.2** | ⚠️ **OBSERVE THE CERT WORKFLOW GO GREEN** | `.github/workflows/cert-expiry.yml` shipped in `57c44a26` and its script is proven (`qa:cert-expiry` 5/5 live, `red:cert-expiry` 3/3) — **but the RUNNER has never been observed executing.** ⛔ **That is the exact class of defect E-227 was about, so it is not closed until a green run exists in Actions.** ▶ One click: Actions → "Origin certificate watch" → Run workflow. Next scheduled run is **Mon 2026-08-31 06:00 UTC**. (`gh` is not installed on the `F:` machine and no `GITHUB_TOKEN` is present, which is why session 69 could not do it.) |
-| **0.3** | 🔴 **THE DEPOSITS — still the largest measured thing on the board** | **52 CONFIRMED (TZS 646,000) against 38 FAILED (TZS 630,500) lifetime — 42% by count, 49% by value.** Last 7 days: **1 confirmed against 4 failed.** Nine genuine player accounts affected; **one player alone carries 4 failures totalling TZS 311,000.** ⛔ **NOT AUDITED, NOT ON ANY LEDGER, AND IT OUTRANKS EVERY ITEM IN THIS FILE.** First question is the only one that matters: **is this money taken and not credited, or abandoned pushes?** Read the provider failure reasons against the Selcom console. ⚠️ Separately `/api/health` reports `sms.provider: "console"` — **no real SMS has ever been sent**, so a player whose deposit failed was never told. |
+| **0.2** | ⛔ **STILL OPEN — THE ONLY ITEM IN THIS FILE THAT IS. Session 70 verified the blocker rather than repeating it: no `gh`, `GITHUB_TOKEN` and `GH_TOKEN` both ABSENT, no token in `.env.qa.local`. The SCRIPT is re-proven live (`qa:cert-expiry` 5/5, 48 days, both hosts, expiring Oct 15). The RUNNER is still unobserved. ▶ One click, or wait for Mon 2026-08-31 06:00 UTC.** ⚠️ **OBSERVE THE CERT WORKFLOW GO GREEN** | `.github/workflows/cert-expiry.yml` shipped in `57c44a26` and its script is proven (`qa:cert-expiry` 5/5 live, `red:cert-expiry` 3/3) — **but the RUNNER has never been observed executing.** ⛔ **That is the exact class of defect E-227 was about, so it is not closed until a green run exists in Actions.** ▶ One click: Actions → "Origin certificate watch" → Run workflow. Next scheduled run is **Mon 2026-08-31 06:00 UTC**. (`gh` is not installed on the `F:` machine and no `GITHUB_TOKEN` is present, which is why session 69 could not do it.) |
+| **0.3** | ⭐ **ANSWERED 2026-08-27 (session 70) — `E-231`, and IT IS NOT MONEY TAKEN.** 34 of 38 failures carry `reconcile-verified-failed`, which our reconciler writes only after the PROVIDER confirmed the payment did not complete; the other 4 never got a reference at all. The books agree both ways (0 failed touched the ledger, 0 confirmed missing from it). ⭐ **The real finding is the amount band:** `DEPOSIT_MAX_TZS = 2_000_000` is advertised while M-PESA has never confirmed above TZS 50,000 here. ▶ One operator question settles it: the Selcom decline codes for the 34 references. ⛔ Do NOT enforce a guessed ceiling. **The original framing follows.** | 🔴 **THE DEPOSITS — still the largest measured thing on the board** | **52 CONFIRMED (TZS 646,000) against 38 FAILED (TZS 630,500) lifetime — 42% by count, 49% by value.** Last 7 days: **1 confirmed against 4 failed.** Nine genuine player accounts affected; **one player alone carries 4 failures totalling TZS 311,000.** ⛔ **NOT AUDITED, NOT ON ANY LEDGER, AND IT OUTRANKS EVERY ITEM IN THIS FILE.** First question is the only one that matters: **is this money taken and not credited, or abandoned pushes?** Read the provider failure reasons against the Selcom console. ⚠️ Separately `/api/health` reports `sms.provider: "console"` — **no real SMS has ever been sent**, so a player whose deposit failed was never told. |
 | **0.4** | ⚠️ **TEN RED SUITES IN `test:all`, EIGHT OF THEM UNDOCUMENTED** | `test:all` is **253/263**. §0b says only `test:responsive` and `test:motion` are expected to fail without a server. The other eight are `test:payments` (23/24), `test:withdrawal` (28/5), `test:concurrency` (31/3), `test:type-scale`, `test:measure`, `test:kyc-workstation-time`, `test:reconcile-announce`, `test:admin-act-gate`. ⭐ **Proven pre-existing, not session 69's**, by swapping HEAD's copies of all six touched files back in and re-running: the three money suites returned **byte-identical counts**. 🔴 **Three are MONEY suites failing on `payout_destination_not_registered`.** Either they are fixture rot or the payout-destination rule is refusing something it should not — and nobody has looked. |
 | **0.5** | ⏸️ **`E-226`** | ⛔ **NOT ready to build — blocked on TWO OWNER DECISIONS, not on the email test alone.** See the register row; four traps are recorded there, two of which would have made the platform worse. |
 | **0.6** | 🟡 **`E-228`** | XRP `source-failed` refunds. Mechanism read off the code and filed. Priority **stays low** while no real player has bet Up & Down since 2026-08-22, and the fix is a money-path concurrency change. |
@@ -34,6 +54,14 @@
 ---
 
 ## §1 · ⭐ ITEM 1 AND ITEM 4 ARE THE SAME BUG, AND IT ALREADY HAS A NAME IN THIS REPO
+
+> ⛔ **CORRECTED BY MEASUREMENT: THEY WERE NOT THE SAME BUG.** Item 4 (the legal nav) was exactly
+> as diagnosed here — fixed, RED 4/3 → GREEN 7/0 live — and the enumeration found **two more
+> instances nobody had reported** (`E-229`). **Item 1 was not.** Four scenarios were driven on
+> production with the soft navigation PROVEN each time and all four came back GREEN before any
+> fix: a poll bet goes through a SERVER ACTION, whose response re-renders the tree from the root,
+> so the layout DOES re-execute. What was genuinely broken there is different and smaller — the
+> pill's freshness depended on side effects rather than on the money path emitting anything.
 
 **Ali reported two things that look unrelated:**
 
@@ -119,6 +147,12 @@ assertion as the FIXED state so it does not invert when the bug is fixed.
 
 ## §2 · ITEM 2 — THE BREAK / FREEZE SYSTEM: A FULL AUDIT, NOT A BUILD
 
+> ✅ **DONE — `docs/RG-AUDIT-2026-08-27.md`.** Every gate is wired (asserted at the CALL SITE);
+> the WORDS were the defect (`E-232`, `E-234`); **a one-hour break was permanent** (`E-238`);
+> and the harm sweep has no runner and cannot be scheduled as written (`E-235`). ⚠️ Q4's answer
+> also found that `sessionTimeLimitMin` is **counted as a limit by the RG audit REPORT** and
+> enforced nowhere — which makes that report wrong, not merely incomplete.
+
 > *"Do a full check on the responsive playing and breaks and freeze system. Is it warning enough?
 > Is it convenient with the theme UI kit? Is the logic missing? Fully integrated?"*
 
@@ -159,6 +193,16 @@ is ZH.**
 ---
 
 ## §3 · ITEM 3 — THE INSTALL INVITATION. GENUINELY UNBUILT.
+
+> ✅ **BUILT, GUARDED AND DRIVEN — `E-237`.** `qa:install-shown` **63/0** (3 languages × 5
+> widths: no text escapes its box, the box is in the viewport, and it overlaps neither the bottom
+> nav nor the balance pill — by rectangle arithmetic), plus first-visit-quiet, already-installed-
+> silent, and money-surface suppression **with a control** proving suppression rather than death.
+> ⭐ **The driver found a real 4px overflow in the card built to honour Ali's rule**, at every
+> width and in every language, caused by negative margins on the dismiss button. Four pixels is
+> invisible in a screenshot. ⛔ And `§3.3`'s cross-cutting rule is now a platform guard with a
+> population walked from source — `test:popup-fit`, 56 popups, ratcheted (`E-236`) — which found
+> the market title `line-clamp-2`'d inside the bet-confirmation dialog.
 
 > *"We need a notification for first-time comers or on every open… If the user didn't add the web
 > app to the home screen, invite them to do so, but in a non-disturbing way. Make it visually
