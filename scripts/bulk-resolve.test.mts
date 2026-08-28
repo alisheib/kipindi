@@ -36,6 +36,7 @@ import {
 import { decideAutoResolve } from "../src/lib/server/market-service.ts";
 import { sourceMatchesAny, type TrustedSource } from "../src/lib/server/source-registry.ts";
 import { BULK_REASON } from "../src/app/admin/resolver-queue/bulk-verdict-copy.ts";
+import { compareBy } from "../src/app/admin/resolver-queue/page.tsx";
 
 const ROOT = process.cwd();
 let pass = 0, fail = 0;
@@ -613,6 +614,281 @@ const V = (m: VerdictMarket, over: Partial<Parameters<typeof bulkVerdictFor>[0]>
   ok("12 · 82% accuweather (citation MATCHES) → below-threshold", acc.reason === "below-threshold", String(acc.reason));
   ok("12 · …and it is NOT accused of a citation failure",
      !acc.all.some((r) => r.startsWith("source-")), acc.all.join(","));
+}
+
+// ── 13 · A NULL OUTCOME IS A HARD STOP, AND `overridable` MUST SAY SO ────────
+// ⛔ THE COUNT MUST NOT PROMISE A SEAL THE SERVER WILL ALWAYS REFUSE.
+// `BulkVerdict.outcome`'s own contract reads "a null here is a hard stop even under
+// override", and the action honours it (`outcome !== "YES" && outcome !== "NO"` → skip).
+// But `overridable` was computed from the REASON SET alone, and `no-assessment` /
+// `outcome-unknown` — the two states that PRODUCE a null outcome — were both in
+// OVERRIDABLE. So the officer saw a textarea, typed twelve characters, and the bar said
+// "Seal 1 market?" over that market's pool. The batch then sealed nothing.
+//
+// ⭐ This is asserted on the VERDICT, not on the bar, because the bar, the row's textarea
+// and the server all read the same `overridable` boolean. Fixing it here fixes the count,
+// the box and the wire in one place; a filter in the bar would have left the row still
+// painting a box that can never be honoured.
+{
+  const noRead = V(clean({ sentinelOutcome: null, sentinelConfidence: null, sentinelEvidence: null,
+                           sentinelSourceUrl: null, sentinelDetermined: null }));
+  ok("13.1 a market with no AI read is not eligible", !noRead.eligible, String(noRead.reason));
+  ok("13.2 …its outcome is null", noRead.outcome === null, String(noRead.outcome));
+  ok("13.3 …and it is NOT offered as overridable", noRead.overridable === false,
+     `overridable=${noRead.overridable} reasons=${noRead.all.join(",")}`);
+
+  // The sibling: a read exists but says neither YES nor NO.
+  const unknown = V(clean({ sentinelOutcome: "UNCLEAR" as never, sentinelDetermined: false }));
+  ok("13.4 an UNCLEAR read yields a null outcome", unknown.outcome === null, String(unknown.outcome));
+  ok("13.5 …and is NOT overridable", unknown.overridable === false,
+     `overridable=${unknown.overridable} reasons=${unknown.all.join(",")}`);
+
+  // ⭐ THE DISCRIMINATION. If the fix were "overridable is always false" every assertion
+  // above would pass over a dead feature. A genuine citation failure — which HAS a YES/NO
+  // to seal — must still be overridable, or compliance has lost the override entirely.
+  const citation = V(clean({ sentinelSourceUrl: "https://www.some-blog.example/x" }), { sourceMatches: false });
+  ok("13.6 a citation failure WITH an outcome is still overridable", citation.overridable === true,
+     `overridable=${citation.overridable} reasons=${citation.all.join(",")}`);
+  ok("13.7 …and it carries the outcome that would be sealed", citation.outcome === "YES", String(citation.outcome));
+
+  // ⛔ AND THE INVARIANT ITSELF, over the whole population rather than three examples:
+  // no verdict may ever be overridable without an outcome to seal.
+  const population = [noRead, unknown, citation,
+    V(clean({ sentinelConfidence: 40 })),
+    V(clean({ status: "RESOLVED" })),
+    V(clean({ resolvedOutcome: "YES" })),
+    V(clean({ sentinelEvidence: "short" })),
+  ];
+  ok("13.8 the population is real", population.length === 7, String(population.length));
+  ok("13.9 NO verdict is ever overridable with a null outcome",
+     population.every((v) => !(v.overridable && v.outcome === null)),
+     population.filter((v) => v.overridable && v.outcome === null).map((v) => v.all.join("+")).join(" | "));
+  // …and the population is not vacuous in the other direction either.
+  ok("13.10 the population contains at least one overridable row",
+     population.some((v) => v.overridable), "none overridable — 13.9 would be vacuous");
+}
+
+// ── 14 · ONE REASON FOR THE BATCH — AND THE AUDIT STILL PER MARKET ───────────
+// The officer types the justification ONCE. What must not follow from that is a wire or an
+// audit chain that has also collapsed: every overridden market keeps its own `override:<id>`
+// entry and its own audit row, exactly as before.
+{
+  const bar = read("src/app/admin/resolver-queue/bulk-resolve-bar.tsx");
+  const row = read("src/app/admin/resolver-queue/row-select.tsx");
+  const sel = read("src/app/admin/resolver-queue/bulk-selection.tsx");
+
+  ok("14.1 the reason lives in the bar, not the row", /<textarea/.test(bar) && !/<textarea/.test(row));
+  ok("14.2 there is exactly ONE reason field", (bar.match(/<textarea/g) ?? []).length === 1,
+     String((bar.match(/<textarea/g) ?? []).length));
+  ok("14.3 the context holds a single string, not a per-market map",
+     /sharedReason: string/.test(sel) && !/overrides: Map/.test(sel));
+
+  // ⛔ THE ONE THAT PROTECTS THE CHAIN. The action records `overrides: Array.from(overrides
+  // .keys())` on the run-boundary audit row. Fanning the shared string over `chosen` rather
+  // than `overridden` would name ELIGIBLE markets as overridden in an append-only record a
+  // regulator reads — a false assertion about a real-money act, written by a convenience.
+  ok("14.4 the reason fans out over `overridden`, never over `chosen`",
+     /for \(const r of overridden\) fd\.set\(`override:\$\{r\.marketId\}`/.test(bar)
+     && !/for \(const r of chosen\) fd\.set\(`override:/.test(bar));
+  ok("14.5 …and the marketIds list is still the full selection",
+     /for \(const r of chosen\) fd\.append\("marketIds"/.test(bar));
+
+  // ⛔ BOTH RESET PATHS. A page change and an explicit Clear are two doors out of a
+  // selection; a reason surviving either one is a sentence typed about markets that are no
+  // longer on the screen, submitted against whatever is selected next.
+  const resets = (sel.match(/setSharedReason\(""\)/g) ?? []).length;
+  ok("14.6 the reason is cleared on BOTH page-change and clear()", resets === 2, `${resets} reset sites`);
+  ok("14.7 …and it is a dependency of the context value", /clear, sharedReason, setSharedReason, someOn/.test(sel));
+
+  // The field may only be offered where it can be honoured.
+  ok("14.8 the field is gated on the compliance grant AND on there being a row to cover",
+     /canOverride && needOverride\.length > 0 && \(/.test(bar));
+  ok("14.9 the too-short reason still blocks, and is now ONE boolean rather than a per-row find",
+     /const shortReason = needOverride\.length > 0 && reason\.length > 0 && reason\.length < MIN_REASON/.test(bar));
+  ok("14.10 the reason is length-capped at the wire's limit", /maxLength=\{500\}/.test(bar));
+
+  // ⭐ THE LABEL IS THE COUNT. "Why are you sealing this anyway?" over a shared field is
+  // ambiguous about scope in a way a per-row box never was; the number closes it.
+  ok("14.11 the label names how many markets the one sentence covers",
+     /needOverride\.length === 1 \? "this market" : `these \$\{needOverride\.length\} markets`/.test(bar));
+  ok("14.12 the row still declares that it is covered", /Needs an override/.test(row));
+
+  // ⛔ A DISABLED CONTROL MUST ALWAYS SAY WHY. The reported defect was a greyed button whose
+  // every tooltip branch returned `undefined` in exactly the state an officer reaches by
+  // ticking twenty refused rows. A trailing `undefined` is what allows that to come back.
+  // ⛔ `\s` NOT `\n`, and the block located by REGEX not `indexOf("title={\n")`. This repo's
+  // files are CRLF, so a literal newline in the needle matches nothing, `indexOf` returns
+  // -1, and the assertion fails on a correct product — which is exactly how it first failed.
+  const titleAt = /title=\{\s*$/m.exec(bar);
+  const titleBlock = titleAt ? bar.slice(titleAt.index, titleAt.index + 1200) : "";
+  ok("14.13 the disabled button's tooltip has no undefined branch",
+     titleBlock.length > 0 && !/:\s*undefined\s*\}/.test(titleBlock),
+     titleAt ? "a state with no explanation remains" : "the title prop was not found at all");
+  ok("14.14 …and it explains the all-blocked state by name",
+     /Every selected market was refused by the resolver/.test(bar));
+}
+
+// ── 15 · THE QUEUE ORDER ─────────────────────────────────────────────────────
+// ⛔ AN UNSTABLE SORT UNDER PAGINATION LOSES ROWS. Two requests that disagree about the
+// order of tied rows put a market on page 2 for one click and page 3 for the next, and an
+// officer working front-to-back never sees it. `pool` is 0 across much of the queue and
+// `sentinelConfidence` is NULL on every pre-column row, so ties are the COMMON case here,
+// not the edge — which is why every comparator must be total.
+{
+  const M = (id: string, over: Partial<Parameters<typeof compareBy>[0] extends never ? never : {
+    id: string; resolutionAt: string; createdAt: string;
+    yesPool: number; noPool: number; sentinelConfidence?: number | null;
+  }> = {}) => ({
+    id, resolutionAt: "2026-08-28T12:00:00Z", createdAt: "2026-08-01T00:00:00Z",
+    yesPool: 0, noPool: 0, sentinelConfidence: null as number | null, ...over,
+  });
+
+  const ids = (rows: ReturnType<typeof M>[], key: Parameters<typeof compareBy>[0]) =>
+    [...rows].sort(compareBy(key)).map((r) => r.id).join(",");
+
+  // ⭐ TOTALITY FIRST, over rows that are identical in the sort field. If the comparator
+  // leaves these to the engine, the two shuffles below disagree.
+  const tied = [M("mkt_c"), M("mkt_a"), M("mkt_b")];
+  const shuffled = [M("mkt_b"), M("mkt_c"), M("mkt_a")];
+  for (const key of ["due", "money", "confidence", "newest"] as const) {
+    ok(`15.1 ${key} is TOTAL — identical rows sort identically whatever the input order`,
+       ids(tied, key) === ids(shuffled, key), `${ids(tied, key)} vs ${ids(shuffled, key)}`);
+  }
+
+  /**
+   * ⛔ EVERY ID BELOW IS CHOSEN SO ALPHABETICAL ORDER IS THE **OPPOSITE** OF THE EXPECTED
+   * ANSWER, and that is the whole reason these assertions are worth anything.
+   *
+   * The first version of this section named the rows "big"/"small", "high"/"low"/"none",
+   * "new"/"old" — and every one of those happens to be alphabetically ordered the way the
+   * sort should return them. The final tie-break is `id`, so with the money branch DELETED
+   * (`if (false)`) the comparator fell through to the default, sorted by id, and produced
+   * exactly the expected string: **the suite reported 184/184 over a sort key that did
+   * nothing.** Proven by mutation, not reasoned about.
+   *
+   * ⭐ So each fixture now makes the fallback WRONG. If a comparator stops doing its own
+   * work, the id tie-break returns the reverse and the assertion fails.
+   */
+  // Money: biggest pool first, and the two halves are ADDED (a market holding 0/900 outranks
+  // one holding 400/400 — reading only `yesPool` would get this backwards).
+  const byMoney = [M("aa_small", { yesPool: 400, noPool: 400 }), M("zz_big", { yesPool: 0, noPool: 900 })];
+  ok("15.2 money orders on yesPool + noPool, largest first",
+     ids(byMoney, "money") === "zz_big,aa_small", ids(byMoney, "money"));
+
+  // ⛔ NO READING SORTS LAST — never as 0, which would rank it above a genuine 5%.
+  const byConf = [M("aa_none"), M("mm_low", { sentinelConfidence: 5 }), M("zz_high", { sentinelConfidence: 97 })];
+  ok("15.3 confidence ranks a NULL reading last, not as zero",
+     ids(byConf, "confidence") === "zz_high,mm_low,aa_none", ids(byConf, "confidence"));
+  const undef = [M("aa_undef", { sentinelConfidence: undefined }), M("zz_low", { sentinelConfidence: 5 })];
+  ok("15.4 …and an ABSENT reading is treated the same as an explicit null",
+     ids(undef, "confidence") === "zz_low,aa_undef", ids(undef, "confidence"));
+
+  // Due: most overdue first — the default, and the tie-break every other comparator falls to.
+  const byDue = [M("aa_later", { resolutionAt: "2026-08-28T18:00:00Z" }), M("zz_overdue", { resolutionAt: "2026-08-27T00:00:00Z" })];
+  ok("15.5 due orders most-overdue first", ids(byDue, "due") === "zz_overdue,aa_later", ids(byDue, "due"));
+  const byNew = [M("aa_old", { createdAt: "2026-01-01T00:00:00Z" }), M("zz_new", { createdAt: "2026-08-27T00:00:00Z" })];
+  ok("15.6 newest orders most-recently-created first", ids(byNew, "newest") === "zz_new,aa_old", ids(byNew, "newest"));
+
+  // ⭐ AND EACH KEY MUST ACTUALLY DIFFER FROM THE DEFAULT. A dead branch falls through to
+  // `due`, so "is this key's order different from due's?" is the question that catches it —
+  // asked per key, not as a set-size over all four, which a single surviving difference
+  // satisfies while two other keys are dead.
+  const mixed = [
+    M("row_a", { yesPool: 10, sentinelConfidence: 10, resolutionAt: "2026-08-26T00:00:00Z", createdAt: "2026-01-01T00:00:00Z" }),
+    M("row_b", { yesPool: 90, sentinelConfidence: 90, resolutionAt: "2026-08-29T00:00:00Z", createdAt: "2026-08-20T00:00:00Z" }),
+  ];
+  for (const key of ["money", "confidence", "newest"] as const) {
+    ok(`15.7 ${key} produces an order of its own, not the default`,
+       ids(mixed, key) !== ids(mixed, "due"), `${key}=${ids(mixed, key)} · due=${ids(mixed, "due")}`);
+  }
+
+  // The page half: the order must survive a page turn, or page 2 is a different queue.
+  const p = read("src/app/admin/resolver-queue/page.tsx");
+  ok("15.8 the pager carries the sort", /buildBaseHref\("\/admin\/resolver-queue", \{[^}]*sort: sp\.sort/.test(p));
+  ok("15.9 an unknown ?sort= falls back to the default rather than emptying the queue",
+     /SORT_OPTIONS as readonly \{ value: string \}\[\]\)\.some\(\(o\) => o\.value === sp\.sort\)/.test(p));
+  ok("15.10 the sort runs over the FILTERED SET, before the page slice",
+     before(p, ".sort(compareBy(sortKey))", "pending.slice("));
+}
+
+// ── 16 · A STAGED ROW STAYS STAGED WHEN THE POLICY IS TOGGLED OFF ────────────
+// ⛔ THE SIGNATURE IS A FACT ABOUT THE ROW, NOT ABOUT THE CURRENT SETTING.
+// `staged` was `requireTwoOfficer && !!m.resolutionStage1By`, so the refusal evaporated the
+// moment compliance flipped two-admin off — a supported, one-click action. Officer A, who
+// had bulk-STAGED ten markets, could then seal all ten with their own single press:
+// `resolveMarket` drops its stage-1 and different-officer guards under the same setting, so
+// A's press completes A's own stage-1 as a solo seal. The one-officer rule is not enforced
+// by the policy flag alone — it is enforced by refusing to bulk-act on a row that already
+// carries someone's first signature.
+//
+// ⭐ And where the staged outcome DIFFERS (a staged VOID, which the AI's YES/NO vocabulary
+// cannot express) the engine refuses with "Stage-2 outcome must match" and the row lands
+// under the heading "Failed" — a policy refusal reported to the officer as an engine fault.
+{
+  const stagedRow = clean({ resolutionStage1By: "usr_me" });
+  const off = V(stagedRow, { requireTwoOfficer: false });
+  ok("16.1 a row carrying a stage-1 signature is NOT eligible with the policy OFF",
+     off.eligible === false, `eligible=${off.eligible} reasons=${off.all.join(",")}`);
+  ok("16.2 …and it is named as awaiting a countersignature",
+     off.all.includes("awaiting-countersignature"), off.all.join(","));
+  ok("16.3 …and it is not overridable — a countersignature is never a bulk act",
+     off.overridable === false, String(off.overridable));
+
+  const byOther = V(clean({ resolutionStage1By: "usr_someone_else" }), { requireTwoOfficer: false });
+  ok("16.4 the same holds when ANOTHER officer staged it", byOther.eligible === false, byOther.all.join(","));
+
+  // Unchanged behaviour with the policy ON — this must not be a regression in the other
+  // direction, where the fix simply blocks everything.
+  const on = V(stagedRow, { requireTwoOfficer: true });
+  ok("16.5 with the policy ON it is still refused, as before", on.eligible === false, on.all.join(","));
+  ok("16.6 …and the copy still knows WHO staged it", on.stagedByMe === true, String(on.stagedByMe));
+
+  // ⭐ THE DISCRIMINATION. An unstaged row must remain sealable, or the fix has simply
+  // turned the queue off.
+  const unstaged = V(clean({ resolutionStage1By: null }), { requireTwoOfficer: false });
+  ok("16.7 an UNSTAGED row is still eligible", unstaged.eligible === true, unstaged.all.join(","));
+}
+
+// ── 17 · THE BULK PATH IS NEVER LAXER THAN THE ENGINE ────────────────────────
+// ⛔ `sourceMatches` HAS TWO ARMS, AND THE SECOND ONE HAS A GATE IN FRONT OF IT.
+// The engine's second arm is `isSourceTrusted`, which refuses a DISABLED CATEGORY before it
+// considers any host. `sourceMatchesAny` deliberately omits that check — its docstring says
+// so — which makes it the caller's debt. Both callers had left it unpaid, so a market whose
+// category an operator had disabled was refused by the scheduled resolver and shown as a
+// green ELIGIBLE row by the queue, sealable in one press with NO override, NO typed reason
+// and NO compliance audit row. ⭐ A bulk convenience that is a LAXER gate than the thing it
+// is a shortcut for is the worst possible direction for this defect to point.
+{
+  const page = read("src/app/admin/resolver-queue/page.tsx");
+  const action = read("src/app/admin/resolver-queue/bulk-resolve-action.ts");
+
+  for (const [name, src] of [["page", page], ["action", action]] as const) {
+    ok(`17.1 ${name} · the registry arm honours a disabled category`,
+       /!disabledCategories\.has\(resolvePublishCategory\(m\.category\)\) &&/.test(src));
+    ok(`17.2 ${name} · …and the check sits BEFORE the host match, as the engine orders it`,
+       before(src, "!disabledCategories.has(resolvePublishCategory(m.category))", "sourceMatchesAny("));
+    ok(`17.3 ${name} · the disabled list is read ONCE, not per row`,
+       (src.match(/listDisabledCategories\(\)/g) ?? []).length === 1,
+       `${(src.match(/listDisabledCategories\(\)/g) ?? []).length} calls`);
+  }
+
+  // ⛔ AND THE TWO CALLERS MUST AGREE WITH EACH OTHER. They are two transcriptions of one
+  // engine expression; the page paints the chip and the action moves the money, so a
+  // divergence shows the officer a verdict the seal will not honour.
+  /* ⛔ SLICE TO THE STATEMENT'S OWN TERMINATOR, not to a fixed window. A 420-character
+     window swept up whatever happened to follow the expression in each file and reported
+     two identical expressions as different. `trustedSources`/`sources` is the one name that
+     legitimately differs between the two callers, so it is normalised away — deliberately
+     and narrowly, because normalising more would let a real divergence through. */
+  const armOf = (src: string) => {
+    const i = src.indexOf("const sourceMatches =");
+    if (i < 0) return "";
+    const end = src.indexOf(";", i);
+    return src.slice(i, end < 0 ? i : end).replace(/\s+/g, " ").replace(/trustedSources|sources/g, "SRC");
+  };
+  ok("17.4 the page and the action compute `sourceMatches` identically",
+     armOf(page).length > 0 && armOf(page) === armOf(action),
+     armOf(page) === armOf(action) ? "identical" : `page: ${armOf(page).slice(0, 120)}\n         action: ${armOf(action).slice(0, 120)}`);
 }
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);
