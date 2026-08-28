@@ -204,5 +204,79 @@ console.log("Money compaction grammar\n");
   ok("4: …and a step of 0 or more than 1 does not trigger it", f(2, { step: 5 }) === "2", f(2, { step: 5 }));
 }
 
+// ── 5 · THE FUNCTION OWNS ITS PREFIX — nobody strips it and puts it back (S-13) ──
+/**
+ * `formatTzsCompact` emits its own "TZS " on every branch, so
+ *     `TZS ${formatTzsCompact(ggr).replace("TZS ", "")}`
+ * is byte-identical to `formatTzsCompact(ggr)` — 15 occurrences of a no-op that reads like it
+ * is doing something. `markets/page.tsx` already carries a comment warning "formatTzsCompact
+ * owns the grammar and emits its own TZS prefix — do not put one back in front of it", which
+ * is precisely what these lines do. Today it cancels out; the day the grammar changes it
+ * reads "TZS TZS 1.3M".
+ *
+ * ⛔ THE RULE IS THE PAIR, NOT THE STRIP, and that distinction is the whole check. A bare
+ * `.replace("TZS ", "")` is LEGITIMATE and one live site depends on it:
+ * `admin/players/[id]/page.tsx` renders `limit {…replace("TZS ","")}/day` → "limit 50K/day",
+ * where deleting the strip would print "limit TZS 50K/day". A guard that flagged every strip
+ * would have to suppress that line, and a suppressed line is one someone deletes later. So
+ * this flags only a strip whose prefix is RE-ADDED in the same expression — which is the
+ * definition of the no-op and cannot match the deliberate one.
+ */
+{
+  const { readdirSync, statSync, readFileSync: rf } = await import("node:fs");
+  const { join, relative } = await import("node:path");
+  const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
+
+  /**
+   * ⛔ HANDED TO SESSION M, NOT EXCUSED. `admin/finance/**` and `admin/players/**` are another
+   * session's files under the parallel-session contract, so these were reported rather than
+   * edited. GOAL: EMPTY — the counts may only ever fall. A file not named here may carry ZERO.
+   */
+  const HANDED_OVER = new Map([
+    ["src/app/admin/finance/page.tsx", 9],
+    ["src/app/admin/players/[id]/page.tsx", 3],
+  ]);
+
+  const walk = (dir: string): string[] => readdirSync(dir).flatMap((e) => {
+    const p = join(dir, e);
+    return statSync(p).isDirectory() ? walk(p) : /\.tsx?$/.test(p) ? [p] : [];
+  });
+
+  // A prefix re-added in front of the call — the template form and the JSX-text form.
+  const NO_OP = /TZS\s*[$]?\{[^}]*formatTzsCompact\([^)]*\)\s*\.replace\("TZS ", ""\)/g;
+  const offenders = new Map<string, number>();
+  let bareStrips = 0;
+  for (const f of walk(join(ROOT, "src"))) {
+    const src = rf(f, "utf8");
+    if (!src.includes('.replace("TZS ", "")')) continue;
+    const rel = relative(ROOT, f).replace(/\\/g, "/");
+    const n = [...src.matchAll(NO_OP)].length;
+    bareStrips += [...src.matchAll(/\.replace\("TZS ", ""\)/g)].length - n;
+    if (n > 0) offenders.set(rel, n);
+  }
+
+  const unexpected = [...offenders].filter(([rel]) => !HANDED_OVER.has(rel));
+  ok("5: 🔴 no file re-adds the TZS prefix formatTzsCompact already emits",
+     unexpected.length === 0, unexpected.map(([r, n]) => `${r} ×${n}`).join(", "));
+  const grown = [...offenders].filter(([rel, n]) => (HANDED_OVER.get(rel) ?? 0) < n);
+  ok("5: …and the handed-over counts have not grown", grown.length === 0,
+     grown.map(([r, n]) => `${r}: ${n} > ${HANDED_OVER.get(r)}`).join(", "));
+
+  /* ⛔ RECONCILIATION. The matcher must still be finding the shape it was written for; if the
+   * JSX is reformatted so `TZS` and the brace part company, `offenders` empties and this
+   * section reports "nobody re-adds the prefix" in the same words whether that is true or the
+   * regex has simply gone blind. The handed-over files are the fixed population that proves
+   * it can still see. ⚠️ When Session M lands their fix this check is what goes red — that is
+   * the ratchet working: lower the counts in HANDED_OVER, do not widen the matcher. */
+  const expectedTotal = [...HANDED_OVER.values()].reduce((a, b) => a + b, 0);
+  const foundTotal = [...offenders.values()].reduce((a, b) => a + b, 0);
+  ok("5: ⛔ the no-op matcher can still see the shape it was written for",
+     foundTotal > 0 || expectedTotal === 0,
+     foundTotal > 0
+       ? `${foundTotal} still open, all in handed-over files`
+       : "0 found while HANDED_OVER still expects some — the matcher has drifted from the JSX");
+  ok("5: …and the DELIBERATE bare strip is not caught by it", bareStrips >= 1, `${bareStrips} bare strip(s)`);
+}
+
 console.log(`\nmoney-format: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

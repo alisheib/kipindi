@@ -143,12 +143,32 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
                 stakes and a correct call loses money. Capping the fee below the prize makes that arithmetically
                 impossible. At a third, winners always keep at least twice what we take.
               </p>
-              <p>
-                <strong className="text-text">No cliff:</strong> &ldquo;the full {(config.commissionRate * 100).toFixed(0)}% whenever the smaller side is
-                ≥ {(config.commissionRate / config.feeCeilingRate * 100).toFixed(0)}% of the pool&rdquo; and &ldquo;never more than{" "}
-                {(config.feeCeilingRate * 100).toFixed(1)}% of the smaller side&rdquo; are the <em>same rule</em>. They cross over
-                seamlessly — <code className="font-mono">min()</code> finds the seam by itself, so there is no threshold to game.
-              </p>
+              {/* ⛔ THE CROSSOVER SENTENCE ONLY EXISTS WHEN THERE IS A CEILING (S-05, scan #1,
+                  2026-08-28). `feeCeilingRate` is validated as >= 0 (market-config.ts) and zero
+                  is not hypothetical — config-form.tsx branches on it explicitly twenty lines
+                  earlier, because a 0% ceiling zeroes the fee on EVERY poll. At that setting the
+                  divisor was zero and this paragraph read "the full 10% whenever the smaller side
+                  is ≥ Infinity% of the pool"; with commission also 0 it read "NaN%".
+                  ⚠️ GUARDING THE NUMBER ALONE WOULD NOT HAVE BEEN ENOUGH. An em-dash in place of
+                  the ratio still leaves a sentence describing a seam between two rules, on a
+                  setting where the fee is flat zero and there is no seam to describe. A
+                  fabricated explanation is the A-5 problem whether the fabrication is a figure
+                  or a sentence, so the whole paragraph switches. */}
+              {config.feeCeilingRate > 0 ? (
+                <p>
+                  <strong className="text-text">No cliff:</strong> &ldquo;the full {(config.commissionRate * 100).toFixed(0)}% whenever the smaller side is
+                  ≥ {(config.commissionRate / config.feeCeilingRate * 100).toFixed(0)}% of the pool&rdquo; and &ldquo;never more than{" "}
+                  {(config.feeCeilingRate * 100).toFixed(1)}% of the smaller side&rdquo; are the <em>same rule</em>. They cross over
+                  seamlessly — <code className="font-mono">min()</code> finds the seam by itself, so there is no threshold to game.
+                </p>
+              ) : (
+                <p>
+                  <strong className="text-text">No fee at this setting:</strong> the ceiling is <strong>0%</strong> of the smaller
+                  side, so <code className="font-mono">min()</code> returns zero on every poll whatever the commission rate says.
+                  There is no crossover to describe — the {(config.commissionRate * 100).toFixed(0)}% commission above is inert
+                  until the ceiling is raised.
+                </p>
+              )}
               <p>
                 <strong className="text-text">Rates stick to the poll.</strong> A poll freezes these rates when it is created.
                 Changing anything here affects <strong>future polls only</strong> — it cannot reprice a bet that has
