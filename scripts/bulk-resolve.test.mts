@@ -516,8 +516,21 @@ const V = (m: VerdictMarket, over: Partial<Parameters<typeof bulkVerdictFor>[0]>
   ok("11.8 the confirmation names the money", /formatTzs\(total\)/.test(bar));
   ok("11.9 …and lists each market with its outcome and confidence",
      /willSeal\.map/.test(bar) && /r\.verdict\.confidence/.test(bar));
+  /**
+   * ⛔ THE TIER AND THE TYPED WORD MUST TRAVEL AS ONE VALUE.
+   *
+   * Passed as two independent props, `tier: "hard" | "medium"` and
+   * `typedWord: string | undefined` let `hard` with NO word sit inside the declared type —
+   * and `ConfirmModal` arms on `tier === "hard" && !!typedWord`, so that combination looks
+   * gated and silently degrades to an ordinary confirm. The check therefore asserts the
+   * CORRELATED form, and asserts the split form is absent: a guard that only looked for
+   * `typedWord="RESOLVE"` somewhere in the file would pass on either.
+   */
   ok("11.10 a typed word is demanded ONLY when an override is in the batch",
-     /tier=\{hasOverride \? "hard" : "medium"\}/.test(bar));
+     /hasOverride[\s\S]{0,40}\?[\s\S]{0,60}tier: "hard", typedWord: "RESOLVE"/.test(bar)
+     && /tier: "medium"/.test(bar));
+  ok("11.10b …and the tier is never passed independently of the word",
+     !/tier=\{/.test(bar) && !/typedWord=\{/.test(bar));
   ok("11.11 the headline counts every bucket, never a bare success",
      /alreadyApplied\.length \? /.test(bar) && /skipped\.length \? /.test(bar));
   ok("11.12 the selection scope is stated on screen", /selectionPageOnly/.test(bar));

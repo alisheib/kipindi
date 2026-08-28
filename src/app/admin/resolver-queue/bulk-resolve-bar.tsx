@@ -250,8 +250,25 @@ function BulkConfirm({
       tone="claret"
       size="lg"
       maxWidth={620}
-      tier={hasOverride ? "hard" : "medium"}
-      typedWord={hasOverride ? "RESOLVE" : undefined}
+      /**
+       * ⛔ THE PAIR IS CORRELATED AT THE CALL SITE, NOT PASSED AS TWO INDEPENDENT PROPS.
+       *
+       * The obvious form — `tier={c ? "hard" : "medium"} typedWord={c ? "RESOLVE" : undefined}`
+       * — renders correctly and is a LIE TO THE TYPE CHECKER. It reads as
+       * `tier: "hard" | "medium"` and `typedWord: string | undefined` INDEPENDENTLY, so
+       * `hard` with no word is inside the type it declares. That combination looks gated and
+       * is not: `ConfirmModal` arms itself with `tier === "hard" && !!typedWord`, so a hard
+       * tier without a word silently degrades to an ordinary confirm — on the control that
+       * seals real money across a page of markets. One spread makes the two inseparable, so
+       * the checker can see what the behaviour already was.
+       *
+       * ⭐ The behaviour is UNCHANGED: a typed `RESOLVE` gate appears only when an override
+       * is in the batch. A typed gate on every routine confirmation is how a typed gate stops
+       * being read.
+       */
+      {...(hasOverride
+        ? ({ tier: "hard", typedWord: "RESOLVE" } as const)
+        : ({ tier: "medium" } as const))}
       eyebrow={requireTwoOfficer ? "Two-admin · Stage 1" : "Irreversible · Hatua ya mwisho"}
       title={`${verb} ${willSeal.length} ${willSeal.length === 1 ? "market" : "markets"}?`}
       confirmLabel={`Yes, ${verb.toLowerCase()} ${willSeal.length}`}

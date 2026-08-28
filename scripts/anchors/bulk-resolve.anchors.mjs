@@ -256,6 +256,16 @@ export const MUTATIONS = [
     to: `      } finally {`,
   },
   {
+    name: "🔴 the typed gate is passed as two INDEPENDENT props (hard with no word)",
+    file: BAR,
+    expect: "11.10b …and the tier is never passed independently of the word",
+    from: `      {...(hasOverride
+        ? ({ tier: "hard", typedWord: "RESOLVE" } as const)
+        : ({ tier: "medium" } as const))}`,
+    to: `      tier={hasOverride ? "hard" : "medium"}
+      typedWord={hasOverride ? "RESOLVE" : undefined}`,
+  },
+  {
     name: "a mixed batch is reported as one tidy success",
     file: BAR,
     expect: "11.11 the headline counts every bucket, never a bare success",
