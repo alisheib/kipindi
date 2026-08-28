@@ -6,6 +6,103 @@
 
 ---
 
+## 2026-08-29 · MASWALI MILLIONEA — the four remaining calls, and D-1's real status
+
+Follows the §0 entry below. These are the items the build door listed as owner-owned once §0's
+seven were settled. All four were put to Ali with the measured position and a recommendation; he
+took three and **overruled one, deliberately** — recorded here so a later session does not "fix"
+it back.
+
+| | Question | Ruling |
+|---|---|---|
+| **G-15** | Does a jackpot win hold for AML review? | **No — credit the wallet immediately.** The existing WITHDRAWAL hold is the control |
+| **D-10** | Does 5-minute free cancellation apply to a ticket? | **Yes — the existing rule, unchanged** |
+| **Nav** | Which rail slot yields to Millionea? | ⚠️ **None — Millionea is a FIFTH slot.** Ali's call, against the recommendation |
+| **Receipt** | Keep the rollover line on a losing receipt? | **Keep it — it is bookkeeping, and it is true** |
+
+### G-15 — the control already sits at the perimeter, and the perimeter is money LEAVING
+
+`AML_REVIEW_THRESHOLD_TZS = 1_000_000` (`payments.ts:128`) fires on **withdrawal**: a payout at or
+above it is held and **not sent to the gateway** (`:162`, `:187`). A tier win is an *internal*
+credit. Holding it would be a second control over the same shilling, and would delay the player's
+**sight** of the win rather than its movement — the money still cannot leave without passing the
+withdrawal hold.
+
+⛔ **The obligation this creates, and it is not optional:** the ticket page and the win
+notification must state that a withdrawal at or above TZS 1,000,000 is reviewed before it is sent,
+**with the SLA**. §3 G-15's own words: *"a winner left in silence with no stated timeline is the
+worst support outcome the product can produce."*
+
+⚠️ The FIU suspicious-activity report must keep reporting the **same** threshold the live hold
+enforces — `catalogue.ts:22` and `:216-217` say a SAR that reports a different number from the
+control that generated the holds is itself the defect.
+
+### D-10 — the existing rule's second condition is exactly the one a jackpot needs
+
+`RULES.md` §2.6: five minutes, full refund, then locked — **but only if the bet had five minutes of
+betting time still ahead of it when it was placed** (`freeExitGraceMinutes`, enforced in
+`cashOutPosition`).
+
+Applied to a ticket that condition already refuses the case that would matter: a slip bought two
+minutes before lock cannot be cancelled, because there were never five minutes of buying time
+ahead of it. So nobody can buy early, watch the field firm up, and cancel out at the boundary —
+and no new condition had to be invented to say so.
+
+⭐ Safe for the seal: `ticketSetHash` is stamped at **LOCK**, not at purchase, so a cancellation
+before lock changes nothing published. Same argument as D-3 — one law, three products.
+
+### The nav slot — ⚠️ ALI OVERRULED THE RECOMMENDATION, AND THIS IS THE TRADE HE ACCEPTED
+
+Recommended: Results yields and moves under "more", keeping the rail at four
+(`Markets · Up&Down · Millionea · Live`). **Ali ruled: Millionea is a FIFTH slot; nothing is
+demoted** — `Markets · Up&Down · Millionea · Live · Results`.
+
+⛔ **Do not silently revert this to four.** It is a deliberate owner decision to give a new weekly
+product maximum visibility in its launch cycles.
+
+⚠️ **What it costs, stated so it is measured rather than discovered:** five labels on a 360-wide
+rail is where truncation begins, and `scripts/responsive-audit.mjs` tests down to **320**, where
+this platform already has a documented header squeeze. **S5 must measure the rail at 320 and 360
+before it ships**, and if a label truncates the answer is the label, not the slot count.
+
+⚠️ **And the 1024–1279 band is a separate risk with the same cause.** The design handover records
+that the band already survives by *subtracting two controls*; a sixth desktop link re-breaks it.
+The handover's recommendation stands and is **not** overturned by this ruling, which is about the
+mobile rail: **Millionea under "more" at lg–xl, top-level only at ≥1280.**
+
+### The loss receipt keeps its rollover line
+
+It is a third-person statement of fact about where the money went — nobody won the top tier, so
+the pool carried forward. A receipt that omits it leaves a player wondering what became of the
+pool they paid into. It says nothing like *"play again"* or *"bigger next week"*, and the receipt
+carries no celebration vocabulary either way.
+
+⚠️ The designers raised the counter-argument themselves and it is recorded, not dismissed: on the
+screen **99% of tickets land on**, "the pool got bigger" can be read as an inducement. If the
+Board or counsel reads it that way, the fix is one deleted row — the handover states *"the receipt
+stands without it"*. **Ali's call is to keep it.**
+
+### 🟠 D-1 — the licence, and exactly what "consider it done" does and does not license
+
+**Ali, verbatim (2026-08-29):** *"licens eiscmin consder ti done for now dont worry"* — the licence
+is coming; treat it as settled for planning.
+
+⭐ **So the programme is unblocked for BUILDING, and this entry records the boundary rather than
+losing it.** D-1 asks whether the Gaming Board licence covers a fixed-stake multi-event jackpot;
+50pick is licensed as a pari-mutuel prediction market. The evaluation's rule is *"confirm with the
+Board in writing before session 1"*.
+
+- ✅ **S1–S7 may proceed on the owner's instruction.** They are law, config, schema, an engine,
+  a money path exercised on a LOCAL database, an admin console, player surfaces and hardening.
+  Nothing in them takes a shilling from a member of the public.
+- ⛔ **S8 — the live drive on production with real money — must NOT run until the written answer
+  exists.** That is the step that sells a ticket for a product whose authorisation class is
+  unconfirmed, and no engineering decision can substitute for it.
+- ⚠️ If the answer comes back negative, the plan stops and **nothing is lost** — which is why the
+  design was bounded to what §0 cannot change, and why S8 is last.
+
+---
+
 ## 2026-08-29 · MASWALI MILLIONEA — six of the seven §0 decisions, and the one that still blocks
 
 **Programme key `MASWALI-BUILD`.** The build plan and tracker are

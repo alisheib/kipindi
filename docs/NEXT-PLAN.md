@@ -5,8 +5,8 @@
 > progressive-only · 13% of losing stakes · void counts CORRECT (3 voids refund the cycle) · no bonus money ·
 > capped at 10 tickets · `/millionea`. The design landed 2026-08-28 and is filed at
 > [`design-brief/maswali-2026-08/handover/`](design-brief/maswali-2026-08/handover/README.md).
-> 🔴 **D-1 — the Gaming Board licence class — is UNANSWERED and blocks every line of code.**
-> ⛔ Nothing is built and nothing may be built until it is answered in writing.
+> 🟢 **CLEARED TO BUILD S1–S7** — Ali ruled 2026-08-29 that the licence is coming; treat D-1 as
+> settled for planning. ⛔ **S8, the live drive with real money, does NOT run until it is in writing.**
 > ⚠️ D-7 is a rename that must happen BEFORE S1: `/maswali/…` → `/millionea/…` (module names unchanged).
 
 > ## ▶ NEW LANE 2026-08-28 — **THE DESIGN GATE** (`DESIGN-GATE-2026-08-28`)

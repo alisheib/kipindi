@@ -3,16 +3,22 @@
 **Programme key: `MASWALI-BUILD`** — quote it in every commit and handoff so any session, on any
 machine, knows which programme it is inside. Owner: Ali.
 
-> ## STATUS: 🔴 **BLOCKED — AND ONLY ON D-1.**
+> ## STATUS: 🟢 **CLEARED TO BUILD S1–S7.** ⛔ **S8 still needs the licence in writing.**
 >
-> **Six of the seven §0 decisions were answered by Ali on 2026-08-29 and are recorded in
-> [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md).** The seventh, **D-1 — does the Gaming
-> Board licence cover a fixed-stake multi-event jackpot? — is unanswered, and it blocks every
-> line of code.** It is not a technical question and no amount of engineering answers it.
+> **All seven §0 decisions plus the four follow-on calls are settled and recorded in
+> [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md)** (two entries, 2026-08-29).
 >
-> ⛔ **Do not start S1 until D-1 is answered in writing.** If it comes back negative this plan
-> stops and nothing is lost — which is precisely why the design was bounded to the four things no
-> §0 decision can change, and why nothing has been built.
+> 🟠 **D-1 — the Gaming Board licence class.** Ali, 2026-08-29: *the licence is coming; consider it
+> done for now.* **So the build proceeds on the owner's instruction**, and the boundary is written
+> down rather than lost:
+>
+> - ✅ **S1–S7 may run.** Law, config, schema, the engine, the money path on a **local** database,
+>   admin, player surfaces, hardening. None of it takes a shilling from the public.
+> - ⛔ **S8 — the live drive on production with real money — does NOT run until the written answer
+>   exists.** That is the step that sells a ticket for a product whose authorisation class is
+>   unconfirmed, and no engineering decision substitutes for it.
+> - ⚠️ If it returns negative the plan stops and **nothing is lost** — which is why the design was
+>   bounded to what §0 cannot change, and why S8 is last.
 
 ---
 
@@ -46,13 +52,17 @@ redraws): `design-brief/maswali-2026-08/handover/sources/` — `A-slip.dc.html`,
 
 | | Decision | Answer | When |
 |---|---|---|---|
-| **D-1** | Does the Gaming Board licence cover a fixed-stake multi-event jackpot? | 🔴 **OPEN — BLOCKS EVERYTHING** | — |
+| **D-1** | Does the Gaming Board licence cover a fixed-stake multi-event jackpot? | 🟠 **Ali: "the licence is coming, consider it done for now."** ✅ S1–S7 proceed. ⛔ **S8 (live, real money) does NOT run until the written answer exists** | 2026-08-29 |
 | **D-2** | Is the TZS 20,000,000 guarantee real, and who funds it? | ✅ **Progressive only. No fixed guarantee.** | 2026-08-29 |
 | **D-3** | 13% of what? | ✅ **13% of losing stakes** — one fee law across three products | 2026-08-29 |
 | **D-4** | What does a VOID question do to a ticket? | ✅ **Void counts CORRECT. 3+ voids ⇒ the whole cycle voids and every ticket refunds in full.** | 2026-08-29 |
 | **D-5** | Can bonus money buy a ticket? | ✅ **No, for v1. Real balance only**, with an explicit message-bearing refusal | 2026-08-29 |
 | **D-6** | How many tickets per player per cycle? | ✅ **Capped. Config-driven, default 10**, enforced in the purchase path and stated on the slip | 2026-08-29 |
 | **D-7** | `/maswali` or `/millionea`? | ✅ **`/millionea`**, nav label **"Millionea"**, headings *Maswali Millionea*, module names stay `maswali-*` | 2026-08-29 |
+| **G-15** | Does a jackpot win hold for AML review? | ✅ **No — credit the wallet immediately.** The existing WITHDRAWAL hold at TZS 1,000,000 is the control. ⛔ The ticket page and the win notification **must state the review and its SLA** | 2026-08-29 |
+| **D-10** | Does 5-minute free cancellation apply? | ✅ **Yes — the existing rule unchanged.** Its "five minutes still ahead" condition already refuses a cancel-at-the-boundary | 2026-08-29 |
+| **Nav** | Which rail slot yields? | ⚠️ **NONE — Millionea is a FIFTH slot.** Ali overruled the recommendation; nothing is demoted | 2026-08-29 |
+| **Receipt** | Rollover line on a losing receipt? | ✅ **Keep it** — third-person bookkeeping, no celebration vocabulary | 2026-08-29 |
 
 ⚠️ **D-7 IS A RENAME AND IT MUST HAPPEN BEFORE S1, NOT AFTER.** §15's own words: one find-replace
 before S1, *"painful after"*. The implementation doc's S5 work items are written as `/maswali`,
@@ -126,9 +136,10 @@ that would go green while a component is wrong.
 
 ⭐ **Everything needed is in this file or linked from it. There is nothing to hunt for.**
 
-**0 · The gate.** D-1 answered in writing and appended to
-[`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md). ⛔ If it is negative, stop — that is the
-plan working, not failing.
+**0 · The gate — already cleared for S1–S7.** Every decision is recorded in
+[`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) (two entries, 2026-08-29). ⛔ **The one thing
+still owed is the licence IN WRITING, and it gates S8 only.** Do not let a green S7 carry the
+programme into a live drive on its momentum — S8 sells a real ticket to a member of the public.
 
 **1 · The D-7 rename, FIRST, before a single line of S1.** ⭐ **MEASURED 2026-08-29, not
 estimated: `src/` contains ZERO Maswali files — nothing is built — so today the rename is 94
@@ -280,9 +291,10 @@ it is covered. **A gate not in the pipeline is not a gate.**
 
 | Owner | Item |
 |---|---|
-| 🔴 **Ali / the Board** | **D-1, the licence class.** Blocks everything |
-| **Ali** | `OPEN-QUESTIONS.md` #9 — which bottom-rail slot yields to Millionea (a product call, not a design one) |
-| **Ali** | `OPEN-QUESTIONS.md` #5 — whether the rollover line belongs on a **loss** receipt, or reads as an inducement |
+| 🟠 **Ali / the Board** | **D-1 in WRITING.** Not blocking S1–S7 on the owner's instruction; ⛔ **gates S8**, the live drive |
+| **S5 — obligation, not a question** | ⚠️ **The five-slot rail must be MEASURED at 320 and 360 before it ships.** Five labels is where truncation starts and `responsive-audit.mjs` tests down to 320. If a label truncates, the fix is the LABEL — ⛔ do not quietly drop back to four slots, that is Ali's decision and it is recorded |
+| **S5 — obligation** | ⚠️ **1024–1279 is a separate risk with the same cause.** The band already survives by subtracting two controls, so Millionea goes under "more" at lg–xl and top-level only at **≥1280**. The five-slot ruling is about the MOBILE rail and does not overturn this |
+| **S3/S5 — obligation** | ⛔ **G-15's disclosure:** the ticket page and the win notification must state that a withdrawal ≥ TZS 1,000,000 is reviewed before it is sent, **with the SLA**. The ruling was "credit immediately"; the disclosure is what makes that safe |
 | S1 | `OPEN-QUESTIONS.md` #8 — whether `--success-*` genuinely aliases the YES ramp in the live repo, or the hue-166 family exists. **Law 6 says SUCCESS IS NOT YES**; until answered the ✓ marks ship in the YES hue |
 | S2 | `OPEN-QUESTIONS.md` #4 — the ticket serial is minted at payment, so the slip prints none before purchase. Confirm |
 | S6 | `OPEN-QUESTIONS.md` #6 — a B11 status-tone row for Maswali ticket words. ⚠️ player-side RESOLVED = struck gilt would put **gold on a losing ticket's row** |
