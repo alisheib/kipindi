@@ -35,6 +35,35 @@ step, the traps, the tracking table, and the delete-when-done list.
 
 ---
 
+## ⏸ THE PARKED BACKLOG — real, open, and deliberately NOT being worked
+
+⛔ **This exists so "two programmes" does not become "everything else is finished".** It is not.
+Every line below was re-verified in code on 2026-08-29, not taken from a document's own header.
+**Do not start any of it without asking Ali** — but do not let it disappear either.
+
+### 🔴 Waiting on Ali — two rulings, both unanswered
+| | |
+|---|---|
+| **`E-243`** | Should a session-limit **increase** (and a `dailyLossLimit` increase) defer 24 h the way the deposit caps do? No `pendingSession*` / `pendingLoss*` columns exist in `schema.prisma`, so today an increase takes effect at once |
+| **`E-245`** | Can a **self-excluded** player reach their own balance? Three defensible answers and no ruling. ⚠️ A self-exclusion is a MINIMUM and never self-reinstates — that part is already decided |
+
+### 🟠 Open engineering, owned by a parked programme
+| | Item |
+|---|---|
+| **`E-226`** | ⛔ **The worst of these: `support-config.ts` has a WRITER and NO READER.** `/help` and ~20 other surfaces — **including four statutory pages** — have shown the wrong support contact **on production since 2026-08-19**. Unbuilt. Lives in [`SESSION-PROMPT-BONUS-AND-CARE-DESK.md`](SESSION-PROMPT-BONUS-AND-CARE-DESK.md) Unit B1 and [`SESSION-PROMPT-JAY-COMMENTS.md`](SESSION-PROMPT-JAY-COMMENTS.md) |
+| **`E-239`** | The bonus **zombie re-lock** inside Unit A's own shipped fix: re-locking a grant whose `remainingTzs` is already 0 restores the full wagering requirement |
+| **`E-228`** | XRP 30m/60m refunding on `source-failed`. Explicitly LOW priority while no real player has bet those pairs |
+| **`purgeChainHistory`** | `CONTROL_DOMAIN.purgeChainHistory: "compliance"` is **still not declared** in `control-gates.ts` — verified absent 2026-08-29. The last un-actioned line of scan #1; it only drives button visibility, the real boundary is `softRequireStaff` |
+| **i18n bundle split** | `src/lib/i18n-dict.ts` is **355,955 B and GREW** since the design-perfection campaign deferred the first-load split |
+| **Unit D / F / G** | Two guide frames + the `--allow-paused` flag (never built) · the first Cloudflare-path **certificate renewal, due from ~2026-09-15** (expires 2026-10-15) · the dated Postgres **volume** re-read |
+| **320px account menu** | The right cluster wants 275px in 238px; every candidate for yielding is protected by a written rule. **Ali's design call** — measured in the session-75 handoff |
+
+⚠️ **`test:orphans` is blind outside its own scope:** it scans `scripts/` **top level only**, no
+recursion, while printing *"every file in `scripts/` must be run, or declared unrun"*. Ten code
+files under `scripts/` subdirectories are named by no npm script and referenced by nothing.
+
+---
+
 ### ⚠️ Two gaps in the Design Gate's own work order, found 2026-08-29
 **`DG-A-19`** (icon sizes 10–23, two prop spellings) **appears in no step row** — the four steps
 cover DG-A-01…18 and 20…23 only. **`DG-A-04` appears in two** (step 1 and step 3). Neither is

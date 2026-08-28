@@ -1,3 +1,14 @@
+> **STATUS: ⚪ RECORD — scan #1 closed 2026-08-28.** All 18 §A findings and the §B purge ceremony
+> are merged and LIVE on `main`; the tombstone migration is applied on production and was read
+> back from the catalogue (session 75).
+>
+> ⛔ **NOT DELETED, although line 2 below says to delete it when everything has landed — because
+> one thing has not.** `CONTROL_DOMAIN.purgeChainHistory: "compliance"` is **still not declared**
+> in `src/lib/server/control-gates.ts` (verified absent 2026-08-29). It drives button visibility
+> only — the real boundary is `softRequireStaff` plus the route's own domain — but a file that
+> deletes itself takes its last open item with it. The item is carried on the PARKED BACKLOG in
+> [`NEXT-PLAN.md`](NEXT-PLAN.md); when it is declared, this file may go.
+
 STATUS: session prompt — the work order for scan #1 (`docs/SCAN-2026-08-28.md`) plus the
 PURGE feature (§B). Delete this file when everything is landed and verified.
 
