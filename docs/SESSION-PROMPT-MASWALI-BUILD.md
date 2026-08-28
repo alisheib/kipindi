@@ -32,6 +32,8 @@ see [§7](#7--why-this-is-one-door-and-not-one-folder). Read them in this order:
 | 7 | [`DESIGN_AUTHORITY.md`](DESIGN_AUTHORITY.md) | ⛔ §0 before writing ANY design value, anywhere |
 | 8 | [`RULES.md`](RULES.md) | 🟢 the money law. §1 (the fee) and §2.2 (TRA + GBT) are the ones this product touches |
 | 9 | [`SESSION-PROMPT-MASWALI-DESIGN.md`](SESSION-PROMPT-MASWALI-DESIGN.md) | ⚪ RECORD — how the design round was run and received |
+| 10 | [`design-brief/maswali-2026-08/BRIEF.md`](design-brief/maswali-2026-08/BRIEF.md) | ⚪ RECORD — **what was commissioned and why the boundary was drawn there.** Needed to judge whether the delivery matched, and to cut a round 2 |
+| 11 | [`design-brief/maswali-2026-08/PROMPT.txt`](design-brief/maswali-2026-08/PROMPT.txt) | ⚪ RECORD — the prompt actually sent. ⛔ Lives **only** here; a commission is never re-sent from a kept snapshot |
 
 **The design's working sources** (living artboards, editable — a round 2 edits rather than
 redraws): `design-brief/maswali-2026-08/handover/sources/` — `A-slip.dc.html`, `B-receipt.dc.html`,
@@ -117,6 +119,58 @@ recorded but not moved, and told S1 not to add a second movement — which would
 §7 and left two accounts unposted). ⛔ **Assert conservation PER COMPONENT** — fee, TRA, GBT, each
 tier, each rollover — not on the total: §14 names a total-only check as one of the instruments
 that would go green while a component is wrong.
+
+---
+
+## 2b · WHEN YOU SAY GO — the pre-flight, in order
+
+⭐ **Everything needed is in this file or linked from it. There is nothing to hunt for.**
+
+**0 · The gate.** D-1 answered in writing and appended to
+[`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md). ⛔ If it is negative, stop — that is the
+plan working, not failing.
+
+**1 · The D-7 rename, FIRST, before a single line of S1.** ⭐ **MEASURED 2026-08-29, not
+estimated: `src/` contains ZERO Maswali files — nothing is built — so today the rename is 94
+route occurrences across 7 documents and nothing else.** §15 calls it *"one find-replace before
+S1, painful after"*, and the reason it becomes painful is that the moment S1 writes a route, a
+config key or a nav entry, the same rename starts touching code, tests, three locale dictionaries
+and every doc that links them.
+
+⛔ **THE TRAP, AND A BLIND `sed` WALKS STRAIGHT INTO IT.** There are **36 occurrences of
+`maswali-2026-08`** — the design-commission FOLDER — and they are not routes. Renaming them
+moves the filed handover, breaks every link to it, and `npm run test:docs` will go red across the
+board. **Rename the ROUTE only:**
+
+```bash
+# route-shaped occurrences only — never the maswali-2026-08 folder path
+grep -rlE "/maswali" docs/ | xargs grep -l . | while read f; do
+  # inspect before replacing; the folder path must survive untouched
+  grep -nE "/maswali" "$f" | grep -v "maswali-2026-08"
+done
+```
+
+⛔ **Module names do NOT change** — `maswali-dal.ts`, `maswali-service.ts`, `maswali-score.ts`,
+`maswali-config.ts`, `maswali-tier-label.ts` stay as the implementation doc writes them. Only the
+**route** (`/maswali…` → `/millionea…`) and the **nav label** move.
+
+✅ **Done when:** `npm run test:docs` is green, `grep -rn "/maswali" docs/ | grep -v maswali-2026-08`
+returns nothing, and the 36 folder references are byte-identical to before.
+
+**2 · Re-read the two sections that decide the shape of everything after them** —
+`MASWALI-MILLIONEA-IMPLEMENTATION.md` **§5** (solvency: why there is no guarantee) and **§7** (the
+settlement algorithm, which is what S2 and S3 implement).
+
+**3 · Then S1**, and only S1. ⛔ **Do not run the chunks "all at once" in the sense of skipping the
+gates.** Each chunk's acceptance line is a real measurement — `trialBalance()` clean, drift
+*exactly* 0, a 200-ticket cycle settled on a real database — and §15's standing rule is explicit:
+**do not start a session before its predecessor's tests are green and its acceptance line is met.**
+Running them back to back in one sitting is fine and expected; running them without stopping at
+each acceptance line is how a money bug reaches S8 wearing nine green suites.
+
+⚠️ **This machine can drive it:** `QA_ADMIN_PASSWORD` is now in `.env.qa.local`, and the local
+Postgres recipe for S3's "on a local database" acceptance is in the dev/QA notes —
+⛔ **never point a destructive drive at production.**
 
 ---
 
