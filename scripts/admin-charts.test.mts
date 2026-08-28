@@ -23,7 +23,7 @@
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
-  AdminAreaChart, AdminStackedBars, AdminSpark, AdminMeter, AdminBarList, AdminGauge,
+  AdminAreaChart, AdminStackedBars, AdminSpark, AdminMeter, AdminBarList, AdminGauge, CATEGORICAL_RAMP,
   type SeriesPoint,
 } from "../src/components/admin/admin-charts.tsx";
 import { AdminStackedBar } from "../src/components/admin/admin-shell.tsx";
@@ -256,6 +256,106 @@ console.log("\n§7 AdminStackedBar");
   const flexes = [...tiny.matchAll(/flex:\s*([\d.]+)/g)].map((m) => Number(m[1]));
   ok("§7 ⭐ CONTROL — a tiny NON-zero segment still paints its 2% visibility floor",
     flexes.includes(0.02), `flexes=[${flexes.join(", ")}]`);
+}
+
+// ── §8 · THE CATEGORICAL RAMP — contrast RECOMPUTED from the tokens ────────────────
+console.log("\n§8 CATEGORICAL_RAMP");
+/**
+ * 🔴 S-03 + S-12 (scan #1, 2026-08-28). `AdminStackedBar` hardcoded `text-white` while the
+ * fill arrived as a free-form string, and the provider ramp put four of its five bands under
+ * that ink at 2.19–4.28:1 where 10px text needs 4.5:1.
+ *
+ * ⛔ WHY THIS LIVES HERE AND NOT IN `test:contrast`. That gate's corpus is four CSS FILES.
+ * This pair forms at RUNTIME, from an inline `style={{ background }}` in a .tsx against a
+ * class — neither half is in a stylesheet, so a pure-CSS gate stays green over it FOR EVER.
+ * The scan said so explicitly, and it is the reason the defect survived every audit.
+ *
+ * ⭐ SO THE RATIOS ARE RECOMPUTED FROM THE TOKEN VALUES, not asserted as remembered numbers.
+ * OKLCH → linear sRGB → WCAG relative luminance, read out of globals.css. Restyle `--gold-400`
+ * two steps lighter and this fails, which a hardcoded expected-ratio table never would.
+ */
+{
+  const { readFileSync: rf } = await import("node:fs");
+  const css = rf(new URL("../src/app/globals.css", import.meta.url), "utf8");
+
+  /** `--royal-700: oklch(32% 0.150 268);` → [L,C,h] */
+  const token = (name: string): [number, number, number] | null => {
+    const m = css.match(new RegExp(`--${name}:\\s*oklch\\(([\\d.]+)%\\s+([\\d.]+)\\s+([\\d.]+)\\)`));
+    return m ? [Number(m[1]) / 100, Number(m[2]), Number(m[3])] : null;
+  };
+  const toLinear = ([L, C, h]: [number, number, number]) => {
+    const rad = (h * Math.PI) / 180, a = C * Math.cos(rad), b = C * Math.sin(rad);
+    const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
+    const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3;
+    const s = (L - 0.0894841775 * a - 1.2914855480 * b) ** 3;
+    return [
+      4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+      -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+      -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s,
+    ] as [number, number, number];
+  };
+  const lum = ([r, g, b]: [number, number, number]) => {
+    const c = (v: number) => Math.max(0, Math.min(1, v));
+    return 0.2126 * c(r) + 0.7152 * c(g) + 0.0722 * c(b);
+  };
+  const contrast = (x: [number, number, number], y: [number, number, number]) => {
+    const [hi, lo] = [lum(x), lum(y)].sort((p, q) => q - p);
+    return (hi + 0.05) / (lo + 0.05);
+  };
+  /** A ramp entry's colour: a `var(--token)` or the literal white the kit uses for ink. */
+  const resolve = (v: string): [number, number, number] | null => {
+    if (v === "#fff" || v === "#ffffff") return [1, 1, 1];
+    const name = v.match(/var\(--([\w-]+)\)/)?.[1];
+    const t = name ? token(name) : null;
+    return t ? toLinear(t) : null;
+  };
+
+  let worst = Infinity;
+  let resolved = 0;
+  for (const { fill, ink } of CATEGORICAL_RAMP) {
+    const f = resolve(fill), i = resolve(ink);
+    // ⛔ A token that does not resolve must FAIL, not silently skip. A renamed or typo'd
+    // token would otherwise drop out of the population and the ramp would "pass" on fewer
+    // and fewer bands — the shape this repo has paid for on every scanner that went blind.
+    // ⚠️ NOT `if (!ok(…)) continue` — this suite's `ok` returns void, so that reads as
+    // "always continue" and every ratio below is silently skipped while the summary check
+    // passes on `worst = Infinity`. That vacuous pass is exactly what the reconciliation
+    // two checks down caught, and it is why the count is asserted rather than assumed.
+    const bothResolve = !!f && !!i;
+    ok(`§8 ${fill} and ${ink} both resolve to real tokens`, bothResolve);
+    if (!bothResolve) continue;
+    resolved++;
+    const r = contrast(f!, i!);
+    worst = Math.min(worst, r);
+    ok(`§8 ${fill} on ${ink} reaches AA at 10px`, r >= 4.5, `${r.toFixed(2)}:1`);
+  }
+  ok("§8 ⛔ every ramp entry was actually measured — the loop is not vacuous",
+    resolved === CATEGORICAL_RAMP.length, `${resolved}/${CATEGORICAL_RAMP.length}`);
+  ok("§8 ⭐ the whole ramp clears AA", worst >= 4.5, `worst = ${worst.toFixed(2)}:1`);
+
+  // Bands must be tellable APART, or a five-way categorical is a four-way one.
+  for (let k = 0; k < CATEGORICAL_RAMP.length - 1; k++) {
+    const a = resolve(CATEGORICAL_RAMP[k].fill)!, b = resolve(CATEGORICAL_RAMP[k + 1].fill)!;
+    ok(`§8 band ${k + 1} is distinguishable from band ${k + 2}`, contrast(a, b) >= 1.5,
+      `${contrast(a, b).toFixed(2)}:1`);
+  }
+
+  /* ⛔ S-12 — aqua and claret carry meanings that are not "provider #4".
+     DESIGN_AUTHORITY §B4: aqua is finishing-pass only, "never a chip, button label, or
+     anything semantic", and §B4b names /admin/live as an exception BY NAME. §B4a makes claret
+     the colour of an irreversible operator ceremony. */
+  const rampText = CATEGORICAL_RAMP.map((c) => `${c.fill} ${c.ink}`).join(" ");
+  ok("§8 ⛔ the ramp borrows no aqua (finishing pass only — /admin/live is the named exception)",
+    !/aqua/.test(rampText), rampText);
+  ok("§8 ⛔ …and no claret (the colour of an irreversible ceremony)", !/claret/.test(rampText), rampText);
+
+  /* ⭐ ONE DEFINITION. The ramp was written out twice, byte-identically, in admin-charts.tsx
+     and admin/page.tsx — two literals painting the same semantic dimension with nothing
+     linking them. A second copy is how they drift apart again. */
+  const pageSrc = rf(new URL("../src/app/admin/page.tsx", import.meta.url), "utf8");
+  ok("§8 ⭐ /admin no longer keeps its own copy of the ramp",
+    !/\[\s*"var\(--royal\)"/.test(pageSrc) && !/provColors\s*=/.test(pageSrc));
+  ok("§8 …and imports the shared one instead", /CATEGORICAL_RAMP/.test(pageSrc));
 }
 
 console.log(`\n${pass} passed, ${fails.length} failed\n`);

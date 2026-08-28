@@ -13,6 +13,51 @@ import { formatNumber, formatCompactNumber } from "@/lib/utils";
 export type SeriesPoint = { x: number; y: number };
 
 /**
+ * ⭐ THE ONE CATEGORICAL RAMP for admin charts — fills PAIRED WITH THE INK THAT READS ON THEM
+ * (S-03 + S-12, scan #1, 2026-08-28).
+ *
+ * 🔴 WHAT IT REPLACES, AND WHY BOTH HALVES WERE BROKEN.
+ * `["var(--royal)", "var(--royal-300)", "var(--aqua-400)", "var(--claret-400)",
+ * "var(--slate-400)"]` was written out TWICE, byte-identically, in this file and in
+ * admin/page.tsx — two independent literals painting the same semantic dimension (which
+ * payment provider a band is) on two surfaces, with nothing linking them.
+ *
+ * · S-03 — `AdminStackedBar` hardcodes its label ink and the fill arrives as a free-form
+ *   string, so the component cannot know the fill's lightness. Measured (OKLCH → linear sRGB
+ *   → WCAG relative luminance, at text-micro/10px so the bar is 4.5:1):
+ *       --royal      6.93:1  pass
+ *       --royal-300  2.19:1  FAIL      --aqua-400   2.37:1  FAIL
+ *       --claret-400 4.28:1  FAIL      --slate-400  3.44:1  FAIL
+ *   Four of the five provider bands were unreadable. ⛔ `test:contrast` cannot see this: its
+ *   corpus is four CSS files, and this pair forms at runtime from an inline `style` in a .tsx
+ *   against a Tailwind class. Neither half is in a stylesheet.
+ * · S-12 — aqua and claret were carrying semantic meaning. DESIGN_AUTHORITY §B4: aqua is
+ *   "finishing pass only, ≤ 8% surface coverage. Never a chip, button label, or anything
+ *   semantic", and §B4b names /admin/live as "an exception BY NAME — no other surface
+ *   inherits it". §B4a makes claret the colour of an irreversible operator ceremony.
+ *   "Provider #4 in a bar chart" is neither.
+ *
+ * ⚠️ ROYAL AND SLATE SHARE HUE 268, which is why this is not simply "five royal steps": at one
+ * hue, five categories can only differ in lightness, and two of them would read as the same
+ * band dimmed. So it alternates royal and gold and steps the lightness — five bands that
+ * differ in BOTH dimensions, without borrowing a hue that means something else.
+ *
+ * Measured, each fill against its OWN ink (worst 4.94:1, so AA holds at 10px), and every
+ * adjacent pair distinguishable from its neighbour (worst 1.75:1). `test:admin-charts` §8
+ * recomputes all of it from the token values rather than trusting this comment.
+ */
+export const CATEGORICAL_RAMP = [
+  { fill: "var(--royal-700)", ink: "var(--text)" },
+  { fill: "var(--gold-400)", ink: "var(--royal-950)" },
+  { fill: "var(--royal-400)", ink: "var(--royal-950)" },
+  { fill: "var(--gold-800)", ink: "var(--text)" },
+  { fill: "var(--royal-200)", ink: "var(--royal-950)" },
+] as const;
+
+/** Fills only — for charts that paint no ink on the band (the SVG stacks, legend swatches). */
+export const CATEGORICAL_FILLS = CATEGORICAL_RAMP.map((c) => c.fill);
+
+/**
  * ⭐ THE DEFAULT FORMATTER IS A **COUNT** FORMATTER, AND THAT IS THE WHOLE CONTRACT.
  *
  * `AdminMeter`, `AdminBarList` and `AdminFunnelChart` each render a bare `value`. Every one
@@ -178,7 +223,7 @@ export function AdminAreaChart({
 export function AdminStackedBars({
   bars,
   height = 200,
-  colors = ["var(--royal)", "var(--royal-300)", "var(--aqua-400)", "var(--claret-400)", "var(--slate-400)"],
+  colors = CATEGORICAL_FILLS,
   legend,
 }: {
   bars: Array<{ label: string; segments: number[] }>;

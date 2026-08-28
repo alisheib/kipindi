@@ -585,12 +585,34 @@ export function AdminFunnel({
 
 /* ===== Stacked bar ===== */
 
+/**
+ * A band in a stacked bar.
+ *
+ * ⛔ A LABEL CANNOT BE DECLARED WITHOUT THE INK THAT READS ON IT (S-03, scan #1, 2026-08-28).
+ * This component used to hardcode `text-white` on every band while the fill arrived as a
+ * free-form `color` string — so it could not know the fill's lightness, and four of the five
+ * provider bands on /admin carried white text at 2.19-4.28:1 where 4.5:1 is required at 10px.
+ *
+ * ⚠️ `test:contrast` is structurally blind to this: its corpus is four CSS files, and the pair
+ * forms at RUNTIME from an inline `style={{ background }}` against a Tailwind class. Neither
+ * half is in a stylesheet, so no amount of CSS auditing would ever have found it.
+ *
+ * ⭐ So the pairing is made unrepresentable rather than merely corrected — the same move as
+ * S-17's typed-confirm gate. Declare a label and you must declare its ink; declare no label
+ * and ink is meaningless and forbidden. `CATEGORICAL_RAMP` in admin-charts.tsx ships the two
+ * together for exactly this reason.
+ */
+type StackedSegment = { flex: number; color: string } & (
+  | { label: string; ink: string }
+  | { label?: never; ink?: never }
+);
+
 export function AdminStackedBar({
   segments,
   height = 18,
   emptyLabel = "No activity in this window",
 }: {
-  segments: ReadonlyArray<{ flex: number; color: string; label?: string }>;
+  segments: ReadonlyArray<StackedSegment>;
   height?: number;
   /** Shown INSTEAD of the bands when there is nothing to distribute. */
   emptyLabel?: string;
@@ -612,7 +634,7 @@ export function AdminStackedBar({
   if (total <= 0) {
     return (
       <div
-        className="rounded-sm border border-dashed border-border-subtle flex items-center justify-center font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary"
+        className="rounded-sm border border-dashed border-border-subtle flex items-center justify-center font-mono text-micro uppercase text-text-tertiary"
         style={{ minHeight: Math.max(height, 18) }}
       >
         {emptyLabel}
@@ -631,8 +653,8 @@ export function AdminStackedBar({
       {shown.map((s, i) => (
         <div
           key={i}
-          className="flex items-center justify-center font-mono text-micro tracking-[0.10em] text-white"
-          style={{ flex: Math.max(s.flex / sum, 0.02), background: s.color }}
+          className="flex items-center justify-center font-mono text-micro tracking-[0.10em]"
+          style={{ flex: Math.max(s.flex / sum, 0.02), background: s.color, color: s.ink }}
         >
           {s.label && height >= 18 ? s.label : null}
         </div>

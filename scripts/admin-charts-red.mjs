@@ -69,8 +69,25 @@ const PLANTS = [
        and important event rendered invisible, which no assertion about the ZERO case can see. */
     name: "S-04 — a tiny non-zero segment loses its visibility floor",
     file: SHELL,
-    from: `          style={{ flex: Math.max(s.flex / sum, 0.02), background: s.color }}`,
-    to: `          style={{ flex: s.flex / sum, background: s.color }}`,
+    from: `          style={{ flex: Math.max(s.flex / sum, 0.02), background: s.color, color: s.ink }}`,
+    to: `          style={{ flex: s.flex / sum, background: s.color, color: s.ink }}`,
+  },
+  {
+    /* 🔴 S-03, scan #1 — the ramp's lightest band under white ink. Measured 1.55:1 where 10px
+       text needs 4.5:1. This is the shape that shipped: four of five provider bands carried
+       white labels at 2.19-4.28:1, and no CSS-corpus gate could see it because the pair forms
+       at runtime from an inline style against a class. */
+    name: "S-03 — a ramp band takes ink that cannot be read on it",
+    from: `  { fill: "var(--royal-200)", ink: "var(--royal-950)" },`,
+    to: `  { fill: "var(--royal-200)", ink: "var(--text)" },`,
+  },
+  {
+    /* 🔴 S-12 — aqua returns to a semantic role. DESIGN_AUTHORITY §B4: finishing pass only,
+       "never a chip, button label, or anything semantic"; §B4b names /admin/live as an
+       exception BY NAME, and this ramp paints /admin and /admin/finance. */
+    name: "S-12 — the ramp borrows aqua for provider identity again",
+    from: `  { fill: "var(--gold-400)", ink: "var(--royal-950)" },`,
+    to: `  { fill: "var(--aqua-400)", ink: "var(--royal-950)" },`,
   },
 ];
 

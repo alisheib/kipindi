@@ -1,5 +1,5 @@
 import { AdminPageHead, AdminKpi, AdminCard, FeedRow, AdminFunnel, AdminStackedBar, AdminLoadError } from "@/components/admin/admin-shell";
-import { AdminAreaChart } from "@/components/admin/admin-charts";
+import { AdminAreaChart, CATEGORICAL_RAMP } from "@/components/admin/admin-charts";
 import { I } from "@/components/ui/glyphs";
 import { db } from "@/lib/server/store";
 import { getAuditPage, type AuditCategory } from "@/lib/server/audit";
@@ -52,7 +52,11 @@ export default async function AdminOverviewPage() {
 
   // Provider mix flex shares — total deposits across the top 5 providers
   const provTotal = (provs ?? []).reduce((s, p) => s + p.deposits, 0) || 1;
-  const provColors = ["var(--royal)", "var(--royal-300)", "var(--aqua-400)", "var(--claret-400)", "var(--slate-400)"];
+  /* ⛔ ONE RAMP, IMPORTED (S-03 + S-12). This was a byte-identical copy of the default in
+     admin-charts.tsx — two literals painting the same semantic dimension on two surfaces with
+     nothing linking them. Four of its five bands failed WCAG AA against the label ink, and two
+     of them borrowed aqua and claret, which DESIGN_AUTHORITY §B4/§B4a/§B4b reserve for the
+     finishing pass and for irreversible ceremonies. The ramp now carries its own ink. */
 
   const conversion = !kyc || kyc.registered === 0 ? 0 : (kyc.approved / kyc.registered) * 100;
 
@@ -145,11 +149,20 @@ export default async function AdminOverviewPage() {
             ) : provs.length > 0 ? (
               <>
                 <AdminStackedBar
-                  segments={provs.map((p, i) => ({
-                    flex: Math.max(2, Math.round((p.deposits / provTotal) * 100)),
-                    color: provColors[i] ?? "var(--slate-400)",
-                    label: p.provider.split("_")[0],
-                  }))}
+                  segments={provs.map((p, i) => {
+                    /* ⛔ WRAPS, never falls back to a loose token. The old code defaulted a 6th
+                       provider to a hardcoded `var(--slate-400)` written a second time right
+                       here — so fixing the ARRAY alone would have left that path painting an
+                       unreadable band with no ink of its own (measured 3.44:1). Cycling keeps
+                       every band inside the measured ramp however many providers appear. */
+                    const c = CATEGORICAL_RAMP[i % CATEGORICAL_RAMP.length]!;
+                    return {
+                      flex: Math.max(2, Math.round((p.deposits / provTotal) * 100)),
+                      color: c.fill,
+                      ink: c.ink,
+                      label: p.provider.split("_")[0],
+                    };
+                  })}
                 />
                 <p className="text-caption text-text-tertiary">28-day deposit share · <span className="text-text-tertiary italic">asilimia</span></p>
               </>

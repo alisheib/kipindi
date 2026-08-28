@@ -305,32 +305,32 @@ export default async function AdminCompliancePage({
                 and inherit the segment-ink contrast question, the counts now sit in the caption
                 where they are legible at any bar height — and the percentages keep their
                 denominator beside them, which is what makes a small sample readable as small. */}
-            {rcTotal === 0 ? (
-              <>
-                <AdminStackedBar segments={[]} height={14} emptyLabel="No reality-check activity in window" />
-                <p className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">
-                  Nothing to report — not a zero rate
-                </p>
-              </>
-            ) : (
-              <>
-                <AdminStackedBar
-                  segments={[
-                    { flex: continued, color: "var(--text-tertiary)" },
-                    { flex: tookBreak, color: "var(--warning-fg)" },
-                    { flex: sxd, color: "var(--bet-lose)" },
-                  ]}
-                  height={14}
-                />
-                <p className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">
+            <AdminStackedBar
+              segments={
+                rcTotal === 0
+                  ? []
+                  : [
+                      { flex: continued, color: "var(--text-tertiary)" },
+                      { flex: tookBreak, color: "var(--warning-fg)" },
+                      { flex: sxd, color: "var(--bet-lose)" },
+                    ]
+              }
+              height={14}
+              emptyLabel="No reality-check activity in window"
+            />
+            <p className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">
+              {rcTotal === 0 ? (
+                "Nothing to report — not a zero rate"
+              ) : (
+                <>
                   {continued} continued · {tookBreak} break · {sxd} self-excluded{" "}
                   <span className="text-text-subtle">
                     ({Math.round((continued / rcTotal) * 100)}/{Math.round((tookBreak / rcTotal) * 100)}/
                     {Math.round((sxd / rcTotal) * 100)}% of {rcTotal})
                   </span>
-                </p>
-              </>
-            )}
+                </>
+              )}
+            </p>
           </AdminCard>
         </div>
 
