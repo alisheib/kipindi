@@ -100,9 +100,23 @@ operator NET                     TZS   433,160   = 11.05% of losing stakes
 to TRA and 13 to GBT; the operator keeps 221."* This section exists so the next session does not
 re-derive it, and so nobody plans against a 13% that was never retained.
 
-⛔ **`levySplit()` in `payout.ts` RECORDS the split; it does not move it.** The 13% moves as one
-fee; TRA and GBT are a real onward liability, recorded per settlement and reported by
-`analytics.ts`. Do not add a second money movement for them.
+⛔ **THE LEVIES ARE REAL LEDGER MOVEMENTS, NOT A LABEL — AND THE ACCOUNTS ALREADY EXIST.**
+`levySplit()` in `payout.ts` computes the split; settlement books it as three separate credits.
+`HOUSE:TRA_LEVY` and `HOUSE:GBT_LEVY` are already defined in
+[`ledger.ts`](../src/lib/server/ledger.ts) (lines 16–17, 177–178), so **S1 does not create them** —
+it creates only the four Maswali-specific house accounts. §7's settlement group is:
+
+```
+CREDIT HOUSE:COMMISSION     + F − TRA − GBT
+CREDIT HOUSE:TRA_LEVY       + TRA
+CREDIT HOUSE:GBT_LEVY       + GBT
+```
+
+⚠️ **This corrects a wrong line that stood in this file for one commit** (it said the levies were
+recorded but not moved, and told S1 not to add a second movement — which would have contradicted
+§7 and left two accounts unposted). ⛔ **Assert conservation PER COMPONENT** — fee, TRA, GBT, each
+tier, each rollover — not on the total: §14 names a total-only check as one of the instruments
+that would go green while a component is wrong.
 
 ---
 
@@ -122,6 +136,26 @@ acceptance line is met.** Every session ends with something demonstrable.
 | **S6** | Fairness, notifications, reports, copy | Provable, talks to players, appears in the books. `/fairness` publishes `ticketSetHash` + count + lock time | A settled cycle appears in the monthly statutory pack with figures equal to `ledgerAccountBalance()` **to the shilling** |
 | **S7** | Adversarial hardening | Break it on purpose first. Void combinations 0–10 × tier thresholds × the cycle-void floor; rollover chains | Every finding fixed **or** recorded in `FAILURE-INVENTORY.md` with a decision · `red:maswali-*` controls per guard |
 | **S8** | The live drive | ⭐ **"Verified" means EXECUTED. A grep is not a chain; a seeded row is not a flow.** Production, real money, small figures | A written drive record in `docs/` with the cycle id, the figures and screenshots — the Up & Down round #267 standard |
+
+### The suites each chunk must create — name them, and they are in the pipeline
+
+⭐ **`test:all` auto-discovers every `test:*` script**, so a suite named `test:maswali-…` is
+covered by the pipeline the moment it exists. `e2e:` and `red:` are run explicitly.
+
+| Chunk | Suites it must add |
+|---|---|
+| **S1** | `test:maswali-law` · `test:maswali-config` — and `test:money-invariants`, `test:fee-model`, `test:loser-share-fee`, `test:rate-copy`, `test:dead-schema` must stay green, which is how the two existing products are *proved* untouched |
+| **S2** | `test:maswali-engine` (≥ 50 assertions) · `red:maswali-engine` — proven RED four ways: remove the question freeze, remove the second signature, remove the exactly-once gate, remove the void floor |
+| **S3** | `test:maswali-money` · `e2e:maswali-money` · `test:maswali-cap` · `e2e:maswali-fault` · `test:concurrency` |
+| **S6** | `test:maswali-fairness` · `test:maswali-reporting` — ⭐ *report == ledger, or the test fails* |
+| **S7** | `test:maswali-adversarial` · a `red:maswali-*` control **per guard** |
+
+⛔ **`e2e:maswali-money` DRIVES a purchase — it must never seed a ticket.** A seeded row proves the
+table accepts a write; it proves nothing about the purchase path, which is where the
+self-exclusion, cool-off, daily-loss-limit and bonus refusals live.
+
+⛔ **`test:maswali-cap` must hold under CONCURRENT purchases** — the count and the insert in one
+transaction, or two simultaneous buys both pass a check that was true when each read it.
 
 ### Tracking — tick here, and push in the SAME commit as the work
 
