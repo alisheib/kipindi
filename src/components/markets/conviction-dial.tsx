@@ -1296,7 +1296,23 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
                       opacity={0.55}
                       letterSpacing="0.04em"
                     >
-                      {tzs >= 1_000_000 ? `${tzs % 1_000_000 === 0 ? tzs / 1_000_000 : (tzs / 1_000_000).toFixed(1)}M` : tzs >= 1000 ? `${tzs / 1000}k` : String(tzs)}
+                      {/* ⛔ %-EXACT, AND UPPERCASE K (S-14, scan #1, 2026-08-28). The K branch
+                          read `${tzs / 1000}k`: lowercase — which is not this platform's
+                          grammar — and UNROUNDED, so any detent that is not a whole multiple
+                          of 1,000 printed its full float tail. Detents are `nice[] ×
+                          baseStake` and baseStake is an admin-set prop, so a 1,100 base makes
+                          this tick read "1.1000000000000001k" at 7.5px.
+                          ⚠️ NOT `formatCompactNumber`, and that is deliberate: this labels a
+                          value the player can SELECT, so it must name the number exactly. The
+                          shared formatter rounds — it would print a 2,500 detent as "3K" and
+                          label a tick with a stake nobody can pick. Same %-exact grammar as
+                          `stakeChipLabel`, which answers the same question for the quick-bet
+                          chips. */}
+                      {tzs >= 1_000_000
+                        ? `${tzs % 1_000_000 === 0 ? tzs / 1_000_000 : (tzs / 1_000_000).toFixed(1)}M`
+                        : tzs >= 1_000
+                          ? `${tzs % 1_000 === 0 ? tzs / 1_000 : (tzs / 1_000).toFixed(1)}K`
+                          : String(tzs)}
                     </text>
                   )}
                 </g>

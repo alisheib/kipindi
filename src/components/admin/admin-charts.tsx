@@ -8,7 +8,7 @@
  */
 
 import type { ReactNode } from "react";
-import { formatNumber } from "@/lib/utils";
+import { formatNumber, formatCompactNumber } from "@/lib/utils";
 
 export type SeriesPoint = { x: number; y: number };
 
@@ -506,16 +506,13 @@ export function AdminGauge({
  * ⭐ Passing the distance between ticks lets the formatter keep exactly enough precision to
  * tell them apart, and no more — so a money axis stays `24K` and a count axis of 0..1 becomes
  * `0, 0.25, 0.50, 0.75, 1.00` instead of lying.
+ *
+ * ⭐ THE BODY NOW LIVES IN `formatCompactNumber` (S-14, scan #1, 2026-08-28). It was already
+ * the utils thresholds with the "TZS " prefix removed, so it was promoted there rather than
+ * left as a fifth private spelling — and it carried the `step` branch above with it, which is
+ * why that promotion is a move and not a deletion. Two real defects came out in the wash:
+ * it divided the SIGNED value, so a negative tick emitted an ASCII hyphen instead of the
+ * U+2212 every other figure on this console uses; and it inherited S-01's branch-before-round,
+ * so a 999,600 tick printed "1000K".
  */
-function compact(n: number, step?: number): string {
-  const abs = Math.abs(n);
-  if (abs >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}B`;
-  if (abs >= 1_000_000)     return `${(n / 1_000_000).toFixed(abs >= 10_000_000 ? 0 : 1)}M`;
-  if (abs >= 1_000)         return `${Math.round(n / 1_000)}K`;
-  if (step !== undefined && step > 0 && step < 1) {
-    // Enough decimals that two adjacent ticks cannot collapse onto one label.
-    const decimals = step >= 0.1 ? 1 : step >= 0.01 ? 2 : 3;
-    return n.toFixed(decimals);
-  }
-  return Math.round(n).toString();
-}
+const compact = (n: number, step?: number): string => formatCompactNumber(n, { step });

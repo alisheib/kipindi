@@ -3205,7 +3205,7 @@ html[data-sheet-open] .route-enter { animation: none; }
    — 561–767 is never measured.
    THE ARITHMETIC (mono advance 0.6em; track = (inner − 2×16 gap)/3, less 16 padding-left and the
    1px hairline) at --type-display-2, 44px → 26.4px per character:
-     W      inner   usable/track   "TZS 1.3M" = 211   "TZS 999.9M" = 264
+     W      inner   usable/track   "TZS 1.3M" = 211   "TZS 999.9B" = 264
       561     529       148.7            WRAPS               WRAPS
       768     720       212.3        fits by 1.1px           WRAPS
       940     892       269.7            fits            fits by 5.7px
@@ -3214,6 +3214,18 @@ html[data-sheet-open] .route-enter { animation: none; }
    is at 1024 — which is also where `.kp-hero__headline` takes its own second step. From 561 to
    1023 the rail stays at --type-h2 (24px → 14.4px/char): 144px for the widest figure this book
    can print, against 148.7px of track at the narrowest width in that band.
+   ⚠️ THE EXEMPLAR READ "TZS 999.9M" AND THAT STRING DOES NOT EXIST (S-02, scan #1, 2026-08-28).
+   `formatTzsCompact` cannot emit it in any version: a ".9" mantissa in the M band occurs only
+   below 10M ("TZS 9.9M"), so a 999.9 always lands in B. THE ARITHMETIC IS UNCHANGED — 264 is
+   10 chars × 26.4px and 144 is 10 × 14.4px, and the real widest positive is still ten
+   characters — but the column was labelled with a figure this book cannot print, which is how
+   a type ladder comes to be sized against a fiction. The maximum is now MEASURED rather than
+   remembered: `test:money-format` §3 reconciles that character count against the function
+   itself and fails if either side moves.
+   ⛔ TEN, NOT ELEVEN, AND THAT IS DELIBERATE. The grammar's true widest output is eleven
+   characters ("TZS −999.9B" = 290.4px), which would wrap at 940. It is excluded here because
+   THIS rail prints Σ open pools — a sum of stakes, which cannot go negative. The sign belongs
+   to /admin/finance's NGR tile, which is neither this element nor this budget. */
    ⛔ Do NOT "fix" this with `white-space: nowrap`: that converts a wrap into a clip, and §A5
    forbids clipping money outright. The size step is the fix. */
 @media (min-width: 1024px) {

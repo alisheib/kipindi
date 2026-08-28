@@ -20,27 +20,103 @@ export function formatTzs(value: number): string {
  *    ≥ 1e6  → "TZS 1.3M"   (1 dp below 10M, 0 dp at or above it)
  *    ≥ 1e3  → "TZS 17K"    (rounded, UPPERCASE K)
  *    else   → "TZS 1,234"
- *  Negatives carry the real minus glyph "−" (U+2212), never a hyphen. The widest output is ten
- *  characters, "TZS 999.9M" — the width the landing hero's proof rail sizes its type steps
- *  against (see `.kp-proof__num` in globals.css).
+ *  Negatives carry the real minus glyph "−" (U+2212), never a hyphen.
+ *
+ *  ⭐ THE BAND IS CHOSEN AFTER ROUNDING, NOT BEFORE (S-01, scan #1, 2026-08-28). It used to be
+ *  chosen against the RAW value and rounded inside the branch, so every boundary had a window
+ *  where the mantissa rounded up out of its own band: 999,500 printed "TZS 1000K", 999,500,000
+ *  printed "TZS 1000M", and 9,999,999 printed "TZS 10.0M" while 10,000,000 printed "TZS 10M".
+ *  "TZS 1000K" is not a grammar this platform has, and it rendered on the landing hero — the
+ *  one place we ask a stranger to trust our numbers. The constants below are the PROMOTION
+ *  POINTS (where the mantissa would round to 1000), not the bands themselves.
+ *
+ *  ⚠️ THE WIDTH CONTRACT, MEASURED — the old one was false before the fix too. It claimed ten
+ *  characters, "TZS 999.9M"; that string is unreachable in either version, because a ".9"
+ *  mantissa in the M band exists only below 10M ("TZS 9.9M") and a 999.9 lands in B. Measured
+ *  over |value| < 1e12 by `test:money-format` §3:
+ *      widest positive — "TZS 999.9B"    10 characters
+ *      widest signed   — "TZS −999.9B"   11 characters, including the U+2212
+ *  ⛔ B is the last band, so above 999.5e9 it keeps growing ("TZS 1000.0B"). That is stated
+ *  rather than hidden: no figure this platform prints approaches a trillion shillings, and a T
+ *  band would only move the same edge one place left.
+ *  The landing hero's proof rail sizes its type steps against the POSITIVE maximum — it prints
+ *  a sum of open pools, which cannot go negative (see `.kp-proof__num` in globals.css).
  *
  *  ⚠️ WHY THIS EARNS A DOC BLOCK. The landing hero prints Σ open pools through this helper as
  *  "TZS 1.3M", while `/markets` printed the SAME quantity — same predicate, same book, both
  *  filtered by the same `discovery.ts` — as "TZS 1280k", because that one call site divided by
  *  1000 itself. Two adjacent player surfaces, one figure, two grammars. The A10 money-format
  *  guard only matches `.toLocaleString`, so a bare division walks straight past it.
- *  ⛔ Lowercase "k" is NOT this grammar. Four other sites compact numbers with their own
- *  thresholds (positions/pnl-chart, markets/conviction-dial, admin/admin-charts,
- *  updown/stake-math) and two of them are lowercase. Unifying those needs a unit-free SIBLING of
- *  this function, not a quiet edit here — they render different quantities, one of them is the
- *  betting dial, and changing this function's suffixes would move money copy on every surface. */
+ *  ⛔ Lowercase "k" is NOT this grammar, and the four divergent sites are now closed (S-14,
+ *  scan #1, 2026-08-28). They were unified through a unit-free SIBLING —
+ *  `formatCompactNumber` below — rather than by editing this function, exactly as this block
+ *  originally prescribed: they render different quantities, and changing these suffixes would
+ *  move money copy on every surface.
+ *    · admin/admin-charts   — its private `compact()` WAS the sibling; promoted, not rewritten
+ *    · positions/pnl-chart  — now the sibling with `explicitPlus`
+ *    · markets/conviction-dial — ⚠️ deliberately NOT the sibling. See below.
+ *    · updown/stake-math    — ⚠️ correct as it stands; left alone.
+ *
+ *  ⭐ THERE ARE TWO COMPACTION GRAMMARS AND THAT IS ON PURPOSE — the distinction is the thing
+ *  to preserve, because "unify them" is the obvious wrong move. THIS one APPROXIMATES a
+ *  quantity, so it rounds. `stakeChipLabel` and the conviction dial are %-EXACT, because they
+ *  name a number the player can SELECT: rounding a 2,500 detent to "3K" would label a control
+ *  with a stake nobody can pick. Same suffixes, opposite obligations. */
+/* ⭐ THE PROMOTION POINTS, ONE DEFINITION, shared by the money grammar and its unit-free
+   sibling below. Each is the value at which that band's own rounding would print a mantissa of
+   1000 — 999_500 / 1_000 rounds to 1000, and 999.5e6 / 1e6 at 0 dp is "1000" — so promoting AT
+   the floor is what makes "1000K" and "1000M" unrepresentable rather than merely unlikely.
+   ⛔ Two grammars reading two copies of these numbers is how they drifted in the first place
+   (utils said K at 1,000 while /markets divided by 1000 itself and said "1280k"). */
+const PROMOTE_TO_B = 999_500_000;
+const PROMOTE_TO_M = 999_500;
+/** Where the M band drops its decimal: 9.95e6 is the first value that rounds to "10.0". */
+const M_DROPS_DECIMAL = 9_950_000;
+const PROMOTE_TO_K = 1_000;
+
 export function formatTzsCompact(value: number): string {
   const abs = Math.abs(value);
   const sign = value < 0 ? "−" : "";
-  if (abs >= 1_000_000_000) return `TZS ${sign}${(abs / 1_000_000_000).toFixed(1)}B`;
-  if (abs >= 1_000_000) return `TZS ${sign}${(abs / 1_000_000).toFixed(abs >= 10_000_000 ? 0 : 1)}M`;
-  if (abs >= 1_000) return `TZS ${sign}${Math.round(abs / 1_000)}K`;
+  if (abs >= PROMOTE_TO_B) return `TZS ${sign}${(abs / 1_000_000_000).toFixed(1)}B`;
+  if (abs >= PROMOTE_TO_M) return `TZS ${sign}${(abs / 1_000_000).toFixed(abs >= M_DROPS_DECIMAL ? 0 : 1)}M`;
+  if (abs >= PROMOTE_TO_K) return `TZS ${sign}${Math.round(abs / 1_000)}K`;
   return `TZS ${sign}${TZ_NUMBER.format(abs)}`;
+}
+
+/**
+ * ⭐ THE UNIT-FREE SIBLING the doc block above asks for (S-14). Same bands, same promotion
+ * points, same U+2212 — no currency.
+ *
+ * ⛔ IT EXISTS BECAUSE THE ALTERNATIVE WAS WORSE, and the doc block above says so: four sites
+ * compacted numbers with their own thresholds and two used a lowercase "k". They render axis
+ * ticks and a betting dial, not money, so they must NOT gain a "TZS " prefix — but they must
+ * not disagree about where a thousand becomes a K either. Promoting `admin-charts`' private
+ * `compact()` here rather than authoring a fifth spelling: it was already the closest thing to
+ * this, byte-for-byte the utils thresholds with the prefix removed.
+ *
+ * `step` is the sub-1 tick-precision branch it brought with it (finding A4): when adjacent
+ * axis ticks are less than 1 apart, enough decimals that two of them cannot collapse onto the
+ * same label. `explicitPlus` is for signed axes that label both ends of a range.
+ *
+ * ⚠️ NOT FOR STAKE DETENTS. `stakeChipLabel` and the conviction dial deliberately print the
+ * EXACT selectable value (a 2,500 detent must read "2.5K", never a rounded "3K"), so they use
+ * a %-exact grammar instead. Two grammars, because they answer different questions: this one
+ * approximates a quantity, that one names a number the player can pick.
+ */
+export function formatCompactNumber(
+  value: number,
+  opts: { step?: number; explicitPlus?: boolean } = {},
+): string {
+  const abs = Math.abs(value);
+  const sign = value < 0 ? "−" : opts.explicitPlus && value > 0 ? "+" : "";
+  if (abs >= PROMOTE_TO_B) return `${sign}${(abs / 1_000_000_000).toFixed(1)}B`;
+  if (abs >= PROMOTE_TO_M) return `${sign}${(abs / 1_000_000).toFixed(abs >= M_DROPS_DECIMAL ? 0 : 1)}M`;
+  if (abs >= PROMOTE_TO_K) return `${sign}${Math.round(abs / 1_000)}K`;
+  if (opts.step !== undefined && opts.step > 0 && opts.step < 1) {
+    const decimals = opts.step >= 0.1 ? 1 : opts.step >= 0.01 ? 2 : 3;
+    return `${sign}${abs.toFixed(decimals)}`;
+  }
+  return `${sign}${Math.round(abs)}`;
 }
 
 /**

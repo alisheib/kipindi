@@ -201,6 +201,8 @@
     "test:search": "tsx scripts/search-grammar.test.mts",
     "test:search-adoption": "tsx scripts/search-adoption.test.mts",
     "test:confirm-gate": "tsx scripts/confirm-gate.test.mts",
+    "test:money-format": "tsx scripts/money-format.test.mts",
+    "red:money-format": "node scripts/red-money-format.mjs",
     "red:confirm-gate": "node scripts/red-confirm-gate.mjs",
     "red:search-adoption": "node scripts/red-search-adoption.mjs",
     "test:card-share": "tsx scripts/card-share.test.mts",

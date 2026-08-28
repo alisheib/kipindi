@@ -13,13 +13,27 @@
  * max / 0 / min of the series.
  */
 
+import { formatCompactNumber } from "@/lib/utils";
+
 type Point = { label: string; value: number }; // cumulative TZS P&L, chronological
 
-const short = (n: number) => {
-  const a = Math.abs(n);
-  const sign = n < 0 ? "\u2212" : n > 0 ? "+" : "";
-  return a >= 1_000_000 ? `${sign}${(a / 1_000_000).toFixed(1)}M` : `${sign}${Math.round(a / 1000)}k`;
-};
+/**
+ * The axis labels, in the platform's one compaction grammar (S-14, scan #1, 2026-08-28).
+ *
+ * \u26d4 THIS WAS A PRIVATE FIFTH SPELLING and it disagreed with the grammar in four ways, not
+ * one. Lowercase "k" was only the visible half:
+ *   \u00b7 NO B band at all \u2014 1.2e9 printed "1200.0M"
+ *   \u00b7 NO 0-dp step at 10M \u2014 "12.3M" where every other surface says "12M"
+ *   \u00b7 NO 1,000 floor, so EVERY sub-1000 value collapsed to "0k". A \u00b1400 TZS axis labelled
+ *     both of its ends "+0k" and "\u22120k" \u2014 two different numbers, printed identically, on a
+ *     chart whose header comment promises "no normalisation lies: the axis labels are the
+ *     real max / 0 / min of the series".
+ *   \u00b7 and it shared S-01's branch-before-round, so 999,600 printed "1000k".
+ * The leading "+" is the one genuine difference this surface needs \u2014 it labels both ends of a
+ * signed range \u2014 so it is a parameter of the shared formatter rather than a reason to keep a
+ * local copy. No "TZS " prefix: the card's own heading carries the unit.
+ */
+const short = (n: number) => formatCompactNumber(n, { explicitPlus: true });
 
 export function PnlChart({ data, ariaLabel }: { data: Point[]; ariaLabel: string }) {
   // Prepend the zero start so the walk always begins at break-even.
