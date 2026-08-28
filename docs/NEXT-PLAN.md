@@ -66,7 +66,7 @@ resolved in the document; decide when you reach them rather than discovering it 
 > - 💵 **The USD→TZS rate and its date** in *Admin → AI usage → Cycle settings* (owed since session 59; every shilling figure renders `—` until then, deliberately).
 > - ⏰ **`E-195`** — ⛔ **check from ~2026-09-15.** `www` behind Cloudflare at `Full (strict)` renews its origin certificate through a path that has never carried one; it **expires 2026-10-15**, and under `strict` that is the whole site, on a date, with no deploy to blame.
 >
-> ▶ **NEXT SESSION STARTS AT [`SESSION-PROMPT-CLOSE-THE-BOARD.md`](SESSION-PROMPT-CLOSE-THE-BOARD.md)** — the six open items, ordered money-first, each with its measurement and its guard. Then Unit D (#6) in [`SESSION-PROMPT-JAY-COMMENTS.md`](SESSION-PROMPT-JAY-COMMENTS.md) §1** — its ledger is backfilled and honest now (**A · B · C ✅**), so tick your row in the commit that ships it.
+> ⛔ **SUPERSEDED DIRECTIVE — DO NOT FOLLOW. THE BOARD AT THE TOP OF THIS FILE IS THE ENTRY POINT.** `CLOSE-THE-BOARD` was superseded by `FINISH-THE-BOARD` (2026-08-25) and the campaign has moved on four sessions since. Kept as the record of what this block said. Original text: **NEXT SESSION STARTS AT [`SESSION-PROMPT-CLOSE-THE-BOARD.md`](SESSION-PROMPT-CLOSE-THE-BOARD.md)** — the six open items, ordered money-first, each with its measurement and its guard. Then Unit D (#6) in [`SESSION-PROMPT-JAY-COMMENTS.md`](SESSION-PROMPT-JAY-COMMENTS.md) §1** — its ledger is backfilled and honest now (**A · B · C ✅**), so tick your row in the commit that ships it.
 
 > # ⭐ SESSION 56 — `/notifications`, THE DOOR THE BELL CANNOT BE (2026-08-22)
 >
@@ -308,7 +308,8 @@ resolved in the document; decide when you reach them rather than discovering it 
 >
 > ---
 
-> # ⭐ CURRENT TRUTH — 2026-08-20 (after session 52). READ THIS BLOCK, THEN STOP.
+> # ⚪ WAS "CURRENT TRUTH" ON 2026-08-20 (after session 52) — ⛔ IT IS NOT CURRENT AND YOU MUST NOT STOP HERE.
+> ⛔ **Nine sessions have shipped since.** The entry point is THE BOARD at the top of this file. This block is kept as a record of what was true that day; its original heading told the reader to stop reading, which is exactly why it had to be relabelled rather than left.
 >
 > Everything below this block is **history**: correct when written, superseded in places. This block
 > is the whole remaining programme, in the order to do it. ⛔ **One door per unit** — each item names
