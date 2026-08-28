@@ -51,6 +51,7 @@ if (!process.env.DATABASE_URL) { console.error("no DATABASE_URL"); process.exit(
 const { marketStore } = await import("../src/lib/server/market-dal.ts");
 const { createMarket, resolveDueMarket, resolveMarket, settleMarket, buyPosition, getMarket } =
   await import("../src/lib/server/market-service.ts");
+const { auditFlush } = await import("../src/lib/server/audit.ts");
 const { prisma: prismaFn } = await import("../src/lib/server/prisma.ts");
 // `prisma()` is a FUNCTION here, not a client — it returns null when no DATABASE_URL is
 // set, which is how the app boots with no database at all. Resolve it once, loudly.
@@ -273,5 +274,12 @@ async function destroy(confirmed: boolean) {
 if (cmd === "mint") await mint();
 else if (cmd === "destroy") await destroy(process.argv.includes("--yes"));
 else await list();
+
+// ⛔ DRAIN THE AUDIT QUEUE BEFORE EXITING (E-66), AND THIS GATE CAUGHT THIS FILE.
+// `audit()` is fire-and-forget and the chain is HMAC-linked, so a script that mutates
+// audited state — this one creates markets, places real stakes, voids and settles — and then
+// exits can drop entries that were queued but never hashed. A missing link in an
+// append-only chain is exactly the signal the chain exists to produce.
+await auditFlush();
 await prisma.$disconnect();
 process.exit(0);
