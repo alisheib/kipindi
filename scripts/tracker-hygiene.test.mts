@@ -163,7 +163,15 @@ const claimsOpen = (s: string) => !RESOLVED.test(s) && UNRESOLVED.test(s);
   ok("§2 …and it is §6b's TOPMOST block, not a superseded one",
     handoff.found && !handoff.stale,
     "the marker matched outside the newest handoff block — the anchor has drifted again");
-  const referenced = [...new Set((resume.match(/\b[EGAH]-\d+\b/g) ?? []))];
+  /* ⛔ THE LOOKBEHIND IS LOAD-BEARING, added 2026-08-29. `\b[EGAH]-\d+\b` alone reads `A-04` out
+     of `DG-A-04`: a hyphen is a non-word character, so `\b` matches happily between the two, and
+     `DESIGN-GATE-2026-08-28`'s ids — `DG-A-01…23` and `DG-P-01…14` — are now permanent vocabulary
+     in this document. The first handoff to name one took this suite 3-red for three findings that
+     do not exist and were never claimed to. ⚠️ It is a FALSE failure, which is the worse kind: it
+     points at the handoff, so the fix it invites is to edit the handoff until the guard is quiet
+     — deleting true text to satisfy a broken instrument. Excluding a letter or a hyphen before the
+     family letter keeps every real `E-246` / `A-04` reference and drops every `DG-`-prefixed one. */
+  const referenced = [...new Set((resume.match(/(?<![-A-Za-z])[EGAH]-\d+\b/g) ?? []))];
   ok("§2 …and it names findings", referenced.length > 0, "no finding ids in the resume list");
   for (const id of referenced) {
     ok(`§2 ${id} (named in RESUME AT) exists in the findings register`, ids.has(id),
