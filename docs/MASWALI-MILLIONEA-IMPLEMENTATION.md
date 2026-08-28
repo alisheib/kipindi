@@ -1014,6 +1014,35 @@ times. Corrected:
 money is mono — that is settled), a bespoke colour for the product (B1: palette is royal 268), or
 any animation vocabulary of its own (M8).
 
+### §12.6 · The commission — where the design work lives
+
+⭐ **The design is commissioned as a BOUNDED set, and the boundary is one rule: design only what
+§0 cannot change.** D-2 alone (guarantee vs progressive) makes the hero two different screens
+rather than two states of one, so commissioning the full product design before §0 is answered buys
+a hero with even odds of being wrong.
+
+| | |
+|---|---|
+| **The commission** | [`design-brief/maswali-2026-08/BRIEF.md`](design-brief/maswali-2026-08/BRIEF.md) — the scope argument, the copy-paste prompt, the exact attachment list, and the acceptance checks |
+| **The outbound package** | `design-brief/maswali-2026-08/maswali-design-package-2026-08-28.zip` — ⛔ **untracked by design.** `.gitignore`'s *"OUTBOUND DESIGN COMMISSIONS"* section keeps every commission package out of the repo; regenerate it from the brief rather than committing it |
+| **⭐ THE HANDOVER LANDS IN** | **`docs/design-brief/maswali-2026-08/handover/`** — one folder, everything Maswali-design inside it. Named to match the existing `handover-2026-08/` convention |
+
+**Four artboard sets are in scope**, all invariant to every §0 decision: **A** the ten-row slip at
+360 and 768 *in Swahili* (the hardest layout in the product) · **B** the loss receipt at 360 (the
+highest-traffic screen, since 99% of tickets lose) · **C** the money figure in gold vs mono, side
+by side (⭐ the artboard that settles §12.1 row 2 with management — prose will not win that
+argument and a picture will) · **D** the three tier glyphs, extending the existing 184 at a 24-grid
+and 1.9 stroke.
+
+⛔ **Out of scope until §0:** the full hero composition, the admin console, the win-seal amount,
+and every piece of acquisition art — that last one waits on **D-1**, because nobody should brief
+marketing material for a product that may not be licensed.
+
+⚠️ **When the handover arrives, check `TOKENS-USED.md` first and mechanically:** every name in it
+must appear in `tokens-LOCKED.css`. One invented colour means the deliverable cannot be built
+without amending a frozen system, and that is the failure this whole commission is shaped to
+prevent.
+
 Everything else — layout, every state, motion, 360/768/1280/1920, contrast, copy structure — is
 Claude Code from the kit, held there by `test:contrast`, `test:type-scale`,
 `test:ui-consistency`, `test:design-frozen` and `test:responsive`.
