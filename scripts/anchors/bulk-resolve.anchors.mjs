@@ -135,8 +135,21 @@ export const MUTATIONS = [
     name: "🔴 POCA §16 · a staged row becomes bulk-countersignable",
     file: ELIG,
     expect: "7.9 two-admin · ANOTHER officer's stage-1 is refused too",
-    from: `  const staged = requireTwoOfficer && !!m.resolutionStage1By;`,
-    to: `  const staged = requireTwoOfficer && !!m.resolutionStage1By && m.resolutionStage1By === officerId;`,
+    from: `  const staged = !!m.resolutionStage1By;`,
+    to: `  const staged = !!m.resolutionStage1By && m.resolutionStage1By === officerId;`,
+  },
+  {
+    /* ⭐ THE SECOND HALF OF THE SAME RULE, and the one the original mutation could not
+       reach. Re-coupling `staged` to the CURRENT POLICY is the defect that shipped: the
+       refusal vanished the moment two-admin was toggled off, and `resolveMarket` drops its
+       own stage-1 and different-officer guards under that same setting — so the officer who
+       staged ten markets could seal all ten with their own press. A mutation that only
+       narrows `staged` to "my own signature" leaves the policy coupling untested. */
+    name: "🔴 POCA §16 · a staged row un-stages itself when two-admin is switched off",
+    file: ELIG,
+    expect: "16.1 a row carrying a stage-1 signature is NOT eligible with the policy OFF",
+    from: `  const staged = !!m.resolutionStage1By;`,
+    to: `  const staged = requireTwoOfficer && !!m.resolutionStage1By;`,
   },
   {
     name: "the claim TTL drifts away from the engine's",

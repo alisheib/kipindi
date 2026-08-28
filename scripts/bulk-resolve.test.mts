@@ -36,7 +36,7 @@ import {
 import { decideAutoResolve } from "../src/lib/server/market-service.ts";
 import { sourceMatchesAny, type TrustedSource } from "../src/lib/server/source-registry.ts";
 import { BULK_REASON } from "../src/app/admin/resolver-queue/bulk-verdict-copy.ts";
-import { compareBy } from "../src/app/admin/resolver-queue/page.tsx";
+import { compareBy, parseSort, SORT_OPTIONS } from "../src/app/admin/resolver-queue/queue-order.ts";
 
 const ROOT = process.cwd();
 let pass = 0, fail = 0;
@@ -805,8 +805,15 @@ const V = (m: VerdictMarket, over: Partial<Parameters<typeof bulkVerdictFor>[0]>
   // The page half: the order must survive a page turn, or page 2 is a different queue.
   const p = read("src/app/admin/resolver-queue/page.tsx");
   ok("15.8 the pager carries the sort", /buildBaseHref\("\/admin\/resolver-queue", \{[^}]*sort: sp\.sort/.test(p));
+  /* ⭐ THE BEHAVIOUR, not the spelling. This used to match the parsing expression as SOURCE
+     TEXT in page.tsx, so moving the parser into its own module broke a guard while the
+     product was fine — a check pinned to a location rather than to what it guarantees. */
   ok("15.9 an unknown ?sort= falls back to the default rather than emptying the queue",
-     /SORT_OPTIONS as readonly \{ value: string \}\[\]\)\.some\(\(o\) => o\.value === sp\.sort\)/.test(p));
+     parseSort("nonsense") === "due" && parseSort(undefined) === "due" && parseSort("") === "due",
+     `${parseSort("nonsense")} / ${parseSort(undefined)} / ${parseSort("")}`);
+  ok("15.9b …and every offered option is accepted verbatim",
+     SORT_OPTIONS.every((o) => parseSort(o.value) === o.value),
+     SORT_OPTIONS.map((o) => `${o.value}→${parseSort(o.value)}`).join(" "));
   ok("15.10 the sort runs over the FILTERED SET, before the page slice",
      before(p, ".sort(compareBy(sortKey))", "pending.slice("));
 }

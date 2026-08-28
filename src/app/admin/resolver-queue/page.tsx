@@ -31,6 +31,7 @@ import { ControlLocked } from "@/components/admin/control-locked";
 import { formatDateTime } from "@/lib/utils";
 import { CEREMONY, SELECTION } from "@/lib/admin-status-lexicon";
 import { AdminBody } from "@/components/admin/admin-body";
+import { SORT_OPTIONS, parseSort, compareBy } from "./queue-order";
 
 export const metadata = { title: "Admin · Resolver queue" };
 export const dynamic = "force-dynamic";
@@ -46,31 +47,6 @@ const WINDOW_OPTIONS = [
 
 const CATEGORY_OPTIONS: readonly MarketCategory[] = ["sports", "macro", "weather", "crypto", "culture", "tech", "other"];
 
-/**
- * ⭐ THE ORDER IS A TRIAGE DECISION, so it belongs to the officer.
- *
- * The queue was hardcoded to `resolutionAt` ascending — "most overdue first" — which is the
- * right DEFAULT and was the only order available. ⛔ The page's own header calls the money
- * held the triage signal and renders it on every row, and it was the one column that could
- * not be ordered by: with 27,615 markets and a 20-row page, the market holding the largest
- * pool can sit on page 40 while the officer works through twenty markets holding nothing.
- *
- * ⛔ SORTING IS SERVER-SIDE, over the WHOLE filtered set, before `slice`. A client-side sort
- * of the current page would reorder twenty rows and call it a queue order — the same lie as
- * a page-scoped "select all" that says "all", which this page already learned not to tell.
- *
- * Every comparator is TOTAL and ends in a tie-break on `resolutionAt` then `id`: a sort with
- * ties is unstable across requests, so an officer paging through a queue ordered by a field
- * that ties (pool = 0 on hundreds of rows) would see rows jump between pages and could skip
- * one entirely without ever knowing.
- */
-const SORT_OPTIONS = [
-  { value: "due", label: "Most overdue first" },
-  { value: "money", label: "Most money held" },
-  { value: "confidence", label: "Highest AI confidence" },
-  { value: "newest", label: "Newest first" },
-] as const;
-type SortKey = (typeof SORT_OPTIONS)[number]["value"];
 
 /**
  * A duration in the largest sensible unit — minutes, then hours, then days.
@@ -103,50 +79,6 @@ function timeUntil(iso: string): { label: string; tone: "default" | "soon" | "ov
   return { label: `${Math.floor(h / 24)}d`, tone: "default" };
 }
 
-/**
- * The comparators, one place, TOTAL and deterministic.
- *
- * ⛔ EVERY ONE ENDS IN THE SAME TIE-BREAK. `pool` is 0 on a large share of the queue and
- * `sentinelConfidence` is NULL on every row assessed before that column existed, so a
- * comparator that returned 0 for those would leave their relative order to the engine — and
- * an unstable order under pagination lets a row swap pages between two clicks and never be
- * seen. `id` is the final discriminator because it is unique; without it two rows created in
- * the same millisecond still tie.
- *
- * ⛔ A NULL CONFIDENCE SORTS LAST UNDER "highest confidence", never as 0 — "no reading" and
- * "read it at zero" are different statements, and the platform's no-fabrication rule (A-5)
- * is exactly about not collapsing them. Ranking them last is honest: the officer asked for
- * the most confident first, and a row with no reading is not one of them.
- */
-type SortableMarket = {
-  id: string; resolutionAt: string; createdAt: string;
-  yesPool: number; noPool: number;
-  /* `undefined` as well as `null`: a row that never carried the column and a row whose
-     column is explicitly empty are the same statement here — no reading. Both sort last
-     under "highest confidence", and `== null` below matches both deliberately. */
-  sentinelConfidence?: number | null;
-};
-export function compareBy(key: SortKey): (a: SortableMarket, b: SortableMarket) => number {
-  const tie = (a: SortableMarket, b: SortableMarket) =>
-    Date.parse(a.resolutionAt) - Date.parse(b.resolutionAt) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
-  if (key === "money") {
-    return (a, b) => (b.yesPool + b.noPool) - (a.yesPool + a.noPool) || tie(a, b);
-  }
-  if (key === "confidence") {
-    return (a, b) => {
-      const ac = a.sentinelConfidence, bc = b.sentinelConfidence;
-      if (ac == null && bc != null) return 1;
-      if (bc == null && ac != null) return -1;
-      if (ac != null && bc != null && ac !== bc) return bc - ac;
-      return tie(a, b);
-    };
-  }
-  if (key === "newest") {
-    return (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || tie(a, b);
-  }
-  return tie;
-}
-
 export default async function ResolverQueuePage({
   searchParams,
 }: {
@@ -154,10 +86,8 @@ export default async function ResolverQueuePage({
 }) {
   const sp = await searchParams;
   const windowFilter = (WINDOW_OPTIONS as readonly { value: string }[]).some((o) => o.value === sp.window) ? sp.window! : "24h";
-  /* An unknown `?sort=` falls back to the default rather than throwing or rendering empty —
-     the same shape the window and category filters already use. */
-  const sortKey: SortKey = (SORT_OPTIONS as readonly { value: string }[]).some((o) => o.value === sp.sort)
-    ? sp.sort as SortKey : "due";
+
+  const sortKey = parseSort(sp.sort);
   const categoryFilter = (CATEGORY_OPTIONS as readonly string[]).includes(sp.category ?? "") ? sp.category as MarketCategory : "";
   const query = (sp.q ?? "").trim().toLowerCase();
   const parsedQ = parseQuery(query, { fields: fieldNames(MARKET_SEARCH) });
