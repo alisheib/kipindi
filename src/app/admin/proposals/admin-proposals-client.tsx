@@ -566,9 +566,16 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
 
       {/* Config — 4-state feature machine + economics */}
       <div className="overflow-hidden rounded-lg glass-panel">
-        <div className="flex flex-col gap-3 border-b border-border px-4 py-3.5 sm:flex-row sm:items-center sm:gap-3.5" style={{ background: meta.selBg }}>
+        {/* ⛔ `sm:gap-4` (20px), NOT `sm:gap-3.5` (S-09, scan #1, 2026-08-28). The intent here is
+            plainly "a little more air once this becomes a horizontal row" — but 3.5 is NOT one of
+            the keys tailwind.config.ts overrides, so it is stock 14px against a base `gap-3` of
+            16px. The row TIGHTENED by 2px at exactly the breakpoint where the content goes side
+            by side and needs more.
+            ⚠️ There is no legal in-between: above gap-3 (16px) the overridden scale offers 4 =
+            20px, then 5 = 24px. 3.5 is the one 14px rung and it sits BELOW 3, not above it. */}
+        <div className="flex flex-col gap-3 border-b border-border px-4 py-3.5 sm:flex-row sm:items-center sm:gap-4" style={{ background: meta.selBg }}>
           <div className="flex min-w-0 flex-1 items-start gap-3.5">
-            {/* ⚠️ LITERALS, not `h-10 w-10` — spacing is overridden (tailwind.config.ts:200-215)
+            {/* ⚠️ LITERALS, not `h-10 w-10` — spacing is overridden (tailwind.config.ts:204-219)
                 so `h-10` was 80px, while the sibling `rounded-[10px]` was already written for a
                 40px tile. Size and radius now agree. */}
             <span className="grid h-[40px] w-[40px] shrink-0 place-items-center rounded-[10px]" style={{ background: "color-mix(in oklab, var(--bg-base) 45%, transparent)", color: meta.fg, border: `1px solid ${meta.selBorder}` }}>

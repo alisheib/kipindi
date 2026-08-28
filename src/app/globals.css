@@ -38,7 +38,19 @@
   --royal-900: oklch(18% 0.080 268);
   --royal-950: oklch(13% 0.060 268);
 
-  /* DEPRECATED aliases of --royal-* — backward compat only (audit L5). */
+  /* DEPRECATED aliases of --royal-* — backward compat only (audit L5).
+     ⭐ NOTHING IN THIS SHEET READS THEM ANY MORE (S-11, scan #1, 2026-08-28), which was the
+     point. `--royal` — the brand's own primary semantic token — used to resolve
+     --royal → --teal-500 → --royal-500: a round trip through the exact family
+     DESIGN_AUTHORITY §B1 calls superseded. It rendered correctly, and it was a tripwire aimed
+     at the next person to do the obvious tidy-up — deleting this block would have broken the
+     brand colour platform-wide, from a commit that looked like housekeeping.
+     ⚠️ TWELVE consumers, not the five the scan named: --bet-pool, --bet-stake, --glow-blue,
+     --g-brand and --g-aurora carried the same fuse. Repointing only --royal* would have left it
+     armed on five more tokens and made the next deletion look safer than it was.
+     ⛔ Every value is unchanged BY CONSTRUCTION — each alias below is literally `var(--royal-N)`,
+     so the substitution is value-identical rather than merely equivalent. The block stays (it is
+     a published contract); `test:design-frozen` keeps the raw-value ratchet over it. */
   --teal-50:  var(--royal-50);
   --teal-100: var(--royal-100);
   --teal-200: var(--royal-200);
@@ -502,11 +514,11 @@
   --gold-subtle:        color-mix(in oklab, var(--gold-500) 18%, transparent);
   --gold-subtle-hover:  color-mix(in oklab, var(--gold-500) 30%, transparent);
 
-  --royal:               var(--teal-500);
-  --royal-hover:         var(--teal-400);
-  --royal-active:        var(--teal-600);
-  --royal-subtle:        color-mix(in oklab, var(--teal-500) 22%, transparent);
-  --royal-subtle-hover:  color-mix(in oklab, var(--teal-500) 30%, transparent);
+  --royal:               var(--royal-500);
+  --royal-hover:         var(--royal-400);
+  --royal-active:        var(--royal-600);
+  --royal-subtle:        color-mix(in oklab, var(--royal-500) 22%, transparent);
+  --royal-subtle-hover:  color-mix(in oklab, var(--royal-500) 30%, transparent);
   --royal-fg:            var(--pearl-50);
 
   /* ⛔ D2: this family reads `--success-500`, never `--yes-*`. See the ruling at
@@ -533,8 +545,8 @@
   --bet-win:    var(--yes-500);
   --bet-lose:   var(--no-500);
   --bet-draw:   var(--text-subtle);
-  --bet-pool:   var(--teal-400);
-  --bet-stake:  var(--teal-300);
+  --bet-pool:   var(--royal-400);
+  --bet-stake:  var(--royal-300);
   --bet-jackpot: var(--gold-500);
   --bet-streak: var(--gold-400);
   --bet-hot:    var(--no-400);
@@ -614,7 +626,7 @@
      one file. INTAKE.md §2a. */
   --shadow-card-top: var(--edge-lit);
   --glow-gold:    0 0 24px -4px color-mix(in oklab, var(--gold-500) 60%, transparent);
-  --glow-blue:    0 0 24px -4px color-mix(in oklab, var(--teal-400) 60%, transparent);
+  --glow-blue:    0 0 24px -4px color-mix(in oklab, var(--royal-400) 60%, transparent);
   --glow-win:     0 0 32px -4px color-mix(in oklab, var(--yes-400) 60%, transparent);
   --glow-jackpot: 0 0 60px -8px color-mix(in oklab, var(--gold-400) 70%, transparent);
   /* The "this one is selected" brand halo — the calendar's chosen day, the active
@@ -740,11 +752,11 @@
                  0 2px 4px oklch(6% 0.06 268 / 0.55),
                  0 14px 34px -10px oklch(4% 0.04 268 / 0.75);
 
-  --g-brand:    linear-gradient(135deg, var(--teal-700), var(--teal-500));
+  --g-brand:    linear-gradient(135deg, var(--royal-700), var(--royal-500));
   --g-gold:     linear-gradient(180deg, var(--gold-300), var(--gold-600));
   --g-jackpot:  radial-gradient(circle at 30% 20%, var(--gold-300), var(--gold-700));
-  --g-aurora:   linear-gradient(135deg, var(--teal-700), var(--teal-500), var(--gold-700));
-  --g-pool:     linear-gradient(135deg, var(--teal-800), var(--teal-600));
+  --g-aurora:   linear-gradient(135deg, var(--royal-700), var(--royal-500), var(--gold-700));
+  --g-pool:     linear-gradient(135deg, var(--royal-800), var(--royal-600));
 
   /* Hero gradient — sapphire royal + gilt + emerald + rose finishing pass */
   --hero-grad:        linear-gradient(135deg, oklch(28% 0.16 268) 0%, oklch(40% 0.20 268) 100%);
@@ -997,7 +1009,7 @@ body {
   letter-spacing: 0.005em;
   text-shadow: 0 1px 0 oklch(20% 0.10 268 / 0.40);
 }
-.btn-primary:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)) saturate(1.04) drop-shadow(0 6px 16px color-mix(in oklab, var(--teal-400) 30%, transparent)); }
+.btn-primary:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)) saturate(1.04) drop-shadow(0 6px 16px color-mix(in oklab, var(--royal-400) 30%, transparent)); }
 
 /* v2 kit: one flat-solid family — YES/NO/gold are SOLID fills (not gradients),
    with an EVEN 1px inset ring + soft shadow. (primary keeps its gradient.)
