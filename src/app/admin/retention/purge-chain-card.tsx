@@ -17,8 +17,9 @@ import { Spinner } from "@/components/ui/spinner";
 import { useDeferredToast } from "@/components/ui/toast";
 import { formatTzsCompact } from "@/lib/utils";
 import {
-  purgeCostAction, purgeStage1Action, purgeStage2Action, purgeAdvanceAction, purgeCancelAction,
+  purgeCostAction, purgeStage1Action, purgeStage2Action, purgeAdvanceAction, purgeCancelAction, purgeJobAction,
 } from "./purge-actions";
+import { useMayAct, useActDisabledReason } from "@/components/admin/act-gate";
 import type { PurgeCost, PurgeJob } from "@/lib/server/chain-purge";
 
 /**
@@ -52,6 +53,12 @@ export function PurgeChainCard({ chains, stage1, viewerId }: {
   const [confirming, setConfirming] = useState(false);
   const [job, setJob] = useState<PurgeJob | null>(null);
   const [pending, start] = useTransition();
+  /* ⛔ A PURGE IS THE MOST DESTRUCTIVE CONTROL ON THE PLATFORM, and this card shipped
+     without consulting the act gate at all — so a role granted READ access to retention
+     was handed a working two-officer purge ceremony. Every other admin surface asks; the
+     one that deletes a chain and its history must not be the exception. */
+  const mayAct = useMayAct();
+  const actReason = useActDisabledReason();
   const { toast } = useDeferredToast(pending);
 
   const chain = chains.find((c) => c.id === chainId);
@@ -73,6 +80,29 @@ export function PurgeChainCard({ chains, stage1, viewerId }: {
   }, []);
 
   useEffect(() => { setCost(null); setCostError(null); loadCost(chainId); }, [chainId, loadCost]);
+
+  /**
+   * ⛔ THE RESUME THE COMMENT BELOW PROMISES — it was asserted and never implemented.
+   * `job` began as `null` on every mount and only became non-null by starting a purge IN
+   * THIS TAB, so an officer who closed the tab mid-delete came back to a card showing no
+   * job at all: the durable row said `deleting`, the chain was half-purged, and the only
+   * surface that could finish it rendered a fresh "Start" button. The batches are driven by
+   * the client, so an unadopted job is a job that never continues.
+   *
+   * Adoption is per chain and does not fight the advance loop: it takes the stored job only
+   * when the card is not already holding one for this chain, and setting it is exactly what
+   * makes the loop below pick the batches back up.
+   */
+  useEffect(() => {
+    if (!chainId) return;
+    let cancelled = false;
+    (async () => {
+      const r = await purgeJobAction(chainId);
+      if (cancelled || !r.ok || !r.data) return;
+      setJob((cur) => (cur && cur.chainId === chainId ? cur : r.data));
+    })();
+    return () => { cancelled = true; };
+  }, [chainId]);
 
   /**
    * ⭐ THE CLIENT DRIVES THE BATCHES, and the bar is determinate because of it. There is no
@@ -133,7 +163,7 @@ export function PurgeChainCard({ chains, stage1, viewerId }: {
 
         {job && (
           <div className="rounded-md border border-border bg-bg-overlay p-3 space-y-2">
-            <p className="font-mono text-micro uppercase tracking-[0.10em] text-text-tertiary">
+            <p className="font-mono text-micro uppercase tracking-widest text-text-tertiary">
               {job.phase === "exporting" && "Writing the evidence pack…"}
               {job.phase === "deleting" && "Deleting rounds…"}
               {job.phase === "verifying" && "Verifying nothing remains…"}
@@ -163,7 +193,7 @@ export function PurgeChainCard({ chains, stage1, viewerId }: {
               You recorded the reason for this chain. A different compliance officer must complete it.
             </AttestationRail>
             <Button
-              type="button" variant="ghost" loading={pending}
+              type="button" variant="ghost" loading={pending} disabled={!mayAct} title={actReason}
               onClick={() => start(async () => {
                 const r = await purgeCancelAction(chainId);
                 toast(r.ok ? { title: "Ceremony withdrawn", variant: "success" } : { title: "Couldn't withdraw", description: r.error, variant: "danger" });
@@ -186,7 +216,8 @@ export function PurgeChainCard({ chains, stage1, viewerId }: {
               type="button"
               variant="ghost"
               loading={pending}
-              disabled={!cost || reason.trim().length < 5}
+              disabled={!mayAct || !cost || reason.trim().length < 5}
+              title={actReason}
               onClick={() => start(async () => {
                 const fd = new FormData();
                 fd.set("chainId", chainId); fd.set("reason", reason); fd.set("basis", basis);
@@ -203,11 +234,11 @@ export function PurgeChainCard({ chains, stage1, viewerId }: {
 
         {!job && theirs && (
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="danger" disabled={!cost} onClick={() => setConfirming(true)}>
+            <Button type="button" variant="danger" disabled={!mayAct || !cost} title={actReason} onClick={() => setConfirming(true)}>
               Confirm as second officer
             </Button>
             <Button
-              type="button" variant="ghost" loading={pending}
+              type="button" variant="ghost" loading={pending} disabled={!mayAct} title={actReason}
               onClick={() => start(async () => {
                 const r = await purgeCancelAction(chainId);
                 toast(r.ok ? { title: "Ceremony withdrawn", variant: "success" } : { title: "Couldn't withdraw", description: r.error, variant: "danger" });
@@ -288,7 +319,7 @@ function CostPanel({ cost, dense = false }: { cost: PurgeCost; dense?: boolean }
   );
   return (
     <div className={dense ? "" : "rounded-md border border-border bg-bg-overlay p-3"}>
-      <p className="font-mono text-micro uppercase tracking-[0.10em] text-claret-300 font-bold mb-1">
+      <p className="font-mono text-micro uppercase tracking-widest text-claret-300 font-bold mb-1">
         What this deletes
       </p>
       <Row k="Rounds" v={cost.rounds.toLocaleString()} note={cost.firstAt && cost.lastAt ? `${cost.firstAt.slice(0, 10)} → ${cost.lastAt.slice(0, 10)}` : undefined} />
@@ -297,7 +328,7 @@ function CostPanel({ cost, dense = false }: { cost: PurgeCost; dense?: boolean }
       <Row k="Price snapshots" v={cost.snapshots.toLocaleString()} />
       <Row k="Observations" v="0" note={cost.observationsNote} />
 
-      <p className="font-mono text-micro uppercase tracking-[0.10em] text-text-tertiary font-bold mt-2 mb-1">
+      <p className="font-mono text-micro uppercase tracking-widest text-text-tertiary font-bold mt-2 mb-1">
         What survives, redacted
       </p>
       <Row k="Markets (kept as tombstones)" v={cost.markets.toLocaleString()} />

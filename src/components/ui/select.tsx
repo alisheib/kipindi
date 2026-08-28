@@ -292,6 +292,31 @@ export function Select({
   const h = size === "xs" ? "min-h-[32px]" : size === "sm" ? "min-h-[36px]" : "min-h-[44px]";
   const txt = size === "xs" ? "text-[12.5px]" : "text-[16px]";
   const radius = size === "xs" ? "rounded-md" : "rounded-lg";
+  /* 🔴 THE PADDING IS PER-SIZE, AND IT WAS NOT (2026-08-28, measured on /admin/resolver-queue).
+   *
+   * The trigger carried a flat `px-3 py-1.5` at EVERY size. On this repo's OVERRIDDEN spacing
+   * scale that is 16px sides and 8px top/bottom, so an `xs` control measured **37px** — while
+   * the comment above calls it "a neat 32px control (== --h-control-xs)". 32px had never
+   * shipped: the same defect that comment exists to record about the old `min-h-8` floors,
+   * one line below it.
+   *
+   * ⛔ AND THE HORIZONTAL HALF WAS THE VISIBLE ONE. 32px of side padding + a 10px chevron + an
+   * 8px gap is 50px of chrome, so a 150px filter chip had ~100px for its label — and "All
+   * categories" at 12.5px mono needs ~105px. It WRAPPED, and because the height is `min-h`
+   * (rightly — E-98: wrapping is honest, clipping is data loss) the control GREW to **56px**
+   * and sat beside 32px neighbours. Measured in one row: 32 / 37 / 56px, a 24px spread.
+   *
+   * ⚠️ Overridden keys only: `px-2` is 12px and `py-1` is 4px here, both monotonic. `px-2.5` /
+   * `py-1.5` are the INVERTED rungs `test:spacing-scale` refuses — smaller than their lower
+   * neighbour — so they are not available even though they look like the finer step. */
+  const pad = size === "xs" ? "px-2 py-1" : "px-3 py-1.5";
+  /* ⚠️ AND THE GAP, measured rather than guessed. After the padding fix "All categories" still
+   * wrapped: it needs 105px and the label box was 102px — THREE pixels short, because a 12px
+   * gap to the chevron was taking room the label needed. At xs the chevron sits closer, which
+   * is ordinary for a dense control and buys 8px. ⭐ Wrapping remains the FALLBACK for a label
+   * that genuinely cannot fit (E-98: growing is honest, clipping is data loss) — this only
+   * stops a label that FITS from being forced to wrap by the chrome around it. */
+  const gap = size === "xs" ? "gap-1" : "gap-2";
 
   return (
     <>
@@ -316,10 +341,10 @@ export function Select({
         aria-controls={open ? listboxId : undefined}
         aria-activedescendant={open && focusIdx >= 0 ? optionId(focusIdx) : undefined}
         className={cn(
-          "field-measure flex items-center justify-between gap-2 w-full px-3 py-1.5 border border-border text-left",
+          "field-measure flex items-center justify-between w-full border border-border text-left",
           "focus:outline-none brand-focus",
           "transition-colors font-mono",
-          radius, txt, h,
+          radius, txt, h, pad, gap,
           selectedOption ? "text-text" : "text-text-subtle",
           disabled && "cursor-not-allowed opacity-50",
           className,

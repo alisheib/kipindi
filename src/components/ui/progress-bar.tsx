@@ -63,7 +63,7 @@ export function ProgressBar({
           style={{ width: `${pct}%` }}
         />
       </div>
-      <p className="font-mono text-micro uppercase tracking-[0.10em] text-text-tertiary tabular-nums">
+      <p className="font-mono text-micro uppercase tracking-widest text-text-tertiary tabular-nums">
         {value.toLocaleString()} of {safeMax.toLocaleString()} · {pct.toFixed(0)}%
       </p>
     </div>
