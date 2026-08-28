@@ -130,7 +130,7 @@ export function BulkResolveBar({
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+      <div data-bulk-bar className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <div onKeyDownCapture={() => { /* header has no range semantics */ }}>
           <Checkbox
             checked={allOn}

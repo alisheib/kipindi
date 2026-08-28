@@ -576,7 +576,8 @@
     "red:bulk-resolve": "node scripts/bulk-resolve-red.mjs",
     "ops:bulk-resolve-fleet": "tsx scripts/ops-bulk-resolve-fleet.mts",
     "ops:fix-orphan-pool": "tsx scripts/ops-fix-orphan-pool-2026-08-28.mts",
-    "ops:verdict-census": "tsx scripts/ops-verdict-census.mts"
+    "ops:verdict-census": "tsx scripts/ops-verdict-census.mts",
+    "qa:bulk-resolve": "node scripts/live-bulk-resolve-drive.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

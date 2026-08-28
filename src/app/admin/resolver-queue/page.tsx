@@ -366,7 +366,17 @@ export default async function ResolverQueuePage({
 
                   <div className="px-4 py-3 border-b border-border">
                     <ProbabilityBar yesPct={yes} size="micro" />
-                    <div className="mt-1 flex items-center justify-between gap-2">
+                    {/* ⛔ `flex-wrap` — MEASURED AT 360 ON PRODUCTION 2026-08-28, and it is the
+                        MONEY that was being clipped. Three `whitespace-nowrap` items (the crowd
+                        split, the predictor link, the pool chip) in a 320px card: the pool chip
+                        ran 217→345 against a card ending at 340, so **"TZS 5,000 held" was
+                        painted 5px outside its own card on every row.** That chip is E-38's fix
+                        for the queue hiding the amount at stake — clipped, it hides it again.
+                        ⚠️ Pre-existing (the row is from 2026-06-22) and found only because the
+                        bulk-bar drive compares RECTANGLES rather than reading text: `innerText`
+                        returns the full string whatever the paint does. Same remedy as G-6 two
+                        blocks up — wrapping costs nothing at any width where it already fits. */}
+                    <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
                       <p className="font-mono text-[10px] text-text-subtle">Crowd: {yes}% YES · {100 - yes}% NO</p>
                       <Link
                         href={`/admin/markets/${m.id}` as never}
