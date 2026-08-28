@@ -3237,7 +3237,7 @@ html[data-sheet-open] .route-enter { animation: none; }
    ⛔ TEN, NOT ELEVEN, AND THAT IS DELIBERATE. The grammar's true widest output is eleven
    characters ("TZS −999.9B" = 290.4px), which would wrap at 940. It is excluded here because
    THIS rail prints Σ open pools — a sum of stakes, which cannot go negative. The sign belongs
-   to /admin/finance's NGR tile, which is neither this element nor this budget. */
+   to /admin/finance's NGR tile, which is neither this element nor this budget.
    ⛔ Do NOT "fix" this with `white-space: nowrap`: that converts a wrap into a clip, and §A5
    forbids clipping money outright. The size step is the fix. */
 @media (min-width: 1024px) {
