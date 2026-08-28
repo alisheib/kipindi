@@ -76,7 +76,7 @@ export default async function AdminLivePage() {
         {/* KPI strip */}
         <KpiGrid>
           <AdminKpi label="Active players · live" sw="Wachezaji hai"   value={active === null ? "" : formatNumber(active)} unavailable={active === null} pulse={active !== null} series={spark(trends.active)} />
-          <AdminKpi label="GGR · 24h"             sw="Mapato"           value={ggr === null ? "" : `TZS ${formatTzsCompact(ggr).replace("TZS ", "")}`} unavailable={ggr === null} series={spark(trends.ggr)} />
+          <AdminKpi label="GGR · 24h"             sw="Mapato"           value={ggr === null ? "" : formatTzsCompact(ggr)} unavailable={ggr === null} series={spark(trends.ggr)} />
           <AdminKpi label="Live matches"           sw="Mechi za moja"    value={liveMatches.length} pulse={liveMatches.length > 0} />
         </KpiGrid>
 

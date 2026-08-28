@@ -244,6 +244,15 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
                     {kyc.idType ? `${ADMIN_ID_TYPE_LABEL[kyc.idType as IdDocType] ?? kyc.idType} format OK` : "ID format OK"}
                   </Chip>
                 )}
+                {/* ⛔ THE STRIP BELOW IS DELIBERATE AND MUST STAY — it is the ONE occurrence
+                    that is not a no-op. Everywhere else the prefix was stripped and
+                    immediately re-added, which is exactly `formatTzsCompact(x)` and was
+                    removed as such; here NOTHING re-adds it, because the chip reads
+                    "limit 50K/day" and "limit TZS 50K/day" is not the same sentence.
+                    Deleting it as an inconsistency breaks the copy.
+                    ⚠️ And this comment sits OUTSIDE the conditional on purpose: the braced
+                    form inside `{cond && ( … )}` is a syntax error, because an expression
+                    slot holds exactly one thing and the comment makes it two. */}
                 {rg?.dailyDepositLimit && (
                   <Chip size="sm" variant="warning">limit {formatTzsCompact(rg.dailyDepositLimit).replace("TZS ", "")}/day</Chip>
                 )}
@@ -281,9 +290,9 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
             SUPPORT agent running the desk never sees a player's financials. */}
         {canSeeMoney && (
         <KpiGrid>
-          <AdminKpi label="Lifetime deposit"    sw="Jumla ya amana"        value={txnsFailed ? "" : `TZS ${formatTzsCompact(lifetimeDeposits).replace("TZS ", "")}`} unavailable={txnsFailed} delta={wallet ? `wallet ${formatTzs(wallet.balance)}` : "—"} />
-          <AdminKpi label="Lifetime withdrawal" sw="Jumla ya utoaji"       value={txnsFailed ? "" : `TZS ${formatTzsCompact(lifetimeWithdrawals).replace("TZS ", "")}`} unavailable={txnsFailed} delta={`${txns.filter((t) => t.type === "WITHDRAWAL").length} txns`} />
-          <AdminKpi label="NGR contribution"    sw="Mchango wa mapato"     value={txnsFailed ? "" : `TZS ${formatTzsCompact(ngr).replace("TZS ", "")}`} unavailable={txnsFailed} delta={`${txns.filter((t) => t.type === "BET_PLACED").length} positions`} />
+          <AdminKpi label="Lifetime deposit"    sw="Jumla ya amana"        value={txnsFailed ? "" : formatTzsCompact(lifetimeDeposits)} unavailable={txnsFailed} delta={wallet ? `wallet ${formatTzs(wallet.balance)}` : "—"} />
+          <AdminKpi label="Lifetime withdrawal" sw="Jumla ya utoaji"       value={txnsFailed ? "" : formatTzsCompact(lifetimeWithdrawals)} unavailable={txnsFailed} delta={`${txns.filter((t) => t.type === "WITHDRAWAL").length} txns`} />
+          <AdminKpi label="NGR contribution"    sw="Mchango wa mapato"     value={txnsFailed ? "" : formatTzsCompact(ngr)} unavailable={txnsFailed} delta={`${txns.filter((t) => t.type === "BET_PLACED").length} positions`} />
           <AdminKpi label="Last position"      sw="Nafasi ya mwisho"      value={txnsFailed ? "" : (() => { const lb = txns.filter((t) => t.type === "BET_PLACED").sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]; return lb ? formatDateShort(lb.createdAt) : "never"; })()} unavailable={txnsFailed} delta={`${txns.filter((t) => t.type === "BET_PLACED").length} positions`} />
         </KpiGrid>
         )}

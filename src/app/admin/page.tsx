@@ -64,8 +64,8 @@ export default async function AdminOverviewPage() {
         {/* §A — KPI strip */}
         <KpiGrid cols="md3-lg4">
           <AdminKpi label="Active players" sw="Wachezaji hai"     value={active24h === null ? "" : active24h.toLocaleString()} unavailable={active24h === null} delta="last 24h" pulse={active24h !== null} series={spark(trends.active)} />
-          <AdminKpi label="GGR · 24h"      sw="Mapato ya jumla"   value={ggr === null ? "" : `TZS ${formatTzsCompact(ggr).replace("TZS ", "")}`} unavailable={ggr === null} delta="vs yesterday" series={spark(trends.ggr)} />
-          <AdminKpi label="NGR · 24h"      sw="Mapato halisi"     value={ngr === null ? "" : `TZS ${formatTzsCompact(ngr).replace("TZS ", "")}`} unavailable={ngr === null} delta="net of bonus + fees" series={spark(trends.ngr)} />
+          <AdminKpi label="GGR · 24h"      sw="Mapato ya jumla"   value={ggr === null ? "" : formatTzsCompact(ggr)} unavailable={ggr === null} delta="vs yesterday" series={spark(trends.ggr)} />
+          <AdminKpi label="NGR · 24h"      sw="Mapato halisi"     value={ngr === null ? "" : formatTzsCompact(ngr)} unavailable={ngr === null} delta="net of bonus + fees" series={spark(trends.ngr)} />
           <AdminKpi label="AML pending"    sw="Inasubiri ukaguzi" value={amlPending ?? ""} unavailable={amlPending === null} delta="needs review" deltaDir={(amlPending ?? 0) > 0 ? "up" : "flat"} pulse={(amlPending ?? 0) > 0} />
         </KpiGrid>
 

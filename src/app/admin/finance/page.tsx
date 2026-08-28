@@ -132,21 +132,21 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
       <AdminBody>
         {/* KPI 8-up */}
         <KpiGrid>
-          <AdminKpi label="Deposits in"     sw="Amana"             value={dep ? `TZS ${formatTzsCompact(dep.amount).replace("TZS ", "")}` : ""} unavailable={dep === null} delta={dep ? `${formatNumber(dep.count)} txns` : undefined} />
-          <AdminKpi label="Withdrawals out" sw="Utoaji"            value={wd ? `TZS ${formatTzsCompact(wd.amount).replace("TZS ", "")}` : ""}  unavailable={wd === null}  delta={wd ? `${formatNumber(wd.count)} txns` : undefined} />
-          <AdminKpi label="GGR"             sw="Mapato ya jumla"    value={ggr === null ? "" : `TZS ${formatTzsCompact(ggr).replace("TZS ", "")}`}        unavailable={ggr === null} delta={range.label} series={spark(trends.ggr)} />
-          <AdminKpi label="NGR"             sw="Mapato halisi"      value={ngr === null ? "" : `TZS ${formatTzsCompact(ngr).replace("TZS ", "")}`}        unavailable={ngr === null} delta="net of bonus + fees" series={spark(trends.ngr)} />
+          <AdminKpi label="Deposits in"     sw="Amana"             value={dep ? formatTzsCompact(dep.amount) : ""} unavailable={dep === null} delta={dep ? `${formatNumber(dep.count)} txns` : undefined} />
+          <AdminKpi label="Withdrawals out" sw="Utoaji"            value={wd ? formatTzsCompact(wd.amount) : ""}  unavailable={wd === null}  delta={wd ? `${formatNumber(wd.count)} txns` : undefined} />
+          <AdminKpi label="GGR"             sw="Mapato ya jumla"    value={ggr === null ? "" : formatTzsCompact(ggr)}        unavailable={ggr === null} delta={range.label} series={spark(trends.ggr)} />
+          <AdminKpi label="NGR"             sw="Mapato halisi"      value={ngr === null ? "" : formatTzsCompact(ngr)}        unavailable={ngr === null} delta="net of bonus + fees" series={spark(trends.ngr)} />
         </KpiGrid>
         <KpiGrid>
           <AdminKpi
             label="Statutory levies"
             sw="Kodi za kisheria"
-            value={taxAccrued === null ? "—" : `TZS ${formatTzsCompact(taxAccrued).replace("TZS ", "")}`}
+            value={taxAccrued === null ? "—" : formatTzsCompact(taxAccrued)}
             delta={taxAccrued === null ? "rates unavailable" : "TRA + GBT on commission"}
             deltaDir="flat"
           />
           <AdminKpi label="Operator margin"  sw="Faida"         value={margin === null ? "" : `${margin.toFixed(1)}%`} unavailable={margin === null} delta={feeModelLabel} deltaDir="flat" />
-          <AdminKpi label="Wallet liability" sw="Madeni"        value={liability === null ? "" : `TZS ${formatTzsCompact(liability).replace("TZS ", "")}`} unavailable={liability === null} delta="real-time" />
+          <AdminKpi label="Wallet liability" sw="Madeni"        value={liability === null ? "" : formatTzsCompact(liability)} unavailable={liability === null} delta="real-time" />
           <AdminKpi label="Active players"   sw="Wachezaji"     value={activePeriod === null ? "" : formatNumber(activePeriod)} unavailable={activePeriod === null} delta={range.label} series={spark(trends.active)} />
         </KpiGrid>
 
@@ -178,7 +178,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
                   <Stat
                     key={account}
                     label={account.replace(/^(HOUSE|SYSTEM):/, "")}
-                    value={`TZS ${formatTzsCompact(amount).replace("TZS ", "")}`}
+                    value={formatTzsCompact(amount)}
                     tone={account === "HOUSE:COMMISSION" ? "gold" : "default"}
                     money
                     hint={HOUSE_ACCOUNT_NOTE[account]}
@@ -199,7 +199,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
           action={
             pollFees ? (
               <span className="font-mono text-[10px] tracking-[0.10em] uppercase text-text-tertiary">
-                loser-share {pollFees.byModel["loser-share"].count} · TZS {formatTzsCompact(pollFees.byModel["loser-share"].fee).replace("TZS ", "")} — capped {pollFees.byModel["capped-commission"].count} · TZS {formatTzsCompact(pollFees.byModel["capped-commission"].fee).replace("TZS ", "")}
+                loser-share {pollFees.byModel["loser-share"].count} · {formatTzsCompact(pollFees.byModel["loser-share"].fee)} — capped {pollFees.byModel["capped-commission"].count} · {formatTzsCompact(pollFees.byModel["capped-commission"].fee)}
               </span>
             ) : null
           }
