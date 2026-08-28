@@ -475,9 +475,14 @@ const V = (m: VerdictMarket, over: Partial<Parameters<typeof bulkVerdictFor>[0]>
   // branch — recording overrides for eligible rows and for seals that had failed.
   ok("10.20 the override audit is gated on an override that was actually USED",
      /const usedOverride = !v\.eligible && !!typed/.test(a) && /if \(usedOverride\) \{/.test(a));
+  // ⚠️ ANCHORED ON THE BRANCH, NOT ON A PUSH. `alreadyApplied.push` now appears TWICE — the
+  // verdict routes an already-resolved row there too — and the FIRST occurrence is above the
+  // loop's seal, so an `indexOf` against it started measuring the wrong pair of positions.
+  // The claim is "inside `if (r.ok)`, before the engine's already-resolved arm", so that is
+  // what is asserted.
   ok("10.21 …and sits inside the seal's success branch",
      before(a, "if (r.ok) {", 'action: "market.resolve.bulk_override"')
-     && before(a, 'action: "market.resolve.bulk_override"', "alreadyApplied.push"));
+     && before(a, 'action: "market.resolve.bulk_override"', 'r.code === "INVALID"'));
   // ⛔ The RAW payload is bounded before it is parsed, not after the Set collapsed it.
   ok("10.22 the raw payload is bounded BEFORE dedupe",
      before(a, "raw.length > PER_PAGE", "new Set(ids)"));
