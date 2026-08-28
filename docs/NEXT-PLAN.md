@@ -6,20 +6,7 @@
 
 ---
 
-## 1 · MASWALI MILLIONEA — the third product · `MASWALI-BUILD`
-
-**Door: [`SESSION-PROMPT-MASWALI-BUILD.md`](SESSION-PROMPT-MASWALI-BUILD.md)** — nine chunks S0–S8
-with acceptance lines, the gates, the traps, the tracker, and an index of every file.
-
-| | |
-|---|---|
-| **State** | 🟢 **CLEARED TO BUILD S1–S7.** All eleven decisions settled ([`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md), two entries 2026-08-29) |
-| **Design** | ✅ Delivered and filed — [`design-brief/maswali-2026-08/handover/`](design-brief/maswali-2026-08/handover/README.md) |
-| **Built so far** | **Nothing.** `src/` contains zero Maswali files |
-| **Next move** | ⚠️ The **D-7 rename first** (`/maswali…` → `/millionea…`, 94 occurrences in 7 docs, ⛔ never the 36 `maswali-2026-08` folder refs), then re-read §5 + §7, then **S1** |
-| **Blocked** | ⛔ **S8 only** — the live drive with real money waits on the Gaming Board licence in writing. S1–S7 proceed on Ali's instruction |
-
-## 2 · THE DESIGN GATE — 100% render consistency · `DESIGN-GATE-2026-08-28`
+## 1 · THE DESIGN GATE — 100% render consistency · `DESIGN-GATE-2026-08-28` · ▶ **ACTIVE**
 
 **Door: [`SESSION-PROMPT-DESIGN-GATE.md`](SESSION-PROMPT-DESIGN-GATE.md)** — 4 steps, the gates per
 step, the traps, the tracking table, and the delete-when-done list.
@@ -61,6 +48,23 @@ Every line below was re-verified in code on 2026-08-29, not taken from a documen
 ⚠️ **`test:orphans` is blind outside its own scope:** it scans `scripts/` **top level only**, no
 recursion, while printing *"every file in `scripts/` must be run, or declared unrun"*. Ten code
 files under `scripts/` subdirectories are named by no npm script and referenced by nothing.
+
+## 2 · MASWALI MILLIONEA — the third product · `MASWALI-BUILD` · ⏸ **AFTER the Design Gate**
+
+⛔ **Ali's order, 2026-08-29: the Design Gate runs FIRST and to completion — "when it is done
+forever and tested, we do this Maswali."** Everything below is ready and waiting; do not start it
+while §1 is open.
+
+**Door: [`SESSION-PROMPT-MASWALI-BUILD.md`](SESSION-PROMPT-MASWALI-BUILD.md)** — nine chunks S0–S8
+with acceptance lines, the gates, the traps, the tracker, and an index of every file.
+
+| | |
+|---|---|
+| **State** | 🟢 **CLEARED TO BUILD S1–S7.** All eleven decisions settled ([`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md), two entries 2026-08-29) |
+| **Design** | ✅ Delivered and filed — [`design-brief/maswali-2026-08/handover/`](design-brief/maswali-2026-08/handover/README.md) |
+| **Built so far** | **Nothing.** `src/` contains zero Maswali files |
+| **Next move** | ⚠️ The **D-7 rename first** (`/maswali…` → `/millionea…`, 94 occurrences in 7 docs, ⛔ never the 36 `maswali-2026-08` folder refs), then re-read §5 + §7, then **S1** |
+| **Blocked** | ⛔ **S8 only** — the live drive with real money waits on the Gaming Board licence in writing. S1–S7 proceed on Ali's instruction |
 
 ---
 

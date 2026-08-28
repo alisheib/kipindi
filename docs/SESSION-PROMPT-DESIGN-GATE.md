@@ -58,6 +58,58 @@ review — DESIGN_AUTHORITY §0b OUTBOUND row). Send it, file the delivery under
 `docs/design-system/` as an incoming commission, then **delete the folder and its `.gitignore`
 exception** — §0b’s own rule.
 
+## 📋 THE PLANNER — all 37 systems, one row each
+
+⭐ **THIS IS THE HANDOFF SURFACE. Tick a row and push in the SAME commit as the work**, so a
+session on another machine can `git pull` and know exactly where the programme stands. A row is
+only ☑ when its gate line is GREEN **re-measured on production**, not on localhost.
+
+| System | Step | Sev | What is wrong | Where | Status | Commit | Re-measured |
+|---|---|---|---|---|---|---|---|
+| **DG-A-02** | 1 | P0 | kit Toggle is 26px on a 40px tap floor — 100x, incl. the payment kill-switches | `src/components/ui/toggle.tsx` | ☐ | — | — |
+| **DG-A-03** | 1 | P0 | "How to search" popover clipped invisible by its own input group, every admin SearchBox | `src/components/ui/search-box.tsx · search-help.tsx` | ☐ | — | — |
+| **DG-P-01** | 1 | P0 | primary navigation gives NO hover feedback at all (200 dead probes) | `nav link component` | ☐ | — | — |
+| **DG-P-02** | 1 | P0 | shared with admin: Toggle 26px on the RG page + the clipped search popover | `same two files` | ☐ | — | — |
+| **DG-A-04** | 1+3 | P1 | THE DENSE FILTER ROW — one job, four dialects (32/36.8/40/44/55.5 in one row). ⚠️ listed in BOTH step 1 and step 3 | `select.tsx · input.tsx + call sites` | ☐ | — | — |
+| **DG-A-05** | 1 | P1 | Selects wrap their value to a second line and grow past their row | `src/components/ui/select.tsx` | ☐ | — | — |
+| **DG-A-07** | 1 | P1 | pagination is 44px inside rails that are 32px — ⚠️ Ali picks which rung wins | `pagination component` | ☐ | — | — |
+| **DG-A-10** | 1 | P1 | the KPI tile system lies a little, everywhere | `AdminKpi` | ☐ | — | — |
+| **DG-A-15** | 1 | P1 | charts: squashed axes and unreadable legends | `chart axis layer` | ☐ | — | — |
+| **DG-A-17** | 1 | P2 | sortable headers are 64px in 37px header rows; the sort colour is dead CSS | `SortTh` | ☐ | — | — |
+| **DG-A-23** | 1 | P1 | tables at 390 clip with no affordance | `ScrollX affordance` | ☐ | — | — |
+| **DG-A-11** | 2 | P1 | 70+ uppercase micro-label recipes — the "fonts everywhere" feeling, quantified | `three label classes` | ☐ | — | — |
+| **DG-A-12** | 2 | P1 | type ladder not in force: 24 sizes; console body size on no rung — ⚠️ ALI'S RULING GATES THIS | `globals.css tokens` | ☐ | — | — |
+| **DG-A-16** | 2 | P2 | card/panel system: three paddings, two dead classes and an inversion | `card rungs` | ☐ | — | — |
+| **DG-A-18** | 2 | P2 | shell details, once, for all 44 pages | `admin shell` | ☐ | — | — |
+| **DG-P-04** | 2 | P1 | vertical rhythm: seven section gaps across sibling pages, plus a −1px overlap | `section-rhythm` | ☐ | — | — |
+| **DG-P-05** | 2 | P1 | 33 font sizes — ⚠️ SAME ALI RULING as DG-A-12; they share the tokens | `type ladder` | ☐ | — | — |
+| **DG-P-06** | 2 | P1 | ~90 uppercase micro-label recipes | `label classes` | ☐ | — | — |
+| **DG-A-06** | 3 | P1 | outlined-capsule rails: 3 sizes x 5+ pages → FilterPill | `FilterPill adoption` | ☐ | — | — |
+| **DG-A-08** | 3 | P1 | in-table action vocabulary: five recipes, three heights, one job | `row actions` | ☐ | — | — |
+| **DG-A-09** | 3 | P1 | hover duplicated inside tables — ⭐ Ali named this one | `cell-hover removal` | ☐ | — | — |
+| **DG-A-13** | 3 | P1 | raw enums on screen (AIRTEL_MONEY, sports, STAKE_SPIKE), doubled units ("TZS TZS") | `copy/enum sweep` | ☐ | — | — |
+| **DG-A-14** | 3 | P1 | reading copy below the floor | `prose floor` | ☐ | — | — |
+| **DG-A-21** | 3 | P1 | semantic colour misuse (B2a): betting ink on non-betting actions | `colour semantics` | ☐ | — | — |
+| **DG-P-03** | 3 | P1 | five h1 systems, and one page with two h1s | `h1 discipline` | ☐ | — | — |
+| **DG-P-07** | 3 | P1 | tap floor at 390 — the residue | `tap-floor sweep` | ☐ | — | — |
+| **DG-P-08** | 3 | P1 | truncation without disclosure, and one clipped support email | `truncation` | ☐ | — | — |
+| **DG-P-10** | 3 | P2 | status chips: the board still hand-types its colours (B11's named remainder) | `chip migration` | ☐ | — | — |
+| **DG-P-11** | 3 | P2 | active/current markers stop at the top bar | `aria-current reach` | ☐ | — | — |
+| **DG-A-01** | 4 | P0 | /admin/reports takes ~88 s to load; timed out at 60/90/240 s | `src/app/admin/reports/page.tsx` | ☐ | — | — |
+| **DG-A-20** | 4 | P2 | loading skeletons are the wrong shape for what they replace | `skeletons` | ☐ | — | — |
+| **DG-A-22** | 4 | P2 | layout balance | `—` | ☐ | — | — |
+| **DG-P-09** | 4 | P1 | /auth/login signed-in redirect throws React error #310 — ⚠️ root cause is a HYPOTHESIS, re-prove first | `auth-flash.tsx?` | ☐ | — | — |
+| **DG-P-12** | 4 | P2 | auth & date-input details | `—` | ☐ | — | — |
+| **DG-P-13** | 4 | P2 | landing/auth duplication artefacts | `—` | ☐ | — | — |
+| **DG-P-14** | 4 | P2 | miscellany, six items — ⚠️ item 5 is an Ali taste call (the /notifications glow) | `—` | ☐ | — | — |
+| **DG-A-19** | ? | P2 | icons: sizes 10–23 with two prop spellings — 🔴 IN NO STEP ROW of the work order | `glyphs` | ☐ | — | — |
+
+⚠️ **`DG-A-19` sits in no step row of the table below** — the four steps cover DG-A-01…18 and
+20…23 only. **`DG-A-04` sits in two** (step 1 as a kit primitive, step 3 as a sweep). Neither is
+resolved in this document; decide when you reach them rather than discovering it mid-step.
+
+---
+
 ## Keep track — tick here, push after every completed step
 Update this table in the same commit as the work (programme key in the commit message).
 
