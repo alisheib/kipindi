@@ -1,21 +1,46 @@
-> ## ▶ NEW LANE 2026-08-29 — **MASWALI MILLIONEA, THE THIRD PRODUCT** (`MASWALI-BUILD`)
-> ⭐ **ONE DOOR: [`SESSION-PROMPT-MASWALI-BUILD.md`](SESSION-PROMPT-MASWALI-BUILD.md)** — the nine chunks
-> S0–S8 with their acceptance lines, the gates, the traps, the tracker, and an index of all 33 files.
-> ⭐ **Six of §0's seven decisions were answered 2026-08-29** ([`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md)):
-> progressive-only · 13% of losing stakes · void counts CORRECT (3 voids refund the cycle) · no bonus money ·
-> capped at 10 tickets · `/millionea`. The design landed 2026-08-28 and is filed at
-> [`design-brief/maswali-2026-08/handover/`](design-brief/maswali-2026-08/handover/README.md).
-> 🟢 **CLEARED TO BUILD S1–S7** — Ali ruled 2026-08-29 that the licence is coming; treat D-1 as
-> settled for planning. ⛔ **S8, the live drive with real money, does NOT run until it is in writing.**
-> ⚠️ D-7 is a rename that must happen BEFORE S1: `/maswali/…` → `/millionea/…` (module names unchanged).
+# ▶ THE BOARD — there are exactly TWO ongoing programmes
 
-> ## ▶ NEW LANE 2026-08-28 — **THE DESIGN GATE** (`DESIGN-GATE-2026-08-28`)
-> Ali commissioned a final-gate consistency audit of the WHOLE platform, measured live on
-> production. The two registers are [`DESIGN-GATE-ADMIN-2026-08-28.md`](DESIGN-GATE-ADMIN-2026-08-28.md)
-> (23 systems) and [`DESIGN-GATE-PLAYER-2026-08-28.md`](DESIGN-GATE-PLAYER-2026-08-28.md)
-> (14 systems); the implementation task + tracking table is
-> [`SESSION-PROMPT-DESIGN-GATE.md`](SESSION-PROMPT-DESIGN-GATE.md). Instruments:
-> `scripts/design-gate/`. ⛔ One login per account at a time when re-measuring.
+> **Read this first, then pick one.** Everything else in `docs/` is a RECORD of finished work.
+> If a document is not one of the two below, it is not a live task, whatever its own header says.
+> ⛔ Do not start a third thing. Ask Ali which of the two to proceed with.
+
+---
+
+## 1 · MASWALI MILLIONEA — the third product · `MASWALI-BUILD`
+
+**Door: [`SESSION-PROMPT-MASWALI-BUILD.md`](SESSION-PROMPT-MASWALI-BUILD.md)** — nine chunks S0–S8
+with acceptance lines, the gates, the traps, the tracker, and an index of every file.
+
+| | |
+|---|---|
+| **State** | 🟢 **CLEARED TO BUILD S1–S7.** All eleven decisions settled ([`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md), two entries 2026-08-29) |
+| **Design** | ✅ Delivered and filed — [`design-brief/maswali-2026-08/handover/`](design-brief/maswali-2026-08/handover/README.md) |
+| **Built so far** | **Nothing.** `src/` contains zero Maswali files |
+| **Next move** | ⚠️ The **D-7 rename first** (`/maswali…` → `/millionea…`, 94 occurrences in 7 docs, ⛔ never the 36 `maswali-2026-08` folder refs), then re-read §5 + §7, then **S1** |
+| **Blocked** | ⛔ **S8 only** — the live drive with real money waits on the Gaming Board licence in writing. S1–S7 proceed on Ali's instruction |
+
+## 2 · THE DESIGN GATE — 100% render consistency · `DESIGN-GATE-2026-08-28`
+
+**Door: [`SESSION-PROMPT-DESIGN-GATE.md`](SESSION-PROMPT-DESIGN-GATE.md)** — 4 steps, the gates per
+step, the traps, the tracking table, and the delete-when-done list.
+
+| | |
+|---|---|
+| **State** | 🔴 **OPEN — 0 of 5 tracker rows done.** 37 systems measured live on production |
+| **Registers** | [`DESIGN-GATE-ADMIN-2026-08-28.md`](DESIGN-GATE-ADMIN-2026-08-28.md) — 23 systems, §6 is the work order, §7 is ~280 page findings whose P0s only were spot-verified · [`DESIGN-GATE-PLAYER-2026-08-28.md`](DESIGN-GATE-PLAYER-2026-08-28.md) — 14 systems, no §7 |
+| **Next move** | **Step 1, kit primitives** — needs nothing from Ali. Toggle hit-area (26px on a 40px floor, 100× incl. the payment kill-switches) · the search popover clipped invisible on every admin box · Select true-32 + no-wrap · NavLink hover (dead on 200 of 333 probes) |
+| **Blocked** | ⚠️ **Step 2 needs Ali's type-ladder ruling** — bless 12.5 as `--type-table`, or move tables to 13. It gates the 24-size and 33-size sweeps together |
+| **Instruments** | `scripts/design-gate/` — ⛔ invoke with `node`, no npm aliases; `analyze`/`redo` take positional argv. ⚠️ `.qa-design-gate/` does NOT exist on this machine, so a re-measure is a cold drive |
+| **Traps** | ⛔ **One login per account at a time** — a second login revokes the first and every later page "succeeds" as the sign-in page at HTTP 200 (`?revoked=1` is the tell). Chain `measure → overlays → shots` in ONE command per account |
+
+---
+
+### ⚠️ Two gaps in the Design Gate's own work order, found 2026-08-29
+**`DG-A-19`** (icon sizes 10–23, two prop spellings) **appears in no step row** — the four steps
+cover DG-A-01…18 and 20…23 only. **`DG-A-04` appears in two** (step 1 and step 3). Neither is
+resolved in the document; decide when you reach them rather than discovering it mid-step.
+
+---
 
 > # ⭐ SESSION 60 — A CONTROL THAT WAS OFF THE SCREEN, A CHECK THAT COULD NOT FAIL (2026-08-24)
 >
