@@ -77,13 +77,11 @@ export function RowCheck({ marketId, title }: { marketId: string; title: string 
 /** The sentence. Full width, inside the card body, free to wrap. */
 export function RowVerdict({
   marketId,
-  title,
   verdict,
   threshold,
   canOverride,
 }: {
   marketId: string;
-  title: string;
   verdict: BulkVerdictView;
   threshold: number;
   /** Does THIS officer hold the compliance grant the override needs? When false the row
@@ -91,13 +89,12 @@ export function RowVerdict({
    *  one, and pressing it writes a privilege-escalation row against an honest officer. */
   canOverride: boolean;
 }) {
-  const { selected, overrides, setOverride } = useBulkSelection();
+  const { selected } = useBulkSelection();
   const on = selected.has(marketId);
   const reason = verdict.reason;
   const detail = bulkReasonDetail({ ...verdict, threshold });
   const chip = reason ? BULK_REASON[reason] : null;
   const needsOverride = on && !verdict.eligible && verdict.overridable;
-  const labelId = `ovr-label-${marketId}`;
 
   return (
     <div className="px-4 py-3 border-b border-border">
@@ -130,25 +127,16 @@ export function RowVerdict({
       {needsOverride && (
         <div className="mt-2">
           {canOverride ? (
-            <div>
-              {/* ⛔ THE ACCESSIBLE NAME CONTAINS THE VISIBLE ONE. An `aria-label` that shares
-                  no words with the label a sighted user reads breaks WCAG 2.5.3 and, more
-                  practically, means a voice-control user saying the words on the screen
-                  cannot reach the field. The market title is appended so twenty of these on
-                  one page are still distinguishable. */}
-              <label id={labelId} htmlFor={`ovr-${marketId}`} className="mb-1 flex items-center gap-1 font-mono text-caption uppercase tracking-widest text-warning">
-                <I.shieldAlert s={11} /> Why are you sealing this anyway?
-              </label>
-              <textarea
-                id={`ovr-${marketId}`}
-                value={overrides.get(marketId) ?? ""}
-                onChange={(e) => setOverride(marketId, e.target.value)}
-                rows={2}
-                placeholder="Recorded against your name in the audit chain."
-                aria-label={`Why are you sealing this anyway? — ${title}`}
-                className="w-full rounded-md border border-warning/50 bg-bg-overlay px-3 py-2 text-label text-text outline-none admin-focus transition-colors placeholder:text-text-subtle"
-              />
-            </div>
+            /* ⭐ THE BOX MOVED TO THE BAR; THE ROW STILL DECLARES ITSELF.
+               One reason is typed once, in the bulk bar, and recorded against every row in
+               this list — so what belongs HERE is not a second input but the sentence that
+               tells the officer this row is one of the ones that reason will cover. Leaving
+               the row silent would have made the shared field look like it applied to the
+               selection as a whole, including the rows that seal cleanly. */
+            <p className="flex items-start gap-1.5 rounded-md border border-warning/50 bg-warning/5 px-3 py-2 font-mono text-caption leading-relaxed text-warning">
+              <I.shieldAlert s={11} className="mt-0.5 shrink-0" />
+              <span>Needs an override. The reason you type in the bar below is recorded against this market by name.</span>
+            </p>
           ) : (
             /* Same shape as the page's other locked controls: state WHY the control is
                absent, and never offer a box the server will refuse. */

@@ -470,6 +470,18 @@ export const BULK_BAR = {
   clear:             { en: "Clear" },
   overrideNeeded:    { en: "Override reason required" },
   overrideLocked:    { en: "Override needs compliance access" },
-  moneyAtStake:      { en: "Player money held on the selected markets" },
+  /**
+   * ⛔ "LISTED ABOVE", NOT "SELECTED" — the figure beneath this label is
+   * `willSeal.reduce(…)`, the money on the markets the batch will actually act on, NOT on
+   * everything ticked. The two differ whenever any row will be skipped, and the same screen
+   * already carries a second, larger figure ("20 selected · TZS 480,000 held") over the
+   * WHOLE selection. Two different totals, one saying "selected" and the other also saying
+   * "selected", on the last screen before real player money is sealed.
+   *
+   * The number was right and the sentence was wrong, which is the more dangerous direction:
+   * an officer reconciling the dialog against the bar sees a shortfall and has to guess
+   * whether the batch or the label is lying.
+   */
+  moneyAtStake:      { en: "Player money held on the markets listed above" },
   nothingSelected:   { en: "Select at least one market" },
 } satisfies Record<string, AdminLabel>;

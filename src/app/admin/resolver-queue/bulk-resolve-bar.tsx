@@ -65,7 +65,7 @@ export function BulkResolveBar({
   objectionWindowHours: number;
 }) {
   const mayAct = useMayAct();
-  const { selected, setAll, clear, overrides, someOn, allOn } = useBulkSelection();
+  const { selected, setAll, clear, sharedReason, setSharedReason, someOn, allOn } = useBulkSelection();
   const [pending, startTransition] = React.useTransition();
   const [confirmOpen, setConfirmOpen] = React.useState(false);
   const [result, setResult] = React.useState<BulkResolveResult | null>(null);
@@ -75,7 +75,11 @@ export function BulkResolveBar({
   const chosen = rows.filter((r) => selected.has(r.marketId));
   const pool = chosen.reduce((s, r) => s + r.pool, 0);
   const blocked = chosen.filter((r) => !r.verdict.eligible);
-  const overridden = blocked.filter((r) => r.verdict.overridable && (overrides.get(r.marketId) ?? "").trim().length >= MIN_REASON);
+  // ⭐ THE ROWS ONE TYPED REASON WOULD COVER — independent of whether it has been typed yet,
+  // because this is also what decides whether the field is SHOWN at all.
+  const needOverride = blocked.filter((r) => r.verdict.overridable);
+  const reason = sharedReason.trim();
+  const overridden = reason.length >= MIN_REASON ? needOverride : [];
   const willSkip = blocked.filter((r) => !overridden.includes(r));
   const willSeal = chosen.filter((r) => r.verdict.eligible).concat(overridden);
   const offPage = Math.max(0, totalPending - rows.length);
@@ -83,16 +87,24 @@ export function BulkResolveBar({
   // An override that is present but too short is a HALF-TYPED intention, not an absence.
   // Blocking on it here — rather than letting the server refuse the whole batch — is the
   // difference between "finish this sentence" and "your 12-market batch did nothing".
-  const shortReason = blocked.find(
-    (r) => r.verdict.overridable && (overrides.get(r.marketId) ?? "").trim().length > 0
-      && (overrides.get(r.marketId) ?? "").trim().length < MIN_REASON,
-  );
+  //
+  // ⭐ ONE field now, so this is one boolean rather than a `.find` over the page. The old
+  // shape disabled the WHOLE batch on the first row holding 1–11 characters and named only
+  // that row in the warning — nineteen finished reasons held hostage by one stray keystroke
+  // somewhere in a page-long list of boxes.
+  const shortReason = needOverride.length > 0 && reason.length > 0 && reason.length < MIN_REASON;
 
   const submit = () => {
     startTransition(async () => {
       const fd = new FormData();
       for (const r of chosen) fd.append("marketIds", r.marketId);
-      for (const r of overridden) fd.set(`override:${r.marketId}`, (overrides.get(r.marketId) ?? "").trim());
+      // ⛔ FANNED OUT OVER `overridden` ONLY — never over `chosen`. The wire format is
+      // unchanged (`override:<marketId>`, one entry per overridden market), and the server
+      // still refuses an override naming a row it did not refuse. Sending the shared string
+      // for every ticked row would put ELIGIBLE market ids into the action's `overrides`
+      // map and therefore into the run-boundary audit's `overrides:` key — asserting, in an
+      // append-only chain a regulator reads, overrides that never happened.
+      for (const r of overridden) fd.set(`override:${r.marketId}`, reason);
       const res = await runAdminAction(() => bulkResolveMarketsAction(fd));
       if (!res.ok) {
         toast({ title: "Bulk resolve failed", description: res.error, variant: "danger" });
@@ -153,6 +165,13 @@ export function BulkResolveBar({
           <p className="font-mono text-micro text-text-subtle">
             {BULK_BAR.selectionPageOnly.en}
             {offPage > 0 && <> — {offPage} more {offPage === 1 ? "market is" : "markets are"} on other pages and not selected</>}
+            {/* ⛔ AND THAT TURNING THE PAGE DISCARDS IT. The provider clears the set on every
+                page change, deliberately — carrying ids across pages would submit rows the
+                officer cannot see. But it did so SILENTLY: an officer who ticked twelve
+                markets, paged forward to check one detail and came back found the ticks gone
+                with nothing having said they would be. Stated only while a selection exists,
+                because a warning about losing nothing is noise. */}
+            {chosen.length > 0 && <>. Turning the page clears it.</>}
           </p>
         </div>
 
@@ -183,7 +202,16 @@ export function BulkResolveBar({
               !mayAct ? "Your role can view this queue but not act on it."
               : shortReason ? `An override reason must be at least ${MIN_REASON} characters.`
               : chosen.length === 0 ? BULK_BAR.nothingSelected.en
-              : undefined
+              // ⛔ THE ONE STATE THAT HAD NO EXPLANATION — and the one an officer actually
+              // hits. Tick twenty rows the citation gate refused, type nothing, and
+              // `willSeal` is empty: the button greys out and every branch above returns
+              // `undefined`, so hovering it said nothing at all. A dead control with no
+              // tooltip is indistinguishable from a broken page, and it was reported as one.
+              : needOverride.length > 0 && canOverride
+                ? `Every selected market was refused by the resolver. Type why you are sealing ${needOverride.length === 1 ? "it" : "them"} anyway — at least ${MIN_REASON} characters.`
+              : needOverride.length > 0
+                ? "Sealing a market the citation gate refused needs compliance access."
+                : "None of the selected markets can be sealed — every one is refused for a reason no override can clear."
             }
           >
             {pending ? "Working…" : `${verb}${chosen.length ? ` (${chosen.length})` : ""}`}
@@ -191,11 +219,37 @@ export function BulkResolveBar({
         </div>
       </div>
 
-      {shortReason && (
-        <p className="mt-2 flex items-center gap-1.5 font-mono text-caption text-warning">
-          <I.alertCircle s={12} />
-          {BULK_BAR.overrideNeeded.en} — at least {MIN_REASON} characters on “{shortReason.title.slice(0, 48)}”.
-        </p>
+      {/* ⭐ ONE REASON, TYPED ONCE, FOR EVERY ROW THE FLOOR REFUSED.
+          Shown only when the selection actually contains overridable rows AND this officer
+          holds the compliance grant — an input that cannot be honoured is worse than none.
+          The count is in the label so the officer can never be unclear about how many
+          markets this one sentence is about to be recorded against. */}
+      {canOverride && needOverride.length > 0 && (
+        <div className="mt-3 rounded-md border border-warning/50 bg-warning/5 p-3">
+          {/* ⛔ THE ACCESSIBLE NAME CONTAINS THE VISIBLE ONE — an `aria-label` sharing no
+              words with the on-screen label breaks WCAG 2.5.3 and puts the field out of
+              reach of a voice-control user reading the screen aloud. */}
+          <label htmlFor="bulk-override-reason" className="mb-1.5 flex items-center gap-1 font-mono text-caption uppercase tracking-widest text-warning">
+            <I.shieldAlert s={11} />
+            Why are you sealing {needOverride.length === 1 ? "this market" : `these ${needOverride.length} markets`} anyway?
+          </label>
+          <textarea
+            id="bulk-override-reason"
+            value={sharedReason}
+            onChange={(e) => setSharedReason(e.target.value)}
+            rows={2}
+            maxLength={500}
+            placeholder="Recorded against your name in the audit chain, on every market listed above."
+            aria-label={`Why are you sealing ${needOverride.length === 1 ? "this market" : `these ${needOverride.length} markets`} anyway?`}
+            aria-describedby="bulk-override-help"
+            className="w-full rounded-md border border-warning/50 bg-bg-overlay px-3 py-2 text-label text-text outline-none admin-focus transition-colors placeholder:text-text-subtle"
+          />
+          <p id="bulk-override-help" className="mt-1.5 font-mono text-caption leading-relaxed text-text-subtle">
+            {shortReason
+              ? <span className="text-warning">{MIN_REASON - reason.length} more {MIN_REASON - reason.length === 1 ? "character" : "characters"} — this is read by a regulator, not by you.</span>
+              : <>Written to the audit chain once per market, against your name. {reason.length >= MIN_REASON ? `Covers ${needOverride.length} refused ${needOverride.length === 1 ? "market" : "markets"}.` : `At least ${MIN_REASON} characters.`}</>}
+          </p>
+        </div>
       )}
       {!canOverride && blocked.length > 0 && (
         <p className="mt-2 flex items-center gap-1.5 font-mono text-caption text-text-subtle">
@@ -323,7 +377,16 @@ function BulkConfirm({
                     )}
                   </div>
                   <div className="shrink-0 whitespace-nowrap text-right">
-                    <span className={`font-mono text-label font-bold ${r.verdict.outcome === "YES" ? "text-yes-300" : "text-no-300"}`}>
+                    {/* ⛔ A MACHINE-READABLE OUTCOME, because the prose beside it lies to a
+                        scanner. A row with nothing to seal renders this span EMPTY, but its
+                        reason text reads "The AI returned no YES/NO outcome" — so a drive
+                        checking the row's words for YES/NO matched the sentence describing
+                        the ABSENCE and passed over the exact defect it was written to catch.
+                        The attribute carries the value itself, with no sentence around it. */}
+                    <span
+                      data-outcome={r.verdict.outcome ?? ""}
+                      className={`font-mono text-label font-bold ${r.verdict.outcome === "YES" ? "text-yes-300" : "text-no-300"}`}
+                    >
                       {r.verdict.outcome}
                     </span>
                     {r.verdict.confidence != null && (

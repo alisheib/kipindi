@@ -28,8 +28,20 @@ type Ctx = {
   extendTo: (id: string) => void;
   setAll: (on: boolean) => void;
   clear: () => void;
-  overrides: Map<string, string>;
-  setOverride: (id: string, reason: string) => void;
+  /** ⭐ ONE reason for the whole batch, not one per row.
+   *
+   *  This was a `Map<marketId, string>` painting a textarea on every refused row, and at a
+   *  full page that is twenty boxes to fill by hand for what is nearly always ONE fact
+   *  ("the AI cited a mirror of the official site"). Worse, the batch was disabled while
+   *  ANY one of them held 1–11 characters, so a single stray keystroke in a page-long list
+   *  killed the whole submit and named only the first offender.
+   *
+   *  ⛔ The AUDIT is unchanged: the reason is still fanned out per market on the wire as
+   *  `override:<marketId>` and still written as its own audit row against each sealed
+   *  market. What collapsed is the TYPING, not the record — a regulator reading the chain
+   *  still finds a named officer and a justification on every overridden market. */
+  sharedReason: string;
+  setSharedReason: (reason: string) => void;
   /** True when SOME but not all of the page is ticked — the header's third state. */
   someOn: boolean;
   allOn: boolean;
@@ -45,7 +57,7 @@ export function useBulkSelection(): Ctx {
 
 export function BulkSelectionProvider({ pageIds, children }: { pageIds: string[]; children: React.ReactNode }) {
   const [selected, setSelected] = React.useState<Set<string>>(() => new Set());
-  const [overrides, setOverrides] = React.useState<Map<string, string>>(() => new Map());
+  const [sharedReason, setSharedReason] = React.useState("");
   const lastClicked = React.useRef<string | null>(null);
 
   // ⛔ A NEW PAGE IS A NEW SELECTION. Without this, paging keeps a set of ids that are no
@@ -55,7 +67,7 @@ export function BulkSelectionProvider({ pageIds, children }: { pageIds: string[]
   const key = pageIds.join(",");
   React.useEffect(() => {
     setSelected(new Set());
-    setOverrides(new Map());
+    setSharedReason("");
     lastClicked.current = null;
   }, [key]);
 
@@ -96,25 +108,19 @@ export function BulkSelectionProvider({ pageIds, children }: { pageIds: string[]
 
   const clear = React.useCallback(() => {
     setSelected(new Set());
-    setOverrides(new Map());
+    setSharedReason("");
     lastClicked.current = null;
-  }, []);
-
-  const setOverride = React.useCallback((id: string, reason: string) => {
-    setOverrides((prev) => {
-      const next = new Map(prev);
-      if (reason.trim()) next.set(id, reason);
-      else next.delete(id);
-      return next;
-    });
   }, []);
 
   const allOn = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
   const someOn = !allOn && pageIds.some((id) => selected.has(id));
 
   const value = React.useMemo<Ctx>(
-    () => ({ pageIds, selected, toggle, extendTo, setAll, clear, overrides, setOverride, someOn, allOn }),
-    [pageIds, selected, toggle, extendTo, setAll, clear, overrides, setOverride, someOn, allOn],
+    () => ({ pageIds, selected, toggle, extendTo, setAll, clear, sharedReason, setSharedReason, someOn, allOn }),
+    // `setSharedReason` is React's own setter — stable by identity, but listed rather than
+    // omitted, because a dependency array that is missing a value it closes over is the
+    // shape that goes stale silently.
+    [pageIds, selected, toggle, extendTo, setAll, clear, sharedReason, someOn, allOn],
   );
 
   return <BulkCtx.Provider value={value}>{children}</BulkCtx.Provider>;
