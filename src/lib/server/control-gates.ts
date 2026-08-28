@@ -55,6 +55,46 @@ export const CONTROL_DOMAIN = {
    *  Declared anyway: the queue must still hide the buttons from a trading role that
    *  has VIEW but not ACT, which the Owner can create live at `/admin/roles`. */
   resolveMarket: "trading",
+  /**
+   * `/admin/resolver-queue` · the BULK resolve bar — seal every SELECTED market that
+   * already clears the platform's own auto-resolve floor.
+   *
+   * `trading`, matching `resolveMarket` beside it and the route itself. It is the same
+   * act as pressing "Resolve YES" on each of those cards in turn, through the same
+   * `resolveMarket`, with the same audit rows — so gating it harder than the single-market
+   * control would be theatre: the officer can already do all of it one click at a time.
+   * Declared here (rather than left to the route) for the same reason `resolveMarket` is:
+   * the Owner can create a role at `/admin/roles` with `trading` VIEW but no ACT, and that
+   * role must see a locked bar, not one that bounces and logs the click as an escalation.
+   */
+  bulkResolveMarkets: "trading",
+  /**
+   * ⭐ `/admin/resolver-queue` · SEALING A ROW THE AUTO-RESOLVE FLOOR REFUSED — the typed
+   * per-row override.
+   *
+   * `compliance`, and the split from `bulkResolveMarkets` above is the whole control.
+   * Confirming a market the platform's own gate would seal is trading work. Sealing one it
+   * REFUSED — because the AI cited espn.com where the market's approved source is
+   * premierleague.com — is a relaxation of the citation gate that stands between a model's
+   * read and a sealed real-money outcome. That is the same kind of decision as
+   * `setTwoAdminAuth` two rows down, and it takes the same domain.
+   *
+   * ⚠️ WHAT THIS ACTUALLY MEANS ON THIS PLATFORM, STATED PLAINLY RATHER THAN AS AN
+   * ASPIRATION — an earlier draft of this comment claimed the two halves "are supposed to
+   * need two different people", and NO configuration of the system can produce two people.
+   * `/admin/resolver-queue` is a `trading` route and `DEFAULT_GRANTS` makes `trading` and
+   * `compliance` DISJOINT, so a COMPLIANCE officer cannot open this page at all and never
+   * sees the bar. The real effect is:
+   *   · a TRADING officer gets the bar, seals the rows the floor already allows, and sees a
+   *     LOCKED override on the ones it refused;
+   *   · the override itself is therefore **Owner-only in practice**.
+   * That is the same shape `recheckMarketNow` and `setTwoAdminAuth` already have on this
+   * very page, and it is documented there as a known gap rather than a design. It is the
+   * SAFE direction — relaxing the citation gate is the tightest thing on this surface — but
+   * it is a gap, not a separation of duties, and widening `trading` to cover it would be a
+   * compliance decision, not a refactor. ⛔ Do not "fix" it by moving this key to `trading`.
+   */
+  bulkResolveOverride: "compliance",
   /** admin shell header · the AI toolkit's four toggles (chatbot, resolution pause,
    *  auto-resolve, poll generation). AI spend + resolution policy — compliance. */
   aiToolkit: "compliance",

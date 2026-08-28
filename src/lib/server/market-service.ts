@@ -264,6 +264,16 @@ export type StoredMarket = {
   sentinelSourceUrl?: string | null;
   sentinelConfidence?: number | null;
   sentinelClosedAt?: string | null;
+  /** ⭐ Did the AI say the outcome is IRREVERSIBLY LOCKED? The sixth conjunct of
+   *  `decideAutoResolve`'s floor, and until 2026-08-28 the ONLY one that was never
+   *  written down — so nothing reading a market ROW could re-derive the decision the
+   *  engine had made about it, and the resolver queue could not tell an officer why a
+   *  99%-confidence market was still sitting there.
+   *  NULL = never recorded (every row assessed before the column existed). The queue's
+   *  verdict reads NULL as BLOCKED and names it "not recorded" — ⛔ never as a refusal
+   *  the AI did not make, and ⛔ never coerced to `true`, which would invent a fact the
+   *  database does not hold on the settlement surface (A-5). */
+  sentinelDetermined?: boolean | null;
   /** Per-market override of the global resolution mode. Null = inherit the global
    *  RateConfig default. See getEffectiveResolutionMode in market-config.ts. */
   resolutionMode?: "human" | "auto" | null;
@@ -1985,7 +1995,10 @@ export type ResolveTriggerResult = {
   /** `early-noop` = an operator re-checked BEFORE resolutionAt and the AI found no
    *  locked outcome, so the market was left LIVE (its recommendation was recorded and
    *  the scheduled trigger still fires on time). */
-  status: "resolved-auto" | "closed-human" | "demo" | "skipped" | "claimed-elsewhere" | "early-noop";
+  /** `reassessed` = an operator re-checked a market that had ALREADY closed for the
+   *  ceremony. Only its AI recommendation was refreshed — status, outcome and the settle
+   *  timer are untouched. Before this existed, that call was paid for and DISCARDED. */
+  status: "resolved-auto" | "closed-human" | "demo" | "skipped" | "claimed-elsewhere" | "early-noop" | "reassessed" | "reassess-cleared";
   outcome?: Side | null;
   confidence?: number | null;
   mode?: "human" | "auto";
@@ -2020,7 +2033,7 @@ export type ResolveTriggerResult = {
  */
 export async function resolveDueMarket(
   marketId: string,
-  opts?: { assessment?: SentinelResult | null },
+  opts?: { assessment?: SentinelResult | null; reassessClosed?: boolean },
 ): Promise<ResolveTriggerResult> {
   const pre = await marketStore.get(marketId);
   if (!pre) return { status: "skipped" };
@@ -2034,13 +2047,38 @@ export async function resolveDueMarket(
   const claim = await withLock(`market:${marketId}`, async () => {
     const m = await marketStore.get(marketId);
     if (!m) return { ok: false as const, reason: "gone" as const };
-    if (m.status !== "LIVE") return { ok: false as const, reason: "not-live" as const };
-    if (m.resolutionNotifiedAt) return { ok: false as const, reason: "already" as const };
+    /**
+     * ⭐ RE-ASSESS A CLOSED MARKET — the operator's only legitimate route past the
+     * citation gate, and it did not exist.
+     *
+     * 🔴 MEASURED 2026-08-28. "Re-check this market now" sits on every card in the
+     * resolver queue, and the queue's own population is *every CLOSED market* plus the
+     * LIVE ones inside the window. On a CLOSED market the button ran `sentinelCheckOne`
+     * — a real, paid, web-searching AI call — handed the answer to this function, and
+     * this line threw it away as `not-live`. The toast said *"Nothing to do."* So the one
+     * control that could have replaced a citation from espn.com with one from the market's
+     * approved source spent money and recorded nothing, on all 17 markets in the queue.
+     *
+     * ⛔ IT REFRESHES THE RECOMMENDATION AND NOTHING ELSE. A CLOSED market has already
+     * left the auto path (`resolutionNotifiedAt` is stamped and officers were alerted);
+     * re-checking it must never re-open that path and seal it unattended. The re-assess
+     * branch below writes ONLY the sentinel columns — no status, no outcome, no timer —
+     * and the officer still seals through the ceremony or the bulk bar.
+     *
+     * ⛔ OPT-IN, AND ONLY THE OPERATOR PASSES IT. The scheduler calls this function
+     * without the flag, so a CLOSED market is still `not-live` to every automatic caller
+     * and cannot be re-checked in a loop against a metered AI budget.
+     */
+    const reassess =
+      opts?.reassessClosed === true && m.status === "CLOSED" &&
+      !m.resolvedOutcome && !m.resolutionStage1By;
+    if (m.status !== "LIVE" && !reassess) return { ok: false as const, reason: "not-live" as const };
+    if (m.resolutionNotifiedAt && !reassess) return { ok: false as const, reason: "already" as const };
     if (m.resolveClaimedAt && Date.now() - Date.parse(m.resolveClaimedAt) < RESOLVE_CLAIM_TTL_MS) {
       return { ok: false as const, reason: "claimed" as const };
     }
     await marketStore.stamp(marketId, { resolveClaimedAt: new Date().toISOString() });
-    return { ok: true as const, market: m };
+    return { ok: true as const, market: m, reassess };
   });
   if (!claim.ok) return { status: claim.reason === "claimed" ? "claimed-elsewhere" : "skipped" };
 
@@ -2088,13 +2126,63 @@ export async function resolveDueMarket(
         sentinelSourceUrl: a.sourceUrl || null,
         sentinelConfidence: a.confidence,
         sentinelClosedAt: new Date().toISOString(),
+        // ⭐ THE CONJUNCT THAT WAS THROWN AWAY. `determined` is ANDed into `confident`
+        // below and was read straight off the live response, so the row kept five of the
+        // six inputs to a real-money decision and dropped the sixth. Persisted from here
+        // on, so the queue's verdict is a re-derivation rather than a guess.
+        sentinelDetermined: a.determined,
       }
     : {};
 
   const applied = await withLock(`market:${marketId}`, async () => {
     const m = await marketStore.get(marketId);
     // Re-check under the lock — a second fire / another instance may have run.
-    if (!m || m.status !== "LIVE" || m.resolutionNotifiedAt) return { done: false as const };
+    if (!m) return { done: false as const };
+    if (claim.reassess) {
+      // ⛔ RECOMMENDATION ONLY. No status, no outcome, no `resolutionNotifiedAt`, no
+      // timer — a CLOSED market's transition already happened and this must not redo it.
+      // Re-verified under the lock: if an officer sealed it while the AI was thinking, we
+      // write nothing. The claim is RELEASED because nothing transitioned, exactly as the
+      // early-recheck branch does — a claim left standing would make the next re-check
+      // report "already running" when nothing is.
+      if (m.status !== "CLOSED" || m.resolvedOutcome || m.resolutionStage1By) {
+        await marketStore.stamp(marketId, { resolveClaimedAt: null });
+        return { done: false as const };
+      }
+      const reIso = new Date().toISOString();
+      /**
+       * 🔴 A RE-CHECK THAT FINDS NOTHING MUST NOT LEAVE THE OLD READING STANDING. This was
+       * the worst defect in the first draft of this branch, and it was found by attacking
+       * it rather than by using it.
+       *
+       * `sentinelFields` is `{}` whenever the fresh read has no concrete YES/NO — which
+       * covers BOTH the honest withdrawal (`assessed` / `UNKNOWN`: *"I can no longer tell"*)
+       * and every hard failure (`action: "error"` — no API key, a spend block, a provider
+       * timeout). Stamping `{...sentinelFields}` in that state writes NOTHING, so
+       * `sentinelOutcome`, `sentinelConfidence` and above all `sentinelDetermined` all
+       * survive at their old values.
+       *
+       * ⛔ AND THE QUEUE'S VERDICT IS DERIVED FROM EXACTLY THOSE COLUMNS. So an officer
+       * could press "Re-check", be told *"the AI could not determine an outcome"*, and be
+       * looking at a row that still says **97% · would auto-seal** — one click from sealing
+       * a real-money outcome on a determination the model had just retracted. Two
+       * contradictory statements about the same market on the same screen, with the seal
+       * button following the stale one.
+       *
+       * So the recommendation is CLEARED and the row falls to `no-assessment`, which is
+       * both the honest description and the fail-closed direction. The fresh read's own
+       * verdict is on the audit row below; nothing is lost except a claim we can no longer
+       * support.
+       */
+      const cleared = haveOutcome ? sentinelFields : {
+        sentinelOutcome: null, sentinelEvidence: null, sentinelReasoning: null,
+        sentinelSourceUrl: null, sentinelConfidence: null, sentinelDetermined: null,
+        sentinelClosedAt: null,
+      };
+      await marketStore.stamp(marketId, { ...cleared, resolveClaimedAt: null, updatedAt: reIso });
+      return { done: true as const, auto: false as const, reassessed: true as const, cleared: !haveOutcome, market: m };
+    }
+    if (m.status !== "LIVE" || m.resolutionNotifiedAt) return { done: false as const };
     const nowIso = new Date().toISOString();
     if (goAuto && a) {
       const windowMs = Math.max(0, cfg.objectionWindowHours) * 3600_000;
@@ -2108,6 +2196,10 @@ export async function resolveDueMarket(
         objectionsClosedAt,
         settledAt: null, // ADJUDICATED only — the settle timer pays after the window
         resolutionNotifiedAt: nowIso,
+        // Same reason as the human fallback below: the claim has done its job the moment
+        // the market transitions, and a stamp nothing releases is a stamp something will
+        // eventually misread.
+        resolveClaimedAt: null,
         updatedAt: nowIso,
         ...sentinelFields,
       });
@@ -2136,9 +2228,24 @@ export async function resolveDueMarket(
       return { done: false as const, early: true as const };
     }
     // HUMAN fallback: close to bets + store any recommendation; officers seal via ceremony.
+    //
+    // 🔴 `resolveClaimedAt: null` — AND ITS ABSENCE WAS A LIVE DEFECT, FOUND BY ATTACKING
+    // THIS FILE AND REPRODUCED BY DRIVING IT. The claim is taken to stop TWO instances
+    // paying for the same AI call; once the market has transitioned it has done its job.
+    // Leaving it standing meant every market closed by the scheduled trigger carried a
+    // claim for the next TEN MINUTES, with two consequences that only appeared once
+    // anything started READING the stamp on a CLOSED market:
+    //   · the resolver queue's new verdict reads a live claim as "an AI check is running
+    //     on this market right now" — a false statement, non-overridable, for ten minutes
+    //     after every close;
+    //   · "Re-check this market now" spends the paid web search FIRST and only then hits
+    //     the claim guard, so the answer is bought and thrown away with "another check is
+    //     already running" — the exact defect the re-assess branch above exists to end.
+    // The early-recheck branch has always released it for the same reason. So does this.
     await marketStore.stamp(marketId, {
       status: "CLOSED",
       resolutionNotifiedAt: nowIso,
+      resolveClaimedAt: null,
       updatedAt: nowIso,
       ...sentinelFields,
     });
@@ -2147,6 +2254,36 @@ export async function resolveDueMarket(
   });
 
   if (!applied.done) return { status: "early" in applied && applied.early ? "early-noop" : "skipped" };
+
+  if ("reassessed" in applied && applied.reassessed) {
+    const wiped = "cleared" in applied && applied.cleared;
+    audit({
+      category: "ADMIN",
+      action: "market.reassessed",
+      actorId: AUTO_RESOLVER_ACTOR,
+      targetType: "Market",
+      targetId: marketId,
+      payload: {
+        aiDetermined: a?.determined ?? null,
+        aiOutcome: haveOutcome ? a?.outcome : null,
+        aiConfidence: a?.confidence ?? null,
+        aiSourceUrl: a?.sourceUrl ?? null,
+        aiAction: a?.action ?? null,
+        aiError: a?.error ?? null,
+        approvedSourceUrl: claim.market.sourceUrl,
+        sourceMatches, threshold, mode, confident,
+        clearedPriorRecommendation: wiped,
+        note: wiped
+          ? "An officer re-ran the AI check on a market that had ALREADY closed for the ceremony, and the fresh read produced NO concrete outcome — a withdrawal, or a failed call. The PRIOR recommendation was CLEARED rather than left standing: the resolver queue derives its verdict from these columns, so keeping a retracted reading would have shown the officer a confident row one click from sealing real money. Status, outcome and the settle timer are untouched, and no money moved."
+          : "An officer re-ran the AI check on a market that had ALREADY closed for the ceremony. The recommendation was refreshed — status, outcome and the settle timer are untouched, and no money moved. This is the operator's route to a citation from the market's own approved source; it can never seal a market on its own.",
+      },
+    });
+    return {
+      status: wiped ? "reassess-cleared" : "reassessed",
+      outcome: haveOutcome ? (a!.outcome as Side) : null,
+      confidence: a?.confidence ?? null, mode,
+    };
+  }
 
   if (applied.auto) {
     audit({

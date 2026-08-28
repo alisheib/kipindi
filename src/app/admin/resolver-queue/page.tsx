@@ -19,6 +19,14 @@ import { RecheckButton } from "./recheck-button";
 import { getRequireTwoOfficerResolution } from "@/lib/server/resolution-policy";
 import { currentSession } from "@/lib/server/auth-service";
 import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
+import { getEffectiveConfig, getEffectiveResolutionMode } from "@/lib/server/market-config";
+import { listSources, sourceMatchesAny } from "@/lib/server/source-registry";
+import { resolvePublishCategory } from "@/lib/server/market-service";
+import { bulkVerdictFor } from "@/lib/server/bulk-resolve-eligibility";
+import { BulkSelectionProvider } from "./bulk-selection";
+import { BulkResolveBar } from "./bulk-resolve-bar";
+import { RowCheck, RowVerdict } from "./row-select";
+import type { BulkRow } from "./bulk-resolve-types";
 import { ControlLocked } from "@/components/admin/control-locked";
 import { formatDateTime } from "@/lib/utils";
 import { CEREMONY, SELECTION } from "@/lib/admin-status-lexicon";
@@ -115,10 +123,15 @@ export default async function ResolverQueuePage({
   // instead of a control that refuses and logs the click as a SECURITY event.
   // Mirrors admin/objections' `canDecide`.
   const session = await currentSession();
-  const [canRecheck, canSetPolicy, canResolve] = await Promise.all([
+  const [canRecheck, canSetPolicy, canResolve, canBulk, canOverride] = await Promise.all([
     canUseControl(session?.role, "recheckMarketNow"),
     canUseControl(session?.role, "setTwoAdminAuth"),
     canUseControl(session?.role, "resolveMarket"),
+    canUseControl(session?.role, "bulkResolveMarkets"),
+    // ⭐ The two halves of the bulk bar are two different decisions and they need two
+    // different grants. Asked HERE with the same function the action will use, so a
+    // trading officer sees a locked override instead of a box the server refuses (E-18).
+    canUseControl(session?.role, "bulkResolveOverride"),
   ]);
   // NOTE: the AI resolution pause + auto-resolve toggles live ONLY in the admin
   // top-bar "AI toolkit" dropdown (one place, no redundancy). This page owns the
@@ -129,6 +142,60 @@ export default async function ResolverQueuePage({
   const paged = pending.slice((page - 1) * PER_PAGE, page * PER_PAGE);
   const baseHref = buildBaseHref("/admin/resolver-queue", { window: sp.window, category: sp.category, q: sp.q });
   const hasFilter = windowFilter !== "24h" || !!categoryFilter || !!query;
+
+  /**
+   * ⭐ THE AUTO-RESOLVE VERDICT FOR EVERY ROW ON THIS PAGE — the answer to *"why is this
+   * 99%-confidence market still sitting here?"*, which this page has never given.
+   *
+   * ⛔ COMPUTED HERE, ON THE SERVER, AND NOWHERE ELSE. It needs the trusted-source
+   * registry, the per-market effective config and `decideAutoResolve` itself; a client
+   * component asking the same question would drag Prisma and the lock manager into the
+   * browser bundle, and a verdict the browser computed is a verdict an attacker chose.
+   * The action re-derives every one of these before it seals anything — what is handed
+   * down is for PAINT.
+   *
+   * ⛔ THE REGISTRY IS READ ONCE. `isSourceTrusted` re-reads the whole store per call, so
+   * asking it per row would be a 20× store read for one answer that cannot change
+   * mid-render — which is why `sourceMatchesAny` exists and why the host rule has exactly
+   * one definition site.
+   */
+  const trustedSources = await listSources({ enabledOnly: true }).catch(() => []);
+  const bulkRows: BulkRow[] = await Promise.all(paged.map(async (m) => {
+    const cfg = await getEffectiveConfig(m.id);
+    const mode = await getEffectiveResolutionMode(m.resolutionMode);
+    const sv = sentinelSourceVerdict(m.sentinelSourceUrl, m.sourceUrl);
+    // ⛔ BOTH ARMS, exactly as `resolveDueMarket` computes `sourceMatches`. A market that
+    // names NO approved source is gated by the registry instead; rendering only
+    // `sentinelSourceVerdict` would show "no approved source" on a row the engine considers
+    // fully matched, and the badge would then contradict the gate it is explaining.
+    const sourceMatches =
+      sv === "match" ||
+      (sv === "no-approved-source" && !!m.sentinelSourceUrl &&
+        sourceMatchesAny(trustedSources, m.sentinelSourceUrl, resolvePublishCategory(m.category)));
+    const v = bulkVerdictFor({
+      market: m, mode, threshold: cfg.resolveConfidenceThreshold,
+      sourceMatches, requireTwoOfficer, officerId: session?.userId ?? null,
+    });
+    return {
+      marketId: m.id,
+      title: m.titleEn,
+      pool: m.yesPool + m.noPool,
+      verdict: {
+        eligible: v.eligible, outcome: v.outcome, reason: v.reason, all: v.all,
+        overridable: v.overridable, stage: v.stage, modeIsAuto: v.modeIsAuto,
+        confidence: v.confidence, citedHost: v.citedHost, approvedHost: v.approvedHost,
+      },
+    };
+  }));
+  const verdictById = new Map(bulkRows.map((r) => [r.marketId, r]));
+  // The floor is a per-market config value; the queue-wide one is only for the copy that
+  // says "floor 90%" beside a refused row, so the global read is the right one here.
+  const globalCfg = await getEffectiveConfig();
+  const displayThreshold = globalCfg.resolveConfidenceThreshold;
+  // ⛔ READ, NEVER ASSUMED. 0 is a legal setting, and at 0 the settle timer pays every
+  // winner within milliseconds of the seal — so the confirmation's "no money moves yet"
+  // has to change with it rather than being a constant.
+  const objectionWindowHours = globalCfg.objectionWindowHours;
 
   return (
     <>
@@ -188,7 +255,38 @@ export default async function ResolverQueuePage({
 
         {marketsFailed ? (
           <AdminLoadError what="the resolver queue" />
-        ) : pending.length === 0 ? (
+        ) : (
+          <BulkSelectionProvider pageIds={bulkRows.map((r) => r.marketId)}>
+          {/* ⭐ THE BULK BAR — its OWN card, in normal flow, directly under the filters and
+              above the grid, and OUTSIDE the empty-state branch.
+              ⛔ OUTSIDE, because it carries the batch RESULT PANEL. A batch that seals the
+              last rows in the queue flips this page to "Queue is clear" on the very refresh
+              that follows — and with the bar inside the non-empty branch, the five-bucket
+              report of what was just sealed, skipped and failed unmounted with it. The one
+              moment an officer most needs that panel is the moment it used to vanish.
+              ⛔ NOT in `AdminCard action=`: that slot is `shrink-0` against a growing title
+              and a summary strip has already measured wider than its own card at 360 there.
+              ⛔ NOT sticky, and that is a decision rather than an omission. The admin top bar
+              in this console is deliberately not sticky either (the SIDEBAR is the sticky
+              element), so a bar that floated here would be the only thing on the page that
+              did — and a scroll-driven bar is a feedback loop this platform has already paid
+              for: a header once oscillated 30 times a second under 9,311 green checks. In
+              normal flow it cannot overlap the nav, the cards or the pager, because it is a
+              sibling of all three. */}
+          <AdminCard padding="p-3">
+            {canBulk ? (
+              <BulkResolveBar
+                rows={bulkRows}
+                totalPending={pending.length}
+                requireTwoOfficer={requireTwoOfficer}
+                canOverride={canOverride}
+                objectionWindowHours={objectionWindowHours}
+              />
+            ) : (
+              <ControlLocked what="Resolve selected markets" need={CONTROL_DOMAIN.bulkResolveMarkets} block />
+            )}
+          </AdminCard>
+          {pending.length === 0 ? (
           <EmptyState
             kind="audit"
             title={hasFilter ? "No markets match" : "Queue is clear"}
@@ -206,6 +304,19 @@ export default async function ResolverQueuePage({
               return (
                 <AdminCard key={m.id} padding="p-0" data-market-id={m.id}>
                   <div className="flex items-start gap-4 p-4 border-b border-border">
+                    {/* ⛔ THE TICK BOX ONLY — 44px, `shrink-0`, and nothing in it that can
+                        widen a track. A grid item's `min-content` forces its track, and the
+                        VERDICT SENTENCE used to live here: a chip reading "The AI read a
+                        different site from this market's approved source" in a shrink-0
+                        column pushed the whole card past its `lg:grid-cols-2` track. The
+                        sentence is now `<RowVerdict>`, full width, in the card body.
+                        It sits FIRST so the tick box is the leftmost thing on the card at
+                        every width, which is where a reader looks for one. */}
+                    {canBulk && verdictById.has(m.id) && (
+                      <div className="shrink-0">
+                        <RowCheck marketId={m.id} title={m.titleEn} />
+                      </div>
+                    )}
                     {/* B6: the dial shows the CROWD's YES lean (impliedYesPct) — nothing more.
                         It previously showed pool "lopsidedness" fed into a YES-green/NO-rose
                         ConfidenceDial, so a 90%-NO market rendered a YES-leaning needle labelled
@@ -242,6 +353,16 @@ export default async function ResolverQueuePage({
                       <p className="mt-1 font-mono text-[11px] text-text-subtle">{SELECTION.betsClosed.en} {fmtTime(m.selectionClosedAt ?? m.resolutionAt)} · Resolves {fmtTime(m.resolutionAt)}</p>
                     </div>
                   </div>
+
+                  {canBulk && verdictById.has(m.id) && (
+                    <RowVerdict
+                      marketId={m.id}
+                      title={m.titleEn}
+                      verdict={verdictById.get(m.id)!.verdict}
+                      threshold={displayThreshold}
+                      canOverride={canOverride}
+                    />
+                  )}
 
                   <div className="px-4 py-3 border-b border-border">
                     <ProbabilityBar yesPct={yes} size="micro" />
@@ -396,6 +517,8 @@ export default async function ResolverQueuePage({
               );
             })}
           </div>
+          )}
+          </BulkSelectionProvider>
         )}
         <AdminPagination total={pending.length} page={page} baseHref={baseHref} />
       </AdminBody>

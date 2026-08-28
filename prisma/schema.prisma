@@ -1178,6 +1178,14 @@ model PredictionMarket {
   sentinelSourceUrl         String?
   sentinelConfidence        Int?
   sentinelClosedAt          DateTime?
+  /// Did the AI say the outcome is IRREVERSIBLY LOCKED? The sixth conjunct of
+  /// `decideAutoResolve`'s floor, and the only one that was never persisted — so a
+  /// market ROW could not re-derive the decision the engine made about it. NULL =
+  /// never recorded (every row assessed before 2026-08-28), which the resolver
+  /// queue's verdict reads as BLOCKED and names as "not recorded", never as a
+  /// refusal the AI did not make. ⛔ Never default this to true: that would invent
+  /// a fact the database does not hold, on the settlement surface (A-5).
+  sentinelDetermined        Boolean?
   /**
    * Per-market override of the global resolution mode (RateConfig.resolutionMode).
    * NULL = inherit the global default. "human" = AI recommends, a two-officer

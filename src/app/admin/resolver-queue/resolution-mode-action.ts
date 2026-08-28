@@ -55,8 +55,20 @@ export async function recheckMarketNowAction(formData: FormData): Promise<
     const { armMarket } = await import("@/lib/server/market-scheduler");
 
     // One paid AI call, passed into the trigger so it is not run twice.
+    //
+    // 🔴 `reassessClosed` — the fix for the reason this button did nothing on most of the
+    // queue. Every CLOSED market (which is what the resolver queue mostly holds) used to
+    // hit `resolveDueMarket`'s `not-live` guard AFTER the paid web search had already run,
+    // so the answer was bought and thrown away and the toast said "Nothing to do". With
+    // the flag, a CLOSED market's RECOMMENDATION is refreshed — status, outcome and the
+    // settle timer are untouched, and it still cannot seal anything on its own. This is
+    // the operator's legitimate route to a citation from the market's own approved source,
+    // and without it the only way past the citation gate is an override.
+    //
+    // ⛔ THE FLAG IS PASSED HERE AND NOWHERE ELSE. The scheduler must never re-check a
+    // CLOSED market in a loop against a metered AI budget.
     const assessment = await sentinelCheckOne(marketId);
-    const r = await resolveDueMarket(marketId, { assessment });
+    const r = await resolveDueMarket(marketId, { assessment, reassessClosed: true });
     await armMarket(marketId).catch(() => {});
 
     audit({
@@ -74,6 +86,12 @@ export async function recheckMarketNowAction(formData: FormData): Promise<
     const detail =
       r.status === "resolved-auto" ? `AI sealed ${r.outcome} (${r.confidence}% confidence) — settles after the objection window.`
       : r.status === "closed-human" ? `Closed for the ceremony.${r.outcome ? ` AI suggests ${r.outcome} (${r.confidence}%).` : " The AI could not determine an outcome."}`
+      : r.status === "reassessed" ? `Recommendation refreshed — the AI now says ${r.outcome} (${r.confidence}%). This market stays closed for the ceremony; nothing was sealed.`
+      // ⛔ THIS IS NOT A SOFTER "refreshed". The fresh read produced no outcome, so the
+      // PRIOR recommendation was cleared — the queue derives its verdict from those
+      // columns, and telling an officer "refreshed" while leaving a retracted 97% on the
+      // row is how a seal happens on a reading the model has withdrawn.
+      : r.status === "reassess-cleared" ? "The AI could not determine an outcome this time, so the previous recommendation was CLEARED. This market stays closed for the ceremony, and the queue will now show it as having no AI reading."
       : r.status === "early-noop" ? "No locked outcome yet — market left open for betting; its recommendation was recorded."
       : r.status === "demo" ? "Demo market auto-resolved."
       : r.status === "claimed-elsewhere" ? "Another check is already running for this market."

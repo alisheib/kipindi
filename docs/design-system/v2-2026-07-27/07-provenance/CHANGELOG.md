@@ -1,5 +1,44 @@
 # Changelog (reconstructed)
 
+## 2026-08-28 (design-system · checkbox) — the third state, and an accessible name that was never there
+
+**`Checkbox` gains two props — `indeterminate` and `ariaLabel`** (`src/components/ui/checkbox.tsx`).
+Both are PROPS on the existing component, never a fork: §K5 / §B9. Nothing else in the kit changed,
+and no new component was created for a bulk-selection column.
+
+**⛔ `indeterminate` is a DOM PROPERTY, not an attribute.** React will not set it from JSX —
+`<input indeterminate={x}>` compiles, renders, and does nothing at all. It is assigned to the
+element in an effect, which is why the component now holds a ref. The paint is a **9×2 rectangle**
+in `var(--pearl-50)` on the existing `--brand-500` fill: both dimensions are numbers and the colour
+is a token, so it adds **no hand-typed value to a frozen property** and `checkbox.tsx` stays at its
+budgeted **1** on `FROZEN_RATCHET` (the one entry is its `oklch()` focus shadow). A minus GLYPH was
+the obvious alternative and was rejected — the kit has none, and spending a design-frozen budget on
+a 9×2 dash to add one is the wrong trade.
+
+**Why the third state at all:** a select-all header that can only say checked or unchecked is
+LYING about a partial selection, and on the resolver queue's new bulk bar — which seals real money
+across up to a page of markets in one press — the lie reads as *"you have selected everything"*.
+
+**⛔ `ariaLabel` is camelCase, and that is not a style preference.** A row checkbox in a grid has no
+visible `<label>`, so without a name prop it shipped as an UNNAMED checkbox that a screen reader
+announces as "checkbox" and nothing else. The hyphenated form on a custom component
+(`<Checkbox aria-label="…">`) is invisible to `tsc` — it compiles clean and is **silently dropped**,
+because a component's props are a plain object and nothing checks for a key nobody declared. This
+platform has shipped a control announcing the wrong name that way once already.
+
+**The 44px tap target is the `<label>` itself**, via `className`, not a wrapper around it: a
+wrapper's padding is dead space that looks tappable and is not. `min-h-[44px] min-w-[44px]` as
+LITERALS — this project overrides Tailwind's numeric spacing scale (`h-8` is 48px here, `h-10` is
+80px), so a scale class silently means something else.
+
+⚠️ **Shift-click is captured on the way down, not handled on a click.** The obvious shape — an
+`onClick` wrapper reading `e.shiftKey` — breaks the KEYBOARD, because the kit hides a real
+`<input type="checkbox">` and a wrapper click handler never sees a space-bar press. The control
+would have been mouse-only while looking perfectly accessible.
+
+Consumers unchanged: every existing `<Checkbox>` call site keeps its exact behaviour — both new
+props default to off.
+
 ## 2026-08-15 (design-system · filter-sheet) — the phone's filters move behind one button, and `position: fixed` turned out not to be
 
 **New component: `FilterSheet` + `FilterSheetGroup`** (`src/components/markets/filter-sheet.tsx`).

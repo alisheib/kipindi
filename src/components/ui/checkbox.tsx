@@ -18,6 +18,8 @@ export function Checkbox({
   value,
   required,
   className,
+  indeterminate = false,
+  ariaLabel,
 }: {
   defaultChecked?: boolean;
   checked?: boolean;
@@ -29,10 +31,41 @@ export function Checkbox({
   value?: string;
   required?: boolean;
   className?: string;
+  /**
+   * ⭐ THE THIRD STATE — "some, but not all". A select-all header that can only say
+   * checked or unchecked is LYING about a partial selection, and on a bulk control that
+   * seals real money the lie is "you have selected everything".
+   *
+   * ⛔ `indeterminate` IS A DOM PROPERTY, NOT AN ATTRIBUTE. React will not set it from
+   * JSX — writing `<input indeterminate={x}>` compiles, renders, and does nothing at all.
+   * It has to be assigned to the element in an effect, which is why this component now
+   * holds a ref. Ignored while `checked` is true (the native rule).
+   */
+  indeterminate?: boolean;
+  /**
+   * The accessible name when there is no visible `label` — a row checkbox in a grid has
+   * none, and without this it ships as an UNNAMED checkbox that a screen reader announces
+   * as "checkbox" and nothing else.
+   *
+   * ⛔ camelCase, and that is not a style preference. A HYPHENATED attribute on a custom
+   * component (`<Checkbox aria-label="…">`) is invisible to `tsc` — it compiles clean and
+   * is SILENTLY DROPPED, because a React component's props are a plain object and nothing
+   * checks for a key nobody declared. This platform has shipped a control announcing the
+   * wrong name that way once already.
+   */
+  ariaLabel?: string;
 }) {
   const [internal, setInternal] = React.useState(defaultChecked ?? false);
   const isControlled = controlledChecked !== undefined;
   const on = isControlled ? controlledChecked : internal;
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const dash = indeterminate && !on;
+
+  // The DOM property, set every render because `indeterminate` is not reflected as an
+  // attribute — React re-creating the vnode does not re-apply it.
+  React.useEffect(() => {
+    if (inputRef.current) inputRef.current.indeterminate = dash;
+  }, [dash]);
 
   const toggle = () => {
     const next = !on;
@@ -63,11 +96,13 @@ export function Checkbox({
           it). `peer` drives the visible box's focus ring. Never aria-hidden:
           hiding a focusable control from the a11y tree is a WCAG violation. */}
       <input
+        ref={inputRef}
         type="checkbox"
         name={name}
         value={value}
         required={required}
         checked={on}
+        aria-label={ariaLabel}
         onChange={() => toggle()}
         className="sr-only peer"
       />
@@ -78,8 +113,8 @@ export function Checkbox({
           width: 19,
           height: 19,
           borderRadius: 5,
-          border: `1.5px solid ${on ? "var(--brand-500)" : "var(--border-strong)"}`,
-          background: on ? "var(--brand-500)" : "transparent",
+          border: `1.5px solid ${on || dash ? "var(--brand-500)" : "var(--border-strong)"}`,
+          background: on || dash ? "var(--brand-500)" : "transparent",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -90,7 +125,15 @@ export function Checkbox({
           marginTop: 1,
         }}
       >
-        {on && <I.check s={13} style={{ color: "var(--pearl-50)", strokeWidth: 3 }} />}
+        {on
+          ? <I.check s={13} style={{ color: "var(--pearl-50)", strokeWidth: 3 }} />
+          /* The "some, not all" bar. A plain rectangle rather than a glyph: the kit has no
+             minus glyph, and adding one to spend a design-frozen budget on a 9×2 dash would
+             be the wrong trade. Both dimensions are numbers and the colour is a token, so
+             this adds NO hand-typed value to a frozen property. */
+          : dash
+            ? <span aria-hidden style={{ width: 9, height: 2, background: "var(--pearl-50)" }} />
+            : null}
       </span>
       {label && <span style={{ lineHeight: 1.4 }}>{label}</span>}
     </label>

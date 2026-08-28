@@ -1,0 +1,25 @@
+-- The AI sentinel's `determined` flag — the one conjunct of the auto-resolve floor
+-- that was never persisted.
+--
+-- ⭐ WHY. `decideAutoResolve` (market-service.ts) ANDs SIX things into `confident`:
+-- a concrete YES/NO, `determined` (the outcome is irreversibly locked), confidence ≥
+-- threshold, real evidence, and a citation from the market's own approved source.
+-- Five of the six were written to PredictionMarket; `determined` was read off the live
+-- API response and thrown away. So nothing that reads a market ROW can re-derive the
+-- decision the engine made — and the resolver queue's new "would this auto-seal?"
+-- verdict has to, because that badge is a statement about real money.
+--
+-- ⛔ THE ALTERNATIVE WAS FABRICATION. Reconstituting an assessment from storage with
+-- `determined: true` invents a fact the database does not hold — the platform's own
+-- A-5 no-fabrication rule, on the settlement surface. NULL is the honest value for
+-- every row assessed before this column existed, and the verdict reads NULL as
+-- BLOCKED (fail closed), naming it as "not recorded" rather than as an AI refusal.
+--
+-- ⭐ PURELY ADDITIVE AND EXPAND-ONLY. One nullable column, no drop, no type change,
+-- no backfill, no default. Every existing row keeps its exact current value set and
+-- reads NULL here. Nothing settles differently: `resolveDueMarket` still reads
+-- `determined` from the LIVE assessment it already holds — this column is written
+-- alongside, and is read only by the queue's verdict and the bulk-resolve gate.
+-- Re-runnable: IF NOT EXISTS, so a re-applied migration is a no-op rather than an
+-- outage (`migrate deploy` runs before `next start` — a failed migration = no boot).
+ALTER TABLE "PredictionMarket" ADD COLUMN IF NOT EXISTS "sentinelDetermined" BOOLEAN;

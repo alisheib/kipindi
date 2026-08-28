@@ -72,6 +72,13 @@ function toStoredMarket(r: any): StoredMarket {
     sentinelSourceUrl: r.sentinelSourceUrl ?? null,
     sentinelConfidence: r.sentinelConfidence ?? null,
     sentinelClosedAt: iso(r.sentinelClosedAt) ?? null,
+    // ⛔ `?? null`, never `?? false`. NULL means the flag was never recorded (every row
+    // assessed before the column existed); `false` means the AI actively said the outcome
+    // is NOT locked. The resolver queue's auto-resolve verdict blocks on both but names
+    // them differently — coercing here would erase that distinction at the one place that
+    // still knows it, and "the AI refused" is not a thing we may say about a row that was
+    // never asked.
+    sentinelDetermined: r.sentinelDetermined ?? null,
     resolutionMode: (r.resolutionMode as StoredMarket["resolutionMode"]) ?? null,
     resolveClaimedAt: iso(r.resolveClaimedAt) ?? null,
     // Coerced, not trusted: a row read before the column existed (or through an old
@@ -488,6 +495,7 @@ const STAMPABLE: Record<string, (v: unknown) => unknown> = {
   sentinelSourceUrl: (v) => v,
   sentinelConfidence: (v) => v,
   sentinelClosedAt: (v) => (v ? new Date(v as string) : null),
+  sentinelDetermined: (v) => v,
   resolutionMode: (v) => v,
   resolveClaimedAt: (v) => (v ? new Date(v as string) : null),
   updatedAt: (v) => (v ? new Date(v as string) : new Date()),
@@ -557,6 +565,7 @@ const prismaMarkets: MarketStore = {
         sentinelSourceUrl: m.sentinelSourceUrl ?? null,
         sentinelConfidence: m.sentinelConfidence ?? null,
         sentinelClosedAt: m.sentinelClosedAt ? new Date(m.sentinelClosedAt) : null,
+        sentinelDetermined: m.sentinelDetermined ?? null,
         resolutionMode: m.resolutionMode ?? null,
         resolveClaimedAt: m.resolveClaimedAt ? new Date(m.resolveClaimedAt) : null,
         productLine: m.productLine ?? "MARKET",
@@ -595,6 +604,7 @@ const prismaMarkets: MarketStore = {
         sentinelSourceUrl: m.sentinelSourceUrl ?? null,
         sentinelConfidence: m.sentinelConfidence ?? null,
         sentinelClosedAt: m.sentinelClosedAt ? new Date(m.sentinelClosedAt) : null,
+        sentinelDetermined: m.sentinelDetermined ?? null,
         resolutionMode: m.resolutionMode ?? null,
         resolveClaimedAt: m.resolveClaimedAt ? new Date(m.resolveClaimedAt) : null,
         // `productLine` is deliberately ABSENT from the update block: a row's product

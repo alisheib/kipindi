@@ -571,7 +571,12 @@
     "qa:rg-state": "node scripts/live-rg-break.mjs state",
     "qa:rg-expired": "node scripts/live-rg-break.mjs expired",
     "qa:rg-session": "node scripts/live-rg-break.mjs session",
-    "qa:rg-excluded": "node scripts/live-rg-break.mjs excluded"
+    "qa:rg-excluded": "node scripts/live-rg-break.mjs excluded",
+    "test:bulk-resolve": "tsx scripts/bulk-resolve.test.mts",
+    "red:bulk-resolve": "node scripts/bulk-resolve-red.mjs",
+    "ops:bulk-resolve-fleet": "tsx scripts/ops-bulk-resolve-fleet.mts",
+    "ops:fix-orphan-pool": "tsx scripts/ops-fix-orphan-pool-2026-08-28.mts",
+    "ops:verdict-census": "tsx scripts/ops-verdict-census.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

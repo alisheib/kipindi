@@ -309,6 +309,37 @@ export async function getGeneratableCategories(): Promise<GeneratableCategory[]>
 }
 
 /**
+ * THE HOST RULE — `host === domain || host.endsWith("." + domain)` — with exactly ONE
+ * definition site, and a hoistable source list.
+ *
+ * ⛔ WHY IT WAS EXTRACTED RATHER THAN COPIED. `isSourceTrusted` re-reads the whole
+ * registry on every call, which is fine for a publish gate (one market) and is an N+1
+ * the moment a LIST asks it — the resolver queue renders up to `PER_PAGE` markets and
+ * each one needs the same answer. The obvious fix is to fetch the sources once in the
+ * page and inline the comparison, and that is exactly how a platform ends up with two
+ * host rules that disagree. The one that gets it wrong drops the leading dot, and then
+ * `evilkitco.com` matches `kitco.com` — a citation gate defeated by a domain purchase.
+ *
+ * So: the rule lives here, both callers consume it, and `grep` finds one `endsWith`.
+ *
+ * ⚠️ PURE AND SYNCHRONOUS ON PURPOSE. It takes the source list as an argument; it does
+ * not fetch. The caller decides how often to read the registry, and the category-
+ * disabled check stays in `isSourceTrusted` where it belongs (a disabled category is a
+ * publishing decision, not a host-matching one).
+ */
+export function sourceMatchesAny(sources: TrustedSource[], url: string, category: MarketCategory): boolean {
+  let host: string;
+  try {
+    host = new URL(url).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+  return sources.some(
+    (s) => s.enabled && s.category === category && (host === s.domain || host.endsWith(`.${s.domain}`)),
+  );
+}
+
+/**
  * Verify whether a market's source URL belongs to an enabled trusted-source
  * domain in the right category. The single gate every publish path calls.
  */
@@ -320,9 +351,10 @@ export async function isSourceTrusted(url: string, category: MarketCategory): Pr
   } catch {
     return { ok: false, reason: "Invalid URL" };
   }
-  const match = (await listSources({ enabledOnly: true })).find(
-    (s) => s.category === category && (host === s.domain || host.endsWith(`.${s.domain}`)),
-  );
-  if (!match) return { ok: false, reason: `No enabled trusted source for ${category} matching ${host}` };
+  // ⚠️ `enabledOnly` here AND `s.enabled` inside the helper — belt and braces, because
+  // the helper's other caller hoists its own list and may not have filtered.
+  if (!sourceMatchesAny(await listSources({ enabledOnly: true }), url, category)) {
+    return { ok: false, reason: `No enabled trusted source for ${category} matching ${host}` };
+  }
   return { ok: true };
 }

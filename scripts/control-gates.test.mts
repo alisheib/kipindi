@@ -81,7 +81,7 @@ __resetGrantsForTest();
 {
   const EXPECT: Record<string, Partial<Record<ControlId, boolean>>> = {
     // Owner bypasses the grant table entirely and can never be locked out.
-    ADMIN:      { recheckMarketNow: true,  setTwoAdminAuth: true,  resolveMarket: true,  aiToolkit: true,  emergencyVoidMarket: true,  voidUpDownRound: true , generateUpDownRound: true , createAsset: true, updateAsset: true, toggleAsset: true, updateReadingMethod: true, updateThresholds: true, armProposal: true, saveProposalsConfig: true, approveProposal: true},
+    ADMIN:      { recheckMarketNow: true,  setTwoAdminAuth: true,  resolveMarket: true,  aiToolkit: true,  emergencyVoidMarket: true,  voidUpDownRound: true , generateUpDownRound: true , createAsset: true, updateAsset: true, toggleAsset: true, updateReadingMethod: true, updateThresholds: true, armProposal: true, saveProposalsConfig: true, bulkResolveMarkets: true, bulkResolveOverride: true, approveProposal: true},
     // ⭐ E-18 in one line: trading yes, compliance no. Sees the queue, cannot re-check;
     //    sees the markets table, cannot work its kill switch.
     // ⚠️ `voidUpDownRound: true` is a DELIBERATE, EVIDENCED decision, not a default —
@@ -97,18 +97,18 @@ __resetGrantsForTest();
     //    run the board every five minutes are exactly this role. It creates no money movement —
     //    the margin, rates and stake bounds are frozen on the chain and the asset — and it is
     //    undone by voiding the round it made, which this same role can already do.
-    MODERATOR:  { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: true,  aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: true , generateUpDownRound: true , createAsset: false, updateAsset: false, toggleAsset: false, updateReadingMethod: false, updateThresholds: false, armProposal: false, saveProposalsConfig: false, approveProposal: false},
+    MODERATOR:  { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: true,  aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: true , generateUpDownRound: true , createAsset: false, updateAsset: false, toggleAsset: false, updateReadingMethod: false, updateThresholds: false, armProposal: false, saveProposalsConfig: false, bulkResolveMarkets: true, bulkResolveOverride: false, approveProposal: false},
     // ⭐ The other half: can act, cannot even reach the trading page that hosts it.
     //    …and that is exactly why `voidUpDownRound` is FALSE here: a control a role can
     //    work but never reach is not a control. The round explorer stays trading-owned.
-    COMPLIANCE: { recheckMarketNow: true,  setTwoAdminAuth: true,  resolveMarket: false, aiToolkit: true,  emergencyVoidMarket: true,  voidUpDownRound: false , generateUpDownRound: false , createAsset: false, updateAsset: false, toggleAsset: false, updateReadingMethod: false, updateThresholds: false, armProposal: false, saveProposalsConfig: false, approveProposal: false},
-    FINANCE:    { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false , generateUpDownRound: false , createAsset: true, updateAsset: true, toggleAsset: true, updateReadingMethod: true, updateThresholds: true, armProposal: true, saveProposalsConfig: true, approveProposal: false},
-    GROWTH:     { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false , generateUpDownRound: false , createAsset: false, updateAsset: false, toggleAsset: false, updateReadingMethod: false, updateThresholds: false, armProposal: false, saveProposalsConfig: false, approveProposal: true},
-    SUPPORT:    { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false , generateUpDownRound: false , createAsset: false, updateAsset: false, toggleAsset: false, updateReadingMethod: false, updateThresholds: false, armProposal: false, saveProposalsConfig: false, approveProposal: false},
+    COMPLIANCE: { recheckMarketNow: true,  setTwoAdminAuth: true,  resolveMarket: false, aiToolkit: true,  emergencyVoidMarket: true,  voidUpDownRound: false , generateUpDownRound: false , createAsset: false, updateAsset: false, toggleAsset: false, updateReadingMethod: false, updateThresholds: false, armProposal: false, saveProposalsConfig: false, bulkResolveMarkets: false, bulkResolveOverride: true, approveProposal: false},
+    FINANCE:    { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false , generateUpDownRound: false , createAsset: true, updateAsset: true, toggleAsset: true, updateReadingMethod: true, updateThresholds: true, armProposal: true, saveProposalsConfig: true, bulkResolveMarkets: false, bulkResolveOverride: false, approveProposal: false},
+    GROWTH:     { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false , generateUpDownRound: false , createAsset: false, updateAsset: false, toggleAsset: false, updateReadingMethod: false, updateThresholds: false, armProposal: false, saveProposalsConfig: false, bulkResolveMarkets: false, bulkResolveOverride: false, approveProposal: true},
+    SUPPORT:    { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false , generateUpDownRound: false , createAsset: false, updateAsset: false, toggleAsset: false, updateReadingMethod: false, updateThresholds: false, armProposal: false, saveProposalsConfig: false, bulkResolveMarkets: false, bulkResolveOverride: false, approveProposal: false},
     // Read-only everywhere, including the domains it can view.
-    AUDITOR:    { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false , generateUpDownRound: false , createAsset: false, updateAsset: false, toggleAsset: false, updateReadingMethod: false, updateThresholds: false, armProposal: false, saveProposalsConfig: false, approveProposal: false},
-    PLAYER:     { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false , generateUpDownRound: false , createAsset: false, updateAsset: false, toggleAsset: false, updateReadingMethod: false, updateThresholds: false, armProposal: false, saveProposalsConfig: false, approveProposal: false},
-    AGENT:      { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false , generateUpDownRound: false , createAsset: false, updateAsset: false, toggleAsset: false, updateReadingMethod: false, updateThresholds: false, armProposal: false, saveProposalsConfig: false, approveProposal: false},
+    AUDITOR:    { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false , generateUpDownRound: false , createAsset: false, updateAsset: false, toggleAsset: false, updateReadingMethod: false, updateThresholds: false, armProposal: false, saveProposalsConfig: false, bulkResolveMarkets: false, bulkResolveOverride: false, approveProposal: false},
+    PLAYER:     { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false , generateUpDownRound: false , createAsset: false, updateAsset: false, toggleAsset: false, updateReadingMethod: false, updateThresholds: false, armProposal: false, saveProposalsConfig: false, bulkResolveMarkets: false, bulkResolveOverride: false, approveProposal: false},
+    AGENT:      { recheckMarketNow: false, setTwoAdminAuth: false, resolveMarket: false, aiToolkit: false, emergencyVoidMarket: false, voidUpDownRound: false , generateUpDownRound: false , createAsset: false, updateAsset: false, toggleAsset: false, updateReadingMethod: false, updateThresholds: false, armProposal: false, saveProposalsConfig: false, bulkResolveMarkets: false, bulkResolveOverride: false, approveProposal: false},
   };
 
   // ⛔ NOT vacuous by omission. `Partial<Record<…>>` lets a new control be added and
@@ -155,6 +155,10 @@ __resetGrantsForTest();
     armProposal: "src/app/admin/updown/proposals/actions.ts",
     saveProposalsConfig: "src/app/admin/proposals/actions.ts",
     approveProposal: "src/app/admin/proposals/actions.ts",
+    // The bulk bar's two halves: sealing what the floor already allows (trading), and
+    // sealing what it REFUSED (compliance). One file enforces both.
+    bulkResolveMarkets: "src/app/admin/resolver-queue/bulk-resolve-action.ts",
+    bulkResolveOverride: "src/app/admin/resolver-queue/bulk-resolve-action.ts",
   };
   for (const [id, file] of Object.entries(SITES) as [ControlId, string][]) {
     ok(`3 · ${id} · enforcement site exists`, existsSync(join(ROOT, file)), file);
@@ -175,7 +179,7 @@ __resetGrantsForTest();
 {
   const queue = read("src/app/admin/resolver-queue/page.tsx");
   ok("4 · resolver-queue asks canUseControl", queue.includes("canUseControl("));
-  for (const id of ["recheckMarketNow", "setTwoAdminAuth", "resolveMarket"] as ControlId[]) {
+  for (const id of ["recheckMarketNow", "setTwoAdminAuth", "resolveMarket", "bulkResolveMarkets", "bulkResolveOverride"] as ControlId[]) {
     ok(`4 · resolver-queue computes ${id}`, queue.includes(`"${id}"`));
   }
   // Each of the three controls must appear ONLY inside a conditional, with a
@@ -184,6 +188,11 @@ __resetGrantsForTest();
     ["RecheckButton", "canRecheck"],
     ["TwoAdminToggle", "canSetPolicy"],
     ["ResolveControls", "canResolve"],
+    // The bulk bar seals REAL MONEY on up to a whole page of markets in one press — if
+    // any control on this page has to sit behind its own flag with a locked alternative,
+    // it is this one. Its OVERRIDE half is gated separately, inside the bar and the row,
+    // on canOverride: a trading officer gets the bar and a locked override box.
+    ["BulkResolveBar", "canBulk"],
   ] as const) {
     const uses = [...queue.matchAll(new RegExp(`<${tag}\\b`, "g"))].length;
     ok(`4 · <${tag}> is rendered exactly once`, uses === 1, `${uses} uses`);

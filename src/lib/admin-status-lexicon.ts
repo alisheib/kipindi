@@ -416,3 +416,60 @@ export const PROPOSAL = {
    *  claims nothing more, rather than guessing which of the three it is. */
   sentenceClosed:   { en: "This proposal is closed — no further action." },
 } satisfies Record<string, AdminLabel>;
+
+/**
+ * FAMILY 12 — the resolver queue's AUTO-RESOLVE VERDICT: why a market is still sitting
+ * there, and what the bulk bar will and will not do about it.
+ *
+ * 🔴 THE WORDS EXIST BECAUSE THEIR ABSENCE WAS THE BUG. Ali reported the AI auto-resolver
+ * as broken with auto-resolve on and 90%+ confidence. Measured on production 2026-08-28:
+ * 12 markets at confidence ≥ 90 and the AI cited the market's approved source on NONE of
+ * them, so `decideAutoResolve` refused every one — correctly, and in total silence. The
+ * queue rendered the number and said nothing about the citation. These are the sentences
+ * it should have been saying.
+ *
+ * ⛔ ONE PLACE. A block reason is an enum an OFFICER reads, and the console's own law is
+ * that such a word gets a lexicon entry rather than a `.replace(/_/g, " ")` at the render
+ * site — which is how "not_determined" reaches a settlement screen looking like a database
+ * column. The market-specific facts (which host, which number) are NOT here: no dictionary
+ * can hold them, and the action composes them onto these.
+ *
+ * ⛔ EN ONLY, deliberately and consistently with the rest of this console. `short` is the
+ * chip (uppercased by CSS, so it must read correctly in caps); `en` is the sentence.
+ */
+export const BULK_VERDICT = {
+  eligible:                 { en: "Clears the auto-resolve floor — this one will seal" },
+  eligibleAuto:             { en: "Would auto-seal" },
+  alreadyResolved:          { en: "Already resolved — the verdict is sealed" },
+  awaitingCountersignature: { en: "Staged already — countersign it on the market's own card, not in bulk" },
+  stillLive:                { en: "Betting is still open — seal this one from its own card" },
+  claimedElsewhere:         { en: "An AI check is running on this market right now" },
+  noAssessment:             { en: "No AI reading recorded for this market" },
+  outcomeUnknown:           { en: "The AI returned no YES/NO outcome" },
+  notDetermined:            { en: "The AI says the outcome is not locked yet" },
+  determinedNotRecorded:    { en: "Assessed before this platform recorded the locked flag — re-check to refresh it" },
+  sourceNoneCited:          { en: "The AI cited no source at all" },
+  sourceDifferentDomain:    { en: "The AI read a different site from this market's approved source" },
+  sourceUntrusted:          { en: "The cited site is not a trusted source for this category" },
+  thinEvidence:             { en: "No real evidence excerpt behind the reading" },
+  belowThreshold:           { en: "Confidence is below the configured floor" },
+  internalDisagreement:     { en: "The eligibility check disagreed with itself — refused" },
+} satisfies Record<string, AdminLabel>;
+
+/**
+ * FAMILY 12b — the bulk bar's own chrome. Short, EN-only, and here rather than inline so
+ * the bar, the confirmation dialog and the result panel cannot drift into three wordings
+ * for the same act — which is exactly what happened to the two-officer note (Family 3).
+ */
+export const BULK_BAR = {
+  selectAllOnPage:   { en: "Select all on this page" },
+  selectionPageOnly: { en: "Selection covers this page only" },
+  nSelected:         { en: "selected" },
+  resolveSelected:   { en: "Resolve selected" },
+  stageSelected:     { en: "Stage selected" },
+  clear:             { en: "Clear" },
+  overrideNeeded:    { en: "Override reason required" },
+  overrideLocked:    { en: "Override needs compliance access" },
+  moneyAtStake:      { en: "Player money held on the selected markets" },
+  nothingSelected:   { en: "Select at least one market" },
+} satisfies Record<string, AdminLabel>;

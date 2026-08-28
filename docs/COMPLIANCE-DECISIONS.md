@@ -6,6 +6,134 @@
 
 ---
 
+## 2026-08-28 · The resolver queue says WHY, and a bulk seal that cannot wave the citation gate through
+
+**Ali, verbatim:** *"the ai auto resolver is not working, i had it on auto resolve and 90%+
+confidence"* — and, for the feature: *"an auto-resolve button on top of this resolver queue page.
+It confirms all of them and resolves all of them. Plus a checkbox functionality — if admin wants
+to resolve only a couple of them using the button, he checks each poll as much as he wants and
+auto-resolves them."*
+
+### ⭐ THE AUTO-RESOLVER WAS NOT BROKEN. IT WAS REFUSING, CORRECTLY, AND SAYING NOTHING.
+
+Measured read-only on production, 2026-08-28: **17 markets CLOSED, 16 carrying a sentinel
+verdict, 12 at confidence ≥ 90 — and the AI cited the market's own approved source on ZERO of
+them.** `resolutionMode` was `auto`; `resolveConfidenceThreshold` was `90`.
+
+| conf | approved source | host the AI actually cited |
+|---|---|---|
+| 99 / 95 | premierleague.com | espn.com |
+| 98 | premierleague.com | worldfootball.net |
+| 97 ×2 | premierleague.com | skysports.com |
+| 97 / 93 | premierleague.com | nbcsports.com |
+| 96 | foxsports.com | heavy.com |
+| 95 | premierleague.com | mancity.com |
+| 92 | premierleague.com | washingtonpost.com |
+| 91 | premierleague.com | vavel.com |
+
+`decideAutoResolve` ANDs `sourceMatches` into `confident`, so confidence is irrelevant when the
+citation does not match. That gate is correct and it is not being relaxed: in auto mode there is
+no officer in the path — the assessment stamps RESOLVED and the settle timer pays — so a wrong or
+invented citation is the only thing between a model and a sealed real-money outcome.
+
+⛔ **The defect was one layer downstream: the queue never said so.** It rendered "99% confidence"
+beside a chip reading *"not the approved source"*, with nothing connecting them and nothing saying
+that this was why the market was still sitting there. A control that refuses without saying it
+refused is indistinguishable, from outside, from a control that is broken.
+
+### The question that was put to Ali before anything was built
+
+`sourceMatches` consults the trusted-source registry **only** on the `no-approved-source` verdict.
+Every one of the 12 HAS an approved source, so espn.com and skysports.com — plausibly
+registry-trusted platform-wide — were never even considered: **a market's own approved source
+silently overrides the registry.** Asked, with the numbers in front of him.
+
+**Ali's decision: keep it strict.** A market that names `premierleague.com` is satisfied by
+`premierleague.com` and nothing else. The registry stays the fallback for markets that name no
+approved source. Do not widen this without a new dated entry.
+
+### What is now true
+
+| | |
+|---|---|
+| Every queue row states its auto-resolve verdict | eligible, or the named reason — cited host and approved host spelled out |
+| A bulk bar seals the SELECTED markets | select-all (page-scoped, stated on screen) or per-row checkboxes |
+| It calls `resolveMarket` — the same engine as the per-card button | same `withLock`, same ceremony, same `market.adjudicated` row, same objection window, same settle timer, same exact-conservation at settle |
+| A row the floor REFUSED is skipped… | …unless the officer types a per-row justification |
+| The override is its OWN control (`bulkResolveOverride`, `compliance`) | recorded as `market.resolve.bulk_override` with the block reason, the cited host, the approved host and the pool |
+| Every batch writes a run boundary | `market.resolve.bulk`, carrying the whole selection and every bucket |
+| Two-admin mode | the bar STAGES only; a countersignature is never a bulk act (below) |
+
+### The POCA §16 position, stated rather than assumed
+
+`requireTwoOfficer` is **false** on production today, so one admin seals in one action — the
+2026-07-24 decision, unchanged. When it is ON, the bulk bar **stages stage-1 and refuses every
+row that already carries one**, for either officer. Three things go wrong if a countersignature
+is treated as a bulk act, and all three were found by attacking the first build:
+
+* stage-1 may have staged **VOID**, which the AI's YES/NO vocabulary cannot express — a bulk
+  confirm offered the AI's outcome over the officer's actual decision;
+* the auto-resolve floor asks whether the AI's READ can stand in for a human. At stage 2 a human
+  has already decided, so gating the countersignature on the AI's read judges the wrong thing —
+  and its override row was indistinguishable from a genuine floor override in the audit chain;
+* countersigning twenty markets in one press is the rubber stamp the two-officer rule exists to
+  prevent.
+
+⛔ **Nothing here reverses a dated decision.** The strict citation gate, the two-officer rule and
+the single-admin default all stand exactly as they were.
+
+### ⚠️ The override is Owner-only in practice, and that is a gap, not a separation of duties
+
+`/admin/resolver-queue` is a `trading` route and `DEFAULT_GRANTS` makes `trading` and `compliance`
+DISJOINT, so a COMPLIANCE officer cannot open the page and never sees the bar. A TRADING officer
+gets the bar, seals what the floor already allows, and sees a **locked** override on the rest. The
+same shape `recheckMarketNow` and `setTwoAdminAuth` already have on this page. It is the safe
+direction — relaxing the citation gate is the tightest thing on this surface — but it is recorded
+as a gap rather than dressed up as design.
+
+### ⚠️ What is NOT a second factor here
+
+`adminTotp` is **DISABLED** on production, so `requireAdminTotp` is a no-op: this control is not
+2FA-gated and nothing in the product says it is. There is also no CSRF token, no nonce and no
+idempotency key in this repo. What is real: the per-market status guard inside
+`withLock('market:<id>')`, `settledAt` as the settlement idempotency stamp, the audit chain's
+`@@unique([prevHash])`, Next's default origin check, `SameSite=Lax`, a typed `RESOLVE` word when
+any override is in the batch, and a mandatory 12-character-minimum reason per overridden row.
+
+### Two defects fixed alongside, both found by measurement rather than by report
+
+1. 🔴 **"Re-check this market now" was a no-op on every CLOSED market** — i.e. on the whole
+   queue. It ran a real, paid, web-searching AI call and `resolveDueMarket` then discarded the
+   answer on its `not-live` guard, toasting *"Nothing to do."* Fixed with an opt-in
+   `reassessClosed` branch that refreshes the recommendation ONLY (no status, no outcome, no
+   timer). ⭐ This is what makes the override exceptional rather than the only route past the
+   gate. A re-check that finds no outcome now CLEARS the prior recommendation rather than
+   leaving a retracted 97% on a row one click from a seal.
+2. 🔴 **The engine never released `resolveClaimedAt` when a market transitioned**, so every
+   scheduled close carried a live claim for ten minutes. Invisible until something read it on a
+   CLOSED market; it also made the re-check above buy an answer and throw it away.
+
+### Code
+
+`src/lib/server/bulk-resolve-eligibility.ts` (the verdict — pure, calls `decideAutoResolve`, never
+restates it) · `src/app/admin/resolver-queue/bulk-resolve-action.ts` (the one enforcement site) ·
+`bulk-selection.tsx` · `row-select.tsx` · `bulk-resolve-bar.tsx` · `page.tsx` ·
+`control-gates.ts` (`bulkResolveMarkets: trading`, `bulkResolveOverride: compliance`) ·
+`market-service.ts` (persists `sentinelDetermined`; the re-assess branch; the claim release) ·
+`source-registry.ts` (`sourceMatchesAny` — one host rule, hoistable) ·
+`prisma/migrations/20260828120000_sentinel_determined` (additive, nullable, no backfill; NULL
+reads as BLOCKED and is named *"not recorded"*, never as an AI refusal).
+
+### Tests
+
+`npm run test:bulk-resolve` (146) · `npm run red:bulk-resolve` (**25/25** mutations caught,
+including a positive control that refuses every row and a liveness case that blinds the matrix) ·
+`npm run test:control-gates` (249, both new keys asserted for all nine roles) ·
+`npm run ops:verdict-census` (read-only, every live row) · `npm run ops:bulk-resolve-fleet`
+(13 production fixtures, one per verdict).
+
+---
+
 ## 2026-08-22 · Up & Down results go into the bell — reversing 2026-07-24 and 2026-08-05
 
 **Ali, verbatim:** *"i want u to fully make all up and down results appear in the bell as well if

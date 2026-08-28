@@ -215,6 +215,22 @@ writes** rather than accept the growth or archive it — one entry per round was
 were protected by test. The honest position is that this does not solve the curve, and the
 remaining lever is the number of rounds, not the code.
 
+**⚠️ What the resolver-queue bulk seal adds to that curve (2026-08-28).** The bulk bar writes
+**one run-boundary row per BATCH** (`market.resolve.bulk`, carrying the whole selection and every
+outcome bucket) plus **one row per OVERRIDDEN market** (`market.resolve.bulk_override`, carrying
+the typed justification, the block reason, the cited host, the approved host and the pool). The
+per-market `market.adjudicated` rows are unchanged — the engine already wrote those whichever
+button the officer pressed, so a batch of twenty costs **N + 1** extra rows, not 2N. On a queue
+that holds 17 markets and is worked a few times a week that is single digits a day against
+~11,500, and it is deliberately not compressed to a summary alone: a regulator must be able to
+reconcile the boundary against the individuals, which is the middle ground between
+`payments.retry.bulk` (summary only) and `aipoll.bulk_deleted` (per-item only).
+
+⛔ **The typed override justification is retained for the life of the chain**, like every other
+audit payload, and it is written by an officer rather than about a player: it carries no personal
+data, so it adds no new data class to §1 and joins no deletion path. That is deliberate — a
+justification for relaxing a money gate that could be erased is not a justification.
+
 ---
 
 ## 4. What runs, and where to look
