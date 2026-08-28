@@ -194,6 +194,9 @@ shots/*.png
 !/design-brief/PLAN-OF-RECORD.md
 !/design-brief/CLEANUP-MANIFEST.md
 !/design-brief/00-NEXT-SESSION-PROMPT.md
+# EXCEPTION, 2026-08-28 (DESIGN-GATE-2026-08-28): outbound Claude Design commission under
+# review — tracked per §0b's OUTBOUND row; DELETE this exception with the folder once sent.
+!/design-brief/design-gate-2026-08-28/
 /design-brief/**/*.zip
 
 # Local playbook + session tooling dropped at the repo root (not build output, not evidence).

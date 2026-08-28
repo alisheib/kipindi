@@ -1,3 +1,11 @@
+> ## ▶ NEW LANE 2026-08-28 — **THE DESIGN GATE** (`DESIGN-GATE-2026-08-28`)
+> Ali commissioned a final-gate consistency audit of the WHOLE platform, measured live on
+> production. The two registers are [`DESIGN-GATE-ADMIN-2026-08-28.md`](DESIGN-GATE-ADMIN-2026-08-28.md)
+> (23 systems) and [`DESIGN-GATE-PLAYER-2026-08-28.md`](DESIGN-GATE-PLAYER-2026-08-28.md)
+> (14 systems); the implementation task + tracking table is
+> [`SESSION-PROMPT-DESIGN-GATE.md`](SESSION-PROMPT-DESIGN-GATE.md). Instruments:
+> `scripts/design-gate/`. ⛔ One login per account at a time when re-measuring.
+
 > # ⭐ SESSION 60 — A CONTROL THAT WAS OFF THE SCREEN, A CHECK THAT COULD NOT FAIL (2026-08-24)
 >
 > ⛔ **THIS BLOCK IS A POINTER, NOT THE RECORD.** The campaign lane's full handoff is the topmost
