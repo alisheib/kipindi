@@ -26,6 +26,7 @@ import { HouseLeanWarning } from "./house-lean-warning";
 import { BetConfirmModal } from "./bet-confirm-modal";
 import { OperationResultModal } from "./operation-result-modal";
 import { payoutFor, leanFor, DEFAULT_COMMISSION_RATE, DEFAULT_FEE_CEILING_RATE, type LeanLevel, type PollRates } from "@/lib/payout";
+import { maxMultiplierFor, stakeFromPosition } from "@/lib/dial-stake";
 import { haptics, motionReduced } from "@/lib/haptics";
 import { formatTzs, formatNumber, fill, fmtRate, pctNum } from "@/lib/utils";
 import { errorCopy } from "@/lib/error-copy";
@@ -261,9 +262,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
   // admin-configured [minStake, maxStake]. Falls back to the legacy 200× when
   // no maxStake is threaded (keeps old callers working). Guarded so a bad
   // config (max ≤ min) can't produce a ≤0 or non-finite range.
-  const maxMultiplier = (typeof maxStake === "number" && maxStake > baseStake)
-    ? maxStake / baseStake
-    : 200;
+  const maxMultiplier = maxMultiplierFor(baseStake, maxStake);
   const isNeutral = distFromCenter < NEUTRAL_BAND;
   // Per management spec (license review · 2026-05):
   // slide LEFT → YES, slide RIGHT → NO. Inverted from the original
@@ -277,9 +276,13 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
   // momentarily disagrees with itself across two consecutive DOM
   // reads (input.value vs. Place-button text) during the 150 ms
   // settle window. The architect-stress E.1 invariant catches that.
-  const stakeTargetFromSlider = baseStake * (1 + conviction * (maxMultiplier - 1));
-  // Snap to the nearest 100, but never below the configured minimum (baseStake).
-  const stakeFromSlider = Math.max(baseStake, Math.round(stakeTargetFromSlider / 100) * 100);
+  // ⛔ Snap to the nearest 100, never below the configured minimum — AND never above the
+  //    configured maximum. `Math.round` rounds UP, so on a `maxStake` that is not a clean
+  //    hundred the far end of the dial used to offer a stake the server refuses outright
+  //    (249,950 → 250,000). Of the dial's three inputs only this one, the DRAG, was unclamped;
+  //    both typed paths already were. The ladder now lives in `dial-stake.ts` so a suite can
+  //    fail on it — this file cannot be imported by one.
+  const stakeFromSlider = stakeFromPosition(pos, baseStake, maxStake);
 
   // THREE coordinated inputs share one source of truth:
   //   1 · DRAG the dial         → pos  → stakeFromSlider (snap-to-100)
