@@ -9,9 +9,19 @@ Companion to [`docs/MASWALI-MILLIONEA-IMPLEMENTATION.md`](../../MASWALI-MILLIONE
 — read its **§12** before commissioning anything, because §12 is the list of ways this particular
 product tries to break this particular design system.
 
+- ⭐ **THE KEY NAME IS `MASWALI-DESIGN-R1`.** That is what the round-1 delivery is called. When it
+  arrives, the receiving session's instruction set is
+  [`SESSION-PROMPT-MASWALI-DESIGN.md`](../../SESSION-PROMPT-MASWALI-DESIGN.md).
 - **The commission folder is this one:** `docs/design-brief/maswali-2026-08/`
 - **The handover lands in:** `docs/design-brief/maswali-2026-08/handover/`
   — one folder, everything Maswali-design inside it.
+- ⛔ **NEVER EXTRACT THE OUTBOUND PACKAGE INSIDE THE REPO.** It carries a copy of
+  `DESIGN_AUTHORITY.md`, and `npm run test:design-one-door` asserts **exactly one on disk** — an
+  in-place unzip took the gate 4-red on 2026-08-28. The gate globs the disk, so `.gitignore` does
+  not quiet it. Extract outside the repo.
+- ⚠️ **The package is assembled from LIVE files at send time and never reused.** If it is older
+  than `HEAD`, rebuild it. `.gitignore`'s *"OUTBOUND DESIGN COMMISSIONS"* section records why: a
+  kept snapshot once taught an outside designer a rule `DESIGN_AUTHORITY.md` §M4 had overturned.
 
 ---
 

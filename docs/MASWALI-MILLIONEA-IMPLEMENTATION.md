@@ -1023,7 +1023,8 @@ a hero with even odds of being wrong.
 
 | | |
 |---|---|
-| **The commission** | [`design-brief/maswali-2026-08/BRIEF.md`](design-brief/maswali-2026-08/BRIEF.md) — the scope argument, the copy-paste prompt, the exact attachment list, and the acceptance checks |
+| ⭐ **THE KEY NAME** | **`MASWALI-DESIGN-R1`** — the round-1 delivery. If Ali hands a session a design handover under that name, its instruction set is [`SESSION-PROMPT-MASWALI-DESIGN.md`](SESSION-PROMPT-MASWALI-DESIGN.md). `grep -rn "MASWALI-DESIGN-R1" docs/` finds every reference |
+| **The commission** | [`design-brief/maswali-2026-08/BRIEF.md`](design-brief/maswali-2026-08/BRIEF.md) — the scope argument, the attachment list, and the acceptance checks. The prompt itself is [`design-brief/maswali-2026-08/PROMPT.txt`](design-brief/maswali-2026-08/PROMPT.txt) and lives **only** there |
 | **The outbound package** | `design-brief/maswali-2026-08/maswali-design-package-2026-08-28.zip` — ⛔ **untracked by design.** `.gitignore`'s *"OUTBOUND DESIGN COMMISSIONS"* section keeps every commission package out of the repo; regenerate it from the brief rather than committing it |
 | **⭐ THE HANDOVER LANDS IN** | **`docs/design-brief/maswali-2026-08/handover/`** — one folder, everything Maswali-design inside it. Named to match the existing `handover-2026-08/` convention |
 
