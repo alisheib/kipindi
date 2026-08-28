@@ -8,28 +8,25 @@ import { useCallback, useTransition } from "react";
 import { I } from "@/components/ui/glyphs";
 import { RefreshButton } from "@/components/admin/refresh-button";
 import { FilterPill } from "@/components/ui/filter-pill";
+import { CANDIDATE_CATEGORIES, CANDIDATE_STATES, CATEGORY_LABEL, STATE_LABEL } from "@/lib/ai/poll-vocabulary";
 import { DateTimeRangeFilter } from "@/components/ui/datetime-range-filter";
 
+/* ⭐ DERIVED, NOT RE-TYPED (S-08, scan #1, 2026-08-28). This rail offered 7 of `CandidateState`'s
+   8 arms: `VERIFYING` was missing — and that is precisely the state a candidate sits in when
+   verification hangs or fails, i.e. the one an officer most needs to find.
+   ⛔ THE CATEGORIES ARE THE NARROWER SET, AND THAT IS CORRECT. The scan read this rail's six as
+   "missing tech and other". It is not: a MarketCandidate can only ever hold the six in
+   CANDIDATE_CATEGORIES, so adding the poll set's extra two would offer two filters that always
+   return zero rows — a narrowing control that cannot narrow. Two vocabularies, two lists. */
 const ALL_STATES = [
   { id: "", label: "All states" },
-  { id: "PENDING_REVIEW", label: "Pending" },
-  { id: "APPROVED", label: "Approved" },
-  { id: "PUBLISHED", label: "Published" },
-  { id: "FILTERED_OUT", label: "Filtered" },
-  { id: "REJECTED", label: "Rejected" },
-  { id: "EXTRACTED", label: "Extracted" },
-  { id: "SCORED", label: "Scored" },
-] as const;
+  ...CANDIDATE_STATES.map((id) => ({ id, label: STATE_LABEL[id] ?? id })),
+];
 
 const ALL_CATEGORIES = [
   { id: "", label: "All categories" },
-  { id: "sports", label: "Sports" },
-  { id: "macro", label: "Macro" },
-  { id: "weather", label: "Weather" },
-  { id: "crypto", label: "Crypto" },
-  { id: "culture", label: "Culture" },
-  { id: "infrastructure", label: "Infra" },
-] as const;
+  ...CANDIDATE_CATEGORIES.map((id) => ({ id, label: CATEGORY_LABEL[id] ?? id })),
+];
 
 export function CandidateFilterToolbar({ totalFiltered, totalAll }: { totalFiltered: number; totalAll: number }) {
   const router = useRouter();

@@ -202,6 +202,8 @@
     "test:search-adoption": "tsx scripts/search-adoption.test.mts",
     "test:confirm-gate": "tsx scripts/confirm-gate.test.mts",
     "test:money-format": "tsx scripts/money-format.test.mts",
+    "test:ai-vocabulary": "tsx scripts/ai-vocabulary.test.mts",
+    "red:ai-vocabulary": "node scripts/red-ai-vocabulary.mjs",
     "red:money-format": "node scripts/red-money-format.mjs",
     "red:confirm-gate": "node scripts/red-confirm-gate.mjs",
     "red:search-adoption": "node scripts/red-search-adoption.mjs",

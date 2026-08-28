@@ -8,29 +8,25 @@ import { useCallback, useTransition } from "react";
 import { I } from "@/components/ui/glyphs";
 import { RefreshButton } from "@/components/admin/refresh-button";
 import { FilterPill } from "@/components/ui/filter-pill";
+import { AI_POLL_CATEGORIES, AI_POLL_STATES, CATEGORY_LABEL, STATE_LABEL } from "@/lib/ai/poll-vocabulary";
 import { DateTimeRangeFilter } from "@/components/ui/datetime-range-filter";
 
+/* ⭐ DERIVED, NOT RE-TYPED (S-08, scan #1, 2026-08-28). This rail listed 7 of the 8 poll
+   categories: `other` was missing — and `other` is the validator's documented FALLBACK, the
+   category a poll lands in when nothing else fits. So the one category a poll is most likely to
+   acquire by default was the one that could not be filtered for.
+   ⚠️ The `{ id: "" }` head row is a SENTINEL, not a vocabulary member: `hrefFor` treats an empty
+   value as "delete this param", which is how "All" clears the filter. It is prepended here
+   rather than carried in the canonical list, where it would be a ninth category. */
 const ALL_STATES = [
   { id: "", label: "All states" },
-  { id: "PENDING_REVIEW", label: "Pending" },
-  { id: "APPROVED", label: "Approved" },
-  { id: "PUBLISHED", label: "Published" },
-  { id: "FILTERED", label: "Didn't pass" },
-  { id: "REJECTED", label: "Rejected" },
-  { id: "VALIDATION_FAILED", label: "Failed" },
-  { id: "GENERATING", label: "Generating" },
-] as const;
+  ...AI_POLL_STATES.map((id) => ({ id, label: STATE_LABEL[id] ?? id })),
+];
 
 const ALL_CATEGORIES = [
   { id: "", label: "All categories" },
-  { id: "sports", label: "Sports" },
-  { id: "macro", label: "Macro" },
-  { id: "weather", label: "Weather" },
-  { id: "crypto", label: "Crypto" },
-  { id: "culture", label: "Culture" },
-  { id: "infrastructure", label: "Infra" },
-  { id: "tech", label: "Tech" },
-] as const;
+  ...AI_POLL_CATEGORIES.map((id) => ({ id, label: CATEGORY_LABEL[id] ?? id })),
+];
 
 export function PollFilterToolbar({ totalFiltered, totalAll }: { totalFiltered: number; totalAll: number }) {
   const router = useRouter();

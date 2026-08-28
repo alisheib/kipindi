@@ -23,6 +23,7 @@ import { randomId } from "./crypto";
 // The ONE storage rule for a criterion translation — shared with the admin wizard
 // and `createMarket`, so the AI cannot enter something an officer would be refused.
 import { normaliseCriterionTranslation } from "@/lib/localized";
+import { AI_POLL_CATEGORIES } from "@/lib/ai/poll-vocabulary";
 import { audit } from "./audit";
 import { getAIProvider, type AIPollGeneration, type AIProviderResponse, type PollIdea } from "./ai-provider";
 import { getAIPollConfig, computeSelectionClosedAt } from "./ai-poll-config";
@@ -354,7 +355,11 @@ const store: AIPollStore = aiPollStore;
 
 /* ─── Constants ─── */
 
-const VALID_CATEGORIES = new Set(["sports", "macro", "weather", "crypto", "culture", "infrastructure", "tech", "other"]);
+/* ⭐ ONE LIST (S-08). This was a private Set with the eight ids typed out; the same eight were
+   typed out again in ai-provider-claude.ts and twice more on the admin rails, and they had
+   already drifted. Membership is what this file wants, so the Set is REBUILT from the canonical
+   order rather than replaced by it. */
+const VALID_CATEGORIES = new Set<string>(AI_POLL_CATEGORIES);
 const BANNED_CATEGORIES = new Set(["politics", "religion", "adult", "violence"]);
 const MAX_TITLE_LENGTH = 200;
 const MAX_CRITERION_LENGTH = 1000;

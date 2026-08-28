@@ -34,10 +34,14 @@ import { getAIPollConfig } from "./ai-poll-config";
 import { ai } from "./ai-config";
 import { recordAiUsage, costOf } from "./ai-usage";
 import { getPlatformTimezone } from "./platform-config";
+import { AI_POLL_CATEGORIES } from "@/lib/ai/poll-vocabulary";
 
-const VALID_CATEGORIES = [
-  "sports", "macro", "weather", "crypto", "culture", "infrastructure", "tech", "other",
-];
+/* ⭐ ONE LIST (S-08, scan #1, 2026-08-28). The eight ids were typed out here, again as a Set in
+   ai-poll-generation.ts, and once more on each of the two admin rails — four copies, already
+   drifted. ⚠️ THIS is the copy that becomes the model's JSON tool-schema enum, so drift here
+   silently changes what the model is ALLOWED to emit: the most expensive of the four to get
+   wrong and the least visible, because nothing on screen would look different. */
+const VALID_CATEGORIES: readonly string[] = AI_POLL_CATEGORIES;
 
 /** The structured-output contract. The model fills this in by calling the
  *  `submit_poll` tool — the input we get back is already valid JSON. */
@@ -49,7 +53,7 @@ const IDEATION_MODEL = process.env.AI_POLL_IDEATION_MODEL || "claude-haiku-4-5-2
  *  categories when we have them, else the full known set as a safe fallback. */
 function categoryEnum(allowed?: string[]): string[] {
   const list = (allowed ?? []).filter((c) => VALID_CATEGORIES.includes(c));
-  return list.length > 0 ? list : VALID_CATEGORIES;
+  return list.length > 0 ? list : [...VALID_CATEGORIES];
 }
 
 function buildSubmitIdeasTool(allowedCategories?: string[]) {
