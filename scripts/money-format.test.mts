@@ -228,14 +228,13 @@ console.log("Money compaction grammar\n");
   const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
 
   /**
-   * ⛔ HANDED TO SESSION M, NOT EXCUSED. `admin/finance/**` and `admin/players/**` are another
-   * session's files under the parallel-session contract, so these were reported rather than
-   * edited. GOAL: EMPTY — the counts may only ever fall. A file not named here may carry ZERO.
+   * ⭐ EMPTY, AND IT REACHED EMPTY. This held `admin/finance/page.tsx: 9` and
+   * `admin/players/[id]/page.tsx: 3` — the sites in another session's files under the
+   * parallel-session contract, reported rather than edited. Session M cleared all of them
+   * (866f23a7), so the ratchet has done its job and the correct value is now zero.
+   * ⛔ It may only ever stay empty. A file added back here needs a reason in writing.
    */
-  const HANDED_OVER = new Map([
-    ["src/app/admin/finance/page.tsx", 9],
-    ["src/app/admin/players/[id]/page.tsx", 3],
-  ]);
+  const HANDED_OVER = new Map<string, number>([]);
 
   const walk = (dir: string): string[] => readdirSync(dir).flatMap((e) => {
     const p = join(dir, e);
@@ -262,19 +261,32 @@ console.log("Money compaction grammar\n");
   ok("5: …and the handed-over counts have not grown", grown.length === 0,
      grown.map(([r, n]) => `${r}: ${n} > ${HANDED_OVER.get(r)}`).join(", "));
 
-  /* ⛔ RECONCILIATION. The matcher must still be finding the shape it was written for; if the
-   * JSX is reformatted so `TZS` and the brace part company, `offenders` empties and this
-   * section reports "nobody re-adds the prefix" in the same words whether that is true or the
-   * regex has simply gone blind. The handed-over files are the fixed population that proves
-   * it can still see. ⚠️ When Session M lands their fix this check is what goes red — that is
-   * the ratchet working: lower the counts in HANDED_OVER, do not widen the matcher. */
-  const expectedTotal = [...HANDED_OVER.values()].reduce((a, b) => a + b, 0);
-  const foundTotal = [...offenders.values()].reduce((a, b) => a + b, 0);
-  ok("5: ⛔ the no-op matcher can still see the shape it was written for",
-     foundTotal > 0 || expectedTotal === 0,
-     foundTotal > 0
-       ? `${foundTotal} still open, all in handed-over files`
-       : "0 found while HANDED_OVER still expects some — the matcher has drifted from the JSX");
+  /* ⛔ RECONCILIATION — AGAINST A SYNTHETIC SPECIMEN, BECAUSE THE LIVE POPULATION IS NOW ZERO.
+   *
+   * This check used to prove the matcher still worked by requiring it to find the known
+   * offenders. That was honest while they existed. The moment the last one was fixed, "no file
+   * re-adds the prefix" and "the regex matches nothing at all" became the SAME RESULT — a
+   * guard whose silence means "I could not see" printed identically to "I looked and it was
+   * fine". Clearing the backlog is exactly when the guard would have gone quietly blind.
+   *
+   * ⭐ So the population it verifies itself against is carried HERE, in the test, the way
+   * `test:labels` keeps a specimen its scanner must still locate. These strings are the two
+   * real shapes that shipped — the template form and the JSX-text form from finance:202 —
+   * and the third is the DELIBERATE strip that must never match. That third one is the whole
+   * rule: it is what makes this "no strip-and-re-add" rather than "no strip". */
+  const SPECIMEN_TEMPLATE = 'value={`TZS ${formatTzsCompact(ggr).replace("TZS ", "")}`}';
+  const SPECIMEN_JSX_TEXT = '· TZS {formatTzsCompact(pollFees.fee).replace("TZS ", "")} — capped';
+  const SPECIMEN_LEGIT = 'limit {formatTzsCompact(rg.dailyDepositLimit).replace("TZS ", "")}/day';
+  const matches = (s: string) => new RegExp(NO_OP.source).test(s);
+
+  ok("5: ⛔ the matcher still recognises the template form it was written for",
+     matches(SPECIMEN_TEMPLATE), "the regex has drifted from the JSX it polices");
+  ok("5: ⛔ …and the JSX-TEXT form, where `TZS ` sits bare before the brace",
+     matches(SPECIMEN_JSX_TEXT), "finance:202's shape — the one that looks done when only the .replace() is deleted");
+  ok("5: ⭐ …and it does NOT match the deliberate bare strip",
+     !matches(SPECIMEN_LEGIT),
+     "players/[id]:248 renders 'limit 50K/day'; flagging it would force a suppression, and a suppressed line is one someone deletes later");
+  ok("5: the live tree is clean of the shape", [...offenders.values()].reduce((a, b) => a + b, 0) === 0);
   ok("5: …and the DELIBERATE bare strip is not caught by it", bareStrips >= 1, `${bareStrips} bare strip(s)`);
 }
 
