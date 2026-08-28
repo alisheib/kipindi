@@ -269,16 +269,28 @@ check("no padding/width on a <PageContainer> call site", polluted.length === 0, 
 // HTML, two "main content" landmarks for a screen reader, and a skip-link that
 // resolves to the outer one while the content starts inside the inner one.
 //
-// ⛔ THE TWO EXEMPTIONS ARE NOT TIDY-UP CANDIDATES:
+// ⛔ THE THREE EXEMPTIONS ARE NOT TIDY-UP CANDIDATES:
 //   · app-shell.tsx        — this IS the landmark. Deleting it removes the only one.
 //   · app/global-error.tsx — renders its own <html>/<body> because the root layout
 //                            never ran, so there is NO shell above it. Its <main>
 //                            is that page's only landmark and must stay.
+//   · app/admin/layout.tsx — 🔴 THE CONSOLE IS A SECOND SHELL, and missing it is what
+//                            made this rule do harm. The admin console does NOT use
+//                            `AppShell`, so when the 2026-08-22 cleanup removed 44
+//                            nested `<main>`s on the rule "the shell owns the
+//                            landmark", the console was left under a shell that owned
+//                            nothing: ZERO `<main>` and no skip link on all 43 admin
+//                            routes, for six days. Measured in a real browser —
+//                            `document.querySelectorAll("main").length === 0` — and it
+//                            was ~700 of `test:responsive`'s 727 failures.
+//                            ⚠️ A rule phrased "no PAGE renders its own" quietly
+//                            became "no FILE may", and the file it caught was a shell.
 // `PageContainer` cannot render one at all — `"main"` is not in its `as` union, so
 // tsc is the guard for its call sites and none is needed here.
 const MAIN_EXEMPT = new Set([
   "src/components/layout/app-shell.tsx",
   "src/app/global-error.tsx",
+  "src/app/admin/layout.tsx",
 ]);
 const strings = (s: string) => s.replace(/`[^`]*`/g, "");   // drop template literals
 const rogueMain: string[] = [];
@@ -293,6 +305,19 @@ check("no page renders its own <main> — the shell owns that landmark",
   rogueMain.length === 0, rogueMain.join(", "));
 check("the shell still renders the skip-link target",
   /<main id="main-content"/.test(readFileSync(join(SRC, "components", "layout", "app-shell.tsx"), "utf8")));
+
+/* ⛔ AND SO DOES THE OTHER SHELL — an exemption without an assertion is a hole exactly
+   the size of the defect it was added for. `src/app/admin/layout.tsx` is now permitted
+   to render `<main>`; without the two checks below, deleting it again would be silent
+   at source level, which is precisely how the console lost its landmark for six days.
+   ⚠️ The skip link is asserted too: the console never had one at all, so "the landmark
+   exists" alone would restore only half of what was missing. */
+const adminShell = readFileSync(join(SRC, "app", "admin", "layout.tsx"), "utf8");
+check("the ADMIN shell renders the landmark too — the console does not use AppShell",
+  /<main id="main-content"/.test(adminShell),
+  "zero <main> on all 43 admin routes was ~700 of test:responsive's failures");
+check("…and the admin shell carries its own skip-to-content link",
+  /href="#main-content"/.test(adminShell));
 
 log(`\n${fail === 0 ? "ALL PASS" : `${fail} FAILURE(S)`} — ${tsx.length} tsx files`);
 process.exit(fail ? 1 : 0);

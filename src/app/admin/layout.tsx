@@ -182,6 +182,20 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="min-h-screen bg-bg-base text-text">
+      {/* ⛔ SKIP-TO-CONTENT — WCAG 2.4.1, and the admin console had NEVER had one.
+          `AppShell` carries this for every player route; the console does not use `AppShell`,
+          so when the 2026-08-22 landmark cleanup removed 44 nested `<main>` elements under
+          `src/app` on the rule "the shell owns the landmark", the console was left with a shell
+          that owns nothing. Zero `<main>`, zero skip links, on all 43 admin routes — measured in
+          a real browser, `document.querySelectorAll("main").length === 0`, which is ~700 of
+          `test:responsive`'s 727 failures. An officer navigating by keyboard had to tab the
+          whole sidebar on every single page load. */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[9999] focus:rounded-md focus:bg-brand-500 focus:px-4 focus:py-2 focus:text-white focus:text-sm focus:font-semibold focus:outline-none focus:shadow-lg"
+      >
+        Skip to content
+      </a>
       <ConfidentialBand session={adminSession} />
       <div className="flex">
         <AdminSidebar activeKey={activeKey} viewDomains={viewDomains} isOwner={isOwner} />
@@ -201,7 +215,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
               `data-measure` is what lets scripts/responsive-audit.mjs assert the
               upper bound at runtime — see `npm run test:measure`. */}
-          <div className="flex-1 mx-auto w-full max-w-console" data-measure="console">
+          {/* ⭐ THE CONSOLE'S `<main>`, and it belongs on THIS element rather than on a new
+              wrapper: it is already the content column, so the landmark matches exactly what a
+              screen reader should be given, and `max-w-console` keeps `data-measure`'s contract
+              on the same node the audit already reads. Exactly one per page, id `main-content`,
+              which is what the skip link above resolves to and what
+              `scripts/responsive-audit.mjs` asserts (B7 / WCAG landmarks). */}
+          <main id="main-content" className="flex-1 mx-auto w-full max-w-console" data-measure="console">
             {viewBlocked ? (
               <AdminRestricted title={crumbs[crumbs.length - 1] ?? "Restricted"} need={need} />
             ) : (
@@ -210,7 +230,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 {children}
               </AdminActProvider>
             )}
-          </div>
+          </main>
         </div>
       </div>
     </div>
