@@ -146,33 +146,70 @@ try {
   rec.check("1.4 the real action request was captured for replay", !!cap && !!cap.headers?.["next-action"], cap ? Object.keys(cap.headers).join(",") : "none");
   if (!cap) throw new Error("no captured action request — the fetch patch did not see it");
 
-  /** Replay the captured request with `marketIds` / `override:` parts rewritten. */
-  const replay = async (mutate) =>
-    page.evaluate(async ({ cap, mut }) => {
-      const fd = new FormData();
-      for (const [k, v] of cap.form) fd.append(k, v);
-      // eslint-disable-next-line no-new-func
-      const apply = new Function("fd", mut);
-      apply(fd);
-      const h = { ...cap.headers };
-      delete h["content-type"]; delete h["content-length"];
-      const res = await fetch(cap.url, { method: "POST", headers: h, body: fd, credentials: "include" });
+  /**
+   * Replay the captured request with the field list rewritten.
+   *
+   * ⛔ THE BODY IS BUILT AS RAW MULTIPART BYTES, NOT AS A `FormData`, AND THAT IS THE ONLY
+   * WAY THIS PROVES ANYTHING. Measured first: rebuilding a `FormData` and `append`-ing 25
+   * extra `1_marketIds` produced a request the server decoded as **one** market — `set` on an
+   * existing key took effect, extra values did not. So three tamper cases "failed" against a
+   * server that had never been sent the tampered payload at all: the probe was measuring the
+   * browser's encoding, not the guard.
+   *
+   * With the body written by hand, the bytes on the wire are exactly the ones named here, and
+   * a refusal is the SERVER's refusal. `mutate` receives, and returns, a plain [key, value]
+   * list — no closure, no `new Function`, nothing that can silently do nothing.
+   */
+  const replay = async (pairs) =>
+    page.evaluate(async ({ url, headers, pairs }) => {
+      /**
+       * ⭐ THE DESCRIPTOR FIELD GOES LAST, AND THIS WAS MEASURED RATHER THAN READ.
+       *
+       * A Server Action carrying a FormData argument is sent as the form's own fields under a
+       * `1_` prefix PLUS a descriptor field named `0` holding `["$K1"]`. Three observations,
+       * in order: appending extra fields to a rebuilt FormData reached the server as ONE
+       * market (26 sent, 1 counted); moving to a raw body and putting `0` FIRST reached it as
+       * ZERO ("Select at least one market"); the original capture has the data fields BEFORE
+       * `0`. Every part written after the descriptor is ignored.
+       *
+       * ⛔ SO A TAMPERED PAYLOAD MUST BE ORDERED, OR IT IS NOT A TAMPERED PAYLOAD — it is a
+       * request the server never saw the tampering in, and three guards "failed" that way
+       * against a server that had never been sent the attack.
+       */
+      const ordered = [...pairs.filter(([k]) => k !== "0"), ...pairs.filter(([k]) => k === "0")];
+      const boundary = "----qaBulkResolve" + Math.random().toString(36).slice(2);
+      const body = ordered
+        .map(([k, v]) => `--${boundary}\r\nContent-Disposition: form-data; name="${k}"\r\n\r\n${v}\r\n`)
+        .join("") + `--${boundary}--\r\n`;
+      const h = { ...headers, "content-type": `multipart/form-data; boundary=${boundary}` };
+      delete h["content-length"];
+      const res = await fetch(url, { method: "POST", headers: h, body, credentials: "include" });
       return { status: res.status, text: await res.text() };
-    }, { cap, mut: mutate });
+    }, { url: cap.url, headers: cap.headers, pairs });
 
   const idField = cap.form.find(([k]) => k.endsWith("marketIds"))?.[0];
+  /** The captured payload as a pair list — the baseline every tamper case starts from. */
+  const base = () => cap.form.map(([k, v]) => [k, v]);
+  /** Replace every marketIds pair with the given ids, keeping the descriptor field intact. */
+  const withIds = (...ids) => [
+    ...base().filter(([k]) => k !== idField),
+    ...ids.map((id) => [idField, id]),
+  ];
+  /** The wire prefix Next puts on a FormData argument's fields (`1_`), derived, never guessed. */
+  const prefix = idField.slice(0, idField.length - "marketIds".length);
   rec.check("1.5 the payload's marketIds field was located", !!idField, idField);
   // ⚠️ PRINTED, NOT ASSUMED. Next prefixes a FormData argument's field names on the wire,
   // and a replay that guesses the prefix silently sends fields the action never sees — which
   // reads exactly like a guard that did not fire. This line is why the next reader will not
   // have to work that out again.
   rec.note(`captured form keys: ${cap.form.map(([k]) => k).join(" | ")}`);
+  rec.note(`descriptor field "0" = ${JSON.stringify(cap.form.find(([k]) => k === "0")?.[1] ?? "(absent)").slice(0, 300)}`);
 
   // ── 2 · REPLAY — the same batch, again ─────────────────────────────────────────
   // ⛔ A restore must be IDEMPOTENT. Re-submitting a sealed batch must report it as
   // already-applied and must not seal or pay anything twice.
   const adjBeforeReplay = await countAudit("market.adjudicated");
-  const r2 = await replay("/* unchanged */");
+  const r2 = await replay(base());
   const adjAfterReplay = await countAudit("market.adjudicated");
   rec.check("2.1 a replayed batch is accepted by the runtime", r2.status === 200, String(r2.status));
   rec.check("2.2 ⭐ …and adjudicates NOTHING a second time", adjAfterReplay === adjBeforeReplay, `${adjBeforeReplay} → ${adjAfterReplay}`);
@@ -188,28 +225,32 @@ try {
   const overSized = key("B-NOA");
 
   // 3a · an override naming a market that is NOT in the selection.
-  const r3 = await replay(`fd.append("${idField.replace("marketIds", "override:mkt_not_selected_zzzz")}", "a perfectly reasonable sounding justification");`);
+  const r3 = await replay([...base(), [`${prefix}override:mkt_not_selected_zzzz`, "a perfectly reasonable sounding justification"]]);
   const j3 = actionResult(r3.text);
   rec.check("3.1 an override for an UNSELECTED market is refused outright — the WHOLE batch",
             !!j3 && j3.ok === false && /not selected/i.test(j3.error ?? ""),
             j3 ? JSON.stringify(j3).slice(0, 220) : tail(r3.text));
 
   // 3b · 500 market ids.
-  const r4 = await replay(`for (let i = 0; i < 500; i++) fd.append("${idField}", "mkt_" + String(i).padStart(20, "0"));`);
+  // ⚠️ 25, NOT 500, AND `attempted` IS PRINTED. The cap is `PER_PAGE` (20), so 25 crosses it
+  // — and reporting what the SERVER counted turns a bare failure into a measurement. A first
+  // run appended 500 and the server counted 1; that number is the finding, not the red.
+  const r4 = await replay(withIds(...Array.from({ length: 26 }, (_, i) => "mkt_" + String(i).padStart(20, "0"))));
   const j4 = actionResult(r4.text);
-  rec.check("3.2 a 500-market payload is refused by the page cap",
-            !!j4 && j4.ok === false && /too many markets in one batch \(500\)/i.test(j4.error ?? ""),
-            j4 ? JSON.stringify(j4).slice(0, 220) : tail(r4.text));
+  rec.note(`oversized payload: server counted attempted=${j4?.attempted ?? "?"} (sent 26, cap is PER_PAGE)`);
+  rec.check("3.2 an oversized payload is refused by the page cap",
+            !!j4 && j4.ok === false && /too many markets in one batch/i.test(j4.error ?? ""),
+            j4 ? JSON.stringify(j4).slice(0, 200) : tail(r4.text));
 
   // 3c · an Up & Down round smuggled into a poll batch.
   const round = (await q(`select id from "PredictionMarket" where "productLine" = 'UPDOWN' and status = 'LIVE' limit 1`))[0];
   if (round) {
     const before = await statusOf(round.id);
-    const r5 = await replay(`fd.set("${idField}", "${round.id}");`);
+    const r5 = await replay(withIds(round.id));
     const j5 = actionResult(r5.text);
     rec.check("3.3 an Up & Down round cannot be sealed through the poll bar",
               !!j5 && j5.ok === true && (j5.failed ?? []).some((f) => /not a poll/i.test(f.detail ?? "")),
-              j5 ? JSON.stringify(j5.failed).slice(0, 220) : tail(r5.text));
+              j5 ? JSON.stringify(j5?.failed ?? null).slice(0, 220) : tail(r5.text));
     rec.check("3.4 ⭐ …and the round is untouched", (await statusOf(round.id)) === before, `${before} → ${await statusOf(round.id)}`);
   } else {
     rec.note("no LIVE Up & Down round to smuggle — case skipped, and that is recorded rather than passed");
@@ -219,7 +260,7 @@ try {
   if (untouched) {
     const before = await statusOf(untouched.id);
     const adjB = await countAudit("market.adjudicated");
-    const r6 = await replay(`fd.set("${idField}", "${untouched.id}");`);
+    const r6 = await replay(withIds(untouched.id));
     rec.check("3.5 ⭐ a market the FLOOR REFUSED is not sealed by a hand-built request",
               (await statusOf(untouched.id)) === before, `${before} → ${await statusOf(untouched.id)}`);
     // ⛔ FIELDS, NOT TEXT. The first draft matched /approved source/i over the stream and
@@ -230,15 +271,14 @@ try {
               !!j6 && j6.ok === true
               && (j6.skipped ?? []).some((x) => x.reason === "source-different-domain")
               && (j6.resolved?.length ?? 0) === 0,
-              j6 ? JSON.stringify(j6.skipped).slice(0, 260) : tail(r6.text));
+              j6 ? JSON.stringify(j6?.skipped ?? null).slice(0, 260) : tail(r6.text));
     rec.check("3.7 …writing no adjudication row", (await countAudit("market.adjudicated")) === adjB);
   }
 
   // 3e · an override on a blocked row, with a reason too short to be one.
   if (overSized) {
     const before = await statusOf(overSized.id);
-    const ovField = idField.replace("marketIds", `override:${overSized.id}`);
-    const r7 = await replay(`fd.set("${idField}", "${overSized.id}"); fd.append("${ovField}", "ok");`);
+    const r7 = await replay([...withIds(overSized.id), [`${prefix}override:${overSized.id}`, "ok"]]);
     const j7 = actionResult(r7.text);
     rec.check("3.8 a two-character override reason is refused",
               !!j7 && j7.ok === false && /at least 12 characters/i.test(j7.error ?? ""),
@@ -255,19 +295,23 @@ try {
     // target. The first draft copied everything EXCEPT the marketIds and then appended one,
     // and BOTH requests came back without sealing anything: a probe whose payload differs
     // from the real one measures its own construction, not the product.
-    const both = await page.evaluate(async ({ cap, id, field }) => {
-      const mk = () => {
-        const fd = new FormData();
-        for (const [k, v] of cap.form) fd.append(k, v);
-        fd.set(field, id);
-        return fd;
+    const both = await page.evaluate(async ({ url, headers, pairs }) => {
+      // Same descriptor-last ordering as replay() — see the note there.
+      const ordered = [...pairs.filter(([k]) => k !== "0"), ...pairs.filter(([k]) => k === "0")];
+      const go = () => {
+        const boundary = "----qaRace" + Math.random().toString(36).slice(2);
+        const body = ordered
+          .map(([k, v]) => `--${boundary}\r\nContent-Disposition: form-data; name="${k}"\r\n\r\n${v}\r\n`)
+          .join("") + `--${boundary}--\r\n`;
+        const h = { ...headers, "content-type": `multipart/form-data; boundary=${boundary}` };
+        delete h["content-length"];
+        return fetch(url, { method: "POST", headers: h, body, credentials: "include" }).then((r) => r.text());
       };
-      const h = { ...cap.headers };
-      delete h["content-type"]; delete h["content-length"];
-      const go = () => fetch(cap.url, { method: "POST", headers: h, body: mk(), credentials: "include" }).then((r) => r.text());
+      // ⛔ Both requests leave before either is awaited — a sequential pair proves nothing
+      // about a lock.
       const [a, b] = await Promise.all([go(), go()]);
       return [a, b];
-    }, { cap, id: raceTarget.id, field: idField });
+    }, { url: cap.url, headers: cap.headers, pairs: withIds(raceTarget.id) });
     await new Promise((r) => setTimeout(r, 4000));
     rec.check("4.1 ⭐ two simultaneous submits seal the market", (await statusOf(raceTarget.id)) === "RESOLVED");
     rec.check("4.2 ⭐ …EXACTLY ONCE", (await countAudit("market.adjudicated")) - adjB === 1, `+${(await countAudit("market.adjudicated")) - adjB}`);
@@ -291,7 +335,7 @@ try {
              "resolutionStage2By"='qa-steal', "resolutionStage2At"=now(),
              "objectionsClosedAt"=now() + interval '24 hours' where id=$1`, [steal.id]);
     const adjB = await countAudit("market.adjudicated");
-    const r8 = await replay(`fd.set("${idField}", "${steal.id}");`);
+    const r8 = await replay(withIds(steal.id));
     const j8 = actionResult(r8.text);
     rec.check("5.1 ⭐ a market sealed between render and submit reports ALREADY resolved",
               !!j8 && j8.ok === true && (j8.alreadyApplied?.length ?? 0) === 1 && (j8.resolved?.length ?? 0) === 0,
