@@ -13,6 +13,7 @@
  * deliberate difference from capped-commission, and the property this suite pins.
  * Owner decision 2026-07-23; see docs/COMPLIANCE-DECISIONS.md.
  */
+import { readFileSync } from "node:fs";
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import {
   poolFee,
@@ -158,6 +159,69 @@ const POOL = YES + NO; // 666,000
   ok("8: accountant view — fee = 84,500 (13% of the NO pool)", row?.fee === 84_500, `fee=${row?.fee}`);
   ok("8: accountant view — operator net = fee − TRA − GBT", row?.operatorNet === 84_500 - Math.round(84_500 * 0.10) - Math.round(84_500 * 0.05), `net=${row?.operatorNet}`);
   ok("8: accountant per-model total matches", view.byModel["loser-share"].fee >= 84_500);
+}
+
+// ── 9 · THE DOC BLOCK, ASSERTED AGAINST THE BEHAVIOUR ───────────────────────────
+/**
+ * ⭐ S-10 · `poolFee`'s JSDoc CLAIMED THE FEE WAS PREVIEWED AGAINST THE SMALLER POOL WHEN
+ * THE WINNING SIDE IS OMITTED. It never was — `losingPool` is `0` in that case and the fee
+ * is `0`, and the inline comment twenty lines below the doc block had always said so. The
+ * file contradicted itself, and the half a reader meets first was the wrong one.
+ *
+ * ⛔ NOTHING COULD HAVE CAUGHT IT, WHICH IS THE POINT. The behaviour was correct and every
+ * money path passes the side, so no assertion anywhere was failing — a false sentence with
+ * no failing test behind it is invisible, and it survived precisely because it was harmless
+ * today. So the guard is in two halves and needs both:
+ *   · the BEHAVIOUR half pins fee === 0, and DISCRIMINATES by proving the same inputs with
+ *     a side produce a non-zero fee — otherwise a function that returned 0 for everything
+ *     would pass;
+ *   · the PROSE half reads the doc block itself. Without it the sentence can drift again
+ *     freely, which is the whole defect. And it is not a bare "does not say SMALLER":
+ *     an absence is satisfied by a deleted paragraph, so it must also SAY the zero rule.
+ */
+{
+  const rates: Partial<FeeRates> = { feeModel: "loser-share", platformFeeRate: 0.08, operatorFeeRate: 0.05 };
+  const noSide = poolFee(300_000, 650_000, rates);
+  ok("9: side omitted on loser-share — the fee is ZERO, not a preview against the smaller pool",
+     noSide.fee === 0, `fee=${noSide.fee}`);
+  ok("9: …and the losing pool it is a share of is zero too", noSide.ceiling === 0, `ceiling=${noSide.ceiling}`);
+  ok("9: …so the whole pool survives", noSide.netPool === 950_000, `netPool=${noSide.netPool}`);
+  // ⛔ THE DISCRIMINATION, in the same run and from the same inputs: a function that
+  // returned 0 unconditionally would satisfy every assertion above.
+  const yesWins = poolFee(300_000, 650_000, rates, "YES");
+  ok("9: …while the SAME pools WITH a winner charge the losing side",
+     yesWins.fee === Math.round(0.13 * 650_000) || Math.abs(yesWins.fee - 0.13 * 650_000) < 1,
+     `fee=${yesWins.fee}`);
+  ok("9: …and it is the LOSING pool, not the smaller one",
+     yesWins.ceiling === 650_000 && noSide.smaller === 300_000,
+     `ceiling=${yesWins.ceiling} smaller=${noSide.smaller}`);
+
+  // The prose half. Read the real file, scoped to `poolFee`'s own doc block.
+  const src = readFileSync(new URL("../src/lib/payout.ts", import.meta.url), "utf8");
+  const doc = src.slice(0, src.indexOf("export function poolFee("));
+  const block = doc.slice(doc.lastIndexOf("/**"));
+  ok("9: the doc block was located (the check is not vacuous)",
+     block.includes("loser-share") && block.length > 200, `${block.length} chars`);
+  /**
+   * ⛔ THE NEGATIVE IS SCOPED TO THE OPERATIVE HALF, and the first draft was not — it read
+   * the whole block and went RED on the doc's own PROVENANCE NOTE, which quotes the wrong
+   * sentence in order to record that it was wrong. A guard that cannot tell a claim from a
+   * quotation of a retracted claim will either be dodged (reword until it passes, which
+   * proves nothing) or delete the history that makes the correction legible.
+   *
+   * The operative description is everything before the `⛔` that opens the provenance note;
+   * what follows is a record, and a record is allowed to name what it retracted.
+   */
+  const marker = block.indexOf("⛔ THIS PARAGRAPH");
+  ok("9: the provenance note is present and separable", marker > 0, `marker@${marker}`);
+  const operative = marker > 0 ? block.slice(0, marker) : block;
+  ok("9: …the operative description no longer claims a preview against the SMALLER pool",
+     !/previewed against the \*{0,2}SMALLER/i.test(operative));
+  ok("9: …and states the zero rule positively", /FEE IS ZERO/i.test(operative));
+  // ⭐ And the record itself must survive: a future edit that silently deletes the note
+  // takes the reason with it, and the sentence becomes free to drift back.
+  ok("9: …while the provenance note still records what was retracted",
+     /SMALLER/i.test(block.slice(marker)));
 }
 
 console.log(`\nloser-share-fee: ${pass} passed, ${fail} failed`);

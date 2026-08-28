@@ -439,9 +439,19 @@ export const FEE_CAPTION_MAX_CHARS = 17;
  * `loser-share`: the fee is `(platformFeeRate + operatorFeeRate) × losingPool`,
  * so it is OUTCOME-DEPENDENT — `poolFee` must be told the winning side to know which
  * pool loses. Money paths (settlement, `settledPayoutFor`, `payoutFor`) ALWAYS pass
- * it. When it is omitted on a loser-share poll (display/guardrail previews only,
- * where no outcome exists) the fee is previewed against the SMALLER pool as the
- * loser (the favourite-wins case) — never used to move money.
+ * it. When it is omitted on a loser-share poll (display/guardrail previews only, where
+ * no outcome exists) there is no loser, so **the FEE IS ZERO** — see the inline note at
+ * the `losingPool` line below, and `market-service.ts`'s F1 comment for why it matters:
+ * an alert keyed off a capped-commission concept went silent on loser-share polls for
+ * three weeks. Never used to move money either way.
+ *
+ * ⛔ THIS PARAGRAPH USED TO SAY THE FEE WAS PREVIEWED AGAINST THE **SMALLER** POOL, AND
+ * IT NEVER WAS. Twenty lines down, `losingPool` is `0` when the side is absent, and the
+ * inline comment there has always said so — so the file contradicted itself, with the
+ * doc block being the half a reader meets first. No money was ever wrong (every money
+ * path passes the side, and `test:loser-share-fee` proves it), which is exactly what let
+ * it stand: a false sentence with no failing test behind it is invisible. `§9` of that
+ * suite now asserts this prose against the behaviour, so the two cannot drift again.
  *
  * The winner floor holds under BOTH models (netPool ≥ winningPool ⇒ payout ≥ stake):
  * loser-share removes only a slice ≤ 100% of the losing pool, so netPool =
