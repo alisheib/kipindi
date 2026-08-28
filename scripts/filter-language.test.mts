@@ -83,6 +83,33 @@ const SURFACES = [
   "src/app/profile/account/page.tsx",           // /profile/account — activity category
 ];
 
+/**
+ * ⭐ THE ADMIN RAILS — same language, different measure (S-07, scan #1, 2026-08-28).
+ *
+ * §3.6's scope note read: "Admin is deliberately out of scope: it is a different audience with
+ * its own density rules, and Ali's instruction named the player platform." That was a
+ * considered decision, not an oversight, and it is preserved in rewritten form below.
+ *
+ * ⛔ WHAT CHANGED, AND WHAT DID NOT. Ali's 2026-08-28 instruction named admin explicitly, so
+ * the scope widens — but the original rationale only ever licensed a different DENSITY, never
+ * a different SELECTION IDIOM. So the rule set SPLITS rather than simply widening:
+ *   · §6.1–6.5 — the IDIOM rules, identical to §3.1–3.5. Consume the primitive, never paint at
+ *     the call site, outline only when selected. That is the design's MEANING, and meaning does
+ *     not vary by audience.
+ *   · §6.6 — the DENSITY rule FORKS. Player rails keep the 44px tap floor; admin rails take
+ *     `--h-control-xs` (32px), the documented dense-admin exception.
+ *
+ * What these rails were: 8 state chips + 8 category chips, EVERY one outlined AND filled,
+ * hand-rolled, on two surfaces — the exact shape filter-pill.tsx's header calls "the single
+ * biggest source of the 'chunky' criticism the round-2 brief was answering". No admin surface
+ * imported the primitive at all. And they rendered about 26px: UNDER the 32px exception they
+ * were nominally claiming.
+ */
+const ADMIN_SURFACES = [
+  "src/app/admin/ai-polls/poll-filters.tsx",        // /admin/ai-polls — state + category
+  "src/app/admin/candidates/candidate-filters.tsx", // /admin/candidates — state + category
+];
+
 // ── §0 · THE SURFACE SET — the positive control ───────────────────────────────────────────────
 
 ok(existsSync(join(ROOT, PRIMITIVE)), "0.0 CONTROL: the primitive exists", PRIMITIVE);
@@ -104,7 +131,15 @@ ok(discovered.length >= SURFACES.length,
   "0.3 CONTROL: at least the eight measured rails are present in the tree",
   `found ${discovered.length}: ${discovered.join(", ")}`);
 
-const undeclared = discovered.filter((f) => !SURFACES.includes(f));
+/**
+ * ⚠️ BOTH LISTS, because a discovered rail is now legitimately either kind. Before S-07 this
+ * compared against `SURFACES` alone, so the moment a converted admin rail emitted the hook a
+ * 92-assertion suite went red for the right reason at the wrong time — the rail was BETTER and
+ * the gate said worse. Declaring the admin rails is what clears that, and it is why they are a
+ * named list rather than a `/admin/` exemption: an exemption would have re-hidden them.
+ */
+const DECLARED = [...SURFACES, ...ADMIN_SURFACES];
+const undeclared = discovered.filter((f) => !DECLARED.includes(f));
 ok(undeclared.length === 0,
   "0.4 no filter rail exists that this gate does not know about",
   `undeclared: ${undeclared.join(", ")}`);
@@ -193,9 +228,25 @@ for (const f of SURFACES) {
 
 /**
  * ⭐ AND THE SAME RULE ACROSS THE WHOLE PLAYER TREE, so a NINTH surface cannot be built the old
- * way and simply omit the hook that §0.4 checks. Admin is deliberately out of scope: it is a
- * different audience with its own density rules, and Ali's instruction named the player
- * platform. Nav is out too — an active NAV destination is a settled, separate language.
+ * way and simply omit the hook that §0.4 checks. Nav is out — an active NAV destination is a
+ * settled, separate language.
+ *
+ * ⛔ THE ADMIN SCOPE NOTE, REWRITTEN RATHER THAN DELETED (S-07, 2026-08-28). It used to read:
+ * "Admin is deliberately out of scope: it is a different audience with its own density rules,
+ * and Ali's instruction named the player platform."
+ *
+ * That was a CONSIDERED DECISION and it is recorded here because deleting it would erase the
+ * reasoning along with the rule. What changed is the instruction: Ali's 2026-08-28 scan named
+ * admin explicitly. What did NOT change is the rationale — "a different audience with its own
+ * density rules" licenses a different MEASURE, and never licensed a different way of saying
+ * "this one is chosen". Under the old note both readings looked equally supported, and the
+ * console drifted into a second filter language on the strength of the wrong one.
+ *
+ * So admin is now IN scope, through `ADMIN_SURFACES` and §6, with the density rule forked and
+ * the idiom rules shared. `NON_FILTER` still excludes `/admin/` HERE, in §3.6 only, because
+ * §3.6 is the PLAYER stray-sweep: an admin rail is not a stray, it is declared and checked by
+ * its own section. ⚠️ Widening §3.6 instead of adding §6 would have applied the 44px player
+ * floor to admin and forced an exemption — which is how a rule becomes unenforceable.
  */
 const NON_FILTER = /\/(admin|api)\//;
 const NAV = /(layout\/(top-app-bar|bottom-nav|nav-more)|ui\/language-menu|ui\/tabs)\.tsx$/;
@@ -386,7 +437,63 @@ ok(sheetGroups.some((g) => /oddsKey/.test(g)) && sheetGroups.some((g) => /poolKe
 ok(/\.kp-fsheet:not\(\[open\]\)[\s\S]{0,140}?\{[^}]*display:\s*none/.test(css),
   "5.23 a CLOSED sheet lays out nothing — otherwise its phantom panel overflows the viewport");
 
-console.log(`filter-language: ${pass} assertions passed · ${SURFACES.length} rails · ${discovered.length} discovered`);
+// ── §6 · THE ADMIN RAILS — the same idiom, the admin measure ──────────────────────────────────
+/**
+ * See the ADMIN_SURFACES note above for the ruling and its date. §6.1–6.5 are §3.1–3.5 applied
+ * unchanged: the selection idiom is the design's meaning and does not vary by audience. §6.6 is
+ * the one rule that forks.
+ */
+for (const f of ADMIN_SURFACES) {
+  ok(existsSync(join(ROOT, f)), `6.0 CONTROL: the admin rail ${f} still exists`);
+  if (!existsSync(join(ROOT, f))) continue;
+  const src = strip(read(f));
+
+  ok(/from "@\/components\/ui\/filter-pill"/.test(src),
+    `6.1 ${f} imports the primitive rather than re-expressing it`);
+  ok(/<FilterPill\b/.test(src),
+    `6.2 ${f} renders its filter controls through the primitive`);
+  ok(!/var\(--pill-active\)/.test(src),
+    `6.3 ${f} does not paint a selected control at the call site`);
+  ok(!/var\(--glow-selected\)/.test(src),
+    `6.4 ${f} does not paint a selected halo at the call site`);
+  ok(!OLD_IDIOM.test(src),
+    `6.5 ${f} no longer carries the divergent rounded-md filter class`);
+
+  /* ⭐ 6.6 — THE FORK. Admin rails take the dense rank; that is the ONLY thing they may vary.
+     ⛔ EVERY pill, not merely one. `/rank="dense"/.test(src)` was the first draft and the red
+     harness caught it: these files render FOUR rails, so dropping the rank from one left three
+     behind and the assertion passed on their evidence. A rail half at 32px and half at 44px is
+     worse than either — it is the same control at two sizes on one screen. Count, don't test. */
+  const pills = (src.match(/<FilterPill\b/g) ?? []).length;
+  const dense = (src.match(/rank="dense"/g) ?? []).length;
+  ok(pills > 0 && dense === pills,
+    `6.6 EVERY pill on ${f} takes the DENSE rank — --h-control-xs (32px), the documented admin exception`,
+    `${dense} dense of ${pills} pills`);
+
+  /* ⛔ 6.7 — THE DEFECT THAT MADE THIS SECTION NECESSARY, asserted directly. Every chip was
+     outlined AND filled, and the selected one switched to `font-bold` in a MONO face — which is
+     wider — so choosing a chip changed its own width and shoved every chip after it sideways.
+     A filter rail that moves under the cursor as you use it (S-07b). */
+  ok(!/\bbg-bg-overlay\b[^`"]*\btext-text-muted\b/.test(src),
+    `6.7 ${f} does not fill an UNSELECTED chip — only the selected one carries paint`);
+  ok(!/currentState === s\.id[\s\S]{0,200}font-bold/.test(src) && !/currentCategory === c\.id[\s\S]{0,200}font-bold/.test(src),
+    `6.8 ${f} does not state selection with FONT WEIGHT — bold mono is wider, so the rail reflows`);
+}
+
+/**
+ * ⛔ AND THE ADMIN STRAY SWEEP, the mirror of §3.6. Without this, a THIRD admin rail could be
+ * hand-rolled tomorrow, omit `data-filter-rail`, and never appear in ADMIN_SURFACES — the exact
+ * hole §3.6 exists to close on the player side. Scoped to the two console trees that actually
+ * carry list filters, so it cannot be satisfied by moving a file.
+ */
+const adminStrays = allSrc
+  .filter((f) => /\.tsx$/.test(f) && /\/admin\//.test(f) && !ADMIN_SURFACES.includes(f))
+  .filter((f) => OLD_IDIOM.test(strip(read(f))));
+ok(adminStrays.length === 0,
+  "6.9 no admin surface builds a filter rail the old way either",
+  adminStrays.join(", "));
+
+console.log(`filter-language: ${pass} assertions passed · ${SURFACES.length} player + ${ADMIN_SURFACES.length} admin rails · ${discovered.length} discovered`);
 if (fails.length) {
   console.error(`\n${fails.length} FAILED:`);
   fails.forEach((f) => console.error("  ✗ " + f));

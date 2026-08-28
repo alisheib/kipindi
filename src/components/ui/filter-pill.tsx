@@ -59,7 +59,27 @@ export type FilterPillSemantics = "tab" | "toggle";
  * Both ranks keep the pill, the 44px floor and the outline-only-when-selected rule. Only the
  * type treatment changes.
  */
-export type FilterPillRank = "primary" | "secondary";
+/**
+ * ⭐ `dense` IS THE ADMIN RANK (S-07, scan #1, 2026-08-28), and it is a DENSITY change only —
+ * never a change of idiom.
+ *
+ * The admin console had a second filter language: sixteen hand-rolled chips per rail, every one
+ * of them outlined AND filled, on /admin/ai-polls and /admin/candidates. That is the exact
+ * shape this primitive's header calls "the single biggest source of the 'chunky' criticism the
+ * round-2 brief was answering" — and no admin surface imported this file at all.
+ *
+ * ⛔ SO THE SELECTION IDIOM IS SHARED AND ONLY THE MEASURE FORKS. `test:filter-language`'s
+ * original scope note said admin is "a different audience with its own density rules". That
+ * licenses a different SIZE; it does not license a different way of saying "this one is
+ * chosen". Unselected is still text on transparent, selected still carries the outline and the
+ * shared fill, and the box is still the same size in both states.
+ *
+ * 32px is `--h-control-xs`, the documented dense-admin floor ("dense mouse-only admin inline
+ * controls (documented floor exception)"). ⚠️ It is written as an arbitrary value for the same
+ * reason 44 is: this repo overrides Tailwind's spacing scale, so `h-8` here would silently be
+ * 48px. The hand-rolled chips it replaces rendered about 26px — under the exception itself.
+ */
+export type FilterPillRank = "primary" | "secondary" | "dense";
 
 export function FilterPill({
   href,
@@ -120,11 +140,22 @@ export function FilterPill({
       aria-current={semantics === "tab" ? (on ? "page" : undefined) : undefined}
       aria-pressed={semantics === "toggle" ? on : undefined}
       className={cn(
-        "kp-fchip inline-flex min-h-[44px] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-pill border",
+        "kp-fchip inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-pill border",
+        // ⚠️ The floor is the ONLY thing the admin rank changes: 32px is --h-control-xs, the
+        // documented dense-admin exception. Everything below this line is shared, because the
+        // selection idiom is not the audience's to vary.
+        rank === "dense" ? "min-h-[32px]" : "min-h-[44px]",
         rank === "primary" ? "text-[13px] font-semibold" : "font-mono text-[11.5px] font-semibold",
         // Selected pills carry a little more air, so the fill reads as a considered shape
         // rather than a tight highlight. Unselected pills stay narrow and quiet.
-        on ? "px-4" : "px-3",
+        // ⭐ THE DENSE RANK DOES NOT STEP ITS PADDING, and that is a real difference rather
+        // than an oversight. A player rail carries four to eight pills, so a 4px step costs a
+        // small shuffle. An admin rail carries SIXTEEN across two rows, where the same step
+        // moves every chip after the selected one and the rail visibly walks under the cursor.
+        // S-07b is that defect in its worst form: the hand-rolled chips switched to `font-bold`
+        // in a MONO face — which is wider — so selection changed the chip's own width too.
+        // Selection is stated by the fill and the outline, which cost no width at all.
+        rank === "dense" ? "px-2.5" : on ? "px-4" : "px-3",
         // ⭐ THE RULE. `border-transparent` — not "no border" — so selecting a pill cannot
         // reflow the row it sits in: the box is the same size in both states, only the ink
         // changes. This is why the class carries `border` unconditionally.

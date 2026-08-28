@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useTransition } from "react";
 import { I } from "@/components/ui/glyphs";
 import { RefreshButton } from "@/components/admin/refresh-button";
+import { FilterPill } from "@/components/ui/filter-pill";
 import { DateTimeRangeFilter } from "@/components/ui/datetime-range-filter";
 
 const ALL_STATES = [
@@ -42,17 +43,21 @@ export function PollFilterToolbar({ totalFiltered, totalAll }: { totalFiltered: 
   const currentCategory = searchParams.get("category") ?? "";
   const currentDate = searchParams.get("range") ?? searchParams.get("from") ?? "";
 
-  const push = useCallback((updates: Record<string, string>) => {
+  /**
+   * ⭐ THE CHIPS ARE REAL LINKS NOW (S-07) — see candidate-filters.tsx for the reasoning.
+   * `replace` + `scroll={false}`: a filter is not a navigation (kit README §3). Paging is reset
+   * here as `push` used to do, or a narrowed list lands on a page number that no longer exists.
+   */
+  const hrefFor = useCallback((updates: Record<string, string>) => {
     const sp = new URLSearchParams(searchParams.toString());
     for (const [k, v] of Object.entries(updates)) {
       if (v) sp.set(k, v);
       else sp.delete(k);
     }
     sp.delete("page"); // reset pagination on filter change
-    startTransition(() => {
-      router.push(`/admin/ai-polls?${sp.toString()}`);
-    });
-  }, [router, searchParams, startTransition]);
+    const qs = sp.toString();
+    return qs ? `/admin/ai-polls?${qs}` : "/admin/ai-polls";
+  }, [searchParams]);
 
   const hasFilters = currentSearch || currentState || currentCategory || currentDate;
 
@@ -90,47 +95,43 @@ export function PollFilterToolbar({ totalFiltered, totalAll }: { totalFiltered: 
       </div>
 
       {/* Filter chips row */}
-      <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex items-center gap-2 flex-wrap" data-filter-rail="poll-state">
         {/* Created-date window — platform date+hour+minute filter (presets + custom). */}
         <DateTimeRangeFilter defaultPreset="all" presetIds={["today", "yesterday", "7d", "30d", "all"]} />
 
         <span className="w-px h-5 bg-border/60" />
 
-        {/* State filter */}
+        {/* State filter — the ONE filter language at admin density (S-07). */}
         <div className="flex items-center gap-1 flex-wrap gap-y-1.5">
           <I.filter size={12} className="text-text-subtle mr-0.5" />
           {ALL_STATES.map((s) => (
-            <button
+            <FilterPill
               key={s.id}
-              type="button"
-              onClick={() => push({ state: s.id })}
-              className={`px-2.5 py-1 rounded-pill text-[10.5px] font-mono uppercase tracking-[0.08em] border transition-colors ${
-                currentState === s.id
-                  ? "border-brand-500 bg-brand-500/10 text-brand-300 font-bold"
-                  : "border-border bg-bg-overlay text-text-muted hover:border-text-subtle"
-              }`}
-            >
-              {s.label}
-            </button>
+              href={hrefFor({ state: s.id })}
+              label={s.label}
+              on={currentState === s.id}
+              rank="dense"
+              replace
+              scroll={false}
+              testId={`state:${s.id}`}
+            />
           ))}
         </div>
       </div>
 
       {/* Category chips */}
-      <div className="flex items-center gap-1 flex-wrap">
+      <div className="flex items-center gap-1 flex-wrap" data-filter-rail="poll-category">
         {ALL_CATEGORIES.map((c) => (
-          <button
+          <FilterPill
             key={c.id}
-            type="button"
-            onClick={() => push({ category: c.id })}
-            className={`px-2.5 py-1 rounded-pill text-[10.5px] font-mono uppercase tracking-[0.08em] border transition-colors ${
-              currentCategory === c.id
-                ? "border-brand-500 bg-brand-500/10 text-brand-300 font-bold"
-                : "border-border bg-bg-overlay text-text-muted hover:border-text-subtle"
-            }`}
-          >
-            {c.label}
-          </button>
+            href={hrefFor({ category: c.id })}
+            label={c.label}
+            on={currentCategory === c.id}
+            rank="dense"
+            replace
+            scroll={false}
+            testId={`category:${c.id}`}
+          />
         ))}
 
         {/* Result count */}

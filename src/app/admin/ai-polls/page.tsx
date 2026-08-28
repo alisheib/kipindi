@@ -482,17 +482,23 @@ function FilterToolbarSkeleton() {
         <div className="h-[32px] flex-1 max-w-[420px] rounded-md bg-bg-overlay" />
         <div className="ml-auto h-[40px] w-[40px] rounded-md bg-bg-overlay" />
       </div>
+      {/* ⚠️ `h-6` IS 32px ON THE OVERRIDDEN SCALE, and it is now the RIGHT number (S-07c). It
+          was wrong before, but not for the reason it looks: the chips it stands in for rendered
+          about 26px — under `--h-control-xs` (32px), the very floor exception they claimed — so
+          the skeleton jumped 6px per row on load. The chips are now FilterPill at rank="dense",
+          which IS 32px, so the stand-in and the thing finally agree.
+          ⚠️ And the COUNTS are the real ones: 8 states, then 8 categories. They were 5/4/5,
+          which is a different kind of lie in the same element — a skeleton must be the size AND
+          the shape of the thing it stands in for. */}
       <div className="flex items-center gap-2">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="h-6 w-16 rounded-pill bg-bg-overlay" />
-        ))}
+        <div className="h-6 w-24 rounded-pill bg-bg-overlay" />
         <div className="w-px h-5 bg-border/60" />
-        {Array.from({ length: 4 }).map((_, i) => (
+        {Array.from({ length: 8 }).map((_, i) => (
           <div key={i} className="h-6 w-16 rounded-pill bg-bg-overlay" />
         ))}
       </div>
       <div className="flex items-center gap-1">
-        {Array.from({ length: 5 }).map((_, i) => (
+        {Array.from({ length: 8 }).map((_, i) => (
           <div key={i} className="h-6 w-20 rounded-pill bg-bg-overlay" />
         ))}
       </div>

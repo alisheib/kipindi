@@ -53,21 +53,32 @@ const CSS = "src/app/globals.css";
 const POSITIONS = "src/app/positions/page.tsx";
 const SHEET = "src/components/markets/filter-sheet.tsx";
 const BAR = "src/components/markets/discovery-bar.tsx";
+/* S-07 — the admin rail used for the two admin-scope plants. candidates rather than ai-polls
+   because it carries BOTH the state and category rails and the shorter vocabulary. */
+const ADMIN_RAIL = "src/app/admin/candidates/candidate-filters.tsx";
 
 const CASES = [
   {
     name: "square (the 8px rounded-md five rails carried instead of the pill)",
     file: PRIMITIVE,
-    from: `"kp-fchip inline-flex min-h-[44px] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-pill border",`,
-    to: `"kp-fchip inline-flex min-h-[44px] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border",`,
+    /* ⚠️ RE-ANCHORED 2026-08-28 (S-07): the height moved out of this string into the rank fork
+       below it, because the admin rank takes --h-control-xs (32px) while the player ranks keep
+       the 44px tap floor. The shape assertion itself is unaffected. */
+    from: `"kp-fchip inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-pill border",`,
+    to: `"kp-fchip inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border",`,
     expect: "1.1",
   },
   {
     name: "below-the-floor (a scale class, which is silently 48px on this repo's overridden scale)",
     file: PRIMITIVE,
-    from: `"kp-fchip inline-flex min-h-[44px] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-pill border",`,
-    to: `"kp-fchip inline-flex h-8 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-pill border",`,
-    expect: "1.3",
+    /* ⚠️ RE-ANCHORED 2026-08-28 (S-07) onto the rank fork, where the floor now lives.
+       ⭐ AND IT IS A BETTER PLANT THERE. `h-8` reads as 32px and is silently 48px on this
+       repo's overridden scale — so this injects the defect at exactly the seam where a future
+       reader is most likely to write it for real: reaching for a scale class because the admin
+       rank "is 32px anyway". That is the trap the 44px floor was made arbitrary to avoid. */
+    from: `        rank === "dense" ? "min-h-[32px]" : "min-h-[44px]",`,
+    to: `        rank === "dense" ? "h-8" : "min-h-[44px]",`,
+    expect: "1.4",
   },
   {
     name: "always-outlined (every control outlined — the defect that is not cosmetic)",
@@ -118,6 +129,38 @@ const CASES = [
     from: `          data-filter-rail\n`,
     to: ``,
     expect: "0.5",
+  },
+
+  /* ── S-07 · the admin rails (scan #1, 2026-08-28) ───────────────────────────────────────
+     The console had a SECOND filter language: 16 hand-rolled chips per rail across two
+     surfaces, every one outlined AND filled, none from the kit. The rule set is split — the
+     idiom is shared, only the density forks — so both halves of that split need a plant. */
+  {
+    // 🔴 THE DEFECT AS IT SHIPPED: a rail stops consuming the primitive and rolls its own.
+    name: "admin-rolls-its-own (an admin rail leaves the shared language again)",
+    file: ADMIN_RAIL,
+    from: `import { FilterPill } from "@/components/ui/filter-pill";`,
+    to: ``,
+    expect: "6.1",
+  },
+  {
+    // ⭐ THE FORK ITSELF. Take the player floor on an admin rail and the density ruling is
+    //   silently reversed — the rail still LOOKS right, and every idiom assertion stays green.
+    name: "admin-loses-its-density (the dense rank is dropped for the 44px player floor)",
+    file: ADMIN_RAIL,
+    from: `              rank="dense"`,
+    to: ``,
+    expect: "6.6",
+  },
+  {
+    // 🔴 S-07b, VERBATIM: selection stated with FONT WEIGHT in a mono face, which is wider —
+    //   so choosing a chip changes its own width and shoves every chip after it sideways.
+    //   A filter rail that walks under the cursor as you use it, and no type can see it.
+    name: "admin-reflows (selection stated with bold mono, so the rail moves as you use it)",
+    file: ADMIN_RAIL,
+    from: `              on={currentState === s.id}`,
+    to: `              className={currentState === s.id ? "font-bold" : ""}\n              on={currentState === s.id}`,
+    expect: "6.8",
   },
 
   /* ── batch 6 · the phone sheet ─────────────────────────────────────────────────────────

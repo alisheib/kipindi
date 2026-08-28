@@ -396,17 +396,20 @@ function FilterToolbarSkeleton() {
         <div className="h-[32px] flex-1 max-w-[420px] rounded-md bg-bg-overlay" />
         <div className="ml-auto h-[40px] w-[40px] rounded-md bg-bg-overlay" />
       </div>
+      {/* ⚠️ `h-6` is 32px on the overridden scale and now matches what renders — see the note in
+          admin/ai-polls/page.tsx. The counts are this rail's OWN: 8 states, 7 categories.
+          ⛔ They differ from ai-polls (8/8) because the two vocabularies genuinely differ, which
+          is the same divergence S-08 is about — this rail is missing `tech`. When S-08 derives
+          both rails from the canonical enums, the 7 becomes an 8 and this comment can go. */}
       <div className="flex items-center gap-2">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="h-6 w-16 rounded-pill bg-bg-overlay" />
-        ))}
+        <div className="h-6 w-24 rounded-pill bg-bg-overlay" />
         <div className="w-px h-5 bg-border/60" />
-        {Array.from({ length: 4 }).map((_, i) => (
+        {Array.from({ length: 8 }).map((_, i) => (
           <div key={i} className="h-6 w-16 rounded-pill bg-bg-overlay" />
         ))}
       </div>
       <div className="flex items-center gap-1">
-        {Array.from({ length: 4 }).map((_, i) => (
+        {Array.from({ length: 7 }).map((_, i) => (
           <div key={i} className="h-6 w-20 rounded-pill bg-bg-overlay" />
         ))}
       </div>
