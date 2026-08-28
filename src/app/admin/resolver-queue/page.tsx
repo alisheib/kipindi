@@ -20,7 +20,7 @@ import { getRequireTwoOfficerResolution } from "@/lib/server/resolution-policy";
 import { currentSession } from "@/lib/server/auth-service";
 import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { getEffectiveConfig, getEffectiveResolutionMode } from "@/lib/server/market-config";
-import { listSources, sourceMatchesAny } from "@/lib/server/source-registry";
+import { listSources, sourceMatchesAny, listDisabledCategories } from "@/lib/server/source-registry";
 import { resolvePublishCategory } from "@/lib/server/market-service";
 import { bulkVerdictFor } from "@/lib/server/bulk-resolve-eligibility";
 import { BulkSelectionProvider } from "./bulk-selection";
@@ -45,6 +45,32 @@ const WINDOW_OPTIONS = [
 ] as const;
 
 const CATEGORY_OPTIONS: readonly MarketCategory[] = ["sports", "macro", "weather", "crypto", "culture", "tech", "other"];
+
+/**
+ * ⭐ THE ORDER IS A TRIAGE DECISION, so it belongs to the officer.
+ *
+ * The queue was hardcoded to `resolutionAt` ascending — "most overdue first" — which is the
+ * right DEFAULT and was the only order available. ⛔ The page's own header calls the money
+ * held the triage signal and renders it on every row, and it was the one column that could
+ * not be ordered by: with 27,615 markets and a 20-row page, the market holding the largest
+ * pool can sit on page 40 while the officer works through twenty markets holding nothing.
+ *
+ * ⛔ SORTING IS SERVER-SIDE, over the WHOLE filtered set, before `slice`. A client-side sort
+ * of the current page would reorder twenty rows and call it a queue order — the same lie as
+ * a page-scoped "select all" that says "all", which this page already learned not to tell.
+ *
+ * Every comparator is TOTAL and ends in a tie-break on `resolutionAt` then `id`: a sort with
+ * ties is unstable across requests, so an officer paging through a queue ordered by a field
+ * that ties (pool = 0 on hundreds of rows) would see rows jump between pages and could skip
+ * one entirely without ever knowing.
+ */
+const SORT_OPTIONS = [
+  { value: "due", label: "Most overdue first" },
+  { value: "money", label: "Most money held" },
+  { value: "confidence", label: "Highest AI confidence" },
+  { value: "newest", label: "Newest first" },
+] as const;
+type SortKey = (typeof SORT_OPTIONS)[number]["value"];
 
 /**
  * A duration in the largest sensible unit — minutes, then hours, then days.
@@ -77,13 +103,61 @@ function timeUntil(iso: string): { label: string; tone: "default" | "soon" | "ov
   return { label: `${Math.floor(h / 24)}d`, tone: "default" };
 }
 
+/**
+ * The comparators, one place, TOTAL and deterministic.
+ *
+ * ⛔ EVERY ONE ENDS IN THE SAME TIE-BREAK. `pool` is 0 on a large share of the queue and
+ * `sentinelConfidence` is NULL on every row assessed before that column existed, so a
+ * comparator that returned 0 for those would leave their relative order to the engine — and
+ * an unstable order under pagination lets a row swap pages between two clicks and never be
+ * seen. `id` is the final discriminator because it is unique; without it two rows created in
+ * the same millisecond still tie.
+ *
+ * ⛔ A NULL CONFIDENCE SORTS LAST UNDER "highest confidence", never as 0 — "no reading" and
+ * "read it at zero" are different statements, and the platform's no-fabrication rule (A-5)
+ * is exactly about not collapsing them. Ranking them last is honest: the officer asked for
+ * the most confident first, and a row with no reading is not one of them.
+ */
+type SortableMarket = {
+  id: string; resolutionAt: string; createdAt: string;
+  yesPool: number; noPool: number;
+  /* `undefined` as well as `null`: a row that never carried the column and a row whose
+     column is explicitly empty are the same statement here — no reading. Both sort last
+     under "highest confidence", and `== null` below matches both deliberately. */
+  sentinelConfidence?: number | null;
+};
+export function compareBy(key: SortKey): (a: SortableMarket, b: SortableMarket) => number {
+  const tie = (a: SortableMarket, b: SortableMarket) =>
+    Date.parse(a.resolutionAt) - Date.parse(b.resolutionAt) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+  if (key === "money") {
+    return (a, b) => (b.yesPool + b.noPool) - (a.yesPool + a.noPool) || tie(a, b);
+  }
+  if (key === "confidence") {
+    return (a, b) => {
+      const ac = a.sentinelConfidence, bc = b.sentinelConfidence;
+      if (ac == null && bc != null) return 1;
+      if (bc == null && ac != null) return -1;
+      if (ac != null && bc != null && ac !== bc) return bc - ac;
+      return tie(a, b);
+    };
+  }
+  if (key === "newest") {
+    return (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || tie(a, b);
+  }
+  return tie;
+}
+
 export default async function ResolverQueuePage({
   searchParams,
 }: {
-  searchParams: Promise<{ window?: string; category?: string; q?: string; page?: string }>;
+  searchParams: Promise<{ window?: string; category?: string; q?: string; page?: string; sort?: string }>;
 }) {
   const sp = await searchParams;
   const windowFilter = (WINDOW_OPTIONS as readonly { value: string }[]).some((o) => o.value === sp.window) ? sp.window! : "24h";
+  /* An unknown `?sort=` falls back to the default rather than throwing or rendering empty —
+     the same shape the window and category filters already use. */
+  const sortKey: SortKey = (SORT_OPTIONS as readonly { value: string }[]).some((o) => o.value === sp.sort)
+    ? sp.sort as SortKey : "due";
   const categoryFilter = (CATEGORY_OPTIONS as readonly string[]).includes(sp.category ?? "") ? sp.category as MarketCategory : "";
   const query = (sp.q ?? "").trim().toLowerCase();
   const parsedQ = parseQuery(query, { fields: fieldNames(MARKET_SEARCH) });
@@ -107,7 +181,7 @@ export default async function ResolverQueuePage({
     if (categoryFilter && m.category !== categoryFilter) return false;
     // Shared grammar — was a single contiguous `.includes()` on two title columns.
     return matchesQuery(parsedQ, m as unknown as Record<string, string | null | undefined>, MARKET_SEARCH);
-  }).sort((a, b) => Date.parse(a.resolutionAt) - Date.parse(b.resolutionAt));
+  }).sort(compareBy(sortKey));
 
   // Triage counts for the header summary.
   const overdueCount = pending.filter((m) => Date.parse(m.resolutionAt) <= now).length;
@@ -140,8 +214,12 @@ export default async function ResolverQueuePage({
   // Paginate
   const page = parsePage(sp.page, pending.length);
   const paged = pending.slice((page - 1) * PER_PAGE, page * PER_PAGE);
-  const baseHref = buildBaseHref("/admin/resolver-queue", { window: sp.window, category: sp.category, q: sp.q });
-  const hasFilter = windowFilter !== "24h" || !!categoryFilter || !!query;
+  /* ⛔ THE PAGER MUST CARRY THE ORDER. Every param the page reads has to be rebuilt into the
+     pager's links, or clicking "2" silently reverts to the default order — and the officer
+     is then paging through a DIFFERENT queue than the one they were reading, with the rows
+     they had already triaged scattered somewhere behind them. */
+  const baseHref = buildBaseHref("/admin/resolver-queue", { window: sp.window, category: sp.category, q: sp.q, sort: sp.sort });
+  const hasFilter = windowFilter !== "24h" || !!categoryFilter || !!query || sortKey !== "due";
 
   /**
    * ⭐ THE AUTO-RESOLVE VERDICT FOR EVERY ROW ON THIS PAGE — the answer to *"why is this
@@ -160,6 +238,22 @@ export default async function ResolverQueuePage({
    * one definition site.
    */
   const trustedSources = await listSources({ enabledOnly: true }).catch(() => []);
+  /**
+   * ⛔ THE DISABLED-CATEGORY ARM, WITHOUT WHICH THIS READING IS MORE PERMISSIVE THAN THE
+   * ENGINE'S — and "more permissive" here means the queue paints a green ELIGIBLE chip on a
+   * market `decideAutoResolve` refuses, and the bulk bar seals it in one press with no
+   * override, no typed reason and no compliance audit row.
+   *
+   * The engine's second arm is `isSourceTrusted`, which fails closed on a disabled category
+   * FIRST. `sourceMatchesAny` deliberately has no such check — its own docstring says the
+   * category gate "stays in isSourceTrusted where it belongs" — so the caller owes it.
+   *
+   * ⛔ Hoisted, like the source list: `isSourceTrusted` re-reads the whole store per call, so
+   * asking it per row would be a 20× read of an answer that cannot change mid-render. Same
+   * reason `sourceMatchesAny` exists at all. `.catch(() => [])` reads as "nothing disabled",
+   * which matches the failure direction of the registry read beside it.
+   */
+  const disabledCategories = new Set(await listDisabledCategories().catch(() => []));
   const bulkRows: BulkRow[] = await Promise.all(paged.map(async (m) => {
     const cfg = await getEffectiveConfig(m.id);
     const mode = await getEffectiveResolutionMode(m.resolutionMode);
@@ -171,6 +265,7 @@ export default async function ResolverQueuePage({
     const sourceMatches =
       sv === "match" ||
       (sv === "no-approved-source" && !!m.sentinelSourceUrl &&
+        !disabledCategories.has(resolvePublishCategory(m.category)) &&
         sourceMatchesAny(trustedSources, m.sentinelSourceUrl, resolvePublishCategory(m.category)));
     const v = bulkVerdictFor({
       market: m, mode, threshold: cfg.resolveConfidenceThreshold,
@@ -183,6 +278,7 @@ export default async function ResolverQueuePage({
       verdict: {
         eligible: v.eligible, outcome: v.outcome, reason: v.reason, all: v.all,
         overridable: v.overridable, stage: v.stage, modeIsAuto: v.modeIsAuto,
+        stagedByMe: v.stagedByMe,
         confidence: v.confidence, citedHost: v.citedHost, approvedHost: v.approvedHost,
       },
     };
@@ -246,6 +342,11 @@ export default async function ResolverQueuePage({
             <div className="w-full sm:w-[150px]">
               <Select name="category" defaultValue={categoryFilter} size="xs" placeholder="All categories"
                 options={[{ value: "", label: "All categories" }, ...CATEGORY_OPTIONS.map((c) => ({ value: c, label: c }))]} />
+            </div>
+            <div className="w-full sm:w-[185px]">
+              <Select name="sort" defaultValue={sortKey} size="xs" placeholder="Order"
+                ariaLabel="Order the queue"
+                options={SORT_OPTIONS.map((o) => ({ value: o.value, label: o.label }))} />
             </div>
             <button type="submit" className="btn btn-primary btn-xs">Filter</button>
             {hasFilter && <a href="/admin/resolver-queue" className="btn btn-ghost btn-xs">Clear</a>}
@@ -357,7 +458,6 @@ export default async function ResolverQueuePage({
                   {canBulk && verdictById.has(m.id) && (
                     <RowVerdict
                       marketId={m.id}
-                      title={m.titleEn}
                       verdict={verdictById.get(m.id)!.verdict}
                       threshold={displayThreshold}
                       canOverride={canOverride}
