@@ -80,6 +80,9 @@ export type BulkVerdictView = {
   overridable: boolean;
   stage: "seal" | "stage1";
   modeIsAuto: boolean;
+  /** Did THIS officer stage it? Decides which of two OPPOSITE instructions the row gives:
+   *  go and find a colleague, or there is nothing here for you to do. */
+  stagedByMe: boolean;
   confidence: number | null;
   citedHost: string | null;
   approvedHost: string | null;

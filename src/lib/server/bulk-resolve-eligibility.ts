@@ -210,6 +210,11 @@ export type BulkVerdict = {
   stage: "seal" | "stage1";
   /** For copy only — ⛔ NEVER for eligibility. See the note on `floorMode` below. */
   modeIsAuto: boolean;
+  /** ⭐ Did THIS officer record the first signature? Computed since the verdict was written
+   *  and, until now, returned to nobody — so the row said only "awaiting countersignature"
+   *  and an officer could not tell whether they were waiting on a colleague or whether a
+   *  colleague was waiting on them. Same defect the purge card fixed with `viewerId`. */
+  stagedByMe: boolean;
   confidence: number | null;
   /** Hosts, already parsed, so the row does not re-parse a URL in the client. */
   citedHost: string | null;
@@ -317,7 +322,16 @@ export function bulkVerdictFor(args: {
   // ⛔ EITHER OFFICER, NOT JUST THE ONE WHO STAGED IT. A stage-2 countersignature is never
   // a bulk act — see `awaiting-countersignature`. `officerId` is still taken, because the
   // COPY differs (you staged this one / another officer did) even though the refusal does not.
-  const staged = requireTwoOfficer && !!m.resolutionStage1By;
+  //
+  // ⛔ AND IT IS A FACT ABOUT THE ROW, NOT ABOUT THE CURRENT SETTING. This read
+  // `requireTwoOfficer && !!m.resolutionStage1By`, so the refusal VANISHED the moment
+  // compliance toggled two-admin off — one confirmed click, from a different screen. The
+  // consequence is not cosmetic: `resolveMarket` drops its own stage-1 and different-officer
+  // guards under that same setting, so the officer who bulk-STAGED ten markets could then
+  // seal all ten with their own single press, completing their own first signature as a solo
+  // resolve. The two-officer rule cannot be enforced by the flag alone — a row that already
+  // carries someone's signature is mid-ceremony whatever the flag now says.
+  const staged = !!m.resolutionStage1By;
   const stagedByMe = staged && m.resolutionStage1By === officerId;
   if (staged) add("awaiting-countersignature");
   if (!sealed && m.status === "LIVE") add("still-live");
@@ -381,9 +395,18 @@ export function bulkVerdictFor(args: {
     all: ordered,
     // Overridable only when EVERY standing reason is overridable — one row-state block is
     // enough to make the whole row untouchable.
-    overridable: !eligible && ordered.length > 0 && ordered.every((r) => OVERRIDABLE.has(r)),
+    //
+    // ⛔ …AND ONLY WHEN THERE IS AN OUTCOME TO SEAL. `outcome`'s contract above calls a
+    // null "a hard stop even under override", and `bulk-resolve-action` enforces exactly
+    // that. Without this clause the two reasons that PRODUCE a null — `no-assessment` and
+    // `outcome-unknown` — were still in OVERRIDABLE, so the queue painted a reason box on
+    // a row no typed sentence could ever seal, counted it in "N will seal", and added its
+    // pool to the player money listed on the confirmation. The batch then sealed nothing.
+    // A promise the server is guaranteed to refuse is worse than a refusal.
+    overridable: !eligible && outcome !== null && ordered.length > 0 && ordered.every((r) => OVERRIDABLE.has(r)),
     stage,
     modeIsAuto: mode === "auto",
+    stagedByMe,
     confidence: m.sentinelConfidence ?? null,
     citedHost,
     approvedHost,

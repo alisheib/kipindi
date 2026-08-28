@@ -127,15 +127,17 @@ export async function bulkResolveMarketsAction(formData: FormData): Promise<Bulk
     const { getEffectiveConfig, getEffectiveResolutionMode } = await import("@/lib/server/market-config");
     const { getRequireTwoOfficerResolution } = await import("@/lib/server/resolution-policy");
     const { sentinelSourceVerdict } = await import("@/lib/server/market-sentinel");
-    const { listSources, sourceMatchesAny } = await import("@/lib/server/source-registry");
+    const { listSources, sourceMatchesAny, listDisabledCategories } = await import("@/lib/server/source-registry");
     const { armMarket } = await import("@/lib/server/market-scheduler");
 
     // Read ONCE for the whole batch. `isSourceTrusted` re-reads the registry per call, so
     // asking it per market is a 20× store read for one answer that cannot change mid-batch.
-    const [requireTwoOfficer, sources] = await Promise.all([
+    const [requireTwoOfficer, sources, disabledList] = await Promise.all([
       getRequireTwoOfficerResolution(),
       listSources({ enabledOnly: true }),
+      listDisabledCategories(),
     ]);
+    const disabledCategories = new Set(disabledList);
 
     for (const id of unique) {
       attempted++;
@@ -161,9 +163,17 @@ export async function bulkResolveMarketsAction(formData: FormData): Promise<Bulk
       // ⛔ BOTH ARMS, exactly as `resolveDueMarket` computes it. A market with no approved
       // source is gated by the REGISTRY, not by its own (absent) source; checking only the
       // first arm would refuse a row the engine considers fully matched.
+      // ⛔ …AND THE DISABLED-CATEGORY GATE THE ENGINE APPLIES FIRST. `resolveDueMarket`'s
+      // second arm is `isSourceTrusted`, which refuses a disabled category before it looks
+      // at any host; `sourceMatchesAny` deliberately does not (its docstring says the check
+      // "stays in isSourceTrusted where it belongs"), so this caller owes it. Without it the
+      // BULK PATH IS MORE PERMISSIVE THAN THE ENGINE — the queue shows a green eligible chip
+      // and seals, in one press with no override and no compliance row, a market the
+      // scheduled resolver refuses. A bulk convenience must never be a laxer gate.
       const sourceMatches =
         sv === "match" ||
         (sv === "no-approved-source" && !!m.sentinelSourceUrl &&
+          !disabledCategories.has(resolvePublishCategory(m.category)) &&
           sourceMatchesAny(sources, m.sentinelSourceUrl, resolvePublishCategory(m.category)));
 
       const v = bulkVerdictFor({

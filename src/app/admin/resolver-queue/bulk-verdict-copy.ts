@@ -54,8 +54,19 @@ export function bulkReasonDetail(v: {
   approvedHost: string | null;
   confidence: number | null;
   threshold: number;
+  /** ⭐ Optional so every existing caller still typechecks; a row that does not pass it
+   *  simply gets the same sentence the queue showed before. */
+  stagedByMe?: boolean;
 }): string | null {
   switch (v.reason) {
+    /* ⛔ "AWAITING COUNTERSIGNATURE" DOES NOT SAY WHO IS WAITING ON WHOM, and those are
+       opposite instructions: one means go and find a colleague, the other means there is
+       nothing for you to do here. The verdict has computed `stagedByMe` since it was
+       written and returned it to nobody. */
+    case "awaiting-countersignature":
+      return v.stagedByMe
+        ? "you recorded the first verdict · another officer must complete it"
+        : "another officer recorded the first verdict · complete it on the market's own card";
     case "source-different-domain":
       return `cited ${v.citedHost ?? "another site"} · approved ${v.approvedHost ?? "unset"}`;
     case "source-untrusted":
