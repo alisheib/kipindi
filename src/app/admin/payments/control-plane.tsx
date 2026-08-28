@@ -28,7 +28,27 @@ import { useMayAct, useActDisabledReason } from "@/components/admin/act-gate";
 
 const PROVIDER_LABEL: Record<PaymentProviderId, string> = { mock: "Mock (test)", selcom: "Selcom", azampay: "AzamPay" };
 
-type Pending = { update: Record<string, string>; title: string; body: ReactNode; confirmLabel: string; tone: "brand" | "warning" | "claret"; tier?: "medium" | "hard"; typedWord?: string } | null;
+/**
+ * ⛔ THE TIER AND THE TYPED WORD ARE ONE VALUE, NOT TWO INDEPENDENT OPTIONALS.
+ *
+ * Declared as `tier?: "medium" | "hard"` beside `typedWord?: string`, the type PERMITS
+ * `hard` with no word — and `ConfirmModal` arms itself on `tier === "hard" && !!typedWord`,
+ * so that combination looks gated and silently degrades to an ordinary one-click confirm.
+ * Here that would be the control that puts the payment rail into SIMULATION while real money
+ * is live: the dialog would still say *"Type MOCK to confirm"* in its body, and there would
+ * be no field and no gate.
+ *
+ * The two are always set together off the same boolean, so the type now says so. Nothing
+ * about the behaviour changes; what changes is that the wrong pair stops compiling.
+ */
+type Pending = {
+  update: Record<string, string>;
+  title: string;
+  body: ReactNode;
+  confirmLabel: string;
+  tone: "brand" | "warning" | "claret";
+} & ({ tier: "hard"; typedWord: string } | { tier: "medium"; typedWord?: never });
+type PendingState = Pending | null;
 
 export function ControlPlane({ controls }: { controls: PaymentControlsView }) {
   // A1 — this panel carries the REAL MONEY / MOCK mode switch and the provider selector on
@@ -39,7 +59,7 @@ export function ControlPlane({ controls }: { controls: PaymentControlsView }) {
   const mayActGate = useMayAct();
   const actReason = useActDisabledReason();
   const [busy, startTransition] = useTransition();
-  const [pending, setPending] = useState<Pending>(null);
+  const [pending, setPending] = useState<PendingState>(null);
   const router = useRouter();
   // B-28 — success toasts ride the transition's falling edge (data visible when announced)
   const { toast, deferToast } = useDeferredToast(busy);
@@ -77,8 +97,11 @@ export function ControlPlane({ controls }: { controls: PaymentControlsView }) {
       update: { provider: p },
       title: mockOnLive ? "Simulate payments on real money?" : `Switch payment rail to ${PROVIDER_LABEL[p]}?`,
       tone: mockOnLive ? "claret" : toReal ? "warning" : "brand",
-      tier: mockOnLive ? "hard" : "medium",
-      typedWord: mockOnLive ? "MOCK" : undefined,
+      // Correlated, so the checker sees what the behaviour already was: a typed MOCK gate
+      // exists exactly when the rail is being simulated on live money, and never otherwise.
+      ...(mockOnLive
+        ? ({ tier: "hard", typedWord: "MOCK" } as const)
+        : ({ tier: "medium" } as const)),
       confirmLabel: mockOnLive ? "Start simulation" : `Switch to ${PROVIDER_LABEL[p]}`,
       body: mockOnLive ? (
         <>
@@ -274,8 +297,19 @@ export function ControlPlane({ controls }: { controls: PaymentControlsView }) {
         title={pending?.title ?? ""}
         body={pending?.body ?? null}
         tone={pending?.tone ?? "brand"}
-        tier={pending?.tier ?? "medium"}
-        typedWord={pending?.typedWord}
+        /* ⛔ SPREAD, NOT TWO PROPS. Passing them separately re-opens the same hole one level
+           down: `pending?.tier ?? "medium"` and `pending?.typedWord` are independent
+           expressions, so `hard` with no word is expressible again even though the state that
+           feeds them can no longer hold it. Narrowing on `tier` keeps the pair inseparable all
+           the way to the component.
+           ⚠️ A PLAIN block comment, never the BRACED form. This is an ATTRIBUTE slot, where a
+           braced comment is a syntax error — the same trap `resolve-controls.tsx` records for
+           an expression slot. And its second-order twin bit me here too: writing the braced
+           form out inside a block comment to explain it ENDS THE COMMENT EARLY, because the
+           closing delimiter is part of what you were quoting. Describe it; do not spell it. */
+        {...(pending?.tier === "hard"
+          ? ({ tier: "hard", typedWord: pending.typedWord } as const)
+          : ({ tier: "medium" } as const))}
         confirmLabel={pending?.confirmLabel}
         /* B-28: while the switch is in flight the confirm can't double-fire and
            the dialog can't be dismissed into a false "cancelled". */
