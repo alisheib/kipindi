@@ -1226,13 +1226,53 @@ export async function deleteChain(id: string, officerId: string): Promise<Servic
     };
   }
 
-  await chainStore.delete(id);
+  /* ⛔ A DESTRUCTIVE WRITE VERIFIES ITS OWN EFFECT BEFORE CLAIMING IT (S-18, scan #1,
+   * 2026-08-28).
+   *
+   * `chainStore.delete` used to end in `.catch(() => {})` and returns void either way, and
+   * this function never read anything back — so a delete that hit an FK violation, a dropped
+   * connection or a vanished row still returned `{ ok: true }` AND wrote the
+   * `updown.chain.deleted` audit row. The audit log would assert a deletion that never
+   * happened, on the one control that exists to be answerable to the Gaming Board.
+   *
+   * ⚠️ THE MIRROR IMAGE OF A DEFECT THIS REPO HAS ALREADY PAID FOR. The reset script's own
+   * comment records "the deletion landed and the audit row did not… and the script still
+   * printed ✅, because it verified the DELETION and never the audit." Here it was the other
+   * way round, which is worse: the audit said yes and the data said no. Both halves are now
+   * checked — the throw is caught, and the row is read back.
+   *
+   * ⚠️ The read-back must sit BEFORE the audit call, not merely before the return: `audit()`
+   * is fire-and-forget onto a global queue and is not awaited, so ordering the two statements
+   * is the only thing that decides which one wins. */
+  try {
+    await chainStore.delete(id);
+  } catch (err) {
+    audit({
+      category: "ADMIN",
+      action: "updown.chain.delete_failed",
+      actorId: officerId, targetType: "UpDownChain", targetId: id,
+      payload: { rounds: 0, state: cur.state, reason: String(err instanceof Error ? err.message : err) },
+    });
+    return { ok: false, error: "The delete did not go through. Nothing was removed — try again, and if it repeats, keep the chain and archive it instead." };
+  }
+
+  const stillThere = await chainStore.get(id);
+  if (stillThere) {
+    audit({
+      category: "ADMIN",
+      action: "updown.chain.delete_failed",
+      actorId: officerId, targetType: "UpDownChain", targetId: id,
+      payload: { rounds: 0, state: cur.state, reason: "The store reported no error but the chain is still readable afterwards." },
+    });
+    return { ok: false, error: "The delete reported success but the chain is still there. Nothing has been recorded as deleted — archive it instead." };
+  }
+
   audit({
     category: "ADMIN",
     action: "updown.chain.deleted",
     actorId: officerId, targetType: "UpDownChain", targetId: id,
     payload: { rounds: 0, state: cur.state, durationMinutes: cur.durationMinutes, assetId: cur.assetId,
-      note: "Permitted only because the chain had never opened a round." },
+      note: "Permitted only because the chain had never opened a round. Verified absent before this row was written." },
   });
   return { ok: true, data: { id } };
 }

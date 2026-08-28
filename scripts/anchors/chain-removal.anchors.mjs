@@ -113,4 +113,38 @@ export const MUTATIONS = [
     to: `  if (chain.state !== "NEVER_A_REAL_STATE") {`,
     expect: "7: ⭐ a RUNNING chain is NOT refused for its state",
   },
+
+  /* ── §8 · S-18 — a destructive write that swallowed its own failure ──
+   * `chainStore.delete` ended in `.catch(() => {})` and returns void either way, and
+   * `deleteChain` never read back — so a delete that failed still returned ok AND wrote the
+   * `updown.chain.deleted` audit row. The mirror image of a defect already recorded in the
+   * reset script's own comment ("it verified the DELETION and never the audit"), and the
+   * worse direction: the audit said yes and the data said no. */
+  {
+    name: "the-caller-stops-reading-back",
+    why: "⭐ THE DEFECT AS IT SHIPPED. The store still throws, but the caller stops catching and verifying — so a failed delete is audited as `updown.chain.deleted` and the log asserts a deletion that never happened, on the one control that exists to answer the Gaming Board",
+    file: CFG,
+    suite: "chain-removal",
+    from: `  const stillThere = await chainStore.get(id);`,
+    to: `  const stillThere = null as Awaited<ReturnType<typeof chainStore.get>>;`,
+    expect: "8: 🔴 a delete that SILENTLY does nothing is refused too",
+  },
+  {
+    name: "the-delete-swallows-its-error-again",
+    why: "The DAL half, restored verbatim: `.catch(() => {})` on the chain delete. This is the shape that made the caller's silence possible — the store reported success for an FK violation, a dropped connection or a vanished row, and returns void either way so nothing downstream could tell",
+    file: "src/lib/server/updown-dal.ts",
+    suite: "chain-removal",
+    from: `  async delete(id) { await pc().upDownChain.delete({ where: { id } }); },`,
+    to: `  async delete(id) { await pc().upDownChain.delete({ where: { id } }).catch(() => {}); },`,
+    expect: "8: ⛔ no destructive DAL delete swallows its own error",
+  },
+  {
+    name: "the-verified-delete-refuses-everything",
+    why: "⭐ POSITIVE CONTROL for the verification itself. `deleteChain` treats every delete as failed: §8's refusal assertions all pass HARDER, no false audit row is ever written, and the control the Gaming Board asked for silently stops working. A guard that can only ever refuse is not a safe guard, it is a broken control that no refusal-only assertion can see",
+    file: CFG,
+    suite: "chain-removal",
+    from: `  if (stillThere) {`,
+    to: `  if (stillThere || true) {`,
+    expect: "8: ⭐ a delete that WORKS is still permitted",
+  },
 ];

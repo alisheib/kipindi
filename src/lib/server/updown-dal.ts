@@ -573,7 +573,11 @@ const prismaAssets: AssetStore = {
       update: data,
     });
   },
-  async delete(id) { await pc().upDownAsset.delete({ where: { id } }).catch(() => {}); },
+  /* ⛔ Fixed alongside the chain delete below (S-18). This one has no caller today, which is
+   * exactly why it mattered: it was the nearer of the two identical swallows, so it is the
+   * one the next author would have copied when wiring an asset-removal control. A dead trap
+   * beside a live one is a template. */
+  async delete(id) { await pc().upDownAsset.delete({ where: { id } }); },
 };
 
 /** Columns `patch` may write on a chain. An allowlist, not a spread, so a caller
@@ -634,7 +638,19 @@ const prismaChains: ChainStore = {
     if (Object.keys(data).length === 0) return;
     await pc().upDownChain.update({ where: { id }, data });
   },
-  async delete(id) { await pc().upDownChain.delete({ where: { id } }).catch(() => {}); },
+  /* ⛔ NO `.catch(() => {})` HERE, AND THAT IS THE POINT (S-18, scan #1, 2026-08-28).
+   *
+   * This used to swallow every error and return void, so a delete that hit an FK violation,
+   * a dropped connection or a missing row was indistinguishable from one that worked — and
+   * `deleteChain` went on to write the `updown.chain.deleted` audit row anyway. The audit
+   * log would assert a deletion that never happened, on a control whose entire purpose is
+   * to be answerable to the Gaming Board.
+   *
+   * ⚠️ Every sibling in this object already lets Prisma reject — `patch` even throws on an
+   * unknown column. `delete` was the lone outlier, and a destructive write is the last
+   * method that should be the forgiving one. The caller now verifies the effect too; this
+   * throw is what makes that verification reachable rather than decorative. */
+  async delete(id) { await pc().upDownChain.delete({ where: { id } }); },
 };
 
 const ROUND_PATCHABLE: Record<string, (v: unknown) => unknown> = {
