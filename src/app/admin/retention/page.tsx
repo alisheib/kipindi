@@ -13,6 +13,9 @@ import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
+import { chainStore, assetStore, roundStore } from "@/lib/server/updown-dal";
+import { PurgeChainCard } from "./purge-chain-card";
+import { getFirstSignature } from "./purge-stage1-store";
 
 export const metadata = { title: "Admin · Data retention" };
 export const dynamic = "force-dynamic";
@@ -64,6 +67,28 @@ export default async function AdminRetentionPage() {
   const allUsers = await db.user.list();
   const userCount = allUsers.length;
   const closed = allUsers.filter((u) => u.status === "CLOSED").length;
+
+  /* The purge ceremony's inputs. ⛔ ARCHIVED ONLY — archiving is the required prior step, and
+     it is the one that can be undone. Reading the first signatures here rather than in the
+     client keeps the durable store server-side; the card only needs to know WHETHER one
+     exists and whose it is, so it can tell officer A they are waiting on someone else. */
+  const allChains = await chainStore.list();
+  const archived = allChains.filter((c) => c.state === "ARCHIVED");
+  const archivedChains = await Promise.all(
+    archived.map(async (c) => {
+      const asset = await assetStore.get(c.assetId);
+      return {
+        id: c.id,
+        label: `${asset?.key ?? c.assetId} ${c.durationMinutes}m`,
+        rounds: await roundStore.count({ chainId: c.id }),
+      };
+    }),
+  );
+  const stage1Map: Record<string, { actorId: string; at: string } | undefined> = {};
+  for (const c of archivedChains) {
+    const sig = await getFirstSignature(c.id);
+    if (sig) stage1Map[c.id] = { actorId: sig.actorId, at: sig.at };
+  }
   // Read through the audit API (like /admin/system) rather than poking the
   // globalThis ring directly — best-effort, capped read.
   const auditEntries = getAuditPage({ limit: 100_000 }).length;
@@ -178,6 +203,20 @@ export default async function AdminRetentionPage() {
             </div>
           </AdminCard>
         </div>
+
+        {/* ⭐ THE PURGE CEREMONY LIVES HERE, not on /admin/updown, which is a `trading` route:
+            a `compliance` control there is Owner-only in practice and logs every legitimate
+            compliance click as `privilege_escalation_blocked` (the documented E-18/E-23
+            failure, which voidUpDownRound had to be corrected for within the hour).
+            /admin/updown carries a link to this card instead. */}
+        {/* ⚠️ THE CARD CHROME IS RENDERED HERE, in the server component, and the interactive
+            body is the client one. `AdminCard` lives in admin-shell, which imports the server
+            store, control-gates and roles — so importing it from a "use client" file drags that
+            whole graph into the browser bundle and the build fails on ioredis reaching for
+            node:dns. This split is the reason, not a preference. */}
+        <AdminCard title="Purge a chain and its history" sw="Futa msururu na historia yake">
+          <PurgeChainCard chains={archivedChains} stage1={stage1Map} />
+        </AdminCard>
       </AdminBody>
     </>
   );

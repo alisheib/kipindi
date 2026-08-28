@@ -310,6 +310,19 @@ export interface RoundStore {
    *  or the process died between stamping the round and stamping settlement. The
    *  second stranding shape, and the same money problem as the first. */
   resolvedUnsettled(limit: number): Promise<StoredRound[]>;
+  /**
+   * Delete the NAMED rounds. Returns how many actually went.
+   *
+   * ⛔ IDS ONLY — there is deliberately no "delete by chain" arm, and no arm that can be
+   * called with an empty filter. `ops-updown-reset-games.mts`'s `deleteMany({})` is the
+   * shape this signature exists to make unwritable: unscoped, it takes every round on the
+   * platform. A caller must say exactly which rows it means.
+   *
+   * ⚠️ It returns a COUNT because the chain purge verifies its own effect before writing a
+   * completion audit row — the S-18 lesson. A destructive write that returns void cannot be
+   * checked, and the caller ends up auditing an outcome it never observed.
+   */
+  deleteMany(ids: string[]): Promise<number>;
   create(r: StoredRound): Promise<void>;
   patch(id: string, fields: Partial<StoredRound>): Promise<void>;
   /**
@@ -442,6 +455,12 @@ function matchRounds(opts?: RoundQuery): StoredRound[] {
 }
 
 const memoryRounds: RoundStore = {
+  /** ⛔ Ids only — see the interface note. An empty list deletes nothing, deliberately. */
+  async deleteMany(ids) {
+    let n = 0;
+    for (const id of ids) if (memRounds.delete(id)) n++;
+    return n;
+  },
   async get(id) { return memRounds.get(id) ?? null; },
   async getByMarketId(marketId) { return [...memRounds.values()].find((r) => r.marketId === marketId) ?? null; },
   async latestForChain(chainId) {
@@ -677,6 +696,12 @@ function roundWhere(opts?: RoundQuery): Prisma.UpDownRoundWhereInput {
 }
 
 const prismaRounds: RoundStore = {
+  /** ⛔ Ids only — see the interface note. Returns the real count so the caller can verify. */
+  async deleteMany(ids) {
+    if (ids.length === 0) return 0;
+    const r = await pc().upDownRound.deleteMany({ where: { id: { in: ids } } });
+    return r.count;
+  },
   async get(id) { const r = await pc().upDownRound.findUnique({ where: { id } }); return r ? toRound(r) : null; },
   async getByMarketId(marketId) {
     const r = await pc().upDownRound.findUnique({ where: { marketId } });

@@ -702,6 +702,20 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
             <p className="px-4 pt-3 text-body-sm text-text-muted">
               Filed away and hidden from players. Every round they ran is kept — restore one to bring it back as a stopped chain.
             </p>
+            {/* ⛔ A LINK, NOT THE CONTROL — and that is precisely why it is a link. Purging a
+                chain's history is a `compliance` act, and this page is a `trading` route
+                (roles.ts ROUTE_DOMAINS). A compliance control hosted here would be Owner-only
+                IN PRACTICE, and would log every legitimate click by a compliance officer as
+                `privilege_escalation_blocked` — the documented E-18/E-23 failure, which
+                `voidUpDownRound` had to be corrected for within the hour. So the operator who
+                wants it is sent to the surface where their own role actually works. */}
+            <p className="px-4 pt-2 text-caption text-text-tertiary">
+              Need the history gone too?{" "}
+              <a href="/admin/retention" className="text-royal-300 underline underline-offset-2">
+                Purge a chain on /admin/retention →
+              </a>{" "}
+              — a two-officer compliance ceremony, not a trading control.
+            </p>
             <ScrollX label="Archived Up & Down chains">
               <table className="admin-tbl min-w-[560px]">
                 <thead>

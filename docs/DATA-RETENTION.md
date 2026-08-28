@@ -303,3 +303,87 @@ unit test.
 2026-05-30 — *82 days old, so the first live run of this chore will delete nothing.* That is
 expected and is not evidence the chore is broken; the first deletions land once rows cross 180
 days. `Otp` is empty and will stay empty while `SMS_PROVIDER=console`.
+
+---
+
+## 7. Purging a chain and its history — the second door beside Archive
+
+**Added 2026-08-28.** A compliance ceremony on `/admin/retention` that removes an archived
+Up & Down chain's price story and player-facing content. Archive stays the default and this is
+the exception: archiving can be undone, this cannot.
+
+### 7.1 What it does, exactly
+
+| class | what happens | why |
+|---|---|---|
+| `UpDownRound` | **DELETED** | the price story. No money meaning — the money lives on the market. |
+| `Comment`, `Watchlist`, `MarketSnapshot` | **DELETED** | player-facing chaff, no statutory role |
+| `PredictionMarket` | **REDACTED, never deleted** | titles + criterion blanked to a named sentinel; `purgedAt` / `purgedBy` / `purgeReason` stamped. Pools, `feeSnapshot`, `resolvedOutcome` and `settledAt` are **kept** |
+| `Position`, `Transaction`, `LedgerEntry`, `HousePoolLedger`, `AuditLog`, `UpDownObservation` | **NEVER TOUCHED** | the statutory record, and the shared price readings |
+
+### 7.2 Why redact rather than delete — proven on production, 2026-08-28
+
+`LedgerEntry.marketId`, `HousePoolLedger.marketId` and `Transaction.positionId` are **loose
+strings with no foreign key**. On 2026-08-28 a teardown script refunded open positions and then
+deleted the markets; the positions cascade-deleted with them and **two `STAKE_DEBIT` ledger
+pairs were left standing** — the books claimed TZS 2,000 held in escrow for a market that no
+longer existed. `house-money.cjs` **still printed "the books balance"**, because both halves of
+each pair were present and the grand total was still zero. The same run surfaced three
+pre-existing orphaned `POOL:*` accounts nobody had noticed.
+
+> "The books balance" says every entry has a counterpart. It does not say every account **means
+> something**. Those are different statements and only the first one was ever checked.
+
+A market delete at the scale of a whole chain manufactures that thousands of times over, with
+every money suite green throughout. The tombstone is what keeps the second statement true.
+
+⭐ **The new guard:** `npm run ops:pool-orphans` asks *does every `POOL:*` account belong to a
+market row that still exists?* ⚠️ `pool-residual.cjs` cannot answer it — its query is an INNER
+JOIN on `PredictionMarket`, so an orphaned pool account has no row to join to and is **silently
+dropped from the result**. The one instrument aimed at pool accounts excluded exactly the ones
+that had lost their market. Read-only; it also reports the population, so a zero cannot be read
+as "clean" when it means "nothing to look at".
+
+### 7.3 No retention check, and no override
+
+The statutory record is never destroyed, and the round's settlement evidence is relocated into
+a signed, hash-anchored evidence pack **before any deletion begins**. So the 7-year mandate
+(POCA Cap 423 §16; TRA Income Tax Act §80) is satisfied **by construction, at any age**, and
+there is nothing to override.
+
+⛔ **There is deliberately no override flag.** A feature with no override has no override to
+abuse, and an override on this control is the first thing a regulator would ask to see the
+usage log for.
+
+### 7.4 The ceremony
+
+1. `softRequireStaff("compliance", …)` — role + audited refusal + step-up TOTP.
+2. **Stage 1** — officer A types a reason (≥ 5 chars, as AML requires to release funds) and the
+   statutory basis. Stored durably in `SystemConfig`, **read back to confirm it landed**, and
+   expiring after 12 hours.
+3. **Stage 2** — a *different* officer, via `twoOfficerGate`, with the chain's **own label** as
+   the typed word. ⛔ An absent first signature is a **refusal**, not a pass: `twoOfficerGate`
+   returns null when the maker is missing, which for this ceremony would mean one officer
+   sufficed.
+4. The whole thing inside `withLock('updown-purge:<chainId>')`.
+5. Every batch verified before the completion audit row is written — zero rounds, zero chaff,
+   every market stamped — or the job **fails** rather than completing with a caveat.
+
+Audit trail: `updown.chain.purge.stage1` → `updown.chain.purged` (or `.failed` /
+`.conflict_blocked` / `.withdrawn`). The completion row carries both officer ids, the typed
+reason, the statutory basis, the evidence-pack sha256 and every count.
+
+### 7.5 Why it is hosted on `/admin/retention`
+
+`/admin/updown` is a **`trading`** route. A `compliance` control there is Owner-only in
+practice and logs every legitimate compliance click as `privilege_escalation_blocked` — the
+documented E-18/E-23 failure, which `voidUpDownRound` had to be corrected for within the hour.
+`/admin/updown` carries a **link**, not the control.
+
+### 7.6 Verification
+
+```
+npm run test:chain-purge    # 51 assertions, driven against the real in-memory stores
+npm run red:chain-purge     # 7 mutations, each the real defect or the reversal of a decision
+npm run ops:pool-orphans    # read-only: does every POOL:* account name a market that exists?
+```

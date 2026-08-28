@@ -1145,6 +1145,33 @@ model PredictionMarket {
    */
   settledAt                 DateTime?
   /**
+   * ⭐ THE PURGE TOMBSTONE — a market whose player-facing content was redacted by the
+   * chain-purge ceremony (docs/DATA-RETENTION.md §7). The ROW SURVIVES: pools, feeSnapshot,
+   * resolvedOutcome and settledAt are untouched, and every Position, Transaction,
+   * LedgerEntry and HousePoolLedger referencing it stays exactly as it was.
+   *
+   * ⛔ WHY REDACT RATHER THAN DELETE. LedgerEntry.marketId, HousePoolLedger.marketId and
+   * Transaction.positionId are loose strings with NO foreign key. Deleting a market leaves
+   * them dangling, and the books still balance to zero while individual accounts name rows
+   * that no longer exist — measured on production 2026-08-28, where a teardown left two
+   * STAKE_DEBIT pairs standing for a market that no longer existed and `house-money.cjs`
+   * still printed "the books balance". A grand total of zero is not the statement "every
+   * account means what it says". Keeping the row is what makes the second statement true.
+   *
+   * ⚠️ NULL MEANS NEVER PURGED, and that reading has to be explicit at every call site.
+   * These columns are additive with no backfill, so every pre-existing row reads NULL on
+   * day one; a query that treats NULL as anything else is reading a migration artefact as
+   * a fact.
+   *
+   * ⭐ AND A STAMPED MARKET IS PURGED, NOT FAILED. The 2026-08-04 incident (~2,515 rounds
+   * cleared, 1,915 phantom "failures") happened because deletion was SILENT and UNLABELLED,
+   * so ops tooling counted what it could not explain as breakage. The label is the fix for
+   * that class, not merely a record of the act.
+   */
+  purgedAt                  DateTime?
+  purgedBy                  String?
+  purgeReason               String?                @db.Text
+  /**
    * The officer's recorded evidence excerpt — the exact quote from the official
    * source that justifies the verdict, captured at stage-1 of the resolution
    * ceremony (also written immutably to the audit chain). Denormalised here so
