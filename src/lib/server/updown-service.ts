@@ -312,10 +312,11 @@ export async function readPrice(
  *
  * The checks, in the order an operator would ask them:
  *  1 · the chain and its asset still exist, and the asset is ENABLED;
- *  2 · the market is OPEN right now (E-36's trading calendar — a round opened into a shut
+ *  2 · the chain is not ARCHIVED (S-16 — archiving is a filing state, not a run state);
+ *  3 · the market is OPEN right now (E-36's trading calendar — a round opened into a shut
  *      market takes stakes all weekend and then voids);
- *  3 · no round is already live on this chain (one round per chain at a time);
- *  4 · the price READS — checked before anything is written.
+ *  4 · no round is already live on this chain (one round per chain at a time);
+ *  5 · the price READS — checked before anything is written.
  *
  * ⚠️ The boundary is taken from the chain's own grid (`boundaryAtOrBefore`), never from
  * "now": the grid is what lets a 10-, 15- or 30-minute round share the 5-minute observation,
@@ -333,7 +334,32 @@ export async function generateRoundNow(
     return { ok: false, error: `${asset.key} is disabled. Enable it before generating a round.` };
   }
 
-  // 3 · one live round per chain — generating a second would split the liquidity and give
+  /* 2 · ⛔ ARCHIVED IS A FILING STATE, NOT A RUN STATE (S-16, scan #1, 2026-08-28).
+   *
+   * ARCHIVED exists (Jay / Gaming Board item #3) as the safe alternative to a hard delete, and
+   * the product tells an operator that an archived chain "disappears from the player board".
+   * That promise was kept ONLY by admin/updown/page.tsx filtering archived chains out of the
+   * working table so this button never rendered — a guarantee living in a LIST FILTER, one
+   * ad-hoc call or one restored row away from being false, on the single path by which a
+   * bettable round now comes into existence.
+   *
+   * ⭐ THE OTHER THREE STATES ARE ALLOWED, AND THAT IS NOT A COMPROMISE. Since E-67 nothing
+   * opens a round automatically — "my admins will enter and generate every 5 min" — so every
+   * chain sits STOPPED by design and the scheduler is inert platform-wide. Refusing STOPPED
+   * would refuse the normal operating flow and break the console outright. RUNNING, PAUSED and
+   * STOPPED are the three RUN states; ARCHIVED is the filing state, and `setChainState`'s own
+   * allowlist already refuses it for exactly this reason ("archiving has its own door").
+   *
+   * ⚠️ Restoring lands the chain in STOPPED, which generates — so the remedy is "restore it",
+   * not "restore and start it". */
+  if (chain.state === "ARCHIVED") {
+    return {
+      ok: false,
+      error: `${asset.key} ${chain.durationMinutes}m is archived — restore it before generating a round.`,
+    };
+  }
+
+  // 4 · one live round per chain — generating a second would split the liquidity and give
   //     two rounds the same boundary.
   const latest = await roundStore.latestForChain(chain.id);
   if (latest && !latest.resolvedAt) {
