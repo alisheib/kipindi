@@ -4,7 +4,7 @@ import { useT } from "@/lib/i18n";
 import { SearchBox } from "@/components/ui/search-box";
 import { fieldNames, CANDIDATE_SEARCH } from "@/lib/search";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useState, useTransition } from "react";
+import { useCallback, useTransition } from "react";
 import { I } from "@/components/ui/glyphs";
 import { RefreshButton } from "@/components/admin/refresh-button";
 import { DateTimeRangeFilter } from "@/components/ui/datetime-range-filter";
@@ -41,8 +41,6 @@ export function CandidateFilterToolbar({ totalFiltered, totalAll }: { totalFilte
   const currentCategory = searchParams.get("category") ?? "";
   const currentDate = searchParams.get("range") ?? searchParams.get("from") ?? "";
 
-  const [search, setSearch] = useState(currentSearch);
-
   const push = useCallback((updates: Record<string, string>) => {
     const sp = new URLSearchParams(searchParams.toString());
     for (const [k, v] of Object.entries(updates)) {
@@ -61,7 +59,15 @@ export function CandidateFilterToolbar({ totalFiltered, totalAll }: { totalFilte
     <div className="space-y-3">
       {/* Search bar */}
       <div className="flex items-center gap-3">
-        {/* One SearchBox — see poll-filters.tsx. */}
+        {/* One SearchBox — see poll-filters.tsx, which lost the same button first.
+            ⛔ NO "Search" BUTTON HERE, and it is not an omission (S-06, scan #1,
+            2026-08-28). The atom runs mode="url": it holds the input in its own state
+            and debounces it into ?q, so it OWNS the param. The button this file used to
+            carry pushed a SECOND copy held in a local useState that nothing wrote
+            except Clear — inert on load, and destructive after a Clear, because it then
+            pushed "" over whatever had since been typed. Re-adding a control that
+            writes ?q re-creates two owners of one value; `test:search-adoption` §6
+            fails on the state that makes it possible. */}
         <div className="flex-1">
           <SearchBox
             placeholder={t.common.searchCandidates}
@@ -70,18 +76,10 @@ export function CandidateFilterToolbar({ totalFiltered, totalAll }: { totalFilte
             allowRegex
           />
         </div>
-        <button
-          type="button"
-          onClick={() => push({ q: search })}
-          className="btn btn-primary btn-xs rounded-pill min-w-[80px]"
-        >
-          Search
-        </button>
         {hasFilters && (
           <button
             type="button"
             onClick={() => {
-              setSearch("");
               startTransition(() => router.push("/admin/candidates"));
             }}
             className="btn btn-ghost btn-xs rounded-pill text-text-subtle hover:text-text"

@@ -256,5 +256,94 @@ check("the advertisement matcher found something at all", adElements > 0,
 
 log(`  (advertised: ${[...advertised].join(", ") || "none"} · parse sites checked: ${[...executed.values()].flat().length})`);
 
+// ── 6. A url-mode SearchBox OWNS its param — the file may not keep a second copy ─
+/**
+ * The defect (S-06, scan #1, 2026-08-28, `/admin/candidates`): the toolbar mounted a
+ * url-mode <SearchBox/> — which holds the input in its OWN state and debounces it into
+ * `?q` — and ALSO kept a `useState` seeded from `?q` at mount, behind a primary
+ * "Search" button that pushed that second copy. Nothing ever wrote the second copy
+ * except the Clear handler, setting it to "".
+ *
+ * So the button was inert on a fresh load, and after a Clear it was DESTRUCTIVE: the
+ * officer types a query (the atom debounces it into `?q`), clicks the largest affordance
+ * on the rail, and `push({ q: "" })` wipes it. The strongest control on the bar undid
+ * the work.
+ *
+ * ⛔ THE OBVIOUS GUARDS ARE THE USELESS ONES, and all three were considered:
+ *   · "no dead useState" — a lint, and it would NOT have fired. `search` was read; the
+ *     button read it. Deadness was never the defect.
+ *   · "no button labelled Search beside a SearchBox" — a VOCABULARY check. A rename to
+ *     "Apply" walks straight past it and the harm is identical.
+ *   · "nothing else writes ?q in this file" — a SYNTAX check, and it is actively WRONG
+ *     here: three files legitimately carry `?q` forward (results/page.tsx preserves it
+ *     across pagination, transactions/page.tsx re-submits it in a hidden input, and
+ *     markets/page.tsx has an unrelated i18n key spelled `q:`). Carrying a value forward
+ *     is not owning it, and a guard that cannot tell the difference would have to be
+ *     suppressed on three files — at which point it guards nothing.
+ *
+ * The defect is TWO OWNERS of one piece of state. That is a relationship, not a spelling,
+ * so this asserts the relationship: mount a url-mode SearchBox and the file has handed
+ * `?<param>` to the atom. A React state seeded from that same param is a second home for
+ * the value, and two homes cannot stay in agreement — whatever the control that reads it
+ * happens to be called.
+ */
+const secondOwners: string[] = [];
+let urlModeBoxes = 0;
+const rendersBox = new Set<string>();
+
+for (const f of files) {
+  const rel = relative(ROOT, f).replace(/\\/g, "/");
+  if (SEARCH_ATOM.has(rel)) continue; // the atom defines the prop; it is not a surface
+  const src = decomment(readFileSync(f, "utf8"));
+  if (/<SearchBox\b/.test(src)) rendersBox.add(rel);
+
+  for (const m of src.matchAll(/<SearchBox\b([^<]*?)\/>/g)) {
+    const el = m[1];
+    if (/\bmode=\{?"controlled"/.test(el)) continue; // client-only filter — owns no param
+    urlModeBoxes++;
+    const param = el.match(/\bparam=\{?"(\w+)"/)?.[1] ?? "q";
+    const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    // Names bound to this param in the file (`const cur = searchParams.get("q") ?? ""`).
+    const aliases = new Set<string>();
+    for (const g of src.matchAll(
+      new RegExp(`const\\s+(\\w+)\\s*=\\s*searchParams\\.get\\(\\s*["']${esc(param)}["']\\s*\\)`, "g"),
+    )) {
+      aliases.add(g[1]);
+    }
+
+    // A useState seeded from the param — directly, or through one of those names.
+    for (const u of src.matchAll(/useState(?:<[^>]*>)?\(\s*([^)]*)\)/g)) {
+      const seed = u[1];
+      const direct = new RegExp(`searchParams\\.get\\(\\s*["']${esc(param)}["']`).test(seed);
+      const viaAlias = [...aliases].some((a) => new RegExp(`\\b${esc(a)}\\b`).test(seed));
+      if (direct || viaAlias) {
+        secondOwners.push(
+          `${rel} — useState(${seed.trim()}) duplicates ?${param}, already owned by the url-mode <SearchBox/>`,
+        );
+      }
+    }
+  }
+}
+check("no file keeps a React copy of a param its url-mode SearchBox already owns",
+  secondOwners.length === 0, secondOwners.join(" · "));
+
+/**
+ * ⛔ RECONCILIATION — the check above hangs off the same `<SearchBox …/>` locator as §5
+ * and inherits its failure mode: reformat the JSX to `></SearchBox>` and the matcher
+ * yields nothing, so the check passes while reporting on an empty set. §5 paid for that
+ * once already (hence `[^<]` and not `[\s\S]`). A count alone is not enough either — a
+ * file could render a box the matcher never parsed — so both are asserted.
+ */
+check("the url-mode SearchBox matcher found something at all", urlModeBoxes > 0,
+  "0 url-mode <SearchBox/> elements parsed — the ownership check above would be vacuous");
+const unparsedBoxes = [...rendersBox].filter((rel) => {
+  const src = decomment(readFileSync(join(ROOT, rel), "utf8"));
+  return [...src.matchAll(/<SearchBox\b([^<]*?)\/>/g)].length === 0;
+});
+check("every file rendering a <SearchBox> was actually PARSED as an element",
+  unparsedBoxes.length === 0,
+  unparsedBoxes.length ? `${unparsedBoxes.join(", ")} — the matcher has drifted from the JSX` : "");
+
 log(`\n${fail === 0 ? "ALL PASS" : `${fail} FAILURE(S)`} — ${files.length} source files`);
 process.exit(fail ? 1 : 0);

@@ -386,9 +386,15 @@ function FilterToolbarSkeleton() {
       <div className="flex items-center gap-3">
         {/* ⚠️ LITERALS, not `h-9` (64px on the overridden scale). The live admin filter rail
             is 32px (--h-control-xs), and a skeleton must be the size of what it replaces.
-            Verbatim twin of admin/ai-polls/page.tsx's FilterToolbarSkeleton. */}
+            ⛔ The second box stood in for the "Search" button S-06 deleted (scan #1,
+            2026-08-28) — it was real when written, and went stale the moment the button did.
+            What renders there now is the icon RefreshButton: 40px square, rounded-md, ml-auto.
+            ⚠️ NOT a verbatim twin of admin/ai-polls/page.tsx's FilterToolbarSkeleton, though
+            it claimed to be: the third chip group is 4 here and 5 there. The claim is left
+            unmade rather than restated, because the chip counts stand in for two rails whose
+            vocabularies genuinely differ (S-08). */}
         <div className="h-[32px] flex-1 max-w-[420px] rounded-md bg-bg-overlay" />
-        <div className="h-[32px] w-[80px] rounded-pill bg-bg-overlay" />
+        <div className="ml-auto h-[40px] w-[40px] rounded-md bg-bg-overlay" />
       </div>
       <div className="flex items-center gap-2">
         {Array.from({ length: 5 }).map((_, i) => (

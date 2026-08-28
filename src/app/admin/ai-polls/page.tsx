@@ -473,9 +473,14 @@ function FilterToolbarSkeleton() {
       <div className="flex items-center gap-3">
         {/* ⚠️ LITERALS, not `h-9` (64px on the overridden scale — tailwind.config.ts:200-215).
             A skeleton must be the size of the thing it stands in for: the live admin filter
-            rail is 32px (--h-control-xs). The widths beside them were already literals. */}
+            rail is 32px (--h-control-xs). The widths beside them were already literals.
+            ⛔ The second box was `w-[80px] rounded-pill` — a stand-in for a "Search" button
+            this toolbar has not had since it adopted the debounced SearchBox, and which
+            /admin/candidates only lost in S-06 (scan #1, 2026-08-28). What actually renders
+            in that slot is the icon RefreshButton: 40px square, rounded-md, ml-auto. The
+            skeleton was 8px short, the wrong shape, and on the wrong side of the row. */}
         <div className="h-[32px] flex-1 max-w-[420px] rounded-md bg-bg-overlay" />
-        <div className="h-[32px] w-[80px] rounded-pill bg-bg-overlay" />
+        <div className="ml-auto h-[40px] w-[40px] rounded-md bg-bg-overlay" />
       </div>
       <div className="flex items-center gap-2">
         {Array.from({ length: 5 }).map((_, i) => (

@@ -4,7 +4,7 @@ import { useT } from "@/lib/i18n";
 import { SearchBox } from "@/components/ui/search-box";
 import { fieldNames, POLL_SEARCH } from "@/lib/search";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useState, useTransition } from "react";
+import { useCallback, useTransition } from "react";
 import { I } from "@/components/ui/glyphs";
 import { RefreshButton } from "@/components/admin/refresh-button";
 import { DateTimeRangeFilter } from "@/components/ui/datetime-range-filter";
@@ -42,8 +42,6 @@ export function PollFilterToolbar({ totalFiltered, totalAll }: { totalFiltered: 
   const currentCategory = searchParams.get("category") ?? "";
   const currentDate = searchParams.get("range") ?? searchParams.get("from") ?? "";
 
-  const [search, setSearch] = useState(currentSearch);
-
   const push = useCallback((updates: Record<string, string>) => {
     const sp = new URLSearchParams(searchParams.toString());
     for (const [k, v] of Object.entries(updates)) {
@@ -64,7 +62,11 @@ export function PollFilterToolbar({ totalFiltered, totalAll }: { totalFiltered: 
       <div className="flex items-center gap-3">
         {/* One SearchBox — was a bespoke input + a "Search" button with no
             debounce, and its own 420px cap. The cap now comes from the field
-            measure token, and typing filters as you pause. */}
+            measure token, and typing filters as you pause.
+            ⛔ That change left a `useState` seeded from ?q behind, dead here but still
+            wired to a live button on the /admin/candidates clone — where it was inert on
+            load and DESTRUCTIVE after a Clear (S-06, scan #1, 2026-08-28). Both copies
+            are gone. The atom owns ?q; nothing else in this file may hold it. */}
         <div className="flex-1">
           <SearchBox
             placeholder={t.common.searchPolls}
@@ -77,7 +79,6 @@ export function PollFilterToolbar({ totalFiltered, totalAll }: { totalFiltered: 
           <button
             type="button"
             onClick={() => {
-              setSearch("");
               startTransition(() => router.push("/admin/ai-polls"));
             }}
             className="btn btn-ghost btn-xs rounded-pill text-text-subtle hover:text-text"
