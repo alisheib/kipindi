@@ -367,7 +367,23 @@ usage log for.
    sufficed.
 4. The whole thing inside `withLock('updown-purge:<chainId>')`.
 5. Every batch verified before the completion audit row is written — zero rounds, zero chaff,
-   every market stamped — or the job **fails** rather than completing with a caveat.
+   every market **still present** and stamped — or the job **fails** rather than completing
+   with a caveat.
+   - ⛔ **The population is the evidence pack, not the database's own stamped rows.** The pack
+     is written in the `exporting` phase, before a single deletion, so it is the only
+     chain-scoped record of which markets this purge was supposed to touch. Asking the
+     database instead — *"which rows did this officer stamp?"* — verifies the stamped rows are
+     stamped, which is not a question. **Fixed 2026-08-28** after shipping in exactly that
+     shape: the population was pre-filtered to `purgedAt IS NOT NULL`, so a market that failed
+     to stamp was excluded *before* the check ran; and `purgedBy` names the officer, so a
+     second purge re-verified the first one's markets.
+   - ⭐ **`vanished` — a market that no longer EXISTS — fails the job, and is reported in its
+     own words.** This is the class the whole redact-don't-destroy design exists to prevent,
+     and nothing measured it until now: a deleted market is *absent*, so every count that asks
+     the surviving rows about themselves returns clean. It can only be seen as a difference
+     against the pack.
+   - The completion row's `marketsRedacted` is the number **actually counted stamped**. It was
+     the round count, asserted as a market count in an append-only compliance record.
 
 Audit trail: `updown.chain.purge.stage1` → `updown.chain.purged` (or `.failed` /
 `.conflict_blocked` / `.withdrawn`). The completion row carries both officer ids, the typed
@@ -383,7 +399,25 @@ documented E-18/E-23 failure, which `voidUpDownRound` had to be corrected for wi
 ### 7.6 Verification
 
 ```
-npm run test:chain-purge    # 51 assertions, driven against the real in-memory stores
-npm run red:chain-purge     # 7 mutations, each the real defect or the reversal of a decision
-npm run ops:pool-orphans    # read-only: does every POOL:* account name a market that exists?
+npm run test:chain-purge         # 64 assertions, driven against the real in-memory stores
+npm run red:chain-purge          # 10 mutations, each the real defect or the reversal of a decision
+npm run qa:chain-purge-verify    # 24 assertions, DRIVEN AGAINST A REAL DATABASE — see below
+npm run ops:pool-orphans         # read-only: does every POOL:* account name a market that exists?
+```
+
+⛔ **`test:chain-purge` RUNS WITH NO `DATABASE_URL`, AND THAT IS WHERE THE 2026-08-28 DEFECT
+LIVED.** `hasDatabase()` is false there, so the market redaction, the chaff deletion and the
+**entire verification phase** never execute — they are prisma-only classes with no in-memory
+twin. The suite was green over a branch that had never run once. `qa:chain-purge-verify` is the
+drive that closes that gap: it seeds a chain, its markets, the chaff and the ledger rows, runs
+the ceremony to completion, and then deletes a market behind the engine's back to prove the job
+**fails**. Its §4 and §5 each finish by running the OLD population query over the identical rows
+and showing it comes back **clean** — one drive, both readings, and the difference between them
+is the finding.
+
+It needs a local Postgres and **refuses any `DATABASE_URL` that is not a loopback host**,
+because it deletes rows and drives a destructive ceremony to completion:
+
+```
+DATABASE_URL="postgresql://postgres:<pw>@127.0.0.1:5433/purge_drive" npm run qa:chain-purge-verify
 ```

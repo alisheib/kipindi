@@ -205,6 +205,7 @@
     "test:ai-vocabulary": "tsx scripts/ai-vocabulary.test.mts",
     "test:spacing-scale": "tsx scripts/spacing-scale.test.mts",
     "test:chain-purge": "tsx scripts/chain-purge.test.mts",
+    "qa:chain-purge-verify": "tsx scripts/chain-purge-drive.mts",
     "shots:scan-fixes": "node scripts/scan-fix-shots.mjs",
     "shots:purge-ceremony": "node scripts/purge-ceremony-shots.mjs",
     "qa:resolver-queue": "node scripts/resolver-queue-drive.mjs",

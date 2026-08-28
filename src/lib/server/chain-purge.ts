@@ -445,39 +445,97 @@ export async function advance(chainId: string): Promise<PurgeJob> {
     const leftoverRounds = await roundStore.count({ chainId });
     let leftoverChaff = 0;
     let unstamped = 0;
+    let vanished = 0;
+    let marketsRedacted = 0;
     if (hasDatabase()) {
       const db = pc();
-      const packRow = await loadConfig<{ hash: string }>(`updown.purge.pack:${chainId}`);
+      const packRow = await loadConfig<{ hash: string; body?: string }>(`updown.purge.pack:${chainId}`);
       if (!packRow?.hash) throw new Error("the evidence pack is missing — refusing to complete");
-      const marketIds = (await db.predictionMarket.findMany({
-        where: { purgedBy: job.officerB, purgedAt: { not: null } }, select: { id: true },
-      })).map((m) => m.id);
-      const [c, w, s] = await Promise.all([
+
+      /* ⛔ THE POPULATION COMES FROM THE PACK, WHICH WAS WRITTEN BEFORE ANY DELETION — and that
+         is the whole correctness of this section, not a detail of it.
+
+         The first version asked the database `purgedBy = officerB AND purgedAt IS NOT NULL` and
+         verified THAT set. It could not fail, in three separate ways:
+
+         ① VACUOUS. The set was already filtered to `purgedAt IS NOT NULL`, so the `purgedAt:
+            null` arm of the very next query could never match, and every row in it had just been
+            written `titleEn = PURGED_TITLE` by the same `updateMany`, so the other arm could not
+            match either. `unstamped` was structurally zero. A verification that cannot fail.
+
+         ② THE INSTRUMENT EXCLUDED WHAT IT HUNTED — `pool-residual.cjs`'s inner join exactly, in
+            new code written days after that finding. A market this purge FAILED to stamp has
+            `purgedAt IS NULL`, so it was filtered OUT of the population before the "is everything
+            stamped?" question was asked. The one row the check exists to find was the one row it
+            could not see.
+
+         ③ WRONG SCOPE ACROSS JOBS. `purgedBy` is the OFFICER, not the chain. An officer's second
+            purge re-verified every market from their first — so this chain's job could be failed
+            by another chain's leftovers, and the counts named in the audit row were never this
+            chain's.
+
+         The pack is the pre-purge truth: chain-scoped, captured in the `exporting` phase before
+         a single row was deleted, hash-anchored in the audit chain. Verifying against it asks
+         the real question — *did every market this chain named end up stamped, and is it still
+         there?* — instead of asking the stamped rows whether they are stamped. */
+      if (!packRow.body) throw new Error("the evidence pack has a hash but no artefact — refusing to complete");
+      const packed = JSON.parse(
+        Buffer.from(packRow.body, "base64").toString("utf8"),
+      ) as { markets?: { id: string }[] };
+      const marketIds = [...new Set((packed.markets ?? []).map((m) => m.id))];
+
+      const [c, w, s, stamped, alive] = await Promise.all([
         db.comment.count({ where: { marketId: { in: marketIds } } }),
         db.watchlist.count({ where: { marketId: { in: marketIds } } }),
         db.marketSnapshot.count({ where: { marketId: { in: marketIds } } }),
+        db.predictionMarket.count({
+          where: { id: { in: marketIds }, purgedAt: { not: null }, titleEn: PURGED_TITLE },
+        }),
+        db.predictionMarket.count({ where: { id: { in: marketIds } } }),
       ]);
       leftoverChaff = c + w + s;
-      unstamped = await db.predictionMarket.count({
-        where: { id: { in: marketIds }, OR: [{ purgedAt: null }, { titleEn: { not: PURGED_TITLE } }] },
-      });
+      marketsRedacted = stamped;
+
+      /* ⭐ VANISHED IS THE ONE THE WHOLE FEATURE EXISTS TO PREVENT, and until now nothing
+         measured it. A market that was DELETED rather than redacted leaves loose `LedgerEntry`,
+         `HousePoolLedger` and `Transaction` rows pointing at nothing — the 2026-08-28 production
+         defect, where the books claimed TZS 2,000 escrowed for a market that no longer existed
+         and `house-money.cjs` still printed "the books balance". A deleted market is not
+         unstamped: it is absent, so an "is it stamped?" count returns nothing and reads as
+         clean. It has to be counted by DIFFERENCE against the pack, which is the only record
+         that the market was ever there. */
+      vanished = marketIds.length - alive;
+
+      /* ⚠️ Only over markets that still EXIST, so a vanished market is reported once, under the
+         name of what actually happened to it, rather than twice under the milder one. */
+      unstamped = alive - stamped;
     }
 
-    if (leftoverRounds > 0 || leftoverChaff > 0 || unstamped > 0) {
+    if (leftoverRounds > 0 || leftoverChaff > 0 || unstamped > 0 || vanished > 0) {
       const failed: PurgeJob = {
         ...job,
         phase: "failed",
         finishedAt: new Date().toISOString(),
-        error: `Verification failed: ${leftoverRounds} round(s), ${leftoverChaff} comment/watchlist/snapshot row(s) and ${unstamped} unstamped market(s) remain. Nothing has been recorded as purged.`,
+        /* ⚠️ `vanished` is named FIRST and in its own words. It is not a bigger `unstamped`:
+           an unstamped market is a redaction that did not finish, a vanished one is a row that
+           was destroyed along with the meaning of every ledger entry still pointing at it. An
+           officer reading this must not have to infer which happened. */
+        error: `Verification failed: ${vanished} market(s) NO LONGER EXIST (they were deleted, not redacted — every ledger entry naming them is now orphaned), ${leftoverRounds} round(s), ${leftoverChaff} comment/watchlist/snapshot row(s) and ${unstamped} unstamped market(s) remain. Nothing has been recorded as purged.`,
       };
       await putJob(failed);
-      audit({
+      /* ⛔ AWAITED, like its twin on the success path — found by driving this branch against a
+         real database on 2026-08-28, where the assertion that the row exists ran BEFORE the row
+         was written. It was the only `audit()` in this file without an `await`, and it was the
+         one that matters most under investigation: the record of a DESTRUCTIVE job that failed
+         verification, on a request that returns immediately afterwards. A floating promise on a
+         process that may not outlive the response is a compliance row that sometimes exists. */
+      await audit({
         category: "COMPLIANCE",
         action: "updown.chain.purge.failed",
         actorId: job.officerB,
         targetType: "UpDownChain",
         targetId: chainId,
-        payload: { leftoverRounds, leftoverChaff, unstamped, packHash: job.packHash },
+        payload: { leftoverRounds, leftoverChaff, unstamped, vanished, packHash: job.packHash },
       });
       return failed;
     }
@@ -501,7 +559,14 @@ export async function advance(chainId: string): Promise<PurgeJob> {
         statutoryBasis: job.basis,
         packSha256: job.packHash,
         roundsDeleted: job.total,
-        marketsRedacted: job.total,
+        /* ⛔ MEASURED, NOT ASSUMED. This was `job.total` — the ROUND count — asserted as the
+           market count in an append-only compliance row. The two are only equal if every round
+           names a distinct market that still exists, which is precisely what the verification
+           above had no way to establish. It is now the number of rows actually counted stamped,
+           so the row states what happened rather than what was planned. ⚠️ Zero on a
+           database-less drive is correct and not a gap: the redaction is a prisma-only class
+           with no in-memory twin, so there is nothing there to redact. */
+        marketsRedacted,
         observationsDeleted: 0,
         note:
           "Markets survive as stamped tombstones; positions, transactions, ledger entries, " +

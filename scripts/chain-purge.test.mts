@@ -268,5 +268,75 @@ console.log("Chain purge\n");
      /\["\/admin\/updown", "trading"\]/.test(roles));
 }
 
+// ── 8 · THE VERIFICATION'S POPULATION — what it asks, and of whom ────────────
+/**
+ * 🔴 THE DEFECT THIS SECTION EXISTS FOR, found 2026-08-28 while confirming the migration had
+ * landed on production. The verify phase asked the database for `purgedBy = officerB AND
+ * purgedAt IS NOT NULL` and verified THAT set — and so could not fail in three ways at once:
+ *
+ *   ① VACUOUS. The population was pre-filtered to `purgedAt IS NOT NULL`, so the follow-up
+ *      "is anything unstamped?" query — whose arms were `purgedAt IS NULL` OR a non-sentinel
+ *      title — could match nothing. Both arms were dead against that set. `unstamped` was
+ *      structurally zero, always, on every run.
+ *
+ *   ② THE INSTRUMENT EXCLUDED WHAT IT HUNTED. A market the purge failed to stamp has
+ *      `purgedAt IS NULL`, so it was filtered out of the population BEFORE the question was
+ *      asked. This is `pool-residual.cjs`'s inner join exactly — the shape this very feature
+ *      was designed around — reproduced in new code days later.
+ *
+ *   ③ WRONG SCOPE. `purgedBy` names the OFFICER, not the chain, so an officer's second purge
+ *      re-verified every market from their first.
+ *
+ * ⚠️ SOURCE-LEVEL, AND STATED RATHER THAN GLOSSED. This suite drives the real stores with no
+ * DATABASE_URL, so `hasDatabase()` is false and the verification block never executes here —
+ * the redaction and the chaff are prisma-only classes with no in-memory twin. These assertions
+ * read the source, exactly as §5 does, and the drive that exercises the block for real is
+ * `qa:chain-purge-verify` against a database.
+ */
+{
+  const src = decomment(readFileSync(join(ROOT, "src/lib/server/chain-purge.ts"), "utf8"));
+  const verify = src.slice(src.indexOf("const leftoverRounds"), src.indexOf("const finished:"));
+  ok("8: the verifying block was located in the source", verify.length > 200, String(verify.length));
+
+  ok("8: 🔴 the verification population is NOT scoped by the OFFICER",
+     !/purgedBy:\s*job\.officerB/.test(verify),
+     "purgedBy names the officer, not the chain — a second purge re-verifies the first one's markets");
+  ok("8: 🔴 …and it is NOT pre-filtered to rows that are already stamped",
+     !/purgedAt:\s*\{\s*not:\s*null\s*\}[\s\S]{0,80}select:\s*\{\s*id:\s*true/.test(verify),
+     "a market that failed to stamp has purgedAt NULL, so pre-filtering hides exactly what is hunted");
+  ok("8: ⭐ the population comes from the EVIDENCE PACK, written before any deletion",
+     /packRow\.body/.test(verify) && /packed\.markets/.test(verify),
+     "the pack is the pre-purge truth: chain-scoped, captured in the exporting phase, hash-anchored");
+  ok("8: …and a pack with a hash but no artefact REFUSES rather than verifying nothing",
+     /hash but no artefact/.test(verify),
+     "an empty market list would make every count below trivially zero");
+  ok("8: …and the ids are de-duplicated, because many rounds can name one market",
+     /new Set\(/.test(verify));
+
+  /* ⭐ VANISHED — the class the whole tombstone design exists to prevent, and which nothing
+     measured until now. A DELETED market is not an unstamped one: it is absent, so any
+     "is it stamped?" count returns nothing and reads as clean. Only a difference against the
+     pack can see it. */
+  ok("8: ⭐ a market that VANISHED is counted, by difference against the pack",
+     /vanished\s*=\s*marketIds\.length\s*-\s*alive/.test(verify),
+     "a deleted market is absent from every count that asks the surviving rows about themselves");
+  ok("8: 🔴 …and it FAILS the job", /vanished\s*>\s*0/.test(verify));
+  ok("8: …and it is named in the officer-facing error in its own words",
+     /NO LONGER EXIST/.test(verify),
+     "an officer must not have to infer that 'unstamped' meant 'destroyed'");
+  ok("8: …and it is carried on the failure audit row", /payload:\s*\{[^}]*vanished/.test(verify));
+  ok("8: ⚠️ unstamped counts only markets that still EXIST, so a vanished one is reported once",
+     /unstamped\s*=\s*alive\s*-\s*stamped/.test(verify));
+
+  /* ⛔ AND THE COMPLETION ROW STATES A MEASURED NUMBER. `marketsRedacted: job.total` asserted
+     the ROUND count as the market count in an append-only compliance record. */
+  const done = src.slice(src.indexOf("const finished:"));
+  ok("8: ⛔ the completion audit row does NOT report the round count as the market count",
+     !/marketsRedacted:\s*job\.total/.test(done),
+     "rounds and markets are only equal if every round names a distinct market that still exists");
+  ok("8: ⭐ …it reports the number actually counted stamped",
+     /marketsRedacted,/.test(done) && /marketsRedacted\s*=\s*stamped/.test(verify));
+}
+
 console.log(`\nchain-purge: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);
