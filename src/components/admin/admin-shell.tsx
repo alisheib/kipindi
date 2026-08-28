@@ -588,17 +588,51 @@ export function AdminFunnel({
 export function AdminStackedBar({
   segments,
   height = 18,
+  emptyLabel = "No activity in this window",
 }: {
   segments: ReadonlyArray<{ flex: number; color: string; label?: string }>;
   height?: number;
+  /** Shown INSTEAD of the bands when there is nothing to distribute. */
+  emptyLabel?: string;
 }) {
+  /* ⛔ A DISTRIBUTION WITH NOTHING IN IT IS NOT A DISTRIBUTION (S-04, scan #1, 2026-08-28).
+   *
+   * This had no empty state, so a caller with no data still painted bands. /admin/compliance
+   * floored every segment at `Math.max(2, …)` over a `|| 1` denominator, and with zero
+   * reality-check events all three landed on that floor — three EQUAL coloured bands,
+   * including the rose self-exclusion band, under a caption reading "0% continued · 0% break ·
+   * 0% self-excluded". A distribution presented where none exists, on the compliance console,
+   * in the row a regulator's eye goes to. A-5 broken by a CHART rather than by a number.
+   *
+   * ⭐ The correct pattern was already in this repo — `StatusMix` on /admin/players filters
+   * zero segments out and returns null when the total is zero. This pushes the same rule into
+   * the primitive so the next caller inherits it instead of re-deriving it. Callers should
+   * still drop their own zero segments; this catches the case where that leaves nothing. */
+  const total = segments.reduce((s, x) => s + (x.flex > 0 ? x.flex : 0), 0);
+  if (total <= 0) {
+    return (
+      <div
+        className="rounded-sm border border-dashed border-border-subtle flex items-center justify-center font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary"
+        style={{ minHeight: Math.max(height, 18) }}
+      >
+        {emptyLabel}
+      </div>
+    );
+  }
+  /* ⭐ ZERO IS ZERO, BUT SMALL IS NOT NOTHING — the same rule `AdminBarList` (2%), `AdminMeter`
+   * (1%) and `AdminStackedBars` (0.5px) already follow. Dropping the zeros above without a
+   * floor here would trade one misreading for another: a self-exclusion count of 1 against 999
+   * continues is a real, important event and a raw flex would render it sub-pixel. So a segment
+   * that exists is guaranteed 2% of the bar, and a segment that does not exist is absent. */
+  const shown = segments.filter((s) => s.flex > 0);
+  const sum = shown.reduce((s, x) => s + x.flex, 0);
   return (
     <div className="rounded-sm overflow-hidden border border-border flex" style={{ height }}>
-      {segments.map((s, i) => (
+      {shown.map((s, i) => (
         <div
           key={i}
           className="flex items-center justify-center font-mono text-micro tracking-[0.10em] text-white"
-          style={{ flex: s.flex, background: s.color }}
+          style={{ flex: Math.max(s.flex / sum, 0.02), background: s.color }}
         >
           {s.label && height >= 18 ? s.label : null}
         </div>

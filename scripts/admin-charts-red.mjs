@@ -13,6 +13,11 @@ import { join } from "node:path";
 
 const ROOT = join(import.meta.dirname, "..");
 const CHARTS = join(ROOT, "src/components/admin/admin-charts.tsx");
+/* ⚠️ The singular `AdminStackedBar` lives in admin-shell.tsx, NOT admin-charts.tsx — which is
+   part of why S-04 survived: its plural sibling in this file always had an empty state, so
+   "the stacked bar handles empty" was true of the one people read. Plants may name their own
+   file; the default stays CHARTS. */
+const SHELL = join(ROOT, "src/components/admin/admin-shell.tsx");
 
 let pass = 0;
 const fails = [];
@@ -48,21 +53,41 @@ const PLANTS = [
     from: `        const pct = r.value === 0 ? 0 : Math.max(2, (r.value / max) * 100);`,
     to: `        const pct = Math.max(2, (r.value / max) * 100);`,
   },
+  {
+    /* 🔴 S-04, scan #1 — the singular AdminStackedBar had no empty state at all, so
+       /admin/compliance painted three EQUAL bands (including the rose self-exclusion one)
+       under "0% continued · 0% break · 0% self-excluded". A distribution where none exists,
+       on the compliance console, in the row a regulator's eye goes to. */
+    name: "S-04 — the stacked bar paints bands over an empty window again",
+    file: SHELL,
+    from: `  if (total <= 0) {`,
+    to: `  if (false) {`,
+  },
+  {
+    /* ⭐ THE ANTI-COLLATERAL PLANT. The fix is "zero is zero", NOT "small values vanish".
+       Dropping the 2% floor makes one self-exclusion against 999 continues sub-pixel — a real
+       and important event rendered invisible, which no assertion about the ZERO case can see. */
+    name: "S-04 — a tiny non-zero segment loses its visibility floor",
+    file: SHELL,
+    from: `          style={{ flex: Math.max(s.flex / sum, 0.02), background: s.color }}`,
+    to: `          style={{ flex: s.flex / sum, background: s.color }}`,
+  },
 ];
 
 console.log("\nred:admin-charts — the guard must FAIL when a chart invents a mark\n");
 ok("CONTROL — the guard is GREEN on the unmodified tree", runGuard() === 0);
 
 for (const p of PLANTS) {
-  const original = readFileSync(CHARTS, "utf8");
+  const target = p.file ?? CHARTS;
+  const original = readFileSync(target, "utf8");
   const crlf = original.includes("\r\n");
   const from = eol(p.from, crlf), to = eol(p.to, crlf);
   if (!ok(`plant located: ${p.name}`, original.includes(from))) continue;
-  writeFileSync(CHARTS, original.replace(from, to));
+  writeFileSync(target, original.replace(from, to));
   const code = runGuard();
   ok(`RED: ${p.name} → guard exits non-zero`, code !== 0, `exit=${code}`);
-  writeFileSync(CHARTS, original);
-  ok(`restored byte-identical after: ${p.name}`, readFileSync(CHARTS, "utf8") === original);
+  writeFileSync(target, original);
+  ok(`restored byte-identical after: ${p.name}`, readFileSync(target, "utf8") === original);
 }
 
 ok("CONTROL — the guard is GREEN again after every restore", runGuard() === 0);

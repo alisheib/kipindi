@@ -26,6 +26,7 @@ import {
   AdminAreaChart, AdminStackedBars, AdminSpark, AdminMeter, AdminBarList, AdminGauge,
   type SeriesPoint,
 } from "../src/components/admin/admin-charts.tsx";
+import { AdminStackedBar } from "../src/components/admin/admin-shell.tsx";
 
 let pass = 0;
 const fails: string[] = [];
@@ -181,6 +182,80 @@ console.log("\n§6 AdminGauge");
   ok("§6 max=0 emits no NaN", !/NaN|Infinity/.test(noMax));
   const over = render(h(AdminGauge, { value: 150, max: 100 }));
   ok("§6 over-max still prints the true value (the arc clamps, so the number must not)", over.includes("150"));
+}
+
+// ── §7 · AdminStackedBar — the SINGULAR flex one ───────────────────────────────────
+console.log("\n§7 AdminStackedBar");
+/**
+ * 🔴 S-04 (scan #1, 2026-08-28). This primitive had NO empty state, and /admin/compliance
+ * floored every segment at `Math.max(2, …)` over a `|| 1` denominator. With zero
+ * reality-check events all three landed on that floor, so the card painted THREE EQUAL
+ * COLOURED BANDS — including the rose self-exclusion band — under a caption reading
+ * "0% continued · 0% break · 0% self-excluded". A distribution presented where none exists,
+ * on the compliance console, in the row a regulator's eye goes to.
+ *
+ * ⚠️ Its plural sibling `AdminStackedBars` (§2) always HAD an empty state. Only the singular
+ * flex one did not — exactly the asymmetry a source scan reports as "there is an empty state"
+ * and a render test does not.
+ */
+{
+  const bands = (html: string) => [...html.matchAll(/background:/g)].length;
+
+  const empty = render(h(AdminStackedBar, { segments: [] }));
+  ok("§7 an EMPTY bar paints no bands at all", bands(empty) === 0, `${bands(empty)} bands`);
+  ok("§7 …and says so in words rather than showing an empty frame", /No activity/i.test(empty));
+
+  const allZero = render(h(AdminStackedBar, {
+    segments: [
+      { flex: 0, color: "var(--text-tertiary)" },
+      { flex: 0, color: "var(--warning-fg)" },
+      { flex: 0, color: "var(--bet-lose)" },
+    ],
+  }));
+  ok("§7 🔴 an ALL-ZERO bar paints no bands — the S-04 defect", bands(allZero) === 0, `${bands(allZero)} bands`);
+  ok("§7 …and does not paint the rose self-exclusion band over an empty window",
+    !allZero.includes("--bet-lose"));
+
+  ok("§7 the empty label is the caller's own words, not a generic placeholder",
+    render(h(AdminStackedBar, { segments: [], emptyLabel: "No reality-check activity in window" }))
+      .includes("No reality-check activity in window"));
+
+  // ⭐ POSITIVE CONTROL — real data must still draw, or "never render" would pass everything.
+  const real = render(h(AdminStackedBar, {
+    segments: [
+      { flex: 7, color: "var(--text-tertiary)" },
+      { flex: 2, color: "var(--warning-fg)" },
+      { flex: 1, color: "var(--bet-lose)" },
+    ],
+  }));
+  ok("§7 ⭐ CONTROL — a bar WITH data still paints every band", bands(real) === 3, `${bands(real)} bands`);
+  ok("§7 …and does not claim to be empty", !/No activity/i.test(real));
+
+  // A zero segment among real ones is dropped, not floored into a visible sliver.
+  const mixed = render(h(AdminStackedBar, {
+    segments: [
+      { flex: 7, color: "var(--text-tertiary)" },
+      { flex: 0, color: "var(--warning-fg)" },
+      { flex: 3, color: "var(--bet-lose)" },
+    ],
+  }));
+  ok("§7 ⛔ a ZERO segment beside real ones is not painted", bands(mixed) === 2, `${bands(mixed)} bands`);
+  ok("§7 …and it is the ZERO one that is missing, not just any of them",
+    !mixed.includes("--warning-fg") && mixed.includes("--bet-lose"));
+
+  /* ⭐ THE ANTI-COLLATERAL ASSERTION, as §5 does for AdminBarList. The fix is "zero is zero",
+   * NOT "small values vanish". One self-exclusion against 999 continues is a real and important
+   * event; a raw flex share would render it sub-pixel. Expected to pass in BOTH states, on
+   * purpose — a check that only goes red with the defect cannot protect what the fix might break. */
+  const tiny = render(h(AdminStackedBar, {
+    segments: [
+      { flex: 999, color: "var(--text-tertiary)" },
+      { flex: 1, color: "var(--bet-lose)" },
+    ],
+  }));
+  const flexes = [...tiny.matchAll(/flex:\s*([\d.]+)/g)].map((m) => Number(m[1]));
+  ok("§7 ⭐ CONTROL — a tiny NON-zero segment still paints its 2% visibility floor",
+    flexes.includes(0.02), `flexes=[${flexes.join(", ")}]`);
 }
 
 console.log(`\n${pass} passed, ${fails.length} failed\n`);

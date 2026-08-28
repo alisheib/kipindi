@@ -62,7 +62,11 @@ export default async function AdminCompliancePage({
   const continued = rgEvents.filter((e) => e.action === "rg.reality_check.continued").length;
   const tookBreak = rgEvents.filter((e) => e.action === "rg.cooling_off.activated").length;
   const sxd = rgEvents.filter((e) => e.action === "rg.self_exclusion.activated").length;
-  const rcTotal = continued + tookBreak + sxd || 1;
+  /* ⛔ NO `|| 1` (S-04, scan #1, 2026-08-28). Defaulting an empty denominator to 1 does not so
+   * much avoid a division by zero as INVENT one observation, and every percentage below then
+   * reads as a real measurement of nothing. The zero case is answered where it is RENDERED, by
+   * saying there was no activity — not by choosing a denominator that makes the arithmetic run. */
+  const rcTotal = continued + tookBreak + sxd;
 
   const kycConv = !kyc || kyc.registered === 0 ? 0 : (kyc.approved / kyc.registered) * 100;
   // ⭐ E-103 · SHARE OF THE TOP STAGE, from the shared rule — see `funnel-share.ts`.
@@ -289,17 +293,44 @@ export default async function AdminCompliancePage({
             <p className={["font-mono text-micro tracking-[0.10em] uppercase", rg ? "text-text-tertiary" : "text-warning-fg"].join(" ")}>{rg ? "pending 24h cool-down" : "couldn't load"}</p>
           </AdminCard>
           <AdminCard title="Reality-check engagement" sw="Tahadhari ya hali halisi">
-            <AdminStackedBar
-              segments={[
-                { flex: Math.max(2, Math.round((continued / rcTotal) * 100)), color: "var(--text-tertiary)", label: continued > 0 ? `${continued}` : undefined },
-                { flex: Math.max(2, Math.round((tookBreak / rcTotal) * 100)), color: "var(--warning-fg)", label: tookBreak > 0 ? `${tookBreak}` : undefined },
-                { flex: Math.max(2, Math.round((sxd / rcTotal) * 100)), color: "var(--bet-lose)", label: sxd > 0 ? `${sxd}` : undefined },
-              ]}
-              height={14}
-            />
-            <p className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">
-              {Math.round((continued / rcTotal) * 100)}% continued · {Math.round((tookBreak / rcTotal) * 100)}% break · {Math.round((sxd / rcTotal) * 100)}% self-excluded
-            </p>
+            {/* ⛔ NO FLOOR, AND NO BAR AT ALL WHEN THERE IS NOTHING TO SHOW (S-04 + S-15).
+                Each segment was floored at `Math.max(2, …)` over a `|| 1` denominator, so with
+                zero rg.* events all three landed on the floor and the card painted three EQUAL
+                bands — including the rose self-exclusion band — under "0% continued · 0% break ·
+                0% self-excluded". A regulator's eye goes to this row, and it was showing a
+                distribution that did not exist.
+                ⚠️ The raw counts used to ride on `label:` props that could NEVER render:
+                AdminStackedBar only draws a label at height >= 18 and this bar passed 14, so
+                three carefully conditioned props were dead (S-15). Rather than raise the height
+                and inherit the segment-ink contrast question, the counts now sit in the caption
+                where they are legible at any bar height — and the percentages keep their
+                denominator beside them, which is what makes a small sample readable as small. */}
+            {rcTotal === 0 ? (
+              <>
+                <AdminStackedBar segments={[]} height={14} emptyLabel="No reality-check activity in window" />
+                <p className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">
+                  Nothing to report — not a zero rate
+                </p>
+              </>
+            ) : (
+              <>
+                <AdminStackedBar
+                  segments={[
+                    { flex: continued, color: "var(--text-tertiary)" },
+                    { flex: tookBreak, color: "var(--warning-fg)" },
+                    { flex: sxd, color: "var(--bet-lose)" },
+                  ]}
+                  height={14}
+                />
+                <p className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">
+                  {continued} continued · {tookBreak} break · {sxd} self-excluded{" "}
+                  <span className="text-text-subtle">
+                    ({Math.round((continued / rcTotal) * 100)}/{Math.round((tookBreak / rcTotal) * 100)}/
+                    {Math.round((sxd / rcTotal) * 100)}% of {rcTotal})
+                  </span>
+                </p>
+              </>
+            )}
           </AdminCard>
         </div>
 
