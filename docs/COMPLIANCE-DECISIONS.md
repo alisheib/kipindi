@@ -6,6 +6,104 @@
 
 ---
 
+## 2026-08-29 · MASWALI MILLIONEA — six of the seven §0 decisions, and the one that still blocks
+
+**Programme key `MASWALI-BUILD`.** The build plan and tracker are
+[`SESSION-PROMPT-MASWALI-BUILD.md`](SESSION-PROMPT-MASWALI-BUILD.md); the evaluation these
+decisions answer is [`MASWALI-MILLIONEA-IMPLEMENTATION.md`](MASWALI-MILLIONEA-IMPLEMENTATION.md)
+§0. Each was put to Ali with the arithmetic and a recommendation; he took the recommendation in
+all six.
+
+⛔ **NOTHING IS BUILT AND NOTHING MAY BE BUILT.** §0 has seven decisions and **D-1 is
+unanswered** — whether the Gaming Board licence covers a fixed-stake multi-event jackpot at all.
+50pick is licensed as a pari-mutuel prediction market; a fixed-entry pooled jackpot with a
+guaranteed prize may sit under a different authorisation class. It is not a technical question,
+no engineering answers it, and if it comes back negative the plan stops with nothing lost.
+
+| | Decision | Ruling |
+|---|---|---|
+| **D-2** | The TZS 20,000,000 guarantee | ⭐ **Progressive only — no fixed guarantee at launch.** |
+| **D-3** | 13% of what? | **13% of losing stakes**, not of gross. |
+| **D-4** | A VOID question | **Void counts CORRECT.** If **3 or more** of the ten void, the whole cycle voids and every ticket refunds in full. |
+| **D-5** | Bonus money buying a ticket | **No, for v1 — real balance only**, refused with a message that names the reason. |
+| **D-6** | Tickets per player per cycle | **Capped. Config-driven, default 10**, enforced in the purchase path and stated on the slip. |
+| **D-7** | The route | **`/millionea`**, nav label *Millionea*, headings *Maswali Millionea*. Module names stay `maswali-*`. |
+
+### D-2 — the guarantee was an unbounded weekly liability
+
+Ten binary questions is 1,024 combinations. At 2,000 tickets a cycle the top prize is hit in
+roughly **six weeks out of seven (85.8%)**, and each hit costs the house the gap between the pool
+and the promise. Against TZS 4,000,000 of gross entries the expected house cost was ≈ **TZS
+15,400,000 per cycle**. Self-funding a 20M guarantee needs **20,000 tickets in one cycle**.
+
+⛔ Correlation does not rescue it: players crowd favourites, so the real world gives "nobody wins"
+or "forty win together". That protects the *share size* and not the guarantee — the house still
+pays the full gap on any cycle with at least one winner. The proposal expressed the promise as a
+schema default (`millionea_pool DECIMAL DEFAULT 20000000.00`), which is a promise no code can keep.
+
+A progressive pool can only ever pay out what it collected. **House exposure is zero by
+construction**, and an unwon pool rolls into a bigger headline next week.
+
+### D-3 — one fee law, not a third one
+
+`docs/RULES.md` §1 is already LAW: **13% of the LOSING side, on both existing products**, enforced
+in one function (`poolFee()`), and stated to players in `/legal/terms` §4, the assistant's system
+prompt and `/help`. ⭐ **The live database agrees**: `market.config.global.feeModel` is
+`loser-share`, with `operatorFeeRate 0.10 + platformFeeRate 0.03 = 0.13`. This decision is
+therefore not a new rule — it is a refusal to invent a second one.
+
+The proposal's own split already contained the answer: **50 + 25 + 12 = 87, and 87 = 100 − 13**.
+The tiers were always the remainder after our fee, not percentages of gross.
+
+Measured difference on a 2,000-ticket week (40 tickets in a tier): fee TZS 509,600 rather than
+520,000 — **TZS 10,400 more to the players**, and identical whenever nobody wins. ⛔ The reason is
+not the 10,400: it is that Option A would leave the platform holding two contradictory statements
+about what 13% means, in a document players are shown.
+
+⚠️ **And the fee is not what the operator keeps.** `RULES.md` §2.2: TRA 10% + GBT 5% **of the fee**,
+via `levySplit()` in `payout.ts`. Of every TZS 260: 26 to TRA, 13 to GBT, operator keeps 221. On
+the week above the operator nets **TZS 433,160 — 11.05% of losing stakes**, not 13%.
+
+### D-4 — nobody is punished for a match that was abandoned
+
+Void counting as WRONG is named in the evaluation as the single most disputed mechanic in every
+jackpot product ever run. Void counting as EXCLUDED makes two tickets that answered *differently*
+tie on the same score, and forces a variable denominator onto the receipt's ten rows.
+
+⭐ The floor matters as much as the rule: **at 3 or more voids the cycle voids and everyone is
+refunded**, because at that point the ticket sold is no longer the ticket being settled.
+
+⛔ One ruling, two surfaces: the slip's rules strip **before purchase**, and the receipt.
+
+### D-5 — bonus money is non-withdrawable, and a jackpot must not launder it
+
+The bonus wallet is non-withdrawable by design (grant → play → unlock) and cash-out is already
+blocked on bonus-funded bets. Allowing bonus to buy a ticket would convert non-withdrawable credit
+into a real cash tier payout in one step — a bigger hole than the one already closed.
+
+⛔ `buyPosition` spends bonus balance unless explicitly told not to, so this is an **active**
+refusal, not an omission, and it must say why (§2.9 failure-message standard).
+
+### D-6 — an uncapped ticket count is an arbitrage hole and the clearest RG harm
+
+1,024 combinations × TZS 2,000 = **TZS 2,048,000 buys the top prize outright**. Whenever the pool
+exceeds that, it stops being gambling and becomes buying money at a discount. It is also the one
+mechanic that teaches "spend more" on a platform that already enforces deposit caps, loss limits
+and session limits.
+
+⛔ Enforced where the purchase happens, never only in the UI, and **printed on the slip** so it is
+a stated rule rather than a surprise refusal.
+
+### D-7 — settle the name before S1, because it is a rename after
+
+*Maswali* means "questions" — generic, and every product here asks questions. *Millionea* is the
+distinctive half and the half marketing will say. The design handover already leans on it (*"Pool
+ya Millionea"*). ⚠️ **One find-replace before S1; a rename across ~30 files after.** The
+implementation doc's S5 routes are written `/maswali/…` and become `/millionea/…`; module names
+(`maswali-dal.ts`, `maswali-tier-label.ts`) do not change.
+
+---
+
 ## 2026-08-28 · The resolver queue says WHY, and a bulk seal that cannot wave the citation gate through
 
 **Ali, verbatim:** *"the ai auto resolver is not working, i had it on auto resolve and 90%+

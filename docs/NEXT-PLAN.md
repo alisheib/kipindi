@@ -1,3 +1,14 @@
+> ## ▶ NEW LANE 2026-08-29 — **MASWALI MILLIONEA, THE THIRD PRODUCT** (`MASWALI-BUILD`)
+> ⭐ **ONE DOOR: [`SESSION-PROMPT-MASWALI-BUILD.md`](SESSION-PROMPT-MASWALI-BUILD.md)** — the nine chunks
+> S0–S8 with their acceptance lines, the gates, the traps, the tracker, and an index of all 33 files.
+> ⭐ **Six of §0's seven decisions were answered 2026-08-29** ([`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md)):
+> progressive-only · 13% of losing stakes · void counts CORRECT (3 voids refund the cycle) · no bonus money ·
+> capped at 10 tickets · `/millionea`. The design landed 2026-08-28 and is filed at
+> [`design-brief/maswali-2026-08/handover/`](design-brief/maswali-2026-08/handover/README.md).
+> 🔴 **D-1 — the Gaming Board licence class — is UNANSWERED and blocks every line of code.**
+> ⛔ Nothing is built and nothing may be built until it is answered in writing.
+> ⚠️ D-7 is a rename that must happen BEFORE S1: `/maswali/…` → `/millionea/…` (module names unchanged).
+
 > ## ▶ NEW LANE 2026-08-28 — **THE DESIGN GATE** (`DESIGN-GATE-2026-08-28`)
 > Ali commissioned a final-gate consistency audit of the WHOLE platform, measured live on
 > production. The two registers are [`DESIGN-GATE-ADMIN-2026-08-28.md`](DESIGN-GATE-ADMIN-2026-08-28.md)
