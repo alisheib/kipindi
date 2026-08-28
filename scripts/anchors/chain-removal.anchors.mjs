@@ -114,6 +114,30 @@ export const MUTATIONS = [
     expect: "7: ⭐ a RUNNING chain is NOT refused for its state",
   },
 
+  /* ── §9 · S-16b (2026-08-28) — the way OUT of ARCHIVED ──
+   * Found by photographing the S-16 fix: the Archived-chains card renders the same controls as
+   * the working table, and `setChainState` validated only the TARGET state. ARCHIVED → RUNNING
+   * was legal and it WORKED — one click put a filed chain back on the player board, skipping
+   * Restore, which exists precisely because a restored chain must come back STOPPED. */
+  {
+    name: "an-archived-chain-can-be-started-again",
+    why: "🔴 THE DEFECT AS IT SHIPPED, and it did not refuse — it SUCCEEDED. The scan's S-16 premise was that the archived guarantee lived in a list filter; it did not live anywhere, and this is the half that had no guard at all. An operator tidying an archive could start a board taking real money, in one click, one row below the word \"Archived\"",
+    file: CFG,
+    suite: "chain-removal",
+    from: `  if (cur.state === "ARCHIVED" && state !== "STOPPED") {`,
+    to: `  if (false) {`,
+    expect: "9: 🔴 an ARCHIVED chain cannot be STARTED",
+  },
+  {
+    name: "the-archived-guard-closes-the-restore-door",
+    why: "⭐ POSITIVE CONTROL, and the specific way this fix could go wrong. `unarchiveChain` DELEGATES to setChainState, so refusing every exit from ARCHIVED breaks the very door the guard exists to protect — the chain would be filed for ever with Restore silently failing. Only ARCHIVED → STOPPED may pass",
+    file: CFG,
+    suite: "chain-removal",
+    from: `  if (cur.state === "ARCHIVED" && state !== "STOPPED") {`,
+    to: `  if (cur.state === "ARCHIVED") {`,
+    expect: "9: ⭐ CONTROL — Restore still works",
+  },
+
   /* ── §8 · S-18 — a destructive write that swallowed its own failure ──
    * `chainStore.delete` ended in `.catch(() => {})` and returns void either way, and
    * `deleteChain` never read back — so a delete that failed still returned ok AND wrote the

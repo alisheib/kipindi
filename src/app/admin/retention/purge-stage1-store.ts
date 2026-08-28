@@ -1,4 +1,5 @@
 import { loadConfig, saveConfig, deleteConfig } from "@/lib/server/config-store";
+import { hasDatabase } from "@/lib/server/prisma";
 
 /**
  * THE DURABLE FIRST SIGNATURE for the chain-purge ceremony.
@@ -78,6 +79,22 @@ export async function getFirstSignature(chainId: string, now = Date.now()): Prom
 export async function setFirstSignature(chainId: string, sig: PurgeStage1): Promise<boolean> {
   mem.set(chainId, sig);
   await saveConfig(KEY(chainId), sig);
+
+  /* ⚠️ WITH NO DATABASE CONFIGURED THERE IS NOTHING TO VERIFY AGAINST, and refusing on that
+   * basis conflates two different facts. `config-store` no-ops by design when `DATABASE_URL`
+   * is absent, so the in-process mirror above IS the only store such a deployment has — and a
+   * single-process dev or demo server has no second container to disagree with it.
+   *
+   * ⛔ THE STRICT CHECK IS FOR THE CASE THAT ACTUALLY MATTERS: a database IS configured and the
+   * write still did not land. That is the silent failure — `saveConfig` catches, logs and
+   * returns void — and it is the one that would let a dropped stage 1 make ONE officer
+   * sufficient, because `twoOfficerGate` reads a missing maker as "no conflict".
+   *
+   * ⭐ Found by driving the ceremony in a browser: the first version refused every stage 1 on
+   * an in-memory server, so the feature could not be demonstrated at all — a guard correct
+   * about production and wrong about everywhere else. */
+  if (!hasDatabase()) return true;
+
   const readBack = await loadConfig<PurgeStage1>(KEY(chainId));
   if (!readBack || readBack.actorId !== sig.actorId) {
     // Do not leave a memory-only signature behind: on another container it would not exist,

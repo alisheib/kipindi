@@ -339,5 +339,67 @@ async function seed(rounds: number) {
      deleteMethods.filter((b) => /\.catch\(/.test(b)).join(" · "));
 }
 
+// ── 9 · ⛔ ARCHIVED IS NOT A RUN STATE ON THE WAY OUT EITHER (S-16b) ────────
+/**
+ * 🔴 FOUND BY LOOKING AT THE SCREEN, 2026-08-28, while photographing the S-16 fix.
+ *
+ * The Archived-chains card renders the SAME `UpDownControls` as the working table, and that
+ * component gates almost nothing on state: `Generate round` is rendered UNCONDITIONALLY, and
+ * `Start` renders for every state except RUNNING — which includes ARCHIVED.
+ *
+ * ⛔ SO S-16's STATED PREMISE WAS WRONG, AND IN THE DANGEROUS DIRECTION. The scan said the
+ * promise that an archived chain "disappears from the player board" was "kept ONLY by
+ * admin/updown/page.tsx filtering archived chains out of the working table so the Generate
+ * button is never rendered". It is not: the button IS rendered, on the archived card, one row
+ * below the word "Archived". The guarantee was not living in a list filter — it was not living
+ * anywhere. The server-side refusal added in §7 is the only thing that ever stopped it.
+ *
+ * ⭐ AND `Start` IS THE WORSE HALF, because it does not refuse — it WORKS. `setChainState`
+ * validates the TARGET state and never reads the source, so ARCHIVED → RUNNING is a legal
+ * transition: one click puts a filed chain back on the player board, skipping `unarchiveChain`
+ * entirely — and Restore exists precisely because a restored chain must land in STOPPED, not
+ * RUNNING. An operator tidying an archive can start a board taking real money.
+ */
+{
+  /* ⛔ THE SOURCE MUST BE TRUSTED FIRST, or this section proves nothing. `setChainState` also
+     refuses a start when the asset's price source is not an approved trusted domain — so on a
+     bare fixture the start is refused for THAT reason and an assertion of "an archived chain
+     cannot be started" passes without the archived rule existing at all. The positive control
+     below caught exactly that: it failed with "No enabled trusted source", which is the test
+     measuring the wrong thing. Approving the domain removes the other reason, so a refusal here
+     can only be the state. */
+  const { addSource } = await import("../src/lib/server/source-registry.ts");
+  await addSource({
+    domain: "api.twelvedata.com", label: "TwelveData", category: "crypto",
+    rationale: "test fixture — so the only possible refusal below is the chain's STATE",
+    addedBy: "test",
+  } as never).catch(() => {});
+
+  const chain = await seed(0);
+  await addSource({
+    domain: "api.twelvedata.com", label: "TwelveData", category: "crypto",
+    rationale: "re-added after the store reset in seed()", addedBy: "test",
+  } as never).catch(() => {});
+  await archiveChain(chain.id, OFFICER);
+  ok("9: the fixture really is archived", (await chainStore.get(chain.id))?.state === "ARCHIVED");
+
+  const started = await setChainState(chain.id, "RUNNING", OFFICER);
+  const after = (await chainStore.get(chain.id))?.state;
+  ok("9: 🔴 an ARCHIVED chain cannot be STARTED — Restore is the only door back",
+     started.ok === false && after === "ARCHIVED",
+     `setChainState returned ok=${started.ok}, chain is now ${after}`);
+  ok("9: …and the refusal names Restore, so the operator knows the way back",
+     started.ok === false && /[Rr]estore/.test(started.error), started.ok ? "" : started.error);
+
+  // ⭐ POSITIVE CONTROL — restoring still works, and still lands in STOPPED rather than RUNNING.
+  const restored = await unarchiveChain(chain.id, OFFICER);
+  ok("9: ⭐ CONTROL — Restore still works", restored.ok === true, restored.ok ? "" : restored.error);
+  ok("9: …and still lands in STOPPED, not RUNNING",
+     (await chainStore.get(chain.id))?.state === "STOPPED");
+  const nowStart = await setChainState(chain.id, "RUNNING", OFFICER);
+  ok("9: ⭐ CONTROL — and a STOPPED chain can still be started",
+     nowStart.ok === true, nowStart.ok ? "" : nowStart.error);
+}
+
 console.log(`\nchain-removal: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

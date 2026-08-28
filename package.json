@@ -205,6 +205,8 @@
     "test:ai-vocabulary": "tsx scripts/ai-vocabulary.test.mts",
     "test:spacing-scale": "tsx scripts/spacing-scale.test.mts",
     "test:chain-purge": "tsx scripts/chain-purge.test.mts",
+    "shots:scan-fixes": "node scripts/scan-fix-shots.mjs",
+    "shots:purge-ceremony": "node scripts/purge-ceremony-shots.mjs",
     "red:chain-purge": "node scripts/red-chain-purge.mjs",
     "ops:pool-orphans": "node scripts/live/ops/pool-orphans.cjs",
     "red:ai-vocabulary": "node scripts/red-ai-vocabulary.mjs",

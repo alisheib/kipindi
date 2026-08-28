@@ -305,32 +305,41 @@ export default async function AdminCompliancePage({
                 and inherit the segment-ink contrast question, the counts now sit in the caption
                 where they are legible at any bar height — and the percentages keep their
                 denominator beside them, which is what makes a small sample readable as small. */}
-            <AdminStackedBar
-              segments={
-                rcTotal === 0
-                  ? []
-                  : [
-                      { flex: continued, color: "var(--text-tertiary)" },
-                      { flex: tookBreak, color: "var(--warning-fg)" },
-                      { flex: sxd, color: "var(--bet-lose)" },
-                    ]
-              }
-              height={14}
-              emptyLabel="No reality-check activity in window"
-            />
-            <p className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">
-              {rcTotal === 0 ? (
-                "Nothing to report — not a zero rate"
-              ) : (
-                <>
+            {/* ⚠️ AND THE EMPTY CASE TAKES THE SHAPE OF ITS THREE SIBLINGS, which is a change I
+                made only after LOOKING at the rendered row. The first fix was correct and read
+                badly: a dashed box wrapping "no reality-check activity in window" over two lines
+                at 10px, in a 4-up row where every other card is a big mono figure with a caption
+                under it. Correct and inconsistent is still a defect on a regulator-facing row.
+                ⛔ The em-dash is the honest zero here, not "0". A count of 0 would state a
+                measured rate of nothing; there was no activity to measure. The siblings already
+                make this distinction — they render "n/a" rather than 0 when the roster read
+                fails — so this is the row's own established grammar, not a new one. */}
+            {rcTotal === 0 ? (
+              <>
+                <div className="font-mono font-bold text-title-md tabular text-text-tertiary">—</div>
+                <p className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">
+                  no activity in window
+                </p>
+              </>
+            ) : (
+              <>
+                <AdminStackedBar
+                  segments={[
+                    { flex: continued, color: "var(--text-tertiary)" },
+                    { flex: tookBreak, color: "var(--warning-fg)" },
+                    { flex: sxd, color: "var(--bet-lose)" },
+                  ]}
+                  height={14}
+                />
+                <p className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">
                   {continued} continued · {tookBreak} break · {sxd} self-excluded{" "}
                   <span className="text-text-subtle">
                     ({Math.round((continued / rcTotal) * 100)}/{Math.round((tookBreak / rcTotal) * 100)}/
                     {Math.round((sxd / rcTotal) * 100)}% of {rcTotal})
                   </span>
-                </>
-              )}
-            </p>
+                </p>
+              </>
+            )}
           </AdminCard>
         </div>
 

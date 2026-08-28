@@ -35,10 +35,14 @@ import type { PurgeCost, PurgeJob } from "@/lib/server/chain-purge";
  */
 type ArchivedChain = { id: string; label: string; rounds: number };
 
-export function PurgeChainCard({ chains, stage1 }: {
+export function PurgeChainCard({ chains, stage1, viewerId }: {
   chains: ArchivedChain[];
   /** chainId → who signed first, so officer A sees they are waiting on someone else. */
   stage1: Record<string, { actorId: string; at: string } | undefined>;
+  /** ⛔ WHO IS LOOKING. Without it the card cannot tell "I signed" from "someone else signed",
+   *  and it offered officer A a "Confirm as second officer" button the server would refuse —
+   *  the same defect as a trading page offering a compliance control. */
+  viewerId: string;
 }) {
   const [chainId, setChainId] = useState(chains[0]?.id ?? "");
   const [reason, setReason] = useState("");
@@ -51,7 +55,11 @@ export function PurgeChainCard({ chains, stage1 }: {
   const { toast } = useDeferredToast(pending);
 
   const chain = chains.find((c) => c.id === chainId);
-  const mine = stage1[chainId];
+  const signed = stage1[chainId];
+  /** Officer A: a signature exists and it is mine — I am waiting on someone else. */
+  const mine = signed && signed.actorId === viewerId;
+  /** Officer B: a signature exists and it is NOT mine — I can complete the ceremony. */
+  const theirs = signed && signed.actorId !== viewerId;
   const label = chain?.label ?? "";
 
   const loadCost = useCallback((id: string) => {
@@ -143,13 +151,30 @@ export function PurgeChainCard({ chains, stage1 }: {
           </div>
         )}
 
+        {/* ⛔ OFFICER A IS SHOWN THE RAIL AND NO CONFIRM BUTTON. The first version offered
+            "Confirm as second officer" to whoever was looking, including the person who had just
+            signed — a control the server refuses through `twoOfficerGate`, which is the same
+            defect as a trading route offering a compliance control. They can still WITHDRAW: it
+            is their own ceremony, and a first signature that cannot be taken back is a gate the
+            signer is locked inside. */}
         {!job && mine && (
-          <AttestationRail tone="blocked" title={{ en: "Second officer required", sw: "Afisa wa pili anahitajika" }}>
-            You recorded the reason for this chain. A different compliance officer must complete it.
-          </AttestationRail>
+          <>
+            <AttestationRail tone="blocked" title={{ en: "Second officer required", sw: "Afisa wa pili anahitajika" }}>
+              You recorded the reason for this chain. A different compliance officer must complete it.
+            </AttestationRail>
+            <Button
+              type="button" variant="ghost" loading={pending}
+              onClick={() => start(async () => {
+                const r = await purgeCancelAction(chainId);
+                toast(r.ok ? { title: "Ceremony withdrawn", variant: "success" } : { title: "Couldn't withdraw", description: r.error, variant: "danger" });
+              })}
+            >
+              Withdraw
+            </Button>
+          </>
         )}
 
-        {!job && !mine && (
+        {!job && !signed && (
           <>
             <Field label="Reason (audited)" hint="At least 5 characters — recorded against your name.">
               <Input value={reason} onChange={(e) => setReason(e.currentTarget.value)} placeholder="e.g. chain retired after the 3m pilot" />
@@ -176,7 +201,7 @@ export function PurgeChainCard({ chains, stage1 }: {
           </>
         )}
 
-        {!job && mine && (
+        {!job && theirs && (
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="danger" disabled={!cost} onClick={() => setConfirming(true)}>
               Confirm as second officer

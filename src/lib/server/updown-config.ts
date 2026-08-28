@@ -1114,6 +1114,26 @@ export async function setChainState(id: string, state: ChainState, officerId: st
   if (!cur) return { ok: false, error: "Chain not found." };
   if (cur.state === state) return { ok: true, data: cur };
 
+  /* ⛔ FROM ARCHIVED, THE ONLY WAY OUT IS STOPPED — which is what Restore does (S-16b, found
+   * 2026-08-28 while photographing the S-16 fix).
+   *
+   * 🔴 THIS WAS LIVE, AND IT WORKED. This function validated the TARGET state and never read
+   * the SOURCE, so ARCHIVED → RUNNING was a legal transition — and the Archived-chains card
+   * renders the same `UpDownControls` as the working table, so "Start" sat one row below the
+   * word "Archived". One click put a filed chain straight back on the player board, skipping
+   * `unarchiveChain` entirely. Restore exists precisely because a restored chain must come back
+   * STOPPED: restoring a board and starting it are two decisions, and this collapsed them into
+   * one for whoever was tidying the archive.
+   *
+   * ⚠️ STOPPED IS ALLOWED THROUGH, because that transition IS Restore — `unarchiveChain`
+   * delegates here. Refusing every exit from ARCHIVED would break the door this protects. */
+  if (cur.state === "ARCHIVED" && state !== "STOPPED") {
+    return {
+      ok: false,
+      error: "This chain is archived. Restore it first — a restored chain comes back STOPPED, and starting it is a separate decision.",
+    };
+  }
+
   if (state === "RUNNING") {
     const asset = await assetStore.get(cur.assetId);
     if (!asset) return { ok: false, error: "Chain's asset no longer exists." };

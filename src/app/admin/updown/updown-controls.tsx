@@ -450,10 +450,20 @@ export function ChainStateControls({
           `loading` disables the button, sets aria-busy and swaps in the kit spinner, so a
           double-click cannot open two rounds; the label says which of the two slow steps is
           running, because "did my click register?" is exactly the doubt E-64 was filed about. */}
-      <Button type="button" onClick={generate} loading={pending && busy === "generate"} variant="primary" size="sm">
-        {pending && busy === "generate" ? "Reading price…" : "Generate round"}
-      </Button>
-      {state !== "RUNNING" && (
+      {/* ⛔ NOT ON AN ARCHIVED CHAIN (S-16b, found 2026-08-28 by photographing the S-16 fix).
+          The Archived-chains card renders THIS component, and `Generate round` was rendered
+          unconditionally while `Start` rendered for every state except RUNNING — so both sat one
+          row below the word "Archived". `Start` did not even refuse: setChainState validated the
+          TARGET state and never read the source, so one click put a filed chain back on the
+          player board, skipping Restore. Both are now refused server-side too, but this file's
+          own rule is that a console offering what the server will refuse is the defect, not the
+          fix. An archived chain gets Restore and Delete. */}
+      {state !== "ARCHIVED" && (
+        <Button type="button" onClick={generate} loading={pending && busy === "generate"} variant="primary" size="sm">
+          {pending && busy === "generate" ? "Reading price…" : "Generate round"}
+        </Button>
+      )}
+      {state !== "RUNNING" && state !== "ARCHIVED" && (
         <Button type="button" onClick={() => go("RUNNING")} loading={pending} variant="ghost" size="sm">
           {state === "PAUSED" ? "Resume" : "Start"}
         </Button>
@@ -470,7 +480,9 @@ export function ChainStateControls({
           irreversible one. It is the kit's ghost Button now, the same shape as Pause beside it;
           the destructive weight is carried where it belongs, by the confirmation this trigger
           opens (tone="claret", "Stop chain"). */}
-      {state !== "STOPPED" && (
+      {/* ⚠️ `!== "ARCHIVED"` too (S-16b). "Stop" on an archived chain read as a live control on a
+          filed board, and the server refuses it — an archived chain is already not running. */}
+      {state !== "STOPPED" && state !== "ARCHIVED" && (
         <ConfirmDialog
           trigger={<Button type="button" variant="ghost" size="sm" disabled={pending}>Stop</Button>}
           title={`Stop ${label}?`}

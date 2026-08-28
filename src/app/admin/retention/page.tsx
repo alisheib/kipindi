@@ -16,6 +16,7 @@ import { KpiGrid } from "@/components/admin/admin-body";
 import { chainStore, assetStore, roundStore } from "@/lib/server/updown-dal";
 import { PurgeChainCard } from "./purge-chain-card";
 import { getFirstSignature } from "./purge-stage1-store";
+import { currentSession } from "@/lib/server/auth-service";
 
 export const metadata = { title: "Admin · Data retention" };
 export const dynamic = "force-dynamic";
@@ -84,6 +85,10 @@ export default async function AdminRetentionPage() {
       };
     }),
   );
+  /* Who is looking — so the card can tell "I signed" from "someone else signed" and never
+     offer officer A a confirm the server would refuse. */
+  const session = await currentSession();
+  const viewer = session?.userId ?? "";
   const stage1Map: Record<string, { actorId: string; at: string } | undefined> = {};
   for (const c of archivedChains) {
     const sig = await getFirstSignature(c.id);
@@ -215,7 +220,7 @@ export default async function AdminRetentionPage() {
             whole graph into the browser bundle and the build fails on ioredis reaching for
             node:dns. This split is the reason, not a preference. */}
         <AdminCard title="Purge a chain and its history" sw="Futa msururu na historia yake">
-          <PurgeChainCard chains={archivedChains} stage1={stage1Map} />
+          <PurgeChainCard chains={archivedChains} stage1={stage1Map} viewerId={viewer} />
         </AdminCard>
       </AdminBody>
     </>
