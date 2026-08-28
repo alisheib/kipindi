@@ -194,6 +194,9 @@ shots/*.png
 !/design-brief/PLAN-OF-RECORD.md
 !/design-brief/CLEANUP-MANIFEST.md
 !/design-brief/00-NEXT-SESSION-PROMPT.md
+# EXCEPTION, 2026-08-28 (DESIGN-GATE-2026-08-28): outbound Claude Design commission under
+# review — tracked per §0b's OUTBOUND row; DELETE this exception with the folder once sent.
+!/design-brief/design-gate-2026-08-28/
 /design-brief/**/*.zip
 
 # Local playbook + session tooling dropped at the repo root (not build output, not evidence).
@@ -214,6 +217,23 @@ shots/*.png
 
 # The identity pack is zipped for handoff; the folder beside it is the source.
 docs/design-brief/*.zip
+
+# MASWALI COMMISSION (2026-08-28) — the only TRACKED files in maswali-2026-08/ are the authored
+# BRIEF.md and PROMPT.txt (and, when it arrives, handover/). Everything else that lands there is
+# an assembled or EXTRACTED package.
+#
+# 🔴 EXTRACTING THE PACKAGE IN PLACE TURNS `npm run test:design-one-door` RED, AND THE GATE IS
+#    RIGHT TO FIRE. It happened on 2026-08-28: the unzip put a SECOND `DESIGN_AUTHORITY.md` on
+#    disk and the gate went 4-red — three "competing front door" hits plus the duplicate-rulebook
+#    assertion. The gate globs the DISK, so ignoring a path does NOT quiet it; these rules only
+#    stop a `git add -A` from committing the copy. ⛔ Extract OUTSIDE the repo.
+#
+# ⚠️ And per the ⛔ above: a commission carries copies only because Claude Design cannot follow a
+#    link into this repo. That is tolerated ONLY because the package is assembled from LIVE files
+#    at send time and stamped with the commit it was cut from — never kept and reused. If you are
+#    about to send a package that is older than HEAD, rebuild it.
+docs/design-brief/maswali-2026-08/0[0-9]-*/
+docs/design-brief/maswali-2026-08/00-PROMPT.txt
 design-brief-ALL.txt
 design-brief-lite/
 

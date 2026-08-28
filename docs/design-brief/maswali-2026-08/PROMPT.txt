@@ -1,0 +1,304 @@
+You are designing three screens and one glyph set for 50pick — a Tanzania-licensed,
+real-money pari-mutuel prediction platform — for a NEW third product called
+"Maswali Millionea": a weekly jackpot where a player pays a fixed TZS 2,000 entry,
+answers 10 binary future-event questions, and shares a prize pool with everyone
+else on the same score. 10/10 shares the Millionea tier, 9/10 the Supa tier, 8/10
+the Mini tier.
+
+You have designed for this product before: the 178-glyph line-icon family in
+src/components/ui/glyphs.tsx is credited to your Identity Sprint. This work
+extends that same system. It does not sit beside it.
+
+Every number below is MEASURED from the live product, not estimated.
+
+═══════════════════════════════════════════════════════════════════
+THE SINGLE MOST IMPORTANT INSTRUCTION
+═══════════════════════════════════════════════════════════════════
+This design system is COMPLETE and FROZEN. Your deliverable must COMPOSE it,
+not extend it.
+
+  · Every colour must be a var(--token) reference to a token that exists in the
+    attached tokens-LOCKED.css. Do not invent a colour. Do not convert colour
+    spaces. Do not add a token. If you believe a needed token is missing, say so
+    in DECISIONS.md and use the nearest existing one — do not create it.
+  · Every radius, shadow, border, duration and easing must likewise name an
+    existing token. No raw ms literal. No inline cubic-bezier.
+  · A new state is a PROP ON AN EXISTING COMPONENT, never a near-duplicate
+    component.
+  · No new stylesheet. No new font. No new colour family. No sub-brand.
+
+⛔ A delivery that arrives as a parallel folder, a second token file, or new
+components sitting beside the old ones has already broken this on arrival.
+A design truth that lives in two places drifts, and on a money product drift
+means two screens disagree about someone's stake. That has already happened here.
+
+DEFINITION OF DONE: zero new colour literals · zero new stylesheets · every new
+value a token · every new state a prop · and a search for anything you added
+finds exactly ONE definition site.
+
+═══════════════════════════════════════════════════════════════════
+THE TWELVE LAWS THIS PRODUCT WILL TRY TO BREAK
+═══════════════════════════════════════════════════════════════════
+A jackpot is the product category most likely to violate this rulebook, because
+every jackpot convention is on this list. Each is law, not preference.
+
+ 1. NO CASINO, NO MANUFACTURED URGENCY. The countdown on a genuinely closing
+    thing is the ONLY manufactured urgency permitted, and it is scoped to that
+    thing. No confetti, no flashing, no streak flames, no combo meters, no
+    perpetual loop. A win breathes or fades and then RESTS.
+    ⛔ A number that animates upward on a timer is banned. The jackpot figure
+    changes only when a ticket is actually sold, using the existing value-flash,
+    which never moves layout. A persistent urgency cue in global chrome is a
+    responsible-gambling finding.
+
+ 2. GOLD IS STRUCK, AND STRUCK MEANS EARNED. The gilt treatment appears ONLY
+    where money was actually earned: a payout, a settled profit, a resolved seal.
+    The jackpot figure is the most UNEARNED number on this platform — a prize
+    nobody has won, that may roll over for months. It must NOT be gold.
+    A decorative element wearing gilt is a violation, not a style choice.
+    No bloom. Rays are banned. Any control wearing gilt keeps a REAL outline on
+    focus (a shadow-only ring vanishes in forced-colors).
+
+ 3. UNREALISED HONESTY — A LICENCE CONDITION, NOT A PREFERENCE. Any unrealised
+    figure is visibly labelled at the point it is read. Per-position potential
+    payout is NOT SHOWN AT ALL before resolution. "Win TZS 20,000,000!" is a
+    promised return and is a licensing problem.
+    ✅ Correct form — third person, about the pool, with the rule attached:
+       "Millionea pool · TZS 2,016,138 · shared by every 10/10 ticket."
+
+ 4. REAL DATA OR NOTHING — A LICENCE CONDITION. Never render a guessed,
+    placeholder or zero-as-unknown number. Unknown = an em-dash PLUS a labelled
+    state ("Opens Friday", "awaiting read"). A null-coalesced zero is the
+    canonical bug; a skeleton number that looks like data is the same bug wearing
+    a shimmer. A pending state is calm, never styled as an error.
+
+ 5. LOSSES GET THE RECEIPT, WINS GET THE SEAL — A COMPLIANCE CONDITION. The
+    celebration vocabulary is EXCLUSIVE to a win. A loss is bookkeeping: calm,
+    factual, final, on a plain rung, no colour ceremony, no tick. A settled
+    screen closes with an explicit finality line. A void or refund is NEUTRAL,
+    never an error treatment.
+    ⛔ "A redesign that gives loss its own expressive treatment for balance is
+    reintroducing the defect." 99% of tickets lose, so this is the highest-traffic
+    screen you will draw. No "so close". No re-entry inducement.
+
+ 6. THE YES/NO PAIR IS UNTOUCHABLE. YES = emerald hue 152 (--yes-*), NO = rose
+    hue 22 (--no-*). Only inside betting actions and market-direction read-outs.
+    Never navigation, never decoration, never re-hued, never inverted.
+    ⚠️ SUCCESS IS NOT YES. App-state green (--success-*) is a DIFFERENT hue (166,
+    chroma 0.12) from betting green (152, chroma 0.17), because a failed password
+    reset was once painted in the losing-bet colour. Your slip has BOTH betting
+    controls and app-state feedback — do not merge them.
+    ⚠️ On a ten-row slip this is the biggest colour-dilution risk in the product:
+    at most ONE lit control per row; unselected rows are neutral.
+
+ 7. COLOUR IS NEVER THE ONLY SIGNAL. Right/wrong, yes/no, win/loss are always
+    paired with a word, arrow or glyph. ~8% of men are colour-blind, and here the
+    colour means which way someone's money went.
+
+ 8. NO EMOJI. Anywhere, ever, in any language. Pictograms are stroke vectors or
+    typographic marks. An emoji cannot be translated and renders unpredictably on
+    cheap Android.
+
+ 9. MONEY IS MONO AND NEVER REFLOWS. Every amount: mono, tabular-nums, and
+    NEVER letter-spaced — tracking is for identifiers, not money. Format is
+    "TZS 1,234": code as prefix, one space, comma thousands, zero decimals.
+    Negatives use U+2212, never a hyphen. The widest realistic figure is
+    "TZS 1,000,000" — size the container for it so 999,999 → 1,000,000 does not
+    shift layout. At a celebration the amount stays in the MONEY face; a display
+    face for the big number was tried here and reversed.
+
+10. THE TYPE SCALE IS CLOSED. Every size comes from a named step; a hand-typed
+    size is a violation even when it looks right. Reading-copy floor is 12.5px —
+    below that is a LABEL tier (uppercase, tracked, mono), forbidden for prose.
+    ⚠️ The two micro tiers (9.5px, 8.5px) are ILLEGIBLE in Chinese. Do not put
+    translatable copy in them.
+    Every numeral that is DATA is mono + tabular — including numbers inside body
+    sentences. Proportional digits make a changing figure twitch.
+
+11. ACCESSIBILITY FLOORS. Text ≥ 4.5:1 measured on its ACTUAL composited surface;
+    non-text and control boundaries ≥ 3.0:1. Tap targets ≥ 44px (the token floor
+    is 40; 44 is preferred, and money controls are NEVER the exception — a stake
+    chip shipped at 26px once). One focus recipe, visible everywhere, surviving
+    forced-colors. ZERO horizontal overflow at 360px, in every language, with
+    every overlay open.
+    ⛔ WHEN A MONEY CONTROL FAILS CONTRAST, DARKEN THE FILL — NEVER LIGHTEN THE
+    LABEL. The faintest ink step is an accessibility floor, not a taste setting;
+    it already sits at 4.88:1 on the elevated surface, which is the tightest pair
+    in the ramp.
+
+12. EVERY REFUSAL STATES THE REASON AND THE NEXT STEP, and severity matches — a
+    fixable problem is a warning, not a red error.
+
+ONE THEME: deep royal indigo, hue 268. There is no light mode and there never
+will be. Do not produce a light variant "for print". A second theme is a second
+unproven contrast surface and every material rule here is derived from the
+darkest one.
+
+═══════════════════════════════════════════════════════════════════
+LANGUAGE — THE MEASURED BUDGET, NOT A GUESS
+═══════════════════════════════════════════════════════════════════
+Computed from the real 1,706-key dictionary, three locales, exact parity.
+
+SWAHILI is the primary market and IS the sizing case. Design in Swahili first,
+then check English.
+  · Short labels (≤24 chars EN): median 1.167× · p90 1.741× · p95 2.000×
+  · Button-sized (≤14 chars EN): median 1.182× · p90 1.889× · p95 2.250×
+  · Prose (≥60 chars EN):        median 1.009× · p90 1.160×
+
+  ⭐ THE BUDGET: fit short labels at 1.75×, PROVE them at 2.25×.
+     Prose needs NO extra room — Swahili prose is the same length as English.
+     Expansion here is a LABEL problem, not a paragraph problem. Spend the room
+     where it is actually used.
+  · 30% of control-sized labels exceed 1.35×. A control designed to 1.35× breaks
+    on roughly one label in three.
+  · Worst real label on the platform: "Top" (3 chars) → "Jedwali la Washindi"
+    (19 chars) = ×6.33.
+  · ⚠️ EVERY Swahili question opens with the fixed 4-character prefix "Je, ".
+    Your ten question rows each carry it.
+
+CHINESE — the sizing rule is the opposite of the intuition.
+  · 62% shorter in CHARACTERS, but 88% of those characters are fullwidth and
+    advance about twice a Latin one.
+  · Modelled advance width: mean 0.715 · median 0.667 · p90 1.000.
+  ⛔ DO NOT SHRINK ANY CONTAINER FOR CHINESE. At p90 it is exactly as wide as
+     English.
+  · No CJK webfont is downloaded, deliberately (Tanzanian mobile data). Chinese
+    renders through system fallback and WILL NOT MATCH the Latin face you choose.
+    Design for a face you do not control.
+
+Money and timestamps are NEVER clipped, in any language. Labels wrap or
+ellipsise; a truncated value stays reachable in full.
+
+═══════════════════════════════════════════════════════════════════
+BREAKPOINTS — WHAT IS ACTUALLY TRUE, NOT WHAT THE OLD DOCS SAY
+═══════════════════════════════════════════════════════════════════
+Measured across the codebase:
+  · 1024 IS THE DOMINANT BREAKPOINT — 431 usages across 148 files, more than
+    every other breakpoint combined. The desktop nav, the sidebar rails, the
+    bottom-rail hide and the header's material all flip here.
+  · 1024–1279 IS THE DEGRADED BAND. The header survives it only by SUBTRACTING
+    two controls. If your layout needs a new control at desktop, this band is
+    where it will break. Say so if it does.
+  · 880px is an off-ladder structural switch already used on a detail page.
+  · 1920 has ZERO branches in the entire product. Do not design for it.
+  · Below 768 every text input is forced to 16px to stop iOS zoom — a type scale
+    assuming 13–14px inputs is overridden there.
+
+Design at 360 and 768. Note in OPEN-QUESTIONS.md anything that would break in
+the 1024–1279 band.
+
+PAGE WIDTH is stated once per page from a fixed tier scale:
+  console 1600 · board 1280 · reading 1080 · form 640 · RECEIPT 560 · auth 1152
+A page and its loading skeleton must state the SAME tier, or the page jumps on
+every load.
+
+═══════════════════════════════════════════════════════════════════
+WHAT TO DELIVER — FOUR SETS, NOTHING ELSE
+═══════════════════════════════════════════════════════════════════
+
+SET A — THE SLIP (the ballot). Breakpoints 360 and 768. IN SWAHILI.
+Page tier: reading (1080).
+  Ten numbered questions, each a full sentence of prose, each answered
+  NDIO / HAPANA. This is the hardest layout in the product.
+    · At 360 the question text cannot sit beside the controls — it must stack,
+      which lengthens the page and pushes the entry CTA below the fold. Solve
+      that. A sticky progress affordance ("4 kati ya 10") is likely needed; if
+      you add one it must read as a STATE OF AN EXISTING COMPONENT.
+    · Precedent to beat: the market card clamps its question to TWO lines at
+      15px / 1.34 line-height. That is already called "the single hardest layout
+      constraint in the product" and it is comfortable against English at 53
+      chars, NOT against Swahili at 84. Ten of them stacked is your problem.
+    · States: nothing answered · partially answered · all ten answered and ready
+      to pay · a refusal (incomplete slip) carrying reason AND next step.
+    · Reserve a "rules strip" slot near the CTA for two sentences whose wording
+      is not yet decided (what a VOID question does to the score; the per-player
+      ticket cap). Design the slot. Do not invent the copy.
+    · Read as A DOCUMENT, not a web form — see the art direction note.
+
+SET B — THE RESULT RECEIPT, AT A LOSS. Breakpoint 360.
+Page tier: RECEIPT (560) — this is a receipt, not a reading page.
+  A ticket that scored 6 out of 10. Show all ten rows: the player's pick beside
+  the official outcome, with the mark saying which were right. It must be
+  possible to see at a glance exactly which picks failed — that is what stops the
+  support queue filling with "why did I lose".
+  Calm. Final. Closes with a finality line. No punishment styling. No "so close".
+  ⚠️ Where the same money fact appears on both a summary and its receipt, the two
+  must agree — on this platform 4 of 8 sampled settled markets once displayed the
+  opposite of the truth.
+
+SET C — THE MONEY FIGURE: GOLD vs MONO. Breakpoint 360. THE DECISION ARTBOARD.
+  The same jackpot-pool hero twice, side by side:
+    LEFT  — the figure in struck gold (--gilt-*), the way every competitor does it
+    RIGHT — the figure in neutral mono ink, the way this rulebook requires
+  Beside both, include a surface where gold IS correct under this system — a real
+  settled payout — so the cost of spending gold on an unwon prize is VISIBLE
+  rather than argued.
+  In DECISIONS.md state which you would ship and why, in three sentences.
+  (Our reading of the rulebook says mono. Tell us if you disagree, and why.)
+  Also show the cold-start state: a pool with no tickets sold yet, under law 4.
+
+SET D — THREE TIER GLYPHS: Millionea, Supa, Mini.
+  These extend the existing 178-glyph family and must be indistinguishable from
+  it in construction:
+    · 24×24 viewBox, strokeWidth 1.9, round caps AND round joins
+    · fill="none", stroke="currentColor" — no fills, no gradients, NO COLOUR
+    · one coherent heraldic set
+    · distinguishable from each other WITHOUT colour (law 7)
+  ⚠️ These are drawn on a 24 grid but they RENDER at 9–18px, and the single most
+  common size in the product is 14px. Prove legibility at 14px — that is the real
+  test, not 24.
+  Deliver each at 14px, 18px and 24px, plus the raw SVG path data.
+  ⛔ Do not give them a colour, a glow, or a motion of their own. Identity motion
+  is reserved for the trademark.
+
+ART DIRECTION — the idea to design against
+  Without gold, confetti, emoji or a climbing counter, a jackpot page risks
+  reading flat. The answer is not decoration; it is this:
+
+    THE SLIP IS A DOCUMENT, NOT A FORM.
+
+  Ten numbered questions, mono figures, a countdown, a stamp when it locks, a
+  published hash when it seals. That reads as an official entry into something
+  real — rarer and more trustworthy than a casino page, and it is already the
+  vocabulary this kit speaks: receipts, seals, mono money, resolution
+  attestations. The house voice is heraldic and calm: a seal being pressed, not a
+  jackpot ringing.
+
+═══════════════════════════════════════════════════════════════════
+HOW TO HAND IT BACK
+═══════════════════════════════════════════════════════════════════
+Deliver as ONE folder with exactly this shape, so it drops into the repo
+unmodified:
+
+  handover/
+    README.md             — what this is, the date, and the line "Where a figure
+                            here disagrees with the live repo, the live repo wins"
+    DECISIONS.md          — every design decision and why; the gold-vs-mono
+                            verdict; anything you believe the rulebook gets wrong
+    TOKENS-USED.md        — every token you referenced, as var(--name), grouped by
+                            surface. ⛔ If this file names a token that is not in
+                            tokens-LOCKED.css, the handover is rejected.
+    OPEN-QUESTIONS.md     — what you could not decide without an answer from us,
+                            plus anything that breaks in the 1024–1279 band
+    artboards/            — one file per frame, named:
+                            <set>-<surface>-<breakpoint>-<locale>.<ext>
+                            e.g. A-slip-360-sw.png · C-figure-360-en.png
+    glyphs/               — millionea.svg · supa.svg · mini.svg (24-grid, 1.9
+                            stroke, currentColor) + a preview sheet at 14/18/24px
+
+ACCEPTANCE — checked in this order:
+  1. Every colour resolves to a token in tokens-LOCKED.css.
+  2. No gilt on any unearned figure.
+  3. Zero horizontal overflow at 360; every tap target ≥ 44px.
+  4. The slip works in SWAHILI at 360 at the 2.25× label budget.
+  5. Text contrast ≥ 4.5:1 measured on the actual surface behind it.
+  6. No emoji · no light-mode variant · no new colour family · no sub-brand ·
+     no new stylesheet.
+  7. The three glyphs are indistinguishable in construction from the existing 178
+     and legible at 14px.
+  8. The loss receipt is on the 560 receipt tier and carries no celebration
+     vocabulary.
+
+If a constraint here makes a screen impossible, say so in OPEN-QUESTIONS.md
+rather than breaking the constraint quietly. A rule broken in silence costs us
+more than a screen we have to rethink.
