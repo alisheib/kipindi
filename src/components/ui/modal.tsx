@@ -353,7 +353,7 @@ export function Modal({
    confirm wants one of those two bespoke modals, or it wants §M3 amended — not a tone. */
 type Tone = "claret" | "warning" | "brand";
 
-export type ConfirmModalProps = {
+type ConfirmModalBase = {
   open: boolean;
   onClose: () => void;
   onConfirm: () => void;
@@ -370,10 +370,6 @@ export type ConfirmModalProps = {
    *  size itself an argument for one of the two answers, which is the opposite of
    *  what a confirmation is for. */
   size?: "md" | "lg";
-  /** "medium" = one explicit confirm. "hard" = must type `typedWord` to arm. */
-  tier?: "medium" | "hard";
-  /** The word the officer must type verbatim to enable confirm (tier="hard"). */
-  typedWord?: string;
   /** Override the header glyph (defaults to the warning triangle). */
   icon?: React.ReactNode;
   maxWidth?: number;
@@ -383,6 +379,33 @@ export type ConfirmModalProps = {
    *  pending at every consequential call site. */
   loading?: boolean;
 };
+
+/* ⛔ THE TIER AND ITS TYPED WORD ARE ONE DECISION, NOT TWO INDEPENDENT PROPS (S-17,
+   scan #1, 2026-08-28).
+ *
+ * They used to be two optionals, and `isHard` was `tier === "hard" && !!typedWord`. So
+ * passing `tier="hard"` WITHOUT a `typedWord` did not fail — it silently produced an
+ * ordinary one-click confirm wearing the styling, the claret tone and the eyebrow of a
+ * hard gate. It failed in the direction of LOOKING SAFE, which is the only direction that
+ * matters for a control whose entire job is to be hard to fire by accident.
+ *
+ * Four live call sites did exactly that, and three of them were RBAC-destructive on
+ * /admin/staff and /admin/roles — the two OWNER_ONLY_PREFIXES. The most privileged surface
+ * in the product was where the gate silently wasn't.
+ *
+ * ⭐ A GUARD THAT COUNTS `tier="hard"` OCCURRENCES CANNOT SEE THIS. The string was present;
+ * the pairing was absent. So the pairing is made unrepresentable instead of merely audited.
+ *
+ * ⚠️ A CORRELATED PAIR AT THE CALL SITE MUST BE SPREAD, NOT WRITTEN AS TWO TERNARIES.
+ * `tier={c ? "hard" : "medium"} typedWord={c ? "X" : undefined}` is REJECTED, and correctly
+ * so: TypeScript sees `"medium" | "hard"` and `string | undefined` independently, and that
+ * pair genuinely can express hard-without-a-word. Write one object instead:
+ *     {...(c ? { tier: "hard" as const, typedWord: "X" } : { tier: "medium" as const })} */
+type ConfirmGate =
+  | { tier: "hard"; typedWord: string }
+  | { tier?: "medium"; typedWord?: never };
+
+export type ConfirmModalProps = ConfirmModalBase & ConfirmGate;
 
 const TONE_BTN: Record<Tone, string> = {
   claret: "btn btn-claret",
@@ -422,8 +445,23 @@ export function ConfirmModal({
   const inputRef = React.useRef<HTMLInputElement>(null);
   const confirmRef = React.useRef<HTMLButtonElement>(null);
   const cancelRef = React.useRef<HTMLButtonElement>(null);
-  const isHard = tier === "hard" && !!typedWord;
-  const armed = !isHard || typed.trim().toUpperCase() === typedWord!.trim().toUpperCase();
+  /* ⛔ FAILS CLOSED. The union above makes `tier="hard"` without a `typedWord`
+     unrepresentable in TypeScript, but a value can still arrive EMPTY at runtime — an
+     untyped JS caller, or a word computed from state that happened to be "". The old
+     expression turned exactly that into a one-click confirm (`isHard` went false and
+     `armed` was permanently true). Now an unusable word keeps the gate on screen and
+     never arms it: the officer sees a control that will not fire and says so, instead of
+     one that fires on the first click. A gate may refuse; it may not quietly stand down. */
+  const isHard = tier === "hard";
+  const gateWord = typedWord?.trim() ?? "";
+  const armed = !isHard || (gateWord !== "" && typed.trim().toUpperCase() === gateWord.toUpperCase());
+
+  if (process.env.NODE_ENV !== "production" && isHard && gateWord === "") {
+    throw new Error(
+      'ConfirmModal: tier="hard" requires a non-empty `typedWord` — the gate cannot arm ' +
+        `without one and would otherwise look armed but be dead (title: ${JSON.stringify(title)}).`,
+    );
+  }
 
   // Reset the typed gate every time the dialog re-opens.
   React.useEffect(() => { if (open) setTyped(""); }, [open]);

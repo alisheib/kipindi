@@ -124,7 +124,13 @@ export function RolesMatrix({ matrix: initial }: { matrix: Matrix }) {
         body="Every role goes back to the seeded default matrix. Any custom grants you've set are discarded. The Owner is unaffected. Continue?"
         confirmLabel="Reset to defaults"
         tone="claret"
+        /* ⛔ NOT "RESET" (S-17). /admin/roles carries two near-identical reset dialogs — this
+           one and read-tiers-matrix's — on adjacent surfaces with the same tone, the same
+           confirm label and one word of difference in the title. A shared typed word would
+           arm whichever one happened to be open, which is precisely the muscle-memory the
+           gate exists to interrupt. Each names what it actually discards. */
         tier="hard"
+        typedWord="RESET PERMISSIONS"
       />
     </div>
   );

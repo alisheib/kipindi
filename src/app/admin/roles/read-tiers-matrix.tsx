@@ -167,7 +167,12 @@ export function ReadTiersMatrix({ matrix: initial }: { matrix: Matrix }) {
         body="Every role goes back to the seeded default grid in docs/READ-TIERS.md §3.2. Any custom read levels you've set are discarded. Continue?"
         confirmLabel="Reset to defaults"
         tone="claret"
+        /* ⛔ NOT "RESET", and deliberately not the same word as roles-matrix's twin (S-17) —
+           see the note there. These two dialogs differ by one word of title and nothing else;
+           the typed word is the only thing that can tell an officer which grid they are about
+           to discard. */
         tier="hard"
+        typedWord="RESET READ LEVELS"
       />
     </div>
   );

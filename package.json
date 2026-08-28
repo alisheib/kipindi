@@ -200,6 +200,8 @@
     "test:design-one-door": "tsx scripts/design-one-door.test.mts",
     "test:search": "tsx scripts/search-grammar.test.mts",
     "test:search-adoption": "tsx scripts/search-adoption.test.mts",
+    "test:confirm-gate": "tsx scripts/confirm-gate.test.mts",
+    "red:confirm-gate": "node scripts/red-confirm-gate.mjs",
     "red:search-adoption": "node scripts/red-search-adoption.mjs",
     "test:card-share": "tsx scripts/card-share.test.mts",
     "test:chat-focus-ring": "tsx scripts/chat-focus-ring.test.mts",

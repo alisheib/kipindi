@@ -143,7 +143,12 @@ export function AssignRoleForm({ userId, currentRole, roleInfos }: { userId: str
         }
         confirmLabel={isRevoke ? "Revoke access" : "Change role"}
         tone={isRevoke || info?.sensitive ? "claret" : "warning"}
+        /* The typed word names the DECISION, not the act (S-17, which found this dialog
+           wearing a hard tier with no word at all — an ordinary one-click confirm). A role
+           change makes you type the role you are GRANTING, so picking the wrong entry from
+           the dropdown and confirming on muscle memory cannot land: the word would not match. */
         tier="hard"
+        typedWord={isRevoke ? "REVOKE" : role}
       />
     </form>
   );
@@ -207,7 +212,11 @@ export function AddStaffForm({ roleInfos }: { roleInfos: Record<string, RoleInfo
         body={`They will be able to ${info?.act.length ? info.act.map((a) => a.act).join("; ") : "view only (read-only)"}. They'll be signed out and must sign in again to pick up admin access. Continue?`}
         confirmLabel="Add as staff"
         tone={info?.sensitive ? "claret" : "warning"}
+        /* Type the role being granted (S-17). This form promotes an account found by phone
+           lookup, so the two things that can go wrong are the wrong account and the wrong
+           role; the word makes the officer restate the second one deliberately. */
         tier="hard"
+        typedWord={role}
       />
     </form>
   );
