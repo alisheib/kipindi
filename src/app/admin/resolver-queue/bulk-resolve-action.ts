@@ -192,7 +192,25 @@ export async function bulkResolveMarketsAction(formData: FormData): Promise<Bulk
       const usedOverride = !v.eligible && !!typed && v.overridable
         && v.all.length > 0 && v.all.every((r) => OVERRIDABLE.has(r));
       if (!v.eligible && !usedOverride) {
-        skipped.push({ marketId: id, title, reason: v.reason ?? undefined, detail: detailFor(v.reason, v.citedHost, v.approvedHost, v.confidence, cfg.resolveConfidenceThreshold) });
+        /**
+         * ⭐ "ALREADY RESOLVED" IS NOT "SKIPPED", AND THE STRESS DRIVE FOUND THE DIFFERENCE.
+         *
+         * Replaying a sealed batch, the verdict correctly refuses every row with
+         * `already-resolved` — before `resolveMarket` is ever reached, which is why the
+         * `alreadyApplied` bucket (fed by the engine's own refusal) stayed EMPTY and the
+         * officer was shown *"Skipped — refused and not overridden"* over markets that had
+         * simply already been done. Nothing refused them; they were finished.
+         *
+         * The buckets have to mean what their headings say, so the verdict's own
+         * already-resolved answer routes here. `alreadyApplied` now covers BOTH ways a
+         * market can turn out to be done: the verdict saw it (the common case, a stale
+         * page) and the engine saw it (the narrow race between the verdict and the seal).
+         */
+        if (v.reason === "already-resolved") {
+          alreadyApplied.push({ marketId: id, title, detail: "Already resolved — nothing to do." });
+        } else {
+          skipped.push({ marketId: id, title, reason: v.reason ?? undefined, detail: detailFor(v.reason, v.citedHost, v.approvedHost, v.confidence, cfg.resolveConfidenceThreshold) });
+        }
         continue;
       }
 

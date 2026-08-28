@@ -577,7 +577,8 @@
     "ops:bulk-resolve-fleet": "tsx scripts/ops-bulk-resolve-fleet.mts",
     "ops:fix-orphan-pool": "tsx scripts/ops-fix-orphan-pool-2026-08-28.mts",
     "ops:verdict-census": "tsx scripts/ops-verdict-census.mts",
-    "qa:bulk-resolve": "node scripts/live-bulk-resolve-drive.mjs"
+    "qa:bulk-resolve": "node scripts/live-bulk-resolve-drive.mjs",
+    "qa:bulk-resolve-stress": "tsx scripts/ops-bulk-resolve-fleet.mts mint --only E-DBL && tsx scripts/ops-bulk-resolve-fleet.mts mint --only E-RACE && tsx scripts/ops-bulk-resolve-fleet.mts mint --only E-STEAL && node scripts/live-bulk-resolve-stress.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",
