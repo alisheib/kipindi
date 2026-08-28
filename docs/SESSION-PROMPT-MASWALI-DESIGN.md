@@ -1,6 +1,29 @@
 # `MASWALI-DESIGN-R1` — the design handover, and what to do with it
 
-> **STATUS: 🔵 LIVE — WAITING ON A DELIVERY.** Written 2026-08-28 by the session that commissioned
+> **STATUS: ⚪ RECORD — THE DELIVERY ARRIVED AND IS FILED (2026-08-28).** It is at
+> [`design-brief/maswali-2026-08/handover/`](design-brief/maswali-2026-08/handover/), in the shape
+> §1 specifies, plus a `sources/` folder of living `.dc.html` artboards the expected shape did not
+> ask for. **§2's token check passed** — all 59 tokens exist. **§3's contested ruling was not
+> contested:** the delivery's `DECISIONS.md` rules *"Ship C2 — the figure in neutral mono ink"* and
+> records *"Nothing rose to wrong"*, so §12.1 row 2 stands unchanged and nothing had to be deleted.
+> §4's stale rows are reconciled in the same commit. ⛔ **§6 still blocks everything** — D-1, D-2,
+> D-4 and D-6 are unanswered, so no line of this product may be built.
+>
+> 🔴 **AND §2's CHECK, AS WRITTEN, HAS A FALSE-FAIL MODE — FIX IT BEFORE ROUND 2.** Its
+> `grep -oE '^\s*--[a-z0-9-]+'` is anchored to the START of a line, but `tokens-LOCKED.css:191`
+> declares six radii on ONE line (`--r-xs: 4px; --r-sm: 8px; --r-md: 12px; …`) and the spacing
+> scale does the same. **13 real tokens are invisible to it** — `--r-sm/md/lg/xl/pill` and
+> `--sp-2/3/4/5/8/10/12/16` — so any design using a radius or a space, which is every design,
+> false-FAILS. Drop the `^\s*` anchor and match `--token\s*:` anywhere on the line. ⛔ **A second
+> false-FAIL:** the check greps the whole of `TOKENS-USED.md`, including its *"NOT USED"* list, so
+> the handover is failed for the four families it explicitly says it AVOIDED (`--danger-*`,
+> `--glow-*`, `--teal-*`, `--warning-*`). ⚠️ **This matters more than the regex.** §2 says the
+> check is run *"first and mechanically — never by eye"* — and run as written it prints seven
+> failures on a delivery that is entirely sound. A gate whose only failure mode is a false one
+> trains the next session to wave it through, which is the same defect as a gate that cannot fail.
+> The delivery's own `TOKENS-USED.md:5` had already spotted it and said so in prose.
+>
+> Written 2026-08-28 by the session that commissioned
 > the work, for the session that receives it. Nothing here is built.
 >
 > ## ⭐ THE KEY NAME IS `MASWALI-DESIGN-R1`

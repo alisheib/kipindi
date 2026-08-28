@@ -986,7 +986,18 @@ shrink**.
 scope is blind outside it. Do not treat a green run as proof that a new surface is kit-faithful —
 `test:contrast`, `test:type-scale`, `test:ui-consistency` and the shot suite are the coverage.
 
-### §12.5 · What a human graphic designer must draw — corrected
+### §12.5 · What a human graphic designer must draw — ✅ DRAWN AND DELIVERED (2026-08-28)
+
+> ✅ **All four are no longer a request — they are in the repo**, at
+> [`docs/design-brief/maswali-2026-08/handover/`](design-brief/maswali-2026-08/handover/):
+> the three tier glyphs as stroke SVGs in the `glyphs.tsx` vocabulary, plus the slip, the loss
+> receipt and the money figure. ⛔ **Delivered is not merged** — nothing has entered `src/`, per
+> `INTAKE.md`'s rule that a component integrated before the ladder it depends on drifts the moment
+> the ladder lands. The section below is kept as the specification the delivery was judged against.
+> ⭐ **And §12.1 row 2 SURVIVED CONTACT:** the commission's own `DECISIONS.md` rules *"Ship C2 —
+> the figure in neutral mono ink"*, and under *"Where we think the rulebook is wrong"* it records
+> *"Nothing rose to wrong."* The ruling management was expected to fight is now backed by the
+> designers who were free to disagree with it.
 
 ⚠️ **My first pass of this section was wrong and B9/M8 are why.** I wrote that Millionea needs *"an
 identity that sits beside the 50pick Needle brand"*. **B9 forbids design that sits beside**, and
@@ -1026,7 +1037,7 @@ a hero with even odds of being wrong.
 | ⭐ **THE KEY NAME** | **`MASWALI-DESIGN-R1`** — the round-1 delivery. If Ali hands a session a design handover under that name, its instruction set is [`SESSION-PROMPT-MASWALI-DESIGN.md`](SESSION-PROMPT-MASWALI-DESIGN.md). `grep -rn "MASWALI-DESIGN-R1" docs/` finds every reference |
 | **The commission** | [`design-brief/maswali-2026-08/BRIEF.md`](design-brief/maswali-2026-08/BRIEF.md) — the scope argument, the attachment list, and the acceptance checks. The prompt itself is [`design-brief/maswali-2026-08/PROMPT.txt`](design-brief/maswali-2026-08/PROMPT.txt) and lives **only** there |
 | **The outbound package** | `design-brief/maswali-2026-08/maswali-design-package-2026-08-28.zip` — ⛔ **untracked by design.** `.gitignore`'s *"OUTBOUND DESIGN COMMISSIONS"* section keeps every commission package out of the repo; regenerate it from the brief rather than committing it |
-| **⭐ THE HANDOVER LANDS IN** | **`docs/design-brief/maswali-2026-08/handover/`** — one folder, everything Maswali-design inside it. Named to match the existing `handover-2026-08/` convention |
+| ✅ **THE HANDOVER LANDED, 2026-08-28** | **[`docs/design-brief/maswali-2026-08/handover/`](design-brief/maswali-2026-08/handover/)** — one folder, everything Maswali-design inside it. **All four sets arrived** (A slip · B receipt · C money figure · D tier glyphs), plus `sources/` — the living `.dc.html` artboards the PNGs were rendered from, which the expected shape did not ask for and which are the reason a future round can edit rather than redraw. ⭐ **The token check passed: every one of the 59 tokens it claims exists.** ⛔ **Nothing is merged into `src/` and nothing is built** — §0's seven decisions are still Ali's, and D-1 still blocks everything |
 
 **Four artboard sets are in scope**, all invariant to every §0 decision: **A** the ten-row slip at
 360 and 768 *in Swahili* (the hardest layout in the product) · **B** the loss receipt at 360 (the

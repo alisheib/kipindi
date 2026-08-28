@@ -25,7 +25,12 @@ product tries to break this particular design system.
 
 ---
 
-## 1 · Should we commission the design now? — **Yes, but three artboard sets, not thirty.**
+## 1 · Should we commission the design now? — ✅ ANSWERED AND DONE. **Yes, but three artboard sets, not thirty.**
+
+> ⚪ **RECORD, NOT A LIVE QUESTION (2026-08-28).** The round was commissioned, sent and returned;
+> the delivery is at [`handover/`](handover/). Four sets were asked for and four arrived. The
+> argument below is kept because it is *why the boundary was drawn there* — and the boundary held:
+> not one of §0's seven decisions had to be made to accept the work.
 
 **The recommendation is a bounded commission, and the boundary is one rule:**
 
