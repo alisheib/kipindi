@@ -34,7 +34,11 @@ export function ScrollX({
       aria-label={label}
       tabIndex={0}
       className={cn(
-        "overflow-x-auto rounded-md",
+        // DG-A-23 — `scrollx` carries the SCROLL AFFORDANCE (globals.css). Three admin tables are
+        // wider than the box holding them with nothing saying so. ⛔ Not an edge-fade: a mask
+        // clips an absolutely-positioned panel exactly as an overflow does, and these tables
+        // carry row menus — that is DG-A-03's defect, one file over.
+        "scrollx overflow-x-auto rounded-md",
         "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[color:var(--brand-400)]",
         className,
       )}

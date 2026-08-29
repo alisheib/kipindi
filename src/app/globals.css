@@ -1898,6 +1898,45 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
 ::-webkit-scrollbar-thumb:hover { background: var(--border-strong); border: 2px solid transparent; background-clip: padding-box; }
 ::-webkit-scrollbar-corner { background: transparent; }
 
+/* ⭐ DG-A-23 (DESIGN-GATE-2026-08-28) — THE SCROLL AFFORDANCE ON WIDE ADMIN TABLES.
+   Measured on production 2026-08-29: three tables are wider than the box holding them, with
+   nothing saying so — `/admin/audit` 1282px in a 1158px card (its payload column cut mid-token
+   AT 1440, not only on a phone), `/admin/updown` 1355 in 1158, `/admin/reports` 602 in 358.
+
+   ⚠️ THE REGISTER'S FIX LINE — "ScrollX gains an edge-fade + scrollbar affordance" — IS HALF A
+   NO-OP AND HALF A HAZARD, so neither half is taken as written:
+
+   · "gains a scrollbar" would ship NOTHING in Chrome. Declaring `::-webkit-scrollbar` at all
+     disables overlay scrollbars in Blink, and the bare rules above are global — so every
+     ScrollX ALREADY paints a persistent 8px thumb. The defect was never absence. It is that
+     the thumb is `--border` (36% L) on `--bg-elevated` (22% L), ~14 points of lightness apart
+     and nowhere near §A1's 3:1 non-text floor — and that Firefox, which reads only the
+     STANDARD properties, was given none of them anywhere except `.kp-thin-scroll`.
+   · "edge-fade" is REFUSED, deliberately. The one mask recipe in this file carries the reason
+     in its own comment: *"a mask clips an absolutely-positioned panel exactly as an overflow
+     does"* — which is DG-A-03's defect, one file over, and these tables carry row menus. A mask
+     would also dim the edges of every table that FITS, and most of them do; CSS cannot ask
+     "am I actually scrollable?" without scroll-timeline support this product does not require.
+
+   So: make the affordance that already exists VISIBLE, in both engines. `--border-strong` is
+   the same ink `.kp-thin-scroll` already uses for exactly this job — guarded by `test:contrast`
+   against `--bg-elevated`, so it cannot quietly drop below the floor again. */
+/* ⛔ `--border-control`, and NOT `--border-strong` — which is what `.kp-thin-scroll` uses for
+   this exact job, and which MEASURES 2.23 against `--bg-elevated`, under the 3.0 non-text
+   floor. (That is a real finding about `.kp-thin-scroll`, recorded but not changed here: its
+   own backgrounds have not been measured, and a blind swap is how a correct control breaks.)
+   `--border-control` is the token minted for precisely this — globals.css:1472 spends it on
+   "the input outline is its only boundary (WCAG 1.4.11)" — and it measures 3.18. */
+.scrollx { scrollbar-width: thin; scrollbar-color: var(--border-control) transparent; }
+.scrollx::-webkit-scrollbar { height: 10px; }
+.scrollx::-webkit-scrollbar-track { background: transparent; }
+.scrollx::-webkit-scrollbar-thumb {
+  background: var(--border-control);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
 /* ===========================================================================
    Motion polish layer — ⚠️ DEPRECATED ALIASES (2026-07-28)
    ---------------------------------------------------------------------------

@@ -807,6 +807,13 @@ const CHECKS: Check[] = [
   { name: "Q5 · .tier-silver label on its own fill", fg: ruleValue(".tier-silver", "color"), bg: ruleValue(".tier-silver", "background"), min: 4.5 },
   // The rims are non-text (WCAG 1.4.11 → 3.0), and each must still separate from the CANVAS
   // the badge sits on, or the ladder stops being a ladder.
+  // ── DG-A-23 · the scroll affordance on wide admin tables ──────────────────
+  // ⛔ 3.0, NOT 4.5: a scrollbar thumb is non-text (WCAG 1.4.11). This exists because the
+  // thumb was ALREADY THERE and simply could not be seen — `--border` (36% L) on
+  // `--bg-elevated` (22% L) is ~14 points of lightness, and three admin tables are wider
+  // than their card with nothing else saying so. The bug was never "no scrollbar"; it was a
+  // scrollbar under the floor. This check is what stops it sliding back under.
+  { name: "DG-A-23 · .scrollx thumb on an admin card (non-text 3.0)", fg: ruleValue(".scrollx::-webkit-scrollbar-thumb", "background"), bg: token("bg-elevated"), min: 3.0 },
   { name: "Q5 · .tier-gold rim against the page (non-text 3.0)", fg: ruleValue(".tier-gold", "border-color"), bg: T.bg, min: 3.0 },
   { name: "Q5 · .tier-diamond rim against the page (non-text 3.0)", fg: ruleValue(".tier-diamond", "border-color"), bg: T.bg, min: 3.0 },
 
