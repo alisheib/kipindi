@@ -380,7 +380,28 @@ export function AdminKpi({
   return (
     <div className="glass-panel admin-kpi p-2 flex flex-col gap-1.5 min-h-[110px]">
       <div className="flex items-center justify-between gap-2">
-        <span className="font-mono uppercase text-text-tertiary truncate" style={{ fontSize: 9.5, letterSpacing: "0.08em", lineHeight: 1.3 }}>{label}</span>
+        {/* ⭐ DG-A-10 · `title`, for the same reason the VALUE below carries one — the label
+            was simply left out of that ruling. Measured on production at 390: "Outstanding
+            bonus" needs 110px of 91 and "Global conservation" 123 of 120, so both ellipsise
+            MID-WORD with no way to read the rest. §A5 permits a LABEL to ellipsise (only money
+            and timestamps may never clip), so the defect is not the clipping — it is that the
+            tail was unreachable. `truncate` + `title` is this component's own answer, stated
+            four lines down: it "gives the tail an affordance and keeps the full string
+            reachable on hover".
+            ⛔ NOT fixed by wrapping to two lines: this label shares a `flex items-center` row
+            with the live pulse, so a second line would misalign that indicator on every tile
+            to spare two labels. ⛔ Nor by dropping the 0.08em tracking — it is a §T3 uppercase
+            microlabel, where tracking is what makes the tier legible, and at 9.5px over 17
+            characters it buys back only ~13px of the 19 needed. Shorter labels are the real
+            cure, and that is a copy decision → DG-A-13.
+            ⚠️ Deliberately NOT added to the `unavailable` branch above: that tile carries a
+            title of its own ("could not be computed … It is NOT zero"), and a nested title
+            would shadow a money-honesty disclosure with a label. */}
+        <span
+          className="font-mono uppercase text-text-tertiary truncate"
+          title={typeof label === "string" ? label : undefined}
+          style={{ fontSize: 9.5, letterSpacing: "0.08em", lineHeight: 1.3 }}
+        >{label}</span>
         {pulse && (
           // Aqua = live-feed signal (admin gold-discipline: gold only on the resolved seal).
           <span className="inline-flex items-center gap-1 text-micro font-mono uppercase tracking-wider" style={{ color: "var(--aqua-400)" }}>
