@@ -221,7 +221,7 @@ const RATCHET_INLINE_FONTSIZE = 36;
 /*  ⬇️ 636 → 635 on 2026-08-25 — pre-existing slack on HEAD, not this commit's doing; see
  *  the note on RATCHET_ARBITRARY_SIZE above. The countdown's date span takes `text-micro`'s
  *  own 0.4px letter-spacing and adds no `tracking-` utility, so this commit is +0 here. */
-const RATCHET_ARBITRARY_TRACKING = 615;   // 2026-08-29: -11 then -5, FieldLegend adopted where its recipe was hand-retyped BYTE FOR BYTE (DG-A-11). The last 5 were `<label>`s in the auth forms — `block … mb-1.5` around the component's exact class string — which the first pass missed because it looked for `<span>`s.
+const RATCHET_ARBITRARY_TRACKING = 602;   // 2026-08-29: -11 then -5, FieldLegend adopted where its recipe was hand-retyped BYTE FOR BYTE (DG-A-11). The last 5 were `<label>`s in the auth forms — `block … mb-1.5` around the component's exact class string — which the first pass missed because it looked for `<span>`s. Then -13 on 2026-08-30 (DG-P-03): the six loading skeletons that adopted `<PageHeader>` were each hand-typing its EYEBROW as well as its h1, so a row about headings paid a tracking dividend nobody predicted. ⚠️ It was found only because the handover's numbers were re-derived before being written down, which is the rule that keeps earning its keep.
 
 /** §5 — the 29 hand-typed sizes that exist today. A member may LEAVE (the guard
  *  says so and this list gets trimmed); a NEW one is a hard failure. This is the
