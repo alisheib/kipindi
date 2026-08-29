@@ -121,20 +121,63 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
   const STATS_WINDOW_DAYS = 7;
   const STATS_CAP = 600; // bounds one chain's read; `truncated` says so rather than lying
   const statsFrom = new Date(Date.now() - STATS_WINDOW_DAYS * 86_400_000).toISOString();
+
+  // 🔴 THIS BLOCK ISSUED 46 CONCURRENT QUERIES (DG-A-01's gate, 2026-08-29). It was
+  // `Promise.all(chains.map(...))` with a `roundStore.list` AND a `poolsByIds` inside — and
+  // production carries **23 chains**, so one render fired 46 round-trips, plus 7 more for the
+  // oracle strip. `market-dal.ts` already records what that shape costs, in the leaderboard
+  // comment: *"making an N+1 parallel does not remove it, it just points all of it at the
+  // connection pool at once."*
+  // 📐 MEASURED on production, best of two, floor `/admin/roles` = 263 ms: this page read
+  // **11,045 ms** against a 5,000 ms budget, while the other 37 admin routes ran 241–2,267 ms.
+  // It was 25× the median console route and NOTHING WAS WATCHING IT — the load gate timed
+  // three hand-picked pages. ⛔ And it is not the window: `?range=today` and `?range=30d`
+  // measured within 600 ms of each other.
+  // ⭐ Two bulk reads instead. `roundStore.list` already accepts `chainIds` in both the
+  // in-memory and the Prisma store, and `poolsByIds` was always a bulk primitive — it was
+  // simply being called once per chain.
+  const chainIds = chains.map((c) => c.id);
+  // The per-chain cap is the contract ("sample capped"), so the global cap is its multiple —
+  // ⛔ never a flat number, which would let one busy chain starve the other 22 of their rows.
+  const GLOBAL_STATS_CAP = STATS_CAP * Math.max(1, chainIds.length);
+  const allRounds = chainIds.length
+    ? await roundStore.list({ chainIds, boundaryFrom: statsFrom, limit: GLOBAL_STATS_CAP }).catch(() => [])
+    : [];
+  // ⚠️ If the GLOBAL cap bit, no chain's sample can be promised complete, so EVERY chain is
+  // flagged. Over-disclosing "sample capped" is the safe direction; under-disclosing is how a
+  // partial sample gets read as a health verdict.
+  const globallyTruncated = allRounds.length >= GLOBAL_STATS_CAP;
+  // ⛔ CHUNKED. 23 chains × 600 is up to 13,800 ids, and one `IN` list that long is a new
+  // problem in place of the old one. Rounds own one market each, so there are no duplicates
+  // to fold out first.
+  const POOL_CHUNK = 2_000;
+  const pools = new Map<string, { yesPool: number; noPool: number }>();
+  for (let i = 0; i < allRounds.length; i += POOL_CHUNK) {
+    const part = await marketStore
+      .poolsByIds(allRounds.slice(i, i + POOL_CHUNK).map((r) => r.marketId))
+      .catch(() => new Map<string, { yesPool: number; noPool: number }>());
+    for (const [k, v] of part) pools.set(k, v);
+  }
+  // `list` returns boundaryAt DESC, so each bucket is newest-first and slicing at STATS_CAP
+  // keeps exactly the rows the per-chain query used to return.
+  const roundsByChain = new Map<string, typeof allRounds>();
+  for (const r of allRounds) {
+    const bucket = roundsByChain.get(r.chainId);
+    if (!bucket) roundsByChain.set(r.chainId, [r]);
+    else if (bucket.length < STATS_CAP) bucket.push(r);
+  }
+  // ⛔ NO `Promise.all` HERE ANY MORE, and its absence is the fix. There is no I/O left in
+  // this loop — every read happened above, in bulk — so a concurrent map would only be
+  // decoration over synchronous work, and decoration that reads like the defect it replaced.
   const chainStats = new Map(
-    await Promise.all(
-      chains.map(async (c) => {
-        const rounds = await roundStore
-          .list({ chainId: c.id, boundaryFrom: statsFrom, limit: STATS_CAP })
-          .catch(() => []);
+    chains.map((c) => {
+        const rounds = roundsByChain.get(c.id) ?? [];
         // ⭐ E-90 · WHETHER A ROUND PAID ANYONE IS A FACT ABOUT ITS POOLS, NOT ITS OUTCOME.
         // A round that decided UP with nobody on DOWN refunds every stake: no winner, no
         // fee. The cell headed "Paid a winner" counted those as paid, and on the freshly
         // built board it read `100% 2/2 paid` over one paid round and one refunded one.
-        // One query for the window's pools, not one per round.
-        const pools = await marketStore
-          .poolsByIds(rounds.map((r) => r.marketId))
-          .catch(() => new Map<string, { yesPool: number; noPool: number }>());
+        // One query for the window's pools, not one per round — and since 2026-08-29 not one
+        // per CHAIN either: `pools` above is loaded once for every chain on the board.
         const withPools = rounds.map((r) => {
           const p = pools.get(r.marketId);
           // ⛔ A MISSING MARKET IS NOT AN EMPTY POOL. Absent → counted as two sides, so a
@@ -143,9 +186,8 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
           return { outcome: r.outcome, voidReason: r.voidReason, sides };
         });
         // ONE reducer, in a tested module — not a second copy of the rule living in JSX.
-        return [c.id, { ...summariseRounds(withPools), truncated: rounds.length >= STATS_CAP }] as const;
-      }),
-    ),
+        return [c.id, { ...summariseRounds(withPools), truncated: globallyTruncated || rounds.length >= STATS_CAP }] as const;
+    }),
   );
 
   // ── E-32 · the margin a chain is ACTUALLY priced at ────────────────────────

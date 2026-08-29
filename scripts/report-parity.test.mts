@@ -188,9 +188,13 @@ console.log("\n── 3b · dailyPnl's day buckets equal the per-day filter, row
      && got.totals.ggr === got.rows.reduce((s, r) => s + r.ggr, 0),
      `totals ${got.totals.stakes}/${got.totals.ggr} vs rows ${got.rows.reduce((s, r) => s + r.stakes, 0)}/${got.rows.reduce((s, r) => s + r.ggr, 0)}`);
 
-  // Leave the store as this section found it, so section 4's source scans and any later
-  // section read the same fixture the earlier ones did.
-  for (const t of seeded) await db.txn.delete(t.id);
+  // ⛔ NO CLEANUP, and it is not laziness: `db.txn` HAS NO `delete`. A transaction is a
+  // financial record and is never removed — `privacy.ts` refuses erasure of them by name. The
+  // seeded rows sit 60+ days after section 1's window and every later section (4, 4b, 5, 5b)
+  // is a source scan, so nothing downstream can see them.
+  // ⚠️ The first draft of this line read `await db.txn.delete?.(t.id).catch?.(() => {})` and
+  // PASSED — optional chaining short-circuits the whole chain, so it was a no-op wearing the
+  // shape of a cleanup. Written out, it threw immediately and said what was true.
 }
 
 console.log("\n── 4 · The reporting paths no longer call listAll ──────────────");
@@ -247,6 +251,55 @@ ok("the per-row detail fetch is bounded by the board size",
   "50 lookups regardless of how many players exist");
 ok("ROI has ONE definition", /roiOf\(r\)/.test(board),
   "two stores and a page ranking by three slightly different numbers is how a board lies");
+
+console.log("\n── 5b · The Up & Down console reads in bulk, not once per chain ──");
+
+/**
+ * 🔴 WHY, measured on production 2026-08-29. `/admin/updown` built its chain-health column with
+ * `Promise.all(chains.map(...))` and TWO awaits inside — a `roundStore.list` and a
+ * `marketStore.poolsByIds` per chain. Production carries **23 chains**, so one render fired
+ * **46 concurrent round-trips**, plus 7 more for the oracle strip. The page read **11,045 ms**
+ * against a 5,000 ms budget while the other 37 admin routes ran 241–2,267 ms.
+ *
+ * ⛔ AND IT SURVIVED BECAUSE NOTHING WAS WATCHING. `qa:admin-load` timed three hand-picked
+ * routes and passed; this page was in none of them. §5 above guards the leaderboard against the
+ * identical shape, and `market-dal.ts` states the rule in words — *"making an N+1 parallel does
+ * not remove it, it just points all of it at the connection pool at once."*
+ */
+{
+  const ud = read("../src/app/admin/updown/page.tsx");
+  const from = ud.indexOf("const STATS_WINDOW_DAYS");
+  const to = ud.indexOf("── E-32");
+  const block = from > 0 && to > from ? ud.slice(from, to) : "";
+  // CONTROL FIRST: an assertion over an empty slice passes unconditionally, which is the exact
+  // failure this suite exists to name.
+  ok("5b · CONTROL · the chain-stats block was located", block.includes("summariseRounds"),
+     `sliced ${block.length} chars — if the page was restructured, re-anchor this scan`);
+  // ⚠️ THE FIRST VERSION OF THIS CHECK WAS `/chains\.map\([\s\S]*?roundStore\.list/` AND IT
+  // FAILED THE FIXED CODE. `const chainIds = chains.map((c) => c.id)` is also a `chains.map(`,
+  // so the pattern matched the id list followed by the BULK read further down and reported a
+  // defect that was not there. A guard that cries red is not the safe direction either — it is
+  // how a correct fix gets reverted. The invariant is narrower and states itself:
+  // **the per-chain map does no I/O**, and I/O in a map needs an `async` callback.
+  ok("5b · 🔴 the per-chain map does NO I/O — it is not even async",
+     !/chains\.map\(\s*async/.test(block),
+     "an await inside chains.map is one round-trip per chain, which is the whole defect");
+  // ⛔ `\.poolsByIds\(` — the CALL form. A bare `poolsByIds` also matches the two comments
+  // above the code that explain why it is bulk, and counting those made this read 3.
+  const poolCalls = (block.match(/\.poolsByIds\(/g) ?? []).length;
+  ok("5b · exactly ONE poolsByIds CALL in the block",
+     poolCalls === 1,
+     `${poolCalls} call site(s) — it is a bulk primitive; more than one means it was split per chain again`);
+  ok("5b · it reads every chain's rounds in ONE query",
+     /roundStore\s*\n?\s*\.?list\(\{\s*chainIds/.test(block) || /roundStore\.list\(\{ chainIds/.test(block),
+     "expected roundStore.list({ chainIds, ... }) — both stores support it");
+  ok("5b · the global cap is a MULTIPLE of the per-chain cap, so one busy chain cannot starve the rest",
+     /STATS_CAP \* Math\.max\(1, chainIds\.length\)/.test(block),
+     "a flat global limit would silently drop the older chains' samples");
+  ok("5b · a globally capped sample is disclosed on EVERY chain",
+     /truncated: globallyTruncated \|\| /.test(block),
+     "under-disclosing a partial sample is how it gets read as a health verdict");
+}
 
 console.log(`\n${"─".repeat(64)}\n  REPORT PARITY: ${pass} passed, ${fail} failed\n${"─".repeat(64)}`);
 process.exit(fail === 0 ? 0 : 1);
