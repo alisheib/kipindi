@@ -342,8 +342,29 @@ ok("4.3 · the role chip yields the width below sm", /hidden sm:inline-flex[^"]*
 // comment claiming the drawer already showed the role — it did not. Pin the replacement.
 ok("4.4 · ⭐ and the role is re-rendered in the mobile drawer, not dropped",
    /roleLabel=\{roleLabel\(session\.role\)\}/.test(shellCode) && /roleLabel &&/.test(mobileSrc));
-ok("4.5 · the AdminKpi VALUE truncates — E-30 fixed the delta and left this assumed safe",
-   /tabular-nums leading-none truncate/.test(shellCode) && /title=\{typeof value === "string"/.test(shellCode));
+// 🔴 THIS ASSERTION MATCHED A SPELLING, AND THE SPELLING CHANGED (2026-08-29, DG-A-10).
+// It was `/tabular-nums leading-none truncate/` — three classes in one order. The value's
+// class list was rewritten to `amount … leading-none truncate text-title-sm sm:text-title-md`,
+// which is the SAME guarantee: `.amount` (globals.css) supplies `font-variant-numeric:
+// tabular-nums` along with mono and the §M4 letter-spacing: 0 it was minted for. Nothing this
+// rule protects was lost, and it went red anyway.
+// ⛔ It is the fourth guard in one session found matching a WORD instead of the behaviour —
+// `type-scale` §2 (`/^tracking-/`, blind to the letter-spacing every rung emits),
+// `ui-consistency`'s `hardcoded-pill-active` (the token's literal text, so it finds copies and
+// never divergence), `redo.cjs` (`/auth/`, blind to the offline page). A guard that pins a
+// class STRING breaks on a refactor that keeps its promise, and — far worse — stays green on
+// one that does not. So assert the three things 4.5 is actually about.
+{
+  const valueEl = /className=\{\["([^"]*)"/.exec(shellCode);
+  const cls = valueEl ? valueEl[1] : "";
+  ok("4.5 · the AdminKpi VALUE truncates — E-30 fixed the delta and left this assumed safe",
+     /\btruncate\b/.test(cls) &&
+     /\bleading-none\b/.test(cls) &&
+     // tabular digits, however they are supplied — literally, or through `.amount`.
+     (/\btabular-nums\b/.test(cls) || /\bamount\b/.test(cls)) &&
+     /title=\{typeof value === "string"/.test(shellCode),
+     `value classes: "${cls}"`);
+}
 // G-2's scale trap again, and this is where it cost the most: `h-10 w-10` is 80×80 here,
 // which made the hamburger the biggest single consumer of a 320px bar.
 // ⚠️ Comments stripped first — the THIRD time in this suite that a scan matched the fix's
