@@ -31,6 +31,21 @@ export function SearchHelp({
   const { t } = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
+  /**
+   * DG-A-03, second half. Unclipping the panel revealed the defect UNDER the defect: on 5 of the
+   * 7 search surfaces the box sits low enough that a 386-464px panel opening downward runs past
+   * the fold, so its LAST example row — a clickable one — could not be reached without scrolling.
+   * Measured on production: /admin/transactions top=565, /admin/candidates 576, /admin/ai-polls
+   * 476, /admin/proposals 492, /live 548, all bottom-out below a 900px viewport.
+   *
+   * ⛔ THIS CANNOT BE DONE IN CSS. Whether there is room below is a fact about where the trigger
+   * happens to be, and no selector can ask that. `select.tsx` and `date-select.tsx` already
+   * measure by hand for the same reason, so this is the file's own house style, not a new one.
+   * ⚠️ Measured on OPEN only, and it is deliberately not re-measured on scroll: the panel closes
+   * on outside-mousedown and Escape, so it never lives long enough to go stale, and a scroll
+   * listener here would run on every wheel event of a long admin table.
+   */
+  const [flipUp, setFlipUp] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -66,7 +81,17 @@ export function SearchHelp({
         // the spacing scale is OVERRIDDEN (tailwind.config.ts:200-215), so `h-8 w-8`
         // was 48px. ⛔ Never a scale token here.
         className="inline-flex h-[40px] w-[40px] items-center justify-center text-text-subtle hover:text-text transition-colors"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          // Decide the direction BEFORE painting, from the trigger's own position. 470px is the
+          // tallest the panel gets (464 with a `field:` row + the 6px gap); 12px keeps it off the
+          // very edge. If neither side has room, DOWN wins — the panel's own top stays reachable.
+          const r = ref.current?.getBoundingClientRect();
+          if (r) {
+            const below = window.innerHeight - r.bottom;
+            setFlipUp(below < 470 + 12 && r.top > below);
+          }
+          setOpen((v) => !v);
+        }}
       >
         <I.info s={15} aria-hidden />
       </button>
@@ -80,7 +105,7 @@ export function SearchHelp({
           // painted nothing at all. Anchor to the trigger instead of to a scale step — the
           // idiom `nav-more.tsx` already ships. ⛔ If a wider gap is ever wanted, change the
           // `6px`, never the `100%`.
-          className="absolute right-0 top-[calc(100%+6px)] z-50 w-[min(320px,calc(100vw-24px))] rounded-xl border border-border-strong bg-bg-elevated/95 p-3 shadow-e4 backdrop-blur-xl"
+          className={`absolute right-0 ${flipUp ? "bottom-[calc(100%+6px)]" : "top-[calc(100%+6px)]"} z-50 w-[min(320px,calc(100vw-24px))] rounded-xl border border-border-strong bg-bg-elevated/95 p-3 shadow-e4 backdrop-blur-xl`}
         >
           <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted">
             {t.common.searchHelpTitle}

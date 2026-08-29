@@ -54,7 +54,11 @@ const probe = (tapMin) => {
       label: (sw.getAttribute("aria-label") || "").slice(0, 40),
       w: Math.round(r.width), h: Math.round(r.height),
       up, down, reach: up + down + 1,
-      pass: up + down + 1 >= tapMin && Math.round(r.height) === 26 && Math.round(r.width) === 44 && Math.abs(up - down) <= 1,
+      // ⚠️ TOLERANCE 2, NOT 1. The box is exactly 40px, but the track's top/bottom are fractional,
+      // so probing INTEGER coordinates outward from a rounded centre legitimately reads 21/19.
+      // A tolerance of 1 failed 19 correct switches on the first run. The assertion that matters
+      // is `reach >= tapMin`; this one only catches a hit area that grew ENTIRELY one way.
+      pass: up + down + 1 >= tapMin && Math.round(r.height) === 26 && Math.round(r.width) === 44 && Math.abs(up - down) <= 2,
     };
   });
   // 4 · did the pseudo-element steal anyone's centre?
@@ -91,19 +95,27 @@ for (const { path, why } of ROUTES) {
       if (n === 0) { await ctx.close(); continue; }
       routesWithSwitches++;
 
-      // ⚠️ elementFromPoint is VIEWPORT-based: a switch below the fold probes nothing at all and
-      // would score a silent pass. Walk the page in viewport-sized steps and probe what is visible.
+      // ⛔ CENTRE EACH SWITCH, NEVER PAGE-STEP. `elementFromPoint` is VIEWPORT-based, and the
+      // admin shell has a STICKY TOPBAR: a switch that happens to land under it reads `up: 0`
+      // — a control apparently unreachable from above — which is a lie about the product and a
+      // truth about the probe. The first draft of this file page-stepped and produced exactly
+      // that on `/admin/system`'s "Publish banner" (re-probed centred: up 20 / down 20 = 41).
+      // It ALSO scored `n=7 probed=0` as a route-level ✓ on /admin/updown@390 — a green tick
+      // over a measurement that never happened. Both are fixed here.
       const seen = new Map();
-      const steps = Math.min(await p.evaluate(() => Math.ceil(document.body.scrollHeight / innerHeight)), 12);
-      for (let s = 0; s < steps; s++) {
-        await p.evaluate((i) => scrollTo(0, i * innerHeight * 0.9), s);
-        await p.waitForTimeout(250);
+      for (let i = 0; i < n; i++) {
+        await p.evaluate((idx) => document.querySelectorAll('[role="switch"].toggle-switch')[idx]?.scrollIntoView({ block: "center" }), i);
+        await p.waitForTimeout(180);
         const { reach, stolen } = await p.evaluate(probe, TAP_MIN);
-        for (const r of reach) if (r.reach > 1) seen.set(`${r.label}|${r.w}x${r.h}|${r.up}`, r);
+        const r = reach[i];
+        // Keep the WORST reading per label — never let a second, luckier probe paper over a bad one.
+        if (r) { const prev = seen.get(r.label); if (!prev || r.reach < prev.reach) seen.set(r.label, r); }
         for (const s2 of stolen) failures.push(`${path}@${W.n}: STOLEN — "${s2}" no longer owns its own centre`);
       }
 
       const rows = [...seen.values()];
+      // ⛔ A ROUTE THAT HAS SWITCHES AND PROBED NONE IS A FAILED RUN, NOT A CLEAN ONE.
+      if (rows.length === 0) failures.push(`${path}@${W.n}: ${n} switches present but 0 probed — the drive measured nothing`);
       probed += rows.length;
       const bad = rows.filter((r) => !r.pass);
       for (const r of bad) failures.push(`${path}@${W.n}: "${r.label}" reach=${r.reach} (up ${r.up}/down ${r.down}) paint=${r.w}×${r.h}`);
