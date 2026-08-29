@@ -7,9 +7,29 @@ rendered platform.”*
 
 ## ⏭️ RESUME AT — session 79 handover (2026-08-29)
 
-> **THE TWO DECISIONS ARE TAKEN, RULED IN `DESIGN_AUTHORITY` AND GUARDED.** Commit
-> `31e8f3ba`. Read this block, then §79 below it, then the PLANNER. ⛔ Every number here was
-> re-derived this session; where it contradicts the session-78 block below, THIS one is newer.
+> **THE TWO DECISIONS ARE TAKEN, RULED IN `DESIGN_AUTHORITY` AND GUARDED.** Read this block,
+> then §79 below it, then the PLANNER. ⛔ Every number here was re-derived this session; where
+> it contradicts the session-78 block below, THIS one is newer.
+>
+> **CLOSED THIS SESSION:** the money wall + the name collision (rulings, `31e8f3ba`) ·
+> **DG-A-18** (`f0f98a20` + `fe4d9aa7`) · **DG-A-10, both parts** (`bcd3b2d1` · `e4bf0e71` ·
+> `e4461156`).
+> **STEP 2 STILL OPEN:** `DG-A-11` 🚢 (33 multi-line `FieldLegend` bodies) · `DG-A-12` 🚢 (the
+> ~tens of amount sites onto `.amount` + a rung, and the above-floor per-site calls) ·
+> `DG-P-05` 🚢 (closes with DG-A-12) · `DG-P-06` ☐ (unblocked — §T7 settled its rung) ·
+> `DG-P-04` ☐ (re-derived; **the work order is in its planner row and the law is §S1**).
+> **NEW: `STEP 5` is planned and must NOT be started** — Ali's commission, a session of its own,
+> after steps 1–4.
+>
+> ### 🔬 THE THREE INSTRUMENTS THIS SESSION ADDED — all tracked, all with controls that go RED
+> · **`npm run qa:dg-type`** — the type bench, inside a live production page.
+> · **`npm run qa:dg-shell`** — the admin landmark/drawer seal, 40 routes.
+> · **`scripts/design-gate/session.mjs`** — ONE sign-in shared by every instrument.
+> ⛔ **And a rule this session paid for four separate times: a gate one level too shallow is
+> indistinguishable from no gate.** The sheet gate passed while every FONT was 404; §2 passed
+> while ten money elements were letter-spaced; §1/§2 passed VACUOUSLY on elements it never
+> read; `landmark-seal` was cited for a surface it never visits. **In every case the
+> instrument was green and the population was wrong.**
 
 ### ⭐ THE MONEY WALL IS RULED — and the guard that was supposed to enforce §M4 was blind
 `.amount` (globals.css, beside `.mono`) carries §M4's three properties, **replaces**
