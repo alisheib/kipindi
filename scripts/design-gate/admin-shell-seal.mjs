@@ -29,7 +29,8 @@
  *         SKIP_NAV=1                        (landmarks only, no 390 drawer pass)
  */
 import { chromium } from "playwright";
-import { loginOnce, BASE } from "../live/harness.mjs";
+import { BASE } from "../live/harness.mjs";
+import { loginShared } from "./session.mjs";
 import { ADMIN_ROUTES } from "./routes.mjs";
 
 /** ⛔ The two the shared population has always excluded — see the header. */
@@ -72,7 +73,7 @@ const browser = await chromium.launch();
   await anon.close();
 }
 
-const state = await loginOnce(browser, "admin");
+const state = await loginShared(browser, "admin");
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, storageState: state });
 const page = await ctx.newPage();
 
@@ -88,7 +89,7 @@ for (const route of ROUTES) {
      this programme lost 30 of 44 records once to a drive that believed the status code. */
   if (/\/auth\//.test(page.url())) {
     revoked++;
-    const fresh = await loginOnce(browser, "admin");
+    const fresh = await loginShared(browser, "admin");
     await ctx.addCookies(fresh.cookies);
     resp = await page.goto(BASE + route, { waitUntil: "load", timeout: 90_000 });
     await page.waitForTimeout(350);

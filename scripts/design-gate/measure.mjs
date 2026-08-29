@@ -17,7 +17,12 @@ import { chromium } from "playwright";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { loginOnce, BASE } from "../live/harness.mjs";
+import { BASE } from "../live/harness.mjs";
+/* ⭐ ONE SIGN-IN, SHARED. Every instrument here is its own process, so each used to take
+   its own session — ~10 admin logins for one session's checks, ~10 "new login" emails to
+   the owner, and (worse) each login REVOKES the previous, which is the revocation this rig
+   has been fighting all along. See session.mjs. */
+import { loginShared as loginOnce } from "./session.mjs";
 import { ADMIN_ROUTES, PLAYER_PUBLIC, PLAYER_AUTHED } from "./routes.mjs";
 
 const SURFACE = process.env.SURFACE || "admin";
