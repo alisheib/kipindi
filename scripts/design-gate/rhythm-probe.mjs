@@ -56,10 +56,17 @@ const page = await ctx.newPage();
 let probed = 0, findings = 0, skipped = 0;
 const rows = [];
 
+let first = true;
 for (const route of routes) {
+  /* ⚠️ THIS DRIVES A LIVE MONEY PLATFORM. Back-to-back navigations made production time out on
+     `load` for public pages that had answered in under a second moments earlier — three routes
+     of four on one run. A skipped route is not a clean route (control 2 below), so the fix is
+     to be gentler rather than to widen the timeout and call the silence a pass. */
+  if (!first) await page.waitForTimeout(1_500);
+  first = false;
   let url = "";
   try {
-    await page.goto(BASE + route, { waitUntil: "load", timeout: 60_000 });
+    await page.goto(BASE + route, { waitUntil: "load", timeout: 90_000 });
     await page.waitForTimeout(700);
     url = page.url();
   } catch {
@@ -74,7 +81,23 @@ for (const route of routes) {
 
   const found = await page.evaluate(() => {
     const out = [];
-    for (const c of document.querySelectorAll("[data-measure]")) {
+    for (const el of document.querySelectorAll("[data-measure]")) {
+      /* ⛔ THE RHYTHM HOST IS NOT ALWAYS THE CONTAINER, AND THIS PROBE READ ONE LEVEL TOO
+         SHALLOW ON ITS FIRST RUN. `/results` declares `space-y-5` on a WRAPPER inside
+         `<PageContainer>` — deliberately, because the container's first child is the
+         out-of-flow `sr-only` h1 this row exists to keep out of the rhythm. Reading only the
+         container reported "declares NO rhythm" over a page that had just been fixed.
+         So: the host is the container, unless its sole IN-FLOW child carries the `space-y-*`,
+         in which case that child is the host and its children are the bands. ⚠️ Sole — if a
+         container has several in-flow children, one of them carrying a rhythm is that child's
+         own business and the container still declares nothing. */
+      const inFlow = [...el.children].filter((k) => {
+        const s = getComputedStyle(k);
+        return s.position !== "absolute" && s.position !== "fixed";
+      });
+      const hasRhythm = (n) => /\bspace-y-[\w.]+/.test(n.getAttribute("class") || "");
+      const c = (!hasRhythm(el) && inFlow.length === 1 && hasRhythm(inFlow[0])) ? inFlow[0] : el;
+      const delegated = c !== el;
       const cs = getComputedStyle(c);
       const kids = [...c.children].map((k) => {
         const ks = getComputedStyle(k);
@@ -88,10 +111,11 @@ for (const route of routes) {
         };
       });
       out.push({
-        tier: c.getAttribute("data-measure"),
+        tier: el.getAttribute("data-measure"),
         cls: (c.getAttribute("class") || "").slice(0, 90),
         rowGap: cs.rowGap,
         display: cs.display,
+        delegated,
         kids,
       });
     }
@@ -106,7 +130,7 @@ for (const route of routes) {
     const lead = firstVisible > -1 ? c.kids[firstVisible] : null;
     const bad = !!(lead && ghosts.length && lead.marginTop > 0);
     if (bad) findings++;
-    rows.push({ route, tier: c.tier, rhythm, ghosts: ghosts.length, ghostTags: ghosts.map((g) => `${g.tag}.${(g.cls.split(" ")[0] || "")}`).join(","), leadTag: lead?.tag, leadMargin: lead?.marginTop, bad, noRhythm: !rhythm && c.display !== "flex" && c.display !== "grid" });
+    rows.push({ route, tier: c.tier, rhythm, delegated: c.delegated, ghosts: ghosts.length, ghostTags: ghosts.map((g) => `${g.tag}.${(g.cls.split(" ")[0] || "")}`).join(","), leadTag: lead?.tag, leadMargin: lead?.marginTop, bad, noRhythm: !rhythm && c.display !== "flex" && c.display !== "grid" });
     /* VERBOSE=1 prints the whole band stack. A histogram of "gaps" cannot say WHERE a gap
        came from; this can, and that is the difference between the register's un-actionable
        "seven section gaps" and a line number. */
@@ -125,17 +149,28 @@ console.log(`\n📐 §S1 RHYTHM PROBE — ${probed} container(s) on ${routes.len
 for (const r of rows) {
   const flag = r.bad ? "🔴" : r.noRhythm ? "⚠️ " : "✅";
   console.log(
-    `${flag} ${r.route.padEnd(30)} tier=${String(r.tier).padEnd(8)} rhythm=${String(r.rhythm || "(none)").padEnd(11)}` +
+    `${flag} ${r.route.padEnd(30)} tier=${String(r.tier).padEnd(8)} rhythm=${String((r.rhythm || "(none)") + (r.delegated ? "*" : "")).padEnd(12)}` +
     ` lead=<${r.leadTag}> margin-top=${r.leadMargin}px` +
     (r.ghosts ? `  ⟵ ${r.ghosts} out-of-flow sibling(s) before it: ${r.ghostTags}` : ""),
   );
 }
-console.log(`\n🔴 ${findings} container(s) where an OUT-OF-FLOW first child hands the rhythm rung to the first VISIBLE band.`);
+console.log(`\n   * = the rhythm is declared on a sole wrapper inside the container, not on the container — legitimate, and the reason /results does it is that the container's first child is an out-of-flow sr-only h1.`);
+console.log(`🔴 ${findings} container(s) where an OUT-OF-FLOW first child hands the rhythm rung to the first VISIBLE band.`);
 console.log(`⚠️  ${rows.filter((r) => r.noRhythm).length} container(s) declaring NO rhythm at all (§S1: the gap falls to per-element margins).`);
 
 /* ⛔ CONTROL 1 — zero probes is a skipped run, never a pass. */
 if (!probed) {
   console.error("\n🔴 ZERO containers probed — a skipped run, not a clean result.");
   process.exit(3);
+}
+/* ⛔ CONTROL 2 — A SKIPPED ROUTE IS NOT A CLEAN ROUTE, and this run proved it. Three routes
+   timed out on one invocation and the summary underneath still read "0 containers where an
+   out-of-flow first child hands the rhythm rung…" — a green sentence over a population that
+   had shrunk by three quarters. Same shape as `redo.cjs` reporting OK 48 over eight offline
+   pages. The count of skips is now stated as a FAILURE of the run, not a footnote. */
+if (skipped) {
+  console.error(`\n🔴 ${skipped} route(s) DID NOT LOAD — this run measured ${routes.length - skipped} of ${routes.length}.`);
+  console.error("   ⛔ Do not read the summary above as a pass: it is silent about every route it never reached.");
+  process.exit(5);
 }
 if (STRICT && findings) process.exit(1);
