@@ -213,6 +213,15 @@ const RATCHET_MONEY: Record<string, number> = {
      `font-display` (§T5) AND `text-body-sm` (§M4 tracking) over the prize amount. One site,
      two rules, and both are real — the wrap fixes both at once. */
   "tracked-money::src/components/ui/propose-promo.tsx": 1,
+  /* 🔴 THE ONE THE `>=` BLIND SPOT WAS HIDING — `positions/performance/page.tsx`'s **34px
+     net-P&L**, the largest money numeral on the player's performance page, carrying
+     `tracking-[-0.02em]`. It is a PURE money element, so the fix is one line
+     (`font-mono … tabular-nums … tracking-[-0.02em]` → `amount`) and NOT a copy call.
+     ⛔ NOT DONE BLIND: un-tightening 0.02em at 34px makes the amount ~7.5px WIDER inside a
+     `min-w-[220px]` column, and `/positions/performance` is an AUTHED player route — every
+     player QA secret is rejected by production, so it can be seen neither before nor after.
+     ⭐ FIRST THING TO FIX when a player credential exists; the guard now holds it. */
+  "tracked-money::src/app/positions/performance/page.tsx": 1,
 };
 /**
  * ⭐ 2026-08-29 — WIDENING §2's POPULATION FOUND 10 SITES IT COULD NEVER HAVE SEEN
@@ -369,13 +378,30 @@ const MONEY_CALL = /\bformatTzs(?:Compact|Signed|Abs)?\s*\(/;
  *
  * Matches a SINGLE element whose whole content is text (`[^<]*` — no nested tag),
  * so "the element that contains the call" is a fact rather than a guess. The
- * attribute match is `(?:[^>]|=>)*?` and not `[^>]*`: `[^>]*` stops at the first
+ * attribute match is `(?:[^>]|=>|>=)*?` and not `[^>]*`: `[^>]*` stops at the first
  * `>`, and every `onClick={() => …}` contains one — that one-character blind spot
  * had `ui-consistency`'s `bare-text-button` under-reporting for its whole life.
+ *
+ * 🔴 `>=` WAS ADDED 2026-08-29, AND IT WAS HIDING A LIVE §M4 VIOLATION.
+ * `=>` was handled; the COMPARISON `>=` was not — and a money className is routinely
+ * `` {`… ${pnl >= 0 ? "text-gilt" : "text-no-300"}`} ``. The capture stopped at that `>`,
+ * so the template literal it had swallowed was UNTERMINATED; `classGroups` needs a closing
+ * backtick, found none, and returned no groups. The element was still counted toward
+ * `0e scanner reach` and then judged on an EMPTY token list.
+ * ⛔ A VACUOUS PASS IS WORSE THAN A MISS: the element is inside the population, so the reach
+ * floor says it is covered, and §1/§2 say it is clean — of an element they never read. It
+ * hid `positions/performance/page.tsx`'s **34px net-P&L**, the largest money numeral on the
+ * player's performance page, carrying `tracking-[-0.02em]`.
+ * ⚠️ AND THE FIRST FIX FOR IT DID NOTHING, which is worth keeping: widening the BODY to
+ * `(?:[^>]|=>|>=)*?` changes no behaviour on its own, because the quantifier is LAZY — at
+ * the `>` of `>=` it prefers to stop and close the tag, and the rest of the pattern still
+ * matches, so the alternation is never tried. **The closing delimiter carries the fix:**
+ * `(?<!=)>(?!=)` refuses a `>` that is half of `=>` or `>=` and backtracks into it.
+ * `0h` asserts all of this, and fails if either half is reverted.
  */
 function scanMoneyElements(body: string): Array<{ tag: string; toks: string[]; snippet: string }> {
   const TAGS = "span|p|div|dd|dt|td|th|li|strong|em|b|h1|h2|h3|h4|h5|h6|label|small";
-  const re = new RegExp(`<(${TAGS})\\b((?:[^>]|=>)*?)>([^<]*?)</\\1>`, "g");
+  const re = new RegExp(`<(${TAGS})\\b((?:[^>]|=>|>=)*?)(?<!=)>(?!=)([^<]*?)</\\1>`, "g");
   const out: Array<{ tag: string; toks: string[]; snippet: string }> = [];
   for (const m of body.matchAll(re)) {
     if (!MONEY_CALL.test(m[3])) continue;
@@ -588,6 +614,32 @@ log("§0 — self-test: the scanners can see, and can fail");
   check("0g ⛔ CONTROL · body-sm is above the floor and label is below it, or the advice is wrong",
     /["']?body-sm["']?:\s*\[\s*"13px"/.test(cfg) && SUBFLOOR_CLASSES["text-label"] < 12.5,
     "the advice string names text-body-sm as the smallest key above the 12.5px floor");
+}
+
+// 0h — §1/§2's element scanner survives a JSX COMPARISON in the className.
+//      🔴 Added 2026-08-29 after a VACUOUS PASS: `{`… ${pnl >= 0 ? "a" : "b"}`}` truncated
+//      the attribute capture at that `>`, leaving an unterminated template literal that
+//      `classGroups` could not read — so the element was COUNTED toward the reach floor and
+//      judged on an EMPTY token list. It hid a real `tracking-` on a 34px net-P&L.
+//      ⛔ A vacuous pass is worse than a miss: the population says covered, the rule says clean.
+{
+  const cmp = `<p className={\`font-mono text-[34px] tabular-nums tracking-[-0.02em] \${pnl >= 0 ? "text-gilt" : "text-no-300"}\`}>{formatTzsSigned(pnl)}</p>`;
+  const arrow = `<span className="font-mono tabular-nums" onClick={() => go()}>{formatTzs(x)}</span>`;
+  const plain = `<span className="font-mono tabular-nums">{formatTzs(x)}</span>`;
+  const [c] = scanMoneyElements(cmp), [a] = scanMoneyElements(arrow), [p0] = scanMoneyElements(plain);
+  check("0h a className holding a `>=` comparison still yields its tokens (not a vacuous pass)",
+    Boolean(c) && c.toks.length > 0 && c.toks.includes("tracking-[-0.02em]"),
+    c ? `isolated but toks=[${c.toks.join(" ")}]` : "the element was not isolated at all");
+  check("0h …and §2 therefore FAILS it, which is the whole point",
+    Boolean(c) && isTracked(c.toks), c ? `isTracked=${isTracked(c.toks)}` : "not isolated");
+  // ⚠️ The `=>` case must keep working — the fix touches the same closing delimiter, and an
+  // arrow handler is the blind spot this scanner was originally widened for.
+  check("0h ⛔ CONTROL · an `onClick={() => …}` element still yields its tokens",
+    Boolean(a) && a.toks.includes("font-mono") && !isTracked(a.toks),
+    a ? `toks=[${a.toks.join(" ")}]` : "the arrow element was not isolated");
+  check("0h ⛔ CONTROL · a plain element is unaffected and is NOT reported as tracked",
+    Boolean(p0) && p0.toks.includes("tabular-nums") && !isTracked(p0.toks),
+    p0 ? `toks=[${p0.toks.join(" ")}]` : "the plain element was not isolated");
 }
 
 const files = walk(SRC);
