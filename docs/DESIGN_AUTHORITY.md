@@ -837,6 +837,46 @@ Values: the `--type-*` ladder in `globals.css`. Laws:
 3. **`--type-label` and `--type-nano` are the blessed sub-`micro` tier** — UPPERCASE mono
    tracking microlabels only. They sit below the reading floor deliberately.
    ⛔ **Never reading copy.**
+
+   ⭐ **THE EYEBROW'S TRACKING IS 0.14em — AND "THE EYEBROW" IS ONE OF FOUR ROLES, NOT ALL
+   UPPERCASE MONO TYPE.** Ruled 2026-08-30, DESIGN-GATE-2026-08-28 step 2 (DG-A-11 / DG-P-06),
+   measured with `npm run qa:dg-type --bench recipe` on production, in the real JetBrains Mono.
+   No law names a tracking value, so this is a taste call — taken against the screenshot and
+   the rendered widths, not from a preference.
+
+   🔴 **THE POPULATION FIRST, BECAUSE THE FIRST TWO COUNTS OF IT WERE BOTH WRONG.** The
+   session-79 handover said *"tracking varies 0.12/0.14/0.16/0.20em"* — four values. A census of
+   elements-with-a-closing-tag found **106 sites over nine values**. Widening the scan to
+   `<button>`, `<a>` and `<input>` found **468**. ⛔ And the third count is the one that changes
+   the answer, because the extra sites are not more eyebrows — they are a DIFFERENT ROLE:
+
+   | role | tracking | n | what it is |
+   |---|---|---|---|
+   | **section eyebrow** | **0.14em** | ~410 across 0.1/0.12/0.14/0.16/0.18 | the label over a block — the thing this rule governs |
+   | control label | 0.08em | 41, nearly all `<button>`/`<a>` | a word inside a control, read as a target not a heading |
+   | type-to-confirm input | 0.2em | 3 `<input>` (kill-switch · balance-adjust · `ConfirmModal`) | the operator types the word; the widest tracking is what makes it unambiguous |
+   | mark / celebration | 0.2–0.3em | 5 | error, not-found and win surfaces where the type IS the ornament |
+
+   ⛔ **So a sweep that standardises "every uppercase mono element" would flatten three real
+   distinctions to buy one number.** That is the same error as counting an amount inside a
+   sentence as an amount: a true measurement over the wrong population.
+
+   ⭐ **WHY 0.14em, in the order the method requires.** ① No law decides it. ② A dated,
+   shipped ruling does bear on it: `globals.css`'s `.admin-tbl thead` sets
+   `letter-spacing: 0.14em` and applies to all 44 admin tables — the single largest eyebrow
+   surface in the product, and the CSS side's own canonical answer. ③ Only then taste, against
+   neighbours and the render: 0.14em is 142 sites, the modal value; at 0.1em the string still
+   reads as compressed text rather than an identifier, which is the job §T3 gives it; at
+   0.18–0.2em a long string breaks into loose letters. ④ Measured, and on the population §A5
+   makes longest — Swahili: `JUMLA ILIYOLIPWA` at 10px renders **112px at 0.1em · 118.41px at
+   0.14em · 121.61px at 0.16em · 128px at 0.2em**. 0.14 costs +6.41px over the old mode and
+   leaves 9.6px of the range unspent, where 0.2 spends all of it.
+   ⚠️ **`field-legend.tsx` is 0.16em and is therefore the odd one out, not the standard** — the
+   kit's own eyebrow is not the product's modal recipe, which is exactly the drift DG-A-11
+   exists to remove. It moves to 0.14em with the rest.
+   ⛔ **An eyebrow with NO explicit tracking is not a neutral option:** `text-micro` emits
+   `letter-spacing: 0.4px` of its own, measured on the bench. Omitting the class picks a value;
+   it does not decline to pick one.
 4. **Reading-copy floor: 12.5px in-app, 12pt in print.** Below that is a label, not prose.
 5. **Every numeral is JetBrains Mono with `font-variant-numeric: tabular-nums`** — no
    exceptions, *including numbers inside body sentences when they are data* (stakes, odds,

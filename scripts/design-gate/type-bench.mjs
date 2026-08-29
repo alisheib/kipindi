@@ -126,6 +126,33 @@ const LABEL_TREATMENTS = [
   { id: "arb-10", label: "text-[10px] — the modal off-ladder size", cls: "font-mono uppercase tracking-[0.14em] text-[10px]" },
 ];
 
+/** ⭐ THE RECIPE BENCH — the last open question in step 2, and the one no law decides.
+ *  §T7 settled the RUNG (`text-micro`) and 139 sites moved onto it. What it did not settle is
+ *  the DRESSING, and the handover's *"tracking varies 0.12/0.14/0.16/0.20em"* was the wrong
+ *  population: re-derived 2026-08-29 there are **106 recipe elements in 74 files carrying 38
+ *  distinct recipes, 23 used exactly once, over NINE tracking values**. The three real
+ *  candidates, each with a claim to being canonical:
+ *    · **0.1em** — the MODE, 32 sites, and ⚠️ spelled two ways (`0.1em` / `0.10em`), so a
+ *      text-matching guard reads them as different. That is the `hardcoded-pill-active` shape.
+ *    · **0.14em** — what `globals.css`'s own `.admin-tbl thead` uses, i.e. the CSS side's
+ *      canonical eyebrow, and 21 call sites.
+ *    · **0.16em** — what `field-legend.tsx`, the KIT's canonical eyebrow, emits. 17 sites.
+ *  🔴 So the component and the product disagree: the most-typed eyebrow is NOT the kit's.
+ *  ⛔ A taste call still needs a screenshot — "I decided" is not a measurement — and the thing
+ *  to look at is Swahili, because §A5 makes it 35-40% longer and tracking multiplies per glyph:
+ *  the cost of a wider rung is paid on the LONGEST string, not the specimen one. */
+const RECIPE_STRINGS = ["TOTAL SETTLED", "JUMLA ILIYOLIPWA", "ZIMEKAMILIKA"];
+const RECIPE_TREATMENTS = [
+  { id: "tr-008", label: "0.08em — 2 sites", cls: "font-mono uppercase text-micro tracking-[0.08em]" },
+  { id: "tr-010", label: "0.1em — 32 sites (the MODE, two spellings)", cls: "font-mono uppercase text-micro tracking-[0.10em]" },
+  { id: "tr-012", label: "0.12em — 20 sites", cls: "font-mono uppercase text-micro tracking-[0.12em]" },
+  { id: "tr-014", label: "0.14em — 21 sites · .admin-tbl thead", cls: "font-mono uppercase text-micro tracking-[0.14em]" },
+  { id: "tr-016", label: "0.16em — 17 sites · FieldLegend", cls: "font-mono uppercase text-micro tracking-[0.16em]" },
+  { id: "tr-018", label: "0.18em — 6 sites", cls: "font-mono uppercase text-micro tracking-[0.18em]" },
+  { id: "tr-020", label: "0.2em — 4 sites", cls: "font-mono uppercase text-micro tracking-[0.20em]" },
+  { id: "tr-rung", label: "⛔ NO tracking — the rung's own 0.4px", cls: "font-mono uppercase text-micro" },
+];
+
 /* ── 3. The page ─────────────────────────────────────────────────────────────────────── */
 
 /* ⭐ THE CANDIDATE MECHANISMS FOR §M4, injected BEFORE the sheet so that SOURCE ORDER is
@@ -454,6 +481,36 @@ if (!ONLY_BENCH || ONLY_BENCH === "label") {
   const arb = label.find((l) => l.treatment === "arb-10");
   console.log(`  ⭐ moving the modal off-ladder eyebrow 10px → --type-micro 11px costs ${Math.round((css.width - arb.width) * 100) / 100}px of width on "${EYEBROW}"`);
   results.benches.eyebrowCost = Math.round((css.width - arb.width) * 100) / 100;
+}
+
+if (!ONLY_BENCH || ONLY_BENCH === "recipe") {
+  console.log("\n── RECIPE BENCH — the eyebrow's TRACKING, the last open call in step 2 ──");
+  const recipe = await runBench("EYEBROW RECIPE — nine tracking values, one rung", RECIPE_TREATMENTS, RECIPE_STRINGS);
+  results.benches.recipe = recipe;
+  for (const s of RECIPE_STRINGS) {
+    console.log(`\n  "${s}"`);
+    const g = recipe.filter((r) => r.string === s).sort((a, b) => a.width - b.width);
+    const base = g.find((r) => r.treatment === "tr-010");
+    for (const r of g) {
+      const d = Math.round((r.width - base.width) * 100) / 100;
+      console.log(`    ${r.label.padEnd(46)} ls ${r.letterSpacing.padStart(7)} → ${String(r.width).padStart(6)}px  ${d === 0 ? "(the mode)" : (d > 0 ? "+" : "") + d + "px"}`);
+    }
+  }
+  /* ⛔ THE ASSERTION THAT MATTERS IS THE ONE ABOUT SWAHILI, not about the English specimen.
+     §A5: every label must survive Swahili at ~35-40% longer, and tracking is charged PER GLYPH,
+     so the widest recipe is punished hardest exactly where there is least room. Quoting the
+     cost on "TOTAL SETTLED" alone would be a true measurement over the wrong population — this
+     programme's signature failure, and the reason §M4's own note lists five rungs, not one. */
+  const sw = recipe.filter((r) => r.string === "JUMLA ILIYOLIPWA");
+  const lo = sw.find((r) => r.treatment === "tr-010"), hi = sw.find((r) => r.treatment === "tr-016");
+  const spread = Math.round((hi.width - lo.width) * 100) / 100;
+  results.benches.recipeSwSpread = spread;
+  console.log(`\n  ⭐ 0.1em → 0.16em costs ${spread}px on the SWAHILI string (${lo.width} → ${hi.width}), the population §A5 makes longest.`);
+  assert("the candidate trackings render measurably different widths (the choice is real, not cosmetic)",
+    spread > 1, `${spread}px on "JUMLA ILIYOLIPWA"`);
+  const untracked = recipe.find((r) => r.treatment === "tr-rung" && r.string === "TOTAL SETTLED");
+  assert("an eyebrow with NO explicit tracking still gets the rung's own 0.4px (so 'no tracking' is not a neutral option)",
+    untracked.letterSpacing !== "normal" && parseFloat(untracked.letterSpacing) > 0, untracked.letterSpacing);
 }
 
 await page.evaluate(() => window.scrollTo(0, 0));
