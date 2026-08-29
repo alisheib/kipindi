@@ -36,8 +36,14 @@ export function AdminSidebarNav({ groups, badges, fallbackKey }: { groups: Reado
                 aria-current={active ? "page" : undefined}
                 className={[
                   // ⭐ DG-A-18 · 40px, the `--h-control-sm` rung, replacing a `py-2` that
-                  // resolved to 42 — off both the 40 and 44 rungs, on every row of every
-                  // admin page. Stated as the FLOOR and centred, never summed to.
+                  // resolved to 42 — off both the 40 and 44 rungs. Stated as the FLOOR and
+                  // centred, never summed to.
+                  // ⚠️ THIS COMMENT SAID "on every row of every admin page" AND IT WAS NOT TRUE
+                  // (corrected 2026-08-29). The fix landed HERE only; `admin-mobile-nav.tsx` kept
+                  // the identical `py-2` = 42 for another day, one file away, while this line
+                  // claimed the whole surface. A comment that overstates its own reach is how the
+                  // next session decides a row is finished without measuring it — the drawer takes
+                  // `--h-control-md` (44), not this rung, because it is a MOBILE target (§A2).
                   "flex min-h-[var(--h-control-sm)] items-center justify-between rounded-md px-2.5 text-body-sm transition-colors",
                   active
                     ? "text-text font-semibold"

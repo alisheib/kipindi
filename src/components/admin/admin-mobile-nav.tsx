@@ -120,12 +120,27 @@ export function AdminMobileNavTrigger({ groups, badges, fallbackKey, roleLabel }
                         // Same reason as admin-sidebar-nav: the current page was signalled by
                         // colour and weight alone, in a drawer whose whole purpose is orientation.
                         aria-current={active ? "page" : undefined}
+                        // ⭐ DG-A-18 · 44px, the `--h-control-md` rung, replacing a `py-2` that
+                        // resolved to 42 — off both rungs, on every row of this drawer. ⛔ NOT
+                        // `--h-control-sm` (40) as the desktop sidebar takes: this is the MOBILE
+                        // nav, and §A2 reads "≥ --tap-min (40px), **44px preferred on mobile**".
+                        // Copying the sibling would have moved a finger target the wrong way, from
+                        // 42 DOWN to 40. `--h-control-md` is documented at its line as "44, not 40,
+                        // so it equals --h-input". Stated as the FLOOR and centred, never summed to.
                         className={[
-                          "flex items-center justify-between rounded-md px-2.5 py-2 text-body-sm transition-colors",
+                          "flex min-h-[var(--h-control-md)] items-center justify-between rounded-md px-2.5 text-body-sm transition-colors",
                           active
-                            ? "bg-bg-inset text-royal-300 font-semibold"
+                            ? "text-text font-semibold"
                             : "text-text-secondary hover:bg-bg-overlay hover:text-text",
                         ].join(" ")}
+                        // ⭐ DG-A-18 · §B9, and the SECOND HOME the sidebar's own fix left standing.
+                        // This was `bg-bg-inset text-royal-300` — a different fill and a different
+                        // ink for the one semantic `--pill-active` owns ("one active filter/tab fill
+                        // everywhere", globals.css:423), one file from the commit that named the
+                        // problem. ⛔ `ui-consistency`'s `hardcoded-pill-active` could not see it
+                        // either: that rule matches the token's LITERAL TEXT, and this was not a
+                        // copy of the literal but a different answer to the same question.
+                        style={active ? { background: "var(--pill-active)" } : undefined}
                       >
                         <span>{it.label}</span>
                         {/* the same kit pip as the desktop sidebar — `count-badge.tsx` names this

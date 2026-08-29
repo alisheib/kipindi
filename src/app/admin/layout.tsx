@@ -94,8 +94,21 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   // Auth-only pages (TOTP verify + 2FA setup) render as standalone pages —
   // no sidebar, no admin topbar. These are gate pages, not console pages.
+  //
+  // 🔴 THEY HAD NO `<main>` AT ALL, AND NOTHING COULD SEE IT (fixed 2026-08-29, DG-A-18).
+  // The console's landmark is at the `<main>` below, and the register's "no `<main>` on any
+  // admin route" was answered by pointing at it — true for 38 routes and false for these 2,
+  // because this early return sits ABOVE it. ⛔ And `ADMIN_ROUTES` (the 38 every drive walks)
+  // contains neither, so the population could not have found them: the two routes without the
+  // landmark are exactly the two nobody measures. `/admin/2fa/setup` is the FORCED-ENROLMENT
+  // page — every new admin passes through it, so it is not an edge case.
+  // ⚠️ Deliberately a bare `<main>`: the console's carries `max-w-console` and
+  // `data-measure="console"`, and these pages set their own width (`max-w-md`) — inheriting the
+  // console measure would widen a centred gate card. And deliberately NO skip link: there is no
+  // nav here to skip, and a bypass link that skips nothing is noise, not access (WCAG 2.4.1 is
+  // about repeated blocks).
   if (TOTP_EXEMPT.has(path)) {
-    return <>{children}</>;
+    return <main id="main-content">{children}</main>;
   }
 
   // TOTP gate — the cookie is HMAC-signed with userId + sessionId to prevent
