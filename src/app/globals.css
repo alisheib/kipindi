@@ -3801,8 +3801,32 @@ html[data-sheet-open] .route-enter { animation: none; }
 /* Consistent padding, breathing room, and border treatment for every
    admin data table. Apply `.admin-tbl` on the <table> element inside
    a `padding="p-0"` AdminCard. */
-.admin-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-.admin-tbl thead { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-subtle); background: var(--bg-overlay); border-bottom: 1px solid var(--border); }
+/* ⭐ DG-A-12 · BOTH OF THIS TABLE'S SIZES NOW COME FROM THE LADDER (2026-08-29).
+   They were 12.5px and 10px — neither on the `--type-*` scale, and between them the single
+   biggest off-ladder population in the console: the body size alone governs ~1,376 rendered
+   cells. ⚠️ NOT 1,376 EDITS — they all read THIS ONE DECLARATION, which is why the register's
+   framing ("bless 12.5 as a token, or move tables to 13") made the cheap option look expensive.
+
+   ⛔ WHY NOT `--type-table: 12.5px`, which is the option the register offered Ali.
+   DESIGN_AUTHORITY §T1: "The scale is closed… the next screen will pick a different number and
+   the product loses its rhythm one component at a time." §T2 has ALREADY applied that law to
+   this exact shape — the off-ladder market question — and ruled: "the fix is to move the question
+   onto the ladder, NEVER to re-tune `--type-h1` to match it." Minting `--type-table` is re-tuning
+   the token to match the drift, which is the move §T2 forbids by name. And §T4 makes 12.5px the
+   READING FLOOR, so a rung there would put a type size and a legibility floor on one number,
+   0.5px away from `--type-small`. Two rungs no reader can tell apart is the "fonts everywhere"
+   feeling DG-A-11 exists to remove.
+   ⭐ A side effect worth naming: at 13 the table body sits ABOVE the reading floor instead of
+   exactly on it.
+
+   ⛔ AND THE HEAD IS NOT `--type-micro`. It is uppercase, mono and tracked 0.14em — precisely
+   §T3's blessed sub-micro tier ("UPPERCASE mono tracking microlabels only… they sit below the
+   reading floor deliberately"), so it takes `--type-label`. Measured before choosing, not after:
+   `--text-subtle` reads **7.52:1** on `--bg` and 7.50 on `--bg-inset`, so the smaller rung costs
+   no contrast. It also keeps these `white-space: nowrap` headers NARROWER, which pushes the
+   right way on DG-A-23 while the body grows. */
+.admin-tbl { width: 100%; border-collapse: collapse; font-size: var(--type-small); }
+.admin-tbl thead { font-family: var(--font-mono); font-size: var(--type-label); letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-subtle); background: var(--bg-overlay); border-bottom: 1px solid var(--border); }
 .admin-tbl th { padding: 10px 16px; font-weight: 500; white-space: nowrap; }
 .admin-tbl td { padding: 12px 16px; vertical-align: middle; }
 /* ⚠️ This transition had a duration and NO easing at all — B5 rule 3 wants the pair
