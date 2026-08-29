@@ -80,9 +80,12 @@ let checked = 0;
 
 for (const surface of SURFACES) {
   const state = surface.authed ? await loginOnce(b, "admin") : undefined;
-  // ⚠️ ONE CONTEXT PER SURFACE, NOT ONE PER ROUTE. A fresh context per cell, seeded from a saved
-  // `storageState`, stops being accepted partway through a long admin drive — measured on
-  // `qa:chart-axis`, which read the SIGN-IN PAGE (at HTTP 200) for its last 8 of 15 cells.
+  // ⚠️ ONE CONTEXT PER SURFACE — a sensible default, and NOT a fix for session revocation.
+  // ⛔ An earlier version of this comment said it was. It is not: `qa:chart-axis` lost its
+  // session at the SAME boundary with one context and with one per cell. The variable there was
+  // `/admin/live` (an open SSE stream), not the contexts. None of the four admin routes below
+  // holds a stream, which is why this drive survives on one context — read that as a property of
+  // the ROUTES, not of the context strategy, and re-derive before copying it anywhere.
   const ctx = await b.newContext({
     ...(state ? { storageState: state } : {}),
     viewport: { width: 1440, height: 900 },

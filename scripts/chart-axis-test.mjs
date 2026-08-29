@@ -32,14 +32,22 @@
  *
  * ⛔ ZERO CHARTS PROBED IS A SKIPPED RUN, NEVER A PASS.
  *
- * ⚠️ ONE CONTEXT FOR THE WHOLE DRIVE, AND THAT IS A MEASURED REQUIREMENT, NOT A STYLE CHOICE.
- * The first version of this file opened a FRESH context per route×width from one saved
- * `storageState`, exactly as `qa:toggle-hit` does. It measured 7 pages and then read the
- * SIGN-IN PAGE for the remaining 8 — first failing immediately after `/admin/live`, the one
- * route here that holds a stream open. The saved state stops being accepted partway through;
- * a single context keeps whatever the server rotates into it, and the failure disappears.
- * ⛔ Do not "tidy" this back into per-cell contexts. And note the shape: every one of those 8
- * pages returned HTTP 200 and rendered fine — only the `/auth/` check told the truth.
+ * ⚠️ THE ADMIN SESSION CAN DIE MID-DRIVE, AND THE CAUSE IS **NOT** ESTABLISHED. Read this as
+ * three observations and NO diagnosis, because two diagnoses have already been wrong:
+ *   · run 1 — a fresh context per route×width: 7 cells measured, then the sign-in page for 8.
+ *   · run 2 — ONE context for the whole drive: 3 cells measured, then the sign-in page for 12.
+ *   · run 3 — one context, `/admin/live` moved last, re-login recovery armed: **15 of 15 cells
+ *     measured and the recovery never fired.**
+ * ⛔ The first note here blamed per-cell contexts; run 2 disproved it. The second blamed
+ * `/admin/live` (the last good cell in runs 1 and 2, and the only route here holding an SSE
+ * stream); run 3 loaded `/admin/live` four times and lost nothing. **Both were a correlation
+ * from one run written down as a cause.** What is actually known: it happens, it is not
+ * deterministic, and every revoked page still returns HTTP 200 and renders — only the `/auth/`
+ * check tells the truth.
+ * ⭐ So the drive does not try to avoid it. It DETECTS it, re-signs-in, retries that one cell,
+ * and PRINTS the count. `/admin/live` stays last as a cheap hedge, not as a fix.
+ * ⛔ A re-login is never silent: `resignins` is printed beside the probe counts, because a drive
+ * quietly re-authenticating is a finding about the platform, not housekeeping.
  *
  *   node scripts/chart-axis-test.mjs [baseUrl]      (default: production)
  */
@@ -57,9 +65,19 @@ const MAX_ANISOTROPY = 0.12;
 const ROUTES = [
   { path: "/admin/finance", why: "2× AdminAreaChart + AdminStackedBars in a 2-up grid — the P1 case" },
   { path: "/admin", why: "the overview area chart, full-width" },
-  { path: "/admin/live", why: "live flow chart" },
-  { path: "/admin/ai-usage", why: "spend series beside AdminMeter" },
+  // ⚠️ CONDITIONAL MEMBER, and the condition is in the product, not in this file:
+  // `ai-usage/page.tsx` renders its chart ONLY when the Anthropic Cost API key is set AND
+  // ≥2 daily points exist — *"we draw the truth or nothing — never a fabricated line."*
+  // Measured on production 2026-08-29: neither holds, so the route carries NO chart at all —
+  // not an empty state, no element. That is correct behaviour, so it is reported as a NOTE.
+  // ⛔ It stays in the list. Deleting it would be a gate quietly shrinking its own population;
+  // if the key is ever set, this route must start being measured without anyone remembering to
+  // add it back.
+  { path: "/admin/ai-usage", why: "spend series beside AdminMeter", conditional: "its chart renders only with the Anthropic Cost API key set (≥2 daily points)" },
   { path: "/admin/players/cohorts", why: "registrations series beside AdminBarList" },
+  // Last as a cheap hedge: it was the final good cell in both drives that lost their session.
+  // ⚠️ NOT a fix — run 3 loaded it four times and lost nothing. See the header.
+  { path: "/admin/live", why: "live flow chart — kept last as a hedge, not as a fix" },
 ];
 const WIDTHS = [
   { n: "1920", w: 1920, h: 1000 },
@@ -101,6 +119,9 @@ const probe = () => {
   }
 
   // ── HTML axis layers: scale 1 by construction, so the declared size IS the effective one ──
+  // A chart sitting in its documented EMPTY state — measurable, and not a defect.
+  const empties = document.querySelectorAll('[data-chart="empty"]').length;
+
   const byRoot = new Map();
   for (const el of document.querySelectorAll("[data-chart-label]")) {
     // ⛔ A label the narrow viewport DROPS (`hidden sm:block`) is not a defect — but it has a
@@ -124,33 +145,66 @@ const probe = () => {
     });
   }
 
-  return { charts, labels };
+  return { charts, labels, empties };
 };
 
 const b = await chromium.launch();
-const state = await loginOnce(b, "admin");
 const failures = [];
+const notes = [];
 let chartsProbed = 0;
 let labelsProbed = 0;
+let resignins = 0;
 
-const ctx = await b.newContext({ storageState: state, viewport: { width: WIDTHS[0].w, height: WIDTHS[0].h }, colorScheme: "dark" });
-const p = await ctx.newPage();
+/** ⛔ BOUNDED. The harness records that a dozen sign-ins in a few minutes stop being accepted;
+ *  a drive that needs more than this many has found a platform problem, not a flaky cell. */
+const MAX_SIGNINS = 8;
+let ctx = null;
+let p = null;
+let signins = 0;
+async function freshSession(viewport) {
+  if (ctx) await ctx.close().catch(() => {});
+  if (signins >= MAX_SIGNINS) throw new Error(`refusing sign-in #${signins + 1} — the session is being revoked faster than it can be replaced`);
+  signins++;
+  const state = await loginOnce(b, "admin");
+  ctx = await b.newContext({ storageState: state, viewport, colorScheme: "dark" });
+  p = await ctx.newPage();
+}
+await freshSession({ width: WIDTHS[0].w, height: WIDTHS[0].h });
 
 for (const W of WIDTHS) {
   await p.setViewportSize({ width: W.w, height: W.h });
-  for (const { path, why } of ROUTES) {
-    {
+  for (const { path, why, conditional } of ROUTES) {
+    // one retry, and ONLY for a revoked session — never for a failed assertion
+    for (let attempt = 1; attempt <= 2; attempt++) {
     try {
       await p.goto(`${BASE}${path}`, { waitUntil: "load", timeout: 120_000 });
       await p.waitForLoadState("networkidle", { timeout: 8_000 }).catch(() => {});
       await p.waitForTimeout(1_200);
       // ⛔ A revoked session renders the sign-in page at HTTP 200. Say so; never score it 0/0 green.
-      if (/\/auth\//.test(p.url())) { failures.push(`${path}@${W.n}: SESSION REVOKED — measured the sign-in page`); continue; }
+      if (/\/auth\//.test(p.url())) {
+        if (attempt === 1) {
+          resignins++;
+          console.log(`${path.padEnd(24)} @${W.n.padEnd(5)} session revoked (by the route before it) — signing in again and retrying`);
+          await freshSession({ width: W.w, height: W.h });
+          continue;
+        }
+        failures.push(`${path}@${W.n}: SESSION REVOKED TWICE — measured the sign-in page even after a fresh sign-in`);
+        break;
+      }
 
-      const { charts, labels } = await p.evaluate(probe);
+      const { charts, labels, empties } = await p.evaluate(probe);
       if (charts.length === 0) {
-        failures.push(`${path}@${W.n}: no chart with labels found — the population shrank, re-choose it deliberately`);
-        continue;
+        if (empties > 0) {
+          notes.push(`${path}@${W.n}: ${empties} chart(s) in the documented EMPTY state — nothing to measure, not a defect`);
+          console.log(`${path.padEnd(24)} @${W.n.padEnd(5)} ${empties} chart(s) EMPTY — "No data in this window"`);
+        } else if (conditional) {
+          notes.push(`${path}@${W.n}: no chart rendered — ${conditional}`);
+          console.log(`${path.padEnd(24)} @${W.n.padEnd(5)} no chart — ${conditional}`);
+        } else {
+          // ⛔ A route that MUST carry a chart and carries none is a failed drive, not a clean one.
+          failures.push(`${path}@${W.n}: no chart and no empty state — the population shrank, re-choose it deliberately`);
+        }
+        break;
       }
       chartsProbed += charts.length;
       labelsProbed += labels.length;
@@ -198,6 +252,7 @@ for (const W of WIDTHS) {
     } catch (e) {
       failures.push(`${path}@${W.n}: ${e.message.slice(0, 100)}`);
     }
+    break; // measured (or failed an assertion) — the retry exists only for a revoked session
     }
   }
 }

@@ -244,7 +244,8 @@ Confirmed instances, each with one definition site that already exists:
 ### DG-A-15 · P1 — charts: squashed axes and unreadable legends
 - **Measured:** every `AdminAreaChart`/`AdminStackedBars` renders in a 1200-wide viewBox with **`preserveAspectRatio="none"`** (admin-charts.tsx:95–96, 212) — axis glyphs squash horizontally at any width ≠ 1200 and vertically by height/240 (finance shots: y-labels ~7px equivalent, S-03 adjacent); stacked-bar legend prints raw provider ids (DG-A-13).
 - **Fix:** render text in a non-scaling layer (`vector-effect="non-scaling-stroke"` doesn’t cover text — draw axis labels as HTML overlay, or compute per-render width) — one component file.
-- **Guard:** screenshot pass on finance at 1440/1920 reading axis label font-size ≥ 10px effective.
+- **Guard:** `npm run qa:chart-axis` — 5 chart routes × 3 widths, asserting isotropy, a 10px effective floor in BOTH dimensions, no overlap, and nothing clipped by the card edge.
+- ⚪ **CORRECTED 2026-08-29 (`fdba7cad`), and the correction is the point.** *"and vertically by height/240"* above is **WRONG — `scaleY` is EXACTLY 1.0 on every chart measured**, because the viewBox height has always been the CSS height. The squash is purely horizontal (scaleX 0.44 at 1440, 0.60 at 1920, **0.257 at 390**). ⛔ A guard written to this entry's own wording — a font-size or a HEIGHT floor — would have passed the defect forever; what separates the two is the RATIO of the axes. The proposed remedy *"or compute per-render width"* was also declined: it needs a runtime measurement, and the HTML layer needs none. **The planner row in [`SESSION-PROMPT-DESIGN-GATE.md`](SESSION-PROMPT-DESIGN-GATE.md) is the authority for this system.**
 
 ---
 ### DG-A-16 · P2 — the card/panel system has three paddings, two dead classes and an inversion

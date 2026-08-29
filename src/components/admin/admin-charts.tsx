@@ -183,7 +183,12 @@ export function AdminAreaChart({
 }) {
   if (series.length === 0) {
     return (
+      // ⭐ `data-chart="empty"` so a drive can tell A CHART IN ITS EMPTY STATE from A CHART THAT
+      // IS NOT THERE. Without it both look identical from outside — nothing to measure — and a
+      // gate would have to choose between calling a legitimate empty state a failure and calling
+      // a vanished chart a pass. Neither is acceptable; the marker removes the choice.
       <div
+        data-chart="empty"
         className="rounded-md bg-bg-sunken border border-dashed border-border-subtle flex items-center justify-center text-caption text-text-tertiary w-full"
         style={{ minHeight: height }}
       >
@@ -344,6 +349,7 @@ export function AdminStackedBars({
   if (bars.length === 0) {
     return (
       <div
+        data-chart="empty"
         className="rounded-md bg-bg-sunken border border-dashed border-border-subtle flex items-center justify-center text-caption text-text-tertiary w-full"
         style={{ minHeight: height }}
       >
