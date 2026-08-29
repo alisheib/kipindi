@@ -9,7 +9,8 @@
 ## 1 · THE DESIGN GATE — 100% render consistency · `DESIGN-GATE-2026-08-28` · ▶ **ACTIVE**
 
 **Door: [`SESSION-PROMPT-DESIGN-GATE.md`](SESSION-PROMPT-DESIGN-GATE.md)** — 4 steps, the gates per
-step, the traps, the tracking table, and the delete-when-done list.
+step, the traps, **THE PLANNER** (37 rows, one per system — the only tracker), and the
+delete-when-done list.
 
 | | |
 |---|---|

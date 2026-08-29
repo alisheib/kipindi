@@ -179,19 +179,15 @@ resolved in this document; decide when you reach them rather than discovering it
 
 ---
 
-## Keep track — tick here, push after every completed step
-Update this table in the same commit as the work (programme key in the commit message).
-
-| Step | Systems | Status | Commit | Re-measured |
-|---|---|---|---|---|
-| 1 kit primitives | DG-A-02/03/04/05/07/10/15/17/23 · DG-P-01/02 | 🟠 **10 of 11** | `0db54c4f`…`fe862319` | ✅ **ALL RE-MEASURED ON PRODUCTION 2026-08-29, HEAD `0de8003f` serving.** ☑ DG-P-01 (hover-dead 114→32) · DG-A-02 (206 probes PASS) · DG-A-03 (7/7 hittable) · DG-A-04 kit half (36→40) · DG-A-05 (closed, no change) · DG-A-07 (closed, no change) · DG-A-17 (64.5→44.5) · DG-A-23 (thumb 2.23→3.18) · 🚢 DG-A-10 part 1 (bare ▲ 8+→**0**, clipped money 6→3) · ☐ **DG-A-15 only**. ⛔ **3 of the 11 needed NO code** — they asked to reverse dated, measured decisions. **Control population intact: 0 horizontal overflow on all 16 public routes × 3 widths** |
-| 2 tokens & classes | DG-A-11/12/16/18 · DG-P-04/05/06 | ☐ | — | — |
-| 3 sweeps | DG-A-04/06/08/09/13/14/21 · DG-P-03/07/08/10/11 | ☐ | — | — |
-| 4 singles | DG-A-01/20/22 · DG-P-09/12/13/14 | ☐ | — | — |
-| Ali decisions | type-ladder ruling · pagination-vs-rail rung · §7 verify-before-fix items | ☐ | — | — |
+> 🧹 **There was a second, five-row “Keep track” table here, and it is DELETED (session 77).**
+> It restated step 1's status beside the planner that already carried it per system — and it had
+> already started to diverge: it still listed *“pagination-vs-rail rung”* as an open Ali decision
+> after DG-A-07's own row recorded **“NOT an Ali decision after all”**. Two homes for one fact,
+> and the stale one is the one that gets read (§0a). **The planner above is the only tracker**;
+> the step→systems map is the *“The work, in order”* table near the top of this file.
 
 ## 🧹 DELETE WHEN DONE (Ali’s instruction, 2026-08-28)
-When every row above is ✅ and the gate re-measures green on production:
+When every row of THE PLANNER is ☑ and the gate re-measures green on production:
 - delete `.qa-design-gate/` and any leftover `.qa-design-adminscan/` output (evidence, regenerable);
 - delete `design-brief/design-gate-2026-08-28/` + its `.gitignore` exception (once the round is sent);
 - mark the two `DESIGN-GATE-*` reports’ headers **⚪ SPENT** (keep the files — they are the record);
