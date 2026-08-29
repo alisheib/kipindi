@@ -226,7 +226,7 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
           </p>
 
           <div className="space-y-4">
-            <div className="rounded-md glass-panel p-4">
+            <div className="glass-panel p-4">
               <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle mb-3">Add override</p>
               <FormColumn measure="form"><MarketOverrideForm globalConfig={config} /></FormColumn>
             </div>

@@ -20,7 +20,7 @@ export function ChartToggle({
   const { t } = useT();
 
   return (
-    <section className="rounded-lg glass-panel overflow-hidden">
+    <section className="glass-panel overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

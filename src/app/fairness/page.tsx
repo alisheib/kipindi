@@ -145,7 +145,7 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
             }
           />
         ) : (
-          <ScrollX label="Resolved markets" className="rounded-lg glass-panel">
+          <ScrollX label="Resolved markets" className="glass-panel">
             <table className="admin-tbl">
               <thead className="border-b border-border bg-bg-overlay">
                 <tr className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">

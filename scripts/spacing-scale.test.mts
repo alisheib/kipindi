@@ -111,7 +111,7 @@ for (const f of walk(SRC)) {
  * ⚠️ Set from the measured tree, comments stripped. If it drops, lower it in the same commit —
  * a ceiling above the real count stops being a ratchet.
  */
-const CEILING = 632;
+const CEILING = 629;   // 2026-08-29: -3, AdminKpi x2 + its skeleton left p-3.5 (14px) for p-2 (12px) — DG-A-16
 
 ok(`1: 🔴 inverted spacing usages may only shrink (${total}, ceiling ${CEILING})`,
   total <= CEILING,

@@ -239,8 +239,7 @@ const BASELINE = new Set<string>([
   "m-axis-reveal", "m-behind", "m-focusable", "m-indicator", "m-needle", "m-press",
   "m-raise", "m-seal", "m-skeleton", "mat-flat", "mat-raised-i", "needle-settle-loss",
   // ── One-off page furniture whose page was rebuilt around it.
-  "market-search", "mcardp-q-sw", "pnl-grid", "pnl-cell", "pnl-cap",
-  "tooltip-popover", "trust-item", "trust-sep", "value-flash", "value-delta",
+  "market-search", "mcardp-q-sw", "tooltip-popover", "value-flash", "value-delta",
   // ⚠️ THREE CLASSES CAME OFF THIS LIST BEFORE IT EVER SHIPPED, and §1.2 is why — the first
   // draft was written from a hand-run probe and §1.2 rejected three of its guesses:
   //   · `.pnl-val` reads "script-only" — `type-scale.test.mts` names it. Nothing RENDERS it
@@ -261,7 +260,7 @@ const BASELINE = new Set<string>([
     // `mat-raised` LEFT THIS LIST on 2026-08-21 — `ui/cashback-promo.tsx` and the wallet
   // bonus card both pick that rung now (D5), so it has real consumers and check 1.2 said so.
   "mark-breathe", "mark-flip", "mark-pending", "mat-float", "mat-inset",
-  "pbar", "pbar-no", "pbar-yes", "pnl-val", "skeleton", "stagger-item",
+  "pbar", "pbar-no", "pbar-yes", "skeleton", "stagger-item",
 ]);
 
 /* ═══ 1 · THE SWEEP ══════════════════════════════════════════════════════════ */

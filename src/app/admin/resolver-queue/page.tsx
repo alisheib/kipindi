@@ -251,7 +251,7 @@ export default async function ResolverQueuePage({
       />
       <AdminBody>
         {/* Filters */}
-        <AdminCard padding="p-3">
+        <AdminCard>
           <form className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-0 sm:min-w-[200px]">
               <I.search size={14} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-subtle" />
@@ -304,7 +304,7 @@ export default async function ResolverQueuePage({
               for: a header once oscillated 30 times a second under 9,311 green checks. In
               normal flow it cannot overlap the nav, the cards or the pager, because it is a
               sibling of all three. */}
-          <AdminCard padding="p-3">
+          <AdminCard>
             {canBulk ? (
               <BulkResolveBar
                 rows={bulkRows}

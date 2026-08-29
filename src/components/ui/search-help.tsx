@@ -98,7 +98,7 @@ export function SearchHelp({
             /**
              * ⛔ THE VIEWPORT IS NOT THE BOUNDARY — the nearest CLIPPING ANCESTOR is, and asking
              * the wrong one is how the second draft failed. On `/admin/proposals` the SearchBox
-             * sits inside `<div className="overflow-hidden rounded-lg glass-panel">` (the queue
+             * sits inside `<div className="overflow-hidden glass-panel">` (the queue
              * card, whose clip is load-bearing: its list rows tint on hover and would square off
              * the card's bottom corners without it). By the viewport's reckoning there was ample
              * room above, so the panel flipped up — straight into that card's clip, and measured

@@ -11,7 +11,7 @@ export default function Loading() {
 
         {/* Review queue card — composed by hand (SkCard takes no children):
             title bar, sort bar, then comment-row skeletons. */}
-        <div className="rounded-lg glass-panel p-4 space-y-4">
+        <div className="glass-panel p-4 space-y-4">
           <SkBar className="h-3.5 w-40" />
           {/* ⚠️ LITERAL, not `h-8` — spacing is overridden (tailwind.config.ts:200-215) so
               `h-8` drew 48px for an admin search input that is now 32px (--h-control-xs). */}

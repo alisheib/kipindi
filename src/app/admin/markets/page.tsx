@@ -104,7 +104,7 @@ export default async function AdminMarketsPage({
           <AdminKpi label="Total pool" sw="Jumla ya dimbwi" value={formatBalancePill(totalPool)} />
         </KpiGrid>
 
-        <AdminCard padding="p-3">
+        <AdminCard>
           <form className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-0 sm:min-w-[260px]">
               <I.search size={14} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-subtle" />

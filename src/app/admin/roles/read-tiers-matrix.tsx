@@ -129,7 +129,7 @@ export function ReadTiersMatrix({ matrix: initial }: { matrix: Matrix }) {
       </div>
 
       {Object.keys(matrix).map((role) => (
-        <div key={role} className="rounded-lg glass-panel p-4">
+        <div key={role} className="glass-panel p-4">
           <p className="font-display font-semibold text-body-sm text-text mb-3">{ROLE_LABEL[role as Role]}</p>
           <div className="grid grid-cols-1 gap-2">
             {(READ_CLASSES as readonly ReadClass[]).map((cls) => (

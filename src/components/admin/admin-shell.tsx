@@ -354,7 +354,7 @@ export function AdminKpi({
   if (unavailable) {
     return (
       <div
-        className="rounded-lg glass-panel p-3.5 flex flex-col gap-1.5 min-h-[110px]"
+        className="glass-panel admin-kpi p-2 flex flex-col gap-1.5 min-h-[110px]"
         title="This figure could not be computed — a data read failed. It is NOT zero."
       >
         <span className="font-mono uppercase text-text-tertiary truncate" style={{ fontSize: 9.5, letterSpacing: "0.08em", lineHeight: 1.3 }}>{label}</span>
@@ -378,7 +378,7 @@ export function AdminKpi({
   // It also carried `transition-all`, which this codebase bans outright — the pattern that once
   // had 895 elements computing to `transition: all 0s ease`.
   return (
-    <div className="rounded-lg glass-panel p-3.5 flex flex-col gap-1.5 min-h-[110px]">
+    <div className="glass-panel admin-kpi p-2 flex flex-col gap-1.5 min-h-[110px]">
       <div className="flex items-center justify-between gap-2">
         <span className="font-mono uppercase text-text-tertiary truncate" style={{ fontSize: 9.5, letterSpacing: "0.08em", lineHeight: 1.3 }}>{label}</span>
         {pulse && (
@@ -498,7 +498,7 @@ export function AdminCard({
 } & Omit<React.HTMLAttributes<HTMLElement>, "children" | "title">) {
   const isFlush = padding === "p-0";
   return (
-    <div {...rest} className={["rounded-lg glass-panel", padding, className ?? ""].join(" ")}>
+    <div {...rest} className={["glass-panel", padding, className ?? ""].join(" ")}>
       {/* ⛔ G-5 (2026-08-02) — the G-4 shape again, in the card header. The action side
             is `shrink-0` and the title side was `min-w-0`, so on a narrow screen the title
             absorbed ALL the shortfall: measured at 360, `/admin/finance`'s "Settlement fees

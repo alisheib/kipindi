@@ -14,7 +14,7 @@ export default function Loading() {
 
         {/* Bet queue — card with an inner KPI band (SkCard takes no children,
             so the equivalent card is composed by hand). */}
-        <div className="rounded-lg glass-panel p-4 space-y-3">
+        <div className="glass-panel p-4 space-y-3">
           <SkBar className="h-3.5 w-28" />
           <SkKpiRow count={4} />
           <SkBar className="h-3 w-full" />
@@ -22,7 +22,7 @@ export default function Loading() {
         </div>
 
         {/* Settlement — card with an inner KPI band */}
-        <div className="rounded-lg glass-panel p-4 space-y-3">
+        <div className="glass-panel p-4 space-y-3">
           <SkBar className="h-3.5 w-28" />
           <SkKpiRow count={4} />
           <SkBar className="h-3 w-full" />

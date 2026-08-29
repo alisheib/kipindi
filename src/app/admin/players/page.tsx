@@ -151,7 +151,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
             band; the detailed per-status breakdown lives on Cohorts. */}
         <StatusMix counts={statusCounts} />
 
-        <AdminCard padding="p-3">
+        <AdminCard>
           <form className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-0 sm:min-w-[260px]">
               <I.search size={14} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-subtle" />

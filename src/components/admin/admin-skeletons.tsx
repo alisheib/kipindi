@@ -46,7 +46,7 @@ export function SkKpiRow({
   return (
     <div className={`grid ${cols} gap-3`}>
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="rounded-lg glass-panel p-3.5 flex flex-col gap-2 min-h-[110px]">
+        <div key={i} className="glass-panel admin-kpi p-2 flex flex-col gap-2 min-h-[110px]">
           <SkBar className="h-2.5 w-20" />
           <SkBar className="h-6 w-24 mt-1" />
           <div className="mt-auto flex items-center gap-2">
@@ -71,7 +71,7 @@ export function SkCard({
   className?: string;
 }) {
   return (
-    <div className={`rounded-lg glass-panel p-4 space-y-3 ${className}`}>
+    <div className={`glass-panel p-4 space-y-3 ${className}`}>
       {title && <SkBar className={`h-3.5 ${titleW}`} />}
       {Array.from({ length: lines }).map((_, i) => (
         <SkBar key={i} className={`h-3 ${i === lines - 1 ? "w-2/3" : "w-full"}`} />
@@ -96,7 +96,7 @@ export function SkFormCard({
   className?: string;
 }) {
   return (
-    <div className={`rounded-lg glass-panel p-4 space-y-4 ${className}`}>
+    <div className={`glass-panel p-4 space-y-4 ${className}`}>
       <SkBar className={`h-3.5 ${titleW}`} />
       <div className={`grid gap-4 ${cols}`}>
         {Array.from({ length: fields }).map((_, i) => (
@@ -135,7 +135,7 @@ export function SkTableCard({
   title?: boolean;
 }) {
   return (
-    <div className="rounded-lg glass-panel p-0">
+    <div className="glass-panel p-0">
       {title && (
         <div className="px-4 pt-4 pb-3">
           <SkBar className={`h-3.5 ${headW}`} />
@@ -189,7 +189,7 @@ export function SkRowCard({
   className?: string;
 }) {
   return (
-    <div className={`rounded-lg glass-panel p-4 ${className}`}>
+    <div className={`glass-panel p-4 ${className}`}>
       <SkBar className={`h-3.5 ${titleW} mb-3`} />
       <div className="grid grid-cols-1 gap-2">
         {Array.from({ length: rows }).map((_, i) => (
@@ -220,7 +220,7 @@ export function SkRowCard({
 export function SkBlock({ height = 240, className = "" }: { height?: number; className?: string }) {
   return (
     <div
-      className={`rounded-lg glass-panel ${className}`}
+      className={`glass-panel ${className}`}
       style={{ minHeight: height }}
     />
   );

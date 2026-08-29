@@ -83,7 +83,7 @@ export function RolesMatrix({ matrix: initial }: { matrix: Matrix }) {
       </div>
 
       {roles.map((role) => (
-        <div key={role} className="rounded-lg glass-panel p-4">
+        <div key={role} className="glass-panel p-4">
           <p className="font-display font-semibold text-body-sm text-text mb-3">{ROLE_LABEL[role as Role]}</p>
           <div className="grid grid-cols-1 gap-2">
             {(ADMIN_DOMAINS as readonly AdminDomain[]).map((d) => {

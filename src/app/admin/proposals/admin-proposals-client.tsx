@@ -335,7 +335,7 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
     <div className="space-y-4">
       {/* Queue + review */}
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[1.3fr_1fr]">
-        <div className="overflow-hidden rounded-lg glass-panel">
+        <div className="overflow-hidden glass-panel">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
             <div className="text-[14px] font-bold">Queue · sorted by votes</div>
             <div className="flex items-center gap-1.5 flex-wrap gap-y-1.5">
@@ -394,7 +394,7 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
 
         {/* Review panel */}
         {sel ? (
-          <div className="flex flex-col gap-3.5 rounded-lg glass-panel p-4">
+          <div className="flex flex-col gap-3.5 glass-panel p-4">
             <div>
               <div className="mb-2 flex flex-wrap items-center gap-2">
                 <StatusBadge status={sel.status} />
@@ -565,7 +565,7 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
       </div>
 
       {/* Config — 4-state feature machine + economics */}
-      <div className="overflow-hidden rounded-lg glass-panel">
+      <div className="overflow-hidden glass-panel">
         {/* ⛔ `sm:gap-4` (20px), NOT `sm:gap-3.5` (S-09, scan #1, 2026-08-28). The intent here is
             plainly "a little more air once this becomes a horizontal row" — but 3.5 is NOT one of
             the keys tailwind.config.ts overrides, so it is stock 14px against a base `gap-3` of

@@ -2834,9 +2834,28 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
    colour a longhand utility sets even when you expect only width and style to apply.
    `:where()` contributes ZERO specificity, so `bg-*`/`border-*` now win while the
    defaults still apply to every panel that names no tone. The four `hover:border-*`
-   call sites were already winning at (0,2,0) and are unaffected. ⛔ Keep the cast and
-   the radius OUT of `:where()`: those are the rung (§M2), not a default to be overridden
-   — a surface picks a rung, it never composes a shadow. */
+   call sites were already winning at (0,2,0) and are unaffected. ⛔ Keep the cast
+   OUT of `:where()`: that IS the rung (§M2) — a surface picks a rung, it never composes
+   a shadow.
+
+   ⚪ CORRECTED 2026-08-29 (DG-A-16). This comment used to read "keep the cast AND THE
+   RADIUS out of `:where()`: those are the rung (§M2)". **§M2 does not mention radius.**
+   Its own words, restated twice in this file (:664-673, :730), are *"Rung = wash + edge +
+   ring + cast"*. Radius is governed by §S2, which is a different law with a different
+   answer — *"cards, modals and sheets take `--r-lg`; inputs, stake rows, STAT TILES and
+   ledger containers take `--r-md`"*. So the radius below is correct for a CARD and was
+   being applied to a stat tile as well, on the authority of a law that says nothing
+   about it.
+
+   ⛔ THE RADIUS STAYS OUTSIDE `:where()` ANYWAY, and NOT for the reason given above.
+   It is authoritative because 22 `rounded-*` utilities are written beside `glass-panel`
+   across `src/` and **every one of them is already dead**: this rule sits after
+   `@tailwind utilities`, so at equal (0,1,0) specificity it wins on source order
+   (measured in the build: `.rounded-lg` at compiled byte ~2569, this radius at ~7539).
+   Moving it into `:where()` would silently bring 21 of those back to life and shrink 21
+   surfaces from 16px to 12px in one commit, which is a restyle nobody asked for. The
+   dead tokens get deleted instead, and a surface that needs a different rung takes an
+   explicit class — see `.admin-kpi` below. */
 :where(.glass-panel) {
   background-color: var(--bg-elevated);
   border: 1px solid var(--border);
@@ -2845,6 +2864,16 @@ textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
   box-shadow: var(--edge-lit), 0 8px 24px -6px oklch(6% 0.08 268 / 0.45);
   border-radius: var(--r-lg);
 }
+/* A STAT TILE IS NOT A CARD — §S2, honoured 2026-08-29 (DG-A-16).
+   `AdminKpi` renders ~170 tiles and composed `glass-panel`, so it inherited the CARD
+   radius (`--r-lg`, 16px) while §S2 puts stat tiles on `--r-md` (12px). It also wrote
+   `rounded-lg` beside it, reaching for exactly 12 — the Tailwind scale's `lg` IS 12 —
+   and that token was dead, so the intent was in the code and never reached the screen.
+   ⛔ It must be a class and not a utility: `glass-panel`'s radius beats any `rounded-*`
+   on source order, so a utility here would be the same dead token again.
+   ⚠️ Honouring §S2 contradicts no written law — only the code and one comment that
+   mis-cited §M2 (above). Nothing was amended; the code was fixed. */
+.glass-panel.admin-kpi { border-radius: var(--r-md); }
 
 /* v2 kit — traveling light-sweep for active progress fills (limits, KYC steps,
    objection window). Add `.prog-sweep` to a filled bar segment. */
@@ -3754,19 +3783,26 @@ html[data-sheet-open] .route-enter { animation: none; }
    4 · Market detail — calm trading terminal
    --------------------------------------------------------------------------- */
 
-/* Position / P&L */
-.pnl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
-.pnl-cell { padding: var(--sp-3); border-radius: var(--r-md); background: var(--bg-overlay); border: 1px solid var(--border); }
-.pnl-cap { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-subtle); }
-.pnl-val { margin-top: 4px; font-family: var(--font-mono); font-weight: 600; font-size: 17px; font-variant-numeric: tabular-nums; color: var(--text); }
-.pnl-val.up { color: var(--yes-300); }
-.pnl-val.down { color: var(--no-300); }
+/* 🧹 `.pnl-grid|cell|cap|val(.up|.down)` AND `.trust|-item|-sep` LIVED HERE AND ARE
+   DELETED (2026-08-29, DG-A-16 — the register's "two dead classes"). Ten rules, and
+   ZERO call sites between them in the entire tree.
 
-/* Trust strip */
-.trust { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-4); padding: var(--sp-4) var(--sp-5); border-radius: var(--r-md); border: 1px solid var(--border); background: var(--bg-overlay); }
-.trust-item { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; color: var(--text-muted); }
-.trust-item svg { width: 16px; height: 16px; color: var(--gilt); flex-shrink: 0; }
-.trust-sep { width: 1px; height: 16px; background: var(--border); }
+   ⛔ Both are the second-definition failure `test:dead-css`'s header names, not merely
+   unused paint:
+     · `.pnl-*` is a CSS implementation of the positions P&L that ships as React today
+       (`PnlSummaryStrip`, `PnlChart`). Its own spec page,
+       `docs/design-system/v2-2026-07-27/02-components/positions-pnl/`, names none of
+       these classes — so deleting them takes nothing documented with it.
+     · `.trust*` is superseded by the LIVE `.kp-trust` block below (:4315), which is a
+       different implementation of the same band. The one `trust` in any className in
+       `src/` is `kp-trust`. ⚠️ A loose `trust` grep returns 16 hits — `trusted`,
+       `trustCell`, `trusted-source` — and reads as "in use". It is not.
+
+   ⭐ THIS IS THE SECOND TOMBSTONE IN THIS FILE AND THE FIRST ONE DID NOT CATCH THESE.
+   The `.admin-quality-*` note directly below records the same discovery in July, two
+   lines away, and these ten rules sat beside it untouched. `npm run test:dead-css`
+   exists because of that; its baseline drops by 6 in this commit. */
+
 
 /* `.admin-quality-good|mid|bad` lived here with a comment telling future work to
    "use these instead of hardcoding oklch values for quality scores". They had ZERO
