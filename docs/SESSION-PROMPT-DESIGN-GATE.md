@@ -621,6 +621,45 @@ the corrected final design revision**, and pushed to the progress file as it goe
 | **DG-S-05** | **Validation completeness: every form, every input.** | `zod` is present; there is no form library. Inventory every admin form first and state which are validated, which are server-only, and which are neither — ⛔ a count of "forms with validation" that does not name its population is this programme's signature failure. |
 | **DG-S-06** | **Validation must TAKE YOU TO the offending field.** ⭐ Ali named this one. | `focus()` on an error is at **ZERO sites**. The recipe is one shared helper: focus the **first** invalid control, `scrollIntoView({block:"center"})`, set `aria-invalid` + `aria-describedby` to the message, and render an error **summary** at the top for long forms — which is the whole point on a 9-screen page, where the invalid field can be six screens away from the button that refused. ⚠️ Focus alone is not enough with a sticky admin topbar: it scrolls the field under the bar (the same trap `qa:toggle-hit` paid for, which read `up: 0` for a switch under that bar). Offset for it and PROVE it with `elementFromPoint`, not a bounding box. |
 
+### 📋 The form inventory, measured now so DG-S-05 starts with facts (2026-08-29)
+`<form>` elements under `src/app/admin`: **16 files.** Controls: **96 `<Input>` · 41 `<Select>`
+· 24 `<Toggle>` · 22 `<textarea>` · 6 `<DateSelect>` · 4 `<TimeSelect>` · 1 raw checkbox.**
+**34 files carry `"use server"`** and only **5** import `zod` — so validation today is
+overwhelmingly *server-side and hand-rolled*, with the client showing whatever the action
+returns. ⚠️ **That is the shape DG-S-06 has to work with:** if the server returns "this is
+wrong" without saying WHICH field, no amount of client focus code can take the operator to it.
+**So DG-S-05 comes before DG-S-06** — the action has to name the field before anything can
+scroll to it.
+
+### 🗺️ How the criterion lands — worked on the two worst pages, and one that must NOT be tabbed
+Not a design for all 12. The step-5 session designs each page; these three fix the *method*,
+including the case where the answer is no.
+- **`/admin/updown` (9.5 screens, 18 cards).** Its real sections are `Price reading method` ·
+  `Price readings` · `Thresholds` · `Archived chains` plus the live chain table. ⭐ **A good
+  tab candidate**: those are independent operator tasks, and `Archived chains` in particular is
+  a *lookup*, never part of running a round. ⛔ But the live chain table and anything holding a
+  round's money state stay on the landing tab, and any tab hiding a pending action carries its
+  count (DG-S-01).
+- **`/admin/payments` (4.5 screens, 19 cards).** Sections: `Operations control-plane` ·
+  `Selcom` · `Payout rails` · `Retry queue` · `What players are told about withdrawals`.
+  ⛔ **The control-plane holds the payment KILL-SWITCHES.** By DG-S-01 they may not go behind
+  an unbadged click — so either they stay on the landing tab or the tab carries a live state
+  pip. ⚠️ This is the page where getting the criterion wrong costs the most.
+- **`/admin/roles` (4.3 screens, 50 cards) — ⛔ DO NOT TAB.** Its entire job is *comparison
+  across roles*; tabs would put the two things being compared on different screens and make the
+  page worse while making it shorter. **Length is not the defect here — density is.** It is a
+  table problem. Recording it in the plan so the next session does not tab it by reflex because
+  it appears on the "over 3 screens" list.
+
+### 🔢 Sequencing — the order is not arbitrary
+1. **DG-S-01** (the criterion, into `DESIGN_AUTHORITY`) — before a single page is touched.
+2. **The measurement decision in the first trap below** — before the first page is tabbed.
+3. **DG-S-02 → DG-S-03** (kit at admin density, then URL state) on ONE page, end to end, as the
+   pattern every other page copies.
+4. **DG-S-04** (unsaved-changes) — it must exist before many tabs do, because a tab switch is
+   one of the three exits it has to cover.
+5. **DG-S-05 → DG-S-06** in that order, for the reason in the inventory above.
+
 ### ⛔ Traps this stage will hit, named in advance
 - **A tabbed page is a NEW population for every existing gate.** `qa:admin-load`, the render drive, `qa:dg-shell` and the overflow checks all walk `routes.mjs` — and a tab's content is *not rendered* until selected. ⛔ **Every one of those gates would go green over content nobody measured.** Either the route list gains `?tab=` entries or the drives learn to walk the tabs; decide that BEFORE tabbing the first page, or step 5 quietly un-measures step 1.
 - **`/admin/updown` and `/admin/updown/proposals` are the two longest pages AND the two whose load budget was hardest won** (13,247 → 1,617 ms). Tabbing them must not resurrect a per-tab refetch.
