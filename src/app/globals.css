@@ -1624,8 +1624,32 @@ body {
    hardcoded 460 (DESIGN_AUTHORITY B7).
    `.market-search` is kept as an alias for one release so nothing breaks
    mid-migration — delete it once every call site uses <SearchBox>. */
+/* 🔴 DG-A-03 / DG-P-02 (DESIGN-GATE-2026-08-28) — THE "HOW TO SEARCH" POPOVER PAINTED ZERO
+   PIXELS ON ALL SEVEN SEARCH SURFACES, admin and player alike, for its whole life.
+   `.input-group` above is `overflow: hidden`, and its padding box is 44px (`--h-input`), so
+   anything a descendant positions absolutely is clipped to a 44px band. `SearchHelp` renders
+   INSIDE the group, and its panel opened at y≈66px — 22px BELOW the bottom of the clip band.
+   ⛔ Not "mostly clipped": entirely unpainted and entirely unhittable.
+
+   ⚠️ THE REGISTER'S OWN EVIDENCE FOR THIS ONE IS UNSOUND, AND THE NEXT SESSION SHOULD NOT
+   TRUST IT. §2 records the panel as "320×386-464, OFFSCREEN/clipped" — but that is a
+   `getBoundingClientRect()` reading, and a rect CANNOT see `overflow: hidden`; it returns the
+   layout box whether or not one pixel is painted. That number will read the SAME after this
+   fix. Only `elementFromPoint` tells the two states apart. (§2 also says "one example row
+   bleeds into the field strip"; the geometry above makes that impossible — nothing of the
+   panel can reach the strip. Do not use it as the before-state.)
+
+   ⭐ WHY UNCLIPPING IS SAFE, VERIFIED RATHER THAN ASSUMED. The clip is cosmetically INERT
+   here: `.input-group .input` sets `background: transparent; border: none; box-shadow: none`
+   and `.input-group .input:focus` zeroes its ring explicitly, `.prefix` has no background and
+   `.clear-btn` is transparent — so nothing paints into the group's rounded corners. The one
+   thing the clip was hiding is the inner `.input:focus` outline, and that outline is
+   `2px solid transparent` (E-129: it exists only so forced-colors mode has something to
+   paint). Unclipping is therefore a visual no-op in normal rendering.
+   ⛔ Scoped to the SEARCH variant, not to `.input-group`, so no other field's clip changes.
+   ⛔ Do NOT "fix" this instead by shrinking the panel's `top` back inside the band. */
 .search-box,
-.market-search { max-width: var(--w-field); }
+.market-search { max-width: var(--w-field); overflow: visible; }
 .search-box .prefix,
 .market-search .prefix { display: inline-flex; align-items: center; }
 .search-box .input,

@@ -74,7 +74,13 @@ export function SearchHelp({
         <div
           role="dialog"
           aria-label={t.common.searchHelpTitle}
-          className="absolute right-0 top-9 z-50 w-[min(320px,calc(100vw-24px))] rounded-xl border border-border-strong bg-bg-elevated/95 p-3 shadow-e4 backdrop-blur-xl"
+          // DG-A-03 — ⚠️ `top-9` was 64px, NOT 36px: the spacing scale is OVERRIDDEN
+          // (tailwind.config.ts), and `top-*` derives from it. So the panel opened 64px below
+          // a 40px trigger, i.e. 22px past the bottom of `.input-group`'s 44px clip band, and
+          // painted nothing at all. Anchor to the trigger instead of to a scale step — the
+          // idiom `nav-more.tsx` already ships. ⛔ If a wider gap is ever wanted, change the
+          // `6px`, never the `100%`.
+          className="absolute right-0 top-[calc(100%+6px)] z-50 w-[min(320px,calc(100vw-24px))] rounded-xl border border-border-strong bg-bg-elevated/95 p-3 shadow-e4 backdrop-blur-xl"
         >
           <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted">
             {t.common.searchHelpTitle}
