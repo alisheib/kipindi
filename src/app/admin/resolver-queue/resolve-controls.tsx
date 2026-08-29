@@ -87,7 +87,7 @@ export function ResolveControls({ marketId, stage, stagedOutcome, twoAdmin = fal
     return (
       <div className="flex items-center justify-center gap-3 py-2">
         <BrandSpinner size={36} />
-        <span className="font-mono text-[12px] uppercase tracking-[0.16em] text-text-muted">
+        <span className="font-mono text-label uppercase tracking-[0.16em] text-text-muted">
           Recording {submittedSide} · {stage}
         </span>
       </div>

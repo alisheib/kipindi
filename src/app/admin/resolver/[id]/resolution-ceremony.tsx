@@ -94,7 +94,7 @@ export function ResolutionCeremony({
     return (
       <div className="flex items-center justify-center gap-3 py-6">
         <BrandSpinner size={36} />
-        <span className="font-mono text-[12px] uppercase tracking-[0.16em] text-text-muted">
+        <span className="font-mono text-label uppercase tracking-[0.16em] text-text-muted">
           Recording attestation…
         </span>
       </div>
@@ -159,7 +159,7 @@ export function ResolutionCeremony({
             spellCheck={false}
             /* ⚠️ LITERAL, not `h-10` — spacing is overridden (tailwind.config.ts:200-215) so
                `h-10` was an 80px field on the two-officer settlement gate. 44px = --h-input. */
-            className="h-[44px] w-full rounded-md border border-claret-edge bg-bg-overlay px-3 font-mono text-[14px] tracking-[0.3em] uppercase text-text admin-focus placeholder:tracking-[0.3em] placeholder:text-text-subtle"
+            className="h-[44px] w-full rounded-md border border-claret-edge bg-bg-overlay px-3 font-mono text-body tracking-[0.3em] uppercase text-text admin-focus placeholder:tracking-[0.3em] placeholder:text-text-subtle"
           />
         </label>
 
@@ -288,7 +288,7 @@ export function ResolutionCeremony({
               spellCheck={false}
               /* ⚠️ LITERAL, not `h-10` (80px on the overridden scale) — see the twin above.
                  Both confirmation fields must stay the same height. */
-              className="h-[44px] w-full rounded-md border border-claret-edge bg-bg-overlay px-3 font-mono text-[14px] tracking-[0.3em] uppercase text-text admin-focus placeholder:tracking-[0.3em] placeholder:text-text-subtle"
+              className="h-[44px] w-full rounded-md border border-claret-edge bg-bg-overlay px-3 font-mono text-body tracking-[0.3em] uppercase text-text admin-focus placeholder:tracking-[0.3em] placeholder:text-text-subtle"
             />
           </label>
 

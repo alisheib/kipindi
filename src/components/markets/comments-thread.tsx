@@ -265,7 +265,7 @@ export function CommentsThread({
         <button
           type="button"
           onClick={() => setShowAll(true)}
-          className="mt-3 w-full rounded-md border border-border bg-bg-overlay px-3 py-2 font-mono text-[11px] uppercase tracking-[0.12em] text-text-subtle hover:text-text hover:border-brand-400 transition-colors"
+          className="mt-3 w-full rounded-md border border-border bg-bg-overlay px-3 py-2 font-mono text-caption uppercase tracking-[0.12em] text-text-subtle hover:text-text hover:border-brand-400 transition-colors"
         >
           {t.common.showAll} ({comments.length - INITIAL_SHOW} {t.common.more})
         </button>

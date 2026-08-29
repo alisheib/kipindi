@@ -72,7 +72,7 @@ export function ReportPackControls({
     return (
       <div className="flex items-center justify-center gap-2.5 py-2">
         <BrandSpinner size={28} />
-        <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">Recording…</span>
+        <span className="font-mono text-caption uppercase tracking-[0.16em] text-text-muted">Recording…</span>
       </div>
     );
   }

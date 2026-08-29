@@ -9,7 +9,7 @@ export default async function LeaderboardLoading() {
   return (
     <PageContainer tier="reading" className="space-y-6">
       <header>
-        <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">
+        <p className="font-mono text-caption uppercase tracking-[0.16em] font-bold text-text-subtle">
           {t.leaderboard.title}
         </p>
         <h1 className="font-display text-[28px] font-bold text-text">{t.leaderboard.topPredictors}</h1>
@@ -18,7 +18,7 @@ export default async function LeaderboardLoading() {
       <section className="rounded-xl border border-border bg-bg-elevated p-8 grid place-items-center">
         <div className="flex flex-col items-center gap-3">
           <BrandSpinner size={48} />
-          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-muted">
+          <p className="font-mono text-caption uppercase tracking-[0.18em] text-text-muted">
             {t.common.loading}
           </p>
         </div>

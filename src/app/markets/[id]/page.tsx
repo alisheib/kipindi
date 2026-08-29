@@ -403,13 +403,13 @@ export default async function MarketDetail({
             <Chip variant="live" size="lg" dot>{t.common.live}</Chip>
           )}
           {heroState === "closing" && (
-            <span className="closing-pill inline-flex items-center gap-1.5 rounded-full border h-[26px] px-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.10em] tabular-nums">
+            <span className="closing-pill inline-flex items-center gap-1.5 rounded-full border h-[26px] px-2.5 font-mono text-caption font-bold uppercase tracking-[0.10em] tabular-nums">
               <I.hourglassHalf s={13} />
               {t.market.closingSoon} · {minsToDeadline} {t.common.minsUnit}
             </span>
           )}
           {heroState === "waiting" && (
-            <span className={`inline-flex items-center gap-1.5 rounded-full border h-[26px] px-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.10em] ${
+            <span className={`inline-flex items-center gap-1.5 rounded-full border h-[26px] px-2.5 font-mono text-caption font-bold uppercase tracking-[0.10em] ${
               settling ? "border-warning-border bg-warning-bg text-warning-fg" : "border-gold-500/40 bg-gold-500/10 text-gold-300"
             }`}>
               <I.hourglassOff s={13} />

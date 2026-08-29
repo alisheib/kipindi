@@ -122,7 +122,7 @@ export function Tabs({
               onClick={() => onChange(t.value)}
               className={cn(
                 // 40px = --tap-min, the chip language every other filter rail uses (was h-8 = 48px).
-                "h-[40px] px-3.5 rounded-pill text-[12px] font-mono font-semibold uppercase tracking-[0.14em] border transition-colors duration-100",
+                "h-[40px] px-3.5 rounded-pill text-label font-mono font-semibold uppercase tracking-[0.14em] border transition-colors duration-100",
                 active
                   ? "border-brand-500 bg-brand-500/15 text-brand-300"
                   : "border-border bg-bg-elevated text-text-muted hover:border-border-strong hover:text-text",

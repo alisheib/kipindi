@@ -132,7 +132,7 @@ export default async function LivePage() {
               <PulseRing size={18} color="var(--aqua-400)">
                 <span className="block w-2 h-2 rounded-full" style={{ background: "var(--aqua-400)" }} />
               </PulseRing>
-              <p className="font-mono text-[12px] uppercase tracking-[0.18em] font-bold text-text">{t.home.liveSection}</p>
+              <p className="font-mono text-label uppercase tracking-[0.18em] font-bold text-text">{t.home.liveSection}</p>
             </div>
             <p className="font-mono text-[10.5px] text-text-subtle tabular-nums whitespace-nowrap">
               {markets.length} {t.market.liveCount}{tippingMarkets > 0 ? ` · ${tippingMarkets} ${t.market.tipping}` : ""}
@@ -167,7 +167,7 @@ export default async function LivePage() {
                     a non-money meaning. It joins this page's own eyebrow ink instead
                     (the same `--aqua-300` featured-contest.tsx uses), so /live now
                     states its identity consistently rather than in two vocabularies. */}
-                <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-aqua-300">{t.market.priceCompetition}</p>
+                <p className="font-mono text-caption uppercase tracking-[0.16em] font-bold text-aqua-300">{t.market.priceCompetition}</p>
               </div>
               <p className="text-[14px] leading-relaxed text-text-muted max-w-[78ch]">
                 {t.market.liveExplainer}

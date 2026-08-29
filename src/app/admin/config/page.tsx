@@ -232,7 +232,7 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
             </div>
 
             {overrides.length === 0 ? (
-              <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-subtle text-center py-3">
+              <p className="font-mono text-caption uppercase tracking-[0.14em] text-text-subtle text-center py-3">
                 No active overrides — every market uses the global config.
               </p>
             ) : (
@@ -293,7 +293,7 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
           padding="p-0"
         >
           {recent.length === 0 ? (
-            <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-subtle text-center py-6">
+            <p className="font-mono text-caption uppercase tracking-[0.14em] text-text-subtle text-center py-6">
               No config changes yet.
             </p>
           ) : (

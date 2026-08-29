@@ -416,7 +416,7 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
 
             <div className="border-t border-border px-3 py-2.5 flex items-center justify-between">
               <button type="button" onClick={() => setCalOpen(false)}
-                className="font-mono text-[12px] uppercase tracking-[0.12em] text-text-subtle hover:text-text transition-colors">
+                className="font-mono text-label uppercase tracking-[0.12em] text-text-subtle hover:text-text transition-colors">
                 {t.common.cancel}
               </button>
               {parsed && (

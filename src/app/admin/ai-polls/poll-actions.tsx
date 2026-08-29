@@ -290,7 +290,7 @@ export function GenerateForm({ generatable }: { generatable: string[] }) {
                   onClick={() => enabled && setCategory(c.id)}
                   disabled={!enabled}
                   title={enabled ? undefined : "No enabled trusted source — add one under Sources & categories to generate this category."}
-                  className={`px-3 py-1.5 rounded-pill text-[12px] font-mono uppercase tracking-[0.1em] border transition-colors ${
+                  className={`px-3 py-1.5 rounded-pill text-label font-mono uppercase tracking-[0.1em] border transition-colors ${
                     !enabled
                       ? "border-border/60 bg-bg-overlay/40 text-text-subtle/60 cursor-not-allowed line-through decoration-1"
                       : category === c.id

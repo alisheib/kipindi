@@ -68,7 +68,7 @@ function FlowToggle({ provider, providerLabel, kind, paused }: { provider: strin
     return (
       <div className="rounded-md border border-claret-edge bg-claret-soft p-2 space-y-1.5">
         <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] font-bold text-claret-300">Type PAUSE to stop {flowLabel.toLowerCase()}</p>
-        <input value={word} onChange={(e) => setWord(e.target.value)} placeholder="PAUSE" autoComplete="off" className="h-7 w-full rounded-sm border border-claret-edge bg-bg-overlay px-2 font-mono text-[12px] uppercase tracking-[0.2em] text-text admin-focus placeholder:text-text-subtle" />
+        <input value={word} onChange={(e) => setWord(e.target.value)} placeholder="PAUSE" autoComplete="off" className="h-7 w-full rounded-sm border border-claret-edge bg-bg-overlay px-2 font-mono text-label uppercase tracking-[0.2em] text-text admin-focus placeholder:text-text-subtle" />
         <div className="grid grid-cols-2 gap-1.5">
           <button type="button" disabled={!armed || pending} onClick={() => apply(true)} className="btn btn-claret btn-sm disabled:opacity-40">Pause</button>
           <button type="button" onClick={() => { setConfirm(false); setWord(""); }} className="btn btn-ghost btn-sm">Cancel</button>

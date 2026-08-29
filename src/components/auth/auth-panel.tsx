@@ -99,7 +99,7 @@ export function AuthHeader({
           arbitrary value correctly to keep both. The class list here is a
           verbatim copy of what the seven pages shipped, and it must stay one. */}
       <p
-        className={`${icon ? "flex items-center gap-2 " : ""}font-mono text-[11px] uppercase tracking-[0.16em] font-bold ${EYEBROW_TONE[tone]}`}
+        className={`${icon ? "flex items-center gap-2 " : ""}font-mono text-caption uppercase tracking-[0.16em] font-bold ${EYEBROW_TONE[tone]}`}
       >
         {icon}
         {eyebrow}

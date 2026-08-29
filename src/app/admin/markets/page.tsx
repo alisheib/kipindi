@@ -174,24 +174,24 @@ export default async function AdminMarketsPage({
                           <I.users size={10} /> View predictors
                         </Link>
                       </td>
-                      <td className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">{m.category}</td>
+                      <td className="font-mono text-caption uppercase tracking-[0.14em] text-text-muted">{m.category}</td>
                       {/* B6: a settled market shows its VERDICT (read from resolvedOutcome),
                           never a pool-implied probability standing in for the outcome. Only a
                           live/pending market shows the crowd probability bar. */}
                       <td>
                         {m.resolvedOutcome === "YES" || m.resolvedOutcome === "NO" ? (
                           <>
-                            <span className={`inline-flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.08em] ${m.resolvedOutcome === "YES" ? "text-yes-300" : "text-no-300"}`}>
+                            <span className={`inline-flex items-center gap-1.5 font-mono text-caption font-bold uppercase tracking-[0.08em] ${m.resolvedOutcome === "YES" ? "text-yes-300" : "text-no-300"}`}>
                               <span className="h-1.5 w-1.5 rounded-pill" style={{ background: m.resolvedOutcome === "YES" ? "var(--yes-400)" : "var(--no-400)" }} />
                               Settled {m.resolvedOutcome}
                             </span>
                             <p className="mt-1 font-mono text-[10px] text-text-subtle">closed at {yes}% YES</p>
                           </>
                         ) : m.resolvedOutcome === "VOID" || m.status === "VOIDED" ? (
-                          <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-tertiary">Void · refunded</span>
+                          <span className="font-mono text-caption uppercase tracking-[0.08em] text-text-tertiary">Void · refunded</span>
                         ) : m.status === "RESOLVED" ? (
                           // Resolved but outcome not readable — show no side rather than a guess.
-                          <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-tertiary">Settled</span>
+                          <span className="font-mono text-caption uppercase tracking-[0.08em] text-text-tertiary">Settled</span>
                         ) : (
                           <>
                             <ProbabilityBar yesPct={yes} size="micro" />

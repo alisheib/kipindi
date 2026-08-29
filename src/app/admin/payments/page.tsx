@@ -202,7 +202,7 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
                 Identical output, one definition. */}
             <Stat label="Drift" value={formatTzs(recon.driftTzs)} tone={recon.driftTzs !== 0 ? "danger" : "ok"} />
             {recon.driftTzs !== 0 && (
-              <Link href={"/admin/audit?category=WALLET" as Route} className="ml-auto inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-[0.08em] text-claret-300 hover:underline">
+              <Link href={"/admin/audit?category=WALLET" as Route} className="ml-auto inline-flex items-center gap-1 font-mono text-caption uppercase tracking-[0.08em] text-claret-300 hover:underline">
                 <I.search s={12} /> Investigate
               </Link>
             )}

@@ -107,7 +107,7 @@ export function CountdownPill({
   return (
     <span className="inline-flex items-center gap-1">
       {left <= 0 ? (
-        <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted" aria-hidden>
+        <span className="font-mono text-caption uppercase tracking-[0.14em] text-text-muted" aria-hidden>
           {t.common.ready}
         </span>
       ) : (

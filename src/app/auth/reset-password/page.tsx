@@ -116,7 +116,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
         <AuthPanel>
           <Link
             href="/auth/login"
-            className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.16em] text-text-subtle hover:text-text"
+            className="inline-flex items-center gap-1.5 font-mono text-caption uppercase tracking-[0.16em] text-text-subtle hover:text-text"
           >
             <I.chevronLeft s={14} />
             {t.common.backToSignIn}

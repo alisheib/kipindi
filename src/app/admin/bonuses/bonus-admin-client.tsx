@@ -195,7 +195,7 @@ export function BonusAdminClient({ config }: { config: BonusConfig }) {
             onClick={() => setC((p) => ({ ...p, cashbackMode: p.cashbackMode === "REQUEST" ? "AUTO" : "REQUEST" }))}
             /* ⚠️ LITERAL, not `h-8` (48px on the overridden scale) — 40px = --tap-min. Bonus
                config mints wallet credit, so this control takes the floor, not the exception. */
-            className="shrink-0 inline-flex h-[40px] items-center gap-1.5 rounded-md border border-border bg-bg-elevated px-3 font-mono text-[11px] font-bold uppercase tracking-[0.06em] text-text-muted hover:text-text transition-colors"
+            className="shrink-0 inline-flex h-[40px] items-center gap-1.5 rounded-md border border-border bg-bg-elevated px-3 font-mono text-caption font-bold uppercase tracking-[0.06em] text-text-muted hover:text-text transition-colors"
           >
             {c.cashbackMode === "REQUEST" ? <><I.shieldcheck s={12} /> Request</> : <><I.bolt s={12} /> Auto</>}
           </button>

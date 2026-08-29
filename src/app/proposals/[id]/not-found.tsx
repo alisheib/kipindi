@@ -41,7 +41,7 @@ export default async function ProposalNotFound() {
           <p className="font-display text-[13px] font-semibold text-text">{t.common.help}</p>
         </Link>
       </nav>
-      <Link href="/proposals" className="mt-6 inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.14em] text-gold-300 hover:text-gold-200">
+      <Link href="/proposals" className="mt-6 inline-flex items-center gap-2 font-mono text-caption uppercase tracking-[0.14em] text-gold-300 hover:text-gold-200">
         <I.globe s={12} />
         {t.error.backToProposals}
         <I.arrowRight s={12} />

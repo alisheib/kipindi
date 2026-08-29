@@ -548,7 +548,7 @@ export default async function ResolverQueuePage({
                     {/* Full evidence-first ceremony (evidence excerpt + typed-SEAL). */}
                     <Link
                       href={`/admin/resolver/${m.id}` as never}
-                      className="flex items-center justify-center gap-1.5 rounded-md border border-border bg-bg-overlay py-2 font-mono text-[11px] tracking-[0.08em] uppercase text-text-muted hover:border-brand-500 hover:text-text transition-colors"
+                      className="flex items-center justify-center gap-1.5 rounded-md border border-border bg-bg-overlay py-2 font-mono text-caption tracking-[0.08em] uppercase text-text-muted hover:border-brand-500 hover:text-text transition-colors"
                     >
                       <I.shieldcheck s={12} /> Open resolution ceremony
                     </Link>

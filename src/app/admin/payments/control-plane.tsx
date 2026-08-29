@@ -242,7 +242,7 @@ export function ControlPlane({ controls }: { controls: PaymentControlsView }) {
                 disabled={disabled}
                 onClick={() => chooseProvider(p)}
                 title={!selectable && !active ? "Not configured" : undefined}
-                className="inline-flex min-h-[40px] flex-1 items-center justify-center gap-1.5 rounded-md px-3 font-mono text-[12px] font-bold uppercase tracking-[0.08em] transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                className="inline-flex min-h-[40px] flex-1 items-center justify-center gap-1.5 rounded-md px-3 font-mono text-label font-bold uppercase tracking-[0.08em] transition-colors disabled:cursor-not-allowed disabled:opacity-40"
                 style={active
                   ? { background: "var(--brand-500)", color: "var(--pearl-50)" }
                   : { color: "var(--text-muted)" }}

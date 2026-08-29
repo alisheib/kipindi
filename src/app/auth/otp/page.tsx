@@ -92,7 +92,7 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
           <div className="flex items-center justify-between border-t border-border pt-3">
             <Link
               href={`${purpose === "register" ? "/auth/register" : "/auth/login"}${nextSafe ? `?next=${encodeURIComponent(nextSafe)}` : ""}` as never}
-              className="font-mono text-[12px] uppercase tracking-[0.14em] text-text-subtle hover:text-text transition-colors"
+              className="font-mono text-label uppercase tracking-[0.14em] text-text-subtle hover:text-text transition-colors"
             >
               ← {t.common.changeNumber}
             </Link>
@@ -101,7 +101,7 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
               // payload, so send the user back to start over (phone prefilled).
               <Link
                 href={`/auth/register?${new URLSearchParams({ ...(phone ? { phone } : {}), ...(nextSafe ? { next: nextSafe } : {}) }).toString()}` as never}
-                className="font-mono text-[12px] uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200 transition-colors"
+                className="font-mono text-label uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200 transition-colors"
               >
                 {t.common.startOver}
               </Link>

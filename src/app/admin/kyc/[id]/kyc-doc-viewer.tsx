@@ -50,7 +50,7 @@ export function KycDocViewer({ userId, slots }: { userId: string; slots: Slot[] 
                  `h-8` was 48px around an 11px label. 40px = --tap-min: this toolbar sits on the
                  screen where an officer judges whether an identity document is genuine, so it
                  takes the floor, not the 32px dense-admin exception. */
-              className="inline-flex items-center gap-1.5 rounded-md border px-2.5 h-[40px] font-mono text-[11px] uppercase tracking-[0.08em] transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-md border px-2.5 h-[40px] font-mono text-caption uppercase tracking-[0.08em] transition-colors"
               style={on
                 ? { borderColor: "var(--brand-500)", background: "color-mix(in oklab, var(--brand-500) 14%, transparent)", color: "var(--brand-200)" }
                 : { borderColor: "var(--border)", color: has ? "var(--text-muted)" : "var(--text-subtle)" }}
@@ -67,7 +67,7 @@ export function KycDocViewer({ userId, slots }: { userId: string; slots: Slot[] 
               onClick={() => setZoom(z)}
               /* ⚠️ LITERAL, not `h-8` (48px on the overridden scale) — 40px = --tap-min,
                  matching the document tabs in the same strip. */
-              className="rounded-md border px-2 h-[40px] font-mono text-[11px] uppercase tracking-[0.08em] transition-colors"
+              className="rounded-md border px-2 h-[40px] font-mono text-caption uppercase tracking-[0.08em] transition-colors"
               style={zoom === z ? { borderColor: "var(--brand-500)", color: "var(--brand-200)" } : { borderColor: "var(--border)", color: "var(--text-subtle)" }}
             >
               {z === "fit" ? "Fit" : `${z}%`}
@@ -100,7 +100,7 @@ export function KycDocViewer({ userId, slots }: { userId: string; slots: Slot[] 
               {imgState === "error" ? (
                 <div className="flex max-w-[380px] flex-col items-center gap-2 p-4 text-center" role="alert">
                   <I.warning s={24} className="text-warning-fg" />
-                  <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">Document failed to load</p>
+                  <p className="font-mono text-caption uppercase tracking-[0.14em] text-text-muted">Document failed to load</p>
                   <p className="text-body-sm leading-snug text-text-subtle">
                     The file exists on record — this is a fetch or permission failure, not missing or altered evidence. Retry before drawing any conclusion.
                   </p>
@@ -127,7 +127,7 @@ export function KycDocViewer({ userId, slots }: { userId: string; slots: Slot[] 
           ) : (
             <div className="flex flex-col items-center gap-2 text-text-subtle">
               <I.idCard s={28} />
-              <span className="font-mono text-[11px] uppercase tracking-[0.14em]">Not uploaded</span>
+              <span className="font-mono text-caption uppercase tracking-[0.14em]">Not uploaded</span>
             </div>
           )}
         </div>

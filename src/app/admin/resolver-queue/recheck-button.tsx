@@ -104,7 +104,7 @@ export function RecheckButton({ marketId }: { marketId: string }) {
         onClick={run}
         disabled={pending}
         title="Ask the AI to web-check this market's outcome right now. It reads the market's own approved source. Before its resolve date this cannot close the market unless the outcome is genuinely locked."
-        className="inline-flex min-h-[40px] w-full items-center justify-center gap-1.5 rounded-md border border-border bg-bg-overlay px-3 font-mono text-[11px] tracking-[0.08em] uppercase text-text-muted transition-colors hover:border-brand-500 hover:text-text disabled:opacity-50"
+        className="inline-flex min-h-[40px] w-full items-center justify-center gap-1.5 rounded-md border border-border bg-bg-overlay px-3 font-mono text-caption tracking-[0.08em] uppercase text-text-muted transition-colors hover:border-brand-500 hover:text-text disabled:opacity-50"
       >
         {/* M5 — in-flight is the kit Spinner (a glyph never wears bespoke motion);
             the check ARRIVES on the state change through the settle primitive. */}

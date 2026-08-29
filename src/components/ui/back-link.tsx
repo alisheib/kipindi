@@ -34,7 +34,7 @@ export function BackLink({
           router.push(fallbackHref as never);
         }
       }}
-      className="inline-flex items-center gap-1.5 text-[12px] font-mono uppercase tracking-[0.16em] text-text-subtle hover:text-text transition-all hover:-translate-x-0.5 group"
+      className="inline-flex items-center gap-1.5 text-label font-mono uppercase tracking-[0.16em] text-text-subtle hover:text-text transition-all hover:-translate-x-0.5 group"
     >
       <I.chevronLeft s={11} />
       {label}

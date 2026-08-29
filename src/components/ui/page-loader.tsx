@@ -50,7 +50,7 @@ export async function PageLoader({
       <div className="rounded-xl border border-border bg-bg-elevated p-10 grid place-items-center">
         <div className="flex flex-col items-center gap-3">
           <BrandSpinner size={48} />
-          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-muted">
+          <p className="font-mono text-caption uppercase tracking-[0.18em] text-text-muted">
             {t.common.loading}
           </p>
         </div>

@@ -38,7 +38,7 @@ export default async function LegalLayout({ children }: { children: React.ReactN
           </div>
           <div className="relative z-10 flex items-center gap-2">
             <I.scrollText s={14} className="text-text-subtle" />
-            <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">
+            <p className="font-mono text-caption uppercase tracking-[0.16em] font-bold text-text-subtle">
               {EYEBROW[locale]}
             </p>
           </div>

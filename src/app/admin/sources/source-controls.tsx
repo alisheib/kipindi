@@ -63,7 +63,7 @@ export function RemoveSource({ id, label }: { id: string; label: string }) {
         <button
           type="button"
           disabled={pending}
-          className="text-[11px] font-mono uppercase tracking-[0.12em] text-text-subtle hover:text-no-300 transition-colors"
+          className="text-caption font-mono uppercase tracking-[0.12em] text-text-subtle hover:text-no-300 transition-colors"
         >
           Remove
         </button>
@@ -104,7 +104,7 @@ export function ToggleCategory({ category, enabled }: { category: string; enable
       type="button"
       onClick={onClick}
       disabled={pending}
-      className={`inline-flex h-7 items-center gap-1.5 rounded-pill border px-3 font-mono text-[11px] uppercase tracking-[0.14em] transition-colors ${
+      className={`inline-flex h-7 items-center gap-1.5 rounded-pill border px-3 font-mono text-caption uppercase tracking-[0.14em] transition-colors ${
         enabled
           ? "border-yes-700 bg-yes-500/15 text-yes-300 hover:border-yes-500"
           : "border-border bg-bg-overlay text-text-subtle hover:border-border-strong"

@@ -535,7 +535,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
       <div className="flex items-center justify-between pt-1">
         <Link
           href="/profile"
-          className="font-mono text-[12px] uppercase tracking-[0.14em] text-text-subtle hover:text-text"
+          className="font-mono text-label uppercase tracking-[0.14em] text-text-subtle hover:text-text"
         >
           ← {t.common.profile}
         </Link>

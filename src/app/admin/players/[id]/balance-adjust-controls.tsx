@@ -127,7 +127,7 @@ export function BalanceAdjustControls({
                    so `min-h-11` was 96px: two 96px direction buttons dwarfing the amount field
                    beneath them, on the one screen where an officer moves real money by hand.
                    44px is A2's preferred tap size, and money controls are never the exception. */
-                "min-h-[44px] rounded-md border font-mono text-[11px] uppercase tracking-[0.12em] transition-colors " +
+                "min-h-[44px] rounded-md border font-mono text-caption uppercase tracking-[0.12em] transition-colors " +
                 (direction === d
                   ? (d === "credit" ? "border-yes-700 bg-yes-500/15 text-yes-300" : "border-no-700 bg-no-500/15 text-no-300")
                   : "border-border bg-bg-overlay text-text-subtle hover:text-text")
@@ -176,7 +176,7 @@ export function BalanceAdjustControls({
               spellCheck={false}
               aria-label={`Type ${hardWord} to confirm`}
               placeholder={hardWord}
-              className="mt-1 w-full rounded-md border border-border-strong bg-bg-overlay px-2.5 py-2 font-mono text-[13px] tracking-[0.2em] uppercase text-text outline-none admin-focus transition-colors"
+              className="mt-1 w-full rounded-md border border-border-strong bg-bg-overlay px-2.5 py-2 font-mono text-body-sm tracking-[0.2em] uppercase text-text outline-none admin-focus transition-colors"
             />
           </label>
         )}

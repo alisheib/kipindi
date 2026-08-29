@@ -96,7 +96,7 @@ export function ShareButton({
         className={
           compact
             ? "mcardp-share"
-            : "inline-flex h-[40px] items-center gap-1.5 rounded-pill border border-border bg-bg-elevated px-3 text-[12px] font-mono uppercase tracking-[0.14em] text-text-muted hover:border-border-strong hover:text-text transition-colors"
+            : "inline-flex h-[40px] items-center gap-1.5 rounded-pill border border-border bg-bg-elevated px-3 text-label font-mono uppercase tracking-[0.14em] text-text-muted hover:border-border-strong hover:text-text transition-colors"
         }
       >
         {copied ? <I.check s={13} /> : <I.share s={13} />}

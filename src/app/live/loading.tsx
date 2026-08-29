@@ -9,7 +9,7 @@ export default async function LiveLoading() {
       {/* Slim header — matches the live page so the questions-first layout
           doesn't jump when the real content swaps in. */}
       <div className="flex items-center justify-between gap-3">
-        <p className="font-mono text-[12px] uppercase tracking-[0.18em] font-bold text-text">{t.common.live}</p>
+        <p className="font-mono text-label uppercase tracking-[0.18em] font-bold text-text">{t.common.live}</p>
         <p className="font-mono text-[10.5px] text-text-subtle">{t.common.loading}</p>
       </div>
 

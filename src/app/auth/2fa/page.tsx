@@ -79,13 +79,13 @@ export default async function TwoFactorChallengePage({ searchParams }: { searchP
         <div className="flex items-center justify-between border-t border-border pt-3">
           <Link
             href={`/auth/login${nextSafe ? `?next=${encodeURIComponent(nextSafe)}` : ""}` as never}
-            className="font-mono text-[12px] uppercase tracking-[0.14em] text-text-subtle hover:text-text transition-colors"
+            className="font-mono text-label uppercase tracking-[0.14em] text-text-subtle hover:text-text transition-colors"
           >
             ← {t.common.back}
           </Link>
           <Link
             href={`/auth/2fa?${backup ? "" : "mode=backup"}${nextQuery}`.replace(/[?&]$/, "") as never}
-            className="font-mono text-[12px] uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200 transition-colors"
+            className="font-mono text-label uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200 transition-colors"
           >
             {backup ? t.security.useAuthenticator : t.security.useBackupCode}
           </Link>

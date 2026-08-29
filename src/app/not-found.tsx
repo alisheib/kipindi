@@ -139,7 +139,7 @@ export default async function NotFound() {
         </nav>
         <Link
           href="/markets"
-          className="mt-6 inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200"
+          className="mt-6 inline-flex items-center gap-2 font-mono text-caption uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200"
         >
           <I.globe s={12} />
           {d.browseOpenMarkets}

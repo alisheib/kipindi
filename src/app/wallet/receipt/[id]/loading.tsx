@@ -16,7 +16,7 @@ export default async function ReceiptLoading() {
   const { t } = await getServerT();
   return (
     <PageContainer tier="receipt" className="space-y-5">
-      <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">
+      <p className="font-mono text-caption uppercase tracking-[0.16em] font-bold text-text-subtle">
         {t.wallet.receiptEyebrow}
       </p>
       <div className="rounded-card border border-border bg-bg-elevated p-5 space-y-4 kp-shimmer-track">

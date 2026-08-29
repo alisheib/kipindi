@@ -59,7 +59,7 @@ export default async function MarketNotFound() {
       </nav>
       <Link
         href="/markets"
-        className="mt-6 inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.14em] text-gold-300 hover:text-gold-200"
+        className="mt-6 inline-flex items-center gap-2 font-mono text-caption uppercase tracking-[0.14em] text-gold-300 hover:text-gold-200"
       >
         <I.globe s={12} />
         {t.error.browseOpenMarkets}

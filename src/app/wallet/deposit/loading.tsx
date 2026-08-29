@@ -11,7 +11,7 @@ export default async function DepositLoading() {
   return (
     <PageContainer tier="form">
       <header className="mb-6">
-        <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.common.deposit}</p>
+        <p className="font-mono text-caption uppercase tracking-[0.16em] font-bold text-text-subtle">{t.common.deposit}</p>
         <h1 className="font-display text-[28px] font-bold text-text">{t.common.loading}</h1>
       </header>
 

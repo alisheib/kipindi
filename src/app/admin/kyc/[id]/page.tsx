@@ -180,7 +180,7 @@ export default async function KycWorkstationPage({ params }: { params: Promise<{
             )}
             {/* ⚠️ LITERAL, not `h-8` — spacing is overridden (tailwind.config.ts:200-215) so
                 `h-8` was 48px. 40px = --tap-min, the admin header-chip height. */}
-            <Link href={"/admin/approvals" as Route} className="inline-flex items-center gap-1.5 h-[40px] px-3 rounded-md border border-border bg-bg-inset font-mono text-[11px] tracking-[0.08em] uppercase text-text-muted hover:text-text hover:border-border-strong transition-colors">
+            <Link href={"/admin/approvals" as Route} className="inline-flex items-center gap-1.5 h-[40px] px-3 rounded-md border border-border bg-bg-inset font-mono text-caption tracking-[0.08em] uppercase text-text-muted hover:text-text hover:border-border-strong transition-colors">
               <I.chevronLeft s={13} /> Queue
             </Link>
           </div>

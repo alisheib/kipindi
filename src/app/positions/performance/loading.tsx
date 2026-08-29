@@ -13,7 +13,7 @@ export default async function PerformanceLoading() {
             headline "Polls you've played"; the real page renders the parent destination as
             the eyebrow and "Performance" as the H1, so the words changed places the instant
             the data arrived. Same pair, same order as `performance/page.tsx`. */}
-        <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.common.positions}</p>
+        <p className="font-mono text-caption uppercase tracking-[0.16em] font-bold text-text-subtle">{t.common.positions}</p>
         <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">{t.performance.title}</h1>
       </header>
 

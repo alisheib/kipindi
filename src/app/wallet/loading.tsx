@@ -7,7 +7,7 @@ export default async function WalletLoading() {
     <PageContainer tier="reading" className="space-y-6">
       <header className="flex items-end justify-between gap-3">
         <div>
-          <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.wallet.title}</p>
+          <p className="font-mono text-caption uppercase tracking-[0.16em] font-bold text-text-subtle">{t.wallet.title}</p>
           <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">{t.common.yourFunds}</h1>
         </div>
         <div className="flex items-center gap-2 shrink-0">

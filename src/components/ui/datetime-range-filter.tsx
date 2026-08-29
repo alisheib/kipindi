@@ -104,7 +104,7 @@ export function DateTimeRangeFilter({
     <button
       key={id} type="button" onClick={onClick} aria-pressed={active}
       className={cn(
-        "shrink-0 rounded-pill border px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.08em] transition-colors admin-focus",
+        "shrink-0 rounded-pill border px-3 py-1.5 font-mono text-caption uppercase tracking-[0.08em] transition-colors admin-focus",
         active ? "border-brand-500 bg-brand-500/10 text-brand-300 font-bold" : "border-border bg-bg-overlay text-text-muted hover:border-text-subtle",
       )}
     >

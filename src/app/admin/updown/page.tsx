@@ -814,7 +814,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
               {oracle.map(({ asset, last }) => (
                 <div key={asset.id} className="rounded-lg border border-border bg-[var(--bg-inset)] p-3">
                   <div className="flex items-baseline justify-between gap-2">
-                    <span className="font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-text-muted">{asset.key}</span>
+                    <span className="font-mono text-caption font-bold uppercase tracking-[0.12em] text-text-muted">{asset.key}</span>
                     <span
                       className={
                         "chip " +

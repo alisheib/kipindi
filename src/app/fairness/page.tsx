@@ -95,7 +95,7 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
       <section className="glass-panel p-5 space-y-4">
         <div className="flex items-baseline justify-between flex-wrap gap-2">
           <h2 className="font-display text-[20px] font-semibold text-text">{t.common.fairnessHowItWorks}</h2>
-          <span className="font-mono text-[11px] tracking-[0.16em] uppercase text-text-subtle">FATF R.10 · POCA Cap 423 §16</span>
+          <span className="font-mono text-caption tracking-[0.16em] uppercase text-text-subtle">FATF R.10 · POCA Cap 423 §16</span>
         </div>
         {/* C1d — 5-step provably-fair chain (glyph idiom, gilt only on the
             two-officer attestation seal). Labels live in HTML, not the SVG.

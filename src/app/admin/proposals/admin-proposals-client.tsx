@@ -587,7 +587,7 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
             </div>
           </div>
           <div className="flex shrink-0 items-center justify-between gap-3 sm:justify-end">
-            <span className="font-mono text-[11px] uppercase tracking-[0.1em]" style={{ color: meta.fg }}>{meta.label}</span>
+            <span className="font-mono text-caption uppercase tracking-[0.1em]" style={{ color: meta.fg }}>{meta.label}</span>
             {canSaveConfig
               ? <Button variant="primary" size="sm" leading={<I.check s={14} />} loading={pending} onClick={saveConfig}>Save</Button>
               : <ControlLocked what="Save prize config" need={needSaveConfig} />}

@@ -165,7 +165,11 @@ const RATCHET_SUBFLOOR = 763;   // 2026-08-29: -268 total, the ADMIN then PLAYER
 // ⭐ §3 STAYED AT 763 THROUGH BOTH SWEEPS, and that pair of numbers is the proof they were real:
 // `text-micro` is inside §3's population, so a rename cannot buy a §3 win, while §4 fell by
 // exactly the number rewritten. Ladder adoption 36.3% → 47.1%.
-const RATCHET_ARBITRARY_SIZE = 1185;
+// …then 1185 → 1109, the same sweep widened to the other EXACT rungs (11/12/13/14) once the
+// 10px batch had been driven on production. ⛔ 8 · 8.5 · 9 · 9.5 · 10.5 · 11.5 · 15 are NOT
+// rungs and stay: moving one is a SIZE change, i.e. a per-site design call the tool refuses.
+// ⭐ Ladder adoption crossed half: 47.1% → 50.5%, and §3 held at 763 through both passes.
+const RATCHET_ARBITRARY_SIZE = 1109;
 /*  ⬇️ 38 → 37 on 2026-08-25. The wallet balance pill carried `fontSize: 12.5` inline — an
  *  off-ladder literal AND invisible to every class-based gate. It now reads `text-caption`
  *  below `sm` and `text-label` from there, both ON the closed ladder (§T1), which is also

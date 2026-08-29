@@ -7,7 +7,7 @@ export default async function WithdrawLoading() {
   return (
     <PageContainer tier="form">
       <header className="mb-6">
-        <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-bold text-text-subtle">{t.wallet.withdrawTitle}</p>
+        <p className="font-mono text-caption uppercase tracking-[0.16em] font-bold text-text-subtle">{t.wallet.withdrawTitle}</p>
         <h1 className="font-display text-[28px] font-bold text-text">{t.common.loading}</h1>
       </header>
       <div className="grid place-items-center py-20 rounded-lg border border-border bg-bg-elevated/40">

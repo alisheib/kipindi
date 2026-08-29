@@ -95,7 +95,7 @@ function BalanceCard({
         {balance === 0 && pending === 0 && hold === 0 && (
           <Link
             href="/wallet/deposit"
-            className="mt-3 inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-gold-300 hover:text-gold-200 transition-colors"
+            className="mt-3 inline-flex items-center gap-1.5 font-mono text-caption uppercase tracking-[0.14em] text-gold-300 hover:text-gold-200 transition-colors"
           >
             <I.plus s={12} />
             {t.common.addFunds}
