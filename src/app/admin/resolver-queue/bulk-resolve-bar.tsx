@@ -214,7 +214,18 @@ export function BulkResolveBar({
                 : "None of the selected markets can be sealed — every one is refused for a reason no override can clear."
             }
           >
-            {pending ? "Working…" : `${verb}${chosen.length ? ` (${chosen.length})` : ""}`}
+            {/* ⛔ THE COUNT STAYS ON SCREEN WHILE IT RUNS. "Working…" alone dropped the one
+                number the officer needs, on a control that seals markets ONE AT A TIME by
+                design (`Promise.all` is the P2024 pool-exhaustion shape) — so a twenty-market
+                batch is twenty sequential transactions behind a single static word, and looks
+                identical to a hung page.
+                ⚠️ It names what is being ATTEMPTED, never a live "3 of 20": one server action
+                returns once, so this component has no progress to read, and a counter that
+                appeared to tick would be invented. The real per-market breakdown arrives in
+                the five-bucket result panel. */}
+            {pending
+              ? `${verb === BULK_BAR.stageSelected.en ? "Staging" : "Sealing"} ${willSeal.length}… one at a time`
+              : `${verb}${chosen.length ? ` (${chosen.length})` : ""}`}
           </Button>
         </div>
       </div>

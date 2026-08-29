@@ -27,6 +27,7 @@ import { Toggle } from "@/components/ui/toggle";
 import { ConfirmModal, useExitPhase } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { I } from "@/components/ui/glyphs";
+import { Spinner } from "@/components/ui/spinner";
 import type { AiToolkitStatus } from "@/lib/server/ai-controls";
 import {
   setChatbotEnabledAction,
@@ -63,31 +64,57 @@ export function AiToolkit({ status, canAct = true }: { status: AiToolkitStatus; 
   const onCount = [chatbotEnabled, resolutionActive, autoResolve, pollGenEnabled].filter(Boolean).length;
   const anyPaused = hasKey && (!resolutionActive || !chatbotEnabled || !pollGenEnabled);
 
-  const run = (fn: () => Promise<{ ok: boolean; error?: string }>, okTitle: string, okDesc: string, tone: "success" | "warning" = "success") =>
+  /**
+   * ⭐ WHICH SWITCH IS WORKING. One `useTransition` drives all four rows, so `pending`
+   * disables the whole panel — flip "Auto-resolve when confident" and the chatbot row goes
+   * grey with it, with no spinner anywhere and nothing saying which one is saving or that
+   * anything is happening at all. On a slow save that is indistinguishable from a dead
+   * panel, and this is the panel where the auto-resolve rule is set.
+   *
+   * ⛔ THE SHARED `disabled` IS KEPT ON PURPOSE — it is not the defect. These four write
+   * config through the same store; letting a second flip start while the first is in flight
+   * is a write race for no benefit. The fix is to SAY which row is busy, not to allow two.
+   */
+  const [busyRow, setBusyRow] = useState<null | "chatbot" | "resolution" | "auto" | "pollgen">(null);
+
+  const run = (
+    key: "chatbot" | "resolution" | "auto" | "pollgen",
+    fn: () => Promise<{ ok: boolean; error?: string }>,
+    okTitle: string,
+    okDesc: string,
+    tone: "success" | "warning" = "success",
+  ) => {
+    setBusyRow(key);
     start(async () => {
-      const r = await fn();
-      if (!r.ok) { toast({ title: "Couldn't apply", description: r.error, variant: "danger" }); return; }
-      toast({ title: okTitle, description: okDesc, variant: tone });
-      router.refresh();
+      try {
+        const r = await fn();
+        if (!r.ok) { toast({ title: "Couldn't apply", description: r.error, variant: "danger" }); return; }
+        toast({ title: okTitle, description: okDesc, variant: tone });
+        router.refresh();
+      } finally {
+        // ⛔ `finally`, so a thrown action cannot strand the panel showing a spinner for ever.
+        setBusyRow(null);
+      }
     });
+  };
 
   const toggleChatbot = () => {
     const next = !chatbotEnabled;
-    run(() => act(setChatbotEnabledAction, { enabled: String(next) }),
+    run("chatbot", () => act(setChatbotEnabledAction, { enabled: String(next) }),
       next ? "Chatbot enabled" : "Chatbot disabled",
       next ? "The help assistant is available to players again." : "The help chat widget is hidden and makes no AI calls.",
       next ? "success" : "warning");
   };
   const togglePollGen = () => {
     const next = !pollGenEnabled;
-    run(() => act(setPollGenEnabledAction, { enabled: String(next) }),
+    run("pollgen", () => act(setPollGenEnabledAction, { enabled: String(next) }),
       next ? "Poll generation enabled" : "Poll generation disabled",
       next ? "Admins can generate market ideas with the AI again." : "The AI poll generator is blocked.",
       next ? "success" : "warning");
   };
   const toggleResolution = () => {
     const nextPaused = resolutionActive; // active → pause; paused → resume
-    run(() => act(setResolutionAiPausedAction, { paused: String(nextPaused) }),
+    run("resolution", () => act(setResolutionAiPausedAction, { paused: String(nextPaused) }),
       nextPaused ? "AI market resolution PAUSED" : "AI market resolution resumed",
       nextPaused ? "Markets reaching their resolve date go to the two-officer ceremony — no AI call." : "The AI checks each market at its resolve date again.",
       nextPaused ? "warning" : "success");
@@ -95,14 +122,14 @@ export function AiToolkit({ status, canAct = true }: { status: AiToolkitStatus; 
   const toggleAuto = () => {
     if (autoResolve) {
       // Turning auto OFF is always safe → direct.
-      run(() => act(setAutoResolveAction, { auto: "false" }), "Auto-resolve OFF", "Every market is sealed by the two-officer ceremony; the AI only recommends.");
+      run("auto", () => act(setAutoResolveAction, { auto: "false" }), "Auto-resolve OFF", "Every market is sealed by the two-officer ceremony; the AI only recommends.");
       return;
     }
     setConfirmAuto(true); // turning ON overrides the two-officer rule → confirm
   };
   const confirmAutoOn = () => {
     setConfirmAuto(false);
-    run(() => act(setAutoResolveAction, { auto: "true" }),
+    run("auto", () => act(setAutoResolveAction, { auto: "true" }),
       "Auto-resolve ENABLED",
       `The AI seals markets at their resolve date when ≥ ${confidenceThreshold}% confident. Anything less still goes to two officers.`,
       "warning");
@@ -167,13 +194,13 @@ export function AiToolkit({ status, canAct = true }: { status: AiToolkitStatus; 
                 icon={<I.bot s={14} />}
                 label="Help chatbot"
                 hint={chatbotEnabled ? "Player help assistant is live." : "Chat widget hidden; no AI calls."}
-                on={chatbotEnabled} disabled={pending} onClick={toggleChatbot} readOnly={!canAct}
+                on={chatbotEnabled} disabled={pending} onClick={toggleChatbot} readOnly={!canAct} busy={busyRow === "chatbot"}
               />
               <ToggleRow
                 icon={<I.shieldcheck s={14} />}
                 label="AI market resolution"
                 hint={resolutionActive ? "AI checks each market at its resolve date." : "Paused — markets go to the human ceremony."}
-                on={resolutionActive} disabled={pending} onClick={toggleResolution} readOnly={!canAct}
+                on={resolutionActive} disabled={pending} onClick={toggleResolution} readOnly={!canAct} busy={busyRow === "resolution"}
               />
               <ToggleRow
                 icon={<I.bolt s={14} />}
@@ -188,6 +215,7 @@ export function AiToolkit({ status, canAct = true }: { status: AiToolkitStatus; 
                 onClick={toggleAuto}
                 warn={autoResolve && resolutionActive}
                 readOnly={!canAct}
+                busy={busyRow === "auto"}
               />
               <ToggleRow
                 icon={<I.sparkle s={14} />}
@@ -201,7 +229,7 @@ export function AiToolkit({ status, canAct = true }: { status: AiToolkitStatus; 
                 // NOT optional: that branch predates it, and without it a viewer who
                 // cannot act still gets a live-looking switch. Every other row here
                 // carries it; a single row missing it is the whole E-18 defect.
-                on={pollGenEnabled} disabled={pending} onClick={togglePollGen} readOnly={!canAct}
+                on={pollGenEnabled} disabled={pending} onClick={togglePollGen} readOnly={!canAct} busy={busyRow === "pollgen"}
               />
               {/* E-19: say WHY the switches are inert, so the panel reads as a status
                   board rather than a broken console. */}
@@ -257,19 +285,36 @@ export function AiToolkit({ status, canAct = true }: { status: AiToolkitStatus; 
 }
 
 function ToggleRow({
-  icon, label, hint, on, disabled, onClick, warn, readOnly,
+  icon, label, hint, on, disabled, onClick, warn, readOnly, busy,
 }: {
   icon: React.ReactNode; label: string; hint: string; on: boolean; disabled?: boolean; onClick: () => void; warn?: boolean;
   /** E-19: the viewer may SEE this switch but not work it — render its state, not a control. */
   readOnly?: boolean;
+  /** ⭐ THIS row is the one being saved. Every row is `disabled` while any one is in flight
+   *  (a shared transition, deliberately — see `busyRow`), so without this the panel goes
+   *  uniformly grey and the officer cannot tell which switch they just moved, or whether
+   *  the press registered at all. */
+  busy?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-md border border-border-subtle bg-bg-inset px-3 py-2">
+    <div
+      className="flex items-center justify-between gap-3 rounded-md border border-border-subtle bg-bg-inset px-3 py-2 transition-colors"
+      /* The working row is lifted out of the greyed-out panel rather than tinted a new
+         colour — no second vocabulary for "in flight", just the row that still reads live. */
+      style={busy ? { borderColor: "var(--border-strong)", background: "var(--bg-elevated)" } : undefined}
+    >
       <div className="min-w-0">
         <p className="inline-flex items-center gap-1.5 font-display text-[12.5px] font-bold text-text">
-          <span className={warn ? "text-warning-fg" : "text-text-tertiary"}>{icon}</span>{label}
+          <span className={warn ? "text-warning-fg" : "text-text-tertiary"}>
+            {busy ? <Spinner size={14} /> : icon}
+          </span>{label}
         </p>
-        <p className="mt-0.5 text-[10.5px] text-text-tertiary leading-snug">{hint}</p>
+        {/* ⛔ THE HINT IS REPLACED, NOT DECORATED. It describes the state the switch is IN,
+            which is exactly the thing that is mid-change — leaving it up during the save
+            states the old setting as current while the new one is being written. */}
+        <p className="mt-0.5 text-[10.5px] text-text-tertiary leading-snug" aria-live="polite">
+          {busy ? "Saving…" : hint}
+        </p>
       </div>
       {readOnly ? (
         // A STATE, not a disabled control: a greyed-out toggle reads as "temporarily

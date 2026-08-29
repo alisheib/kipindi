@@ -18,6 +18,7 @@ import { Toggle } from "@/components/ui/toggle";
 import { ConfirmModal } from "@/components/ui/modal";
 import { useDeferredToast } from "@/components/ui/toast";
 import { I } from "@/components/ui/glyphs";
+import { Spinner } from "@/components/ui/spinner";
 import { setTwoAdminAuthAction } from "./resolution-policy-action";
 import { runAdminAction } from "@/lib/client/run-admin-action";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
@@ -80,9 +81,18 @@ export function TwoAdminToggle({ enabled }: { enabled: boolean }) {
           className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.12em]"
           style={{ color: enabled ? "var(--text-subtle)" : "var(--warning-fg)" }}
         >
-          <I.users s={13} />
-          <span className="hidden sm:inline">{enabled ? "Two-admin auth" : "Single-admin"}</span>
-          <span className="sm:hidden">2-admin</span>
+          {/* ⭐ THE CONTROL SAYS IT IS WORKING, INSTEAD OF ONLY GOING DEAD.
+              `disabled={pending}` was the whole of the in-flight state: the switch stopped
+              responding and nothing else changed, so a slow save and a broken toggle looked
+              identical — on the control that decides whether ONE officer or TWO may seal a
+              real-money market. The glyph is swapped for the kit Spinner (never a bespoke
+              animation on a glyph) and the label says which way it is going, so the officer
+              can read the outcome before the toast arrives. */}
+          {pending ? <Spinner size={13} /> : <I.users s={13} />}
+          <span className="hidden sm:inline">
+            {pending ? (enabled ? "Switching to single…" : "Switching to two-admin…") : enabled ? "Two-admin auth" : "Single-admin"}
+          </span>
+          <span className="sm:hidden">{pending ? "Saving…" : "2-admin"}</span>
         </span>
         <Toggle
           on={enabled}
@@ -92,10 +102,19 @@ export function TwoAdminToggle({ enabled }: { enabled: boolean }) {
         />
       </div>
 
+      {/* ⛔ `loading` WAS AVAILABLE ON THIS MODAL ALL ALONG AND WAS NEVER PASSED.
+          `setConfirmOff(false)` runs AFTER the await inside `apply`, so between the click
+          and the server's answer the dialog stayed open with a live, re-pressable
+          "Yes, single admin can resolve" — a second press firing a second write of the
+          compliance-relaxing direction. The kit already handles this: `loading` disables the
+          confirm and shows its own in-flight state. Left mounted rather than closed early,
+          deliberately — closing on click would hide the outcome of a control whose whole
+          point is informed consent. */}
       <ConfirmModal
         open={confirmOff}
         onClose={() => setConfirmOff(false)}
         onConfirm={() => apply(false)}
+        loading={pending}
         tone="claret"
         eyebrow="Compliance · Uzingatiaji"
         title="Allow single-admin resolution?"

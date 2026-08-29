@@ -77,3 +77,66 @@ export function bulkReasonDetail(v: {
       return null;
   }
 }
+
+/**
+ * The override justification, WRITTEN FOR the officer from the row's own verdict rather
+ * than typed by them.
+ *
+ * ⭐ WHY IT IS GENERATED. The audit chain has always required a sentence beside an
+ * override, and it still does — `bulk-resolve-action.ts` is unchanged, including its
+ * minimum length, its `bulkResolveOverride` compliance domain, and its refusal of an
+ * override naming a row the server did not itself refuse. What changed is who writes the
+ * prose. One sentence had to be typed once and then stood for EVERY refused row in the
+ * batch, so it could only ever be generic; this is composed per row from that row's own
+ * facts, so the chain records which site was read on which market, at what confidence,
+ * against which floor. That is strictly more informative than what it replaces.
+ *
+ * ⚠️ IT IS PROSE, NOT EVIDENCE. Composed client-side, exactly as the typed sentence was,
+ * and trusted no further: every FACT in the audit payload — the block reason, the hosts,
+ * the confidence, the threshold, the pools — is re-derived on the SERVER from the market
+ * row. Nothing here is read back as truth about the world.
+ *
+ * ⛔ AND IT NEVER REACHES A PLAYER. `bulk-resolve-action.ts` passes no `evidence` to
+ * `resolveMarket` deliberately: `resolutionEvidence` is rendered on the player's
+ * settlement proof under a named officer's byline, and an officer's internal justification
+ * for clearing a gate is not a source quote.
+ */
+export function composeOverrideJustification(v: {
+  reason: BulkBlockReason | null;
+  all: BulkBlockReason[];
+  citedHost: string | null;
+  approvedHost: string | null;
+  confidence: number | null;
+  outcome: "YES" | "NO" | null;
+  threshold: number;
+  /** The officer's own words, when they choose to add any. Optional by design. */
+  note?: string;
+}): string {
+  const parts: string[] = [];
+
+  parts.push(
+    v.confidence != null
+      ? `Officer accepted the AI reading: ${v.outcome ?? "outcome"} at ${v.confidence}% against a floor of ${v.threshold}%.`
+      : `Officer accepted the AI reading: ${v.outcome ?? "outcome"}.`,
+  );
+
+  // ⛔ EVERY standing reason, not just the headline. A row refused on three counts and
+  // recorded as one is a partial account of what the officer cleared.
+  const refusals = v.all.length ? v.all : v.reason ? [v.reason] : [];
+  if (refusals.length) {
+    parts.push(`Resolver floor refused it: ${refusals.map((r) => BULK_REASON[r].label).join("; ")}.`);
+  }
+
+  if (v.citedHost && v.approvedHost && v.citedHost !== v.approvedHost) {
+    parts.push(`The AI read ${v.citedHost}; this market approves ${v.approvedHost}.`);
+  } else if (v.citedHost && !v.approvedHost) {
+    parts.push(`The AI read ${v.citedHost}; this market names no approved source.`);
+  }
+
+  const note = v.note?.trim();
+  if (note) parts.push(`Officer's note: ${note}`);
+
+  // The action stores at most 500 characters; trimming here keeps what the officer is
+  // shown identical to what the chain records.
+  return parts.join(" ").slice(0, 500);
+}
