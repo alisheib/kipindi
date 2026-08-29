@@ -372,14 +372,56 @@ ${approvedHost
 
   const started = Date.now();
   try {
-    const response = await anthropic.messages.create({
+    const ask = (t: Anthropic.Tool[]) => anthropic.messages.create({
       model: SENTINEL_MODEL,
       max_tokens: 2048,
       system: systemPrompt,
-      tools,
+      tools: t,
       tool_choice: { type: "auto" },
       messages: [{ role: "user", content: userPrompt }],
     });
+
+    /**
+     * 🔴 A BLOCKED APPROVED SOURCE MUST NOT SILENCE THE SENTINEL — MEASURED 2026-08-29.
+     *
+     * Some sites block Anthropic's crawler, and `allowed_domains` pinned to one of them
+     * does NOT degrade: the request is rejected at VALIDATION with
+     * `400 invalid_request_error — "The following domains are not accessible to our user
+     * agent: ['bbc.com']"`, in ~0.3s, before the model does anything. Probed across every
+     * host this platform uses: **25 of 25 in use today are reachable**, but `bbc.com` and
+     * `reuters.com` are BLOCKED — and both are exactly what an operator would add for a
+     * news or finance market.
+     *
+     * ⛔ WITHOUT THIS RETRY THE PIN IS A REGRESSION for such a market: before it, the
+     * unpinned search still produced a recommendation an officer could read; after it, the
+     * call hard-errors, the officer sees *"no AI reading recorded"*, and every scheduled
+     * check burns a failed request for ever.
+     *
+     * ⭐ THE FALLBACK IS SAFE BY CONSTRUCTION, AND THE REASON IS THE WHOLE DESIGN: the pin
+     * was never what stops a bad citation from sealing a market — `decideAutoResolve` is.
+     * It ANDs `sourceMatches`, so a citation gathered off-host CANNOT auto-resolve anything;
+     * it can only reach a human, with the "not the approved source" chip beside it. The pin
+     * makes the model READ the right site; the gate decides what may SEAL. Falling back
+     * therefore trades none of the safety and recovers all of the usefulness.
+     *
+     * ⚠️ ONE retry, and only for this exact error. Any other failure propagates to the
+     * catch below and is metered as an error, unchanged.
+     */
+    let response;
+    try {
+      response = await ask(tools);
+    } catch (err) {
+      const msg = String((err as Error)?.message ?? "");
+      if (!approvedHost || !/not accessible to our user agent/i.test(msg)) throw err;
+      console.warn(
+        `[sentinel] approved source ${approvedHost} is not reachable by the AI's fetcher — ` +
+        `retrying UNPINNED for market ${market.id}. The citation gate still refuses to auto-seal an off-host read.`,
+      );
+      response = await ask([
+        OUTCOME_TOOL as unknown as Anthropic.Tool,
+        { type: ai.webSearchTool.type, name: ai.webSearchTool.name, max_uses: 5 } as unknown as Anthropic.Tool,
+      ]);
+    }
 
     // Meter the spend (best-effort).
     const u = response.usage as { input_tokens?: number; output_tokens?: number; server_tool_use?: { web_search_requests?: number } } | undefined;
