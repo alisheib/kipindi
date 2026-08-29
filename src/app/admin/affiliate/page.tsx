@@ -9,7 +9,7 @@ import { ScrollX } from "@/components/ui/scroll-x";
 import { getAffiliateConfig } from "@/lib/server/affiliate-config";
 import { getAdminAffiliateStats } from "@/lib/server/affiliate-service";
 import { AffiliateAdminClient } from "./affiliate-admin-client";
-import { formatDateShort, formatTzs } from "@/lib/utils";
+import { formatDateShort, formatTzs, formatBalancePill } from "@/lib/utils";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
 
@@ -57,7 +57,7 @@ export default async function AdminAffiliatePage({
         <KpiGrid>
           <AdminKpi label="Total referrals"   sw="Marafiki wote"   value={stats.totalReferrals.toLocaleString()} delta="all-time" deltaDir="flat" />
           <AdminKpi label="Active affiliates"  sw="Wanaolipwa"      value={stats.activeAffiliates.toLocaleString()} delta="earned a reward" deltaDir="flat" />
-          <AdminKpi label="Commission paid"    sw="Tume zilizolipwa" value={formatTzs(stats.commissionPaidTzs)} delta="all-time" />
+          <AdminKpi label="Commission paid"    sw="Tume zilizolipwa" value={formatBalancePill(stats.commissionPaidTzs)} delta="all-time" />
           <AdminKpi label="Top referrer"       sw="Bingwa"          value={stats.topReferrer?.handle ?? "—"} delta={stats.topReferrer ? `${stats.topReferrer.recruits} recruits` : "none yet"} deltaDir="flat" />
         </KpiGrid>
 

@@ -19,7 +19,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { canView } from "@/lib/server/rbac";
 import { getInsights } from "@/lib/server/insights";
 import { categoryBreakdown } from "@/lib/server/report-money";
-import { formatTzs, formatNumber } from "@/lib/utils";
+import { formatTzs, formatBalancePill, formatNumber } from "@/lib/utils";
 // E-103 · one rule for the share beside a funnel stage, and for the bar width.
 import { funnelShares, stagesAreNested } from "@/lib/funnel-share";
 import { AdminBody } from "@/components/admin/admin-body";
@@ -81,8 +81,8 @@ export default async function InsightsPage() {
         <KpiGrid>
           <AdminKpi label="Players" sw="Wachezaji" value={formatNumber(totals.players)} spark={false} />
           <AdminKpi label="Have bet" sw="Wamecheza" value={formatNumber(totals.bettors)} spark={false} />
-          <AdminKpi label="Lifetime GGR" sw="GGR ya jumla" value={formatTzs(totals.ltvTotal)} gold spark={false} />
-          <AdminKpi label="GGR per player" sw="GGR kwa mchezaji" value={formatTzs(totals.ltvPerPlayer)} spark={false} />
+          <AdminKpi label="Lifetime GGR" sw="GGR ya jumla" value={formatBalancePill(totals.ltvTotal)} gold spark={false} />
+          <AdminKpi label="GGR per player" sw="GGR kwa mchezaji" value={formatBalancePill(totals.ltvPerPlayer)} spark={false} />
         </KpiGrid>
 
         {/* Funnel — 4 REAL stages. The missing 5th is called out, not hidden. */}

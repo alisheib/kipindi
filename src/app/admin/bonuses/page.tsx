@@ -6,7 +6,7 @@ import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { getBonusConfig } from "@/lib/server/bonus-config";
 import { getAdminBonusStats } from "@/lib/server/bonus-service";
-import { formatTzs, formatDateShort } from "@/lib/utils";
+import { formatTzs, formatBalancePill, formatDateShort } from "@/lib/utils";
 import { BonusAdminClient, GrantBonusForm, CancelGrantButton } from "./bonus-admin-client";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
@@ -63,10 +63,10 @@ export default async function AdminBonusesPage({
       <AdminBody>
         {/* KPIs */}
         <KpiGrid>
-          <AdminKpi label="Outstanding bonus" sw="Bonasi inayodaiwa" value={formatTzs(stats.outstandingTzs)} pulse delta="liability now" deltaDir="flat" />
+          <AdminKpi label="Outstanding bonus" sw="Bonasi inayodaiwa" value={formatBalancePill(stats.outstandingTzs)} pulse delta="liability now" deltaDir="flat" />
           <AdminKpi label="Active grants" sw="Bonasi hai" value={stats.activeGrants.toLocaleString()} delta="in play" deltaDir="flat" />
-          <AdminKpi label="Total granted" sw="Jumla iliyotolewa" value={formatTzs(stats.totalGrantedTzs)} delta="all-time" deltaDir="flat" />
-          <AdminKpi label="Unlocked to cash" sw="Imefunguliwa" value={formatTzs(stats.totalFulfilledTzs)} delta="played through" deltaDir="flat" />
+          <AdminKpi label="Total granted" sw="Jumla iliyotolewa" value={formatBalancePill(stats.totalGrantedTzs)} delta="all-time" deltaDir="flat" />
+          <AdminKpi label="Unlocked to cash" sw="Imefunguliwa" value={formatBalancePill(stats.totalFulfilledTzs)} delta="played through" deltaDir="flat" />
         </KpiGrid>
 
         {/* Manual grant */}

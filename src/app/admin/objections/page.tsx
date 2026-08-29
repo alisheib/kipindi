@@ -10,7 +10,7 @@ import { db } from "@/lib/server/store";
 import { currentSession } from "@/lib/server/auth-service";
 import { canAct } from "@/lib/server/rbac";
 import { displayLabel } from "@/lib/display-label";
-import { formatDateTime, formatTzs } from "@/lib/utils";
+import { formatDateTime, formatTzs, formatBalancePill } from "@/lib/utils";
 import { OBJECTION } from "@/lib/admin-status-lexicon";
 import { ObjectionDecision } from "./objection-decision";
 import Link from "next/link";
@@ -72,7 +72,7 @@ export default async function AdminObjectionsPage({ searchParams }: { searchPara
 
       <KpiGrid cols="3">
         <AdminKpi label="Open" value={String(open.length)} />
-        <AdminKpi label="Money frozen" value={formatTzs(frozenTzs)} />
+        <AdminKpi label="Money frozen" value={formatBalancePill(frozenTzs)} />
         <AdminKpi label="Total filed" value={String(rows.length)} />
       </KpiGrid>
 

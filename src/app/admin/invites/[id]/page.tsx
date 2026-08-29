@@ -9,7 +9,7 @@ import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { getCampaignDetail } from "@/lib/server/invite-service";
 import { smsConfigured } from "@/lib/server/sms";
-import { formatTzs, formatDateShort } from "@/lib/utils";
+import { formatTzs, formatBalancePill, formatDateShort } from "@/lib/utils";
 import { CampaignControls } from "../invite-admin-client";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
@@ -51,7 +51,7 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
         </Link>
 
         <KpiGrid>
-          <AdminKpi label="Bonus per invitee" sw="Bonasi" value={formatTzs(campaign.bonusAmountTzs)} delta={`${campaign.wagerMultiplier}× wagering`} deltaDir="flat" />
+          <AdminKpi label="Bonus per invitee" sw="Bonasi" value={formatBalancePill(campaign.bonusAmountTzs)} delta={`${campaign.wagerMultiplier}× wagering`} deltaDir="flat" />
           <AdminKpi label="Invited" sw="Walioalikwa" value={campaign.totalInvites.toLocaleString()} delta={`${queued} queued`} deltaDir="flat" />
           <AdminKpi label="Registered" sw="Waliojiunga" value={campaign.totalRegistered.toLocaleString()} delta={`${counts.SENT ?? 0} sent`} deltaDir="flat" />
           <AdminKpi label="Expiry" sw="Muda" value={`${campaign.expiresInDays}d`} delta="bonus validity" deltaDir="flat" />

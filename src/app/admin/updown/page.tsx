@@ -17,7 +17,7 @@ import { observationStore, roundStore } from "@/lib/server/updown-dal";
 import { marketStore } from "@/lib/server/market-dal";
 import { summariseRounds, chainHealth } from "@/lib/server/updown-chain-stats";
 import { poolFee } from "@/lib/payout";
-import { formatTzs } from "@/lib/utils";
+import { formatTzs, formatBalancePill } from "@/lib/utils";
 import { moneyByGame } from "@/lib/server/report-money";
 import { resolveRange } from "@/lib/server/date-range";
 import { DateTimeRangeFilter } from "@/components/ui/datetime-range-filter";
@@ -254,7 +254,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
           <AdminKpi
             label="Fee · balanced 10,000"
             sw="Ada"
-            value={formatTzs(Math.round(feePreview.fee))}
+            value={formatBalancePill(Math.round(feePreview.fee))}
             delta={boardFee.caption}
             deltaDir="flat"
             tone={boardFee.split ? "danger" : undefined}
@@ -278,9 +278,9 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
             <DateTimeRangeFilter defaultPreset="30d" presetIds={["today", "yesterday", "24h", "7d", "30d", "mtd", "all"]} />
           </div>
           <KpiGrid>
-            <AdminKpi label="GGR · this game" sw="Mapato" value={formatTzs(Math.round(pnl.ggr))} delta={`hold ${pnl.holdPct.toFixed(1)}%`} tone={pnl.ggr >= 0 ? "success" : "danger"} spark={false} gold />
-            <AdminKpi label="Staked" sw="Zilizowekwa" value={formatTzs(Math.round(pnl.stakes))} delta={`${pnl.bets.toLocaleString()} bets`} spark={false} />
-            <AdminKpi label="Paid out" sw="Zilizolipwa" value={formatTzs(Math.round(pnl.payouts))} delta={`${pnl.players.toLocaleString()} players`} spark={false} />
+            <AdminKpi label="GGR · this game" sw="Mapato" value={formatBalancePill(Math.round(pnl.ggr))} delta={`hold ${pnl.holdPct.toFixed(1)}%`} tone={pnl.ggr >= 0 ? "success" : "danger"} spark={false} gold />
+            <AdminKpi label="Staked" sw="Zilizowekwa" value={formatBalancePill(Math.round(pnl.stakes))} delta={`${pnl.bets.toLocaleString()} bets`} spark={false} />
+            <AdminKpi label="Paid out" sw="Zilizolipwa" value={formatBalancePill(Math.round(pnl.payouts))} delta={`${pnl.players.toLocaleString()} players`} spark={false} />
             <AdminKpi label="AI oracle cost" sw="Gharama ya AI" value={usd(aiCost.last30)} delta={`${aiCost.calls.toLocaleString()} calls · 90d ${usd(aiCost.all)}`} spark={false} />
           </KpiGrid>
           <p className="mt-3 text-[11.5px] leading-[1.55] text-text-subtle max-w-[80ch]">

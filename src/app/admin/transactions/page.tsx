@@ -35,7 +35,7 @@ import { db } from "@/lib/server/store";
 import { attentionOf, GATEWAY_TYPES, type TxnSearchFilters } from "@/lib/server/txn-filters";
 import { resolveRange } from "@/lib/server/date-range";
 import { DateTimeRangeFilter } from "@/components/ui/datetime-range-filter";
-import { formatTzs, formatDateTimeSafe } from "@/lib/utils";
+import { formatTzs, formatBalancePill, formatDateTimeSafe } from "@/lib/utils";
 import { txnTypeLabel, txnStatusLabel, txnProviderLabel } from "@/components/admin/status-badge";
 import type { StoredTxn } from "@/lib/server/store";
 import { payoutRailLabel } from "@/lib/server/selcom";
@@ -125,9 +125,9 @@ export default async function AdminTransactionsPage({ searchParams }: { searchPa
       <AdminBody>
       {/* Compliance totals — over the WHOLE filtered set, not this page. */}
       <KpiGrid>
-        <AdminKpi label="Deposits in" sw="Amana zilizoingia" value={formatTzs(summary.depositsConfirmedTzs)} />
-        <AdminKpi label="Withdrawals out" sw="Malipo yaliyotoka" value={formatTzs(summary.withdrawalsConfirmedTzs)} />
-        <AdminKpi label="Fees & commission" sw="Ada na tume" value={formatTzs(summary.feesTzs)} />
+        <AdminKpi label="Deposits in" sw="Amana zilizoingia" value={formatBalancePill(summary.depositsConfirmedTzs)} />
+        <AdminKpi label="Withdrawals out" sw="Malipo yaliyotoka" value={formatBalancePill(summary.withdrawalsConfirmedTzs)} />
+        <AdminKpi label="Fees & commission" sw="Ada na tume" value={formatBalancePill(summary.feesTzs)} />
         <AdminKpi
           label="Unreconciled"
           sw="Hayajalinganishwa"

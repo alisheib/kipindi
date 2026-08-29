@@ -10,7 +10,7 @@ import { Select } from "@/components/ui/select";
 import Link from "next/link";
 import { listMarkets, impliedYesPct, type MarketCategory } from "@/lib/server/market-service";
 import { ProbabilityBar } from "@/components/markets/probability-bar";
-import { formatTzs, formatDateTime } from "@/lib/utils";
+import { formatTzs, formatBalancePill, formatDateTime } from "@/lib/utils";
 import { SELECTION } from "@/lib/admin-status-lexicon";
 import { MarketStatusBadge } from "@/components/admin/status-badge";
 import { EmergencyVoidControl } from "./emergency-void-control";
@@ -101,7 +101,7 @@ export default async function AdminMarketsPage({
           <AdminKpi label="Live"      sw="Hai"           value={String(live.length)} />
           <AdminKpi label="Awaiting resolution" sw="Inangoja" value={String(closed.length)} />
           <AdminKpi label="Resolved"  sw="Imetatuliwa"   value={String(resolved.length)} />
-          <AdminKpi label="Total pool" sw="Jumla ya dimbwi" value={formatTzs(totalPool)} />
+          <AdminKpi label="Total pool" sw="Jumla ya dimbwi" value={formatBalancePill(totalPool)} />
         </KpiGrid>
 
         <AdminCard padding="p-3">

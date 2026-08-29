@@ -20,7 +20,7 @@ import { ProbabilityBar } from "@/components/markets/probability-bar";
 import { getMarket, listPositionsForMarket, impliedYesPct } from "@/lib/server/market-service";
 import { db } from "@/lib/server/store";
 import { displayLabel, displayInitials } from "@/lib/display-label";
-import { formatTzs, formatDateTime } from "@/lib/utils";
+import { formatTzs, formatBalancePill, formatDateTime } from "@/lib/utils";
 import { SELECTION } from "@/lib/admin-status-lexicon";
 import { MarketStatusBadge } from "@/components/admin/status-badge";
 import { AdminBody } from "@/components/admin/admin-body";
@@ -318,8 +318,8 @@ export default async function MarketPredictorsPage({
         <KpiGrid>
           <AdminKpi label="Predictors"     sw="Watabiri"   value={String(m.predictorCount)} />
           <AdminKpi label="Open positions" sw="Wazi"       value={String(openCount)} />
-          <AdminKpi label="YES staked"     sw="Dau la NDIO"  value={formatTzs(yesStaked)} />
-          <AdminKpi label="NO staked"      sw="Dau la HAPANA" value={formatTzs(noStaked)} />
+          <AdminKpi label="YES staked"     sw="Dau la NDIO"  value={formatBalancePill(yesStaked)} />
+          <AdminKpi label="NO staked"      sw="Dau la HAPANA" value={formatBalancePill(noStaked)} />
         </KpiGrid>
 
         {/* Filters */}

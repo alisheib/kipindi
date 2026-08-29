@@ -13,7 +13,7 @@ import { ControlLocked } from "@/components/admin/control-locked";
 import { UPDOWN } from "@/lib/admin-status-lexicon";
 import { updownVoidReasonLabel } from "@/components/admin/status-badge";
 import { VoidRoundControl } from "./void-round-control";
-import { formatTzs } from "@/lib/utils";
+import { formatTzs, formatBalancePill } from "@/lib/utils";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
 
@@ -163,7 +163,7 @@ export default async function AdminUpDownRoundsPage({
             making. */}
         <KpiGrid>
           <AdminKpi label="Settled" sw="Zimekamilika" value={settled.toLocaleString()} delta={`of ${total.toLocaleString()} total`} spark={false} />
-          <AdminKpi label="Turnover on this page" sw="Mzunguko (ukurasa huu)" value={formatTzs(pageVol)} spark={false} />
+          <AdminKpi label="Turnover on this page" sw="Mzunguko (ukurasa huu)" value={formatBalancePill(pageVol)} spark={false} />
           <AdminKpi label="Voided" sw="Batili" value={voided.toLocaleString()} delta={voided > 0 ? "refunded in full" : "none"} spark={false} />
           <AdminKpi
             label="Overdue"

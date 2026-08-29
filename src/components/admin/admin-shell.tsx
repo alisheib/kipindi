@@ -312,7 +312,15 @@ export function AdminKpi({
   sw,
   value,
   delta,
-  deltaDir = "up",
+  /**
+   * ⛔ DG-A-10 — THE DEFAULT IS NEUTRAL, AND IT USED TO BE "up". `delta` is a free caption and
+   * almost every caller passes context rather than a movement, so the tile drew a brand-tinted
+   * ▲ over things that have no direction at all. Measured on production 2026-08-28:
+   * "▲ 672 generations", "▲ 1 calls", "▲ lifetime", "▲ top: SYSTEM", and — on a tile reading
+   * TZS 0 — "▲ all-time". On a money console an upward arrow is a claim, not decoration.
+   * ⭐ `up`/`down` are now OPT-IN: a caller that means a movement says so.
+   */
+  deltaDir = "flat",
   gold,
   tone,
   pulse,
@@ -362,8 +370,12 @@ export function AdminKpi({
     : effectiveTone === "success" ? "text-success"
     : effectiveTone === "gold" ? "text-gold"
     : "text-text";
+  // ⛔ DG-A-10 — NO HOVER LIFT ON THE TILE BELOW. It is a `<div>`: not pressable, navigating
+  // nowhere, and a shadow that rises under the pointer promises an action that does not exist.
+  // It also carried `transition-all`, which this codebase bans outright — the pattern that once
+  // had 895 elements computing to `transition: all 0s ease`.
   return (
-    <div className="rounded-lg glass-panel p-3.5 flex flex-col gap-1.5 min-h-[110px] transition-all hover:shadow-[var(--shadow-3)]">
+    <div className="rounded-lg glass-panel p-3.5 flex flex-col gap-1.5 min-h-[110px]">
       <div className="flex items-center justify-between gap-2">
         <span className="font-mono uppercase text-text-tertiary truncate" style={{ fontSize: 9.5, letterSpacing: "0.08em", lineHeight: 1.3 }}>{label}</span>
         {pulse && (
