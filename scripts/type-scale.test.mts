@@ -158,7 +158,11 @@ const RATCHET_ARBITRARY_SIZE = 1439;   // 2026-08-29: -370 total — the prose s
  *  off-ladder literal AND invisible to every class-based gate. It now reads `text-caption`
  *  below `sm` and `text-label` from there, both ON the closed ladder (§T1), which is also
  *  what let the pill get denser on a phone without inventing a size. */
-const RATCHET_INLINE_FONTSIZE = 37;
+// 2026-08-29 · 37 → 36 (DG-A-10 part 2): `AdminKpi`'s value dropped its inline
+// `{ fontSize: 22, letterSpacing: "-0.02em" }` for `text-title-sm sm:text-title-md` + `.amount`.
+// ⭐ The letter-spacing half was the real defect — an INLINE style outranks every stylesheet
+// rule, so §2 could never have seen -0.44px/glyph over ~170 money tiles.
+const RATCHET_INLINE_FONTSIZE = 36;
 
 /** §6 — arbitrary `tracking-[…]`. Measured 2026-08-21 across 200 files.
  *  ⚠️ RE-BASELINED 639 → 640 on 2026-08-22 — same merge, the `dsar-controls.tsx`

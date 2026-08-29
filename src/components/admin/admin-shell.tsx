@@ -397,9 +397,30 @@ export function AdminKpi({
           `truncate` + `title` gives the tail an affordance and keeps the full string
           reachable on hover; the per-element scan correctly ignores `text-overflow:
           ellipsis`, because the "…" IS the disclosure. */}
+      {/* 🔴 DG-A-10 part 2 · THE TRACKING HERE WAS LOAD-BEARING, AND IT WAS ILLEGAL.
+          This was `style={{ fontSize: 22, letterSpacing: "-0.02em" }}` — -0.44px per glyph
+          over an AMOUNT, which §M4 forbids ("every amount … NEVER letter-spaced"), on ~170
+          tiles. ⛔ `type-scale` §2 could not see it: it reads class tokens, and this was an
+          INLINE style, which outranks every stylesheet rule ever written.
+          ⚠️ AND REMOVING IT ALONE WOULD HAVE BROKEN A DIFFERENT LAW. Measured on production
+          at 390 (`.qa-design-gate/kpi-probe.mjs`, Range-based — `scrollWidth` is clamped to
+          `clientWidth` on a block and can only say "overflowing", never how much room is
+          left): `/admin/insights`'s **"TZS 685,532" needs 140.4 of 141px**. It fits by 0.6px
+          ONLY because the illegal tracking squeezes it; untracked it needs **145.2 and
+          overflows by 4.2**, and this element is `truncate`, so it would ellipsise — which
+          §A5 forbids by name: "⛔ never clip money or a timestamp".
+          ⭐ So the size steps DOWN at mobile, on the ladder, and the amount is honest at both:
+          18px (`text-title-sm`) below 640 → "TZS 685,532" needs 118.8 of 141, 22px of slack;
+          22px (`text-title-md`) above, where the tiles are wide. §T7: a size written at a
+          call site comes from the TAILWIND ladder.
+          ⛔ `truncate` STAYS — it is the G-4/E-30 ruling below and it is for the HANDLE case
+          (`@jaykishan_kaba` runs 57px past this box and is not money). Money must fit; a
+          handle may ellipsise.
+          ⚠️ `.amount.amount` is (0,2,0) deliberately: `sm:text-title-md` is a RESPONSIVE
+          variant, emitted after everything globals.css writes, so a single-class money rule
+          would silently lose to it at ≥640 and re-tighten the amount. */}
       <div
-        className={["font-mono font-bold tabular-nums leading-none truncate", valueToneCls].join(" ")}
-        style={{ fontSize: 22, letterSpacing: "-0.02em" }}
+        className={["amount font-bold leading-none truncate text-title-sm sm:text-title-md", valueToneCls].join(" ")}
         title={typeof value === "string" ? value : undefined}
       >
         {value}
