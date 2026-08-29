@@ -100,9 +100,23 @@ const SRC = join(ROOT, "src");
 // the win in is a one-line edit, and the ratchet can never quietly slip back up.
 // ───────────────────────────────────────────────────────────────────────────────
 
-/** §3 — `text-[Npx]` below the 12.5px reading floor that is NOT a blessed
- *  UPPERCASE tracked microlabel. Measured 2026-08-21 across 175 files. */
-const RATCHET_SUBFLOOR = 768;   // 2026-08-28: -3, the selcom card + withdraw panel prose lifted onto the ladder
+/** §3 — anything below the 12.5px reading floor that is NOT a blessed UPPERCASE tracked
+ *  microlabel, written EITHER as `text-[Npx]` OR as one of the three sub-floor semantic
+ *  keys. Measured 2026-08-21 across 175 files.
+ *
+ *  🔴 RE-BASELINED 768 → 1031 on 2026-08-29 (DG-A-12), and this is the second case the
+ *  "may only shrink" rule did not anticipate: the POPULATION grew, not the defect.
+ *  §3 had only ever scanned `text-[Npx]`, so 263 sites already rendering at 10, 11 or 12px
+ *  through `text-micro` / `text-caption` / `text-label` were invisible to it — 174 of them
+ *  unblessed `text-caption`, i.e. reading copy at 11px. Nothing was written today; 263
+ *  existing violations became countable.
+ *
+ *  ⛔ AND THE OLD NUMBER WAS WORSE THAN INCOMPLETE — IT WAS A TRAP. Rewriting a
+ *  `text-[11px]` paragraph as `text-caption` renders at exactly the same 11px and dropped
+ *  the site from §3 AND §4: two ratchets down, nothing lifted, the site now in a population
+ *  the guard could not read. 509 of the old 768 could have been deleted that way. §3's own
+ *  advice string recommended it in those words. Both are fixed in this commit. */
+const RATCHET_SUBFLOOR = 1031;
 
 /** §4 — every hand-typed size in the product: `text-[Npx]` plus inline literal
  *  `style={{ fontSize: N }}`. Measured 2026-08-21: 1,839 + 38.
@@ -265,6 +279,36 @@ function scanSizes(body: string): Hit[] {
 function isBlessedMicrolabel(group: string): boolean {
   const toks = tokens(group).map(bare);
   return toks.includes("uppercase") && toks.some((t) => /^tracking-/.test(t));
+}
+
+/**
+ * §3 — THE SEMANTIC CLASSES THAT ARE ALSO BELOW THE FLOOR.
+ *
+ * 🔴 THE BLIND SPOT THIS CLOSES, and it is this guard's own (2026-08-29, DG-A-12).
+ * §3 counted only `text-[Npx]`. But three of `tailwind.config.ts`'s twelve `fontSize`
+ * keys render BELOW the 12.5px floor §T4 sets — `micro` 10px, `caption` 11px,
+ * `label` 12px — and a site written as `text-caption` was invisible to it.
+ *
+ * ⛔ THAT MADE THE RATCHET REWARD THE WRONG FIX. Rewriting `text-[11px]` as
+ * `text-caption` changes no rendered size, yet it deleted the site from §3 AND from §4 —
+ * two counters down, one glyph unchanged, still 1.5px under the floor and now in a
+ * population the guard could not read. §3's own advice line pushed exactly that edit:
+ * it said *"lift it onto the ladder (text-label/text-caption)"*, naming 12px and 11px
+ * against the 12.5px floor the same line enforces. Both halves are fixed together,
+ * because fixing the advice without fixing the population just moves the trap.
+ *
+ * ⚠️ The sizes are asserted against `tailwind.config.ts` in §0f, not trusted from here.
+ */
+const SUBFLOOR_CLASSES: Record<string, number> = { "text-micro": 10, "text-caption": 11, "text-label": 12 };
+
+function scanSubfloorClasses(body: string): Hit[] {
+  const out: Hit[] = [];
+  for (const g of classGroups(body)) {
+    for (const t of tokens(g).map(bare)) {
+      if (t in SUBFLOOR_CLASSES) out.push({ size: String(SUBFLOOR_CLASSES[t]), group: g });
+    }
+  }
+  return out;
 }
 
 /** §6 — every hand-typed `tracking-[…]`. */
@@ -448,6 +492,45 @@ log("§0 — self-test: the scanners can see, and can fail");
     missing.length ? `src/lib/utils.ts no longer exports: ${missing.join(", ")} — update MONEY_CALL or this guard is blind` : "");
 }
 
+// 0f — the sub-floor CLASS scanner can see, can be blessed, and can fail. Without this,
+//      §3's new half is a rule written against a branch nobody proved reachable (§5b#4).
+{
+  const prose = scanSubfloorClasses(`<p className="text-caption text-text-secondary leading-relaxed">x</p>`);
+  const label = scanSubfloorClasses(`<span className="text-micro uppercase tracking-[0.14em]">x</span>`);
+  const variant = scanSubfloorClasses(`<p className={cn("md:text-label", on && "text-caption")}>x</p>`);
+  const above = scanSubfloorClasses(`<p className="text-body-sm text-text">x</p>`);
+  check("0f sub-floor class scanner matches text-caption prose",
+    prose.length === 1 && prose[0].size === "11" && !isBlessedMicrolabel(prose[0].group));
+  check("0f …and the SAME class is exempt when it is a blessed microlabel",
+    label.length === 1 && isBlessedMicrolabel(label[0].group));
+  check("0f …and it reads variants and cn() the way scanSizes does",
+    variant.length === 2 && variant.map((h) => h.size).sort().join(",") === "11,12");
+  // ⛔ THE CONTROL THAT MATTERS: a key ABOVE the floor must NOT be counted, or §3 would
+  // condemn the very fix its advice string now recommends.
+  check("0f ⛔ CONTROL · text-body-sm (13px) is NOT counted — it is the prescribed fix",
+    above.length === 0, `matched ${above.length}`);
+}
+// 0g — the three sizes this guard hard-codes are still what tailwind.config.ts says.
+//      Change `caption` to 13px there and, without this, §3 would keep condemning 174
+//      sites that had become legal — a guard confidently wrong about the product.
+{
+  const cfg = readFileSync(join(ROOT, "tailwind.config.ts"), "utf8");
+  const wrong = Object.entries(SUBFLOOR_CLASSES).filter(([cls, px]) => {
+    const key = cls.replace(/^text-/, "");
+    const m = cfg.match(new RegExp(`\\b${key}:\\s*\\[\\s*"(\\d+(?:\\.\\d+)?)px"`));
+    return !m || Number(m[1]) !== px;
+  });
+  check("0g the sub-floor keys still measure what §3 assumes (micro 10 · caption 11 · label 12)",
+    wrong.length === 0,
+    wrong.length ? `tailwind.config.ts disagrees about: ${wrong.map(([c]) => c).join(", ")} — re-read the config and update SUBFLOOR_CLASSES` : "");
+  // And the floor itself must still sit between them and the prescribed fix.
+  // ⚠️ `"body-sm"` is QUOTED in the config (the hyphen forces it) while `micro`/`caption`/
+  // `label` are bare — a `\bbody-sm:` pattern misses it and the control fails on correct code.
+  check("0g ⛔ CONTROL · body-sm is above the floor and label is below it, or the advice is wrong",
+    /["']?body-sm["']?:\s*\[\s*"13px"/.test(cfg) && SUBFLOOR_CLASSES["text-label"] < 12.5,
+    "the advice string names text-body-sm as the smallest key above the 12.5px floor");
+}
+
 const files = walk(SRC);
 
 // ─── Collect ──────────────────────────────────────────────────────────────────
@@ -458,6 +541,8 @@ const newSizes = new Map<string, string[]>();
 const newTracking = new Map<string, string[]>();
 const subfloorTop = new Map<string, number>();
 const subfloorSamples: string[] = [];
+let subfloorClassHits = 0;
+const subfloorClassSamples: string[] = [];
 const moneyCounts = new Map<string, number>();
 const moneyDetail = new Map<string, string[]>();
 
@@ -478,6 +563,16 @@ for (const f of files) {
       subfloorTop.set(where, (subfloorTop.get(where) ?? 0) + 1);
       if (subfloorSamples.length < 6) subfloorSamples.push(`${where}  "${hit.group.slice(0, 84)}"`);
     }
+  }
+  // The SAME floor rule over the semantic half of the population — see scanSubfloorClasses.
+  // ⛔ Counted into the same `subfloor` total on purpose: two counters would let a session
+  // trade one for the other and call it progress, which is the very edit this closes.
+  for (const hit of scanSubfloorClasses(body)) {
+    if (isBlessedMicrolabel(hit.group)) continue;
+    subfloor++;
+    subfloorClassHits++;
+    subfloorTop.set(where, (subfloorTop.get(where) ?? 0) + 1);
+    if (subfloorClassSamples.length < 3) subfloorClassSamples.push(`${where}  "${hit.group.slice(0, 84)}"`);
   }
   for (const t of scanTracking(body)) {
     arbTrack++;
@@ -540,12 +635,20 @@ log("\n§1/§2 — money type (§T5 · §M4)");
 // ═══════════════════════════════════════════════════════════════════════════════
 log("\n§3 — the 12.5px reading floor (§T4 · §T3)");
 ratchet("§3 reading copy below the 12.5px floor", subfloor, RATCHET_SUBFLOOR, "RATCHET_SUBFLOOR",
-  "Below 12.5px is a LABEL, not prose (§T4). Either lift it onto the ladder (text-label/text-caption) " +
-  "or make it a real microlabel: UPPERCASE + a tracking utility (§T3's blessed sub-micro tier).");
+  // 🔴 THIS STRING USED TO READ "lift it onto the ladder (text-label/text-caption)" — 12px
+  // and 11px, BOTH BELOW the 12.5px floor this very line enforces. Following it satisfied the
+  // instrument and left the law broken, and it was the guard telling you to do that.
+  // `text-body-sm` (13px) is the smallest key that clears the floor, so it is the one named.
+  "Below 12.5px is a LABEL, not prose (§T4). Either lift it to text-body-sm (13px — the " +
+  "SMALLEST key above the floor; text-label 12 and text-caption 11 are BELOW it and do not " +
+  "count as a fix), or make it a real microlabel: UPPERCASE + a tracking utility (§T3's " +
+  "blessed sub-micro tier).");
 if (subfloor > 0) {
   const worst = [...subfloorTop.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+  log(`         ${subfloor - subfloorClassHits} written as text-[Npx], ${subfloorClassHits} as text-micro/caption/label`);
   log(`         heaviest files: ${worst.map(([f, n]) => `${f} (${n})`).join(", ")}`);
-  for (const s of subfloorSamples.slice(0, 3)) log(`           e.g. ${s}`);
+  for (const s of subfloorSamples.slice(0, 2)) log(`           e.g. ${s}`);
+  for (const s of subfloorClassSamples.slice(0, 2)) log(`           e.g. ${s}`);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
