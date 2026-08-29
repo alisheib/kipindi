@@ -99,7 +99,7 @@ export function PollFilterToolbar({ totalFiltered, totalAll }: { totalFiltered: 
 
         {/* State filter — the ONE filter language at admin density (S-07). */}
         <div className="flex items-center gap-1 flex-wrap gap-y-1.5">
-          <I.filter size={12} className="text-text-subtle mr-0.5" />
+          <I.filter s={12} className="text-text-subtle mr-0.5" />
           {ALL_STATES.map((s) => (
             <FilterPill
               key={s.id}

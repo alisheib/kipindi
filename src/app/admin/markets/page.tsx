@@ -107,7 +107,7 @@ export default async function AdminMarketsPage({
         <AdminCard>
           <form className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-0 sm:min-w-[260px]">
-              <I.search size={14} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-subtle" />
+              <I.search s={14} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-subtle" />
               <input
                 name="q"
                 defaultValue={query}
@@ -171,7 +171,7 @@ export default async function AdminMarketsPage({
                         {m.titleSw && <p className="mt-0.5 text-body-sm italic text-text-subtle line-clamp-1">{m.titleSw}</p>}
                         {m.titleZh && <p className="mt-0.5 text-body-sm italic text-text-subtle line-clamp-1">{m.titleZh}</p>}
                         <Link href={`/admin/markets/${m.id}` as never} className="mt-1 inline-flex items-center gap-1 font-mono text-micro uppercase tracking-[0.12em] text-brand-400 hover:text-brand-300 transition-colors">
-                          <I.users size={10} /> View predictors
+                          <I.users s={10} /> View predictors
                         </Link>
                       </td>
                       <td className="font-mono text-caption uppercase tracking-[0.14em] text-text-muted">{m.category}</td>
@@ -215,7 +215,7 @@ export default async function AdminMarketsPage({
                       </td>
                       <td>
                         <a href={m.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-mono text-[11px] text-royal-300 hover:text-royal-200">
-                          <I.ext size={11} />
+                          <I.ext s={11} />
                         </a>
                       </td>
                       <td>
@@ -223,7 +223,7 @@ export default async function AdminMarketsPage({
                           href={`/admin/markets/${m.id}` as never}
                           className="inline-flex items-center gap-1.5 rounded-md border border-border bg-bg-overlay px-2 py-1 font-mono text-[10.5px] font-semibold text-text-muted hover:border-brand-500 hover:text-text transition-colors whitespace-nowrap"
                         >
-                          <I.users size={11} />
+                          <I.users s={11} />
                           {m.predictorCount} {m.predictorCount === 1 ? "predictor" : "predictors"}
                         </Link>
                       </td>

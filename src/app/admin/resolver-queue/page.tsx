@@ -254,7 +254,7 @@ export default async function ResolverQueuePage({
         <AdminCard>
           <form className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-0 sm:min-w-[200px]">
-              <I.search size={14} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-subtle" />
+              <I.search s={14} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-subtle" />
               <input
                 name="q"
                 defaultValue={query}
@@ -375,7 +375,7 @@ export default async function ResolverQueuePage({
                         <span className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">{m.category}</span>
                         <a href={m.sourceUrl} target="_blank" rel="noopener noreferrer" className="ml-auto inline-flex items-center gap-1 font-mono text-[11px] text-royal-300 hover:text-royal-200">
                           Source
-                          <I.ext size={11} />
+                          <I.ext s={11} />
                         </a>
                       </div>
                       <h3 className="mt-1 font-display text-[15px] font-semibold leading-tight text-text line-clamp-2">{m.titleEn}</h3>
@@ -412,7 +412,7 @@ export default async function ResolverQueuePage({
                         href={`/admin/markets/${m.id}` as never}
                         className="inline-flex items-center gap-1 rounded-md border border-border bg-bg-overlay px-2 py-0.5 font-mono text-[10.5px] font-semibold text-text-muted hover:border-brand-500 hover:text-text transition-colors whitespace-nowrap"
                       >
-                        <I.users size={10} />
+                        <I.users s={10} />
                         {m.predictorCount} {m.predictorCount === 1 ? "predictor" : "predictors"}
                       </Link>
                       {/* ⭐ E-38 · THE MONEY HELD, which is the actual urgency signal and was
@@ -426,7 +426,7 @@ export default async function ResolverQueuePage({
                           className="inline-flex items-center gap-1 rounded-md border border-border bg-bg-overlay px-2 py-0.5 font-mono text-[10.5px] font-semibold text-text-muted whitespace-nowrap"
                           title="Player money held on this market until it resolves"
                         >
-                          <I.wallet size={10} />
+                          <I.wallet s={10} />
                           {formatTzs(m.yesPool + m.noPool)} held
                         </span>
                       )}
@@ -455,7 +455,7 @@ export default async function ResolverQueuePage({
                         {m.sentinelSourceUrl && (
                           <div className="mt-1 flex flex-wrap items-center gap-2">
                             <a href={m.sentinelSourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-mono text-[11px] text-royal-300 hover:text-royal-200">
-                              AI source <I.ext size={10} />
+                              AI source <I.ext s={10} />
                             </a>
                             {/* Whether the AI read the market's OWN approved source. Derived, never
                                 stored, so it cannot go stale against an edited market. In human mode

@@ -188,7 +188,7 @@ export default async function AdminAIPollsPage({
         {/* Info banner + generate form */}
         <AdminCard>
           <div className="flex items-start gap-3 mb-4">
-            <I.bot size={18} className="text-royal-300 mt-0.5 shrink-0" />
+            <I.bot s={18} className="text-royal-300 mt-0.5 shrink-0" />
             <div className="flex-1 text-caption text-text-secondary leading-relaxed">
               <div className="flex items-center gap-2 mb-1">
                 <span className="font-mono text-micro uppercase tracking-wide font-bold">Provider:</span>
@@ -211,7 +211,7 @@ export default async function AdminAIPollsPage({
         {/* Controls */}
         <AdminCard>
           <div className="flex items-center gap-2 mb-3">
-            <I.bot size={16} className="text-royal-300 shrink-0" />
+            <I.bot s={16} className="text-royal-300 shrink-0" />
             <div>
               <p className="font-display font-semibold text-body-sm text-text">Generation settings</p>
               <p className="text-caption italic text-text-tertiary">
@@ -320,8 +320,8 @@ export default async function AdminAIPollsPage({
                   so `h-10` was an 80px disc round an 18px glyph. */}
               <div className="h-[40px] w-[40px] rounded-pill bg-bg-overlay flex items-center justify-center">
                 {hasFilters
-                  ? <I.search size={18} className="text-text-subtle" />
-                  : <I.bot size={18} className="text-text-subtle" />}
+                  ? <I.search s={18} className="text-text-subtle" />
+                  : <I.bot s={18} className="text-text-subtle" />}
               </div>
               <div>
                 <p className="font-display text-[13px] font-semibold text-text-muted">
@@ -352,8 +352,22 @@ export default async function AdminAIPollsPage({
                     </tr>
                   </thead>
                   <tbody className="text-text-muted">
+                      {/* ⭐ DG-A-09 · §B8 — `hover:bg-bg-overlay/50` DELETED, AND IT NEVER PAINTED.
+                          Read out of the served sheet, not reasoned: the canon
+                          `.admin-tbl tbody tr:hover{background: color-mix(in oklab,
+                          var(--bg-overlay) 50%, transparent)}` is specificity (0,2,2), the
+                          utility `.hover\:bg-bg-overlay\/50:hover` is (0,2,0), this table
+                          carries `.admin-tbl` (:340), and the compiled sheet has ZERO `@layer`
+                          so precedence is specificity then source order. The canon won on every
+                          hover — and the two colours are the SAME value, so the call site was a
+                          second definition of a live thing that could not even diverge visibly.
+                          ⛔ `group` and `scroll-mt-24` STAY: `group` is load-bearing for the
+                          row action below, and deleting it would be a real change.
+                          ⚠️ This is NOT the register's defect. That was "80 hover-classed cells
+                          on /admin/markets" — which is four LINK hovers times `PER_PAGE=20`
+                          rows, not one of them a background. */}
                     {pageItems.map((p) => (
-                      <tr key={p.id} id={`poll-tr-${p.id}`} className="border-b border-border/60 last:border-b-0 hover:bg-bg-overlay/50 group scroll-mt-24">
+                      <tr key={p.id} id={`poll-tr-${p.id}`} className="border-b border-border/60 last:border-b-0 group scroll-mt-24">
                         <td className="p-3"><Chip size="sm" variant={STATE_VARIANT[p.state]}>{aiPollStateLabel(p.state)}</Chip></td>
                         <td className="p-3 font-mono uppercase tracking-[0.12em] text-micro">{p.category || "\u2014"}</td>
                         <td className="p-3 text-text max-w-[360px]">
@@ -517,11 +531,11 @@ function PollRow({ poll, mode }: { poll: StoredAIPoll; mode: "review" | "publish
           <Chip size="sm" variant={STATE_VARIANT[poll.state]}>{aiPollStateLabel(poll.state)}</Chip>
           <span className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">{poll.category}</span>
           <span className="font-mono text-[10.5px] tabular-nums text-text-muted">
-            <I.shieldAlert size={10} className="inline -mt-0.5 mr-0.5" />
+            <I.shieldAlert s={10} className="inline -mt-0.5 mr-0.5" />
             confidence {poll.confidence}
           </span>
           <span className="font-mono text-[10.5px] tabular-nums text-text-muted">
-            <I.fileCheck size={10} className="inline -mt-0.5 mr-0.5" />
+            <I.fileCheck s={10} className="inline -mt-0.5 mr-0.5" />
             {poll.sources.length} sources
           </span>
           <span className="font-mono text-[10.5px] tabular-nums text-text-muted">
@@ -530,7 +544,7 @@ function PollRow({ poll, mode }: { poll: StoredAIPoll; mode: "review" | "publish
           </span>
           {poll.regenerationCount > 0 && (
             <span className="font-mono text-[10.5px] tabular-nums text-text-muted">
-              <I.sparkle size={10} className="inline -mt-0.5 mr-0.5" />
+              <I.sparkle s={10} className="inline -mt-0.5 mr-0.5" />
               regen #{poll.regenerationCount}
             </span>
           )}

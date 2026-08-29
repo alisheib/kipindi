@@ -154,7 +154,7 @@ export default async function AdminRetentionPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           <AdminCard className="border-info-border bg-info-bg">
             <div className="flex items-start gap-3">
-              <I.archive size={18} className="text-info shrink-0 mt-0.5" />
+              <I.archive s={18} className="text-info shrink-0 mt-0.5" />
               <div className="text-caption text-text-secondary space-y-1">
                 <p className="text-text font-bold">Automated purge <span className="font-normal text-success-fg">· LIVE since 2026-08-20</span></p>
                 <p>

@@ -95,7 +95,7 @@ export function SuspendControls({
           disabled={pending}
           className={`${btnBase} border-no-700 bg-no-500/15 text-no-300 hover:bg-no-500/25 transition-colors`}
         >
-          <I.shieldOff size={11} aria-hidden />
+          <I.shieldOff s={11} aria-hidden />
           Suspend player
         </button>
       )}

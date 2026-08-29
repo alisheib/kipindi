@@ -58,7 +58,7 @@ export default async function AdminTotpVerifyPage({ searchParams }: { searchPara
             <FiftyMark size={140} />
           </div>
           <div className="relative flex items-start gap-2.5">
-            <I.keyRound size={16} className="text-brand-300 shrink-0 mt-0.5" />
+            <I.keyRound s={16} className="text-brand-300 shrink-0 mt-0.5" />
             <div className="text-[12.5px] text-text-muted">
               <p className="font-display font-semibold text-text">Open your authenticator app</p>
               <p>Codes refresh every 30 seconds. Enter the current 6-digit code to complete admin sign-in.</p>

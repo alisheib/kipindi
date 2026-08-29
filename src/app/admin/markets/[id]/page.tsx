@@ -206,7 +206,7 @@ export default async function MarketPredictorsPage({
               rel="noopener noreferrer"
               className="shrink-0 inline-flex items-center gap-1 font-mono text-[11px] text-royal-300 hover:text-royal-200"
             >
-              Source <I.ext size={11} />
+              Source <I.ext s={11} />
             </a>
           </div>
           <div className="mt-3">
@@ -326,7 +326,7 @@ export default async function MarketPredictorsPage({
         <AdminCard>
           <form className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-0 sm:min-w-[220px]">
-              <I.search size={14} aria-hidden className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
+              <I.search s={14} aria-hidden className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
               <input
                 name="q"
                 defaultValue={query}

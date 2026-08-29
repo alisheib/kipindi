@@ -198,6 +198,24 @@ const RULES: Rule[] = [
     scan: (b) => matches(/oklch\(\s*40%\s+0\.12\s+262\s*\/\s*0\.35\s*\)/g, b),
   },
   {
+    /* ⭐ DG-A-09 — A `<tr>` MUST NOT RE-AUTHOR THE ROW HOVER. `globals.css`'s
+       `.admin-tbl tbody tr:hover` is specificity (0,2,2) and a `hover:bg-*` utility is (0,2,0),
+       and the compiled sheet has ZERO `@layer`, so the canon wins every time: a call-site row
+       hover is DEAD CSS that looks like a decision. Four existed when this rule was written —
+       two admin, and ⚠️ two PLAYER, because `.admin-tbl` is not admin-only (`/leaderboard`,
+       `/profile/account`). All four asked for `/40` or `/50` and all four rendered the canon's
+       50%. Deleted, so this rule ships at ZERO findings and writes no baseline entry — any
+       reintroduction is a NEW (rule,file) pair and fails.
+       ⛔ It matches a `<tr>` ONLY. A `hover:bg-*` on a control inside a cell is that control's
+       own affordance and is none of this rule's business — the register's version of this
+       finding ("delete per-cell hover:bg-*") would have stripped five real button hovers and
+       condemned the kit's own `tr:hover td:first-child` inset bar. */
+    id: "tr-restates-row-hover",
+    severity: "error",
+    desc: "a <tr> re-authors the row hover — dead CSS, .admin-tbl tbody tr:hover (0,2,2) always wins",
+    scan: (b) => matches(/<tr\b[^>]*\bhover:bg-/g, b),
+  },
+  {
     id: "adhoc-portal",
     severity: "warning",
     desc: "createPortal off the kit Modal — use <Modal> / <Modal sheet> (has focus-trap + scroll-lock)",

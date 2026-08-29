@@ -164,8 +164,12 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
               </tr>
             </thead>
             <tbody>
+                {/* ⭐ DG-A-09 · §B8 — dead duplicate of the canon row hover; see the note on
+                    `leaderboard/page.tsx`. This table is `.admin-tbl` too (:158), so the canon
+                    at (0,2,2) has always won and the `/40` never rendered. `transition-colors`
+                    stays — it eases the canon's change. */}
               {activityPage.map((e) => (
-                <tr key={e.id} className="border-b border-border last:border-b-0 hover:bg-bg-overlay/40 transition-colors">
+                <tr key={e.id} className="border-b border-border last:border-b-0 transition-colors">
                   <td className="px-3 py-2 font-mono tabular-nums whitespace-nowrap text-text-muted">
                     {formatDateTime(e.createdAt)}
                   </td>

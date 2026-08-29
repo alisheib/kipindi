@@ -127,7 +127,7 @@ export function TotpSetupClient({ initiallyEnabled, next }: { initiallyEnabled: 
           </a>
         )}
         <div className="flex gap-2 flex-wrap">
-          <Button variant="secondary" size="md" leading={<I.keyRound size={14} />} onClick={() => { setStepCode(""); setReprovOpen(true); }} loading={busy}>
+          <Button variant="secondary" size="md" leading={<I.keyRound s={14} />} onClick={() => { setStepCode(""); setReprovOpen(true); }} loading={busy}>
             Re-provision (new QR)
           </Button>
           <Button variant="danger" size="md" leading={<I.trash s={14} />} onClick={() => { setStepCode(""); setRemoveOpen(true); }} loading={busy}>
@@ -232,7 +232,7 @@ export function TotpSetupClient({ initiallyEnabled, next }: { initiallyEnabled: 
       <p className="text-body-sm text-text-secondary">
         Click below to provision a new QR code. Scan it with Google Authenticator, Authy, 1Password, or Bitwarden.
       </p>
-      <Button variant="primary" size="lg" leading={<I.keyRound size={14} />} onClick={() => start()} loading={busy}>
+      <Button variant="primary" size="lg" leading={<I.keyRound s={14} />} onClick={() => start()} loading={busy}>
         Provision authenticator
       </Button>
     </div>

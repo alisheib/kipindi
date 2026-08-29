@@ -426,7 +426,7 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
                 const Icon = Ic as (typeof I)[keyof typeof I];
                 return (
                   <div key={l as string} className="flex-1 rounded-md bg-bg-overlay p-3">
-                    <div className="flex items-center gap-1"><Cap><span className="inline-flex items-center gap-1"><Icon size={11} />{l as string}</span></Cap></div>
+                    <div className="flex items-center gap-1"><Cap><span className="inline-flex items-center gap-1"><Icon s={11} />{l as string}</span></Cap></div>
                     <div className="mt-1 font-mono text-[19px] font-bold" style={{ color: col as string }}>{v as number}</div>
                   </div>
                 );
@@ -485,7 +485,7 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
                 )}
                 <div className="flex gap-2">
                   <Button variant="ghost" size="md" onClick={() => setEditing(false)}>Cancel</Button>
-                  <Button variant="primary" size="md" fullWidth disabled={!editValid} loading={pending} leading={<I.check size={15} />} onClick={saveEdit}>Save changes</Button>
+                  <Button variant="primary" size="md" fullWidth disabled={!editValid} loading={pending} leading={<I.check s={15} />} onClick={saveEdit}>Save changes</Button>
                 </div>
               </div>
             ) : approved ? (
@@ -505,7 +505,7 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
                     body="Publish this proposal as a LIVE market? Players can immediately bet real money on it. It can only be reversed by an emergency void (which refunds every stake) — it cannot be un-published."
                     confirmLabel="Yes, publish live"
                     onConfirm={goLive}
-                    trigger={<Button variant="primary" size="md" loading={pending} leading={<I.arrowRight size={15} />}>Publish live · Orodhesha</Button>}
+                    trigger={<Button variant="primary" size="md" loading={pending} leading={<I.arrowRight s={15} />}>Publish live · Orodhesha</Button>}
                   />
                   <Button variant="ghost" size="md" leading={<I.edit s={15} />} onClick={openEdit}>Edit</Button>
                 </div>
@@ -531,14 +531,14 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
                     body="Approve this proposal? This immediately credits the proposer's bonus wallet (real bonus liability). Publishing the market is a separate step afterwards."
                     confirmLabel="Yes, approve & pay"
                     onConfirm={approve}
-                    trigger={<Button variant="primary" size="md" loading={pending} leading={<I.checkCircle size={15} />}>Approve &amp; pay bonus · Kubali</Button>}
+                    trigger={<Button variant="primary" size="md" loading={pending} leading={<I.checkCircle s={15} />}>Approve &amp; pay bonus · Kubali</Button>}
                   />
                   ) : (
                     <ControlLocked what="Approve &amp; pay bonus" need={needApprove} />
                   )}
                   <Button variant="ghost" size="md" leading={<I.edit s={15} />} onClick={openEdit}>Edit</Button>
                   <Button variant="ghost" size="md" loading={pending} leading={<I.fileText s={15} />} onClick={sendBack}>Request changes</Button>
-                  <Button variant="ghost" size="md" leading={<I.xCircle size={15} />} onClick={() => setDeclining(true)} className="!text-claret-300">Decline</Button>
+                  <Button variant="ghost" size="md" leading={<I.xCircle s={15} />} onClick={() => setDeclining(true)} className="!text-claret-300">Decline</Button>
                 </div>
                 <p className="text-body-sm text-text-subtle">Approving instantly credits the proposer&apos;s bonus wallet. Publishing the market is a separate step afterwards.</p>
               </div>

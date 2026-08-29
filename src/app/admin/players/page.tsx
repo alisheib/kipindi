@@ -154,7 +154,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
         <AdminCard>
           <form className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-0 sm:min-w-[260px]">
-              <I.search size={14} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-subtle" />
+              <I.search s={14} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-subtle" />
               <input
                 name="q"
                 defaultValue={query}

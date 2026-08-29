@@ -170,7 +170,7 @@ export default async function AdminCandidatesPage({
 
         <AdminCard>
           <div className="flex items-start gap-3">
-            <I.brain size={18} className="text-royal-300 mt-0.5 shrink-0" />
+            <I.brain s={18} className="text-royal-300 mt-0.5 shrink-0" />
             <div className="flex-1 text-caption text-text-secondary leading-relaxed">
               The pipeline runs in four layers — extract, filter, cross-verify,
               score. Candidates scoring {"\u2265"}&nbsp;75 land here in <strong>Pending
@@ -264,8 +264,8 @@ export default async function AdminCandidatesPage({
                   admin/ai-polls/page.tsx's empty-state medallion. */}
               <div className="h-[40px] w-[40px] rounded-pill bg-bg-overlay flex items-center justify-center">
                 {hasFilters
-                  ? <I.search size={18} className="text-text-subtle" />
-                  : <I.brain size={18} className="text-text-subtle" />}
+                  ? <I.search s={18} className="text-text-subtle" />
+                  : <I.brain s={18} className="text-text-subtle" />}
               </div>
               <div>
                 <p className="font-display text-[13px] font-semibold text-text-muted">
@@ -294,8 +294,12 @@ export default async function AdminCandidatesPage({
                     </tr>
                   </thead>
                   <tbody className="text-text-muted">
+                      {/* ⭐ DG-A-09 · §B8 — dead duplicate of the canon row hover, deleted.
+                          See the note on `admin/ai-polls/page.tsx`: `.admin-tbl tbody tr:hover`
+                          is (0,2,2) against this utility's (0,2,0), this table carries
+                          `.admin-tbl` (:284), and the two colours are identical. Zero pixels. */}
                     {pageItems.map((c) => (
-                      <tr key={c.id} className="border-b border-border/60 last:border-b-0 hover:bg-bg-overlay/50">
+                      <tr key={c.id} className="border-b border-border/60 last:border-b-0">
                         <td className="p-3"><Chip size="sm" variant={STATE_VARIANT[c.state]}>{candidateStateLabel(c.state)}</Chip></td>
                         <td className="p-3 font-mono uppercase tracking-[0.12em] text-micro">{c.category}</td>
                         <td className="p-3 text-text max-w-[420px] truncate">{c.proposedTitleEn}</td>
@@ -433,11 +437,11 @@ function CandidateRow({
           <Chip size="sm" variant={STATE_VARIANT[c.state]}>{candidateStateLabel(c.state)}</Chip>
           <span className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">{c.category}</span>
           <span className="font-mono text-[10.5px] tabular-nums text-text-muted">
-            <I.shieldAlert size={10} className="inline -mt-0.5 mr-0.5" />
+            <I.shieldAlert s={10} className="inline -mt-0.5 mr-0.5" />
             confidence {c.confidence}
           </span>
           <span className="font-mono text-[10.5px] tabular-nums text-text-muted">
-            <I.fileCheck size={10} className="inline -mt-0.5 mr-0.5" />
+            <I.fileCheck s={10} className="inline -mt-0.5 mr-0.5" />
             {c.sources.length} sources
           </span>
           <span className="font-mono text-[10.5px] tabular-nums text-text-muted">

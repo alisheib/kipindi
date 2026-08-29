@@ -191,7 +191,7 @@ export default async function AdminSystemPage() {
         <AdminCard title="Settlement" sw="Malipo">
           {settlement.readyToSettle.count > 0 ? (
             <div className="flex items-start gap-2 rounded-md border border-danger-border bg-danger-bg px-3 py-2.5 mb-3 text-[12.5px] text-danger-fg">
-              <I.alertCircle size={15} className="mt-[1px] shrink-0" />
+              <I.alertCircle s={15} className="mt-[1px] shrink-0" />
               <div>
                 <p className="font-semibold">
                   {settlement.readyToSettle.count} market{settlement.readyToSettle.count === 1 ? " is" : "s are"} OVERDUE — players are not being paid.
@@ -209,7 +209,7 @@ export default async function AdminSystemPage() {
             </div>
           ) : (
             <p className="flex items-center gap-1.5 mb-3 text-body-sm text-success">
-              <I.check size={14} className="shrink-0" />
+              <I.check s={14} className="shrink-0" />
               Nothing is overdue — every market past its objection window has been paid by its timer.
             </p>
           )}
@@ -304,7 +304,7 @@ export default async function AdminSystemPage() {
           <AdminCard title="Persistence" sw="Hifadhi · Postgres">
             <div className="flex items-start gap-2 mb-3">
               <I.server
-                size={16}
+                s={16}
                 className={
                   dbConnected ? "text-success mt-0.5 shrink-0"
                   : dbWaiting ? "text-text-muted mt-0.5 shrink-0"
@@ -373,7 +373,7 @@ export default async function AdminSystemPage() {
 
           <AdminCard title="Bootstrap admins" sw="Wasimamizi wa kuanzishia">
             <div className="flex items-start gap-2 mb-3">
-              <I.keyRound size={16} className={bootstrap.length > 0 ? "text-success mt-0.5 shrink-0" : "text-warning-fg mt-0.5 shrink-0"} />
+              <I.keyRound s={16} className={bootstrap.length > 0 ? "text-success mt-0.5 shrink-0" : "text-warning-fg mt-0.5 shrink-0"} />
               <div className="text-caption text-text-secondary leading-relaxed">
                 {bootstrap.length > 0 ? (
                   <>

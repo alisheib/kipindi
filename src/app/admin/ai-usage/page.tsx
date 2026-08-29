@@ -844,7 +844,7 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
               <label className="flex flex-col gap-1 flex-1 min-w-[180px]">
                 <FilterLabel>Search</FilterLabel>
                 <div className="relative">
-                  <I.search size={14} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-subtle" />
+                  <I.search s={14} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-subtle" />
                   {/* ⚠️ LITERAL, not `h-8` (48px on the overridden scale) — 32px = --h-control-xs,
                       the one admin-search height across every admin filter rail. */}
                   <input type="text" name="q" defaultValue={q} placeholder="model, error, detail…" className="w-full h-[32px] pl-9 pr-3 rounded-md border border-border bg-bg-overlay text-label text-text admin-focus transition-colors placeholder:text-text-subtle" />

@@ -122,7 +122,7 @@ export default async function AdminSourcesPage() {
                           className="inline-flex items-center gap-1 font-mono text-[12px] text-royal-300 hover:text-royal-200"
                         >
                           {s.domain}
-                          <I.ext size={11} aria-hidden />
+                          <I.ext s={11} aria-hidden />
                         </a>
                       </td>
                       <td className="p-3 text-text-tertiary max-w-[420px]">{s.rationale}</td>

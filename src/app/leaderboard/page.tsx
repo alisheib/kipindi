@@ -249,8 +249,15 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
             </tr>
           </thead>
           <tbody>
+              {/* ⭐ DG-A-09 · §B8 — `hover:bg-bg-overlay/40` DELETED; it never painted, and the
+                  reason is one worth knowing: **`.admin-tbl` IS NOT ADMIN-ONLY.** This player
+                  table carries it (:240), so the canon `.admin-tbl tbody tr:hover` — specificity
+                  (0,2,2) — beat this utility's (0,2,0) on every hover, and the `/40` requested
+                  here has never rendered: what a player sees is the canon's 50%.
+                  ⛔ `transition-colors` STAYS. The background still changes on hover — it just
+                  comes from the canon — and this class is what eases it. */}
             {pagedRows.map((r, i) => (
-              <tr key={r.userId} className="border-b border-border last:border-b-0 hover:bg-bg-overlay/40 transition-colors">
+              <tr key={r.userId} className="border-b border-border last:border-b-0 transition-colors">
                 <td className="p-3 font-mono font-bold tabular-nums">
                   <span className={offset + i < 3 ? "text-brand-300" : "text-text-subtle"}>{offset + i + 1}</span>
                 </td>

@@ -85,7 +85,7 @@ function RouteCard({
           color: on ? "var(--royal-300)" : "var(--text-muted)",
         }}
       >
-        <Icon size={19} />
+        <Icon s={19} />
       </span>
       <div className="flex-1 min-w-0">
         <div className="text-[14px] font-bold">
@@ -136,7 +136,7 @@ export function BonusAdminClient({ config }: { config: BonusConfig }) {
             color: on ? "var(--royal-300)" : "var(--warning-fg)",
           }}
         >
-          {on ? <I.gift size={23} /> : <I.pause s={23} />}
+          {on ? <I.gift s={23} /> : <I.pause s={23} />}
         </span>
         <div className="flex-1 min-w-0">
           <div className="text-[15px] font-bold">

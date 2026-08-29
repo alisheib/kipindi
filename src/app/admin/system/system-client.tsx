@@ -64,7 +64,7 @@ export function SystemActions({ kind }: { kind: "verify-chain" }) {
       </Button>
       {result && (
         <p className="text-caption flex items-center gap-1.5 text-text-secondary">
-          {result.startsWith("Chain valid") ? <I.checkCircle size={12} className="text-success" /> : <I.warning s={12} />}
+          {result.startsWith("Chain valid") ? <I.checkCircle s={12} className="text-success" /> : <I.warning s={12} />}
           {result}
         </p>
       )}

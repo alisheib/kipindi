@@ -93,7 +93,7 @@ function RewardCard({
             color: active ? "var(--royal-300)" : "var(--text-muted)",
           }}
         >
-          <Icon size={19} />
+          <Icon s={19} />
         </span>
         <div className="flex-1 min-w-0">
           <div className="text-[14.5px] font-bold">
@@ -151,7 +151,7 @@ export function AffiliateAdminClient({ config }: { config: AffiliateConfig }) {
             color: on ? "var(--royal-300)" : "var(--warning-fg)",
           }}
         >
-          {on ? <I.megaphone size={23} /> : <I.pause s={23} />}
+          {on ? <I.megaphone s={23} /> : <I.pause s={23} />}
         </span>
         <div className="flex-1 min-w-0">
           <div className="text-[15px] font-bold">

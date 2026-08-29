@@ -10,12 +10,21 @@
  */
 import type { SVGProps } from "react";
 
-/* `s` is the kit size prop; `size` is accepted as a lucide-compatible alias so
-   icons swap from lucide → I.* without renaming every call site's prop. */
-type GlyphProps = { s?: number; size?: number } & Omit<SVGProps<SVGSVGElement>, "ref">;
+/* ⭐ DG-A-19 — `s` IS THE SIZE PROP. THE `size` ALIAS IS GONE, AND ITS REASON WAS SPENT.
+   It read: *"`size` is accepted as a lucide-compatible alias so icons swap from lucide → I.*
+   without renaming every call site's prop."* That migration finished — `da19ead5`, 2026-06-06 —
+   so the alias had stopped buying anything and was only costing the kit two spellings for one
+   idea, which is what DG-A-19 files. Measured before removing it: **64 call sites in 30 files
+   wrote `size=` against 608 writing `s=`, and every single one of the 64 was under
+   `src/app/admin/`** — so the drift was one surface, not the platform.
+   ⭐ The removal is zero-visual by construction (`width={s ?? size}` returned the same number
+   either way) and it needs NO new guard: deleting `size?: number` from this type makes a
+   reintroduction a COMPILE ERROR, and `tsc --noEmit` already runs in the pipeline. A guard you
+   get for free by deleting something is better than one you have to write. */
+type GlyphProps = { s?: number } & Omit<SVGProps<SVGSVGElement>, "ref">;
 
-const G = ({ children, s, size, ...p }: GlyphProps & { children: React.ReactNode }) => (
-  <svg viewBox="0 0 24 24" width={s ?? size ?? 24} height={s ?? size ?? 24} fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden {...p}>{children}</svg>
+const G = ({ children, s, ...p }: GlyphProps & { children: React.ReactNode }) => (
+  <svg viewBox="0 0 24 24" width={s ?? 24} height={s ?? 24} fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden {...p}>{children}</svg>
 );
 
 /* The ONE 64-grid wrapper — every empty-state line-art uses it.
@@ -29,8 +38,8 @@ const G = ({ children, s, size, ...p }: GlyphProps & { children: React.ReactNode
  * The 56-grid BADGE set (`src/components/badges/icons.tsx`) is a DIFFERENT,
  * deliberate tier at 2.2: those are filled medallions read at ~32–56px, not
  * line-arts, and they are not neighbours of anything drawn here. */
-const GL = ({ children, s, size, ...p }: GlyphProps & { children: React.ReactNode }) => (
-  <svg viewBox="0 0 64 64" width={s ?? size ?? 64} height={s ?? size ?? 64} fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden {...p}>{children}</svg>
+const GL = ({ children, s, ...p }: GlyphProps & { children: React.ReactNode }) => (
+  <svg viewBox="0 0 64 64" width={s ?? 64} height={s ?? 64} fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden {...p}>{children}</svg>
 );
 
 const Ibase = {

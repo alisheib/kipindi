@@ -36,7 +36,7 @@ export default async function AdminSettlementPage({ searchParams }: { searchPara
               : "flex items-start gap-2 rounded-md border border-brand-500 bg-brand-500/10 px-3 py-2.5 text-[12.5px] text-text-muted"
           }
         >
-          <I.alertCircle size={15} className="mt-[1px] shrink-0" />
+          <I.alertCircle s={15} className="mt-[1px] shrink-0" />
           {ready.length > 0 ? (
             <p>
               <strong>{ready.length} market{ready.length === 1 ? "" : "s"} sat past the window without paying.</strong>{" "}

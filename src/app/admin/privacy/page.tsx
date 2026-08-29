@@ -192,7 +192,7 @@ export default async function AdminPrivacyPage({
 
         <AdminCard className="border-info-border bg-info-bg">
           <div className="flex items-start gap-3">
-            <I.shieldQuestion size={18} className="text-info shrink-0 mt-0.5" />
+            <I.shieldQuestion s={18} className="text-info shrink-0 mt-0.5" />
             <div className="text-caption text-text-secondary space-y-1">
               <p className="text-text font-bold">Legal frame</p>
               <p>

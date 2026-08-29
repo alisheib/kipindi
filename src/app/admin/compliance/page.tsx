@@ -466,7 +466,7 @@ async function PlayerSafetyPanel({ sp }: { sp: { page?: string; sort?: string; d
       sw="Alama za hatari"
       action={
         <div className="flex items-center gap-2">
-          <I.heartPulse size={14} className="text-warning" />
+          <I.heartPulse s={14} className="text-warning" />
           <span className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">LCCP §3.4.1</span>
         </div>
       }

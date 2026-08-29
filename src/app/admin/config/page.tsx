@@ -92,7 +92,7 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
         {config.feeModel === "loser-share" ? (
           <AdminCard className="border-warning-border bg-warning-bg">
             <div className="flex items-start gap-3">
-              <I.warning size={18} className="text-warning shrink-0 mt-0.5" />
+              <I.warning s={18} className="text-warning shrink-0 mt-0.5" />
               <div className="text-caption text-text-secondary space-y-1.5">
                 <p className="text-text font-bold">Loser-share model active — new polls</p>
                 <p>
@@ -114,7 +114,7 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
         ) : null}
         <AdminCard className="border-info-border bg-info-bg">
           <div className="flex items-start gap-3">
-            <I.settings size={18} className="text-info shrink-0 mt-0.5" />
+            <I.settings s={18} className="text-info shrink-0 mt-0.5" />
             <div className="text-caption text-text-secondary space-y-1.5">
               <p className="text-text font-bold">Capped-fee pari-mutuel {config.feeModel === "loser-share" ? "(legacy / existing polls)" : ""}</p>
               {/* ⚫ F3 · SAY IT IN A SENTENCE, NOT ONLY IN A PARENTHESIS. Everything below is

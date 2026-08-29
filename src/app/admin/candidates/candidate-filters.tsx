@@ -105,7 +105,7 @@ export function CandidateFilterToolbar({ totalFiltered, totalAll }: { totalFilte
         <span className="w-px h-5 bg-border/60" />
 
         <div className="flex items-center gap-1 flex-wrap gap-y-1.5">
-          <I.filter size={12} className="text-text-subtle mr-0.5" />
+          <I.filter s={12} className="text-text-subtle mr-0.5" />
           {ALL_STATES.map((s) => (
             <FilterPill
               key={s.id}

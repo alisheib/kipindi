@@ -629,7 +629,7 @@ function ExclusionTab({ rg }: { rg: Awaited<ReturnType<typeof db.responsible.get
     <div className="space-y-3">
       {rg.selfExclusionUntil ? (
         <div className="rounded-md border-2 border-danger/40 bg-danger-bg p-4 flex items-start gap-2.5">
-          <I.alertOctagon size={16} className="text-danger shrink-0 mt-0.5" />
+          <I.alertOctagon s={16} className="text-danger shrink-0 mt-0.5" />
           <div className="text-caption text-text-secondary">
             <p className="font-bold text-text">Self-exclusion active</p>
             {/* An exclusion expiry is the one date an officer must never read three hours

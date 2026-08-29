@@ -83,16 +83,16 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
                 <Chip size="md" variant={STATE_VARIANT[poll.state]}>{aiPollStateLabel(poll.state)}</Chip>
                 <span className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">{poll.category}</span>
                 <span className="font-mono text-[10.5px] tabular-nums text-text-muted">
-                  <I.shieldAlert size={10} className="inline -mt-0.5 mr-0.5" />
+                  <I.shieldAlert s={10} className="inline -mt-0.5 mr-0.5" />
                   confidence {poll.confidence}
                 </span>
                 <span className="font-mono text-[10.5px] tabular-nums text-text-muted">
-                  <I.fileCheck size={10} className="inline -mt-0.5 mr-0.5" />
+                  <I.fileCheck s={10} className="inline -mt-0.5 mr-0.5" />
                   {poll.sources.length} sources
                 </span>
                 {poll.regenerationCount > 0 && (
                   <span className="font-mono text-[10.5px] tabular-nums text-text-muted">
-                    <I.sparkle size={10} className="inline -mt-0.5 mr-0.5" />
+                    <I.sparkle s={10} className="inline -mt-0.5 mr-0.5" />
                     regen #{poll.regenerationCount}
                   </span>
                 )}
@@ -120,7 +120,7 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
                   href={`/admin/markets/${poll.publishedMarketId}` as never}
                   className="inline-flex items-center gap-1.5 rounded-md border border-border bg-bg-overlay px-2.5 py-1.5 font-mono text-[10.5px] font-semibold text-text-muted hover:border-brand-500 hover:text-text transition-colors whitespace-nowrap"
                 >
-                  <I.users size={11} />
+                  <I.users s={11} />
                   View predictors
                 </Link>
               )}
@@ -199,7 +199,7 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
               {/* ⚠️ LITERALS, not `h-8 w-8` — spacing is overridden (tailwind.config.ts:200-215)
                   so `h-8` was a 48px disc round a 14px glyph. */}
               <div className="h-[32px] w-[32px] rounded-pill bg-bg-overlay flex items-center justify-center">
-                <I.shieldAlert size={14} className="text-text-subtle" />
+                <I.shieldAlert s={14} className="text-text-subtle" />
               </div>
               <div>
                 <p className="text-body-sm text-text-muted">No quality data</p>
@@ -240,7 +240,7 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
             <div className="flex items-center gap-2 py-3">
               {/* ⚠️ LITERALS — see the quality medallion above. `h-8` is 48px here. */}
               <div className="h-[32px] w-[32px] rounded-pill bg-bg-overlay flex items-center justify-center">
-                <I.fileCheck size={14} className="text-text-subtle" />
+                <I.fileCheck s={14} className="text-text-subtle" />
               </div>
               <p className="text-body-sm text-text-muted">
                 {poll.state === "VALIDATION_FAILED" || poll.state === "FILTERED"
@@ -308,7 +308,7 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
                 href={`/admin/markets/${poll.publishedMarketId}` as never}
                 className="inline-flex items-center gap-1 rounded-md border border-border bg-bg-overlay px-2 py-1 font-mono text-[10.5px] font-semibold text-text-muted hover:border-brand-500 hover:text-text transition-colors"
               >
-                <I.users size={11} />
+                <I.users s={11} />
                 View predictors
               </Link>
               <span className="font-mono text-[10px] text-text-subtle select-all break-all">
