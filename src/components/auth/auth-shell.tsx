@@ -30,7 +30,7 @@ export async function AuthShell({ children }: { children: React.ReactNode }) {
         >
           <BrandTopo id="auth-rail-topo" opacity={0.09} />
           <div className="relative">
-            <Link href="/" aria-label={t.auth.brandHomeAria} className="inline-block">
+            <Link href="/" aria-label={t.auth.brandHomeAria} className="inline-block transition-opacity hover:opacity-90">
               <FiftyLockup size={26} />
             </Link>
           </div>
@@ -72,7 +72,7 @@ export async function AuthShell({ children }: { children: React.ReactNode }) {
           <BrandTopo id="auth-form-topo" opacity={0.09} />
           <div className="relative w-full min-w-0 max-w-md">
             {/* Mobile lockup — the rail carries it on lg. */}
-            <Link href="/" aria-label={t.auth.brandHomeAria} className="mb-6 inline-block lg:hidden">
+            <Link href="/" aria-label={t.auth.brandHomeAria} className="mb-6 inline-block transition-opacity hover:opacity-90 lg:hidden">
               <FiftyLockup size={22} />
             </Link>
             {children}

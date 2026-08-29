@@ -46,7 +46,7 @@ export default async function AdminLoginPage({ searchParams }: { searchParams?: 
       {/* B7 — was max-w-lg (512) where every sibling auth form is max-w-md (448). */}
       <div className="w-full min-w-0 max-w-md space-y-4">
         <header className="text-center space-y-1.5">
-          <Link href="/" aria-label="50pick home" className="mb-2 inline-block">
+          <Link href="/" aria-label="50pick home" className="mb-2 inline-block transition-opacity hover:opacity-90">
             <FiftyLockup size={22} />
           </Link>
           {/* Admin gold-discipline: gold is only the resolved seal. Royal frame
