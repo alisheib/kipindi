@@ -45,7 +45,7 @@ export function SearchHelp({
    * on outside-mousedown and Escape, so it never lives long enough to go stale, and a scroll
    * listener here would run on every wheel event of a long admin table.
    */
-  const [flipUp, setFlipUp] = useState(false);
+  const [pos, setPos] = useState<{ up: boolean; maxH: number }>({ up: false, maxH: 0 });
 
   useEffect(() => {
     if (!open) return;
@@ -82,13 +82,23 @@ export function SearchHelp({
         // was 48px. ⛔ Never a scale token here.
         className="inline-flex h-[40px] w-[40px] items-center justify-center text-text-subtle hover:text-text transition-colors"
         onClick={() => {
-          // Decide the direction BEFORE painting, from the trigger's own position. 470px is the
-          // tallest the panel gets (464 with a `field:` row + the 6px gap); 12px keeps it off the
-          // very edge. If neither side has room, DOWN wins — the panel's own top stays reachable.
+          /**
+           * ⛔ CHOOSING A SIDE IS NOT ENOUGH — measured on production. The first version flipped
+           * up whenever there was more room above, and on `/admin/ai-polls` and `/admin/proposals`
+           * that put the panel's top at −39px and −23px: off the TOP instead of off the bottom.
+           * A 464px panel in a 900px viewport does not fit on EITHER side of a mid-page trigger,
+           * so no choice of direction can be correct. It must also be BOUNDED.
+           * So: take the roomier side, then cap the height to the room that side actually has and
+           * let the list scroll inside itself. The panel is then always wholly on screen and every
+           * example row is reachable — which is the only thing this affordance is for.
+           */
           const r = ref.current?.getBoundingClientRect();
           if (r) {
-            const below = window.innerHeight - r.bottom;
-            setFlipUp(below < 470 + 12 && r.top > below);
+            const GAP = 6, EDGE = 12;
+            const below = window.innerHeight - r.bottom - GAP - EDGE;
+            const above = r.top - GAP - EDGE;
+            const up = above > below;
+            setPos({ up, maxH: Math.max(180, Math.floor(up ? above : below)) });
           }
           setOpen((v) => !v);
         }}
@@ -105,7 +115,8 @@ export function SearchHelp({
           // painted nothing at all. Anchor to the trigger instead of to a scale step — the
           // idiom `nav-more.tsx` already ships. ⛔ If a wider gap is ever wanted, change the
           // `6px`, never the `100%`.
-          className={`absolute right-0 ${flipUp ? "bottom-[calc(100%+6px)]" : "top-[calc(100%+6px)]"} z-50 w-[min(320px,calc(100vw-24px))] rounded-xl border border-border-strong bg-bg-elevated/95 p-3 shadow-e4 backdrop-blur-xl`}
+          className={`absolute right-0 ${pos.up ? "bottom-[calc(100%+6px)]" : "top-[calc(100%+6px)]"} z-50 w-[min(320px,calc(100vw-24px))] overflow-y-auto overscroll-contain rounded-xl border border-border-strong bg-bg-elevated/95 p-3 shadow-e4 backdrop-blur-xl`}
+          style={pos.maxH ? { maxHeight: pos.maxH } : undefined}
         >
           <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted">
             {t.common.searchHelpTitle}
