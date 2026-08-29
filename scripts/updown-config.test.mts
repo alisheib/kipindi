@@ -611,6 +611,35 @@ let goldId = "";
   }
 }
 
+// ── §9 · the feed-advice memo is bounded by a real-world window ─────────────
+//
+// 🔴 WHY. `feedAdviceLookup()` measured **11,865 ms — 93.5% of `/admin/updown`'s server work**
+// on production 2026-08-29 (`GET /api/admin/updown-timing`), so it is memoised. A memo on a
+// SAFETY read needs a ceiling that is a fact about the world, not a number someone liked, and
+// the ceiling has to be asserted or it is a comment.
+//
+// ⛔ The bound is ONE ROUND at the shortest length the product offers. Advice that could
+// outlive a whole round could tell an operator a feed is confirming after it had stopped —
+// the single thing this advice exists to prevent.
+{
+  const { FEED_ADVICE_TTL_MS, FEED_ADVICE_TTL_CEILING_MS } =
+    await import("../src/lib/server/updown-feed-history.ts");
+  const { ALLOWED_DURATIONS } = await import("../src/lib/server/updown-config.ts");
+  ok("9.1 · the feed-advice memo cannot outlive one round of the SHORTEST duration offered",
+     FEED_ADVICE_TTL_MS <= FEED_ADVICE_TTL_CEILING_MS,
+     `TTL ${FEED_ADVICE_TTL_MS}ms vs ceiling ${FEED_ADVICE_TTL_CEILING_MS}ms`);
+  // ⛔ CONTROL · the ceiling must be derived from the product, not from the memo. If the
+  // shortest allowed round ever drops below the ceiling, this ceiling is stale and the memo
+  // could span a round without anything going red.
+  const shortestMin = Math.min(...ALLOWED_DURATIONS);
+  ok("9.2 · CONTROL · the ceiling still equals one round at the shortest allowed duration",
+     FEED_ADVICE_TTL_CEILING_MS === shortestMin * 60_000,
+     `ceiling ${FEED_ADVICE_TTL_CEILING_MS}ms, shortest round ${shortestMin}min = ${shortestMin * 60_000}ms`);
+  ok("9.3 · …and the memo is short enough to actually be warm between two console loads",
+     FEED_ADVICE_TTL_MS >= 60_000,
+     `${FEED_ADVICE_TTL_MS}ms — an 11.9s read that expires between two page views was never cached`);
+}
+
 // ── Result ──────────────────────────────────────────────────────────────────
 console.log(`\nupdown-config: ${pass} passed, ${fail} failed`);
 if (fail > 0) {

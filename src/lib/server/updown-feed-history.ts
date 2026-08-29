@@ -196,6 +196,76 @@ export async function movementByAssetKey(): Promise<Map<string, MovementProfile>
  * LIVE config here and passed in, never defaulted inside the advice engine: a code default is
  * not a live setting, and quoting the wrong deadline in a warning is E-84 in a new place.
  */
+/**
+ * 2 minutes. ⛔ Bounded from ABOVE by `FEED_ADVICE_TTL_CEILING_MS` — see below — and asserted
+ * by `npm run test:updown-config` §9 rather than remembered.
+ *
+ * ⚠️ IT WAS WRITTEN AS 5 MINUTES FIRST, copying `TERMINAL_TTL_MS`, and §9.1 failed on the
+ * first run: 300,000 against a 180,000 ceiling. The archive memo's 5 minutes is bounded by a
+ * 24-hour objection window; this one is bounded by a 3-minute round. Copying a number across
+ * two caches whose ceilings differ by 480× is exactly what an asserted bound is for.
+ */
+export const FEED_ADVICE_TTL_MS = 120_000;
+
+/**
+ * The staleness this advice may never approach: ONE ROUND at the shortest length the product
+ * offers. The two reads behind it are 30-day rolling statistics — "does this asset move enough
+ * in three minutes, and does the feed confirm in time" — and those answers do not change
+ * between two consecutive page loads. They change over days. But if the memo could outlive a
+ * whole round, the console could advise on a feed that had already stopped confirming, which
+ * is the one thing this advice exists to prevent.
+ */
+export const FEED_ADVICE_TTL_CEILING_MS = 3 * 60_000;
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __50PICK_FEED_ADVICE: { at: number; value: Awaited<ReturnType<typeof loadFeedAdvice>> } | undefined;
+}
+
+/**
+ * ⛔ THE MEASURED CAUSE OF `/admin/updown` AT 11 SECONDS, and it was found by an instrument
+ * rather than by reading (2026-08-29, DG-A-01's widened gate).
+ *
+ * `GET /api/admin/updown-timing` times each of that page's own reads. It reported
+ * **`feedAdviceLookup` 11,865 ms — 93.5%** of the page's server work, against
+ * `roundStore.list` 594 ms (12,559 rows), `moneyByGame` 153 ms, `poolsByIds` 36 ms,
+ * `playbookLookup` 15 ms and the rest under 10 ms.
+ *
+ * ⚠️ THAT MEASUREMENT ALSO CONVICTED A FIX I HAD ALREADY SHIPPED. The commit before this one
+ * collapsed the page's 46 per-chain queries into two, on the reasoning that 23 chains × 2
+ * round-trips was the cost. It was 630 ms of 12,688 — **5%** — and the page moved from
+ * 11,045 ms to 11,448 ms, i.e. not at all. The bulk read is still the right shape and it
+ * stays; it was simply never the answer, and no amount of re-reading the code would have
+ * said so. ⛔ Two diagnoses of this page have now been wrong. The instrument is the record.
+ *
+ * The cost is the two SQL reads below: a `GROUP BY` over the whole observation table and a
+ * self-join pairing every confirmed reading with every later one inside 65 minutes, then
+ * `percentile_disc` grouped three ways. Both are 30-day rolling statistics.
+ *
+ * ⛔ THE INNER FUNCTIONS ARE DELIBERATELY LEFT UNCACHED. `feedHistoryByAssetKey` and
+ * `movementByAssetKey` stay exported and un-memoised so the timing endpoint can keep
+ * attributing this cost after the memo hides it from the page. A cache that also blinds the
+ * instrument measuring it is how a slow query survives being "fixed".
+ */
+async function loadFeedAdvice() {
+  const [byKey, moveByKey] = await Promise.all([feedHistoryByAssetKey(), movementByAssetKey()]);
+  return { byKey, moveByKey };
+}
+
+async function cachedFeedAdvice(): Promise<Awaited<ReturnType<typeof loadFeedAdvice>>> {
+  // ⛔ THE TEST SEAMS BYPASS THE MEMO. `__setFeedHistoryForTests` exists so the in-memory
+  // suites can drive the measured gate's REFUSAL end to end; a memo that outlived a seam
+  // change would make the next assertion in the same run read the previous fixture, and the
+  // suite would be proving something about neither.
+  if (historyOverride || movementOverride) return loadFeedAdvice();
+  const now = Date.now();
+  const hit = globalThis.__50PICK_FEED_ADVICE;
+  if (hit && now - hit.at < FEED_ADVICE_TTL_MS) return hit.value;
+  const value = await loadFeedAdvice();
+  globalThis.__50PICK_FEED_ADVICE = { at: now, value };
+  return value;
+}
+
 export async function feedAdviceLookup(): Promise<{
   advise: (assetKey: string, durationMinutes?: number) => FeedAdvice;
   /** ⭐ G1 · the second axis. Null when no duration is in question — "does gold move enough" is
@@ -206,9 +276,12 @@ export async function feedAdviceLookup(): Promise<{
   record: (assetKey: string) => FeedRecord;
   abandonAfterSeconds: number;
 }> {
-  const [byKey, moveByKey, cfg] = await Promise.all([
-    feedHistoryByAssetKey(), movementByAssetKey(), getUpDownConfig(),
-  ]);
+  // ⚠️ `getUpDownConfig()` is NOT memoised with the two statistics and must not be. It carries
+  // `abandonAfterSeconds`, an operator SETTING — a live config value quoted in a warning, and
+  // quoting a stale one is E-84 in a new place (the note under this function says so). It
+  // measured 0 ms on production; there is nothing to save and a real thing to lose.
+  const [stats, cfg] = await Promise.all([cachedFeedAdvice(), getUpDownConfig()]);
+  const { byKey, moveByKey } = stats;
   const deadline = abandonAfterSeconds(cfg);
   const historyFor = (assetKey: string) => byKey.get(assetKey) ?? emptyHistory(assetKey);
   return {

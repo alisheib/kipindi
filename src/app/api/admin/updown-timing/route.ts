@@ -32,7 +32,7 @@ import { canView } from "@/lib/server/rbac";
 import { checkAdminTotp } from "@/lib/server/admin-guard";
 import { db } from "@/lib/server/store";
 import { listAssets, listChains, getUpDownConfig } from "@/lib/server/updown-config";
-import { feedAdviceLookup } from "@/lib/server/updown-feed-history";
+import { feedAdviceLookup, feedHistoryByAssetKey, movementByAssetKey } from "@/lib/server/updown-feed-history";
 import { playbookLookup } from "@/lib/server/updown-playbook-store";
 import { roundStore, observationStore } from "@/lib/server/updown-dal";
 import { marketStore } from "@/lib/server/market-dal";
@@ -71,7 +71,13 @@ export async function GET() {
   const assets = await phase("listAssets", () => listAssets(), (v) => v.length);
   const chains = await phase("listChains", () => listChains(), (v) => v.length);
   const cfg = await phase("getUpDownConfig", () => getUpDownConfig(), () => 1);
-  const feed = await phase("feedAdviceLookup", () => feedAdviceLookup(), (v) => (v ? 1 : 0));
+  const feed = await phase("feedAdviceLookup (memoised)", () => feedAdviceLookup(), (v) => (v ? 1 : 0));
+  // ⛔ THE TWO HALVES BEHIND IT, CALLED DIRECTLY AND UNCACHED. `feedAdviceLookup` is memoised
+  // now (it was 93.5% of this page), and a memo that also blinds the instrument measuring it
+  // is how a slow query survives being "fixed" — the row above will read ~0 ms on a warm
+  // container and say nothing about the underlying cost. These two do not go through the memo.
+  const hist = await phase("  └ feedHistoryByAssetKey (uncached)", () => feedHistoryByAssetKey(), (v) => v.size);
+  const move = await phase("  └ movementByAssetKey (uncached)", () => movementByAssetKey(), (v) => v.size);
   const play = await phase("playbookLookup", () => playbookLookup(), (v) => v.measured.length);
 
   const chainList = await listChains().catch(() => []);
@@ -98,7 +104,7 @@ export async function GET() {
   );
   const money = await phase("moneyByGame(30d)", () => moneyByGame(Date.now() - 30 * 86_400_000, Date.now()), () => 1);
 
-  const phases = [assets, chains, cfg, feed, play, rounds, pools, obs, money];
+  const phases = [assets, chains, cfg, feed, hist, move, play, rounds, pools, obs, money];
   const sum = phases.reduce((s, p) => s + p.ms, 0);
   return NextResponse.json({
     ok: true,
