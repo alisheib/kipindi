@@ -95,8 +95,29 @@ export function SearchHelp({
           const r = ref.current?.getBoundingClientRect();
           if (r) {
             const GAP = 6, EDGE = 12;
-            const below = window.innerHeight - r.bottom - GAP - EDGE;
-            const above = r.top - GAP - EDGE;
+            /**
+             * ⛔ THE VIEWPORT IS NOT THE BOUNDARY — the nearest CLIPPING ANCESTOR is, and asking
+             * the wrong one is how the second draft failed. On `/admin/proposals` the SearchBox
+             * sits inside `<div className="overflow-hidden rounded-lg glass-panel">` (the queue
+             * card, whose clip is load-bearing: its list rows tint on hover and would square off
+             * the card's bottom corners without it). By the viewport's reckoning there was ample
+             * room above, so the panel flipped up — straight into that card's clip, and measured
+             * `hits=[false,false,true]`: two thirds of it painted nothing. Flipping had made it
+             * WORSE than staying down, where at least it could be scrolled to.
+             * So walk up and intersect with every ancestor that clips. This also protects any
+             * SearchBox a future page drops inside a card, which is the ordinary case.
+             */
+            let top = 0, bottom = window.innerHeight;
+            for (let el = ref.current?.parentElement; el && el !== document.body; el = el.parentElement) {
+              const s = getComputedStyle(el);
+              if (s.overflow !== "visible" || s.overflowX !== "visible" || s.overflowY !== "visible") {
+                const q = el.getBoundingClientRect();
+                top = Math.max(top, q.top);
+                bottom = Math.min(bottom, q.bottom);
+              }
+            }
+            const below = bottom - r.bottom - GAP - EDGE;
+            const above = r.top - top - GAP - EDGE;
             const up = above > below;
             setPos({ up, maxH: Math.max(180, Math.floor(up ? above : below)) });
           }
