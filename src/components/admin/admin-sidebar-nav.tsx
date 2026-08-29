@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { activeKeyFromPath, type NavGroup } from "./admin-nav-groups";
+import { CountBadge } from "@/components/ui/count-badge";
 
 // The route→nav-key resolver is imported from admin-nav-groups.ts — see the note
 // there. This file's local copy was the one missing /admin/payments, /admin/kyc and
@@ -34,19 +35,29 @@ export function AdminSidebarNav({ groups, badges, fallbackKey }: { groups: Reado
                 // one had not. WCAG 1.4.1 (use of colour) and 2.4.8 (location).
                 aria-current={active ? "page" : undefined}
                 className={[
-                  "flex items-center justify-between rounded-md px-2.5 py-2 text-body-sm transition-colors",
+                  // ⭐ DG-A-18 · 40px, the `--h-control-sm` rung, replacing a `py-2` that
+                  // resolved to 42 — off both the 40 and 44 rungs, on every row of every
+                  // admin page. Stated as the FLOOR and centred, never summed to.
+                  "flex min-h-[var(--h-control-sm)] items-center justify-between rounded-md px-2.5 text-body-sm transition-colors",
                   active
                     ? "text-text font-semibold"
                     : "text-text-subtle hover:text-text",
                 ].join(" ")}
-                style={active ? { background: "oklch(40% 0.12 268 / 0.5)" } : undefined}
+                // ⭐ DG-A-18 · §B9. This was `oklch(40% 0.12 268 / 0.5)`, typed here — and it had
+                // already DIVERGED from the token that owns this exact job: `--pill-active` is
+                // `oklch(40% 0.12 262 / 0.35)`, i.e. a different hue AND a different alpha, for
+                // "one active filter/tab fill everywhere". Two homes for one design truth, drifting
+                // apart in the dark — which is the whole argument of B9 in one line.
+                // ⛔ `ui-consistency`'s `hardcoded-pill-active` rule could not see it: that rule
+                // matches the token's LITERAL text, and this was a different literal.
+                style={active ? { background: "var(--pill-active)" } : undefined}
               >
                 <span>{it.label}</span>
-                {badge && (
-                  <span className="bg-brand-500 text-white font-mono text-micro leading-none" style={{ padding: "1px 5px", borderRadius: 4 }}>
-                    {badge}
-                  </span>
-                )}
+                {/* ⭐ The kit pip. `count-badge.tsx`'s own header names "admin sidebar" as one of
+                    the FOUR implementations it was written to consolidate, and this call site was
+                    never migrated — so it kept the 4px corner B10.2 calls a second definition site,
+                    and it kept NO CAP. `approvals` is kyc + aml + sof, which can genuinely pass 99. */}
+                {badge && <CountBadge count={Number(badge)} tone="brand" size="sm" />}
               </Link>
             );
           })}

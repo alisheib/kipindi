@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { activeKeyFromPath } from "./admin-nav-groups";
 import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
+import { CountBadge } from "@/components/ui/count-badge";
 
 type NavItem = { href: string; label: string; key: string; badge?: string };
 type NavGroup = { group: { en: string; sw: string }; items: ReadonlyArray<NavItem> };
@@ -127,11 +128,9 @@ export function AdminMobileNavTrigger({ groups, badges, fallbackKey, roleLabel }
                         ].join(" ")}
                       >
                         <span>{it.label}</span>
-                        {badge && (
-                          <span className="bg-brand-500 text-white font-mono text-micro px-1.5 py-0.5 rounded-sm leading-none">
-                            {badge}
-                          </span>
-                        )}
+                        {/* the same kit pip as the desktop sidebar — `count-badge.tsx` names this
+                            drawer as its fourth implementation. One pip, one cap, one radius. */}
+                        {badge && <CountBadge count={Number(badge)} tone="brand" size="sm" />}
                       </Link>
                     );
                   })}

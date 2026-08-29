@@ -104,7 +104,10 @@ export async function AdminSidebar({ activeKey, viewDomains, isOwner }: { active
   return (
     <aside className="hidden lg:flex shrink-0 border-r border-border flex-col gap-1 sticky top-0 self-start max-h-screen overflow-y-auto"
       style={{ width: 216, padding: "18px 14px", background: "var(--panel)" }}>
-      <Link href="/admin" className="flex items-center gap-2 px-2 pb-3 mb-2 border-b border-dashed border-border-subtle">
+      {/* ⭐ DG-A-18 · the console's own brand link had NO hover response on any of its 44 pages —
+          the hover probe's only universal miss. It is a link to /admin; it now says so on approach,
+          using the same `--pill-active` fill the nav rows below it use for their active state. */}
+      <Link href="/admin" className="flex items-center gap-2 px-2 pb-3 mb-2 rounded-md border-b border-dashed border-border-subtle transition-colors hover:bg-[var(--pill-active)]">
         <FiftyMark size={18} simplified aria-hidden />
         <span className="font-display font-bold text-body-sm text-text">50pick · admin</span>
       </Link>

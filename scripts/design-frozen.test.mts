@@ -215,7 +215,13 @@ const FROZEN_RATCHET = new Map<string, number>([
   // ── Admin surfaces (deferred: player-facing work ships first) ─────────────
   ["src/app/admin/affiliate/affiliate-admin-client.tsx", 2],
   ["src/app/admin/bonuses/bonus-admin-client.tsx", 2],
-  ["src/components/admin/admin-sidebar-nav.tsx", 2],
+  // ⭐ `admin-sidebar-nav.tsx` LEFT THIS LIST on 2026-08-29 (DG-A-18), 2 → 0. Its two entries were
+  // the active-row fill and the badge pip. The fill was `oklch(40% 0.12 268 / 0.5)` typed inline —
+  // and it had already DIVERGED from `--pill-active` (`oklch(40% 0.12 262 / 0.35)`), the token
+  // whose own comment claims "one active filter/tab fill everywhere": a different hue AND a
+  // different alpha for one job, which is B9's argument in a single line. The pip's `padding` +
+  // `borderRadius: 4` went to the kit `<CountBadge tone="brand" size="sm">`, whose header had
+  // named this exact call site as one of four it was written to consolidate and never reached.
   ["src/app/admin/kyc/[id]/kyc-doc-viewer.tsx", 1],
 ]);
 
