@@ -179,10 +179,10 @@ export function EditAssetForm({
           <Input name="priceSourceUrl" defaultValue={priceSourceUrl} size="sm" />
         </Field>
       </div>
-      <p className="text-[11.5px] leading-[1.55] text-text-subtle max-w-[80ch]">
+      <p className="text-body-sm leading-[1.55] text-text-subtle max-w-[80ch]">
         The host must be an <strong>enabled trusted source in this asset&rsquo;s own category</strong> —
-        the allowlist is per category, so one domain approved for <span className="font-mono text-[11px]">macro</span>{" "}
-        does not cover a <span className="font-mono text-[11px]">crypto</span> asset. The source cannot be
+        the allowlist is per category, so one domain approved for <span className="font-mono">macro</span>{" "}
+        does not cover a <span className="font-mono">crypto</span> asset. The source cannot be
         changed while any round on this asset is still unresolved; pause its chains and let them settle first.
       </p>
       <div className="flex gap-2">
@@ -309,7 +309,7 @@ export function EditChainForm({
           live default, and the smallest band is the deliberate choice that took the pay rate
           from 63% to ~99%. Help text that argues against the recommended option is worse than
           none: it teaches the operator to pick the one that refunds every round. */}
-      <p className="text-[11.5px] leading-[1.55] text-text-subtle max-w-[80ch]">
+      <p className="text-body-sm leading-[1.55] text-text-subtle max-w-[80ch]">
         The band is the winning distance: <strong>UP at open + band, DOWN at open − band</strong>, and a close
         anywhere between the two refunds every stake and earns no fee. A band wider than the asset actually
         moves in one round refunds nearly every round <em>even when the price feed is working perfectly</em> —
@@ -699,30 +699,30 @@ export function AddAssetForm({ catalogue }: { catalogue: SymbolOption[] }) {
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2">
               Set by the symbol — not editable
             </p>
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11.5px] sm:grid-cols-3">
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-body-sm sm:grid-cols-3">
               <div><dt className="text-text-subtle">Category</dt><dd className="font-mono">{spec.category}</dd></div>
               <div><dt className="text-text-subtle">Name</dt><dd>{spec.nameEn} · {spec.nameSw} · {spec.nameZh}</dd></div>
               <div><dt className="text-text-subtle">Decimals</dt><dd className="font-mono">{spec.decimals}</dd></div>
               <div><dt className="text-text-subtle">Min move</dt><dd className="font-mono">{spec.minMoveTicks} tick</dd></div>
               <div className="col-span-2"><dt className="text-text-subtle">Price source</dt>
-                <dd className="font-mono text-[10.5px] break-all">https://api.twelvedata.com/quote</dd></div>
+                <dd className="font-mono break-all">https://api.twelvedata.com/quote</dd></div>
             </dl>
-            <p className="mt-2 text-[11px] leading-[1.55] text-text-subtle max-w-[80ch]">
+            <p className="mt-2 text-body-sm leading-[1.55] text-text-subtle max-w-[80ch]">
               <strong>The category decides the trading calendar</strong>, so it belongs to the instrument, not to
-              you — <span className="font-mono text-[10.5px]">crypto</span> is 24/7, everything else follows the
-              FX/metals week. A coin filed as <span className="font-mono text-[10.5px]">macro</span> is shut every
+              you — <span className="font-mono">crypto</span> is 24/7, everything else follows the
+              FX/metals week. A coin filed as <span className="font-mono">macro</span> is shut every
               weekend for no reason, which is exactly what happened to BNB.
             </p>
           </div>
 
           {spec.unsupported && (
-            <div className="rounded-lg border border-danger-border bg-danger-bg p-3 text-[12px] leading-[1.55] text-danger-fg">
+            <div className="rounded-lg border border-danger-border bg-danger-bg p-3 text-body-sm leading-[1.55] text-danger-fg">
               <strong>{spec.symbol} cannot be used.</strong> {spec.unsupported}
             </div>
           )}
 
           {/* ── Trading hours, stated before anything is created ── */}
-          <div className="rounded-lg border border-border bg-bg p-3 text-[11.5px] leading-[1.6] text-text-subtle max-w-[85ch]">
+          <div className="rounded-lg border border-border bg-bg p-3 text-body-sm leading-[1.6] text-text-subtle max-w-[85ch]">
             <strong className="text-text">When this asset can settle rounds.</strong>{" "}
             {spec.category === "crypto"
               ? `${spec.symbol} trades 24/7 — rounds can run at any hour, weekends included.`
@@ -735,13 +735,13 @@ export function AddAssetForm({ catalogue }: { catalogue: SymbolOption[] }) {
               <Button type="button" onClick={runCheck} loading={checking} variant="secondary" size="sm">
                 {checking ? "Checking the live feed…" : "Check the live feed"}
               </Button>
-              <span className="text-[11px] text-text-subtle">
+              <span className="text-body-sm text-text-subtle">
                 Asks the real provider, through the same functions that settle money.
               </span>
             </div>
 
             {check?.verdict === "would-confirm" && (
-              <p className="text-[12px] leading-[1.55] text-success-fg">
+              <p className="text-body-sm leading-[1.55] text-success-fg">
                 <strong>Would confirm.</strong> {spec.symbol} quoted{" "}
                 <span className="font-mono">{check.price}</span> at{" "}
                 <span className="font-mono">{check.quotedAt?.slice(11, 19)}Z</span> — skew{" "}
@@ -750,7 +750,7 @@ export function AddAssetForm({ catalogue }: { catalogue: SymbolOption[] }) {
               </p>
             )}
             {check?.verdict === "stale" && (
-              <p className="text-[12px] leading-[1.55] text-danger-fg">
+              <p className="text-body-sm leading-[1.55] text-danger-fg">
                 <strong>Readable, but too slow — do not arm this.</strong> The provider&rsquo;s quote for{" "}
                 {spec.symbol} is <strong>{check.skewSec}s</strong> old against a{" "}
                 {check.maxStalenessSeconds}s window, so a round cannot confirm its opening price and{" "}
@@ -760,7 +760,7 @@ export function AddAssetForm({ catalogue }: { catalogue: SymbolOption[] }) {
               </p>
             )}
             {check?.verdict === "market-closed" && (
-              <p className="text-[12px] leading-[1.55] text-warning-fg">
+              <p className="text-body-sm leading-[1.55] text-warning-fg">
                 <strong>The market is shut right now, so the feed cannot be judged.</strong>{" "}
                 {check.closureDetail ?? ""} It reopens{" "}
                 <span className="font-mono">{check.opensAt?.slice(0, 16).replace("T", " ")}Z</span>. Come back
@@ -768,24 +768,24 @@ export function AddAssetForm({ catalogue }: { catalogue: SymbolOption[] }) {
               </p>
             )}
             {(check?.verdict === "unreadable" || check?.verdict === "error") && (
-              <p className="text-[12px] leading-[1.55] text-danger-fg">
+              <p className="text-body-sm leading-[1.55] text-danger-fg">
                 <strong>The provider could not quote {spec.symbol}.</strong> {check.detail ?? check.error ?? ""}{" "}
                 An asset the feed cannot read voids every round — this is what ETH on coingecko did, 27 of 27.
               </p>
             )}
             {check?.supported === false && (
-              <p className="text-[12px] leading-[1.55] text-danger-fg"><strong>Unavailable.</strong> {check.reason}</p>
+              <p className="text-body-sm leading-[1.55] text-danger-fg"><strong>Unavailable.</strong> {check.reason}</p>
             )}
           </div>
         </>
       )}
 
-      <p className="text-[11.5px] leading-[1.55] text-text-subtle max-w-[80ch]">
+      <p className="text-body-sm leading-[1.55] text-text-subtle max-w-[80ch]">
         The source domain must already be an <strong>enabled trusted source</strong> in the matching category — a round
         captures this exact link when it opens and resolves against the same link. Add it at{" "}
-        <span className="font-mono text-[11px]">/admin/sources</span> first if it is not there yet.
+        <span className="font-mono">/admin/sources</span> first if it is not there yet.
       </p>
-      <p className="text-[11.5px] leading-[1.55] text-text-subtle max-w-[80ch]">
+      <p className="text-body-sm leading-[1.55] text-text-subtle max-w-[80ch]">
         Because a round resolves against the link it captured, <strong>the source cannot be changed while any round on
         the asset is still unresolved</strong>. To move it: pause the asset&rsquo;s chains, let the in-flight rounds
         settle, then edit — the next round captures the new link.
@@ -1002,7 +1002,7 @@ export function AddChainForm({
           the tick floor. So the form told the operator the band was 0.5% when it was $0.02 on
           BTC: a 25-fold error, in the sentence whose whole job is to explain the field. The
           figure now comes from the same value the server resolves with. */}
-      <p className="font-mono text-[9.5px] leading-[1.5] text-text-faint">
+      <p className="font-mono text-body-sm leading-[1.5] text-text-faint">
         The winning band is ± this much from the opening price, frozen onto each round at open.
         This chain inherits <strong>{inherited === 0 ? "the smallest possible step" : `${(inherited / 100).toFixed(2)}%`}</strong> if
         you leave it on the recommended choice. Anything between the two targets refunds every stake.
@@ -1121,7 +1121,7 @@ export function ReadingMethodForm({
              "feed / mock" tells an operator nothing about whether prices are real. ── */}
       <div
         className={
-          "rounded-lg border p-3 text-[11.5px] leading-[1.55] max-w-[80ch] " +
+          "rounded-lg border p-3 text-body-sm leading-[1.55] max-w-[80ch] " +
           (simulated || keyMissing || method === "ai"
             ? "border-warning-border bg-warning-bg text-warning-fg"
             : "border-border bg-[var(--bg-inset)] text-text-subtle")
@@ -1160,7 +1160,7 @@ export function ReadingMethodForm({
         )}
       </div>
 
-      <p className="text-[11.5px] leading-[1.55] text-text-subtle max-w-[80ch]">
+      <p className="text-body-sm leading-[1.55] text-text-subtle max-w-[80ch]">
         A change takes effect at the <strong>next grid boundary</strong>. Rounds already open keep
         the source link they captured and resolve against it — changing the reader never changes the
         terms of a round players have already staked on.
@@ -1256,7 +1256,7 @@ export function ThresholdsForm({
           <Input name="defaultMaxStake" type="number" defaultValue={String(defaultMaxStake)} min={PLATFORM_MIN_STAKE} max={PLATFORM_MAX_STAKE} size="sm" />
         </Field>
       </div>
-      <p className="text-[11.5px] leading-[1.55] text-text-subtle max-w-[80ch]">
+      <p className="text-body-sm leading-[1.55] text-text-subtle max-w-[80ch]">
         <strong>The margin</strong>{" "}is the ± band around each round&rsquo;s opening price. UP wins if the price
         reaches <em>open + margin</em>, DOWN if it reaches <em>open − margin</em>; a smaller move voids the round and
         refunds every stake in full. ⚠️ The box above is the <strong>fallback only</strong>: every duration this
@@ -1267,7 +1267,7 @@ export function ThresholdsForm({
         with the square root of the window. The margin is frozen onto each round at open, so a change affects only{" "}
         <strong>new</strong> rounds; override it per chain with <em>Edit</em> to tune a single asset or duration.
       </p>
-      <p className="text-[11.5px] leading-[1.55] text-text-subtle max-w-[80ch]">
+      <p className="text-body-sm leading-[1.55] text-text-subtle max-w-[80ch]">
         <strong>Staleness</strong>{" "}is how far the source&rsquo;s own quoted time may sit from the round boundary
         before a reading is refused. A refused reading is retried; a boundary that never confirms voids its rounds and
         refunds every stake in full — we never settle on a guessed price.
