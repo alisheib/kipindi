@@ -13,7 +13,7 @@ import { getAuditPage } from "@/lib/server/audit";
 import { GenerateButton } from "./generate-button";
 import { ReportPackCard } from "./report-pack-card";
 import { formatDateTime, formatTzs, formatTzsCompact } from "@/lib/utils";
-import { reportSummary, dailyPnl, categoryBreakdown, moneyByGame, loadMoneyAttribution } from "@/lib/server/report-money";
+import { reportSummary, dailyPnl, categoryBreakdown, moneyByGame, loadReportWindow } from "@/lib/server/report-money";
 import { resolveRange } from "@/lib/server/date-range";
 import { currentSession } from "@/lib/server/auth-service";
 import { canView } from "@/lib/server/rbac";
@@ -168,15 +168,18 @@ export default async function AdminReportsPage({
   // 4,759 ms against `?range=30d` at 5,012 — which is what proves the cost is the table reads
   // and not `listInRange`. Load the attribution ONCE, hand it to both, and run the four in
   // parallel. See `loadMoneyAttribution` for why this is a parameter and not a cache.
-  const attribution = await loadMoneyAttribution();
+  // ⭐ ONE SNAPSHOT, FOUR AGGREGATES. `loadReportWindow` reads the window's transactions and
+  // the market/position attribution maps once; all four read from it, so they cannot disagree
+  // with each other and the page issues 2 queries where it used to issue 9.
+  const snapshot = await loadReportWindow(range.start, range.end);
   const [{ current, prior }, { rows: pnlRows, totals }, categories, byGame] = await Promise.all([
-    reportSummary(win, generatedAt),
-    dailyPnl(win, generatedAt),
-    categoryBreakdown(win, generatedAt, attribution),
+    reportSummary(win, generatedAt, snapshot),
+    dailyPnl(win, generatedAt, snapshot),
+    categoryBreakdown(win, generatedAt, snapshot),
     // Per-game split (Up & Down vs long-form polls). The KPI strip + statutory pack stay
     // COMBINED (TRA/GBT is levied on total commission); this is an additive breakdown so
     // management sees which game earns what.
-    moneyByGame(range.start, range.end, attribution).catch(() => null),
+    moneyByGame(range.start, range.end, snapshot).catch(() => null),
   ]);
   const activeRows = pnlRows.filter((r) => r.stakes !== 0 || r.payouts !== 0 || r.bonus !== 0 || r.fees !== 0);
   // KPI sparklines — real daily series (AdminSpark hides <2 pts, e.g. "today").

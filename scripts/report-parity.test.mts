@@ -99,6 +99,100 @@ const legacyMine = (await db.txn.listAll()).filter((t) => t.userId === "usr_midd
 ok("listForUser matches the old filter", ids(mine) === ids(legacyMine), ids(mine));
 ok("…and it is not the whole table", mine.length < fixture.length, `${mine.length} of ${fixture.length}`);
 
+console.log("\n── 3b · dailyPnl's day buckets equal the per-day filter, row for row ──");
+
+/**
+ * 🔴 THIS SECTION EXISTS BECAUSE THIS FILE'S OWN HEADER WAS WRONG (2026-08-29).
+ * Line 6 names `dailyPnl` as one of the five functions this suite protects. It had NEVER
+ * CALLED IT — not once, in a file whose whole argument is that "an off-by-one at a month
+ * boundary is exactly what no eyeball catches". The daily P&L grid feeds the statutory pack.
+ *
+ * ⭐ AND THE REFERENCE IS THE POINT. `dailyPnl` used to read
+ *   `for (day = firstDay; day < end; day += DAY) inWindow.filter(at >= day && at < day+DAY)`
+ * — O(days × transactions), and the day count is unbounded (`?range=all` resolves to
+ * `win(0, now)`, ~20,700 days since the epoch; measured 7,844 ms on production). It is one
+ * bucketing pass now. The old loop is reproduced verbatim below as the ORACLE, so the test
+ * asserts equivalence against the thing that was replaced rather than against the replacement's
+ * own idea of itself.
+ */
+{
+  const { dailyPnl, startOfEatDay } = await import("../src/lib/server/report-money.ts");
+
+  // Rows on the exact EAT day boundaries, plus an empty day in the middle, plus rows of every
+  // type that `summarise` treats differently — a bucketing bug that only dropped refunds would
+  // otherwise pass.
+  const D0 = startOfEatDay(T0 + 60 * DAY);
+  const seeded: StoredTxn[] = [
+    txn("d_a1", D0),                                                        // first instant of day 0
+    txn("d_a2", D0 + DAY - 1),                                              // last instant of day 0
+    txn("d_b1", D0 + DAY, { type: "BET_PAYOUT", amount: 400 }),             // first instant of day 1
+    // day 2 deliberately EMPTY — the grid must still emit a row for it
+    txn("d_d1", D0 + 3 * DAY + 1, { type: "BET_REFUND", amount: 250 }),
+    txn("d_d2", D0 + 3 * DAY + 2, { type: "BONUS_CREDIT", amount: 90 }),
+    txn("d_d3", D0 + 3 * DAY + 3, { type: "DEPOSIT", amount: 5000, fee: 35 }),
+    txn("d_d4", D0 + 3 * DAY + 4, { type: "BET_PLACED", amount: 700, status: "PENDING" }), // not CONFIRMED
+  ];
+  for (const t of seeded) await db.txn.create(t);
+
+  const winStart = D0, winEnd = D0 + 5 * DAY;
+  const got = await dailyPnl({ start: winStart, end: winEnd });
+
+  // THE ORACLE — the pre-2026-08-29 loop, character for character in its logic.
+  const inWindow = await db.txn.listInRange(winStart, winEnd);
+  const firstDay = startOfEatDay(winStart);
+  const oracle: Array<{ dayMs: number; ids: string }> = [];
+  for (let day = firstDay; day < winEnd; day += DAY) {
+    const dayTxns = inWindow.filter((t) => {
+      const at = Date.parse(t.createdAt);
+      return at >= day && at < day + DAY;
+    });
+    oracle.push({ dayMs: day, ids: dayTxns.map((t) => t.id).sort().join(",") });
+  }
+
+  ok("3b · the same NUMBER of day rows as the old loop",
+     got.rows.length === oracle.length, `bucketed ${got.rows.length}, old loop ${oracle.length}`);
+  ok("3b · every row carries the same dayMs, in the same order",
+     got.rows.every((r, i) => r.dayMs === oracle[i]?.dayMs),
+     got.rows.map((r) => r.dayMs).join(",") + " vs " + oracle.map((o) => o.dayMs).join(","));
+
+  // Re-summarise the oracle's own per-day slices and compare every money field.
+  const fieldsMatch = got.rows.every((r, i) => {
+    const dayTxns = inWindow.filter((t) => {
+      const at = Date.parse(t.createdAt);
+      return at >= oracle[i].dayMs && at < oracle[i].dayMs + DAY;
+    });
+    const conf = dayTxns.filter((t) => t.status === "CONFIRMED");
+    const sum = (pred: (t: StoredTxn) => boolean) => conf.filter(pred).reduce((s, t) => s + Math.abs(t.amount), 0);
+    const stakes = sum((t) => t.type === "BET_PLACED");
+    const payouts = sum((t) => t.type === "BET_PAYOUT" || t.type === "CASHOUT");
+    const refunds = sum((t) => t.type === "BET_REFUND");
+    const bonus = sum((t) => t.type === "BONUS_CREDIT");
+    const fees = conf.filter((t) => t.type === "DEPOSIT" || t.type === "WITHDRAWAL").reduce((s, t) => s + (t.fee || 0), 0);
+    return r.stakes === stakes && r.payouts === payouts && r.ggr === stakes - payouts - refunds
+      && r.bonus === bonus && r.fees === fees;
+  });
+  ok("3b · every money field on every day row matches the old per-day filter", fieldsMatch);
+
+  // ⛔ CONTROLS. Without these the three assertions above would pass over an empty grid.
+  ok("3b · CONTROL · the fixture really did straddle several days",
+     oracle.filter((o) => o.ids !== "").length >= 3,
+     `${oracle.filter((o) => o.ids !== "").length} non-empty day(s) of ${oracle.length}`);
+  ok("3b · CONTROL · an EMPTY day still gets its own row (the grid is a calendar)",
+     oracle.some((o) => o.ids === "") && got.rows.length === oracle.length,
+     `${oracle.filter((o) => o.ids === "").length} empty day(s) present, and all ${got.rows.length} rows emitted`);
+  ok("3b · CONTROL · a non-CONFIRMED row is excluded, so the buckets are not raw counts",
+     got.rows.reduce((s, r) => s + r.stakes, 0) === 2000,
+     `staked total ${got.rows.reduce((s, r) => s + r.stakes, 0)}, expected 2000 (the PENDING 700 must not count)`);
+  ok("3b · totals equal the sum of the day rows, so the grid reconciles with its own footer",
+     got.totals.stakes === got.rows.reduce((s, r) => s + r.stakes, 0)
+     && got.totals.ggr === got.rows.reduce((s, r) => s + r.ggr, 0),
+     `totals ${got.totals.stakes}/${got.totals.ggr} vs rows ${got.rows.reduce((s, r) => s + r.stakes, 0)}/${got.rows.reduce((s, r) => s + r.ggr, 0)}`);
+
+  // Leave the store as this section found it, so section 4's source scans and any later
+  // section read the same fixture the earlier ones did.
+  for (const t of seeded) await db.txn.delete(t.id);
+}
+
 console.log("\n── 4 · The reporting paths no longer call listAll ──────────────");
 
 const { readFileSync } = await import("node:fs");

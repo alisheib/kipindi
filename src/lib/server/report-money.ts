@@ -176,7 +176,7 @@ export async function moneyForWindow(start: number, end: number): Promise<MoneyS
 }
 
 /** Period summary + the equal-length prior window (for the compare toggle). */
-export async function reportSummary(period: Window, now = Date.now()): Promise<{
+export async function reportSummary(period: Window, now = Date.now(), ctx?: ReportWindow): Promise<{
   bounds: { start: number; end: number };
   current: MoneySummary;
   prior: MoneySummary;
@@ -184,9 +184,10 @@ export async function reportSummary(period: Window, now = Date.now()): Promise<{
   const bounds = boundsOf(period, now);
   const prior = priorBounds(bounds);
   // Two windows, two queries — still far cheaper than one whole-table walk, and the two
-  // are adjacent so the index serves both.
+  // are adjacent so the index serves both. The CURRENT half comes from the shared snapshot
+  // when the caller has one; the prior window is this function's alone.
   const [cur, prev] = await Promise.all([
-    db.txn.listInRange(bounds.start, bounds.end),
+    windowTxns(ctx, bounds.start, bounds.end),
     db.txn.listInRange(prior.start, prior.end),
   ]);
   return { bounds, current: summarise(cur), prior: summarise(prev) };
@@ -237,6 +238,50 @@ export type MoneyAttribution = {
  * page would look wrong. The dedupe is lexical — one caller, one load, passed down — so its
  * lifetime is visible at the call site instead of living in a framework's request scope.
  */
+/**
+ * ONE window read, shared by every aggregate on the reporting console.
+ *
+ * 🔴 WHY, and the perf half is the smaller half. `/admin/reports` runs four aggregates over
+ * the SAME window, and each issued its own `db.txn.listInRange(start, end)` — five reads in
+ * total counting `reportSummary`'s prior window. Once they were parallelised (see the page)
+ * that became five concurrent copies of the window in heap, and `?range=all` is reachable by
+ * URL: measured on production 2026-08-29, `/admin/reports?range=all` read **7,844 ms** with
+ * every transaction ever written, five times over. ⛔ `date-range.ts:25` calls `MAX_RANGE_MS`
+ * a "hard cap … a filter can never trigger an unbounded scan", but it is applied only on the
+ * custom branch; `case "all"` returns `win(0, now)` and bypasses it. That preset is NOT capped
+ * here either — capping it would silently understate a figure labelled "All time", which is a
+ * worse defect than a slow page. It is made cheap instead.
+ *
+ * ⭐ AND IT IS A COHERENCE FIX, NOT ONLY A SPEED ONE. Four independent reads of one window can
+ * straddle a commit, so the daily P&L total and the per-game total could disagree on a busy
+ * console and both be "correct". One snapshot, four aggregates: they now reconcile by
+ * construction.
+ */
+export type ReportWindow = {
+  /** The exact bounds this snapshot was read with. A caller passing a different window is
+   *  ignored rather than trusted — see the check in each consumer. */
+  start: number;
+  end: number;
+  txns: StoredTxn[];
+  attribution: MoneyAttribution;
+};
+
+export async function loadReportWindow(start: number, end: number): Promise<ReportWindow> {
+  const [txns, attribution] = await Promise.all([
+    db.txn.listInRange(start, end),
+    loadMoneyAttribution(),
+  ]);
+  return { start, end, txns, attribution };
+}
+
+/** Use the shared snapshot only when it is the SAME window. ⛔ Never "close enough": a
+ *  snapshot of a different window would move a reported figure, silently, and the whole point
+ *  of this file is that such a move is invisible because every number still reconciles. */
+async function windowTxns(ctx: ReportWindow | undefined, start: number, end: number): Promise<StoredTxn[]> {
+  if (ctx && ctx.start === start && ctx.end === end) return ctx.txns;
+  return db.txn.listInRange(start, end);
+}
+
 export async function loadMoneyAttribution(): Promise<MoneyAttribution> {
   const [marketRows, positionRows] = await Promise.all([
     marketStore.attribution(),
@@ -328,13 +373,13 @@ function emptyGame(game: GameLine): GameMoney {
 export async function moneyByGame(
   start: number,
   end: number,
-  /** Pass a map loaded by `loadMoneyAttribution()` when the caller also runs
-   *  `categoryBreakdown` — see the DG-A-01 note above. Omit and it loads its own. */
-  attribution?: MoneyAttribution,
+  /** Pass the snapshot from `loadReportWindow()` when the caller also runs
+   *  `categoryBreakdown` — see the DG-A-01 notes above. Omit and it reads its own. */
+  ctx?: ReportWindow,
 ): Promise<{ market: GameMoney; updown: GameMoney; unattributed: GameMoney }> {
   const [allTxn, attr] = await Promise.all([
-    db.txn.listInRange(start, end),
-    attribution ? Promise.resolve(attribution) : loadMoneyAttribution(),
+    windowTxns(ctx, start, end),
+    ctx ? Promise.resolve(ctx.attribution) : loadMoneyAttribution(),
   ]);
   // ⛔ `?? "MARKET"` here is UNCHANGED and is not the F-03 defect below: this resolves a
   // market that exists but carries no readable product line, which the DAL already coerces
@@ -389,20 +434,32 @@ export type DailyPnlRow = {
 
 /** One row per EAT calendar day in the period, oldest→newest, + totals.
  *  "today" collapses to a single row; longer periods give the daily P&L grid. */
-export async function dailyPnl(period: Window, now = Date.now()): Promise<{ rows: DailyPnlRow[]; totals: DailyPnlRow }> {
+export async function dailyPnl(period: Window, now = Date.now(), ctx?: ReportWindow): Promise<{ rows: DailyPnlRow[]; totals: DailyPnlRow }> {
   const { start, end } = boundsOf(period, now);
   // The window comes from SQL now; `within` kept only where a per-DAY slice is taken
   // below. Same bounds, so every figure is unchanged — measured 66x faster, 333 MB less.
-  const inWindow = await db.txn.listInRange(start, end);
+  const inWindow = await windowTxns(ctx, start, end);
   const firstDay = startOfEatDay(start);
   const rows: DailyPnlRow[] = [];
-  for (let day = firstDay; day < end; day += DAY_MS) {
-    const dayTxns = inWindow.filter((t) => {
-      const at = Date.parse(t.createdAt);
-      return at >= day && at < day + DAY_MS;
-    });
-    const m = summarise(dayTxns);
-    rows.push({ dayMs: day, stakes: m.stakes, payouts: m.payouts, ggr: m.ggr, bonus: m.bonusCost, fees: m.fees, ngr: m.ngr, holdPct: m.holdPct });
+  // 🔴 THIS WAS `for (day…) inWindow.filter(…)` — O(days × transactions), and the day count is
+  // NOT bounded: `?range=all` resolves to `win(0, now)`, i.e. **~20,700 days since the epoch**,
+  // each re-scanning the whole window. Measured on production 2026-08-29,
+  // `/admin/reports?range=all` read **7,844 ms** and printed 44 non-empty rows — it had walked
+  // twenty thousand empty ones to find them. One pass into day buckets instead.
+  // ⛔ EVERY EMPTY DAY STILL GETS A ROW. The grid prints a continuous calendar; dropping empty
+  // days here would silently change what the page shows, and the caller (`activeRows`) is what
+  // decides which rows are worth rendering.
+  // ⚠️ EAT is UTC+3 with NO DST, so consecutive day starts are exactly DAY_MS apart and the
+  // bucket index is exact. This arithmetic would be wrong in a zone that observes DST.
+  const dayCount = Math.max(0, Math.ceil((end - firstDay) / DAY_MS));
+  const buckets: StoredTxn[][] = Array.from({ length: dayCount }, () => []);
+  for (const t of inWindow) {
+    const i = Math.floor((Date.parse(t.createdAt) - firstDay) / DAY_MS);
+    if (i >= 0 && i < dayCount) buckets[i].push(t);
+  }
+  for (let i = 0; i < dayCount; i++) {
+    const m = summarise(buckets[i]);
+    rows.push({ dayMs: firstDay + i * DAY_MS, stakes: m.stakes, payouts: m.payouts, ggr: m.ggr, bonus: m.bonusCost, fees: m.fees, ngr: m.ngr, holdPct: m.holdPct });
   }
   const t = summarise(inWindow);
   const totals: DailyPnlRow = { dayMs: 0, stakes: t.stakes, payouts: t.payouts, ggr: t.ggr, bonus: t.bonusCost, fees: t.fees, ngr: t.ngr, holdPct: t.holdPct };
@@ -457,9 +514,9 @@ export type CategoryRow = {
 export async function categoryBreakdown(
   period: Window,
   now = Date.now(),
-  /** Pass a map loaded by `loadMoneyAttribution()` when the caller also runs `moneyByGame`
-   *  — see the DG-A-01 note above `loadMoneyAttribution`. Omit and it loads its own. */
-  attribution?: MoneyAttribution,
+  /** Pass the snapshot from `loadReportWindow()` when the caller also runs `moneyByGame`
+   *  — see the DG-A-01 notes above `loadMoneyAttribution`. Omit and it reads its own. */
+  ctx?: ReportWindow,
 ): Promise<CategoryRow[]> {
   const { start, end } = boundsOf(period, now);
   // positionId → category lookup (market-scoped).
@@ -490,7 +547,7 @@ export async function categoryBreakdown(
   // no `productLine` parameter, so it cannot exclude Up & Down. `test:product-line` was updated
   // in the same commit to assert exactly that, behaviourally, rather than by grepping for a
   // string this file no longer contains.
-  const attr = attribution ?? (await loadMoneyAttribution());
+  const attr = ctx?.attribution ?? (await loadMoneyAttribution());
   const posCat = new Map<string, MarketCategory>();
   for (const [positionId, marketId] of attr.marketOfPosition) {
     const c = attr.catByMarket.get(marketId);
@@ -505,7 +562,7 @@ export async function categoryBreakdown(
   const acc = new Map<MarketCategory, { stakes: number; payouts: number }>();
   // The window is the WHERE clause now; the per-row `within` below is therefore
   // redundant but harmless, and kept so the bounds stay stated at the point of use.
-  for (const t of await db.txn.listInRange(start, end)) {
+  for (const t of await windowTxns(ctx, start, end)) {
     if (t.status !== "CONFIRMED" || !t.positionId) continue;
     const isStake = t.type === "BET_PLACED";
     // A refund is payout-like for GGR: it returns a stake we keep nothing from.
