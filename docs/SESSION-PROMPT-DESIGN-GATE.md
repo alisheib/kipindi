@@ -5,6 +5,55 @@ session, on any machine, knows which programme it is inside. Owner: Ali. Commiss
 *“100% consistency among the platform … your report should be the final gate to a perfectly
 rendered platform.”*
 
+## ⏭️ RESUME AT — session 76 handover (2026-08-29)
+
+> **Step 1 is 10 of 11.** Read this block, then the PLANNER at the bottom (every row carries its
+> own evidence and its own commit). Everything below was driven on production, not on localhost.
+
+### 🔴 READ THIS BEFORE YOU FIX ANYTHING — the registers' numbers are stale
+DG-A-04's headline table says `/admin/markets` renders `Select 36.8` and `Select 55.5 (wrapped)`.
+**Measured 2026-08-29: 32 and 32. `36.8` and `55.5` occur NOWHERE in 44 routes / ~2,600 controls.**
+The cause is `select.tsx`'s `px-2 py-1` fix — commit **`af4de432`, dated 2026-08-28, the SAME DAY
+the report was written.** The audit drive ran before it deployed.
+⛔ **§7's ~280 findings come from that same pre-`af4de432` drive. Re-derive every row before
+fixing it.** Fixing a defect that no longer exists is how a correct control gets broken.
+
+### ⛔ THREE OF THE ELEVEN NEEDED NO CODE — they asked to reverse dated, measured decisions
+| Row | What it asked | Why it was refused |
+|---|---|---|
+| **DG-A-05** | `truncate` the Select trigger | `ui-consistency`'s `combobox-trigger-truncates` forbids it at **error severity** (E-98: *"not a layout fix — it is data loss"*), and `select.tsx:285-318` already ruled *"growing is honest, clipping is data loss"* |
+| **DG-A-07** | fix the pagination wrap | `pagination.tsx` records *"THE WRAP IS THE DESIGN"*, measured **2026-08-25 — three days before the audit** — and explicitly rejects the exact remedy proposed |
+| **DG-A-23** (half) | "gains a scrollbar" | A **no-op in Chrome**: a global `::-webkit-scrollbar` rule means a thumb was always painted — at **2.23 against the 3.0 floor**. Its "edge-fade" is a hazard: a mask clips absolutely-positioned panels, i.e. DG-A-03's defect |
+
+### ▶ THE NEXT MOVE, in order
+1. **`DG-A-15` — the only step-1 system not started.** Already re-derived and quantified in its
+   planner row; the fix shape is written there. It needs no ruling from Ali.
+2. **Step 2, the moment Ali rules on the type ladder.** ⚠️ That ruling gates DG-A-12 + DG-P-05 **and
+   the remainder of DG-A-10** — three sub-1M money values still clip at 390 and cannot be fixed
+   while the value is a 22px inline literal.
+3. ⛔ **Do not start Maswali.** Ali's order: the Design Gate runs first and to completion.
+
+### ⚠️ What this session could NOT measure, and why
+🔴 **All six 36-character player/officer secrets in `.env.qa.local` are rejected by production**
+(`error=wrong_credentials`, tested on five accounts). Only `QA_ADMIN_PASSWORD` works. ⛔ NOT the
+PhoneInput hydration trap — the hidden mirror synced and the server answered. **So the authed
+player surface is blind:** the Toggle on `/profile/responsible-gambling`, the avatar trigger,
+`More`, the updown stake presets and the notification rows are FIXED IN CODE but unverified.
+⭐ **The way round it, and it is enough to close DG-P-01:** `SURFACE=player ANON=1 node
+scripts/design-gate/measure.mjs` drives the 17 PUBLIC routes with no login, and the top bar is
+present signed-out.
+
+### ⭐ Two traps this session paid for — do not re-pay them
+- **The `::after` hit-area arithmetic.** `top:-7px; bottom:-7px` on a 26px track measures **38, not
+  40** — an absolutely-positioned box resolves against the **padding** box and the track carries a
+  1px border. **State the floor** (`height: var(--tap-min)` + centre); never sum your way to it.
+- **A guard can lie in both directions, and mine did on its first run.** `qa:toggle-hit` page-stepped
+  the viewport, so a switch under the sticky admin topbar read `up: 0` (a lie about the product);
+  and it printed `n=7 probed=0 ✓` (a green tick over a measurement that never happened). Both fixed.
+  ⛔ **Zero probes is a skipped run, never a pass.**
+
+---
+
 ## ▶ START HERE (any machine)
 1. `git pull` on `main` (F:\kipindi-main on the original PC; any clone works — the evidence
    regenerates). `npm install` after every pull. ⚠️ Two sessions may share this tree — read
