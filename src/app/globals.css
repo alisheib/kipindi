@@ -4284,6 +4284,41 @@ textarea::-webkit-resizer {
 
 
 /* =====================================================================
+   THE TOP BAR'S NAV LINK — DG-P-01 (DESIGN-GATE-2026-08-28)
+   =====================================================================
+   🔴 THE PRIMARY NAVIGATION OF A MONEY PRODUCT ANSWERED A MOUSE ONLY ON CLICK. Measured on
+   production 2026-08-28 and re-measured 2026-08-29: of 114 hover-dead elements on the signed-out
+   surface, **85 were these five links** (Markets · Up & Down · Live · Results · Top, on 17 pages).
+
+   ⛔ WHY THE PAINT MOVED HERE FROM `style={{…}}`. `top-app-bar.tsx` set colour and background as
+   INLINE STYLES and declared a `transition` for them — so the transition had nothing to animate,
+   and no class could ever add a hover, because an inline style outranks every selector short of
+   `!important`. The transition being present is what made it read as an oversight rather than a
+   decision: someone intended a hover here. A hover state is not expressible inline; that is the
+   whole reason this block exists.
+
+   The hover vocabulary is `.pchart-range`'s (line ~2670) — the platform's one existing sentence
+   for "a tab-like control with an active state": `--text` ink on a sunken `--bg-overlay`, and the
+   ACTIVE item does not take it, because it already says what it is with `--pill-active`. Not a
+   new invention; the nearest existing rule, copied deliberately.
+   ⚠️ Order matters below: `[aria-current]` follows `[data-accent]` at equal specificity, which is
+   what reproduces the old ternary exactly (active beat accent). Do not reorder them. */
+.kp-navlink {
+  color: var(--text-subtle);
+  background: transparent;
+  /* ⛔ Never `transition: all` — one rule per property, from the motion ladder. */
+  transition: color var(--t-quick) ease-out, background var(--t-quick) ease-out;
+}
+.kp-navlink[data-accent] { color: var(--brand-300); }
+/* TWO WAYS TO SAY "THIS IS THE CURRENT DESTINATION", because two elements say it: a real <a> says
+   it with `aria-current="page"`, and the "More" <button> cannot — it is a menu trigger, not a page,
+   so claiming `aria-current="page"` there would be a lie to a screen reader. It carries
+   `data-active` instead. One class, one paint, two honest declarations of the same fact. */
+.kp-navlink[aria-current="page"],
+.kp-navlink[data-active] { color: var(--text); background: var(--pill-active); }
+.kp-navlink:not([aria-current="page"]):not([data-active]):hover { color: var(--text); background: var(--bg-overlay); }
+
+/* =====================================================================
    THE BOTTOM RAIL — round-2 kit §2 / COMPONENTS §14 (batch 3, 2026-08-13)
    =====================================================================
    Was a floating inset capsule on a 78% `--bg-elevated` mix with a 16px backdrop blur — the

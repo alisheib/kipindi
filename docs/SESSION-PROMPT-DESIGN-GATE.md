@@ -33,6 +33,26 @@ surface and diff the analyzer section that step owns. A step is done when its RE
 report’s §6 gate list is GREEN **on production**, not on localhost.
 
 ## ⛔ Traps this programme has already paid for (do not re-pay)
+- 🔴 **THE PLAYER QA LOGINS ARE DEAD (measured 2026-08-29, session 76).** All SIX 36-character
+  secrets in `.env.qa.local` — alpha, echo, growth, trading, officer, finance — are rejected by
+  production with `error=wrong_credentials`. Only `QA_ADMIN_PASSWORD` (10 chars, added session 75)
+  works. ⛔ This is NOT the PhoneInput hydration trap: the hidden mirror synced correctly and the
+  server answered `wrong_credentials`. **The memory note has it exactly backwards now** — admin is
+  the measurable surface and player-authed is the blind one.
+  ⭐ **The way round it:** `SURFACE=player ANON=1 node scripts/design-gate/measure.mjs` drives the
+  17 PUBLIC player routes with no login at all, and the top bar is present signed-out — so
+  DG-P-01's whole gate line is measurable anonymously (85 dead nav links on 17 pages = the same
+  5-per-page population as the report's 200). What stays UNMEASURABLE until Ali supplies a working
+  player password: the Toggle on `/profile/responsible-gambling` (DG-P-02's other half), the avatar
+  trigger, `More`, and every other authed-only element.
+- 🔴 **DG-A-05's PRESCRIBED FIX IS ILLEGAL — it contradicts finding E-98.** The register says give
+  the Select trigger `truncate whitespace-nowrap min-w-0`. But `scripts/ui-consistency.test.mts`
+  carries an **error-severity** rule `combobox-trigger-truncates` whose whole point is that
+  *"a dropdown's CLOSED trigger is the only place an operator reads what they chose, so `truncate`
+  there is not a layout fix — it is data loss"* — measured on production hiding the deciding word
+  of an Up & Down winning band. **Do not truncate that trigger.** The wrap must be cured by
+  content-sizing + `whitespace-nowrap`, never by hiding the answer. This is a THIRD defect in the
+  work order, alongside the two below.
 - **One login per account at a time.** The platform keeps ONE live session per account; a second
   Playwright login revokes the first mid-run and every later page “succeeds” as the sign-in page
   at HTTP 200 (`?revoked=1` in the URL is the tell). Chain drives per account:
@@ -68,7 +88,7 @@ only ☑ when its gate line is GREEN **re-measured on production**, not on local
 |---|---|---|---|---|---|---|---|
 | **DG-A-02** | 1 | P0 | kit Toggle is 26px on a 40px tap floor — 100x, incl. the payment kill-switches | `src/components/ui/toggle.tsx` | ☐ | — | — |
 | **DG-A-03** | 1 | P0 | "How to search" popover clipped invisible by its own input group, every admin SearchBox | `src/components/ui/search-box.tsx · search-help.tsx` | ☐ | — | — |
-| **DG-P-01** | 1 | P0 | primary navigation gives NO hover feedback at all (200 dead probes) | `nav link component` | ☐ | — | — |
+| **DG-P-01** | 1 | P0 | primary navigation gives NO hover feedback at all (200 dead probes) | `top-app-bar.tsx · nav-more.tsx · avatar-menu.tsx · globals.css `.kp-navlink`` | 🚢 shipped, verifying | this commit | ⏳ prod re-measure pending |
 | **DG-P-02** | 1 | P0 | shared with admin: Toggle 26px on the RG page + the clipped search popover | `same two files` | ☐ | — | — |
 | **DG-A-04** | 1+3 | P1 | THE DENSE FILTER ROW — one job, four dialects (32/36.8/40/44/55.5 in one row). ⚠️ listed in BOTH step 1 and step 3 | `select.tsx · input.tsx + call sites` | ☐ | — | — |
 | **DG-A-05** | 1 | P1 | Selects wrap their value to a second line and grow past their row | `src/components/ui/select.tsx` | ☐ | — | — |

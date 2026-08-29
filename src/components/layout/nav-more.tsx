@@ -115,7 +115,14 @@ export function NavMore({
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1 whitespace-nowrap"
+        // ⛔ DG-P-01 — this trigger sat beside the nav links, looked like them, and was hover-dead
+        // for the same reason: its colour and background were inline, which no `:hover` can beat.
+        // `.kp-navlink` now owns that paint (globals.css) and `data-active` states the "one of my
+        // items is the current page" fact that `aria-current="page"` cannot honestly carry on a
+        // menu button. `--pill-active` remains the ONE active treatment across header, rail and
+        // this menu — it is just declared in CSS now instead of here.
+        data-active={anyActive ? "" : undefined}
+        className="kp-navlink inline-flex items-center gap-1 whitespace-nowrap"
         style={{
           // 44px — the tap floor, matching every other destination in the bar. This was 7px of
           // vertical padding on a 13.5px line, i.e. ~33px, on the primary nav of a money product.
@@ -124,10 +131,6 @@ export function NavMore({
           borderRadius: "var(--r-sm)",
           fontSize: 13.5,
           fontWeight: anyActive ? 600 : 500,
-          color: anyActive ? "var(--text)" : "var(--text-subtle)",
-          // `--pill-active`, not the hand-typed `oklch(40% 0.08 264 / 0.4)` this carried: ONE
-          // active treatment across the header, the rail and this menu.
-          background: anyActive ? "var(--pill-active)" : "transparent",
         }}
       >
         <span className="capitalize">{label}</span>

@@ -386,7 +386,13 @@ function NavLink({ it, pathname }: { it: NavItem; pathname: string }) {
     <Link
       href={it.href as never}
       aria-current={active ? "page" : undefined}
-      className="inline-flex items-center gap-1.5 whitespace-nowrap"
+      // ⛔ DG-P-01 — COLOUR, BACKGROUND AND THE TRANSITION LIVE IN `.kp-navlink` (globals.css), NOT
+      // HERE. They were inline, which is why this link had no hover for its whole life: an inline
+      // style outranks every selector, so no class could add one, and the `transition` declared
+      // beside them had nothing to animate. Accent and active are now `data-accent` /
+      // `aria-current`, read by that rule. Putting either back inline re-kills the hover.
+      data-accent={accent ? "" : undefined}
+      className="kp-navlink inline-flex items-center gap-1.5 whitespace-nowrap"
       style={{
         // 44px is the tap floor and the kit's destination height. The nav used to be 34px —
         // under the floor on the primary navigation of a money product.
@@ -397,12 +403,6 @@ function NavLink({ it, pathname }: { it: NavItem; pathname: string }) {
         borderRadius: "var(--r-sm)",
         fontSize: 13.5,
         fontWeight: active ? 600 : 500,
-        // ⛔ Never `transition: all` — that is what produced 895 elements computing to
-        // `transition: all 0s ease`. One rule per property, from the motion ladder.
-        transition: "color var(--t-quick) ease-out, background var(--t-quick) ease-out",
-        // THE ONLY ACTIVE TREATMENT, at every width, shared with the bottom rail.
-        background: active ? "var(--pill-active)" : "transparent",
-        color: active ? "var(--text)" : accent ? "var(--brand-300)" : "var(--text-subtle)",
       }}
     >
       {/* The product-line mark: a 5px gilt dot. It replaces a glassy indigo pill, a bespoke

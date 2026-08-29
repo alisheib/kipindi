@@ -95,7 +95,10 @@ export function AvatarMenu({
         aria-label={t.common.accountMenu}
         aria-expanded={open ? "true" : "false"}
         onClick={() => setOpen((v) => !v)}
-        className="rounded-pill focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base"
+        // DG-P-01 — the account trigger was hover-dead too (36 probes). It carries an IMAGE inside a
+        // brand ring, so the nav links' background wash cannot show through it; opacity is the
+        // platform's existing answer for an image-bearing control (the brand mark, top-app-bar.tsx).
+        className="rounded-pill transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base"
         style={{
           width: 40,
           height: 40,
