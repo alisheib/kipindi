@@ -433,7 +433,20 @@ export default async function MarketDetail({
         </div>
         {/* C1a — slim gilt hairline framing the question ("seal of the real") */}
         <div aria-hidden className="gilt-hairline mb-3" />
-        <h1 className="font-display text-[26px] md:text-[34px] font-bold leading-tight tracking-[-0.02em] text-text">{pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}</h1>
+        {/* 🔴 DG-P-03 · §T2 — THE MARKET QUESTION, WHICH THE RULEBOOK NAMES BY NAME.
+            `DESIGN_AUTHORITY` §T2 files this exact line as a live violation of §T1 — *"the
+            market question itself is off the ladder: `src/app/markets/[id]/page.tsx` renders it
+            as a hand-typed `text-[26px] md:text-[34px]`"* — and prescribes the fix in the same
+            breath: **move the question onto the ladder, ⛔ never re-tune `--type-h1` to match
+            it.** So this is law-decided, not taste.
+            ▶ The base takes `text-title-lg` (28), which is §T2's own page-title step and the
+            size every other page h1 already uses (`page-header.tsx:45`, 25 call sites) — so the
+            question stops being the one h1 in the product at its own size. The `md:` step is
+            KEPT and lands on `text-display-3` (36): the desktop emphasis is a deliberate part
+            of this page's composition, and 36 is the next rung above 28. ⛔ NOT
+            `text-title-md md:text-title-lg` (22/28) — that demotes the market question below
+            every other page title, which is the opposite of what this page is for. */}
+        <h1 className="font-display text-title-lg md:text-display-3 font-bold leading-tight tracking-[-0.02em] text-text">{pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}</h1>
       </header>
 
       {/* ── Main two-column layout ──

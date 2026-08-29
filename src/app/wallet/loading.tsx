@@ -1,15 +1,24 @@
 import { getServerT } from "@/lib/i18n-server";
 import { PageContainer } from "@/components/layout/page-container";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default async function WalletLoading() {
   const { t } = await getServerT();
   return (
     <PageContainer tier="reading" className="space-y-6">
-      <header className="flex items-end justify-between gap-3">
-        <div>
-          <p className="font-mono text-caption uppercase tracking-[0.16em] font-bold text-text-subtle">{t.wallet.title}</p>
-          <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">{t.common.yourFunds}</h1>
-        </div>
+      {/* 🔴 DG-P-03 · §K — TWO DEFECTS, AND THE SECOND ONE ONLY SHOWS ON A PHONE.
+          (1) The eyebrow + h1 were `PageHeader`'s recipe retyped by hand; `wallet-client.tsx:501`
+          renders the component with these exact two strings, so this renders it too — the
+          hand-typed copy also had no `mb-1` under the eyebrow, where `PageHeader` does.
+          (2) 🔴 THE WRAPPER DID NOT MATCH THE PAGE. This was `flex items-end justify-between`,
+          while `wallet-client.tsx:500` is `flex flex-col items-start gap-3 sm:flex-row
+          sm:items-end sm:justify-between` — so **below 640 the real wallet STACKS its title
+          above the two buttons and the skeleton put them on one row**. The header changed
+          layout the instant the data landed, on the page a player opens to see their money.
+          ⚠️ The eyebrow/title strings differ from the page's h1 word ("Your funds") only in the
+          eyebrow, which matches; do not "tidy" them apart (§L1 — one name per destination). */}
+      <header className="flex flex-col items-start gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <PageHeader eyebrow={t.wallet.title} title={t.common.yourFunds} />
         <div className="flex items-center gap-2 shrink-0">
           {/* ⚠️ HEIGHTS ARE LITERALS, not `h-10` — spacing is overridden
               (tailwind.config.ts:200-215) so `h-10` drew an 80px pill for a `btn-md btn-pill`

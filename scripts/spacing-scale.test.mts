@@ -111,7 +111,7 @@ for (const f of walk(SRC)) {
  * ⚠️ Set from the measured tree, comments stripped. If it drops, lower it in the same commit —
  * a ceiling above the real count stops being a ratchet.
  */
-const CEILING = 629;   // 2026-08-29: -3, AdminKpi x2 + its skeleton left p-3.5 (14px) for p-2 (12px) — DG-A-16
+const CEILING = 628;   // 2026-08-29: -3, AdminKpi x2 + its skeleton left p-3.5 (14px) for p-2 (12px) — DG-A-16. Then -1 on 2026-08-30 (DG-P-03): the BackLink ghost's `w-16`. ⚠️ AND THIS GUARD EARNED ITS KEEP THE SAME DAY — adopting `PageHeader` in the deposit and withdraw skeletons meant COPYING that ghost into two more files, and this suite caught it at 631 before it shipped. A ratchet's job is not only to shrink a backlog; it is to stop a sweep from spreading one while it tidies something else.
 
 ok(`1: 🔴 inverted spacing usages may only shrink (${total}, ceiling ${CEILING})`,
   total <= CEILING,

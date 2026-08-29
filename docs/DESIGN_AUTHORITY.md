@@ -824,10 +824,16 @@ Values: the `--type-*` ladder in `globals.css`. Laws:
    the law was pointing at a surface no player has ever seen. At HEAD the token's real
    consumers are three landing classes in `globals.css`: `.kp-hero__headline`, `.kp-shead__h`
    and `.kp-claim` — which is why the token is held at 32, so the landing is not restyled.
-   🔴 **And the market question itself is off the ladder:** `src/app/markets/[id]/page.tsx`
-   renders it as a hand-typed `text-[26px] md:text-[34px]`. That is a live violation of
-   rule 1 above, filed here rather than fixed silently — the fix is to move the question
-   onto the ladder, **never** to re-tune `--type-h1` to match it.
+   ✅ **THE MARKET QUESTION IS ON THE LADDER — fixed 2026-08-30, DG-P-03.** This law used to
+   read *"the market question itself is off the ladder: `src/app/markets/[id]/page.tsx` renders
+   it as a hand-typed `text-[26px] md:text-[34px]` … the fix is to move the question onto the
+   ladder, **never** to re-tune `--type-h1` to match it."* It was taken exactly as prescribed:
+   **`text-title-lg md:text-display-3`** (28 → 36). The base is now rule 2's own page-title
+   step — the size `page-header.tsx` gives all 25 of its call sites — so the question stops
+   being the one `<h1>` in the product at a size of its own, and the deliberate desktop
+   emphasis survives on the next rung up. `--type-h1` was not touched.
+   ⛔ **The prohibition is the durable half of this note and it stands:** a hand-typed page
+   title is moved onto the ladder, never answered by re-tuning the token.
 3. **`--type-label` and `--type-nano` are the blessed sub-`micro` tier** — UPPERCASE mono
    tracking microlabels only. They sit below the reading floor deliberately.
    ⛔ **Never reading copy.**

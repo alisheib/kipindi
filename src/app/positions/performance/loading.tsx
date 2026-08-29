@@ -1,21 +1,30 @@
 import { getServerT } from "@/lib/i18n-server";
 import { PageContainer } from "@/components/layout/page-container";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default async function PerformanceLoading() {
   const { t } = await getServerT();
   return (
     <PageContainer tier="reading" className="space-y-6">
       {/* BackLink placeholder */}
-      <div className="h-4 w-16 rounded bg-bg-overlay kp-shimmer-track" aria-hidden />
+      {/* WIDTH IS A LITERAL, not `w-16` — the Tailwind spacing scale is OVERRIDDEN and
+          INVERTS at the keys it does not cover: `w-16` is stock 64px while `w-12` is an
+          overridden 128px, so the bigger number paints the smaller box. `test:spacing-scale`
+          derives that forbidden set from the two scales and ratchets it. Same 64px, on a key
+          that cannot invert. */}
+      <div className="h-4 w-[64px] rounded bg-bg-overlay kp-shimmer-track" aria-hidden />
 
-      <header>
-        {/* ⚠️ THE TWO WERE SWAPPED. This skeleton drew the eyebrow "Performance" over the
-            headline "Polls you've played"; the real page renders the parent destination as
-            the eyebrow and "Performance" as the H1, so the words changed places the instant
-            the data arrived. Same pair, same order as `performance/page.tsx`. */}
-        <p className="font-mono text-caption uppercase tracking-[0.16em] font-bold text-text-subtle">{t.common.positions}</p>
-        <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">{t.performance.title}</h1>
-      </header>
+      {/* ⚠️ THE TWO WERE SWAPPED. This skeleton drew the eyebrow "Performance" over the
+          headline "Polls you've played"; the real page renders the parent destination as
+          the eyebrow and "Performance" as the H1, so the words changed places the instant
+          the data arrived. Same pair, same order as `performance/page.tsx`.
+          ⭐ DG-P-03 · §K — and it is the KIT now, which is what stops that from recurring: the
+          pair cannot be swapped again without swapping it at `performance/page.tsx:125` too,
+          because both call the same component with the same prop names. The hand-typed copy
+          also had no `mb-1` under the eyebrow, where `PageHeader` does — a 4px gap the page had
+          and the skeleton did not. ⛔ NOT wrapped in a `<header>`: the real page renders
+          `<PageHeader>` as a direct child of the container, after the BackLink. */}
+      <PageHeader eyebrow={t.common.positions} title={t.performance.title} />
 
       {/* Hero stat card skeleton */}
       <div className="rounded-xl border border-border bg-bg-elevated px-5 py-5 kp-shimmer-track" aria-hidden>

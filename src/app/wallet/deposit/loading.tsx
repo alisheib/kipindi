@@ -1,5 +1,8 @@
 import { getServerT } from "@/lib/i18n-server";
 import { PageContainer } from "@/components/layout/page-container";
+import { PageHeader } from "@/components/ui/page-header";
+import { PageHero } from "@/components/ui/page-hero";
+import { I } from "@/components/ui/glyphs";
 
 /**
  * B-29 / V-2 — the skeleton mirrors the FORM the page actually renders
@@ -16,10 +19,33 @@ export default async function DepositLoading() {
      the product — 10 of 10 containers that declare a rhythm declare `space-y-5`. */
   return (
     <PageContainer tier="form" className="space-y-5">
-      <header>
-        <p className="font-mono text-caption uppercase tracking-[0.16em] font-bold text-text-subtle">{t.common.deposit}</p>
-        <h1 className="font-display text-[28px] font-bold text-text">{t.common.loading}</h1>
-      </header>
+      {/* 🔴 DG-P-03 · §L1 · §K — THIS SKELETON NAMED THE PAGE TWO DIFFERENT THINGS, ON A MONEY
+          FORM. It drew the eyebrow "Deposit" over an h1 reading **"Loading"**, while
+          `page.tsx:88` renders eyebrow "Add funds" over the h1 "Deposit" — so BOTH strings
+          changed the instant the data landed, and for the moment before it the page's own
+          heading was the word `Loading`. §L1: one name per destination. `positions/loading.tsx`
+          states this rule in its own header; this file was the counter-example.
+          ⭐ It now renders the SAME three components the page does, with the same props —
+          BackLink ghost, `PageHero glow="gold"`, `PageHeader tone="gold"` — so the shape and
+          the words are the page's, not a second copy of them. The h1 recipe was also
+          `font-display text-[28px] font-bold text-text`, missing the `leading-tight
+          tracking-[-0.02em]` `PageHeader` carries, so the heading changed line-height too. */}
+      {/* WIDTH IS A LITERAL, not `w-16` — the Tailwind spacing scale is OVERRIDDEN and
+          INVERTS at the keys it does not cover: `w-16` is stock 64px while `w-12` is an
+          overridden 128px, so the bigger number paints the smaller box. `test:spacing-scale`
+          derives that forbidden set from the two scales and ratchets it. Same 64px, on a key
+          that cannot invert. */}
+      <div className="h-4 w-[64px] rounded bg-bg-overlay kp-shimmer-track" aria-hidden />
+
+      <PageHero glow="gold">
+        <PageHeader
+          tone="gold"
+          icon={<I.arrowDownToLine s={14} className="text-gold-300" />}
+          eyebrow={t.common.addFunds}
+          title={t.common.deposit}
+          subtitle={t.wallet.mobileMoney}
+        />
+      </PageHero>
 
       <div className="space-y-5" aria-hidden>
         {/* Amount field */}

@@ -87,28 +87,34 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
 
   return (
     <PageContainer tier="reading" className="space-y-6">
-      {/* 🔴 DG-P-04 · §S1 — the wrapper is load-bearing; see the long note on
-          `src/app/live/page.tsx`. `space-y-*` counts DOM SIBLINGS, not in-flow boxes, so an
-          out-of-flow `sr-only` h1 sitting first handed this hero a margin-top nobody wrote.
-          Measured on production 2026-08-29, `npm run qa:dg-rhythm`: `/proposals` lead
-          margin-top **32px** (this container is `space-y-6`), against 0 on `/leaderboard` and
-          `/help`. ⛔ The h1 stays — WCAG 1.3.1/2.4.6. */}
-      <div>
-        <h1 className="sr-only">{t.proposals.title}</h1>
-
-        <PageHero glow="gold" contentClassName="relative z-10 p-5 lg:p-6 flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-          <div className="flex flex-col items-start gap-2">
-            <PageHeader tone="gold" icon={<I.trophy s={18} />} eyebrow={t.proposals.title} title={t.proposals.voteForMarkets} />
-            {/* Gilt "coming soon" here, amber "maintenance" here, nothing when active. */}
-            <ProposalsStateBadge state={state} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} />
-          </div>
-          {active && (
-            <Link href={"/proposals/new" as never} className="shrink-0">
-              <Button variant="gold" size="md" leading={<I.plus s={15} />}>{t.proposals.create}</Button>
-            </Link>
-          )}
-        </PageHero>
-      </div>
+      {/* 🔴 DG-P-03 — THE `sr-only` h1 IS DELETED, BECAUSE THIS PAGE SHIPPED TWO OF THEM.
+          `PageHeader` renders an `<h1>` of its own, unconditionally (`page-header.tsx:45`, 25
+          call sites), so the hidden heading three lines above it was a SECOND h1 on one
+          document: invalid, and two competing answers to "what is this page" for anyone
+          navigating by heading. Measured 2026-08-29 across all 54 files that render an h1
+          (literal or via a component), this is the ONLY page that ships two.
+          ⚠️ `app/updown/page.tsx` has two `<PageHeader>` call sites and is NOT a second case —
+          they are mutually exclusive branches, so only one ever renders. Checked, not assumed.
+          ⭐ The h1 is now `t.proposals.voteForMarkets` ("Vote for markets"), which is the
+          better heading anyway: `t.proposals.title` survives as PageHeader's own eyebrow
+          directly above it, so nothing is lost to a screen reader.
+          ⛔ DO NOT re-add a hidden h1 here. And note this deletion also removed the DG-P-04
+          ghost — the wrapper that had been added to keep an out-of-flow `sr-only` h1 out of
+          the `space-y-6` rhythm is gone with it, because there is no longer a ghost to fence.
+          The DISABLED branch at the top of this file keeps ITS `sr-only` h1: that branch
+          renders no `PageHeader`, so there it is the page's only heading. */}
+      <PageHero glow="gold" contentClassName="relative z-10 p-5 lg:p-6 flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <div className="flex flex-col items-start gap-2">
+          <PageHeader tone="gold" icon={<I.trophy s={18} />} eyebrow={t.proposals.title} title={t.proposals.voteForMarkets} />
+          {/* Gilt "coming soon" here, amber "maintenance" here, nothing when active. */}
+          <ProposalsStateBadge state={state} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} />
+        </div>
+        {active && (
+          <Link href={"/proposals/new" as never} className="shrink-0">
+            <Button variant="gold" size="md" leading={<I.plus s={15} />}>{t.proposals.create}</Button>
+          </Link>
+        )}
+      </PageHero>
 
       {/* Reward promo — shown only when the feature is live (the state banner
           carries the message otherwise, so this gold CTA isn't redundant). */}

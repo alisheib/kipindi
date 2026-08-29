@@ -1,5 +1,6 @@
 import { getServerT } from "@/lib/i18n-server";
 import { PageContainer } from "@/components/layout/page-container";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default async function PositionsLoading() {
   const { t } = await getServerT();
@@ -7,11 +8,17 @@ export default async function PositionsLoading() {
     <PageContainer tier="reading" className="space-y-6">
       {/* Same three strings, in the same order, as the real header — a skeleton that
           names the page differently is a second name for one destination (§L1), and the
-          subtitle is drawn here too so the tab rail below does not jump when data lands. */}
-      <header>
-        <p className="mb-1 font-mono text-caption uppercase tracking-[0.16em] font-bold text-text-subtle">{t.common.positions}</p>
-        <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">{t.positions.headline}</h1>
-        <p className="mt-1 text-[13px] italic text-text-subtle">{t.positions.headlineBody}</p>
+          subtitle is drawn here too so the tab rail below does not jump when data lands.
+          ⭐ DG-P-03 · §K — AND IT IS THE KIT NOW, NOT A HAND-TYPED COPY OF IT. This block was
+          `PageHeader`'s eyebrow / h1 / subtitle recipe retyped by hand, which is why the census
+          found **17 distinct literal `<h1>` recipes** against `PageHeader`'s 25 call sites.
+          `positions/page.tsx:138` renders `<PageHeader>` with these exact three strings, so
+          the skeleton renders the same component with the same props and the two cannot drift.
+          ⚠️ The `<header>` wrapper takes the real page's own class (`page.tsx:128`) — the
+          skeleton had a bare `<header>` against the page's `flex items-start justify-between`,
+          which is only invisible while the skeleton has nothing to put beside the title. */}
+      <header className="flex items-start justify-between gap-3">
+        <PageHeader eyebrow={t.common.positions} title={t.positions.headline} subtitle={t.positions.headlineBody} />
       </header>
 
       {/* Tab skeleton */}
