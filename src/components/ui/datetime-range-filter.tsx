@@ -124,14 +124,14 @@ export function DateTimeRangeFilter({
         <div className="rounded-lg border border-border bg-bg-inset p-3">
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <div className="mb-1 font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-faint">{t.common.rangeFrom}</div>
+              <div className="mb-1 font-mono text-micro uppercase tracking-[0.12em] text-text-faint">{t.common.rangeFrom}</div>
               <div className="flex items-center gap-1.5">
                 <div className="min-w-0 flex-1"><DateSelect size="sm" max={todayIso} value={fromDate} onChange={setFromDate} /></div>
                 <TimeSelect size="sm" value={fromTime} onChange={setFromTime} aria-label={`${t.common.rangeFrom} ${t.common.time24}`} />
               </div>
             </div>
             <div>
-              <div className="mb-1 font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-faint">{t.common.rangeTo}</div>
+              <div className="mb-1 font-mono text-micro uppercase tracking-[0.12em] text-text-faint">{t.common.rangeTo}</div>
               <div className="flex items-center gap-1.5">
                 <div className="min-w-0 flex-1"><DateSelect size="sm" max={todayIso} value={toDate} onChange={setToDate} /></div>
                 <TimeSelect size="sm" value={toTime} onChange={setToTime} aria-label={`${t.common.rangeTo} ${t.common.time24}`} />

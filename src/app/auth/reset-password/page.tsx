@@ -4,6 +4,7 @@ import { I } from "@/components/ui/glyphs";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { AuthPanel, AuthHeader } from "@/components/auth/auth-panel";
 import { PasswordInput } from "@/components/ui/password-input";
+import { FieldLegend } from "@/components/ui/field-legend";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { HELPLINE, SUPPORT_EMAIL } from "@/lib/support-config";
 import { verifySession } from "@/lib/server/crypto";
@@ -142,12 +143,11 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
           <form action={resetPasswordAction} className="space-y-4">
             <input type="hidden" name="token" value={token} />
             <div>
-              <label
-                htmlFor="password"
-                className="block font-mono text-micro uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5"
-              >
+              {/* ⭐ DG-A-11 — `FieldLegend`'s recipe byte for byte, so this adopts the kit and
+                  moves no pixel. See the note on `app/auth/admin/page.tsx`. */}
+              <FieldLegend as="label" htmlFor="password" className="block mb-1.5">
                 {t.common.newPassword}
-              </label>
+              </FieldLegend>
               <PasswordInput
                 id="password"
                 name="password"
@@ -160,12 +160,9 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
               />
             </div>
             <div>
-              <label
-                htmlFor="confirm"
-                className="block font-mono text-micro uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5"
-              >
+              <FieldLegend as="label" htmlFor="confirm" className="block mb-1.5">
                 {t.common.confirmPassword}
-              </label>
+              </FieldLegend>
               <PasswordInput
                 id="confirm"
                 name="confirm"

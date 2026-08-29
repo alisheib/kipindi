@@ -345,8 +345,21 @@ lastLabel={t.common.lastPage}
         </div>
       )}
 
+      {/* 🔴 DG-P-04 · §S1 — `mt-10` WAS 80px, AND 80 IS ON NEITHER LADDER. The Tailwind spacing
+          scale is overridden (`tailwind.config.ts`), so `mt-10` renders 80px — a value that is
+          not in `--sp-*` (…24 · 32 · 40 · 48 · 64…) and not one of the four gaps §Spacing says
+          a long page is allowed (`--rh-tight` 24 · `--rh-close` 32 · `--rh-section` 64 ·
+          `--rh-chapter` 96). Measured on production 2026-08-29 with `npm run qa:dg-rhythm`:
+          this band's margin-top was **80px**, the largest of the five different gaps /markets
+          spaces itself with.
+          ⭐ It takes `--rh-section`: this is a section boundary inside one page (open markets →
+          recently resolved), and the token also carries the two-rung ladder — 64 on a phone,
+          96 from 768 — which a flat `mt-10` never did. ⛔ NOT `--rh-chapter`: §Spacing records
+          that it has zero consumers deliberately, because a 144 chapter gap is PRODUCED where
+          two bands' paddings meet, not declared. The `style` form is the house idiom for a
+          rhythm token in TSX — `app/page.tsx:212` and `components/home/trust-band.tsx:91`. */}
       {resolved.length > 0 && (
-        <section className="mt-10">
+        <section style={{ marginTop: "var(--rh-section)" }}>
           <div className="mb-3 flex items-baseline justify-between gap-2">
             <h2 className="font-display text-[20px] font-semibold text-text">
               {searching ? t.market.marketsMatch : t.market.recentlyResolved}

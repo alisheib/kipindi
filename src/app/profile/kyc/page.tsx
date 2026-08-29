@@ -444,14 +444,14 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
                 authority check, and "if any surface contradicts it, that surface
                 is wrong". Same string is still correct in the stepper above,
                 where it is gated on `kyc?.status === "APPROVED"`. */}
-            <span className="inline-flex items-center gap-1 rounded-pill border border-yes-700 bg-yes-500/10 px-2.5 py-0.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.1em] text-yes-300">
+            <span className="inline-flex items-center gap-1 rounded-pill border border-yes-700 bg-yes-500/10 px-2.5 py-0.5 font-mono text-micro font-bold uppercase tracking-[0.1em] text-yes-300">
               <I.check s={11} />
               {t.profile.idSaved}
             </span>
             {/* Which document this submission is built on, stated where the player
                 can see it — a passport journey that never names the passport leaves
                 somebody wondering whether the right thing was recorded. */}
-            <span className="font-mono text-[10.5px] uppercase tracking-[0.1em] text-text-subtle">{idLabel}</span>
+            <span className="font-mono text-micro uppercase tracking-[0.1em] text-text-subtle">{idLabel}</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-500/15 text-brand-300">
@@ -582,7 +582,7 @@ function ProgressRail({ nodes }: { nodes: { label: string; glyph: keyof typeof I
               <span className={`inline-flex h-[32px] w-[32px] items-center justify-center rounded-full ${circleCls}`}>
                 {node.done ? <I.check s={16} /> : <Glyph s={16} />}
               </span>
-              <span className={`mt-2 text-center font-mono text-[9.5px] font-semibold uppercase leading-tight tracking-[0.08em] ${labelCls}`}>
+              <span className={`mt-2 text-center font-mono text-micro font-semibold uppercase leading-tight tracking-[0.08em] ${labelCls}`}>
                 {node.label}
               </span>
             </div>

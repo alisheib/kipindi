@@ -115,7 +115,7 @@ const Cell = memo(function Cell({ v, unit }: { v: number; unit: string }) {
       >
         {String(v).padStart(2, "0")}
       </div>
-      <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-subtle mt-1.5">{unit}</div>
+      <div className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle mt-1.5">{unit}</div>
     </div>
   );
 });

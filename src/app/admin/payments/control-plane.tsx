@@ -263,7 +263,7 @@ export function ControlPlane({ controls }: { controls: PaymentControlsView }) {
             type="button"
             disabled={busy || !mayActGate}
             onClick={testConnection}
-            className="inline-flex min-h-[36px] shrink-0 items-center gap-1.5 rounded-md border border-border px-3 font-mono text-[10.5px] uppercase tracking-[0.08em] text-text-muted transition-colors hover:text-text disabled:opacity-50"
+            className="inline-flex min-h-[36px] shrink-0 items-center gap-1.5 rounded-md border border-border px-3 font-mono text-micro uppercase tracking-[0.08em] text-text-muted transition-colors hover:text-text disabled:opacity-50"
             /* ⚠️ ONE title, and the read-only reason WINS when it applies — the probe's own
                explanation is useless on a control the officer cannot press. */
             title={actReason ?? "Signed order-status probe — no money moves. Must run from an allow-listed IP."}
@@ -332,7 +332,7 @@ function ToggleRow({
           <span className="text-text-tertiary">{icon}</span>{label}
           {locked && <I.lock s={11} className="text-text-subtle" />}
         </p>
-        <p className="font-mono text-[9.5px] uppercase tracking-[0.1em] text-text-subtle">{sw}</p>
+        <p className="font-mono text-micro uppercase tracking-[0.1em] text-text-subtle">{sw}</p>
         <p className="mt-0.5 text-body-sm text-text-tertiary leading-snug">
           {hint}{!explicit && !locked ? ` · env: ${envValue ? "on" : "off"}` : ""}
         </p>

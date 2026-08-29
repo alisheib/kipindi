@@ -67,7 +67,7 @@ function POSITION_STATUS_LABEL(
 
 const card = { background: "var(--bg-elevated)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", boxShadow: "var(--shadow-card)" } as const;
 const inset = { background: "var(--bg-inset)", border: "1px solid color-mix(in oklab, var(--border) 70%, transparent)", borderRadius: "var(--r-md)" } as const;
-const eyebrow = "m-0 font-mono text-[8.5px] font-semibold uppercase tracking-[0.12em] text-text-faint";
+const eyebrow = "m-0 font-mono text-micro font-semibold uppercase tracking-[0.12em] text-text-faint";
 
 const usd = (n: number | null, d: number): string =>
   n == null ? "—" : `$${n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d })}`;
@@ -321,7 +321,7 @@ export default async function UpDownRoundPage({
               </span>
             </span>
             <Link href={`/updown/${fromRound.roundId}`}
-                  className="inline-flex items-center gap-0.5 font-mono text-[10.5px] font-semibold uppercase tracking-[0.08em]"
+                  className="inline-flex items-center gap-0.5 font-mono text-micro font-semibold uppercase tracking-[0.08em]"
                   style={{ color: "var(--brand-300)" }}>
               {t.market.udLastRoundView}
             </Link>
@@ -339,7 +339,7 @@ export default async function UpDownRoundPage({
                 </span>
                 <span className="chip">{round.durationMinutes} {t.market.udMin}</span>
               </h1>
-              <p className="mt-1 flex items-center gap-1.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.10em] text-text-subtle">
+              <p className="mt-1 flex items-center gap-1.5 font-mono text-micro font-semibold uppercase tracking-[0.10em] text-text-subtle">
                 {isOpen && <span className="live-dot" />}
                 {statusWord} · {ticker}
               </p>
@@ -458,15 +458,25 @@ export default async function UpDownRoundPage({
               <p className={eyebrow}>{t.market.udPool}</p>
               <div className="mt-2.5 flex items-baseline justify-between gap-3">
                 <div>
-                  <p className="m-0 font-mono text-[17px] font-bold leading-[1.1] tabular-nums text-text">{formatTzs(round.volumeTzs)}</p>
-                  <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">{t.market.udVolume}</p>
+                  {/* ⭐ DG-A-12 · §M4 + §T1 — THE POOL FIGURE AND THE COUNT BESIDE IT MOVE TOGETHER.
+                      `volumeTzs` is an amount, so §M4 gives it `.amount` (mono + tabular-nums +
+                      letter-spacing 0) in place of `font-mono … tabular-nums`. 17px is on
+                      neither ladder (§T1); `text-title-sm` (18) is the nearest rung, +1px.
+                      ⛔ The predictor count at L465 is the SAME 17px and sits in the same
+                      `items-baseline justify-between` row — it moves in this edit too, or the
+                      pool's two headline figures end up a pixel apart on one baseline. It is a
+                      COUNT, not an amount, so it keeps `font-mono tabular-nums` and does NOT
+                      take `.amount` (§M4 governs amounts only). `leading-[1.1]` stays on both:
+                      the rung would otherwise impose 24px and open the pair up. */}
+                  <p className="m-0 amount text-title-sm font-bold leading-[1.1] text-text">{formatTzs(round.volumeTzs)}</p>
+                  <p className="mt-1 font-mono text-micro uppercase tracking-[0.10em] text-text-faint">{t.market.udVolume}</p>
                 </div>
                 <div className="text-right">
-                  <p className="m-0 flex items-center justify-end gap-1.5 font-mono text-[17px] font-bold leading-[1.1] tabular-nums text-text">
+                  <p className="m-0 flex items-center justify-end gap-1.5 font-mono text-title-sm font-bold leading-[1.1] tabular-nums text-text">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.4" /><path d="M5.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" /></svg>
                     {round.players.toLocaleString()}
                   </p>
-                  <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">{t.market.udPlayers}</p>
+                  <p className="mt-1 font-mono text-micro uppercase tracking-[0.10em] text-text-faint">{t.market.udPlayers}</p>
                 </div>
               </div>
               <div className="mt-3.5">
@@ -535,11 +545,11 @@ export default async function UpDownRoundPage({
                 </div>
                 <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
                   <div>
-                    <p className="m-0 font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">{t.market.udPaidOut}</p>
+                    <p className="m-0 font-mono text-micro uppercase tracking-[0.10em] text-text-faint">{t.market.udPaidOut}</p>
                     <p className={`mt-1 m-0 text-title-md font-bold leading-none amount${payoutStruck ? " gilt-ink" : " text-text"}`}>{formatTzs(myPosition.payout ?? 0)}</p>
                   </div>
                   <div className="text-right">
-                    <p className="m-0 font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">{t.market.udYourPick} · {t.market.udStake}</p>
+                    <p className="m-0 font-mono text-micro uppercase tracking-[0.10em] text-text-faint">{t.market.udYourPick} · {t.market.udStake}</p>
                     {/* ⛔ A HEDGED HOLDER IS NOT QUOTED ONE SIDE. `myPositionFor` derives its
                         single `side` with `up >= down`, which is a tie-break, not a fact about
                         the bet — so a player who backed BOTH ways was shown the larger leg as
@@ -562,7 +572,7 @@ export default async function UpDownRoundPage({
                 {myPosition.items.length > 1 && (
                   <div className="mt-3.5 border-t border-border-subtle/60 pt-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="m-0 font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">
+                      <p className="m-0 font-mono text-micro uppercase tracking-[0.10em] text-text-faint">
                         {t.market.udPositionsOnRound} · {myPosition.items.length}
                       </p>
                       {myPosition.hedged && <span className="chip">{t.market.udBothSides}</span>}
@@ -579,7 +589,11 @@ export default async function UpDownRoundPage({
                             </span>
                             <span className="font-mono text-[10px] text-text-faint">{POSITION_STATUS_LABEL(t, p.status)}</span>
                           </span>
-                          <span className="ml-auto font-mono text-[12.5px] font-bold tabular-nums text-text">
+                          {/* DG-A-12 · §M4 + §T1 — a player's own payout. `.amount` replaces
+                              `font-mono … tabular-nums`; 12.5 → `text-body-sm` (13), the +0.5
+                              already ruled for `.admin-tbl` and the only rung at or above
+                              §T4's floor. */}
+                          <span className="ml-auto amount text-body-sm font-bold text-text">
                             {p.payout == null ? "—" : formatTzs(p.payout)}
                           </span>
                         </li>
@@ -640,7 +654,7 @@ export default async function UpDownRoundPage({
           <section aria-label={t.market.udSettlementProof} style={{ ...card, padding: "16px 18px 18px" }}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <span className="gilt-eyebrow">{t.market.udSettlementProof}</span>
-              <span className="font-mono text-[9.5px] uppercase tracking-[0.08em] text-text-subtle">{t.market.udRoundLabel} {round.roundId} · {t.market.udAuditableRecord}</span>
+              <span className="font-mono text-micro uppercase tracking-[0.08em] text-text-subtle">{t.market.udRoundLabel} {round.roundId} · {t.market.udAuditableRecord}</span>
             </div>
             <div className="gilt-rule" style={{ margin: "10px 0 14px" }} />
 

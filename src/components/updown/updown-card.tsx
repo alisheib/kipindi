@@ -747,7 +747,7 @@ export function UpDownCard(props: UpDownCardProps) {
             {assetName} {t.market.udTitle}
             <span className="chip" style={{ marginLeft: 6, verticalAlign: "middle" }}>{durationMinutes} {t.market.udMin}</span>
           </h3>
-          <div className="mt-1 flex items-center gap-1.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.10em] text-text-subtle">
+          <div className="mt-1 flex items-center gap-1.5 font-mono text-micro font-semibold uppercase tracking-[0.10em] text-text-subtle">
             {/* Stage 9b — kit <Dot pulse>. It IS `.live-dot`: same 6px box, same
                 `--live-400`, same 2600ms breathe, same gating at all three
                 reduced-motion tiers. Nothing about this pip renders differently. */}
@@ -771,7 +771,7 @@ export function UpDownCard(props: UpDownCardProps) {
           {livePrice == null ? (
             <>
               <div className="font-mono text-[15.5px] font-bold tabular-nums" style={{ color: "var(--text-faint)" }}>—</div>
-              <div className="font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">{t.market.udAwaitingRead}</div>
+              <div className="font-mono text-micro uppercase tracking-[0.10em] text-text-faint">{t.market.udAwaitingRead}</div>
             </>
           ) : (
             <>
@@ -798,7 +798,7 @@ export function UpDownCard(props: UpDownCardProps) {
             "Result in" after. Without it the player reads a live-looking clock over dead
             buttons and concludes the app cheated them. */}
         <div key={`c-${podPhase}`}
-             className="m-tick font-mono text-[8.5px] font-semibold uppercase tracking-[0.12em] text-text-faint"
+             className="m-tick font-mono text-micro font-semibold uppercase tracking-[0.12em] text-text-faint"
              style={{
                // ⛔ ONE LINE, ALWAYS, IN EVERY LOCALE. The handover caption replaces the
                // countdown caption inside a pod whose height must not change (no layout shift),
@@ -843,7 +843,7 @@ export function UpDownCard(props: UpDownCardProps) {
       {/* ── Stats (mandatory: VOLUME · PLAYERS) ────────────────────────── */}
       <div className="mt-3 flex items-center justify-between gap-2">
         <span className="font-mono text-[11.5px] font-semibold tabular-nums text-text-muted">
-          <span className="text-[8.5px] uppercase tracking-[0.12em] text-text-faint">{t.market.udVolume} </span>
+          <span className="text-micro uppercase tracking-[0.12em] text-text-faint">{t.market.udVolume} </span>
           {formatTzs(volumeTzs)}
         </span>
         <span className="inline-flex items-center gap-1 font-mono text-[11.5px] font-semibold tabular-nums text-text-muted">
@@ -881,7 +881,7 @@ export function UpDownCard(props: UpDownCardProps) {
           {/* "Higher or lower than $63,572.10" — the OPEN price is the thing being compared
               against, so it is what the heading names. The ± figure stays because it is the
               honest size of the band, and at the tick floor it is reassuringly tiny. */}
-          <div className="flex items-center justify-between gap-2 font-mono text-[8px] font-semibold uppercase tracking-[0.12em] text-text-faint">
+          <div className="flex items-center justify-between gap-2 font-mono text-micro font-semibold uppercase tracking-[0.12em] text-text-faint">
             <span className="truncate">
               {t.market.udWinTarget}{openPrice != null ? ` ${priceText.open ?? ""}` : ""}
             </span>
@@ -898,7 +898,7 @@ export function UpDownCard(props: UpDownCardProps) {
           <div className="mt-1 grid grid-cols-2 gap-2">
             <div className="min-w-0 rounded-lg px-2.5 py-1.5"
                  style={{ background: "color-mix(in oklab, var(--yes-500) 10%, transparent)", border: "1px solid color-mix(in oklab, var(--yes-500) 24%, transparent)" }}>
-              <div className="flex items-center gap-1 font-mono text-[9px] font-bold uppercase tracking-[0.10em]" style={{ color: "var(--yes-300)" }}>
+              <div className="flex items-center gap-1 font-mono text-micro font-bold uppercase tracking-[0.10em]" style={{ color: "var(--yes-300)" }}>
                 <I.trendingUp s={10} />{t.market.udUp}
               </div>
               <div className="mt-0.5 font-mono text-[12.5px] font-bold tabular-nums leading-tight" style={{ color: "var(--yes-300)" }}>
@@ -907,7 +907,7 @@ export function UpDownCard(props: UpDownCardProps) {
             </div>
             <div className="min-w-0 rounded-lg px-2.5 py-1.5 text-right"
                  style={{ background: "color-mix(in oklab, var(--no-500) 10%, transparent)", border: "1px solid color-mix(in oklab, var(--no-500) 24%, transparent)" }}>
-              <div className="flex items-center justify-end gap-1 font-mono text-[9px] font-bold uppercase tracking-[0.10em]" style={{ color: "var(--no-300)" }}>
+              <div className="flex items-center justify-end gap-1 font-mono text-micro font-bold uppercase tracking-[0.10em]" style={{ color: "var(--no-300)" }}>
                 {t.market.udDown}<I.trendingDown s={10} />
               </div>
               <div className="mt-0.5 font-mono text-[12.5px] font-bold tabular-nums leading-tight" style={{ color: "var(--no-300)" }}>
@@ -1010,19 +1010,23 @@ export function UpDownCard(props: UpDownCardProps) {
             {ifUp != null && ifDown != null && (
               <div className="mt-2">
                 {holdsBoth && (
-                  <p className="m-0 font-mono text-[9.5px] font-bold uppercase tracking-[0.14em] text-text-subtle">
+                  <p className="m-0 font-mono text-micro font-bold uppercase tracking-[0.14em] text-text-subtle">
                     {t.market.udBothSidesHeld}
                   </p>
                 )}
+                {/* DG-A-12 · §M4 + §T1 — the card's two "if it closes" payouts. `.amount`
+                    replaces `font-mono … tabular-nums`; 12.5 → `text-body-sm` (13). ⭐ This is
+                    the card twin of `round-action-panel.tsx` L129/135; the two surfaces state
+                    the same fact and now land on the same rung. */}
                 <p className="mt-1 m-0 flex items-baseline justify-between gap-2 text-body-sm text-text-muted">
                   <span>{t.market.udIfClosesUp}</span>
-                  <span className="font-mono text-[12.5px] font-bold tabular-nums" style={{ color: "var(--yes-300)" }}>
+                  <span className="amount text-body-sm font-bold" style={{ color: "var(--yes-300)" }}>
                     {formatTzs(ifUp)}
                   </span>
                 </p>
                 <p className="mt-0.5 m-0 flex items-baseline justify-between gap-2 text-body-sm text-text-muted">
                   <span>{t.market.udIfClosesDown}</span>
-                  <span className="font-mono text-[12.5px] font-bold tabular-nums" style={{ color: "var(--no-300)" }}>
+                  <span className="amount text-body-sm font-bold" style={{ color: "var(--no-300)" }}>
                     {formatTzs(ifDown)}
                   </span>
                 </p>

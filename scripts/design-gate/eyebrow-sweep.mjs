@@ -53,11 +53,51 @@ const walk = (d) => readdirSync(d).flatMap((e) => {
  *  refuses them. `--type-label` (9.5) and `--type-nano` (8.5) are the CSS ladder's sub-micro
  *  tier and have no Tailwind key at all: §T7's frozen collision, not a sweep. */
 const RUNG = { 10: "text-micro", 11: "text-caption", 12: "text-label", 13: "text-body-sm", 14: "text-body" };
+
+/** ⭐ `--off-ladder` — THE SIZES THAT ARE NOT RUNGS, AND THE RULING THAT DECIDES THEM.
+ *  8 · 8.5 · 9 · 9.5 · 10.5 · 11.5 · 15 are on NEITHER Tailwind rung, so each is a size
+ *  change and the default mode refuses all 139 of them. `DESIGN_AUTHORITY` §T7 (ruled
+ *  2026-08-29) settles what an eyebrow written at a call site takes: **`text-micro`** — the
+ *  only ladder a `.tsx` file can reach, the mode of the 557-site microlabel census (341, 61%),
+ *  the rung `FieldLegend` itself carries, and the rung ~343 sites already sit on after two
+ *  shipped sweeps. So the destination is one value for all of them and it is not a taste call.
+ *  ⛔ 9.5 and 8.5 ARE `--type-label` / `--type-nano`, §T3's blessed sub-micro tier — but that
+ *  tier lives on the CSS ladder, whose only legal consumers are rules inside `globals.css`
+ *  (§T7). Reading a `--type-*` name and typing its number at a call site is exactly how the
+ *  two ladders got confused in the first place. ⛔ And minting a Tailwind rung at 9.5 is the
+ *  move §T7 already refused: 11/10/9.5/8.5 inside 2.5px is "two rungs no reader can tell
+ *  apart", the objection `.admin-tbl`'s own ruling sustained.
+ *  ⚠️ THE COST IS REAL AND IS NOT ZERO, unlike the 10px pass: +0.5px on the 9.5s, +1 on the
+ *  9s, +1.5 on the 8.5s, +2 on the one 8, −0.5 on the 10.5s. Every site was read individually
+ *  before this list was written (153 classified, 61 adversarially re-checked); the ones where
+ *  the string is not an eyebrow at all are in EXCEPTIONS below and this tool refuses them. */
+const OFF_LADDER = process.argv.includes("--off-ladder");
+const OFF_LADDER_DEST = "text-micro";
+const OFF_LADDER_SIZES = new Set([8, 8.5, 9, 9.5, 10.5, 11.5, 15]);
+
+/** ⛔ THE SITES THIS SWEEP MUST NOT TOUCH, each with the law that exempts it. Every one was
+ *  found by READING THE STRING — a size sweep cannot see that a "microlabel" is a sentence,
+ *  and §T3 says the sub-micro tier is ⛔ NEVER reading copy while §T4 puts the reading floor
+ *  at 12.5px. Moving these to `text-micro` would put prose one rung further below the floor
+ *  and call it progress. They are per-site design calls and are made by hand, not here. */
+const EXCEPTIONS = new Map([
+  ["app/admin/payments/page.tsx:213", "PROSE — \"Unmatched movements — match to a PSP ref or write off (A3)\" is a sentence dressed as an eyebrow. §T3/§T4: text-body-sm + drop uppercase/tracking."],
+  ["app/admin/payments/payout-status-control.tsx:137", "PROSE — \"Note shown to players (optional — blank uses the translated default)\" is a label AND a hint in one element. Split them; the hint is prose."],
+  ["app/admin/payments/kill-switch-toggle.tsx:70", "PROSE — a full sentence about pausing a real-money rail. §T3/§T4: text-body-sm + drop the eyebrow dressing."],
+  ["components/onboarding/first-visit-primer.tsx:213", "PROSE — \"losers fund winners · …\" is the primer's explanatory caption, not a label."],
+  ["components/ui/modal.tsx:552", "NOT A LABEL — this is ConfirmModal's hard-tier type-to-confirm <input> itself. It is the thing being typed into, so it takes text-body-lg (16) and KEEPS its uppercase + tracking-[0.2em]."],
+]);
 const SIZE = /((?:[a-z0-9._-]+:)*)text-\[([0-9.]+)px\]/g;
 const TRACKED = /\btracking-\[|\btracking-(?:wide|wider|widest)\b/;
 
-let changed = 0, refusedNoTrack = 0, refusedNotEyebrow = 0, offLadder = 0, files = 0;
+let changed = 0, refusedNoTrack = 0, refusedNotEyebrow = 0, offLadder = 0, files = 0, exempted = 0;
 const refusals = [];
+const exemptions = [];
+/** ⛔ THE OFF-LADDER SITES ARE LISTED, NOT MERELY COUNTED (2026-08-29). This tool printed
+ *  "139 OFF-LADDER" and named none of them, while the handover cited it as *the list* of
+ *  per-site calls to make — a number nobody could act on, quoted as a work order. Same shape
+ *  as `qa:dg-money`, which lists its 14 and always did. */
+const offLadderSites = [];
 
 for (const f of walk(SRC)) {
   const src = readFileSync(f, "utf8");
@@ -77,8 +117,21 @@ for (const f of walk(SRC)) {
     }
     let n = 0;
     const next = line.replace(SIZE, (whole, variant, px) => {
-      const rung = RUNG[Number(px)];
-      if (!rung) { offLadder++; return whole; }
+      let rung = RUNG[Number(px)];
+      if (!rung && OFF_LADDER && OFF_LADDER_SIZES.has(Number(px))) {
+        const key = `${rel}:${i + 1}`;
+        if (EXCEPTIONS.has(key)) {
+          exempted++;
+          exemptions.push(`${key}  ${px}px  ⛔ ${EXCEPTIONS.get(key)}`);
+          return whole;
+        }
+        rung = OFF_LADDER_DEST;
+      }
+      if (!rung) {
+        offLadder++;
+        offLadderSites.push(`${rel}:${i + 1}  ${px}px  ⛔ OFF-LADDER — a size change, so a per-site design call`);
+        return whole;
+      }
       n++; return `${variant}${rung}`;
     });
     if (!n) return;
@@ -92,6 +145,21 @@ for (const f of walk(SRC)) {
 console.log(`${changed} eyebrow site(s) in ${files} file(s) ${APPLY ? "REWRITTEN" : "would change"}`);
 console.log(`refused: ${refusedNoTrack} uppercase-without-tracking · ${refusedNotEyebrow} not an eyebrow (no uppercase) · ${offLadder} OFF-LADDER sizes (8 · 8.5 · 9 · 9.5 · 10.5 · 11.5 · 15 — each a per-site size decision)`);
 if (refusals.length) console.log(`\n${refusals.map((r) => "   " + r).join("\n")}`);
+if (offLadderSites.length) {
+  console.log(`\n⛔ the off-ladder eyebrows, which this tool will never touch${OFF_LADDER ? " (pass --off-ladder to move them onto §T7's rung)" : ""}:`);
+  console.log(offLadderSites.map((r) => "   " + r).join("\n"));
+}
+if (exemptions.length) {
+  console.log(`\n⛔ ${exempted} site(s) EXEMPTED by name — a size sweep cannot see that a "microlabel" is a sentence:`);
+  console.log(exemptions.map((r) => "   " + r).join("\n"));
+}
+/* ⛔ CONTROL — every exemption must still be FOUND. An exemption for a line that has moved is
+   an exemption that silently stops protecting anything, and the sweep would then rewrite the
+   prose it was written to spare. */
+if (OFF_LADDER && exempted !== EXCEPTIONS.size) {
+  console.error(`\n🔴 ${EXCEPTIONS.size} exemption(s) declared but ${exempted} matched — a line has moved. Re-derive before applying.`);
+  process.exit(4);
+}
 if (!changed && !refusedNoTrack && !refusedNotEyebrow && !offLadder) {
   console.error("🔴 ZERO sites examined — a skipped run, not a clean tree."); process.exit(3);
 }

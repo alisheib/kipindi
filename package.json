@@ -611,7 +611,8 @@
     "ops:verdict-census": "tsx scripts/ops-verdict-census.mts",
     "qa:bulk-resolve": "node scripts/live-bulk-resolve-drive.mjs",
     "qa:bulk-resolve-stress": "tsx scripts/ops-bulk-resolve-fleet.mts mint --only E-DBL && tsx scripts/ops-bulk-resolve-fleet.mts mint --only E-RACE && tsx scripts/ops-bulk-resolve-fleet.mts mint --only E-STEAL && node scripts/live-bulk-resolve-stress.mjs",
-    "qa:bulk-confirm-gate": "node scripts/live-bulk-confirm-gate.mjs"
+    "qa:bulk-confirm-gate": "node scripts/live-bulk-confirm-gate.mjs",
+    "qa:dg-rhythm": "node scripts/design-gate/rhythm-probe.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

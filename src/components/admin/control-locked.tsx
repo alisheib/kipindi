@@ -41,7 +41,7 @@ export function ControlLocked({
   return (
     <div
       title={`${what} — this is a ${need} decision. Ask ${who}.`}
-      className={`inline-flex items-center gap-1.5 rounded-md border border-border bg-bg-inset px-2.5 font-mono text-[10.5px] uppercase tracking-[0.10em] text-text-subtle ${
+      className={`inline-flex items-center gap-1.5 rounded-md border border-border bg-bg-inset px-2.5 font-mono text-micro uppercase tracking-[0.10em] text-text-subtle ${
         // ⛔ BOTH BRANCHES ARE LITERALS ON PURPOSE — the spacing scale is overridden
         // (tailwind.config.ts:200-215), so the inline branch's old `h-8` was 48px: one
         // component with two heights for the same lock chip, and 8px taller than the

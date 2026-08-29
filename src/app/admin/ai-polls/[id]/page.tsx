@@ -150,7 +150,7 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
                 "I forgot to look", and this states what the player will actually get. */}
             {([["SW", poll.resolutionCriterionSw], ["ZH", poll.resolutionCriterionZh]] as const).map(([lang, text]) => (
               <div key={lang} className="mt-2 border-l-2 border-border/60 pl-2.5">
-                <p className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-text-subtle">{lang}</p>
+                <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">{lang}</p>
                 {text
                   ? <p className="text-body-sm text-text-muted leading-relaxed" lang={lang.toLowerCase()}>{text}</p>
                   : <p className="text-body-sm italic text-text-subtle">No translation — players see the English with a note saying so.</p>}
@@ -325,7 +325,7 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
 function MetaField({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div>
-      <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-subtle mb-0.5">{label}</p>
+      <p className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle mb-0.5">{label}</p>
       <p className={`text-[12px] text-text leading-tight ${mono ? "font-mono break-all" : ""}`}>{value}</p>
     </div>
   );

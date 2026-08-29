@@ -119,7 +119,7 @@ export function LiveTicker({ events }: { events: TickerEvent[] }) {
               `--live-400`, same 2600ms breathe, and the same gating at all three
               reduced-motion tiers. */}
           <Dot tone="live" size={6} pulse />
-          <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[var(--live-400)]">
+          <span className="font-mono text-micro font-semibold uppercase tracking-[0.1em] text-[var(--live-400)]">
             {t.common.live}
           </span>
         </span>

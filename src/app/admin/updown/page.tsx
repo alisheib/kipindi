@@ -595,13 +595,13 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                             {chainStateLabel(c.state)}
                           </span>
                         </td>
-                        <td className="px-4 py-3 font-mono text-[11.5px] text-text-muted whitespace-nowrap">
+                        <td className="px-4 py-3 font-mono text-caption text-text-muted whitespace-nowrap">
                           {fmtTime(c.nextBoundaryAt)}
                         </td>
                         {/* E-36 · the market's own calendar, not the chain's state. A RUNNING
                             chain on a shut market opens nothing and settles nothing — and
                             without this cell that reads as a broken feed. */}
-                        <td className="px-4 py-3 font-mono text-[11.5px] whitespace-nowrap">
+                        <td className="px-4 py-3 font-mono text-caption whitespace-nowrap">
                           {(() => {
                             const s = sessionOf(c);
                             if (!s) return <span className="text-text-faint">—</span>;
@@ -618,7 +618,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                             );
                           })()}
                         </td>
-                        <td className="px-4 py-3 text-right font-mono text-[11.5px] whitespace-nowrap">
+                        <td className="px-4 py-3 text-right font-mono text-caption whitespace-nowrap">
                           {/* Effective winning band: this chain's override, else the E-32
                               ladder for its class and duration, else the flat default.
                               ⚠️ It MUST be the effective number. Before E-32 this cell read
@@ -643,7 +643,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                             <span className="text-text-faint"> ·{scheduledFor(c) != null ? "sched" : "def"}</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-right font-mono text-[11.5px] whitespace-nowrap">
+                        <td className="px-4 py-3 text-right font-mono text-caption whitespace-nowrap">
                           {(() => {
                             const s = chainStats.get(c.id);
                             if (!s || s.resolved === 0) return <span className="text-text-faint">—</span>;
@@ -698,7 +698,16 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                             );
                           })()}
                         </td>
-                        <td className="px-4 py-3 text-right font-mono text-[11.5px] text-text-muted whitespace-nowrap">
+                        {/* ⭐ DG-A-12 · §M4 + §T1 — THE MONEY CELL, AND THE FOUR THAT SIT BESIDE IT.
+                            `Stake bounds` prints two amounts, so §M4 gives it `.amount` (mono +
+                            tabular-nums + letter-spacing 0). §T1 puts 11.5 — a value on neither
+                            ladder — onto `text-caption` (11). ⛔ AND THE FOUR SIBLING CELLS IN
+                            THIS SAME `<tr>` (L598/604/621/646) MOVED WITH IT. They were all
+                            authored at 11.5; changing only the money cell would have left one
+                            column half a pixel out of step with the four it is read across, on
+                            the screen where an officer sets what a player may stake. A money fix
+                            that splits its own table row is not a fix. */}
+                        <td className="px-4 py-3 text-right amount text-caption text-text-muted whitespace-nowrap">
                           {/* The column header is "Stake bounds" — it names no currency, so the
                               cell has to. This read "1,000 – 100,000" on the one screen where an
                               officer sets what a player may stake, and a bare `toLocaleString()`

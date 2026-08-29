@@ -217,18 +217,40 @@ export function FeeSimulator({ config }: { config: RateConfig }) {
         </>
       ) : null}
 
-      {/* Fee vs. outcome — a fact about these very numbers, per the active model. */}
+      {/* Fee vs. outcome — a fact about these very numbers, per the active model.
+          ⛔ DG-A-12 · §T4 — BOTH BRANCHES ARE PROSE, AND NEITHER TAKES `.amount`.
+          `qa:dg-money` surfaced these two as off-ladder AMOUNTS because the paragraph calls
+          `formatTzs()` three times. It is not an amount — it is a 40-word paragraph explaining
+          the licence posture, with figures inside the sentence. ⭐ THIS IS THE EXACT TRAP THE
+          FIRST money-sweep TOOL FELL INTO: it judged "is this an amount?" from a ±4-line window
+          and rewrote *"A confirmed movement reconciles … Drift must be TZS 0."* into `.amount`.
+          §M4 governs AMOUNTS ONLY — its own note says so — and putting `.amount` here would set
+          the whole paragraph in JetBrains Mono with tabular figures.
+          What IS wrong is the size: 10.5px is off the ladder (§T1) and two pixels under §T4's
+          12.5px reading floor, on reading copy. It takes `text-body-sm` (13), the first rung at
+          or above the floor; `leading-relaxed` stays, because the rung's 18px line-height is
+          tighter than the ratio this paragraph was set with.
+          🔴 AND THE §T4 FIX IMMEDIATELY BROKE §M4 — `test:type-scale` §2 caught it, which is
+          why the amounts below are WRAPPED. Every Tailwind rung is a tuple that also emits
+          `letter-spacing` (`text-body-sm` = −0.05px), while the old `text-[10.5px]` set size
+          alone. So lifting the paragraph to a legible rung letter-spaced the four figures
+          inside it, and §M4 says an amount is ⛔ never letter-spaced. The guard's own remedy
+          is the one taken: *"wrap the amount in its own span — the sentence keeps its voice,
+          the number keeps the ladder."* `.amount` is (0,2,0), so it wins over the paragraph's
+          rung. ⭐ This is DG-A-14's shape: an amount inside a sentence is governed by BOTH
+          laws, and satisfying one by itself breaks the other. */}
       {isLoserShare ? (
-        <p className="font-mono text-[10.5px] leading-relaxed text-text-subtle">
-          Loser-share: the fee DEPENDS on who wins. On these pools it is {formatTzs(Math.round(sim.fee.fee))} if {side} wins
+        <p className="font-mono text-body-sm leading-relaxed text-text-subtle">
+          Loser-share: the fee DEPENDS on who wins. On these pools it is <span className="amount">{formatTzs(Math.round(sim.fee.fee))}</span> if {side} wins
           {" "}(a {fmtRate(config.platformFeeRate + config.operatorFeeRate)} slice of the losing side), and
-          {" "}{formatTzs(Math.round(sim.feeIfOtherSideWon))} if {side === "YES" ? "NO" : "YES"} wins. This is an owner-approved
+          {" "}<span className="amount">{formatTzs(Math.round(sim.feeIfOtherSideWon))}</span> if {side === "YES" ? "NO" : "YES"} wins. This is an owner-approved
           override of the outcome-neutral posture — see docs/COMPLIANCE-DECISIONS.md.
         </p>
       ) : (
-        <p className="font-mono text-[10.5px] leading-relaxed text-text-subtle">
-          Outcome-neutral: the fee on these pools is {formatTzs(Math.round(sim.fee.fee))} whether YES wins or NO
-          wins ({formatTzs(Math.round(sim.feeIfOtherSideWon))} either way). The fee is computed from the two pool
+        /* ⛔ The other branch of the same paragraph — see the note above. Prose, not an amount. */
+        <p className="font-mono text-body-sm leading-relaxed text-text-subtle">
+          Outcome-neutral: the fee on these pools is <span className="amount">{formatTzs(Math.round(sim.fee.fee))}</span> whether YES wins or NO
+          wins (<span className="amount">{formatTzs(Math.round(sim.feeIfOtherSideWon))}</span> either way). The fee is computed from the two pool
           sizes alone and never reads the outcome — that is what the pari-mutuel licence rests on.
         </p>
       )}

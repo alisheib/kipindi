@@ -96,7 +96,7 @@ export function VoidRoundControl({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1 rounded-md border border-claret-700 bg-claret-500/10 px-2 py-1 font-mono text-[10.5px] font-bold uppercase tracking-[0.1em] text-claret-300 hover:bg-claret-500/20 transition-colors whitespace-nowrap"
+        className="inline-flex items-center gap-1 rounded-md border border-claret-700 bg-claret-500/10 px-2 py-1 font-mono text-micro font-bold uppercase tracking-[0.1em] text-claret-300 hover:bg-claret-500/20 transition-colors whitespace-nowrap"
         title="Void this round and refund every stake in full"
       >
         <I.warning s={12} />

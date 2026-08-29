@@ -108,13 +108,13 @@ export function SellConfirmModal({ open, pending, stake, value, positionId, onCo
       >
         <div className="flex items-baseline justify-between">
           <div>
-            <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-text-subtle mb-1">{t.dialog.youReceive}</p>
+            <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle mb-1">{t.dialog.youReceive}</p>
             <p className="font-mono font-bold text-[24px] tabular-nums leading-none text-text">
               TZS {formatNumber(value)}
             </p>
           </div>
           <div className="text-right">
-            <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-text-subtle mb-1">{t.dialog.earlyExitFee}</p>
+            <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle mb-1">{t.dialog.earlyExitFee}</p>
             <p
               className="font-bold text-title-sm amount leading-none"
               style={{ color: isFree ? "var(--yes-300)" : "var(--text)" }}

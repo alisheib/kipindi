@@ -580,7 +580,7 @@ export function NotificationsPanel() {
                     <button
                       type="button"
                       onClick={handleClearAll}
-                      className="h-7 px-1.5 rounded-md font-mono text-[9.5px] font-bold uppercase tracking-[0.10em] text-text-subtle hover:text-no-300 hover:bg-bg-overlay transition-colors whitespace-nowrap"
+                      className="h-7 px-1.5 rounded-md font-mono text-micro font-bold uppercase tracking-[0.10em] text-text-subtle hover:text-no-300 hover:bg-bg-overlay transition-colors whitespace-nowrap"
                     >
                       {t.common.clearAll}
                     </button>

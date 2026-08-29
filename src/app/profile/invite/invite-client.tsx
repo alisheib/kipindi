@@ -109,7 +109,7 @@ export function ReferralShare({ link, shareText }: { link: string; shareText: st
 
   return (
     <div>
-      <p className="mb-2 font-mono text-[9.5px] uppercase tracking-[0.1em] font-bold text-text-subtle">
+      <p className="mb-2 font-mono text-micro uppercase tracking-[0.1em] font-bold text-text-subtle">
         {t.profile.yourReferralLink}
       </p>
       <div className="flex items-center gap-2 mb-2.5">

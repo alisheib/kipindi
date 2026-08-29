@@ -1078,7 +1078,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
           aria-label={armed ? t.market.lockDialAria : t.market.unlockDialAria}
           title={armed ? t.market.lockDialAria : t.market.unlockDialAria}
           data-testid="dial-lock-toggle"
-          className={`absolute right-3 top-3 z-20 inline-flex min-h-[44px] items-center gap-1.5 rounded-pill border font-mono font-bold uppercase tracking-[0.12em] transition-all ${armed ? "px-2.5 text-[9px]" : "px-3 text-micro"} ${!armed && hintUnlock ? "dial-unlock-hint" : ""}`}
+          className={`absolute right-3 top-3 z-20 inline-flex min-h-[44px] items-center gap-1.5 rounded-pill border font-mono font-bold uppercase tracking-[0.12em] transition-all ${armed ? "px-2.5 text-micro" : "px-3 text-micro"} ${!armed && hintUnlock ? "dial-unlock-hint" : ""}`}
           style={armed
             ? { borderColor: "var(--border)", color: "var(--text-subtle)", background: "var(--bg-inset)" }
             : { borderColor: "var(--brand-500)", color: "var(--brand-200)", background: "color-mix(in oklab, var(--brand-500) 22%, transparent)", boxShadow: "0 0 14px -2px color-mix(in oklab, var(--brand-500) 45%, transparent)" }}
@@ -1093,7 +1093,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
            glows in its colour, the other sits greyed with a padlock so the
            player can see exactly which way they're committed. */
         <div className="mb-4">
-          <p className="mb-2 text-center font-mono text-[9px] uppercase tracking-[0.16em] font-bold text-text-subtle">
+          <p className="mb-2 text-center font-mono text-micro uppercase tracking-[0.16em] font-bold text-text-subtle">
             {t.common.yourPick}
           </p>
           <div className="grid grid-cols-2 gap-2" role="img" aria-label={t.market.backingLocked.replace("{side}", lock)}>
@@ -1404,7 +1404,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
           "TZS 25,000" don't collide at < 360 px container widths. */}
       <div className="grid grid-cols-[1fr_auto] gap-2 sm:gap-3 mt-5 items-center">
         <div className="min-w-0">
-          <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-subtle mb-1">
+          <p className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle mb-1">
             {effectiveSide === "NEUTRAL" ? t.common.noConviction : t.common.youArePicking}
           </p>
           <p
@@ -1415,7 +1415,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
           </p>
         </div>
         <div className="text-right min-w-0">
-          <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-subtle mb-1.5">
+          <p className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle mb-1.5">
             {t.dialog.stakeLabel}
             <InfoHint
               size={10}
@@ -1503,7 +1503,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
           the stake-text lock above. Same kit Input atom for visual
           consistency. */}
       <div className="mt-3 grid grid-cols-[1fr_auto] gap-2 sm:gap-3 items-center">
-        <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-subtle">
+        <p className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle">
           {t.common.multiplier}
           <InfoHint
             size={10}
@@ -1567,7 +1567,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
         const estimate = Math.round(stake * (1 + (rates?.estimatedWinningsRate ?? 0)));
         return (
           <div className="mt-3 rounded-md border border-border bg-bg-overlay px-3 py-2.5">
-            <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-subtle mb-1">
+            <p className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle mb-1">
               {showEstimate ? t.dialog.estimatedWinningsLabel : t.common.payout2}
               <InfoHint
                 size={10}

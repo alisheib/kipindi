@@ -294,9 +294,20 @@ export default async function AdminUpDownRoundsPage({
                             {why ? ` · ${why}` : ""}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-right font-mono text-[11.5px] tabular-nums text-text-muted">{formatTzs(volume)}</td>
-                        <td className="px-4 py-3 text-right font-mono text-[11.5px] tabular-nums text-text-muted">{players}</td>
-                        <td className="px-4 py-3 text-right font-mono text-[10.5px] text-text-subtle whitespace-nowrap">{r.settledAt ? fmt(r.settledAt) : "—"}</td>
+                        {/* ⭐ DG-A-12 · §M4 + §T1 — THE WHOLE ROW MOVES, NOT JUST THE AMOUNT.
+                            `volume` is an amount, so §M4 gives it `.amount` (mono + tabular +
+                            letter-spacing 0, replacing `font-mono tabular-nums`) and §T1 puts
+                            11.5 → `text-caption` (11). ⛔ But moving ONLY that cell would leave
+                            the count beside it at 11.5 and the timestamp at 10.5 — a money
+                            column half a pixel out of step with the cell touching it, which is
+                            a worse render than the violation it fixed. The row was authored
+                            11.5 / 11.5 / 10.5, so it lands 11 / 11 / 10: every cell on a rung
+                            and the SAME relationship the design had. `players` is a count, not
+                            an amount, so it keeps `tabular-nums` and does NOT take `.amount`
+                            (§M4 governs amounts only — see its own note on the population). */}
+                        <td className="px-4 py-3 text-right amount text-caption text-text-muted">{formatTzs(volume)}</td>
+                        <td className="px-4 py-3 text-right font-mono text-caption tabular-nums text-text-muted">{players}</td>
+                        <td className="px-4 py-3 text-right font-mono text-micro text-text-subtle whitespace-nowrap">{r.settledAt ? fmt(r.settledAt) : "—"}</td>
                         <td className="px-4 py-3 text-right whitespace-nowrap">
                           {/* The lever exists ONLY where it can do something: an unsettled
                               round. Once the money has moved there is nothing to refund and

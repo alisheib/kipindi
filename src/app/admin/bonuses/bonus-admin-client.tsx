@@ -154,7 +154,7 @@ export function BonusAdminClient({ config }: { config: BonusConfig }) {
 
       {/* Defaults */}
       <div className="rounded-lg border border-border bg-bg-elevated p-4">
-        <p className="font-mono text-[9.5px] uppercase tracking-[0.1em] text-text-subtle mb-3">Defaults · platform-wide · Misingi</p>
+        <p className="font-mono text-micro uppercase tracking-[0.1em] text-text-subtle mb-3">Defaults · platform-wide · Misingi</p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <NumField label="Wagering multiplier" hint="Play this × the bonus to unlock it" suffix="×"
             value={c.defaultWagerMultiplier} onChange={(n) => setC((p) => ({ ...p, defaultWagerMultiplier: n }))} />
@@ -167,7 +167,7 @@ export function BonusAdminClient({ config }: { config: BonusConfig }) {
 
       {/* Rules — Management Bonus Rules §2 (cashback) and §6 (sequential) */}
       <div className="rounded-lg border border-border bg-bg-elevated p-4 space-y-3">
-        <p className="font-mono text-[9.5px] uppercase tracking-[0.1em] text-text-subtle">Bonus rules · Management policy · Sheria</p>
+        <p className="font-mono text-micro uppercase tracking-[0.1em] text-text-subtle">Bonus rules · Management policy · Sheria</p>
 
         <div className="flex items-center gap-3 rounded-md border border-border bg-bg-overlay/40 px-3.5 py-3">
           <div className="flex-1 min-w-0">
@@ -203,7 +203,7 @@ export function BonusAdminClient({ config }: { config: BonusConfig }) {
       </div>
 
       {/* Routing */}
-      <p className="font-mono text-[9.5px] uppercase tracking-[0.1em] text-text-subtle">Reward routing · send earnings to the bonus wallet · Mwelekeo</p>
+      <p className="font-mono text-micro uppercase tracking-[0.1em] text-text-subtle">Reward routing · send earnings to the bonus wallet · Mwelekeo</p>
       <RouteCard icon={I.percent} title="Affiliate rewards" sw="Tume za marafiki"
         desc="Referral commission, bonuses and prizes land in the bonus wallet (must be played through)."
         on={c.affiliateToBonus} onToggle={() => setC((p) => ({ ...p, affiliateToBonus: !p.affiliateToBonus }))} />

@@ -34,7 +34,7 @@ function BalanceSpark({ series, label }: { series: number[]; label: string }) {
   const d = xs.map((x, i) => `${i === 0 ? "M" : "L"} ${x.toFixed(1)} ${ys[i].toFixed(1)}`).join(" ");
   return (
     <div className="rounded-xl glass-panel p-3">
-      <p className="mb-1.5 font-mono text-[9.5px] uppercase tracking-[0.14em] font-bold text-text-subtle">{label}</p>
+      <p className="mb-1.5 font-mono text-micro uppercase tracking-[0.14em] font-bold text-text-subtle">{label}</p>
       <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="block w-full" style={{ height: 46 }} aria-hidden>
         <path d={d} fill="none" stroke="var(--aqua-400)" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
         <circle cx={xs[xs.length - 1]} cy={ys[ys.length - 1]} r="2.4" fill="var(--aqua-400)" vectorEffect="non-scaling-stroke" />
@@ -79,7 +79,7 @@ function BalanceCard({
       <div className="relative z-10 p-5 lg:p-6">
         <div className="flex items-center gap-1.5 text-gold-300">
           <I.wallet s={13} />
-          <p className="font-mono text-[10.5px] uppercase tracking-[0.16em] font-bold">{t.common.available2}</p>
+          <p className="font-mono text-micro uppercase tracking-[0.16em] font-bold">{t.common.available2}</p>
         </div>
         {/* ⛔ §M4 — MONEY IS MONO, TABULAR AND NEVER LETTER-SPACED. This figure carried
             `tracking-[-0.02em]`: negative tracking on a 38px grouped TZS numeral pulls the
@@ -193,8 +193,8 @@ function BonusWalletCard({
       <div className="relative z-10 p-5 lg:p-6">
         <div className="flex items-center gap-1.5 text-gold-300">
           <I.gift s={13} />
-          <p className="font-mono text-[10.5px] uppercase tracking-[0.16em] font-bold">{t.common.bonus}</p>
-          <span className="ml-auto inline-flex items-center gap-1 rounded-pill px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] font-bold bg-gold-500/15 text-gold-200">
+          <p className="font-mono text-micro uppercase tracking-[0.16em] font-bold">{t.common.bonus}</p>
+          <span className="ml-auto inline-flex items-center gap-1 rounded-pill px-2 py-0.5 font-mono text-micro uppercase tracking-[0.12em] font-bold bg-gold-500/15 text-gold-200">
             {t.common.playToUnlock}
           </span>
         </div>
@@ -368,7 +368,7 @@ function TxnRow({ tx }: { tx: Transaction }) {
           <p className={`font-mono text-[14px] font-bold tabular-nums ${isCredit ? "text-yes-300" : "text-text"}`}>
             <Cash>{`${isCredit ? "+" : ""}${formatTzs(Math.abs(tx.amount))}`}</Cash>
           </p>
-          <p className={`mt-0.5 font-mono text-[9px] uppercase tracking-[0.14em] font-semibold ${statusTone}`}>
+          <p className={`mt-0.5 font-mono text-micro uppercase tracking-[0.14em] font-semibold ${statusTone}`}>
             {statusLabel[tx.status]}
           </p>
         </div>
@@ -376,11 +376,11 @@ function TxnRow({ tx }: { tx: Transaction }) {
       {expanded && (
         <div className="px-3 pb-3 pt-0 grid grid-cols-2 gap-2 text-[11px]">
           <div className="rounded-md border border-border/60 bg-bg-overlay/40 px-2.5 py-1.5">
-            <p className="font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">{t.common.txnType}</p>
+            <p className="font-mono text-micro uppercase tracking-[0.10em] text-text-faint">{t.common.txnType}</p>
             <p className="font-semibold text-text">{tx.type}</p>
           </div>
           <div className="rounded-md border border-border/60 bg-bg-overlay/40 px-2.5 py-1.5">
-            <p className="font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">{t.wallet.amount}</p>
+            <p className="font-mono text-micro uppercase tracking-[0.10em] text-text-faint">{t.wallet.amount}</p>
             <p className="font-mono font-bold tabular-nums text-text">{formatTzs(Math.abs(tx.amount))}</p>
           </div>
           {/* Both references, in FULL. This used to print `tx.id.slice(0, 16)`
@@ -389,12 +389,12 @@ function TxnRow({ tx }: { tx: Transaction }) {
               actually look up) wasn't here at all. Same two labels as the
               receipt page, the return page and the deposit emails. */}
           <div className="rounded-md border border-border/60 bg-bg-overlay/40 px-2.5 py-1.5">
-            <p className="font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">{t.wallet.transactionId}</p>
+            <p className="font-mono text-micro uppercase tracking-[0.10em] text-text-faint">{t.wallet.transactionId}</p>
             <p className="font-mono text-text-muted break-all">{tx.id}</p>
           </div>
           {tx.providerRef && (
             <div className="rounded-md border border-border/60 bg-bg-overlay/40 px-2.5 py-1.5">
-              <p className="font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">{t.wallet.gatewayReference}</p>
+              <p className="font-mono text-micro uppercase tracking-[0.10em] text-text-faint">{t.wallet.gatewayReference}</p>
               <p className="font-mono text-text-muted break-all">{tx.providerRef}</p>
             </div>
           )}
@@ -403,7 +403,7 @@ function TxnRow({ tx }: { tx: Transaction }) {
               href={`/wallet/receipt/${tx.id}`}
               className="rounded-md border border-border/60 bg-bg-overlay/40 px-2.5 py-1.5 hover:border-brand-400 transition-colors block"
             >
-              <p className="font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">{t.wallet.receiptEyebrow}</p>
+              <p className="font-mono text-micro uppercase tracking-[0.10em] text-text-faint">{t.wallet.receiptEyebrow}</p>
               <p className="font-mono text-[11px] text-brand-300 underline-offset-2 hover:underline">{t.wallet.viewReceipt}</p>
             </Link>
           )}
@@ -421,7 +421,7 @@ function TxnRow({ tx }: { tx: Transaction }) {
               href={positionPermalinkHref(tx.positionId)}
               className="rounded-md border border-border/60 bg-bg-overlay/40 px-2.5 py-1.5 hover:border-brand-400 transition-colors block"
             >
-              <p className="font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">{t.common.ticket}</p>
+              <p className="font-mono text-micro uppercase tracking-[0.10em] text-text-faint">{t.common.ticket}</p>
               {/* 🔴 E-100 · `break-all`, like the two reference boxes above it. Found by Ali on a
                   real phone: `pos_e290a28e8e906b6255…` ran straight out of its box while
                   TRANSACTION ID beside it wrapped correctly — the two sit in the SAME grid and

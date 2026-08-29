@@ -210,7 +210,16 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
           <p className="mt-2 font-mono text-[10px] text-text-tertiary">A confirmed movement reconciles when it carries the PSP correlation ref. Drift must be TZS 0.</p>
           {recon.unmatchedRefs.length > 0 && (
             <div className="mt-3 border-t border-border-subtle pt-3">
-              <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-subtle mb-2">Unmatched movements — match to a PSP ref or write off (A3)</p>
+              {/* ⛔ DG-A-12 · §T3/§T4 — THIS IS PROSE, AND IT WAS DRESSED AS AN EYEBROW.
+                  §T3: the sub-micro tier is UPPERCASE mono tracking microlabels only and
+                  ⛔ "never reading copy"; §T4 puts the reading floor at 12.5px. A nine-word
+                  instruction — "match to a PSP ref or write off" — is a sentence, so at 9.5px
+                  uppercase it broke both. `text-body-sm` (13) is the first rung at or above the
+                  floor. ⛔ It is EXEMPTED BY NAME in `qa:dg-eyebrow`: the sweep that moved the
+                  other 134 sites onto `text-micro` would have pushed this one a rung FURTHER
+                  below the floor and counted it as a win. `font-mono` stays — the note directly
+                  above it (L210) is mono, and matching the neighbour is the rule here. */}
+              <p className="font-mono text-body-sm text-text-subtle mb-2">Unmatched movements — match to a PSP ref or write off (A3)</p>
               <ul className="space-y-1.5">
                 {recon.unmatchedRefs.map((id) => (
                   <li key={id} className="flex items-center justify-between gap-3 flex-wrap">
@@ -237,11 +246,11 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
                   <div className="min-w-0">
                     <p className="font-display text-[14px] font-bold text-text leading-tight">{h.label}</p>
                     {anyPaused && k.at ? (
-                      <p className="font-mono text-[9.5px] uppercase tracking-[0.1em] text-claret-300">
+                      <p className="font-mono text-micro uppercase tracking-[0.1em] text-claret-300">
                         PAUSED{k.by ? ` BY ${k.by.slice(0, 10)}` : ""} · {formatDateTime(k.at)}
                       </p>
                     ) : (
-                      <p className="font-mono text-[9.5px] uppercase tracking-[0.1em] text-text-subtle">Live · malipo</p>
+                      <p className="font-mono text-micro uppercase tracking-[0.1em] text-text-subtle">Live · malipo</p>
                     )}
                   </div>
                   <div className="ml-auto text-right">
@@ -251,7 +260,7 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
                         {h.successRate === null ? "—" : `${h.successRate.toFixed(1)}%`}
                       </span>
                     </div>
-                    <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-subtle">success · 24h</p>
+                    <p className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle">success · 24h</p>
                   </div>
                 </div>
 
@@ -275,7 +284,7 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
 
                 {/* Kill-switches. */}
                 <div className="mt-3 border-t border-dashed border-border-subtle pt-2.5">
-                  <p className="mb-1.5 font-mono text-[9px] uppercase tracking-[0.14em] text-text-subtle">Kill-switch · Zima</p>
+                  <p className="mb-1.5 font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">Kill-switch · Zima</p>
                   <KillSwitch provider={h.id} label={h.label} deposits={k.deposits} withdrawals={k.withdrawals} />
                 </div>
               </AdminCard>
@@ -368,7 +377,7 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
 function Stat({ label, value, tone }: { label: string; value: string; tone?: "ok" | "danger" }) {
   return (
     <div>
-      <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-subtle">{label}</span>
+      <span className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle">{label}</span>
       <p className={`font-mono text-[15px] font-bold tabular-nums ${tone === "danger" ? "text-danger" : "text-text"}`}>{value}</p>
     </div>
   );
@@ -376,7 +385,7 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: "ok
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-text-subtle">{label}</span>
+      <span className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle">{label}</span>
       <p className="font-mono tabular-nums text-text">{value}</p>
     </div>
   );

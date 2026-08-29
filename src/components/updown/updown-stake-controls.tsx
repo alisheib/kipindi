@@ -186,7 +186,7 @@ export function UpDownStakeControls({
       {/* Stake selector — preset chips + a Custom toggle. Compact magnitude labels
           (no per-chip "TZS") keep the whole row on one line at 360px. */}
       <div className={cn("flex items-center gap-1", compact ? "mb-2" : "mb-2 gap-1.5")} role="radiogroup" aria-label={t.market.udStake}>
-        <span className={cn("mr-0.5 shrink-0 font-mono uppercase tracking-[0.12em] text-text-faint", compact ? "text-[8.5px]" : "text-[9px]")}>
+        <span className={cn("mr-0.5 shrink-0 font-mono uppercase tracking-[0.12em] text-text-faint", compact ? "text-micro" : "text-micro")}>
           {t.market.udStake}
         </span>
         {bet.stakes.map((s, i) => {

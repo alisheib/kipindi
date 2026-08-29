@@ -130,7 +130,7 @@ export function KycDecisionRail({
           <button key={c.key} type="button" onClick={() => cycle(c.key)} className="flex w-full items-center gap-2.5 rounded-sm py-0.5 text-left text-[12.5px] hover:bg-bg-overlay/40">
             <TriIcon state={judg[c.key]} />
             <span className="text-text">{c.label}</span>
-            <span className="ml-auto font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-subtle">
+            <span className="ml-auto font-mono text-micro uppercase tracking-[0.12em] text-text-subtle">
               {judg[c.key] === "pending" ? "tap to verify" : judg[c.key]}
             </span>
           </button>

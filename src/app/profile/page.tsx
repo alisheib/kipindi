@@ -75,17 +75,25 @@ export default async function ProfilePage() {
 
   return (
     <PageContainer tier="reading" className="space-y-6">
-      {/* Screen-reader-only h1 — gives the page proper landmark
-          structure without disturbing the visual hierarchy (the
-          display name + ProfileNameEditor sit prominently inside the
-          hero card below; that's where the eye reads, but a screen
-          reader needs a top-level heading too). */}
-      <h1 className="sr-only">
-        {t.profile.title} · {displayName}
-      </h1>
       {/* ── Hero — kit-faithful: tilted FiftyMark watermark, OKLCH gradient,
             mono-stamped meta, picture uploader badge. No off-brand tokens. */}
       <section className="relative overflow-hidden rounded-xl border border-border bg-bg-elevated">
+        {/* 🔴 DG-P-04 · §S1 — THE h1 MOVED INSIDE THE HERO, AND THE MOVE IS LOAD-BEARING.
+            It was the container's FIRST child. `space-y-*` is not a gap; it is
+            `> :not([hidden]) ~ :not([hidden]) { margin-top }`, a SIBLING selector that counts
+            DOM order and not layout. `.sr-only` is `position:absolute; margin:-1px`, so the h1
+            occupied the "first child, no margin" slot while occupying no space — and this hero
+            was handed **32px** of margin-top nobody wrote (`space-y-6`). The same defect,
+            measured on production with `npm run qa:dg-rhythm`, cost `/live` 24px and
+            `/proposals` 32px. ⛔ The h1 STAYS (WCAG 1.3.1/2.4.6) and it must not go inside an
+            `aria-hidden` band — here the hero is not one, and the heading belongs with the
+            display name it names, which this comment already said.
+            Screen-reader-only h1 — gives the page proper landmark structure without disturbing
+            the visual hierarchy (the display name + ProfileNameEditor sit prominently in this
+            card; that's where the eye reads, but a screen reader needs a top-level heading). */}
+        <h1 className="sr-only">
+          {t.profile.title} · {displayName}
+        </h1>
         {/* Layered background — emerald → rose tilt + mark watermark */}
         <div
           className="absolute inset-0"
@@ -362,7 +370,7 @@ function SettingRow({ icon: Icon, title, subtitle, href, accent, badge }: { icon
         <p className="font-display text-[13.5px] font-semibold text-text leading-tight flex items-center gap-2">
           {title}
           {badge && (
-            <span className="inline-flex items-center rounded-pill border border-gold-700/50 bg-gold-500/15 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.08em] text-gold-300">
+            <span className="inline-flex items-center rounded-pill border border-gold-700/50 bg-gold-500/15 px-1.5 py-0.5 font-mono text-micro font-bold uppercase tracking-[0.08em] text-gold-300">
               {badge}
             </span>
           )}

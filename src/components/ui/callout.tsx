@@ -246,7 +246,7 @@ export function Callout({
   const resolvedRole = role ?? (live ? "alert" : "note");
 
   const metaLine = meta
-    ? <p className="mt-1.5 font-mono text-[10.5px] uppercase tracking-[0.12em] text-text-subtle">{meta}</p>
+    ? <p className="mt-1.5 font-mono text-micro uppercase tracking-[0.12em] text-text-subtle">{meta}</p>
     : null;
 
   if (layout === "stack") {

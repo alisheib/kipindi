@@ -56,7 +56,7 @@ export function ObjectionDecision({ objectionId, canReverse, canDecide = true }:
   if (!canDecide) {
     return (
       <span
-        className="inline-flex items-center gap-1.5 font-mono text-[10.5px] uppercase tracking-[0.08em] text-text-tertiary"
+        className="inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.08em] text-text-tertiary"
         title="Upholding or rejecting an objection is a compliance decision — ask an Admin or Compliance officer."
       >
         <I.alertCircle s={12} /> Compliance only
@@ -102,7 +102,7 @@ export function ObjectionDecision({ objectionId, canReverse, canDecide = true }:
         <button
           type="button"
           onClick={() => setMode("UPHOLD_VOID")}
-          className="inline-flex min-h-[40px] items-center gap-1 rounded-md border border-warning-border bg-warning-bg px-2.5 py-1.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.08em] text-warning-fg hover:bg-warning-border transition-colors brand-focus"
+          className="inline-flex min-h-[40px] items-center gap-1 rounded-md border border-warning-border bg-warning-bg px-2.5 py-1.5 font-mono text-micro font-bold uppercase tracking-[0.08em] text-warning-fg hover:bg-warning-border transition-colors brand-focus"
         >
           Void
         </button>
@@ -110,7 +110,7 @@ export function ObjectionDecision({ objectionId, canReverse, canDecide = true }:
           <button
             type="button"
             onClick={() => setMode("UPHOLD_REVERSE")}
-            className="inline-flex min-h-[40px] items-center gap-1 rounded-md border border-warning-border bg-warning-bg px-2.5 py-1.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.08em] text-warning-fg hover:bg-warning-border transition-colors brand-focus"
+            className="inline-flex min-h-[40px] items-center gap-1 rounded-md border border-warning-border bg-warning-bg px-2.5 py-1.5 font-mono text-micro font-bold uppercase tracking-[0.08em] text-warning-fg hover:bg-warning-border transition-colors brand-focus"
           >
             Reverse
           </button>
@@ -118,7 +118,7 @@ export function ObjectionDecision({ objectionId, canReverse, canDecide = true }:
         <button
           type="button"
           onClick={() => setMode("REJECT")}
-          className="inline-flex min-h-[40px] items-center gap-1 rounded-md border border-border bg-bg-overlay px-2.5 py-1.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.08em] text-text-muted hover:border-border-strong hover:text-text transition-colors brand-focus"
+          className="inline-flex min-h-[40px] items-center gap-1 rounded-md border border-border bg-bg-overlay px-2.5 py-1.5 font-mono text-micro font-bold uppercase tracking-[0.08em] text-text-muted hover:border-border-strong hover:text-text transition-colors brand-focus"
         >
           Reject
         </button>
@@ -153,7 +153,7 @@ export function ObjectionDecision({ objectionId, canReverse, canDecide = true }:
             <div className="space-y-1.5">
               <label
                 htmlFor="objection-note"
-                className="font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-text-subtle"
+                className="font-mono text-micro font-bold uppercase tracking-[0.12em] text-text-subtle"
               >
                 Reason for the record (required)
               </label>

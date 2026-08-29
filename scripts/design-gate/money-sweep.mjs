@@ -86,7 +86,15 @@ for (const f of files) {
        change the typeface. Those sites are §T5 violations already RECORDED in the guard's
        RATCHET_MONEY, to be fixed deliberately with a screenshot — never swept. */
     if (/\bfont-display\b/.test(attrs)) { note("⛔ carries font-display — a §T5 case, recorded, not swept"); continue; }
-    if (!/\bfont-mono\b|\btabular(-nums)?\b/.test(attrs)) { note("no mono/tabular signal on the element"); continue; }
+    /* 🔴 `.amount` IS A MONO SIGNAL, AND LEAVING IT OUT MADE THIS TOOL GO GREEN BY SHRINKING.
+       The signal was `font-mono|tabular` — the very two classes `.amount` REPLACES. So the
+       moment a site adopted `.amount`, it stopped looking like money to the tool that had just
+       swept it, and any off-ladder SIZE still on it became invisible. Measured 2026-08-29:
+       adopting `.amount` at `positions/performance` moved two sites from "OFF-LADDER" to "no
+       mono signal", and the off-ladder count fell to 0 with both defects still on the page.
+       ⛔ An instrument that stops seeing what it just fixed cannot report a regression on it —
+       this programme's signature failure, and this is the sixth instance. */
+    if (!/\bfont-mono\b|\btabular(-nums)?\b|\bamount\b/.test(attrs)) { note("no mono/tabular signal on the element"); continue; }
     if (!RUNG[px]) { note("⛔ OFF-LADDER — a size change, so a per-site design call"); continue; }
 
     /* The rewrite. ⚠️ Token-surgical: only the three tokens change, and NO whitespace is

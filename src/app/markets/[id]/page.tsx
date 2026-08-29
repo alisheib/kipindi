@@ -516,7 +516,7 @@ export default async function MarketDetail({
             <div className="rounded-lg border border-warning-border bg-warning-bg px-4 py-3 flex items-start gap-2.5">
               <I.warning s={15} className="shrink-0 mt-0.5 text-warning-fg" />
               <div>
-                <p className="font-mono text-[10.5px] font-bold uppercase tracking-[0.14em] text-warning-fg mb-1">
+                <p className="font-mono text-micro font-bold uppercase tracking-[0.14em] text-warning-fg mb-1">
                   {t.market.oneSidedMarket}
                 </p>
                 <p className="text-body-sm leading-relaxed text-text-muted">

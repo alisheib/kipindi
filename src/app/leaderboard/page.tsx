@@ -233,7 +233,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
       <ScrollX label="Leaderboard" className="rounded-xl glass-panel">
         {isSynthetic && (
           <div className="px-4 py-2.5 border-b border-border bg-bg-overlay/40 flex items-center gap-2">
-            <span className="inline-flex items-center rounded-pill border border-border bg-bg-overlay px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.10em] text-text-subtle">{t.leaderboard.demo}</span>
+            <span className="inline-flex items-center rounded-pill border border-border bg-bg-overlay px-2 py-0.5 font-mono text-micro font-bold uppercase tracking-[0.10em] text-text-subtle">{t.leaderboard.demo}</span>
             <p className="text-body-sm text-text-muted">{t.leaderboard.sampleData}</p>
           </div>
         )}

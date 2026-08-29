@@ -165,7 +165,7 @@ export function ResolutionPanel({
           quote renders as escaped text (React) so any markup is inert. */}
       {evidenceText && (
         <div className="space-y-1.5">
-          <p className="flex items-center gap-1.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-text-subtle">
+          <p className="flex items-center gap-1.5 font-mono text-micro font-bold uppercase tracking-[0.12em] text-text-subtle">
             <I.fileCheck s={12} className="text-gilt" />
             {t.market.resEvidence}
           </p>

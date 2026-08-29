@@ -137,7 +137,7 @@ export function LivePulseGrid({ markets }: { markets: Market[] }) {
           aria-live="polite"
         >
           <BrandSpinner size={30} />
-          <p className="font-mono text-[10.5px] uppercase tracking-[0.16em] text-text-subtle">
+          <p className="font-mono text-micro uppercase tracking-[0.16em] text-text-subtle">
             {t.common.loadingMore}
           </p>
         </div>

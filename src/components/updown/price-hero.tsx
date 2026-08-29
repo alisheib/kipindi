@@ -127,7 +127,7 @@ export function PriceHero({
     >
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div>
-          <p className="m-0 font-mono text-[8.5px] font-semibold uppercase tracking-[0.12em] text-text-faint">{copy.priceLabel}</p>
+          <p className="m-0 font-mono text-micro font-semibold uppercase tracking-[0.12em] text-text-faint">{copy.priceLabel}</p>
           <div style={{ marginTop: 5, display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
             {hasPrice ? (
               <>
@@ -145,7 +145,7 @@ export function PriceHero({
           </div>
         </div>
         <div className="text-right">
-          <p className="m-0 font-mono text-[8.5px] font-semibold uppercase tracking-[0.12em] text-text-faint">{copy.openLabel}</p>
+          <p className="m-0 font-mono text-micro font-semibold uppercase tracking-[0.12em] text-text-faint">{copy.openLabel}</p>
           <p className="mt-[5px] mb-0 font-mono text-[13px] font-bold tabular-nums text-text-muted">{usd(openPrice)}</p>
           {/* ⭐ E-198 · THE TWO NUMBERS THAT DECIDE THE BET, IN TEXT, WHILE THEY STILL MATTER.
               🔴 They were rendered in ONE place on a live round — inside the chart below, in

@@ -77,7 +77,7 @@ function EarningsRing({ value, label }: { value: number; label: string }) {
 
 function Cap({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <p className={`font-mono text-[9.5px] uppercase tracking-[0.1em] font-bold text-text-subtle ${className}`}>
+    <p className={`font-mono text-micro uppercase tracking-[0.1em] font-bold text-text-subtle ${className}`}>
       {children}
     </p>
   );
@@ -220,7 +220,7 @@ export default async function InvitePage() {
           <div className="min-w-0 flex-1">
             <FiftyMark size={38} />
             <p className="mt-3 font-display text-[20px] font-bold leading-tight text-text">{t.common.youveBeenInvited}</p>
-            <p className="mt-3 font-mono text-[9.5px] uppercase tracking-[0.16em] font-bold text-gold-300/70">{t.common.invite}</p>
+            <p className="mt-3 font-mono text-micro uppercase tracking-[0.16em] font-bold text-gold-300/70">{t.common.invite}</p>
             <div className="mt-1 inline-block rounded-md border border-gold-700 px-3 py-1.5" style={{ background: "color-mix(in oklab, var(--gold-500) 10%, transparent)" }}>
               <span className="font-mono text-[22px] font-bold tracking-[0.1em] text-gold-300">{s.code || "—"}</span>
             </div>

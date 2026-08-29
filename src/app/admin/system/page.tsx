@@ -365,7 +365,7 @@ export default async function AdminSystemPage() {
             </div>
             {(ping.error || health.lastError) && (
               <div className="mt-2 rounded-md border border-no-700/60 bg-no-500/10 px-3 py-2 font-mono text-[10.5px] text-no-200 leading-relaxed">
-                <div className="font-bold uppercase tracking-[0.14em] text-no-300 text-[9.5px] mb-1">Last error</div>
+                <div className="font-bold uppercase tracking-[0.14em] text-no-300 text-micro mb-1">Last error</div>
                 {(ping.error ?? health.lastError ?? "").slice(0, 280)}
               </div>
             )}

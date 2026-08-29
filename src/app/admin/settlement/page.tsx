@@ -140,7 +140,7 @@ export default async function AdminSettlementPage({ searchParams }: { searchPara
                         ) : r.state === "FROZEN" ? (
                           <Link
                             href={"/admin/objections" as never}
-                            className="inline-flex min-h-[40px] items-center gap-1.5 rounded-md border border-warning-border bg-warning-bg px-3 py-2 font-mono text-[10.5px] font-bold uppercase tracking-[0.08em] text-warning-fg hover:bg-warning-border transition-colors brand-focus"
+                            className="inline-flex min-h-[40px] items-center gap-1.5 rounded-md border border-warning-border bg-warning-bg px-3 py-2 font-mono text-micro font-bold uppercase tracking-[0.08em] text-warning-fg hover:bg-warning-border transition-colors brand-focus"
                           >
                             Rule on it
                           </Link>

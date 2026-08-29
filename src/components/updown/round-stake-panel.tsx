@@ -117,7 +117,7 @@ export function RoundStakePanel(props: {
   return (
     <div className={cn(pulse && "ud-place-pulse")}>
       <div className="flex items-center justify-between gap-2.5">
-        <p className="m-0 font-mono text-[8.5px] font-semibold uppercase tracking-[0.12em] text-text-faint">{t.market.udYourPick}</p>
+        <p className="m-0 font-mono text-micro font-semibold uppercase tracking-[0.12em] text-text-faint">{t.market.udYourPick}</p>
         <span className={cn("chip", isUp ? "chip-yes" : "chip-no")} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={arrow} /></svg>
           {pickWord}
@@ -157,7 +157,10 @@ export function RoundStakePanel(props: {
         {projected != null && (
           <span className="flex shrink-0 items-center gap-1.5" title={t.market.udRcProjected}>
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-            <span className="font-mono text-[12.5px] font-semibold tabular-nums text-text-muted">{formatTzs(projected)}</span>
+            {/* DG-A-12 · §M4 + §T1 — `.amount` replaces `font-mono … tabular-nums`; 12.5 →
+                `text-body-sm` (13), the +0.5 already ruled for `.admin-tbl`. The muted ink and
+                the semibold stay: §M3 keeps projected money quieter than earned money. */}
+            <span className="amount text-body-sm font-semibold text-text-muted">{formatTzs(projected)}</span>
             {/* The multiple, in the SAME muted ink as the amount — it is the same fact stated
                 twice, and neither statement gets to be louder than the stake control (G5). */}
             {projectedMult != null && (

@@ -142,8 +142,22 @@ export default async function PerformancePage() {
             <div className="gilt-rule" style={{ margin: "10px 0 14px" }} />
             <div className="flex flex-wrap items-end gap-x-10 gap-y-4">
               <div className="min-w-[220px]">
+                {/* 🔴 DG-A-12 · §M4 — THE HERO AMOUNT WAS LETTER-SPACED, AND THAT HALF SHIPS NOW.
+                    §M4: *"Every amount … NEVER letter-spaced"*. This carried an explicit
+                    `tracking-[-0.02em]` = −0.68px per glyph, tightening the largest money figure
+                    on the player's own P&L page. `.amount` (mono + tabular-nums +
+                    letter-spacing 0, a doubled selector so a responsive variant cannot beat it)
+                    replaces `font-mono … tabular-nums` and the tracking is deleted outright
+                    rather than left as a dead class.
+                    ⚠️ THE SIZE IS DELIBERATELY NOT CHANGED, AND THAT IS NOT AN OVERSIGHT.
+                    `text-[34px]` is off the ladder (§T1) and the nearest rung is
+                    `text-display-3` (36). But this route is AUTHED, all six player QA secrets
+                    are rejected by production, and a +2px change to the biggest figure on the
+                    page is a size call §T4 does not decide — so it needs the 360 screenshot this
+                    machine cannot take. Ship the law, record the taste: 34 stands as a known
+                    above-floor exception until a player credential exists. Same for L198. */}
                 <p
-                  className={`font-mono text-[34px] font-bold tabular-nums leading-none tracking-[-0.02em] ${netPnl >= 0 ? "text-[var(--gilt)]" : "text-no-300"}`}
+                  className={`amount text-[34px] font-bold leading-none ${netPnl >= 0 ? "text-[var(--gilt)]" : "text-no-300"}`}
                   style={netPnl >= 0 ? { textShadow: "0 0 24px color-mix(in oklab, var(--gilt) 30%, transparent)" } : undefined}
                 >
                   {formatTzsSigned(netPnl)}
@@ -195,7 +209,10 @@ export default async function PerformancePage() {
                   <I.trophy s={22} />
                 </span>
                 <div className="min-w-0">
-                  <p className="font-mono text-[26px] lg:text-[30px] font-bold leading-none tabular-nums text-gold-300" style={{ textShadow: "0 0 20px color-mix(in oklab, var(--gold-400) 30%, transparent)" }}>
+                  {/* DG-A-12 · §M4 — `.amount` for the best-win figure; the size stays for the
+                      reason given on the net-P&L hero above (authed route, no player credential,
+                      and 26/30 → 22/28 is a taste call that needs a screenshot). */}
+                  <p className="amount text-[26px] lg:text-[30px] font-bold leading-none text-gold-300" style={{ textShadow: "0 0 20px color-mix(in oklab, var(--gold-400) 30%, transparent)" }}>
                     {bestMarket ? formatTzsAbs(bestMarket.payout) : "—"}
                   </p>
                   {bestTitle && <p className="mt-1.5 truncate text-body-sm text-text-muted">{bestTitle}</p>}
@@ -250,7 +267,7 @@ export default async function PerformancePage() {
                     </div>
                     <div className="shrink-0 text-right">
                       <p className={`text-body-sm font-bold amount ${r.pnl >= 0 ? "text-[var(--gilt)]" : "text-no-300"}`}>{formatTzsSigned(r.pnl)}</p>
-                      <p className="font-mono text-[9px] uppercase tracking-[0.08em] text-text-muted">{r.statusLabel}</p>
+                      <p className="font-mono text-micro uppercase tracking-[0.08em] text-text-muted">{r.statusLabel}</p>
                     </div>
                   </Link>
                 ))}

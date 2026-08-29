@@ -75,16 +75,32 @@ export default async function ResultsPage({
       {/* Refresh every 60s — new resolutions should appear without F5 */}
       <RefreshPoller intervalMs={60_000} />
 
-      <Suspense fallback={<ResultsSkeleton />}>
-        <ResultsContent
-          activeCat={activeCat}
-          activeProduct={activeProduct}
-          activeSort={activeSort}
-          qRaw={qRaw}
-          searching={searching}
-          pageNum={pageNum}
-        />
-      </Suspense>
+      {/* 🔴 DG-P-04 · §S1 — THE RHYTHM IS DECLARED ONCE, HERE, AND NOT ON THE CONTAINER.
+          This page had NO rhythm at all, so its three bands each typed their own: `mb-4` (20) on
+          the header, the sticky band's `py-2.5`, `mt-1` (4) on the grid. Measured on production
+          2026-08-29 (`npm run qa:dg-rhythm --VERBOSE`) the content rendered **32 above the
+          search and 16 below it** while `ResultsSkeleton`, the thing that stands in for it for
+          the first paint, rendered **20 and 24** — so the page moved twice on every load, and
+          neither figure was one of the four gaps §Spacing allows a long page.
+          ⛔ WHY THE WRAPPER AND NOT `<PageContainer className="space-y-5">`: `space-y-*` is
+          `> :not([hidden]) ~ :not([hidden]) { margin-top }`, a SIBLING selector that counts DOM
+          order and not layout, and the container's first child is an out-of-flow
+          `<h1 class="sr-only">` (`position:absolute`). On the container the rung would have
+          been handed to the header for nothing — the exact defect this row fixed on `/live`
+          (24px) and `/proposals` (32px). `<Suspense>` renders no DOM node, so this div's real
+          children are the three bands of whichever branch is showing. */}
+      <div className="space-y-5">
+        <Suspense fallback={<ResultsSkeleton />}>
+          <ResultsContent
+            activeCat={activeCat}
+            activeProduct={activeProduct}
+            activeSort={activeSort}
+            qRaw={qRaw}
+            searching={searching}
+            pageNum={pageNum}
+          />
+        </Suspense>
+      </div>
     </PageContainer>
   );
 }
@@ -254,8 +270,10 @@ async function ResultsContent({
   return (
     <>
       {/* Header — lean (parity with /markets). C2b adds the aggregate YES/NO
-          donut as data, not a masthead. */}
-      <div className="mb-4 flex items-center justify-between gap-3">
+          donut as data, not a masthead.
+          ⛔ NO `mb-*` — DG-P-04 · §S1: the gap below this band belongs to the `space-y-5`
+          wrapper in the parent, and a margin here would be a second definition of it. */}
+      <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <span className="text-gold-300"><I.resolved s={18} /></span>
           <p className="font-mono text-caption uppercase tracking-[0.16em] font-bold text-text-subtle">{t.results.title}</p>
@@ -285,7 +303,15 @@ async function ResultsContent({
               It cannot be reconstructed from the DOM: page 1 lifts up to three markets into the
               notable carousel, which renders only the current slide, so two of them are not in the
               document at all. */}
-          <p data-result-count={totalCount} className="hidden sm:block font-mono text-[10.5px] text-text-subtle tabular-nums whitespace-nowrap">
+          {/* ⭐ DG-A-12 · §M4 + §T1 — `.amount` and the rung its NEIGHBOUR already sits on.
+              The line carries `formatTzsCompact(totalVolume)`, so §M4 applies: `.amount`
+              replaces `font-mono … tabular-nums` and adds the letter-spacing 0 that keeps a
+              rung from tracking the figure out. 10.5px is on neither ladder (§T1), and the
+              choice between `text-micro` (10) and `text-caption` (11) is decided by what sits
+              beside it in this very flex row: the YES/NO tally at L289 is 10px and the page
+              title at L279 is `text-caption`. Taking 10 puts this line level with the tally it
+              is read against, and keeps the title a step above both. */}
+          <p data-result-count={totalCount} className="hidden sm:block amount text-micro text-text-subtle whitespace-nowrap">
             {totalCount} {t.results.resolved} · {formatTzsCompact(totalVolume)} {t.common.settled}
           </p>
         </div>
@@ -302,8 +328,8 @@ async function ResultsContent({
         </Suspense>
       </div>
 
-      {/* Filters + Grid */}
-      <div className="mt-1 flex flex-col gap-5 lg:flex-row lg:gap-6">
+      {/* Filters + Grid — ⛔ no `mt-*`, see the header band above (DG-P-04 · §S1). */}
+      <div className="flex flex-col gap-5 lg:flex-row lg:gap-6">
         {/* Sidebar filters — sticky on desktop, horizontal scroll on mobile */}
         {/* `data-filter-rail` makes this addressable to the visual sweep. Without it the sweep
             looked only for `.kp-discovery-bar`, found nothing on /results and reported
@@ -563,8 +589,10 @@ function FeaturedResult({ m, t, locale }: { m: Awaited<ReturnType<typeof listMar
 function ResultsSkeleton() {
   return (
     <>
-      {/* Header skeleton */}
-      <div className="mb-4 flex items-center justify-between gap-3">
+      {/* Header skeleton — ⛔ no `mb-*`: the fallback and the content are children of the SAME
+          `space-y-5` wrapper, so both branches get the same rhythm and the page cannot move
+          between them. Before DG-P-04 this branch spaced itself 20/24 and the content 32/16. */}
+      <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <div className="h-5 w-5 rounded bg-bg-overlay kp-shimmer-track" />
           <div className="h-4 w-32 rounded bg-bg-overlay kp-shimmer-track" />
@@ -572,11 +600,17 @@ function ResultsSkeleton() {
         <div className="h-3.5 w-36 rounded bg-bg-overlay kp-shimmer-track" />
       </div>
 
-      {/* Search skeleton */}
-      <div className="mb-4 h-[44px] rounded-md bg-bg-overlay kp-shimmer-track" style={{ maxWidth: 460 }} />
+      {/* Search skeleton.
+          ⚠️ FILED, NOT FIXED (DG-P-13 / DG-A-20): this bar is **44px** and the band it stands
+          in for renders **91px** on production — a sticky wrapper (`py-2.5`) around a real
+          `SearchBox` with its echo row. So the grid below still lands ~47px out when the
+          fallback is replaced. That is a skeleton-SHAPE defect, not a rhythm one; DG-P-04 fixes
+          the gaps and leaves the height with a measured number rather than a complaint.
+          `markets/loading.tsx` already has the right shape to copy (`search-box-wrap`). */}
+      <div className="h-[44px] rounded-md bg-bg-overlay kp-shimmer-track" style={{ maxWidth: 460 }} />
 
       {/* Filters + grid */}
-      <div className="mt-1 flex flex-col gap-5 lg:flex-row lg:gap-6">
+      <div className="flex flex-col gap-5 lg:flex-row lg:gap-6">
         {/* Sidebar skeleton */}
         <aside className="lg:w-[208px] lg:shrink-0 space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (

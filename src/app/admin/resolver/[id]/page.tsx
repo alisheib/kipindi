@@ -327,7 +327,7 @@ function AttestSlot({
     >
       <div className="flex items-center gap-1.5">
         <I.shieldcheck s={12} className={signed ? "text-brand-300" : "text-text-subtle"} />
-        <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-subtle">{label}</span>
+        <span className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle">{label}</span>
       </div>
       {signed ? (
         <>

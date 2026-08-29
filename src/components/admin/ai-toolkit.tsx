@@ -179,7 +179,7 @@ export function AiToolkit({ status, canAct = true }: { status: AiToolkitStatus; 
             <span className="grid h-7 w-7 place-items-center rounded-md bg-brand-500/[0.12] text-brand-300"><I.sparkle s={15} /></span>
             <div className="min-w-0">
               <p className="font-display text-[13px] font-semibold text-text leading-tight">AI toolkit</p>
-              <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-subtle">Every AI feature · one place</p>
+              <p className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle">Every AI feature · one place</p>
             </div>
           </div>
 
@@ -248,7 +248,7 @@ export function AiToolkit({ status, canAct = true }: { status: AiToolkitStatus; 
           <Link
             href={"/admin/ai-usage" as never}
             onClick={() => setOpen(false)}
-            className="mt-3 flex items-center justify-between rounded-md border border-border bg-bg-overlay px-3 py-2 font-mono text-[10.5px] uppercase tracking-[0.1em] text-text-muted hover:border-brand-500 hover:text-text transition-colors"
+            className="mt-3 flex items-center justify-between rounded-md border border-border bg-bg-overlay px-3 py-2 font-mono text-micro uppercase tracking-[0.1em] text-text-muted hover:border-brand-500 hover:text-text transition-colors"
           >
             <span className="inline-flex items-center gap-1.5"><I.activity s={12} /> AI usage &amp; spend</span>
             <I.chevronRight s={12} />
@@ -321,7 +321,7 @@ function ToggleRow({
         // unavailable, try again", which is not what is happening.
         <span
           aria-label={`${label}: ${on ? "on" : "off"} (read-only)`}
-          className={`shrink-0 rounded-md border px-1.5 py-0.5 font-mono text-[9.5px] uppercase tracking-[0.12em] ${
+          className={`shrink-0 rounded-md border px-1.5 py-0.5 font-mono text-micro uppercase tracking-[0.12em] ${
             on ? "border-border-strong bg-bg-elevated text-text-secondary" : "border-border bg-bg-overlay text-text-subtle"
           }`}
         >

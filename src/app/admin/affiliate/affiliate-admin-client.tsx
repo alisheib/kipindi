@@ -170,7 +170,7 @@ export function AffiliateAdminClient({ config }: { config: AffiliateConfig }) {
       </div>
 
       {/* Reward modes */}
-      <p className="font-mono text-[9.5px] uppercase tracking-[0.1em] text-text-subtle">Reward modes · independently toggleable · Njia za zawadi</p>
+      <p className="font-mono text-micro uppercase tracking-[0.1em] text-text-subtle">Reward modes · independently toggleable · Njia za zawadi</p>
 
       <RewardCard
         icon={I.percent} title="Commission" sw="Tume"

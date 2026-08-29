@@ -116,7 +116,7 @@ const SRC = join(ROOT, "src");
  *  the site from §3 AND §4: two ratchets down, nothing lifted, the site now in a population
  *  the guard could not read. 509 of the old 768 could have been deleted that way. §3's own
  *  advice string recommended it in those words. Both are fixed in this commit. */
-const RATCHET_SUBFLOOR = 763;   // 2026-08-29: -268 total, the ADMIN then PLAYER prose sweeps (DG-A-12)
+const RATCHET_SUBFLOOR = 761;   // 2026-08-29: -268 total, the ADMIN then PLAYER prose sweeps (DG-A-12); then -2 for `fee-simulator.tsx`'s two licence paragraphs, 10.5px prose lifted to `text-body-sm`. ⭐ THE FIRST TIME §3 MOVED IN THREE SWEEPS, and that is the point: §3 falls only when a GLYPH gets more legible, which is why it held flat at 763 through 376 renames that bought §4 alone.
 
 /** §4 — every hand-typed size in the product: `text-[Npx]` plus inline literal
  *  `style={{ fontSize: N }}`. Measured 2026-08-21: 1,839 + 38.
@@ -169,7 +169,31 @@ const RATCHET_SUBFLOOR = 763;   // 2026-08-29: -268 total, the ADMIN then PLAYER
 // 10px batch had been driven on production. ⛔ 8 · 8.5 · 9 · 9.5 · 10.5 · 11.5 · 15 are NOT
 // rungs and stay: moving one is a SIZE change, i.e. a per-site design call the tool refuses.
 // ⭐ Ladder adoption crossed half: 47.1% → 50.5%, and §3 held at 763 through both passes.
-const RATCHET_ARBITRARY_SIZE = 1109;
+// …then 1109 → 975 on 2026-08-29, the OFF-LADDER eyebrows: the last 139 sites at 8 · 8.5 · 9 ·
+// 9.5 · 10.5 · 11.5 · 15, which every earlier pass refused because each is a real SIZE change.
+// §T7's dated ruling decides the destination — `text-micro` — and it is one value for all of
+// them, so what was left was not "which rung" but "is this string actually an eyebrow". So all
+// 139 were READ: 153 classifications, 61 of them adversarially re-checked. **134 moved; 5 are
+// exempted BY NAME in `qa:dg-eyebrow` and did not**, because they are prose dressed as
+// microlabels (a sentence about pausing a real-money rail; "Unmatched movements — match to a
+// PSP ref or write off"; a label with its hint welded on; the primer's caption) plus
+// `modal.tsx:552`, which is not a label at all but ConfirmModal's type-to-confirm INPUT.
+// ⛔ THAT IS THE WHOLE POINT OF THE EXEMPTIONS: §T3 says the sub-micro tier is never reading
+// copy and §T4 puts the floor at 12.5px, so sweeping those five onto `text-micro` would have
+// pushed prose a rung FURTHER below the floor and counted it as progress — a §4 win bought by
+// making the product worse, which is this programme's signature failure wearing a new hat.
+// ⭐ §3 held at 763 again, and §4 fell by exactly 134 — the count the tool reported.
+// …then 975 → 951 in the same session: the 5 exempted prose sites, plus the 14 OFF-LADDER
+// AMOUNTS `qa:dg-money` had been listing and refusing since it was built, plus the cells that
+// had to move WITH them. ⭐ That last part is the lesson: an amount does not live alone. Moving
+// `admin/updown/page.tsx`'s stake-bounds cell to `text-caption` would have left four sibling
+// `<td>`s in the SAME `<tr>` at 11.5, and `admin/updown/rounds`' volume cell would have split a
+// three-cell row — so the rows moved whole, keeping the relationships the design drew.
+// ⛔ TWO SITES ARE DELIBERATELY LEFT OFF-LADDER: `positions/performance` 34px and 26px. Their
+// §M4 half shipped (both are `.amount` now), but the SIZE is a call §T4 does not decide, the
+// route is AUTHED, and every player QA secret is rejected by production. Ship the law, record
+// the taste — `qa:dg-money` still lists both.
+const RATCHET_ARBITRARY_SIZE = 951;
 /*  ⬇️ 38 → 37 on 2026-08-25. The wallet balance pill carried `fontSize: 12.5` inline — an
  *  off-ladder literal AND invisible to every class-based gate. It now reads `text-caption`
  *  below `sm` and `text-label` from there, both ON the closed ladder (§T1), which is also
@@ -188,7 +212,7 @@ const RATCHET_INLINE_FONTSIZE = 36;
 /*  ⬇️ 636 → 635 on 2026-08-25 — pre-existing slack on HEAD, not this commit's doing; see
  *  the note on RATCHET_ARBITRARY_SIZE above. The countdown's date span takes `text-micro`'s
  *  own 0.4px letter-spacing and adds no `tracking-` utility, so this commit is +0 here. */
-const RATCHET_ARBITRARY_TRACKING = 620;   // 2026-08-29: -11, FieldLegend adopted where its recipe was hand-retyped (DG-A-11)
+const RATCHET_ARBITRARY_TRACKING = 615;   // 2026-08-29: -11 then -5, FieldLegend adopted where its recipe was hand-retyped BYTE FOR BYTE (DG-A-11). The last 5 were `<label>`s in the auth forms — `block … mb-1.5` around the component's exact class string — which the first pass missed because it looked for `<span>`s.
 
 /** §5 — the 29 hand-typed sizes that exist today. A member may LEAVE (the guard
  *  says so and this list gets trimmed); a NEW one is a hard failure. This is the
@@ -233,15 +257,23 @@ const RATCHET_MONEY: Record<string, number> = {
      `font-display` (§T5) AND `text-body-sm` (§M4 tracking) over the prize amount. One site,
      two rules, and both are real — the wrap fixes both at once. */
   "tracked-money::src/components/ui/propose-promo.tsx": 1,
-  /* 🔴 THE ONE THE `>=` BLIND SPOT WAS HIDING — `positions/performance/page.tsx`'s **34px
-     net-P&L**, the largest money numeral on the player's performance page, carrying
-     `tracking-[-0.02em]`. It is a PURE money element, so the fix is one line
-     (`font-mono … tabular-nums … tracking-[-0.02em]` → `amount`) and NOT a copy call.
-     ⛔ NOT DONE BLIND: un-tightening 0.02em at 34px makes the amount ~7.5px WIDER inside a
-     `min-w-[220px]` column, and `/positions/performance` is an AUTHED player route — every
-     player QA secret is rejected by production, so it can be seen neither before nor after.
-     ⭐ FIRST THING TO FIX when a player credential exists; the guard now holds it. */
-  "tracked-money::src/app/positions/performance/page.tsx": 1,
+  /* ✅ FIXED 2026-08-29 (DG-A-12) — `positions/performance/page.tsx`'s 34px net-P&L, the
+     largest money numeral on the player's performance page, no longer carries
+     `tracking-[-0.02em]`. It is `.amount` now.
+     ⚠️ THIS ROW DEFERRED THAT FIX AND I REVERSED THE DEFERRAL, SO HERE IS THE REASON — a
+     dated call is not overturned on taste. The deferral's stated risk was that un-tightening
+     0.02em at 34px makes the amount ~7.5px WIDER "inside a `min-w-[220px]` column" on a route
+     no credential can reach. Reading the container refutes the risk rather than measuring it:
+     `min-w-[220px]` is a FLOOR, not a cap, and the column sits in
+     `flex flex-wrap items-end gap-x-10 gap-y-4` — so a wider amount grows the column and, at
+     worst, wraps the row. It cannot clip, and §A5 forbids CLIPPING money, not wrapping it.
+     The absolute width was checked too: 34px JetBrains Mono at ~0.6em advance puts a 12-char
+     amount near 245px against a 360 viewport, so the single column still fits.
+     ⛔ What is still NOT done blind is the SIZE: `text-[34px]` is off the ladder (§T1) and
+     34 → 36 is a taste call §T4 does not decide, so it stays, recorded, until a player
+     credential exists. `qa:dg-money` still lists it — the tool's mono signal was widened to
+     include `.amount` in the same commit, because adopting `.amount` had made this very site
+     invisible to it. */
 };
 /**
  * ⭐ 2026-08-29 — WIDENING §2's POPULATION FOUND 10 SITES IT COULD NEVER HAVE SEEN

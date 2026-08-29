@@ -4,6 +4,7 @@ import { I } from "@/components/ui/glyphs";
 import { FiftyMark, FiftyLockup } from "@/components/brand";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { PasswordInput } from "@/components/ui/password-input";
+import { FieldLegend } from "@/components/ui/field-legend";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { hasTotp } from "@/lib/server/totp";
@@ -85,21 +86,19 @@ export default async function AdminLoginPage({ searchParams }: { searchParams?: 
           <form action={startLoginAction} className="relative space-y-3">
             {next && <input type="hidden" name="next" value={next} />}
             <div>
-              <label
-                htmlFor="phone"
-                className="block font-mono text-micro uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5"
-              >
+              {/* ⭐ DG-A-11 — the kit's own eyebrow, adopted. This was `font-mono text-micro
+                  uppercase tracking-[0.16em] font-bold text-text-muted` typed by hand, i.e.
+                  `FieldLegend`'s recipe BYTE FOR BYTE, so the swap moves no pixel; `className`
+                  still carries the two classes that are this site's own (`block mb-1.5`). */}
+              <FieldLegend as="label" htmlFor="phone" className="block mb-1.5">
                 Phone · Simu
-              </label>
+              </FieldLegend>
               <PhoneInput id="phone" name="phone" required autoComplete="tel" size="lg" />
             </div>
             <div>
-              <label
-                htmlFor="password"
-                className="block font-mono text-micro uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5"
-              >
+              <FieldLegend as="label" htmlFor="password" className="block mb-1.5">
                 Password · Nenosiri
-              </label>
+              </FieldLegend>
               <PasswordInput
                 id="password"
                 name="password"

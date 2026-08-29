@@ -450,7 +450,7 @@ function CardSortControl({
           <a
             key={o.field}
             href={buildHref(o.field)}
-            className={`px-2.5 py-1 rounded-pill text-[10.5px] font-mono uppercase tracking-[0.08em] border transition-colors ${
+            className={`px-2.5 py-1 rounded-pill text-micro font-mono uppercase tracking-[0.08em] border transition-colors ${
               isActive
                 ? "border-brand-500 bg-brand-500/10 text-brand-300 font-bold"
                 : "border-border bg-bg-overlay text-text-muted hover:border-text-subtle"

@@ -385,7 +385,7 @@ export function ReviewActions({
       <button
         type="button"
         onClick={() => setRejectOpen(true)}
-        className="font-mono text-[10.5px] uppercase tracking-[0.1em] text-text-subtle hover:text-no-300 transition-colors px-2 py-1"
+        className="font-mono text-micro uppercase tracking-[0.1em] text-text-subtle hover:text-no-300 transition-colors px-2 py-1"
       >
         Reject
       </button>
@@ -654,7 +654,7 @@ export function DeleteProposalAction({ id }: { id: string }) {
         type="button"
         onClick={() => setOpen(true)}
         disabled={pending}
-        className="font-mono text-[10.5px] uppercase tracking-[0.1em] text-text-subtle hover:text-no-300 transition-colors px-2 py-1"
+        className="font-mono text-micro uppercase tracking-[0.1em] text-text-subtle hover:text-no-300 transition-colors px-2 py-1"
       >
         Delete
       </button>

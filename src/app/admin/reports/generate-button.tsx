@@ -87,7 +87,7 @@ export function GenerateButton({ id }: { id: string }) {
           className="btn btn-yes btn-sm rounded-pill"
         >
           <I.fileSpreadsheet size={13} aria-hidden />
-          <span className="ml-1.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.12em]">
+          <span className="ml-1.5 font-mono text-micro font-bold uppercase tracking-[0.12em]">
             {busy === "xlsx" ? "…" : "Excel"}
           </span>
         </button>
@@ -100,7 +100,7 @@ export function GenerateButton({ id }: { id: string }) {
           className="btn btn-claret btn-sm rounded-pill"
         >
           <I.fileText size={13} aria-hidden />
-          <span className="ml-1.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.12em]">
+          <span className="ml-1.5 font-mono text-micro font-bold uppercase tracking-[0.12em]">
             {busy === "pdf" ? "…" : "PDF"}
           </span>
         </button>

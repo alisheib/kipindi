@@ -888,6 +888,39 @@ Values: `--sp-*`, `--r-*` in `globals.css`. Laws:
 1. **Layout space comes from the `--sp-*` scale, applied as `gap`** on flex/grid — not as
    margins sprinkled per element. Consistent gutters are what make an unfamiliar screen
    read as the same product.
+
+   ⭐ **THE PAGE RHYTHM IS DECLARED ON `<PageContainer>`, AND `space-y-*` IS NOT A GAP.**
+   Ruled 2026-08-29, DESIGN-GATE-2026-08-28 step 2 (DG-P-04), measured on production with
+   `npm run qa:dg-rhythm`. The product's rhythm idiom is a `space-y-*` on the page container
+   — 35 of 41 containers, and only two values, `space-y-5` (24) and `space-y-6` (32), both
+   on `--sp-*`. That satisfies this rule's PURPOSE (one decision, applied uniformly) even
+   though `space-y` compiles to a margin: what the rule forbids is each child choosing for
+   itself. A container that declares NOTHING is the violation, because then its bands do
+   exactly that — `/results` spaced itself `mb-4` · `py-2.5` · `mt-1`, an asymmetric 32 above
+   the search and 16 below it, while the skeleton standing in for it rendered 20 and 24, so
+   the page moved twice on every load.
+
+   🔴 **AND THE MECHANISM HAS A TRAP THAT COST FOUR PAGES A RUNG THEY NEVER ASKED FOR.**
+   `space-y-5` emits `> :not([hidden]) ~ :not([hidden]) { margin-top: 24px }` — a SIBLING
+   selector that counts DOM order and does not care whether the sibling it counts occupies
+   any space. `.sr-only` is `position:absolute; margin:-1px` (read out of the served sheet,
+   not assumed). So a page that opens with the correct WCAG 1.3.1/2.4.6
+   `<h1 className="sr-only">` has a first child that takes no space and still holds the
+   "first child gets no margin" slot — and the first band anyone can SEE is pushed down a
+   full rung by nothing. Measured on production: `/live` **+24px**, `/proposals` **+32px**,
+   against 0 on `/markets`, `/results`, `/leaderboard` and `/help`. ⭐ That is the register's
+   *"seven section gaps across sibling pages"* with a cause attached: the gaps differed not
+   because anyone chose differently but because an out-of-flow element ate a rung.
+   ▶ **The fix is structural, never CSS:** wrap the `sr-only` heading together with the band
+   it names, or move it inside that band — ⛔ never inside an `aria-hidden` one, and ⛔ never
+   delete the heading. It is not the bug; being a ghost SIBLING is.
+   ⚠️ **A corollary to know before editing one of these pages:** that selector is `(0,3,0)`,
+   so it beats any `mt-*` utility `(0,1,0)` on a child. Adding a rhythm to a container
+   therefore SILENTLY FLATTENS every per-element top margin already inside it — including a
+   deliberate chapter break — with nothing going red. That is why `/markets` keeps its
+   per-element margins for now and only its one **off-ladder** gap was fixed: `mt-10` renders
+   **80px** on the overridden spacing scale, which is on neither `--sp-*` nor the four
+   `--rh-*` gaps §Spacing allows a long page. It takes `--rh-section`.
 2. **The radius scale is additive and closed, and each family has ONE radius:**
    cards, modals and sheets take `--r-lg`; inputs, stake rows, stat tiles and ledger
    containers take `--r-md`; tabs and filter pills take `--r-sm`; chips, quick-stake pills

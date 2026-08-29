@@ -150,7 +150,7 @@ function VisualDial({ dragLabel, yes, no, minLabel, maxLabel }: {
         </svg>
       </div>
       {/* Annotation labels */}
-      <div className="flex items-center justify-between px-2 font-mono text-[9px] tracking-[0.12em] uppercase text-text-subtle">
+      <div className="flex items-center justify-between px-2 font-mono text-micro tracking-[0.12em] uppercase text-text-subtle">
         <span>{minLabel}</span>
         {/* Was the hardcoded English "drag to commit", rendered to Swahili and Chinese players
             alike — inside an SVG annotation row, where no i18n sweep was looking. The two
@@ -193,16 +193,16 @@ function VisualPools({ caption, poolYes, poolNo, share, barLabels, barAria }: {
         {/* 8.5px, not 8 and 7 — `--type-nano` is the floor for a mono uppercase microlabel
             (§T3), and "share" at 7px was the smallest type in the entire product. */}
         <div className="rounded-lg border border-yes-700/40 bg-yes-500/[0.08] px-3 py-2 text-center">
-          <p className="font-mono text-[8.5px] uppercase tracking-[0.14em] font-bold" style={{ color: "oklch(70% 0.12 152)" }}>{poolYes}</p>
+          <p className="font-mono text-micro uppercase tracking-[0.14em] font-bold" style={{ color: "oklch(70% 0.12 152)" }}>{poolYes}</p>
           <p className="font-display text-[15px] font-bold text-text">TZS 12k</p>
         </div>
         <div className="flex flex-col items-center gap-0.5">
           <span className="inline-block h-[2px] w-5 rounded-pill" style={{ background: "var(--gilt)" }} />
-          <span className="font-mono text-[8.5px] uppercase tracking-[0.14em]" style={{ color: "var(--gilt)" }}>{share}</span>
+          <span className="font-mono text-micro uppercase tracking-[0.14em]" style={{ color: "var(--gilt)" }}>{share}</span>
           <span className="inline-block h-[2px] w-5 rounded-pill" style={{ background: "var(--gilt)" }} />
         </div>
         <div className="rounded-lg border border-no-700/40 bg-no-500/[0.08] px-3 py-2 text-center">
-          <p className="font-mono text-[8.5px] uppercase tracking-[0.14em] font-bold" style={{ color: "oklch(70% 0.14 22)" }}>{poolNo}</p>
+          <p className="font-mono text-micro uppercase tracking-[0.14em] font-bold" style={{ color: "oklch(70% 0.14 22)" }}>{poolNo}</p>
           <p className="font-display text-[15px] font-bold text-text">TZS 18k</p>
         </div>
       </div>
@@ -210,7 +210,17 @@ function VisualPools({ caption, poolYes, poolNo, share, barLabels, barAria }: {
           and Chinese player — and it said "small operator margin", which is the
           old model. It now states the actual promise, in the player's language,
           from the ONE place that copy lives (`t.primer.poolCaption`). */}
-      <p className="text-center font-mono text-[8.5px] uppercase tracking-[0.14em] text-text-subtle">
+      {/* ⛔ DG-A-12 · §T3/§T4 — PROSE, AND THE SMALLEST TYPE IN THE PRODUCT.
+          `t.primer.poolCaption` is "losers fund winners · a correct call never loses" (SW:
+          "wapotezao hulipa washindi · jibu sahihi halipotezi") — the sentence that states the
+          platform's actual promise to a player on their first visit. It was set at **8.5px**,
+          uppercase and tracked: the sub-micro tier §T3 reserves for identifiers and ⛔ "never
+          reading copy", four pixels under §T4's 12.5px reading floor, on the one line that has
+          to be understood. `text-body-sm` (13) is the first rung at or above the floor, and the
+          dressing goes with it — §T6 puts body copy in Inter, and a promise is body copy.
+          ⚠️ The Swahili is the longest of the three and this is a centred single line in a
+          card, so it wraps rather than clips (§A5). ⛔ Exempted by name in `qa:dg-eyebrow`. */}
+      <p className="text-center text-body-sm text-text-subtle">
         {caption}
       </p>
     </div>

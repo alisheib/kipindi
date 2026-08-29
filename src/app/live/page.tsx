@@ -120,26 +120,39 @@ export default async function LivePage() {
       <BrandTopo opacity={0.09} />
 
       <PageContainer tier="board" className="relative space-y-5">
-        {/* Accessible page heading (WCAG 1.3.1 / 2.4.6). Visually hidden — the
-            design uses a slim live header, not a marketing H1. */}
-        <h1 className="sr-only">{t.common.live} {t.common.markets}</h1>
-        {/* C1e — aqua PageHero masthead. Gives /live a real identity (not a slim
-            header) and features the genuinely MOST-CONTESTED market (closest to
-            50/50) — not the soonest-closing one the old label implied. */}
-        <PageHero glow="aqua" watermark={200}>
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <PulseRing size={18} color="var(--aqua-400)">
-                <span className="block w-2 h-2 rounded-full" style={{ background: "var(--aqua-400)" }} />
-              </PulseRing>
-              <p className="font-mono text-label uppercase tracking-[0.18em] font-bold text-text">{t.home.liveSection}</p>
+        {/* 🔴 DG-P-04 · §S1 — THE `sr-only` h1 IS WRAPPED WITH THE BAND IT NAMES, AND THE
+            WRAPPER IS LOAD-BEARING. `space-y-*` is not a gap; it is
+            `> :not([hidden]) ~ :not([hidden]) { margin-top }`, a SIBLING selector that does not
+            care whether the sibling it counts occupies space. `.sr-only` is
+            `position:absolute; margin:-1px` (read out of the served sheet). So an `sr-only` h1
+            as the FIRST child took no space yet still claimed the "first child gets no margin"
+            position — and this PageHero was handed a **24px margin-top nobody wrote**. Measured
+            on production 2026-08-29 with `npm run qa:dg-rhythm`: `/live` lead margin-top 24px,
+            against 0 on `/markets` and `/results`, its own board-tier siblings.
+            ⛔ Do NOT "fix" this by deleting the h1 (WCAG 1.3.1/2.4.6) or by moving it inside
+            an `aria-hidden` band. Keep it a sibling of nothing: one wrapper, no CSS trick. */}
+        <div>
+          {/* Accessible page heading (WCAG 1.3.1 / 2.4.6). Visually hidden — the
+              design uses a slim live header, not a marketing H1. */}
+          <h1 className="sr-only">{t.common.live} {t.common.markets}</h1>
+          {/* C1e — aqua PageHero masthead. Gives /live a real identity (not a slim
+              header) and features the genuinely MOST-CONTESTED market (closest to
+              50/50) — not the soonest-closing one the old label implied. */}
+          <PageHero glow="aqua" watermark={200}>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <PulseRing size={18} color="var(--aqua-400)">
+                  <span className="block w-2 h-2 rounded-full" style={{ background: "var(--aqua-400)" }} />
+                </PulseRing>
+                <p className="font-mono text-label uppercase tracking-[0.18em] font-bold text-text">{t.home.liveSection}</p>
+              </div>
+              <p className="font-mono text-[10.5px] text-text-subtle tabular-nums whitespace-nowrap">
+                {markets.length} {t.market.liveCount}{tippingMarkets > 0 ? ` · ${tippingMarkets} ${t.market.tipping}` : ""}
+              </p>
             </div>
-            <p className="font-mono text-[10.5px] text-text-subtle tabular-nums whitespace-nowrap">
-              {markets.length} {t.market.liveCount}{tippingMarkets > 0 ? ` · ${tippingMarkets} ${t.market.tipping}` : ""}
-            </p>
-          </div>
-          <FeaturedContest markets={topContested} eyebrow={t.market.mostContested} openLabel={t.market.openMarket} />
-        </PageHero>
+            <FeaturedContest markets={topContested} eyebrow={t.market.mostContested} openLabel={t.market.openMarket} />
+          </PageHero>
+        </div>
 
         {markets.length === 0 ? (
           <EmptyState

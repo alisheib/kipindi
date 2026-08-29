@@ -153,7 +153,7 @@ export function TimeSelect({ value, defaultValue, onChange, error, size = "md", 
           ))}
         </div>
         <span
-          className="inline-flex items-center px-2 bg-bg-elevated border-l border-border font-mono text-[9px] uppercase tracking-[0.08em] text-text-subtle shrink-0 select-none"
+          className="inline-flex items-center px-2 bg-bg-elevated border-l border-border font-mono text-micro uppercase tracking-[0.08em] text-text-subtle shrink-0 select-none"
           aria-hidden
         >
           24h

@@ -410,7 +410,7 @@ export default async function UpDownProposalsPage({
                               />
                             )}
                             {p.state === "ARMED" && p.armedChainId && (
-                              <Link href={"/admin/updown" as Route} className="font-mono text-[10.5px] uppercase tracking-[0.1em] text-text-subtle hover:text-text px-2 py-1">
+                              <Link href={"/admin/updown" as Route} className="font-mono text-micro uppercase tracking-[0.1em] text-text-subtle hover:text-text px-2 py-1">
                                 View chain
                               </Link>
                             )}

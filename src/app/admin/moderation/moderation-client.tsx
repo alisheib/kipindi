@@ -102,7 +102,7 @@ export function ModerationQueue({ items }: { items: ModerationItem[] }) {
   return (
     <div>
       <div className="flex items-center gap-4 border-b border-border px-1 pb-2">
-        <span className="font-mono text-[9.5px] uppercase tracking-[0.1em] text-text-subtle">Sort</span>
+        <span className="font-mono text-micro uppercase tracking-[0.1em] text-text-subtle">Sort</span>
         <SortBtn field="reports" label="Reports" current={sort} dir={dir} onSort={onSort} />
         <SortBtn field="date" label="Date" current={sort} dir={dir} onSort={onSort} />
         <SortBtn field="author" label="Author" current={sort} dir={dir} onSort={onSort} />

@@ -252,7 +252,7 @@ export default async function LoginPage({
             <div className="flex items-center justify-end -mt-2">
               <Link
                 href="/auth/forgot-password"
-                className="font-mono text-[11.5px] uppercase tracking-[0.14em] text-text-subtle hover:text-text"
+                className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle hover:text-text"
               >
                 {t.auth.forgotPassword}
               </Link>

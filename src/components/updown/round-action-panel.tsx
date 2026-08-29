@@ -124,15 +124,21 @@ export function RoundActionPanel(props: {
                 {t.market.udBothSidesHeld}
               </p>
             )}
+            {/* ⭐ DG-A-12 · §M4 + §T1 — the two "you get" payouts. `.amount` replaces
+                `font-mono … tabular-nums`, and 15px — on neither ladder — takes `text-body`
+                (14). ⛔ NOT `text-body-lg` (16): the label these sit opposite is `text-body-sm`
+                (13) on this very line, so 14 keeps the figure one step louder than the words,
+                which is the relationship 15-against-13 was drawing. 16 would open it to three
+                steps on a projection §M3 keeps deliberately quiet. */}
             <p className="mt-1.5 m-0 flex items-baseline justify-between gap-3 text-body-sm text-text-muted">
               <span>{t.market.udIfClosesUp}</span>
-              <span className="font-mono text-[15px] font-bold tabular-nums" style={{ color: "var(--yes-300)" }}>
+              <span className="amount text-body font-bold" style={{ color: "var(--yes-300)" }}>
                 {t.market.udYouGet} {formatTzs(payoutIfUp)}
               </span>
             </p>
             <p className="mt-1 m-0 flex items-baseline justify-between gap-3 text-body-sm text-text-muted">
               <span>{t.market.udIfClosesDown}</span>
-              <span className="font-mono text-[15px] font-bold tabular-nums" style={{ color: "var(--no-300)" }}>
+              <span className="amount text-body font-bold" style={{ color: "var(--no-300)" }}>
                 {t.market.udYouGet} {formatTzs(payoutIfDown)}
               </span>
             </p>

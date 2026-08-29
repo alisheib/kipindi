@@ -42,7 +42,7 @@ export function PageRibbon({
       {stats.map((s, i) => (
         <div key={i} className="flex items-baseline gap-2 min-w-0">
           <div className="flex flex-col gap-0.5 min-w-0">
-            <p className="font-mono text-[9px] uppercase tracking-[0.16em] font-bold text-text-subtle whitespace-nowrap">
+            <p className="font-mono text-micro uppercase tracking-[0.16em] font-bold text-text-subtle whitespace-nowrap">
               {s.label}
             </p>
             {s.sw && (

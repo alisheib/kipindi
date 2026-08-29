@@ -549,7 +549,15 @@ export function ConfirmModal({
             autoCapitalize="characters"
             spellCheck={false}
             aria-label={typeLabel}
-            className="mt-1 w-full rounded-lg border border-border-strong bg-bg-overlay px-3 py-2.5 font-mono text-[15px] tracking-[0.2em] uppercase text-text outline-none focus:border-[color:var(--brand-400)]"
+            /* ⛔ DG-A-12 · §T1 — NOT A LABEL. This is `ConfirmModal`'s hard-tier type-to-confirm
+               INPUT: the operator types the word into it to arm an irreversible action, so the
+               uppercase and the 0.2em tracking are the CONTROL's own design and both stay. What
+               was wrong is only the size — `text-[15px]` is on neither ladder (§T1), and 15 sits
+               between the `text-body` (14) and `text-body-lg` (16) rungs. It takes 16: this is
+               something a human types under pressure, and §T4's floor argues up, never down.
+               ⛔ Exempted by name in `qa:dg-eyebrow`, which would have swept it to `text-micro`
+               — 10px — because it is uppercase and tracked. It is an input, not an eyebrow. */
+            className="mt-1 w-full rounded-lg border border-border-strong bg-bg-overlay px-3 py-2.5 font-mono text-body-lg tracking-[0.2em] uppercase text-text outline-none focus:border-[color:var(--brand-400)]"
             placeholder={typedWord}
           />
         </label>

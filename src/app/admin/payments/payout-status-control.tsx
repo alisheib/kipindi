@@ -83,7 +83,7 @@ export function PayoutStatusControl({
           was an 80px box around one 9.5px line. This is a readout, not a control, so there is
           no tap floor to justify the height. */}
       <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-bg-overlay px-3 h-[44px]">
-        <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-subtle">Players are told</span>
+        <span className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle">Players are told</span>
         <StatusPill status={effective} />
       </div>
 
@@ -134,8 +134,19 @@ export function PayoutStatusControl({
       </div>
 
       <label className="block">
-        <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-subtle">
-          Note shown to players (optional — blank uses the translated default)
+        {/* ⛔ DG-A-12 · §T3/§T4 — ONE ELEMENT WAS DOING TWO JOBS, AND THE HINT WAS THE CASUALTY.
+            "Note shown to players (optional — blank uses the translated default)" is a field
+            LABEL with its HINT welded on, and the whole 68-character string was set at 9.5px
+            UPPERCASE — so the part a human actually has to read was three pixels under §T4's
+            floor and in the tier §T3 reserves for identifiers, ⛔ "never reading copy".
+            ⭐ Split, not resized: the label keeps the eyebrow recipe (now on §T7's rung) and the
+            hint becomes prose at `text-body-sm`, which is what it always was.
+            ⛔ Exempted by name in `qa:dg-eyebrow` — a size sweep cannot see a sentence. */}
+        <span className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle">
+          Note shown to players
+        </span>
+        <span className="mt-1 block text-body-sm text-text-subtle">
+          Optional — blank uses the translated default.
         </span>
         <textarea
           value={text}
@@ -171,7 +182,7 @@ export function PayoutStatusControl({
 function Row({ term, desc }: { term: string; desc: string }) {
   return (
     <div className="rounded-md border border-border/70 px-2 py-1.5">
-      <dt className="font-mono text-[9px] uppercase tracking-[0.1em] text-text-subtle">{term}</dt>
+      <dt className="font-mono text-micro uppercase tracking-[0.1em] text-text-subtle">{term}</dt>
       <dd className="mt-0.5 font-mono text-[11.5px] font-bold text-text tabular-nums">{desc}</dd>
     </div>
   );

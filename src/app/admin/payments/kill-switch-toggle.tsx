@@ -67,7 +67,16 @@ function FlowToggle({ provider, providerLabel, kind, paused }: { provider: strin
     const armed = word.trim().toUpperCase() === "PAUSE";
     return (
       <div className="rounded-md border border-claret-edge bg-claret-soft p-2 space-y-1.5">
-        <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] font-bold text-claret-300">Type PAUSE to stop {flowLabel.toLowerCase()}</p>
+        {/* ⛔ DG-A-12 · §T3/§T4 — PROSE, AND ON THE MOST CONSEQUENTIAL SENTENCE IN THE CONSOLE.
+            "Type PAUSE to stop deposits" is the instruction for a real-money kill switch, and
+            it was set at 9.5px UPPERCASE with 0.12em tracking — i.e. as a microlabel, which §T3
+            reserves for identifiers and ⛔ "never reading copy", three pixels under §T4's
+            12.5px floor. `text-body-sm` (13) is the first rung at or above it.
+            ⭐ Dropping `uppercase` does NOT un-emphasise the word to type: PAUSE is uppercase
+            in the source string, so it still reads as the literal token, and now it is the only
+            uppercase word in the line instead of one of five. The claret tone and the weight
+            stay. ⛔ Exempted by name in `qa:dg-eyebrow`. */}
+        <p className="font-mono text-body-sm font-bold text-claret-300">Type PAUSE to stop {flowLabel.toLowerCase()}</p>
         <input value={word} onChange={(e) => setWord(e.target.value)} placeholder="PAUSE" autoComplete="off" className="h-7 w-full rounded-sm border border-claret-edge bg-bg-overlay px-2 font-mono text-label uppercase tracking-[0.2em] text-text admin-focus placeholder:text-text-subtle" />
         <div className="grid grid-cols-2 gap-1.5">
           <button type="button" disabled={!armed || pending} onClick={() => apply(true)} className="btn btn-claret btn-sm disabled:opacity-40">Pause</button>

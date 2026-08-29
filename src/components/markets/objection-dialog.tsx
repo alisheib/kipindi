@@ -115,7 +115,7 @@ export function ObjectionDialog({ marketId, onFiled }: { marketId: string; onFil
           <div className="space-y-1.5">
             <label
               htmlFor="objection-reason"
-              className="font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-text-subtle"
+              className="font-mono text-micro font-bold uppercase tracking-[0.12em] text-text-subtle"
             >
               {t.market.objReasonLabel}
             </label>
@@ -131,7 +131,7 @@ export function ObjectionDialog({ marketId, onFiled }: { marketId: string; onFil
           <div className="space-y-1.5">
             <label
               htmlFor="objection-detail"
-              className="font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-text-subtle"
+              className="font-mono text-micro font-bold uppercase tracking-[0.12em] text-text-subtle"
             >
               {t.market.objDetailLabel}
             </label>

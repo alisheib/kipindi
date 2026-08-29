@@ -8,9 +8,15 @@ import { PageContainer } from "@/components/layout/page-container";
  */
 export default async function DepositLoading() {
   const { t } = await getServerT();
+  /* ⭐ DG-P-04 · §S1 — THE RHYTHM IS DECLARED ON THE CONTAINER, NOT SPRINKLED PER ELEMENT.
+     This read `<PageContainer tier="form">` + `<header className="mb-6">`, i.e. a 32px gap
+     typed onto one child, while the page it stands in for (`page.tsx`, same directory)
+     declares `space-y-5` = 24px. So the deposit form MOVED 8px the instant the skeleton was
+     replaced, on a money surface. Measured, not guessed: `form` is the most unanimous tier in
+     the product — 10 of 10 containers that declare a rhythm declare `space-y-5`. */
   return (
-    <PageContainer tier="form">
-      <header className="mb-6">
+    <PageContainer tier="form" className="space-y-5">
+      <header>
         <p className="font-mono text-caption uppercase tracking-[0.16em] font-bold text-text-subtle">{t.common.deposit}</p>
         <h1 className="font-display text-[28px] font-bold text-text">{t.common.loading}</h1>
       </header>

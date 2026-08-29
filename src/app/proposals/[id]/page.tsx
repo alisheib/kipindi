@@ -67,7 +67,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
 
       {/* Resolution criterion + source */}
       <section className="rounded-xl glass-panel p-4">
-        <p className="mb-2 font-mono text-[9.5px] uppercase tracking-[0.12em] font-bold text-text-subtle">{t.common.resolutionCriterion}</p>
+        <p className="mb-2 font-mono text-micro uppercase tracking-[0.12em] font-bold text-text-subtle">{t.common.resolutionCriterion}</p>
         <p className="text-[13px] leading-relaxed text-text-muted">{p.resolutionCriterion}</p>
         {p.selectionCloseDate && (
           <p className="mt-2 font-mono text-[11px] text-text-subtle">{t.common.selectionCloseDate}: {p.selectionCloseDate}</p>
@@ -125,7 +125,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
       {/* Timeline / market link */}
       {p.status !== "DECLINED" && (
         <section className="rounded-xl glass-panel p-4">
-          <p className="mb-3 font-mono text-[9.5px] uppercase tracking-[0.12em] font-bold text-text-subtle">{t.common.statusLabel}</p>
+          <p className="mb-3 font-mono text-micro uppercase tracking-[0.12em] font-bold text-text-subtle">{t.common.statusLabel}</p>
           <StatusTimeline current={timelineStep(p)} />
           {open && <p className="mt-1 text-body-sm text-text-subtle">{t.common.officerReviewsNext}</p>}
           {p.publishedMarketId && (

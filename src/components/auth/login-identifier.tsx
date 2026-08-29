@@ -21,6 +21,7 @@ import * as React from "react";
 import { Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { I } from "@/components/ui/glyphs";
+import { FieldLegend } from "@/components/ui/field-legend";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -96,12 +97,11 @@ export function LoginIdentifier({
 
       {/* Morphing field */}
       <div>
-        <label
-          htmlFor="identifier"
-          className="block font-mono text-micro uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5"
-        >
+        {/* ⭐ DG-A-11 — `FieldLegend`'s recipe byte for byte, so this adopts the kit and moves
+            no pixel. See the note on `app/auth/admin/page.tsx`. */}
+        <FieldLegend as="label" htmlFor="identifier" className="block mb-1.5">
           {method === "phone" ? t.auth.phone : t.auth.emailLabel}
-        </label>
+        </FieldLegend>
 
         {method === "phone" ? (
           <PhoneInput

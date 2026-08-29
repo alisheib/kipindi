@@ -119,7 +119,7 @@ export function NewMarketWizard({ feeInfo, platformTz }: { feeInfo: FeeInfo; pla
       {/* What this market WILL freeze at creation (read-only). Change it at
           /admin/config → Fee model. A poll settles by the model it was created under. */}
       <div className="rounded-md border border-border bg-bg-overlay px-3 py-2.5 text-[11.5px] text-text-muted">
-        <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-text-subtle">Fee model frozen at creation</span>
+        <span className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">Fee model frozen at creation</span>
         {feeInfo.model === "loser-share" ? (
           <p className="mt-1">
             <strong className="text-text">Loser-share</strong> — fee = <strong className="text-text">{feeInfo.feePct}%</strong> of the losing pool.
