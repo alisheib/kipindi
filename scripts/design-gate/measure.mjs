@@ -18,6 +18,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { loginOnce, BASE } from "../live/harness.mjs";
+import { ADMIN_ROUTES, PLAYER_PUBLIC, PLAYER_AUTHED } from "./routes.mjs";
 
 const SURFACE = process.env.SURFACE || "admin";
 const PERSONA = process.env.PERSONA || (SURFACE === "admin" ? "admin" : "alpha");
@@ -27,15 +28,8 @@ const OUT = path.join(HERE, "..", "..", ".qa-design-gate", `out-${SURFACE}`);
 mkdirSync(OUT, { recursive: true });
 const ONLY = process.env.ONLY ? process.env.ONLY.split(",") : null;
 
-const ADMIN_ROUTES = [
-  "/admin", "/admin/live", "/admin/finance", "/admin/reports", "/admin/players", "/admin/players/cohorts",
-  "/admin/markets", "/admin/markets/new", "/admin/resolver-queue", "/admin/settlement", "/admin/objections",
-  "/admin/proposals", "/admin/candidates", "/admin/ai-polls", "/admin/ai-usage", "/admin/sources",
-  "/admin/updown", "/admin/updown/rounds", "/admin/updown/proposals",
-  "/admin/payments", "/admin/transactions", "/admin/approvals", "/admin/bonuses", "/admin/affiliate", "/admin/invites",
-  "/admin/compliance", "/admin/aml", "/admin/self-exclusions", "/admin/privacy", "/admin/retention", "/admin/moderation",
-  "/admin/audit", "/admin/events", "/admin/system", "/admin/config", "/admin/insights", "/admin/staff", "/admin/roles",
-];
+// ⛔ ONE DEFINITION SITE — see scripts/design-gate/routes.mjs. The load budget imports the
+// same list, so a route added for the render drive is measured for load too.
 const ADMIN_DISCOVER = [
   ["/admin/players", "/admin/players/", "/admin/players/cohorts"],
   ["/admin/markets", "/admin/markets/", "/admin/markets/new"],
@@ -46,9 +40,6 @@ const ADMIN_DISCOVER = [
   ["/admin/staff", "/admin/staff/", null],
   ["/admin/invites", "/admin/invites/", null],
 ];
-const PLAYER_PUBLIC = ["/", "/markets", "/updown", "/live", "/results", "/leaderboard", "/proposals", "/fairness", "/help", "/legal/terms", "/legal/privacy", "/legal/responsible-gambling", "/legal/aml", "/auth/login", "/auth/register", "/auth/forgot-password"];
-const PLAYER_AUTHED = ["/wallet", "/wallet/deposit", "/wallet/withdraw", "/positions", "/positions/performance", "/watchlist", "/notifications", "/updown/history", "/proposals/new",
-  "/profile", "/profile/account", "/profile/activity", "/profile/invite", "/profile/kyc", "/profile/notifications", "/profile/responsible-gambling", "/profile/security", "/profile/sessions", "/profile/source-of-funds"];
 const PLAYER_DISCOVER = [
   ["/markets", "/markets/", null],
   ["/updown", "/updown/", "/updown/history"],

@@ -79,6 +79,23 @@ patching is listed only where no primitive exists.
 - **Fix:** move the heavy aggregates behind a `<Suspense>` with a skeleton + paginate the fee query server-side; nothing on this page needs 12,882 rows to paint the shell.
 - **Proof:** `node scripts/design-gate/measure.mjs` with `ONLY=/admin/reports` — RED today (load > 10 s), GREEN when `load` < 5 s.
 - **Guard:** a load-budget assertion in the drive (fail any admin route whose `load` exceeds 15 s).
+- ⚪ **CORRECTED 2026-08-29 (sessions 77–78), and every line above is now wrong in a different way.**
+  ① *"its settlement-fee/report-pack reads render 12,882 rows' aggregates"* — **no**. The report pack
+  is a single period read and `getAuditPage` is an in-memory ring-buffer slice with no I/O. The 88 s
+  was an `await` inside a loop over every market row in `categoryBreakdown()` (fixed, `d74d0708`),
+  and what remained after that was the two **whole-table, all-column** reads that
+  `categoryBreakdown` and `moneyByGame` each did for themselves.
+  ② *"move the heavy aggregates behind a `<Suspense>` with a skeleton"* — **declined.** A
+  `loading.tsx` already exists and is well shaped; Suspense would have moved the number an
+  instrument reads without removing one query. The fix was to stop reading ~35 columns to use four
+  (`marketStore.attribution()`) and to load the map once per render.
+  ③ *"paginate the fee query server-side"* — there is no fee query on this page to paginate.
+  ④ **The Guard line's 15 s is 3× the Proof line's own 5 s target**, so a page at 14 s would have
+  passed the guard while failing the acceptance criterion two lines above it. The gate is
+  `npm run qa:admin-load`, it holds **every** admin route to 5,000 ms, and it carries a **floor
+  route** so a slow network cannot be reported as a slow page. **The planner row in
+  [`SESSION-PROMPT-DESIGN-GATE.md`](SESSION-PROMPT-DESIGN-GATE.md) is the authority for this
+  system.**
 
 ---
 ### DG-A-02 · P0 — the kit Toggle is a 26px control on a 40px floor, 100× in the console — including the payment kill-switches

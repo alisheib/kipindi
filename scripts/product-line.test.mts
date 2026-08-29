@@ -28,6 +28,7 @@ import { join } from "node:path";
 import { marketStore } from "../src/lib/server/market-dal.ts";
 import { listMarkets, type StoredMarket } from "../src/lib/server/market-service.ts";
 import { TERMINAL_TTL_MS, TERMINAL_TTL_CEILING_MS } from "../src/lib/server/market-service.ts";
+import { loadMoneyAttribution } from "../src/lib/server/report-money.ts";
 
 const ROOT = process.cwd();
 let pass = 0, fail = 0;
@@ -47,9 +48,13 @@ const read = (p: string): string => { try { return readFileSync(join(ROOT, p), "
 // so each carries its justification inline.
 
 const MUST_OPT_IN: Array<{ file: string; why: string; minCalls: number }> = [
-  { file: "src/lib/server/report-money.ts",
-    why: "category revenue breakdown — omitting UPDOWN drops its whole turnover",
-    minCalls: 1 },
+  // ⚪ `src/lib/server/report-money.ts` WAS HERE and moved to its own block below on
+  // 2026-08-29 (DG-A-01). It no longer calls `listMarkets` at all — its market read is now
+  // `marketStore.attribution()`, which takes NO productLine parameter and therefore CANNOT
+  // exclude Up & Down. ⛔ The protection is not dropped: it is asserted structurally in
+  // ATTRIBUTION_IS_ALL_PRODUCTS below, and behaviourally in B9. Leaving the entry here
+  // would have failed the file for doing the right thing — the shape this list's own
+  // header warns about.
   { file: "src/lib/server/analytics.ts",
     why: "per-poll settlement fees by fee model — UPDOWN is the only capped-commission@13% product",
     minCalls: 1 },
@@ -119,6 +124,33 @@ for (const { file, why, minCalls } of MUST_OPT_IN) {
   const bare = calls.filter((args) => !readsAllProducts(args));
   ok(`A · ${file} passes productLine "ALL" on every call`, bare.length === 0,
      bare.length ? `${bare.length} call(s) missing it — ${why}. Bare: listMarkets(${bare[0].trim().slice(0, 70)})` : "");
+}
+
+/**
+ * ATTRIBUTION_IS_ALL_PRODUCTS — the money aggregates read every product line, and cannot
+ * be made to do otherwise.
+ *
+ * 🔴 WHY THIS REPLACED AN ENTRY IN `MUST_OPT_IN` (DG-A-01, 2026-08-29). `report-money.ts`
+ * used to call `listMarkets({ productLine: "ALL" })`, and this suite asserted that string
+ * was present. The call was removed because it read every column of ~13,000 wide market
+ * rows to use four of them; the replacement, `marketStore.attribution()`, has NO
+ * `productLine` parameter at all.
+ *
+ * ⭐ THAT IS A STRONGER GUARANTEE THAN THE OLD ASSERTION, not a weaker one. The old one
+ * checked that a caller remembered to pass an argument; this one checks that no argument
+ * exists to forget. What is asserted here is that the file has not quietly grown a
+ * filtered market read alongside it — and B9 below proves the read itself sees both lines.
+ */
+{
+  const file = "src/lib/server/report-money.ts";
+  const src = read(file) ?? "";
+  ok(`A · ${file} reads markets through the unfiltered attribution projection`,
+     /marketStore\.attribution\s*\(/.test(src),
+     "marketStore.attribution() is gone — if the money read moved again, assert the new one here");
+  // It may legitimately call listMarkets again one day; if it does, "ALL" is still mandatory.
+  const bare = listMarketsCalls(src).filter((args) => !readsAllProducts(args));
+  ok(`A · ${file} has no market read on the single-product default`, bare.length === 0,
+     bare.length ? `${bare.length} bare call(s) — omitting UPDOWN drops its whole turnover. Bare: listMarkets(${bare[0].trim().slice(0, 70)})` : "");
 }
 
 // The inverse guard: player boards must NOT opt in, or the default stops protecting
@@ -293,6 +325,41 @@ const ids = (rows: Array<{ id: string }>) => rows.map((r) => r.id).filter((i) =>
      `got ${row?.productLine}`);
   const got = ids(await listMarkets());
   ok("B8 · and it appears on the default (long-form) board", got.includes("pl_legacy"), `got [${got}]`);
+}
+
+// B9 — THE MONEY ATTRIBUTION READ SEES BOTH PRODUCTS, and a demo row is excluded from the
+// category map but NOT from the game map.
+//
+// 🔴 THIS IS THE CONTROL THAT REPLACED A GREP (DG-A-01, 2026-08-29). The A-section used to
+// prove `report-money.ts` contained the string `productLine: "ALL"`. That call is gone; what
+// matters now is behaviour, so this drives the real DAL and the real loader.
+// ⛔ It must go RED if anyone gives `attribution()` a filter, or moves the demo exclusion.
+{
+  // A long-form poll, a round, and a DEMO poll — the three shapes that must land differently.
+  await marketStore.set(mk("pl_attr_market", "MARKET", { category: "sports" }));
+  await marketStore.set(mk("pl_attr_round", "UPDOWN", { category: "crypto" }));
+  await marketStore.set(mk("pl_attr_demo", "MARKET", { category: "macro", titleEn: "Demo · seeded poll" }));
+
+  const rows = await marketStore.attribution();
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  ok("B9 · marketStore.attribution() returns long-form polls",
+     byId.get("pl_attr_market")?.productLine === "MARKET", `got ${byId.get("pl_attr_market")?.productLine}`);
+  ok("B9 · …and Up & Down rounds — an attribution read that could drop them is the whole defect",
+     byId.get("pl_attr_round")?.productLine === "UPDOWN", `got ${byId.get("pl_attr_round")?.productLine}`);
+  ok("B9 · …and it carries titleEn, which is what makes the demo exclusion possible at all",
+     byId.get("pl_attr_demo")?.titleEn === "Demo · seeded poll", `got ${byId.get("pl_attr_demo")?.titleEn}`);
+
+  const attr = await loadMoneyAttribution();
+  ok("B9 · loadMoneyAttribution().plByMarket sees BOTH product lines",
+     attr.plByMarket.get("pl_attr_market") === "MARKET" && attr.plByMarket.get("pl_attr_round") === "UPDOWN",
+     `market=${attr.plByMarket.get("pl_attr_market")} round=${attr.plByMarket.get("pl_attr_round")}`);
+  ok("B9 · a DEMO poll is in the game map (moneyByGame never filtered them)",
+     attr.plByMarket.has("pl_attr_demo"), "demo row missing from plByMarket — moneyByGame's population changed");
+  ok("B9 · …and is NOT in the category map (categoryBreakdown read through listMarkets, which filtered them)",
+     !attr.catByMarket.has("pl_attr_demo"), "a demo poll entered the revenue breakdown — that moves a reported figure");
+  ok("B9 · CONTROL · the two non-demo rows ARE in the category map, so the check above is not passing over an empty map",
+     attr.catByMarket.get("pl_attr_market") === "sports" && attr.catByMarket.get("pl_attr_round") === "crypto",
+     `market=${attr.catByMarket.get("pl_attr_market")} round=${attr.catByMarket.get("pl_attr_round")}`);
 }
 
 // ── Result ──────────────────────────────────────────────────────────────────

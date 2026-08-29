@@ -9,14 +9,15 @@
  * loop over every market row, i.e. **~13,000 sequential Prisma round-trips** at ~6-7 ms each.
  *
  * ⛔ AND IT WAS NEVER ONE PAGE. `/admin/insights` calls the same function, so it paid the same
- * 13,000 queries. Both are measured here, because a fix verified on one route would have left the
- * other slow with nothing watching it.
+ * 13,000 queries. A fix verified on one route would have left the other slow with nothing
+ * watching it — which is the same mistake, one size down, as watching three routes and calling
+ * the console covered. **Every admin route is measured now**; see the note on ROUTES below.
  *
- * ⭐ THE CONTROL IS THE POINT, and it is why this is not just a timer. `/admin/finance` renders
- * comparable money aggregates and was never slow. If the budget fails on the two suspects AND on
- * the control, the run measured the NETWORK, not the pages — a cold container, a bad link, a
- * Railway restart — and reporting that as a page regression would be a confident lie. The control
- * has its own, tighter budget and is asserted separately.
+ * ⭐ THE FLOOR IS THE POINT, and it is why this is not just a timer. `/admin/roles` is a
+ * shell-only admin page — layout, sidebar, CSS, JS and almost no data. If the budget fails on
+ * the real pages AND on the floor, the run measured the NETWORK, not the pages — a cold
+ * container, a bad link, a Railway restart — and reporting that as a page regression would be a
+ * confident lie. The floor has its own, much tighter budget and is asserted separately.
  *
  * ⚠️ `load`, NOT first-byte. These are server-rendered pages; the number the register quoted, and
  * the number an officer actually waits through, is `loadEventEnd`.
@@ -30,25 +31,53 @@
  */
 import { chromium } from "playwright";
 import { loginOnce, BASE as DEFAULT_BASE } from "./live/harness.mjs";
+import { ADMIN_ROUTES } from "./design-gate/routes.mjs";
 
 const BASE = process.argv[2] || DEFAULT_BASE;
 
-/** The register's own target for DG-A-01: "GREEN when `load` < 5 s". */
+/** The register's own target for DG-A-01: "GREEN when `load` < 5 s". Every admin route is
+ *  held to it — an operator's console page that takes longer is a defect wherever it lives. */
 const BUDGET_MS = 5_000;
-/** The control was always fast; hold it to a tighter number so a slow network cannot hide in it. */
-const CONTROL_BUDGET_MS = 4_000;
+
+/**
+ * 🔴 THE POPULATION WAS HAND-PICKED, AND THAT IS WHY IT PASSED (corrected 2026-08-29).
+ *
+ * This gate used to time exactly three routes — `/admin/reports`, `/admin/insights` and
+ * `/admin/finance` — and reported PASS. Driving the real admin list the same afternoon found
+ * **`/admin/updown` at 13,325 ms**, 2.7× the route this gate was written to watch, on a page
+ * no instrument looked at. ⛔ A guard that chooses its own population cannot fail. It now
+ * imports the SAME list the render drive uses (`design-gate/routes.mjs`), so a route added
+ * there is measured here without anybody remembering to add it.
+ *
+ * ⚠️ AND THE OLD "CONTROL" WAS NOT A CONTROL. `/admin/finance` was described here as
+ * "comparable money aggregates, never slow" and given a TIGHTER 4,000 ms budget. Measured
+ * best-of-three on production 2026-08-29 it is **2,701 ms** — against **292 ms** for
+ * `/admin/roles`, a shell-only admin page. It was never fast; it was 9× the floor and inside
+ * a budget chosen to fit it. A control has to be a page that does almost nothing, or it
+ * cannot tell "the pages are slow" from "the network is slow".
+ */
+const FLOOR_ROUTE = "/admin/roles";
+/** The floor is the shell: layout, sidebar badges, CSS, JS. Measured 292 ms; 2,000 ms is
+ *  generous, and a floor that misses it means the run measured the network, not the pages. */
+const FLOOR_BUDGET_MS = 2_000;
+
+/** ⚠️ Git Bash rewrites a lone `/` in an env list — `export MSYS_NO_PATHCONV=1` before ONLY=. */
+const ONLY = process.env.ONLY ? process.env.ONLY.split(",").map((s) => s.trim()).filter(Boolean) : null;
 
 const ROUTES = [
-  { path: "/admin/reports", budget: BUDGET_MS, why: "THE P0 — 88 s on 2026-08-28, the N+1 in categoryBreakdown()" },
-  { path: "/admin/insights", budget: BUDGET_MS, why: "calls the SAME categoryBreakdown() — one fix, two routes" },
-  { path: "/admin/finance", budget: CONTROL_BUDGET_MS, control: true, why: "CONTROL — comparable money aggregates, never slow" },
-];
+  { path: FLOOR_ROUTE, budget: FLOOR_BUDGET_MS, floor: true, why: "FLOOR — a shell-only admin page; if THIS is slow the run measured the network" },
+  ...ADMIN_ROUTES.filter((p) => p !== FLOOR_ROUTE).map((path) => ({ path, budget: BUDGET_MS, why: "admin console route" })),
+].filter((r) => !ONLY || ONLY.includes(r.path));
 
 /** Two samples per route, and the BETTER one counts. A single cold-start sample is not the page. */
 const SAMPLES = 2;
 
 const b = await chromium.launch();
-const MAX_SIGNINS = 6;
+// 38 routes × 2 samples is ~76 page loads, and the admin session dies mid-drive
+// non-deterministically (see the programme door's trap list). Allow more recoveries than the
+// 3-route version needed, but keep a ceiling: a drive that re-authenticates without limit is
+// hiding a platform finding as housekeeping.
+const MAX_SIGNINS = 12;
 let ctx = null;
 let p = null;
 let signins = 0;
@@ -97,17 +126,19 @@ for (const r of ROUTES) {
   const ok = best <= r.budget;
   rows.push({ ...r, best, times, ok });
   if (!ok) failures.push(`${r.path}: load ${best} ms over its ${r.budget} ms budget (samples ${times.join(", ")})`);
-  console.log(`${r.path.padEnd(18)} ${String(best).padStart(6)} ms  budget ${String(r.budget).padStart(5)}  ${ok ? "✓" : "✗ OVER"}${r.control ? "  [CONTROL]" : ""}  — ${r.why}`);
+  console.log(`${r.path.padEnd(26)} ${String(best).padStart(6)} ms  budget ${String(r.budget).padStart(5)}  ${ok ? "✓" : "✗ OVER"}${r.floor ? "  [FLOOR]" : ""}${ok ? "" : `  — ${r.why}`}`);
 }
 await b.close();
 
-// ⭐ THE CONTROL'S VERDICT CHANGES WHAT A FAILURE MEANS. Say so out loud rather than leaving the
-// reader to infer it from three numbers.
-const control = rows.find((r) => r.control);
-const suspects = rows.filter((r) => !r.control);
-if (control && !control.ok && suspects.some((s) => !s.ok)) {
-  console.log("\n⚠️  THE CONTROL IS ALSO OVER BUDGET — this run measured the network or a cold");
-  console.log("    container, not the pages. Re-run against a warm server before believing it.");
+// ⭐ THE FLOOR'S VERDICT CHANGES WHAT EVERY OTHER FAILURE MEANS. Say so out loud rather than
+// leaving the reader to infer it from a column of numbers.
+const floor = rows.find((r) => r.floor);
+if (floor && !floor.ok) {
+  console.log("\n⚠️  THE FLOOR ROUTE IS OVER BUDGET — this run measured the network or a cold");
+  console.log("    container, not the pages. Re-run against a warm server before believing any row.");
+} else if (floor) {
+  const over = rows.filter((r) => !r.ok);
+  console.log(`\nfloor ${floor.path} = ${floor.best} ms, so the shell is warm; ${over.length} route(s) carry their own cost past budget.`);
 }
 
 console.log(`\nadmin-load: ${measured} of ${ROUTES.length} routes measured, ${SAMPLES} samples each (best counts)`);

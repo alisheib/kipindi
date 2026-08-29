@@ -38,11 +38,18 @@ export default async function InsightsPage() {
     return <AdminRestricted title="Insights" sw="Maarifa" need="Admin or Compliance" />;
   }
 
-  const data = await getInsights().catch(() => null);
+  // DG-A-01: these two are independent, so they run together rather than one after the
+  // other. `categoryBreakdown` is the expensive half — it reads the market and position
+  // tables — and this page is the reason that read was narrowed to four columns; see
+  // `loadMoneyAttribution` in report-money.ts for the measurements.
+  //
   // A-5: distinguish a FAILED read (null → "couldn't load") from a genuinely empty
   // 30-day window (still "No settled volume"). A thrown query must not masquerade
-  // as a real zero — same null-pattern as getInsights above.
-  const cats = await categoryBreakdown("30d").catch(() => null);
+  // as a real zero — same null-pattern for both.
+  const [data, cats] = await Promise.all([
+    getInsights().catch(() => null),
+    categoryBreakdown("30d").catch(() => null),
+  ]);
 
   if (!data) {
     return (

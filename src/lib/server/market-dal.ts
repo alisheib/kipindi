@@ -8,7 +8,27 @@
 import { prisma } from "./prisma";
 import { hasDatabase } from "./prisma";
 import type { Prisma } from "@prisma/client";
-import type { StoredMarket, StoredPosition, MarketStatus, MarketCategory, Side, ProductLineFilter } from "./market-service";
+import type { StoredMarket, StoredPosition, MarketStatus, MarketCategory, Side, ProductLine, ProductLineFilter } from "./market-service";
+
+/**
+ * The four market columns a MONEY ATTRIBUTION read actually uses — see
+ * `MarketStore.attribution()` for why the projection exists.
+ *
+ * `titleEn` is here for ONE reason and it is load-bearing: `isDemoMarket()`
+ * (market-service.ts:346) decides what a demo row is by reading `titleEn`, and
+ * `categoryBreakdown` excludes demo rows from the revenue breakdown. Drop the
+ * column and that exclusion silently stops happening — which changes a reported
+ * money figure while every number still reconciles with itself.
+ */
+export type MarketAttribution = {
+  id: string;
+  titleEn: string;
+  category: MarketCategory;
+  productLine: ProductLine;
+};
+
+/** The two position columns a money attribution read uses. See `PositionStore.attribution()`. */
+export type PositionAttribution = { id: string; marketId: string };
 
 // ---------------------------------------------------------------------------
 // Globals — same Maps as before, just accessed through this DAL
@@ -161,6 +181,29 @@ export interface MarketStore {
    */
   poolsByIds(ids: readonly string[]): Promise<Map<string, { yesPool: number; noPool: number }>>;
   /**
+   * THE MONEY-ATTRIBUTION PROJECTION — every market row, four columns.
+   *
+   * 🔴 WHY IT EXISTS, measured on production 2026-08-29. `categoryBreakdown()` and
+   * `moneyByGame()` both need a `marketId → (category | productLine)` lookup, and both got
+   * it by reading the WHOLE market row: `listMarkets({ productLine: "ALL" })` and
+   * `values()`. `PredictionMarket` is a very wide table — three titles, three resolution
+   * criteria, `resolutionEvidence`/`sentinelEvidence`/`sentinelReasoning`/`purgeReason` all
+   * `@db.Text`, plus a `feeSnapshot` JSON blob — and there are ~13,000 rows because every
+   * Up & Down round is one. `/admin/reports` did that read TWICE per render.
+   *
+   * Measured, best of three, `loadEventEnd` on production: `/admin/roles` (a shell-only
+   * admin page) **292 ms**, `/admin/insights` (ONE such read) **2,534 ms**,
+   * `/admin/reports` (TWO) **4,615 ms** — and `/admin/reports` moved by under 500 ms
+   * between a `today` window and a `30d` one, so the cost is NOT the transaction query.
+   * It is the columns.
+   *
+   * ⛔ THERE IS NO `productLine` PARAMETER, AND THAT IS THE DESIGN. This read is only ever
+   * used to attribute money, and a money read that could exclude Up & Down is the exact
+   * defect `npm run test:product-line` exists to prevent (see the READ-PATH RULE on
+   * `listMarkets`). Being unable to filter is what makes it safe; do not add one.
+   */
+  attribution(): Promise<MarketAttribution[]>;
+  /**
    * Every market with a PENDING time-based transition — i.e. what the per-market
    * scheduler must arm a timer for: LIVE markets (closing-soon / selection-closed /
    * resolve triggers) and adjudicated-but-unsettled markets (settle trigger).
@@ -266,6 +309,17 @@ export interface PositionStore {
    */
   listForMarkets(marketIds: string[]): Promise<StoredPosition[]>;
   /**
+   * The money-attribution twin of `MarketStore.attribution()` — every position row, two
+   * columns, so a caller can build `positionId → marketId` without hydrating stakes,
+   * payouts, decimals and timestamps it never reads.
+   *
+   * ⚠️ It is still a WHOLE-TABLE read, and it is deliberate: the callers are the platform
+   * money aggregates, which attribute every bet transaction in a window and cannot know
+   * which positions those are without the map. `listForMarkets` is the right primitive
+   * when the caller already holds the ids; this one is for when it does not.
+   */
+  attribution(): Promise<PositionAttribution[]>;
+  /**
    * One player's positions on one market.
    *
    * ⛔ NOT `listForMarket(...).filter(...)`. The one-side-per-round rule reads this INSIDE the
@@ -359,6 +413,16 @@ const memoryMarkets: MarketStore = {
   async delete(id) { markets.delete(id); },
   async has(id) { return markets.has(id); },
   async values() { return Array.from(markets.values()); },
+  async attribution() {
+    // The projection is free in memory; it exists so a test that passes here means the
+    // same thing in production — the Prisma twin returns exactly these four fields.
+    return Array.from(markets.values()).map((m) => ({
+      id: m.id,
+      titleEn: m.titleEn,
+      category: m.category,
+      productLine: m.productLine ?? "MARKET",
+    }));
+  },
   async poolsByIds(ids) {
     const out = new Map<string, { yesPool: number; noPool: number }>();
     for (const id of ids) {
@@ -388,6 +452,9 @@ const memoryPositions: PositionStore = {
   async get(id) { return positions.get(id) ?? null; },
   async set(p, _tx) { positions.set(p.id, p); },
   async values() { return Array.from(positions.values()); },
+  async attribution() {
+    return Array.from(positions.values()).map((p) => ({ id: p.id, marketId: p.marketId }));
+  },
   async listOpen() { return Array.from(positions.values()).filter((p) => p.status === "OPEN"); },
   async listForUser(userId, limit = 100, productLine) {
     const pl = productLine && productLine !== "ALL" ? productLine : null;
@@ -625,6 +692,21 @@ const prismaMarkets: MarketStore = {
     const rows = await pc().predictionMarket.findMany();
     return rows.map(toStoredMarket);
   },
+  async attribution() {
+    // ⛔ NO `where`. See the interface comment: a money attribution read that could exclude
+    // a product line is the defect test:product-line exists to catch.
+    const rows = await pc().predictionMarket.findMany({
+      select: { id: true, titleEn: true, category: true, productLine: true },
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      titleEn: r.titleEn,
+      category: r.category as MarketCategory,
+      // Same coercion as `toStoredMarket` (line 86) — an unknown or absent value is MARKET,
+      // never UPDOWN, so a bad row cannot invent Up & Down turnover.
+      productLine: (r.productLine === "UPDOWN" ? "UPDOWN" : "MARKET") as ProductLine,
+    }));
+  },
   async poolsByIds(ids) {
     const out = new Map<string, { yesPool: number; noPool: number }>();
     if (ids.length === 0) return out;
@@ -701,6 +783,9 @@ const prismaPositions: PositionStore = {
   async values() {
     const rows = await pc().position.findMany();
     return rows.map(toStoredPosition);
+  },
+  async attribution() {
+    return pc().position.findMany({ select: { id: true, marketId: true } });
   },
   async listOpen() {
     // Pushed down. See the interface comment: this runs on every boot and the table only

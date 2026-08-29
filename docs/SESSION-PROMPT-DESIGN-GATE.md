@@ -5,19 +5,35 @@ session, on any machine, knows which programme it is inside. Owner: Ali. Commiss
 *“100% consistency among the platform … your report should be the final gate to a perfectly
 rendered platform.”*
 
-## ⏭️ RESUME AT — session 77 handover (2026-08-29)
+## ⏭️ RESUME AT — session 78 handover (2026-08-29)
 
-> **Step 1 is CLOSED, 11 of 11. Step 2 is UNBLOCKED and part-shipped. DG-A-01 is 19× faster.**
+> **Step 1 is CLOSED, 11 of 11. DG-A-01's code is shipped and its gate now measures all 38 admin
+> routes instead of 3 — which immediately found a page at 13 s that nothing was watching.**
 > Read this block, then the **RE-DERIVED** section, then the PLANNER. Everything below was
 > driven on production.
 
+### 🔴 THE THEME AGAIN, AND IT COST TWO NUMBERS THIS SESSION
+Session 77 handed over *"the remaining cost is identified, not guessed: … `/admin/insights` (one
+of them) returns in **257 ms**"*. Re-measured today: **insights 2,375–3,048 ms, reports
+4,490–4,980 ms** — neither of the handover's two figures reproduces. The 257 was almost certainly
+a `getInsights()` TTL cache hit. ⛔ **The conclusion drawn from them ("the gap IS the duplicate
+scan") happened to be directionally right, and that is the danger** — a stale number that
+flatters a correct hypothesis is indistinguishable from evidence. What actually established it
+was a **floor route** (`/admin/roles`, 234–292 ms) and a **window sweep** (`?range=today` 4,759 vs
+`?range=30d` 5,012 — a 30× bigger window costs 5%, so the cost is not the query window).
+⭐ **Every load number in this file is now floor-adjusted or stated with its floor. Re-derive
+before quoting.**
+
 ### ▶ THE NEXT MOVE, in order
-1. **Finish DG-A-01 — it is 🚢 not ☑.** `/admin/reports` went **137,317 ms → 7,112 ms** but the
-   budget is 5,000. The remaining cost is identified, not guessed: the page calls BOTH
-   `categoryBreakdown` AND `moneyByGame`, and **each reads the entire Position table**, while
-   `/admin/insights` (one of them) returns in **257 ms**. Dedupe the whole-table reads per
-   request — ⚠️ check `reactCache` is safe outside an RSC render first, these are money reads —
-   or take the F-07 answer the file already names. Prove it with `npm run qa:admin-load`.
+1. **DG-A-01 is 🚢 — the code shipped, the re-measure is the remaining half, and the gate is
+   EXPECTED RED.** `qa:admin-load` no longer picks its own three routes; it imports the render
+   drive's list (`scripts/design-gate/routes.mjs`) and holds all 38 to 5,000 ms against a
+   `/admin/roles` floor. That found **`/admin/updown` at 13,247–13,845 ms**, window-independent,
+   2.7× the route the gate was built for and in no instrument at all. ▶ Re-measure reports and
+   insights, then **fix `/admin/updown`** — ⚠️ its per-chain loop (`updown/page.tsx:125-137`,
+   one `roundStore.list` + one `poolsByIds` per chain, 600 rounds each) is a separate cost from
+   the `moneyByGame` read this commit already narrowed, so **measure what remains before fixing
+   anything**.
 2. **Finish DG-A-12 — the table half shipped, the arbitraries sweep did not.** `10.5 / 11.5 /
    13.5` and the hand-typed `text-[Npx]` census still have to come onto rungs, by ROLE
    (label → micro/label tier, prose → small/body). ⚠️ **Its acceptance line is the DG-A-23
@@ -96,26 +112,8 @@ fixing it.** Fixing a defect that no longer exists is how a correct control gets
 | **DG-A-07** | fix the pagination wrap | `pagination.tsx` records *"THE WRAP IS THE DESIGN"*, measured **2026-08-25 — three days before the audit** — and explicitly rejects the exact remedy proposed |
 | **DG-A-23** (half) | "gains a scrollbar" | A **no-op in Chrome**: a global `::-webkit-scrollbar` rule means a thumb was always painted — at **2.23 against the 3.0 floor**. Its "edge-fade" is a hazard: a mask clips absolutely-positioned panels, i.e. DG-A-03's defect |
 
-### ▶ THE NEXT MOVE, in order
-1. ✅ **STEP 1 IS CLOSED — all 11 rows ticked, every one re-measured on production.**
-2. ⭐ **STEP 2 IS UNBLOCKED. Ali delegated the type-ladder ruling on 2026-08-29** — *"you choose,
-   based on consistency rules and what makes the platform perfectly professional."*
-   **The ruling, and it is not a taste call:** `DESIGN_AUTHORITY` §T1 says the scale is CLOSED, and
-   §T2 has already applied that law to this exact shape — the off-ladder market question — with
-   *"the fix is to move the question onto the ladder, **never** to re-tune `--type-h1` to match
-   it."* Blessing 12.5 as `--type-table` is re-tuning the token to match the drift, the move §T2
-   forbids by name. §T4 also makes 12.5 the READING FLOOR, so a rung there would put a size and a
-   legibility floor on one number, 0.5px from `--type-small`.
-   ⭐ **So: `.admin-tbl` moves to `--type-small` (13px). No `--type-table` is created.** And it is
-   ONE declaration — `globals.css:3804` — not 1,376 edits; the "1,376 cells" all read that line.
-   ⚠️ **Measure, do not assume, the two consequences:** rows grow ~0.5px and columns ~4%, so
-   **DG-A-23's clipping at 390 must be re-measured after**; and `.admin-tbl thead` is **also
-   off-ladder at 10px** (globals.css:3805) — it is §T3's uppercase-tracked label tier, but 9.5
-   (`--type-label`) may fail the contrast floor against `--text-subtle`, so pick that rung by
-   measurement plus `test:contrast`, never by symmetry.
-3. ⛔ **Read the RE-DERIVED section below before starting any step-3 or step-4 row.** Nine register
-   claims do not reproduce, eight more contradict a guard, and DG-A-01's filed cause is wrong.
-4. ⛔ **Do not start Maswali.** Ali's order: the Design Gate runs first and to completion.
+> 🧹 **A SECOND “THE NEXT MOVE” LIST STOOD HERE, AND IT IS DELETED (session 78).** It restated step 1's closure and the type-ladder ruling that the two blocks above already carry — two homes for one fact, and §0a says the stale one is the one that gets read. It had already started to drift: it pointed the ruling at `globals.css:3804/3805`, and the shipped declarations are at **3828–3829**. The one line in it that lived nowhere else is kept:
+> ⛔ **Do not start Maswali.** Ali's order: the Design Gate runs first and to completion.
 
 ### ⚠️ What this session could NOT measure, and why
 🔴 **All six 36-character player/officer secrets in `.env.qa.local` are rejected by production**
@@ -343,7 +341,7 @@ only ☑ when its gate line is GREEN **re-measured on production**, not on local
 | **DG-P-08** | 3 | P1 | truncation without disclosure, and one clipped support email | `truncation` | ☐ | — | — |
 | **DG-P-10** | 3 | P2 | status chips: the board still hand-types its colours (B11's named remainder) | `chip migration` | ☐ | — | — |
 | **DG-P-11** | 3 | P2 | active/current markers stop at the top bar | `aria-current reach` | ☐ | — | — |
-| **DG-A-01** | 4 | P0 | /admin/reports takes ~88 s to load; timed out at 60/90/240 s | `src/lib/server/report-money.ts` (⛔ NOT `reports/page.tsx`) | 🚢 **19× FASTER, still over budget** | `d74d0708` | 🔴 **RE-DERIVED WITH A NEW GATE (`npm run qa:admin-load`) AND THE FILED CAUSE IS WRONG.** The register blames *"settlement-fee/report-pack reads render 12,882 rows' aggregates"*; the report pack is a single period read and `getAuditPage` is an in-memory ring-buffer slice with no I/O. Fixing what it named would have moved nothing. **The real defect was an `await` inside a loop over every market row in `categoryBreakdown()` — ~13,000 SEQUENTIAL Prisma round-trips.** ⛔ And never one page: `/admin/insights` calls the same function, which is why BOTH have failed `redo.cjs` on every drive — not flaky, too slow to finish rendering. 📐 **MEASURED, before → after, on production:** `/admin/reports` **137,317 ms → 7,112 ms (19×)**; `/admin/insights` **87,419 ms → 257 ms (340×)**; control `/admin/finance` 2,660 ms. ⭐ **The control earned its place twice:** on the post-deploy run it read 4,561 ms and the guard REFUSED the result in words — cold container, not the pages — which is why the numbers above are from a re-run on a warm server. ⛔ **NOT CLOSED: 7,112 > the 5,000 ms budget, and the remaining cost is identified.** `/admin/reports` calls BOTH `categoryBreakdown` AND `moneyByGame`, and **each does its own `positionStore.values()` — the entire Position table, twice per render**, plus `marketStore.values()` and an un-memoised `listMarkets`. `/admin/insights` calls one of them and returns in 257 ms; that gap IS the duplicate scan. ▶ **NEXT:** dedupe the whole-table reads per request (`reactCache`, as `admin-shell.tsx:84` already does for `getSidebarBadges`) — ⚠️ verify it is safe outside an RSC render first, since these are money reads called from route handlers too — or take the F-07 answer the file already names, *"a full SQL GROUP BY over the join"* |
+| **DG-A-01** | 4 | P0 | /admin/reports takes ~88 s to load; timed out at 60/90/240 s | `report-money.ts` + `market-dal.ts` (⛔ NOT `reports/page.tsx`) | 🚢 **SHIPPED, awaiting the production re-measure** | `d74d0708` · this commit | 🔴 **RE-DERIVED AGAIN 2026-08-29 (session 78), AND THE HANDOVER'S TWO NUMBERS DO NOT REPRODUCE.** The row said `/admin/reports` **7,112 ms** and `/admin/insights` **257 ms**. Measured today on production, best of three, `loadEventEnd`: reports **4,490–4,980**, insights **2,375–3,048**. ⚠️ The 257 was almost certainly a `getInsights()` TTL cache hit (`insights.ts:75-79`), and quoting it as the page's cost is what made "the gap IS the duplicate scan" look like an arithmetic certainty. ⭐ **A FLOOR ROUTE SETTLED IT, and the old "control" was not one.** `/admin/roles`, a shell-only admin page, measures **234–292 ms** — so `/admin/finance`, described in the gate as *"comparable money aggregates, never slow"* and given a TIGHTER 4,000 ms budget, is **2,635–2,701 ms**: 9× the floor, inside a budget cut to fit it. ⛔ A control has to be a page that does almost nothing. 📐 **THE DECISIVE MEASUREMENT — the cost does not care about the window.** `/admin/reports?range=today` **4,759** vs `?range=30d` **5,012**: a window 30× larger costs ~5%. So it is NOT `listInRange`; it is the whole-table reads. And floor-adjusted, insights (ONE such read) carries **+2,242 ms** while reports (TWO) carries **+4,323 ms** — which is what actually confirms the duplicate-scan direction the stale numbers only appeared to. ⭐ **THE FIX, and it is two things not one:** (1) `loadMoneyAttribution()` does the market + position read ONCE and `/admin/reports` hands it to both `categoryBreakdown` and `moneyByGame`; (2) that read is a **projection** — `marketStore.attribution()` selects 4 columns where `findMany()` shipped ~35, including three `@db.Text` fields and a JSON blob, over ~13,000 rows. ⛔ **`reactCache` was NOT used**: these are money reads, and a dedupe whose lifetime lives in a framework's request scope is invisible at the call site. The maps are a parameter. ⛔ **And the two callers' populations were NOT harmonised** — `categoryBreakdown` excluded demo markets (via `listMarkets`’ `isDemoMarket`) and `moneyByGame` never did; tidying that would have moved a regulator-facing figure under cover of a performance fix. Both are preserved, and `test:product-line` B9 now asserts the difference. 🔴 **A SECOND DEFECT, ON THE SAME PAGE, AND IT IS A MONEY STATEMENT:** `moneyByGame` is wrapped in `.catch(() => null)` and the per-game card began `{byGame && …}` — so a FAILED read rendered **identically to an empty window**. `/admin/insights:173` already discloses that exact failure in words for the sibling function. It says them here too now. 🔴 **AND THE GATE'S POPULATION WAS HAND-PICKED.** `qa:admin-load` timed 3 routes and passed. Driving the real list found **`/admin/updown` at 13,247–13,845 ms**, 2.7× the route the gate was built to watch, window-independent, in **no instrument at all**. The gate now imports the same route list as the render drive (`scripts/design-gate/routes.mjs`, one definition site) and holds all 38 to 5,000 ms with `/admin/roles` as the floor. ⚠️ **It is therefore EXPECTED to be RED on `/admin/updown` until that page is fixed** — that is the gate telling the truth, and the next move under this row.
 | **DG-A-20** | 4 | P2 | loading skeletons are the wrong shape for what they replace | `skeletons` | ☐ | — | — |
 | **DG-A-22** | 4 | P2 | layout balance | `—` | ☐ | — | — |
 | **DG-P-09** | 4 | P1 | /auth/login signed-in redirect throws React error #310 — ⚠️ root cause is a HYPOTHESIS, re-prove first | `auth-flash.tsx?` | ☐ | — | — |

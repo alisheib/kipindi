@@ -13,7 +13,7 @@ import { getAuditPage } from "@/lib/server/audit";
 import { GenerateButton } from "./generate-button";
 import { ReportPackCard } from "./report-pack-card";
 import { formatDateTime, formatTzs, formatTzsCompact } from "@/lib/utils";
-import { reportSummary, dailyPnl, categoryBreakdown, moneyByGame } from "@/lib/server/report-money";
+import { reportSummary, dailyPnl, categoryBreakdown, moneyByGame, loadMoneyAttribution } from "@/lib/server/report-money";
 import { resolveRange } from "@/lib/server/date-range";
 import { currentSession } from "@/lib/server/auth-service";
 import { canView } from "@/lib/server/rbac";
@@ -160,13 +160,24 @@ export default async function AdminReportsPage({
   // ONE platform-wide window resolver — presets + custom date+hour+minute, EAT-safe.
   const range = resolveRange(sp, generatedAt);
   const win = { start: range.start, end: range.end };
-  const { current, prior } = await reportSummary(win, generatedAt);
-  const { rows: pnlRows, totals } = await dailyPnl(win, generatedAt);
-  const categories = await categoryBreakdown(win, generatedAt);
-  // Per-game split (Up & Down vs long-form polls). The KPI strip + statutory pack stay
-  // COMBINED (TRA/GBT is levied on total commission); this is an additive breakdown so
-  // management sees which game earns what.
-  const byGame = await moneyByGame(range.start, range.end).catch(() => null);
+  // 🔴 DG-A-01. These four used to be four SEQUENTIAL awaits, and two of them each read the
+  // whole market table and the whole position table for themselves — so this page did that
+  // pair of whole-table reads TWICE per render. Measured on production 2026-08-29, best of
+  // three: `/admin/roles` (shell only) 292 ms · `/admin/insights` (ONE such read) 2,534 ms ·
+  // this page (TWO) 4,615 ms. ⭐ And it did not care about the window — `?range=today` read
+  // 4,759 ms against `?range=30d` at 5,012 — which is what proves the cost is the table reads
+  // and not `listInRange`. Load the attribution ONCE, hand it to both, and run the four in
+  // parallel. See `loadMoneyAttribution` for why this is a parameter and not a cache.
+  const attribution = await loadMoneyAttribution();
+  const [{ current, prior }, { rows: pnlRows, totals }, categories, byGame] = await Promise.all([
+    reportSummary(win, generatedAt),
+    dailyPnl(win, generatedAt),
+    categoryBreakdown(win, generatedAt, attribution),
+    // Per-game split (Up & Down vs long-form polls). The KPI strip + statutory pack stay
+    // COMBINED (TRA/GBT is levied on total commission); this is an additive breakdown so
+    // management sees which game earns what.
+    moneyByGame(range.start, range.end, attribution).catch(() => null),
+  ]);
   const activeRows = pnlRows.filter((r) => r.stakes !== 0 || r.payouts !== 0 || r.bonus !== 0 || r.fees !== 0);
   // KPI sparklines — real daily series (AdminSpark hides <2 pts, e.g. "today").
   const ggrSpark = pnlRows.map((r) => r.ggr);
@@ -292,6 +303,30 @@ export default async function AdminReportsPage({
               </ScrollX>
             )}
           </AdminCard>
+
+          {/* 🔴 A FAILED READ IS NOT AN EMPTY WINDOW (DG-A-01, 2026-08-29).
+              `moneyByGame` is wrapped in `.catch(() => null)`, and the condition below used to
+              begin `byGame && …` — so when the read threw, this whole card silently VANISHED
+              and the page read exactly as it does when nobody staked anything. On a
+              regulator-facing reporting console that is a money statement made by omission,
+              and the same file already argues the principle 20 lines down: *"DISCLOSED, NEVER
+              FOLDED … added to Markets, which overstated long-form GGR by an amount no reader
+              could see"*. `/admin/insights` (insights/page.tsx:173) already discloses this exact
+              failure for `categoryBreakdown` — the sibling call to the sibling function — in
+              these words. It says them here too now.
+              ⛔ A genuinely empty window still renders nothing: that is not a false statement,
+              because every other card on the page is reporting the same window. */}
+          {byGame === null && (
+            <AdminCard title="By game" sw="Kwa mchezo · Markets vs Up &amp; Down">
+              {/* `text-body-sm` (13px), not a hand-typed `text-[13px]` — the sibling
+                  disclosure on /admin/insights still hand-types it and DG-A-12's sweep will
+                  move it; a new line does not join the backlog it is being written beside. */}
+              <p className="text-body-sm text-warning-fg">
+                Couldn&apos;t load the per-game split — a data read failed, so this is not a real zero.
+                Refresh to retry.
+              </p>
+            </AdminCard>
+          )}
 
           {byGame && (byGame.market.stakes > 0 || byGame.updown.stakes > 0 || byGame.unattributed.stakes > 0) && (
             <AdminCard title="By game" sw="Kwa mchezo · Markets vs Up &amp; Down" padding="p-0">

@@ -35,7 +35,7 @@
 import { EAT_OFFSET_MS } from "@/lib/eat-day";
 import { db } from "./store";
 import type { StoredTxn } from "./store";
-import { listMarkets } from "./market-service";
+import { isDemoMarket } from "./market-service";
 import type { MarketCategory } from "./market-service";
 import { positionStore, marketStore } from "./market-dal";
 
@@ -192,6 +192,69 @@ export async function reportSummary(period: Window, now = Date.now()): Promise<{
   return { bounds, current: summarise(cur), prior: summarise(prev) };
 }
 
+// ── The shared attribution read ──────────────────────────────────────────────
+//
+// 🔴 WHY THIS EXISTS (DG-A-01, measured on production 2026-08-29).
+// `categoryBreakdown()` and `moneyByGame()` each need to answer "which market does this
+// position belong to, and what is that market?", and each answered it by reading the WHOLE
+// market table AND the whole position table for itself. `/admin/reports` calls both, so it
+// did all four whole-table reads on every render.
+//
+// 📐 MEASURED, best of three, `loadEventEnd` on production, before this change:
+//   `/admin/roles`    292 ms  — a shell-only admin page: the floor every number below sits on
+//   `/admin/insights` 2,534 ms — ONE of these reads (`categoryBreakdown` alone)
+//   `/admin/reports`  4,615 ms — TWO of them
+// ⭐ And the cost is NOT the transaction window: `/admin/reports?range=today` measured
+// 4,759 ms against `?range=30d` at 5,012 ms. A window that is 30× larger costs ~5%. Whatever
+// is slow here does not care about the window, which is what identifies it as the table reads.
+// ⛔ So the earlier note that the remaining cost was "the duplicate scan" was directionally
+// right and quantitatively wrong: 2,534 → 4,615 is roughly a doubling, and the ~2.2 s unit is
+// the read itself. Halving the number of reads is only half the fix; the other half is that
+// `marketStore.attribution()` stops shipping ~35 columns per row (three `@db.Text` fields and
+// a JSON blob among them) to answer a question about four of them.
+//
+// ⚠️ THE TWO CALLERS DO NOT SHARE A POPULATION, AND HARMONISING THEM WOULD MOVE MONEY.
+// `categoryBreakdown` read through `listMarkets`, which drops demo rows (`isDemoMarket`);
+// `moneyByGame` read `marketStore.values()`, which does not. That divergence is pre-existing
+// and is NOT corrected here — changing it would silently move a regulator-facing figure under
+// cover of a performance fix. Both maps are built below, each over its own population, and
+// each caller keeps exactly the rows it had before.
+export type MoneyAttribution = {
+  /** marketId → category. DEMO ROWS EXCLUDED — `categoryBreakdown`'s population. */
+  catByMarket: Map<string, MarketCategory>;
+  /** marketId → game line. EVERY row, demo included — `moneyByGame`'s population. */
+  plByMarket: Map<string, GameLine>;
+  /** positionId → marketId, for every position that exists. */
+  marketOfPosition: Map<string, string>;
+};
+
+/**
+ * Load the attribution maps ONCE. Pass the result to `categoryBreakdown` and `moneyByGame`
+ * when a single render calls both — `/admin/reports` does.
+ *
+ * ⛔ This is deliberately NOT a cache. These are money reads; a memo that outlived a request
+ * would let a settled position keep reporting the category it had before, and nothing on the
+ * page would look wrong. The dedupe is lexical — one caller, one load, passed down — so its
+ * lifetime is visible at the call site instead of living in a framework's request scope.
+ */
+export async function loadMoneyAttribution(): Promise<MoneyAttribution> {
+  const [marketRows, positionRows] = await Promise.all([
+    marketStore.attribution(),
+    positionStore.attribution(),
+  ]);
+  const catByMarket = new Map<string, MarketCategory>();
+  const plByMarket = new Map<string, GameLine>();
+  for (const m of marketRows) {
+    // ⛔ Demo rows are excluded HERE ONLY. See the note above: the two callers differ, and
+    // that difference is preserved rather than tidied.
+    if (!isDemoMarket(m)) catByMarket.set(m.id, m.category);
+    plByMarket.set(m.id, m.productLine === "UPDOWN" ? "UPDOWN" : "MARKET");
+  }
+  const marketOfPosition = new Map<string, string>();
+  for (const p of positionRows) marketOfPosition.set(p.id, p.marketId);
+  return { catByMarket, plByMarket, marketOfPosition };
+}
+
 // ── Per-game money split (Up & Down vs long-form polls) ──────────────────────
 //
 // Ali, 2026-07-25: "Up & Down is a game and normal polls are another game completely."
@@ -262,14 +325,23 @@ function emptyGame(game: GameLine): GameMoney {
  * Up & Down round is now a market row — 12,931 of them on production 2026-08-20, growing
  * ~360/day. A full SQL GROUP BY over the join is the answer (audit F-07).
  */
-export async function moneyByGame(start: number, end: number): Promise<{ market: GameMoney; updown: GameMoney; unattributed: GameMoney }> {
-  const [allTxn, positions, markets] = await Promise.all([
+export async function moneyByGame(
+  start: number,
+  end: number,
+  /** Pass a map loaded by `loadMoneyAttribution()` when the caller also runs
+   *  `categoryBreakdown` — see the DG-A-01 note above. Omit and it loads its own. */
+  attribution?: MoneyAttribution,
+): Promise<{ market: GameMoney; updown: GameMoney; unattributed: GameMoney }> {
+  const [allTxn, attr] = await Promise.all([
     db.txn.listInRange(start, end),
-    positionStore.values(),
-    marketStore.values(),
+    attribution ? Promise.resolve(attribution) : loadMoneyAttribution(),
   ]);
-  const plByMarket = new Map<string, GameLine>(markets.map((m) => [m.id, (m.productLine === "UPDOWN" ? "UPDOWN" : "MARKET")]));
-  const plByPosition = new Map<string, GameLine>(positions.map((p) => [p.id, plByMarket.get(p.marketId) ?? "MARKET"]));
+  // ⛔ `?? "MARKET"` here is UNCHANGED and is not the F-03 defect below: this resolves a
+  // market that exists but carries no readable product line, which the DAL already coerces
+  // to MARKET at the row level. The defect was defaulting an unresolvable POSITION.
+  const plByPosition = new Map<string, GameLine>(
+    [...attr.marketOfPosition].map(([positionId, marketId]) => [positionId, attr.plByMarket.get(marketId) ?? "MARKET"]),
+  );
 
   const out: Record<GameLine, GameMoney & { _players: Set<string> }> = {
     MARKET: { ...emptyGame("MARKET"), _players: new Set<string>() },
@@ -382,10 +454,16 @@ export type CategoryRow = {
 /** Share-of-GGR by market category, via positionId → market.category.
  *  In production this is a single GROUP BY join; here we build the lookup map
  *  from the in-memory stores. Categories with no staked activity are omitted. */
-export async function categoryBreakdown(period: Window, now = Date.now()): Promise<CategoryRow[]> {
+export async function categoryBreakdown(
+  period: Window,
+  now = Date.now(),
+  /** Pass a map loaded by `loadMoneyAttribution()` when the caller also runs `moneyByGame`
+   *  — see the DG-A-01 note above `loadMoneyAttribution`. Omit and it loads its own. */
+  attribution?: MoneyAttribution,
+): Promise<CategoryRow[]> {
   const { start, end } = boundsOf(period, now);
   // positionId → category lookup (market-scoped).
-  // MONEY READ → productLine "ALL". This attributes staked volume and fees to a
+  // MONEY READ → EVERY PRODUCT LINE. This attributes staked volume and fees to a
   // category; excluding Up & Down rounds would drop their entire turnover out of the
   // revenue breakdown while every remaining number still reconciled with itself,
   // which is the worst shape a books defect can take. Guarded by test:product-line.
@@ -402,25 +480,27 @@ export async function categoryBreakdown(period: Window, now = Date.now()): Promi
   // aggregates". That is wrong — the report pack is a single period read and `getAuditPage` is an
   // in-memory ring-buffer slice. The cost was always here.
   //
-  // ⭐ THE SHAPE IS `moneyByGame`'s, 40 lines above: two bulk reads and an in-memory join. That
-  // one already builds `plByMarket` then `plByPosition` exactly like this; the only difference is
-  // which market field it carries across. Two queries, not 12,901.
-  // ⛔ `listMarkets({ productLine: "ALL" })` STAYS, and not merely to satisfy a guard: this is a
-  // MONEY READ and `test:product-line` requires the opt-in here by name, because attributing
-  // stakes without Up & Down would drop that product's whole turnover out of the revenue
-  // breakdown while every remaining number still reconciled with itself.
-  const [markets, positions] = await Promise.all([
-    listMarkets({ productLine: "ALL" }),
-    positionStore.values(),
-  ]);
-  const catByMarket = new Map<string, MarketCategory>(markets.map((m) => [m.id, m.category]));
+  // ⭐ THE SHAPE IS `moneyByGame`'s: bulk reads and an in-memory join. Two queries, not 12,901.
+  //
+  // ⚪ SPENT, and kept because the reasoning still governs: this block used to end with
+  // *"`listMarkets({ productLine: "ALL" })` STAYS … `test:product-line` requires the opt-in here
+  // by name"*. That call is GONE (DG-A-01, 2026-08-29) — the read moved to
+  // `loadMoneyAttribution()`, which reads `marketStore.attribution()`. The RULE it protected is
+  // unchanged and is now enforced structurally instead of by an argument: `attribution()` takes
+  // no `productLine` parameter, so it cannot exclude Up & Down. `test:product-line` was updated
+  // in the same commit to assert exactly that, behaviourally, rather than by grepping for a
+  // string this file no longer contains.
+  const attr = attribution ?? (await loadMoneyAttribution());
   const posCat = new Map<string, MarketCategory>();
-  for (const p of positions) {
-    const c = catByMarket.get(p.marketId);
+  for (const [positionId, marketId] of attr.marketOfPosition) {
+    const c = attr.catByMarket.get(marketId);
     // ⛔ No default. A position whose market we cannot see is not "some category" — it is
     // unattributed, and the loop below simply skips it, exactly as `moneyByGame` refuses
     // to guess "MARKET" for an unresolvable positionId.
-    if (c) posCat.set(p.id, c);
+    // ⚠️ A DEMO market is "cannot see" by this rule too, because `loadMoneyAttribution`
+    // leaves demo rows out of `catByMarket` — which is exactly what `listMarkets`' own
+    // `isDemoMarket` filter did before this read was narrowed.
+    if (c) posCat.set(positionId, c);
   }
   const acc = new Map<MarketCategory, { stakes: number; payouts: number }>();
   // The window is the WHERE clause now; the per-row `within` below is therefore
