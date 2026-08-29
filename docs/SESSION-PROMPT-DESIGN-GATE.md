@@ -21,10 +21,25 @@ rendered platform.”*
 > **NEW: `STEP 5` is planned and must NOT be started** — Ali's commission, a session of its own,
 > after steps 1–4.
 >
-> ### 🔬 THE THREE INSTRUMENTS THIS SESSION ADDED — all tracked, all with controls that go RED
+> ### 🔬 THE INSTRUMENTS THIS SESSION ADDED — all tracked, all with controls that go RED
 > · **`npm run qa:dg-type`** — the type bench, inside a live production page.
 > · **`npm run qa:dg-shell`** — the admin landmark/drawer seal, 40 routes.
+> · **`npm run qa:dg-money`** / **`qa:dg-eyebrow`** — the two sweeps, each REFUSING what it
+>   must not decide (14 off-ladder amounts · 139 off-ladder eyebrows are per-site size calls).
 > · **`scripts/design-gate/session.mjs`** — ONE sign-in shared by every instrument.
+> · 🔴 **`redo.cjs` HARDENED — it had reported `OK 48` over EIGHT OFFLINE PAGES.** A 44-route
+>   drive returned HTTP 200 everywhere with `0 unrecoverable`, while eight routes had rendered
+>   *"You're offline"* with 16-20 console errors each; its only poison test was
+>   `/auth/(admin|login)`. ⛔ **The sign-in-page failure, one page over.** It also carried a
+>   SECOND, already-drifted copy of the route population — it imports `routes.mjs` now.
+>   ⚠️ And my first fix for it deleted `/auth/login`, a route where the sign-in page IS the
+>   correct answer: a detector that reads a legitimate page as poison silently shrinks the
+>   population it protects. Both directions are proved now.
+>
+> ### 📈 WHERE THE TYPE LADDER STANDS
+> **Adoption 19.8% → 50.5%** — more than half the product's type is on the closed scale, and
+> §4 has gone 1809 → 1109. ⭐ **§3 held at 763 through every sweep**, which is the proof that
+> none of them bought a ratchet without moving a glyph.
 > ⛔ **And a rule this session paid for four separate times: a gate one level too shallow is
 > indistinguishable from no gate.** The sheet gate passed while every FONT was 404; §2 passed
 > while ten money elements were letter-spaced; §1/§2 passed VACUOUSLY on elements it never
