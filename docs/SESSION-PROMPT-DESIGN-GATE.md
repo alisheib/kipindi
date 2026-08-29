@@ -5,9 +5,9 @@ session, on any machine, knows which programme it is inside. Owner: Ali. Commiss
 *“100% consistency among the platform … your report should be the final gate to a perfectly
 rendered platform.”*
 
-## ⏭️ RESUME AT — session 76 handover (2026-08-29)
+## ⏭️ RESUME AT — session 77 handover (2026-08-29)
 
-> **Step 1 is 10 of 11.** Read this block, then the PLANNER at the bottom (every row carries its
+> **Step 1 is 11 of 11 — CLOSED.** Read this block, then the PLANNER at the bottom (every row carries its
 > own evidence and its own commit). Everything below was driven on production, not on localhost.
 
 ### 🔴 READ THIS BEFORE YOU FIX ANYTHING — the registers' numbers are stale
@@ -26,12 +26,25 @@ fixing it.** Fixing a defect that no longer exists is how a correct control gets
 | **DG-A-23** (half) | "gains a scrollbar" | A **no-op in Chrome**: a global `::-webkit-scrollbar` rule means a thumb was always painted — at **2.23 against the 3.0 floor**. Its "edge-fade" is a hazard: a mask clips absolutely-positioned panels, i.e. DG-A-03's defect |
 
 ### ▶ THE NEXT MOVE, in order
-1. **`DG-A-15` — the only step-1 system not started.** Already re-derived and quantified in its
-   planner row; the fix shape is written there. It needs no ruling from Ali.
-2. **Step 2, the moment Ali rules on the type ladder.** ⚠️ That ruling gates DG-A-12 + DG-P-05 **and
-   the remainder of DG-A-10** — three sub-1M money values still clip at 390 and cannot be fixed
-   while the value is a 22px inline literal.
-3. ⛔ **Do not start Maswali.** Ali's order: the Design Gate runs first and to completion.
+1. ✅ **STEP 1 IS CLOSED — all 11 rows ticked, every one re-measured on production.**
+2. ⭐ **STEP 2 IS UNBLOCKED. Ali delegated the type-ladder ruling on 2026-08-29** — *"you choose,
+   based on consistency rules and what makes the platform perfectly professional."*
+   **The ruling, and it is not a taste call:** `DESIGN_AUTHORITY` §T1 says the scale is CLOSED, and
+   §T2 has already applied that law to this exact shape — the off-ladder market question — with
+   *"the fix is to move the question onto the ladder, **never** to re-tune `--type-h1` to match
+   it."* Blessing 12.5 as `--type-table` is re-tuning the token to match the drift, the move §T2
+   forbids by name. §T4 also makes 12.5 the READING FLOOR, so a rung there would put a size and a
+   legibility floor on one number, 0.5px from `--type-small`.
+   ⭐ **So: `.admin-tbl` moves to `--type-small` (13px). No `--type-table` is created.** And it is
+   ONE declaration — `globals.css:3804` — not 1,376 edits; the "1,376 cells" all read that line.
+   ⚠️ **Measure, do not assume, the two consequences:** rows grow ~0.5px and columns ~4%, so
+   **DG-A-23's clipping at 390 must be re-measured after**; and `.admin-tbl thead` is **also
+   off-ladder at 10px** (globals.css:3805) — it is §T3's uppercase-tracked label tier, but 9.5
+   (`--type-label`) may fail the contrast floor against `--text-subtle`, so pick that rung by
+   measurement plus `test:contrast`, never by symmetry.
+3. ⛔ **Read the RE-DERIVED section below before starting any step-3 or step-4 row.** Nine register
+   claims do not reproduce, eight more contradict a guard, and DG-A-01's filed cause is wrong.
+4. ⛔ **Do not start Maswali.** Ali's order: the Design Gate runs first and to completion.
 
 ### ⚠️ What this session could NOT measure, and why
 🔴 **All six 36-character player/officer secrets in `.env.qa.local` are rejected by production**
@@ -139,6 +152,89 @@ review — DESIGN_AUTHORITY §0b OUTBOUND row). Send it, file the delivery under
 `docs/design-system/` as an incoming commission, then **delete the folder and its `.gitignore`
 exception** — §0b’s own rule.
 
+---
+
+## 🔬 RE-DERIVED 2026-08-29 (session 77) — steps 3 and 4, before a line was written
+
+⭐ **Read this before starting any step-3 or step-4 row.** Every claim below was checked against
+the working tree, not taken from a register. It is filed here because the alternative is the next
+session paying for it again — step 1 already lost three rows to defects that no longer existed.
+
+### ⛔ Register claims that DO NOT REPRODUCE — do not "fix" these
+| Row | The claim | What is actually there |
+|---|---|---|
+| **DG-A-01** | *"its settlement-fee/report-pack reads render 12,882 rows' aggregates"* | **Wrong cause.** The report pack is a single period read and `getAuditPage` is an in-memory ring-buffer slice. The real defect is a **textbook N+1 at `src/lib/server/report-money.ts:392-396`** — `for (const m of markets) { for (const p of await listPositionsForMarket(m.id)) … }`, i.e. **~13,000 sequential Prisma round-trips** at ~6–7 ms ≈ the 88 s. ⭐ **`/admin/insights` calls the same `categoryBreakdown()`, so ONE fix closes both routes.** The primitive already exists with a written ruling behind it: `positionStore.listForMarkets(ids)` (`market-dal.ts:762-768`, one `findMany` on `@@index([marketId,status])`), and `moneyByGame` in the same file already does the bulk-join shape. ⚠️ `loading.tsx` already exists and is well-shaped — Suspense alone would move the number without removing the queries |
+| **DG-P-09** | root cause is `auth-flash.tsx` | **Refuted by reading it:** five hooks, all top-level, unconditional, fixed order, `return null`. No branch can change its hook count. A scan of **all 227 "use client" files** for hooks after an early return or inside an `if` found **zero**. ⛔ **And the finding is UNREPROVABLE:** `.qa-design-gate/` holds no `auth-login.json`, zero occurrences of `Minified React error`, and zero non-empty `errors` arrays — while the register's own proof line needs an authed player, which no working password exists for. **Getting a player credential is a hard prerequisite, not part of the fix** |
+| **DG-P-14 item 5** | `/notifications` is *"the only rail whose selected state also casts `--glow-selected`"* — filed as **an Ali taste call** | **It is not page-local at all.** `/notifications` uses the shared `FilterPill`, and the glow comes from the ONE kit rule `.kp-fchip[data-on]` (`globals.css:2908-2911`) whose own comment reads *"one definition site, for every filter rail in the product."* Every selected pill on the platform glows. ⭐ **Nothing to promote, nothing to drop, and no ruling needed from Ali — strike the item** |
+| **DG-P-03** | *"`/updown`'s h1 drops to 24px at 390"* | `/updown` renders `PageHeader`, a flat `text-[28px]` with **no responsive step** anywhere in the component or in globals.css. Nothing in code can produce 24 at 390. ✅ The **double-h1 reproduces exactly**: `src/app/proposals/page.tsx:90` sr-only h1 + `PageHeader`'s own h1 at `page-header.tsx:45` |
+| **DG-P-10** | three hand-typing surfaces incl. `results/page.tsx` | `results/page.tsx` **already imports the kit `Chip`** and hand-types nothing. Two of three reproduce — and the register **misses two it never named**: `components/home/trust-band.tsx:154` (the landing) and `updown/[roundId]/page.tsx:197,619` |
+| **DG-P-07** | *"16 back-link instances"* | **4.** And a kit primitive nobody adopted already exists — `src/components/ui/back-link.tsx`. The honest fix is adopt-plus-`min-h`, one file and four call sites. ⚠️ `/profile/account`'s "Change" button at 30px **could not be located** — no `Change` string, no `btn-xs` in that file |
+| **DG-A-09** | *"hover duplicated inside tables, 80 cells on /admin/markets"* | **Zero `hover:bg-` inside any `<td>` in the whole admin tree.** What the drive counted was `hover:text-*` on LINKS in cells — a link underline, which is the canon. Only **2 files** genuinely duplicate the row hover (`ai-polls/page.tsx:356`, `candidates/page.tsx:298`) |
+| **DG-A-13** | a literal `&times;` escape renders on `/admin/ai-usage` | **Zero hits** anywhere under `src/app/admin`. Already fixed |
+| **DG-A-21** | *"ai-polls detail paints its quality meter in `--yes-*`"* | **Already fixed 2026-08-21**, with an in-file tombstone at `poll-actions.tsx:817-825` recording this exact defect and the owner ruling. The register re-files a closed finding |
+
+### 🔴 A guard that REWARDS THE WRONG FIX — settle this before DG-A-14
+`scripts/type-scale.test.mts:542-543` tells the fixer to *"lift it onto the ladder
+(**text-label/text-caption**)"*. `text-label` is **12px** and `text-caption` is **11px**
+(`tailwind.config.ts:192-193`) — **both are BELOW the 12.5px reading floor the same file
+enforces.** And §3 only scans arbitrary `text-[Npx]`, so converting an 11px paragraph from
+`text-[11px]` to `text-caption` **lowers the ratchet while leaving the prose at 11px**: the guard
+scores the defect as fixed. ⛔ There are **100 `<p>` elements at `text-caption` in admin today**
+and §3 cannot see one of them. **`text-body-sm` (13px, `tailwind.config.ts:194`) is the only
+class above the floor** — and it exists, so **DG-A-14 is NOT blocked by the type ladder.**
+
+### ⚠️ Ordering constraints that are not in the work order
+- **DG-P-08's clipped support email and `E-226` are THE SAME LINE** —
+  `src/app/auth/forgot-password/page.tsx:125`, `truncate` on `SUPPORT_EMAIL()`. E-226 is that
+  `support-config.ts` has a writer and **no reader** (`SUPPORT_CONFIG_KEY` appears in exactly two
+  files; the header's claim that boot-checks hydrates it is **false in today's code**). ⛔ Fixing
+  the `truncate` first makes a **wrong** contact fully legible. E-226 lands first, or together.
+- **DG-A-20 (skeletons) and DG-A-22 (layout balance) sit behind step 2**, not beside it — card
+  rungs (DG-A-16) change the padding those grids and skeletons are measured against.
+
+### ⭐ Reuse, not new code — the inventory
+`FilterPill` (`ui/filter-pill.tsx`, `rank="dense"`=32px, ⚠️ requires `href` / renders `Link`) ·
+`status-tone.ts` (`TONE_CHIP`/`STATUS_TONE`; **only 2 files in the tree consume it**, and the
+player side reads it **zero** times) · `admin-status-lexicon.ts` (14 word families, 25 importers) ·
+`status-badge.tsx` (`txnProviderLabel` + 13 sibling label fns) · `category-label.ts` +
+`poll-vocabulary.ts` (⚠️ `CAT_LABEL` is **page-local** in `reports/page.tsx:27` — promote it, or
+point call sites at these two shared ones instead) · `page-header.tsx` (28 call sites, the h1 to
+converge on) · `back-link.tsx` (unadopted) · `admin-skeletons.tsx`.
+⛔ **There is no `AdminFilterRow` and no plural helper** — those two would be NEW primitives, so
+mint them deliberately or not at all.
+
+### ⛔ EIGHT more register-vs-guard contradictions (step 1 found three; these are the rest)
+1. **DG-A-14 vs `type-scale.test.mts:542`** — the guard's own advice is below the floor (above).
+2. **DG-A-08 vs DG-A-02 / DA §A2** — `btn-xs` (32px) row actions contradict the 40px tap floor
+   that DG-A-02 argues is inviolable *for money controls*, on the same rows.
+3. **DG-A-08 vs `bare-text-button`** — that rule's written reasoning (*"an icon is paint … flagging
+   it would push authors toward a `btn` on a control the design deliberately keeps quiet"*) is the
+   inverse of DG-A-08's "never bare uppercase text".
+4. **DG-A-09 vs `globals.css:3814`** — the canon itself paints a per-CELL hover
+   (`tr:hover td:first-child` inset bar) on all 44 tables. State the rule as *"no per-cell hover
+   authored at the call site"*, or it condemns the kit.
+5. **DG-A-21 vs `status-tone.ts:93-96`** — `TONE_CHIP` is a 9-tone narrowing over 7 status WORDS;
+   it has no entry for `cat`/`info`/`brand`/feature names/audit categories, and ~106 of the 113
+   admin `<Chip>` call sites are outside it. Enforcing the guard as written means minting new law
+   first. ⛔ And `STATUS_TONE_EXCEPTIONS` records three divergences that are **decisions** — a
+   naive sweep would "harmonise" them, which that file forbids by name.
+6. **DG-A-06 vs `filter-language.test.mts` §0.4** — converting any admin rail without adding it to
+   the hard-coded 2-entry `ADMIN_SURFACES` turns a **111-assertion green suite red for doing the
+   right thing.** The file's own comment documents exactly this failure.
+7. **DG-A-06 vs `datetime-range-filter.tsx`** — it is a shared `components/ui` primitive that
+   exports `PLAYER_PRESETS`. Hard-coding the 32px dense rank into it bakes the admin fork into a
+   player-facing component, against §6.6's stated player-44 / admin-32 split. **Take the rank as a
+   prop.** ⭐ It is also the biggest single win in DG-A-06: **one component, 7 admin call sites.**
+8. **Any sweep vs the `ui-consistency` BASELINE MODEL** — it fails on a NEW `(rule,file)` pair even
+   at warning severity. A sweep touching a previously-clean file must use the kit `<Button>` /
+   `<FilterPill>`, never `className="btn …"` or a numeric `h-7`/`h-8`.
+
+### 🔎 And the guard blind spot behind DG-A-06
+`filter-language.test.mts:207` holds an `OLD_IDIOM` regex that matches only the **rounded-md**
+idiom. **Every surviving DG-A-06 capsule is `rounded-pill`**, so the stray sweep runs over the
+whole tree and sees none of them. The work item *"widen the guard to `/admin/**`"* is already done
+(S-07, 2026-08-28); the real work is **widening that regex**.
+
 ## 📋 THE PLANNER — all 37 systems, one row each
 
 ⭐ **THIS IS THE HANDOFF SURFACE. Tick a row and push in the SAME commit as the work**, so a
@@ -155,7 +251,7 @@ only ☑ when its gate line is GREEN **re-measured on production**, not on local
 | **DG-A-05** | 1 | P1 | ⛔ **CLOSED — NO CHANGE.** Its prescribed fix (`truncate` the trigger) is ILLEGAL: `combobox-trigger-truncates` forbids it at error severity (E-98, "not a layout fix — it is data loss"), and `select.tsx:285-318` already ruled "growing is honest, clipping is data loss". 55.5 does not reproduce; 2 selects exceed their rung, both call-site width → step 3 | `select.tsx` — correct as-is | ☑ | this commit | ✅ re-derived on production 2026-08-29: no kit defect exists |
 | **DG-A-07** | 1 | P1 | pagination is 44px inside rails that are 32px | `pagination.tsx` — correct as-is | ☑ | this commit | ⛔ **CLOSED, NO CHANGE — and NOT an Ali decision after all.** ① The rung half was already ruled in the register's own §2: *"keep 44 (floor wins)"*, and 44 is the tap floor. ② The wrap half is **THE DESIGN**, measured on production **2026-08-25 — three days BEFORE this audit** — and `pagination.tsx`'s comment records it: *"THE WRAP IS THE DESIGN … the row ALREADY wrapped to two lines … the trade-off this change was expected to force — hide the numbers on a phone — was NOT taken, because the measurement says it is not needed."* `justify-center`-when-wrapped exists so the wrap reads as intentional. ⚠️ Re-derived 2026-08-29: it wraps at 390 on audit/markets/players/transactions, exactly as that comment predicts |
 | **DG-A-10** | 1 | P1 | the KPI tile system lies a little, everywhere | `admin-shell.tsx `AdminKpi` + 20 money call sites` | 🚢 **PART 1 of 2** | `06d02bdf` | ✅ verified 2026-08-29: **▲-without-a-number = 0** across 6 routes (the "▲ all-time on TZS 0" lie is gone); hover lift gone; clipped money at 390 **6 → 3**. 🔴 **THE 3 THAT REMAIN ARE ALL SUB-1M** and `formatBalancePill` only compacts above 1M by decision: `TZS 134,000` and `TZS 679,532` need 140px in 137, `TZS 137,920` needs 140 in 116. ⛔ **They cannot be fixed without Ali's step-2 type ruling** — the value is a 22px inline literal and the tile cannot widen; that IS the "value on the ladder" work. Also still open with it: labels ellipsising mid-word at 390, the 3 `KpiGrid` bypasses |
-| **DG-A-15** | 1 | P1 | charts: squashed axes and unreadable legends | `src/components/admin/admin-charts.tsx` | 🚢 **SHIPPED — production re-measure pending** | `fdba7cad` | 🔴 **RE-DERIVED BY THE NEW GATE `npm run qa:chart-axis`, 2026-08-29 on production: RED, 106 failures over 31+11+11 labels.** `/admin/finance` **62 failures at EVERY width — 1920, 1440 AND 390**, `/admin` 22, `/admin/live` 22. Worst reading `/admin@390`: scaleX **0.257** — a label condensed to **26%** of its own width, rendering **2.82px wide × 11px tall**. ⛔ **The register's "and vertically by height/240" is WRONG — scaleY is EXACTLY 1.0 everywhere**, so a HEIGHT floor would have passed this defect forever; the gate asserts the RATIO of the axes. ⭐ **FIX: the glyphs left the SVG.** Axis labels and the legend are an HTML layer in REAL PIXELS (`AXIS_GUTTER` 46 left, `AXIS_BASE` 16 below); the SVG keeps `preserveAspectRatio="none"` because the data path is SUPPOSED to stretch. Vertical = user units used as px (scaleY is 1 BY CONSTRUCTION), horizontal = % of the plot column. No JS measurement, no ResizeObserver. ⚠️ **TWO FURTHER DEFECTS THE LOCAL PRE-FLIGHT CAUGHT BEFORE PRODUCTION DID:** ① the HTML legend's min-content width (~450px for five providers) propagated through a `min-width:auto` grid item and pushed the whole `/admin/finance` card **past a 390 viewport** — it wraps now, and both roots carry `min-w-0`; ② at 390 the edge-anchored first/last x-labels overlapped their neighbours by **12.5px at both ends** and the stacked chart's first label sat **2.1px outside its own card**. Fixed by one shared rule (`xAxisCols`): edges anchored, and below `sm` only first/middle/last survive. ✅ Local pre-flight after both: **122 labels, 0 failing at 1920 / 1440 / 390.** `test:admin-charts` **68/68** (was 62) with two new CI-level assertions that NO `<text>` returns to either chart. ✅ **PRODUCTION, `fdba7cad` serving: `qa:chart-axis` = 169 labels across 18 chart renders, ALL isotropic, ≥10px in both dimensions, un-collided, in-box** — the 106 failures are 0. ⚠️ Its exit code is still 1 on THREE `/admin/ai-usage` cells, and that is the guard being right for the wrong reason: that page renders its chart **only with the Anthropic Cost API key set** (*"draw the truth or nothing"*), so it carries no chart at all. Reclassified as a NOTE, and the empty state now carries `data-chart="empty"` so a drive can tell EMPTY from VANISHED — ⛔ the route stays in the population rather than being deleted from it |
+| **DG-A-15** | 1 | P1 | charts: squashed axes and unreadable legends | `src/components/admin/admin-charts.tsx` | ☑ | `fdba7cad` · `f5fa98d3` | 🔴 **RE-DERIVED BY THE NEW GATE `npm run qa:chart-axis`, 2026-08-29 on production: RED, 106 failures over 31+11+11 labels.** `/admin/finance` **62 failures at EVERY width — 1920, 1440 AND 390**, `/admin` 22, `/admin/live` 22. Worst reading `/admin@390`: scaleX **0.257** — a label condensed to **26%** of its own width, rendering **2.82px wide × 11px tall**. ⛔ **The register's "and vertically by height/240" is WRONG — scaleY is EXACTLY 1.0 everywhere**, so a HEIGHT floor would have passed this defect forever; the gate asserts the RATIO of the axes. ⭐ **FIX: the glyphs left the SVG.** Axis labels and the legend are an HTML layer in REAL PIXELS (`AXIS_GUTTER` 46 left, `AXIS_BASE` 16 below); the SVG keeps `preserveAspectRatio="none"` because the data path is SUPPOSED to stretch. Vertical = user units used as px (scaleY is 1 BY CONSTRUCTION), horizontal = % of the plot column. No JS measurement, no ResizeObserver. ⚠️ **TWO FURTHER DEFECTS THE LOCAL PRE-FLIGHT CAUGHT BEFORE PRODUCTION DID:** ① the HTML legend's min-content width (~450px for five providers) propagated through a `min-width:auto` grid item and pushed the whole `/admin/finance` card **past a 390 viewport** — it wraps now, and both roots carry `min-w-0`; ② at 390 the edge-anchored first/last x-labels overlapped their neighbours by **12.5px at both ends** and the stacked chart's first label sat **2.1px outside its own card**. Fixed by one shared rule (`xAxisCols`): edges anchored, and below `sm` only first/middle/last survive. ✅ Local pre-flight after both: **122 labels, 0 failing at 1920 / 1440 / 390.** `test:admin-charts` **68/68** (was 62) with two new CI-level assertions that NO `<text>` returns to either chart. ✅ **PRODUCTION, `fdba7cad` serving: `qa:chart-axis` = 169 labels across 18 chart renders, ALL isotropic, ≥10px in both dimensions, un-collided, in-box** — the 106 failures are 0. ✅ **GATE GREEN, `qa:chart-axis` exit 0** on the deploy after the reclassification: 169 labels / 18 chart renders / 3 notes. ⚠️ Those 3 notes are `/admin/ai-usage`, and they are the guard being right for the wrong reason: that page renders its chart **only with the Anthropic Cost API key set** (*"draw the truth or nothing"*), so it carries no chart at all. Reclassified as a NOTE, and the empty state now carries `data-chart="empty"` so a drive can tell EMPTY from VANISHED — ⛔ the route stays in the population rather than being deleted from it |
 | **DG-A-17** | 1 | P2 | sortable headers are 64px in 37px header rows; the sort colour is dead CSS | `admin-sort.tsx · globals.css `.admin-tbl th[aria-sort]`` | ☑ | `0d749dba` — ✅ **re-measured on production 2026-08-29: sortable header cells 64.5 → 44.5**, and on /admin/audit + /admin/aml the whole header row is now one height. | ⏳ Re-derived 2026-08-29: **64.5px confirmed** (audit/aml/ai-usage) and the dead tint confirmed (th computes brand-300, the anchor inside computes `--text`). ⚠️ **Two register claims are WRONG:** on audit + aml the PLAIN headers are also 64.5 (same row, they stretch) — the 35.5 mismatch is only on ai-usage's sibling tables; and **`/admin/candidates` has ZERO sortable headers**. ⛔ Fixed by removing the th's redundant vertical padding, NOT by dropping `min-h-[44px]` — that is the tap target |
 | **DG-A-23** | 1 | P1 | tables clip with no affordance — ⚠️ **at 1440 too**, not only 390 | `scroll-x.tsx · globals.css `.scrollx`` | ☑ | `8c72f591` | ✅ **2026-08-29 production, `/admin/audit`**: `.scrollx` present, `scrollbar-color` = `--border-control`, `scrollbar-width: thin`, on a wrapper measuring **1282 > 1158 — i.e. the affordance is painted on the exact table that was cut mid-token.** ⛔ The register's fix was half a NO-OP (Blink already painted a thumb; it was under the contrast floor at 2.23, not missing) and half a HAZARD (a mask clips absolutely-positioned panels = DG-A-03's defect). Guarded by `test:contrast` at 3.18 |
 | **DG-A-11** | 2 | P1 | 70+ uppercase micro-label recipes — the "fonts everywhere" feeling, quantified | `three label classes` | ☐ | — | — |

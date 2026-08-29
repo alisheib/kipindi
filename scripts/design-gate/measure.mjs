@@ -225,9 +225,44 @@ if (!ANON) {
   }
 }
 const mk = (vp, extra = {}) => browser.newContext({ ...(state ? { storageState: state } : {}), viewport: vp, colorScheme: "dark", ...extra });
-const ctx1440 = await mk({ width: 1440, height: 900 });
-const ctx1920 = await mk({ width: 1920, height: 1080 });
-const ctx390 = await mk({ width: 390, height: 844 }, { isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+let ctx1440 = await mk({ width: 1440, height: 900 });
+let ctx1920 = await mk({ width: 1920, height: 1080 });
+let ctx390 = await mk({ width: 390, height: 844 }, { isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+
+/**
+ * 🔴 THE SESSION DIES MID-DRIVE, AND THIS FILE USED TO WRITE THE SIGN-IN PAGE AS DATA.
+ *
+ * Measured 2026-08-29 (session 77): a full 44-route admin drive returned HTTP 200 on every
+ * route, printed a plausible line for each — and `redo.cjs` then deleted **30 of the 44 records
+ * as poisoned**. Only 14 were real. `/admin/transactions` had been recorded with `tbl=0`, i.e.
+ * a table page with no table, because the drive was photographing the sign-in form.
+ *
+ * ⛔ THE RECORD WAS ALREADY IN THE FILE AND NOTHING READ IT. `rec.finalUrl` has always been
+ * captured — `redo.cjs` uses exactly that field, AFTER the fact, to throw the drive away. So the
+ * drive knew, at the moment of measuring, that it was on `/auth/admin`, and carried on for
+ * thirty more routes. Detecting it costs one `if`; not detecting it cost a whole drive.
+ *
+ * ⭐ So: on `/auth/`, sign in again, REBUILD ALL THREE CONTEXTS (they were minted from the dead
+ * `storageState` and are dead with it), and retry that route once. ⛔ Bounded — a drive that
+ * needs more than MAX_SIGNINS sign-ins has found a platform problem, and the harness records
+ * that a dozen sign-ins in a few minutes stop being accepted anyway.
+ * ⛔ And the count is PRINTED. A drive that silently re-authenticates is hiding a platform
+ * finding as housekeeping.
+ */
+const MAX_SIGNINS = 8;
+let signins = state ? 1 : 0;
+let resignins = 0;
+const revoked = (url) => !ANON && /\/auth\//.test(url);
+async function resignin(why) {
+  if (signins >= MAX_SIGNINS) throw new Error(`refusing sign-in #${signins + 1} — session revoked faster than it can be replaced`);
+  signins++; resignins++;
+  console.log(`  ⚠️  session revoked (${why}) — sign-in #${signins}, rebuilding contexts`);
+  await Promise.all([ctx1440.close(), ctx1920.close(), ctx390.close()].map((q) => Promise.resolve(q).catch(() => {})));
+  state = await loginOnce(browser, PERSONA);
+  ctx1440 = await mk({ width: 1440, height: 900 });
+  ctx1920 = await mk({ width: 1920, height: 1080 });
+  ctx390 = await mk({ width: 390, height: 844 }, { isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+}
 
 const routes = SURFACE === "admin" ? [...ADMIN_ROUTES] : [...PLAYER_PUBLIC, ...(ANON ? [] : PLAYER_AUTHED)];
 const DISCOVER = SURFACE === "admin" ? ADMIN_DISCOVER : PLAYER_DISCOVER;
@@ -251,6 +286,7 @@ for (const route of routes) {
   if (ONLY && !ONLY.some((o) => route === o || route.startsWith(o + "/") || (o !== "/" && route.startsWith(o)))) continue;
   const s = slug(route);
   const rec = { route, slug: s, surface: SURFACE, persona: ANON ? "anon" : PERSONA };
+  for (let attempt = 1; attempt <= 2; attempt++) {
   try {
     const page = await ctx1440.newPage();
     const errors = [];
@@ -259,6 +295,15 @@ for (const route of routes) {
     const resp = await gotoSettled(page, BASE + route);
     rec.status = resp?.status();
     rec.finalUrl = page.url();
+    // ⛔ THE CHECK THAT WAS MISSING. `finalUrl` was recorded and never read until redo.cjs
+    // deleted the drive afterwards. A revoked page is HTTP 200 and renders perfectly.
+    if (revoked(rec.finalUrl)) {
+      await page.close();
+      if (attempt === 1) { await resignin(route); continue; }
+      rec.error = "SESSION REVOKED TWICE — measured the sign-in page";
+      console.log(`${route.padEnd(32)} ✗ ${rec.error}`);
+      break;
+    }
     await page.waitForTimeout(600);
     rec.m1440 = await page.evaluate(measure);
     rec.hover = await hoverProbe(page);
@@ -279,9 +324,14 @@ for (const route of routes) {
     rec.error = String(e.message).slice(0, 200);
     console.log(`${route.padEnd(32)} ERROR ${rec.error}`);
   }
+  break; // measured, or failed for a reason a retry cannot cure
+  }
   writeFileSync(path.join(OUT, `${s}.json`), JSON.stringify(rec, null, 1));
   summary.push({ route, slug: s, status: rec.status, error: rec.error });
 }
 writeFileSync(path.join(OUT, `_summary.json`), JSON.stringify(summary, null, 1));
 await browser.close();
-console.log("done", summary.length, "routes");
+const poisoned = summary.filter((r) => /REVOKED/.test(r.error ?? "")).length;
+console.log("done", summary.length, "routes", `· ${signins} sign-in(s), ${resignins} forced by a revoked session, ${poisoned} unrecoverable`);
+// ⛔ A drive whose records are mostly the sign-in page is not a measurement. Say so in the exit code.
+if (poisoned) process.exit(3);

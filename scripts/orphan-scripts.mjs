@@ -35,9 +35,34 @@ const CODE = new Set([".mjs", ".mts", ".ts", ".js", ".cjs"]);
 const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 const allScripts = Object.values(pkg.scripts ?? {}).join("\n");
 
-const files = readdirSync(here)
-  .filter((n) => statSync(join(here, n)).isFile())
-  .filter((n) => CODE.has(n.slice(n.lastIndexOf("."))));
+/**
+ * 🔴 THIS USED TO SCAN THE TOP LEVEL ONLY, while printing "every file in `scripts/` must be run,
+ * or declared unrun". It was not: **113 code files live in subdirectories and none of them was
+ * ever looked at.** Measured 2026-08-29, once the walk was made recursive: **41 of them are
+ * neither reachable nor declared** — and four of those were `scripts/design-gate/`, the entire
+ * measurement rig of the live DESIGN-GATE programme. `grep -c design-gate package.json` returned
+ * **0**. The instruments that decide whether a design row is finished were invisible to the gate
+ * whose whole job is to notice that nothing runs a file.
+ *
+ * ⛔ It is the gate's own failure mode, one directory down: a guard that looks like it covers a
+ * tree while covering one level of it. Same shape as the compliance card in this file's header.
+ *
+ * ⚠️ Entries are RELATIVE TO `scripts/`. A top-level file is still its bare basename, so all 192
+ * existing allowlist entries keep working untouched; a nested one is `design-gate/measure.mjs`.
+ */
+function walkCode(dir, prefix = "") {
+  const out = [];
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry);
+    const rel = prefix ? `${prefix}/${entry}` : entry;
+    if (statSync(full).isDirectory()) out.push(...walkCode(full, rel));
+    else if (CODE.has(entry.slice(entry.lastIndexOf(".")))) out.push(rel);
+  }
+  return out;
+}
+const files = walkCode(here);
+const dirOf = (rel) => (rel.includes("/") ? rel.slice(0, rel.lastIndexOf("/")) : "");
+const baseOf = (rel) => rel.slice(rel.lastIndexOf("/") + 1);
 
 /**
  * A file counts as reachable if any package.json script names it, OR if another reachable
@@ -77,7 +102,15 @@ const reachable = new Set(namedDirectly);
 for (const entry of namedDirectly) {
   let src = "";
   try { src = stripComments(readFileSync(join(here, entry), "utf8")); } catch { continue; }
-  for (const n of files) if (n !== entry && src.includes(n)) reachable.add(n);
+  for (const n of files) {
+    if (n === entry) continue;
+    // the path as it would be written from `scripts/` — `./live/harness.mjs`, `./anchors/x.mjs`
+    if (src.includes(n)) { reachable.add(n); continue; }
+    // ⛔ A BARE FILENAME COUNTS ONLY FROM A SIBLING. `require("./q.cjs")` inside `live/ops/` is a
+    // real reference, but matching bare filenames GLOBALLY would let any file anywhere confer
+    // reachability on a same-named file in another directory — the E-136 hole in a new costume.
+    if (dirOf(n) === dirOf(entry) && src.includes(baseOf(n))) reachable.add(n);
+  }
 }
 
 const orphans = files.filter((n) => !reachable.has(n)).sort();
