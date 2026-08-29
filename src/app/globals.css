@@ -1519,10 +1519,67 @@ body {
    ⚠️ Both were also chosen because neither can move layout: `filter` does not reflow, and
    a `box-shadow` ring is painted outside the border box. The hover sweep asserts zero
    layout shift for every control on the page, and this rule has to keep that true. */
-.toggle-switch { transition: filter var(--dur-micro) var(--ease-micro), box-shadow var(--dur-micro) var(--ease-micro); }
+.toggle-switch {
+  /* ⛔ ITS OWN POSITIONING CONTEXT, RESTATED DELIBERATELY — the same reason `.mcardp-share`
+     restates it. `toggle.tsx:67` already carries Tailwind's `relative`, so this is a no-op
+     TODAY; it is written here so the hit area below cannot be silently orphaned by an edit
+     to that className string. Same value either way, so the cascade tie is harmless. */
+  position: relative;
+  transition: filter var(--dur-micro) var(--ease-micro), box-shadow var(--dur-micro) var(--ease-micro);
+}
 .toggle-switch:hover:not(:disabled) {
   filter: brightness(1.14);
   box-shadow: 0 0 0 3px oklch(63% 0.18 262 / 0.16);
+}
+
+/* ⭐ DG-A-02 / DG-P-02 (DESIGN-GATE-2026-08-28) — THE 26px SWITCH REACHES 40px WITHOUT
+   MOVING ONE PIXEL OF PAINT.
+   The kit Switch is 44×26 by construction (`toggle.tsx:69-70` sets width/height inline;
+   line 3 documents the geometry). 26 is 14px under `--tap-min`, and DESIGN_AUTHORITY §A2
+   says money controls are never the exception — this component renders `/admin/payments`'
+   kill-switches, the affiliate and bonus MASTER switches, `/admin/system`'s maintenance
+   lever, and all 84 permission grants on `/admin/roles`.
+
+   ⛔ THE VISUAL SIZE DOES NOT CHANGE and no row grows: a pseudo-element is out of flow, so
+   this adds ZERO height anywhere. The hit box IS `--tap-min` (40px) by declaration rather
+   than by sum, centred on the track — which puts its edges exactly 7px above and below the
+   26px the eye sees. ⚠️ Measured, not asserted: `up 20 / down 19` = 40, paint still 44×26.
+
+   ⛔ `left: 0; right: 0` — NEVER A NEGATIVE HORIZONTAL INSET, and that is the whole safety
+   argument. `.btn` declares no `position`, so it is STATIC, and this positioned `::after`
+   paints ABOVE it wherever they overlap. The affiliate and bonus master rows put a 40px
+   Save immediately after the switch in the same flex row, and `/admin/roles` puts two
+   switches 20px apart. A horizontal bleed would steal the click that COMMITS a master
+   switch. Vertical-only PARTITIONS the row instead of overlaying it — the property
+   `.mcardp-details::after` is called out for.
+
+   ⚠️ THE VERTICAL NEIGHBOURS WERE MEASURED, NOT ASSUMED, against the OVERRIDDEN spacing
+   scale (`py-2` = 12px, `py-3.5` = stock 14px). Tightest stacks are `roles-matrix` (`py-2`
+   rows, `gap-2`), `ai-toolkit` (`px-3 py-2` in a `space-y-1.5` column) and the affiliate
+   RewardCard (`py-3.5` inside an `overflow-hidden` ancestor, ~19px of headroom). 7px
+   clears every one. ⛔ `overflow:hidden` clips descendant HIT-TESTING, not only paint, so
+   that RewardCard headroom is the real ceiling on how far this inset could ever grow.
+
+   ⚠️ A BOUNDING BOX CANNOT SEE THIS FIX — `getBoundingClientRect()` correctly keeps
+   returning 44×26 before AND after, so `scripts/responsive-audit.mjs` will go on warning
+   about it forever. Reach is provable only with `document.elementFromPoint`, which is what
+   `npm run qa:toggle-hit` does. ⛔ AND IT MUST BE RE-PROVEN, NEVER ASSUMED: `.pchart-range`
+   tried this exact technique and measured 36px, not 40, because a later sibling took the
+   pixels back by paint order. That control had to be made genuinely tall; this one cannot be. */
+.toggle-switch::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  /* ⛔ STATE THE FLOOR, DO NOT ARITHMETIC YOUR WAY TO IT. The first draft of this rule was
+     `top: -7px; bottom: -7px` — 26 + 7 + 7 = 40, which is wrong, and the hit probe measured
+     38. An absolutely-positioned box resolves against its ancestor's PADDING box, and the
+     track carries a 1px border set inline by `toggle.tsx`, so the containing block is 24px,
+     not 26. Reading `--tap-min` and centring is immune to that: it is exactly the floor at
+     any border width and any track height, and it cannot silently drift if either changes. */
+  top: 50%;
+  height: var(--tap-min);
+  transform: translateY(-50%);
 }
 .input.input-mono { font-family: var(--font-mono); }
 

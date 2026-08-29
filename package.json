@@ -475,6 +475,7 @@
     "qa:landing-shots": "node scripts/landing-shots.mjs",
     "qa:landing-seam": "node scripts/landing-seam.mjs",
     "qa:tap-hit": "node scripts/tap-hit-test.mjs",
+    "qa:toggle-hit": "node scripts/toggle-hit-test.mjs",
     "qa:card-geometry": "node scripts/card-geometry-probe.mjs",
     "qa:board-bootstrap": "node scripts/qa-board-bootstrap.mjs",
     "qa:poll-lifecycle": "node scripts/live-poll-lifecycle.mjs",
