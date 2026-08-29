@@ -333,7 +333,7 @@ function ToggleRow({
           {locked && <I.lock s={11} className="text-text-subtle" />}
         </p>
         <p className="font-mono text-[9.5px] uppercase tracking-[0.1em] text-text-subtle">{sw}</p>
-        <p className="mt-0.5 text-[11px] text-text-tertiary leading-snug">
+        <p className="mt-0.5 text-body-sm text-text-tertiary leading-snug">
           {hint}{!explicit && !locked ? ` · env: ${envValue ? "on" : "off"}` : ""}
         </p>
       </div>

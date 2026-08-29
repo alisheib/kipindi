@@ -112,7 +112,7 @@ export function AmlActionRow({ txnId, amount }: { txnId: string; amount: number 
           Reject
         </Button>
       </div>
-      <p className="text-[10.5px] text-text-tertiary">
+      <p className="text-body-sm text-text-tertiary">
         Large payouts (≥ {formatTzs(TWO_PERSON_THRESHOLD_TZS)}) need <span className="text-text-secondary">two different officers</span>; approval dispatches the payout. <span className="text-text-secondary">Reject</span> returns the held funds.
       </p>
       {mode && (

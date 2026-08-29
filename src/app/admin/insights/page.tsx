@@ -95,7 +95,7 @@ export default async function InsightsPage() {
         {/* Funnel — 4 REAL stages. The missing 5th is called out, not hidden. */}
         <AdminCard title="Acquisition funnel" sw="Njia ya usajili">
           <AdminFunnelChart steps={funnelSteps} />
-          <p className="mt-3 border-t border-border/60 pt-3 text-[11.5px] leading-relaxed text-text-subtle">
+          <p className="mt-3 border-t border-border/60 pt-3 text-body-sm leading-relaxed text-text-subtle">
             Every percentage is a share of <strong className="text-text-muted">Registered</strong>, the top stage —
             not of the row above it.
             {!funnelNested && (
@@ -166,7 +166,7 @@ export default async function InsightsPage() {
               </table>
             </ScrollX>
           )}
-          <p className="mt-3 border-t border-border/60 pt-3 text-[11.5px] leading-relaxed text-text-subtle">
+          <p className="mt-3 border-t border-border/60 pt-3 text-body-sm leading-relaxed text-text-subtle">
             <strong className="text-text-muted">M<em>k</em></strong> = share of the cohort that placed a bet <em>k</em> months
             after signing up (activity retention, from confirmed stakes). Login-frequency retention is not shown —
             only the latest login is stored, so a login curve would be fabricated. GGR / player is lifetime
@@ -214,7 +214,7 @@ export default async function InsightsPage() {
           </AdminCard>
         </div>
 
-        <p className="text-[11px] text-text-faint">
+        <p className="text-body-sm text-text-faint">
           Registered players: {formatNumber(registered)} · computed {data.cached ? "from a ≤60s cache" : "live"} at{" "}
           {new Date(data.generatedAt).toISOString().replace("T", " ").slice(0, 19)} UTC.
         </p>

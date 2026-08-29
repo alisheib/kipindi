@@ -371,7 +371,7 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
             <SortBtn field="title" label="Title" current={sort} dir={dir} onSort={onSort} />
           </div>
           {totalQueue === 0 ? (
-            <div className="px-4 py-10 text-center text-[12.5px] text-text-subtle">{search.trim() ? "No proposals match your search." : "No proposals in this view yet."}</div>
+            <div className="px-4 py-10 text-center text-body-sm text-text-subtle">{search.trim() ? "No proposals match your search." : "No proposals in this view yet."}</div>
           ) : shownQueue.map((q, i) => {
             const active = q.id === sel?.id;
             return (
@@ -407,10 +407,10 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
 
             <div>
               <Cap>Resolution criterion</Cap>
-              <p className="mt-1 text-[12.5px] leading-relaxed text-text-muted">{sel.resolutionCriterion}</p>
+              <p className="mt-1 text-body-sm leading-relaxed text-text-muted">{sel.resolutionCriterion}</p>
               <p className="mt-1 font-mono text-[10.5px] text-text-subtle">selection closes {sel.selectionCloseDate ?? "at resolution"} · resolves {sel.resolutionDate}</p>
               {sel.sourceUrl && (
-                <p className="mt-1.5 flex items-center gap-1.5 text-[11.5px]">
+                <p className="mt-1.5 flex items-center gap-1.5 text-body-sm">
                   <I.link s={12} className="shrink-0 text-text-subtle" />
                   <a href={sel.sourceUrl} target="_blank" rel="noopener noreferrer nofollow" className="truncate text-royal-200 hover:underline" title={sel.sourceUrl}>{sel.sourceUrl}</a>
                 </p>
@@ -432,7 +432,7 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
                 );
               })}
             </div>
-            <p className="flex items-center gap-1.5 text-[11.5px] text-text-subtle"><I.info s={13} />Votes only rank the queue — the officer makes the final call.</p>
+            <p className="flex items-center gap-1.5 text-body-sm text-text-subtle"><I.info s={13} />Votes only rank the queue — the officer makes the final call.</p>
 
             <div className="h-px bg-border" />
 
@@ -481,7 +481,7 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
                   <Input value={eSource} onChange={(e) => setESource(e.target.value)} placeholder="https://..." mono size="sm" />
                 </div>
                 {!editValid && (
-                  <p className="text-[10.5px] text-no-300">Check the fields: title 8–120 chars, criterion ≥ 12, a resolution date, selection close before it, and a valid source URL.</p>
+                  <p className="text-body-sm text-no-300">Check the fields: title 8–120 chars, criterion ≥ 12, a resolution date, selection close before it, and a valid source URL.</p>
                 )}
                 <div className="flex gap-2">
                   <Button variant="ghost" size="md" onClick={() => setEditing(false)}>Cancel</Button>
@@ -491,12 +491,12 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
             ) : approved ? (
               <div className="space-y-2.5">
                 <div className="rounded-md border p-2.5" style={{ borderColor: "color-mix(in oklab, var(--brand-500) 30%, var(--border))", background: "color-mix(in oklab, var(--brand-500) 7%, transparent)" }}>
-                  <p className="flex items-center gap-1.5 text-[11.5px] text-text"><I.checkCircle s={13} />Approved &amp; bonus paid. Publish it live to open the market — no further reward is granted.</p>
+                  <p className="flex items-center gap-1.5 text-body-sm text-text"><I.checkCircle s={13} />Approved &amp; bonus paid. Publish it live to open the market — no further reward is granted.</p>
                 </div>
                 <div>
                   <div className="mb-1.5 text-[12px] font-semibold text-text">Source URL · Chanzo</div>
                   <Input value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} placeholder="https://... (trusted source for resolution)" mono size="sm" />
-                  <p className="mt-1 text-[10.5px] text-text-subtle">Pre-filled from the proposal · must be on the approved source registry.</p>
+                  <p className="mt-1 text-body-sm text-text-subtle">Pre-filled from the proposal · must be on the approved source registry.</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <ConfirmDialog
@@ -509,7 +509,7 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
                   />
                   <Button variant="ghost" size="md" leading={<I.edit s={15} />} onClick={openEdit}>Edit</Button>
                 </div>
-                <p className="text-[10.5px] text-text-subtle">You decide when it goes to market — publishing is a deliberate step, separate from approval.</p>
+                <p className="text-body-sm text-text-subtle">You decide when it goes to market — publishing is a deliberate step, separate from approval.</p>
               </div>
             ) : !open ? (
               // §L3 — an enum used to be interpolated straight into this sentence
@@ -518,7 +518,7 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
               // second one. Deleting the interpolation deletes both defects: a status is
               // storage, and what the officer needs here is the CONSEQUENCE — "listed"
               // said nothing, "live as a market and taking predictions" is the fact.
-              <p className="text-[12.5px] text-text-muted">{terminalNote(sel.status)}</p>
+              <p className="text-body-sm text-text-muted">{terminalNote(sel.status)}</p>
             ) : !declining ? (
               <div className="space-y-2.5">
                 <div className="flex flex-wrap gap-2">
@@ -540,7 +540,7 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
                   <Button variant="ghost" size="md" loading={pending} leading={<I.fileText s={15} />} onClick={sendBack}>Request changes</Button>
                   <Button variant="ghost" size="md" leading={<I.xCircle size={15} />} onClick={() => setDeclining(true)} className="!text-claret-300">Decline</Button>
                 </div>
-                <p className="text-[10.5px] text-text-subtle">Approving instantly credits the proposer&apos;s bonus wallet. Publishing the market is a separate step afterwards.</p>
+                <p className="text-body-sm text-text-subtle">Approving instantly credits the proposer&apos;s bonus wallet. Publishing the market is a separate step afterwards.</p>
               </div>
             ) : (
               <div>
@@ -583,7 +583,7 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
             </span>
             <div className="min-w-0">
               <div className="text-[15px] font-bold">Proposals feature · state</div>
-              <div className="mt-0.5 text-[12px] text-text-muted">Controls what players see and can do — applies immediately on Save.</div>
+              <div className="mt-0.5 text-body-sm text-text-muted">Controls what players see and can do — applies immediately on Save.</div>
             </div>
           </div>
           <div className="flex shrink-0 items-center justify-between gap-3 sm:justify-end">
@@ -618,14 +618,14 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
                 >
                   <span className="shrink-0" style={{ color: sel ? m.fg : "var(--text-subtle)" }}><Ico s={16} /></span>
                   <span className="min-w-0">
-                    <span className="block text-[12.5px] font-semibold leading-tight" style={{ color: sel ? "var(--text)" : "var(--text-muted)" }}>{m.label}</span>
+                    <span className="block text-body-sm font-semibold leading-tight" style={{ color: sel ? "var(--text)" : "var(--text-muted)" }}>{m.label}</span>
                     <span className="block truncate font-mono text-[10px] leading-tight text-text-subtle">{m.sw}</span>
                   </span>
                 </button>
               );
             })}
           </div>
-          <p className="mt-2.5 flex items-start gap-1.5 text-[11px] leading-relaxed text-text-subtle"><I.info s={13} className="mt-px shrink-0" />{meta.note}</p>
+          <p className="mt-2.5 flex items-start gap-1.5 text-body-sm leading-relaxed text-text-subtle"><I.info s={13} className="mt-px shrink-0" />{meta.note}</p>
         </div>
 
         <div className="flex flex-wrap gap-5 p-4">

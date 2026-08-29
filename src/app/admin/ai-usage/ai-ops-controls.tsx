@@ -57,7 +57,7 @@ export function AiOpsControls({
           </div>
           <Button type="submit" size="sm" loading={pending}>Apply</Button>
         </form>
-        <div className="mt-2 rounded-md border border-border bg-bg-overlay px-3 py-2.5 text-[11px] text-text-muted leading-relaxed space-y-1">
+        <div className="mt-2 rounded-md border border-border bg-bg-overlay px-3 py-2.5 text-body-sm text-text-muted leading-relaxed space-y-1">
           <p>
             <I.sparkle s={11} className="inline text-brand-300 mr-1" />
             <strong className="text-text">Affects poll generation</strong> — the AI that creates new market questions with web search.
@@ -90,7 +90,7 @@ export function AiOpsControls({
               {triageInfo.label}
               <span className="text-[11px] text-text-subtle ml-auto">{triageInfo.cost}</span>
             </div>
-            <p className="mt-2 rounded-md border border-border bg-bg-overlay px-3 py-2.5 text-[11px] text-text-subtle leading-relaxed">
+            <p className="mt-2 rounded-md border border-border bg-bg-overlay px-3 py-2.5 text-body-sm text-text-subtle leading-relaxed">
               Locked to Haiku 4.5 (cheap) for lightweight classification. The heavy resolution check uses the primary model above.
             </p>
           </div>

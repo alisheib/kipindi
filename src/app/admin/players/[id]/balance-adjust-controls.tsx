@@ -109,7 +109,7 @@ export function BalanceAdjustControls({
       >
         <p className="font-mono text-[10px] uppercase tracking-[0.18em] font-bold text-text mb-1">Balance adjustment · Marekebisho</p>
         <h3 className="font-display text-[18px] font-bold text-text leading-tight">Credit or debit this balance</h3>
-        <p className="mt-1 text-[12.5px] italic text-text-subtle">
+        <p className="mt-1 text-body-sm italic text-text-subtle">
           Current balance {formatTzs(currentBalance)}. Money-safe + audit-logged; a debit can&rsquo;t drive the balance negative.
         </p>
 
@@ -182,7 +182,7 @@ export function BalanceAdjustControls({
         )}
 
         {stage1Msg && (
-          <p className="mt-3 rounded-md border border-border bg-bg-sunken/40 px-3 py-2 text-[12.5px] text-text-secondary" role="status">
+          <p className="mt-3 rounded-md border border-border bg-bg-sunken/40 px-3 py-2 text-body-sm text-text-secondary" role="status">
             <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text block mb-0.5">Awaiting second officer</span>
             {stage1Msg}
           </p>

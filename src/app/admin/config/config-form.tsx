@@ -206,7 +206,7 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
       <div className="rounded-lg border border-border bg-bg-overlay p-3 space-y-3">
         <div>
           <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">Fee model</p>
-          <p className="mt-0.5 text-[11px] text-text-muted">
+          <p className="mt-0.5 text-body-sm text-text-muted">
             Applies to <strong>new polls only</strong>. Existing polls keep the model they were created under —
             the two calculations never mix.
           </p>
@@ -238,7 +238,7 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
 
         {/* What the selected model does — updates on every change so the officer
             always sees exactly what new polls will apply. */}
-        <div className="rounded-md border border-border/70 bg-bg-base/40 px-3 py-2 text-[11.5px] leading-relaxed text-text-muted">
+        <div className="rounded-md border border-border/70 bg-bg-base/40 px-3 py-2 text-body-sm leading-relaxed text-text-muted">
           {feeModel === "loser-share" ? (
             <>
               <strong className="text-text">Loser-share.</strong> When a poll resolves, the fee is a fixed
@@ -378,7 +378,7 @@ export function MarketOverrideForm({ globalConfig }: { globalConfig: RateConfig 
           server-side in `buyPosition`, so they work exactly as advertised. This was
           "4 of 6 controls are inert", never "the form is broken" — deleting the form
           would have deleted two working controls. */}
-      <p className="rounded-md border border-border bg-bg-overlay px-3 py-2.5 text-[11.5px] leading-relaxed text-text-muted">
+      <p className="rounded-md border border-border bg-bg-overlay px-3 py-2.5 text-body-sm leading-relaxed text-text-muted">
         <strong className="text-text">Stake bounds only.</strong> Fee rates are global and are
         frozen onto a poll when it is created, so they cannot be overridden per market — change
         them above, before creating the poll.

@@ -51,7 +51,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
     <label className="block">
       <span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mb-1">{label}</span>
       {children}
-      {hint && <span className="mt-1 block text-[10.5px] leading-snug text-text-subtle">{hint}</span>}
+      {hint && <span className="mt-1 block text-body-sm leading-snug text-text-subtle">{hint}</span>}
     </label>
   );
 }
@@ -80,7 +80,7 @@ export function EvidencePanel({
       // `text-danger-fg` — `hot-rose` is not a bridged colour family, so the
       // unreadable-feed state painted in ordinary body ink, indistinguishable
       // from a healthy evidence reading. Not `no-300`: §B2 reserves YES/NO.
-      <div className="text-[10.5px] leading-snug text-danger-fg">
+      <div className="text-body-sm leading-snug text-danger-fg">
         <span className="font-mono text-[13px] font-bold">—</span>
         <div>nothing readable on that page</div>
       </div>
@@ -108,7 +108,7 @@ export function EvidencePanel({
   const stale = ageSec > maxStalenessSeconds;
   const human = (s: number) => (s < 120 ? `${s}s` : s < 7200 ? `${Math.round(s / 60)}m` : `${Math.round(s / 3600)}h`);
   return (
-    <div className="text-[10.5px] leading-snug">
+    <div className="text-body-sm leading-snug">
       <span className="font-mono text-[13px] font-bold tabular-nums text-text">
         ${observedPrice.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}
       </span>
@@ -223,7 +223,7 @@ export function ProposeForm({
       </div>
 
       {chosen && (
-        <p className="text-[11.5px] leading-[1.55] text-text-subtle max-w-[80ch]">
+        <p className="text-body-sm leading-[1.55] text-text-subtle max-w-[80ch]">
           {/* E-47b — the AI does not read anything. It used to say "the AI may only read
               {chosen.sourceDomain} … it will report the price and quote time it actually finds
               there", which described 12 production generations that read nothing at all. */}
@@ -262,7 +262,7 @@ export function ProposeForm({
             {/* A generation still going at the last phase is not stuck — say so, rather
                 than leaving the officer staring at a bar that has stopped moving. */}
             {gen.active === "finishing" && gen.elapsed > 45 && (
-              <p className="text-[11px] leading-[1.55] text-warning-fg">
+              <p className="text-body-sm leading-[1.55] text-warning-fg">
                 Still working after {gen.elapsed}s. Web-search grounding can be slow on an
                 awkward page — it will finish or fail on its own, and either way the result
                 lands in the queue. Nothing is lost.
@@ -402,7 +402,7 @@ export function ReviewActions({
             Review · {assetKey} {durationMinutes}m
           </h2>
           {blockingReasons.length > 0 && (
-            <div className="rounded-lg border border-warning-border bg-warning-bg p-3 text-[11.5px] leading-[1.55] text-warning-fg">
+            <div className="rounded-lg border border-warning-border bg-warning-bg p-3 text-body-sm leading-[1.55] text-warning-fg">
               <strong>This cannot be approved yet:</strong>
               <ul className="mt-1 space-y-0.5">
                 {blockingReasons.map((r) => <li key={r}>· {r}</li>)}
@@ -417,7 +417,7 @@ export function ReviewActions({
           {reasoning && (
             <div className="rounded-lg border border-border bg-[var(--bg-inset)] p-3">
               <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mb-1">What the AI said</p>
-              <p className="text-[11.5px] leading-[1.6] text-text-secondary whitespace-pre-wrap">{reasoning}</p>
+              <p className="text-body-sm leading-[1.6] text-text-secondary whitespace-pre-wrap">{reasoning}</p>
             </div>
           )}
 
@@ -466,7 +466,7 @@ export function ReviewActions({
           {localError && (
             // `text-danger-fg` — see EvidencePanel above; `hot-rose` never rendered,
             // so this validation error looked like ordinary hint text.
-            <p className="text-[11.5px] text-danger-fg">{localError}</p>
+            <p className="text-body-sm text-danger-fg">{localError}</p>
           )}
 
           <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -484,7 +484,7 @@ export function ReviewActions({
               {state === "APPROVED" ? "Already approved" : "Approve"}
             </Button>
             {dirty && (
-              <span className="text-[10.5px] text-text-subtle">Save your changes before approving.</span>
+              <span className="text-body-sm text-text-subtle">Save your changes before approving.</span>
             )}
           </div>
         </div>
@@ -501,7 +501,7 @@ export function ReviewActions({
           <h2 id={`reject-title-${id}`} className="font-display text-[16px] font-semibold text-text">
             Reject · {assetKey} {durationMinutes}m
           </h2>
-          <p className="text-[12px] leading-[1.6] text-text-secondary">
+          <p className="text-body-sm leading-[1.6] text-text-secondary">
             Pick every reason that applies. These are counted, so they tell us which sources and
             framings the AI keeps getting wrong.
           </p>

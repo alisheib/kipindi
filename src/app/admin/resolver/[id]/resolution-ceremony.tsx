@@ -142,7 +142,7 @@ export function ResolutionCeremony({
             rows={3}
             maxLength={2000}
             placeholder="Paste the exact quote from the official source that settles this market…"
-            className="w-full rounded-md border border-border bg-bg-overlay px-3 py-2 text-[12.5px] leading-relaxed text-text admin-focus resize-y placeholder:text-text-subtle"
+            className="w-full rounded-md border border-border bg-bg-overlay px-3 py-2 text-body-sm leading-relaxed text-text admin-focus resize-y placeholder:text-text-subtle"
           />
           <span className="mt-0.5 block text-right font-mono text-[10px] text-text-subtle">{evidence.length}/2000</span>
         </label>
@@ -215,7 +215,7 @@ export function ResolutionCeremony({
             rows={3}
             maxLength={2000}
             placeholder="Paste the exact quote from the official source that settles this market…"
-            className="w-full rounded-md border border-border bg-bg-overlay px-3 py-2 text-[12.5px] leading-relaxed text-text admin-focus resize-y placeholder:text-text-subtle"
+            className="w-full rounded-md border border-border bg-bg-overlay px-3 py-2 text-body-sm leading-relaxed text-text admin-focus resize-y placeholder:text-text-subtle"
           />
           <span className="mt-0.5 block text-right font-mono text-[10px] text-text-subtle">{evidence.length}/2000</span>
         </label>
@@ -249,7 +249,7 @@ export function ResolutionCeremony({
           </span>
           <span className="ml-auto font-mono text-[10px] text-text-subtle">seal to publish</span>
         </div>
-        <p className="mt-2 text-[12px] leading-relaxed text-text-muted">
+        <p className="mt-2 text-body-sm leading-relaxed text-text-muted">
           Sealing credits every winning wallet, closes every losing position, starts the 24-hour objection
           window, and writes an immutable audit entry. <strong className="text-text">This is final.</strong>
         </p>
@@ -272,7 +272,7 @@ export function ResolutionCeremony({
               rows={2}
               maxLength={2000}
               placeholder="Optional: note what you independently verified before sealing…"
-              className="w-full rounded-md border border-border bg-bg-overlay px-3 py-2 text-[12.5px] leading-relaxed text-text admin-focus resize-y placeholder:text-text-subtle"
+              className="w-full rounded-md border border-border bg-bg-overlay px-3 py-2 text-body-sm leading-relaxed text-text admin-focus resize-y placeholder:text-text-subtle"
             />
           </label>
 

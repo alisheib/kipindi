@@ -118,7 +118,7 @@ export async function ReportPackCard() {
         {sealed ? (
           <div className="flex items-start gap-2.5">
             <I.shieldcheck s={16} className="mt-0.5 shrink-0" style={{ color: "var(--gold-400)" }} />
-            <p className="text-[12px] text-text-muted">
+            <p className="text-body-sm text-text-muted">
               Pack acknowledged by the Gaming Board{pack.acknowledgedAt ? ` on ${formatDateTime(pack.acknowledgedAt)}` : ""}.
               The two-officer chain is complete and immutable.
             </p>
@@ -147,7 +147,7 @@ function SignSlot({ role, name, at }: { role: string; name: string | null; at: s
       </div>
       {signed ? (
         <>
-          <p className="mt-1 truncate text-[12.5px] font-semibold text-text" title={name!}>{name}</p>
+          <p className="mt-1 truncate text-body-sm font-semibold text-text" title={name!}>{name}</p>
           {at && <p className="font-mono text-[10px] text-text-subtle">{formatDateTime(at)}</p>}
         </>
       ) : (

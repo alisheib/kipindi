@@ -79,7 +79,7 @@ export function SettleButton({
             Pay out this market?
           </h2>
 
-          <p className="text-[12.5px] leading-relaxed text-text-muted">{title}</p>
+          <p className="text-body-sm leading-relaxed text-text-muted">{title}</p>
 
           <div className="rounded-md border border-border bg-bg-overlay font-mono text-[12.5px]">
             <Row label="Verdict" value={outcome ?? "—"} />
@@ -87,7 +87,7 @@ export function SettleButton({
             <Row label="Open positions" value={String(positions)} />
           </div>
 
-          <p className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-[12px] leading-relaxed text-warning-fg">
+          <p className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-body-sm leading-relaxed text-warning-fg">
             <I.alertCircle s={14} className="mt-[1px] shrink-0" />
             This credits every winner and closes every position. It cannot be undone — once the
             money is in players&rsquo; wallets, an objection can no longer change it.

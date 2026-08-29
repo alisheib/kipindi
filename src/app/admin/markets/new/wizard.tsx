@@ -185,13 +185,13 @@ export function NewMarketWizard({ feeInfo, platformTz }: { feeInfo: FeeInfo; pla
             <Textarea value={criterionSw} onChange={(e) => setCriterionSw(e.target.value)} disabled={pending} rows={5}
               aria-invalid={!!swIssue || undefined} className={swIssue ? "border-no-700" : undefined}
               placeholder="Inatatuliwa NDIYO iwapo kiwango cha katikati cha BoT…" />
-            {swIssue && <p role="alert" className="mt-1.5 text-[11.5px] leading-snug text-no-300">{issueText(swIssue)}</p>}
+            {swIssue && <p role="alert" className="mt-1.5 text-body-sm leading-snug text-no-300">{issueText(swIssue)}</p>}
           </Field>
           <Field label="Criterion (ZH) · Chinese / 中文" hint="Optional. Same rule as Swahili — blank is honest, a copy of the English is not.">
             <Textarea value={criterionZh} onChange={(e) => setCriterionZh(e.target.value)} disabled={pending} rows={5}
               aria-invalid={!!zhIssue || undefined} className={zhIssue ? "border-no-700" : undefined}
               placeholder="若坦桑尼亚银行最后一个营业日的中间价…" />
-            {zhIssue && <p role="alert" className="mt-1.5 text-[11.5px] leading-snug text-no-300">{issueText(zhIssue)}</p>}
+            {zhIssue && <p role="alert" className="mt-1.5 text-body-sm leading-snug text-no-300">{issueText(zhIssue)}</p>}
           </Field>
         </Section>
       )}
@@ -258,7 +258,7 @@ function Section({ title, sw, children }: { title: string; sw: string; children:
   return (
     <div>
       <h3 className="font-display text-[18px] font-semibold text-text">{title}</h3>
-      <p className="text-[12px] italic text-text-subtle mb-4">{sw}</p>
+      <p className="text-body-sm italic text-text-subtle mb-4">{sw}</p>
       <div className="space-y-3">{children}</div>
     </div>
   );
@@ -269,7 +269,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
     <label className="block">
       <span className="block font-mono text-[10px] uppercase tracking-[0.14em] font-semibold text-text-muted mb-1.5">{label}</span>
       {children}
-      {hint && <p className="mt-1 text-[11px] text-text-subtle">{hint}</p>}
+      {hint && <p className="mt-1 text-body-sm text-text-subtle">{hint}</p>}
     </label>
   );
 }

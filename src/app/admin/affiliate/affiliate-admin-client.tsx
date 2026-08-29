@@ -155,7 +155,7 @@ export function AffiliateAdminClient({ config }: { config: AffiliateConfig }) {
         </span>
         <div className="flex-1 min-w-0">
           <div className="text-[15px] font-bold">
-            Program master switch · <span className="font-normal italic text-text-subtle text-[12.5px]">Swichi kuu</span>
+            Program master switch · <span className="font-normal italic text-text-subtle text-body-sm">Swichi kuu</span>
           </div>
           <div className="mt-0.5 text-[12px] text-text-muted">
             {on
@@ -225,7 +225,7 @@ export function AffiliateAdminClient({ config }: { config: AffiliateConfig }) {
           <Toggle on={c.prize.requireDeposit ?? true} onClick={() => patchPrize({ requireDeposit: !(c.prize.requireDeposit ?? true) })} aria-label="Require deposit" />
           <div>
             <div className="text-[12px] font-semibold">Require deposit (§4.2b)</div>
-            <div className="text-[10.5px] text-text-muted">Recruit must have deposited before prize fires</div>
+            <div className="text-body-sm text-text-muted">Recruit must have deposited before prize fires</div>
           </div>
         </div>
         <Field label="Cap per referrer" hint="Max prizes (0 = none)" suffix="prizes" width={180} value={c.prize.capPerReferrer} onChange={(n) => patchPrize({ capPerReferrer: n })} />

@@ -176,7 +176,7 @@ export default async function AdminUpDownRoundsPage({
 
         {stuckAll.length > 0 && (
           <AdminCard title="Rounds past their deadline" sw="Raundi zilizochelewa" padding="p-4">
-            <p className="text-[12.5px] leading-[1.6] text-text-muted">
+            <p className="text-body-sm leading-[1.6] text-text-muted">
               {stuckAll.length === 1 ? "One round has" : `${stuckLabel} rounds have`} passed their price boundary
               by more than {Math.round(overdueMs / 1000)}s without reaching a verdict, holding{" "}
               <strong className="text-text">{stuckMoneyLabel}</strong> of player stakes. The platform closes
@@ -327,7 +327,7 @@ export default async function AdminUpDownRoundsPage({
           )}
           <AdminPagination total={total} page={page} baseHref={baseHref} />
         </AdminCard>
-        <p className="text-[11.5px] leading-[1.55] text-text-subtle">
+        <p className="text-body-sm leading-[1.55] text-text-subtle">
           Each round is a settled or in-flight price market. Open and close prices are read from the asset&rsquo;s approved
           source at the round&rsquo;s grid boundaries; a round that could not confirm a price VOIDs and refunds every stake
           in full. Full per-round proof (both source links + quoted times) is on each round&rsquo;s market page.

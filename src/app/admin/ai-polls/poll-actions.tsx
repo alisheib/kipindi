@@ -304,14 +304,14 @@ export function GenerateForm({ generatable }: { generatable: string[] }) {
             })}
           </div>
           {generatable.length === 0 ? (
-            <p className="flex items-start gap-1.5 text-[11.5px] text-warning-fg leading-snug">
+            <p className="flex items-start gap-1.5 text-body-sm text-warning-fg leading-snug">
               <I.warning s={13} className="shrink-0 mt-0.5" />
               No categories have an enabled trusted source yet. Add one under{" "}
               <a href="/admin/sources" className="underline underline-offset-2 hover:text-text">Sources &amp; categories</a>{" "}
               before generating — polls can only cite approved domains.
             </p>
           ) : (
-            <p className="text-[11px] text-text-subtle leading-snug">
+            <p className="text-body-sm text-text-subtle leading-snug">
               Only categories with an enabled trusted source can be generated. Manage them under{" "}
               <a href="/admin/sources" className="text-royal-300 underline-offset-2 hover:underline">Sources &amp; categories</a>.
             </p>
@@ -336,7 +336,7 @@ export function GenerateForm({ generatable }: { generatable: string[] }) {
           </button>
           {controlled && (
             <div ref={formRef} className="space-y-3 rounded-lg border border-border bg-bg-overlay p-3.5">
-              <p className="text-[11px] text-text-subtle leading-snug">
+              <p className="text-body-sm text-text-subtle leading-snug">
                 Set specific dates and title. The AI will generate the criterion, options, and sources around your constraints.
               </p>
 
@@ -352,7 +352,7 @@ export function GenerateForm({ generatable }: { generatable: string[] }) {
                   size="sm"
                   error={!!formErrors.title}
                 />
-                {formErrors.title && <p className="mt-1 text-[11px] text-no-300">{formErrors.title}</p>}
+                {formErrors.title && <p className="mt-1 text-body-sm text-no-300">{formErrors.title}</p>}
               </div>
 
               {/* Selection Close: Date + Time */}
@@ -377,7 +377,7 @@ export function GenerateForm({ generatable }: { generatable: string[] }) {
                   />
                 </div>
                 {formErrors.selDate
-                  ? <p className="mt-1 text-[11px] text-no-300">{formErrors.selDate}</p>
+                  ? <p className="mt-1 text-body-sm text-no-300">{formErrors.selDate}</p>
                   : <p className="mt-1 text-[10px] text-text-subtle">When new bets stop · time defaults to 00:00 if blank</p>
                 }
               </div>
@@ -404,7 +404,7 @@ export function GenerateForm({ generatable }: { generatable: string[] }) {
                   />
                 </div>
                 {formErrors.resDate
-                  ? <p className="mt-1 text-[11px] text-no-300">{formErrors.resDate}</p>
+                  ? <p className="mt-1 text-body-sm text-no-300">{formErrors.resDate}</p>
                   : <p className="mt-1 text-[10px] text-text-subtle">When outcome is known · time defaults to 00:00 if blank</p>
                 }
               </div>
@@ -671,7 +671,7 @@ export function BatchGenerateForm({ maxBatch, remaining, generatable }: { maxBat
                     {error ? "Batch failed" : `Batch complete — ${summary?.total ?? 0} generated`}
                   </p>
                 </div>
-                <p className="text-[12.5px] text-text-muted">
+                <p className="text-body-sm text-text-muted">
                   {error ?? `${summary?.pending ?? 0} ready for review · ${summary?.filtered ?? 0} filtered`}
                 </p>
                 <button type="button" onClick={dismiss} className="btn btn-ghost btn-sm rounded-pill w-full">Dismiss</button>
@@ -759,8 +759,8 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
       {/* Web search toggle */}
       <div className="flex items-center justify-between rounded-md border border-border bg-bg-overlay px-3 py-2.5">
         <div className="min-w-0">
-          <p className="text-[12.5px] font-semibold text-text">Live web search grounding</p>
-          <p className="text-[11px] text-text-subtle leading-snug">
+          <p className="text-body-sm font-semibold text-text">Live web search grounding</p>
+          <p className="text-body-sm text-text-subtle leading-snug">
             Grounds every poll in real current events + real source URLs. Off = the model uses its training memory only.
           </p>
         </div>
@@ -784,8 +784,8 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
 
       {/* ── Selection lead times per category ── */}
       <div className="rounded-md border border-border bg-bg-overlay p-3">
-        <p className="text-[12px] font-semibold text-text mb-1">Selection lead time per category · Muda wa kufunga uchaguzi</p>
-        <p className="text-[10.5px] text-text-subtle mb-2.5 leading-snug">
+        <p className="text-body-sm font-semibold text-text mb-1">Selection lead time per category · Muda wa kufunga uchaguzi</p>
+        <p className="text-body-sm text-text-subtle mb-2.5 leading-snug">
           How long before the resolution date betting closes for each category. Players see &quot;{SELECTION.selectionClosedWaiting.en}&quot; after this cutoff.
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -1095,7 +1095,7 @@ export function DeleteAction({ pollId, state, redirectTo }: { pollId: string; st
                 <li>Refund every player their <strong className="text-text">full stake — no deductions</strong></li>
                 <li>Send refund notifications to all affected players</li>
               </ul>
-              <p className="text-[12px] text-text-subtle">
+              <p className="text-body-sm text-text-subtle">
                 Only proceed under a regulatory or government directive. This is irreversible.
               </p>
               <div className="mt-3 pt-3 border-t border-border/60">
@@ -1218,7 +1218,7 @@ export function DeleteAllButton({ totalCount }: { totalCount: number }) {
             <li>Any <strong className="text-text">PUBLISHED</strong> markets are voided and all players are refunded their full stake — no deductions</li>
             <li><strong className="text-text">GENERATING</strong> polls (in-flight) are left untouched</li>
           </ul>
-          <p className="text-[12px] text-text-subtle">This cannot be undone. The platform will be clean and ready for fresh generation.</p>
+          <p className="text-body-sm text-text-subtle">This cannot be undone. The platform will be clean and ready for fresh generation.</p>
           <div className="mt-3 pt-3 border-t border-border/60">
             <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle mb-1.5">Reason (required for audit log)</p>
             <textarea
@@ -1450,7 +1450,7 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
           <TimeSelect value={selTime} size="md" error={!!selError} aria-label="Selection close time, 24-hour" onChange={(t) => { setSelTime(t); setSelError(""); }} />
         </div>
         {selError
-          ? <p className="mt-1 text-[11px] text-no-300">{selError}</p>
+          ? <p className="mt-1 text-body-sm text-no-300">{selError}</p>
           : <p className="mt-0.5 text-[10px] text-text-subtle">When new bets stop. Leave blank to auto-compute from category lead time.</p>
         }
       </div>
@@ -1462,7 +1462,7 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
           </div>
           <TimeSelect value={editTime} size="md" error={!!dateError} aria-label="Resolution time, 24-hour" onChange={(t) => { setEditTime(t); setDateError(""); }} />
         </div>
-        {dateError && <p className="mt-1 text-[11px] text-no-300">{dateError}</p>}
+        {dateError && <p className="mt-1 text-body-sm text-no-300">{dateError}</p>}
       </div>
       <div className="flex flex-col gap-2 pt-1">
         <button type="button" onClick={submit} disabled={pending} className="btn btn-primary btn-md w-full">

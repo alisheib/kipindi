@@ -123,7 +123,7 @@ export default async function AdminSystemPage() {
               pulse={admission.shed + admission.timedOut > 0}
             />
           </div>
-          <p className="mt-3 text-[12px] text-text-muted">
+          <p className="mt-3 text-body-sm text-text-muted">
             A bet beyond <strong className="text-text">{admission.limits.maxInFlight}</strong> in flight
             waits in a FIFO queue for up to <strong className="text-text">{(admission.limits.maxWaitMs / 1000).toFixed(0)}s</strong> instead
             of failing. <strong className="text-text">Turned away</strong>{" "}counts the bets that were
@@ -136,7 +136,7 @@ export default async function AdminSystemPage() {
           </p>
           {/* Redis posture. Bets never touch Redis either way — stated plainly so
               nobody reads a red badge here as a betting incident. */}
-          <p className="mt-2 text-[12px] text-text-muted">
+          <p className="mt-2 text-body-sm text-text-muted">
             <strong className="text-text">Redis</strong>{" · "}
             {!redis.configured ? (
               redis.urlPresent ? (
@@ -208,7 +208,7 @@ export default async function AdminSystemPage() {
               </div>
             </div>
           ) : (
-            <p className="flex items-center gap-1.5 mb-3 text-[12.5px] text-success">
+            <p className="flex items-center gap-1.5 mb-3 text-body-sm text-success">
               <I.check size={14} className="shrink-0" />
               Nothing is overdue — every market past its objection window has been paid by its timer.
             </p>
@@ -451,7 +451,7 @@ export default async function AdminSystemPage() {
           sw="Mawasiliano ya msaada"
           action={<span className="font-mono text-[10px] text-text-subtle">{getSupportConfig().email}</span>}
         >
-          <p className="text-[12px] text-text-subtle mb-3">
+          <p className="text-body-sm text-text-subtle mb-3">
             Changes here propagate to every page that shows support info: help, chatbot, login, register, legal, KYC, account, forgot-password, footer, reality-check.
           </p>
           <SupportConfigForm config={getSupportConfig()} />

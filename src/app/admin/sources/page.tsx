@@ -53,7 +53,7 @@ export default async function AdminSourcesPage() {
           sw="Aina za soko"
           action={<span className="font-mono text-[10px] tracking-[0.12em] uppercase text-text-tertiary">click any to disable site-wide</span>}
         >
-          <p className="text-[12px] text-text-tertiary mb-3 max-w-[72ch]">
+          <p className="text-body-sm text-text-tertiary mb-3 max-w-[72ch]">
             Disabling a category prevents officers from publishing new markets in it. Existing live markets continue
             until they resolve. Use this to e.g. ship "sports + crypto only" mode for a launch window.
           </p>

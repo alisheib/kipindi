@@ -208,7 +208,7 @@ function SettleConfirm({
               ? "Every stake is refunded and the market closes — no payouts, no margin, no undo."
               : "The outcome is recorded and audited. Winners are paid automatically once the objection window closes with nothing standing; an upheld objection can still change it until then."}
           </p>
-          <p className="text-text-subtle italic text-[12px] mt-1.5">
+          <p className="text-text-subtle italic text-body-sm mt-1.5">
             Hatua hii haiwezi kubatilishwa.
           </p>
         </>

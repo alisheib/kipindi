@@ -67,11 +67,11 @@ export default async function AdminEventsPage() {
       <AdminPageHead title="Events" sw="Matukio" />
       <AdminBody>
         <AdminCard title="Why this exists" sw="Kwa nini">
-          <p className="text-[12.5px] leading-relaxed text-text-muted">
+          <p className="text-body-sm leading-relaxed text-text-muted">
             Markets scheduled around <strong className="text-text">real moments</strong> (a derby, the rains, a rate
             decision) draw natural two-sided interest — which is the honest fix for thin, one-sided pools.
           </p>
-          <p className="mt-2 text-[12.5px] leading-relaxed text-text-subtle">
+          <p className="mt-2 text-body-sm leading-relaxed text-text-subtle">
             <strong className="text-text-muted">You</strong> enter the events, not the AI. We have no fixtures feed, so
             an AI-authored calendar could invent a match that does not exist. Each event needs an official source on the
             trusted registry. The AI is only <em>steered</em> by what you enter — and an officer must still approve the

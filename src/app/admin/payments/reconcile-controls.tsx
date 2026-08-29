@@ -85,7 +85,7 @@ export function ReconcileControls({ txnId }: { txnId: string }) {
         <h3 className="font-display text-[18px] font-bold text-text leading-tight">
           {mode === "match" ? "Match to a PSP settlement ref" : "Write off this unmatched item"}
         </h3>
-        <p className="mt-1 text-[12.5px] italic text-text-subtle">
+        <p className="mt-1 text-body-sm italic text-text-subtle">
           No money moves — this records the PSP correlation for an already-settled movement. COMPLIANCE-audited.
         </p>
 

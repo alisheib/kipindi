@@ -80,7 +80,7 @@ export function EventsClient({
               <tr key={e.id} className="border-t border-border/50 align-top">
                 <td className="py-2.5 pr-3">
                   <p className="font-semibold text-text">{e.title}</p>
-                  {e.note && <p className="mt-0.5 text-[11.5px] text-text-subtle">{e.note}</p>}
+                  {e.note && <p className="mt-0.5 text-body-sm text-text-subtle">{e.note}</p>}
                 </td>
                 <td className="py-2.5 pr-3"><Chip size="sm" variant="cat">{e.category}</Chip></td>
                 <td className="py-2.5 pr-3 font-mono tabular-nums text-text-muted">{formatDateTime(e.startsAt)}</td>
@@ -140,7 +140,7 @@ export function EventsClient({
           <Input name="note" placeholder="Draft a market on the result, not the scoreline" />
         </label>
       </div>
-      <p className="mt-2 text-[11px] text-text-subtle">
+      <p className="mt-2 text-body-sm text-text-subtle">
         The source domain must already be on the trusted registry for this category, or the event is rejected.
       </p>
       <div className="mt-3">

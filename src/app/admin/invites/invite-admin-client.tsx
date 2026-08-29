@@ -162,7 +162,7 @@ export function CampaignControls({ campaignId, status, queued, smsLive }: { camp
             />
           </Field>
         </div>
-        <div className="text-[10.5px] text-text-subtle">Fill an email, a phone, or both — at least one is required. Add several, review the list, then submit.</div>
+        <div className="text-body-sm text-text-subtle">Fill an email, a phone, or both — at least one is required. Add several, review the list, then submit.</div>
         <Button variant="ghost" size="sm" leading={<I.plus s={13} />} onClick={addToList} disabled={locked}>Add to list</Button>
       </div>
 
@@ -180,7 +180,7 @@ export function CampaignControls({ campaignId, status, queued, smsLive }: { camp
           </div>
           <ul className="divide-y divide-border max-h-72 overflow-y-auto">
             {rows.map((row, i) => (
-              <li key={i} className="flex items-center gap-2 px-3 py-2 text-[12px]">
+              <li key={i} className="flex items-center gap-2 px-3 py-2 text-body-sm">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 flex-1 min-w-0">
                   {row.email && <span className="font-mono text-text-muted truncate">{row.email}</span>}
                   {row.phone && <span className="font-mono text-text-muted">+255 {row.phone}</span>}
@@ -197,7 +197,7 @@ export function CampaignControls({ campaignId, status, queued, smsLive }: { camp
 
       {/* Zero-queued hint — tells the admin why Send is unavailable. */}
       {!locked && queued === 0 && !busy && (
-        <p className="text-[11.5px] text-text-subtle">
+        <p className="text-body-sm text-text-subtle">
           {rows.length > 0
             ? "Press “Add to campaign” to queue these contacts, then Send."
             : "No invites queued yet — add contacts above, then Send."}

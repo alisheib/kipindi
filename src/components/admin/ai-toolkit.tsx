@@ -184,7 +184,7 @@ export function AiToolkit({ status, canAct = true }: { status: AiToolkitStatus; 
           </div>
 
           {!hasKey ? (
-            <div className="rounded-md border border-warning-border bg-warning-bg px-3 py-2.5 text-[11.5px] text-warning-fg leading-snug">
+            <div className="rounded-md border border-warning-border bg-warning-bg px-3 py-2.5 text-body-sm text-warning-fg leading-snug">
               <strong>No ANTHROPIC_API_KEY on this deployment.</strong> Every AI feature below is
               inert regardless of these switches — set the key in Railway to enable AI.
             </div>
@@ -234,7 +234,7 @@ export function AiToolkit({ status, canAct = true }: { status: AiToolkitStatus; 
               {/* E-19: say WHY the switches are inert, so the panel reads as a status
                   board rather than a broken console. */}
               {!canAct && (
-                <p className="flex items-start gap-1.5 pt-0.5 text-[10.5px] leading-snug text-text-subtle">
+                <p className="flex items-start gap-1.5 pt-0.5 text-body-sm leading-snug text-text-subtle">
                   <I.lock s={11} aria-hidden className="mt-[1px] shrink-0" />
                   <span>
                     Status only — switching an AI feature is a <strong className="text-text-tertiary">compliance</strong> decision.
@@ -304,7 +304,7 @@ function ToggleRow({
       style={busy ? { borderColor: "var(--border-strong)", background: "var(--bg-elevated)" } : undefined}
     >
       <div className="min-w-0">
-        <p className="inline-flex items-center gap-1.5 font-display text-[12.5px] font-bold text-text">
+        <p className="inline-flex items-center gap-1.5 font-display text-body-sm font-bold text-text">
           <span className={warn ? "text-warning-fg" : "text-text-tertiary"}>
             {busy ? <Spinner size={14} /> : icon}
           </span>{label}
@@ -312,7 +312,7 @@ function ToggleRow({
         {/* ⛔ THE HINT IS REPLACED, NOT DECORATED. It describes the state the switch is IN,
             which is exactly the thing that is mid-change — leaving it up during the save
             states the old setting as current while the new one is being written. */}
-        <p className="mt-0.5 text-[10.5px] text-text-tertiary leading-snug" aria-live="polite">
+        <p className="mt-0.5 text-body-sm text-text-tertiary leading-snug" aria-live="polite">
           {busy ? "Saving…" : hint}
         </p>
       </div>

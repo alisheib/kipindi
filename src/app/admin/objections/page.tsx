@@ -65,7 +65,7 @@ export default async function AdminObjectionsPage({ searchParams }: { searchPara
     <>
       <AdminPageHead title="Objections" sw="Pingamizi" />
       <AdminBody>
-      <p className="text-[12.5px] leading-relaxed text-text-muted">
+      <p className="text-body-sm leading-relaxed text-text-muted">
         Player disputes against a market verdict. An OPEN objection freezes that market&rsquo;s
         settlement — nobody is paid until you rule.
       </p>
@@ -135,7 +135,7 @@ export default async function AdminObjectionsPage({ searchParams }: { searchPara
                     </td>
                     <td className="font-mono text-[11px] text-text-muted">{who}</td>
                     <td className="text-[12px] text-text-muted">{REASON_LABEL[o.reason] ?? o.reason}</td>
-                    <td className="text-[12px] leading-relaxed text-text-muted whitespace-pre-wrap break-words max-w-[190px]">
+                    <td className="text-body-sm leading-relaxed text-text-muted whitespace-pre-wrap break-words max-w-[190px]">
                       {o.detail}
                     </td>
                     <td className="text-right font-mono tabular-nums text-text-muted">
@@ -165,7 +165,7 @@ export default async function AdminObjectionsPage({ searchParams }: { searchPara
                             {o.reviewedAt ? formatDateTime(o.reviewedAt) : "—"}
                           </div>
                           {o.reviewNote && (
-                            <p className="text-[11.5px] text-text-muted whitespace-pre-wrap break-words max-w-[220px]">
+                            <p className="text-body-sm text-text-muted whitespace-pre-wrap break-words max-w-[220px]">
                               {o.reviewNote}
                             </p>
                           )}

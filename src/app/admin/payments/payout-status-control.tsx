@@ -88,7 +88,7 @@ export function PayoutStatusControl({
       </div>
 
       {derivedOverrodeDeclared && (
-        <p className="flex items-start gap-1.5 rounded-md border border-warning-border bg-warning-bg px-2.5 py-2 text-[11px] leading-snug text-text-muted">
+        <p className="flex items-start gap-1.5 rounded-md border border-warning-border bg-warning-bg px-2.5 py-2 text-body-sm leading-snug text-text-muted">
           <I.alertCircle s={13} className="mt-px shrink-0 text-warning-fg" />
           <span>
             The withdrawal queue is worse than what you declared, so <b>reality wins</b> — players see{" "}
@@ -148,7 +148,7 @@ export function PayoutStatusControl({
         {/* A custom note replaces the translated body, so it reaches Swahili and Chinese players
             in English. Say so rather than let an officer discover it from a support ticket. */}
         {text.trim().length > 0 && (
-          <span className="mt-1 block text-[10.5px] leading-snug text-warning-fg">
+          <span className="mt-1 block text-body-sm leading-snug text-warning-fg">
             A custom note replaces the translated message for every player, in all three languages.
           </span>
         )}

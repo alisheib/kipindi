@@ -325,7 +325,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
             <AdminKpi label="Paid out" sw="Zilizolipwa" value={formatBalancePill(Math.round(pnl.payouts))} delta={`${pnl.players.toLocaleString()} players`} spark={false} />
             <AdminKpi label="AI oracle cost" sw="Gharama ya AI" value={usd(aiCost.last30)} delta={`${aiCost.calls.toLocaleString()} calls · 90d ${usd(aiCost.all)}`} spark={false} />
           </KpiGrid>
-          <p className="mt-3 text-[11.5px] leading-[1.55] text-text-subtle max-w-[80ch]">
+          <p className="mt-3 text-body-sm leading-[1.55] text-text-subtle max-w-[80ch]">
             This is <strong>Up &amp; Down alone</strong> — long-form polls are reported separately under Money → Reports.
             GGR is the commission kept on this game (TZS); AI cost is what its price oracle spent (USD). The platform&rsquo;s
             combined figures, and the TRA/GBT levy on total commission, are unchanged.
@@ -441,7 +441,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
               </table>
             </ScrollX>
           )}
-          <p className="px-4 pb-4 pt-3 text-[11.5px] leading-[1.55] text-text-subtle max-w-[95ch]">
+          <p className="px-4 pb-4 pt-3 text-body-sm leading-[1.55] text-text-subtle max-w-[95ch]">
             An asset&rsquo;s price source must be an approved trusted source at{" "}
             <span className="font-mono text-[11px]">/admin/sources</span> — checked when it is added, when it is
             enabled, and again each time a chain starts.
@@ -687,7 +687,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                                 <span className={ink}>{paidPct.toFixed(0)}%</span>
                                 <span className="text-text-faint"> {s.paid}/{s.resolved} paid</span>
                                 {parts.length > 0 && (
-                                  <div className="text-text-faint text-[10.5px] leading-tight">
+                                  <div className="text-text-faint text-body-sm leading-tight">
                                     {parts.join(" · ")}
                                   </div>
                                 )}
@@ -808,7 +808,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
         {/* ── Reading health ─────────────────────────────────────────────── */}
         <AdminCard title="Price readings" sw="Bei zilizosomwa">
           {oracle.length === 0 ? (
-            <p className="text-[12px] text-text-tertiary">Enable an asset to see its price readings here.</p>
+            <p className="text-body-sm text-text-tertiary">Enable an asset to see its price readings here.</p>
           ) : (
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
               {oracle.map(({ asset, last }) => (
@@ -847,7 +847,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
               ))}
             </div>
           )}
-          <p className="mt-3 text-[11.5px] leading-[1.55] text-text-subtle max-w-[80ch]">
+          <p className="mt-3 text-body-sm leading-[1.55] text-text-subtle max-w-[80ch]">
             A reading is stored once per asset per grid boundary and shared by every round meeting at that instant, so a
             round&rsquo;s closing price is the next round&rsquo;s opening price exactly. The time shown is the one the
             source itself published, not our boundary.

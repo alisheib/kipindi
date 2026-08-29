@@ -72,7 +72,7 @@ export function ForceReverifyControls({ userId }: { userId: string }) {
       >
         <p className="font-mono text-[10px] uppercase tracking-[0.18em] font-bold text-text mb-1">KYC · Re-verify</p>
         <h3 className="font-display text-[18px] font-bold text-text leading-tight">Force KYC re-verification?</h3>
-        <p className="mt-1 text-[12.5px] italic text-text-subtle">
+        <p className="mt-1 text-body-sm italic text-text-subtle">
           Moves this APPROVED player back to re-verification and asks them to re-submit their documents. Audit-logged. It does <strong>not</strong> stop withdrawals — to hold money, freeze the wallet or pause payouts.
         </p>
         <label className="mt-3 block">

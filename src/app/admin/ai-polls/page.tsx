@@ -549,14 +549,14 @@ function PollRow({ poll, mode }: { poll: StoredAIPoll; mode: "review" | "publish
           </p>
         </Link>
         {poll.titleSw && (
-          <p className="text-[12px] italic text-text-tertiary leading-tight">{poll.titleSw}</p>
+          <p className="text-body-sm italic text-text-tertiary leading-tight">{poll.titleSw}</p>
         )}
         {poll.titleZh && (
-          <p className="text-[12px] italic text-text-tertiary leading-tight">{poll.titleZh}</p>
+          <p className="text-body-sm italic text-text-tertiary leading-tight">{poll.titleZh}</p>
         )}
 
         {/* Resolution criterion */}
-        <p className="mt-1 text-[12px] text-text-muted leading-snug line-clamp-2">
+        <p className="mt-1 text-body-sm text-text-muted leading-snug line-clamp-2">
           {poll.resolutionCriterion || <span className="italic">No resolution criterion</span>}
         </p>
 

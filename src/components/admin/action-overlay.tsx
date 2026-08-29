@@ -85,7 +85,7 @@ export function ActionOverlay({ state, onDismiss, onRetry, retryLabel }: {
               <p className="font-display text-[15px] font-semibold text-text">{state.label}</p>
             </div>
             {state.sublabel && (
-              <p className="text-[11px] text-text-subtle leading-relaxed">{state.sublabel}</p>
+              <p className="text-body-sm text-text-subtle leading-relaxed">{state.sublabel}</p>
             )}
           </div>
         )}

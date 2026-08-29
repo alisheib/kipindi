@@ -142,8 +142,8 @@ export function ObjectionDecision({ objectionId, canReverse, canDecide = true }:
             <p
               className={
                 copy.danger
-                  ? "flex items-start gap-2 rounded-md border border-danger-border bg-danger-bg px-3 py-2 text-[12px] leading-relaxed text-danger-fg"
-                  : "flex items-start gap-2 rounded-md border border-border bg-bg-overlay px-3 py-2 text-[12px] leading-relaxed text-text-muted"
+                  ? "flex items-start gap-2 rounded-md border border-danger-border bg-danger-bg px-3 py-2 text-body-sm leading-relaxed text-danger-fg"
+                  : "flex items-start gap-2 rounded-md border border-border bg-bg-overlay px-3 py-2 text-body-sm leading-relaxed text-text-muted"
               }
             >
               <I.alertCircle s={14} className="mt-[1px] shrink-0" />

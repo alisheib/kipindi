@@ -240,7 +240,7 @@ export function MaintenanceModeForm({ enabled, note }: { enabled: boolean; note:
           <p className={`mt-0.5 font-display text-[15px] font-bold ${on ? "text-claret-200" : "text-text"}`}>
             {on ? "PAUSED · maintenance" : "LIVE · accepting"}
           </p>
-          <p className="mt-0.5 text-[11.5px] text-text-subtle leading-snug">
+          <p className="mt-0.5 text-body-sm text-text-subtle leading-snug">
             {on
               ? "Withdrawals & cash-outs stay open — funds are never trapped."
               : "Toggle to pause new bets + deposits during a deploy or incident."}

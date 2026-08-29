@@ -37,7 +37,7 @@ export function AdminRestricted({
             </span>
             <div>
               <p className="text-[13.5px] font-semibold text-text">Your role cannot view this page.</p>
-              <p className="mt-1 text-[12.5px] leading-relaxed text-text-muted">
+              <p className="mt-1 text-body-sm leading-relaxed text-text-muted">
                 This surface exposes regulator-grade financial data and is limited to{" "}
                 <strong className="text-text">{need}</strong>. Moderators are excluded by policy — see
                 the role tiers in <code className="font-mono text-[11.5px]">roles.ts</code>.

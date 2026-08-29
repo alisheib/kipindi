@@ -101,7 +101,7 @@ export function KycDocViewer({ userId, slots }: { userId: string; slots: Slot[] 
                 <div className="flex max-w-[380px] flex-col items-center gap-2 p-4 text-center" role="alert">
                   <I.warning s={24} className="text-warning-fg" />
                   <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">Document failed to load</p>
-                  <p className="text-[12px] leading-snug text-text-subtle">
+                  <p className="text-body-sm leading-snug text-text-subtle">
                     The file exists on record — this is a fetch or permission failure, not missing or altered evidence. Retry before drawing any conclusion.
                   </p>
                   <button

@@ -149,7 +149,7 @@ export function SuspendControls({
             ? "Lock this account?"
             : "Restore account access?"}
         </h3>
-        <p className="mt-1 text-[12.5px] italic text-text-subtle">
+        <p className="mt-1 text-body-sm italic text-text-subtle">
           {mode === "suspend"
             ? "Login + bets + deposits will be blocked until restored."
             : isSelfExcluded

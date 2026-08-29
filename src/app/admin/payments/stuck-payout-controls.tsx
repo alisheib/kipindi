@@ -85,7 +85,7 @@ export function StuckPayoutControls({ txnId, amountLabel }: { txnId: string; amo
 
           <div className="rounded-md border border-border bg-bg-overlay/60 px-3 py-2.5">
             <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-subtle">Before it runs</p>
-            <p className="mt-1 text-[12px] text-text-secondary leading-snug">
+            <p className="mt-1 text-body-sm text-text-secondary leading-snug">
               The provider is asked one more time. If it reports the payout <strong>completed</strong>, this is
               refused — reversing a payout that actually settled would pay the player twice.
             </p>

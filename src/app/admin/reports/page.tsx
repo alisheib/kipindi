@@ -390,7 +390,7 @@ export default async function AdminReportsPage({
                   </tfoot>
                 </table>
               </ScrollX>
-              <p className="px-4 py-3 text-[11px] text-text-tertiary leading-snug">
+              <p className="px-4 py-3 text-body-sm text-text-tertiary leading-snug">
                 Bet-derived money only. Deposits, withdrawals, bonuses and payment fees belong to neither game and stay in
                 the platform totals above. The statutory pack and the TRA/GBT levy read the COMBINED commission.
                 {(byGame.unattributed.stakes > 0 || byGame.unattributed.payouts > 0 || byGame.unattributed.refunds > 0) && (
@@ -459,7 +459,7 @@ export default async function AdminReportsPage({
                 <div className="flex-1 min-w-0 space-y-2">
                   <div>
                     <p className="font-display font-bold text-[14px] text-text leading-snug">{t.title}</p>
-                    <p className="text-[11px] text-text-tertiary italic mt-0.5">{t.sw}</p>
+                    <p className="text-body-sm text-text-tertiary italic mt-0.5">{t.sw}</p>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {/* ⭐ G-7 IS NOW FIXED IN THE SHARED `Chip` ITSELF, so this call site no
@@ -477,7 +477,7 @@ export default async function AdminReportsPage({
                     </Chip>
                     <span className="font-mono text-[10px] tracking-wider text-text-tertiary self-center">{t.cadence}</span>
                   </div>
-                  <p className="text-[12px] text-text-secondary leading-relaxed">{t.body}</p>
+                  <p className="text-body-sm text-text-secondary leading-relaxed">{t.body}</p>
                   <div className="flex flex-wrap items-center justify-between gap-2 pt-2 mt-1 border-t border-border-subtle">
                     <div className="flex flex-wrap gap-1">
                       {t.formats.map((f) => (

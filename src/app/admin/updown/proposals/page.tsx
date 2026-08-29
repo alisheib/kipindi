@@ -197,7 +197,7 @@ export default async function UpDownProposalsPage({
 
         {/* ── The AI switch lives in ONE place; this page reports it, never mirrors it. ── */}
         {!aiOn && (
-          <div className="rounded-lg border border-warning-border bg-warning-bg p-3 text-[12px] leading-[1.55] text-warning-fg">
+          <div className="rounded-lg border border-warning-border bg-warning-bg p-3 text-body-sm leading-[1.55] text-warning-fg">
             <strong>AI generation is switched off.</strong> Proposals cannot be generated until it is
             turned back on in the <strong>AI toolkit</strong> menu in the top bar — the one place that
             switch lives, for both long-form polls and Up &amp; Down. Proposals already in the queue can
@@ -343,7 +343,7 @@ export default async function UpDownProposalsPage({
                                 // `text-danger-fg` — `hot-rose` is not a bridged family, so
                                 // these refusal reasons rendered in plain body ink. Not
                                 // `no-300`: §B2 keeps YES/NO for money outcomes only.
-                                <li key={r} className="text-[10.5px] leading-snug text-danger-fg">
+                                <li key={r} className="text-body-sm leading-snug text-danger-fg">
                                   · {REASON_LABEL[r] ?? r}
                                   {REASON_ADVICE[r] && (
                                     <span className="mt-0.5 block text-text-subtle">{REASON_ADVICE[r]}</span>
@@ -430,7 +430,7 @@ export default async function UpDownProposalsPage({
         </AdminCard>
 
         <AdminCard title="How this works" sw="Inavyofanya kazi">
-          <div className="space-y-2 text-[11.5px] leading-[1.6] text-text-subtle max-w-[85ch]">
+          <div className="space-y-2 text-body-sm leading-[1.6] text-text-subtle max-w-[85ch]">
             <p>
               <strong>1 · The AI proposes.</strong> It fetches the asset&rsquo;s approved domain — it is
               restricted to that one domain and cannot cite anywhere else — finds a page showing a live

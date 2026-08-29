@@ -379,8 +379,8 @@ export default async function ResolverQueuePage({
                         </a>
                       </div>
                       <h3 className="mt-1 font-display text-[15px] font-semibold leading-tight text-text line-clamp-2">{m.titleEn}</h3>
-                      <p className="text-[12px] italic text-text-subtle line-clamp-1">{m.titleSw}</p>
-                      {m.titleZh && <p className="text-[12px] italic text-text-subtle line-clamp-1">{m.titleZh}</p>}
+                      <p className="text-body-sm italic text-text-subtle line-clamp-1">{m.titleSw}</p>
+                      {m.titleZh && <p className="text-body-sm italic text-text-subtle line-clamp-1">{m.titleZh}</p>}
                       <p className="mt-1 font-mono text-[11px] text-text-subtle">{SELECTION.betsClosed.en} {fmtTime(m.selectionClosedAt ?? m.resolutionAt)} · Resolves {fmtTime(m.resolutionAt)}</p>
                     </div>
                   </div>
@@ -450,7 +450,7 @@ export default async function ResolverQueuePage({
                           Sentinel says: <span className={m.sentinelOutcome === "YES" ? "text-yes-300" : "text-no-300"}>{m.sentinelOutcome}</span>
                         </p>
                         {m.sentinelEvidence && (
-                          <p className="mt-1 text-[12px] text-text-secondary leading-snug">{m.sentinelEvidence}</p>
+                          <p className="mt-1 text-body-sm text-text-secondary leading-snug">{m.sentinelEvidence}</p>
                         )}
                         {m.sentinelSourceUrl && (
                           <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -473,7 +473,7 @@ export default async function ResolverQueuePage({
                             <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle hover:text-text-muted">
                               AI reasoning
                             </summary>
-                            <p className="mt-1 text-[11px] text-text-muted leading-relaxed pl-2 border-l-2 border-border">
+                            <p className="mt-1 text-body-sm text-text-muted leading-relaxed pl-2 border-l-2 border-border">
                               {m.sentinelReasoning}
                             </p>
                           </details>

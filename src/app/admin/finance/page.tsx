@@ -267,7 +267,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
                 baseHref={feeBaseHref}
                 param="feepage"
               />
-              <p className="mt-2 text-[11px] text-text-subtle">
+              <p className="mt-2 text-body-sm text-text-subtle">
                 Total commission this period: TZS {formatTzs(pollFees.totalFee)}.
               </p>
             </>

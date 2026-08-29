@@ -152,8 +152,8 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
               <div key={lang} className="mt-2 border-l-2 border-border/60 pl-2.5">
                 <p className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-text-subtle">{lang}</p>
                 {text
-                  ? <p className="text-[12.5px] text-text-muted leading-relaxed" lang={lang.toLowerCase()}>{text}</p>
-                  : <p className="text-[12px] italic text-text-subtle">No translation — players see the English with a note saying so.</p>}
+                  ? <p className="text-body-sm text-text-muted leading-relaxed" lang={lang.toLowerCase()}>{text}</p>
+                  : <p className="text-body-sm italic text-text-subtle">No translation — players see the English with a note saying so.</p>}
               </div>
             ))}
             <div className="mt-3 pt-3 border-t border-border/60 grid grid-cols-2 gap-3">
@@ -184,7 +184,7 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
                 ))}
               </div>
             ) : (
-              <p className="text-[12px] italic text-text-subtle">No options defined</p>
+              <p className="text-body-sm italic text-text-subtle">No options defined</p>
             )}
           </AdminCard>
         </div>
@@ -202,8 +202,8 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
                 <I.shieldAlert size={14} className="text-text-subtle" />
               </div>
               <div>
-                <p className="text-[12px] text-text-muted">No quality data</p>
-                <p className="text-[11px] text-text-subtle">
+                <p className="text-body-sm text-text-muted">No quality data</p>
+                <p className="text-body-sm text-text-subtle">
                   {poll.state === "VALIDATION_FAILED" || poll.state === "FILTERED"
                     ? "This poll failed validation before quality scoring."
                     : "Quality indicators have not been computed."}
@@ -242,7 +242,7 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
               <div className="h-[32px] w-[32px] rounded-pill bg-bg-overlay flex items-center justify-center">
                 <I.fileCheck size={14} className="text-text-subtle" />
               </div>
-              <p className="text-[12px] text-text-muted">
+              <p className="text-body-sm text-text-muted">
                 {poll.state === "VALIDATION_FAILED" || poll.state === "FILTERED"
                   ? "No sources were returned by the AI provider."
                   : "No sources attached to this poll."}
@@ -255,11 +255,11 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
         <AdminCard>
           <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mb-2">AI reasoning</p>
           {poll.reasoning ? (
-            <p className="text-[12px] text-text-muted leading-relaxed pl-3 border-l-2 border-border">
+            <p className="text-body-sm text-text-muted leading-relaxed pl-3 border-l-2 border-border">
               {poll.reasoning}
             </p>
           ) : (
-            <p className="text-[12px] italic text-text-subtle py-2">No reasoning provided by the AI.</p>
+            <p className="text-body-sm italic text-text-subtle py-2">No reasoning provided by the AI.</p>
           )}
         </AdminCard>
 

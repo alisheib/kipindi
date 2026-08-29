@@ -256,14 +256,14 @@ export default async function KycWorkstationPage({ params }: { params: Promise<{
               {risk.factors.length > 0 ? (
                 <ul className="mt-2.5 space-y-1">
                   {risk.factors.map((f) => (
-                    <li key={f.label} className="flex items-baseline justify-between gap-2 text-[11.5px]">
+                    <li key={f.label} className="flex items-baseline justify-between gap-2 text-body-sm">
                       <span className="text-text-muted">{f.label} <span className="text-text-subtle">· {f.detail}</span></span>
                       <span className="font-mono tabular-nums text-no-300">+{f.points}</span>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="mt-2.5 text-[11.5px] text-text-tertiary">No elevated-risk signals on this account.</p>
+                <p className="mt-2.5 text-body-sm text-text-tertiary">No elevated-risk signals on this account.</p>
               )}
             </AdminCard>
 
@@ -275,10 +275,10 @@ export default async function KycWorkstationPage({ params }: { params: Promise<{
                     <p className={`font-display text-[15px] font-bold ${kyc.status === "APPROVED" ? "text-yes-300" : "text-no-300"}`}>
                       {kyc.status === "APPROVED" ? "Identity approved" : "Submission rejected"}
                     </p>
-                    <p className="mt-0.5 text-[12px] text-text-muted">
+                    <p className="mt-0.5 text-body-sm text-text-muted">
                       {kyc.reviewerId ? `by ${kyc.reviewerId.slice(0, 14)}…` : ""}{kyc.reviewedAt ? ` · ${formatDateTime(kyc.reviewedAt)}` : ""}
                     </p>
-                    {kyc.rejectNote && <p className="mt-1 text-[12px] text-text-muted italic">“{kyc.rejectNote}”</p>}
+                    {kyc.rejectNote && <p className="mt-1 text-body-sm text-text-muted italic">“{kyc.rejectNote}”</p>}
                   </div>
                 </div>
               ) : (

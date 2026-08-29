@@ -136,7 +136,7 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
                   <I.externalLink s={12} className="shrink-0" />
                   {m.sourceUrl}
                 </a>
-                <p className="mt-2 text-[12px] leading-relaxed text-text-muted">{m.resolutionCriterion}</p>
+                <p className="mt-2 text-body-sm leading-relaxed text-text-muted">{m.resolutionCriterion}</p>
               </div>
             </AdminCard>
 
@@ -161,7 +161,7 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
                 <p className="mt-2 font-display text-[14px] font-bold text-text">
                   Sentinel says: <span style={{ color: verdictColor(m.sentinelOutcome) }}>{m.sentinelOutcome}</span>
                 </p>
-                {m.sentinelEvidence && <p className="mt-1 text-[12px] leading-snug text-text-secondary">{m.sentinelEvidence}</p>}
+                {m.sentinelEvidence && <p className="mt-1 text-body-sm leading-snug text-text-secondary">{m.sentinelEvidence}</p>}
                 {m.sentinelSourceUrl && (
                   <div className="mt-1 flex flex-wrap items-center gap-2">
                     <a href={m.sentinelSourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-mono text-[11px] text-royal-300 hover:text-royal-200">
@@ -181,7 +181,7 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
             {/* Recorded officer evidence (from the immutable audit trail). */}
             {recordedEvidence && (
               <AdminCard title={bi(CEREMONY.recordedEvidence)} sw="From the Stage-1 attestation">
-                <blockquote className="border-l-2 border-brand-500 pl-3 text-[12.5px] leading-relaxed text-text-muted italic">
+                <blockquote className="border-l-2 border-brand-500 pl-3 text-body-sm leading-relaxed text-text-muted italic">
                   {recordedEvidence}
                 </blockquote>
               </AdminCard>
@@ -241,7 +241,7 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
                   <div>
                     <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{bi(CEREMONY.objectionWindow)}</p>
                     <p className="mt-0.5 text-[13px] font-semibold text-text">Closes {formatDateTime(m.objectionsClosedAt)}</p>
-                    <p className="mt-0.5 text-[11px] text-text-muted">Payouts are provisional until the 24-hour window elapses.</p>
+                    <p className="mt-0.5 text-body-sm text-text-muted">Payouts are provisional until the 24-hour window elapses.</p>
                   </div>
                 </div>
               </AdminCard>
@@ -259,7 +259,7 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
                     <p className="font-display text-[15px] font-bold" style={{ color: verdictColor(m.resolvedOutcome) }}>
                       {m.status === "VOIDED" ? "Voided · stakes refunded" : `Sealed ${m.resolvedOutcome}`}
                     </p>
-                    <p className="mt-0.5 text-[12px] text-text-muted">
+                    <p className="mt-0.5 text-body-sm text-text-muted">
                       {stage1By && stage2By && stage1By !== stage2By
                         ? "Both officers attested. The verdict is published and the audit entry is immutable."
                         : "Resolved by an officer. The verdict is published and the audit entry is immutable."}
@@ -331,7 +331,7 @@ function AttestSlot({
       </div>
       {signed ? (
         <>
-          <p className="mt-1 truncate text-[12px] font-semibold text-text" title={name!}>{name}</p>
+          <p className="mt-1 truncate text-body-sm font-semibold text-text" title={name!}>{name}</p>
           {at && <p className="font-mono text-[10px] text-text-subtle">{formatDateTime(at)}</p>}
           {outcome && (
             <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.12em]">
