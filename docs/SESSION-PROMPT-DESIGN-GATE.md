@@ -7,8 +7,10 @@ rendered platform.”*
 
 ## ⏭️ RESUME AT — session 78 handover (2026-08-29)
 
-> **Step 1 is CLOSED, 11 of 11. DG-A-01's code is shipped and its gate now measures all 38 admin
-> routes instead of 3 — which immediately found a page at 13 s that nothing was watching.**
+>**Step 1 is CLOSED, 11 of 11. ✅ DG-A-01 IS CLOSED — 38 of 38 admin routes inside budget on
+> production.** Widening its gate from 3 hand-picked routes to all 38 immediately found a page
+> at 13 s that nothing was watching; that page is now 1,617 ms. **Step 2 is the whole of what
+> remains before steps 3 and 4.**
 > Read this block, then the **RE-DERIVED** section, then the PLANNER. Everything below was
 > driven on production.
 
@@ -24,27 +26,42 @@ was a **floor route** (`/admin/roles`, 234–292 ms) and a **window sweep** (`?r
 ⭐ **Every load number in this file is now floor-adjusted or stated with its floor. Re-derive
 before quoting.**
 
+### ✅ DG-A-01 IS CLOSED — and the whole admin surface is now measured, not three routes
+`npm run qa:admin-load` = **38 of 38 routes inside 5,000 ms on production**, floor
+`/admin/roles` 254 ms. `/admin/reports` **4,490–4,980 → 360–447**, `/admin/insights`
+**2,375–3,048 → 431–504**, `/admin/updown` **13,247 → 1,617**. Details in its planner row.
+
+### 🔬 THE ONE TOOL THIS PROGRAMME KEPT NEEDING — `GET /api/admin/updown-timing`
+A server-rendered page cannot be profiled from outside; `loadEventEnd` is one number for the
+whole render, and Railway's logs are not reachable from this machine (MCP: *Unauthorized*).
+So `/admin/updown`'s phases are timed through the page's own reads and returned as integers
+— duration, share, **and row count**, because a phase that is fast BECAUSE it returned
+nothing is not a fast phase and a duration alone cannot tell the two apart. Admin-gated,
+returns no data. ⭐ **It convicted a fix I had already shipped**: the 46-query collapse was
+630 ms of 12,688, and `feedAdviceLookup` was 11,865 ms — 93.5%. ⛔ **Do not delete it while
+any admin route is near budget.** It is the difference between diagnosing and detecting.
+
 ### ▶ THE NEXT MOVE, in order
-1. **DG-A-01 is 🚢 — the code shipped, the re-measure is the remaining half, and the gate is
-   EXPECTED RED.** `qa:admin-load` no longer picks its own three routes; it imports the render
-   drive's list (`scripts/design-gate/routes.mjs`) and holds all 38 to 5,000 ms against a
-   `/admin/roles` floor. That found **`/admin/updown` at 13,247–13,845 ms**, window-independent,
-   2.7× the route the gate was built for and in no instrument at all. ▶ Re-measure reports and
-   insights, then **fix `/admin/updown`** — ⚠️ its per-chain loop (`updown/page.tsx:125-137`,
-   one `roundStore.list` + one `poolsByIds` per chain, 600 rounds each) is a separate cost from
-   the `moneyByGame` read this commit already narrowed, so **measure what remains before fixing
-   anything**.
-2. **Finish DG-A-12 — the table half shipped, the arbitraries sweep did not.** `10.5 / 11.5 /
-   13.5` and the hand-typed `text-[Npx]` census still have to come onto rungs, by ROLE
-   (label → micro/label tier, prose → small/body). ⚠️ **Its acceptance line is the DG-A-23
-   re-measure at 390** — the table change adds **+2.4%** width, which widens an already-scrolling
-   table and can push a just-fitting one into scroll. The 44-route baseline to diff against was
-   captured this session, before the change.
-3. **Then the rest of step 2** — DG-A-11 / DG-P-06 label classes, DG-A-16 card rungs, DG-P-04
+1. **DG-A-12's arbitraries sweep — the guard half is DONE, the sweep half is not.**
+   ⭐ The instrument was fixed FIRST, on purpose: §3 of `type-scale.test.mts` scanned only
+   `text-[Npx]`, so the 263 sites already rendering below the 12.5px floor through
+   `text-micro`/`text-caption`/`text-label` were invisible to it — and its own advice line
+   told you to convert into that blind spot. **Rewriting `text-[11px]` as `text-caption`
+   changes no pixel and used to drop TWO ratchets.** 509 of the old 768 could have been
+   deleted that way. Now re-baselined 768 → **1031**, advice corrected to `text-body-sm`
+   (13px, the smallest key above the floor), with 0f/0g proving both halves can fail.
+   ▶ **Now the sweep means something.** Order by role, not by value — full census, per-value
+   destinations and the per-file counts are in the RE-DERIVED §DG-A-12 block below.
+   ⚠️ **DG-A-12's acceptance line is still the DG-A-23 re-measure at 390** — the shipped table
+   change adds **+2.4%** width, which widens an already-scrolling table and can push a
+   just-fitting one into scroll. The 44-route baseline to diff against was captured in
+   session 77, before the change. ⛔ **That re-measure has NOT been run.**
+2. **Then the rest of step 2** — DG-A-11 / DG-P-06 label classes, DG-A-16 card rungs, DG-P-04
    rhythm. ⛔ DG-A-16 carries an open question the register states itself: §S2 wants stat tiles at
    `--r-md`; honour it or amend the law, one or the other.
-4. **Then steps 3 and 4**, ⛔ **reading the RE-DERIVED section first** — nine claims do not
+3. **Then steps 3 and 4**, ⛔ **reading the RE-DERIVED section first** — nine claims do not
    reproduce and eight more contradict a guard.
+4. ⛔ **Do not start Maswali.** Ali's order: the Design Gate runs first and to completion.
 
 ### ⭐ THE RULING ALI DELEGATED, AND WHY IT WAS NOT HIS TO MAKE
 He said *"you choose, based on consistency rules and what makes the platform perfectly
@@ -70,10 +87,21 @@ Four, and every one printed a plausible result:
 - **`ui-consistency`'s `hardcoded-pill-active` rule matches the token's literal text**, so it
   finds copies and never divergence — which is why it missed a sidebar fill that had drifted to
   a different hue AND alpha from `--pill-active`.
-- **`type-scale.test.mts:542` advises a fix below its own floor** (`text-label` 12px /
-  `text-caption` 11px against a 12.5 floor), and §3 cannot see semantic-class prose — so the
-  advised fix lowers the ratchet while leaving 100 admin `<p>`s at 11px. **Settle this before
-  DG-A-14** or the guard rewards the wrong fix.
+- ⚪ **SPENT — `type-scale.test.mts` advised a fix below its own floor.** FIXED 2026-08-29;
+  the blind spot was **263 sites, not 100**, and the trap is now measured in both directions.
+  See *"THE GUARD THAT REWARDED THE WRONG FIX"* in RE-DERIVED. **DG-A-14 is no longer blocked.**
+
+### ⚠️ AND A THIRD DIAGNOSIS WAS WRONG — MINE, THIS SESSION, AND IT SHIPPED
+`/admin/updown` was 11,045 ms. I read the code, found `Promise.all(chains.map(...))` with two
+awaits inside, counted 23 chains × 2 = **46 concurrent queries**, wrote that down as the cause,
+fixed it, and shipped it. **The page moved to 11,448 ms** — the collapse was worth **630 ms of
+12,688, i.e. 5%.** The bulk read is still the right shape and it stays; it was simply never the
+answer, and re-reading the code a fourth time would never have said so.
+⭐ **What did:** `GET /api/admin/updown-timing`, which times the page's own reads and reports
+each one's share. `feedAdviceLookup` **11,865 ms, 93.5%**. One request, no ambiguity.
+⛔ **So the rule now has a positive form, not only a prohibition.** "Detect, don't diagnose" is
+not "be more careful reading" — it is *build the instrument*. Three of this programme's four
+wrong causes were confident, literate readings of correct code.
 
 ### ⚠️ AND TWO DIAGNOSES I WROTE DOWN WERE WRONG
 The admin session dies mid-drive **non-deterministically**. I first blamed per-cell browser
@@ -242,15 +270,83 @@ session paying for it again — step 1 already lost three rows to defects that n
 | **DG-A-13** | a literal `&times;` escape renders on `/admin/ai-usage` | **Zero hits** anywhere under `src/app/admin`. Already fixed |
 | **DG-A-21** | *"ai-polls detail paints its quality meter in `--yes-*`"* | **Already fixed 2026-08-21**, with an in-file tombstone at `poll-actions.tsx:817-825` recording this exact defect and the owner ruling. The register re-files a closed finding |
 
-### 🔴 A guard that REWARDS THE WRONG FIX — settle this before DG-A-14
-`scripts/type-scale.test.mts:542-543` tells the fixer to *"lift it onto the ladder
-(**text-label/text-caption**)"*. `text-label` is **12px** and `text-caption` is **11px**
-(`tailwind.config.ts:192-193`) — **both are BELOW the 12.5px reading floor the same file
-enforces.** And §3 only scans arbitrary `text-[Npx]`, so converting an 11px paragraph from
-`text-[11px]` to `text-caption` **lowers the ratchet while leaving the prose at 11px**: the guard
-scores the defect as fixed. ⛔ There are **100 `<p>` elements at `text-caption` in admin today**
-and §3 cannot see one of them. **`text-body-sm` (13px, `tailwind.config.ts:194`) is the only
-class above the floor** — and it exists, so **DG-A-14 is NOT blocked by the type ladder.**
+### ✅ THE GUARD THAT REWARDED THE WRONG FIX — FIXED 2026-08-29 (session 78), and the numbers
+⚪ **SPENT as a task, kept as the reasoning.** Session 77 filed this correctly and its
+diagnosis held. What it could not know is the size: **the blind spot was 263 sites, not 100.**
+
+`type-scale.test.mts` §3 enforces the 12.5px floor and scanned **only `text-[Npx]`**. Three of
+`tailwind.config.ts`'s twelve `fontSize` keys render below that floor — `micro` 10, `caption` 11,
+`label` 12 — so a site written as a CLASS was invisible to it, while §3's own advice line said
+*"lift it onto the ladder (text-label/text-caption)"*, naming two of those three.
+
+🔴 **THE TRAP, MEASURED BOTH WAYS.** Renaming one real `text-[11px]` to `text-caption`:
+| | §3 sub-floor | §4 arbitraries |
+|---|---|---|
+| before the fix | 768 → **767** | 1809 → 1808 |
+| after the fix | 1031 → **1031** | 1809 → 1808 |
+
+Two wins for zero legibility, versus only the true one. **509 of the old 768 were reachable by
+that edit** — 66% of the flagship type guard, zeroable without moving one glyph.
+
+✅ **Now:** §3's population is `text-[Npx]` ∪ {`text-micro`, `text-caption`, `text-label`},
+counted into ONE total (two counters would let a session trade one for the other and call it
+progress). `RATCHET_SUBFLOOR` **768 → 1031** — ⛔ the POPULATION grew, not the defect; nothing was
+written. The advice now names **`text-body-sm` (13px)** and says in words that 12 and 11 are
+below the floor and do not count as a fix. `0f` proves the new scanner sees prose, exempts the
+same class when it IS a blessed microlabel, reads `cn()`/variants, and ⛔ does **not** count
+`text-body-sm` — the very fix it prescribes. `0g` asserts the three sizes against
+`tailwind.config.ts`, so changing `caption` to 13px there cannot leave §3 condemning 174 sites
+that had become legal.
+
+### 📏 DG-A-12 — THE SWEEP, RE-DERIVED. Its guard half is done; this is the rest
+Counts reproduced by re-implementing §3/§4's own scanner and matching their totals exactly
+(**1,809 arbitraries / 803 files / 768 old sub-floor**). ⛔ The register's headline
+(*"12.5px ×1,376 · 10.5 ×700 · 11.5 ×579"*) is a **rendered-element** census from
+`analyze admin type`, not a code census — 1,376 table cells reading ONE declaration. Do not
+quote it as an edit count.
+
+**TWO LADDERS EXIST AND THEY DISAGREE.** `globals.css:206-220` defines twelve `--type-*`
+(72/60/44/32/24/20/17/15/13/11/9.5/8.5); `tailwind.config.ts:190-202` defines twelve `fontSize`
+keys (10/11/12/13/14/16/18/22/28/36/48/64). They agree on **two values** and **collide on
+names**: `label` = 9.5 (CSS) vs 12 (Tailwind); `micro` = 11 vs 10; `body` = 15 vs 14.
+🔴 **And the `--type-*` ladder is UNREACHABLE FROM TSX** — all 35 `var(--type-*)` consumers
+are inside `globals.css` itself, and there are zero `text-[var(--type-…)]` sites. So "move it
+onto the ladder" from a call site can only mean the **Tailwind** ladder today. §T's preamble
+closes the CSS one and never names `tailwind.config.ts`. **That is the open question this row
+inherits, and it is bigger than the sweep.**
+
+**OFF-LADDER: 519 sites in 150 files** (in NEITHER scale). By value:
+`10.5 ×148` · `12.5 ×139` · `11.5 ×112` · `9 ×51` · `13.5 ×30` · `19 ×13` · `26 ×6` ·
+`15.5 ×5` · `30 ×4` · `14.5 ×3` · `38 ×3` · `8 ×2` · `34 ×2` · `21 ×1`.
+The three the row names (10.5 / 11.5 / 13.5) are **290 sites in 109 files**.
+
+| value | destination, BY ROLE | why |
+|---|---|---|
+| **10.5** (96 admin) | NUMERIC 89 → `text-micro` (10) · LABEL 34 → `text-micro` · PROSE 26 → `text-body-sm` (13) | rounding metadata UP to 11 makes it bigger than the 380 `text-[10px]` spans beside it |
+| **11.5** (63 admin) | PROSE 69 → `text-body-sm` · NUMERIC 39 → `text-caption` (11) · LABEL 4 → `text-caption` | ⛔ **the hardest value.** Rounding prose to 12 or 11 is the trap above |
+| **12.5** (98 player) | ALL → `text-body-sm` (+0.5) | the SAME +0.5 already ruled for `.admin-tbl`; ⛔ never `text-label`, which moves prose from legal-at-the-floor to illegal |
+| **13.5** (28 player) | PROSE 22 → `text-body` (14) · rest → `text-body-sm` | ⚠️ **above the floor, so no law decides it.** Both 13 and 14 are rungs — this one is a DESIGN CALL and must be labelled as one |
+| **9** (44 LABEL) | ⛔ **NO HONEST RUNG.** `--type-label` 9.5 is exactly this tier and **has no Tailwind key** | either → `text-micro` (10), or mint a `nano` key — which §T's own wording makes a DESIGN_AUTHORITY change, not a call-site edit |
+| **26** (6) | ⛔ **DO NOT SWEEP.** One is the market question, which §T2 files against itself by name | needs its own decision with a screenshot |
+
+⛔ **DO NOT lead with the 836 pure renames** (10/11/12 → micro/caption/label). Font-size is
+unchanged; **line-height and letter-spacing are NOT** — every Tailwind `fontSize` key is a tuple
+that also emits both, and an arbitrary `text-[Npx]` sets size alone. And ⚠️ **§M4**: those keys
+emit `letter-spacing`, which §M4 forbids over a numeral — so converting the **228 mono/tabular**
+off-ladder sites would letter-space money.
+
+⭐ **Cleanest first commit:** `admin/updown/updown-controls.tsx` — all ten of its 11.5px sites
+are PROSE with one destination, it is admin-only, and it is not on `design-frozen`'s list.
+**Biggest files:** `wallet/wallet-client.tsx` 24 · `updown-card.tsx` 21 ·
+`admin-proposals-client.tsx` 18 · `updown/[roundId]/page.tsx` 17 · `admin/updown/page.tsx` 15.
+Ten files carry **155 of the 519**.
+
+⚠️ **Three populations no guard reads at all**, and they hold the same values:
+**75 literal `font-size: Npx` in `src/**/*.css`** (45 below the floor — `type-scale` walks only
+`.ts/.tsx/.mts`), of which `src/styles/chat/chat-styles.css` is a **third styling system** with
+28 hand-typed sizes on neither ladder; and the **37 inline `style={{fontSize}}`** literals.
+⚠️ `test:type-scale` is in `test:all` (CI runs it, auto-populated) but **NOT in `predeploy`**,
+whose suite list is hand-picked.
 
 ### ⚠️ Ordering constraints that are not in the work order
 - **DG-P-08's clipped support email and `E-226` are THE SAME LINE** —
@@ -341,7 +437,7 @@ only ☑ when its gate line is GREEN **re-measured on production**, not on local
 | **DG-P-08** | 3 | P1 | truncation without disclosure, and one clipped support email | `truncation` | ☐ | — | — |
 | **DG-P-10** | 3 | P2 | status chips: the board still hand-types its colours (B11's named remainder) | `chip migration` | ☐ | — | — |
 | **DG-P-11** | 3 | P2 | active/current markers stop at the top bar | `aria-current reach` | ☐ | — | — |
-| **DG-A-01** | 4 | P0 | /admin/reports takes ~88 s to load; timed out at 60/90/240 s | `report-money.ts` + `market-dal.ts` (⛔ NOT `reports/page.tsx`) | 🚢 **SHIPPED, awaiting the production re-measure** | `d74d0708` · this commit | 🔴 **RE-DERIVED AGAIN 2026-08-29 (session 78), AND THE HANDOVER'S TWO NUMBERS DO NOT REPRODUCE.** The row said `/admin/reports` **7,112 ms** and `/admin/insights` **257 ms**. Measured today on production, best of three, `loadEventEnd`: reports **4,490–4,980**, insights **2,375–3,048**. ⚠️ The 257 was almost certainly a `getInsights()` TTL cache hit (`insights.ts:75-79`), and quoting it as the page's cost is what made "the gap IS the duplicate scan" look like an arithmetic certainty. ⭐ **A FLOOR ROUTE SETTLED IT, and the old "control" was not one.** `/admin/roles`, a shell-only admin page, measures **234–292 ms** — so `/admin/finance`, described in the gate as *"comparable money aggregates, never slow"* and given a TIGHTER 4,000 ms budget, is **2,635–2,701 ms**: 9× the floor, inside a budget cut to fit it. ⛔ A control has to be a page that does almost nothing. 📐 **THE DECISIVE MEASUREMENT — the cost does not care about the window.** `/admin/reports?range=today` **4,759** vs `?range=30d` **5,012**: a window 30× larger costs ~5%. So it is NOT `listInRange`; it is the whole-table reads. And floor-adjusted, insights (ONE such read) carries **+2,242 ms** while reports (TWO) carries **+4,323 ms** — which is what actually confirms the duplicate-scan direction the stale numbers only appeared to. ⭐ **THE FIX, and it is two things not one:** (1) `loadMoneyAttribution()` does the market + position read ONCE and `/admin/reports` hands it to both `categoryBreakdown` and `moneyByGame`; (2) that read is a **projection** — `marketStore.attribution()` selects 4 columns where `findMany()` shipped ~35, including three `@db.Text` fields and a JSON blob, over ~13,000 rows. ⛔ **`reactCache` was NOT used**: these are money reads, and a dedupe whose lifetime lives in a framework's request scope is invisible at the call site. The maps are a parameter. ⛔ **And the two callers' populations were NOT harmonised** — `categoryBreakdown` excluded demo markets (via `listMarkets`’ `isDemoMarket`) and `moneyByGame` never did; tidying that would have moved a regulator-facing figure under cover of a performance fix. Both are preserved, and `test:product-line` B9 now asserts the difference. 🔴 **A SECOND DEFECT, ON THE SAME PAGE, AND IT IS A MONEY STATEMENT:** `moneyByGame` is wrapped in `.catch(() => null)` and the per-game card began `{byGame && …}` — so a FAILED read rendered **identically to an empty window**. `/admin/insights:173` already discloses that exact failure in words for the sibling function. It says them here too now. 🔴 **AND THE GATE'S POPULATION WAS HAND-PICKED.** `qa:admin-load` timed 3 routes and passed. Driving the real list found **`/admin/updown` at 13,247–13,845 ms**, 2.7× the route the gate was built to watch, window-independent, in **no instrument at all**. The gate now imports the same route list as the render drive (`scripts/design-gate/routes.mjs`, one definition site) and holds all 38 to 5,000 ms with `/admin/roles` as the floor. ⚠️ **It is therefore EXPECTED to be RED on `/admin/updown` until that page is fixed** — that is the gate telling the truth, and the next move under this row.
+| **DG-A-01** | 4 | P0 | /admin/reports takes ~88 s to load; timed out at 60/90/240 s | `report-money.ts` · `market-dal.ts` · `updown-feed-history.ts` (⛔ NOT `reports/page.tsx`) | ☑ | `d74d0708` · `35916281` · `b5201cee` · `758bbf8b` · `7bc20724` | ✅ **GATE GREEN ON PRODUCTION 2026-08-29: `npm run qa:admin-load` = 38 of 38 admin routes inside 5,000 ms, 1 sign-in, 0 revocations, floor `/admin/roles` 254 ms.** 📐 `/admin/reports` **4,490–4,980 → 360–447 ms** · `/admin/insights` **2,375–3,048 → 431–504 ms** · `/admin/updown` **13,247 → 1,617 ms**. Render verified, not just the clock: reports shows the per-game card, 2 tables, 11 rows, 58 non-zero TZS; updown shows 7 assets, 23 chains, 36 metric cells, zero "unmeasured". 🔴 **THE HANDOVER'S TWO NUMBERS DID NOT REPRODUCE** (7,112 / 257). What settled it was a FLOOR route and a WINDOW SWEEP — see the RESUME AT block. ⭐ **THE FIX WAS THREE THINGS AND I GOT THE SECOND ONE WRONG.** (1) `loadReportWindow()`: one snapshot — the window's transactions plus a 4-column market projection where `findMany()` shipped ~35 over ~27,500 rows — shared by all four aggregates; 9 queries per render become 2, and they now reconcile by construction rather than by luck. (2) `/admin/updown`'s 46 per-chain queries collapsed to two bulk reads — **and the page did not move, 11,045 → 11,448 ms.** That was 630 ms of 12,688. (3) The instrument then said what reading never would: `GET /api/admin/updown-timing` → **`feedAdviceLookup` 11,865 ms, 93.5%**, a 30-day observation self-join. Memoised, ceiling = ONE ROUND at the shortest duration offered, asserted by `test:updown-config` §9 with a control that re-derives the ceiling from `ALLOWED_DURATIONS`. ⛔ **`reactCache` was NOT used** (money reads; a dedupe living in a framework's request scope is invisible at the call site) and the two callers' demo-market populations were **NOT harmonised** — tidying that would move a regulator-facing figure under cover of a performance fix. `test:product-line` B9 asserts the difference. 🔴 **A MONEY-STATEMENT DEFECT ON THE SAME PAGE:** `moneyByGame` is wrapped in `.catch(() => null)` and the per-game card began `{byGame && …}`, so a FAILED read rendered identically to an empty window. `/admin/insights:173` already disclosed that exact failure in words; it says them here too now. ⚠️ **AND THE GATE'S POPULATION WAS HAND-PICKED** — 3 routes. Widened to all 38 via `scripts/design-gate/routes.mjs` (one definition site, shared with the render drive), with `/admin/roles` as a FLOOR rather than `/admin/finance` as a "control" that was 9× the floor inside a budget cut to fit it.
 | **DG-A-20** | 4 | P2 | loading skeletons are the wrong shape for what they replace | `skeletons` | ☐ | — | — |
 | **DG-A-22** | 4 | P2 | layout balance | `—` | ☐ | — | — |
 | **DG-P-09** | 4 | P1 | /auth/login signed-in redirect throws React error #310 — ⚠️ root cause is a HYPOTHESIS, re-prove first | `auth-flash.tsx?` | ☐ | — | — |
