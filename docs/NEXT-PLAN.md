@@ -13,12 +13,13 @@ step, the traps, the tracking table, and the delete-when-done list.
 
 | | |
 |---|---|
-| **State** | 🔴 **OPEN — 0 of 5 tracker rows done.** 37 systems measured live on production |
+| **State** | 🟠 **STEP 1 IS 10 OF 11 DONE (2026-08-29, session 76).** ☑ DG-P-01 · DG-A-02 · DG-A-04 (kit half) · DG-A-05 · DG-A-07 · DG-A-17 · DG-A-23 · 🚢 DG-A-03 · DG-A-10 (part 1). ☐ **DG-A-15 is the only one not started** — re-derived and quantified, fix shape written down. Steps 2–4 untouched |
+| **🔴 THE BIGGEST FINDING** | **THE REGISTERS' NUMBERS ARE STALE — re-derive every row before fixing it.** DG-A-04's headline (`Select 36.8`, `55.5 wrapped`) does not reproduce: the row is uniformly **32**, and 36.8/55.5 occur NOWHERE in 44 routes. `select.tsx` was fixed by **`af4de432`, dated 2026-08-28 — the same day the report was written**; the drive ran before it deployed. **Three rows asked to REVERSE dated, measured decisions** — DG-A-05 (`truncate` breaks E-98 at error severity), DG-A-23 ("add a scrollbar" is a Chrome no-op; its edge-fade clips popovers), DG-A-07 (the wrap is the design, ruled 2026-08-25). All three closed with **no code change** |
 | **Registers** | [`DESIGN-GATE-ADMIN-2026-08-28.md`](DESIGN-GATE-ADMIN-2026-08-28.md) — 23 systems, §6 is the work order, §7 is ~280 page findings whose P0s only were spot-verified · [`DESIGN-GATE-PLAYER-2026-08-28.md`](DESIGN-GATE-PLAYER-2026-08-28.md) — 14 systems, no §7 |
-| **Next move** | **Step 1, kit primitives** — needs nothing from Ali. Toggle hit-area (26px on a 40px floor, 100× incl. the payment kill-switches) · the search popover clipped invisible on every admin box · Select true-32 + no-wrap · NavLink hover (dead on 200 of 333 probes) |
-| **Blocked** | ⚠️ **Step 2 needs Ali's type-ladder ruling** — bless 12.5 as `--type-table`, or move tables to 13. It gates the 24-size and 33-size sweeps together |
-| **Instruments** | `scripts/design-gate/` — ⛔ invoke with `node`, no npm aliases; `analyze`/`redo` take positional argv. ⚠️ `.qa-design-gate/` does NOT exist on this machine, so a re-measure is a cold drive |
-| **Traps** | ⛔ **One login per account at a time** — a second login revokes the first and every later page "succeeds" as the sign-in page at HTTP 200 (`?revoked=1` is the tell). Chain `measure → overlays → shots` in ONE command per account |
+| **Next move** | **DG-A-15** (the last of step 1), then step 2 the moment Ali rules on the type ladder |
+| **Blocked** | ⚠️ **Step 2 needs Ali's type-ladder ruling** — bless 12.5 as `--type-table`, or move tables to 13. It gates DG-A-12 + DG-P-05 **and the rest of DG-A-10** (three sub-1M money values still clip at 390 because the value is a 22px inline literal). 🔴 **And the authed PLAYER half needs a working password from Ali** |
+| **Instruments** | `scripts/design-gate/` — ⛔ invoke with `node`, no npm aliases; `analyze`/`redo` take positional argv. ✅ `.qa-design-gate/` now EXISTS here with a clean 44-route admin baseline (`redo` 0 poisoned) + a 17-route anon player one, both snapshotted as `BASE-out-*`. ⭐ New gate: **`npm run qa:toggle-hit`** |
+| **Traps** | ⛔ **One login per account at a time** — a second login revokes the first and every later page "succeeds" as the sign-in page at HTTP 200 (`?revoked=1` is the tell). Chain `measure → overlays → shots` in ONE command per account. 🔴 **ALL SIX PLAYER/OFFICER QA SECRETS ARE REJECTED** (`error=wrong_credentials`, 2026-08-29); only `QA_ADMIN_PASSWORD` works. Use `SURFACE=player ANON=1` for the 17 public routes |
 
 ---
 

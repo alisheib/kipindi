@@ -135,7 +135,7 @@ Update this table in the same commit as the work (programme key in the commit me
 
 | Step | Systems | Status | Commit | Re-measured |
 |---|---|---|---|---|
-| 1 kit primitives | DG-A-02/03/04/05/07/10/15/17/23 · DG-P-01/02 | ☐ | — | — |
+| 1 kit primitives | DG-A-02/03/04/05/07/10/15/17/23 · DG-P-01/02 | 🟠 **10 of 11** | `0db54c4f`…`95cbed6b` | ☑ DG-P-01 · DG-A-02 · DG-A-04 (kit half) · DG-A-05 · DG-A-07 · DG-A-17 · DG-A-23 · 🚢 DG-A-03 · DG-A-10 (part 1) · ☐ **DG-A-15 only**. ⛔ **3 of the 11 needed NO code** — DG-A-05, DG-A-07 and half of DG-A-23 asked to reverse dated, measured decisions |
 | 2 tokens & classes | DG-A-11/12/16/18 · DG-P-04/05/06 | ☐ | — | — |
 | 3 sweeps | DG-A-04/06/08/09/13/14/21 · DG-P-03/07/08/10/11 | ☐ | — | — |
 | 4 singles | DG-A-01/20/22 · DG-P-09/12/13/14 | ☐ | — | — |
