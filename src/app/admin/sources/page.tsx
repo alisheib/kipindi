@@ -51,7 +51,7 @@ export default async function AdminSourcesPage() {
         <AdminCard
           title="Categories · global toggle"
           sw="Aina za soko"
-          action={<span className="font-mono text-[10px] tracking-[0.12em] uppercase text-text-tertiary">click any to disable site-wide</span>}
+          action={<span className="font-mono text-micro tracking-[0.12em] uppercase text-text-tertiary">click any to disable site-wide</span>}
         >
           <p className="text-body-sm text-text-tertiary mb-3 max-w-[72ch]">
             Disabling a category prevents officers from publishing new markets in it. Existing live markets continue
@@ -75,7 +75,7 @@ export default async function AdminSourcesPage() {
             padding="p-0"
             className={catEnabled ? "" : "opacity-60"}
             action={
-              <span className={`font-mono text-[10px] tracking-[0.12em] uppercase px-2 py-0.5 rounded-pill border ${
+              <span className={`font-mono text-micro tracking-[0.12em] uppercase px-2 py-0.5 rounded-pill border ${
                 isGeneratable
                   ? "border-yes-700/40 bg-yes-500/10 text-yes-300"
                   : "border-warning-border bg-warning-bg text-warning-fg"
@@ -87,7 +87,7 @@ export default async function AdminSourcesPage() {
             <ScrollX label="Sources">
               <table className="admin-tbl">
                 <thead className="border-b border-border-subtle bg-bg-sunken/50">
-                  <tr className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-tertiary">
+                  <tr className="font-mono text-micro uppercase tracking-[0.14em] text-text-tertiary">
                     <th className="text-left p-3">Source</th>
                     <th className="text-left p-3">Domain</th>
                     <th className="text-left p-3">Rationale</th>

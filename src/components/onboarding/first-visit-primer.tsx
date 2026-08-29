@@ -418,7 +418,7 @@ export function FirstVisitPrimer() {
           </div>
 
           {/* Eyebrow */}
-          <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.18em] font-bold text-gold-300">
+          <p className="mt-4 font-mono text-micro uppercase tracking-[0.18em] font-bold text-gold-300">
             {c.eyebrow}
           </p>
 

@@ -540,7 +540,7 @@ function FeaturedResult({ m, t, locale }: { m: Awaited<ReturnType<typeof listMar
         {isVoid
           ? <Chip variant="pending" size="sm">{t.common.voided}</Chip>
           : <Chip variant="resolved" size="sm">{t.market.resolvedOutcome} · {outcomeWord(t, m.resolvedOutcome ?? "VOID", m.productLine)}</Chip>}
-        <span className="ml-auto inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">
+        <span className="ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.16em] font-bold text-gold-300">
           <I.crown s={13} /> {t.results.notableResult}
         </span>
       </div>

@@ -54,7 +54,7 @@ export default async function AdminLoginPage({ searchParams }: { searchParams?: 
               dot — the console ConfidentialBand's security signal. */}
           <div className="flex w-fit mx-auto items-center gap-2 px-3 h-7 rounded-pill border border-brand-500 bg-brand-500/10">
             <span className="h-1.5 w-1.5 shrink-0 rounded-pill" style={{ background: "var(--claret-200)" }} />
-            <span className="font-mono text-[10px] uppercase tracking-[0.18em] font-bold text-brand-300 whitespace-nowrap">
+            <span className="font-mono text-micro uppercase tracking-[0.18em] font-bold text-brand-300 whitespace-nowrap">
               Staff · Confidential
             </span>
           </div>
@@ -87,7 +87,7 @@ export default async function AdminLoginPage({ searchParams }: { searchParams?: 
             <div>
               <label
                 htmlFor="phone"
-                className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5"
+                className="block font-mono text-micro uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5"
               >
                 Phone · Simu
               </label>
@@ -96,7 +96,7 @@ export default async function AdminLoginPage({ searchParams }: { searchParams?: 
             <div>
               <label
                 htmlFor="password"
-                className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5"
+                className="block font-mono text-micro uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5"
               >
                 Password · Nenosiri
               </label>

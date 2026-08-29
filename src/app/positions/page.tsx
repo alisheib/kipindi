@@ -210,7 +210,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
               end-labels (a11y §6b — never colour-only). */}
           {openStake > 0 && (
             <div className="mb-3 rounded-lg border border-border bg-bg-elevated/60 p-3">
-              <div className="mb-1.5 flex items-center justify-between gap-2 font-mono text-[10px] uppercase tracking-[0.12em] tabular-nums">
+              <div className="mb-1.5 flex items-center justify-between gap-2 font-mono text-micro uppercase tracking-[0.12em] tabular-nums">
                 <span className="font-bold text-yes-300">{t.common.yes} · {formatTzsCompact(openYesStake)}</span>
                 <span className="text-text-subtle">{t.positions.atRisk}</span>
                 <span className="font-bold text-no-300">{t.common.no} · {formatTzsCompact(openNoStake)}</span>

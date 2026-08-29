@@ -117,7 +117,7 @@ export function KycDecisionRail({
     <div className="space-y-4">
       {/* Checklist */}
       <div className="space-y-1.5">
-        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">Verification checklist · Orodha</p>
+        <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">Verification checklist · Orodha</p>
         {autoChecks.map((c) => (
           <div key={c.label} className="flex items-center gap-2.5 text-[12.5px]">
             <TriIcon state={c.state} />

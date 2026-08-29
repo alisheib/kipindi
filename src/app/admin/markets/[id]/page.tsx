@@ -180,7 +180,7 @@ export default async function MarketPredictorsPage({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1.5">
                 <MarketStatusBadge status={m.status} />
-                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{m.category}</span>
+                <span className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">{m.category}</span>
                 {/* ⭐ Jay (Gaming Board) item #14 — the category is editable here now. It used to
                     be set once at creation and read-only everywhere else, so a mis-filed market
                     could only be corrected by re-creating it. ⛔ The choices come from
@@ -349,7 +349,7 @@ export default async function MarketPredictorsPage({
               <a href={`/admin/markets/${id}`} className="btn btn-ghost btn-sm">Clear</a>
             )}
           </form>
-          <p className="mt-2 font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle">
+          <p className="mt-2 font-mono text-micro tracking-[0.14em] uppercase text-text-subtle">
             {filtered.length} of {allPositions.length} {allPositions.length === 1 ? "position" : "positions"}
           </p>
         </AdminCard>

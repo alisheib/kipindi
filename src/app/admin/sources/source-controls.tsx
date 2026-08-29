@@ -152,23 +152,23 @@ export function AddSourceForm() {
 
   return (
     <form onSubmit={onSubmit} className="rounded-lg border border-border bg-bg-elevated p-4 space-y-3">
-      <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">Add trusted source</p>
+      <p className="font-mono text-micro uppercase tracking-[0.16em] font-bold text-text-subtle">Add trusted source</p>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <label className="block">
-          <span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mb-1">Domain</span>
+          <span className="block font-mono text-micro uppercase tracking-[0.14em] text-text-subtle mb-1">Domain</span>
           <Input name="domain" required placeholder="bot.go.tz" size="sm" />
         </label>
         <label className="block">
-          <span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mb-1">Label</span>
+          <span className="block font-mono text-micro uppercase tracking-[0.14em] text-text-subtle mb-1">Label</span>
           <Input name="label" required placeholder="Bank of Tanzania" size="sm" />
         </label>
         <div>
-          <span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mb-1">Category</span>
+          <span className="block font-mono text-micro uppercase tracking-[0.14em] text-text-subtle mb-1">Category</span>
           <Select name="category" defaultValue={CATEGORIES[0]}
             options={CATEGORIES.map((c) => ({ value: c, label: c }))} />
         </div>
         <label className="block md:col-span-2">
-          <span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mb-1">Rationale (≥ 1 line)</span>
+          <span className="block font-mono text-micro uppercase tracking-[0.14em] text-text-subtle mb-1">Rationale (≥ 1 line)</span>
           <textarea name="rationale" required rows={2} placeholder="Why this source is authoritative for this category." className="w-full rounded-lg border border-border bg-[var(--bg-inset)] px-3 py-2.5 text-[13px] text-text placeholder:text-text-subtle outline-none admin-focus transition-colors resize-none" />
         </label>
       </div>

@@ -173,7 +173,7 @@ function ContactCard({
         <span className={`inline-flex h-7 w-7 items-center justify-center rounded-md border ${tintCls}`}>
           {icon}
         </span>
-        <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-semibold text-text-subtle">
+        <span className="font-mono text-micro uppercase tracking-[0.14em] font-semibold text-text-subtle">
           {title}
         </span>
       </div>

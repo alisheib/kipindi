@@ -282,7 +282,7 @@ export default async function AdminCandidatesPage({
             <>
               <ScrollX label="Market candidates">
                 <table className="admin-tbl">
-                  <thead className="font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle bg-bg-overlay border-b border-border">
+                  <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-subtle bg-bg-overlay border-b border-border">
                     <tr>
                       <th className="text-left p-3">State</th>
                       <th className="text-left p-3">Category</th>
@@ -297,7 +297,7 @@ export default async function AdminCandidatesPage({
                     {pageItems.map((c) => (
                       <tr key={c.id} className="border-b border-border/60 last:border-b-0 hover:bg-bg-overlay/50">
                         <td className="p-3"><Chip size="sm" variant={STATE_VARIANT[c.state]}>{candidateStateLabel(c.state)}</Chip></td>
-                        <td className="p-3 font-mono uppercase tracking-[0.12em] text-[10px]">{c.category}</td>
+                        <td className="p-3 font-mono uppercase tracking-[0.12em] text-micro">{c.category}</td>
                         <td className="p-3 text-text max-w-[420px] truncate">{c.proposedTitleEn}</td>
                         <td className="p-3 font-mono tabular-nums text-right">
                           <ScoreBadge value={c.confidence} good={85} warn={75} muted />
@@ -354,7 +354,7 @@ function CardSortControl({
   };
   return (
     <div className="flex items-center gap-1 flex-wrap px-4 lg:px-5 pt-3">
-      <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mr-1">
+      <span className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle mr-1">
         Sort <span className="italic text-text-tertiary">· Panga</span>
       </span>
       {options.map((o) => {
@@ -431,7 +431,7 @@ function CandidateRow({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
           <Chip size="sm" variant={STATE_VARIANT[c.state]}>{candidateStateLabel(c.state)}</Chip>
-          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{c.category}</span>
+          <span className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">{c.category}</span>
           <span className="font-mono text-[10.5px] tabular-nums text-text-muted">
             <I.shieldAlert size={10} className="inline -mt-0.5 mr-0.5" />
             confidence {c.confidence}

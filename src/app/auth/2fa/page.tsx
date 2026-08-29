@@ -92,7 +92,7 @@ export default async function TwoFactorChallengePage({ searchParams }: { searchP
         </div>
       </AuthPanel>
 
-      <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.16em] text-text-subtle">
+      <p className="mt-6 text-center font-mono text-micro uppercase tracking-[0.16em] text-text-subtle">
         {t.security.challengeFootnote}
       </p>
     </AuthShell>

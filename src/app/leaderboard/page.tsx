@@ -239,7 +239,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
         )}
         <table className="admin-tbl min-w-[640px]">
           <thead className="border-b border-border bg-bg-overlay">
-            <tr className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">
+            <tr className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">
               <th className="text-left p-3 w-14">#</th>
               <th className="text-left p-3">{t.leaderboard.tablePredictor}</th>
               <th className="text-right p-3">{t.leaderboard.tableRoi}</th>

@@ -212,7 +212,7 @@ export function SellButton({
     <>
       {inGrace && !closedNow && (
         <div className="mb-1.5 flex items-center gap-1.5 px-2 py-1 rounded-md bg-brand-500/[0.12] border border-brand-500/30">
-          <span className="font-mono text-[10px] font-bold text-brand-300 uppercase tracking-[0.12em]">{t.common.freeExitLabel}</span>
+          <span className="font-mono text-micro font-bold text-brand-300 uppercase tracking-[0.12em]">{t.common.freeExitLabel}</span>
           <span className="font-mono text-[10px] text-brand-300 tabular-nums">{graceLabel}</span>
           <span className="font-mono text-[10px] text-text-subtle">· {t.dialog.noFee}</span>
         </div>

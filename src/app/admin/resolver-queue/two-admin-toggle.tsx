@@ -78,7 +78,7 @@ export function TwoAdminToggle({ enabled }: { enabled: boolean }) {
           : "Single-admin resolution — one admin resolves any market in one action, even one they hold a position in. Toggle on to require two officers."}
       >
         <span
-          className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.12em]"
+          className="inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.12em]"
           style={{ color: enabled ? "var(--text-subtle)" : "var(--warning-fg)" }}
         >
           {/* ⭐ THE CONTROL SAYS IT IS WORKING, INSTEAD OF ONLY GOING DEAD.

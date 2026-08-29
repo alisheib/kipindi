@@ -40,7 +40,7 @@ export async function AuthShell({ children }: { children: React.ReactNode }) {
               {t.auth.railTagline}
             </p>
             <div className="mt-7 rounded-xl border border-border/60 bg-bg-elevated/40 p-4 backdrop-blur-sm">
-              <div className="mb-2 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.14em]">
+              <div className="mb-2 flex items-center justify-between font-mono text-micro uppercase tracking-[0.14em]">
                 <span className="text-yes-300">{t.common.yes} 64%</span>
                 <span className="text-no-300">36% {t.common.no}</span>
               </div>
@@ -59,7 +59,7 @@ export async function AuthShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          <div className="relative font-mono text-[10px] uppercase tracking-[0.16em] text-text-subtle">
+          <div className="relative font-mono text-micro uppercase tracking-[0.16em] text-text-subtle">
             {t.auth.licensedByGbt} {HELPLINE()} · EN · SW · 中文
           </div>
         </aside>
@@ -77,7 +77,7 @@ export async function AuthShell({ children }: { children: React.ReactNode }) {
             </Link>
             {children}
             {/* Mobile trust strip — the rail carries it on lg. */}
-            <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.16em] text-text-subtle lg:hidden">
+            <p className="mt-6 text-center font-mono text-micro uppercase tracking-[0.16em] text-text-subtle lg:hidden">
               {t.auth.licensedByGbt} {HELPLINE()}
             </p>
           </div>

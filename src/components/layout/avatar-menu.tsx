@@ -191,7 +191,7 @@ export function AvatarMenu({
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block font-display text-body-sm font-semibold text-text leading-tight">{t.common.staffConsole}</span>
-                    <span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-gold-300/80 leading-tight mt-0.5">Staff · Internal</span>
+                    <span className="block font-mono text-micro uppercase tracking-[0.14em] text-gold-300/80 leading-tight mt-0.5">Staff · Internal</span>
                   </span>
                   {/* ⛔ §M5 — "icons respond, they do not perform". This arrow carried
                       `transition-transform group-hover:translate-x-0.5`, i.e. a glyph moving

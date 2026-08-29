@@ -312,7 +312,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
         <AdminCard
           title="Up & Down economics · this game only"
           sw="Uchumi wa mchezo huu"
-          action={<span className="font-mono text-[10px] tracking-[0.12em] uppercase text-text-tertiary">{range.label} · UPDOWN only</span>}
+          action={<span className="font-mono text-micro tracking-[0.12em] uppercase text-text-tertiary">{range.label} · UPDOWN only</span>}
         >
           {/* This game's money over a chosen window — presets + custom date+hour+minute.
               (AI oracle cost stays on standard lookbacks — a separate spend concept.) */}

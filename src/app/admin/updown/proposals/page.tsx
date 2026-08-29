@@ -257,7 +257,7 @@ export default async function UpDownProposalsPage({
               ))}
             </>
           )}
-          <span className="ml-auto font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle">
+          <span className="ml-auto font-mono text-micro tracking-[0.14em] uppercase text-text-subtle">
             {filtered.length.toLocaleString()} of {allProposals.length.toLocaleString()}
           </span>
         </div>

@@ -155,7 +155,7 @@ export function Pagination({
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3 border-t border-border">
-      <p className="font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle">
+      <p className="font-mono text-micro tracking-[0.14em] uppercase text-text-subtle">
         {((safePage - 1) * perPage + 1).toLocaleString()}–{Math.min(safePage * perPage, total).toLocaleString()} {ofLabel} {total.toLocaleString()}
       </p>
       {/* Centred while wrapped, right-aligned once it fits on one line. `justify-end` once

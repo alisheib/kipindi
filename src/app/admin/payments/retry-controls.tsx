@@ -47,8 +47,8 @@ export function RetryControls({ txnId, type }: { txnId: string; type: "DEPOSIT" 
     return (
       <span className="inline-flex items-center gap-1.5">
         <span className="font-mono text-[10px] text-text-subtle">Cancel &amp; close?</span>
-        <button type="button" disabled={pending} onClick={() => run(cancelRefundTxnAction, "Transaction cancelled")} className="font-mono text-[10px] uppercase tracking-[0.08em] text-claret-300 hover:underline">Yes</button>
-        <button type="button" onClick={() => setConfirmCancel(false)} className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-subtle hover:text-text">No</button>
+        <button type="button" disabled={pending} onClick={() => run(cancelRefundTxnAction, "Transaction cancelled")} className="font-mono text-micro uppercase tracking-[0.08em] text-claret-300 hover:underline">Yes</button>
+        <button type="button" onClick={() => setConfirmCancel(false)} className="font-mono text-micro uppercase tracking-[0.08em] text-text-subtle hover:text-text">No</button>
       </span>
     );
   }
@@ -60,18 +60,18 @@ export function RetryControls({ txnId, type }: { txnId: string; type: "DEPOSIT" 
     return (
       <span className="inline-flex items-center gap-1.5">
         <span className="font-mono text-[10px] text-text-subtle">Re-send payout?</span>
-        <button type="button" disabled={pending} onClick={() => run(retryWithdrawalAction, "Retry dispatched")} className="font-mono text-[10px] uppercase tracking-[0.08em] text-claret-300 hover:underline">Yes</button>
-        <button type="button" onClick={() => setConfirmRetry(false)} className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-subtle hover:text-text">No</button>
+        <button type="button" disabled={pending} onClick={() => run(retryWithdrawalAction, "Retry dispatched")} className="font-mono text-micro uppercase tracking-[0.08em] text-claret-300 hover:underline">Yes</button>
+        <button type="button" onClick={() => setConfirmRetry(false)} className="font-mono text-micro uppercase tracking-[0.08em] text-text-subtle hover:text-text">No</button>
       </span>
     );
   }
 
   return (
     <span className="inline-flex items-center gap-2">
-      <button type="button" disabled={pending} onClick={() => (type === "WITHDRAWAL" ? setConfirmRetry(true) : run(retryDepositAction, "Retry dispatched"))} className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.08em] text-royal-300 hover:underline disabled:opacity-40">
+      <button type="button" disabled={pending} onClick={() => (type === "WITHDRAWAL" ? setConfirmRetry(true) : run(retryDepositAction, "Retry dispatched"))} className="inline-flex items-center gap-1 font-mono text-micro uppercase tracking-[0.08em] text-royal-300 hover:underline disabled:opacity-40">
         <I.rotateCcw s={11} /> Retry
       </button>
-      <button type="button" disabled={pending} onClick={() => setConfirmCancel(true)} className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.08em] text-text-subtle hover:text-claret-300 disabled:opacity-40">
+      <button type="button" disabled={pending} onClick={() => setConfirmCancel(true)} className="inline-flex items-center gap-1 font-mono text-micro uppercase tracking-[0.08em] text-text-subtle hover:text-claret-300 disabled:opacity-40">
         <I.x s={11} /> Cancel
       </button>
     </span>

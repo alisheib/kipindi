@@ -120,7 +120,7 @@ export function RoundActionPanel(props: {
         {payoutIfUp != null && payoutIfDown != null && (
           <div className="mt-3">
             {bothSides && (
-              <p className="m-0 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-text-subtle">
+              <p className="m-0 font-mono text-micro font-bold uppercase tracking-[0.14em] text-text-subtle">
                 {t.market.udBothSidesHeld}
               </p>
             )}

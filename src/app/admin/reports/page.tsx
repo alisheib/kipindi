@@ -292,7 +292,7 @@ export default async function AdminReportsPage({
                   </tbody>
                   <tfoot>
                     <tr className="border-t-2 border-border-strong">
-                      <td className="font-mono text-text uppercase text-[10px] tracking-wider font-bold">Total</td>
+                      <td className="font-mono text-text uppercase text-micro tracking-wider font-bold">Total</td>
                       <td className="font-mono tabular text-right text-text font-bold">{formatTzs(totals.stakes)}</td>
                       <td className="font-mono tabular text-right text-text font-bold">{formatTzs(totals.payouts)}</td>
                       <td className={["font-mono tabular text-right font-bold", totals.ggr < 0 ? "text-danger" : "text-text"].join(" ")}>{formatTzs(totals.ggr)}</td>

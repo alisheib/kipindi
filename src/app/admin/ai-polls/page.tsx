@@ -338,7 +338,7 @@ export default async function AdminAIPollsPage({
             <>
               <ScrollX label="AI polls">
                 <table className="admin-tbl min-w-[760px]">
-                  <thead className="font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle bg-bg-overlay border-b border-border">
+                  <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-subtle bg-bg-overlay border-b border-border">
                     <tr>
                       <th className="text-left p-3">State</th>
                       <th className="text-left p-3">Category</th>
@@ -355,7 +355,7 @@ export default async function AdminAIPollsPage({
                     {pageItems.map((p) => (
                       <tr key={p.id} id={`poll-tr-${p.id}`} className="border-b border-border/60 last:border-b-0 hover:bg-bg-overlay/50 group scroll-mt-24">
                         <td className="p-3"><Chip size="sm" variant={STATE_VARIANT[p.state]}>{aiPollStateLabel(p.state)}</Chip></td>
-                        <td className="p-3 font-mono uppercase tracking-[0.12em] text-[10px]">{p.category || "\u2014"}</td>
+                        <td className="p-3 font-mono uppercase tracking-[0.12em] text-micro">{p.category || "\u2014"}</td>
                         <td className="p-3 text-text max-w-[360px]">
                           <Link
                             href={`/admin/ai-polls/${p.id}` as "/admin/ai-polls"}
@@ -441,7 +441,7 @@ function CardSortControl({
   };
   return (
     <div className="flex items-center gap-1 flex-wrap px-4 lg:px-5 pt-3">
-      <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mr-1">
+      <span className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle mr-1">
         Sort <span className="italic text-text-tertiary">· Panga</span>
       </span>
       {options.map((o) => {
@@ -515,7 +515,7 @@ function PollRow({ poll, mode }: { poll: StoredAIPoll; mode: "review" | "publish
         {/* Header badges */}
         <div className="flex items-center gap-2 mb-1 flex-wrap">
           <Chip size="sm" variant={STATE_VARIANT[poll.state]}>{aiPollStateLabel(poll.state)}</Chip>
-          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{poll.category}</span>
+          <span className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">{poll.category}</span>
           <span className="font-mono text-[10.5px] tabular-nums text-text-muted">
             <I.shieldAlert size={10} className="inline -mt-0.5 mr-0.5" />
             confidence {poll.confidence}
@@ -599,7 +599,7 @@ function PollRow({ poll, mode }: { poll: StoredAIPoll; mode: "review" | "publish
         {/* AI reasoning */}
         {poll.reasoning && (
           <details className="mt-2 text-[11px]">
-            <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle hover:text-text-muted">
+            <summary className="cursor-pointer font-mono text-micro uppercase tracking-[0.14em] text-text-subtle hover:text-text-muted">
               AI reasoning
             </summary>
             <p className="mt-1 text-text-muted leading-relaxed pl-2 border-l-2 border-border">
@@ -611,7 +611,7 @@ function PollRow({ poll, mode }: { poll: StoredAIPoll; mode: "review" | "publish
         {/* Raw response */}
         {poll.rawResponse && (poll.state === "VALIDATION_FAILED" || poll.state === "FILTERED") && (
           <details className="mt-2 text-[11px]">
-            <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle hover:text-text-muted">
+            <summary className="cursor-pointer font-mono text-micro uppercase tracking-[0.14em] text-text-subtle hover:text-text-muted">
               Raw AI response
             </summary>
             <pre className="mt-1 text-text-muted leading-relaxed pl-2 border-l-2 border-border text-[10px] font-mono overflow-x-auto max-w-full whitespace-pre-wrap break-all">

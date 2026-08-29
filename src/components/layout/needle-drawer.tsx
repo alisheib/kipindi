@@ -75,7 +75,7 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
       >
         <span className={hidden ? "text-text-subtle" : "text-brand-300"}><NeedleMark /></span>
         <span className="flex-1">{t("The Needle", "Sindano", "指针玩具")}</span>
-        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle">{shownLabel}</span>
+        <span className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle">{shownLabel}</span>
         <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" className="text-text-subtle"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </button>
     ) : (

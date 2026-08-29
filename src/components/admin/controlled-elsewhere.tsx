@@ -33,7 +33,7 @@ export function ControlledElsewhere({
       href={href}
       className="admin-focus mt-2 inline-flex min-h-[40px] items-center gap-2 rounded-pill border border-border bg-bg-overlay px-3 text-[12px] text-text-tertiary transition-colors hover:text-text-secondary"
     >
-      <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle">
+      <span className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle">
         Display only
       </span>
       <span>

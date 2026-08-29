@@ -249,7 +249,7 @@ export function WinCelebrationHost() {
 
         {/* Eyebrow */}
         <p
-          className="g-settle font-mono text-[10px] uppercase tracking-[0.2em] font-bold text-gold-300"
+          className="g-settle font-mono text-micro uppercase tracking-[0.2em] font-bold text-gold-300"
           style={{ "--i": 0 } as CSSProperties}
         >
           {t.common.positionWon}

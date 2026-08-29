@@ -112,7 +112,7 @@ export function ReportPackControls({
     return (
       <div className="space-y-2">
         <label className="block">
-          <span className="mb-1 block font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">Acknowledgement reference · optional</span>
+          <span className="mb-1 block font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">Acknowledgement reference · optional</span>
           <input
             value={ackRef}
             onChange={(e) => setAckRef(e.target.value)}

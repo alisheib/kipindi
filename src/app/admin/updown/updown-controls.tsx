@@ -66,7 +66,7 @@ const CATEGORIES = ["macro", "crypto", "other"] as const;
 function Field({ label, children, className = "" }: { label: string; children: React.ReactNode; className?: string }) {
   return (
     <label className={`block ${className}`}>
-      <span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mb-1">{label}</span>
+      <span className="block font-mono text-micro uppercase tracking-[0.14em] text-text-subtle mb-1">{label}</span>
       {children}
     </label>
   );
@@ -164,7 +164,7 @@ export function EditAssetForm({
 
   return (
     <form onSubmit={onSubmit} className="rounded-lg border border-border bg-bg-elevated p-4 space-y-3 text-left">
-      <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">Edit {label}</p>
+      <p className="font-mono text-micro uppercase tracking-[0.16em] font-bold text-text-subtle">Edit {label}</p>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Symbol"><Input name="symbol" defaultValue={symbol} size="sm" /></Field>
         <Field label="Name (EN)"><Input name="nameEn" defaultValue={nameEn} size="sm" /></Field>
@@ -269,7 +269,7 @@ export function EditChainForm({
 
   return (
     <form onSubmit={onSubmit} className="rounded-lg border border-border bg-bg-elevated p-4 space-y-3 text-left">
-      <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">Edit {label}</p>
+      <p className="font-mono text-micro uppercase tracking-[0.16em] font-bold text-text-subtle">Edit {label}</p>
       {/* ⛔ NO VIEWPORT BREAKPOINT HERE. This panel renders inside the LAST TABLE CELL of a chain
           row — about 390px wide — but `sm:grid-cols-3` responds to the 1440px VIEWPORT, not to the
           space the panel actually has. So it laid three columns into 390px and the band dropdown
@@ -651,7 +651,7 @@ export function AddAssetForm({ catalogue }: { catalogue: SymbolOption[] }) {
 
   return (
     <form onSubmit={onSubmit} className="rounded-lg border border-border bg-bg-elevated p-4 space-y-3">
-      <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">Add tradable asset</p>
+      <p className="font-mono text-micro uppercase tracking-[0.16em] font-bold text-text-subtle">Add tradable asset</p>
 
       {/* ── The two choices an operator actually makes ── */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -696,7 +696,7 @@ export function AddAssetForm({ catalogue }: { catalogue: SymbolOption[] }) {
           <input type="hidden" name="priceSourceUrl" value="https://api.twelvedata.com/quote" />
 
           <div className="rounded-lg border border-border bg-bg p-3">
-            <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-2">
+            <p className="font-mono text-micro uppercase tracking-[0.16em] font-bold text-text-subtle mb-2">
               Set by the symbol — not editable
             </p>
             <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-body-sm sm:grid-cols-3">
@@ -895,7 +895,7 @@ export function AddChainForm({
 
   if (assets.length === 0) {
     return (
-      <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle">
+      <span className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle">
         add an asset first
       </span>
     );
@@ -928,7 +928,7 @@ export function AddChainForm({
 
   return (
     <form onSubmit={onSubmit} className="rounded-lg border border-border bg-bg-elevated p-4 space-y-3">
-      <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">Add chain</p>
+      <p className="font-mono text-micro uppercase tracking-[0.16em] font-bold text-text-subtle">Add chain</p>
       {/* ⚠️ SIX COLUMNS, NOT FIVE, SO THE BAND CAN SAY WHICH OPTION IS RECOMMENDED (E-85).
           Five equal columns put "Smallest possible (recommended)" in the same width as a
           numeric stake box, and the kit trigger's `.truncate` clipped it to "Smallest

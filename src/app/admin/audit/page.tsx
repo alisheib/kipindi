@@ -143,7 +143,7 @@ export default async function AdminAuditPage({
               <a href={`/admin/audit${category ? `?category=${category}` : ""}`} className="text-yes-300 hover:text-yes-200 ml-2">clear</a>
             </span>
           )}
-          <span className="ml-auto font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle">
+          <span className="ml-auto font-mono text-micro tracking-[0.14em] uppercase text-text-subtle">
             {allFiltered.length.toLocaleString()} entries
           </span>
         </div>

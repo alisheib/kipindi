@@ -214,7 +214,7 @@ function BonusWalletCard({
           <>
             <div className="mt-4">
               <div className="flex items-center justify-between gap-2 mb-1.5">
-                <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-gold-200/80">
+                <p className="font-mono text-micro uppercase tracking-[0.12em] text-gold-200/80">
                   {t.common.unlockProgress}
                 </p>
                 <p className="font-mono text-[12px] font-bold text-text tabular-nums">{overallPct}%</p>
@@ -263,7 +263,7 @@ function BonusWalletCard({
                   return (
                     <div key={g.id} className={`rounded-md px-3 py-2 border ${isQueued ? "bg-bg-overlay/40 border-border/40 opacity-70" : "bg-gold-500/[0.06] border-gold-700/25"}`}>
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-gold-200/80 flex items-center gap-1.5">
+                        <span className="font-mono text-micro uppercase tracking-[0.1em] text-gold-200/80 flex items-center gap-1.5">
                           {BONUS_SOURCE_LABEL[g.source] ?? g.source}
                           {isQueued && (
                             <span className="inline-flex items-center rounded-pill px-1.5 py-px text-[8px] font-bold bg-warning-bg border border-warning-border text-warning-fg">

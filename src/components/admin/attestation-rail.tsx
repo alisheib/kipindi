@@ -47,7 +47,7 @@ export function AttestationRail({
       <Icon s={15} className={`mt-0.5 shrink-0 ${blocked ? "text-claret-300" : "text-warning-fg"}`} />
       <div className="text-[12px] text-text-muted">
         <p
-          className={`font-mono text-[10px] uppercase tracking-[0.14em] font-bold ${
+          className={`font-mono text-micro uppercase tracking-[0.14em] font-bold ${
             blocked ? "text-claret-300" : "text-warning-fg"
           }`}
         >

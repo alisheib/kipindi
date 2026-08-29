@@ -574,7 +574,7 @@ export default async function MarketDetail({
                             fully localised. A Swahili player reading "NDIO" on the card
                             they arrived from met "YES" here. */}
                         <span className={`font-bold ${p.side === "YES" ? "text-yes-300" : "text-no-300"}`}>{sideWord(t, p.side, "MARKET")}</span>
-                        <span className={`text-[10px] uppercase tracking-[0.10em] font-semibold ${
+                        <span className={`text-micro uppercase tracking-[0.10em] font-semibold ${
                           p.status === "OPEN" ? "text-info-fg" : p.status === "WIN" ? "text-gold-300" : p.status === "LOSS" ? "text-no-300" : "text-text-subtle"
                         }`}>{
                           p.status === "OPEN" ? t.market.posOpen
@@ -701,7 +701,7 @@ export default async function MarketDetail({
               {/* Hedge warning — shown when player already has a position */}
               {openPositions.length > 0 && (
                 <div className="rounded-lg border border-warning-border bg-warning-bg px-3.5 py-2.5">
-                  <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-warning-fg">
+                  <p className="font-mono text-micro uppercase tracking-[0.14em] font-bold text-warning-fg">
                     {t.market.youAlreadyHold} {heldLabel} {t.market.here}
                   </p>
                   <p className="mt-1 text-body-sm leading-snug text-text-muted">
@@ -755,7 +755,7 @@ export default async function MarketDetail({
                     "var(--hero-panel-grad)",
                 }}
               >
-                <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">
+                <p className="font-mono text-micro uppercase tracking-[0.16em] font-bold text-gold-300">
                   {t.market.signInToPredict}
                 </p>
                 <h3 className="mt-1.5 font-display text-[18px] font-bold text-text leading-tight">
@@ -785,7 +785,7 @@ export default async function MarketDetail({
               <div className="flex items-center justify-center gap-2 mb-2">
                 <I.hourglassOff s={18} className="text-gold-300" />
               </div>
-              <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">
+              <p className="font-mono text-micro uppercase tracking-[0.16em] font-bold text-gold-300">
                 {t.market.selectionClosedBadge}
               </p>
               <h3 className="mt-1.5 font-display text-[15px] font-bold text-text">{t.market.waitingForResultsAside}</h3>
@@ -796,7 +796,7 @@ export default async function MarketDetail({
             </div>
           ) : closedByTime ? (
             <div className="rounded-xl border border-warning-border bg-warning-bg p-6 text-center">
-              <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-warning-fg">
+              <p className="font-mono text-micro uppercase tracking-[0.16em] font-bold text-warning-fg">
                 {t.market.closedAwaitingSettlement}
               </p>
               <h3 className="mt-1.5 font-display text-[15px] font-bold text-text">{t.market.noMoreBets}</h3>
@@ -932,7 +932,7 @@ function KPI({ label, value, icon, mono }: { label: string; value: string; icon?
     <div className="rounded-md border border-border bg-bg-elevated p-3">
       <div className="flex items-center gap-1.5 text-text-subtle">
         {icon}
-        <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-semibold">{label}</p>
+        <p className="font-mono text-micro uppercase tracking-[0.14em] font-semibold">{label}</p>
       </div>
       <p className={`mt-1 ${mono ? "font-mono text-[13px]" : "font-display text-[18px] font-bold"} tabular-nums text-text leading-tight`}>{value}</p>
     </div>

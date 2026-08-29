@@ -137,7 +137,7 @@ export default async function PerformancePage() {
           <section aria-label={t.performance.netPnl} className="glass-panel p-5">
             <div className="flex items-center justify-between gap-3">
               <span className="gilt-eyebrow">{t.performance.netPnl} · {t.common.settled}</span>
-              <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-subtle">{t.performance.allFiguresFinal}</span>
+              <span className="font-mono text-micro uppercase tracking-[0.08em] text-text-subtle">{t.performance.allFiguresFinal}</span>
             </div>
             <div className="gilt-rule" style={{ margin: "10px 0 14px" }} />
             <div className="flex flex-wrap items-end gap-x-10 gap-y-4">
@@ -168,7 +168,7 @@ export default async function PerformancePage() {
             <section aria-label={t.performance.pnlOverTime} className="glass-panel p-5">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <span className="gilt-eyebrow">{t.performance.pnlOverTime}</span>
-                <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-subtle">{t.performance.cumulativePerSettlement}</span>
+                <span className="font-mono text-micro uppercase tracking-[0.08em] text-text-subtle">{t.performance.cumulativePerSettlement}</span>
               </div>
               <PnlChart data={pnlSeries} ariaLabel={t.performance.pnlOverTime} />
             </section>
@@ -207,7 +207,7 @@ export default async function PerformancePage() {
             <div className="rounded-xl border border-border bg-bg-elevated p-5">
               <div className="flex items-baseline justify-between gap-2">
                 <p className="gilt-eyebrow" style={{ color: "var(--text-subtle)" }}>{t.performance.currentStreak}</p>
-                <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle tabular-nums">{t.performance.longestStreak} {longestStreak}</p>
+                <p className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle tabular-nums">{t.performance.longestStreak} {longestStreak}</p>
               </div>
               <div className="mt-3 flex items-center gap-2">
                 {/* §T5 — every numeral is JetBrains Mono, "no exceptions". This one was

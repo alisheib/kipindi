@@ -175,7 +175,7 @@ export function CampaignControls({ campaignId, status, queued, smsLive }: { camp
               {rows.length} contact{rows.length === 1 ? "" : "s"} staged · not yet saved
             </FieldLegend>
             <button type="button" onClick={() => setRows([])} disabled={pending}
-              className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle hover:text-no-300 transition-colors disabled:opacity-40">
+              className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle hover:text-no-300 transition-colors disabled:opacity-40">
               Clear all
             </button>
           </div>

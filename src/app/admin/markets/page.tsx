@@ -140,7 +140,7 @@ export default async function AdminMarketsPage({
             )}
             <RefreshButton className="ml-auto" />
           </form>
-          <p className="mt-2 font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle">
+          <p className="mt-2 font-mono text-micro tracking-[0.14em] uppercase text-text-subtle">
             {filtered.length} of {all.length} {all.length === 1 ? "market" : "markets"}
           </p>
         </AdminCard>
@@ -170,7 +170,7 @@ export default async function AdminMarketsPage({
                         <Link href={`/markets/${m.id}` as never} className="font-display font-semibold text-text hover:text-royal-300 line-clamp-2">{m.titleEn}</Link>
                         {m.titleSw && <p className="mt-0.5 text-body-sm italic text-text-subtle line-clamp-1">{m.titleSw}</p>}
                         {m.titleZh && <p className="mt-0.5 text-body-sm italic text-text-subtle line-clamp-1">{m.titleZh}</p>}
-                        <Link href={`/admin/markets/${m.id}` as never} className="mt-1 inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.12em] text-brand-400 hover:text-brand-300 transition-colors">
+                        <Link href={`/admin/markets/${m.id}` as never} className="mt-1 inline-flex items-center gap-1 font-mono text-micro uppercase tracking-[0.12em] text-brand-400 hover:text-brand-300 transition-colors">
                           <I.users size={10} /> View predictors
                         </Link>
                       </td>

@@ -126,7 +126,7 @@ export function SecurityClient({ enabled, backupRemaining }: { enabled: boolean;
           </div>
           {secret && (
             <div className="text-center">
-              <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{t.security.manualKey}</p>
+              <p className="mb-1 font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">{t.security.manualKey}</p>
               <code className="select-all break-all font-mono text-[12.5px] text-text">{secret}</code>
             </div>
           )}

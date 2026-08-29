@@ -84,7 +84,7 @@ export function SortBtn<K extends string>({
 }) {
   const isActive = current === field;
   return (
-    <button type="button" onClick={() => onSort(field)} className={`inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.1em] hover:text-text transition-colors ${isActive ? "text-text" : "text-text-subtle"}`}>
+    <button type="button" onClick={() => onSort(field)} className={`inline-flex items-center gap-1 font-mono text-micro uppercase tracking-[0.1em] hover:text-text transition-colors ${isActive ? "text-text" : "text-text-subtle"}`}>
       {label}
       <span className={`text-brand-300 ${isActive ? "" : "opacity-0"}`} aria-hidden>{dir === "asc" ? "↑" : "↓"}</span>
     </button>

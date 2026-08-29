@@ -39,7 +39,7 @@ import { cn } from "@/lib/utils";
 /** The figure's role in the receipt. One rendering per role — that is the fix. */
 export type ReceiptEmphasis = "row" | "amount" | "fee" | "total" | "muted";
 
-const LABEL = "font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle";
+const LABEL = "font-mono text-micro uppercase tracking-[0.12em] text-text-subtle";
 
 const VALUE: Record<ReceiptEmphasis, string> = {
   // The reference/context lines — provider, phone, recipient name.
@@ -96,7 +96,7 @@ export function ReceiptRow({
     >
       {/* When the row carries a tone, the label must NOT re-assert `text-text-subtle`
           or it fights the row colour and only half the line reads as one thing. */}
-      <span className={toneCls ? "font-mono text-[10px] uppercase tracking-[0.12em]" : LABEL}>{label}</span>
+      <span className={toneCls ? "font-mono text-micro uppercase tracking-[0.12em]" : LABEL}>{label}</span>
       <span className={cn(VALUE[emphasis], alignEnd && "text-right")}>
         {money ? <Cash>{value}</Cash> : value}
       </span>

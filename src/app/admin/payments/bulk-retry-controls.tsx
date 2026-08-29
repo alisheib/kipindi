@@ -52,11 +52,11 @@ export function BulkRetryControls() {
       {confirm ? (
         <span className="inline-flex items-center gap-1.5">
           <span className="font-mono text-[10px] text-text-subtle">Retry all failed?</span>
-          <button type="button" disabled={pending} onClick={run} className="font-mono text-[10px] uppercase tracking-[0.08em] text-royal-300 hover:underline disabled:opacity-40">Yes</button>
-          <button type="button" onClick={() => setConfirm(false)} className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-subtle hover:text-text">No</button>
+          <button type="button" disabled={pending} onClick={run} className="font-mono text-micro uppercase tracking-[0.08em] text-royal-300 hover:underline disabled:opacity-40">Yes</button>
+          <button type="button" onClick={() => setConfirm(false)} className="font-mono text-micro uppercase tracking-[0.08em] text-text-subtle hover:text-text">No</button>
         </span>
       ) : (
-        <button type="button" disabled={pending} onClick={() => setConfirm(true)} className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.08em] text-royal-300 hover:underline disabled:opacity-40">
+        <button type="button" disabled={pending} onClick={() => setConfirm(true)} className="inline-flex items-center gap-1 font-mono text-micro uppercase tracking-[0.08em] text-royal-300 hover:underline disabled:opacity-40">
           <I.rotateCcw s={11} /> Retry all
         </button>
       )}

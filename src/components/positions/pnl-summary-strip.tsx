@@ -51,7 +51,7 @@ export function PnlSummaryStrip({
     <section aria-label={t.yourStanding} className="glass-panel px-5 pt-4 pb-[18px]">
       <div className="flex items-center justify-between gap-3">
         <span className="gilt-eyebrow">{t.yourStanding}</span>
-        <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-text-subtle">
+        <span className="inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.08em] text-text-subtle">
           <span
             className="h-1.5 w-1.5 rounded-full"
             style={{ background: "var(--aqua-300)", boxShadow: "0 0 8px var(--aqua-glow)" }}

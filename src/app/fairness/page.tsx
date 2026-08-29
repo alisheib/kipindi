@@ -53,7 +53,7 @@ function FairnessChain({ steps }: { steps: { glyph: keyof typeof I; label: strin
                 <span className={`inline-flex h-[44px] w-[44px] items-center justify-center rounded-full ${circleCls}`}>
                   <Glyph s={19} />
                 </span>
-                <span className={`mt-2 font-mono text-[10px] font-semibold uppercase leading-tight tracking-[0.06em] ${s.gilt ? "text-gold-300" : "text-text-muted"}`}>
+                <span className={`mt-2 font-mono text-micro font-semibold uppercase leading-tight tracking-[0.06em] ${s.gilt ? "text-gold-300" : "text-text-muted"}`}>
                   {s.label}
                 </span>
               </div>
@@ -148,7 +148,7 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
           <ScrollX label="Resolved markets" className="glass-panel">
             <table className="admin-tbl">
               <thead className="border-b border-border bg-bg-overlay">
-                <tr className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">
+                <tr className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">
                   <th className="text-left p-3">{t.common.thMarket}</th>
                   <th className="text-left p-3">{t.common.thOutcome}</th>
                   <th className="text-left p-3">{t.common.thOfficers}</th>

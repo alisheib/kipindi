@@ -68,7 +68,7 @@ export function StuckPayoutControls({ txnId, amountLabel }: { txnId: string; amo
         type="button"
         disabled={pending}
         onClick={() => { setOpen(true); setReason(""); }}
-        className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.08em] text-claret-300 hover:underline disabled:opacity-40"
+        className="inline-flex items-center gap-1 font-mono text-micro uppercase tracking-[0.08em] text-claret-300 hover:underline disabled:opacity-40"
       >
         <I.x s={11} /> Return to player
       </button>

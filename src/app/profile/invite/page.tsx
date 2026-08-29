@@ -302,7 +302,7 @@ export default async function InvitePage() {
 
       {/* Requirements banner — Management Bonus Rules §4 + §5 */}
       <section className="rounded-xl border border-border bg-bg-elevated/60 p-4 space-y-2">
-        <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle flex items-center gap-1.5">
+        <p className="font-mono text-micro uppercase tracking-[0.14em] font-bold text-text-subtle flex items-center gap-1.5">
           <I.shieldcheck s={11} />
           {t.profile.bonusRequirements}
         </p>

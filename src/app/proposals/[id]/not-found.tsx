@@ -21,7 +21,7 @@ export default async function ProposalNotFound() {
       <div className="mb-5">
         <FiftyMark size={64} />
       </div>
-      <p className="font-mono text-[10px] font-bold uppercase tracking-[0.20em] text-gold-300">
+      <p className="font-mono text-micro font-bold uppercase tracking-[0.20em] text-gold-300">
         {t.error.notFoundCode}
       </p>
       <h1 className="mt-2 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-text">

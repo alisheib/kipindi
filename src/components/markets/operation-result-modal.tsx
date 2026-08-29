@@ -435,7 +435,7 @@ export function OperationResultModal({
         </div>
 
         <p
-          className="mt-4 font-mono text-[10px] uppercase tracking-[0.16em] font-bold"
+          className="mt-4 font-mono text-micro uppercase tracking-[0.16em] font-bold"
           style={{ color: tone.fg }}
         >
           {eyebrow}

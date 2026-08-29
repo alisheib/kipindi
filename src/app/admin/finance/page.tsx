@@ -160,7 +160,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
           title="House accounts (double-entry ledger)"
           sw="Akaunti za nyumba"
           action={
-            <span className="font-mono text-[10px] tracking-[0.10em] uppercase text-text-tertiary">
+            <span className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">
               summed from ledger entries
             </span>
           }
@@ -198,7 +198,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
           sw="Ada za malipo kwa kila soko"
           action={
             pollFees ? (
-              <span className="font-mono text-[10px] tracking-[0.10em] uppercase text-text-tertiary">
+              <span className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">
                 loser-share {pollFees.byModel["loser-share"].count} · {formatTzsCompact(pollFees.byModel["loser-share"].fee)} — capped {pollFees.byModel["capped-commission"].count} · {formatTzsCompact(pollFees.byModel["capped-commission"].fee)}
               </span>
             ) : null
@@ -239,7 +239,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
                         <td className="text-left whitespace-nowrap">{eatDayKey(Date.parse(r.settledAt))}</td>
                         <td className="text-left">
                           <span
-                            className={`inline-block rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] ${
+                            className={`inline-block rounded px-1.5 py-0.5 font-mono text-micro uppercase tracking-[0.08em] ${
                               r.feeModel === "loser-share" ? "bg-brand-500/15 text-brand-300" : "bg-bg-inset text-text-muted"
                             }`}
                           >
@@ -285,7 +285,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
             sw="Ulinganifu wa daftari"
             className={tb.ok ? undefined : "border-danger-border bg-danger-bg"}
             action={
-              <span className={["font-mono text-[10px] tracking-[0.10em] uppercase", tb.ok ? "text-success" : "text-danger-fg"].join(" ")}>
+              <span className={["font-mono text-micro tracking-[0.10em] uppercase", tb.ok ? "text-success" : "text-danger-fg"].join(" ")}>
                 {tb.ok ? "✓ reconciles" : "✗ drift detected"}
               </span>
             }

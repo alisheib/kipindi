@@ -96,7 +96,7 @@ export function FeaturedContest({
       <div className="mb-2 flex items-center justify-between gap-3">
         {/* min-w-0 + truncate lets the eyebrow yield at the smallest widths (≤320) so the
             44px arrow controls are never pushed off the panel edge; shrink-0 pins them. */}
-        <p className="min-w-0 truncate font-mono text-[10px] uppercase tracking-[0.18em] font-bold text-aqua-300">{eyebrow}</p>
+        <p className="min-w-0 truncate font-mono text-micro uppercase tracking-[0.18em] font-bold text-aqua-300">{eyebrow}</p>
         {multi && (
           <div className="flex shrink-0 items-center gap-2">
             <Arrow dir="prev" onClick={() => go(-1)} />

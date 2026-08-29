@@ -111,7 +111,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
         <section className="relative overflow-hidden rounded-xl border p-5 text-center" style={{ borderColor: "var(--gold-700)", background: "linear-gradient(160deg, var(--bg-elevated), var(--royal-950))" }}>
           <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "linear-gradient(180deg, transparent, color-mix(in oklab, var(--gold-700) 16%, transparent))" }} />
           <div className="relative flex flex-col items-center">
-            <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-gold-300">{t.common.yourProposalApproved}</p>
+            <p className="mb-3 font-mono text-micro uppercase tracking-[0.16em] font-bold text-gold-300">{t.common.yourProposalApproved}</p>
             <RewardBurst
               glyph="trophy"
               amount={formatTzsSigned(p.bonusGrantedTzs)}

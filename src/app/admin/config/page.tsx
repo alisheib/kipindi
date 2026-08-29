@@ -183,7 +183,7 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
           title="Fee simulator"
           sw="Kijaribio cha ada"
           action={
-            <span className="font-mono text-[10px] tracking-[0.10em] uppercase text-text-tertiary">
+            <span className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">
               runs the real payout function
             </span>
           }
@@ -196,7 +196,7 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
           title="Global rates"
           sw="Viwango vya jumla"
           action={
-            <span className="font-mono text-[10px] tracking-[0.10em] uppercase text-text-tertiary">
+            <span className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">
               changes apply on next bet — no redeploy
             </span>
           }
@@ -214,7 +214,7 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
           title="Per-market overrides"
           sw="Vifuniko vya soko"
           action={
-            <span className="font-mono text-[10px] tracking-[0.10em] uppercase text-text-tertiary">
+            <span className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">
               {overrides.length} active
             </span>
           }
@@ -227,7 +227,7 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
 
           <div className="space-y-4">
             <div className="glass-panel p-4">
-              <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle mb-3">Add override</p>
+              <p className="font-mono text-micro uppercase tracking-[0.14em] font-bold text-text-subtle mb-3">Add override</p>
               <FormColumn measure="form"><MarketOverrideForm globalConfig={config} /></FormColumn>
             </div>
 
@@ -239,7 +239,7 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
               <ScrollX label="Market overrides" className="rounded-md border border-border">
                 <table className="admin-tbl">
                   <thead className="border-b border-border bg-bg-overlay">
-                    <tr className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">
+                    <tr className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">
                       <th className="text-left p-3">Market</th>
                       <th className="text-left p-3">Fee ceiling</th>
                       <th className="text-left p-3">Commission</th>
@@ -289,7 +289,7 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
         <AdminCard
           title="Recent changes"
           sw="Mabadiliko ya hivi karibuni"
-          action={<span className="font-mono text-[10px] tracking-[0.10em] uppercase text-text-tertiary">{recent.length} entries</span>}
+          action={<span className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">{recent.length} entries</span>}
           padding="p-0"
         >
           {recent.length === 0 ? (
@@ -300,7 +300,7 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
             <ScrollX label="Config changes">
               <table className="admin-tbl">
                 <thead className="border-b border-border bg-bg-overlay">
-                  <tr className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">
+                  <tr className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">
                     <th className="text-left p-3">Time</th>
                     <th className="text-left p-3">Action</th>
                     <th className="text-left p-3">Officer</th>

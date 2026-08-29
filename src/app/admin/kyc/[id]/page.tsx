@@ -174,7 +174,7 @@ export default async function KycWorkstationPage({ params }: { params: Promise<{
         actions={
           <div className="flex items-center gap-2 flex-wrap">
             {queuePos >= 0 && (
-              <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle">
+              <span className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle">
                 #{queuePos + 1} of {pending.length} · oldest {ageLabel(oldest)}
               </span>
             )}
@@ -240,13 +240,13 @@ export default async function KycWorkstationPage({ params }: { params: Promise<{
             <AdminCard>
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">Risk score · Alama ya hatari</p>
+                  <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">Risk score · Alama ya hatari</p>
                   <p className="font-mono text-[26px] font-bold leading-none tabular-nums" style={{ color: risk.band === "high" ? "var(--no-400)" : risk.band === "medium" ? "var(--warning-fg)" : "var(--yes-400)" }}>
                     {risk.score}
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">SLA</p>
+                  <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">SLA</p>
                   <Chip size="sm" variant={slaTone as "brand" | "warning" | "danger" | "neutral"}>{slaLabel}</Chip>
                 </div>
               </div>
@@ -302,7 +302,7 @@ export default async function KycWorkstationPage({ params }: { params: Promise<{
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
-      <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{label}</dt>
+      <dt className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">{label}</dt>
       <dd className="text-text">{value}</dd>
     </div>
   );

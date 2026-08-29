@@ -60,10 +60,10 @@ export function ReconcileControls({ txnId }: { txnId: string }) {
   return (
     <>
       <span className="inline-flex items-center gap-2">
-        <button type="button" disabled={pending} onClick={() => { setMode("match"); setRef(""); setReason(""); }} className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.08em] text-royal-300 hover:underline disabled:opacity-40">
+        <button type="button" disabled={pending} onClick={() => { setMode("match"); setRef(""); setReason(""); }} className="inline-flex items-center gap-1 font-mono text-micro uppercase tracking-[0.08em] text-royal-300 hover:underline disabled:opacity-40">
           <I.check s={11} /> Match
         </button>
-        <button type="button" disabled={pending} onClick={() => { setMode("writeoff"); setRef(""); setReason(""); }} className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.08em] text-text-subtle hover:text-claret-300 disabled:opacity-40">
+        <button type="button" disabled={pending} onClick={() => { setMode("writeoff"); setRef(""); setReason(""); }} className="inline-flex items-center gap-1 font-mono text-micro uppercase tracking-[0.08em] text-text-subtle hover:text-claret-300 disabled:opacity-40">
           <I.x s={11} /> Write off
         </button>
       </span>
@@ -79,7 +79,7 @@ export function ReconcileControls({ txnId }: { txnId: string }) {
         ariaBusy={pending}
         initialFocus={firstFieldRef}
       >
-        <p className="font-mono text-[10px] uppercase tracking-[0.18em] font-bold text-text mb-1">
+        <p className="font-mono text-micro uppercase tracking-[0.18em] font-bold text-text mb-1">
           {mode === "match" ? "Reconcile · Match" : "Reconcile · Write off"}
         </p>
         <h3 className="font-display text-[18px] font-bold text-text leading-tight">
@@ -91,7 +91,7 @@ export function ReconcileControls({ txnId }: { txnId: string }) {
 
         {mode === "match" && (
           <label className="mt-3 block">
-            <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle">PSP settlement ref (required)</span>
+            <span className="font-mono text-micro uppercase tracking-[0.14em] font-bold text-text-subtle">PSP settlement ref (required)</span>
             <input
               ref={(el) => { firstFieldRef.current = el; }}
               value={ref}
@@ -103,7 +103,7 @@ export function ReconcileControls({ txnId }: { txnId: string }) {
         )}
 
         <label className="mt-3 block">
-          <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle">
+          <span className="font-mono text-micro uppercase tracking-[0.14em] font-bold text-text-subtle">
             {mode === "match" ? "Note (optional)" : "Reason · Sababu (required, audit-logged)"}
           </span>
           <textarea

@@ -144,7 +144,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
             <div>
               <label
                 htmlFor="password"
-                className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5"
+                className="block font-mono text-micro uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5"
               >
                 {t.common.newPassword}
               </label>
@@ -162,7 +162,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
             <div>
               <label
                 htmlFor="confirm"
-                className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5"
+                className="block font-mono text-micro uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5"
               >
                 {t.common.confirmPassword}
               </label>

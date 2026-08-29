@@ -118,7 +118,7 @@ export function ResolutionCeremony({
 
         {verdict === "VOID" && (
           <label className="block">
-            <span className="mb-1 block font-mono text-[10px] uppercase tracking-[0.14em] text-claret-300">
+            <span className="mb-1 block font-mono text-micro uppercase tracking-[0.14em] text-claret-300">
               Void reason · Sababu ya kubatilisha <span className="text-claret-300">*</span>
             </span>
             <Select
@@ -133,7 +133,7 @@ export function ResolutionCeremony({
         )}
 
         <label className="block">
-          <span className="mb-1 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">
+          <span className="mb-1 flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">
             <I.fileText s={12} /> {bi(CEREMONY.evidenceExcerpt)}
           </span>
           <textarea
@@ -148,7 +148,7 @@ export function ResolutionCeremony({
         </label>
 
         <label className="block">
-          <span className="mb-1 block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-claret-300">
+          <span className="mb-1 block font-mono text-micro uppercase tracking-[0.16em] font-bold text-claret-300">
             Type SEAL to publish · Andika SEAL
           </span>
           <input
@@ -191,7 +191,7 @@ export function ResolutionCeremony({
 
         {verdict === "VOID" && (
           <label className="block">
-            <span className="mb-1 block font-mono text-[10px] uppercase tracking-[0.14em] text-claret-300">
+            <span className="mb-1 block font-mono text-micro uppercase tracking-[0.14em] text-claret-300">
               Void reason · Sababu ya kubatilisha <span className="text-claret-300">*</span>
             </span>
             <Select
@@ -206,7 +206,7 @@ export function ResolutionCeremony({
         )}
 
         <label className="block">
-          <span className="mb-1 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">
+          <span className="mb-1 flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">
             <I.fileText s={12} /> {bi(CEREMONY.evidenceExcerpt)}
           </span>
           <textarea
@@ -243,7 +243,7 @@ export function ResolutionCeremony({
     <div className="space-y-4">
       <div className="rounded-lg border border-border bg-bg-overlay p-3">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">Staged verdict</span>
+          <span className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">Staged verdict</span>
           <span className="font-mono text-[14px] font-bold" style={{ color: verdictMeta?.text }}>
             {stagedOutcome}{verdictMeta?.sw ? ` · ${verdictMeta.sw}` : ""}
           </span>
@@ -263,7 +263,7 @@ export function ResolutionCeremony({
       ) : (
         <>
           <label className="block">
-            <span className="mb-1 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">
+            <span className="mb-1 flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">
               <I.fileText s={12} /> Countersign note · Optional
             </span>
             <textarea
@@ -277,7 +277,7 @@ export function ResolutionCeremony({
           </label>
 
           <label className="block">
-            <span className="mb-1 block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-claret-300">
+            <span className="mb-1 block font-mono text-micro uppercase tracking-[0.16em] font-bold text-claret-300">
               Type SEAL to publish · Andika SEAL
             </span>
             <input
@@ -329,7 +329,7 @@ function VerdictCards({ value, onChange }: { value: Outcome | null; onChange: (v
             <div className="font-display text-[16px] font-bold" style={{ color: active ? v.text : "var(--text)" }}>
               {v.label}
             </div>
-            <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{v.sw}</div>
+            <div className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">{v.sw}</div>
           </button>
         );
       })}

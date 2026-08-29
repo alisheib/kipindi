@@ -67,7 +67,7 @@ export function EventsClient({
       <ScrollX label="Scheduled events">
         <table className="admin-tbl min-w-[720px]">
           <thead>
-            <tr className="text-left font-mono text-[10px] uppercase tracking-[0.12em] text-text-faint">
+            <tr className="text-left font-mono text-micro uppercase tracking-[0.12em] text-text-faint">
               <th className="py-2 pr-3 font-semibold">Event</th>
               <th className="py-2 pr-3 font-semibold">Category</th>
               <th className="py-2 pr-3 font-semibold">Starts</th>
@@ -117,7 +117,7 @@ export function EventsClient({
 
   return (
     <form action={add} className="rounded-xl border border-border bg-bg-elevated p-4">
-      <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle">Add a real event</p>
+      <p className="mb-3 font-mono text-micro uppercase tracking-[0.14em] font-bold text-text-subtle">Add a real event</p>
       <div className="grid gap-3 md:grid-cols-2">
         <label className="block">
           <span className="mb-1 block text-[11.5px] text-text-muted">What happens</span>

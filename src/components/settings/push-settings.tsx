@@ -132,7 +132,7 @@ export function PushSettings() {
             aria-label={t.push.title}
           />
         ) : (
-          <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.12em] text-text-faint">
+          <span className="shrink-0 font-mono text-micro uppercase tracking-[0.12em] text-text-faint">
             {state === "loading" ? "…" : t.push.na}
           </span>
         )}

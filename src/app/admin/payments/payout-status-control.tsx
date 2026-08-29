@@ -127,7 +127,7 @@ export function PayoutStatusControl({
               ? { borderColor: "var(--gold-edge)", background: "var(--gold-soft)", color: "var(--text)" }
               : { borderColor: "var(--border)", color: "var(--text-muted)" }}
           >
-            <span className="block font-mono text-[10px] uppercase tracking-[0.1em] font-bold">{o.label}</span>
+            <span className="block font-mono text-micro uppercase tracking-[0.1em] font-bold">{o.label}</span>
             <span className="block mt-0.5 text-[10px] leading-tight text-text-subtle">{o.hint}</span>
           </button>
         ))}
@@ -185,7 +185,7 @@ function StatusPill({ status }: { status: Status }) {
         ? { borderColor: "var(--warning-border)", background: "var(--warning-bg)", color: "var(--warning-fg)" }
         : { borderColor: "var(--border)", color: "var(--text-muted)" };
   return (
-    <span className="inline-flex items-center gap-1 rounded-sm border px-2 h-6 font-mono text-[10px] font-bold uppercase tracking-[0.1em]" style={style}>
+    <span className="inline-flex items-center gap-1 rounded-sm border px-2 h-6 font-mono text-micro font-bold uppercase tracking-[0.1em]" style={style}>
       {status === "operational" ? <I.check s={11} className="text-yes-300" /> : <I.alertCircle s={11} />}
       {status}
     </span>

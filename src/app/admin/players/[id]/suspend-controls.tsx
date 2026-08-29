@@ -141,7 +141,7 @@ export function SuspendControls({
         ariaBusy={pending}
         initialFocus={reasonRef}
       >
-        <p className="font-mono text-[10px] uppercase tracking-[0.18em] font-bold text-text mb-1">
+        <p className="font-mono text-micro uppercase tracking-[0.18em] font-bold text-text mb-1">
           {mode === "suspend" ? "Suspend · Simamisha" : "Restore · Rejesha"}
         </p>
         <h3 className="font-display text-[18px] font-bold text-text leading-tight">
@@ -157,7 +157,7 @@ export function SuspendControls({
               : "Login + bets + deposits will be re-enabled."}
         </p>
         <label className="mt-3 block">
-          <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle">
+          <span className="font-mono text-micro uppercase tracking-[0.14em] font-bold text-text-subtle">
             Reason · Sababu (required, audit-logged)
           </span>
           <textarea

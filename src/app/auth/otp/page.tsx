@@ -117,7 +117,7 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
           </div>
         </AuthPanel>
 
-        <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.16em] text-text-subtle">
+        <p className="mt-6 text-center font-mono text-micro uppercase tracking-[0.16em] text-text-subtle">
           {t.common.wrongAttemptsHint}
         </p>
     </AuthShell>

@@ -107,7 +107,7 @@ export function BalanceAdjustControls({
         ariaBusy={pending}
         initialFocus={amountRef}
       >
-        <p className="font-mono text-[10px] uppercase tracking-[0.18em] font-bold text-text mb-1">Balance adjustment · Marekebisho</p>
+        <p className="font-mono text-micro uppercase tracking-[0.18em] font-bold text-text mb-1">Balance adjustment · Marekebisho</p>
         <h3 className="font-display text-[18px] font-bold text-text leading-tight">Credit or debit this balance</h3>
         <p className="mt-1 text-body-sm italic text-text-subtle">
           Current balance {formatTzs(currentBalance)}. Money-safe + audit-logged; a debit can&rsquo;t drive the balance negative.
@@ -139,7 +139,7 @@ export function BalanceAdjustControls({
         </div>
 
         <label className="mt-3 block">
-          <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle">Amount (TZS)</span>
+          <span className="font-mono text-micro uppercase tracking-[0.14em] font-bold text-text-subtle">Amount (TZS)</span>
           <input
             ref={amountRef}
             inputMode="numeric"
@@ -151,7 +151,7 @@ export function BalanceAdjustControls({
         </label>
 
         <label className="mt-3 block">
-          <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-subtle">Reason · Sababu (required, audit-logged)</span>
+          <span className="font-mono text-micro uppercase tracking-[0.14em] font-bold text-text-subtle">Reason · Sababu (required, audit-logged)</span>
           <textarea
             value={reason}
             onChange={(e) => setReason(e.target.value)}
@@ -165,7 +165,7 @@ export function BalanceAdjustControls({
 
         {needsHard && (
           <label className="mt-3 block">
-            <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-claret-300">
+            <span className="font-mono text-micro uppercase tracking-[0.14em] font-bold text-claret-300">
               {`Large adjustment (≥ ${formatTzs(TWO_PERSON_THRESHOLD_TZS)}) — type ${hardWord} to confirm; a second officer must countersign`}
             </span>
             <input
@@ -183,7 +183,7 @@ export function BalanceAdjustControls({
 
         {stage1Msg && (
           <p className="mt-3 rounded-md border border-border bg-bg-sunken/40 px-3 py-2 text-body-sm text-text-secondary" role="status">
-            <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text block mb-0.5">Awaiting second officer</span>
+            <span className="font-mono text-micro uppercase tracking-[0.14em] font-bold text-text block mb-0.5">Awaiting second officer</span>
             {stage1Msg}
           </p>
         )}

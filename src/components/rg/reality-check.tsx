@@ -179,7 +179,7 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, user
           </Link>
         </div>
 
-        <p className="text-center font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle pt-1">
+        <p className="text-center font-mono text-micro uppercase tracking-[0.14em] text-text-subtle pt-1">
           {t.rg.helpline} · <span className="text-text-muted">{SUPPORT_PHONE()}</span>
         </p>
       </div>

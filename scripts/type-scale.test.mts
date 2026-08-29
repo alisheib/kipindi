@@ -159,7 +159,13 @@ const RATCHET_SUBFLOOR = 763;   // 2026-08-29: -268 total, the ADMIN then PLAYER
 // to `text-micro`/`text-caption`/`text-label`, which §3's population still counts. A `.amount`
 // sized from a `--type-*` var would have rendered identically and vanished from BOTH ratchets —
 // the exact trap that made 509 of §3's old 768 zeroable by a rename that moved nothing.
-const RATCHET_ARBITRARY_SIZE = 1428;
+// …then 1428 → 1185, the §T3 EYEBROW sweep (`qa:dg-eyebrow`): 242 `text-[10px]` sites in 107
+// files onto `text-micro`, which IS 10px — plus `field-legend.tsx` itself, the canonical eyebrow,
+// which was on an arbitrary while 200 call sites were being asked to adopt it.
+// ⭐ §3 STAYED AT 763 THROUGH BOTH SWEEPS, and that pair of numbers is the proof they were real:
+// `text-micro` is inside §3's population, so a rename cannot buy a §3 win, while §4 fell by
+// exactly the number rewritten. Ladder adoption 36.3% → 47.1%.
+const RATCHET_ARBITRARY_SIZE = 1185;
 /*  ⬇️ 38 → 37 on 2026-08-25. The wallet balance pill carried `fontSize: 12.5` inline — an
  *  off-ladder literal AND invisible to every class-based gate. It now reads `text-caption`
  *  below `sm` and `text-label` from there, both ON the closed ladder (§T1), which is also

@@ -107,26 +107,26 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
 
               <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-dashed border-border-subtle pt-3 text-[12px]">
                 <div>
-                  <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{SELECTION.betsClosed.en}</dt>
+                  <dt className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">{SELECTION.betsClosed.en}</dt>
                   <dd className="font-mono text-text">{formatDateTime(m.selectionClosedAt ?? m.resolutionAt)}</dd>
                 </div>
                 <div>
-                  <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">Resolves</dt>
+                  <dt className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">Resolves</dt>
                   <dd className="font-mono text-text">{formatDateTime(m.resolutionAt)}</dd>
                 </div>
                 <div>
-                  <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">Gross pool</dt>
+                  <dt className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">Gross pool</dt>
                   <dd className="font-mono text-text">{formatTzs(grossPool)}</dd>
                 </div>
                 <div>
-                  <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">Positions</dt>
+                  <dt className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">Positions</dt>
                   <dd className="font-mono text-text">{m.predictorCount} predictors · {positionsFailed ? "—" : openCount} open</dd>
                 </div>
               </dl>
 
               {/* Declared official source — read-only, mono URL. */}
               <div className="mt-3 border-t border-dashed border-border-subtle pt-3">
-                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">Declared source</span>
+                <span className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">Declared source</span>
                 <a
                   href={m.sourceUrl}
                   target="_blank"
@@ -153,7 +153,7 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
               <AdminCard>
                 <div className="flex items-center gap-2">
                   <I.sparkle s={14} className="text-brand-300" />
-                  <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-semibold text-brand-300">AI-Sentinel recommendation</span>
+                  <span className="font-mono text-micro uppercase tracking-[0.14em] font-semibold text-brand-300">AI-Sentinel recommendation</span>
                   {m.sentinelConfidence != null && (
                     <span className="font-mono text-[10px] text-text-subtle">{m.sentinelConfidence}% confidence</span>
                   )}
@@ -239,7 +239,7 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
                     ariaLabel="Objection window remaining"
                   />
                   <div>
-                    <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{bi(CEREMONY.objectionWindow)}</p>
+                    <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">{bi(CEREMONY.objectionWindow)}</p>
                     <p className="mt-0.5 text-[13px] font-semibold text-text">Closes {formatDateTime(m.objectionsClosedAt)}</p>
                     <p className="mt-0.5 text-body-sm text-text-muted">Payouts are provisional until the 24-hour window elapses.</p>
                   </div>
@@ -334,7 +334,7 @@ function AttestSlot({
           <p className="mt-1 truncate text-body-sm font-semibold text-text" title={name!}>{name}</p>
           {at && <p className="font-mono text-[10px] text-text-subtle">{formatDateTime(at)}</p>}
           {outcome && (
-            <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.12em]">
+            <p className="mt-0.5 font-mono text-micro uppercase tracking-[0.12em]">
               <span className="text-text-subtle">attested </span>
               <span className="font-bold" style={{ color }}>{outcome}</span>
             </p>

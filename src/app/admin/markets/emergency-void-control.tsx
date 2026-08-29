@@ -122,7 +122,7 @@ function ConfirmVoid({
       <div className="mb-3 flex items-start gap-2.5">
         <I.warning s={20} />
         <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-claret-300">
+          <p className="font-mono text-micro uppercase tracking-[0.16em] font-bold text-claret-300">
             Irreversible · Hatua ya dharura
           </p>
           <h2 className="mt-0.5 font-display text-[18px] font-bold text-text leading-tight">
@@ -137,7 +137,7 @@ function ConfirmVoid({
         <p><strong>This is final.</strong> Every open stake is refunded in full, the live pool closes, and an immutable compliance entry is recorded. No payouts, no fees.</p>
       </div>
       <label className="block mb-4">
-        <span className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle mb-1.5">
+        <span className="block font-mono text-micro uppercase tracking-[0.16em] font-bold text-text-subtle mb-1.5">
           Reason (required) · Sababu
         </span>
         <textarea

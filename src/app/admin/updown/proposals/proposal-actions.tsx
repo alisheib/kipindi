@@ -49,7 +49,7 @@ const REJECT_OPTIONS: Array<{ value: string; label: string }> = [
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mb-1">{label}</span>
+      <span className="block font-mono text-micro uppercase tracking-[0.14em] text-text-subtle mb-1">{label}</span>
       {children}
       {hint && <span className="mt-1 block text-body-sm leading-snug text-text-subtle">{hint}</span>}
     </label>
@@ -416,7 +416,7 @@ export function ReviewActions({
 
           {reasoning && (
             <div className="rounded-lg border border-border bg-[var(--bg-inset)] p-3">
-              <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle mb-1">What the AI said</p>
+              <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle mb-1">What the AI said</p>
               <p className="text-body-sm leading-[1.6] text-text-secondary whitespace-pre-wrap">{reasoning}</p>
             </div>
           )}

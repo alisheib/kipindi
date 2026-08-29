@@ -80,7 +80,7 @@ export function SellConfirmModal({ open, pending, stake, value, positionId, onCo
       initialFocus={confirmRef}
     >
       <div className="mb-4 min-w-0">
-        <p className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-subtle">
+        <p className="font-mono text-micro uppercase tracking-[0.16em] font-bold text-text-subtle">
           {t.dialog.cashOutTitle}
         </p>
         <p className="mt-1 font-display text-[16px] font-semibold text-text leading-snug">

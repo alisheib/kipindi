@@ -147,12 +147,12 @@ export function EmailEditor({ currentEmail, verified }: { currentEmail: string |
           </button>
           {currentEmail && (
             verified ? (
-              <span className="inline-flex items-center gap-1 rounded-pill border border-yes-700 bg-yes-500/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-yes-300">
+              <span className="inline-flex items-center gap-1 rounded-pill border border-yes-700 bg-yes-500/10 px-2 py-0.5 font-mono text-micro font-bold uppercase tracking-[0.1em] text-yes-300">
                 <I.check s={10} /> {t.common.confirmed}
               </span>
             ) : (
               <span className="inline-flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1 rounded-pill border border-gold-700 bg-gold-500/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-gold-300">
+                <span className="inline-flex items-center gap-1 rounded-pill border border-gold-700 bg-gold-500/10 px-2 py-0.5 font-mono text-micro font-bold uppercase tracking-[0.1em] text-gold-300">
                   <I.mail s={10} /> {t.common.unconfirmed}
                 </span>
                 <button type="button" onClick={resend} disabled={pending} className="font-mono text-[11px] text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline disabled:opacity-60">

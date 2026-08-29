@@ -79,7 +79,7 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
         title="Payments operations"
         sw="Operesheni za malipo"
         actions={
-          <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle">MNO health · 24h window</span>
+          <span className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle">MNO health · 24h window</span>
         }
       />
 
@@ -131,7 +131,7 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
                 const tone = p.verdict === "ENABLED" ? "text-success" : p.verdict === "NOT_ENABLED" ? "text-danger" : "text-warning";
                 return (
                   <div key={p.rail} className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                    <span className={`font-mono text-[10px] uppercase tracking-[0.12em] ${tone}`}>
+                    <span className={`font-mono text-micro uppercase tracking-[0.12em] ${tone}`}>
                       {p.verdict === "ENABLED" ? "enabled" : p.verdict === "NOT_ENABLED" ? "not enabled" : "unknown"}
                     </span>
                     <span className="font-mono text-[11px] text-text">{PAYOUT_RAILS[p.rail].label}</span>
@@ -162,7 +162,7 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
         {frozenPayouts !== null && frozenPayouts.length > 0 && (
           <AdminCard>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <span className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-danger">
+              <span className="inline-flex items-center gap-2 font-mono text-micro uppercase tracking-[0.14em] text-danger">
                 <I.alertCircle s={14} /> Frozen payouts · {frozenPayouts.length}
               </span>
               <span className="font-mono text-[10px] text-text-tertiary">
@@ -192,7 +192,7 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
         {/* Reconciliation strip — ledger vs PSP settlement. */}
         <AdminCard>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-            <span className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">
+            <span className="inline-flex items-center gap-2 font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">
               <I.reconcile s={14} className="text-text-tertiary" /> Reconciliation · Ulinganishaji · 24h
             </span>
             <Stat label="Matched" value={recon.matched.toLocaleString()} />

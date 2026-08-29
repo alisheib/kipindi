@@ -42,7 +42,7 @@ export function AiOpsControls({
       <div>
         <form onSubmit={onModelSubmit} className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1 flex-1 min-w-[200px]">
-            <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-muted">
+            <span className="font-mono text-micro uppercase tracking-[0.14em] font-bold text-text-muted">
               Primary model · Modeli kuu
             </span>
             <Select
@@ -80,7 +80,7 @@ export function AiOpsControls({
           <div className="border-t border-border" />
           {/* ── Fast-scan model (read-only) — used for cheap classification tasks ── */}
           <div>
-            <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-text-muted">
+            <span className="font-mono text-micro uppercase tracking-[0.14em] font-bold text-text-muted">
               Fast-scan model · Modeli ya haraka
             </span>
             {/* ⚠️ LITERAL, not `h-9` — spacing is overridden (tailwind.config.ts:200-215), so

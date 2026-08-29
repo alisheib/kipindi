@@ -27,7 +27,7 @@ export function ChartToggle({
         className="w-full flex items-center justify-between gap-3 px-4 py-3.5 hover:bg-white/[0.03] transition-colors"
         aria-expanded={open}
       >
-        <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">
+        <span className="flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">
           <I.chart s={11} />
           {t.market.probOverTime}
         </span>

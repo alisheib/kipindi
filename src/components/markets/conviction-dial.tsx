@@ -1078,7 +1078,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
           aria-label={armed ? t.market.lockDialAria : t.market.unlockDialAria}
           title={armed ? t.market.lockDialAria : t.market.unlockDialAria}
           data-testid="dial-lock-toggle"
-          className={`absolute right-3 top-3 z-20 inline-flex min-h-[44px] items-center gap-1.5 rounded-pill border font-mono font-bold uppercase tracking-[0.12em] transition-all ${armed ? "px-2.5 text-[9px]" : "px-3 text-[10px]"} ${!armed && hintUnlock ? "dial-unlock-hint" : ""}`}
+          className={`absolute right-3 top-3 z-20 inline-flex min-h-[44px] items-center gap-1.5 rounded-pill border font-mono font-bold uppercase tracking-[0.12em] transition-all ${armed ? "px-2.5 text-[9px]" : "px-3 text-micro"} ${!armed && hintUnlock ? "dial-unlock-hint" : ""}`}
           style={armed
             ? { borderColor: "var(--border)", color: "var(--text-subtle)", background: "var(--bg-inset)" }
             : { borderColor: "var(--brand-500)", color: "var(--brand-200)", background: "color-mix(in oklab, var(--brand-500) 22%, transparent)", boxShadow: "0 0 14px -2px color-mix(in oklab, var(--brand-500) 45%, transparent)" }}
@@ -1131,7 +1131,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
         </div>
       ) : (
         /* Free mode — the kit's "YES · slide to commit · NO" guidance. */
-        <div className="flex items-baseline justify-between gap-2 mb-3.5 font-mono text-[10px] tracking-[0.16em] uppercase">
+        <div className="flex items-baseline justify-between gap-2 mb-3.5 font-mono text-micro tracking-[0.16em] uppercase">
           {/* Pole labels localize to NDIO / HAPANA / 是 / 否; the box is widened
               (~24%) via min-width so the longer SW words never crowd the centre
               guidance — verified at 360px (kit B1 trilingual fit). */}
@@ -1188,7 +1188,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
             slider is armed (a locked dial isn't draggable, so the "drag" nudge
             would mislead). */}
         {showCoach && !closedNow && armed && (
-          <div className="dial-coach pointer-events-none absolute left-1/2 top-1.5 z-10 flex items-center gap-1.5 rounded-pill border border-brand-500/40 bg-bg-overlay px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-brand-300">
+          <div className="dial-coach pointer-events-none absolute left-1/2 top-1.5 z-10 flex items-center gap-1.5 rounded-pill border border-brand-500/40 bg-bg-overlay px-2.5 py-1 font-mono text-micro font-bold uppercase tracking-[0.08em] text-brand-300">
             <I.dragHandle s={11} />
             {t.market.dragToSetStake}
           </div>

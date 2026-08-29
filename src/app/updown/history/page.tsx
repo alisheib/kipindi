@@ -324,7 +324,7 @@ export default async function UpDownHistoryPage({ searchParams }: {
                       same defect wearing a different mechanism. The card is allowed to grow —
                       the grid's rows auto-size, and the money block below stays inside it. */}
                   <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-                    <span className="font-mono text-[10px] uppercase tracking-[0.10em] text-text-faint">
+                    <span className="font-mono text-micro uppercase tracking-[0.10em] text-text-faint">
                       {g.bets.length} {t.market.udBets}
                     </span>
                     {g.bets.map((b) => (

@@ -90,7 +90,7 @@ function FlowToggle({ provider, providerLabel, kind, paused }: { provider: strin
         ? { borderColor: "var(--claret-edge)", background: "var(--claret-soft)", color: "var(--claret-200)" }
         : { borderColor: "var(--border)", color: "var(--text-muted)" }}
     >
-      <span className="font-mono text-[10px] uppercase tracking-[0.1em]">{flowLabel}</span>
+      <span className="font-mono text-micro uppercase tracking-[0.1em]">{flowLabel}</span>
       <span className="inline-flex items-center gap-1 font-mono text-[10px] font-bold">
         {paused ? <><I.pause s={11} /> PAUSED</> : <><I.check s={11} className="text-yes-300" /> LIVE</>}
       </span>

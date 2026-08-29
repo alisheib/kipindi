@@ -99,7 +99,7 @@ export default async function NotFound() {
         >
           <I.search s={19} />
         </div>
-        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.20em] text-text-subtle">
+        <p className="font-mono text-micro font-bold uppercase tracking-[0.20em] text-text-subtle">
           {d.notFoundCode} · {d.notFound}
         </p>
         <h1 className="mt-2 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-text">

@@ -68,7 +68,7 @@ export function RouteError({
         >
           <I.alertCircle s={19} />
         </div>
-        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.20em] text-no-300">
+        <p className="font-mono text-micro font-bold uppercase tracking-[0.20em] text-no-300">
           {eyebrow ?? t.error.somethingWentWrong}
         </p>
         <h1 className="mt-2 font-display text-[24px] font-bold leading-tight tracking-[-0.02em] text-text">

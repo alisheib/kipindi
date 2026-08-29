@@ -98,7 +98,7 @@ export function LoginIdentifier({
       <div>
         <label
           htmlFor="identifier"
-          className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5"
+          className="block font-mono text-micro uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5"
         >
           {method === "phone" ? t.auth.phone : t.auth.emailLabel}
         </label>

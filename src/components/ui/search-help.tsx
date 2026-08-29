@@ -160,7 +160,7 @@ export function SearchHelp({
 
           {fields && fields.length > 0 && (
             <>
-              <p className="mt-2.5 mb-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">
+              <p className="mt-2.5 mb-1.5 font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">
                 {t.common.searchHelpFieldsHere}
               </p>
               <div className="flex flex-wrap gap-1">

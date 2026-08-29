@@ -241,7 +241,7 @@ export default async function ResolverQueuePage({
                 need={CONTROL_DOMAIN.setTwoAdminAuth}
               />
             )}
-            <div className="flex items-center gap-2.5 font-mono text-[10px] tracking-[0.14em] uppercase text-text-subtle">
+            <div className="flex items-center gap-2.5 font-mono text-micro tracking-[0.14em] uppercase text-text-subtle">
               <span>{pending.length} pending</span>
               {overdueCount > 0 && <><span className="text-border">·</span><span className="text-claret-300">{overdueCount} overdue</span></>}
               {requireTwoOfficer && awaitingStage2 > 0 && <><span className="text-border">·</span><span className="text-warning">{awaitingStage2} awaiting 2nd</span></>}
@@ -372,7 +372,7 @@ export default async function ResolverQueuePage({
                           : t.tone === "soon" ? "warning"
                           : "neutral"
                         }>{t.label}</Chip>
-                        <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{m.category}</span>
+                        <span className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">{m.category}</span>
                         <a href={m.sourceUrl} target="_blank" rel="noopener noreferrer" className="ml-auto inline-flex items-center gap-1 font-mono text-[11px] text-royal-300 hover:text-royal-200">
                           Source
                           <I.ext size={11} />
@@ -438,7 +438,7 @@ export default async function ResolverQueuePage({
                     <div className="px-4 py-3 border-b border-border">
                       <div className="flex items-center gap-2 mb-2">
                         <I.sparkle s={14} className="text-brand-300" />
-                        <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-semibold text-brand-300">AI recommendation</span>
+                        <span className="font-mono text-micro uppercase tracking-[0.14em] font-semibold text-brand-300">AI recommendation</span>
                         {m.sentinelConfidence != null && (
                           <span className="font-mono text-[10px] tabular-nums text-text-subtle">{m.sentinelConfidence}% confidence</span>
                         )}
@@ -470,7 +470,7 @@ export default async function ResolverQueuePage({
                         )}
                         {m.sentinelReasoning && (
                           <details className="mt-2">
-                            <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle hover:text-text-muted">
+                            <summary className="cursor-pointer font-mono text-micro uppercase tracking-[0.14em] text-text-subtle hover:text-text-muted">
                               AI reasoning
                             </summary>
                             <p className="mt-1 text-body-sm text-text-muted leading-relaxed pl-2 border-l-2 border-border">
@@ -494,7 +494,7 @@ export default async function ResolverQueuePage({
                     <div className="px-4 py-3 border-b border-border">
                       <div className="flex items-center gap-2 mb-2">
                         <I.users s={14} />
-                        <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-semibold text-text-muted">{CEREMONY.twoOfficerRule.en}</span>
+                        <span className="font-mono text-micro uppercase tracking-[0.14em] font-semibold text-text-muted">{CEREMONY.twoOfficerRule.en}</span>
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-[12px]">
                         <div className={`rounded-md border p-2 ${
@@ -504,13 +504,13 @@ export default async function ResolverQueuePage({
                         }`}>
                           <div className="flex items-center gap-1.5">
                             <I.shieldcheck s={12} />
-                            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{CEREMONY.stage1.en}</span>
+                            <span className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">{CEREMONY.stage1.en}</span>
                           </div>
                           <p className={`mt-1 font-mono text-[11px] ${stage1 ? "text-text-muted" : "text-text-subtle"}`}>
                             {stage1 ? `${m.resolutionStage1By?.slice(0, 14)}…` : "awaiting"}
                           </p>
                           {stage1 && m.resolvedOutcome && (
-                            <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle">
+                            <p className="mt-0.5 font-mono text-micro uppercase tracking-[0.12em] text-text-subtle">
                               staged <span className={`font-bold ${m.resolvedOutcome === "YES" ? "text-yes-300" : m.resolvedOutcome === "NO" ? "text-no-300" : "text-claret-300"}`}>{m.resolvedOutcome}</span>
                             </p>
                           )}
@@ -518,7 +518,7 @@ export default async function ResolverQueuePage({
                         <div className="rounded-md border border-border bg-bg-overlay p-2">
                           <div className="flex items-center gap-1.5">
                             <I.alertCircle s={12} />
-                            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">{CEREMONY.stage2.en}</span>
+                            <span className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">{CEREMONY.stage2.en}</span>
                           </div>
                           <p className="mt-1 font-mono text-[11px] text-text-subtle">{stage1 ? `confirm ${m.resolvedOutcome}` : "unlocks after stage 1"}</p>
                         </div>
@@ -528,7 +528,7 @@ export default async function ResolverQueuePage({
                     <div className="px-4 py-3 border-b border-border">
                       <div className="flex items-center gap-1.5">
                         <I.shieldcheck s={12} className="text-text-subtle" />
-                        <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-subtle">Single-admin resolution · one action seals it</span>
+                        <span className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">Single-admin resolution · one action seals it</span>
                       </div>
                     </div>
                   )}
