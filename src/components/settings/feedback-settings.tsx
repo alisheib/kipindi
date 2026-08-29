@@ -46,7 +46,7 @@ export function FeedbackSettings() {
       <h2 className="mb-1 font-display text-[15px] font-bold text-text">
         {t.common.soundFeedback}
       </h2>
-      <p className="mb-4 text-[12.5px] text-text-muted">
+      <p className="mb-4 text-body-sm text-text-muted">
         {t.common.soundFeedbackHint}
       </p>
 
@@ -76,7 +76,7 @@ export function FeedbackSettings() {
             <p className="font-display text-[13.5px] font-semibold text-text leading-tight">
               {locale === "sw" ? "Sindano (kichezeo)" : locale === "zh" ? "指针玩具" : "The Needle"}
             </p>
-            <p className="mt-0.5 text-[12px] text-text-muted leading-snug">
+            <p className="mt-0.5 text-body-sm text-text-muted leading-snug">
               {locale === "sw"
                 ? "Onyesha/ficha na chagua jinsi inavyocheza (zungusha au dunda)."
                 : locale === "zh"
@@ -117,7 +117,7 @@ function Row({
         <p className="font-display text-[13.5px] font-semibold text-text leading-tight">
           {title}
         </p>
-        <p className="mt-0.5 text-[12px] text-text-muted leading-snug">{subtitle}</p>
+        <p className="mt-0.5 text-body-sm text-text-muted leading-snug">{subtitle}</p>
       </div>
       <Toggle on={on} onClick={onToggle} aria-label={title} />
     </div>

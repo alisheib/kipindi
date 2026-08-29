@@ -168,7 +168,7 @@ export function AiProgress({
           </p>
         )}
       </div>
-      {note && <p className="text-[11px] text-text-subtle leading-relaxed">{note}</p>}
+      {note && <p className="text-body-sm text-text-subtle leading-relaxed">{note}</p>}
     </div>
   );
 }

@@ -95,7 +95,7 @@ export function AmountField({
         </div>
       )}
 
-      {hint && <p className="mt-2 text-[11px] text-text-subtle">{hint}</p>}
+      {hint && <p className="mt-2 text-body-sm text-text-subtle">{hint}</p>}
     </div>
   );
 }

@@ -35,7 +35,7 @@ export function PublicFooter({ proposalsState }: { proposalsState: ProposalsStat
             <FiftyMark size={20} />
             <span className="font-display font-bold text-[14px] text-text">50pick</span>
           </div>
-          <p className="text-text-muted leading-relaxed text-[12px]">
+          <p className="text-text-muted leading-relaxed text-body-sm">
             {t.footer.licensedByGbt}
           </p>
           <p className="font-mono text-[11px] text-text-subtle tabular-nums">
@@ -59,7 +59,7 @@ export function PublicFooter({ proposalsState }: { proposalsState: ProposalsStat
               Email · {SUPPORT_EMAIL()}
             </a>
           </li>
-          <li className="italic text-text-subtle text-[11.5px]">
+          <li className="italic text-text-subtle text-body-sm">
             {t.footer.stopGambling}
           </li>
         </FooterCol>

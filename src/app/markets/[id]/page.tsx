@@ -519,7 +519,7 @@ export default async function MarketDetail({
                 <p className="font-mono text-[10.5px] font-bold uppercase tracking-[0.14em] text-warning-fg mb-1">
                   {t.market.oneSidedMarket}
                 </p>
-                <p className="text-[12px] leading-relaxed text-text-muted">
+                <p className="text-body-sm leading-relaxed text-text-muted">
                   {t.market.oneSidedBody}
                 </p>
               </div>
@@ -550,7 +550,7 @@ export default async function MarketDetail({
                 {t.market.yourPositions}
               </h2>
               {myPositions.length === 0 && (
-                <p className="text-[12.5px] text-text-subtle italic">
+                <p className="text-body-sm text-text-subtle italic">
                   {t.market.noBetYet}
                 </p>
               )}
@@ -642,7 +642,7 @@ export default async function MarketDetail({
                 for `en`, and the binding note is gated on the locale — so an English
                 reader sees exactly what they saw before. */}
             {criterion.fellBack ? (
-              <p className="mt-2.5 flex items-start gap-1.5 text-[12px] leading-relaxed text-text-subtle">
+              <p className="mt-2.5 flex items-start gap-1.5 text-body-sm leading-relaxed text-text-subtle">
                 <I.globe s={12} className="mt-[3px] shrink-0 opacity-70" />
                 <span>{t.market.criterionNoTranslation}</span>
               </p>
@@ -652,7 +652,7 @@ export default async function MarketDetail({
               // is one tap away rather than absent: the binding text must never be
               // something a player has to change language to read.
               <details className="mt-2.5 group">
-                <summary className="flex cursor-pointer list-none items-start gap-1.5 text-[12px] leading-relaxed text-text-subtle hover:text-text-muted">
+                <summary className="flex cursor-pointer list-none items-start gap-1.5 text-body-sm leading-relaxed text-text-subtle hover:text-text-muted">
                   <I.globe s={12} className="mt-[3px] shrink-0 opacity-70" />
                   <span>
                     {t.market.criterionEnglishBinding}{" "}
@@ -704,7 +704,7 @@ export default async function MarketDetail({
                   <p className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-warning-fg">
                     {t.market.youAlreadyHold} {heldLabel} {t.market.here}
                   </p>
-                  <p className="mt-1 text-[12px] leading-snug text-text-muted">
+                  <p className="mt-1 text-body-sm leading-snug text-text-muted">
                     {/* ⛔ NO `fill({pct})` HERE ANY MORE. Both hedge bodies stated the
                         RETIRED capped-commission rule and were unreachable behind the
                         2026-08-04 guard; RULES.md §2.4 makes them live. They now quote no
@@ -722,7 +722,7 @@ export default async function MarketDetail({
                       different fact about a different thing — one is what the market will do,
                       this is what their bonus will not do. */}
                   {bonusWagerWarning && (
-                    <p className="mt-2 pt-2 border-t border-warning-border text-[12px] leading-snug font-semibold text-warning-fg">
+                    <p className="mt-2 pt-2 border-t border-warning-border text-body-sm leading-snug font-semibold text-warning-fg">
                       {bonusWagerWarning}
                     </p>
                   )}
@@ -761,7 +761,7 @@ export default async function MarketDetail({
                 <h3 className="mt-1.5 font-display text-[18px] font-bold text-text leading-tight">
                   {t.market.placeYourStake}
                 </h3>
-                <p className="mt-1.5 text-[12.5px] text-text-muted leading-snug">
+                <p className="mt-1.5 text-body-sm text-text-muted leading-snug">
                   {t.market.browseForFree}
                 </p>
                 {(() => {
@@ -789,7 +789,7 @@ export default async function MarketDetail({
                 {t.market.selectionClosedBadge}
               </p>
               <h3 className="mt-1.5 font-display text-[15px] font-bold text-text">{t.market.waitingForResultsAside}</h3>
-              <p className="mt-3 text-[12px] text-text-muted leading-snug">
+              <p className="mt-3 text-body-sm text-text-muted leading-snug">
                 {t.market.newPredictionsNotAccepted}
                 {m.resolutionAt && ` ${t.market.resultsExpectedBy} ${formatDeadline(m.resolutionAt)}.`}
               </p>
@@ -801,7 +801,7 @@ export default async function MarketDetail({
               </p>
               <h3 className="mt-1.5 font-display text-[15px] font-bold text-text">{t.market.noMoreBets}</h3>
               <p className="mt-1 text-[13px] italic text-text-subtle">{t.market.closedWaitSubtitle}</p>
-              <p className="mt-3 text-[12px] text-text-muted leading-snug">
+              <p className="mt-3 text-body-sm text-text-muted leading-snug">
                 {t.market.countdownEndedBody}
               </p>
             </div>
@@ -854,7 +854,7 @@ export default async function MarketDetail({
                 {t.market.similarMarkets}
               </h2>
             </div>
-            <p className="mb-4 text-[12.5px] text-text-muted">{t.market.similarMarketsBody}</p>
+            <p className="mb-4 text-body-sm text-text-muted">{t.market.similarMarketsBody}</p>
             {/* The shared board grid at EVERY width now. It used to be forced to
                 `lg:!grid-cols-1` because this block lived inside the 360px rail, which is
                 also why the titles truncated mid-word. Full width, each card gets ~470px. */}

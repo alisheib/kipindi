@@ -428,7 +428,7 @@ export function Select({
                 {/* ⚠️ WRAPPED, NOT TRUNCATED. A reason cut off at the panel edge has not been
                     given, and the operator is left exactly where they started. */}
                 {o.hint && (
-                  <span className="mt-0.5 block whitespace-normal text-[11px] leading-[1.45] text-text-faint">
+                  <span className="mt-0.5 block whitespace-normal text-body-sm leading-[1.45] text-text-faint">
                     {o.hint}
                   </span>
                 )}

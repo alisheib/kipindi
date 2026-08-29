@@ -148,7 +148,7 @@ export default async function PerformancePage() {
                 >
                   {formatTzsSigned(netPnl)}
                 </p>
-                <p className="mt-2 text-[12.5px] leading-normal text-text-muted">
+                <p className="mt-2 text-body-sm leading-normal text-text-muted">
                   {netPnl >= 0 ? t.performance.netProfitCaption : t.performance.netLossCaption}
                 </p>
               </div>
@@ -198,7 +198,7 @@ export default async function PerformancePage() {
                   <p className="font-mono text-[26px] lg:text-[30px] font-bold leading-none tabular-nums text-gold-300" style={{ textShadow: "0 0 20px color-mix(in oklab, var(--gold-400) 30%, transparent)" }}>
                     {bestMarket ? formatTzsAbs(bestMarket.payout) : "—"}
                   </p>
-                  {bestTitle && <p className="mt-1.5 truncate text-[12px] text-text-muted">{bestTitle}</p>}
+                  {bestTitle && <p className="mt-1.5 truncate text-body-sm text-text-muted">{bestTitle}</p>}
                 </div>
               </div>
             </div>

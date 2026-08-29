@@ -213,10 +213,10 @@ function HowItWorks() {
         maxWidth={320}
       >
         <p className="mb-1.5 font-display text-[13px] font-bold text-text">{t.common.howItWorks}</p>
-        <p className="text-[11.5px] leading-[1.55] text-text-muted">
+        <p className="text-body-sm leading-[1.55] text-text-muted">
           {t.common.howItWorksBody}
         </p>
-        <p className="mt-1.5 text-[10.5px] leading-[1.5] text-text-subtle italic">
+        <p className="mt-1.5 text-body-sm leading-[1.5] text-text-subtle italic">
           {t.common.howItWorksFine}
         </p>
       </Modal>

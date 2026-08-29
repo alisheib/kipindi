@@ -253,7 +253,7 @@ export default async function ProfilePage() {
         </h2>
         <div className="rounded-xl glass-panel p-5">
           <BadgeShelf items={badges} />
-          <p className="mt-4 text-center text-[11px] text-text-subtle">
+          <p className="mt-4 text-center text-body-sm text-text-subtle">
             {t.profile.badgesHint}
           </p>
         </div>
@@ -294,7 +294,7 @@ export default async function ProfilePage() {
             </span>
             <span className="text-left">
               <p className="font-display text-[14px] font-semibold text-text leading-tight">{t.common.signOut}</p>
-              <p className="mt-0.5 text-[12px] text-text-subtle">{t.profile.seeYouSoon}</p>
+              <p className="mt-0.5 text-body-sm text-text-subtle">{t.profile.seeYouSoon}</p>
             </span>
           </span>
           <I.chevronRight s={16} />
@@ -335,7 +335,7 @@ function Step({ n, title, detail, active, done }: { n: number; title: string; de
         </span>
         <span className="font-display text-[12px] font-semibold text-text">{title}</span>
       </div>
-      <p className="mt-1 text-[11px] text-text-muted">{detail}</p>
+      <p className="mt-1 text-body-sm text-text-muted">{detail}</p>
     </div>
   );
 }
@@ -367,7 +367,7 @@ function SettingRow({ icon: Icon, title, subtitle, href, accent, badge }: { icon
             </span>
           )}
         </p>
-        <p className="mt-0.5 text-[11.5px] text-text-subtle leading-snug">{subtitle}</p>
+        <p className="mt-0.5 text-body-sm text-text-subtle leading-snug">{subtitle}</p>
       </div>
       <I.chevronRight s={16} />
     </Link>

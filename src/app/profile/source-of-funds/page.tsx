@@ -98,7 +98,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
             <I.alertCircle s={18} />
             <div className="min-w-0">
               <p className="font-display text-[14px] font-bold text-no-300">{t.profile.sofResubmit}</p>
-              <p className="mt-1 text-[12.5px] text-text-muted leading-snug">
+              <p className="mt-1 text-body-sm text-text-muted leading-snug">
                 {t.profile.sofResubmitBody}
               </p>
             </div>
@@ -114,7 +114,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
               {t.common.submitted} {formatDate(existing.submittedAt)}
             </p>
           </div>
-          <p className="text-[12.5px] text-text-muted leading-snug">
+          <p className="text-body-sm text-text-muted leading-snug">
             {t.profile.sourceOfFunds}: <span className="font-semibold text-text">{sourceLabel}</span> · {existing.declaredOccupation}
             {existing.declaredEmployer ? ` · ${existing.declaredEmployer}` : ""}
             <br />{t.profile.sofIncomeBand}: <span className="font-semibold text-text">{bandLabel}</span>
@@ -162,7 +162,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
                     />
                     {/* C2g — per-source glyph; SoF is compliance → royal, never gold. */}
                     <Glyph s={20} className="text-text-subtle transition-colors peer-checked:text-brand-300" />
-                    <span className="font-display text-[12.5px] font-bold text-text text-center leading-tight">{s.label}</span>
+                    <span className="font-display text-body-sm font-bold text-text text-center leading-tight">{s.label}</span>
                   </label>
                 );
               })}
@@ -232,8 +232,8 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
           <div className="flex items-start gap-2.5 rounded-md border border-warning-border bg-warning-bg p-3.5">
             <I.fileSignature s={18} className="shrink-0 mt-0.5 text-warning-fg" />
             <div className="space-y-1">
-              <p className="font-display text-[12.5px] font-semibold text-text">{t.profile.bySubmitting}</p>
-              <p className="text-[12px] text-text-muted leading-snug">
+              <p className="font-display text-body-sm font-semibold text-text">{t.profile.bySubmitting}</p>
+              <p className="text-body-sm text-text-muted leading-snug">
                 {t.profile.sofDisclaimer}
               </p>
             </div>

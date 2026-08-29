@@ -65,13 +65,13 @@ const TONE: Record<StatTone, string> = {
 export type StatSize = "xs" | "sm" | "md" | "lg" | "xl" | "2xl" | "3xl";
 
 const SIZE: Record<StatSize, { text: string; face: "mono" | "display"; lead: string; gap: string; hint: string }> = {
-  /* the kit's own rung */                    xs:    { text: "text-[13.5px]", face: "mono",    lead: "leading-tight",   gap: "",        hint: "text-[9px]" },
-  /* wallet SubStat */                        sm:    { text: "text-[14px]",   face: "mono",    lead: "leading-tight",   gap: "",        hint: "text-[9.5px]" },
-  /* admin/payments Stat */                   md:    { text: "text-[15px]",   face: "mono",    lead: "leading-tight",   gap: "",        hint: "text-[9.5px]" },
+  /* the kit's own rung */                    xs:    { text: "text-[13.5px]", face: "mono",    lead: "leading-tight",   gap: "",        hint: "text-body-sm" },
+  /* wallet SubStat */                        sm:    { text: "text-[14px]",   face: "mono",    lead: "leading-tight",   gap: "",        hint: "text-body-sm" },
+  /* admin/payments Stat */                   md:    { text: "text-[15px]",   face: "mono",    lead: "leading-tight",   gap: "",        hint: "text-body-sm" },
   /* activity MoneyTile */                    lg:    { text: "text-[17px]",   face: "display", lead: "leading-tight",   gap: "mt-1",    hint: "text-[10px]" },
   /* profile Stat · markets KPI · perf Stat */xl:    { text: "text-[18px]",   face: "display", lead: "leading-tight",   gap: "mt-1",    hint: "text-[10px]" },
   /* performance Kpi */                       "2xl": { text: "text-[21px]",   face: "mono",    lead: "leading-none",    gap: "mt-1.5",  hint: "text-[10px]" },
-  /* invite Kpi */                            "3xl": { text: "text-[24px]",   face: "mono",    lead: "leading-none",    gap: "mt-1.5",  hint: "text-[10.5px]" },
+  /* invite Kpi */                            "3xl": { text: "text-[24px]",   face: "mono",    lead: "leading-none",    gap: "mt-1.5",  hint: "text-body-sm" },
 };
 
 /* ── The LABEL dictionary ──────────────────────────────────────────────────

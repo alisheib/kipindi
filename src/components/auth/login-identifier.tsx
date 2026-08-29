@@ -134,7 +134,7 @@ export function LoginIdentifier({
           />
         )}
 
-        <p className="mt-1.5 text-[11px] text-text-subtle">
+        <p className="mt-1.5 text-body-sm text-text-subtle">
           {method === "phone" ? t.common.phoneInputTitle : t.auth.emailSignInHint}
         </p>
       </div>

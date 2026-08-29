@@ -130,7 +130,7 @@ export default async function SessionsPage() {
 
       <section className="flex items-start gap-2.5 rounded-xl border border-info-border bg-info-bg p-4">
         <I.shieldcheck s={16} className="shrink-0 text-info-fg" />
-        <div className="text-[12px] text-text-muted leading-snug space-y-1">
+        <div className="text-body-sm text-text-muted leading-snug space-y-1">
           <p className="font-display font-semibold text-text">{t.profile.sessionSecurity}</p>
           <p>
             {t.profile.sessionSecurityBody}

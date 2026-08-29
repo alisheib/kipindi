@@ -98,7 +98,7 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
           <div className="rounded-xl border border-border bg-bg-overlay/40 p-4 space-y-3">
             <div className="flex items-start gap-2.5">
               <I.shieldQuestion s={16} className="mt-0.5 shrink-0 text-text-subtle" />
-              <div className="text-[12.5px] text-text-muted leading-relaxed">
+              <div className="text-body-sm text-text-muted leading-relaxed">
                 <p className="font-display font-semibold text-text">{t.common.noEmailContactSupport}</p>
                 <p>
                   {t.common.noEmailHelp}

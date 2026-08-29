@@ -160,7 +160,7 @@ const TONE: Record<CalloutTone, ToneSpec> = {
 // before money moves reads as a footnote and gets skimmed past.
 const SIZE = {
   sm: { box: "gap-2.5 rounded-md px-3 py-2.5", icon: 14, title: "font-bold text-text", body: "text-caption leading-snug text-text-secondary", titleGap: "" },
-  md: { box: "gap-3 rounded-xl px-4 py-3.5", icon: 17, title: "font-display font-semibold text-text text-[13.5px]", body: "text-[12.5px] leading-snug text-text-muted", titleGap: "mt-1" },
+  md: { box: "gap-3 rounded-xl px-4 py-3.5", icon: 17, title: "font-display font-semibold text-text text-[13.5px]", body: "text-body-sm leading-snug text-text-muted", titleGap: "mt-1" },
 } as const;
 
 export function Callout({

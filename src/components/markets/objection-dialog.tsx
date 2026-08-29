@@ -146,7 +146,7 @@ export function ObjectionDialog({ marketId, onFiled }: { marketId: string; onFil
               onChange={(e) => setDetail(e.target.value)}
               aria-describedby="objection-detail-hint"
             />
-            <p id="objection-detail-hint" className="flex items-start justify-between gap-3 text-[11px] leading-relaxed text-text-subtle">
+            <p id="objection-detail-hint" className="flex items-start justify-between gap-3 text-body-sm leading-relaxed text-text-subtle">
               <span>{t.market.objDetailHint}</span>
               <span className="font-mono tabular-nums shrink-0">{detail.length}/{DETAIL_MAX}</span>
             </p>

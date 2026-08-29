@@ -63,7 +63,7 @@ export function ProposalsStateBanner({
       className="p-3.5"
     >
       <p className="text-[13px] font-bold leading-normal text-text">{title}</p>
-      <p className="mt-1 text-[12.5px] leading-relaxed text-text-muted">{body}</p>
+      <p className="mt-1 text-body-sm leading-relaxed text-text-muted">{body}</p>
     </Callout>
   );
 }

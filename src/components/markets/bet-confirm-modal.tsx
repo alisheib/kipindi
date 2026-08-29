@@ -307,7 +307,7 @@ export function BetConfirmModal({
             <p className="text-[18px] font-bold tabular-nums text-text leading-none">
               TZS {formatNumber(Math.round(stake * (1 + (rates?.estimatedWinningsRate ?? 0))))}
             </p>
-            <p className="mt-1.5 text-[12px] leading-relaxed text-text-muted">
+            <p className="mt-1.5 text-body-sm leading-relaxed text-text-muted">
               {t.dialog.estimateDisclaimer}
             </p>
           </div>
@@ -319,10 +319,10 @@ export function BetConfirmModal({
             {/* Pool-share invariant (micro-spec §10.2) — side-aware, mandatory
                 on the medium confirm: the player must see that a win means
                 sharing the pool, not a fixed odds payout. */}
-            <p className="text-[12.5px] font-semibold leading-relaxed text-text">
+            <p className="text-body-sm font-semibold leading-relaxed text-text">
               {t.dialog.poolShareIfWins.replace("{side}", sideWord(t, side, "MARKET"))}
             </p>
-            <p className="mt-1 text-[12px] leading-relaxed text-text-muted">
+            <p className="mt-1 text-body-sm leading-relaxed text-text-muted">
               {t.dialog.payoutCalcBody}
             </p>
           </div>
@@ -337,7 +337,7 @@ export function BetConfirmModal({
           hasExitRunway ? "border-brand-500/30 bg-brand-500/[0.07]" : "border-border bg-bg-overlay/40"
         }`}>
           <I.shieldcheck s={13} className={`shrink-0 mt-0.5 ${hasExitRunway ? "text-brand-300" : "text-text-subtle"}`} />
-          <p className="text-[11px] leading-relaxed text-text-muted">
+          <p className="text-body-sm leading-relaxed text-text-muted">
             <span className={`font-semibold ${hasExitRunway ? "text-brand-300" : "text-text-subtle"}`}>
               {hasExitRunway ? exitLabel : t.dialog.noExitWindowLabel} ·{" "}
             </span>
@@ -398,7 +398,7 @@ export function BetConfirmModal({
             {t.common.cancel}
           </button>
         </div>
-        <p className="mt-2.5 text-center text-[11px] text-text-subtle">
+        <p className="mt-2.5 text-center text-body-sm text-text-subtle">
           {t.dialog.poolSharePayout}
         </p>
       </div>

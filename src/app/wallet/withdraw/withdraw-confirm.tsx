@@ -186,7 +186,7 @@ export function WithdrawConfirm({ feeRate }: { feeRate: number }) {
               <ReceiptRow divider alignEnd label={t.common.recipient} value={payee.name} />
             )}
           </ReceiptBox>
-          <p className="text-[12.5px] text-text-muted">
+          <p className="text-body-sm text-text-muted">
             {t.common.withdrawSendBody}
           </p>
         </>

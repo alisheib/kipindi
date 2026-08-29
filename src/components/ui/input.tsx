@@ -178,9 +178,9 @@ export function Field({
       </span>
       {children}
       {error ? (
-        <p className="mt-1.5 text-[11px] text-no-300">{error}</p>
+        <p className="mt-1.5 text-body-sm text-no-300">{error}</p>
       ) : hint ? (
-        <p className="mt-1.5 text-[11px] text-text-subtle">{hint}</p>
+        <p className="mt-1.5 text-body-sm text-text-subtle">{hint}</p>
       ) : null}
     </label>
   );

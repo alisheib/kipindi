@@ -108,7 +108,7 @@ export default async function HelpPage() {
                     <I.chevronDown s={13} />
                   </span>
                 </summary>
-                <p className="mt-2 pl-[25px] text-[12.5px] text-text-muted leading-relaxed">
+                <p className="mt-2 pl-[25px] text-body-sm text-text-muted leading-relaxed">
                   {/* The fee FAQ (faq1) is model-specific: loser-share polls charge a
                       % of the losing side, not a capped commission on the pool. */}
                   {key === "faq1" && cfg.feeModel === "loser-share"
@@ -178,7 +178,7 @@ function ContactCard({
         </span>
       </div>
       <p className="font-display font-bold text-[15px] text-text break-all">{value}</p>
-      <p className="text-[11.5px] text-text-subtle">{sub}</p>
+      <p className="text-body-sm text-text-subtle">{sub}</p>
     </div>
   );
   return href ? <a href={href} className="block">{card}</a> : card;
@@ -210,7 +210,7 @@ function QuickLinkCard({
       </span>
       <div className="flex-1 min-w-0">
         <p className="font-display text-[13px] font-semibold text-text truncate">{title}</p>
-        <p className="mt-0.5 text-[11px] text-text-subtle">{sub}</p>
+        <p className="mt-0.5 text-body-sm text-text-subtle">{sub}</p>
       </div>
     </Link>
   );

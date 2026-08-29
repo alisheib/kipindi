@@ -59,7 +59,7 @@ export function CardBillingFields({
     >
       <div>
         <FieldLegend as="p" className="mb-1">{copy.legend}</FieldLegend>
-        <p className="text-[11.5px] leading-relaxed text-text-subtle">{copy.why}</p>
+        <p className="text-body-sm leading-relaxed text-text-subtle">{copy.why}</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

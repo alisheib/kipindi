@@ -148,7 +148,7 @@ export function SidePicker({
           NO {hasPool && <span className="font-mono text-[12.5px] opacity-85">@ {100 - yesPct}%</span>}
         </button>
       </div>
-      <p className="mt-3 text-center text-[11px] text-text-subtle leading-snug">
+      <p className="mt-3 text-center text-body-sm text-text-subtle leading-snug">
         {t.market.chooseSideHelp}
       </p>
     </div>

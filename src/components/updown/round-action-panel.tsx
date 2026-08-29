@@ -104,7 +104,7 @@ export function RoundActionPanel(props: {
     return (
       <section aria-label={t.market.udLockedTitle} style={{ ...insetStyle, padding: 16 }}>
         <span className="chip chip-pending">{t.market.udLockedTitle}</span>
-        <p className="mt-2.5 m-0 text-[12.5px] leading-[1.55] text-text-muted">
+        <p className="mt-2.5 m-0 text-body-sm leading-[1.55] text-text-muted">
           {t.market.udLockedWhy.replace("{time}", lockClock ?? "—")}
         </p>
         {/* ⭐ UD-20 · BOTH OUTCOMES, QUOTED — Ali's decision, 2026-08-14.
@@ -124,13 +124,13 @@ export function RoundActionPanel(props: {
                 {t.market.udBothSidesHeld}
               </p>
             )}
-            <p className="mt-1.5 m-0 flex items-baseline justify-between gap-3 text-[12.5px] text-text-muted">
+            <p className="mt-1.5 m-0 flex items-baseline justify-between gap-3 text-body-sm text-text-muted">
               <span>{t.market.udIfClosesUp}</span>
               <span className="font-mono text-[15px] font-bold tabular-nums" style={{ color: "var(--yes-300)" }}>
                 {t.market.udYouGet} {formatTzs(payoutIfUp)}
               </span>
             </p>
-            <p className="mt-1 m-0 flex items-baseline justify-between gap-3 text-[12.5px] text-text-muted">
+            <p className="mt-1 m-0 flex items-baseline justify-between gap-3 text-body-sm text-text-muted">
               <span>{t.market.udIfClosesDown}</span>
               <span className="font-mono text-[15px] font-bold tabular-nums" style={{ color: "var(--no-300)" }}>
                 {t.market.udYouGet} {formatTzs(payoutIfDown)}

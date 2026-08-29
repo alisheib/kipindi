@@ -116,7 +116,7 @@ const SRC = join(ROOT, "src");
  *  the site from §3 AND §4: two ratchets down, nothing lifted, the site now in a population
  *  the guard could not read. 509 of the old 768 could have been deleted that way. §3's own
  *  advice string recommended it in those words. Both are fixed in this commit. */
-const RATCHET_SUBFLOOR = 889;   // 2026-08-29: -142, the ADMIN prose sweep (DG-A-12)
+const RATCHET_SUBFLOOR = 763;   // 2026-08-29: -268 total, the ADMIN then PLAYER prose sweeps (DG-A-12)
 
 /** §4 — every hand-typed size in the product: `text-[Npx]` plus inline literal
  *  `style={{ fontSize: N }}`. Measured 2026-08-21: 1,839 + 38.
@@ -153,7 +153,7 @@ const RATCHET_SUBFLOOR = 889;   // 2026-08-29: -142, the ADMIN prose sweep (DG-A
  *  step above the real count and would have accepted a new arbitrary size for free.
  *  ⛔ That is the failure mode §4.2 of `test:red-anchors` names for its own ceiling: a
  *  ratchet above the real number has stopped being a ratchet. Re-measured, then locked. */
-const RATCHET_ARBITRARY_SIZE = 1641;   // 2026-08-29: -168, the ADMIN prose sweep (DG-A-12)
+const RATCHET_ARBITRARY_SIZE = 1450;   // 2026-08-29: -359 total, the ADMIN then PLAYER prose sweeps (DG-A-12)
 /*  ⬇️ 38 → 37 on 2026-08-25. The wallet balance pill carried `fontSize: 12.5` inline — an
  *  off-ladder literal AND invisible to every class-based gate. It now reads `text-caption`
  *  below `sm` and `text-label` from there, both ON the closed ladder (§T1), which is also

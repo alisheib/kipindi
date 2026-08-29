@@ -259,7 +259,7 @@ export default async function UpDownHistoryPage({ searchParams }: {
           {/* The cap, stated — faint factual register (a fact about the list, not an alarm),
               directly under the figures it qualifies so it cannot be read in isolation. */}
           {capped && (
-            <p className="mt-3 flex items-start gap-1.5 text-[11px] leading-[1.5] text-text-faint">
+            <p className="mt-3 flex items-start gap-1.5 text-body-sm leading-[1.5] text-text-faint">
               <I.info s={11} className="mt-[2px] shrink-0" />
               <span>{t.market.udHistoryCapped.replace("{n}", String(UD_HISTORY_LIMIT))}</span>
             </p>
@@ -352,7 +352,7 @@ export default async function UpDownHistoryPage({ searchParams }: {
               );
             })}
           </div>
-          <p className="mt-3 flex items-center gap-1.5 text-[11.5px] text-text-subtle">
+          <p className="mt-3 flex items-center gap-1.5 text-body-sm text-text-subtle">
             <I.info s={12} />
             {t.market.udHistoryBody}
           </p>

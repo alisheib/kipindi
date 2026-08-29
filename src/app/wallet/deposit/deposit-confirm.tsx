@@ -138,7 +138,7 @@ export function DepositConfirm() {
               <ReceiptRow label={t.auth.phone} value={`+255 ${summary.msisdn}`} />
             )}
           </ReceiptBox>
-          <p className="text-[12.5px] text-text-muted">{t.common.depositSendBody}</p>
+          <p className="text-body-sm text-text-muted">{t.common.depositSendBody}</p>
         </>
       }
       confirmLabel={t.common.deposit}

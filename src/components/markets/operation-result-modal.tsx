@@ -473,7 +473,7 @@ export function OperationResultModal({
                     {d.label}
                   </p>
                   {d.sw && (
-                    <p className="text-[11px] italic text-text-subtle">{d.sw}</p>
+                    <p className="text-body-sm italic text-text-subtle">{d.sw}</p>
                   )}
                 </div>
                 <p
@@ -525,7 +525,7 @@ export function OperationResultModal({
         </div>
 
         {footnote && (
-          <p className="mt-3 text-[11px] text-text-subtle">
+          <p className="mt-3 text-body-sm text-text-subtle">
             {footnote}
           </p>
         )}

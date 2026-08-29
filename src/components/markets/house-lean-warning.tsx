@@ -41,7 +41,7 @@ export function HouseLeanWarning({ level }: { level: LeanLevel }) {
 
   return (
     <Callout tone="warning" className="mt-3" title={t.market.crowdedWarning}>
-      <p className="mt-1 text-[11px] leading-snug text-text-muted">{t.market.thinUpsideNote}</p>
+      <p className="mt-1 text-body-sm leading-snug text-text-muted">{t.market.thinUpsideNote}</p>
     </Callout>
   );
 }

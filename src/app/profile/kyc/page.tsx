@@ -135,7 +135,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
       {hasEmail && !emailVerified && idDone && (
         <div className="rounded-xl border border-gold-700 bg-gold-500/[0.06] px-4 py-3 flex items-start gap-2.5">
           <I.mail s={16} className="text-gold-300 mt-0.5 shrink-0" />
-          <div className="text-[12.5px] text-text-muted leading-snug">
+          <div className="text-body-sm text-text-muted leading-snug">
             <p className="font-display font-semibold text-gold-300">{t.profile.kycConfirmEmail}</p>
             <p className="mt-0.5">
               {t.profile.kycConfirmEmailBody} <span className="font-semibold text-text">{user?.email}</span>
@@ -160,7 +160,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
             <p className="font-display text-[14px] font-bold text-gold-300">
               {t.auth.welcomeTo50pick}
             </p>
-            <p className="mt-1 text-[12.5px] text-text-muted leading-snug">
+            <p className="mt-1 text-body-sm text-text-muted leading-snug">
               {t.profile.kycWelcomeCan + " "}<span className="font-bold text-text">{t.profile.kycWelcomeBrowse}</span>.
               {t.profile.kycWelcomeLater}
             </p>
@@ -196,7 +196,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
             </span>
             <div className="min-w-0">
               <p className="font-display text-[14px] font-bold text-no-300">{t.profile.rejected}</p>
-              <p className="mt-1 text-[12.5px] text-text-muted leading-snug">
+              <p className="mt-1 text-body-sm text-text-muted leading-snug">
                 {rejectLabel ? <>{t.profile.kycRejectReason}: <span className="font-semibold text-text">{rejectLabel}</span>. </> : null}
                 {kyc?.rejectNote ? `${kyc.rejectNote} ` : ""}
                 {t.profile.kycResubmitOrEmail}{" "}
@@ -221,7 +221,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
             </span>
             <div className="min-w-0">
               <p className="font-display text-[14px] font-bold text-gold-300">{t.profile.kycMoreInfo}</p>
-              <p className="mt-1 text-[12.5px] text-text-muted leading-snug">
+              <p className="mt-1 text-body-sm text-text-muted leading-snug">
                 {kyc?.rejectNote ? <span className="font-semibold text-text">{kyc.rejectNote}</span> : t.profile.kycMoreInfoBody1}
                 {" "}{t.profile.kycMoreInfoBody2}
               </p>
@@ -238,7 +238,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
             </span>
             <h2 className="font-display text-[15px] font-semibold text-text">{t.profile.kycRequestedDocs}</h2>
           </div>
-          <p className="text-[12.5px] text-text-muted leading-snug">
+          <p className="text-body-sm text-text-muted leading-snug">
             {t.profile.kycRequestedDocsBody}
           </p>
           <div className="space-y-2">
@@ -290,7 +290,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
               the other eight rails that use it. */}
           <div>
             <FieldLegend as="p" className="block mb-1.5">{t.profile.chooseIdType}</FieldLegend>
-            <p className="mb-2.5 text-[12px] text-text-muted leading-snug">{t.profile.chooseIdTypeBody}</p>
+            <p className="mb-2.5 text-body-sm text-text-muted leading-snug">{t.profile.chooseIdTypeBody}</p>
             <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={t.profile.chooseIdType}>
               <FilterGroupKey>{t.profile.idDocsNeeded}</FilterGroupKey>
               {ID_DOC_TYPES.map((ty) => (
@@ -335,7 +335,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
                 whenever the server refused the number — "invalid" is never an
                 acceptable answer on an identity field (§F4). */}
             {sp.reason === "id_number_format" && (
-              <p role="alert" className="-mt-2 text-[12px] leading-snug text-no-300">
+              <p role="alert" className="-mt-2 text-body-sm leading-snug text-no-300">
                 {(t.profile as unknown as Record<string, string>)[spec.ruleKey]}
               </p>
             )}
@@ -356,7 +356,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
                   max={`${new Date().getFullYear() + 20}-12-31`}
                   defaultValue={(sp as Record<string, string | undefined>).idExpiry ?? ""}
                 />
-                <p className="mt-1.5 text-[11px] text-text-subtle">{t.profile.idExpiryHint}</p>
+                <p className="mt-1.5 text-body-sm text-text-subtle">{t.profile.idExpiryHint}</p>
               </div>
             )}
             <Field
@@ -387,7 +387,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
                     <span className="font-mono text-[13px] text-text">{user.dob.slice(0, 10)}</span>
                     <span className="ml-auto text-[10.5px] text-text-subtle">{t.profile.fromSignUp}</span>
                   </div>
-                  <p className="mt-1.5 text-[11px] text-text-subtle">
+                  <p className="mt-1.5 text-body-sm text-text-subtle">
                     {t.profile.dobFromSignUp}{" "}
                     <a href={`mailto:${SUPPORT_EMAIL()}`} className="text-brand-300 underline-offset-2 hover:underline hover:text-brand-200">{t.error.contactSupport}</a>
                   </p>
@@ -401,7 +401,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
                     min="1930-01-01"
                     max={new Date(new Date().getFullYear() - 18, new Date().getMonth(), new Date().getDate()).toISOString().slice(0, 10)}
                   />
-                  <p className="mt-1.5 text-[11px] text-text-subtle">{t.auth.dobHint}</p>
+                  <p className="mt-1.5 text-body-sm text-text-subtle">{t.auth.dobHint}</p>
                 </>
               )}
             </div>
@@ -459,7 +459,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
             </span>
             <h2 className="font-display text-[15px] font-semibold text-text">{t.profile.step2} · {t.profile.uploadDocuments}</h2>
           </div>
-          <p className="text-[12.5px] text-text-muted leading-snug">
+          <p className="text-body-sm text-text-muted leading-snug">
             {t.profile.uploadDocsBody}
           </p>
           {/* ⛔ THE SLOTS COME FROM THE CATALOGUE, NOT FROM THIS FILE. A NIDA asks for
@@ -480,7 +480,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
               />
             ))}
           </div>
-          <p className="text-[10.5px] text-text-subtle">
+          <p className="text-body-sm text-text-subtle">
             {t.profile.tapToAttach}
           </p>
           <p className="font-mono text-[11px] font-bold tabular-nums text-text-muted">
@@ -498,7 +498,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
                 >
                   {t.common.confirm}
                 </button>
-                <p className="mt-2 text-[11px] text-text-subtle text-center">{t.profile.attachAllThree}</p>
+                <p className="mt-2 text-body-sm text-text-subtle text-center">{t.profile.attachAllThree}</p>
               </>
             )}
           </form>

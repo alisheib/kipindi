@@ -202,7 +202,7 @@ export function KycExtraDocUploader({
           {working ? <Spinner size={14} /> : done ? <I.check s={14} className="g-settle" /> : <I.plus s={14} />}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[12.5px] text-text leading-snug">{description}</p>
+          <p className="text-body-sm text-text leading-snug">{description}</p>
           <p className="mt-0.5 font-mono text-[10.5px] text-text-subtle">
             {pending ? t.common.uploading : busy ? t.common.preparing : done ? t.profile.docTapReplace : t.profile.docTapAttachPhoto}
           </p>

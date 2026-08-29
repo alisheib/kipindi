@@ -127,7 +127,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
             title={t.common.setNewPassword}
             subtitle={t.common.strongPassword}
           >
-            <p className="mt-1.5 flex items-center gap-1.5 text-[11.5px] text-gold-300">
+            <p className="mt-1.5 flex items-center gap-1.5 text-body-sm text-gold-300">
               <I.clock s={12} />
               {t.common.thisLinkExpires}
             </p>

@@ -101,7 +101,7 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
       {errorMsg && (
         <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-no-700/60 bg-no-500/[0.10] px-4 py-3">
           <I.alertCircle s={16} />
-          <div className="text-[12.5px] leading-snug">
+          <div className="text-body-sm leading-snug">
             <p className="font-display font-semibold text-text">{t.wallet.depositFailed}</p>
             <p className="mt-0.5 text-text-muted">{errorMsg}</p>
           </div>
@@ -169,7 +169,7 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
             mono
             defaultValue={prevMsisdn}
           />
-          <p className="mt-1.5 text-[11.5px] text-text-subtle">{t.wallet.mobileMoneyNumberHint}</p>
+          <p className="mt-1.5 text-body-sm text-text-subtle">{t.wallet.mobileMoneyNumberHint}</p>
           {/* 🔴 `E-215`'s OTHER HALF. Withdrawal states its destination and refuses any
               other; deposit OFFERS one, because money arriving from a friend's handset is
               ordinary and blocking it would break real top-ups. The prefill alone was not
@@ -216,7 +216,7 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
         >
           <I.shieldcheck s={18} />
         </span>
-        <p className="text-[11.5px] text-text-subtle leading-relaxed">
+        <p className="text-body-sm text-text-subtle leading-relaxed">
           {t.wallet.securedBody}
         </p>
       </div>

@@ -538,7 +538,7 @@ function ToastItem({ toast, exiting, onDismiss, onPause, onResume }: { toast: To
           {/* Kit toast-title 13px / 600 / -2px margin */}
           <p className="font-display text-[13px] font-semibold text-text leading-tight">{toast.title}</p>
           {toast.description ? (
-            <p className="mt-0.5 text-[12px] text-text-muted leading-snug">{toast.description}</p>
+            <p className="mt-0.5 text-body-sm text-text-muted leading-snug">{toast.description}</p>
           ) : null}
         </div>
       </div>

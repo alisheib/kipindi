@@ -125,7 +125,7 @@ export default async function AdminLoginPage({ searchParams }: { searchParams?: 
         >
           <div>
             <p className="font-display text-[13.5px] font-semibold text-text">I&apos;m a player, not staff</p>
-            <p className="mt-0.5 text-[11.5px] text-text-subtle">Sign in to your player account instead</p>
+            <p className="mt-0.5 text-body-sm text-text-subtle">Sign in to your player account instead</p>
           </div>
           <I.chevronRight s={16} className="text-text-subtle group-hover:text-text transition-colors" />
         </Link>

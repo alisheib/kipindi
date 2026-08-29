@@ -76,7 +76,7 @@ export function CashbackPromo({
           {t.common.getCashbackPercent.replace("{pct}", String(percent))}
         </p>
 
-        <p className={cn("text-text/85 leading-snug", compact ? "mt-1.5 text-[12px]" : "mt-2 text-[13px]")}>
+        <p className={cn("text-text/85 leading-snug", compact ? "mt-1.5 text-body-sm" : "mt-2 text-[13px]")}>
           {(isRequest ? t.common.cashbackRequestSubtitle : t.common.cashbackSubtitle)
             .replace("{pct}", String(percent))
             .replace("{wager}", String(wagerMultiplier))}

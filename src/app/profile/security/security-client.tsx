@@ -155,7 +155,7 @@ export function SecurityClient({ enabled, backupRemaining }: { enabled: boolean;
           </span>
           <div>
             <p className="font-display text-[15px] font-semibold text-text leading-tight">{t.security.totpTitle}</p>
-            <p className="mt-0.5 text-[12.5px] text-text-subtle leading-snug">{t.security.totpBody}</p>
+            <p className="mt-0.5 text-body-sm text-text-subtle leading-snug">{t.security.totpBody}</p>
           </div>
         </div>
         <Chip variant={enabled ? "success" : "neutral"} size="md">{enabled ? t.security.on : t.security.off}</Chip>
@@ -179,7 +179,7 @@ export function SecurityClient({ enabled, backupRemaining }: { enabled: boolean;
             </div>
           ) : (
             <div className="space-y-2 rounded-md border border-border bg-bg-overlay/40 p-3">
-              <p className="text-[12.5px] text-text-muted">{disarm === "disable" ? t.security.disableConfirm : t.security.regenConfirm}</p>
+              <p className="text-body-sm text-text-muted">{disarm === "disable" ? t.security.disableConfirm : t.security.regenConfirm}</p>
               <OtpInput value={disarmCode} onChange={(e) => setDisarmCode(e.target.value)} placeholder="• • • • • •" aria-label={t.security.codeLabel} />
               <div className="flex gap-2">
                 <Button variant="ghost" size="sm" onClick={() => setDisarm(null)} disabled={pending}>{t.common.cancel}</Button>

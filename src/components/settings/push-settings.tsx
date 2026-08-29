@@ -110,7 +110,7 @@ export function PushSettings() {
   return (
     <section className="rounded-xl glass-panel p-5">
       <p className="gilt-eyebrow mb-1">{t.push.eyebrow}</p>
-      <p className="mb-4 text-[12.5px] text-text-subtle">{t.push.sectionHint}</p>
+      <p className="mb-4 text-body-sm text-text-subtle">{t.push.sectionHint}</p>
       <div className="flex items-start justify-between gap-4 border-t border-border pt-4">
         <div className="flex items-start gap-3 min-w-0">
           {/* ⛔ LITERALS, NOT `h-10 w-10` — the spacing scale is overridden
@@ -121,7 +121,7 @@ export function PushSettings() {
           </span>
           <div className="min-w-0">
             <p className="font-display text-[14px] font-semibold text-text leading-tight">{t.push.title}</p>
-            <p className="mt-0.5 text-[12px] text-text-subtle leading-snug">{hint}</p>
+            <p className="mt-0.5 text-body-sm text-text-subtle leading-snug">{hint}</p>
           </div>
         </div>
         {interactive ? (

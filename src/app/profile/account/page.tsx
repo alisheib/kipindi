@@ -179,7 +179,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
                     <p className="font-display text-[13px] font-semibold text-text-muted">
                       {actFilter === "all" ? t.profile.noActivityYet : t.profile.noFilteredActivity.replace("{cat}", actFilter.toLowerCase())}
                     </p>
-                    <p className="mt-1 text-[12px] text-text-subtle">
+                    <p className="mt-1 text-body-sm text-text-subtle">
                       {actFilter === "all" ? t.profile.activityHint : t.profile.tryDifferentFilter}
                     </p>
                   </td>
@@ -211,7 +211,7 @@ lastLabel={t.common.lastPage}
             {t.footer.exportClose.split("/")[0].trim() /* "Export" */}
           </h2>
         </div>
-        <p className="text-[12.5px] text-text-muted leading-snug">
+        <p className="text-body-sm text-text-muted leading-snug">
           {t.profile.exportDescription}
         </p>
         <div className="pt-1">
@@ -231,7 +231,7 @@ lastLabel={t.common.lastPage}
             {t.profile.privacyRequestTitle}
           </h2>
         </div>
-        <p className="text-[12.5px] text-text-muted leading-snug">
+        <p className="text-body-sm text-text-muted leading-snug">
           {t.profile.privacyRequestBody}
         </p>
         <FormColumn measure="field"><PrivacyRequestForm /></FormColumn>
@@ -251,7 +251,7 @@ lastLabel={t.common.lastPage}
             {t.common.oneWay}
           </Chip>
         </div>
-        <p className="text-[12.5px] text-text-muted leading-snug">
+        <p className="text-body-sm text-text-muted leading-snug">
           {t.profile.closeAccountDescription}
         </p>
         <FormColumn measure="field"><CloseAccountForm /></FormColumn>

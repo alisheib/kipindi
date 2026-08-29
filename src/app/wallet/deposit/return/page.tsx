@@ -182,7 +182,7 @@ export default async function DepositReturnPage({
         )}
       </div>
 
-      <p className="text-[11.5px] leading-relaxed text-text-subtle">{t.wallet.returnFootnote}</p>
+      <p className="text-body-sm leading-relaxed text-text-subtle">{t.wallet.returnFootnote}</p>
     </PageContainer>
   );
 }

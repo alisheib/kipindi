@@ -70,7 +70,7 @@ export function LimitUsageMeter({
           style={{ transform: `scaleX(${Math.max(3, clamped) / 100})`, background: fill }}
         />
       </div>
-      {reached && <p className="mt-1 text-[11px] font-medium text-danger-fg">{overLabel}</p>}
+      {reached && <p className="mt-1 text-body-sm font-medium text-danger-fg">{overLabel}</p>}
     </div>
   );
 }

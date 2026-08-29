@@ -249,7 +249,7 @@ function BonusWalletCard({
                   style={{ transform: `scaleX(${overallPct / 100})`, background: "linear-gradient(90deg, var(--gold-500), var(--yes-400))" }} />
               </div>
               {totalRemainingWager > 0 && (
-                <p className="mt-2 text-[12px] text-gold-100/90">
+                <p className="mt-2 text-body-sm text-gold-100/90">
                   <span className="font-mono font-bold text-text"><Cash>{formatTzs(totalRemainingWager)}</Cash></span>
                   {" — "}{t.common.playMoreToUnlock}
                 </p>
@@ -274,7 +274,7 @@ function BonusWalletCard({
                         <span className="font-mono text-[12px] font-bold text-text tabular-nums"><Cash>{formatTzs(g.remainingTzs)}</Cash></span>
                       </div>
                       {isQueued ? (
-                        <p className="mt-1.5 text-[9.5px] text-text-muted italic">
+                        <p className="mt-1.5 text-body-sm text-text-muted italic">
                           {t.common.queuedHint}
                         </p>
                       ) : (
@@ -583,7 +583,7 @@ lastLabel={t.common.lastPage}
 
       {tab === "methods" && (
         <section className="space-y-3">
-          <p className="text-[12.5px] text-text-muted leading-snug">
+          <p className="text-body-sm text-text-muted leading-snug">
             {t.common.supportedChannels}
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -605,7 +605,7 @@ lastLabel={t.common.lastPage}
 
       {tab === "limits" && (
         <section className="space-y-3">
-          <p className="text-[12.5px] text-text-muted leading-snug">
+          <p className="text-body-sm text-text-muted leading-snug">
             {t.common.platformLimits}
           </p>
           {txnCaps.map((l) => (
@@ -623,7 +623,7 @@ lastLabel={t.common.lastPage}
           >
             <div>
               <p className="font-display text-[13.5px] font-semibold text-text leading-tight">{t.common.setPersonalLimits}</p>
-              <p className="mt-0.5 text-[11.5px] text-text-subtle">{t.common.dailyWeeklyLimits}</p>
+              <p className="mt-0.5 text-body-sm text-text-subtle">{t.common.dailyWeeklyLimits}</p>
             </div>
             <I.chevronRight s={16} className="text-text-subtle" />
           </Link>
@@ -631,7 +631,7 @@ lastLabel={t.common.lastPage}
             <p className="font-display text-[13.5px] font-semibold text-text">
               {t.common.selfExclusion}
             </p>
-            <p className="text-[12.5px] text-text-muted leading-snug">
+            <p className="text-body-sm text-text-muted leading-snug">
               {t.common.selfExclusionHint}
             </p>
             <div className="flex flex-wrap gap-1.5 pt-1">

@@ -598,7 +598,7 @@ export default async function UpDownRoundPage({
                     down. ⚠️ The guard asserted the branch EXISTED; it did not assert it was
                     REACHABLE, and those are different claims. */}
                 {refundReason && (
-                  <p className="mt-3 m-0 text-[12.5px] leading-[1.55] text-text-muted">
+                  <p className="mt-3 m-0 text-body-sm leading-[1.55] text-text-muted">
                     {(t.market as Record<string, string>)[REFUND_REASON_KEY[refundReason]]}
                   </p>
                 )}
@@ -617,7 +617,7 @@ export default async function UpDownRoundPage({
             ) : round.state === "confirming" ? (
               <section style={{ ...inset, padding: 16 }}>
                 <span className="chip chip-pending">{t.market.udSettlingTitle}</span>
-                <p className="mt-2 text-[12.5px] leading-[1.55] text-text-muted">{t.market.udConfirmingBody}</p>
+                <p className="mt-2 text-body-sm leading-[1.55] text-text-muted">{t.market.udConfirmingBody}</p>
               </section>
             ) : refundReason ? (
               // ── A REFUND, WITH ITS REAL REASON (E-65) ────────────────────
@@ -627,7 +627,7 @@ export default async function UpDownRoundPage({
               // which the old `state === "void"` branch could never reach.
               <section style={{ ...inset, padding: 16 }}>
                 <span className="chip">{t.market.udRefundTitle}</span>
-                <p className="mt-2 text-[12.5px] leading-[1.55] text-text-muted">
+                <p className="mt-2 text-body-sm leading-[1.55] text-text-muted">
                   {(t.market as Record<string, string>)[REFUND_REASON_KEY[refundReason]]}
                 </p>
               </section>
@@ -721,7 +721,7 @@ export default async function UpDownRoundPage({
               </div>
             )}
 
-            <p className="mt-3 text-[11px] leading-[1.55] text-text-faint">{t.market.udProofClosingNote}</p>
+            <p className="mt-3 text-body-sm leading-[1.55] text-text-faint">{t.market.udProofClosingNote}</p>
           </section>
         )}
       </div>

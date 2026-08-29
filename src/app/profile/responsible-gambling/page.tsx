@@ -103,7 +103,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
         <RgSunriseArt size={44} className="shrink-0 text-yes-300" />
         <div className="min-w-0">
           <p className="font-display text-[14px] font-semibold text-yes-200">{t.rg.supportAvailable}</p>
-          <p className="mt-1 text-[12.5px] text-text-muted leading-snug">
+          <p className="mt-1 text-body-sm text-text-muted leading-snug">
             {t.rg.helpline} · <a href={`tel:${SUPPORT_PHONE_TEL()}`} className="font-semibold text-yes-300 underline underline-offset-2">{SUPPORT_PHONE()}</a>.
             {" "}{t.rg.intlSupport}{" "}<a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer" className="text-yes-300 underline underline-offset-2">begambleaware.org</a>.
           </p>
@@ -118,7 +118,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
           <I.clock s={16} />
           <h2 className="font-display text-[15px] font-semibold text-text">{t.rg.setLimits}</h2>
         </div>
-        <p className="text-[12px] text-text-muted leading-snug">
+        <p className="text-body-sm text-text-muted leading-snug">
           {t.rg.limitsDescription}
         </p>
         {hasPendingIncrease && (
@@ -160,7 +160,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
           <div className="rounded-lg border border-border/70 bg-bg-elevated/30 p-4 space-y-3.5">
             <div>
               <p className="font-display text-[13.5px] font-semibold text-text">{t.rg.usageTitle}</p>
-              <p className="mt-0.5 text-[11.5px] text-text-tertiary leading-snug">{t.rg.usageIntro}</p>
+              <p className="mt-0.5 text-body-sm text-text-tertiary leading-snug">{t.rg.usageIntro}</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-3.5">
               {usageMeters.map((row) => (
@@ -177,7 +177,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
           <I.pause s={16} className="text-info-fg" />
           <h2 className="font-display text-[15px] font-semibold text-text">{t.rg.takeABreak}</h2>
         </div>
-        <p className="text-[12px] text-text-muted leading-snug">
+        <p className="text-body-sm text-text-muted leading-snug">
           {t.rg.breakDescription}
         </p>
         <form action={coolOffAction} className="flex flex-wrap items-end gap-2">
@@ -205,7 +205,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
               (profile/account), which is where that key belongs. */}
           <Chip variant="no" size="sm" className="ml-auto">{t.rg.minimumPeriod}</Chip>
         </div>
-        <p className="text-[12px] text-text-muted leading-snug max-w-prose">
+        <p className="text-body-sm text-text-muted leading-snug max-w-prose">
           {t.rg.selfExcludeDescription}
         </p>
         <form action={selfExcludeAction} className="flex flex-wrap items-end gap-2">

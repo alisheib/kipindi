@@ -217,7 +217,7 @@ export function UpDownHandover({
         borderRadius: "var(--r-md)",
       }}
     >
-      <span className="text-[12px] leading-[1.45] text-text-muted">{sentence}</span>
+      <span className="text-body-sm leading-[1.45] text-text-muted">{sentence}</span>
       {/* ⛔ Only when there is somewhere real to go — `ready` is true solely when a successor
           ROW is open, so this can never point at a round that does not exist.
           ⛔ And it wears the KIT's ghost button, the same control the board card offers this

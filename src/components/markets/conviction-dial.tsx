@@ -1583,12 +1583,12 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
                 <p className="text-[18px] font-bold tabular-nums text-text leading-none">
                   TZS {formatNumber(estimate)}
                 </p>
-                <p className="mt-1 text-[11px] leading-relaxed text-text-subtle">
+                <p className="mt-1 text-body-sm leading-relaxed text-text-subtle">
                   {t.dialog.estimateDisclaimer}
                 </p>
               </>
             ) : (
-              <p className="text-[12px] leading-relaxed text-text-muted">
+              <p className="text-body-sm leading-relaxed text-text-muted">
                 {t.dialog.payoutCalcBody}
               </p>
             )}
@@ -1608,7 +1608,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
           they know immediately rather than seeing an error after the click. */}
       {effectiveSide !== "NEUTRAL" && balance !== undefined && stake > balance && (
         <div className="mt-3 rounded-md border border-no-700 bg-no-500/10 px-3 py-2">
-          <p className="text-[11px] font-medium text-no-300">
+          <p className="text-body-sm font-medium text-no-300">
             {t.common.insufficientBalanceHint}
           </p>
           <p className="text-[10px] text-text-subtle mt-0.5">
@@ -1620,7 +1620,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
       {/* Compact place-bet pill — opens the confirm modal. Sits inline with
           a hint instead of taking the full width with a giant gold slab. */}
       <div className="mt-4 flex items-center gap-3">
-        <p className="flex-1 min-w-0 text-[11px] text-text-subtle leading-snug">
+        <p className="flex-1 min-w-0 text-body-sm text-text-subtle leading-snug">
           {closedNow
             ? t.common.marketClosed
             : effectiveSide === "NEUTRAL"

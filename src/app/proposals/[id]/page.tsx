@@ -73,7 +73,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
           <p className="mt-2 font-mono text-[11px] text-text-subtle">{t.common.selectionCloseDate}: {p.selectionCloseDate}</p>
         )}
         {p.sourceUrl && (
-          <p className="mt-3 flex items-center gap-1.5 text-[12px]">
+          <p className="mt-3 flex items-center gap-1.5 text-body-sm">
             <I.link s={13} className="shrink-0 text-text-subtle" />
             <a href={p.sourceUrl} target="_blank" rel="noopener noreferrer nofollow" className="truncate text-royal-200 hover:underline">{t.proposals.viewSource}</a>
           </p>
@@ -88,7 +88,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
               the player's localized equivalent (unknown/legacy values fall through
               verbatim rather than disappearing). The free-text note stays as
               written — it is the officer's own message. */}
-          <p className="text-[12.5px] leading-relaxed text-text-muted">{`${t.proposals.reason}: `}{({
+          <p className="text-body-sm leading-relaxed text-text-muted">{`${t.proposals.reason}: `}{({
             "Politics": t.proposals.declinePolitics,
             "Ambiguous outcome": t.proposals.declineAmbiguous,
             "No official source": t.proposals.declineNoSource,
@@ -102,7 +102,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
       {p.status === "CHANGES_REQUESTED" && p.changeNote && (
         <section className="rounded-xl border p-4" style={{ borderColor: "color-mix(in oklab, var(--royal-500) 30%, var(--border))", background: "color-mix(in oklab, var(--royal-500) 8%, var(--bg-elevated))" }}>
           <div className="mb-1.5 flex items-center gap-2 text-royal-200"><I.edit s={16} /><p className="text-[13px] font-bold">{t.common.changesRequested}</p></div>
-          <p className="text-[12.5px] leading-relaxed text-text-muted">{p.changeNote}</p>
+          <p className="text-body-sm leading-relaxed text-text-muted">{p.changeNote}</p>
         </section>
       )}
 
@@ -117,7 +117,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
               amount={formatTzsSigned(p.bonusGrantedTzs)}
               caption={t.common.earnedAPrize}
             />
-            <p className="mt-2 text-[12.5px] text-text-muted">{t.common.creditedToBonusWallet}</p>
+            <p className="mt-2 text-body-sm text-text-muted">{t.common.creditedToBonusWallet}</p>
           </div>
         </section>
       )}
@@ -127,7 +127,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
         <section className="rounded-xl glass-panel p-4">
           <p className="mb-3 font-mono text-[9.5px] uppercase tracking-[0.12em] font-bold text-text-subtle">{t.common.statusLabel}</p>
           <StatusTimeline current={timelineStep(p)} />
-          {open && <p className="mt-1 text-[12px] text-text-subtle">{t.common.officerReviewsNext}</p>}
+          {open && <p className="mt-1 text-body-sm text-text-subtle">{t.common.officerReviewsNext}</p>}
           {p.publishedMarketId && (
             <Link href={`/markets/${p.publishedMarketId}` as never}>
               <Button variant={p.status === "RESOLVED" ? "gold" : "ghost"} size="md" fullWidth className="mt-3" trailing={<I.arrowRight s={15} />}>

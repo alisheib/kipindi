@@ -45,7 +45,7 @@ export async function ProposePromo({ href }: { href: string }) {
           {t.market.proposeAndGetPaid}
           <ProposalsStateBadge state={cfg.state} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" />
         </p>
-        <p className="font-display italic text-text-subtle text-[11.5px]">
+        <p className="font-display italic text-text-subtle text-body-sm">
           {t.common.proposeEarn}
           {active && cfg.prizeTzs > 0 ? ` · ${formatTzs(cfg.prizeTzs)}` : ""}
         </p>

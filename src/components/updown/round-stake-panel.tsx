@@ -68,7 +68,7 @@ export function RoundStakePanel(props: {
   if (!isAuthed) {
     return (
       <>
-        <p className="text-[12.5px] leading-[1.55] text-text-muted">{t.market.udTagline}</p>
+        <p className="text-body-sm leading-[1.55] text-text-muted">{t.market.udTagline}</p>
         <Link href={signInHref as never} className="btn btn-primary btn-lg mt-3 w-full justify-center">
           {t.market.udSignInToBet}
         </Link>
@@ -81,7 +81,7 @@ export function RoundStakePanel(props: {
   if (!lockedSide) {
     return (
       <div className={cn(pulse && "ud-place-pulse")}>
-        <p className="mb-3 text-[12.5px] leading-[1.55] text-text-muted">{t.market.udTagline}</p>
+        <p className="mb-3 text-body-sm leading-[1.55] text-text-muted">{t.market.udTagline}</p>
         {/* UD-22 · no `onWatchRound`: the player is already on the round, and a ghost CTA
             that navigates to the page you are standing on is the dead-end this session's
             brief names. The receipt keeps its single primary action. */}
@@ -123,7 +123,7 @@ export function RoundStakePanel(props: {
           {pickWord}
         </span>
       </div>
-      <p className="mt-2 text-[12px] leading-[1.5] text-text-muted">{t.market.udPickLocked}</p>
+      <p className="mt-2 text-body-sm leading-[1.5] text-text-muted">{t.market.udPickLocked}</p>
 
       {/* Stake field — display of the chosen amount + a neutral projection (a projection
           is not earned money, so no gold).
@@ -262,7 +262,7 @@ export function RoundStakePanel(props: {
       {/* UD-1 · the inline reason + the deposit route — same factual register as the
           empty-side note (info glyph, faint ink): a fact about the wallet, not an alarm. */}
       {bet.insufficient && !bet.locallyLocked && (
-        <p className="mt-2 flex items-start gap-1 text-[10.5px] leading-[1.45] text-text-faint">
+        <p className="mt-2 flex items-start gap-1 text-body-sm leading-[1.45] text-text-faint">
           <I.info s={11} className="mt-[2px] shrink-0" />
           <span>
             {t.market.udInsufficientBalance}{" "}
@@ -275,7 +275,7 @@ export function RoundStakePanel(props: {
       {/* ⭐ D2 · the empty-side state, scoped to the side this player has locked. Faint
           informational ink and the `info` glyph — a refund is not a failure and not a prize. */}
       {warnCopy && (
-        <p className="mt-2 flex items-start gap-1 text-[10.5px] leading-[1.45] text-text-faint">
+        <p className="mt-2 flex items-start gap-1 text-body-sm leading-[1.45] text-text-faint">
           <I.info s={11} className="mt-[2px] shrink-0" />
           <span>{warnCopy}</span>
         </p>

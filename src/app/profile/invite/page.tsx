@@ -204,7 +204,7 @@ export default async function InvitePage() {
           }}
         >
           <span className="shrink-0" style={{ color: "var(--gold-300)" }}><I.info s={16} /></span>
-          <p className="text-[12px] leading-relaxed text-text-muted">
+          <p className="text-body-sm leading-relaxed text-text-muted">
             {t.profile.programPaused}
           </p>
         </div>
@@ -306,7 +306,7 @@ export default async function InvitePage() {
           <I.shieldcheck s={11} />
           {t.profile.bonusRequirements}
         </p>
-        <ul className="space-y-1.5 text-[12px] text-text-muted leading-snug list-disc pl-4">
+        <ul className="space-y-1.5 text-body-sm text-text-muted leading-snug list-disc pl-4">
           <li>{t.profile.inviteReqRegister}</li>
           <li>{t.profile.inviteReqDeposit}</li>
           <li>{t.profile.inviteReqBet}</li>
@@ -353,7 +353,7 @@ export default async function InvitePage() {
         />
       )}
 
-      <p className="pt-1 text-center text-[10.5px] leading-relaxed text-text-subtle">
+      <p className="pt-1 text-center text-body-sm leading-relaxed text-text-subtle">
         {t.profile.rewardsDisclaimer}
       </p>
     </PageContainer>

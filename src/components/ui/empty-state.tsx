@@ -51,7 +51,7 @@ export function EmptyState({
         {illustration ?? <DefaultIllustration kind={kind} />}
       </div>
       <p className="font-display text-[15.5px] font-semibold text-text">{title}</p>
-      {body && <p className="mt-2 text-[12.5px] leading-relaxed text-text-subtle">{body}</p>}
+      {body && <p className="mt-2 text-body-sm leading-relaxed text-text-subtle">{body}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
   );

@@ -112,7 +112,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
 
       {/* A pending receipt must not read as a completed one. */}
       {tone.key === "pending" && (
-        <p className="rounded-xl border border-brand-600/50 bg-brand-500/[0.08] px-4 py-3 text-[12.5px] leading-relaxed text-text-muted">
+        <p className="rounded-xl border border-brand-600/50 bg-brand-500/[0.08] px-4 py-3 text-body-sm leading-relaxed text-text-muted">
           {t.wallet.receiptPendingNote}
         </p>
       )}
@@ -156,7 +156,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
         </Link>
       </div>
 
-      <p className="text-[11.5px] leading-relaxed text-text-subtle">{t.wallet.receiptFootnote}</p>
+      <p className="text-body-sm leading-relaxed text-text-subtle">{t.wallet.receiptFootnote}</p>
     </PageContainer>
   );
 }

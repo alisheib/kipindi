@@ -62,7 +62,7 @@ export function EmailVerifyGate({ email }: { email: string | null }) {
         </span>
         <div className="min-w-0">
           <h2 className="font-display font-bold text-[15px] text-text">{t.wallet.verifyGateTitle}</h2>
-          <p className="mt-1 text-[12.5px] leading-relaxed text-text-muted">{t.wallet.verifyGateBody}</p>
+          <p className="mt-1 text-body-sm leading-relaxed text-text-muted">{t.wallet.verifyGateBody}</p>
         </div>
       </div>
 
@@ -107,7 +107,7 @@ export function EmailVerifyGate({ email }: { email: string | null }) {
         </Link>
       </div>
 
-      <p className="text-[11.5px] leading-relaxed text-text-subtle">{t.wallet.verifyGateFootnote}</p>
+      <p className="text-body-sm leading-relaxed text-text-subtle">{t.wallet.verifyGateFootnote}</p>
     </section>
   );
 }

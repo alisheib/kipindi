@@ -130,7 +130,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
       {errorMsg && (
         <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-no-700/60 bg-no-500/[0.10] px-4 py-3">
           <I.alertCircle s={16} />
-          <div className="text-[12.5px] leading-snug">
+          <div className="text-body-sm leading-snug">
             <p className="font-display font-semibold text-text">{t.wallet.withdrawFailed}</p>
             <p className="mt-0.5 text-text-muted">{errorMsg}</p>
           </div>
@@ -228,7 +228,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
 /** One iconized row inside the merged withdraw notices panel (C2e). */
 function NoticeRow({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
   return (
-    <div className="flex items-start gap-2.5 px-3.5 py-3 text-[12.5px] leading-snug">
+    <div className="flex items-start gap-2.5 px-3.5 py-3 text-body-sm leading-snug">
       <span className="mt-0.5 shrink-0">{icon}</span>
       <div>
         <p className="font-display font-semibold text-text">{title}</p>

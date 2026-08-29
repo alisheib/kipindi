@@ -84,9 +84,9 @@ export function ProviderRadioGrid({
               <I.check s={11} />
             </span>
             <PaymentLogo id={p.id} name={p.name} hue={p.hue} size={48} />
-            <span className="font-medium text-[12px] text-text text-center leading-tight">{p.name}</span>
+            <span className="font-medium text-body-sm text-text text-center leading-tight">{p.name}</span>
             {p.unavailable && (
-              <span className="text-[9.5px] text-text-subtle text-center leading-tight">{unavailableLabel}</span>
+              <span className="text-body-sm text-text-subtle text-center leading-tight">{unavailableLabel}</span>
             )}
           </label>
         );

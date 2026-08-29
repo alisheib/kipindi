@@ -85,7 +85,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
           {/* Money-honesty tiles — all wrapped in <Cash> (privacy mask). */}
           <section className="rounded-xl glass-panel p-5">
             <p className="gilt-eyebrow mb-1">{t.activity.moneyEyebrow}</p>
-            <p className="mb-3 text-[11.5px] text-text-subtle">{t.activity.forPeriod} {periodLabel[period].toLowerCase()}.</p>
+            <p className="mb-3 text-body-sm text-text-subtle">{t.activity.forPeriod} {periodLabel[period].toLowerCase()}.</p>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
               {/* ⭐ STAGE 9b — was a local `MoneyTile`; now the kit <Stat> at the `lg`
                   rung (17px, mt-1, leading-tight) in the `tile` box (rounded-lg,
@@ -103,7 +103,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
                   did in the fork. */}
               <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.net}         value={summary.net >= 0 ? `+${formatTzs(summary.net)}` : formatTzs(summary.net)} icon={<I.activity s={14} />} labelTone={summary.net >= 0 ? "yes" : "no"} />
             </div>
-            <p className="mt-3 text-[11px] leading-relaxed text-text-subtle">{t.activity.netNote}</p>
+            <p className="mt-3 text-body-sm leading-relaxed text-text-subtle">{t.activity.netNote}</p>
           </section>
 
           {/* Responsible-gambling limits — used vs your cap (real, matches the gate). */}

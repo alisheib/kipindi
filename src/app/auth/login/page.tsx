@@ -197,7 +197,7 @@ export default async function LoginPage({
               <span className={"mt-0.5 shrink-0 " + (errorPanel.tone === "success" ? "text-success-fg" : errorPanel.tone === "danger" ? "text-danger-fg" : "text-gold-300")}>
                 <I.alertCircle s={16} />
               </span>
-              <div className="text-[12.5px] leading-snug">
+              <div className="text-body-sm leading-snug">
                 <p className="font-display font-semibold text-text">{errorPanel.title}</p>
                 <p className="mt-0.5 text-text-muted">{errorPanel.body}</p>
                 {errorPanel.cta && (
@@ -242,7 +242,7 @@ export default async function LoginPage({
                 aria-describedby={sp.error === "wrong_credentials" ? "login-error" : undefined}
               />
               {sp.error === "wrong_credentials" && (
-                <p id="login-error" className="mt-1.5 flex items-center gap-1.5 text-[12px] text-danger-fg font-medium">
+                <p id="login-error" className="mt-1.5 flex items-center gap-1.5 text-body-sm text-danger-fg font-medium">
                   <I.alertCircle s={13} />
                   {t.auth.wrongCredentials}
                 </p>

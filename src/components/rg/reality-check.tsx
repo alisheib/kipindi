@@ -148,7 +148,7 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, user
           </h2>
         </div>
 
-        <p className="text-[12.5px] text-text-muted leading-snug">
+        <p className="text-body-sm text-text-muted leading-snug">
           {t.rg.mostPlayForFun}
         </p>
 

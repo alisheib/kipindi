@@ -133,7 +133,7 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
               <span className="mt-0.5 text-brand-300"><NeedleMark size={20} /></span>
               <div className="min-w-0 flex-1">
                 <p className="font-display text-[15px] font-bold text-text leading-tight">{t("The Needle", "Sindano", "指针玩具")}</p>
-                <p className="mt-0.5 text-[11.5px] text-text-subtle leading-snug">
+                <p className="mt-0.5 text-body-sm text-text-subtle leading-snug">
                   {t(
                     "An optional fidget on the edge. It never affects your account.",
                     "Kichezeo cha hiari kwenye ukingo. Hakiathiri akaunti yako.",
@@ -158,7 +158,7 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
             <div className="flex items-center gap-3 border-t border-border/60 py-3.5">
               <div className="min-w-0 flex-1">
                 <p className="font-display text-[13.5px] font-semibold text-text leading-tight">{t("Show on screen", "Onyesha kwenye skrini", "在屏幕上显示")}</p>
-                <p className="mt-0.5 text-[11.5px] text-text-muted leading-snug">{t("The fidget on the edge of the screen", "Kichezeo kwenye ukingo wa skrini", "屏幕边缘的小玩具")}</p>
+                <p className="mt-0.5 text-body-sm text-text-muted leading-snug">{t("The fidget on the edge of the screen", "Kichezeo kwenye ukingo wa skrini", "屏幕边缘的小玩具")}</p>
               </div>
               <Toggle on={!hidden} onClick={toggleShown} aria-label={t("Show the Needle", "Onyesha Sindano", "显示指针玩具")} />
             </div>
@@ -192,13 +192,13 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
                         {label}
                         {active && <span className="text-brand-300" aria-hidden><svg width="12" height="12" viewBox="0 0 24 24"><path d="M5 12l5 5L20 6" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg></span>}
                       </span>
-                      <span className="mt-0.5 block text-[11px] leading-snug text-text-subtle">{hint}</span>
+                      <span className="mt-0.5 block text-body-sm leading-snug text-text-subtle">{hint}</span>
                     </button>
                   );
                 })}
               </div>
               {hidden && (
-                <p className="mt-2 text-[11px] italic text-text-subtle">{t("Turn it on above to change how it plays.", "Iwashe hapo juu ili kubadilisha jinsi inavyocheza.", "先在上方开启，才能更改玩法。")}</p>
+                <p className="mt-2 text-body-sm italic text-text-subtle">{t("Turn it on above to change how it plays.", "Iwashe hapo juu ili kubadilisha jinsi inavyocheza.", "先在上方开启，才能更改玩法。")}</p>
               )}
             </div>
           </div>

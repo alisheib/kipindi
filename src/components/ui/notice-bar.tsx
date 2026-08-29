@@ -79,7 +79,7 @@ export function NoticeBar({
         {Glyph
           ? <Glyph s={15} className="shrink-0" aria-hidden />
           : <span className="shrink-0 inline-block h-2 w-2 rounded-full" style={{ background: t.accent }} aria-hidden />}
-        <p className="min-w-0 flex-1 text-[12.5px] leading-snug font-medium">{children}</p>
+        <p className="min-w-0 flex-1 text-body-sm leading-snug font-medium">{children}</p>
         {action}
         {onDismiss && (
           <button
@@ -149,7 +149,7 @@ export function NoticeBarAction({
   // deposit, resend the code). 40 is the absolute floor, not the target, for a button a
   // thumb reaches for on a bar that is deliberately never in the reading flow.
   const cls =
-    "inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-pill border border-warning-fg/40 px-3.5 text-[12px] font-semibold transition-colors hover:bg-warning-fg/10 disabled:opacity-50";
+    "inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-pill border border-warning-fg/40 px-3.5 text-body-sm font-semibold transition-colors hover:bg-warning-fg/10 disabled:opacity-50";
   if (href) {
     return (
       <a href={href} className={cls}>

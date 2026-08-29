@@ -76,7 +76,7 @@ export function BadgeShelf({
       {items.map((it) => (
         <figure key={it.achievement} className="flex flex-col items-center gap-2 text-center">
           <Badge achievement={it.achievement} state={it.state} progress={it.progress} size="md" title={it.title} />
-          <figcaption className="text-[11px] leading-tight text-text-muted">{it.title}</figcaption>
+          <figcaption className="text-body-sm leading-tight text-text-muted">{it.title}</figcaption>
         </figure>
       ))}
     </div>

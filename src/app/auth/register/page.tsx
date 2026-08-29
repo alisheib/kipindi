@@ -124,7 +124,7 @@ export default async function RegisterPage({
                 <div className="min-w-0 flex-1">
                   <p className="text-[14px] font-bold text-text">{t.auth.invitedBy} {referral.referrerName}</p>
                   {referral.newPlayerBonusTzs > 0 && (
-                    <p className="mt-1 text-[12.5px] font-semibold text-gold-300">
+                    <p className="mt-1 text-body-sm font-semibold text-gold-300">
                       {referral.bonusTrigger === "SIGNUP"
                         ? `${t.auth.signUpAndGet} ${formatTzs(referral.newPlayerBonusTzs)} ${t.auth.toStart}`
                         : `${t.auth.getOnFirstDeposit} ${formatTzs(referral.newPlayerBonusTzs)}`}
@@ -152,7 +152,7 @@ export default async function RegisterPage({
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="text-[14px] font-bold text-text">{t.auth.claimBonus} {formatTzs(invite.bonusAmountTzs)}</p>
-                  <p className="mt-1 text-[12px] font-semibold text-gold-300">{t.auth.bonusWalletHint}</p>
+                  <p className="mt-1 text-body-sm font-semibold text-gold-300">{t.auth.bonusWalletHint}</p>
                 </div>
               </div>
             </div>
@@ -173,7 +173,7 @@ export default async function RegisterPage({
               <span className={"mt-0.5 shrink-0 " + (errorPanel.tone === "danger" ? "text-danger-fg" : "text-gold-300")}>
                 <I.alertCircle s={16} />
               </span>
-              <div className="text-[12.5px] leading-snug">
+              <div className="text-body-sm leading-snug">
                 <p className="font-display font-semibold text-text">{errorPanel.title}</p>
                 <p className="mt-0.5 text-text-muted">{errorPanel.body}</p>
                 {errorPanel.cta && (
@@ -276,7 +276,7 @@ export default async function RegisterPage({
                 label={<span className="text-[13px] text-text-muted">{t.auth.optionalUpdates}</span>}
               />
               {/* The binding documents must be reachable at the consent point. */}
-              <p className="pt-0.5 text-[11.5px] text-text-subtle">
+              <p className="pt-0.5 text-body-sm text-text-subtle">
                 <Link href={"/legal/terms" as never} className="text-brand-300 underline-offset-2 hover:underline">{t.footer.terms}</Link>
                 {" · "}
                 <Link href={"/legal/privacy" as never} className="text-brand-300 underline-offset-2 hover:underline">{t.footer.privacy}</Link>

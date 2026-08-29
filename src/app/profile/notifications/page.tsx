@@ -41,7 +41,7 @@ export default async function NotificationSettingsPage() {
             </span>
             <div>
               <p className="font-display text-[14px] font-semibold text-text leading-tight">{t.watchlist.title}</p>
-              <p className="mt-0.5 text-[12px] text-text-subtle leading-snug">{t.watchlist.alertsHint}</p>
+              <p className="mt-0.5 text-body-sm text-text-subtle leading-snug">{t.watchlist.alertsHint}</p>
             </div>
           </div>
           <Link href={"/watchlist" as never} className="inline-flex items-center gap-1 shrink-0 font-mono text-[11px] text-accent-400 hover:text-text underline">

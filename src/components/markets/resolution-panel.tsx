@@ -131,12 +131,12 @@ export function ResolutionPanel({
       {/* Attestation (only when genuinely two-officer) + timestamp + source */}
       <div className="space-y-2">
         {twoOfficer ? (
-          <p className="flex items-start gap-2 text-[12.5px] text-text-muted">
+          <p className="flex items-start gap-2 text-body-sm text-text-muted">
             <I.sealCheck s={14} className="mt-[1px] shrink-0 text-yes-300" />
             <span>{t.market.resTwoOfficer}</span>
           </p>
         ) : singleOfficer ? (
-          <p className="flex items-start gap-2 text-[12.5px] text-text-muted">
+          <p className="flex items-start gap-2 text-body-sm text-text-muted">
             <I.sealCheck s={14} className="mt-[1px] shrink-0 text-yes-300" />
             <span>{t.market.resSingleOfficer}</span>
           </p>
@@ -169,7 +169,7 @@ export function ResolutionPanel({
             <I.fileCheck s={12} className="text-gilt" />
             {t.market.resEvidence}
           </p>
-          <blockquote className="border-l-2 border-gilt/60 bg-bg-overlay/30 rounded-r-md px-3 py-2 text-[12.5px] leading-relaxed text-text-muted italic whitespace-pre-wrap break-words">
+          <blockquote className="border-l-2 border-gilt/60 bg-bg-overlay/30 rounded-r-md px-3 py-2 text-body-sm leading-relaxed text-text-muted italic whitespace-pre-wrap break-words">
             {evidenceText}
           </blockquote>
         </div>
@@ -191,12 +191,12 @@ export function ResolutionPanel({
         // Just "Settled <when>". Who was paid and how much is INTERNAL — the player
         // sees their own payout under Your positions, and the operator sees the rest
         // in the admin console. Do not narrate the payout run on a public surface.
-        <p className="flex items-center gap-1.5 text-[12px] text-text-subtle">
+        <p className="flex items-center gap-1.5 text-body-sm text-text-subtle">
           <I.check s={13} className="text-yes-300" />
           {t.market.resPaidOut} <span className="font-mono tabular-nums">{formatDateTime(settledAt)}</span>
         </p>
       ) : (
-        <p className="flex items-center gap-1.5 text-[12px] text-text-subtle">
+        <p className="flex items-center gap-1.5 text-body-sm text-text-subtle">
           <I.check s={13} className="text-yes-300" />
           {t.market.resFinal}
         </p>
@@ -204,7 +204,7 @@ export function ResolutionPanel({
 
       {/* Settlement / pool composition — exact stored values only */}
       {isVoid ? (
-        <p className="text-[12.5px] leading-relaxed text-text-muted">{t.market.resVoidRefund}</p>
+        <p className="text-body-sm leading-relaxed text-text-muted">{t.market.resVoidRefund}</p>
       ) : (
         <div className="rounded-md border border-border/60 bg-bg-overlay/40 font-mono text-[12.5px]">
           <Row label={t.market.resFinalPool} value={formatTzs(gross)} strong />
@@ -248,24 +248,24 @@ export function ResolutionPanel({
           exists for THIS viewer, in THIS state. We never show a control that the
           server would refuse; we say why instead. */}
       <div className="space-y-2 pt-1">
-        {!isVoid && <p className="text-[11.5px] leading-relaxed text-text-subtle">{t.market.resYourPayoutNote}</p>}
+        {!isVoid && <p className="text-body-sm leading-relaxed text-text-subtle">{t.market.resYourPayoutNote}</p>}
 
         {objection?.state === "OPEN" ? (
-          <p className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-[11.5px] leading-relaxed text-warning-fg">
+          <p className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-body-sm leading-relaxed text-warning-fg">
             <I.hourglassHalf s={13} className="mt-[1px] shrink-0" />
             {t.market.objOpenNotice}
           </p>
         ) : objection?.state === "ELIGIBLE" ? (
           <ObjectionDialog marketId={marketId} />
         ) : objection?.state === "NO_POSITION" ? (
-          <p className="text-[11.5px] leading-relaxed text-text-subtle">{t.market.objOnlyStakeholders}</p>
+          <p className="text-body-sm leading-relaxed text-text-subtle">{t.market.objOnlyStakeholders}</p>
         ) : objection?.state === "WINDOW_CLOSED" ? (
-          <p className="text-[11.5px] leading-relaxed text-text-subtle">{t.market.objWindowClosed}</p>
+          <p className="text-body-sm leading-relaxed text-text-subtle">{t.market.objWindowClosed}</p>
         ) : objection?.state === "ALREADY_SETTLED" ? (
-          <p className="text-[11.5px] leading-relaxed text-text-subtle">{t.market.objSettledContact}</p>
+          <p className="text-body-sm leading-relaxed text-text-subtle">{t.market.objSettledContact}</p>
         ) : null}
 
-        <p className="text-[11.5px] leading-relaxed text-text-subtle">
+        <p className="text-body-sm leading-relaxed text-text-subtle">
           {t.market.resDispute}{" "}
           <a href="/help" className="text-accent-400 hover:text-text underline">{t.market.resContact}</a>
         </p>

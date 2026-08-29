@@ -997,7 +997,7 @@ export function UpDownCard(props: UpDownCardProps) {
             {/* V-1 — kit glyph, not the 🔒 emoji: platform rule is no emoji in
                 UI copy, and the OS-rendered glyph broke the card's ink. */}
             <span className="chip chip-pending"><I.lock s={11} /> {t.market.udLockedTitle}</span>
-            <p className="mt-2 text-[11.5px] leading-[1.5] text-text-muted">
+            <p className="mt-2 text-body-sm leading-[1.5] text-text-muted">
               {lockClock ? t.market.udLockedWhy.replace("{time}", lockClock) : t.market.udLockedWhy.replace("{time}", "—")}
             </p>
             {/* ⭐ The estimate is GONE here — the pool is frozen, so these are the real figures.
@@ -1014,13 +1014,13 @@ export function UpDownCard(props: UpDownCardProps) {
                     {t.market.udBothSidesHeld}
                   </p>
                 )}
-                <p className="mt-1 m-0 flex items-baseline justify-between gap-2 text-[11.5px] text-text-muted">
+                <p className="mt-1 m-0 flex items-baseline justify-between gap-2 text-body-sm text-text-muted">
                   <span>{t.market.udIfClosesUp}</span>
                   <span className="font-mono text-[12.5px] font-bold tabular-nums" style={{ color: "var(--yes-300)" }}>
                     {formatTzs(ifUp)}
                   </span>
                 </p>
-                <p className="mt-0.5 m-0 flex items-baseline justify-between gap-2 text-[11.5px] text-text-muted">
+                <p className="mt-0.5 m-0 flex items-baseline justify-between gap-2 text-body-sm text-text-muted">
                   <span>{t.market.udIfClosesDown}</span>
                   <span className="font-mono text-[12.5px] font-bold tabular-nums" style={{ color: "var(--no-300)" }}>
                     {formatTzs(ifDown)}
@@ -1033,7 +1033,7 @@ export function UpDownCard(props: UpDownCardProps) {
           // CALM. No red, no spinner, and above all no number we do not have.
           <div className="rounded-xl p-3.5" style={{ background: "color-mix(in oklab, var(--bg-inset) 70%, transparent)", border: "1px solid var(--border)" }}>
             <span className="chip chip-pending">{t.market.udSettlingTitle}</span>
-            <p className="mt-2 text-[11.5px] leading-[1.5] text-text-muted">{t.market.udConfirmingBody}</p>
+            <p className="mt-2 text-body-sm leading-[1.5] text-text-muted">{t.market.udConfirmingBody}</p>
           </div>
         ) : refundReason ? (
           // ── A REFUND, WITH ITS REAL REASON (E-65 / E-39) ──────────────────
@@ -1049,7 +1049,7 @@ export function UpDownCard(props: UpDownCardProps) {
           // proof, the push and the inbox. NEUTRAL chrome throughout: a refund is not a failure.
           <div className="rounded-xl p-3.5" style={{ background: "color-mix(in oklab, var(--bg-inset) 70%, transparent)", border: "1px solid var(--border)" }}>
             <span className="chip">{t.market.udRefundTitle}</span>
-            <p className="mt-2 text-[11.5px] leading-[1.5] text-text-muted">
+            <p className="mt-2 text-body-sm leading-[1.5] text-text-muted">
               {(t.market as Record<string, string>)[REFUND_REASON_KEY[refundReason]]}
             </p>
           </div>
@@ -1079,7 +1079,7 @@ export function UpDownCard(props: UpDownCardProps) {
             void hands over exactly as a win does (rule 7), so nothing here is rose and nothing
             is gold. `--brand-300` marks only the LINK, which is a navigation, not money. */}
         {inHandover && (
-          <p className="mt-2.5 mb-0 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-[11px] leading-[1.45] text-text-muted">
+          <p className="mt-2.5 mb-0 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-body-sm leading-[1.45] text-text-muted">
             <span>
               {handover.phase === "live" ? t.market.udNextMatchLiveBody
                 : handover.phase === "counting" ? t.market.udNextMatchCountingBody

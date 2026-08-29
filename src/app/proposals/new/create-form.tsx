@@ -91,10 +91,10 @@ export function CreateProposalForm({ rateLimit, openCount, platformTz }: { rateL
           <span className="text-royal-200"><I.info s={16} /></span>
           <p className="text-[13px] font-bold text-royal-200">{t.common.whatMakesGood}</p>
         </div>
-        <p className="text-[12px] leading-relaxed text-text-muted">
+        <p className="text-body-sm leading-relaxed text-text-muted">
           {t.common.goodProposalHint}
         </p>
-        <p className="mt-2.5 flex items-center gap-1.5 text-[11.5px] text-text-muted">
+        <p className="mt-2.5 flex items-center gap-1.5 text-body-sm text-text-muted">
           <I.info s={13} />
           <span className="font-mono">{openCount} / {rateLimit}</span> {t.common.openProposalsUsed}
         </p>
@@ -122,15 +122,15 @@ export function CreateProposalForm({ rateLimit, openCount, platformTz }: { rateL
       <div>
         <FieldLegend className="block mb-1.5">{t.common.resolutionCriterion} <Req /></FieldLegend>
         <Textarea placeholder={t.common.resolutionPlaceholder} value={criterion} onChange={(e) => setCriterion(e.target.value)} maxLength={500} />
-        <p className="mt-1.5 text-[11px] leading-snug text-text-subtle">{t.common.resolutionHint}</p>
+        <p className="mt-1.5 text-body-sm leading-snug text-text-subtle">{t.common.resolutionHint}</p>
       </div>
 
       <div>
         <FieldLegend className="block mb-1.5">{t.common.sourceLink} <Req /></FieldLegend>
         <Input type="url" inputMode="url" placeholder={t.proposals.sourceLinkPlaceholder} value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} maxLength={500} />
-        <p className="mt-1.5 text-[11px] leading-snug text-text-subtle">{t.proposals.sourceLinkHint}</p>
+        <p className="mt-1.5 text-body-sm leading-snug text-text-subtle">{t.proposals.sourceLinkHint}</p>
         {sourceUrl.trim().length > 0 && !sourceValid && (
-          <p className="mt-1 text-[11px] leading-snug text-no-300">{t.proposals.sourceLinkInvalid}</p>
+          <p className="mt-1 text-body-sm leading-snug text-no-300">{t.proposals.sourceLinkInvalid}</p>
         )}
       </div>
 
@@ -157,7 +157,7 @@ export function CreateProposalForm({ rateLimit, openCount, platformTz }: { rateL
                    Choosing a category for a proposal is not that, so the selected state is
                    royal, exactly as every other filter rail in the product.
                    Selection was also colour-only before; `aria-pressed` now states it. */
-                className={`kp-fchip inline-flex min-h-[44px] items-center gap-1.5 rounded-pill border text-[12.5px] font-semibold ${
+                className={`kp-fchip inline-flex min-h-[44px] items-center gap-1.5 rounded-pill border text-body-sm font-semibold ${
                   active
                     ? "border-brand-400 px-4 text-text"
                     : "border-transparent px-3 text-text-muted hover:bg-bg-overlay hover:text-text"
@@ -189,9 +189,9 @@ export function CreateProposalForm({ rateLimit, openCount, platformTz }: { rateL
           min={new Date().toISOString().slice(0, 10)}
           max={date || `${new Date().getFullYear() + 2}-12-31`}
         />
-        <p className="mt-1.5 text-[11px] leading-snug text-text-subtle">{t.common.selectionCloseHint}</p>
+        <p className="mt-1.5 text-body-sm leading-snug text-text-subtle">{t.common.selectionCloseHint}</p>
         {closeDate && !closeValid && (
-          <p className="mt-1 text-[11px] leading-snug text-no-300">{t.common.selectionCloseError}</p>
+          <p className="mt-1 text-body-sm leading-snug text-no-300">{t.common.selectionCloseError}</p>
         )}
       </div>
 
@@ -206,7 +206,7 @@ export function CreateProposalForm({ rateLimit, openCount, platformTz }: { rateL
       <Button variant="primary" size="lg" fullWidth disabled={!valid} loading={pending} onClick={submit}>
         {t.common.submitProposal}
       </Button>
-      <p className="text-center text-[11px] leading-relaxed text-text-subtle">
+      <p className="text-center text-body-sm leading-relaxed text-text-subtle">
         {t.common.submittingNoGuarantee}
       </p>
 
