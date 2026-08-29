@@ -72,7 +72,7 @@ export function RoundStakePanel(props: {
         <Link href={signInHref as never} className="btn btn-primary btn-lg mt-3 w-full justify-center">
           {t.market.udSignInToBet}
         </Link>
-        <p className="mt-2 font-mono text-[10px] text-text-faint">{formatTzs(minStake)} – {formatTzs(maxStake)}</p>
+        <p className="mt-2 amount text-micro text-text-faint">{formatTzs(minStake)} – {formatTzs(maxStake)}</p>
       </>
     );
   }
@@ -226,7 +226,7 @@ export function RoundStakePanel(props: {
             onKeyDown={(e) => { if (e.key === "Escape") bet.exitCustom(); }}
             aria-label={t.market.udCustomAmount} aria-invalid={customInvalid} error={customInvalid} placeholder="0"
           />
-          <p className={cn("mt-1 font-mono text-[10px] tabular-nums", customInvalid ? "text-no-300" : "text-text-subtle")}>
+          <p className={cn("mt-1 text-micro amount", customInvalid ? "text-no-300" : "text-text-subtle")}>
             {customInvalid ? `${t.market.udStakeRange} · ` : ""}{formatTzs(bet.min)} – {formatTzs(bet.max)}
           </p>
         </div>

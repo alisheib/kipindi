@@ -233,7 +233,7 @@ export function UpDownStakeControls({
             error={customInvalid}
             placeholder="0"
           />
-          <p className={cn("mt-1 font-mono text-[10px] tabular-nums", customInvalid ? "text-no-300" : "text-text-subtle")}>
+          <p className={cn("mt-1 text-micro amount", customInvalid ? "text-no-300" : "text-text-subtle")}>
             {customInvalid ? `${t.market.udStakeRange} · ` : ""}{formatTzs(bet.min)} – {formatTzs(bet.max)}
           </p>
         </div>

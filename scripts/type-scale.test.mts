@@ -153,7 +153,13 @@ const RATCHET_SUBFLOOR = 763;   // 2026-08-29: -268 total, the ADMIN then PLAYER
  *  step above the real count and would have accepted a new arbitrary size for free.
  *  ⛔ That is the failure mode §4.2 of `test:red-anchors` names for its own ceiling: a
  *  ratchet above the real number has stopped being a ratchet. Re-measured, then locked. */
-const RATCHET_ARBITRARY_SIZE = 1439;   // 2026-08-29: -370 total — the prose sweeps (DG-A-12) then 11 FieldLegend adoptions (DG-A-11)
+// 2026-08-29: -381 total — the prose sweeps (DG-A-12) · 11 FieldLegend adoptions (DG-A-11) ·
+// and 1439 → 1428, the 11 AMOUNT elements moved onto a rung + `.amount` by `qa:dg-money`.
+// ⭐ §3 held at 763 across that last sweep, and that is the point: the sub-floor amounts moved
+// to `text-micro`/`text-caption`/`text-label`, which §3's population still counts. A `.amount`
+// sized from a `--type-*` var would have rendered identically and vanished from BOTH ratchets —
+// the exact trap that made 509 of §3's old 768 zeroable by a rename that moved nothing.
+const RATCHET_ARBITRARY_SIZE = 1428;
 /*  ⬇️ 38 → 37 on 2026-08-25. The wallet balance pill carried `fontSize: 12.5` inline — an
  *  off-ladder literal AND invisible to every class-based gate. It now reads `text-caption`
  *  below `sm` and `text-label` from there, both ON the closed ladder (§T1), which is also

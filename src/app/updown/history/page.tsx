@@ -242,7 +242,7 @@ export default async function UpDownHistoryPage({ searchParams }: {
                    style={{ color: net > 0 ? "var(--yes-300)" : net < 0 ? "var(--no-300)" : "var(--text)" }}>
                 {net === 0 ? formatTzs(0) : formatTzsSigned(net)}
               </div>
-              <div className="font-mono text-[10px] text-text-subtle">{formatTzs(staked)} → {formatTzs(returned)}</div>
+              <div className="amount text-micro text-text-subtle">{formatTzs(staked)} → {formatTzs(returned)}</div>
             </div>
             <div className="rounded-xl border border-border bg-bg-elevated p-3.5">
               <div className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-faint">{t.market.udRoundsPlayed}</div>

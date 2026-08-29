@@ -249,7 +249,7 @@ export default async function PerformancePage() {
                       <p className="mt-0.5 font-mono text-[10px] text-text-muted">{r.side ? <>{r.side} &middot; </> : null}{formatTzsAbs(r.stake)} &middot; {r.date}</p>
                     </div>
                     <div className="shrink-0 text-right">
-                      <p className={`font-mono text-[13px] font-bold tabular-nums ${r.pnl >= 0 ? "text-[var(--gilt)]" : "text-no-300"}`}>{formatTzsSigned(r.pnl)}</p>
+                      <p className={`text-body-sm font-bold amount ${r.pnl >= 0 ? "text-[var(--gilt)]" : "text-no-300"}`}>{formatTzsSigned(r.pnl)}</p>
                       <p className="font-mono text-[9px] uppercase tracking-[0.08em] text-text-muted">{r.statusLabel}</p>
                     </div>
                   </Link>

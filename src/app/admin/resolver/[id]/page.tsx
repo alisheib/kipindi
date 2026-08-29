@@ -143,7 +143,7 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
             {/* Final tipping bar, frozen at close — numerals only, no animation. */}
             <AdminCard title="Final tipping bar · frozen at close" sw="Baa la mwisho">
               <ProbabilityBar yesPct={yes} size="large" resolved={settled} showLabels />
-              <p className="mt-2 font-mono text-[11px] text-text-subtle">
+              <p className="mt-2 amount text-caption text-text-subtle">
                 YES {yes}% · {formatTzs(m.yesPool)} &nbsp;|&nbsp; NO {100 - yes}% · {formatTzs(m.noPool)}
               </p>
             </AdminCard>

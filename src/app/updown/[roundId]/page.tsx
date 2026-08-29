@@ -536,7 +536,7 @@ export default async function UpDownRoundPage({
                 <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
                   <div>
                     <p className="m-0 font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">{t.market.udPaidOut}</p>
-                    <p className={`mt-1 m-0 font-mono text-[22px] font-bold leading-none tabular-nums${payoutStruck ? " gilt-ink" : " text-text"}`}>{formatTzs(myPosition.payout ?? 0)}</p>
+                    <p className={`mt-1 m-0 text-title-md font-bold leading-none amount${payoutStruck ? " gilt-ink" : " text-text"}`}>{formatTzs(myPosition.payout ?? 0)}</p>
                   </div>
                   <div className="text-right">
                     <p className="m-0 font-mono text-[9px] uppercase tracking-[0.10em] text-text-faint">{t.market.udYourPick} · {t.market.udStake}</p>
@@ -544,7 +544,7 @@ export default async function UpDownRoundPage({
                         single `side` with `up >= down`, which is a tie-break, not a fact about
                         the bet — so a player who backed BOTH ways was shown the larger leg as
                         though it were their whole position. Same rule as UD-20 on the board. */}
-                    <p className="mt-1 m-0 font-mono text-[12px] tabular-nums text-text-muted">
+                    <p className="mt-1 m-0 text-label amount text-text-muted">
                       {myPosition.hedged
                         ? t.market.udBothSides
                         : myPosition.side === "UP" ? t.market.udUp : t.market.udDown} · {formatTzs(myPosition.stake)}

@@ -116,12 +116,12 @@ export function SellConfirmModal({ open, pending, stake, value, positionId, onCo
           <div className="text-right">
             <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-text-subtle mb-1">{t.dialog.earlyExitFee}</p>
             <p
-              className="font-mono font-bold text-[18px] tabular-nums leading-none"
+              className="font-bold text-title-sm amount leading-none"
               style={{ color: isFree ? "var(--yes-300)" : "var(--text)" }}
             >
               {isFree ? t.dialog.noFee : `−${formatTzs(fee)}`}
             </p>
-            <p className="mt-1 font-mono text-[10px] text-text-subtle">{isFree ? t.dialog.freeExitWindow : `${feePct}% · ${formatTzs(stake)}`}</p>
+            <p className="mt-1 amount text-micro text-text-subtle">{isFree ? t.dialog.freeExitWindow : `${feePct}% · ${formatTzs(stake)}`}</p>
           </div>
         </div>
       </div>
