@@ -96,7 +96,12 @@ for (const route of ROUTES) {
     if (/\/auth\//.test(page.url())) { ok(`${route} keeps its session`, false, `still ${page.url()}`); continue; }
   }
 
-  const m = await page.evaluate(() => {
+  /* ⚠️ RETRIED, because `page.evaluate` races a late client-side navigation and throws
+     "Execution context was destroyed". It happened on a real run and killed the whole seal
+     mid-drive. ⛔ A flake that aborts a 40-route gate reads, from the outside, exactly like a
+     gate that was never run — and if the run is piped to `tail`, the shell reports TAIL's
+     exit code, so the crash prints as success. Settle, retry once, and only then give up. */
+  const probe = () => page.evaluate(() => {
     const mains = [...document.querySelectorAll("main")];
     return {
       n: mains.length,
@@ -106,6 +111,21 @@ for (const route of ROUTES) {
       h1: document.querySelectorAll("h1").length,
     };
   });
+  let m;
+  try { m = await probe(); }
+  catch (e) {
+    if (!/Execution context was destroyed|Target closed/.test(String(e))) {
+      ok(`${route} could be probed`, false, String(e).slice(0, 100)); continue;
+    }
+    await page.waitForLoadState("load", { timeout: 30_000 }).catch(() => {});
+    await page.waitForTimeout(600);
+    /* ⛔ A late navigation can also be a REVOCATION — re-check the URL before trusting
+       whatever the second probe returns, or a retry silently measures the sign-in page. */
+    if (/\/auth\//.test(page.url())) { ok(`${route} keeps its session (after a re-navigation)`, false, page.url()); continue; }
+    try { m = await probe(); }
+    catch (e2) { ok(`${route} could be probed after a re-navigation`, false, String(e2).slice(0, 100)); continue; }
+    console.log(`  ⚠️  ${route} re-navigated mid-probe; retried and settled on ${page.url().replace(BASE, "")}`);
+  }
   probed++;
   const exempt = TOTP_EXEMPT_ROUTES.includes(route);
   ok(`${route} exactly one <main>`, m.n === 1,
