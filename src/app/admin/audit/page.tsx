@@ -1,4 +1,5 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
+import { KpiGrid } from "@/components/admin/admin-body";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { GenerateButton } from "../reports/generate-button";
@@ -105,9 +106,12 @@ export default async function AdminAuditPage({
       />
 
       <AdminBody>
-        {/* Summary KPIs — kit AdminKpi grid, consistent with every other admin
-            screen (this page previously used the player-side MarketStats shell). */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {/* Summary KPIs — the kit band. ⚠️ This comment used to claim it WAS "the kit
+            AdminKpi grid, consistent with every other admin screen" while hand-writing the
+            grid beside `KpiGrid` — the claim was the reason nobody checked. It is the kit
+            now, on the `sm3` rung minted for this exact shape: 3 tiles STACKED at 390, which
+            no previous rung offered and which is deliberate (2-up would orphan the third). */}
+        <KpiGrid cols="sm3">
           <AdminKpi label="Total entries" sw="Jumla" value={allEntries.length.toLocaleString()} delta="lifetime" spark={false} />
           <AdminKpi label="Last 24h" sw="Saa 24" value={recent24.length.toLocaleString()} delta={topCat ? `top: ${topCat[0]}` : "no activity"} spark={false} />
           <AdminKpi
@@ -119,7 +123,7 @@ export default async function AdminAuditPage({
             deltaDir={chain.valid ? "up" : "down"}
             spark={false}
           />
-        </div>
+        </KpiGrid>
 
         {/* Category filters — kit Chip pills wrapped as nav links. The link is the
             tap target: min-h-[44px] + flex-centring gives it a 44px-tall hit area

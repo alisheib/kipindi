@@ -44,14 +44,28 @@ export function AdminBody({
  * band step differently, and two pages step at `md`/`sm` rather than `lg`.
  * Every entry below is a string that already ships — nothing new is introduced.
  */
-export type KpiCols = "4" | "3" | "md3-lg4" | "lg3-xl6";
+export type KpiCols = "4" | "3" | "2" | "sm3" | "md3-lg4" | "lg3-xl6";
 
 /* ⛔ Every entry here has at least one live caller (`4` is the default and is
  * implicit on 33 of the 38 bands). A ladder nobody uses is a ladder that will be
- * wrong when someone finally does — so do not add one speculatively. */
+ * wrong when someone finally does — so do not add one speculatively.
+ *
+ * ⭐ `2` and `sm3` were ADDED 2026-08-29 (DG-A-10 part 2) and they are the opposite of
+ * speculative: they are the two shapes that were BYPASSING this component. `/admin/audit`
+ * hand-wrote `grid grid-cols-1 sm:grid-cols-3 gap-3` under a comment claiming it was "the
+ * kit AdminKpi grid, consistent with every other admin screen", and `/admin/compliance`
+ * hand-wrote `grid grid-cols-2 gap-2` for a 2×2 inside a card.
+ * ⛔ NEITHER WAS A DEFECT TO SWEEP AWAY. A 3-tile band that stacks at 390 and a 2×2 that
+ * never steps are deliberate, and forcing them onto `4`/`3` would have restyled two live
+ * pages under cover of a consistency fix — 3 tiles becoming 2-up-plus-an-orphan at 390, and
+ * a 2×2 in a card spreading to 4-across at `lg`. The ladder was missing the rungs, not the
+ * pages missing the ladder. Adopting them is pixel-identical, verified by the emitted class
+ * list (`twMerge` lets a call site's `gap-2` override the default `gap-3`). */
 const KPI_COLS: Record<KpiCols, string> = {
   "4":        "grid-cols-2 lg:grid-cols-4",                // the console default — 33 bands
   "3":        "grid-cols-2 lg:grid-cols-3",                // config · moderation · objections
+  "2":        "grid-cols-2",                               // compliance — a 2×2 INSIDE a card, no step
+  "sm3":      "grid-cols-1 sm:grid-cols-3",                // audit — 3 tiles, stacked at 390
   "md3-lg4":  "grid-cols-2 md:grid-cols-3 lg:grid-cols-4", // /admin overview
   "lg3-xl6":  "grid-cols-2 lg:grid-cols-3 xl:grid-cols-6", // reports
 };

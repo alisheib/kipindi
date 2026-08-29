@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AdminPageHead, AdminCard, AdminKpi, AdminStackedBar, StatusPill, FeedRow, AdminLoadError } from "@/components/admin/admin-shell";
+import { KpiGrid } from "@/components/admin/admin-body";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
@@ -244,12 +245,15 @@ export default async function AdminCompliancePage({
             )}
           </AdminCard>
           <AdminCard title="AML queue · 7-day" sw="Foleni ya AML">
-            <div className="grid grid-cols-2 gap-2">
+            {/* ⭐ The kit band on the `2` rung, minted for this shape: a 2×2 INSIDE a card
+                that must never step to 4-across. `gap-2` overrides the band's default
+                `gap-3` through `twMerge` — verified on the emitted class list, not assumed. */}
+            <KpiGrid cols="2" className="gap-2">
               <AdminKpi label="Pending"  sw="Inasubiri"  value={amlFailed ? "" : aml.length} unavailable={amlFailed} spark={false} pulse={!amlFailed && aml.length > 0} />
               <AdminKpi label="Approved" sw="Imekubaliwa" value={recentApprovals.filter((e) => e.action === "aml.approved").length} spark={false} />
               <AdminKpi label="Rejected" sw="Imekataliwa" value={recentApprovals.filter((e) => e.action === "aml.rejected").length} spark={false} />
               <AdminKpi label="Avg time" sw="Wastani"     value="—"             spark={false} />
-            </div>
+            </KpiGrid>
             <div className="pt-3 mt-2 border-t border-border-subtle">
               <p className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary mb-1.5">Next in queue</p>
               {amlFailed ? (
