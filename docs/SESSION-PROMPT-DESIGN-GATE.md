@@ -11,11 +11,26 @@ rendered platform.”*
 > **RE-DERIVED** section, then THE PLANNER. ⛔ Every number here was re-derived this session;
 > where it contradicts the session-79 block below, THIS one is newer.
 >
-> **PLANNER: 14 ☑ · 4 🚢 · 19 ☐** of 37. `test:all` **272/272** at this commit.
+> **PLANNER: 16 ☑ · 5 🚢 · 16 ☐** of 37. `test:all` **272/272**.
 >
-> **CLOSED THIS SESSION:** **DG-P-04** ☑ · the **139 off-ladder eyebrows** (DG-A-11/DG-P-06's
-> rung) · the **14 off-ladder amounts** (DG-A-12/DG-P-05's money half, 12 shipped + 2 recorded).
-> 📐 **§4 1109 → 951 · §3 763 → 761 · ladder adoption 50.5% → 57.5% · §6 620 → 615.**
+> **CLOSED THIS SESSION:** **DG-P-04** · **DG-A-09** · **DG-A-19** (prop half) · the **139
+> off-ladder eyebrows** (DG-A-11/DG-P-06's rung) · the **14 off-ladder amounts**
+> (DG-A-12/DG-P-05's money half, 12 shipped + 2 recorded) · **DG-P-03's** double-h1 and §T2's
+> named violation · **the eyebrow tracking is RULED** · **all 15 open step-3/4 rows re-derived**.
+> 📐 **§4 1109 → 935 · §3 763 → 761 · ladder adoption 50.5% → 57.7% · §6 620 → 615 ·
+> `spacing-scale` 629 → 628 · PageHeader call sites 25 → 31 · literal h1 recipes 17 → 14.**
+>
+> ### ✅ VERIFIED ON PRODUCTION AFTER THE DEPLOY — not asserted
+> · **`qa:dg-rhythm`** — 16 routes, 0 skipped, 6 containers, **0 phantom rungs**; `/live` 24 → 0,
+>   `/proposals` 32 → 0, `/results` (none) → `space-y-5`.
+> · **`qa:dg-shell`** — **40 routes · 78 probes · 0 re-sign-ins · 0 failing**, `h1=1` on every one,
+>   38 drawer rows all 44, active fill still `--pill-active` at alpha 0.35.
+> · **anon player drive** — **17 routes · 0 sign-ins · 0 unrecoverable · `ovf390=no` and `err=0`
+>   on every route**, which is the real test of a sweep that moved 134 type sites. ⭐ And
+>   `/markets/[id]` reports **h1=36**, the §T2 fix measuring itself.
+> · **`qa:dg-type --bench recipe`** — the tracking screenshot, in the real JetBrains Mono.
+> ⚠️ `redo.cjs` reports **OK 20 / REDO 19**, and the 19 are exactly the authed routes — correct
+> behaviour, and the standing credential blocker, not a fault in the drive.
 >
 > ### ✅ THE LAST STEP-2 DECISION IS TAKEN — the eyebrow's tracking is **0.14em** (§T3)
 > Ruled 2026-08-30 against a screenshot and rendered widths on production (`qa:dg-type --bench
