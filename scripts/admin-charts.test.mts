@@ -41,11 +41,20 @@ const pts = (ys: number[]): SeriesPoint[] => ys.map((y, x) => ({ x, y }));
 function texts(html: string): string[] {
   return [...html.matchAll(/<text[^>]*>([^<]*)<\/text>/g)].map((m) => m[1]);
 }
-/** The y-tick labels of an AdminAreaChart: the 5 emitted before the area path. */
-function yTickLabels(html: string): string[] {
-  const cut = html.indexOf("<path");
-  return texts(cut > 0 ? html.slice(0, cut) : html);
+/**
+ * The axis labels of a chart, by axis.
+ *
+ * ⭐ DG-A-15 — THESE ARE HTML SPANS NOW, NOT SVG `<text>`. The axis layer moved out of the
+ * `preserveAspectRatio="none"` viewBox that was condensing every glyph to 44% of its own width
+ * on production. Selecting on `data-chart-label` is also the honest selector: the version this
+ * replaces took "whatever `<text>` appears before the first `<path>`", a position heuristic that
+ * would have kept passing while pointing at the wrong nodes.
+ * ⚠️ y/x labels only — their content is bare text. The legend span nests a swatch.
+ */
+function chartLabels(html: string, axis: "y" | "x"): string[] {
+  return [...html.matchAll(new RegExp(`<span[^>]*data-chart-label="${axis}"[^>]*>([^<]*)</span>`, "g"))].map((m) => m[1]);
 }
+const yTickLabels = (html: string): string[] => chartLabels(html, "y");
 
 console.log("\ntest:admin-charts — the chart primitives, rendered, at the edges\n");
 
@@ -89,6 +98,15 @@ console.log("§1 AdminAreaChart");
   ok("§1 a huge outlier emits no NaN/Infinity coordinates", !/NaN|Infinity/.test(huge));
   ok("§1 CONTROL — the huge value is compacted on the axis, not printed raw",
     yTickLabels(huge).some((l) => /B$/.test(l)), `labels=[${yTickLabels(huge).join(", ")}]`);
+
+  // ⛔ DG-A-15 · NO GLYPH GOES BACK INSIDE THE STRETCHED viewBox. `qa:chart-axis` proves this
+  // on production; this proves it in CI, with no browser, on every push. A `<text>` inside a
+  // `preserveAspectRatio="none"` SVG is condensed by scaleX — 44% of its own width at 1440 —
+  // and neither a font-size floor nor a screenshot diff describes that correctly.
+  const axed = render(h(AdminAreaChart, { series: pts([0, 4, 2, 1]), xLabels: ["a", "b", "c", "d"] }));
+  ok("§1 ⛔ AdminAreaChart emits NO <text> — the axis layer is HTML (DG-A-15)", !axed.includes("<text"), axed.slice(0, 160));
+  ok("§1 …and it emits the x labels it was handed", chartLabels(axed, "x").length > 0, `x=[${chartLabels(axed, "x").join(", ")}]`);
+  ok("§1 …with the y ticks beside them", yTickLabels(axed).length === 5, `y=[${yTickLabels(axed).join(", ")}]`);
 }
 
 // ── §2 · AdminStackedBars ──────────────────────────────────────────────────────────
@@ -107,6 +125,17 @@ console.log("\n§2 AdminStackedBars");
 
   const nan = render(h(AdminStackedBars, { bars: [{ label: "d1", segments: [0, 0] }] }));
   ok("§2 an all-zero stack emits no NaN", !/NaN|Infinity/.test(nan));
+
+  // ⛔ DG-A-15 · same rule for the bars: no glyph inside the stretched viewBox. The legend was
+  // the worse half here — five items pitched 140 USER UNITS apart, i.e. 62px at a 530px card,
+  // so the provider names ran into each other AND were condensed. It is an HTML flex row now.
+  const legended = render(h(AdminStackedBars, {
+    bars: [{ label: "d1", segments: [3, 1] }, { label: "d2", segments: [2, 2] }],
+    legend: ["M-Pesa", "Airtel Money"],
+  }));
+  ok("§2 ⛔ AdminStackedBars emits NO <text> — labels and legend are HTML (DG-A-15)", !legended.includes("<text"));
+  ok("§2 …the legend still names every band", legended.includes("M-Pesa") && legended.includes("Airtel Money"));
+  ok("§2 …and the x labels are still emitted", chartLabels(legended, "x").length === 2, `x=[${chartLabels(legended, "x").join(", ")}]`);
 }
 
 // ── §3 · AdminSpark ────────────────────────────────────────────────────────────────

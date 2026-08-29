@@ -5,6 +5,11 @@
  * to the parent's width, the data fills the card edge-to-edge with minimal
  * padding. The series can be 24 hourly buckets or 28 daily buckets — the SVG
  * naturally distributes them across the full width.
+ *
+ * ⛔ THE SVG HOLDS THE DATA AND NOTHING ELSE. Axis labels and legends are an HTML layer
+ * measured in REAL PIXELS — see the DG-A-15 block above `AXIS_GUTTER`. Putting a `<text>`
+ * back inside one of these `preserveAspectRatio="none"` viewBoxes re-opens the defect;
+ * `npm run qa:chart-axis` fails on it.
  */
 
 import type { ReactNode } from "react";
@@ -77,10 +82,84 @@ const formatCount = (n: number) => formatNumber(n);
 
 const CHART_W = 1200;
 const CHART_H = 240;
-const PAD_X = 40;          // just enough for left-edge Y-labels
+const PAD_X = 16;          // ⬅ was 40 "just enough for left-edge Y-labels" — the labels left the SVG (DG-A-15)
 const PAD_X_RIGHT = 16;    // pull the line all the way to the right edge
 const PAD_Y_TOP = 18;
-const PAD_Y_BOTTOM = 26;   // room for x-axis labels
+const PAD_Y_BOTTOM = 8;    // ⬅ was 26 "room for x-axis labels" — same reason
+
+/**
+ * ⭐ DG-A-15 · THE AXIS LAYER IS HTML, IN REAL PIXELS. THE SVG IS FOR THE DATA.
+ *
+ * 🔴 THE DEFECT, MEASURED ON PRODUCTION 2026-08-29. Every chart below draws into a
+ * **1200-wide** viewBox with `preserveAspectRatio="none"` and then renders it at whatever width
+ * its card gives it — 530px in `/admin/finance`'s two-up grid. `none` means the two axes scale
+ * INDEPENDENTLY, so the glyphs came out multiplied by **scaleX 0.44 and scaleY 1.00**: an 11px
+ * axis label rendered 11px TALL and **4.9px WIDE**. Not small text — text condensed to 44% of its
+ * own width. 31 `<text>` nodes across the three charts on `/admin/finance` alone, and it failed
+ * at 1920 too (scaleX 0.60), not only at 1440.
+ *
+ * ⛔ THE REGISTER'S "AND VERTICALLY BY HEIGHT/240" IS WRONG — `scaleY` is EXACTLY 1.0, because
+ * the viewBox height has always been the CSS height. A fix aimed at the vertical would have
+ * changed nothing, and a guard asserting a HEIGHT floor would have passed this defect forever.
+ * What separates the two is the RATIO of the axes; `npm run qa:chart-axis` asserts exactly that.
+ *
+ * ⛔ AND THERE IS NO CSS-ONLY FIX. `vector-effect` does not cover text, and dropping
+ * `preserveAspectRatio="none"` letterboxes a chart that must span its card — the data path is
+ * SUPPOSED to stretch. Only the glyphs are not.
+ *
+ * ⭐ SO THE GLYPHS MOVE OUT, and the two bands they need are sized in the READER'S pixels:
+ * `AXIS_GUTTER` left, `AXIS_BASE` below. Sized in the DATA's coordinate space they shrink with
+ * the card — which is how a 40-unit y-gutter became 17px on a 530px chart and the labels had to
+ * be condensed to fit at all. **That is the whole lesson: an axis gutter is a reading measure,
+ * not a data measure.**
+ *
+ * ⛔ NO JS MEASUREMENT, DELIBERATELY. Vertical positions are user units used as PIXELS — exact,
+ * because the SVG's viewBox height is set to its own CSS height, so `scaleY` is 1 by
+ * construction. Horizontal positions are PERCENTAGES of the plot column, which is exactly the
+ * SVG's box. A ResizeObserver here would be a second source of truth for the same geometry.
+ */
+const AXIS_GUTTER = 46;                 // px column left of the plot, for the y-axis labels
+const AXIS_BASE = 16;                   // px band below the plot, for the x-axis labels
+const Y_LABEL_W = AXIS_GUTTER - 8;      // …less an 8px gap, so a label never touches the plot
+
+/**
+ * ⭐ ONE RULE FOR BOTH CHARTS' X-AXIS LABELS — and BOTH halves of it came out of measuring at
+ * 390, not out of reasoning about it. The local pre-flight screenshot is what found them, before
+ * either reached the live console.
+ *
+ * · **The edges are anchored, never centred.** A label centred on its own data point hangs
+ *   outside the card at the ends: the stacked chart's first "01 Aug" sat **2.1px left of its own
+ *   box**. First label starts at its point, last label ends at it.
+ * · **Below `sm`, only the first, the middle and the last survive.** At 390 a 28-day series puts
+ *   41px labels on a 48px pitch, and the edge anchoring above legitimately steals ~20px from the
+ *   two end gaps — **measured overlaps of 12.5px at BOTH ends**. Thinning is the only remedy
+ *   that needs no runtime text measurement, which is the constraint this whole layer is under.
+ *
+ * ⛔ Do not "simplify" this by centring every label — that trades an overlap for a clipped one,
+ * and `qa:chart-axis` asserts against both.
+ */
+function xAxisCols(points: ReadonlyArray<{ key: number; x: number; text: string }>) {
+  const last = points.length - 1;
+  const mid = Math.round(last / 2);
+  return points.map((p, i) => ({
+    key: p.key,
+    text: p.text,
+    left: (p.x / CHART_W) * 100,
+    shift: i === 0 ? "translateX(0)" : i === last ? "translateX(-100%)" : "translateX(-50%)",
+    keepNarrow: i === 0 || i === last || i === mid,
+  }));
+}
+/** `hidden sm:block` on everything the narrow viewport drops. */
+const narrowClass = (keep: boolean) => (keep ? "" : " hidden sm:block");
+/* ⛔ THERE IS NO `LEGEND_H`, AND THAT IS THE FIX FOR THE SECOND DEFECT THIS CHANGE FOUND.
+ * A fixed-height legend band forced `white-space: nowrap` on five provider names into 18px, and
+ * a row of nowrap items in NORMAL FLOW carries a min-content width — ~450px for five providers.
+ * A grid item is `min-width: auto`, so that width propagated up and pushed the whole
+ * `/admin/finance` card past a 390 viewport. **Measured on the local pre-flight screenshot
+ * before it ever reached production**: all four cards clipped at the right edge, while the
+ * probe called the page clean because the labels were inside a box that had simply grown.
+ * ⭐ So the legend WRAPS and the plot takes what is left — which this chart can afford
+ * because it has no y-axis labels, so nothing needs pixel alignment with the viewBox. */
 
 /* ===== Mini area chart (KPI sparkline at scale) ===== */
 
@@ -112,8 +191,12 @@ export function AdminAreaChart({
       </div>
     );
   }
+  // ⭐ The SVG owns the PLOT only; `AXIS_BASE` px below it belong to the x-axis labels, and the
+  // viewBox height is the plot's own CSS height — which is what keeps scaleY at exactly 1, so a
+  // y-tick's user-unit y IS its pixel offset in the gutter. No measurement, no observer.
+  const plotH = Math.max(40, height - AXIS_BASE);
   const innerW = CHART_W - PAD_X - PAD_X_RIGHT;
-  const innerH = height - PAD_Y_TOP - PAD_Y_BOTTOM;
+  const innerH = plotH - PAD_Y_TOP - PAD_Y_BOTTOM;
   const maxY = Math.max(...series.map((p) => p.y), 1);
   const minY = Math.min(...series.map((p) => p.y), 0);
   const range = Math.max(maxY - minY, 1);
@@ -135,14 +218,45 @@ export function AdminAreaChart({
     }
   }
 
+  const yTickRows = yTicks.map((t, i) => ({
+    key: i,
+    top: PAD_Y_TOP + innerH - ((t - minY) / range) * innerH,
+    text: compact(t, range / 4),
+  }));
+  const xl = xLabels ?? [];
+  // ⭐ x in USER UNITS; `xAxisCols` turns it into a % of the PLOT column — which is exactly the
+  // SVG's box, so a label lands on the same coordinate the data path uses, at any card width.
+  const xTickCols = xAxisCols(labelIndices.map((idx) => ({
+    key: idx,
+    x: xs[idx] ?? PAD_X + (idx / Math.max(1, xl.length - 1)) * innerW,
+    text: xl[idx],
+  })));
+
   return (
+    <div data-chart="area" className="w-full min-w-0" style={{ height }}>
+      <div className="flex" style={{ height: plotH }}>
+        {/* ── y-axis labels · a REAL-PIXEL gutter (DG-A-15) ───────────────────────────── */}
+        <div aria-hidden className="relative shrink-0" style={{ width: AXIS_GUTTER }}>
+          {yTickRows.map((r) => (
+            <span
+              key={r.key}
+              data-chart-label="y"
+              className="absolute left-0 block truncate text-right font-mono text-caption tabular text-text-tertiary"
+              style={{ width: Y_LABEL_W, top: r.top, transform: "translateY(-50%)" }}
+            >
+              {r.text}
+            </span>
+          ))}
+        </div>
+        {/* ── the plot · the data path is SUPPOSED to stretch, so `none` stays ─────────── */}
+        <div className="relative min-w-0 flex-1">
     <svg
-      viewBox={`0 0 ${CHART_W} ${height}`}
+      viewBox={`0 0 ${CHART_W} ${plotH}`}
       preserveAspectRatio="none"
       className="block w-full"
       role="img"
       aria-label={yLabel ? `${yLabel} time series` : "Time series chart"}
-      style={{ height }}
+      style={{ height: plotH }}
     >
       <defs>
         <linearGradient id="kp-area-grad" x1="0" y1="0" x2="0" y2="1">
@@ -172,16 +286,6 @@ export function AdminAreaChart({
               strokeWidth="1"
               vectorEffect="non-scaling-stroke"
             />
-            <text
-              x={PAD_X - 6}
-              y={y + 3}
-              textAnchor="end"
-              style={{ fontFamily: "var(--font-mono)" }}
-              fontSize="11"
-              fill="var(--text-tertiary)"
-            >
-              {compact(t, range / 4)}
-            </text>
           </g>
         );
       })}
@@ -200,21 +304,26 @@ export function AdminAreaChart({
       {/* End-point dot with glow */}
       <circle cx={xs[xs.length - 1]} cy={ys[ys.length - 1]} r="5" fill={strokeVar} opacity="0.3" />
       <circle cx={xs[xs.length - 1]} cy={ys[ys.length - 1]} r="3.5" fill={strokeVar} />
-      {/* X-axis labels */}
-      {xLabels && xLabels.length > 0 && (
-        <g style={{ fontFamily: "var(--font-mono)" }} fontSize="11" fill="var(--text-tertiary)">
-          {labelIndices.map((idx, i) => {
-            const x = xs[idx] ?? PAD_X + (idx / Math.max(1, xLabels.length - 1)) * innerW;
-            const anchor = i === 0 ? "start" : i === labelIndices.length - 1 ? "end" : "middle";
-            return (
-              <text key={idx} x={x} y={height - 8} textAnchor={anchor}>
-                {xLabels[idx]}
-              </text>
-            );
-          })}
-        </g>
-      )}
     </svg>
+        </div>
+      </div>
+      {/* ── x-axis labels · their own px band, offset by the same gutter ────────────────── */}
+      <div className="flex" style={{ height: AXIS_BASE }}>
+        <div className="shrink-0" style={{ width: AXIS_GUTTER }} />
+        <div aria-hidden className="relative min-w-0 flex-1">
+          {xTickCols.map((c) => (
+            <span
+              key={c.key}
+              data-chart-label="x"
+              className={`absolute top-0 whitespace-nowrap font-mono text-caption tabular text-text-tertiary${narrowClass(c.keepNarrow)}`}
+              style={{ left: `${c.left}%`, transform: c.shift }}
+            >
+              {c.text}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -243,18 +352,43 @@ export function AdminStackedBars({
     );
   }
   const padX = 24;
-  const padTop = legend ? 28 : 14;
+  const padTop = 6;
   const innerW = CHART_W - padX * 2;
-  const innerH = height - padTop - 22; // space for x labels
+  // ⭐ DG-A-15 · the legend and the x labels are HTML bands now, so the SVG is ALL plot.
+  // ⚠️ `VB_H` IS NOMINAL, unlike AdminAreaChart's `plotH`. This chart has no y-axis labels, so
+  // nothing needs pixel alignment with the viewBox: `preserveAspectRatio="none"` maps these user
+  // units onto whatever height the flex column leaves, and the bar PROPORTIONS survive intact.
+  const VB_H = CHART_H;
+  const hasLegend = !!legend && legend.length > 0;
+  const innerH = VB_H - padTop;
   const maxStack = Math.max(...bars.map((b) => b.segments.reduce((s, v) => s + v, 0)), 1);
   const barW = (innerW / bars.length) * 0.78;
   const gap = (innerW / bars.length) * 0.22;
 
   // Pick which x-labels to render (up to 8 to avoid clutter)
   const labelStep = Math.max(1, Math.ceil(bars.length / 8));
+  const xTickCols = xAxisCols(
+    bars
+      .map((bar, i) => ({ i, bar }))
+      .filter(({ i }) => i % labelStep === 0)
+      .map(({ i, bar }) => ({ key: i, x: padX + i * (barW + gap) + gap / 2 + barW / 2, text: bar.label })),
+  );
 
   return (
-    <svg viewBox={`0 0 ${CHART_W} ${height}`} preserveAspectRatio="none" className="block w-full" role="img" aria-label="Stacked bar chart" style={{ height }}>
+    <div data-chart="stacked" className="flex w-full min-w-0 flex-col" style={{ height }}>
+      {hasLegend && (
+        <div className="flex min-w-0 shrink-0 flex-wrap items-center gap-x-4 gap-y-1 pb-1 font-mono text-micro text-text-secondary">
+          {(legend ?? []).map((l, i) => (
+            <span key={i} data-chart-label="legend" className="inline-flex min-w-0 items-center gap-1 whitespace-nowrap">
+              {/* the swatch reads its fill from the SAME ramp the bars do — one source */}
+              <span aria-hidden className="inline-block h-2 w-2 shrink-0" style={{ background: colors[i % colors.length] }} />
+              <span className="truncate">{l}</span>
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="relative min-h-0 min-w-0 flex-1">
+    <svg viewBox={`0 0 ${CHART_W} ${VB_H}`} preserveAspectRatio="none" className="absolute inset-0 block h-full w-full" role="img" aria-label="Stacked bar chart">
       {bars.map((b, i) => {
         let yCursor = padTop + innerH;
         const x = padX + i * (barW + gap) + gap / 2;
@@ -283,32 +417,25 @@ export function AdminStackedBars({
                 />
               );
             })}
-            {i % labelStep === 0 && (
-              <text
-                x={x + barW / 2}
-                y={height - 6}
-                textAnchor="middle"
-                style={{ fontFamily: "var(--font-mono)" }}
-                fontSize="10"
-                fill="var(--text-tertiary)"
-              >
-                {b.label}
-              </text>
-            )}
           </g>
         );
       })}
-      {legend && legend.length > 0 && (
-        <g style={{ fontFamily: "var(--font-mono)" }} fontSize="10" fill="var(--text-secondary)">
-          {legend.map((l, i) => (
-            <g key={i} transform={`translate(${padX + i * 140}, ${padTop - 14})`}>
-              <rect width="10" height="10" fill={colors[i % colors.length]} />
-              <text x="14" y="9">{l}</text>
-            </g>
-          ))}
-        </g>
-      )}
     </svg>
+      </div>
+      {/* ── x-axis labels · their own px band, percentage-positioned over the plot ──────── */}
+      <div aria-hidden className="relative min-w-0 shrink-0" style={{ height: AXIS_BASE }}>
+        {xTickCols.map((c) => (
+          <span
+            key={c.key}
+            data-chart-label="x"
+            className={`absolute top-0 whitespace-nowrap font-mono text-micro tabular text-text-tertiary${narrowClass(c.keepNarrow)}`}
+            style={{ left: `${c.left}%`, transform: c.shift }}
+          >
+            {c.text}
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 
