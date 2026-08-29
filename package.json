@@ -483,6 +483,7 @@
     "qa:dg-overlays": "node scripts/design-gate/overlays.mjs",
     "qa:dg-shots": "node scripts/design-gate/shots.mjs",
     "qa:dg-analyze": "node scripts/design-gate/analyze.mjs",
+    "qa:dg-type": "node scripts/design-gate/type-bench.mjs",
     "qa:dg-redo": "node scripts/design-gate/redo.cjs",
     "qa:card-geometry": "node scripts/card-geometry-probe.mjs",
     "qa:board-bootstrap": "node scripts/qa-board-bootstrap.mjs",

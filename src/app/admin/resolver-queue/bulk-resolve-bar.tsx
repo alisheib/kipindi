@@ -403,7 +403,7 @@ function BulkConfirm({
                     {r.verdict.confidence != null && (
                       <span className="ml-1.5 font-mono text-micro text-text-subtle">{r.verdict.confidence}%</span>
                     )}
-                    <p className="font-mono text-caption text-text-muted">{formatTzs(r.pool)}</p>
+                    <p className="amount text-caption text-text-muted">{formatTzs(r.pool)}</p>
                   </div>
                 </li>
               );
@@ -414,7 +414,7 @@ function BulkConfirm({
             <span className="font-mono text-micro uppercase tracking-widest text-text-subtle">
               {BULK_BAR.moneyAtStake.en}
             </span>
-            <span className="font-mono text-body-sm font-bold text-text">{formatTzs(total)}</span>
+            <span className="amount text-body-sm font-bold text-text">{formatTzs(total)}</span>
           </p>
 
           {willSkip.length > 0 && (

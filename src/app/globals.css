@@ -877,6 +877,38 @@ body {
    honest with zero churn. Prefer this or Tailwind's `tabular-nums`; both are equal. */
 .tabular { font-variant-numeric: tabular-nums; }
 
+/* ⭐ `.amount` — §M4 MADE MECHANICAL. DESIGN-GATE-2026-08-28, step 2, the money-wall ruling.
+   §M4: "Every amount: --font-mono, tabular-nums, NEVER letter-spaced — tracking is for
+   identifiers; money has weight." Until now that was prose no guard could enforce and no
+   call site could adopt: **every one of the ten Tailwind `fontSize` rungs that emits CSS is
+   a TUPLE that also emits letter-spacing**, so an amount had a choice between the type
+   ladder (§T1) and §M4, and could not obey both. Measured on production 2026-08-29 with
+   `npm run qa:dg-type`, over "TZS 1,234,567" in the real JetBrains Mono:
+     text-micro +0.4px/glyph = +5.2px (+6.67%)  ·  text-caption +0.2px (+3.02%)
+     text-label +0.05px  ·  text-body-sm −0.05px  ·  text-title-lg −0.85px (−5.06%)
+   ⛔ So the severity is NOT uniform, and a ruling quoting only the 13px case would be a true
+   measurement of the wrong population: at `text-micro` an amount is tracked OUT by 6.67%,
+   which is exactly the "reads like a reference code" that §M4 exists to forbid.
+
+   ⛔ WHY A DOUBLED SELECTOR, WHICH LOOKS LIKE A TRICK AND IS NOT. `@tailwind utilities` is
+   emitted at line 19 of this file, so a plain `.amount` here would beat a plain rung on
+   source order — measured: `.text-body-sm` at byte 92,287 of the served sheet, `.mono` at
+   131,743. But Tailwind's RESPONSIVE VARIANTS are emitted after everything this file writes
+   (`sm\:text-*` from byte 219,312), so a single-class rule LOSES to `sm:text-…` at ≥640px —
+   silently, and only at that breakpoint. `qa:dg-type` asserts that failure as a CONTROL, then
+   asserts the doubled form survives both. (0,2,0) wins on SPECIFICITY, which no emission
+   order can overturn. The idiom already ships in this file — see `.btn.admin-focus:focus-visible`,
+   written for this same fight, ~3,000 lines down.
+
+   ⭐ IT REPLACES TWO CLASSES WITH ONE. `font-mono tabular` becomes `amount`, so adopting it
+   makes a call site SHORTER, and it carries the meaning the pair does not: this is money,
+   and §M4 governs it. That is what makes it guardable — `type-scale.test.mts` §2 can require
+   it, which it could not require of a habit.
+   ⛔ NOT folded into `.mono` or `.tabular`: 12 sites pair `tabular` with deliberate tracking
+   (the TOTP inputs), and §M4's own words are "tracking is for identifiers". An identifier is
+   SUPPOSED to be tracked; only an amount is not. */
+.amount.amount { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: 0; }
+
 /* ===========================================================================
    Tipping rails + heraldic furniture
    =========================================================================== */

@@ -44,7 +44,7 @@ function SourcedFigure({
         {caption} · {sw}
       </span>
       <p
-        className={`font-mono text-body-lg font-bold tabular-nums ${
+        className={`amount text-body-lg font-bold ${
           tone === "danger" ? "text-danger" : tone === "muted" ? "text-text-tertiary" : "text-text"
         }`}
       >
@@ -78,7 +78,7 @@ export function SelcomStatementCard({ statement }: { statement: SelcomStatement 
             {float.available ? (
               <>
                 <p
-                  className={`font-mono text-body-lg font-bold tabular-nums ${
+                  className={`amount text-body-lg font-bold ${
                     float.balance < FLOAT_LOW_TZS ? "text-danger" : "text-text"
                   }`}
                 >

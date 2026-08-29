@@ -128,7 +128,7 @@ export default async function AdminBonusesPage({
                             </div>
                             <span className="font-mono text-micro text-text-subtle whitespace-nowrap">{r.progressPct}%</span>
                           </div>
-                          <div className="font-mono text-micro text-text-subtle mt-0.5">
+                          <div className="amount text-micro text-text-subtle mt-0.5">
                             {formatTzs(r.wageredTzs)} / {formatTzs(r.wagerRequiredTzs)}
                           </div>
                         </td>

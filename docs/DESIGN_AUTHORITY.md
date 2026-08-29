@@ -838,6 +838,46 @@ Values: the `--type-*` ladder in `globals.css`. Laws:
 6. **Families:** display = Sora, body = Inter, numerals/labels = JetBrains Mono.
    **CJK is per-glyph fallback — no CJK webfont is downloaded**, deliberately: our players
    are on Tanzanian mobile data and a CJK face is megabytes.
+7. **THERE ARE TWO LADDERS. THEY HAVE DIFFERENT JOBS, AND FIVE NAMES MEAN TWO SIZES.**
+   Ruled 2026-08-29, DESIGN-GATE-2026-08-28 step 2. Rule 1 above says "the ladder" and this
+   file's preamble names `--type-*`; that was true of the CSS and never of the call sites.
+
+   | | `--type-*` (`globals.css:206-220`) | Tailwind `fontSize` (`tailwind.config.ts:190-202`) |
+   |---|---|---|
+   | **Job** | sizes written **inside `globals.css`** | sizes written at a **call site** (`.tsx`) |
+   | **Reach** | all 35 consumers are in `globals.css` itself; **zero `text-[…var(--type-*)…]` sites** | the only ladder a component can reach |
+   | Rungs | 72·60·44·32·24·20·17·15·13·11·9.5·8.5 | 64·48·36·28·22·18·16·14·13·12·11·10 |
+
+   ⛔ **So "move it onto the ladder" from a `.tsx` file means the TAILWIND ladder.** Rule 1
+   is unchanged — the scale is still closed — but which closed scale depends on where you
+   are writing. Reading a `--type-*` name and typing the Tailwind class of the same name is
+   how this went wrong: the two ladders **share five names and agree on none of their values**
+   — `micro` 11 vs 10 · `label` 9.5 vs 12 · `body` 15 vs 14 · `display-1` 60 vs 64 ·
+   `display-2` 44 vs 48. They agree on two *values* under different names (13 = `small` /
+   `body-sm`; 11 = `micro` / `caption`).
+
+   ⛔ **THE FIVE COLLISIONS ARE FROZEN, AND A SIXTH IS A BUILD FAILURE.** Not because the
+   duality is good — it is not — but because every fix costs more than it buys, and three
+   were tried on paper first:
+   · *Re-tune one ladder to the other* moves `text-label` 12 → 9.5 on **21 of 21 sites that
+     are reading prose**, which rule 3 forbids by name and rule 4's floor condemns twice over.
+   · *Mint a rung at 10* would put 11 / 10 / 9.5 / 8.5 inside 2.5px — the objection the
+     `--type-table` ruling already sustained at `globals.css`'s `.admin-tbl`: *"two rungs no
+     reader can tell apart is the 'fonts everywhere' feeling DG-A-11 exists to remove."*
+   · *Rename the Tailwind keys* turns `test:type-scale` red and, worse, **silently shrinks its
+     own metric** — that suite holds two hard-coded key lists (`SUBFLOOR_CLASSES` and the
+     `KEYS` regex at `:696`), and a renamed key simply stops being counted. A fix that makes
+     the instrument read better while the product is unchanged is this programme's signature
+     failure, and it has now been caught four times.
+   ⭐ **What DOES get fixed is growth.** `npm run test:type-scale` §7 pins the collision set at
+   exactly these five and fails on a sixth, so the duality can be lived with and cannot spread.
+
+   ⭐ **AND THE 10px EYEBROW IS ALREADY ON A LADDER.** The open DG-A-11 question — *"there is
+   no rung at 10, so putting the eyebrow on the ladder costs +1px on 254 labels"* — was asked
+   of the wrong ladder. `text-micro` **is** 10px, is the reachable ladder's rung, already
+   holds 101 sites, and 10px is the mode of the whole 557-site microlabel census (341, 61%).
+   The eyebrow takes `text-micro`. **Nothing moves**, and the +1px — measured at **+9.63px of
+   width on "TOTAL SETTLED"**, ~10% — is not paid.
 
 ---
 
@@ -1342,6 +1382,37 @@ identifiers; money has weight, so at the earned peak it takes `.gilt-ink` (struc
 glow at the measured 84/0.114). A motion on a changing number must not shift layout; verify
 with tabular figures. (D-0's table listed `--font-display` for the celebration amount —
 mono won, amended at source.)
+
+⭐ **THE MECHANISM IS `.amount`, AND IT IS A RULE NOW, NOT A HABIT** (DESIGN-GATE-2026-08-28,
+step 2, 2026-08-29). *"Never letter-spaced"* had no legal way to be obeyed from a call site:
+**every one of the ten Tailwind `fontSize` rungs that emits CSS is a tuple that also emits
+`letter-spacing`**, so an amount had to choose between the type ladder (§T1) and this rule.
+Write an amount as `.amount` — `src/app/globals.css`, beside `.mono`/`.tabular`, which it
+replaces at a money site — and take the size from any rung. Measured with
+`npm run qa:dg-type` on production, in the real JetBrains Mono: `.amount` restores the
+untracked width **byte for byte** (85.81px on `TZS 679,532`, identical to today's
+`text-[13px]`), so adopting it moves the ladder and no pixels.
+
+🔴 **THE SEVERITY IS NOT UNIFORM, AND QUOTING ONLY THE 13px CASE IS THE WRONG POPULATION.**
+Over `TZS 1,234,567`: `text-micro` **+0.4px/glyph = +6.67%**, `text-caption` +3.02%,
+`text-label` +0.68%, `text-body-sm` −0.65%, `text-title-lg` −5.06%. At the small rungs an
+amount is tracked **out**, which is precisely the "reads like a reference code" this rule
+exists to forbid; at the large ones it is tightened. Both are the defect.
+
+⛔ **AND THE GUARD WAS BLIND TO ALL OF IT.** `type-scale.test.mts` §2 forbade "tracking over
+an amount" via `isTracked = toks.some(t => /^tracking-/.test(t))` — **a spelling.** A money
+element written `text-micro` is letter-spaced by 0.4px and §2 printed PASS; written
+`tracking-[0.4px]` it renders identically and §2 failed. Measured 2026-08-29: **8 money
+elements already carry a rung's tracking in production**, two of them tracked out, and the
+guard reported ALL PASS over them. Same shape as `ui-consistency`'s `hardcoded-pill-active`,
+which matches the token's literal text and so finds copies but never divergence. §2's
+population now includes the rungs.
+
+⚠️ **The population, re-derived — the register's "~190 money/mono sites" is the FILE count.**
+Of ~900 sites carrying both a mono/tabular signal and an arbitrary size, **~450 are §T3
+blessed uppercase microlabels, which this rule never governed** (an eyebrow is an identifier
+and is *supposed* to be tracked); ~450 are numerals, of which the amounts are **tens**, not
+hundreds. §T5 puts every numeral in mono; **§M4 governs amounts only.**
 
 ### M5 — A glyph moves for a reason, and all 178 move the same way
 

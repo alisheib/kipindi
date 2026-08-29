@@ -206,9 +206,34 @@ const KNOWN_TRACKING = new Set([
 const RATCHET_MONEY: Record<string, number> = {
   "non-mono-family::src/app/profile/responsible-gambling/page.tsx": 1,
   "non-mono-family::src/components/ui/propose-promo.tsx": 1,
-  "tracked-money::src/app/admin/finance/page.tsx": 1,
-  "tracked-money::src/app/admin/players/[id]/balance-adjust-controls.tsx": 1,
+  "tracked-money::src/app/admin/finance/page.tsx": 2,
+  "tracked-money::src/app/admin/players/[id]/balance-adjust-controls.tsx": 2,
+  "tracked-money::src/app/auth/register/page.tsx": 1,
+  /* ⚠️ The SAME element as the `non-mono-family` entry above: `propose-promo.tsx` sets
+     `font-display` (§T5) AND `text-body-sm` (§M4 tracking) over the prize amount. One site,
+     two rules, and both are real — the wrap fixes both at once. */
+  "tracked-money::src/components/ui/propose-promo.tsx": 1,
 };
+/**
+ * ⭐ 2026-08-29 — WIDENING §2's POPULATION FOUND 10 SITES IT COULD NEVER HAVE SEEN
+ * (DESIGN-GATE-2026-08-28, the money-wall ruling; see `neutralisesTracking` below for why).
+ * ⛔ THE POPULATION GREW, NOT THE DEFECT — nothing regressed. Of the 10:
+ *
+ *   FIXED HERE, by adopting `.amount` (globals.css) — five elements whose whole content is
+ *   an amount, so the class is exactly right and it also shortens the call site:
+ *     · admin/bonuses/page.tsx              `font-mono text-micro`   → tracked OUT +0.4px/glyph
+ *     · admin/resolver-queue/bulk-resolve-bar.tsx ×2                 → +0.2px and −0.05px
+ *     · admin/payments/selcom-statement-card.tsx ×2 — the live float balance, −0.16px/glyph
+ *
+ *   RECORDED ABOVE, NOT FIXED — three are an amount inside a SENTENCE, where the flag lands
+ *   on the paragraph because the number is not its own element. The fix is this file's own
+ *   standing advice ("wrap the amount in its own <span>"), it is a copy edit per site rather
+ *   than a class swap, and it belongs to the prose sweep (DG-A-14), not to the type ruling:
+ *     · admin/finance 1→2 · admin/players/[id]/balance-adjust-controls 1→2 · auth/register 0→1
+ *   ⚠️ Each raises a REAL question of voice — "Total commission this period: TZS 4,300." reads
+ *   as a sentence, and monospacing only the numeral is the correct answer but changes how the
+ *   line looks. That is a per-site call with a screenshot, which is why it is not done blind here.
+ */
 
 // ───────────────────────────────────────────────────────────────────────────────
 // Scanners. Pure functions over (body) so §0 can run them on fixtures.
@@ -393,7 +418,41 @@ function classAttrTokens(attrs: string): string[] {
 
 const setsNonMonoFamily = (toks: string[]) =>
   toks.map(bare).some((t) => t === "font-display" || t === "font-sans");
-const isTracked = (toks: string[]) => toks.map(bare).some((t) => /^tracking-/.test(t));
+/**
+ * 🔴 §2's POPULATION WAS A SPELLING, AND IT MISSED THE ONLY CASE THAT MATTERS.
+ *
+ * This used to be `toks.some(t => /^tracking-/.test(t))` alone. But **every Tailwind
+ * `fontSize` key is a tuple `[size, {lineHeight, letterSpacing}]`**, so a money element
+ * written `text-micro` IS letter-spaced — by +0.4px per glyph, +6.67% over
+ * `TZS 1,234,567`, measured on production by `npm run qa:dg-type` — while an element
+ * written `tracking-[0.4px]` renders identically and failed. §2 was finding the *word*
+ * `tracking`, not the defect §M4 describes; it printed ALL PASS over **8 real violations**
+ * (2026-08-29), two of them tracking an amount OUT.
+ *
+ * ⛔ It is the same shape as `ui-consistency`'s `hardcoded-pill-active`, which matches the
+ * token's literal text and so finds copies but never divergence — and the same shape as
+ * §3's own 2026-08-29 repair, where three sub-floor sizes written as CLASSES were invisible
+ * to a scanner that only read `text-[Npx]`. Third time for this programme.
+ *
+ * ⭐ THE EXEMPTION IS EXPLICIT, NOT IMPLIED. `tracking-normal` (and an arbitrary
+ * `tracking-[0…]`) neutralises the rung — verified in the browser against the served sheet:
+ * all 23 `.tracking-*` rules are emitted at bytes 52,048-52,952, strictly after the last
+ * fontSize rung at 51,022, so at equal (0,1,0) the tracking wins on source order. `.amount`
+ * (globals.css) does the same and is the ADOPTABLE form, because it also carries the meaning.
+ */
+const RUNG_TRACKING: Record<string, number> = {
+  "text-micro": 0.4, "text-caption": 0.2, "text-label": 0.05, "text-body-sm": -0.05,
+  "text-body": -0.08, "text-body-lg": -0.16, "text-title-sm": -0.36, "text-title-md": -0.55,
+  "text-title-lg": -0.85, "text-display-3": -1.2, "text-display-2": -1.7, "text-display-1": -2.4,
+};
+/** Anything that explicitly sets letter-spacing back to zero over the rung. */
+const neutralisesTracking = (toks: string[]) =>
+  toks.map(bare).some((t) => t === "amount" || t === "tracking-normal" || /^tracking-\[0(?:[a-z%]*)?\]$/.test(t));
+const isTracked = (toks: string[]) => {
+  const t = toks.map(bare);
+  if (neutralisesTracking(t)) return false;
+  return t.some((x) => /^tracking-/.test(x)) || t.some((x) => x in RUNG_TRACKING);
+};
 
 // ───────────────────────────────────────────────────────────────────────────────
 // Harness.
@@ -688,6 +747,60 @@ ratchet("§6 arbitrary tracking-[…]", arbTrack, RATCHET_ARBITRARY_TRACKING, "R
   const goneT = [...KNOWN_TRACKING].filter((t) => !seenTracking.has(t));
   if (goneS.length) log(`         ✓ retired sizes (delete from KNOWN_SIZES): ${goneS.map((s) => `${s}px`).join(", ")}`);
   if (goneT.length) log(`         ✓ retired tracking (delete from KNOWN_TRACKING): ${goneT.join(", ")}`);
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+// §7 — TWO LADDERS, AND A NAME MAY NOT COME TO MEAN A THIRD SIZE   (DESIGN_AUTHORITY §T7)
+//
+// `globals.css` defines twelve `--type-*` rungs; `tailwind.config.ts` defines twelve
+// `fontSize` keys. Five names appear in BOTH and agree on NONE of their values — which is
+// how a session reads `--type-micro` (11px), types `text-micro`, and ships 10px.
+//
+// ⛔ §T7 FREEZES these five rather than fixing them, and the reasoning is in the authority.
+// What this gate exists to stop is GROWTH: a sixth collision, or one of these five drifting
+// to a new pair of values, is a build failure. It is deliberately not a ratchet — a
+// collision is not a debt to pay down, it is a state to hold still.
+//
+// ⚠️ CONTROL. The pair values are asserted, not just the names. Re-tuning `--type-micro` to
+// 10px to "resolve" the collision would silently satisfy a names-only check while changing
+// every one of that token's consumers, so the check must fail on that too.
+// ───────────────────────────────────────────────────────────────────────────────
+{
+  const css = readFileSync(join(SRC, "app", "globals.css"), "utf8");
+  const cfg = readFileSync(join(ROOT, "tailwind.config.ts"), "utf8");
+  const cssLadder = new Map<string, string>();
+  for (const m of css.matchAll(/--type-([\w-]+):\s*([\d.]+)px/g)) cssLadder.set(m[1], m[2]);
+  const twLadder = new Map<string, string>();
+  for (const m of cfg.matchAll(/^\s*"?([\w-]+)"?:\s*\["([\d.]+)px"/gm)) twLadder.set(m[1], m[2]);
+
+  check(`§7 both ladders still parse (${cssLadder.size} --type-* · ${twLadder.size} fontSize)`,
+    cssLadder.size >= 10 && twLadder.size >= 10,
+    `--type-* ${cssLadder.size}, fontSize ${twLadder.size} — if either is 0 this whole section is blind`);
+
+  /** The five frozen collisions, name → [--type-* px, Tailwind px]. §T7. */
+  const FROZEN: Record<string, [string, string]> = {
+    micro: ["11", "10"], label: ["9.5", "12"], body: ["15", "14"],
+    "display-1": ["60", "64"], "display-2": ["44", "48"],
+  };
+  const live = [...cssLadder.keys()].filter((n) => twLadder.has(n)).sort();
+  const expected = Object.keys(FROZEN).sort();
+  check("§7 the colliding-name set is exactly the five §T7 freezes — a SIXTH is a failure",
+    live.join(",") === expected.join(","),
+    live.join(",") === expected.join(",") ? "" :
+      `now [${live.join(", ")}] — expected [${expected.join(", ")}]. ` +
+      `NEW: ${live.filter((n) => !expected.includes(n)).join(", ") || "none"} · ` +
+      `GONE: ${expected.filter((n) => !live.includes(n)).join(", ") || "none"}. ` +
+      `A new name meaning two sizes is how "fonts everywhere" comes back — see DESIGN_AUTHORITY §T7.`);
+
+  const drifted = live.filter((n) => FROZEN[n] && (cssLadder.get(n) !== FROZEN[n][0] || twLadder.get(n) !== FROZEN[n][1]));
+  check("§7 no frozen collision has DRIFTED to a new pair of values",
+    drifted.length === 0,
+    drifted.map((n) => `${n}: --type-${n}=${cssLadder.get(n)} / text-${n}=${twLadder.get(n)}, frozen at ${FROZEN[n].join(" / ")}`).join(" · "));
+
+  /* ⭐ The eyebrow rung §T7 rules on. If `text-micro` ever stops being 10px, the ruling
+     "the eyebrow takes text-micro, nothing moves" silently starts moving 341 sites. */
+  check("§7 CONTROL · `text-micro` is still 10px — the rung §T7 puts the 10px eyebrow on",
+    twLadder.get("micro") === "10", `text-micro = ${twLadder.get("micro")}px`);
 }
 
 // ─── Summary ──────────────────────────────────────────────────────────────────
