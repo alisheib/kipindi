@@ -3821,10 +3821,30 @@ textarea::-webkit-resizer {
 }
 
 /* ── Table sort header active state ──────────────────────────────── */
-.admin-tbl th[aria-sort] { cursor: pointer; }
+/* ⭐ DG-A-17 (DESIGN-GATE-2026-08-28) — A SORTABLE HEADER WAS 64.5px BECAUSE IT PAID FOR ITS
+   HEIGHT TWICE. `SortTh`'s anchor carries `min-h-[44px]` — correctly: a sort control is
+   interactive and §A2's floor applies to it — and then this rule's own `padding: 10px 20px`
+   added 20 more. Measured on production 2026-08-29: 64.5px on /admin/audit, /admin/aml and
+   /admin/ai-usage, against 35.5px plain headers on the ai-usage sibling tables.
+   ⛔ THE FIX IS NOT TO DROP `min-h-[44px]`. That is the tap target, and dropping it would put
+   a real control at ~20px — trading a cosmetic defect for an accessibility one. The redundant
+   half is the CELL padding: the anchor already states the height, so the th stops restating it
+   and the cell lands on 44, which is a rung (`--h-control-md`) rather than a number nobody chose.
+   ⚠️ Vertical only — the 20px horizontal padding is the table's column rhythm and stays.
+   ⚠️ `aria-sort="none"` is emitted on UNSORTED sortable columns too, so this matches every
+   sortable header, not only the active one. That is what keeps a header row one height. */
+.admin-tbl th[aria-sort] { cursor: pointer; padding-top: 0; padding-bottom: 0; }
 .admin-tbl th[aria-sort]:hover { color: var(--text); }
-.admin-tbl th[aria-sort="ascending"],
-.admin-tbl th[aria-sort="descending"] { color: var(--brand-300); }
+/* ⛔ DG-A-17 — THE `[aria-sort="ascending"|"descending"] { color: --brand-300 }` PAIR IS DELETED,
+   NOT REPAIRED. It had never rendered: `SortTh`'s anchor carries its own `text-text` when active,
+   and an anchor's colour beats an inherited one, so the tint was dead CSS. Confirmed on production
+   2026-08-29 — the th computes brand-300 and the anchor inside it computes `--text`, on the same
+   cell. §B8's rule is that a declaration which resolves to nothing is a typo, not a style.
+   ⭐ AND THE STATE IS ALREADY SAID TWICE, so nothing is lost: the sorted column carries a VISIBLE
+   `--brand-300` arrow and its label goes `--text` while its siblings stay `--text-subtle`.
+   Re-adding this rule would be a third spelling of one fact, and the first two are the ones that
+   actually paint. ⛔ If the tint is ever genuinely wanted on the label, move it ONTO the anchor —
+   the th cannot win that cascade. */
 
 /* ===========================================================================
    View Transitions API — native cross-fade for route changes (Chrome/Edge 111+).

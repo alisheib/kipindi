@@ -157,11 +157,21 @@ export function SortTh({
     >
       <Link
         href={`${baseHref}?${params.toString()}` as never}
-        className={`inline-flex min-h-[44px] items-center gap-1 hover:text-text transition-colors ${isActive ? "text-text" : ""}`}
+        className={`group inline-flex min-h-[44px] items-center gap-1 hover:text-text transition-colors ${isActive ? "text-text" : ""}`}
         scroll={false}
       >
         {label}
-        <span className={`text-brand-300 ${isActive ? "" : "opacity-0"}`} aria-hidden>{dir === "asc" ? "↑" : "↓"}</span>
+        {/* ⭐ DG-A-17 — AN UNSORTED SORTABLE COLUMN NOW SAYS SO. The arrow was `opacity-0` on
+            every inactive column, which reserved its width (right — the label must not jump when
+            you sort) but left the column with NO affordance at all: nothing distinguished a
+            sortable header from a fixed one until you happened to hover and the cursor changed.
+            It fades in on hover instead of being permanently visible, so ten sortable columns do
+            not become ten arrows competing with the data. ⛔ Still `aria-hidden`: it is a picture
+            of the state, and `aria-sort` on the th is the state. */}
+        <span
+          className={`text-brand-300 transition-opacity ${isActive ? "" : "opacity-0 group-hover:opacity-60"}`}
+          aria-hidden
+        >{dir === "asc" ? "↑" : "↓"}</span>
       </Link>
     </th>
   );
