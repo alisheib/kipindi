@@ -268,6 +268,63 @@ export async function deepCheckMarket(market: MarketInput, sentinelModel?: strin
   const now = new Date().toISOString();
   const criterion = market.resolutionCriterion?.trim() || "Not specified";
 
+  /**
+   * ⭐ THE APPROVED SOURCE STOPS BEING A REQUEST AND BECOMES A FENCE.
+   *
+   * 🔴 MEASURED ON PRODUCTION 2026-08-28: 12 markets at confidence ≥ 90, and the AI had
+   * cited the market's own approved source on NOT ONE of them. Every one was refused by
+   * `decideAutoResolve` — correctly — so auto-resolve sealed nothing while the operator
+   * had it switched on. The model was not disobeying: it was told *"resolve against this
+   * if given"* in prose and then handed an UNRESTRICTED `web_search`. News sites outrank
+   * governing-body sites for a finished fixture, so it read the Washington Post, cited it,
+   * and stopped — having answered the question correctly and uselessly.
+   *
+   * ⛔ SO THE PROSE IS NOT THE MECHANISM ANY MORE. When the market names an approved
+   * source, both server tools are pinned to that host with `allowed_domains`, enforced by
+   * Anthropic's own tool service. This is the same containment the Up & Down oracle uses
+   * (`updown-oracle.ts`), and the same lesson: a rule the model is ASKED to follow is a
+   * rule that gets followed most of the time, which on a real-money settlement path is
+   * indistinguishable from not having it.
+   *
+   * ⚠️ `web_fetch` ONLY OPENS URLS ALREADY IN THE CONVERSATION. The user prompt names the
+   * approved source, which satisfies that for the source page itself, and the pinned
+   * SEARCH supplies the deeper links (a fixture page, a result page) that the source's own
+   * homepage would not. That is why both are armed and not just the fetch.
+   *
+   * ⚠️ AND FAILING TO FIND IT IS A LEGITIMATE ANSWER. If the approved source genuinely
+   * does not settle the question, the model now says `determined=false` instead of
+   * substituting a site that could never seal the market. That is the honest outcome and
+   * the fail-closed one — the market goes to the officers, which is where it went anyway.
+   */
+  let approvedHost: string | null = null;
+  if (market.sourceUrl) {
+    try {
+      approvedHost = new URL(market.sourceUrl).hostname;
+    } catch {
+      // A market whose stored sourceUrl will not parse has no fence to build. It falls to
+      // the unpinned path below, exactly as a market with no approved source does, and the
+      // caller's `sentinelSourceVerdict` still judges whatever gets cited.
+      approvedHost = null;
+    }
+  }
+
+  const searchTool = {
+    type: ai.webSearchTool.type,
+    name: ai.webSearchTool.name,
+    max_uses: 5,
+    ...(approvedHost ? { allowed_domains: [approvedHost] } : {}),
+  } as unknown as Anthropic.Tool;
+
+  const tools: Anthropic.Tool[] = [OUTCOME_TOOL as unknown as Anthropic.Tool, searchTool];
+  if (approvedHost) {
+    tools.push({
+      type: ai.webFetchTool.type,
+      name: ai.webFetchTool.name,
+      max_uses: 4,
+      allowed_domains: [approvedHost],
+    } as unknown as Anthropic.Tool);
+  }
+
   const systemPrompt = `You are the 50pick Market Sentinel — a real-time integrity monitor for a LICENSED, REAL-MONEY prediction-market platform in Tanzania. Real money is at stake. If a market stays open after its outcome is already settled, players can bet on a known result and the house loses money. If you close a market whose outcome is NOT yet settled, you block legitimate betting. Both are costly — be VIGILANT and PRECISE.
 
 CURRENT DATE/TIME: ${now} (platform timezone: ${getPlatformTimezone()})
@@ -275,9 +332,15 @@ CURRENT DATE/TIME: ${now} (platform timezone: ${getPlatformTimezone()})
 YOUR JOB
 Decide whether this market's outcome is already IRREVERSIBLY SETTLED ("locked") by real-world events — i.e. nothing that can still happen could change the YES/NO result. The platform closes a market to new bets only when it is locked. A human officer still does the final payout; you never pay out.
 
-YOU MUST USE WEB SEARCH — never answer from memory. The deciding event may have happened minutes ago. Search for the latest score/result/data. Search more than once, from different angles, if the first result is unclear or incomplete.
+${approvedHost
+  ? `YOUR TOOLS ARE PINNED TO THIS MARKET'S APPROVED SOURCE: ${approvedHost}. Search and fetch reach that host and nothing else — this is enforced, not requested, so there is no other site to try. Read the approved source and report the URL you actually opened in sourceUrl.
 
-YOU MUST RESOLVE AGAINST THE MARKET'S OWN APPROVED SOURCE when one is given below, and report the URL you actually read in sourceUrl. If that source does not settle the question, say so and report determined=false rather than substituting a different site, however reputable. A citation from anywhere else CANNOT seal this market automatically — an officer will have to check it by hand — so substituting one wastes the check rather than helping.
+Work it like this: SEARCH ${approvedHost} for the fixture/event page, then FETCH the most specific page you find so you are reading the live page rather than a crawl snippet. Report the URL you fetched.
+
+If ${approvedHost} does not settle the question — the page does not exist, does not carry the result, or is not specific enough — say so in reasoning and report determined=false. That is the correct answer and a useful one. Do NOT report an outcome you could not read on the approved source.`
+  : `YOU MUST USE WEB SEARCH — never answer from memory. The deciding event may have happened minutes ago. Search for the latest score/result/data. Search more than once, from different angles, if the first result is unclear or incomplete.
+
+This market names no approved source, so cite the most authoritative page you actually read in sourceUrl — a governing body, an official competition site, or a primary operator of the event. The platform checks that citation against its trusted-source register, so a citation from a random aggregator cannot seal this market.`}
 
 HOW TO JUDGE — follow these steps exactly:
 1. Parse the EXACT condition and its comparison operator, literally. A difference of one unit decides the winner:
@@ -299,11 +362,13 @@ TITLE (EN): ${market.titleEn}
 TITLE (SW): ${market.titleSw || market.titleEn}
 CATEGORY: ${market.category}
 RESOLUTION CRITERION: ${criterion}
-OFFICIAL SOURCE (resolve against this if given): ${market.sourceUrl || "none provided"}
+APPROVED SOURCE: ${market.sourceUrl || "none provided"}${approvedHost ? ` — your search and fetch tools reach ${approvedHost} ONLY` : ""}
 MARKET OPENED: ${market.createdAt || "unknown"}
 SCHEDULED RESOLUTION: ${market.resolutionAt}
 
-Search the web for the latest data, work through the steps, then call report_outcome. Report determined=true ONLY if the YES/NO result is already irreversibly locked.`;
+${approvedHost
+  ? `Search ${approvedHost} for this event, fetch the page that carries the result, work through the steps, then call report_outcome. Report determined=true ONLY if the YES/NO result is already irreversibly locked AND you read it on ${approvedHost}.`
+  : "Search the web for the latest data, work through the steps, then call report_outcome. Report determined=true ONLY if the YES/NO result is already irreversibly locked."}`;
 
   const started = Date.now();
   try {
@@ -311,10 +376,7 @@ Search the web for the latest data, work through the steps, then call report_out
       model: SENTINEL_MODEL,
       max_tokens: 2048,
       system: systemPrompt,
-      tools: [
-        OUTCOME_TOOL as unknown as Anthropic.Tool,
-        { type: ai.webSearchTool.type, name: ai.webSearchTool.name, max_uses: 5 } as unknown as Anthropic.Tool,
-      ],
+      tools,
       tool_choice: { type: "auto" },
       messages: [{ role: "user", content: userPrompt }],
     });
