@@ -12,6 +12,7 @@ import { saveBonusConfigAction, grantBonusToPlayerAction, cancelGrantAction } fr
 import { formatTzs } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ConfirmModal } from "@/components/ui/modal";
+import { FieldLegend } from "@/components/ui/field-legend";
 
 /** Cancel an ACTIVE grant from the ledger row. Confirmed — it claws bonus money
  *  back out of a player's wallet, so it should not fire on a single stray click. */
@@ -48,7 +49,7 @@ function NumField({
 }) {
   return (
     <div style={{ width: width ?? "100%" }}>
-      <div className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted">{label}</div>
+      <FieldLegend as="div" className="mb-1.5">{label}</FieldLegend>
       <Input
         aria-label={label}
         prefix={prefix || undefined}
@@ -255,7 +256,7 @@ export function GrantBonusForm() {
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <div className="w-full">
-          <div className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted">Player phone</div>
+          <FieldLegend as="div" className="mb-1.5">Player phone</FieldLegend>
           <Input aria-label="Player phone" prefix="+255" mono size="sm" placeholder="712 345 678" value={phone}
             onChange={(e) => setPhone(e.target.value)} />
           <div className="mt-1.5 text-[10.5px] text-text-subtle">Any TZ format · 0712…, 255…, +255…</div>
@@ -266,7 +267,7 @@ export function GrantBonusForm() {
         <NumField label="Expiry" hint="Blank = default" suffix="days"
           value={expiry === "" ? 0 : expiry} onChange={(n) => setExpiry(n === 0 ? "" : n)} />
         <div className="w-full sm:col-span-2 lg:col-span-1">
-          <div className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted">Note (optional)</div>
+          <FieldLegend as="div" className="mb-1.5">Note (optional)</FieldLegend>
           <Input aria-label="Note (optional)" size="sm" placeholder="e.g. retention gift" value={note} onChange={(e) => setNote(e.target.value)} />
         </div>
       </div>

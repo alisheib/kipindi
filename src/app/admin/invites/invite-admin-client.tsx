@@ -11,6 +11,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { useDeferredToast } from "@/components/ui/toast";
 import { formatTzs } from "@/lib/utils";
 import { createCampaignAction, addContactsStructuredAction, sendCampaignAction, cancelCampaignAction } from "./invite-actions";
+import { FieldLegend } from "@/components/ui/field-legend";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 type StagedRow = { email: string; phone: string; amount: number | "" };
@@ -45,7 +46,7 @@ export function CreateCampaignForm() {
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="w-full">
-          <div className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted">Campaign name</div>
+          <FieldLegend as="div" className="mb-1.5">Campaign name</FieldLegend>
           <Input aria-label="Campaign name" size="sm" placeholder="June Launch Push" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
         <NumField label="Bonus per invitee" prefix="TZS" value={bonus} onChange={setBonus} />
@@ -56,11 +57,11 @@ export function CreateCampaignForm() {
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="w-full">
-          <div className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted">Message (English)</div>
+          <FieldLegend as="div" className="mb-1.5">Message (English)</FieldLegend>
           <Input aria-label="Message (English)" size="sm" value={messageEn} onChange={(e) => setMessageEn(e.target.value)} />
         </div>
         <div className="w-full">
-          <div className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted">Message (Swahili)</div>
+          <FieldLegend as="div" className="mb-1.5">Message (Swahili)</FieldLegend>
           <Input aria-label="Message (Swahili)" size="sm" value={messageSw} onChange={(e) => setMessageSw(e.target.value)} />
         </div>
       </div>
@@ -170,9 +171,9 @@ export function CampaignControls({ campaignId, status, queued, smsLive }: { camp
       {rows.length > 0 && (
         <div className="rounded-lg border border-border overflow-hidden">
           <div className="flex items-center justify-between gap-2 px-3 py-2 bg-bg-elevated">
-            <span className="font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted">
+            <FieldLegend>
               {rows.length} contact{rows.length === 1 ? "" : "s"} staged · not yet saved
-            </span>
+            </FieldLegend>
             <button type="button" onClick={() => setRows([])} disabled={pending}
               className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-subtle hover:text-no-300 transition-colors disabled:opacity-40">
               Clear all
@@ -232,7 +233,7 @@ function NumField({
 }: { label: string; hint?: string; prefix?: string; suffix?: string; value: number; onChange: (n: number) => void; width?: number }) {
   return (
     <div style={{ width: width ?? "100%" }}>
-      <div className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted">{label}</div>
+      <FieldLegend as="div" className="mb-1.5">{label}</FieldLegend>
       <Input aria-label={label} prefix={prefix || undefined} trailing={suffix ? <span className="text-[11px]">{suffix}</span> : undefined}
         mono size="sm" inputMode="numeric" value={value}
         onChange={(e) => { const n = Number(e.target.value.replace(/[^\d.]/g, "")); onChange(Number.isFinite(n) ? n : 0); }} />

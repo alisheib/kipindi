@@ -18,6 +18,7 @@
 import { useEffect, useRef, useState } from "react";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
+import { FieldLegend } from "@/components/ui/field-legend";
 
 export function SearchHelp({
   fields,
@@ -139,9 +140,9 @@ export function SearchHelp({
           className={`absolute right-0 ${pos.up ? "bottom-[calc(100%+6px)]" : "top-[calc(100%+6px)]"} z-50 w-[min(320px,calc(100vw-24px))] overflow-y-auto overscroll-contain rounded-xl border border-border-strong bg-bg-elevated/95 p-3 shadow-e4 backdrop-blur-xl`}
           style={pos.maxH ? { maxHeight: pos.maxH } : undefined}
         >
-          <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted">
+          <FieldLegend as="p" className="mb-2">
             {t.common.searchHelpTitle}
-          </p>
+          </FieldLegend>
           <ul className="space-y-1.5">
             {rows.map((r) => (
               <li key={r.ex}>

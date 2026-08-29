@@ -19,6 +19,7 @@
  */
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { FieldLegend } from "@/components/ui/field-legend";
 
 type Props = Omit<React.InputHTMLAttributes<HTMLInputElement>, "size"> & {
   prefix?: React.ReactNode;
@@ -173,9 +174,9 @@ export function Field({
 }) {
   return (
     <label className={cn("block", className)}>
-      <span className="block font-mono text-[10px] uppercase tracking-[0.16em] font-bold text-text-muted mb-1.5">
+      <FieldLegend className="block mb-1.5">
         {label}
-      </span>
+      </FieldLegend>
       {children}
       {error ? (
         <p className="mt-1.5 text-body-sm text-no-300">{error}</p>
