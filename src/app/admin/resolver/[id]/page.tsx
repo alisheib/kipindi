@@ -102,7 +102,18 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
                 )}
                 <span className="ml-auto font-mono text-[10px] text-text-subtle">{m.id}</span>
               </div>
-              <h1 className="mt-2 font-display text-[18px] font-bold leading-tight text-text">{m.titleEn}</h1>
+              {/* 🔴 DG-P-03 — `<h2>`, NOT `<h1>`: THE ADMIN SHELL ALREADY RENDERS THIS PAGE'S h1.
+                  `AdminPageHead` emits `<h1 …>{title}</h1>` at `components/admin/admin-shell.tsx:296`
+                  on every admin route, so the market question here was a SECOND h1 — measured on
+                  production, all three `resolver-mkt-*` captures in the drive report an h1 count
+                  of 2. Same shape as `/proposals`: the count is the page PLUS what it renders,
+                  and a per-file census cannot see it.
+                  ⭐ The size moves onto the ladder in the same edit and NOTHING SHIFTS:
+                  `text-title-sm` is 18px, and its tuple's letter-spacing is −0.36px, which is
+                  exactly what `tracking-[-0.02em]` computes to at 18px — the value every sibling
+                  heading in the product already carries. `leading-tight` still overrides the
+                  rung's 24px line-height. So this is a convergence, not a re-style. */}
+              <h2 className="mt-2 font-display text-title-sm font-bold leading-tight text-text">{m.titleEn}</h2>
               {m.titleSw && <p className="text-[13px] italic text-text-subtle">{m.titleSw}</p>}
 
               <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-dashed border-border-subtle pt-3 text-[12px]">

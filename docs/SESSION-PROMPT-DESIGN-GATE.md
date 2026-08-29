@@ -52,6 +52,24 @@ rendered platform.”*
 > (`.admin-tbl thead`'s CSS-side canonical, 21) · **0.16em** (`FieldLegend`'s, 17).
 > **Still blocked and only by Ali:** DG-P-02 · DG-P-09 · the 2 authed amount sizes.
 >
+> ### 🔴 ALL 15 OPEN STEP-3/4 ROWS ARE NOW RE-DERIVED — READ THAT SECTION BEFORE TOUCHING ONE
+> **14 PARTLY_REAL · 1 REAL_AND_ACTIONABLE · 0 that reproduce as written**, and **14 of the 15
+> derivations were REFUTED on their first pass** by a second reader briefed to break them — *the
+> re-derivation needed a re-derivation.* ⛔ **DG-A-13 and DG-A-21 did not complete and are still
+> un-re-derived.** The section carries a does-not-reproduce table (17 rows), what each row is
+> actually about, and the guard hazards. Three worth knowing before you open anything:
+> · **DG-A-06's obvious first edit turns a green 111-assertion suite RED** — `filter-language`
+>   §6.6 counts `<FilterPill` occurrences against `rank="dense"` occurrences in the same file, so
+>   passing a rank through `DateTimeRangeFilter` fails it. Re-key §6.6 in the SAME commit.
+> · **DG-A-14's 45 sites move §3 by ZERO** — `text-body-sm` is not counted either, by §0f's own
+>   control. Narrow §3's blessing test FIRST or the whole sweep is invisible to its ratchet.
+> · **DG-A-08's prescribed `btn-xs` (32px) is the FIFTH register item asking to reverse a dated
+>   decision** — §A2's *"money controls are never the exception"*, with 20 of its 61 sites
+>   already shipped at ≥40.
+> ⭐ **And the pattern across all fifteen: an instrument measured the wrong population and the
+> register wrote the number down.** So the first edit of most of these rows is to the
+> INSTRUMENT, not the product.
+>
 > ### 🔬 ONE NEW INSTRUMENT — `npm run qa:dg-rhythm`
 > The §S1 probe. Walks the public routes anonymously, finds every `[data-measure]` container and
 > reports each band's computed `margin-top`, `position` and height. `VERBOSE=1` prints the whole
@@ -520,6 +538,60 @@ tile art direction, the label type ramp) are packaged for Claude Design at
 review — DESIGN_AUTHORITY §0b OUTBOUND row). Send it, file the delivery under
 `docs/design-system/` as an incoming commission, then **delete the folder and its `.gitignore`
 exception** — §0b’s own rule.
+
+---
+
+## 🔬 RE-DERIVED 2026-08-30 (session 80) — ALL 15 OPEN STEP-3/4 ROWS, AGAINST HEAD
+
+⭐ **Read this before starting ANY step-3 or step-4 row.** Every open row was re-derived against
+the working tree and, where the route is public, against production — then each derivation was
+adversarially re-checked by a second reader whose brief was to refute it. **14 of the 15 were
+refuted on their first pass**, which is the number to hold on to: *the re-derivation needed a
+re-derivation.* Verdicts: **14 PARTLY_REAL · 1 REAL_AND_ACTIONABLE · 0 that reproduce as
+written.** ⛔ Two rows (**DG-A-13**, **DG-A-21**) did not complete and are still un-re-derived.
+
+### ⛔ WHAT DOES NOT REPRODUCE — do not "fix" any of these
+| Row | The claim | What is actually there |
+|---|---|---|
+| **DG-A-06** | *"state/category rails 25.8px, 31 instances, ai-polls + candidates"* | **Already FilterPill at HEAD** — converted by S-07 on 2026-08-28 and now guarded by `filter-language` §6.1-6.8. ⚠️ But the recipe SURVIVED on the same two pages on a DIFFERENT rail: `CardSortControl` (`ai-polls/page.tsx:453`, `candidates/page.tsx:366`), byte-identical, and invisible to the audit because both sit behind `{pendingSorted.length > 0 && …}` — an empty prod queue renders zero. **The drive's population was the defect.** Also: the register names 5 routes / 45 chips; there are **7 routes / 54 chips** — `/admin/reports` and `/admin/updown` were never looked at |
+| **DG-A-08** | THE FIX: *"one row-action recipe: `btn-xs` (32px)"* | **The FIFTH register item asking to reverse a dated decision.** §A2: *"Money controls are never the exception"* (E-112, a 26px stake chip), and `globals.css:287-292` scopes the 32px exception to controls that are *"not … a finger, primary or money control"*. **20 of the 61 sites have already shipped at ≥40.** THE GUARD is also unimplementable: only **38** interactive tags are literally inside a `<td>` against 334 outside, so it would catch 2 of the row's own 7 |
+| **DG-A-08** | *"'never bare uppercase text' contradicts `bare-text-button`"* | **Not a contradiction — they never overlap.** That rule exempts a button carrying an icon; every DG-A-08 instance is uppercase text with NO icon |
+| **DG-A-09** | *"80 hover-classed cells on /admin/markets"* — Ali named this row | **Four** link/control hovers × `PER_PAGE=20` rendered rows. Not one is a background. Across all hovers inside a `<table>` there is exactly **ONE** `hover:bg-*`, and it is a destructive button's own affordance. ⭐ The real (smaller) defect: **4 `<tr>` elements re-author the row hover and are DEAD** — overridden by `.admin-tbl tbody tr:hover` on specificity, proven from the compiled sheet (zero `@layer`, so precedence is specificity then source order) |
+| **DG-A-14** | *"the four prose-as-eyebrow sites found this session"* | **All five are already fixed at HEAD** (`f4b90a89`), each with an in-file tombstone. ⭐ The row's real content is what the register never names: **§3's exemption covers 545 sub-floor hits inside which 45 sites are prose or a label-with-hint that §3 will never count** |
+| **DG-A-14** | the register's guard: *"paragraphs >60 chars under 12.5px fail"* | **Misses 92% of them** — 34 of the 37 strings are ≤60 characters, including *"Type PAUSE to stop deposits"* (27) |
+| **DG-P-03** | *"/updown's h1 drops to 24px at 390"* | Refuted **three** ways: the code is a flat `text-[28px]`; `git log -p --follow` shows it was NEVER responsive; and the drive's own artefact reports **fs 28 at both 1440 and 390** |
+| **DG-P-03** | the register's fix: *"32 `--type-h1` is the natural step"* | **Unimplementable.** §T7 (ruled AFTER the register) says a `.tsx` reaches only the Tailwind ladder — 64·48·36·28·22·18·16·14·13·12·11·10 — and **there is no 32** |
+| **DG-P-07** | *"16 back-link instances"* | The 16 is the **legal sidebar** (4 nav items × 4 legal routes), which the row's next clause already lists separately — so the row double-counts one defect and invents another. ⛔ **And the session-79 re-derivation's "the count is 4, and nobody adopted the kit" is ALSO wrong: `BackLink` has 18 call sites in 18 files — it is one of the most-adopted primitives in the tree** |
+| **DG-P-07** | *"/profile/account DSAR radios 13px, fix = the kit radio"* | The tap floor is **already met** (the radio sits inside a `label` with `px-3 py-2`), and the prescribed kit radio **does not exist** |
+| **DG-P-10** | *"three surfaces hand-type chip colours, incl. `results/page.tsx`"* | `results/page.tsx` uses the kit. Two of three reproduce, and the register misses **two more** (`trust-band.tsx:154`, `updown/[roundId]/page.tsx:197/:619`). ⚠️ The "kit chip vs `kp-settled__pill`" mechanism is impossible — there are **zero** kit `<Chip>` renders on `/` |
+| **DG-P-11** | the register's route list | Wrong **in both directions**: 13 routes carry no marker, and `/wallet`, `/leaderboard`, `/proposals/*`, `/profile/invite` **ARE** marked — by the "More" trigger the instrument structurally could not see (`measure.mjs`'s nav probe selects anchors only) |
+| **DG-P-12** | *"the three fields carry no visible focus join"* | **False at HEAD** |
+| **DG-P-13** | *"gate the PWA prompt to touch/small viewports"* | A dated, guarded decision whose reversal turns **6 cells of `qa:install-shown`** red |
+| **DG-P-14** | item 2's prescribed fix | **Reverses Ali's own E-221 ruling** and turns a guard in `test:all` red. Item 5 was already struck |
+| **DG-A-22** | two of its six named instances | **Not defects.** Its *"flex-wrap on header rows"* fix is a **no-op — the wrap is already there** |
+| **DG-P-08** | the E-226 ordering constraint (*"E-226 lands first or the row is frozen"*) | **Falsified by `/help`**, which already reads the config. The row is not frozen |
+
+### ⭐ WHAT EACH ROW IS ACTUALLY ABOUT, once re-derived
+- **DG-A-06** — 3 recipes / 70 controls / 10 routes. The big win is unchanged: `DateTimeRangeFilter`, **one primitive, 7 admin call sites**, rank as a prop. 🔴 **But `filter-language` §6.6 counts `<FilterPill` occurrences against `rank="dense"` occurrences IN THE SAME FILE, so passing a rank through `DateTimeRangeFilter` turns a green 111-assertion suite RED — proved by running the guard's own `strip()` and regexes.** Re-key §6.6 in the SAME commit, before any rank is passed.
+- **DG-A-08** — **43 distinct mono-uppercase action recipes over 61 call sites in NINE height families**, ~3× the register's "five recipes, three heights". ⛔ The fix is the 40px rung via the kit, not `btn-xs`.
+- **DG-A-09** — 2 dead `<tr>` hovers to delete (zero-pixel), plus betting ink on non-betting links (§B2a). ⛔ **Do NOT touch `.admin-tbl tbody tr:hover td:first-child` — it IS a per-cell hover and it IS the canon**, on all 56 tables.
+- **DG-A-14** — **45 sites** §3 structurally cannot see, in two tiers: **26 sentences** (drop the dressing, `text-body-sm`) and **19 label-with-hint** (split in two). ⛔ Fixing them moves §3 by **zero** — `text-body-sm` is not counted either, by §0f's own control — so **narrow §3's blessing test FIRST** or the work is invisible to the ratchet.
+- **DG-A-19** — 67 `size=` glyph renders in 30 files, **every one of them admin**, against 625 `s=`; the alias's dated reason (the lucide migration, `da19ead5`) is **spent**, so collapsing it is zero-visual-change and `tsc` guards it. The size range is **10→28 over 16–17 rungs**, not 10–23.
+- **DG-A-20** — four of eleven numbers stale; the two largest real jumps are **`/admin/privacy` (4 tiles for 5) and `/admin/config` (6 for 7), ~126px each**.
+- **DG-A-22** — ONE mechanism (a `max-w` ceiling on a wrapping cell in an auto-layout `.admin-tbl`, 9 sites, 3 tables ballooning) plus three CSS-grid stretch defects.
+- **DG-P-12** — the consent row is **20px against a 40px floor** and **the instrument reports it as 1px**; and the row's biggest defect is unnamed — the sign-up DOB placeholder renders at **3.58:1**, under §A1's 4.5 floor, where `test:contrast` cannot see it.
+- **DG-P-14** — the three surviving items are all the SAME unnamed defect: **six controls whose height comes from padding, landing at 30/35/38/41px** against a 40 floor and a 44 sibling.
+
+### 🔴 THE PATTERN ACROSS ALL FIFTEEN, AND IT IS NOT THE REGISTERS' FAULT ALONE
+Every row that was wrong was wrong the same way: **an instrument measured the wrong population,
+and the register wrote the number down.** `CardSortControl` invisible because an empty queue
+renders nothing · the nav probe selecting anchors only, so four marked routes read as unmarked ·
+a `<td>`-scoped guard reaching 38 of 372 tags · a >60-character threshold missing 92% of its
+targets · a per-file h1 census blind to a component that renders its own · `measure.mjs`
+SUPPRESSING in-table controls rather than splitting them. ⛔ **So the first edit of most of these
+rows is to the INSTRUMENT, not the product** — and several of those repairs will take a green
+guard RED on purpose, which is the correct outcome and must land in the same commit as its
+re-baseline.
 
 ---
 

@@ -59,7 +59,7 @@ export default async function AdminLoginPage({ searchParams }: { searchParams?: 
               Staff · Confidential
             </span>
           </div>
-          <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">
+          <h1 className="font-display text-title-lg font-bold text-text leading-tight tracking-[-0.02em]">
             Admin sign in
           </h1>
           <p className="text-[14px] italic text-text-subtle">Kuingia kwa wafanyakazi</p>

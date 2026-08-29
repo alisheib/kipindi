@@ -104,7 +104,7 @@ export function AuthHeader({
         {icon}
         {eyebrow}
       </p>
-      <h1 className="mt-1.5 font-display text-[28px] font-bold leading-tight text-text tracking-[-0.02em]">
+      <h1 className="mt-1.5 font-display text-title-lg font-bold leading-tight text-text tracking-[-0.02em]">
         {title}
       </h1>
       {subtitle != null && (

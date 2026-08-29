@@ -102,7 +102,7 @@ export default async function NotFound() {
         <p className="font-mono text-micro font-bold uppercase tracking-[0.20em] text-text-subtle">
           {d.notFoundCode} · {d.notFound}
         </p>
-        <h1 className="mt-2 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-text">
+        <h1 className="mt-2 font-display text-title-lg font-bold leading-tight tracking-[-0.02em] text-text">
           {d.notFoundBody}
         </h1>
         <p className="mt-3 max-w-[420px] text-[13px] leading-relaxed text-text-subtle">

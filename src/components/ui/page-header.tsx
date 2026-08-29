@@ -42,7 +42,14 @@ export function PageHeader({
         {icon}
         {eyebrow}
       </p>
-      <h1 className="font-display text-[28px] font-bold text-text leading-tight tracking-[-0.02em]">
+      {/* ⭐ DG-P-03 · §T1/§T7 — ONE LINE, 31 CALL SITES, AND NOT ONE PIXEL MOVES.
+          This was `text-[28px]`, an arbitrary — and it is the arbitrary every page title in the
+          product inherits, so it was the highest-leverage one in the tree. `text-title-lg` IS
+          28px; its tuple also carries `lineHeight: 34px` and `letterSpacing: -0.85px`, and BOTH
+          are already overridden on this very element by `leading-tight` (1.25 → 35px) and
+          `tracking-[-0.02em]` (−0.56px at 28px), which are emitted after the fontSize rungs in
+          the served sheet. So the computed style is byte-for-byte what it was. */}
+      <h1 className="font-display text-title-lg font-bold text-text leading-tight tracking-[-0.02em]">
         {title}
       </h1>
       {subtitle != null && (

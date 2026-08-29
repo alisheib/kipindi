@@ -193,7 +193,16 @@ const RATCHET_SUBFLOOR = 761;   // 2026-08-29: -268 total, the ADMIN then PLAYER
 // §M4 half shipped (both are `.amount` now), but the SIZE is a call §T4 does not decide, the
 // route is AUTHED, and every player QA secret is rejected by production. Ship the law, record
 // the taste — `qa:dg-money` still lists both.
-const RATCHET_ARBITRARY_SIZE = 951;
+// …then 951 → 935 on 2026-08-30 (DG-P-03), and every one of those 16 is a RENDER-IDENTICAL
+// rename, which is the point: `text-title-lg` IS 28px, and the rung's `lineHeight: 34px` /
+// `letterSpacing: -0.85px` are already overridden on each of these elements by `leading-tight`
+// and `tracking-[-0.02em]`, both emitted after the fontSize rungs in the served sheet. ⭐ The
+// biggest single line is `page-header.tsx:45` — one arbitrary that **31 call sites** inherit,
+// i.e. every page title in the product. The rest: six loading skeletons adopting `<PageHeader>`
+// outright, the market question onto `text-title-lg md:text-display-3` (§T2's named violation),
+// `admin/resolver/[id]` onto `text-title-sm` while its `<h1>` became an `<h2>`, and five
+// hand-retypings of the same 28px recipe.
+const RATCHET_ARBITRARY_SIZE = 935;
 /*  ⬇️ 38 → 37 on 2026-08-25. The wallet balance pill carried `fontSize: 12.5` inline — an
  *  off-ladder literal AND invisible to every class-based gate. It now reads `text-caption`
  *  below `sm` and `text-label` from there, both ON the closed ladder (§T1), which is also

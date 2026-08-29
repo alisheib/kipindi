@@ -101,8 +101,15 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
           ⛔ DO NOT re-add a hidden h1 here. And note this deletion also removed the DG-P-04
           ghost — the wrapper that had been added to keep an out-of-flow `sr-only` h1 out of
           the `space-y-6` rhythm is gone with it, because there is no longer a ghost to fence.
-          The DISABLED branch at the top of this file keeps ITS `sr-only` h1: that branch
-          renders no `PageHeader`, so there it is the page's only heading. */}
+          The DISABLED branch at the top of this file keeps ITS `sr-only` h1 — but ⚠️ THAT WAS
+          NOT TRUE WHEN THIS COMMENT WAS FIRST WRITTEN, and the correction is the useful part.
+          That branch renders no `PageHeader`, so the h1 looked unpaired; it renders
+          `ProposalsUnavailable`, which had an `<h1>` of its own
+          (`components/proposals/proposals-state-views.tsx:159`). So the page shipped two h1s on
+          BOTH branches, and the census that found the first missed the second because it only
+          looked WITHIN a file. That h1 is a `<p>` now, matching `ui/empty-state.tsx:53`, and
+          the sentence above is true. ⛔ A page's h1 count is the page PLUS everything it
+          renders. */}
       <PageHero glow="gold" contentClassName="relative z-10 p-5 lg:p-6 flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div className="flex flex-col items-start gap-2">
           <PageHeader tone="gold" icon={<I.trophy s={18} />} eyebrow={t.proposals.title} title={t.proposals.voteForMarkets} />

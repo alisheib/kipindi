@@ -156,7 +156,17 @@ export function ProposalsUnavailable({
       <IconPlate size={56} bg="var(--bg-overlay)" border="1px solid var(--border)" className="text-text-subtle" aria-hidden>
         <I.info s={26} />
       </IconPlate>
-      <h1 className="mt-4 font-display text-[19px] font-bold leading-snug text-text">{title}</h1>
+      {/* 🔴 DG-P-03 — `<p>`, NOT `<h1>`: THIS CARD IS RENDERED INSIDE A PAGE THAT ALREADY HAS ONE.
+          `proposals/page.tsx`'s DISABLED early-return renders an `sr-only` h1 and then this
+          component, so the page shipped TWO h1s — the same defect as its ACTIVE branch, one
+          level further away and therefore missed by a census that only looks WITHIN a file.
+          ⛔ That is the lesson worth keeping: a page's h1 count is not a property of the page's
+          own source. It is the page PLUS every component it renders, and a scanner that stops
+          at the file boundary is one level too shallow.
+          ⭐ `<p>` is the kit's own answer for an empty-state title — `ui/empty-state.tsx:53`
+          renders `<p className="font-display …">` for exactly this shape — so this adopts a
+          precedent rather than inventing one. The class list is untouched; nothing moves. */}
+      <p className="mt-4 font-display text-[19px] font-bold leading-snug text-text">{title}</p>
       <p className="mx-auto mt-2 max-w-[38ch] text-[13px] leading-relaxed text-text-muted">{body}</p>
       <Link href={browseHref as never} className="mt-5">
         <Button variant="primary" size="md" trailing={<I.arrowRight s={15} />}>{browseLabel}</Button>
