@@ -478,6 +478,7 @@
     "qa:toggle-hit": "node scripts/toggle-hit-test.mjs",
     "qa:popover-clip": "node scripts/popover-clip-test.mjs",
     "qa:chart-axis": "node scripts/chart-axis-test.mjs",
+    "qa:admin-load": "node scripts/admin-load-budget.mjs",
     "qa:dg-measure": "node scripts/design-gate/measure.mjs",
     "qa:dg-overlays": "node scripts/design-gate/overlays.mjs",
     "qa:dg-shots": "node scripts/design-gate/shots.mjs",

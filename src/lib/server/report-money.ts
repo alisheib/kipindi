@@ -35,7 +35,7 @@
 import { EAT_OFFSET_MS } from "@/lib/eat-day";
 import { db } from "./store";
 import type { StoredTxn } from "./store";
-import { listMarkets, listPositionsForMarket } from "./market-service";
+import { listMarkets } from "./market-service";
 import type { MarketCategory } from "./market-service";
 import { positionStore, marketStore } from "./market-dal";
 
@@ -389,10 +389,38 @@ export async function categoryBreakdown(period: Window, now = Date.now()): Promi
   // category; excluding Up & Down rounds would drop their entire turnover out of the
   // revenue breakdown while every remaining number still reconciled with itself,
   // which is the worst shape a books defect can take. Guarded by test:product-line.
-  const markets = await listMarkets({ productLine: "ALL" });
+  //
+  // 🔴 THIS LOOP USED TO ISSUE ONE QUERY PER MARKET, AND IT IS WHY `/admin/reports` TOOK ~88 s.
+  // It read `for (const m of markets) { for (const p of await listPositionsForMarket(m.id)) … }`
+  // — an `await` inside a loop over EVERY market row, i.e. ~13,000 SEQUENTIAL Prisma
+  // round-trips at ~6-7 ms each. The comment 30 lines up had already measured the population
+  // ("12,931 of them on production 2026-08-20, growing ~360/day") and called the same shape "no
+  // longer cheap" for `moneyByGame`; this function was doing the far worse version of it.
+  // ⛔ AND IT WAS NEVER ONLY THIS PAGE: `/admin/insights` calls `categoryBreakdown` too, so the
+  // same 13,000 queries ran there. One fix, two routes.
+  // ⚠️ The register filed the cause as "its settlement-fee/report-pack reads render 12,882 rows'
+  // aggregates". That is wrong — the report pack is a single period read and `getAuditPage` is an
+  // in-memory ring-buffer slice. The cost was always here.
+  //
+  // ⭐ THE SHAPE IS `moneyByGame`'s, 40 lines above: two bulk reads and an in-memory join. That
+  // one already builds `plByMarket` then `plByPosition` exactly like this; the only difference is
+  // which market field it carries across. Two queries, not 12,901.
+  // ⛔ `listMarkets({ productLine: "ALL" })` STAYS, and not merely to satisfy a guard: this is a
+  // MONEY READ and `test:product-line` requires the opt-in here by name, because attributing
+  // stakes without Up & Down would drop that product's whole turnover out of the revenue
+  // breakdown while every remaining number still reconciled with itself.
+  const [markets, positions] = await Promise.all([
+    listMarkets({ productLine: "ALL" }),
+    positionStore.values(),
+  ]);
+  const catByMarket = new Map<string, MarketCategory>(markets.map((m) => [m.id, m.category]));
   const posCat = new Map<string, MarketCategory>();
-  for (const m of markets) {
-    for (const p of await listPositionsForMarket(m.id)) posCat.set(p.id, m.category);
+  for (const p of positions) {
+    const c = catByMarket.get(p.marketId);
+    // ⛔ No default. A position whose market we cannot see is not "some category" — it is
+    // unattributed, and the loop below simply skips it, exactly as `moneyByGame` refuses
+    // to guess "MARKET" for an unresolvable positionId.
+    if (c) posCat.set(p.id, c);
   }
   const acc = new Map<MarketCategory, { stakes: number; payouts: number }>();
   // The window is the WHERE clause now; the per-row `within` below is therefore
