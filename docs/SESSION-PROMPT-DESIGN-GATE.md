@@ -41,6 +41,28 @@ returns no data. ⭐ **It convicted a fix I had already shipped**: the 46-query 
 630 ms of 12,688, and `feedAdviceLookup` was 11,865 ms — 93.5%. ⛔ **Do not delete it while
 any admin route is near budget.** It is the difference between diagnosing and detecting.
 
+### 🖼️ HOW TO VISUAL-TEST THE SWEEP — three routes failed, one works
+Ali's standing rule is to screenshot every UI change before pushing. For an ADMIN surface that
+is harder than it sounds on this machine, and the next session should not re-pay it:
+- ⛔ **`next dev`** — an instance was already up on `:3009`; `/admin/updown` rendered an
+  **empty body**. That is the trap `seed-admin-local.mts`'s own header records: *"the dev
+  server's HMR socket never came up on this machine, so the page rendered and never
+  hydrated."* Believe it the first time.
+- ⛔ **`next start` + local PG** — `pg_ctl -D C:\pg-loadtest\data -o "-p 5433" start`,
+  `prisma migrate deploy`, `npx tsx scripts/seed-admin-local.mts`, then
+  `DATABASE_URL=… DISABLE_ADMIN_TOTP=true npx next start -p 3222`. The server serves, and the
+  ADMIN row **is** in Postgres — but the sign-in form would not accept it, via the harness or
+  by hand. ⚠️ **Unsolved.** Solving it is what unlocks form-level admin screenshots.
+  (⛔ And `/api/dev-test/*` 404s under `next start` — it is gated on `NODE_ENV`.)
+- ✅ **WHAT WORKS TODAY, and it is enough for a type sweep:** a static harness that loads the
+  **real compiled stylesheet** (`.next/static/chunks/*.css`) and renders the before and after
+  markup side by side, with a `getComputedStyle` assertion that REFUSES to screenshot if the
+  sheet did not load. No server, no auth, no database — and it answers the only question a
+  class swap raises, which is what the cascade actually does.
+- ⭐ It also settles precedence questions deterministically: `.text-body-sm` sits at byte
+  50,504 of the built sheet and `.leading-[1.55]` at 51,608, same specificity, so **the
+  `leading-` utility wins** and a swept paragraph keeps its ratio. Read the bytes, don't guess.
+
 ### ▶ THE NEXT MOVE, in order
 1. **DG-A-12's arbitraries sweep — the guard half is DONE, the sweep half is not.**
    ⭐ The instrument was fixed FIRST, on purpose: §3 of `type-scale.test.mts` scanned only
@@ -439,7 +461,7 @@ only ☑ when its gate line is GREEN **re-measured on production**, not on local
 | **DG-P-11** | 3 | P2 | active/current markers stop at the top bar | `aria-current reach` | ☐ | — | — |
 | **DG-A-01** | 4 | P0 | /admin/reports takes ~88 s to load; timed out at 60/90/240 s | `report-money.ts` · `market-dal.ts` · `updown-feed-history.ts` (⛔ NOT `reports/page.tsx`) | ☑ | `d74d0708` · `35916281` · `b5201cee` · `758bbf8b` · `7bc20724` | ✅ **GATE GREEN ON PRODUCTION 2026-08-29: `npm run qa:admin-load` = 38 of 38 admin routes inside 5,000 ms, 1 sign-in, 0 revocations, floor `/admin/roles` 254 ms.** 📐 `/admin/reports` **4,490–4,980 → 360–447 ms** · `/admin/insights` **2,375–3,048 → 431–504 ms** · `/admin/updown` **13,247 → 1,617 ms**. Render verified, not just the clock: reports shows the per-game card, 2 tables, 11 rows, 58 non-zero TZS; updown shows 7 assets, 23 chains, 36 metric cells, zero "unmeasured". 🔴 **THE HANDOVER'S TWO NUMBERS DID NOT REPRODUCE** (7,112 / 257). What settled it was a FLOOR route and a WINDOW SWEEP — see the RESUME AT block. ⭐ **THE FIX WAS THREE THINGS AND I GOT THE SECOND ONE WRONG.** (1) `loadReportWindow()`: one snapshot — the window's transactions plus a 4-column market projection where `findMany()` shipped ~35 over ~27,500 rows — shared by all four aggregates; 9 queries per render become 2, and they now reconcile by construction rather than by luck. (2) `/admin/updown`'s 46 per-chain queries collapsed to two bulk reads — **and the page did not move, 11,045 → 11,448 ms.** That was 630 ms of 12,688. (3) The instrument then said what reading never would: `GET /api/admin/updown-timing` → **`feedAdviceLookup` 11,865 ms, 93.5%**, a 30-day observation self-join. Memoised, ceiling = ONE ROUND at the shortest duration offered, asserted by `test:updown-config` §9 with a control that re-derives the ceiling from `ALLOWED_DURATIONS`. ⛔ **`reactCache` was NOT used** (money reads; a dedupe living in a framework's request scope is invisible at the call site) and the two callers' demo-market populations were **NOT harmonised** — tidying that would move a regulator-facing figure under cover of a performance fix. `test:product-line` B9 asserts the difference. 🔴 **A MONEY-STATEMENT DEFECT ON THE SAME PAGE:** `moneyByGame` is wrapped in `.catch(() => null)` and the per-game card began `{byGame && …}`, so a FAILED read rendered identically to an empty window. `/admin/insights:173` already disclosed that exact failure in words; it says them here too now. ⚠️ **AND THE GATE'S POPULATION WAS HAND-PICKED** — 3 routes. Widened to all 38 via `scripts/design-gate/routes.mjs` (one definition site, shared with the render drive), with `/admin/roles` as a FLOOR rather than `/admin/finance` as a "control" that was 9× the floor inside a budget cut to fit it.
 | **DG-A-20** | 4 | P2 | loading skeletons are the wrong shape for what they replace | `skeletons` | ☐ | — | — |
-| **DG-A-22** | 4 | P2 | layout balance | `—` | ☐ | — | — |
+| **DG-A-22** | 4 | P2 | layout balance | `admin/updown/page.tsx:579` + `—` | ☐ | — | 🔴 **ONE MEASURED INSTANCE, FOUND 2026-08-29 WHILE SHOOTING DG-A-12** — and it is a `max-w` written where a `min-w` was meant. The chain-duration caution (*“5m+ advised on BTC — its reading typically lands 91s after the boundary, leaving 89s of a 180s betting window”*) is a `<div … whitespace-normal max-w-[24rem]>` inside the CHAIN `<td>`. `max-w` is a CEILING: in an auto-layout table the column collapses to ~110px anyway, so the sentence wraps to **13 lines of two or three words** and the row renders **316px tall**. The author's own stated intent is 384px, written on the line, and the browser can never honour it. ⚠️ Added by `844367e2`, NOT by the DG-A-12 sweep — it is in the pre-sweep screenshot too. ⛔ **The fix is a column width, so it is a DG-A-23 question**: widening a column on a table that already scrolls at 390 is exactly what that row's outstanding re-measure exists to catch. Do them together |
 | **DG-P-09** | 4 | P1 | /auth/login signed-in redirect throws React error #310 — ⚠️ root cause is a HYPOTHESIS, re-prove first | `auth-flash.tsx?` | ☐ | — | — |
 | **DG-P-12** | 4 | P2 | auth & date-input details | `—` | ☐ | — | — |
 | **DG-P-13** | 4 | P2 | landing/auth duplication artefacts | `—` | ☐ | — | — |
