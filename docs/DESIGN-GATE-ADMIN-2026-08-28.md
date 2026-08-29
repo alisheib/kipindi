@@ -101,6 +101,36 @@ patching is listed only where no primitive exists.
 This is the single biggest source of the “visually shocking” feel: the row an officer touches
 first on every list page.
 
+> ## 🔴 RE-DERIVED ON PRODUCTION 2026-08-29 — THE TABLE BELOW IS STALE. DO NOT FIX IT.
+> The measurements in this row were taken against a build that **no longer existed hours later**,
+> and most of the defect is already gone. Re-measured on 44 routes, ~2,600 controls, signed in as
+> ADMIN, with `redo.cjs` reporting **0 poisoned records**:
+>
+> | The table below says (`/admin/markets`) | Measured 2026-08-29 |
+> |---|---|
+> | search 32 · Select **36.8** · Select **55.5 (wrapped)** · btn 32 · btn 32 | search 32 · Select **32** · Select **32** · btn 32 · btn 32 |
+>
+> ⛔ **`36.8` and `55.5` do not occur anywhere in the console** — not on one route, not at one
+> width. `/admin/markets` and `/admin/players` have **zero** mixed-height row groups;
+> `/admin/resolver-queue` and `/admin/ai-usage`'s filter rows are uniformly 32 as well.
+>
+> **Why:** root cause (a) was fixed by **`af4de432`, dated 2026-08-28 — the same day this report
+> was written.** `select.tsx` now reads `size === "xs" ? "px-2 py-1"`, and its own comment records
+> the defect this row describes: *“the trigger carried a flat `px-3 py-1.5` at EVERY size … so an
+> `xs` control measured 37px”*. The audit drive ran before that deploy landed.
+>
+> **What actually survived, and is the whole of DG-A-04's kit half:**
+> - **(b) `Input size="sm"` rendered `h-[36px]`, and 36 is on no rung** (the ladder is
+>   32/40/44/48/56). 45 instances measured, 42 call sites. ✅ FIXED 2026-08-29 — it now reads
+>   `--h-control-sm` (40), **Ali's ruling**: most call sites are forms rather than dense rails, 40
+>   is `--tap-min`, and it closes the 4px step against the `btn-sm` it sits beside.
+> - (c)/(d) the three hand-rolled `h-[32px]` search inputs and the per-page button rungs are
+>   cosmetic convergence, not a height defect — they already render 32. **Step 3.**
+>
+> ⚠️ **This is not a one-row problem.** §7's ~280 findings and this file's other numbers come from
+> the same pre-`af4de432` drive. **Re-derive every row before fixing it** — several may have closed
+> the same way, and "fixing" a defect that no longer exists is how a correct control gets broken.
+
 | Route | Row (left→right), measured heights |
 |---|---|
 | `/admin/markets` | search **32** (`h-[32px]` raw input, 12.5px text) · Select xs **36.8** · Select xs **55.5 (wrapped!)** · `btn-xs` Search **32** · `btn-xs` Refresh **32** |
@@ -121,6 +151,30 @@ first on every list page.
 
 ---
 ### DG-A-05 · P1 — Selects wrap their value to a second line and grow past their row
+> ## ⛔ CLOSED 2026-08-29 — NO CHANGE. THIS ROW ASKS TO REVERSE A DATED RULING, AND ITS FIX IS ILLEGAL.
+> **The prescribed fix — “`select.tsx` trigger gets `truncate whitespace-nowrap min-w-0`” — must
+> not be applied.** `scripts/ui-consistency.test.mts` carries an **error-severity** rule,
+> `combobox-trigger-truncates`, whose subject is exactly this: *“a dropdown's CLOSED trigger is the
+> only place an operator reads what they chose, so `truncate` there is not a layout fix — it is
+> data loss.”* It was measured on production hiding the deciding word of an Up & Down winning band
+> (`Smallest possible (reco…`) and 162px of a 307px label on the control that decides what winning
+> MEANS for a chain already holding stakes.
+>
+> **The kit has already answered this question, deliberately and in writing** (`select.tsx:285-318`):
+> *“`min-h-*`, NOT `h-*` — E-98 … A floor lets a short label keep the exact height it has today and
+> lets a long one grow instead of vanish”*, and — naming this row's own symptom — *“(rightly — E-98:
+> wrapping is honest, clipping is data loss) the control GREW to 56px and sat beside 32px
+> neighbours.”* **Growing is the designed behaviour.** A tall trigger is the control telling the
+> truth; a short one would be it hiding the answer.
+>
+> **Re-derived on production 2026-08-29:** the “55.5 across several routes” does not reproduce —
+> `55.5` occurs nowhere. Exactly **two** selects exceed their rung, and both are a long label meeting
+> a narrow trigger, i.e. a CALL-SITE width question for step 3, not a kit defect:
+> `/admin/config`'s fee-model (**66px**, both widths) and `/admin/ai-usage`'s model select
+> (**66.3px at 390 only**; 32px at 1440, where it has 1039px of width).
+>
+> The only honest residue is the report's own aside — a two-line trigger *“riding 9px above its
+> siblings”* — which is row **alignment** at the call site, not the control's height. Step 3.
 - **Measured:** “All categories” **55.5px** (`/admin/markets`, `/admin/resolver-queue`), “All statuses” 55.5 (`/admin/ai-usage`), config fee-model Select **66px**, ai-usage model Select **74.3px at 390**. Screenshot `markets-1440.png` shows the two-line trigger riding 9px above its siblings; its floating label rides with it (§7 ai-usage).
 - **Fix (kit):** `select.tsx` trigger gets `truncate whitespace-nowrap min-w-0` on the value span; callers give the narrow ones `min-w`.
 - **Guard:** measure drive — any `[role=combobox]` height > rung + 4px fails.

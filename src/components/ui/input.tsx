@@ -56,7 +56,14 @@ export function sanitizeNumericInput(raw: string, opts: { decimal: boolean; nega
 // against the 36 / 44 / 48 contract above — i.e. every un-sized field in the
 // product was 96px tall. ⛔ Never "tidy" these back into h-9 / h-11 / h-12.
 const heightCls: Record<NonNullable<Props["size"]>, string> = {
-  sm: "h-[36px]",
+  // ⭐ DG-A-04 (DESIGN-GATE-2026-08-28) — WAS `h-[36px]`, AND 36 IS ON NO RUNG. The ladder is
+  // 32/40/44/48/56 (`--h-control-*`), so `sm` was the one field height in the kit that named a
+  // number nobody had decided; 45 instances measured on production. Ali's ruling 2026-08-29:
+  // it takes `--h-control-sm` (40), not the 32 dense-admin rung — most call sites are FORMS
+  // (bonuses, invites, poll editing) rather than dense rails, 40 is `--tap-min` so it stays
+  // finger-safe, and where these sit beside a `btn-sm` (the ai-polls batch row) the step of 4px
+  // closes to flush. ⚠️ Read the TOKEN, like `md` below, so the rung cannot drift from the ladder.
+  sm: "h-[var(--h-control-sm)]",
   md: "h-[var(--h-input)]",   // 44px — the kit input token, globals.css
   lg: "h-[48px]",
 };
