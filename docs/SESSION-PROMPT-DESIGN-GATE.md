@@ -36,6 +36,20 @@ rendered platform.”*
 >   correct answer: a detector that reads a legitimate page as poison silently shrinks the
 >   population it protects. Both directions are proved now.
 >
+> ### ⭐ ALI DELEGATED THE PER-SITE DESIGN CALLS (2026-08-29) — AND HOW TO USE THAT
+> His words: *"for design calls you decide, based on the overall design of the platform and
+> perfection and what you see better; I care about consistency and being perfect."*
+> So the 14 off-ladder amounts, the 139 off-ladder eyebrows and the above-floor sizes do **not**
+> need to wait for him. ⛔ **But the method is LAW FIRST, taste only where no law decides** —
+> the last time he delegated a ruling in these words, `DESIGN_AUTHORITY` had **already answered
+> it**, and one of the two options being offered to him contradicted a written law (§T2). That
+> is now **four** register items that asked to reverse a dated, measured decision.
+> ▶ For each site, in this order: ① does a law decide it (§T4's 12.5px floor · §T3's blessed
+> tier · §M4 · §A2 · §A5)? ② does a dated ruling in the file itself decide it? ③ only then is it
+> taste — and then pick the value that makes the site match its NEIGHBOURS, because consistency
+> is the thing he named. ⚠️ And a taste call still needs a screenshot; "I decided" is not a
+> measurement.
+>
 > ### 📈 WHERE THE TYPE LADDER STANDS
 > **Adoption 19.8% → 50.5%** — more than half the product's type is on the closed scale, and
 > §4 has gone 1809 → 1109. ⭐ **§3 held at 763 through every sweep**, which is the proof that
