@@ -21,6 +21,11 @@
  * ⚠️ `load`, NOT first-byte. These are server-rendered pages; the number the register quoted, and
  * the number an officer actually waits through, is `loadEventEnd`.
  *
+ * ⚠️ THE ADMIN SESSION DIES MID-DRIVE, NON-DETERMINISTICALLY (see the programme door's trap list).
+ * It cost this script its CONTROL on its second run — `/admin/finance` measured the sign-in page,
+ * so the run could not say whether the server was warm. A guard that loses its control has lost
+ * the thing that makes its other numbers mean anything, so it re-signs-in and retries.
+ *
  *   node scripts/admin-load-budget.mjs [baseUrl]      (default: production)
  */
 import { chromium } from "playwright";
@@ -43,9 +48,20 @@ const ROUTES = [
 const SAMPLES = 2;
 
 const b = await chromium.launch();
-const state = await loginOnce(b, "admin");
-const ctx = await b.newContext({ storageState: state, viewport: { width: 1440, height: 1000 }, colorScheme: "dark" });
-const p = await ctx.newPage();
+const MAX_SIGNINS = 6;
+let ctx = null;
+let p = null;
+let signins = 0;
+let resignins = 0;
+async function freshSession() {
+  if (ctx) await ctx.close().catch(() => {});
+  if (signins >= MAX_SIGNINS) throw new Error(`refusing sign-in #${signins + 1}`);
+  signins++;
+  const state = await loginOnce(b, "admin");
+  ctx = await b.newContext({ storageState: state, viewport: { width: 1440, height: 1000 }, colorScheme: "dark" });
+  p = await ctx.newPage();
+}
+await freshSession();
 
 const failures = [];
 const rows = [];
@@ -58,7 +74,13 @@ for (const r of ROUTES) {
       await p.goto(`${BASE}${r.path}`, { waitUntil: "load", timeout: 180_000 });
       // ⛔ A revoked session renders the sign-in page at HTTP 200 — and it is FAST, so it would
       // read as a spectacular improvement. Never score it.
-      if (/\/auth\//.test(p.url())) { failures.push(`${r.path}: SESSION REVOKED — measured the sign-in page`); break; }
+      if (/\/auth\//.test(p.url())) {
+        // ⛔ Never score it: the sign-in page is FAST, so a revoked session reads as a
+        // spectacular improvement. Re-sign-in and take this sample again.
+        if (resignins < MAX_SIGNINS - 1) { resignins++; await freshSession(); i--; continue; }
+        failures.push(`${r.path}: SESSION REVOKED — measured the sign-in page`);
+        break;
+      }
       const ms = await p.evaluate(() => {
         const nav = performance.getEntriesByType("navigation")[0];
         return nav ? Math.round(nav.loadEventEnd) : null;

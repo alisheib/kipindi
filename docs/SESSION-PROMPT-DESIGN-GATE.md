@@ -7,8 +7,79 @@ rendered platform.”*
 
 ## ⏭️ RESUME AT — session 77 handover (2026-08-29)
 
-> **Step 1 is 11 of 11 — CLOSED.** Read this block, then the PLANNER at the bottom (every row carries its
-> own evidence and its own commit). Everything below was driven on production, not on localhost.
+> **Step 1 is CLOSED, 11 of 11. Step 2 is UNBLOCKED and part-shipped. DG-A-01 is 19× faster.**
+> Read this block, then the **RE-DERIVED** section, then the PLANNER. Everything below was
+> driven on production.
+
+### ▶ THE NEXT MOVE, in order
+1. **Finish DG-A-01 — it is 🚢 not ☑.** `/admin/reports` went **137,317 ms → 7,112 ms** but the
+   budget is 5,000. The remaining cost is identified, not guessed: the page calls BOTH
+   `categoryBreakdown` AND `moneyByGame`, and **each reads the entire Position table**, while
+   `/admin/insights` (one of them) returns in **257 ms**. Dedupe the whole-table reads per
+   request — ⚠️ check `reactCache` is safe outside an RSC render first, these are money reads —
+   or take the F-07 answer the file already names. Prove it with `npm run qa:admin-load`.
+2. **Finish DG-A-12 — the table half shipped, the arbitraries sweep did not.** `10.5 / 11.5 /
+   13.5` and the hand-typed `text-[Npx]` census still have to come onto rungs, by ROLE
+   (label → micro/label tier, prose → small/body). ⚠️ **Its acceptance line is the DG-A-23
+   re-measure at 390** — the table change adds **+2.4%** width, which widens an already-scrolling
+   table and can push a just-fitting one into scroll. The 44-route baseline to diff against was
+   captured this session, before the change.
+3. **Then the rest of step 2** — DG-A-11 / DG-P-06 label classes, DG-A-16 card rungs, DG-P-04
+   rhythm. ⛔ DG-A-16 carries an open question the register states itself: §S2 wants stat tiles at
+   `--r-md`; honour it or amend the law, one or the other.
+4. **Then steps 3 and 4**, ⛔ **reading the RE-DERIVED section first** — nine claims do not
+   reproduce and eight more contradict a guard.
+
+### ⭐ THE RULING ALI DELEGATED, AND WHY IT WAS NOT HIS TO MAKE
+He said *"you choose, based on consistency rules and what makes the platform perfectly
+professional."* `DESIGN_AUTHORITY` had already answered: §T1 closes the scale, and §T2 applied
+that law to this exact shape — *"move the question onto the ladder, **never** re-tune the token to
+match it."* Minting `--type-table: 12.5px` is the forbidden move; §T4 also makes 12.5 the reading
+FLOOR. **So `.admin-tbl` → `--type-small` (13) and `thead` → `--type-label` (9.5).** DG-A-12's
+framing as "Ali's call, one of two" was itself the error — one option contradicted a written law.
+**That is now four register items that asked to reverse a dated decision** (DG-A-05, DG-A-07,
+DG-A-23 in step 1; DG-A-12's framing here).
+
+### 🔴 THE THEME OF THIS SESSION: INSTRUMENTS THAT REPORTED ON NOTHING
+Four, and every one printed a plausible result:
+- **The measurement rig wrote the sign-in page as data.** A 44-route drive returned HTTP 200
+  everywhere and looked fine; `redo.cjs` then deleted **30 of 44 records**. `/admin/transactions`
+  had been recorded with `tbl=0` — a table page with no table. ⛔ **`rec.finalUrl` was already
+  captured and nothing read it until after the fact.** `measure.mjs` now detects, re-signs-in,
+  retries, prints the count and exits 3 on an unrecoverable record. The re-run: **44 routes,
+  1 sign-in, 0 revocations, 42 OK.**
+- **`test:orphans` could not see its own programme's instruments.** It scanned the top level of
+  `scripts/` only while claiming to cover the tree; 113 files lived below it, **47 unrun and
+  undeclared**, including all of `scripts/design-gate/`. Now recursive; the rig is `qa:dg-*`.
+- **`ui-consistency`'s `hardcoded-pill-active` rule matches the token's literal text**, so it
+  finds copies and never divergence — which is why it missed a sidebar fill that had drifted to
+  a different hue AND alpha from `--pill-active`.
+- **`type-scale.test.mts:542` advises a fix below its own floor** (`text-label` 12px /
+  `text-caption` 11px against a 12.5 floor), and §3 cannot see semantic-class prose — so the
+  advised fix lowers the ratchet while leaving 100 admin `<p>`s at 11px. **Settle this before
+  DG-A-14** or the guard rewards the wrong fix.
+
+### ⚠️ AND TWO DIAGNOSES I WROTE DOWN WERE WRONG
+The admin session dies mid-drive **non-deterministically**. I first blamed per-cell browser
+contexts (the next run disproved it), then `/admin/live` (the run after loaded it four times and
+lost nothing). ⛔ **Each was a correlation from one run recorded as a cause.** Do not diagnose it
+a third time — **detect it**: every admin drive now re-signs-in on `/auth/` and prints the count.
+Every revoked page returns HTTP 200 and renders; only the `/auth/` check tells the truth.
+
+### ✅ §4 SOUND control, re-proven this session
+**42 of 44 admin routes: zero horizontal overflow at 390/1440/1920, zero console errors**, on a
+rig that can no longer photograph the sign-in page. The 2 unmeasurable were `/admin/reports` and
+`/admin/insights` — which is the DG-A-01 finding, not a gap in the control.
+
+### 🖥️ A PARALLEL SESSION IS LIVE ON THIS MACHINE
+`C:\kipindi-lane-sentinel` on `lane/sentinel-source-pin`. ⛔ Never `git checkout` in another
+tree; `git fetch` before every push. It filed `E-249..E-253` this session.
+
+### 🔴 STILL BLOCKED, AND ONLY BY ALI
+**All six player/officer QA secrets are rejected by production**; only `QA_ADMIN_PASSWORD` works.
+That blocks DG-P-02's re-measure and makes **DG-P-09 unreprovable** — no `auth-login` record was
+retained, and the register's `auth-flash.tsx` hypothesis is refuted (227 client files scanned,
+zero conditional hooks). ⭐ Use `SURFACE=player ANON=1` for the 17 public routes meanwhile.
 
 ### 🔴 READ THIS BEFORE YOU FIX ANYTHING — the registers' numbers are stale
 DG-A-04's headline table says `/admin/markets` renders `Select 36.8` and `Select 55.5 (wrapped)`.
@@ -255,9 +326,9 @@ only ☑ when its gate line is GREEN **re-measured on production**, not on local
 | **DG-A-17** | 1 | P2 | sortable headers are 64px in 37px header rows; the sort colour is dead CSS | `admin-sort.tsx · globals.css `.admin-tbl th[aria-sort]`` | ☑ | `0d749dba` — ✅ **re-measured on production 2026-08-29: sortable header cells 64.5 → 44.5**, and on /admin/audit + /admin/aml the whole header row is now one height. | ⏳ Re-derived 2026-08-29: **64.5px confirmed** (audit/aml/ai-usage) and the dead tint confirmed (th computes brand-300, the anchor inside computes `--text`). ⚠️ **Two register claims are WRONG:** on audit + aml the PLAIN headers are also 64.5 (same row, they stretch) — the 35.5 mismatch is only on ai-usage's sibling tables; and **`/admin/candidates` has ZERO sortable headers**. ⛔ Fixed by removing the th's redundant vertical padding, NOT by dropping `min-h-[44px]` — that is the tap target |
 | **DG-A-23** | 1 | P1 | tables clip with no affordance — ⚠️ **at 1440 too**, not only 390 | `scroll-x.tsx · globals.css `.scrollx`` | ☑ | `8c72f591` | ✅ **2026-08-29 production, `/admin/audit`**: `.scrollx` present, `scrollbar-color` = `--border-control`, `scrollbar-width: thin`, on a wrapper measuring **1282 > 1158 — i.e. the affordance is painted on the exact table that was cut mid-token.** ⛔ The register's fix was half a NO-OP (Blink already painted a thumb; it was under the contrast floor at 2.23, not missing) and half a HAZARD (a mask clips absolutely-positioned panels = DG-A-03's defect). Guarded by `test:contrast` at 3.18 |
 | **DG-A-11** | 2 | P1 | 70+ uppercase micro-label recipes — the "fonts everywhere" feeling, quantified | `three label classes` | ☐ | — | — |
-| **DG-A-12** | 2 | P1 | type ladder not in force: 24 sizes; console body size on no rung — ⚠️ ALI'S RULING GATES THIS | `globals.css tokens` | ☐ | — | — |
+| **DG-A-12** | 2 | P1 | type ladder not in force: 24 sizes; console body size on no rung | `globals.css:3804` | 🚢 **table half SHIPPED** | `78586808` | ⭐ **RULING MADE 2026-08-29 — and it was never Ali's to make.** He delegated it (*"you choose, based on consistency rules"*), and `DESIGN_AUTHORITY` §T1 (*the scale is closed*) + §T2 (*"move the question onto the ladder, **never** re-tune the token to match it"*) already settle it: minting `--type-table` is the move §T2 forbids by name, and §T4 makes 12.5 the READING FLOOR, so a rung there collides a size with a floor 0.5px from `--type-small`. **`.admin-tbl` → `var(--type-small)` (13); `thead` → `var(--type-label)` (9.5, §T3's uppercase-tracked tier; `--text-subtle` measured 7.52:1 so the smaller rung costs no contrast).** ⛔ **NOT 1,376 edits — ONE declaration** that 1,376 cells read; the register's framing made the cheap option look expensive. 📐 Measured locally on a real 7-column table: **width 824→844 (+2.4%), body row 44→45, header row 36→35, total 385→390.** ⚠️ **Acceptance is the DG-A-23 re-measure at 390** — +2.4% widens an already-scrolling table and can push a just-fitting one into scroll. ☐ The arbitraries sweep (10.5/11.5/13.5 → rungs) is the REST of this row and is not started |
 | **DG-A-16** | 2 | P2 | card/panel system: three paddings, two dead classes and an inversion | `card rungs` | ☐ | — | — |
-| **DG-A-18** | 2 | P2 | shell details, once, for all 44 pages | `admin shell` | ☐ | — | — |
+| **DG-A-18** | 2 | P2 | shell details, once, for all 44 pages | `admin-sidebar-nav.tsx · admin-mobile-nav.tsx · admin-shell.tsx` | 🚢 **3 of 5 SHIPPED, 2 REFUTED** | `b5f92656`→`e84a8a5c` | 🔴 **The sidebar's active fill had DIVERGED from its own token** — inline `oklch(40% 0.12 268 / 0.5)` against `--pill-active`'s `oklch(40% 0.12 262 / 0.35)`: a different HUE *and* alpha for one semantic. ⛔ `ui-consistency`'s `hardcoded-pill-active` rule could not see it — that rule matches the token's LITERAL TEXT, so it finds copies and never divergence. ✅ fill → `var(--pill-active)` · row height `py-2`=**42** (off both rungs, every row of every page) → `min-h-[var(--h-control-sm)]` 40 · badge → kit `<CountBadge>` on desktop **and** mobile, which `count-badge.tsx`'s own header names as two of the four implementations it was written to consolidate and never reached — they had a 4px corner and **no count cap**, while `approvals` = kyc+aml+sof can pass 99 · brand link `50pick · admin` gains a hover (the probe's only universal miss). ⭐ `test:design-frozen`'s ratchet SHRANK 2→0 for that file — the gate itself demanded it. ⛔ **TWO CLAIMS REFUTED, no code:** the *"no `<main>` landmark on any admin route"* headline is **stale** — it exists at `admin/layout.tsx:224` with a skip link, and `qa:landmark-seal` already asserts one per page; and *"four trackings in one row"* is **three** (0.10/0.14/0.18em) |
 | **DG-P-04** | 2 | P1 | vertical rhythm: seven section gaps across sibling pages, plus a −1px overlap | `section-rhythm` | ☐ | — | — |
 | **DG-P-05** | 2 | P1 | 33 font sizes — ⚠️ SAME ALI RULING as DG-A-12; they share the tokens | `type ladder` | ☐ | — | — |
 | **DG-P-06** | 2 | P1 | ~90 uppercase micro-label recipes | `label classes` | ☐ | — | — |
@@ -272,7 +343,7 @@ only ☑ when its gate line is GREEN **re-measured on production**, not on local
 | **DG-P-08** | 3 | P1 | truncation without disclosure, and one clipped support email | `truncation` | ☐ | — | — |
 | **DG-P-10** | 3 | P2 | status chips: the board still hand-types its colours (B11's named remainder) | `chip migration` | ☐ | — | — |
 | **DG-P-11** | 3 | P2 | active/current markers stop at the top bar | `aria-current reach` | ☐ | — | — |
-| **DG-A-01** | 4 | P0 | /admin/reports takes ~88 s to load; timed out at 60/90/240 s | `src/app/admin/reports/page.tsx` | ☐ | — | — |
+| **DG-A-01** | 4 | P0 | /admin/reports takes ~88 s to load; timed out at 60/90/240 s | `src/lib/server/report-money.ts` (⛔ NOT `reports/page.tsx`) | 🚢 **19× FASTER, still over budget** | `d74d0708` | 🔴 **RE-DERIVED WITH A NEW GATE (`npm run qa:admin-load`) AND THE FILED CAUSE IS WRONG.** The register blames *"settlement-fee/report-pack reads render 12,882 rows' aggregates"*; the report pack is a single period read and `getAuditPage` is an in-memory ring-buffer slice with no I/O. Fixing what it named would have moved nothing. **The real defect was an `await` inside a loop over every market row in `categoryBreakdown()` — ~13,000 SEQUENTIAL Prisma round-trips.** ⛔ And never one page: `/admin/insights` calls the same function, which is why BOTH have failed `redo.cjs` on every drive — not flaky, too slow to finish rendering. 📐 **MEASURED, before → after, on production:** `/admin/reports` **137,317 ms → 7,112 ms (19×)**; `/admin/insights` **87,419 ms → 257 ms (340×)**; control `/admin/finance` 2,660 ms. ⭐ **The control earned its place twice:** on the post-deploy run it read 4,561 ms and the guard REFUSED the result in words — cold container, not the pages — which is why the numbers above are from a re-run on a warm server. ⛔ **NOT CLOSED: 7,112 > the 5,000 ms budget, and the remaining cost is identified.** `/admin/reports` calls BOTH `categoryBreakdown` AND `moneyByGame`, and **each does its own `positionStore.values()` — the entire Position table, twice per render**, plus `marketStore.values()` and an un-memoised `listMarkets`. `/admin/insights` calls one of them and returns in 257 ms; that gap IS the duplicate scan. ▶ **NEXT:** dedupe the whole-table reads per request (`reactCache`, as `admin-shell.tsx:84` already does for `getSidebarBadges`) — ⚠️ verify it is safe outside an RSC render first, since these are money reads called from route handlers too — or take the F-07 answer the file already names, *"a full SQL GROUP BY over the join"* |
 | **DG-A-20** | 4 | P2 | loading skeletons are the wrong shape for what they replace | `skeletons` | ☐ | — | — |
 | **DG-A-22** | 4 | P2 | layout balance | `—` | ☐ | — | — |
 | **DG-P-09** | 4 | P1 | /auth/login signed-in redirect throws React error #310 — ⚠️ root cause is a HYPOTHESIS, re-prove first | `auth-flash.tsx?` | ☐ | — | — |
