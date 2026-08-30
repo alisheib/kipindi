@@ -389,6 +389,19 @@ console.log(`\n${defects === 0
   ? `✓ every rail MEASURED speaks ONE language (${measured} of ${SURFACES.length} surfaces reached)`
   : `🔴 ${defects} of ${measured} surface(s) measured still diverge`}`);
 if (defects > 0) process.exitCode = 1;
+/* 🔴 ZERO SURFACES REACHED IS A SKIPPED RUN, NOT A CLEAN ONE — and this scan exited 0 over
+   exactly that on 2026-08-30 (DG-A-06's verification). Its BASE defaults to
+   `http://localhost:3009`; nothing was listening; every navigation returned
+   ERR_CONNECTION_REFUSED or `<html lang="null">`; the last line read
+   "✓ every rail MEASURED speaks ONE language (0 of 8 surfaces reached)" and the process
+   returned SUCCESS. ⛔ The line was even honest about the number — and it still passed,
+   because nothing tested it. That is this programme's oldest failure wearing a new hat: a
+   gate that reaches nothing must go RED, or the next session reads a green run as evidence. */
+if (measured === 0) {
+  console.log(`🔴 ZERO surfaces reached at ${BASE} — this is a SKIPPED RUN, not a pass.`);
+  console.log(`   Pass a base as the first argument (or set BASE=…) — e.g. \`npm run qa:filter-scan -- https://50pick.tz\`.`);
+  process.exitCode = 3;
+}
 if (signInFailed) {
   console.log(`🔴 a sign-in was requested and failed — the four authed rails were NOT measured`);
   process.exitCode = 1;
