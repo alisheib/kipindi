@@ -7,88 +7,147 @@ rendered platform.”*
 
 ## ⏭️ RESUME AT — session 81 handover (2026-08-30)
 
-> **DG-A-06 IS CODE-COMPLETE AND GUARDED. IT IS NOT BROWSER-VERIFIED, AND THAT IS THE ONE THING
-> THIS ROW CANNOT BE ALLOWED TO SKIP** — it survived S-07 precisely because a drive looked at an
-> empty queue. Read this block, then THE PLANNER's DG-A-06 row, then the **RE-DERIVED** section.
+> **STEP 2 IS CLOSED. STEP 3 IS THREE ROWS IN.** Read this block, then the **RE-DERIVED
+> 2026-08-30** section (now complete at **17 of 17** rows), then THE PLANNER. ⛔ Every number
+> here was re-derived at HEAD after the last push; where it contradicts the session-80 block
+> below, THIS one is newer.
 >
-> **PLANNER: 20 ☑ · 3 🚢 · 14 ☐** of 37 — re-derived by counting the table, not carried forward
-> (the session-80 block's "16 ☑ · 5 🚢 · 16 ☐" is stale; rows closed after it was written).
+> **PLANNER: 20 ☑ · 3 🚢 · 14 ☐** of 37. `test:all --skip responsive,motion` **273/273**.
+> Last commit: `1b256343`. Working tree clean, `origin/main` level with HEAD.
 >
-> ### ✅ CLOSED THIS SESSION — DG-A-06, the outlined-capsule rails
-> **70 controls · 12 rails · 8 distinct routes.** Four rails converted onto `FilterPill` at the
-> dense (32px) rank: the shared `DateTimeRangeFilter` (**one primitive, 7 admin call sites, 54
-> chips**), `CardSortControl` (**hoisted out of two byte-identical 52-line copies first**, now
-> `src/components/admin/card-sort-control.tsx`), and `/admin/proposals`' queue rail. ⭐
-> `filterPillClass` extracted from `filter-pill.tsx` so the two chips that genuinely cannot be a
-> `<Link>` wear the primitive's own geometry instead of a re-typed copy of it.
-> 📐 **`test:filter-language` 111 → 183 assertions · 8 player + 9 admin rails · 12 discovered ·
-> `red:filter-language` 27/27** (6 new plants). `tsc --noEmit` clean. **`test:all` 273/275** —
-> the two failures are `test:responsive` and `test:motion`, both of which drive a browser at
-> `localhost:3000`, both `ECONNREFUSED`, and both verified failing the same way at HEAD before
-> any edit. ⛔ Nothing in this row touches a motion token, a keyframe or a breakpoint.
-> 📐 **Two ratchets moved and BOTH were lowered in the same commit, because both gates demanded
-> it out loud:** `spacing-scale` **628 → 625** (the three `px-2.5` capsules that converted —
-> ⭐ and the win is smaller than it looks: `FilterPill`'s dense rank writes `px-2.5` too, so the
-> inverted key moved from three call sites into ONE definition site, which is the shape that
-> ratchet wants), and `eyebrow-roles` lost **3 stale declarations** (both `CardSortControl`
-> copies and the window chip) — `test:eyebrow-roles` exits 4 the instant a declaration matches
-> nothing, so a deleted element cannot leave a stale read behind.
-> ⚠️ **AND A THIRD GATE CAUGHT SOMETHING I WOULD NEVER HAVE PREDICTED.** Writing those three
-> deletion notes as `/* … */` in `eyebrow-roles.mjs` took `test:decomment` §5's naive-strip loss
-> for that file from **5,803 to 43,604 characters** and moved its worst-case file into a
-> subdirectory §5.3's own control excludes. The cause is in that file's DATA: one declaration
-> string contains a literal `//`. The notes are line comments now, and say so.
+> **CLOSED THIS SESSION:** **DG-A-11 + DG-P-06** (step 2's last item) · **DG-A-14** ·
+> **DG-A-06** · and **DG-A-13 + DG-A-21 are re-derived at last**, so the RE-DERIVED section
+> covers every open row.
+> 📐 **§3 761 → 755 · §4 935 → 934 · §6 602 → 271 · adoption 58.0% → 58.1% ·
+> `filter-language` 111 → 183 assertions · admin rails 2 → 9 · the §T3 role population
+> 586 → 552.**
 >
-> ### 🔴 THE TWO FINDINGS WORTH CARRYING OUT OF IT
-> · **A guard's widening can widen what counts as SATISFACTION.** My first §6.1 read "imports
->   EITHER `filter-pill` or `datetime-range-filter`", and `red:filter-language`'s existing
->   `admin-rolls-its-own` plant went **GREEN**: a rail that had dropped its `FilterPill` import
->   still satisfied the rule through a module it does not use. §6.1 is now per-control. ⛔ The
->   harness caught this within the hour; the source suite never would have.
-> · **The prescribed guard fix — "widen `OLD_IDIOM` to `rounded-pill`" — does not survive
->   measurement**, and the minimal version of it would have gone green over the very rails this
->   row exists to find (both write `border` LAST). **The pill is the shared shape of this
->   product**; 43 hits tree-wide on shape alone. §6.9 is now keyed on the DEFECT — an interactive
->   capsule that states a binary state at the call site — with 4 named exemptions keyed on the
->   CONTROL rather than the file, and §6.10 as their staleness control.
+> ### ✅ VERIFIED ON PRODUCTION AFTER EACH DEPLOY — not asserted
+> · **anon player drive** — 17 routes, 0 sign-ins, **`ovf390=no` and `err=0` on every one**,
+>   which is the real test of a sweep that moved 166 type sites. `/markets/[id]` reports h1=36.
+> · **`qa:dg-shell`** — 40 routes · 77 probes · 0 re-sign-ins · **0 failing**, drawer rows all 44.
+> · **admin drive (`qa:dg-measure`)** — **44 routes · 1 sign-in · 0 revocations · 0
+>   unrecoverable · `ovf390=no` and `err=0` on every one**, after DG-A-06 moved 70 controls.
+> · **`qa:dg-type --bench eyebrow`** — green on the live sheet, **with its control firing**.
+> · **`qa:filter-scan https://50pick.tz`** — every rail MEASURED speaks ONE language, 4 of 8
+>   surfaces reached, and it SAYS the other four are authed rather than counting them clean.
 >
-> ### 📏 THE GEOMETRY *IS* MEASURED — in Chromium, over the REAL compiled stylesheet
-> ⛔ Not asserted, and not from the source. `next dev` renders an empty admin body on this
-> machine and `next start` login is unsolved, so this used the documented local route: the served
-> sheet (`.next/dev/.../[root-of-the-server]…css`) + the exact markup the components now emit,
-> measured with `getBoundingClientRect()` at 1440. ⭐ **Its first assertion is a CONTROL that
-> every utility the new markup needs is present in that sheet** — a stale sheet would have made
-> the whole measurement a statement about a page that does not exist.
-> · **BEFORE — the three recipes reproduce their claimed heights exactly: window `33` · sort `24`
->   · queue `22.5`.** The "three sizes of one capsule" finding was a measurement, not a claim.
-> · **AFTER — 7 chips in one rail, ONE distinct height: `32`.** Radius `999px` on all seven;
->   unselected border `rgba(0,0,0,0)` (text on transparent), selected `border-brand-400` with
->   `.kp-fchip[data-on]`'s fill and halo. Screenshot inspected.
-> ⚠️ **THIS IS GEOMETRY, NOT THE ROUTE.** It proves the rail is one size and one idiom; it does
-> NOT prove the rails render, that the sort links carry the right hrefs, or that the queue rail
-> filters. Those still need a real drive.
+> ### ⭐ STEP 2 CLOSED — §T3's SECTION EYEBROW, AND THE POPULATION WAS THE WHOLE JOB
+> §T3 ruled 0.14em on 2026-08-30; what remained was the sweep, and the sweep is hard because
+> **§T3 governs ONE of six roles that all render as uppercase mono tracked type and nothing a
+> regex can see separates them.** So all **586 sites were READ**, in three passes — classify, a
+> reader briefed to REFUTE, then a third pass over every control label once the enclosure test
+> had to be sharpened. **23 calls overturned on pass 2, 12 more on pass 3.**
+> 🔴 **§T3's OWN TABLE WAS WRONG AND IS CORRECTED FROM THE READ:** not *"~410 · 41 · 3 · 5"* but
+> **308 · 102 · 5 · 11**, plus **two families it never named** — 57 non-interactive STATUS CHIPS
+> and 55 DATA VALUES / in-flight readouts / count annotations. ⛔ A sweep keyed on the dressing
+> would have moved 112 sites the rule does not govern. Its two small counts failed the same way:
+> type-to-confirm was grouped by VALUE where the table claims to group by ROLE, and celebration
+> missed the OG-image routes and the transactional email because a scan of pages cannot see them.
+> ⭐ **THE ENCLOSURE TEST IS SHARPENED, AND IT DECIDED FOUR SITES.** *"A `<span>` inside a
+> `<button>` is a control label"* read as *any interactive ancestor wins* makes a CARD'S OWN
+> `<h3>` a control label, because `market-card.tsx:493` wraps the whole card in a `<Link>`. A
+> CONTROL is one target whose accessible name IS the string; a **NAVIGATION WRAPPER** leaves the
+> captions inside it their own roles.
+> ⭐ **AND THE VALUE IS WRITTEN ONCE**, as `.eyebrow` in `globals.css` beside `.amount`. ⛔
+> **Converging nine values onto one would have left §6 at 602 forever** — what it counts is a
+> value written at a CALL SITE, so a class is the only move that can take it to zero. The six
+> CSS-side eyebrows join the same rule rather than restating it (§0a), and
+> `.board-section-head` / `.board-section-eyebrow` are **DELETED**: a second definition of the
+> section eyebrow at 0.16em with zero consumers since 2026-08-13, **declared dead in
+> `dead-css`'s baseline for seventeen days**. ⭐ A declared-dead list is a list of things nobody
+> deleted.
 >
-> ### ⏳ WHAT THE NEXT SESSION MUST STILL DO BEFORE TICKING "RE-MEASURED"
-> 1. Drive `/admin/finance` and `/admin/ai-polls` on production and confirm the rails render.
-> 2. Drive the sort rail **with a NON-EMPTY pending queue** on `/admin/ai-polls` *and*
->    `/admin/candidates` — seed a poll and a candidate first. ⛔ An empty-queue screenshot is
->    exactly the evidence that let this defect ship for two days.
-> 3. Drive `/admin/proposals` with at least one item in each of `all/review/approved/flagged`.
-> ⚠️ No AUTOMATED gate measures any of this: `filter-language-scan.mjs` is player-only, and a
-> source assertion cannot see a rendered height. The harness above is evidence, not a gate — it
-> reads a `.next` dev artefact that is not in git, so it would be unrunnable on a fresh clone,
-> and a gate that cannot run is worse than none. **An admin arm on `filter-language-scan.mjs` is
-> the real answer, and it is not written.**
+> ### 🔬 THE NEW GATE — `npm run test:eyebrow-roles`, AND IT IS IN `test:all`
+> A gate not in the pipeline is not a gate. It holds one invariant: **every uppercase-and-tracked
+> site in `src/` either carries `.eyebrow`, or its role has been READ and written down**
+> (`scripts/design-gate/eyebrow-roles.mjs`, 552 sites). ⛔ Its declarations are keyed on the
+> line's CONTENT plus what the element renders — **a `:line` key is correct for exactly one
+> commit**, and a gate that reports itself stale on every unrelated edit gets deleted. Proved RED
+> both ways: a NEW undeclared uppercase site exits 5, and so does an eyebrow that loses its class.
 >
-> ### ▶ THREE FOLLOW-UPS OPENED, DELIBERATELY NOT FOLDED IN
-> **(a)** Widen §3.6 to the player tree — costs 4 named player exemptions (`conviction-dial`
-> dial-lock, `position-share`, `share-button`, wallet `amount-field`) and touches a money
-> surface, so it is Ali's to see on its own. **(b)** `src/app/notifications/page.tsx` is a PLAYER
-> rail correctly built on `FilterPill` that carries **no `data-filter-rail` hook and is not in
-> `SURFACES`** — correct today by luck, not by gate, while `live-notifications-page.mjs` already
-> addresses its chips by `data-chip`. **(c)** The pill-language FORM pickers (`poll-actions.tsx`,
-> `admin-proposals-client.tsx` ×2) — a defensible row given `create-form.tsx` and `profile/kyc`
-> already use the language for pickers, but they are not filters and are exemptions today.
+> ### ✅ DG-A-14 — THE INSTRUMENT WAS KEYED ON THE DRESSING
+> §3 exempted *"an UPPERCASE tracked microlabel"* — the DRESSING — so **48 sentences** sat 2–4px
+> under §T4's floor counted as labels, among them the arming instruction for an irreversible
+> settlement and a promise to the player that their P&L will not move again. ⛔ **No text test
+> decides it, and two were measured:** the register's own *">60 characters"* misses **92%** of
+> them, and a word count cannot separate a bilingual LABEL from a sentence. So §3 imports the
+> **§T3 ROLE READ** — one list, no second home (§0a). ⚠️ §3 rose to 804 before it fell: **the
+> population grew, not the defect**, the third time this ratchet has been re-based upward and
+> the third time the BLESSING was wrong rather than the product.
+> 🔴 **9 OF THE 48 CAME OFF THE RATCHET WITHOUT A GLYPH MOVING.** A fixer refused 12 as
+> misclassified; accepting a refusal deletes a site from a ratchet for FREE, so a third reader
+> adjudicated all 12 with the brief that upholding is the costly answer — **8 upheld, 3
+> overturned, 1 a different defect**. ⭐ *"All figures final"* is not a noun phrase but a
+> verbless clause, and only ENGLISH can elide the copula: Swahili writes it out (*"Takwimu zote
+> **ni** za mwisho"*), so §A5's longest population reads a five-word sentence in 10px caps.
+>
+> ### ✅ DG-A-06 — THE AUDIT'S POPULATION WAS THE DEFECT, AND SO WAS THE GUARD'S
+> The register's rails were already converted by S-07. What survived was **70 controls over 12
+> rails and 8 routes**, invisible because `CardSortControl` sits behind `{queue.length > 0 && …}`
+> and an empty production queue renders nothing. §6.6 was **re-keyed BEFORE any rank was passed**
+> — and the trap was TWO reds, not one — then proved falsifiable: dropping one rank gives
+> *"2 dense of 3 controls"*, so it did not widen into a tautology.
+> 🔴 **AN ADVERSARIAL PASS THEN FOUND FOUR THINGS THE CONVERSION ITSELF INTRODUCED** (`23ca440f`):
+> ① §6.7 **convicted an innocent `<input>`** — its subject was the whole FILE, harmless over two
+> files and a landmine over nine; ② the sort rail's `data-chip` **named no real query param and
+> collided across the two rails one page renders**; ③ the "Custom" chip **lost `aria-pressed`**
+> (`aria-expanded` says the panel is open, not that a custom window is in force — §A4 forbids
+> colour as the only signal); ④ **three ratchets were left ABOVE what the tree already reached**.
+> ⭐ Slack is not safety, and the suite passes either way — only re-deriving all three found it.
+>
+> ### ⛔ THE THEME, THREE MORE INSTRUMENTS THAT REPORTED ON NOTHING — TWO OF THEM MINE
+> · **`qa:dg-shell` reported a PRODUCT defect that did not exist.** `/admin/totp-verify` printed
+>   *"NO `<main>` — the landmark is gone"*. The page is fine: it REDIRECTS an already-verified
+>   admin to `/admin`, and at `waitUntil:"load"` the seal was reading the EMPTY pre-redirect
+>   document. It only ever checked `/auth/`, so every other redirect was invisible. ⚠️ It also
+>   means session 79's *"40/40"* was a FLAKE that settled in time. Now: it waits for the document,
+>   compares the LANDED url, and **names the one route it cannot reach** instead of counting it
+>   clean — 39 measured, 1 named.
+> · **`qa:filter-scan` EXITED 0 HAVING REACHED ZERO SURFACES.** Its BASE defaults to
+>   `localhost:3009`; with nothing listening it printed *"✓ every rail MEASURED speaks ONE
+>   language (0 of 8 surfaces reached)"* and returned success. The line was honest about the
+>   number and it still passed. Zero surfaces now exits 3.
+> · **My own census counted 19 COMMENT lines as type sites**, by matching the word "uppercase"
+>   inside JSDoc. Everything decomments now — line-preservingly, so `:line` stays true.
+> · ⭐ **And the eyebrow bench found two bugs in ITSELF on production:** it compared an `em`
+>   value across two font sizes (0.14em is 2.1px at 15px and 1.4px at 10px — they can never be
+>   equal), and its control probed `sm:tracking-[0.3em]`, a class **Tailwind never emitted**
+>   because nothing in the tree writes one. A control built on a class that does not ship proves
+>   nothing.
+>
+> ### 🔴 TWO BUGS IN MY OWN SWEEP, BOTH CAUGHT BY READING THE DIFF BEFORE IT SHIPPED
+> The "add the class" branch inserted it before the first literal `uppercase` on the line —
+> which in an inline style is the VALUE of `text-transform`. It wrote
+> `text-transform: eyebrow uppercase` into **five sites, three of them in the transactional
+> email**: invalid CSS, so those elements would have **stopped being uppercase**. And a class
+> cannot reach an inline `letterSpacing` at all, so it would have been inert on both `AdminKpi`
+> captions. ⛔ **A sweep needs a write mode per site shape, and must refuse the shapes it cannot
+> write.**
+>
+> ### ▶ WHAT IS LEFT, AND THE ORDER I WOULD TAKE IT
+> **STEP 3 (7 rows):** `DG-A-08` · `DG-A-13` · `DG-A-21` · `DG-P-03`'s four page-level h1s ·
+> `DG-P-07` · `DG-P-08` · `DG-P-10` · `DG-P-11`.
+> **STEP 4 (5 rows):** `DG-A-20` · `DG-A-22` · `DG-P-12` · `DG-P-13` · `DG-P-14`.
+> **🚢 and NOT closable this session:** `DG-A-12` / `DG-P-05` (the above-floor long tail is a
+> per-site design call, and 2 money sizes are authed-blind).
+> **🔴 BLOCKED ON ALI ONLY:** `DG-P-02` and `DG-P-09` — all six player/officer QA secrets are
+> rejected by production; only `QA_ADMIN_PASSWORD` works.
+> ⛔ **DO NOT START STEP 5 (DG-S-01…07) until 1–4 close. ⛔ Do not start Maswali.**
+>
+> ### ⚠️ THREE THINGS LEFT ON THE FLOOR, NAMED SO THEY ARE NOT LOST
+> · **`ui-consistency` has ONE unlocked baseline improvement** (`numeric-size-utility` on
+>   `notifications-panel.tsx`, 8 → 7). It PRE-DATES this session — the raw match count is
+>   identical at `699887c3` and at HEAD — so it was left rather than claimed. `npm run
+>   test:ui-consistency -- --update-baseline` locks it in.
+> · **`/updown` at 360 reports "every control in the rail is hidden — matched ZERO controls"**
+>   in `qa:filter-scan`, printed as a NOTE that does not fail. That is a per-surface zero-probe,
+>   one level below the one just fixed.
+> · **`/admin/totp-verify`'s landmark is unmeasurable** by any authed drive. It is named by the
+>   seal now; proving it needs an admin with TOTP who has not verified this session.
+
+
+---
 
 ## ⏭️ RESUME AT — session 80 handover (2026-08-29)
 
