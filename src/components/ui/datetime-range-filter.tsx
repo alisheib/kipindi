@@ -175,6 +175,14 @@ export function DateTimeRangeFilter({
             type="button"
             onClick={() => setOpen((v) => !v)}
             aria-expanded={open}
+            /* ⛔ `aria-pressed` STAYS ALONGSIDE `aria-expanded`, AND THEY SAY DIFFERENT THINGS.
+               The FilterPill conversion dropped it and left only `aria-expanded`, which
+               announces whether the from/to panel is OPEN — not whether a custom window is IN
+               FORCE. A screen-reader user could have a custom range applied, the panel closed,
+               and hear nothing distinguishing this chip from the presets beside it, every one
+               of which announces its own state. `data-on` PAINTS it; only `aria-pressed`
+               SPEAKS it, and §A4 is explicit that colour is never the only signal. */
+            aria-pressed={activeId === "custom"}
             data-on={activeId === "custom" || undefined}
             className={filterPillClass({ rank, on: activeId === "custom" })}
           >

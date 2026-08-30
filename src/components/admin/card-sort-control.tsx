@@ -88,7 +88,14 @@ export function CardSortControl({
             rank="dense"
             semantics="tab"
             scroll={false}
-            testId={`sort:${o.field}`}
+            /* ⛔ `testId` IS THE REAL QUERY-PARAM NAME, NOT THE WORD "sort". `filter-pill.tsx`
+               documents the prop as *"axis:value" using the REAL query-param name and value —
+               drivers rebuild a URL from it*, and this page's params are PREFIXED
+               (`pendingsort`, `approvedsort`). A bare `sort:date` would both lie about the
+               param and be AMBIGUOUS: one page renders TWO of these rails, so the two would
+               collide on identical ids and a driver could not tell which it had pressed —
+               which is the same reason `railId` is a prop. */
+            testId={`${sortKey}:${o.field}`}
           />
         );
       })}

@@ -56,6 +56,19 @@ const read = (rel: string) => readFileSync(join(ROOT, rel), "utf8").replace(/\r\
  */
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/^\s*\/\/.*$/gm, "").replace(/\/\/.*$/gm, "");
 
+/**
+ * Every quoted string that reads like a class list — the unit a paint rule is actually about.
+ * ⛔ §6.7 used to test the whole FILE for `bg-bg-overlay … text-text-muted`, which is fine over
+ * two small filter files and a landmine over a nine-file set: on `ai-usage/page.tsx` the pair
+ * appears on a SEARCH INPUT, and the rule convicted it for a chip's crime. A rule that has to
+ * be exempted is a rule that protects nothing, so the subject is the class string, not the file.
+ */
+function classStrings(src: string): string[] {
+  return [...src.matchAll(/["'`]([^"'`\n]{6,400})["'`]/g)]
+    .map((m) => m[1])
+    .filter((s) => /(?:^|\s)(?:flex|inline-flex|rounded-|border|bg-|text-|px-|py-|h-|min-h-)/.test(s));
+}
+
 function walk(dir: string, out: string[] = []): string[] {
   for (const e of readdirSync(join(ROOT, dir))) {
     const rel = `${dir}/${e}`;
@@ -562,7 +575,19 @@ for (const f of ADMIN_SURFACES) {
      outlined AND filled, and the selected one switched to `font-bold` in a MONO face — which is
      wider — so choosing a chip changed its own width and shoved every chip after it sideways.
      A filter rail that moves under the cursor as you use it (S-07b). */
-  ok(!/\bbg-bg-overlay\b[^`"]*\btext-text-muted\b/.test(src),
+  /* 🔴 AND THE POPULATION HAD TO BE NARROWED THE MOMENT THE DECLARED SET GREW FROM 2 FILES TO 9
+     (DG-A-06, 2026-08-30). The old subject was the WHOLE FILE: `bg-bg-overlay … text-text-muted`
+     anywhere in it. On a 2-file declared set that was harmless; on `ai-usage/page.tsx` it is a
+     landmine. Demonstrated, not theorised — changing ONE word on that page's SEARCH INPUT
+     (`text-text` → `text-text-muted` at :850, an <input>, nowhere near a rail) turns this
+     assertion RED. A rule that convicts an input for a chip's crime is a rule that gets
+     exempted, and then it protects nothing.
+     ⛔ So the subject is now the CHIP: the pair must appear inside one class string that also
+     names a capsule (`rounded-pill`) or the kit chip class. That is where the defect lives —
+     "every chip outlined AND filled" was always a statement about a chip. */
+  const filledChip = classStrings(src).some((cls) =>
+    /\brounded-pill\b|\bkp-fchip\b/.test(cls) && /\bbg-bg-overlay\b/.test(cls) && /\btext-text-muted\b/.test(cls));
+  ok(!filledChip,
     `6.7 ${f} does not fill an UNSELECTED chip — only the selected one carries paint`);
   ok(!/currentState === s\.id[\s\S]{0,200}font-bold/.test(src) && !/currentCategory === c\.id[\s\S]{0,200}font-bold/.test(src),
     `6.8 ${f} does not state selection with FONT WEIGHT — bold mono is wider, so the rail reflows`);

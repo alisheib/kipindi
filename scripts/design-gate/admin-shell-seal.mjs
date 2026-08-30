@@ -40,6 +40,9 @@ const ALL = [...ADMIN_ROUTES, ...TOTP_EXEMPT_ROUTES];
 const ROUTES = ONLY ? ALL.filter((r) => ONLY.includes(r)) : ALL;
 
 let fail = 0, probed = 0, revoked = 0;
+/** Routes that send an already-verified admin somewhere else. Reported, never counted as
+ *  measured — a redirect is a fact about the route, not a landmark failure on it. */
+const redirected = [];
 const bad = [];
 const ok = (name, pass, detail) => {
   if (!pass) { fail++; bad.push(`${name} — ${detail}`); }
@@ -94,6 +97,31 @@ for (const route of ROUTES) {
     resp = await page.goto(BASE + route, { waitUntil: "load", timeout: 90_000 });
     await page.waitForTimeout(350);
     if (/\/auth\//.test(page.url())) { ok(`${route} keeps its session`, false, `still ${page.url()}`); continue; }
+  }
+
+  /* 🔴 A REDIRECT IS NOT A MISSING LANDMARK, AND THIS SEAL COULD NOT TELL THE TWO APART.
+     Measured 2026-08-30: `/admin/totp-verify` reported `main=0 h1=0` and the run printed
+     "NO <main> — the landmark is gone" over a page that is FINE. An already-verified admin is
+     redirected from it to `/admin`, and at `waitUntil:"load"` the probe was reading the EMPTY
+     pre-redirect document. A hand probe with a 1.5s settle sees `main=[main-content]` and
+     `h1=["Overview"]`.
+     ⛔ TWO THINGS WERE WRONG AND BOTH ARE FIXED HERE. ① The wait was too shallow, so the seal
+     measured a document that is not the page — this programme's signature failure, committed by
+     its own instrument for the fifth time. ② It only ever checked `/auth/`, so ANY other
+     redirect was invisible and reported as a product defect on the route that was asked for.
+     ⚠️ It also means the session-79 record of "40/40 exactly one #main-content" was a FLAKE
+     that happened to settle in time. A gate that passes or fails on timing is a gate that gets
+     ignored the third time it cries wolf.
+     ⭐ AND THE HONEST CONSEQUENCE IS A POPULATION LIMIT, NOT A FIX: `/admin/totp-verify` is
+     UNREACHABLE by a verified admin, so this seal cannot measure its landmark at all. It is
+     named below rather than silently counted as covered. */
+  await page.waitForFunction(() => document.readyState === "complete" && document.body.children.length > 0, null, { timeout: 15_000 }).catch(() => {});
+  await page.waitForTimeout(600);
+  const landed = page.url().replace(BASE, "").replace(/\?.*$/, "");
+  if (landed !== route) {
+    redirected.push(`${route} → ${landed}`);
+    console.log(`  ↪ ${route.padEnd(30)} REDIRECTS to ${landed} — this seal cannot measure ${route}'s own landmark`);
+    continue;
   }
 
   /* ⚠️ RETRIED, because `page.evaluate` races a late client-side navigation and throws
@@ -183,7 +211,12 @@ if (!process.env.SKIP_NAV) {
 }
 
 await browser.close();
-console.log(`\n${probed} probe(s) · ${ROUTES.length} route(s) · ${revoked} re-sign-in(s) · ${fail} failing`);
+console.log(`\n${probed} probe(s) · ${ROUTES.length} route(s) · ${revoked} re-sign-in(s) · ${redirected.length} redirected · ${fail} failing`);
+if (redirected.length) {
+  console.log(`⚠️  ${redirected.length} route(s) redirect an already-verified admin, so their OWN landmark is`);
+  console.log("   outside this seal's reach. That is a limit of the population, not a clean result:");
+  console.log(redirected.map((r) => "   " + r).join("\n"));
+}
 /** ⛔ Zero probes is a SKIPPED RUN, never a pass. */
 if (!probed) { console.error("🔴 ZERO PROBES — this is a skipped run, not a pass."); process.exit(3); }
 if (fail) { console.error(`🔴 ${bad.length} failure(s):\n${bad.map((b) => "   " + b).join("\n")}`); process.exit(1); }
