@@ -1543,6 +1543,296 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
    filter control while the kit's own reference sat one import away, and the divergence reached
    four control heights and two radii before anyone measured it.
 
+7. ⛔ **THERE IS ONE SECTION RAIL, AND A TAB IS NOT A FILTER** (added 2026-08-31,
+   `DESIGN-GATE-2026-08-28` step 5, DG-S-01 — Ali's commission: *"admin pages n tabs — some
+   pages are so large to scroll down"*).
+
+   A **section rail** chooses which *part of one page* an operator is looking at. A **filter
+   rail** chooses which *rows* a list shows. They are different controls, and the platform
+   already keeps them apart in code: `scripts/filter-language.test.mts:321` excludes
+   `ui/tabs.tsx` from the filter language **by name**, with the reason written beside it at
+   `:299-301` — *"Nav is out — an active NAV destination is a settled, separate language."*
+   ⛔ **So a section rail is never a `FilterPill`, never carries `data-filter-rail`, and never
+   takes rule 6's dense rank.** Routing one through `FilterPill` would drag it into that
+   gate's `ADMIN_SURFACES`, where §6.6 forks density and would impose **32px on a page's
+   primary navigation**. Rule 6 does not reach it either: it is double-scoped to *"every
+   **player-facing** control that chooses which **rows** are shown"*, and a section rail is
+   neither.
+
+   🔴 **AND THE CONSOLE IS ALREADY TABBED, TWICE, IN TWO SPELLINGS THAT DISAGREE — which is
+   why this rule exists at all.** The probe that reported *"`role="tab"` / `aria-selected`
+   anywhere in admin: ZERO"* was keyed on **exactly the attributes A5 forbids**, so it was
+   structurally incapable of finding either rail: a true measurement over the wrong
+   population. Re-derived at HEAD 2026-08-31 — `src/app/admin/roles/page.tsx:60` and
+   `src/app/admin/players/[id]/page.tsx:302` both ship a URL-backed `?tab=` rail with a
+   **byte-identical container class string** (`flex gap-4 px-4 border-b border-border-subtle
+   overflow-x-auto`) and divergent items: **40px vs 52px**, `<Link>` vs raw `<a>`,
+   `aria-current="page"` vs **nothing at all** (`grep -c 'aria-current'` on the second file →
+   **0**). That is the Definition of Done's own failure test — *"a grep for the thing you
+   added finds it in exactly ONE definition site"* — and rule 6's postscript is this same
+   sentence with a different noun. **This is rule 5 restated a third time, and the count is
+   already two.**
+
+   ### 7a — When a page earns tabs, and when it does not
+
+   Apply these in order to a console you have never seen. **All three must hold.**
+
+   1. **The height must come from the SECTION COUNT, not from ROW DENSITY.** If one panel is
+      more than ~40% of the page's `docH`, that panel *is* the length and a rail moves
+      nothing. Measured on production 2026-08-30 (`.qa-design-gate/out-admin`, `m1440.docH` at
+      1440×900): `/admin/updown/proposals` is **8,657px**, the tallest page in the console —
+      and its rows run 379.6–462.6px at `PER_PAGE = 20`, i.e. roughly 7,600px of one already
+      paginated table. Tabbing it yields a 1,000px landing tab and an 8,000px queue tab.
+      Against that, `/admin/system` is 3,327px whose *tallest* panel is 401px (**12%**) —
+      many small independent sections, the clearest tab shape in the console.
+   2. **The bands must be alternative TASKS, read one at a time — not one document read
+      together.** A page whose bands are compared *against each other* stays scrolling. That
+      is why `/admin/finance` does not qualify: wallet liability is read *against* house
+      accounts, and tabs would put the two compared things on different screens.
+   3. **Nothing load-bearing may be left behind a click.** See 7d.
+
+   ⛔ **A tab is a REACHABILITY change, never a rhythm change, and LENGTH ALONE DOES NOT
+   QUALIFY A PAGE.** Re-derived 2026-08-31 from the same drive: **13 admin routes exceed three
+   screens** at 1440×900 — and only four pass all three tests above.
+
+   ### 7b — The primitive, and what A5 does and does not forbid
+
+   **One home: `src/components/ui/tabs.tsx`.** `TabItem` gains an optional `href`. With
+   `href` the rail renders `<nav aria-label>` + `<Link aria-current="page">` on the option in
+   force and nothing on the others; without it, today's `role="group"` + `<button
+   aria-pressed>` is unchanged. ⛔ Do not mint a second tab component, and ⛔ do not leave a
+   hand-rolled rail beside it — both shipped admin rails are deleted **into** the primitive
+   (§B9: new design merges in, it never sits beside; §K5: extend the kit, never fork it).
+
+   ⭐ **A5 (2026-08-21, `tabs.tsx:21-45`) STANDS, AND IS NARROWED ON ITS OWN TERMS — IT IS NOT
+   REVERSED.** It is two rulings and only one of them is conditional.
+   - **The structural half stands untouched:** *"THE FIX IS TO STOP CLAIMING THE WIDGET, not
+     to build it here — and that is a fact about WHERE the panel lives … a primitive cannot
+     label an element it does not own."* URL-backing changes nothing about who renders the
+     panel. ⛔ **So no `role="tablist"`, no `role="tab"`, no `aria-selected`, no
+     `aria-controls`** — building the widget would announce arrow-key navigation on a dozen
+     consoles that would not have it, which is the exact lie A5 removed. Re-derived at HEAD:
+     `role="tab` has **five** grep hits in `src/` and **all five are prose inside comments** —
+     zero live elements.
+   - **The `aria-current` half is a CONDITIONAL, and a URL falsifies its antecedent.** A5
+     reads: *"NOT `aria-current` … **These change in-page view state without a URL**, which is
+     the `/markets` discovery-chip case."* A rail whose selection lives in `?tab=` is not
+     *these*. The general law is already written at `filter-pill.tsx:38-48` — *"⛔ ONE PROP,
+     BOTH CORRECT — never one semantic imposed on both"* — and `roles/page.tsx:67` already
+     ships it correctly.
+
+   **The selection lives in the URL.** ⛔ Never `useState` alone. Three shipped reasons: (a)
+   it is what makes `aria-current="page"` honest — `globals.css:4661-4664`'s own test is
+   whether the option is a destination the browser goes to; (b) it is what lets a validation
+   failure address the tab holding the offending field (7d); (c) it makes the server read
+   **cheaper**, not dearer — `roles/page.tsx:36-38`: *"Only the matrix the active tab renders
+   is read. Loading both would double a DB round trip on every visit to pay for a tab most
+   visits never open."*
+   ⚠️ **A panel is fetched conditionally ONLY when it owns a read no visible panel needs.**
+   Otherwise every panel is rendered in one pass. `players/[id]:99-125` is the correct
+   *unconditional* case — six panels off one player's record — and is not a defect.
+
+   ### 7c — Geometry, paint, type and motion
+
+   - **44px — `--h-control-md`.** §A2's preferred tap height, and what the `line` variant
+     already ships. ⛔ **Not 32:** `globals.css:292` scopes `--h-control-xs` to *"dense
+     mouse-only admin **inline** controls (documented floor exception)"* and its own note adds
+     that all its call sites are inline admin controls; a page's section navigation is neither
+     dense nor inline. ⛔ **Not 52** (`players/[id]`'s `py-3`): that is on no rung, and it is
+     invisible to `test:tap-target`, which reads a **declared** height and cannot see one made
+     of padding. ⛔ And never "tidied" into a scale class — `h-9` is 64px here, `h-10` is 80px.
+   - **The underline is the section language; the capsule is the filter language.** `border-b`
+     on the container, `border-b-2 border-brand-500` on the current item. Three shipped
+     section rails are three-for-three an underline; all 25 `<FilterPill>` call sites are the
+     capsule. ⛔ A section rail never wears `.kp-fchip`.
+   - **The rail SCROLLS; it does not wrap.** `overflow-x-auto`, options `whitespace-nowrap`.
+     This is structural, not taste: the `border-b` is on the **container**, so a wrapped second
+     row leaves the first with no baseline under it. ⛔ Not an edge-fade in the console —
+     refused with its reason at `globals.css:2065-2071` (DG-A-23, 2026-08-29). ⛔ And not
+     `ScrollX`: all 57 of its call sites are admin **tables**, content with no focusable
+     children, which is exactly why it carries `tabIndex=0`; a rail of links is already
+     keyboard-reachable and the wrapper would insert a redundant tab stop before every rail.
+   - **The active item takes no hover; every inactive item must.** DG-P-01, verified on
+     production 2026-08-29 — hovering the active item would swap the brighter `--pill-active`
+     for the darker sunken `--bg-overlay`, so the current section would appear to *lose*
+     emphasis under the cursor. Both shipped admin rails already obey this.
+   - **The label is `text-body-sm` (13px), sentence case, in the body face — NOT uppercase and
+     NOT `font-display`.** §T3's enclosure test names *"a button, **tab**, filter or sort
+     chip"* in the CONTROL bullet, and `scripts/design-gate/eyebrow-roles.mjs:302` already
+     declares `tabs.tsx`'s label `CONTROL_LABEL`. ⛔ **The eyebrow recipe is not available to
+     it, and the reason is arithmetic rather than taste:** re-derived 2026-08-31,
+     `test:type-scale` §6 stands at **241 against a ratchet of 241** — zero slack — so an
+     uppercase tracked tab label needs a ratchet raised that may only shrink. The same run
+     puts §4 at **924/924**, so `tabs.tsx:153`'s `text-[13px]` must become the Tailwind rung
+     `text-body-sm` (§T7: a size written at a call site comes from the **Tailwind** ladder) —
+     a shrink to 923, which is legal. Three admin neighbours already render a section or nav
+     label at 13px with no font class: `roles/page.tsx:68`, `players/[id]/page.tsx:321` and
+     `admin-sidebar-nav.tsx:47`.
+   - **The label is ENGLISH, single-language — and that is a dated ruling, not an omission.**
+     `scripts/failure-reasons.test.mts:1080-1085`: *"The ADMIN console is an English-only staff
+     surface by design, so counting its toasts here would have made this ratchet fail on
+     30-odd non-defects."* The console's Swahili gloss belongs to its **headings**
+     (`AdminPageHead sw`, `AdminCard sw`), which is a heading idiom; §T3 files a tab as a
+     CONTROL. ⚠️ So `roles/page.tsx:72`'s `{t.label} · {t.sw}` is that heading idiom applied to
+     a control, and the conversion drops the gloss to the card above it. That is the one
+     *rendered* change the conversion makes, and it must be screenshotted, not assumed.
+   - ⛔ **THE ACTIVE FILL IS `--pill-active`, AND THE PRIMITIVE IS FIXED BEFORE IT IS
+     ADOPTED.** `globals.css:423` names itself *"one active filter/tab fill everywhere"* and
+     means tabs by word. `tabs.tsx:99` paints `oklch(40% 0.08 264 / 0.55)` — a different
+     chroma, hue *and* alpha, so **a different answer, not a copy**, which is precisely why
+     `ui-consistency`'s `hardcoded-pill-active` cannot see it: that rule matches the token's
+     literal text, so it finds copies and never divergence (§M4's named shape — a guard
+     reading the SPELLING of a value instead of the value that lands on the glass).
+     `tabs.tsx:127`'s `bg-brand-500/15 text-brand-300` is the same defect through a Tailwind
+     alpha. ⚠️ **Both drifting variants have ZERO call sites at HEAD**, so the drift costs
+     nothing today and costs every converted console the moment the primitive is adopted.
+     **That is the whole sequencing argument: the primitive is repaired first, in a commit
+     that moves no pixel.**
+   - **Motion names a rung.** ⛔ No bare `transition-colors`, and no `duration-150`: 150 is on
+     no rung (`motion.css:33-37` — `--t-quick` 140 · `--t-base` 220 · `--t-move` 340), and an
+     omitted timing function silently means `ease` (§B5 rule 3). `globals.css:2037-2041` has
+     already ruled this exact number for a colour change — *"150ms → `--t-quick` (140). A
+     colour crossfade travels nowhere, so it takes `linear`."* ⭐ And the travelling underline
+     has a shipped utility built for it with **zero consumers**: `motion.css:211` `.m-indicator`
+     — *"Travelling indicator — tabs, filters, bottom nav. One object, never a cross-fade."*
+   - **The rail's skeleton moves in the SAME commit, as a literal** (§B7 rule 3).
+     `roles/loading.tsx:24` is `h-[41px]` with the arithmetic written out, because without a
+     ghost *"the whole matrix below it jumped up by 41 + the body's 20px rhythm on every
+     load"* — so a rail that becomes 44px leaves a 4px jump behind unless its `loading.tsx`
+     moves with it.
+   - ⚠️ **`eyebrow-roles.mjs` is keyed on line CONTENT.** Its declaration at `:302` quotes the
+     `pill` variant's class string verbatim; editing that line — even to fix its duration —
+     makes the declaration stale and turns `test:eyebrow-roles` red. Edit both in the same
+     commit, or neither.
+
+   ### 7d — What may never go behind a click
+
+   ⛔ **A tab may hide a DETAIL. It may never hide a STATE.** Anything that answers *"is
+   something wrong right now"* stays **above the rail, on every tab**: a money figure an
+   officer acts on, a control that starts or stops something in production, and a backlog
+   waiting on a human. The KPI band and any mode-or-paused banner sit above the rail — which
+   is what makes this rule affordable rather than paralysing, and is already the shipped shape
+   at `players/[id]:290-302` and `wallet-client.tsx:555-567`.
+
+   **If a hidden section holds a pending action, its tab carries the count**, rendered through
+   the kit `<CountBadge tone="brand">` — ⛔ never a bare number. The cap is the point
+   (`count-badge.tsx:15-18`: *"The cap is not decoration; it is the reason a shared primitive
+   exists"*), and `/admin/approvals` is kyc + aml + sof, which genuinely passes 99.
+   `tabs.tsx` writes that pip by hand three times today, uncapped.
+   ⛔ **A badge does not buy a kill-switch a hiding place.** `CountBadge` renders nothing at
+   zero (`count-badge.tsx:81`), so it cannot distinguish *"nothing pending"* from *"this tab
+   failed to read"*, and no number can state *"maintenance is ON"*.
+   ⛔ **And a tab's count is never painted in the betting pair** (§B2a / D2).
+   `players/[id]:313` paints a KYC compliance state `bg-yes-500` / `bg-no-500` today. That is
+   a live breach; it is fixed in the conversion, not copied by it.
+
+   **A tab switch is an EXIT.** A page whose tabs unmount their panels must (a) treat the
+   switch as it treats an unload, and (b) resolve which tab owns the first invalid field and
+   switch to it **before** focusing. ⛔ A helper that queries the DOM for a field on an
+   unrendered tab returns `null` and refuses in silence — re-derived at HEAD,
+   `poll-actions.tsx:197` is the repo's **only** such helper and it has no `else` branch.
+   ⚠️ And *"keep applying the unsaved-changes detection"* is a **build, not a continuation**:
+   there are **zero** `beforeunload` handlers in `src/`, and the four `dirty` booleans that
+   exist only disable their own Save button. §K5 — it lands once, in the kit, not per page.
+
+   ### 7e — The consoles that are NOT tabbed, and why
+
+   - **`/admin/roles`** — ⛔ do not add tabs, and ⛔ do not remove the ones it has. Its rail is
+     **Access vs Reads, two permission AXES, not roles**, and `roles/page.tsx:14-18` cites
+     `docs/READ-TIERS.md` §6: *"two permission screens is how two permission models are
+     born."* Comparison across roles happens **within** one matrix. ⚠️ Its recorded *"50
+     cards"* is a probe artefact — `measure.mjs:164-171` counts any rounded painted box
+     ≥160×40, and 6 editable roles × 7 domains + 6 role cards + 2 real cards = 50. The work
+     here is to delete its hand-rolled rail into the primitive, and nothing else.
+   - **`/admin/updown/proposals`, `/admin/resolver-queue`, `/admin/markets`** — single
+     already-paginated lists. Row density, not section count (7a.1).
+   - **`/admin/payments`** — after the control-plane, the payout declaration, the Selcom
+     float, the per-MNO kill-switches, the frozen-payout alarm and reconciliation, the landing
+     tab *is* the page under 7d. ⚠️ **The kill-switches are not in the control-plane:**
+     `KillSwitch` renders inside the per-MNO health grid at `payments/page.tsx:288`, roughly
+     4,000px down — so a plan that pins "the control-plane" pins the wrong card and pushes the
+     real deposit/withdrawal stops behind a click.
+   - **`/admin/config`** — every block is a fee statement, and *"Worst winner ratio"*
+     (`page.tsx:72-81`, whose own comment reads *"If this ever reads below 1.00×, a player who
+     called it right is losing money"*) is the invariant an officer must see **while** editing
+     rates. Splitting the simulator from the rates is 7a.2's anti-pattern exactly.
+   - **`/admin/finance`** — zero controls; one money statement read as one document.
+   - **`/admin/sources`** — the per-category readiness chip *is* the comparison; hiding six of
+     seven categories kills the only thing the page does.
+   - **`/admin/reports`** — its bulk is six template cards. It is a **chooser**, and tabbing a
+     chooser hides half the choices.
+
+   ### 7f — What tabbing does to the gate population
+
+   ⭐ **A tab may hide DOM from an operator. It may never hide DOM from an instrument.**
+
+   **Inactive panels are NOT RENDERED** — the active panel is chosen server-side from `?tab=`.
+   ⛔ **Not hidden-but-present:** `measure.mjs:83`'s `vis()`, `responsive-audit.mjs:288`'s
+   `r.width < 8` skip and `contrast-rendered.mjs:197` each drop `display:none` DOM
+   independently, so a four-tab page would be measured at roughly a quarter of itself with
+   **every gate green** — and nothing would notice the shrink, because the rig's only
+   DOM-volume heuristic (`redo.cjs:58-61`) needs zero cards AND zero tables AND ≤20 controls,
+   and only *prints*. ⛔ **And never laid-out-but-off-screen:** `responsive-audit.mjs:221-231`
+   hard-fails every control whose box runs past the viewport edge.
+
+   ⛔ **`scripts/design-gate/routes.mjs` gains no `?` entries.** Re-derived 2026-08-31: **73
+   entries across its three arrays, 0 containing a query string.** Two reasons, one legal and
+   one mechanical. **LEGAL** — a hand-typed tab list is a §0a copy of a fact whose home is the
+   page's own tab definition, and that file's header already forbids it. **MECHANICAL — it
+   would not work:** `admin-shell-seal.mjs:120` strips the query off the landed URL *before*
+   comparing it to the route string, so `/admin/config?tab=risk` files as REDIRECTED and is
+   never probed — while `probed` stays non-zero from the other routes, so the *"zero probes is
+   a skipped run"* guard never fires. **A silently unmeasured route inside a green run.**
+
+   ▶ **So the tab set is READ OFF THE RENDERED RAIL, never typed.** The rail stamps
+   `data-section-rail` (⛔ **not** `data-filter-rail` — that is `test:filter-language` §0.4's
+   discovery key, and a section rail landing in that set turns the suite red for the right
+   reason at the wrong time), each option carries its real `href`, and `routes.mjs` gains ONE
+   shared expander that every importer calls — the same self-maintaining shape
+   `admin-filter-drive.mjs:17-22` already rules for a driver's inputs: *"THE VALUE IS CHOSEN
+   FROM THE DATA, NOT INVENTED."* ⚠️ `measure.mjs:294`'s `hit.split("?")[0]` must stop
+   discarding the query in the same commit, or the drive cannot follow a tab link even when it
+   finds one.
+   ⭐ **THIS TRAP IS ALREADY LIVE, AT n=1.** `/admin/roles?tab=reads` — and with it the whole
+   of `read-tiers-matrix.tsx` — has never been visited by `measure.mjs`, `qa:dg-shell`,
+   `qa:admin-load` or the overlay drive, because `routes.mjs` lists the page bare.
+
+   ### 7g — The gate
+
+   **`test:section-rail`** — *"every `<nav>` that maps a rail of destinations states which one
+   is current."* Keyed on the CONTROL, never on a spelling.
+
+   - **POPULATION** — every `<nav>` in `src/**/*.tsx` that `.map()`s a rail of `<a>` / `<Link>`
+     / `<FilterPill>` destinations, comments stripped first so prose cannot count as code.
+     Re-derived 2026-08-31: 487 `.tsx` files scanned, 27 `<nav>` blocks parsed, **17 in
+     population**.
+   - **HEAD HITS, outside any allowlist: 1** — `players/[id]/page.tsx:302`, the rail that
+     announces nothing. It lands at **0** the moment that rail is converted, which is work
+     this rule already mandates. ⛔ No allowlist entry is available for it: an exemption here
+     could only be earned by a filename, which §A1 forbids.
+   - **THE CONTROL** — delete `aria-current` from `bottom-nav.tsx`, `legal-nav.tsx` or
+     `admin-mobile-nav.tsx`, in a **copy** of the tree. Each takes hits 1 → 2; proved three
+     ways, with the population steady at 17 in all four runs, so the control moves the finding
+     and not the denominator.
+   - **THE VACUITY FLOOR** — the gate asserts its own population is **≥ 17** and exits
+     non-zero below it, so a rename, a refactor away from `<nav>` or a broken regex empties the
+     subject set **loudly** instead of passing.
+   - ⛔ **THE COMPLIANCE TEST READS THE RENDERED ARIA, NOT A PROP'S SPELLING — and two
+     shallower keys were measured failing, which is why they are written down.** Keyed on
+     `semantics="tab"`: `FilterPill`'s `semantics` **defaults** to `"tab"` (`filter-pill.tsx`),
+     so a rail that never spells the prop still emits `aria-current="page"` — that key reported
+     **HITS 4**, convicting three innocent filter rails. Keyed on the URL spelling `?tab=`: it
+     reported **HITS 0 over the live defect**, because that rail computes its class into a
+     `const` above the tag so no state token sits inside the tag body — and it would empty
+     silently the day someone spells it `?section=`. Both are §A1's named disease.
+
+   ⚠️ **WHAT THIS GATE DOES NOT PROVE, said out loud:** it proves the rail *says* which section
+   is current. It cannot prove 7a (when to tab), 7d (what may not go behind a click) or 7e (the
+   do-not-tab list). Those ship as **reviewed** rules, applied through the Definition of Done
+   below and its *"look at the screenshots"* clause. Claiming a gate over them would be a gate
+   one level too shallow, which is indistinguishable from no gate.
+
+
 **Definition of Done — every design task, no exceptions:**
 
 - Zero new hex/rgb literals in components; zero new `.css` files.

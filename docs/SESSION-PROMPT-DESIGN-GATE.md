@@ -15,16 +15,27 @@ rendered platform.”*
 
 ## ⏭️ START HERE — the state, re-derived 2026-08-31
 
-**Steps 1–4 are CLOSED. Step 5 is the only stage left, and it is a session of its own.**
+**Steps 1–4 are CLOSED. Step 5 is OPEN and DG-S-01 is closed — the criterion is law.**
+
+🔴 **THE FINDING THAT REWROTE THIS STAGE: THE ADMIN CONSOLE WAS ALREADY TABBED, TWICE, AND THIS
+FILE COULD NOT SEE IT.** §🅢's measurement table recorded *"`role="tab"` / `aria-selected`
+anywhere in admin: **ZERO**"* — and that probe was keyed on **exactly the attributes
+`tabs.tsx`'s A5 ruling FORBIDS**, so it was structurally incapable of finding either rail.
+`src/app/admin/roles/page.tsx:60` and `src/app/admin/players/[id]/page.tsx:302` both ship a
+URL-backed `?tab=` rail, with a **byte-identical container class string** and divergent items
+(40px vs 52px · `<Link>` vs raw `<a>` · `aria-current="page"` vs **nothing**). ⭐ A true
+measurement over the wrong population — this programme's signature failure, this time inside
+its own plan. **Three more §🅢 claims are wrong at source; each is struck in place below.**
 
 | | |
 |---|---|
-| **Planner** | **30 ☑ · 5 🚢 · 2 ☐** of 37 — re-derive it yourself from the table below, never from this line |
-| **Last commit** | `b4e0345c` · pushed · `origin/main` level · tree clean |
+| **Planner** | **31 ☑ · 5 🚢 · 8 ☐** of 44 — re-derive it yourself from the table below, never from this line. The 7 `DG-S-*` rows joined the planner on 2026-08-31; before that they lived only in §🅢, which is two homes for one fact (§0a) |
+| **Last commit** | `6b17869c` + this commit · pushed · `origin/main` level · tree clean |
 | **Suite** | `node scripts/test-all.mjs --skip responsive,motion` → **273/273**, `npx tsc --noEmit` clean |
 | **Live** | Deployed and driven. Admin 43 routes + a 5-route re-drive, **`ovf390=no err=0 h1=28` on every one**; player anon 17 routes clean; `qa:dg-shell` 40/77/0-failing; `qa:toggle-hit` 206 PASS; `qa:install-shown` 63/0 **unmoved**; `qa:e70-legal` 7/0 |
-| **⛔ The 2 ☐** | `DG-P-02` and `DG-P-09` — **blocked on Ali, not on work.** All six player/officer QA secrets are rejected by production; only `QA_ADMIN_PASSWORD` works |
+| **⛔ The 2 blocked ☐** | `DG-P-02` and `DG-P-09` — **blocked on Ali, not on work.** All six player/officer QA secrets are rejected by production; only `QA_ADMIN_PASSWORD` works |
 | **🚢 The 5 tails** | `DG-A-08` (guard not built) · `DG-A-21` (~414 lines / ~125 files residual, only a third admin) · `DG-A-12`/`DG-P-05` (the above-floor long tail is a per-site call) · `DG-P-14` (item 2 closed no-change; item 5 is Ali's) |
+| **▶ RESUME AT** | **`DG-S-02` — repair `ui/tabs.tsx` ALONE, before any adopter.** Both drifting variants have **zero call sites at HEAD**, so that commit moves no rendered pixel; it is the cheapest moment and the last one. The full order is in §🅢's *"the order is not arbitrary"*, rewritten 2026-08-31 |
 
 ### 🔴 TWO THINGS SHIPPED THAT NOBODY HAS LOOKED AT — carry these, they are not gates
 - **The 13 `/admin/payments` money levers** (Retry · Cancel · Match · Write off · **Return to
@@ -218,6 +229,14 @@ only ☑ when its gate line is GREEN **re-measured on production**, not on local
 | **DG-P-14** | 4 | P2 | miscellany, six items — ⚠️ item 5 is an Ali taste call (the /notifications glow) | `—` | 🚢 **items 1·3·4·6 ☑ · item 2 closed NO-CHANGE · item 5 is Ali's** | session 82 | ✅ Items 1, 3 and 4 were **one unnamed mechanism** — controls whose height comes from padding rather than a token, landing at 30/35/38/41px against a 40 floor and a 44 sibling. ✅ **Item 6 is law-decided, not taste:** `px-3 py-2` renders **44.25px** on this repo's *overridden* spacing scale and `px-3.5 py-2.5` renders **38px** (`2.5` is NOT overridden, so it keeps stock 10px) — so §A2 picks the winner and all three menus now share one recipe. The sign-out row came off the betting rose in the same edit (§B2a). ⛔ **ITEM 2 CLOSES WITH NO CHANGE:** its prescribed fix ("truncate the URL") reverses **Ali's own E-221**, and the 30px spread it complains about is the *direct consequence* of that ruling — `LinkField` is an auto-growing `<textarea>` so the URL never leaves its box, and both it and the Copy button clear §A2. ⚠️ Observed while there and left for Ali: the card carries **two Copy controls** ("Copy" inline and "Copy link" in the share grid) — one action, two labels. ⛔ Item 5 (the `/notifications` glow) is struck; it is Ali's taste call. |
 | **DG-A-19** | ? | P2 | icons: sizes 10–23 with two prop spellings — 🔴 IN NO STEP ROW of the work order | `glyphs` | ☑ | this commit | ✅ **CLOSED 2026-08-30 — the prop half in full; and the row now HAS a step: it belonged in 3.** ⭐ **The alias's own reason was SPENT.** `glyphs.tsx` accepted `size` as *"a lucide-compatible alias so icons swap from lucide → I.* without renaming every call site"* — and that migration finished in `da19ead5`, 2026-06-06. Measured before removing it: **67 call sites wrote `size=` against 608 writing `s=`, and every single one of the 67 was under `src/app/admin/`** — the drift was one surface, not the platform. ⭐ **Zero visual change by construction** (`width={s ?? size}` returned the same number either way) **and the guard was FREE**: deleting `size?: number` from `GlyphProps` makes a reintroduction a COMPILE ERROR, and `tsc --noEmit` is already in the pipeline. 🔴 **And `tsc` immediately earned it** — a regex sweep found 64; the type error found **three more** that no `<I.` pattern could see, where the glyph is held in a variable (`<Icon size={19} />`). ⚠️ **The SIZE half is NOT closed:** the range is **10→28 over 16–17 rungs**, not the row's 10–23, and that is a per-site design call, not a rename. | |
 
+| **DG-S-01** | 5 | P1 | no criterion decided WHEN an admin page may hide a section behind a click — and two consoles had already tabbed themselves without one | `DESIGN_AUTHORITY.md §K rule 7` | ☑ **CLOSED 2026-08-31 — the criterion is LAW, §K rule 7 (7a…7g), 290 lines** | this commit | 🔴 **THE ROW'S OWN PREMISE WAS FALSE AND THE PROBE IS WHY.** §🅢 recorded `role="tab"`/`aria-selected` in admin = **ZERO** — keyed on the exact ARIA `tabs.tsx`'s A5 (2026-08-21) FORBIDS, so it could not see `roles/page.tsx:60` or `players/[id]/page.tsx:302`, both URL-backed `?tab=` rails, **byte-identical container class**, divergent items (40/52px · `<Link>`/raw `<a>` · `aria-current`/**nothing**). ✅ **WHAT IT DECIDED, each by law or a dated ruling:** ① a section rail is **NAV, not a filter** — `filter-language.test.mts:299-301,321` excludes `ui/tabs.tsx` **by name** (*"Nav is out — an active NAV destination is a settled, separate language"*), so ⛔ never `FilterPill`, never `data-filter-rail`, never rule 6's 32px dense rank; ② **A5 is NARROWED, NOT REVERSED** — its structural half (*"a primitive cannot label an element it does not own"*) stands, while its `aria-current` clause is a CONDITIONAL whose antecedent (*"these change in-page view state **without a URL**"*) a `?tab=` rail falsifies; ③ **44px** (`--h-control-md`) — ⛔ not 32 (`globals.css:292` scopes `--h-control-xs` to *"dense mouse-only admin **inline** controls"*), ⛔ not 52 (on no rung, and invisible to `test:tap-target`, which reads a DECLARED height and cannot see one made of padding); ④ **`text-body-sm`, sentence case, body face, ENGLISH** — §T3's enclosure test files a tab as a **CONTROL LABEL** (and `eyebrow-roles.mjs:302` already declares it so), and `failure-reasons.test.mts:1080-1085` already ruled *"the ADMIN console is an English-only staff surface by design"*; ⑤ the rail **scrolls, never wraps** — structural, because the `border-b` is on the **container**; ⑥ **inactive panels are NOT RENDERED** — `measure.mjs:83`, `responsive-audit.mjs:288` and `contrast-rendered.mjs:197` each drop `display:none` DOM **independently**, so hidden-but-present measures a 4-tab page at ¼ of itself with every gate green. 📐 **Re-derived, not quoted:** 13 (not 12) admin routes over 3 screens; `routes.mjs` 73 entries / **0** with a query; type-scale §4 **924/924** and §6 **241/241**, both zero slack. 🔴 **AND THE POPULATION TRAP IS ALREADY LIVE AT n=1:** `/admin/roles?tab=reads` — with all of `read-tiers-matrix.tsx` — has never been visited by `measure.mjs`, `qa:dg-shell`, `qa:admin-load` or the overlay drive |
+| **DG-S-02** | 5 | P1 | `ui/tabs.tsx` holds the **4th and 5th homes** of `--pill-active`, in two spellings no guard can see | `src/components/ui/tabs.tsx` | ☐ ▶ **NEXT** | — | ⛔ **REPAIR THE PRIMITIVE ALONE, BEFORE ANY ADOPTER — both drifting variants have ZERO call sites at HEAD**, so the commit moves no rendered pixel; it is the cheapest moment and the last one. `:99` paints `oklch(40% 0.08 264 / 0.55)` against the token's `oklch(40% 0.12 262 / 0.35)` — a different chroma, hue AND alpha, i.e. **a different answer, not a copy**, which is exactly why `ui-consistency`'s `hardcoded-pill-active` cannot see it (it matches the token's literal TEXT). `:127`'s `bg-brand-500/15 text-brand-300` is the same defect through a Tailwind alpha. Also: `:153` `text-[13px]` → `text-body-sm`; `duration-100`/`duration-150` → a named rung (150 is on no rung; `globals.css:2037-2041` already ruled this number); the count pip hand-written **three times, uncapped** → kit `<CountBadge tone="brand">`; header's two false facts (*"gold underline"* — it is `--brand-500`, D5; *"teal-subtle"* — teal is the killed kit); `TabItem.labelSw` is dead API, 0 readers. 📐 **RATCHETS IN THE SAME COMMIT:** `design-frozen` 43→42 files / 160→159 values (`:153`'s row IS `tabs.tsx:99`); `type-scale` `RATCHET_ARBITRARY_SIZE` 924→923. ⛔ **`eyebrow-roles.mjs:302` quotes the `pill` variant's class string VERBATIM and is keyed on line CONTENT** — editing that line without editing the declaration turns `test:eyebrow-roles` red. ⛔ Do NOT touch the `segmented` 36px height: `tap-target.test.mts:352` holds it as a keyed ratchet row (`file:tag@px`) |
+| **DG-S-03** | 5 | P1 | tab state must live in the URL — and the two shipped rails disagree about what that means | `tabs.tsx` `href` prop + both admin rails | ☐ | — | ⭐ `TabItem` gains `href?`; link mode renders `<nav aria-label data-section-rail>` + `<Link aria-current>`; state mode untouched. ⛔ A prop and every call site it types ship in ONE commit (standards §8b). Then convert **`/admin/roles:60-77`** (smallest: 2 tabs, `?tab=` and `aria-current` already right — ⛔ and its `loading.tsx:24` `h-[41px]` ghost moves to 45px in the same commit, §B7 rule 3) and **`/admin/players/[id]:302-338`**, which is the gate's ONE head hit and fixes four defects at once: 52px padding-height → 44 declared · raw `<a>` → `<Link>` (B-11: *"a full document teardown — flash, scroll lost, SSE reconnect"*; **scroll lost is the thing Ali is complaining about**) · missing `aria-current` · and a **live §B2a/D2 breach at `:313`**, a KYC compliance state painted `bg-yes-500`/`bg-no-500` in the betting pair. ⚠️ Also coerce `sp.tab ?? "activity"` (`:77`): an unknown or unpermitted value renders a **blank panel** today (`:392` has no `else`) |
+| **DG-S-07** | 5 | P1 | every tab state crafted — ⭐ Ali named this one | `tabs.tsx` + `globals.css` | ☐ | — | Most of it is decided by §K rule 7c and lands with DG-S-02/03. What is left is the render: the travelling underline should take `motion.css:211` `.m-indicator` (*"Travelling indicator — tabs, filters, bottom nav. One object, never a cross-fade"*) — **zero consumers today**; the focus ring (⚠️ `tabs.tsx` carries NO focus class, so it falls to the 0,0,0 catch-all, a different recipe from §A3's 2px + 4px halo); and the 390 proof. 📐 **Measured 2026-08-31 in the real production fonts: the six-tab `/admin/players/[id]` rail is 695.8px inside ~310px of available width — 224% of its box, on production, today, and no instrument has ever opened that page.** ⛔ Prove the fix with `elementFromPoint`, never a bounding box |
+| **DG-S-04** | 5 | P1 | unsaved-changes detection — ⛔ **there is nothing to "keep applying"** | one shared kit hook | ☐ | — | Re-derived at HEAD: **zero** `beforeunload` handlers in `src/`, and the four `dirty` booleans that exist (`payout-status-control.tsx:77` · `proposal-actions.tsx:310` · `updown-controls.tsx:1059` · `password-pair.tsx:22`) only disable their own Save button. So it is a **BUILD**, not a continuation. §K5 — it lands once, in the kit. It must cover **three** exits: unload, route change, **and a tab switch** (§K rule 7d: *a tab switch is an EXIT*). ⛔ It must never fire on a form the operator has not touched. ⛔ Not claret (§B4a reserves it for the irreversible), ⛔ not gold (§M3) |
+| **DG-S-05** | 5 | P1 | validation completeness — and the register's *"only 5 import zod"* does not reproduce | 16 admin `<form>` files | ☐ | — | 📐 **RE-DERIVED 2026-08-31: `zod` is imported by exactly ONE file under `src/app/admin`** (6 in all of `src/`), not five; 16 `<form>` files; **34** `"use server"` files; no form library. ⛔ So validation today is overwhelmingly server-side and hand-rolled, and `src/lib/server/validators.ts` has **no field-error surface at all** — no `flatten`, no `fieldErrors`. ⛔ Inventory the full population and NAME it before counting; a count of *"forms with validation"* that does not name its population is this programme's signature failure |
+| **DG-S-06** | 5 | P1 | validation must TAKE YOU TO the offending field — ⭐ Ali named this one | one shared helper | ☐ | — | ⛔ **DG-S-05 FIRST: the server must NAME the field before anything can scroll to it.** Re-derived: `focus()`-on-error is at **ZERO** sites, and `poll-actions.tsx:197`'s `scrollToFirstError` is the repo's **ONLY** such helper — over three `data-field` markers, with **no `else` branch**, so an absent element makes it refuse in silence. 🔴 **A tabbed page makes that structural:** an unrendered panel's field cannot be queried at all, so the helper must resolve WHICH TAB owns the first invalid field and switch to it **before** focusing (§K rule 7d). ⚠️ And focus alone is not enough under the sticky admin topbar — offset for it and prove it with `elementFromPoint`, the trap `qa:toggle-hit` already paid for |
+
 ⚠️ **`DG-A-19` sits in no step row of the table below** — the four steps cover DG-A-01…18 and
 20…23 only. **`DG-A-04` sits in two** (step 1 as a kit primitive, step 3 as a sweep). Neither is
 resolved in this document; decide when you reach them rather than discovering it mid-step.
@@ -249,7 +268,7 @@ the corrected final design revision**, and pushed to the progress file as it goe
 | Admin routes over **3 screens** at 1440×900 | **12 of 47** | `docH` in `.qa-design-gate/out-admin/*.json` |
 | The worst four | `/admin/updown/proposals` **8,656px (9.6 screens)** · `/admin/updown` 8,569 (9.5) · `/admin/ai-usage` 6,695 (7.4) · `/admin/config` 4,681 (5.2) | same |
 | Densest by card count | `/admin/roles` **50 cards** · `/admin/ai-usage` 25 · `/admin/system` 25 · `/admin/compliance` 22 | same |
-| `role="tab"` / `aria-selected` anywhere in admin | **ZERO** | `grep -rln 'role="tab"\|aria-selected' src/app/admin src/components/admin` |
+| ~~`role="tab"` / `aria-selected` anywhere in admin~~ | 🔴 **STRUCK 2026-08-31 — THE PROBE WAS THE WRONG POPULATION.** Its ZERO is true and useless: it is keyed on **exactly the ARIA `tabs.tsx`'s A5 ruling FORBIDS**, so it could not see the two URL-backed `?tab=` rails the console already ships (`roles/page.tsx:60` · `players/[id]/page.tsx:302`). The honest probe is `grep -rln '?tab=' src/app/admin` | `grep -rn 'data-section-rail\|?tab=' src/app/admin` |
 | Kit `ui/tabs.tsx` adopters | **1**, and it is PLAYER (`wallet-client.tsx`) | `grep -rl '@/components/ui/tabs' src` |
 | `beforeunload` / unsaved-changes guards | **ZERO** | `grep -rln beforeunload src` |
 | `focus()` on a validation error | **ZERO** | `grep -rn 'focus()' src --include=*.tsx \| grep -ci error` |
@@ -257,37 +276,62 @@ the corrected final design revision**, and pushed to the progress file as it goe
 | Validation library available | **`zod`** (no react-hook-form) | `package.json` |
 
 ### 🧭 The rows
-| Row | What | Why it is not obvious |
-|---|---|---|
-| **DG-S-01** | **A tab criterion, written into `DESIGN_AUTHORITY` BEFORE any page is tabbed.** | ⛔ A tab HIDES content, and this is an operations console where the cost of hiding is not cosmetic. Tab a page when its sections are **independent tasks**; never when they are one continuous read. ⛔ **Nothing that carries a money state, a kill-switch, or a pending count may go behind a click unbadged** — if a hidden tab holds a live alert, its tab must carry the count (the kit `<CountBadge>` already exists and is already used in both navs). |
-| **DG-S-02** | **Adopt `ui/tabs.tsx` at admin density — do NOT mint a second tab component.** | It has ONE adopter and that adopter is player-side, so its 44px player rank is the only one proven. Admin is 32/40 (§6.6's player-44/admin-32 split). Take the rank as a **prop**, exactly as `datetime-range-filter.tsx` was ruled to (RE-DERIVED §7). ⚠️ `ui-consistency`'s BASELINE MODEL fails on a NEW `(rule,file)` pair even at warning severity, so every converted page must use the kit, never `className="btn …"`. |
-| **DG-S-03** | **Tab state lives in the URL (`?tab=`), not in `useState`.** | An operator shares a link to a finding, and the back button is part of how a console is used. A `useState` tab breaks both silently and cannot be deep-linked from an audit entry. ⚠️ It also has to survive the server-rendered pages — most of these consoles are RSC. |
-| **DG-S-07** | **⭐ THE TAB'S OWN CRAFT — every state, and Ali named this one: *"every tab detail, the hover, the font, all perfect; the whole structure should be perfect."*** | It is NOT a blank sheet: most of it is already decided by a law or a shipped ruling, and the job is to obey them rather than re-invent. **See the craft table below** — the only genuinely open questions there are the label rung, the 390 overflow behaviour, and the label lengths in SW. |
-| **DG-S-04** | **Unsaved-changes detection, per page, once.** | ZERO today. Needs ONE shared hook, not a per-page habit — and it must cover **three** exits, not one: page unload, route change, **and a tab switch** (switching tab with a dirty form is the same hazard as leaving, and is the one a naive `beforeunload` misses entirely). ⛔ It must never fire on a form the user has not touched — a false "you have unsaved changes" teaches operators to click through it. |
-| **DG-S-05** | **Validation completeness: every form, every input.** | `zod` is present; there is no form library. Inventory every admin form first and state which are validated, which are server-only, and which are neither — ⛔ a count of "forms with validation" that does not name its population is this programme's signature failure. |
-| **DG-S-06** | **Validation must TAKE YOU TO the offending field.** ⭐ Ali named this one. | `focus()` on an error is at **ZERO sites**. The recipe is one shared helper: focus the **first** invalid control, `scrollIntoView({block:"center"})`, set `aria-invalid` + `aria-describedby` to the message, and render an error **summary** at the top for long forms — which is the whole point on a 9-screen page, where the invalid field can be six screens away from the button that refused. ⚠️ Focus alone is not enough with a sticky admin topbar: it scrolls the field under the bar (the same trap `qa:toggle-hit` paid for, which read `up: 0` for a switch under that bar). Offset for it and PROVE it with `elementFromPoint`, not a bounding box. |
+
+⭐ **THE SEVEN `DG-S-*` ROWS NOW LIVE IN THE PLANNER ABOVE, WITH EVERY OTHER SYSTEM — one tracker,
+one home (§0a).** A second table here restating their status is exactly the divergence the
+five-row "Keep track" table was deleted for in session 77. What survives below is the material
+the planner rows point AT and do not repeat: the craft table, the form inventory, the worked
+pages and the sequencing.
 
 ### 🎛️ DG-S-07 — THE CRAFT TABLE. What already decides each tab detail, and what is genuinely open
 ⛔ **Read `src/components/ui/tabs.tsx`'s header in full before touching it.** It carries two
 rulings that a "make the tabs perfect" pass would otherwise reverse by accident.
 
+✅ **ALL THREE "GENUINELY OPEN" QUESTIONS ARE NOW CLOSED, and none of them by taste
+(2026-08-31, DG-S-01 — the rulings are in `DESIGN_AUTHORITY.md` §K rule 7c):**
+- **The label rung is `text-body-sm` (13px), sentence case, body face.** Forced *mechanically*,
+  not chosen: `test:type-scale` §4 sits at **924/924** with zero slack, so a new hand-typed
+  `text-[13px]` at a call site fails the suite — the semantic rung is the only legal spelling.
+  Three admin neighbours already render at 13 with no font class (`roles/page.tsx:68` ·
+  `players/[id]/page.tsx:321` · `admin-sidebar-nav.tsx:47`). ⛔ **Not** the filter pill (dense
+  rank is **11.5px mono** — a different role) and ⛔ **not** the admin table head
+  (`--type-label` **9.5px** — the eyebrow tier). Citing either would be a true measurement over
+  the wrong population.
+- **The rail SCROLLS.** Structural, not preference: the `border-b` is on the **container**, so a
+  wrapped second row leaves the first with no baseline. 📐 And the arithmetic agrees — measured
+  in the real production fonts, the smallest plausible **four-tab English rail is 354.3px
+  against 350px of available width at 390**, so three is the maximum that fits and wrapping was
+  never on the table. ⛔ Not an edge-fade (DG-A-23 refused it for admin with reasons), ⛔ not
+  `ScrollX` (all 57 call sites are admin **tables** — content with no focusable children, which
+  is why it carries `tabIndex=0`; a rail of links would gain a redundant tab stop).
+- **Swahili was never the risk, and the console is English anyway.** 📐 Re-derived over the right
+  population — the 691 dictionary pairs whose English is ≤12 characters — the EN→SW ratio is
+  **1.2423**, not §A5's 35–40%; a six-tab worst-case Swahili rail is 698.6px against 1,120px
+  available at 1440. And `failure-reasons.test.mts:1080-1085` already ruled *"the ADMIN console
+  is an English-only staff surface by design."* ⚠️ So `roles/page.tsx:72`'s `{t.label} · {t.sw}`
+  is the console's **heading** idiom applied to a control; the conversion drops the gloss to the
+  card above it, and that is the one *rendered* change it makes.
+
 | Detail | Already decided by | ⚠️ The catch |
 |---|---|---|
-| **Active fill** | **`--pill-active`.** `globals.css:423` calls it *"one active filter/tab fill everywhere"* — it names TABS by word. | ⛔ Never a second literal. That token has now drifted **twice** (the admin sidebar's inline `oklch(…268 / 0.5)`, and the mobile drawer's `bg-bg-inset text-royal-300`), and `ui-consistency`'s `hardcoded-pill-active` catches **neither**, because it matches the token's literal TEXT and so finds copies but never a different answer. |
+| **Active fill** | **`--pill-active`.** `globals.css:423` calls it *"one active filter/tab fill everywhere"* — it names TABS by word. | 🔴 **AND THE 4th AND 5th HOMES ARE INSIDE `tabs.tsx` ITSELF, found 2026-08-31.** `:99` paints `oklch(40% 0.08 264 / 0.55)` — a different chroma, hue AND alpha, so **a different answer, not a copy** — and `:127` says it again through a Tailwind alpha (`bg-brand-500/15 text-brand-300`). ⛔ `hardcoded-pill-active` sees neither, nor the two earlier drifts, because it matches the token's literal TEXT. ⚠️ **Both variants have ZERO call sites at HEAD** — the drift costs nothing today and costs every converted console the moment the primitive is adopted, which is the whole reason DG-S-02 repairs the primitive FIRST. |
 | **Hover** | **DG-P-01's ruling.** The `aria-current`/active item is excluded from hover **by design** — hovering it would swap the brighter `--pill-active` for the darker sunken `--bg-overlay`, i.e. the current tab would appear to LOSE emphasis on hover. | ⛔ Do not "fix" the active tab's missing hover. DG-P-01 measured 7 remaining dead probes and they are all exactly this, deliberately. The INACTIVE tabs must respond. |
-| **Height / rank** | §A2 (≥40, 44 preferred on mobile) + §6.6's player-44 / admin-32 split. `--h-control-xs` 32 · `sm` 40 · `md` 44. | 🔴 **`tabs.tsx` warns that every height in it is an arbitrary literal ON PURPOSE**: `theme.extend.spacing` is overridden, so `h-8` is **48px** and `h-10` is **80px**. All three variants once shipped oversized — `line` put the wallet rail in an 80px band. ⛔ **Never "tidy" them into scale classes.** |
+| **Height / rank** | ✅ **CLOSED — 44px, `--h-control-md`.** ⛔ **NOT 32:** `globals.css:292` scopes `--h-control-xs` to *"dense mouse-only admin **inline** controls (documented floor exception)"*, and a page's section navigation is neither dense nor inline — §6.6's admin-32 split licenses a different MEASURE for a *filter chip*, never for a page's primary rail. ⛔ **And not 52** (`players/[id]`'s `py-3`): on no rung, and invisible to `test:tap-target`, which reads a **declared** height and cannot see one made of padding. | 🔴 **`tabs.tsx` warns that every height in it is an arbitrary literal ON PURPOSE**: `theme.extend.spacing` is overridden, so `h-8` is **48px** and `h-10` is **80px**. All three variants once shipped oversized — `line` put the wallet rail in an 80px band. ⛔ **Never "tidy" them into scale classes.** |
 | **Focus ring** | §A3 — one recipe, 2px `--brand-500` at offset 2 plus the 4px 25% halo. | ⛔ Never `outline: none` without a replacement. And beware the stacking trap `globals.css` documents at `.btn.admin-focus:focus-visible`: a later equal-specificity rule silently strips the kit ring. |
 | **Motion** | §B5 — one definition site; `--t-*` durations with `--m-*` easings, both stated. | ⚠️ A transition with a duration and no easing silently means `ease` — the exact defect corrected on `.admin-tbl tbody tr`. And §M6: it must still work with motion off. |
-| **Badge / count** | `TabItem.count` already exists in the API, and the kit `<CountBadge>` is the pip **already used in both admin navs**. | ⭐ This is what makes DG-S-01's rule enforceable: a tab hiding a pending action *can* show it. ⚠️ `approvals` = kyc+aml+sof can exceed 99, so the cap matters — that is why `CountBadge` exists. |
-| **Semantics** | 🔴 **`tabs.tsx` A5 (2026-08-21): these are `role="group"` + `aria-pressed` buttons, NOT an ARIA tab widget** — because the PANEL is rendered by the caller, so the primitive can never emit a correct `aria-controls`. It also reserves `aria-current` for rails that NAVIGATE. | ⭐ **AND THAT COLLIDES WITH DG-S-03.** The moment tab state lives in the URL, the rail IS navigation — so `aria-pressed` becomes wrong and `aria-current="page"` becomes right. ⭐ **Which means URL-backed admin section tabs may not be a "tab widget" at all, but a NAVIGATION rail — the `FilterPill` shape that already ships on eight player surfaces.** Decide that in DG-S-01/03, before building; it changes which primitive is adopted. |
-| **Type** | §T7 — a size written at a call site comes from the **Tailwind** ladder. | ⚠️ **OPEN:** a tab label is not an eyebrow, so `text-micro` (10) is wrong for it; `text-body-sm` (13) is the likely rung at admin density, but it is a call that needs a screenshot, not an assumption. |
-| **Trilingual** | §A5 — every label must survive **Swahili ~35–40% longer** and Chinese ~50% shorter. | ⚠️ **OPEN and it is the real risk to the whole idea:** a 5-tab rail that fits at 1440 in EN can overflow in SW. Measure the SW labels BEFORE choosing the rail, not after. 📋 Note `TabItem.labelSw` is **dead API** — nothing reads it; the one call site passes translated `labelEn` from `useT()`. |
-| **Overflow at 390** | ⚠️ **OPEN.** Two shipped precedents disagree and neither is obviously right here: `pagination.tsx` ruled *"THE WRAP IS THE DESIGN"*, while `ScrollX` + the DG-A-23 affordance is how wide things scroll. | ⛔ A rail that silently wraps to two rows on a phone is a different component from one that scrolls. Pick one, write it into the criterion, and prove it at 390 with `elementFromPoint` — a bounding box cannot see whether a tab is reachable. |
+| **Badge / count** | `TabItem.count` already exists in the API, and the kit `<CountBadge>` is the pip **already used in both admin navs**. | 🔴 **BUT `tabs.tsx` DOES NOT USE IT** — it hand-writes that pip **three times** (`:103`, `:132`, `:159`), **uncapped**: a fifth implementation of the exact thing the stage-9 consolidation existed to remove. ⚠️ `approvals` = kyc+aml+sof can exceed 99, so the cap matters. ⛔ **And a badge does not buy a kill-switch a hiding place** (§K rule 7d): `CountBadge` renders nothing at zero, so it cannot tell *"nothing pending"* from *"this tab failed to read"*, and no number states *"maintenance is ON"*. |
+| **Semantics** | ✅ **SETTLED 2026-08-31 — §K rule 7b. A5 is NARROWED ON ITS OWN TERMS, NOT REVERSED.** Its structural half stands (*"a primitive cannot label an element it does not own"* — so ⛔ still no `role="tab"`/`aria-selected`/`aria-controls`); its `aria-current` clause is a **conditional** — *"these change in-page view state **without a URL**"* — whose antecedent a `?tab=` rail falsifies. | 🔴 **AND THE GUESS IN THIS CELL WAS WRONG: it is NOT the `FilterPill` shape.** `filter-language.test.mts:299-301,321` excludes `ui/tabs.tsx` from the filter language **by name** — *"Nav is out — an active NAV destination is a settled, separate language"* — so routing a section rail through `FilterPill` would **reverse a dated ruling** and drag it into `ADMIN_SURFACES`, where §6.6 would impose **32px on a page's primary navigation**. The primitive is `ui/tabs.tsx`, **extended with an `href` prop**, per §K's Definition of Done: *"a prop on the existing component, not a clone of it."* |
+| **Type** | ✅ **CLOSED — `text-body-sm` (13), sentence case, body face.** §T3's enclosure test files a tab as a **CONTROL LABEL** (*"a button, **tab**, filter or sort chip"*), and `eyebrow-roles.mjs:302` already declares `tabs.tsx`'s label so. | ⛔ **The eyebrow recipe is not available to it, and the reason is arithmetic:** `test:type-scale` §6 is **241/241** with zero slack, so an uppercase tracked tab label needs a ratchet raised that may only shrink — *and* a new signature in `eyebrow-roles.mjs`. Two censuses, one commit, both red. |
+| **Trilingual** | ✅ **CLOSED — the label is ENGLISH, and that is a dated ruling.** `failure-reasons.test.mts:1080-1085`: *"the ADMIN console is an English-only staff surface by design."* §A5's Swahili budget does not bind a control the console will never translate. | 📐 And SW was never the risk anyway: re-derived over the 691 short-label dictionary pairs the EN→SW ratio is **1.2423**, not 35–40%, and a six-tab worst-case Swahili rail is 698.6px in 1,120px at 1440. 📋 `TabItem.labelSw` is **dead API** — verified, 3 occurrences, all inside `tabs.tsx`, **0 readers**. It is deleted with the DG-S-02 repair. |
+| **Overflow at 390** | ✅ **CLOSED — IT SCROLLS.** Structural: the `border-b` is on the **container**, so a wrapped second row leaves the first with no baseline under it. Three shipped section rails are three-for-three `overflow-x-auto`; every FILTER rail wraps. | 📐 The arithmetic agrees — the smallest plausible 4-tab EN rail is **354.3px against 350px available at 390**, so three is the maximum. 🔴 **AND THE DEFECT IS ALREADY LIVE:** the six-tab `/admin/players/[id]` rail measures **695.8px inside ~310px — 224% of its box, on production, today**, and no instrument has ever opened that page. ⛔ Prove the fix with `elementFromPoint`, never a bounding box. |
 
 ### 📋 The form inventory, measured now so DG-S-05 starts with facts (2026-08-29)
 `<form>` elements under `src/app/admin`: **16 files.** Controls: **96 `<Input>` · 41 `<Select>`
 · 24 `<Toggle>` · 22 `<textarea>` · 6 `<DateSelect>` · 4 `<TimeSelect>` · 1 raw checkbox.**
-**34 files carry `"use server"`** and only **5** import `zod` — so validation today is
+**34 files carry `"use server"`** and 🔴 **exactly ONE imports `zod`** (⚠️ re-derived 2026-08-31:
+the recorded *"only 5"* does not reproduce — 5 is the count for all of `src/`, 6 today, and only
+**1** is under `src/app/admin`; `src/lib/server/validators.ts` has **no field-error surface at
+all** — no `flatten`, no `fieldErrors`) — so validation today is
 overwhelmingly *server-side and hand-rolled*, with the client showing whatever the action
 returns. ⚠️ **That is the shape DG-S-06 has to work with:** if the server returns "this is
 wrong" without saying WHICH field, no amount of client focus code can take the operator to it.
@@ -305,30 +349,64 @@ including the case where the answer is no.
   count (DG-S-01).
 - **`/admin/payments` (4.5 screens, 19 cards).** Sections: `Operations control-plane` ·
   `Selcom` · `Payout rails` · `Retry queue` · `What players are told about withdrawals`.
-  ⛔ **The control-plane holds the payment KILL-SWITCHES.** By DG-S-01 they may not go behind
-  an unbadged click — so either they stay on the landing tab or the tab carries a live state
-  pip. ⚠️ This is the page where getting the criterion wrong costs the most.
-- **`/admin/roles` (4.3 screens, 50 cards) — ⛔ DO NOT TAB.** Its entire job is *comparison
-  across roles*; tabs would put the two things being compared on different screens and make the
-  page worse while making it shorter. **Length is not the defect here — density is.** It is a
-  table problem. Recording it in the plan so the next session does not tab it by reflex because
-  it appears on the "over 3 screens" list.
+  🔴 **STRUCK 2026-08-31 — THE KILL-SWITCHES ARE NOT IN THE CONTROL-PLANE.** `KillSwitch` is
+  imported at `payments/page.tsx:15` and renders inside the **per-MNO health grid** at `:288`,
+  roughly 4,000px down the page; the control-plane at the top holds LIVE-vs-SIMULATION mode,
+  the provider radiogroup and demo-async. Acting on the sentence as written would pin the wrong
+  card and push the real deposit/withdrawal stops behind a click. ⭐ **§K rule 7e now rules the
+  whole page DO-NOT-TAB:** after the control-plane, the payout declaration, the Selcom float,
+  the per-MNO kill-switches, the frozen-payout alarm and reconciliation, the landing tab *is*
+  the page. ⚠️ Note also that this page's kill-switch is a **third spelling of the hard
+  confirm** (`kill-switch-toggle.tsx:67`, `word === "PAUSE"`, no `ConfirmModal`, no
+  `typedWord`) — so a guard keyed on `typedWord` undercounts, and the one it misses is the live
+  payment rail.
+- **`/admin/roles` — 🔴 THE RULING WAS RIGHT AND ITS REASON DESCRIBED A DIFFERENT PAGE.** *"Do
+  not tab"* stands, but **the page is ALREADY TABBED** (`page.tsx:19-22, :60-77`, URL-driven
+  `?tab=`, with `aria-current` correct) — and its two tabs are not roles, they are two
+  permission **AXES** (Access vs Reads) carrying their own dated ruling at `page.tsx:14-18`
+  citing `docs/READ-TIERS.md` §6: *"two permission screens is how two permission models are
+  born."* Comparison across roles happens **within** one matrix, on one tab, and was never at
+  risk. ⚠️ And its *"50 cards"* is a **probe artefact**: `measure.mjs:164-171` counts any
+  rounded painted box ≥160×40, and 6 editable roles × 7 domains + 6 role cards + 2 real cards
+  = 50 exactly. The page has three operator-visible blocks. **The work here is to delete its
+  hand-rolled rail INTO the primitive — nothing else.**
 
-### 🔢 Sequencing — the order is not arbitrary
-1. **DG-S-01** (the criterion, into `DESIGN_AUTHORITY`) — before a single page is touched, and it
-   must settle the **semantics question in DG-S-07's craft table**: URL-backed tabs ARE
-   navigation, and that changes which primitive is adopted.
-2. **The measurement decision in the first trap below** — before the first page is tabbed.
-3. **DG-S-02 → DG-S-03 → DG-S-07** (kit at admin density, URL state, then every state crafted) on
-   ONE page, end to end, as the pattern every other page copies. ⛔ **The craft is part of the
-   pattern, not a polish pass afterwards** — a rail copied to eleven pages before its hover,
-   focus and 390 behaviour are settled is eleven pages to redo.
-4. **DG-S-04** (unsaved-changes) — it must exist before many tabs do, because a tab switch is
+### 🔢 Sequencing — REWRITTEN 2026-08-31, once DG-S-01 found the two shipped rails
+✅ **1. DG-S-01 — DONE.** The criterion is `DESIGN_AUTHORITY.md` §K rule 7. It settled the
+semantics question (A5 is **narrowed on its own terms, not reversed**) and the measurement
+question (**inactive panels are not rendered; the tab set is read off the rendered rail, never
+typed into `routes.mjs`**).
+
+⭐ **AND THE ORDER BELOW CHANGED, because the console is already tabbed.** The old plan tabbed a
+NEW page first. That is now wrong: **two rails already ship, they disagree, and no gate can see
+either** — so the pattern is proved by *converting what exists*, on pages whose tab decision has
+already been taken, before a thirteenth console gets one.
+
+2. **DG-S-02 — repair `ui/tabs.tsx` ALONE.** ⛔ Both drifting variants have **zero call sites at
+   HEAD**: this commit moves no rendered pixel, and it is the last moment that is true.
+3. **DG-S-03 — the `href` prop, then convert `/admin/roles` (2 tabs, smallest) and
+   `/admin/players/[id]` (the gate's one head hit, four defects).** ⛔ A prop and every call site
+   it types ship in ONE commit (standards §8b). ⛔ **The craft (DG-S-07) is part of this
+   pattern, not a polish pass afterwards** — a rail copied onward before its hover, focus and
+   390 behaviour are settled is every page to redo.
+4. **The instruments — BEFORE the first NEW rail exists.** The `data-section-rail` expander in
+   `routes.mjs` (read off the page, ⛔ no `?` entries), `measure.mjs:293-294` and
+   `admin-shell-seal.mjs:120` stop discarding the query. 🔴 This is not a future risk: it is
+   live at n=1, and `/admin/roles?tab=reads` has never been measured by anything.
+5. **`test:section-rail` + `red:section-rail`, wired into `test:all`** — ⛔ **after** step 3, never
+   before, or it is a baseline rather than a gate (its one HEAD hit is cleared by step 3).
+6. **DG-S-04** (unsaved-changes) — it must exist before many tabs do, because a tab switch is
    one of the three exits it has to cover.
-5. **DG-S-05 → DG-S-06** in that order, for the reason in the inventory above.
+7. **DG-S-05 → DG-S-06** in that order, for the reason in the inventory above.
+8. **Only then tab a NEW console.** First page: **`/admin/ai-polls`** — it passes all three of
+   §K rule 7a, already reads 13 search params so DG-S-03 adds a parameter rather than a
+   mechanism, is the **only** page in the repo that already ships DG-S-06's helper
+   (`poll-actions.tsx:197`), and costs least if the call is wrong, because AI never publishes
+   without an officer. Runner-up `/admin/system` (tallest panel 12% of the page — the flattest
+   tab shape in the console, but it holds the platform maintenance kill-switch).
 
 ### ⛔ Traps this stage will hit, named in advance
-- **A tabbed page is a NEW population for every existing gate.** `qa:admin-load`, the render drive, `qa:dg-shell` and the overflow checks all walk `routes.mjs` — and a tab's content is *not rendered* until selected. ⛔ **Every one of those gates would go green over content nobody measured.** Either the route list gains `?tab=` entries or the drives learn to walk the tabs; decide that BEFORE tabbing the first page, or step 5 quietly un-measures step 1.
+- 🔴 **A tabbed page is a NEW population for every existing gate — AND IT IS ALREADY LIVE AT n=1, NOT A FUTURE RISK.** `qa:admin-load`, the render drive, `qa:dg-shell` and the overflow checks all walk `routes.mjs`, whose **73 entries carry 0 query strings** — so `/admin/roles?tab=reads`, and with it the whole of `read-tiers-matrix.tsx` including its own hard confirm, **has never been visited by any instrument**, and `/admin/roles` is `qa:admin-load`'s floor route. ✅ **DECIDED 2026-08-31 (§K rule 7f):** inactive panels are **NOT RENDERED**, and the tab set is **read off the rendered rail** via a `data-section-rail` expander in `routes.mjs` — ⛔ **never typed as `?` entries**, which is both a §0a copy *and* mechanically broken (`admin-shell-seal.mjs:120` strips the query before comparing, so every `?tab=` entry files as REDIRECTED and is never probed, while `probed` stays non-zero so the *"zero probes is a skipped run"* guard never fires — a silently unmeasured route inside a green run).
 - **`/admin/updown` and `/admin/updown/proposals` are the two longest pages AND the two whose load budget was hardest won** (13,247 → 1,617 ms). Tabbing them must not resurrect a per-tab refetch.
 - **Do not tab `/admin/roles` (50 cards) by role.** Its whole job is comparison across roles; tabs would make the comparison impossible. It is a table problem, not a tab problem.
 - **§B10 says the system is COMPLETE and FROZEN.** Tabs are not a new visual system — they are an existing kit primitive reaching a new surface. If a tab needs a new token, that is a signal the criterion in DG-S-01 is being stretched.
