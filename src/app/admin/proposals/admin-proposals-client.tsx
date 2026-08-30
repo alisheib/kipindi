@@ -96,7 +96,7 @@ function isValidHttpUrl(raw: string): boolean {
 }
 
 function Cap({ children }: { children: React.ReactNode }) {
-  return <span className="font-mono text-micro uppercase tracking-[0.1em] text-text-subtle">{children}</span>;
+  return <span className="font-mono text-micro uppercase eyebrow text-text-subtle">{children}</span>;
 }
 function CField({ label, hint, prefix, suffix, value, onChange, width }: { label: string; hint?: string; prefix?: string; suffix?: string; value: number; onChange: (n: number) => void; width?: number }) {
   return (

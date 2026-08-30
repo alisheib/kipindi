@@ -382,7 +382,7 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
             {calView === "days" ? (<>
               <div className="grid grid-cols-7 px-3 pt-2 pb-1">
                 {DAY_LABELS.map((l) => (
-                  <span key={l} className="text-center font-mono text-micro uppercase tracking-[0.12em] text-text-subtle font-bold">{l}</span>
+                  <span key={l} className="text-center font-mono text-micro uppercase eyebrow text-text-subtle font-bold">{l}</span>
                 ))}
               </div>
               <div className="grid grid-cols-7 gap-0.5 px-2.5 pb-3">

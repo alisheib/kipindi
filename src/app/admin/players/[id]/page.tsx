@@ -259,7 +259,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
               </div>
             </div>
             <div className="ml-auto flex flex-col items-center gap-1.5">
-              <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-tertiary">Risk score</p>
+              <p className="font-mono text-micro uppercase eyebrow text-text-tertiary">Risk score</p>
               {/* Radial gauge (AdminGauge) — arc + number coloured by band with the
                   SAME tokens the rest of the console uses for risk. NOT ConfidenceDial:
                   that is a YES/NO tipping dial and would misread as a bet split.
@@ -360,7 +360,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
               <>
               <ScrollX label="Transactions">
                 <table className="admin-tbl min-w-[600px]">
-                  <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
+                  <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle">
                     <tr>
                       <SortTh field="time" label="When" current={tx.sort} dir={tx.dir} sp={sp} baseHref={playerHref} prefix="tx" className="py-2 pr-3" />
                       <SortTh field="type" label="Type" current={tx.sort} dir={tx.dir} sp={sp} baseHref={playerHref} prefix="tx" className="py-2 pr-3" />
@@ -480,7 +480,7 @@ function KycTab({ kyc, userEmail, userId, makerCheckerRequired, canActSupport, c
       <div className={`rounded-md px-3 py-2.5 flex items-start gap-2.5 text-caption ${userEmail ? "border border-border bg-bg-inset/30" : "border-2 border-warning-border bg-warning-bg"}`}>
         <I.mail s={14} className={userEmail ? "text-text-tertiary mt-0.5" : "text-warning-fg mt-0.5"} />
         <div className="flex-1 min-w-0">
-          <p className="font-mono text-micro tracking-[0.12em] uppercase text-text-tertiary">Player email</p>
+          <p className="font-mono text-micro eyebrow uppercase text-text-tertiary">Player email</p>
           {userEmail ? (
             <p className="text-body-sm font-medium text-text break-all"><Sensitive field="email" subjectId={userId} value={userEmail} /></p>
           ) : (
@@ -533,7 +533,7 @@ function KycTab({ kyc, userEmail, userId, makerCheckerRequired, canActSupport, c
         const present = new Set(kyc.documents.map((d: { docType: string }) => d.docType));
         return (
           <div>
-            <p className="font-mono text-micro tracking-[0.12em] uppercase text-text-tertiary mb-2.5">Documents</p>
+            <p className="font-mono text-micro eyebrow uppercase text-text-tertiary mb-2.5">Documents</p>
             <div className={`grid gap-2.5 ${SLOTS.length >= 3 ? "grid-cols-3" : "grid-cols-2"}`}>
               {SLOTS.map((s) => {
                 const has = present.has(s.type);
@@ -563,7 +563,7 @@ function KycTab({ kyc, userEmail, userId, makerCheckerRequired, canActSupport, c
           "awaiting"). Empty in the normal case; only shown when docs were asked. */}
       {(kyc.extraRequests ?? []).length > 0 && (
         <div>
-          <p className="font-mono text-micro tracking-[0.12em] uppercase text-text-tertiary mb-2.5">Requested documents</p>
+          <p className="font-mono text-micro eyebrow uppercase text-text-tertiary mb-2.5">Requested documents</p>
           <div className="space-y-2.5">
             {(kyc.extraRequests ?? []).map((rq: { id: string; description: string; storageKey: string | null; uploadedAt: string | null }) => {
               const src = `/api/admin/kyc-doc?user=${encodeURIComponent(kyc.userId)}&req=${encodeURIComponent(rq.id)}`;
@@ -594,7 +594,7 @@ function KycTab({ kyc, userEmail, userId, makerCheckerRequired, canActSupport, c
 
       {canActCompliance && (
         <div className="rounded-lg border border-border-subtle bg-bg-inset/30 p-3.5">
-          <p className="font-mono text-micro tracking-[0.12em] uppercase text-text-tertiary mb-2.5">Officer decision</p>
+          <p className="font-mono text-micro eyebrow uppercase text-text-tertiary mb-2.5">Officer decision</p>
           <KycReviewControls userId={kyc.userId} status={kyc.status} makerCheckerRequired={makerCheckerRequired} />
         </div>
       )}
@@ -654,7 +654,7 @@ function ExclusionTab({ rg }: { rg: Awaited<ReturnType<typeof db.responsible.get
 function Item({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="rounded-md bg-bg-sunken/40 px-3 py-2">
-      <dt className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary">{label}</dt>
+      <dt className="font-mono text-micro eyebrow uppercase text-text-tertiary">{label}</dt>
       <dd className="text-body-sm font-medium text-text mt-1 break-words">{value}</dd>
     </div>
   );

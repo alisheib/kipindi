@@ -53,7 +53,7 @@ function FairnessChain({ steps }: { steps: { glyph: keyof typeof I; label: strin
                 <span className={`inline-flex h-[44px] w-[44px] items-center justify-center rounded-full ${circleCls}`}>
                   <Glyph s={19} />
                 </span>
-                <span className={`mt-2 font-mono text-micro font-semibold uppercase leading-tight tracking-[0.06em] ${s.gilt ? "text-gold-300" : "text-text-muted"}`}>
+                <span className={`mt-2 font-mono text-micro font-semibold uppercase leading-tight eyebrow ${s.gilt ? "text-gold-300" : "text-text-muted"}`}>
                   {s.label}
                 </span>
               </div>
@@ -95,7 +95,7 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
       <section className="glass-panel p-5 space-y-4">
         <div className="flex items-baseline justify-between flex-wrap gap-2">
           <h2 className="font-display text-[20px] font-semibold text-text">{t.common.fairnessHowItWorks}</h2>
-          <span className="font-mono text-caption tracking-[0.16em] uppercase text-text-subtle">FATF R.10 · POCA Cap 423 §16</span>
+          <span className="font-mono text-caption eyebrow uppercase text-text-subtle">FATF R.10 · POCA Cap 423 §16</span>
         </div>
         {/* C1d — 5-step provably-fair chain (glyph idiom, gilt only on the
             two-officer attestation seal). Labels live in HTML, not the SVG.
@@ -148,7 +148,7 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
           <ScrollX label="Resolved markets" className="glass-panel">
             <table className="admin-tbl">
               <thead className="border-b border-border bg-bg-overlay">
-                <tr className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">
+                <tr className="font-mono text-micro uppercase eyebrow text-text-subtle">
                   <th className="text-left p-3">{t.common.thMarket}</th>
                   <th className="text-left p-3">{t.common.thOutcome}</th>
                   <th className="text-left p-3">{t.common.thOfficers}</th>

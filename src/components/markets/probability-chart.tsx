@@ -164,7 +164,7 @@ export function ProbabilityChart({
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
         <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
           <SignalPip size={7} />
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--text-subtle)" }}>{t.market.probOverTime}</span>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--text-subtle)" }}>{t.market.probOverTime}</span>
         </div>
         {/* 🔴 A5 (2026-08-21) — PRESSED BUTTONS, NOT AN ARIA TAB WIDGET. The range rail carried
             `role="tablist"`/`role="tab"`/`aria-selected` with no roving tabindex, no arrow keys

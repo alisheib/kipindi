@@ -487,6 +487,7 @@
     "qa:dg-shell": "node scripts/design-gate/admin-shell-seal.mjs",
     "qa:dg-money": "node scripts/design-gate/money-sweep.mjs",
     "qa:dg-eyebrow": "node scripts/design-gate/eyebrow-sweep.mjs",
+    "test:eyebrow-roles": "node scripts/design-gate/eyebrow-sweep.mjs --tracking",
     "qa:dg-redo": "node scripts/design-gate/redo.cjs",
     "qa:card-geometry": "node scripts/card-geometry-probe.mjs",
     "qa:board-bootstrap": "node scripts/qa-board-bootstrap.mjs",

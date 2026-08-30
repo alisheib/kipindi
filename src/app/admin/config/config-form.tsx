@@ -205,7 +205,7 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
           rates it froze at creation, so the two calculations never mix. */}
       <div className="rounded-lg border border-border bg-bg-overlay p-3 space-y-3">
         <div>
-          <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">Fee model</p>
+          <p className="font-mono text-micro uppercase eyebrow text-text-subtle">Fee model</p>
           <p className="mt-0.5 text-body-sm text-text-muted">
             Applies to <strong>new polls only</strong>. Existing polls keep the model they were created under —
             the two calculations never mix.

@@ -87,7 +87,7 @@ export default async function AdminSourcesPage() {
             <ScrollX label="Sources">
               <table className="admin-tbl">
                 <thead className="border-b border-border-subtle bg-bg-sunken/50">
-                  <tr className="font-mono text-micro uppercase tracking-[0.14em] text-text-tertiary">
+                  <tr className="font-mono text-micro uppercase eyebrow text-text-tertiary">
                     <th className="text-left p-3">Source</th>
                     <th className="text-left p-3">Domain</th>
                     <th className="text-left p-3">Rationale</th>

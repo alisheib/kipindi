@@ -227,7 +227,7 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
 
           <div className="space-y-4">
             <div className="glass-panel p-4">
-              <p className="font-mono text-micro uppercase tracking-[0.14em] font-bold text-text-subtle mb-3">Add override</p>
+              <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle mb-3">Add override</p>
               <FormColumn measure="form"><MarketOverrideForm globalConfig={config} /></FormColumn>
             </div>
 
@@ -239,7 +239,7 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
               <ScrollX label="Market overrides" className="rounded-md border border-border">
                 <table className="admin-tbl">
                   <thead className="border-b border-border bg-bg-overlay">
-                    <tr className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">
+                    <tr className="font-mono text-micro uppercase eyebrow text-text-subtle">
                       <th className="text-left p-3">Market</th>
                       <th className="text-left p-3">Fee ceiling</th>
                       <th className="text-left p-3">Commission</th>
@@ -300,7 +300,7 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
             <ScrollX label="Config changes">
               <table className="admin-tbl">
                 <thead className="border-b border-border bg-bg-overlay">
-                  <tr className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">
+                  <tr className="font-mono text-micro uppercase eyebrow text-text-subtle">
                     <th className="text-left p-3">Time</th>
                     <th className="text-left p-3">Action</th>
                     <th className="text-left p-3">Officer</th>

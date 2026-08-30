@@ -115,7 +115,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
             subtitle={t.wallet.mobileMoney}
           />
           <div className="text-right shrink-0">
-            <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">{t.wallet.available}</p>
+            <p className="font-mono text-micro uppercase eyebrow text-text-subtle">{t.wallet.available}</p>
             <Cash className="font-display font-bold text-[22px] tabular-nums text-text leading-none block">
               {formatTzs(wallet?.balance ?? 0)}
             </Cash>

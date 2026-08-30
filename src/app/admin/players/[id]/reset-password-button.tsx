@@ -52,7 +52,7 @@ export function ResetPasswordButton({ userId }: { userId: string }) {
       <div className="inline-flex items-center gap-2 rounded-md border border-warning-fg/40 bg-warning/10 px-3 py-2">
         <I.keyRound s={14} className="text-warning-fg shrink-0" />
         <div>
-          <p className="font-mono text-micro uppercase tracking-[0.12em] text-warning-fg">Temporary password</p>
+          <p className="font-mono text-micro uppercase eyebrow text-warning-fg">Temporary password</p>
           <p className="font-mono text-[13px] font-bold text-text select-all">{result}</p>
         </div>
         <button

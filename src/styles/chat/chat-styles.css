@@ -678,7 +678,11 @@
   font-family: var(--font-mono);
   font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  /* §T3 0.14em — the section eyebrow's tracking. ⚠️ Written here rather than pulled from
+     `globals.css`'s shared rule because §0d licenses this layer its own NAMESPACED vocabulary
+     and a cross-file selector list would couple them; the LAW still reaches it, because §T3
+     governs a ROLE, not a stylesheet. */
+  letter-spacing: 0.14em;
 }
 .cm-handoff-rule::before,
 .cm-handoff-rule::after {
@@ -734,7 +738,11 @@
   font-family: var(--font-mono);
   font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.10em;
+  /* §T3 0.14em — the section eyebrow's tracking. ⚠️ Written here rather than pulled from
+     `globals.css`'s shared rule because §0d licenses this layer its own NAMESPACED vocabulary
+     and a cross-file selector list would couple them; the LAW still reaches it, because §T3
+     governs a ROLE, not a stylesheet. */
+  letter-spacing: 0.14em;
   color: var(--pearl);
 }
 .cm-rg-title {

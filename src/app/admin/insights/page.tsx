@@ -125,7 +125,7 @@ export default async function InsightsPage() {
             <ScrollX label="Cohort retention & value">
               <table className="admin-tbl min-w-[640px]">
                 <thead>
-                  <tr className="text-left font-mono text-micro uppercase tracking-[0.12em] text-text-faint">
+                  <tr className="text-left font-mono text-micro uppercase eyebrow text-text-faint">
                     <th className="py-2 pr-3 font-semibold">Cohort</th>
                     <th className="py-2 pr-3 font-semibold text-right">Players</th>
                     {Array.from({ length: cols + 1 }, (_, k) => (

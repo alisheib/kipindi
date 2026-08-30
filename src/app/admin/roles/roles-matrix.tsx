@@ -99,11 +99,11 @@ export function RolesMatrix({ matrix: initial }: { matrix: Matrix }) {
                   </div>
                   <div className="flex items-center gap-4 shrink-0">
                     <label className="flex items-center gap-1.5">
-                      <span className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle">See</span>
+                      <span className="font-mono text-micro uppercase eyebrow text-text-subtle">See</span>
                       <Toggle on={g.canView} onClick={() => toggleView(role, d)} aria-label={`${ROLE_LABEL[role as Role]} can view ${DOMAIN_LABEL[d]}`} />
                     </label>
                     <label className="flex items-center gap-1.5">
-                      <span className="font-mono text-micro uppercase tracking-[0.12em]" style={{ color: sensitive && g.canAct ? MONEY : "var(--text-subtle)" }}>
+                      <span className="font-mono text-micro uppercase eyebrow" style={{ color: sensitive && g.canAct ? MONEY : "var(--text-subtle)" }}>
                         Do{sensitive ? " ⚠" : ""}
                       </span>
                       <Toggle on={g.canAct} onClick={() => toggleAct(role, d)} aria-label={`${ROLE_LABEL[role as Role]} can act on ${DOMAIN_LABEL[d]}`} />

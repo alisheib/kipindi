@@ -162,7 +162,7 @@ export function ControlPlane({ controls }: { controls: PaymentControlsView }) {
             {!controls.simulationActiveOnLiveMoney && controls.gatewayConfigured && controls.provider !== "mock" && <I.check s={13} className="text-yes-300" />}
           </Chip>
           <div className="min-w-0">
-            <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">Operations mode · Hali ya uendeshaji</p>
+            <p className="font-mono text-micro uppercase eyebrow text-text-subtle">Operations mode · Hali ya uendeshaji</p>
             <p className="text-caption text-text-secondary">
               {live
                 ? "Real deposits & withdrawals move real money. The provider is operator-switchable; the kill-switch is the emergency stop."
@@ -219,7 +219,7 @@ export function ControlPlane({ controls }: { controls: PaymentControlsView }) {
       {/* Provider selector */}
       <div className="mt-4">
         <div className="flex items-center justify-between gap-2 flex-wrap">
-          <span className="inline-flex items-center gap-2 font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">
+          <span className="inline-flex items-center gap-2 font-mono text-micro uppercase eyebrow text-text-subtle">
             <I.mobileMoney s={14} className="text-text-tertiary" /> Payment provider · Mtoa huduma
           </span>
           {controls.provider !== "mock" && (
@@ -332,7 +332,7 @@ function ToggleRow({
           <span className="text-text-tertiary">{icon}</span>{label}
           {locked && <I.lock s={11} className="text-text-subtle" />}
         </p>
-        <p className="font-mono text-micro uppercase tracking-[0.1em] text-text-subtle">{sw}</p>
+        <p className="font-mono text-micro uppercase eyebrow text-text-subtle">{sw}</p>
         <p className="mt-0.5 text-body-sm text-text-tertiary leading-snug">
           {hint}{!explicit && !locked ? ` · env: ${envValue ? "on" : "off"}` : ""}
         </p>

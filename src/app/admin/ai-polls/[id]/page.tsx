@@ -137,7 +137,7 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
         {/* Resolution + options */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <AdminCard>
-            <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle mb-2">Resolution criterion · EN (binding)</p>
+            <p className="font-mono text-micro uppercase eyebrow text-text-subtle mb-2">Resolution criterion · EN (binding)</p>
             <p className="text-[13px] text-text leading-relaxed">
               {poll.resolutionCriterion || <span className="italic text-text-subtle">No criterion set</span>}
             </p>
@@ -150,7 +150,7 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
                 "I forgot to look", and this states what the player will actually get. */}
             {([["SW", poll.resolutionCriterionSw], ["ZH", poll.resolutionCriterionZh]] as const).map(([lang, text]) => (
               <div key={lang} className="mt-2 border-l-2 border-border/60 pl-2.5">
-                <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">{lang}</p>
+                <p className="font-mono text-micro uppercase eyebrow text-text-subtle">{lang}</p>
                 {text
                   ? <p className="text-body-sm text-text-muted leading-relaxed" lang={lang.toLowerCase()}>{text}</p>
                   : <p className="text-body-sm italic text-text-subtle">No translation — players see the English with a note saying so.</p>}
@@ -158,13 +158,13 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
             ))}
             <div className="mt-3 pt-3 border-t border-border/60 grid grid-cols-2 gap-3">
               <div>
-                <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle mb-1">{SELECTION.selectionCloses.en}</p>
+                <p className="font-mono text-micro uppercase eyebrow text-text-subtle mb-1">{SELECTION.selectionCloses.en}</p>
                 <p className="font-mono text-[13px] text-text tabular-nums">
                   {poll.selectionClosedAt ? fmtDate(poll.selectionClosedAt) : "\u2014"}
                 </p>
               </div>
               <div>
-                <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle mb-1">Resolution date</p>
+                <p className="font-mono text-micro uppercase eyebrow text-text-subtle mb-1">Resolution date</p>
                 <p className="font-mono text-[13px] text-text tabular-nums">
                   {poll.resolutionAt ? fmtDate(poll.resolutionAt) : "\u2014"}
                 </p>
@@ -173,7 +173,7 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
           </AdminCard>
 
           <AdminCard>
-            <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle mb-2">Betting options</p>
+            <p className="font-mono text-micro uppercase eyebrow text-text-subtle mb-2">Betting options</p>
             {poll.options.length > 0 ? (
               <div className="space-y-2">
                 {poll.options.map((o, i) => (
@@ -191,7 +191,7 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
 
         {/* Quality */}
         <AdminCard>
-          <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle mb-2">Quality assessment</p>
+          <p className="font-mono text-micro uppercase eyebrow text-text-subtle mb-2">Quality assessment</p>
           {poll.qualityIndicators.length > 0 ? (
             <QualityBadges indicators={poll.qualityIndicators} overall={poll.overallQuality} />
           ) : (
@@ -218,7 +218,7 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
           <AdminCard>
             <div className="flex items-center gap-2 mb-2">
               <I.warning s={14} />
-              <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">Filter reasons</p>
+              <p className="font-mono text-micro uppercase eyebrow text-text-subtle">Filter reasons</p>
             </div>
             <FilterReasonChips reasons={poll.filterReasons} />
           </AdminCard>
@@ -226,7 +226,7 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
 
         {/* Sources */}
         <AdminCard>
-          <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle mb-2">Sources</p>
+          <p className="font-mono text-micro uppercase eyebrow text-text-subtle mb-2">Sources</p>
           {poll.sources.length > 0 ? (
             <div className="space-y-1.5">
               {poll.sources.map((s, i) => (
@@ -253,7 +253,7 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
 
         {/* AI reasoning */}
         <AdminCard>
-          <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle mb-2">AI reasoning</p>
+          <p className="font-mono text-micro uppercase eyebrow text-text-subtle mb-2">AI reasoning</p>
           {poll.reasoning ? (
             <p className="text-body-sm text-text-muted leading-relaxed pl-3 border-l-2 border-border">
               {poll.reasoning}
@@ -266,7 +266,7 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
         {/* Raw response (for failed/filtered) */}
         {poll.rawResponse && (poll.state === "VALIDATION_FAILED" || poll.state === "FILTERED") && (
           <AdminCard>
-            <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle mb-2">Raw AI response</p>
+            <p className="font-mono text-micro uppercase eyebrow text-text-subtle mb-2">Raw AI response</p>
             <pre className="text-[10px] font-mono text-text-muted leading-relaxed pl-3 border-l-2 border-border overflow-x-auto whitespace-pre-wrap break-all max-h-[300px] overflow-y-auto">
               {poll.rawResponse.slice(0, 2000)}
               {poll.rawResponse.length > 2000 && "\u2026"}
@@ -276,7 +276,7 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
 
         {/* Meta card */}
         <AdminCard>
-          <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle mb-3">Metadata</p>
+          <p className="font-mono text-micro uppercase eyebrow text-text-subtle mb-3">Metadata</p>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <MetaField label="Poll ID" value={poll.id} mono />
             <MetaField label="Created" value={fmtDate(poll.createdAt)} />
@@ -325,7 +325,7 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
 function MetaField({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div>
-      <p className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle mb-0.5">{label}</p>
+      <p className="font-mono text-micro uppercase eyebrow text-text-subtle mb-0.5">{label}</p>
       <p className={`text-[12px] text-text leading-tight ${mono ? "font-mono break-all" : ""}`}>{value}</p>
     </div>
   );

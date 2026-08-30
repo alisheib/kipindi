@@ -582,7 +582,7 @@ function ProgressRail({ nodes }: { nodes: { label: string; glyph: keyof typeof I
               <span className={`inline-flex h-[32px] w-[32px] items-center justify-center rounded-full ${circleCls}`}>
                 {node.done ? <I.check s={16} /> : <Glyph s={16} />}
               </span>
-              <span className={`mt-2 text-center font-mono text-micro font-semibold uppercase leading-tight tracking-[0.08em] ${labelCls}`}>
+              <span className={`mt-2 text-center font-mono text-micro font-semibold uppercase leading-tight eyebrow ${labelCls}`}>
                 {node.label}
               </span>
             </div>

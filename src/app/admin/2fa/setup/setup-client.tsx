@@ -89,7 +89,7 @@ export function TotpSetupClient({ initiallyEnabled, next }: { initiallyEnabled: 
 
   const stepCodeInput = (
     <label className="block mt-3">
-      <span className="block text-caption uppercase tracking-[0.14em] font-bold text-text-secondary mb-1.5">
+      <span className="block text-caption uppercase eyebrow font-bold text-text-secondary mb-1.5">
         Current 6-digit code
       </span>
       <input
@@ -201,7 +201,7 @@ export function TotpSetupClient({ initiallyEnabled, next }: { initiallyEnabled: 
         </div>
         <div className="space-y-2">
           <label className="block">
-            <span className="block text-caption uppercase tracking-[0.14em] font-bold text-text-secondary mb-1.5">
+            <span className="block text-caption uppercase eyebrow font-bold text-text-secondary mb-1.5">
               2. Enter the 6-digit code
             </span>
             <input

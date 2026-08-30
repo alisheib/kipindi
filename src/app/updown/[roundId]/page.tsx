@@ -67,7 +67,7 @@ function POSITION_STATUS_LABEL(
 
 const card = { background: "var(--bg-elevated)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", boxShadow: "var(--shadow-card)" } as const;
 const inset = { background: "var(--bg-inset)", border: "1px solid color-mix(in oklab, var(--border) 70%, transparent)", borderRadius: "var(--r-md)" } as const;
-const eyebrow = "m-0 font-mono text-micro font-semibold uppercase tracking-[0.12em] text-text-faint";
+const eyebrow = "m-0 font-mono text-micro font-semibold uppercase eyebrow text-text-faint";
 
 const usd = (n: number | null, d: number): string =>
   n == null ? "—" : `$${n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d })}`;
@@ -469,14 +469,14 @@ export default async function UpDownRoundPage({
                       take `.amount` (§M4 governs amounts only). `leading-[1.1]` stays on both:
                       the rung would otherwise impose 24px and open the pair up. */}
                   <p className="m-0 amount text-title-sm font-bold leading-[1.1] text-text">{formatTzs(round.volumeTzs)}</p>
-                  <p className="mt-1 font-mono text-micro uppercase tracking-[0.10em] text-text-faint">{t.market.udVolume}</p>
+                  <p className="mt-1 font-mono text-micro uppercase eyebrow text-text-faint">{t.market.udVolume}</p>
                 </div>
                 <div className="text-right">
                   <p className="m-0 flex items-center justify-end gap-1.5 font-mono text-title-sm font-bold leading-[1.1] tabular-nums text-text">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.4" /><path d="M5.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" /></svg>
                     {round.players.toLocaleString()}
                   </p>
-                  <p className="mt-1 font-mono text-micro uppercase tracking-[0.10em] text-text-faint">{t.market.udPlayers}</p>
+                  <p className="mt-1 font-mono text-micro uppercase eyebrow text-text-faint">{t.market.udPlayers}</p>
                 </div>
               </div>
               <div className="mt-3.5">
@@ -545,11 +545,11 @@ export default async function UpDownRoundPage({
                 </div>
                 <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
                   <div>
-                    <p className="m-0 font-mono text-micro uppercase tracking-[0.10em] text-text-faint">{t.market.udPaidOut}</p>
+                    <p className="m-0 font-mono text-micro uppercase eyebrow text-text-faint">{t.market.udPaidOut}</p>
                     <p className={`mt-1 m-0 text-title-md font-bold leading-none amount${payoutStruck ? " gilt-ink" : " text-text"}`}>{formatTzs(myPosition.payout ?? 0)}</p>
                   </div>
                   <div className="text-right">
-                    <p className="m-0 font-mono text-micro uppercase tracking-[0.10em] text-text-faint">{t.market.udYourPick} · {t.market.udStake}</p>
+                    <p className="m-0 font-mono text-micro uppercase eyebrow text-text-faint">{t.market.udYourPick} · {t.market.udStake}</p>
                     {/* ⛔ A HEDGED HOLDER IS NOT QUOTED ONE SIDE. `myPositionFor` derives its
                         single `side` with `up >= down`, which is a tie-break, not a fact about
                         the bet — so a player who backed BOTH ways was shown the larger leg as
@@ -572,7 +572,7 @@ export default async function UpDownRoundPage({
                 {myPosition.items.length > 1 && (
                   <div className="mt-3.5 border-t border-border-subtle/60 pt-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="m-0 font-mono text-micro uppercase tracking-[0.10em] text-text-faint">
+                      <p className="m-0 font-mono text-micro uppercase eyebrow text-text-faint">
                         {t.market.udPositionsOnRound} · {myPosition.items.length}
                       </p>
                       {myPosition.hedged && <span className="chip">{t.market.udBothSides}</span>}
@@ -654,7 +654,7 @@ export default async function UpDownRoundPage({
           <section aria-label={t.market.udSettlementProof} style={{ ...card, padding: "16px 18px 18px" }}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <span className="gilt-eyebrow">{t.market.udSettlementProof}</span>
-              <span className="font-mono text-micro uppercase tracking-[0.08em] text-text-subtle">{t.market.udRoundLabel} {round.roundId} · {t.market.udAuditableRecord}</span>
+              <span className="font-mono text-micro uppercase eyebrow text-text-subtle">{t.market.udRoundLabel} {round.roundId} · {t.market.udAuditableRecord}</span>
             </div>
             <div className="gilt-rule" style={{ margin: "10px 0 14px" }} />
 

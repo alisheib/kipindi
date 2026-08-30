@@ -112,14 +112,14 @@ export function NewMarketWizard({ feeInfo, platformTz }: { feeInfo: FeeInfo; pla
   return (
     <div className="space-y-6">
       <SteppedProgress steps={4} current={step} />
-      <p className="font-mono text-micro uppercase tracking-[0.16em] font-bold text-text-subtle">
+      <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">
         Step {step + 1} / 4
       </p>
 
       {/* What this market WILL freeze at creation (read-only). Change it at
           /admin/config → Fee model. A poll settles by the model it was created under. */}
       <div className="rounded-md border border-border bg-bg-overlay px-3 py-2.5 text-[11.5px] text-text-muted">
-        <span className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">Fee model frozen at creation</span>
+        <span className="font-mono text-micro uppercase eyebrow text-text-subtle">Fee model frozen at creation</span>
         {feeInfo.model === "loser-share" ? (
           <p className="mt-1">
             <strong className="text-text">Loser-share</strong> — fee = <strong className="text-text">{feeInfo.feePct}%</strong> of the losing pool.
@@ -267,7 +267,7 @@ function Section({ title, sw, children }: { title: string; sw: string; children:
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="block font-mono text-micro uppercase tracking-[0.14em] font-semibold text-text-muted mb-1.5">{label}</span>
+      <span className="block font-mono text-micro uppercase eyebrow font-semibold text-text-muted mb-1.5">{label}</span>
       {children}
       {hint && <p className="mt-1 text-body-sm text-text-subtle">{hint}</p>}
     </label>
@@ -277,7 +277,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 function Row({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div className="flex items-baseline gap-3">
-      <span className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle w-32 shrink-0">{label}</span>
+      <span className="font-mono text-micro uppercase eyebrow text-text-subtle w-32 shrink-0">{label}</span>
       <span className={`flex-1 ${mono ? "font-mono text-[12px] break-all" : "text-[13px]"} text-text`}>{value}</span>
     </div>
   );

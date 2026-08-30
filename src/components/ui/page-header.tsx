@@ -37,7 +37,7 @@ export function PageHeader({
   return (
     <div className={className}>
       <p
-        className={`flex items-center gap-2 mb-1 font-mono text-caption uppercase tracking-[0.16em] font-bold ${EYEBROW_TONE[tone]}`}
+        className={`flex items-center gap-2 mb-1 font-mono text-caption uppercase eyebrow font-bold ${EYEBROW_TONE[tone]}`}
       >
         {icon}
         {eyebrow}

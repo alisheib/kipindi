@@ -41,7 +41,7 @@ export default async function MarketsLoading() {
       {/* Header row — title left, the live-count + volume line right. The real page renders
           both; drawing only the title made the row a different height. */}
       <div className="mb-3 flex items-center justify-between gap-3">
-        <p className="font-mono text-caption font-bold uppercase tracking-[0.16em] text-text-subtle">{t.market.title}</p>
+        <p className="font-mono text-caption font-bold uppercase eyebrow text-text-subtle">{t.market.title}</p>
         <div className="kp-shimmer-track h-4 w-40 rounded bg-bg-elevated" aria-hidden />
       </div>
 

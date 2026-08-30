@@ -177,7 +177,7 @@ export function UpDownStakeControls({
       {/* "You're in" — the viewer's OWN live stake this round (server + optimistic tap). */}
       {(bet.shownUp > 0 || bet.shownDown > 0) && (
         <div className={cn("flex flex-wrap items-center gap-1.5 font-mono", compact ? "mb-2 text-[10px]" : "mb-3 text-[10.5px]")}>
-          <span className="uppercase tracking-[0.10em] text-text-faint">{t.market.udYoureIn}</span>
+          <span className="uppercase eyebrow text-text-faint">{t.market.udYoureIn}</span>
           {bet.shownUp > 0 && <span className="chip chip-yes tabular-nums">{t.market.udUp} {formatTzs(bet.shownUp)}</span>}
           {bet.shownDown > 0 && <span className="chip chip-no tabular-nums">{t.market.udDown} {formatTzs(bet.shownDown)}</span>}
         </div>
@@ -186,7 +186,7 @@ export function UpDownStakeControls({
       {/* Stake selector — preset chips + a Custom toggle. Compact magnitude labels
           (no per-chip "TZS") keep the whole row on one line at 360px. */}
       <div className={cn("flex items-center gap-1", compact ? "mb-2" : "mb-2 gap-1.5")} role="radiogroup" aria-label={t.market.udStake}>
-        <span className={cn("mr-0.5 shrink-0 font-mono uppercase tracking-[0.12em] text-text-faint", compact ? "text-micro" : "text-micro")}>
+        <span className={cn("mr-0.5 shrink-0 font-mono uppercase eyebrow text-text-faint", compact ? "text-micro" : "text-micro")}>
           {t.market.udStake}
         </span>
         {bet.stakes.map((s, i) => {

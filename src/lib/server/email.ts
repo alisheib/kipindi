@@ -467,7 +467,7 @@ function wrap(body: string, opts: { accent?: "gold" | "royal" } = {}): string {
  *  emails (gold-discipline). Gold = GILT_DARK; neutral = TEXT_SUBTLE. */
 function eyebrow(en: string, sw?: string, gold = false): string {
   const color = gold ? GILT_DARK : TEXT_SUBTLE;
-  let html = `<p style="margin:0 0 6px;font-family:'JetBrains Mono','Courier New',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.16em;font-weight:700;color:${color}">${esc(en)}</p>`;
+  let html = `<p style="margin:0 0 6px;font-family:'JetBrains Mono','Courier New',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.14em;font-weight:700;color:${color}">${esc(en)}</p>`;
   if (sw) html += `<p style="margin:0 0 2px;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;font-style:italic;color:${TEXT_FAINT}">${esc(sw)}</p>`;
   return html;
 }

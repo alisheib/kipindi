@@ -410,7 +410,7 @@ export function ConfidenceDial({
             fontSize: 10,
             color: "oklch(72% 0.04 240)",
             fontFamily: "JetBrains Mono, ui-monospace, monospace",
-            letterSpacing: "0.08em",
+            letterSpacing: "0.14em",
             textTransform: "uppercase",
           }}
         >

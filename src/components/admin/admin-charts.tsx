@@ -466,7 +466,7 @@ export function AdminFunnelChart({
         const pct = s.barPct;
         return (
           <div key={i} className="flex items-center gap-2">
-            <span className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary w-24 shrink-0">{s.label}</span>
+            <span className="font-mono text-micro eyebrow uppercase text-text-tertiary w-24 shrink-0">{s.label}</span>
             <div className="flex-1 h-7 bg-bg-sunken rounded-sm relative overflow-hidden">
               <div
                 className="absolute inset-y-0 left-0 bg-royal/70 rounded-sm flex items-center justify-end pr-2 prog-sweep"
@@ -547,7 +547,7 @@ export function AdminMeter({
     <div className="space-y-1">
       {label && (
         <div className="flex items-baseline justify-between gap-2">
-          <span className="font-mono text-micro uppercase tracking-[0.12em] text-text-tertiary">{label}</span>
+          <span className="font-mono text-micro uppercase eyebrow text-text-tertiary">{label}</span>
           <span className={`font-mono text-caption tabular ${danger ? "text-danger" : "text-text"}`}>
             {fmt(value)}{unit ? ` ${unit}` : ""} / {fmt(cap)}
           </span>

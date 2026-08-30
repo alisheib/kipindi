@@ -142,7 +142,7 @@ function RejectForm({
   const [note, setNote] = useState<string>("");
   return (
     <div className="absolute right-4 mt-2 z-10 rounded-md border border-border bg-bg-elevated p-3 shadow-lg w-[280px]">
-      <p className="font-mono text-micro uppercase tracking-[0.14em] font-bold text-text-subtle mb-2">
+      <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle mb-2">
         Reject reason
       </p>
       <div className="mb-2">

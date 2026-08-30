@@ -121,7 +121,7 @@ export default async function SessionsPage() {
           </form>
         </div>
         <div className="mt-4 flex items-center justify-between gap-3 border-t border-border/60 pt-3">
-          <p className="font-mono text-micro uppercase tracking-[0.14em] font-semibold text-text-subtle">
+          <p className="font-mono text-micro uppercase eyebrow font-semibold text-text-subtle">
             {t.profile.ipAddress}
           </p>
           <IpReveal ip={ip} />

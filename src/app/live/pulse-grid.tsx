@@ -168,7 +168,7 @@ function PulseCard({ market, index }: { market: Market; index: number }) {
       style={{ animationDelay: `${Math.min(index, 10) * 45}ms` }}
     >
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.12em] text-text-subtle">
+        <span className="inline-flex items-center gap-1.5 font-mono text-micro uppercase eyebrow text-text-subtle">
           {isUpDown ? (
             // The game tag — so a mixed wall reads as two games at a glance.
             <span className="inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 font-bold tracking-[0.10em]"

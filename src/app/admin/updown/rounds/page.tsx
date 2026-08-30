@@ -246,7 +246,7 @@ export default async function AdminUpDownRoundsPage({
             <ScrollX label="Up & Down rounds">
               <table className="admin-tbl min-w-[1020px]">
                 <thead>
-                  <tr className="text-left font-mono text-micro uppercase tracking-[0.12em] text-text-subtle border-b border-border-subtle">
+                  <tr className="text-left font-mono text-micro uppercase eyebrow text-text-subtle border-b border-border-subtle">
                     <th className="px-4 py-2.5 font-semibold">Round</th>
                     <th className="px-4 py-2.5 font-semibold">Window (UTC)</th>
                     <th className="px-4 py-2.5 font-semibold text-right">Open → Close</th>

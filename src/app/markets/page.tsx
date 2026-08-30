@@ -150,7 +150,7 @@ export default async function MarketsPage({ searchParams }: { searchParams: Prom
       <RefreshPoller intervalMs={30_000} />
 
       <div className="mb-3 flex items-center justify-between gap-3">
-        <p className="font-mono text-caption font-bold uppercase tracking-[0.16em] text-text-subtle">
+        <p className="font-mono text-caption font-bold uppercase eyebrow text-text-subtle">
           {t.market.title}
         </p>
         {/* Aqua (not gilt) by design: gold is reserved for earned-money moments. */}

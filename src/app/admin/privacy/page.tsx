@@ -78,7 +78,7 @@ export default async function AdminPrivacyPage({
         >
           <ScrollX label="DSAR requests">
             <table className="admin-tbl">
-              <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
+              <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
                 <tr>
                   <SortTh field="filed" label="Filed" current={sort} dir={dir} sp={sp} baseHref="/admin/privacy" className="p-3" />
                   <SortTh field="user" label="User" current={sort} dir={dir} sp={sp} baseHref="/admin/privacy" className="p-3" />
@@ -143,7 +143,7 @@ export default async function AdminPrivacyPage({
           ) : (
           <ScrollX label="On-behalf export" className="-mx-4 px-4">
             <table className="admin-tbl min-w-[640px]">
-              <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
+              <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle">
                 <tr>
                   <th className="text-left py-2 pr-3">Player</th>
                   <th className="text-left py-2 pr-3">Phone</th>

@@ -153,7 +153,7 @@ export function AnnouncementForm({
   return (
     <div className="space-y-3">
       <label className="block">
-        <span className="block font-mono text-micro uppercase tracking-[0.14em] font-bold text-text-subtle mb-1.5">
+        <span className="block font-mono text-micro uppercase eyebrow font-bold text-text-subtle mb-1.5">
           Message
         </span>
         <Input
@@ -165,7 +165,7 @@ export function AnnouncementForm({
       </label>
       <div className="flex items-end gap-3 flex-wrap">
         <label className="block flex-1 min-w-[160px]">
-          <span className="block font-mono text-micro uppercase tracking-[0.14em] font-bold text-text-subtle mb-1.5">
+          <span className="block font-mono text-micro uppercase eyebrow font-bold text-text-subtle mb-1.5">
             Tone
           </span>
           <Select
@@ -234,7 +234,7 @@ export function MaintenanceModeForm({ enabled, note }: { enabled: boolean; note:
           : { borderColor: "var(--border)" }}
       >
         <div className="min-w-0">
-          <p className="font-mono text-micro uppercase tracking-[0.14em] font-bold text-text-subtle">
+          <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">
             New bets &amp; deposits
           </p>
           <p className={`mt-0.5 font-display text-[15px] font-bold ${on ? "text-claret-200" : "text-text"}`}>
@@ -256,7 +256,7 @@ export function MaintenanceModeForm({ enabled, note }: { enabled: boolean; note:
         <Toggle on={on} tone="claret" onClick={() => setOn((v) => !v)} aria-label="Maintenance mode" />
       </div>
       <label className="block">
-        <span className="block font-mono text-micro uppercase tracking-[0.14em] font-bold text-text-subtle mb-1.5">
+        <span className="block font-mono text-micro uppercase eyebrow font-bold text-text-subtle mb-1.5">
           Player message (optional)
         </span>
         <Input

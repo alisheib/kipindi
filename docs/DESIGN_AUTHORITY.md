@@ -850,12 +850,45 @@ Values: the `--type-*` ladder in `globals.css`. Laws:
    `<button>`, `<a>` and `<input>` found **468**. ⛔ And the third count is the one that changes
    the answer, because the extra sites are not more eyebrows — they are a DIFFERENT ROLE:
 
+   ⚠️ **AND THE FOURTH COUNT MOVED IT AGAIN — the table below is the read, 2026-08-30.**
+   Every one of the **586** uppercase-and-tracked sites in `src/` was then READ, in three passes
+   (classify · a reader briefed to REFUTE · a third pass over every control label once the
+   enclosure test had to be sharpened). 23 calls were overturned on the second pass and 12 more
+   on the third. The counts this rule first carried were estimates from a narrower scan, and
+   **two of the three small ones were wrong**; these are the read:
+
    | role | tracking | n | what it is |
    |---|---|---|---|
-   | **section eyebrow** | **0.14em** | ~410 across 0.1/0.12/0.14/0.16/0.18 | the label over a block — the thing this rule governs |
-   | control label | 0.08em | 41, nearly all `<button>`/`<a>` | a word inside a control, read as a target not a heading |
-   | type-to-confirm input | 0.2em | 3 `<input>` (kill-switch · balance-adjust · `ConfirmModal`) | the operator types the word; the widest tracking is what makes it unambiguous |
-   | mark / celebration | 0.2–0.3em | 5 | error, not-found and win surfaces where the type IS the ornament |
+   | **section eyebrow** | **0.14em** | **308** | the label over a block — the thing this rule governs |
+   | control label | 0.08–0.14em | **102** | a word inside a control, read as a target not a heading |
+   | **status chip** | 0.02–0.14em | **57** | a NON-interactive status badge. Not a label over anything |
+   | **other** | mixed | **55** | a DATA value in a cell, an in-flight readout (“Recording…”), a count annotation |
+   | **prose** | mixed | **48** | ⛔ a SENTENCE, or a label with its hint welded on, in an eyebrow's clothes — DG-A-14's population, not this rule's |
+   | mark / celebration | 0.16–0.3em | **11** | error, not-found, win, the OG images and the transactional email |
+   | type-to-confirm input | 0.2–0.3em | **5** | the operator types the word; the widest tracking is what makes it unambiguous |
+
+   ⛔ **THE TWO SMALL COUNTS THIS RULE GOT WRONG, AND HOW.** *Type-to-confirm is 5, not 3*:
+   `resolver/[id]/resolution-ceremony.tsx` holds two more — the SEAL fields on the settlement
+   ceremony — and this table had filed them under mark/celebration because they sit at 0.3em,
+   i.e. it grouped by VALUE where it claims to group by ROLE. *Celebration is 11, not 5*, once
+   the OG-image routes and `lib/server/email.ts` are counted; both render the product's face and
+   neither is a `.tsx` page, so a scan of pages could not see them.
+   ⭐ **And two families this table never named at all.** A status chip and a data value are
+   uppercase, mono and tracked, and neither is "the label over a block" — so a sweep keyed on
+   the dressing would have moved 112 sites this rule does not govern.
+
+   ⭐ **THE ENCLOSURE TEST, SHARPENED — because the shorthand below collapses on this tree.**
+   *"A `<span>` inside a `<button>` is a control label"* read as *any interactive ancestor wins*
+   makes a CARD'S OWN `<h3>` a control label: `markets/market-card.tsx:493` wraps the entire
+   market card in a `<Link>`, and `position-card.tsx:58` and `home/trust-band.tsx` do the same.
+   So the test is:
+   · **CONTROL** — the control's accessible name IS this string: a button, tab, filter or sort
+     chip, menu item, or a link whose visible text is its whole label. One target, one name; a
+     glyph beside the word is still one name. → leave it alone.
+   · **NAVIGATION WRAPPER** — a whole card, row or tile made clickable: a surface with contents,
+     holding a heading, several fields, or its own `aria-label`. → the captions inside it KEEP
+     THEIR OWN ROLES.
+   That distinction moved **4 of 98** control-label calls on the third pass.
 
    ⛔ **So a sweep that standardises "every uppercase mono element" would flatten three real
    distinctions to buy one number.** That is the same error as counting an amount inside a
@@ -871,12 +904,34 @@ Values: the `--type-*` ladder in `globals.css`. Laws:
    makes longest — Swahili: `JUMLA ILIYOLIPWA` at 10px renders **112px at 0.1em · 118.41px at
    0.14em · 121.61px at 0.16em · 128px at 0.2em**. 0.14 costs +6.41px over the old mode and
    leaves 9.6px of the range unspent, where 0.2 spends all of it.
-   ⚠️ **`field-legend.tsx` is 0.16em and is therefore the odd one out, not the standard** — the
-   kit's own eyebrow is not the product's modal recipe, which is exactly the drift DG-A-11
-   exists to remove. It moves to 0.14em with the rest.
+   ✅ **`field-legend.tsx` WAS 0.16em — the kit was the odd one out, not the standard** — and
+   that is the drift DG-A-11 exists to remove. It took `.eyebrow` with the rest on 2026-08-30,
+   and its own header no longer claims to be "one source" for a value it does not own.
    ⛔ **An eyebrow with NO explicit tracking is not a neutral option:** `text-micro` emits
    `letter-spacing: 0.4px` of its own, measured on the bench. Omitting the class picks a value;
-   it does not decline to pick one.
+   it does not decline to pick one. Five sites were in exactly that state and now carry the
+   value like the rest.
+
+   ⭐ **AND THE VALUE IS WRITTEN ONCE, AS `.eyebrow` — SHIPPED 2026-08-30.** `globals.css`,
+   beside `.amount`, doubled selector for the same measured reason (`sm:tracking-…` is emitted
+   after everything that file writes, so a single class loses at ≥640px — asserted as a
+   CONTROL by `qa:dg-type --bench eyebrow`). It carries **letter-spacing only**: §T3 rules the
+   eyebrow's tracking and nothing else, its size belongs to §T7's Tailwind ladder, and its
+   weight and colour vary legitimately by surface.
+   ⛔ **Why a class and not 308 hand-typed values.** §0a: one fact, one home. 308 copies of
+   0.14em are 308 definition sites that diverge — which had already happened, NINE values over
+   one role, with 0.1em spelled two ways so a text-matching guard read them as different. And
+   `test:type-scale` §6 ratchets hand-typed `tracking-[…]` toward ZERO: **converging** nine
+   values onto one would have left that count at 602 forever, because what it counts is a value
+   written at a CALL SITE. Adopting the class took it to **313**.
+   ⚠️ **It is not a Tailwind utility, so it takes no variant prefix** — `sm:eyebrow` compiles
+   to nothing, which is the §B8 defect. The sweep refuses any site that would need one.
+   ⚠️ **And an inline `letterSpacing` cannot be reached by a class at all** — an inline
+   declaration beats every selector. The four such eyebrows (both `AdminKpi` captions, the dial
+   label, the probability chart's caption) have the value written in place, and the three inside
+   `lib/server/email.ts` likewise. The first version of the sweep did not know this and wrote
+   `text-transform: eyebrow uppercase` into five of them, which is invalid CSS — so those
+   elements would have STOPPED BEING UPPERCASE. Caught before it shipped, by reading the diff.
 4. **Reading-copy floor: 12.5px in-app, 12pt in print.** Below that is a label, not prose.
 5. **Every numeral is JetBrains Mono with `font-variant-numeric: tabular-nums`** — no
    exceptions, *including numbers inside body sentences when they are data* (stakes, odds,

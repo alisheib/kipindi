@@ -271,7 +271,7 @@ export function FilterSheetGroup({
 }) {
   return (
     <section aria-label={label} className="kp-fsheet-grp">
-      <span className="kp-fsheet-key font-mono text-micro font-bold uppercase tracking-[0.14em] text-text-subtle">
+      <span className="kp-fsheet-key font-mono text-micro font-bold uppercase eyebrow text-text-subtle">
         {label}
       </span>
       <div className={className ?? "flex flex-wrap items-center gap-1.5"}>{children}</div>

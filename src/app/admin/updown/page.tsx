@@ -312,7 +312,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
         <AdminCard
           title="Up & Down economics · this game only"
           sw="Uchumi wa mchezo huu"
-          action={<span className="font-mono text-micro tracking-[0.12em] uppercase text-text-tertiary">{range.label} · UPDOWN only</span>}
+          action={<span className="font-mono text-micro eyebrow uppercase text-text-tertiary">{range.label} · UPDOWN only</span>}
         >
           {/* This game's money over a chosen window — presets + custom date+hour+minute.
               (AI oracle cost stays on standard lookbacks — a separate spend concept.) */}
@@ -349,7 +349,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
             <ScrollX label="Up & Down assets">
               <table className="admin-tbl min-w-[820px]">
                 <thead>
-                  <tr className="text-left font-mono text-micro uppercase tracking-[0.12em] text-text-subtle border-b border-border-subtle">
+                  <tr className="text-left font-mono text-micro uppercase eyebrow text-text-subtle border-b border-border-subtle">
                     <th className="px-4 py-2.5 font-semibold">Key</th>
                     <th className="px-4 py-2.5 font-semibold">Name</th>
                     <th className="px-4 py-2.5 font-semibold">Source</th>
@@ -522,7 +522,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                     squeezes the others inside the ScrollX rather than widening it (the E-30 class). */}
               <table className="admin-tbl min-w-[960px]">
                 <thead>
-                  <tr className="text-left font-mono text-micro uppercase tracking-[0.12em] text-text-subtle border-b border-border-subtle">
+                  <tr className="text-left font-mono text-micro uppercase eyebrow text-text-subtle border-b border-border-subtle">
                     <th className="px-4 py-2.5 font-semibold">Chain</th>
                     <th className="px-4 py-2.5 font-semibold">State</th>
                     <th className="px-4 py-2.5 font-semibold">Next boundary</th>
@@ -770,7 +770,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
             <ScrollX label="Archived Up & Down chains">
               <table className="admin-tbl min-w-[560px]">
                 <thead>
-                  <tr className="text-left font-mono text-micro uppercase tracking-[0.12em] text-text-subtle">
+                  <tr className="text-left font-mono text-micro uppercase eyebrow text-text-subtle">
                     <th className="px-4 py-2.5 font-semibold">Chain</th>
                     <th className="px-4 py-2.5 font-semibold">State</th>
                     <th className="px-4 py-2.5 font-semibold">Actions</th>
@@ -823,7 +823,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
               {oracle.map(({ asset, last }) => (
                 <div key={asset.id} className="rounded-lg border border-border bg-[var(--bg-inset)] p-3">
                   <div className="flex items-baseline justify-between gap-2">
-                    <span className="font-mono text-caption font-bold uppercase tracking-[0.12em] text-text-muted">{asset.key}</span>
+                    <span className="font-mono text-caption font-bold uppercase eyebrow text-text-muted">{asset.key}</span>
                     <span
                       className={
                         "chip " +

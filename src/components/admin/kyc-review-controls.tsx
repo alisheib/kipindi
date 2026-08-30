@@ -126,7 +126,7 @@ export function KycReviewControls({ userId, status, makerCheckerRequired }: { us
             normal case — the officer adds rows only when extra docs are needed. */}
         {!rejecting && (
           <div className="space-y-2 rounded-md border border-border-subtle bg-bg-inset/40 p-2.5">
-            <p className="font-mono text-micro tracking-[0.12em] uppercase text-text-tertiary">Extra documents to request (optional)</p>
+            <p className="font-mono text-micro eyebrow uppercase text-text-tertiary">Extra documents to request (optional)</p>
             {docReqs.map((d, i) => (
               <div key={i} className="flex items-center gap-2">
                 <input

@@ -31,7 +31,7 @@ export function FieldLegend({
          (0,1,0) the tracking wins on source order. Measured, not assumed: `qa:dg-type`'s
          eyebrow bench renders this exact recipe and reports ls 1.4-1.68px, never 0.4. */
       className={cn(
-        "font-mono text-micro uppercase tracking-[0.16em] font-bold text-text-muted",
+        "font-mono text-micro uppercase eyebrow font-bold text-text-muted",
         className,
       )}
       {...rest}

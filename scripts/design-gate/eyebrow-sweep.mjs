@@ -30,20 +30,59 @@
  * `text-micro` that would apply at every width (`password-input.tsx` pairs `text-[12px]` with
  * `sm:text-[10px]`, and flattening that would resize the phone).
  *
+ * ⭐ AND THE SECOND HALF, `--tracking`, IS A GATE RATHER THAN A SWEEP. The rung above is the
+ * eyebrow's SIZE; §T3's 2026-08-30 ruling is its TRACKING. That 308-site pass has landed, and
+ * what stays is the invariant it established: **every uppercase-and-tracked site in `src/`
+ * either carries `.eyebrow`, or its role has been READ and written down** in
+ * `eyebrow-roles.mjs`. ⛔ A site in neither state is one nobody has read, and the gate exits 5
+ * rather than guessing — because §T3 governs ONE of six roles here and nothing a regex can see
+ * separates them. It is wired into `test:all` as `test:eyebrow-roles`: a gate that is not in
+ * the pipeline is not a gate.
+ *
  * Usage:
- *   node scripts/design-gate/eyebrow-sweep.mjs           # DRY RUN
+ *   node scripts/design-gate/eyebrow-sweep.mjs             # DRY RUN, the SIZE half
  *   node scripts/design-gate/eyebrow-sweep.mjs --apply
+ *   npm run test:eyebrow-roles                             # the §T3 role gate
  */
 import { readdirSync, readFileSync, writeFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
+import { INLINE_EYEBROWS, NOT_EYEBROW } from "./eyebrow-roles.mjs";
 
 const ROOT = new URL("../..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
 const SRC = join(ROOT, "src");
 const APPLY = process.argv.includes("--apply");
-const walk = (d) => readdirSync(d).flatMap((e) => {
+const TRACKING = process.argv.includes("--tracking");
+const walk = (d, re = /\.tsx$/) => readdirSync(d).flatMap((e) => {
   const p = join(d, e);
-  return statSync(p).isDirectory() ? walk(p) : (/\.tsx$/.test(e) ? [p] : []);
+  return statSync(p).isDirectory() ? walk(p, re) : (re.test(e) ? [p] : []);
 });
+
+/**
+ * ⛔ COMMENTS ARE BLANKED BEFORE ANYTHING IS BELIEVED, LINE-PRESERVINGLY so `:line` stays
+ * true. The first census of the tracking population matched the word "uppercase" inside JSDoc
+ * and JSX comments and reported NINETEEN sites that render nothing — this programme's
+ * signature failure, committed by its own instrument. A sweep that rewrote a comment would be
+ * worse: it would edit the record of a past defect and leave the defect.
+ */
+function decomment(src) {
+  let out = "", i = 0, mode = 0, quote = "";
+  while (i < src.length) {
+    const c = src[i], n = src[i + 1];
+    if (mode === 0) {
+      if (c === "/" && n === "*") { mode = 1; out += "  "; i += 2; continue; }
+      if (c === "/" && n === "/") { mode = 2; out += "  "; i += 2; continue; }
+      if (c === '"' || c === "'") { mode = 3; quote = c; out += c; i++; continue; }
+      if (c === "`") { mode = 4; out += c; i++; continue; }
+      out += c; i++; continue;
+    }
+    if (mode === 1) { if (c === "*" && n === "/") { mode = 0; out += "  "; i += 2; continue; } out += c === "\n" ? "\n" : " "; i++; continue; }
+    if (mode === 2) { if (c === "\n") { mode = 0; out += "\n"; i++; continue; } out += " "; i++; continue; }
+    if (c === "\\") { out += "  "; i += 2; continue; }
+    if ((mode === 3 && c === quote) || (mode === 4 && c === "`")) mode = 0;
+    out += c; i++;
+  }
+  return out;
+}
 
 /** Every EXACT Tailwind rung. ⭐ Widened past 10px on 2026-08-29 once the 10px batch had
  *  shipped and verified: `text-caption` (11) · `text-label` (12) · `text-body-sm` (13) ·
@@ -89,6 +128,112 @@ const EXCEPTIONS = new Map([
 ]);
 const SIZE = /((?:[a-z0-9._-]+:)*)text-\[([0-9.]+)px\]/g;
 const TRACKED = /\btracking-\[|\btracking-(?:wide|wider|widest)\b/;
+
+/* ═══ THE TRACKING HALF — §T3's 0.14em, by ROLE ═══════════════════════════════════════════ */
+/**
+ * ⭐ THIS HALF IS A GATE, NOT A SWEEP, AND THAT IS THE POINT. The 308-site pass landed on
+ * 2026-08-30; what stays behind is the invariant it established:
+ *
+ *   EVERY uppercase-and-tracked site in `src/` either carries `.eyebrow`, or its role has
+ *   been READ and written down.
+ *
+ * ⛔ A site in neither state is a site nobody has read, and the tool exits 5 rather than
+ * guessing a role. That is the difference between a sweep that ran once and a rule that
+ * holds: §T3 governs ONE of six roles here, and nothing a regex can see separates them.
+ *
+ * ⛔ AND THE DECLARATIONS ARE KEYED ON THE LINE'S CONTENT, NOT ON `:line`. A line number is
+ * correct for exactly one commit — the next edit ANYWHERE above a declared site shifts it and
+ * the entire read reports itself stale, which is how a gate becomes noise and then gets
+ * deleted. A signature drifts only when somebody edits THAT element, which is exactly when a
+ * re-read is warranted. ⚠️ The signature is the line PLUS what the element renders, because
+ * the line alone is not unique: `admin/config/page.tsx` carries one class string four times
+ * and two of those are prose while two are count annotations.
+ */
+if (TRACKING) {
+  /* ⚠️ No trailing `\b` after the bracket form: in `tracking-[0.09em]">` there is no word
+     boundary between `]` and `"`, so the first version of this label reported "untracked"
+     over a tracked site. A report that mislabels what it found is a small lie, and this
+     programme has paid for those. */
+  const TRACK_TOKEN = /\btracking-(?:\[[^\]]*\]|(?:wide|wider|widest)\b)/;
+  /** The same signature the generator wrote: this line, then the next non-empty one. */
+  const sig = (lines, i) => {
+    const head = (lines[i] ?? "").replace(/\s+/g, " ").trim();
+    let tail = "";
+    for (let j = i + 1; j < Math.min(i + 3, lines.length); j++) {
+      const t = (lines[j] ?? "").replace(/\s+/g, " ").trim();
+      if (t) { tail = t; break; }
+    }
+    return (head + " ↵ " + tail).slice(0, 170);
+  };
+
+  let onClass = 0, inlineOk = 0, other = 0;
+  const undeclared = [], badInline = [], prose = [];
+  const seenNot = new Map(), seenInline = new Map();
+
+  for (const f of walk(SRC, /\.tsx?$/)) {
+    const raw = readFileSync(f, "utf8");
+    if (!/uppercase/.test(raw)) continue;
+    const rel = relative(SRC, f).split(/[\\/]/).join("/");
+    const code = decomment(raw).split("\n");
+    const lines = raw.split("\n");
+
+    code.forEach((c, i) => {
+      if (!/\buppercase\b/.test(c)) return;
+      const line = lines[i];
+      if (/\beyebrow\b/.test(line)) { onClass++; return; }
+      const k = `${rel} :: ${sig(lines, i)}`;
+      if (INLINE_EYEBROWS.has(k)) {
+        seenInline.set(k, (seenInline.get(k) ?? 0) + 1);
+        /* ⛔ ASSERTED, NOT TRUSTED. These are the eyebrows a class cannot reach, so their value
+           is hand-written — and a hand-written value that drifts is exactly what a declaration
+           is for. The window is the element, not the line: `brand.tsx` sets `letterSpacing` one
+           line above `textTransform`. */
+        const win = lines.slice(Math.max(0, i - 6), i + 7).join(" ");
+        if (!/letterSpacing:\s*"0\.14em"|letter-spacing:\s*0\.14em/.test(win)) badInline.push(`${rel}:${i + 1}  declared an INLINE eyebrow but no 0.14em in its element window`);
+        else inlineOk++;
+        return;
+      }
+      if (NOT_EYEBROW.has(k)) {
+        seenNot.set(k, (seenNot.get(k) ?? 0) + 1);
+        other++;
+        const role = NOT_EYEBROW.get(k);
+        if ((Array.isArray(role) ? role[0] : role) === "PROSE") prose.push(`${rel}:${i + 1}  ${line.trim().slice(0, 108)}`);
+        return;
+      }
+      /* A site with no tracking at all and no declaration is only a defect if it is meant to be
+         an eyebrow — but that is exactly what nobody has decided, so it is reported either way. */
+      undeclared.push(`${rel}:${i + 1}  ${TRACK_TOKEN.test(line) ? "tracked" : "untracked"}  ${line.trim().slice(0, 100)}`);
+    });
+  }
+
+  console.log(`\n§T3 EYEBROW GATE — every uppercase-and-tracked site is READ or refused`);
+  console.log(`  ${onClass + inlineOk} section eyebrow(s): ${onClass} carry \`.eyebrow\` · ${inlineOk} written inline (a class cannot reach an inline style)`);
+  console.log(`  ${other} site(s) in another role — control label · status chip · data value · type-to-confirm · celebration · prose`);
+  if (prose.length) {
+    console.log(`\n🔴 ${prose.length} PROSE site(s) — a sentence, or a label with its hint welded on, below §T4's`);
+    console.log(`   12.5px reading floor while wearing an eyebrow's clothes. ⛔ 0.14em would make a paragraph`);
+    console.log(`   read MORE like an identifier. This is DG-A-14's population, and it is a work order:`);
+    console.log(prose.map((p) => "   " + p).join("\n"));
+  }
+
+  const missNot = [...NOT_EYEBROW].filter(([k, v]) => (seenNot.get(k) ?? 0) !== (Array.isArray(v) ? v[1] : 1));
+  const missInl = [...INLINE_EYEBROWS].filter(([k, n]) => (seenInline.get(k) ?? 0) !== n);
+  if (badInline.length) { console.error(`\n🔴 ${badInline.length} inline eyebrow(s) no longer read 0.14em:\n${badInline.map((m) => "   " + m).join("\n")}`); process.exit(6); }
+  if (undeclared.length) {
+    console.error(`\n🔴 ${undeclared.length} uppercase site(s) are neither \`.eyebrow\` nor declared — nobody has read them.`);
+    console.error(`   ⛔ Read each one and add it to eyebrow-roles.mjs. This tool does not guess a role.`);
+    console.error(undeclared.map((u) => "   " + u).join("\n"));
+    process.exit(5);
+  }
+  if (missNot.length || missInl.length) {
+    console.error(`\n🔴 ${missNot.length + missInl.length} declaration(s) no longer match anything — the element was edited, so the read is stale there.`);
+    console.error([...missNot.map(([k]) => k), ...missInl.map(([k]) => k)].slice(0, 30).map((m) => "   " + m).join("\n"));
+    process.exit(4);
+  }
+  if (!onClass && !other) { console.error("🔴 ZERO sites examined — a skipped run, not a clean tree."); process.exit(3); }
+  console.log(`\n✅ ${onClass + inlineOk + other} sites, every one accounted for.`);
+  process.exit(0);
+}
 
 let changed = 0, refusedNoTrack = 0, refusedNotEyebrow = 0, offLadder = 0, files = 0, exempted = 0;
 const refusals = [];

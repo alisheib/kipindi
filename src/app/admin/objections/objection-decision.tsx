@@ -153,7 +153,7 @@ export function ObjectionDecision({ objectionId, canReverse, canDecide = true }:
             <div className="space-y-1.5">
               <label
                 htmlFor="objection-note"
-                className="font-mono text-micro font-bold uppercase tracking-[0.12em] text-text-subtle"
+                className="font-mono text-micro font-bold uppercase eyebrow text-text-subtle"
               >
                 Reason for the record (required)
               </label>

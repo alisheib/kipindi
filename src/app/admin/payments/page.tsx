@@ -79,7 +79,7 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
         title="Payments operations"
         sw="Operesheni za malipo"
         actions={
-          <span className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle">MNO health · 24h window</span>
+          <span className="font-mono text-micro uppercase eyebrow text-text-subtle">MNO health · 24h window</span>
         }
       />
 
@@ -162,7 +162,7 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
         {frozenPayouts !== null && frozenPayouts.length > 0 && (
           <AdminCard>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <span className="inline-flex items-center gap-2 font-mono text-micro uppercase tracking-[0.14em] text-danger">
+              <span className="inline-flex items-center gap-2 font-mono text-micro uppercase eyebrow text-danger">
                 <I.alertCircle s={14} /> Frozen payouts · {frozenPayouts.length}
               </span>
               <span className="font-mono text-[10px] text-text-tertiary">
@@ -192,7 +192,7 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
         {/* Reconciliation strip — ledger vs PSP settlement. */}
         <AdminCard>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-            <span className="inline-flex items-center gap-2 font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">
+            <span className="inline-flex items-center gap-2 font-mono text-micro uppercase eyebrow text-text-subtle">
               <I.reconcile s={14} className="text-text-tertiary" /> Reconciliation · Ulinganishaji · 24h
             </span>
             <Stat label="Matched" value={recon.matched.toLocaleString()} />
@@ -260,7 +260,7 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
                         {h.successRate === null ? "—" : `${h.successRate.toFixed(1)}%`}
                       </span>
                     </div>
-                    <p className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle">success · 24h</p>
+                    <p className="font-mono text-micro uppercase eyebrow text-text-subtle">success · 24h</p>
                   </div>
                 </div>
 
@@ -284,7 +284,7 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
 
                 {/* Kill-switches. */}
                 <div className="mt-3 border-t border-dashed border-border-subtle pt-2.5">
-                  <p className="mb-1.5 font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">Kill-switch · Zima</p>
+                  <p className="mb-1.5 font-mono text-micro uppercase eyebrow text-text-subtle">Kill-switch · Zima</p>
                   <KillSwitch provider={h.id} label={h.label} deposits={k.deposits} withdrawals={k.withdrawals} />
                 </div>
               </AdminCard>
@@ -377,7 +377,7 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
 function Stat({ label, value, tone }: { label: string; value: string; tone?: "ok" | "danger" }) {
   return (
     <div>
-      <span className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle">{label}</span>
+      <span className="font-mono text-micro uppercase eyebrow text-text-subtle">{label}</span>
       <p className={`font-mono text-[15px] font-bold tabular-nums ${tone === "danger" ? "text-danger" : "text-text"}`}>{value}</p>
     </div>
   );
@@ -385,7 +385,7 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: "ok
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <span className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle">{label}</span>
+      <span className="font-mono text-micro uppercase eyebrow text-text-subtle">{label}</span>
       <p className="font-mono tabular-nums text-text">{value}</p>
     </div>
   );

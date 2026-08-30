@@ -18,7 +18,7 @@ export function AdminSidebarNav({ groups, badges, fallbackKey }: { groups: Reado
     <>
       {groups.map((g) => (
         <div key={g.group.en}>
-          <div className="px-2 pt-3 pb-1.5 font-mono text-micro uppercase tracking-[0.18em] text-text-tertiary">
+          <div className="px-2 pt-3 pb-1.5 font-mono text-micro uppercase eyebrow text-text-tertiary">
             {g.group.en} · {g.group.sw}
           </div>
           {g.items.map((it) => {

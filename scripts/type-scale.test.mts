@@ -116,7 +116,7 @@ const SRC = join(ROOT, "src");
  *  the site from §3 AND §4: two ratchets down, nothing lifted, the site now in a population
  *  the guard could not read. 509 of the old 768 could have been deleted that way. §3's own
  *  advice string recommended it in those words. Both are fixed in this commit. */
-const RATCHET_SUBFLOOR = 761;   // 2026-08-29: -268 total, the ADMIN then PLAYER prose sweeps (DG-A-12); then -2 for `fee-simulator.tsx`'s two licence paragraphs, 10.5px prose lifted to `text-body-sm`. ⭐ THE FIRST TIME §3 MOVED IN THREE SWEEPS, and that is the point: §3 falls only when a GLYPH gets more legible, which is why it held flat at 763 through 376 renames that bought §4 alone.
+const RATCHET_SUBFLOOR = 756;   // 2026-08-30: -5, the five section eyebrows that carried NO tracking at all and gained §T3's 0.14em with the rest (DG-A-11's tracking sweep). ⚠️ They fell out because a GLYPH moved — from `text-micro`'s own 0.4px to 1.4px — not because the blessing widened: `.eyebrow` was added to `isBlessedMicrolabel` in the same commit, and without it the sweep would have read as +291 on a ratchet that may only shrink. // 2026-08-29: -268 total, the ADMIN then PLAYER prose sweeps (DG-A-12); then -2 for `fee-simulator.tsx`'s two licence paragraphs, 10.5px prose lifted to `text-body-sm`. ⭐ THE FIRST TIME §3 MOVED IN THREE SWEEPS, and that is the point: §3 falls only when a GLYPH gets more legible, which is why it held flat at 763 through 376 renames that bought §4 alone.
 
 /** §4 — every hand-typed size in the product: `text-[Npx]` plus inline literal
  *  `style={{ fontSize: N }}`. Measured 2026-08-21: 1,839 + 38.
@@ -221,7 +221,7 @@ const RATCHET_INLINE_FONTSIZE = 36;
 /*  ⬇️ 636 → 635 on 2026-08-25 — pre-existing slack on HEAD, not this commit's doing; see
  *  the note on RATCHET_ARBITRARY_SIZE above. The countdown's date span takes `text-micro`'s
  *  own 0.4px letter-spacing and adds no `tracking-` utility, so this commit is +0 here. */
-const RATCHET_ARBITRARY_TRACKING = 602;   // 2026-08-29: -11 then -5, FieldLegend adopted where its recipe was hand-retyped BYTE FOR BYTE (DG-A-11). The last 5 were `<label>`s in the auth forms — `block … mb-1.5` around the component's exact class string — which the first pass missed because it looked for `<span>`s. Then -13 on 2026-08-30 (DG-P-03): the six loading skeletons that adopted `<PageHeader>` were each hand-typing its EYEBROW as well as its h1, so a row about headings paid a tracking dividend nobody predicted. ⚠️ It was found only because the handover's numbers were re-derived before being written down, which is the rule that keeps earning its keep.
+const RATCHET_ARBITRARY_TRACKING = 313;   // ⭐ 2026-08-30, −289 IN ONE COMMIT and the largest fall this ratchet has ever taken: DG-A-11's tracking sweep put §T3's section eyebrow on `.eyebrow` (globals.css, beside `.amount`) instead of a hand-typed value at 289 call sites. ⛔ THAT IS THE ONLY WAY THIS RATCHET CAN REACH ZERO — CONVERGING nine tracking values onto one would have left the count untouched at 602 forever, because the defect it counts is a value written at a CALL SITE, not a value that disagrees with its neighbours. // 2026-08-29: -11 then -5, FieldLegend adopted where its recipe was hand-retyped BYTE FOR BYTE (DG-A-11). The last 5 were `<label>`s in the auth forms — `block … mb-1.5` around the component's exact class string — which the first pass missed because it looked for `<span>`s. Then -13 on 2026-08-30 (DG-P-03): the six loading skeletons that adopted `<PageHeader>` were each hand-typing its EYEBROW as well as its h1, so a row about headings paid a tracking dividend nobody predicted. ⚠️ It was found only because the handover's numbers were re-derived before being written down, which is the rule that keeps earning its keep.
 
 /** §5 — the 29 hand-typed sizes that exist today. A member may LEAVE (the guard
  *  says so and this list gets trimmed); a NEW one is a hard failure. This is the
@@ -371,8 +371,25 @@ function scanSizes(body: string): Hit[] {
  *  ⚠️ The blessing test is `uppercase` + `tracking-`, NOT `+ font-mono`, for the
  *  same inheritance reason §1 documents above: `.admin-tbl thead`, `.mcardp-cat`
  *  and friends set mono on the container, so the label itself often carries none. */
+/**
+ * ⭐ AND `.eyebrow` IS A BLESSING MARKER TOO — 2026-08-30, DG-A-11's tracking sweep.
+ *
+ * §T3's section eyebrow now takes `.eyebrow` (globals.css, beside `.amount`) instead of a
+ * hand-typed `tracking-[0.14em]`, which is what let §6's arbitrary-tracking ratchet fall
+ * 602 → 313. ⛔ Without this clause that sweep would have read as **+291 sub-floor sites** on
+ * a ratchet that may only shrink — 291 microlabels that were blessed on Friday and reading
+ * copy on Saturday, having changed no pixel. Same trap, opposite sign, as the rename that
+ * once made 509 of §3's 768 zeroable: a guard keyed on a SPELLING moves when the spelling
+ * does.
+ * ⭐ It is also the better key. `uppercase + tracking-` is the DRESSING; `eyebrow` names the
+ * ROLE, and 586 sites were read to decide who may wear it
+ * (`scripts/design-gate/eyebrow-roles.mjs`). The dressing clause stays because the roles §T3
+ * deliberately leaves alone — the control label, the type-to-confirm input, the celebration —
+ * are still legitimately uppercase-and-tracked and are still not reading copy.
+ */
 function isBlessedMicrolabel(group: string): boolean {
   const toks = tokens(group).map(bare);
+  if (toks.includes("eyebrow")) return true;
   return toks.includes("uppercase") && toks.some((t) => /^tracking-/.test(t));
 }
 
@@ -655,6 +672,17 @@ log("§0 — self-test: the scanners can see, and can fail");
   // condemn the very fix its advice string now recommends.
   check("0f ⛔ CONTROL · text-body-sm (13px) is NOT counted — it is the prescribed fix",
     above.length === 0, `matched ${above.length}`);
+  /* ⭐ 0f/e — THE `.eyebrow` BRANCH, PROVED REACHABLE AND PROVED FALSIFIABLE. §T3's section
+     eyebrow stopped hand-typing its tracking on 2026-08-30, so a blessing keyed only on
+     `tracking-` would have condemned 291 unchanged microlabels as reading copy. ⛔ And the
+     second half is the one that matters: the class must not bless a size on its own, or
+     anybody could delete a §3 hit by typing one word. */
+  const marked = scanSubfloorClasses(`<span className="text-micro uppercase eyebrow">x</span>`);
+  const bare_ = scanSubfloorClasses(`<p className="text-caption leading-relaxed">x</p>`);
+  check("0f …and `.eyebrow` blesses the same size — the role marker, not the dressing",
+    marked.length === 1 && isBlessedMicrolabel(marked[0].group));
+  check("0f ⛔ CONTROL · without a blessing the SAME size is still counted",
+    bare_.length === 1 && !isBlessedMicrolabel(bare_[0].group));
 }
 // 0g — the three sizes this guard hard-codes are still what tailwind.config.ts says.
 //      Change `caption` to 13px there and, without this, §3 would keep condemning 174

@@ -9,7 +9,7 @@ export default async function UpDownLoading() {
   return (
     <div className="mx-auto w-full max-w-[1280px] px-4 py-6" aria-busy="true">
       <div className="mb-4">
-        <p className="font-mono text-caption uppercase tracking-[0.16em] font-bold text-text-subtle">{t.market.udStreaming}</p>
+        <p className="font-mono text-caption uppercase eyebrow font-bold text-text-subtle">{t.market.udStreaming}</p>
         <div className="mt-1 h-7 w-40 rounded-md bg-bg-elevated kp-shimmer-track" aria-hidden />
       </div>
       {/* price tape */}

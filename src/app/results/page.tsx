@@ -276,7 +276,7 @@ async function ResultsContent({
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <span className="text-gold-300"><I.resolved s={18} /></span>
-          <p className="font-mono text-caption uppercase tracking-[0.16em] font-bold text-text-subtle">{t.results.title}</p>
+          <p className="font-mono text-caption uppercase eyebrow font-bold text-text-subtle">{t.results.title}</p>
         </div>
         <div className="flex items-center gap-3">
           {totalCount > 0 && (

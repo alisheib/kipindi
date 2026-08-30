@@ -523,7 +523,7 @@ export function ConfirmModal({
           {icon ?? <I.warning s={18} />}
         </span>
         <div>
-          <p className="font-mono text-micro uppercase tracking-[0.16em] font-bold text-text-subtle">
+          <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">
             {effectiveEyebrow}
           </p>
           <h2 className="mt-0.5 font-display text-[18px] font-bold text-text leading-tight">
@@ -538,7 +538,7 @@ export function ConfirmModal({
 
       {isHard && (
         <label className="block mb-4">
-          <span className="font-mono text-micro uppercase tracking-[0.14em] text-claret-300 font-bold">
+          <span className="font-mono text-micro uppercase eyebrow text-claret-300 font-bold">
             {typeLabel}
           </span>
           <input

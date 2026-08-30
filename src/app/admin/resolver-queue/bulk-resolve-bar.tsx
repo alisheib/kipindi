@@ -411,7 +411,7 @@ function BulkConfirm({
           </ul>
 
           <p className="flex items-center justify-between rounded-md border border-border bg-bg-overlay px-3 py-2">
-            <span className="font-mono text-micro uppercase tracking-widest text-text-subtle">
+            <span className="font-mono text-micro uppercase eyebrow text-text-subtle">
               {BULK_BAR.moneyAtStake.en}
             </span>
             <span className="amount text-body-sm font-bold text-text">{formatTzs(total)}</span>
@@ -466,7 +466,7 @@ function BulkResultPanel({ result, onDismiss }: { result: BulkResolveResult; onD
   return (
     <div className="mt-3 rounded-md border border-border bg-bg-overlay">
       <div className="flex items-center justify-between border-b border-border px-3 py-2">
-        <p className="font-mono text-micro uppercase tracking-widest text-text-subtle">
+        <p className="font-mono text-micro uppercase eyebrow text-text-subtle">
           Batch {result.batchId.slice(0, 8)} · {result.attempted} attempted
         </p>
         <Button variant="ghost" size="xs" onClick={onDismiss}>Dismiss</Button>
@@ -474,7 +474,7 @@ function BulkResultPanel({ result, onDismiss }: { result: BulkResolveResult; onD
       <div className="space-y-2 px-3 py-2">
         {groups.filter((g) => g.rows.length > 0).map((g) => (
           <div key={g.key}>
-            <p className={`font-mono text-micro uppercase tracking-widest ${g.tone}`}>{g.rows.length} · {g.label}</p>
+            <p className={`font-mono text-micro uppercase eyebrow ${g.tone}`}>{g.rows.length} · {g.label}</p>
             <ul className="mt-0.5 space-y-0.5">
               {g.rows.map((r) => (
                 <li key={r.marketId} className="text-label leading-snug text-text-muted">

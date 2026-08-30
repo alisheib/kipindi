@@ -226,8 +226,13 @@ const BASELINE = new Set<string>([
   // ── ⛔ `.bg-damask` PAINTS WITH `--aqua-300` — a token from the killed teal era. This is
   //    the single most copy-able trap in the list: it reads as "the house background recipe".
   "bg-damask",
-  // ── Board section headings. The board renders its own headings in JSX.
-  "board-section-head", "board-section-eyebrow",
+  // ── ⚪ DELETED 2026-08-30 (DG-A-11): `board-section-head` / `board-section-eyebrow` are gone
+  //    from globals.css, so their entries go with them. ⛔ THEY HAD BEEN DECLARED DEAD HERE
+  //    SINCE THE BOARD WAS REBUILT ON 2026-08-13 — seventeen days in which a list saying "this
+  //    renders nowhere" was read as permission to leave it. And it was not inert: it was a
+  //    SECOND definition of §T3's section eyebrow, at 0.16em against the ruled 0.14, and the
+  //    comment beside `.kp-hero__eyebrow` cited it as its reference point. ⭐ A declared-dead
+  //    list is a list of things nobody deleted, not a list of things that cannot hurt you.
   // ── The support-chat kit. Twelve rules for an avatar, a chip row, a disclosure and a
   //    pressed bubble that `chat/` never mounts.
   "cm-avatar", "cm-avatar-lg", "cm-avatar-sm", "cm-bubble-pip", "cm-bubble-pressed",

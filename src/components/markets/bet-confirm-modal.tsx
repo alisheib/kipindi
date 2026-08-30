@@ -240,7 +240,7 @@ export function BetConfirmModal({
       <div className="p-5 lg:p-6 pb-[calc(env(safe-area-inset-bottom,0px)+20px)]">
         <div className="flex items-start justify-between gap-3 mb-4">
           <div className="min-w-0">
-            <p className="font-mono text-micro uppercase tracking-[0.16em] font-bold text-text-subtle">
+            <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">
               {t.common.confirmPrediction}
             </p>
             {marketTitle && (
@@ -275,7 +275,7 @@ export function BetConfirmModal({
         <div className="rounded-lg border p-4" style={{ borderColor: sideTone.brd, background: sideTone.bg }}>
           <div className="flex items-baseline justify-between">
             <div>
-              <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle mb-1">{t.common.youArePicking}</p>
+              <p className="font-mono text-micro uppercase eyebrow text-text-subtle mb-1">{t.common.youArePicking}</p>
               {/* ⛔ THIS USED TO PRINT THE STORED ENUM. On the Chinese money-commit dialog the
                   26px headline read "YES" while the pool-share sentence three rows below read
                   "是" — one fact, two answers, one screen. Both now come out of §L's one map,
@@ -286,7 +286,7 @@ export function BetConfirmModal({
               </p>
             </div>
             <div className="text-right">
-              <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle mb-1">{t.dialog.stakeLabel}</p>
+              <p className="font-mono text-micro uppercase eyebrow text-text-subtle mb-1">{t.dialog.stakeLabel}</p>
               <p className="font-mono font-bold text-[22px] tabular-nums leading-none text-text">TZS {formatNumber(stake)}</p>
               <p className="mt-1 font-mono text-[10px] text-text-subtle">{multiplier.toFixed(2)}× {t.dialog.conviction}</p>
             </div>
@@ -301,7 +301,7 @@ export function BetConfirmModal({
               it is an estimate. See docs/COMPLIANCE-DECISIONS.md. */}
         {rates?.feeModel === "loser-share" && rates?.showEstimatedWinnings !== false ? (
           <div className="mt-3 rounded-lg border border-border bg-bg-overlay p-3">
-            <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle mb-1">
+            <p className="font-mono text-micro uppercase eyebrow text-text-subtle mb-1">
               {t.dialog.estimatedWinningsLabel}
             </p>
             <p className="text-[18px] font-bold tabular-nums text-text leading-none">
@@ -313,7 +313,7 @@ export function BetConfirmModal({
           </div>
         ) : (
           <div className="mt-3 rounded-lg border border-border bg-bg-overlay p-3">
-            <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle mb-1">
+            <p className="font-mono text-micro uppercase eyebrow text-text-subtle mb-1">
               {t.common.payout2}
             </p>
             {/* Pool-share invariant (micro-spec §10.2) — side-aware, mandatory

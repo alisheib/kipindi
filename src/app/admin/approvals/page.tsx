@@ -115,7 +115,7 @@ export default async function AdminApprovalsPage({
             <>
             <ScrollX label="KYC queue" className="-mx-4 px-4">
               <table className="admin-tbl min-w-[600px]">
-                <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
+                <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle">
                   <tr>
                     <SortTh field="submitted" label="Submitted" current={kyc.sort} dir={kyc.dir} sp={sp} baseHref="/admin/approvals" prefix="kyc" className="py-2 pr-3" />
                     <SortTh field="user" label="User" current={kyc.sort} dir={kyc.dir} sp={sp} baseHref="/admin/approvals" prefix="kyc" className="py-2 pr-3" />
@@ -175,7 +175,7 @@ export default async function AdminApprovalsPage({
             <>
             <ScrollX label="AML queue" className="-mx-4 px-4">
               <table className="admin-tbl min-w-[640px]">
-                <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
+                <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle">
                   <tr>
                     <SortTh field="time" label="When" current={amlS.sort} dir={amlS.dir} sp={sp} baseHref="/admin/approvals" prefix="aml" className="py-2 pr-3" />
                     <th className="text-left py-2 pr-3">User</th>
@@ -215,7 +215,7 @@ export default async function AdminApprovalsPage({
             <>
             <ScrollX label="Source of funds" className="-mx-4 px-4">
               <table className="admin-tbl min-w-[600px]">
-                <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
+                <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle">
                   <tr>
                     <SortTh field="submitted" label="Submitted" current={sofS.sort} dir={sofS.dir} sp={sp} baseHref="/admin/approvals" prefix="sof" className="py-2 pr-3" />
                     <SortTh field="user" label="User" current={sofS.sort} dir={sofS.dir} sp={sp} baseHref="/admin/approvals" prefix="sof" className="py-2 pr-3" />

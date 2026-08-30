@@ -193,7 +193,7 @@ function VisualPools({ caption, poolYes, poolNo, share, barLabels, barAria }: {
         {/* 8.5px, not 8 and 7 — `--type-nano` is the floor for a mono uppercase microlabel
             (§T3), and "share" at 7px was the smallest type in the entire product. */}
         <div className="rounded-lg border border-yes-700/40 bg-yes-500/[0.08] px-3 py-2 text-center">
-          <p className="font-mono text-micro uppercase tracking-[0.14em] font-bold" style={{ color: "oklch(70% 0.12 152)" }}>{poolYes}</p>
+          <p className="font-mono text-micro uppercase eyebrow font-bold" style={{ color: "oklch(70% 0.12 152)" }}>{poolYes}</p>
           <p className="font-display text-[15px] font-bold text-text">TZS 12k</p>
         </div>
         <div className="flex flex-col items-center gap-0.5">
@@ -202,7 +202,7 @@ function VisualPools({ caption, poolYes, poolNo, share, barLabels, barAria }: {
           <span className="inline-block h-[2px] w-5 rounded-pill" style={{ background: "var(--gilt)" }} />
         </div>
         <div className="rounded-lg border border-no-700/40 bg-no-500/[0.08] px-3 py-2 text-center">
-          <p className="font-mono text-micro uppercase tracking-[0.14em] font-bold" style={{ color: "oklch(70% 0.14 22)" }}>{poolNo}</p>
+          <p className="font-mono text-micro uppercase eyebrow font-bold" style={{ color: "oklch(70% 0.14 22)" }}>{poolNo}</p>
           <p className="font-display text-[15px] font-bold text-text">TZS 18k</p>
         </div>
       </div>
@@ -428,7 +428,7 @@ export function FirstVisitPrimer() {
           </div>
 
           {/* Eyebrow */}
-          <p className="mt-4 font-mono text-micro uppercase tracking-[0.18em] font-bold text-gold-300">
+          <p className="mt-4 font-mono text-micro uppercase eyebrow font-bold text-gold-300">
             {c.eyebrow}
           </p>
 

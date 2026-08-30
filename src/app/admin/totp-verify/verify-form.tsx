@@ -52,7 +52,7 @@ export function TotpVerifyForm({ next }: { next?: string }) {
   return (
     <div className="space-y-3">
       <label className="block">
-        <span className="block text-caption uppercase tracking-[0.16em] font-bold text-text-secondary mb-1.5">
+        <span className="block text-caption uppercase eyebrow font-bold text-text-secondary mb-1.5">
           6-digit code · Msimbo
         </span>
         <input

@@ -118,7 +118,7 @@ export function ResolutionCeremony({
 
         {verdict === "VOID" && (
           <label className="block">
-            <span className="mb-1 block font-mono text-micro uppercase tracking-[0.14em] text-claret-300">
+            <span className="mb-1 block font-mono text-micro uppercase eyebrow text-claret-300">
               Void reason · Sababu ya kubatilisha <span className="text-claret-300">*</span>
             </span>
             <Select
@@ -133,7 +133,7 @@ export function ResolutionCeremony({
         )}
 
         <label className="block">
-          <span className="mb-1 flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">
+          <span className="mb-1 flex items-center gap-1.5 font-mono text-micro uppercase eyebrow text-text-subtle">
             <I.fileText s={12} /> {bi(CEREMONY.evidenceExcerpt)}
           </span>
           <textarea
@@ -191,7 +191,7 @@ export function ResolutionCeremony({
 
         {verdict === "VOID" && (
           <label className="block">
-            <span className="mb-1 block font-mono text-micro uppercase tracking-[0.14em] text-claret-300">
+            <span className="mb-1 block font-mono text-micro uppercase eyebrow text-claret-300">
               Void reason · Sababu ya kubatilisha <span className="text-claret-300">*</span>
             </span>
             <Select
@@ -206,7 +206,7 @@ export function ResolutionCeremony({
         )}
 
         <label className="block">
-          <span className="mb-1 flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">
+          <span className="mb-1 flex items-center gap-1.5 font-mono text-micro uppercase eyebrow text-text-subtle">
             <I.fileText s={12} /> {bi(CEREMONY.evidenceExcerpt)}
           </span>
           <textarea
@@ -243,7 +243,7 @@ export function ResolutionCeremony({
     <div className="space-y-4">
       <div className="rounded-lg border border-border bg-bg-overlay p-3">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">Staged verdict</span>
+          <span className="font-mono text-micro uppercase eyebrow text-text-subtle">Staged verdict</span>
           <span className="font-mono text-[14px] font-bold" style={{ color: verdictMeta?.text }}>
             {stagedOutcome}{verdictMeta?.sw ? ` · ${verdictMeta.sw}` : ""}
           </span>
@@ -263,7 +263,7 @@ export function ResolutionCeremony({
       ) : (
         <>
           <label className="block">
-            <span className="mb-1 flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">
+            <span className="mb-1 flex items-center gap-1.5 font-mono text-micro uppercase eyebrow text-text-subtle">
               <I.fileText s={12} /> Countersign note · Optional
             </span>
             <textarea

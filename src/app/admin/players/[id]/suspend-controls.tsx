@@ -141,7 +141,7 @@ export function SuspendControls({
         ariaBusy={pending}
         initialFocus={reasonRef}
       >
-        <p className="font-mono text-micro uppercase tracking-[0.18em] font-bold text-text mb-1">
+        <p className="font-mono text-micro uppercase eyebrow font-bold text-text mb-1">
           {mode === "suspend" ? "Suspend · Simamisha" : "Restore · Rejesha"}
         </p>
         <h3 className="font-display text-[18px] font-bold text-text leading-tight">

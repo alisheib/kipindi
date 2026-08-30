@@ -94,7 +94,7 @@ function FooterCol({
 }: { heading: string; children: React.ReactNode }) {
   return (
     <div className="space-y-2">
-      <p className="font-mono text-micro uppercase tracking-[0.16em] font-bold text-text-subtle">
+      <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">
         {heading}
       </p>
       <ul className="space-y-1.5">{children}</ul>

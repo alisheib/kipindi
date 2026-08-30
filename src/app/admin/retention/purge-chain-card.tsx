@@ -319,7 +319,7 @@ function CostPanel({ cost, dense = false }: { cost: PurgeCost; dense?: boolean }
   );
   return (
     <div className={dense ? "" : "rounded-md border border-border bg-bg-overlay p-3"}>
-      <p className="font-mono text-micro uppercase tracking-widest text-claret-300 font-bold mb-1">
+      <p className="font-mono text-micro uppercase eyebrow text-claret-300 font-bold mb-1">
         What this deletes
       </p>
       <Row k="Rounds" v={cost.rounds.toLocaleString()} note={cost.firstAt && cost.lastAt ? `${cost.firstAt.slice(0, 10)} → ${cost.lastAt.slice(0, 10)}` : undefined} />
@@ -328,7 +328,7 @@ function CostPanel({ cost, dense = false }: { cost: PurgeCost; dense?: boolean }
       <Row k="Price snapshots" v={cost.snapshots.toLocaleString()} />
       <Row k="Observations" v="0" note={cost.observationsNote} />
 
-      <p className="font-mono text-micro uppercase tracking-widest text-text-tertiary font-bold mt-2 mb-1">
+      <p className="font-mono text-micro uppercase eyebrow text-text-tertiary font-bold mt-2 mb-1">
         What survives, redacted
       </p>
       <Row k="Markets (kept as tombstones)" v={cost.markets.toLocaleString()} />

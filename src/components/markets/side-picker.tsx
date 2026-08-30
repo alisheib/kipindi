@@ -74,7 +74,7 @@ export function SidePicker({
                   is poll-only; `/markets/[id]` redirects an Up & Down round to `/updown`. */}
               {sideWord(t, side, "MARKET")}{hasPool ? ` ${side === "YES" ? yesPct : 100 - yesPct}%` : ""}
             </Chip>
-            <span className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">{t.common.yourPick}</span>
+            <span className="font-mono text-micro uppercase eyebrow text-text-subtle">{t.common.yourPick}</span>
           </div>
           <button
             type="button"
@@ -115,7 +115,7 @@ export function SidePicker({
 
   return (
     <div className="rounded-xl border border-border bg-bg-elevated p-5 lg:p-6">
-      <p className="font-mono text-micro uppercase tracking-[0.16em] font-bold text-text-subtle text-center">
+      <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle text-center">
         {t.common.pickYourSide}
       </p>
       <h3 className="mt-1.5 mb-4 font-display text-[17px] font-bold text-text leading-tight text-center">

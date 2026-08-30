@@ -377,7 +377,7 @@ export function RoundCountdownPod({
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 14px", background: "var(--bg-inset)", border: "1px solid color-mix(in oklab, var(--border) 70%, transparent)", borderRadius: "var(--r-md)" }}>
       <span key={`c-${podPhase}`}
-            className="m-tick font-mono text-micro font-semibold uppercase tracking-[0.12em] text-text-faint"
+            className="m-tick font-mono text-micro font-semibold uppercase eyebrow text-text-faint"
             /* ⛔ ONE LINE IN EVERY LOCALE — SW and ZH run ~35% longer and this pod sits inline
                beside 28px digits in a wrapping header. A wrapped caption grows the pod and
                shifts the whole header row, which is the layout shift §6 forbids. */
@@ -422,7 +422,7 @@ export function RoundCountdown({ closesAtMs, label }: { closesAtMs: number; labe
   const urgent = left != null && left > 0 && left <= 30;
   return (
     <div className="text-right">
-      <div className="font-mono text-micro uppercase tracking-[0.12em] text-text-faint">{label}</div>
+      <div className="font-mono text-micro uppercase eyebrow text-text-faint">{label}</div>
       <div
         className={urgent ? "ud-count-pulse" : undefined}
         style={{

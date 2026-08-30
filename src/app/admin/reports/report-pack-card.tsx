@@ -65,7 +65,7 @@ export async function ReportPackCard() {
                       <span className="font-mono text-[11px] font-bold" style={{ color: nodeColor }}>{i + 1}</span>
                     )}
                   </span>
-                  <span className="text-center font-mono text-micro uppercase tracking-[0.1em] leading-tight" style={{ color: textColor }}>
+                  <span className="text-center font-mono text-micro uppercase eyebrow leading-tight" style={{ color: textColor }}>
                     {step.label}
                   </span>
                 </div>
@@ -143,7 +143,7 @@ function SignSlot({ role, name, at }: { role: string; name: string | null; at: s
     >
       <div className="flex items-center gap-1.5">
         <I.shieldcheck s={12} className={signed ? "text-brand-300" : "text-text-subtle"} />
-        <span className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle">{role}</span>
+        <span className="font-mono text-micro uppercase eyebrow text-text-subtle">{role}</span>
       </div>
       {signed ? (
         <>

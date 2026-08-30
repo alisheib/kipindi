@@ -191,7 +191,7 @@ export default async function AdminAIPollsPage({
             <I.bot s={18} className="text-royal-300 mt-0.5 shrink-0" />
             <div className="flex-1 text-caption text-text-secondary leading-relaxed">
               <div className="flex items-center gap-2 mb-1">
-                <span className="font-mono text-micro uppercase tracking-wide font-bold">Provider:</span>
+                <span className="font-mono text-micro uppercase eyebrow font-bold">Provider:</span>
                 <Chip size="sm" variant={getAIProvider().name.includes("mock") ? "warning" : "success"}>
                   {getAIProvider().name}
                 </Chip>
@@ -338,7 +338,7 @@ export default async function AdminAIPollsPage({
             <>
               <ScrollX label="AI polls">
                 <table className="admin-tbl min-w-[760px]">
-                  <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-subtle bg-bg-overlay border-b border-border">
+                  <thead className="font-mono text-micro eyebrow uppercase text-text-subtle bg-bg-overlay border-b border-border">
                     <tr>
                       <th className="text-left p-3">State</th>
                       <th className="text-left p-3">Category</th>
@@ -455,7 +455,7 @@ function CardSortControl({
   };
   return (
     <div className="flex items-center gap-1 flex-wrap px-4 lg:px-5 pt-3">
-      <span className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle mr-1">
+      <span className="font-mono text-micro uppercase eyebrow text-text-subtle mr-1">
         Sort <span className="italic text-text-tertiary">· Panga</span>
       </span>
       {options.map((o) => {
@@ -613,7 +613,7 @@ function PollRow({ poll, mode }: { poll: StoredAIPoll; mode: "review" | "publish
         {/* AI reasoning */}
         {poll.reasoning && (
           <details className="mt-2 text-[11px]">
-            <summary className="cursor-pointer font-mono text-micro uppercase tracking-[0.14em] text-text-subtle hover:text-text-muted">
+            <summary className="cursor-pointer font-mono text-micro uppercase eyebrow text-text-subtle hover:text-text-muted">
               AI reasoning
             </summary>
             <p className="mt-1 text-text-muted leading-relaxed pl-2 border-l-2 border-border">
@@ -625,7 +625,7 @@ function PollRow({ poll, mode }: { poll: StoredAIPoll; mode: "review" | "publish
         {/* Raw response */}
         {poll.rawResponse && (poll.state === "VALIDATION_FAILED" || poll.state === "FILTERED") && (
           <details className="mt-2 text-[11px]">
-            <summary className="cursor-pointer font-mono text-micro uppercase tracking-[0.14em] text-text-subtle hover:text-text-muted">
+            <summary className="cursor-pointer font-mono text-micro uppercase eyebrow text-text-subtle hover:text-text-muted">
               Raw AI response
             </summary>
             <pre className="mt-1 text-text-muted leading-relaxed pl-2 border-l-2 border-border text-[10px] font-mono overflow-x-auto max-w-full whitespace-pre-wrap break-all">

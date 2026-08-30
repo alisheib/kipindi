@@ -165,7 +165,7 @@ export default async function AdminTransactionsPage({ searchParams }: { searchPa
             ?range/?from/?to directly; the form below keeps them via hidden inputs so a
             field change (type/status/…) preserves the window. */}
         <div className="mb-3">
-          <span className="mb-1.5 block font-mono text-micro uppercase tracking-[0.12em] text-text-tertiary">Window · Dirisha</span>
+          <span className="mb-1.5 block font-mono text-micro uppercase eyebrow text-text-tertiary">Window · Dirisha</span>
           <DateTimeRangeFilter defaultPreset="28d" presetIds={["today", "yesterday", "24h", "7d", "28d", "30d", "mtd", "all"]} />
         </div>
         {/* Search sits ABOVE the form and drives ?q directly (same pattern as the
@@ -175,7 +175,7 @@ export default async function AdminTransactionsPage({ searchParams }: { searchPa
             silently drop ?q — on a compliance browser that reads as "no such
             transaction". */}
         <div className="mb-3">
-          <span className="mb-1.5 block font-mono text-micro uppercase tracking-[0.12em] text-text-tertiary">Search · Tafuta</span>
+          <span className="mb-1.5 block font-mono text-micro uppercase eyebrow text-text-tertiary">Search · Tafuta</span>
           <SearchBox
             placeholder="Gateway ref, phone, txn or player id"
             ariaLabel="Search transactions"
@@ -212,7 +212,7 @@ export default async function AdminTransactionsPage({ searchParams }: { searchPa
         title={`Movements · ${total.toLocaleString()}`}
         sw="Miamala"
         className="mt-4"
-        action={<span className="font-mono text-micro uppercase tracking-[0.12em] text-text-tertiary">{range.label}</span>}
+        action={<span className="font-mono text-micro uppercase eyebrow text-text-tertiary">{range.label}</span>}
       >
         {rows.length === 0 ? (
           <EmptyState
@@ -312,7 +312,7 @@ export default async function AdminTransactionsPage({ searchParams }: { searchPa
 function FilterSelect({ name, label, value, options }: { name: string; label: string; value: string; options: [string, string][] }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="font-mono text-micro uppercase tracking-[0.12em] text-text-tertiary">{label}</span>
+      <span className="font-mono text-micro uppercase eyebrow text-text-tertiary">{label}</span>
       <Select
         name={name}
         defaultValue={value}

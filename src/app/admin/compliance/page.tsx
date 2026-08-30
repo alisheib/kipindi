@@ -255,7 +255,7 @@ export default async function AdminCompliancePage({
               <AdminKpi label="Avg time" sw="Wastani"     value="—"             spark={false} />
             </KpiGrid>
             <div className="pt-3 mt-2 border-t border-border-subtle">
-              <p className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary mb-1.5">Next in queue</p>
+              <p className="font-mono text-micro eyebrow uppercase text-text-tertiary mb-1.5">Next in queue</p>
               {amlFailed ? (
                 <AdminLoadError what="the AML queue" />
               ) : recentAml.length === 0 ? (
@@ -286,15 +286,15 @@ export default async function AdminCompliancePage({
                 <span className="font-mono text-micro text-warning tracking-wider">{rg.expiringThisWeek} expiring</span>
               )}
             </div>
-            <p className={["font-mono text-micro tracking-[0.10em] uppercase", rg ? "text-text-tertiary" : "text-warning-fg"].join(" ")}>{rg ? "active roster" : "couldn't load"}</p>
+            <p className={["font-mono text-micro eyebrow uppercase", rg ? "text-text-tertiary" : "text-warning-fg"].join(" ")}>{rg ? "active roster" : "couldn't load"}</p>
           </AdminCard>
           <AdminCard title="Cooling-off" sw="Kupumzika">
             <div className={["font-mono font-bold text-title-md tabular", rg ? "text-text" : "text-text-tertiary"].join(" ")}>{rg ? rg.cooledOff : "n/a"}</div>
-            <p className={["font-mono text-micro tracking-[0.10em] uppercase", rg ? "text-text-tertiary" : "text-warning-fg"].join(" ")}>{rg ? "in progress" : "couldn't load"}</p>
+            <p className={["font-mono text-micro eyebrow uppercase", rg ? "text-text-tertiary" : "text-warning-fg"].join(" ")}>{rg ? "in progress" : "couldn't load"}</p>
           </AdminCard>
           <AdminCard title="Limit-increase deferrals" sw="Kuongeza kikomo">
             <div className={["font-mono font-bold text-title-md tabular", rg ? "text-warning-fg" : "text-text-tertiary"].join(" ")}>{rg ? rg.pendingLimitIncrease : "n/a"}</div>
-            <p className={["font-mono text-micro tracking-[0.10em] uppercase", rg ? "text-text-tertiary" : "text-warning-fg"].join(" ")}>{rg ? "pending 24h cool-down" : "couldn't load"}</p>
+            <p className={["font-mono text-micro eyebrow uppercase", rg ? "text-text-tertiary" : "text-warning-fg"].join(" ")}>{rg ? "pending 24h cool-down" : "couldn't load"}</p>
           </AdminCard>
           <AdminCard title="Reality-check engagement" sw="Tahadhari ya hali halisi">
             {/* ⛔ NO FLOOR, AND NO BAR AT ALL WHEN THERE IS NOTHING TO SHOW (S-04 + S-15).
@@ -321,7 +321,7 @@ export default async function AdminCompliancePage({
             {rcTotal === 0 ? (
               <>
                 <div className="font-mono font-bold text-title-md tabular text-text-tertiary">—</div>
-                <p className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">
+                <p className="font-mono text-micro eyebrow uppercase text-text-tertiary">
                   no activity in window
                 </p>
               </>
@@ -358,7 +358,7 @@ export default async function AdminCompliancePage({
             ) : (
               <ScrollX label="Integrity alerts" className="-mx-4 px-4">
                 <table className="admin-tbl min-w-[480px]">
-                  <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle">
+                  <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle">
                     <tr>
                       <th className="text-left py-2 pr-3">When</th>
                       <th className="text-left py-2 pr-3">Match</th>
@@ -501,7 +501,7 @@ async function PlayerSafetyPanel({ sp }: { sp: { page?: string; sort?: string; d
         <>
       <ScrollX label="Harm markers">
         <table className="admin-tbl">
-          <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
+          <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
             <tr>
               <SortTh field="user" label="User" current={sort} dir={dir} sp={sp} baseHref="/admin/compliance" className="p-3" />
               <SortTh field="marker" label="Marker" current={sort} dir={dir} sp={sp} baseHref="/admin/compliance" className="p-3" />

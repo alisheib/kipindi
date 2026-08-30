@@ -75,7 +75,7 @@ export function PnlSummaryStrip({
           sub={`${wins}W \u00b7 ${losses}L \u00b7 ${cashOuts}C`}
         />
         <div className="pl-3.5 pt-0.5" style={{ borderLeft: "1px solid color-mix(in oklab, var(--border) 60%, transparent)" }}>
-          <p className="m-0 font-mono text-micro font-semibold uppercase tracking-[0.10em] text-text-subtle">{t.winRate}</p>
+          <p className="m-0 font-mono text-micro font-semibold uppercase eyebrow text-text-subtle">{t.winRate}</p>
           <div className="mt-1.5 flex items-center gap-2.5">
             <NeedleDial rate={winRate} />
             <p className="m-0 font-mono text-[19px] font-bold tabular-nums leading-[1.1] text-text">{winRate}%</p>
@@ -92,7 +92,7 @@ function Cell({ label, value, sub, valueClass = "text-text" }: {
 }) {
   return (
     <div className="pl-3.5 pt-0.5" style={{ borderLeft: "1px solid color-mix(in oklab, var(--border) 60%, transparent)" }}>
-      <p className="m-0 font-mono text-micro font-semibold uppercase tracking-[0.10em] text-text-subtle">{label}</p>
+      <p className="m-0 font-mono text-micro font-semibold uppercase eyebrow text-text-subtle">{label}</p>
       <p className={`mt-[7px] font-mono text-[19px] font-bold tabular-nums leading-[1.1] ${valueClass}`}>{value}</p>
       <p className="mt-1.5 font-mono text-[10.5px] tabular-nums text-text-muted">{sub}</p>
     </div>

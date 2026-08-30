@@ -78,7 +78,7 @@ export default async function AdminOverviewPage() {
           <AdminCard
             title="24-hour money flow"
             sw="Mtiririko wa pesa · TZS net per hour"
-            action={<span className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">net inflow vs outflow</span>}
+            action={<span className="font-mono text-micro eyebrow uppercase text-text-tertiary">net inflow vs outflow</span>}
           >
             {flow === null ? <AdminLoadError what="the money-flow series" /> : (
               <AdminAreaChart

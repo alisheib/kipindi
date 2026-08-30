@@ -106,7 +106,7 @@ export function AdminMobileNavTrigger({ groups, badges, fallbackKey, roleLabel }
             <nav className="flex-1 px-3 py-3 flex flex-col gap-1">
               {groups.map((g) => (
                 <div key={g.group.en}>
-                  <div className="px-2 pt-3 pb-1.5 font-mono text-micro uppercase tracking-[0.18em] text-text-tertiary">
+                  <div className="px-2 pt-3 pb-1.5 font-mono text-micro uppercase eyebrow text-text-tertiary">
                     {g.group.en} · {g.group.sw}
                   </div>
                   {g.items.map((it) => {

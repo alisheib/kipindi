@@ -748,7 +748,7 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
 
   const numField = (label: string, hint: string, value: string, set: (v: string) => void) => (
     <label className="block">
-      <span className="text-micro text-text-subtle block mb-1 font-mono uppercase tracking-[0.12em]">{label}</span>
+      <span className="text-micro text-text-subtle block mb-1 font-mono uppercase eyebrow">{label}</span>
       <Input type="number" value={value} onChange={(e) => set(e.target.value)} mono size="sm" />
       <span className="text-[10px] text-text-subtle">{hint}</span>
     </label>
@@ -791,7 +791,7 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {LEAD_TIME_CATEGORIES.map((cat) => (
             <div key={cat}>
-              <span className="text-micro text-text-subtle block mb-0.5 font-mono uppercase tracking-[0.1em]">{LEAD_TIME_LABELS[cat]}</span>
+              <span className="text-micro text-text-subtle block mb-0.5 font-mono uppercase eyebrow">{LEAD_TIME_LABELS[cat]}</span>
               <DurationInput
                 value={leadTimes[cat] ?? 1440}
                 onChange={(mins) => setLeadTimes((prev) => ({ ...prev, [cat]: mins }))}
@@ -830,7 +830,7 @@ export function QualityBadges({ indicators, overall }: { indicators: QualityIndi
     <div className="space-y-1.5">
       <div className="flex items-center gap-2">
         <I.gauge s={13} className="text-text-subtle" />
-        <span className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">
+        <span className="font-mono text-micro uppercase eyebrow text-text-subtle">
           Overall quality
         </span>
         <span
@@ -1275,7 +1275,7 @@ function RejectForm({ pollId, onClose, overlay }: { pollId: string; onClose: () 
 
   return (
     <div className="mt-2 z-10 rounded-md border border-border bg-bg-elevated p-3 shadow-lg w-[min(280px,calc(100vw-2rem))]">
-      <p className="font-mono text-micro uppercase tracking-[0.14em] font-bold text-text-subtle mb-2">
+      <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle mb-2">
         Reject reason
       </p>
       <div className="mb-2">
@@ -1399,7 +1399,7 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
 
   return (
     <div className="mt-2 z-10 rounded-md border border-border bg-bg-elevated p-3 shadow-lg w-[min(360px,calc(100vw-2rem))] space-y-2">
-      <p className="font-mono text-micro uppercase tracking-[0.14em] font-bold text-text-subtle">
+      <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">
         Edit poll
       </p>
       <label className="block">

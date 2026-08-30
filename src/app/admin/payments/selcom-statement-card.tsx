@@ -40,7 +40,7 @@ function SourcedFigure({
   const prov = provenanceLabel(figure.source);
   return (
     <div className="min-w-[150px]">
-      <span className="font-mono text-micro uppercase text-text-subtle">
+      <span className="font-mono text-micro eyebrow uppercase text-text-subtle">
         {caption} · {sw}
       </span>
       <p
@@ -66,13 +66,13 @@ export function SelcomStatementCard({ statement }: { statement: SelcomStatement 
     <div className="space-y-4">
       {/* ── The two balances, both answered honestly ─────────────────────────── */}
       <div>
-        <p className="font-mono text-micro uppercase text-text-subtle">
+        <p className="font-mono text-micro eyebrow uppercase text-text-subtle">
           Selcom balances · Salio la Selcom
         </p>
         <div className="mt-2 flex flex-wrap items-start gap-x-8 gap-y-3">
           {/* B2C — the one balance the vendor API exposes. */}
           <div className="min-w-[150px]">
-            <span className="font-mono text-micro uppercase text-text-subtle">
+            <span className="font-mono text-micro eyebrow uppercase text-text-subtle">
               Disbursement float (B2C) · Salio la malipo
             </span>
             {float.available ? (
@@ -96,7 +96,7 @@ export function SelcomStatementCard({ statement }: { statement: SelcomStatement 
           {/* C2B — ⛔ there is no such balance in Selcom's contract, and the page says so
               rather than computing one from our ledger and captioning it "Selcom" (A-5). */}
           <div className="min-w-[220px] max-w-[420px]">
-            <span className="font-mono text-micro uppercase text-text-subtle">
+            <span className="font-mono text-micro eyebrow uppercase text-text-subtle">
               Collections balance (C2B) · Salio la makusanyo
             </span>
             <p className="mt-0.5 font-mono text-body-sm font-bold text-text-tertiary">Not published by Selcom</p>
@@ -112,7 +112,7 @@ export function SelcomStatementCard({ statement }: { statement: SelcomStatement 
 
       {/* ── The statement: what actually crossed the rail ────────────────────── */}
       <div className="border-t border-border-subtle pt-3">
-        <p className="font-mono text-micro uppercase text-text-subtle">
+        <p className="font-mono text-micro eyebrow uppercase text-text-subtle">
           Statement · Taarifa ya miamala · all confirmed movements
         </p>
         <div className="mt-2 flex flex-wrap items-start gap-x-8 gap-y-3">

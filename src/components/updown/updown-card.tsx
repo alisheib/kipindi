@@ -798,7 +798,7 @@ export function UpDownCard(props: UpDownCardProps) {
             "Result in" after. Without it the player reads a live-looking clock over dead
             buttons and concludes the app cheated them. */}
         <div key={`c-${podPhase}`}
-             className="m-tick font-mono text-micro font-semibold uppercase tracking-[0.12em] text-text-faint"
+             className="m-tick font-mono text-micro font-semibold uppercase eyebrow text-text-faint"
              style={{
                // ⛔ ONE LINE, ALWAYS, IN EVERY LOCALE. The handover caption replaces the
                // countdown caption inside a pod whose height must not change (no layout shift),
@@ -843,7 +843,7 @@ export function UpDownCard(props: UpDownCardProps) {
       {/* ── Stats (mandatory: VOLUME · PLAYERS) ────────────────────────── */}
       <div className="mt-3 flex items-center justify-between gap-2">
         <span className="font-mono text-[11.5px] font-semibold tabular-nums text-text-muted">
-          <span className="text-micro uppercase tracking-[0.12em] text-text-faint">{t.market.udVolume} </span>
+          <span className="text-micro uppercase eyebrow text-text-faint">{t.market.udVolume} </span>
           {formatTzs(volumeTzs)}
         </span>
         <span className="inline-flex items-center gap-1 font-mono text-[11.5px] font-semibold tabular-nums text-text-muted">
@@ -881,7 +881,7 @@ export function UpDownCard(props: UpDownCardProps) {
           {/* "Higher or lower than $63,572.10" — the OPEN price is the thing being compared
               against, so it is what the heading names. The ± figure stays because it is the
               honest size of the band, and at the tick floor it is reassuringly tiny. */}
-          <div className="flex items-center justify-between gap-2 font-mono text-micro font-semibold uppercase tracking-[0.12em] text-text-faint">
+          <div className="flex items-center justify-between gap-2 font-mono text-micro font-semibold uppercase eyebrow text-text-faint">
             <span className="truncate">
               {t.market.udWinTarget}{openPrice != null ? ` ${priceText.open ?? ""}` : ""}
             </span>
@@ -898,7 +898,7 @@ export function UpDownCard(props: UpDownCardProps) {
           <div className="mt-1 grid grid-cols-2 gap-2">
             <div className="min-w-0 rounded-lg px-2.5 py-1.5"
                  style={{ background: "color-mix(in oklab, var(--yes-500) 10%, transparent)", border: "1px solid color-mix(in oklab, var(--yes-500) 24%, transparent)" }}>
-              <div className="flex items-center gap-1 font-mono text-micro font-bold uppercase tracking-[0.10em]" style={{ color: "var(--yes-300)" }}>
+              <div className="flex items-center gap-1 font-mono text-micro font-bold uppercase eyebrow" style={{ color: "var(--yes-300)" }}>
                 <I.trendingUp s={10} />{t.market.udUp}
               </div>
               <div className="mt-0.5 font-mono text-[12.5px] font-bold tabular-nums leading-tight" style={{ color: "var(--yes-300)" }}>
@@ -907,7 +907,7 @@ export function UpDownCard(props: UpDownCardProps) {
             </div>
             <div className="min-w-0 rounded-lg px-2.5 py-1.5 text-right"
                  style={{ background: "color-mix(in oklab, var(--no-500) 10%, transparent)", border: "1px solid color-mix(in oklab, var(--no-500) 24%, transparent)" }}>
-              <div className="flex items-center justify-end gap-1 font-mono text-micro font-bold uppercase tracking-[0.10em]" style={{ color: "var(--no-300)" }}>
+              <div className="flex items-center justify-end gap-1 font-mono text-micro font-bold uppercase eyebrow" style={{ color: "var(--no-300)" }}>
                 {t.market.udDown}<I.trendingDown s={10} />
               </div>
               <div className="mt-0.5 font-mono text-[12.5px] font-bold tabular-nums leading-tight" style={{ color: "var(--no-300)" }}>

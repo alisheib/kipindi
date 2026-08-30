@@ -93,7 +93,7 @@ export default async function UpDownPage({
            style={{ background: "var(--bg-inset)", border: "1px solid color-mix(in oklab, var(--border) 70%, transparent)" }}>
         {assets.map((a) => (
           <span key={a.id} className="inline-flex items-baseline gap-2">
-            <span className="font-mono text-micro font-semibold uppercase tracking-[0.10em] text-text-subtle">
+            <span className="font-mono text-micro font-semibold uppercase eyebrow text-text-subtle">
               {pickLocalized(locale, a.nameEn, a.nameSw, a.nameZh)}
             </span>
             <span className="font-mono text-[13px] font-bold tabular-nums"
@@ -127,7 +127,7 @@ export default async function UpDownPage({
       {/* ── Heartbeat: real outcomes only; hidden entirely when there are none ── */}
       {recent.length > 0 && (
         <div className="mt-4 flex items-center gap-2">
-          <span className="font-mono text-micro font-semibold uppercase tracking-[0.10em] text-text-faint">
+          <span className="font-mono text-micro font-semibold uppercase eyebrow text-text-faint">
             {t.market.udLastRounds}
           </span>
           <span className="flex gap-1">

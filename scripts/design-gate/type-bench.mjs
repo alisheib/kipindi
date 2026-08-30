@@ -513,6 +513,47 @@ if (!ONLY_BENCH || ONLY_BENCH === "recipe") {
     untracked.letterSpacing !== "normal" && parseFloat(untracked.letterSpacing) > 0, untracked.letterSpacing);
 }
 
+if (!ONLY_BENCH || ONLY_BENCH === "eyebrow") {
+  console.log("\n── EYEBROW BENCH — `.eyebrow` is the MECHANISM, and a class can be defeated ──");
+  /* ⛔ THE SAME FIGHT `.amount` HAD, AND IT MUST BE RE-PROVED FOR THIS CLASS RATHER THAN
+     ASSUMED FROM IT. §T3's ruling is now carried by a class in globals.css instead of 308
+     hand-typed values, so the ONLY thing standing between the eyebrow and its tracking is
+     the cascade. A single-class rule authored in globals.css beats a plain rung on source
+     order — and LOSES to a responsive variant, which Tailwind emits after everything this
+     stylesheet writes. The first control below is the one that proves the second means
+     something: if a single class already survived, the doubled selector would be theatre. */
+  const eb = await page.evaluate(() => {
+    const mk = (cls) => { const s = document.createElement("span"); s.className = cls; s.textContent = "TOTAL SETTLED"; document.body.appendChild(s); return s; };
+    const probe = (cls) => { const s = mk(cls); const r = { ls: getComputedStyle(s).letterSpacing, w: Math.round(s.getBoundingClientRect().width * 100) / 100 }; s.remove(); return r; };
+    /* A single-class twin of the shipped rule, minted here so the control is a CONTROL and
+       not a second definition site in globals.css. */
+    const st = document.createElement("style");
+    st.textContent = ".eb-1 { letter-spacing: 0.14em; }";
+    document.head.appendChild(st);
+    const out = {
+      shippedAlone: probe("eyebrow"),
+      shippedVsRung: probe("eyebrow text-micro"),
+      shippedVsVariant: probe("eyebrow sm:tracking-[0.3em]"),
+      singleVsVariant: probe("eb-1 sm:tracking-[0.3em]"),
+      rungAlone: probe("text-micro"),
+    };
+    st.remove();
+    return out;
+  });
+  results.benches.eyebrow = eb;
+  for (const [k, v] of Object.entries(eb)) console.log(`  ${k.padEnd(18)} ls ${String(v.ls).padStart(8)}  w ${String(v.w).padStart(7)}px`);
+  assert("`.eyebrow` resolves at all — the class exists in the served sheet, so it is not a typo (§B8)",
+    eb.shippedAlone.ls !== "normal" && parseFloat(eb.shippedAlone.ls) > 0, eb.shippedAlone.ls);
+  assert("…and it BEATS a rung's own letter-spacing, which is what an eyebrow sits on",
+    eb.shippedVsRung.ls === eb.shippedAlone.ls && eb.shippedVsRung.ls !== eb.rungAlone.ls,
+    `with rung ${eb.shippedVsRung.ls} · rung alone ${eb.rungAlone.ls}`);
+  assert("CONTROL — a SINGLE-class rule LOSES to a responsive variant, so source order is NOT enough",
+    eb.singleVsVariant.ls !== eb.shippedAlone.ls,
+    `got ${eb.singleVsVariant.ls}; if this equals ${eb.shippedAlone.ls} the control is dead and the doubled selector proves nothing`);
+  assert("…and the shipped DOUBLED (0,2,0) rule holds 0.14em against that same variant",
+    eb.shippedVsVariant.ls === eb.shippedAlone.ls, `${eb.shippedVsVariant.ls} vs ${eb.shippedAlone.ls}`);
+}
+
 await page.evaluate(() => window.scrollTo(0, 0));
 const shot = path.join(OUT, "type-bench.png");
 await page.screenshot({ path: shot, fullPage: true });

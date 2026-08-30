@@ -43,7 +43,7 @@ export function LegalHeader({
           </span>
         )}
         <div className="min-w-0 space-y-1">
-          <p className="font-mono text-micro uppercase tracking-[0.16em] font-bold text-text-subtle">
+          <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">
             {eyebrow}
           </p>
           <h1 className="font-display text-[26px] lg:text-[30px] font-bold text-text leading-tight tracking-[-0.02em]">

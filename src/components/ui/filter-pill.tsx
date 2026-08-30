@@ -194,7 +194,7 @@ export function FilterGroupKey({ children, className }: { children: React.ReactN
   return (
     <span
       className={cn(
-        "shrink-0 pr-0.5 font-mono text-micro font-bold uppercase tracking-[0.14em] text-text-subtle",
+        "shrink-0 pr-0.5 font-mono text-micro font-bold uppercase eyebrow text-text-subtle",
         className,
       )}
     >

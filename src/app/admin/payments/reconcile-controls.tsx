@@ -79,7 +79,7 @@ export function ReconcileControls({ txnId }: { txnId: string }) {
         ariaBusy={pending}
         initialFocus={firstFieldRef}
       >
-        <p className="font-mono text-micro uppercase tracking-[0.18em] font-bold text-text mb-1">
+        <p className="font-mono text-micro uppercase eyebrow font-bold text-text mb-1">
           {mode === "match" ? "Reconcile · Match" : "Reconcile · Write off"}
         </p>
         <h3 className="font-display text-[18px] font-bold text-text leading-tight">
@@ -91,7 +91,7 @@ export function ReconcileControls({ txnId }: { txnId: string }) {
 
         {mode === "match" && (
           <label className="mt-3 block">
-            <span className="font-mono text-micro uppercase tracking-[0.14em] font-bold text-text-subtle">PSP settlement ref (required)</span>
+            <span className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">PSP settlement ref (required)</span>
             <input
               ref={(el) => { firstFieldRef.current = el; }}
               value={ref}
@@ -103,7 +103,7 @@ export function ReconcileControls({ txnId }: { txnId: string }) {
         )}
 
         <label className="mt-3 block">
-          <span className="font-mono text-micro uppercase tracking-[0.14em] font-bold text-text-subtle">
+          <span className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">
             {mode === "match" ? "Note (optional)" : "Reason · Sababu (required, audit-logged)"}
           </span>
           <textarea

@@ -117,7 +117,7 @@ export function RoundStakePanel(props: {
   return (
     <div className={cn(pulse && "ud-place-pulse")}>
       <div className="flex items-center justify-between gap-2.5">
-        <p className="m-0 font-mono text-micro font-semibold uppercase tracking-[0.12em] text-text-faint">{t.market.udYourPick}</p>
+        <p className="m-0 font-mono text-micro font-semibold uppercase eyebrow text-text-faint">{t.market.udYourPick}</p>
         <span className={cn("chip", isUp ? "chip-yes" : "chip-no")} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={arrow} /></svg>
           {pickWord}

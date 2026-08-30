@@ -123,7 +123,7 @@ function tzsFmt(n: number | null): string {
  * now there is exactly one place to change if that ever stops being true.
  */
 function FilterLabel({ children }: { children: React.ReactNode }) {
-  return <span className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">{children}</span>;
+  return <span className="font-mono text-micro uppercase eyebrow text-text-subtle">{children}</span>;
 }
 type SP = Record<string, string | string[] | undefined>;
 function one(v: string | string[] | undefined): string {
@@ -429,7 +429,7 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
 
           {/* Reconciliation — the number that says the ledger and the events agree. */}
           <div className="mt-4 rounded-md border border-border bg-bg-overlay px-4 py-3">
-            <div className="text-micro uppercase tracking-[0.14em] text-text-tertiary mb-1">Reconciliation</div>
+            <div className="text-micro uppercase eyebrow text-text-tertiary mb-1">Reconciliation</div>
             <p className="text-label text-text-secondary leading-snug">
               {!cyc.conservation.comparable ? (
                 <>
@@ -675,20 +675,20 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
             <div className="rounded-md border border-border bg-bg-overlay px-4 py-3">
-              <div className="text-micro uppercase tracking-[0.14em] text-text-tertiary mb-1">Limit / window</div>
+              <div className="text-micro uppercase eyebrow text-text-tertiary mb-1">Limit / window</div>
               <div className="text-text font-semibold tabular-nums">{usd(c.limitUsd)}</div>
             </div>
             <div className="rounded-md border border-border bg-bg-overlay px-4 py-3">
-              <div className="text-micro uppercase tracking-[0.14em] text-text-tertiary mb-1">Spent this window</div>
+              <div className="text-micro uppercase eyebrow text-text-tertiary mb-1">Spent this window</div>
               <div className="text-text font-semibold tabular-nums">{usd(c.spentThisWindowUsd)}</div>
               <div className="text-caption text-text-tertiary mt-0.5">{pctSpent.toFixed(0)}% of limit</div>
             </div>
             <div className={`rounded-md border px-4 py-3 ${creditToneCls}`}>
-              <div className="text-micro uppercase tracking-[0.14em] text-text-tertiary mb-1">Remaining (est.)</div>
+              <div className="text-micro uppercase eyebrow text-text-tertiary mb-1">Remaining (est.)</div>
               <div className="text-text font-semibold tabular-nums">{usd(c.remainingUsd)}</div>
             </div>
             <div className="rounded-md border border-border bg-bg-overlay px-4 py-3">
-              <div className="text-micro uppercase tracking-[0.14em] text-text-tertiary mb-1">Window started</div>
+              <div className="text-micro uppercase eyebrow text-text-tertiary mb-1">Window started</div>
               <div className="text-text font-semibold tabular-nums text-body-sm">{c.topUpWindowStartIso.slice(0, 10)}</div>
               {c.alertedLevel !== "none" && (
                 <div className="text-caption text-warning-fg mt-0.5">alerted: {c.alertedLevel}</div>

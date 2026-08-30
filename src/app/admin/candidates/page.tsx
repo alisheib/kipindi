@@ -282,7 +282,7 @@ export default async function AdminCandidatesPage({
             <>
               <ScrollX label="Market candidates">
                 <table className="admin-tbl">
-                  <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-subtle bg-bg-overlay border-b border-border">
+                  <thead className="font-mono text-micro eyebrow uppercase text-text-subtle bg-bg-overlay border-b border-border">
                     <tr>
                       <th className="text-left p-3">State</th>
                       <th className="text-left p-3">Category</th>
@@ -358,7 +358,7 @@ function CardSortControl({
   };
   return (
     <div className="flex items-center gap-1 flex-wrap px-4 lg:px-5 pt-3">
-      <span className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle mr-1">
+      <span className="font-mono text-micro uppercase eyebrow text-text-subtle mr-1">
         Sort <span className="italic text-text-tertiary">· Panga</span>
       </span>
       {options.map((o) => {

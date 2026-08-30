@@ -237,7 +237,7 @@ export default async function UpDownHistoryPage({ searchParams }: {
           {/* ── P&L strip (settled rounds) ─────────────────────────────────── */}
           <div className="mt-5 grid grid-cols-2 sm:grid-cols-3 gap-3">
             <div className="rounded-xl border border-border bg-bg-elevated p-3.5">
-              <div className="font-mono text-micro uppercase tracking-[0.12em] text-text-faint">{t.market.udNetReturn}</div>
+              <div className="font-mono text-micro uppercase eyebrow text-text-faint">{t.market.udNetReturn}</div>
               <div className="mt-0.5 font-mono text-[19px] font-bold tabular-nums"
                    style={{ color: net > 0 ? "var(--yes-300)" : net < 0 ? "var(--no-300)" : "var(--text)" }}>
                 {net === 0 ? formatTzs(0) : formatTzsSigned(net)}
@@ -245,12 +245,12 @@ export default async function UpDownHistoryPage({ searchParams }: {
               <div className="amount text-micro text-text-subtle">{formatTzs(staked)} → {formatTzs(returned)}</div>
             </div>
             <div className="rounded-xl border border-border bg-bg-elevated p-3.5">
-              <div className="font-mono text-micro uppercase tracking-[0.12em] text-text-faint">{t.market.udRoundsPlayed}</div>
+              <div className="font-mono text-micro uppercase eyebrow text-text-faint">{t.market.udRoundsPlayed}</div>
               <div className="mt-0.5 font-mono text-[19px] font-bold tabular-nums text-text">{rounds.length}</div>
               <div className="font-mono text-[10px] text-text-subtle">{rows.length} {t.market.udBets}</div>
             </div>
             <div className="rounded-xl border border-border bg-bg-elevated p-3.5 col-span-2 sm:col-span-1">
-              <div className="font-mono text-micro uppercase tracking-[0.12em] text-text-faint">{t.market.udWinRate}</div>
+              <div className="font-mono text-micro uppercase eyebrow text-text-faint">{t.market.udWinRate}</div>
               <div className="mt-0.5 font-mono text-[19px] font-bold tabular-nums text-text">{winRate == null ? "—" : `${winRate}%`}</div>
               <div className="font-mono text-[10px] text-text-subtle">{wins}/{decided} decided</div>
             </div>
@@ -341,7 +341,7 @@ export default async function UpDownHistoryPage({ searchParams }: {
                       <div className="mt-0.5 text-[10px] text-text-faint">{usd(r.openPrice, r.decimals)} → {usd(r.closePrice, r.decimals)}</div>
                     </div>
                     <div className="text-right">
-                      <div className="font-mono text-micro uppercase tracking-[0.12em] text-text-faint">{t.market.udNetReturn}</div>
+                      <div className="font-mono text-micro uppercase eyebrow text-text-faint">{t.market.udNetReturn}</div>
                       <div className="font-mono text-[15px] font-bold tabular-nums"
                            style={{ color: g.anyOpen ? "var(--text-subtle)" : net > 0 ? "var(--yes-300)" : net < 0 ? "var(--no-300)" : "var(--text)" }}>
                         {g.anyOpen ? "—" : net === 0 ? formatTzs(0) : formatTzsSigned(net)}

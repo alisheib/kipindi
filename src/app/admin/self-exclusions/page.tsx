@@ -103,7 +103,7 @@ export default async function AdminSelfExclusionsPage({
         <AdminCard
           title="Roster · in order of next expiry"
           sw="Orodha"
-          action={<span className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">{rosterFailed ? "—" : `${roster.length} active`}</span>}
+          action={<span className="font-mono text-micro eyebrow uppercase text-text-tertiary">{rosterFailed ? "—" : `${roster.length} active`}</span>}
         >
           {rosterFailed ? (
             <AdminLoadError what="the self-exclusion roster" />

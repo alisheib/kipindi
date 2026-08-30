@@ -435,7 +435,7 @@ export function OperationResultModal({
         </div>
 
         <p
-          className="mt-4 font-mono text-micro uppercase tracking-[0.16em] font-bold"
+          className="mt-4 font-mono text-micro uppercase eyebrow font-bold"
           style={{ color: tone.fg }}
         >
           {eyebrow}
@@ -469,7 +469,7 @@ export function OperationResultModal({
                 className="rounded-md border border-border bg-bg-overlay/60 px-3 py-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5"
               >
                 <div className="min-w-0">
-                  <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">
+                  <p className="font-mono text-micro uppercase eyebrow text-text-subtle">
                     {d.label}
                   </p>
                   {d.sw && (

@@ -216,15 +216,15 @@ export default async function MarketPredictorsPage({
           {/* Pool breakdown — YES/NO/total player volume */}
           <div className="mt-3 pt-3 border-t border-border/60 grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-1 font-mono text-[10.5px]">
             <div>
-              <span className="text-text-subtle uppercase tracking-[0.12em]">YES pool · </span>
+              <span className="text-text-subtle uppercase eyebrow">YES pool · </span>
               <span className="text-yes-300 font-semibold">{formatTzs(m.yesPool)}</span>
             </div>
             <div>
-              <span className="text-text-subtle uppercase tracking-[0.12em]">NO pool · </span>
+              <span className="text-text-subtle uppercase eyebrow">NO pool · </span>
               <span className="text-no-300 font-semibold">{formatTzs(m.noPool)}</span>
             </div>
             <div>
-              <span className="text-text-subtle uppercase tracking-[0.12em]">Total pool · </span>
+              <span className="text-text-subtle uppercase eyebrow">Total pool · </span>
               <span className="text-text font-semibold">{formatTzs(totalPool)}</span>
             </div>
           </div>

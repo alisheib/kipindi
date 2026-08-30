@@ -38,7 +38,7 @@ function Consequence({ info, isRevoke }: { info: RoleInfo | undefined; isRevoke:
   if (isRevoke) {
     return (
       <div className="rounded-md border px-3 py-2.5 text-caption" style={{ borderColor: "var(--no-border, var(--border))", background: "color-mix(in oklab, var(--no-500) 8%, transparent)" }}>
-        <p className="font-mono text-micro uppercase tracking-[0.14em]" style={{ color: REVOKE }}>Revokes staff access</p>
+        <p className="font-mono text-micro uppercase eyebrow" style={{ color: REVOKE }}>Revokes staff access</p>
         <p className="mt-1 text-text-secondary">This person becomes an ordinary <strong>Player</strong>. They will no longer reach the admin console — the nav, every page and every action are closed to them.</p>
       </div>
     );

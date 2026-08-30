@@ -909,6 +909,57 @@ body {
    SUPPOSED to be tracked; only an amount is not. */
 .amount.amount { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: 0; }
 
+/* ⭐ `.eyebrow` — §T3's SECTION EYEBROW MADE MECHANICAL. DESIGN-GATE-2026-08-28, step 2, the
+   DG-A-11 / DG-P-06 close. §T3 (ruled 2026-08-30 against a production screenshot in the real
+   JetBrains Mono): the section eyebrow — "the label over a block" — is tracked at 0.14em, and
+   the other roles §T3 names are left alone.
+
+   ⛔ IT CARRIES ONE PROPERTY, ON PURPOSE. §T3 rules the eyebrow's TRACKING and nothing else.
+   Its SIZE belongs to the Tailwind ladder (§T7 — `text-micro` holds most of them); its weight
+   and colour vary legitimately by surface, and rightly: `.admin-tbl thead` is `--type-label`
+   on `--text-subtle`, the landing hero's is `--type-micro` bold. A class carrying the whole
+   recipe would be a VISIBLE change at ~170 sites and would be minting law §T3 did not write.
+   ⭐ What it carries besides the value is the ROLE: `eyebrow` in a class list SAYS "this is
+   the label over a block", which is the fact the next session needs and the one a repeated
+   `tracking-[0.14em]` never states. 586 uppercase-and-tracked sites were READ to decide which
+   308 qualify — `scripts/design-gate/eyebrow-roles.mjs` is that read, and its header carries
+   the enclosure test that separates this role from a control label.
+
+   ⛔ WHY A CLASS RATHER THAN 308 HAND-TYPED VALUES. §0a: one fact, one home. 308 copies of
+   0.14em are 308 definition sites that will diverge — which is exactly the drift this row
+   exists to remove, and it had already happened: NINE tracking values over one role, with
+   0.1em spelled two ways so a text-matching guard read them as different. And
+   `type-scale.test.mts` §6 ratchets every hand-typed `tracking-[…]` toward ZERO, a target no
+   amount of CONVERGING can ever reach while the value is written at the call site.
+
+   ⛔ WHY A DOUBLED SELECTOR — identical to `.amount` above, and for the same measured reason.
+   Tailwind's responsive variants are emitted after everything this file writes (`sm\:*` from
+   byte 219,312), so a single-class rule loses to `sm:tracking-…` at ≥640px, silently and only
+   at that breakpoint. (0,2,0) wins on SPECIFICITY, which no emission order can overturn.
+   `qa:dg-type --bench eyebrow` asserts the single-class failure as a CONTROL and the doubled
+   form's survival as the result.
+   ⚠️ AND IT IS NOT A TAILWIND UTILITY, so it takes NO VARIANT PREFIX — `sm:eyebrow` compiles
+   to nothing. The sweep refuses any site that would need one. */
+.eyebrow.eyebrow,
+/* ⭐ AND THE CSS-SIDE EYEBROWS JOIN IT RATHER THAN RESTATING THE VALUE. Each of these is a
+   section eyebrow authored as its own class, and each used to carry its own letter-spacing:
+   `.admin-tbl thead` 0.14 · `.gilt-eyebrow` 0.14 · `.kp-hero__eyebrow` 0.18 ·
+   `.kp-proof__cap` 0.16 · `.mcardp-cat` 0.12 · `.mcardp-pctcap` 0.12 — six blocks, four
+   values, one role. §0a: a value that lives in two places is fixed by DELETING one, never by
+   keeping them in sync. Each block keeps everything else it says and now points here.
+   ⚠️ A selector list does NOT share specificity — each selector keeps its own — so this is
+   safe: none of them is competing with another rule for letter-spacing.
+   ⛔ NOT IN THIS LIST, each for a reason §T3 gives: `.kp-shead__link` is a control label (a
+   "see all" <Link> whose own text is its whole name) · `.kp-settled__src` is a DATA field
+   inside a settled row, not the label over it · `.tipbar-lean` is a value readout ("leans
+   YES") · `.chip` is a non-interactive status badge. */
+.gilt-eyebrow,
+.admin-tbl thead,
+.kp-hero__eyebrow,
+.kp-proof__cap,
+.mcardp-cat,
+.mcardp-pctcap { letter-spacing: 0.14em; }
+
 /* ===========================================================================
    Tipping rails + heraldic furniture
    =========================================================================== */
@@ -943,7 +994,7 @@ body {
   font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
+  /* letter-spacing: §T3's 0.14em — in the shared eyebrow rule beside `.amount`. */
   color: var(--gilt);
 }
 
@@ -3177,21 +3228,12 @@ html[data-sheet-open] .route-enter { animation: none; }
 }
 /* The board's section headings — Featured / New markets / Recently resolved.
    One rule, so the three sections cannot drift apart. */
-.board-section-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-.board-section-eyebrow {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--text-subtle);
-}
+/* ⚪ `.board-section-head` / `.board-section-eyebrow` DELETED — 2026-08-30, DG-A-11.
+   Zero consumers anywhere in `src/` (or in the design-system archive) since 2026-08-13, when
+   `a351addb` rebuilt /markets on the round-2 kit and `1de3b38d` replaced the hero. They sat
+   here for seventeen days as a SECOND definition of the section eyebrow — at 0.16em, against
+   §T3's 0.14 — and the surviving comment beside `.kp-hero__eyebrow` cited the dead rule as
+   its reference point, which is how a reader takes a rule nothing renders for canon. */
 /* v2 Dark Glass — staggered card entrance on page load. Each child gets a
    rising fade-in with staggered delay. Cards end at opacity:1 + transform:none as
    the keyframe's `to` state, so nothing is hidden if animation fails.
@@ -3281,8 +3323,9 @@ html[data-sheet-open] .route-enter { animation: none; }
   .kp-hero__inner { padding: var(--sp-16) var(--sp-6); gap: var(--sp-10); }
 }
 
-/* 11px, not the 10px `.board-section-eyebrow` carries: the kit sets the minimum for NEW work at
-   `--type-micro`, and this is new work. */
+/* 11px: the kit sets the minimum for NEW work at `--type-micro`, and this is new work. (This
+   note used to justify itself against `.board-section-eyebrow`'s 10px — a rule nothing had
+   rendered since 2026-08-13, now deleted above.) */
 .kp-hero__eyebrow {
   display: flex;
   align-items: center;
@@ -3290,7 +3333,7 @@ html[data-sheet-open] .route-enter { animation: none; }
   font-family: var(--font-mono);
   font-weight: 700;
   font-size: var(--type-micro);
-  letter-spacing: 0.18em;
+  /* letter-spacing: §T3's 0.14em (was 0.18) — in the shared eyebrow rule beside `.amount`. */
   text-transform: uppercase;
   color: var(--text-subtle);
   margin: 0;
@@ -3369,7 +3412,7 @@ html[data-sheet-open] .route-enter { animation: none; }
   font-family: var(--font-mono);
   font-weight: 700;
   font-size: var(--type-micro);
-  letter-spacing: 0.16em;
+  /* letter-spacing: §T3's 0.14em (was 0.16) — in the shared eyebrow rule beside `.amount`. */
   text-transform: uppercase;
   color: var(--text-subtle);
   margin-top: 4px;
@@ -3657,7 +3700,8 @@ html[data-sheet-open] .route-enter { animation: none; }
    separates the glyph from whichever signal chip precedes it. Kept exactly. */
 .mcardp-catico { display:inline-flex; align-items:center; justify-content:center; color: var(--text-subtle); flex-shrink:0; margin-left: 2px; }
 .mcardp-catico svg { width: 13px; height: 13px; }
-.mcardp-cat { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-subtle); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* §T3 0.14em, was 0.12 — tracking in the shared eyebrow rule beside `.amount`. */
+.mcardp-cat { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; color: var(--text-subtle); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .mcardp-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; flex: 1 1 auto; }
 .mcardp-qwrap { flex: 1 1 auto; min-width: 0; }
 .mcardp-q { font-family: var(--font-display); font-weight: 600; font-size: 15px; line-height: 1.34; letter-spacing: -0.015em; color: var(--text); text-wrap: balance; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; min-height: calc(2 * 1.34em); }
@@ -3665,7 +3709,8 @@ html[data-sheet-open] .route-enter { animation: none; }
 .mcardp-prob { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; flex-shrink: 0; text-align: right; }
 .mcardp-pct { font-family: var(--font-mono); font-weight: 700; font-size: 28px; line-height: 1; letter-spacing: -0.02em; color: var(--yes-400); font-variant-numeric: tabular-nums; }
 .mcardp-pct .u { font-size: 13px; color: var(--text-subtle); margin-left: 1px; }
-.mcardp-pctcap { font-family: var(--font-mono); font-size: 9.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--yes-400); }
+/* §T3 0.14em, was 0.12 — tracking in the shared eyebrow rule beside `.amount`. */
+.mcardp-pctcap { font-family: var(--font-mono); font-size: 9.5px; font-weight: 600; text-transform: uppercase; color: var(--yes-400); }
 .mcardp-spark { line-height: 0; margin-top: 2px; }
 .mcardp-traders { display:flex; align-items:center; gap:7px; }
 .av-stack { display:flex; }
@@ -3894,7 +3939,8 @@ html[data-sheet-open] .route-enter { animation: none; }
    no contrast. It also keeps these `white-space: nowrap` headers NARROWER, which pushes the
    right way on DG-A-23 while the body grows. */
 .admin-tbl { width: 100%; border-collapse: collapse; font-size: var(--type-small); }
-.admin-tbl thead { font-family: var(--font-mono); font-size: var(--type-label); letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-subtle); background: var(--bg-overlay); border-bottom: 1px solid var(--border); }
+/* letter-spacing: §T3's 0.14em — in the shared eyebrow rule beside `.amount`. */
+.admin-tbl thead { font-family: var(--font-mono); font-size: var(--type-label); text-transform: uppercase; color: var(--text-subtle); background: var(--bg-overlay); border-bottom: 1px solid var(--border); }
 .admin-tbl th { padding: 10px 16px; font-weight: 500; white-space: nowrap; }
 .admin-tbl td { padding: 12px 16px; vertical-align: middle; }
 /* ⚠️ This transition had a duration and NO easing at all — B5 rule 3 wants the pair

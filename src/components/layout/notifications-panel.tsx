@@ -563,7 +563,7 @@ export function NotificationsPanel() {
             style={{ transformOrigin: "top right" }}
           >
             <div className="flex items-center justify-between border-b border-border bg-transparent px-3 shrink-0" style={{ height: 44 }}>
-              <p className="font-mono text-micro font-bold uppercase tracking-[0.18em] text-text min-w-0 truncate">
+              <p className="font-mono text-micro font-bold uppercase eyebrow text-text min-w-0 truncate">
                 {t.notif.title}
               </p>
               <div className="flex items-center shrink-0">

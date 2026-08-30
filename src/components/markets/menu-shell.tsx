@@ -85,7 +85,7 @@ export function MenuShell({
       >
         {/* The KEY never truncates; the VALUE ellipsises. Swahili short labels measure
             1.74× p90 / 2.25× p95 against English, so the value is the part that must give. */}
-        <span className="shrink-0 font-mono text-micro font-bold uppercase tracking-[0.14em] text-text-subtle">
+        <span className="shrink-0 font-mono text-micro font-bold uppercase eyebrow text-text-subtle">
           {label}
         </span>
         <span className="min-w-0 truncate text-[13px] font-semibold text-text">{value}</span>

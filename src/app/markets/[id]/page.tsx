@@ -529,7 +529,7 @@ export default async function MarketDetail({
             <div className="rounded-lg border border-warning-border bg-warning-bg px-4 py-3 flex items-start gap-2.5">
               <I.warning s={15} className="shrink-0 mt-0.5 text-warning-fg" />
               <div>
-                <p className="font-mono text-micro font-bold uppercase tracking-[0.14em] text-warning-fg mb-1">
+                <p className="font-mono text-micro font-bold uppercase eyebrow text-warning-fg mb-1">
                   {t.market.oneSidedMarket}
                 </p>
                 <p className="text-body-sm leading-relaxed text-text-muted">
@@ -768,7 +768,7 @@ export default async function MarketDetail({
                     "var(--hero-panel-grad)",
                 }}
               >
-                <p className="font-mono text-micro uppercase tracking-[0.16em] font-bold text-gold-300">
+                <p className="font-mono text-micro uppercase eyebrow font-bold text-gold-300">
                   {t.market.signInToPredict}
                 </p>
                 <h3 className="mt-1.5 font-display text-[18px] font-bold text-text leading-tight">
@@ -798,7 +798,7 @@ export default async function MarketDetail({
               <div className="flex items-center justify-center gap-2 mb-2">
                 <I.hourglassOff s={18} className="text-gold-300" />
               </div>
-              <p className="font-mono text-micro uppercase tracking-[0.16em] font-bold text-gold-300">
+              <p className="font-mono text-micro uppercase eyebrow font-bold text-gold-300">
                 {t.market.selectionClosedBadge}
               </p>
               <h3 className="mt-1.5 font-display text-[15px] font-bold text-text">{t.market.waitingForResultsAside}</h3>
@@ -809,7 +809,7 @@ export default async function MarketDetail({
             </div>
           ) : closedByTime ? (
             <div className="rounded-xl border border-warning-border bg-warning-bg p-6 text-center">
-              <p className="font-mono text-micro uppercase tracking-[0.16em] font-bold text-warning-fg">
+              <p className="font-mono text-micro uppercase eyebrow font-bold text-warning-fg">
                 {t.market.closedAwaitingSettlement}
               </p>
               <h3 className="mt-1.5 font-display text-[15px] font-bold text-text">{t.market.noMoreBets}</h3>
@@ -945,7 +945,7 @@ function KPI({ label, value, icon, mono }: { label: string; value: string; icon?
     <div className="rounded-md border border-border bg-bg-elevated p-3">
       <div className="flex items-center gap-1.5 text-text-subtle">
         {icon}
-        <p className="font-mono text-micro uppercase tracking-[0.14em] font-semibold">{label}</p>
+        <p className="font-mono text-micro uppercase eyebrow font-semibold">{label}</p>
       </div>
       <p className={`mt-1 ${mono ? "font-mono text-[13px]" : "font-display text-[18px] font-bold"} tabular-nums text-text leading-tight`}>{value}</p>
     </div>

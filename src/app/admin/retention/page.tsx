@@ -120,7 +120,7 @@ export default async function AdminRetentionPage() {
         >
           <ScrollX label="Retention schedule">
             <table className="admin-tbl min-w-[720px]">
-              <thead className="font-mono text-micro tracking-[0.14em] uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
+              <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
                 <tr>
                   <th className="text-left p-3">Category</th>
                   <th className="text-left p-3">Retention</th>

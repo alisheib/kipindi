@@ -105,7 +105,7 @@ export function ResolveControls({ marketId, stage, stagedOutcome, twoAdmin = fal
         // error on a mismatch). Changing it means reopening the market.
         <div className="space-y-2">
           <div className="flex items-center gap-2 rounded-md border border-border bg-bg-overlay px-3 py-2">
-            <span className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">Stage 1 staged</span>
+            <span className="font-mono text-micro uppercase eyebrow text-text-subtle">Stage 1 staged</span>
             <span className={`font-mono text-[12px] font-bold ${toneText(stagedOutcome)}`}>{stagedOutcome}</span>
             <span className="ml-auto font-mono text-[10px] text-text-subtle">confirm to settle</span>
           </div>

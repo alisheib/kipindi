@@ -80,7 +80,7 @@ export function SellConfirmModal({ open, pending, stake, value, positionId, onCo
       initialFocus={confirmRef}
     >
       <div className="mb-4 min-w-0">
-        <p className="font-mono text-micro uppercase tracking-[0.16em] font-bold text-text-subtle">
+        <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">
           {t.dialog.cashOutTitle}
         </p>
         <p className="mt-1 font-display text-[16px] font-semibold text-text leading-snug">
@@ -108,13 +108,13 @@ export function SellConfirmModal({ open, pending, stake, value, positionId, onCo
       >
         <div className="flex items-baseline justify-between">
           <div>
-            <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle mb-1">{t.dialog.youReceive}</p>
+            <p className="font-mono text-micro uppercase eyebrow text-text-subtle mb-1">{t.dialog.youReceive}</p>
             <p className="font-mono font-bold text-[24px] tabular-nums leading-none text-text">
               TZS {formatNumber(value)}
             </p>
           </div>
           <div className="text-right">
-            <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle mb-1">{t.dialog.earlyExitFee}</p>
+            <p className="font-mono text-micro uppercase eyebrow text-text-subtle mb-1">{t.dialog.earlyExitFee}</p>
             <p
               className="font-bold text-title-sm amount leading-none"
               style={{ color: isFree ? "var(--yes-300)" : "var(--text)" }}

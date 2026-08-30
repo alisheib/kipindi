@@ -357,7 +357,7 @@ export function AdminKpi({
         className="glass-panel admin-kpi p-2 flex flex-col gap-1.5 min-h-[110px]"
         title="This figure could not be computed — a data read failed. It is NOT zero."
       >
-        <span className="font-mono uppercase text-text-tertiary truncate" style={{ fontSize: 9.5, letterSpacing: "0.08em", lineHeight: 1.3 }}>{label}</span>
+        <span className="font-mono uppercase text-text-tertiary truncate" style={{ fontSize: 9.5, letterSpacing: "0.14em", lineHeight: 1.3 }}>{label}</span>
         <div className="font-mono font-bold text-text-tertiary leading-none" style={{ fontSize: 20, letterSpacing: "-0.01em" }}>n/a</div>
         {sw && <div className="text-text-tertiary italic leading-tight" style={{ fontSize: 10.5 }}>{sw}</div>}
         <div className="mt-auto inline-flex items-center gap-1.5">
@@ -400,7 +400,7 @@ export function AdminKpi({
         <span
           className="font-mono uppercase text-text-tertiary truncate"
           title={typeof label === "string" ? label : undefined}
-          style={{ fontSize: 9.5, letterSpacing: "0.08em", lineHeight: 1.3 }}
+          style={{ fontSize: 9.5, letterSpacing: "0.14em", lineHeight: 1.3 }}
         >{label}</span>
         {pulse && (
           // Aqua = live-feed signal (admin gold-discipline: gold only on the resolved seal).
@@ -631,7 +631,7 @@ export function AdminFunnel({
           className="flex-1 bg-bg-sunken border border-border rounded-md px-2 py-1.5 flex flex-col justify-between min-w-0"
         >
           <span className="font-mono text-body-sm font-bold text-text truncate">{s.value}</span>
-          <span className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary truncate">
+          <span className="font-mono text-micro eyebrow uppercase text-text-tertiary truncate">
             {s.label}
           </span>
         </div>

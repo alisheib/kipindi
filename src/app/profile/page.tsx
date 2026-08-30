@@ -117,7 +117,7 @@ export default async function ProfilePage() {
             size="2xl"
           />
           <div className="flex-1 min-w-0 pt-1">
-            <p className="font-mono text-caption uppercase tracking-[0.16em] font-bold text-text-subtle">
+            <p className="font-mono text-caption uppercase eyebrow font-bold text-text-subtle">
               {t.profile.predictor}
             </p>
             <ProfileNameEditor
@@ -255,7 +255,7 @@ export default async function ProfilePage() {
 
       {/* ── Achievements shelf */}
       <section>
-        <h2 className="mb-3 flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.16em] font-bold text-text-subtle">
+        <h2 className="mb-3 flex items-center gap-1.5 font-mono text-micro uppercase eyebrow font-bold text-text-subtle">
           <I.trophy s={13} />
           {t.profile.achievements}
         </h2>
@@ -269,7 +269,7 @@ export default async function ProfilePage() {
 
       {/* ── Settings grid */}
       <section>
-        <h2 className="mb-3 flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.16em] font-bold text-text-subtle">
+        <h2 className="mb-3 flex items-center gap-1.5 font-mono text-micro uppercase eyebrow font-bold text-text-subtle">
           <I.settings s={13} />
           {t.profile.account}
         </h2>

@@ -70,7 +70,7 @@ export function Countdown({ to, label, serverNow, at }: { to: string; label?: st
           0.4px exactly as before — the label renders pixel-for-pixel what it did. The date
           takes the ladder's own spacing and so adds no `tracking-` utility either (§6). */}
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-2">
-        <span className="font-mono text-micro uppercase tracking-[0.12em] text-warning-fg">{resolvedLabel}</span>
+        <span className="font-mono text-micro uppercase eyebrow text-warning-fg">{resolvedLabel}</span>
         {/* ⭐ A <time> WITH THE MACHINE-READABLE INSTANT, not a styled span. `dateTime` carries
             the SAME `to` the clock counts down to, which is what lets a live driver assert the
             date NAMES the right moment rather than merely that some date is present — a date
@@ -115,7 +115,7 @@ const Cell = memo(function Cell({ v, unit }: { v: number; unit: string }) {
       >
         {String(v).padStart(2, "0")}
       </div>
-      <div className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle mt-1.5">{unit}</div>
+      <div className="font-mono text-micro uppercase eyebrow text-text-subtle mt-1.5">{unit}</div>
     </div>
   );
 });

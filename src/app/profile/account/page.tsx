@@ -157,7 +157,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
         <ScrollX label="Account activity" className="rounded-md border border-border">
           <table className="admin-tbl">
             <thead>
-              <tr className="border-b border-border bg-bg-overlay/50 font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">
+              <tr className="border-b border-border bg-bg-overlay/50 font-mono text-micro uppercase eyebrow text-text-subtle">
                 <th className="text-left px-3 py-2 font-semibold">{t.common.when}</th>
                 <th className="text-left px-3 py-2 font-semibold">{t.common.category}</th>
                 <th className="text-left px-3 py-2 font-semibold">{t.common.action}</th>
@@ -272,7 +272,7 @@ lastLabel={t.common.lastPage}
 function Item({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="rounded-md border border-border bg-bg-overlay/40 px-3 py-2.5">
-      <p className="font-mono text-micro uppercase tracking-[0.14em] font-semibold text-text-subtle">
+      <p className="font-mono text-micro uppercase eyebrow font-semibold text-text-subtle">
         {label}
       </p>
       <p className="mt-0.5 font-display text-[13px] font-semibold text-text">{value}</p>
