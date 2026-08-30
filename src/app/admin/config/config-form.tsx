@@ -289,7 +289,7 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
       </div>
 
       <div className="flex items-center gap-2 pt-1">
-        <Button type="submit" variant="yes" loading={pending} disabled={!mayAct} title={disabledReason}>
+        <Button type="submit" variant="primary" loading={pending} disabled={!mayAct} title={disabledReason}>
           Save · Hifadhi
         </Button>
         {/* The old note here read "Combined tax + commission + reserve + aggregator

@@ -71,8 +71,34 @@ export function NotableCarousel({
 
       {slides[current]}
 
+      {/* ⭐ DG-P-07 · §A2 — THE DOT WAS THE BUTTON, SO THE TARGET WAS 6×8px.
+          Re-derived: `h-1.5` is 8px on the OVERRIDDEN spacing scale (tailwind.config.ts:207),
+          and the inline `width` was 6 inactive / 18 active — so the whole tappable box was the
+          paint. ⭐ THE TARGET IS PADDED; THE DOT IS NOT THICKENED. This is the treatment its
+          own declared twin already carries — `live/featured-contest.tsx:155-163`, whose comment
+          reads "THE HIT AREA IS PADDING, NOT A BIGGER DOT (§A2) … a 40px dot is a different
+          design", and which then says this file "still carries the old shape … the two are
+          knowingly out of step until it gets the same treatment". This IS that treatment, so
+          ⛔ that paragraph in `featured-contest.tsx` is now stale and must be retired.
+          ⛔ THE `gap` GOES, and the twin says why in its own words: the 24px button supplies the
+          separation, so a gap would stack on top of it and widen the rail a second time.
+          ⚠️ 24px WIDE IS THE TWIN'S NUMBER, NOT §A2's. §A2 names ONE number — 40 — while
+          `responsive-audit.mjs:292` instruments `height < 40 || width < 24`, and the twin was
+          tuned to the guard. Matching the twin keeps two carousels identical and leaves the
+          40-vs-24 width question where it belongs: a ruling for Ali, not an edit smuggled in
+          by whichever of the two files was touched last.
+          ⚠️ WHAT MOVES: the rail goes 8px → 40px tall (+32px under the featured card) and
+          46px → 72px wide, still `justify-center`. A bounding box CANNOT prove this fix works
+          (globals.css:4788 records exactly that trap) — the 40×24 wrapper measures 40×24
+          whether or not the inner span steals the click, so re-prove it with
+          `document.elementFromPoint`, the way `qa:toggle-hit` does.
+          ⚠️ THE A11Y DIVERGENCE IS LEFT AS FOUND AND REPORTED, NOT SETTLED HERE: this row is
+          `aria-hidden` with `tabIndex={-1}` (so the `aria-label` is dead weight) while the twin
+          is in the a11y tree with `aria-current`. Two carousels must not disagree about that —
+          but that is a semantics ruling, not the tap floor, and it needs one decision applied
+          to BOTH files in one pass. */}
       {multi && (
-        <div className="mt-2.5 flex items-center justify-center gap-1.5" aria-hidden>
+        <div className="mt-2.5 flex items-center justify-center" aria-hidden>
           {slides.map((_, i) => (
             <button
               key={i}
@@ -80,12 +106,16 @@ export function NotableCarousel({
               onClick={() => setIdx(i)}
               tabIndex={-1}
               aria-label={t.market.showResultN.replace("{n}", String(i + 1))} /* V-7 */
-              className="h-1.5 rounded-full transition-all"
-              style={{
-                width: i === current ? 18 : 6,
-                background: i === current ? "var(--gold-400)" : "var(--border-strong)",
-              }}
-            />
+              className="grid h-[40px] w-[24px] place-items-center rounded-md"
+            >
+              <span
+                className="block h-1.5 rounded-full transition-all"
+                style={{
+                  width: i === current ? 18 : 6,
+                  background: i === current ? "var(--gold-400)" : "var(--border-strong)",
+                }}
+              />
+            </button>
           ))}
         </div>
       )}

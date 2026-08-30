@@ -110,7 +110,19 @@ export function ProfileNameEditor({
             re-toned off gold — §M3 reserves gold for earned money and status, which a
             preference editor is not — onto `--border-control`, the token `.input`
             already uses precisely because a control's only boundary must clear 3:1
-            (WCAG 1.4.11). It now MOVES to brand on focus instead of standing still. */}
+            (WCAG 1.4.11). It now MOVES to brand on focus instead of standing still.
+
+            ⭐ DG-P-14 · §A2 — AND THE FIELD IS THE SAME HEIGHT AS THE BUTTON IT REPLACES.
+            It declared no height either: its box was one line box plus the 1px underline. On a
+            phone `globals.css:1839-1845` forces every text field to `font-size: 16px !important`
+            (the dated iOS-Safari auto-zoom guard), and `!important` beats `.text-\[24px\]`
+            whatever the specificity — so at ≤768 this field renders 16px and stood 16 × 1.25 + 1
+            = 21px, against the read-mode button's 30px. Tapping your own name SHORTENED the row
+            by 9px and shrank the name by 8px. At ≥769 it was 28 × 1.25 + 1 = 36px against 35px.
+            `min-h-[40px]` on both states is what removes the jump; 40 is the neighbouring
+            badges' value (`avatar-uploader.tsx:147-149`), not a new number.
+            ⛔ Do NOT "fix" the 24→16px type step instead — that is the iOS zoom guard, and
+            reverting it re-opens a viewport-zoom defect on every phone. */}
         <input
           ref={inputRef}
           autoFocus
@@ -124,19 +136,35 @@ export function ProfileNameEditor({
           maxLength={40}
           aria-label={t.common.yourName}
           placeholder={t.common.yourName}
-          className="font-display text-[24px] md:text-[28px] font-bold leading-tight tracking-[-0.02em] text-text bg-transparent border-b border-border-control transition-colors focus:border-brand-500 focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-[color:var(--brand-500)] focus:shadow-[0_0_0_4px_color-mix(in_oklab,var(--brand-500)_25%,transparent)] px-0 min-w-0 max-w-full flex-1"
+          className="font-display text-[24px] md:text-[28px] font-bold leading-tight tracking-[-0.02em] text-text bg-transparent border-b border-border-control transition-colors focus:border-brand-500 focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-[color:var(--brand-500)] focus:shadow-[0_0_0_4px_color-mix(in_oklab,var(--brand-500)_25%,transparent)] px-0 min-h-[40px] min-w-0 max-w-full flex-1"
         />
         {pending && <span className="inline-flex text-text-subtle"><Spinner size={16} /></span>}
       </div>
     );
   }
 
+  /* DG-P-14 · §A2 — THE HEIGHT CAME FROM THE TYPE, AND TYPE IS NOT A HEIGHT DECISION.
+     This button declared no height at all: its box was its child span's line box —
+     `text-[24px] md:text-[28px] leading-tight` ⇒ 24 × 1.25 = 30px on a phone, 28 × 1.25 = 35px
+     from `md`. Its neighbours in the identity row are the avatar's two badges, both 40px with
+     a dated written reason (`avatar-uploader.tsx:147-149`, "40px = --tap-min; both badges
+     match"), so the step across the row was 10px at 390 and 5px from 768 — on the control that
+     edits your own name.
+     ⛔ 40, NOT 44. §A2 prefers 44 on mobile, but the value is taken from the NEIGHBOUR this
+     control sits beside, and both neighbours carry a written reason for 40. Taking 44 would
+     close a 10px step by opening a 4px one.
+     ⚠️ `min-h`, never `h`: a Swahili display name is ~35-40% longer (§A5) and wraps at 390, and
+     a fixed height would clip exactly the locale the floor exists for. `items-center` keeps the
+     name centred inside its own box, so the label does not move within the control — the box
+     grows, so this column shifts down 5px at 390 / 2.5px from 768, once.
+     ⭐ AND IT MUST MATCH THE FIELD AT :127, which shares this slot: the two states are one
+     control in two modes, so they settle on ONE height or the row jumps on tap. */
   return (
     <button
       ref={triggerRef}
       type="button"
       onClick={enter}
-      className="mt-1.5 inline-flex items-center gap-2 group text-left"
+      className="mt-1.5 inline-flex min-h-[40px] items-center gap-2 group text-left"
       aria-label={t.common.editDisplayName}
     >
       <span className="font-display text-[24px] md:text-[28px] font-bold leading-tight tracking-[-0.02em] text-text">

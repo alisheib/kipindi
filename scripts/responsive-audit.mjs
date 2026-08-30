@@ -92,23 +92,27 @@ const PLAYER = [
   "/legal/responsible-gambling",
   "/auth/login", "/auth/register", "/auth/forgot-password",
 ];
-const ADMIN = [
-  "/admin", "/admin/live", "/admin/markets", "/admin/resolver-queue",
-  "/admin/ai-polls", "/admin/candidates", "/admin/proposals", "/admin/sources",
-  // ⚠️ Up & Down's console was NEVER in this sweep — an entire second product line, three
-  // routes, unaudited at every width since it was built. Added 2026-07-30. These are exactly
-  // the pages an overflow bug hides on: /admin/updown carries the assets + chains tables, and
-  // /admin/updown/proposals is the widest table in admin at 8 columns.
-  "/admin/updown", "/admin/updown/proposals", "/admin/updown/rounds",
-  "/admin/config", "/admin/finance", "/admin/payments", "/admin/transactions", "/admin/reports",
-  "/admin/players", "/admin/players/cohorts", "/admin/affiliate",
-  "/admin/bonuses", "/admin/invites", "/admin/compliance", "/admin/moderation",
-  "/admin/aml", "/admin/self-exclusions", "/admin/privacy", "/admin/retention",
-  "/admin/audit", "/admin/system", "/admin/ai-usage", "/admin/approvals",
-  // Index routes that were missing from the sweep (they render growable
-  // tables / KPI bands and now carry pagination + shared empty states).
-  "/admin/objections", "/admin/settlement", "/admin/events", "/admin/insights",
-];
+/* 🔴 DG-A-08 (2026-08-30) — THIS FILE HELD THE SECOND COPY OF THE ADMIN ROUTE LIST, AND THE
+   FILE IT DIVERGED FROM FORBIDS EXACTLY THAT IN WRITING. `scripts/design-gate/routes.mjs`
+   opens with a dated DG-A-01 ruling (2026-08-29): *"the list lives here and nowhere else …
+   Copying it into a second file would re-create the divergence (DESIGN_AUTHORITY §0a — one
+   fact, one home)."* It had already re-created it: measured today, `ADMIN_ROUTES` held **38**
+   and the copy here held **35** — a strict subset missing `/admin/markets/new`, `/admin/roles`
+   and `/admin/staff`.
+   ⛔ `/admin/roles` is the expensive one to have missed: it renders **84 permission switches**,
+   the densest control grid in the console and the page `globals.css`'s own toggle ruling cites
+   as its worst case — and the responsive audit, the one instrument that measures tap targets at
+   360, had never opened it.
+   ⭐ The divergence was invisible because BOTH lists were plausible and neither was short
+   enough to look wrong. That is the shape this programme keeps paying for: not a list that is
+   obviously incomplete, but two lists that are each *nearly* right.
+   ⚠️ TWO ROUTES ARE IN NEITHER LIST AND STAY THAT WAY, NAMED RATHER THAN COUNTED CLEAN:
+   `/admin/2fa/setup` and `/admin/totp-verify`. `totp-verify` REDIRECTS an already-verified
+   admin to `/admin`, so a drive that visits it measures `/admin` twice and reports it as
+   covered — the precise failure `qa:dg-shell` was repaired for on 2026-08-30. Reaching them
+   needs an admin with TOTP who has not verified this session; until a drive can hold that
+   state, adding them would buy a number instead of a measurement. */
+import { ADMIN_ROUTES as ADMIN } from "./design-gate/routes.mjs";
 
 let pass = 0, fail = 0, warn = 0;
 const failures = [], warnings = [];

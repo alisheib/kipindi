@@ -11,9 +11,12 @@
  *
  * Modelled on `admin/markets/emergency-void-control.tsx` on purpose — it is the same
  * act on the same kind of row (close a live pool, hand every stake back), so it wears
- * the same clothes. That deliberate mirroring is also why this file carries a documented
- * entry in `scripts/ui-consistency-baseline.json` rather than being converted to the kit
- * button on its own: the two destructive-confirm dialogs must not diverge.
+ * the same clothes. That deliberate mirroring is why neither file may be restyled on its
+ * own: the two destructive-confirm dialogs must not diverge. DG-A-08 (2026-08-30) moved
+ * BOTH triggers to the kit `<Button size="sm" variant="ghost">` in one pass — the
+ * hand-rolled pill rendered 24px against §A2's 40px floor. The modal's own confirm/cancel
+ * pair still wears raw `btn` classes in both files, which is what the
+ * `raw-button-btn-class` entry in `scripts/ui-consistency-baseline.json` tracks.
  *
  * ⛔ The authority is `trading`, NOT `compliance` — read from
  * `CONTROL_DOMAIN.voidUpDownRound` so this component, the page and the server action all
@@ -30,6 +33,7 @@ import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { useDeferredToast } from "@/components/ui/toast";
 import { Modal } from "@/components/ui/modal";
+import { Button } from "@/components/ui/button";
 import { voidRoundAction } from "../actions";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 
@@ -93,15 +97,17 @@ export function VoidRoundControl({
 
   return (
     <>
-      <button
+      <Button
         type="button"
+        size="sm"
+        variant="ghost"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1 rounded-md border border-claret-700 bg-claret-500/10 px-2 py-1 font-mono text-micro font-bold uppercase tracking-[0.1em] text-claret-300 hover:bg-claret-500/20 transition-colors whitespace-nowrap"
+        className="whitespace-nowrap"
+        leading={<I.warning s={13} />}
         title="Void this round and refund every stake in full"
       >
-        <I.warning s={12} />
         Void &amp; refund
-      </button>
+      </Button>
 
       <Modal
         open={open}

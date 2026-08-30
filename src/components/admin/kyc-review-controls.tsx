@@ -17,6 +17,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Spinner } from "@/components/ui/spinner";
+import { Button } from "@/components/ui/button";
 import { I } from "@/components/ui/glyphs";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
@@ -152,10 +153,9 @@ export function KycReviewControls({ userId, status, makerCheckerRequired }: { us
                 </button>
               </div>
             ))}
-            <button type="button" onClick={() => setDocReqs((prev) => [...prev, ""])}
-              className="inline-flex items-center gap-1.5 font-mono text-micro tracking-[0.08em] uppercase text-brand-300 hover:text-brand-200">
-              <I.plus s={14} /> Add a document request
-            </button>
+            <Button type="button" size="sm" variant="ghost" leading={<I.plus s={13} />} onClick={() => setDocReqs((prev) => [...prev, ""])}>
+              Add a document request
+            </Button>
           </div>
         )}
 

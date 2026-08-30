@@ -87,15 +87,16 @@ export function BalanceAdjustControls({
 
   return (
     <>
-      <button
+      <Button
         type="button"
+        size="sm"
+        variant="ghost"
         onClick={() => { setOpen(true); setDirection("credit"); setAmount(""); setReason(""); setConfirmWord(""); setStage1Msg(null); }}
         disabled={pending}
-        className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 py-1.5 rounded-sm border border-border bg-bg-overlay text-text-secondary hover:bg-brand-500/10 hover:text-brand-300 hover:border-brand-500/60 transition-colors inline-flex items-center gap-1.5"
+        leading={<I.wallet s={13} aria-hidden />}
       >
-        <I.wallet s={11} aria-hidden />
         Adjust balance
-      </button>
+      </Button>
 
       <Modal
         open={open}

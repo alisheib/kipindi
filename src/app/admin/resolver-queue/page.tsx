@@ -410,7 +410,7 @@ export default async function ResolverQueuePage({
                       <p className="font-mono text-[10px] text-text-subtle">Crowd: {yes}% YES · {100 - yes}% NO</p>
                       <Link
                         href={`/admin/markets/${m.id}` as never}
-                        className="inline-flex items-center gap-1 rounded-md border border-border bg-bg-overlay px-2 py-0.5 font-mono text-[10.5px] font-semibold text-text-muted hover:border-brand-500 hover:text-text transition-colors whitespace-nowrap"
+                        className="inline-flex min-h-[var(--tap-min)] items-center gap-1 rounded-md border border-border bg-bg-overlay px-2 py-0.5 font-mono text-[10.5px] text-text-muted hover:border-brand-500 hover:text-text transition-colors whitespace-nowrap"
                       >
                         <I.users s={10} />
                         {m.predictorCount} {m.predictorCount === 1 ? "predictor" : "predictors"}

@@ -200,7 +200,7 @@ export default function GlobalError({
 
           <h1
             style={{
-              fontSize: 26,
+              fontSize: 28,
               fontWeight: 700,
               lineHeight: 1.15,
               letterSpacing: "-0.02em",

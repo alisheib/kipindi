@@ -68,6 +68,14 @@ export function applySort<T>(
  * ⛔ The arrow keeps its `opacity-0` (not `hidden`) on the inactive column: the
  * glyph still occupies its box, so the header does not jump sideways when the
  * sort moves — same reason <SortTh> does it.
+ *
+ * ⭐ DG-A-08 (2026-08-30) — `min-h-[44px]`, THE SAME LITERAL <SortTh> CARRIES. This
+ * rendered a 14px box (`text-micro` is 10px/14px with no padding) against §A2's 40px
+ * floor, on the control that reorders a moderation queue. It does NOT take the kit
+ * `<Button>`: the twin invariant above is the whole reason this component exists, and
+ * <SortTh> cannot be a `.btn` — it is an anchor inside a `<th>` that must keep the
+ * header's own type. Giving one of the twins a button body is how they stop matching.
+ * §K1 forbids a height utility only ON a `.btn`, and neither of these is one.
  */
 export function SortBtn<K extends string>({
   field,
@@ -84,7 +92,7 @@ export function SortBtn<K extends string>({
 }) {
   const isActive = current === field;
   return (
-    <button type="button" onClick={() => onSort(field)} className={`inline-flex items-center gap-1 font-mono text-micro uppercase tracking-[0.1em] hover:text-text transition-colors ${isActive ? "text-text" : "text-text-subtle"}`}>
+    <button type="button" onClick={() => onSort(field)} className={`inline-flex min-h-[44px] items-center gap-1 font-mono text-micro uppercase tracking-[0.1em] hover:text-text transition-colors ${isActive ? "text-text" : "text-text-subtle"}`}>
       {label}
       <span className={`text-brand-300 ${isActive ? "" : "opacity-0"}`} aria-hidden>{dir === "asc" ? "↑" : "↓"}</span>
     </button>

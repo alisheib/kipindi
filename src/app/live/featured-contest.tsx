@@ -145,9 +145,17 @@ export function FeaturedContest({
               instruments (`responsive-audit.mjs`: `height < 40 || width < 24`). The row's `gap`
               is dropped because the padding now provides the separation; ⛔ do not re-add one,
               it would stack on top of the padding and widen the rail a second time.
-              ⚠️ `results/notable-carousel.tsx` is this component's declared twin and still
-              carries the old shape; it is out of this change's scope, so the two are knowingly
-              out of step until it gets the same treatment. */}
+              ✅ `results/notable-carousel.tsx` — this component's declared twin — GOT THE SAME
+              TREATMENT on 2026-08-30 (DG-P-07), so the paragraph that used to sit here saying
+              the two were "knowingly out of step until it gets the same treatment" is retired
+              rather than left to read as a live caveat. ⛔ A note describing a divergence that
+              has been closed is indistinguishable from one describing a live one, and this file
+              is the one a session reads to learn the shape.
+              ⚠️ ONE DIVERGENCE GENUINELY REMAINS AND IT IS NOT THE TAP FLOOR: this row is in
+              the a11y tree with `aria-current`, while the twin is `aria-hidden` with
+              `tabIndex={-1}`. Two carousels must not disagree about that — but it is a
+              semantics ruling that has to be applied to BOTH files in one pass, not smuggled
+              in by whichever was touched last. */}
           {multi && (
             <div className="flex items-center">
               {markets.map((mm, i) => (

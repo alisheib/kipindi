@@ -17,7 +17,7 @@ import { getCycleReadModel, listCycles, suggestedPriceUsd, tzs } from "@/lib/ser
 import { AI_SUBJECT_LABEL, AI_SUBJECT_TYPES } from "@/lib/ai-cycle-rules";
 import { CycleSettings, StartCycleControl, CloseCycleControl } from "./cycle-controls";
 // ⛔ THE ONE MONEY FORMATTER. See `tzsFmt` below for why a local `toLocaleString` is a defect.
-import { formatTzs } from "@/lib/utils";
+import { formatTzs, adminCount } from "@/lib/utils";
 import { getAnthropicSpend } from "@/lib/server/anthropic-billing";
 import { CreditControls } from "./credit-controls";
 import { AiOpsControls } from "./ai-ops-controls";
@@ -253,7 +253,7 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
       ? { cls: "border-no-700/60 bg-no-500/10", icon: <I.warning s={16} className="text-no-300 shrink-0 mt-0.5" />, title: "AI calls are FAILING", body: `Every AI call in the last 24h errored (${s.recent24h.err} failed). The Up & Down oracle, market resolution, poll generation and chatbot are all down \u2014 almost always an exhausted Anthropic balance or a bad key. Top up and start a new top-up window below.` }
       : health === "idle"
       ? { cls: "border-border bg-bg-overlay", icon: <I.clock s={16} className="text-text-tertiary shrink-0 mt-0.5" />, title: "AI idle", body: "No AI calls in the last 24h \u2014 normal during quiet periods." }
-      : { cls: "border-success/40 bg-success/10", icon: <I.checkCircle s={16} className="text-success shrink-0 mt-0.5" />, title: "AI is healthy", body: `${s.recent24h.ok} successful AI call${s.recent24h.ok === 1 ? "" : "s"} in the last 24h, ${s.recent24h.err} error${s.recent24h.err === 1 ? "" : "s"}.` };
+      : { cls: "border-success/40 bg-success/10", icon: <I.checkCircle s={16} className="text-success shrink-0 mt-0.5" />, title: "AI is healthy", body: `${adminCount(s.recent24h.ok, "successful AI call")} in the last 24h, ${adminCount(s.recent24h.err, "error")}.` };
 
   return (
     <>
@@ -274,21 +274,21 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
             label={anthropic ? "Spend today (Anthropic)" : "Spend today"}
             sw="Leo"
             value={usd(anthropic?.today ?? s.windows.today.costUsd)}
-            delta={anthropic ? `est. ${usd(s.windows.today.costUsd)} \u00b7 ${s.windows.today.calls} calls` : `${s.windows.today.calls} calls`}
+            delta={anthropic ? `est. ${usd(s.windows.today.costUsd)} \u00b7 ${adminCount(s.windows.today.calls, "call")}` : adminCount(s.windows.today.calls, "call")}
           />
           <AdminKpi
             label={anthropic ? "Last 7 days (Anthropic)" : "Last 7 days"}
             sw="Siku 7"
             value={usd(anthropic?.last7 ?? s.windows.last7.costUsd)}
-            delta={anthropic ? `est. ${usd(s.windows.last7.costUsd)} \u00b7 ${s.windows.last7.calls} calls` : `${s.windows.last7.calls} calls`}
+            delta={anthropic ? `est. ${usd(s.windows.last7.costUsd)} \u00b7 ${adminCount(s.windows.last7.calls, "call")}` : adminCount(s.windows.last7.calls, "call")}
           />
           <AdminKpi
             label={anthropic ? "Last 30 days (Anthropic)" : "Last 30 days"}
             sw="Siku 30"
             value={usd(anthropic?.last30 ?? s.windows.last30.costUsd)}
-            delta={anthropic ? `est. ${usd(s.windows.last30.costUsd)} \u00b7 ${s.windows.last30.calls} calls` : `${s.windows.last30.calls} calls`}
+            delta={anthropic ? `est. ${usd(s.windows.last30.costUsd)} \u00b7 ${adminCount(s.windows.last30.calls, "call")}` : adminCount(s.windows.last30.calls, "call")}
           />
-          <AdminKpi label="Stored (180d)" sw="Jumla" value={usd(s.windows.all.costUsd)} delta={`${s.windows.all.calls} calls`} />
+          <AdminKpi label="Stored (180d)" sw="Jumla" value={usd(s.windows.all.costUsd)} delta={adminCount(s.windows.all.calls, "call")} />
         </KpiGrid>
 
         {/* 30-day spend trend — real Anthropic daily cost. Only rendered when the
@@ -395,16 +395,16 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
           <p className="text-caption text-text-tertiary mt-3 leading-snug">
             {cyc.projection.ok ? (
               <>
-                Projected from <strong>{cyc.projection.closedCycles}</strong> closed cycle{cyc.projection.closedCycles === 1 ? "" : "s"} over{" "}
-                <strong>{cyc.projection.observedDays} days</strong> ({cyc.projection.cyclesPerDay.toFixed(4)} cycles/day ·{" "}
+                Projected from <strong>{adminCount(cyc.projection.closedCycles, "closed cycle")}</strong> over{" "}
+                <strong>{adminCount(cyc.projection.observedDays, "day")}</strong> ({cyc.projection.cyclesPerDay.toFixed(4)} cycles/day ·{" "}
                 {usd(cyc.projection.usdPerYear)}/year). Only <strong>closed</strong> cycles feed this rate — the open one is a partial and
                 would drag it down. A rate from few cycles is coarse; it sharpens as more close.
               </>
             ) : (
               <>
-                No yearly projection yet: <strong>{cyc.projection.observedDays} days</strong> observed against a minimum of{" "}
-                <strong>{cyc.projection.minDays}</strong>, with {cyc.projection.closedCycles} closed cycle
-                {cyc.projection.closedCycles === 1 ? "" : "s"}. A year extrapolated from less than this looks like an answer and is not.
+                No yearly projection yet: <strong>{adminCount(cyc.projection.observedDays, "day")}</strong> observed against a minimum of{" "}
+                <strong>{cyc.projection.minDays}</strong>, with {adminCount(cyc.projection.closedCycles, "closed cycle")}. A year extrapolated
+                from less than this looks like an answer and is not.
               </>
             )}
           </p>
@@ -516,7 +516,7 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
             <p>
               {cyc.fx.usable ? (
                 <>Shillings converted at <strong>{cyc.fx.rate.toLocaleString()} TZS / USD</strong>, rate taken {cyc.fx.asOfIso.slice(0, 10)}
-                  {cyc.fx.stale ? <span className="text-warning-fg"> — {Math.round(cyc.fx.ageDays ?? 0)} days old; refresh it before pricing from this.</span> : null}.</>
+                  {cyc.fx.stale ? <span className="text-warning-fg"> — {adminCount(Math.round(cyc.fx.ageDays ?? 0), "day")} old; refresh it before pricing from this.</span> : null}.</>
               ) : (
                 <>No USD→TZS rate is set, so every shilling figure reads &ldquo;—&rdquo;. Set the rate and its date in <strong>Cycle settings</strong> below. A converted figure with no visible rate is a claim nobody can check.</>
               )}
@@ -746,8 +746,14 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
                   <tr key={f} className="border-b border-border/60 last:border-b-0">
                     <td className="p-3 text-text">
                       <div className="flex items-center gap-2">
-                        <Chip size="sm" variant={FEATURE_VARIANT[f]}>{f.toUpperCase()}</Chip>
-                        <span>{FEATURE_LABEL[f]}</span>
+                        {/* ⛔ WAS `<Chip>{f.toUpperCase()}</Chip>` followed by this same
+                            row's `<span>{FEATURE_LABEL[f]}</span>` — the storage token and
+                            its own word side by side in one cell, so an officer read
+                            "UPDOWN  Up & Down oracle". §0a: one fact, one home. The map two
+                            hundred lines above is the home; `.toUpperCase()` is a spelling
+                            operation, not a label (§L2). The Chip atom upper-cases via CSS,
+                            so the chip still LOOKS the same — it just says a word now. */}
+                        <Chip size="sm" variant={FEATURE_VARIANT[f]}>{FEATURE_LABEL[f]}</Chip>
                       </div>
                     </td>
                     <td className="p-3 font-mono tabular-nums text-right text-text">{b.calls.toLocaleString()}</td>
@@ -897,7 +903,7 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
                     <td className="p-3 font-mono tabular-nums text-text-tertiary whitespace-nowrap text-caption">{ts(e.createdAt)}</td>
                     <td className="p-3 whitespace-nowrap">
                       <Chip size="sm" variant={FEATURE_VARIANT[(e.feature as AiFeature)] ?? "neutral"}>
-                        {e.feature.toUpperCase()}
+                        {FEATURE_LABEL[e.feature as AiFeature] ?? e.feature}
                       </Chip>
                     </td>
                     <td className="p-3 font-mono text-text-tertiary whitespace-nowrap text-caption">{e.model}</td>

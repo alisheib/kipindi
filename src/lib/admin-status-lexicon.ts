@@ -485,3 +485,25 @@ export const BULK_BAR = {
   moneyAtStake:      { en: "Player money held on the markets listed above" },
   nothingSelected:   { en: "Select at least one market" },
 } satisfies Record<string, AdminLabel>;
+
+/**
+ * FAMILY 13 — SURVEILLANCE: what the suspicious-bet detector flagged, in words.
+ *
+ * `SuspiciousFlag.type` (`src/lib/server/analytics.ts`) is a TypeScript union —
+ * `"STAKE_SPIKE" | "VELOCITY"` — and NOT a Prisma enum, so nothing that reads the
+ * schema could ever have caught it. It reached /admin/aml's flags table raw: the chip
+ * on that page printed the database token `STAKE_SPIKE` at an officer, on the queue
+ * that decides whether a Suspicious Activity Report is filed (POCA Cap 423 §16).
+ *
+ * ⛔ NO `sw` HERE, ON PURPOSE. This file's provenance rule is that every Swahili string
+ * is lifted verbatim from an already-shipped surface and never invented. /admin/aml
+ * ships "Bendera za shaka" for the flags COLLECTIVELY and nothing at all for the two
+ * arms, so there is no source to lift — and these render in a `Chip`, which is one of
+ * the EN-only surfaces named at the top of this file.
+ */
+export const SURVEILLANCE = {
+  /** A stake more than 10× the player's own 30-day median. */
+  stakeSpike: { en: "Stake spike" },
+  /** More than 100 confirmed stakes in 24h — possible automation. */
+  velocity:   { en: "Velocity" },
+} satisfies Record<string, AdminLabel>;

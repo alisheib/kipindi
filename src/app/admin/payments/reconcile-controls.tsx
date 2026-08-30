@@ -60,12 +60,12 @@ export function ReconcileControls({ txnId }: { txnId: string }) {
   return (
     <>
       <span className="inline-flex items-center gap-2">
-        <button type="button" disabled={pending} onClick={() => { setMode("match"); setRef(""); setReason(""); }} className="inline-flex items-center gap-1 font-mono text-micro uppercase tracking-[0.08em] text-royal-300 hover:underline disabled:opacity-40">
-          <I.check s={11} /> Match
-        </button>
-        <button type="button" disabled={pending} onClick={() => { setMode("writeoff"); setRef(""); setReason(""); }} className="inline-flex items-center gap-1 font-mono text-micro uppercase tracking-[0.08em] text-text-subtle hover:text-claret-300 disabled:opacity-40">
-          <I.x s={11} /> Write off
-        </button>
+        <Button size="sm" variant="ghost" disabled={pending} leading={<I.check s={13} />} onClick={() => { setMode("match"); setRef(""); setReason(""); }}>
+          Match
+        </Button>
+        <Button size="sm" variant="ghost" disabled={pending} leading={<I.x s={13} />} onClick={() => { setMode("writeoff"); setRef(""); setReason(""); }}>
+          Write off
+        </Button>
       </span>
 
       <Modal

@@ -83,8 +83,14 @@ export function SuspendControls({
     });
   };
 
+  // DG-A-08 — `min-h-[var(--tap-min)]`, not the kit `<Button>`: these three wear the
+  // yes-/no- outcome ink and DG-A-21 owns that palette, so the tone must not move here.
+  // 32px (10px line box + py-1.5 + border) was under §A2's 40px floor. The class is legal
+  // because none of these is a `.btn` — §K1 forbids a height utility only on the kit's own
+  // button. It sits on the SHARED base so the self-exclusion status pill below, which can
+  // render beside the Suspend button, stays on the same baseline instead of 8px shorter.
   const btnBase =
-    "font-mono text-micro tracking-[0.10em] uppercase px-2.5 py-1.5 rounded-sm border inline-flex items-center gap-1.5";
+    "font-mono text-micro tracking-[0.10em] uppercase min-h-[var(--tap-min)] px-2.5 py-1.5 rounded-sm border inline-flex items-center gap-1.5";
 
   return (
     <>

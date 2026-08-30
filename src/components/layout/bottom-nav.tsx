@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
 import { NavMore } from "@/components/layout/nav-more";
+import type { ProposalsState } from "@/lib/server/proposals-config";
 
 /**
  * THE BOTTOM RAIL — round-2 kit §2 / COMPONENTS §14, rebuilt in batch 3.
@@ -34,7 +35,7 @@ import { NavMore } from "@/components/layout/nav-more";
  * tap meant for Markets could grab the toy instead. The physics is vendored and do-not-edit; its
  * RESTING POSITION is not. See `needle-rest.css`, loaded beside this component's own layer.
  */
-export function BottomNav({ isAuthed = false }: { isAuthed?: boolean }) {
+export function BottomNav({ isAuthed = false, proposalsState }: { isAuthed?: boolean; proposalsState: ProposalsState }) {
   const pathname = usePathname();
   const { t } = useT();
 
@@ -47,19 +48,42 @@ export function BottomNav({ isAuthed = false }: { isAuthed?: boolean }) {
     { href: "/results", glyph: "resolved" as const,   label: t.common.results },
   ];
 
-  /** `More` carries the rest. Positions / Wallet / Top / Invite for a player; the public
-   *  destinations for a visitor, who has no positions or wallet to reach. */
-  const moreItems = isAuthed
+  /** `More` carries the rest. Positions / Wallet / Top / Invite / Propose for a player; the
+   *  public destinations for a visitor, who has no positions or wallet to reach. */
+  /* ⭐ DG-P-11 — TWO DEFECTS, ONE LIST, AND BOTH ONLY VISIBLE WHEN THIS LIST IS READ BESIDE
+     THE BAR'S (§0a: "which destinations live behind More" was answered in two places that
+     disagreed).
+     1. THE AUTHED BRANCH OMITTED /proposals, WHICH THE AUTHED TOP BAR CARRIES. `moreActive`
+        below is the ONLY thing that can mark an overflow destination under 1024, and the four
+        rail slots are Markets / Up & Down / Live / Results — so a signed-in player on a phone
+        at /proposals, /proposals/[id] or /proposals/new had NOTHING marked anywhere on the
+        page, while the same player on a laptop had the bar's `More` marked. Signing in also
+        REMOVED a destination a guest could reach here, which is not a decision anyone made.
+     2. THE GUEST BRANCH SHOWED /proposals UNCONDITIONALLY. `proposals-config.ts` states
+        DISABLED as "every entry point is hidden; direct nav to /proposals* is redirected" —
+        and every other entry point already obeys it (the top bar's `MORE_ITEMS`, the avatar
+        menu, `public-footer.tsx`). This rail was the one that did not, so a visitor could be
+        shown a door the operator had closed and be redirected on arrival.
+     ⛔ NOT fixed by deleting /proposals from the top bar to make the two agree: that hides a
+     live destination to buy a symmetry.
+     ⛔ NOT fixed by a fifth rail SLOT either — the rail is five by design and the grid below
+     is `repeat(5, 1fr)`. It goes behind `More`, where its three siblings already live. */
+  const proposalsRow: { href: string; label: string; proposalsBadge?: ProposalsState }[] =
+    proposalsState !== "DISABLED"
+      ? [{ href: "/proposals", label: t.common.propose, proposalsBadge: proposalsState }]
+      : [];
+  const moreItems: { href: string; label: string; proposalsBadge?: ProposalsState }[] = isAuthed
     ? [
         { href: "/positions",      label: t.common.positions },
         { href: "/wallet",         label: t.nav.wallet },
         { href: "/leaderboard",    label: t.nav.leaderboard },
         { href: "/profile/invite", label: t.common.invite },
+        ...proposalsRow,
       ]
     : [
         { href: "/leaderboard", label: t.nav.leaderboard },
         { href: "/fairness",    label: t.footer.resolutionAttestation },
-        { href: "/proposals",   label: t.common.propose },
+        ...proposalsRow,
       ];
 
   const isActive = (href: string) => {

@@ -537,6 +537,14 @@
   --danger-bg:      color-mix(in oklab, var(--danger-500) 18%, transparent);
   --danger-border:  color-mix(in oklab, var(--danger-500) 36%, transparent);
   --danger-fg:      oklch(82% 0.16 25);
+  /* ⭐ DG-A-21 (DESIGN-GATE-2026-08-28) — THE ERRORED FIELD'S WASH, AND IT HAD FIVE HOMES.
+     `input`, `password-input`, `date-select`, `duration-input` and `time-select` each carried
+     the SAME hand-typed `oklch(58% 0.2 25 / 0.08)` inline, and it was the sole `FROZEN_RATCHET`
+     entry of all five files. ⭐ Note the hue: **25 — this literal was already `--danger`'s hue,
+     not `--no-*`'s 22**, so giving it the token is a NAME fix and not a repaint (57%/0.22 against
+     58%/0.2, at 8% alpha). ⛔ It is 8% and not `--danger-bg`'s 18% on purpose: this sits BEHIND
+     the value an operator is typing, and §A1 measures text on its actual surface. */
+  --danger-wash:    color-mix(in oklab, var(--danger-500) 8%, transparent);
   --info:           var(--info-500);
   --info-bg:        color-mix(in oklab, var(--info-500) 18%, transparent);
   --info-border:    color-mix(in oklab, var(--info-500) 36%, transparent);
@@ -1559,7 +1567,14 @@ body {
   font-size: 14px;
   transition: border-color var(--dur-micro) var(--ease-micro), box-shadow var(--dur-micro) var(--ease-micro), background-color var(--dur-micro) var(--ease-micro);
 }
-.input::placeholder { color: var(--text-subtle); opacity: 0.7; }
+/* ⭐ DG-P-12 (2026-08-30) — THE `opacity` IS DELETED, AND IT WAS AN §A1 BREACH THE GATE
+   COULD NOT SEE. A placeholder's rendered ink is token x alpha x opacity; `test:contrast`
+   scores the TOKEN. So it printed `--text-subtle on --bg-inset 7.50 PASS` for this very pair
+   while the browser painted **4.07** — under §A1's 4.5 floor, on every `.input` in the
+   product. ⛔ Same shape as §M4's `isTracked = /^tracking-/`: a guard reading the spelling of a
+   value instead of the value that lands on the glass. §P of `contrast-audit.mts` now scores the
+   composite, and its control is this line. */
+.input::placeholder { color: var(--text-subtle); }
 .input:hover:not(:focus):not(:disabled) { border-color: var(--border-strong); }
 /* ⭐ E-129 · THE FORCED-COLORS RULE — the canonical note; every other focus rule in
    this file and in motion.css points back here rather than restating it.
@@ -1664,6 +1679,54 @@ body {
   height: var(--tap-min);
   transform: translateY(-50%);
 }
+
+/* ⭐ DG-A-08 (DESIGN-GATE-2026-08-28) — THE ROW'S NAVIGATION LINK: ONE RECIPE, AND IT REACHES
+   `--tap-min`. A row's or card's way OUT — to a detail page or to a file: "PROFILE →",
+   "MANAGE →", "WORKSTATION →", "VIEW →", "VIEW PREDICTORS", "DOWNLOAD" — is NOT an action and
+   deliberately does not wear a button: the
+   register's own work order keeps "the 10px mono → link ONLY for navigation". §K5 is therefore
+   satisfied by naming the link recipe, not by forking `.btn` into a text-shaped variant.
+   ⛔ Which is also why this is NOT a second `.btn-sm`: an ACTION in this console goes to the
+   kit (`.btn-sm` = `--h-control-sm` = 40px). Minting a class that hands a `<button>` the
+   control height would be exactly the fork §K5 names, and §K1 forbids `min-h-[…]` on a `.btn`.
+
+   📐 THE DEFECT WAS TWO, AND THE SECOND ONE IS WHY THIS IS A CLASS. Six call sites, one role,
+   and they shipped in TWO spellings — `players/page.tsx:240`, `staff/page.tsx:96` and
+   `markets/[id]/page.tsx:428` carry `font-medium`; `self-exclusions/page.tsx:144`,
+   `approvals/page.tsx:149` and `live/page.tsx:122` do not. Three-all is no majority, so the
+   weight is decided by the NEIGHBOUR (§0a's method step ③): every one of these sits inside an
+   `.admin-tbl`, whose own `thead` is `font-weight: 500`. The column heading and the row's way
+   out of that column now agree. And all six rendered a 14px box — `text-micro` is 10px/14px
+   with no padding — against §A2's 40px floor, on a link an officer taps to open a player.
+
+   ⛔ IT CARRIES ONLY WHAT IT OWNS — geometry, weight, case and tracking. SIZE AND COLOUR STAY
+   AT THE CALL SITE, exactly as `.eyebrow` above leaves its size to §T7's Tailwind ladder. That
+   is not tidiness: `--type-micro` in this file is **11px** while Tailwind's `text-micro` is
+   **10px** (§T7 — five names, two ladders), so a `font-size` written here would silently grow
+   all six by a pixel. The call sites keep `text-micro`.
+   ⛔ 0.10em IS NOT A TYPO FOR §T3's 0.14em. §T3 rules the SECTION EYEBROW; a link whose visible
+   text is its whole label is a CONTROL LABEL by the enclosure test in
+   `scripts/design-gate/eyebrow-roles.mjs`, and that role's measured range is 0.08–0.14em.
+   ⚠️ Doubled selector for the same measured reason as `.amount` and `.eyebrow`: Tailwind's
+   responsive variants are emitted after everything this file writes, so a single class would
+   lose to an `sm:` utility at ≥640px.
+
+   🔴 IT IS FOR TEXT THAT IS ALREADY UPPERCASE, BECAUSE IT SUPPLIES `text-transform` — and that
+   makes it the one class in this file that can change WHAT THE SCREEN SAYS. Four bordered
+   predictor pills reading "8 predictors" (`markets/page.tsx` · `resolver-queue/page.tsx` ·
+   `ai-polls/[id]/page.tsx` ×2) were swept onto it while this row was being applied and would
+   have shipped as "8 PREDICTORS". They are painted pills, not text links, so they take a bare
+   `min-h-[var(--tap-min)]` and keep their own case. ⛔ Caught by reading the diff — `tsc` is
+   silent, every ratchet stayed green, and the sweep's own report called it a judgment call. */
+.row-link.row-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-min);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+}
+
 .input.input-mono { font-family: var(--font-mono); }
 
 .input-group {
@@ -1823,7 +1886,13 @@ textarea {
    recolours it back to brand for the keyboard — HEAD's look, unchanged. */
 textarea:focus { outline: 2px solid transparent; outline-offset: 2px; border-color: var(--brand-500); box-shadow: 0 0 0 3px oklch(63% 0.18 262 / 0.25); }
 textarea:focus-visible { outline-color: var(--brand-500); }
-textarea::placeholder { color: var(--text-subtle); opacity: 0.7; }
+/* ⭐ DG-P-12 — the same deletion, on an ELEMENT selector (0,0,2) that reaches every
+   `<textarea>` in the product: 4.07 -> 7.50. ⚠️ This LIGHTENS 22 live placeholders on player
+   and admin surfaces — a real visual change, and the reason this row needs a screenshot pass
+   rather than a green suite. It is also why the chat composer had to move: that surface sets
+   its own colour and inherited this `opacity`, so deleting it here lifts chat 2.61 -> 4.32 and
+   the token itself had to carry the rest. */
+textarea::placeholder { color: var(--text-subtle); }
 
 /* ---------- Tier badge ---------- */
 .tier-badge {

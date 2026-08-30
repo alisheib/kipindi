@@ -168,7 +168,7 @@ const config: Config = {
         // There is deliberately no 300/700 step — the ramp has exactly one rung.
         success: { DEFAULT: alpha("var(--success)"), bg: alpha("var(--success-bg)"), border: alpha("var(--success-border)"), fg: alpha("var(--success-fg)") },
         warning: { DEFAULT: alpha("var(--warning)"), bg: alpha("var(--warning-bg)"), border: alpha("var(--warning-border)"), fg: alpha("var(--warning-fg)"), 500: alpha("var(--warning-500)") },
-        danger:  { DEFAULT: alpha("var(--danger)"),  bg: alpha("var(--danger-bg)"),  border: alpha("var(--danger-border)"),  fg: alpha("var(--danger-fg)"),  500: alpha("var(--danger-500)") },
+        danger:  { DEFAULT: alpha("var(--danger)"),  bg: alpha("var(--danger-bg)"),  border: alpha("var(--danger-border)"),  fg: alpha("var(--danger-fg)"),  wash: alpha("var(--danger-wash)"),  500: alpha("var(--danger-500)") },
         info:    { DEFAULT: alpha("var(--info)"),    bg: alpha("var(--info-bg)"),    border: alpha("var(--info-border)"),    fg: alpha("var(--info-fg)"),    500: alpha("var(--info-500)") },
         bet: {
           win: alpha("var(--bet-win)"),

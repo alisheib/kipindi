@@ -1,12 +1,12 @@
 import { AdminPageHead, AdminCard, AdminKpi, AdminLoadError } from "@/components/admin/admin-shell";
 import { CEREMONY } from "@/lib/admin-status-lexicon";
-import { txnTypeLabel } from "@/components/admin/status-badge";
+import { txnTypeLabel, amlFlagTypeLabel } from "@/components/admin/status-badge";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { Chip } from "@/components/ui/chip";
 import { db, type StoredTxn } from "@/lib/server/store";
-import { formatTzs, formatDateTime } from "@/lib/utils";
+import { formatTzs, formatDateTime, adminCount } from "@/lib/utils";
 import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { AmlActionRow } from "./aml-actions-client";
@@ -70,10 +70,15 @@ export default async function AdminAmlPage({
   const largeCount = inReviewAll.filter((t) => Math.abs(t.amount) >= TWO_PERSON_THRESHOLD_TZS).length;
   const awaitingSecond = inReviewAll.filter((t) => stage1.has(t.id)).length;
 
+  /* ⭐ ONE NAME PER DESTINATION (§L1). Sidebar "AML queue", tab title "Admin · AML queue",
+     crumb "AML", h1 "AML · EDD queue" — four surfaces, three names. Two of the four already
+     said the nav label, and the nav label is the canonical name (`admin-nav-groups.ts` is
+     the only place a destination is DECLARED). "EDD" is not lost: the "Pending review" KPI
+     immediately below is captioned "EDD queue". */
   return (
     <>
       <AdminPageHead
-        title="AML · EDD queue"
+        title="AML queue"
         sw="Foleni ya AML"
         actions={<Chip size="md" variant={!amlFailed && inReviewAll.length > 0 ? "warning" : "neutral"}>{amlFailed ? "n/a" : `${inReviewAll.length} pending`}</Chip>}
       />
@@ -164,7 +169,7 @@ export default async function AdminAmlPage({
               <p className="font-bold text-text">Suspicious-bet detector · Tabia za shaka</p>
               <span className="text-caption text-text-tertiary">stake spike ≥ 10× user 30-day median; or velocity ≥ 100/24h</span>
             </div>
-            <Chip size="md" variant={!flagsFailed && flagsAll.length > 0 ? "warning" : "neutral"}>{flagsFailed ? "n/a" : `${flagsAll.length} flags`}</Chip>
+            <Chip size="md" variant={!flagsFailed && flagsAll.length > 0 ? "warning" : "neutral"}>{flagsFailed ? "n/a" : adminCount(flagsAll.length, "flag")}</Chip>
           </div>
           {flagsFailed ? (
             <div className="p-4"><AdminLoadError what="suspicious-bet flags" /></div>
@@ -191,8 +196,15 @@ export default async function AdminAmlPage({
                       </a>
                     </td>
                     <td>
+                      {/* ⛔ WAS `{f.type}` — the chip printed the storage token STAKE_SPIKE at
+                          a compliance officer, on the queue that decides whether a Suspicious
+                          Activity Report is filed. §L2: `amlFlagTypeLabel` is now the single
+                          definition site (status-badge.tsx / SURVEILLANCE in the lexicon).
+                          ⚠️ The variant ternary beside it is a §B11 site (a hand-typed tone
+                          next to a label) and is deliberately left for that row: `status-tone`
+                          keys on status WORDS, and a flag TYPE is a taxonomy, not a status. */}
                       <Chip size="sm" variant={f.type === "STAKE_SPIKE" ? "warning" : "danger"}>
-                        {f.type}
+                        {amlFlagTypeLabel(f.type)}
                       </Chip>
                     </td>
                     <td className="font-mono tabular text-right">{formatTzs(f.stake)}</td>

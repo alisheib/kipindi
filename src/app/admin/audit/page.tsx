@@ -17,14 +17,26 @@ export const dynamic = "force-dynamic";
 
 const CATEGORIES: AuditCategory[] = ["AUTH", "KYC", "WALLET", "BET", "ADMIN", "COMPLIANCE", "SECURITY", "SYSTEM"];
 
-const CAT_VARIANT: Record<AuditCategory, "yes" | "no" | "live" | "resolved" | "pending" | "objection" | "neutral"> = {
+/* ⭐ DG-A-21 (2026-08-30) — AN AUDIT CATEGORY IS A LOG LABEL, NOT A SIDE AND NOT A BROADCAST.
+   Two rows moved, and both were decided by a SIBLING that had already written its reason down —
+   this map was one of three files naming the same eight categories, and seven of eight agreed.
+   · BET was `"yes"`, the betting GREEN. §B2a: the YES/NO pair names the side a stake is on, and
+     a log category is not a stake. `admin/page.tsx` already states the answer in its own words —
+     "BET events use neutral (the calm, highest-volume log category)" — so this is `neutral`.
+   · SECURITY was `"live"`, which is the PLAYER's broadcast red (§B11: "to a player it is a
+     broadcast — this is open, money is moving, act now"). Borrowing it for a security event in
+     the console is the same defect one layer up. `admin/page.tsx` and `players/[id]/page.tsx`
+     BOTH already say `"danger"`; this file was the outlier, so it joins them.
+   ⛔ The union had to grow to admit `danger` — it listed `yes`/`no`, which this map must never
+   use again, and omitted the app-state tone it actually needs. */
+const CAT_VARIANT: Record<AuditCategory, "danger" | "live" | "resolved" | "pending" | "objection" | "neutral"> = {
   AUTH:       "pending",
   KYC:        "pending",
   WALLET:     "neutral",
-  BET:        "yes",
+  BET:        "neutral",
   ADMIN:      "objection",
   COMPLIANCE: "objection",
-  SECURITY:   "live",
+  SECURITY:   "danger",
   SYSTEM:     "neutral",
 };
 

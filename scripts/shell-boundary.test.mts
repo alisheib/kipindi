@@ -100,11 +100,34 @@ for (const l of staffLinks) {
 // ⛔ Without this, §1 and §2 could be passing because `linksTo` is broken and returns nothing
 // useful. Ask for something that IS legitimately a <Link> and require the parser to find it.
 console.log("\n§3 · CONTROL — the parser can still identify a soft <Link>, so §1/§2 are not vacuous");
-const intraShell = linksTo(avatarMenu, "/results");
+/* ⚠️ RE-POINTED 2026-08-30 (DG-P-11), AND THE MOVE IS THE FINDING. This control used to ask
+   `avatar-menu.tsx` for a soft `<Link href="/results">`. That menu now renders its rows from a
+   `MENU_ROWS` array — `href={r.href}` — so `/results` is no longer written as a literal
+   attribute anywhere, the control went red, and it was RIGHT to: `linksTo` reads opening-tag
+   attributes, so after that refactor it can see exactly ONE href in that file (`/admin`) and is
+   blind to the other eight. The control did its job — it detected that §2's population had
+   collapsed underneath it. `admin-shell.tsx:110` is a real literal soft `<Link>`, in the other
+   file this suite parses, so the parser is still proved live. */
+const intraShell = linksTo(adminShell, "/admin");
 ok("3.1 an ordinary intra-shell destination is still found by the parser", intraShell.length > 0,
-   "`linksTo` found nothing for href=\"/results\" — the parser is broken and §1/§2 prove nothing");
+   "`linksTo` found nothing for href=\"/admin\" in admin-shell.tsx — the parser is broken and §1/§2 prove nothing");
 ok("3.2 …and it is (correctly) still a soft link, not an <a>",
    intraShell.every((l) => l.tag !== "a"), JSON.stringify(intraShell.map((l) => l.tag)));
+
+/* ⛔ §3b — AND THE HOLE THAT REFACTOR OPENED IS CLOSED, NOT JUST WORKED AROUND.
+   §2.2 asserts there is EXACTLY ONE `/admin` jump in the avatar menu, and it counts opening-tag
+   attributes. Now that the menu's rows come from a data array, a second `/admin` could be added
+   as a `MENU_ROWS` entry and §2.2 would still say "1" — it would render as a soft `<Link>`,
+   which is the precise defect E-70 exists to prevent (the console rendering inside player
+   chrome). So the array is read too, and it must contain no admin href at all. */
+const menuRowsBlock = avatarMenu.slice(avatarMenu.indexOf("const MENU_ROWS"),
+                                       avatarMenu.indexOf("];", avatarMenu.indexOf("const MENU_ROWS")));
+ok("3b.1 the MENU_ROWS block is found, so this check is not vacuous",
+   menuRowsBlock.length > 0 && /href:/.test(menuRowsBlock),
+   "no `const MENU_ROWS` array with hrefs in avatar-menu.tsx — re-point this check");
+ok("3b.2 …and no row in it crosses the shell boundary (a soft <Link> to /admin is E-70)",
+   !/href:\s*"\/admin/.test(menuRowsBlock),
+   "a MENU_ROWS entry points at /admin — it would render as a soft <Link> and break the shell");
 
 // ── §4. THE ROOT CAUSE IS STILL WHERE THE COMMENT SAYS IT IS ───────────────────────────────
 // If someone later restructures the layout into route groups, the <a> workaround stops being

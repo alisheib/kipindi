@@ -203,14 +203,18 @@ const FROZEN_RATCHET = new Map<string, number>([
   // `linear-gradient(135deg, oklch(45% 0.10 ${hue}), …)` is one colour computed from the
   // provider's own hue. Per-colour binding analysis exonerates it; a value-level
   // "contains a literal" test would have put it on this list wrongly.
-  // ⭐ ONE VALUE, FIVE COPIES — the kit's error tint. `oklch(58% 0.2 25 / 0.08)` is
-  // typed out identically in five form controls and exists as no token anywhere. It
-  // is the cheapest entry on this list to clear: define it once, delete five lines.
-  ["src/components/ui/date-select.tsx", 1],
-  ["src/components/ui/duration-input.tsx", 1],
-  ["src/components/ui/input.tsx", 1],
-  ["src/components/ui/password-input.tsx", 1],
-  ["src/components/ui/time-select.tsx", 1],
+  // ✅ CLEARED 2026-08-30 (DG-A-21) — "ONE VALUE, FIVE COPIES" IS NOW ONE VALUE, ONE HOME.
+  // This block used to list `date-select` · `duration-input` · `input` · `password-input` ·
+  // `time-select`, each at 1, under the note: *"the kit's error tint. `oklch(58% 0.2 25 / 0.08)`
+  // is typed out identically in five form controls and exists as no token anywhere. It is the
+  // cheapest entry on this list to clear: define it once, delete five lines."* That is exactly
+  // what happened — the token is `--danger-wash` in `globals.css`, beside `--danger-bg`.
+  // ⭐ AND IT WAS A NAME FIX, NOT A REPAINT: the literal's hue is **25**, which is `--danger`'s,
+  // not `--no-*`'s 22. Five files had been hand-typing the danger colour without the danger
+  // token. §B2a is satisfied and not one pixel moves.
+  // ⛔ The five entries are DELETED rather than set to 0: this list's own contract is that an
+  // entry which no longer matches is STALE, and the suite says so by name ("now clean — delete
+  // the entry"). A zero would be a permanent placeholder for a defect that no longer exists.
 
   // ── Admin surfaces (deferred: player-facing work ships first) ─────────────
   ["src/app/admin/affiliate/affiliate-admin-client.tsx", 2],

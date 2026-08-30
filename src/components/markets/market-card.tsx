@@ -8,6 +8,8 @@ import { I, categoryGlyph } from "@/components/ui/glyphs";
 import { Avatar } from "@/components/ui/avatar";
 import { Modal } from "@/components/ui/modal";
 import { ShareButton } from "@/components/markets/share-button";
+import { Chip } from "@/components/ui/chip";
+import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
 import { cn, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { pickLocalized, marketCategoryLabel } from "@/lib/localized";
@@ -232,6 +234,31 @@ export function MarketCard({
   const title = pickLocalized(locale, titleEn, titleSw, titleZh);
   const live = status === "LIVE" && !selectionClosed;
   const isResolved = status === "RESOLVED";
+  /* ⭐ §B11 (D4, 2026-08-21) — ONE WORD, AND ITS TONE COMES FROM THE DICTIONARY.
+   *
+   * 🔴 THE WORD AND THE COLOUR USED TO BE DECIDED BY TWO INDEPENDENT LADDERS. A ternary
+   * picked the label and a separate `cn()` stack below picked the class, in a different
+   * order, with no mechanism keeping them agreed — so a market could paint a colour its
+   * own label disagreed with. It was not hypothetical arithmetic: a RESOLVED market whose
+   * selection was closed matched BOTH `chip-resolved` and `chip-pending`, and which one
+   * won was decided by nothing more than their order in `globals.css`. One derivation
+   * cannot disagree with itself.
+   *
+   * The five words are the dictionary's own keys, so the tone is a lookup and the variant
+   * is no longer expressible here — which is what §B11 means by "every render site
+   * consumes it". */
+  const statusWord = selectionClosed ? "CLOSED"
+    : live ? "LIVE"
+    : isResolved ? "RESOLVED"
+    : status === "VOIDED" ? "VOID"
+    : "PENDING";
+  const statusLabel = {
+    CLOSED: t.market.statusClosed,
+    LIVE: t.market.statusLive,
+    RESOLVED: t.market.statusResolved,
+    VOID: t.market.statusVoid,
+    PENDING: t.market.statusPending,
+  }[statusWord];
   // COLD-START: a LIVE, still-open market with genuinely no activity. Derived
   // when the caller doesn't pass it, so the fix holds everywhere the card is
   // used. We show emptiness; we never invent a price (RULES law 5).
@@ -307,19 +334,15 @@ export function MarketCard({
       <span className="mcardp-watermark" aria-hidden><CatIco /></span>
 
       <div className="mcardp-top">
-        <span
-          className={cn(
-            "chip",
-            status === "LIVE" && !selectionClosed && "chip-live",
-            selectionClosed && "chip-pending",
-            status === "RESOLVED" && "chip-resolved",
-            (status === "CLOSED" || status === "DRAFT") && !selectionClosed && "chip-pending",
-            status === "VOIDED" && "chip-pending",
-          )}
-        >
-          {live && <span className="live-dot" />}
-          {selectionClosed ? t.market.statusClosed : live ? t.market.statusLive : isResolved ? t.market.statusResolved : status === "VOIDED" ? t.market.statusVoid : t.market.statusPending}
-        </span>
+        {/* `size="xs"` IS `.mcardp .chip`, promoted to a prop — same 9px type, 0 6px
+            padding, 3px gap, 0.02em tracking and 5px live-dot, in the same 21/23px box.
+            The one property it does not port is `white-space: nowrap`, which is the live
+            G-7 defect; every word this chip can hold is a single short one in all three
+            locales, so nothing wraps today and a longer one would now wrap instead of
+            drawing outside the column. */}
+        <Chip size="xs" variant={TONE_CHIP[STATUS_TONE[statusWord].player]} dot={live}>
+          {statusLabel}
+        </Chip>
         {signal && (
           <span
             aria-label={signal.label}

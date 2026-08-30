@@ -482,8 +482,13 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
                 <div>
                   <div className="mb-1.5 text-[12px] font-semibold text-text">Category</div>
                   <div className="flex flex-wrap gap-1.5">
+                    {/* DG-A-08 — was a hard `h-[30px]`, ten under §A2's 40px floor. These chips
+                        (and the decline-reason chips below, which rendered 28px) state the floor
+                        with `min-h` instead of taking the kit `<Button>`: each one SHOWS whether
+                        it is the chosen category, and the kit has no selected variant to carry
+                        that. §K1 forbids a height utility on a `.btn`; a chip is not one. */}
                     {CATEGORIES.map((ct) => (
-                      <button key={ct} type="button" onClick={() => setECategory(ct)} className="inline-flex h-[30px] items-center gap-1.5 rounded-pill border px-3 text-[12px] font-semibold transition-colors"
+                      <button key={ct} type="button" onClick={() => setECategory(ct)} className="inline-flex min-h-[var(--tap-min)] items-center gap-1.5 rounded-pill border px-3 text-[12px] font-semibold transition-colors"
                         style={eCategory === ct ? { borderColor: "color-mix(in oklab, var(--brand-500) 40%, transparent)", background: "color-mix(in oklab, var(--brand-500) 14%, transparent)", color: "var(--brand-200)" } : { borderColor: "var(--border)", color: "var(--text-muted)" }}>
                         <CategoryIcon category={ct} size={13} />{CATEGORY_LABEL[ct]}
                       </button>
@@ -571,7 +576,7 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
                 <div className="mb-2 text-[12.5px] font-semibold">Decline reason · Sababu</div>
                 <div className="mb-2.5 flex flex-wrap gap-1.5">
                   {DECLINE_REASONS.map((r) => (
-                    <button key={r} onClick={() => setReason(r)} className="rounded-pill border px-3 py-1 text-[12px] font-semibold transition-colors"
+                    <button key={r} onClick={() => setReason(r)} className="inline-flex min-h-[var(--tap-min)] items-center justify-center rounded-pill border px-3 py-1 text-[12px] font-semibold transition-colors"
                       style={reason === r ? { borderColor: "color-mix(in oklab, var(--claret-500) 44%, transparent)", background: "color-mix(in oklab, var(--claret-500) 16%, transparent)", color: "var(--claret-300)" } : { borderColor: "var(--border)", color: "var(--text-muted)" }}>{r}</button>
                   ))}
                 </div>

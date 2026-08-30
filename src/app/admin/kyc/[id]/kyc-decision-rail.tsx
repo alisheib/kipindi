@@ -126,8 +126,13 @@ export function KycDecisionRail({
           </div>
         ))}
         <div className="my-1 border-t border-dashed border-border-subtle" />
+        {/* DG-A-08 — the checklist row is a CONTROL (it cycles the judgment), and at
+            py-0.5 it rendered 22.75px against §A2's 40px floor. `min-h` rather than the
+            kit `.btn`: this is a full-width row whose label is left-aligned and whose
+            verdict is pushed right by `ml-auto`, and a `.btn` centres both. §K1 forbids a
+            height utility ON a `.btn` — this is not one, so the floor is stated directly. */}
         {JUDGMENT_CHECKS.map((c) => (
-          <button key={c.key} type="button" onClick={() => cycle(c.key)} className="flex w-full items-center gap-2.5 rounded-sm py-0.5 text-left text-[12.5px] hover:bg-bg-overlay/40">
+          <button key={c.key} type="button" onClick={() => cycle(c.key)} className="flex min-h-[var(--tap-min)] w-full items-center gap-2.5 rounded-sm py-0.5 text-left text-[12.5px] hover:bg-bg-overlay/40">
             <TriIcon state={judg[c.key]} />
             <span className="text-text">{c.label}</span>
             <span className="ml-auto font-mono text-micro uppercase tracking-[0.12em] text-text-subtle">

@@ -16,6 +16,7 @@
 import { useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
+import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { Callout } from "@/components/ui/callout";
 import { Toggle } from "@/components/ui/toggle";
@@ -259,17 +260,20 @@ export function ControlPlane({ controls }: { controls: PaymentControlsView }) {
             {controls.providerExplicit ? "Set by an officer." : `Inherited from env (PAYMENT_AGGREGATOR=${controls.env.provider}).`}
             {" "}Selcom ships integrated but off — flip here when ready; the kill-switch is the emergency stop.
           </p>
-          <button
+          <Button
             type="button"
+            size="sm"
+            variant="ghost"
             disabled={busy || !mayActGate}
             onClick={testConnection}
-            className="inline-flex min-h-[36px] shrink-0 items-center gap-1.5 rounded-md border border-border px-3 font-mono text-micro uppercase tracking-[0.08em] text-text-muted transition-colors hover:text-text disabled:opacity-50"
+            className="shrink-0"
+            leading={<I.bolt s={13} />}
             /* ⚠️ ONE title, and the read-only reason WINS when it applies — the probe's own
                explanation is useless on a control the officer cannot press. */
             title={actReason ?? "Signed order-status probe — no money moves. Must run from an allow-listed IP."}
           >
-            <I.bolt s={12} /> Test Selcom · Jaribu
-          </button>
+            Test Selcom · Jaribu
+          </Button>
         </div>
       </div>
 

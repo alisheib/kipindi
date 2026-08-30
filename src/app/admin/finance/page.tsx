@@ -21,7 +21,8 @@ import {
 import { dailyKpiSeries } from "@/lib/server/report-money";
 import { resolveRange } from "@/lib/server/date-range";
 import { DateTimeRangeFilter } from "@/components/ui/datetime-range-filter";
-import { formatTzs, formatTzsCompact, formatNumber } from "@/lib/utils";
+import { formatTzs, formatTzsCompact, formatNumber, adminCount } from "@/lib/utils";
+import { txnProviderLabel } from "@/components/admin/status-badge";
 import { eatDayKey } from "@/lib/eat-day";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { GenerateButton } from "../reports/generate-button";
@@ -80,7 +81,12 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
   const flow = await moneyFlowSeries(period, 28).catch(() => null);
   const margins = await marginSeries(period, 28).catch(() => null);
   const provBars = await providerStackedSeries(period, 14).catch(() => null);
-  const providers = await listProvidersInPeriod(period).catch(() => null);
+  // ⛔ THE LEGEND IS A LABEL (§L1), SO IT IS SPELLED BY THE LEXICON — the chart printed
+  // `AIRTEL_MONEY` / `TIGO_PESA` beside its swatches while the transactions, payments and
+  // player pages four clicks away all render the same enum through `txnProviderLabel`.
+  // ⚠️ Only the LEGEND is mapped. `listProvidersInPeriod`'s raw keys are also the stack keys
+  // that `providerStackedSeries` bins by, so the read itself must stay untouched.
+  const providers = (await listProvidersInPeriod(period).catch(() => null))?.map(txnProviderLabel) ?? null;
   // Read-only 7-day daily trend for the GGR/NGR/active tile sparklines — each
   // point is that day's REAL metric (canonical `summarise`), the metric's own
   // recent history, not a proxy series. `spark()` hides an all-zero line.
@@ -132,8 +138,12 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
       <AdminBody>
         {/* KPI 8-up */}
         <KpiGrid>
-          <AdminKpi label="Deposits in"     sw="Amana"             value={dep ? formatTzsCompact(dep.amount) : ""} unavailable={dep === null} delta={dep ? `${formatNumber(dep.count)} txns` : undefined} />
-          <AdminKpi label="Withdrawals out" sw="Utoaji"            value={wd ? formatTzsCompact(wd.amount) : ""}  unavailable={wd === null}  delta={wd ? `${formatNumber(wd.count)} txns` : undefined} />
+          {/* ⭐ ONE COUNT-LINE RECIPE — `adminCount` (src/lib/utils.ts). It carries the same
+              fixed en-US grouping the note beside the trial-balance counts below already
+              rules for, AND the singular, which every count line on this page was missing:
+              a window holding one deposit read "1 txns". */}
+          <AdminKpi label="Deposits in"     sw="Amana"             value={dep ? formatTzsCompact(dep.amount) : ""} unavailable={dep === null} delta={dep ? adminCount(dep.count, "txn") : undefined} />
+          <AdminKpi label="Withdrawals out" sw="Utoaji"            value={wd ? formatTzsCompact(wd.amount) : ""}  unavailable={wd === null}  delta={wd ? adminCount(wd.count, "txn") : undefined} />
           <AdminKpi label="GGR"             sw="Mapato ya jumla"    value={ggr === null ? "" : formatTzsCompact(ggr)}        unavailable={ggr === null} delta={range.label} series={spark(trends.ggr)} />
           <AdminKpi label="NGR"             sw="Mapato halisi"      value={ngr === null ? "" : formatTzsCompact(ngr)}        unavailable={ngr === null} delta="net of bonus + fees" series={spark(trends.ngr)} />
         </KpiGrid>
@@ -272,7 +282,12 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
                 param="feepage"
               />
               <p className="mt-2 text-body-sm text-text-subtle">
-                Total commission this period: TZS {formatTzs(pollFees.totalFee)}.
+                {/* ⛔ NO LITERAL `TZS ` HERE. `formatTzs` already returns "TZS 45,630"
+                    (src/lib/utils.ts), so the unit was printed twice — "TZS TZS 45,630" —
+                    on a money page an accountant reconciles against. The same mistake is
+                    named in the dated note at wallet/deposit/deposit-confirm.tsx:69-72
+                    ("`formatTzs` here would read 'TZS TZS 1,000'"). §C1: the prefix, once. */}
+                Total commission this period: {formatTzs(pollFees.totalFee)}.
               </p>
             </>
           )}
@@ -437,7 +452,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
                 )}
                 {(provs ?? []).map((p) => (
                   <tr key={p.provider}>
-                    <td className="font-medium text-text whitespace-nowrap">{p.provider}</td>
+                    <td className="font-medium text-text whitespace-nowrap">{txnProviderLabel(p.provider)}</td>
                     <td className="font-mono tabular text-right">{formatTzs(p.deposits)}</td>
                     <td className="font-mono tabular text-right text-text-secondary">{formatNumber(p.depositCount)}</td>
                     <td className="font-mono tabular text-right">{formatTzs(p.withdrawals)}</td>

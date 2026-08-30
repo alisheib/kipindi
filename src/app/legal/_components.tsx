@@ -9,6 +9,7 @@
 import { type ReactNode } from "react";
 import { I } from "@/components/ui/glyphs";
 import { GiltCorner } from "@/components/brand";
+import { PageHeader } from "@/components/ui/page-header";
 
 export function LegalHeader({
   title,
@@ -42,16 +43,22 @@ export function LegalHeader({
             <Glyph s={20} />
           </span>
         )}
+        {/* ⭐ DG-P-03 (2026-08-30) — THE LEGAL HEADER JOINS `PageHeader`, AND IT WAS THE BIGGEST
+            h1 IN THE ROW THAT NOBODY HAD COUNTED. The handover listed four page-level h1s; its
+            census was literal-`<h1>` files plus `PageHeader` files, so it could not see a
+            component that renders its own — and none of `/legal/licence`, `/aml`, `/privacy` or
+            `/responsible-gambling` contains an `<h1>` of its own. All four got their title from
+            the one line here: `text-[26px] lg:text-[30px]`, and §T7 says a `.tsx` reaches only
+            64·48·36·28·22·18·16·14·13·12·11·10 — there is no 26 and no 30. §T2 puts a page title
+            on the 28px step, which is exactly what `PageHeader` gives its other 31 call sites.
+            ⚠️ THREE VALUES MOVE, all toward the kit and all deliberate: the h1 26→28 below 1024
+            and 30→28 above it (the `lg:` step goes — no other `PageHeader` call site has one);
+            the eyebrow 10→11px, which is the drift `PageHeader`'s own header says it exists to
+            normalise; and the subtitle 14→13px. ⛔ The `meta` line stays OUTSIDE the component:
+            `PageHeader` has no slot for it, and adding one for a single caller would widen a
+            31-site primitive to fit its 32nd. The `space-y-1` still spaces it, unchanged. */}
         <div className="min-w-0 space-y-1">
-          <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">
-            {eyebrow}
-          </p>
-          <h1 className="font-display text-[26px] lg:text-[30px] font-bold text-text leading-tight tracking-[-0.02em]">
-            {title}
-          </h1>
-          {subtitle && (
-            <p className="text-[14px] italic text-text-subtle">{subtitle}</p>
-          )}
+          <PageHeader eyebrow={eyebrow} title={title} subtitle={subtitle} />
           {meta && (
             <p className="font-mono text-[11px] tabular-nums text-text-subtle">{meta}</p>
           )}

@@ -45,7 +45,8 @@
  * Run: npm run test:contrast
  * RED: node scripts/contrast-audit-red.mjs
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join, relative } from "node:path";
 // ⛔ ONE definition of the corpus, shared with the RED harness. See contrast-corpus.mjs
 // for why it is not a list in each file: two copies cost 21/21 → 0/21 in one edit.
 import { CONTRAST_CORPUS } from "./contrast-corpus.mjs";
@@ -644,7 +645,59 @@ const CHAT = {
 
 // `decorative: true` = WCAG 1.4.11 exempt (a divider that is NOT the sole means
 // of identifying a control). Printed for reference but never fails the gate.
-type Check = { name: string; fg: Oklch; bg: Oklch; min: number; decorative?: boolean; filter?: Filter };
+/**
+ * 🔴 §P — `alpha` IS THE FIELD THAT MAKES THIS GATE SCORE WHAT THE BROWSER PAINTS.
+ * Added 2026-08-30, DG-P-12, and it closes this file's own blind spot.
+ *
+ * Every row here scored a TOKEN against a TOKEN. But a placeholder's rendered ink is
+ * `token x alpha x opacity`, and three whole families carried an alpha nobody scored:
+ * `.input::placeholder` and `textarea::placeholder` at `opacity: .7`, and the date/time/
+ * duration segments at a `/40` utility. So this gate printed
+ * `--text-subtle on --bg-inset  7.50  PASS` — a true statement about a pair — while the sign-up
+ * form painted that pair at **2.02:1**, less than half §A1's floor, on the field a new player
+ * types their date of birth into.
+ * ⛔ It is the `isTracked = /^tracking-/` shape (§M4) in a different family: a guard reading the
+ * SPELLING of a value rather than the value that lands on the glass. A green suite over a
+ * failing pixel is worse than no suite, because it is quoted as evidence.
+ *
+ * ⛔ THE COMPOSITE IS DONE IN LINEAR sRGB, **not** `mixOklab`. That helper exists for
+ * `color-mix(in oklab, …)`, which is what the CSS asks for at those call sites; `opacity` and a
+ * `/NN` alpha are painted by the compositor in the device space instead. Using the oklab mixer
+ * here would model the wrong operation and quietly report a different number than the screen.
+ */
+type Check = { name: string; fg: Oklch; bg: Oklch; min: number; decorative?: boolean; filter?: Filter; alpha?: number };
+
+/**
+ * WCAG ratio for `fg` laid over `bg` at `alpha`, composited the way the compositor does.
+ *
+ * 🔴 IT COMPOSITES IN GAMMA-ENCODED sRGB, AND THE FIRST VERSION DID NOT — caught by this
+ * section's own RED control, which is the only reason it is right. Written to blend in LINEAR
+ * light, it scored the real shipped defect (`.input::placeholder` at `opacity: .7`) as **5.55
+ * and PASSED**, where the browser paints **4.07**. A guard for "the gate scores the token, not
+ * the pixel" that itself scored the wrong pixel — the same error one layer down, and it would
+ * have shipped green.
+ * ⛔ So: encode, blend, decode. Compositing happens in the device colour space, not in linear
+ * light; `color-mix(in oklab, …)` is the other operation and `mixOklab` is its model. Two
+ * different blends, and using either for the other is a wrong number that looks like a right
+ * one. ⛔ Never "simplify" this back to a linear lerp — re-run CONTROL 1 first and watch it pass
+ * when it must fail.
+ */
+function contrastAlpha(fg: Oklch, bg: Oklch, alpha: number, f?: Filter): number {
+  if (alpha >= 1) return contrast(fg, bg, f);
+  const enc = (u: number) => (u <= 0.0031308 ? 12.92 * u : 1.055 * u ** (1 / 2.4) - 0.055);
+  const dec = (v: number) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+  const a = oklchToLinearSrgb(fg).map(enc);
+  const b = oklchToLinearSrgb(bg).map(enc);
+  const mixed = a.map((v, i) => v * alpha + b[i] * (1 - alpha)).map(dec);
+  const [hi, lo] = [LUMA(mixed), luminance(bg, f)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+/** The `opacity` a rule declares, or 1. Read from the stylesheet — never typed here. */
+function ruleOpacity(selector: string): number {
+  const m = /(?:^|;)\s*opacity\s*:([^;]*)/.exec(ruleBody(selector));
+  return m ? parseFloat(m[1].trim()) : 1;
+}
 const CHECKS: Check[] = [
   { name: "btn-no label (pearl on no-bg)", fg: T.pearl50, bg: T.btnNoBg, min: 4.5 },
   { name: "btn-yes label (pearl on yes-bg)", fg: T.pearl50, bg: T.btnYesBg, min: 4.5 },
@@ -834,9 +887,65 @@ const CHECKS: Check[] = [
 // hand-typed inputs above, which is how `--text` drifted unnoticed. The values
 // are read off globals.css now, so the record belongs in the log, not here.
 
+/* ⭐ §P — THE PLACEHOLDER FAMILY, SCORED AS RENDERED. The `opacity` values are READ from the
+   compiled stylesheet by `ruleOpacity`, not typed here, so re-adding `opacity: .7` to either
+   rule turns this section red on the next run — which is the control this section needs and the
+   reason the numbers are not hard-coded. The `/40` and `/50` utilities are call-site alphas and
+   are stated, because Tailwind emits them per class rather than as a rule this file can read;
+   the guard against those is `§P-u` below. */
+const PLACEHOLDER_CHECKS: Check[] = [
+  { name: "§P .input::placeholder AS RENDERED", fg: T.textSubtle, bg: T.bgInset, min: 4.5, alpha: ruleOpacity(".input::placeholder") },
+  { name: "§P textarea::placeholder AS RENDERED", fg: T.textSubtle, bg: T.bgInset, min: 4.5, alpha: ruleOpacity("textarea::placeholder") },
+];
+CHECKS.push(...PLACEHOLDER_CHECKS);
+
+/* ⛔ §P-u — AND THE CALL-SITE ALPHAS ARE BANNED OUTRIGHT ON INK, because no stylesheet rule
+   exists for this file to read them from. `text-text-subtle/40` renders 2.02:1 and
+   `/50` renders 2.56 — both under the 3.0 non-text floor, let alone 4.5. The four sites that
+   carried them (the DateSelect and TimeSelect separators, the DurationInput spinner chevrons,
+   and the three placeholder segments) are fixed; this stops the idiom coming back.
+   ⭐ THREE OF THE FOUR EXEMPTIONS ARE EARNED BY A RENDERED FACT, NOT BY A LIST. A group that
+   also carries `cursor-not-allowed` or `pointer-events-none` IS a disabled control, and WCAG
+   1.4.3 exempts those — so the check reads the same class list the browser does instead of
+   trusting a filename. ⛔ That matters: a file-scoped allowlist would have exempted every
+   future site in `date-select.tsx` and `poll-actions.tsx` too, which is precisely how
+   `filter-language` §6.7 came to convict an innocent `<input>` — its subject was the whole
+   FILE. Only the one genuinely-decorative case is written down by name. */
+const ALPHA_INK_ALLOWED = new Map([
+  // A streak meter drawn as filled/unfilled glyphs inside `role="img"` whose `aria-label`
+  // states the value ("3 / 7"). The dim glyphs carry no information of their own, and §A4 is
+  // satisfied by the label, not by their contrast.
+  ["src/app/positions/performance/page.tsx", "text-text-subtle/30"],
+]);
+{
+  const hits: string[] = [];
+  const walk = (d: string): string[] =>
+    readdirSync(d).flatMap((e) => {
+      const p = join(d, e);
+      return statSync(p).isDirectory() ? walk(p) : /\.tsx?$/.test(e) ? [p] : [];
+    });
+  const DISABLED = /cursor-not-allowed|pointer-events-none/;
+  for (const f of walk(join(ROOT, "src"))) {
+    const relf = relative(ROOT, f).split(/[\\/]/).join("/");
+    const body = readFileSync(f, "utf8");
+    // Read the whole quoted class list, so the disabled markers beside the ink are visible.
+    for (const g of body.matchAll(/"((?:\\.|[^"\\\n])*)"|'((?:\\.|[^'\\\n])*)'|`((?:\\.|[^`\\])*)`/g)) {
+      const group = g[1] ?? g[2] ?? g[3] ?? "";
+      const m = /\btext-text-(?:subtle|faint|tertiary)\/\d+/.exec(group);
+      if (!m) continue;
+      if (DISABLED.test(group)) continue;                      // WCAG 1.4.3 — disabled is exempt
+      if (ALPHA_INK_ALLOWED.get(relf) === m[0]) continue;       // named, with its reason above
+      hits.push(`${relf}  ${m[0]}`);
+    }
+  }
+  const ok = hits.length === 0;
+  console.log(`${ok ? "PASS" : "FAIL"}  §P-u no call-site alpha on subtle ink (renders under §A1)${ok ? "" : "\n   " + hits.join("\n   ")}`);
+  if (!ok) process.exitCode = 1;
+}
+
 let fails = 0;
 for (const c of CHECKS) {
-  const r = contrast(c.fg, c.bg, c.filter);
+  const r = c.alpha !== undefined ? contrastAlpha(c.fg, c.bg, c.alpha, c.filter) : contrast(c.fg, c.bg, c.filter);
   const pass = r >= c.min;
   const tag = c.decorative ? (pass ? "PASS" : "INFO") : pass ? "PASS" : "FAIL";
   if (!pass && !c.decorative) fails++;

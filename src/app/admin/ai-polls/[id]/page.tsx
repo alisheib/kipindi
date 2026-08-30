@@ -118,7 +118,7 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
               {poll.publishedMarketId && (
                 <Link
                   href={`/admin/markets/${poll.publishedMarketId}` as never}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-border bg-bg-overlay px-2.5 py-1.5 font-mono text-[10.5px] font-semibold text-text-muted hover:border-brand-500 hover:text-text transition-colors whitespace-nowrap"
+                  className="inline-flex min-h-[var(--tap-min)] items-center gap-1.5 rounded-md border border-border bg-bg-overlay px-2.5 py-1.5 font-mono text-[10.5px] text-text-muted hover:border-brand-500 hover:text-text transition-colors whitespace-nowrap"
                 >
                   <I.users s={11} />
                   View predictors
@@ -306,7 +306,7 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
               </Link>
               <Link
                 href={`/admin/markets/${poll.publishedMarketId}` as never}
-                className="inline-flex items-center gap-1 rounded-md border border-border bg-bg-overlay px-2 py-1 font-mono text-[10.5px] font-semibold text-text-muted hover:border-brand-500 hover:text-text transition-colors"
+                className="inline-flex min-h-[var(--tap-min)] items-center gap-1 rounded-md border border-border bg-bg-overlay px-2 py-1 font-mono text-[10.5px] text-text-muted hover:border-brand-500 hover:text-text transition-colors"
               >
                 <I.users s={11} />
                 View predictors

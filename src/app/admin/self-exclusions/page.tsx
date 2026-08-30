@@ -141,7 +141,7 @@ export default async function AdminSelfExclusionsPage({
                     <td className="font-mono whitespace-nowrap">{formatDateTime(r.until)}</td>
                     <td className="font-mono tabular text-right">{r.daysLeft}</td>
                     <td>
-                      <a href={`/admin/players/${r.userId}`} className="font-mono text-micro tracking-[0.10em] uppercase text-royal-300 hover:underline">profile →</a>
+                      <a href={`/admin/players/${r.userId}`} className="row-link font-mono text-micro text-royal-300 hover:underline">profile →</a>
                     </td>
                   </tr>
                 ))}

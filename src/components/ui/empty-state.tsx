@@ -75,14 +75,14 @@ export function ErrorState({
   return (
     <div
       className={cn(
-        "rounded-lg border border-dashed border-no-700 bg-no-500/[0.06] px-6 py-10 text-center max-w-[420px] mx-auto",
+        "rounded-lg border border-dashed border-danger-border bg-danger-500/[0.06] px-6 py-10 text-center max-w-[420px] mx-auto",
         className,
       )}
     >
       {/* 48px mark — ARBITRARY LITERAL. The spacing scale is OVERRIDDEN
           (tailwind.config.ts:200-215), so `w-12 h-12` was a 128px box, nearly a third
           of this panel's 420px measure. ⛔ Never a scale token here. */}
-      <div className="mx-auto mb-4 w-[48px] h-[48px] grid place-items-center text-no-300" aria-hidden>
+      <div className="mx-auto mb-4 w-[48px] h-[48px] grid place-items-center text-danger-fg" aria-hidden>
         <ErrorMark />
       </div>
       <p className="font-display text-[15px] font-semibold text-text">{resolvedTitle}</p>

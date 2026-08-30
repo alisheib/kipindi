@@ -105,6 +105,15 @@ export const STATUS_TONE = {
   /** Settled money. The player gets the struck seal (§M3, §M7); the console gets the
    *  soft gilt, because an operator reading a hundred rows is not being congratulated. */
   RESOLVED: { player: "giltStruck", admin: "gilt", proposals: "giltStruck" },
+  /** ⭐ ADDED 2026-08-30 (DG-P-10). The market or round settled to NOTHING and every
+   *  stake came back. MEASURED, not chosen — §B11's Player column records the shipped
+   *  state, and five player surfaces already paint this word royal (`market-card`,
+   *  `home/trust-band`, `updown/history`, `markets/resolution-panel`, `results`): a
+   *  refund is not a fault, which is the same reason CLOSED and PENDING are royal. The
+   *  console's market table paints it SLATE — terminal and inert, sitting beside DRAFT.
+   *  ⛔ There is a THIRD tone and it is a decision, not a drift — see
+   *  `STATUS_TONE_EXCEPTIONS.VOID`. */
+  VOID:     { player: "royal", admin: "slate" },
   /** A decision went the applicant's way. NEVER gold: an approval is not earned money. */
   APPROVED: { admin: "green", proposals: "green" },
   /** A decision went against them. See `STATUS_TONE_EXCEPTIONS.REJECTED`. */
@@ -148,4 +157,25 @@ export const STATUS_TONE_EXCEPTIONS = {
    * clause is that the console loses AMBER for CLOSED — slate was never amber.
    */
   CLOSED: "Royal as a market lifecycle stage; SLATE as a terminal account state — royal would make a dead account look live.",
+  /**
+   * ⭐ ADDED 2026-08-30 (DG-P-10). VOID is the SECOND word with more than one tone, and
+   * unlike LIVE nobody had written it down — which is exactly how it acquired THREE:
+   *   · a PLAYER sees royal — a refund is not a fault, and their stake is back;
+   *   · the console's market table sees SLATE — terminal and inert, beside DRAFT;
+   *   · the RESOLVER's settlement ceremony sees CLARET, because voiding a market is an
+   *     irreversible operator act and §B4a gives that class of act its own colour.
+   * The first two are in the table above because they are the ordinary reading of the
+   * word; the claret is the exception, and it is the SAME reason claret already carries
+   * everywhere else in the console.
+   *
+   * ⚠️ `components/admin/status-badge.tsx` hard-types `VOIDED: "neutral"` under a comment
+   * saying slate "is not in the dictionary because no other surface disagrees about it".
+   * That clause is FALSE at HEAD — verified 2026-08-30: `app/admin/resolver/[id]/page.tsx`
+   * renders the word VOIDED in claret, and the five player surfaces listed above render it
+   * royal. This entry is the record; correcting that file's comment and pointing its
+   * `VOIDED` arm at `TONE_CHIP[STATUS_TONE.VOID.admin]` belongs to the CONSOLE's migration,
+   * which owns that file. Both arms above are what those surfaces already paint, so nothing
+   * repaints when it lands.
+   */
+  VOID: "Royal to a player (a refund is not a fault) · slate in the console market table (terminal, inert) · claret in the resolver's settlement ceremony (§B4a, an irreversible operator act).",
 } as const satisfies Partial<Record<keyof typeof STATUS_TONE, string>>;

@@ -159,6 +159,25 @@ export function InstallInvite() {
     setVisible(false);
   }, []);
 
+  /* ⭐ DG-P-13 (2026-08-30) — ESCAPE DISMISSES IT, LIKE EVERY OTHER DISMISSIBLE DIALOG.
+     This card carries `role="dialog"` and two dismiss controls, and it was the ONE dismissible
+     dialog surface in `src/` with no keyboard path out: `modal.tsx`, `language-menu.tsx`,
+     `date-select.tsx` and the rest all route Escape, and the only other exception —
+     `ai-progress.tsx` — is deliberately not dismissible at all. A viewer on a desktop keyboard
+     had to find the button with a pointer.
+     ⛔ It calls the SAME `dismiss` the button calls, deliberately, so an Escape counts toward
+     `MAX_DISMISSALS` and starts the `RE_ASK_DAYS` clock exactly as a click does. A second,
+     quieter "close" that the frequency rules cannot see would be a second definition of what
+     dismissal MEANS (§0a) — and the one that forgets is the one that re-asks tomorrow.
+     ⚠️ `aria-modal="false"` and no scrim, so this listener must not swallow the key: no
+     `preventDefault`, and it is bound only while the card is on screen. */
+  useEffect(() => {
+    if (!visible) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") dismiss(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [visible, dismiss]);
+
   const install = useCallback(async () => {
     if (!deferred) return;
     try { await deferred.prompt(); } catch { /* the browser declined to show it; say nothing */ }
@@ -197,7 +216,7 @@ export function InstallInvite() {
               leaves its box "no matter the amount of lines needed" — so the box grows and the
               words stay whole. Swahili is the longest of the three and 360 is the narrowest
               width; both are driven by `qa:install-invite`. */}
-          <p className="mt-1 text-label leading-snug text-text-muted">
+          <p className="mt-1 text-body-sm leading-snug text-text-muted">
             {mode === "prompt" ? t.common.installBody
               : mode === "ios" ? t.common.installIosHow
               : t.common.installOtherHow}

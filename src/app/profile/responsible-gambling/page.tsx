@@ -99,13 +99,13 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
 
       {/* C2h — self-care sunrise line-art + yes-toned support callout, surfaced
           early so anyone seeking help sees it immediately (no gambling imagery). */}
-      <section className="flex items-start gap-3.5 rounded-xl border border-yes-700/60 bg-yes-500/[0.08] p-4 lg:p-5">
-        <RgSunriseArt size={44} className="shrink-0 text-yes-300" />
+      <section className="flex items-start gap-3.5 rounded-xl border border-success-border bg-success/[0.08] p-4 lg:p-5">
+        <RgSunriseArt size={44} className="shrink-0 text-success-fg" />
         <div className="min-w-0">
-          <p className="font-display text-[14px] font-semibold text-yes-200">{t.rg.supportAvailable}</p>
+          <p className="font-display text-[14px] font-semibold text-success-fg">{t.rg.supportAvailable}</p>
           <p className="mt-1 text-body-sm text-text-muted leading-snug">
-            {t.rg.helpline} · <a href={`tel:${SUPPORT_PHONE_TEL()}`} className="font-semibold text-yes-300 underline underline-offset-2">{SUPPORT_PHONE()}</a>.
-            {" "}{t.rg.intlSupport}{" "}<a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer" className="text-yes-300 underline underline-offset-2">begambleaware.org</a>.
+            {t.rg.helpline} · <a href={`tel:${SUPPORT_PHONE_TEL()}`} className="font-semibold text-success-fg underline underline-offset-2">{SUPPORT_PHONE()}</a>.
+            {" "}{t.rg.intlSupport}{" "}<a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer" className="text-success-fg underline underline-offset-2">begambleaware.org</a>.
           </p>
         </div>
       </section>
@@ -194,7 +194,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
       </section>
 
       {/* SELF-EXCLUSION */}
-      <section id="exclude" className="scroll-mt-20 rounded-xl border border-no-700/60 bg-no-500/[0.06] p-5 lg:p-6 space-y-3">
+      <section id="exclude" className="scroll-mt-20 rounded-xl border border-danger-border bg-danger-500/[0.06] p-5 lg:p-6 space-y-3">
         <div className="flex items-center gap-2">
           <I.lock s={16} />
           <h2 className="font-display text-[15px] font-semibold text-text">{t.rg.selfExclude}</h2>
@@ -203,7 +203,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
               each is the MINIMUM the exclusion lasts, and the account still never reopens by
               itself. ⛔ Do not put `oneWay` back — it is true only of account CLOSURE
               (profile/account), which is where that key belongs. */}
-          <Chip variant="no" size="sm" className="ml-auto">{t.rg.minimumPeriod}</Chip>
+          <Chip variant="danger" size="sm" className="ml-auto">{t.rg.minimumPeriod}</Chip>
         </div>
         <p className="text-body-sm text-text-muted leading-snug max-w-prose">
           {t.rg.selfExcludeDescription}

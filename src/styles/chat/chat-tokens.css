@@ -20,7 +20,7 @@
 
   --chat-text:        oklch(96% 0.010 268);
   --chat-text-muted:  oklch(74% 0.025 268);
-  --chat-text-subtle: oklch(56% 0.035 268);
+  --chat-text-subtle: oklch(61% 0.035 268);   /* DG-P-12 (2026-08-30): 56% -> 61%. The composer placeholder read 2.61:1 against §A1's 4.5 floor; deleting globals.css's blanket textarea `opacity:.7` lifted it only to 4.32, so the token carries the rest. 61 is the first whole percent that clears 4.5 on all four chat surfaces (5.31 on the composer). */
 
   /* ---------- Pearl — the chat's emphasis color ------------------------
      Pearl replaces gilt EVERYWHERE that isn't the player-bubble edge or

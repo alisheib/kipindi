@@ -18,7 +18,11 @@ import { listSources, listDisabledCategories, seedDefaultSources } from "@/lib/s
 import { EventsClient } from "./events-client";
 import { AdminBody } from "@/components/admin/admin-body";
 
-export const metadata = { title: "Admin · Events" };
+/* ⭐ ONE NAME PER DESTINATION (§L1). The sidebar said "Event calendar"; the h1, the tab
+   title and the derived crumb all said "Events". The nav label is the canonical name —
+   `admin-nav-groups.ts` is the only file where a destination is DECLARED (href + label +
+   key) and the only one that already records naming DECISIONS in comments. */
+export const metadata = { title: "Admin · Event calendar" };
 export const dynamic = "force-dynamic";
 
 export default async function AdminEventsPage() {
@@ -64,7 +68,7 @@ export default async function AdminEventsPage() {
 
   return (
     <>
-      <AdminPageHead title="Events" sw="Matukio" />
+      <AdminPageHead title="Event calendar" sw="Matukio" />
       <AdminBody>
         <AdminCard title="Why this exists" sw="Kwa nini">
           <p className="text-body-sm leading-relaxed text-text-muted">

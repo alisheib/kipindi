@@ -88,6 +88,23 @@ export function AvatarMenu({
    */
   if (!isAuthed) return null;
 
+  /** The rows actually rendered — Proposals is hidden entirely when DISABLED
+   *  ("every entry point is hidden", `proposals-config.ts`). */
+  const rows = MENU_ROWS.filter((r) => !r.proposals || proposalsState !== "DISABLED");
+  /* ⭐ DG-P-11 — WHICH ROW IS THE CURRENT PAGE, BY LONGEST MATCH.
+     ⛔ Longest-match is load-bearing, not tidiness: `/profile` is a prefix of both
+     `/profile/invite` and `/profile/kyc`, so a plain per-row test would raise THREE current
+     items inside one menu, and ARIA is explicit that a set should carry exactly one.
+     ⛔ `h + "/"` and never a bare `startsWith(h)` — a bare prefix would make `/results`
+     current on a future `/results-archive`.
+     ⛔ Derived from `MENU_ROWS`, the same array the rows render from (§0a). A predicate
+     written against a second copy of this list is exactly the drift §0a exists to prevent. */
+  const currentHref =
+    rows
+      .map((r) => r.href)
+      .filter((h) => pathname === h || pathname.startsWith(h + "/"))
+      .sort((a, b) => b.length - a.length)[0] ?? null;
+
   return (
     <div ref={ref} className="relative ml-1">
       <button
@@ -152,19 +169,32 @@ export function AvatarMenu({
                 <p className="mt-0.5 font-mono text-caption text-text-subtle tabular-nums truncate">{phone}</p>
               </div>
             </div>
-            <ul className="py-1">
-              <Item href="/profile"        icon={I.profile}      en="Profile"        sw="Wasifu"                       zh="个人资料" />
-              <Item href="/wallet"         icon={I.wallet}       en="Wallet"         sw="Pochi"                        zh="钱包" />
-              <Item href="/profile/invite" icon={I.gift}         en="Invite & Earn"  sw="Alika na upate zawadi"        zh="邀请赚钱" accent />
-              {/* Proposals: hidden entirely when DISABLED; otherwise the state
-                  flag (gilt coming-soon / amber maintenance / none active). */}
-              {proposalsState !== "DISABLED" && (
-                <Item href="/proposals"    icon={I.sparkle}      en="Propose & earn" sw="Pendekeza na upate zawadi"    zh="提议赚钱" accent proposalsBadge={proposalsState} />
-              )}
-              <Item href="/positions"      icon={I.portfolio}    en="Positions"      sw="Nafasi"                       zh="持仓" />
-              <Item href="/results"        icon={I.resolved}     en="Results"        sw="Matokeo"                      zh="结果" />
-              <Item href="/leaderboard"    icon={I.crown}        en="Leaderboard"    sw="Jedwali la Washindi"          zh="排行榜" />
-              <Item href="/profile/kyc"    icon={I.shieldcheck}  en="Verify ID"      sw="Kuthibitisha kitambulisho"    zh="身份验证" />
+            {/* ⭐ DG-P-11 — `role="none"` ON THE LIST WRAPPER. `role="menu"` takes `menuitem`
+                children; a `list`/`listitem` subtree sitting between them is not an allowed
+                structure, and it was the reason ONE element in this menu (the staff-console
+                `<a role="menuitem">` below) was a valid menu child and none of the rows were.
+                Neutralising the list keeps the semantic markup and lets each row BE a menu
+                item — which is what makes the new `aria-current` below legible to the
+                accessibility tree instead of orphaned inside a list.
+                ⛔ Not a roving-tabindex widget: `tabs.tsx` already refused that trade ("a
+                cross-file contract for a single rail") and this menu has no arrow-key
+                implementation to justify it either. */}
+            <ul role="none" className="py-1">
+              {rows.map((r) => (
+                <Item
+                  key={r.href}
+                  href={r.href}
+                  icon={r.icon}
+                  en={r.en}
+                  sw={r.sw}
+                  zh={r.zh}
+                  accent={r.accent}
+                  current={r.href === currentHref}
+                  /* The state flag rides the proposals row only: gilt coming-soon /
+                     amber maintenance / nothing when ACTIVE. */
+                  proposalsBadge={r.proposals ? proposalsState : undefined}
+                />
+              ))}
             </ul>
             {/* Staff console jump — admin-tier only. Gilt/gold treatment mirrors
                 the admin confidential band so it reads unmistakably as "staff",
@@ -236,7 +266,11 @@ export function AvatarMenu({
                 trigger={
                   <button
                     type="button"
-                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 font-display text-body-sm font-semibold text-no-300 hover:bg-no-500/10 transition-colors text-left"
+                    /* DG-P-11 — the last child of this `role="menu"` that was not a menu item.
+                       `ConfirmDialog` clones the trigger with `onClick`/`disabled` only, so the
+                       role survives the clone. */
+                    role="menuitem"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 font-display text-body-sm font-semibold text-danger-fg hover:bg-danger-500/10 transition-colors text-left"
                   >
                     <I.logOut s={15} aria-hidden />
                     {t.common.signOut}
@@ -252,16 +286,72 @@ export function AvatarMenu({
   );
 }
 
-function Item({ href, icon: Ico, en, sw, zh, accent, proposalsBadge }: { href: string; icon: (p: { s?: number; className?: string }) => React.ReactElement; en: string; sw: string; zh: string; accent?: boolean; proposalsBadge?: ProposalsState }) {
+type MenuRow = {
+  href: string;
+  icon: (p: { s?: number; className?: string }) => React.ReactElement;
+  en: string;
+  sw: string;
+  zh: string;
+  accent?: boolean;
+  /** Proposals rides the feature-state flag and is dropped entirely when DISABLED. */
+  proposals?: boolean;
+};
+
+/**
+ * ⭐ DG-P-11 · §0a — ONE HOME FOR THIS MENU'S DESTINATIONS.
+ *
+ * These were eight hand-written `<Item …/>` calls, which cost nothing while nothing read the
+ * list back. The current-page marker reads it back, and a "which row am I on" predicate
+ * written against a SECOND copy of the list is precisely the drift §0a exists to prevent —
+ * the copy is always the one that goes stale. Rows and marker now derive from one array.
+ *
+ * ⚠️ The order below is the shipped order, unchanged: Profile · Wallet · Invite · Proposals ·
+ * Positions · Results · Leaderboard · Verify ID.
+ */
+const MENU_ROWS: readonly MenuRow[] = [
+  { href: "/profile",        icon: I.profile,     en: "Profile",        sw: "Wasifu",                    zh: "个人资料" },
+  { href: "/wallet",         icon: I.wallet,      en: "Wallet",         sw: "Pochi",                     zh: "钱包" },
+  { href: "/profile/invite", icon: I.gift,        en: "Invite & Earn",  sw: "Alika na upate zawadi",     zh: "邀请赚钱", accent: true },
+  { href: "/proposals",      icon: I.sparkle,     en: "Propose & earn", sw: "Pendekeza na upate zawadi", zh: "提议赚钱", accent: true, proposals: true },
+  { href: "/positions",      icon: I.portfolio,   en: "Positions",      sw: "Nafasi",                    zh: "持仓" },
+  { href: "/results",        icon: I.resolved,    en: "Results",        sw: "Matokeo",                   zh: "结果" },
+  { href: "/leaderboard",    icon: I.crown,       en: "Leaderboard",    sw: "Jedwali la Washindi",       zh: "排行榜" },
+  { href: "/profile/kyc",    icon: I.shieldcheck, en: "Verify ID",      sw: "Kuthibitisha kitambulisho", zh: "身份验证" },
+];
+
+function Item({ href, icon: Ico, en, sw, zh, accent, current, proposalsBadge }: { href: string; icon: (p: { s?: number; className?: string }) => React.ReactElement; en: string; sw: string; zh: string; accent?: boolean; current?: boolean; proposalsBadge?: ProposalsState }) {
   const { t, locale } = useT();
   // System language only — no adjacent second-language gloss.
   const primary = locale === "sw" ? sw : locale === "zh" ? zh : en;
   return (
-    <li>
+    <li role="none">
       <Link
         href={href as never}
+        role="menuitem"
+        /* ⭐ DG-P-11 — THIS MENU MARKED NOTHING, AND IT IS THE ONLY DOOR THE PERSISTENT CHROME
+           OFFERS TO /profile. This `className` was byte-identical on every row on every route;
+           the component's `pathname` fed only the close-on-navigate effect. Consequence,
+           counted from the four nav predicates rather than from a drive: /profile and its
+           seven settings pages, plus /profile/kyc — NINE reachable routes — had no
+           current-location marker anywhere in the product, at any width. It is also the one
+           menu in the tree that marked nothing: `nav-more.tsx` marks in both variants,
+           `legal-nav.tsx` marks, and both admin navs were given the same attribute by DG-A-18
+           on 2026-08-29, whose ruling is the one that convicts this line: "THE CURRENT PAGE
+           WAS COMMUNICATED BY COLOUR ALONE… a screen reader had no way to know where it was"
+           (WCAG 1.3.1 / 1.4.1). Here it was not even communicated by colour.
+           ⛔ THE FILL IS `--pill-active` AND NOTHING ELSE. Its own line in `globals.css` reads
+           "one active filter/tab fill everywhere", and DG-A-18 deleted two near-misses of it
+           the same day. Inline, exactly as those two fixes are.
+           §A4 — the fill is NOT the only signal: the weight steps 500→600, the same step
+           `.kp-navlink` takes for a current destination in the top bar.
+           ⚠️ An inline `background` shorthand does not animate under `transition-colors`; the
+           menu is destroyed and rebuilt on every navigation, so there is nothing to animate
+           between. If it ever becomes persistent, the fill must move into a class. */
+        aria-current={current ? "page" : undefined}
+        style={current ? { background: "var(--pill-active)" } : undefined}
         className={cn(
-          "flex items-center gap-2.5 px-3.5 py-2.5 font-display text-body-sm font-medium text-text transition-colors",
+          "flex items-center gap-2.5 px-3 py-2 font-display text-body-sm text-text transition-colors",
+          current ? "font-semibold" : "font-medium",
           accent ? "hover:bg-gold-500/10" : "hover:bg-bg-overlay",
         )}
       >

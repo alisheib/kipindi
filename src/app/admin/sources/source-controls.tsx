@@ -3,6 +3,7 @@
 import { useTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Toggle } from "@/components/ui/toggle";
@@ -60,13 +61,9 @@ export function RemoveSource({ id, label }: { id: string; label: string }) {
   return (
     <ConfirmDialog
       trigger={
-        <button
-          type="button"
-          disabled={pending}
-          className="text-caption font-mono uppercase tracking-[0.12em] text-text-subtle hover:text-no-300 transition-colors"
-        >
+        <Button type="button" size="sm" variant="ghost" disabled={pending}>
           Remove
-        </button>
+        </Button>
       }
       title={`Remove "${label}"?`}
       body="Markets already published with this source stay resolved by it. This cannot be undone."

@@ -32,10 +32,17 @@ const TONE: Record<NoticeBarTone, { bar: string; accent: string }> = {
   maintenance: { bar: "border-claret-edge bg-claret-soft text-claret-100",       accent: "var(--claret-400)" },
   warning:     { bar: "border-warning-border bg-warning-bg text-warning-fg",     accent: "var(--warning-fg)" },
   info:        { bar: "border-info-border bg-info-bg text-info-fg",              accent: "var(--info-fg)" },
-  // `/[0.12]` and not `/12`: Tailwind's opacity scale is a 5-step ladder, so `/12`
-  // is dropped before the mix and this tone painted nothing. `--yes-500` is opaque,
-  // so unlike the three above it DOES want a modifier — just an on-ladder one.
-  success:     { bar: "border-yes-700 bg-yes-500/[0.12] text-yes-200",           accent: "var(--yes-400)" },
+  // ⭐ DG-A-21 (2026-08-30) — THE TONE NAMED `success` NOW READS THE SUCCESS FAMILY.
+  // It was `border-yes-700 bg-yes-500/[0.12] text-yes-200` with `accent: --yes-400`: a tone
+  // whose own key says *app state* painted from the BETTING ramp, which is precisely what D2
+  // (globals.css, `--success-500`) minted this family to stop. §B2a — the YES/NO pair names the
+  // side a stake is on and is never borrowed for saved/healthy/failed.
+  // ⭐ It also removes the odd one out. `--success-bg` and `--success-border` are pre-mixed in
+  // globals.css exactly like `--warning-*` and `--info-*`, so this row now has the SAME SHAPE as
+  // its three siblings — and the note ABOVE ("`--yes-500` is opaque, so unlike the three above it
+  // DOES want a modifier") described the one tone that no longer needs one. ⛔ Its rule still
+  // stands for every tone here: do not re-add a modifier to a pre-mixed token.
+  success:     { bar: "border-success-border bg-success-bg text-success-fg",     accent: "var(--success-fg)" },
 };
 
 export function NoticeBar({

@@ -23,7 +23,7 @@ export default function OfflinePage() {
         <span className="mt-6 inline-flex h-[40px] w-[40px] items-center justify-center rounded-full border border-border bg-bg-overlay text-text-subtle">
           <I.wifiOff s={18} />
         </span>
-        <h1 className="mt-4 font-display text-[24px] font-bold leading-tight text-text">{t.common.offline}</h1>
+        <h1 className="mt-4 font-display text-title-lg font-bold leading-tight text-text">{t.common.offline}</h1>
         <p className="mt-2 text-[13px] leading-snug text-text-muted">{t.common.offlineHint}</p>
         <button
           type="button"

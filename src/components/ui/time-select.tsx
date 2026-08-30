@@ -121,16 +121,16 @@ export function TimeSelect({ value, defaultValue, onChange, error, size = "md", 
         className={cn(
           "inline-flex items-stretch rounded-lg border overflow-hidden brand-focus-within transition-colors w-[112px]",
           h,
-          errored ? "border-no-500" : "border-border",
+          errored ? "border-danger-500" : "border-border",
         )}
-        style={{ background: errored ? "oklch(58% 0.2 25 / 0.08)" : "var(--bg-inset)" }}
+        style={{ background: errored ? "var(--danger-wash)" : "var(--bg-inset)" }}
         role="group"
         aria-label={rest["aria-label"] ?? t.common.time24}
       >
         <div className={cn("flex-1 flex items-center justify-center font-mono tabular-nums", fs)}>
           {TIME_SEGMENTS.map((seg, idx) => (
             <span key={seg.key} className="flex items-center">
-              {idx > 0 && <span className="text-text-subtle/50 mx-0.5 select-none" aria-hidden>:</span>}
+              {idx > 0 && <span className="text-text-subtle mx-0.5 select-none" aria-hidden>:</span>}
               <input
                 ref={refs[idx]}
                 type="text"
@@ -143,7 +143,7 @@ export function TimeSelect({ value, defaultValue, onChange, error, size = "md", 
                 aria-label={seg.aria}
                 maxLength={seg.max}
                 style={{ width: SEG_WIDTH }}
-                className="bg-transparent text-center text-text outline-none placeholder:text-text-subtle/40"
+                className="bg-transparent text-center text-text outline-none placeholder:text-text-subtle"
                 onChange={(e) => onSegChange(idx, e.target.value)}
                 onKeyDown={(e) => onSegKeyDown(idx, e)}
                 onBlur={() => onSegBlur(idx)}

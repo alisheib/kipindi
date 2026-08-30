@@ -362,8 +362,40 @@ function Podium({ top, t }: { top: Row[]; t: Dict }) {
                   {rank}
                 </span>
               </div>
+              {/* DG-P-08 · A PLAYER'S OWN NAME IS THE ONE STRING THE PODIUM IS FOR.
+                  Chain at 390: PageContainer tier="reading" px-3 → 358; this section's
+                  glass-panel border + px-4 → 358 − 2 − 40 = 316; `grid-cols-3 gap-2` (12px on
+                  the overridden scale) → 97.3px per column, less this row's gap-1.5 (8px) and
+                  the `.tier-badge` (globals.css:1876-1882), which is 22px but is itself a
+                  shrinkable flex item. MEASURED in a real browser over the compiled stylesheet
+                  and the real fonts, at 390: the handle's box is 72.7px against 75px of
+                  `@kiongozi` and 99px of `@Christopher` — both clipped. The handle is
+                  `(displayName ?? …).split(" ")[0]` (:142) at the inherited 15px (`--type-body`,
+                  globals.css:213 — NOT the Tailwind `text-body` 14, §T7), so it runs out at
+                  about eight characters. At 1440 the same box is 99.5px and nothing clips.
+                  §A5 offers WRAP or ellipsise, and here wrap is free: `items-end` bottom-aligns
+                  the three columns, so a second line grows this one upward and the podium's base
+                  stays flat. The file already says this string should be read whole — the table
+                  at :267 renders the same handles with no truncate at all.
+                  ⚠️ That table was also the only thing making the clip survivable, and it is an
+                  ACCIDENT: the podium is always rows[0..2] while the table paginates, so the
+                  disclosure evaporated on page 2. Nothing recorded it; now nothing needs to.
+                  ⛔ `break-words`, not `break-all`: a handle has no space in it, so ordinary
+                  wrapping cannot act on it, but it is a NAME being read rather than a token being
+                  transcribed — the `break-all` ruling (operation-result-modal.tsx:455-466) is for
+                  the latter. `overflow-wrap` breaks the word only when it genuinely cannot fit.
+                  ⛔ AND `min-w-0` TRAVELS WITH IT, or the fix is worse than the defect. `truncate`
+                  was setting `overflow:hidden`, which is what zeroed this flex item's automatic
+                  minimum size; `overflow-wrap: break-word` explicitly does NOT reduce min-content,
+                  so dropping the one without adding the other would restore `min-width:auto`, and
+                  the handle would shove the tier badge out of a 97px column instead of wrapping
+                  inside it. Same box model as E-30 (admin-clip.test.mts) and the 2026-07-29
+                  ruling — `min-w-0` restores shrinkability, the break mode does the rest.
+                  That is MEASURED, not argued: driven as a red control, `break-words` alone puts
+                  `@Christopher` 2.1px past its own row's right edge at 390, while `min-w-0
+                  break-words` wraps it to two lines inside the column and leaves `@asha` on one. */}
               <div className="mt-2 flex max-w-full items-center gap-1.5">
-                <span className="truncate font-medium text-text">@{r.handle}</span>
+                <span className="min-w-0 break-words font-medium text-text">@{r.handle}</span>
                 <TierBadge tier={r.tier} t={t} />
               </div>
               <span className={`mt-0.5 font-mono text-[13px] font-bold tabular-nums ${r.roi >= 0 ? "text-yes-300" : "text-no-300"}`}>

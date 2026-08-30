@@ -64,14 +64,15 @@ export function StuckPayoutControls({ txnId, amountLabel }: { txnId: string; amo
 
   return (
     <>
-      <button
-        type="button"
+      <Button
+        size="sm"
+        variant="ghost"
         disabled={pending}
+        leading={<I.x s={13} />}
         onClick={() => { setOpen(true); setReason(""); }}
-        className="inline-flex items-center gap-1 font-mono text-micro uppercase tracking-[0.08em] text-claret-300 hover:underline disabled:opacity-40"
       >
-        <I.x s={11} /> Return to player
-      </button>
+        Return to player
+      </Button>
 
       <Modal open={open} onClose={close} ariaLabel="Return a frozen payout to the player" maxWidth={520}>
         <div className="p-5 space-y-4">
@@ -110,7 +111,7 @@ export function StuckPayoutControls({ txnId, amountLabel }: { txnId: string; amo
               onChange={(e) => setReason(e.target.value)}
               rows={2}
               placeholder="e.g. Selcom 403 — wallet-cashin not enabled for the vendor; payout never dispatched"
-              className="mt-1 w-full rounded-md border border-border bg-bg-base px-2.5 py-2 text-[13px] text-text placeholder:text-text-faint"
+              className="mt-1 w-full rounded-md border border-border bg-bg-base px-2.5 py-2 text-[13px] text-text placeholder:text-text-subtle"
             />
           </div>
 

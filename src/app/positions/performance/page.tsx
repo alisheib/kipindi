@@ -223,7 +223,35 @@ export default async function PerformancePage() {
                   <p className="amount text-[26px] lg:text-[30px] font-bold leading-none text-gold-300" style={{ textShadow: "0 0 20px color-mix(in oklab, var(--gold-400) 30%, transparent)" }}>
                     {bestMarket ? formatTzsAbs(bestMarket.payout) : "—"}
                   </p>
-                  {bestTitle && <p className="mt-1.5 truncate text-body-sm text-text-muted">{bestTitle}</p>}
+                  {/* 🔴 DG-P-08 · THE ONE CLIPPED MARKET TITLE ON THIS PAGE THAT WAS NOT A LINK.
+                      `bestTitle` is a whole localised market question (:89, `pickLocalized` over
+                      titleEn/Sw/Zh) in a box MEASURED at 246px at 390 and 388px at 1440 — derived
+                      the same: PageContainer tier="reading" is 1080 (globals.css:4116) with px-3
+                      lg:px-6, the `grid gap-3 md:grid-cols-2` at :201 halves it (gap-3 = 16 on the
+                      overridden scale), then −2 border −48 (p-5 = 24×2) −48 (the trophy disc) −14
+                      (gap-3.5, which is NOT overridden so it stays 0.875rem). Driven over the
+                      compiled stylesheet, a 79-character Swahili question clipped at BOTH widths
+                      on one line and clears 1440 entirely on two. And `bestMarket` is the highest payout across
+                      ALL positions while "Recent settled" below is only the recent five, so the two
+                      need not intersect — the full question was reachable NOWHERE on this page.
+                      TWO LINES, NOT ONE, because Swahili and Chinese expand ~35% and this card is
+                      not height-locked — the same accommodation, for the same reason, as
+                      updown-card.tsx:743-746 and `.mcardp-q` (globals.css:3707).
+                      AND A TAP, which is this page's OWN disclosure idiom, at :294 below
+                      (and fairness/page.tsx:163, proposals/page.tsx:209, position-card.tsx:81,
+                      trust-band.tsx:165). `bestTitle` is set only when `getMarket` resolved (:89),
+                      so the href always has a page behind it.
+                      ⛔ The <Link> is INLINE inside the clamped <p>, not the clamped block itself:
+                      `line-clamp-2` computes to `display:-webkit-box`, and responsive-audit.mjs:287
+                      exempts a sub-40px tap target only while an <a> is still `display:inline`
+                      (WCAG 2.5.8). Clamping the anchor would have bought a warning for nothing. */}
+                  {bestMarket && bestTitle && (
+                    <p className="mt-1.5 line-clamp-2 text-body-sm text-text-muted">
+                      <Link href={`/markets/${bestMarket.marketId}` as never} className="hover:text-text transition-colors">
+                        {bestTitle}
+                      </Link>
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

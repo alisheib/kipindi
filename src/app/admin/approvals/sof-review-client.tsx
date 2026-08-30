@@ -72,7 +72,7 @@ export function SofReviewRow({ userId }: { userId: string }) {
       <div className="flex items-center gap-1.5">
         <ConfirmDialog
           trigger={
-            <Button size="sm" variant="yes" disabled={busy !== null} loading={busy === "ACCEPT"} leading={<I.check s={12} />} aria-label="Accept declaration">
+            <Button size="sm" variant="primary" disabled={busy !== null} loading={busy === "ACCEPT"} leading={<I.check s={12} />} aria-label="Accept declaration">
               Accept
             </Button>
           }

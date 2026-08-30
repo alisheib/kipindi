@@ -6,6 +6,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
+import { Button } from "@/components/ui/button";
 import { bulkRetryAction } from "./payment-actions";
 import { runAdminAction } from "@/lib/client/run-admin-action";
 import { ActionOverlay, useActionOverlay } from "@/components/admin/action-overlay";
@@ -52,13 +53,13 @@ export function BulkRetryControls() {
       {confirm ? (
         <span className="inline-flex items-center gap-1.5">
           <span className="font-mono text-[10px] text-text-subtle">Retry all failed?</span>
-          <button type="button" disabled={pending} onClick={run} className="font-mono text-micro uppercase tracking-[0.08em] text-royal-300 hover:underline disabled:opacity-40">Yes</button>
-          <button type="button" onClick={() => setConfirm(false)} className="font-mono text-micro uppercase tracking-[0.08em] text-text-subtle hover:text-text">No</button>
+          <Button size="sm" variant="claret" disabled={pending} onClick={run}>Yes</Button>
+          <Button size="sm" variant="ghost" onClick={() => setConfirm(false)}>No</Button>
         </span>
       ) : (
-        <button type="button" disabled={pending} onClick={() => setConfirm(true)} className="inline-flex items-center gap-1 font-mono text-micro uppercase tracking-[0.08em] text-royal-300 hover:underline disabled:opacity-40">
-          <I.rotateCcw s={11} /> Retry all
-        </button>
+        <Button size="sm" variant="ghost" disabled={pending} leading={<I.rotateCcw s={13} />} onClick={() => setConfirm(true)}>
+          Retry all
+        </Button>
       )}
     </>
   );

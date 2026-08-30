@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
+import { Button } from "@/components/ui/button";
 import { useDeferredToast } from "@/components/ui/toast";
 import { OperationResultModal } from "@/components/markets/operation-result-modal";
 import { emergencyVoidMarketAction } from "@/app/markets/actions";
@@ -58,15 +59,17 @@ export function EmergencyVoidControl({ marketId, title }: { marketId: string; ti
 
   return (
     <>
-      <button
+      <Button
         type="button"
+        size="sm"
+        variant="ghost"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1 rounded-md border border-claret-700 bg-claret-500/10 px-2 py-1 font-mono text-micro font-bold uppercase tracking-[0.1em] text-claret-300 hover:bg-claret-500/20 transition-colors whitespace-nowrap"
+        className="whitespace-nowrap"
+        leading={<I.warning s={13} />}
         title="Emergency void — cancel this market and refund every stake"
       >
-        <I.warning s={12} />
         Cancel &amp; refund
-      </button>
+      </Button>
 
       <ConfirmVoid
         open={open}

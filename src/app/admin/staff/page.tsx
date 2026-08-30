@@ -93,7 +93,7 @@ export default async function AdminStaffPage() {
                       <td><Chip size="sm" variant={u.status === "ACTIVE" ? "success" : "neutral"}>{accountStatusLabel(u.status)}</Chip></td>
                       <td className="font-mono whitespace-nowrap">{u.lastLoginAt ? formatDate(u.lastLoginAt) : "—"}</td>
                       <td>
-                        <a href={`/admin/staff/${u.id}`} className="text-royal-300 hover:underline font-medium font-mono text-micro tracking-[0.10em] uppercase">manage →</a>
+                        <a href={`/admin/staff/${u.id}`} className="row-link text-royal-300 hover:underline font-mono text-micro">manage →</a>
                       </td>
                     </tr>
                   );

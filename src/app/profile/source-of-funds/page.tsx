@@ -162,7 +162,21 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
                     />
                     {/* C2g — per-source glyph; SoF is compliance → royal, never gold. */}
                     <Glyph s={20} className="text-text-subtle transition-colors peer-checked:text-brand-300" />
-                    <span className="font-display text-body-sm font-bold text-text text-center leading-tight">{s.label}</span>
+                    {/* DG-P-14 · §T6 — ONE CONTROL FAMILY, ONE FACE, AND THE LAW PICKS IT.
+                        This tile is the same radio tile the wallet ships from
+                        `components/wallet/provider-radio-grid.tsx` (glyph above, name below, the
+                        same 2-up/3-up grid), and the two labels read in two faces: Inter 13/500
+                        there (`:87`, no family class, so it inherits `body`), Sora 13/700 here.
+                        §T6 (DESIGN_AUTHORITY.md:1037) assigns display = Sora, body = Inter,
+                        numerals/labels = JetBrains Mono — and "Salary"/"Business"/"Savings" is a
+                        sentence-case word that IS this radio's whole accessible name, i.e. a
+                        CONTROL by §T3's enclosure test (:961-963), not a page or section heading
+                        (§T2 reserves the display steps for those) and not a numeral. ⇒ body ⇒
+                        Inter. Decided by law, not by preference, and byte-identical to the
+                        shipped wallet twin so the two can never drift again (§0a).
+                        ⚠️ Sora and Inter are both 13px/leading-tight here, so the glyph stack
+                        above does not move; only the letterforms and the weight change. */}
+                    <span className="font-medium text-body-sm text-text text-center leading-tight">{s.label}</span>
                   </label>
                 );
               })}
@@ -208,7 +222,20 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
                     defaultChecked={prevBand ? prevBand === b.id : i === 0}
                     className="sr-only peer"
                   />
-                  <span className="font-mono text-[11px] font-bold text-text text-center">{b.label}</span>
+                  {/* DG-P-14 · §T5 — THE THIRD FACE IN THIS FAMILY IS MONO, AND MONO IS RIGHT.
+                      These labels are money — "Under TZS 12M", "TZS 12M – 50M" — so §T5
+                      (DESIGN_AUTHORITY.md:1034-1036) and §M4 put them in JetBrains Mono. ⛔ Do
+                      NOT flatten them to Inter for the sake of one face.
+                      ⭐ WHAT WAS MISSING IS §T5's OTHER HALF. Tailwind's `font-mono` sets
+                      family only; every `font-variant-numeric: tabular-nums` in `globals.css`
+                      belongs to a named class (`.mono`, `.tabular`, `.amount`, …) and none of
+                      them reaches this span — so four TZS figures in a 2×2 grid were rendering
+                      with proportional digits. `tabular-nums` is the rest of the law.
+                      §T1/§T7 — `text-[11px]` was a hand-typed size and 11px IS the reachable
+                      ladder's `caption` rung (tailwind.config.ts:192), which also brings the
+                      rung's own 15px line box (was the inherited 1.5 × 11 = 16.5), so each band
+                      tile loses 1.5px of height and stays well clear of §A2's floor at 47px. */}
+                  <span className="font-mono tabular-nums text-caption font-bold text-text text-center">{b.label}</span>
                 </label>
               ))}
             </div>

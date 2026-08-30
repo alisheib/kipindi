@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useToast } from "@/components/ui/toast";
 import { I } from "@/components/ui/glyphs";
+import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ActionOverlay, useActionOverlay } from "@/components/admin/action-overlay";
 import { adminResetPasswordAction } from "./actions";
@@ -76,14 +77,15 @@ export function ResetPasswordButton({ userId }: { userId: string }) {
       confirmLabel="Generate temporary password"
       onConfirm={reset}
       trigger={
-        <button
+        <Button
           type="button"
+          size="sm"
+          variant="ghost"
           disabled={pending}
-          className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 py-1.5 rounded-sm border border-border bg-bg-elevated inline-flex items-center gap-1.5 text-text-muted hover:border-warning-fg/40 hover:text-warning-fg disabled:opacity-40 transition-colors"
+          leading={<I.keyRound s={13} />}
         >
-          <I.keyRound s={13} />
           {pending ? "Resetting…" : "Reset password"}
-        </button>
+        </Button>
       }
     />
     </>

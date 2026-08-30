@@ -104,7 +104,7 @@ export function SupportConfigForm({ config }: { config: SupportConfig }) {
           <Input name="helpline" defaultValue={config.helpline} />
         </Field>
       </div>
-      <Button type="submit" variant="yes" loading={pending}>
+      <Button type="submit" variant="primary" loading={pending}>
         Save · Hifadhi
       </Button>
     </form>

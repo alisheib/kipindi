@@ -17,9 +17,18 @@ type Back = { href: string; label: string };
  * section-naming sentence, and a single primary "Try again" plus a back link.
  *
  * NO claret — an error boundary is recoverable, not destructive; claret stays
- * reserved for irreversible confirms. The only `--no-*` here is the small
- * alert-glyph tint. Errors are where trust is most fragile, so they get the
- * brand, not the least-branded screen in the app.
+ * reserved for irreversible confirms. Errors are where trust is most fragile, so
+ * they get the brand, not the least-branded screen in the app.
+ *
+ * ⭐ DG-A-21 (2026-08-30) — AND THE ALARM INK IS `--danger-*`, NOT THE BETTING ROSE.
+ * This header used to end "The only `--no-*` here is the small alert-glyph tint", which
+ * sanctioned one site. There were THREE — the medallion (border/fill/glyph), its ring
+ * shadow, and the whole eyebrow line — so the sanction had been outgrown by the file it
+ * was written for. §B2a: a failed render is the state of the INTERFACE, and `--no-*` is
+ * the ink that means *your money is gone*; D2 minted `--danger-500` so app state would
+ * stop wearing it. `border-danger-border` replaces `border-no-700` because the `--danger-*`
+ * family carries no numeric ramp by design (tailwind.config.ts) — its 36% mix is the
+ * step this border wants.
  */
 export function RouteError({
   error,
@@ -63,15 +72,15 @@ export function RouteError({
              (tailwind.config.ts:200-215), so `h-11 w-11` was a 96px disc (110px with
              the ring) sitting UNDER a size={64} FiftyMark and out-weighing it.
              ⛔ Never a scale token here. */
-          className="mb-3 mt-5 inline-flex h-[44px] w-[44px] items-center justify-center rounded-full border border-no-700 bg-no-500/10 text-no-300"
-          style={{ boxShadow: "0 0 0 7px color-mix(in oklab, var(--no-500) 8%, transparent)" }}
+          className="mb-3 mt-5 inline-flex h-[44px] w-[44px] items-center justify-center rounded-full border border-danger-border bg-danger-500/10 text-danger-fg"
+          style={{ boxShadow: "0 0 0 7px var(--danger-wash)" }}
         >
           <I.alertCircle s={19} />
         </div>
-        <p className="font-mono text-micro font-bold uppercase tracking-[0.20em] text-no-300">
+        <p className="font-mono text-micro font-bold uppercase tracking-[0.20em] text-danger-fg">
           {eyebrow ?? t.error.somethingWentWrong}
         </p>
-        <h1 className="mt-2 font-display text-[24px] font-bold leading-tight tracking-[-0.02em] text-text">
+        <h1 className="mt-2 font-display text-title-lg font-bold leading-tight tracking-[-0.02em] text-text">
           {headline ?? t.error.pageHitSnag}
         </h1>
         <p className="mt-3 max-w-[440px] text-[13px] leading-relaxed text-text-muted">{body}</p>

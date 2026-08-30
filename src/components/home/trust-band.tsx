@@ -17,6 +17,8 @@
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { PaymentLogo } from "@/components/wallet/payment-logo";
+import { Chip } from "@/components/ui/chip";
+import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
 import { pickLocalized } from "@/lib/localized";
 import { outcomeWord } from "@/lib/side-label";
 import { formatTzs } from "@/lib/utils";
@@ -148,10 +150,14 @@ function SettledRow({ row, t, locale }: { row: SettlementRow; t: Dict; locale: L
   // its own word there, because a refund is neutral and printing a direction over one is a
   // false statement about someone's money.
   const label = outcomeWord(t, row.outcome, "MARKET");
-  // ⚠️ A TONE IS NOT A WORD. This ternary stays local by design: `test:labels` §4 explicitly
-  // does not count colour ternaries, because "fixing" them would push a colour through a
-  // vocabulary map that has no opinion about colour.
-  const tone = isVoid ? "chip-pending" : row.outcome === "YES" ? "chip-yes" : "chip-no";
+  // ⚠️ A TONE IS NOT A WORD — AND THAT IS WHY IT NOW HAS ITS OWN MAP, NOT THIS FILE'S.
+  // The note this replaces was right about `side-label.ts`: pushing a colour through a
+  // VOCABULARY map, which has no opinion about colour, is the defect, and `test:labels` §4
+  // still deliberately does not count a colour ternary. §B11 (D4) supplies the map that DOES
+  // have an opinion — `status-tone.ts` — so the VOID arm reads its tone from there rather
+  // than naming a class. ⛔ The YES/NO arms stay: those are OUTCOME words carrying the
+  // betting pair for its own meaning (§B2a), not app states borrowing it.
+  const variant = isVoid ? TONE_CHIP[STATUS_TONE.VOID.player] : row.outcome === "YES" ? "yes" : "no";
   const question = pickLocalized(locale, row.titleEn, row.titleSw, row.titleZh);
   return (
     /* ⭐ THE WHOLE ROW IS THE LINK, AND THAT IS A FIX, NOT A FLOURISH. The question alone was the
@@ -167,7 +173,11 @@ function SettledRow({ row, t, locale }: { row: SettlementRow; t: Dict; locale: L
       className="kp-settled__row"
       aria-label={question}
     >
-      <span className={`kp-settled__pill chip ${tone}`}>{label}</span>
+      {/* `.kp-settled__pill` is `grid-area: o` and NOTHING else — it never set a height,
+          a padding or a size. The geometry came from `.chip`, and the kit's `md` base is
+          that rule byte-for-byte (21px / 0 8px / 10.5px), with the status metrics (23px /
+          0 9px / 11px) on the VOID arm exactly as `.chip-pending` gave them. */}
+      <Chip variant={variant} className="kp-settled__pill">{label}</Chip>
       <span className="kp-settled__q">{question}</span>
       {/* The named public source the outcome was judged against — the host only, because a full
           URL on a display row is noise and the market page carries the link itself. */}

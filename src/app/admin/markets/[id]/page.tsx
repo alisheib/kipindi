@@ -425,7 +425,7 @@ export default async function MarketPredictorsPage({
                         {formatDateTime(p.placedAt)}
                       </td>
                       <td>
-                        <a href={`/admin/players/${p.userId}`} className="text-royal-300 hover:underline font-medium font-mono text-micro tracking-[0.10em] uppercase">
+                        <a href={`/admin/players/${p.userId}`} className="row-link text-royal-300 hover:underline font-mono text-micro">
                           profile →
                         </a>
                       </td>

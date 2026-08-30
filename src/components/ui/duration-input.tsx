@@ -155,9 +155,9 @@ export function DurationInput({
         className={cn(
           "field-measure inline-flex items-stretch rounded-lg border overflow-hidden brand-focus-within transition-colors w-full",
           h,
-          errored ? "border-no-500" : "border-border",
+          errored ? "border-danger-500" : "border-border",
         )}
-        style={{ background: errored ? "oklch(58% 0.2 25 / 0.08)" : "var(--bg-inset)" }}
+        style={{ background: errored ? "var(--danger-wash)" : "var(--bg-inset)" }}
         role="group"
         aria-label={rest["aria-label"] ?? t.common.duration}
       >
@@ -171,7 +171,7 @@ export function DurationInput({
           placeholder="0"
           aria-label={t.common.durationValue}
           className={cn(
-            "flex-1 min-w-0 bg-transparent px-2.5 text-text outline-none font-mono tabular-nums text-right placeholder:text-text-subtle/40",
+            "flex-1 min-w-0 bg-transparent px-2.5 text-text outline-none font-mono tabular-nums text-right placeholder:text-text-subtle",
             fs,
           )}
           onChange={(e) => onValueChange(e.target.value)}
@@ -196,14 +196,14 @@ export function DurationInput({
           )}
           aria-label={t.common.unitCycle.replace("{unit}", unitLabels[unit])}
         >
-          <span className="text-text-subtle/40 group-hover:text-text-subtle transition-colors leading-none"><Chev up /></span>
+          <span className="text-text-subtle group-hover:text-text-subtle transition-colors leading-none"><Chev up /></span>
           <span className={cn(
             "font-mono uppercase tracking-[0.06em] text-text-subtle group-hover:text-text transition-colors leading-none",
             size === "sm" ? "text-[9px]" : "text-[10px]",
           )}>
             {unitLabels[unit]}
           </span>
-          <span className="text-text-subtle/40 group-hover:text-text-subtle transition-colors leading-none"><Chev /></span>
+          <span className="text-text-subtle group-hover:text-text-subtle transition-colors leading-none"><Chev /></span>
         </button>
       </div>
       {totalMin > 0 && (

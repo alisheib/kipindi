@@ -170,7 +170,7 @@ export default async function AdminMarketsPage({
                         <Link href={`/markets/${m.id}` as never} className="font-display font-semibold text-text hover:text-royal-300 line-clamp-2">{m.titleEn}</Link>
                         {m.titleSw && <p className="mt-0.5 text-body-sm italic text-text-subtle line-clamp-1">{m.titleSw}</p>}
                         {m.titleZh && <p className="mt-0.5 text-body-sm italic text-text-subtle line-clamp-1">{m.titleZh}</p>}
-                        <Link href={`/admin/markets/${m.id}` as never} className="mt-1 inline-flex items-center gap-1 font-mono text-micro uppercase tracking-[0.12em] text-brand-400 hover:text-brand-300 transition-colors">
+                        <Link href={`/admin/markets/${m.id}` as never} className="row-link mt-1 inline-flex items-center gap-1 font-mono text-micro text-brand-400 hover:text-brand-300 transition-colors">
                           <I.users s={10} /> View predictors
                         </Link>
                       </td>
@@ -221,7 +221,7 @@ export default async function AdminMarketsPage({
                       <td>
                         <Link
                           href={`/admin/markets/${m.id}` as never}
-                          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-bg-overlay px-2 py-1 font-mono text-[10.5px] font-semibold text-text-muted hover:border-brand-500 hover:text-text transition-colors whitespace-nowrap"
+                          className="inline-flex min-h-[var(--tap-min)] items-center gap-1.5 rounded-md border border-border bg-bg-overlay px-2 py-1 font-mono text-[10.5px] text-text-muted hover:border-brand-500 hover:text-text transition-colors whitespace-nowrap"
                         >
                           <I.users s={11} />
                           {m.predictorCount} {m.predictorCount === 1 ? "predictor" : "predictors"}

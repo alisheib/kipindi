@@ -48,6 +48,17 @@ import { readdirSync, readFileSync, writeFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { INLINE_EYEBROWS, NOT_EYEBROW } from "./eyebrow-roles.mjs";
 
+/** ⭐ CLASSES THAT SUPPLY `text-transform: uppercase` FROM `globals.css`, so a call site that
+ *  adopts one STOPS SAYING THE WORD and would otherwise drop out of this census silently.
+ *  ⛔ `.eyebrow` IS NOT ONE OF THEM, and putting it here was a real bug for one run: §T3 gives
+ *  that class `letter-spacing` and nothing else (its own comment says so — size, weight and
+ *  colour vary by surface), so an eyebrow call site still writes `uppercase` itself and was
+ *  already counted. Listing it made every `<PageHeader eyebrow="…">` PROP match, and the
+ *  section-eyebrow total jumped 318 → 499 — an instrument inflating its own population, which
+ *  is the same failure in the opposite direction. ⭐ The test is not "is it a design class" but
+ *  "does this class carry `text-transform`". Only `.row-link` does. */
+const CARRIER = /\brow-link\b/;
+
 const ROOT = new URL("../..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
 const SRC = join(ROOT, "src");
 const APPLY = process.argv.includes("--apply");
@@ -166,21 +177,30 @@ if (TRACKING) {
     return (head + " ↵ " + tail).slice(0, 170);
   };
 
-  let onClass = 0, inlineOk = 0, other = 0;
+  let onClass = 0, inlineOk = 0, other = 0, onRowLink = 0;
   const undeclared = [], badInline = [], prose = [];
   const seenNot = new Map(), seenInline = new Map();
 
   for (const f of walk(SRC, /\.tsx?$/)) {
     const raw = readFileSync(f, "utf8");
-    if (!/uppercase/.test(raw)) continue;
+    if (!/uppercase/.test(raw) && !CARRIER.test(raw)) continue;
     const rel = relative(SRC, f).split(/[\\/]/).join("/");
     const code = decomment(raw).split("\n");
     const lines = raw.split("\n");
 
     code.forEach((c, i) => {
-      if (!/\buppercase\b/.test(c)) return;
+      /* ⛔ A CARRIER CLASS MUST KEEP THE SITE IN THE CENSUS. This test used to be `uppercase`
+         alone, which reads the DRESSING — so the moment DG-A-08 moved six row navigation links
+         onto `.row-link` (whose `text-transform` lives in globals.css), all six vanished from
+         the population and the total fell by six with nothing going red. That is this
+         programme's signature failure — an instrument quietly choosing a smaller population —
+         and it is the same shape as `type-scale` §3's blessing, which had to learn `.eyebrow`
+         for exactly this reason on 2026-08-30. ⭐ The rule: a class that supplies `uppercase`
+         is a CARRIER, and a carrier is counted, never skipped. */
+      if (!/\buppercase\b/.test(c) && !CARRIER.test(c)) return;
       const line = lines[i];
-      if (/\beyebrow\b/.test(line)) { onClass++; return; }
+      if (/\beyebrow\b/.test(c)) { onClass++; return; }
+      if (/\brow-link\b/.test(c)) { onRowLink++; return; }
       const k = `${rel} :: ${sig(lines, i)}`;
       if (INLINE_EYEBROWS.has(k)) {
         seenInline.set(k, (seenInline.get(k) ?? 0) + 1);
@@ -208,7 +228,8 @@ if (TRACKING) {
 
   console.log(`\n§T3 EYEBROW GATE — every uppercase-and-tracked site is READ or refused`);
   console.log(`  ${onClass + inlineOk} section eyebrow(s): ${onClass} carry \`.eyebrow\` · ${inlineOk} written inline (a class cannot reach an inline style)`);
-  console.log(`  ${other} site(s) in another role — control label · status chip · data value · type-to-confirm · celebration · prose`);
+  console.log(`  ${other + onRowLink} site(s) in another role — control label · status chip · data value · type-to-confirm · celebration · prose`);
+  console.log(`     of which ${onRowLink} carry \`.row-link\` — the row navigation link, a CONTROL LABEL whose case and 0.10em live in globals.css (DG-A-08)`);
   if (prose.length) {
     console.log(`\n🔴 ${prose.length} PROSE site(s) — a sentence, or a label with its hint welded on, below §T4's`);
     console.log(`   12.5px reading floor while wearing an eyebrow's clothes. ⛔ 0.14em would make a paragraph`);
@@ -230,8 +251,8 @@ if (TRACKING) {
     console.error([...missNot.map(([k]) => k), ...missInl.map(([k]) => k)].slice(0, 30).map((m) => "   " + m).join("\n"));
     process.exit(4);
   }
-  if (!onClass && !other) { console.error("🔴 ZERO sites examined — a skipped run, not a clean tree."); process.exit(3); }
-  console.log(`\n✅ ${onClass + inlineOk + other} sites, every one accounted for.`);
+  if (!onClass && !other && !onRowLink) { console.error("🔴 ZERO sites examined — a skipped run, not a clean tree."); process.exit(3); }
+  console.log(`\n✅ ${onClass + inlineOk + other + onRowLink} sites, every one accounted for.`);
   process.exit(0);
 }
 

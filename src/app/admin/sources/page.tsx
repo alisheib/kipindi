@@ -2,14 +2,17 @@ import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-she
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
-import { formatDate } from "@/lib/utils";
+import { formatDate, adminCount } from "@/lib/utils";
+import { CATEGORY_LABEL } from "@/lib/ai/poll-vocabulary";
 import { listSources, listDisabledCategories, seedDefaultSources, getGeneratableCategories } from "@/lib/server/source-registry";
 import type { MarketCategory } from "@/lib/server/market-service";
 import { ToggleSource, RemoveSource, ToggleCategory, AddSourceForm } from "./source-controls";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
 
-export const metadata = { title: "Admin · Sources" };
+/* §L1, one name per destination: the sidebar and the h1 both say "Sources & categories";
+   only the tab title said "Sources". The nav label is the canonical name. */
+export const metadata = { title: "Admin · Sources & categories" };
 export const dynamic = "force-dynamic";
 
 const CATEGORIES: MarketCategory[] = ["sports", "macro", "weather", "crypto", "culture", "tech", "other"];
@@ -72,10 +75,19 @@ export default async function AdminSourcesPage() {
         {/* Sources by category */}
         {grouped.map(({ category, enabled: catEnabled, sources }) => {
           const isGeneratable = generatable.has(category);
+          /* ⛔ WAS `${category[0].toUpperCase()}${category.slice(1)}` — A SPELLING OPERATION
+             STANDING IN FOR A LEXICON, the same move `test:labels` §11a already ruled on for
+             `.replace(/_/g," ")`: "The fix is a lexicon entry, never a `.replace`."
+             It happens to agree with `CATEGORY_LABEL` on all seven `MarketCategory` arms
+             today, so this renders byte-identically; it would NOT agree the moment a
+             multi-word arm exists (the rails already write `infrastructure` as "Infra").
+             The count goes through the one count-line recipe (`adminCount`), which adds the
+             platform's fixed grouping to a plural this line already had. */
+          const cardTitle = `${CATEGORY_LABEL[category] ?? category} · ${adminCount(sources.length, "source")}`;
           return (
           <AdminCard
             key={category}
-            title={`${category[0].toUpperCase()}${category.slice(1)} · ${sources.length} source${sources.length === 1 ? "" : "s"}`}
+            title={cardTitle}
             sw={catEnabled ? "Hai" : "Imezimwa"}
             padding="p-0"
             className={catEnabled ? "" : "opacity-60"}

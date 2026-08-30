@@ -14,6 +14,8 @@ import { HashFocus } from "@/components/ui/hash-focus";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { I } from "@/components/ui/glyphs";
+import { Chip } from "@/components/ui/chip";
+import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { currentSession } from "@/lib/server/auth-service";
 import { getMyUpDownHistory, type MyRoundRow } from "@/lib/server/updown-board";
@@ -272,12 +274,19 @@ export default async function UpDownHistoryPage({ searchParams }: {
               const name = pickLocalized(locale, r.assetNameEn, r.assetNameSw, r.assetNameZh);
               const net = g.returned - g.stake;
               // Round outcome (what happened) — factual; the player's own result is the net.
+              // ⭐ §B11 (D4) — THREE OF THESE FIVE ARMS ARE DICTIONARY WORDS AND READ IT.
+              // The word a player sees here is Up & Down's own vocabulary, and the dictionary
+              // is keyed on the STATE that word names, not on its spelling: "In play" IS LIVE
+              // (the round is open and taking money — it even carries the live-dot), and
+              // "Confirming price" IS PENDING (waiting on a queue is not a warning). The
+              // UP/DOWN arms are OUTCOME words carrying the betting pair for its own meaning
+              // (§B2a) and stay where they are.
               const result =
-                g.anyOpen ? { cls: "chip-live", label: t.market.udInPlay, live: true }
-                : r.outcome === "VOID" ? { cls: "chip-pending", label: t.market.udVoided, live: false }
-                : r.outcome === "UP" ? { cls: "chip-yes", label: t.market.udUpWins, live: false }
-                : r.outcome === "DOWN" ? { cls: "chip-no", label: t.market.udDownWins, live: false }
-                : { cls: "chip-pending", label: t.market.udConfirmingPrice, live: false };
+                g.anyOpen ? { variant: TONE_CHIP[STATUS_TONE.LIVE.player], label: t.market.udInPlay, live: true }
+                : r.outcome === "VOID" ? { variant: TONE_CHIP[STATUS_TONE.VOID.player], label: t.market.udVoided, live: false }
+                : r.outcome === "UP" ? { variant: "yes" as const, label: t.market.udUpWins, live: false }
+                : r.outcome === "DOWN" ? { variant: "no" as const, label: t.market.udDownWins, live: false }
+                : { variant: TONE_CHIP[STATUS_TONE.PENDING.player], label: t.market.udConfirmingPrice, live: false };
               const roundLink = r.roundId ? `/updown/${r.roundId}` : null;
               // ⛔ UD-18 · next/link, NOT a raw <a>. The anchor form made every click out
               // of history a full document reload — the slowest navigation in the
@@ -306,9 +315,9 @@ export default async function UpDownHistoryPage({ searchParams }: {
                       </div>
                       <div className="mt-0.5 font-mono text-[10px] text-text-subtle">{r.assetKey} · {fmtDate(r.placedAt)}</div>
                     </div>
-                    <span className={"chip shrink-0 " + result.cls}>
-                      {result.live && <span className="live-dot" />}{result.label}
-                    </span>
+                    {/* `shrink-0` is kept explicitly: the kit only implies it at `size="xs"`,
+                        and this row is `md`. */}
+                    <Chip className="shrink-0" variant={result.variant} dot={result.live}>{result.label}</Chip>
                   </div>
 
                   {/* Bets on this round — EVERY position, one chip each.

@@ -27,7 +27,7 @@ export function CloseAccountForm() {
       </label>
       <label className="block">
         <FieldLegend className="block mb-1.5">
-          {t.common.type} <span className="font-mono text-no-300">CLOSE MY ACCOUNT</span> {t.common.typeToConfirm}
+          {t.common.type} <span className="font-mono text-danger-fg">CLOSE MY ACCOUNT</span> {t.common.typeToConfirm}
         </FieldLegend>
         <input
           name="confirm"
@@ -49,8 +49,20 @@ export function CloseAccountForm() {
              redefines it as `outline-style: none` — so the accessibility of this field
              was resting on a version-specific implementation detail nobody had written
              down. Transparent, so forced-colors substitutes a real colour and normal
-             rendering is unchanged. */
-          className="w-full h-[var(--h-input)] px-3 rounded-md border border-border bg-bg-overlay font-mono text-[16px] tabular-nums text-text focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-transparent focus:border-no-700 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--no-500)_25%,transparent)] transition-colors"
+             rendering is unchanged.
+
+             🔴 DG-A-21 (2026-08-30) — AND THE RING THIS NOTE DEFENDS IS NOT THE RING THAT
+             SHIPPED. The paragraph above says "the claret ring — deliberate, this is the
+             destructive confirm field, and it stays claret rather than borrowing the brand
+             blue". The code underneath it read `focus:border-no-700` and a `--no-500` halo:
+             the betting NO ink, which §B2a reserves for the side a stake is on and which D2
+             minted `--danger-*` to stop app state wearing. So the intent was recorded, argued
+             and then not implemented — a comment defending a colour the file never painted.
+             ⭐ Resolved toward the NOTE, not toward the token, because two things agree with
+             it: §B4a gives claret the act that cannot be taken back, and the `<ConfirmDialog>`
+             on the very next element is already `tone="claret"`. The halo also goes 3px → 4px,
+             which is the figure §A3 states for the one focus recipe. */
+          className="w-full h-[var(--h-input)] px-3 rounded-md border border-border bg-bg-overlay font-mono text-[16px] tabular-nums text-text focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-transparent focus:border-claret-400 focus:shadow-[0_0_0_4px_color-mix(in_oklab,var(--claret-500)_25%,transparent)] transition-colors"
           autoComplete="off"
         />
       </label>

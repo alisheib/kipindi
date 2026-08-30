@@ -99,8 +99,26 @@ export default async function AdminCompliancePage({
       />
 
       <AdminBody>
-        {/* §A — Audit chain + backup */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        {/* §A — Audit chain + backup + error monitoring */}
+        {/* ⛔ DG-A-22 (2026-08-30) — THREE CARDS, THREE COLUMNS. This band was
+            `lg:grid-cols-2` with three children, so auto-placement put the third in row 2
+            column 1 and left row 2 column 2 as a grid AREA WITH NO ITEM IN IT: 572px wide at
+            1440 (1440 − 216 sidebar − 64 `lg:px-6`, minus one 16px gap, halved).
+            ⛔ No alignment property can fix that, and the register's `auto-rows` prescription
+            is the wrong lever: `auto-rows-*`, `items-*` and `align-content` all size or place
+            an item INSIDE its area, and there is no item here to place. The only levers on an
+            empty area are the column count, a `col-span` on a sibling, or a fourth card —
+            and a `col-span-2` would claim "Error monitoring is worth twice the other two",
+            which is false: all three are one-line platform-health statuses built from the
+            same StatusPill + `flex-1 min-w-0` text block.
+            The value is the neighbour that already ships this exact shape —
+            `src/app/admin/players/cohorts/page.tsx` `grid grid-cols-1 lg:grid-cols-3 gap-3`
+            with three AdminCards — and this page's own §C band below is 4-across at the same
+            `lg`, so 3-across is narrower than a rhythm this page already keeps.
+            ⚠️ `compliance/loading.tsx`'s §A band moves with this one, or the page jumps on
+            every load — §B7 rule 3's defect ("a 152px jump on every load that no test could
+            see") one level down, on the count and the breakpoint instead of the tier. */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
           <AdminCard title="Audit chain · integrity" sw="Mlolongo wa ukaguzi">
             <div className="flex items-center gap-4">
               <StatusPill status={chain.valid ? "ok" : "fail"} label={chain.valid ? "OK" : "✗"} />
@@ -360,9 +378,30 @@ export default async function AdminCompliancePage({
 
         {/* §D — Match-integrity + report exports */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          <AdminCard title="Match-integrity alerts · 30 days" sw="Tahadhari za uadilifu">
+          {/* ⛔ DG-A-22 (2026-08-30) — THE STRETCH IS NOT THE DEFECT; THE CONTENT PINNED TO
+              THE TOP OF IT IS. This row is FULL — two cards, two columns — so there is no
+              empty cell here, only a short card equalised to a tall one. Derived from the
+              classes: "Regulator report exports" is 5 REPORTS × (`h-7` plate 40 + `py-2` 24 +
+              1px border) + `space-y-1` 16 = 340, inside 20 + 32 header + 16 `mb-3` + 20 =
+              **428px**; this card's empty state is 20 + 32 + 16 + (`py-4` 40 + an 18px icon)
+              + 20 = **146px**. 282px — two thirds of the card — was empty glass under one
+              line of text.
+              ⛔ `items-start` on the grid would REVERSE a shipped ruling: `AdminKpi`'s delta
+              comment in admin-shell.tsx says "wrapping costs a line of height that the grid
+              row equalises anyway, and loses nothing" — the console relies on equal card
+              bottoms, and un-stretching gives every band a ragged edge.
+              ⛔ `h-full` on the child does NOT work here and would overflow: `AdminCard` is a
+              plain block that renders its 48px header BEFORE `{children}`, so a child at
+              height:100% resolves against the whole content box and hangs ~48px past the
+              card. Making the CARD a flex column and giving the child `flex-1` is the only
+              form that distributes the height the grid row already imposed — and it needs no
+              guessed `min-h`, which is the trap in the register's `auto-rows` prescription.
+              ⭐ It is unconditionally safe because `integrityAlerts` is `.slice(0, 3)`: this
+              card can never be the taller of the two, and the branch being centred renders
+              only when it holds one line. */}
+          <AdminCard title="Match-integrity alerts · 30 days" sw="Tahadhari za uadilifu" className="flex flex-col">
             {integrityAlerts.length === 0 ? (
-              <div className="flex items-center gap-3 py-4">
+              <div className="flex flex-1 items-center justify-center gap-3 py-4">
                 <I.shieldcheck s={18} />
                 <p className="text-caption text-text-secondary">No integrity alerts in the last 30 days. Sportradar feed: stub adapter.</p>
               </div>

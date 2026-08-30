@@ -119,7 +119,7 @@ export default async function AdminLivePage() {
                         </td>
                         <td className="py-2 pr-3 font-mono tabular text-right text-text">{formatTzs(totalPool)}</td>
                         <td className="py-2 pl-3 text-right">
-                          <a href={`/markets/${m.id}`} className="font-mono text-micro tracking-[0.10em] uppercase text-royal-300 hover:underline">view →</a>
+                          <a href={`/markets/${m.id}`} className="row-link font-mono text-micro text-royal-300 hover:underline">view →</a>
                         </td>
                       </tr>
                     );

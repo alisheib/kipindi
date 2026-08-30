@@ -84,7 +84,7 @@ export function GenerateButton({ id }: { id: string }) {
           disabled={busy !== null}
           title="Download as Excel (.xlsx)"
           aria-label="Download Excel report"
-          className="btn btn-yes btn-sm rounded-pill"
+          className="btn btn-ghost btn-sm rounded-pill"
         >
           <I.fileSpreadsheet s={13} aria-hidden />
           <span className="ml-1.5 font-mono text-micro font-bold uppercase tracking-[0.12em]">
@@ -97,7 +97,7 @@ export function GenerateButton({ id }: { id: string }) {
           disabled={busy !== null}
           title="Download as PDF"
           aria-label="Download PDF report"
-          className="btn btn-claret btn-sm rounded-pill"
+          className="btn btn-ghost btn-sm rounded-pill"
         >
           <I.fileText s={13} aria-hidden />
           <span className="ml-1.5 font-mono text-micro font-bold uppercase tracking-[0.12em]">

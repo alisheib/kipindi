@@ -76,9 +76,20 @@ export function Checkbox({
   return (
     <label
       className={className}
+      /* ⭐ DG-P-12 (2026-08-30) — THE CONSENT ROW REACHES `--tap-min`, AND IT IS THE LABEL THAT
+         HAD TO GROW. The real `<input>` is `.sr-only` (a 1x1 clipped box), so the hit area IS
+         this `<label>` — and it declared no height at all: a 19px box beside a 13.5px line gave
+         a ~20px row against §A2's 40px floor, on the control a player uses to swear they are 18.
+         ⛔ THE TOKEN, NEVER A NUMBER, and never a numeric spacing class: `min-h-11` is **96px**
+         on this repo's overridden scale, not 44. §0d keeps the value in one home.
+         ⚠️ `flex-start` -> `center` is deliberate and is the whole point: with a 40px minimum, a
+         top-aligned single-line label would sit against the ceiling with 20px of dead space
+         under it. Multi-line labels (the age gate wraps to two lines at 360) stay legible
+         centred, and the box tracks the text rather than the first line of it. */
       style={{
         display: "inline-flex",
-        alignItems: "flex-start",
+        alignItems: "center",
+        minHeight: "var(--tap-min)",
         gap: 9,
         cursor: "pointer",
         fontSize: 13.5,

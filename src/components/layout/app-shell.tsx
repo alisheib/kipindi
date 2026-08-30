@@ -169,7 +169,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         <RouteTransition>{children}</RouteTransition>
       </main>
       <PublicFooter proposalsState={proposalsState} />
-      <BottomNav isAuthed={!!session} />
+      {/* DG-P-11 — the rail's `More` needs the feature state for the same two reasons the bar
+          and the footer already take it: DISABLED hides every proposals entry point, and the
+          state flag (coming-soon / maintenance) must read the same on a phone as on a laptop. */}
+      <BottomNav isAuthed={!!session} proposalsState={proposalsState} />
       <RealityCheckHost enabled={!!session} intervalMin={realityCheckMin} userId={session?.userId ?? null} />
       {/* 🔴 SESSION-GATED, like its neighbours on the lines above and below (audit F-08).
           It was the only one of the three that was not, and the omission had no upper bound.

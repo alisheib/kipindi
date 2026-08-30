@@ -174,10 +174,9 @@ export function CampaignControls({ campaignId, status, queued, smsLive }: { camp
             <FieldLegend>
               {rows.length} contact{rows.length === 1 ? "" : "s"} staged · not yet saved
             </FieldLegend>
-            <button type="button" onClick={() => setRows([])} disabled={pending}
-              className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle hover:text-no-300 transition-colors disabled:opacity-40">
+            <Button type="button" variant="ghost" size="sm" onClick={() => setRows([])} disabled={pending}>
               Clear all
-            </button>
+            </Button>
           </div>
           <ul className="divide-y divide-border max-h-72 overflow-y-auto">
             {rows.map((row, i) => (
@@ -187,9 +186,9 @@ export function CampaignControls({ campaignId, status, queued, smsLive }: { camp
                   {row.phone && <span className="font-mono text-text-muted">+255 {row.phone}</span>}
                   {row.amount !== "" && <span className="font-mono text-text">{formatTzs(Number(row.amount))}</span>}
                 </div>
-                <button type="button" onClick={() => removeRow(i)} className="text-text-subtle hover:text-no-300 transition-colors shrink-0" aria-label="Remove">
+                <Button type="button" variant="ghost" size="sm" onClick={() => removeRow(i)} className="shrink-0" aria-label="Remove">
                   <I.x s={14} />
-                </button>
+                </Button>
               </li>
             ))}
           </ul>

@@ -250,14 +250,14 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
           "field-measure relative flex items-stretch w-full rounded-lg border overflow-hidden transition-colors",
           HEIGHT[size],
           "brand-focus-within",
-          invalid ? "border-no-500" : "border-border",
+          invalid ? "border-danger-500" : "border-border",
         )}
-        style={{ background: invalid ? "oklch(58% 0.2 25 / 0.08)" : "var(--bg-inset)" }}
+        style={{ background: invalid ? "var(--danger-wash)" : "var(--bg-inset)" }}
       >
         <div className={cn("flex-1 flex items-center tabular-nums font-mono", TYPE[size])}>
           {SEGMENTS.map((seg, idx) => (
             <span key={seg.key} className="flex items-center">
-              {idx > 0 && <span className="text-text-subtle/40 mx-1 select-none" aria-hidden>/</span>}
+              {idx > 0 && <span className="text-text-subtle mx-1 select-none" aria-hidden>/</span>}
               <input
                 ref={refs[idx]}
                 /* ⭐ `id` rides the FIRST segment, not the value carrier (2026-08-21).
@@ -278,7 +278,7 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
                 aria-label={seg.aria}
                 maxLength={seg.max}
                 style={{ width: SEG_WIDTH[seg.key] }}
-                className="bg-transparent text-center text-text outline-none placeholder:text-text-subtle/40"
+                className="bg-transparent text-center text-text outline-none placeholder:text-text-subtle"
                 onChange={(e) => onSegChange(idx, e.target.value)}
                 onKeyDown={(e) => onSegKeyDown(idx, e)}
                 onBlur={() => onSegBlur(idx)}
@@ -337,7 +337,7 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
         />
       </div>
 
-      {invalid && <p className="mt-1.5 font-mono text-[11px] text-no-300">{t.common.invalidDate}</p>}
+      {invalid && <p className="mt-1.5 font-mono text-[11px] text-danger-fg">{t.common.invalidDate}</p>}
 
       {mounted && calOpen && createPortal(
         <div role="dialog" aria-modal="true" aria-label={t.common.pickDate}

@@ -9,6 +9,7 @@ import { I } from "@/components/ui/glyphs";
 import { RefreshButton } from "@/components/admin/refresh-button";
 import { FilterPill } from "@/components/ui/filter-pill";
 import { CANDIDATE_CATEGORIES, CANDIDATE_STATES, CATEGORY_LABEL, STATE_LABEL } from "@/lib/ai/poll-vocabulary";
+import { adminCount, formatNumber } from "@/lib/utils";
 import { DateTimeRangeFilter } from "@/components/ui/datetime-range-filter";
 
 /* ⭐ DERIVED, NOT RE-TYPED (S-08, scan #1, 2026-08-28). This rail offered 7 of `CandidateState`'s
@@ -136,9 +137,15 @@ export function CandidateFilterToolbar({ totalFiltered, totalAll }: { totalFilte
           />
         ))}
         <span className="ml-auto font-mono text-[10.5px] text-text-subtle tabular-nums">
+          {/* ⛔ NOT `.toLocaleString()`. It groups by whatever locale the RUNTIME holds, so
+              this count could group with dots while the money and counts elsewhere in the
+              console grouped with commas — the ruling already written at
+              admin/finance/page.tsx:315-318 and wallet/deposit/deposit-confirm.tsx:69-72.
+              `adminCount` also carries the singular this line was missing: one candidate
+              read "1 candidates". In the "N of M" form the noun agrees with the TOTAL. */}
           {totalFiltered === totalAll
-            ? `${totalAll.toLocaleString()} candidates`
-            : `${totalFiltered.toLocaleString()} of ${totalAll.toLocaleString()} candidates`}
+            ? adminCount(totalAll, "candidate")
+            : `${formatNumber(totalFiltered)} of ${adminCount(totalAll, "candidate")}`}
         </span>
       </div>
     </div>

@@ -166,6 +166,40 @@ export function formatNumber(value: number): string {
   return TZ_NUMBER.format(value);
 }
 
+/**
+ * ⭐ THE ONE COUNT-LINE RECIPE FOR THE OPERATOR CONSOLE — "3 flags", "1 source",
+ * "12,904 calls". A count line is a NUMBER followed by the noun naming what was
+ * counted, and this repo wrote it seventeen different ways in the admin tree alone.
+ *
+ * It diverged on two axes, and both are settled here:
+ *   · GROUPING — some sites called `.toLocaleString()`, some printed the bare number.
+ *     ⛔ `toLocaleString()` with no argument groups by whatever locale the RUNTIME
+ *     holds, which is the ruling already written at `wallet/deposit/deposit-confirm.tsx`
+ *     ("a raw `toLocaleString` is grouped by whatever locale the runtime holds").
+ *     `formatNumber` is the platform's unit-free grouping, so it is what this uses.
+ *   · PLURAL — most sites did not pluralise at all, so an officer read "1 candidates",
+ *     "1 entries", "1 flags". The `n === 1 ? "" : "s"` idiom was hand-written 16 times
+ *     across `src/` with no home.
+ *
+ * ⛔ ENGLISH ONLY, AND THAT IS WHY IT IS NAMED `adminCount` AND NOT `count`.
+ * `n === 1 ? singular : plural` is an ENGLISH rule. Swahili marks number on the noun
+ * class prefix (chanzo → vyanzo) and Chinese does not mark it at all, so this function
+ * is correct on exactly one surface: the operator console, whose copy is English with
+ * hand-paired Swahili and is NOT read from the trilingual dict — the dated ruling in
+ * `src/lib/admin-status-lexicon.ts`'s header ("The admin console renders its status
+ * labels as inline bilingual literals … rather than through the trilingual player
+ * dict") and `src/lib/ai/poll-vocabulary.ts:64` ("Admin copy is English-only by
+ * convention — these are not player-facing").
+ * ⛔ NEVER call this from a player surface. A player's count line is a dictionary key
+ * with the noun already inside it (`src/lib/i18n-dict.ts`, three locale blocks), which
+ * is the only shape §A5 and §L4 permit.
+ *
+ * `plural` is only needed for a noun English does not pluralise with a bare "s".
+ */
+export function adminCount(n: number, singular: string, plural?: string): string {
+  return `${formatNumber(n)} ${n === 1 ? singular : plural ?? `${singular}s`}`;
+}
+
 /* ── Date formatting ─────────────────────────────────────────────── */
 
 /** Platform timezone — admin-configurable at /admin/config, persisted to DB.

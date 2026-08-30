@@ -75,7 +75,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
   return (
     <PageContainer tier="reading" className="space-y-5">
       {banner && (
-        <div role="alert" className="rounded-xl border border-no-700 bg-no-500/10 px-4 py-3 text-[13px] text-no-300">
+        <div role="alert" className="rounded-xl border border-danger-border bg-danger-500/10 px-4 py-3 text-[13px] text-danger-fg">
           {banner.body}
         </div>
       )}
@@ -243,15 +243,15 @@ lastLabel={t.common.lastPage}
 
       {/* CLOSE ACCOUNT — GDPR Art 17. C2g: warning-topo backdrop (BrandTopo over
           the claret danger panel) so the one-way zone reads as weightier. */}
-      <section className="relative isolate overflow-hidden rounded-xl border border-no-700/60 bg-no-500/[0.06] p-5">
+      <section className="relative isolate overflow-hidden rounded-xl border border-danger-border bg-danger-500/[0.06] p-5">
         <BrandTopo opacity={0.08} />
         <div className="relative z-10 space-y-3">
         <div className="flex items-center gap-2">
-          <I.alertOctagon s={15} className="text-no-300" />
+          <I.alertOctagon s={15} className="text-danger-fg" />
           <h2 className="font-display text-[15px] font-semibold text-text">
             {t.profile.closeAccount}
           </h2>
-          <Chip variant="no" className="ml-auto">
+          <Chip variant="danger" className="ml-auto">
             {t.common.oneWay}
           </Chip>
         </div>

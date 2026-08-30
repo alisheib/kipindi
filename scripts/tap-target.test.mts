@@ -355,8 +355,6 @@ const RATCHET: Record<string, { px: number; note: string }> = {
     { px: 36, note: "calendar day cell. Documented at the call site: `h-9` is 64px on this repo's scale, which made six rows 384px of grid inside a 320px popover." },
   "src/components/ui/date-select.tsx:button@32":
     { px: 32, note: "calendar year cell, same reason — `h-8` is 48px here, which showed 4.5 rows in a 240px scroller instead of 7." },
-  "src/app/results/notable-carousel.tsx:button@8":
-    { px: 8, note: "carousel paging dots (8px tall, 6–18px wide). `tabIndex={-1}` inside an `aria-hidden` strip, so they are out of the a11y tree — but they are still tappable, and a finger cannot hit 8px." },
 };
 const keyOf = (f: Finding) => `${f.file}:${f.tag}@${f.px}`;
 const seenKeys = new Set(findings.map(keyOf));

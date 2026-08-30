@@ -67,7 +67,21 @@ const slug = (r) => r.replace(/^\/(admin\/?)?/, "").replace(/[^a-z0-9]+/gi, "-")
 /** Runs in the page. Everything measured from computed style + getBoundingClientRect. */
 function measure() {
   const cs = (el) => getComputedStyle(el);
-  const vis = (el) => { const r = el.getBoundingClientRect(); const s = cs(el); return r.width > 0 && r.height > 0 && s.visibility !== "hidden" && s.display !== "none" && s.opacity !== "0"; };
+  /* ⭐ DG-P-12 (2026-08-30) — A CLIPPED 1x1 BOX IS NOT A VISIBLE CONTROL, AND BELIEVING IT WAS
+     MADE THIS DRIVE REPORT A 20px CONSENT ROW AS **1px**. `.sr-only` is
+     `position:absolute; clip:rect(0,0,0,0); width:1px; height:1px` — so a real
+     `<input type="checkbox">` behind an accessible label passed every clause here (it has a
+     box, it is not `hidden`, `display` is not `none`, `opacity` is not `0`) and was measured as
+     the control. The thing a finger actually hits is the `<label>`.
+     ⛔ This clause is HALF a fix and must never ship without the `CONTROL_SEL` change below —
+     measured, not assumed: on its own it deletes the consent rows from the residue entirely and
+     the surface reads CLEANER than before, which is strictly worse than the wrong number. */
+  const vis = (el) => {
+    const r = el.getBoundingClientRect(); const s = cs(el);
+    const clipped = (s.clip && s.clip !== "auto") || (s.clipPath && s.clipPath !== "none");
+    if (clipped && r.width <= 2 && r.height <= 2) return false;
+    return r.width > 0 && r.height > 0 && s.visibility !== "hidden" && s.display !== "none" && s.opacity !== "0";
+  };
   const txt = (el) => (el.innerText || el.value || el.getAttribute("aria-label") || el.getAttribute("placeholder") || "").replace(/\s+/g, " ").trim().slice(0, 48);
   const fam = (s) => s.fontFamily.split(",")[0].replace(/['"]/g, "").trim();
   const px = (v) => Math.round(parseFloat(v) * 10) / 10;
@@ -78,7 +92,14 @@ function measure() {
   const inShell = (el) => !main.contains(el);
 
   // ---------- controls ----------
-  const CONTROL_SEL = 'button, a.btn, [role="button"], input:not([type="hidden"]), textarea, select, [role="combobox"], [role="switch"], [role="checkbox"], [role="radio"], [role="tab"], [role="menuitem"], .chip, a[class*="rounded-pill"], a[class*="rounded-md"][class*="border"], nav a, aside a';
+  /* ⭐ DG-P-12 — `label:has(input[type=checkbox|radio])` is THE OTHER HALF of the `vis()` fix
+     above. The kit's Checkbox and the DSAR radios put the real input in `.sr-only` and give the
+     `<label>` the click handler, so the label IS the control; it was in no selector here.
+     ⛔ And this edit ALONE is a no-op, because the `nodes` filter one line down drops any
+     element that CONTAINS a `button, input, textarea, select, a` — which every such label does.
+     It only starts reporting once `vis()` stops admitting the clipped input, so the label no
+     longer contains a *visible* one. Two edits, one fix; either alone measures nothing. */
+  const CONTROL_SEL = 'button, a.btn, [role="button"], input:not([type="hidden"]), textarea, select, [role="combobox"], [role="switch"], [role="checkbox"], [role="radio"], [role="tab"], [role="menuitem"], .chip, a[class*="rounded-pill"], a[class*="rounded-md"][class*="border"], nav a, aside a, label:has(input[type="checkbox"]), label:has(input[type="radio"])';
   const raw = Array.from(document.querySelectorAll(CONTROL_SEL)).filter(vis);
   const nodes = raw.filter((el) => !raw.some((o) => o !== el && el.contains(o) && o.matches("button, input, textarea, select, a")));
   const flexParent = (el) => { let e = el.parentElement; while (e && e !== document.body) { const s = cs(e); if ((s.display === "flex" || s.display === "inline-flex") && !s.flexDirection.startsWith("column")) return e; if (s.display === "grid" || s.display === "inline-grid") return e; e = e.parentElement; } return null; };

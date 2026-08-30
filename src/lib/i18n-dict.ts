@@ -324,9 +324,9 @@ export const dict = {
       betPlacedEyebrow: "Bet placed",
       couldNotPlaceBet: "Could not place bet",
       stakeHasntMoved: "Your stake hasn\u2019t moved.",
-      installTitle: "Add 50pick to your home screen",
-      installBody: "It opens like an app — full screen, no browser bar, and one tap from your phone’s home screen.",
-      installCta: "Add to home screen",
+      installTitle: "Install 50pick",
+      installBody: "It opens like an app — full screen, no browser bar, and it sits alongside your other apps.",
+      installCta: "Install",
       installLater: "Not now",
       installIosHow: "Tap the Share button, then choose “Add to Home Screen”.",
       installOtherHow: "Open your browser menu and choose “Install app” or “Add to Home screen”.",
@@ -428,6 +428,7 @@ export const dict = {
     nav: {
       home: "Home", live: "Live", bets: "Bets",
       wallet: "Wallet", leaderboard: "Top", primary: "Primary",
+      currentSection: "current section",
     },
     auth: {
       signInTitle: "Sign in", signUpTitle: "Create account",
@@ -2281,9 +2282,9 @@ export const dict = {
       betPlacedEyebrow: "Dau lipo",
       couldNotPlaceBet: "Haikuwekwa dau",
       stakeHasntMoved: "Dau lako halijaondoka.",
-      installTitle: "Ongeza 50pick kwenye skrini yako ya mwanzo",
-      installBody: "Inafunguka kama app — skrini kamili, bila mwambaa wa kivinjari, na mguso mmoja kutoka skrini ya mwanzo ya simu yako.",
-      installCta: "Ongeza kwenye skrini ya mwanzo",
+      installTitle: "Sakinisha 50pick",
+      installBody: "Inafunguka kama app — skrini kamili, bila mwambaa wa kivinjari, na inakaa pamoja na app zako nyingine.",
+      installCta: "Sakinisha",
       installLater: "Sio sasa",
       installIosHow: "Gusa kitufe cha Kushiriki (Share), kisha chagua “Add to Home Screen”.",
       installOtherHow: "Fungua menyu ya kivinjari chako na chagua “Install app” au “Add to Home screen”.",
@@ -2376,6 +2377,7 @@ export const dict = {
     nav: {
       home: "Mwanzo", live: "Mubashara", bets: "Madau",
       wallet: "Pochi", leaderboard: "Jedwali la Washindi", primary: "Kuu",
+      currentSection: "sehemu ya sasa",
     },
     auth: {
       signInTitle: "Ingia", signUpTitle: "Fungua akaunti",
@@ -3939,9 +3941,9 @@ export const dict = {
       betPlacedEyebrow: "已下注",
       couldNotPlaceBet: "无法下注",
       stakeHasntMoved: "您的投注未变动。",
-      installTitle: "将 50pick 添加到主屏幕",
-      installBody: "像应用一样打开 — 全屏、无浏览器地址栏，从主屏幕一触即达。",
-      installCta: "添加到主屏幕",
+      installTitle: "安装 50pick",
+      installBody: "像应用一样打开 — 全屏、无浏览器地址栏，并与你的其他应用放在一起。",
+      installCta: "安装",
       installLater: "暂不需要",
       installIosHow: "点击分享按钮，然后选择“添加到主屏幕”。",
       installOtherHow: "打开浏览器菜单，选择“安装应用”或“添加到主屏幕”。",
@@ -4034,6 +4036,7 @@ export const dict = {
     nav: {
       home: "首页", live: "直播", bets: "投注",
       wallet: "钱包", leaderboard: "排行", primary: "主要",
+      currentSection: "当前板块",
     },
     auth: {
       signInTitle: "登录", signUpTitle: "创建账户",

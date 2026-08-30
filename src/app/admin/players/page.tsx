@@ -237,7 +237,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                       <td className="font-mono whitespace-nowrap">{formatDate(u.createdAt)}</td>
                       <td className="font-mono whitespace-nowrap">{u.lastLoginAt ? formatDate(u.lastLoginAt) : "—"}</td>
                       <td>
-                        <a href={`/admin/players/${u.id}`} className="text-royal-300 hover:underline font-medium font-mono text-micro tracking-[0.10em] uppercase">profile →</a>
+                        <a href={`/admin/players/${u.id}`} className="row-link text-royal-300 hover:underline font-mono text-micro">profile →</a>
                       </td>
                     </tr>
                   );

@@ -7,7 +7,8 @@ import { CardSortControl } from "@/components/admin/card-sort-control";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
-import { formatDateTimeSafe, formatUsd } from "@/lib/utils";
+import { formatDateTimeSafe, formatUsd, adminCount } from "@/lib/utils";
+import { CATEGORY_LABEL } from "@/lib/ai/poll-vocabulary";
 import {
   listCandidates,
   countByState,
@@ -23,7 +24,16 @@ import { resolveRange } from "@/lib/server/date-range";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
 
-export const metadata = { title: "Admin · Market candidates" };
+/* ⭐ ONE NAME PER DESTINATION (§L1). This route was named THREE ways at once: the sidebar
+   said "AI candidates", the breadcrumb derived "Candidates" and the h1 said "Market
+   candidates" — three words for one page, on one screen, to one officer.
+   The canonical name is the NAV LABEL in `admin-nav-groups.ts`, because that is the only
+   file where a destination is DECLARED (href + label + key), it is where a naming decision
+   is already recorded and reasoned ("'AI proposals', not 'Proposals' — two identically-
+   labelled entries in one console is a support ticket waiting to happen", NAV_GROUPS), and
+   `CRUMB_LABELS`' own header instructs the crumb to defer to a curated word rather than to
+   the title-caser. So the tab title and the h1 read the nav label. */
+export const metadata = { title: "Admin · AI candidates" };
 export const dynamic = "force-dynamic";
 
 const STATE_VARIANT: Record<Candidate["state"], "success" | "warning" | "danger" | "neutral" | "info"> = {
@@ -133,7 +143,7 @@ export default async function AdminCandidatesPage({
   return (
     <>
       <AdminPageHead
-        title="Market candidates"
+        title="AI candidates"
         sw="Mapendekezo ya soko · AI-validated"
       />
       <AdminBody>
@@ -306,7 +316,12 @@ export default async function AdminCandidatesPage({
                     {pageItems.map((c) => (
                       <tr key={c.id} className="border-b border-border/60 last:border-b-0">
                         <td className="p-3"><Chip size="sm" variant={STATE_VARIANT[c.state]}>{candidateStateLabel(c.state)}</Chip></td>
-                        <td className="p-3 font-mono uppercase tracking-[0.12em] text-micro">{c.category}</td>
+                        {/* ⛔ NOT `{c.category}`. The column holds the stored slug, and CSS
+                            `uppercase` printed it as INFRASTRUCTURE while this page's OWN filter
+                            rail (candidate-filters.tsx:28) resolved the same id through
+                            `CATEGORY_LABEL` to "Infra" — one screen, two names for one value.
+                            §L2: the definition site exists; this render site must read it. */}
+                        <td className="p-3 font-mono uppercase tracking-[0.12em] text-micro">{CATEGORY_LABEL[c.category] ?? c.category}</td>
                         <td className="p-3 text-text max-w-[420px] truncate">{c.proposedTitleEn}</td>
                         <td className="p-3 font-mono tabular-nums text-right">
                           <ScoreBadge value={c.confidence} good={85} warn={75} muted />
@@ -391,14 +406,14 @@ function CandidateRow({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
           <Chip size="sm" variant={STATE_VARIANT[c.state]}>{candidateStateLabel(c.state)}</Chip>
-          <span className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">{c.category}</span>
+          <span className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">{CATEGORY_LABEL[c.category] ?? c.category}</span>
           <span className="font-mono text-[10.5px] tabular-nums text-text-muted">
             <I.shieldAlert s={10} className="inline -mt-0.5 mr-0.5" />
             confidence {c.confidence}
           </span>
           <span className="font-mono text-[10.5px] tabular-nums text-text-muted">
             <I.fileCheck s={10} className="inline -mt-0.5 mr-0.5" />
-            {c.sources.length} sources
+            {adminCount(c.sources.length, "source")}
           </span>
           <span className="font-mono text-[10.5px] tabular-nums text-text-muted">
             <I.coins s={10} />

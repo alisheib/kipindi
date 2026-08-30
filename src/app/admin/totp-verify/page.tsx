@@ -44,7 +44,7 @@ export default async function AdminTotpVerifyPage({ searchParams }: { searchPara
               Step 2 of 2 · Authenticator
             </span>
           </div>
-          <h1 className="font-display text-[26px] font-bold text-text leading-tight tracking-[-0.02em]">
+          <h1 className="font-display text-title-lg font-bold text-text leading-tight tracking-[-0.02em]">
             Enter your 6-digit code
           </h1>
           <p className="text-[13px] italic text-text-subtle">Andika msimbo wa nambari sita</p>

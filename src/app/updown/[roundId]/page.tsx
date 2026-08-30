@@ -18,6 +18,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BackLink } from "@/components/ui/back-link";
+import { Chip } from "@/components/ui/chip";
+import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
 // E-101b · a fragment names a row; this is what actually scrolls to it.
 import { HashFocus } from "@/components/ui/hash-focus";
 import { getRoundDetail } from "@/lib/server/updown-board";
@@ -194,7 +196,6 @@ export default async function UpDownRoundPage({
     refundedStake: myPosition && myPosition.payout != null && myPosition.payout === myPosition.stake ? myPosition.stake : 0,
   });
   const result = myPosition?.result ?? null;
-  const resultChip = result === "WIN" ? "chip chip-resolved" : result === "LOSS" ? "chip chip-no" : "chip";
   /**
    * ⭐ E-87 · THE CHIP HAD THREE STATES AND THE WORLD HAS FOUR — and this is E-65's own defect,
    * one line further on.
@@ -221,6 +222,27 @@ export default async function UpDownRoundPage({
     // The round DECIDED and this player was refunded anyway — never call that a void.
     : refundReason === "unmatched" ? t.market.udRefundTitle
     : t.market.udVoided;
+  /**
+   * ⭐ §B11 (D4) — THE TONE NOW BRANCHES WHERE THE WORD BRANCHES, WHICH IS THE WHOLE POINT.
+   *
+   * 🔴 IT DID NOT, AND ON THE VOID ARM THAT WAS A DIVERGENCE. The colour was
+   * `WIN ? resolved : LOSS ? no : bare .chip` — THREE branches for the label's FOUR, exactly
+   * the shape E-87 above records as the label's own defect, one line further up. So the two
+   * words that share the leftover branch shared a tone as well, and `udVoided` — the same
+   * string `updown/history` paints ROYAL one screen away — was drawn SLATE here.
+   *
+   * A refund that came back because the round DECIDED without a counterparty keeps slate:
+   * "refunded" is not a dictionary word, a refund is neutral (§C4), and nothing else on the
+   * platform paints it. `udVoided` is the dictionary's VOID and takes the player tone the
+   * other five surfaces already give it. WIN keeps the struck seal (§M3/§M7 — this is money
+   * the player earned) and LOSS keeps the betting rose; neither is a §B11 word and neither
+   * may be repainted on taste.
+   */
+  const resultVariant =
+    result === "WIN" ? "resolved" as const
+    : result === "LOSS" ? "no" as const
+    : refundReason === "unmatched" ? "neutral" as const
+    : TONE_CHIP[STATUS_TONE.VOID.player];
   // DA-7 · the "Paid out" figure. A WIN is money the player EARNED, so M3 puts it in struck
   // type rather than gold colour; everything else keeps plain text ink. The class carries its
   // own gradient, mono family and tabular-nums, so no `color` may be set alongside it — a flat
@@ -334,7 +356,7 @@ export default async function UpDownRoundPage({
             <AssetMark icon={asset.iconKey} ticker={ticker} size={44} />
             <div className="min-w-0">
               <h1 className="m-0 flex flex-wrap items-center gap-2">
-                <span className="overflow-hidden text-ellipsis whitespace-nowrap font-display text-[20px] font-semibold leading-[1.25] text-text" style={{ letterSpacing: "-0.01em" }}>
+                <span className="overflow-hidden text-ellipsis whitespace-nowrap font-display text-title-lg font-bold leading-tight text-text">
                   {name} {t.market.udTitle}
                 </span>
                 <span className="chip">{round.durationMinutes} {t.market.udMin}</span>
@@ -541,7 +563,7 @@ export default async function UpDownRoundPage({
                 ))}
                 <div className="flex items-center justify-between gap-2.5">
                   <p className={eyebrow}>{t.market.udYourResult}</p>
-                  <span className={resultChip}>{resultLabel}</span>
+                  <Chip variant={resultVariant}>{resultLabel}</Chip>
                 </div>
                 <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
                   <div>
@@ -630,7 +652,7 @@ export default async function UpDownRoundPage({
               </section>
             ) : round.state === "confirming" ? (
               <section style={{ ...inset, padding: 16 }}>
-                <span className="chip chip-pending">{t.market.udSettlingTitle}</span>
+                <Chip variant={TONE_CHIP[STATUS_TONE.PENDING.player]}>{t.market.udSettlingTitle}</Chip>
                 <p className="mt-2 text-body-sm leading-[1.55] text-text-muted">{t.market.udConfirmingBody}</p>
               </section>
             ) : refundReason ? (
@@ -640,7 +662,11 @@ export default async function UpDownRoundPage({
               // on a round that DECIDED but refunded this viewer for want of a counterparty,
               // which the old `state === "void"` branch could never reach.
               <section style={{ ...inset, padding: 16 }}>
-                <span className="chip">{t.market.udRefundTitle}</span>
+                {/* Slate, and stated rather than left over: a refund is neutral (§C4) and
+                    "refunded" is not a §B11 word. `variant="neutral"` is `.chip`'s own base
+                    byte-for-byte, so this says out loud what the bare class was saying by
+                    default. */}
+                <Chip variant="neutral">{t.market.udRefundTitle}</Chip>
                 <p className="mt-2 text-body-sm leading-[1.55] text-text-muted">
                   {(t.market as Record<string, string>)[REFUND_REASON_KEY[refundReason]]}
                 </p>

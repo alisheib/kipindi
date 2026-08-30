@@ -357,7 +357,35 @@ function TxnRow({ tx }: { tx: Transaction }) {
           {isCredit ? <I.arrowDown s={16} /> : <I.arrowUp s={16} />}
         </span>
         <div className="flex-1 min-w-0">
-          <p className="font-display text-[13.5px] font-semibold text-text leading-tight truncate">
+          {/* 🔴 DG-P-08 · THE ROW PROMISED MORE AND THEN WITHHELD THE ONE THING IT CUT.
+              This line is the only human-readable fact on the row, and it is written by
+              market-service.ts:3280/3392 as `YES won · "<market title, up to 60 chars>"` —
+              up to ~85 characters. At 390 the box is 154px:
+                390 − 32 (PageContainer px-3) − 2 (glass-panel border) − 32 (button px-3)
+                − 34 (the arrow plate) − 16 − 16 (gap-3 twice) − the shrink-0 money and
+                status column = 154px — DRIVEN in a browser over the compiled stylesheet,
+                not just derived: 154px of box against 565px of text.
+              ⚠️ AND IT IS A MOBILE-ONLY DEFECT, which on this product makes it worse rather
+              than milder: the same box measures 812px at 1440 and nothing truncates there.
+              So a phone read `YES won · "Will Mosh…`, and the panel this button opens prints
+              type, amount, transaction id, gateway reference, the receipt and the ticket —
+              every fact EXCEPT this one. An `aria-expanded` that discloses everything but
+              the string it truncated is a disclosure a player cannot use.
+              ⛔ NOT a `title`: re-derived at HEAD, all six `truncate`+`title=` sites in
+              `src/` are under `src/app/admin/` and none is on the player surface — a hover
+              tooltip renders on no touch device, and this product's device assumption is
+              §C6's "cheap Android". The admin-side rule it comes from is what travels, not
+              its mechanism: "a truncated value that cannot be read in full is data loss,
+              not a layout fix" (admin-clip.test.mts:74, E-30, 2026-08-01).
+              SO THE STATE THAT ALREADY EXISTS CARRIES IT. `truncate` is conditional here for
+              the same reason it is conditional at select.tsx:427 — it applies only while the
+              full string is out of reach. Collapsed, the row stays one line and matches the
+              compact-clips/full-wraps idiom (notifications-panel.tsx:654 against
+              notifications/page.tsx:231+244); expanded, it wraps and the sentence is whole.
+              ⛔ Not `line-clamp-2` on the collapsed row: at ~22 characters a line, two lines
+              still cut an 85-character description, so it would trade the defect for a
+              taller one while costing every row in the list its height parity. */}
+          <p className={`font-display text-[13.5px] font-semibold text-text leading-tight ${expanded ? "break-words" : "truncate"}`}>
             {tx.description ?? tx.type}
           </p>
           <p className="mt-0.5 font-mono text-[10.5px] text-text-subtle tabular-nums">

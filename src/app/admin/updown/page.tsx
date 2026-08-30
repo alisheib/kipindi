@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ScrollX } from "@/components/ui/scroll-x";
@@ -537,52 +538,35 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                   {chains.map((c) => {
                     const a = assetById.get(c.assetId);
                     const label = `${a?.key ?? "?"} ${c.durationMinutes}m`;
+                    const adv = a && feed ? feed.advise(a.key, c.durationMinutes) : null;
+                    /* ⛔ THE LAG COMES FROM THE RECORD, NOT FROM THE ADVICE. `FeedAdvice`
+                       carries the verdict; `FeedRecord.history` carries the measurement.
+                       Reading a median off the advice would render `undefined` as a
+                       number — the shape of a probe that returns nothing and is read as a
+                       pass (E-191). */
+                    const caution =
+                      a && feed && adv
+                        ? chainDurationCaution({
+                            durationMinutes: c.durationMinutes,
+                            advisedMinDurationMinutes: adv.advisedMinDurationMinutes,
+                            unmeasured: adv.unmeasured,
+                            medianLagSeconds: feed.record(a.key).history.medianLagSeconds,
+                          })
+                        : null;
                     return (
-                      <tr key={c.id} className="border-b border-border-subtle/60 last:border-0">
+                      <Fragment key={c.id}>
+                      {/* ⛔ `!border-b-0` WHEN A CAUTION FOLLOWS, and the `!` is not a shortcut.
+                          `.admin-tbl tbody tr { border-bottom }` in globals.css is (0,1,1) and is
+                          written far below `@tailwind utilities`, so a plain `border-b-0` here is
+                          dead twice over — which is why the `border-b border-border-subtle/60`
+                          this row already carries has never painted anything either. Without it a
+                          hairline lands BETWEEN a chain and its own caution, and the caution reads
+                          as belonging to the chain below. Same reason as the `!p-0` the empty-state
+                          rows in /admin/audit and /admin/ai-usage already use on a spanning cell. */}
+                      <tr className={"border-b border-border-subtle/60 last:border-0" + (caution ? " !border-b-0" : "")}>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <div className="font-mono font-bold text-text">{label}</div>
                           <div className="font-mono text-[10.5px] text-text-subtle">{a?.nameEn ?? "unknown asset"}</div>
-                          {/* ⭐ E-194 · THE ADVICE, ON THE CHAIN IT IS ABOUT.
-                              🔴 The platform already measured this and already said it — just not
-                              here. The ASSET table above renders "+91s typical · 5m+ advised" from
-                              `feedAdviceLookup()`, and the CHAIN table rendered nothing, so a
-                              3-minute chain running on an asset whose own advised minimum is 5
-                              minutes was invisible unless an operator held two tables in their
-                              head and did the comparison themselves. Measured on production
-                              2026-08-24: BTC/USD and ETH/USD 3m leave **88.7s** of a 180s window
-                              once the reading lands, against this engine's own 50% caution line
-                              of 90s — over the line, by 1.3 seconds, on both live 3m chains.
-                              ⛔ THE NUMBERS ARE NOT RE-DERIVED HERE. `advisedMinDurationMinutes`
-                              and `bettingSecondsAfterLag` are the same functions `createChain`
-                              refuses with, so the console and the write path cannot come to
-                              disagree about whether a pairing is sound — which is the defect this
-                              file's own asset-table comment already warns about in the other
-                              direction. ⚠️ It is a CAUTION, never a block: these chains are live,
-                              they settle correctly, and 88.7 seconds is a real betting window.
-                              What was wrong was that nobody was told. */}
-                          {(() => {
-                            if (!a || !feed) return null;
-                            const adv = feed.advise(a.key, c.durationMinutes);
-                            // ⛔ THE LAG COMES FROM THE RECORD, NOT FROM THE ADVICE. `FeedAdvice`
-                            // carries the verdict; `FeedRecord.history` carries the measurement.
-                            // Reading a median off the advice would render `undefined` as a
-                            // number — the shape of a probe that returns nothing and is read as a
-                            // pass (E-191).
-                            const caution = chainDurationCaution({
-                              durationMinutes: c.durationMinutes,
-                              advisedMinDurationMinutes: adv.advisedMinDurationMinutes,
-                              unmeasured: adv.unmeasured,
-                              medianLagSeconds: feed.record(a.key).history.medianLagSeconds,
-                            });
-                            if (!caution) return null;
-                            return (
-                              <div className="mt-1 font-mono text-body-sm text-warning-fg whitespace-normal max-w-[24rem]">
-                                {caution.advisedMinMinutes}m+ advised on {a.key} — its reading typically lands{" "}
-                                {caution.lagSeconds}s after the boundary, leaving {caution.bettingSecondsLeft}s of a{" "}
-                                {caution.advertisedSeconds}s betting window
-                              </div>
-                            );
-                          })()}
                         </td>
                         <td className="px-4 py-3">
                           <span
@@ -732,6 +716,59 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                           </div>
                         </td>
                       </tr>
+                      {/* ⭐ E-194 · THE ADVICE, ON THE CHAIN IT IS ABOUT.
+                          🔴 The platform already measured this and already said it — just not
+                          here. The ASSET table above renders "+91s typical · 5m+ advised" from
+                          `feedAdviceLookup()`, and the CHAIN table rendered nothing, so a
+                          3-minute chain running on an asset whose own advised minimum is 5
+                          minutes was invisible unless an operator held two tables in their
+                          head and did the comparison themselves. Measured on production
+                          2026-08-24: BTC/USD and ETH/USD 3m leave **88.7s** of a 180s window
+                          once the reading lands, against this engine's own 50% caution line
+                          of 90s — over the line, by 1.3 seconds, on both live 3m chains.
+                          ⛔ THE NUMBERS ARE NOT RE-DERIVED HERE. `advisedMinDurationMinutes`
+                          and `bettingSecondsAfterLag` are the same functions `createChain`
+                          refuses with, so the console and the write path cannot come to
+                          disagree about whether a pairing is sound — which is the defect this
+                          file's own asset-table comment already warns about in the other
+                          direction. ⚠️ It is a CAUTION, never a block: these chains are live,
+                          they settle correctly, and 88.7 seconds is a real betting window.
+                          What was wrong was that nobody was told.
+
+                          ⛔ DG-A-22 (2026-08-30) — IT IS A ROW OF ITS OWN BECAUSE A CEILING
+                          CANNOT WIDEN A COLUMN. It shipped as a `<div … whitespace-normal
+                          max-w-[24rem]>` inside the Chain `<td>`, and 384px was unreachable:
+                          this table was measured at 1355px inside a 1158px card at 1440
+                          (`8c72f591`, DG-A-23), i.e. the sum of the columns' MIN-content
+                          already exceeds the space, so auto table layout gives every column
+                          exactly its min-content and nothing else. The Chain column's
+                          min-content is set by the two `whitespace-nowrap` lines above —
+                          ~110px — so the sentence wrapped to two or three words a line.
+                          ⛔ AND THE FIX IS NOT A `min-w` ON THE `<th>`: a 24rem floor adds
+                          ~270px to EVERY row of EVERY chain, on a table already 197px past
+                          its card, to pay for a sentence that renders only when
+                          `chainDurationCaution()` returns non-null. A cell that spans all 8
+                          columns has the TABLE as its containing block, so its ceiling binds
+                          and it contributes nothing to any single column: `scrollWidth` is
+                          unchanged, which is the one number that must be re-measured.
+                          ⚠️ `max-w-[36ch]` below `lg`, because the ScrollX's resting window at
+                          360 is ~300px of content — an 80ch line there would make an officer
+                          scroll sideways to finish a SENTENCE, which is worse than scrolling
+                          past columns. 80ch from `lg` up is this file's own prose measure — the
+                          two `max-w-[80ch]` explainer paragraphs above and below this table —
+                          and it fits the 704px window at 1024. */}
+                      {caution && (
+                        <tr>
+                          <td colSpan={8} className="!pt-0">
+                            <div className="font-mono text-body-sm text-warning-fg max-w-[36ch] lg:max-w-[80ch]">
+                              {caution.advisedMinMinutes}m+ advised on {a?.key} — its reading typically lands{" "}
+                              {caution.lagSeconds}s after the boundary, leaving {caution.bettingSecondsLeft}s of a{" "}
+                              {caution.advertisedSeconds}s betting window
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      </Fragment>
                     );
                   })}
                 </tbody>

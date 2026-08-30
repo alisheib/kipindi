@@ -257,6 +257,44 @@ has one less reason to read it as their side. ⛔ And never re-hue a state token
 betting pair to "match" — that closes the gap from the other end. Each family has its own
 definition site (§0d); ⛔ no value is restated here.
 
+🔴 **D2 MINTED THE TOKENS AND MIGRATED NOTHING — for nine days.** Found 2026-08-30, DG-A-21.
+The ruling above names its own three motivating examples: *"a saved password, a confirmed
+e-mail and a settled RG limit"*. On the day this was re-derived, **all three were still painted
+in the betting ramp** — the password-strength meter in `ui/password-input.tsx` (whose tone
+variable is literally named `danger` while it painted `bg-no-500`), the e-mail-confirmed pills,
+and the responsible-gambling **support panel**: a helpline callout, on the page a player opens
+when gambling is hurting them, in the colour that means *your bet won*. ⭐ **A ruling that mints
+a token is half a ruling.** The tokens existed and were correct; nothing had adopted them, and
+nothing went red, because a guard that reads a token's *definition* cannot see its *absence*.
+
+✅ **THE SHARED KIT IS MIGRATED (2026-08-30).** That is where reach multiplies: the five field
+atoms (`input`, `password-input`, `date-select`, `duration-input`, `time-select`) painted every
+validation error on the platform — player and admin — in the betting rose, and shared one
+hand-typed `oklch(58% 0.2 25 / 0.08)` errored wash across all five. ⭐ **That literal's hue is
+25, which is `--danger`'s, not `--no-*`'s 22** — five files had been hand-typing the danger
+colour without the danger token, so tokenising it as `--danger-wash` was a NAME fix that moved
+no pixels and cleared five entries from `design-frozen`'s ratchet. Also migrated: `route-error`
+(17 boundaries, and its own header had sanctioned "the only `--no-*` here" while three sites
+carried it), `empty-state`, `notice-bar`'s tone literally named `success`, `search-box`, and
+`lib/score-band.ts` — the shared helper a 2026-08-21 tombstone had named while repairing only
+its own consumer.
+⚠️ **The residual is real and it is NOT the console.** Re-derived at HEAD: the betting pair is
+used as a non-money tone in **~414 lines across ~125 files** (comments stripped); only ~131
+lines / 43 files are admin. So a console-scoped work order measures about a third of it. ⛔ A
+guard over all of `src/` therefore **cannot land at zero** and would only ever be a baseline —
+scope one to `src/components/ui/` + `src/lib/`, the sub-population that can.
+⛔ **`ui/chip.tsx` binds ONE `GREEN` object to both `yes` and `success`** (and `ROSE` to both
+`no` and `hot`), so §B11's dictionary itself routes every console APPROVED and LIVE chip into
+`var(--yes-300)`. That is B2a broken beneath B11 — and splitting it is **Ali's call**, not a
+session's: the file carries a dated counter-note that the pairs "share ONE style object so the
+pair can never drift apart" and that collapsing them is "pending Ali's sign-off". Choosing the
+right *name* at a call site is free and correct; splitting the object is not.
+⛔ **And `.btn-yes` is not `.btn-primary` with a different fill.** It also sets `font-weight:
+700`, `letter-spacing: 0.06em` and a text-shadow that neither `.btn-primary` nor `.btn-danger`
+carries. Every betting-ink button swap is therefore a *typographic* change as well as a repaint
+— which is the correct outcome (an operator's Approve should not wear the weight of a stake),
+but it must be seen, not assumed.
+
 
 ## B3 — Single dark-royal theme. No light mode.
 
@@ -375,12 +413,50 @@ lifecycle step reached, not a market broadcasting that it is taking money.
   state**. Royal would give a dead account the tone of a live one. The ruling's operative
   clause is that the console loses **amber** for CLOSED; slate was never amber.
 
-**Not yet migrated — named so it is not mistaken for done.** The console
-(`components/admin/status-badge.tsx`) and `/proposals`
-(`components/proposals/status-badge.tsx`) read the dictionary today. The player board still
-hard-types its chip classes at the call site (`market-card.tsx`, `results/page.tsx`,
-`updown/history/page.tsx`), so the Player column above is the **measured** state, recorded so
-that migration has something to migrate *to* rather than a fresh opinion.
+**Migration state — a RECORD, re-derived 2026-08-30 (DG-P-10), named so nothing is mistaken
+for done.** The console (`components/admin/status-badge.tsx`) and `/proposals`
+(`components/proposals/status-badge.tsx`) have read the dictionary since 2026-08-21. **The
+Player column now has readers too**: `markets/market-card.tsx`, `home/trust-band.tsx`,
+`updown/history/page.tsx` and `updown/[roundId]/page.tsx` take their tone from
+`STATUS_TONE[word].player`. **VOID joined the table** in the same pass — measured, not chosen:
+five player surfaces already painted it royal and the console's market table already painted it
+slate, and its third tone (the resolver's claret, §B4a) is now recorded in
+`STATUS_TONE_EXCEPTIONS`.
+
+⚠️ **Two corrections to what this paragraph used to say.** It named three files; two were
+right and the third was not. `results/page.tsx` has never hard-typed a chip **class** — it
+renders the kit `<Chip>` and hand-types the **variant** (`"pending"`, `"resolved"`), which is
+still a §B11 site by the law above but a different defect with a different fix. And it never
+named `home/trust-band.tsx` or `updown/[roundId]/page.tsx`, which held the same defect.
+
+**Still hand-typed, on a PLAYER surface, and each one is one of two kinds:**
+
+- *Agrees with the dictionary — a NAME fix at zero visual risk.* `markets/resolution-panel.tsx`
+  (VOID · RESOLVED) · `updown/updown-card.tsx` (CLOSED · PENDING) ·
+  `updown/round-action-panel.tsx` (CLOSED) · `markets/[id]/page.tsx:403,420` and
+  `results/page.tsx:567,568` (kit variants beside LIVE · RESOLVED · VOID).
+- 🔴 *DISAGREES with the dictionary — each is a REPAINT and needs a screenshot, not a sweep.*
+  `markets/[id]/page.tsx:411-418` paints **CLOSED in the gilt family** (`--warning-fg` resolves
+  to `--gilt`) on the player's own market page, while that market's card renders CLOSED royal —
+  correction #3 running backwards on the surface it was written to protect.
+  `markets/position-card.tsx:68` paints **OPEN as `info`**, not the royal the table gives it.
+  `profile/account/page.tsx:70-73` paints **PENDING_KYC amber** (the console was corrected off
+  amber for exactly this word), a **CLOSED account rose** where the exception above says slate,
+  and **ACTIVE in the betting-YES token** (§B2a). ⛔ None of these three belongs in
+  `STATUS_TONE_EXCEPTIONS` — writing a drift down as a decision would repeal the ruling by
+  paperwork.
+
+⚠️ **And a status pill is not always a chip.** `wallet/receipt/[id]/page.tsx` holds a file-local
+constant *named* `STATUS_TONE`, shadowing this module's export, hand-typing seven payment tones
+as Tailwind classes on a hand-rolled pill; `wallet/wallet-client.tsx` paints QUEUED amber;
+`profile/email-editor.tsx` and `profile/kyc/page.tsx` dress app states in the betting-YES pair.
+A census that only greps `chip-*` cannot see any of them.
+
+**Re-derived at 2026-08-30, comment-stripped over all 487 `.tsx` + 320 `.ts` files under
+`src/`** (`/\bchip-(live|resolved|pending|objection|hot-rose|signal|new|yes|no)\b/`): raw chip
+colour classes went **50 → 34**; the player subset **33 → 17**, of which the outcome chips
+(`chip-yes`/`chip-no` on UP/DOWN and YES/NO) and the board's crowd-signal flags are not §B11
+sites at all. The console's own 17, in four files, are untouched and still owed.
 
 ---
 
@@ -1075,6 +1151,28 @@ them, never dip under.
    the canvas it is nominally "on". Non-text UI ≥ 3.0:1. Guard: `npm run test:contrast`.
    ⚠️ `--text-faint` sits at its value **as an accessibility floor, not a style choice**;
    darkening it requires re-running the gate.
+
+   🔴 **"ON ITS ACTUAL SURFACE" MEANS THE RENDERED INK, AND THE RENDERED INK IS
+   `token × alpha × opacity`.** Ruled 2026-08-30, DG-P-12. `test:contrast` scored a token
+   against a token for a year, so it printed `--text-subtle on --bg-inset 7.50 PASS` — a true
+   statement about a pair — while the sign-up form painted that same pair at **2.02:1** through
+   a `/40` utility, and every `.input` and `<textarea>` placeholder in the product painted it at
+   **4.07** through a blanket `opacity: .7`. Under half the floor, on the field a new player
+   types their date of birth into, with a green gate over it. ⛔ Same shape as §M4's
+   `isTracked = /^tracking-/`: **a guard that reads the SPELLING of a value instead of the value
+   that lands on the glass.** §P of `scripts/contrast-audit.mts` now reads the `opacity` out of
+   the compiled rule and composites before scoring; §P-u bans a call-site alpha on subtle ink
+   outright, because no rule exists for the gate to read one from.
+   ⛔ **AND THE COMPOSITE IS DONE IN GAMMA-ENCODED sRGB, NOT LINEAR LIGHT** — this is where the
+   first version of that very guard was wrong, and only its RED control caught it: blending in
+   linear light scored the real shipped defect at **5.55 and PASSED**. A fix for "the gate
+   scores the token, not the pixel" that itself scored the wrong pixel. `color-mix(in oklab, …)`
+   is a different operation with a different model (`mixOklab`); using either for the other
+   returns a wrong number that looks like a right one.
+   ⚠️ **A DISABLED control is exempt (WCAG 1.4.3)** — and that exemption is earned by the class
+   list carrying `cursor-not-allowed` / `pointer-events-none`, a rendered fact, never by a
+   filename. A file-scoped allowlist would exempt every future site in the same file, which is
+   how `filter-language` §6.7 once convicted an innocent `<input>`.
 2. **Tap targets ≥ `--tap-min` (40px), 44px preferred on mobile.** Money controls are
    never the exception — a stake chip is where a player chooses how much to risk, and it
    was shipped at 26px once (E-112). `--h-input` already sits at 44px.

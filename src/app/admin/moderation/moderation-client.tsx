@@ -132,7 +132,7 @@ export function ModerationQueue({ items }: { items: ModerationItem[] }) {
                 type="button"
                 onClick={() => act("restore", c)}
                 disabled={pending}
-                className="inline-flex items-center gap-1.5 rounded-md border border-yes-700 bg-yes-500/10 px-2.5 py-1 font-mono text-[11px] font-semibold text-yes-300 hover:bg-yes-500/20 transition-colors disabled:opacity-50"
+                className="inline-flex min-h-[var(--tap-min)] items-center gap-1.5 rounded-md border border-yes-700 bg-yes-500/10 px-2.5 py-1 font-mono text-[11px] font-semibold text-yes-300 hover:bg-yes-500/20 transition-colors disabled:opacity-50"
               >
                 <I.rotateCcw s={12} aria-hidden /> Restore
               </button>
@@ -140,7 +140,7 @@ export function ModerationQueue({ items }: { items: ModerationItem[] }) {
                 type="button"
                 onClick={() => act("remove", c)}
                 disabled={pending}
-                className="inline-flex items-center gap-1.5 rounded-md border border-no-700 bg-no-500/10 px-2.5 py-1 font-mono text-[11px] font-semibold text-no-300 hover:bg-no-500/20 transition-colors disabled:opacity-50"
+                className="inline-flex min-h-[var(--tap-min)] items-center gap-1.5 rounded-md border border-no-700 bg-no-500/10 px-2.5 py-1 font-mono text-[11px] font-semibold text-no-300 hover:bg-no-500/20 transition-colors disabled:opacity-50"
               >
                 <I.trash s={12} /> Remove
               </button>

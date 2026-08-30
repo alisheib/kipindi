@@ -86,7 +86,7 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, Props>(function 
         className={cn(
           // field-measure — DESIGN_AUTHORITY B7. No-op until a <FormColumn> opts in.
           "field-measure flex items-stretch rounded-lg border overflow-hidden brand-focus-within transition-colors",
-          errored ? "border-no-500" : "border-border",
+          errored ? "border-danger-500" : "border-border",
           heightCls[size],
         )}
         /* ⭐ ADDED 2026-08-21 — `--bg-inset`, the same fill <Input> and <DateSelect>
@@ -95,7 +95,7 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, Props>(function 
            lighter than the form's own, it read as a border floating on nothing
            while the field above it sat in a well. The errored tint is <Input>'s
            value, not a new one. */
-        style={errored ? { background: "oklch(58% 0.2 25 / 0.08)" } : { background: "var(--bg-inset)" }}
+        style={errored ? { background: "var(--danger-wash)" } : { background: "var(--bg-inset)" }}
       >
         <input
           {...rest}
@@ -137,13 +137,13 @@ function PasswordStrength({ value }: { value: string }) {
   const tone = score >= 3 ? "yes" : score === 2 ? "gold" : "danger";
   const label = score >= 3 ? t.common.strong : score === 2 ? t.common.ok : score === 1 ? t.common.weak : t.common.tooShort;
   const fillCls =
-    tone === "yes" ? "bg-yes-500"
+    tone === "yes" ? "bg-success"
     : tone === "gold" ? "bg-gold-500"
-    : "bg-no-500";
+    : "bg-danger";
   const fgCls =
-    tone === "yes" ? "text-yes-300"
+    tone === "yes" ? "text-success-fg"
     : tone === "gold" ? "text-gold-300"
-    : "text-no-300";
+    : "text-danger-fg";
 
   return (
     <div className="mt-1.5">

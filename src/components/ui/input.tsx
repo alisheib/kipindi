@@ -115,10 +115,10 @@ export const Input = React.forwardRef<HTMLInputElement, Props>(function Input(
         // cap only applies where a form column has opted in.
         "field-measure flex items-stretch rounded-lg border overflow-hidden brand-focus-within transition-all duration-150",
         heightCls[size],
-        errored ? "border-no-500" : "border-border hover:border-border-strong",
+        errored ? "border-danger-500" : "border-border hover:border-border-strong",
         containerClassName,
       )}
-      style={errored ? { background: "oklch(58% 0.2 25 / 0.08)" } : { background: "var(--bg-inset)" }}
+      style={errored ? { background: "var(--danger-wash)" } : { background: "var(--bg-inset)" }}
     >
       {prefix !== undefined && (
         <span
@@ -179,7 +179,7 @@ export function Field({
       </FieldLegend>
       {children}
       {error ? (
-        <p className="mt-1.5 text-body-sm text-no-300">{error}</p>
+        <p className="mt-1.5 text-body-sm text-danger-fg">{error}</p>
       ) : hint ? (
         <p className="mt-1.5 text-body-sm text-text-subtle">{hint}</p>
       ) : null}

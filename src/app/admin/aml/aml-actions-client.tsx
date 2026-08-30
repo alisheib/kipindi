@@ -89,7 +89,7 @@ export function AmlActionRow({ txnId, amount }: { txnId: string; amount: number 
             funds to the player. */}
         <Button
           size="sm"
-          variant="yes"
+          variant="primary"
           disabled={busy !== null}
           onClick={() => toggle("approve")}
           aria-label="Approve transaction"

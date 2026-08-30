@@ -27,7 +27,7 @@
  * import (erased at build) so no server code is pulled into the bundle.
  */
 import { Chip } from "@/components/ui/chip";
-import { LIFECYCLE, REVIEW, OBJECTION, ACCOUNT, MONEY, PIPELINE, UPDOWN, AUDIT } from "@/lib/admin-status-lexicon";
+import { LIFECYCLE, REVIEW, OBJECTION, ACCOUNT, MONEY, PIPELINE, UPDOWN, AUDIT, SURVEILLANCE } from "@/lib/admin-status-lexicon";
 import { STATUS_TONE, TONE_CHIP, type StatusChipVariant } from "@/lib/status-tone";
 import { refundReasonFor, type RefundReason } from "@/lib/updown-refund-reason";
 import type { MarketStatus } from "@/lib/server/market-service";
@@ -38,6 +38,7 @@ import type { AIPollState } from "@/lib/server/ai-poll-generation";
 import type { UpDownProposalState } from "@/lib/server/updown-proposal";
 import type { ChainState, ObservationState } from "@/lib/server/updown-dal";
 import type { AuditCategory } from "@/lib/server/audit";
+import type { SuspiciousFlag } from "@/lib/server/analytics";
 
 /**
  * ⭐ D4 — THE COLOUR COMES FROM THE DICTIONARY, NOT FROM THIS FILE.
@@ -429,4 +430,24 @@ export function auditCategoryLabel(category: AuditCategory): string {
     SYSTEM: AUDIT.system.en,
   };
   return L[category] ?? humanise(category);
+}
+
+/* ── Suspicious-bet flag TYPE (Family 13) ────────────────────────────────── */
+
+/**
+ * What the suspicious-bet detector caught, in words.
+ *
+ * ⛔ WHY THIS COULD NOT BE LEFT TO A SCHEMA-DRIVEN GUARD. `SuspiciousFlag["type"]` is a
+ * TypeScript union declared in `src/lib/server/analytics.ts`, not a Prisma enum — the
+ * token `STAKE_SPIKE` appears nowhere in `prisma/schema.prisma` — so `test:labels` §11b,
+ * which reads its token set out of the schema, is structurally blind to it. It printed
+ * database spelling at a compliance officer on the queue that decides whether a
+ * Suspicious Activity Report is filed.
+ */
+export function amlFlagTypeLabel(type: SuspiciousFlag["type"]): string {
+  const L: Record<SuspiciousFlag["type"], string> = {
+    STAKE_SPIKE: SURVEILLANCE.stakeSpike.en,
+    VELOCITY: SURVEILLANCE.velocity.en,
+  };
+  return L[type] ?? humanise(type);
 }

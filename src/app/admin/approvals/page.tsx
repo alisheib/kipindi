@@ -146,7 +146,7 @@ export default async function AdminApprovalsPage({
                       <td className="py-2 pr-3"><a href={`/admin/players/${k.userId}?tab=kyc`} className="font-mono text-royal-300 hover:underline">{k.userId.slice(0, 14)}…</a></td>
                       <td className="py-2 pr-3 font-medium text-text">{k.fullName ?? "—"}</td>
                       <td className="py-2 pr-3 font-mono tabular">{slots ? `${k.documents.length}/${slots}` : k.documents.length}</td>
-                      <td className="py-2 pl-3 text-right"><a href={`/admin/kyc/${k.userId}`} className="font-mono text-micro tracking-[0.10em] uppercase text-royal-300 hover:underline">workstation →</a></td>
+                      <td className="py-2 pl-3 text-right"><a href={`/admin/kyc/${k.userId}`} className="row-link font-mono text-micro text-royal-300 hover:underline">workstation →</a></td>
                     </tr>
                     );
                   })}

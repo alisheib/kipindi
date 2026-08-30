@@ -10,6 +10,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { BrandSpinner } from "@/components/brand";
 import {
@@ -138,8 +139,10 @@ export function ReportPackControls({
 export function CopyHash({ sha256 }: { sha256: string }) {
   const [copied, setCopied] = useState(false);
   return (
-    <button
+    <Button
       type="button"
+      size="sm"
+      variant="ghost"
       onClick={async () => {
         try {
           await navigator.clipboard.writeText(sha256);
@@ -148,10 +151,9 @@ export function CopyHash({ sha256 }: { sha256: string }) {
         } catch { /* clipboard blocked — no-op */ }
       }}
       title={`sha256: ${sha256}`}
-      className="inline-flex items-center gap-1 font-mono text-[11px] text-text-tertiary hover:text-text transition-colors"
+      trailing={copied ? <I.check s={13} className="text-yes-300" /> : <I.copy s={13} />}
     >
       sha256 …{sha256.slice(-8)}
-      {copied ? <I.check s={11} className="text-yes-300" /> : <I.copy s={11} />}
-    </button>
+    </Button>
   );
 }

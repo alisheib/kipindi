@@ -74,6 +74,16 @@ export function NavMore({
             <I.menu s={20} />
           </span>
           <span className="kp-rail__label">{label}</span>
+          {/* ⭐ DG-P-11 (2026-08-30) — THE ONLY CURRENT-LOCATION SIGNAL FOR ~10 ROUTES, AND IT WAS
+              SILENT. This trigger paints `data-on` when any destination behind it is the current
+              page, and that paint had NO ARIA VOICE — the two "More" triggers were the last 2 of
+              the tree's 10 live active-paint hooks with none. ⛔ `aria-current="page"` is
+              forbidden here IN WRITING, twice (globals.css's `.kp-navlink` block and the note
+              below): the trigger is a menu button, not a page, so claiming it would be a lie to a
+              screen reader. A translated `sr-only` statement says the true thing instead — the
+              shipped precedent is `notifications-panel.tsx`. It sits BEFORE the chevron on the bar
+              twin so the accessible name never interleaves with a decorative glyph. */}
+          {anyActive && <span className="sr-only">{t.nav.currentSection}</span>}
         </button>
         {open && (
           <div
@@ -99,6 +109,12 @@ export function NavMore({
                   }}
                 >
                   {it.label}
+                  {/* DG-P-11 — the rail branch accepted `proposalsBadge` in its props and threw
+                      it away, so the same destination read "Propose & earn · Coming soon" on a
+                      laptop and a bare "Propose" on a phone. Same flag, both variants. */}
+                  {it.proposalsBadge && (
+                    <ProposalsStateBadge state={it.proposalsBadge} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" className="ml-auto" />
+                  )}
                 </Link>
               );
             })}
@@ -134,6 +150,7 @@ export function NavMore({
         }}
       >
         <span className="capitalize">{label}</span>
+        {anyActive && <span className="sr-only">{t.nav.currentSection}</span>}
         <I.chevronDown s={12} className={open ? "rotate-180 transition-transform" : "transition-transform"} />
       </button>
       {open && (

@@ -11,6 +11,7 @@ import { ScrollX } from "@/components/ui/scroll-x";
 import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
 import { formatDateTime } from "@/lib/utils";
+import { CATEGORY_LABEL } from "@/lib/ai/poll-vocabulary";
 import { addEventAction, removeEventAction, generateFromEventAction } from "./actions";
 
 type Ev = {
@@ -82,7 +83,7 @@ export function EventsClient({
                   <p className="font-semibold text-text">{e.title}</p>
                   {e.note && <p className="mt-0.5 text-body-sm text-text-subtle">{e.note}</p>}
                 </td>
-                <td className="py-2.5 pr-3"><Chip size="sm" variant="cat">{e.category}</Chip></td>
+                <td className="py-2.5 pr-3"><Chip size="sm" variant="cat">{CATEGORY_LABEL[e.category] ?? e.category}</Chip></td>
                 <td className="py-2.5 pr-3 font-mono tabular-nums text-text-muted">{formatDateTime(e.startsAt)}</td>
                 <td className="py-2.5 pr-3">
                   <a href={e.sourceUrl} target="_blank" rel="noopener noreferrer"
@@ -125,7 +126,11 @@ export function EventsClient({
         </label>
         <label className="block">
           <span className="mb-1 block text-[11.5px] text-text-muted">Category</span>
-          <Select name="category" required options={categories.map((c) => ({ value: c, label: c }))} defaultValue={categories[0]} />
+          {/* ⛔ `label: c` OFFERED THE RAW SLUGS — the listbox read "sports", "macro". A
+              filter/chooser option is a label (§L1), and §L2's definition site for the
+              category word is `CATEGORY_LABEL`. The VALUE stays the slug: it is what the
+              server action stores. */}
+          <Select name="category" required options={categories.map((c) => ({ value: c, label: CATEGORY_LABEL[c] ?? c }))} defaultValue={categories[0]} />
         </label>
         <label className="block">
           <span className="mb-1 block text-[11.5px] text-text-muted">Starts (local)</span>

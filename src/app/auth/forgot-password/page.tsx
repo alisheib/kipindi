@@ -105,7 +105,37 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
                 </p>
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {/* 🔴 DG-P-08 · THE SUPPORT ADDRESS WAS CLIPPED, AND ONLY ON THE WIDE SCREENS.
+                `sm:grid-cols-2` split this 448px panel into two 164px cards, which leaves the
+                mono line below exactly 106.0px of content box:
+                  max-w-md 448 − 2 (glass-panel border, globals.css:2981-2983) − 64 (p-6)
+                  = 382 → −2 −40 (p-4 above) = 340 → (340 − 12 gap-2)/2 = 164 per column
+                  → −2 −32 (px-3) = 130 → −14 (the 14px glyph) −10 (gap-2.5) = 106.0
+                on this repo's OVERRIDDEN spacing scale (tailwind.config.ts:204-219 — 6→32,
+                4→20, 3→16, 2→12; "2.5" is NOT overridden so it stays 0.625rem = 10px).
+                `support@50pick.tz` is 17 characters of JetBrains Mono, whose advance is 0.6em:
+                17 × 0.6 × 11px = 112.2px. ⭐ AND IT WAS DRIVEN, not just derived — a static
+                harness over `.next`'s own compiled stylesheet and the real self-hosted JBM
+                measures the box at exactly 106px and the string at 112px, `scrollWidth >
+                clientWidth` at 640, 768, 1024 AND 1440, and NOT clipped at 390. So it read
+                `support@50pick.…` — the TLD gone — on every desktop and tablet, and correctly
+                on a phone, which is the inverse of where anyone looks for it.
+                ⛔ NOT "one `min-w-0` away": the column below already carries `min-w-0`, and it
+                is the ENABLER of the ellipsis, not its cure — a flex item's automatic minimum
+                size is its content unless something sets it, so removing it would push the
+                address OUT of the card instead of ellipsising it inside it (E-30, the same box
+                model admin-clip.test.mts was written for).
+                THE FIX IS THE RULING'S OWN FIRST SENTENCE — "The value must FIT, wrapping to a
+                second row if it has to" (operation-result-modal.tsx:455-466, reported from a
+                real withdrawal 2026-07-29). One column gives each card the full 340px row, and
+                the same harness then measures the address at 112px in a 112px box — ONE line,
+                no ellipsis, at 390, 640, 768, 1024 and 1440. `break-all` below is the
+                length-agnostic backstop for an operator override at /admin/system.
+                ⚠️ THIS CHANGES NOTHING ON A PHONE — the grid was already `grid-cols-1` under
+                640px, which is the only width where the address was legible. And the Swahili
+                render improves twice over: `saa 2 asubuhi – saa 2 usiku` (~135px) stopped
+                wrapping to two lines in the card beside it. */}
+            <div className="grid grid-cols-1 gap-2">
               <a
                 href={`tel:${HELPLINE_TEL()}`}
                 className="flex items-center gap-2.5 rounded-md border border-border bg-bg-elevated px-3 py-2.5 hover:border-brand-400 transition-colors"
@@ -122,7 +152,14 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
               >
                 <I.mail s={14} className="text-gold-300 shrink-0" />
                 <div className="min-w-0">
-                  <p className="font-mono text-[11px] font-bold text-text truncate">{SUPPORT_EMAIL()}</p>
+                  {/* `break-all`, not `truncate` — the same string, on the same product, already
+                      renders this way at src/app/help/page.tsx:180, so the two pages are one
+                      decision rather than two habits. An address a locked-out player cannot read
+                      is the one fact this card exists to carry, and §A5 offers wrap OR ellipsise:
+                      an ellipsis here does not shorten the address, it states a different one.
+                      `break-all` is the only break that acts on an unbroken token (the 2026-07-29
+                      ruling above; E-100 at wallet-client.tsx:425-431, Ali on a real phone). */}
+                  <p className="font-mono text-[11px] font-bold text-text break-all">{SUPPORT_EMAIL()}</p>
                   <p className="text-[10px] text-text-subtle">{t.common.oneBusinessDay}</p>
                 </div>
               </a>

@@ -290,7 +290,12 @@ export function GenerateForm({ generatable }: { generatable: string[] }) {
                   onClick={() => enabled && setCategory(c.id)}
                   disabled={!enabled}
                   title={enabled ? undefined : "No enabled trusted source — add one under Sources & categories to generate this category."}
-                  className={`px-3 py-1.5 rounded-pill text-label font-mono uppercase tracking-[0.1em] border transition-colors ${
+                  /* DG-A-08 — 34px (12px line box + py-1.5 + border) was under §A2's 40px
+                     floor. `min-h` and not the kit `<Button>`: this is a single-select chip
+                     whose whole job is to SHOW which category is chosen, and the kit has no
+                     selected state — a variant would erase the signal. Legal because a chip
+                     is not a `.btn`; §K1 forbids a height utility only on the kit's button. */
+                  className={`inline-flex min-h-[var(--tap-min)] items-center justify-center px-3 py-1.5 rounded-pill text-label font-mono uppercase tracking-[0.1em] border transition-colors ${
                     !enabled
                       ? "border-border/60 bg-bg-overlay/40 text-text-subtle/60 cursor-not-allowed line-through decoration-1"
                       : category === c.id
