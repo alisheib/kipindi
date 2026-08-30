@@ -1,763 +1,124 @@
-# SESSION PROMPT — implement THE DESIGN GATE to 100%
+# SESSION PROMPT — THE DESIGN GATE · STEP 5, THE LAST STAGE
 
-**Programme key: `DESIGN-GATE-2026-08-28`** — quote this key in commits and handoffs so any
-session, on any machine, knows which programme it is inside. Owner: Ali. Commissioned 2026-08-28:
+**Programme key: `DESIGN-GATE-2026-08-28`** — quote it in commits and handoffs so any session, on
+any machine, knows which programme it is inside. Owner: Ali. Commissioned 2026-08-28:
 *“100% consistency among the platform … your report should be the final gate to a perfectly
 rendered platform.”*
 
-## ⏭️ RESUME AT — session 82 handover (2026-08-30)
-
-> **STEPS 3 AND 4 ARE CLOSED. EVERY ROW A SESSION CAN CLOSE IS CLOSED.** Read this block, then
-> the PLANNER. ⛔ The **RE-DERIVED 2026-08-30** section below is now HISTORY for steps 3–4 — it
-> was the input to this session, and where it disagrees with a planner row, the planner row is
-> newer. Every number here was re-derived at the end of this session, not copied.
->
-> **PLANNER: 30 ☑ · 5 🚢 · 2 ☐** of 37. ⭐ **BOTH ☐ ROWS ARE BLOCKED ON ALI, NOT ON WORK**
-> (`DG-P-02`, `DG-P-09` — all six player/officer QA secrets are rejected by production; only
-> `QA_ADMIN_PASSWORD` works). The 5 🚢 each name exactly what is left, in their own row.
-> 📐 `type-scale` §3 **755 → 753** · §4 **934 → 924** · §6 **271 → 241** · inline fontSize 36 flat ·
-> `spacing-scale` **625 → 562** (−63, the largest fall that ratchet has taken) · eyebrow census
-> **552 → 527** · `contrast-audit` **67 → 69 checks**. Ladder adoption 58.0%.
->
-> ### ▶ WHAT IS LEFT, AND IT IS ONE THING
-> **STEP 5 — `DG-S-01…07`, ADMIN SHAPE & FORMS.** Ali's own commission (admin tabs ·
-> unsaved-changes · validation that takes you to the field). It is planned in this file's §🅢 and
-> was deliberately not started. That is the next session's whole job.
-> Then: the two blocked rows the moment Ali supplies working player/officer credentials, and the
-> three 🚢 tails (`DG-A-08`'s control-floor guard · `DG-A-21`'s ~414-line non-admin residual ·
-> `DG-A-12`/`DG-P-05`'s above-floor long tail, which is a per-site design call).
->
-> ### 🔴 THE THREE FINDINGS THIS SESSION EXISTS FOR
-> · **A GUARD PRINTED `PASS 7.50` OVER A PIXEL THAT RENDERS `2.02`.** §A1 says "measured ON ITS
->   ACTUAL SURFACE", and a placeholder's rendered ink is `token × alpha × opacity` — while
->   `test:contrast` scored a token against a token. The sign-up DOB field, every `.input` and
->   every `<textarea>` placeholder in the product sat under the AA floor with a green gate over
->   them. ⛔ The §M4 `isTracked = /^tracking-/` shape: **a guard reading the SPELLING of a value,
->   not the value that lands on the glass.**
-> · **AND THE FIX FOR IT WAS ITSELF WRONG, CAUGHT ONLY BY ITS OWN RED CONTROL.** The first
->   `contrastAlpha` blended in LINEAR light and scored the real shipped defect at **5.55 PASS**;
->   browsers composite in gamma-encoded sRGB, where it is **4.07 FAIL**. A guard against
->   "scoring the wrong thing" that scored the wrong thing. ⭐ **This is the argument for building
->   the control BEFORE believing the gate** — nothing else in the run would have caught it.
-> · **A RULING THAT MINTS A TOKEN IS HALF A RULING.** D2 (2026-08-21) minted `--success-500` and
->   `--danger-500` so app state would stop wearing the money ink, and named three examples.
->   **Nine days later all three were still in the betting ramp** — including the
->   responsible-gambling **helpline panel**, painted in the colour that means *your bet won*.
->   Nothing went red, because a guard that reads a token's *definition* cannot see its *absence*.
->
-> ### ⚠️ MY OWN TWO MISTAKES, BOTH CAUGHT, BOTH WORTH KNOWING
-> · **`.row-link` supplies `text-transform`, so it can change WHAT THE SCREEN SAYS.** The sweep
->   put it on four *lowercase* predictor pills — "8 predictors" would have shipped as
->   **"8 PREDICTORS"**. `tsc` silent, every ratchet green. Caught by reading the diff.
-> · **A CLASS THAT SUPPLIES `uppercase` REMOVES ITS SITES FROM TWO CENSUSES AT ONCE.** Eight
->   sites moved onto `.row-link` and (a) vanished from `test:eyebrow-roles` and (b) counted as
->   **+8 NEW** reading-copy violations in `type-scale` §3, on a ratchet that may only shrink —
->   with no glyph moved. Both blessings are keyed on the DRESSING. Fixed in both
->   (`CARRIER` in `eyebrow-sweep.mjs`; `isBlessedMicrolabel` in `type-scale.test.mts`), and the
->   two lists **must not drift**. ⛔ Then the first repair over-corrected: adding `.eyebrow` to
->   `CARRIER` made every `<PageHeader eyebrow=…>` PROP match and inflated the census **318 → 499**.
->   `.eyebrow` carries letter-spacing ONLY. The test is not "is it a design class" but "does this
->   class carry `text-transform`".
->
-> ### ⛔ REGISTER ITEMS REFUSED THIS SESSION, WITH THE RULING EACH WOULD REVERSE
-> `DG-A-08`'s `btn-xs` (32px, reverses `globals.css`'s Phase-3 ruling and §A2) · `DG-A-08`'s
-> `<td>`-keyed guard (reaches 2 of its own 7 instances) · `DG-A-13`'s `test:copy-enums` (finds
-> **zero** of its own confirmed defects — the token is never typed, it comes from the DATA) ·
-> `DG-A-21`'s console-scoped guard (**cannot land at zero**; the residual is 3× the console) ·
-> `DG-A-22`'s `min-w` (the table is already past its card, so no `max-w` in it can bind) ·
-> `DG-P-13`'s viewport gate (reverses three dated decisions; the premise that a PWA is
-> phone-only is false) · `DG-P-14` item 2's "truncate the URL" (reverses Ali's E-221).
->
-> ### ✅ VERIFIED ON PRODUCTION AFTER THE DEPLOY (`78546e83`) — measured, not asserted
-> · **`qa:dg-measure` admin — 43 routes plus a 5-route re-drive · 1 sign-in · 0 revocations · 0
->   unrecoverable**, and **`ovf390=no`, `err=0` and `h1=28` on EVERY measured route.** That
->   `h1=28` across the whole console is DG-P-03 landing: the page-title step is what admin now
->   renders, everywhere. ⚠️ Four routes first timed out at 90s — machine contention with a second
->   Chromium, not the product; re-driven alone all four are green, `/admin/updown` included.
-> · **`qa:dg-measure` player, `SURFACE=player ANON=1` — 17 routes · 0 sign-ins · 0 unrecoverable ·
->   `ovf390=no err=0` on every one**, and `/markets/[id]` reports **h1=36** — §T2's
->   `md:text-display-3` still rendering after the h1 sweep moved five of its siblings.
-> · **`qa:dg-shell` — 40 routes · 77 probes · 0 re-sign-ins · 0 failing**, drawer rows all 44, and
->   it still NAMES `/admin/totp-verify` rather than counting it clean.
-> · **`qa:toggle-hit` — 206 probes over 12 route/width pairs, PASS.** Every kit Switch still
->   reaches `--tap-min` by hit test and still paints 44×26.
-> · **`qa:install-shown` — 63 passed, 0 failed, UNMOVED.** That is the result DG-P-13 needed: the
->   row changed the COPY and not the render gate, and the gate's own unchanged number proves it.
-> · **`qa:e70-legal` — 7 passed, 0 failed**, so the legal nav's new `--pill-active` fill did not
->   break the soft-navigation highlight E-70 exists for, in EN or SW.
-> · **`qa:filter-scan https://50pick.tz`** — every rail MEASURED speaks ONE language, 4 of 8
->   surfaces reached, unchanged. · **`redo.cjs`: admin OK 49 / REDO 0 · player OK 21 / REDO 19** —
->   the 19 are the authed routes an anon drive cannot reach, which is the correct result.
-> · **DG-A-22's own acceptance test, re-run with the admin session:** `colSpan="8"` is honoured —
->   the caution cell measures **1429px, exactly the table's own width**, so it contributes nothing
->   to any column's intrinsic width — and the sentence renders in **2 lines at 1440** (49px)
->   against the ~13 lines of two-or-three words the `max-w`-in-a-`<td>` produced. **Zero document
->   overflow at BOTH 1440 and 390.** ⚠️ The table measures **1429**, not the **1355** DG-A-23
->   recorded, so that row's "scrollWidth unchanged to the pixel" criterion is NOT testable as
->   written: 1355 predates both DG-A-06's 70-control conversion and this session's, and an
->   auto-layout column follows its content.
-> · **Looked at, not merely measured** (`.qa-shots/session82/`, gitignored): the sign-up form's
->   **"DD / MM / YYYY" is legible** — that placeholder rendered **2.02:1** before, under half
->   §A1's floor, with the gate printing `PASS 7.50` over it — as are `you@example.com` and the `/`
->   separators; the three consent rows now stand on the 40px floor; and `/admin/reports` renders
->   **EXCEL and PDF as a matched pair**, where Excel wore the betting green and PDF the
->   irreversible-ceremony claret.
->
-> ### 🔴 WHAT IS STILL OWED, AND WHY — none of it is "run the command again"
-> · ⛔ **THE 13 PAYMENTS MONEY LEVERS ARE NOT VISUALLY VERIFIED, AND CANNOT BE FROM HERE.** They
->   render only when there IS a failed retry, an unmatched item or a stuck payout; production
->   reads **STUCK PAYOUTS 0 · OLDEST STUCK —**, so the controls are absent from the DOM. This is
->   the `CardSortControl` shape exactly — *an empty production queue renders nothing* — and it is
->   the single most important thing this session could not see. The conversion is type-checked,
->   suite-green and its page drives clean; the CONTROLS themselves are unwitnessed. ▶ To see them,
->   mint a failed payment in a non-production environment, or drive `/admin/payments` at a moment
->   the retry queue is non-empty.
-> · 🔴 **THE RESPONSIBLE-GAMBLING HELPLINE PANEL IS UNWITNESSED**, for the same reason as
->   `DG-P-02` and `DG-P-09`: `/profile/responsible-gambling` is authed and every player secret is
->   rejected, so an anon drive is bounced to sign-in. It is the sharpest repaint in DG-A-21 — a
->   helpline panel in the colour that means *your bet won* — and nobody has looked at the fix.
-> · ⚠️ **`/updown/[roundId]`'s VOID chip (slate → royal)** needs a voided round the viewer played.
->   ⚠️ **The 22 `<textarea>` placeholders** that got lighter: only the auth ones were seen.
->   ⚠️ **`qa:admin-updown-widths`** wants the TRADING officer persona — one of the six rejected.
-> · ⚠️ **The screenshots are EN only.** §A5 makes Swahili the longest population; `qa:install-shown`
->   did exercise sw and zh, but the repaints were not looked at in either.
-
-## ⏭️ RESUME AT — session 81 handover (2026-08-30)
-
-> **STEP 2 IS CLOSED. STEP 3 IS THREE ROWS IN.** Read this block, then the **RE-DERIVED
-> 2026-08-30** section (now complete at **17 of 17** rows), then THE PLANNER. ⛔ Every number
-> here was re-derived at HEAD after the last push; where it contradicts the session-80 block
-> below, THIS one is newer.
->
-> **PLANNER: 20 ☑ · 3 🚢 · 14 ☐** of 37. `test:all --skip responsive,motion` **273/273**.
-> Last commit: `1b256343`. Working tree clean, `origin/main` level with HEAD.
->
-> **CLOSED THIS SESSION:** **DG-A-11 + DG-P-06** (step 2's last item) · **DG-A-14** ·
-> **DG-A-06** · and **DG-A-13 + DG-A-21 are re-derived at last**, so the RE-DERIVED section
-> covers every open row.
-> 📐 **§3 761 → 755 · §4 935 → 934 · §6 602 → 271 · adoption 58.0% → 58.1% ·
-> `filter-language` 111 → 183 assertions · admin rails 2 → 9 · the §T3 role population
-> 586 → 552.**
->
-> ### ✅ VERIFIED ON PRODUCTION AFTER EACH DEPLOY — not asserted
-> · **anon player drive** — 17 routes, 0 sign-ins, **`ovf390=no` and `err=0` on every one**,
->   which is the real test of a sweep that moved 166 type sites. `/markets/[id]` reports h1=36.
-> · **`qa:dg-shell`** — 40 routes · 77 probes · 0 re-sign-ins · **0 failing**, drawer rows all 44.
-> · **admin drive (`qa:dg-measure`)** — **44 routes · 1 sign-in · 0 revocations · 0
->   unrecoverable · `ovf390=no` and `err=0` on every one**, after DG-A-06 moved 70 controls.
-> · **`qa:dg-type --bench eyebrow`** — green on the live sheet, **with its control firing**.
-> · **`qa:filter-scan https://50pick.tz`** — every rail MEASURED speaks ONE language, 4 of 8
->   surfaces reached, and it SAYS the other four are authed rather than counting them clean.
->
-> ### ⭐ STEP 2 CLOSED — §T3's SECTION EYEBROW, AND THE POPULATION WAS THE WHOLE JOB
-> §T3 ruled 0.14em on 2026-08-30; what remained was the sweep, and the sweep is hard because
-> **§T3 governs ONE of six roles that all render as uppercase mono tracked type and nothing a
-> regex can see separates them.** So all **586 sites were READ**, in three passes — classify, a
-> reader briefed to REFUTE, then a third pass over every control label once the enclosure test
-> had to be sharpened. **23 calls overturned on pass 2, 12 more on pass 3.**
-> 🔴 **§T3's OWN TABLE WAS WRONG AND IS CORRECTED FROM THE READ:** not *"~410 · 41 · 3 · 5"* but
-> **308 · 102 · 5 · 11**, plus **two families it never named** — 57 non-interactive STATUS CHIPS
-> and 55 DATA VALUES / in-flight readouts / count annotations. ⛔ A sweep keyed on the dressing
-> would have moved 112 sites the rule does not govern. Its two small counts failed the same way:
-> type-to-confirm was grouped by VALUE where the table claims to group by ROLE, and celebration
-> missed the OG-image routes and the transactional email because a scan of pages cannot see them.
-> ⭐ **THE ENCLOSURE TEST IS SHARPENED, AND IT DECIDED FOUR SITES.** *"A `<span>` inside a
-> `<button>` is a control label"* read as *any interactive ancestor wins* makes a CARD'S OWN
-> `<h3>` a control label, because `market-card.tsx:493` wraps the whole card in a `<Link>`. A
-> CONTROL is one target whose accessible name IS the string; a **NAVIGATION WRAPPER** leaves the
-> captions inside it their own roles.
-> ⭐ **AND THE VALUE IS WRITTEN ONCE**, as `.eyebrow` in `globals.css` beside `.amount`. ⛔
-> **Converging nine values onto one would have left §6 at 602 forever** — what it counts is a
-> value written at a CALL SITE, so a class is the only move that can take it to zero. The six
-> CSS-side eyebrows join the same rule rather than restating it (§0a), and
-> `.board-section-head` / `.board-section-eyebrow` are **DELETED**: a second definition of the
-> section eyebrow at 0.16em with zero consumers since 2026-08-13, **declared dead in
-> `dead-css`'s baseline for seventeen days**. ⭐ A declared-dead list is a list of things nobody
-> deleted.
->
-> ### 🔬 THE NEW GATE — `npm run test:eyebrow-roles`, AND IT IS IN `test:all`
-> A gate not in the pipeline is not a gate. It holds one invariant: **every uppercase-and-tracked
-> site in `src/` either carries `.eyebrow`, or its role has been READ and written down**
-> (`scripts/design-gate/eyebrow-roles.mjs`, 552 sites). ⛔ Its declarations are keyed on the
-> line's CONTENT plus what the element renders — **a `:line` key is correct for exactly one
-> commit**, and a gate that reports itself stale on every unrelated edit gets deleted. Proved RED
-> both ways: a NEW undeclared uppercase site exits 5, and so does an eyebrow that loses its class.
->
-> ### ✅ DG-A-14 — THE INSTRUMENT WAS KEYED ON THE DRESSING
-> §3 exempted *"an UPPERCASE tracked microlabel"* — the DRESSING — so **48 sentences** sat 2–4px
-> under §T4's floor counted as labels, among them the arming instruction for an irreversible
-> settlement and a promise to the player that their P&L will not move again. ⛔ **No text test
-> decides it, and two were measured:** the register's own *">60 characters"* misses **92%** of
-> them, and a word count cannot separate a bilingual LABEL from a sentence. So §3 imports the
-> **§T3 ROLE READ** — one list, no second home (§0a). ⚠️ §3 rose to 804 before it fell: **the
-> population grew, not the defect**, the third time this ratchet has been re-based upward and
-> the third time the BLESSING was wrong rather than the product.
-> 🔴 **9 OF THE 48 CAME OFF THE RATCHET WITHOUT A GLYPH MOVING.** A fixer refused 12 as
-> misclassified; accepting a refusal deletes a site from a ratchet for FREE, so a third reader
-> adjudicated all 12 with the brief that upholding is the costly answer — **8 upheld, 3
-> overturned, 1 a different defect**. ⭐ *"All figures final"* is not a noun phrase but a
-> verbless clause, and only ENGLISH can elide the copula: Swahili writes it out (*"Takwimu zote
-> **ni** za mwisho"*), so §A5's longest population reads a five-word sentence in 10px caps.
->
-> ### ✅ DG-A-06 — THE AUDIT'S POPULATION WAS THE DEFECT, AND SO WAS THE GUARD'S
-> The register's rails were already converted by S-07. What survived was **70 controls over 12
-> rails and 8 routes**, invisible because `CardSortControl` sits behind `{queue.length > 0 && …}`
-> and an empty production queue renders nothing. §6.6 was **re-keyed BEFORE any rank was passed**
-> — and the trap was TWO reds, not one — then proved falsifiable: dropping one rank gives
-> *"2 dense of 3 controls"*, so it did not widen into a tautology.
-> 🔴 **AN ADVERSARIAL PASS THEN FOUND FOUR THINGS THE CONVERSION ITSELF INTRODUCED** (`23ca440f`):
-> ① §6.7 **convicted an innocent `<input>`** — its subject was the whole FILE, harmless over two
-> files and a landmine over nine; ② the sort rail's `data-chip` **named no real query param and
-> collided across the two rails one page renders**; ③ the "Custom" chip **lost `aria-pressed`**
-> (`aria-expanded` says the panel is open, not that a custom window is in force — §A4 forbids
-> colour as the only signal); ④ **three ratchets were left ABOVE what the tree already reached**.
-> ⭐ Slack is not safety, and the suite passes either way — only re-deriving all three found it.
->
-> ### ⛔ THE THEME, THREE MORE INSTRUMENTS THAT REPORTED ON NOTHING — TWO OF THEM MINE
-> · **`qa:dg-shell` reported a PRODUCT defect that did not exist.** `/admin/totp-verify` printed
->   *"NO `<main>` — the landmark is gone"*. The page is fine: it REDIRECTS an already-verified
->   admin to `/admin`, and at `waitUntil:"load"` the seal was reading the EMPTY pre-redirect
->   document. It only ever checked `/auth/`, so every other redirect was invisible. ⚠️ It also
->   means session 79's *"40/40"* was a FLAKE that settled in time. Now: it waits for the document,
->   compares the LANDED url, and **names the one route it cannot reach** instead of counting it
->   clean — 39 measured, 1 named.
-> · **`qa:filter-scan` EXITED 0 HAVING REACHED ZERO SURFACES.** Its BASE defaults to
->   `localhost:3009`; with nothing listening it printed *"✓ every rail MEASURED speaks ONE
->   language (0 of 8 surfaces reached)"* and returned success. The line was honest about the
->   number and it still passed. Zero surfaces now exits 3.
-> · **My own census counted 19 COMMENT lines as type sites**, by matching the word "uppercase"
->   inside JSDoc. Everything decomments now — line-preservingly, so `:line` stays true.
-> · ⭐ **And the eyebrow bench found two bugs in ITSELF on production:** it compared an `em`
->   value across two font sizes (0.14em is 2.1px at 15px and 1.4px at 10px — they can never be
->   equal), and its control probed `sm:tracking-[0.3em]`, a class **Tailwind never emitted**
->   because nothing in the tree writes one. A control built on a class that does not ship proves
->   nothing.
->
-> ### 🔴 TWO BUGS IN MY OWN SWEEP, BOTH CAUGHT BY READING THE DIFF BEFORE IT SHIPPED
-> The "add the class" branch inserted it before the first literal `uppercase` on the line —
-> which in an inline style is the VALUE of `text-transform`. It wrote
-> `text-transform: eyebrow uppercase` into **five sites, three of them in the transactional
-> email**: invalid CSS, so those elements would have **stopped being uppercase**. And a class
-> cannot reach an inline `letterSpacing` at all, so it would have been inert on both `AdminKpi`
-> captions. ⛔ **A sweep needs a write mode per site shape, and must refuse the shapes it cannot
-> write.**
->
-> ### ▶ WHAT IS LEFT, AND THE ORDER I WOULD TAKE IT
-> **STEP 3 (7 rows):** `DG-A-08` · `DG-A-13` · `DG-A-21` · `DG-P-03`'s four page-level h1s ·
-> `DG-P-07` · `DG-P-08` · `DG-P-10` · `DG-P-11`.
-> **STEP 4 (5 rows):** `DG-A-20` · `DG-A-22` · `DG-P-12` · `DG-P-13` · `DG-P-14`.
-> **🚢 and NOT closable this session:** `DG-A-12` / `DG-P-05` (the above-floor long tail is a
-> per-site design call, and 2 money sizes are authed-blind).
-> **🔴 BLOCKED ON ALI ONLY:** `DG-P-02` and `DG-P-09` — all six player/officer QA secrets are
-> rejected by production; only `QA_ADMIN_PASSWORD` works.
-> ⛔ **DO NOT START STEP 5 (DG-S-01…07) until 1–4 close. ⛔ Do not start Maswali.**
->
-> ### ⚠️ THREE THINGS LEFT ON THE FLOOR, NAMED SO THEY ARE NOT LOST
-> · **`ui-consistency` has ONE unlocked baseline improvement** (`numeric-size-utility` on
->   `notifications-panel.tsx`, 8 → 7). It PRE-DATES this session — the raw match count is
->   identical at `699887c3` and at HEAD — so it was left rather than claimed. `npm run
->   test:ui-consistency -- --update-baseline` locks it in.
-> · **`/updown` at 360 reports "every control in the rail is hidden — matched ZERO controls"**
->   in `qa:filter-scan`, printed as a NOTE that does not fail. That is a per-surface zero-probe,
->   one level below the one just fixed.
-> · **`/admin/totp-verify`'s landmark is unmeasurable** by any authed drive. It is named by the
->   seal now; proving it needs an admin with TOTP who has not verified this session.
-
+> ⭐ **THIS FILE IS THE DOOR AND THE TRACKER.** It is the ONLY place the programme's state is
+> written (§0a — one fact, one home). Sessions 76–82 each left a handover block here; those are
+> now spent and have been **deleted**, not archived, because a finished handover read as live
+> instruction is exactly how this programme lost numbers twice. What survives is what is still
+> TRUE: the rules, the traps, the planner, and the plan for the one stage that is left.
 
 ---
 
-## ⏭️ RESUME AT — session 80 handover (2026-08-29)
+## ⏭️ START HERE — the state, re-derived 2026-08-31
 
-> **STEP 2 IS CLOSED EXCEPT ONE TASTE CALL AND TWO BLOCKED SITES.** Read this block, then the
-> **RE-DERIVED** section, then THE PLANNER. ⛔ Every number here was re-derived this session;
-> where it contradicts the session-79 block below, THIS one is newer.
->
-> **PLANNER: 16 ☑ · 5 🚢 · 16 ☐** of 37. `test:all` **272/272**.
->
-> **CLOSED THIS SESSION:** **DG-P-04** · **DG-A-09** · **DG-A-19** (prop half) · the **139
-> off-ladder eyebrows** (DG-A-11/DG-P-06's rung) · the **14 off-ladder amounts**
-> (DG-A-12/DG-P-05's money half, 12 shipped + 2 recorded) · **DG-P-03's** double-h1 and §T2's
-> named violation · **the eyebrow tracking is RULED** · **all 15 open step-3/4 rows re-derived**.
-> 📐 **§4 1109 → 935 · §3 763 → 761 · ladder adoption 50.5% → 58.0% · §6 620 → 602 ·
-> `spacing-scale` 629 → 628 · PageHeader call sites 25 → 31 · literal h1 recipes 17 → 14.**
->
-> ### ✅ VERIFIED ON PRODUCTION AFTER THE DEPLOY — not asserted
-> · **`qa:dg-rhythm`** — 16 routes, 0 skipped, 6 containers, **0 phantom rungs**; `/live` 24 → 0,
->   `/proposals` 32 → 0, `/results` (none) → `space-y-5`.
-> · **`qa:dg-shell`** — **40 routes · 78 probes · 0 re-sign-ins · 0 failing**, `h1=1` on every one,
->   38 drawer rows all 44, active fill still `--pill-active` at alpha 0.35.
-> · **anon player drive** — **17 routes · 0 sign-ins · 0 unrecoverable · `ovf390=no` and `err=0`
->   on every route**, which is the real test of a sweep that moved 134 type sites. ⭐ And
->   `/markets/[id]` reports **h1=36**, the §T2 fix measuring itself.
-> · **`qa:dg-type --bench recipe`** — the tracking screenshot, in the real JetBrains Mono.
-> ⚠️ `redo.cjs` reports **OK 20 / REDO 19**, and the 19 are exactly the authed routes — correct
-> behaviour, and the standing credential blocker, not a fault in the drive.
->
-> ### ✅ THE LAST STEP-2 DECISION IS TAKEN — the eyebrow's tracking is **0.14em** (§T3)
-> Ruled 2026-08-30 against a screenshot and rendered widths on production (`qa:dg-type --bench
-> recipe`, a bench added for it). ① No law names a value. ② A dated ruling bears on it:
-> `.admin-tbl thead` is `0.14em` across all 44 admin tables. ③ Then taste, against the render:
-> at 0.1em the string reads as compressed TEXT, not the identifier §T3 asks for; at 0.18–0.2em
-> a long string breaks into loose letters. ④ Measured where §A5 hurts most — Swahili
-> `JUMLA ILIYOLIPWA` is **112px at 0.1em · 118.41 at 0.14 · 121.61 at 0.16 · 128 at 0.2**.
-> 🔴 **AND THE POPULATION WAS WRONG TWICE, WHICH IS WHAT CHANGED THE ANSWER: 4 values → 106
-> sites over 9 values → 468 once `<button>`, `<a>` and `<input>` are counted — and the extra
-> sites are a DIFFERENT ROLE.** 0.08em is 41 sites, nearly all `<button>`/`<a>` control labels;
-> 0.2em includes three `<input>`s (kill-switch · balance-adjust · `ConfirmModal`) where the
-> widest tracking is what makes the typed word unambiguous. ⛔ **A sweep over "every uppercase
-> mono element" would flatten three real distinctions to buy one number.**
-> ▶ **WHAT REMAINS IS THE SWEEP, ROLE-AWARE:** ~410 section eyebrows onto 0.14em —
-> `field-legend.tsx` itself included, since at 0.16em the KIT is the odd one out — leaving the
-> control-label, type-to-confirm and celebration families alone (§T3's table names them).
-> ⛔ Do NOT drive it off the tag alone: a `<span>` inside a `<button>` is a control label. The
-> 139-site rung sweep succeeded because every site was READ; this one is the same shape.
->
-> ### ▶ THE EARLIER FRAMING OF THAT DECISION, kept for its census
-> **The eyebrow RECIPE, and it is ONE decision for DG-A-11 and DG-P-06 together.** The rung is
-> settled and shipped; the dressing is not. ⚠️ **The handover's list was the wrong population:**
-> not *"tracking varies 0.12/0.14/0.16/0.20em"* but **106 recipe elements in 74 files carrying
-> 38 DISTINCT recipes, 23 of them used exactly once, over NINE tracking values** — 0.08 · 0.1 ·
-> 0.12 · 0.14 · 0.16 · 0.18 · 0.2 · `wide` · none. **The biggest group is 0.1em (32 sites) and
-> it is spelled TWO ways (`0.1em` / `0.10em`), so a text-matching guard reads them as different**
-> — the `hardcoded-pill-active` shape again. 🔴 **And `FieldLegend`'s own recipe is not the
-> platform's modal one:** the most-typed eyebrow is `micro · 0.1em · no weight · no colour`,
-> while the component is `micro · 0.16em · bold · text-text-muted`. So *"adopt the component"* is
-> a VISIBLE change at most sites, not the no-op the 16 byte-identical adoptions were.
-> ▶ No law names a tracking value, so this is taste — **it needs a screenshot, and `qa:dg-type`
-> is what works.** Three candidates with their evidence: **0.1em** (modal, 32) · **0.14em**
-> (`.admin-tbl thead`'s CSS-side canonical, 21) · **0.16em** (`FieldLegend`'s, 17).
-> **Still blocked and only by Ali:** DG-P-02 · DG-P-09 · the 2 authed amount sizes.
->
-> ### 🔴 ALL 15 OPEN STEP-3/4 ROWS ARE NOW RE-DERIVED — READ THAT SECTION BEFORE TOUCHING ONE
-> **14 PARTLY_REAL · 1 REAL_AND_ACTIONABLE · 0 that reproduce as written**, and **14 of the 15
-> derivations were REFUTED on their first pass** by a second reader briefed to break them — *the
-> re-derivation needed a re-derivation.* ⛔ **DG-A-13 and DG-A-21 did not complete and are still
-> un-re-derived.** The section carries a does-not-reproduce table (17 rows), what each row is
-> actually about, and the guard hazards. Three worth knowing before you open anything:
-> · ~~**DG-A-06's obvious first edit turns a green 111-assertion suite RED**~~ — ✅ **DONE
->   2026-08-30. §6.6 now counts every RANK-TAKING control (`RANK_TAKING`, one array, from which
->   §6.1/§6.2 are derived), the four rails are converted, and the suite stands at **183 assertions
->   green · 8 player + 9 admin rails · 12 discovered**, `red:filter-language` **27/27**. ⛔ The
->   111 in this line is now a STALE NUMBER — re-derive, do not quote it forward.
-> · **DG-A-14's 45 sites move §3 by ZERO** — `text-body-sm` is not counted either, by §0f's own
->   control. Narrow §3's blessing test FIRST or the whole sweep is invisible to its ratchet.
-> · **DG-A-08's prescribed `btn-xs` (32px) is the FIFTH register item asking to reverse a dated
->   decision** — §A2's *"money controls are never the exception"*, with 20 of its 61 sites
->   already shipped at ≥40.
-> ⭐ **And the pattern across all fifteen: an instrument measured the wrong population and the
-> register wrote the number down.** So the first edit of most of these rows is to the
-> INSTRUMENT, not the product.
->
-> ### 🔬 ONE NEW INSTRUMENT — `npm run qa:dg-rhythm`
-> The §S1 probe. Walks the public routes anonymously, finds every `[data-measure]` container and
-> reports each band's computed `margin-top`, `position` and height. `VERBOSE=1` prints the whole
-> stack, which is the difference between the register's un-actionable *"seven section gaps"* and
-> a line number. ⛔ Zero probes exits 3; `/auth/` is checked before anything is believed.
->
-> ### 🔴 THE FINDING WORTH CARRYING FORWARD — `space-y-*` IS NOT A GAP
-> It emits `> :not([hidden]) ~ :not([hidden]) { margin-top }`: a SIBLING selector that counts DOM
-> order and does not care whether the sibling occupies space. `.sr-only` is
-> `position:absolute; margin:-1px`. So the correct WCAG `sr-only` h1, written first, takes no
-> space and still holds the *"first child gets no margin"* slot — and the first band anyone can
-> SEE is pushed down a full rung by nothing. **`/live` +24px, `/proposals` +32px, measured on
-> production.** Ruled into `DESIGN_AUTHORITY` §S1. ⚠️ **The corollary is the trap for next time:**
-> that selector is **(0,3,0)** and beats any `mt-*` **(0,1,0)** on a child, so adding a rhythm to
-> a container **silently flattens every per-element top margin inside it**, a deliberate chapter
-> break included, with nothing going red. That is why `/markets` was left on per-element margins.
->
-> ### ⛔ THE THEME, THREE MORE INSTANCES — AND TWO OF THEM WERE MINE, THIS SESSION
-> · **`qa:dg-money` went blind to its own work.** Its money signal was `font-mono|tabular` — the
->   two classes `.amount` REPLACES. The moment a site adopted `.amount` it stopped looking like
->   money, and its off-ladder size vanished from the report: **14 → 0 with two defects still on
->   the page.** Signal widened; it correctly reports 2. ⭐ **A tool that stops seeing what it just
->   fixed cannot report a regression on it.**
-> · **`type-scale` §3 cannot see prose that is dressed as a label.** Its floor rule exempts *"an
->   UPPERCASE tracked microlabel"* — keyed on the DRESSING, not on whether the string is prose.
->   That is why §3 sat flat at 763 while four genuine paragraphs, including the first-visit
->   primer's promise to the player at **8.5px**, were 3–4px under the reading floor.
-> · **A window one line too shallow, twice in one census.** A code scan counted a
->   `<PageContainer>` written inside a COMMENT; and `grep -A2` found 3 of the 6 sr-only-first
->   containers, `-A3` found 4, `-A5` found 6 — **while production found one the code scan missed
->   entirely.** ⭐ The production probe is the instrument; the code scan was orientation.
-> · ⭐ **And one that went the right way:** lifting `fee-simulator`'s two licence paragraphs onto
->   a legible rung immediately BROKE §M4 — every rung is a tuple that emits `letter-spacing`
->   while `text-[10.5px]` set size alone — and `test:type-scale` §2 caught it in the same run.
->   Its own prescribed remedy is the fix that shipped: wrap the figures in `.amount` spans.
->   **That is DG-A-14's shape proven live — an amount inside a sentence is governed by BOTH laws,
->   and satisfying one alone breaks the other.**
->
-> ### ⚠️ AND ONE DATED DECISION WAS REVERSED, ON PURPOSE, WITH THE REASON WRITTEN DOWN
-> `RATCHET_MONEY` deferred the 34px net-P&L `.amount` fix because it widens the figure ~7.5px
-> "inside a `min-w-[220px]` column" on a route no credential reaches. **Reading the container
-> refutes the risk rather than measuring it:** `min-w` is a FLOOR, not a cap, inside
-> `flex flex-wrap` — the worst case is an earlier wrap, and §A5 forbids CLIPPING money, not
-> wrapping it. The §M4 half shipped; the SIZE call did not, and stays recorded.
+**Steps 1–4 are CLOSED. Step 5 is the only stage left, and it is a session of its own.**
+
+| | |
+|---|---|
+| **Planner** | **30 ☑ · 5 🚢 · 2 ☐** of 37 — re-derive it yourself from the table below, never from this line |
+| **Last commit** | `b4e0345c` · pushed · `origin/main` level · tree clean |
+| **Suite** | `node scripts/test-all.mjs --skip responsive,motion` → **273/273**, `npx tsc --noEmit` clean |
+| **Live** | Deployed and driven. Admin 43 routes + a 5-route re-drive, **`ovf390=no err=0 h1=28` on every one**; player anon 17 routes clean; `qa:dg-shell` 40/77/0-failing; `qa:toggle-hit` 206 PASS; `qa:install-shown` 63/0 **unmoved**; `qa:e70-legal` 7/0 |
+| **⛔ The 2 ☐** | `DG-P-02` and `DG-P-09` — **blocked on Ali, not on work.** All six player/officer QA secrets are rejected by production; only `QA_ADMIN_PASSWORD` works |
+| **🚢 The 5 tails** | `DG-A-08` (guard not built) · `DG-A-21` (~414 lines / ~125 files residual, only a third admin) · `DG-A-12`/`DG-P-05` (the above-floor long tail is a per-site call) · `DG-P-14` (item 2 closed no-change; item 5 is Ali's) |
+
+### 🔴 TWO THINGS SHIPPED THAT NOBODY HAS LOOKED AT — carry these, they are not gates
+- **The 13 `/admin/payments` money levers** (Retry · Cancel · Match · Write off · **Return to
+  player**) went from a **14px** box to the kit's 40px rung. They render ONLY when a retry has
+  failed or a payout is stuck, and production reads **STUCK PAYOUTS 0**, so they are absent from
+  the DOM. ⛔ This is the `CardSortControl` shape — *an empty production queue renders nothing* —
+  and it is the single most important thing session 82 could not witness.
+- **The responsible-gambling helpline panel** was painted in the betting WIN green (D2's own named
+  example, unmigrated for nine days). The fix is in; the route is authed, so nobody has seen it.
 
 ---
 
-## ⏭️ RESUME AT — session 79 handover (2026-08-29)
+## ⛔ THE METHOD — LAW FIRST. This is the whole programme, not a preamble.
+For every value you write, decide it in this order and **say which step decided it**:
+1. **A law** in [`DESIGN_AUTHORITY.md`](DESIGN_AUTHORITY.md). Read the section in full; do not skim.
+2. **A dated ruling already in the repo** — an in-file tombstone, a comment beside a token in
+   `globals.css`, a dated note in the rulebook, a guard's own reason string. Hunt with
+   `git log -S` / `git log -L` if you suspect one.
+3. **Only then taste** — and the value must match the site's NEIGHBOURS, which you must name.
+   A taste call still needs a screenshot; *"I decided"* is not a measurement.
 
-> **THE TWO DECISIONS ARE TAKEN, RULED IN `DESIGN_AUTHORITY` AND GUARDED.** Read this block,
-> then §79 below it, then the PLANNER. ⛔ Every number here was re-derived this session; where
-> it contradicts the session-78 block below, THIS one is newer.
->
-> **CLOSED THIS SESSION:** the money wall + the name collision (rulings, `31e8f3ba`) ·
-> **DG-A-18** (`f0f98a20` + `fe4d9aa7`) · **DG-A-10, both parts** (`bcd3b2d1` · `e4bf0e71` ·
-> `e4461156`).
-> **STEP 2 STILL OPEN:** `DG-A-11` 🚢 (33 multi-line `FieldLegend` bodies) · `DG-A-12` 🚢 (the
-> ~tens of amount sites onto `.amount` + a rung, and the above-floor per-site calls) ·
-> `DG-P-05` 🚢 (closes with DG-A-12) · `DG-P-06` ☐ (unblocked — §T7 settled its rung) ·
-> `DG-P-04` ☐ (re-derived; **the work order is in its planner row and the law is §S1**).
-> **NEW: `STEP 5` is planned and must NOT be started** — Ali's commission, a session of its own,
-> after steps 1–4.
->
-> ### 🔬 THE INSTRUMENTS THIS SESSION ADDED — all tracked, all with controls that go RED
-> · **`npm run qa:dg-type`** — the type bench, inside a live production page.
-> · **`npm run qa:dg-shell`** — the admin landmark/drawer seal, 40 routes.
-> · **`npm run qa:dg-money`** / **`qa:dg-eyebrow`** — the two sweeps, each REFUSING what it
->   must not decide (14 off-ladder amounts · 139 off-ladder eyebrows are per-site size calls).
-> · **`scripts/design-gate/session.mjs`** — ONE sign-in shared by every instrument.
-> · 🔴 **`redo.cjs` HARDENED — it had reported `OK 48` over EIGHT OFFLINE PAGES.** A 44-route
->   drive returned HTTP 200 everywhere with `0 unrecoverable`, while eight routes had rendered
->   *"You're offline"* with 16-20 console errors each; its only poison test was
->   `/auth/(admin|login)`. ⛔ **The sign-in-page failure, one page over.** It also carried a
->   SECOND, already-drifted copy of the route population — it imports `routes.mjs` now.
->   ⚠️ And my first fix for it deleted `/auth/login`, a route where the sign-in page IS the
->   correct answer: a detector that reads a legitimate page as poison silently shrinks the
->   population it protects. Both directions are proved now.
->
-> ### ⭐ ALI DELEGATED THE PER-SITE DESIGN CALLS (2026-08-29) — AND HOW TO USE THAT
-> His words: *"for design calls you decide, based on the overall design of the platform and
-> perfection and what you see better; I care about consistency and being perfect."*
-> So the 14 off-ladder amounts, the 139 off-ladder eyebrows and the above-floor sizes do **not**
-> need to wait for him. ⛔ **But the method is LAW FIRST, taste only where no law decides** —
-> the last time he delegated a ruling in these words, `DESIGN_AUTHORITY` had **already answered
-> it**, and one of the two options being offered to him contradicted a written law (§T2). That
-> is now **four** register items that asked to reverse a dated, measured decision.
-> ▶ For each site, in this order: ① does a law decide it (§T4's 12.5px floor · §T3's blessed
-> tier · §M4 · §A2 · §A5)? ② does a dated ruling in the file itself decide it? ③ only then is it
-> taste — and then pick the value that makes the site match its NEIGHBOURS, because consistency
-> is the thing he named. ⚠️ And a taste call still needs a screenshot; "I decided" is not a
-> measurement.
->
-> ### 📈 WHERE THE TYPE LADDER STANDS
-> **Adoption 19.8% → 50.5%** — more than half the product's type is on the closed scale, and
-> §4 has gone 1809 → 1109. ⭐ **§3 held at 763 through every sweep**, which is the proof that
-> none of them bought a ratchet without moving a glyph.
-> ⛔ **And a rule this session paid for four separate times: a gate one level too shallow is
-> indistinguishable from no gate.** The sheet gate passed while every FONT was 404; §2 passed
-> while ten money elements were letter-spaced; §1/§2 passed VACUOUSLY on elements it never
-> read; `landmark-seal` was cited for a surface it never visits. **In every case the
-> instrument was green and the population was wrong.**
+⭐ **Ali has delegated the per-site design calls:** *"you decide, based on the overall design of
+the platform and perfection and what you see better; I care about consistency and being perfect."*
+That delegation is for step ③, never for overriding ① or ②.
 
-### ⭐ THE MONEY WALL IS RULED — and the guard that was supposed to enforce §M4 was blind
-`.amount` (globals.css, beside `.mono`) carries §M4's three properties, **replaces**
-`font-mono tabular` so a call site gets shorter, and restores the untracked width **byte for
-byte** (85.81px on `TZS 679,532`). Written up as `DESIGN_AUTHORITY` §M4's new subsection.
-🔴 **The real find:** `type-scale` §2 forbade tracking over an amount via `/^tracking-/` — a
-SPELLING. A money element written `text-micro` is tracked **out by +0.4px/glyph (+6.67%)** and
-§2 printed PASS. Widening it found **10 sites it could never have seen**; 5 fixed by adopting
-`.amount`, 5 recorded (an amount inside a sentence → the wrap, which is DG-A-14).
-⛔ **THE POPULATION GREW, NOT THE DEFECT.** Third instance of this exact shape.
+## ⛔ THE RULES THIS PROGRAMME KEEPS PAYING FOR
+- **Never quote a recorded number in a conclusion — RE-DERIVE it**, and print the command. Every
+  register number here has rotted at least once, and five session claims were overturned by
+  re-derivation in one pass.
+- **MEASURE THE RIGHT POPULATION.** A true measurement over the wrong population is the most
+  convincing way to be wrong. Before counting, ask what the FULL set is. Past failures: a
+  `<td>`-scoped guard reaching 38 of 372 tags · a nav probe selecting anchors only · a
+  >60-character threshold missing 92% of its targets · a census blind to a component that renders
+  its own h1 · **a contrast gate that scored a token while the browser painted `token × alpha ×
+  opacity`.**
+- **A GATE ONE LEVEL TOO SHALLOW IS INDISTINGUISHABLE FROM NO GATE.** Any guard you propose must
+  state (a) its re-derived population, (b) its HEAD hit count outside any allowlist, (c) the
+  CONTROL that makes it go RED. If it cannot land at zero, REFUSE it and say so with arithmetic.
+  ⛔ **Build the control BEFORE believing the gate** — session 82's contrast fix scored the real
+  shipped defect as PASS until its own control caught it.
+- **A gate not in the pipeline is not a gate** (`test:all` picks up any `test:*` key automatically).
+- **An allowlist entry earns its place by a RENDERED FACT or a written reason — never by filename.**
+  A file-scoped allowlist exempts every future site in that file.
+- **⛔ Some register items ask to REVERSE a dated, measured decision.** Twelve have been caught.
+  Refuse them by name, with the ruling's date and `file:line`.
+- **Read the diff before you believe the suite.** Session 82's `.row-link` would have shipped
+  *"8 PREDICTORS"* for *"8 predictors"* with `tsc` silent and every ratchet green.
 
-### ⭐ THE NAME COLLISION IS RULED — and the row's question was asked of the wrong ladder
-**FIVE collisions, not three** (`display-1` 60/64 and `display-2` 44/48 were missed), and the
-ladders agree on **none** of their values. `DESIGN_AUTHORITY` **§T7** is new: the two ladders
-have different JOBS — `--type-*` for sizes written inside `globals.css`, Tailwind for sizes
-written at a call site — and the five are **FROZEN**, with `test:type-scale` §7 pinning the
-set *and its values* so a sixth cannot appear. Proven RED both ways.
-⭐ **`text-micro` IS 10px.** The handover's *"there is no rung at 10, so the eyebrow costs
-+1px on 254 labels"* is true of the CSS ladder and false of the reachable one. The eyebrow
-takes `text-micro`; **nothing moves**, and the +1px (**+9.63px on "TOTAL SETTLED"**, ~10%) is
-not paid.
+## 📐 RATCHETS — if your work moves one, lower the constant in the SAME commit
+`scripts/type-scale.test.mts`: `RATCHET_SUBFLOOR` **753** · `RATCHET_ARBITRARY_SIZE` **924** ·
+`RATCHET_INLINE_FONTSIZE` **36** · `RATCHET_ARBITRARY_TRACKING` **241**.
+`scripts/spacing-scale.test.mts`: `CEILING` **562** — §2 asserts `total === CEILING`, so a drop
+that does not lower it FAILS. `scripts/design-frozen.test.mts`: `FROZEN_RATCHET`, may only shrink.
+`scripts/tap-target.test.mts`: its ratchet asserts every row is STILL a real finding — a fixed
+control leaves a stale row and the gate fails until it is deleted.
+`scripts/design-gate/eyebrow-roles.mjs`: **527 sites**; every uppercase-and-tracked site in `src/`
+either carries `.eyebrow` or has its role written down. ⛔ Keyed on line CONTENT, not `:line`.
+⛔ **A class that supplies `text-transform` removes its sites from TWO censuses at once.** Add it
+to `CARRIER` in `eyebrow-sweep.mjs` AND to `isBlessedMicrolabel` in `type-scale.test.mts`, in the
+same commit; the two lists must not drift. ⛔ `.eyebrow` is NOT a carrier — it sets letter-spacing
+only, and listing it inflates the census 318 → 499 by matching every `<PageHeader eyebrow=…>` prop.
 
-### 🔬 `npm run qa:dg-type` — THE BENCH, AND IT IS TRACKED IN `scripts/`
-⛔ The DG-A-12 sweep tool was written into `.qa-design-gate/`, which this programme's own
-DELETE-WHEN-DONE list orders deleted. This one is not.
-🔴 **It runs INSIDE a live production page, and the two versions before it were wrong in ways
-that looked right.** A saved stylesheet's `@font-face` is `url(../media/…)` and 404s; rewritten
-to absolute URLs a webfont is still **CORS-refused from `file://`** — and either way
-`getComputedStyle().fontFamily` reports `"JetBrains Mono"`, because it echoes what was
-REQUESTED. **The 13px money string measured 75.73px; in the real face it is 85.81px — 13%
-out**, and every KPI conclusion drawn from it was wrong. It now gates on
-`document.fonts.check` and refuses to measure without it.
-⭐ **The lesson has a general form: a gate one level too shallow is indistinguishable from no
-gate.** The sheet gate passed the whole time — it checks a CSS custom property, which resolves
-perfectly from a stylesheet whose every font is 404.
-
-### ✅ DG-A-18 IS CLOSED — but both of session 78's "refutations" were wrong, and that is the lesson
-- *"`qa:landmark-seal` already asserts one `<main>` per page"* — **`scripts/landmark-seal.mjs`
-  contains ZERO occurrences of `/admin`.** Its lists are `/wallet /profile /positions …` and it
-  signs in as a PLAYER (`loginOnce(b, "fleet:07")`). It is a PLAYER guard, cited as admin proof.
-  ⭐ The gate that *does* cover admin landmarks is `scripts/responsive-audit.mjs` (`test:responsive`).
-- *"the `<main>` exists at `admin/layout.tsx:224`"* — true for 38 routes and **false for 2**:
-  `TOTP_EXEMPT` (`:38-41`) returns `<>{children}</>` at `:97-99`, above the shell. `/admin/2fa/setup`
-  is a **forced-enrolment** page every new admin passes through, and it has no `<main>` and no
-  skip link. ⛔ And `ADMIN_ROUTES` (38) **excludes both**, so the population cannot see them.
-- *"four trackings in one row is three"* — the count is right and **the value set is wrong**:
-  0.10/0.12/0.14em, not 0.10/0.14/0.18em.
-- 🔴 **AND THE FIX HAD ONLY LANDED ON THE DESKTOP SIDEBAR.** `admin-mobile-nav.tsx` was still
-  `px-2.5 py-2` = **42px** while `admin-sidebar-nav.tsx`'s own comment claimed it replaced that
-  "on every row of every admin page", and it still said the active state as
-  `bg-bg-inset text-royal-300` — a second home for what `--pill-active` owns, one file from the
-  fix that named the problem, invisible to `hardcoded-pill-active` for the same literal-text reason.
-
-✅ **ALL FIXED AND SEALED (`f0f98a20` + the shell-seal commit).** ⛔ **And the sibling's rung was
-the WRONG one to copy:** the drawer takes `--h-control-md` (**44**), not the desktop's
-`--h-control-sm` (40) — §A2 reads *"≥ --tap-min (40px), **44px preferred on mobile**"*, so
-copying the precedent would have moved a finger target from 42 **down** to 40. A consistency
-fix that is a regression is still a regression.
-⭐ **THE GUARD GAP IS CLOSED TOO — `npm run qa:dg-shell`.** Production, admin-authed, walking
-`ADMIN_ROUTES` **plus the two routes that population has always excluded**:
-**40/40 exactly one `#main-content` · 38 drawer rows all 44 · active fill = `--pill-active`
-(alpha 0.35) · 78 probes · 0 re-sign-ins.**
-🔴 **ITS CONTROL IS THE FINDING WORTH CARRYING FORWARD: `/auth/admin` ALSO renders exactly one
-`<main id="main-content">`.** So a landmark check would pass, route for route, on a drive whose
-session died at cell 3 — which is exactly how a 44-route drive once recorded the sign-in page as
-data and lost 30 of 44 records. ⛔ **The landmark does not distinguish the console from the
-sign-in page. The URL does.** Any new admin gate must check `/auth/` before believing anything.
-
-### ⚠️ DG-P-04 — five gaps on the measurable surface, not seven
-Fresh anon drive, **17 routes** (16 declared in `routes.mjs` + 1 discovered — that is where the
-"17" comes from), 0 sign-ins, 0 revocations, **zero overflow at 390, zero console errors**:
-`24px ×22 · 32 ×9 · 16 ×4 · 20 ×2 · 29.3 ×1`. All four real values are on `--sp-*`; the 29.3 is
-a measurement artefact of an `inline-flex` eyebrow, not an authored gap. ⛔ **The register's
-seven can be neither confirmed nor refuted** — 19 of the 36 player routes are authed and blind.
-⚠️ The rig's "section" is *any two adjacent children of `<main>`*, which is NOT the rhythm's
-"section", so a raw histogram cannot be read as a rhythm violation. The −1px **does** reproduce
-(Tailwind's `.sr-only{margin:-1px}`, `/profile/invite` `page.tsx:142`).
-
-### ⭐ DG-A-10 part 2 — the arithmetic is settled and it is 17px
-137px and 116px re-derived exactly (390 − 8 scrollbar → 382, − `px-4` 40 → 342, − `gap-3` 16 ÷ 2
-→ 163/142, − 2 border − `p-2` 24 → **137/116**). The value is a **22px inline literal**,
-`admin-shell.tsx:402`. Measured in the real face: 22px needs **145.2px** — it cannot fit either
-tile. **17px is the largest that fits both.**
-⛔ **Do NOT lower `BALANCE_COMPACT_ABOVE`.** It is 1,000,000, and `utils.ts:139-143` records it as
-MEASURED on production 2026-08-25 (100 wallets, p95 TZS 886,854). ⚠️ But note the population:
-that was measured on **player wallets** and is applied to **admin aggregates** — a different
-population, which is worth its own row rather than a quiet threshold change.
+## 🔬 THE INSTRUMENTS — all in `scripts/design-gate/`, all with controls that go RED
+`qa:dg-measure` (the drive; `SURFACE=player ANON=1` for the 17 public routes) · `qa:dg-shell` ·
+`qa:dg-type --bench recipe|money|eyebrow` (runs INSIDE a live production page) · `qa:dg-rhythm` ·
+`qa:dg-money` · `qa:dg-eyebrow` · `qa:dg-redo <admin|player>` (run after EVERY drive —
+`player OK 21 / REDO 19` is CORRECT for an anon drive) · `qa:filter-scan https://50pick.tz`
+(⚠️ defaults to localhost:3009 — pass the URL or it reaches nothing) · `qa:toggle-hit` ·
+`test:eyebrow-roles`. ⛔ Piping a gate to `tail` reports TAIL's exit code.
 
 ---
 
-## §79 — the session-78 handover, kept for its traps
+## ▶ BOOT — any machine, any PC
+1. `git pull` on `main`, then `npm install`. ⚠️ A parallel session may share this tree
+   (`C:\kipindi-lane-sentinel`) — **`git fetch` before every push**, and read
+   `.claude/skills/50pick-standards/SKILL.md` §8b before committing.
+2. Read, in order: this file's state block → [`DESIGN_AUTHORITY.md`](DESIGN_AUTHORITY.md) §0 and
+   the sections your row touches → the §🅢 STEP 5 plan below.
+3. Credentials live in `.env.qa.local` (never tracked, per-machine). Only `QA_ADMIN_PASSWORD`
+   works today. Evidence writes to `.qa-design-gate/` and `.qa-shots/`, both gitignored and
+   regenerable — ⛔ never commit a screenshot.
+4. ⛔ **Before pushing:** `node scripts/test-all.mjs --skip responsive,motion` — the whole suite,
+   not a list you chose — plus `npx tsc --noEmit`. Push to `main` is **LIVE**.
 
-## ⏭️ RESUME AT — session 78 handover (2026-08-29)
+## ▶ THE WORK THAT IS LEFT
+| Step | What | Systems | State |
+|---|---|---|---|
+| 1–4 | Kit primitives · tokens & classes · the sweeps · the singles | `DG-A-01…23` · `DG-P-01…14` | ✅ **CLOSED** — 30 ☑ · 5 🚢 tails · 2 ☐ blocked on Ali |
+| **5** | **Admin shape & forms: tabs for the long consoles · every tab state crafted · unsaved-changes · validation that is complete AND takes you to the offending field** | **`DG-S-01…07`** | ▶ **THIS SESSION.** Plan in §🅢 below — it is already MEASURED, so start from its numbers and re-derive them, not from scratch |
 
->**Step 1 is CLOSED, 11 of 11. ✅ DG-A-01 IS CLOSED — 38 of 38 admin routes inside budget on
-> production.** Widening its gate from 3 hand-picked routes to all 38 immediately found a page
-> at 13 s that nothing was watching; that page is now 1,617 ms. **Step 2 is the whole of what
-> remains before steps 3 and 4.**
-> Read this block, then the **RE-DERIVED** section, then the PLANNER. Everything below was
-> driven on production.
-
-### 🔴 THE THEME AGAIN, AND IT COST TWO NUMBERS THIS SESSION
-Session 77 handed over *"the remaining cost is identified, not guessed: … `/admin/insights` (one
-of them) returns in **257 ms**"*. Re-measured today: **insights 2,375–3,048 ms, reports
-4,490–4,980 ms** — neither of the handover's two figures reproduces. The 257 was almost certainly
-a `getInsights()` TTL cache hit. ⛔ **The conclusion drawn from them ("the gap IS the duplicate
-scan") happened to be directionally right, and that is the danger** — a stale number that
-flatters a correct hypothesis is indistinguishable from evidence. What actually established it
-was a **floor route** (`/admin/roles`, 234–292 ms) and a **window sweep** (`?range=today` 4,759 vs
-`?range=30d` 5,012 — a 30× bigger window costs 5%, so the cost is not the query window).
-⭐ **Every load number in this file is now floor-adjusted or stated with its floor. Re-derive
-before quoting.**
-
-### ✅ DG-A-01 IS CLOSED — and the whole admin surface is now measured, not three routes
-`npm run qa:admin-load` = **38 of 38 routes inside 5,000 ms on production**, floor
-`/admin/roles` 254 ms. `/admin/reports` **4,490–4,980 → 360–447**, `/admin/insights`
-**2,375–3,048 → 431–504**, `/admin/updown` **13,247 → 1,617**. Details in its planner row.
-
-### 🔬 THE ONE TOOL THIS PROGRAMME KEPT NEEDING — `GET /api/admin/updown-timing`
-A server-rendered page cannot be profiled from outside; `loadEventEnd` is one number for the
-whole render, and Railway's logs are not reachable from this machine (MCP: *Unauthorized*).
-So `/admin/updown`'s phases are timed through the page's own reads and returned as integers
-— duration, share, **and row count**, because a phase that is fast BECAUSE it returned
-nothing is not a fast phase and a duration alone cannot tell the two apart. Admin-gated,
-returns no data. ⭐ **It convicted a fix I had already shipped**: the 46-query collapse was
-630 ms of 12,688, and `feedAdviceLookup` was 11,865 ms — 93.5%. ⛔ **Do not delete it while
-any admin route is near budget.** It is the difference between diagnosing and detecting.
-
-### 🖼️ HOW TO VISUAL-TEST THE SWEEP — three routes failed, one works
-Ali's standing rule is to screenshot every UI change before pushing. For an ADMIN surface that
-is harder than it sounds on this machine, and the next session should not re-pay it:
-- ⛔ **`next dev`** — an instance was already up on `:3009`; `/admin/updown` rendered an
-  **empty body**. That is the trap `seed-admin-local.mts`'s own header records: *"the dev
-  server's HMR socket never came up on this machine, so the page rendered and never
-  hydrated."* Believe it the first time.
-- ⛔ **`next start` + local PG** — `pg_ctl -D C:\pg-loadtest\data -o "-p 5433" start`,
-  `prisma migrate deploy`, `npx tsx scripts/seed-admin-local.mts`, then
-  `DATABASE_URL=… DISABLE_ADMIN_TOTP=true npx next start -p 3222`. The server serves, and the
-  ADMIN row **is** in Postgres — but the sign-in form would not accept it, via the harness or
-  by hand. ⚠️ **Unsolved.** Solving it is what unlocks form-level admin screenshots.
-  (⛔ And `/api/dev-test/*` 404s under `next start` — it is gated on `NODE_ENV`.)
-- ✅ **WHAT WORKS TODAY, and it is enough for a type sweep:** a static harness that loads the
-  **real compiled stylesheet** (`.next/static/chunks/*.css`) and renders the before and after
-  markup side by side, with a `getComputedStyle` assertion that REFUSES to screenshot if the
-  sheet did not load. No server, no auth, no database — and it answers the only question a
-  class swap raises, which is what the cascade actually does.
-- ⭐ It also settles precedence questions deterministically: `.text-body-sm` sits at byte
-  50,504 of the built sheet and `.leading-[1.55]` at 51,608, same specificity, so **the
-  `leading-` utility wins** and a swept paragraph keeps its ratio. Read the bytes, don't guess.
-
-### ▶ THE NEXT MOVE, in order
-⭐ **Step 2 is nearly closed. DG-A-16 is ☑. DG-A-12 / DG-P-05 / DG-A-11 are 🚢 and each is
-now blocked on a DECISION, not on work.** Take the two decisions first — they are written
-out in the planner rows and both need a screenshot, not a sweep:
-
-1. **THE MONEY WALL (DG-A-12 / DG-P-05).** §M4: *"Every amount … NEVER letter-spaced."*
-   **Every Tailwind `fontSize` key emits letter-spacing**, so ~190 mono/numeral sites have
-   NO legal rung. ⛔ `.tabular` cannot neutralise it — §M4's own words are *"tracking is for
-   identifiers"* and 12 sites pair `tabular` with tracking legitimately (the TOTP inputs).
-   ▶ Mint a money-safe class in `globals.css` (a `--type-*` size + `letter-spacing: 0`), or
-   rule that money stays arbitrary and say so in `DESIGN_AUTHORITY`. One or the other.
-2. **THE NAME COLLISION (DG-A-11 / DG-P-06).** `micro` = 10px in `tailwind.config.ts` and
-   11px as `--type-micro`; `label` = 12 vs 9.5. That is why 10px is the modal size of the
-   605-site micro-label census, and why there is no rung to put it on. ▶ Take the 11px
-   behind screenshots · mint `--type-eyebrow: 10px` as a NEW rung (⛔ never a re-tune, §T2)
-   · or bridge the Tailwind keys to `var(--type-*)`.
-3. **Then the rest of step 2** — DG-P-04 rhythm (derived: the register's "seven gaps" is
-   right in COUNT and wrong in MEMBERSHIP — only 3 of its 7 are authored, and the −1px
-   overlap is Tailwind's own `.sr-only { margin:-1px }` counted as a section by the rig),
-   DG-P-06 with DG-A-11, DG-A-10 part 2, DG-A-18's last 2.
-4. **Then steps 3 and 4**, ⛔ **reading the RE-DERIVED section first** — nine claims do not
-   reproduce and eight more contradict a guard.
-5. ⛔ **Do not start Maswali.** Ali's order: the Design Gate runs first and to completion.
-
-### 🔴 STILL BLOCKED ON ALI, AND IT IS THE ONLY THING A SESSION CANNOT SOLVE
-**All six player/officer QA passwords are rejected by production; only the admin one works.**
-The 17 PUBLIC player routes drive fine with `SURFACE=player ANON=1`. What cannot be verified
-at all until one player login works: the Toggle on `/profile/responsible-gambling` (**DG-P-02**,
-the last open step-1 row), **DG-P-09** (unprovable — no `auth-login` record was ever retained),
-the avatar menu, `More`, the stake presets, and every notification row.
-
-### ⭐ THE RULING ALI DELEGATED, AND WHY IT WAS NOT HIS TO MAKE
-He said *"you choose, based on consistency rules and what makes the platform perfectly
-professional."* `DESIGN_AUTHORITY` had already answered: §T1 closes the scale, and §T2 applied
-that law to this exact shape — *"move the question onto the ladder, **never** re-tune the token to
-match it."* Minting `--type-table: 12.5px` is the forbidden move; §T4 also makes 12.5 the reading
-FLOOR. **So `.admin-tbl` → `--type-small` (13) and `thead` → `--type-label` (9.5).** DG-A-12's
-framing as "Ali's call, one of two" was itself the error — one option contradicted a written law.
-**That is now four register items that asked to reverse a dated decision** (DG-A-05, DG-A-07,
-DG-A-23 in step 1; DG-A-12's framing here).
-
-### 🔴 THE THEME OF THIS SESSION: INSTRUMENTS THAT REPORTED ON NOTHING
-Four, and every one printed a plausible result:
-- **The measurement rig wrote the sign-in page as data.** A 44-route drive returned HTTP 200
-  everywhere and looked fine; `redo.cjs` then deleted **30 of 44 records**. `/admin/transactions`
-  had been recorded with `tbl=0` — a table page with no table. ⛔ **`rec.finalUrl` was already
-  captured and nothing read it until after the fact.** `measure.mjs` now detects, re-signs-in,
-  retries, prints the count and exits 3 on an unrecoverable record. The re-run: **44 routes,
-  1 sign-in, 0 revocations, 42 OK.**
-- **`test:orphans` could not see its own programme's instruments.** It scanned the top level of
-  `scripts/` only while claiming to cover the tree; 113 files lived below it, **47 unrun and
-  undeclared**, including all of `scripts/design-gate/`. Now recursive; the rig is `qa:dg-*`.
-- **`ui-consistency`'s `hardcoded-pill-active` rule matches the token's literal text**, so it
-  finds copies and never divergence — which is why it missed a sidebar fill that had drifted to
-  a different hue AND alpha from `--pill-active`.
-- ⚪ **SPENT — `type-scale.test.mts` advised a fix below its own floor.** FIXED 2026-08-29;
-  the blind spot was **263 sites, not 100**, and the trap is now measured in both directions.
-  See *"THE GUARD THAT REWARDED THE WRONG FIX"* in RE-DERIVED. **DG-A-14 is no longer blocked.**
-
-### ⚠️ AND A THIRD DIAGNOSIS WAS WRONG — MINE, THIS SESSION, AND IT SHIPPED
-`/admin/updown` was 11,045 ms. I read the code, found `Promise.all(chains.map(...))` with two
-awaits inside, counted 23 chains × 2 = **46 concurrent queries**, wrote that down as the cause,
-fixed it, and shipped it. **The page moved to 11,448 ms** — the collapse was worth **630 ms of
-12,688, i.e. 5%.** The bulk read is still the right shape and it stays; it was simply never the
-answer, and re-reading the code a fourth time would never have said so.
-⭐ **What did:** `GET /api/admin/updown-timing`, which times the page's own reads and reports
-each one's share. `feedAdviceLookup` **11,865 ms, 93.5%**. One request, no ambiguity.
-⛔ **So the rule now has a positive form, not only a prohibition.** "Detect, don't diagnose" is
-not "be more careful reading" — it is *build the instrument*. Three of this programme's four
-wrong causes were confident, literate readings of correct code.
-
-### ⚠️ AND TWO DIAGNOSES I WROTE DOWN WERE WRONG
-The admin session dies mid-drive **non-deterministically**. I first blamed per-cell browser
-contexts (the next run disproved it), then `/admin/live` (the run after loaded it four times and
-lost nothing). ⛔ **Each was a correlation from one run recorded as a cause.** Do not diagnose it
-a third time — **detect it**: every admin drive now re-signs-in on `/auth/` and prints the count.
-Every revoked page returns HTTP 200 and renders; only the `/auth/` check tells the truth.
-
-### ✅ §4 SOUND control, re-proven this session
-**42 of 44 admin routes: zero horizontal overflow at 390/1440/1920, zero console errors**, on a
-rig that can no longer photograph the sign-in page. The 2 unmeasurable were `/admin/reports` and
-`/admin/insights` — which is the DG-A-01 finding, not a gap in the control.
-
-### 🖥️ A PARALLEL SESSION IS LIVE ON THIS MACHINE
-`C:\kipindi-lane-sentinel` on `lane/sentinel-source-pin`. ⛔ Never `git checkout` in another
-tree; `git fetch` before every push. It filed `E-249..E-253` this session.
-
-### 🔴 STILL BLOCKED, AND ONLY BY ALI
-**All six player/officer QA secrets are rejected by production**; only `QA_ADMIN_PASSWORD` works.
-That blocks DG-P-02's re-measure and makes **DG-P-09 unreprovable** — no `auth-login` record was
-retained, and the register's `auth-flash.tsx` hypothesis is refuted (227 client files scanned,
-zero conditional hooks). ⭐ Use `SURFACE=player ANON=1` for the 17 public routes meanwhile.
-
-### 🔴 READ THIS BEFORE YOU FIX ANYTHING — the registers' numbers are stale
-DG-A-04's headline table says `/admin/markets` renders `Select 36.8` and `Select 55.5 (wrapped)`.
-**Measured 2026-08-29: 32 and 32. `36.8` and `55.5` occur NOWHERE in 44 routes / ~2,600 controls.**
-The cause is `select.tsx`'s `px-2 py-1` fix — commit **`af4de432`, dated 2026-08-28, the SAME DAY
-the report was written.** The audit drive ran before it deployed.
-⛔ **§7's ~280 findings come from that same pre-`af4de432` drive. Re-derive every row before
-fixing it.** Fixing a defect that no longer exists is how a correct control gets broken.
-
-### ⛔ THREE OF THE ELEVEN NEEDED NO CODE — they asked to reverse dated, measured decisions
-| Row | What it asked | Why it was refused |
-|---|---|---|
-| **DG-A-05** | `truncate` the Select trigger | `ui-consistency`'s `combobox-trigger-truncates` forbids it at **error severity** (E-98: *"not a layout fix — it is data loss"*), and `select.tsx:285-318` already ruled *"growing is honest, clipping is data loss"* |
-| **DG-A-07** | fix the pagination wrap | `pagination.tsx` records *"THE WRAP IS THE DESIGN"*, measured **2026-08-25 — three days before the audit** — and explicitly rejects the exact remedy proposed |
-| **DG-A-23** (half) | "gains a scrollbar" | A **no-op in Chrome**: a global `::-webkit-scrollbar` rule means a thumb was always painted — at **2.23 against the 3.0 floor**. Its "edge-fade" is a hazard: a mask clips absolutely-positioned panels, i.e. DG-A-03's defect |
-
-> 🧹 **A SECOND “THE NEXT MOVE” LIST STOOD HERE, AND IT IS DELETED (session 78).** It restated step 1's closure and the type-ladder ruling that the two blocks above already carry — two homes for one fact, and §0a says the stale one is the one that gets read. It had already started to drift: it pointed the ruling at `globals.css:3804/3805`, and the shipped declarations are at **3828–3829**. The one line in it that lived nowhere else is kept:
-> ⛔ **Do not start Maswali.** Ali's order: the Design Gate runs first and to completion.
-
-### ⚠️ What this session could NOT measure, and why
-🔴 **All six 36-character player/officer secrets in `.env.qa.local` are rejected by production**
-(`error=wrong_credentials`, tested on five accounts). Only `QA_ADMIN_PASSWORD` works. ⛔ NOT the
-PhoneInput hydration trap — the hidden mirror synced and the server answered. **So the authed
-player surface is blind:** the Toggle on `/profile/responsible-gambling`, the avatar trigger,
-`More`, the updown stake presets and the notification rows are FIXED IN CODE but unverified.
-⭐ **The way round it, and it is enough to close DG-P-01:** `SURFACE=player ANON=1 node
-scripts/design-gate/measure.mjs` drives the 17 PUBLIC routes with no login, and the top bar is
-present signed-out.
-
-### ⭐ Two traps this session paid for — do not re-pay them
-- **The `::after` hit-area arithmetic.** `top:-7px; bottom:-7px` on a 26px track measures **38, not
-  40** — an absolutely-positioned box resolves against the **padding** box and the track carries a
-  1px border. **State the floor** (`height: var(--tap-min)` + centre); never sum your way to it.
-- **A guard can lie in both directions, and mine did on its first run.** `qa:toggle-hit` page-stepped
-  the viewport, so a switch under the sticky admin topbar read `up: 0` (a lie about the product);
-  and it printed `n=7 probed=0 ✓` (a green tick over a measurement that never happened). Both fixed.
-  ⛔ **Zero probes is a skipped run, never a pass.**
+⛔ **Do not start Maswali** (`MASWALI-BUILD`) — Ali's order, 2026-08-29: the Design Gate runs first
+and to completion.
 
 ---
-
-## ▶ START HERE (any machine)
-1. `git pull` on `main` (F:\kipindi-main on the original PC; any clone works — the evidence
-   regenerates). `npm install` after every pull. ⚠️ Two sessions may share this tree — read
-   `.claude/skills/50pick-standards/SKILL.md` §8b before committing anything.
-2. Read, in order:
-   - [DESIGN-GATE-ADMIN-2026-08-28.md](DESIGN-GATE-ADMIN-2026-08-28.md) — 23 systems `DG-A-01…23`, §6 is the work order.
-   - [DESIGN-GATE-PLAYER-2026-08-28.md](DESIGN-GATE-PLAYER-2026-08-28.md) — 14 systems `DG-P-01…14`, §6 is the work order.
-   - [DESIGN_AUTHORITY.md](DESIGN_AUTHORITY.md) §0 before writing ANY design value anywhere.
-3. The measuring instruments are **in the repo**: `scripts/design-gate/measure.mjs`,
-   `overlays.mjs`, `shots.mjs`, `analyze.mjs`, `redo.cjs`, `AUDIT-BRIEF.md`. They run against
-   production read-only and write to `.qa-design-gate/` (gitignored). Credentials come from
-   `.env.qa.local` (never tracked; per-machine — see the memory note “QA logins stale again”).
-
-## The work, in order (details in each report’s §6)
-| Step | What | Systems |
-|---|---|---|
-| 1 | Kit primitives (one file each, whole classes close at once): toggle hit-area · select true-32 + no-wrap · search popover unclip · input sm rung · NavLink hover · ScrollX affordance · AdminKpi re-token + neutral delta · SortTh · chart axis layer · pagination wrap | DG-A-02/03/04/05/07/10/15/17/23 · DG-P-01/02 |
-| 2 | Tokens & classes: type-ladder ruling (⚠️ Ali picks: bless 12.5 as `--type-table` or move tables to 13) · three label classes · card rungs · sidebar active token + 40px items + `<main>` landmark · section-rhythm | DG-A-11/12/16/18 · DG-P-04/05/06 |
-| 3 | Sweeps: dense filter rows → one recipe · rails → FilterPill · row-actions · cell-hover removal · copy/enum sweep · prose floor · colour semantics (§B11 + no betting ink on actions) · h1 discipline · tap-floor residue · truncation disclosures · board chip migration · aria-current reach | DG-A-04/06/08/09/13/14/21 · DG-P-03/07/08/10/11 |
-| 4 | Singles: `/admin/reports` 88 s load · React #310 on authed `/auth/login` · layout balance · skeletons last | DG-A-01/20/22 · DG-P-09/12/13/14 |
-| **5** | ⛔ **THE FINAL STAGE, AND A SESSION OF ITS OWN — DO NOT START IT UNTIL 1–4 CLOSE.** Admin shape & forms: tabs for the long consoles · **every tab state crafted (DG-S-07)** · unsaved-changes detection · validation that is complete AND takes you to the offending field | **DG-S-01…07** — see *"STEP 5"* below |
-
-**Definition of done per step:** `npx tsc --noEmit` clean · `npm run test:ui-consistency` ·
-`npm run test:design-frozen` · `npm run test:contrast` · `npm run test:tokens` ·
-`npm run test:filter-language` green — then **re-measure**: run the drive for the touched
-surface and diff the analyzer section that step owns. A step is done when its RED line in the
-report’s §6 gate list is GREEN **on production**, not on localhost.
 
 ## ⛔ Traps this programme has already paid for (do not re-pay)
 - 🔴 **THE PLAYER QA LOGINS ARE DEAD (measured 2026-08-29, session 76).** All SIX 36-character
@@ -809,322 +170,7 @@ report’s §6 gate list is GREEN **on production**, not on localhost.
 - Deliberately out of scope, Ali’s standing calls: numeric radius scale; `--h-control-*` /
   `--type-nano` raises; density toggle; search typeahead (NEXT-PLAN §8.8).
 
-## Claude Design commission
-The visual-taste questions this gate cannot settle by measurement (admin dense-rung look, KPI
-tile art direction, the label type ramp) are packaged for Claude Design at
-`design-brief/design-gate-2026-08-28/PROMPT-claude-design.md` (tracked while the round is under
-review — DESIGN_AUTHORITY §0b OUTBOUND row). Send it, file the delivery under
-`docs/design-system/` as an incoming commission, then **delete the folder and its `.gitignore`
-exception** — §0b’s own rule.
-
 ---
-
-## 🔬 RE-DERIVED 2026-08-30 — ALL 17 OPEN STEP-3/4 ROWS, AGAINST HEAD
-
-⭐ **Read this before starting ANY step-3 or step-4 row.** Every open row was re-derived against
-the working tree and, where the route is public, against production — then each derivation was
-adversarially re-checked by a second reader whose brief was to refute it. **14 of the 15 were
-refuted on their first pass**, which is the number to hold on to: *the re-derivation needed a
-re-derivation.* Verdicts: **16 PARTLY_REAL · 1 REAL_AND_ACTIONABLE · 0 that reproduce as
-written.** ✅ **DG-A-13 and DG-A-21 are re-derived too, 2026-08-30 — the section is now complete
-at 17 of 17 rows**, and both of those derivations were themselves refuted (8 and 11 overturns).
-Their entry is below, before the pattern note.
-
-### ⛔ WHAT DOES NOT REPRODUCE — do not "fix" any of these
-| Row | The claim | What is actually there |
-|---|---|---|
-| **DG-A-06** | *"state/category rails 25.8px, 31 instances, ai-polls + candidates"* | **Already FilterPill at HEAD** — converted by S-07 on 2026-08-28 and now guarded by `filter-language` §6.1-6.8. ⚠️ But the recipe SURVIVED on the same two pages on a DIFFERENT rail: `CardSortControl` (`ai-polls/page.tsx:453`, `candidates/page.tsx:366`), byte-identical, and invisible to the audit because both sit behind `{pendingSorted.length > 0 && …}` — an empty prod queue renders zero. **The drive's population was the defect.** Also: the register names 5 routes / 45 chips; there are **7 routes / 54 chips** — `/admin/reports` and `/admin/updown` were never looked at. ✅ **All of it converted 2026-08-30 — see the planner row** ✅ **RE-MEASURED ON PRODUCTION 2026-08-30, after the deploy:** the admin drive walks **44 routes · 1 sign-in · 0 revocations · 0 unrecoverable · `ovf390=no` and `err=0` on EVERY one** — which is the check the conversion needed, because it moved 70 controls across 8 routes and the rails sit in wrapping toolbars. `qa:filter-scan` against `https://50pick.tz`: **every rail MEASURED speaks ONE language, 4 of 8 surfaces reached** (the other four are the authed player rails, and it SAYS so rather than counting them clean). 🔴 **AND AN ADVERSARIAL PASS OVER THE CONVERSION FOUND FOUR THINGS IT HAD INTRODUCED, all now fixed (`23ca440f`):** ① **§6.7 convicted an innocent `<input>`** — its subject was the whole FILE, which is harmless over two files and a landmine over nine; changing one word on ai-usage's SEARCH INPUT turned it red, so the subject is now the CHIP (proved green over the input, RED over a planted filled chip). ② the sort rail's `data-chip` **named no real query param and collided across the two rails one page renders**. ③ the "Custom" chip **lost `aria-pressed`** — `aria-expanded` says the panel is open, not that a custom window is IN FORCE, and §A4 forbids colour as the only signal. ④ **three ratchets were left ABOVE what the tree already reached** (§3 756→755 · §4 935→934 · §6 274→271) — slack is not safety, and the suite passes either way, so only re-deriving all three found it. ⚠️ **And one more instrument that passed over nothing:** `qa:filter-scan` defaults to `localhost:3009`, and with nothing listening it printed *“✓ every rail MEASURED speaks ONE language (0 of 8 surfaces reached)”* and **exited 0**. The line was honest about the number and it still passed. Zero surfaces now exits 3. |
-| **DG-A-08** | THE FIX: *"one row-action recipe: `btn-xs` (32px)"* | **The FIFTH register item asking to reverse a dated decision.** §A2: *"Money controls are never the exception"* (E-112, a 26px stake chip), and `globals.css:287-292` scopes the 32px exception to controls that are *"not … a finger, primary or money control"*. **20 of the 61 sites have already shipped at ≥40.** THE GUARD is also unimplementable: only **38** interactive tags are literally inside a `<td>` against 334 outside, so it would catch 2 of the row's own 7 |
-| **DG-A-08** | *"'never bare uppercase text' contradicts `bare-text-button`"* | **Not a contradiction — they never overlap.** That rule exempts a button carrying an icon; every DG-A-08 instance is uppercase text with NO icon |
-| **DG-A-09** | *"80 hover-classed cells on /admin/markets"* — Ali named this row | **Four** link/control hovers × `PER_PAGE=20` rendered rows. Not one is a background. Across all hovers inside a `<table>` there is exactly **ONE** `hover:bg-*`, and it is a destructive button's own affordance. ⭐ The real (smaller) defect: **4 `<tr>` elements re-author the row hover and are DEAD** — overridden by `.admin-tbl tbody tr:hover` on specificity, proven from the compiled sheet (zero `@layer`, so precedence is specificity then source order) |
-| **DG-A-14** | *"the four prose-as-eyebrow sites found this session"* | **All five are already fixed at HEAD** (`f4b90a89`), each with an in-file tombstone. ⭐ The row's real content is what the register never names: **§3's exemption covers 545 sub-floor hits inside which 45 sites are prose or a label-with-hint that §3 will never count** |
-| **DG-A-14** | the register's guard: *"paragraphs >60 chars under 12.5px fail"* | **Misses 92% of them** — 34 of the 37 strings are ≤60 characters, including *"Type PAUSE to stop deposits"* (27) |
-| **DG-P-03** | *"/updown's h1 drops to 24px at 390"* | Refuted **three** ways: the code is a flat `text-[28px]`; `git log -p --follow` shows it was NEVER responsive; and the drive's own artefact reports **fs 28 at both 1440 and 390** |
-| **DG-P-03** | the register's fix: *"32 `--type-h1` is the natural step"* | **Unimplementable.** §T7 (ruled AFTER the register) says a `.tsx` reaches only the Tailwind ladder — 64·48·36·28·22·18·16·14·13·12·11·10 — and **there is no 32** |
-| **DG-P-07** | *"16 back-link instances"* | The 16 is the **legal sidebar** (4 nav items × 4 legal routes), which the row's next clause already lists separately — so the row double-counts one defect and invents another. ⛔ **And the session-79 re-derivation's "the count is 4, and nobody adopted the kit" is ALSO wrong: `BackLink` has 18 call sites in 18 files — it is one of the most-adopted primitives in the tree** |
-| **DG-P-07** | *"/profile/account DSAR radios 13px, fix = the kit radio"* | The tap floor is **already met** (the radio sits inside a `label` with `px-3 py-2`), and the prescribed kit radio **does not exist** |
-| **DG-P-10** | *"three surfaces hand-type chip colours, incl. `results/page.tsx`"* | `results/page.tsx` uses the kit. Two of three reproduce, and the register misses **two more** (`trust-band.tsx:154`, `updown/[roundId]/page.tsx:197/:619`). ⚠️ The "kit chip vs `kp-settled__pill`" mechanism is impossible — there are **zero** kit `<Chip>` renders on `/` |
-| **DG-P-11** | the register's route list | Wrong **in both directions**: 13 routes carry no marker, and `/wallet`, `/leaderboard`, `/proposals/*`, `/profile/invite` **ARE** marked — by the "More" trigger the instrument structurally could not see (`measure.mjs`'s nav probe selects anchors only) |
-| **DG-P-12** | *"the three fields carry no visible focus join"* | **False at HEAD** |
-| **DG-P-13** | *"gate the PWA prompt to touch/small viewports"* | A dated, guarded decision whose reversal turns **6 cells of `qa:install-shown`** red |
-| **DG-P-14** | item 2's prescribed fix | **Reverses Ali's own E-221 ruling** and turns a guard in `test:all` red. Item 5 was already struck |
-| **DG-A-22** | two of its six named instances | **Not defects.** Its *"flex-wrap on header rows"* fix is a **no-op — the wrap is already there** |
-| **DG-P-08** | the E-226 ordering constraint (*"E-226 lands first or the row is frozen"*) | **Falsified by `/help`**, which already reads the config. The row is not frozen |
-
-### ⭐ WHAT EACH ROW IS ACTUALLY ABOUT, once re-derived
-- **DG-A-06** — ✅ **CLOSED 2026-08-30.** 3 recipes / **70 controls / 12 rails / 8 DISTINCT routes** (⛔ the "10 routes" written here before was 10 route×recipe PAIRS, not routes — re-derived, not copied). The big win was as stated: `DateTimeRangeFilter`, **one primitive, 7 admin call sites, 54 chips**, rank taken as a prop. 🔴 **§6.6 was re-keyed FIRST, in the same working tree, before a single `rank="dense"` was typed** — it counted `<FilterPill` against `rank="dense"` in the same file, and both `poll-filters.tsx` and `candidate-filters.tsx` already rendered a `<DateTimeRangeFilter>` inside their declared rail at pills=2/dense=2, so the trap was **two** red assertions, not one. ⛔ **And §6.2 fails identically and was NOT named in the brief** — `/<FilterPill\b/` is false on all five window-only routes. Anyone who fixed only the hazard they were warned about still had a red build.
-- **DG-A-08** — **43 distinct mono-uppercase action recipes over 61 call sites in NINE height families**, ~3× the register's "five recipes, three heights". ⛔ The fix is the 40px rung via the kit, not `btn-xs`.
-- **DG-A-09** — 2 dead `<tr>` hovers to delete (zero-pixel), plus betting ink on non-betting links (§B2a). ⛔ **Do NOT touch `.admin-tbl tbody tr:hover td:first-child` — it IS a per-cell hover and it IS the canon**, on all 56 tables.
-- **DG-A-14** — **45 sites** §3 structurally cannot see, in two tiers: **26 sentences** (drop the dressing, `text-body-sm`) and **19 label-with-hint** (split in two). ⛔ Fixing them moves §3 by **zero** — `text-body-sm` is not counted either, by §0f's own control — so **narrow §3's blessing test FIRST** or the work is invisible to the ratchet.
-- **DG-A-19** — 67 `size=` glyph renders in 30 files, **every one of them admin**, against 625 `s=`; the alias's dated reason (the lucide migration, `da19ead5`) is **spent**, so collapsing it is zero-visual-change and `tsc` guards it. The size range is **10→28 over 16–17 rungs**, not 10–23.
-- **DG-A-20** — four of eleven numbers stale; the two largest real jumps are **`/admin/privacy` (4 tiles for 5) and `/admin/config` (6 for 7), ~126px each**.
-- **DG-A-22** — ONE mechanism (a `max-w` ceiling on a wrapping cell in an auto-layout `.admin-tbl`, 9 sites, 3 tables ballooning) plus three CSS-grid stretch defects.
-- **DG-P-12** — the consent row is **20px against a 40px floor** and **the instrument reports it as 1px**; and the row's biggest defect is unnamed — the sign-up DOB placeholder renders at **3.58:1**, under §A1's 4.5 floor, where `test:contrast` cannot see it.
-- **DG-P-14** — the three surviving items are all the SAME unnamed defect: **six controls whose height comes from padding, landing at 30/35/38/41px** against a 40 floor and a 44 sibling.
-
-### ✅ AND THE LAST TWO ROWS ARE RE-DERIVED — DG-A-13 AND DG-A-21, 2026-08-30
-Both were still un-re-derived when this section was written. Both are **PARTLY_REAL**, both
-derivations were **refuted on a second pass** (8 and 11 overturns), and each refutation found
-the defect's real centre of mass OUTSIDE where the register was looking.
-
-**DG-A-13 — raw enums, doubled units, count lines.**
-· ✅ REPRODUCES EXACTLY: `admin/finance/page.tsx:271` renders `TZS {formatTzs(…)}` while
-  `utils.ts:10` already returns `TZS …` — **`TZS TZS 45,630` on a live money page**, and it is
-  the only doubled unit in the tree. Raw `AIRTEL_MONEY` in the provider legend AND the summary
-  table, while `txnProviderLabel` (`status-badge.tsx:298`) is four lines away and already used
-  correctly on four other pages. `{X.sources.length} sources` at **three** sites, not one, with
-  the correct recipe already written in `admin/sources/page.tsx:73`. The breadcrumb title-cases
-  an id, and the candidates page is named **three ways** (sidebar / breadcrumb / h1).
-· ⛔ DOES NOT REPRODUCE: the literal `&times;` escape — **zero hits in `src/`, and `git log -S`
-  says the string has NEVER existed anywhere under `src/` in the repo's history**. And
-  *"Pending review**for**"*: the space is an explicit literal on the same line and the newline
-  falls BETWEEN two words, so JSX collapses it correctly. It was misread, not fixed.
-· 🔴 **REFUSE THE PRESCRIBED GUARD.** `test:copy-enums` as specified — *"a grep-list of enum
-  tokens appearing inside JSX text"* — would find **ZERO** of this row's confirmed defects and
-  five false positives, because **in every confirmed instance the token is never typed in the
-  source**: it arrives from the DATA (`{p.provider}`, `{c.category}`, `{f.type}`). ⭐ An
-  instrument aimed at a population the defect does not live in, specified in advance. That is
-  the seventh instance of this shape in this programme, and the first one caught BEFORE it was
-  built.
-· ⚠️ The count-line population is **9, not 3**, and it diverges on two axes the register never
-  named: thousands grouping (four call `.toLocaleString()`, five do not) and PLURALISATION —
-  only two of the nine pluralise, so seven of them read *"1 candidates"*, *"1 entries"*,
-  *"1 flags"*. ⛔ And the *"count helper"* the fix prescribes **does not exist**.
-· ⛔ A refutation caught the derivation falling into §T7's own trap: it called
-  `markets/page.tsx` *"11px, not 10"* because it read `--type-micro`. `text-micro` is a
-  **Tailwind** key and is **10px**. The two ladders again.
-
-**DG-A-21 — betting ink on non-betting actions.**
-· ✅ REPRODUCES: `admin/reports/generate-button.tsx:87/:100` — two identical report downloads,
-  one `btn-yes` and one `btn-claret`. `aml/aml-actions-client.tsx:92` — **Approve wears
-  `variant="yes"`**. `audit/page.tsx:20-29` gives SECURITY the player's broadcast red and BET
-  the YES green.
-· 🔴 **THE TOMBSTONE FIXED THE LOCAL HELPER AND LEFT THE SHARED ONE CARRYING THE DEFECT.**
-  `poll-actions.tsx:817-825` records the 2026-08-21 ruling by name — *"`good` was `--yes-300`
-  … `bad` was `--claret-300`"* — and repaired its own `statusColor`. `lib/score-band.ts:26-30`
-  still reads exactly `good: "var(--yes-300)"` / `bad: "var(--claret-300)"`, and
-  `poll-actions.tsx` IMPORTS it. A fix that names the defect and leaves its definition site.
-· ⚠️ **STATE_VARIANT is FOUR maps, not two** (ai-polls · ai-polls/[id] · candidates ·
-  updown/proposals), and the audit-category tone is hand-typed in **three files that DISAGREE**:
-  `audit/page.tsx:27` says `SECURITY: "live"` while `admin/page.tsx:24` and
-  `players/[id]/page.tsx:64` both say `"danger"`. One word, three files, two answers.
-· 🔴 **AND THE HIGHEST-REACH VIOLATION IS IN THE SHARED `Input` ATOM, WHICH NEITHER THE
-  REGISTER NOR THE FIRST DERIVATION NAMED.** `ui/input.tsx:118` `errored ? "border-no-500"` and
-  `:182` `text-no-300` — **every validation error on the platform is painted in the betting
-  rose**, player and admin, and `date-select.tsx` and `duration-input.tsx` do the same. 34 files
-  import the atom; 39 `error=` props exist.
-· ⛔ **THE PRESCRIBED GUARD CANNOT LAND AT ZERO, AND THE ARITHMETIC SAYS SO.** The rule as
-  specified hits **169 lines across 71 files** outside its 9-entry allowlist at HEAD, while the
-  work order fixes about 20 of them. Platform-wide the betting pair is used as a non-money tone
-  in **456 lines across 137 files**; only 138 lines / 46 files are admin, so a console-scoped
-  row measured the wrong population by a factor of three.
-· ⚠️ Three facts that change what "fixing" even means: `<Chip variant="yes">` and
-  `variant="success"` are **byte-identical** (`chip.tsx:68` `GREEN` is one object bound to both
-  keys), `.btn-no` and `.btn-danger` are the same button to a millionth of a hue
-  (oklch 56% 0.200 25 vs 57% 0.22 25), and **`.btn-secondary` does not exist**. So several of
-  these are a NAME defect, not a pixel defect — which is still worth fixing, and is a different
-  job from a repaint.
-· ⛔ `design-frozen`'s `FROZEN_RATCHET` pins `ui/chip.tsx` at exactly **14 inline colour
-  literals** and the list MAY ONLY SHRINK, so any edit there must not add one.
-
-### 🔴 THE PATTERN ACROSS ALL FIFTEEN, AND IT IS NOT THE REGISTERS' FAULT ALONE
-Every row that was wrong was wrong the same way: **an instrument measured the wrong population,
-and the register wrote the number down.** `CardSortControl` invisible because an empty queue
-renders nothing · the nav probe selecting anchors only, so four marked routes read as unmarked ·
-a `<td>`-scoped guard reaching 38 of 372 tags · a >60-character threshold missing 92% of its
-targets · a per-file h1 census blind to a component that renders its own · `measure.mjs`
-SUPPRESSING in-table controls rather than splitting them. ⛔ **So the first edit of most of these
-rows is to the INSTRUMENT, not the product** — and several of those repairs will take a green
-guard RED on purpose, which is the correct outcome and must land in the same commit as its
-re-baseline.
-
----
-
-## 🔬 RE-DERIVED 2026-08-29 (session 77) — steps 3 and 4, before a line was written
-
-⭐ **Read this before starting any step-3 or step-4 row.** Every claim below was checked against
-the working tree, not taken from a register. It is filed here because the alternative is the next
-session paying for it again — step 1 already lost three rows to defects that no longer existed.
-
-### ⛔ Register claims that DO NOT REPRODUCE — do not "fix" these
-| Row | The claim | What is actually there |
-|---|---|---|
-| **DG-A-01** | *"its settlement-fee/report-pack reads render 12,882 rows' aggregates"* | **Wrong cause.** The report pack is a single period read and `getAuditPage` is an in-memory ring-buffer slice. The real defect is a **textbook N+1 at `src/lib/server/report-money.ts:392-396`** — `for (const m of markets) { for (const p of await listPositionsForMarket(m.id)) … }`, i.e. **~13,000 sequential Prisma round-trips** at ~6–7 ms ≈ the 88 s. ⭐ **`/admin/insights` calls the same `categoryBreakdown()`, so ONE fix closes both routes.** The primitive already exists with a written ruling behind it: `positionStore.listForMarkets(ids)` (`market-dal.ts:762-768`, one `findMany` on `@@index([marketId,status])`), and `moneyByGame` in the same file already does the bulk-join shape. ⚠️ `loading.tsx` already exists and is well-shaped — Suspense alone would move the number without removing the queries |
-| **DG-P-09** | root cause is `auth-flash.tsx` | **Refuted by reading it:** five hooks, all top-level, unconditional, fixed order, `return null`. No branch can change its hook count. A scan of **all 227 "use client" files** for hooks after an early return or inside an `if` found **zero**. ⛔ **And the finding is UNREPROVABLE:** `.qa-design-gate/` holds no `auth-login.json`, zero occurrences of `Minified React error`, and zero non-empty `errors` arrays — while the register's own proof line needs an authed player, which no working password exists for. **Getting a player credential is a hard prerequisite, not part of the fix** |
-| **DG-P-14 item 5** | `/notifications` is *"the only rail whose selected state also casts `--glow-selected`"* — filed as **an Ali taste call** | **It is not page-local at all.** `/notifications` uses the shared `FilterPill`, and the glow comes from the ONE kit rule `.kp-fchip[data-on]` (`globals.css:2908-2911`) whose own comment reads *"one definition site, for every filter rail in the product."* Every selected pill on the platform glows. ⭐ **Nothing to promote, nothing to drop, and no ruling needed from Ali — strike the item** |
-| **DG-P-03** | *"`/updown`'s h1 drops to 24px at 390"* | `/updown` renders `PageHeader`, a flat `text-[28px]` with **no responsive step** anywhere in the component or in globals.css. Nothing in code can produce 24 at 390. ✅ The **double-h1 reproduces exactly**: `src/app/proposals/page.tsx:90` sr-only h1 + `PageHeader`'s own h1 at `page-header.tsx:45` |
-| **DG-P-10** | three hand-typing surfaces incl. `results/page.tsx` | `results/page.tsx` **already imports the kit `Chip`** and hand-types nothing. Two of three reproduce — and the register **misses two it never named**: `components/home/trust-band.tsx:154` (the landing) and `updown/[roundId]/page.tsx:197,619` |
-| **DG-P-07** | *"16 back-link instances"* | **4.** And a kit primitive nobody adopted already exists — `src/components/ui/back-link.tsx`. The honest fix is adopt-plus-`min-h`, one file and four call sites. ⚠️ `/profile/account`'s "Change" button at 30px **could not be located** — no `Change` string, no `btn-xs` in that file |
-| **DG-A-09** | *"hover duplicated inside tables, 80 cells on /admin/markets"* | **Zero `hover:bg-` inside any `<td>` in the whole admin tree.** What the drive counted was `hover:text-*` on LINKS in cells — a link underline, which is the canon. Only **2 files** genuinely duplicate the row hover (`ai-polls/page.tsx:356`, `candidates/page.tsx:298`) |
-| **DG-A-13** | a literal `&times;` escape renders on `/admin/ai-usage` | **Zero hits** anywhere under `src/app/admin`. Already fixed |
-| **DG-A-21** | *"ai-polls detail paints its quality meter in `--yes-*`"* | **Already fixed 2026-08-21**, with an in-file tombstone at `poll-actions.tsx:817-825` recording this exact defect and the owner ruling. The register re-files a closed finding |
-
-### ✅ THE GUARD THAT REWARDED THE WRONG FIX — FIXED 2026-08-29 (session 78), and the numbers
-⚪ **SPENT as a task, kept as the reasoning.** Session 77 filed this correctly and its
-diagnosis held. What it could not know is the size: **the blind spot was 263 sites, not 100.**
-
-`type-scale.test.mts` §3 enforces the 12.5px floor and scanned **only `text-[Npx]`**. Three of
-`tailwind.config.ts`'s twelve `fontSize` keys render below that floor — `micro` 10, `caption` 11,
-`label` 12 — so a site written as a CLASS was invisible to it, while §3's own advice line said
-*"lift it onto the ladder (text-label/text-caption)"*, naming two of those three.
-
-🔴 **THE TRAP, MEASURED BOTH WAYS.** Renaming one real `text-[11px]` to `text-caption`:
-| | §3 sub-floor | §4 arbitraries |
-|---|---|---|
-| before the fix | 768 → **767** | 1809 → 1808 |
-| after the fix | 1031 → **1031** | 1809 → 1808 |
-
-Two wins for zero legibility, versus only the true one. **509 of the old 768 were reachable by
-that edit** — 66% of the flagship type guard, zeroable without moving one glyph.
-
-✅ **Now:** §3's population is `text-[Npx]` ∪ {`text-micro`, `text-caption`, `text-label`},
-counted into ONE total (two counters would let a session trade one for the other and call it
-progress). `RATCHET_SUBFLOOR` **768 → 1031** — ⛔ the POPULATION grew, not the defect; nothing was
-written. The advice now names **`text-body-sm` (13px)** and says in words that 12 and 11 are
-below the floor and do not count as a fix. `0f` proves the new scanner sees prose, exempts the
-same class when it IS a blessed microlabel, reads `cn()`/variants, and ⛔ does **not** count
-`text-body-sm` — the very fix it prescribes. `0g` asserts the three sizes against
-`tailwind.config.ts`, so changing `caption` to 13px there cannot leave §3 condemning 174 sites
-that had become legal.
-
-### 📏 DG-A-12 — THE SWEEP, RE-DERIVED. Its guard half is done; this is the rest
-Counts reproduced by re-implementing §3/§4's own scanner and matching their totals exactly
-(**1,809 arbitraries / 803 files / 768 old sub-floor**). ⛔ The register's headline
-(*"12.5px ×1,376 · 10.5 ×700 · 11.5 ×579"*) is a **rendered-element** census from
-`analyze admin type`, not a code census — 1,376 table cells reading ONE declaration. Do not
-quote it as an edit count.
-
-**TWO LADDERS EXIST AND THEY DISAGREE.** `globals.css:206-220` defines twelve `--type-*`
-(72/60/44/32/24/20/17/15/13/11/9.5/8.5); `tailwind.config.ts:190-202` defines twelve `fontSize`
-keys (10/11/12/13/14/16/18/22/28/36/48/64). They agree on **two values** and **collide on
-names**: `label` = 9.5 (CSS) vs 12 (Tailwind); `micro` = 11 vs 10; `body` = 15 vs 14.
-🔴 **And the `--type-*` ladder is UNREACHABLE FROM TSX** — all 35 `var(--type-*)` consumers
-are inside `globals.css` itself, and there are zero `text-[var(--type-…)]` sites. So "move it
-onto the ladder" from a call site can only mean the **Tailwind** ladder today. §T's preamble
-closes the CSS one and never names `tailwind.config.ts`. **That is the open question this row
-inherits, and it is bigger than the sweep.**
-
-**OFF-LADDER: 519 sites in 150 files** (in NEITHER scale). By value:
-`10.5 ×148` · `12.5 ×139` · `11.5 ×112` · `9 ×51` · `13.5 ×30` · `19 ×13` · `26 ×6` ·
-`15.5 ×5` · `30 ×4` · `14.5 ×3` · `38 ×3` · `8 ×2` · `34 ×2` · `21 ×1`.
-The three the row names (10.5 / 11.5 / 13.5) are **290 sites in 109 files**.
-
-| value | destination, BY ROLE | why |
-|---|---|---|
-| **10.5** (96 admin) | NUMERIC 89 → `text-micro` (10) · LABEL 34 → `text-micro` · PROSE 26 → `text-body-sm` (13) | rounding metadata UP to 11 makes it bigger than the 380 `text-[10px]` spans beside it |
-| **11.5** (63 admin) | PROSE 69 → `text-body-sm` · NUMERIC 39 → `text-caption` (11) · LABEL 4 → `text-caption` | ⛔ **the hardest value.** Rounding prose to 12 or 11 is the trap above |
-| **12.5** (98 player) | ALL → `text-body-sm` (+0.5) | the SAME +0.5 already ruled for `.admin-tbl`; ⛔ never `text-label`, which moves prose from legal-at-the-floor to illegal |
-| **13.5** (28 player) | PROSE 22 → `text-body` (14) · rest → `text-body-sm` | ⚠️ **above the floor, so no law decides it.** Both 13 and 14 are rungs — this one is a DESIGN CALL and must be labelled as one |
-| **9** (44 LABEL) | ⛔ **NO HONEST RUNG.** `--type-label` 9.5 is exactly this tier and **has no Tailwind key** | either → `text-micro` (10), or mint a `nano` key — which §T's own wording makes a DESIGN_AUTHORITY change, not a call-site edit |
-| **26** (6) | ⛔ **DO NOT SWEEP.** One is the market question, which §T2 files against itself by name | needs its own decision with a screenshot |
-
-⛔ **DO NOT lead with the 836 pure renames** (10/11/12 → micro/caption/label). Font-size is
-unchanged; **line-height and letter-spacing are NOT** — every Tailwind `fontSize` key is a tuple
-that also emits both, and an arbitrary `text-[Npx]` sets size alone. And ⚠️ **§M4**: those keys
-emit `letter-spacing`, which §M4 forbids over a numeral — so converting the **228 mono/tabular**
-off-ladder sites would letter-space money.
-
-⭐ **Cleanest first commit:** `admin/updown/updown-controls.tsx` — all ten of its 11.5px sites
-are PROSE with one destination, it is admin-only, and it is not on `design-frozen`'s list.
-**Biggest files:** `wallet/wallet-client.tsx` 24 · `updown-card.tsx` 21 ·
-`admin-proposals-client.tsx` 18 · `updown/[roundId]/page.tsx` 17 · `admin/updown/page.tsx` 15.
-Ten files carry **155 of the 519**.
-
-⚠️ **Three populations no guard reads at all**, and they hold the same values:
-**75 literal `font-size: Npx` in `src/**/*.css`** (45 below the floor — `type-scale` walks only
-`.ts/.tsx/.mts`), of which `src/styles/chat/chat-styles.css` is a **third styling system** with
-28 hand-typed sizes on neither ladder; and the **37 inline `style={{fontSize}}`** literals.
-⚠️ `test:type-scale` is in `test:all` (CI runs it, auto-populated) but **NOT in `predeploy`**,
-whose suite list is hand-picked.
-
-### ⚠️ Ordering constraints that are not in the work order
-- **DG-P-08's clipped support email and `E-226` are THE SAME LINE** —
-  `src/app/auth/forgot-password/page.tsx:125`, `truncate` on `SUPPORT_EMAIL()`. E-226 is that
-  `support-config.ts` has a writer and **no reader** (`SUPPORT_CONFIG_KEY` appears in exactly two
-  files; the header's claim that boot-checks hydrates it is **false in today's code**). ⛔ Fixing
-  the `truncate` first makes a **wrong** contact fully legible. E-226 lands first, or together.
-- **DG-A-20 (skeletons) and DG-A-22 (layout balance) sit behind step 2**, not beside it — card
-  rungs (DG-A-16) change the padding those grids and skeletons are measured against.
-
-### ⭐ Reuse, not new code — the inventory
-`FilterPill` (`ui/filter-pill.tsx`, `rank="dense"`=32px, ⚠️ requires `href` / renders `Link`) ·
-`status-tone.ts` (`TONE_CHIP`/`STATUS_TONE`; **only 2 files in the tree consume it**, and the
-player side reads it **zero** times) · `admin-status-lexicon.ts` (14 word families, 25 importers) ·
-`status-badge.tsx` (`txnProviderLabel` + 13 sibling label fns) · `category-label.ts` +
-`poll-vocabulary.ts` (⚠️ `CAT_LABEL` is **page-local** in `reports/page.tsx:27` — promote it, or
-point call sites at these two shared ones instead) · `page-header.tsx` (28 call sites, the h1 to
-converge on) · `back-link.tsx` (unadopted) · `admin-skeletons.tsx`.
-⛔ **There is no `AdminFilterRow` and no plural helper** — those two would be NEW primitives, so
-mint them deliberately or not at all.
-
-### ⛔ EIGHT more register-vs-guard contradictions (step 1 found three; these are the rest)
-1. **DG-A-14 vs `type-scale.test.mts:542`** — the guard's own advice is below the floor (above).
-2. **DG-A-08 vs DG-A-02 / DA §A2** — `btn-xs` (32px) row actions contradict the 40px tap floor
-   that DG-A-02 argues is inviolable *for money controls*, on the same rows.
-3. **DG-A-08 vs `bare-text-button`** — that rule's written reasoning (*"an icon is paint … flagging
-   it would push authors toward a `btn` on a control the design deliberately keeps quiet"*) is the
-   inverse of DG-A-08's "never bare uppercase text".
-4. **DG-A-09 vs `globals.css:3814`** — the canon itself paints a per-CELL hover
-   (`tr:hover td:first-child` inset bar) on all 44 tables. State the rule as *"no per-cell hover
-   authored at the call site"*, or it condemns the kit.
-5. **DG-A-21 vs `status-tone.ts:93-96`** — `TONE_CHIP` is a 9-tone narrowing over 7 status WORDS;
-   it has no entry for `cat`/`info`/`brand`/feature names/audit categories, and ~106 of the 113
-   admin `<Chip>` call sites are outside it. Enforcing the guard as written means minting new law
-   first. ⛔ And `STATUS_TONE_EXCEPTIONS` records three divergences that are **decisions** — a
-   naive sweep would "harmonise" them, which that file forbids by name.
-6. ~~**DG-A-06 vs `filter-language.test.mts` §0.4**~~ — ✅ **HANDLED 2026-08-30.** `ADMIN_SURFACES`
-   is now **9 entries**, grown in the same commit as each conversion. ⚠️ Two lessons: **declaring
-   a file can make an assertion UNFALSIFIABLE** (§6.8 is keyed on two literal strings that exist
-   in only two files — on all seven additions it passes because its subject is absent, so §6.8b
-   was added as its positive control), and therefore **the assertion total is not the
-   measurement**: declaring raises the count while lowering coverage per file.
-7. ~~**DG-A-06 vs `datetime-range-filter.tsx`**~~ — ✅ **DONE 2026-08-30: `rank` is a PROP**,
-   defaulting to the 44px player floor, and new **§7.3 fails if the dense rank appears inside that
-   file at all** — the density rule inverted for the shared primitive. It was the biggest single
-   win in DG-A-06: **one component, 7 admin call sites, 54 chips.** ⚠️ One correction to the
-   reasoning: `PLAYER_PRESETS` is **exported and currently consumed by nothing**, so "it serves
-   player surfaces" is a statement about the file's design, not about live call sites. The
-   conclusion is unchanged and does not rest on it — a `components/ui` primitive must not
-   hard-code one audience's density, and its default must be the safe (44px) one.
-8. **Any sweep vs the `ui-consistency` BASELINE MODEL** — it fails on a NEW `(rule,file)` pair even
-   at warning severity. A sweep touching a previously-clean file must use the kit `<Button>` /
-   `<FilterPill>`, never `className="btn …"` or a numeric `h-7`/`h-8`.
-
-### 🔎 And the guard blind spot behind DG-A-06 — ✅ CLOSED 2026-08-30, but NOT the way this said
-`filter-language.test.mts` held an `OLD_IDIOM` regex matching only the **rounded-md** idiom.
-**Every surviving DG-A-06 capsule was `rounded-pill`**, so the stray sweep ran over the whole tree
-and saw none of them. The work item *"widen the guard to `/admin/**`"* was already done (S-07,
-2026-08-28).
-
-🔴 **BUT "WIDEN THAT REGEX" WAS THE WRONG WORK ITEM, AND THE MINIMAL EDIT WOULD HAVE SHIPPED GREEN
-OVER THIS VERY ROW.** Measured, three ways:
-- **(a)** Keeping `OLD_IDIOM`'s word order as `/rounded-pill border px-\d/` MISSES **both**
-  `CardSortControl` **and** the poll-actions picker, because both write `border` **LAST**
-  (`px-2.5 py-1 rounded-pill … border`). The two rails DG-A-06 exists to find would have stayed
-  invisible while the work item looked done — *instruments green while measuring the wrong thing*,
-  a third time in this programme.
-- **(b)** An order-insensitive SHAPE key is noise by construction: `rounded-pill` + a bare
-  `border` + `px-` = **43 hits tree-wide**; + `font-mono` = **27**. Almost all are status tags,
-  share buttons and progress tracks. **The pill is the shared shape of this product**, so keying
-  on it is DG-A-14's lesson repeating one row later.
-- **(c)** `/admin/proposals`' rail was invisible to **any** class-string key: it painted selection
-  through an inline conditional `style={…}`.
-
-✅ **WHAT SHIPPED INSTEAD — key on the DEFECT.** §6.9 now finds an **interactive** element
-(`<button>`/`<a>`/`<Link>`) wearing `rounded-pill` + a **bare** `border` + a `px-`, that states a
-binary state **at the call site** — either a ternary painting a non-transparent `border-*` in BOTH
-branches, or an inline conditional `style`. `border-transparent` is excluded because it is the
-primitive's own idiom. **13 hits tree-wide before the work, 7 under `/admin/`; 9 after, and every
-remaining admin hit is one of 4 NAMED exemptions.** The `rounded-md` rule is KEPT as a tombstone —
-it is green because it won.
-⛔ **The exemptions are keyed on the CONTROL, not the file.** A file-level exemption for
-`admin-proposals-client.tsx` would have shielded its two form pickers **and** the queue rail this
-row just converted. §6.10 is their own positive control: a stale exemption turns the suite red.
-⛔ **A subtlety worth carrying: `(?:[^>]|=>)*?` — the spelling `ui-consistency.test.mts` still
-uses — is BROKEN for lazy matching.** It stops at the first `>` of an arrow function, so
-`className`/`style` never enter the captured tag body. It found **6** of the 13 capsules,
-silently dropping every button whose handler is an arrow function. `=>` must come FIRST in the
-alternation.
 
 ## 📋 THE PLANNER — all 37 systems, one row each
 
@@ -1185,7 +231,9 @@ resolved in this document; decide when you reach them rather than discovering it
 > and the stale one is the one that gets read (§0a). **The planner above is the only tracker**;
 > the step→systems map is the *“The work, in order”* table near the top of this file.
 
-## 🅢 STEP 5 — ADMIN SHAPE & FORMS. ⛔ THE FINAL STAGE. DO NOT START IT UNTIL STEPS 1–4 CLOSE.
+---
+
+## 🅢 STEP 5 — ADMIN SHAPE & FORMS. ▶ THE FINAL STAGE, AND IT IS NOW OPEN (steps 1-4 closed 2026-08-30).
 
 **Commissioned by Ali, 2026-08-29**, in his words: *"admin pages n tabs — some pages are so
 large to scroll down, and maybe putting them in tabs consistently using our theme design kit
@@ -1287,6 +335,8 @@ including the case where the answer is no.
 
 ### ✅ Definition of done for step 5
 Every row's gate GREEN **re-measured on production**, plus: `npx tsc --noEmit` · `test:ui-consistency` · `test:design-frozen` · `test:contrast` · `test:tokens` · `test:type-scale` · `qa:dg-shell` · `qa:admin-load` (⚠️ **re-run with the tab population included** — see the first trap). And a new gate proving DG-S-06 lands focus on a *hittable* point, not merely a focused element.
+
+---
 
 ---
 
