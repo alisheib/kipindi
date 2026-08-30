@@ -68,16 +68,59 @@ rendered platform.”*
 > `DG-P-13`'s viewport gate (reverses three dated decisions; the premise that a PWA is
 > phone-only is false) · `DG-P-14` item 2's "truncate the URL" (reverses Ali's E-221).
 >
-> ### 🖼️ WHAT IS OWED BEFORE THIS IS CALLED DONE
-> ⛔ **NOTHING HERE IS PRODUCTION-VERIFIED YET.** The suite is green and `tsc` is clean, but this
-> programme's own rule is that a row is ☑ only when re-measured live. Owed, in order:
-> `npm run qa:dg-measure` (admin, 44 routes) · `qa:dg-shell` · `qa:filter-scan https://50pick.tz`
-> · `SURFACE=player ANON=1` over the 17 public routes · `qa:toggle-hit` · `qa:install-shown`
-> (should be UNMOVED — the render gate did not change) · `qa:e70-legal` (the legal nav's active
-> paint moved) · and **screenshots at 360/768/1280/1920 in EN + SW + ZH** for the three real
-> repaints: the 22 `<textarea>` placeholders that got lighter, `/updown/[roundId]`'s VOID chip
-> (slate → royal), and `/admin/payments`' action cells, which grew when 13 money levers reached
-> 40px.
+> ### ✅ VERIFIED ON PRODUCTION AFTER THE DEPLOY (`78546e83`) — measured, not asserted
+> · **`qa:dg-measure` admin — 43 routes plus a 5-route re-drive · 1 sign-in · 0 revocations · 0
+>   unrecoverable**, and **`ovf390=no`, `err=0` and `h1=28` on EVERY measured route.** That
+>   `h1=28` across the whole console is DG-P-03 landing: the page-title step is what admin now
+>   renders, everywhere. ⚠️ Four routes first timed out at 90s — machine contention with a second
+>   Chromium, not the product; re-driven alone all four are green, `/admin/updown` included.
+> · **`qa:dg-measure` player, `SURFACE=player ANON=1` — 17 routes · 0 sign-ins · 0 unrecoverable ·
+>   `ovf390=no err=0` on every one**, and `/markets/[id]` reports **h1=36** — §T2's
+>   `md:text-display-3` still rendering after the h1 sweep moved five of its siblings.
+> · **`qa:dg-shell` — 40 routes · 77 probes · 0 re-sign-ins · 0 failing**, drawer rows all 44, and
+>   it still NAMES `/admin/totp-verify` rather than counting it clean.
+> · **`qa:toggle-hit` — 206 probes over 12 route/width pairs, PASS.** Every kit Switch still
+>   reaches `--tap-min` by hit test and still paints 44×26.
+> · **`qa:install-shown` — 63 passed, 0 failed, UNMOVED.** That is the result DG-P-13 needed: the
+>   row changed the COPY and not the render gate, and the gate's own unchanged number proves it.
+> · **`qa:e70-legal` — 7 passed, 0 failed**, so the legal nav's new `--pill-active` fill did not
+>   break the soft-navigation highlight E-70 exists for, in EN or SW.
+> · **`qa:filter-scan https://50pick.tz`** — every rail MEASURED speaks ONE language, 4 of 8
+>   surfaces reached, unchanged. · **`redo.cjs`: admin OK 49 / REDO 0 · player OK 21 / REDO 19** —
+>   the 19 are the authed routes an anon drive cannot reach, which is the correct result.
+> · **DG-A-22's own acceptance test, re-run with the admin session:** `colSpan="8"` is honoured —
+>   the caution cell measures **1429px, exactly the table's own width**, so it contributes nothing
+>   to any column's intrinsic width — and the sentence renders in **2 lines at 1440** (49px)
+>   against the ~13 lines of two-or-three words the `max-w`-in-a-`<td>` produced. **Zero document
+>   overflow at BOTH 1440 and 390.** ⚠️ The table measures **1429**, not the **1355** DG-A-23
+>   recorded, so that row's "scrollWidth unchanged to the pixel" criterion is NOT testable as
+>   written: 1355 predates both DG-A-06's 70-control conversion and this session's, and an
+>   auto-layout column follows its content.
+> · **Looked at, not merely measured** (`.qa-shots/session82/`, gitignored): the sign-up form's
+>   **"DD / MM / YYYY" is legible** — that placeholder rendered **2.02:1** before, under half
+>   §A1's floor, with the gate printing `PASS 7.50` over it — as are `you@example.com` and the `/`
+>   separators; the three consent rows now stand on the 40px floor; and `/admin/reports` renders
+>   **EXCEL and PDF as a matched pair**, where Excel wore the betting green and PDF the
+>   irreversible-ceremony claret.
+>
+> ### 🔴 WHAT IS STILL OWED, AND WHY — none of it is "run the command again"
+> · ⛔ **THE 13 PAYMENTS MONEY LEVERS ARE NOT VISUALLY VERIFIED, AND CANNOT BE FROM HERE.** They
+>   render only when there IS a failed retry, an unmatched item or a stuck payout; production
+>   reads **STUCK PAYOUTS 0 · OLDEST STUCK —**, so the controls are absent from the DOM. This is
+>   the `CardSortControl` shape exactly — *an empty production queue renders nothing* — and it is
+>   the single most important thing this session could not see. The conversion is type-checked,
+>   suite-green and its page drives clean; the CONTROLS themselves are unwitnessed. ▶ To see them,
+>   mint a failed payment in a non-production environment, or drive `/admin/payments` at a moment
+>   the retry queue is non-empty.
+> · 🔴 **THE RESPONSIBLE-GAMBLING HELPLINE PANEL IS UNWITNESSED**, for the same reason as
+>   `DG-P-02` and `DG-P-09`: `/profile/responsible-gambling` is authed and every player secret is
+>   rejected, so an anon drive is bounced to sign-in. It is the sharpest repaint in DG-A-21 — a
+>   helpline panel in the colour that means *your bet won* — and nobody has looked at the fix.
+> · ⚠️ **`/updown/[roundId]`'s VOID chip (slate → royal)** needs a voided round the viewer played.
+>   ⚠️ **The 22 `<textarea>` placeholders** that got lighter: only the auth ones were seen.
+>   ⚠️ **`qa:admin-updown-widths`** wants the TRADING officer persona — one of the six rejected.
+> · ⚠️ **The screenshots are EN only.** §A5 makes Swahili the longest population; `qa:install-shown`
+>   did exercise sw and zh, but the repaints were not looked at in either.
 
 ## ⏭️ RESUME AT — session 81 handover (2026-08-30)
 
