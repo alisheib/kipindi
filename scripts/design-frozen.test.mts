@@ -150,7 +150,12 @@ const FROZEN_RATCHET = new Map<string, number>([
   ["src/components/ui/checkbox.tsx", 1],
   ["src/components/ui/empty-state.tsx", 1],
   ["src/components/ui/propose-promo.tsx", 1],
-  ["src/components/ui/tabs.tsx", 1],
+  // `tabs.tsx` LEFT THIS LIST on 2026-08-31 (DG-S-02, DESIGN-GATE-2026-08-28 step 5, 43 files /
+  // 160 → 159 values). Its one budgeted literal was the `segmented` variant's inline
+  // `oklch(40% 0.08 264 / 0.55)` — the FOURTH home of `--pill-active`, and a different chroma,
+  // hue AND alpha rather than a copy, so `ui-consistency`'s `hardcoded-pill-active` could never
+  // see it: that rule matches the token's literal TEXT. It is `var(--pill-active)` now, exactly
+  // as `nav-more.tsx`'s near-identical `oklch(40% 0.08 264 / 0.4)` became on 2026-08-13.
   ["src/components/ui/toast.tsx", 1],
   // reward-burst.tsx CLEARED 2026-08-08 — its two borderRadius literals were the
   // heraldic corner brackets, which died with the rays (INTAKE §3b, 45 → 44).

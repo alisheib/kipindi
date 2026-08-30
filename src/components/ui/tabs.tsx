@@ -3,9 +3,16 @@
 /**
  * Tabs — kit-faithful three-variant tabs.
  *
- *   line       — kit default. Horizontal row, gold underline on active.
- *   segmented  — pill-shaped capsule with active surface raised.
- *   pill       — separate pills, active fills with teal-subtle.
+ *   line       — kit default. Horizontal row, `--brand-500` underline on active.
+ *   segmented  — pill-shaped capsule with the active surface raised.
+ *   pill       — separate pills, active fills with `--pill-active`.
+ *
+ * ⚠️ THOSE THREE LINES SAID SOMETHING ELSE UNTIL 2026-08-31, AND BOTH CORRECTIONS ARE THE
+ * FILE'S OWN DEFECTS SPELLED OUT. `line` was described as a "gold underline": it is
+ * `--brand-500`, and `wallet/loading.tsx:76` carries the reason — "⭐ D5 — brand, not gold …
+ * section tabs are NAVIGATION, not earned money (§M3)" — after the skeleton drew gold and
+ * repainted brand a beat later. `pill` was described as filling with "teal-subtle", which is
+ * the KILLED kit's colour; it filled with a hand-typed `--brand-500/15` instead.
  *
  * All three share the same data shape and onChange API; pick the one that
  * fits the host context (line on detail pages, segmented in toolbars,
@@ -44,16 +51,65 @@
  * (`aria-current="page"`). These change in-page view state without a URL, which is the
  * `/markets` discovery-chip case, and that rail is `aria-pressed`.
  *
- * 📋 STAGE 8 — `TabItem.labelSw` is dead API: nothing reads it, and the one call site passes
- * translated `labelEn` from `useT()`. Left in place here on purpose (removing a public field
- * is a call-site change, not an accessibility fix); flag it with the naming pass.
+ * ─────────────────────────────────────────────────────────────────────────────
+ * 🔴 DG-S-02 (2026-08-31, DESIGN-GATE-2026-08-28 step 5) — THIS FILE HELD THE FOURTH AND
+ * FIFTH HOMES OF `--pill-active`, AND NO GUARD COULD SEE EITHER.
+ *
+ * `globals.css:423` defines `--pill-active: oklch(40% 0.12 262 / 0.35)` and captions it, in a
+ * comment on its own line, "one active filter/tab fill everywhere" — it names TABS by word.
+ * This file painted its active state
+ * two other ways: `segmented` with an inline `oklch(40% 0.08 264 / 0.55)` (a different
+ * chroma, hue AND alpha — a different ANSWER, not a copy) and `pill` with
+ * `bg-brand-500/15 text-brand-300` (the same thing through a Tailwind alpha, which is the
+ * evasion DG-P-11 refused on `legal-nav.tsx`). ⛔ `ui-consistency`'s `hardcoded-pill-active`
+ * matches the token's LITERAL TEXT, so it finds copies and never divergence — DESIGN_AUTHORITY
+ * §M4's named shape, a guard reading the SPELLING of a value instead of the value that lands
+ * on the glass.
+ *
+ * ⭐ WHY IT WAS FIXED BEFORE ANY ADOPTER, NOT AFTER. Both drifting variants had ZERO call
+ * sites: the drift cost nothing on the day it was found and would have cost every admin
+ * console the moment §K rule 7 sent one here. That was the cheapest possible moment, and the
+ * last one.
+ *
+ * ⚠️ AND IT IS NOT PIXEL-NEUTRAL — THE FIRST DRAFT OF THIS NOTE SAID IT WAS, AND AN A/B BENCH
+ * AGAINST THE REAL PRODUCTION FONTS REFUTED IT. `line` is the one variant with a call site
+ * (`/wallet`), and moving `text-[13px]` onto the ladder's `text-body-sm` carries that rung's
+ * `letter-spacing: -0.05px` and `line-height: 18px` with it, which `text-[13px]` never set.
+ * Measured, old → new: label width **92.44 → 92.03px** on "Activity", line-height 19.5 → 18
+ * (invisible inside a 44px flex-centred box), transition 150ms `ease` → 140ms `linear`.
+ * ⭐ That is a CONVERGENCE, not a regression: the two shipped admin section rails
+ * (`roles/page.tsx:68`, `players/[id]/page.tsx:321`) already render `text-body-sm`, so this rail
+ * was the one 13px label in the product that was not on the rung. But it is a rendered change
+ * on an authed player surface, and it is recorded here rather than claimed away.
+ *
+ * 📋 The count pip was hand-written THREE times here, uncapped — a fifth implementation of the
+ * thing the stage-9 consolidation existed to remove. It is the kit `<CountBadge>` now, which
+ * caps at 99 and renders nothing at zero. ⚠️ That second behaviour is a deliberate API change:
+ * `count={0}` used to render a literal "0".
+ *
+ * 📋 `TabItem.labelSw` was dead API — nothing read it, and the one call site passes translated
+ * `labelEn` from `useT()`. Deleted 2026-08-31 with the rest. The admin console is
+ * English-only by design (`scripts/failure-reasons.test.mts:1080-1085`), and a player surface
+ * translates through `useT()` before it reaches this component.
  */
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { CountBadge } from "@/components/ui/count-badge";
 
-export type TabItem = { value: string; labelEn: string; labelSw?: string; count?: number };
+export type TabItem = { value: string; labelEn: string; count?: number };
 
 type Variant = "line" | "segmented" | "pill";
+
+/**
+ * Every variant lays its label and its `<CountBadge>` out the same way, so the box is written
+ * ONCE. ⛔ Not merely tidiness: `scripts/design-gate/eyebrow-roles.mjs` keys the `pill` variant's
+ * declaration on that class line's CONTENT, truncated at 170 characters — and inlining these
+ * three utilities there pushed the key past the cut, so it truncated MID-TOKEN and lost its
+ * `↵ active` tail. A key that cannot hold its own signature is a key that goes stale for no
+ * reason. `gap-1.5` is 8px: the overridden scale runs 1=4 · 1.5=8 · 2=12, so it is not one of
+ * the inverted keys `spacing-scale.test.mts` ratchets.
+ */
+const BOX = "inline-flex items-center gap-1.5";
 
 export function Tabs({
   tabs,
@@ -91,17 +147,30 @@ export function Tabs({
               className={cn(
                 // 36px segment inside the `p-1` (4px) capsule above ⇒ a 46px capsule with its
                 // 1px border, in line with the 44px filter rails (was h-8 = 48px ⇒ 58px).
-                "h-[36px] px-3 rounded-md text-[12.5px] font-mono font-semibold transition-colors duration-100",
+                // ⛔ `tap-target.test.mts` holds this 36 as a keyed ratchet row
+                // (`src/components/ui/tabs.tsx:button@36`) whose key is `file:tag@px` — changing
+                // the height silently makes that row stale. Edit both or neither.
+                // ⚠️ `text-body-sm` (13), not `text-[12.5px]`: §T1 the scale is closed and §T7
+                // says a size written at a call site comes from the TAILWIND ladder, which has
+                // no 12.5 rung. ⛔ AND NOT `text-label` (12), which was tried and measured:
+                // 12 is UNDER §T4's 12.5px reading floor, so `test:type-scale` §3 counted it as
+                // a new sub-floor site (753 → 752 only because two count pips left in the same
+                // edit). A tab label is a CONTROL LABEL (§T3), not a blessed uppercase
+                // microlabel, so it has no claim on the sub-micro tier. 13 also puts all three
+                // variants on ONE size, which is the point of a closed scale.
+                BOX,
+                "h-[36px] px-3 rounded-md text-body-sm font-mono font-semibold transition-colors duration-quick ease-linear",
                 active
                   ? "text-text"
                   : "text-text-muted hover:text-text",
               )}
-              style={active ? { background: "oklch(40% 0.08 264 / 0.55)" } : undefined}
+              /* ⛔ THE ONE ACTIVE FILL — `globals.css:423`. Consumed as a `var()` exactly as the
+                 five shipped neighbours do (`admin-sidebar-nav` · `admin-mobile-nav` ·
+                 `legal-nav` · `nav-more` · `avatar-menu`); never re-typed as a literal. */
+              style={active ? { background: "var(--pill-active)" } : undefined}
             >
               {t.labelEn}
-              {t.count !== undefined && (
-                <span className="ml-1.5 font-mono text-[11px] text-text-subtle">{t.count}</span>
-              )}
+              {t.count !== undefined && <CountBadge count={t.count} tone="brand" size="sm" />}
             </button>
           );
         })}
@@ -122,14 +191,25 @@ export function Tabs({
               onClick={() => onChange(t.value)}
               className={cn(
                 // 40px = --tap-min, the chip language every other filter rail uses (was h-8 = 48px).
-                "h-[40px] px-3.5 rounded-pill text-label font-mono font-semibold uppercase tracking-[0.14em] border transition-colors duration-100",
+                // ⛔ THIS LINE'S CONTENT IS A KEY. `scripts/design-gate/eyebrow-roles.mjs`
+                // declares this site CONTROL_LABEL keyed on the line's TEXT, not on `:line` —
+                // so editing this string without editing that declaration turns
+                // `test:eyebrow-roles` red. Both, in one commit, or neither.
+                BOX,
+                "h-[40px] px-3.5 rounded-pill text-label font-mono font-semibold uppercase tracking-[0.14em] border transition-colors duration-quick ease-linear",
                 active
-                  ? "border-brand-500 bg-brand-500/15 text-brand-300"
+                  // ⛔ The selected state is `filterPillClass`'s, exactly: `--brand-400` edge,
+                  // `--text` ink, and the fill from the token below. It was
+                  // `border-brand-500 bg-brand-500/15 text-brand-300` — a Tailwind-alpha
+                  // restatement of `--pill-active`, on the ink DG-P-11 refused for an active
+                  // nav item, and invisible to `hardcoded-pill-active` for the same reason.
+                  ? "border-brand-400 text-text"
                   : "border-border bg-bg-elevated text-text-muted hover:border-border-strong hover:text-text",
               )}
+              style={active ? { background: "var(--pill-active)" } : undefined}
             >
               {t.labelEn}
-              {t.count !== undefined && <span className="ml-1.5 opacity-70">{t.count}</span>}
+              {t.count !== undefined && <CountBadge count={t.count} tone="brand" size="sm" />}
             </button>
           );
         })}
@@ -149,15 +229,25 @@ export function Tabs({
             type="button"
             onClick={() => onChange(t.value)}
             className={cn(
-              // 44px — A2's mobile-preferred tap height (was h-10 = 80px on the wallet rail).
-              "relative h-[44px] px-4 text-[13px] font-display font-semibold transition-colors duration-150 whitespace-nowrap",
+              // 44px — A2's mobile-preferred tap height (was h-10 = 80px on the wallet rail),
+              // and §K rule 7c's rung for a section rail: `--h-control-md`.
+              // ⚠️ `text-body-sm` (13), not `text-[13px]`: same glyph, but §T7 says a size at a
+              // call site comes from the Tailwind ladder, and `test:type-scale` §4 ratchets the
+              // hand-typed spelling toward zero.
+              // 📋 `font-display` STAYS FOR NOW, AND THE REASON IS THAT NOBODY CAN SEE IT
+              // CHANGE. Five of the seven shipped nav/rail components carry no font class, and
+              // `.btn` sets `font-family: var(--font-body)` outright — so a control label in
+              // Sora is the odd one out. But this variant's ONE adopter is `/wallet`, an authed
+              // player surface, and every player QA secret is rejected by production today
+              // (DESIGN-GATE-2026-08-28), so the change would ship unwitnessed. It moves with
+              // the DG-S-03 admin conversion, where two console rails can witness it.
+              BOX,
+              "relative h-[44px] px-4 text-body-sm font-display font-semibold transition-colors duration-quick ease-linear whitespace-nowrap",
               active ? "text-text" : "text-text-muted hover:text-text",
             )}
           >
             {t.labelEn}
-            {t.count !== undefined && (
-              <span className="ml-1.5 font-mono text-[11px] text-text-subtle">{t.count}</span>
-            )}
+            {t.count !== undefined && <CountBadge count={t.count} tone="brand" size="sm" />}
             <span
               aria-hidden
               className="absolute left-2 right-2 -bottom-px h-[2px] rounded-pill"

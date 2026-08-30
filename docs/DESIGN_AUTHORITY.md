@@ -1686,8 +1686,18 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
      `tabs.tsx:127`'s `bg-brand-500/15 text-brand-300` is the same defect through a Tailwind
      alpha. ⚠️ **Both drifting variants have ZERO call sites at HEAD**, so the drift costs
      nothing today and costs every converted console the moment the primitive is adopted.
-     **That is the whole sequencing argument: the primitive is repaired first, in a commit
-     that moves no pixel.**
+     **That is the whole sequencing argument: the primitive is repaired first, while the
+     repaint is still free.**
+     ⛔ **AND "NO ADOPTER" IS NOT "NO PIXEL" — THIS RULE SAID IT WAS, AND AN A/B BENCH IN THE
+     REAL PRODUCTION FONTS REFUTED IT THE SAME DAY (2026-08-31, DG-S-02).** The `line` variant
+     *does* ship, on `/wallet`, and moving its `text-[13px]` onto `text-body-sm` carries that
+     rung's `letter-spacing: -0.05px` and `line-height: 18px` — which a hand-typed size never
+     set. Measured old → new: the label "Activity" goes **92.44 → 92.03px**. It is a
+     CONVERGENCE (both shipped admin section rails already render `text-body-sm`, so this rail
+     was the one 13px label in the product off the rung), but it is rendered. ⭐ **Moving a
+     hand-typed size onto its ladder rung is never only a rename — check what else the rung
+     carries.** The two ladders' rungs bring tracking and line-height with them; `text-[Npx]`
+     brings neither.
    - **Motion names a rung.** ⛔ No bare `transition-colors`, and no `duration-150`: 150 is on
      no rung (`motion.css:33-37` — `--t-quick` 140 · `--t-base` 220 · `--t-move` 340), and an
      omitted timing function silently means `ease` (§B5 rule 3). `globals.css:2037-2041` has

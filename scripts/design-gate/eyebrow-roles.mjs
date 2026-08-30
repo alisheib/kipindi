@@ -299,7 +299,13 @@ export const NOT_EYEBROW = new Map([
   ["components/ui/route-error.tsx :: <p className=\"font-mono text-micro font-bold uppercase tracking-[0.20em] text-danger-fg\"> ↵ {eyebrow ?? t.error.somethingWentWrong}", "CELEBRATION"],
   ["components/ui/stat.tsx :: \"font-mono uppercase\", ↵ LABEL[labelStyle],", "OTHER"],
   ["components/ui/status-flag.tsx :: \"inline-flex items-center rounded-pill font-mono font-bold uppercase whitespace-nowrap leading-none align-middle\", ↵ className,", "STATUS_CHIP"],
-  ["components/ui/tabs.tsx :: \"h-[40px] px-3.5 rounded-pill text-label font-mono font-semibold uppercase tracking-[0.14em] border transition-colors duration-100\", ↵ active", "CONTROL_LABEL"],
+  // ⚠️ RE-KEYED 2026-08-31 (DG-S-02). The role is unchanged — DESIGN_AUTHORITY §T3's enclosure
+  // test names "a button, tab, filter or sort chip" in the CONTROL bullet — but the line's TEXT
+  // moved when the variant took `inline-flex items-center gap-1.5` (for the kit `<CountBadge>`)
+  // and its off-rung `duration-100` became `duration-quick ease-linear`. ⭐ This gate went RED on
+  // that edit, exactly as designed: the key is line CONTENT, not `:line`, so a class-string change
+  // reads as an undeclared site until a human re-reads it. That is the ⛔ named in the door.
+  ["components/ui/tabs.tsx :: \"h-[40px] px-3.5 rounded-pill text-label font-mono font-semibold uppercase tracking-[0.14em] border transition-colors duration-quick ease-linear\", ↵ active", "CONTROL_LABEL"],
   ["components/ui/time-select.tsx :: className=\"inline-flex items-center px-2 bg-bg-elevated border-l border-border font-mono text-micro uppercase tracking-[0.08em] text-text-subtle shrink-0 select-none\" ↵ a", "OTHER"],
   ["components/updown/price-hero.tsx :: <span className=\"font-mono font-semibold uppercase tracking-[0.10em]\" style={{ fontSize: 9, color: \"var(--text-faint)\" }}>{copy.awaitingRead}</span> ↵ </>", "STATUS_CHIP"],
   ["components/updown/updown-card.tsx :: <div className=\"font-mono text-micro uppercase tracking-[0.10em] text-text-faint\">{t.market.udAwaitingRead}</div> ↵ </>", "OTHER"],
