@@ -22,6 +22,8 @@
  *   §3 EVERY SURFACE consumes the primitive and re-expresses nothing.
  *   §4 THE CHART RANGE — the eighth filter control, which was painted in the money ink.
  *   §5 THE PHONE SHEET — batch 6: the whole filter surface at 360, and the ways it can vanish.
+ *   §6 THE ADMIN RAILS — the same idiom at the admin measure, plus the admin stray sweep.
+ *   §7 THE SHARED WINDOW PRIMITIVE — in the language, and deliberately NOT an admin surface.
  *
  * ⚠️ §0 IS THE POSITIVE CONTROL AND IT IS THE POINT. A rule of the form "every filter surface
  * must do X" passes vacuously the moment the set of filter surfaces becomes empty — a renamed
@@ -105,10 +107,64 @@ const SURFACES = [
  * imported the primitive at all. And they rendered about 26px: UNDER the 32px exception they
  * were nominally claiming.
  */
+/**
+ * ⛔ AND IT GREW ON 2026-08-30 (DG-A-06), BECAUSE THE 2026-08-28 LIST WAS THE WRONG POPULATION.
+ *
+ * S-07 converted the two rails it had been told about and guarded them. It did not see:
+ *   · `DateTimeRangeFilter` — ONE primitive with SEVEN admin call sites and 54 chips, which
+ *     hand-rolled its own 33px capsule and, on `/admin/ai-polls` and `/admin/candidates`,
+ *     rendered INSIDE the very same `data-filter-rail` div as the 32px dense pills. The same
+ *     control at two sizes on one screen, ten pixels apart, for two days.
+ *   · `CardSortControl` — 24px, duplicated byte-for-byte across two pages, and INVISIBLE to the
+ *     audit because both call sites sit behind `{pendingSorted.length > 0 && …}` and an empty
+ *     production queue renders zero of them.
+ *   · `/admin/proposals`' queue rail — 22.5px, painted by an inline conditional `style` in an
+ *     alphabet (`color-mix(in oklab, var(--brand-500) …)`) that §6.3/§6.4 cannot see.
+ *
+ * ⚠️ THE FIVE WINDOW-ONLY ROUTES ARE DECLARED THOUGH THEY EMIT NO HOOK. §0.4 does not force
+ * them: they render `<DateTimeRangeFilter>` and nothing else filter-shaped, so nothing would
+ * have noticed a 44px player-rank window filter shipping into a 32px console. Declaring them is
+ * what makes §6.6 demand the dense rank at those call sites.
+ */
 const ADMIN_SURFACES = [
-  "src/app/admin/ai-polls/poll-filters.tsx",        // /admin/ai-polls — state + category
-  "src/app/admin/candidates/candidate-filters.tsx", // /admin/candidates — state + category
+  "src/app/admin/ai-polls/poll-filters.tsx",        // /admin/ai-polls — state + category + window
+  "src/app/admin/candidates/candidate-filters.tsx", // /admin/candidates — state + category + window
+  "src/components/admin/card-sort-control.tsx",     // the hoisted card SORT rail (both consoles)
+  "src/app/admin/proposals/admin-proposals-client.tsx", // /admin/proposals — the queue rail
+  "src/app/admin/ai-usage/page.tsx",                // window only
+  "src/app/admin/finance/page.tsx",                 // window only
+  "src/app/admin/reports/page.tsx",                 // window only
+  "src/app/admin/transactions/page.tsx",            // window only
+  "src/app/admin/updown/page.tsx",                  // window only
 ];
+
+/**
+ * ⭐ EVERY PRIMITIVE THAT TAKES A `rank`, IN ONE PLACE — §6.2 and §6.6 are both derived from it.
+ *
+ * 🔴 THIS LIST IS WHY §6.6 HAD TO BE RE-KEYED BEFORE A SINGLE `rank="dense"` WAS TYPED. §6.6
+ * used to count `<FilterPill` against `rank="dense"` and demand they be EQUAL. Both
+ * `poll-filters.tsx` and `candidate-filters.tsx` already rendered a `<DateTimeRangeFilter>`
+ * inside their declared rail, so the moment that call site took the dense rank the count went
+ * 3 dense of 2 pills and a green 111-assertion suite went RED for doing the right thing.
+ *
+ * ⛔ SO THE RULE KEEPS COUNTING AND WIDENS WHAT IT COUNTS. Its original reason is correct and is
+ * not softened: `/rank="dense"/.test(src)` was the first draft, the red harness caught it, and a
+ * rail half at 32px and half at 44px is worse than either. ⚠️ TWO HAND-TYPED COPIES OF THIS LIST
+ * IS HOW THE NEXT PRIMITIVE GETS ADDED TO ONE AND NOT THE OTHER — §6.2's regex is derived from
+ * the same array, never re-typed.
+ */
+const RANK_TAKING = ["FilterPill", "DateTimeRangeFilter"];
+const RANK_TAG = new RegExp(`<(?:${RANK_TAKING.join("|")})\\b`, "g");
+/**
+ * ⚠️ AND THE THIRD FORM OF THE SAME THING. `filterPillClass({ rank: "dense", on })` is the
+ * primitive's own geometry worn by a control that genuinely cannot be a `<Link>` — the
+ * `/admin/proposals` queue rail, which owns no URL. It takes a rank exactly as a JSX prop does,
+ * so it counts as a control and its `rank: "dense"` counts as a dense one. A rule that ignored
+ * it would let the one chip that is NOT a link be the one chip at the wrong height.
+ */
+const RANK_HELPER = /\bfilterPillClass\(/g;
+const DENSE_ATTR = /rank="dense"/g;
+const DENSE_PROP = /rank:\s*"dense"/g;
 
 // ── §0 · THE SURFACE SET — the positive control ───────────────────────────────────────────────
 
@@ -448,10 +504,39 @@ for (const f of ADMIN_SURFACES) {
   if (!existsSync(join(ROOT, f))) continue;
   const src = strip(read(f));
 
-  ok(/from "@\/components\/ui\/filter-pill"/.test(src),
-    `6.1 ${f} imports the primitive rather than re-expressing it`);
-  ok(/<FilterPill\b/.test(src),
-    `6.2 ${f} renders its filter controls through the primitive`);
+  /* ⚠️ TWO DOORS INTO THE ONE LANGUAGE, AND NEITHER IS A LOOSENING. Five declared routes render
+     `<DateTimeRangeFilter>` and no `FilterPill` of their own, so they import
+     `datetime-range-filter` and not `filter-pill` — I ran the old regex over all five and it was
+     FALSE on every one. Declaring them with §6.1 unchanged would have been five more red
+     assertions. ⛔ The indirection is only safe because §7 pins that primitive to `FilterPill`:
+     without §7 this would be a hole, not a door.
+
+     🔴 AND THE FIRST DRAFT OF THIS WIDENING WAS ITSELF A HOLE — `red:filter-language` caught it
+     within the same hour, which is the whole reason that harness exists. Written as "imports
+     EITHER module", the `admin-rolls-its-own` plant (candidate-filters.tsx drops its
+     `FilterPill` import) STAYED GREEN: the file still imported `datetime-range-filter`, so a
+     rail that had left the shared language satisfied a rule about a module it does not use.
+     ⛔ SO THE RULE IS PER-CONTROL: whatever this file RENDERS, it must import from that
+     control's own module. Widening the subject must never widen what counts as satisfaction. */
+  const IMPORT_OF: Record<string, RegExp> = {
+    FilterPill: /from "@\/components\/ui\/filter-pill"/,
+    DateTimeRangeFilter: /from "@\/components\/ui\/datetime-range-filter"/,
+  };
+  const rendered = new Set(RANK_TAKING.filter((n) => new RegExp(`<${n}\\b`).test(src)));
+  // `filterPillClass` is the primitive's own geometry worn by a non-navigating chip — same module.
+  if ((src.match(RANK_HELPER) ?? []).length > 0) rendered.add("FilterPill");
+  const unimported = [...rendered].filter((n) => !IMPORT_OF[n].test(src));
+  ok(rendered.size > 0 && unimported.length === 0,
+    `6.1 ${f} imports every shared control it renders, from that control's own module`,
+    rendered.size === 0 ? "renders none" : `missing: ${unimported.join(", ")}`);
+  /* ⛔ `.match()`, NEVER `.test()`. `RANK_TAG` and `RANK_HELPER` carry the `g` flag, and a
+     global regex's `.test()` advances `lastIndex` between calls — inside a `for` loop over nine
+     files that means file 2 starts scanning where file 1 stopped and the rule silently reports
+     on text it never read. `String.prototype.match` resets `lastIndex` itself. */
+  const rankTags = (src.match(RANK_TAG) ?? []).length;
+  const rankHelpers = (src.match(RANK_HELPER) ?? []).length;
+  ok(rankTags + rankHelpers > 0,
+    `6.2 ${f} renders its filter controls through a shared primitive`);
   ok(!/var\(--pill-active\)/.test(src),
     `6.3 ${f} does not paint a selected control at the call site`);
   ok(!/var\(--glow-selected\)/.test(src),
@@ -460,15 +545,18 @@ for (const f of ADMIN_SURFACES) {
     `6.5 ${f} no longer carries the divergent rounded-md filter class`);
 
   /* ⭐ 6.6 — THE FORK. Admin rails take the dense rank; that is the ONLY thing they may vary.
-     ⛔ EVERY pill, not merely one. `/rank="dense"/.test(src)` was the first draft and the red
+     ⛔ EVERY control, not merely one. `/rank="dense"/.test(src)` was the first draft and the red
      harness caught it: these files render FOUR rails, so dropping the rank from one left three
      behind and the assertion passed on their evidence. A rail half at 32px and half at 44px is
-     worse than either — it is the same control at two sizes on one screen. Count, don't test. */
-  const pills = (src.match(/<FilterPill\b/g) ?? []).length;
-  const dense = (src.match(/rank="dense"/g) ?? []).length;
-  ok(pills > 0 && dense === pills,
-    `6.6 EVERY pill on ${f} takes the DENSE rank — --h-control-xs (32px), the documented admin exception`,
-    `${dense} dense of ${pills} pills`);
+     worse than either — it is the same control at two sizes on one screen. Count, don't test.
+     ⛔ AND THE SUBJECT WIDENED ON 2026-08-30 (DG-A-06) WITHOUT THE REASON CHANGING. It counted
+     `<FilterPill` alone, so the `<DateTimeRangeFilter>` sitting in the SAME rail — 33px against
+     the pills' 32px — was not a control as far as this rule was concerned. See `RANK_TAKING`. */
+  const controls = rankTags + rankHelpers;
+  const dense = (src.match(DENSE_ATTR) ?? []).length + (src.match(DENSE_PROP) ?? []).length;
+  ok(controls > 0 && dense === controls,
+    `6.6 EVERY rank-taking control on ${f} takes the DENSE rank — --h-control-xs (32px), the documented admin exception`,
+    `${dense} dense of ${controls} controls`);
 
   /* ⛔ 6.7 — THE DEFECT THAT MADE THIS SECTION NECESSARY, asserted directly. Every chip was
      outlined AND filled, and the selected one switched to `font-bold` in a MONO face — which is
@@ -481,17 +569,185 @@ for (const f of ADMIN_SURFACES) {
 }
 
 /**
- * ⛔ AND THE ADMIN STRAY SWEEP, the mirror of §3.6. Without this, a THIRD admin rail could be
- * hand-rolled tomorrow, omit `data-filter-rail`, and never appear in ADMIN_SURFACES — the exact
- * hole §3.6 exists to close on the player side. Scoped to the two console trees that actually
- * carry list filters, so it cannot be satisfied by moving a file.
+ * 🔴 6.8b — THE POSITIVE CONTROL §6.8 NEEDED THE MOMENT THE DECLARED SET GREW (DG-A-06).
+ *
+ * §6.8 is keyed on two LITERAL strings, `currentState === s.id` and `currentCategory === c.id`.
+ * I ran both over the seven files added on 2026-08-30: FALSE on every one. So on those seven
+ * files §6.8 passes because its SUBJECT DOES NOT EXIST — an assertion that cannot fail, which is
+ * the exact disease this file's own §0 preamble was written to refuse.
+ *
+ * ⛔ AND IT MEANS THE ASSERTION TOTAL IS NOT THE MEASUREMENT. Declaring a file RAISES the count
+ * while LOWERING the coverage per file. This control is what stops a rename from silently
+ * emptying the rule: if either key stops existing anywhere in the declared set, someone must
+ * come here and re-key §6.8 rather than enjoy a larger green number.
  */
-const adminStrays = allSrc
-  .filter((f) => /\.tsx$/.test(f) && /\/admin\//.test(f) && !ADMIN_SURFACES.includes(f))
-  .filter((f) => OLD_IDIOM.test(strip(read(f))));
+const adminCode = ADMIN_SURFACES.filter((f) => existsSync(join(ROOT, f))).map((f) => strip(read(f)));
+ok(adminCode.some((s) => /currentState === s\.id/.test(s)) && adminCode.some((s) => /currentCategory === c\.id/.test(s)),
+  "6.8b CONTROL: §6.8's two literal keys still name real code — otherwise the rule is vacuous");
+
+// ── §6.9 · THE ADMIN STRAY SWEEP — RE-KEYED ON THE DEFECT, NOT ON THE DRESSING ────────────────
+/**
+ * ⛔ WITHOUT THIS, a THIRD admin rail could be hand-rolled tomorrow, omit `data-filter-rail`, and
+ * never appear in ADMIN_SURFACES — the exact hole §3.6 closes on the player side.
+ *
+ * 🔴 AND IT WAS DEAD. `OLD_IDIOM` is `/rounded-md border px-3(?:\.5)? font-mono/`, and I walked
+ * the whole tree with this file's own `strip()`: it matches ZERO files in `src/`. It won — the
+ * rounded-md idiom is gone — so the rule is kept below as a TOMBSTONE. ⚠️ Do not delete a rule
+ * that is green because it succeeded; deleting it is how the idiom comes back.
+ *
+ * 🔴 BUT EVERY SURVIVING DG-A-06 CAPSULE IS `rounded-pill`, SO THE SWEEP SAW NONE OF THEM, AND
+ * THE OBVIOUS WIDENING IS A TRAP THAT WOULD HAVE SHIPPED GREEN OVER THIS VERY ROW. Measured:
+ *   (a) `/rounded-pill border px-\d/` — the minimal edit, keeping OLD_IDIOM's word order —
+ *       MISSES both `CardSortControl` and the poll-actions picker, because both write `border`
+ *       LAST (`px-2.5 py-1 rounded-pill … border`). The two rails this row exists to find would
+ *       have stayed invisible while the work item looked done.
+ *   (b) An order-insensitive SHAPE key is noise by construction: `rounded-pill` + a bare
+ *       `border` + `px-` matches 43 sites tree-wide, and + `font-mono` still matches 27 —
+ *       almost all of them status tags, share buttons and progress tracks. THE PILL IS THE
+ *       SHARED SHAPE of this product. Keying on it is DG-A-14's lesson repeating one row later:
+ *       that instrument counted 48 sentences as labels because it was keyed on the dressing.
+ *   (c) `/admin/proposals`' rail was invisible to ANY class-string key at all — it stated
+ *       selection through an inline conditional `style={…}`.
+ *
+ * ⭐ SO THE KEY IS THE DEFECT ITSELF: an INTERACTIVE element (`<button>` / `<a>` / `<Link>`)
+ * wearing the capsule (`rounded-pill` + a BARE `border` + a `px-`) that states a binary state AT
+ * THE CALL SITE — either by a ternary painting a non-transparent `border-*` in BOTH branches, or
+ * by an inline conditional `style`. `border-transparent` is excluded on purpose: it is the
+ * primitive's own idiom (same box, only the ink changes), and a control that uses it is
+ * conforming, not straying. Measured tree-wide: 13 hits, 7 of them under `/admin/`, and they
+ * separate cleanly into the four this row converts and the four named below.
+ */
+/**
+ * ⛔ `=>` COMES FIRST IN THE ALTERNATION AND THAT ORDER IS LOAD-BEARING. With `(?:[^>]|=>)*?`
+ * — the spelling `ui-consistency.test.mts` still carries — a LAZY match stops at the first `>`
+ * it can reach: on `<button onClick={() => …} className=…>` the engine matches `=` with `[^>]`,
+ * finds `>` next, and closes the tag there, so `className` and `style` are never in the captured
+ * body. Measured: that spelling found 6 of the 13 capsules and silently dropped every button
+ * whose handler is an arrow function — including all three on `/admin/proposals`. Putting `=>`
+ * first makes the loop consume the arrow before it can be mistaken for the tag's end.
+ */
+const CAPSULE_TAG = /<(?:button|a|Link)\b((?:=>|[^>])*?)>/gs;
+const BARE_BORDER = /(?:^|[\s"'`])border(?=[\s"'`])/;
+const PAINTED_BORDER = /border-(?!transparent\b)[a-z]/g;
+
+/** Every call-site-painted selection capsule in one file, as raw tag bodies. */
+function selectionCapsules(src: string): string[] {
+  const out: string[] = [];
+  for (const m of src.matchAll(CAPSULE_TAG)) {
+    const body = m[1] ?? "";
+    if (!/rounded-pill/.test(body)) continue;
+    if (!BARE_BORDER.test(body)) continue;
+    if (!/\bpx-/.test(body)) continue;
+    const painted = (body.match(PAINTED_BORDER) ?? []).length;
+    const ternaryPaint = body.includes("?") && body.includes(":") && painted >= 2;
+    const inlineCond = /style=\{[^}]*\?[\s\S]{0,400}?:/.test(body);
+    if (!ternaryPaint && !inlineCond) continue;
+    out.push(body);
+  }
+  return out;
+}
+
+/**
+ * ⭐ NAMED EXEMPTIONS, ONE REASON EACH — mirroring ADMIN_SURFACES' own design note that a named
+ * list beats a blanket `/admin/` exemption, which would simply re-hide what this rule found.
+ *
+ * ⛔ THEY ARE KEYED ON THE CONTROL, NOT ON THE FILE. A file-level exemption for
+ * `admin-proposals-client.tsx` would have protected its two form pickers AND its queue rail —
+ * the very rail this row just converted — so a regression there would go unnoticed for ever.
+ * Each entry names a substring of the control's own tag, so a NEW hand-rolled rail in the same
+ * file is still caught.
+ *
+ * ⚠️ Every one of these is a control that is NOT a view filter. Giving them a filter's
+ * outline-only-when-selected idiom would misrepresent what they do — which is the same argument,
+ * run the other way, that put the four converted rails into the language.
+ */
+const SWEEP_EXEMPT: { file: string; key: string; why: string }[] = [
+  {
+    file: "src/app/admin/ai-polls/poll-actions.tsx",
+    key: "setCategory(c.id)",
+    why: "the GENERATION category picker — it sets an action parameter (which category the AI writes a poll for) and filters nothing on the page",
+  },
+  {
+    file: "src/app/admin/sources/source-controls.tsx",
+    key: "border-yes-700",
+    why: "ToggleCategory WRITES — it posts toggleCategoryAction and router.refresh()es. A control that changes the world is not a filter",
+  },
+  {
+    file: "src/app/admin/proposals/admin-proposals-client.tsx",
+    key: "setECategory(ct)",
+    why: "the edit-form CATEGORY picker inside the review panel — it chooses what to SAVE, not what to see",
+  },
+  {
+    file: "src/app/admin/proposals/admin-proposals-client.tsx",
+    key: "setReason(r)",
+    why: "the DECLINE REASON picker — a form input on the decline path, not a view filter",
+  },
+];
+
+const adminStrays: string[] = [];
+for (const f of allSrc.filter((x) => /\.tsx$/.test(x) && /\/admin\//.test(x))) {
+  const src = strip(read(f));
+  if (OLD_IDIOM.test(src)) adminStrays.push(`${f} — the rounded-md idiom is back`);
+  for (const body of selectionCapsules(src)) {
+    if (SWEEP_EXEMPT.some((e) => e.file === f && body.includes(e.key))) continue;
+    adminStrays.push(`${f} — ${body.replace(/\s+/g, " ").trim().slice(0, 90)}`);
+  }
+}
 ok(adminStrays.length === 0,
-  "6.9 no admin surface builds a filter rail the old way either",
-  adminStrays.join(", "));
+  "6.9 no admin surface paints a selection capsule at the call site",
+  adminStrays.join("  |  "));
+
+/**
+ * ⭐ AND THE EXEMPTION LIST'S OWN POSITIVE CONTROL. An exemption that no longer matches anything
+ * is worse than no exemption: it protects nothing, it is invisible, and it makes the next reader
+ * believe a control was considered when it may have been deleted or rewritten. If one goes
+ * stale, someone must come here and decide again rather than inherit a decision that expired.
+ */
+const staleExempt = SWEEP_EXEMPT.filter(
+  (e) => !existsSync(join(ROOT, e.file)) || !selectionCapsules(strip(read(e.file))).some((b) => b.includes(e.key)),
+);
+ok(staleExempt.length === 0,
+  "6.10 CONTROL: every named sweep exemption still matches a real control — and proves the key still matches",
+  staleExempt.map((e) => `${e.file} :: ${e.key}`).join(", "));
+
+// ── §7 · THE SHARED WINDOW PRIMITIVE — in the language, but NOT an admin surface ───────────────
+/**
+ * ⛔ `DateTimeRangeFilter` DELIBERATELY DOES NOT JOIN `ADMIN_SURFACES`, and the reason is the
+ * whole point of DG-A-06. Declaring it would make §6.6 demand `rank="dense"` INSIDE it — baking
+ * the 32px admin fork into a `components/ui` primitive that also defines `PLAYER_PRESETS` and
+ * whose default must stay the 44px tap floor. A shared file that hard-codes one audience's
+ * density is the defect, not the fix. So it gets its own block, with the density rule INVERTED:
+ * §7.3 fails if the dense rank appears here at all.
+ *
+ * ⚠️ AND §7 IS WHAT MAKES §6.1's SECOND DOOR SAFE. Five declared routes reach the language only
+ * through this file; without §7 pinning it to `FilterPill`, "imports datetime-range-filter"
+ * would prove nothing about what those routes render.
+ */
+const RANGE = "src/components/ui/datetime-range-filter.tsx";
+ok(existsSync(join(ROOT, RANGE)), "7.0 CONTROL: the shared window primitive exists to be checked", RANGE);
+if (existsSync(join(ROOT, RANGE))) {
+  const rangeSrc = strip(read(RANGE));
+  ok(/from "@\/components\/ui\/filter-pill"/.test(rangeSrc),
+    "7.1 the window filter imports the pill primitive rather than re-expressing it");
+  ok((rangeSrc.match(/<FilterPill\b/g) ?? []).length > 0,
+    "7.2 …and renders its presets through it — 54 chips over 7 admin call sites");
+  /* ⭐ RANK IS A PROP. This is the assertion that keeps an admin decision out of shared code:
+     the type must be declared here, and the admin value must NOT appear here. */
+  const takesRank = /rank\??:\s*FilterPillRank/.test(rangeSrc);
+  const hardCodedDense = (rangeSrc.match(DENSE_ATTR) ?? []).length + (rangeSrc.match(DENSE_PROP) ?? []).length;
+  ok(takesRank && hardCodedDense === 0,
+    "7.3 the window filter TAKES a rank and never hard-codes the admin one — PLAYER_PRESETS lives here",
+    `takesRank=${takesRank} hardCodedDense=${hardCodedDense}`);
+  /* ⛔ NO SECOND CAPSULE. The "Custom" chip cannot be a <Link> (it opens a disclosure), so it
+     wears `filterPillClass` — the primitive's own string — rather than a re-typed copy of it.
+     A `rounded-pill` written in this file would BE that re-typed copy. */
+  ok(!/rounded-pill/.test(rangeSrc) && (rangeSrc.match(RANK_HELPER) ?? []).length > 0,
+    "7.4 …and re-expresses no capsule of its own — the non-navigating chip wears filterPillClass");
+  ok(!/\bbg-bg-overlay\b[^`"]*\btext-text-muted\b/.test(rangeSrc),
+    "7.5 …and does not fill an UNSELECTED chip — the defect it shipped for two days");
+  ok(!/var\(--pill-active\)/.test(rangeSrc) && !/var\(--glow-selected\)/.test(rangeSrc),
+    "7.6 …and paints no selected state itself — the fill and halo are .kp-fchip[data-on] (law 82)");
+}
 
 console.log(`filter-language: ${pass} assertions passed · ${SURFACES.length} player + ${ADMIN_SURFACES.length} admin rails · ${discovered.length} discovered`);
 if (fails.length) {

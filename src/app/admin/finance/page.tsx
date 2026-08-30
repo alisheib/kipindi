@@ -122,7 +122,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
         actions={
           <>
             {/* Platform date+hour+minute window (presets + custom), EAT-safe. */}
-            <DateTimeRangeFilter defaultPreset="7d" presetIds={["today", "yesterday", "24h", "7d", "28d", "30d", "mtd", "qtd"]} />
+            <DateTimeRangeFilter rank="dense" defaultPreset="7d" presetIds={["today", "yesterday", "24h", "7d", "28d", "30d", "mtd", "qtd"]} />
             {/* Branded Excel + PDF export — the GBT monthly statutory pack. */}
             <GenerateButton id="gbt-monthly" />
           </>

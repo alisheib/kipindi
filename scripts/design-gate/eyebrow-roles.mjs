@@ -94,7 +94,16 @@ export const NOT_EYEBROW = new Map([
   ["app/admin/ai-polls/[id]/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.14em] text-text-subtle\">{poll.category}</span> ↵ <span className=\"font-mono text-[10.5px] tabular-nums text-te", "OTHER"],
   ["app/admin/ai-polls/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.14em] text-text-subtle\">{poll.category}</span> ↵ <span className=\"font-mono text-[10.5px] tabular-nums text-te", "OTHER"],
   ["app/admin/ai-polls/page.tsx :: <td className=\"p-3 font-mono uppercase tracking-[0.12em] text-micro\">{p.category || \"\\u2014\"}</td> ↵ <td className=\"p-3 text-text max-w-[360px]\">", "OTHER"],
-  ["app/admin/ai-polls/page.tsx :: className={`px-2.5 py-1 rounded-pill text-micro font-mono uppercase tracking-[0.08em] border transition-colors ${ ↵ isActive", "CONTROL_LABEL"],
+  // ⛔ DELETED 2026-08-30 (DG-A-06): `CardSortControl`'s hand-rolled chip. It was hoisted out
+  // of BOTH pages into `components/admin/card-sort-control.tsx` and converted to `FilterPill`,
+  // which is neither uppercase nor tracked — so it leaves this population entirely rather than
+  // moving within it. ⭐ This gate is what told me: it exits 4 the moment a declaration matches
+  // nothing, so a deleted element cannot leave a stale read behind.
+  // ⚠ LINE COMMENTS, NOT A BLOCK, AND THAT IS NOT A STYLE CHOICE. This file's DATA contains a
+  // `//` inside a string literal (the `control-locked.tsx` entry), and `test:decomment` §5
+  // measures how much a naive line-comments-first stripper would lose here. Writing these three
+  // notes as `/* */` took that loss from 5,803 characters to 43,604 and moved the gate's
+  // worst-case file into a subdirectory its own control excludes — red, correctly.
   ["app/admin/ai-polls/poll-actions.tsx :: className={`px-3 py-1.5 rounded-pill text-label font-mono uppercase tracking-[0.1em] border transition-colors ${ ↵ !enabled", "CONTROL_LABEL"],
   ["app/admin/ai-usage/page.tsx :: action={<span className=\"font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary\">${cyc.config.sizeUsd.toLocaleString()} per cycle · rates {cyc.priceRev}</spa", "OTHER"],
   ["app/admin/ai-usage/page.tsx :: action={<span className=\"font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary\">Anthropic Cost API · USD</span>} ↵ >", "OTHER"],
@@ -105,7 +114,7 @@ export const NOT_EYEBROW = new Map([
   ["app/admin/bonuses/bonus-admin-client.tsx :: className=\"shrink-0 inline-flex h-[40px] items-center gap-1.5 rounded-md border border-border bg-bg-elevated px-3 font-mono text-caption font-bold uppercase tracking-[0.0", "CONTROL_LABEL"],
   ["app/admin/candidates/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.14em] text-text-subtle\">{c.category}</span> ↵ <span className=\"font-mono text-[10.5px] tabular-nums text-text-", "OTHER"],
   ["app/admin/candidates/page.tsx :: <td className=\"p-3 font-mono uppercase tracking-[0.12em] text-micro\">{c.category}</td> ↵ <td className=\"p-3 text-text max-w-[420px] truncate\">{c.proposedTitleEn}</td>", "OTHER"],
-  ["app/admin/candidates/page.tsx :: className={`px-2.5 py-1 rounded-pill text-micro font-mono uppercase tracking-[0.08em] border transition-colors ${ ↵ isActive", "CONTROL_LABEL"],
+  // ⛔ DELETED 2026-08-30 (DG-A-06) — the byte-identical twin of the ai-polls entry above.
   ["app/admin/compliance/page.tsx :: <p className=\"font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary\"> ↵ {continued} continued · {tookBreak} break · {sxd} self-excluded{\" \"}", "OTHER"],
   ["app/admin/compliance/page.tsx :: <p className=\"font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary\"> ↵ HMAC-SHA256 · last verify {formatClock(new Date().toISOString())}", "OTHER"],
   ["app/admin/compliance/page.tsx :: <span className=\"font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary\">LCCP §3.4.1</span> ↵ </div>", "OTHER"],
@@ -307,7 +316,9 @@ export const NOT_EYEBROW = new Map([
   ["components/ui/chip.tsx :: \"inline-flex items-center rounded-pill font-bold border uppercase max-w-full\", ↵ selected && \"ring-1 ring-[var(--brand-400)] ring-offset-1 ring-offset-bg-elevated\",", "STATUS_CHIP"],
   ["components/ui/countdown-pill.tsx :: <span className=\"font-mono text-caption uppercase tracking-[0.14em] text-text-muted\" aria-hidden> ↵ {t.common.ready}", "OTHER"],
   ["components/ui/date-select.tsx :: className=\"font-mono text-label uppercase tracking-[0.12em] text-text-subtle hover:text-text transition-colors\"> ↵ {t.common.cancel}", "CONTROL_LABEL"],
-  ["components/ui/datetime-range-filter.tsx :: \"shrink-0 rounded-pill border px-3 py-1.5 font-mono text-caption uppercase tracking-[0.08em] transition-colors admin-focus\", ↵ active ? \"border-brand-500 bg-brand-500/10 ", "CONTROL_LABEL"],
+  // ⛔ DELETED 2026-08-30 (DG-A-06): the window filter's hand-rolled preset chip — 54 of them
+  // over 7 admin call sites. The presets are `FilterPill`s now and the non-navigating "Custom"
+  // chip wears `filterPillClass`; neither is uppercase or tracked.
   ["components/ui/duration-input.tsx :: \"font-mono uppercase tracking-[0.06em] text-text-subtle group-hover:text-text transition-colors leading-none\", ↵ size === \"sm\" ? \"text-[9px]\" : \"text-[10px]\",", "CONTROL_LABEL"],
   ["components/ui/modal.tsx :: className=\"mt-1 w-full rounded-lg border border-border-strong bg-bg-overlay px-3 py-2.5 font-mono text-body-lg tracking-[0.2em] uppercase text-text outline-none focus:bor", "TYPE_TO_CONFIRM"],
   ["components/ui/page-loader.tsx :: <p className=\"font-mono text-caption uppercase tracking-[0.18em] text-text-muted\"> ↵ {t.common.loading}", "STATUS_CHIP"],

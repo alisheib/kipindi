@@ -218,7 +218,7 @@ export default async function AdminReportsPage({
         sw="Ripoti"
         actions={
           <>
-            <DateTimeRangeFilter defaultPreset="7d" />
+            <DateTimeRangeFilter rank="dense" defaultPreset="7d" />
             <Link
               href={cmpHref as never}
               scroll={false}

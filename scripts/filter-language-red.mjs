@@ -56,6 +56,12 @@ const BAR = "src/components/markets/discovery-bar.tsx";
 /* S-07 — the admin rail used for the two admin-scope plants. candidates rather than ai-polls
    because it carries BOTH the state and category rails and the shorter vocabulary. */
 const ADMIN_RAIL = "src/app/admin/candidates/candidate-filters.tsx";
+/* DG-A-06 — the shared window primitive (§7), the queue rail whose exemptions are keyed on the
+   control, an admin file holding an EXEMPT capsule, and a window-only declared route. */
+const RANGE = "src/components/ui/datetime-range-filter.tsx";
+const PROPOSALS = "src/app/admin/proposals/admin-proposals-client.tsx";
+const SOURCES = "src/app/admin/sources/source-controls.tsx";
+const FINANCE = "src/app/admin/finance/page.tsx";
 
 const CASES = [
   {
@@ -76,15 +82,20 @@ const CASES = [
        repo's overridden scale — so this injects the defect at exactly the seam where a future
        reader is most likely to write it for real: reaching for a scale class because the admin
        rank "is 32px anyway". That is the trap the 44px floor was made arbitrary to avoid. */
-    from: `        rank === "dense" ? "min-h-[32px]" : "min-h-[44px]",`,
-    to: `        rank === "dense" ? "h-8" : "min-h-[44px]",`,
+    /* ⚠️ RE-ANCHORED AGAIN 2026-08-30 (DG-A-06): the whole class computation moved out of
+       `FilterPill`'s JSX into the exported `filterPillClass` helper, so every line of it lost
+       four spaces of indentation. The defect and its assertion are unchanged. */
+    from: `    rank === "dense" ? "min-h-[32px]" : "min-h-[44px]",`,
+    to: `    rank === "dense" ? "h-8" : "min-h-[44px]",`,
     expect: "1.4",
   },
   {
     name: "always-outlined (every control outlined — the defect that is not cosmetic)",
     file: PRIMITIVE,
-    from: `          : "border-transparent text-text-muted hover:bg-bg-overlay hover:text-text",`,
-    to: `          : "border-border text-text-muted hover:bg-bg-overlay hover:text-text",`,
+    /* ⚠️ RE-ANCHORED 2026-08-30 (DG-A-06) — see `below-the-floor`: the extraction of
+       `filterPillClass` de-indented this line by four spaces. */
+    from: `      : "border-transparent text-text-muted hover:bg-bg-overlay hover:text-text",`,
+    to: `      : "border-border text-text-muted hover:bg-bg-overlay hover:text-text",`,
     expect: "1.5",
   },
   {
@@ -161,6 +172,84 @@ const CASES = [
     from: `              on={currentState === s.id}`,
     to: `              className={currentState === s.id ? "font-bold" : ""}\n              on={currentState === s.id}`,
     expect: "6.8",
+  },
+
+  /* ── DG-A-06 · 2026-08-30 — the rails S-07's population never contained ─────────────────
+     S-07 converted the two rails it had been told about. It missed 70 more controls across
+     12 rails and 8 routes: one shared window primitive with SEVEN admin call sites, a card
+     SORT rail duplicated byte-for-byte across two pages and hidden behind an empty queue, and
+     a queue rail painted by an inline conditional style that four assertions could not see.
+     Every widening below gets a plant, or the widening is a claim rather than a gate. */
+  {
+    /* 🔴 THE TRAP THIS ROW WAS WARNED ABOUT, PLANTED SO IT CAN NEVER BE A SURPRISE AGAIN.
+       `<DateTimeRangeFilter>` sits INSIDE this file's declared rail, ten pixels from the dense
+       pills. Drop its rank and the window filter silently returns to the 44px player floor while
+       every idiom assertion — import, primitive, no call-site paint — stays green. That is the
+       "same control at two sizes on one screen" §6.6's own comment refuses.
+       ⛔ THE RANK IS WRITTEN INLINE ON THE CALL, NOT ON A LINE OF ITS OWN, and that is not a
+       formatting preference: `resolveAnchor` REFUSES a non-unique anchor and kills the WHOLE
+       harness run, and `admin-loses-its-density` above anchors on a 14-space `rank="dense"`. A
+       second 14-space match would make both cases unprovable at once. */
+    name: "admin-window-loses-its-density (the shared window filter reverts to the player floor)",
+    file: ADMIN_RAIL,
+    from: `<DateTimeRangeFilter rank="dense" defaultPreset="all"`,
+    to: `<DateTimeRangeFilter defaultPreset="all"`,
+    expect: "6.6",
+  },
+  {
+    /* ⭐ THE FORK, PLANTED FROM THE OTHER SIDE. §6.6 catches a call site that forgets the admin
+       density; §7.3 catches the far worse fix for it — hard-coding 32px INSIDE a
+       `components/ui` primitive that also serves player surfaces. One is a rail at the wrong
+       height; the other ships a mouse-only height to a phone and calls it shared code. */
+    name: "window-forks-into-admin (the shared primitive hard-codes the dense rank)",
+    file: RANGE,
+    from: `            rank={rank}`,
+    to: `            rank="dense"`,
+    expect: "7.3",
+  },
+  {
+    /* ⛔ THE EXTRACTION, PLANTED. `filterPillClass` exists so the ONE chip that cannot be a
+       `<Link>` still cannot drift; re-typing its geometry is exactly the copy that
+       `create-form.tsx` already made once. */
+    name: "window-retypes-the-capsule (the Custom chip re-expresses the pill instead of wearing it)",
+    file: RANGE,
+    from: `            className={filterPillClass({ rank, on: activeId === "custom" })}`,
+    to: `            className="rounded-pill border px-3 py-1.5 font-mono text-caption"`,
+    expect: "7.4",
+  },
+  {
+    /* 🔴 THE STRAY SWEEP'S REAL SUBJECT. `OLD_IDIOM` matched ZERO files at HEAD — every
+       surviving capsule is `rounded-pill`, so the old sweep ran over the whole tree and saw none
+       of them. ⭐ AND THE PLANT IS DELIBERATELY IN A FILE THAT ALREADY HOLDS AN EXEMPT CAPSULE:
+       `source-controls.tsx`'s ToggleCategory is named in `SWEEP_EXEMPT` because it WRITES a
+       setting. A file-level exemption would have shielded this new rail too, which is precisely
+       why the exemptions are keyed on the control. */
+    name: "admin-capsule-returns (a new hand-rolled selection rail, in a file with an exempt control)",
+    file: SOURCES,
+    from: `      <span className={\`block h-1.5 w-1.5 rounded-full \${enabled ? "bg-yes-300" : "bg-text-subtle"}\`} />`,
+    to: `      <span className={\`block h-1.5 w-1.5 rounded-full \${enabled ? "bg-yes-300" : "bg-text-subtle"}\`} />\n      <a href="?f=all" className={\`rounded-pill border px-2.5 py-1 font-mono \${enabled ? "border-brand-500 bg-brand-500/10" : "border-border bg-bg-overlay"}\`}>all</a>`,
+    expect: "6.9",
+  },
+  {
+    /* ⭐ AND THE EXEMPTION LIST'S OWN CONTROL. An exemption that matches nothing protects
+       nothing, is invisible, and tells the next reader a control was considered when it may have
+       been deleted. Renaming the handler this entry is keyed on must be caught HERE, not
+       discovered later by someone wondering why a rail was never swept. */
+    name: "stale-exemption (a named sweep exemption stops matching any real control)",
+    file: PROPOSALS,
+    from: `onClick={() => setReason(r)}`,
+    to: `onClick={() => setDeclineReason(r)}`,
+    expect: "6.10",
+  },
+  {
+    /* ⚠️ THE HAZARD THE BRIEF DID NOT NAME. Five declared routes render the window filter and no
+       `FilterPill` of their own, so §6.1 had to accept the indirect import. This proves the
+       widened rule still refuses a route that leaves the language altogether. */
+    name: "window-route-leaves-the-language (a declared route stops importing the shared filter)",
+    file: FINANCE,
+    from: `import { DateTimeRangeFilter } from "@/components/ui/datetime-range-filter";\n`,
+    to: ``,
+    expect: "6.1",
   },
 
   /* ── batch 6 · the phone sheet ─────────────────────────────────────────────────────────

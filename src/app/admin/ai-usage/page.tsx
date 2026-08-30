@@ -839,7 +839,7 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
               </div>
               <div className="flex flex-col gap-1">
                 <FilterLabel>Window</FilterLabel>
-                <DateTimeRangeFilter defaultPreset="all" presetIds={["today", "yesterday", "24h", "7d", "30d", "all"]} />
+                <DateTimeRangeFilter rank="dense" defaultPreset="all" presetIds={["today", "yesterday", "24h", "7d", "30d", "all"]} />
               </div>
               <label className="flex flex-col gap-1 flex-1 min-w-[180px]">
                 <FilterLabel>Search</FilterLabel>

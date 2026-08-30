@@ -5,6 +5,73 @@ session, on any machine, knows which programme it is inside. Owner: Ali. Commiss
 *“100% consistency among the platform … your report should be the final gate to a perfectly
 rendered platform.”*
 
+## ⏭️ RESUME AT — session 81 handover (2026-08-30)
+
+> **DG-A-06 IS CODE-COMPLETE AND GUARDED. IT IS NOT BROWSER-VERIFIED, AND THAT IS THE ONE THING
+> THIS ROW CANNOT BE ALLOWED TO SKIP** — it survived S-07 precisely because a drive looked at an
+> empty queue. Read this block, then THE PLANNER's DG-A-06 row, then the **RE-DERIVED** section.
+>
+> **PLANNER: 20 ☑ · 3 🚢 · 14 ☐** of 37 — re-derived by counting the table, not carried forward
+> (the session-80 block's "16 ☑ · 5 🚢 · 16 ☐" is stale; rows closed after it was written).
+>
+> ### ✅ CLOSED THIS SESSION — DG-A-06, the outlined-capsule rails
+> **70 controls · 12 rails · 8 distinct routes.** Four rails converted onto `FilterPill` at the
+> dense (32px) rank: the shared `DateTimeRangeFilter` (**one primitive, 7 admin call sites, 54
+> chips**), `CardSortControl` (**hoisted out of two byte-identical 52-line copies first**, now
+> `src/components/admin/card-sort-control.tsx`), and `/admin/proposals`' queue rail. ⭐
+> `filterPillClass` extracted from `filter-pill.tsx` so the two chips that genuinely cannot be a
+> `<Link>` wear the primitive's own geometry instead of a re-typed copy of it.
+> 📐 **`test:filter-language` 111 → 183 assertions · 8 player + 9 admin rails · 12 discovered ·
+> `red:filter-language` 27/27** (6 new plants). `tsc --noEmit` clean. **`test:all` 273/275** —
+> the two failures are `test:responsive` and `test:motion`, both of which drive a browser at
+> `localhost:3000`, both `ECONNREFUSED`, and both verified failing the same way at HEAD before
+> any edit. ⛔ Nothing in this row touches a motion token, a keyframe or a breakpoint.
+> 📐 **Two ratchets moved and BOTH were lowered in the same commit, because both gates demanded
+> it out loud:** `spacing-scale` **628 → 625** (the three `px-2.5` capsules that converted —
+> ⭐ and the win is smaller than it looks: `FilterPill`'s dense rank writes `px-2.5` too, so the
+> inverted key moved from three call sites into ONE definition site, which is the shape that
+> ratchet wants), and `eyebrow-roles` lost **3 stale declarations** (both `CardSortControl`
+> copies and the window chip) — `test:eyebrow-roles` exits 4 the instant a declaration matches
+> nothing, so a deleted element cannot leave a stale read behind.
+> ⚠️ **AND A THIRD GATE CAUGHT SOMETHING I WOULD NEVER HAVE PREDICTED.** Writing those three
+> deletion notes as `/* … */` in `eyebrow-roles.mjs` took `test:decomment` §5's naive-strip loss
+> for that file from **5,803 to 43,604 characters** and moved its worst-case file into a
+> subdirectory §5.3's own control excludes. The cause is in that file's DATA: one declaration
+> string contains a literal `//`. The notes are line comments now, and say so.
+>
+> ### 🔴 THE TWO FINDINGS WORTH CARRYING OUT OF IT
+> · **A guard's widening can widen what counts as SATISFACTION.** My first §6.1 read "imports
+>   EITHER `filter-pill` or `datetime-range-filter`", and `red:filter-language`'s existing
+>   `admin-rolls-its-own` plant went **GREEN**: a rail that had dropped its `FilterPill` import
+>   still satisfied the rule through a module it does not use. §6.1 is now per-control. ⛔ The
+>   harness caught this within the hour; the source suite never would have.
+> · **The prescribed guard fix — "widen `OLD_IDIOM` to `rounded-pill`" — does not survive
+>   measurement**, and the minimal version of it would have gone green over the very rails this
+>   row exists to find (both write `border` LAST). **The pill is the shared shape of this
+>   product**; 43 hits tree-wide on shape alone. §6.9 is now keyed on the DEFECT — an interactive
+>   capsule that states a binary state at the call site — with 4 named exemptions keyed on the
+>   CONTROL rather than the file, and §6.10 as their staleness control.
+>
+> ### ⏳ WHAT THE NEXT SESSION MUST DO BEFORE TICKING "RE-MEASURED"
+> 1. Drive `/admin/finance` and `/admin/ai-polls`: every window chip **32px**, and the window chip
+>    and the state pill the **same height inside the one rail**.
+> 2. Drive the sort rail **with a NON-EMPTY pending queue** on `/admin/ai-polls` *and*
+>    `/admin/candidates` — seed a poll and a candidate first. ⛔ An empty-queue screenshot is
+>    exactly the evidence that let this defect ship for two days.
+> 3. Drive `/admin/proposals` with at least one item in each of `all/review/approved/flagged`.
+> ⚠️ Nothing in DG-A-06 is measured in a browser today: `filter-language-scan.mjs` is
+> player-only, and a source assertion cannot see a rendered height.
+>
+> ### ▶ THREE FOLLOW-UPS OPENED, DELIBERATELY NOT FOLDED IN
+> **(a)** Widen §3.6 to the player tree — costs 4 named player exemptions (`conviction-dial`
+> dial-lock, `position-share`, `share-button`, wallet `amount-field`) and touches a money
+> surface, so it is Ali's to see on its own. **(b)** `src/app/notifications/page.tsx` is a PLAYER
+> rail correctly built on `FilterPill` that carries **no `data-filter-rail` hook and is not in
+> `SURFACES`** — correct today by luck, not by gate, while `live-notifications-page.mjs` already
+> addresses its chips by `data-chip`. **(c)** The pill-language FORM pickers (`poll-actions.tsx`,
+> `admin-proposals-client.tsx` ×2) — a defensible row given `create-form.tsx` and `profile/kyc`
+> already use the language for pickers, but they are not filters and are exemptions today.
+
 ## ⏭️ RESUME AT — session 80 handover (2026-08-29)
 
 > **STEP 2 IS CLOSED EXCEPT ONE TASTE CALL AND TWO BLOCKED SITES.** Read this block, then the
@@ -73,9 +140,11 @@ rendered platform.”*
 > re-derivation needed a re-derivation.* ⛔ **DG-A-13 and DG-A-21 did not complete and are still
 > un-re-derived.** The section carries a does-not-reproduce table (17 rows), what each row is
 > actually about, and the guard hazards. Three worth knowing before you open anything:
-> · **DG-A-06's obvious first edit turns a green 111-assertion suite RED** — `filter-language`
->   §6.6 counts `<FilterPill` occurrences against `rank="dense"` occurrences in the same file, so
->   passing a rank through `DateTimeRangeFilter` fails it. Re-key §6.6 in the SAME commit.
+> · ~~**DG-A-06's obvious first edit turns a green 111-assertion suite RED**~~ — ✅ **DONE
+>   2026-08-30. §6.6 now counts every RANK-TAKING control (`RANK_TAKING`, one array, from which
+>   §6.1/§6.2 are derived), the four rails are converted, and the suite stands at **183 assertions
+>   green · 8 player + 9 admin rails · 12 discovered**, `red:filter-language` **27/27**. ⛔ The
+>   111 in this line is now a STALE NUMBER — re-derive, do not quote it forward.
 > · **DG-A-14's 45 sites move §3 by ZERO** — `text-body-sm` is not counted either, by §0f's own
 >   control. Narrow §3's blessing test FIRST or the whole sweep is invisible to its ratchet.
 > · **DG-A-08's prescribed `btn-xs` (32px) is the FIFTH register item asking to reverse a dated
@@ -570,7 +639,7 @@ Their entry is below, before the pattern note.
 ### ⛔ WHAT DOES NOT REPRODUCE — do not "fix" any of these
 | Row | The claim | What is actually there |
 |---|---|---|
-| **DG-A-06** | *"state/category rails 25.8px, 31 instances, ai-polls + candidates"* | **Already FilterPill at HEAD** — converted by S-07 on 2026-08-28 and now guarded by `filter-language` §6.1-6.8. ⚠️ But the recipe SURVIVED on the same two pages on a DIFFERENT rail: `CardSortControl` (`ai-polls/page.tsx:453`, `candidates/page.tsx:366`), byte-identical, and invisible to the audit because both sit behind `{pendingSorted.length > 0 && …}` — an empty prod queue renders zero. **The drive's population was the defect.** Also: the register names 5 routes / 45 chips; there are **7 routes / 54 chips** — `/admin/reports` and `/admin/updown` were never looked at |
+| **DG-A-06** | *"state/category rails 25.8px, 31 instances, ai-polls + candidates"* | **Already FilterPill at HEAD** — converted by S-07 on 2026-08-28 and now guarded by `filter-language` §6.1-6.8. ⚠️ But the recipe SURVIVED on the same two pages on a DIFFERENT rail: `CardSortControl` (`ai-polls/page.tsx:453`, `candidates/page.tsx:366`), byte-identical, and invisible to the audit because both sit behind `{pendingSorted.length > 0 && …}` — an empty prod queue renders zero. **The drive's population was the defect.** Also: the register names 5 routes / 45 chips; there are **7 routes / 54 chips** — `/admin/reports` and `/admin/updown` were never looked at. ✅ **All of it converted 2026-08-30 — see the planner row** |
 | **DG-A-08** | THE FIX: *"one row-action recipe: `btn-xs` (32px)"* | **The FIFTH register item asking to reverse a dated decision.** §A2: *"Money controls are never the exception"* (E-112, a 26px stake chip), and `globals.css:287-292` scopes the 32px exception to controls that are *"not … a finger, primary or money control"*. **20 of the 61 sites have already shipped at ≥40.** THE GUARD is also unimplementable: only **38** interactive tags are literally inside a `<td>` against 334 outside, so it would catch 2 of the row's own 7 |
 | **DG-A-08** | *"'never bare uppercase text' contradicts `bare-text-button`"* | **Not a contradiction — they never overlap.** That rule exempts a button carrying an icon; every DG-A-08 instance is uppercase text with NO icon |
 | **DG-A-09** | *"80 hover-classed cells on /admin/markets"* — Ali named this row | **Four** link/control hovers × `PER_PAGE=20` rendered rows. Not one is a background. Across all hovers inside a `<table>` there is exactly **ONE** `hover:bg-*`, and it is a destructive button's own affordance. ⭐ The real (smaller) defect: **4 `<tr>` elements re-author the row hover and are DEAD** — overridden by `.admin-tbl tbody tr:hover` on specificity, proven from the compiled sheet (zero `@layer`, so precedence is specificity then source order) |
@@ -589,7 +658,7 @@ Their entry is below, before the pattern note.
 | **DG-P-08** | the E-226 ordering constraint (*"E-226 lands first or the row is frozen"*) | **Falsified by `/help`**, which already reads the config. The row is not frozen |
 
 ### ⭐ WHAT EACH ROW IS ACTUALLY ABOUT, once re-derived
-- **DG-A-06** — 3 recipes / 70 controls / 10 routes. The big win is unchanged: `DateTimeRangeFilter`, **one primitive, 7 admin call sites**, rank as a prop. 🔴 **But `filter-language` §6.6 counts `<FilterPill` occurrences against `rank="dense"` occurrences IN THE SAME FILE, so passing a rank through `DateTimeRangeFilter` turns a green 111-assertion suite RED — proved by running the guard's own `strip()` and regexes.** Re-key §6.6 in the SAME commit, before any rank is passed.
+- **DG-A-06** — ✅ **CLOSED 2026-08-30.** 3 recipes / **70 controls / 12 rails / 8 DISTINCT routes** (⛔ the "10 routes" written here before was 10 route×recipe PAIRS, not routes — re-derived, not copied). The big win was as stated: `DateTimeRangeFilter`, **one primitive, 7 admin call sites, 54 chips**, rank taken as a prop. 🔴 **§6.6 was re-keyed FIRST, in the same working tree, before a single `rank="dense"` was typed** — it counted `<FilterPill` against `rank="dense"` in the same file, and both `poll-filters.tsx` and `candidate-filters.tsx` already rendered a `<DateTimeRangeFilter>` inside their declared rail at pills=2/dense=2, so the trap was **two** red assertions, not one. ⛔ **And §6.2 fails identically and was NOT named in the brief** — `/<FilterPill\b/` is false on all five window-only routes. Anyone who fixed only the hazard they were warned about still had a red build.
 - **DG-A-08** — **43 distinct mono-uppercase action recipes over 61 call sites in NINE height families**, ~3× the register's "five recipes, three heights". ⛔ The fix is the 40px rung via the kit, not `btn-xs`.
 - **DG-A-09** — 2 dead `<tr>` hovers to delete (zero-pixel), plus betting ink on non-betting links (§B2a). ⛔ **Do NOT touch `.admin-tbl tbody tr:hover td:first-child` — it IS a per-cell hover and it IS the canon**, on all 56 tables.
 - **DG-A-14** — **45 sites** §3 structurally cannot see, in two tiers: **26 sentences** (drop the dressing, `text-body-sm`) and **19 label-with-hint** (split in two). ⛔ Fixing them moves §3 by **zero** — `text-body-sm` is not counted either, by §0f's own control — so **narrow §3's blessing test FIRST** or the work is invisible to the ratchet.
@@ -809,22 +878,59 @@ mint them deliberately or not at all.
    admin `<Chip>` call sites are outside it. Enforcing the guard as written means minting new law
    first. ⛔ And `STATUS_TONE_EXCEPTIONS` records three divergences that are **decisions** — a
    naive sweep would "harmonise" them, which that file forbids by name.
-6. **DG-A-06 vs `filter-language.test.mts` §0.4** — converting any admin rail without adding it to
-   the hard-coded 2-entry `ADMIN_SURFACES` turns a **111-assertion green suite red for doing the
-   right thing.** The file's own comment documents exactly this failure.
-7. **DG-A-06 vs `datetime-range-filter.tsx`** — it is a shared `components/ui` primitive that
-   exports `PLAYER_PRESETS`. Hard-coding the 32px dense rank into it bakes the admin fork into a
-   player-facing component, against §6.6's stated player-44 / admin-32 split. **Take the rank as a
-   prop.** ⭐ It is also the biggest single win in DG-A-06: **one component, 7 admin call sites.**
+6. ~~**DG-A-06 vs `filter-language.test.mts` §0.4**~~ — ✅ **HANDLED 2026-08-30.** `ADMIN_SURFACES`
+   is now **9 entries**, grown in the same commit as each conversion. ⚠️ Two lessons: **declaring
+   a file can make an assertion UNFALSIFIABLE** (§6.8 is keyed on two literal strings that exist
+   in only two files — on all seven additions it passes because its subject is absent, so §6.8b
+   was added as its positive control), and therefore **the assertion total is not the
+   measurement**: declaring raises the count while lowering coverage per file.
+7. ~~**DG-A-06 vs `datetime-range-filter.tsx`**~~ — ✅ **DONE 2026-08-30: `rank` is a PROP**,
+   defaulting to the 44px player floor, and new **§7.3 fails if the dense rank appears inside that
+   file at all** — the density rule inverted for the shared primitive. It was the biggest single
+   win in DG-A-06: **one component, 7 admin call sites, 54 chips.** ⚠️ One correction to the
+   reasoning: `PLAYER_PRESETS` is **exported and currently consumed by nothing**, so "it serves
+   player surfaces" is a statement about the file's design, not about live call sites. The
+   conclusion is unchanged and does not rest on it — a `components/ui` primitive must not
+   hard-code one audience's density, and its default must be the safe (44px) one.
 8. **Any sweep vs the `ui-consistency` BASELINE MODEL** — it fails on a NEW `(rule,file)` pair even
    at warning severity. A sweep touching a previously-clean file must use the kit `<Button>` /
    `<FilterPill>`, never `className="btn …"` or a numeric `h-7`/`h-8`.
 
-### 🔎 And the guard blind spot behind DG-A-06
-`filter-language.test.mts:207` holds an `OLD_IDIOM` regex that matches only the **rounded-md**
-idiom. **Every surviving DG-A-06 capsule is `rounded-pill`**, so the stray sweep runs over the
-whole tree and sees none of them. The work item *"widen the guard to `/admin/**`"* is already done
-(S-07, 2026-08-28); the real work is **widening that regex**.
+### 🔎 And the guard blind spot behind DG-A-06 — ✅ CLOSED 2026-08-30, but NOT the way this said
+`filter-language.test.mts` held an `OLD_IDIOM` regex matching only the **rounded-md** idiom.
+**Every surviving DG-A-06 capsule was `rounded-pill`**, so the stray sweep ran over the whole tree
+and saw none of them. The work item *"widen the guard to `/admin/**`"* was already done (S-07,
+2026-08-28).
+
+🔴 **BUT "WIDEN THAT REGEX" WAS THE WRONG WORK ITEM, AND THE MINIMAL EDIT WOULD HAVE SHIPPED GREEN
+OVER THIS VERY ROW.** Measured, three ways:
+- **(a)** Keeping `OLD_IDIOM`'s word order as `/rounded-pill border px-\d/` MISSES **both**
+  `CardSortControl` **and** the poll-actions picker, because both write `border` **LAST**
+  (`px-2.5 py-1 rounded-pill … border`). The two rails DG-A-06 exists to find would have stayed
+  invisible while the work item looked done — *instruments green while measuring the wrong thing*,
+  a third time in this programme.
+- **(b)** An order-insensitive SHAPE key is noise by construction: `rounded-pill` + a bare
+  `border` + `px-` = **43 hits tree-wide**; + `font-mono` = **27**. Almost all are status tags,
+  share buttons and progress tracks. **The pill is the shared shape of this product**, so keying
+  on it is DG-A-14's lesson repeating one row later.
+- **(c)** `/admin/proposals`' rail was invisible to **any** class-string key: it painted selection
+  through an inline conditional `style={…}`.
+
+✅ **WHAT SHIPPED INSTEAD — key on the DEFECT.** §6.9 now finds an **interactive** element
+(`<button>`/`<a>`/`<Link>`) wearing `rounded-pill` + a **bare** `border` + a `px-`, that states a
+binary state **at the call site** — either a ternary painting a non-transparent `border-*` in BOTH
+branches, or an inline conditional `style`. `border-transparent` is excluded because it is the
+primitive's own idiom. **13 hits tree-wide before the work, 7 under `/admin/`; 9 after, and every
+remaining admin hit is one of 4 NAMED exemptions.** The `rounded-md` rule is KEPT as a tombstone —
+it is green because it won.
+⛔ **The exemptions are keyed on the CONTROL, not the file.** A file-level exemption for
+`admin-proposals-client.tsx` would have shielded its two form pickers **and** the queue rail this
+row just converted. §6.10 is their own positive control: a stale exemption turns the suite red.
+⛔ **A subtlety worth carrying: `(?:[^>]|=>)*?` — the spelling `ui-consistency.test.mts` still
+uses — is BROKEN for lazy matching.** It stops at the first `>` of an arrow function, so
+`className`/`style` never enter the captured tag body. It found **6** of the 13 capsules,
+silently dropping every button whose handler is an arrow function. `=>` must come FIRST in the
+alternation.
 
 ## 📋 THE PLANNER — all 37 systems, one row each
 
@@ -852,7 +958,7 @@ only ☑ when its gate line is GREEN **re-measured on production**, not on local
 | **DG-P-04** | 2 | P1 | vertical rhythm: seven section gaps across sibling pages, plus a −1px overlap | `section-rhythm` | ☑ | `f4b90a89` + this commit | ✅ **CLOSED 2026-08-29, AND RE-MEASURED ON PRODUCTION AFTER THE DEPLOY — `npm run qa:dg-rhythm`: 16 routes, 0 skipped, 6 containers, `/live` 24 → **0** · `/proposals` 32 → **0** · `/results` (none) → `space-y-5`, and **0 phantom rungs**.** The single remaining ⚠️ is `/markets`, left on per-element margins deliberately for the (0,3,0) corollary below. **And the register's "seven gaps across sibling pages" had ONE MECHANISM, not seven authors.** 🔴 **`space-y-*` is not a gap.** It emits `> :not([hidden]) ~ :not([hidden]) { margin-top }` — a SIBLING selector that counts DOM order and does not care whether the sibling occupies space — and `.sr-only` is `position:absolute; margin:-1px`, read out of the SERVED sheet, not assumed. So a page opening with the correct WCAG 1.3.1/2.4.6 `sr-only` h1 has a first child that takes no space and still holds the *"first child gets no margin"* slot, and its first VISIBLE band is pushed down a full rung by nothing. **Measured on production, `npm run qa:dg-rhythm`: `/live` +24px · `/proposals` +32px**, against **0** on `/markets` `/results` `/leaderboard` `/help`. Fixed at **4** containers (live · proposals · profile · profile/loading) by wrapping the heading WITH the band it names — ⛔ never inside an `aria-hidden` band, which is why `profile/loading` takes a wrapper and `profile` takes a move. ✅ **And 6 containers declared no rhythm at all**, which is §S1's real violation (their bands then each type their own): `/results` fixed, and `wallet/deposit|withdraw/loading` had been spacing themselves **32** against their own page's **24** — an 8px jump on a deposit form, every load. ✅ `/markets`' `mt-10` renders **80px**, on neither `--sp-*` nor the four `--rh-*` gaps §Spacing allows a long page; now `--rh-section`, which also gains the two-rung ladder a flat `mt-10` never had. ⭐ Ruled into **`DESIGN_AUTHORITY` §S1's new subsection**, with the corollary that matters next: the rhythm selector is **(0,3,0)** and beats any `mt-*` on a child **(0,1,0)**, so adding a rhythm to a container SILENTLY FLATTENS every per-element top margin inside it, a deliberate chapter break included, with nothing going red. That is why `/markets` keeps its per-element margins and only its off-ladder gap moved. ⚠️ **Filed, not fixed:** `/results`' skeleton search bar is **44px** against the **91px** band it replaces (DG-P-13 / DG-A-20). 🔎 **The census paid the window tax twice, both caught:** a code scan counted a `<PageContainer>` written inside a COMMENT, and `grep -A2` found 3 of the 6 sr-only-first containers, `-A3` found 4, `-A5` found 6 — while **production found one the code scan missed entirely**. ⛔ The −1px is NOT a defect. — *the session-79 re-derivation this closes:* ⚠️ **FIVE gaps on the measurable surface, not seven.** Fresh anon drive, 17 routes, 0 sign-ins, 0 revocations, **zero overflow at 390, zero console errors**: `24px ×22 · 32 ×9 · 16 ×4 · 20 ×2 · 29.3 ×1`. All four real values sit on `--sp-*`; the **29.3 is a measurement artefact** of an `inline-flex` eyebrow, not an authored gap. ⛔ **The register's seven can be neither confirmed nor refuted — 19 of the 36 player routes are authed and blind.** ⚠️ **And the rig's "section" is any two adjacent children of `<main>`**, which is NOT the rhythm's "section" (`--rh-tight/close/section/chapter`, `globals.css:227`), so the histogram cannot be read as a violation list without that distinction — doing so would condemn legitimate within-group spacing. ✅ The −1px **does** reproduce: Tailwind's `.sr-only{margin:-1px}` on `/profile/invite` `page.tsx:142`, proven with a control |
 | **DG-P-05** | 2 | P1 | 33 font sizes — ⚠️ SAME ruling as DG-A-12; they share the tokens | `type ladder` | 🚢 **prose half ☑ with DG-A-12** | `0869e5c0` | ✅ **191 player prose sites over 72 files swept in the same pass**, verified by the anon drive: 17 routes, 0 overflowing, 0 console errors. ✅ **BOTH BLOCKERS ARE NOW RULED (`31e8f3ba`)** — the money wall by `.amount` + `DESIGN_AUTHORITY` §M4, the ladder question by §T7. This row still closes when DG-A-12 does; what is left under both is the per-site sweep, not a decision. |
 | **DG-P-06** | 2 | P1 | ~90 uppercase micro-label recipes | `label classes` | ☑ **CLOSED 2026-08-30 with DG-A-11 — it was always ONE job** | `f4b90a89` + this commit | ✅ **2026-08-29 — the player eyebrows are on the rung.** This row and DG-A-11 were never two jobs: `qa:dg-eyebrow` walks all of `src/`, so the 139-site off-ladder pass covered player and admin in one edit, and the census that drove it is platform-wide by construction (which is exactly why ⛔ the classes must NOT be named `admin-*`). ▶ What remains here is what remains there: **the recipe**, not the rung — 106 elements, 74 files, 38 distinct recipes, 9 tracking values, and `FieldLegend`'s own recipe is not the modal one. That is ONE decision for both rows and it needs a screenshot. ✅ `DESIGN_AUTHORITY` §T7 (`31e8f3ba`) settles the rung: **the eyebrow takes `text-micro` (10px)** and nothing moves. ⚠️ The census is **557 sites / 193 files**, not 605/204 — and **115 of the distinct recipes are PLAYER against 100 admin**, so ⛔ do NOT name the classes `admin-*` as this row and DG-A-11 both prescribe: that strands the larger half and guarantees a `player-*` twin. Name for the ROLE ✅ **CLOSED 2026-08-30 with DG-A-11's tracking sweep, and the player half was never separable:** `eyebrow-roles.mjs` is keyed by path over all of `src/`, so the 586-site read and the 308-site sweep covered player and admin in one pass. ⭐ The player side is where the sharpened enclosure test earned its keep — `market-card.tsx`, `position-card.tsx` and `trust-band.tsx` are all whole-card `<Link>`s, and under the blunt reading every caption inside them would have been left at a control label's tracking. |
-| **DG-A-06** | 3 | P1 | outlined-capsule rails: 3 sizes x 5+ pages → FilterPill | `FilterPill adoption` | ☐ | — | — |
+| **DG-A-06** | 3 | P1 | outlined-capsule rails: 3 sizes x 5+ pages → FilterPill | `FilterPill adoption` | ☑ **CODE + GUARD DONE 2026-08-30 — ⏳ NOT re-measured in a browser** | this commit | 🔴 **THE REGISTER'S RAILS WERE ALREADY DONE AND THE DEFECT WAS SOMEWHERE ELSE.** S-07 converted the state/category rails on 2026-08-28 and guarded them; what survived was **70 controls over 12 rails and 8 DISTINCT routes** (⛔ the handover's "10 routes" was 10 route×recipe PAIRS; the register's "5 routes / 45 chips" is **7 routes / 54 chips** — both re-derived, neither copied). ✅ **FOUR RAILS CONVERTED, IN THIS ORDER, IN ONE WORKING TREE.** ① `DateTimeRangeFilter` — **one primitive, 7 admin call sites, 54 chips**, 33px, outlined AND filled in both states, and on `/admin/ai-polls` + `/admin/candidates` it rendered **inside the same `data-filter-rail` div as the 32px dense pills, ten pixels away**: the "same control at two sizes on one screen" §6.6's own comment calls worse than either size. Presets are now `FilterPill`s with an href **derived from the mutation `pickPreset` already performed** (⛔ not invented), `semantics="tab"` replacing a `aria-pressed` that told a screen-reader user a window was un-pressable, and **`rank` is a PROP** defaulting to the player floor. ② `CardSortControl` — 24px, **eight pixels UNDER `--h-control-xs`**, still shipping S-07b's `font-bold`-in-mono reflow, and **invisible because both call sites sit behind `{pendingSorted.length > 0 && …}` — an empty production queue renders zero.** ⛔ **HOISTED BEFORE CONVERTING**: the two 52-line definitions differed on **exactly one line** (the route in `buildHref`), so it is `src/components/admin/card-sort-control.tsx` taking a `basePath`, converted once, both copies deleted — converting in place would have left two copies of the corrected control. ③ `/admin/proposals`' queue rail — 22.5px, the smallest control in the console, painted by an inline conditional `style` in `color-mix(in oklab, var(--brand-500) …)`, **a law-82 breach four assertions (§3.3/§3.4/§6.3/§6.4) are structurally unable to see** because they ban only `var(--pill-active)` / `var(--glow-selected)`. ⭐ **`filterPillClass` was extracted from the primitive** so a chip that genuinely CANNOT be a `<Link>` still cannot drift: the repo had already answered this once at `proposals/new/create-form.tsx:149`, correctly in reasoning and wrongly in execution — it **re-typed** the geometry. ⛔ **NO FAKE href**: `DateTimeRangeFilter`'s "Custom" chip opens a disclosure and `/admin/proposals` owns no URL; `?range=custom&from=<today>…` would apply a window the operator never chose. 📐 **`test:filter-language` 111 → 183 assertions green · 8 player + 9 admin rails · 12 discovered · `red:filter-language` 27/27** (6 new plants). `tsc` clean; **`test:all` 273/275**, the two failures being `test:responsive` + `test:motion`, both `ECONNREFUSED` on `localhost:3000` and both verified failing identically at HEAD. 📐 `spacing-scale` **628 → 625** and `eyebrow-roles` **−3 stale declarations**, both lowered in this commit because both gates demanded it. ⚠️ And `test:decomment` §5 caught a hazard I would not have predicted: writing those three deletion notes as `/* … */` in `eyebrow-roles.mjs` took its naive-strip loss from **5,803 to 43,604 characters**, because one declaration STRING in that file contains a literal `//`. They are line comments now. 🔴 **THE GUARD RE-KEY WAS THE ROW.** §6.6 counted `<FilterPill` against `rank="dense"` in the same file and both filter toolbars already rendered a `<DateTimeRangeFilter>` inside their declared rail at pills=2/dense=2 — so the trap was **TWO** red assertions, not one; §6.2 fails identically on all five window-only routes and the brief never named it; and §6.9's prescribed widening was itself the row's trap one level up (see the blind-spot section above). 🔴 **AND MY OWN FIRST WIDENING OF §6.1 OPENED A HOLE — `red:filter-language` caught it inside the hour.** Written as *"imports EITHER module"*, the existing `admin-rolls-its-own` plant **stayed GREEN**: `candidate-filters.tsx` dropped its `FilterPill` import and still satisfied the rule via `datetime-range-filter`. §6.1 is now per-control — whatever a file RENDERS it must import from that control's own module. **Widening the subject must never widen what counts as satisfaction.** ⛔ **REFUSED, WITH REASONS:** the plan's recommendation to **URL-drive** the proposals rail (`?q=all\|review\|…`) — the queue's search, sort and paging are all local by a documented decision on that same panel, the page is `force-dynamic` so every chip click would re-run `getAdminQueue`, and URL-driving one of four sibling controls is incoherent; and the plan's separate **"inline conditional paint on a declared rail file"** rule — it would have gone red on the two LEGITIMATE form pickers in the same file, and the structural §6.9 key already sees that breach. ⏳ **WHAT IS NOT DONE, SAID PLAINLY: nothing here has been measured in a browser.** `filter-language-scan.mjs` is player-only, source assertions cannot see a rendered height, and **this row survived S-07 precisely because a drive's population was wrong.** Before this is ticked as re-measured: drive `/admin/finance` and `/admin/ai-polls` and confirm the window chip and the state pill are the SAME height in one rail, and drive the sort rail **with a NON-EMPTY pending queue** — an empty-queue screenshot is the exact evidence that let this ship. ▶ **FOLLOW-UPS OPENED, deliberately NOT folded in:** (a) widen §3.6 to the player tree — costs 4 named player exemptions (`conviction-dial` dial-lock, `position-share`, `share-button`, wallet `amount-field`) and touches a money surface, so Ali should see it alone; (b) `src/app/notifications/page.tsx` is a PLAYER rail correctly built on `FilterPill` that carries **no `data-filter-rail` hook and is not in `SURFACES`** — correct today by luck, not by gate, while `live-notifications-page.mjs` already addresses its chips by `data-chip`; (c) the pill-language form pickers (`poll-actions.tsx`, `admin-proposals-client.tsx` ×2) are a defensible row given `create-form.tsx` and `profile/kyc` already use it, but they are NOT filters and are named exemptions today |
 | **DG-A-08** | 3 | P1 | in-table action vocabulary: five recipes, three heights, one job | `row actions` | ☐ | — | — |
 | **DG-A-09** | 3 | P1 | hover duplicated inside tables — ⭐ Ali named this one | `cell-hover removal` | ☑ | this commit | ✅ **CLOSED 2026-08-30 — and the register's defect DOES NOT EXIST.** 🔴 *"80 hover-classed cells on /admin/markets"* — the row Ali named — is **four LINK/control hovers × `PER_PAGE=20` rendered rows**, and not one of them is a background. Across every hover inside a `<table>` there is exactly **ONE** `hover:bg-*`, and it is a destructive button's own affordance. ⭐ **What IS real is smaller, and it was DEAD:** four `<tr>` elements re-authored the canon row hover and none ever painted — read out of the COMPILED SHEET, not reasoned: `.admin-tbl tbody tr:hover` is specificity **(0,2,2)**, the utility `.hover\:bg-bg-overlay\/50:hover` is **(0,2,0)**, and the served sheet has **zero `@layer`**, so precedence is specificity then source order. The two colours are also the SAME value, so it was a second definition that could not even diverge visibly (§B8). ⚠️ **And the population was 4, not 2, because `.admin-tbl` IS NOT ADMIN-ONLY** — `/leaderboard` and `/profile/account` carry it too, so their `hover:bg-bg-overlay/40` was dead in the same way and the `/40` they asked for has never rendered. ⛔ `transition-colors` STAYS on the two player rows: the background still changes, it just comes from the canon, and that class is what eases it. ⭐ **GUARDED** — new `ui-consistency` rule `tr-restates-row-hover` (error), shipping at **0 findings** so no baseline entry is written and any reintroduction is a NEW pair. **Control proved:** re-adding one takes the suite to exit 1, removing it returns to 0. ⛔ **DO NOT** touch `.admin-tbl tbody tr:hover td:first-child` — it IS a per-cell hover and it IS the canon, on all 56 tables; the register's *"delete per-cell hover:bg-*"* would have condemned the kit and stripped five real button affordances. | |
 | **DG-A-13** | 3 | P1 | raw enums on screen (AIRTEL_MONEY, sports, STAKE_SPIKE), doubled units ("TZS TZS") | `copy/enum sweep` | ☐ | — | — |

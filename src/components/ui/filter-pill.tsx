@@ -81,6 +81,58 @@ export type FilterPillSemantics = "tab" | "toggle";
  */
 export type FilterPillRank = "primary" | "secondary" | "dense";
 
+/**
+ * ⭐ THE CLASS COMPUTATION, EXTRACTED (DG-A-06, 2026-08-30) — so that a chip which genuinely
+ * CANNOT be a link still cannot drift away from the pill it is standing beside.
+ *
+ * 🔴 WHY. `FilterPill` requires an `href` and renders a `next/link` `<Link>`, which is the right
+ * shape for every rail that owns a URL. Two shipped controls are genuinely NOT navigations and
+ * never will be: `DateTimeRangeFilter`'s "Custom" chip OPENS A DISCLOSURE PANEL, and
+ * `/admin/proposals`' queue rail narrows a list that is already in the browser's memory. ⛔ The
+ * answer is NOT to synthesise an href for them — `?range=custom&from=<today>…` would apply a
+ * window the operator never chose, which on a money console is a false statement about what a
+ * control did.
+ *
+ * ⭐ AND THE REPO HAD ALREADY ANSWERED THIS ONCE, badly. `src/app/proposals/new/create-form.tsx`
+ * wears `kp-fchip` and the pill's geometry on a `<button>` with the note *"that primitive is a
+ * `<Link>` and this is a form control — so it reuses the primitive's geometry and paint
+ * verbatim"*. The reasoning is right; the execution RE-TYPED the class string, which is a second
+ * definition of one geometry and therefore the exact disease this file exists to cure. Four
+ * heights on one screen is how the player rails got here.
+ *
+ * ⛔ SO THE STRING HAS ONE AUTHOR. `FilterPill` calls this, a non-navigating chip calls this, and
+ * nobody types it. A `<button>` wearing it is the same control, at the same size, stating
+ * selection the same way — it simply is not a link, which is a fact about the control and not a
+ * licence to look different. ⚠️ A caller that wants the SELECTED fill and halo must also emit
+ * `data-on`, because those live in `.kp-fchip[data-on]` in `globals.css` (law 82) and not here.
+ */
+export function filterPillClass({ rank = "primary", on }: { rank?: FilterPillRank; on: boolean }) {
+  return cn(
+    "kp-fchip inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-pill border",
+    // ⚠️ The floor is the ONLY thing the admin rank changes: 32px is --h-control-xs, the
+    // documented dense-admin exception. Everything below this line is shared, because the
+    // selection idiom is not the audience's to vary.
+    rank === "dense" ? "min-h-[32px]" : "min-h-[44px]",
+    rank === "primary" ? "text-[13px] font-semibold" : "font-mono text-[11.5px] font-semibold",
+    // Selected pills carry a little more air, so the fill reads as a considered shape
+    // rather than a tight highlight. Unselected pills stay narrow and quiet.
+    // ⭐ THE DENSE RANK DOES NOT STEP ITS PADDING, and that is a real difference rather
+    // than an oversight. A player rail carries four to eight pills, so a 4px step costs a
+    // small shuffle. An admin rail carries SIXTEEN across two rows, where the same step
+    // moves every chip after the selected one and the rail visibly walks under the cursor.
+    // S-07b is that defect in its worst form: the hand-rolled chips switched to `font-bold`
+    // in a MONO face — which is wider — so selection changed the chip's own width too.
+    // Selection is stated by the fill and the outline, which cost no width at all.
+    rank === "dense" ? "px-2.5" : on ? "px-4" : "px-3",
+    // ⭐ THE RULE. `border-transparent` — not "no border" — so selecting a pill cannot
+    // reflow the row it sits in: the box is the same size in both states, only the ink
+    // changes. This is why the class carries `border` unconditionally.
+    on
+      ? "border-brand-400 text-text"
+      : "border-transparent text-text-muted hover:bg-bg-overlay hover:text-text",
+  );
+}
+
 export function FilterPill({
   href,
   label,
@@ -139,31 +191,10 @@ export function FilterPill({
       data-on={on || undefined}
       aria-current={semantics === "tab" ? (on ? "page" : undefined) : undefined}
       aria-pressed={semantics === "toggle" ? on : undefined}
-      className={cn(
-        "kp-fchip inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-pill border",
-        // ⚠️ The floor is the ONLY thing the admin rank changes: 32px is --h-control-xs, the
-        // documented dense-admin exception. Everything below this line is shared, because the
-        // selection idiom is not the audience's to vary.
-        rank === "dense" ? "min-h-[32px]" : "min-h-[44px]",
-        rank === "primary" ? "text-[13px] font-semibold" : "font-mono text-[11.5px] font-semibold",
-        // Selected pills carry a little more air, so the fill reads as a considered shape
-        // rather than a tight highlight. Unselected pills stay narrow and quiet.
-        // ⭐ THE DENSE RANK DOES NOT STEP ITS PADDING, and that is a real difference rather
-        // than an oversight. A player rail carries four to eight pills, so a 4px step costs a
-        // small shuffle. An admin rail carries SIXTEEN across two rows, where the same step
-        // moves every chip after the selected one and the rail visibly walks under the cursor.
-        // S-07b is that defect in its worst form: the hand-rolled chips switched to `font-bold`
-        // in a MONO face — which is wider — so selection changed the chip's own width too.
-        // Selection is stated by the fill and the outline, which cost no width at all.
-        rank === "dense" ? "px-2.5" : on ? "px-4" : "px-3",
-        // ⭐ THE RULE. `border-transparent` — not "no border" — so selecting a pill cannot
-        // reflow the row it sits in: the box is the same size in both states, only the ink
-        // changes. This is why the class carries `border` unconditionally.
-        on
-          ? "border-brand-400 text-text"
-          : "border-transparent text-text-muted hover:bg-bg-overlay hover:text-text",
-        className,
-      )}
+      /* ⭐ ONE AUTHOR FOR THE GEOMETRY (DG-A-06). See `filterPillClass` above — the string it
+         returns is the same one a non-navigating chip wears, so a `<button>` that cannot be a
+         `<Link>` still cannot end up a different size from the pill beside it. */
+      className={cn(filterPillClass({ rank, on }), className)}
     >
       {glyph}
       {label}

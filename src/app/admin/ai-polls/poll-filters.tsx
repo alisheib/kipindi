@@ -93,7 +93,7 @@ export function PollFilterToolbar({ totalFiltered, totalAll }: { totalFiltered: 
       {/* Filter chips row */}
       <div className="flex items-center gap-2 flex-wrap" data-filter-rail="poll-state">
         {/* Created-date window — platform date+hour+minute filter (presets + custom). */}
-        <DateTimeRangeFilter defaultPreset="all" presetIds={["today", "yesterday", "7d", "30d", "all"]} />
+        <DateTimeRangeFilter rank="dense" defaultPreset="all" presetIds={["today", "yesterday", "7d", "30d", "all"]} />
 
         <span className="w-px h-5 bg-border/60" />
 

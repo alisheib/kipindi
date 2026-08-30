@@ -21,11 +21,12 @@ import { RefreshButton } from "@/components/admin/refresh-button";
 import { ControlLocked } from "@/components/admin/control-locked";
 import { StatusBadge } from "@/components/proposals/status-badge";
 import { CategoryIcon, CATEGORY_LABEL } from "@/components/proposals/category-icon";
+import { filterPillClass } from "@/components/ui/filter-pill";
 import type { ProposalsConfig, ProposalsState } from "@/lib/server/proposals-config";
 import type { AdminQueueRow, DeclineReason } from "@/lib/server/proposals-service";
 import type { ProposalCategory, ProposalStatus } from "@/lib/server/store";
 import { saveProposalsConfigAction, approveProposalAction, goLiveProposalAction, declineProposalAction, requestChangesAction, editProposalAction } from "./actions";
-import { formatTzs } from "@/lib/utils";
+import { formatTzs, cn } from "@/lib/utils";
 
 const DECLINE_REASONS: DeclineReason[] = ["Politics", "Ambiguous outcome", "No official source", "Duplicate", "Past resolution", "Outside jurisdiction", "Officer decision"];
 const CATEGORIES: ProposalCategory[] = ["sports", "macro", "weather", "crypto", "culture", "infrastructure", "tech", "mixed"];
@@ -338,10 +339,33 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
         <div className="overflow-hidden glass-panel">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
             <div className="text-[14px] font-bold">Queue · sorted by votes</div>
-            <div className="flex items-center gap-1.5 flex-wrap gap-y-1.5">
+            {/* ⭐ THE QUEUE RAIL — the ONE filter language at admin density (DG-A-06, 2026-08-30).
+                🔴 WHAT IT WAS: `rounded-pill border px-2.5 py-0.5 text-[11px] font-semibold`, painted
+                by an INLINE conditional `style` in a different alphabet from the rest of the product
+                (`color-mix(in oklab, var(--brand-500) 14%, transparent)`). That is a law-82 breach
+                that four existing assertions were structurally unable to see: §3.3/§6.3 ban only
+                `var(--pill-active)` and §3.4/§6.4 only `var(--glow-selected)`, so this spelling stayed
+                green. It rendered at 22.5px — the smallest control in the console, nearly TEN pixels
+                under the 32px dense floor its neighbours stand on.
+                ⛔ IT IS A `<button>`, NOT A `FilterPill`, AND THAT IS DELIBERATE. `FilterPill` requires
+                an `href`, and this rail owns no URL: the queue is already in the browser's memory and
+                its search, sort and paging are all local state by a documented decision on this very
+                panel ("a URL round-trip would buy nothing"). URL-driving one of the four controls
+                would also re-run `getAdminQueue` on the server for every chip click. So it wears
+                `filterPillClass` — the primitive's own geometry, from the primitive's own file — and
+                emits `data-on`, which is what `.kp-fchip[data-on]` paints. */}
+            <div className="flex items-center gap-1.5 flex-wrap gap-y-1.5" data-filter-rail="proposal-queue">
               {(["all", "review", "approved", "flagged"] as QFilter[]).map((f) => (
-                <button key={f} onClick={() => setQFilter(f)} className="rounded-pill border px-2.5 py-0.5 text-[11px] font-semibold capitalize transition-colors"
-                  style={qFilter === f ? { borderColor: "color-mix(in oklab, var(--brand-500) 40%, transparent)", background: "color-mix(in oklab, var(--brand-500) 14%, transparent)", color: "var(--brand-200)" } : { borderColor: "var(--border)", color: "var(--text-muted)" }}>{f}</button>
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setQFilter(f)}
+                  aria-pressed={qFilter === f}
+                  data-on={qFilter === f || undefined}
+                  className={cn(filterPillClass({ rank: "dense", on: qFilter === f }), "capitalize")}
+                >
+                  {f}
+                </button>
               ))}
               {/* ⛔ NO SIZE OVERRIDE. This carried `!h-7 !w-7` to bandage a `variant="icon"`
                   that shipped at 80×80 (`h-10 w-10` on the overridden scale). The atom now

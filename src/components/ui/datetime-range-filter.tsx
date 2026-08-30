@@ -12,12 +12,28 @@
  *
  * Modes: pass `presetIds` for the chip set (admin/finance get the full precise set;
  * player surfaces get a compact set) — both always offer Custom.
+ *
+ * ⭐ THE PRESETS ARE `FilterPill`s (DG-A-06, 2026-08-30), AND THIS WAS THE BIGGEST SINGLE WIN OF
+ * THAT ROW. This one primitive has SEVEN admin call sites and renders 54 chips, and it used to
+ * hand-roll its own capsule: `shrink-0 rounded-pill border px-3 py-1.5 font-mono text-caption
+ * uppercase tracking-[0.08em]`, outlined AND filled in BOTH states, measuring 33px.
+ *
+ * 🔴 THE PROOF IT WAS A DEFECT WAS ON SCREEN, NOT IN AN ARGUMENT. On `/admin/ai-polls` and
+ * `/admin/candidates` this 33px chip renders INSIDE the same `data-filter-rail` div as the 32px
+ * dense `FilterPill`s, about ten pixels away — literally "the same control at two sizes on one
+ * screen", which `test:filter-language` §6.6's own comment calls worse than either size. It
+ * survived S-07 because the audit looked at the rails it had been told about.
+ *
+ * ⛔ `rank` IS A PROP AND MUST STAY ONE. This is a `components/ui` primitive that also serves
+ * player surfaces (`PLAYER_PRESETS` is defined here); hard-coding the admin 32px rank inside it
+ * would bake an admin fork into shared code. `test:filter-language` §7.3 asserts exactly that.
  */
 import { useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { DateSelect } from "@/components/ui/date-select";
 import { TimeSelect } from "@/components/ui/time-select";
+import { FilterPill, filterPillClass, type FilterPillRank } from "@/components/ui/filter-pill";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 
@@ -36,11 +52,19 @@ export function DateTimeRangeFilter({
   presetIds = FULL_PRESETS as unknown as string[],
   defaultPreset = "7d",
   allowCustom = true,
+  rank = "primary",
   className,
 }: {
   presetIds?: readonly string[];
   defaultPreset?: string;
   allowCustom?: boolean;
+  /**
+   * ⛔ THE ADMIN DENSITY IS THE CALLER'S TO ASK FOR, NEVER THIS FILE'S TO ASSUME. Every admin
+   * call site passes `rank="dense"` (32px, `--h-control-xs`); the default stays the 44px player
+   * floor, because a shared primitive that silently shipped a mouse-only height onto a phone
+   * would be the admin fork the whole DG-A-06 row exists to refuse.
+   */
+  rank?: FilterPillRank;
   className?: string;
 }) {
   const { t } = useT();
@@ -100,24 +124,63 @@ export function DateTimeRangeFilter({
     });
   };
 
-  const chip = (id: string, label: string, active: boolean, onClick: () => void) => (
-    <button
-      key={id} type="button" onClick={onClick} aria-pressed={active}
-      className={cn(
-        "shrink-0 rounded-pill border px-3 py-1.5 font-mono text-caption uppercase tracking-[0.08em] transition-colors admin-focus",
-        active ? "border-brand-500 bg-brand-500/10 text-brand-300 font-bold" : "border-border bg-bg-overlay text-text-muted hover:border-text-subtle",
-      )}
-    >
-      {label}
-    </button>
-  );
+  /**
+   * ⭐ THE PRESET HREF, DERIVED FROM THE MUTATION `pickPreset` ALREADY PERFORMS — not invented
+   * for the sake of the `<Link>`. A preset genuinely IS a navigation: it round-trips
+   * `?range=<id>` exactly as the click did, so the control now states in the address bar what it
+   * did, and an officer can middle-click two windows into two tabs.
+   *
+   * ⛔ THESE TWO MUST NEVER DIVERGE. `pickPreset` still runs (the Clear button inside the custom
+   * panel calls it), so if it ever learns a new parameter this must learn it in the same edit.
+   * ⚠️ `push`, not `replace` — deliberately unchanged. The rail has always pushed, and quietly
+   * rewriting seven admin routes' history behaviour is not a design fix.
+   */
+  const hrefForPreset = (id: string) => {
+    const p = new URLSearchParams(sp.toString());
+    p.delete("from"); p.delete("to");
+    if (id === defaultPreset) p.delete("range"); else p.set("range", id);
+    p.delete("page"); // any window change resets pagination — exactly as pushParams does
+    const qs = p.toString();
+    return qs ? `${pathname}?${qs}` : pathname;
+  };
 
   return (
     <div className={cn("flex flex-col gap-2", className)}>
       <div className="flex flex-wrap items-center gap-1.5">
         <I.calendar s={13} className="mr-0.5 shrink-0 text-text-subtle" />
-        {presetIds.map((id) => chip(id, LABELS[id] ?? id, activeId === id, () => pickPreset(id)))}
-        {allowCustom && chip("custom", t.common.rangeCustom, activeId === "custom", () => setOpen((v) => !v))}
+        {/* ⚠️ `semantics="tab"`, which is a CHANGE and the correct one. These chips used to
+            announce `aria-pressed`, telling a screen-reader user that "7d" is a toggle they can
+            un-press; exactly one window is ever in force and choosing it navigates, which is
+            what the primitive documents `aria-current="page"` for. ⛔ No `count` — this rail has
+            no honest number to show, and A-5 forbids inventing one. */}
+        {presetIds.map((id) => (
+          <FilterPill
+            key={id}
+            href={hrefForPreset(id)}
+            label={LABELS[id] ?? id}
+            on={activeId === id}
+            rank={rank}
+            semantics="tab"
+            scroll={false}
+            testId={`range:${id}`}
+            onClick={() => setOpen(false)}
+          />
+        ))}
+        {/* ⛔ CUSTOM IS NOT A NAVIGATION AND GETS NO href. It toggles the disclosure below; a
+            synthesised `?range=custom&from=<today>…` would apply a window nobody chose. It wears
+            `filterPillClass` so it cannot drift from the presets it sits beside, and emits
+            `data-on` because the selected fill and halo live in `.kp-fchip[data-on]` (law 82). */}
+        {allowCustom && (
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+            data-on={activeId === "custom" || undefined}
+            className={filterPillClass({ rank, on: activeId === "custom" })}
+          >
+            {t.common.rangeCustom}
+          </button>
+        )}
       </div>
 
       {allowCustom && open && (

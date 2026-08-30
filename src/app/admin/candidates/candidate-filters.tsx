@@ -100,7 +100,7 @@ export function CandidateFilterToolbar({ totalFiltered, totalAll }: { totalFilte
       {/* Filter chips — the ONE filter language at admin density (S-07). See `href` above. */}
       <div className="flex items-center gap-2 flex-wrap" data-filter-rail="candidate-state">
         {/* Created-date window — platform date+hour+minute filter (presets + custom). */}
-        <DateTimeRangeFilter defaultPreset="all" presetIds={["today", "yesterday", "7d", "30d", "all"]} />
+        <DateTimeRangeFilter rank="dense" defaultPreset="all" presetIds={["today", "yesterday", "7d", "30d", "all"]} />
 
         <span className="w-px h-5 bg-border/60" />
 

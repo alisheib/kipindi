@@ -317,7 +317,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
           {/* This game's money over a chosen window — presets + custom date+hour+minute.
               (AI oracle cost stays on standard lookbacks — a separate spend concept.) */}
           <div className="mb-3">
-            <DateTimeRangeFilter defaultPreset="30d" presetIds={["today", "yesterday", "24h", "7d", "30d", "mtd", "all"]} />
+            <DateTimeRangeFilter rank="dense" defaultPreset="30d" presetIds={["today", "yesterday", "24h", "7d", "30d", "mtd", "all"]} />
           </div>
           <KpiGrid>
             <AdminKpi label="GGR · this game" sw="Mapato" value={formatBalancePill(Math.round(pnl.ggr))} delta={`hold ${pnl.holdPct.toFixed(1)}%`} tone={pnl.ggr >= 0 ? "success" : "danger"} spark={false} gold />

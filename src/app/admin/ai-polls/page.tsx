@@ -3,7 +3,8 @@ import Link from "next/link";
 import type { Route } from "next";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
-import { parseSort, applySort, type SortDir } from "@/components/admin/admin-sort";
+import { parseSort, applySort } from "@/components/admin/admin-sort";
+import { CardSortControl } from "@/components/admin/card-sort-control";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
@@ -240,6 +241,8 @@ export default async function AdminAIPollsPage({
               <Chip size="sm" variant="warning">{pendingSorted.length} pending</Chip>
             </div>
             <CardSortControl
+              basePath="/admin/ai-polls"
+              railId="poll-sort-pending"
               prefix="p"
               current={p.sort}
               dir={p.dir}
@@ -273,6 +276,8 @@ export default async function AdminAIPollsPage({
               <Chip size="sm" variant="success">{approvedSorted.length} approved</Chip>
             </div>
             <CardSortControl
+              basePath="/admin/ai-polls"
+              railId="poll-sort-approved"
               prefix="a"
               current={a.sort}
               dir={a.dir}
@@ -424,60 +429,12 @@ export default async function AdminAIPollsPage({
   );
 }
 
-/* ─── Card sort control — pill row above a card grid (mirrors SortTh, link-driven) ─── */
-
-function CardSortControl({
-  prefix,
-  current,
-  dir,
-  sp,
-  options,
-}: {
-  prefix: string;
-  current: string;
-  dir: SortDir;
-  sp: Record<string, string | undefined>;
-  options: { field: string; label: string }[];
-}) {
-  const sortKey = `${prefix}sort`;
-  const dirKey = `${prefix}dir`;
-  const pageKey = `${prefix}page`;
-  const buildHref = (field: string) => {
-    const isActive = current === field;
-    const nextDir: SortDir = isActive && dir === "desc" ? "asc" : "desc";
-    const params = new URLSearchParams();
-    for (const [k, v] of Object.entries(sp)) {
-      if (v && k !== sortKey && k !== dirKey && k !== pageKey) params.set(k, v);
-    }
-    params.set(sortKey, field);
-    params.set(dirKey, nextDir);
-    return `/admin/ai-polls?${params.toString()}`;
-  };
-  return (
-    <div className="flex items-center gap-1 flex-wrap px-4 lg:px-5 pt-3">
-      <span className="font-mono text-micro uppercase eyebrow text-text-subtle mr-1">
-        Sort <span className="italic text-text-tertiary">· Panga</span>
-      </span>
-      {options.map((o) => {
-        const isActive = current === o.field;
-        return (
-          <a
-            key={o.field}
-            href={buildHref(o.field)}
-            className={`px-2.5 py-1 rounded-pill text-micro font-mono uppercase tracking-[0.08em] border transition-colors ${
-              isActive
-                ? "border-brand-500 bg-brand-500/10 text-brand-300 font-bold"
-                : "border-border bg-bg-overlay text-text-muted hover:border-text-subtle"
-            }`}
-          >
-            {o.label}
-            {isActive && <span className="ml-1 text-brand-300" aria-hidden>{dir === "asc" ? "↑" : "↓"}</span>}
-          </a>
-        );
-      })}
-    </div>
-  );
-}
+/* ⛔ `CardSortControl` USED TO LIVE HERE, and a byte-identical twin lived in
+   `admin/candidates/page.tsx` — fifty-two lines each, differing on the single line that named
+   the route. Both are gone: it is `src/components/admin/card-sort-control.tsx` now, taking a
+   `basePath`, converted once to the kit `FilterPill` (DG-A-06, 2026-08-30). ⚠️ Do not
+   reintroduce a local copy to "avoid a prop" — the duplication is what hid a 24px chip on a
+   console whose other rails are 32px, for as long as the review queue happened to be empty. */
 
 /* ─── Filter toolbar skeleton (Suspense fallback) ─── */
 

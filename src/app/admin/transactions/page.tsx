@@ -166,7 +166,7 @@ export default async function AdminTransactionsPage({ searchParams }: { searchPa
             field change (type/status/…) preserves the window. */}
         <div className="mb-3">
           <span className="mb-1.5 block font-mono text-micro uppercase eyebrow text-text-tertiary">Window · Dirisha</span>
-          <DateTimeRangeFilter defaultPreset="28d" presetIds={["today", "yesterday", "24h", "7d", "28d", "30d", "mtd", "all"]} />
+          <DateTimeRangeFilter rank="dense" defaultPreset="28d" presetIds={["today", "yesterday", "24h", "7d", "28d", "30d", "mtd", "all"]} />
         </div>
         {/* Search sits ABOVE the form and drives ?q directly (same pattern as the
             window filter above it), with a hidden mirror INSIDE the form so that
