@@ -46,7 +46,10 @@ function Consequence({ info, isRevoke }: { info: RoleInfo | undefined; isRevoke:
   if (!info) return null;
   return (
     <div className="rounded-md border border-border bg-bg-overlay px-3 py-2.5 space-y-2">
-      <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">
+      {/* DG-A-14: "As {info.label}, this person will be able to" is a SENTENCE — it opens the
+          grant list underneath it — so it cannot wear the section eyebrow's clothes. The
+          uppercase and the 0.14em tracking are gone and it now sits on the reading floor. */}
+      <p className="font-mono text-body-sm text-text-subtle">
         As {info.label}, this person will be able to
       </p>
       <div className="space-y-1.5">

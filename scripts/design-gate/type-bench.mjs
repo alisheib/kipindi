@@ -517,41 +517,68 @@ if (!ONLY_BENCH || ONLY_BENCH === "eyebrow") {
   console.log("\n── EYEBROW BENCH — `.eyebrow` is the MECHANISM, and a class can be defeated ──");
   /* ⛔ THE SAME FIGHT `.amount` HAD, AND IT MUST BE RE-PROVED FOR THIS CLASS RATHER THAN
      ASSUMED FROM IT. §T3's ruling is now carried by a class in globals.css instead of 308
-     hand-typed values, so the ONLY thing standing between the eyebrow and its tracking is
-     the cascade. A single-class rule authored in globals.css beats a plain rung on source
-     order — and LOSES to a responsive variant, which Tailwind emits after everything this
-     stylesheet writes. The first control below is the one that proves the second means
-     something: if a single class already survived, the doubled selector would be theatre. */
+     hand-typed values, so the ONLY thing standing between the eyebrow and its tracking is the
+     cascade. A single-class rule authored in globals.css beats a plain rung on source order —
+     and LOSES to a responsive variant, which Tailwind emits after everything that stylesheet
+     writes. The first control below is what proves the second means anything: if a single
+     class already survived, the doubled selector would be theatre.
+
+     🔴 AND THE FIRST VERSION OF THIS BENCH GOT BOTH HALVES WRONG, ON PRODUCTION.
+     ① It asserted `.eyebrow`-with-a-rung equals `.eyebrow`-alone. **`em` tracking scales with
+        font-size**: 0.14em is 2.1px on the page's 15px body and 1.4px on `text-micro`'s 10px,
+        so the two can never be equal and the rule was measuring the wrong basis. What matters
+        is that the RUNG's own 0.4px is overridden — 1.4 ≠ 0.4 — and that the result is exactly
+        0.14 × the element's own size.
+     ② Its control `<style>` was APPENDED to <head>, so it landed after Tailwind's variants and
+        won on source order — which made the single-class rule look sufficient and the doubled
+        selector look pointless. `openProdPage` prepends its candidates for exactly this reason.
+     ③ And the variant it probed with was `sm:tracking-[0.3em]`, which renders `normal`,
+        because **Tailwind only emits the classes it finds in the source** and no responsive
+        tracking variant exists anywhere in this tree. A control built on a class that does not
+        ship proves nothing at all — the same wrong-population failure, in the instrument again.
+        It probes `sm:text-label` instead, which `wallet-balance-pill.tsx:180` and
+        `password-input.tsx:155` really ship, and which carries letter-spacing because every
+        Tailwind fontSize rung is a TUPLE that emits one. */
   const eb = await page.evaluate(() => {
-    const mk = (cls) => { const s = document.createElement("span"); s.className = cls; s.textContent = "TOTAL SETTLED"; document.body.appendChild(s); return s; };
-    const probe = (cls) => { const s = mk(cls); const r = { ls: getComputedStyle(s).letterSpacing, w: Math.round(s.getBoundingClientRect().width * 100) / 100 }; s.remove(); return r; };
-    /* A single-class twin of the shipped rule, minted here so the control is a CONTROL and
-       not a second definition site in globals.css. */
     const st = document.createElement("style");
     st.textContent = ".eb-1 { letter-spacing: 0.14em; }";
-    document.head.appendChild(st);
-    const out = {
-      shippedAlone: probe("eyebrow"),
-      shippedVsRung: probe("eyebrow text-micro"),
-      shippedVsVariant: probe("eyebrow sm:tracking-[0.3em]"),
-      singleVsVariant: probe("eb-1 sm:tracking-[0.3em]"),
-      rungAlone: probe("text-micro"),
+    document.head.insertBefore(st, document.head.firstChild);   // ⛔ FIRST, never appended.
+    const probe = (cls) => {
+      const s = document.createElement("span");
+      s.className = cls; s.textContent = "TOTAL SETTLED";
+      document.body.appendChild(s);
+      const cs = getComputedStyle(s);
+      const r = { cls, ls: cs.letterSpacing, fs: cs.fontSize, w: Math.round(s.getBoundingClientRect().width * 100) / 100 };
+      s.remove(); return r;
     };
+    const out = [
+      probe("eyebrow"),
+      probe("eyebrow text-micro"),
+      probe("eyebrow sm:text-label"),
+      probe("eb-1 sm:text-label"),
+      probe("text-micro"),
+      probe("sm:text-label"),
+    ];
     st.remove();
     return out;
   });
   results.benches.eyebrow = eb;
-  for (const [k, v] of Object.entries(eb)) console.log(`  ${k.padEnd(18)} ls ${String(v.ls).padStart(8)}  w ${String(v.w).padStart(7)}px`);
-  assert("`.eyebrow` resolves at all — the class exists in the served sheet, so it is not a typo (§B8)",
-    eb.shippedAlone.ls !== "normal" && parseFloat(eb.shippedAlone.ls) > 0, eb.shippedAlone.ls);
-  assert("…and it BEATS a rung's own letter-spacing, which is what an eyebrow sits on",
-    eb.shippedVsRung.ls === eb.shippedAlone.ls && eb.shippedVsRung.ls !== eb.rungAlone.ls,
-    `with rung ${eb.shippedVsRung.ls} · rung alone ${eb.rungAlone.ls}`);
+  const at = (cls) => eb.find((r) => r.cls === cls);
+  for (const r of eb) console.log(`  ${r.cls.padEnd(26)} ${String(r.fs).padStart(6)}  ls ${String(r.ls).padStart(8)}  w ${String(r.w).padStart(7)}px`);
+  /** 0.14em of the element's OWN size, to a tenth of a pixel. */
+  const isEyebrow = (r) => Math.abs(parseFloat(r.ls) - 0.14 * parseFloat(r.fs)) < 0.05;
+
+  assert("`.eyebrow` resolves in the SERVED sheet — it is not a typo (§B8)",
+    isEyebrow(at("eyebrow")), `${at("eyebrow").ls} on ${at("eyebrow").fs}`);
+  assert("…and on a rung it overrides that rung's own letter-spacing",
+    isEyebrow(at("eyebrow text-micro")) && at("eyebrow text-micro").ls !== at("text-micro").ls,
+    `with the rung ${at("eyebrow text-micro").ls} · the rung alone ${at("text-micro").ls}`);
   assert("CONTROL — a SINGLE-class rule LOSES to a responsive variant, so source order is NOT enough",
-    eb.singleVsVariant.ls !== eb.shippedAlone.ls,
-    `got ${eb.singleVsVariant.ls}; if this equals ${eb.shippedAlone.ls} the control is dead and the doubled selector proves nothing`);
+    at("eb-1 sm:text-label").ls === at("sm:text-label").ls,
+    `single-class ${at("eb-1 sm:text-label").ls} vs the variant alone ${at("sm:text-label").ls}; if these differ the control is dead and the doubled selector proves nothing`);
   assert("…and the shipped DOUBLED (0,2,0) rule holds 0.14em against that same variant",
-    eb.shippedVsVariant.ls === eb.shippedAlone.ls, `${eb.shippedVsVariant.ls} vs ${eb.shippedAlone.ls}`);
+    isEyebrow(at("eyebrow sm:text-label")),
+    `${at("eyebrow sm:text-label").ls} on ${at("eyebrow sm:text-label").fs}`);
 }
 
 await page.evaluate(() => window.scrollTo(0, 0));

@@ -157,8 +157,16 @@ export function SuspendControls({
               : "Login + bets + deposits will be re-enabled."}
         </p>
         <label className="mt-3 block">
-          <span className="font-mono text-micro uppercase tracking-[0.14em] font-bold text-text-subtle">
-            Reason · Sababu (required, audit-logged)
+          {/* DG-A-14: "Reason · Sababu (required, audit-logged)" was one microlabel with its
+              hint welded on, so the hint — reading copy — was wearing the eyebrow recipe at
+              10px, well under the §T4 12.5px floor. The bilingual label keeps that recipe
+              because it really is an identifier; the hint moves to its own legible line. The
+              textarea stays nested inside this <label>, so the control is still named by it. */}
+          <span className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">
+            Reason · Sababu
+          </span>
+          <span className="block text-body-sm text-text-subtle">
+            (required, audit-logged)
           </span>
           <textarea
             ref={reasonRef}

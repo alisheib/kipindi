@@ -528,7 +528,13 @@ export default async function ResolverQueuePage({
                     <div className="px-4 py-3 border-b border-border">
                       <div className="flex items-center gap-1.5">
                         <I.shieldcheck s={12} className="text-text-subtle" />
-                        <span className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">Single-admin resolution · one action seals it</span>
+                        {/* DG-A-14 · "Single-admin resolution · one action seals it" is a sentence about
+                            how settlement works — the " · " here joins English to English, so it is not one
+                            of the console's bilingual labels. It was wearing the section-eyebrow recipe
+                            (uppercase + 0.14em tracking at 10px) while being reading copy, so the dressing
+                            is gone and the size is text-body-sm, the smallest rung above the 12.5px
+                            reading floor (DESIGN_AUTHORITY §T4/§T7). Colour and spacing are untouched. */}
+                        <span className="font-mono text-body-sm text-text-subtle">Single-admin resolution · one action seals it</span>
                       </div>
                     </div>
                   )}

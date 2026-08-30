@@ -51,7 +51,12 @@ export default async function AdminSourcesPage() {
         <AdminCard
           title="Categories · global toggle"
           sw="Aina za soko"
-          action={<span className="font-mono text-micro tracking-[0.12em] uppercase text-text-tertiary">click any to disable site-wide</span>}
+          /* DG-A-14 · "click any to disable site-wide" is an instruction to the officer, not a
+             microlabel naming the card. It sat 4px under the reading floor in eyebrow clothing
+             (uppercase + 0.12em tracking at 10px), so the dressing is dropped and the size is
+             text-body-sm — the smallest rung above the 12.5px floor (DESIGN_AUTHORITY §T4/§T7).
+             The tertiary tone stays as it is; §A1's contrast gate owns that. */
+          action={<span className="font-mono text-body-sm text-text-tertiary">click any to disable site-wide</span>}
         >
           <p className="text-body-sm text-text-tertiary mb-3 max-w-[72ch]">
             Disabling a category prevents officers from publishing new markets in it. Existing live markets continue

@@ -439,8 +439,11 @@ export default async function AdminSystemPage() {
               </table>
             </ScrollX>
           )}
+          {/* DG-A-14: "showing 25 of N active buckets" is a sentence about the table above it,
+              not the label over a block, so the uppercase and the 0.10em tracking come off and
+              the size rises to the reading floor. */}
           {buckets.length > 25 && (
-            <p className="mt-2 font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary text-right">
+            <p className="mt-2 font-mono text-body-sm text-text-tertiary text-right">
               showing 25 of {buckets.length} active buckets
             </p>
           )}

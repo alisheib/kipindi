@@ -117,7 +117,13 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
           </div>
         </AuthPanel>
 
-        <p className="mt-6 text-center font-mono text-micro uppercase tracking-[0.16em] text-text-subtle">
+        {/* DG-A-14 · §T4 — "5 wrong attempts triggers a cool-down. Codes expire after 10
+            minutes." is two full sentences telling the player a rule, so it is reading copy
+            and not a microlabel. It was set in the eyebrow recipe — uppercase, 0.16em
+            tracking, text-micro (10px) — which put it 2.5px below the 12.5px reading floor.
+            The dressing is removed and the size rises to text-body-sm; colour, centring and
+            the mt-6 margin are unchanged. */}
+        <p className="mt-6 text-center font-mono text-body-sm text-text-subtle">
           {t.common.wrongAttemptsHint}
         </p>
     </AuthShell>

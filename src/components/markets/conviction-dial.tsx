@@ -1186,9 +1186,14 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
       >
         {/* One-time coach hint — a nudging pill above the knob. Only once the
             slider is armed (a locked dial isn't draggable, so the "drag" nudge
-            would mislead). */}
+            would mislead).
+            DG-A-14: "Drag to set stake" is an instruction the player has to READ,
+            not an identifier, so it no longer wears the eyebrow's clothes — the
+            uppercase and the 0.08em tracking are gone and it sits on text-body-sm
+            (13px), the smallest rung above the 12.5px reading floor. The pill is
+            centred by `translateX(-50%)`, so the wider label stays centred. */}
         {showCoach && !closedNow && armed && (
-          <div className="dial-coach pointer-events-none absolute left-1/2 top-1.5 z-10 flex items-center gap-1.5 rounded-pill border border-brand-500/40 bg-bg-overlay px-2.5 py-1 font-mono text-micro font-bold uppercase tracking-[0.08em] text-brand-300">
+          <div className="dial-coach pointer-events-none absolute left-1/2 top-1.5 z-10 flex items-center gap-1.5 rounded-pill border border-brand-500/40 bg-bg-overlay px-2.5 py-1 font-mono text-body-sm font-bold text-brand-300">
             <I.dragHandle s={11} />
             {t.market.dragToSetStake}
           </div>

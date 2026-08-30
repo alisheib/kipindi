@@ -599,7 +599,7 @@ export function BatchGenerateForm({ maxBatch, remaining, generatable }: { maxBat
   return (
     <div className="flex flex-wrap items-end gap-3 pt-3 mt-3 border-t border-border/60">
       <label className="block">
-        <span className="text-micro text-text-subtle block mb-1 font-mono uppercase tracking-[0.12em]">
+        <span className="text-micro text-text-subtle block mb-1 font-mono uppercase eyebrow">
           Batch count (max {maxBatch})
         </span>
         <Input
@@ -1099,9 +1099,15 @@ export function DeleteAction({ pollId, state, redirectTo }: { pollId: string; st
                 Only proceed under a regulatory or government directive. This is irreversible.
               </p>
               <div className="mt-3 pt-3 border-t border-border/60">
-                <p className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle mb-1.5">
-                  Reason for cancellation (required for audit log)
+                {/* DG-A-14: this read "Reason for cancellation (required for audit log)" — a
+                    label with its hint welded on, so the hint was reading copy sitting below the
+                    12.5px floor in eyebrow dress. The label keeps the eyebrow recipe untouched;
+                    the hint drops to the reading rung beneath it and carries the `mb-1.5` that
+                    used to separate the label from the textarea. */}
+                <p className="font-mono text-micro uppercase eyebrow text-text-subtle">
+                  Reason for cancellation
                 </p>
+                <p className="text-body-sm text-text-subtle mb-1.5">(required for audit log)</p>
                 <textarea
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
@@ -1220,7 +1226,11 @@ export function DeleteAllButton({ totalCount }: { totalCount: number }) {
           </ul>
           <p className="text-body-sm text-text-subtle">This cannot be undone. The platform will be clean and ready for fresh generation.</p>
           <div className="mt-3 pt-3 border-t border-border/60">
-            <p className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle mb-1.5">Reason (required for audit log)</p>
+            {/* DG-A-14: same welded label/hint as the cancel dialog above — "Reason (required
+                for audit log)". The label keeps the eyebrow recipe; the hint moves to the
+                reading rung below it and inherits the `mb-1.5` before the textarea. */}
+            <p className="font-mono text-micro uppercase eyebrow text-text-subtle">Reason</p>
+            <p className="text-body-sm text-text-subtle mb-1.5">(required for audit log)</p>
             <textarea
               value={reason}
               onChange={(e) => setReason(e.target.value)}

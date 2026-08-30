@@ -203,7 +203,17 @@ export function BonusAdminClient({ config }: { config: BonusConfig }) {
       </div>
 
       {/* Routing */}
-      <p className="font-mono text-micro uppercase tracking-[0.1em] text-text-subtle">Reward routing · send earnings to the bonus wallet · Mwelekeo</p>
+      {/* DG-A-14 — this eyebrow used to read "Reward routing · send earnings to the bonus
+          wallet · Mwelekeo", i.e. the bilingual section label with a six-word explanation
+          welded into the middle of it, the whole line at 10px uppercase. Its two siblings
+          above ("Defaults · platform-wide · Misingi", "Bonus rules · Management policy ·
+          Sheria") carry a two-word qualifier there, not a sentence. So the label keeps the
+          eyebrow recipe exactly, and the hint moves onto its own line above the reading
+          floor. */}
+      <p className="font-mono text-micro uppercase eyebrow text-text-subtle">
+        Reward routing · Mwelekeo
+        <span className="mt-0.5 block normal-case text-body-sm text-text-subtle">send earnings to the bonus wallet</span>
+      </p>
       <RouteCard icon={I.percent} title="Affiliate rewards" sw="Tume za marafiki"
         desc="Referral commission, bonuses and prizes land in the bonus wallet (must be played through)."
         on={c.affiliateToBonus} onToggle={() => setC((p) => ({ ...p, affiliateToBonus: !p.affiliateToBonus }))} />

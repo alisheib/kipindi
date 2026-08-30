@@ -169,8 +169,16 @@ export function AffiliateAdminClient({ config }: { config: AffiliateConfig }) {
         </Button>
       </div>
 
-      {/* Reward modes */}
-      <p className="font-mono text-micro uppercase tracking-[0.1em] text-text-subtle">Reward modes · independently toggleable · Njia za zawadi</p>
+      {/* Reward modes. DG-A-14: this eyebrow read "Reward modes · independently toggleable ·
+          Njia za zawadi" — a bilingual label with its hint welded into the middle of it, so the
+          hint was reading copy wearing the sub-floor microlabel recipe. The label keeps that
+          recipe (and now matches the "English · Swahili" shape used everywhere else in this
+          file); the hint moved to its own line on the reading rung. The wrapper keeps the pair
+          as ONE child of the outer `space-y-3`, so the surrounding rhythm is unchanged. */}
+      <div>
+        <p className="font-mono text-micro uppercase eyebrow text-text-subtle">Reward modes · Njia za zawadi</p>
+        <p className="mt-0.5 text-body-sm text-text-subtle">independently toggleable</p>
+      </div>
 
       <RewardCard
         icon={I.percent} title="Commission" sw="Tume"

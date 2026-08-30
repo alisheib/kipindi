@@ -696,7 +696,11 @@ export function AddAssetForm({ catalogue }: { catalogue: SymbolOption[] }) {
           <input type="hidden" name="priceSourceUrl" value="https://api.twelvedata.com/quote" />
 
           <div className="rounded-lg border border-border bg-bg p-3">
-            <p className="font-mono text-micro uppercase tracking-[0.16em] font-bold text-text-subtle mb-2">
+            {/* DG-A-14: "Set by the symbol — not editable" is a statement about the fields below,
+                not an identifier for them, so it loses the uppercase and the 0.16em tracking and
+                comes up to the reading floor. It keeps its weight, so it still reads as the
+                heading of this block. */}
+            <p className="font-mono text-body-sm font-bold text-text-subtle mb-2">
               Set by the symbol — not editable
             </p>
             <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-body-sm sm:grid-cols-3">
@@ -894,8 +898,11 @@ export function AddChainForm({
   })();
 
   if (assets.length === 0) {
+    /* DG-A-14: "add an asset first" is this block's entire empty state — an instruction the admin
+       has to read and act on, not the label over anything — so it drops the uppercase and the
+       0.12em tracking and rises to the reading floor. */
     return (
-      <span className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle">
+      <span className="font-mono text-body-sm text-text-subtle">
         add an asset first
       </span>
     );

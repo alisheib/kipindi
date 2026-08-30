@@ -154,7 +154,12 @@ export function BulkResolveBar({
         </div>
 
         <div className="min-w-0 flex-1">
-          <p className="font-mono text-caption uppercase tracking-widest text-text-muted">
+          {/* DG-A-14: this line is read, not scanned as a heading — it is either "N selected ·
+              TZS X held" or "Select all on this page — N on this page", and the held stake is
+              a number an officer acts on. It was wearing a section eyebrow's dress (uppercase
+              + widest tracking) at 11px, under the §T4 12.5px reading floor, so the dressing
+              is gone and the size is on the smallest legible rung. */}
+          <p className="font-mono text-body-sm text-text-muted">
             {chosen.length > 0
               ? <>{chosen.length} {BULK_BAR.nSelected.en}<span className="text-border"> · </span><span className="text-text">{formatTzs(pool)} held</span></>
               : <>{BULK_BAR.selectAllOnPage.en} — {rows.length} on this page</>}
@@ -240,7 +245,12 @@ export function BulkResolveBar({
           {/* ⛔ THE ACCESSIBLE NAME CONTAINS THE VISIBLE ONE — an `aria-label` sharing no
               words with the on-screen label breaks WCAG 2.5.3 and puts the field out of
               reach of a voice-control user reading the screen aloud. */}
-          <label htmlFor="bulk-override-reason" className="mb-1.5 flex items-center gap-1 font-mono text-caption uppercase tracking-widest text-warning">
+          {/* DG-A-14: "Why are you sealing these N markets anyway?" is a whole question put to
+              the officer, not an identifier, so it loses the eyebrow dress (uppercase + widest
+              tracking) and comes up off 11px onto the smallest rung above the §T4 reading
+              floor. The words are untouched, which keeps it word-for-word identical to the
+              textarea's `aria-label` and so keeps WCAG 2.5.3 satisfied. */}
+          <label htmlFor="bulk-override-reason" className="mb-1.5 flex items-center gap-1 font-mono text-body-sm text-warning">
             <I.shieldAlert s={11} />
             Why are you sealing {needOverride.length === 1 ? "this market" : `these ${needOverride.length} markets`} anyway?
           </label>

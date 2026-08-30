@@ -179,7 +179,12 @@ export function AiToolkit({ status, canAct = true }: { status: AiToolkitStatus; 
             <span className="grid h-7 w-7 place-items-center rounded-md bg-brand-500/[0.12] text-brand-300"><I.sparkle s={15} /></span>
             <div className="min-w-0">
               <p className="font-display text-[13px] font-semibold text-text leading-tight">AI toolkit</p>
-              <p className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle">Every AI feature · one place</p>
+              {/* DG-A-14 — "Every AI feature · one place" identifies nothing; it is the
+                  panel's descriptive sub-line under the "AI toolkit" title, so it is
+                  reading copy wearing an eyebrow's clothes. Dressing dropped and the size
+                  lifted from text-micro (10px) to text-body-sm (13px), the smallest rung
+                  above §T4's 12.5px floor. */}
+              <p className="font-mono text-body-sm text-text-subtle">Every AI feature · one place</p>
             </div>
           </div>
 

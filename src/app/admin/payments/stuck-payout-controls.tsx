@@ -92,9 +92,18 @@ export function StuckPayoutControls({ txnId, amountLabel }: { txnId: string; amo
           </div>
 
           <div>
-            <label htmlFor={`reason-${txnId}`} className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle">
-              Reason (recorded against your name, min 10 characters)
+            {/* DG-A-14: this was one element doing two jobs — the field's name with its hint
+                welded on inside brackets, the whole of it uppercase and tracked below §T4's
+                12.5px reading floor. The LABEL keeps the eyebrow recipe (and keeps naming the
+                textarea through `htmlFor`); the HINT is now its own line at `text-body-sm` with
+                no uppercase and no tracking, which is the same shape the shared `Field` atom
+                renders. The words are unchanged — only the welding brackets are gone. */}
+            <label htmlFor={`reason-${txnId}`} className="font-mono text-micro uppercase eyebrow text-text-subtle">
+              Reason
             </label>
+            <p className="mt-1 text-body-sm text-text-subtle leading-snug">
+              recorded against your name, min 10 characters
+            </p>
             <textarea
               id={`reason-${txnId}`}
               value={reason}

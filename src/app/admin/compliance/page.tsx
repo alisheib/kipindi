@@ -158,7 +158,13 @@ export default async function AdminCompliancePage({
                   {backup.kind === "stale" && "Backup is stale"}
                   {backup.kind === "ok" && "Backup verified"}
                 </p>
-                <p className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">
+                {/* DG-A-14 — the "none" branch of this line is an instruction the operator
+                    is meant to carry out ("run npm run db:backup then db:verify-backup"), and
+                    at 10px uppercase it rendered as RUN NPM RUN DB:BACKUP THEN DB:VERIFY-BACKUP
+                    — a shell command dressed as an eyebrow, which is unreadable and untypeable
+                    at once. The eyebrow dressing comes off the whole element; the metadata
+                    branch loses nothing by being 13px and sentence-cased. */}
+                <p className="font-mono text-body-sm text-text-tertiary">
                   {backup.kind === "none"
                     ? "run npm run db:backup then db:verify-backup"
                     : `${formatDateTime(backup.run.finishedAt)} · ${backup.run.rows.toLocaleString("en-US")} rows · ${(backup.run.sizeBytes / 1_048_576).toFixed(1)} MiB${backup.run.sealed ? " · sealed" : " · UNSEALED"}`}
@@ -184,7 +190,7 @@ export default async function AdminCompliancePage({
                     the finding outlives whichever backup surfaced it. */}
                 {backup.kind !== "none" && backup.run.sourceWarnings?.length ? (
                   <div className="mt-2 pt-2 border-t border-border-subtle">
-                    <p className="font-mono text-micro tracking-[0.10em] uppercase text-warning-fg">
+                    <p className="font-mono text-micro eyebrow uppercase text-warning-fg">
                       Source database — found while verifying
                     </p>
                     <ul className="mt-1 space-y-0.5">
@@ -214,7 +220,12 @@ export default async function AdminCompliancePage({
                 <p className="font-display font-bold text-body-sm text-text">
                   {alerting ? "Durable and alerting" : "Durable — but nobody is paged"}
                 </p>
-                <p className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">
+                {/* DG-A-14 — both branches of this line end in a clause you have to read
+                    rather than scan ("PII scrubbed before it leaves", "set SENTRY_DSN to
+                    activate the off-box mirror"), and uppercasing the second one buried the
+                    env-var name in a wall of caps. Eyebrow dressing off, reading floor on;
+                    the colour and every other class are untouched. */}
+                <p className="font-mono text-body-sm text-text-tertiary">
                   {alerting
                     ? "audit chain + external monitor · PII scrubbed before it leaves"
                     : "audit chain only · set SENTRY_DSN to activate the off-box mirror"}

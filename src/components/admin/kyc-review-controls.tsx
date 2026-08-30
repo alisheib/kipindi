@@ -106,8 +106,17 @@ export function KycReviewControls({ userId, status, makerCheckerRequired }: { us
     const rejecting = mode === "rejecting";
     return (
       <><div className={`space-y-2 rounded-lg border p-3 ${rejecting ? "border-no-700/50 bg-no-500/[0.06]" : "border-warning/50 bg-warning/[0.06]"}`}>
-        <label className="block font-mono text-micro tracking-[0.12em] uppercase text-text-secondary">
-          {rejecting ? "Rejection reason (sent to the player)" : "What do you need? (sent to the player)"}
+        {/* DG-A-14: this label had its hint welded onto its name — "Rejection reason
+            (sent to the player)" / "What do you need? (sent to the player)". The name
+            keeps the eyebrow recipe (mono, uppercase, 0.12em, 10px), but the shared
+            parenthetical is reading copy telling the officer where the words end up,
+            so it moves to its own line on the 13px reading rung with the uppercase
+            and the tracking stripped off it. */}
+        <label className="block font-mono text-micro eyebrow uppercase text-text-secondary">
+          {rejecting ? "Rejection reason" : "What do you need?"}
+          <span className="mt-1 block font-sans text-body-sm normal-case tracking-normal text-text-subtle">
+            (sent to the player)
+          </span>
         </label>
         <textarea
           value={reason}

@@ -126,7 +126,11 @@ export function SecurityClient({ enabled, backupRemaining }: { enabled: boolean;
           </div>
           {secret && (
             <div className="text-center">
-              <p className="mb-1 font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">{t.security.manualKey}</p>
+              {/* DG-A-14 — "Or enter this key manually" is an instruction the player reads,
+                  not a section eyebrow naming a block. It loses the uppercase + tracking
+                  dressing and moves off text-micro (10px) up to text-body-sm (13px), the
+                  smallest rung above §T4's 12.5px reading floor. */}
+              <p className="mb-1 font-mono text-body-sm text-text-subtle">{t.security.manualKey}</p>
               <code className="select-all break-all font-mono text-[12.5px] text-text">{secret}</code>
             </div>
           )}

@@ -297,8 +297,14 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
             this rewrite — 9% passed it comfortably while paying winners less than
             they staked. The real guard is now the winner floor, enforced in
             validate(): a config under which any winner could be underpaid is
-            REFUSED, not warned about. */}
-        <p className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">
+            REFUSED, not warned about.
+
+            DG-A-14: that sentence — "A save is refused if any winner could be paid
+            below their stake" — was wearing a section eyebrow's clothes (uppercase,
+            0.14em tracking, text-micro at 10px). It is reading copy telling the
+            operator what the save button will do, so it is now plain prose on
+            text-body-sm, the smallest rung above the 12.5px reading floor. */}
+        <p className="font-mono text-body-sm text-text-subtle">
           A save is refused if any winner could be paid below their stake
         </p>
       </div>

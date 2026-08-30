@@ -137,7 +137,15 @@ export default async function PerformancePage() {
           <section aria-label={t.performance.netPnl} className="glass-panel p-5">
             <div className="flex items-center justify-between gap-3">
               <span className="gilt-eyebrow">{t.performance.netPnl} · {t.common.settled}</span>
-              <span className="font-mono text-micro uppercase tracking-[0.08em] text-text-subtle">{t.performance.allFiguresFinal}</span>
+              {/* 🔴 DG-A-14 · NOT a noun phrase. "All figures final" is a verbless clause —
+                  subject plus predicate adjective with the copula elided — and TWO of the three
+                  locales write the copula out: sw "Takwimu zote **ni** za mwisho", zh 為. So the
+                  longest population §A5 names reads a five-word SENTENCE in 10px caps. It is also
+                  a promise about money — that this P&L will not move again — rendered 2.5px under
+                  §T4’s floor in the faintest token there is. ⛔ Its three siblings (:185, :227,
+                  :270) are a noun phrase, a label+value and a status word: genuine §T3 microlabels,
+                  deliberately NOT swept with it. */}
+              <span className="text-body-sm leading-normal text-text-muted">{t.performance.allFiguresFinal}</span>
             </div>
             <div className="gilt-rule" style={{ margin: "10px 0 14px" }} />
             <div className="flex flex-wrap items-end gap-x-10 gap-y-4">

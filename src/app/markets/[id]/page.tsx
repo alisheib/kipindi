@@ -714,7 +714,14 @@ export default async function MarketDetail({
               {/* Hedge warning — shown when player already has a position */}
               {openPositions.length > 0 && (
                 <div className="rounded-lg border border-warning-border bg-warning-bg px-3.5 py-2.5">
-                  <p className="font-mono text-micro uppercase tracking-[0.14em] font-bold text-warning-fg">
+                  {/* DG-A-14 · §T4 — "You already hold <side> here" is a sentence about the
+                      player's own money, not a section eyebrow, but it was set uppercase with
+                      0.14em tracking at text-micro (10px) — 2.5px under the 12.5px reading
+                      floor and dressed as an identifier. The uppercase and the tracking are
+                      dropped and the size moves to text-body-sm. The warning colour and the
+                      font-bold stay, so this line still reads as the louder half of the panel
+                      against the muted body directly below it. */}
+                  <p className="font-mono text-body-sm font-bold text-warning-fg">
                     {t.market.youAlreadyHold} {heldLabel} {t.market.here}
                   </p>
                   <p className="mt-1 text-body-sm leading-snug text-text-muted">

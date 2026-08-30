@@ -1010,7 +1010,12 @@ export function UpDownCard(props: UpDownCardProps) {
             {ifUp != null && ifDown != null && (
               <div className="mt-2">
                 {holdsBoth && (
-                  <p className="m-0 font-mono text-micro font-bold uppercase tracking-[0.14em] text-text-subtle">
+                  // DG-A-14 · §T3 + §T4 — "You hold both sides" is a sentence about the player's
+                  // own position, not an identifier, so the eyebrow dressing is wrong for it:
+                  // uppercase and tracking dropped, 10px lifted to `text-body-sm` (13). This is
+                  // the card twin of the same line in `round-action-panel.tsx`, and the two
+                  // surfaces stay on the same rung.
+                  <p className="m-0 font-mono text-body-sm font-bold text-text-subtle">
                     {t.market.udBothSidesHeld}
                   </p>
                 )}

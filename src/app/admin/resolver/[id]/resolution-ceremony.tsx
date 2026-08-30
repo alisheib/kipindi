@@ -147,8 +147,15 @@ export function ResolutionCeremony({
           <span className="mt-0.5 block text-right font-mono text-[10px] text-text-subtle">{evidence.length}/2000</span>
         </label>
 
+        {/* 🔴 DG-A-14 · this is an IMPERATIVE, not a label, and it was the least legible
+            text in the ceremony: "Type SEAL to publish" is verb + object + purpose clause, and
+            the Swahili half is imperative too. At `text-micro` uppercase it rendered as ~258px
+            of tracked capitals 2.5px under §T4's reading floor — the arming instruction for an
+            IRREVERSIBLE real-money settlement. Dressing dropped, `text-body-sm` (13px).
+            ⚠️ It also hand-typed `tracking-[0.16em] font-bold` while every other label in this
+            file carries `.eyebrow` — the exact 0.16em drift §T3 removed on 2026-08-30. */}
         <label className="block">
-          <span className="mb-1 block font-mono text-micro uppercase tracking-[0.16em] font-bold text-claret-300">
+          <span className="mb-1 block font-mono text-body-sm font-bold text-claret-300">
             Type SEAL to publish · Andika SEAL
           </span>
           <input
@@ -277,7 +284,7 @@ export function ResolutionCeremony({
           </label>
 
           <label className="block">
-            <span className="mb-1 block font-mono text-micro uppercase tracking-[0.16em] font-bold text-claret-300">
+            <span className="mb-1 block font-mono text-body-sm font-bold text-claret-300">
               Type SEAL to publish · Andika SEAL
             </span>
             <input

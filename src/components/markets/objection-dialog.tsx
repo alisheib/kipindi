@@ -113,9 +113,13 @@ export function ObjectionDialog({ marketId, onFiled }: { marketId: string; onFil
           <Callout tone="warning">{t.market.objIntro}</Callout>
 
           <div className="space-y-1.5">
+            {/* DG-A-14 · §T3 + §T4 — "What is wrong?" is a question, not an identifier, so it
+                cannot wear the sub-micro eyebrow recipe. The uppercase and the 0.12em tracking
+                are gone and the size climbs from `text-micro` (10) to `text-body-sm` (13), the
+                smallest rung above the 12.5px reading floor. */}
             <label
               htmlFor="objection-reason"
-              className="font-mono text-micro font-bold uppercase tracking-[0.12em] text-text-subtle"
+              className="font-mono text-body-sm font-bold text-text-subtle"
             >
               {t.market.objReasonLabel}
             </label>
@@ -129,9 +133,12 @@ export function ObjectionDialog({ marketId, onFiled }: { marketId: string; onFil
           </div>
 
           <div className="space-y-1.5">
+            {/* DG-A-14 · §T3 + §T4 — "Explain your case" is an instruction to the player, so it
+                is reading copy and not a microlabel: uppercase and tracking dropped, size lifted
+                to `text-body-sm` (13). It matches the reason label directly above it. */}
             <label
               htmlFor="objection-detail"
-              className="font-mono text-micro font-bold uppercase tracking-[0.12em] text-text-subtle"
+              className="font-mono text-body-sm font-bold text-text-subtle"
             >
               {t.market.objDetailLabel}
             </label>

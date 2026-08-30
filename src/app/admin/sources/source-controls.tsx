@@ -168,7 +168,12 @@ export function AddSourceForm() {
             options={CATEGORIES.map((c) => ({ value: c, label: c }))} />
         </div>
         <label className="block md:col-span-2">
-          <span className="block font-mono text-micro uppercase tracking-[0.14em] text-text-subtle mb-1">Rationale (≥ 1 line)</span>
+          {/* DG-A-14: "Rationale (≥ 1 line)" was a control label with its requirement welded on,
+              and the whole string was wearing the eyebrow recipe — uppercase, tracked, 10px. The
+              label keeps that recipe, because it is still the name of the control; the "(≥ 1 line)"
+              is a hint the admin has to READ, so it moves to its own line on the reading floor. */}
+          <span className="block font-mono text-micro uppercase eyebrow text-text-subtle mb-1">Rationale</span>
+          <span className="block text-body-sm text-text-subtle mb-1">(≥ 1 line)</span>
           <textarea name="rationale" required rows={2} placeholder="Why this source is authoritative for this category." className="w-full rounded-lg border border-border bg-[var(--bg-inset)] px-3 py-2.5 text-[13px] text-text placeholder:text-text-subtle outline-none admin-focus transition-colors resize-none" />
         </label>
       </div>

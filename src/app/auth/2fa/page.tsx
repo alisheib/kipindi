@@ -92,7 +92,13 @@ export default async function TwoFactorChallengePage({ searchParams }: { searchP
         </div>
       </AuthPanel>
 
-      <p className="mt-6 text-center font-mono text-micro uppercase tracking-[0.16em] text-text-subtle">
+      {/* DG-A-14 · §T4 — "Lost your device? Use a backup code." is two sentences of reading
+          copy, not an identifier, yet it was wearing the section-eyebrow recipe: uppercase,
+          0.16em tracking and text-micro (10px), which is 2.5px under the 12.5px reading floor.
+          The dressing comes off and the size moves to text-body-sm, the smallest rung §T7
+          allows above the floor. Colour, centring and the mt-6 margin are deliberately left
+          exactly as they were. */}
+      <p className="mt-6 text-center font-mono text-body-sm text-text-subtle">
         {t.security.challengeFootnote}
       </p>
     </AuthShell>

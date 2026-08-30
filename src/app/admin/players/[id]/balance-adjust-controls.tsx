@@ -165,7 +165,13 @@ export function BalanceAdjustControls({
 
         {needsHard && (
           <label className="mt-3 block">
-            <span className="font-mono text-micro uppercase tracking-[0.14em] font-bold text-claret-300">
+            {/* DG-A-14: this is a whole instruction — the threshold, the word to type and the
+                countersignature rule in one sentence — and an officer about to move real money
+                has to READ it. So it drops the section eyebrow's uppercase and 0.14em tracking
+                and rises to `text-body-sm`, the smallest rung above §T4's 12.5px reading floor;
+                the claret tone and the weight are untouched, because the warning still has to
+                carry. The input below it keeps its own TYPE_TO_CONFIRM tracking. */}
+            <span className="font-mono text-body-sm font-bold text-claret-300">
               {`Large adjustment (≥ ${formatTzs(TWO_PERSON_THRESHOLD_TZS)}) — type ${hardWord} to confirm; a second officer must countersign`}
             </span>
             <input

@@ -84,12 +84,13 @@
  *
  * Run: npm run test:type-scale
  */
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 /** Strip JS/TS/JSX comments — a guard that greps for a defect otherwise matches
  *  the comment explaining the fix. (`admin/markets/page.tsx` documents the `h-8`
  *  trap in prose; `ui-consistency` learned this the hard way, twice in a day.) */
 import { decomment } from "./lib/decomment.mts";
+import { NOT_EYEBROW } from "./design-gate/eyebrow-roles.mjs";
 
 const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
 const SRC = join(ROOT, "src");
@@ -116,7 +117,7 @@ const SRC = join(ROOT, "src");
  *  the site from §3 AND §4: two ratchets down, nothing lifted, the site now in a population
  *  the guard could not read. 509 of the old 768 could have been deleted that way. §3's own
  *  advice string recommended it in those words. Both are fixed in this commit. */
-const RATCHET_SUBFLOOR = 756;   // 2026-08-30: -5, the five section eyebrows that carried NO tracking at all and gained §T3's 0.14em with the rest (DG-A-11's tracking sweep). ⚠️ They fell out because a GLYPH moved — from `text-micro`'s own 0.4px to 1.4px — not because the blessing widened: `.eyebrow` was added to `isBlessedMicrolabel` in the same commit, and without it the sweep would have read as +291 on a ratchet that may only shrink. // 2026-08-29: -268 total, the ADMIN then PLAYER prose sweeps (DG-A-12); then -2 for `fee-simulator.tsx`'s two licence paragraphs, 10.5px prose lifted to `text-body-sm`. ⭐ THE FIRST TIME §3 MOVED IN THREE SWEEPS, and that is the point: §3 falls only when a GLYPH gets more legible, which is why it held flat at 763 through 376 renames that bought §4 alone.
+const RATCHET_SUBFLOOR = 756;   // ✅ 2026-08-30, −48 and DG-A-14 IS CLOSED: 39 of the 48 were FIXED (27 sentences lifted onto `text-body-sm`, 9 labels split from their hint, 3 more after a third reader overturned the fixer's refusal) and ⚠️ **9 came off by RECLASSIFICATION, not by moving a glyph** — adjudicated as genuine labels, and that half of the number is stated rather than folded in. // was 804: ⛔ 2026-08-30, +48: THE POPULATION GREW, NOT THE DEFECT — the third time this ratchet has had to be re-based upward for that reason, and the third time it was the BLESSING that was wrong rather than the product. §3 exempted "an UPPERCASE tracked microlabel", keyed on the DRESSING, so 48 sentences and labels-with-their-hint-welded-on were counted as labels while sitting 3-4px under §T4's reading floor. They are DG-A-14's population and they now count. // 2026-08-30: -5, the five section eyebrows that carried NO tracking at all and gained §T3's 0.14em with the rest (DG-A-11's tracking sweep). ⚠️ They fell out because a GLYPH moved — from `text-micro`'s own 0.4px to 1.4px — not because the blessing widened: `.eyebrow` was added to `isBlessedMicrolabel` in the same commit, and without it the sweep would have read as +291 on a ratchet that may only shrink. // 2026-08-29: -268 total, the ADMIN then PLAYER prose sweeps (DG-A-12); then -2 for `fee-simulator.tsx`'s two licence paragraphs, 10.5px prose lifted to `text-body-sm`. ⭐ THE FIRST TIME §3 MOVED IN THREE SWEEPS, and that is the point: §3 falls only when a GLYPH gets more legible, which is why it held flat at 763 through 376 renames that bought §4 alone.
 
 /** §4 — every hand-typed size in the product: `text-[Npx]` plus inline literal
  *  `style={{ fontSize: N }}`. Measured 2026-08-21: 1,839 + 38.
@@ -221,7 +222,7 @@ const RATCHET_INLINE_FONTSIZE = 36;
 /*  ⬇️ 636 → 635 on 2026-08-25 — pre-existing slack on HEAD, not this commit's doing; see
  *  the note on RATCHET_ARBITRARY_SIZE above. The countdown's date span takes `text-micro`'s
  *  own 0.4px letter-spacing and adds no `tracking-` utility, so this commit is +0 here. */
-const RATCHET_ARBITRARY_TRACKING = 313;   // ⭐ 2026-08-30, −289 IN ONE COMMIT and the largest fall this ratchet has ever taken: DG-A-11's tracking sweep put §T3's section eyebrow on `.eyebrow` (globals.css, beside `.amount`) instead of a hand-typed value at 289 call sites. ⛔ THAT IS THE ONLY WAY THIS RATCHET CAN REACH ZERO — CONVERGING nine tracking values onto one would have left the count untouched at 602 forever, because the defect it counts is a value written at a CALL SITE, not a value that disagrees with its neighbours. // 2026-08-29: -11 then -5, FieldLegend adopted where its recipe was hand-retyped BYTE FOR BYTE (DG-A-11). The last 5 were `<label>`s in the auth forms — `block … mb-1.5` around the component's exact class string — which the first pass missed because it looked for `<span>`s. Then -13 on 2026-08-30 (DG-P-03): the six loading skeletons that adopted `<PageHeader>` were each hand-typing its EYEBROW as well as its h1, so a row about headings paid a tracking dividend nobody predicted. ⚠️ It was found only because the handover's numbers were re-derived before being written down, which is the rule that keeps earning its keep.
+const RATCHET_ARBITRARY_TRACKING = 274;   // 2026-08-30, −39 more: DG-A-14's 39 prose fixes each dropped the eyebrow dressing, and the tracking token went with it — a row about the READING FLOOR paid a tracking dividend, the same way DG-P-03's skeleton adoption did. // was 313: ⭐ 2026-08-30, −289 IN ONE COMMIT and the largest fall this ratchet has ever taken: DG-A-11's tracking sweep put §T3's section eyebrow on `.eyebrow` (globals.css, beside `.amount`) instead of a hand-typed value at 289 call sites. ⛔ THAT IS THE ONLY WAY THIS RATCHET CAN REACH ZERO — CONVERGING nine tracking values onto one would have left the count untouched at 602 forever, because the defect it counts is a value written at a CALL SITE, not a value that disagrees with its neighbours. // 2026-08-29: -11 then -5, FieldLegend adopted where its recipe was hand-retyped BYTE FOR BYTE (DG-A-11). The last 5 were `<label>`s in the auth forms — `block … mb-1.5` around the component's exact class string — which the first pass missed because it looked for `<span>`s. Then -13 on 2026-08-30 (DG-P-03): the six loading skeletons that adopted `<PageHeader>` were each hand-typing its EYEBROW as well as its h1, so a row about headings paid a tracking dividend nobody predicted. ⚠️ It was found only because the handover's numbers were re-derived before being written down, which is the rule that keeps earning its keep.
 
 /** §5 — the 29 hand-typed sizes that exist today. A member may LEAVE (the guard
  *  says so and this list gets trimmed); a NEW one is a hard failure. This is the
@@ -655,6 +656,54 @@ log("§0 — self-test: the scanners can see, and can fail");
     missing.length ? `src/lib/utils.ts no longer exports: ${missing.join(", ")} — update MONEY_CALL or this guard is blind` : "");
 }
 
+/**
+ * The PROSE sites the §T3 role read found, per file. Keys there are `path :: signature`; the
+ * count is the second element when a file renders the same recipe more than once.
+ *
+ * ⛔ EACH ONE IS RE-FOUND IN THE FILE AND ITS SIZE RE-READ, rather than parsed out of the
+ * signature. The signature is truncated at 170 characters, and the first version of this did
+ * read it — which reported `conviction-dial.tsx`'s coach nudge as having no size at all,
+ * because its `text-micro` fell past the cut. A count that lands on a site ABOVE the floor
+ * would be §3 condemning legal copy, so the size is read from the line itself and anything
+ * at or above 12.5px is not counted (and is named by 0i, because it would mean the read and
+ * the floor disagree about a site and somebody should look).
+ */
+const PROSE_SITES = new Map<string, number>();
+const PROSE_ABOVE_FLOOR: string[] = [];
+const PROSE_UNFOUND: string[] = [];
+{
+  const sigOf = (lines: string[], i: number) => {
+    const head = (lines[i] ?? "").replace(/\s+/g, " ").trim();
+    let tail = "";
+    for (let j = i + 1; j < Math.min(i + 3, lines.length); j++) {
+      const t = (lines[j] ?? "").replace(/\s+/g, " ").trim();
+      if (t) { tail = t; break; }
+    }
+    return (head + " ↵ " + tail).slice(0, 170);
+  };
+  const SIZE_ON_LINE = /text-\[(\d+(?:\.\d+)?)px\]|\btext-(micro|caption|label|body-sm|body|body-lg|title-sm|title-md|title-lg)\b/;
+  const PX: Record<string, number> = { micro: 10, caption: 11, label: 12, "body-sm": 13, body: 14, "body-lg": 16, "title-sm": 18, "title-md": 22, "title-lg": 28 };
+  for (const [k, v] of NOT_EYEBROW as Map<string, string | [string, number]>) {
+    const [role, want] = Array.isArray(v) ? v : [v, 1];
+    if (role !== "PROSE") continue;
+    const [relPath, signature] = k.split(" :: ");
+    const file = "src/" + relPath;
+    const abs = join(ROOT, file);
+    if (!existsSync(abs)) { PROSE_UNFOUND.push(k); continue; }
+    const lines = readFileSync(abs, "utf8").split("\n");
+    let found = 0;
+    for (let i = 0; i < lines.length; i++) {
+      if (sigOf(lines, i) !== signature) continue;
+      found++;
+      const m = lines[i].match(SIZE_ON_LINE);
+      const px = m ? (m[1] ? parseFloat(m[1]) : PX[m[2]]) : NaN;
+      if (Number.isFinite(px) && px < 12.5) PROSE_SITES.set(file, (PROSE_SITES.get(file) ?? 0) + 1);
+      else PROSE_ABOVE_FLOOR.push(`${file}:${i + 1}  ${m ? `${px}px` : "no size on the line"}`);
+    }
+    if (found !== want) PROSE_UNFOUND.push(`${k}  (matched ${found}, declared ${want})`);
+  }
+}
+
 // 0f — the sub-floor CLASS scanner can see, can be blessed, and can fail. Without this,
 //      §3's new half is a rule written against a branch nobody proved reachable (§5b#4).
 {
@@ -684,6 +733,38 @@ log("§0 — self-test: the scanners can see, and can fail");
   check("0f ⛔ CONTROL · without a blessing the SAME size is still counted",
     bare_.length === 1 && !isBlessedMicrolabel(bare_[0].group));
 }
+// 0i — §3's PROSE half is wired to the role read, and it can go to zero only by being fixed.
+//      ⛔ The failure this closes is a RENAME: if the role key ever stops being spelled
+//      "PROSE", or the import path moves, `PROSE_SITES` empties and §3 silently drops 48
+//      sites with no glyph moved — the exact shape that once made 509 of §3's 768 zeroable.
+//      So the count is asserted against the declarations themselves, not trusted.
+{
+  const declared = [...(NOT_EYEBROW as Map<string, string | [string, number]>)]
+    .map(([, v]) => (Array.isArray(v) ? v : [v, 1] as [string, number]))
+    .filter(([role]) => role === "PROSE")
+    .reduce((n, [, c]) => n + (c as number), 0);
+  const wired = [...PROSE_SITES.values()].reduce((n, c) => n + c, 0);
+  /* ⛔ THE ASSERTION IS ABOUT THE WIRING, NOT ABOUT A NON-ZERO COUNT — and the distinction
+     had to be made the moment DG-A-14 took the prose population to ZERO. "declared > 0" would
+     now fail on a CLOSED row, and relaxing it to "≥ 0" would make it unfalsifiable. So the
+     import is proved live against the whole map (556 declarations), and the prose subset is
+     proved to be counted exactly, whatever its size. A NEW prose site cannot slip past: the
+     §T3 gate refuses any uppercase site that is neither `.eyebrow` nor declared, so the only
+     way to add one is to declare it — which re-arms this counter. */
+  check("0i §3's prose population is wired to the §T3 role read, and counted exactly",
+    (NOT_EYEBROW as Map<string, unknown>).size > 100 && wired + PROSE_ABOVE_FLOOR.length === declared,
+    `${wired} counted + ${PROSE_ABOVE_FLOOR.length} above the floor vs ${declared} declared PROSE, over ${(NOT_EYEBROW as Map<string, unknown>).size} declarations`);
+  // ⛔ CONTROL · every declaration must still be FOUND, at the count it declares. A signature
+  //    that matches nothing means the element was edited, and the read is stale there.
+  check("0i ⛔ CONTROL · every prose declaration is still found in its file, at its count",
+    PROSE_UNFOUND.length === 0, PROSE_UNFOUND.slice(0, 6).join(" · "));
+  // ⛔ CONTROL · and the read and the floor must agree. A PROSE site at or above 12.5px is
+  //    legal reading copy that merely wears an eyebrow's dressing — a real finding either way,
+  //    and NOT something §3 may count.
+  check("0i ⛔ CONTROL · the role read and §T4's floor agree about every prose site",
+    PROSE_ABOVE_FLOOR.length === 0, PROSE_ABOVE_FLOOR.slice(0, 6).join(" · "));
+}
+
 // 0g — the three sizes this guard hard-codes are still what tailwind.config.ts says.
 //      Change `caption` to 13px there and, without this, §3 would keep condemning 174
 //      sites that had become legal — a guard confidently wrong about the product.
@@ -773,6 +854,27 @@ for (const f of files) {
     subfloorClassHits++;
     subfloorTop.set(where, (subfloorTop.get(where) ?? 0) + 1);
     if (subfloorClassSamples.length < 3) subfloorClassSamples.push(`${where}  "${hit.group.slice(0, 84)}"`);
+  }
+  /* ⭐ §3's THIRD POPULATION — PROSE WEARING A MICROLABEL'S CLOTHES (DG-A-14, 2026-08-30).
+     §3's blessing exempts "an UPPERCASE tracked microlabel", which is keyed on the DRESSING and
+     not on whether the string is prose. That is why §3 sat FLAT at 763 through three sweeps
+     while genuine paragraphs — the first-visit primer's promise to the player at 8.5px among
+     them — sat 3-4px under §T4's reading floor and were counted as labels.
+     ⛔ NO HEURISTIC DECIDES THIS. A ">60 characters" threshold was tried on paper and misses
+     92% of the strings (34 of 37 are shorter than that, "Type PAUSE to stop deposits" included),
+     and a word count cannot tell "Reward modes · independently toggleable · Njia za zawadi" —
+     a bilingual LABEL — from "changes apply on next bet — no redeploy". So the population comes
+     from the READ: 586 uppercase-and-tracked sites were classified by role in three passes, and
+     `eyebrow-roles.mjs` records which are PROSE.
+     ⛔ AND THE PAIR IS CLOSED, WHICH IS WHY A DECLARATION LIST IS SAFE HERE. Deleting a PROSE
+     declaration cannot buy a §3 win: `test:eyebrow-roles` fails the moment a declaration
+     matches nothing (exit 4) AND the moment an uppercase site is neither `.eyebrow` nor
+     declared (exit 5). To lose the entry you must actually change the element — which is the
+     fix. Counted into the SAME `subfloor` total, for the reason the class scanner above gives. */
+  {
+    const n = PROSE_SITES.get(where) ?? 0;
+    subfloor += n;
+    if (n) subfloorTop.set(where, (subfloorTop.get(where) ?? 0) + n);
   }
   for (const t of scanTracking(body)) {
     arbTrack++;

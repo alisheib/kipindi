@@ -160,7 +160,11 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
           title="House accounts (double-entry ledger)"
           sw="Akaunti za nyumba"
           action={
-            <span className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">
+            /* DG-A-14: "summed from ledger entries" is a sentence about where these balances come
+               from — reading copy, not an identifier — so it drops the eyebrow's uppercase and
+               tracking and moves up to `text-body-sm`, the smallest rung above §T4's 12.5px
+               reading floor. The tone stays; §A1's contrast gate owns that, not this pass. */
+            <span className="font-mono text-body-sm text-text-tertiary">
               summed from ledger entries
             </span>
           }

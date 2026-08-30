@@ -933,6 +933,28 @@ Values: the `--type-*` ladder in `globals.css`. Laws:
    `text-transform: eyebrow uppercase` into five of them, which is invalid CSS — so those
    elements would have STOPPED BEING UPPERCASE. Caught before it shipped, by reading the diff.
 4. **Reading-copy floor: 12.5px in-app, 12pt in print.** Below that is a label, not prose.
+
+   ⭐ **AND "IS IT PROSE?" IS A READ, NOT A HEURISTIC — ruled 2026-08-30, DG-A-14.** §3 of
+   `type-scale.test.mts` enforces this floor and used to exempt *"an UPPERCASE tracked
+   microlabel"*, which is keyed on the DRESSING rather than on the string. So 48 sentences sat
+   2–4px under this floor wearing an eyebrow's clothes and were counted as labels — including
+   the arming instruction for an irreversible settlement and a promise to the player that their
+   P&L will not move again.
+   ⛔ **No text test decides it, and two were tried and measured.** The register's own
+   *"paragraphs over 60 characters"* misses **92%** of them (34 of the 37 strings are shorter,
+   *"Type PAUSE to stop deposits"* included). A word count cannot separate
+   *"Reward modes · independently toggleable · Njia za zawadi"* — a bilingual LABEL — from
+   *"changes apply on next bet — no redeploy"*. So the population is the §T3 role read
+   (`scripts/design-gate/eyebrow-roles.mjs`), and §3 imports it: ONE list, no second home (§0a).
+   ⚠️ **What a scanner CAN see is the ellipsis trap.** *"All figures final"* looks like a noun
+   phrase only in English — it is a verbless clause, and Swahili and Chinese both write the
+   copula out (*"Takwimu zote **ni** za mwisho"*). §A5 makes Swahili the longest population, so
+   the widest thing a real player reads there is a five-word SENTENCE in 10px caps.
+   ▶ **The two remedies, and a label keeps its dressing:** a SENTENCE drops the uppercase and
+   the tracking and takes `text-body-sm` (13px, the lowest rung above this floor — ⛔ never
+   `text-label` 12 or `text-caption` 11, which are below it). A LABEL WITH ITS HINT WELDED ON is
+   SPLIT: the label keeps the eyebrow recipe and takes `.eyebrow`, the hint moves to its own
+   legible line.
 5. **Every numeral is JetBrains Mono with `font-variant-numeric: tabular-nums`** — no
    exceptions, *including numbers inside body sentences when they are data* (stakes, odds,
    times). Proportional digits make a changing number twitch; see §M4 for the money case.

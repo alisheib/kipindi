@@ -76,7 +76,13 @@ export function ForceReverifyControls({ userId }: { userId: string }) {
           Moves this APPROVED player back to re-verification and asks them to re-submit their documents. Audit-logged. It does <strong>not</strong> stop withdrawals — to hold money, freeze the wallet or pause payouts.
         </p>
         <label className="mt-3 block">
-          <span className="font-mono text-micro uppercase tracking-[0.14em] font-bold text-text-subtle">Reason · Sababu (required, audit-logged)</span>
+          {/* DG-A-14: "Reason · Sababu (required, audit-logged)" was one microlabel with its
+              hint welded on, so the hint — reading copy — was wearing the eyebrow recipe at
+              10px, well under the §T4 12.5px floor. The bilingual label keeps that recipe
+              because it really is an identifier; the hint moves to its own legible line. The
+              textarea stays nested inside this <label>, so the control is still named by it. */}
+          <span className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">Reason · Sababu</span>
+          <span className="block text-body-sm text-text-subtle">(required, audit-logged)</span>
           <textarea
             ref={reasonRef}
             value={reason}

@@ -178,12 +178,18 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
           </div>
         </AdminCard>
 
-        {/* The simulator — see a rate change before you save it. */}
+        {/* The simulator — see a rate change before you save it.
+
+            DG-A-14: the card's action slot is where a status microlabel belongs
+            ("12 active", "4 entries"), but "runs the real payout function" is not
+            an identifier — it is a sentence assuring the operator that the numbers
+            below are not a mock. So it loses the eyebrow dressing and moves up to
+            text-body-sm; the tone stays as it was. */}
         <AdminCard
           title="Fee simulator"
           sw="Kijaribio cha ada"
           action={
-            <span className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">
+            <span className="font-mono text-body-sm text-text-tertiary">
               runs the real payout function
             </span>
           }
@@ -191,12 +197,17 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
           <FormColumn measure="form"><FeeSimulator config={config} /></FormColumn>
         </AdminCard>
 
-        {/* Global config form */}
+        {/* Global config form.
+
+            DG-A-14: "changes apply on next bet — no redeploy" is a full statement
+            about when a saved rate takes effect, not a label, so the uppercase and
+            the 0.10em tracking came off and the size moved from text-micro (10px)
+            to text-body-sm (13px), the smallest rung above the reading floor. */}
         <AdminCard
           title="Global rates"
           sw="Viwango vya jumla"
           action={
-            <span className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">
+            <span className="font-mono text-body-sm text-text-tertiary">
               changes apply on next bet — no redeploy
             </span>
           }
@@ -231,8 +242,13 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
               <FormColumn measure="form"><MarketOverrideForm globalConfig={config} /></FormColumn>
             </div>
 
+            {/* DG-A-14: the empty state is a sentence — "No active overrides —
+                every market uses the global config." — and it was set as an
+                eyebrow at 11px. An empty state is the one thing on the card an
+                operator actually has to read, so it drops the uppercase and the
+                tracking and sits on text-body-sm. */}
             {overrides.length === 0 ? (
-              <p className="font-mono text-caption uppercase tracking-[0.14em] text-text-subtle text-center py-3">
+              <p className="font-mono text-body-sm text-text-subtle text-center py-3">
                 No active overrides — every market uses the global config.
               </p>
             ) : (
@@ -292,8 +308,11 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
           action={<span className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">{recent.length} entries</span>}
           padding="p-0"
         >
+          {/* DG-A-14: "No config changes yet." is a sentence, not a column
+              heading, so it loses the uppercase and the 0.14em tracking and
+              climbs from text-caption (11px) to text-body-sm (13px). */}
           {recent.length === 0 ? (
-            <p className="font-mono text-caption uppercase tracking-[0.14em] text-text-subtle text-center py-6">
+            <p className="font-mono text-body-sm text-text-subtle text-center py-6">
               No config changes yet.
             </p>
           ) : (

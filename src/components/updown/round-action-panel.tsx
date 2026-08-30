@@ -120,7 +120,11 @@ export function RoundActionPanel(props: {
         {payoutIfUp != null && payoutIfDown != null && (
           <div className="mt-3">
             {bothSides && (
-              <p className="m-0 font-mono text-micro font-bold uppercase tracking-[0.14em] text-text-subtle">
+              // DG-A-14 · §T3 + §T4 — "You hold both sides" is a full sentence stating the
+              // player's position, so it is prose and not a section eyebrow. The uppercase and
+              // the 0.14em tracking come off and 10px becomes `text-body-sm` (13), the first
+              // rung above the 12.5px reading floor.
+              <p className="m-0 font-mono text-body-sm font-bold text-text-subtle">
                 {t.market.udBothSidesHeld}
               </p>
             )}
