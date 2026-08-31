@@ -9,6 +9,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Sensitive } from "@/components/ui/sensitive";
 import { Chip } from "@/components/ui/chip";
 import { ScrollX } from "@/components/ui/scroll-x";
+import { Tabs } from "@/components/ui/tabs";
 import { db, type StoredTxn } from "@/lib/server/store";
 import { getAuditForActor, getAuditForTarget, audit as recordAudit, type AuditCategory } from "@/lib/server/audit";
 import { selfExclusionStanding } from "@/lib/server/responsible-gambling";
@@ -177,12 +178,10 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
   // KYC tab needs compliance-view; Transactions (money history) needs accounting-view.
   const visibleTabs = TABS.filter((t) => (t.id !== "kyc" || canSeePII) && (t.id !== "transactions" || canSeeMoney));
 
-  // KYC is the most critical tab — give it an at-a-glance status so an officer
-  // immediately sees whether it needs action. Warn = not approved (needs you),
-  // green = approved, red = rejected.
-  const kycTone: "warn" | "green" | "red" =
-    kyc?.status === "APPROVED" ? "green" : kyc?.status === "REJECTED" ? "red" : "warn";
-  const kycNeedsAction = kyc?.status === "PENDING_REVIEW" || kyc?.status === "ADDITIONAL_INFO_REQUIRED";
+  // ⛔ `kycTone` / `kycNeedsAction` were DELETED with the rail that was their only reader
+  // (DG-S-07, 2026-08-31). The KYC state is stated ONCE, above the rail, by the `:229` chip
+  // that reads the §B11 dictionary — §K rule 7d ("a tab may hide a detail, never a state"),
+  // and §0a: one fact, one home. Re-adding an at-a-glance tone here re-opens both.
 
   return (
     <>
@@ -276,7 +275,13 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
                     value={riskScore}
                     max={100}
                     size={80}
-                    colorVar={riskBand === "high" ? "var(--danger-500)" : riskBand === "medium" ? "var(--warning-500)" : "var(--yes-500)"}
+                    /* ⛔ `--success-500`, NOT `--yes-500` (D2, 2026-08-21). This one ternary
+                       spoke BOTH ramps at once: `high` and `medium` already took the app-state
+                       tokens D2 minted, while `low` fell back to the BETTING YES ink — so a
+                       compliance risk band was painted in the colour that means "your bet won"
+                       on exactly one of its three stops. §K rule 7d names the same breach in
+                       this page's tab rail; it is the same defect, twice, on one screen. */
+                    colorVar={riskBand === "high" ? "var(--danger-500)" : riskBand === "medium" ? "var(--warning-500)" : "var(--success-500)"}
                     ariaLabel={`Risk score ${riskScore} of 100 — ${riskBand} risk`}
                   />
                   <p className="font-mono text-micro text-text-tertiary tracking-wider">{riskBand} · review monthly</p>
@@ -297,47 +302,49 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
         </KpiGrid>
         )}
 
-        {/* §C — Tabs */}
+        {/* ⭐ §C — THE KIT SECTION RAIL (DG-S-03 tail + DG-S-07, 2026-08-31), §K rule 7.
+            This rail was hand-rolled here with a container class string BYTE-IDENTICAL to
+            `/admin/roles`'s and divergent items — 52px vs 40px, raw `<a>` vs `<Link>`, and no
+            `aria-current` at all, so nothing announced which section was in force. It is
+            deleted INTO the primitive (§B9), which brings 44px (§A2 · §K rule 7c), the real
+            `aria-current="page"`, `data-section-rail` for the gate population (7f), and the
+            capped kit `<CountBadge>` in place of a bare `· 26` that 7d forbids by name.
+
+            🔴 THE KYC PAINT IS NOT PORTED, AND THAT IS RULE 7d RATHER THAN A DELETION.
+            This rail carried a second copy of the KYC state: a dot in `bg-yes-500` /
+            `bg-no-500`, a `· review` annotation, a check glyph, and an ink that recoloured the
+            option even while another tab was active. §K rule 7d names that exact dot — *"a
+            tab's count is never painted in the betting pair (§B2a / D2) … that is a live
+            breach; it is fixed in the conversion, not copied by it"* — and 7d also says where
+            the state belongs: ABOVE the rail, on every tab.
+            ⭐ IT ALREADY IS. `:226-228` renders `<Chip variant={kycStatusVariant(kyc.status)}>
+            KYC · {kycStatusLabel(kyc.status)}</Chip>`, which reads the §B11 dictionary, is a
+            LINK to this same `?tab=kyc`, and — the part that settles it — is gated on
+            `canSeePII`, **the identical condition that decides whether the KYC tab exists at
+            all** (`visibleTabs`, above). So no role could ever see the rail's colour without
+            also seeing the chip: the copy was never the only carrier, only a second home for
+            one fact (§0a).
+            ⛔ AND THE THIRD STATE WAS THE MONEY INK. "Needs review" painted `bg-warning-fg`,
+            and that alias chains `globals.css:535 --warning-fg → :414 --gilt → :96 --gold-300`
+            — struck gold, which §M3 reserves for money that was EARNED. So the rail spoke the
+            betting pair for approved/rejected and the money ink for pending, on a compliance
+            state, in one control.
+            ⛔ AND ITS PULSE WAS ILLEGAL. `animate-pulse` is NOT in `globals.css`'s
+            `[data-motion="reduced"]` list — `dot.tsx`'s header calls that out as the reason the
+            kit `<Dot pulse>` exists — so an officer who chose Reduce motion still got a
+            blinking dot. Porting the dot would have carried that across too. */}
         <AdminCard padding="p-0">
-          <nav aria-label="Player tabs" className="flex gap-4 px-4 border-b border-border-subtle overflow-x-auto">
-            {visibleTabs.map((t) => {
-              const active = t.id === tab;
-              const isKyc = t.id === "kyc";
-              // The KYC tab stays visually loud when it's not approved, even
-              // when another tab is active, so the officer always notices it.
-              const kycHot = isKyc && kycTone !== "green";
-              const dotColor = kycTone === "green" ? "bg-yes-500" : kycTone === "red" ? "bg-no-500" : "bg-warning-fg";
-              const cls = active
-                ? (kycHot ? "border-warning-fg/40 text-warning-fg font-bold" : "border-brand-500 text-text font-semibold")
-                : kycHot
-                  ? (kycTone === "red" ? "border-no-700/60 text-no-300 font-semibold hover:text-no-200" : "border-warning-fg/40 text-warning-fg font-semibold hover:text-warning-fg")
-                  : isKyc
-                    ? "border-transparent text-yes-300 hover:text-yes-200" // approved → calm green
-                    : "border-transparent text-text-tertiary hover:text-text";
-              return (
-                <a
-                  key={t.id}
-                  href={`/admin/players/${id}?tab=${t.id}`}
-                  className={["py-3 text-body-sm whitespace-nowrap border-b-2 transition-colors inline-flex items-center gap-1.5", cls].join(" ")}
-                >
-                  {isKyc ? (
-                    <span
-                      aria-hidden
-                      className={`h-1.5 w-1.5 rounded-pill ${dotColor} ${kycNeedsAction ? "animate-pulse" : ""}`}
-                    />
-                  ) : (
-                    <span aria-hidden className="opacity-60">{t.icon}</span>
-                  )}
-                  {t.label}
-                  {isKyc && kycNeedsAction && (
-                    <span className="font-mono text-micro uppercase tracking-[0.1em] text-warning-fg">· review</span>
-                  )}
-                  {isKyc && kyc?.status === "APPROVED" && <I.check s={12} className="text-yes-400" />}
-                  {t.count !== undefined && <span className="ml-1.5 font-mono text-micro text-text-tertiary">· {t.count}</span>}
-                </a>
-              );
-            })}
-          </nav>
+          <Tabs
+            ariaLabel="Player tabs"
+            value={tab}
+            tabs={visibleTabs.map((t) => ({
+              value: t.id,
+              labelEn: t.label,
+              count: t.count,
+              href: `/admin/players/${id}?tab=${t.id}`,
+              glyph: t.icon,
+            }))}
+          />
           <div className="p-4">
             {tab === "activity" && (
               <div className="max-h-[420px] overflow-y-auto">

@@ -2089,6 +2089,30 @@ textarea::placeholder { color: var(--text-subtle); }
   background-clip: padding-box;
 }
 
+/* 🔴 DG-S-07 (2026-08-31) — THE SECTION RAIL CLIPPED ITS OWN FOCUS RING, AND THIS IS
+   MEASURED RATHER THAN REASONED.
+
+   A section rail (§K rule 7c) is `overflow-x-auto` because it SCROLLS and must not wrap —
+   the `border-b` is on the container, so a wrapped second row would leave the first with no
+   baseline. But CSS computes `overflow-y` to `auto` whenever `overflow-x` is not `visible`,
+   so the rail clips VERTICALLY too, and that was never intended by anyone.
+
+   📐 Measured on production, `/admin/players/[id]`, before the fix: the rail's content box is
+   52px and its item is 52px, so `roomAbove` is **0**. `globals.css`'s defensive
+   `:where(…):focus-visible` catch-all paints a 2px outline at `outline-offset: 2px`, which
+   needs 4px of vertical room in a box that has none — so a keyboard user focusing a tab saw
+   the ring clipped away at top and bottom, on a page's PRIMARY navigation. ⛔ DG-A-03's shape
+   exactly: painted, and invisible because of its own container. A bounding box cannot see
+   this; the computed `overflow-y` and the item/rail heights can.
+
+   ⭐ §A3 IS KEPT WHERE IT CAN BE AND NARROWED WHERE IT CANNOT. Still 2px `--brand-500`, moved
+   INSIDE the item: a ring you can see at -2px beats the specified +2px that does not exist.
+   ⛔ §A3's 4px halo is deliberately NOT restored here — a `box-shadow` is clipped by the same
+   overflow, so adding it would read as compliance while painting nothing.
+   ⛔ Do not "restore" the offset to 2px without re-measuring: `roomAbove` is 0 by construction
+   for as long as the item fills the rail, which §K rule 7c's 44px rung guarantees. */
+[data-section-rail] :where(a, button):focus-visible { outline-offset: -2px; }
+
 /* ===========================================================================
    Motion polish layer — ⚠️ DEPRECATED ALIASES (2026-07-28)
    ---------------------------------------------------------------------------

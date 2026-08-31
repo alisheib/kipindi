@@ -31,7 +31,7 @@
 import { chromium } from "playwright";
 import { BASE } from "../live/harness.mjs";
 import { loginShared } from "./session.mjs";
-import { ADMIN_ROUTES } from "./routes.mjs";
+import { ADMIN_ROUTES, expandSectionRail } from "./routes.mjs";
 
 /** ⛔ The two the shared population has always excluded — see the header. */
 const TOTP_EXEMPT_ROUTES = ["/admin/totp-verify", "/admin/2fa/setup"];
@@ -82,7 +82,21 @@ const page = await ctx.newPage();
 
 console.log(`\nADMIN SHELL SEAL — ${BASE}  ·  ${ROUTES.length} routes (${ADMIN_ROUTES.length} + ${TOTP_EXEMPT_ROUTES.length} TOTP-exempt)\n`);
 
-for (const route of ROUTES) {
+/**
+ * ⭐ A WORKLIST, NOT A FIXED LIST (§K rule 7f, DG-S-07 2026-08-31). A tabbed console renders
+ * only the panel whose tab is in force, so the routes typed in `routes.mjs` are not the whole
+ * surface. Each page is asked for its OWN rail (`expandSectionRail`) and its sibling tabs join
+ * the queue — so `/admin/roles?tab=reads`, which no instrument had ever opened, is probed like
+ * any other route. ⛔ The set is read off the rendered rail, never typed here.
+ */
+const queue = [...ROUTES];
+const visited = new Set();
+let discovered = 0;
+
+for (let qi = 0; qi < queue.length; qi++) {
+  const route = queue[qi];
+  if (visited.has(route)) continue;
+  visited.add(route);
   let resp;
   try { resp = await page.goto(BASE + route, { waitUntil: "load", timeout: 90_000 }); }
   catch (e) { ok(`${route} loads`, false, String(e).slice(0, 90)); continue; }
@@ -117,8 +131,18 @@ for (const route of ROUTES) {
      named below rather than silently counted as covered. */
   await page.waitForFunction(() => document.readyState === "complete" && document.body.children.length > 0, null, { timeout: 15_000 }).catch(() => {});
   await page.waitForTimeout(600);
+  /**
+   * 🔴 BOTH SIDES LOSE THE QUERY, OR A `?tab=` ROUTE IS SILENTLY UNMEASURED (§K rule 7f).
+   * This compared a query-STRIPPED landed URL against the route as written, so a route like
+   * `/admin/roles?tab=reads` could never be equal to its own landing and filed as REDIRECTED
+   * every time — while `probed` stayed non-zero, so the "zero probes is a skipped run" guard
+   * never fired either. A route inside a green run that nothing ever looked at.
+   * ⚠️ The comparison is PATH to PATH on purpose: a tab lives in the query, and landing on the
+   * same path with the rail's own default tab is not a redirect.
+   */
   const landed = page.url().replace(BASE, "").replace(/\?.*$/, "");
-  if (landed !== route) {
+  const expected = route.replace(/\?.*$/, "");
+  if (landed !== expected) {
     redirected.push(`${route} → ${landed}`);
     console.log(`  ↪ ${route.padEnd(30)} REDIRECTS to ${landed} — this seal cannot measure ${route}'s own landmark`);
     continue;
@@ -155,6 +179,14 @@ for (const route of ROUTES) {
     console.log(`  ⚠️  ${route} re-navigated mid-probe; retried and settled on ${page.url().replace(BASE, "")}`);
   }
   probed++;
+
+  /* ⭐ Ask the page which sections it hides behind its own rail, and queue them (§K rule 7f).
+     ⚠️ Only from a route that actually PROBED — a redirected or signed-out page has no rail
+     worth reading, and queueing off one would grow the population from the sign-in screen. */
+  for (const sib of await expandSectionRail(page, route)) {
+    if (!visited.has(sib) && !queue.includes(sib)) { queue.push(sib); discovered++; }
+  }
+
   const exempt = TOTP_EXEMPT_ROUTES.includes(route);
   ok(`${route} exactly one <main>`, m.n === 1,
     m.n === 0 ? "NO <main> — the landmark is gone" : `${m.n}: ${m.ids.join(" | ")}`);
@@ -211,7 +243,7 @@ if (!process.env.SKIP_NAV) {
 }
 
 await browser.close();
-console.log(`\n${probed} probe(s) · ${ROUTES.length} route(s) · ${revoked} re-sign-in(s) · ${redirected.length} redirected · ${fail} failing`);
+console.log(`\n${probed} probe(s) · ${ROUTES.length} typed route(s) + ${discovered} tab route(s) read off rendered rails · ${revoked} re-sign-in(s) · ${redirected.length} redirected · ${fail} failing`);
 if (redirected.length) {
   console.log(`⚠️  ${redirected.length} route(s) redirect an already-verified admin, so their OWN landmark is`);
   console.log("   outside this seal's reach. That is a limit of the population, not a clean result:");

@@ -161,7 +161,12 @@ export const NOT_EYEBROW = new Map([
   ["app/admin/players/[id]/balance-adjust-controls.tsx :: \"min-h-[44px] rounded-md border font-mono text-caption uppercase tracking-[0.12em] transition-colors \" + ↵ (direction === d", "CONTROL_LABEL"],
   ["app/admin/players/[id]/balance-adjust-controls.tsx :: className=\"mt-1 w-full rounded-md border border-border-strong bg-bg-overlay px-2.5 py-2 font-mono text-body-sm tracking-[0.2em] uppercase text-text outline-none admin-foc", "TYPE_TO_CONFIRM"],
   ["app/admin/players/[id]/export-player-button.tsx :: className=\"font-mono text-micro tracking-[0.10em] uppercase px-2.5 h-7 inline-flex items-center gap-1.5 rounded-md border border-border bg-bg-elevated text-text-secondary", "CONTROL_LABEL"],
-  ["app/admin/players/[id]/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.1em] text-warning-fg\">· review</span> ↵ )}", "CONTROL_LABEL"],
+  // ⛔ RETIRED 2026-08-31 (DG-S-07). The `· review` annotation lived in `/admin/players/[id]`'s
+  // hand-rolled tab rail, as a SECOND statement of a KYC state the `:229` chip above the rail
+  // already makes through the §B11 dictionary. §K rule 7d puts a state above the rail, not in
+  // a tab, so the rail was deleted into the kit primitive and this site went with it. The
+  // declaration is removed rather than left to match nothing — a stale key is how this gate
+  // starts reporting on itself instead of on the product.
   ["app/admin/players/[id]/page.tsx :: <td className=\"py-2 pr-3\"><span className=\"font-mono text-micro tracking-wider uppercase\">{txnStatusLabel(t.status)}</span></td> ↵ <td className={[\"py-2 pl-3 font-mono ta", "STATUS_CHIP"],
   ["app/admin/players/[id]/suspend-controls.tsx :: \"font-mono text-micro tracking-[0.10em] uppercase min-h-[var(--tap-min)] px-2.5 py-1.5 rounded-sm border inline-flex items-center gap-1.5\"; ↵ return (", "CONTROL_LABEL"],
   ["app/admin/privacy/dsar-controls.tsx :: <label key={v} className=\"inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.10em] text-text-secondary\"> ↵ <input type=\"radio\" name=\"dsar-type\" v", "CONTROL_LABEL"],

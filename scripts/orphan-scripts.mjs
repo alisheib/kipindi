@@ -25,6 +25,7 @@
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { spawnSync } from "node:child_process";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..");
@@ -60,7 +61,46 @@ function walkCode(dir, prefix = "") {
   }
   return out;
 }
-const files = walkCode(here);
+
+/**
+ * 🔴 GIT-IGNORED FILES ARE NOT THE PRODUCT, AND UNTIL 2026-08-31 THIS GATE COUNTED THEM
+ * (DG-S-07 session, found by running the suite on a second machine).
+ *
+ * The walk above reads the FILESYSTEM while this repo's boundary is GIT, so any ignored
+ * scratch file in `scripts/` scored as an undeclared orphan. `scripts/live/ops/stranded-check.cjs`
+ * — a local ops one-off matching `.gitignore:105`'s `*-check.cjs`, dated 2026-08-10 and never
+ * committed — took `test:all` from 273/273 to 272/273 on one machine while the other stayed
+ * green. ⛔ An instrument that reports on the MACHINE instead of the product: the same shape as
+ * the recursion bug this file's own header records, one layer out.
+ *
+ * ⚠️ IGNORED, NOT UNTRACKED — and the difference is the whole point. Filtering by `git ls-files`
+ * would drop a script written THIS session and not yet committed, which is exactly the file a
+ * coverage gate most needs to see; a new orphan would land silently and the gate would call it
+ * clean. `check-ignore` removes only what git was explicitly told to disregard.
+ *
+ * ⛔ And it FAILS OPEN BY DESIGN: outside a git checkout, or if git is missing, every file stays
+ * in the population. A coverage gate that quietly empties its own population when a subprocess
+ * fails is the vacuous pass this programme keeps paying for.
+ */
+function dropGitIgnored(rels) {
+  if (!rels.length) return rels;
+  try {
+    const r = spawnSync("git", ["check-ignore", "--stdin"], {
+      cwd: here, input: rels.join("\n"), encoding: "utf8",
+    });
+    // 0 = some paths ignored · 1 = none ignored (both fine). Anything else = git could not
+    // answer, so keep every file rather than trust a partial list.
+    if (r.error || (r.status !== 0 && r.status !== 1)) return rels;
+    const ignored = new Set(r.stdout.split("\n").map((s) => s.trim().replace(/\\/g, "/")).filter(Boolean));
+    return rels.filter((rel) => !ignored.has(rel));
+  } catch {
+    return rels;
+  }
+}
+
+const allFiles = walkCode(here);
+const files = dropGitIgnored(allFiles);
+const skippedIgnored = allFiles.length - files.length;
 const dirOf = (rel) => (rel.includes("/") ? rel.slice(0, rel.lastIndexOf("/")) : "");
 const baseOf = (rel) => rel.slice(rel.lastIndexOf("/") + 1);
 
@@ -165,6 +205,9 @@ console.log("─".repeat(70));
 console.log("ORPHAN SCRIPTS — every file in scripts/ must be run, or declared unrun");
 console.log("─".repeat(70));
 console.log(`  files            ${files.length}`);
+// ⛔ Never silent. A gate that narrows its own population without saying so reads as
+// "everything is covered" when it is not — so the number is printed even at zero.
+console.log(`  git-ignored      ${skippedIgnored}   (not the product — excluded from the population)`);
 console.log(`  reachable        ${reachable.size}`);
 console.log(`  orphaned         ${orphans.length}`);
 console.log(`  declared         ${declared.size}   (allowlist recorded ${allow.recordedOn ?? "?"})`);

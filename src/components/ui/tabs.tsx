@@ -111,6 +111,41 @@ export type TabItem = {
   count?: number;
   /** Present ⇒ this rail NAVIGATES: the option renders a `<Link aria-current>`. See `TabControl`. */
   href?: string;
+  /**
+   * A leading glyph (DG-S-07, 2026-08-31).
+   *
+   * ⭐ THE NAME, TYPE AND POSITION ARE `filter-pill.tsx`'s, NOT NEW ONES — `:159`
+   * `glyph?: React.ReactNode`, rendered at `:199` immediately before the label. §K5 says
+   * extend the kit rather than fork it, and the Definition of Done's own failure test is
+   * that a grep for the thing you added finds ONE definition site; a second spelling here
+   * (`icon`, `leading`) would fail both.
+   *
+   * ⛔ **DECORATIVE BY DEFAULT** — `glyphs.tsx:27` (`G`) and `:42` (`GL`) write `aria-hidden`
+   * on the `<svg>`, so a kit glyph is announced to nobody unless a caller works to undo it.
+   * ⚠️ It is a DEFAULT, not construction: `aria-hidden` is written BEFORE `{...p}`, so a
+   * caller passing `aria-hidden={false}` overrides it. That is the reason this slot is
+   * documented as decorative rather than merely assumed to be — a tab whose STATE an officer
+   * must read states it above the rail (§K rule 7d), never in its own icon.
+   *
+   * ⭐ It takes NO opacity of its own and inherits `currentColor`, so it tracks the label's
+   * ink through active / inactive / hover instead of holding a fourth answer to "how bright
+   * is an inactive option". `players/[id]` painted its icons at a flat `opacity-60` in every
+   * state, which left the ACTIVE tab's glyph dimmer than its own label.
+   *
+   * ⚠️ SIZE IS THE CALLER'S, AND NO LAW DECIDES IT. A grep of `DESIGN_AUTHORITY.md` for a
+   * glyph or icon SIZE rule returns nothing: §B10.3 fixes the stroke (1.9) and §C6/§C7 the
+   * idiom, never the scale. `players/[id]` passes `s={12}`; the two `glyph={…}` ReactNode
+   * call sites in the product pass `s={14}` (`results/page.tsx:417,457`) — and the admin
+   * register already files this drift (`DESIGN-GATE-ADMIN-2026-08-28.md:392`, "rails 12 vs
+   * 13, `size=`/`s=` mixed").
+   * ⛔ AND THOSE TWO DO NOT SETTLE IT — they are `FilterPill`s, and §K rule 7c separates the
+   * languages by name: "the underline is the section language; the capsule is the filter
+   * language." Reading a section rail's glyph size off the filter rail is a true measurement
+   * over the wrong population, which is this programme's signature failure. So the size is
+   * left at the call site's own 12, unchanged and unclaimed, and the drift is carried as an
+   * open item rather than settled by a row that was not commissioned to settle it.
+   */
+  glyph?: React.ReactNode;
 };
 
 type Variant = "line" | "segmented" | "pill";
@@ -165,20 +200,35 @@ function TabControl({
 }) {
   const body = (
     <>
+      {/* ⛔ RENDERED BARE, with no wrapper — `filter-pill.tsx:199` is the kit's shipped glyph
+          slot and renders `{glyph}` exactly like this. A wrapping `<span aria-hidden>` would
+          restate what `glyphs.tsx:27` / `:42` already set on the `<svg>` itself, and would
+          also take the flex gap, putting 8px between the glyph and its own label. */}
+      {item.glyph}
       {item.labelEn}
       {item.count !== undefined && <CountBadge count={item.count} tone="brand" size="sm" />}
       {trailing}
     </>
   );
+  /* The hook the rail's scroll-into-view reads. ⛔ A DATA ATTRIBUTE, not a lookup by
+     `aria-current` / `aria-pressed`: those two differ by mode, so keying on either would
+     make the correction work in one mode and silently not in the other. */
+  const activeAttr = active ? "true" : undefined;
   if (item.href) {
     return (
-      <Link href={item.href as never} aria-current={active ? "page" : undefined} className={cls} style={style}>
+      <Link
+        href={item.href as never}
+        aria-current={active ? "page" : undefined}
+        data-tab-active={activeAttr}
+        className={cls}
+        style={style}
+      >
         {body}
       </Link>
     );
   }
   return (
-    <button type="button" aria-pressed={active} onClick={onSelect} className={cls} style={style}>
+    <button type="button" aria-pressed={active} data-tab-active={activeAttr} onClick={onSelect} className={cls} style={style}>
       {body}
     </button>
   );
@@ -225,6 +275,44 @@ export function Tabs({
    *   that same ratchet already records.
    */
   const isNav = tabs.some((t) => t.href);
+
+  /**
+   * ⭐ DG-S-07 (2026-08-31) — BRING THE ACTIVE OPTION INTO VIEW. Measured on production at
+   * 390 before this existed: `/admin/players/[id]` puts **682px of rail in a 348px box** and
+   * left `scrollLeft` at **0**, so opening `?tab=audit` — whose option starts at x=587 —
+   * showed a rail with the CURRENT section entirely off-screen and no way to tell which one
+   * was selected. Three of six options were reachable; the other three, including the active
+   * one, were not.
+   *
+   * ⛔ `scrollLeft`, not `scrollIntoView()`. The latter also scrolls every ancestor, so on a
+   * page whose rail sits ~395px down it drags the whole document on first paint.
+   * ⛔ And no `behavior: "smooth"`: an instant correction is not motion, so it owes
+   * §M6 nothing and cannot animate for a reader who asked it not to.
+   *
+   * ⚠️ Hooks run BEFORE the `segmented` / `pill` early returns on purpose — a hook after a
+   * conditional return is a different hook order on the next render.
+   */
+  const railRef = React.useRef<HTMLElement | null>(null);
+  React.useEffect(() => {
+    const rail = railRef.current;
+    if (!rail || rail.scrollWidth <= rail.clientWidth) return;
+    const active = rail.querySelector<HTMLElement>('[data-tab-active="true"]');
+    if (!active) return;
+    // ⛔ RECTS, NOT `offsetLeft` — and this is a bug that was written and then caught by
+    // reading the diff. `offsetLeft` is measured from the `offsetParent`, which is the nearest
+    // POSITIONED ancestor; this rail sets no `position`, while every option carries `relative`
+    // for its underline. So the options' `offsetParent` is some card further up the tree and
+    // `offsetLeft` would have been an offset into the wrong box — landing the rail at a
+    // plausible but wrong scroll position, which is worse than not scrolling at all because it
+    // looks deliberate. Rect deltas are relative to nothing and cannot drift.
+    const railBox = rail.getBoundingClientRect();
+    const itemBox = active.getBoundingClientRect();
+    const leftWithinRail = itemBox.left - railBox.left + rail.scrollLeft;
+    // Centre it when there is room on both sides; the clamp keeps the two ends flush.
+    const target = leftWithinRail - (rail.clientWidth - itemBox.width) / 2;
+    rail.scrollLeft = Math.max(0, Math.min(target, rail.scrollWidth - rail.clientWidth));
+  }, [value, tabs.length]);
+
   if (variant === "segmented") {
     return (
       <div
@@ -320,7 +408,25 @@ export function Tabs({
   // section language; the capsule is the filter language"). ⛔ It SCROLLS and never wraps, and
   // that is structural rather than taste: the `border-b` is on this container, so a wrapped
   // second row would leave the first with no baseline under it.
-  const railCls = cn("flex items-end gap-1 border-b border-border overflow-x-auto", className);
+  /**
+   * ⭐ `scrollx` IS THE SCROLL AFFORDANCE, AND IT IS DG-A-23's RULING RATHER THAN A NEW ONE
+   * (2026-08-29, `globals.css:2058-2077`). That row refused the two things the register asked
+   * for and said what to do instead: *"make the affordance that already exists VISIBLE, in
+   * both engines."* An **edge-fade is refused** — *"a mask clips an absolutely-positioned
+   * panel exactly as an overflow does"*, DG-A-03's defect one file over — and *"gains a
+   * scrollbar"* ships nothing in Blink, where the global `::-webkit-scrollbar` rules already
+   * paint a thumb. What was missing is the STANDARD properties, which Firefox reads and which
+   * existed nowhere but this class, and a thumb ink above §A1's 3:1 non-text floor:
+   * `--border-control` measures **3.59** against `--bg-elevated`, guarded by `test:contrast`.
+   *
+   * ⛔ THE CLASS, NOT THE `ScrollX` COMPONENT — and §K rule 7c forbids only the component.
+   * Its `tabIndex=0` exists because all 57 of its call sites are TABLES, content with no
+   * focusable children; a rail of links is already keyboard-reachable and the wrapper would
+   * insert a redundant tab stop before every rail. `.scrollx` itself is nothing but scrollbar
+   * paint — `scrollbar-width`, `scrollbar-color` and three `::-webkit-scrollbar` rules — so
+   * wearing it borrows the ruled affordance without the tab stop.
+   */
+  const railCls = cn("scrollx flex items-end gap-1 border-b border-border overflow-x-auto", className);
   const items = (
     <>
       {tabs.map((t) => {
@@ -351,6 +457,12 @@ export function Tabs({
               // real production fonts, and recorded rather than assumed.
               BOX,
               "relative h-[44px] px-4 text-body-sm font-semibold transition-colors duration-quick ease-linear whitespace-nowrap",
+              // ⚠️ The focus ring is NOT set here. It is one CSS rule on `[data-section-rail]`
+              // in `globals.css` (§A3 — one recipe, one definition site), because this rail
+              // CLIPS its own ring: see the note there. ⛔ Do not add a `focus-visible:` class
+              // at this call site — that would be the second home §0a exists to prevent, and
+              // DG-A-02 set the precedent when the Toggle's reach was fixed in `globals.css`
+              // rather than in `toggle.tsx`.
               active ? "text-text" : "text-text-muted hover:text-text",
             )}
             trailing={
@@ -378,8 +490,22 @@ export function Tabs({
      drives use to DISCOVER a page's tabs off the rendered rail instead of a hand-typed list
      (§K rule 7f); one whose options only change in-page state stays `role="group"`. */
   return isNav ? (
-    <nav aria-label={ariaLabel} data-section-rail="" className={railCls}>{items}</nav>
+    <nav
+      ref={railRef as React.RefObject<HTMLElement>}
+      aria-label={ariaLabel}
+      data-section-rail=""
+      className={railCls}
+    >
+      {items}
+    </nav>
   ) : (
-    <div role="group" aria-label={ariaLabel} className={railCls}>{items}</div>
+    <div
+      ref={railRef as React.RefObject<HTMLDivElement>}
+      role="group"
+      aria-label={ariaLabel}
+      className={railCls}
+    >
+      {items}
+    </div>
   );
 }

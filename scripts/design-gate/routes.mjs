@@ -39,3 +39,47 @@ export const PLAYER_AUTHED = [
   "/profile/notifications", "/profile/responsible-gambling", "/profile/security", "/profile/sessions",
   "/profile/source-of-funds",
 ];
+
+/**
+ * ⭐ THE SECTION-RAIL EXPANDER (§K rule 7f, DG-S-07 2026-08-31).
+ *
+ * A tabbed console is a NEW POPULATION for every instrument that walks these lists: the panels
+ * behind the rail are not rendered until their tab is in force, so a drive that only ever
+ * visits `/admin/roles` has never seen `read-tiers-matrix.tsx` — including its own hard
+ * confirm — even though `/admin/roles` is `qa:admin-load`'s floor route.
+ *
+ * ⛔ THE TAB SET IS READ OFF THE RENDERED RAIL, NEVER TYPED HERE AS `?` ENTRIES, and that is
+ * two rulings rather than a preference:
+ *   ① §0a — the tab set's home is the page's own definition. A hand-typed copy in this file is
+ *     a second home that goes stale the first time a tab is renamed, and goes stale SILENTLY.
+ *   ② It is mechanically broken anyway. `admin-shell-seal.mjs` compares a query-stripped
+ *     landing against the route as written, so every `?tab=` entry filed as REDIRECTED and was
+ *     never probed — while `probed` stayed non-zero, so the "zero probes is a skipped run"
+ *     guard never fired. (That comparison is fixed in the same commit as this expander; the
+ *     ruling stands regardless, because it is about where the fact LIVES.)
+ *
+ * Usage: after a drive has loaded `route`, call this with the live page. It returns the
+ * SIBLING tab URLs — the rail's own hrefs, minus the one already on screen.
+ */
+export async function expandSectionRail(page, route) {
+  const hrefs = await page.evaluate(() => {
+    const rail = document.querySelector("[data-section-rail]");
+    if (!rail) return [];
+    return [...rail.querySelectorAll("a[href]")].map((a) => a.getAttribute("href")).filter(Boolean);
+  }).catch(() => []);
+
+  const seen = new Set();
+  const out = [];
+  const here = route.replace(/^https?:\/\/[^/]+/, "");
+  for (const h of hrefs) {
+    // Same-origin, path-relative only — a rail never leaves the page it belongs to.
+    if (!h.startsWith("/")) continue;
+    if (h === here) continue;
+    // ⚠️ Keyed on the FULL href including its query: the whole point is that `?tab=reads` is a
+    // different render of the same path. Deduping on the path would collapse the set to one.
+    if (seen.has(h)) continue;
+    seen.add(h);
+    out.push(h);
+  }
+  return out;
+}
