@@ -660,8 +660,12 @@ did not fire); the §6 emitter scan read every `reason:` in `ai-usage.ts` and in
 which are an INTERNAL vocabulary sharing the field name — this file's own `E-179`; and
 `qa:refusal`'s `--sheet-missing` "control" **passed identically** to the styled run, because
 stripping CSS removes the constraints that make overflow possible. `--prove-red` replaces it and
-replays the shipped defect. `npm run qa:refusal` **121/121** across 320–1280; `npm run red:refusal`
-reports the defect and exits 0 on catching it.
+replays the shipped defect. `npm run qa:refusal` **121/121** across 320–1280;
+`npm run qa:refusal-control` reports the defect and exits 0 on catching it. ⚠️ It is deliberately
+NOT `red:refusal`: in this repo `red:*` means a harness that MUTATES REAL SOURCE, which is what
+`test:red-anchors` §4 audits — and that ratchet correctly reported this as an undeclared 68th
+harness when it squatted there. `test:operator-error` §9 pins the bench's specimen to the product
+so the copy cannot drift from what ships.
 
 **Driven on production.** `npm run qa:refusal-live` **16/16** — signs in as ADMIN and asserts what
 only a real session can: both anchors exist on the live page; the limit input reads `70` and the
