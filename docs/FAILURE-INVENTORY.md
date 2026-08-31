@@ -663,6 +663,25 @@ stripping CSS removes the constraints that make overflow possible. `--prove-red`
 replays the shipped defect. `npm run qa:refusal` **121/121** across 320–1280; `npm run red:refusal`
 reports the defect and exits 0 on catching it.
 
+**Driven on production.** `npm run qa:refusal-live` **16/16** — signs in as ADMIN and asserts what
+only a real session can: both anchors exist on the live page; the limit input reads `70` and the
+meter reads `$20.56 / $70.00` (**re-derived from the screen**, not from what the session wrote);
+`#ai-credit-budget` genuinely **scrolls** (`scrollY=2595`, card at viewport top) rather than merely
+appearing in the URL; and the poll console renders with no client exception — which doubles as a
+smoke test of the new `operator-refusal` module inside the browser bundle. ⛔ It deliberately does
+NOT trigger the refusal: doing so live means lowering the ceiling below current spend, which would
+also refuse the Market Sentinel and the Up & Down oracle on real markets to take a screenshot.
+
+⭐ **AND ITS §5 NEARLY "FIXED" A COMPONENT THAT WAS ALREADY RIGHT** — worth recording, because the
+instinct to repair is the failure here. Run with `measureClipping` bare, it failed on eight
+elements of `/admin/ai-polls`: the `AdminKpi` labels and the poll titles. Those are `truncate`
+**with a `title`**, and [`admin-shell.tsx`](../src/components/admin/admin-shell.tsx)'s own DG-A-10
+comment already states that as the component's deliberate answer, explicitly rejecting both obvious
+repairs (wrap to two lines; drop the tracking) and concluding *"shorter labels are the real fix"*.
+**Ellipsis with a reachable full string is a decision; ellipsis with no affordance is the defect.**
+The check now separates the two and still COUNTS the intentional ones (23 at 360, 21 at 1280) —
+a silently-ignored category is where a real regression hides inside an accepted one.
+
 **⚠️ Left open, filed not fixed — the page still buries the control that is actually blocking.**
 `/admin/ai-usage` leads with **Spend cycles** (`$63.14 / $100`, reassuring) at `page.tsx:336`, while
 the **Credit budget** card holding the top-up-window limit that refuses everything sits at
