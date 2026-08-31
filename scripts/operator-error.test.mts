@@ -350,6 +350,52 @@ ok("§4.4 the one sentence is still defined once, in ai-usage",
     "a client file reaching into lib/server is how server code lands in the browser bundle");
 }
 
+/* ───────── §9 the bench measures the PRODUCT, not a lookalike ───────── */
+/**
+ * ⛔ `qa:refusal` RENDERS A COPY OF THE PRODUCT'S MARKUP, and a copy drifts. That is the one
+ * structural weakness of a static bench: it can go on passing perfectly against markup nobody
+ * ships, which is this programme's signature failure — a true measurement over the wrong
+ * population. Its own header already records two versions of exactly that (a container pinned at
+ * `max-width:420px` with no `w-[90vw]`, and a modal footer modelled as a two-up row when the real
+ * one stacks `w-full`).
+ *
+ * ⭐ SO THE COPY IS PINNED TO THE ORIGINAL HERE. These are cheap string assertions, and each one
+ * fails the moment the product moves and the bench does not.
+ */
+{
+  const bench = src("scripts/design-gate/refusal-bench.mjs");
+  const usage = src("src/lib/server/ai-usage.ts");
+
+  // The label the bench measures must be the label the server actually sends.
+  const shipped = /label: "([^"]*Credit budget[^"]*)"/.exec(usage)?.[1] ?? "";
+  ok("§9.1 the bench measures the label the server really emits",
+    shipped.length > 0 && bench.includes(`: "${shipped}"`), `server="${shipped}"`);
+
+  // The row and button classes the bench measures must be the ones the console really renders.
+  ok("§9.2 the bench's action row matches the console's",
+    con.includes('className="flex flex-wrap gap-2 pt-1"') && bench.includes('"flex flex-wrap gap-2 pt-1"'));
+
+  ok("§9.3 the bench's button basis matches the console's",
+    con.includes("basis-[8rem]") && bench.includes("basis-[8rem]"));
+
+  // The container the bench pins its card in must be the shell the console actually opens in.
+  const shell = src("src/components/ui/ai-progress.tsx");
+  ok("§9.4 the bench's card container matches AiOverlayShell",
+    shell.includes("w-[90vw] max-w-[420px]") && bench.includes("w-[90vw] max-w-[420px]"),
+    "a fixed width here invents an overflow the product does not have");
+
+  // ⛔ AND THE CONTROL IS NOT A `red:*`. That namespace means a harness that MUTATES REAL SOURCE
+  // and proves a guard catches it — which is what `test:red-anchors` §4 audits, and it correctly
+  // reported this control as an undeclared 68th when it squatted there. It mutates nothing.
+  const pkgJson = JSON.parse(raw("package.json")) as { scripts: Record<string, string> };
+  ok("§9.5 the bench control does not squat the red:* namespace",
+    !Object.keys(pkgJson.scripts).some((k) => k.startsWith("red:") && k.includes("refusal"))
+    && typeof pkgJson.scripts["qa:refusal-control"] === "string");
+
+  ok("§9.6 …and it is still reachable as a script",
+    (pkgJson.scripts["qa:refusal-control"] ?? "").includes("--prove-red"));
+}
+
 console.error = realError;
 console.log(`\n${pass} passed · ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

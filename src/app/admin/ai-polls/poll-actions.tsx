@@ -554,16 +554,22 @@ export function GenerateForm({ generatable }: { generatable: string[] }) {
                         {refusalBody(result.refusal) ?? result.message}
                       </p>
                     )}
-                    {/* THE FIGURES, AS DATA — never parsed back out of the sentence. */}
+                    {/* THE FIGURES, AS DATA — never parsed back out of the sentence.
+                        ⛔ RUNGS, NOT `text-[Npx]`. This shipped as text-[10px]/text-[12px] and
+                        `test:type-scale` §4 caught it as "+2 NEW" against a closed scale — the
+                        ratchet exists so the ladder can only gain adopters. `text-micro` IS 10px
+                        and `text-label` IS 12px (tailwind.config.ts:198/200), so this is the same
+                        render on the scale. ⚠️ The literals elsewhere in this file are older and
+                        sit under the ratchet; new markup does not get to add to them. */}
                     {refusalRows(result.refusal).length > 0 && (
                       <dl className="flex flex-wrap gap-x-5 gap-y-1.5">
                         {refusalRows(result.refusal).map((f) => (
                           <div key={f.label} className="flex items-baseline gap-1.5">
-                            <dt className="font-mono text-[10px] uppercase eyebrow text-text-tertiary">{f.label}</dt>
+                            <dt className="font-mono text-micro uppercase eyebrow text-text-tertiary">{f.label}</dt>
                             {/* ⚠️ NEUTRAL, not `text-no-300`. Painting BOTH figures danger-red says the
                                 LIMIT is at fault as loudly as the spend — and the limit is the thing
                                 the operator is about to raise. The medallion carries the alarm. */}
-                            <dd className="font-mono text-[12px] tabular text-text">{f.value}</dd>
+                            <dd className="font-mono text-label tabular text-text">{f.value}</dd>
                           </div>
                         ))}
                       </dl>

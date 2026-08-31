@@ -28,7 +28,7 @@
  *
  * Usage:
  *   node scripts/design-gate/refusal-bench.mjs                 # measure + screenshot
- *   node scripts/design-gate/refusal-bench.mjs --prove-red     # THE CONTROL — must report the defect
+ *   npm run qa:refusal-control                                # THE CONTROL — must report the defect
  *   node scripts/design-gate/refusal-bench.mjs --sheet-missing # premise check only: is the sheet read
  *   LIVE_BASE=… to point elsewhere.
  * Output: `.qa-design-gate/refusal-bench/` (evidence — gitignored, regenerable).
@@ -52,7 +52,13 @@ const SHEET_MISSING = process.argv.includes("--sheet-missing");
  * control has to change the VERDICT, not the numbers. It is kept, and demoted to what it
  * honestly is: a premise check that the sheet is being read.
  *
- * `--prove-red` is the control. It re-renders the card with the label and the non-wrapping row
+ * `--prove-red` (`npm run qa:refusal-control`) is the control. ⛔ It is deliberately NOT named
+ * `red:refusal`: in this repo `red:*` means a harness that MUTATES REAL SOURCE to prove a guard
+ * catches it, which is what `test:red-anchors` §4 audits — and that ratchet correctly reported
+ * this as an undeclared 68th harness when it squatted there. This mutates nothing; it re-renders
+ * the specimen. `test:operator-error` §9 pins the specimen to the product so the copy cannot drift.
+ *
+ * It re-renders the card with the label and the non-wrapping row
  * AS THEY SHIPPED BEFORE THIS FIX — the 224px "Open AI usage → Credit budget" in a plain
  * `flex gap-2` — and REQUIRES the bench to report failures. It replays the actual defect
  * rather than removing the conditions that make defects possible.
