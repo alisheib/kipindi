@@ -92,7 +92,9 @@ const CATEGORIES = [
 ] as const;
 
 type GenPhase = "idle" | "calling" | "validating" | "filtering" | "done";
-type GenResult = { state: string; title: string; quality: number; reasons: string[] } | null;
+/** `message` is the server's OWN refusal sentence, carried verbatim — see the failure
+ *  branch in the overlay for why nothing here may invent a cause. */
+type GenResult = { state: string; title: string; quality: number; reasons: string[]; message?: string } | null;
 
 const PHASE_LABELS: Record<GenPhase, string> = {
   idle: "",
@@ -264,7 +266,8 @@ export function GenerateForm({ generatable }: { generatable: string[] }) {
           state,
           title: r.ok ? r.poll.titleEn : "",
           quality: r.ok ? r.poll.overallQuality : 0,
-          reasons: r.ok ? r.poll.filterReasons.map((r: string) => REASON_LABELS[r] ?? r) : ["Server error"],
+          reasons: r.ok ? r.poll.filterReasons.map((r: string) => REASON_LABELS[r] ?? r) : [],
+          message: r.ok ? undefined : r.error,
         });
         setPhase("done");
         router.refresh();
@@ -273,7 +276,7 @@ export function GenerateForm({ generatable }: { generatable: string[] }) {
         }
       } catch {
         clearTimers();
-        setResult({ state: "VALIDATION_FAILED", title: "", quality: 0, reasons: ["Server error — try again"] });
+        setResult({ state: "VALIDATION_FAILED", title: "", quality: 0, reasons: [], message: "The request never reached the server. Check the connection and try again." });
         setPhase("done");
       }
     });
@@ -507,14 +510,26 @@ export function GenerateForm({ generatable }: { generatable: string[] }) {
                       <span className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-full bg-no-500/15 text-no-300 shrink-0"><I.x s={18} /></span>
                       <div>
                         <p className="font-display text-[15px] font-semibold text-text">Generation failed</p>
-                        <p className="font-mono text-[11px] text-no-300">AI provider error</p>
+                        {/* ⛔ NO SUBLINE HERE, DELIBERATELY — this branch does not know the cause.
+                            It read "AI provider error" until 2026-08-31, when every failure on this
+                            screen was our OWN spend cap refusing before Anthropic was ever called: the
+                            single place that named a cause named the wrong one, and pointed the operator
+                            away from the control actually stopping them. The replacement must not be
+                            another guess — "nothing was charged" is false too, because L961/L985 reach
+                            this state AFTER a paid call. `result.message` below is the server's own
+                            sentence. When there isn't one, say nothing. */}
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {result.reasons.map((r, i) => (
-                        <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-pill text-[10px] font-mono border border-no-700/40 bg-no-500/10 text-no-300">{r}</span>
-                      ))}
-                    </div>
+                    {result.message && (
+                      <p className="text-[13px] text-text-muted leading-snug">{result.message}</p>
+                    )}
+                    {result.reasons.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {result.reasons.map((r, i) => (
+                          <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-pill text-[10px] font-mono border border-no-700/40 bg-no-500/10 text-no-300">{r}</span>
+                        ))}
+                      </div>
+                    )}
                   </>
                 )}
                 <div className="flex gap-2 pt-1">
@@ -978,7 +993,12 @@ export function ReviewActions({ poll }: { poll: StoredAIPoll }) {
           overlay.succeed("New poll generated", `State: ${r.poll.state} · Quality: ${r.poll.overallQuality}%`);
           if (r.poll.state === "PENDING_REVIEW") revealElement(`poll-${r.poll.id}`);
         } else {
-          overlay.fail("Regeneration failed", "The AI could not produce a valid poll. Try again.");
+          // ⛔ NEVER hardcode a cause here. This line used to read "The AI could not produce a
+          // valid poll. Try again." — and on 2026-08-31 it said exactly that while the server
+          // was refusing on our own spend cap, so the operator retried against a ceiling that
+          // could not yield. `r.error` is the server's own sentence; it names the real control
+          // and where to change it. See `OperatorError` in lib/server/safe-error.ts.
+          overlay.fail("Regeneration failed", r.error);
         }
       } catch {
         overlay.fail("Regeneration failed", "Server error — please try again.");

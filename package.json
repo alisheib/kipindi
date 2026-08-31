@@ -110,6 +110,7 @@
     "test:lifecycle-e2e": "tsx scripts/poll-lifecycle-e2e.test.mts",
     "test:sentinel-guards": "tsx scripts/sentinel-strict-guards.test.mts",
     "test:i18n": "tsx scripts/i18n-parity.test.mts",
+    "test:operator-error": "tsx scripts/operator-error.test.mts",
     "test:labels": "tsx scripts/label-lexicon.test.mts",
     "test:red-anchors": "tsx scripts/red-anchors.test.mts",
     "red:labels": "node scripts/red-labels.mjs",

@@ -28,6 +28,7 @@ import { audit } from "./audit";
 import { getAIProvider, type AIPollGeneration, type AIProviderResponse, type PollIdea } from "./ai-provider";
 import { getAIPollConfig, computeSelectionClosedAt } from "./ai-poll-config";
 import { assertAiBudget, describeAiBudgetBlock } from "./ai-usage";
+import { OperatorError } from "./safe-error";
 import { listMarkets, resolvePublishCategory } from "./market-service";
 import { seedDefaultSources, getGeneratableCategories, isSourceTrusted } from "./source-registry";
 import { prisma, hasDatabase } from "./prisma";
@@ -837,7 +838,7 @@ export async function generateAIPoll(opts: {
   // alert after the fact; the sole real cost cap was "a human clicks Generate",
   // which a calendar-driven generator (F8) removes. Now spend is enforced.
   const budget = await assertAiBudget("polls");
-  if (!budget.ok) throw new Error(describeAiBudgetBlock(budget));
+  if (!budget.ok) throw new OperatorError(describeAiBudgetBlock(budget));
 
   const now = new Date().toISOString();
   const parentPoll = opts.regenerationOf ? await store.get(opts.regenerationOf) : null;
@@ -1183,7 +1184,7 @@ export async function generateAIPollBatch(opts: {
   // Budget gate before the (expensive) ideation call too — a batch is the most
   // costly path, so it must not even start when the cycle is exhausted.
   const batchBudget = await assertAiBudget("polls");
-  if (!batchBudget.ok) throw new Error(describeAiBudgetBlock(batchBudget));
+  if (!batchBudget.ok) throw new OperatorError(describeAiBudgetBlock(batchBudget));
 
   const cfg = getAIPollConfig();
   const requested = Number.isFinite(opts.count) ? Math.floor(opts.count) : 1;
