@@ -13,7 +13,7 @@ export default function Loading() {
         {/* Cohort retention heatmap */}
         <SkTableCard cols={7} rows={5} minWidth={640} />
         {/* GGR by category + top markets */}
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <SkCard lines={5} />
           <SkCard lines={5} />
         </div>

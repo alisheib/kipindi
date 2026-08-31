@@ -174,7 +174,15 @@ export default async function InsightsPage() {
           </p>
         </AdminCard>
 
-        <div className="grid gap-4 lg:grid-cols-2">
+        {/* ⛔ `grid-cols-1` IS LOAD-BEARING, NOT DECORATION. Without a BASE column definition the
+            implicit mobile column is `auto`, whose floor is MIN-CONTENT — so a card that cannot
+            shrink pushes the row wider than the viewport and the whole page scrolls sideways.
+            `grid-cols-1` emits `repeat(1, minmax(0, 1fr))`, and the `0` is what lets it shrink.
+            Measured at 320 by `qa:fit`: this grid was a correct 280px while its own card rendered
+            at 379px and broke out, taking 42 escaping elements with it. ⚠️ The table inside was
+            NOT at fault — its `ScrollX` was working (238px viewport around a 640px table).
+            ⭐ 29 other grids in this repo already write `grid-cols-1`; five had omitted it. */}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {/* GGR by category — reuses the normative money module. */}
           <AdminCard title="GGR by category · 30d" sw="GGR kwa aina · siku 30">
             {cats === null ? (

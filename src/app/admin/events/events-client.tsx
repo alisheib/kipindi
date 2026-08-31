@@ -119,7 +119,7 @@ export function EventsClient({
   return (
     <form action={add} className="rounded-xl border border-border bg-bg-elevated p-4">
       <p className="mb-3 font-mono text-micro uppercase eyebrow font-bold text-text-subtle">Add a real event</p>
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <label className="block">
           <span className="mb-1 block text-[11.5px] text-text-muted">What happens</span>
           <Input name="title" required placeholder="Simba SC vs Yanga — Kariakoo Derby" />

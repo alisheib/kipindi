@@ -193,7 +193,7 @@ export function DateTimeRangeFilter({
 
       {allowCustom && open && (
         <div className="rounded-lg border border-border bg-bg-inset p-3">
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <div className="mb-1 font-mono text-micro uppercase eyebrow text-text-faint">{t.common.rangeFrom}</div>
               <div className="flex items-center gap-1.5">

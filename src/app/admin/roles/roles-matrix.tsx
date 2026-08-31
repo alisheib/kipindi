@@ -102,7 +102,13 @@ export function RolesMatrix({ matrix: initial }: { matrix: Matrix }) {
                 <div key={d} className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 rounded-md border border-border bg-bg-overlay px-3 py-2">
                   <div className="min-w-0 flex-1 basis-[14rem]">
                     <p className="text-body-sm text-text">{DOMAIN_LABEL[d]}</p>
-                    <p className="text-micro text-text-tertiary truncate">
+                    {/* ⚠️ AND A `title` AS WELL, because the basis fixed the COLLAPSE but not the
+                        length: `qa:fit` re-measured this at 204px (up from 27px) against a longest
+                        description of 715px — "See finance, reports, transactions, payments…". The
+                        row now gives the text its fair share; DG-A-10's ruling covers the rest,
+                        keeping the full string reachable rather than lost. */}
+                    <p className="text-micro text-text-tertiary truncate"
+                       title={`See ${DOMAIN_SUMMARY[d].view}${DOMAIN_SUMMARY[d].act !== "—" ? ` · Do: ${DOMAIN_SUMMARY[d].act}` : ""}`}>
                       See {DOMAIN_SUMMARY[d].view}{DOMAIN_SUMMARY[d].act !== "—" ? ` · Do: ${DOMAIN_SUMMARY[d].act}` : ""}
                     </p>
                   </div>

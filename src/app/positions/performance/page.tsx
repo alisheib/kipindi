@@ -198,7 +198,7 @@ export default async function PerformancePage() {
 
           {/* ── C2d highlights: best-win gilt crest + streak pip-chain ─
               (earned money / earned standing — gold is legitimate here) ── */}
-          <section className="grid gap-3 md:grid-cols-2">
+          <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {/* Best-win gilt crest */}
             <div
               className="relative overflow-hidden rounded-xl border border-gold-700/50 p-5"
