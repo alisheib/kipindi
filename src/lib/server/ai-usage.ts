@@ -282,8 +282,36 @@ export async function getCreditConfig(): Promise<CreditConfig> {
 export async function setCreditLimit(limitUsd: number): Promise<void> {
   const cur = await getCreditConfig();
   const next = Math.max(0, limitUsd);
-  const spent = next > 0 ? await aiUsageDal.sumCostSince(cur.topUpWindowStartIso) : 0;
-  await saveCredit({ ...cur, limitUsd: next, alertedLevel: alertLevelFor(spent, next) });
+  // ⛔ THE METER MUST NOT BE ABLE TO BLOCK A CEILING CHANGE. `assertAiBudget` fails OPEN on any
+  // internal error precisely so a broken meter can never stop the platform; a `setCreditLimit`
+  // that throws when `sumCostSince` throws would be the mirror defect — the operator's attempt to
+  // RAISE a limit (the remedy this whole seam points them at) silently lost to a metering fault.
+  // On an unreadable meter, keep the level unchanged: the ceiling still moves.
+  let reached: CreditConfig["alertedLevel"] | null = null;
+  if (next > 0) {
+    try { reached = alertLevelFor(await aiUsageDal.sumCostSince(cur.topUpWindowStartIso), next); }
+    catch { reached = null; }
+  } else {
+    reached = "none";
+  }
+
+  /**
+   * 🔴 NEVER RAISE `alertedLevel`, ONLY LOWER IT — and the first version of this line got that
+   * backwards. The field means "the highest level we have already ANNOUNCED": `checkLimitAndAlert`
+   * is the ONLY thing that writes it, and only immediately before actually emailing (L461).
+   * Writing `alertLevelFor(spent, next)` conflates ANNOUNCED with REACHED, and the two differ in
+   * exactly one direction:
+   *   · raising a ceiling clear of spend  → reached drops → re-arms. Correct, and the original fix.
+   *   · LOWERING a ceiling into the 80% band → reached rises to `warn` → marks the 80% warning as
+   *     already sent when nobody ever sent it. The operator silently loses the warning email that
+   *     the Credit budget card promises them.
+   * ⚠️ `test:operator-error` §7.2/§7.3 ASSERTED the broken behaviour — they encoded "reached" as if
+   * it were "announced", so the suite went green over a real defect. Both now assert the min rule.
+   */
+  const announced = reached === null
+    ? cur.alertedLevel
+    : (LEVEL_ORDER[reached] < LEVEL_ORDER[cur.alertedLevel] ? reached : cur.alertedLevel);
+  await saveCredit({ ...cur, limitUsd: next, alertedLevel: announced });
 }
 
 /**
@@ -416,7 +444,12 @@ export function aiBudgetRefusal(b: AiBudgetBlock): OperatorRefusal {
     return {
       reason: "ai_cycle_ended",
       detail: { lastClosedIndex: done, nextIndex: done + 1 },
-      fix: { label: "Open Spend cycles", href: "/admin/ai-usage#ai-cycles" },
+      // ⛔ `#ai-cycle-gate`, NOT `#ai-cycles`. The only control that lifts this refusal is
+      // `StartCycleControl`, and it lives in the paused-gate banner (page.tsx ~L321) — ABOVE the
+      // "Spend cycles" card. Anchoring at the card scrolled the Start button off the top of the
+      // screen, so the remedy button went to the wrong place. Caught by an adversarial audit, not
+      // by the guard: §6.5 only proved the anchor EXISTS, never that it holds the control.
+      fix: { label: "Open Spend cycles", href: "/admin/ai-usage#ai-cycle-gate" },
     };
   }
   return {

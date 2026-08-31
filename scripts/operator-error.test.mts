@@ -31,6 +31,24 @@
  *
  * Run: npm run test:operator-error
  */
+/**
+ * 🔴 FORCE THE IN-MEMORY DAL BEFORE ANYTHING BINDS TO A DATABASE. §5 and §7 WRITE: §5 calls
+ * `recordAiUsage` (a real row) and §7 calls `setCreditLimit` (a real SystemConfig write). Run with
+ * `DATABASE_URL` set — a `railway run`, a shell that sourced the wrong `.env` — this suite would
+ * inject ~$3.50 of PHANTOM SPEND into the production usage ledger and then rewrite the LIVE AI
+ * credit limit to BELOW current spend, blocking poll generation, market resolution and the Up &
+ * Down oracle on a real-money platform. A test that can do that is more dangerous than the bug it
+ * guards.
+ *
+ * ⛔ THIS IS THE REPO'S EXISTING CONVENTION AND I SIMPLY DID NOT FOLLOW IT — `ai-usage.test.mts:8`
+ * has carried these three lines all along. The §0 assertion below is the part that convention
+ * lacks: env-setting is silent if a module has already bound, so the suite also PROVES it is on
+ * the memory store before it writes anything.
+ */
+process.env.USE_PRISMA_DAL = "false";
+delete process.env.DATABASE_URL;
+delete process.env.DIRECT_URL;
+
 import { readFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -48,6 +66,22 @@ const raw = (p: string) => readFileSync(join(ROOT, p), "utf8");
 // `safeError` logs the raw message; silence it so the suite output stays readable.
 const realError = console.error;
 console.error = () => {};
+
+/* ───────── §0 the premise: this suite may NOT touch a real database ───────── */
+// ⛔ FAIL-FAST, BEFORE ANY WRITE. Setting env is silent if a module bound earlier, so the guard
+// asserts the OUTCOME rather than trusting the intent. If this ever goes red, stop — do not
+// "fix" it by deleting the check; §5 and §7 write, and the target would be production.
+{
+  const { hasDatabase } = await import("../src/lib/server/prisma.ts");
+  if (hasDatabase()) {
+    console.error = realError;
+    console.error("\n⛔ ABORT — a DATABASE is reachable. §5 records usage and §7 rewrites the AI\n" +
+      "   credit limit; against a real database that is phantom spend in the ledger and a live\n" +
+      "   money control silently changed. Unset DATABASE_URL and re-run.\n");
+    process.exit(1);
+  }
+  ok("§0 the suite is on the in-memory store — it cannot reach production", true);
+}
 
 /* ─────────────────────── §1 the sanitiser ─────────────────────── */
 
@@ -274,9 +308,29 @@ ok("§4.4 the one sentence is still defined once, in ai-usage",
     const page = join("src/app", route, "page.tsx");
     ok(`§6.4 ${href} → the route exists`, existsSync(join(ROOT, page)), page);
     if (anchor && existsSync(join(ROOT, page))) {
+      const pageSrc = raw(page);
       ok(`§6.5 ${href} → #${anchor} is rendered on that page`,
-        raw(page).includes(`id="${anchor}"`),
+        pageSrc.includes(`id="${anchor}"`),
         "the anchor must exist or the button lands at the top of a long page");
+
+      /**
+       * ⛔ AN ANCHOR THAT EXISTS IS NOT AN ANCHOR THAT HELPS, and §6.5 alone let a real defect
+       * through. `ai_cycle_ended` pointed at `#ai-cycles` — a card that RENDERS cycle history and
+       * contains no control. The only thing that lifts that refusal, `StartCycleControl`, sits in
+       * the paused-gate banner ABOVE it, so following the remedy scrolled the button the operator
+       * needed off the top of the screen. §6.5 passed the whole time: the id was there.
+       * An adversarial audit found it, not this suite. So the anchored region must now contain
+       * something the operator can actually operate.
+       */
+      // ⚠️ 6000 chars, not 2500: this repo writes long explanatory comments INSIDE its markup, and
+      // `#ai-credit-budget` sits 44 lines above its own `<CreditControls>` — almost all of it
+      // prose. A window tuned to line count rather than to this repo's actual density reported a
+      // correct card as control-less on the first run.
+      const at = pageSrc.indexOf(`id="${anchor}"`);
+      const region = at >= 0 ? pageSrc.slice(at, at + 6000) : "";
+      ok(`§6.5b ${href} → #${anchor} actually CONTAINS a control`,
+        /<(Button|button|form|Link|input|select)\b/.test(region) || /<[A-Z]\w*(Control|Controls)\b/.test(region),
+        "scrolling to a read-only card leaves the operator exactly where they were stuck");
     }
   }
 
@@ -313,13 +367,35 @@ ok("§4.4 the one sentence is still defined once, in ai-usage",
     after.alertedLevel === "none",
     `spent $${spentNow.toFixed(4)}, new limit $${after.limitUsd.toFixed(4)}, level ${after.alertedLevel}`);
 
-  await setCreditLimit(spentNow * 1.05);        // now spend sits above 80% but below 100%
-  ok("§7.2 a ceiling that puts spend past 80% lands on 'warn', not 'none'",
-    (await getCreditConfig()).alertedLevel === "warn");
+  // 🔴 THESE TWO ASSERTED THE BUG. They required `alertedLevel` to RISE to match the new ceiling —
+  // "reached" — when the field means "already ANNOUNCED". Raising it marks an email as sent that
+  // nobody sent, so the operator silently loses the very warning the Credit budget card promises.
+  // A green suite over a real defect, written by the same hand that wrote the defect.
+  await setCreditLimit(spentNow * 1.05);        // spend now sits above 80% but below 100%
+  ok("§7.2 lowering into the 80% band does NOT mark the unsent warning as already sent",
+    (await getCreditConfig()).alertedLevel === "none",
+    "warn was never announced, so it must still be allowed to fire");
 
   await setCreditLimit(spentNow * 0.5);         // lower it BELOW current spend
-  ok("§7.3 lowering below spend lands on 'limit' — it does not re-announce what was told",
+  ok("§7.3 lowering below spend still leaves the limit alert free to fire",
+    (await getCreditConfig()).alertedLevel === "none");
+
+  // …and the no-duplicate half of the same rule: a level ALREADY announced is never re-armed by a
+  // further lowering, or the operator gets the same alert twice.
+  globalThis.__50PICK_AI_CREDIT = { ...(await getCreditConfig()), alertedLevel: "limit" };
+  await setCreditLimit(spentNow * 0.4);
+  ok("§7.3b an ALREADY-announced level survives a further lowering — no duplicate alert",
     (await getCreditConfig()).alertedLevel === "limit");
+
+  // And a broken meter must not lose the ceiling change (assertAiBudget fails open; so must this).
+  const dal = (await import("../src/lib/server/ai-usage-dal.ts")).aiUsageDal as { sumCostSince: (s: string) => Promise<number> };
+  const realSum = dal.sumCostSince;
+  dal.sumCostSince = async () => { throw new Error("meter unavailable"); };
+  let threw = false;
+  try { await setCreditLimit(123.45); } catch { threw = true; }
+  dal.sumCostSince = realSum;
+  ok("§7.3c a broken meter cannot block a ceiling change",
+    !threw && (await getCreditConfig()).limitUsd === 123.45, threw ? "setCreditLimit threw" : "");
 
   ok("§7.4 the threshold formula is defined ONCE and shared",
     (src("src/lib/server/ai-usage.ts").match(/function alertLevelFor\(/g) ?? []).length === 1

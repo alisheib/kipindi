@@ -549,11 +549,17 @@ export function GenerateForm({ generatable }: { generatable: string[] }) {
                         this card's own title and repeats both figures, so rendering it here printed
                         one fact three times. It stays as the fallback for an unknown reason, which
                         has no title and no figures of its own. */}
-                    {(refusalBody(result.refusal) ?? result.message) && (
-                      <p className="text-[13px] text-text-muted leading-snug">
-                        {refusalBody(result.refusal) ?? result.message}
-                      </p>
-                    )}
+                    {/* ⚠️ NOT WHEN IT ONLY REPEATS THE TITLE. On a crash the server returns the bare
+                        fallback ("Generation failed"), which is also what the heading falls back to
+                        — so the card printed the same three words twice, one above the other, and
+                        said nothing with either. */}
+                    {(() => {
+                      const body = refusalBody(result.refusal) ?? result.message;
+                      const title = refusalTitle(result.refusal) ?? "Generation failed";
+                      return body && body !== title ? (
+                        <p className="text-[13px] text-text-muted leading-snug">{body}</p>
+                      ) : null;
+                    })()}
                     {/* THE FIGURES, AS DATA — never parsed back out of the sentence.
                         ⛔ RUNGS, NOT `text-[Npx]`. This shipped as text-[10px]/text-[12px] and
                         `test:type-scale` §4 caught it as "+2 NEW" against a closed scale — the
@@ -635,6 +641,7 @@ export function BatchGenerateForm({ maxBatch, remaining, generatable }: { maxBat
   const [pct, setPct] = useState(0);
   const [summary, setSummary] = useState<BatchSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [refusal, setRefusal] = useState<OperatorRefusal | undefined>(undefined);
   const tick = useRef<ReturnType<typeof setInterval> | null>(null);
   const router = useRouter();
 
@@ -680,20 +687,27 @@ export function BatchGenerateForm({ maxBatch, remaining, generatable }: { maxBat
           setPhase("done");
           if (r.summary.PENDING_REVIEW > 0) revealElement("ai-polls-pending");
         } else {
-          setError("Server error — try again with fewer polls.");
+          // 🔴 THE SAME INCIDENT, ONE CONTROL OVER ON THE SAME SCREEN. This read
+          // "Server error — try again with fewer polls." — hardcoded, discarding both the server's
+          // sentence and its refusal, and advising a retry that CANNOT work: fewer polls does not
+          // help when the spend ceiling is the thing refusing. Generate and Regenerate were fixed
+          // on 2026-08-31 and this was missed, which is exactly why the seam is shared rather than
+          // patched per control.
+          setError(r.error);
+          setRefusal(r.refusal);
           setPct(100);
           setPhase("done");
         }
       } catch {
         clearTick();
-        setError("Server error — please try again.");
+        setError("The request never reached the server. Check the connection and try again.");
         setPct(100);
         setPhase("done");
       }
     });
   };
 
-  const dismiss = () => { setPhase("idle"); setSummary(null); setError(null); setPct(0); };
+  const dismiss = () => { setPhase("idle"); setSummary(null); setError(null); setRefusal(undefined); setPct(0); };
 
   const active = phase !== "idle";
   // Estimated poll currently in flight (1-based), derived from the simulated %.
@@ -771,13 +785,39 @@ export function BatchGenerateForm({ maxBatch, remaining, generatable }: { maxBat
                     {error ? <I.x s={18} /> : <I.check s={18} />}
                   </span>
                   <p className="font-display text-[15px] font-semibold text-text">
-                    {error ? "Batch failed" : `Batch complete — ${summary?.total ?? 0} generated`}
+                    {/* A known refusal NAMES ITSELF — "Batch failed" only says what did not happen. */}
+                    {error ? (refusalTitle(refusal) ?? "Batch failed") : `Batch complete — ${summary?.total ?? 0} generated`}
                   </p>
                 </div>
                 <p className="text-body-sm text-text-muted">
-                  {error ?? `${summary?.pending ?? 0} ready for review · ${summary?.filtered ?? 0} filtered`}
+                  {error
+                    ? (refusalBody(refusal) ?? error)
+                    : `${summary?.pending ?? 0} ready for review · ${summary?.filtered ?? 0} filtered`}
                 </p>
-                <button type="button" onClick={dismiss} className="btn btn-ghost btn-sm rounded-pill w-full">Dismiss</button>
+                {/* The figures, as data — same shape the single generator renders. */}
+                {refusalRows(refusal).length > 0 && (
+                  <dl className="flex flex-wrap gap-x-5 gap-y-1.5">
+                    {refusalRows(refusal).map((f) => (
+                      <div key={f.label} className="flex items-baseline gap-1.5">
+                        <dt className="font-mono text-micro uppercase eyebrow text-text-tertiary">{f.label}</dt>
+                        <dd className="font-mono text-label tabular text-text">{f.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
+                {/* ⛔ THE REMEDY REPLACES THE DISMISS-ONLY CARD when the server named one. A batch
+                    that was refused by the spend cap must not leave the operator with nothing but
+                    "Dismiss" and the memory of advice to use fewer polls. */}
+                {refusalFix(refusal) ? (
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" onClick={dismiss} className="btn btn-ghost btn-sm rounded-pill flex-1 basis-[8rem]">Dismiss</button>
+                    <Link href={refusalFix(refusal)!.href} onClick={dismiss} className="btn btn-primary btn-sm rounded-pill flex-1 basis-[8rem] text-center">
+                      {refusalFix(refusal)!.label}
+                    </Link>
+                  </div>
+                ) : (
+                  <button type="button" onClick={dismiss} className="btn btn-ghost btn-sm rounded-pill w-full">Dismiss</button>
+                )}
               </div>
             )}
         </AiOverlayShell>

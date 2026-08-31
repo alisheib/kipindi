@@ -317,9 +317,16 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
             or AI resolving blocked ... we see each cycle how much it lasted."
             ⛔ Every figure below is either measured or "—". Nothing here is estimated. */}
 
-        {/* The gate — the loudest thing on the page when the AI is paused. */}
+        {/* The gate — the loudest thing on the page when the AI is paused.
+            ⛔ `id` IS THE ANCHOR THE `ai_cycle_ended` REFUSAL LINKS TO, and it belongs HERE, not on
+            the "Spend cycles" card below. `StartCycleControl` — the ONLY control that lifts that
+            refusal — is inside this banner. The refusal first pointed at `#ai-cycles`, which sits
+            BELOW this, so following the remedy scrolled the Start button off the TOP of the screen:
+            a remedy button that goes to the wrong place is the defect this whole seam exists to
+            remove. ⚠️ This banner renders only while the gate is blocked — which is exactly when
+            the refusal can be raised, so the anchor exists whenever anything links to it. */}
         {cyc.gate.blocked ? (
-          <div className="rounded-lg border border-no-700/60 bg-no-500/10 px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div id="ai-cycle-gate" className="rounded-lg border border-no-700/60 bg-no-500/10 px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3">
             <I.warning s={16} className="text-no-300 shrink-0" />
             <div className="flex-1">
               <p className="font-bold text-text">AI is paused — cycle {cyc.gate.lastClosedIndex} is complete</p>

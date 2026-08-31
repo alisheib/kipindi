@@ -68,11 +68,20 @@ try {
   ok("§2.4 the Credit budget card names the top-up window limit",
     /Spend limit per top-up window/i.test(creditText), creditText.slice(0, 90));
 
-  // ⭐ RE-DERIVED FROM THE LIVE SCREEN, not from what this session wrote earlier.
+  /**
+   * ⛔ DO NOT PIN THE LIMIT TO A CONSTANT. This asserted `=== 70`, which meant the suite went RED
+   * the moment an operator did the thing the refusal tells them to do — raise the limit. A guard
+   * that fails when the product is used correctly trains people to ignore it.
+   * ⭐ The invariant that IS true for any ceiling: the input and the meter's cap agree, and the
+   * cap is a positive number. That is re-derived from the live screen every run.
+   */
   const limitVal = hasCredit ? await page.locator('#ai-credit-budget input[name="limitUsd"]').inputValue().catch(() => "") : "";
-  ok("§2.5 the live limit reads 70", Number(limitVal) === 70, `input value = "${limitVal}"`);
-
   const meter = /Top-up window spend[^\n]*/i.exec(creditText)?.[0] ?? "";
+  const meterCap = /\/\s*\$([\d,]+(?:\.\d+)?)/.exec(meter)?.[1]?.replace(/,/g, "") ?? "";
+  ok("§2.5 the live limit is a real ceiling, and the input agrees with the meter",
+    Number(limitVal) > 0 && Number(meterCap) > 0 && Math.abs(Number(limitVal) - Number(meterCap)) < 0.005,
+    `input="${limitVal}" meterCap="${meterCap}"`);
+
   ok("§2.6 the top-up window meter is rendered", meter.length > 0, meter.slice(0, 80));
 
   await shot(page, "refusal-e2e-credit-budget");
@@ -96,6 +105,12 @@ try {
     land ? `card top=${land.top}px, viewport=${land.vh}px, scrollY=${land.scrollY}` : "no element");
 
   /* ── §4 · the console that renders the refusal still loads ───────────────────────────── */
+  // ⛔ LISTEN BEFORE NAVIGATING. This attached the `pageerror` handler AFTER the page had loaded
+  // and hydrated, so the hydration failure it claims to smoke-test had already happened and could
+  // never be seen — the assertion passed on every run for the wrong reason.
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(String(e)));
+
   const pollsRes = await page.goto(`${BASE}/admin/ai-polls`, { waitUntil: "domcontentloaded", timeout: 90_000 });
   ok("§4.1 /admin/ai-polls loads", !!pollsRes && pollsRes.ok(), `HTTP ${pollsRes && pollsRes.status()}`);
   await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => {});
@@ -106,8 +121,6 @@ try {
 
   // The console imports `operator-refusal` at module scope — a bad import would blank the page
   // or throw in the client bundle, so a rendered console is also a smoke test of that module.
-  const errors = [];
-  page.on("pageerror", (e) => errors.push(String(e)));
   await page.waitForTimeout(1200);
   ok("§4.3 no client-side exception on the refusal-rendering console", errors.length === 0, errors.join(" | ").slice(0, 120));
 
