@@ -333,6 +333,7 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
         ) : null}
 
         <AdminCard
+          id="ai-cycles"
           title="Spend cycles"
           sw="Mizunguko ya matumizi"
           action={<span className="font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary">${cyc.config.sizeUsd.toLocaleString()} per cycle · rates {cyc.priceRev}</span>}
@@ -664,7 +665,7 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
         </AdminCard>
 
         {/* Credit limit + top-up window */}
-        <AdminCard title="Credit budget" sw="Bajeti ya salio">
+        <AdminCard id="ai-credit-budget" title="Credit budget" sw="Bajeti ya salio">
           <p className="text-caption text-text-secondary mb-3">
             Anthropic has no API for exact remaining balance, so this tracks spend against a budget you set.
             Admins are emailed at <strong>~80%</strong> and again at <strong>100%</strong>. After you top up credit on the

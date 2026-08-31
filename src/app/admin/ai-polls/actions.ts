@@ -23,7 +23,7 @@ import { updateAIPollConfig } from "@/lib/server/ai-poll-config";
 import { publishApprovedPoll } from "@/lib/server/ai-poll-publish";
 import { emergencyVoidMarket, resolvePublishCategory } from "@/lib/server/market-service";
 import { isSourceTrusted, seedDefaultSources } from "@/lib/server/source-registry";
-import { safeError } from "@/lib/server/safe-error";
+import { safeError, refuseFrom } from "@/lib/server/safe-error";
 import { requireStaff } from "@/lib/server/rbac-guard";
 
 // RBAC: authorization is data-driven — requireStaff checks canAct for this domain
@@ -62,7 +62,7 @@ export async function generatePollAction(formData: FormData) {
     revalidatePath("/admin/ai-polls");
     return { ok: true as const, poll };
   } catch (err) {
-    return { ok: false as const, error: safeError(err, "Generation failed") };
+    return { ...refuseFrom(err, "Generation failed"), ok: false as const };
   }
 }
 
@@ -97,7 +97,7 @@ export async function generatePollBatchAction(formData: FormData) {
     revalidatePath("/admin/ai-polls");
     return { ok: true as const, total: generated.length, summary };
   } catch (err) {
-    return { ok: false as const, error: safeError(err, "Batch generation failed") };
+    return { ...refuseFrom(err, "Batch generation failed"), ok: false as const };
   }
 }
 

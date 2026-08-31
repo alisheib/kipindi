@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import Link from "next/link";
+import { isKnownRefusal, refusalFigures, ADMIN_REFUSALS, type OperatorRefusal } from "@/lib/operator-refusal";
 import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
 import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
@@ -92,9 +94,23 @@ const CATEGORIES = [
 ] as const;
 
 type GenPhase = "idle" | "calling" | "validating" | "filtering" | "done";
-/** `message` is the server's OWN refusal sentence, carried verbatim — see the failure
- *  branch in the overlay for why nothing here may invent a cause. */
-type GenResult = { state: string; title: string; quality: number; reasons: string[]; message?: string } | null;
+/**
+ * `message` is the server's OWN refusal sentence, carried verbatim, and `refusal` is the same
+ * refusal AS DATA — see the failure branch in the overlay for why nothing here may invent a
+ * cause, and `src/lib/operator-refusal.ts` for why the figures never come out of the sentence.
+ */
+type GenResult = {
+  state: string; title: string; quality: number; reasons: string[];
+  message?: string; refusal?: OperatorRefusal;
+} | null;
+
+/** The three reads of a refusal this console needs, each returning nothing when the server sent
+ *  no refusal or sent a `reason` this client does not know — so an older console degrades to the
+ *  plain sentence rather than to an empty card. */
+const refusalTitle = (r?: OperatorRefusal) => (isKnownRefusal(r) ? ADMIN_REFUSALS[r.reason].title : undefined);
+const refusalRows = (r?: OperatorRefusal) => (r ? refusalFigures(r) : []);
+const refusalFix = (r?: OperatorRefusal) => (isKnownRefusal(r) ? r.fix : undefined);
+const refusalBody = (r?: OperatorRefusal) => (isKnownRefusal(r) ? ADMIN_REFUSALS[r.reason].body : undefined);
 
 const PHASE_LABELS: Record<GenPhase, string> = {
   idle: "",
@@ -268,6 +284,7 @@ export function GenerateForm({ generatable }: { generatable: string[] }) {
           quality: r.ok ? r.poll.overallQuality : 0,
           reasons: r.ok ? r.poll.filterReasons.map((r: string) => REASON_LABELS[r] ?? r) : [],
           message: r.ok ? undefined : r.error,
+          refusal: r.ok ? undefined : r.refusal,
         });
         setPhase("done");
         router.refresh();
@@ -509,19 +526,47 @@ export function GenerateForm({ generatable }: { generatable: string[] }) {
                       {/* ⚠️ LITERALS — see the pass medallion above. `h-8` is 48px here. */}
                       <span className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-full bg-no-500/15 text-no-300 shrink-0"><I.x s={18} /></span>
                       <div>
-                        <p className="font-display text-[15px] font-semibold text-text">Generation failed</p>
-                        {/* ⛔ NO SUBLINE HERE, DELIBERATELY — this branch does not know the cause.
+                        {/* ⭐ A KNOWN REFUSAL NAMES ITSELF. "Generation failed" says what did not
+                            happen; "AI credit limit reached" says what DID, and only the second can
+                            be acted on. Falls back for anything this client does not recognise. */}
+                        <p className="font-display text-[15px] font-semibold text-text">
+                          {refusalTitle(result.refusal) ?? "Generation failed"}
+                        </p>
+                        {/* ⛔ NO HARDCODED SUBLINE — this branch does not know the cause on its own.
                             It read "AI provider error" until 2026-08-31, when every failure on this
                             screen was our OWN spend cap refusing before Anthropic was ever called: the
                             single place that named a cause named the wrong one, and pointed the operator
                             away from the control actually stopping them. The replacement must not be
                             another guess — "nothing was charged" is false too, because L961/L985 reach
-                            this state AFTER a paid call. `result.message` below is the server's own
-                            sentence. When there isn't one, say nothing. */}
+                            this state AFTER a paid call. The figures below and `result.message` come
+                            from the server. When there is neither, say nothing. */}
                       </div>
                     </div>
-                    {result.message && (
-                      <p className="text-[13px] text-text-muted leading-snug">{result.message}</p>
+                    {/* ⭐ BODY, THEN FIGURES — the same order the shared OperationResultModal uses.
+                        One refusal rendered in two orders on two surfaces is the reader's problem,
+                        and the bespoke surface moves to match the shared one, never the reverse.
+                        ⛔ `refusalBody` is the NEXT STEP ONLY. The server's full sentence opens with
+                        this card's own title and repeats both figures, so rendering it here printed
+                        one fact three times. It stays as the fallback for an unknown reason, which
+                        has no title and no figures of its own. */}
+                    {(refusalBody(result.refusal) ?? result.message) && (
+                      <p className="text-[13px] text-text-muted leading-snug">
+                        {refusalBody(result.refusal) ?? result.message}
+                      </p>
+                    )}
+                    {/* THE FIGURES, AS DATA — never parsed back out of the sentence. */}
+                    {refusalRows(result.refusal).length > 0 && (
+                      <dl className="flex flex-wrap gap-x-5 gap-y-1.5">
+                        {refusalRows(result.refusal).map((f) => (
+                          <div key={f.label} className="flex items-baseline gap-1.5">
+                            <dt className="font-mono text-[10px] uppercase eyebrow text-text-tertiary">{f.label}</dt>
+                            {/* ⚠️ NEUTRAL, not `text-no-300`. Painting BOTH figures danger-red says the
+                                LIMIT is at fault as loudly as the spend — and the limit is the thing
+                                the operator is about to raise. The medallion carries the alarm. */}
+                            <dd className="font-mono text-[12px] tabular text-text">{f.value}</dd>
+                          </div>
+                        ))}
+                      </dl>
                     )}
                     {result.reasons.length > 0 && (
                       <div className="flex flex-wrap gap-1.5">
@@ -532,13 +577,34 @@ export function GenerateForm({ generatable }: { generatable: string[] }) {
                     )}
                   </>
                 )}
-                <div className="flex gap-2 pt-1">
-                  <button type="button" onClick={dismiss} className="btn btn-ghost btn-sm rounded-pill flex-1">
+                {/* 🔴 THE CTA IS THE OTHER HALF OF THE 2026-08-31 INCIDENT, AND IT IS EASY TO MISS.
+                    Correcting the words while leaving a "Generate another" button under them still
+                    invites the loop — the operator was retrying because the screen kept offering a
+                    retry. When the server named a remedy, the primary action IS the remedy; retry
+                    survives only where nobody knows why it failed. */}
+                {/* ⛔ THE ROW WRAPS, AND EACH BUTTON KEEPS A BASIS — the same idiom `AdminCard`'s
+                    header took after `G-5`. A `.btn` is `white-space: nowrap`, so as a flex item its
+                    `min-width: auto` is its FULL label width and `flex-1` cannot shrink it: a long
+                    label does not clip, it pushes the row out of the card. Measured by `qa:refusal`
+                    at 320/360/390. The labels are short enough today; this makes the row unable to
+                    break if one ever is not. */}
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <button type="button" onClick={dismiss} className="btn btn-ghost btn-sm rounded-pill flex-1 basis-[8rem]">
                     Dismiss
                   </button>
-                  <button type="button" onClick={() => { dismiss(); generate(); }} className="btn btn-primary btn-sm rounded-pill flex-1">
-                    Generate another
-                  </button>
+                  {refusalFix(result.refusal) ? (
+                    <Link
+                      href={refusalFix(result.refusal)!.href}
+                      onClick={dismiss}
+                      className="btn btn-primary btn-sm rounded-pill flex-1 basis-[8rem] text-center"
+                    >
+                      {refusalFix(result.refusal)!.label}
+                    </Link>
+                  ) : (
+                    <button type="button" onClick={() => { dismiss(); generate(); }} className="btn btn-primary btn-sm rounded-pill flex-1 basis-[8rem]">
+                      Generate another
+                    </button>
+                  )}
                 </div>
               </div>
             ) : null}
@@ -998,7 +1064,7 @@ export function ReviewActions({ poll }: { poll: StoredAIPoll }) {
           // was refusing on our own spend cap, so the operator retried against a ceiling that
           // could not yield. `r.error` is the server's own sentence; it names the real control
           // and where to change it. See `OperatorError` in lib/server/safe-error.ts.
-          overlay.fail("Regeneration failed", r.error);
+          overlay.fail("Regeneration failed", r.error, r.refusal);
         }
       } catch {
         overlay.fail("Regeneration failed", "Server error — please try again.");

@@ -602,25 +602,74 @@ leak", which nobody can apply. Both poll budget gates (single + batch) throw it.
 was not replaced with a better guess: the obvious candidate, *"nothing was charged"*, is **also
 false**, because `ai-poll-generation.ts` L961/L985 reach that state AFTER a paid call.
 
-**Proof.** `test:operator-error` **25/25**, auto-discovered by `test:all`. Every pass-through
-assertion is PAIRED with a crash that must stay redacted — without that pair, "the message reaches
-the UI" is satisfied by deleting the sanitiser. §5 drives the **real** gate with a genuinely
-overspent window. ⚠️ Its first draft passed a `costUsd` field that does not exist on
-`recordAiUsage` (cost is computed by `costOf` from tokens), spent `$0.09` against a `$0.50`
-ceiling, and the gate correctly did not fire — a test that had decided what it was measuring
-without measuring it. §5.0 now asserts the overspend **before** the gate is asked to react.
-Verified by mutation: reverting each of the three fixes turns exactly its own assertions red.
-`tsc` clean — ⚠️ but see §7.2b-tsc, which does **not** cover the suite file; the suite's own green
-run is the evidence for that file.
+#### The second pass — a sentence is not an architecture
 
-**⚠️ Left open, filed not fixed — the page buries the control that is actually blocking.**
-`/admin/ai-usage` leads with **Spend cycles** (cycle 3, `$63.14 / $100`, reassuring) at
-`page.tsx:336`, while the **Credit budget** card holding the `$20.00` top-up-window limit that
-refuses everything sits at `page.tsx:711`, below the fold. Reading the top of that page, Ali
-reasonably concluded the diagnosis was wrong. A *cycle* is a fixed $100 denomination and a
-*window* is "since you last topped up"; `ai-usage.ts` already warns the two must never be confused
-on an operator's screen, and the page's own ordering is what confuses them. Ordering is a design
-call, not a bug fix's.
+🔴 **THE FIRST REPAIR PASSED THE ENGLISH SENTENCE THROUGH, AND THAT WAS STILL WRONG.** It
+unblocked the operator, and then the owner — reading that exact sentence, which NAMES the screen
+that lifts the block — asked *"where do I fix it, which screen?"* **Prose that names a destination
+cannot link to one.** [`src/lib/failure-reasons.ts`](../src/lib/failure-reasons.ts) had already
+settled the shape for the player surface, in its own header: *"the server says why, in a machine
+token, and carries the figures as data"*, and *"interpolated figures come from `detail`, NEVER
+from the prose"*. A sentence with `$20.56` baked into it can only ever be printed.
+
+⚠️ **AND THE FIRST CRITIQUE OF THAT WAS ITSELF WRONG, WHICH IS WHY THE SCOPE NOTE IS EXPLICIT.**
+The i18n objection — "an English-only refusal on a translated console" — was raised on a `grep` for
+`useT` that matched every `useTransition` and reported 55 admin files. Measured properly
+(`grep -rlE "\buseT\(|\bgetServerT\("`) it is **4 of 195**, and the edited file uses it **zero**
+times. The admin seam is English in practice, so the new contract deliberately does NOT duplicate
+the player registry's three-language dictionary machinery.
+
+**The architecture.** [`src/lib/operator-refusal.ts`](../src/lib/operator-refusal.ts) — isomorphic,
+so the client never reaches into `lib/server/` for a type — carries `reason` (a token, never shown,
+never phrase-matched), `detail` (figures as **numbers**), and `fix` (a real `href`, so the console
+renders a **button**, not a sentence about a screen). `ADMIN_REFUSALS` is the rostered catalogue;
+`OperatorError` carries the payload, `refuseFrom()` builds both halves in one place. ⛔ `message`
+survives beside `refusal` on purpose: a surface that has not been taught a reason still has one
+correct sentence, so adding a reason can never blank a screen — §3.12 above is what that rule is
+made of. The shared `ActionOverlay` was taught this, **not** the poll console, so all fourteen
+admin surfaces gain it; and **the fix outranks the retry** in the single secondary slot, because
+offering "Try again" against a spend ceiling is precisely what this incident did to the owner.
+
+**Two further defects fell out of doing it, both MEASURED on production, neither guessed:**
+
+1. 🔴 **Raising a spend limit silently disarmed its own alarms.** The live row was
+   `{limitUsd:20, alertedLevel:"limit"}` at `$20.5573` spent. `setCreditLimit` carried
+   `alertedLevel` across unchanged, and `checkLimitAndAlert` only ESCALATES
+   (`LEVEL_ORDER[level] <= LEVEL_ORDER[cfg.alertedLevel]` → return). So against the new `$70`
+   ceiling, warn (`1 ≤ 2`) and limit (`2 ≤ 2`) would **both** return early and neither alert would
+   ever fire again in that window — the operator crosses `$49` of spend and hits a hard block with
+   no warning, the identical silent wall, one ceiling later. Fixed by recomputing the level against
+   the new ceiling with `alertLevelFor`, now shared with `checkLimitAndAlert` so the two cannot drift.
+2. ⚠️ **The remedy button pushed itself out of its own card.** `.btn` is `white-space: nowrap`, so
+   as a flex item its `min-width: auto` is the FULL label width and `flex-1` cannot shrink it: a
+   long label does not clip, it overflows the container. `qa:refusal` measured *"Open AI usage →
+   Credit budget"* at 224px spilling **68px at 320, 32px at 360, 5px at 390**. Fixed by the label
+   (*"Open Credit budget"*, 150px, clears 320 with 5px to spare) **and** by the row taking
+   `AdminCard`'s own post-`G-5` wrap+basis idiom, so it cannot break if a label ever grows.
+   ⭐ **The shared `OperationResultModal` was already correct** — its footer stacks `w-full` — and
+   the bench's first draft modelled it as a two-up row and indicted a component that was right.
+
+**Proof.** `test:operator-error` **54/54**, auto-discovered by `test:all`. Every pass-through is
+PAIRED with a crash that must stay redacted — without that pair, "the message reaches the UI" is
+satisfied by deleting the sanitiser. §5 drives the **real** gate with a genuinely overspent window;
+§6 walks the catalogue in BOTH directions and resolves every `fix.href` to a real route and every
+`#anchor` to an `id` actually rendered on that page. ⚠️ Three of this entry's own instruments were
+wrong first and are documented in place rather than quietly corrected: the §5 driver passed a
+`costUsd` field that does not exist (spent `$0.09` against a `$0.50` ceiling and the gate correctly
+did not fire); the §6 emitter scan read every `reason:` in `ai-usage.ts` and indicted `budget`/`cycle`,
+which are an INTERNAL vocabulary sharing the field name — this file's own `E-179`; and
+`qa:refusal`'s `--sheet-missing` "control" **passed identically** to the styled run, because
+stripping CSS removes the constraints that make overflow possible. `--prove-red` replaces it and
+replays the shipped defect. `npm run qa:refusal` **121/121** across 320–1280; `npm run red:refusal`
+reports the defect and exits 0 on catching it.
+
+**⚠️ Left open, filed not fixed — the page still buries the control that is actually blocking.**
+`/admin/ai-usage` leads with **Spend cycles** (`$63.14 / $100`, reassuring) at `page.tsx:336`, while
+the **Credit budget** card holding the top-up-window limit that refuses everything sits at
+`page.tsx:711`, below the fold. Reading the top of that page the owner reasonably concluded the
+diagnosis was wrong. Both cards now carry `id` anchors so a refusal can link straight to the right
+one, which removes the cost of the ordering — but the ordering itself is a design call, not a bug
+fix's.
 
 ---
 

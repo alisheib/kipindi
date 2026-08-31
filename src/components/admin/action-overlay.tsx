@@ -33,15 +33,18 @@
  */
 
 import { useCallback, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/modal";
-import { OperationResultModal } from "@/components/markets/operation-result-modal";
+import { OperationResultModal, type OperationDetail } from "@/components/markets/operation-result-modal";
 import { DWELL_ADMIN_RESULT_MS } from "@/lib/feedback-timing";
+import { isKnownRefusal, refusalFigures, ADMIN_REFUSALS, type OperatorRefusal } from "@/lib/operator-refusal";
 
 export type OverlayState =
   | { phase: "idle" }
   | { phase: "running"; label: string; sublabel?: string }
   | { phase: "success"; title: string; subtitle?: string }
-  | { phase: "error"; title: string; message: string };
+  /** `refusal` is the STRUCTURED half — see the note on `fail` below. */
+  | { phase: "error"; title: string; message: string; refusal?: OperatorRefusal };
 
 export function useActionOverlay() {
   const [state, setState] = useState<OverlayState>({ phase: "idle" });
@@ -50,8 +53,18 @@ export function useActionOverlay() {
     setState({ phase: "running", label, sublabel }), []);
   const succeed = useCallback((title: string, subtitle?: string) =>
     setState({ phase: "success", title, subtitle }), []);
-  const fail = useCallback((title: string, message: string) =>
-    setState({ phase: "error", title, message }), []);
+  /**
+   * Report a failure. `refusal` is OPTIONAL and additive: pass an action's `r.refusal`
+   * straight through and the card gains the figures and a button to the screen that lifts it.
+   *
+   * ⛔ IT IS FIXED HERE, IN THE SHARED HOOK, NOT IN THE POLL CONSOLE. Fourteen admin surfaces
+   * use this overlay for operations that move real money; teaching one of them to render a
+   * refusal and leaving the rest printing a sentence is the `E-108` shape this repo already
+   * has a name for — one helper, many copies, repaired one at a time. Every existing call site
+   * passes two arguments and is untouched.
+   */
+  const fail = useCallback((title: string, message: string, refusal?: OperatorRefusal) =>
+    setState({ phase: "error", title, message, refusal }), []);
   return { state, dismiss, run, succeed, fail };
 }
 
@@ -67,6 +80,35 @@ export function ActionOverlay({ state, onDismiss, onRetry, retryLabel }: {
   onRetry?: () => void;
   retryLabel?: string;
 }) {
+  const router = useRouter();
+
+  // ── The structured refusal, resolved once ────────────────────────────────────────────────
+  // ⛔ `isKnownRefusal` GATES THIS, so a reason shipped by a newer server than this client
+  // renders as today's plain sentence rather than as a card with an empty figure grid and a
+  // button to nowhere. The `error` sentence is always present for exactly that case.
+  const refusal = state.phase === "error" ? state.refusal : undefined;
+  const known = isKnownRefusal(refusal) ? refusal : undefined;
+  const figures: OperationDetail[] = known
+    // ⚠️ TONE `default`, NOT `bad`. Rendering BOTH figures in danger red says the LIMIT is at
+    // fault as loudly as the spend, and the limit is the thing the operator is about to raise.
+    // The card's variant already carries the alarm.
+    ? refusalFigures(known).map((f) => ({ label: f.label, value: f.value }))
+    : [];
+  const fix = known?.fix;
+
+  /**
+   * ⛔ THE FIX OUTRANKS THE RETRY, AND THAT IS THE WHOLE POINT OF THIS COMPONENT.
+   * Both want the one secondary slot. A refusal that names its own remedy must offer the
+   * remedy — offering "Try again" against a spend ceiling is precisely what the 2026-08-31
+   * incident did to the owner, repeatedly, and it can never succeed until something else
+   * changes. A retry is only honest when nobody knows why it failed.
+   */
+  const secondaryLabel = fix ? fix.label : (onRetry ? (retryLabel ?? "Try again · Jaribu tena") : undefined);
+  const onSecondary = fix
+    // Dismiss FIRST, then navigate — same ordering rule as the retry below.
+    ? () => { onDismiss(); router.push(fix.href); }
+    : (onRetry ? () => { onDismiss(); onRetry(); } : undefined);
+
   return (
     <>
       {/* Running — a blocking, non-dismissible progress dialog. */}
@@ -113,15 +155,23 @@ export function ActionOverlay({ state, onDismiss, onRetry, retryLabel }: {
         open={state.phase === "error"}
         variant="danger"
         eyebrow="Failed · Imeshindikana"
-        title={state.phase === "error" ? state.title : ""}
-        subtitle={state.phase === "error" ? state.message : undefined}
+        // ⭐ A KNOWN REFUSAL NAMES ITSELF. "Generation failed" describes what did not happen;
+        // "AI credit limit reached" describes what DID, which is the only one an operator can
+        // act on. The action's own title stays for everything this client does not recognise.
+        title={known ? ADMIN_REFUSALS[known.reason].title : (state.phase === "error" ? state.title : "")}
+        // ⭐ THE BODY IS THE NEXT STEP, NOT THE WHOLE SENTENCE. With a known reason the title
+        // and the figure grid already carry the fact; the server's `message` restates both, so
+        // showing it here printed one fact three times. Unknown reasons still get the sentence,
+        // which is the only thing they have.
+        subtitle={known ? ADMIN_REFUSALS[known.reason].body : (state.phase === "error" ? state.message : undefined)}
+        details={figures.length > 0 ? figures : undefined}
         primaryLabel="Dismiss · Funga"
-        secondaryLabel={onRetry ? (retryLabel ?? "Try again · Jaribu tena") : undefined}
-        // ⚠️ Dismiss FIRST, then retry. A retry re-enters `overlay.run(...)`, so the other
-        // order would set `running` and then let the queued `idle` land on top of it,
+        secondaryLabel={secondaryLabel}
+        // ⚠️ Dismiss FIRST, then retry/navigate. A retry re-enters `overlay.run(...)`, so the
+        // other order would set `running` and then let the queued `idle` land on top of it,
         // leaving a live operation with no overlay over it. Same reason the dial's
         // secondary closes before it navigates (conviction-dial.tsx).
-        onSecondary={onRetry ? () => { onDismiss(); onRetry(); } : undefined}
+        onSecondary={onSecondary}
         onClose={onDismiss}
       />
     </>

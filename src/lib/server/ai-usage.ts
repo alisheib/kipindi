@@ -55,6 +55,7 @@ import { hasDatabase } from "./prisma";
 import { withLock } from "./locks";
 import { randomId } from "./crypto";
 import { audit } from "./audit";
+import type { OperatorRefusal } from "./safe-error";
 // ⛔ RELATIVE, NOT THE `@/` ALIAS, AND THAT IS LOAD-BEARING. `red:ai-cycles` proves each
 // check by copying the tree, mutating one file and running the gate from the copy. `tsx`
 // resolves `@/` through the tsconfig paths of the CWD — which is the real repo — so an
@@ -257,10 +258,32 @@ export async function getCreditConfig(): Promise<CreditConfig> {
   return fresh;
 }
 
-/** Set the spend limit (USD) for the top-up window. Keeps the window + alert state. */
+/**
+ * Set the spend limit (USD) for the top-up window. Keeps the window; RE-ARMS the alerts.
+ *
+ * 🔴 RAISING A LIMIT USED TO SILENTLY DISARM ITS OWN ALARMS, and this was MEASURED on
+ * production on 2026-08-31, not reasoned about. The stored row was
+ * `{limitUsd:20, alertedLevel:"limit", …}` with $20.5573 spent. `alertedLevel` was carried over
+ * unchanged, and `checkLimitAndAlert` escalates only — `LEVEL_ORDER[level] <= LEVEL_ORDER[cfg.alertedLevel]`
+ * returns early. So against a NEW $70 ceiling: at $56 the level computes to `warn` (1 ≤ 2 →
+ * return, no alert) and at $70 it computes to `limit` (2 ≤ 2 → return, no alert).
+ *
+ * ⛔ THE OPERATOR WOULD HAVE CROSSED $49 OF SPEND AND HIT A HARD BLOCK WITH NO WARNING — the
+ * identical silent wall that caused the incident this whole seam exists for, one ceiling later.
+ * An alert level is a statement about a ceiling; carry it across a ceiling change and it becomes
+ * a statement about a ceiling that no longer exists.
+ *
+ * ⭐ SO THE LEVEL IS RECOMPUTED AGAINST THE NEW CEILING, with the SAME formula
+ * `checkLimitAndAlert` uses (shared as `alertLevelFor`, so the two cannot drift). Lowering a
+ * limit onto spend that already exceeds it therefore lands on `limit` and does NOT re-announce
+ * something the operator was already told; raising one above current spend lands on `none` and
+ * genuinely re-arms both thresholds.
+ */
 export async function setCreditLimit(limitUsd: number): Promise<void> {
   const cur = await getCreditConfig();
-  await saveCredit({ ...cur, limitUsd: Math.max(0, limitUsd) });
+  const next = Math.max(0, limitUsd);
+  const spent = next > 0 ? await aiUsageDal.sumCostSince(cur.topUpWindowStartIso) : 0;
+  await saveCredit({ ...cur, limitUsd: next, alertedLevel: alertLevelFor(spent, next) });
 }
 
 /**
@@ -356,7 +379,73 @@ export function describeAiBudgetBlock(b: AiBudgetBlock): string {
     `Raise the limit, or start a new top-up window after adding credit, under Admin → AI usage.`;
 }
 
+/**
+ * THE SAME REFUSAL, AS DATA — the machine token, the figures, and where to lift it.
+ *
+ * ⛔ THIS EXISTS BECAUSE THE SENTENCE ABOVE CANNOT BE ACTED ON. `describeAiBudgetBlock` names
+ * the screen ("under Admin → AI usage") in prose, and on 2026-08-31 the owner read that exact
+ * sentence on production and still had to ask *"where do I fix it, which screen?"* — because a
+ * console can PRINT prose but cannot FOLLOW it. `fix.href` is a real route, so the refusal
+ * renders as a button that goes there.
+ *
+ * ⛔ THE FIGURES ARE NUMBERS, NOT SUBSTRINGS OF THE SENTENCE. `failure-reasons.ts` was built
+ * over exactly this defect on the player side: `errorCopy` pulled "TZS 1,234" back out of a
+ * server sentence with a regex, so rewording the sentence silently dropped the figure off the
+ * screen. Reword `describeAiBudgetBlock` freely — nothing downstream reads it for data.
+ *
+ * ⚠️ KEEP THE TWO IN STEP. They describe one event and are built from one `AiBudgetBlock`;
+ * `test:operator-error` asserts that both arms produce a reason AND a matching sentence.
+ */
+// ⛔ TWO THINGS ARE CALLED `reason` ACROSS THIS BOUNDARY, and after `E-179` this file does not
+// get to leave that unsaid. `AiBudgetBlock.reason` is INTERNAL and says which gate refused
+// (`"budget"` | `"cycle"`). `OperatorRefusal.reason` is the OPERATOR-FACING token the console
+// renders on (`"ai_budget_exhausted"` | `"ai_cycle_ended"`), rostered in
+// `src/lib/operator-refusal.ts`. The `ai_` prefix is what keeps them apart at a glance, and this
+// function is the ONLY place either vocabulary is translated into the other.
+// ⚠️ `test:operator-error` §6.2 scans the bodies of functions RETURNING `OperatorRefusal` — not
+// every `reason:` in the file — precisely because the two vocabularies coexist here.
+// ⚠️ THE LABELS ARE LENGTH-CONSTRAINED, AND THAT IS A MEASUREMENT, NOT A STYLE OPINION.
+// `qa:refusal` renders them in the real button, in the real card, over the real production
+// stylesheet: "Open AI usage → Credit budget" is 224px and spills its card by 68px at 320,
+// 32px at 360 and 5px at 390 — broken on every phone width. "Open Credit budget" is 150px and
+// clears 320 with 5px to spare. ⛔ A remedy the operator cannot read is the defect this whole
+// seam exists to remove, so lengthening these needs a bench run, not a judgement.
+export function aiBudgetRefusal(b: AiBudgetBlock): OperatorRefusal {
+  if (b.reason === "cycle") {
+    const done = b.lastClosedIndex ?? 0;
+    return {
+      reason: "ai_cycle_ended",
+      detail: { lastClosedIndex: done, nextIndex: done + 1 },
+      fix: { label: "Open Spend cycles", href: "/admin/ai-usage#ai-cycles" },
+    };
+  }
+  return {
+    reason: "ai_budget_exhausted",
+    detail: { spentUsd: b.spentUsd, limitUsd: b.limitUsd },
+    fix: { label: "Open Credit budget", href: "/admin/ai-usage#ai-credit-budget" },
+  };
+}
+
 const LEVEL_ORDER: Record<CreditConfig["alertedLevel"], number> = { none: 0, warn: 1, limit: 2 };
+
+/**
+ * Which alert threshold a given spend has reached against a given ceiling. ONE definition.
+ *
+ * ⛔ SHARED BY `checkLimitAndAlert` (what to announce) AND `setCreditLimit` (what to consider
+ * already announced after a ceiling changes). Two copies of this formula would drift, and the
+ * drift is silent in the worst direction: alerts that never fire look exactly like a platform
+ * that is comfortably under budget.
+ *
+ * ⚠️ The epsilon is load-bearing. `20 * 0.8` is `16.000000000000004` in float, so an exact
+ * boundary spend of $16.00 against a $20 limit would miss the warn threshold without it.
+ */
+function alertLevelFor(spentUsd: number, limitUsd: number): CreditConfig["alertedLevel"] {
+  const EPS = 1e-6;
+  if (limitUsd <= 0) return "none"; // no ceiling set — nothing to announce
+  if (spentUsd >= limitUsd - EPS) return "limit";
+  if (spentUsd >= limitUsd * WARN_FRACTION - EPS) return "warn";
+  return "none";
+}
 
 /** After each call, if cycle spend crossed the warn (80%) or limit (100%)
  *  threshold for the first time, email + in-app alert all admins. Serialized so
@@ -365,12 +454,7 @@ async function checkLimitAndAlert(): Promise<void> {
   await withLock("ai-credit-alert", async () => {
     const cfg = await getCreditConfig();
     const spent = await aiUsageDal.sumCostSince(cfg.topUpWindowStartIso);
-    // Small epsilon so an exact-boundary spend (e.g. $16.00 of a $20 limit, where
-    // 20*0.8 is 16.000000000000004 in float) reliably trips the threshold.
-    const EPS = 1e-6;
-    let level: CreditConfig["alertedLevel"] = "none";
-    if (spent >= cfg.limitUsd - EPS) level = "limit";
-    else if (spent >= cfg.limitUsd * WARN_FRACTION - EPS) level = "warn";
+    const level = alertLevelFor(spent, cfg.limitUsd);
 
     if (LEVEL_ORDER[level] <= LEVEL_ORDER[cfg.alertedLevel]) return; // no new escalation
 
