@@ -36,7 +36,7 @@ its own plan. **Three more §🅢 claims are wrong at source; each is struck in 
 | **Live** | ✅ **`qa:dg-shell` AFTER THE EXPANDER: 79 probes · 40 typed routes + **2 tab routes read off rendered rails** · 0 failing.** ⭐ `/admin/roles?tab=access` and `?tab=reads` are measured for the FIRST TIME — discovered from the page's own `data-section-rail`, never typed as `?` entries (§K rule 7f, §0a). Before this the seal compared a query-STRIPPED landing against the route as written, so every `?tab=` route filed as REDIRECTED and was skipped while `probed` stayed non-zero — a silently unmeasured route inside a green run. Admin drive 43 routes + player anon 17 unchanged. |
 | **⛔ The 2 blocked ☐** | `DG-P-02` and `DG-P-09` — **blocked on Ali, not on work.** All six player/officer QA secrets are rejected by production; only `QA_ADMIN_PASSWORD` works |
 | **🚢 The 5 tails** | `DG-A-08` (guard not built) · `DG-A-21` (~414 lines / ~125 files residual, only a third admin) · `DG-A-12`/`DG-P-05` (the above-floor long tail is a per-site call) · `DG-P-14` (item 2 closed no-change; item 5 is Ali's) |
-| **▶ RESUME AT** | **Step 5’s BUILD is done; what is left is ADOPTION and EYES.** In order: ① **`/admin/ai-polls` is the first NEW console to tab** (§K rule 7a — it passes all three tests, already reads 13 search params so DG-S-03 adds a parameter rather than a mechanism, and costs least if the call is wrong because AI never publishes without an officer); runner-up `/admin/system`. ② **DG-S-05’s remainder** — carry `fieldError()` into the ~33 remaining admin actions, per action, never as a sweep (several move money). ③ **`.m-indicator`** — the rail’s underline is N per-item spans that each `scaleX`, while the utility means ONE object that translates; that is a rework, not a class swap. ④ 🔴 **THE THINGS NOBODY HAS LOOKED AT**, which no gate can close: the 13 `/admin/payments` money levers (absent from the DOM while STUCK PAYOUTS is 0), the RG helpline repaint, and the 7 pre-step-5 `cn()` call sites that shipped rendered changes. |
+| **▶ RESUME AT** | ⭐ **READ `🏁 CLOSING THE PROGRAMME` DIRECTLY BELOW — it is the whole of what is left, in order.** Step 5 is CLOSED: every `DG-S-*` row is built AND driven on production. What remains is 6 🚢 remainders (two of which are guards that were never written), 2 ☐ that are **Ali’s to unblock, not work**, and four things NO GATE CAN CLOSE because they need a human to look. ⛔ Do not start a new system; there is none left to start. |
 
 ### 🔴 THE BIGGEST FINDING OF STEP 5 SO FAR — `cn()` WAS DELETING TYPE SIZES BEFORE THEY REACHED THE GLASS
 Found 2026-08-31 (DG-S-03) **by driving production after a regression, not by any static gate.**
@@ -85,6 +85,87 @@ cascade probe and no stylesheet audit could ever have found it.
   and it is the single most important thing session 82 could not witness.
 - **The responsible-gambling helpline panel** was painted in the betting WIN green (D2's own named
   example, unmigrated for nine days). The fix is in; the route is authed, so nobody has seen it.
+
+---
+
+## 🏁 CLOSING THE PROGRAMME — the whole of what is left, in order
+
+**Re-derive the tally from THE PLANNER below before you believe this section.** It was
+**37 ☑ · 6 🚢 · 2 ☐ of 45** when it was written, and every number in this file has rotted at
+least once.
+
+### ⛔ TWO ROWS ARE ALI'S, AND NO AMOUNT OF WORK MOVES THEM
+
+`DG-P-02` and `DG-P-09` are ☐ because **all six player/officer QA secrets are rejected by
+production** (`error=wrong_credentials`, re-confirmed 2026-08-29); only `QA_ADMIN_PASSWORD`
+signs in. ⛔ Do not attempt them with the ADMIN login: ADMIN bypasses every domain check, so a
+sweep run as ADMIN measures nothing about the player surface and would file a green over an
+unmeasured page — the exact shape this programme exists to catch.
+**The unblock is one action:** re-mint or supply the six secrets in `.env.qa.local`
+(`QA_ALPHA/ECHO/OFFICER/TRADING/GROWTH/FINANCE_PASSWORD`). Everything else in both rows is
+ordinary work that has been scoped already.
+
+### ▶ THE SIX 🚢, IN THE ORDER THEY SHOULD BE TAKEN
+
+Each is a *remainder*, not an unstarted row — the ruling and the floor are already decided in
+the row itself. Read the row before the code.
+
+1. **`DG-A-08` — build the guard.** The floor is closed; the guard was never written. Its
+   population is the in-table action vocabulary (five recipes, three heights, one job), and its
+   sharpest instance is the 13 `/admin/payments` money levers. ⚠️ Those levers are ALSO in the
+   "nobody has looked" list below — the guard is static, so it can land without seeing them.
+2. **`DG-A-21` — build the guard.** The kit is closed and the residual is named: D2's
+   `--success-500` / `--danger-500` exist so app state stops wearing the betting ink, and the
+   un-migrated half is what remains. ⭐ A precedent now exists: `players/[id]`'s risk gauge was
+   the same defect and is fixed (`--yes-500` → `--success-500`), with the reasoning in place.
+3. **`DG-S-05` — carry `fieldError()` into the remaining admin actions.** The surface is built
+   and proved end to end on `2fa/setup`. ⛔ **PER ACTION, NEVER A SWEEP** — several move money,
+   and a blind rewrite of an action that moves money is how a correct control breaks. Start
+   from the field-shaped refusals: `totp-verify`, `ai-usage`, `staff` (phone + role),
+   `objections` (remedy), `kyc/[id]` (rejection reason), `updown/proposals` (asset, reasons).
+   Each needs the matching `data-field` on its client and the handler to call
+   `focusFirstInvalid` — the 2fa/setup pair is the worked example.
+4. **`DG-A-12` + `DG-P-05` — the above-floor type long tail.** Both blockers are ruled; what is
+   left is a per-site design call, which Ali has delegated. They share tokens, so they close
+   together or not at all.
+5. **`DG-P-14` item 5 — the `/notifications` glow.** ⭐ **This one is Ali's taste call**, not a
+   session's. Everything else in the row is closed.
+
+### 🔴 WHAT NO GATE CAN CLOSE — these need EYES, and they are not findings until someone looks
+
+⛔ Do not tick a row on the strength of a green suite for any of these.
+
+- **The 13 `/admin/payments` money levers.** They render ONLY when a retry has failed or a
+  payout is stuck, and production reads **STUCK PAYOUTS 0**, so they are absent from the DOM.
+  A drive cannot see them; a screenshot of an empty queue proves nothing. Seeing them needs a
+  stuck payout, or a local run with seeded state.
+- **The responsible-gambling helpline panel** — repainted out of the betting WIN green, on an
+  authed player route nobody can reach while the QA secrets are rejected. It unblocks with
+  Ali's two rows above.
+- **The remaining `cn()` co-occurrence sites.** `test:cn-collision` proves no LITERAL class list
+  loses a class; a list built from a ternary cannot be resolved without executing the component,
+  and the gate says so. Those sites shipped a rendered change and have not been looked at.
+- **`.m-indicator`.** ⛔ It is a REWORK, not a class swap. The utility means *"one object, never
+  a cross-fade"*; the rail ships **N per-item spans that each `scaleX`**, and an inline
+  `transition` is a single property that would override the class outright. Adopting it properly
+  means one absolutely-positioned underline that TRANSLATES between options.
+
+### ✅ AND WHEN EVERY ROW IS ☑ — the ceremony, in this order
+
+1. Re-run `node scripts/test-all.mjs --skip responsive,motion` and `npx tsc --noEmit`
+   (⛔ capture the exit BEFORE any pipe — a pipe reports `tail`'s status, and this programme has
+   already read a green off one).
+2. Drive `npm run qa:dg-rail` on both converted rails and `npm run qa:dg-shell`, on production.
+3. Delete `.qa-design-gate/` and any `.qa-design-adminscan/` output — evidence, regenerable.
+   ⛔ **Check first that nothing in `docs/` still cites a file inside it.** That mistake has been
+   made twice in this programme: a handover told the next session to re-derive with
+   `.qa-design-gate/cn-collision2.mjs`, which was gitignored and had never existed on any other
+   machine. The durable instruments were moved to `scripts/design-gate/` for exactly this reason.
+4. Delete `design-brief/design-gate-2026-08-28/` and its `.gitignore` exception, once the round
+   is sent.
+5. Mark both `DESIGN-GATE-*` reports' headers **⚪ SPENT** — keep the files, they are the record.
+6. Update the memory note `50pick-design-gate` to CLOSED.
+7. Delete THIS FILE. ⛔ Not before: while any row is open, it is the only home of the state.
 
 ---
 
