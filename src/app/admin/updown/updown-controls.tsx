@@ -24,6 +24,7 @@ import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
 import { PLATFORM_MIN_STAKE, PLATFORM_MAX_STAKE } from "@/lib/payout";
 import { Button } from "@/components/ui/button";
+import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Toggle } from "@/components/ui/toggle";
@@ -1188,6 +1189,15 @@ export function ReadingMethodForm({
           </Button>
         )}
       </div>
+
+      {/* ⭐ DG-S-04 — the price READING METHOD decides how every Up&Down round is settled, so a
+          half-changed one that vanishes because an operator followed a link is a money-adjacent
+          loss, not a typing inconvenience. `dirty` already had an explicit Discard beside it;
+          the guard covers the two exits that Discard cannot (§K rule 7d). */}
+      <UnsavedChangesGuard
+        dirty={dirty}
+        body="The price reading method has been changed but not saved. Leaving now discards the change."
+      />
 
       {/* Kit type-to-arm gate — the same one the payment provider switch uses for MOCK. */}
       <ConfirmModal

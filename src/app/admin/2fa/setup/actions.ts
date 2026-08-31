@@ -1,6 +1,7 @@
 "use server";
 
 import { safeError } from "@/lib/server/safe-error";
+import { fieldError } from "@/lib/server/field-error";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { currentSession } from "@/lib/server/auth-service";
@@ -41,12 +42,18 @@ export async function provisionTotpAction(formData?: FormData) {
 export async function verifyTotpAction(formData: FormData) {
   const { session } = await requireAdmin();
   const code = String(formData.get("code") ?? "").trim();
+  /* ⭐ DG-S-05 — the refusal NAMES its field. Both of these are about the same control, and
+     until now both said only "this is wrong" with no address, so nothing on the client could
+     take the operator to the box. `"totp-code"` is the `data-field` on the label in
+     `setup-client.tsx`. ⛔ The rest of the console still returns bare `{ ok, error }` and still
+     works — `field` is optional by design; this is the surface being proved end to end, not a
+     sweep across 34 server files. */
   if (!/^\d{6}$/.test(code)) {
-    return { ok: false as const, error: "Enter the 6-digit code from your authenticator app." };
+    return fieldError("totp-code", "Enter the 6-digit code from your authenticator app.");
   }
   try {
     const ok = await verifyTotp(session.userId, code);
-    if (!ok) return { ok: false as const, error: "Code didn't match. Try again — codes refresh every 30 seconds." };
+    if (!ok) return fieldError("totp-code", "Code didn't match. Try again — codes refresh every 30 seconds.");
     revalidatePath("/admin/2fa/setup");
     return { ok: true as const };
   } catch (err) {

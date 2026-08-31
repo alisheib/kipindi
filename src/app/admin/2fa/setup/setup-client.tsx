@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import { ConfirmModal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { I } from "@/components/ui/glyphs";
@@ -56,6 +57,11 @@ export function TotpSetupClient({ initiallyEnabled, next }: { initiallyEnabled: 
         toast({ title: "2FA enabled", description: "You'll be asked for the code on next admin sign-in.", variant: "success" });
       } else {
         toast({ title: "Code didn't match", description: r?.error, variant: "danger" });
+        /* ⭐ DG-S-06 — and then TAKE THEM THERE. A toast says what is wrong; it does not move
+           the cursor, and on a long form it can be off-screen from the field it describes.
+           `r.field` is the address the action returned; `focusFirstInvalid` resolves it to the
+           control and focuses it without racing a smooth scroll (§M6). */
+        if (r && "field" in r && r.field) focusFirstInvalid(document.body, [r.field]);
       }
     } catch {
       toast({ title: "Verification failed", description: "Something went wrong. Try again.", variant: "danger" });
@@ -200,7 +206,12 @@ export function TotpSetupClient({ initiallyEnabled, next }: { initiallyEnabled: 
           </p>
         </div>
         <div className="space-y-2">
-          <label className="block">
+          {/* ⭐ DG-S-05/06 (2026-08-31) — `data-field` is the ADDRESS the server's refusal names.
+              `verifyTotpAction` returns `fieldError("totp-code", …)`, and the handler hands that
+              name to `focusFirstInvalid`, which is what turns "the code is wrong" into a cursor
+              sitting in the box. ⛔ The two strings must match; a typo degrades to today's
+              behaviour (a toast and no focus) rather than to a jump somewhere wrong. */}
+          <label className="block" data-field="totp-code">
             <span className="block text-caption uppercase eyebrow font-bold text-text-secondary mb-1.5">
               2. Enter the 6-digit code
             </span>

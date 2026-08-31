@@ -19,6 +19,7 @@ import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
 import { AiProgress, AiOverlayShell, useAiPhases, type AiPhase } from "@/components/ui/ai-progress";
 import { Button } from "@/components/ui/button";
+import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -487,6 +488,14 @@ export function ReviewActions({
               <span className="text-body-sm text-text-subtle">Save your changes before approving.</span>
             )}
           </div>
+          {/* ⭐ DG-S-04 — INSIDE the modal on purpose, so it mounts only while this form is on
+              screen. `dirty` survives the modal closing, so a guard hung at component root
+              would prompt on any navigation long after the form was dismissed — a guard that
+              cries wolf, which §K's own rules say gets ignored the third time. */}
+          <UnsavedChangesGuard
+            dirty={dirty}
+            body="This proposal has edits that have not been saved. Leaving now discards them."
+          />
         </div>
       </Modal>
 

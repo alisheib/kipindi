@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { softRequireStaff } from "@/lib/server/rbac-guard";
+import { CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { twoOfficerGate } from "@/lib/server/two-officer";
 import { withLock } from "@/lib/server/locks";
 import { audit } from "@/lib/server/audit";
@@ -43,7 +44,7 @@ async function labelFor(chainId: string): Promise<string | null> {
 
 /** The cost panel. Read-only, gated, and it REFUSES rather than estimating (A-5). */
 export async function purgeCostAction(chainId: string): Promise<Result<PurgeCost>> {
-  const gate = await softRequireStaff("compliance", "purgeChainHistory", REFUSAL);
+  const gate = await softRequireStaff(CONTROL_DOMAIN.purgeChainHistory, "purgeChainHistory", REFUSAL);
   if (!gate.ok) return { ok: false, error: gate.error };
 
   const pre = await checkPreconditions(chainId);
@@ -71,7 +72,7 @@ export async function purgeCostAction(chainId: string): Promise<Result<PurgeCost
  * a failed read-back instead of reporting success.
  */
 export async function purgeStage1Action(formData: FormData): Promise<Result<{ at: string }>> {
-  const gate = await softRequireStaff("compliance", "purgeChainHistory", REFUSAL);
+  const gate = await softRequireStaff(CONTROL_DOMAIN.purgeChainHistory, "purgeChainHistory", REFUSAL);
   if (!gate.ok) return { ok: false, error: gate.error };
 
   const chainId = String(formData.get("chainId") ?? "");
@@ -121,7 +122,7 @@ export async function purgeStage1Action(formData: FormData): Promise<Result<{ at
  * person?
  */
 export async function purgeStage2Action(formData: FormData): Promise<Result<PurgeJob>> {
-  const gate = await softRequireStaff("compliance", "purgeChainHistory", REFUSAL);
+  const gate = await softRequireStaff(CONTROL_DOMAIN.purgeChainHistory, "purgeChainHistory", REFUSAL);
   if (!gate.ok) return { ok: false, error: gate.error };
 
   const chainId = String(formData.get("chainId") ?? "");
@@ -177,7 +178,7 @@ export async function purgeStage2Action(formData: FormData): Promise<Result<Purg
  * ⚠️ Under the same lock as the ceremony, so two tabs cannot interleave batches on one chain.
  */
 export async function purgeAdvanceAction(chainId: string): Promise<Result<PurgeJob>> {
-  const gate = await softRequireStaff("compliance", "purgeChainHistory", REFUSAL);
+  const gate = await softRequireStaff(CONTROL_DOMAIN.purgeChainHistory, "purgeChainHistory", REFUSAL);
   if (!gate.ok) return { ok: false, error: gate.error };
 
   return withLock(`updown-purge:${chainId}`, async () => {
@@ -192,14 +193,14 @@ export async function purgeAdvanceAction(chainId: string): Promise<Result<PurgeJ
 
 /** Read the job for the progress bar. */
 export async function purgeJobAction(chainId: string): Promise<Result<PurgeJob | null>> {
-  const gate = await softRequireStaff("compliance", "purgeChainHistory", REFUSAL);
+  const gate = await softRequireStaff(CONTROL_DOMAIN.purgeChainHistory, "purgeChainHistory", REFUSAL);
   if (!gate.ok) return { ok: false, error: gate.error };
   return { ok: true, data: await getJob(chainId) };
 }
 
 /** Abandon a ceremony before stage 2 — clears the first signature and records the withdrawal. */
 export async function purgeCancelAction(chainId: string): Promise<Result<null>> {
-  const gate = await softRequireStaff("compliance", "purgeChainHistory", REFUSAL);
+  const gate = await softRequireStaff(CONTROL_DOMAIN.purgeChainHistory, "purgeChainHistory", REFUSAL);
   if (!gate.ok) return { ok: false, error: gate.error };
   await clearFirstSignature(chainId);
   await audit({

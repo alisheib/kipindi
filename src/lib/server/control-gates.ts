@@ -98,6 +98,20 @@ export const CONTROL_DOMAIN = {
   /** admin shell header · the AI toolkit's four toggles (chatbot, resolution pause,
    *  auto-resolve, poll generation). AI spend + resolution policy — compliance. */
   aiToolkit: "compliance",
+  /**
+   * `/admin/retention` · PURGE A CHAIN'S HISTORY — the redaction ceremony
+   * (`docs/DATA-RETENTION.md` §7). The last un-actioned line of scan #1, declared 2026-08-31.
+   *
+   * ⛔ AND IT IS NOT THE NO-OP IT LOOKED LIKE. `purge-actions.ts` passed the literal
+   * `"compliance"` to `softRequireStaff` at six call sites, so the DOMAIN was correct and
+   * enforced — the security boundary was never in doubt. What was missing is that the domain
+   * had two homes: the action's literal and nothing else. `control-gates.test.mts` §4 stayed
+   * silent because `/admin/retention`'s own route domain already equals `"compliance"`, so its
+   * mismatch check could never fire here. ⭐ Declaring it makes the action READ this constant
+   * (§3 now enforces that, and the SITES entry alongside it), which is what turns a coincidence
+   * into a single definition site (§0a).
+   */
+  purgeChainHistory: "compliance",
   /** `/admin/markets` · the emergency void kill switch — pulls a LIVE market and
    *  refunds every open stake. Deliberately tighter than the trading page that hosts
    *  it: "it moves money / closes a live pool — not a moderator job". Third instance

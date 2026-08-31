@@ -43,50 +43,23 @@ function walk(dir: string): string[] {
 }
 
 /**
- * Comments stripped FIRST, so prose cannot count as code (7g's population clause).
- * ⚠️ Deliberately a lexer, not a regex sweep. Source files here are full of comments that
- * quote JSX verbatim — including `<nav aria-current=…>` inside explanations of past defects —
- * so prose must not count as code. Strings and template literals are skipped properly, which
- * a regex sweep cannot do: a quoted double-slash would otherwise open a comment that runs to
- * end of line and swallow real code after it.
+ * Comments stripped FIRST, so prose cannot count as code (7g population clause) — through the
+ * SHARED `decomment`, never a private copy.
  *
- * ⛔ AND THIS COMMENT ITSELF MUST NOT SPELL A BLOCK-COMMENT TERMINATOR. The first draft did,
- * inside backticks, while explaining this very function — and esbuild closed the comment
- * there and died on "unterminated string literal" 40 lines lower, pointing at innocent code.
- * A delimiter written in prose ABOUT code is still a delimiter.
+ * ⛔ THE FIRST DRAFT HAND-ROLLED A LEXER HERE AND `test:decomment` WAS RIGHT TO REFUSE IT.
+ * That ratchet exists because this exact helper was once copy-pasted into 40 files in four
+ * spellings — the E-108 shape: one helper, many copies, repaired one at a time and handing the
+ * next bug to the others. A private stripper here would have been the 41st, and it would have
+ * been WORSE than the shared one: `decomment` leaves `://` alone so an unquoted URL survives,
+ * and stops an unmatched quote at end-of-line so a lone backtick cannot open a template that
+ * swallows hundreds of lines. Both were learned by shipping the bug.
+ * ⭐ It also already does the thing this gate depends on: a block comment is BLANKED with its
+ * newlines kept, so line numbers survive. The private draft learned that the expensive way —
+ * deleting those lines shifted every reported `file:line` earlier, and the gate printed
+ * `notifications/page.tsx:120` over a helper function and `results/page.tsx:307` over a `<p>`.
+ * A gate that names a location the reader cannot find teaches distrust, not repair.
  */
-function stripComments(s: string): string {
-  let out = "";
-  let i = 0;
-  const n = s.length;
-  while (i < n) {
-    const c = s[i], d = s[i + 1];
-    // ⛔ COMMENTS ARE BLANKED, NOT DELETED — every newline inside one is KEPT. The first draft
-    // deleted them, so the stripped text had fewer lines than the file and every line number
-    // this gate printed was shifted earlier: it reported `notifications/page.tsx:120` over a
-    // helper function and `results/page.tsx:307` over a `<p>`. A gate that names a file:line
-    // the reader cannot find teaches them to distrust the gate, not to fix the defect — and in
-    // a file whose comments outweigh its code, the drift is tens of lines.
-    if (c === "/" && d === "/") { while (i < n && s[i] !== "\n") i++; continue; }
-    if (c === "/" && d === "*") {
-      i += 2;
-      while (i < n && !(s[i] === "*" && s[i + 1] === "/")) { if (s[i] === "\n") out += "\n"; i++; }
-      i += 2;
-      continue;
-    }
-    if (c === '"' || c === "'" || c === "`") {
-      const q = c; out += c; i++;
-      while (i < n) {
-        if (s[i] === "\\") { out += s[i] + (s[i + 1] ?? ""); i += 2; continue; }
-        if (s[i] === q) { out += s[i]; i++; break; }
-        out += s[i]; i++;
-      }
-      continue;
-    }
-    out += c; i++;
-  }
-  return out;
-}
+import { decomment } from "./lib/decomment.mts";
 
 /** Every `<nav …>` … `</nav>` block. Navs do not nest in this product; asserted below. */
 function navBlocks(src: string): { block: string; line: number }[] {
@@ -138,7 +111,7 @@ type Row = { file: string; line: number; block: string };
 const population: Row[] = [];
 
 for (const f of files) {
-  const src = stripComments(readFileSync(f, "utf8"));
+  const src = decomment(readFileSync(f, "utf8"));
   const wrappers = toggleWrappers(src);
   for (const { block, line } of navBlocks(src)) {
     /**

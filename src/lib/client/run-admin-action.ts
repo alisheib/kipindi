@@ -12,7 +12,14 @@
  * cannot know whether the mutation applied. Say so; tell the officer to
  * refresh before retrying.
  */
-export async function runAdminAction<T>(fn: () => Promise<T>): Promise<T | { ok: false; error: string }> {
+/**
+ * ⭐ DG-S-05 (2026-08-31) — the failure shape carries an optional `field`, so a refusal can name
+ * the control an operator has to fix and `focusFirstInvalid` can take them there. ⛔ OPTIONAL,
+ * and additive: every existing `{ ok: false, error }` still satisfies this and still renders
+ * exactly as it does today. The thrown-error path below cannot name a field — it does not know
+ * one — and says so by omitting it rather than guessing.
+ */
+export async function runAdminAction<T>(fn: () => Promise<T>): Promise<T | { ok: false; error: string; field?: string }> {
   try {
     return await fn();
   } catch (e) {

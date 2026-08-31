@@ -18,6 +18,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { Button } from "@/components/ui/button";
+import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
 import { useDeferredToast } from "@/components/ui/toast";
 import { setPayoutStatusAction } from "./payment-actions";
 import { runAdminAction } from "@/lib/client/run-admin-action";
@@ -175,6 +176,15 @@ export function PayoutStatusControl({
         disabled={!dirty || !mayAct} title={disabledReason} onClick={save}>
         Apply
       </Button>
+      {/* ⭐ DG-S-04 — `dirty` used to do exactly one thing: grey out Apply. It now also guards
+          the three exits (§K rule 7d), so a half-declared withdrawal message cannot be lost by
+          following a link or closing the tab. ⛔ The state is UNCHANGED — the guard reads the
+          same boolean the button does, so the two can never disagree about whether work is at
+          risk. */}
+      <UnsavedChangesGuard
+        dirty={dirty}
+        body="The withdrawal message has been edited but not applied. Leaving now discards the edit."
+      />
     </div>
   );
 }

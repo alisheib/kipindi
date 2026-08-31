@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
+import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import { AiProgress, AiOverlayShell, type AiPhase } from "@/components/ui/ai-progress";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Select } from "@/components/ui/select";
@@ -193,15 +194,25 @@ export function GenerateForm({ generatable }: { generatable: string[] }) {
     return errs;
   };
 
-  /** Scroll to the first error field within the form. */
+  /**
+   * Take the operator to the first invalid field (DG-S-06, §K rule 7d).
+   *
+   * ⭐ DELETED INTO `focusFirstInvalid` (2026-08-31). The version that lived here was the
+   * repo's only such helper and it was wrong four ways, each of which the kit version fixes and
+   * documents: it picked by `Object.keys(errs)[0]` — the VALIDATOR's order, not the order the
+   * fields appear, so it could scroll past the first empty field to a later one; it only ever
+   * focused an `<input>`, so a `<textarea>` or `<select>` got a scroll and no keyboard; it had
+   * no `else`, so a field on an unrendered tab meant NOTHING happened and nothing said why; and
+   * its `behavior:"smooth"` plus `setTimeout(…, 300)` ignored §M6 and raced its own animation.
+   * ⛔ The result is now READ, not discarded — a refusal that nobody looks at is the silence
+   * §K rule 7d names.
+   */
   const scrollToFirstError = (errs: Record<string, string>) => {
-    const firstKey = Object.keys(errs)[0];
-    if (!firstKey || !formRef.current) return;
-    const el = formRef.current.querySelector(`[data-field="${firstKey}"]`);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
-      const input = el.querySelector("input");
-      if (input) setTimeout(() => input.focus(), 300);
+    const r = focusFirstInvalid(formRef.current, Object.keys(errs));
+    if (!r.ok && r.reason === "not-rendered") {
+      // The field is invalid and off-screen. Say so — this form is single-panel today, so this
+      // cannot happen yet; when it is tabbed, the branch is already here rather than missing.
+      console.warn(`[validation] "${r.field}" is invalid but not rendered`, r.ownedByTab ? `— it belongs to ${r.ownedByTab}` : "");
     }
   };
 
