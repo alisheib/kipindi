@@ -21,7 +21,24 @@
  *
  * Usage: node scripts/live-refusal-e2e.mjs        (LIVE_BASE=… to point elsewhere)
  */
-import { browser, login, shot, BASE, measureClipping, describeClipping } from "./live/harness.mjs";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { browser, login, BASE, measureClipping, describeClipping } from "./live/harness.mjs";
+
+/**
+ * ⛔ EVIDENCE GOES TO THE GITIGNORED DIR, NOT THE REPO ROOT. The harness's `shot()` defaults
+ * `SHOT_DIR` to `"."` (harness.mjs:30), and the first run of this driver dropped two PNGs beside
+ * package.json — where a careless `git add -A` commits them. The ignored evidence convention in
+ * this repo is the `.qa-design-` prefix (.gitignore:61) — ⚠️ written WITHOUT its trailing glob on
+ * purpose, because the two characters that follow it would close this block comment and turn the
+ * rest of the paragraph into code. Writing the file here rather than exporting SHOT_DIR keeps it
+ * correct however the script is invoked, on any shell.
+ */
+const SHOTS = join(dirname(fileURLToPath(import.meta.url)), "..", ".qa-design-gate", "refusal-live");
+mkdirSync(SHOTS, { recursive: true });
+const shot = async (page, name) =>
+  writeFileSync(join(SHOTS, name + ".png"), await page.screenshot({ fullPage: true }));
 
 let pass = 0, fail = 0;
 const ok = (l, c, x = "") => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"} ${l}${x ? ` — ${x}` : ""}`); };
