@@ -113,6 +113,7 @@
     "test:operator-error": "tsx scripts/operator-error.test.mts",
     "qa:refusal": "node scripts/design-gate/refusal-bench.mjs",
     "red:refusal": "node scripts/design-gate/refusal-bench.mjs --prove-red",
+    "qa:refusal-live": "node scripts/live-refusal-e2e.mjs",
     "test:labels": "tsx scripts/label-lexicon.test.mts",
     "test:red-anchors": "tsx scripts/red-anchors.test.mts",
     "red:labels": "node scripts/red-labels.mjs",
