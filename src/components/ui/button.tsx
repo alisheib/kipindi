@@ -6,7 +6,14 @@
  *
  * variants: primary (royal) · yes (emerald) · no (rose) · ghost · danger ·
  *           gold · claret · aqua-ghost · secondary (alias for ghost)
- * sizes:    sm 30 · md 38 · lg 46 · xl 56 (xl uses --r-lg radius)
+ * sizes:    xs · sm · md · lg · xl — ⛔ EACH RESOLVES THROUGH ITS OWN `--h-control-*` TOKEN
+ *           (`globals.css`, beside the ruling that set it). The values are NOT restated here:
+ *           §0d says a value has one home, and this line had drifted to the PRE-Phase-3 ladder
+ *           (it read "sm 30 · md 38 · lg 46") while the shipped controls were 40/44/48, and it
+ *           never mentioned `xs` at all — so anyone sizing a control from this comment was
+ *           reading a second, wrong home. `test:tap-target` §1 resolves the real class → token
+ *           → px chain on every run and fails if any of the five stops resolving.
+ *           (xl uses the --r-lg radius.)
  *
  * Adds: leading + trailing icon slots, loading state (spinner replaces
  * leading), fullWidth.

@@ -21,13 +21,34 @@
 7. **Final Swahili strings** — all copy here is representative, written to the measured
    budget (rows ≤ 93 chars, every question "Je, "); final keys belong to the dictionary
    and the label modules (maswali-tier-label.ts; outcomes reuse side-label.ts).
-8. **--success-\* aliases the YES ramp in tokens-LOCKED.css** — law 6 insists SUCCESS IS
+8. ✅ **ANSWERED 2026-08-31 — the LIVE REPO WINS, and your reading of law 6 was right.**
+   ~~**--success-\* aliases the YES ramp in tokens-LOCKED.css** — law 6 insists SUCCESS IS
    NOT YES (166 vs 152), and the brief describes --success-500 at hue 166 / chroma 0.12,
    but the locked extract defines --success as var(--yes-500) and --success-fg as
    var(--yes-200). We reference the semantic tokens (correct either way); confirm whether
    the hue-166 family lives in globals.css beyond the extract (live repo wins) or the
    alias is intended. Until answered, the ✓ marks and the 10/10 helper will render in the
-   YES hue on ship.
+   YES hue on ship.~~
+
+   **The hue-166 family is real and live.** `globals.css` defines
+   `--success-500: oklch(62% 0.12 166)` — exactly the hue and chroma the brief describes —
+   and `--success: var(--success-500)`, **not** `var(--yes-500)`. The alias you found in
+   `tokens-LOCKED.css` is a STALE EXTRACT: it predates **D2 (2026-08-21, Ali's ruling)**,
+   which de-aliased the family precisely so that *"a saved password, a confirmed e-mail and
+   a settled RG limit"* would stop wearing the money ink. `DESIGN_AUTHORITY` §B2a carries it.
+
+   ⭐ **So your ✓ marks and the 10/10 helper WILL render in the success hue, not the YES hue** —
+   referencing the semantic tokens was the right call and needs no change.
+
+   ⚠️ **One thing that was NOT true when you asked, and is now:** `--success-500` existed but
+   was not exposed as a Tailwind utility, so `bg-success-500/10` compiled to **nothing,
+   silently**. Fixed 2026-08-31 and held by `test:bridge` §9, which gates that every app-state
+   token the stylesheet defines is spellable as a class. If you write a `success-500` utility,
+   it now resolves.
+
+   ⛔ **Do not "fix" `tokens-LOCKED.css` to match.** It is a frozen delivery snapshot and its
+   job is to record what was handed over; the live repo is the authority (§0d). See
+   [`DESIGN-BASELINE.md`](../../../DESIGN-BASELINE.md) §1 for where each kind of design fact lives.
 9. **Bottom-rail slot** — the artboards show Maswali as the middle slot of five. Which
    existing slot yields (Results moved under "more"?) is a product call, not a design one.
 

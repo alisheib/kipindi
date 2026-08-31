@@ -285,9 +285,17 @@
      further down this file — so the clause is deleted rather than left to invite a
      future session to "finish" something already finished.
      --tap-min is the 40px finger/primary/money floor (Law 9). --h-control-xs stays
-     at 32px: it is the documented dense, MOUSE-ONLY admin exception, and all 8 of
-     its call sites are under src/app/admin/ — not one is a finger, primary or money
-     control, which is the only thing §A2's floor governs. */
+     at 32px: it is the documented dense, MOUSE-ONLY admin exception — not one call
+     site is a finger, primary or money control, which is the only thing §A2's floor
+     governs.
+     ⚠️ THE COUNT THAT USED TO BE HERE WAS WRONG AND IS GONE (2026-08-31). It read
+     "all 8 of its call sites are under src/app/admin/"; re-derived, the rung is used
+     in 7 files and two of them are under src/components/ — `admin/refresh-button.tsx`
+     (an admin surface, so the SPIRIT held) and `ui/button.tsx` (which DEFINES the
+     rung). A hand-counted population in a comment rots silently; the claim is now
+     ENFORCED instead: `test:tap-target` §2 fails if the 32px rung appears on any
+     player surface, and §5.1 fails if an admin control declares a sub-floor height
+     without NAMING this token. */
   --tap-min:      40px;
   --h-control-xs: 32px;   /* dense mouse-only admin inline controls (documented floor exception) */
   --h-control-sm: 40px;   /* .btn-sm — Phase 3 landed: exactly --tap-min (Law 9 / DA §A2) */
@@ -1690,7 +1698,10 @@ body {
    kit (`.btn-sm` = `--h-control-sm` = 40px). Minting a class that hands a `<button>` the
    control height would be exactly the fork §K5 names, and §K1 forbids `min-h-[…]` on a `.btn`.
 
-   📐 THE DEFECT WAS TWO, AND THE SECOND ONE IS WHY THIS IS A CLASS. Six call sites, one role,
+   📐 THE DEFECT WAS TWO, AND THE SECOND ONE IS WHY THIS IS A CLASS. ⚠️ It read "Six call sites"
+   until 2026-08-31 and there are now 9 — a hand-counted population in a comment rots the moment
+   the class is adopted again, which is the whole reason this recipe exists. Re-derive with
+   `grep -rl "row-link" src --include=*.tsx`. At the time: six call sites, one role,
    and they shipped in TWO spellings — `players/page.tsx:240`, `staff/page.tsx:96` and
    `markets/[id]/page.tsx:428` carry `font-medium`; `self-exclusions/page.tsx:144`,
    `approvals/page.tsx:149` and `live/page.tsx:122` do not. Three-all is no majority, so the

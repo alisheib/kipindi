@@ -1,5 +1,23 @@
 # Integration reality — what your decisions actually cost us
 
+> ⚪ **STATUS: RECORD, AND ITS PRICES ARE DATED (banner added 2026-08-31).** This was written
+> TO an outside designer in August 2026 to tell them what each choice would cost *at that time*.
+> ⛔ **The body is deliberately NOT restated** — every figure here records what we really told
+> them, and rewriting one to match today would turn a record into a fiction. Read it as history.
+>
+> **Two of its prices are no longer true, and they are the two most likely to mislead:**
+> · §5 says the tap floor is "enforced by a warning calibrated to the defect" and that shipped
+>   heights "include 30px and 38px". Both were fixed by `DESIGN-GATE-2026-08-28`: the control
+>   ladder is now 40/44/48 through `--h-control-*`, and **`npm run test:tap-target` FAILS** —
+>   §3 on the player surface, §5 on the admin console, with `red:tap-floor` as its control.
+> · §1's YES/NO re-mapping cost predates §B2a (D2), which split app-state colour off the
+>   betting ramp — so part of that 350 is already paid.
+>
+> ⭐ For what is true NOW — the guards, what they hold, and what is deliberately left alone —
+> read [`DESIGN-BASELINE.md`](../../../DESIGN-BASELINE.md). The rulebook remains
+> [`DESIGN_AUTHORITY.md`](../../../DESIGN_AUTHORITY.md); where this file and the live code
+> disagree, **the live code wins**.
+
 None of this constrains your design. It is here so that when you choose, you choose knowing
 the price, and so nothing in this package reads as easier than it is. We would rather you
 made an expensive decision deliberately than a cheap-looking one by accident.
