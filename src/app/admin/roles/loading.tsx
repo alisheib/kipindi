@@ -16,12 +16,15 @@ export default function Loading() {
         {/* "What this is" — an UNTITLED info card: its heading is a `<p>` INSIDE the
             body, not the AdminCard's own `title`. */}
         <SkCard lines={4} title={false} />
-        {/* The Access / Reads tab rail — `<AdminCard padding="p-0">` around a `<nav>`
-            whose links are `py-2.5 text-body-sm border-b-2`: 10 + 18 + 10 + 2, plus the
-            nav's own 1px bottom border = 41px. It had NO ghost, so the whole matrix
-            below it jumped up by 41 + the body's 20px rhythm on every load. */}
+        {/* The Access / Reads tab rail. ⚠️ 41 → 45px on 2026-08-31 (DG-S-03): the rail is the
+            kit `<Tabs variant="line">` now, whose options are `h-[44px]` — §A2's preferred tap
+            height and §K rule 7c's rung for a section rail — plus the rail's own 1px bottom
+            border. The hand-rolled rail it replaced was `py-2.5 text-body-sm border-b-2`
+            = 10 + 18 + 10 + 2 + 1 = 41. ⛔ A ghost that keeps the OLD number is the same defect
+            as no ghost, only quieter: this one had none at all, and the whole matrix below it
+            jumped up by 41 + the body's 20px rhythm on every load (§B7 rule 3). */}
         <div className="glass-panel p-0">
-          <div className="h-[41px] border-b border-border-subtle" />
+          <div className="h-[45px] border-b border-border" />
         </div>
         {/* Matrix intro + "Reset to defaults" (roles-matrix.tsx:72-83). */}
         <div className="flex flex-wrap items-start justify-between gap-2">

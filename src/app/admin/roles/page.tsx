@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Tabs } from "@/components/ui/tabs";
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
 import { currentSession } from "@/lib/server/auth-service";
@@ -16,9 +16,12 @@ export const dynamic = "force-dynamic";
  * models are born." Access answers "may this role reach this ROUTE?"; Reads answers "may this
  * role read this FIELD?" — and Reads may only ever SUBTRACT from what Access already grants.
  */
+/* ⚠️ The `sw` gloss is gone with the hand-rolled rail (DG-S-03) — the kit rail's label is one
+   string, and dead data is how a stale fact survives (§0a). `Ufikiaji` still ships at
+   `admin-nav-groups.ts:158`. */
 const TABS = [
-  { id: "access", label: "Access", sw: "Ufikiaji" },
-  { id: "reads", label: "Reads", sw: "Kusoma" },
+  { id: "access", label: "Access" },
+  { id: "reads", label: "Reads" },
 ] as const;
 
 export default async function AdminRolesPage({
@@ -56,26 +59,26 @@ export default async function AdminRolesPage({
           </div>
         </AdminCard>
 
+        {/* ⭐ THE KIT SECTION RAIL (DG-S-03, 2026-08-31) — DESIGN_AUTHORITY §K rule 7.
+            This rail was hand-rolled here, and `/admin/players/[id]:302` hand-rolled it again
+            with a BYTE-IDENTICAL container class string and divergent items (40px vs 52px,
+            `<Link>` vs raw `<a>`, `aria-current` vs nothing). Two definition sites for one
+            control is §K's Definition of Done failing its own test — "a grep for the thing you
+            added finds it in exactly ONE definition site" — so this one is deleted INTO the
+            primitive (§B9: new design merges in, it never sits beside).
+            ⚠️ THE SWAHILI GLOSS GOES. This rail rendered `Access · Ufikiaji`; the primitive's
+            label is one string and the console is English-only by design
+            (`scripts/failure-reasons.test.mts:1080-1085`), which is what stops a six-tab rail
+            from needing 1,400px. `Ufikiaji` survives at `admin-nav-groups.ts:158` as the Access
+            domain's own gloss; `Kusoma` does not, and the card above still names and explains
+            both axes in prose. That is the one content change here, and it is stated rather
+            than absorbed. */}
         <AdminCard padding="p-0">
-          <nav aria-label="Permission axes" className="flex gap-4 px-4 border-b border-border-subtle overflow-x-auto">
-            {TABS.map((t) => {
-              const active = t.id === tab;
-              return (
-                <Link
-                  key={t.id}
-                  href={`/admin/roles?tab=${t.id}`}
-                  aria-current={active ? "page" : undefined}
-                  className={`shrink-0 border-b-2 py-2.5 text-body-sm transition-colors ${
-                    active
-                      ? "border-brand-500 text-text font-semibold"
-                      : "border-transparent text-text-tertiary hover:text-text"
-                  }`}
-                >
-                  {t.label} · {t.sw}
-                </Link>
-              );
-            })}
-          </nav>
+          <Tabs
+            ariaLabel="Permission axes"
+            value={tab}
+            tabs={TABS.map((t) => ({ value: t.id, labelEn: t.label, href: `/admin/roles?tab=${t.id}` }))}
+          />
         </AdminCard>
 
         {tab === "access" && grantMatrix && <RolesMatrix matrix={grantMatrix} />}

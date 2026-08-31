@@ -93,10 +93,17 @@
  * translates through `useT()` before it reaches this component.
  */
 import * as React from "react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { CountBadge } from "@/components/ui/count-badge";
 
-export type TabItem = { value: string; labelEn: string; count?: number };
+export type TabItem = {
+  value: string;
+  labelEn: string;
+  count?: number;
+  /** Present ⇒ this rail NAVIGATES: the option renders a `<Link aria-current>`. See `TabControl`. */
+  href?: string;
+};
 
 type Variant = "line" | "segmented" | "pill";
 
@@ -111,6 +118,64 @@ type Variant = "line" | "segmented" | "pill";
  */
 const BOX = "inline-flex items-center gap-1.5";
 
+/**
+ * ⭐ LINK MODE (DG-S-03, 2026-08-31) — ONE RAIL, TWO WAYS OF HOLDING ITS SELECTION.
+ *
+ * An item with an `href` renders a `next/link` `<Link>` carrying `aria-current="page"` when it
+ * is the one in force; an item without one renders today's `<button aria-pressed>`. The rail
+ * wrapper follows: `<nav aria-label>` for links, `role="group"` for buttons.
+ *
+ * ⛔ THIS DOES NOT REVERSE A5 (2026-08-21) — IT SATISFIES ITS ANTECEDENT. A5's structural half
+ * stands untouched: the panel is still rendered by the CALLER, so this component still cannot
+ * emit a correct `aria-controls`, and it still claims NO ARIA tab widget — no `role="tablist"`,
+ * no `role="tab"`, no `aria-selected`. What A5 forbade about `aria-current` was conditional and
+ * it said so: *"These change in-page view state WITHOUT A URL, which is the /markets
+ * discovery-chip case."* A rail whose selection lives in `?tab=` is not that rail, and
+ * `filter-pill.tsx:38-48` already states the general law — `"tab"` navigates and takes
+ * `aria-current="page"`, `"toggle"` does not and takes `aria-pressed`; ⛔ one semantic imposed
+ * on both is a lie about the control.
+ *
+ * ⛔ `data-section-rail`, NOT `data-filter-rail`. A section rail chooses which PART OF A PAGE is
+ * shown; a filter rail chooses which ROWS a list shows (DESIGN_AUTHORITY §K rule 7).
+ * `filter-language.test.mts:321` already excludes this file from the filter language BY NAME —
+ * *"Nav is out — an active NAV destination is a settled, separate language"* — so wearing that
+ * other hook would turn §0.4 red for the right reason at the wrong time, and then have §6.6
+ * demand a 32px dense rank of a page's primary navigation. The hook exists so the design-gate
+ * drives can DISCOVER a page's tabs off the rendered rail instead of a hand-typed list in
+ * `routes.mjs` (§0a: the tab set's home is the page's own definition).
+ */
+function TabControl({
+  item, active, cls, style, onSelect, trailing,
+}: {
+  item: TabItem;
+  active: boolean;
+  cls: string;
+  style?: React.CSSProperties;
+  onSelect?: () => void;
+  /** The `line` variant's travelling underline — absolutely positioned, so it is not a flex item. */
+  trailing?: React.ReactNode;
+}) {
+  const body = (
+    <>
+      {item.labelEn}
+      {item.count !== undefined && <CountBadge count={item.count} tone="brand" size="sm" />}
+      {trailing}
+    </>
+  );
+  if (item.href) {
+    return (
+      <Link href={item.href as never} aria-current={active ? "page" : undefined} className={cls} style={style}>
+        {body}
+      </Link>
+    );
+  }
+  return (
+    <button type="button" aria-pressed={active} onClick={onSelect} className={cls} style={style}>
+      {body}
+    </button>
+  );
+}
+
 export function Tabs({
   tabs,
   value,
@@ -121,11 +186,37 @@ export function Tabs({
 }: {
   tabs: TabItem[];
   value: string;
-  onChange: (v: string) => void;
+  /** ⚠️ Optional in LINK mode: a `<Link>` rail is navigated, not called back — and a function
+   *  prop cannot cross the RSC boundary, which is what lets a server console render this. */
+  onChange?: (v: string) => void;
   variant?: Variant;
   className?: string;
   ariaLabel?: string;
 }) {
+  /**
+   * A rail is a NAVIGATION the moment any of its options owns a URL.
+   *
+   * ⛔ LINK MODE IS `line`-ONLY, AND THAT IS TWO RULINGS, NOT A SHORTCUT.
+   * ① DESIGN_AUTHORITY §K rule 7c: *"the underline is the section language; the capsule is the
+   *   filter language"* — three shipped section rails are three-for-three an underline, all 25
+   *   `<FilterPill>` call sites are the capsule. A URL-backed capsule would be a fourth answer.
+   * ② AND IT KEEPS A GATE'S SIGHT. The first draft of this refactor routed all three variants
+   *   through the shared `TabControl`, which moved every height out of its own `<button>` open
+   *   tag and into a `cn()` passed as a prop — and `scripts/tap-target.test.mts` §3 reads
+   *   heights DECLARED INSIDE AN INTERACTIVE OPEN TAG. `test:tap-target` went red saying the
+   *   `tabs.tsx:button@36` row was "fixed (or moved)". ⛔ It was neither: the segment was still
+   *   36px and the gate had simply gone blind to it — a guard one level too shallow, made so by
+   *   a refactor that looked like tidying. So `segmented` and `pill` keep their own `<button>`
+   *   with a literal height, and only `line` — whose 44px is above the floor and can never be a
+   *   finding — delegates.
+   * ⚠️ The residue, stated rather than hidden: a future height edit inside the `line` branch is
+   *   invisible to that static gate. Closing that needs the gate to follow a `cn()` through a
+   *   prop, which it cannot do, and the alternative — a rule scoped to this filename — is the
+   *   allowlist-by-filename shape §A1 forbids. The rendered drive is where a rail's real height
+   *   is provable anyway, with `elementFromPoint`, exactly as the `toggle.tsx:button@26` row in
+   *   that same ratchet already records.
+   */
+  const isNav = tabs.some((t) => t.href);
   if (variant === "segmented") {
     return (
       <div
@@ -141,9 +232,9 @@ export function Tabs({
           return (
             <button
               key={t.value}
-              aria-pressed={active}
               type="button"
-              onClick={() => onChange(t.value)}
+              aria-pressed={active}
+              onClick={() => onChange?.(t.value)}
               className={cn(
                 // 36px segment inside the `p-1` (4px) capsule above ⇒ a 46px capsule with its
                 // 1px border, in line with the 44px filter rails (was h-8 = 48px ⇒ 58px).
@@ -186,9 +277,9 @@ export function Tabs({
           return (
             <button
               key={t.value}
-              aria-pressed={active}
               type="button"
-              onClick={() => onChange(t.value)}
+              aria-pressed={active}
+              onClick={() => onChange?.(t.value)}
               className={cn(
                 // 40px = --tap-min, the chip language every other filter rail uses (was h-8 = 48px).
                 // ⛔ THIS LINE'S CONTENT IS A KEY. `scripts/design-gate/eyebrow-roles.mjs`
@@ -217,50 +308,70 @@ export function Tabs({
     );
   }
 
-  // line
-  return (
-    <div role="group" aria-label={ariaLabel} className={cn("flex items-end gap-1 border-b border-border overflow-x-auto", className)}>
+  // line — ⭐ THE SECTION-RAIL VARIANT (DESIGN_AUTHORITY §K rule 7c: "the underline is the
+  // section language; the capsule is the filter language"). ⛔ It SCROLLS and never wraps, and
+  // that is structural rather than taste: the `border-b` is on this container, so a wrapped
+  // second row would leave the first with no baseline under it.
+  const railCls = cn("flex items-end gap-1 border-b border-border overflow-x-auto", className);
+  const items = (
+    <>
       {tabs.map((t) => {
         const active = value === t.value;
         return (
-          <button
+          <TabControl
             key={t.value}
-            aria-pressed={active}
-            type="button"
-            onClick={() => onChange(t.value)}
-            className={cn(
+            item={t}
+            active={active}
+            onSelect={() => onChange?.(t.value)}
+            cls={cn(
               // 44px — A2's mobile-preferred tap height (was h-10 = 80px on the wallet rail),
               // and §K rule 7c's rung for a section rail: `--h-control-md`.
               // ⚠️ `text-body-sm` (13), not `text-[13px]`: same glyph, but §T7 says a size at a
               // call site comes from the Tailwind ladder, and `test:type-scale` §4 ratchets the
               // hand-typed spelling toward zero.
-              // 📋 `font-display` STAYS FOR NOW, AND THE REASON IS THAT NOBODY CAN SEE IT
-              // CHANGE. Five of the seven shipped nav/rail components carry no font class, and
-              // `.btn` sets `font-family: var(--font-body)` outright — so a control label in
-              // Sora is the odd one out. But this variant's ONE adopter is `/wallet`, an authed
-              // player surface, and every player QA secret is rejected by production today
-              // (DESIGN-GATE-2026-08-28), so the change would ship unwitnessed. It moves with
-              // the DG-S-03 admin conversion, where two console rails can witness it.
+              // ⭐ THE BODY FACE, NOT SORA — and it was held back one commit ON PURPOSE, until
+              // something could witness it. `font-display` made this the only nav-shaped control
+              // in the product wearing the DISPLAY face: five of the seven shipped nav/rail
+              // components carry no font class at all, and `.btn` — the platform's own control
+              // primitive — sets `font-family: var(--font-body)` outright (globals.css:1015).
+              // ⚠️ AND BE PRECISE ABOUT WHAT THE ADMIN CONVERSION WITNESSES, BECAUSE THE FIRST
+              // DRAFT OF THIS NOTE OVERSTATED IT. `/admin/roles`'s hand-rolled rail carried NO
+              // font class, so it already rendered Inter — measured 2026-08-31, old and new
+              // both resolve `Inter`. Removing `font-display` is therefore what lets an admin
+              // rail adopt this variant WITHOUT gaining a face it never had; it does not
+              // witness the loss of Sora on `/wallet`. That loss is measured separately, in the
+              // real production fonts, and recorded rather than assumed.
               BOX,
-              "relative h-[44px] px-4 text-body-sm font-display font-semibold transition-colors duration-quick ease-linear whitespace-nowrap",
+              "relative h-[44px] px-4 text-body-sm font-semibold transition-colors duration-quick ease-linear whitespace-nowrap",
               active ? "text-text" : "text-text-muted hover:text-text",
             )}
-          >
-            {t.labelEn}
-            {t.count !== undefined && <CountBadge count={t.count} tone="brand" size="sm" />}
-            <span
-              aria-hidden
-              className="absolute left-2 right-2 -bottom-px h-[2px] rounded-pill"
-              style={{
-                background: active ? "var(--brand-500)" : "transparent",
-                boxShadow: active ? "0 0 8px color-mix(in oklab, var(--brand-500) 50%, transparent)" : "none",
-                transform: active ? "scaleX(1)" : "scaleX(0)",
-                transition: "transform var(--t-base) var(--m-glide), background var(--t-quick) ease-out, box-shadow var(--t-base) ease-out",
-              }}
-            />
-          </button>
+            trailing={
+              /* ⭐ §B5/§M5: ONE object travels — the underline scales, it does not cross-fade.
+                 `--t-base` with `--m-glide` is `motion.css:211`'s `.m-indicator` recipe stated
+                 inline, which is what this span has always done. */
+              <span
+                aria-hidden
+                className="absolute left-2 right-2 -bottom-px h-[2px] rounded-pill"
+                style={{
+                  background: active ? "var(--brand-500)" : "transparent",
+                  boxShadow: active ? "0 0 8px color-mix(in oklab, var(--brand-500) 50%, transparent)" : "none",
+                  transform: active ? "scaleX(1)" : "scaleX(0)",
+                  transition: "transform var(--t-base) var(--m-glide), background var(--t-quick) linear, box-shadow var(--t-base) ease-out",
+                }}
+              />
+            }
+          />
         );
       })}
-    </div>
+    </>
+  );
+  /* ⭐ The wrapper states which KIND of rail this is, and nothing else varies. A rail whose
+     options own a URL is a `<nav>` carrying `data-section-rail` — the hook the design-gate
+     drives use to DISCOVER a page's tabs off the rendered rail instead of a hand-typed list
+     (§K rule 7f); one whose options only change in-page state stays `role="group"`. */
+  return isNav ? (
+    <nav aria-label={ariaLabel} data-section-rail="" className={railCls}>{items}</nav>
+  ) : (
+    <div role="group" aria-label={ariaLabel} className={railCls}>{items}</div>
   );
 }
