@@ -624,14 +624,22 @@ export function AdminFunnel({
   steps: ReadonlyArray<{ label: string; value: string | number }>;
 }) {
   return (
-    <div className="flex items-stretch gap-1 h-16">
+    /* 🔴 A CLIPPED NUMERAL IS A MISREPORTED FIGURE, and that is why this got a floor rather than a
+       `title`. Every step was `flex-1 min-w-0`, so N steps split the width evenly and at 320 each
+       got ~31px: `qa:fit` measured the VALUE "103" in a 20px box (content 23px) on /admin. A
+       truncated word is annoying; a truncated number READS AS A DIFFERENT NUMBER — "103" shown as
+       "10" on an operator's console is not a cosmetic defect.
+       ⭐ So the steps keep a minimum width and the row SCROLLS when they no longer fit, which is
+       this repo's standing rule for wide content. The label keeps a `title` as well (DG-A-10),
+       because a label may still truncate inside its floor; the value now cannot. */
+    <div className="flex items-stretch gap-1 h-16 overflow-x-auto">
       {steps.map((s, i) => (
         <div
           key={i}
-          className="flex-1 bg-bg-sunken border border-border rounded-md px-2 py-1.5 flex flex-col justify-between min-w-0"
+          className="flex-1 shrink-0 basis-[6rem] bg-bg-sunken border border-border rounded-md px-2 py-1.5 flex flex-col justify-between min-w-0"
         >
-          <span className="font-mono text-body-sm font-bold text-text truncate">{s.value}</span>
-          <span className="font-mono text-micro eyebrow uppercase text-text-tertiary truncate">
+          <span className="font-mono text-body-sm font-bold text-text">{s.value}</span>
+          <span className="font-mono text-micro eyebrow uppercase text-text-tertiary truncate" title={s.label}>
             {s.label}
           </span>
         </div>

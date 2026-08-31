@@ -89,9 +89,18 @@ export function RolesMatrix({ matrix: initial }: { matrix: Matrix }) {
             {(ADMIN_DOMAINS as readonly AdminDomain[]).map((d) => {
               const g = matrix[role][d];
               const sensitive = SENSITIVE.has(d);
+              /* ⛔ `G-5` AGAIN, AND THIS ROW NEVER GOT THE FIX. `AdminCard`'s header learned it in
+                 2026-08-02: an action side that is `shrink-0` beside a text side that is only
+                 `min-w-0` means the TEXT absorbs the entire shortfall, because `min-w-0` is not a
+                 request for space — it is only permission to disappear. Measured by `qa:fit` on
+                 /admin/roles: the domain description rendered into a **27px box holding 161px of
+                 text**, 126 times across the matrix. At 1280 the same element measures 161/161 and
+                 fits, which is why reading the markup alone would never have found it.
+                 ⭐ The repair is the card header's: the row WRAPS and the text keeps a basis, so a
+                 wide control group drops to its own line instead of eating the description. */
               return (
-                <div key={d} className="flex items-start justify-between gap-3 rounded-md border border-border bg-bg-overlay px-3 py-2">
-                  <div className="min-w-0">
+                <div key={d} className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 rounded-md border border-border bg-bg-overlay px-3 py-2">
+                  <div className="min-w-0 flex-1 basis-[14rem]">
                     <p className="text-body-sm text-text">{DOMAIN_LABEL[d]}</p>
                     <p className="text-micro text-text-tertiary truncate">
                       See {DOMAIN_SUMMARY[d].view}{DOMAIN_SUMMARY[d].act !== "—" ? ` · Do: ${DOMAIN_SUMMARY[d].act}` : ""}

@@ -454,8 +454,12 @@ export default async function AdminCompliancePage({
                                            "bg-bg-sunken text-text-tertiary",
                   ].join(" ")}>↓</span>
                   <span className="flex-1 min-w-0 flex items-center justify-between gap-2">
-                    <span className="text-body-sm font-semibold text-text truncate">{r.title}</span>
-                    <span className="font-mono text-micro text-text-tertiary truncate">{r.sub}</span>
+                    {/* ⛔ `title` ON BOTH — `qa:fit` measured these at 39px/107px holding 93px/256px,
+                        and two truncating siblings in one flex row compete for the same space, so
+                        BOTH lose text. DG-A-10's ruling: truncation is a choice only when the full
+                        string stays reachable. */}
+                    <span className="text-body-sm font-semibold text-text truncate" title={r.title}>{r.title}</span>
+                    <span className="font-mono text-micro text-text-tertiary truncate" title={r.sub}>{r.sub}</span>
                   </span>
                 </a>
               ))}

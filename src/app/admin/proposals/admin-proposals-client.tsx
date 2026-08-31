@@ -406,7 +406,12 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
                   <span className="text-[9px] text-text-subtle">net</span>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-[13px] font-semibold text-text">{q.title}</div>
+                  {/* ⛔ `truncate` WITHOUT `title` LOSES THE TEXT. `qa:fit` measured this title in a
+                      33px box holding 486px of content — the proposal list's primary content,
+                      unrecoverable. This repo's ruling (DG-A-10, `admin-shell.tsx`) is that
+                      truncation is a legitimate choice PAIRED WITH `title`, which keeps the full
+                      string reachable; truncation alone is just loss. */}
+                  <div className="truncate text-[13px] font-semibold text-text" title={q.title}>{q.title}</div>
                   <div className="mt-0.5 font-mono text-[10.5px] text-text-subtle">{CATEGORY_LABEL[q.category]} · {q.proposerMasked}</div>
                 </div>
                 <StatusBadge status={q.status} />

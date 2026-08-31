@@ -113,7 +113,7 @@ const inlineCard = () => `
       ${FIGURES.map(([l, v]) => `
       <div class="flex items-baseline gap-1.5">
         <dt data-fit="figure-label" class="font-mono text-micro uppercase eyebrow text-text-tertiary">${l}</dt>
-        <dd data-fit="figure-value" class="font-mono text-label tabular text-text">${v}</dd>
+        <dd data-fit="figure-value" class="font-mono text-body-sm tabular text-text">${v}</dd>
       </div>`).join("")}
     </dl>
     <div class="${ROW_CLS}">

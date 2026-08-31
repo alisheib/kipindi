@@ -1220,12 +1220,26 @@ body {
 }
 
 /* ---------- Chip ---------- */
+/* ⛔ A CHIP HAS A FIXED HEIGHT, SO IT MUST NOT WRAP — measured by `qa:fit` on production,
+   2026-09-01. `.chip` set `height: 21px` (23px on the -live/-resolved/-pending/-objection
+   variants) and said nothing about `white-space`, so a two-word label wrapped to a second line
+   and the fixed height SHEARED it: `/admin/updown/rounds` rendered "VOID · No move" into a 23px
+   box holding 37px of text, losing 14px of ink off the bottom. ⚠️ Invisible to any width-based
+   overflow check — the chip is exactly as wide as it should be; it is the HEIGHT that is wrong,
+   which is why the sweep measures vertical clipping separately.
+   ⭐ `nowrap` is the fix rather than `min-height`: a chip is a short label on one line, and
+   letting it grow taller turns a pill into a lozenge and breaks the rhythm of every row it sits
+   in. A label too long to fit now makes the chip WIDER — visible, and reported by `qa:fit` as
+   horizontal overflow — instead of silently cutting the text in half.
+   Shared by admin AND player surfaces (`/updown/history`, `/updown/[roundId]`), so this is one
+   fix for both. */
 .chip {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   height: 21px;
   padding: 0 8px;
+  white-space: nowrap;
   border-radius: var(--r-pill);
   font-size: 10.5px;
   font-weight: 700;

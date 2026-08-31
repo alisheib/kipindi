@@ -586,7 +586,7 @@ export function GenerateForm({ generatable }: { generatable: string[] }) {
                             {/* ⚠️ NEUTRAL, not `text-no-300`. Painting BOTH figures danger-red says the
                                 LIMIT is at fault as loudly as the spend — and the limit is the thing
                                 the operator is about to raise. The medallion carries the alarm. */}
-                            <dd className="font-mono text-label tabular text-text">{f.value}</dd>
+                            <dd className="font-mono text-body-sm tabular text-text">{f.value}</dd>
                           </div>
                         ))}
                       </dl>
@@ -811,7 +811,7 @@ export function BatchGenerateForm({ maxBatch, remaining, generatable }: { maxBat
                     {refusalRows(refusal).map((f) => (
                       <div key={f.label} className="flex items-baseline gap-1.5">
                         <dt className="font-mono text-micro uppercase eyebrow text-text-tertiary">{f.label}</dt>
-                        <dd className="font-mono text-label tabular text-text">{f.value}</dd>
+                        <dd className="font-mono text-body-sm tabular text-text">{f.value}</dd>
                       </div>
                     ))}
                   </dl>
@@ -819,16 +819,19 @@ export function BatchGenerateForm({ maxBatch, remaining, generatable }: { maxBat
                 {/* ⛔ THE REMEDY REPLACES THE DISMISS-ONLY CARD when the server named one. A batch
                     that was refused by the spend cap must not leave the operator with nothing but
                     "Dismiss" and the memory of advice to use fewer polls. */}
-                {refusalFix(refusal) ? (
-                  <div className="flex flex-wrap gap-2">
-                    <button type="button" onClick={dismiss} className="btn btn-ghost btn-sm rounded-pill flex-1 basis-[8rem]">Dismiss</button>
+                {/* ⚠️ ONE Dismiss, always — the remedy is ADDED beside it rather than the whole row
+                    being branched. The first version duplicated the button into both branches, which
+                    `test:ui-consistency` caught as new `raw-button-btn-class` drift (14 → 15): a
+                    second copy of a control is a second thing to keep in step, and the gate counts
+                    exactly that. */}
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={dismiss} className="btn btn-ghost btn-sm rounded-pill flex-1 basis-[8rem]">Dismiss</button>
+                  {refusalFix(refusal) && (
                     <Link href={refusalFix(refusal)!.href} onClick={dismiss} className="btn btn-primary btn-sm rounded-pill flex-1 basis-[8rem] text-center">
                       {refusalFix(refusal)!.label}
                     </Link>
-                  </div>
-                ) : (
-                  <button type="button" onClick={dismiss} className="btn btn-ghost btn-sm rounded-pill w-full">Dismiss</button>
-                )}
+                  )}
+                </div>
               </div>
             )}
         </AiOverlayShell>

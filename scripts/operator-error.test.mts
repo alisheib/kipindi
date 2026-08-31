@@ -513,7 +513,11 @@ ok("§4.4 the one sentence is still defined once, in ai-usage",
   // measuring the OLD literals. `text-micro` carries `letterSpacing: 0.4px` that a bare
   // `text-[10px]` does not, so the bench was measuring narrower text than the product renders.
   // A pin that covers most of a specimen still lets the rest drift.
-  for (const rung of ["text-micro", "text-label"]) {
+  // ⚠️ `text-body-sm`, not `text-label`, for the VALUE — `text-label` is 12px and §T4's reading
+  // floor is 12.5px, so `test:type-scale` §3 counted the figure value as sub-floor reading copy
+  // (751 against a ratchet of 750). 13px also matches what the shared OperationResultModal already
+  // renders its details at, so the two surfaces now agree on the figure size as well as the order.
+  for (const rung of ["text-micro", "text-body-sm"]) {
     ok(`§9.3b the bench uses the console's ${rung} rung`,
       con.includes(rung) && bench.includes(rung),
       "a rung carries tracking and line-height a bare px literal does not");
