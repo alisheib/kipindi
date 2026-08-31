@@ -1991,6 +1991,48 @@ blessed uppercase microlabels, which this rule never governed** (an eyebrow is a
 and is *supposed* to be tracked); ~450 are numerals, of which the amounts are **tens**, not
 hundreds. §T5 puts every numeral in mono; **§M4 governs amounts only.**
 
+### M4a — Text fits its container, and a clipped NUMBER is a wrong number
+
+🔬 Measured platform-wide by **`npm run qa:fit`** (2026-09-01): 220 page-views over 56 admin
+and player routes at 320/360/430/1280, **37,127 text leaves**, 415 intentional truncations
+excluded, **255 defect instances in 12 component signatures**.
+
+**The four rules, each written from a defect the sweep found:**
+
+1. ⛔ **`min-w-0` IS PERMISSION TO DISAPPEAR, NOT A REQUEST FOR SPACE.** A `shrink-0` action side
+   beside a text side carrying only `min-w-0` means the text absorbs 100% of any shortfall.
+   `AdminCard`'s header learned this as **`G-5`** in 2026-08-02; `roles-matrix.tsx` never got the
+   fix and rendered its domain description into a **27px box holding 161px of text, 126 times**.
+   ⭐ The repair is the card header's: the row **wraps** and the text keeps a **basis**.
+   ⚠️ At 1280 that same element measures 161/161 and fits — reading the markup cannot find this.
+2. 🔴 **A CLIPPED NUMERAL IS A MISREPORTED FIGURE.** `AdminFunnel` split its width evenly across
+   `flex-1 min-w-0` steps, and at 320 each got ~31px: the VALUE `"103"` rendered in a **20px box**.
+   A truncated word is annoying; a truncated number **reads as a different number**. Numbers get a
+   **minimum width and a scrolling row** — never a `title`, which only makes a wrong figure
+   recoverable rather than absent.
+3. ⛔ **A FIXED-HEIGHT PILL MUST NOT WRAP.** `.chip` set `height: 21px` (23px on its variants) and
+   said nothing about `white-space`, so a two-word label wrapped and was **sheared**:
+   `"VOID · No move"` in a 23px box holding 37px of text. Invisible to every width-based check —
+   the chip is exactly as wide as it should be. `nowrap`, not `min-height`: a pill that grows
+   taller is a lozenge. A label too long now makes the chip **wider**, which is visible.
+4. ⛔ **`truncate` WITHOUT `title` IS LOSS, NOT A CHOICE.** DG-A-10 already ruled that truncation is
+   legitimate *paired with* `title`, which keeps the full string reachable. `/admin/proposals` and
+   `/admin/compliance` truncated their primary content with no affordance (**33px box, 486px of
+   content**).
+
+⚠️ **THE INSTRUMENT NEEDED TWO CORRECTIONS BEFORE IT MEASURED ANYTHING REAL,** and both were
+false POSITIVES that would have "fixed" correct code: it first reported every cell of tables
+inside `overflow-x:auto` wrappers — this repo's own rule for wide content, so the sweep was
+indicting the design — and then 67 "escapes" on `/markets` that were one animating **ticker**,
+which `live-ticker.tsx` already carries a comment about an earlier probe getting wrong. An
+element is only *escaping* when no ancestor can scroll **or animate** it into view.
+⛔ **`FIT_PROVE_RED=1` is the control** — it injects one clipped span and one sheared pill per page
+and requires both to be caught. It failed on its first run because the assertion looked for text
+past the 48-char slice the measurement stores: the control was broken, not the sweep. A sweep
+reporting zero is worth nothing until it has been shown to detect one.
+⚠️ `FIT_ROUTES` needs `MSYS_NO_PATHCONV=1` under Git Bash, or a leading-slash value becomes a
+Windows path, every route silently skips, and the run prints a clean **"0 defects"**.
+
 ### M5 — A glyph moves for a reason, and all 178 move the same way
 
 Four primitives, applied as classes (`.g-settle`, `.g-nudge-up/-down`, `.g-ring`,
