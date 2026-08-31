@@ -80,7 +80,7 @@ const ROUTES = process.env.FIT_ROUTES
  * node double-counts one defect as many and buries the element actually at fault.
  */
 const MEASURE = () => {
-  const out = { bare: [], vclip: [], escape: [], affordanced: 0, scanned: 0 };
+  const out = { bare: [], vclip: [], escape: [], affordanced: 0, scanned: 0, excused: 0 };
   const vw = document.documentElement.clientWidth;
   const sig = (el) => (el.getAttribute("class") || "(no class)").trim().replace(/\s+/g, " ").slice(0, 120);
   const root = document.body;
@@ -115,12 +115,22 @@ const MEASURE = () => {
     // probe that measured it mid-flight and reported the movement as a defect. This sweep hit the
     // identical false positive on /markets — 67 "escapes" that were one animating ticker. An
     // ancestor with a running animation means the geometry is a frame, not a layout.
+    // 🔴 AND THE ANIMATION CHECK ALONE IS NOT ENOUGH, WHICH COST TWO ROUNDS TO LEARN. Headless
+    // Chromium reports `prefers-reduced-motion: reduce`, and this repo gates every animation on
+    // that (§M6) — so the ticker's `animationName` is `none` in ANY headless probe and the
+    // exclusion silently stopped firing. The full sweep then re-reported the same marquee as 36
+    // escapes across 14 routes, including /legal and /auth. An exclusion that depends on motion
+    // actually RUNNING cannot work in the one environment this instrument runs in.
+    // ⭐ So a marquee is excused by its own marker class as well. Explicit, narrow, and readable —
+    // and it survives motion being off, which is the state the sweep always measures in.
     let excused = false;
     for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) {
       const acs = getComputedStyle(a);
       if (/auto|scroll/.test(acs.overflowX) && a.scrollWidth > a.clientWidth + 1) { excused = true; break; }
       if (acs.animationName && acs.animationName !== "none") { excused = true; break; }
+      if (/ticker|marquee/i.test(a.getAttribute("class") || "")) { excused = true; break; }
     }
+    if (excused) out.excused++;
     const esc = excused ? 0 : Math.round(rect.right - vw);
 
     const row = { text: text.slice(0, 48), sig: sig(el), box: w, content: el.scrollWidth, over: overX };
@@ -148,7 +158,7 @@ try { await login(page, "admin"); adminOk = true; console.log("signed in as ADMI
 catch (e) { console.log(`⚠️  ADMIN sign-in failed (${String(e).slice(0, 60)}) — admin routes will be skipped`); }
 
 const findings = [];
-let scanned = 0, affordanced = 0, pages = 0, skipped = 0;
+let scanned = 0, affordanced = 0, pages = 0, skipped = 0, excused = 0;
 
 for (const r of ROUTES) {
   if (r.area === "admin" && !adminOk) { skipped++; continue; }
@@ -188,7 +198,7 @@ for (const r of ROUTES) {
         process.exit(1);
       }
     }
-    pages++; scanned += m.scanned; affordanced += m.affordanced;
+    pages++; scanned += m.scanned; affordanced += m.affordanced; excused += (m.excused || 0);
     for (const kind of ["bare", "vclip", "escape"]) {
       for (const row of m[kind]) findings.push({ kind, route: r.path, area: r.area, w, ...row });
     }
@@ -211,7 +221,7 @@ for (const f of findings) {
 }
 const groups = [...byComponent.values()].sort((a, b) => b.hits.length - a.hits.length);
 
-console.log(`\n\n${pages} page-views · ${scanned} text leaves measured · ${affordanced} intentional truncations (not defects) · ${skipped} skipped`);
+console.log(`\n\n${pages} page-views · ${scanned} text leaves measured · ${affordanced} intentional truncations (not defects) · ${excused} excused as scroller/marquee · ${skipped} skipped`);
 console.log(`${findings.length} defect instances in ${groups.length} distinct component signatures\n`);
 
 const LABEL = { bare: "CLIPPED, no affordance", vclip: "CLIPPED VERTICALLY", escape: "ESCAPES VIEWPORT", page: "PAGE SCROLLS SIDEWAYS" };
