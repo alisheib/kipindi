@@ -114,6 +114,7 @@
     "qa:refusal": "node scripts/design-gate/refusal-bench.mjs",
     "qa:refusal-control": "node scripts/design-gate/refusal-bench.mjs --prove-red",
     "qa:refusal-live": "node scripts/live-refusal-e2e.mjs",
+    "qa:fit": "node scripts/design-gate/fit-sweep.mjs",
     "test:labels": "tsx scripts/label-lexicon.test.mts",
     "test:red-anchors": "tsx scripts/red-anchors.test.mts",
     "red:labels": "node scripts/red-labels.mjs",
