@@ -1,6 +1,7 @@
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
+import { Tabs } from "@/components/ui/tabs";
 import { SystemActions, SupportConfigForm, TimezoneForm, MaintenanceModeForm, AnnouncementForm } from "./system-client";
 import { getSupportConfig } from "@/lib/support-config";
 import { db } from "@/lib/server/store";
@@ -25,7 +26,32 @@ function bootstrapPhones(): string[] {
     .split(",").map(s => s.trim()).filter(Boolean);
 }
 
-export default async function AdminSystemPage() {
+/**
+ * ⭐ THE SECTION RAIL (DG-S-08, 2026-08-31) — §K rule 7, and this page was chosen by
+ * MEASUREMENT rather than by the plan's nomination.
+ *
+ * 🔴 THE STEP-5 PLAN NAMED `/admin/ai-polls` AS THE FIRST CONSOLE TO TAB, AND IT FAILS 7a's
+ * FIRST TEST. Re-derived on production 2026-08-31 at 1440×900: `/admin/ai-polls` is 4,482px
+ * whose TALLEST PANEL IS 1,902px — **42% of the page, and it is the polls table.** 7a rule 1:
+ * *"If one panel is more than ~40% of the page's docH, that panel IS the length and a rail
+ * moves nothing."* Tabbing it yields a small landing tab and one huge table tab, which is the
+ * anti-pattern 7a names against `/admin/updown/proposals`. ⛔ Its nomination rested on cost
+ * ("already reads 13 search params") — and 7a says *all three must hold*, so cost cannot buy a
+ * page past a hard test.
+ * ✅ THIS PAGE PASSES ALL THREE, and 7a already used it as its worked example: measured 3,310px
+ * across 23 panels whose tallest is 384px — **12%** — reproducing 7a's recorded 3,327/401/12%.
+ * Its bands are alternative TASKS (nobody reads the rate limiter *against* the timezone), and
+ * nothing load-bearing goes behind a click — see the block above the rail.
+ */
+export default async function AdminSystemPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  /* ⛔ The tab is READ, never trusted: an unknown `?tab=` falls back to the landing rather than
+     rendering an empty page. §K rule 7f — the tab set's home is this page's own definition. */
+  const sp = await searchParams;
+  const tab: "platform" | "diagnostics" = sp.tab === "diagnostics" ? "diagnostics" : "platform";
   const platform = await getPlatformConfig().catch(() => ({ timezone: "Africa/Dar_es_Salaam" } as Awaited<ReturnType<typeof getPlatformConfig>>));
   const chain = verifyChain();
   const auditCount = getAuditPage({ limit: 100_000 }).length;
@@ -259,6 +285,29 @@ export default async function AdminSystemPage() {
           </p>
         </AdminCard>
 
+        {/* ⭐ THE RAIL. Everything ABOVE it stays on every tab, and that is §K rule 7d rather
+            than layout taste: "a tab may hide a DETAIL. It may never hide a STATE." The three
+            cards above each answer "is something wrong right now" —
+            · Maintenance mode is a KILL-SWITCH, which 7d names: "a badge does not buy a
+              kill-switch a hiding place." It pauses new bets and deposits platform-wide.
+            · Bet queue carries `Turned away` (shed + timedOut) — players actually refused —
+              and a queue depth that pulses danger above zero.
+            · Settlement carries the OVERDUE alarm with the money still in the pool:
+              "markets are OVERDUE — players are not being paid." That is 7d's "money figure an
+              officer acts on" exactly.
+            ⛔ Do not move any of the three behind this rail, whatever a future tidy-up suggests. */}
+        <AdminCard padding="p-0">
+          <Tabs
+            ariaLabel="System sections"
+            value={tab}
+            tabs={[
+              { value: "platform", labelEn: "Platform", href: "/admin/system?tab=platform" },
+              { value: "diagnostics", labelEn: "Diagnostics", href: "/admin/system?tab=diagnostics" },
+            ]}
+          />
+        </AdminCard>
+
+        {tab === "platform" && (<>
         {/* Broadcast banner — site-wide player announcement (§9.3 #5) */}
         <AdminCard title="Broadcast banner" sw="Tangazo kwa wachezaji">
           <p className="text-caption text-text-secondary mb-3">
@@ -282,6 +331,26 @@ export default async function AdminSystemPage() {
           </p>
           <TimezoneForm current={platform.timezone} />
         </AdminCard>
+
+        {/* ⭐ MOVED HERE 2026-08-31 (DG-S-08). It sat below the rate limiter, between two
+            diagnostics cards, purely because that is where it was added. It belongs with the
+            other two controls that change what a PLAYER sees — its own copy says the change
+            "propagates to every page that shows support info". ⚠️ This is the ONE card the
+            conversion moves; every other section stays exactly where it was, so the diff is a
+            rail plus two wrappers rather than a re-ordering nobody can review. */}
+        <AdminCard
+          title="Support contacts"
+          sw="Mawasiliano ya msaada"
+          action={<span className="font-mono text-[10px] text-text-subtle">{getSupportConfig().email}</span>}
+        >
+          <p className="text-body-sm text-text-subtle mb-3">
+            Changes here propagate to every page that shows support info: help, chatbot, login, register, legal, KYC, account, forgot-password, footer, reality-check.
+          </p>
+          <SupportConfigForm config={getSupportConfig()} />
+        </AdminCard>
+        </>)}
+
+        {tab === "diagnostics" && (<>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <AdminCard title="Audit chain integrity" sw="Mlolongo · uadilifu">
@@ -449,16 +518,6 @@ export default async function AdminSystemPage() {
           )}
         </AdminCard>
 
-        <AdminCard
-          title="Support contacts"
-          sw="Mawasiliano ya msaada"
-          action={<span className="font-mono text-[10px] text-text-subtle">{getSupportConfig().email}</span>}
-        >
-          <p className="text-body-sm text-text-subtle mb-3">
-            Changes here propagate to every page that shows support info: help, chatbot, login, register, legal, KYC, account, forgot-password, footer, reality-check.
-          </p>
-          <SupportConfigForm config={getSupportConfig()} />
-        </AdminCard>
 
         <AdminCard className="border-info-border bg-info-bg">
           <div className="text-caption text-text-secondary space-y-1">
@@ -479,6 +538,7 @@ export default async function AdminSystemPage() {
             </p>
           </div>
         </AdminCard>
+        </>)}
       </AdminBody>
     </>
   );

@@ -1,5 +1,8 @@
 import { AdminPageHead } from "@/components/admin/admin-shell";
-import { SkBar, SkBody, SkKpiRow, SkCard, SkFormCard, SkTableRows, SkTitle } from "@/components/admin/admin-skeletons";
+/* ⚠️ `SkTableRows` dropped 2026-08-31: its only user was the rate-limiter ghost, which went with
+   the diagnostics panel behind the rail. An import nothing renders is dead weight `tsc` will not
+   flag here, and the next reader would take it as a hint that a table is still ghosted. */
+import { SkBar, SkBody, SkKpiRow, SkCard, SkFormCard, SkTitle } from "@/components/admin/admin-skeletons";
 
 export default function Loading() {
   return (
@@ -35,38 +38,37 @@ export default function Loading() {
           <SkBar className="h-3 w-2/3" />
         </div>
 
+        {/* ⭐ THE SECTION RAIL'S GHOST (DG-S-08, 2026-08-31) — §B7 rule 3 and §K rule 7c: the
+            skeleton moves in the SAME commit as the rail, or every load drops the panels below
+            it by the rail's full height. 45px = the kit `<Tabs variant="line">` item at 44px
+            (§A2's preferred tap height, §K rule 7c's rung) plus the rail's own 1px bottom
+            border — the same literal `roles/loading.tsx` and `players/[id]/loading.tsx` carry.
+            ⚠️ A LITERAL, not `h-11`: `theme.extend.spacing` is overridden, so a scale class here
+            is roughly double what it reads as. */}
+        <div className="glass-panel p-0">
+          <div className="h-[45px] border-b border-border" />
+        </div>
+
+        {/* ⚠️ ONLY THE `platform` TAB'S CARDS ARE GHOSTED, and that is deliberate rather than an
+            omission: the rail defaults to `platform`, so that is what a cold load paints. A
+            skeleton for the diagnostics panel would draw boxes the first render never fills. */}
         {/* Broadcast banner */}
         <SkFormCard fields={1} titleW="w-40" />
 
         {/* Platform timezone */}
         <SkFormCard fields={1} titleW="w-40" />
 
-        {/* Audit chain integrity — ⚠️ ONE card in this `md:grid-cols-2` row, not two
-            (system/page.tsx:286-297). A second ghost filled a grid area the page leaves
-            empty, so at ≥768 the ghost showed two panels where the page shows one. */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <SkCard lines={3} />
-        </div>
-
-        {/* Persistence + Bootstrap admins */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <SkCard lines={3} />
-          <SkCard lines={3} />
-        </div>
-
-        {/* Rate limiter · live buckets — a TITLED PADDED card whose table is
-            `min-w-[480px]` with cells at `py-2` (12px), the `.admin-tbl` rhythm.
-            ⛔ Not `SkTableCard`: that draws a flush `p-0` panel, and this card is `p-4`. */}
-        <div className="glass-panel p-4">
-          <SkTitle titleW="w-52" className="mb-3" />
-          <SkTableRows cols={4} rows={5} minWidth={480} />
-        </div>
-
-        {/* Support contacts — titled. Had no ghost. */}
+        {/* Support contacts — MOVED into the platform tab with the page (2026-08-31). */}
         <SkCard lines={3} titleW="w-40" />
 
-        {/* Operational-notes info card — UNTITLED. Had no ghost. */}
-        <SkCard lines={4} title={false} />
+        {/* ⛔ THE DIAGNOSTICS GHOSTS ARE DELETED, NOT MOVED — audit-chain integrity, the
+            Persistence + Bootstrap-admins pair, the rate-limiter table and the operational-notes
+            card. They ghosted a panel the landing tab no longer renders, so keeping them would
+            paint ~1,100px of boxes that the first render never fills and then collapse: the
+            same jump §B7 rule 3 exists to prevent, only in the other direction.
+            ⚠️ If the rail's DEFAULT tab ever changes from `platform`, this file is wrong and
+            silently so — a skeleton cannot fail a gate. That coupling is the cost of ghosting a
+            tabbed page at all, and it is written down here rather than left to be discovered. */}
       </SkBody>
     </>
   );
