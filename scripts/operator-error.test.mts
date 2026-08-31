@@ -355,6 +355,38 @@ ok("§4.4 the one sentence is still defined once, in ai-usage",
     }
   }
 
+  /**
+   * ⛔ THE THREE HALVES OF A FIGURE MUST AGREE, and nothing checked that. A row names its
+   * `figures`; `format` says how to render each; `FIGURE_LABELS` supplies the word the operator
+   * reads. Miss the format and a dollar amount prints as a bare number; miss the label and the
+   * RAW KEY (`spentUsd`) appears on screen in front of an officer. Both are silent.
+   */
+  const refusalSrc = src("src/lib/operator-refusal.ts");
+  const labelled = new Set([...refusalSrc.matchAll(/^\s{2}(\w+):\s*"/gm)].map((m) => m[1]));
+  for (const [key, spec] of Object.entries(ADMIN_REFUSALS)) {
+    const s = spec as unknown as { figures: readonly string[]; format: Record<string, string> };
+    for (const fig of s.figures) {
+      ok(`§6.8 ${key}.${fig} has a format`, typeof s.format[fig] === "string", `format=${s.format[fig]}`);
+      ok(`§6.8b ${key}.${fig} has an operator-facing label`, labelled.has(fig),
+        "without one the raw key is what the officer reads");
+    }
+  }
+
+  // ⭐ EXERCISE THE OTHER ROW END-TO-END. §5 drives `ai_budget_exhausted` through the real gate;
+  // `ai_cycle_ended` was only ever asserted as a shape, so a broken figure in it would ship.
+  {
+    const { aiBudgetRefusal } = await import("../src/lib/server/ai-usage.ts");
+    const cyc = aiBudgetRefusal({ ok: false, reason: "cycle", spentUsd: 0, limitUsd: 0, lastClosedIndex: 7 } as never);
+    const rows = refusalFigures(cyc);
+    ok("§6.9 ai_cycle_ended renders real figures, not '$undefined'",
+      cyc.reason === "ai_cycle_ended" && rows.length === 2
+      && rows[0].value === "7" && rows[1].value === "8"
+      && !JSON.stringify(rows).includes("undefined"),
+      JSON.stringify(rows));
+    ok("§6.9b …and its remedy points at the control that lifts it",
+      cyc.fix?.href === "/admin/ai-usage#ai-cycle-gate" && cyc.fix?.domain === "ops");
+  }
+
   ok("§6.6 an unknown reason degrades to the sentence, it does not blank the card",
     !isKnownRefusal({ reason: "reason_from_a_newer_server" }) && refusalFigures({ reason: "nope" }).length === 0);
 

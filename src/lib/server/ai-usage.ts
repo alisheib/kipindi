@@ -287,13 +287,18 @@ export async function setCreditLimit(limitUsd: number): Promise<void> {
   // that throws when `sumCostSince` throws would be the mirror defect — the operator's attempt to
   // RAISE a limit (the remedy this whole seam points them at) silently lost to a metering fault.
   // On an unreadable meter, keep the level unchanged: the ceiling still moves.
+  /**
+   * ⚠️ MEASURE AGAINST THE **EFFECTIVE** CEILING, not the number that was passed in.
+   * `getCreditConfig` substitutes `DEFAULT_LIMIT_USD` for any stored `limitUsd <= 0`, so setting 0
+   * does not mean "no ceiling" — it means $20, silently. Computing the alert level against the
+   * raw 0 therefore produced "none" against a ceiling that is really $20, re-arming a warning the
+   * operator may already have had and mailing it twice. The UI's `min="0.01"` makes this
+   * programmatic-only, which is exactly why it would have gone unnoticed.
+   */
+  const effective = next > 0 ? next : DEFAULT_LIMIT_USD;
   let reached: CreditConfig["alertedLevel"] | null = null;
-  if (next > 0) {
-    try { reached = alertLevelFor(await aiUsageDal.sumCostSince(cur.topUpWindowStartIso), next); }
-    catch { reached = null; }
-  } else {
-    reached = "none";
-  }
+  try { reached = alertLevelFor(await aiUsageDal.sumCostSince(cur.topUpWindowStartIso), effective); }
+  catch { reached = null; }
 
   /**
    * 🔴 NEVER RAISE `alertedLevel`, ONLY LOWER IT — and the first version of this line got that
