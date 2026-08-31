@@ -566,6 +566,64 @@ a dead row) · `test:proposals` 48 · `test:proposals-state` 28 · `test:kyc` ·
 
 ---
 
+### 3.13 · 🔴 FIXED (`0e6009c5`, 2026-08-31) · §0's own standard was broken on the ADMIN side, and it cost a live operator an afternoon
+
+⚠️ **This file scopes itself to refusals a PLAYER can reach, and that scope is why this defect
+survived.** §0 already says *"⛔ No screen says only 'failed'"*. The admin console said exactly
+that, for weeks, and nothing here was looking.
+
+**What happened.** Ali reported "generation failed" on `/admin/ai-polls`. Production was healthy;
+poll generation was being refused by 50pick's **own** AI spend cap — `$20.56` against a `$20.00`
+top-up window — and the refusal never reached him. Three layers deleted it:
+
+| Layer | What it did |
+|---|---|
+| `ai-poll-generation.ts:841` | threw the **right** sentence: `describeAiBudgetBlock()` names the cause, the numbers, and the screen that fixes it |
+| `safe-error.ts` | `safeError` logged that sentence and returned `"Generation failed"` |
+| `poll-actions.tsx` (Regenerate) | discarded even that, for a hardcoded **"The AI could not produce a valid poll. Try again."** |
+| `poll-actions.tsx` (Generate) | blamed **"AI provider error"** — Anthropic was never called |
+
+So the screen instructed a retry against a ceiling that can never yield, and the retries happened.
+
+🔴 **THE LESSON IS NOT "ADD A MESSAGE", IT IS THAT PROSE DOES NOT HOLD A CONTRACT.** `ai-usage.ts`
+*already* carried a paragraph above `describeAiBudgetBlock` warning that "a refusal that names the
+wrong cause sends an operator to raise a limit that was never the problem", and the sentence was
+*already* defined once, in one place, for exactly this reason. Both survived intact. The transport
+layer deleted the sentence anyway, because nothing downstream had been told the difference between
+a refusal and a crash.
+
+**The fix.** `OperatorError` (`safe-error.ts`) marks a message deliberately **written for the
+person reading the screen**; `safeError` passes those through and keeps redacting everything else.
+⛔ **The discriminator is the TYPE, not how friendly the text reads** — a plain `Error` whose
+message happens to look operator-facing stays redacted, or the rule becomes "nice-sounding errors
+leak", which nobody can apply. Both poll budget gates (single + batch) throw it.
+
+⛔ **The failure branch now names no cause at all when it does not know one.** "AI provider error"
+was not replaced with a better guess: the obvious candidate, *"nothing was charged"*, is **also
+false**, because `ai-poll-generation.ts` L961/L985 reach that state AFTER a paid call.
+
+**Proof.** `test:operator-error` **25/25**, auto-discovered by `test:all`. Every pass-through
+assertion is PAIRED with a crash that must stay redacted — without that pair, "the message reaches
+the UI" is satisfied by deleting the sanitiser. §5 drives the **real** gate with a genuinely
+overspent window. ⚠️ Its first draft passed a `costUsd` field that does not exist on
+`recordAiUsage` (cost is computed by `costOf` from tokens), spent `$0.09` against a `$0.50`
+ceiling, and the gate correctly did not fire — a test that had decided what it was measuring
+without measuring it. §5.0 now asserts the overspend **before** the gate is asked to react.
+Verified by mutation: reverting each of the three fixes turns exactly its own assertions red.
+`tsc` clean — ⚠️ but see §7.2b-tsc, which does **not** cover the suite file; the suite's own green
+run is the evidence for that file.
+
+**⚠️ Left open, filed not fixed — the page buries the control that is actually blocking.**
+`/admin/ai-usage` leads with **Spend cycles** (cycle 3, `$63.14 / $100`, reassuring) at
+`page.tsx:336`, while the **Credit budget** card holding the `$20.00` top-up-window limit that
+refuses everything sits at `page.tsx:711`, below the fold. Reading the top of that page, Ali
+reasonably concluded the diagnosis was wrong. A *cycle* is a fixed $100 denomination and a
+*window* is "since you last topped up"; `ai-usage.ts` already warns the two must never be confused
+on an operator's screen, and the page's own ordering is what confuses them. Ordering is a design
+call, not a bug fix's.
+
+---
+
 ## §4 · WHAT C5's GUARD MUST DO
 
 A count of mapped surfaces is not enough — that check passes by never growing. The guard must
