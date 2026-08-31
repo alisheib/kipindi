@@ -449,13 +449,13 @@ export function aiBudgetRefusal(b: AiBudgetBlock): OperatorRefusal {
       // "Spend cycles" card. Anchoring at the card scrolled the Start button off the top of the
       // screen, so the remedy button went to the wrong place. Caught by an adversarial audit, not
       // by the guard: §6.5 only proved the anchor EXISTS, never that it holds the control.
-      fix: { label: "Open Spend cycles", href: "/admin/ai-usage#ai-cycle-gate" },
+      fix: { label: "Open Spend cycles", href: "/admin/ai-usage#ai-cycle-gate", domain: "ops" },
     };
   }
   return {
     reason: "ai_budget_exhausted",
     detail: { spentUsd: b.spentUsd, limitUsd: b.limitUsd },
-    fix: { label: "Open Credit budget", href: "/admin/ai-usage#ai-credit-budget" },
+    fix: { label: "Open Credit budget", href: "/admin/ai-usage#ai-credit-budget", domain: "ops" },
   };
 }
 

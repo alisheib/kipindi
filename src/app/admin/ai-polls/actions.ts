@@ -24,7 +24,7 @@ import { publishApprovedPoll } from "@/lib/server/ai-poll-publish";
 import { emergencyVoidMarket, resolvePublishCategory } from "@/lib/server/market-service";
 import { isSourceTrusted, seedDefaultSources } from "@/lib/server/source-registry";
 import { safeError, refuseFrom } from "@/lib/server/safe-error";
-import { requireStaff } from "@/lib/server/rbac-guard";
+import { requireStaff, scopeRefusalToViewer } from "@/lib/server/rbac-guard";
 
 // RBAC: authorization is data-driven — requireStaff checks canAct for this domain
 // (Owner/ADMIN bypasses), audits a blocked attempt, then enforces step-up 2FA.
@@ -38,8 +38,10 @@ async function requireAdmin(action: string): Promise<{ userId: string; sessionId
 export async function generatePollAction(formData: FormData) {
   const { userId: officerId } = await requireAdmin("generatePollAction");
   // AI toolkit kill-switch — refuse when poll generation is disabled.
-  const { isPollGenEnabled } = await import("@/lib/server/ai-controls");
-  if (!(await isPollGenEnabled())) return { ok: false as const, error: "AI poll generation is disabled (AI toolkit)." };
+  const { isPollGenEnabled, pollGenDisabledRefusal } = await import("@/lib/server/ai-controls");
+  if (!(await isPollGenEnabled())) {
+    return { ok: false as const, error: "AI poll generation is disabled (AI toolkit).", refusal: pollGenDisabledRefusal() };
+  }
   const category = String(formData.get("category") ?? "sports");
   const prompt = String(formData.get("prompt") ?? "");
   const regenerationOf = String(formData.get("regenerationOf") ?? "");
@@ -62,7 +64,11 @@ export async function generatePollAction(formData: FormData) {
     revalidatePath("/admin/ai-polls");
     return { ok: true as const, poll };
   } catch (err) {
-    return { ...refuseFrom(err, "Generation failed"), ok: false as const };
+    // ⛔ SCOPE THE REMEDY TO WHO ASKED. `/admin/ai-polls` is `trading`; the remedy lives in `ops`,
+    // which MODERATOR does not hold — so an unscoped refusal hands that role a button to a page it
+    // cannot open, in the slot that was holding "Try again".
+    const r = refuseFrom(err, "Generation failed");
+    return { ...r, refusal: await scopeRefusalToViewer(r.refusal, officerId), ok: false as const };
   }
 }
 
@@ -71,14 +77,20 @@ export async function generatePollAction(formData: FormData) {
 export async function generatePollBatchAction(formData: FormData) {
   const { userId: officerId } = await requireAdmin("generatePollBatchAction");
   // AI toolkit kill-switch — refuse when poll generation is disabled.
-  const { isPollGenEnabled } = await import("@/lib/server/ai-controls");
-  if (!(await isPollGenEnabled())) return { ok: false as const, error: "AI poll generation is disabled (AI toolkit)." };
+  const { isPollGenEnabled, pollGenDisabledRefusal } = await import("@/lib/server/ai-controls");
+  if (!(await isPollGenEnabled())) {
+    return { ok: false as const, error: "AI poll generation is disabled (AI toolkit).", refusal: pollGenDisabledRefusal() };
+  }
   // Per-officer rate-limit: a batch fires up to 200 paid AI generations, so cap
   // how often it can be triggered (caps runaway Anthropic spend within the
   // trusted-admin boundary).
   const rl = await rateCheckAsync(officerId, "ai.batch");
   if (!rl.allowed) {
-    return { ok: false as const, error: `Too many batch generations — wait ${rl.retryAfterSec}s before the next batch.` };
+    // ⛔ NO REFUSAL HERE, AND THAT IS THE RIGHT ANSWER. A rate-limit is the one refusal on this
+    // screen where RETRY genuinely is the remedy — it lifts by itself, in a stated number of
+    // seconds. Giving it a `reason` would let the console replace "Try again" with a link to a
+    // control nobody needs to touch. `refusal: undefined` keeps the union one shape.
+    return { ok: false as const, error: `Too many batch generations — wait ${rl.retryAfterSec}s before the next batch.`, refusal: undefined };
   }
   const countRaw = Number(formData.get("count") ?? "3");
   const count = Number.isFinite(countRaw) ? Math.max(1, Math.min(200, Math.floor(countRaw))) : 3;
@@ -97,7 +109,9 @@ export async function generatePollBatchAction(formData: FormData) {
     revalidatePath("/admin/ai-polls");
     return { ok: true as const, total: generated.length, summary };
   } catch (err) {
-    return { ...refuseFrom(err, "Batch generation failed"), ok: false as const };
+    // Same scoping as the single generator — the batch reaches the identical budget gate.
+    const r = refuseFrom(err, "Batch generation failed");
+    return { ...r, refusal: await scopeRefusalToViewer(r.refusal, officerId), ok: false as const };
   }
 }
 

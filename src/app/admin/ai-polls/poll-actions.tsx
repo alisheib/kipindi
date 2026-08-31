@@ -110,7 +110,18 @@ type GenResult = {
 const refusalTitle = (r?: OperatorRefusal) => (isKnownRefusal(r) ? ADMIN_REFUSALS[r.reason].title : undefined);
 const refusalRows = (r?: OperatorRefusal) => (r ? refusalFigures(r) : []);
 const refusalFix = (r?: OperatorRefusal) => (isKnownRefusal(r) ? r.fix : undefined);
-const refusalBody = (r?: OperatorRefusal) => (isKnownRefusal(r) ? ADMIN_REFUSALS[r.reason].body : undefined);
+/**
+ * The body, switching on whether THIS viewer was given the remedy.
+ *
+ * ⛔ A ROLE WITHOUT THE REMEDY MUST NOT GET THE REMEDY'S INSTRUCTIONS. `scopeRefusalToViewer`
+ * drops `fix` for a role that cannot open the target page — MODERATOR operates poll generation
+ * (`trading`) and holds no `ops` grant — so telling them to "raise the limit" describes a control
+ * they cannot reach. `escalate` names who can instead.
+ */
+const refusalBody = (r?: OperatorRefusal) =>
+  isKnownRefusal(r)
+    ? (r.fix ? ADMIN_REFUSALS[r.reason].body : ADMIN_REFUSALS[r.reason].escalate)
+    : undefined;
 
 const PHASE_LABELS: Record<GenPhase, string> = {
   idle: "",

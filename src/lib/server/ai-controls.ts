@@ -1,3 +1,4 @@
+import type { OperatorRefusal } from "../operator-refusal";
 /**
  * AI feature switches — the operator's on/off controls for every AI-powered feature,
  * surfaced together in the admin "AI toolkit" dropdown (one place, no redundancy).
@@ -130,4 +131,20 @@ export async function getAiToolkitStatus(): Promise<AiToolkitStatus> {
     autoResolve,
     confidenceThreshold,
   };
+}
+
+/**
+ * The kill-switch refusal, as DATA — the same contract the budget gate emits.
+ *
+ * ⛔ IT LIVES BESIDE ITS OWN GATE, exactly as `aiBudgetRefusal` sits beside `assertAiBudget`.
+ * The action used to return a bare sentence here — *"AI poll generation is disabled (AI toolkit)."*
+ * — while the budget path beside it returned a full refusal, so one screen had two different
+ * grades of answer depending on which control had stopped you. A typecheck caught it: the two
+ * return shapes no longer unified.
+ *
+ * ⚠️ NO `fix` LINK, and that is correct rather than unfinished — the toolkit is a header popover,
+ * not a route. See the catalogue entry in `src/lib/operator-refusal.ts`.
+ */
+export function pollGenDisabledRefusal(): OperatorRefusal {
+  return { reason: "ai_pollgen_disabled" };
 }

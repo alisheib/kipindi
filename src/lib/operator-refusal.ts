@@ -33,7 +33,20 @@
  * every `#anchor` against the `id` actually rendered on that page, because a button that goes
  * nowhere is worse than the sentence it replaced.
  */
-export type RefusalFix = { label: string; href: string };
+export type RefusalFix = {
+  label: string;
+  href: string;
+  /**
+   * The admin DOMAIN `href` lives in, so the action layer can drop this link for a viewer who
+   * cannot open it (`scopeRefusalToViewer`).
+   *
+   * 🔴 NOT OPTIONAL IN SPIRIT. `/admin/ai-polls` is `trading` and `/admin/ai-usage` is `ops`, and
+   * `MODERATOR` — the role that operates poll generation — holds no `ops` grant. Without this the
+   * refusal handed that role a button to a page it cannot open, in the slot that had been holding
+   * "Try again". `test:operator-error` §6.8 fails any catalogue fix that omits it.
+   */
+  domain?: string;
+};
 
 /**
  * A refusal the operator can act on, in the shape a UI can actually use.
@@ -73,6 +86,14 @@ export type RefusalSpec = {
    * surface that does not know this reason and therefore renders no title and no figures.
    */
   body: string;
+  /**
+   * What to tell a viewer who CANNOT reach the fix — it names who can lift the block.
+   *
+   * ⛔ A ROLE THAT CANNOT ACT STILL DESERVES THE TRUTH. When `scopeRefusalToViewer` drops the
+   * link, this is the only thing left that moves the operator forward; without it the card states
+   * what is wrong, shows the figures, and offers nothing at all.
+   */
+  escalate: string;
   /** `detail` keys this reason promises to carry, in the order they should render. */
   figures: readonly string[];
   /** How to format each figure for display. `usd` renders `$12.34`; `count` renders `3`. */
@@ -88,13 +109,31 @@ export const ADMIN_REFUSALS = {
   ai_budget_exhausted: {
     title: "AI credit limit reached",
     body: "Raise the limit, or start a new top-up window after adding credit.",
+    escalate: "An administrator can raise the limit under Admin → AI usage → Credit budget.",
     figures: ["spentUsd", "limitUsd"],
     format: { spentUsd: "usd", limitUsd: "usd" },
+  },
+  /**
+   * The AI toolkit's poll-generation switch is OFF. Nothing is exhausted and nothing is broken —
+   * a human turned it off.
+   *
+   * ⛔ NO `fix` HREF, DELIBERATELY, and that is why `fix` is optional. The toolkit is a POPOVER IN
+   * THE ADMIN HEADER (`components/admin/ai-toolkit.tsx`, rendered by the shell), not a route —
+   * there is no URL to send anyone to. A refusal that invented `/admin/system#ai-toolkit` to have
+   * a button would be a button that goes nowhere, which is the defect this seam exists to remove.
+   */
+  ai_pollgen_disabled: {
+    title: "AI poll generation is switched off",
+    body: "Turn it back on from the AI toolkit in the admin header.",
+    escalate: "An administrator can turn it back on from the AI toolkit in the admin header.",
+    figures: [],
+    format: {},
   },
   /** A spend cycle closed and nobody opened its successor, so AI is paused. */
   ai_cycle_ended: {
     title: "AI spend cycle complete",
     body: "AI is paused until the next cycle is opened.",
+    escalate: "An administrator can start the next cycle under Admin → AI usage.",
     figures: ["lastClosedIndex", "nextIndex"],
     format: { lastClosedIndex: "count", nextIndex: "count" },
   },

@@ -13,7 +13,8 @@ import { currentSession } from "./auth-service";
 import { db } from "./store";
 import { audit } from "./audit";
 import { requireAdminTotp } from "./admin-guard";
-import { canAct } from "./rbac";
+import { canAct, canView } from "./rbac";
+import type { OperatorRefusal } from "../operator-refusal";
 import type { SessionData } from "./session";
 import type { AdminDomain, Role } from "./roles";
 
@@ -45,6 +46,45 @@ export async function requireStaff(domain: AdminDomain, action?: string): Promis
   }
   await requireAdminTotp(session.userId, session.sessionId); // step-up 2FA at the action layer
   return session;
+}
+
+/**
+ * Strip a refusal's remedy link when THIS viewer cannot open it.
+ *
+ * 🔴 THE DEFECT THIS CLOSES, found by an adversarial audit and confirmed against the grant
+ * matrix. `/admin/ai-polls` is the **trading** domain; `/admin/ai-usage` is **ops**. `MODERATOR`
+ * — the role that actually operates poll generation — is granted `overview` and `trading` only,
+ * and `defaultGrant` returns `{canView:false}` for any unlisted pair. So a moderator hit the AI
+ * spend cap, and the refusal handed them a button to a page they cannot open. Worse: the console
+ * gives the remedy the single secondary slot AHEAD of "Try again", so they lost the retry too and
+ * were left with a dead link and no way forward — a more complete dead end than the sentence this
+ * whole seam replaced.
+ *
+ * ⛔ IT IS RESOLVED IN THE ACTION LAYER, NOT IN `ai-usage.ts`. The refusal is built where the
+ * BLOCK is known; only the action knows WHO asked. Teaching the emitter about roles would put an
+ * RBAC lookup behind every budget gate, including the Market Sentinel's, which has no viewer.
+ *
+ * ⭐ THE FIX IS DROPPED, NOT REWRITTEN. A refusal with no `fix` still renders its title, its
+ * figures and its `escalate` line — which names who can lift it — so the operator is told the
+ * truth rather than handed a door that will not open.
+ */
+export async function scopeRefusalToViewer(
+  refusal: OperatorRefusal | undefined,
+  userId: string,
+): Promise<OperatorRefusal | undefined> {
+  if (!refusal?.fix?.domain) return refusal;
+  try {
+    const me = await db.user.findById(userId);
+    if (!me) return { ...refusal, fix: undefined };
+    if (me.role === "ADMIN") return refusal;
+    const allowed = await canView(me.role as Role, refusal.fix.domain as AdminDomain);
+    return allowed ? refusal : { ...refusal, fix: undefined };
+  } catch {
+    // ⛔ FAIL TOWARDS THE TRUTHFUL CARD. If the grant lookup breaks we cannot promise the link
+    // works, and showing a dead button is worse than showing none: the escalate line still tells
+    // them who to ask. Never fail towards "show the link anyway".
+    return { ...refusal, fix: undefined };
+  }
 }
 
 /**

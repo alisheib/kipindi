@@ -275,7 +275,11 @@ ok("§4.4 the one sentence is still defined once, in ai-usage",
   // are `AiBudgetBlock.reason`, an INTERNAL vocabulary that happens to share the field name. Two
   // meanings of one word in one file is this repo's `E-179`; the guard has to know which one it
   // is reading, or it fails on correct code and gets "fixed" by loosening it.
-  const EMITTERS = ["src/lib/server/ai-usage.ts"];
+  // ⚠️ EVERY file that builds an `OperatorRefusal`. This listed only `ai-usage.ts`, so the moment
+  // a second gate started emitting one (the AI-toolkit kill-switch, in `ai-controls.ts`) §6.1
+  // reported its catalogue row as dead copy — the guard was measuring a subset of the emitters
+  // and calling it the whole population.
+  const EMITTERS = ["src/lib/server/ai-usage.ts", "src/lib/server/ai-controls.ts"];
   const emitted = new Set<string>();
   for (const f of EMITTERS) {
     const text = src(f);
@@ -298,10 +302,27 @@ ok("§4.4 the one sentence is still defined once, in ai-usage",
 
   // ⛔ A BUTTON THAT GOES NOWHERE IS WORSE THAN THE SENTENCE IT REPLACED. Resolve every fix link
   // to a real page file, and every #anchor to an `id` actually rendered on THAT page.
-  const aiUsage = src("src/lib/server/ai-usage.ts");
-  const hrefs = [...aiUsage.matchAll(/href: "([^"]+)"/g)].map((m) => m[1]);
-  ok("§6.3 every refusal in ai-usage carries a fix link", hrefs.length === Object.keys(ADMIN_REFUSALS).length,
-    `${hrefs.length} links for ${Object.keys(ADMIN_REFUSALS).length} reasons`);
+  /**
+   * ⛔ A REASON MAY BE LINK-LESS, BUT ONLY DELIBERATELY. `ai_pollgen_disabled` has no `fix`
+   * because the AI toolkit is a POPOVER IN THE ADMIN HEADER, not a route — inventing an href to
+   * have a button would be a button that goes nowhere. Everything else must carry one.
+   * ⚠️ This assertion used to be `hrefs.length === reasons.length`, which broke the moment a
+   * legitimately link-less reason existed and would have been "fixed" by loosening it.
+   */
+  const LINKLESS = new Set(["ai_pollgen_disabled"]);
+  const emitterSrc = EMITTERS.map(src).join("\n");
+  const hrefs = [...emitterSrc.matchAll(/href: "([^"]+)"/g)].map((m) => m[1]);
+  const needLinks = Object.keys(ADMIN_REFUSALS).filter((r) => !LINKLESS.has(r));
+  ok("§6.3 every reason that should carry a fix link has one",
+    hrefs.length === needLinks.length,
+    `${hrefs.length} links for ${needLinks.length} linkable reasons (${[...LINKLESS].join(", ")} link-less by design)`);
+
+  // …and the link-less one is link-less ON PURPOSE, not by omission.
+  for (const r of LINKLESS) {
+    ok(`§6.3b '${r}' is emitted without a fix, deliberately`,
+      new RegExp(`reason: "${r}"(?![^}]*fix:)`).test(emitterSrc),
+      "if this reason ever gains a route, remove it from LINKLESS rather than widening §6.3");
+  }
 
   for (const href of hrefs) {
     const [route, anchor] = href.split("#");
@@ -484,6 +505,55 @@ ok("§4.4 the one sentence is still defined once, in ai-usage",
 
   ok("§9.6 …and it is still reachable as a script",
     (pkgJson.scripts["qa:refusal-control"] ?? "").includes("--prove-red"));
+}
+
+/* ───────── §10 the remedy must be reachable BY THE VIEWER ───────── */
+// 🔴 THE DEAD END THIS PINS. `/admin/ai-polls` is the `trading` domain; the remedy lives in `ops`.
+// MODERATOR — the role that actually operates poll generation — is granted `overview` and
+// `trading` only, and `defaultGrant` returns {canView:false} for any unlisted pair. So the refusal
+// handed that role a button to a page it cannot open, in the slot that had been holding
+// "Try again": a more complete dead end than the sentence this seam replaced.
+{
+  const { defaultGrant } = await import("../src/lib/server/roles.ts");
+
+  // The PREMISE. If grants ever change so that MODERATOR can view `ops`, this goes red and the
+  // scoping below becomes unnecessary — which is a thing worth being told, not silently carrying.
+  ok("§10.1 MODERATOR genuinely cannot view the `ops` domain the remedy lives in",
+    defaultGrant("MODERATOR", "ops").canView === false);
+  ok("§10.2 …while it CAN act in `trading`, which is what lets it hit the refusal at all",
+    defaultGrant("MODERATOR", "trading").canAct === true);
+
+  // Every catalogue fix must declare the domain, or the scoping silently no-ops.
+  const usage = src("src/lib/server/ai-usage.ts");
+  const fixes = [...usage.matchAll(/fix: \{[^}]*\}/g)].map((m) => m[0]);
+  ok("§10.3 every emitted fix declares the domain it lives in",
+    fixes.length > 0 && fixes.every((f) => /domain: "/.test(f)),
+    `${fixes.filter((f) => /domain: "/.test(f)).length}/${fixes.length} carry a domain`);
+
+  const acts = src("src/app/admin/ai-polls/actions.ts");
+  ok("§10.4 BOTH generate actions scope the refusal to the viewer",
+    (acts.match(/scopeRefusalToViewer\(r\.refusal, officerId\)/g) ?? []).length === 2,
+    "the batch path reaches the same budget gate as the single generator");
+
+  const guard = src("src/lib/server/rbac-guard.ts");
+  ok("§10.5 the scoper drops the LINK and keeps the rest of the refusal",
+    /fix: undefined/.test(guard) && !/return undefined/.test(guard.slice(guard.indexOf("scopeRefusalToViewer"))),
+    "a refusal with no fix still shows its title, figures and escalate line");
+  ok("§10.6 …and fails towards the truthful card, never towards showing a dead link",
+    /catch \{[\s\S]{0,400}fix: undefined/.test(guard));
+
+  // The copy the viewer gets INSTEAD of the link must exist for every reason.
+  for (const [key, spec] of Object.entries(ADMIN_REFUSALS)) {
+    ok(`§10.7 '${key}' has an escalate line for a viewer who cannot act`,
+      typeof (spec as { escalate?: string }).escalate === "string" && (spec as { escalate: string }).escalate.length > 10);
+  }
+
+  const con10 = src("src/app/admin/ai-polls/poll-actions.tsx");
+  ok("§10.8 the console shows `escalate` when the remedy was withheld",
+    /r\.fix \? ADMIN_REFUSALS\[r\.reason\]\.body : ADMIN_REFUSALS\[r\.reason\]\.escalate/.test(con10));
+  const ov10 = src("src/components/admin/action-overlay.tsx");
+  ok("§10.9 …and so does the shared overlay",
+    /known\.fix \? ADMIN_REFUSALS\[known\.reason\]\.body : ADMIN_REFUSALS\[known\.reason\]\.escalate/.test(ov10));
 }
 
 console.error = realError;

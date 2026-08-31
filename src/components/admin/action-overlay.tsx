@@ -163,7 +163,12 @@ export function ActionOverlay({ state, onDismiss, onRetry, retryLabel }: {
         // and the figure grid already carry the fact; the server's `message` restates both, so
         // showing it here printed one fact three times. Unknown reasons still get the sentence,
         // which is the only thing they have.
-        subtitle={known ? ADMIN_REFUSALS[known.reason].body : (state.phase === "error" ? state.message : undefined)}
+        // ⛔ …and `escalate` when the remedy was WITHHELD from this viewer. `scopeRefusalToViewer`
+        // drops `fix` for a role that cannot open the target page; telling that role to "raise the
+        // limit" describes a control they cannot reach, so the copy names who can instead.
+        subtitle={known
+          ? (known.fix ? ADMIN_REFUSALS[known.reason].body : ADMIN_REFUSALS[known.reason].escalate)
+          : (state.phase === "error" ? state.message : undefined)}
         details={figures.length > 0 ? figures : undefined}
         primaryLabel="Dismiss · Funga"
         secondaryLabel={secondaryLabel}
