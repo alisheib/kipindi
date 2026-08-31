@@ -378,6 +378,20 @@ ok("§4.4 the one sentence is still defined once, in ai-usage",
   ok("§9.3 the bench's button basis matches the console's",
     con.includes("basis-[8rem]") && bench.includes("basis-[8rem]"));
 
+  // ⛔ THE FIGURE RUNGS TOO — and this one was MISSED first time round, which is the lesson.
+  // §9 pinned the row, the basis and the container, then the type-scale ratchet moved the figure
+  // classes from `text-[10px]/text-[12px]` to `text-micro/text-label` and the bench went on
+  // measuring the OLD literals. `text-micro` carries `letterSpacing: 0.4px` that a bare
+  // `text-[10px]` does not, so the bench was measuring narrower text than the product renders.
+  // A pin that covers most of a specimen still lets the rest drift.
+  for (const rung of ["text-micro", "text-label"]) {
+    ok(`§9.3b the bench uses the console's ${rung} rung`,
+      con.includes(rung) && bench.includes(rung),
+      "a rung carries tracking and line-height a bare px literal does not");
+  }
+  ok("§9.3c …and neither still carries the retired px literals",
+    !bench.includes('text-[10px]') && !bench.includes('text-[12px]'));
+
   // The container the bench pins its card in must be the shell the console actually opens in.
   const shell = src("src/components/ui/ai-progress.tsx");
   ok("§9.4 the bench's card container matches AiOverlayShell",

@@ -112,8 +112,8 @@ const inlineCard = () => `
     <dl class="flex flex-wrap gap-x-5 gap-y-1.5">
       ${FIGURES.map(([l, v]) => `
       <div class="flex items-baseline gap-1.5">
-        <dt data-fit="figure-label" class="font-mono text-[10px] uppercase eyebrow text-text-tertiary">${l}</dt>
-        <dd data-fit="figure-value" class="font-mono text-[12px] tabular text-text">${v}</dd>
+        <dt data-fit="figure-label" class="font-mono text-micro uppercase eyebrow text-text-tertiary">${l}</dt>
+        <dd data-fit="figure-value" class="font-mono text-label tabular text-text">${v}</dd>
       </div>`).join("")}
     </dl>
     <div class="${ROW_CLS}">
