@@ -493,6 +493,7 @@
     "qa:dg-eyebrow": "node scripts/design-gate/eyebrow-sweep.mjs",
     "test:eyebrow-roles": "node scripts/design-gate/eyebrow-sweep.mjs --tracking",
     "test:section-rail": "tsx scripts/section-rail.test.mts",
+    "qa:dg-rail": "node scripts/design-gate/rail-live.mjs",
     "test:unsaved-changes": "tsx scripts/unsaved-changes.test.mts",
     "test:validation-focus": "tsx scripts/validation-focus.test.mts",
     "test:cn-collision": "tsx scripts/cn-collision.test.mts",
