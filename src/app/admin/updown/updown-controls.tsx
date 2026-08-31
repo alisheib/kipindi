@@ -26,6 +26,7 @@ import { PLATFORM_MIN_STAKE, PLATFORM_MAX_STAKE } from "@/lib/payout";
 import { Button } from "@/components/ui/button";
 import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
 import { Input } from "@/components/ui/input";
+import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import { Select } from "@/components/ui/select";
 import { Toggle } from "@/components/ui/toggle";
 import type { ChainState } from "@/lib/server/updown-dal";
@@ -64,9 +65,16 @@ const ICONS = ["gold", "silver", "platinum", "copper", "oil", "fx", "crypto"] as
 const CATEGORIES = ["macro", "crypto", "other"] as const;
 
 /** Shared label shell — one definition, used by every field on this page. */
-function Field({ label, children, className = "" }: { label: string; children: React.ReactNode; className?: string }) {
+/**
+ * ⚠️ §0a DRIFT, RECORDED 2026-08-31 (DG-S-05): this is the THIRD Field in the tree doing one
+ * job — the kit (src/components/ui/input.tsx:162), one in updown/proposals/proposal-actions.tsx,
+ * and this. Adopting the kit here is a RENDERED change (a different legend recipe and margin),
+ * so it belongs to §K adoption with eyes on it, not to this row. dataField is added so the
+ * three do not drift further apart while that adoption is pending.
+ */
+function Field({ label, children, className = "", dataField }: { label: string; children: React.ReactNode; className?: string; dataField?: string }) {
   return (
-    <label className={`block ${className}`}>
+    <label className={`block ${className}`} data-field={dataField}>
       <span className="block font-mono text-micro uppercase eyebrow text-text-subtle mb-1">{label}</span>
       {children}
     </label>
@@ -1076,6 +1084,8 @@ export function ReadingMethodForm({
       setConfirmOpen(false);
       if (!r.ok) {
         toast({ title: "Could not change the reading method", description: r.error, variant: "danger" });
+        // DG-S-05/06 — take the officer to the select the refusal names.
+        if ("field" in r && r.field) focusFirstInvalid(document.body, [r.field]);
         return;
       }
       router.refresh();
@@ -1098,7 +1108,7 @@ export function ReadingMethodForm({
   return (
     <form onSubmit={onSubmit} className="space-y-3">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Field label="Reading method">
+        <Field label="Reading method" dataField="observationMethod">
           <Select
             value={method}
             onChange={(v) => setMethod(v as "feed" | "ai")}
@@ -1110,7 +1120,7 @@ export function ReadingMethodForm({
             ]}
           />
         </Field>
-        <Field label="Feed provider">
+        <Field label="Feed provider" dataField="feedProvider">
           {/* ⛔ RENDERED FROM THE SHARED LIST, never a hand-written array. This dropdown used
               to carry its own `["twelvedata", "mock"]`, so a provider added server-side was
               accepted by the action and offered by no screen — the same defect that made both

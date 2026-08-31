@@ -35,6 +35,7 @@ import { useDeferredToast } from "@/components/ui/toast";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { voidRoundAction } from "../actions";
+import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 
 export function VoidRoundControl({
@@ -77,6 +78,9 @@ export function VoidRoundControl({
       const r = await voidRoundAction(fd);
       if (!r.ok) {
         toast({ title: "Could not void this round", description: r.error, variant: "danger" });
+        // DG-S-05/06 — the modal stays open on a refusal, and a closed <Modal> renders null,
+        // so only this dialog owns a [data-field] and the document search cannot stray.
+        if ("field" in r && r.field) focusFirstInvalid(document.body, [r.field]);
         return;
       }
       setOpen(false);
@@ -150,6 +154,7 @@ export function VoidRoundControl({
             Reason (required) · Sababu
           </span>
           <textarea
+            data-field="reason"
             ref={textareaRef}
             value={reason}
             onChange={(e) => setReason(e.target.value)}

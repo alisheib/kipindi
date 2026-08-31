@@ -14,11 +14,14 @@ import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
 import { twoOfficerGate } from "@/lib/server/two-officer";
 import { softRequireStaff } from "@/lib/server/rbac-guard";
+import { fieldError } from "@/lib/server/field-error";
 import { reviewKyc } from "@/lib/server/kyc-service";
 import { kycRiskScore, getApprovalRecommendation, KYC_MAKER_CHECKER_THRESHOLD } from "@/lib/server/kyc-risk";
 import { parseAttestations } from "@/lib/kyc-attestations";
 
-type Result = { ok: true } | { ok: false; error: string };
+/** ⭐ DG-S-05 — `field` is optional and additive: every existing refusal below still satisfies
+ *  this shape and still renders exactly as it does today. */
+type Result = { ok: true } | { ok: false; error: string; field?: string };
 type RejectCode = NonNullable<Parameters<typeof reviewKyc>[0]["rejectCode"]>;
 
 /** The rail's reason codes → the stored `KycRejectReason`, and a fallback
@@ -122,7 +125,7 @@ export async function rejectKycWorkstationAction(formData: FormData): Promise<Re
   const code = String(formData.get("reasonCode") ?? "");
   const note = String(formData.get("note") ?? "").trim();
   const picked = REJECT_REASONS[code];
-  if (picked === undefined) return { ok: false, error: "Pick a rejection reason." };
+  if (picked === undefined) return fieldError("reasonCode", "Pick a rejection reason.");
   // `picked.text` is empty for every code that maps to a translated enum member
   // — the player reads the category in their OWN language, so prepending our
   // English sentence printed the reason twice (§6 E-6). It is non-empty only for
@@ -132,7 +135,10 @@ export async function rejectKycWorkstationAction(formData: FormData): Promise<Re
   // one already does, in their language, so the officer's note is optional
   // there; an OTHER rejection has nothing else, so it still needs words.
   if (picked.code === "OTHER" && reason.length < 5) {
-    return { ok: false, error: "Add a short explanation (5+ characters)." };
+    /* ⭐ The address is the NOTE, not the reason code: the code is already correct (it is
+       OTHER), and it is the note that is missing. A refusal that pointed at the select would
+       send the officer to the one field they had filled in properly. */
+    return fieldError("note", "Add a short explanation (5+ characters).");
   }
   const r = await reviewKyc({ officerId: g.userId, userId, decision: "REJECT", reason, rejectCode: picked.code });
   if (!r.ok) return { ok: false, error: r.error ?? "Could not reject." };

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import { useDeferredToast, useToast } from "@/components/ui/toast";
 import { I } from "@/components/ui/glyphs";
 import { Input, Field } from "@/components/ui/input";
@@ -79,11 +80,22 @@ export function SupportConfigForm({ config }: { config: SupportConfig }) {
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const fd = new FormData(e.currentTarget);
+    /* ⛔ CAPTURED BEFORE THE ASYNC BOUNDARY. `e.currentTarget` is null by the time the
+       transition callback below runs, so the element is taken now, while the event is still
+       live — and it doubles as the SEARCH SCOPE for `focusFirstInvalid`. Scoped to this form
+       rather than `document.body` because four forms share /admin/system and three of them
+       carry a text box; a body-wide search is one shared field name away from focusing a
+       control in a different card. */
+    const form = e.currentTarget;
+    const fd = new FormData(form);
     start(async () => {
       const r = await updateSupportConfigAction(fd);
       if (!r.ok) {
         toast({ title: "Couldn't update", description: r.error, variant: "danger" });
+        /* ⭐ DG-S-06 — and then TAKE THEM THERE. The toast says what is wrong; it does not move
+           the cursor, and on this page the card can be scrolled well away from the field it is
+           describing. `r.field` is the address the action returned ("support-email"). */
+        if (r.field) focusFirstInvalid(form, [r.field]);
       } else {
         router.refresh();
         deferToast({ title: "Support info updated", variant: "success" });
@@ -94,7 +106,11 @@ export function SupportConfigForm({ config }: { config: SupportConfig }) {
   return (
     <form onSubmit={onSubmit} className="space-y-3">
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <Field label="Support email" hint="Shown on help, login, legal, KYC pages">
+        {/* ⭐ DG-S-05/06 — `dataField` is the ADDRESS `updateSupportConfigAction` names when it
+            refuses ("Email is required."). It lands on the <label> wrapper, which CONTAINS the
+            input, so `focusFirstInvalid` finds the control inside it. ⛔ The two strings must
+            match; nothing across the server/client boundary can check that for you. */}
+        <Field label="Support email" hint="Shown on help, login, legal, KYC pages" dataField="support-email">
           <Input name="email" defaultValue={config.email} required />
         </Field>
         <Field label="Support phone" hint="E.g. +255 22 211 5811">
@@ -127,6 +143,11 @@ export function AnnouncementForm({
   const router = useRouter();
   const { deferToast, toast } = useDeferredToast(pending);
   const changed = active !== initialActive || message.trim() !== initialMessage.trim() || tone !== initialTone;
+  /* ⛔ A REF, BECAUSE THERE IS NO <form> HERE. This card submits from a Button's onClick, so
+     there is no submit event to read `currentTarget` from — and `focusFirstInvalid` still needs
+     a CONTAINER, not `document.body`: the banner message and the maintenance note are two text
+     boxes on the same page, and scoping the search is what keeps the cursor in this card. */
+  const cardRef = useRef<HTMLDivElement>(null);
 
   const submit = () => {
     if (active && !message.trim()) {
@@ -141,6 +162,9 @@ export function AnnouncementForm({
       const r = await setAnnouncementAction(fd);
       if (!r.ok) {
         toast({ title: "Couldn't update", description: (r as { error?: string }).error, variant: "danger" });
+        /* ⭐ DG-S-06 — the server refuses with `"announcement-message"`, so the cursor lands in
+           the message box, not on the toggle the operator meant to switch on. */
+        if (r.field) focusFirstInvalid(cardRef.current, [r.field]);
       } else {
         router.refresh();
         deferToast(active
@@ -151,8 +175,11 @@ export function AnnouncementForm({
   };
 
   return (
-    <div className="space-y-3">
-      <label className="block">
+    <div ref={cardRef} className="space-y-3">
+      {/* ⭐ DG-S-05/06 — `data-field` sits on the <label> that WRAPS the input, not on a sibling
+          label: `focusFirstInvalid` scrolls to the `[data-field]` element and then focuses the
+          control INSIDE it, so an htmlFor-style sibling would scroll and focus nothing. */}
+      <label className="block" data-field="announcement-message">
         <span className="block font-mono text-micro uppercase eyebrow font-bold text-text-subtle mb-1.5">
           Message
         </span>
@@ -283,12 +310,20 @@ export function TimezoneForm({ current }: { current: string }) {
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!value || !changed) return;
+    // Same capture-before-await as SupportConfigForm: `e.currentTarget` is gone once the
+    // transition callback runs, and this element is the scope the field name is resolved in.
+    const form = e.currentTarget;
     const fd = new FormData();
     fd.set("timezone", value);
     start(async () => {
       const r = await updatePlatformTimezoneAction(fd);
       if (!r.ok) {
         toast({ title: "Invalid timezone", description: r.error, variant: "danger" });
+        /* ⭐ DG-S-06 — focus the combobox trigger, which is what `data-field="timezone"` wraps.
+           ⚠️ The empty-value refusal this addresses is unreachable from here today (the guard
+           above blocks it), so the address is for the SERVER boundary, not for this button —
+           the action is exported and must answer any caller with a place to go. */
+        if (r.field) focusFirstInvalid(form, [r.field]);
       } else {
         router.refresh();
         deferToast({ title: "Timezone updated", variant: "success" });
@@ -298,7 +333,12 @@ export function TimezoneForm({ current }: { current: string }) {
 
   return (
     <form onSubmit={onSubmit} className="flex items-center gap-3 flex-wrap">
-      <div className="flex-1 min-w-[280px]">
+      {/* ⭐ DG-S-05/06 — the address goes on the WRAPPER, because a <Select> is not an <input>:
+          its trigger is a `role="combobox"` <button> followed by a hidden input carrying the
+          value. `focusFirstInvalid` takes the first focusable control inside the wrapper in
+          document order — the button — so the operator lands on the thing they can open, not on
+          a hidden field nothing can focus. */}
+      <div className="flex-1 min-w-[280px]" data-field="timezone">
         <Select
           name="timezone"
           value={value}

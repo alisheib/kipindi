@@ -7,7 +7,7 @@
  * actions. High-risk approvals go through the maker-checker: recommend (officer
  * A) → approve (officer B ≠ A).
  */
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { useDeferredToast } from "@/components/ui/toast";
@@ -18,6 +18,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { CEREMONY } from "@/lib/admin-status-lexicon";
 import { KYC_ATTESTATIONS } from "@/lib/kyc-attestations";
 import { runAdminAction } from "@/lib/client/run-admin-action";
+import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import {
   approveKycWorkstationAction,
   rejectKycWorkstationAction,
@@ -71,6 +72,8 @@ export function KycDecisionRail({
   const [judg, setJudg] = useState<Record<string, TriState>>(Object.fromEntries(JUDGMENT_CHECKS.map((c) => [c.key, "pending"])));
   const [rejectOpen, setRejectOpen] = useState(false);
   const [reasonCode, setReasonCode] = useState("");
+  /* The reject panel — the container focusFirstInvalid searches (see run() below). */
+  const rejectRef = useRef<HTMLDivElement>(null);
   const [note, setNote] = useState("");
   const router = useRouter();
   // B-28 — success toasts ride the transition's falling edge (data visible when announced)
@@ -85,13 +88,19 @@ export function KycDecisionRail({
   const allJudged = JUDGMENT_CHECKS.every((c) => judg[c.key] === "pass");
   const anyAutoFail = autoChecks.some((c) => c.state === "fail");
 
-  const run = (fn: (fd: FormData) => Promise<{ ok: boolean; error?: string }>, okTitle: string, extra?: Record<string, string>, okVariant: "success" | "warning" = "success") => {
+  const run = (fn: (fd: FormData) => Promise<{ ok: boolean; error?: string; field?: string }>, okTitle: string, extra?: Record<string, string>, okVariant: "success" | "warning" = "success") => {
     startTransition(async () => {
       const fd = new FormData();
       fd.set("userId", userId);
       for (const [k, v] of Object.entries(extra ?? {})) fd.set(k, v);
       const r = await runAdminAction(() => fn(fd));
-      if (!r.ok) { toast({ title: "Blocked", description: r.error, variant: "danger" }); return; }
+      if (!r.ok) {
+        toast({ title: "Blocked", description: r.error, variant: "danger" });
+        /* ⭐ DG-S-05/06 — scoped to the reject panel, which is the only part of this rail that
+           owns addressable fields. It stays open on a refusal, so both controls are on screen. */
+        if (r.field) focusFirstInvalid(rejectRef.current, [r.field]);
+        return;
+      }
       // Success outcomes defer to the refresh; warning outcomes stay immediate.
       (okVariant === "success" ? deferToast : toast)({ title: okTitle, variant: okVariant });
       router.refresh();
@@ -219,16 +228,21 @@ export function KycDecisionRail({
             </button>
           </div>
         ) : (
-          <div className="space-y-2 rounded-md border border-claret-edge bg-claret-soft p-2.5">
-            <Select
-              value={reasonCode}
-              onChange={setReasonCode}
-              ariaLabel="Reason code"
-              placeholder="Reason code…"
-              size="sm"
-              options={REJECT_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
-            />
-            <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Note to the player (required for “Other”)…" className="w-full rounded-md border border-border bg-bg-overlay px-2.5 py-1.5 text-[12px] text-text admin-focus resize-y placeholder:text-text-subtle" />
+          <div ref={rejectRef} className="space-y-2 rounded-md border border-claret-edge bg-claret-soft p-2.5">
+            {/* ⭐ DG-S-05/06 — the two addresses `rejectKycWorkstationAction` can name. Each
+                wrapper CONTAINS its control, so `focusFirstInvalid` focuses the control rather
+                than merely scrolling to a label. */}
+            <div data-field="reasonCode">
+              <Select
+                value={reasonCode}
+                onChange={setReasonCode}
+                ariaLabel="Reason code"
+                placeholder="Reason code…"
+                size="sm"
+                options={REJECT_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+              />
+            </div>
+            <textarea data-field="note" value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Note to the player (required for “Other”)…" className="w-full rounded-md border border-border bg-bg-overlay px-2.5 py-1.5 text-[12px] text-text admin-focus resize-y placeholder:text-text-subtle" />
             <div className="grid grid-cols-2 gap-2">
               <button type="button" disabled={!reasonCode} onClick={() => run(rejectKycWorkstationAction, "Submission rejected", { reasonCode, note })} className="btn btn-claret btn-md w-full disabled:opacity-40">Confirm reject</button>
               <button type="button" onClick={() => { setRejectOpen(false); setReasonCode(""); }} className="btn btn-ghost btn-md w-full">Cancel</button>

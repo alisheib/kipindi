@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { I } from "@/components/ui/glyphs";
 import { reverseStuckPayoutAction } from "./payment-actions";
 import { runAdminAction } from "@/lib/client/run-admin-action";
+import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 
 export function StuckPayoutControls({ txnId, amountLabel }: { txnId: string; amountLabel: string }) {
@@ -55,7 +56,13 @@ export function StuckPayoutControls({ txnId, amountLabel }: { txnId: string; amo
       fd.set("txnId", txnId);
       fd.set("reason", reason.trim());
       const r = await runAdminAction(() => reverseStuckPayoutAction(fd));
-      if (!r.ok) { toast({ title: "Blocked", description: r.error, variant: "danger" }); return; }
+      if (!r.ok) {
+        toast({ title: "Blocked", description: r.error, variant: "danger" });
+        /* DG-S-05/06 — same reasoning as reconcile-controls: a closed <Modal> renders null, so
+           only the open dialog owns a [data-field] and the document search cannot stray. */
+        if (r.field) focusFirstInvalid(document.body, [r.field]);
+        return;
+      }
       deferToast({ title: "Returned to the player", description: `${amountLabel} is back in their balance.`, variant: "success" });
       setOpen(false); setReason("");
       router.refresh();

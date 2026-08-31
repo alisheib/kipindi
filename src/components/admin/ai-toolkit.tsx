@@ -253,7 +253,7 @@ export function AiToolkit({ status, canAct = true }: { status: AiToolkitStatus; 
           <Link
             href={"/admin/ai-usage" as never}
             onClick={() => setOpen(false)}
-            className="mt-3 flex items-center justify-between rounded-md border border-border bg-bg-overlay px-3 py-2 font-mono text-micro uppercase tracking-[0.1em] text-text-muted hover:border-brand-500 hover:text-text transition-colors"
+            className="min-h-[var(--tap-min)] mt-3 flex items-center justify-between rounded-md border border-border bg-bg-overlay px-3 py-2 font-mono text-micro uppercase tracking-[0.1em] text-text-muted hover:border-brand-500 hover:text-text transition-colors"
           >
             <span className="inline-flex items-center gap-1.5"><I.activity s={12} /> AI usage &amp; spend</span>
             <I.chevronRight s={12} />

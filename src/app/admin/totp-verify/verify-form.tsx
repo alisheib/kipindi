@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { I } from "@/components/ui/glyphs";
+import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import { verifyAdminTotpAction } from "./actions";
 
 export function TotpVerifyForm({ next }: { next?: string }) {
@@ -37,6 +38,11 @@ export function TotpVerifyForm({ next }: { next?: string }) {
       toast({ title: "Invalid code", description: r.error, variant: "danger" });
       setCode("");
       setBusy(false);
+      /* ⭐ DG-S-05/06 — and then TAKE THEM THERE. The field is cleared above, so without this
+         the officer reads a toast and the caret is still wherever it was. `r.field` is the
+         address the action returned; it is absent on the rate-limit refusal, which is correct
+         — there is no field to go to when the answer is "wait". */
+      if ("field" in r && r.field) focusFirstInvalid(document.body, [r.field]);
       return;
     }
     // success → redirect happens server-side
@@ -51,7 +57,10 @@ export function TotpVerifyForm({ next }: { next?: string }) {
 
   return (
     <div className="space-y-3">
-      <label className="block">
+      {/* ⭐ DG-S-05/06 — `data-field` is the ADDRESS the server's refusal names. The wrapper
+          carries it, not the <input>, so `focusFirstInvalid` can find the field in document
+          order and then focus whatever control it contains (§K rule 7d). */}
+      <label className="block" data-field="totp-code">
         <span className="block text-caption uppercase eyebrow font-bold text-text-secondary mb-1.5">
           6-digit code · Msimbo
         </span>

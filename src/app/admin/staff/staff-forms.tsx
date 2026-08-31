@@ -9,13 +9,14 @@
  * `roleInfos` is computed server-side from the LIVE grant matrix (so it reflects any
  * edits made at /admin/roles), then handed to the client as plain data.
  */
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
 import { Input, Field } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { ConfirmModal } from "@/components/ui/modal";
+import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import { setStaffRoleAction, addStaffByPhoneAction } from "./actions";
 
 export type RoleInfo = {
@@ -166,6 +167,9 @@ export function AddStaffForm({ roleInfos }: { roleInfos: Record<string, RoleInfo
   const [role, setRole] = useState<string>("SUPPORT");
   const [reason, setReason] = useState("");
   const [confirming, setConfirming] = useState(false);
+  /* The container `focusFirstInvalid` searches — see the note in `run()` for why it is this
+     form and not the document. */
+  const formRef = useRef<HTMLFormElement>(null);
 
   const info = roleInfos[role];
   const options = useMemo(() => ROLE_OPTIONS(roleInfos, false), [roleInfos]);
@@ -177,7 +181,18 @@ export function AddStaffForm({ roleInfos }: { roleInfos: Record<string, RoleInfo
       fd.set("role", role);
       fd.set("reason", reason);
       const r = await addStaffByPhoneAction(fd);
-      if (!r.ok) { toast({ title: "Couldn't add staff", description: r.error, variant: "danger" }); return; }
+      if (!r.ok) {
+        toast({ title: "Couldn't add staff", description: r.error, variant: "danger" });
+        /* ⛔ SCOPED TO THIS FORM, NOT `document.body`. This page renders TWO forms and both
+           own a `role` and a `reason` field — the role-change form above this one. A
+           document-wide search would hand back the FIRST match in document order, i.e. the
+           other form's control, and take the officer to a field that is not the one that
+           refused. `focusFirstInvalid` picks the first match in DOM order by design, so the
+           container is what makes it the right one. The confirm modal has already closed
+           (`onConfirm` sets it false before calling this), so the field is on screen. */
+        if (r.field) focusFirstInvalid(formRef.current, [r.field]);
+        return;
+      }
       router.refresh();
       deferToast({ title: "Staff added", description: `${info?.label ?? role} assigned. They've been signed out and will re-enter with the new role.`, variant: "success" });
       setPhone(""); setReason("");
@@ -192,15 +207,15 @@ export function AddStaffForm({ roleInfos }: { roleInfos: Record<string, RoleInfo
   };
 
   return (
-    <form onSubmit={onSubmit} className="space-y-3">
+    <form ref={formRef} onSubmit={onSubmit} className="space-y-3">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Field label="Phone" hint="Their existing 50pick account.">
+        <Field label="Phone" hint="Their existing 50pick account." dataField="phone">
           <Input name="phone" value={phone} onChange={(e) => setPhone(e.currentTarget.value)} placeholder="+255…" mono />
         </Field>
-        <Field label="Role">
+        <Field label="Role" dataField="role">
           <Select name="role" ariaLabel="Role" defaultValue="SUPPORT" onChange={setRole} options={options} />
         </Field>
-        <Field label="Reason (audited)">
+        <Field label="Reason (audited)" dataField="reason">
           <Input name="reason" value={reason} onChange={(e) => setReason(e.currentTarget.value)} placeholder="e.g. new support hire" />
         </Field>
       </div>

@@ -399,7 +399,7 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
           ) : shownQueue.map((q, i) => {
             const active = q.id === sel?.id;
             return (
-              <button key={q.id} onClick={() => { setSelId(q.id); resetReview(); }} className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors"
+              <button key={q.id} onClick={() => { setSelId(q.id); resetReview(); }} className="min-h-[var(--tap-min)] flex w-full items-center gap-3 px-4 py-3 text-left transition-colors"
                 style={{ borderBottom: i < shownQueue.length - 1 ? "1px solid var(--border)" : "none", borderLeft: "3px solid " + (active ? "var(--brand-500)" : "transparent"), background: active ? "color-mix(in oklab, var(--brand-500) 8%, transparent)" : "transparent" }}>
                 <div className="flex w-[42px] shrink-0 flex-col items-center font-mono">
                   <span className="text-[14px] font-bold" style={{ color: q.score >= 0 ? "var(--text)" : "var(--claret-300)" }}>{q.score}</span>

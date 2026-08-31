@@ -166,7 +166,14 @@ const config: Config = {
         // (globals.css:159-161). They exist as vars but were unreachable, so
         // `bg-danger-500` / `border-danger-500` / `bg-info-500` compiled to nothing.
         // There is deliberately no 300/700 step — the ramp has exactly one rung.
-        success: { DEFAULT: alpha("var(--success)"), bg: alpha("var(--success-bg)"), border: alpha("var(--success-border)"), fg: alpha("var(--success-fg)") },
+        // 🔴 DG-A-21 (2026-08-31) — `success` WAS THE ONE FAMILY LEFT OUT OF THE REPAIR THE
+        // COMMENT ABOVE DESCRIBES, and that is why the green half of D2's migration stalled
+        // for nine days while the rose half moved. `--success-500` has existed since
+        // globals.css:188; without this key a developer could not write `bg-success-500/10`
+        // or `border-success-500` at all — and by this file's own documented mechanism the
+        // class would compile to NOTHING, silently, rather than erroring. So the only
+        // spelling that worked for "app state, good" was the betting ramp D2 forbids.
+        success: { DEFAULT: alpha("var(--success)"), bg: alpha("var(--success-bg)"), border: alpha("var(--success-border)"), fg: alpha("var(--success-fg)"), 500: alpha("var(--success-500)") },
         warning: { DEFAULT: alpha("var(--warning)"), bg: alpha("var(--warning-bg)"), border: alpha("var(--warning-border)"), fg: alpha("var(--warning-fg)"), 500: alpha("var(--warning-500)") },
         danger:  { DEFAULT: alpha("var(--danger)"),  bg: alpha("var(--danger-bg)"),  border: alpha("var(--danger-border)"),  fg: alpha("var(--danger-fg)"),  wash: alpha("var(--danger-wash)"),  500: alpha("var(--danger-500)") },
         info:    { DEFAULT: alpha("var(--info)"),    bg: alpha("var(--info-bg)"),    border: alpha("var(--info-border)"),    fg: alpha("var(--info-fg)"),    500: alpha("var(--info-500)") },

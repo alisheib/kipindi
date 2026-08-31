@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { I } from "@/components/ui/glyphs";
 import { suspendPlayerAction, restorePlayerAction } from "./actions";
 import { runAdminAction } from "@/lib/client/run-admin-action";
+import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 
 /**
@@ -68,6 +69,7 @@ export function SuspendControls({
         : await runAdminAction(() => restorePlayerAction(fd));
       if (!r.ok) {
         toast({ title: `Could not ${mode}`, description: r.error, variant: "danger" });
+        if (r.field) focusFirstInvalid(document.body, [r.field]);
         return;
       }
       setMode(null);
@@ -175,6 +177,7 @@ export function SuspendControls({
             (required, audit-logged)
           </span>
           <textarea
+            data-field="reason"
             ref={reasonRef}
             value={reason}
             onChange={(e) => setReason(e.target.value)}

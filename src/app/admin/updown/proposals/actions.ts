@@ -21,6 +21,7 @@
 import { revalidatePath } from "next/cache";
 import { safeError } from "@/lib/server/safe-error";
 import { requireStaff } from "@/lib/server/rbac-guard";
+import { fieldError } from "@/lib/server/field-error";
 import { CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import {
   generateProposal, editProposal, approveProposal, rejectProposal, armProposal, deleteProposal,
@@ -45,9 +46,9 @@ export async function generateProposalAction(formData: FormData) {
   try {
     const assetId = String(formData.get("assetId") ?? "").trim();
     const duration = num(formData, "durationMinutes");
-    if (!assetId) return { ok: false as const, error: "Choose an asset." };
+    if (!assetId) return fieldError("assetId", "Choose an asset.");
     if (duration === undefined || !ALLOWED_DURATIONS.includes(duration as Duration)) {
-      return { ok: false as const, error: `Choose a round length: ${ALLOWED_DURATIONS.join(", ")} minutes.` };
+      return fieldError("durationMinutes", `Choose a round length: ${ALLOWED_DURATIONS.join(", ")} minutes.`);
     }
     const prompt = String(formData.get("prompt") ?? "").trim().slice(0, 1000);
     const r = await generateProposal({
@@ -118,7 +119,9 @@ export async function rejectProposalAction(formData: FormData) {
     const reasons = raw.filter((v): v is ProposalRejectReason =>
       (PROPOSAL_REJECT_REASONS as readonly string[]).includes(v));
     if (reasons.length === 0) {
-      return { ok: false as const, error: "Choose at least one reason so the rejection can be counted." };
+      /* The address is the reason GROUP, not a single checkbox — `data-field` sits on the
+         fieldset that owns them, so the officer lands on the first box in the set. */
+      return fieldError("reasons", "Choose at least one reason so the rejection can be counted.");
     }
     const note = String(formData.get("note") ?? "").trim().slice(0, 500);
     const r = await rejectProposal(id, { officerId: session.userId, reasons, note: note || undefined });

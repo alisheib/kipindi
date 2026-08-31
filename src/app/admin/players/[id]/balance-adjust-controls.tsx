@@ -10,6 +10,7 @@ import { formatTzs } from "@/lib/utils";
 import { adjustBalanceAction } from "./actions";
 import { TWO_PERSON_THRESHOLD_TZS } from "../../aml/constants";
 import { runAdminAction } from "@/lib/client/run-admin-action";
+import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 
 /**
@@ -65,6 +66,7 @@ export function BalanceAdjustControls({
       const r = await runAdminAction(() => adjustBalanceAction(fd));
       if (!r.ok) {
         toast({ title: "Adjustment failed", description: r.error, variant: "danger" });
+        if (r.field) focusFirstInvalid(document.body, [r.field]);
         return;
       }
       if ("stage" in r && r.stage === "stage1") {
@@ -139,7 +141,7 @@ export function BalanceAdjustControls({
           ))}
         </div>
 
-        <label className="mt-3 block">
+        <label className="mt-3 block" data-field="amount">
           <span className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">Amount (TZS)</span>
           <input
             ref={amountRef}
@@ -151,7 +153,7 @@ export function BalanceAdjustControls({
           />
         </label>
 
-        <label className="mt-3 block">
+        <label className="mt-3 block" data-field="reason">
           <span className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">Reason · Sababu (required, audit-logged)</span>
           <textarea
             value={reason}

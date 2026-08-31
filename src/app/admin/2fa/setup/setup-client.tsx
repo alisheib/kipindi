@@ -60,7 +60,15 @@ export function TotpSetupClient({ initiallyEnabled, next }: { initiallyEnabled: 
         /* ⭐ DG-S-06 — and then TAKE THEM THERE. A toast says what is wrong; it does not move
            the cursor, and on a long form it can be off-screen from the field it describes.
            `r.field` is the address the action returned; `focusFirstInvalid` resolves it to the
-           control and focuses it without racing a smooth scroll (§M6). */
+           control and focuses it without racing a smooth scroll (§M6).
+           ⚠️ `document.body` IS SAFE AS THE CONTAINER, and that was CHECKED rather than assumed —
+           three ways. (a) This handler only runs from the `provisioning` branch, which is an
+           early return, so the two step-up `ConfirmModal`s are not rendered at all while it is
+           on screen. (b) `/admin/2fa/setup` is in the layout's TOTP_EXEMPT set, so
+           `admin/layout.tsx:110-112` returns a bare `<main>` — no sidebar, no nav form beside it.
+           (c) The only other `data-field="totp-code"` in `src/` is on a different route
+           (`admin/totp-verify/verify-form.tsx:63`). Exactly one `[data-field]` exists
+           document-wide when this fires, so the search cannot stray into another form's copy. */
         if (r && "field" in r && r.field) focusFirstInvalid(document.body, [r.field]);
       }
     } catch {
@@ -93,6 +101,21 @@ export function TotpSetupClient({ initiallyEnabled, next }: { initiallyEnabled: 
     }
   };
 
+  /* ⛔ DG-S-05 — NO `data-field` ON THIS ONE, ON PURPOSE, AND DO NOT ADD ONE.
+     It is the obvious-looking home for the two step-up refusals ("Enter a valid current 6-digit
+     code to re-provision / remove 2FA"), and an attribute here would be a wire with nothing on
+     the other end: BOTH ceremonies below close their `ConfirmModal` before awaiting the action
+     (L173-174, L199-200), and `Modal` returns null once closed (`modal.tsx:249`) — so this whole
+     subtree is unmounted before the server answers and a `focusFirstInvalid` aimed at it would
+     report `not-rendered` on every failure instead of taking anyone anywhere. The server keeps
+     both refusals plain for the same reason; the argument is written out in full at
+     `provisionTotpAction` in `actions.ts`.
+     ⚠️ If these dialogs are ever held open across the mutation (`ConfirmModal` already takes
+     `loading`), the control survives the round-trip and both halves become wireable — that is
+     the remainder, and it is a control-flow change, not this row's.
+     ⚠️ It is also ONE element shared by both modals, so an address here would name a control
+     that can appear in two different ceremonies — a second reason to give it its own name
+     rather than reusing `totp-code`, if it is ever wired at all. */
   const stepCodeInput = (
     <label className="block mt-3">
       <span className="block text-caption uppercase eyebrow font-bold text-text-secondary mb-1.5">
@@ -109,7 +132,7 @@ export function TotpSetupClient({ initiallyEnabled, next }: { initiallyEnabled: 
         autoComplete="one-time-code"
         aria-label="Current 6-digit verification code"
         /* ⚠️ HEIGHT IS A LITERAL, not `h-11` — spacing is overridden (tailwind.config.ts:200-215)
-           so `h-11` was 96px here while the identical field at L213 was `h-12` = 128px: the same
+           so `h-11` was 96px here while the identical field at L253 was `h-12` = 128px: the same
            control at two heights. 48px, matching the enrolment field. (`w-40` is NOT an
            overridden key — it is Tailwind's default 160px and is correct as written.) */
         className="w-40 h-[48px] px-3 rounded-md bg-bg-inset border border-border text-text font-mono text-title-sm tabular tracking-[0.2em] focus:outline-none admin-focus transition-colors"

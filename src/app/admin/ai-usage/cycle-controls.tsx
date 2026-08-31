@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Toggle } from "@/components/ui/toggle";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { parseCycleForm, CYCLE_BOUNDS } from "@/lib/ai-cycle-rules";
+import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import { setCycleConfigAction, startNextCycleAction, closeCycleNowAction } from "./actions";
 /**
  * ⛔ THE SHELL'S GATE, NOT A SECOND ONE. These controls shipped reading a `canAct` prop the
@@ -124,6 +125,10 @@ export function CycleSettings(p: Props) {
       if (!r.ok) {
         setErr({ field: r.field, message: r.error ?? "Save failed" });
         toast({ title: "Couldn't save", description: r.error, variant: "danger" });
+        /* ⭐ DG-S-05/06 — this form already KNEW which field was wrong (it paints the input
+           red through `fieldErr`) and still left the caret wherever it was. On a five-field
+           grid that can be off-screen from the field it describes. */
+        if (r.field) focusFirstInvalid(formRef.current, [r.field]);
         return;
       }
       router.refresh();
@@ -146,6 +151,7 @@ export function CycleSettings(p: Props) {
           label="Cycle size (USD)"
           hint={`One cycle = this much Claude spend. $${CYCLE_BOUNDS.sizeUsd.min}–$${CYCLE_BOUNDS.sizeUsd.max.toLocaleString()}.`}
           error={fieldErr("sizeUsd")}
+          dataField="sizeUsd"
         >
           <Input name="sizeUsd" inputMode="decimal" defaultValue={String(p.sizeUsd)} placeholder="100" mono disabled={!mayAct} error={!!fieldErr("sizeUsd")} />
         </Field>
@@ -154,6 +160,7 @@ export function CycleSettings(p: Props) {
           label="Target margin (%)"
           hint="100 = the suggested price is twice the AI cost."
           error={fieldErr("targetMarginPct")}
+          dataField="targetMarginPct"
         >
           <Input name="targetMarginPct" inputMode="decimal" defaultValue={String(p.targetMarginPct)} placeholder="100" mono disabled={!mayAct} error={!!fieldErr("targetMarginPct")} />
         </Field>
@@ -162,6 +169,7 @@ export function CycleSettings(p: Props) {
           label="Min days before projecting"
           hint="A yearly figure is withheld until there is at least this much history."
           error={fieldErr("minDaysForProjection")}
+          dataField="minDaysForProjection"
         >
           <Input name="minDaysForProjection" inputMode="numeric" defaultValue={String(p.minDaysForProjection)} placeholder="14" mono disabled={!mayAct} error={!!fieldErr("minDaysForProjection")} />
         </Field>
@@ -170,6 +178,7 @@ export function CycleSettings(p: Props) {
           label="USD → TZS rate"
           hint={`${CYCLE_BOUNDS.fxTzsPerUsd.min.toLocaleString()}–${CYCLE_BOUNDS.fxTzsPerUsd.max.toLocaleString()}. Leave blank and shilling figures show “—”.`}
           error={fieldErr("fxTzsPerUsd")}
+          dataField="fxTzsPerUsd"
         >
           <Input name="fxTzsPerUsd" inputMode="decimal" defaultValue={p.fxTzsPerUsd > 0 ? String(p.fxTzsPerUsd) : ""} placeholder="e.g. 2600" mono disabled={!mayAct} error={!!fieldErr("fxTzsPerUsd")} />
         </Field>
@@ -178,6 +187,7 @@ export function CycleSettings(p: Props) {
           label="Rate taken on"
           hint="Shown beside every shilling figure, so a stale rate is visible."
           error={fieldErr("fxAsOfIso")}
+          dataField="fxAsOfIso"
         >
           <Input name="fxAsOfIso" type="text" defaultValue={p.fxAsOfIso ? p.fxAsOfIso.slice(0, 10) : ""} placeholder="YYYY-MM-DD" mono disabled={!mayAct} error={!!fieldErr("fxAsOfIso")} />
         </Field>
@@ -204,7 +214,11 @@ export function CycleSettings(p: Props) {
         </Field>
       </div>
 
-      {err && !err.field && <p className="text-caption text-no-300">{err.message}</p>}
+      {/* ⭐ §B2a (D2) — a form that could not save is an APP STATE, not a losing bet. This line
+          was the betting rose (`text-no-300`) while the per-field errors right above it, drawn
+          by the kit's own `Field`, were already `text-danger-fg`: one form, two reds, one of
+          them spending the money vocabulary on chrome. The neighbour decides the value. */}
+      {err && !err.field && <p className="text-caption text-danger-fg">{err.message}</p>}
 
       {mayAct ? (
         <ConfirmDialog

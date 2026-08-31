@@ -13,6 +13,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
 import { softRequireStaff } from "@/lib/server/rbac-guard";
+import { fieldError } from "@/lib/server/field-error";
 import { setKillSwitch, type Mno, MNOS } from "@/lib/server/payment-ops";
 import { setPaymentControls, type ControlsUpdate, type PaymentProviderId } from "@/lib/server/payment-control";
 import { setPayoutStatus, PAYOUT_STATUSES, type PayoutStatus } from "@/lib/server/payout-status";
@@ -21,7 +22,9 @@ import { deposit } from "@/lib/server/wallet-service";
 
 type DepositProvider = "MPESA" | "AIRTEL_MONEY" | "HALO_PESA" | "MIXX" | "CARD";
 
-type Result = { ok: true } | { ok: false; error: string };
+/* DG-S-05 — `field` is optional and additive: every refusal below keeps its exact sentence and
+   its exact shape; what is new is that three of them can now say WHICH control to fix. */
+type Result = { ok: true } | { ok: false; error: string; field?: string };
 
 // ⛔ ONE GATE, NOT A COPY (finding A2). This wrapper keeps the local error wording and the
 // `"error" in g` shape every call site below already uses; the DECISION — grant lookup,
@@ -196,7 +199,7 @@ export async function reconcileMatchAction(formData: FormData): Promise<Result> 
   const txnId = String(formData.get("txnId") ?? "");
   const providerRef = String(formData.get("providerRef") ?? "").trim().slice(0, 120);
   const reason = String(formData.get("reason") ?? "").trim().slice(0, 200);
-  if (providerRef.length < 3) return { ok: false, error: "Enter the provider settlement reference." };
+  if (providerRef.length < 3) return fieldError("providerRef", "Enter the provider settlement reference.");
   const t = await db.txn.findById(txnId);
   if (!t || t.status !== "CONFIRMED" || (t.type !== "DEPOSIT" && t.type !== "WITHDRAWAL")) return { ok: false, error: "Not an unmatched settled money movement." };
   if (t.providerRef) return { ok: false, error: "Already matched." };
@@ -237,7 +240,7 @@ export async function reverseStuckPayoutAction(formData: FormData): Promise<Resu
   if ("error" in g) return { ok: false, error: g.error };
   const txnId = String(formData.get("txnId") ?? "").trim();
   const reason = String(formData.get("reason") ?? "").trim().slice(0, 200);
-  if (reason.length < 10) return { ok: false, error: "A reason of at least 10 characters is required — this returns real money." };
+  if (reason.length < 10) return fieldError("reason", "A reason of at least 10 characters is required — this returns real money.");
 
   const t = await db.txn.findById(txnId);
   if (!t) return { ok: false, error: "Transaction not found." };
@@ -279,7 +282,7 @@ export async function reconcileWriteOffAction(formData: FormData): Promise<Resul
   if ("error" in g) return { ok: false, error: g.error };
   const txnId = String(formData.get("txnId") ?? "");
   const reason = String(formData.get("reason") ?? "").trim().slice(0, 200);
-  if (reason.length < 5) return { ok: false, error: "A write-off reason (≥ 5 chars) is required." };
+  if (reason.length < 5) return fieldError("reason", "A write-off reason (≥ 5 chars) is required.");
   const t = await db.txn.findById(txnId);
   if (!t || t.status !== "CONFIRMED" || (t.type !== "DEPOSIT" && t.type !== "WITHDRAWAL")) return { ok: false, error: "Not an unmatched settled money movement." };
   if (t.providerRef) return { ok: false, error: "Already matched." };

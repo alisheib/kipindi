@@ -12,6 +12,7 @@ import { getFirstSignature, setFirstSignature } from "./stage1-store";
 import { TWO_PERSON_THRESHOLD_TZS } from "./constants";
 import { formatTzs } from "@/lib/utils";
 import { requireStaff } from "@/lib/server/rbac-guard";
+import { fieldError } from "@/lib/server/field-error";
 
 // RBAC: AML release/reject moves money but is a COMPLIANCE decision → `compliance`.
 // requireStaff enforces the role's canAct (Owner/ADMIN bypass), audits, then step-up
@@ -48,10 +49,21 @@ export async function approveAmlAction(formData: FormData) {
   const { session } = await requireAdmin();
   const txnId = String(formData.get("txnId") ?? "");
   const reason = String(formData.get("reason") ?? "").trim().slice(0, 500);
+  // ⛔ DELIBERATELY PLAIN (DG-S-05): `txnId` is a hidden value the queue row supplies, not a
+  // control anyone typed into — there is nothing on screen to focus, and naming a field that
+  // does not render is the one failure mode `focusFirstInvalid` cannot recover from.
   if (!txnId) return { ok: false as const, error: "Missing transaction id." };
   // Releasing money is the highest-risk action — a recorded justification is
   // mandatory (FATF R.10 / EDD), matching the reject path.
-  if (reason.length < 5) return { ok: false as const, error: "Reason is required (≥ 5 chars) to release funds." };
+  //
+  // ⭐ DG-S-05 — THE ONLY FIELD-SHAPED REFUSAL IN THIS ACTION, and it is the one that stands
+  // between an officer and frozen funds. The sentence is UNCHANGED; it now carries the address
+  // of the control that has to change. `"aml-reason"` is the `data-field` on the reason input
+  // in `aml-actions-client.tsx` — one input serves both buttons, so the reject path names the
+  // same address. Every other refusal below is a STATE or SEPARATION-OF-DUTIES decision (not in
+  // AML_REVIEW · self-review · a deposit awaiting a refund · the two-person rule · a gateway
+  // fault): none of them is fixed by editing a box on screen, so all of them stay plain.
+  if (reason.length < 5) return fieldError("aml-reason", "Reason is required (≥ 5 chars) to release funds.");
 
   // Lock the transaction to prevent TOCTOU — two officers clicking approve at once
   // could otherwise both pass the AML_REVIEW check and bypass the two-person rule.
@@ -120,8 +132,12 @@ export async function rejectAmlAction(formData: FormData) {
   const { session } = await requireAdmin();
   const txnId = String(formData.get("txnId") ?? "");
   const reason = String(formData.get("reason") ?? "").trim().slice(0, 500);
+  // ⛔ Plain for the same reason as the approve path — `txnId` renders nowhere.
   if (!txnId) return { ok: false as const, error: "Missing transaction id." };
-  if (reason.length < 5) return { ok: false as const, error: "Reason is required (≥ 5 chars)." };
+  // ⭐ DG-S-05 — the reject panel and the approve panel are the SAME control (`AmlActionRow`
+  // renders one reason input and swaps its placeholder by mode), so both refusals name one
+  // address. Sentence unchanged.
+  if (reason.length < 5) return fieldError("aml-reason", "Reason is required (≥ 5 chars).");
 
   // Lock the whole reject on the transaction (like approveAmlAction) so two
   // officers / a double-click can't both pass the AML_REVIEW check and refund

@@ -242,15 +242,26 @@ function walk(dir: string, out: string[] = []): string[] {
   }
   return out;
 }
-const relOf = (f: string) => relative(ROOT, f).replace(/\\/g, "/");
+/**
+ * ⚠️ `KP_SRC` exists so `red:tap-floor` can point this gate at a MUTATED COPY of the tree
+ * rather than writing to the real one — the same mechanism `red:section-rail` uses, and for
+ * the same reason: a control that edits `src/` in place can leave the repo dirty if it dies
+ * halfway. Unset (every normal run, and every `test:all` run) SRC_BASE is ROOT and every
+ * read below is byte-for-byte what it was before this was added.
+ */
+const SRC = process.env.KP_SRC || join(ROOT, "src");
+const SRC_BASE = process.env.KP_SRC ? join(SRC, "..") : ROOT;
+const relOf = (f: string) => relative(SRC_BASE, f).replace(/\\/g, "/");
+/** Read a file the SCAN found, which lives under SRC_BASE (== ROOT unless KP_SRC is set). */
+const rdSrc = (p: string) => readFileSync(join(SRC_BASE, p), "utf8");
 /** Admin surfaces are mouse-and-desktop by definition; player surfaces are a phone. */
 const isAdmin = (r: string) => r.includes("/admin/") || /\/admin-[\w-]+\.(tsx|css)$/.test(r);
-const files = walk(join(ROOT, "src")).map(relOf);
+const files = walk(SRC).map(relOf);
 
 const xsOnPlayer: string[] = [];
 for (const r of files) {
   if (isAdmin(r) || XS_DEFINERS.has(r)) continue;
-  const body = decomment(rd(r));
+  const body = decomment(rdSrc(r));
   for (const [re, what] of XS_SIGNALS) if (re.test(body)) xsOnPlayer.push(`${r} (${what})`);
 }
 ok("2.1 the 32px rung appears on NO player surface", xsOnPlayer.length === 0,
@@ -258,7 +269,7 @@ ok("2.1 the 32px rung appears on NO player surface", xsOnPlayer.length === 0,
    `checked ${files.filter((r) => !isAdmin(r)).length} player files`);
 // And the exception must still be REACHABLE — if nothing uses it, it is not an
 // exception, it is dead config, and it should be deleted rather than documented.
-const xsOnAdmin = files.filter((r) => isAdmin(r) && XS_SIGNALS.some(([re]) => re.test(decomment(rd(r)))));
+const xsOnAdmin = files.filter((r) => isAdmin(r) && XS_SIGNALS.some(([re]) => re.test(decomment(rdSrc(r)))));
 ok("2.2 the exception is actually used by admin (so it is a rule, not dead config)",
    xsOnAdmin.length > 0,
    "nothing uses --h-control-xs any more — delete the token and this exception rather than carrying both",
@@ -280,10 +291,19 @@ function declaredHeights(attrs: string): Array<{ px: number; how: string }> {
   for (const m of attrs.matchAll(/\bsize-\[(\d+)px\]/g)) push(Number(m[1]), m[0]);
   for (const m of attrs.matchAll(/\bh-\[var\(--tap-min\)\]/g)) push(TAP_MIN, m[0]);
   for (const m of attrs.matchAll(/\bh-\[var\(--h-control-(xs|sm|md|lg|xl)\)\]/g)) push(H[m[1] as keyof typeof H], m[0]);
+  /* ⚠️ `--h-input` was missing here until 2026-08-31 (DG-A-08). A field that declares the
+     INPUT rung — 44px, above the floor — resolved to nothing and read as "declares no height",
+     which is the same answer this gate gives a control that declares nothing at all. */
+  for (const m of attrs.matchAll(/\b(?:min-)?h-\[var\(--h-input\)\]/g)) push(H_INPUT, m[0]);
   // numeric scale classes — resolved through the OVERRIDDEN scale, never 4×N
   for (const m of attrs.matchAll(/\b(?:min-)?h-([\d.]+)(?![\w[-])/g)) {
     const v = SPACING.get(m[1]);
     if (v !== undefined) push(v, `${m[0]} (=${v}px on this repo's scale)`);
+    /* ⛔ …and the scale is an `extend`, not a replacement (tailwind.config.ts:49 `extend:` →
+       :204 `spacing:`), so a key the override does NOT name keeps its STOCK 4×N value. `h-14`
+       is 56px, not "unresolvable". Reading only the overridden keys made every stock-key height
+       invisible, which is a false negative in a gate whose whole job is to resolve a number. */
+    else if (/^\d+$/.test(m[1])) push(Number(m[1]) * 4, `${m[0]} (=${Number(m[1]) * 4}px, stock scale — the override does not name this key)`);
   }
   // inline styles
   for (const m of attrs.matchAll(/\b(?:min)?[Hh]eight:\s*(\d+)\b/g)) push(Number(m[1]), m[0].replace(/\s+/g, ""));
@@ -300,7 +320,7 @@ let scannedTags = 0, runaways = 0;
 for (const r of files) {
   if (!r.endsWith(".tsx")) continue;
   if (isAdmin(r)) continue;
-  const body = decomment(rd(r));
+  const body = decomment(rdSrc(r));
   const starts: Array<{ at: number; tag: string }> = [];
   for (const tag of TAGS) {
     for (const m of body.matchAll(new RegExp(`<${tag}(?=[\\s/>])`, "g"))) starts.push({ at: m.index ?? 0, tag });
@@ -378,6 +398,122 @@ for (const [key, { px, note }] of Object.entries(RATCHET)) {
 // "may only shrink" mean shrink, and not merely "may not grow in count".
 ok("4.z the ratchet is keyed by height, so a control cannot shrink inside its own row",
    Object.keys(RATCHET).every((k) => /@\d+$/.test(k)), "a row lost its @px suffix", "every row is keyed file:tag@px");
+
+// ===========================================================================
+console.log("\n§5 · DG-A-08 — THE ADMIN SURFACE, WHICH §3 EXCLUDES BY CONSTRUCTION");
+// ===========================================================================
+/**
+ * 🔴 WHY §5 EXISTS: §3 SKIPS THE ENTIRE ADMIN CONSOLE IN ONE LINE (`if (isAdmin(r)) continue`).
+ * That is deliberate — its rule is the 44px PLAYER preference — but the effect was that the
+ * console, where every money lever lives, had no failing tap gate at all. §2 touches admin only
+ * in the opposite direction: it LICENSES the 32px rung there. So "the floor is enforced" was
+ * true of 307 player files and of nothing else.
+ *
+ * 📐 WHAT IT COST, re-derived 2026-08-31 by driving the source rather than the prose: on
+ * `/admin/updown/proposals` the "Reject" and "Delete" levers were bare-text `<button>`s in a
+ * table cell — no kit class, no declared height — rendering `text-micro` (10px/14px) + `py-1`
+ * (4px×2 on this repo's OVERRIDDEN scale) = **22px**, beside a 40px `<Button size="sm">Review</Button>`
+ * in the same flex row. One cell, two heights, and one of them a DELETE at 18px under the floor.
+ * A third, the "View chain" link, was 22px in the same cluster. None of them was visible to any
+ * gate: §3 skipped the file for being admin, and `ui-consistency`'s `bare-text-button` rule
+ * cannot see them because its open-tag regex still dies on the `>` inside `=>` — which is the
+ * defect §0 of THIS file exists to prove, and the reason the reader below is the lexer.
+ *
+ * ⛔ TWO RULES, AND THEY CATCH DIFFERENT THINGS. 5.1 is a DECLARATION rule (what a control says
+ * its height is); 5.2 is a VOCABULARY rule (whether a control drawn as a box goes through a
+ * recipe at all). 5.1 alone would have scored the 22px levers as PASS, because they declared
+ * nothing — a gate one level too shallow is indistinguishable from no gate.
+ *
+ * ⚠️ AND THE LIMIT, STATED: this is still a SOURCE contract. A control that reaches 40px purely
+ * through padding declares nothing and cannot be told apart from one that does not — which is
+ * exactly why 5.2 asks for a stated floor rather than trying to compute a height it cannot see.
+ */
+{
+  const adminFiles = files.filter((r) => r.endsWith(".tsx") && isAdmin(r));
+
+  /* The 32px rung is legal on admin (§2, and globals.css beside the token) — but only when the
+     call site NAMES it. `h-[32px]` is the rung's VALUE hand-typed at a call site, which is the
+     defect §0a exists for: the number stops being traceable to the ruling that set it, and a
+     later change to the token silently leaves it behind. The exemption is therefore keyed on
+     the RESOLVED TOKEN, never on a filename — §A1: "an allowlist entry earns its place by a
+     RENDERED FACT or a written reason, never by filename." */
+  const NAMES_XS = /\bbtn-xs\b|\bh-\[var\(--h-control-xs\)\]|size=["']xs["']/;
+  /* A control is "drawn as a box" when it declares its own padding: it has a hit area of its
+     own, which is what §A2 governs. A link inside a sentence declares none and is text. */
+  const HAS_PADDING = /(?:^|\s)(?:p|px|py|pt|pb)-\[?[\d.]/;
+  /* The sanctioned recipes: the kit's size rungs, and `.row-link` — the row-NAVIGATION recipe
+     minted for this job at globals.css:1683, which carries `min-height: var(--tap-min)`. */
+  const SANCTIONED = /(?:^|\s)(?:btn-(?:xs|sm|md|lg|xl)|row-link)(?=\s|$)/;
+
+  type A5 = { file: string; line: number; tag: string; cn: string; why: string };
+  const subFloor: A5[] = [];
+  const unstated: A5[] = [];
+  let declaring = 0, padded = 0;
+
+  /**
+   * ⛔ 5.2's POPULATION IS ACTIONS AND NAVIGATION, NOT TEXT ENTRY, and the distinction is the
+   * rule's subject rather than a convenience. A `<button>` or a link is a thing you hit ONCE:
+   * its box IS the tap target, so §A2 governs it and it must state that box. A `<textarea
+   * rows={3}>` or an `<input>` is a field you type into — its geometry comes from `rows` and
+   * from `--h-input` (44px, already at the floor), and demanding `min-h-[var(--tap-min)]` on a
+   * three-row textarea would be enforcing a floor it clears several times over.
+   * ⚠️ Text fields are NOT unguarded: 5.1 below reads EVERY tag, so an `<input>` that declares
+   * a sub-floor height is still a finding.
+   */
+  const ACTION_TAGS = ["button", "a", "Link", "summary"];
+
+  for (const r of adminFiles) {
+    const body = decomment(rdSrc(r));
+    for (const tag of TAGS) {
+      for (const m of body.matchAll(new RegExp(`<${tag}(?=[\\s/>])`, "g"))) {
+        const at = m.index ?? 0;
+        const end = endOfOpenTag(body, at);
+        if (end < 0) continue;
+        const open = body.slice(at, end);
+        const cm = /className=\{?["'`]([\s\S]*?)["'`]/.exec(open);
+        if (!cm) continue;
+        const cn = cm[1].replace(/\s+/g, " ").trim();
+        const line = body.slice(0, at).split("\n").length;
+        const hs = declaredHeights(open);
+
+        if (hs.length) {
+          declaring++;
+          const min = Math.min(...hs.map((h) => h.px));
+          if (min < TAP_MIN && !NAMES_XS.test(cn)) {
+            subFloor.push({ file: r, line, tag, cn, why: `declares ${min}px` });
+          }
+        }
+        if (ACTION_TAGS.includes(tag) && HAS_PADDING.test(cn)) {
+          padded++;
+          if (!SANCTIONED.test(cn) && !(hs.length && Math.max(...hs.map((h) => h.px)) >= TAP_MIN)) {
+            unstated.push({ file: r, line, tag, cn, why: "padded, but no recipe and no stated floor" });
+          }
+        }
+      }
+    }
+  }
+
+  ok(`5.1 no admin control declares a height under --tap-min (${TAP_MIN}px) except by NAMING the --h-control-xs rung`,
+     subFloor.length === 0,
+     subFloor.map((f) => `${f.file}:${f.line} <${f.tag}> ${f.why} :: ${f.cn.slice(0, 70)}`).join(" · ") +
+       ` — take the kit rung, or write h-[var(--h-control-xs)] if this really is the dense mouse-only console control`,
+     `${declaring} admin controls declare a height across ${adminFiles.length} files; every sub-floor one names the 32px rung`);
+
+  ok(`5.2 an admin control drawn as a BOX (it declares its own padding) goes through a recipe or states the floor`,
+     unstated.length === 0,
+     unstated.map((f) => `${f.file}:${f.line} <${f.tag}> :: ${f.cn.slice(0, 70)}`).join(" · ") +
+       ` — give it the kit (.btn-<size> / <Button>), or .row-link if it NAVIGATES, or min-h-[var(--tap-min)]`,
+     `${padded} padded admin controls, all accounted for`);
+
+  /* ⛔ A COVERAGE FLOOR. 5.1 and 5.2 both report "0 findings" when they find nothing AND when
+     they can see nothing, and this programme has shipped that vacuous pass more than once. If
+     the reader stops reaching the console — a refactor, a moved directory, a lexer regression —
+     the population collapses and this fails LOUDLY rather than printing two green lines. */
+  ok("5.3 CONTROL — the admin population is non-empty, so 0 findings means 0 defects and not 0 reach",
+     adminFiles.length > 100 && declaring > 50 && padded > 20,
+     `admin files ${adminFiles.length}, declaring ${declaring}, padded ${padded} — the scan lost its subject set`,
+     `${adminFiles.length} admin files · ${declaring} declaring a height · ${padded} drawn as a box`);
+}
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

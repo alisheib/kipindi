@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { softRequireStaff } from "@/lib/server/rbac-guard";
+import { fieldError } from "@/lib/server/field-error";
 import { CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { twoOfficerGate } from "@/lib/server/two-officer";
 import { withLock } from "@/lib/server/locks";
@@ -31,7 +32,9 @@ import {
  * declaration only drives BUTTON VISIBILITY; the security boundary is `softRequireStaff` below,
  * plus the fact that a non-compliance role cannot open this route at all. Flagged to M.
  */
-type Result<T> = { ok: true; data: T } | { ok: false; error: string };
+/* DG-S-05 — the failure arm carries an optional address; every refusal that cannot name a
+   rendered control keeps its exact shape. */
+type Result<T> = { ok: true; data: T } | { ok: false; error: string; field?: string };
 
 const REFUSAL = "Purging a chain's history is a compliance control. Your role cannot act here.";
 
@@ -80,8 +83,8 @@ export async function purgeStage1Action(formData: FormData): Promise<Result<{ at
   const basis = String(formData.get("basis") ?? "").trim();
 
   // ≥ 5 characters, as AML requires to release funds. A reason nobody can read is not a reason.
-  if (reason.length < 5) return { ok: false, error: "Add a reason (at least 5 characters) — it is recorded against your name." };
-  if (basis.length < 5) return { ok: false, error: "Name the statutory basis — it is written into the completion record." };
+  if (reason.length < 5) return fieldError("reason", "Add a reason (at least 5 characters) — it is recorded against your name.");
+  if (basis.length < 5) return fieldError("basis", "Name the statutory basis — it is written into the completion record.");
 
   const label = await labelFor(chainId);
   if (!label) return { ok: false, error: "Chain not found." };

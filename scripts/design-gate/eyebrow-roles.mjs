@@ -179,7 +179,7 @@ export const NOT_EYEBROW = new Map([
   ["app/admin/resolver-queue/page.tsx :: <div className=\"flex items-center gap-2.5 font-mono text-micro tracking-[0.14em] uppercase text-text-subtle\"> ↵ <span>{pending.length} pending</span>", "OTHER"],
   ["app/admin/resolver-queue/page.tsx :: <p className=\"mt-0.5 font-mono text-micro uppercase tracking-[0.12em] text-text-subtle\"> ↵ staged <span className={`font-bold ${m.resolvedOutcome === \"YES\" ? \"text-yes-30", "STATUS_CHIP"],
   ["app/admin/resolver-queue/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.14em] text-text-subtle\">{m.category}</span> ↵ <a href={m.sourceUrl} target=\"_blank\" rel=\"noopener noreferrer\" ", "OTHER"],
-  ["app/admin/resolver-queue/page.tsx :: className=\"flex items-center justify-center gap-1.5 rounded-md border border-border bg-bg-overlay py-2 font-mono text-caption tracking-[0.08em] uppercase text-text-muted ", "CONTROL_LABEL"],
+  ["app/admin/resolver-queue/page.tsx :: className=\"min-h-[var(--tap-min)] flex items-center justify-center gap-1.5 rounded-md border border-border bg-bg-overlay py-2 font-mono text-caption tracking-[0.08em] upp", "CONTROL_LABEL"],
   ["app/admin/resolver-queue/recheck-button.tsx :: className=\"inline-flex min-h-[40px] w-full items-center justify-center gap-1.5 rounded-md border border-border bg-bg-overlay px-3 font-mono text-caption tracking-[0.08em]", "CONTROL_LABEL"],
   ["app/admin/resolver-queue/resolve-controls.tsx :: <span className=\"font-mono text-label uppercase tracking-[0.16em] text-text-muted\"> ↵ Recording {submittedSide} · {stage}", "OTHER"],
   ["app/admin/resolver-queue/two-admin-toggle.tsx :: className=\"inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.12em]\" ↵ style={{ color: enabled ? \"var(--text-subtle)\" : \"var(--warning-fg)\" }}", "STATUS_CHIP"],
@@ -197,9 +197,16 @@ export const NOT_EYEBROW = new Map([
   ["app/admin/sources/source-controls.tsx :: className={`inline-flex h-7 items-center gap-1.5 rounded-pill border px-3 font-mono text-caption uppercase tracking-[0.14em] transition-colors ${ ↵ enabled", "CONTROL_LABEL"],
   ["app/admin/totp-verify/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.18em] font-bold text-brand-300 whitespace-nowrap\"> ↵ Step 2 of 2 · Authenticator", "STATUS_CHIP"],
   ["app/admin/transactions/page.tsx :: <span className=\"ml-1.5 text-micro uppercase tracking-[0.1em] text-[var(--gold-300)]\"> ↵ {t.payoutRail === \"SELCOM_PESA\" ? \"pesa\" : \"agent\"}", "OTHER"],
-  ["app/admin/updown/proposals/page.tsx :: <Link href={\"/admin/updown\" as Route} className=\"font-mono text-micro uppercase tracking-[0.1em] text-text-subtle hover:text-text px-2 py-1\"> ↵ View chain", "CONTROL_LABEL"],
+  // ⛔ RETIRED 2026-08-31 (DG-A-08). This was the proposals row's 22px hand-rolled "View chain"
+  // link. It is NAVIGATION, so it took `.row-link` (globals.css:1683), which supplies the case and
+  // the 0.10em itself — so the site now counts in the `.row-link` bucket above and no longer needs
+  // a hand-written role here. Deleted rather than left: a declaration that matches nothing is a
+  // stale read, and this gate fails until it goes.
   ["app/admin/updown/proposals/page.tsx :: <span className=\"ml-auto font-mono text-micro tracking-[0.14em] uppercase text-text-subtle\"> ↵ {filtered.length.toLocaleString()} of {allProposals.length.toLocaleString()", "OTHER"],
-  ["app/admin/updown/proposals/proposal-actions.tsx :: className=\"font-mono text-micro uppercase tracking-[0.1em] text-text-subtle hover:text-no-300 transition-colors px-2 py-1\" ↵ >", ["CONTROL_LABEL",2]],
+  // ⛔ RETIRED 2026-08-31 (DG-A-08). The proposals row's "Reject" and "Delete" levers were 22px
+  // bare-text buttons sitting beside a 40px <Button size="sm">Review</Button> in the SAME cell.
+  // Both are the kit at size="sm" now, which carries neither uppercase nor tracking, so they
+  // leave this census entirely.
   ["app/admin/updown/rounds/page.tsx :: <span className=\"ml-auto font-mono text-micro tracking-[0.14em] uppercase text-text-subtle\"> ↵ {total.toLocaleString()} rounds", "OTHER"],
   ["app/api/og/market/[id]/route.tsx :: <div style={{ fontSize: 14, fontFamily: \"JetBrains Mono, monospace\", letterSpacing: \"0.16em\", textTransform: \"uppercase\", opacity: 0.7 }}> ↵ {m.category}", "OTHER"],
   ["app/api/og/market/[id]/route.tsx :: <span style={{ color: C.tipLabel, opacity: 0.6, fontStyle: \"italic\", textTransform: \"uppercase\", fontSize: 14 }}> ↵ {Math.abs(yes - 50) < 4 ? \"tipping\" : yes > 50 ? \"lean", "STATUS_CHIP"],
@@ -257,7 +264,7 @@ export const NOT_EYEBROW = new Map([
   ["components/admin/admin-shell.tsx :: className=\"inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-border bg-bg-inset text-text-secondary hover:text-text hover:border-border-strong hover:bg", "CONTROL_LABEL"],
   ["components/admin/admin-shell.tsx :: className=\"rounded-sm border border-dashed border-border-subtle flex items-center justify-center font-mono text-micro uppercase text-text-tertiary\" ↵ style={{ minHeight: ", "OTHER"],
   ["components/admin/admin-sort.tsx :: <button type=\"button\" onClick={() => onSort(field)} className={`inline-flex min-h-[44px] items-center gap-1 font-mono text-micro uppercase tracking-[0.1em] hover:text-tex", "CONTROL_LABEL"],
-  ["components/admin/ai-toolkit.tsx :: className=\"mt-3 flex items-center justify-between rounded-md border border-border bg-bg-overlay px-3 py-2 font-mono text-micro uppercase tracking-[0.1em] text-text-muted ", "CONTROL_LABEL"],
+  ["components/admin/ai-toolkit.tsx :: className=\"min-h-[var(--tap-min)] mt-3 flex items-center justify-between rounded-md border border-border bg-bg-overlay px-3 py-2 font-mono text-micro uppercase tracking-[", "CONTROL_LABEL"],
   ["components/admin/ai-toolkit.tsx :: className={`font-mono text-micro tracking-[0.12em] uppercase px-2.5 h-7 inline-flex items-center gap-1.5 rounded-md border transition-colors ${ ↵ !hasKey", "CONTROL_LABEL"],
   ["components/admin/ai-toolkit.tsx :: className={`shrink-0 rounded-md border px-1.5 py-0.5 font-mono text-micro uppercase tracking-[0.12em] ${ ↵ on ? \"border-border-strong bg-bg-elevated text-text-secondary\" ", "STATUS_CHIP"],
   ["components/admin/control-locked.tsx :: className={`inline-flex items-center gap-1.5 rounded-md border border-border bg-bg-inset px-2.5 font-mono text-micro uppercase tracking-[0.10em] text-text-subtle ${ ↵ // ", "STATUS_CHIP"],

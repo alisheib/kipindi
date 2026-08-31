@@ -18,6 +18,7 @@ import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
 import { revokeUserSessions } from "@/lib/server/session-registry";
 import { requireOwner } from "@/lib/server/rbac-guard";
+import { fieldError } from "@/lib/server/field-error";
 import { sendEmailToUser, staffRoleChangedHtml } from "@/lib/server/email";
 import { ROLE_LABEL, type Role } from "@/lib/server/roles";
 import { validateRoleChange, isStaffAssignable, type AssignableRole } from "@/lib/server/staff-roles";
@@ -77,21 +78,25 @@ export async function setStaffRoleAction(formData: FormData): Promise<{ ok: true
 
 /** Promote an existing account (looked up by phone) to a staff role. The person must
  *  already have a normal 50pick account — we never create logins here. */
-export async function addStaffByPhoneAction(formData: FormData): Promise<{ ok: true; userId: string } | { ok: false; error: string }> {
+export async function addStaffByPhoneAction(formData: FormData): Promise<{ ok: true; userId: string } | { ok: false; error: string; field?: string }> {
   const officerId = (await requireOwner("addStaffByPhone")).userId;
   const phoneRaw = String(formData.get("phone") ?? "").trim();
   const newRole = String(formData.get("role") ?? "").trim();
   const reason = String(formData.get("reason") ?? "").trim().slice(0, 500);
 
+  /* ⭐ DG-S-05 — every refusal below names the control whose VALUE has to change, which on a
+     three-field form is not guessable from the sentence alone: "That's your own account" and
+     "Already SUPPORT" are both about the person, but one is fixed at the phone and the other
+     at the role. §F4 asks for the reason AND the next step; `field` is the next step. */
   const parsed = tzPhone.safeParse(phoneRaw);
-  if (!parsed.success) return { ok: false, error: "Enter a valid Tanzanian phone (+255…)." };
-  if (!isStaffAssignable(newRole)) return { ok: false, error: "Pick a staff role." };
-  if (reason.length < 5) return { ok: false, error: "A reason is required (≥ 5 characters)." };
+  if (!parsed.success) return fieldError("phone", "Enter a valid Tanzanian phone (+255…).");
+  if (!isStaffAssignable(newRole)) return fieldError("role", "Pick a staff role.");
+  if (reason.length < 5) return fieldError("reason", "A reason is required (≥ 5 characters).");
 
   const target = await db.user.findByPhone(parsed.data);
-  if (!target) return { ok: false, error: "No account with that phone. Ask them to register a normal account first, then add them." };
-  if (target.id === officerId) return { ok: false, error: "That's your own account." };
-  if (target.role === newRole) return { ok: false, error: `Already ${ROLE_LABEL[newRole as Role]}.` };
+  if (!target) return fieldError("phone", "No account with that phone. Ask them to register a normal account first, then add them.");
+  if (target.id === officerId) return fieldError("phone", "That's your own account.");
+  if (target.role === newRole) return fieldError("role", `Already ${ROLE_LABEL[newRole as Role]}.`);
 
   const r = await applyRoleChange(officerId, target, newRole as AssignableRole, reason);
   return r.ok ? { ok: true, userId: target.id } : r;

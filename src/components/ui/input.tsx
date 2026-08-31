@@ -165,15 +165,26 @@ export function Field({
   error,
   children,
   className,
+  dataField,
 }: {
   label: React.ReactNode;
   hint?: React.ReactNode;
   error?: string;
   children: React.ReactNode;
   className?: string;
+  /**
+   * ⭐ DG-S-05/06 — the ADDRESS a server refusal names, e.g. `fieldError("limitUsd", …)`.
+   *
+   * It lands on the `<label>` wrapper rather than the control, because that is what
+   * `focusFirstInvalid` queries (`[data-field]`) before focusing whatever focusable control
+   * the wrapper contains — so one prop works for an `<input>`, a `<select>` and a `<textarea>`
+   * alike. ⛔ OPTIONAL, and absent means exactly today's behaviour: nothing renders
+   * differently and no consumer has to change. Adoption is per-form and deliberate.
+   */
+  dataField?: string;
 }) {
   return (
-    <label className={cn("block", className)}>
+    <label className={cn("block", className)} data-field={dataField}>
       <FieldLegend className="block mb-1.5">
         {label}
       </FieldLegend>

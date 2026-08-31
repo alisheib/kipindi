@@ -120,7 +120,7 @@ export default async function AdminLoginPage({ searchParams }: { searchParams?: 
 
         <Link
           href="/auth/login"
-          className="flex items-center justify-between gap-2 rounded-xl border border-border bg-bg-elevated p-4 hover:border-aqua-edge transition-colors group"
+          className="min-h-[var(--tap-min)] flex items-center justify-between gap-2 rounded-xl border border-border bg-bg-elevated p-4 hover:border-aqua-edge transition-colors group"
         >
           <div>
             <p className="font-display text-[13.5px] font-semibold text-text">I&apos;m a player, not staff</p>

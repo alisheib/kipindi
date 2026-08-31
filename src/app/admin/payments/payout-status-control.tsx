@@ -123,7 +123,7 @@ export function PayoutStatusControl({
             // lie, and it is the same family as the offer this whole finding is about.
             disabled={!mayAct}
             title={disabledReason}
-            className="rounded-md border px-2 py-1.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+            className="min-h-[var(--tap-min)] rounded-md border px-2 py-1.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50"
             style={pick === o.id
               ? { borderColor: "var(--gold-edge)", background: "var(--gold-soft)", color: "var(--text)" }
               : { borderColor: "var(--border)", color: "var(--text-muted)" }}

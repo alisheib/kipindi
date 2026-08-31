@@ -7,6 +7,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { type AdminDomain } from "@/lib/server/roles";
 import { requireStaff } from "@/lib/server/rbac-guard";
+import { fieldError } from "@/lib/server/field-error";
 import { CONTROL_DOMAIN, type ControlId } from "@/lib/server/control-gates";
 import { findProvider, type FeedProviderId } from "@/lib/updown-providers";
 import {
@@ -140,7 +141,7 @@ export async function createChainAction(formData: FormData) {
   const assetId = String(formData.get("assetId") ?? "");
   const duration = Number(formData.get("durationMinutes") ?? 0);
   if (!ALLOWED_DURATIONS.includes(duration as Duration)) {
-    return { ok: false as const, error: `Duration must be one of ${ALLOWED_DURATIONS.join(", ")} minutes.` };
+    return fieldError("durationMinutes", `Duration must be one of ${ALLOWED_DURATIONS.join(", ")} minutes.`);
   }
   try {
     // ⭐ THE BAND ARRIVES AS BASIS POINTS FROM A DROPDOWN, not as a typed percentage.
@@ -335,10 +336,10 @@ export async function voidRoundAction(formData: FormData) {
   // stored here is what the compliance record says about why a player's stake was
   // handed back (the E-6 rule — our words never masquerade as the officer's).
   if (reason.length < 5) {
-    return { ok: false as const, error: "Give a reason of at least 5 characters — it is recorded on the compliance trail." };
+    return fieldError("reason", "Give a reason of at least 5 characters — it is recorded on the compliance trail.");
   }
   if (reason.length > 300) {
-    return { ok: false as const, error: "Keep the reason under 300 characters." };
+    return fieldError("reason", "Keep the reason under 300 characters.");
   }
   try {
     const r = await voidRoundByOperator(id, session.userId, reason);
@@ -369,7 +370,7 @@ export async function updateReadingMethodAction(formData: FormData) {
     const method = String(formData.get("observationMethod") ?? "").trim();
     const provider = String(formData.get("feedProvider") ?? "").trim();
     if (method !== "feed" && method !== "ai") {
-      return { ok: false as const, error: "Choose a reading method: market feed or AI." };
+      return fieldError("observationMethod", "Choose a reading method: market feed or AI.");
     }
     // ⛔ VALIDATED AGAINST THE SHARED LIST, never a hand-written pair. This line was
     // `provider !== "mock" && provider !== "twelvedata"` — the exact drift the console's
@@ -381,7 +382,7 @@ export async function updateReadingMethodAction(formData: FormData) {
     // ceremony end-to-end (the type-to-arm modal completed, then the refusal toast).
     const spec = findProvider(provider as FeedProviderId);
     if (!spec) {
-      return { ok: false as const, error: "Choose a feed provider." };
+      return fieldError("feedProvider", "Choose a feed provider.");
     }
     // The typed confirmation is required for ANY simulated provider (the spec's own flag,
     // not an id comparison — same rule the console uses), and only when the feed method

@@ -335,7 +335,7 @@ export default async function MarketPredictorsPage({
                 /* ⚠️ LITERAL, not `h-9` — spacing is overridden (tailwind.config.ts:200-215), so
                    `h-9` was 64px: a third size for one control. 32px = --h-control-xs, the same
                    as every other admin search input and as the xs Selects beside it. */
-                className="w-full h-[32px] pl-9 pr-3 rounded-md bg-bg-inset border border-border text-text font-mono text-body-sm focus:outline-none admin-focus transition-colors"
+                className="w-full h-[var(--h-control-xs)] pl-9 pr-3 rounded-md bg-bg-inset border border-border text-text font-mono text-body-sm focus:outline-none admin-focus transition-colors"
               />
             </div>
             <div className="w-full sm:w-[140px]">

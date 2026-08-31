@@ -8,7 +8,7 @@
  * still whole. So both go behind an explicit confirm with a mandatory note, and
  * the confirm says in plain words what the money will do.
  */
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,6 +17,7 @@ import { I } from "@/components/ui/glyphs";
 import { OBJECTION } from "@/lib/admin-status-lexicon";
 import { upholdObjectionAction, rejectObjectionAction } from "./actions";
 import { useRouter } from "next/navigation";
+import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 
 type Mode = "UPHOLD_VOID" | "UPHOLD_REVERSE" | "REJECT";
 
@@ -49,6 +50,8 @@ export function ObjectionDecision({ objectionId, canReverse, canDecide = true }:
   const [mode, setMode] = useState<Mode | null>(null);
   const [note, setNote] = useState("");
   const [pending, start] = useTransition();
+  /* The dialog body — the container `focusFirstInvalid` searches. See the note in `submit`. */
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   // Upholding/rejecting is COMPLIANCE-gated in the action. A MODERATOR can VIEW
   // this queue (market-ops) but must not be shown buttons that redirect them to
@@ -70,7 +73,7 @@ export function ObjectionDecision({ objectionId, canReverse, canDecide = true }:
       const fd = new FormData();
       fd.set("objectionId", objectionId);
       fd.set("note", note);
-      let r: { ok: boolean; error?: string };
+      let r: { ok: boolean; error?: string; field?: string };
       if (mode === "REJECT") {
         r = await rejectObjectionAction(fd);
       } else {
@@ -79,6 +82,10 @@ export function ObjectionDecision({ objectionId, canReverse, canDecide = true }:
       }
       if (!r.ok) {
         toast({ title: r.error ?? "Could not record the decision", variant: "danger" });
+        /* ⭐ DG-S-05/06 — the modal stays OPEN on a refusal, so the note is on screen and this
+           puts the caret in it. Scoped to the dialog rather than the document: the objections
+           queue renders one of these per row, and every one of them owns a `note`. */
+        if (r.field) focusFirstInvalid(dialogRef.current, [r.field]);
         return;
       }
       setMode(null);
@@ -133,7 +140,7 @@ export function ObjectionDecision({ objectionId, canReverse, canDecide = true }:
         maxWidth={460}
       >
         {copy && (
-          <div className="space-y-4">
+          <div ref={dialogRef} className="space-y-4">
             <h2 id="objection-decision-title" className="font-display text-[16px] font-semibold text-text">
               {copy.title}
             </h2>
@@ -150,7 +157,12 @@ export function ObjectionDecision({ objectionId, canReverse, canDecide = true }:
               {copy.effect}
             </p>
 
-            <div className="space-y-1.5">
+            {/* ⛔ `data-field` sits on the WRAPPER, not on the <label>. The label is a SIBLING
+                of the textarea here (it addresses it with `htmlFor`), and `focusFirstInvalid`
+                focuses a control it finds INSIDE the addressed element — on the label it would
+                scroll and then focus nothing, which is the exact defect ② that helper exists
+                to fix. The wrapper contains both. */}
+            <div className="space-y-1.5" data-field="note">
               <label
                 htmlFor="objection-note"
                 className="font-mono text-micro font-bold uppercase eyebrow text-text-subtle"

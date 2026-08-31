@@ -16,6 +16,7 @@ import { Select } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { useDeferredToast } from "@/components/ui/toast";
 import { formatTzsCompact } from "@/lib/utils";
+import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import {
   purgeCostAction, purgeStage1Action, purgeStage2Action, purgeAdvanceAction, purgeCancelAction, purgeJobAction,
 } from "./purge-actions";
@@ -206,10 +207,10 @@ export function PurgeChainCard({ chains, stage1, viewerId }: {
 
         {!job && !signed && (
           <>
-            <Field label="Reason (audited)" hint="At least 5 characters — recorded against your name.">
+            <Field label="Reason (audited)" hint="At least 5 characters — recorded against your name." dataField="reason">
               <Input value={reason} onChange={(e) => setReason(e.currentTarget.value)} placeholder="e.g. chain retired after the 3m pilot" />
             </Field>
-            <Field label="Statutory basis" hint="Written into the completion record.">
+            <Field label="Statutory basis" hint="Written into the completion record." dataField="basis">
               <Input value={basis} onChange={(e) => setBasis(e.currentTarget.value)} />
             </Field>
             <Button
@@ -222,6 +223,7 @@ export function PurgeChainCard({ chains, stage1, viewerId }: {
                 const fd = new FormData();
                 fd.set("chainId", chainId); fd.set("reason", reason); fd.set("basis", basis);
                 const r = await purgeStage1Action(fd);
+                if (!r.ok && r.field) focusFirstInvalid(document.body, [r.field]);
                 toast(r.ok
                   ? { title: "Reason recorded — a second officer must now confirm", variant: "success" }
                   : { title: "Couldn't record it", description: r.error, variant: "danger" });

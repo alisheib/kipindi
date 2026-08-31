@@ -10,6 +10,7 @@ import { buildDsarBundle } from "@/lib/server/privacy";
 import { revokeUserSessions } from "@/lib/server/session-registry";
 import { type AdminDomain } from "@/lib/server/roles";
 import { requireStaff } from "@/lib/server/rbac-guard";
+import { fieldError } from "@/lib/server/field-error";
 import { setUserEmail } from "@/lib/server/email-verification";
 import { loadConfig, saveConfig } from "@/lib/server/config-store";
 import { TWO_PERSON_THRESHOLD_TZS } from "../../aml/constants";
@@ -89,7 +90,7 @@ export async function suspendPlayerAction(formData: FormData) {
   const userId = String(formData.get("userId") ?? "");
   const reason = String(formData.get("reason") ?? "").trim().slice(0, 500);
   if (!userId) return { ok: false as const, error: "Missing user id." };
-  if (reason.length < 5) return { ok: false as const, error: "Reason is required (≥ 5 chars)." };
+  if (reason.length < 5) return fieldError("reason", "Reason is required (≥ 5 chars).");
 
   const target = await db.user.findById(userId);
   if (!target) return { ok: false as const, error: "Player not found." };
@@ -135,7 +136,7 @@ export async function restorePlayerAction(formData: FormData) {
   const userId = String(formData.get("userId") ?? "");
   const reason = String(formData.get("reason") ?? "").trim().slice(0, 500);
   if (!userId) return { ok: false as const, error: "Missing user id." };
-  if (reason.length < 5) return { ok: false as const, error: "Reason is required (≥ 5 chars)." };
+  if (reason.length < 5) return fieldError("reason", "Reason is required (≥ 5 chars).");
 
   const target = await db.user.findById(userId);
   if (!target) return { ok: false as const, error: "Player not found." };
@@ -232,7 +233,7 @@ export async function setPlayerEmailAction(formData: FormData) {
   const userId = String(formData.get("userId") ?? "");
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   if (!userId) return { ok: false as const, error: "Missing user id." };
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false as const, error: "Enter a valid email." };
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fieldError("email", "Enter a valid email.");
 
   const target = await db.user.findById(userId);
   if (!target) return { ok: false as const, error: "Player not found." };
@@ -298,8 +299,8 @@ export async function adjustBalanceAction(formData: FormData) {
   const amountRaw = Number(String(formData.get("amount") ?? "0").replace(/[,\s]/g, ""));
   const reason = String(formData.get("reason") ?? "").trim().slice(0, 300);
   if (!userId) return { ok: false as const, error: "Missing user id." };
-  if (!Number.isFinite(amountRaw) || amountRaw <= 0) return { ok: false as const, error: "Enter a positive whole-shilling amount." };
-  if (reason.length < 5) return { ok: false as const, error: "Reason is required (≥ 5 chars)." };
+  if (!Number.isFinite(amountRaw) || amountRaw <= 0) return fieldError("amount", "Enter a positive whole-shilling amount.");
+  if (reason.length < 5) return fieldError("reason", "Reason is required (≥ 5 chars).");
   const signed = direction === "debit" ? -Math.round(amountRaw) : Math.round(amountRaw);
   try {
     // Two-person rule (B-4): at/above the platform's two-person threshold the
@@ -356,7 +357,7 @@ export async function forceReverifyKycAction(formData: FormData) {
   const userId = String(formData.get("userId") ?? "");
   const reason = String(formData.get("reason") ?? "").trim().slice(0, 300);
   if (!userId) return { ok: false as const, error: "Missing user id." };
-  if (reason.length < 5) return { ok: false as const, error: "Reason is required (≥ 5 chars)." };
+  if (reason.length < 5) return fieldError("reason", "Reason is required (≥ 5 chars).");
   try {
     const { forceReverifyKyc } = await import("@/lib/server/kyc-service");
     const r = await forceReverifyKyc(officerId, userId, reason);

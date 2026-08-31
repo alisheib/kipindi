@@ -409,8 +409,17 @@ export default async function UpDownProposalsPage({
                                 currentAssetSource={asset?.priceSourceUrl ?? ""}
                               />
                             )}
+                            {/* 🔴 DG-A-08 — the third 22px control in this cell, and the one
+                                the `.row-link` class was minted for: a row's way OUT is
+                                NAVIGATION, not an action, so it takes the link recipe rather
+                                than a `.btn` (globals.css:1683). Size and colour stay at the
+                                call site, exactly as that ruling requires.
+                                ⚠️ `.row-link` supplies `text-transform`, so the copy was
+                                checked before adopting: this text is already `uppercase`, so
+                                it renders "VIEW CHAIN" before and after. That is the check the
+                                four predictor pills failed. */}
                             {p.state === "ARMED" && p.armedChainId && (
-                              <Link href={"/admin/updown" as Route} className="font-mono text-micro uppercase tracking-[0.1em] text-text-subtle hover:text-text px-2 py-1">
+                              <Link href={"/admin/updown" as Route} className="row-link font-mono text-micro text-text-subtle hover:text-text">
                                 View chain
                               </Link>
                             )}

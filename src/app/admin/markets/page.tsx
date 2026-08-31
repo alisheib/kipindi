@@ -116,7 +116,7 @@ export default async function AdminMarketsPage({
                 /* ⚠️ LITERAL, not `h-8` — spacing is overridden (tailwind.config.ts:200-215), so
                    `h-8` was 48px. 32px = --h-control-xs, the documented dense-admin height, and
                    the height the `Select size="xs"` and `btn-xs` beside it already render. */
-                className="h-[32px] w-full rounded-md border border-border bg-bg-overlay pl-9 pr-3 text-[12.5px] text-text outline-none admin-focus transition-colors placeholder:text-text-subtle"
+                className="h-[var(--h-control-xs)] w-full rounded-md border border-border bg-bg-overlay pl-9 pr-3 text-[12.5px] text-text outline-none admin-focus transition-colors placeholder:text-text-subtle"
               />
             </div>
             <div className="w-full sm:w-[160px]">

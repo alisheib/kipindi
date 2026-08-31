@@ -262,7 +262,7 @@ export default async function ResolverQueuePage({
                 aria-label="Search resolver queue"
                 /* ⚠️ LITERAL, not `h-8` (48px on the overridden scale) — 32px = --h-control-xs,
                    the one admin-search height, matching the xs Selects beside it. */
-                className="h-[32px] w-full rounded-md border border-border bg-bg-overlay pl-9 pr-3 text-[12.5px] text-text outline-none admin-focus transition-colors placeholder:text-text-subtle"
+                className="h-[var(--h-control-xs)] w-full rounded-md border border-border bg-bg-overlay pl-9 pr-3 text-[12.5px] text-text outline-none admin-focus transition-colors placeholder:text-text-subtle"
               />
             </div>
             <div className="w-full sm:w-[160px]">
@@ -554,7 +554,7 @@ export default async function ResolverQueuePage({
                     {/* Full evidence-first ceremony (evidence excerpt + typed-SEAL). */}
                     <Link
                       href={`/admin/resolver/${m.id}` as never}
-                      className="flex items-center justify-center gap-1.5 rounded-md border border-border bg-bg-overlay py-2 font-mono text-caption tracking-[0.08em] uppercase text-text-muted hover:border-brand-500 hover:text-text transition-colors"
+                      className="min-h-[var(--tap-min)] flex items-center justify-center gap-1.5 rounded-md border border-border bg-bg-overlay py-2 font-mono text-caption tracking-[0.08em] uppercase text-text-muted hover:border-brand-500 hover:text-text transition-colors"
                     >
                       <I.shieldcheck s={12} /> Open resolution ceremony
                     </Link>

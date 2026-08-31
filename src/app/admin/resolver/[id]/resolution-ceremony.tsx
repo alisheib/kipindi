@@ -327,7 +327,7 @@ function VerdictCards({ value, onChange }: { value: Outcome | null; onChange: (v
             type="button"
             onClick={() => onChange(v.value)}
             aria-pressed={active}
-            className="rounded-lg border-2 p-3 text-center transition-colors"
+            className="min-h-[var(--tap-min)] rounded-lg border-2 p-3 text-center transition-colors"
             style={{
               borderColor: active ? v.ring : "var(--border)",
               background: active ? `color-mix(in oklab, ${v.ring} 12%, transparent)` : "transparent",

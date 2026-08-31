@@ -6,6 +6,7 @@ import { useDeferredToast } from "@/components/ui/toast";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { I } from "@/components/ui/glyphs";
+import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import { setAiModelAction } from "./actions";
 
 type ModelOption = { id: string; label: string; cost: string; tier: string };
@@ -25,10 +26,17 @@ export function AiOpsControls({
 
   const onModelSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const fd = new FormData(e.currentTarget);
+    /* The form is captured before the async boundary — `e.currentTarget` is null once the
+       transition resolves, and it is the container `focusFirstInvalid` searches. */
+    const form = e.currentTarget;
+    const fd = new FormData(form);
     start(async () => {
       const r = await setAiModelAction(fd);
-      if (!r.ok) toast({ title: "Couldn't update model", description: r.error, variant: "danger" });
+      if (!r.ok) {
+        toast({ title: "Couldn't update model", description: r.error, variant: "danger" });
+        // ⭐ DG-S-05/06 — a <select> is a field like any other; the wrapper carries the address.
+        if (r.field) focusFirstInvalid(form, [r.field]);
+      }
       else { router.refresh(); deferToast({ title: "Model updated — takes effect on next AI call", variant: "success" }); }
     });
   };
@@ -41,7 +49,7 @@ export function AiOpsControls({
       {/* ── Primary model (changeable) ── */}
       <div>
         <form onSubmit={onModelSubmit} className="flex flex-wrap items-end gap-3">
-          <div className="flex flex-col gap-1 flex-1 min-w-[200px]">
+          <div className="flex flex-col gap-1 flex-1 min-w-[200px]" data-field="model">
             <span className="font-mono text-micro uppercase eyebrow font-bold text-text-muted">
               Primary model · Modeli kuu
             </span>

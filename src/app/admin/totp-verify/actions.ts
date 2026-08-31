@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { currentSession } from "@/lib/server/auth-service";
+import { fieldError } from "@/lib/server/field-error";
 import { verifyTotp } from "@/lib/server/totp";
 import { audit } from "@/lib/server/audit";
 import { signSession } from "@/lib/server/crypto";
@@ -28,7 +29,10 @@ export async function verifyAdminTotpAction(formData: FormData) {
 
   const code = String(formData.get("code") ?? "").trim();
   if (!/^\d{6}$/.test(code)) {
-    return { ok: false as const, error: "Enter the 6-digit code from your authenticator app." };
+    /* ⭐ DG-S-05 — the refusal names the control the officer has to fix. The rate-limit refusal
+       above deliberately does NOT: waiting out a throttle is not something you fix in a field,
+       and pointing at the input would tell the officer to retype a code that was fine. */
+    return fieldError("totp-code", "Enter the 6-digit code from your authenticator app.");
   }
   const ok = await verifyTotp(session.userId, code);
   if (!ok) {
@@ -39,7 +43,7 @@ export async function verifyAdminTotpAction(formData: FormData) {
       targetType: "User",
       targetId: session.userId,
     });
-    return { ok: false as const, error: "Code didn't match. Codes refresh every 30 seconds." };
+    return fieldError("totp-code", "Code didn't match. Codes refresh every 30 seconds.");
   }
   // Issue a signed admin-totp cookie bound to this specific user + session.
   // A plain "1" value would be trivially forgeable via subdomain injection

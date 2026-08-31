@@ -222,6 +222,7 @@
     "red:unsaved-changes": "node scripts/red-unsaved-changes.mjs",
     "red:validation-focus": "node scripts/red-validation-focus.mjs",
     "red:cn-collision": "node scripts/red-cn-collision.mjs",
+    "red:tap-floor": "node scripts/red-tap-floor.mjs",
     "red:search-adoption": "node scripts/red-search-adoption.mjs",
     "test:card-share": "tsx scripts/card-share.test.mts",
     "test:chat-focus-ring": "tsx scripts/chat-focus-ring.test.mts",

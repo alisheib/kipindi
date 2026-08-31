@@ -26,6 +26,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Checkbox } from "@/components/ui/checkbox";
+import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import { Chip } from "@/components/ui/chip";
 import { Button } from "@/components/ui/button";
 import { ConfirmModal } from "@/components/ui/modal";
@@ -108,7 +109,8 @@ export function BulkResolveBar({
       const res = await runAdminAction(() => bulkResolveMarketsAction(fd));
       if (!res.ok) {
         toast({ title: "Bulk resolve failed", description: res.error, variant: "danger" });
-        setResult({ ok: false, error: res.error });
+        setResult({ ok: false, error: res.error, field: res.field });
+        if (res.field) focusFirstInvalid(document.body, [res.field]);
         return;
       }
       const r = res;
@@ -142,7 +144,7 @@ export function BulkResolveBar({
 
   return (
     <>
-      <div data-bulk-bar className="flex flex-wrap items-center gap-x-3 gap-y-2">
+      <div data-bulk-bar data-field="marketIds" className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <div onKeyDownCapture={() => { /* header has no range semantics */ }}>
           <Checkbox
             checked={allOn}
@@ -255,6 +257,7 @@ export function BulkResolveBar({
             Why are you sealing {needOverride.length === 1 ? "this market" : `these ${needOverride.length} markets`} anyway?
           </label>
           <textarea
+            data-field="overrideReason"
             id="bulk-override-reason"
             value={sharedReason}
             onChange={(e) => setSharedReason(e.target.value)}

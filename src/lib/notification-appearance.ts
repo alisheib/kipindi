@@ -64,11 +64,19 @@ export const tintFor = (k: Kind) => {
     case "BET_PLACED":   return "border-info-border bg-info-bg/30 text-info-fg";
     case "SELECTION_CLOSED": return "border-info-border bg-info-bg/30 text-info-fg";
     case "ROUND_RESULT": return "border-border bg-bg-overlay text-text-muted";
-    case "DEPOSIT":      return "border-yes-700 bg-yes-500/10 text-yes-300";
+    /* 🔴 §B2a (D2, 2026-08-21) — A DEPOSIT IS MONEY ARRIVING, NOT A BET WON. This wore
+       `--yes-*`, the ink that means *your money is on this side of a market*, on a notification
+       about a bank transfer. The app-state family is `success`, and the SPELLING is decided by
+       the neighbours: every other non-gold tone on this list reads
+       `border-<family>-border bg-<family>-bg/30 text-<family>-fg`. */
+    case "DEPOSIT":      return "border-success-border bg-success-bg/30 text-success-fg";
     case "WITHDRAW":     return "border-warning-border bg-warning-bg/30 text-warning-fg";
     case "KYC":          return "border-info-border bg-info-bg/30 text-info-fg";
     case "RG":           return "border-info-border bg-info-bg/30 text-info-fg";
-    case "SECURITY":     return "border-no-700 bg-no-500/10 text-no-300";
+    /* 🔴 §B2a — and a SECURITY notice is not a lost bet. `--no-*` is the ink that means *your
+       money is gone*; a new-sign-in alert borrowing it spends the money vocabulary on chrome.
+       `danger` is the app-state family for "something needs your attention now", same recipe. */
+    case "SECURITY":     return "border-danger-border bg-danger-bg/30 text-danger-fg";
     case "MATCH_START":  return "border-border bg-bg-overlay text-text-muted";
     case "AFFILIATE":    return "border-gold-700 bg-gold-500/10 text-gold-300";
     case "PROPOSAL":     return "border-gold-700 bg-gold-500/10 text-gold-300";

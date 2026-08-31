@@ -148,6 +148,46 @@ export function decomment(s: string): string {
 }
 
 /**
+ * Strip comments from a STYLESHEET.                              (added 2026-08-31, DG-A-12)
+ *
+ * ⭐ WHY IT LIVES HERE RATHER THAN AT THE ONE CALL SITE. `type-scale.test.mts` §7 parsed RAW
+ * `globals.css` and so read the prose at `globals.css:4016` — *"⛔ WHY NOT `--type-table:
+ * 12.5px`, which is the option the register offered Ali"* — as a REAL rung, printing 13
+ * `--type-*` vars where the stylesheet defines 12. Writing the one-line fix at the call site
+ * would have made that file the 56th PRIVATE stripper, which is precisely the E-108 shape this
+ * module exists to end — and `test:decomment` §2.1 said so, out loud, the moment it was tried.
+ *
+ * ⛔ IT IS NOT `decomment()`. That one also removes `//` to end-of-line; a stylesheet has no
+ * line comments, but it does have `url(https://…)`, and eating the rest of that line would
+ * silently delete real declarations. CSS has block comments only, so this does block comments
+ * only.
+ *
+ * ⭐ NEWLINES SURVIVE, for the same reason as above: a guard must still be able to report the
+ * line number of surviving code. Unterminated comments are KEPT, erring toward a loud false
+ * positive rather than a silent false negative.
+ */
+/*  ⛔ WRITTEN DELIBERATELY UNLIKE `decomment`'s block branch, and that is not style.
+    The first version copied those three lines verbatim, and `red:decomment` declares two of
+    them as ANCHORS (`unterminated-block-swallows-to-EOF-again`, `block-comment-newlines-are-
+    destroyed`). A duplicate made each anchor match TWICE, so `test:red-anchors` refused to
+    inject and failed — correctly: an anchor that resolves to two places can plant its defect
+    in the wrong one. Same behaviour, different text, anchors unique again. */
+export function decommentCss(s: string): string {
+  let out = "";
+  for (let i = 0; i < s.length; ) {
+    if (s[i] === "/" && s[i + 1] === "*") {
+      const close = s.indexOf("*/", i + 2);
+      if (close === -1) { out += s.slice(i); break; }      // unterminated: keep it, err loud
+      out += s.slice(i, close + 2).replace(/[^\n]/g, "");  // blank the body, keep line numbers
+      i = close + 2;
+      continue;
+    }
+    out += s[i++];
+  }
+  return out;
+}
+
+/**
  * The two blind strippers this file retired, kept ONLY so `test:decomment` and
  * `red:decomment` can demonstrate the holes rather than assert them in prose.
  *

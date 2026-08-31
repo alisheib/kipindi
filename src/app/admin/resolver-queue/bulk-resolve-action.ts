@@ -39,6 +39,7 @@ import { randomUUID } from "node:crypto";
 import { audit } from "@/lib/server/audit";
 import { safeError } from "@/lib/server/safe-error";
 import { softRequireStaff } from "@/lib/server/rbac-guard";
+import { fieldError } from "@/lib/server/field-error";
 import { CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { PER_PAGE } from "@/components/ui/pagination";
 import {
@@ -69,7 +70,9 @@ export async function bulkResolveMarketsAction(formData: FormData): Promise<Bulk
   }
   const ids = raw.map((v) => String(v).trim()).filter(Boolean);
   const unique = Array.from(new Set(ids));
-  if (unique.length === 0) return { ok: false, error: "Select at least one market." };
+  // ⭐ DG-S-05 — the address is the row list itself: there is one control per market and the
+  // officer has ticked none of them, so "the place where the missing item is" is the first row.
+  if (unique.length === 0) return fieldError("marketIds", "Select at least one market.");
   // ⛔ THE CAP IS THE PAGE, NOT A ROUND NUMBER. Selection is page-scoped and the page holds
   // `PER_PAGE` rows, so a payload larger than that did not come from this screen. Refusing
   // it is cheap; accepting it would let a hand-built request enumerate the whole queue.
@@ -104,7 +107,12 @@ export async function bulkResolveMarketsAction(formData: FormData): Promise<Bulk
     if (!g2.ok) return { ok: false, error: g2.error };
     for (const [, reason] of overrides) {
       if (reason.length < MIN_REASON) {
-        return { ok: false, error: `An override reason must be at least ${MIN_REASON} characters — it is read by a regulator, not by you.` };
+        /* ⭐ DG-S-05 — ONE address, not one per market, and that is a fact about the CLIENT
+           rather than a simplification: `bulk-resolve-bar.tsx` collects a single shared
+           override reason (`#bulk-override-reason`) and sends the same string for every
+           overridden row, so there is exactly one control to send the officer to. If this
+           ever becomes a per-row box, the address has to become per-row with it. */
+        return fieldError("overrideReason", `An override reason must be at least ${MIN_REASON} characters — it is read by a regulator, not by you.`);
       }
     }
   }

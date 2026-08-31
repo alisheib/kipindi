@@ -1,6 +1,7 @@
 "use server";
 
 import { safeError } from "@/lib/server/safe-error";
+import { fieldError } from "@/lib/server/field-error";
 import { revalidatePath } from "next/cache";
 import {
   setCreditLimit, startNewTopUpWindow, getCreditConfig,
@@ -18,12 +19,12 @@ async function ensureAdmin() {
 }
 
 /** Set the spend limit (USD) for the top-up window. Admins are emailed at ~80% and at 100%. */
-export async function setCreditLimitAction(fd: FormData): Promise<{ ok: boolean; error?: string }> {
+export async function setCreditLimitAction(fd: FormData): Promise<{ ok: boolean; error?: string; field?: string }> {
   const s = await ensureAdmin();
   const raw = String(fd.get("limitUsd") ?? "").trim();
   const amount = Number(raw);
   if (!Number.isFinite(amount) || amount <= 0) {
-    return { ok: false, error: "Enter a valid limit in USD (e.g. 20)." };
+    return fieldError("limitUsd", "Enter a valid limit in USD (e.g. 20).");
   }
   try {
     const prior = await getCreditConfig();
@@ -72,11 +73,11 @@ export async function startTopUpWindowAction(): Promise<{ ok: boolean; error?: s
 }
 
 /** Set the primary Claude model for poll generation + sentinel deep checks. */
-export async function setAiModelAction(fd: FormData): Promise<{ ok: boolean; error?: string }> {
+export async function setAiModelAction(fd: FormData): Promise<{ ok: boolean; error?: string; field?: string }> {
   const s = await ensureAdmin();
   const model = String(fd.get("model") ?? "").trim();
   if (!AVAILABLE_MODELS.some((m) => m.id === model)) {
-    return { ok: false, error: "Invalid model selection." };
+    return fieldError("model", "Invalid model selection.");
   }
   try {
     await setAiModel(model);

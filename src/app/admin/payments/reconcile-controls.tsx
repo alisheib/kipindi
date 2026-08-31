@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { I } from "@/components/ui/glyphs";
 import { reconcileMatchAction, reconcileWriteOffAction } from "./payment-actions";
 import { runAdminAction } from "@/lib/client/run-admin-action";
+import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 
 export function ReconcileControls({ txnId }: { txnId: string }) {
@@ -47,10 +48,20 @@ export function ReconcileControls({ txnId }: { txnId: string }) {
       const fd = new FormData();
       fd.set("txnId", txnId);
       fd.set("reason", reason.trim());
-      let r: { ok: boolean; error?: string };
+      let r: { ok: boolean; error?: string; field?: string };
       if (mode === "match") { fd.set("providerRef", ref.trim()); r = await runAdminAction(() => reconcileMatchAction(fd)); }
       else { r = await runAdminAction(() => reconcileWriteOffAction(fd)); }
-      if (!r.ok) { toast({ title: "Blocked", description: r.error, variant: "danger" }); return; }
+      if (!r.ok) {
+        toast({ title: "Blocked", description: r.error, variant: "danger" });
+        /* ⭐ DG-S-05/06 — the modal stays open on a refusal, so the named field is on screen.
+           ⚠️ `document.body` IS SAFE HERE, AND THE REASON IS WORTH STATING because it is NOT
+           safe on `/admin/staff`: `<Modal>` returns null while closed (`modal.tsx:249`), so
+           although /admin/payments renders one ReconcileControls per unmatched row, only the
+           OPEN dialog's `[data-field]` nodes exist in the DOM at all. A document-wide search
+           therefore cannot reach another row's copy of `reason`. */
+        if (r.field) focusFirstInvalid(document.body, [r.field]);
+        return;
+      }
       deferToast({ title: mode === "match" ? "Matched" : "Written off", variant: "success" });
       setMode(null); setRef(""); setReason("");
       router.refresh();
@@ -90,7 +101,7 @@ export function ReconcileControls({ txnId }: { txnId: string }) {
         </p>
 
         {mode === "match" && (
-          <label className="mt-3 block">
+          <label className="mt-3 block" data-field="providerRef">
             <span className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">PSP settlement ref (required)</span>
             <input
               ref={(el) => { firstFieldRef.current = el; }}
@@ -102,7 +113,7 @@ export function ReconcileControls({ txnId }: { txnId: string }) {
           </label>
         )}
 
-        <label className="mt-3 block">
+        <label className="mt-3 block" data-field="reason">
           <span className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">
             {mode === "match" ? "Note (optional)" : "Reason · Sababu (required, audit-logged)"}
           </span>

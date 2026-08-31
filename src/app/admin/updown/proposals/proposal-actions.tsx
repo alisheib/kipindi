@@ -14,8 +14,9 @@
  * that single field decides what every future round resolves against.
  */
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import { useDeferredToast } from "@/components/ui/toast";
 import { AiProgress, AiOverlayShell, useAiPhases, type AiPhase } from "@/components/ui/ai-progress";
 import { Button } from "@/components/ui/button";
@@ -47,9 +48,19 @@ const REJECT_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "officer_judgement", label: "Officer judgement (see note)" },
 ];
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+/**
+ * ⚠️ §0a DRIFT, RECORDED NOT FIXED HERE (found 2026-08-31, DG-S-05): this is a SECOND `Field`,
+ * a hand-built copy of the kit's (`src/components/ui/input.tsx:162`) doing the same job with a
+ * different spelling — the kit draws its legend through `FieldLegend` at `mb-1.5`, this one
+ * hand-types `font-mono text-micro uppercase eyebrow text-text-subtle` at `mb-1`. Adopting the
+ * kit here is the right end state and it is a RENDERED change (a different legend recipe and a
+ * different margin), so it belongs to §K adoption with eyes on it — not to this row, which is
+ * about where a refusal points. `dataField` is added to the local copy so the two do not drift
+ * further apart while the adoption is pending.
+ */
+function Field({ label, hint, children, dataField }: { label: string; hint?: string; children: React.ReactNode; dataField?: string }) {
   return (
-    <label className="block">
+    <label className="block" data-field={dataField}>
       <span className="block font-mono text-micro uppercase eyebrow text-text-subtle mb-1">{label}</span>
       {children}
       {hint && <span className="mt-1 block text-body-sm leading-snug text-text-subtle">{hint}</span>}
@@ -137,6 +148,8 @@ export function ProposeForm({
   const router = useRouter();
   const { deferToast, toast } = useDeferredToast(pending);
   const [assetId, setAssetId] = useState(assets[0]?.id ?? "");
+  /* The generate form — the container focusFirstInvalid searches. */
+  const genRef = useRef<HTMLFormElement>(null);
   const [duration, setDuration] = useState("15");
   const [prompt, setPrompt] = useState("");
 
@@ -173,6 +186,8 @@ export function ProposeForm({
       gen.finish();
       if (!r.ok) {
         toast({ title: "Could not generate a proposal", description: r.error, variant: "danger" });
+        // ⭐ DG-S-05/06 — take the officer to the select the refusal names.
+        if ("field" in r && r.field) focusFirstInvalid(genRef.current, [r.field]);
         return;
       }
       setPrompt("");
@@ -192,9 +207,9 @@ export function ProposeForm({
   };
 
   return (
-    <form onSubmit={onSubmit} className="space-y-3">
+    <form ref={genRef} onSubmit={onSubmit} className="space-y-3">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <Field label="Asset">
+        <Field label="Asset" dataField="assetId">
           <Select
             value={assetId}
             onChange={setAssetId}
@@ -203,7 +218,7 @@ export function ProposeForm({
             options={assets.map((a) => ({ value: a.id, label: `${a.key} · ${a.symbol}` }))}
           />
         </Field>
-        <Field label="Round length">
+        <Field label="Round length" dataField="durationMinutes">
           <Select
             value={duration}
             onChange={setDuration}
@@ -307,6 +322,8 @@ export function ReviewActions({
   const [zh, setZh] = useState(framingZh);
   const [note, setNote] = useState("");
   const [reasons, setReasons] = useState<string[]>([]);
+  /* This proposal's reject dialog — see the note in reject() for why it is not the document. */
+  const rejectRef = useRef<HTMLDivElement>(null);
 
   const dirty =
     dur !== String(durationMinutes) || pct !== (marginBps / 100).toFixed(2) ||
@@ -372,7 +389,14 @@ export function ReviewActions({
     if (note.trim()) fd.set("note", note.trim());
     start(async () => {
       const r = await rejectProposalAction(fd);
-      if (!r.ok) { toast({ title: "Could not reject", description: r.error, variant: "danger" }); return; }
+      if (!r.ok) {
+        toast({ title: "Could not reject", description: r.error, variant: "danger" });
+        /* Scoped to this proposal's reject dialog: the queue renders one card per proposal and
+           every one of them owns a `reasons` group, so a document-wide search would focus
+           another proposal's checkboxes. */
+        if ("field" in r && r.field) focusFirstInvalid(rejectRef.current, [r.field]);
+        return;
+      }
       setRejectOpen(false);
       setReasons([]);
       router.refresh();
@@ -383,13 +407,14 @@ export function ReviewActions({
   return (
     <>
       <Button type="button" onClick={() => setOpen(true)} variant="ghost" size="sm">Review</Button>
-      <button
-        type="button"
-        onClick={() => setRejectOpen(true)}
-        className="font-mono text-micro uppercase tracking-[0.1em] text-text-subtle hover:text-no-300 transition-colors px-2 py-1"
-      >
-        Reject
-      </button>
+      {/* 🔴 DG-A-08 — THIS WAS A 22px BARE-TEXT BUTTON BESIDE A 40px ONE, IN THE SAME CELL.
+          `text-micro` is 10px/14px and `py-1` is 4px on this repo's overridden scale, so the
+          box painted 14+8 = 22px against §A2's 40px floor — and §A2 says money and destructive
+          controls are never the exception. The recipe is decided by the NEIGHBOUR: `Review`,
+          one element to the left, is the kit at `size="sm"` (= --h-control-sm = 40px), so this
+          takes the same. The ceremony stays in the modal, where it already was.
+          ⭐ §B2a comes free: `hover:text-no-300` was the betting rose on an operator action. */}
+      <Button type="button" onClick={() => setRejectOpen(true)} variant="ghost" size="sm">Reject</Button>
 
       <Modal
         open={open}
@@ -506,7 +531,7 @@ export function ReviewActions({
         maxWidth={460}
         closeOnScrim={!pending}
       >
-        <div className="space-y-3">
+        <div ref={rejectRef} className="space-y-3">
           <h2 id={`reject-title-${id}`} className="font-display text-[16px] font-semibold text-text">
             Reject · {assetKey} {durationMinutes}m
           </h2>
@@ -514,7 +539,10 @@ export function ReviewActions({
             Pick every reason that applies. These are counted, so they tell us which sources and
             framings the AI keeps getting wrong.
           </p>
-          <div className="space-y-1.5">
+          {/* ⭐ DG-S-05/06 — the address is the GROUP. "Choose at least one reason" is not about
+              any single checkbox, so the wrapper carries it and the officer lands on the first
+              box in the set. */}
+          <div className="space-y-1.5" data-field="reasons">
             {REJECT_OPTIONS.map((o) => (
               <Checkbox
                 key={o.value}
@@ -659,14 +687,9 @@ export function DeleteProposalAction({ id }: { id: string }) {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        disabled={pending}
-        className="font-mono text-micro uppercase tracking-[0.1em] text-text-subtle hover:text-no-300 transition-colors px-2 py-1"
-      >
-        Delete
-      </button>
+      {/* 🔴 DG-A-08 — the same 22px bare-text box, on a DELETE. Same ruling, same recipe as the
+          `Review`/`Reject` pair this row's cell already carries. */}
+      <Button type="button" onClick={() => setOpen(true)} disabled={pending} variant="ghost" size="sm">Delete</Button>
       <ConfirmModal
         open={open}
         onClose={() => setOpen(false)}

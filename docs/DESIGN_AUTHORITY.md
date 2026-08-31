@@ -1041,7 +1041,7 @@ Values: the `--type-*` ladder in `globals.css`. Laws:
    Ruled 2026-08-29, DESIGN-GATE-2026-08-28 step 2. Rule 1 above says "the ladder" and this
    file's preamble names `--type-*`; that was true of the CSS and never of the call sites.
 
-   | | `--type-*` (`globals.css:206-220`) | Tailwind `fontSize` (`tailwind.config.ts:190-202`) |
+   | | `--type-*` (`globals.css:206-221`) | Tailwind `fontSize` (`tailwind.config.ts:190-202`) |
    |---|---|---|
    | **Job** | sizes written **inside `globals.css`** | sizes written at a **call site** (`.tsx`) |
    | **Reach** | all 35 consumers are in `globals.css` itself; **zero `text-[…var(--type-*)…]` sites** | the only ladder a component can reach |
@@ -1070,6 +1070,26 @@ Values: the `--type-*` ladder in `globals.css`. Laws:
      failure, and it has now been caught four times.
    ⭐ **What DOES get fixed is growth.** `npm run test:type-scale` §7 pins the collision set at
    exactly these five and fails on a sixth, so the duality can be lived with and cannot spread.
+
+   🔴 **AND HALF THE "ABOVE-FLOOR ARBITRARY SIZES" ARE NOT ARBITRARY — THEY ARE THIS LADDER,
+   TYPED AT A CALL SITE.** Ruled 2026-08-31, DG-A-12. The register's remaining type tail listed
+   13.5 · 15 · 17 · 19 · 26 · 34 · 38 as "per-site design calls". Re-derived at HEAD, **`15px`
+   IS `--type-body` (`globals.css:213`) and `17px` IS `--type-h4` (`:212`)** — and among the
+   sizes the register never named, **`20px` is `--type-h3` (`:211`) and `24px` is `--type-h2`
+   (`:210`)**. So a session typing `text-[15px]` was not picking a number at random; it was
+   reaching for the OTHER ladder's rung from a file that cannot reach it (row 2 of the table
+   above: zero `text-[…var(--type-*)…]` sites exist).
+   ⛔ **THAT MAKES "MOVE IT TO THE NEAREST RUNG" THE WRONG REMEDY, NOT MERELY AN OPTIONAL ONE.**
+   `15 → 14` or `15 → 16` breaks alignment with every element sized from `--type-body` inside
+   `globals.css`, and `17 → 16/18` does the same to `--type-h4` — and neither is even a nearest:
+   15 is 1px from BOTH `body` 14 and `body-lg` 16, and 17 is 1px from BOTH `body-lg` 16 and
+   `title-sm` 18. A tie is not a design call, it is a coin flip wearing one.
+   ⭐ **SO THESE SITES STAY**, and the rule is: a hand-typed size that equals a `--type-*` rung
+   is a CROSS-LADDER REACH, and its only correct fixes are to move the element's styling into
+   `globals.css` (where the token is reachable) or to accept the value. It is not §T1 debt to be
+   swept, and `test:type-scale` §4 counts it only as *hand-typed*, which it is.
+   ⚠️ **57 sites at 15px and 8 at 17px** re-derived at HEAD — the largest block of the tail, and
+   the reason that tail stopped shrinking.
 
    ⭐ **AND THE 10px EYEBROW IS ALREADY ON A LADDER.** The open DG-A-11 question — *"there is
    no rung at 10, so putting the eyebrow on the ladder costs +1px on 254 labels"* — was asked
@@ -1579,8 +1599,10 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
 
    1. **The height must come from the SECTION COUNT, not from ROW DENSITY.** If one panel is
       more than ~40% of the page's `docH`, that panel *is* the length and a rail moves
-      nothing. Measured on production 2026-08-30 (`.qa-design-gate/out-admin`, `m1440.docH` at
-      1440×900): `/admin/updown/proposals` is **8,657px**, the tallest page in the console —
+      nothing. Measured on production 2026-08-30 — re-derive with **`npm run qa:dg-measure`**,
+      which writes `m1440.docH` into `.qa-design-gate/out-admin/`; ⛔ that directory is
+      GITIGNORED EVIDENCE and is deleted when a programme closes, so the instrument is named
+      here and the output is not — at 1440×900: `/admin/updown/proposals` is **8,657px**, the tallest page in the console —
       and its rows run 379.6–462.6px at `PER_PAGE = 20`, i.e. roughly 7,600px of one already
       paginated table. Tabbing it yields a 1,000px landing tab and an 8,000px queue tab.
       Against that, `/admin/system` is 3,327px whose *tallest* panel is 401px (**12%**) —

@@ -6,6 +6,7 @@ import { useDeferredToast } from "@/components/ui/toast";
 import { Input, Field } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import { setCreditLimitAction, startTopUpWindowAction } from "./actions";
 
 export function CreditControls({ limitUsd }: { limitUsd: number }) {
@@ -15,10 +16,17 @@ export function CreditControls({ limitUsd }: { limitUsd: number }) {
 
   const onSetLimit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const fd = new FormData(e.currentTarget);
+    /* ⭐ The form element is captured before the async boundary: `e.currentTarget` is null by
+       the time the transition resolves, and it is the container `focusFirstInvalid` searches. */
+    const form = e.currentTarget;
+    const fd = new FormData(form);
     start(async () => {
       const r = await setCreditLimitAction(fd);
-      if (!r.ok) toast({ title: "Couldn't update", description: r.error, variant: "danger" });
+      if (!r.ok) {
+        toast({ title: "Couldn't update", description: r.error, variant: "danger" });
+        // ⭐ DG-S-05/06 — and then take the operator to the field the server named.
+        if (r.field) focusFirstInvalid(form, [r.field]);
+      }
       else { router.refresh(); deferToast({ title: "Limit updated", variant: "success" }); }
     });
   };
@@ -34,7 +42,7 @@ export function CreditControls({ limitUsd }: { limitUsd: number }) {
   return (
     <div className="flex flex-wrap items-center gap-3">
       <form onSubmit={onSetLimit} className="flex items-center gap-3 flex-1 min-w-[200px]">
-        <Field label="Spend limit per top-up window (USD)" className="flex-1 min-w-[140px]">
+        <Field label="Spend limit per top-up window (USD)" className="flex-1 min-w-[140px]" dataField="limitUsd">
           <Input name="limitUsd" type="number" step="0.01" min="0.01" inputMode="decimal" defaultValue={String(limitUsd)} placeholder="20" mono />
         </Field>
         <Button type="submit" loading={pending}>Set limit</Button>

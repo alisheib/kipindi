@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ActionOverlay, useActionOverlay } from "@/components/admin/action-overlay";
 import { setPlayerEmailAction } from "./actions";
+import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 
 export function SetEmailForm({ userId }: { userId: string }) {
@@ -38,6 +39,8 @@ export function SetEmailForm({ userId }: { userId: string }) {
           router.refresh();
         } else {
           overlay.fail("Couldn't set email", r.error);
+          // DG-S-05/06 — the address the action returned, resolved to this page's email input.
+          if ("field" in r && r.field) focusFirstInvalid(document.body, [r.field]);
         }
       } catch {
         overlay.fail("Couldn't set email", "Server error — please try again.");
@@ -48,6 +51,7 @@ export function SetEmailForm({ userId }: { userId: string }) {
   return (
     <div className="flex items-center gap-2 mt-2">
       <input
+        data-field="email"
         type="email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}

@@ -616,5 +616,69 @@ if (written.length) {
     `cn("text-text-muted text-text") === "${cn("text-text-muted text-text")}"`);
 }
 
+// ===========================================================================
+// §9 · DG-A-21 — AN APP-STATE TOKEN THAT EXISTS BUT IS UNREACHABLE IS HALF A RULING
+// ===========================================================================
+/**
+ * 🔴 WHY THIS EXISTS, AND WHY §7 COULD NOT HAVE FOUND IT. §7 probes the class-shaped tokens it
+ * finds WRITTEN IN THE SOURCE — so it can only ever check the classes somebody already uses.
+ * `--success-500` was defined at `globals.css:188` and exposed by `tailwind.config.ts` to
+ * NOBODY: `success` was the single semantic family with no `500` key, while `warning`, `danger`
+ * and `info` all had one. Nothing wrote `bg-success-500` because writing it produced nothing —
+ * and by this config's own documented mechanism it fails SILENTLY (a `var()` string fails
+ * `parseColor`, `withAlphaValue` returns undefined, `matchUtilities` emits no rule). So the
+ * only spelling that actually painted "app state, good" was the betting ramp, which §B2a (D2,
+ * 2026-08-21) forbids in as many words.
+ *
+ * ⭐ THAT IS THE MECHANICAL REASON THE GREEN HALF OF D2'S MIGRATION STALLED FOR NINE DAYS WHILE
+ * THE ROSE HALF PROGRESSED — `--danger-500` was reachable and `--success-500` was not. A ruling
+ * that mints a token nothing can spell is half a ruling, and this section is the other half.
+ *
+ * ⛔ IT ASSERTS REACHABILITY, NOT A LIST. The population is derived from globals.css — every
+ * `--<family>-<rung>` the stylesheet DEFINES for the four app-state families must be spellable
+ * as a utility. Adding a fifth family, or a new rung to any of them, is covered the day it is
+ * written; nothing here has to be updated by hand.
+ */
+{
+  const SEMANTIC = ["success", "warning", "danger", "info"];
+  const css = readFileSync(join(ROOT, "src/app/globals.css"), "utf8");
+  const cfg = readFileSync(join(ROOT, "tailwind.config.ts"), "utf8");
+
+  const missing: string[] = [];
+  let probed = 0;
+  for (const fam of SEMANTIC) {
+    /* The rungs the STYLESHEET defines for this family — the definition site is the authority
+       (§0d), so the config is measured against it and never the other way round. */
+    const rungs = new Set<string>();
+    for (const m of css.matchAll(new RegExp(`^\\s*--${fam}(?:-([a-z0-9]+))?:`, "gm"))) rungs.add(m[1] ?? "DEFAULT");
+    /* The family's object in the config, read as a whole so a key on any line is seen. */
+    const block = new RegExp(`\\b${fam}:\\s*\\{([^}]*)\\}`).exec(cfg);
+    const declared = new Set<string>();
+    /* ⚠️ `\s*` goes OUTSIDE the alternation. Written as `(?:^|[{,]\s*)` the FIRST key in the
+       block — which follows the opening brace and a space — matched neither branch, so all four
+       families reported a missing `DEFAULT` on the first run of this section. Caught by the
+       gate failing rather than by reading it. */
+    if (block) for (const m of block[1].matchAll(/(?:^|[{,])\s*([A-Za-z0-9]+)\s*:/g)) declared.add(m[1]);
+    for (const rung of rungs) {
+      probed++;
+      if (!declared.has(rung)) missing.push(`--${fam}${rung === "DEFAULT" ? "" : `-${rung}`} (no \`${rung}\` key on \`${fam}\` in tailwind.config.ts)`);
+    }
+  }
+
+  check("§9.1 every app-state token globals.css defines is spellable as a utility class",
+    missing.length === 0,
+    `${missing.join(" · ")} — the token exists and NOTHING can write it, so the only spelling that paints is the betting ramp §B2a forbids`);
+
+  // ⛔ COVERAGE FLOOR: if the reader stops finding rungs, §9.1 passes over an empty set.
+  check("§9.2 CONTROL — the rung population is non-empty, so a pass means reachable and not unread",
+    probed >= 16,
+    `only ${probed} rungs read across ${SEMANTIC.length} families — the stylesheet reader has lost its subject set`);
+
+  // The positive control: the family this section was written for must now actually resolve.
+  check("§9.3 …and the rung that started this — `success-500` — is reachable",
+    /success:\s*\{[^}]*\b500:/.test(cfg),
+    "`success` still has no 500 key");
+}
+
 log(`\n${fail === 0 ? "PASS" : "FAIL"} — ${tsxFiles.length} tsx files, ${families.size} colour families, ${shadowKeys.size} shadow rungs, ${written.length} alpha classes probed`);
 process.exit(fail ? 1 : 0);

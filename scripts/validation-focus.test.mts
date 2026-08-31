@@ -105,5 +105,57 @@ const rogue = clients.filter((f) => {
 const rel = (f: string) => f.slice(SRC.length + 1).replace(/\\/g, "/");
 ok("3.1 no file hand-rolls a scroll-to-first-error", rogue.length === 0, rogue.map(rel).join(", "));
 
-console.log(`\n${fail ? `🔴 ${fail} failing` : "✅ a refusal can name its field, and the helper takes you there or says why not"}`);
+// ===========================================================================
+console.log("\n§4 · DG-S-05 — every address a REFUSAL names must EXIST on the screen");
+// ===========================================================================
+/**
+ * 🔴 THIS IS THE ONE HOLE `field-error.ts` DOCUMENTS AS UNCHECKABLE. Its own header says the
+ * address *"MUST MATCH A RENDERED `data-field`, and nothing can check that for you across the
+ * server/client boundary — a typo here degrades to 'no focus happens'"*. That is true at
+ * runtime and it is exactly why the failure is dangerous: a misspelt address does not throw, it
+ * silently reverts to the behaviour this whole row existed to replace, and the wire still LOOKS
+ * connected in review. Nothing can check it inside one request; something can check it across
+ * the tree, which is what this does.
+ *
+ * ⛔ ONE DIRECTION ONLY, and the asymmetry is the point. Every literal address a server NAMES
+ * must be rendered somewhere. The reverse is NOT required: a `data-field` with no `fieldError`
+ * naming it is legitimate — a client-side rule may own that field (`ai-polls` validates
+ * `title`/`selDate`/`resDate` in the browser), and `sources` computes its address at runtime
+ * (`fieldError(firstEmpty, …)`), so its three names are rendered and never appear as literals.
+ *
+ * ⚠️ WHAT IT CANNOT SEE, stated plainly: both sides are matched as STRING LITERALS. An address
+ * built by interpolation on either side is invisible here, and would pass. It reads the source
+ * tree, not the DOM, so it cannot know whether the element is ever actually rendered on the
+ * route that refuses — only that the name exists somewhere. That is strictly more than nothing,
+ * and strictly less than a drive.
+ */
+{
+  /* ⛔ BOTH EXTENSIONS. The server half lives in `.ts` action files and the client half in
+     `.tsx`; walking only one is how this check would have read half its own population. */
+  const allFiles = [...walk(SRC, ".ts"), ...walk(SRC, ".tsx")];
+  const named = new Map<string, string[]>();
+  const rendered = new Set<string>();
+  for (const f of allFiles) {
+    const s = decomment(readFileSync(f, "utf8"));
+    for (const m of s.matchAll(/fieldError\(\s*"([^"]+)"/g)) {
+      if (!named.has(m[1])) named.set(m[1], []);
+      named.get(m[1])!.push(rel(f));
+    }
+    for (const m of s.matchAll(/data-field=\{?"([^"]+)"/g)) rendered.add(m[1]);
+    for (const m of s.matchAll(/dataField=\{?"([^"]+)"/g)) rendered.add(m[1]);
+  }
+  const missing = [...named.keys()].filter((k) => !rendered.has(k));
+  ok(`4.1 every literal address a refusal names is rendered as a data-field (${named.size} named · ${rendered.size} rendered)`,
+    missing.length === 0,
+    missing.map((k) => `"${k}" named by ${named.get(k)!.join(", ")} but rendered nowhere`).join(" · "));
+
+  /* ⛔ A COVERAGE FLOOR. 4.1 passes trivially over an empty set, and this row's whole history is
+     instruments that went green because the population shrank. If the scan stops finding
+     addresses at all, that is a broken reader, not a clean tree. */
+  ok("4.2 CONTROL — the address population is non-empty, so a pass means resolved and not unread",
+    named.size >= 15 && rendered.size >= 15,
+    `named ${named.size}, rendered ${rendered.size} — the scan has lost its subject set`);
+}
+
+console.log(`\n${fail ? `🔴 ${fail} failing` : "✅ a refusal can name its field, the helper takes you there or says why not, and every address it names exists"}`);
 process.exit(fail ? 1 : 0);

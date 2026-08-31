@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Toggle } from "@/components/ui/toggle";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import { addSourceAction, removeSourceAction, toggleSourceAction, toggleCategoryAction } from "./actions";
 
 const CATEGORIES = ["sports", "macro", "weather", "crypto", "culture", "tech", "other"] as const;
@@ -121,11 +122,23 @@ export function AddSourceForm() {
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const fd = new FormData(e.currentTarget);
+    /* ⛔ DG-S-06 — CAPTURE THE FORM BEFORE THE ASYNC BOUNDARY. React nulls `currentTarget` once
+       the handler returns, and everything below runs inside `start(async …)`, i.e. after that.
+       Read there it would be `null`, `focusFirstInvalid` would answer `{ reason: "no-form" }`,
+       and the address the server just took the trouble to send would go nowhere. */
+    const form = e.currentTarget;
+    const fd = new FormData(form);
     start(async () => {
       const r = await addSourceAction(fd);
       if (!r.ok) {
         toast({ title: "Could not add source", description: r.error, variant: "danger" });
+        /* ⭐ DG-S-06 — and then TAKE THEM THERE. The toast says three fields are required;
+           `r.field` is the one the server found empty FIRST in form order, and this puts the
+           cursor in it. ⛔ SCOPED TO `form`, not `document.body`: "domain" and "label" are
+           generic names, this component also renders per-row controls and a ConfirmDialog on
+           the same page, and a second add form would be indistinguishable to a body-wide query.
+           Scoping costs nothing here because the form element is already in hand. */
+        if (r.field) focusFirstInvalid(form, [r.field]);
       } else {
         (e.target as HTMLFormElement).reset();
         setOpen(false);
@@ -151,11 +164,20 @@ export function AddSourceForm() {
     <form onSubmit={onSubmit} className="rounded-lg border border-border bg-bg-elevated p-4 space-y-3">
       <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">Add trusted source</p>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <label className="block">
+        {/* ⭐ DG-S-05/06 — `data-field` is the ADDRESS `addSourceAction` names. It goes on the
+            wrapping <label>, which CONTAINS its control, so `focusFirstInvalid` finds the anchor
+            and then focuses the <input>/<textarea>/<select> inside it. ⛔ Never on a label that
+            is only a SIBLING of its control (htmlFor) — the query would scroll to the caption and
+            focus nothing. This form hand-rolls its labels rather than using the kit <Field>, so
+            the attribute is written out here; <Field dataField="…"> does exactly this. ⚠️ The
+            three names must match the strings in `actions.ts` (domain · label · rationale) — a
+            typo degrades to today's behaviour (toast, no focus), not to a jump somewhere wrong.
+            The category <select> gets none: it defaults, so no refusal ever names it. */}
+        <label className="block" data-field="domain">
           <span className="block font-mono text-micro uppercase eyebrow text-text-subtle mb-1">Domain</span>
           <Input name="domain" required placeholder="bot.go.tz" size="sm" />
         </label>
-        <label className="block">
+        <label className="block" data-field="label">
           <span className="block font-mono text-micro uppercase eyebrow text-text-subtle mb-1">Label</span>
           <Input name="label" required placeholder="Bank of Tanzania" size="sm" />
         </label>
@@ -164,7 +186,7 @@ export function AddSourceForm() {
           <Select name="category" defaultValue={CATEGORIES[0]}
             options={CATEGORIES.map((c) => ({ value: c, label: c }))} />
         </div>
-        <label className="block md:col-span-2">
+        <label className="block md:col-span-2" data-field="rationale">
           {/* DG-A-14: "Rationale (≥ 1 line)" was a control label with its requirement welded on,
               and the whole string was wearing the eyebrow recipe — uppercase, tracked, 10px. The
               label keeps that recipe, because it is still the name of the control; the "(≥ 1 line)"

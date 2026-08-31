@@ -191,6 +191,20 @@ export function FileDsarOnBehalfButton({ userId }: { userId: string }) {
             <p className="text-caption text-text-tertiary">
               Access and portability need no request: use <em>Export bundle</em> beside this.
             </p>
+            {/* ⛔ DG-S-05 — NO `data-field` HERE, ON PURPOSE, AND DO NOT ADD ONE.
+                This radio pair is the only input control in the whole `/admin/privacy` route,
+                so it looks like the obvious place to hang the address for `fileDsarAction`'s
+                "Type must be ERASURE or CORRECTION" refusal. It is not, and an attribute here
+                would be a wire with nothing on the other end: this ConfirmDialog passes no
+                `pending`, so it takes the classic branch in `confirm-dialog.tsx` — close
+                FIRST, then run `onConfirm`. `Modal` returns null once closed, so this whole
+                subtree is unmounted before the server answers, and a `focusFirstInvalid` aimed
+                at it would report `not-rendered` on every failure rather than taking anyone
+                anywhere. The server keeps the refusal plain for the same reason; the argument
+                is written out in full at the `type` check in `actions.ts`.
+                ⚠️ If this dialog is ever given `pending` (hold-open), the control survives the
+                round-trip and BOTH halves become wireable — that is the remainder, and it is a
+                control-flow change, not this row's. */}
             <div className="flex gap-2 pt-1">
               {(["CORRECTION", "ERASURE"] as const).map((v) => (
                 <label key={v} className="inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.10em] text-text-secondary">

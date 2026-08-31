@@ -49,7 +49,9 @@ export type BulkResolveResult =
       /** The engine refused, or threw. */
       failed: BulkResolveOutcome[];
     }
-  | { ok: false; error: string };
+  /** ⭐ DG-S-05 — `field` is the `data-field` of the control the officer must fix. Optional and
+   *  additive: every refusal that cannot name one stays exactly as it was. */
+  | { ok: false; error: string; field?: string };
 
 /**
  * One row of the queue, as the CLIENT sees it. Everything here is derived on the server

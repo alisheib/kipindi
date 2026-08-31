@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { I } from "@/components/ui/glyphs";
 import { forceReverifyKycAction } from "./actions";
 import { runAdminAction } from "@/lib/client/run-admin-action";
+import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 
 export function ForceReverifyControls({ userId }: { userId: string }) {
@@ -46,7 +47,11 @@ export function ForceReverifyControls({ userId }: { userId: string }) {
       fd.set("userId", userId);
       fd.set("reason", reason.trim());
       const r = await runAdminAction(() => forceReverifyKycAction(fd));
-      if (!r.ok) { toast({ title: "Blocked", description: r.error, variant: "danger" }); return; }
+      if (!r.ok) {
+        toast({ title: "Blocked", description: r.error, variant: "danger" });
+        if (r.field) focusFirstInvalid(document.body, [r.field]);
+        return;
+      }
       setOpen(false); setReason("");
       router.refresh();
       toast({ title: "Re-verification required", description: "Player asked to re-submit documents. This does not stop withdrawals — freeze the wallet or pause payouts for that.", variant: "warning" });
@@ -84,6 +89,7 @@ export function ForceReverifyControls({ userId }: { userId: string }) {
           <span className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">Reason · Sababu</span>
           <span className="block text-body-sm text-text-subtle">(required, audit-logged)</span>
           <textarea
+            data-field="reason"
             ref={reasonRef}
             value={reason}
             onChange={(e) => setReason(e.target.value)}

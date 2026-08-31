@@ -276,7 +276,7 @@ hostname && git rev-parse --show-toplevel && git worktree list
 | `hostname` | Repo root | Measured |
 |---|---|---|
 | **`Ali-Blade15`** | `C:\kipindi-main` | 2026-08-15 — a full session ran here all day. ⚠️ **`F:\kipindi-main` does not exist on this machine**, so the `F:\…` paths in `docs/LIVE-QA-CAMPAIGN.md` are another machine's. `railway` CLI **is** linked and authenticated here (`railway status` → project `50pick`, env `production`). `git worktree list` showed ONE tree at the close of that session |
-| *(the `F:\kipindi-main` machine)* | `F:\kipindi-main` | its hostname was **never recorded**, which is exactly why this table now leads with `hostname`. Source of the `F:\…` paths in `LIVE-QA-CAMPAIGN.md`. ⚠️ Treat as unverified until a session there fills in its own row |
+| **`OMEGA-COMPILE01`** | `F:\kipindi-main` | ✅ **ROW FILLED IN FROM THE MACHINE ITSELF, 2026-08-31** (DESIGN-GATE-2026-08-28), which is what this table asked for: the hostname was previously *"never recorded"* and the row read "unverified". `git worktree list` shows **ONE** tree, `F:/kipindi-main` on `main`. Source of the `F:\…` paths in `docs/LIVE-QA-CAMPAIGN.md`. ⚠️ `.env.qa.local` here holds `QA_ADMIN_PASSWORD` (which works) and the six player/officer secrets (which production rejects) |
 
 ⚠️ **A `C:\kipindi-night` worktree existed on `Ali-Blade15` mid-session on 2026-08-15 (branch
 `night/measure-search`) and was gone by the end of the day.** If you see a second tree, it is
