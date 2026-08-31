@@ -245,3 +245,8 @@ scripts/live/ops/.cfg-snapshots/
 # four documents, at any width and locale; the PNGs are not, because a checked-in
 # screenshot is a claim nobody can re-derive.
 .qa-kyc-id/
+
+# ⛔ `red:cn-collision` copies src/ here so the mutated `utils.ts` can still resolve
+# node_modules (a temp-dir copy dies on MODULE_NOT_FOUND, which reads as a caught defect
+# and is not one). Removed in the harness `finally`; ignored so a killed run leaves nothing.
+.cn-red-tmp/
