@@ -1,5 +1,57 @@
 import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { extendTailwindMerge } from "tailwind-merge";
+
+/**
+ * 🔴 `cn` WAS DELETING TYPE SIZES BEFORE THEY REACHED THE GLASS — found 2026-08-31, DG-S-03,
+ * on production, after every static gate had passed over it.
+ *
+ * `cn` was bare `twMerge()` with NO config, while `tailwind.config.ts` REPLACES Tailwind's
+ * `fontSize` scale with this platform's own keys — `micro caption label body-sm body body-lg
+ * title-sm title-md title-lg display-3 display-2 display-1`. tailwind-merge does not know them,
+ * and its `text-*` fallback classifies anything it cannot recognise as a text COLOUR. So
+ * `text-body-sm` and `text-text` landed in ONE conflict group and the later one silently
+ * deleted the earlier:
+ *
+ *     twMerge("text-body-sm font-semibold text-text")  →  "font-semibold text-text"
+ *
+ * ⛔ THE CLASS WAS NOT OVERRIDDEN. IT WAS REMOVED. The element then inherits `body`'s
+ * `var(--type-body)` — 15px — and no rule anywhere says so, which is why no cascade probe and
+ * no stylesheet audit could find it. Measured on production: `/admin/roles`' section rail asked
+ * for `text-body-sm` (13px) and rendered **15px**, with `text-body-sm` absent from the element's
+ * own class attribute.
+ *
+ * ⛔ AND IT IS §M4's AND §A1's SHAPE A THIRD TIME — a guard reading the SPELLING of a value
+ * instead of the value that lands on the glass. `test:type-scale` counts `text-body-sm` at a
+ * call site as "on the ladder", so a class that never survives to the browser was scoring as
+ * adoption. ⚠️ An arbitrary value never had the bug: `text-[13px]` IS recognised as a length,
+ * so it stayed — which means the ladder migration this programme has been running was, at these
+ * sites, replacing something that worked with something that did not.
+ *
+ * ⭐ THE FIX IS ONE DEFINITION SITE (§0a), not ten call sites. The 12 keys below are the
+ * `fontSize` block of `tailwind.config.ts`, and they are disjoint from all 20 colour families
+ * (`teal yes no claret aqua accent brand slate bg surface border text royal gilt gold success
+ * warning danger info bet`) — checked before writing this, because a name that is both would
+ * make the declaration ambiguous rather than helpful.
+ * ⛔ If a rung is added to `tailwind.config.ts`, add it HERE in the same commit. A size this
+ * list does not name is a size `cn` will silently delete. `npm run test:bridge` §8 holds the
+ * two lists together.
+ */
+const twMerge = extendTailwindMerge({
+  extend: {
+    classGroups: {
+      "font-size": [
+        {
+          text: [
+            "micro", "caption", "label",
+            "body-sm", "body", "body-lg",
+            "title-sm", "title-md", "title-lg",
+            "display-3", "display-2", "display-1",
+          ],
+        },
+      ],
+    },
+  },
+});
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));

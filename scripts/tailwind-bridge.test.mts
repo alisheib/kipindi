@@ -39,6 +39,8 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 /** Strip comments + block-comment JSX so commented-out examples never trip the guard. */
 import { decomment } from "./lib/decomment.mts";
+/* §8 asserts the merge BEHAVIOUR, not just the declaration, so it imports the real helper. */
+import { cn } from "../src/lib/utils";
 
 const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
 const SRC = join(ROOT, "src");
@@ -546,6 +548,72 @@ if (written.length) {
     "no token was admitted by a compiling sibling — tier 2 has collapsed to the numeric-step rule alone");
 
   log(`\n  (§7 probed ${probed.length} class-shaped tokens — ${tier1.size} from className attributes, ${tier2.size} corroborated elsewhere)`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §8 · `cn()` MUST KNOW EVERY TYPE RUNG, OR IT DELETES THE ONES IT DOES NOT KNOW
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * 🔴 WHY THIS SECTION EXISTS (DG-S-03, 2026-08-31, found on production).
+ *
+ * `cn` is `twMerge`, and tailwind-merge classifies any `text-*` it does not recognise as a text
+ * COLOUR. This repo REPLACES Tailwind's `fontSize` scale with its own keys, so before the fix
+ * `text-body-sm` and `text-text` shared one conflict group and the later class DELETED the
+ * earlier — not overrode it, removed it. The element then inherited `body`'s 15px and nothing
+ * in any stylesheet said so, which is why a cascade probe could not find it and a static gate
+ * scored the class as "on the ladder".
+ *
+ * Measured on production before the fix: `/auth/login`'s PHONE and PASSWORD field legends
+ * rendered **15px** with 2.1px tracking, beside a SIGN IN eyebrow at 11px and a FORGOT PASSWORD
+ * at 10px — three sizes of one recipe on the sign-in card, which is the exact "fonts everywhere"
+ * defect DG-A-11 exists to remove. `/admin/roles`' section rail rendered 15px for `text-body-sm`.
+ *
+ * ⛔ SO THE TWO LISTS MUST NOT DRIFT. A rung added to `tailwind.config.ts` and not to
+ * `src/lib/utils.ts` is a rung `cn` will silently delete at every call site that also passes a
+ * colour. This asserts set EQUALITY in both directions, so neither list can grow alone.
+ *
+ * POPULATION: the `fontSize` block of `tailwind.config.ts` (12 keys at HEAD) against the `text`
+ * array inside `extendTailwindMerge`'s `font-size` group in `src/lib/utils.ts`.
+ * CONTROL: add a rung to either file alone — §8.1 or §8.2 goes red. §8.3 proves the merge
+ * behaviour itself rather than trusting the declaration, and would have caught the original bug.
+ */
+{
+  const fsStart = cfgRaw.indexOf("fontSize: {");
+  let depth = 0, i = cfgRaw.indexOf("{", fsStart), fsBody = "";
+  for (; i < cfgRaw.length; i++) {
+    const c = cfgRaw[i];
+    if (c === "{") depth++;
+    if (c === "}") { depth--; if (!depth) break; }
+    fsBody += c;
+  }
+  const cfgKeys = [...new Set([...fsBody.matchAll(/^\s*["']?([\w-]+)["']?\s*:/gm)].map((m) => m[1]))].sort();
+
+  const utils = readFileSync(join(ROOT, "src/lib/utils.ts"), "utf8");
+  const groupAt = utils.indexOf('"font-size"');
+  const arr = groupAt < 0 ? "" : utils.slice(utils.indexOf("[", utils.indexOf("text:", groupAt)), utils.indexOf("]", utils.indexOf("text:", groupAt)) + 1);
+  const cnKeys = [...new Set([...arr.matchAll(/"([\w-]+)"/g)].map((m) => m[1]))].sort();
+
+  const missing = cfgKeys.filter((k) => !cnKeys.includes(k));
+  const extra = cnKeys.filter((k) => !cfgKeys.includes(k));
+  check("§8.1 every `fontSize` rung in tailwind.config.ts is declared to `cn`'s twMerge",
+    missing.length === 0,
+    `${missing.join(", ")} — cn() will DELETE ${missing.length === 1 ? "this class" : "these classes"} wherever a colour class is passed in the same call`,
+    `${cfgKeys.length} rungs`);
+  check("§8.2 …and `cn` declares no rung the config does not have",
+    extra.length === 0,
+    `${extra.join(", ")} — a name cn treats as a size that Tailwind never emits`);
+
+  // ⛔ THE BEHAVIOURAL HALF. A declaration can be right while the merge is still wrong (a
+  // future tailwind-merge could change how `extend` composes), so assert the OUTCOME too.
+  check("§8.3 a size and a colour survive ONE cn() together — the defect this section exists for",
+    cn("text-body-sm text-text").split(/\s+/).sort().join(" ") === "text-body-sm text-text",
+    `cn("text-body-sm text-text") === "${cn("text-body-sm text-text")}" — the size is being deleted again`);
+  check("§8.3b …and cn still COLLAPSES two sizes (it must not have stopped merging)",
+    cn("text-body-sm text-title-lg") === "text-title-lg",
+    `cn("text-body-sm text-title-lg") === "${cn("text-body-sm text-title-lg")}"`);
+  check("§8.3c …and still collapses two colours",
+    cn("text-text-muted text-text") === "text-text",
+    `cn("text-text-muted text-text") === "${cn("text-text-muted text-text")}"`);
 }
 
 log(`\n${fail === 0 ? "PASS" : "FAIL"} — ${tsxFiles.length} tsx files, ${families.size} colour families, ${shadowKeys.size} shadow rungs, ${written.length} alpha classes probed`);

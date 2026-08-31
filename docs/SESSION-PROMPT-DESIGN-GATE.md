@@ -37,6 +37,34 @@ its own plan. **Three more §🅢 claims are wrong at source; each is struck in 
 | **🚢 The 5 tails** | `DG-A-08` (guard not built) · `DG-A-21` (~414 lines / ~125 files residual, only a third admin) · `DG-A-12`/`DG-P-05` (the above-floor long tail is a per-site call) · `DG-P-14` (item 2 closed no-change; item 5 is Ali's) |
 | **▶ RESUME AT** | **`DG-S-07` FIRST, THEN `DG-S-03`'s TAIL — and that order is now forced by a measurement.** `TabItem` needs `glyph` and a status tone before `/admin/players/[id]` can convert without deleting the KYC signal its own comment says exists *"so the officer always notices it"*; and the `line` variant needs a **scroll affordance** before a six-tab rail ships anywhere — re-measured at 390 through the kit recipe, content is **576px in a 356px box and `elementFromPoint` finds 4 of 6 options reachable**, with nothing on screen saying the other two exist. `DG-S-02` ✅ and `DG-S-03`'s prop + `/admin/roles` ✅ are closed (last two commits). The full order is in §🅢's *"the order is not arbitrary"*, rewritten 2026-08-31 |
 
+### 🔴 THE BIGGEST FINDING OF STEP 5 SO FAR — `cn()` WAS DELETING TYPE SIZES BEFORE THEY REACHED THE GLASS
+Found 2026-08-31 (DG-S-03) **by driving production after a regression, not by any static gate.**
+`cn` was bare `twMerge()` with **no config**, while `tailwind.config.ts` REPLACES Tailwind's
+`fontSize` scale with this platform's own 12 keys. tailwind-merge does not know them, and files
+any unrecognised `text-*` as a **colour** — so `text-body-sm` and `text-text` shared one conflict
+group and the later class **deleted** the earlier. Not overrode: *removed*. The element then
+inherits `body`'s `var(--type-body)` = **15px**, and no rule anywhere says so, which is why no
+cascade probe and no stylesheet audit could ever have found it.
+- 📐 **Measured on production, `/auth/login`:** the `PHONE` and `PASSWORD` field legends render
+  **15px at 2.1px tracking**, beside a `SIGN IN` eyebrow at 11px and `FORGOT PASSWORD?` at 10px.
+  **Three sizes of one recipe on the sign-in card** — the exact "fonts everywhere" defect DG-A-11
+  exists to remove, on the platform's front door, in `FieldLegend`, the *kit's own* eyebrow.
+- ⛔ **AND IT IS §M4/§A1's SHAPE A THIRD TIME:** `test:type-scale` counts `text-body-sm` at a call
+  site as *"on the ladder"*, so a class that never survives to the browser was scoring as
+  **adoption**. ⚠️ An arbitrary `text-[13px]` never had the bug — tailwind-merge recognises a
+  length — which means the ladder migration this programme has been running was, at these sites,
+  replacing something that worked with something that did not.
+- ✅ Fixed at the one definition site (`src/lib/utils.ts`, `extendTailwindMerge`), and held by a
+  new **`test:bridge` §8** — set equality between the config's rungs and `cn`'s list, **plus a
+  behavioural half** that asserts the merge outcome rather than the declaration. Proved RED both
+  ways (drop a rung from either file).
+- 🔴 **The blast radius is 10 `cn()` call sites and SEVEN OF THEM PRE-DATE STEP 5** — re-derive
+  with `node .qa-design-gate/cn-collision2.mjs`, which asks the real `twMerge` rather than
+  modelling it (⚠️ v1 of that census parsed the config instead and under-counted; the file
+  records why). ⛔ **Every one is a rendered change and they all need eyes**: `field-legend` ·
+  `filter-pill`'s `FilterGroupKey` · `avatar-menu` · `page-ribbon` · `wallet-balance-pill` ·
+  `round-stake-panel` · `updown-stake-controls` · `tabs` ×3.
+
 ### 🔴 TWO THINGS SHIPPED THAT NOBODY HAS LOOKED AT — carry these, they are not gates
 - **The 13 `/admin/payments` money levers** (Retry · Cancel · Match · Write off · **Return to
   player**) went from a **14px** box to the kit's 40px rung. They render ONLY when a retry has

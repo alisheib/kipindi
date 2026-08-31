@@ -77,6 +77,14 @@
  * `letter-spacing: -0.05px` and `line-height: 18px` with it, which `text-[13px]` never set.
  * Measured, old → new: label width **92.44 → 92.03px** on "Activity", line-height 19.5 → 18
  * (invisible inside a 44px flex-centred box), transition 150ms `ease` → 140ms `linear`.
+ * 🔴 **AND THAT BENCH WAS ITSELF MEASURING THE WRONG THING, WHICH PRODUCTION THEN PROVED.** It
+ * rendered the class STRINGS by hand, so it never ran them through `cn()` — and `cn` was
+ * DELETING `text-body-sm` outright, because tailwind-merge did not know this repo's fontSize
+ * keys and filed the size as a colour that `text-text` then overrode. The rail shipped at
+ * **15px**, not 13, with `text-body-sm` absent from its own class attribute. Fixed at the one
+ * definition site (`src/lib/utils.ts`) and held by `test:bridge` §8. ⛔ **A bench that rebuilds
+ * a component's class list instead of rendering the component measures the intention, not the
+ * product** — the same wrong-population error this programme keeps paying for, one layer down.
  * ⭐ That is a CONVERGENCE, not a regression: the two shipped admin section rails
  * (`roles/page.tsx:68`, `players/[id]/page.tsx:321`) already render `text-body-sm`, so this rail
  * was the one 13px label in the product that was not on the rung. But it is a rendered change
