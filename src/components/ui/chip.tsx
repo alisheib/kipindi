@@ -56,16 +56,31 @@ type Size = "xs" | "sm" | "md" | "lg";
  * identical but kept distinct because they carry different call-site intent —
  * they share ONE style object below so the pair can never drift apart:
  *   • slate  — neutral (default) · cat (category tag)
- *   • green  — yes (betting YES) · success (positive status)
+ *   • green  — yes (betting YES) ONLY. ⭐ `success` was SPLIT OFF on 2026-08-31 (Ali's
+ *     sign-off, DG-A-21): it now paints `--success-*`, the app-state family, because §B2a
+ *     forbids the betting ink on a non-money meaning and every console APPROVED/LIVE chip
+ *     was wearing it. ⚠️ `yes` now has ZERO call sites and is kept only as the betting name.
  *   • royal  — brand (brand accent) · active (enabled/on state)
  *   • gilt   — gold (earned/emphasis) · objection (objection window)
  *   • rose   — no (betting NO) · hot (the board's "hot" signal flag)
  * Distinct one-offs: live, resolved, pending, paused, claret, warning,
  * danger, info, signal, new. (`pending`/`info` are royal-adjacent but intentionally differ
- * in alpha/hue, so they are NOT merged.) Collapsing the semantic pairs at call
- * sites is a separate design decision — pending Ali's sign-off. */
+ * in alpha/hue, so they are NOT merged.) ✅ The green pair was collapsed on 2026-08-31 with
+ * Ali's sign-off (see below). ⚠️ The ROSE pair (`no` / `hot`) is UNCHANGED and both have zero
+ * call sites; splitting it was offered and not taken, so it stays one object. */
 const SLATE: React.CSSProperties = { background: "oklch(34% 0.09 268 / 0.5)",  color: "var(--text-muted)", borderColor: "var(--border)" };
 const GREEN: React.CSSProperties = { background: "oklch(52% 0.15 150 / 0.22)", color: "var(--yes-300)",    borderColor: "oklch(61% 0.16 150 / 0.5)" };
+/* ⭐ SPLIT FROM `GREEN` — Ali's sign-off, 2026-08-31 (DG-A-21). The note above deferred this,
+   arguing the pair "share ONE style object so the pair can never drift apart". Re-derived at
+   HEAD that argument had lost its ground: `variant="success"` has 13 call sites and
+   `variant="yes"` has **zero**, so the pairing was protecting a drift between a live variant
+   and a dead one — while every console APPROVED/LIVE chip painted `var(--yes-300)`, the ink
+   that means *a player's money is on this side of a market*. §B2a beneath §B11.
+   ⛔ AND IT ONLY BECAME WRITEABLE TODAY: `--success-500` existed at `globals.css:188` but was
+   not exposed as a utility, so nothing could spell the app-state green (fixed in the same
+   commit, held by `test:bridge` §9). The trio below is the SANCTIONED one — `globals.css:185`
+   records `--success-fg` on an 18% `--success` tint at **9.23:1**, well over §A1's 4.5 floor. */
+const SUCCESS: React.CSSProperties = { background: "var(--success-bg)", color: "var(--success-fg)", borderColor: "var(--success-border)" };
 const ROYAL: React.CSSProperties = { background: "oklch(54% 0.165 262 / 0.20)", color: "var(--brand-300)", borderColor: "oklch(63% 0.18 262 / 0.45)" };
 const GILT:  React.CSSProperties = { background: "oklch(72% 0.13 80 / 0.22)",  color: "var(--gold-300)",   borderColor: "oklch(80% 0.13 80 / 0.5)" };
 /* ROSE is `.chip-no`'s ink exactly. `.chip-hot-rose` was a byte-identical copy of
@@ -77,7 +92,7 @@ const variantStyle: Record<Variant, React.CSSProperties> = {
   neutral:   SLATE,
   cat:       SLATE,
   yes:       GREEN,
-  success:   GREEN,
+  success:   SUCCESS,
   brand:     ROYAL,
   active:    ROYAL,
   gold:      GILT,

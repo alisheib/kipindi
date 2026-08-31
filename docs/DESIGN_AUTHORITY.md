@@ -120,6 +120,7 @@ None of these is a rulebook. Each carries a header saying so.
 | File / tree | What it is | Read it when |
 |---|---|---|
 | `src/app/globals.css`, `motion.css` | **The implementation — the values themselves.** Outranks every doc | always, for a value |
+| [`docs/DESIGN-BASELINE.md`](DESIGN-BASELINE.md) | ⭐ **The state of the system after `DESIGN-GATE-2026-08-28` closed (2026-08-31): which guard holds which rule, what is deliberately left hand-typed and why, the blind spots no gate here can see, and how to add a guard.** A record and an on-ramp — ⛔ not law, and it restates no value | **first**, before adding any design work |
 | `docs/design-master-brief.md` | Palette **rationale** + ground-truth sRGB | you want to know *why* a hue |
 | `docs/design-system/README.md` | Index of the archive | you are looking for a delivered artefact |
 | `docs/design-system/v2-2026-07-27/**` | The **July 2026 designer delivery**, frozen | you need provenance or a preview |

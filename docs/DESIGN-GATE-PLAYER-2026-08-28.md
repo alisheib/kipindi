@@ -1,6 +1,14 @@
 # THE DESIGN GATE — Player surface · 2026-08-28
 
-**Programme key: `DESIGN-GATE-2026-08-28`** · sibling report: [DESIGN-GATE-ADMIN-2026-08-28.md](DESIGN-GATE-ADMIN-2026-08-28.md) · implementation task: [SESSION-PROMPT-DESIGN-GATE.md](SESSION-PROMPT-DESIGN-GATE.md)
+> ⚪ **SPENT — CLOSED 2026-08-31.** All 45 systems across both registers are ☑. This file is now
+> the MEASURED RECORD and nothing in it is an instruction any more: the work it asks for is done,
+> and several of its findings were overturned by re-derivation rather than fixed (each is struck
+> at its own entry). ⭐ For the state of the design system, what enforces it, and what is
+> deliberately left alone, read **[DESIGN-BASELINE.md](DESIGN-BASELINE.md)**.
+> ⛔ The implementation task file this header used to name (`SESSION-PROMPT-DESIGN-GATE.md`) was
+> DELETED on 2026-08-31 by the programme’s own closing ceremony — do not go looking for it.
+
+**Programme key: `DESIGN-GATE-2026-08-28`** · sibling report: [DESIGN-GATE-ADMIN-2026-08-28.md](DESIGN-GATE-ADMIN-2026-08-28.md) · outcome: [DESIGN-BASELINE.md](DESIGN-BASELINE.md)
 
 > **STATUS: RECORD, NOT RULE.** Laws live in [DESIGN_AUTHORITY.md](DESIGN_AUTHORITY.md); this file
 > records what was measured on production and what must change. §1 names existing kit/majority

@@ -4,6 +4,15 @@
 > under review and is DELETED after it is sent + the delivery is filed. It LINKS to live files —
 > it bundles nothing.
 
+> 🔴 **NEVER SENT — CONFIRMED BY ALI, 2026-08-31. ⛔ DO NOT DELETE THIS FOLDER.**
+> The Design Gate's closing ceremony says to delete this directory and its `.gitignore`
+> exception "once the round is sent". It was asked and the answer was that the round never went
+> out, so **this file is the only copy of the request** and deleting it would destroy the
+> commission rather than tidy up after it. The five decisions below are therefore still OPEN and
+> still unasked — they are not "unanswered", which is a different state and would license a
+> session to decide them by taste. ⚠️ A future session that reaches the ceremony must re-ask
+> before removing anything here.
+
 ## Who you are designing for
 50pick — a licensed Tanzanian real-money prediction platform. Single dark royal theme. The
 PLAYER surface has a finished, accepted design language (do not touch it; it is your reference:

@@ -1,6 +1,14 @@
 # THE DESIGN GATE — Admin console · 2026-08-28
 
-**Programme key: `DESIGN-GATE-2026-08-28`** · sibling report: [DESIGN-GATE-PLAYER-2026-08-28.md](DESIGN-GATE-PLAYER-2026-08-28.md) · implementation task: [SESSION-PROMPT-DESIGN-GATE.md](SESSION-PROMPT-DESIGN-GATE.md)
+> ⚪ **SPENT — CLOSED 2026-08-31.** All 45 systems across both registers are ☑. This file is now
+> the MEASURED RECORD and nothing in it is an instruction any more: the work it asks for is done,
+> and several of its findings were overturned by re-derivation rather than fixed (each is struck
+> at its own entry). ⭐ For the state of the design system, what enforces it, and what is
+> deliberately left alone, read **[DESIGN-BASELINE.md](DESIGN-BASELINE.md)**.
+> ⛔ The implementation task file this header used to name (`SESSION-PROMPT-DESIGN-GATE.md`) was
+> DELETED on 2026-08-31 by the programme’s own closing ceremony — do not go looking for it.
+
+**Programme key: `DESIGN-GATE-2026-08-28`** · sibling report: [DESIGN-GATE-PLAYER-2026-08-28.md](DESIGN-GATE-PLAYER-2026-08-28.md) · outcome: [DESIGN-BASELINE.md](DESIGN-BASELINE.md)
 
 > **STATUS: RECORD, NOT RULE.** Laws live in [DESIGN_AUTHORITY.md](DESIGN_AUTHORITY.md) — this file
 > records what was **measured on production** and what must change for the console to render as one
@@ -94,7 +102,7 @@ patching is listed only where no primitive exists.
   passed the guard while failing the acceptance criterion two lines above it. The gate is
   `npm run qa:admin-load`, it holds **every** admin route to 5,000 ms, and it carries a **floor
   route** so a slow network cannot be reported as a slow page. **The planner row in
-  [`SESSION-PROMPT-DESIGN-GATE.md`](SESSION-PROMPT-DESIGN-GATE.md) is the authority for this
+  the planner row (in the programme door file, DELETED 2026-08-31 at close — see [`DESIGN-BASELINE.md`](DESIGN-BASELINE.md)) was the authority for this
   system.**
 
 ---
@@ -262,7 +270,7 @@ Confirmed instances, each with one definition site that already exists:
 - **Measured:** every `AdminAreaChart`/`AdminStackedBars` renders in a 1200-wide viewBox with **`preserveAspectRatio="none"`** (admin-charts.tsx:95–96, 212) — axis glyphs squash horizontally at any width ≠ 1200 and vertically by height/240 (finance shots: y-labels ~7px equivalent, S-03 adjacent); stacked-bar legend prints raw provider ids (DG-A-13).
 - **Fix:** render text in a non-scaling layer (`vector-effect="non-scaling-stroke"` doesn’t cover text — draw axis labels as HTML overlay, or compute per-render width) — one component file.
 - **Guard:** `npm run qa:chart-axis` — 5 chart routes × 3 widths, asserting isotropy, a 10px effective floor in BOTH dimensions, no overlap, and nothing clipped by the card edge.
-- ⚪ **CORRECTED 2026-08-29 (`fdba7cad`), and the correction is the point.** *"and vertically by height/240"* above is **WRONG — `scaleY` is EXACTLY 1.0 on every chart measured**, because the viewBox height has always been the CSS height. The squash is purely horizontal (scaleX 0.44 at 1440, 0.60 at 1920, **0.257 at 390**). ⛔ A guard written to this entry's own wording — a font-size or a HEIGHT floor — would have passed the defect forever; what separates the two is the RATIO of the axes. The proposed remedy *"or compute per-render width"* was also declined: it needs a runtime measurement, and the HTML layer needs none. **The planner row in [`SESSION-PROMPT-DESIGN-GATE.md`](SESSION-PROMPT-DESIGN-GATE.md) is the authority for this system.**
+- ⚪ **CORRECTED 2026-08-29 (`fdba7cad`), and the correction is the point.** *"and vertically by height/240"* above is **WRONG — `scaleY` is EXACTLY 1.0 on every chart measured**, because the viewBox height has always been the CSS height. The squash is purely horizontal (scaleX 0.44 at 1440, 0.60 at 1920, **0.257 at 390**). ⛔ A guard written to this entry's own wording — a font-size or a HEIGHT floor — would have passed the defect forever; what separates the two is the RATIO of the axes. The proposed remedy *"or compute per-render width"* was also declined: it needs a runtime measurement, and the HTML layer needs none. **The planner row in the planner row (in the programme door file, DELETED 2026-08-31 at close — see [`DESIGN-BASELINE.md`](DESIGN-BASELINE.md)) was the authority for this system.**
 
 ---
 ### DG-A-16 · P2 — the card/panel system has three paddings, two dead classes and an inversion

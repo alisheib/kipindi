@@ -64,12 +64,29 @@ const TONE: Record<StatTone, string> = {
  * dialects that grew a bigger value also grew the gap under the label. */
 export type StatSize = "xs" | "sm" | "md" | "lg" | "xl" | "2xl" | "3xl";
 
+/**
+ * ⭐ DG-A-12/DG-P-05, RULED 2026-08-31 (Ali's call). Two of these seven rungs are now NAMED and
+ * five are hand-typed ON PURPOSE. The reasoning, so nobody sweeps them later:
+ *   · `sm` 14 → `text-body` and `xl` 18 → `text-title-sm` are the SAME px, so no figure moved.
+ *   · `md` 15, `lg` 17 and `3xl` 24 are `--type-body`, `--type-h4` and `--type-h2` — rungs of
+ *     the OTHER ladder (§T7), reached from a `.tsx` file that cannot reach it. Moving them to
+ *     the nearest Tailwind rung would break alignment with everything `globals.css` sizes from
+ *     those tokens, and 15 and 17 are each EQUIDISTANT from two rungs — a tie is not a design
+ *     call. They stay.
+ *   · `xs` 13.5 and `2xl` 21 are off BOTH ladders and are the only real open sizes. `xs` is the
+ *     DEFAULT rung and 35 of this component's 65 call sites pass money, so moving it repaints
+ *     money across wallet, admin/finance and positions/performance at once. Left, deliberately,
+ *     as a named exception rather than swept.
+ * ⚠️ A rung is a TUPLE — it also sets letter-spacing and line-height. `lead` overrides the
+ * line-height below, and `money` forces `letterSpacing: normal` (§M4), so the two renames above
+ * are inert on money figures and cost -0.05px/-0.36px of tracking on non-money ones.
+ */
 const SIZE: Record<StatSize, { text: string; face: "mono" | "display"; lead: string; gap: string; hint: string }> = {
   /* the kit's own rung */                    xs:    { text: "text-[13.5px]", face: "mono",    lead: "leading-tight",   gap: "",        hint: "text-body-sm" },
-  /* wallet SubStat */                        sm:    { text: "text-[14px]",   face: "mono",    lead: "leading-tight",   gap: "",        hint: "text-body-sm" },
+  /* wallet SubStat */                        sm:    { text: "text-body",     face: "mono",    lead: "leading-tight",   gap: "",        hint: "text-body-sm" },
   /* admin/payments Stat */                   md:    { text: "text-[15px]",   face: "mono",    lead: "leading-tight",   gap: "",        hint: "text-body-sm" },
   /* activity MoneyTile */                    lg:    { text: "text-[17px]",   face: "display", lead: "leading-tight",   gap: "mt-1",    hint: "text-[10px]" },
-  /* profile Stat · markets KPI · perf Stat */xl:    { text: "text-[18px]",   face: "display", lead: "leading-tight",   gap: "mt-1",    hint: "text-[10px]" },
+  /* profile Stat · markets KPI · perf Stat */xl:    { text: "text-title-sm", face: "display", lead: "leading-tight",   gap: "mt-1",    hint: "text-[10px]" },
   /* performance Kpi */                       "2xl": { text: "text-[21px]",   face: "mono",    lead: "leading-none",    gap: "mt-1.5",  hint: "text-[10px]" },
   /* invite Kpi */                            "3xl": { text: "text-[24px]",   face: "mono",    lead: "leading-none",    gap: "mt-1.5",  hint: "text-body-sm" },
 };
