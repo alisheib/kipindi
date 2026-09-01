@@ -75,6 +75,7 @@ plants the defect on a COPY of the tree and proves the gate fails **on its own a
 | `test:ui-consistency` | per-rule component conventions | baseline |
 | `test:eyebrow-roles` | every uppercase-and-tracked site is `.eyebrow` or has its role written down | census must total exactly |
 | `test:chip-contract` · `test:motion-ladder` · `test:reduce-motion` · `test:stacking` · `test:dead-css` | chips, motion tokens, §M6, z-order, unused CSS | — |
+| `qa:fit` (live) · `test:popup-fit` | **§M4a — text fits its container, and a clipped NUMBER is a wrong number.** ⚠️ Added by a parallel programme on 2026-09-01, after this file was first written; listed here so the table stays the one place that answers *"what holds this rule?"* | `red:header-fit` |
 
 ### ⛔ If you add a guard, it must state three things or it is not a guard
 1. its **re-derived population** (what the FULL set is, and how you know your matcher reaches it),
