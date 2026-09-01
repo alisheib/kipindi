@@ -1997,6 +1997,12 @@ hundreds. §T5 puts every numeral in mono; **§M4 governs amounts only.**
 and player routes at 320/360/430/1280, **37,127 text leaves**, 415 intentional truncations
 excluded, **255 defect instances in 12 component signatures**.
 
+✅ **CLOSED at 14 instances in 1 signature**, re-measured on production at `39fe2419` — and the
+one that remains is the filed header finding at the bottom of this section, which needs a design
+decision rather than a fix. ⚠️ Both numbers are from the same instrument AFTER its three
+corrections below; the first run's figure is not comparable to a pre-correction one, which is why
+the corrections are recorded here rather than tidied away.
+
 **The four rules, each written from a defect the sweep found:**
 
 1. ⛔ **`min-w-0` IS PERMISSION TO DISAPPEAR, NOT A REQUEST FOR SPACE.** A `shrink-0` action side
