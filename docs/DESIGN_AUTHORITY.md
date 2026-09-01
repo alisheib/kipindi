@@ -2032,6 +2032,17 @@ past the 48-char slice the measurement stores: the control was broken, not the s
 reporting zero is worth nothing until it has been shown to detect one.
 ⚠️ `FIT_ROUTES` needs `MSYS_NO_PATHCONV=1` under Git Bash, or a leading-slash value becomes a
 Windows path, every route silently skips, and the run prints a clean **"0 defects"**.
+⚠️ And it must not RACE the product: measuring 180ms after `networkidle` caught the live ticker
+mid-hydration, before its wrapper carried the marker class, and reported one shell element as 14
+identical escapes. 700ms. An instrument that races the product measures a frame, not a layout.
+
+**⏳ FILED, NOT FIXED — the signed-in shell header is 21px wider than a 320px viewport.**
+`body` carries `overflow-x: clip`, so the excess is **clipped rather than scrollable** and the
+header crest button is cut by ~8px on the narrowest phones. ⚠️ It reproduces **only with a
+session** — an unauthenticated probe of the same page finds nothing, which is why it survived
+earlier responsive passes. Recovering those pixels means changing padding or gaps on the header
+every page shares, on a live money platform: **a design call, not a bug fix's**, and it needs
+Ali rather than a session.
 
 ### M5 — A glyph moves for a reason, and all 178 move the same way
 

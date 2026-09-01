@@ -450,11 +450,15 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
             </div>
 
             {/* Vote stats — rank only */}
-            <div className="flex gap-2.5">
+            {/* ⛔ `min-w-0` + WRAP — `flex-1` alone cannot shrink a tile below its own min-content,
+                and "Downvotes" with its icon sets a floor three tiles cannot meet at 320. `qa:fit`
+                caught the VALUE escaping the viewport there, and by §M4a a cut numeral is a
+                misreported figure, not a cosmetic clip. The row wraps rather than compressing. */}
+            <div className="flex flex-wrap gap-2.5">
               {[["Upvotes", sel.up, "var(--text)", I.chevronUp], ["Downvotes", sel.down, "var(--claret-300)", I.chevronDown], ["Score", sel.score, "var(--text)", I.fileText]].map(([l, v, col, Ic]) => {
                 const Icon = Ic as (typeof I)[keyof typeof I];
                 return (
-                  <div key={l as string} className="flex-1 rounded-md bg-bg-overlay p-3">
+                  <div key={l as string} className="flex-1 min-w-0 basis-[7rem] rounded-md bg-bg-overlay p-3">
                     <div className="flex items-center gap-1"><Cap><span className="inline-flex items-center gap-1"><Icon s={11} />{l as string}</span></Cap></div>
                     <div className="mt-1 font-mono text-[19px] font-bold" style={{ color: col as string }}>{v as number}</div>
                   </div>
