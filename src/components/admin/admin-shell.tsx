@@ -611,7 +611,14 @@ export function FeedRow({
       >
         {category}
       </span>
-      <span className="flex-1 min-w-0 text-text truncate">{body}</span>
+      {/* ⛔ `title` WHEN THE BODY IS A STRING. `qa:fit` measured this at 121px holding 256px on
+          /admin/live — 90 rows of the live event feed, each losing its tail with no way back
+          ("market.position.opened · Position pos_d1ed12f4" cut mid-id). DG-A-10's ruling is that
+          truncation is a legitimate choice PAIRED with `title`; alone it is just loss.
+          ⚠️ `body` is a ReactNode, so the attribute is set only when it is genuinely a string —
+          `String(someNode)` would write "[object Object]" into the tooltip, which is worse than
+          having none. A node body keeps today's behaviour. */}
+      <span className="flex-1 min-w-0 text-text truncate" title={typeof body === "string" ? body : undefined}>{body}</span>
     </div>
   );
 }

@@ -130,7 +130,12 @@ const MEASURE = () => {
       if (acs.animationName && acs.animationName !== "none") { excused = true; break; }
       if (/ticker|marquee/i.test(a.getAttribute("class") || "")) { excused = true; break; }
     }
-    if (excused) out.excused++;
+    // ⚠️ COUNT ONLY WHAT THE EXCLUSION ACTUALLY SUPPRESSED. This first counted every element that
+    // merely LIVES inside a scroller or marquee, and reported "22,135 excused" against 37,684
+    // measured — a number that reads as "the instrument is hiding 22k defects" when almost none of
+    // them were escaping in the first place. An exclusion's honest size is how many findings it
+    // removed, not how many nodes it passed over.
+    if (excused && rect.right - vw > 1) out.excused++;
     const esc = excused ? 0 : Math.round(rect.right - vw);
 
     const row = { text: text.slice(0, 48), sig: sig(el), box: w, content: el.scrollWidth, over: overX };
@@ -169,7 +174,12 @@ for (const r of ROUTES) {
     catch { skipped++; continue; }
     if (!res || !res.ok()) { skipped++; continue; }
     await page.waitForLoadState("networkidle", { timeout: 8_000 }).catch(() => {});
-    await page.waitForTimeout(180);
+    // ⚠️ 700ms, not 180. The live ticker mounts after hydration, and measured too early its items
+    // sit outside a wrapper that does not yet carry the marker class — so the marquee escaped every
+    // exclusion and was reported as 14 identical "escapes" across 14 routes, on a shell element that
+    // is fine. A probe with a longer settle found nothing on the same page. An instrument that races
+    // the product measures a frame, not a layout.
+    await page.waitForTimeout(700);
     // ⛔ THE CONTROL. A sweep that reports "0 defects" is worthless until it has been shown to
     // detect one, and this file has already produced two rounds of confident false POSITIVES
     // (table cells in a scroller, then a marquee mid-flight) — the same instrument can just as
