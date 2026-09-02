@@ -78,12 +78,10 @@ export function RowCheck({ marketId, title }: { marketId: string; title: string 
 export function RowVerdict({
   marketId,
   verdict,
-  threshold,
   canOverride,
 }: {
   marketId: string;
   verdict: BulkVerdictView;
-  threshold: number;
   /** Does THIS officer hold the compliance grant the override needs? When false the row
    *  states the refusal and offers no box — a control that bounces is worse than a locked
    *  one, and pressing it writes a privilege-escalation row against an honest officer. */
@@ -92,7 +90,9 @@ export function RowVerdict({
   const { selected } = useBulkSelection();
   const on = selected.has(marketId);
   const reason = verdict.reason;
-  const detail = bulkReasonDetail({ ...verdict, threshold });
+  // ⛔ `verdict.threshold`, not a prop. The floor is a PER-MARKET config value, so the row
+  // states the one it was actually refused against.
+  const detail = bulkReasonDetail(verdict);
   const chip = reason ? BULK_REASON[reason] : null;
   const needsOverride = on && !verdict.eligible && verdict.overridable;
 
