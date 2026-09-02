@@ -120,9 +120,25 @@ try {
     process.exit(1);
   }
 
-  const deployed = m.itemH === 44;
+  /**
+   * ⛔ THE KIT HAS TWO RAIL RUNGS, AND THIS DETECTOR KNEW ONLY ONE — SO IT CRIED WOLF.
+   *
+   * 44px is the LINE variant (§K rule 7c's section rail, `--h-control-md`). The CAPSULE variant
+   * is 40px on purpose: `--tap-min`, the chip language every filter rail in the console already
+   * wears. When `/admin/sources` took a capsule filter on 2026-09-02 this printed *"🔴 OLD build
+   * … the numbers below are NOT a result"* over a rail that was correctly deployed and whose
+   * numbers were perfectly good — 8/8 reachable, one `aria-current`.
+   *
+   * ⭐ That is the worse failure of the two directions. A guard that cries wolf teaches the next
+   * person to read past it, and the next thing they read past will be real. The rungs are named
+   * here rather than widened to "any height": a rail at 32px is still an old build, and the
+   * message now says WHICH rung it matched so the reader is never guessing.
+   */
+  const RAIL_RUNGS = { 44: "line · section rail", 40: "capsule · filter rail" };
+  const rung = RAIL_RUNGS[m.itemH];
+  const deployed = !!rung;
   console.log(`\n${ROUTE}  @${W}`);
-  console.log(`  DEPLOY        item ${m.itemH}px → ${deployed ? "NEW build" : "🔴 OLD build (the kit rung is 44) — the numbers below are NOT a result"}`);
+  console.log(`  DEPLOY        item ${m.itemH}px → ${deployed ? `NEW build (${rung})` : "🔴 OLD build (the kit rungs are 44 line / 40 capsule) — the numbers below are NOT a result"}`);
   console.log(`  rail          ${m.scrollW}px in ${m.clientW}px (${m.pct}%) · overflow ${m.overflowX}/${m.overflowY} · scrollx ${m.scrollx}`);
   console.log(`  active        "${m.activeLabel}" · scrollLeft ${m.scrollLeft} · fully visible ${m.activeFullyVisible}`);
   console.log(`  announced     aria-current="page" ×${m.ariaCurrent}`);
