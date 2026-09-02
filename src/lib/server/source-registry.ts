@@ -191,7 +191,18 @@ export function normalizeDomain(input: string): string {
     .replace(/^www\./, "");
 }
 
-export async function addSource(input: Omit<TrustedSource, "id" | "addedAt" | "enabled"> & { enabled?: boolean }): Promise<TrustedSource> {
+/**
+ * @param meta AUDIT-ONLY facts about how this source came to be added. ⛔ It is a SECOND
+ * parameter rather than another field on `input`, and that is load-bearing: `input` is
+ * spread verbatim into the stored row, so anything added there becomes a column-shaped
+ * value in the registry itself. What the AI's fetcher could see at 01:00 on one Tuesday is
+ * an event, not a property of the domain — it belongs in the append-only chain, where it is
+ * stamped with a time, and nowhere else. (E-254)
+ */
+export async function addSource(
+  input: Omit<TrustedSource, "id" | "addedAt" | "enabled"> & { enabled?: boolean },
+  meta?: { aiReachable?: "reachable" | "blocked" | "unknown"; acknowledgedUnreachable?: boolean },
+): Promise<TrustedSource> {
   const row: TrustedSource = {
     id: `src_${randomId(8)}`,
     addedAt: new Date().toISOString(),
@@ -206,7 +217,15 @@ export async function addSource(input: Omit<TrustedSource, "id" | "addedAt" | "e
     actorId: input.addedBy,
     targetType: "TrustedSource",
     targetId: row.id,
-    payload: { domain: row.domain, category: row.category },
+    // ⛔ `acknowledgedUnreachable` IS THE ONE THAT MATTERS TO A REGULATOR. It records that the
+    // console told an operator this host cannot be read by the AI and the operator chose it
+    // anyway — the difference between an oversight and a decision.
+    payload: {
+      domain: row.domain,
+      category: row.category,
+      aiReachable: meta?.aiReachable ?? null,
+      acknowledgedUnreachable: meta?.acknowledgedUnreachable ?? false,
+    },
   });
   return row;
 }

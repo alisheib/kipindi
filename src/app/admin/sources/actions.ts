@@ -14,6 +14,7 @@ import {
   normalizeDomain,
 } from "@/lib/server/source-registry";
 import type { MarketCategory } from "@/lib/server/market-service";
+import { probeDomainReachable, reachabilityRefusal } from "@/lib/server/source-reachability";
 import { requireStaff } from "@/lib/server/rbac-guard";
 
 // RBAC: authorization is data-driven — requireStaff checks this role's canAct for the
@@ -35,7 +36,14 @@ async function ensureAdmin() {
  *
  * ⛔ NOT exported — a `"use server"` module may only export async functions.
  */
-type AddSourceResult = { ok: true } | ActionFailure;
+/**
+ * ⛔ WIDENED HERE, NOT ON `ActionFailure`. `needsAck` is the one refusal an operator is meant
+ * to be able to overrule, and it exists for exactly one form. Putting it on the shared type
+ * would offer "you may proceed anyway" to all 34 admin actions that return `ActionFailure`,
+ * several of which move money — a concept is much harder to take back off a shared surface
+ * than to add to one. (E-254)
+ */
+type AddSourceResult = { ok: true } | (ActionFailure & { needsAck?: boolean });
 
 export async function addSourceAction(formData: FormData): Promise<AddSourceResult> {
   const session = await ensureAdmin();
@@ -61,8 +69,36 @@ export async function addSourceAction(formData: FormData): Promise<AddSourceResu
     const firstEmpty = !domain ? "domain" : !label ? "label" : "rationale";
     return fieldError(firstEmpty, "Domain, label and rationale are required.");
   }
+  /**
+   * E-254 · CAN THE AI ACTUALLY READ THIS SITE? Asked HERE, at the operator's decision
+   * point, rather than at resolve time weeks later on somebody else's market.
+   *
+   * ⛔ THE PROBE REFUSES ONCE AND THEN GETS OUT OF THE WAY. `bbc.com` and `reuters.com`
+   * block Anthropic's crawler and are exactly what an operator would add for a news market;
+   * deleting them from the platform to fix a silence would be the worse trade. So the first
+   * attempt is refused with the consequence spelled out, and a second attempt carrying
+   * `acknowledgeUnreachable` proceeds and is recorded as a DECISION in the audit chain.
+   *
+   * ⛔ AND IT FAILS OPEN. `unknown` — no API key, a blip, a rate limit — PROCEEDS. A source
+   * registry that quietly stops accepting sources whenever Anthropic is unwell is a worse
+   * defect than the one this closes, and it would present to an operator as a dead button.
+   */
+  /* ⛔ PROBED EVEN WHEN ACKNOWLEDGED, and this is not a wasted call. Skipping the probe on
+     the second attempt would mean writing `aiReachable: "blocked"` into an append-only chain
+     on the strength of a FORM FIELD the client chose — and a client that always sets the flag
+     (or a forged post) would file "blocked" against a perfectly reachable host. The
+     acknowledgement decides whether we REFUSE; it is never evidence of what was measured. */
+  const acknowledged = String(formData.get("acknowledgeUnreachable") ?? "") === "true";
+  const reach = await probeDomainReachable(domain);
+  if (!acknowledged && reach.state === "blocked") {
+    return { ...fieldError("domain", reachabilityRefusal(domain)), needsAck: true };
+  }
+
   try {
-    await addSource({ domain, label, category, rationale, addedBy: session.userId });
+    await addSource(
+      { domain, label, category, rationale, addedBy: session.userId },
+      { aiReachable: reach.state, acknowledgedUnreachable: acknowledged },
+    );
     revalidatePath("/admin/sources");
     return { ok: true as const };
   } catch (err) {
