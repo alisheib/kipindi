@@ -67,8 +67,8 @@ plants the defect on a COPY of the tree and proves the gate fails **on its own a
 | `test:bridge` | a class must RESOLVE; `cn()` knows every rung; **§9 every app-state token the stylesheet defines is spellable as a utility** | §9.3 + manual RED |
 | `test:cn-collision` | `cn()` cannot delete a class it does not recognise | `red:cn-collision` |
 | `test:validation-focus` | a refusal can name its field; the helper goes to the right place; **§4 every literal address a refusal names is actually rendered** | `red:validation-focus` |
+| `test:unsaved-changes` | **every admin component that renders a control someone can TYPE INTO** either guards its three exits or is NAMED exempt with a reason. ⭐ Rebuilt 2026-09-02: it used to select files that already computed a `dirty`, so a form was invisible to it **precisely because it was unprotected** — a true measurement of the wrong set. Lands at **zero**, not a ratchet of debt. | `red:unsaved-changes` (6 cases) |
 | `test:section-rail` | every rail of destinations names the one in force | `red:section-rail` |
-| `test:unsaved-changes` | a dirty form cannot be navigated away from silently | `red:unsaved-changes` |
 | `test:contrast` | §A1, scored on the RENDERED ink (`token × alpha × opacity`), composited in gamma sRGB | `red:contrast`, `red:contrast-rendered` |
 | `test:design-frozen` | no hand-typed edge/shadow/radius beside a token | ratchet |
 | `test:tokens` · `test:design-one-door` | one definition site per token; one door into the system | `red:tokens` |
@@ -89,6 +89,65 @@ future site in that file.
 
 ---
 
+## 3b. THE CONSOLE'S SHAPE — what `ADMIN-TABS-2026-09-01/02` settled
+
+**Ten admin pages carry a rail** (`/admin/payments` · `reports` · `system` · `roles` ·
+`ai-usage` · `ai-polls` · `finance` · `updown` · `config` · `sources`). Tab state is a URL
+fact, so it survives a refresh, a Back and a shared link — and `qa:tab-candidates` /
+`qa:chaos` DISCOVER a page's tabs off the rendered `data-section-rail` rather than any list.
+
+### The four rules that cost the most to learn
+
+1. **A page earns a rail on its SECTION COUNT, never its length.** `qa:tab-candidates`
+   measures the one mechanical part (§K 7a ①: no panel over ~40% of docH); ② and ③ are
+   judgement. `/admin/markets` and `/admin/updown/proposals` are 86% and 85% one panel —
+   **a page with one section has nothing to tab**, and refusing them is the rule working.
+   ⚠️ `/admin/updown` is railed while FAILING ①, with the arithmetic stated in its own
+   comment: the landing stays ~6,000px, and what the rail buys is reachability, not length.
+
+2. **⛔ NOTHING LOAD-BEARING BEHIND A CLICK (§K 7d ③), and this is where tabs BREAK things.**
+   Three deep links pointed at ids that moved onto tabs. A remedy button that scrolls to
+   nothing is worse than no button, and none of it is visible to `tsc`:
+   · `aiBudgetRefusal` → `#ai-credit-budget`, now `?tab=settings#…`;
+   · `BatchGenerateForm` → `#ai-polls-pending`, now switches tabs before revealing;
+   · the paused-cycle gate `#ai-cycle-gate` is kept ABOVE the rail on every tab instead.
+   ⭐ **Before railing a page, grep its `id="…"` anchors for who links to them.**
+
+3. **The underline is the SECTION language; the capsule is the FILTER language (§K 7c).**
+   `/admin/sources` is one card shape repeated once per category — subsets of one list, not
+   parts of a document — so it takes a capsule. ⚠️ A filter's default is "All", so its
+   default height is unchanged; the win is one click instead of a scroll past eleven.
+
+4. **A landing tab must always paint.** `/admin/ai-polls` cannot land on its queue: both
+   queue cards are `{list.length > 0 && …}`, so a quiet morning would open on a blank page.
+
+### The tab's own states, and why
+
+🔴 Hover and active both resolved to `--text` until 2026-09-02 — **a rail whose selected
+state a mouse can imitate has to be re-read to be trusted.** Hover now takes a SURFACE
+(`--bg-overlay`, the kit's shipped hover-down token) rather than more ink, and the underline
+PREVIEWS itself on hover in `--border-strong` — a non-brand ink, so a preview can never be
+read as a selection. ⚠️ Colour deliberately does not transition: `.m-indicator` sets
+`transition-property: transform`, and `transition-colors` would REPLACE that list, not extend
+it, snapping the scale that is the actual motion.
+
+### Pending changes — two surfaces, one signal
+
+`PendingChangesBar` (proactive, says the work exists) + `UnsavedChangesGuard` (catches the
+three exits: tab close, in-app link — **a rail tab is an in-app link** — and the kit dialog).
+⛔ **The bar is a SINGLETON.** Every instance is `fixed bottom-0`, five files render two or
+three, and two dirty forms painted two bars in the same pixels while the page reserved the
+height of one. The lowest-id instance paints, showing the most recently dirtied entry and a
+count of the rest. `qa:pending-bar` ⑥ counts bars in the DOM, because two bars at identical
+coordinates look exactly like one in a screenshot.
+
+⛔ **A POPOVER IS NOT A MODAL.** A `Modal` earns its exemption by painting a `fixed inset-0`
+scrim, so a click aimed at the sidebar hits the scrim. A bare `absolute` panel with a Cancel
+button looks identical to a reader and blocks nothing — the sidebar, the tabs and every row
+link stay live through it. An earlier triage exempted five files as "modal-scoped" that
+contain no `<Modal>` at all; it keyed on a spelling this codebase does not use there.
+
+---
 ## 4. DELIBERATELY LEFT — do not "fix" these without reading why
 
 - **`ui/stat.tsx`'s size dictionary.** Five of seven rungs are hand-typed on purpose: 15 · 17 ·
@@ -168,6 +227,11 @@ one machine and is gone the moment anyone else pulls (this cost the programme tw
 `qa:dg-measure` (⚠️ `SURFACE=player ANON=1` drives the 17 public routes with no login) ·
 `qa:dg-shell` · `qa:dg-rail` (⛔ **requires `ROUTE=`**; on Git Bash prefix `MSYS_NO_PATHCONV=1`) ·
 `qa:dg-type` · `qa:dg-money` · `qa:dg-eyebrow` · `qa:dg-rhythm` · `qa:toggle-hit` ·
+`qa:tab-candidates` (which pages earn a rail — measures 7a ① and REPORTS what it could not see) ·
+`qa:pending-bar` (⛔ needs `ROUTE=`/`FIELD=`; `FIELD_B=` is a second field in a DIFFERENT form,
+which is what proves the bar is a singleton — ⚠️ it must be a VISIBLE input, the kit's `<Select>`
+keeps its value in a hidden one) · `qa:chaos` (geometry at 320/360/390/768/1440/2560; it
+DISCOVERS each page's tabs off the rendered rail and FAILS on any view it could not measure) ·
 `qa:dg-redo <admin|player>` after every drive · `qa:personas` to prove a login before trusting a
 drive.
 

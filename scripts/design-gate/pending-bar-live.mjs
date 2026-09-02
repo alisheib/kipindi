@@ -148,8 +148,22 @@ for (const { w, h } of WIDTHS) {
     if (!(await second.count())) {
       console.log(`  ⑥ one bar only     · no [name="${FIELD_B}"] on this page — not applicable`);
     } else {
-      // The field may be a <select>; choosing a different option is its edit.
+      /* ⛔ A HIDDEN INPUT IS NOT A FIELD, AND THIS DRIVE HUNG ON ONE FOR 60 SECONDS. The kit's
+         `<Select>` is a custom listbox that carries its value in `<input type="hidden">`, so
+         `[name="model"]` resolves to something `fill()` can never make visible — Playwright
+         retried 119 times and then threw, killing the run after five assertions had already
+         passed. ⭐ Named and refused, not skipped silently: a FIELD_B that cannot be typed into
+         is a mis-configured drive, and it should say so in one line. */
+      const hidden = await second.evaluate((el) => el.type === "hidden" || el.offsetParent === null);
+      if (hidden) {
+        console.log(`  ⑥ one bar only     🔴 [name="${FIELD_B}"] is a hidden input (a kit <Select> keeps its value in one) — pick a visible field in a DIFFERENT form`);
+        bad++;
+        await ctx.close();
+        continue;
+      }
+      // The field may be a native <select>; choosing a different option is its edit.
       const tag = await second.evaluate((el) => el.tagName);
+      const secondOriginal = await second.inputValue();
       if (tag === "SELECT") {
         const picked = await second.evaluate((el) => {
           const opts = [...el.options].map((o) => o.value);
@@ -157,7 +171,7 @@ for (const { w, h } of WIDTHS) {
         });
         if (picked) await second.selectOption(picked);
       } else {
-        await second.fill(`${await second.inputValue()}1`);
+        await second.fill(`${secondOriginal}1`);
       }
       await page.waitForTimeout(700);
       const m2 = await page.evaluate(() => {
@@ -168,6 +182,15 @@ for (const { w, h } of WIDTHS) {
       const counted = /\+\s*\d+\s+more unsaved/i.test(m2.text);
       console.log(`  ⑥ one bar only      bars in DOM ${m2.count} · says "+N more": ${counted ? "yes" : "no"}  ${single && counted ? "✓" : "🔴 TWO BARS STACKED, or the others are not counted"}`);
       if (!single || !counted) bad++;
+
+      /* ⛔ PUT THE SECOND FIELD BACK BEFORE ③ RUNS, or this drive convicts the product of its
+         own mess. ③ asserts the bar is GONE once the edit is undone — it restores `FIELD`, and
+         with `FIELD_B` still dirty in another form the bar correctly stays up, which ③ then
+         reports as *"this is a `touched` flag, not a comparison"*. That reading was false and
+         the bar was right: a drive that leaves state behind writes its own failures. */
+      if (tag === "SELECT") await second.selectOption(secondOriginal).catch(() => {});
+      else await second.fill(secondOriginal);
+      await page.waitForTimeout(400);
     }
   }
 
