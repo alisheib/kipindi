@@ -1037,5 +1037,32 @@ const V = (m: VerdictMarket, over: Partial<Parameters<typeof bulkVerdictFor>[0]>
      armOf(page) === armOf(action) ? "identical" : `page: ${armOf(page).slice(0, 120)}\n         action: ${armOf(action).slice(0, 120)}`);
 }
 
+// ── 18 · THE QUEUE'S READ IS BOUNDED BY ITS OWN RESULT (E-252) ───────────────
+/**
+ * 🔴 THE DEFECT. `resolver-queue/page.tsx` called `listMarkets()` with NO filter — every
+ * non-demo MARKET-line row including RESOLVED and VOIDED — and narrowed to two statuses in
+ * JavaScript. The cost was O(every market ever run) to produce O(pending), and the RESOLVED
+ * bucket grows for ever. The index it needed already existed, unused:
+ * `@@index([productLine, status, resolutionAt])`.
+ *
+ * ⛔ THIS IS A SOURCE ASSERTION AND IT IS HONEST ABOUT THAT. It proves the READ was pushed
+ * down; it cannot prove the query PLAN. `EXPLAIN` needs production credentials, which CI
+ * does not have and which this machine does not have either — so the row count is
+ * deliberately not quoted anywhere in this change.
+ */
+{
+  const page = read("src/app/admin/resolver-queue/page.tsx");
+
+  ok("18.1 the queue asks for the two statuses it renders",
+     /listMarkets\(\{ status: "CLOSED" \}\)/.test(page) && /listMarkets\(\{ status: "LIVE" \}\)/.test(page));
+  /* ⛔ THE ONE THAT ACTUALLY CATCHES A REGRESSION. 18.1 stays green if somebody re-adds an
+     unfiltered read BESIDE the two filtered ones — which is exactly how this comes back,
+     as a "just for the counts" convenience. A bare `listMarkets()` must not exist here. */
+  ok("18.2 …and NO unfiltered whole-table read survives on this page",
+     !/listMarkets\(\)/.test(page), "a bare listMarkets() is back on the resolver queue");
+  ok("18.3 both reads share ONE failure path, so half a queue is never shown as the whole one",
+     /Promise\.all\(\[[\s\S]{0,200}?\]\)\.catch\(/.test(page) && /marketsFailed = true;/.test(page));
+}
+
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

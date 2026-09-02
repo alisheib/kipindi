@@ -323,4 +323,25 @@ export const MUTATIONS = [
     from: `  const detail = bulkReasonDetail(verdict);`,
     to: `  const detail = bulkReasonDetail({ ...verdict, threshold: 90 });`,
   },
+
+  /* ── E-252 · the queue's read is bounded by its own result ──────────────────
+     ⛔ THE SECOND CASE IS THE ONE THAT MATTERS. The whole-table read does not come back as
+     a deletion of the filters — it comes back as an unfiltered call added BESIDE them, for
+     a count or a total, by someone who never sees that it costs the entire table. */
+  {
+    name: "🔴 the queue reads every market ever again instead of the two statuses it renders",
+    file: PAGE,
+    expect: "18.1 the queue asks for the two statuses it renders",
+    from: `    listMarkets({ status: "CLOSED" }),`,
+    to: `    listMarkets(),`,
+  },
+  {
+    name: "🔴 an unfiltered read is added BESIDE the filtered ones (the 'just for the counts' regression)",
+    file: PAGE,
+    expect: "18.2 …and NO unfiltered whole-table read survives on this page",
+    from: `  type MarketRows = Awaited<ReturnType<typeof listMarkets>>;`,
+    to: `  type MarketRows = Awaited<ReturnType<typeof listMarkets>>;
+  const everyMarketEver = await listMarkets();
+  void everyMarketEver;`,
+  },
 ];

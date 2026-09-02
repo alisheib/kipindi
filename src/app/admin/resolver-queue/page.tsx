@@ -101,8 +101,42 @@ export default async function ResolverQueuePage({
   // A-5: distinguish a FAILED market read from a genuinely-clear queue, so a
   // backend error never renders "Queue is clear" and hides pending settlements.
   let marketsFailed = false;
-  const allMarkets = await listMarkets().catch(() => { marketsFailed = true; return []; });
-  const pending = allMarkets.filter((m) => {
+  /**
+   * E-252 · TWO INDEXED READS, NOT ONE WHOLE-TABLE READ.
+   *
+   * 🔴 This was `listMarkets()` with NO filter: every non-demo MARKET-line row — LIVE,
+   * CLOSED, **RESOLVED and VOIDED** — pulled into Node and narrowed to two statuses in
+   * JavaScript. The queue's cost was O(every market this platform has ever run) while its
+   * result is O(pending), and the RESOLVED bucket is the one that grows for ever.
+   *
+   * ⭐ The index it needs already existed and was unused: `@@index([productLine, status,
+   * resolutionAt])`. `listBoard` pushes `status` into the WHERE and orders by
+   * `resolutionAt`, so each of these two calls is an index range scan and the terminal rows
+   * never leave the database.
+   *
+   * ⚠️ THE ROW COUNT IS DELIBERATELY NOT QUOTED HERE. The session-76 handoff carried `53`
+   * and an older one `27,764`; neither was re-derived, and this machine has no production
+   * credentials to re-derive from. The justification is the SHAPE — a read whose cost is
+   * unbounded by its own result — which is true at any count.
+   *
+   * ⛔ CONCATENATING TWO SORTED LISTS IS SAFE ONLY BECAUSE `compareBy` IS TOTAL, which is
+   * not an accident: `bulk-resolve.test.mts` §15.1 asserts every comparator sorts identical
+   * rows identically whatever the input order, precisely so pagination cannot lose a row.
+   * If that ever stops being true, this concatenation changes which markets are on page 2.
+   */
+  type MarketRows = Awaited<ReturnType<typeof listMarkets>>;
+  const [closedRows, liveRows] = await Promise.all([
+    listMarkets({ status: "CLOSED" }),
+    listMarkets({ status: "LIVE" }),
+  ]).catch((): [MarketRows, MarketRows] => {
+    // A-5, UNCHANGED: distinguish a FAILED read from a genuinely-clear queue, so a backend
+    // error never renders "Queue is clear" over pending settlements. ⛔ ONE catch across
+    // BOTH reads on purpose — if either half fails the queue is incomplete, and a page that
+    // silently showed only the CLOSED half would be the A-5 defect wearing a new shape.
+    marketsFailed = true;
+    return [[], []];
+  });
+  const pending = [...closedRows, ...liveRows].filter((m) => {
     const due = Date.parse(m.resolutionAt);
     if (m.status === "CLOSED") return true;
     if (m.status === "LIVE") return windowMs === Infinity || due - now < windowMs;
