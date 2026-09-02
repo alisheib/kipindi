@@ -98,7 +98,7 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
                     <tr key={e.id}>
                       <td className="font-mono text-text-muted">{e.contactValue}</td>
                       <td className="text-text-subtle">{e.contactType === "EMAIL" ? "Email" : "Phone"}</td>
-                      <td className="text-right font-mono text-text">{formatTzs(e.bonusAmountTzs)}</td>
+                      <td className="text-right font-mono tabular text-text">{formatTzs(e.bonusAmountTzs)}</td>
                       <td className="font-mono text-text-subtle whitespace-nowrap">{e.sentAt ? formatDateShort(e.sentAt) : "—"}</td>
                       <td><Chip size="sm" variant={ENTRY_CHIP[e.status] ?? "paused"}>{e.status.toLowerCase()}</Chip></td>
                     </tr>

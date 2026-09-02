@@ -125,9 +125,26 @@ const probe = () => {
     const cs = getComputedStyle(el);
     if (cs.display === "none" || cs.visibility === "hidden") continue;
     if (el.getBoundingClientRect().height === 0) continue;
+    /**
+     * ⛔ COUNT DISTINCT LINE TOPS, NOT RECTS — and this cost a false positive that nearly got
+     * "fixed". A `Range`'s client rects split at every text-run boundary, and FONT FALLBACK is
+     * one: `TZS 12,000` rendered in the mono face with the space or comma falling back to
+     * another font yields TWO rects on ONE line. The drive reported `AdminKpi`'s value as
+     * wrapped — an element carrying `truncate`, i.e. `white-space: nowrap`, which cannot wrap at
+     * all. ⭐ The tell was in the report itself: the class list said `truncate`, so the claim
+     * contradicted the CSS. Rects on the SAME `top` are one line; only distinct tops are lines.
+     */
     range.selectNodeContents(el);
-    const lines = range.getClientRects().length;
-    if (lines > 1) out.wrappedMoney.push(`${el.tagName.toLowerCase()} "${t}" broken across ${lines} lines`);
+    const tops = new Set([...range.getClientRects()].map((r) => Math.round(r.top)));
+    const lines = tops.size;
+    /* ⛔ A DEFECT REPORT THAT DOES NOT SAY WHERE IS HALF A REPORT. The first version printed
+       only the tag and the value — `div "TZS 12,000"` — and nothing in the source could be
+       grepped for that, because these values are passed as props and assembled at runtime. The
+       class list is what identifies the component, so it is carried. */
+    if (lines > 1) {
+      const cls = (el.className || "").toString().trim().split(/\s+/).slice(0, 6).join(" ");
+      out.wrappedMoney.push(`${el.tagName.toLowerCase()} "${t}" × ${lines} lines · class="${cls}"`);
+    }
   }
 
   /* ③ An interactive control whose CENTRE belongs to something else, or is off-viewport. */

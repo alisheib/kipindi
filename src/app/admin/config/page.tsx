@@ -307,13 +307,13 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
                             </a>
                             <p className="mt-0.5 font-mono text-[10px] text-text-subtle">{marketId}</p>
                           </td>
-                          <td className="p-3 font-mono">
+                          <td className="p-3 font-mono tabular">
                             {over.feeCeilingRate !== undefined ? `${(over.feeCeilingRate * 100).toFixed(1)}%` : "—"}
                           </td>
-                          <td className="p-3 font-mono">
+                          <td className="p-3 font-mono tabular">
                             {over.commissionRate !== undefined ? `${(over.commissionRate * 100).toFixed(1)}%` : "—"}
                           </td>
-                          <td className="p-3 font-mono">
+                          <td className="p-3 font-mono tabular">
                             {over.minStake !== undefined || over.maxStake !== undefined
                               ? `${over.minStake != null ? formatTzs(over.minStake) : "—"} / ${over.maxStake != null ? formatTzs(over.maxStake) : "—"}`
                               : "—"}
@@ -365,8 +365,8 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
                     <tr key={e.id} className="border-b border-border/50 last:border-b-0 align-top">
                       <td className="p-3 font-mono whitespace-nowrap text-text-subtle">{formatDateTime(e.createdAt)}</td>
                       <td className="p-3 font-medium text-text">{e.action.replace("config.", "")}</td>
-                      <td className="p-3 font-mono">{e.actorId?.slice(0, 16) ?? "—"}</td>
-                      <td className="p-3 font-mono">{e.targetId ?? "—"}</td>
+                      <td className="p-3 font-mono tabular">{e.actorId?.slice(0, 16) ?? "—"}</td>
+                      <td className="p-3 font-mono tabular">{e.targetId ?? "—"}</td>
                       <td className="p-3 font-mono text-[11px] text-text-subtle max-w-[360px] truncate">
                         {(e.payload as { changes?: unknown })?.changes ? JSON.stringify((e.payload as { changes: unknown }).changes) : "—"}
                       </td>

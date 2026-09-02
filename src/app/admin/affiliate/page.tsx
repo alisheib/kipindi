@@ -102,7 +102,7 @@ export default async function AdminAffiliatePage({
                         </span>
                       </td>
                       <td className="text-right font-mono text-text-muted">{b.recruits}</td>
-                      <td className="text-right font-mono font-semibold text-text">{formatTzs(b.earnedTzs)}</td>
+                      <td className="text-right font-mono tabular font-semibold text-text">{formatTzs(b.earnedTzs)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -140,7 +140,7 @@ export default async function AdminAffiliatePage({
                         <td className="font-mono font-semibold">{r.referrerHandle}</td>
                         <td className="font-mono text-text-muted">{r.recruitMasked}</td>
                         <td className="text-text-muted">{r.type}</td>
-                        <td className="text-right font-mono font-semibold text-text">{formatTzs(r.amountTzs)}</td>
+                        <td className="text-right font-mono tabular font-semibold text-text">{formatTzs(r.amountTzs)}</td>
                         <td className="font-mono text-text-subtle whitespace-nowrap">{formatDateShort(r.date)}</td>
                         <td><Chip size="sm" variant={LEDGER_CHIP[r.status]}>{r.status.toLowerCase()}</Chip></td>
                       </tr>

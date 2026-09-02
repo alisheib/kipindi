@@ -906,8 +906,15 @@ for (const f of files) {
     moneyEls++;
     /* §2b — see the note at the assertion. A money TABLE CELL must be MARKED as money; §1/§2
        above are prohibitions and say nothing about a cell that sets nothing at all. */
+    /* ⛔ A TABULAR MARKER, NOT MERELY A MONO ONE — and the first draft of this list accepted
+       `font-mono` alone, which let six cells through that were still WRONG in two ways: §M4
+       wants figures with TABULAR digits so a column lines up, and `globals.css`'s nowrap rule
+       keys on `.tabular`/`.tabular-nums`, so a mono-but-not-tabular cell kept folding `TZS
+       10,000` onto two lines. ⭐ A gate whose marker set is WIDER than the CSS selector it
+       exists to protect will pass cells the CSS never reaches; the two lists are now the same
+       list. `.amount` qualifies because it sets `font-variant-numeric: tabular-nums` itself. */
     if ((el.tag === "td" || el.tag === "th") &&
-        !el.toks.some((t) => /^(font-mono|mono|amount|tabular|tabular-nums)$/.test(t))) {
+        !el.toks.some((t) => /^(amount|tabular|tabular-nums)$/.test(t))) {
       unmarkedMoneyCells.push(`${where}  ${el.snippet}`);
     }
     for (const [rule, bad] of [["non-mono-family", setsNonMonoFamily(el.toks)], ["tracked-money", isTracked(el.toks)]] as const) {
