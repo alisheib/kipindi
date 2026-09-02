@@ -111,6 +111,10 @@ try {
       reachable: opts.filter((o) => o.reachable).length,
       total: opts.length,
       outlineOffset: first ? getComputedStyle(first).outlineOffset : null,
+      /* A VERTICAL SCROLLBAR ON A HORIZONTAL RAIL — see the assertion below. */
+      vGutter: nav.offsetWidth - nav.clientWidth,
+      vOverflow: nav.scrollHeight - nav.clientHeight,
+      itemRadius: first ? getComputedStyle(first).borderRadius : null,
       opts,
     };
   });
@@ -140,6 +144,22 @@ try {
   console.log(`\n${ROUTE}  @${W}`);
   console.log(`  DEPLOY        item ${m.itemH}px → ${deployed ? `NEW build (${rung})` : "🔴 OLD build (the kit rungs are 44 line / 40 capsule) — the numbers below are NOT a result"}`);
   console.log(`  rail          ${m.scrollW}px in ${m.clientW}px (${m.pct}%) · overflow ${m.overflowX}/${m.overflowY} · scrollx ${m.scrollx}`);
+  /* 🔴 A SCROLLBAR THAT MOVES NOTHING (Ali, 2026-09-02). `overflow-x: auto` makes CSS compute
+     `overflow-y: auto` too, and the travelling underline used to sit ONE PIXEL below the content
+     box — enough vertical overflow for the browser to paint a full vertical scrollbar that
+     `.scrollx` then styles into visibility. A draggable control that moves nothing is worse than
+     no affordance: it invites a gesture and answers with nothing. Both halves are asserted, so a
+     revert of either is named rather than merely re-appearing on screen. */
+  const vClean = m.vGutter === 0 && m.vOverflow <= 0;
+  console.log(`  no v-scroller  gutter ${m.vGutter}px · vertical overflow ${m.vOverflow}px · overflow-y ${m.overflowY}  ${vClean ? "✓" : "🔴 A VERTICAL SCROLLBAR ON A HORIZONTAL RAIL"}`);
+  if (!vClean) bad++;
+  /* ⭐ AND THE HIGHLIGHT IS ROUNDED ON ALL FOUR CORNERS. A square-bottomed fill inside a rounded
+     card collides with the card radius at the first option and reads as a rendering fault; the
+     focus ring follows the same radius, so it was half-rounded with it. */
+  const radii = (m.itemRadius || "").split(/[ /]/).filter(Boolean);
+  const allRound = radii.length > 0 && radii.every((r) => parseFloat(r) > 0);
+  console.log(`  item radius    ${m.itemRadius}  ${allRound ? "✓ rounded on all corners" : "🔴 a square corner inside a rounded card"}`);
+  if (!allRound) bad++;
   console.log(`  active        "${m.activeLabel}" · scrollLeft ${m.scrollLeft} · fully visible ${m.activeFullyVisible}`);
   console.log(`  announced     aria-current="page" ×${m.ariaCurrent}`);
   console.log(`  reachable     ${m.reachable}/${m.total} by elementFromPoint`);
