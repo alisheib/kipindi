@@ -8,11 +8,15 @@ import { Toggle } from "@/components/ui/toggle";
 import { Input } from "@/components/ui/input";
 import { useDeferredToast } from "@/components/ui/toast";
 import type { BonusConfig } from "@/lib/server/bonus-config";
+import { UnsavedChangesGuard, PendingChangesBar } from "@/components/ui/unsaved-changes";
 import { saveBonusConfigAction, grantBonusToPlayerAction, cancelGrantAction } from "./bonus-actions";
 import { formatTzs } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ConfirmModal } from "@/components/ui/modal";
 import { FieldLegend } from "@/components/ui/field-legend";
+
+/** ⛔ ONE HOME for the grant form's opening amount — its seed and its dirty comparison. */
+const GRANT_DEFAULT_TZS = 10_000;
 
 /** Cancel an ACTIVE grant from the ledger row. Confirmed — it claws bonus money
  *  back out of a player's wallet, so it should not fire on a single stray click. */
@@ -103,6 +107,7 @@ export function BonusAdminClient({ config }: { config: BonusConfig }) {
   const [pending, start] = useTransition();
   const { deferToast, toast } = useDeferredToast(pending);
   const [c, setC] = useState<BonusConfig>(config);
+  const configDirty = JSON.stringify(c) !== JSON.stringify(config);
   const on = c.enabled;
 
   const save = () => {
@@ -220,6 +225,21 @@ export function BonusAdminClient({ config }: { config: BonusConfig }) {
       <RouteCard icon={I.ticket} title="Proposal prizes" sw="Tuzo za mapendekezo"
         desc="Player-proposal prizes land in the bonus wallet (must be played through)."
         on={c.proposalToBonus} onToggle={() => setC((p) => ({ ...p, proposalToBonus: !p.proposalToBonus }))} />
+
+      {/**
+        * ⛔ MOST OF THIS CONFIG IS TOGGLES, AND TOGGLES ARE USUALLY EXEMPT — but not these.
+        * The exemption in the triage is for a toggle where FLIPPING IS THE SAVE; here every
+        * switch, including the master `enabled`, is held in `c` until Save is pressed. An owner
+        * who turned the bonus programme off and walked away left it running.
+        */}
+      <PendingChangesBar
+        dirty={configDirty}
+        saving={pending}
+        detail="The bonus programme keeps running on the saved settings until this is saved."
+        onSave={save}
+        onDiscard={() => setC(config)}
+      />
+      <UnsavedChangesGuard dirty={configDirty} body="The bonus configuration has been changed but not saved. Leaving now discards the change." />
     </div>
   );
 }
@@ -229,11 +249,19 @@ export function GrantBonusForm() {
   const [pending, start] = useTransition();
   const { deferToast, toast } = useDeferredToast(pending);
   const [phone, setPhone] = useState("");
-  const [amount, setAmount] = useState(10_000);
+  const [amount, setAmount] = useState(GRANT_DEFAULT_TZS);
   const [multiplier, setMultiplier] = useState<number | "">("");
   const [expiry, setExpiry] = useState<number | "">("");
   const [note, setNote] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
+  /* A half-filled grant is real work: a phone number read off a support ticket, an amount, and
+     a note that ends up on a money movement. ⚠️ `amount` is compared to its seed, not tested for
+     truthiness — it opens at 10,000, so "non-zero" would mean permanently dirty. */
+  const grantDirty =
+    phone.trim() !== "" || amount !== GRANT_DEFAULT_TZS || multiplier !== "" || expiry !== "" || note.trim() !== "";
+  const discardGrant = () => {
+    setPhone(""); setAmount(GRANT_DEFAULT_TZS); setMultiplier(""); setExpiry(""); setNote("");
+  };
 
   // Validate first, then ask for an explicit confirm — a manual grant creates
   // real bonus liability the player must play through, so it must not issue on
@@ -294,6 +322,16 @@ export function GrantBonusForm() {
           {multiplier === "" ? "" : ` at ${Number(multiplier)}× wagering`}? This creates real bonus liability the player must play through before it can be withdrawn.</>
         }
       />
+
+      {/* ⭐ NO SAVE ON THE BAR: "saving" a grant credits a real bonus wallet and is deliberately
+          behind a confirmation that names the player and the amount. Grant stays where it is. */}
+      <PendingChangesBar
+        dirty={grantDirty}
+        label="Grant not issued"
+        detail="Nothing is credited until you press Grant bonus and confirm."
+        onDiscard={discardGrant}
+      />
+      <UnsavedChangesGuard dirty={grantDirty} body="A bonus grant has been filled in but not issued. Leaving now discards it." />
     </div>
   );
 }

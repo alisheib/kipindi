@@ -37,6 +37,7 @@ import { useMayAct } from "@/components/admin/act-gate";
 import { runAdminAction } from "@/lib/client/run-admin-action";
 import { formatTzs } from "@/lib/utils";
 import { BULK_BAR } from "@/lib/admin-status-lexicon";
+import { UnsavedChangesGuard, PendingChangesBar } from "@/components/ui/unsaved-changes";
 import { useBulkSelection } from "./bulk-selection";
 import { BULK_REASON } from "./bulk-verdict-copy";
 import { bulkResolveMarketsAction } from "./bulk-resolve-action";
@@ -293,6 +294,29 @@ export function BulkResolveBar({
         overridden={overridden}
         requireTwoOfficer={requireTwoOfficer}
         objectionWindowHours={objectionWindowHours}
+      />
+
+      {/**
+        * ⛔ THE PAGE ALREADY ADMITS THIS WORK IS LOST — "Turning the page clears it" is printed
+        * two hundred lines above, and `BulkSelectionProvider` really does `setSharedReason("")`
+        * on every page key change. So the console has been telling officers about a silent loss
+        * instead of preventing it, on the one field it describes as *"read by a regulator, not
+        * by you"*. The pagination links are in-app links, which is exit ② — the guard covers
+        * them the moment it is given a dirty signal.
+        *
+        * ⭐ NO SAVE ON THE BAR, and this one is not a style choice: "saving" here means SEALING
+        * markets and moving money, behind a confirmation that itemises every row. A one-click
+        * Save on a floating bar is the last place that should live.
+        */}
+      <PendingChangesBar
+        dirty={reason.length > 0}
+        label="Override reason not submitted"
+        detail="It is discarded if you turn the page or leave — it is not held anywhere yet."
+        onDiscard={() => setSharedReason("")}
+      />
+      <UnsavedChangesGuard
+        dirty={reason.length > 0}
+        body="An override reason has been typed for the selected markets but nothing has been sealed. Leaving now discards it."
       />
     </>
   );

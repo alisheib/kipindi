@@ -1,12 +1,13 @@
 "use client";
 
-import { useTransition } from "react";
+import { useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { I } from "@/components/ui/glyphs";
 import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
+import { UnsavedChangesGuard, PendingChangesBar, useFormDirty } from "@/components/ui/unsaved-changes";
 import { setAiModelAction } from "./actions";
 
 type ModelOption = { id: string; label: string; cost: string; tier: string };
@@ -23,6 +24,13 @@ export function AiOpsControls({
   const [pending, start] = useTransition();
   const router = useRouter();
   const { deferToast, toast } = useDeferredToast(pending);
+  /* ⛔ A `<select>` IS STAGED WORK WHEN THERE IS AN APPLY BUTTON. Nothing is typed here, which
+     is exactly why it reads as exempt at a glance — but the model is not applied on change, it
+     waits for Apply, so an officer who picks a different model and clicks away has silently
+     lost the change and the AI keeps running on the old one. ⭐ This is why `useFormDirty`
+     binds `change` as well as `input`: a select fires no `input` event in every engine. */
+  const formRef = useRef<HTMLFormElement>(null);
+  const { dirty, markSaved, formProps } = useFormDirty(formRef);
 
   const onModelSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -37,7 +45,7 @@ export function AiOpsControls({
         // ⭐ DG-S-05/06 — a <select> is a field like any other; the wrapper carries the address.
         if (r.field) focusFirstInvalid(form, [r.field]);
       }
-      else { router.refresh(); deferToast({ title: "Model updated — takes effect on next AI call", variant: "success" }); }
+      else { markSaved(); router.refresh(); deferToast({ title: "Model updated — takes effect on next AI call", variant: "success" }); }
     });
   };
 
@@ -48,7 +56,7 @@ export function AiOpsControls({
     <div className="space-y-5">
       {/* ── Primary model (changeable) ── */}
       <div>
-        <form onSubmit={onModelSubmit} className="flex flex-wrap items-end gap-3">
+        <form ref={formRef} {...formProps} onSubmit={onModelSubmit} className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1 flex-1 min-w-[200px]" data-field="model">
             <span className="font-mono text-micro uppercase eyebrow font-bold text-text-muted">
               Primary model · Modeli kuu
@@ -104,6 +112,17 @@ export function AiOpsControls({
           </div>
         </>
       )}
+
+      {/* One signal, two surfaces — the bar states it, the guard catches the exits. */}
+      <PendingChangesBar
+        dirty={dirty}
+        saving={pending}
+        detail="The AI keeps running on the current model until this is applied."
+        saveLabel="Apply"
+        onSave={() => formRef.current?.requestSubmit()}
+        onDiscard={() => { formRef.current?.reset(); markSaved(); }}
+      />
+      <UnsavedChangesGuard dirty={dirty} body="A different AI model has been selected but not applied. Leaving now discards the change." />
     </div>
   );
 }

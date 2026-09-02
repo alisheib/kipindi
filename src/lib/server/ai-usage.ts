@@ -460,7 +460,13 @@ export function aiBudgetRefusal(b: AiBudgetBlock): OperatorRefusal {
   return {
     reason: "ai_budget_exhausted",
     detail: { spentUsd: b.spentUsd, limitUsd: b.limitUsd },
-    fix: { label: "Open Credit budget", href: "/admin/ai-usage#ai-credit-budget", domain: "ops" },
+    /* ⛔ `?tab=settings` IS LOAD-BEARING AS OF 2026-09-02, NOT DECORATION. `/admin/ai-usage`
+       gained a section rail (§K rule 7a) and the Credit budget card now lives on the `settings`
+       tab — a bare `#ai-credit-budget` would land on the default section, where that id is not
+       rendered at all, and the remedy button would scroll to nothing. §K rule 7d ③: nothing
+       load-bearing behind a click. ⚠️ The sibling refusal above stays bare on purpose: its
+       anchor is the paused-cycle gate, which the page keeps ABOVE the rail on every tab. */
+    fix: { label: "Open Credit budget", href: "/admin/ai-usage?tab=settings#ai-credit-budget", domain: "ops" },
   };
 }
 

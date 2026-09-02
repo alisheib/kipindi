@@ -256,8 +256,18 @@ ok("§4.4 the one sentence is still defined once, in ai-usage",
     && Number(r?.refusal?.detail?.limitUsd) === 0.5,
     JSON.stringify(r?.refusal?.detail));
 
+  /**
+   * ⚠️ THE LITERAL CHANGED ON 2026-09-02, AND CHANGING A PINNED ASSERTION DESERVES A REASON.
+   * `/admin/ai-usage` gained a section rail, which moved the Credit budget card onto the
+   * `settings` tab — so `?tab=settings` is not decoration here, it is the difference between a
+   * remedy button that lands on the control and one that lands on a section where the anchor is
+   * not rendered at all. The assertion is pinned to the WHOLE href on purpose: this is the one
+   * link an operator follows while the platform is refusing to spend, and a silent drift in it
+   * would only ever be discovered by someone already blocked.
+   */
   ok("§5.5 …and the remedy is a route the console can navigate to",
-    r?.refusal?.fix?.href === "/admin/ai-usage#ai-credit-budget");
+    r?.refusal?.fix?.href === "/admin/ai-usage?tab=settings#ai-credit-budget",
+    String(r?.refusal?.fix?.href));
 
   // The renderer, on the real payload — proves the figures survive formatting.
   const rows = refusalFigures(r!.refusal!);
@@ -325,7 +335,19 @@ ok("§4.4 the one sentence is still defined once, in ai-usage",
   }
 
   for (const href of hrefs) {
-    const [route, anchor] = href.split("#");
+    /**
+     * ⛔ THE QUERY IS STRIPPED TOO, AND IT WAS NOT UNTIL 2026-09-02. This split only removed the
+     * `#anchor`, so the first remedy href to carry a query — `/admin/ai-usage?tab=settings
+     * #ai-credit-budget`, needed once that page gained a section rail and the Credit budget card
+     * moved onto a tab — was resolved to the literal path
+     * `src/app/admin/ai-usage?tab=settings/page.tsx` and reported as a route that does not exist.
+     * ⭐ The href was CORRECT and the gate was one level too shallow, which is the more dangerous
+     * direction only because it is the one that gets "fixed" by weakening the href: dropping the
+     * query to make the gate green would have shipped a remedy button that lands on the wrong
+     * section. A route is its path; the query and the hash are arguments to it.
+     */
+    const [pathAndQuery, anchor] = href.split("#");
+    const route = pathAndQuery.split("?")[0];
     const page = join("src/app", route, "page.tsx");
     ok(`§6.4 ${href} → the route exists`, existsSync(join(ROOT, page)), page);
     if (anchor && existsSync(join(ROOT, page))) {

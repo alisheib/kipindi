@@ -189,6 +189,9 @@ export function AddStaffForm({ roleInfos }: { roleInfos: Record<string, RoleInfo
      form and not the document. */
   const formRef = useRef<HTMLFormElement>(null);
 
+  /* Same question as the form above: has the officer typed anything that leaving would lose?
+     All three start at a known default, so this is a comparison, not a touched flag. */
+  const unsaved = phone.trim() !== "" || reason.trim() !== "" || role !== "SUPPORT";
   const info = roleInfos[role];
   const options = useMemo(() => ROLE_OPTIONS(roleInfos, false), [roleInfos]);
 
@@ -238,6 +241,16 @@ export function AddStaffForm({ roleInfos }: { roleInfos: Record<string, RoleInfo
         </Field>
       </div>
       <Consequence info={info} isRevoke={false} />
+      <PendingChangesBar
+        dirty={unsaved}
+        saving={pending}
+        detail="Promoting an account grants console access and signs the person out."
+        /* Through the FORM, so the bar cannot skip onSubmit validation. */
+        onSave={() => formRef.current?.requestSubmit()}
+        onDiscard={() => { setPhone(""); setRole("SUPPORT"); setReason(""); }}
+        saveLabel="Add as staff"
+      />
+      <UnsavedChangesGuard dirty={unsaved} body="This staff promotion has been part-filled and not saved. Leaving now discards it." />
       <Button type="submit" variant="primary" loading={pending}>Add as staff</Button>
 
       <ConfirmModal

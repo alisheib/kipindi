@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
+import { Tabs } from "@/components/ui/tabs";
 import { parseSort, applySort } from "@/components/admin/admin-sort";
 import { CardSortControl } from "@/components/admin/card-sort-control";
 import { Chip } from "@/components/ui/chip";
@@ -83,6 +84,7 @@ export default async function AdminAIPollsPage({
     asort?: string;
     adir?: string;
     apage?: string;
+    tab?: string;
   }>;
 }) {
   const sp = await searchParams;
@@ -140,6 +142,13 @@ export default async function AdminAIPollsPage({
   const start = (page - 1) * PER_PAGE;
   const pageItems = filtered.slice(start, start + PER_PAGE);
 
+  /** ⛔ THE TAB IS A URL FACT (DG-S-03) — it survives a refresh, a Back and a shared link.
+   *  `pBase`/`aBase` above are built from `sp` wholesale, so those two pagers carry it free;
+   *  this one names its params one by one, so a tab omitted here is a tab the activity
+   *  filters would silently drop. */
+  const POLL_TABS = ["generate", "queue", "activity"] as const;
+  const tabRaw = sp.tab ?? "";
+  const tab: (typeof POLL_TABS)[number] = (POLL_TABS as readonly string[]).includes(tabRaw) ? (tabRaw as (typeof POLL_TABS)[number]) : "generate";
   const baseHref = buildBaseHref("/admin/ai-polls", {
     q: sp.q,
     state: sp.state,
@@ -147,7 +156,13 @@ export default async function AdminAIPollsPage({
     range: sp.range,
     from: sp.from,
     to: sp.to,
+    tab: sp.tab,
   });
+  const tabHref = (t: (typeof POLL_TABS)[number]) =>
+    buildBaseHref("/admin/ai-polls", {
+      q: sp.q, state: sp.state, category: sp.category, range: sp.range, from: sp.from, to: sp.to,
+      tab: t === "generate" ? undefined : t,
+    }) as Route;
 
   return (
     <>
@@ -186,6 +201,25 @@ export default async function AdminAIPollsPage({
           />
         </KpiGrid>
 
+
+        {/* ⭐ §K rule 7a — THE RAIL. 4,482px over 9 panels, tallest 42%. ⛔ `generate` is the
+            landing rather than `queue`, and that is a RENDERED fact rather than a preference:
+            the queue's two cards are both `{list.length > 0 && …}`, so on a quiet morning a
+            queue-first landing would open on an empty page. The generate tab always paints.
+            ⚠️ `#ai-polls-pending` lives on `queue` now — `BatchGenerateForm` reveals it after
+            a run and has been taught to switch tabs first (7d ③). */}
+        <Tabs
+          variant="line"
+          value={tab}
+          ariaLabel="AI poll sections"
+          tabs={[
+            { value: "generate", labelEn: "Generate", href: tabHref("generate") },
+            { value: "queue", labelEn: "Review queue", count: pendingSorted.length, href: tabHref("queue") },
+            { value: "activity", labelEn: "All activity", href: tabHref("activity") },
+          ]}
+        />
+
+        {tab === "generate" && (<>
         {/* Info banner + generate form */}
         <AdminCard>
           <div className="flex items-start gap-3 mb-4">
@@ -226,7 +260,9 @@ export default async function AdminAIPollsPage({
           </div>
           <ConfigPanel config={config} />
         </AdminCard>
+        </>)}
 
+        {tab === "queue" && (<>
         {/* Pending review queue */}
         {pendingSorted.length > 0 && (
           <div id="ai-polls-pending" className="scroll-mt-24">
@@ -296,7 +332,9 @@ export default async function AdminAIPollsPage({
             <AdminPagination total={approvedSorted.length} page={aPage} baseHref={aBase} param="apage" />
           </AdminCard>
         )}
+        </>)}
 
+        {tab === "activity" && (<>
         {/* All activity — filterable + paginated */}
         <AdminCard padding="p-0">
           <div className="px-4 lg:px-5 pt-4 pb-2 space-y-3">
@@ -424,6 +462,7 @@ export default async function AdminAIPollsPage({
             </>
           )}
         </AdminCard>
+        </>)}
       </AdminBody>
     </>
   );

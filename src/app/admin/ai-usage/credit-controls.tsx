@@ -1,11 +1,12 @@
 "use client";
 
-import { useTransition } from "react";
+import { useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
 import { Input, Field } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { UnsavedChangesGuard, PendingChangesBar, useFormDirty } from "@/components/ui/unsaved-changes";
 import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import { setCreditLimitAction, startTopUpWindowAction } from "./actions";
 
@@ -13,6 +14,13 @@ export function CreditControls({ limitUsd }: { limitUsd: number }) {
   const [pending, start] = useTransition();
   const router = useRouter();
   const { deferToast, toast } = useDeferredToast(pending);
+  /* ⚠️ ONE FIELD STILL COUNTS, and the bar still appears. The temptation here is to say a number
+     typed beside its own visible "Set limit" button cannot be lost — but the officer who types a
+     limit and then clicks a sidebar link loses it exactly as silently as on a five-field form,
+     and a console that warns on some forms and not others teaches nobody when to trust it. The
+     rule is uniform: every page-level form gets both surfaces. */
+  const formRef = useRef<HTMLFormElement>(null);
+  const { dirty, markSaved, formProps } = useFormDirty(formRef);
 
   const onSetLimit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -27,7 +35,7 @@ export function CreditControls({ limitUsd }: { limitUsd: number }) {
         // ⭐ DG-S-05/06 — and then take the operator to the field the server named.
         if (r.field) focusFirstInvalid(form, [r.field]);
       }
-      else { router.refresh(); deferToast({ title: "Limit updated", variant: "success" }); }
+      else { markSaved(); router.refresh(); deferToast({ title: "Limit updated", variant: "success" }); }
     });
   };
 
@@ -41,7 +49,7 @@ export function CreditControls({ limitUsd }: { limitUsd: number }) {
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <form onSubmit={onSetLimit} className="flex items-center gap-3 flex-1 min-w-[200px]">
+      <form ref={formRef} {...formProps} onSubmit={onSetLimit} className="flex items-center gap-3 flex-1 min-w-[200px]">
         <Field label="Spend limit per top-up window (USD)" className="flex-1 min-w-[140px]" dataField="limitUsd">
           <Input name="limitUsd" type="number" step="0.01" min="0.01" inputMode="decimal" defaultValue={String(limitUsd)} placeholder="20" mono />
         </Field>
@@ -65,6 +73,17 @@ export function CreditControls({ limitUsd }: { limitUsd: number }) {
           </Button>
         }
       />
+
+      {/* One signal, two surfaces — the bar states it, the guard catches the exits. */}
+      <PendingChangesBar
+        dirty={dirty}
+        saving={pending}
+        detail="The spend limit governs every top-up window from here on."
+        saveLabel="Set limit"
+        onSave={() => formRef.current?.requestSubmit()}
+        onDiscard={() => { formRef.current?.reset(); markSaved(); }}
+      />
+      <UnsavedChangesGuard dirty={dirty} body="The spend limit has been changed but not saved. Leaving now discards the change." />
     </div>
   );
 }

@@ -35,6 +35,8 @@ import { ControlLocked } from "@/components/admin/control-locked";
 import { chainStateLabel, readingStateLabel } from "@/components/admin/status-badge";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
+import type { Route } from "next";
+import { Tabs } from "@/components/ui/tabs";
 
 export const metadata = { title: "Admin · Up & Down" };
 export const dynamic = "force-dynamic";
@@ -51,10 +53,26 @@ function fmtTime(iso: string | null): string {
   return Number.isFinite(d.getTime()) ? d.toISOString().slice(11, 19) + " UTC" : "—";
 }
 
-export default async function AdminUpDownPage({ searchParams }: { searchParams: Promise<{ range?: string; from?: string; to?: string }> }) {
+export default async function AdminUpDownPage({ searchParams }: { searchParams: Promise<{ range?: string; from?: string; to?: string; tab?: string }> }) {
   const sp = await searchParams;
   // The economics card's window — presets + custom date+hour+minute, EAT-safe (default 30d).
   const range = resolveRange(sp, Date.now(), "30d");
+  /** ⛔ THE TAB IS A URL FACT (DG-S-03) — it survives a refresh, a Back and a shared link.
+   *  ⚠️ `DateTimeRangeFilter` on the economics card copies `sp.toString()` wholesale and
+   *  mutates only the window keys, so changing the range keeps the tab (checked, not
+   *  assumed) — the rail is the only thing that has to build its own href here. */
+  const UD_TABS = ["chains", "assets", "pricing", "economics"] as const;
+  const tabRaw = sp.tab ?? "";
+  const tab: (typeof UD_TABS)[number] = (UD_TABS as readonly string[]).includes(tabRaw) ? (tabRaw as (typeof UD_TABS)[number]) : "chains";
+  const tabHref = (t: (typeof UD_TABS)[number]) => {
+    const p = new URLSearchParams();
+    if (sp.range) p.set("range", sp.range);
+    if (sp.from) p.set("from", sp.from);
+    if (sp.to) p.set("to", sp.to);
+    if (t !== "chains") p.set("tab", t);
+    const qs = p.toString();
+    return (qs ? `/admin/updown?${qs}` : "/admin/updown") as Route;
+  };
   const [assets, allChains, cfg, feed, book] = await Promise.all([
     listAssets().catch(() => []),
     listChains().catch(() => []),
@@ -306,6 +324,31 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
           <AdminKpi label="Staleness window" sw="Muda wa bei" value={`${cfg.maxStalenessSeconds}s`} delta={`confidence ≥ ${cfg.confidenceThreshold}`} spark={false} />
         </KpiGrid>
 
+
+        {/* ⭐ §K rule 7a — THE RAIL, AND THE ARITHMETIC IS STATED RATHER THAN FLATTERED.
+            8,553px, the tallest page in the console — but the Chains table alone is 5,783px
+            of it (68%), so this page FAILS 7a test ① as written: *"if one panel is more than
+            ~40% of docH, that panel IS the length and a rail moves nothing"*. It is railed
+            anyway, on the narrower claim the rule protects: the landing stays ~6,000px
+            because the chains table is what this page IS, and what the rail actually buys is
+            that assets, economics and the three pricing panels — 2,770px between them — stop
+            sitting BEHIND that table. That is a reachability win, which is what a tab is for;
+            it is not a shortening win, and this comment refuses to claim one.
+            ⛔ `chains` is the landing because it is the operator's standing job. Opening on a
+            short tab would cost a click on every visit to save scrolling once. */}
+        <Tabs
+          variant="line"
+          value={tab}
+          ariaLabel="Up & Down sections"
+          tabs={[
+            { value: "chains", labelEn: "Chains", count: running.length, href: tabHref("chains") },
+            { value: "assets", labelEn: "Assets", count: assets.length, href: tabHref("assets") },
+            { value: "pricing", labelEn: "Pricing", href: tabHref("pricing") },
+            { value: "economics", labelEn: "Economics", href: tabHref("economics") },
+          ]}
+        />
+
+        {tab === "economics" && (<>
         {/* ── This game's economics (Up & Down ONLY) ─────────────────────────
             Sealed from the long-form polls: its own GGR, hold and turnover, beside
             its own AI spend. GGR is TZS (commission kept on this game); AI cost is
@@ -332,7 +375,9 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
             combined figures, and the TRA/GBT levy on total commission, are unchanged.
           </p>
         </AdminCard>
+        </>)}
 
+        {tab === "assets" && (<>
         {/* ── Assets ─────────────────────────────────────────────────────── */}
         <AdminCard title={`Assets · ${assets.length}`} sw="Bidhaa" padding="p-0">
           {/* The empty state renders OUTSIDE the scroll container. Inside it, the
@@ -455,7 +500,9 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
             a handful of readings produces one that looks exactly like a reliable figure.
           </p>
         </AdminCard>
+        </>)}
 
+        {tab === "chains" && (<>
         {/* ── Chains ─────────────────────────────────────────────────────── */}
         <AdminCard
           title={`Chains · ${running.length} running`}
@@ -834,7 +881,9 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
             </ScrollX>
           </AdminCard>
         )}
+        </>)}
 
+        {tab === "pricing" && (<>
         {/* ── Reading method ─────────────────────────────────────────────── */}
         <AdminCard title="Price reading method" sw="Njia ya kusoma bei">
           {!canConfig ? (
@@ -915,6 +964,7 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
             />
           )}
         </AdminCard>
+        </>)}
       </AdminBody>
     </>
   );

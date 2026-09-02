@@ -456,28 +456,64 @@ export function Tabs({
               // witness the loss of Sora on `/wallet`. That loss is measured separately, in the
               // real production fonts, and recorded rather than assumed.
               BOX,
-              "relative h-[44px] px-4 text-body-sm font-semibold transition-colors duration-quick ease-linear whitespace-nowrap",
+              /**
+               * ⭐ `group` IS LOAD-BEARING: it is what lets the underline below preview itself
+               * on hover. See the indicator's own note for why that preview had to exist.
+               * ⭐ `rounded-t-md` — the hover fill is a TAB sitting on the rail's baseline, so
+               * it rounds at the top and stays square where it meets the `border-b`. A fully
+               * rounded fill would float free of the line that defines the rail.
+               */
+              "group relative h-[44px] px-4 rounded-t-md text-body-sm font-semibold transition-colors duration-quick ease-linear whitespace-nowrap",
               // ⚠️ The focus ring is NOT set here. It is one CSS rule on `[data-section-rail]`
               // in `globals.css` (§A3 — one recipe, one definition site), because this rail
               // CLIPS its own ring: see the note there. ⛔ Do not add a `focus-visible:` class
               // at this call site — that would be the second home §0a exists to prevent, and
               // DG-A-02 set the precedent when the Toggle's reach was fixed in `globals.css`
               // rather than in `toggle.tsx`.
-              active ? "text-text" : "text-text-muted hover:text-text",
+              /**
+               * 🔴 HOVER AND ACTIVE USED TO RENDER THE SAME INK, and that was the defect worth
+               * fixing on this rail. Both resolved to `--text`: hovering tab B while tab A was
+               * selected produced TWO tabs in identical ink, and the only thing separating "the
+               * section you are reading" from "the section under your cursor" was a 2px line at
+               * the very bottom edge of a 44px control. A rail whose selected state can be
+               * imitated by a mouse is a rail that has to be re-read to be trusted.
+               *
+               * ⭐ THE FIX IS A SURFACE, NOT MORE INK. Hover now takes the kit's shipped
+               * hover-down fill (`--bg-overlay`, the same token `date-select` and
+               * `duration-input` use), so hover and active differ by SUBSTRATE while the
+               * underline stays the one thing that means "selected". Ink is left alone: it was
+               * already at the top of the ramp and had nowhere to go.
+               */
+              active ? "text-text" : "text-text-muted hover:text-text hover:bg-bg-overlay",
             )}
             trailing={
-              /* ⭐ §B5/§M5: ONE object travels — the underline scales, it does not cross-fade.
-                 `--t-base` with `--m-glide` is `motion.css:211`'s `.m-indicator` recipe stated
-                 inline, which is what this span has always done. */
+              /**
+               * ⭐ §B5/§M5: ONE object travels — the underline scales, it does not cross-fade.
+               * ⛔ `.m-indicator` IS USED, NOT RESTATED. It is `motion.css:212` — `transition:
+               * transform var(--t-base) var(--m-glide)` — and this span used to write that
+               * declaration out inline, one edit away from drifting from the recipe it named in
+               * its own comment. §0a: one fact, one home.
+               *
+               * ⭐ AND IT PREVIEWS ITSELF ON HOVER, which is the other half of the fix above.
+               * An inactive tab scales its underline in at `--border-strong` — a NON-brand ink,
+               * so the preview can never be mistaken for the selection — using the very motion
+               * the real indicator uses. The rail now answers "what happens if I click here?"
+               * before the click, and answers it in the same language as the result.
+               *
+               * ⚠️ COLOUR DOES NOT TRANSITION, ON PURPOSE. `.m-indicator` sets
+               * `transition-property: transform`; adding `transition-colors` here would REPLACE
+               * that property list rather than extend it, and the scale — the actual motion —
+               * would snap. The scale is the animation; the colour is a state.
+               */
               <span
                 aria-hidden
-                className="absolute left-2 right-2 -bottom-px h-[2px] rounded-pill"
-                style={{
-                  background: active ? "var(--brand-500)" : "transparent",
-                  boxShadow: active ? "0 0 8px color-mix(in oklab, var(--brand-500) 50%, transparent)" : "none",
-                  transform: active ? "scaleX(1)" : "scaleX(0)",
-                  transition: "transform var(--t-base) var(--m-glide), background var(--t-quick) linear, box-shadow var(--t-base) ease-out",
-                }}
+                className={cn(
+                  "m-indicator absolute left-2 right-2 -bottom-px h-[2px] rounded-pill",
+                  active
+                    ? "scale-x-100 bg-brand-500"
+                    : "scale-x-0 bg-border-strong group-hover:scale-x-100",
+                )}
+                style={active ? { boxShadow: "0 0 8px color-mix(in oklab, var(--brand-500) 50%, transparent)" } : undefined}
               />
             }
           />

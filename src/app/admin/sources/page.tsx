@@ -9,6 +9,8 @@ import type { MarketCategory } from "@/lib/server/market-service";
 import { ToggleSource, RemoveSource, ToggleCategory, AddSourceForm } from "./source-controls";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
+import type { Route } from "next";
+import { Tabs } from "@/components/ui/tabs";
 
 /* §L1, one name per destination: the sidebar and the h1 both say "Sources & categories";
    only the tab title said "Sources". The nav label is the canonical name. */
@@ -17,7 +19,7 @@ export const dynamic = "force-dynamic";
 
 const CATEGORIES: MarketCategory[] = ["sports", "macro", "weather", "crypto", "culture", "tech", "other"];
 
-export default async function AdminSourcesPage() {
+export default async function AdminSourcesPage({ searchParams }: { searchParams: Promise<{ cat?: string }> }) {
   await seedDefaultSources();
   const all = await listSources();
   const enabled = all.filter((s) => s.enabled);
@@ -34,6 +36,23 @@ export default async function AdminSourcesPage() {
     enabled: !disabledCats.has(c),
     sources: all.filter((s) => s.category === c),
   }));
+
+  /**
+   * ⛔ THE CAPSULE VARIANT (`pill`), NOT AN UNDERLINE — §K rule 7c decides this and taste does not get a vote.
+   * *"The underline is the section language; the capsule is the filter language."* This
+   * page's 3,624px is not many SECTIONS: it is ONE card shape repeated once per category,
+   * eleven times. An underline rail would claim the categories are alternative parts of a
+   * document; they are alternative SUBSETS of one list, which is what a filter is.
+   * ⭐ URL-backed all the same (DG-S-03), so a chosen category survives a refresh, a Back and
+   * a shared link — and `Tabs` marks ANY rail whose options own a URL as `data-section-rail`,
+   * which is the hook the design-gate drives use to discover it.
+   * ⚠️ The global category toggle card stays ABOVE the filter: it is not a subset of the
+   * list, it is the switch that decides whether a category may be published at all.
+   */
+  const spCat = (await searchParams).cat ?? "";
+  const cat = (CATEGORIES as readonly string[]).includes(spCat) ? (spCat as MarketCategory) : null;
+  const shown = cat ? grouped.filter((g) => g.category === cat) : grouped;
+  const catHref = (c: string | null) => (c ? `/admin/sources?cat=${c}` : "/admin/sources") as Route;
 
   return (
     <>
@@ -72,8 +91,23 @@ export default async function AdminSourcesPage() {
           </div>
         </AdminCard>
 
+        <Tabs
+          variant="pill"
+          value={cat ?? "all"}
+          ariaLabel="Filter sources by category"
+          tabs={[
+            { value: "all", labelEn: "All", count: all.length, href: catHref(null) },
+            ...CATEGORIES.map((c) => ({
+              value: c,
+              labelEn: CATEGORY_LABEL[c] ?? c,
+              count: all.filter((s) => s.category === c).length,
+              href: catHref(c),
+            })),
+          ]}
+        />
+
         {/* Sources by category */}
-        {grouped.map(({ category, enabled: catEnabled, sources }) => {
+        {shown.map(({ category, enabled: catEnabled, sources }) => {
           const isGeneratable = generatable.has(category);
           /* ⛔ WAS `${category[0].toUpperCase()}${category.slice(1)}` — A SPELLING OPERATION
              STANDING IN FOR A LEXICON, the same move `test:labels` §11a already ruled on for

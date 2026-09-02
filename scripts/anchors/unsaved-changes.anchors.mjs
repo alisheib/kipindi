@@ -37,4 +37,47 @@ export const MUTATIONS = [
     from: `      <UnsavedChangesGuard`,
     to: `      <NotTheGuard`,
   },
+  /**
+   * ⭐ THE CASE THE OLD GATE COULD NOT HAVE FAILED, and the reason §2 was rebuilt. Until
+   * 2026-09-01 the population was "admin files that compute a `dirty`", so a NEW form that
+   * simply never protected itself was invisible — it stayed out of the set precisely BECAUSE it
+   * was unguarded, and the gate reported a serene pass. This plants exactly that: a typed
+   * control on a file that has none, no dirty flag, no guard, nothing. The gate must demand one.
+   */
+  {
+    name: "⭐ A BRAND-NEW UNGUARDED FORM · a typed control on a file that never had one",
+    file: "src/app/admin/ai-polls/poll-filters.tsx",
+    expect: "2.x app/admin/ai-polls/poll-filters.tsx guards its exits",
+    from: `    <div className="space-y-3">`,
+    to: `    <div className="space-y-3"><textarea defaultValue="" />`,
+  },
+  /**
+   * ⛔ AND THE EXEMPTION LIST IS CHECKED IN BOTH DIRECTIONS. A named exemption is only honest
+   * while it stays true, so these two prove the list cannot rot into a permission slip: one
+   * makes an exempt file guarded (the entry must then be deleted), the other takes an exempt
+   * file out of the population entirely (a stale path covering nothing).
+   */
+  {
+    name: "an EXEMPT file gains a guard · the stale entry must be deleted",
+    file: "src/app/admin/roles/read-tiers-matrix.tsx",
+    expect: "2.x app/admin/roles/read-tiers-matrix.tsx — guarded, and not also claimed exempt",
+    from: `<Select`,
+    to: `<UnsavedChangesGuard dirty={false} /><Select`,
+  },
+  /**
+   * ⚠️ THE ANCHOR IS THE FILE'S ONLY TYPED CONTROL, AND THAT IS NOT A DETAIL. The first draft
+   * planted this on `config/fee-simulator.tsx`, which renders THREE `<Input>`s — and
+   * `String.replace` swaps the first occurrence only, so the file kept two, stayed in the
+   * population, and the gate correctly saw nothing wrong. The control reported that as the gate
+   * being BLIND. ⭐ A mutation that does not actually create the defect proves nothing about the
+   * gate; `kill-switch-toggle.tsx` has exactly one `<input>`, so removing it really does take
+   * the file out of the population and leave the EXEMPT entry naming nothing.
+   */
+  {
+    name: "an EXEMPT path stops naming a form · the list outlived its file",
+    file: "src/app/admin/payments/kill-switch-toggle.tsx",
+    expect: `2.e EXEMPT "app/admin/payments/kill-switch-toggle.tsx" still names a file in the population`,
+    from: `<input`,
+    to: `<NotAnInput`,
+  },
 ];

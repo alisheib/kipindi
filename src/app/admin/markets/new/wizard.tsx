@@ -10,6 +10,7 @@ import {
   type CriterionTranslationIssue,
 } from "@/lib/localized";
 import { SteppedProgress } from "@/components/markets/stepped-progress";
+import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { createMarketAction } from "@/app/markets/actions";
@@ -32,6 +33,10 @@ export function NewMarketWizard({ feeInfo, platformTz }: { feeInfo: FeeInfo; pla
   const [criterion, setCriterion] = useState("");
   const [criterionSw, setCriterionSw] = useState("");
   const [criterionZh, setCriterionZh] = useState("");
+  /* ⛔ CLEARED BEFORE THE REDIRECT. The success path calls router.push(), and although the
+     guard intercepts anchor CLICKS rather than programmatic navigation, leaving `dirty` true
+     through a redirect would keep the bar painted over the page the officer lands on. */
+  const [published, setPublished] = useState(false);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
   const { toast } = useToast();
@@ -103,14 +108,37 @@ export function NewMarketWizard({ feeInfo, platformTz }: { feeInfo: FeeInfo; pla
       if (!r.ok) {
         toast({ title: "Couldn't create", description: r.error, variant: "danger" });
       } else {
+        setPublished(true);
         toast({ title: "Market published", description: titleEn.slice(0, 50), variant: "success" });
         router.push("/admin/markets");
       }
     });
   };
 
+  /**
+   * ⭐ THE WIZARD IS WHERE LOSING WORK HURTS MOST, so `dirty` is spelled out rather than
+   * approximated: four steps, trilingual titles and a resolution criterion of at least 30
+   * characters. Losing it means retyping the whole thing in three languages.
+   * ⛔ It is a comparison against the INITIAL values, not a `touched` flag — clearing a field
+   * back to empty stops being dirty, and `category` counts because "sports" is a default the
+   * officer may have deliberately changed and not yet saved.
+   * ⛔ NO BAR HERE, ONLY THE GUARD. The wizard already owns its own Back/Next/Publish footer;
+   * a second, fixed action bar would put two Publish affordances on one screen — and §K5 is
+   * about not forking a recipe, which a duplicate primary action plainly does.
+   */
+  const dirty = !published && (
+    titleEn !== "" || titleSw !== "" || titleZh !== "" ||
+    sourceUrl !== "" || resolutionAt !== "" ||
+    criterion !== "" || criterionSw !== "" || criterionZh !== "" ||
+    category !== "sports"
+  );
+
   return (
     <div className="space-y-6">
+      <UnsavedChangesGuard
+        dirty={dirty}
+        body="This market has been part-written and not published. Leaving now discards every step, including the Swahili and Chinese text."
+      />
       <SteppedProgress steps={4} current={step} />
       <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">
         Step {step + 1} / 4

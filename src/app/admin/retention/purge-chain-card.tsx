@@ -21,6 +21,7 @@ import {
   purgeCostAction, purgeStage1Action, purgeStage2Action, purgeAdvanceAction, purgeCancelAction, purgeJobAction,
 } from "./purge-actions";
 import { useMayAct, useActDisabledReason } from "@/components/admin/act-gate";
+import { UnsavedChangesGuard, PendingChangesBar } from "@/components/ui/unsaved-changes";
 import type { PurgeCost, PurgeJob } from "@/lib/server/chain-purge";
 
 /**
@@ -37,6 +38,14 @@ import type { PurgeCost, PurgeJob } from "@/lib/server/chain-purge";
  */
 type ArchivedChain = { id: string; label: string; rounds: number };
 
+/**
+ * ⛔ THE SEED VALUE HAS ONE HOME, because two things now read it: the field's initial state and
+ * the "is this dirty?" comparison. Written out twice, the day someone amends the statute
+ * reference the card would open already claiming unsaved changes — a warning that fires on a
+ * form nobody has touched is how an officer learns to click through warnings.
+ */
+const BASIS_DEFAULT = "POCA Cap 423 §16 — record retained; player-facing content redacted";
+
 export function PurgeChainCard({ chains, stage1, viewerId }: {
   chains: ArchivedChain[];
   /** chainId → who signed first, so officer A sees they are waiting on someone else. */
@@ -48,7 +57,7 @@ export function PurgeChainCard({ chains, stage1, viewerId }: {
 }) {
   const [chainId, setChainId] = useState(chains[0]?.id ?? "");
   const [reason, setReason] = useState("");
-  const [basis, setBasis] = useState("POCA Cap 423 §16 — record retained; player-facing content redacted");
+  const [basis, setBasis] = useState(BASIS_DEFAULT);
   const [cost, setCost] = useState<PurgeCost | null>(null);
   const [costError, setCostError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
@@ -69,6 +78,24 @@ export function PurgeChainCard({ chains, stage1, viewerId }: {
   /** Officer B: a signature exists and it is NOT mine — I can complete the ceremony. */
   const theirs = signed && signed.actorId !== viewerId;
   const label = chain?.label ?? "";
+
+  /**
+   * ⭐ THE STAGE-1 CEREMONY IN ONE PLACE, read by the button and by the bar. It was written
+   * inline on the button's `onClick`; the bar needed the same call, and a second copy of a
+   * two-officer ceremony is two things to keep in step — the exact shape §0a forbids.
+   */
+  const editable = !job && !signed;
+  const stagedWork = reason.trim().length > 0 || basis !== BASIS_DEFAULT;
+  const canRecord = mayAct && !!cost && reason.trim().length >= 5;
+  const recordReason = () => start(async () => {
+    const fd = new FormData();
+    fd.set("chainId", chainId); fd.set("reason", reason); fd.set("basis", basis);
+    const r = await purgeStage1Action(fd);
+    if (!r.ok && r.field) focusFirstInvalid(document.body, [r.field]);
+    toast(r.ok
+      ? { title: "Reason recorded — a second officer must now confirm", variant: "success" }
+      : { title: "Couldn't record it", description: r.error, variant: "danger" });
+  });
 
   const loadCost = useCallback((id: string) => {
     if (!id) return;
@@ -205,7 +232,7 @@ export function PurgeChainCard({ chains, stage1, viewerId }: {
           </>
         )}
 
-        {!job && !signed && (
+        {editable && (
           <>
             <Field label="Reason (audited)" hint="At least 5 characters — recorded against your name." dataField="reason">
               <Input value={reason} onChange={(e) => setReason(e.currentTarget.value)} placeholder="e.g. chain retired after the 3m pilot" />
@@ -217,17 +244,9 @@ export function PurgeChainCard({ chains, stage1, viewerId }: {
               type="button"
               variant="ghost"
               loading={pending}
-              disabled={!mayAct || !cost || reason.trim().length < 5}
+              disabled={!canRecord}
               title={actReason}
-              onClick={() => start(async () => {
-                const fd = new FormData();
-                fd.set("chainId", chainId); fd.set("reason", reason); fd.set("basis", basis);
-                const r = await purgeStage1Action(fd);
-                if (!r.ok && r.field) focusFirstInvalid(document.body, [r.field]);
-                toast(r.ok
-                  ? { title: "Reason recorded — a second officer must now confirm", variant: "success" }
-                  : { title: "Couldn't record it", description: r.error, variant: "danger" });
-              })}
+              onClick={recordReason}
             >
               Record the reason (step 1 of 2)
             </Button>
@@ -298,6 +317,28 @@ export function PurgeChainCard({ chains, stage1, viewerId }: {
                 or worse, read the armed button as proof their input was accepted. One gate. */}
           </div>
         }
+      />
+
+      {/**
+        * ⛔ THE DIRTY WINDOW CLOSES ONCE THE REASON IS RECORDED. `!job && !signed` is the only
+        * state in which these two fields are editable — after stage 1 the reason belongs to the
+        * audit record, not to this form, and a bar still offering to "discard" it would be
+        * describing work that is no longer the operator's to throw away.
+        */}
+      <PendingChangesBar
+        dirty={editable && stagedWork}
+        label="Reason not recorded"
+        detail="Nothing is purged until a second officer confirms — but this reason is lost if you leave."
+        saveLabel="Record the reason"
+        /* ⚠️ NO SAVE UNTIL IT WOULD SUCCEED. The server requires five characters and a computed
+           cost; a bar button that is always present would fail into a toast and read as a
+           broken control rather than an unmet precondition. */
+        onSave={canRecord ? recordReason : undefined}
+        onDiscard={() => { setReason(""); setBasis(BASIS_DEFAULT); }}
+      />
+      <UnsavedChangesGuard
+        dirty={editable && stagedWork}
+        body="A purge reason has been typed but not recorded. Leaving now discards it, and the ceremony does not start."
       />
     </>
   );

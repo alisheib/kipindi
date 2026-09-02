@@ -81,11 +81,27 @@ const probe = () => {
     if (overflowsX && hides && !ellipsis) out.clipped.push(`${el.tagName.toLowerCase()} "${t.slice(0, 34)}"`);
   }
 
+  /* ⛔ A CONTROL INSIDE A HORIZONTAL SCROLLER IS NOT OFF-SCREEN — IT IS ONE SCROLL AWAY, and
+     the first full-console run of this drive called ~15 of them defects. Every admin table
+     ships inside `<ScrollX>` around a deliberately `min-w-[600px]` table: at 320 the far
+     columns sit past the right edge BY DESIGN, and the officer scrolls the table to reach
+     them. The page itself does not scroll sideways — `① overflow` proves that separately and
+     reads 0 everywhere. ⭐ Reporting a design as a defect is how a drive gets ignored, so the
+     scroller is recognised here rather than argued with in a report. */
+  const inHorizontalScroller = (el) => {
+    for (let p = el.parentElement; p; p = p.parentElement) {
+      const cs = getComputedStyle(p);
+      if ((cs.overflowX === "auto" || cs.overflowX === "scroll") && p.scrollWidth > p.clientWidth + 1) return true;
+    }
+    return false;
+  };
+
   /* ③ An interactive control whose CENTRE belongs to something else, or is off-viewport. */
   for (const el of document.querySelectorAll("button, a[href], input, select, textarea")) {
     const r = el.getBoundingClientRect();
     if (r.width < 4 || r.height < 4) continue;
     if (r.bottom < 0 || r.top > window.innerHeight) continue;   // simply scrolled away — fine
+    if (inHorizontalScroller(el)) continue;                     // see the note above
     if (r.left < -1 || r.right > vw + 1) {
       out.offscreen.push(`${el.tagName.toLowerCase()} "${(el.textContent || el.getAttribute("aria-label") || "").trim().slice(0, 28)}" x:${Math.round(r.left)}..${Math.round(r.right)}`);
     }
@@ -95,6 +111,8 @@ const probe = () => {
 
 const browser = await chromium.launch();
 let defects = 0;
+let measured = 0;
+const unmeasured = [];
 
 for (const wd of WIDTHS) {
   const ctx = await browser.newContext({ viewport: { width: wd.w, height: wd.h } });
@@ -105,10 +123,40 @@ for (const wd of WIDTHS) {
   page.on("pageerror", (e) => errors.push(String(e).slice(0, 120)));
   await login(page, "admin");
 
-  for (const route of ROUTES) {
-    await page.goto(BASE + route, { waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(2200);
-    const r = await page.evaluate(probe);
+  /**
+   * ⛔ A TABBED PAGE PAINTS ONE TAB, AND THE FIRST SWEEP MEASURED ONLY THAT ONE. Putting section
+   * state in the URL means `/admin/payments` renders **Health** and nothing else — so a sweep
+   * over bare routes proved the default tab of every page and left the other nine views of this
+   * programme's own work completely unmeasured, while reporting a full-console pass. ⭐ The tabs
+   * are DISCOVERED off the rendered rail (`data-section-rail`, the hook §K rule 7f exists for)
+   * rather than hand-typed here: a list in this file would go stale the day a tab is renamed,
+   * and would be a second home for a fact that already has one.
+   */
+  const queue = [...ROUTES];
+  const seen = new Set(ROUTES);
+
+  for (const route of queue) {
+    /* ⛔ A ROUTE THAT NAVIGATES MID-PROBE IS UNMEASURED, NOT A CRASH. Some admin routes bounce
+       (`/admin/totp-verify` → `/admin`), and a session can be revoked underneath the drive — in
+       both cases `page.evaluate` throws *"Execution context was destroyed"* and the first
+       version of this file died on route 59 of 228, throwing away every result behind it. A
+       sweep that stops at the first surprise reports a subset as if it were the whole. */
+    let r;
+    try {
+      await page.goto(BASE + route, { waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(2200);
+      r = await page.evaluate(probe);
+      for (const href of await page.evaluate(() =>
+        [...document.querySelectorAll("[data-section-rail] a[href]")].map((a) => a.getAttribute("href")))) {
+        if (!href || !href.startsWith("/admin") || seen.has(href)) continue;
+        seen.add(href);
+        queue.push(href);
+      }
+    } catch (e) {
+      unmeasured.push(`${route} @${wd.n} — ${String(e).split("\n")[0].slice(0, 80)}`);
+      continue;
+    }
+    measured++;
     const bad = (r.overflow > 0 ? 1 : 0) + r.zeroWidth.length + r.clipped.length + r.offscreen.length;
     defects += bad;
     const mark = bad === 0 ? "✓" : "🔴";
@@ -122,5 +170,18 @@ for (const wd of WIDTHS) {
 }
 
 await browser.close();
-console.log(`\n${defects === 0 ? "✅ nothing broke under hostile widths." : `🔴 ${defects} rendering defect(s).`}`);
-process.exit(defects ? 1 : 0);
+
+/**
+ * ⛔ AN INSTRUMENT MUST REPORT ITS OWN BLIND SPOTS, and for one run this one did not. The
+ * try/catch above was added so a bouncing route could not kill the sweep — and then `unmeasured`
+ * was collected and never printed, so a run in which HALF the console failed to load would have
+ * ended on the same green line as a run that measured everything. That is worse than the crash
+ * it replaced: a crash is loud. The count is printed even when it is zero, so "0 unmeasured" is
+ * a stated fact rather than a silence, and any route that could not be measured fails the run.
+ */
+console.log(`\nmeasured ${measured} page-views over ${WIDTHS.length} widths · unmeasured ${unmeasured.length}`);
+for (const u of unmeasured) console.log(`  ⚠️ UNMEASURED  ${u}`);
+
+const bad = defects + unmeasured.length;
+console.log(`\n${bad === 0 ? "✅ nothing broke under hostile widths." : `🔴 ${defects} rendering defect(s), ${unmeasured.length} unmeasured.`}`);
+process.exit(bad ? 1 : 0);

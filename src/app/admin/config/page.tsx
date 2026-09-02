@@ -16,18 +16,30 @@ import {
 import { FormColumn } from "@/components/ui/form-column";
 import { formatTzs, formatDateTime } from "@/lib/utils";
 import { AdminBody } from "@/components/admin/admin-body";
+import type { Route } from "next";
+import { Tabs } from "@/components/ui/tabs";
 import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Market config" };
 export const dynamic = "force-dynamic";
 
-export default async function AdminConfigPage({ searchParams }: { searchParams: Promise<{ opage?: string }> }) {
+export default async function AdminConfigPage({ searchParams }: { searchParams: Promise<{ opage?: string; tab?: string }> }) {
   const sp = await searchParams;
   const config = await getGlobalConfig().catch(() => DEFAULT_GLOBAL_CONFIG);
   const overrides = await listMarketOverrides().catch(() => []);
   const oPage = parsePage(sp.opage, overrides.length);
   const overridesPage = overrides.slice((oPage - 1) * PER_PAGE, oPage * PER_PAGE);
   const oBase = buildBaseHref("/admin/config", sp, "opage");
+  /** ⛔ THE TAB IS A URL FACT (DG-S-03) — it survives a refresh, a Back and a shared link.
+   *  `oBase` above is built from `sp`, so the overrides pager keeps the tab for free. */
+  const CFG_TABS = ["rates", "overrides", "history"] as const;
+  const tabRaw = sp.tab ?? "";
+  const tab: (typeof CFG_TABS)[number] = (CFG_TABS as readonly string[]).includes(tabRaw) ? (tabRaw as (typeof CFG_TABS)[number]) : "rates";
+  /* ⚠️ `opage` IS DROPPED ON A TAB SWITCH, deliberately — it is the overrides table's page
+     number, and carrying page 4 onto a section that has no table would be a number with
+     nothing to count. `buildBaseHref`'s third argument is the param it omits. */
+  const tabHref = (t: (typeof CFG_TABS)[number]) =>
+    buildBaseHref("/admin/config", { ...sp, tab: t === "rates" ? undefined : t }, "opage") as Route;
   const overrideMarketNames = new Map<string, string>();
   for (const { marketId } of overridesPage) {
     const m = await getMarket(marketId).catch(() => null);
@@ -178,6 +190,23 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
           </div>
         </AdminCard>
 
+
+        {/* ⭐ §K rule 7a — THE RAIL. 4,681px over 14 panels, tallest 41%: the length is a
+            SECTION COUNT, not one table, so a rail is the right instrument. ⛔ The two
+            callouts above stay on every tab — they say what this whole page is and what
+            editing it costs, which is not a section but the frame the sections sit in. */}
+        <Tabs
+          variant="line"
+          value={tab}
+          ariaLabel="Market config sections"
+          tabs={[
+            { value: "rates", labelEn: "Rates", href: tabHref("rates") },
+            { value: "overrides", labelEn: "Per-market overrides", count: overrides.length, href: tabHref("overrides") },
+            { value: "history", labelEn: "Recent changes", href: tabHref("history") },
+          ]}
+        />
+
+        {tab === "rates" && (<>
         {/* The simulator — see a rate change before you save it.
 
             DG-A-14: the card's action slot is where a status microlabel belongs
@@ -219,7 +248,9 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
             <GlobalConfigForm config={config} />
           </FormColumn>
         </AdminCard>
+        </>)}
 
+        {tab === "overrides" && (<>
         {/* Per-market overrides */}
         <AdminCard
           title="Per-market overrides"
@@ -300,7 +331,9 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
             {overrides.length > 0 && <AdminPagination total={overrides.length} page={oPage} baseHref={oBase} param="opage" />}
           </div>
         </AdminCard>
+        </>)}
 
+        {tab === "history" && (<>
         {/* Recent config changes audit */}
         <AdminCard
           title="Recent changes"
@@ -364,6 +397,7 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
             </div>
           </div>
         </AdminCard>
+        </>)}
 
 
       </AdminBody>

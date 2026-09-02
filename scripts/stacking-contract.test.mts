@@ -62,6 +62,20 @@
  * and §5.3 proves the failure mode is REACHABLE rather than theoretical, because a
  * check written against an unreachable branch proves nothing.
  *
+ * 🔴 §5.2 WAS ONE LEVEL TOO SHALLOW UNTIL 2026-09-01, AND A REAL DEFECT WALKED THROUGH
+ * IT GREEN. Its predicate was `fixed` + `inset-0` — a FULL-VIEWPORT overlay — so an
+ * EDGE-ANCHORED bar (`fixed inset-x-0 bottom-0`) was invisible to it, even though the
+ * containing-block trap is identical and does not care which insets are set. The new
+ * `PendingChangesBar` was written non-portaled, passed this gate, and would have sat at
+ * the bottom of a 4,000px PAGE — scrolling away — while still computing `position:
+ * fixed` and looking perfect in a screenshot of the top of the page.
+ * ⭐ Widening it required fixing a SECOND shallowness first: the "is it root-mounted?"
+ * question was asked one hop deep, so `ui/toast.tsx` — whose viewport reaches the root
+ * through its own `ToastProvider` — read as a finding, and the rule could not have
+ * landed at zero. `reachesOnlyRootMounts` now walks the consumer graph transitively
+ * (cycle-safe), which is what made the widening honest rather than a ratchet entry.
+ * ⚠️ Proved RED on the exact shape: removing the bar's `createPortal` fails 5.2 by name.
+ *
  * ⚠️ RATCHETS vs EXCEPTIONS, and why both appear here. A deliberate inversion with a
  * reason (toasts above modals; select above modal) is stated in §3 as LAW. A defect we
  * have not fixed yet (`AiOverlayShell`; `needle.css` naming a rung that no surface
@@ -461,6 +475,32 @@ const bodyOf = (r: string) => {
 /** Every file that renders `<Symbol …>`, excluding the file that defines it. */
 const consumersOf = (symbol: string, self: string) =>
   tsxFiles.map(relOf).filter((r) => r !== self && new RegExp(`<${symbol}[\\s/>]`).test(bodyOf(r)));
+
+/**
+ * ⭐ ROOT-MOUNTED TRANSITIVELY, not just directly (added 2026-09-01, ADMIN-TABS).
+ *
+ * §5.2 used to ask only *"are this file's DIRECT consumers all root mounts?"*, which is one hop
+ * short of the truth: `ui/toast.tsx` declares a fixed viewport, its only consumer is itself
+ * (`<ToastViewport>` inside `<ToastProvider>`), and it is `ToastProvider` that
+ * `theme-provider.tsx` mounts at the root. One hop said "no consumers found" and the file read
+ * as an unratcheted finding — so the sweep could not be widened without either a filename
+ * allowlist or a ratchet entry for a file that is not actually broken. §A1 forbids the first
+ * and the second would be debt wearing a rule's clothes.
+ *
+ * ⛔ THE DEPTH BOUND IS NOT DECORATION: a component can render itself (a recursive tree), and a
+ * cycle here would hang the gate. `seen` makes the walk terminate on any graph.
+ */
+const reachesOnlyRootMounts = (file: string, seen = new Set<string>()): boolean => {
+  if (ROOT_MOUNTS.has(file)) return true;
+  if (seen.has(file)) return false;            // a cycle proves nothing; it is not a root mount
+  seen.add(file);
+  const body = bodyOf(file);
+  const symbols = [...body.matchAll(/export (?:function|const) (\w+)/g)].map((m) => m[1]);
+  const consumers = new Set<string>();
+  for (const sym of symbols) for (const c of consumersOf(sym, file)) consumers.add(c);
+  if (consumers.size === 0) return false;      // nothing renders it — cannot claim it is safe
+  return [...consumers].every((c) => reachesOnlyRootMounts(c, seen));
+};
 /**
  * The exported component that OWNS a match — the nearest `export function X` /
  * `export const X =` above it. That is the symbol a consumer actually writes, which
@@ -483,7 +523,20 @@ for (const f of tsxFiles) {
   // A full-viewport fixed layer: a className carrying both `fixed` and `inset-0`, or
   // an inline style setting position:fixed with inset:0. Anything smaller is anchored
   // chrome, which the transform trap displaces but does not make unreachable.
+  /**
+   * 🔴 WIDENED 2026-09-01 (ADMIN-TABS) — IT USED TO SEE ONLY FULL-VIEWPORT OVERLAYS, and that
+   * blind spot let a real defect through a green gate. `PendingChangesBar` is `fixed inset-x-0
+   * bottom-0`: an EDGE-ANCHORED bar spanning the viewport, mis-anchored by the IDENTICAL
+   * mechanism this section exists for — `.route-enter`'s retained transform makes it the
+   * containing block, so the bar would have sat at the bottom of a 4,000px PAGE and scrolled
+   * away, while still computing `position: fixed` and looking perfect in a screenshot of the
+   * top. `inset-0` was never the property that mattered; being viewport-anchored is.
+   * ⛔ It was only widenable once the consumer walk became TRANSITIVE — before that,
+   * `ui/toast.tsx` read as a finding and the rule could not land at zero.
+   */
   const hit = /\bfixed\b[^"'`]*\binset-0\b|\binset-0\b[^"'`]*\bfixed\b/.exec(body)
+           ?? /\bfixed\b[^"'`]*\binset-x-0\b[^"'`]*\b(?:bottom|top)-0\b/.exec(body)
+           ?? /\b(?:bottom|top)-0\b[^"'`]*\binset-x-0\b[^"'`]*\bfixed\b/.exec(body)
            ?? /position:\s*"fixed",\s*inset:\s*0\b/.exec(body);
   if (!hit) continue;
   if (/createPortal\s*\(/.test(body)) continue;   // it escapes to document.body — safe
@@ -492,12 +545,14 @@ for (const f of tsxFiles) {
   // Mounted ONLY from the app's four root mount points ⇒ it is a sibling of the shell,
   // never a descendant of <RouteTransition>, so there is no transformed ancestor.
   if (ROOT_MOUNTS.has(r)) continue;
-  if (consumers.length > 0 && consumers.every((c) => ROOT_MOUNTS.has(c))) continue;
+  /* ⭐ TRANSITIVE — see `reachesOnlyRootMounts`. The one-hop version could not see that
+     `ui/toast.tsx`'s viewport reaches the root through its own provider. */
+  if (reachesOnlyRootMounts(r)) continue;
   fixedOverlays.push({ file: r, symbol, consumers });
 }
 const ratchetFiles = new Set(FIXED_OVERLAY_RATCHET.map((e) => e.file));
 const unratcheted = fixedOverlays.filter((o) => !ratchetFiles.has(o.file));
-ok("5.2 no NEW non-portaled full-viewport `fixed` overlay inside route content",
+ok("5.2 no NEW non-portaled viewport-anchored `fixed` overlay inside route content (full-viewport OR edge-anchored)",
    unratcheted.length === 0,
    unratcheted.map((o) => `${o.file} (<${o.symbol}>, rendered by ${o.consumers.join(", ") || "nothing found — check by hand"})`).join(" · ") +
      " — portal it to document.body (see <Modal>), or mount it at the root beside <AppShell>",

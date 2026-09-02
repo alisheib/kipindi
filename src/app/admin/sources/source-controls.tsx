@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition, useState } from "react";
+import { useRef, useTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Toggle } from "@/components/ui/toggle";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { UnsavedChangesGuard, PendingChangesBar, useFormDirty } from "@/components/ui/unsaved-changes";
 import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import { addSourceAction, removeSourceAction, toggleSourceAction, toggleCategoryAction } from "./actions";
 
@@ -119,6 +120,11 @@ export function AddSourceForm() {
   const router = useRouter();
   const { deferToast, toast } = useDeferredToast(pending);
   const [open, setOpen] = useState(false);
+  /* ⛔ THE FORM IS COLLAPSIBLE, AND "CANCEL" IS NOT THE ONLY WAY OUT. `setOpen(false)` throws
+     the four fields away deliberately, which is fine — the officer asked. Navigating away threw
+     them away too, silently, which is not. */
+  const formRef = useRef<HTMLFormElement>(null);
+  const { dirty, markSaved, formProps } = useFormDirty(formRef);
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -141,6 +147,7 @@ export function AddSourceForm() {
         if (r.field) focusFirstInvalid(form, [r.field]);
       } else {
         (e.target as HTMLFormElement).reset();
+        markSaved();
         setOpen(false);
         router.refresh();
         deferToast({ title: "Source added", variant: "success" });
@@ -161,7 +168,7 @@ export function AddSourceForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="rounded-lg border border-border bg-bg-elevated p-4 space-y-3">
+    <form ref={formRef} {...formProps} onSubmit={onSubmit} className="rounded-lg border border-border bg-bg-elevated p-4 space-y-3">
       <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">Add trusted source</p>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {/* ⭐ DG-S-05/06 — `data-field` is the ADDRESS `addSourceAction` names. It goes on the
@@ -204,6 +211,17 @@ export function AddSourceForm() {
           Cancel
         </button>
       </div>
+
+      {/* One signal, two surfaces — the bar states it, the guard catches the exits. */}
+      <PendingChangesBar
+        dirty={dirty}
+        saving={pending}
+        detail="A source that is not added cannot be cited by any market."
+        saveLabel="Add source"
+        onSave={() => formRef.current?.requestSubmit()}
+        onDiscard={() => { formRef.current?.reset(); markSaved(); setOpen(false); }}
+      />
+      <UnsavedChangesGuard dirty={dirty} body="This trusted source has been typed but not added. Leaving now discards it." />
     </form>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { Chip } from "@/components/ui/chip";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
+import { UnsavedChangesGuard, PendingChangesBar, useFormDirty } from "@/components/ui/unsaved-changes";
 import { formatDateTime } from "@/lib/utils";
 import { CATEGORY_LABEL } from "@/lib/ai/poll-vocabulary";
 import { addEventAction, removeEventAction, generateFromEventAction } from "./actions";
@@ -31,10 +32,23 @@ export function EventsClient({
   const [pending, start] = useTransition();
   const [busyId, setBusyId] = useState<string | null>(null);
 
+  /* ⛔ FIVE FIELDS AND NOTHING WATCHING THEM. This is the longest hand-typed form in the console
+     after the market wizard — a title, a source URL and a note for the AI, all uncontrolled —
+     and until now an officer who typed the lot and then clicked away in the sidebar lost every
+     character silently. The snapshot hook owns all five, because they are uncontrolled and
+     `FormData` is the only thing that can see them. */
+  const formRef = useRef<HTMLFormElement>(null);
+  const { dirty, markSaved, formProps } = useFormDirty(formRef);
+
   function add(fd: FormData) {
     start(async () => {
       const r = await addEventAction(fd);
       if (!r.ok) { toast({ title: "Could not add event", description: r.error, variant: "danger" }); return; }
+      /* ⚠️ RESET BEFORE `markSaved`, IN THAT ORDER. The baseline is re-snapshotted off the live
+         DOM, so a reset that ran afterwards would leave the baseline holding the values just
+         submitted and the now-empty form reading as dirty. */
+      formRef.current?.reset();
+      markSaved();
       toast({ title: "Event added", variant: "success" });
       router.refresh();
     });
@@ -117,7 +131,7 @@ export function EventsClient({
   }
 
   return (
-    <form action={add} className="rounded-xl border border-border bg-bg-elevated p-4">
+    <form ref={formRef} {...formProps} action={add} className="rounded-xl border border-border bg-bg-elevated p-4">
       <p className="mb-3 font-mono text-micro uppercase eyebrow font-bold text-text-subtle">Add a real event</p>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <label className="block">
@@ -151,6 +165,17 @@ export function EventsClient({
       <div className="mt-3">
         <Button type="submit" variant="primary" size="sm" loading={pending} leading={<I.plus s={14} />}>Add event</Button>
       </div>
+
+      {/* One signal, two surfaces — the bar states it, the guard catches the exits. */}
+      <PendingChangesBar
+        dirty={dirty}
+        saving={pending}
+        detail="An event that is not added cannot be drafted into a poll."
+        saveLabel="Add event"
+        onSave={() => formRef.current?.requestSubmit()}
+        onDiscard={() => { formRef.current?.reset(); markSaved(); }}
+      />
+      <UnsavedChangesGuard dirty={dirty} body="This event has been typed but not added. Leaving now discards it." />
     </form>
   );
 }

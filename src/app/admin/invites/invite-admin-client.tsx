@@ -9,6 +9,7 @@ import { Input, Field } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { Spinner } from "@/components/ui/spinner";
 import { useDeferredToast } from "@/components/ui/toast";
+import { UnsavedChangesGuard, PendingChangesBar } from "@/components/ui/unsaved-changes";
 import { formatTzs } from "@/lib/utils";
 import { createCampaignAction, addContactsStructuredAction, sendCampaignAction, cancelCampaignAction } from "./invite-actions";
 import { FieldLegend } from "@/components/ui/field-legend";
@@ -17,16 +18,28 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 type StagedRow = { email: string; phone: string; amount: number | "" };
 
 /** Create-campaign form (on the list page). */
+/* ⛔ THE DEFAULTS ARE NAMED ONCE. `dirty` compares against them and Discard restores them, so a
+   copy in either place would drift and the bar would either never appear or never clear. */
+const CAMPAIGN_DEFAULTS = {
+  name: "", bonus: 10_000, multiplier: "" as number | "", expiry: "" as number | "",
+  messageEn: "Join 50pick and start predicting.",
+  messageSw: "Jiunge na 50pick uanze kutabiri.",
+};
+
 export function CreateCampaignForm() {
   const router = useRouter();
   const [pending, start] = useTransition();
   const { deferToast, toast } = useDeferredToast(pending);
-  const [name, setName] = useState("");
-  const [bonus, setBonus] = useState(10_000);
-  const [multiplier, setMultiplier] = useState<number | "">("");
-  const [expiry, setExpiry] = useState<number | "">("");
-  const [messageEn, setMessageEn] = useState("Join 50pick and start predicting.");
-  const [messageSw, setMessageSw] = useState("Jiunge na 50pick uanze kutabiri.");
+  const [name, setName] = useState(CAMPAIGN_DEFAULTS.name);
+  const [bonus, setBonus] = useState(CAMPAIGN_DEFAULTS.bonus);
+  const [multiplier, setMultiplier] = useState<number | "">(CAMPAIGN_DEFAULTS.multiplier);
+  const [expiry, setExpiry] = useState<number | "">(CAMPAIGN_DEFAULTS.expiry);
+  const [messageEn, setMessageEn] = useState(CAMPAIGN_DEFAULTS.messageEn);
+  const [messageSw, setMessageSw] = useState(CAMPAIGN_DEFAULTS.messageSw);
+  const unsaved =
+    name.trim() !== CAMPAIGN_DEFAULTS.name || bonus !== CAMPAIGN_DEFAULTS.bonus ||
+    multiplier !== CAMPAIGN_DEFAULTS.multiplier || expiry !== CAMPAIGN_DEFAULTS.expiry ||
+    messageEn !== CAMPAIGN_DEFAULTS.messageEn || messageSw !== CAMPAIGN_DEFAULTS.messageSw;
 
   const create = () => {
     if (!name.trim()) { toast({ title: "Enter a campaign name", variant: "danger" }); return; }
@@ -44,6 +57,19 @@ export function CreateCampaignForm() {
 
   return (
     <div className="space-y-3">
+      <PendingChangesBar
+        dirty={unsaved}
+        saving={pending}
+        detail="A campaign has been part-written and not created."
+        onSave={create}
+        onDiscard={() => {
+          setName(CAMPAIGN_DEFAULTS.name); setBonus(CAMPAIGN_DEFAULTS.bonus);
+          setMultiplier(CAMPAIGN_DEFAULTS.multiplier); setExpiry(CAMPAIGN_DEFAULTS.expiry);
+          setMessageEn(CAMPAIGN_DEFAULTS.messageEn); setMessageSw(CAMPAIGN_DEFAULTS.messageSw);
+        }}
+        saveLabel="Create campaign"
+      />
+      <UnsavedChangesGuard dirty={unsaved} body="This invite campaign has been part-written and not created. Leaving now discards it." />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="w-full">
           <FieldLegend as="div" className="mb-1.5">Campaign name</FieldLegend>

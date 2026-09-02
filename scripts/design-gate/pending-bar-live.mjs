@@ -31,6 +31,9 @@ import { login, BASE } from "../live/harness.mjs";
 
 const ROUTE = process.env.ROUTE || "/admin/config";
 const FIELD = process.env.FIELD || "commissionRate";
+/** ⭐ A SECOND FIELD IN A DIFFERENT FORM ON THE SAME PAGE — assertion ⑥ needs two independently
+ *  dirty forms, which is the shape the two-stacked-bars defect lived in. */
+const FIELD_B = process.env.FIELD_B || "";
 const WIDTHS = (process.env.W ? [Number(process.env.W)] : [1440, 390]).map((w) => ({ w, h: w === 390 ? 844 : 900 }));
 
 const browser = await chromium.launch();
@@ -95,6 +98,78 @@ for (const { w, h } of WIDTHS) {
   const announced = m.live === "polite";
   console.log(`  ④ announced         aria-live="${m.live}"  ${announced ? "✓" : "🔴 expected polite"}`);
   if (!announced) bad++;
+
+  /* ── ⑤ A TAB SWITCH IS AN EXIT (§K rule 7d) ────────────────────────────────
+     ⛔ THIS IS THE ASSERTION THE RAIL MAKES NECESSARY. A `?tab=` option is an `<a href>`, so
+     the guard's in-app-link interception should already cover it — but "should already" is
+     exactly the kind of claim this programme does not accept without driving it. With the form
+     dirty, clicking another section must OPEN THE KIT DIALOG and must NOT navigate. */
+  const rail = page.locator("[data-section-rail] a[href]");
+  const railCount = await rail.count();
+  if (railCount > 1) {
+    const urlBefore = page.url();
+    // the first option that is not the current one
+    let clicked = false;
+    for (let i = 0; i < railCount; i++) {
+      const a = rail.nth(i);
+      if ((await a.getAttribute("aria-current")) === "page") continue;
+      await a.click({ trial: false }).catch(() => {});
+      clicked = true;
+      break;
+    }
+    if (clicked) {
+      await page.waitForTimeout(900);
+      const dialog = await page.evaluate(() => {
+        const d = document.querySelector('[role="dialog"], [role="alertdialog"]');
+        return d ? (d.textContent || "").slice(0, 90) : null;
+      });
+      const moved = page.url() !== urlBefore;
+      const held = !!dialog && !moved;
+      console.log(`  ⑤ tab is an EXIT   dialog:${dialog ? "opened" : "none"} · navigated:${moved ? "YES" : "no"}  ${held ? "✓" : "🔴 the tab switch discarded the edit silently"}`);
+      if (!held) bad++;
+      // Dismiss: stay on this page, so the field can be restored below.
+      const stay = page.getByRole("button", { name: /Stay on this page/i }).first();
+      if (await stay.count()) { await stay.click().catch(() => {}); await page.waitForTimeout(500); }
+    }
+  } else {
+    console.log("  ⑤ tab is an EXIT   · no section rail on this route — not applicable");
+  }
+
+  /* ── ⑥ TWO DIRTY FORMS, ONE BAR (the singleton) ────────────────────────────
+     ⛔ THE ASSERTION THAT CAUGHT A DEFECT IN THE FIX ITSELF. Every bar is `fixed inset-x-0
+     bottom-0`, so two dirty forms on one page painted two bars IN THE SAME PIXELS — and both
+     wrote `document.body.style.paddingBottom`, so the page reserved the height of ONE while TWO
+     were painted and the lower one covered the content the reserve exists to protect. It is
+     reachable on this very route: `/admin/ai-usage` renders CreditControls and AiOpsControls
+     side by side. This counts the bars in the DOM — a count, not a screenshot, because two
+     bars at identical coordinates look exactly like one. */
+  if (FIELD_B) {
+    const second = page.locator(`[name="${FIELD_B}"]`).first();
+    if (!(await second.count())) {
+      console.log(`  ⑥ one bar only     · no [name="${FIELD_B}"] on this page — not applicable`);
+    } else {
+      // The field may be a <select>; choosing a different option is its edit.
+      const tag = await second.evaluate((el) => el.tagName);
+      if (tag === "SELECT") {
+        const picked = await second.evaluate((el) => {
+          const opts = [...el.options].map((o) => o.value);
+          return opts.find((v) => v !== el.value) ?? null;
+        });
+        if (picked) await second.selectOption(picked);
+      } else {
+        await second.fill(`${await second.inputValue()}1`);
+      }
+      await page.waitForTimeout(700);
+      const m2 = await page.evaluate(() => {
+        const bars = document.querySelectorAll('[role="status"].kp-rail');
+        return { count: bars.length, text: bars.length ? (bars[0].textContent || "") : "" };
+      });
+      const single = m2.count === 1;
+      const counted = /\+\s*\d+\s+more unsaved/i.test(m2.text);
+      console.log(`  ⑥ one bar only      bars in DOM ${m2.count} · says "+N more": ${counted ? "yes" : "no"}  ${single && counted ? "✓" : "🔴 TWO BARS STACKED, or the others are not counted"}`);
+      if (!single || !counted) bad++;
+    }
+  }
 
   // ── ③ undo the edit — the bar must go ─────────────────────────────────────
   await field.fill(original);

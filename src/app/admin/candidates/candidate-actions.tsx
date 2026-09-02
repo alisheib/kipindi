@@ -6,6 +6,7 @@ import { Select } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ActionOverlay, useActionOverlay } from "@/components/admin/action-overlay";
 import { approveCandidateAction, rejectCandidateAction, publishCandidateAction } from "./actions";
+import { UnsavedChangesGuard, PendingChangesBar } from "@/components/ui/unsaved-changes";
 
 const REJECT_REASONS = [
   { id: "politics",            label: "Politics" },
@@ -16,6 +17,9 @@ const REJECT_REASONS = [
   { id: "outside_jurisdiction",label: "Outside Tanzania" },
   { id: "officer_decision",    label: "Officer decision" },
 ] as const;
+
+/** ⛔ ONE HOME for the resting reason — the field's seed and the dirty comparison read one name. */
+const REJECT_DEFAULT = "officer_decision";
 
 export function CandidateActions({ id, mode }: { id: string; mode: "review" | "publish" | "view" }) {
   const [pending, start] = useTransition();
@@ -138,8 +142,9 @@ function RejectForm({
   onSubmit: (reason: string, note: string) => void;
   onCancel: () => void;
 }) {
-  const [reason, setReason] = useState<string>("officer_decision");
+  const [reason, setReason] = useState<string>(REJECT_DEFAULT);
   const [note, setNote] = useState<string>("");
+  const dirty = reason !== REJECT_DEFAULT || note.trim().length > 0;
   return (
     <div className="absolute right-4 mt-2 z-10 rounded-md border border-border bg-bg-elevated p-3 shadow-lg w-[280px]">
       <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle mb-2">
@@ -164,6 +169,27 @@ function RejectForm({
         <button type="button" onClick={() => onSubmit(reason, note)} className="btn btn-no btn-md w-full">Reject</button>
         <button type="button" onClick={onCancel} className="btn btn-ghost btn-sm w-full">Cancel</button>
       </div>
+
+      {/**
+        * ⛔ A POPOVER IS NOT A MODAL, AND THAT IS THE WHOLE REASON THIS IS HERE. The triage put
+        * this panel in the "lost to Cancel, not to navigation" class because it has a Cancel
+        * button — but a modal EARNS that exemption by blocking the page behind an overlay, and
+        * this is a bare `absolute` div. The sidebar, the tabs and every row link stay clickable
+        * straight through it, so a typed rejection note is exposed to navigation exactly like a
+        * page-level field. The dismissible-looking chrome is what makes it easy to miss.
+        */}
+      <PendingChangesBar
+        dirty={dirty}
+        label="Rejection not recorded"
+        detail="The reason and note are held in this panel only."
+        saveLabel="Reject"
+        onSave={() => onSubmit(reason, note)}
+        onDiscard={onCancel}
+      />
+      <UnsavedChangesGuard
+        dirty={dirty}
+        body="A rejection reason has been chosen for this candidate but not recorded. Leaving now discards it."
+      />
     </div>
   );
 }

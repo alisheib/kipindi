@@ -17,6 +17,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
+import { UnsavedChangesGuard, PendingChangesBar } from "@/components/ui/unsaved-changes";
 import { Select } from "@/components/ui/select";
 import { resolveMarketAction } from "@/app/markets/actions";
 import { BrandSpinner } from "@/components/brand";
@@ -59,10 +60,24 @@ export function ResolutionCeremony({
   const router = useRouter();
   const { toast } = useToast();
 
-  const [verdict, setVerdict] = useState<Outcome | null>(stage === "stage2" ? stagedOutcome : null);
+  /* ⛔ ONE HOME FOR THE OPENING VERDICT — the field's seed and the "has this been touched?"
+     comparison read the same expression. Written twice, a change to the stage-2 seed would make
+     the ceremony open already claiming unsaved work. */
+  const initialVerdict = stage === "stage2" ? stagedOutcome : null;
+  const [verdict, setVerdict] = useState<Outcome | null>(initialVerdict);
   const [evidence, setEvidence] = useState("");
   const [voidReason, setVoidReason] = useState("");
   const [sealText, setSealText] = useState("");
+
+  /**
+   * ⛔ THE EVIDENCE EXCERPT IS THE WORK, and it is the one field here nobody can retype from
+   * memory: it is a quote pasted out of an official source, up to 2,000 characters, and it is
+   * what a regulator reads back. `sealText` is deliberately NOT counted — "SEAL" is an arming
+   * word, not work, and a guard that fired on it would interrupt an officer for four letters
+   * they can retype in a second, on the most safety-critical screen in the console.
+   */
+  const typedWork = verdict !== initialVerdict || evidence.trim().length > 0 || voidReason !== "";
+  const discardWork = () => { setVerdict(initialVerdict); setEvidence(""); setVoidReason(""); };
 
   const fire = (outcome: Outcome, evidenceText: string) => {
     startTransition(async () => {
@@ -181,6 +196,21 @@ export function ResolutionCeremony({
         <p className="text-center font-mono text-[10px] text-text-subtle">
           {sealed ? "Armed — this seals the verdict (single-admin authorization)." : "Type SEAL to arm. One officer seals; winners are paid after the objection window."}
         </p>
+
+        {/* ⛔ THIS IS THE DEFAULT BRANCH, AND IT WAS ALMOST THE ONE LEFT OUT. Two-admin
+            authorization ships OFF, so `!twoAdmin` is the ceremony an officer actually sees —
+            covering only the stage-1/stage-2 pair below would have guarded the two paths that
+            are switched off and left the live one bare. Three returns, three pairs. */}
+        <PendingChangesBar
+          dirty={typedWork}
+          label="Verdict not sealed"
+          detail="The verdict and evidence excerpt are held in this page only."
+          onDiscard={discardWork}
+        />
+        <UnsavedChangesGuard
+          dirty={typedWork}
+          body="A verdict and evidence have been entered but the market was not resolved. Leaving now discards them."
+        />
       </div>
     );
   }
@@ -238,6 +268,19 @@ export function ResolutionCeremony({
         <p className="text-center font-mono text-[10px] text-text-subtle">
           Staging moves no money. A second officer must seal to settle.
         </p>
+
+        <PendingChangesBar
+          dirty={typedWork}
+          label="Attestation not recorded"
+          detail="The verdict and evidence excerpt are held in this page only."
+          saveLabel="Record Stage-1"
+          onSave={canSubmit && verdict ? () => fire(verdict, composedEvidence) : undefined}
+          onDiscard={discardWork}
+        />
+        <UnsavedChangesGuard
+          dirty={typedWork}
+          body="A verdict and evidence have been entered but no attestation was recorded. Leaving now discards them."
+        />
       </div>
     );
   }
@@ -312,6 +355,21 @@ export function ResolutionCeremony({
           </p>
         </>
       )}
+
+      {/* ⭐ THE SAME PAIR IN BOTH STAGES. The second officer edits the same evidence excerpt,
+          and the stage-2 tree is a separate `return` — so the surfaces are rendered again here
+          rather than hoisted, which would mean restructuring a settlement ceremony to satisfy
+          a warning. `onSave` is omitted: sealing is irreversible and is armed by typing SEAL. */}
+      <PendingChangesBar
+        dirty={typedWork}
+        label="Evidence not sealed"
+        detail="Nothing is published until the verdict is sealed below."
+        onDiscard={discardWork}
+      />
+      <UnsavedChangesGuard
+        dirty={typedWork}
+        body="Evidence has been entered for this settlement but nothing was sealed. Leaving now discards it."
+      />
     </div>
   );
 }

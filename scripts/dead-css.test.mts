@@ -241,7 +241,14 @@ const BASELINE = new Set<string>([
   // ── Motion-kit utilities that arrived with the material commission and never got a
   //    consumer. ⚠️ These are §B-style "lands before its consumer" atoms, but the consumer
   //    has not arrived; that is precisely why they are counted rather than excused.
-  "m-axis-reveal", "m-behind", "m-focusable", "m-indicator", "m-needle", "m-press",
+  /* ⭐ `m-indicator` CAME OFF THIS LIST 2026-09-02, and it is the good direction: the section
+     rail's travelling underline had been RESTATING that recipe as an inline `transition`, one
+     edit from drifting from the class it named in its own comment. Using the class instead is
+     what revived it — the consumer this list was waiting for turned out to already exist and to
+     be spelling the rule out by hand. ⚠️ Its body was read before reviving, as §1.2 demands:
+     `transition: transform var(--t-base) var(--m-glide); will-change: transform` is exactly
+     what the call site had inline, so nothing superseded was resurrected. */
+  "m-axis-reveal", "m-behind", "m-focusable", "m-needle", "m-press",
   "m-raise", "m-seal", "m-skeleton", "mat-flat", "mat-raised-i", "needle-settle-loss",
   // ── One-off page furniture whose page was rebuilt around it.
   "market-search", "mcardp-q-sw", "tooltip-popover", "value-flash", "value-delta",

@@ -26,6 +26,7 @@ import type { ProposalsConfig, ProposalsState } from "@/lib/server/proposals-con
 import type { AdminQueueRow, DeclineReason } from "@/lib/server/proposals-service";
 import type { ProposalCategory, ProposalStatus } from "@/lib/server/store";
 import { saveProposalsConfigAction, approveProposalAction, goLiveProposalAction, declineProposalAction, requestChangesAction, editProposalAction } from "./actions";
+import { UnsavedChangesGuard, PendingChangesBar } from "@/components/ui/unsaved-changes";
 import { formatTzs, cn } from "@/lib/utils";
 
 const DECLINE_REASONS: DeclineReason[] = ["Politics", "Ambiguous outcome", "No official source", "Duplicate", "Past resolution", "Outside jurisdiction", "Officer decision"];
@@ -230,6 +231,32 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
   // Pre-fill the go-live source field with the proposer's submitted source URL
   // whenever the selected proposal changes (officer can edit before publishing).
   useEffect(() => { setSourceUrl(sel?.sourceUrl ?? ""); }, [sel?.id, sel?.sourceUrl]);
+
+  /**
+   * ⛔ THREE SEPARATE BODIES OF WORK ON ONE SCREEN, and each is lost differently.
+   *   ① the feature CONFIG — prize, thresholds, rate limit, state — held in `c` until Save;
+   *   ② an EDITED proposal — eight fields seeded off the selected row when editing opens;
+   *   ③ a DECISION NOTE — the reason and note behind a decline or a change request.
+   *
+   * ⚠️ `sourceUrl` IS COMPARED, NOT TESTED FOR EMPTINESS. An effect pre-fills it from the
+   * selected proposal on every selection change, so "non-empty" is the page's RESTING state —
+   * a dirty flag written that way would light up the moment an officer clicked any row, on a
+   * page whose whole job is clicking rows. It is dirty only when it differs from the seed.
+   */
+  const configDirty = JSON.stringify(c) !== JSON.stringify(config);
+  const editDirty = editing && sel !== null && (
+    eTitle !== sel.title || eTitleSw !== (sel.titleSw ?? "") || eTitleZh !== (sel.titleZh ?? "") ||
+    eCriterion !== sel.resolutionCriterion || eCategory !== sel.category ||
+    eResDate !== sel.resolutionDate || eCloseDate !== (sel.selectionCloseDate ?? "") ||
+    eSource !== (sel.sourceUrl ?? "")
+  );
+  const noteDirty = note.trim().length > 0 || reason !== null || sourceUrl !== (sel?.sourceUrl ?? "");
+  const pendingWhat = [
+    configDirty ? "the feature configuration" : "",
+    editDirty ? "an edited proposal" : "",
+    noteDirty ? "a decision note" : "",
+  ].filter(Boolean);
+  const anyDirty = pendingWhat.length > 0;
 
   const onSort = (f: QSort) => {
     if (f === sort) setDir((d) => (d === "desc" ? "asc" : "desc"));
@@ -673,6 +700,25 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
         </div>
       </div>
       <ActionOverlay state={overlay.state} onDismiss={overlay.dismiss} />
+
+      {/**
+        * ⭐ THE BAR NAMES WHICH OF THE THREE IS PENDING, rather than saying "unsaved changes" over
+        * a screen with three places to have made one. ⛔ Save is offered ONLY when the config is
+        * the sole dirty thing: `saveConfig` writes the config and nothing else, so offering it
+        * beside an unsaved proposal edit would be a button that appears to save everything and
+        * silently saves one third of it — worse than no button.
+        */}
+      <PendingChangesBar
+        dirty={anyDirty}
+        saving={pending}
+        detail={`Not saved yet: ${pendingWhat.join(" · ")}.`}
+        saveLabel="Save config"
+        onSave={configDirty && !editDirty && !noteDirty && canSaveConfig ? saveConfig : undefined}
+      />
+      <UnsavedChangesGuard
+        dirty={anyDirty}
+        body={`This page holds unsaved work: ${pendingWhat.join(", ")}. Leaving now discards it.`}
+      />
     </div>
   );
 }

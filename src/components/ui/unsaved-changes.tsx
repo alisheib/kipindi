@@ -74,16 +74,7 @@ import { Button } from "@/components/ui/button";
  * it, which is exactly the "rendered is not visible" defect this lineage keeps paying for. The
  * spacer below is a sibling in the page flow and is why the bar can never hide content.
  */
-export function PendingChangesBar({
-  dirty,
-  onSave,
-  onDiscard,
-  saving = false,
-  label = "Unsaved changes",
-  detail,
-  saveLabel = "Save changes",
-  discardLabel = "Discard",
-}: {
+type BarProps = {
   dirty: boolean;
   onSave?: () => void;
   onDiscard?: () => void;
@@ -92,11 +83,95 @@ export function PendingChangesBar({
   detail?: React.ReactNode;
   saveLabel?: string;
   discardLabel?: string;
-}) {
+};
+
+/**
+ * ⛔ THE BAR IS A SINGLETON, AND IT HAD TO BECOME ONE — TWO OF THEM PAINT IN THE SAME PIXELS.
+ *
+ * Every instance is `fixed inset-x-0 bottom-0`, so two dirty forms on one page render two bars
+ * ON TOP OF EACH OTHER, and both write `document.body.style.paddingBottom` — last effect wins,
+ * so the page reserves the height of ONE bar while TWO are painted and the lower one covers the
+ * content the reserve was supposed to protect. That is the same "rendered is not visible" defect
+ * the reserve exists to prevent, reintroduced by the fix for it.
+ *
+ * ⚠️ IT IS REACHABLE, NOT THEORETICAL. `/admin/ai-usage` renders `AiOpsControls` and
+ * `CreditControls` side by side; `/admin/bonuses` renders the config panel and the grant form.
+ * Editing the model and the spend limit before saving either is an ordinary morning.
+ *
+ * ⭐ NO HOST COMPONENT IN THE LAYOUT. A `<PendingChangesHost>` would be a second thing every
+ * page must remember to render, and a page that forgot would lose its bar silently. Instead the
+ * registered instance with the LOWEST id paints — a deterministic single painter, chosen without
+ * anyone having to install anything — and it paints the entry that was dirtied MOST RECENTLY,
+ * which is the form the officer just touched. The others are counted, not hidden: nothing is
+ * lost either way, because each instance still renders its own `UnsavedChangesGuard`.
+ */
+type Entry = { id: number; seq: number; props: React.RefObject<BarProps> };
+const registry = new Map<number, Entry>();
+const listeners = new Set<() => void>();
+let nextBarId = 1;
+let dirtySeq = 0;
+let registryVersion = 0;
+const bumpRegistry = () => { registryVersion++; for (const l of listeners) l(); };
+const subscribeRegistry = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l); }; };
+/* ⚠️ SSR returns a CONSTANT. `useSyncExternalStore` calls the server snapshot during hydration
+   and React throws if it is not stable; the registry is empty on the server anyway. */
+const getRegistryVersion = () => registryVersion;
+const getServerVersion = () => 0;
+
+export function PendingChangesBar(props: BarProps) {
+  const {
+    dirty,
+    onSave,
+    onDiscard,
+    saving = false,
+    label = "Unsaved changes",
+    detail,
+    saveLabel = "Save changes",
+    discardLabel = "Discard",
+  } = props;
   /* ⛔ SSR: `createPortal` needs a DOM. Mount-gate it so the server renders the SPACER only —
      which is right, because the spacer belongs to the page and the bar belongs to the window. */
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => { setMounted(true); }, []);
+
+  /* A stable identity per instance. `useRef` rather than `useId` because the painter is elected
+     by numeric order and ids must be comparable. */
+  const idRef = React.useRef(0);
+  if (idRef.current === 0) idRef.current = nextBarId++;
+  const id = idRef.current;
+
+  /**
+   * ⚠️ THE PROPS GO IN A REF, AND THE REGISTRY HOLDS THE REF — NOT A COPY. `onSave` and
+   * `onDiscard` are inline arrows at nearly every call site, so a new identity arrives on every
+   * render. Registering the VALUES would mean an effect that re-runs each render, notifies the
+   * painter, re-renders it, produces new arrows, and re-runs the effect: an infinite loop. The
+   * painter therefore reads `entry.props.current`, which is always this render's props, and the
+   * registration effect depends only on `dirty`.
+   */
+  const propsRef = React.useRef<BarProps>(props);
+  propsRef.current = props;
+
+  React.useEffect(() => {
+    if (dirty) {
+      registry.set(id, { id, seq: ++dirtySeq, props: propsRef });
+      bumpRegistry();
+    } else if (registry.delete(id)) {
+      bumpRegistry();
+    }
+    return () => { if (registry.delete(id)) bumpRegistry(); };
+  }, [dirty, id]);
+
+  /* `saving` and `label` are read off the ref, so a change to either would otherwise never
+     reach the painter. This nudges it without re-registering (and without touching `seq`, which
+     would make a spinner steal the bar from the form the officer just edited). */
+  React.useEffect(() => { if (registry.has(id)) bumpRegistry(); }, [id, saving, label]);
+
+  const version = React.useSyncExternalStore(subscribeRegistry, getRegistryVersion, getServerVersion);
+  void version; // the subscription is the point; the registry below is the actual read
+
+  const entries = [...registry.values()];
+  const painterId = entries.length ? Math.min(...entries.map((e) => e.id)) : 0;
+  const top = entries.length ? entries.reduce((a, b) => (b.seq > a.seq ? b : a)) : null;
 
   /**
    * ⚠️ THE PAGE RESERVES THE BAR'S MEASURED HEIGHT, AND BOTH HALVES OF THAT WERE LEARNED THE
@@ -126,9 +201,23 @@ export function PendingChangesBar({
       ro?.disconnect();
       document.body.style.paddingBottom = "";
     };
-  }, [mounted, dirty]);
+  }, [mounted, dirty, painterId, id]);
 
-  if (!dirty) return null;
+  /* ⛔ EXACTLY ONE INSTANCE PAINTS. Everything above still runs in every instance — each one
+     registers, so the count is right and the reserve follows whichever instance is painting. */
+  if (!dirty || id !== painterId || !top) return null;
+
+  /* The entry the officer touched last, which may belong to a DIFFERENT instance than this one.
+     Reading it through the ref is what keeps an inline `onSave` correct. */
+  const shown = top.props.current;
+  const shownLabel = shown.label ?? "Unsaved changes";
+  const shownDetail = shown.detail;
+  const shownSaving = shown.saving ?? false;
+  const shownSaveLabel = shown.saveLabel ?? "Save changes";
+  const shownDiscardLabel = shown.discardLabel ?? "Discard";
+  const shownSave = shown.onSave;
+  const shownDiscard = shown.onDiscard;
+  const others = entries.length - 1;
 
   /**
    * 🔴 IT PORTALS, AND THAT IS NOT OPTIONAL — `test:stacking` §5 names the mechanism.
@@ -165,21 +254,36 @@ export function PendingChangesBar({
         >
           <span className="inline-flex items-center gap-2 font-mono text-micro uppercase eyebrow text-warning-fg">
             <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-pill bg-warning-fg" />
-            {label}
+            {shownLabel}
           </span>
-          {detail && <span className="min-w-0 text-caption text-text-secondary">{detail}</span>}
+          {shownDetail && <span className="min-w-0 text-caption text-text-secondary">{shownDetail}</span>}
+          {/* ⭐ THE OTHERS ARE COUNTED, NOT HIDDEN. Only one form's actions can sit on one bar
+              without a Save button that saves an ambiguous thing — but silently omitting the
+              rest would let an officer discard the visible one and leave believing the page was
+              clean. Nothing is at risk either way: every instance still renders its own
+              `UnsavedChangesGuard`, so all of them are covered on the way out. */}
+          {/* ⚠️ `text-body-sm` (13px), NOT `text-micro` — and `test:type-scale` was right to
+              refuse the first draft. This is a SENTENCE an officer has to read, so §T4's 12.5px
+              floor applies; `text-micro`/`caption`/`label` are all below it and none of them
+              counts as a fix. The sub-micro tier is for UPPERCASE tracked microlabels only,
+              which this is not. */}
+          {others > 0 && (
+            <span className="text-body-sm text-text-tertiary">
+              +{others} more unsaved {others === 1 ? "change" : "changes"} on this page
+            </span>
+          )}
           {/* ⭐ The actions sit at the END on one line and WRAP as a pair at 390 — the same
               `flex-wrap` + `ml-auto` shape the admin card header uses, so a narrow screen
               never puts Save on its own orphan row. */}
           <span className="ml-auto flex items-center gap-2">
-            {onDiscard && (
-              <Button type="button" variant="ghost" size="sm" onClick={onDiscard} disabled={saving}>
-                {discardLabel}
+            {shownDiscard && (
+              <Button type="button" variant="ghost" size="sm" onClick={shownDiscard} disabled={shownSaving}>
+                {shownDiscardLabel}
               </Button>
             )}
-            {onSave && (
-              <Button type="button" variant="primary" size="sm" onClick={onSave} loading={saving}>
-                {saveLabel}
+            {shownSave && (
+              <Button type="button" variant="primary" size="sm" onClick={shownSave} loading={shownSaving}>
+                {shownSaveLabel}
               </Button>
             )}
           </span>

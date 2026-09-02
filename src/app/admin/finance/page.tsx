@@ -34,6 +34,8 @@ import { Stat } from "@/components/ui/stat";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
+import type { Route } from "next";
+import { Tabs } from "@/components/ui/tabs";
 
 /** What each house account actually holds — so the owner doesn't have to guess. */
 const HOUSE_ACCOUNT_NOTE: Record<string, string> = {
@@ -50,7 +52,7 @@ const HOUSE_ACCOUNT_NOTE: Record<string, string> = {
 export const metadata = { title: "Admin · Finance" };
 export const dynamic = "force-dynamic";
 
-export default async function AdminFinancePage({ searchParams }: { searchParams: Promise<{ range?: string; from?: string; to?: string; feepage?: string }> }) {
+export default async function AdminFinancePage({ searchParams }: { searchParams: Promise<{ range?: string; from?: string; to?: string; feepage?: string; tab?: string }> }) {
   // Money data is MONEY_ROLES only — NEVER MODERATOR (roles.ts). The admin layout
   // only gates ADMIN_CONSOLE_ROLES (which DOES include MODERATOR), so without this
   // a moderator could read owner-grade GGR/NGR and the top-contributor list.
@@ -114,7 +116,18 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
   // hosts several lists and one shared param would move all of them at once.
   const feePage = parsePage(sp.feepage, pollFees?.rows.length ?? 0);
   const feeRows = (pollFees?.rows ?? []).slice((feePage - 1) * PER_PAGE, feePage * PER_PAGE);
-  const feeBaseHref = buildBaseHref("/admin/finance", { range: sp.range, from: sp.from, to: sp.to }, "feepage");
+  /** ⛔ THE TAB IS A URL FACT (DG-S-03) — it survives a refresh, a Back and a shared link. */
+  const FIN_TABS = ["ledger", "trends", "providers"] as const;
+  const tabRaw = sp.tab ?? "";
+  const tab: (typeof FIN_TABS)[number] = (FIN_TABS as readonly string[]).includes(tabRaw) ? (tabRaw as (typeof FIN_TABS)[number]) : "ledger";
+  /* ⛔ `tab` RIDES THE FEE PAGER TOO. This href is built from an explicit object rather than
+     from `sp`, so a param omitted here is a param the pager silently drops — turning to page
+     2 of the settlement fees would have bounced the officer back to the default section.
+     ⚠️ `DateTimeRangeFilter` needs no such change: it copies `sp.toString()` wholesale and
+     mutates only the window keys, so it carries the tab already (checked, not assumed). */
+  const feeBaseHref = buildBaseHref("/admin/finance", { range: sp.range, from: sp.from, to: sp.to, tab: sp.tab }, "feepage");
+  const tabHref = (t: (typeof FIN_TABS)[number]) =>
+    buildBaseHref("/admin/finance", { range: sp.range, from: sp.from, to: sp.to, tab: t === "ledger" ? undefined : t }, "feepage") as Route;
   const feeModelLabel = rates?.feeModel === "loser-share" ? "loser-share (new polls)" : "capped-fee (new polls)";
   const taxAccrued = rates && ggr !== null
     ? Math.round(Math.max(0, ggr) * (rates.traTaxOnCommissionRate + rates.gbtLevyOnCommissionRate))
@@ -160,6 +173,29 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
           <AdminKpi label="Active players"   sw="Wachezaji"     value={activePeriod === null ? "" : formatNumber(activePeriod)} unavailable={activePeriod === null} delta={range.label} series={spark(trends.active)} />
         </KpiGrid>
 
+
+        {/* ⭐ §K rule 7a — THE RAIL, AND IT REVERSES A REFUSAL THIS PROGRAMME MADE.
+            `/admin/finance` was refused on test ② (2026-09-01): *"wallet liability is read
+            AGAINST house accounts, and tabs would put the two compared things on different
+            screens."* That objection was right about the COMPARISON and wrong about the
+            remedy — it assumed any split would separate them. The books stay together on
+            `ledger`: house accounts, settlement fees and the trial balance are one document
+            read against itself, so they share a tab. What leaves are the TRENDS and the
+            PROVIDER breakdown, which are read on their own and were never compared to it.
+            ⛔ The KPI strip stays above the rail on every tab — it is the frame, not a
+            section, and it is what the charts are read against. */}
+        <Tabs
+          variant="line"
+          value={tab}
+          ariaLabel="Finance sections"
+          tabs={[
+            { value: "ledger", labelEn: "Ledger", href: tabHref("ledger") },
+            { value: "trends", labelEn: "Trends", href: tabHref("trends") },
+            { value: "providers", labelEn: "Providers", href: tabHref("providers") },
+          ]}
+        />
+
+        {tab === "ledger" && (<>
         {/* THE HOUSE ACCOUNTS — straight from the double-entry ledger.
             `houseAccountBalances()` has existed in ledger.ts since the ledger was
             built and had ZERO call sites: the books were being kept and nobody was
@@ -378,7 +414,9 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
             )}
           </AdminCard>
         )}
+        </>)}
 
+        {tab === "trends" && (<>
         {/* Charts row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           <AdminCard title="Net flow over time" sw="Mtiririko wa pesa · 28-day daily series">
@@ -428,7 +466,9 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
             )}
           </AdminCard>
         </div>
+        </>)}
 
+        {tab === "providers" && (<>
         {/* Provider summary table */}
         <AdminCard
           title="Provider summary"
@@ -469,6 +509,7 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
             </table>
           </ScrollX>
         </AdminCard>
+        </>)}
       </AdminBody>
     </>
   );

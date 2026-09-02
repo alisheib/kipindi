@@ -22,6 +22,7 @@ import {
 import { CEREMONY } from "@/lib/admin-status-lexicon";
 import { AttestationRail } from "@/components/admin/attestation-rail";
 import { runAdminAction } from "@/lib/client/run-admin-action";
+import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 
 type PackState = "draft" | "prepared" | "approved" | "submitted" | "acknowledged";
@@ -42,6 +43,11 @@ export function ReportPackControls({
 
   const [pending, startTransition] = useTransition();
   const [ackRef, setAckRef] = useState("");
+  /* ⭐ GUARD ONLY, NO BAR — and the rule is worth stating because consistency is the whole
+     point of a kit. The BAR earns its place on a form whose Save can scroll out of view; this
+     is ONE field with its button beside it, on a card that now sits above the section rail.
+     A fixed bar here would put a second primary action on screen next to the real one. */
+  const unsaved = ackRef.trim() !== "";
   const router = useRouter();
   const { toast } = useToast();
 
@@ -112,6 +118,7 @@ export function ReportPackControls({
   if (state === "submitted") {
     return (
       <div className="space-y-2">
+        <UnsavedChangesGuard dirty={unsaved} body="The acknowledgement reference has been typed but not recorded. Leaving now discards it." />
         <label className="block">
           <span className="mb-1 block font-mono text-micro uppercase eyebrow text-text-subtle">Acknowledgement reference · optional</span>
           <input

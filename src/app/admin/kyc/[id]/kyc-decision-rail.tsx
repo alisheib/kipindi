@@ -15,6 +15,7 @@ import { Select } from "@/components/ui/select";
 import { BrandSpinner } from "@/components/brand";
 import { AttestationRail } from "@/components/admin/attestation-rail";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { UnsavedChangesGuard, PendingChangesBar } from "@/components/ui/unsaved-changes";
 import { CEREMONY } from "@/lib/admin-status-lexicon";
 import { KYC_ATTESTATIONS } from "@/lib/kyc-attestations";
 import { runAdminAction } from "@/lib/client/run-admin-action";
@@ -69,12 +70,24 @@ export function KycDecisionRail({
   const mayAct = useMayAct();
 
   const [pending, startTransition] = useTransition();
-  const [judg, setJudg] = useState<Record<string, TriState>>(Object.fromEntries(JUDGMENT_CHECKS.map((c) => [c.key, "pending"])));
+  /* ⛔ ONE HOME for the resting checklist — the seed and the "has anything been judged?"
+     comparison read the same builder, so a new check added to JUDGMENT_CHECKS cannot make the
+     rail open already claiming unsaved work. */
+  const freshJudgments = () => Object.fromEntries(JUDGMENT_CHECKS.map((c) => [c.key, "pending"])) as Record<string, TriState>;
+  const [judg, setJudg] = useState<Record<string, TriState>>(freshJudgments);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [reasonCode, setReasonCode] = useState("");
   /* The reject panel — the container focusFirstInvalid searches (see run() below). */
   const rejectRef = useRef<HTMLDivElement>(null);
   const [note, setNote] = useState("");
+  const reviewDirty =
+    Object.values(judg).some((v) => v !== "pending") || reasonCode !== "" || note.trim().length > 0;
+  const discardReview = () => {
+    setJudg(freshJudgments());
+    setReasonCode("");
+    setNote("");
+    setRejectOpen(false);
+  };
   const router = useRouter();
   // B-28 — success toasts ride the transition's falling edge (data visible when announced)
   const { toast, deferToast } = useDeferredToast(pending);
@@ -254,6 +267,24 @@ export function KycDecisionRail({
       {anyAutoFail && (
         <p className="font-mono text-[10.5px] text-no-300">A required check failed — reject or request more info rather than approve.</p>
       )}
+
+      {/**
+        * ⛔ THE OFFICER'S JUDGEMENTS ARE WORK, not just the typed note. `judg` is a whole manual
+        * checklist — every entry starts `pending` and an officer moves them one at a time while
+        * reading the documents — and none of it is written anywhere until a decision is run. An
+        * interrupted KYC review meant doing the reading again.
+        * ⭐ This rail is inline chrome, not a modal: nothing blocks a click on the sidebar.
+        */}
+      <PendingChangesBar
+        dirty={reviewDirty}
+        label="Decision not recorded"
+        detail="The checklist and reject note are held in this page only."
+        onDiscard={discardReview}
+      />
+      <UnsavedChangesGuard
+        dirty={reviewDirty}
+        body="This KYC review has judgements that have not been submitted as a decision. Leaving now discards them."
+      />
     </div>
   );
 }

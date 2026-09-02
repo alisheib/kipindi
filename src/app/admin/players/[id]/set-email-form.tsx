@@ -7,6 +7,7 @@ import { ActionOverlay, useActionOverlay } from "@/components/admin/action-overl
 import { setPlayerEmailAction } from "./actions";
 import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
+import { UnsavedChangesGuard, PendingChangesBar } from "@/components/ui/unsaved-changes";
 
 export function SetEmailForm({ userId }: { userId: string }) {
   // A1 — this control only ACTS, so a role holding VIEW without ACT is shown why rather
@@ -90,6 +91,29 @@ export function SetEmailForm({ userId }: { userId: string }) {
         onConfirm={submit}
       />
       <ActionOverlay state={overlay.state} onDismiss={overlay.dismiss} />
+
+      {/**
+        * ⛔ NO `useFormDirty` HERE, AND NOT AN OVERSIGHT. That hook snapshots `FormData`, and
+        * this control is a CONTROLLED `<input>` with no `<form>` around it at all — the hook
+        * would find no form, return a null snapshot, and report clean for ever. The typed
+        * address IS the state, so `email` is the honest dirty signal and reading it directly is
+        * the shorter true answer.
+        *
+        * ⭐ THE BAR OFFERS NO SAVE, DELIBERATELY. Setting a player's address re-points their KYC
+        * notices, receipts and account recovery, so it is gated behind a confirmation on purpose
+        * — and a second Save on the bar would either duplicate that dialog or, worse, skip it.
+        * The bar's job here is to say the work exists and offer the safe way out of it.
+        */}
+      <PendingChangesBar
+        dirty={email.trim().length > 0}
+        label="Email not set"
+        detail="Use “Set email” to save it — it asks you to confirm first."
+        onDiscard={() => setEmail("")}
+      />
+      <UnsavedChangesGuard
+        dirty={email.trim().length > 0}
+        body="An email address has been typed for this player but not set. Leaving now discards it."
+      />
     </div>
   );
 }

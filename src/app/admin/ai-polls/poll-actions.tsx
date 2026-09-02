@@ -37,6 +37,7 @@ import type { AIPollConfig } from "@/lib/server/ai-poll-config";
 import { formatTzs } from "@/lib/utils";
 import { SELECTION, bi } from "@/lib/admin-status-lexicon";
 import { band, BAND_TEXT, BAND_FILL } from "@/lib/score-band";
+import { UnsavedChangesGuard, PendingChangesBar } from "@/components/ui/unsaved-changes";
 
 const adminTextarea = "w-full rounded-lg border border-border bg-[var(--bg-inset)] px-3 py-2.5 text-[13px] text-text placeholder:text-text-subtle outline-none admin-focus transition-colors resize-none";
 
@@ -696,7 +697,19 @@ export function BatchGenerateForm({ maxBatch, remaining, generatable }: { maxBat
           setSummary({ total: r.total, pending: r.summary.PENDING_REVIEW, filtered: r.summary.FILTERED + r.summary.VALIDATION_FAILED });
           setPct(100);
           setPhase("done");
-          if (r.summary.PENDING_REVIEW > 0) revealElement("ai-polls-pending");
+          /**
+           * ⛔ SWITCH TABS, THEN REVEAL — `/admin/ai-polls` gained a section rail on 2026-09-02
+           * and `#ai-polls-pending` now lives on the `queue` tab, while this form lives on
+           * `generate`. A bare `revealElement` would have run its whole retry budget against a
+           * DOM that never contains the id, and the operator would have watched a batch finish
+           * and nothing move. §K rule 7d ③: nothing load-bearing behind a click.
+           * ⭐ The order is safe without awaiting the navigation: `revealElement` polls every
+           * 80ms up to 40 times, so it simply finds the element once the tab has painted.
+           */
+          if (r.summary.PENDING_REVIEW > 0) {
+            router.push("/admin/ai-polls?tab=queue" as never);
+            revealElement("ai-polls-pending");
+          }
         } else {
           // 🔴 THE SAME INCIDENT, ONE CONTROL OVER ON THE SAME SCREEN. This read
           // "Server error — try again with fewer polls." — hardcoded, discarding both the server's
@@ -857,11 +870,33 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
   const [maxLead, setMaxLead] = useState(String(config.maxLeadTimeDays));
   const [minConf, setMinConf] = useState(String(config.minConfidence));
   const [maxBatch, setMaxBatch] = useState(String(config.maxBatchPerRun));
-  const [leadTimes, setLeadTimes] = useState<Record<string, number>>(
-    Object.fromEntries(LEAD_TIME_CATEGORIES.map((c) => [c, config.selectionLeadTimeHours?.[c] ?? 1440])),
-  );
+  /* ⛔ ONE HOME for the resting lead times — the seed and the dirty comparison read one builder,
+     so adding a category cannot make the panel open already claiming unsaved work. */
+  const freshLeadTimes = () =>
+    Object.fromEntries(LEAD_TIME_CATEGORIES.map((c) => [c, config.selectionLeadTimeHours?.[c] ?? 1440]));
+  const [leadTimes, setLeadTimes] = useState<Record<string, number>>(freshLeadTimes);
   const router = useRouter();
   const { deferToast } = useDeferredToast(pending);
+
+  /* Eight settings that govern how many markets the AI writes and how confident it must be —
+     held here until Save. An owner who retuned them and left kept the old generator running. */
+  const configDirty =
+    webSearch !== config.webSearchEnabled ||
+    dailyTarget !== String(config.dailyTarget) ||
+    minLead !== String(config.minLeadTimeHours) ||
+    maxLead !== String(config.maxLeadTimeDays) ||
+    minConf !== String(config.minConfidence) ||
+    maxBatch !== String(config.maxBatchPerRun) ||
+    JSON.stringify(leadTimes) !== JSON.stringify(freshLeadTimes());
+  const discardConfig = () => {
+    setWebSearch(config.webSearchEnabled);
+    setDailyTarget(String(config.dailyTarget));
+    setMinLead(String(config.minLeadTimeHours));
+    setMaxLead(String(config.maxLeadTimeDays));
+    setMinConf(String(config.minConfidence));
+    setMaxBatch(String(config.maxBatchPerRun));
+    setLeadTimes(freshLeadTimes());
+  };
 
   const save = (override?: Partial<{ webSearchEnabled: boolean }>) => {
     start(async () => {
@@ -965,6 +1000,17 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
       <button type="button" onClick={() => save()} disabled={pending} className="btn btn-primary btn-sm rounded-pill min-w-[140px]">
         {pending ? "Saving…" : "Save settings"}
       </button>
+
+      {/* One signal, two surfaces — the bar states it, the guard catches the exits. */}
+      <PendingChangesBar
+        dirty={configDirty}
+        saving={pending}
+        detail="The generator keeps running on the saved settings until this is saved."
+        saveLabel="Save settings"
+        onSave={() => save()}
+        onDiscard={discardConfig}
+      />
+      <UnsavedChangesGuard dirty={configDirty} body="The AI poll settings have been changed but not saved. Leaving now discards the change." />
     </div>
   );
 }
@@ -1420,10 +1466,14 @@ const REJECT_REASONS = [
   { id: "empty_title", label: "Missing content" },
 ] as const;
 
+/** ⛔ ONE HOME for the resting reason — the field's seed and the dirty comparison read one name. */
+const POLL_REJECT_DEFAULT = "low_confidence";
+
 function RejectForm({ pollId, onClose, overlay }: { pollId: string; onClose: () => void; overlay: ReturnType<typeof useActionOverlay> }) {
   const [pending, start] = useTransition();
-  const [reason, setReason] = useState<string>("low_confidence");
+  const [reason, setReason] = useState<string>(POLL_REJECT_DEFAULT);
   const [note, setNote] = useState("");
+  const rejectDirty = reason !== POLL_REJECT_DEFAULT || note.trim().length > 0;
   const router = useRouter();
 
   const submit = () => {
@@ -1467,6 +1517,22 @@ function RejectForm({ pollId, onClose, overlay }: { pollId: string; onClose: () 
         </button>
         <button type="button" onClick={onClose} className="btn btn-ghost btn-sm w-full">Cancel</button>
       </div>
+
+      {/* ⛔ An inline panel with a Cancel is NOT a modal — nothing blocks a sidebar click
+          through it, so a typed rejection note is exposed to navigation. Same shape as the
+          candidates reject popover, guarded the same way. */}
+      <PendingChangesBar
+        dirty={rejectDirty}
+        label="Rejection not recorded"
+        detail="The reason and note are held in this panel only."
+        saveLabel="Reject"
+        onSave={submit}
+        onDiscard={onClose}
+      />
+      <UnsavedChangesGuard
+        dirty={rejectDirty}
+        body="A rejection reason has been chosen for this poll but not recorded. Leaving now discards it."
+      />
     </div>
   );
 }
@@ -1505,6 +1571,23 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
   const [selError, setSelError] = useState("");
   const router = useRouter();
   const todayIso = new Date().toISOString().slice(0, 10);
+
+  /**
+   * ⛔ NINE FIELDS SEEDED OFF THE POLL, INCLUDING TWO HAND-WRITTEN TRANSLATIONS. This is the
+   * heaviest edit surface in the console outside the market wizard: an officer rewrites the
+   * question in three languages and its resolution criterion in three more, and the panel is an
+   * inline div — a sidebar click goes straight through it and took the lot.
+   * ⚠️ Every comparison is against the SEED, never against emptiness: these fields open full.
+   */
+  const editDirty =
+    titleEn !== poll.titleEn || titleSw !== poll.titleSw || titleZh !== (poll.titleZh ?? "") ||
+    category !== poll.category ||
+    criterion !== poll.resolutionCriterion ||
+    criterionSw !== (poll.resolutionCriterionSw ?? "") || criterionZh !== (poll.resolutionCriterionZh ?? "") ||
+    editDate !== (validInit ? validInit.toISOString().slice(0, 10) : "") ||
+    editTime !== (validInit ? validInit.toISOString().slice(11, 16) : "") ||
+    selDate !== (validSel ? validSel.toISOString().slice(0, 10) : "") ||
+    selTime !== (validSel ? validSel.toISOString().slice(11, 16) : "");
 
   /** Combine an ISO date (YYYY-MM-DD) + 24h time (HH:MM) into a UTC ISO string. */
   const combineDateTime = (isoDate: string, time: string): string | null => {
@@ -1642,6 +1725,20 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
         </button>
         <button type="button" onClick={onClose} className="btn btn-ghost btn-sm w-full">Cancel</button>
       </div>
+
+      {/* One signal, two surfaces — the bar states it, the guard catches the exits. */}
+      <PendingChangesBar
+        dirty={editDirty}
+        saving={pending}
+        detail="Edits to the question, its translations and its dates are held in this panel only."
+        saveLabel="Save & re-validate"
+        onSave={submit}
+        onDiscard={onClose}
+      />
+      <UnsavedChangesGuard
+        dirty={editDirty}
+        body="This poll has been edited but not saved. Leaving now discards the edit."
+      />
     </div>
   );
 }

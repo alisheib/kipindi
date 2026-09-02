@@ -25,6 +25,8 @@ import { getAiOpsConfig, AVAILABLE_MODELS } from "@/lib/server/ai-ops-config";
 import { ai } from "@/lib/server/ai-config";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
+import type { Route } from "next";
+import { Tabs } from "@/components/ui/tabs";
 
 export const metadata = { title: "Admin \u00b7 AI usage & credits" };
 export const dynamic = "force-dynamic";
@@ -132,6 +134,10 @@ function one(v: string | string[] | undefined): string {
 
 export default async function AdminAiUsagePage({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
+  /** ⛔ THE TAB IS A URL FACT (DG-S-03), so it survives a refresh, a Back and a shared link. */
+  const AI_TABS = ["cycles", "settings", "usage"] as const;
+  const tabRaw = one(sp.tab);
+  const tab: (typeof AI_TABS)[number] = (AI_TABS as readonly string[]).includes(tabRaw) ? (tabRaw as (typeof AI_TABS)[number]) : "cycles";
   const feature = one(sp.feature);
   const status = one(sp.status);
   const q = one(sp.q).trim();
@@ -219,8 +225,19 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
     to: one(sp.to) || undefined,
     sort: sortRaw || undefined,
     dir: dirRaw || undefined,
+    /* ⛔ WITHOUT THIS, TURNING A PAGE LEAVES THE TAB. `baseHref` is what every filter, sort
+       and pagination link is built from, so a tab missing here silently sends the officer
+       back to the default section on the next click. It also makes the rail hrefs below
+       correct with no query of their own. */
+    tab: tab === "cycles" ? undefined : tab,
   };
   const baseHref = buildBaseHref("/admin/ai-usage", spFlat);
+  /** ⛔ A TAB SWITCH MUST NOT SILENTLY RESET THE FILTERS. The rail's options are `<a href>`s,
+   *  so each one has to restate the whole query — built from the SAME `spFlat` every other
+   *  link on this page is built from, with only `tab` replaced. Written any other way, moving
+   *  from the usage log to settings and back would drop a date range the officer had set. */
+  const tabHref = (t: (typeof AI_TABS)[number]) =>
+    buildBaseHref("/admin/ai-usage", { ...spFlat, tab: t === "cycles" ? undefined : t }) as Route;
 
   const c = s.credit;
   const pctSpent = c.limitUsd > 0 ? Math.min(100, (c.spentThisWindowUsd / c.limitUsd) * 100) : 0;
@@ -339,6 +356,25 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
           </div>
         ) : null}
 
+
+        {/* ⭐ §K rule 7a — THE RAIL. 7,079px was the tallest page in the console and none of
+            it was one table: the biggest panel was 47%, so the length came from the SECTION
+            COUNT and a rail is the right instrument. ⛔ Everything ABOVE this line stays on
+            every tab on purpose — the health banner, the KPI strip and the paused-cycle gate
+            are the page's standing state, and `aiBudgetRefusal` links an operator straight at
+            `#ai-cycle-gate` to lift a refusal. A remedy behind a click is 7d ③'s defect. */}
+        <Tabs
+          variant="line"
+          value={tab}
+          ariaLabel="AI usage sections"
+          tabs={[
+            { value: "cycles", labelEn: "Spend cycles", href: tabHref("cycles") },
+            { value: "settings", labelEn: "Settings", href: tabHref("settings") },
+            { value: "usage", labelEn: "Usage log", href: tabHref("usage") },
+          ]}
+        />
+
+        {tab === "cycles" && (<>
         <AdminCard
           id="ai-cycles"
           title="Spend cycles"
@@ -658,7 +694,9 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
             boundary — real, bounded by one call, and shown rather than smoothed away.
           </p>
         </AdminCard>
+        </>)}
 
+        {tab === "settings" && (<>
         {/* ═══ SETTINGS ═══════════════════════════════════════════════════════════ */}
         <AdminCard title="Cycle settings" sw="Mipangilio ya mizunguko">
           <CycleSettings
@@ -732,7 +770,9 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
             models={AVAILABLE_MODELS}
           />
         </AdminCard>
+        </>)}
 
+        {tab === "usage" && (<>
         {/* Per-feature breakdown */}
         <AdminCard title="By feature (stored window)" sw="Kwa kipengele" padding="p-0">
           <ScrollX label="AI usage by feature">
@@ -952,6 +992,7 @@ export default async function AdminAiUsagePage({ searchParams }: { searchParams:
             Haiku $1/$5, Sonnet $3/$15, Opus $5/$25 per 1M tokens; web search $0.01/call. Ledger retained 180 days.
           </p>
         </AdminCard>
+        </>)}
       </AdminBody>
     </>
   );

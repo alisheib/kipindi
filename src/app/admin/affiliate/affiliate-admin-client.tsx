@@ -8,6 +8,7 @@ import { Toggle } from "@/components/ui/toggle";
 import { Input } from "@/components/ui/input";
 import { useDeferredToast } from "@/components/ui/toast";
 import type { AffiliateConfig, BonusRecipient, BonusTrigger, PrizeMilestone } from "@/lib/server/affiliate-config";
+import { UnsavedChangesGuard, PendingChangesBar } from "@/components/ui/unsaved-changes";
 import { saveAffiliateConfigAction } from "./actions";
 
 /**
@@ -113,6 +114,9 @@ export function AffiliateAdminClient({ config }: { config: AffiliateConfig }) {
   const [pending, start] = useTransition();
   const { deferToast, toast } = useDeferredToast(pending);
   const [c, setC] = useState<AffiliateConfig>(config);
+  /* ⭐ THE WHOLE CONFIG IS ONE STATE OBJECT, so the comparison is exact and needs no hook:
+     every field the officer can touch lives in `c`, and `config` is what the server last saved. */
+  const unsaved = JSON.stringify(c) !== JSON.stringify(config);
 
   const on = c.enabled;
   const setMaster = (v: boolean) => setC((p) => ({ ...p, enabled: v }));
@@ -134,6 +138,15 @@ export function AffiliateAdminClient({ config }: { config: AffiliateConfig }) {
 
   return (
     <div className="space-y-3">
+      {/* One signal, two surfaces. This page is long enough that Save scrolls away. */}
+      <PendingChangesBar
+        dirty={unsaved}
+        saving={pending}
+        detail="Affiliate bonuses and prize milestones apply to every referral."
+        onSave={save}
+        onDiscard={() => setC(config)}
+      />
+      <UnsavedChangesGuard dirty={unsaved} body="The affiliate configuration has been changed but not saved. Leaving now discards the change." />
       {/* Master switch + Save */}
       <div
         className="flex items-center gap-4 rounded-lg border p-4"
