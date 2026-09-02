@@ -92,6 +92,18 @@ future site in that file.
 
 ## 3b. THE CONSOLE'S SHAPE — what `ADMIN-TABS-2026-09-01/02` settled
 
+> 🏁 **CLOSED 2026-09-02 — the admin console is DONE and validated on production.**
+> `qa:chaos` **438 page-views · 38 routes × every discovered tab × 6 widths · 0 unmeasured ·
+> 0 defects** · `qa:dg-shell` GREEN (104 probes) · `qa:dg-rail` on **all 14 rails** at 1440 and
+> 390 · `qa:pending-bar` **7/7** · `qa:tab-candidates` **0 remaining candidates** ·
+> `test:all` green · `tsc` 0.
+>
+> ⚠️ **What is deliberately NOT claimed.** `/admin/updown/proposals` is 11,580px of a
+> *paginated* 16-row queue — 580px per row. That is a ROW-DENSITY question and is left OPEN;
+> a rail there would have been the wrong instrument wearing the look of progress. And
+> `test:docs` is red on `docs/PLAYER-VISUAL-2026-09.md`, a parallel session's untracked work
+> in this shared directory — not this programme's, and not touched.
+
 **Fourteen admin pages carry a rail** (`/admin/payments` · `reports` · `system` · `roles` ·
 `ai-usage` · `ai-polls` · `finance` · `updown` · `config` · `sources` · `compliance` ·
 `bonuses` · `proposals` · `retention`). Measured at 390: **38 routes, 14 railed, 0 remaining**
