@@ -930,7 +930,14 @@ body {
    ⛔ NOT folded into `.mono` or `.tabular`: 12 sites pair `tabular` with deliberate tracking
    (the TOTP inputs), and §M4's own words are "tracking is for identifiers". An identifier is
    SUPPOSED to be tracked; only an amount is not. */
-.amount.amount { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: 0; }
+/* ⛔ `white-space: nowrap` ADDED 2026-09-02 — §M4, A MONEY FIGURE IS ONE OBJECT, AND IN PROSE
+   TOO. `qa:chaos` ⑤ found `TZS 1,365` split across two lines inside a SENTENCE on the fee
+   simulator ("the fee on these pools is TZS 1,365 whether YES wins…"): the paragraph wrapped and
+   the figure happened to land on the break. ⭐ The sentence is still free to wrap — an inline
+   `nowrap` span moves WHOLE to the next line — so this changes where the line breaks, never
+   whether it does. It is the root of the same rule `.admin-tbl td.tabular` states for columns,
+   and `.amount` is the one class that means "this is a money figure" everywhere else. */
+.amount.amount { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: 0; white-space: nowrap; }
 
 /* ⭐ `.eyebrow` — §T3's SECTION EYEBROW MADE MECHANICAL. DESIGN-GATE-2026-08-28, step 2, the
    DG-A-11 / DG-P-06 close. §T3 (ruled 2026-08-30 against a production screenshot in the real
