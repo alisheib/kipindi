@@ -501,6 +501,8 @@
     "test:section-rail": "tsx scripts/section-rail.test.mts",
     "qa:dg-rail": "node scripts/design-gate/rail-live.mjs",
     "qa:tab-candidates": "node scripts/design-gate/tab-candidates.mjs",
+    "qa:pending-bar": "node scripts/design-gate/pending-bar-live.mjs",
+    "qa:chaos": "node scripts/design-gate/chaos-render.mjs",
     "test:unsaved-changes": "tsx scripts/unsaved-changes.test.mts",
     "test:validation-focus": "tsx scripts/validation-focus.test.mts",
     "test:cn-collision": "tsx scripts/cn-collision.test.mts",

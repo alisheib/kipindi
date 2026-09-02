@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
 import { Input, Field } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { Select } from "@/components/ui/select";
 import { Toggle } from "@/components/ui/toggle";
 import { Button } from "@/components/ui/button";
 import { ConfirmModal } from "@/components/ui/modal";
+import { UnsavedChangesGuard, PendingChangesBar, useFormDirty } from "@/components/ui/unsaved-changes";
 import {
   updateGlobalConfigAction,
   setMarketOverrideAction,
@@ -33,6 +34,11 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
   const [feeModel, setFeeModel] = useState<RateConfig["feeModel"]>(config.feeModel);
   const [showEst, setShowEst] = useState<boolean>(config.showEstimatedWinnings);
   const [confirmFd, setConfirmFd] = useState<FormData | null>(null);
+  /* ADMIN-TABS-2026-09-01 — this form is UNCONTROLLED (11 defaultValue inputs), so React
+     state never sees an edit. useFormDirty snapshots the form and compares, so a value typed
+     back to what it was stops being dirty rather than warning over nothing. */
+  const formRef = useRef<HTMLFormElement>(null);
+  const { dirty, markSaved, formProps } = useFormDirty(formRef);
 
   const runSave = (fd: FormData) => {
     start(async () => {
@@ -40,6 +46,7 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
       if (!r.ok) {
         toast({ title: "Couldn't update", description: r.error, variant: "danger" });
       } else {
+        markSaved();
         router.refresh();
         deferToast({
           title: "Global config updated",
@@ -86,7 +93,7 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
   const loserSharePct = ((config.platformFeeRate + config.operatorFeeRate) * 100).toFixed(1);
 
   return (
-    <form onSubmit={onSubmit} className="space-y-3">
+    <form ref={formRef} {...formProps} onSubmit={onSubmit} className="space-y-3">
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <Field
           label="Commission rate (%)"
@@ -287,6 +294,24 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
           </div>
         ) : null}
       </div>
+
+      {/* ⭐ THE TWO HALVES OF ONE TRUTH, both driven by the same `dirty`.
+          The BAR is proactive — it states the condition while the officer is still on the page
+          and puts Save in reach on a form that is taller than the viewport. The GUARD is the
+          backstop for the two exits the bar cannot stop: an in-app link (including a section
+          rail tab) and the tab closing. ⛔ Not two mechanisms — one signal, two surfaces. */}
+      <PendingChangesBar
+        dirty={dirty && mayAct}
+        saving={pending}
+        detail="These rates govern every market on the platform."
+        onSave={() => formRef.current?.requestSubmit()}
+        onDiscard={() => { formRef.current?.reset(); markSaved(); }}
+        saveLabel="Save · Hifadhi"
+      />
+      <UnsavedChangesGuard
+        dirty={dirty && mayAct}
+        body="The global rate configuration has been changed but not saved. Leaving now discards the change."
+      />
 
       <div className="flex items-center gap-2 pt-1">
         <Button type="submit" variant="primary" loading={pending} disabled={!mayAct} title={disabledReason}>

@@ -4,6 +4,7 @@ import { AdminPageHead, AdminCard, AdminLoadError } from "@/components/admin/adm
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { AdminMeter } from "@/components/admin/admin-charts";
 import { Chip } from "@/components/ui/chip";
+import { Tabs } from "@/components/ui/tabs";
 import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { PaymentLogo } from "@/components/wallet/payment-logo";
@@ -37,7 +38,7 @@ const ageLabel = (msv: number) => {
   return `${Math.max(0, Math.floor(msv / 60_000))}m`;
 };
 
-export default async function PaymentsOpsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+export default async function PaymentsOpsPage({ searchParams }: { searchParams: Promise<{ page?: string; tab?: string }> }) {
   const sp = await searchParams;
   // `railProbes` asks each Selcom payout endpoint whether it is provisioned for this
   // vendor. It moves NO money (a signed status query for a transid that does not
@@ -69,6 +70,17 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
     .filter((t) => t.type === "WITHDRAWAL" && Date.now() - Date.parse(t.createdAt) > FROZEN_AFTER_MS)
     .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt))
     .slice(0, 25);
+  /* ⛔ THE TAB IS READ, NEVER TRUSTED: an unknown `?tab=` falls back to the landing rather
+     than rendering an empty page. §K rule 7f — the tab set is defined here, on the page that
+     owns it, and the design-gate drives DISCOVER it off the rendered rail instead of a
+     hand-typed route list.
+     ⚠️ The rail links are BARE (`/admin/payments?tab=…`) and deliberately drop `page`:
+     `buildBaseHref` below preserves every param except `page`, so `base` now carries `tab` —
+     which is right for PAGINATION inside the queue, and wrong for the rail, where reusing it
+     would emit `?tab=queue&tab=health`. Switching section also resets to page 1, because
+     page 3 of the retry queue means nothing on the Health tab. */
+  const tab: "health" | "rails" | "queue" =
+    sp.tab === "rails" ? "rails" : sp.tab === "queue" ? "queue" : "health";
   const page = parsePage(sp.page, queue.length);
   const queueRows = queue.slice((page - 1) * PER_PAGE, page * PER_PAGE);
   const base = buildBaseHref("/admin/payments", sp);
@@ -102,54 +114,6 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
             derivedOverrodeDeclared={payouts.derivedOverrodeDeclared}
           />
         </AdminCard>
-
-        {/* ⭐ THE SELCOM SURFACE — Jay's #7. Both balances (one live, one honestly absent
-            because Selcom does not publish it) plus the statement of what actually crossed
-            the rail. ⛔ It REPLACED a bare disbursement-float strip rather than sitting
-            beside it: two Selcom money cards on one page is how an officer ends up reading
-            the wrong one. Every provenance label is derived from the figure it sits under —
-            see `selcom-statement-card.tsx`. */}
-        <AdminCard title="Selcom" sw="Selcom">
-          {railTotals === null
-            ? <AdminLoadError what="the Selcom statement tallies" />
-            : <SelcomStatementCard statement={buildSelcomStatement(railTotals, floatBal?.balance ?? null)} />}
-        </AdminCard>
-
-        {/* Payout rails — which Selcom disbursement products are actually provisioned
-            for this vendor. Probed live (money-free status queries) on every load.
-            A payout tries the ladder in order and skips anything marked NOT ENABLED. */}
-        {railProbes === null && (
-          <AdminCard title="Payout rails" sw="Njia za malipo">
-            <AdminLoadError what="the payout-rail probes" />
-          </AdminCard>
-        )}
-        {railProbes !== null && railProbes.length > 0 && (
-          <AdminCard title="Payout rails" sw="Njia za malipo">
-            <div className="space-y-2">
-              {railProbes.map((p) => {
-                const rung = PAYOUT_LADDER.indexOf(p.rail);
-                const tone = p.verdict === "ENABLED" ? "text-success" : p.verdict === "NOT_ENABLED" ? "text-danger" : "text-warning";
-                return (
-                  <div key={p.rail} className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                    <span className={`font-mono text-micro uppercase tracking-[0.12em] ${tone}`}>
-                      {p.verdict === "ENABLED" ? "enabled" : p.verdict === "NOT_ENABLED" ? "not enabled" : "unknown"}
-                    </span>
-                    <span className="font-mono text-[11px] text-text">{PAYOUT_RAILS[p.rail].label}</span>
-                    <span className="font-mono text-[10px] text-text-subtle">
-                      {rung >= 0 ? `fallback #${rung + 1}` : "manual only"}
-                    </span>
-                    <span className="font-mono text-[10px] text-text-tertiary break-all">{p.detail}</span>
-                  </div>
-                );
-              })}
-            </div>
-            <p className="mt-2 font-mono text-[10px] text-text-tertiary">
-              A payout walks the ladder in order and skips a rail Selcom has told us is not provisioned.
-              It advances ONLY on a definitive refusal — never on a timeout, which might still be in flight.
-              &ldquo;Manual only&rdquo; rails are implemented and reachable, but never substituted automatically.
-            </p>
-          </AdminCard>
-        )}
 
         {/* Frozen payouts — a player's money held with nothing able to release it.
             B-1: a FAILED read renders the explicit load-error card, never a blank
@@ -189,6 +153,31 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
           </AdminCard>
         )}
 
+
+        {/* ⭐ THE RAIL — §K rule 7. EVERYTHING ABOVE IT STAYS ON EVERY TAB, and that is 7d
+            rather than layout taste: "a tab may hide a DETAIL. It may never hide a STATE."
+            Three things therefore never move below it:
+              · the operations control-plane — it holds the MNO KILL-SWITCHES, and a switch an
+                officer cannot see is a switch they cannot reach in an incident;
+              · what players are told about withdrawals — it is the sentence the product is
+                showing right now, and it carries the stuck-payout count;
+              · the frozen-payouts alarm — a player's money is HELD and nothing automatic can
+                release it. An alarm behind a click is not an alarm.
+            ⛔ AND THE QUEUE'S COUNT RIDES THE RAIL. The retry queue's ROWS are a detail and
+            may sit in a tab, but "there are failed transactions" is a STATE — so the count is
+            on the option itself and is legible without opening it. That is the whole of 7d's
+            distinction, applied rather than quoted. */}
+        <Tabs
+          ariaLabel="Payments sections"
+          value={tab}
+          tabs={[
+            { value: "health", labelEn: "Health", href: `/admin/payments?tab=health` as Route },
+            { value: "rails", labelEn: "Rails", href: `/admin/payments?tab=rails` as Route },
+            { value: "queue", labelEn: "Retry queue", count: queue.length, href: `/admin/payments?tab=queue` as Route },
+          ]}
+        />
+
+        {tab === "health" && (<>
         {/* Reconciliation strip — ledger vs PSP settlement. */}
         <AdminCard>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
@@ -292,6 +281,66 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
           })}
         </div>
 
+        <AdminCard className="border-info-border bg-info-bg">
+          <p className="text-caption text-text-secondary">
+            <span className="text-text font-bold">Live telemetry.</span> Success rate, latency, failures and reconciliation are computed from the real
+            transaction record over the last 24h — no data is fabricated. Latency percentiles come only from movements that recorded a settlement time.
+            A per-MNO settlement-file feed will replace the ref-based reconciliation when the aggregator contract is signed.
+          </p>
+        </AdminCard>
+        </>)}
+
+        {tab === "rails" && (<>
+        {/* ⭐ THE SELCOM SURFACE — Jay's #7. Both balances (one live, one honestly absent
+            because Selcom does not publish it) plus the statement of what actually crossed
+            the rail. ⛔ It REPLACED a bare disbursement-float strip rather than sitting
+            beside it: two Selcom money cards on one page is how an officer ends up reading
+            the wrong one. Every provenance label is derived from the figure it sits under —
+            see `selcom-statement-card.tsx`. */}
+        <AdminCard title="Selcom" sw="Selcom">
+          {railTotals === null
+            ? <AdminLoadError what="the Selcom statement tallies" />
+            : <SelcomStatementCard statement={buildSelcomStatement(railTotals, floatBal?.balance ?? null)} />}
+        </AdminCard>
+
+        {/* Payout rails — which Selcom disbursement products are actually provisioned
+            for this vendor. Probed live (money-free status queries) on every load.
+            A payout tries the ladder in order and skips anything marked NOT ENABLED. */}
+        {railProbes === null && (
+          <AdminCard title="Payout rails" sw="Njia za malipo">
+            <AdminLoadError what="the payout-rail probes" />
+          </AdminCard>
+        )}
+        {railProbes !== null && railProbes.length > 0 && (
+          <AdminCard title="Payout rails" sw="Njia za malipo">
+            <div className="space-y-2">
+              {railProbes.map((p) => {
+                const rung = PAYOUT_LADDER.indexOf(p.rail);
+                const tone = p.verdict === "ENABLED" ? "text-success" : p.verdict === "NOT_ENABLED" ? "text-danger" : "text-warning";
+                return (
+                  <div key={p.rail} className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                    <span className={`font-mono text-micro uppercase tracking-[0.12em] ${tone}`}>
+                      {p.verdict === "ENABLED" ? "enabled" : p.verdict === "NOT_ENABLED" ? "not enabled" : "unknown"}
+                    </span>
+                    <span className="font-mono text-[11px] text-text">{PAYOUT_RAILS[p.rail].label}</span>
+                    <span className="font-mono text-[10px] text-text-subtle">
+                      {rung >= 0 ? `fallback #${rung + 1}` : "manual only"}
+                    </span>
+                    <span className="font-mono text-[10px] text-text-tertiary break-all">{p.detail}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="mt-2 font-mono text-[10px] text-text-tertiary">
+              A payout walks the ladder in order and skips a rail Selcom has told us is not provisioned.
+              It advances ONLY on a definitive refusal — never on a timeout, which might still be in flight.
+              &ldquo;Manual only&rdquo; rails are implemented and reachable, but never substituted automatically.
+            </p>
+          </AdminCard>
+        )}
+        </>)}
+
+        {tab === "queue" && (<>
         {/* Retry queue. */}
         <AdminCard title="Retry queue · Foleni ya majaribio" sw="Failed deposits & withdrawals" padding={queue.length ? "p-0" : "p-4"} action={queue.length > 1 ? <BulkRetryControls /> : undefined}>
           {queue.length === 0 ? (
@@ -330,14 +379,8 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
           )}
           {queue.length > 0 && <AdminPagination total={queue.length} page={page} baseHref={base} />}
         </AdminCard>
+        </>)}
 
-        <AdminCard className="border-info-border bg-info-bg">
-          <p className="text-caption text-text-secondary">
-            <span className="text-text font-bold">Live telemetry.</span> Success rate, latency, failures and reconciliation are computed from the real
-            transaction record over the last 24h — no data is fabricated. Latency percentiles come only from movements that recorded a settlement time.
-            A per-MNO settlement-file feed will replace the ref-based reconciliation when the aggregator contract is signed.
-          </p>
-        </AdminCard>
       </AdminBody>
     </>
   );

@@ -16,6 +16,7 @@ import { Input, Field } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { ConfirmModal } from "@/components/ui/modal";
+import { UnsavedChangesGuard, PendingChangesBar } from "@/components/ui/unsaved-changes";
 import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import { setStaffRoleAction, addStaffByPhoneAction } from "./actions";
 
@@ -94,7 +95,12 @@ export function AssignRoleForm({ userId, currentRole, roleInfos }: { userId: str
   const [role, setRole] = useState<string>(currentRole);
   const [reason, setReason] = useState("");
   const [confirming, setConfirming] = useState(false);
+  /* The bar submits through the FORM, not past it — see the note on onSave below. */
+  const assignFormRef = useRef<HTMLFormElement>(null);
 
+  /* ⛔ `changed` alone is not the whole answer: an officer who has typed a REASON and not yet
+     picked a role has still done work, and losing it means retyping an audited justification. */
+  const unsaved = role !== currentRole || reason.trim() !== "";
   const isRevoke = role === "PLAYER";
   const info = roleInfos[role];
   const changed = role !== currentRole;
@@ -121,7 +127,7 @@ export function AssignRoleForm({ userId, currentRole, roleInfos }: { userId: str
   };
 
   return (
-    <form onSubmit={onSubmit} className="space-y-3">
+    <form ref={assignFormRef} onSubmit={onSubmit} className="space-y-3">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Role" hint="One role per person.">
           <Select name="role" ariaLabel="Role" defaultValue={currentRole} onChange={setRole} options={ROLE_OPTIONS(roleInfos, true)} />
@@ -131,6 +137,18 @@ export function AssignRoleForm({ userId, currentRole, roleInfos }: { userId: str
         </Field>
       </div>
       <Consequence info={info} isRevoke={isRevoke} />
+      <PendingChangesBar
+        dirty={unsaved}
+        saving={pending}
+        detail="A role change signs this person out of every device."
+        /* ⛔ requestSubmit(), NOT setConfirming(true): the bar must take the SAME path as the
+           button, or it skips this form onSubmit guard and would open the confirm ceremony for
+           a no-op (a typed reason with no role change) or for a reason under 5 characters. */
+        onSave={() => assignFormRef.current?.requestSubmit()}
+        onDiscard={() => { setRole(currentRole); setReason(""); }}
+        saveLabel={isRevoke ? "Revoke staff access" : "Change role"}
+      />
+      <UnsavedChangesGuard dirty={unsaved} body="This role change has not been saved. Leaving now discards it." />
       <Button type="submit" variant="primary" loading={pending} disabled={!changed}>
         {isRevoke ? "Revoke staff access" : "Change role"}
       </Button>

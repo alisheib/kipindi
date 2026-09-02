@@ -25,6 +25,7 @@ import { Input, Field } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Toggle } from "@/components/ui/toggle";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { UnsavedChangesGuard, PendingChangesBar, useFormDirty } from "@/components/ui/unsaved-changes";
 import { parseCycleForm, CYCLE_BOUNDS } from "@/lib/ai-cycle-rules";
 import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import { setCycleConfigAction, startNextCycleAction, closeCycleNowAction } from "./actions";
@@ -66,6 +67,12 @@ export function CycleSettings(p: Props) {
   const [pauseOnEnd, setPauseOnEnd] = useState(!p.autoRoll);
   const [err, setErr] = useState<{ field?: string; message: string } | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  /* ⛔ TWO SOURCES OF TRUTH FOR ONE QUESTION, OR-ED — and the OR is the point. The five money
+     fields are UNCONTROLLED, so the snapshot hook owns them; `pauseOnEnd` is a kit <Toggle>,
+     which is NOT a form field, so `FormData` cannot see it at all. Wiring only the hook would
+     leave an officer able to flip the cycle-end behaviour and walk away with no warning. */
+  const { dirty: fieldsDirty, markSaved, formProps } = useFormDirty(formRef);
+  const dirty = fieldsDirty || pauseOnEnd !== !p.autoRoll;
   const router = useRouter();
   const { deferToast, toast } = useDeferredToast(pending);
 
@@ -131,6 +138,7 @@ export function CycleSettings(p: Props) {
         if (r.field) focusFirstInvalid(formRef.current, [r.field]);
         return;
       }
+      markSaved();
       router.refresh();
       deferToast({
         title: "Cycle settings saved",
@@ -145,7 +153,7 @@ export function CycleSettings(p: Props) {
   const fieldErr = (name: string) => (err?.field === name ? err.message : undefined);
 
   return (
-    <form ref={formRef} onSubmit={(e) => { e.preventDefault(); }} className="space-y-4">
+    <form ref={formRef} {...formProps} onSubmit={(e) => { e.preventDefault(); }} className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <Field
           label="Cycle size (USD)"
@@ -219,6 +227,16 @@ export function CycleSettings(p: Props) {
           by the kit's own `Field`, were already `text-danger-fg`: one form, two reds, one of
           them spending the money vocabulary on chrome. The neighbour decides the value. */}
       {err && !err.field && <p className="text-caption text-danger-fg">{err.message}</p>}
+
+      {/* One signal, two surfaces — the bar states it, the guard catches the exits. */}
+      <PendingChangesBar
+        dirty={dirty && mayAct}
+        saving={pending}
+        detail="Cycle size and FX drive every projection on this page."
+        onSave={() => { if (guard()) save(); }}
+        onDiscard={() => { formRef.current?.reset(); setPauseOnEnd(!p.autoRoll); setErr(null); markSaved(); }}
+      />
+      <UnsavedChangesGuard dirty={dirty && mayAct} body="The AI cycle settings have been changed but not saved. Leaving now discards the change." />
 
       {mayAct ? (
         <ConfirmDialog

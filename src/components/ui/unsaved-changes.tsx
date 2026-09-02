@@ -37,11 +37,230 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { ConfirmModal } from "@/components/ui/modal";
+import { createPortal } from "react-dom";
+import { Button } from "@/components/ui/button";
 
 /**
  * Install the guard. `dirty` is the caller's own answer to "would leaving lose work?" — the
  * kit does not guess it, because only the form knows what its saved state was.
  */
+/**
+ * `PendingChangesBar` — the PROACTIVE half of unsaved-change tracking.
+ *                                                    (ADMIN-TABS-2026-09-01, §K rule 7d)
+ *
+ * ⭐ WHY A BAR AND NOT ONLY A DIALOG. `UnsavedChangesGuard` is REACTIVE: it speaks only once
+ * the operator is already leaving, and its answer is a question. A console page that is now a
+ * SECTION RAIL makes that worse — an officer edits on one tab, switches to another, and the
+ * only thing that ever mentioned the edit is a modal they must read under time pressure. A
+ * persistent bar states the condition continuously and puts Save and Discard in reach, so the
+ * dialog becomes the backstop it was always meant to be rather than the whole mechanism.
+ *
+ * ⛔ IT INTRODUCES NO NEW DESIGN. Every part is a surface this platform already paints, which
+ * is §B9/§B10 — the system is complete; new design MERGES IN, it never sits beside:
+ *   · the surface is `.kp-rail` — the SAME recipe the player's bottom navigation uses
+ *     (`globals.css:4730`): `--panel`, a top border, `--shadow-overlay-up`, and the
+ *     `env(safe-area-inset-bottom)` padding that keeps it off an iOS home indicator;
+ *   · the motion is `.kp-rise`, an EXISTING registered keyframe (`test:keyframes` rule 1.1
+ *     forbids a second name for a motion that already exists) — and it is already listed in
+ *     the reduced-motion block at `globals.css:2728`, so §M6 is satisfied without a new rule;
+ *   · the rung is `z-nav` (40), which already paints. It sits BELOW `menu`, `drawer` and
+ *     `modal`, so a dialog — including this file's own confirm — always covers it, and an
+ *     officer can never be asked to answer a question they cannot see;
+ *   · the tone is `--warning-*`, the APP-STATE caution family. ⛔ Never the betting ramp: an
+ *     unsaved form is not a losing bet (§B2a).
+ *
+ * ⚠️ IT RESERVES ITS OWN SPACE. A `position: fixed` bar covers whatever is under it, and the
+ * admin body reserves no bottom padding — so the last card on a 4,000px page would sit beneath
+ * it, which is exactly the "rendered is not visible" defect this lineage keeps paying for. The
+ * spacer below is a sibling in the page flow and is why the bar can never hide content.
+ */
+export function PendingChangesBar({
+  dirty,
+  onSave,
+  onDiscard,
+  saving = false,
+  label = "Unsaved changes",
+  detail,
+  saveLabel = "Save changes",
+  discardLabel = "Discard",
+}: {
+  dirty: boolean;
+  onSave?: () => void;
+  onDiscard?: () => void;
+  saving?: boolean;
+  label?: string;
+  detail?: React.ReactNode;
+  saveLabel?: string;
+  discardLabel?: string;
+}) {
+  /* ⛔ SSR: `createPortal` needs a DOM. Mount-gate it so the server renders the SPACER only —
+     which is right, because the spacer belongs to the page and the bar belongs to the window. */
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => { setMounted(true); }, []);
+
+  /**
+   * ⚠️ THE SPACER MEASURES THE BAR; IT DOES NOT ASSUME IT. `--h-pending-bar` is the bar's
+   * MINIMUM, and at 390 the row legitimately WRAPS — the label, the detail sentence and the
+   * two buttons do not fit on one line — so the painted bar can be half as tall again as the
+   * token. A spacer fixed at the token would then under-reserve by exactly the wrapped height
+   * and the bar would cover the last card **only at narrow widths**, which is the kind of
+   * defect that passes every desktop check and ships. So the reserved height is READ from the
+   * rendered element, and re-read whenever it changes size.
+   * ⭐ It falls back to the token until the first measurement lands, so the space is never zero.
+   */
+  const barRef = React.useRef<HTMLDivElement>(null);
+  const [barH, setBarH] = React.useState<number | null>(null);
+  React.useEffect(() => {
+    const el = barRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => setBarH(el.getBoundingClientRect().height));
+    ro.observe(el);
+    setBarH(el.getBoundingClientRect().height);
+    return () => ro.disconnect();
+  }, [mounted, dirty]);
+
+  if (!dirty) return null;
+
+  /**
+   * 🔴 IT PORTALS, AND THAT IS NOT OPTIONAL — `test:stacking` §5 names the mechanism.
+   * `.route-enter` is `animation: m-settle-in … both`, and a `both` fill keeps the final
+   * keyframe's `transform` applied FOR EVER. A transformed element is the containing block for
+   * every `position: fixed` descendant, so a bar rendered from a route file anchors to the
+   * page-transition wrapper instead of the window — it would sit at the bottom of the PAGE,
+   * scrolling away, on a console page that is 4,000px tall. That is the "rendered is not
+   * visible" defect, and no screenshot of the top of the page would show it.
+   * ⚠️ §5.2's sweep did NOT catch this: its predicate is `fixed` + `inset-0`, i.e. a
+   * FULL-VIEWPORT overlay, and this bar is edge-anchored (`inset-x-0 bottom-0`). The gate was
+   * one level too shallow for this shape and has been widened in the same commit — but the
+   * portal is the fix, not the gate.
+   */
+  const bar = (
+    <div
+        ref={barRef}
+        /* ⭐ `status` + `polite`, not `alert`: the condition is important and is NOT an
+           emergency, and an assertive live region would interrupt whatever the officer is
+           typing — on the very form the message is about. */
+        role="status"
+        aria-live="polite"
+        className="kp-rail kp-rise fixed inset-x-0 bottom-0 z-nav"
+      >
+        <div
+          /* ⛔ NO `max-w-…` HERE — §B7, "every page states its width, once", and `test:measure`
+             refused the first draft's `max-w-[1400px]` as a NEW hand-typed page width. It was
+             also simply wrong: `AdminBody` states no measure at all and runs full-width at
+             `px-4 lg:px-6`, so a bar that centred itself inside 1400px would not line up with
+             the content it belongs to. The padding below is AdminBody's own, so the bar's
+             contents sit on the same left edge as the form above them. */
+          className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 lg:px-6"
+          style={{ minHeight: "var(--h-pending-bar)" }}
+        >
+          <span className="inline-flex items-center gap-2 font-mono text-micro uppercase eyebrow text-warning-fg">
+            <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-pill bg-warning-fg" />
+            {label}
+          </span>
+          {detail && <span className="min-w-0 text-caption text-text-secondary">{detail}</span>}
+          {/* ⭐ The actions sit at the END on one line and WRAP as a pair at 390 — the same
+              `flex-wrap` + `ml-auto` shape the admin card header uses, so a narrow screen
+              never puts Save on its own orphan row. */}
+          <span className="ml-auto flex items-center gap-2">
+            {onDiscard && (
+              <Button type="button" variant="ghost" size="sm" onClick={onDiscard} disabled={saving}>
+                {discardLabel}
+              </Button>
+            )}
+            {onSave && (
+              <Button type="button" variant="primary" size="sm" onClick={onSave} loading={saving}>
+                {saveLabel}
+              </Button>
+            )}
+          </span>
+        </div>
+      </div>
+  );
+
+  return (
+    <>
+      {/* ⛔ THE SPACER IS NOT DECORATION, and it stays IN FLOW while the bar portals away. It
+          reads the SAME token the bar paints at, so the two cannot drift; a numeric utility
+          here would be a second copy of one number, and `test:ui-consistency`'s
+          `numeric-size-utility` rule said so the first time this was written as `h-10`. The
+          safe-area inset is added because `.kp-rail` gives the bar that padding, and the space
+          reserved has to match what is actually on screen. */}
+      <div aria-hidden style={{ height: barH !== null ? barH : "calc(var(--h-pending-bar) + env(safe-area-inset-bottom, 0px))" }} />
+      {mounted ? createPortal(bar, document.body) : null}
+    </>
+  );
+}
+
+/**
+ * `useFormDirty` — the honest answer to *"would leaving lose work?"* for an UNCONTROLLED form.
+ *                                                    (ADMIN-TABS-2026-09-01, §K5, §K rule 7d)
+ *
+ * ⭐ WHY IT EXISTS. `UnsavedChangesGuard` takes a `dirty` boolean and the caller owns it. That
+ * is easy where state is controlled (`updown-controls.tsx` compares `method !== observationMethod`
+ * and is exact). But most admin forms are UNCONTROLLED — `config-form.tsx` alone renders 11
+ * `<Input defaultValue={…}>` — and React state never sees those edits at all, so there is
+ * nothing to compare and every such form would otherwise ship without a guard.
+ *
+ * ⛔ AND THE OBVIOUS SHORTCUT IS WRONG. A `touched` flag set by the first keystroke reports
+ * dirty forever after — including once the operator has typed a value back to what it was. That
+ * is a prompt over nothing, and a dialog that fires when nothing would be lost is how operators
+ * learn to dismiss the dialog that matters. This SNAPSHOTS the form on mount and COMPARES, so
+ * typing `40` over `40` is not dirty and typing it back to `40` stops being dirty.
+ *
+ * ⚠️ WHAT IT COMPARES, STATED: the form's own `FormData`, serialised in DOM order. That means
+ *   · a field the form renders CONDITIONALLY (a fee model that reveals two more inputs) changes
+ *     the serialisation and therefore reads dirty — which is correct, the operator changed it;
+ *   · a checkbox that posts nothing when unchecked is handled, because both sides of the
+ *     comparison are built the same way;
+ *   · ⛔ a FILE input is skipped by name. `FormData` holds a `File` object whose stringification
+ *     is the filename alone, so two different files with one name would compare equal — a
+ *     silent false negative, which is the failure direction this repo does not accept. No admin
+ *     form uploads today; if one does, it must own its own `dirty`.
+ *
+ * ⛔ `markSaved()` IS NOT OPTIONAL. After a successful save the CURRENT values are the new
+ * baseline; without the call the form stays dirty forever and the guard fires on a form that
+ * holds nothing unsaved.
+ */
+export function useFormDirty(formRef: React.RefObject<HTMLFormElement | null>) {
+  const [dirty, setDirty] = React.useState(false);
+  const baseline = React.useRef<string | null>(null);
+
+  const snapshot = React.useCallback(() => {
+    const form = formRef.current;
+    if (!form) return null;
+    const fd = new FormData(form);
+    const parts: string[] = [];
+    for (const [k, v] of fd.entries()) {
+      if (typeof v !== "string") continue; // see the FILE note above
+      parts.push(`${encodeURIComponent(k)}=${encodeURIComponent(v)}`);
+    }
+    return parts.join("&");
+  }, [formRef]);
+
+  /* The baseline is taken AFTER the first paint, not during render: a `defaultValue` is only on
+     the DOM node once it exists, and a snapshot taken too early is an empty string that makes
+     every field read as a change. */
+  React.useEffect(() => {
+    baseline.current = snapshot();
+  }, [snapshot]);
+
+  const check = React.useCallback(() => {
+    const now = snapshot();
+    if (now === null || baseline.current === null) return;
+    setDirty(now !== baseline.current);
+  }, [snapshot]);
+
+  const markSaved = React.useCallback(() => {
+    baseline.current = snapshot();
+    setDirty(false);
+  }, [snapshot]);
+
+  /* ⚠️ BOTH EVENTS, ON PURPOSE. `input` covers typing; `change` covers a `<select>` and a
+     checkbox, which do not fire `input` in every engine. They are cheap and idempotent. */
+  return { dirty, markSaved, formProps: { onInput: check, onChange: check } };
+}
+
 export function UnsavedChangesGuard({
   dirty,
   title = "Leave without saving?",

@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
+import type { Route } from "next";
+import { Tabs } from "@/components/ui/tabs";
 import { DateTimeRangeFilter } from "@/components/ui/datetime-range-filter";
 import { AdminBarList } from "@/components/admin/admin-charts";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
@@ -140,7 +142,7 @@ const TEMPLATES = [
 export default async function AdminReportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; sort?: string; dir?: string; range?: string; from?: string; to?: string; cmp?: string }>;
+  searchParams: Promise<{ page?: string; sort?: string; dir?: string; range?: string; from?: string; to?: string; cmp?: string; tab?: string }>;
 }) {
   // Reports/exports expose regulator-grade data → CONFIG_ROLES only, NEVER
   // MODERATOR (roles.ts). The admin layout only gates ADMIN_CONSOLE_ROLES (which
@@ -152,6 +154,10 @@ export default async function AdminReportsPage({
   }
 
   const sp = await searchParams;
+  /* §K rule 7f — the tab set is defined HERE, on the page that owns it, and an unknown value
+     falls back to the landing rather than rendering an empty page. The drives discover the
+     set off the rendered rail, never a typed route list. */
+  const tab: "performance" | "library" = sp.tab === "library" ? "library" : "performance";
 
   // ── Reporting console (Batch 3 §1) — real aggregates on the normative money
   //    definitions (report-money.ts). "vs prior" is opt-in via ?cmp=1.
@@ -253,6 +259,35 @@ export default async function AdminReportsPage({
           <AdminKpi label="Active players" sw="Wachezaji" value={current.activePlayers.toLocaleString()} spark={false} {...deltaProps(current.activePlayers, prior.activePlayers, compare, "count")} />
         </KpiGrid>
 
+        {/* ── Regulator pack — maker-checker signing chain (ADM1 §1) ── */}
+        <ReportPackCard />
+
+
+        {/* ⭐ THE RAIL — §K rule 7a, and the split is the two JOBS this page holds, not its length.
+            An officer either READS the period (GGR, the daily P&L, the per-game and per-category
+            breakdowns — one document, compared against itself, which is why they stay together)
+            or GENERATES from the library. Those are alternative tasks; the numbers and the
+            template list are never read against each other.
+            ⛔ TWO THINGS STAY ABOVE IT, AND BOTH ARE 7d:
+              · the KPI strip and the freshness stamp — they are the SUMMARY and the period the
+                whole page is about; a report generated against the wrong window is the defect
+                that stamp exists to prevent, so it cannot be one click away;
+              · the REGULATOR PACK — a maker-checker signing chain whose STATE (draft → prepared
+                → approved → submitted → acknowledged) is exactly what 7d refuses to hide. A pack
+                sitting at PREPARED is waiting on a second officer, and an officer who cannot see
+                that is the reason the countersignature is late. ⚠️ It could have ridden the rail
+                as a count, but the card fetches its own pack — the page does not know the state,
+                and inventing that plumbing to justify a tab is the tail wagging the dog. */}
+        <Tabs
+          ariaLabel="Reports sections"
+          value={tab}
+          tabs={[
+            { value: "performance", labelEn: "Performance", href: "/admin/reports?tab=performance" as Route },
+            { value: "library", labelEn: "Report library", href: "/admin/reports?tab=library" as Route },
+          ]}
+        />
+
+        {tab === "performance" && (<>
         {/* Daily P&L + category breakdown. minmax(0,1fr) lets the P&L track
             shrink so its inner overflow-x-auto scrolls instead of pushing the
             category card off-canvas (a plain 1fr won't shrink below min-content).
@@ -429,10 +464,9 @@ export default async function AdminReportsPage({
             </AdminCard>
           )}
         </div>
+        </>)}
 
-        {/* ── Regulator pack — maker-checker signing chain (ADM1 §1) ── */}
-        <ReportPackCard />
-
+        {tab === "library" && (<>
         {/* ── Report library — statutory + operational templates ── */}
         <div className="pt-3 border-t border-dashed border-border-subtle">
           <p className="font-display font-semibold text-body-sm text-text">Report library</p>
@@ -542,6 +576,8 @@ export default async function AdminReportsPage({
             </p>
           </div>
         </AdminCard>
+        </>)}
+
       </AdminBody>
     </>
   );

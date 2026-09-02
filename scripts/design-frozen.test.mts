@@ -524,6 +524,19 @@ const PORTAL_EXEMPT = new Set([
   "src/components/admin/admin-mobile-nav.tsx",     // slide-over
   "src/components/admin/action-overlay.tsx",       // full-screen progress overlay
   "src/components/markets/share-button.tsx",       // anchored share menu
+  /* ⭐ ADDED 2026-09-01 (ADMIN-TABS-2026-09-01) — `PendingChangesBar`, and it is the OPPOSITE
+     of the shape this rule exists to catch. The reason above is *"a hand-rolled createPortal
+     DIALOG is a popup that skipped the focus trap, the focus return and the scroll lock"*.
+     This is not a dialog: it is a persistent, non-modal `role="status"` bar that must NEVER
+     trap focus, never return it, and never lock scrolling — an officer has to keep typing in
+     the form underneath it while it is on screen. Adopting `<Modal>` would give it all four
+     behaviours it must not have.
+     ⛔ AND IT PORTALS BECAUSE ANOTHER GATE REQUIRES IT: `test:stacking` §5 — `.route-enter`
+     retains a transform for ever, and a transformed ancestor is the containing block for every
+     fixed descendant, so a bar rendered from a route file would anchor to the page wrapper and
+     scroll away instead of holding the window's bottom edge. Not portalling is the defect here;
+     portalling is the fix. */
+  "src/components/ui/unsaved-changes.tsx",         // pending-changes bar — non-modal status, must not trap focus
 ]);
 const roguePortals: string[] = [];
 for (const file of walk(SRC, /\.tsx$/)) {

@@ -303,6 +303,13 @@
   --h-control-lg: 48px;   /* .btn-lg — Phase 3 landed: closes the +4 ladder 40/44/48 */
   --h-control-xl: 56px;   /* .btn-xl */
   --h-input:      44px;   /* .input / .input-group — already at the tap floor */
+  /* ⭐ ADMIN-TABS-2026-09-01 — the pending-changes bar's reserved height, and it has ONE home
+     because TWO things must agree on it: the fixed bar paints at least this tall, and the
+     in-flow spacer beside it reserves exactly this much so the bar can never cover the last
+     card on a page. Two hand-typed copies of one number is how a `position: fixed` bar starts
+     hiding content on one breakpoint only. ⚠️ The spacer adds `env(safe-area-inset-bottom)`
+     on top, which the bar gets from `.kp-rail`. */
+  --h-pending-bar: 64px;  /* .kp-rail pending-changes bar — 40px control + 12px padding ×2 */
 
   /* ---------- E-120 · the hover gain, in ONE place because it is an AA input ----
      🔴 Every solid button used to lighten its own fill on hover — .btn-yes/.btn-no

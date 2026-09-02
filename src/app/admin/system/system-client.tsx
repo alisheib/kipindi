@@ -9,6 +9,7 @@ import { I } from "@/components/ui/glyphs";
 import { Input, Field } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Toggle } from "@/components/ui/toggle";
+import { UnsavedChangesGuard, PendingChangesBar, useFormDirty } from "@/components/ui/unsaved-changes";
 import { verifyChainAction, updateSupportConfigAction, updatePlatformTimezoneAction, setMaintenanceModeAction, setAnnouncementAction } from "./actions";
 import type { SupportConfig } from "@/lib/support-config";
 
@@ -74,6 +75,9 @@ export function SystemActions({ kind }: { kind: "verify-chain" }) {
 }
 
 export function SupportConfigForm({ config }: { config: SupportConfig }) {
+  /* ADMIN-TABS-2026-09-01 — uncontrolled inputs, so the snapshot hook owns `dirty`. */
+  const cfgFormRef = useRef<HTMLFormElement>(null);
+  const { dirty, markSaved, formProps } = useFormDirty(cfgFormRef);
   const [pending, start] = useTransition();
   const router = useRouter();
   const { deferToast, toast } = useDeferredToast(pending);
@@ -97,6 +101,7 @@ export function SupportConfigForm({ config }: { config: SupportConfig }) {
            describing. `r.field` is the address the action returned ("support-email"). */
         if (r.field) focusFirstInvalid(form, [r.field]);
       } else {
+        markSaved();
         router.refresh();
         deferToast({ title: "Support info updated", variant: "success" });
       }
@@ -104,7 +109,7 @@ export function SupportConfigForm({ config }: { config: SupportConfig }) {
   };
 
   return (
-    <form onSubmit={onSubmit} className="space-y-3">
+    <form ref={cfgFormRef} {...formProps} onSubmit={onSubmit} className="space-y-3">
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {/* ⭐ DG-S-05/06 — `dataField` is the ADDRESS `updateSupportConfigAction` names when it
             refuses ("Email is required."). It lands on the <label> wrapper, which CONTAINS the
@@ -123,6 +128,18 @@ export function SupportConfigForm({ config }: { config: SupportConfig }) {
       <Button type="submit" variant="primary" loading={pending}>
         Save · Hifadhi
       </Button>
+      {/* ⛔ THIS PAGE IS A SECTION RAIL, which is exactly why the bar earns its place: an
+          officer can edit support details and switch to Diagnostics, and without this the only
+          thing that would ever mention the edit is a modal on the way out. */}
+      <PendingChangesBar
+        dirty={dirty}
+        saving={pending}
+        detail="Support contact details are shown on help, login, legal and KYC pages."
+        onSave={() => cfgFormRef.current?.requestSubmit()}
+        onDiscard={() => { cfgFormRef.current?.reset(); markSaved(); }}
+        saveLabel="Save · Hifadhi"
+      />
+      <UnsavedChangesGuard dirty={dirty} body="The support contact details have been changed but not saved. Leaving now discards the change." />
     </form>
   );
 }
@@ -221,6 +238,18 @@ export function AnnouncementForm({
       <Button onClick={submit} loading={pending} disabled={!changed}>
         {active ? "Publish banner" : "Save"}
       </Button>
+      {/* ⭐ `changed` ALREADY EXISTED and is the honest comparison against the saved values —
+          so this card needs no `useFormDirty`: that hook is for UNCONTROLLED forms with nothing
+          to compare. One signal, two surfaces, and no second answer to "is this dirty". */}
+      <PendingChangesBar
+        dirty={changed}
+        saving={pending}
+        detail="The banner is shown to every player on every page."
+        onSave={submit}
+        onDiscard={() => { setActive(initialActive); setMessage(initialMessage); setTone(initialTone); }}
+        saveLabel={active ? "Publish banner" : "Save"}
+      />
+      <UnsavedChangesGuard dirty={changed} body="The site-wide announcement has been changed but not saved. Leaving now discards the change." />
     </div>
   );
 }
