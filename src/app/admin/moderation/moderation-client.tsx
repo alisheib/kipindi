@@ -101,7 +101,15 @@ export function ModerationQueue({ items }: { items: ModerationItem[] }) {
 
   return (
     <div>
-      <div className="flex items-center gap-4 border-b border-border px-1 pb-2">
+      {/* 🔴 IT DID NOT WRAP, AND THE LAST CONTROL LEFT THE SCREEN AT 320. `qa:chaos` measured
+          the Status button at x:307..360 against a 320px viewport — 40px of it outside the
+          window, unreachable, with the PAGE reporting zero horizontal overflow because the card
+          clips it. That is the "rendered is not visible" shape: nothing errors, nothing scrolls,
+          and a sort control simply cannot be pressed on the narrowest phone still in use.
+          ⭐ `flex-wrap` with a split gap is the fix the shared pager already took for the same
+          reason — "at 360px seven 44px controls need two rows" — so this is the house pattern
+          rather than a new one. Clean at 360 and above, where the row still fits on one line. */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border px-1 pb-2">
         <span className="font-mono text-micro uppercase eyebrow text-text-subtle">Sort</span>
         <SortBtn field="reports" label="Reports" current={sort} dir={dir} onSort={onSort} />
         <SortBtn field="date" label="Date" current={sort} dir={dir} onSort={onSort} />
