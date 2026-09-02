@@ -297,9 +297,17 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
                           </span>
                         </td>
                         <td className="text-left">{r.outcome}</td>
-                        <td className="text-right">{formatTzs(r.pool)}</td>
-                        <td className="text-right">{formatTzs(r.fee)}</td>
-                        <td className="text-right">{formatTzs(r.operatorNet)}</td>
+                        {/* 🔴 THESE THREE CARRIED NO MONEY TREATMENT AT ALL — just `text-right`.
+                            Every sibling money cell in this file is `font-mono tabular`, which is
+                            §M4 (money is mono, figures are tabular); these rendered `formatTzs`
+                            output in the body face with proportional digits, so columns of
+                            figures did not line up. ⛔ AND IT MADE THEM INVISIBLE TO THE NOWRAP
+                            RULE: `.admin-tbl td.tabular` keys on that marker, so `TZS 0` here
+                            kept folding onto two lines after the fix for folding money shipped.
+                            A cell that is not MARKED as money does not get treated as money. */}
+                        <td className="font-mono tabular text-right">{formatTzs(r.pool)}</td>
+                        <td className="font-mono tabular text-right">{formatTzs(r.fee)}</td>
+                        <td className="font-mono tabular text-right">{formatTzs(r.operatorNet)}</td>
                       </tr>
                     ))}
                   </tbody>

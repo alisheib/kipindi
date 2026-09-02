@@ -831,6 +831,7 @@ const files = walk(SRC);
 
 // ─── Collect ──────────────────────────────────────────────────────────────────
 let arbSize = 0, subfloor = 0, inlineFs = 0, arbTrack = 0, moneyEls = 0, groups = 0;
+const unmarkedMoneyCells: string[] = [];
 const seenSizes = new Map<string, number>();
 const seenTracking = new Map<string, number>();
 const newSizes = new Map<string, string[]>();
@@ -903,6 +904,12 @@ for (const f of files) {
 
   for (const el of scanMoneyElements(body)) {
     moneyEls++;
+    /* §2b — see the note at the assertion. A money TABLE CELL must be MARKED as money; §1/§2
+       above are prohibitions and say nothing about a cell that sets nothing at all. */
+    if ((el.tag === "td" || el.tag === "th") &&
+        !el.toks.some((t) => /^(font-mono|mono|amount|tabular|tabular-nums)$/.test(t))) {
+      unmarkedMoneyCells.push(`${where}  ${el.snippet}`);
+    }
     for (const [rule, bad] of [["non-mono-family", setsNonMonoFamily(el.toks)], ["tracked-money", isTracked(el.toks)]] as const) {
       if (!bad) continue;
       const key = `${rule}::${where}`;
@@ -945,6 +952,35 @@ log("\n§1/§2 — money type (§T5 · §M4)");
     for (const [k] of fixedMoney) log(`             ${k}`);
   }
   log(`         (${moneyEls} isolable money elements scanned, ${Object.keys(RATCHET_MONEY).length} recorded violations)`);
+
+  /**
+   * §2b — A MONEY CELL MUST BE MARKED AS MONEY, not merely free of the wrong marking.
+   *
+   * 🔴 §1/§2 above are PROHIBITIONS: they refuse a money element that sets a non-mono family or
+   * tracking ON ITSELF. A cell that sets NOTHING passes both, having given them nothing to
+   * object to — and three of them shipped on `/admin/finance`'s settlement-fee table as bare
+   * `<td className="text-right">{formatTzs(…)}</td>`. They rendered money in the BODY face with
+   * proportional digits, so a column of figures did not line up, while every sibling cell in the
+   * same file was `font-mono tabular`.
+   *
+   * ⛔ AND THE ABSENCE COMPOUNDED. `globals.css`'s `.admin-tbl td.tabular { white-space: nowrap }`
+   * keys on that marker, so those three cells were also invisible to the fix for wrapping money:
+   * `TZS 0` kept folding onto two lines after the fix deployed. **A cell that is not MARKED as
+   * money does not get TREATED as money** — by the type rules or by anything downstream.
+   *
+   * ⭐ SCOPED TO TABLE CELLS, AND THAT IS THE WHOLE JUDGEMENT. Money inside a SENTENCE keeps the
+   * body face on purpose — "Current balance {formatTzs(x)} will be adjusted" must not go mono
+   * mid-clause, and 33 such sites exist and are correct. A `<td>`/`<th>` is not a sentence: it is
+   * a figure in a column, and §M4 says figures are mono and tabular. That population is at ZERO
+   * today, so this lands as a plain assertion with no ratchet and no baseline of debt.
+   */
+  check("§2b every money TABLE CELL carries the money treatment (mono + tabular figures)",
+    unmarkedMoneyCells.length === 0,
+    unmarkedMoneyCells.length
+      ? `${unmarkedMoneyCells.length} unmarked:`
+        + unmarkedMoneyCells.slice(0, 6).map((c) => "\n         " + c).join("")
+        + "\n         Fix: add `font-mono tabular` — a column of figures must align, and the nowrap rule keys on that same marker."
+      : "");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
