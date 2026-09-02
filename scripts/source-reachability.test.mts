@@ -96,6 +96,45 @@ const read = (rel: string) => decomment(readFileSync(join(ROOT, rel), "utf8"));
      /reach\.state === "blocked"/.test(actions) && !/reach\.state !== "reachable"/.test(actions));
 }
 
+// ── 2b · THE PROBE MUST USE A MODEL THAT CAN ACTUALLY HOLD THE TOOL ──────────
+/**
+ * 🔴 THIS SECTION EXISTS BECAUSE THE FIRST VERSION SHIPPED BROKEN TO PRODUCTION AND EVERY
+ * ASSERTION ABOVE STILL PASSED.
+ *
+ * The probe was written with `ai.triageModel` (Haiku) because it is cheapest. Driven on
+ * production against `bbc.com` — a host measured as BLOCKED four days earlier — it returned
+ * `unknown`, the add proceeded, and the audit row read `"aiReachable":"unknown"`. The cause
+ * was not the domain: **`web_fetch` is not available to the triage model**, so the call
+ * 400'd on the TOOL and every domain in the world looked unknowable.
+ *
+ * ⛔ A CHECK THAT FAILS OPEN ON EVERY INPUT IS INVISIBLE. It never refuses, so it never looks
+ * wrong; §1 kept passing because the classifier was never the broken part. The only
+ * instrument that could see it was a live drive.
+ *
+ * ⭐ SO THE ASSERTION IS ABOUT PROVENANCE, NOT ABOUT A MODEL NAME: arm the server tool with
+ * the SAME model that `market-sentinel.ts` arms it with — the call whose 400 discovered the
+ * blocked-domain behaviour in the first place.
+ */
+{
+  const probe = read("src/lib/server/source-reachability.ts");
+  const sentinel = read("src/lib/server/market-sentinel.ts");
+
+  ok("2b.1 the probe does NOT use the triage model, which cannot hold a server tool",
+     !/model: ai\.triageModel/.test(probe));
+  ok("2b.2 …it uses `ai.model`, the shape `market-sentinel.ts` proves works",
+     /model: ai\.model,/.test(probe));
+  /* ⛔ THE DISCRIMINATION. 2b.2 would pass over a probe that no longer arms `web_fetch` at
+     all — which would also never refuse anything, by a different route. */
+  ok("2b.3 …and it still arms the fetch tool pinned to the one domain",
+     /allowed_domains: \[host\]/.test(probe) && /ai\.webFetchTool\.type/.test(probe));
+  ok("2b.4 the sentinel still arms the same tool, so the provenance claim stays true",
+     /ai\.webFetchTool\.type/.test(sentinel) && /allowed_domains: \[approvedHost\]/.test(sentinel));
+
+  // ⛔ AND A PERMANENT `unknown` MUST BE AUDIBLE. Failing open in silence is how this dies.
+  ok("2b.5 an `unknown` is announced rather than swallowed",
+     /console\.warn\(`\[source-reachability\]/.test(probe));
+}
+
 // ── 3 · THE ACKNOWLEDGEMENT IS A PERMISSION, NEVER AN OBSERVATION ────────────
 /**
  * 🔴 THE BUG THIS EXISTS TO PREVENT WAS WRITTEN AND CAUGHT DURING THE CHANGE ITSELF. The

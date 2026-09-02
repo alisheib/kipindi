@@ -60,6 +60,20 @@ export const MUTATIONS = [
     to: `      acknowledgedUnreachable: false,`,
   },
   {
+    name: "🔴 THE ONE THAT SHIPPED — the probe goes back to the triage model, which cannot hold web_fetch, so EVERY domain returns unknown and nothing is ever refused",
+    file: PROBE,
+    expect: "2b.1 the probe does NOT use the triage model, which cannot hold a server tool",
+    from: `      model: ai.model,`,
+    to: `      model: ai.triageModel,`,
+  },
+  {
+    name: "🔴 a permanent `unknown` goes silent again, so a dead check is indistinguishable from an outage",
+    file: PROBE,
+    expect: "2b.5 an `unknown` is announced rather than swallowed",
+    from: `      console.warn(\`[source-reachability] could not determine whether \${host} is fetchable — ADDING PROCEEDS. \${v.detail}\`);`,
+    to: `      void v;`,
+  },
+  {
     name: "🔴 the acknowledgement becomes a hidden input, so it survives into a LATER add of a different domain",
     file: CONTROLS,
     expect: "4.3 the acknowledgement is not carried in the form's DOM",

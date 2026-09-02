@@ -95,7 +95,25 @@ export async function probeDomainReachable(domain: string): Promise<Reachability
   try {
     const client = new Anthropic({ apiKey });
     await client.messages.create({
-      model: ai.triageModel,
+      /**
+       * 🔴 `ai.model`, NOT `ai.triageModel`, AND THIS LINE IS THE WHOLE FEATURE.
+       *
+       * The first version used the triage model because it is the cheapest. Driven on
+       * production 2026-09-03 it returned `unknown` for `bbc.com` — a host measured as
+       * BLOCKED four days earlier — so the add proceeded and the audit row read
+       * `"aiReachable":"unknown"`. The fail-open path was working perfectly; there was
+       * simply nothing behind it. **`triageModel` (Haiku) is used nowhere else in this
+       * repo with a server tool**, and `web_fetch` is not available to it, so every probe
+       * 400'd on the TOOL rather than on the domain and every domain looked unknowable.
+       *
+       * ⛔ A DEAD CHECK THAT FAILS OPEN IS INVISIBLE — it agrees with a healthy one on
+       * every screen, and all 26 assertions in `test:source-reachability` still passed,
+       * because they test the classifier and the classifier was never wrong. Only driving
+       * it against production found this. `ai.model` is the model `market-sentinel.ts`
+       * arms `web_fetch` with, and it is the call whose 400 discovered the blocked-domain
+       * behaviour in the first place — so it is the one shape known to work.
+       */
+      model: ai.model,
       max_tokens: 1,
       messages: [{ role: "user", content: "ok" }],
       tools: [{
@@ -108,7 +126,20 @@ export async function probeDomainReachable(domain: string): Promise<Reachability
 
     return { state: "reachable" };
   } catch (err) {
-    return classifyProbeError(String((err as Error)?.message ?? ""));
+    const v = classifyProbeError(String((err as Error)?.message ?? ""));
+    /**
+     * ⛔ AN `unknown` IS ANNOUNCED, BECAUSE FAILING OPEN IN SILENCE IS HOW THIS FEATURE DIES.
+     *
+     * `unknown` means the add PROCEEDS, which is correct for an outage and indistinguishable
+     * from a probe that is permanently broken — which is exactly what shipped on the first
+     * attempt and reached production. The audit row records it, but nobody reads an audit row
+     * to discover that a control stopped working. A run of these in the logs is the signal
+     * that the probe, not the internet, is the problem.
+     */
+    if (v.state === "unknown") {
+      console.warn(`[source-reachability] could not determine whether ${host} is fetchable — ADDING PROCEEDS. ${v.detail}`);
+    }
+    return v;
   }
 }
 
