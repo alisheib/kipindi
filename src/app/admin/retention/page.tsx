@@ -15,6 +15,8 @@ import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
 import { chainStore, assetStore, roundStore } from "@/lib/server/updown-dal";
 import { PurgeChainCard } from "./purge-chain-card";
+import type { Route } from "next";
+import { Tabs } from "@/components/ui/tabs";
 import { getFirstSignature } from "./purge-stage1-store";
 import { currentSession } from "@/lib/server/auth-service";
 
@@ -64,7 +66,9 @@ const SCHEDULE: Row[] = [
   { category: "Backup snapshots (HMAC-signed)", swahili: "Nakala rudufu", retentionYears: "90 days rolling", legalBasis: "DR/BCP", trigger: "Per snapshot date", storage: "S3 with SSE-KMS" },
 ];
 
-export default async function AdminRetentionPage() {
+export default async function AdminRetentionPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+  /** ⛔ THE TAB IS A URL FACT (DG-S-03) — it survives a refresh, a Back and a shared link. */
+  const tab = (await searchParams).tab === "purge" ? "purge" : "schedule";
   const allUsers = await db.user.list();
   const userCount = allUsers.length;
   const closed = allUsers.filter((u) => u.status === "CLOSED").length;
@@ -113,6 +117,24 @@ export default async function AdminRetentionPage() {
           <AdminKpi label="Default class"   sw="Aina kuu"            value="7y"                        delta="POCA Cap 423 §16" />
         </KpiGrid>
 
+
+        {/* ⭐ §K rule 7a — THE RAIL. 2,544px at 390 over 8 panels. ⛔ It clears the three-screen
+            threshold by TWELVE PIXELS, so length is NOT the argument here and pretending it was
+            would be dishonest. The argument is ②: reading the retention schedule and running an
+            IRREVERSIBLE two-officer purge are different tasks, and the destructive ceremony has
+            no business sharing a screen with the reference table. The two policy callouts go
+            WITH the purge — they are what an officer must have read before signing it. */}
+        <Tabs
+          variant="line"
+          value={tab}
+          ariaLabel="Retention sections"
+          tabs={[
+            { value: "schedule", labelEn: "Schedule", href: "/admin/retention" as Route },
+            { value: "purge", labelEn: "Purge a chain", href: "/admin/retention?tab=purge" as Route },
+          ]}
+        />
+
+        {tab === "schedule" && (<>
         <AdminCard
           title="Schedule · category × retention × legal basis"
           sw="Ratiba"
@@ -150,7 +172,9 @@ export default async function AdminRetentionPage() {
             </table>
           </ScrollX>
         </AdminCard>
+        </>)}
 
+        {tab === "purge" && (<>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           <AdminCard className="border-info-border bg-info-bg">
             <div className="flex items-start gap-3">
@@ -222,6 +246,7 @@ export default async function AdminRetentionPage() {
         <AdminCard title="Purge a chain and its history" sw="Futa msururu na historia yake">
           <PurgeChainCard chains={archivedChains} stage1={stage1Map} viewerId={viewer} />
         </AdminCard>
+        </>)}
       </AdminBody>
     </>
   );

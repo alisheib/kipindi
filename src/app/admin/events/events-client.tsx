@@ -106,8 +106,17 @@ export function EventsClient({
                   </a>
                 </td>
                 <td className="py-2.5 pl-3 text-right">
+                  {/* ⛔ `?tab=queue`, NOT the bare route. This link means "the poll drafted from
+                      this event is over there" — and a drafted poll is PENDING_REVIEW, which
+                      lives on the review queue. `/admin/ai-polls` landed on `generate`, a form
+                      for making a NEW poll: the officer is shown the opposite of what they
+                      asked for. §K rule 7d ③, on a cross-page link.
+                      ⚠️ This comment sits ABOVE the ternary rather than inside its branch: a JSX
+                      comment as the first token of a `? (` branch is a parse error, not a
+                      comment. ⛔ And it does not SPELL the delimiter while saying so — writing
+                      the closing sequence inside prose ends the comment right there. */}
                   {e.generatedAt ? (
-                    <Link href={"/admin/ai-polls" as never} className="inline-flex items-center gap-1 font-mono text-[11px] text-yes-300 hover:text-text underline">
+                    <Link href={"/admin/ai-polls?tab=queue" as never} className="inline-flex items-center gap-1 font-mono text-[11px] text-yes-300 hover:text-text underline">
                       <I.check s={12} /> drafted
                     </Link>
                   ) : (

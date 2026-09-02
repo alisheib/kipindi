@@ -33,8 +33,25 @@ import { chromium } from "playwright";
 import { login, BASE } from "../live/harness.mjs";
 import { ADMIN_ROUTES } from "./routes.mjs";
 
-const W = Number(process.env.W || 1440);
-const H = Number(process.env.H || 900);
+/**
+ * 🔴 IT MEASURED ONE WIDTH, AND THE ONE IT CHOSE WAS THE FORGIVING ONE.
+ *
+ * This drive defaulted to 1440×900 and reported **9 routes over three screens**. Ali asked why so
+ * many admin screens still had no tabs; re-run at 390×844 the same console reports **17**, and
+ * FOUR more pages pass 7a ① — compliance, bonuses, proposals, retention — because every
+ * `lg:grid-cols-2` collapses to one column and a page roughly doubles.
+ *
+ * ⛔ THE NARROW WIDTH IS THE BINDING ONE. A rail is a REACHABILITY instrument, and reachability
+ * is worst exactly where the page is longest. Measuring only the desktop said "this console is
+ * done" about pages that are three screens deep on a phone.
+ *
+ * ⭐ THE DEFAULT IS NOW 390. Not both-and-compare — that would be a nested sweep and a second
+ * verdict to keep in step — but the BINDING width, because a verdict taken at the forgiving one
+ * is the thing that was wrong. Run `W=1440 H=900` for the desktop view; the numbers differ by
+ * roughly 2× and the desktop reading is the optimistic one.
+ */
+const W = Number(process.env.W || 390);
+const H = Number(process.env.H || 844);
 /** §K rule 7a ①. A page whose tallest panel exceeds this share IS that panel. */
 const DOMINANT = 0.40;
 /** "More than three screens" — the length at which 7a is worth asking at all. */

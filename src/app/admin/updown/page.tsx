@@ -846,7 +846,12 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                 wants it is sent to the surface where their own role actually works. */}
             <p className="px-4 pt-2 text-caption text-text-tertiary">
               Need the history gone too?{" "}
-              <a href="/admin/retention" className="text-royal-300 underline underline-offset-2">
+              {/* ⛔ `?tab=purge` IS LOAD-BEARING AS OF 2026-09-02. `/admin/retention` gained a
+                  section rail and the ceremony moved onto its own tab, so a bare link lands the
+                  operator on the retention SCHEDULE — a reference table — while the sentence they
+                  just clicked says "Purge a chain". §K rule 7d ③: nothing load-bearing behind a
+                  click, and a cross-page link is the easiest kind to forget. */}
+              <a href="/admin/retention?tab=purge" className="text-royal-300 underline underline-offset-2">
                 Purge a chain on /admin/retention →
               </a>{" "}
               — a two-officer compliance ceremony, not a trading control.

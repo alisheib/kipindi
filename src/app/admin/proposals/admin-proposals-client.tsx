@@ -3,7 +3,9 @@
 import { parseQuery, matchesQuery, fieldNames, PROPOSAL_SEARCH } from "@/lib/search";
 import { SearchBox } from "@/components/ui/search-box";
 import { useState, useMemo, useEffect, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import type { Route } from "next";
+import { Tabs } from "@/components/ui/tabs";
 import { I } from "@/components/ui/glyphs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -243,6 +245,11 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
    * a dirty flag written that way would light up the moment an officer clicked any row, on a
    * page whose whole job is clicking rows. It is dirty only when it differs from the seed.
    */
+  /** ⛔ THE TAB IS A URL FACT (DG-S-03). `useSearchParams` rather than `useState` so a refresh,
+   *  a Back and a shared link all land on the same section — and so the rail is an in-app LINK,
+   *  which the unsaved-changes guard already intercepts as exit ②. */
+  const urlParams = useSearchParams();
+  const tab: "queue" | "settings" = urlParams.get("tab") === "settings" ? "settings" : "queue";
   const configDirty = JSON.stringify(c) !== JSON.stringify(config);
   const editDirty = editing && sel !== null && (
     eTitle !== sel.title || eTitleSw !== (sel.titleSw ?? "") || eTitleZh !== (sel.titleZh ?? "") ||
@@ -361,6 +368,25 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
 
   return (
     <div className="space-y-4">
+
+      {/* ⭐ §K rule 7a — THE RAIL, AND IT LIVES IN THE CLIENT BECAUSE THE PAGE IS THE CLIENT.
+          `/admin/proposals`'s whole body is this component, so a rail in `page.tsx` would have
+          nothing to divide. 2,849px over 7 panels at 390 (tallest 28%) — a section count.
+          ⛔ URL-BACKED, not local state (DG-S-03): the options are `<a href>`s, so the tab
+          survives a refresh and a shared link — AND it becomes exit ② of the unsaved-changes
+          guard, which is what makes leaving an edited proposal for the settings tab ask first.
+          A `useState` rail would have switched sections silently over unsaved work. */}
+      <Tabs
+        variant="line"
+        value={tab}
+        ariaLabel="Proposal sections"
+        tabs={[
+          { value: "queue", labelEn: "Queue", count: queue.length, href: "/admin/proposals" as Route },
+          { value: "settings", labelEn: "Feature & prizes", href: "/admin/proposals?tab=settings" as Route },
+        ]}
+      />
+
+      {tab === "queue" && (<>
       {/* Queue + review */}
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[1.3fr_1fr]">
         <div className="overflow-hidden glass-panel">
@@ -628,7 +654,9 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
           <div className="rounded-xl border border-dashed border-border bg-bg-elevated/40 p-10 text-center text-[13px] text-text-subtle">Select a proposal to review.</div>
         )}
       </div>
+      </>)}
 
+      {tab === "settings" && (<>
       {/* Config — 4-state feature machine + economics */}
       <div className="overflow-hidden glass-panel">
         {/* ⛔ `sm:gap-4` (20px), NOT `sm:gap-3.5` (S-09, scan #1, 2026-08-28). The intent here is
@@ -699,6 +727,7 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
           <CField label="Rate limit" hint="Max open proposals per player" suffix="open" width={180} value={c.rateLimit} onChange={(n) => setC((p) => ({ ...p, rateLimit: n }))} />
         </div>
       </div>
+      </>)}
       <ActionOverlay state={overlay.state} onDismiss={overlay.dismiss} />
 
       {/**

@@ -10,6 +10,8 @@ import { formatTzs, formatBalancePill, formatDateShort } from "@/lib/utils";
 import { BonusAdminClient, GrantBonusForm, CancelGrantButton } from "./bonus-admin-client";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
+import type { Route } from "next";
+import { Tabs } from "@/components/ui/tabs";
 
 export const metadata = { title: "Bonuses · Admin" };
 export const dynamic = "force-dynamic";
@@ -40,9 +42,16 @@ const SOURCE_LABEL: Record<string, string> = {
 export default async function AdminBonusesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ gpage?: string }>;
+  searchParams: Promise<{ gpage?: string; tab?: string }>;
 }) {
   const sp = await searchParams;
+  /** ⛔ THE TAB IS A URL FACT (DG-S-03) — it survives a refresh, a Back and a shared link. */
+  const BON_TABS = ["grants", "settings"] as const;
+  const tabRaw = sp.tab ?? "";
+  const tab: (typeof BON_TABS)[number] = (BON_TABS as readonly string[]).includes(tabRaw) ? (tabRaw as (typeof BON_TABS)[number]) : "grants";
+  /* ⚠️ `gpage` is DROPPED on a tab switch — it is the grant ledger's page number. */
+  const tabHref = (t: (typeof BON_TABS)[number]) =>
+    (t === "grants" ? "/admin/bonuses" : `/admin/bonuses?tab=${t}`) as Route;
   const config = getBonusConfig();
   const stats = await getAdminBonusStats().catch(() => ({
     outstandingTzs: 0, activeGrants: 0, totalGrantedTzs: 0, totalFulfilledTzs: 0, ledger: [],
@@ -69,26 +78,26 @@ export default async function AdminBonusesPage({
           <AdminKpi label="Unlocked to cash" sw="Imefunguliwa" value={formatBalancePill(stats.totalFulfilledTzs)} delta="played through" deltaDir="flat" />
         </KpiGrid>
 
+        {/* ⭐ §K rule 7a — THE RAIL. 3,018px over 7 panels at 390 (tallest 20%), which is a
+            section count rather than one table. ⛔ The KPI strip stays above it: outstanding
+            bonus liability is the number every section is read against. */}
+        <Tabs
+          variant="line"
+          value={tab}
+          ariaLabel="Bonus sections"
+          tabs={[
+            { value: "grants", labelEn: "Grants", href: tabHref("grants") },
+            { value: "settings", labelEn: "Settings", href: tabHref("settings") },
+          ]}
+        />
+
+        {tab === "grants" && (<>
+
         {/* Manual grant */}
         <AdminCard title="Grant a bonus" sw="Toa bonasi kwa mchezaji">
           <GrantBonusForm />
         </AdminCard>
 
-        {/* Config editor */}
-        <BonusAdminClient config={config} />
-
-        {/* How it works note */}
-        <AdminCard className="border-royal-700/40 bg-royal-500/[0.06]">
-          <div className="flex items-start gap-2.5">
-            <span className="text-royal-300 shrink-0 mt-0.5"><I.gift s={16} /></span>
-            <div className="text-caption text-text-secondary leading-relaxed">
-              <p className="font-bold text-royal-300 mb-1">How bonuses work · Jinsi inavyofanya kazi</p>
-              Bonus funds sit in a separate, non-withdrawable wallet. A player must play (turn over) the bonus ×
-              its multiplier before it converts to real, withdrawable cash. Winnings from any bet go to the real wallet;
-              bonuses accumulate (no one-at-a-time limit) and a withdrawal of real balance leaves active bonuses running.
-            </div>
-          </div>
-        </AdminCard>
 
         {/* Grant ledger */}
         <AdminCard title="Grant ledger" sw="Daftari la bonasi" padding={stats.ledger.length > 0 ? "p-0" : "p-4"}>
@@ -144,6 +153,24 @@ export default async function AdminBonusesPage({
             </>
           )}
         </AdminCard>
+        </>)}
+        {tab === "settings" && (<>
+        {/* Config editor */}
+        <BonusAdminClient config={config} />
+
+        {/* How it works note */}
+        <AdminCard className="border-royal-700/40 bg-royal-500/[0.06]">
+          <div className="flex items-start gap-2.5">
+            <span className="text-royal-300 shrink-0 mt-0.5"><I.gift s={16} /></span>
+            <div className="text-caption text-text-secondary leading-relaxed">
+              <p className="font-bold text-royal-300 mb-1">How bonuses work · Jinsi inavyofanya kazi</p>
+              Bonus funds sit in a separate, non-withdrawable wallet. A player must play (turn over) the bonus ×
+              its multiplier before it converts to real, withdrawable cash. Winnings from any bet go to the real wallet;
+              bonuses accumulate (no one-at-a-time limit) and a withdrawal of real balance leaves active bonuses running.
+            </div>
+          </div>
+        </AdminCard>
+        </>)}
       </AdminBody>
     </>
   );

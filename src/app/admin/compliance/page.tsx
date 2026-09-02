@@ -19,6 +19,8 @@ import { txnTypeLabel } from "@/components/admin/status-badge";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { formatClock, formatDate, formatDateTime } from "@/lib/utils";
 import { AdminBody } from "@/components/admin/admin-body";
+import type { Route } from "next";
+import { Tabs } from "@/components/ui/tabs";
 
 export const metadata = { title: "Admin · Compliance" };
 export const dynamic = "force-dynamic";
@@ -36,9 +38,17 @@ const REPORTS: ReadonlyArray<{ id: string; title: string; sub: string; tone: "wa
 export default async function AdminCompliancePage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; sort?: string; dir?: string }>;
+  searchParams: Promise<{ page?: string; sort?: string; dir?: string; tab?: string }>;
 }) {
   const sp = await searchParams;
+  /** ⛔ THE TAB IS A URL FACT (DG-S-03) — it survives a refresh, a Back and a shared link. */
+  const CMP_TABS = ["platform", "kyc", "safety", "integrity"] as const;
+  const tabRaw = sp.tab ?? "";
+  const tab: (typeof CMP_TABS)[number] = (CMP_TABS as readonly string[]).includes(tabRaw) ? (tabRaw as (typeof CMP_TABS)[number]) : "platform";
+  /* ⚠️ `page` is DROPPED on a tab switch — it is the harm table's page number and means
+     nothing on a section without that table. */
+  const tabHref = (t: (typeof CMP_TABS)[number]) =>
+    buildBaseHref("/admin/compliance", { sort: sp.sort, dir: sp.dir, tab: t === "platform" ? undefined : t }) as Route;
   const chain = verifyChain();
   // A-5: on a regulator-facing surface a failed read must NOT render a fabricated
   // all-zero funnel or a false "nobody self-excluded". null → explicit "couldn't load".
@@ -99,6 +109,28 @@ export default async function AdminCompliancePage({
       />
 
       <AdminBody>
+
+        {/* ⭐ §K rule 7a — THE RAIL, AND IT EXISTS BECAUSE THE INSTRUMENT WAS RE-POINTED.
+            At 1440 this page is 1,814px and never appeared on a candidate list. At 390 — one
+            column, which is how it is actually read on a phone — it is **3,152px over 13
+            panels, tallest 14%**: the purest section-count page in the console, and it was
+            missed only because `qa:tab-candidates` defaulted to the forgiving width.
+            ⛔ The inspector note and the confidentiality line stay BELOW the rail on every
+            tab: a regulator reads this page first, and the sentence telling them what the
+            screen is must not be a thing they have to find. */}
+        <Tabs
+          variant="line"
+          value={tab}
+          ariaLabel="Compliance sections"
+          tabs={[
+            { value: "platform", labelEn: "Platform", href: tabHref("platform") },
+            { value: "kyc", labelEn: "KYC & AML", href: tabHref("kyc") },
+            { value: "safety", labelEn: "Player safety", href: tabHref("safety") },
+            { value: "integrity", labelEn: "Integrity & reports", href: tabHref("integrity") },
+          ]}
+        />
+
+        {tab === "platform" && (<>
         {/* §A — Audit chain + backup + error monitoring */}
         {/* ⛔ DG-A-22 (2026-08-30) — THREE CARDS, THREE COLUMNS. This band was
             `lg:grid-cols-2` with three children, so auto-placement put the third in row 2
@@ -130,8 +162,17 @@ export default async function AdminCompliancePage({
                   HMAC-SHA256 · last verify {formatClock(new Date().toISOString())}
                 </p>
               </div>
+              {/* 🔴 `?tab=diagnostics` — AND THIS LINK HAD ALREADY BEEN BROKEN, SILENTLY.
+                  `/admin/system` took a section rail in the FIRST wave of this programme, which
+                  moved "Audit chain integrity" and its `SystemActions kind="verify-chain"`
+                  control onto the `diagnostics` tab (page.tsx:353+). This link kept pointing at
+                  the bare route, so an officer clicking "verify now" landed on `platform` — a
+                  page with no verify control anywhere on it — and nothing anywhere reported a
+                  fault. ⛔ Found by auditing INBOUND links after railing a page, not by any
+                  gate: a cross-page link is the easiest kind to forget, and it fails by showing
+                  the wrong screen rather than by erroring. */}
               <a
-                href="/admin/system"
+                href="/admin/system?tab=diagnostics"
                 className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 h-7 inline-flex items-center rounded-md border border-border bg-bg-elevated text-royal-300"
               >
                 verify now →
@@ -257,7 +298,9 @@ export default async function AdminCompliancePage({
             </div>
           </AdminCard>
         </div>
+        </>)}
 
+        {tab === "kyc" && (<>
         {/* §B — KYC funnel + AML queue */}
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-3">
           <AdminCard title="KYC conversion funnel" sw="Hatua za uthibitisho">
@@ -305,7 +348,9 @@ export default async function AdminCompliancePage({
             </div>
           </AdminCard>
         </div>
+        </>)}
 
+        {tab === "safety" && (<>
         {/* §C — Responsible-gambling row */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <AdminCard title="Self-exclusion" sw="Kujizuia">
@@ -375,7 +420,10 @@ export default async function AdminCompliancePage({
             )}
           </AdminCard>
         </div>
+        <PlayerSafetyPanel sp={sp} />
+        </>)}
 
+        {tab === "integrity" && (<>
         {/* §D — Match-integrity + report exports */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           {/* ⛔ DG-A-22 (2026-08-30) — THE STRETCH IS NOT THE DEFECT; THE CONTENT PINNED TO
@@ -466,6 +514,7 @@ export default async function AdminCompliancePage({
             </div>
           </AdminCard>
         </div>
+        </>)}
 
         {/* §E — Operational notes */}
         <AdminCard className="border-info-border bg-info-bg">
@@ -484,8 +533,6 @@ export default async function AdminCompliancePage({
           </div>
         </AdminCard>
 
-        <PlayerSafetyPanel sp={sp} />
-
         <p className="text-caption text-text-tertiary text-center pt-3 flex items-center justify-center gap-1.5">
           <I.lock s={11} /> Confidential · screen and contents are subject to operational access logging.
         </p>
@@ -494,7 +541,7 @@ export default async function AdminCompliancePage({
   );
 }
 
-async function PlayerSafetyPanel({ sp }: { sp: { page?: string; sort?: string; dir?: string } }) {
+async function PlayerSafetyPanel({ sp }: { sp: { page?: string; sort?: string; dir?: string; tab?: string } }) {
   // A-5: a failed harm-detector read must NOT render all-zero marker chips or a
   // "No markers of harm detected" table — on an LCCP §3.4.1 safety surface that is
   // a false all-clear. Show an explicit "couldn't load" instead.
@@ -513,7 +560,10 @@ async function PlayerSafetyPanel({ sp }: { sp: { page?: string; sort?: string; d
   });
   const page = parsePage(sp.page, sorted.length);
   const paged = sorted.slice((page - 1) * PER_PAGE, page * PER_PAGE);
-  const baseHref = buildBaseHref("/admin/compliance", { sort: sp.sort, dir: sp.dir });
+  /* ⛔ `tab` RIDES THE PAGER. This panel now lives on the `safety` tab, and its href is built
+     from named params — so a tab omitted here would drop an officer back to `platform` on the
+     first page-turn of the harm-marker table. */
+  const baseHref = buildBaseHref("/admin/compliance", { sort: sp.sort, dir: sp.dir, tab: sp.tab });
   return (
     <AdminCard
       title="Player safety · markers of harm"
