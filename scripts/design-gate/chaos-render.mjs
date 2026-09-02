@@ -51,6 +51,17 @@ const probe = () => {
   const vw = window.innerWidth;
   const out = { overflow: Math.max(0, Math.round(doc.scrollWidth - vw)), zeroWidth: [], clipped: [], offscreen: [] };
 
+  /* ⛔ THE VISUALLY-HIDDEN IDIOM IS NOT A DEFECT, and the first run of this drive said it was.
+     Tailwind's `sr-only` is `position:absolute; width:1px; height:1px; overflow:hidden;
+     clip:rect(0,0,0,0)` — it is how the admin layout ships its "Skip to content" link, which
+     is CORRECT accessibility: hidden until a keyboard focuses it (`focus:not-sr-only`). The
+     drive reported it at every one of six widths on both pages, i.e. 12 of its 12 findings were
+     one accessibility feature. ⭐ A guard that cries wolf teaches the next person to ignore it,
+     so the idiom is recognised here rather than argued with in a report. */
+  const srOnly = (cs, r) =>
+    cs.position === "absolute" && r.width <= 1 && r.height <= 1 &&
+    (cs.overflow === "hidden" || cs.clip !== "auto" || cs.clipPath !== "none");
+
   /* ② A visible element laid out at ~0 width, or whose text is cut. Only elements that HAVE
      text are interesting — a spacer at 0 is fine. */
   for (const el of document.querySelectorAll("h1,h2,h3,p,span,a,button,label,td,th")) {
@@ -60,6 +71,7 @@ const probe = () => {
     if (r.height === 0) continue;                       // not painted
     const cs = getComputedStyle(el);
     if (cs.visibility === "hidden" || cs.display === "none") continue;
+    if (srOnly(cs, r)) continue;                        // see the note above
     if (r.width < 2) { out.zeroWidth.push(`${el.tagName.toLowerCase()} "${t.slice(0, 34)}"`); continue; }
     /* Cut text: the content is wider than the box and nothing is allowed to show it. An
        ellipsis is a DECISION (truncate) and is not counted; a hard clip is not. */

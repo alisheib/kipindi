@@ -99,24 +99,33 @@ export function PendingChangesBar({
   React.useEffect(() => { setMounted(true); }, []);
 
   /**
-   * ⚠️ THE SPACER MEASURES THE BAR; IT DOES NOT ASSUME IT. `--h-pending-bar` is the bar's
-   * MINIMUM, and at 390 the row legitimately WRAPS — the label, the detail sentence and the
-   * two buttons do not fit on one line — so the painted bar can be half as tall again as the
-   * token. A spacer fixed at the token would then under-reserve by exactly the wrapped height
-   * and the bar would cover the last card **only at narrow widths**, which is the kind of
-   * defect that passes every desktop check and ships. So the reserved height is READ from the
-   * rendered element, and re-read whenever it changes size.
-   * ⭐ It falls back to the token until the first measurement lands, so the space is never zero.
+   * ⚠️ THE PAGE RESERVES THE BAR'S MEASURED HEIGHT, AND BOTH HALVES OF THAT WERE LEARNED THE
+   * HARD WAY BY `qa:pending-bar` DRIVING PRODUCTION.
+   *
+   * ① WHERE. An in-flow sibling spacer reserves space where THIS COMPONENT sits. Rendered
+   *   mid-form, that leaves the page's LAST card still running under the bar — measured at 49px
+   *   of overlap on 1440 and **102px on 390**. A kit primitive cannot require its callers to
+   *   render it last, so the reserve goes on the SCROLL CONTAINER instead, the same way the
+   *   kit's modal owns the scroll lock. Cleared on unmount, always.
+   * ② HOW MUCH. `--h-pending-bar` is the bar's MINIMUM, not its height: at 390 the row wraps —
+   *   label, detail and two buttons do not fit on one line — so a constant would under-reserve
+   *   at exactly the width where the overlap is worst. The height is READ from the rendered
+   *   element and re-read whenever it changes.
    */
   const barRef = React.useRef<HTMLDivElement>(null);
-  const [barH, setBarH] = React.useState<number | null>(null);
   React.useEffect(() => {
     const el = barRef.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(() => setBarH(el.getBoundingClientRect().height));
-    ro.observe(el);
-    setBarH(el.getBoundingClientRect().height);
-    return () => ro.disconnect();
+    if (!el) return;
+    const apply = () => {
+      document.body.style.paddingBottom = `${Math.ceil(el.getBoundingClientRect().height)}px`;
+    };
+    apply();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(apply) : null;
+    ro?.observe(el);
+    return () => {
+      ro?.disconnect();
+      document.body.style.paddingBottom = "";
+    };
   }, [mounted, dirty]);
 
   if (!dirty) return null;
@@ -180,13 +189,17 @@ export function PendingChangesBar({
 
   return (
     <>
-      {/* ⛔ THE SPACER IS NOT DECORATION, and it stays IN FLOW while the bar portals away. It
-          reads the SAME token the bar paints at, so the two cannot drift; a numeric utility
-          here would be a second copy of one number, and `test:ui-consistency`'s
-          `numeric-size-utility` rule said so the first time this was written as `h-10`. The
-          safe-area inset is added because `.kp-rail` gives the bar that padding, and the space
-          reserved has to match what is actually on screen. */}
-      <div aria-hidden style={{ height: barH !== null ? barH : "calc(var(--h-pending-bar) + env(safe-area-inset-bottom, 0px))" }} />
+      {/* 🔴 THE SPACER IS GONE, AND ITS FAILURE IS WORTH KEEPING. The first version rendered an
+          in-flow sibling of the bar's own height — which reserves space WHERE THE COMPONENT
+          SITS, not at the end of the page. This component is rendered mid-form, so the page's
+          LAST card still ran underneath the bar: `qa:pending-bar` measured the overlap at 49px
+          on 1440 and **102px on 390**, where the bar wraps to two rows.
+          ⭐ A spacer only works if the component is the last thing in the flow, and a kit
+          primitive cannot require that of its callers. The reserve therefore goes on the
+          SCROLL CONTAINER — `document.body`'s padding-bottom, set from the bar's MEASURED
+          height and cleared on unmount, the same way the kit's modal owns the scroll lock.
+          ⚠️ Measured, not assumed: at 390 the row legitimately wraps, so a constant would
+          under-reserve at exactly the width where it matters most. */}
       {mounted ? createPortal(bar, document.body) : null}
     </>
   );
