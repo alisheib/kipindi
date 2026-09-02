@@ -31,6 +31,8 @@ const BAR = "src/app/admin/resolver-queue/bulk-resolve-bar.tsx";
 const REGISTRY = "src/lib/server/source-registry.ts";
 const DAL = "src/lib/server/market-dal.ts";
 const PAGE = "src/app/admin/resolver-queue/page.tsx";
+const ROW = "src/app/admin/resolver-queue/row-select.tsx";
+const COPY = "src/app/admin/resolver-queue/bulk-verdict-copy.ts";
 const SUITE = "scripts/bulk-resolve.test.mts";
 
 export const MUTATIONS = [
@@ -285,5 +287,40 @@ export const MUTATIONS = [
     from: "        r.alreadyApplied.length ? `${r.alreadyApplied.length} already done` : \"\",\n        r.skipped.length ? `${r.skipped.length} skipped` : \"\",",
     to: `        "",
         "",`,
+  },
+
+  /* ── E-253 · the owner's ruling, and the four guards that hold it ─────────────
+     ⛔ THE FIRST CASE IS THE DANGEROUS ONE AND IT IS NOT ABOUT THE OWNER AT ALL. Dropping
+     the typed-reason gate is what Ali asked for; dropping it without putting `canOverride`
+     in its place hands a trading-only officer a batch that the server kills WHOLE — the
+     compliance grant is asked once, for all rows, so eligible markets die with the refused
+     ones. That regression is invisible to `tsc` and to every screenshot. */
+  {
+    name: "🔴 the override list is gated on NOTHING (a trading-only officer kills the whole batch)",
+    file: BAR,
+    expect: "14.9 the override list is gated on the COMPLIANCE GRANT, not on a typed sentence",
+    from: `  const overridden = canOverride ? needOverride : [];`,
+    to: `  const overridden = needOverride;`,
+  },
+  {
+    name: "🔴 the composer returns the officer's note alone, so an EMPTY note sends an empty override",
+    file: COPY,
+    expect: "14b.1 an EMPTY note still produces a justification",
+    from: `  return parts.join(" ").slice(0, 500);`,
+    to: `  return (v.note ?? "").slice(0, 500);`,
+  },
+  {
+    name: "🔴 the row is projected with the QUEUE-WIDE floor, so the chain records a floor the row was not judged by",
+    file: PAGE,
+    expect: "14c.1 the verdict AND the row's projection read the same per-market floor",
+    from: `        threshold: cfg.resolveConfidenceThreshold,`,
+    to: `        threshold: globalCfg.resolveConfidenceThreshold,`,
+  },
+  {
+    name: "🔴 the row's copy takes a floor from beside the verdict again instead of off it",
+    file: ROW,
+    expect: "14c.3 the row reads the floor off the verdict rather than a prop",
+    from: `  const detail = bulkReasonDetail(verdict);`,
+    to: `  const detail = bulkReasonDetail({ ...verdict, threshold: 90 });`,
   },
 ];

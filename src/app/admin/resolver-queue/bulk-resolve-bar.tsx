@@ -39,11 +39,26 @@ import { formatTzs } from "@/lib/utils";
 import { BULK_BAR } from "@/lib/admin-status-lexicon";
 import { UnsavedChangesGuard, PendingChangesBar } from "@/components/ui/unsaved-changes";
 import { useBulkSelection } from "./bulk-selection";
-import { BULK_REASON } from "./bulk-verdict-copy";
+import { BULK_REASON, composeOverrideJustification } from "./bulk-verdict-copy";
 import { bulkResolveMarketsAction } from "./bulk-resolve-action";
 import type { BulkRow, BulkResolveResult } from "./bulk-resolve-types";
 
-const MIN_REASON = 12;
+/**
+ * ⛔ THERE IS NO `MIN_REASON` HERE ANY MORE, AND THAT IS THE POINT OF THIS CHANGE.
+ *
+ * Ali's ruling, stated four times: *"if I click autoresolve I'm responsible about it — I
+ * have Sentinel saying it's 92% confident, we don't care, just resolve"*. A typed sentence
+ * stood between the owner and a batch he had already decided on, and the console never said
+ * it would.
+ *
+ * ⭐ WHAT DID **NOT** CHANGE, deliberately: the server's own `MIN_REASON`, the
+ * `bulkResolveOverride` compliance domain, the per-market audit row, and the server's
+ * refusal of an override naming a row it did not itself refuse. `bulk-resolve-action.ts` is
+ * untouched. The justification is now COMPOSED per row from that row's own verdict
+ * (`composeOverrideJustification`) instead of one generic sentence typed once and stood
+ * against every market in the batch — strictly more informative than what it replaces, and
+ * always far longer than the server's floor.
+ */
 
 export function BulkResolveBar({
   rows,
@@ -80,21 +95,23 @@ export function BulkResolveBar({
   // ⭐ THE ROWS ONE TYPED REASON WOULD COVER — independent of whether it has been typed yet,
   // because this is also what decides whether the field is SHOWN at all.
   const needOverride = blocked.filter((r) => r.verdict.overridable);
-  const reason = sharedReason.trim();
-  const overridden = reason.length >= MIN_REASON ? needOverride : [];
+  // The officer's OPTIONAL words. It is no longer a precondition for anything — it is
+  // appended to each composed justification when they choose to write one.
+  const note = sharedReason.trim();
+  /**
+   * ⛔ GATED ON `canOverride`, AND THAT CLAUSE IS LOAD-BEARING — NOT A TIDY-UP.
+   *
+   * The old shape got this for free: the reason box only RENDERED under the compliance
+   * grant, so an officer without it could never reach the length that populated this list.
+   * Dropping the length gate without putting `canOverride` in its place would let a
+   * trading-only officer post overrides the server refuses at
+   * `bulk-resolve-action.ts`'s `softRequireStaff` — which is asked ONCE for the whole batch,
+   * so the WHOLE batch dies, eligible rows included, over rows they never meant to override.
+   */
+  const overridden = canOverride ? needOverride : [];
   const willSkip = blocked.filter((r) => !overridden.includes(r));
   const willSeal = chosen.filter((r) => r.verdict.eligible).concat(overridden);
   const offPage = Math.max(0, totalPending - rows.length);
-
-  // An override that is present but too short is a HALF-TYPED intention, not an absence.
-  // Blocking on it here — rather than letting the server refuse the whole batch — is the
-  // difference between "finish this sentence" and "your 12-market batch did nothing".
-  //
-  // ⭐ ONE field now, so this is one boolean rather than a `.find` over the page. The old
-  // shape disabled the WHOLE batch on the first row holding 1–11 characters and named only
-  // that row in the warning — nineteen finished reasons held hostage by one stray keystroke
-  // somewhere in a page-long list of boxes.
-  const shortReason = needOverride.length > 0 && reason.length > 0 && reason.length < MIN_REASON;
 
   const submit = () => {
     startTransition(async () => {
@@ -106,7 +123,16 @@ export function BulkResolveBar({
       // for every ticked row would put ELIGIBLE market ids into the action's `overrides`
       // map and therefore into the run-boundary audit's `overrides:` key — asserting, in an
       // append-only chain a regulator reads, overrides that never happened.
-      for (const r of overridden) fd.set(`override:${r.marketId}`, reason);
+      // ⭐ COMPOSED PER ROW, from that row's OWN verdict — the outcome, its confidence
+      // against the floor THAT MARKET was judged by, every standing refusal (`v.all`, not
+      // just the headline), the cited host against the approved one, and the officer's note
+      // when they wrote one. One typed sentence could only ever be generic across a batch;
+      // this records which site was read on which market.
+      // ⚠️ It is PROSE, not evidence: the server re-derives every fact from the market row
+      // and never reads this back as truth about the world.
+      for (const r of overridden) {
+        fd.set(`override:${r.marketId}`, composeOverrideJustification({ ...r.verdict, note }));
+      }
       const res = await runAdminAction(() => bulkResolveMarketsAction(fd));
       if (!res.ok) {
         toast({ title: "Bulk resolve failed", description: res.error, variant: "danger" });
@@ -141,7 +167,7 @@ export function BulkResolveBar({
   // the button stayed armed and opened a dialog headed "Seal 0 markets?" over an empty list
   // and a total of zero. The confirmation already keys off `willSeal`; this makes the
   // button agree with it.
-  const disabled = !mayAct || pending || willSeal.length === 0 || !!shortReason;
+  const disabled = !mayAct || pending || willSeal.length === 0;
 
   return (
     <>
@@ -208,15 +234,17 @@ export function BulkResolveBar({
             leading={pending ? <BrandSpinner size={16} /> : <I.listChecks s={14} />}
             title={
               !mayAct ? "Your role can view this queue but not act on it."
-              : shortReason ? `An override reason must be at least ${MIN_REASON} characters.`
               : chosen.length === 0 ? BULK_BAR.nothingSelected.en
               // ⛔ THE ONE STATE THAT HAD NO EXPLANATION — and the one an officer actually
               // hits. Tick twenty rows the citation gate refused, type nothing, and
-              // `willSeal` is empty: the button greys out and every branch above returns
+              // `willSeal` was empty: the button greyed out and every branch above returned
               // `undefined`, so hovering it said nothing at all. A dead control with no
               // tooltip is indistinguishable from a broken page, and it was reported as one.
+              // ⭐ THAT STATE NO LONGER EXISTS FOR AN OFFICER WITH THE GRANT — the button is
+              // ARMED — so this branch stopped being an excuse and became a statement of
+              // what pressing it will do.
               : needOverride.length > 0 && canOverride
-                ? `Every selected market was refused by the resolver. Type why you are sealing ${needOverride.length === 1 ? "it" : "them"} anyway — at least ${MIN_REASON} characters.`
+                ? `${needOverride.length} of these ${needOverride.length === 1 ? "was" : "were"} refused by the resolver. Sealing ${needOverride.length === 1 ? "it" : "them"} records an override against your name, on each market.`
               : needOverride.length > 0
                 ? "Sealing a market the citation gate refused needs compliance access."
                 : "None of the selected markets can be sealed — every one is refused for a reason no override can clear."
@@ -238,11 +266,13 @@ export function BulkResolveBar({
         </div>
       </div>
 
-      {/* ⭐ ONE REASON, TYPED ONCE, FOR EVERY ROW THE FLOOR REFUSED.
-          Shown only when the selection actually contains overridable rows AND this officer
-          holds the compliance grant — an input that cannot be honoured is worse than none.
-          The count is in the label so the officer can never be unclear about how many
-          markets this one sentence is about to be recorded against. */}
+      {/* ⭐ AN OPTIONAL NOTE, NOT A TOLL GATE.
+          The justification itself is COMPOSED per market from that row's own verdict, so the
+          audit chain is complete whether or not the officer writes anything here; what they
+          add is appended to it. Shown only when the selection actually contains overridable
+          rows AND this officer holds the compliance grant — an input that cannot be honoured
+          is worse than none. The count stays in the label so the officer can never be
+          unclear about how many markets an override is about to be recorded against. */}
       {canOverride && needOverride.length > 0 && (
         <div className="mt-3 rounded-md border border-warning/50 bg-warning/5 p-3">
           {/* ⛔ THE ACCESSIBLE NAME CONTAINS THE VISIBLE ONE — an `aria-label` sharing no
@@ -255,7 +285,7 @@ export function BulkResolveBar({
               textarea's `aria-label` and so keeps WCAG 2.5.3 satisfied. */}
           <label htmlFor="bulk-override-reason" className="mb-1.5 flex items-center gap-1 font-mono text-body-sm text-warning">
             <I.shieldAlert s={11} />
-            Why are you sealing {needOverride.length === 1 ? "this market" : `these ${needOverride.length} markets`} anyway?
+            Anything to add about {needOverride.length === 1 ? "this market" : `these ${needOverride.length} markets`}? Optional.
           </label>
           <textarea
             data-field="overrideReason"
@@ -264,15 +294,16 @@ export function BulkResolveBar({
             onChange={(e) => setSharedReason(e.target.value)}
             rows={2}
             maxLength={500}
-            placeholder="Recorded against your name in the audit chain, on every market listed above."
-            aria-label={`Why are you sealing ${needOverride.length === 1 ? "this market" : `these ${needOverride.length} markets`} anyway?`}
+            placeholder="Added to the justification recorded against your name. Leave it empty and the market's own facts are still recorded."
+            aria-label={`Anything to add about ${needOverride.length === 1 ? "this market" : `these ${needOverride.length} markets`}? Optional.`}
             aria-describedby="bulk-override-help"
             className="w-full rounded-md border border-warning/50 bg-bg-overlay px-3 py-2 text-label text-text outline-none admin-focus transition-colors placeholder:text-text-subtle"
           />
           <p id="bulk-override-help" className="mt-1.5 font-mono text-caption leading-relaxed text-text-subtle">
-            {shortReason
-              ? <span className="text-warning">{MIN_REASON - reason.length} more {MIN_REASON - reason.length === 1 ? "character" : "characters"} — this is read by a regulator, not by you.</span>
-              : <>Written to the audit chain once per market, against your name. {reason.length >= MIN_REASON ? `Covers ${needOverride.length} refused ${needOverride.length === 1 ? "market" : "markets"}.` : `At least ${MIN_REASON} characters.`}</>}
+            {/* ⛔ THE HINT STATES WHAT IS RECORDED EITHER WAY. Its predecessor counted
+                characters down to a minimum, which asserted that nothing would be written
+                until the officer typed — the opposite of what now happens. */}
+            <>Each of the {needOverride.length} refused {needOverride.length === 1 ? "market" : "markets"} is recorded with its own outcome, confidence, floor and cited source, against your name. {note ? "Your note is appended to each." : "A note is optional."}</>
           </p>
         </div>
       )}
@@ -308,15 +339,18 @@ export function BulkResolveBar({
         * markets and moving money, behind a confirmation that itemises every row. A one-click
         * Save on a floating bar is the last place that should live.
         */}
+      {/* ⚠️ THE NOTE IS OPTIONAL, BUT LOSING TYPED WORDS IS STILL LOSING WORK — so the guard
+          stays. What changed is the claim it makes: it no longer says an override is being
+          held up by this box, because it is not. */}
       <PendingChangesBar
-        dirty={reason.length > 0}
-        label="Override reason not submitted"
+        dirty={note.length > 0}
+        label="Override note not submitted"
         detail="It is discarded if you turn the page or leave — it is not held anywhere yet."
         onDiscard={() => setSharedReason("")}
       />
       <UnsavedChangesGuard
-        dirty={reason.length > 0}
-        body="An override reason has been typed for the selected markets but nothing has been sealed. Leaving now discards it."
+        dirty={note.length > 0}
+        body="A note has been typed for the selected markets but nothing has been sealed. Leaving now discards it."
       />
     </>
   );

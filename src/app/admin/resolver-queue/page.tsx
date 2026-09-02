@@ -210,14 +210,20 @@ export default async function ResolverQueuePage({
         overridable: v.overridable, stage: v.stage, modeIsAuto: v.modeIsAuto,
         stagedByMe: v.stagedByMe,
         confidence: v.confidence, citedHost: v.citedHost, approvedHost: v.approvedHost,
+        // ⛔ THE SAME `cfg` THE VERDICT WAS COMPUTED WITH, one line above. Reading the
+        // queue-wide floor here instead would put a number beside the row that the row was
+        // not judged by — and that number is now composed into the audit chain.
+        threshold: cfg.resolveConfidenceThreshold,
       },
     };
   }));
   const verdictById = new Map(bulkRows.map((r) => [r.marketId, r]));
   // The floor is a per-market config value; the queue-wide one is only for the copy that
   // says "floor 90%" beside a refused row, so the global read is the right one here.
+  // ⛔ NO `displayThreshold` ANY MORE. It read the queue-wide floor and handed it to every
+  // row's copy, so a market with a per-market override stated a floor it was not judged
+  // against. Each row now carries its own on `verdict.threshold`.
   const globalCfg = await getEffectiveConfig();
-  const displayThreshold = globalCfg.resolveConfidenceThreshold;
   // ⛔ READ, NEVER ASSUMED. 0 is a legal setting, and at 0 the settle timer pays every
   // winner within milliseconds of the seal — so the confirmation's "no money moves yet"
   // has to change with it rather than being a constant.
@@ -389,7 +395,6 @@ export default async function ResolverQueuePage({
                     <RowVerdict
                       marketId={m.id}
                       verdict={verdictById.get(m.id)!.verdict}
-                      threshold={displayThreshold}
                       canOverride={canOverride}
                     />
                   )}

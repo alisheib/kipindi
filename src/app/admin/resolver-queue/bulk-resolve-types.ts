@@ -88,4 +88,15 @@ export type BulkVerdictView = {
   confidence: number | null;
   citedHost: string | null;
   approvedHost: string | null;
+  /**
+   * ⛔ THE FLOOR THIS ROW WAS ACTUALLY JUDGED AGAINST — `getEffectiveConfig(m.id)`, which
+   * honours a per-market override, and NOT the queue-wide number.
+   *
+   * It is on the verdict rather than passed beside it because the override justification is
+   * composed from these fields and written to the audit chain. The queue used to hand the
+   * GLOBAL threshold down for display while `bulkVerdictFor` refused the row against the
+   * market's own — harmless while it only dressed a chip, a false statement the moment a
+   * regulator reads "against a floor of 90%" on a market whose floor was 95.
+   */
+  threshold: number;
 };

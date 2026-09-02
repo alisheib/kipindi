@@ -35,7 +35,7 @@ import {
 } from "../src/lib/server/bulk-resolve-eligibility.ts";
 import { decideAutoResolve } from "../src/lib/server/market-service.ts";
 import { sourceMatchesAny, type TrustedSource } from "../src/lib/server/source-registry.ts";
-import { BULK_REASON } from "../src/app/admin/resolver-queue/bulk-verdict-copy.ts";
+import { BULK_REASON, composeOverrideJustification } from "../src/app/admin/resolver-queue/bulk-verdict-copy.ts";
 import { compareBy, parseSort, SORT_OPTIONS } from "../src/app/admin/resolver-queue/queue-order.ts";
 
 const ROOT = process.cwd();
@@ -688,8 +688,13 @@ const V = (m: VerdictMarket, over: Partial<Parameters<typeof bulkVerdictFor>[0]>
   // than `overridden` would name ELIGIBLE markets as overridden in an append-only record a
   // regulator reads — a false assertion about a real-money act, written by a convenience.
   ok("14.4 the reason fans out over `overridden`, never over `chosen`",
-     /for \(const r of overridden\) fd\.set\(`override:\$\{r\.marketId\}`/.test(bar)
-     && !/for \(const r of chosen\) fd\.set\(`override:/.test(bar));
+     /for \(const r of overridden\)[\s\S]{0,240}?fd\.set\(`override:\$\{r\.marketId\}`/.test(bar)
+     /* ⛔ THE NEGATIVE STAYS ANCHORED TO ITS OWN STATEMENT, and this is not pedantry — it
+        was briefly written with the same lazy `[\s\S]{0,240}?` as the positive above and
+        began matching CORRECT code, because `for (const r of chosen) fd.append("marketIds"…)`
+        sits ~90 characters above the override loop. A negative assertion that can reach into
+        the next statement is not a guard; it fires on the shape it is meant to permit. */
+     && !/for \(const r of chosen\)\s*\{?\s*fd\.set\(`override:/.test(bar));
   ok("14.5 …and the marketIds list is still the full selection",
      /for \(const r of chosen\) fd\.append\("marketIds"/.test(bar));
 
@@ -703,8 +708,25 @@ const V = (m: VerdictMarket, over: Partial<Parameters<typeof bulkVerdictFor>[0]>
   // The field may only be offered where it can be honoured.
   ok("14.8 the field is gated on the compliance grant AND on there being a row to cover",
      /canOverride && needOverride\.length > 0 && \(/.test(bar));
-  ok("14.9 the too-short reason still blocks, and is now ONE boolean rather than a per-row find",
-     /const shortReason = needOverride\.length > 0 && reason\.length > 0 && reason\.length < MIN_REASON/.test(bar));
+  /**
+   * ⭐ 14.9 — THE OWNER'S RULING, ASSERTED. Ali: *"if I click autoresolve I'm responsible
+   * about it … we don't care, just resolve"*. A typed sentence no longer stands between him
+   * and a batch he has decided on.
+   *
+   * ⛔ AND THE CLAUSE THAT REPLACED IT IS THE LOAD-BEARING HALF. The old shape got
+   * `canOverride` for free, because the box only RENDERED under the compliance grant. Gating
+   * on nothing at all would let a trading-only officer post overrides the server refuses at a
+   * `softRequireStaff` asked ONCE for the whole batch — killing eligible rows too. So this
+   * asserts the exact gate, not merely the absence of the old one.
+   */
+  ok("14.9 the override list is gated on the COMPLIANCE GRANT, not on a typed sentence",
+     /const overridden = canOverride \? needOverride : \[\]/.test(bar));
+  ok("14.9b …and no length floor survives on the CLIENT to re-block him",
+     !/MIN_REASON/.test(bar) && !/shortReason/.test(bar));
+  // ⛔ THE DISCRIMINATION. 14.9b passes just as well if the client stopped sending overrides
+  // altogether. The server's floor must still be there — it is the forged-payload guard.
+  ok("14.9c …while the SERVER's floor is untouched",
+     /MIN_REASON/.test(read("src/app/admin/resolver-queue/bulk-resolve-action.ts")));
   ok("14.10 the reason is length-capped at the wire's limit", /maxLength=\{500\}/.test(bar));
 
   // ⭐ THE LABEL IS THE COUNT. "Why are you sealing this anyway?" over a shared field is
@@ -724,8 +746,125 @@ const V = (m: VerdictMarket, over: Partial<Parameters<typeof bulkVerdictFor>[0]>
   ok("14.13 the disabled button's tooltip has no undefined branch",
      titleBlock.length > 0 && !/:\s*undefined\s*\}/.test(titleBlock),
      titleAt ? "a state with no explanation remains" : "the title prop was not found at all");
-  ok("14.14 …and it explains the all-blocked state by name",
-     /Every selected market was refused by the resolver/.test(bar));
+  ok("14.14 …and it explains the refused-rows state by name",
+     /refused by the resolver/.test(bar));
+}
+
+// ── 14b · THE JUSTIFICATION IS COMPOSED, AND AN EMPTY NOTE STILL SEALS ───────
+/**
+ * ⛔ THE ASSERTION THE WHOLE CHANGE RESTS ON. The typed reason is gone from the client, so
+ * the ONLY thing keeping an override above the server's `MIN_REASON` is what
+ * `composeOverrideJustification` produces from the row itself. If that can ever come back
+ * short, the officer presses seal and the server refuses the entire batch — the exact
+ * failure the typed box used to prevent.
+ *
+ * ⭐ SO IT IS ASSERTED OVER A POPULATION, not one happy example: every overridable reason,
+ * with and without a note, with and without a confidence, with and without hosts.
+ */
+{
+  const MIN_ON_THE_WIRE = 12; // mirrors `MIN_REASON` in bulk-resolve-action.ts
+
+  const base = {
+    reason: "source-different-domain" as const,
+    all: ["source-different-domain"] as const,
+    citedHost: "www.washingtonpost.com",
+    approvedHost: "www.premierleague.com",
+    confidence: 92,
+    outcome: "YES" as const,
+    threshold: 90,
+  };
+
+  const noNote = composeOverrideJustification({ ...base, all: [...base.all] });
+  ok("14b.1 an EMPTY note still produces a justification", noNote.length > 0, noNote);
+  ok("14b.2 …and it clears the server's floor on its own",
+     noNote.length >= MIN_ON_THE_WIRE, `${noNote.length} chars`);
+  ok("14b.3 …and it states the outcome being sealed", /YES/.test(noNote), noNote);
+  ok("14b.4 …the confidence AND the floor THAT MARKET was judged by",
+     /92%/.test(noNote) && /90%/.test(noNote), noNote);
+  ok("14b.5 …and which site was read against which was approved",
+     /washingtonpost\.com/.test(noNote) && /premierleague\.com/.test(noNote), noNote);
+
+  // ⛔ THE FLOOR IS THE ROW'S OWN, NOT THE QUEUE'S. `page.tsx` used to hand the GLOBAL
+  // threshold to the copy while `bulkVerdictFor` refused the row against the per-market one.
+  // Composing that global number into an append-only chain would be a false statement about
+  // a real-money act, so the number must travel ON the verdict.
+  const perMarket = composeOverrideJustification({ ...base, all: [...base.all], threshold: 95 });
+  ok("14b.6 the floor is read from the verdict, so a per-market override reaches the chain",
+     /95%/.test(perMarket) && !/90%/.test(perMarket), perMarket);
+
+  // An officer's words are ADDED, never required, and never replace the facts.
+  const withNote = composeOverrideJustification({ ...base, all: [...base.all], note: "Match finished, result irreversible." });
+  ok("14b.7 a note is appended", /Match finished, result irreversible\./.test(withNote), withNote);
+  ok("14b.8 …without displacing the composed facts",
+     /92%/.test(withNote) && /premierleague\.com/.test(withNote), withNote);
+  ok("14b.9 a whitespace-only note adds nothing",
+     composeOverrideJustification({ ...base, all: [...base.all], note: "   " }) === noNote);
+
+  // ⭐ EVERY standing refusal, not just the headline — a row refused on three counts and
+  // recorded as one is a partial account of what the officer cleared.
+  const multi = composeOverrideJustification({
+    ...base, all: ["source-different-domain", "below-threshold", "thin-evidence"], confidence: 71,
+  });
+  ok("14b.10 every standing refusal is named, not just the headline",
+     [BULK_REASON["source-different-domain"].label, BULK_REASON["below-threshold"].label,
+      BULK_REASON["thin-evidence"].label].every((l) => multi.includes(l)), multi);
+
+  // ⛔ THE WIRE CAP. The action stores at most 500 characters; what the chain records must be
+  // what the composer produced, not a server truncation of something longer.
+  const huge = composeOverrideJustification({
+    ...base,
+    all: Object.keys(BULK_REASON) as (keyof typeof BULK_REASON)[],
+    note: "x".repeat(900),
+  });
+  ok("14b.11 the composed string never exceeds the wire's 500-char cap",
+     huge.length <= 500, `${huge.length} chars`);
+
+  // ⛔ THE POPULATION. A market with no confidence and no approved source is the thin end,
+  // and it is exactly where a composer is most likely to return something short.
+  const thin = [
+    composeOverrideJustification({ reason: "source-untrusted", all: ["source-untrusted"], citedHost: "some-blog.example", approvedHost: null, confidence: null, outcome: "NO", threshold: 90 }),
+    composeOverrideJustification({ reason: "thin-evidence", all: ["thin-evidence"], citedHost: null, approvedHost: null, confidence: null, outcome: "NO", threshold: 90 }),
+    composeOverrideJustification({ reason: null, all: [], citedHost: null, approvedHost: null, confidence: null, outcome: null, threshold: 90 }),
+  ];
+  ok("14b.12 the population is real", thin.length === 3, String(thin.length));
+  ok("14b.13 NO composed justification is ever short enough for the server to refuse",
+     thin.every((s) => s.length >= MIN_ON_THE_WIRE),
+     thin.map((s) => `${s.length}:${s}`).join(" | "));
+}
+
+// ── 14c · THE FLOOR TRAVELS ON THE VERDICT ───────────────────────────────────
+/**
+ * 🔴 THE DEFECT THIS CLOSES, FOUND WHILE WIRING THE COMPOSER. `page.tsx` computed each
+ * row's verdict against `getEffectiveConfig(m.id).resolveConfidenceThreshold` — the
+ * PER-MARKET floor, which honours an override — and then handed the copy a separate
+ * `displayThreshold` read from the GLOBAL config. A market with its own floor was refused
+ * against 95 and told the officer "floor 90%".
+ *
+ * ⚠️ It was cosmetic while it only dressed a chip. It stopped being cosmetic the moment the
+ * same number began being composed into an append-only chain a regulator reads.
+ */
+{
+  const page = read("src/app/admin/resolver-queue/page.tsx");
+  const row = read("src/app/admin/resolver-queue/row-select.tsx");
+
+  /* ⛔ COUNTED, NOT MERELY PRESENT — and the first draft of this assertion was the very trap
+     this repo names most often. `/threshold: cfg\.resolveConfidenceThreshold/` is ALSO
+     satisfied by the `bulkVerdictFor({ market: m, mode, threshold: cfg… })` call one line
+     above, so swapping the PROJECTION to the queue-wide config left the guard green and
+     `red:bulk-resolve` reported the mutation as NOT CAUGHT. Two occurrences is the claim:
+     the verdict and the row's copy read the SAME per-market number. */
+  const perMarketReads = (page.match(/threshold: cfg\.resolveConfidenceThreshold/g) ?? []).length;
+  ok("14c.1 the verdict AND the row's projection read the same per-market floor",
+     perMarketReads === 2, `${perMarketReads} reads`);
+  ok("14c.1b …and the queue-wide config never supplies a threshold",
+     !/threshold: globalCfg\.resolveConfidenceThreshold/.test(page));
+  ok("14c.2 …and no queue-wide floor is handed to a row any more",
+     !/displayThreshold/.test(page));
+  ok("14c.3 the row reads the floor off the verdict rather than a prop",
+     /bulkReasonDetail\(verdict\)/.test(row) && !/threshold: number;/.test(row));
+  // ⛔ THE DISCRIMINATION. 14c.3 would pass just as well if `bulkReasonDetail` stopped being
+  // called at all and the row simply printed no detail.
+  ok("14c.4 …and it still renders that detail", /\{detail\}/.test(row));
 }
 
 // ── 15 · THE QUEUE ORDER ─────────────────────────────────────────────────────

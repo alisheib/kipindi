@@ -82,107 +82,150 @@ almost no processing power and holds 4.7 GB of memory. Capping that is the cheap
   <tr class="tot"><td>Total</td><td class="n">≈ $84</td><td class="n">$155 – 290</td><td></td></tr>
 </table>
 
-<p><strong>Budget $200 per month.</strong> Two lines can run away and both are controllable: the AI
-bill, set by how often we generate markets, and the memory bill, set by a configuration limit.</p>
+<p><strong>Budget $200 per month for normal running.</strong> Section 4 covers what a bad month
+costs and which lines have no ceiling today.</p>
 
-<h2>3 · What must be done before we open, and why</h2>
+<h2>3 · What must be done before we open</h2>
 
 <table>
-  <tr><th style="width:4%"></th><th style="width:26%">Item</th><th class="n">Cost</th><th>Reason</th></tr>
+  <tr><th style="width:4%"></th><th style="width:27%">Item</th><th class="n">Cost</th><th>Description</th></tr>
   <tr>
     <td><span class="sev r"></span></td>
     <td><strong>Turn on SMS</strong></td>
     <td class="n">$35–45/mo</td>
-    <td><strong>No member of the public can register today.</strong> Sign-up requires a code by text
-    message; the platform is set to write those codes to a log file instead of sending them. It has
-    never sent one. Needs a signed Selcom contract and a TCRA sender ID — a commercial step, not
-    engineering.</td>
+    <td>No member of the public can register today. Sign-up requires a code by text message; the
+    platform writes those codes to a log file instead of sending them, and has never sent one.
+    Requires a signed Selcom contract and a TCRA sender ID.</td>
   </tr>
   <tr>
     <td><span class="sev r"></span></td>
     <td><strong>Two-factor on the admin console</strong></td>
     <td class="n">$0</td>
-    <td>Nine administrator accounts control customer money and are protected by a password only.
-    Second-factor was switched off and was meant to be restored on 31 July.</td>
+    <td>Nine administrator accounts control customer money and are protected by a password only.</td>
   </tr>
   <tr>
     <td><span class="sev r"></span></td>
     <td><strong>Health check on deployments</strong></td>
     <td class="n">$0</td>
-    <td>Railway is not checking whether a new version works before sending customers to it. A broken
-    release goes live unchallenged. The status page also reports "healthy" while the database is
-    down, so it must be fixed before it can be trusted.</td>
+    <td>Railway does not check whether a new version works before sending customers to it. The status
+    page also reports healthy while the database is down.</td>
   </tr>
   <tr>
     <td><span class="sev r"></span></td>
     <td><strong>Continuous database backup</strong></td>
-    <td class="n">~$2/mo</td>
-    <td>We back up once a night. A failure at the wrong hour loses <strong>up to 24 hours of bets,
-    deposits and payouts</strong>. Railway provides point-in-time recovery on our existing plan; it
-    is not switched on.</td>
+    <td class="n">$2–5/mo</td>
+    <td>Backup runs once a night. A failure at the wrong hour loses up to 24 hours of bets, deposits
+    and payouts. Point-in-time recovery is included in the current plan and is not switched on.</td>
   </tr>
   <tr>
     <td><span class="sev r"></span></td>
-    <td><strong>Alerts that arrive by themselves</strong></td>
+    <td><strong>Automatic failure alerts</strong></td>
     <td class="n">$0</td>
-    <td>In August the nightly backup failed <strong>eleven nights running</strong>. The warning was
-    displayed correctly for ten of them and nobody saw it. Today the same failure would repeat the
-    same way.</td>
+    <td>In August the nightly backup failed eleven nights running. The warning displayed correctly for
+    ten of them and was not seen. Nothing currently sends an alert.</td>
   </tr>
   <tr>
     <td><span class="sev o"></span></td>
     <td><strong>Updates without downtime</strong></td>
     <td class="n">$0</td>
-    <td>Every release briefly takes the site down and cancels any bet being placed at that moment.
-    At five customers a day nobody notices. At a thousand, everybody does.</td>
+    <td>Every release briefly takes the site down and cancels any bet in progress.</td>
   </tr>
   <tr>
     <td><span class="sev o"></span></td>
     <td><strong>Payouts on large markets</strong></td>
     <td class="n">$0</td>
-    <td>Winners are paid one at a time inside a thirty-second limit. Measured, that runs out at about
-    <strong>660 winners</strong>. Our biggest market ever had 29 bets, so it has never been reached —
-    one popular football match with a thousand customers will pass it, and the market then freezes for
-    betting and cashing out.</td>
+    <td>Winners are paid one at a time inside a thirty-second limit, which runs out at about 660
+    winners. Beyond that the market freezes for betting and cashing out. Largest market to date: 29 bets.</td>
   </tr>
   <tr>
     <td><span class="sev o"></span></td>
     <td><strong>Cache the busy screens</strong></td>
     <td class="n">$2–4/mo</td>
-    <td>Nothing is cached. Every page is rebuilt from the database on every view, and the main screens
-    refresh themselves every 15–20 seconds. At 200 customers online that is roughly 400 database
-    queries a second to redraw screens that have barely changed.</td>
+    <td>Nothing is cached. Every page is rebuilt from the database on every view and the main screens
+    refresh every 15–20 seconds — about 400 database queries a second at 200 customers online.</td>
   </tr>
   <tr>
     <td><span class="sev o"></span></td>
     <td><strong>Move servers to Amsterdam</strong></td>
     <td class="n">$0</td>
-    <td>Servers are in California; customers are in Tanzania. The server answers in 31 milliseconds
-    but a customer waits about half a second. That is distance, not slow software. Moving halves it
-    and costs nothing. Requires one short planned outage.</td>
+    <td>Servers are in California, customers in Tanzania. Server responds in 31 ms; customer waits
+    about 510 ms. Moving halves the wait. Requires one short planned outage.</td>
   </tr>
   <tr>
     <td><span class="sev y"></span></td>
     <td><strong>Enlarge the database disk</strong></td>
-    <td class="n">$0 now</td>
-    <td>The disk is 897 MB of 5 GB and grows 14 MB a day — about six months left. The compliance
-    record inside it must be kept seven years by law and cannot be deleted. Railway charges for space
-    used, not reserved, so enlarging it costs nothing until it is filled.</td>
+    <td class="n">$0 now, $7.50/mo when full</td>
+    <td>897 MB of 5 GB, growing 14 MB a day — about six months remaining. The compliance record must
+    be kept seven years and cannot be deleted. Billed on space used, not reserved.</td>
   </tr>
   <tr>
     <td><span class="sev y"></span></td>
     <td><strong>Recovery procedure and rehearsal</strong></td>
     <td class="n">$0</td>
-    <td>There is no written procedure for restoring the platform, and no measured recovery time. The
-    restore tool was rehearsed once in July against a database a tenth of today's size.</td>
+    <td>No written restore procedure and no measured recovery time. The restore tool was rehearsed
+    once, in July, against a database a tenth of today's size.</td>
+  </tr>
+  <tr class="tot"><td></td><td>Added monthly cost</td><td class="n">$39–54</td><td>Already included in the $155–290 total above</td></tr>
+</table>
+
+<h2 class="brk">4 · Emergency and contingency costs</h2>
+
+<p>Three scenarios. Normal is the planned figure. Mid is a heavy month. Max is several problems in
+the same month.</p>
+
+<table>
+  <tr><th style="width:22%">Line</th><th class="n">Normal</th><th class="n">Mid</th><th class="n">Max</th><th>What drives it</th></tr>
+  <tr><td>Railway — 50pick</td><td class="n">$56–107</td><td class="n">$137</td><td class="n">$515</td><td>Emergency scaling to 4 copies; traffic under attack</td></tr>
+  <tr><td>Railway — other projects</td><td class="n">$8–10</td><td class="n">$10</td><td class="n">$10</td><td>Unchanged</td></tr>
+  <tr><td>Anthropic — AI</td><td class="n">$55–110</td><td class="n">$150</td><td class="n">$700</td><td>Spend limit is $100 per cycle but the limit fails open on error</td></tr>
+  <tr><td>SMS</td><td class="n">$35–45</td><td class="n">$120</td><td class="n">$260</td><td>Registration surge; sign-up abuse before it is blocked</td></tr>
+  <tr><td>DDoS protection</td><td class="n">$0</td><td class="n">$20</td><td class="n">$200</td><td>Cloudflare Pro, or Business during an attack</td></tr>
+  <tr><td>Email</td><td class="n">$0–15</td><td class="n">$15</td><td class="n">$50</td><td>Volume above the free allowance</td></tr>
+  <tr><td>Error reporting</td><td class="n">$0</td><td class="n">$26</td><td class="n">$26</td><td>Paid tier once error volume rises</td></tr>
+  <tr><td>Cloudflare R2</td><td class="n">$1–3</td><td class="n">$3</td><td class="n">$5</td><td>ID documents stored</td></tr>
+  <tr class="tot"><td>Total per month</td><td class="n">$155–290</td><td class="n">$481</td><td class="n">$1,766</td><td></td></tr>
+</table>
+
+<h3>What is already limited, and what is not</h3>
+<table>
+  <tr><th style="width:22%">Risk</th><th style="width:26%">Limit in place today</th><th>Exposure</th></tr>
+  <tr>
+    <td><strong>AI overspend</strong></td>
+    <td>$100 per cycle. Currently $71.48 spent of $100.</td>
+    <td><strong>The limit fails open.</strong> If the meter itself errors, spending continues
+    unmetered. This is the largest uncontrolled line.</td>
+  </tr>
+  <tr>
+    <td><strong>SMS pumping</strong></td>
+    <td>5 codes then 1 per 2 minutes per phone; 3 sign-ups per hour per phone; 10 new phones per
+    address per 20 minutes.</td>
+    <td>Bounded. A determined attacker across ten addresses reaches roughly 10,000 messages a day —
+    about $100/day — and is visible immediately.</td>
+  </tr>
+  <tr>
+    <td><strong>Traffic under attack</strong></td>
+    <td>Railway caps 10,000 requests per second per host.</td>
+    <td><strong>Unlimited cost.</strong> Traffic is billed per gigabyte and there is no firewall in
+    front of the site. This is the only line with no ceiling.</td>
+  </tr>
+  <tr>
+    <td><strong>Database disk</strong></td>
+    <td>Billed on space used; can grow to 1 TB.</td>
+    <td>$0.15 per GB per month. A full disk stops the platform accepting bets until resized.</td>
+  </tr>
+  <tr>
+    <td><strong>Runaway scaling</strong></td>
+    <td>None. Railway bills what is consumed.</td>
+    <td>Set a spending limit on the Railway account. It is not set today.</td>
   </tr>
 </table>
 
-<div class="box stop"><strong>Two of these are decisions, not engineering.</strong> Turning on SMS
-needs a signed contract. Two-factor needs an administrator to enrol an authenticator app. Everything
-else is a few days of work and buys no new infrastructure.</div>
+<div class="box stop"><strong>Three spending limits worth setting before launch, all free:</strong>
+a hard spend cap on the Railway account; an alert when the AI cycle passes 80% of $100; and
+Cloudflare in front of the site, which removes the only line that has no ceiling. Together these cap
+the Max scenario at roughly <strong>$600</strong> instead of $1,766.</div>
 
-<h2>4 · Decisions taken</h2>
+<h2>5 · Decisions taken</h2>
 <table>
   <tr><th style="width:32%">Question</th><th>Decision</th></tr>
   <tr><td>How many customers online at once?</td><td>Size for <strong>100–200</strong> at peak</td></tr>
