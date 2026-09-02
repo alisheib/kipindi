@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>50pick · Launch Readiness — The First 1,000 Clients</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm 14mm; }
+  * { box-sizing: border-box; }
+  body { font: 10.5pt/1.5 "Segoe UI", Helvetica, Arial, sans-serif; color: #14161c; margin: 0; }
+  h1 { font-size: 23pt; margin: 0 0 2mm; letter-spacing: -.5pt; }
+  h2 { font-size: 13pt; margin: 9mm 0 3mm; padding-bottom: 1.5mm;
+       border-bottom: 1.5pt solid #14161c; page-break-after: avoid; }
+  h3 { font-size: 11pt; margin: 6mm 0 2mm; page-break-after: avoid; }
+  p, li { margin: 0 0 2.5mm; }
+  ul, ol { margin: 0 0 3mm; padding-left: 6mm; }
+  li { margin-bottom: 1.5mm; }
+  code { font: 9.5pt/1.4 Consolas, monospace; background: #f1f2f5; padding: .3mm 1mm; border-radius: 1mm; }
+  .sub { color: #5b6070; font-size: 10pt; margin: 0 0 6mm; }
+  .lead { font-size: 11pt; }
+  .brk { page-break-before: always; }
+  table { width: 100%; border-collapse: collapse; margin: 0 0 4mm; font-size: 9.5pt; }
+  th, td { border: .5pt solid #c8ccd6; padding: 1.5mm 2mm; text-align: left; vertical-align: top; }
+  th { background: #eef0f4; font-weight: 600; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.tot td { font-weight: 700; background: #f7f8fa; }
+  .note { border: .5pt solid #c8ccd6; border-left: 2.5pt solid #b8860b; background: #fdfaf2;
+          padding: 2.5mm 3mm; margin: 0 0 4mm; page-break-inside: avoid; }
+  .stop { border-left-color: #a8202a; background: #fdf4f4; }
+  .ok   { border-left-color: #1c7a45; background: #f3faf5; }
+  .arch { font: 8.6pt/1.5 Consolas, monospace; background: #f7f8fa; border: .5pt solid #c8ccd6;
+          padding: 3mm; margin: 0 0 4mm; white-space: pre; page-break-inside: avoid; }
+  .kpi { display: flex; gap: 3mm; margin: 0 0 5mm; }
+  .kpi div { flex: 1; border: .5pt solid #c8ccd6; border-top: 2pt solid #14161c;
+             padding: 2.5mm 3mm; page-break-inside: avoid; }
+  .kpi b { display: block; font-size: 15pt; letter-spacing: -.3pt; margin-bottom: .5mm; }
+  .kpi span { font-size: 8.5pt; color: #5b6070; }
+  .sev { display: inline-block; width: 4mm; height: 4mm; border-radius: 50%; vertical-align: -.6mm; }
+  .r { background: #a8202a; } .o { background: #c8791a; } .y { background: #b8a11a; } .g { background: #1c7a45; }
+  .foot { margin-top: 8mm; padding-top: 2mm; border-top: .5pt solid #c8ccd6;
+          font-size: 8.5pt; color: #5b6070; }
+  .step { page-break-inside: avoid; margin: 0 0 4mm; }
+  .tag { display: inline-block; font: 8pt/1 Consolas, monospace; text-transform: uppercase;
+         letter-spacing: .5pt; background: #14161c; color: #fff; padding: 1mm 2mm;
+         border-radius: 1mm; vertical-align: 1mm; margin-left: 2mm; }
+</style>
+
+<h1>Launch Readiness — The First 1,000 Clients</h1>
+<p class="sub">50pick · <code>50pick.tz</code> · prepared 3 September 2026. Every number in this
+document was measured against live production on the day of writing — from the Railway API, the
+production database and the live site itself. Nothing here is copied from internal documentation,
+because two of the figures that documentation carries turned out to be out of date.</p>
+
+<p class="lead">50pick works. It is fast, it has not dropped a single request in the sample we took,
+its money handling is genuinely well defended, and last night's backup restores. What it has never
+had is <strong>a crowd</strong>. Production currently serves <strong>two to five betting customers
+a day</strong>, and the busiest market in its history took 29 bets from 12 people. Opening to 1,000
+clients is a step up of roughly two hundred times.</p>
+
+<p>This document says what we run today, what it costs today, what has to change before the doors
+open, and what it will cost after. It ends with the honest list of what could still go wrong.</p>
+
+<div class="note stop"><strong>The single most important sentence in this document:</strong> as of
+today <strong>no member of the public can register on 50pick</strong>, because registration requires
+an SMS code and the platform is configured to deliver SMS to a log file rather than to a telephone.
+That is a signature on a contract, not a piece of engineering — but until it is done, nothing else
+in this plan matters.</div>
+
+<h2>1 · What we run today</h2>
+
+<div class="arch">Players (Tanzania)
+   |   no CDN, no firewall, nothing cached at the edge
+   v
+Railway edge network  ---->  ORIGIN: us-west2  (California)
+   |
+   +-- 50pick        Next.js 15    1 container   no health check, no drain
+   +-- PostgreSQL 18.6              1 container   5 GB disk (897 MB used)
+   +-- Redis                        1 container   connected and in use
+
+Outside Railway:
+   Selcom .......... deposits and withdrawals          LIVE
+   Postmark ........ email                             LIVE, 20 sent, 0 failures
+   Cloudflare R2 ... customer ID documents + backups    LIVE
+   Sentry .......... error reporting                    LIVE
+   Anthropic ....... market generation + auto-settling  LIVE
+   Twelve Data ..... price feed for Up &amp; Down           LIVE
+   SMS ............. one-time codes                     NOT DELIVERING</div>
+
+<div class="kpi">
+  <div><b>31 ms</b><span>typical server response</span></div>
+  <div><b>0</b><span>server errors in 500 requests</span></div>
+  <div><b>104</b><span>registered customers</span></div>
+  <div><b>17 h</b><span>since backup last verified</span></div>
+</div>
+
+<p>The account is on Railway's <strong>Pro</strong> plan. That matters, because it means the ceilings
+people worry about are not close: disks can grow to 1 TB on demand without downtime, and up to 42
+copies of the application may run at once. We are nowhere near either.</p>
+
+<div class="note ok"><strong>Two things the internal notes had wrong, both in our favour.</strong>
+The code and documentation repeatedly state that the database allows only 100 simultaneous
+connections and that Redis is switched off in production. Measured live: the database allows
+<strong>500</strong>, and Redis is <strong>connected and working across containers</strong>. Several
+"we cannot scale" conclusions written earlier in the year were based on those two stale figures and
+no longer hold.</div>
+
+<h2>2 · What it costs today</h2>
+
+<p>Taken from Railway's billing API for the workspace <em>Ali Sheib's Projects</em>, and from the
+platform's own AI spend ledger.</p>
+
+<h3>Railway — the last four bills</h3>
+<table>
+  <tr><th>Billing period</th><th class="n">Invoiced</th></tr>
+  <tr><td>May → June</td><td class="n">$5.00</td></tr>
+  <tr><td>June → July</td><td class="n">$11.15</td></tr>
+  <tr><td>July → August <em>(last complete month)</em></td><td class="n">$25.42</td></tr>
+  <tr><td>20 Aug → today <em>(14 days in, still running)</em></td><td class="n">$17.38</td></tr>
+</table>
+
+<h3>Railway — where this month's money is going</h3>
+<table>
+  <tr><th>Project</th><th class="n">Processor</th><th class="n">Memory</th><th class="n">Disk</th><th class="n">Traffic</th><th class="n">Total</th></tr>
+  <tr><td><strong>50pick</strong></td><td class="n">$1.50</td><td class="n"><strong>$20.60</strong></td><td class="n">$0.10</td><td class="n">$1.33</td><td class="n"><strong>$23.57</strong></td></tr>
+  <tr><td>generous-elegance</td><td class="n">$0.02</td><td class="n">$3.89</td><td class="n">$0.15</td><td class="n">$0.01</td><td class="n">$4.07</td></tr>
+  <tr><td>amanat-watan</td><td class="n">$0.20</td><td class="n">$2.12</td><td class="n">$0.11</td><td class="n">$0.40</td><td class="n">$2.83</td></tr>
+  <tr><td>intercontinental-glass</td><td class="n">—</td><td class="n">$0.92</td><td class="n">$0.09</td><td class="n">—</td><td class="n">$1.01</td></tr>
+  <tr><td>lmc-sagesse</td><td class="n">—</td><td class="n">$0.33</td><td class="n">—</td><td class="n">—</td><td class="n">$0.33</td></tr>
+  <tr class="tot"><td>All six projects</td><td class="n">$1.72</td><td class="n">$27.86</td><td class="n">$0.45</td><td class="n">$1.74</td><td class="n">$31.81</td></tr>
+</table>
+
+<p>50pick is about three-quarters of the Railway bill, and <strong>memory alone is 87% of 50pick's
+share</strong>. The application sits almost idle on processing power while holding an average of
+4.7 GB of memory. That is the whole Railway cost story in one line, and it is the cheapest saving
+available to us.</p>
+
+<h3>Artificial intelligence — the largest single line</h3>
+<table>
+  <tr><th>What it does</th><th class="n">Calls (30 days)</th><th class="n">Average each</th><th class="n">30-day cost</th></tr>
+  <tr><td>Writing new markets for customers to bet on</td><td class="n">185</td><td class="n">$0.185</td><td class="n">$34.15</td></tr>
+  <tr><td>Checking and auto-settling finished markets</td><td class="n">72</td><td class="n">$0.230</td><td class="n">$16.59</td></tr>
+  <tr><td>Customer help chat</td><td class="n">5</td><td class="n">$0.002</td><td class="n">$0.01</td></tr>
+  <tr class="tot"><td>Total</td><td class="n">262</td><td class="n"></td><td class="n">$50.75</td></tr>
+</table>
+
+<div class="note"><strong>The AI bill is larger than the entire hosting bill</strong>, and this is
+the most useful thing we learned about cost. Crucially, <strong>99.98% of it does not depend on how
+many customers we have</strong> — it is the cost of generating and settling markets, which happens
+on a clock whether one person is watching or ten thousand. Going from 104 customers to 1,000 will
+barely move it. The only part that grows with customers is the help chat, which has cost one cent
+in a month.</div>
+
+<h3>Everything together, today</h3>
+<table>
+  <tr><th>Service</th><th class="n">Per month</th><th>Basis</th></tr>
+  <tr><td>Railway — 50pick</td><td class="n">$23.57</td><td>measured</td></tr>
+  <tr><td>Railway — five other projects</td><td class="n">$8.24</td><td>measured</td></tr>
+  <tr><td>Anthropic (AI)</td><td class="n">$50.75</td><td>measured</td></tr>
+  <tr><td>Postmark (email)</td><td class="n">$0</td><td>20 emails sent — inside free allowance</td></tr>
+  <tr><td>Cloudflare R2 (documents, backups)</td><td class="n">~$1</td><td>under 1 GB stored</td></tr>
+  <tr><td>Sentry (error reporting)</td><td class="n">$0</td><td>free tier</td></tr>
+  <tr><td>Twelve Data (price feed)</td><td class="n">not measured</td><td>billed outside Railway — to confirm</td></tr>
+  <tr><td>SMS</td><td class="n">$0</td><td>not sending anything</td></tr>
+  <tr class="tot"><td>Running total</td><td class="n">≈ $84 / month</td><td></td></tr>
+</table>
+
+<h2 class="brk">3 · What has to happen before we open</h2>
+
+<p>Ranked by what stops us, not by how hard it is. The first two are decisions and configuration.
+The rest is engineering.</p>
+
+<h3><span class="sev r"></span> 1 · Turn on SMS <span class="tag">blocks everything</span></h3>
+<p>Signing up requires a one-time code sent by text message. The platform is set to the
+<code>console</code> provider, which writes <em>"NOT delivered"</em> into a log and throws the code
+away. Production has never successfully sent a single one. <strong>No new customer can join
+today.</strong></p>
+<p>The Selcom connection is already written and waiting — it needs three settings: the provider name,
+an API key, and a sender ID licensed by the TCRA. <strong>This is a commercial step, not a
+technical one.</strong> Once it is in, we prove it by registering on a real handset and reading the
+code off the screen — not by looking at a log.</p>
+
+<h3><span class="sev r"></span> 2 · Put the admin console behind two-factor</h3>
+<p>Second-factor authentication is switched off for all nine administrator accounts, on a licensed
+real-money platform. Internal notes say it was meant to be turned on at the end of July. We enrol an
+authenticator app and prove a full sign-in with a real code <em>first</em>, then remove the override
+— doing it the other way round risks locking everyone out of the platform.</p>
+
+<h3><span class="sev r"></span> 3 · Stop every update being an outage</h3>
+<p>All three services run as a single copy, and Railway has <strong>no health check configured</strong>,
+no overlap between the old and new version during an update, and no grace period for requests already
+in progress. Today that means every deployment briefly takes the site down and cancels any bet being
+placed at that moment. With five customers nobody notices. With a thousand, everybody does.</p>
+<p>There is a subtlety worth stating plainly: the platform's own health page currently reports
+<em>"healthy"</em> even when the database is unreachable. Pointing Railway's health check at it as it
+stands would create a safety check that cannot fail, which is worse than none. We fix the health page
+first, then switch the check on, then <strong>deliberately break the database to watch it go red</strong>.</p>
+
+<h3><span class="sev o"></span> 4 · Make big markets able to pay out</h3>
+<p>When a market finishes, winners are paid one after another inside a single database operation with
+a thirty-second limit. Measured, that runs out at roughly <strong>660 winners</strong>. The largest
+market we have ever run had 29 bets, so this has never been reached — but a popular football match
+with a thousand customers will pass it comfortably, and beyond that point the market freezes for both
+betting and cashing out while it repeatedly times out. We break the payout into batches and prove it
+by settling a test market with over a thousand winners.</p>
+
+<h3><span class="sev o"></span> 5 · Stop rebuilding every page from scratch</h3>
+<p>Nothing on 50pick is cached. Every page is rebuilt from the database on every view, and the busiest
+screens automatically refresh themselves every 15 to 20 seconds. The Up &amp; Down board costs around
+forty database queries each time it is drawn. At 200 customers online that is roughly four hundred
+database queries a second purely to redraw screens whose contents have barely changed.</p>
+<p>Redis is already installed, already connected, and currently used for almost nothing. Caching those
+screens for a handful of seconds is invisible to customers — they refresh every twenty seconds anyway
+— and removes the large majority of that load. <strong>This is the highest-value change in the whole
+plan.</strong></p>
+
+<h3><span class="sev o"></span> 6 · Move the servers closer to Tanzania</h3>
+<p>The application and database both run in California. The server itself answers in 31 milliseconds,
+but a customer waits around half a second, because the request has to cross the planet and back. That
+delay is geography, not slow software — and it is the same on every page, which is exactly what
+distance looks like.</p>
+<p>Moving to Amsterdam roughly halves it, and <strong>costs nothing extra</strong>. The database has to
+move with the application, and moving stored data requires a short planned outage, so we do it in an
+announced window using the platform's existing maintenance mode — which pauses betting and deposits
+while <strong>leaving withdrawals open</strong>, so no customer's money is ever locked in.</p>
+
+<h3><span class="sev y"></span> 7 · Give the database room</h3>
+<p>The database disk is 897 MB of a 5 GB allowance and grows a measured <strong>14 MB a day</strong>.
+That is about six months of headroom. Notably, <strong>89% of that growth is the platform's own
+automatic market activity, not customers</strong>, so a thousand customers will not change it much.</p>
+<p>It still needs raising, because the compliance record inside it can never be deleted — it is
+required to be kept for seven years and is cryptographically chained, so removing old rows would break
+it. Growing the disk takes seconds, needs no downtime, and <strong>costs nothing until the space is
+actually used</strong>, because Railway charges for what is stored rather than what is reserved.</p>
+
+<h2 class="brk">4 · What it will cost with 1,000 clients</h2>
+
+<p>Sized for <strong>1,000 registered customers with 100–200 online at once</strong> at peak — the
+figure agreed for this launch. We are deliberately <em>not</em> running multiple copies of the
+application: one well-tuned container handles this comfortably once caching is in place, and running
+several would first require fixing a set of emergency controls that currently only reach one copy.</p>
+
+<table>
+  <tr><th>Line</th><th class="n">Today</th><th class="n">At 1,000</th><th>Why it changes</th></tr>
+  <tr><td>Railway — memory</td><td class="n">$20.60</td><td class="n">$25 – 55</td><td>lower end if we cap memory; higher if left as-is</td></tr>
+  <tr><td>Railway — processor</td><td class="n">$1.50</td><td class="n">$10 – 18</td><td>caching holds this down</td></tr>
+  <tr><td>Railway — database</td><td class="n">$5.30</td><td class="n">$8 – 12</td><td>more queries, more storage</td></tr>
+  <tr><td>Railway — Redis</td><td class="n">~$0</td><td class="n">$2 – 4</td><td>now doing real caching work</td></tr>
+  <tr><td>Railway — disk &amp; backups</td><td class="n">$0.14</td><td class="n">$1 – 3</td><td>charged on what is used</td></tr>
+  <tr><td>Railway — traffic</td><td class="n">$1.33</td><td class="n">$10 – 15</td><td>roughly ten times the visitors</td></tr>
+  <tr><td>Railway — other five projects</td><td class="n">$8.24</td><td class="n">$8 – 10</td><td>unchanged</td></tr>
+  <tr><td><strong>Anthropic (AI)</strong></td><td class="n">$50.75</td><td class="n">$55 – 110</td><td>market generation is flat; only help chat grows</td></tr>
+  <tr><td>SMS one-time codes</td><td class="n">$0</td><td class="n">$35 – 45</td><td>new — roughly 4,000 messages a month</td></tr>
+  <tr><td>Postmark (email)</td><td class="n">$0</td><td class="n">$0 – 15</td><td>free up to 100 messages a month</td></tr>
+  <tr><td>Cloudflare R2</td><td class="n">~$1</td><td class="n">$1 – 3</td><td>more ID documents stored</td></tr>
+  <tr class="tot"><td>Total</td><td class="n">≈ $84</td><td class="n">$155 – 290</td><td></td></tr>
+</table>
+
+<div class="note"><strong>Call it $200 a month, and watch two lines.</strong> The AI bill and the
+memory bill are the only two that can run away, and both are directly controllable — the first by how
+often we generate markets, the second by capping how much memory the application is allowed to hold.
+Twelve Data's price-feed plan is billed outside Railway and still needs confirming; it is the one
+figure in this document I have not been able to measure.</div>
+
+<h2>5 · Safety</h2>
+
+<h3>What is already built, tested, and should not be touched</h3>
+<p>This platform has been through real incidents and the scars are visible in the code, in a good
+way. All of the following are working and have automated tests proving them:</p>
+<ul>
+  <li><strong>Maintenance mode</strong> pauses new bets and deposits while leaving withdrawals open,
+      so customer money is never trapped by an operational decision.</li>
+  <li><strong>Payment kill switches</strong> per mobile network, separately for money in and money
+      out, for use during a provider incident.</li>
+  <li><strong>Payments are settled from a signed re-query, not from the incoming message</strong>,
+      exactly once, and defended against a tampered amount. A deposit is recovered by a 15-second
+      poller and a 5-minute sweep <em>even if the payment provider's confirmation never arrives</em>.</li>
+  <li><strong>A dead Redis cannot break a bet</strong> — proven by a test that points the platform at
+      a dead port and asserts that betting still succeeds.</li>
+  <li><strong>Repeated bets cannot double-charge.</strong> A retry without an idempotency key is
+      refused outright, so a retry can never become a second bet.</li>
+  <li><strong>Money invariants hold under load</strong>: 200 simultaneous bets on one market, zero
+      shillings lost or created.</li>
+  <li><strong>The Up &amp; Down safety net is deliberately independent of the game's own off switch</strong>
+      — turning the game off must never turn off the thing that returns money already staked in it.</li>
+  <li><strong>Backups are verified by actually restoring them</strong> into a scratch database every
+      night and re-checking the money totals — not merely by confirming a file was written.</li>
+</ul>
+
+<h3>What is still open</h3>
+<table>
+  <tr><th style="width:60%">Gap</th><th>Severity</th><th>Fixed in</th></tr>
+  <tr><td>No customer can register — SMS delivers nothing</td><td><span class="sev r"></span> Critical</td><td>Step 1</td></tr>
+  <tr><td>Admin console has no second factor (9 accounts)</td><td><span class="sev r"></span> Critical</td><td>Step 2</td></tr>
+  <tr><td>Health page reports healthy while the database is down</td><td><span class="sev r"></span> Critical</td><td>Step 3</td></tr>
+  <tr><td>Up to 24 hours of data could be lost — no continuous backup</td><td><span class="sev r"></span> Critical</td><td>Step 8</td></tr>
+  <tr><td>Nobody is alerted when a backup fails</td><td><span class="sev r"></span> Critical</td><td>Step 9</td></tr>
+  <tr><td>No written recovery procedure or on-call plan</td><td><span class="sev o"></span> High</td><td>Step 10</td></tr>
+  <tr><td>Recovery time never measured at current data size</td><td><span class="sev o"></span> High</td><td>Step 10</td></tr>
+  <tr><td>Updates cancel bets in progress</td><td><span class="sev o"></span> High</td><td>Step 3</td></tr>
+  <tr><td>If the database is down at start-up, the app will not start at all</td><td><span class="sev o"></span> High</td><td>Step 3</td></tr>
+  <tr><td>Backup key and document-store credentials readable from one place</td><td><span class="sev y"></span> Medium</td><td>after launch</td></tr>
+  <tr><td>No firewall or denial-of-service protection in front of the site</td><td><span class="sev y"></span> Medium</td><td>after launch</td></tr>
+</table>
+
+<div class="note stop"><strong>The August backup failure is the story worth remembering.</strong>
+The nightly backup failed on <strong>eleven consecutive nights</strong>. The most recent restorable
+copy became nearly twelve days old, on a platform holding real customer money. Nothing was broken
+about the alarm — the compliance screen displayed the warning correctly for ten of those days.
+<strong>Nobody was looking at it.</strong> The remedy that was shipped is a command an operator has to
+remember to run, which means the same failure would happen the same way again. Step 9 replaces it with
+an alert that arrives on its own, and we will test it by breaking the backup on purpose.</div>
+
+<h2>6 · If it crashes, how do we get back?</h2>
+
+<p>Honestly stated: <strong>we would recover, but more slowly than we should, and we have never timed
+it.</strong> The pieces exist and are good; they have simply never been assembled into a procedure
+that someone could follow at two in the morning.</p>
+
+<table>
+  <tr><th style="width:30%">Question</th><th>Answer today</th><th>After this plan</th></tr>
+  <tr><td>How much data could we lose?</td><td>Up to <strong>24 hours</strong> — one backup a night, nothing in between</td><td><strong>Minutes</strong>, via continuous point-in-time recovery</td></tr>
+  <tr><td>How long to get back up?</td><td><strong>Unknown</strong> — rehearsed once in July against a database a tenth of today's size</td><td>Measured and written down</td></tr>
+  <tr><td>Is there a written procedure?</td><td><strong>No</strong></td><td>A one-page recovery runbook</td></tr>
+  <tr><td>Would we know it had happened?</td><td>Error reporting yes; backup failure <strong>no</strong></td><td>Alerts that arrive without being asked</td></tr>
+  <tr><td>Can we trade while degraded?</td><td><strong>Yes</strong> — maintenance mode already works</td><td>Unchanged, and part of the procedure</td></tr>
+</table>
+
+<p>Railway also provides its own point-in-time recovery for the database, which is separate from our
+nightly backup. Turning it on gives us <strong>two unrelated ways to recover</strong>, so a mistake in
+one does not cost us the other. That is step 8, and it is the single largest reduction in risk
+available for the least work.</p>
+
+<h2>7 · The order of work</h2>
+<table>
+  <tr><th style="width:6%">#</th><th style="width:44%">Step</th><th>How we prove it is done</th></tr>
+  <tr><td>1</td><td>Turn on Selcom SMS</td><td>Register on a real handset; read the code off the phone</td></tr>
+  <tr><td>2</td><td>Enrol and enforce admin two-factor</td><td>Full admin sign-in with a real code, before removing the override</td></tr>
+  <tr><td>3</td><td>Health check, deploy overlap, graceful shutdown</td><td>Break the database on purpose and watch the check go red</td></tr>
+  <tr><td>4</td><td>Grow the database disk</td><td>New size visible; site stays up throughout</td></tr>
+  <tr><td>5</td><td>Cache the busy screens in Redis</td><td>Re-measure page timing and database query rate, before and after</td></tr>
+  <tr><td>6</td><td>Move to Amsterdam</td><td>Re-run the timing test against today's half-second baseline</td></tr>
+  <tr><td>7</td><td>Batch the payout of big markets</td><td>Settle a test market with over 1,000 winners and time it</td></tr>
+  <tr><td>8</td><td>Turn on continuous database recovery</td><td>Perform a real point-in-time restore into a scratch database</td></tr>
+  <tr><td>9</td><td>Alerts that arrive by themselves</td><td>Break the backup deliberately; confirm the alert lands</td></tr>
+  <tr><td>10</td><td>Rehearse recovery; write the runbook</td><td>Record the actual wall-clock recovery time</td></tr>
+</table>
+
+<div class="note ok"><strong>Steps 1 and 2 are decisions; the rest is a few days of engineering.</strong>
+Nothing in this list is a rewrite, and nothing requires new infrastructure to be bought. The platform
+is closer to ready than the length of this document suggests — the gaps are almost entirely in
+operations and recovery, not in the product or in how it handles money.</div>
+
+<p class="foot">Prepared 3 September 2026 against production commit <code>78c3876e</code>. All figures
+measured live: Railway billing API, Railway metrics API, the production PostgreSQL database, and
+timed requests to <code>50pick.tz</code>. The one figure not measured is the Twelve Data subscription,
+which is billed outside Railway. Rebuild this document with
+<code>node docs/runbooks/mkpdf.mjs ../launch-1k.html 50pick-launch-1k.pdf</code>.</p>

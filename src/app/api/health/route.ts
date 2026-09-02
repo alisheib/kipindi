@@ -15,6 +15,7 @@ import { leadershipSnapshot } from "@/lib/server/leader";
 import { isAdminTotpEnforced } from "@/lib/server/admin-guard";
 import { redisHealth } from "@/lib/server/redis";
 import { emailHealth } from "@/lib/server/email";
+import { pingDatabase } from "@/lib/server/prisma";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -24,6 +25,32 @@ const BOOT_AT = Date.now();
 export async function GET() {
   try {
     const uptimeSec = Math.floor((Date.now() - BOOT_AT) / 1000);
+
+    // 🔴 READINESS, NOT JUST LIVENESS. This endpoint used to answer `ok: true` with HTTP 200
+    // while Postgres was unreachable: `db.user.count()` was wrapped in a bare `catch {}` and
+    // the failure became `users: -1` in a 200 body. Nothing else in the payload could go red
+    // either, so the one question a health check exists to answer — "should traffic go to
+    // this container?" — was the one question it could not answer. A gate that cannot fail is
+    // not a gate; MODULE-CERTIFICATION-PROGRAM.md §L3 names this exact attack.
+    //
+    // ⚠️ SAFE TO FAIL HERE, and this is why. Railway queries `healthcheckPath` ONLY while a
+    // new deployment is going live and explicitly does NOT monitor it afterwards
+    // (docs.railway.com/deployments/healthchecks → "Continuous healthchecks"). So a 503
+    // cannot restart-loop a running container on a transient blip — it can only stop a
+    // BROKEN DEPLOY from taking over from a working one, which is the whole point.
+    //
+    // ⛔ Postgres only. Redis is fail-open by design and a dead Redis must never mark the
+    // container unhealthy — see the `redis` block below. And with no DATABASE_URL at all
+    // (local dev / the in-memory test boot) there is nothing to be unready about.
+    const dbPing = await pingDatabase();
+    const dbReady = !dbPing.envSet || (dbPing.reachable && dbPing.tableExists);
+    if (!dbReady) {
+      // The operator needs the real reason, but this endpoint is PUBLIC and a Prisma
+      // connection error echoes the database host back. Detail goes to the log; the body
+      // gets booleans and a latency.
+      console.error(`[health] NOT READY — database reachable=${dbPing.reachable} migrated=${dbPing.tableExists}: ${dbPing.error ?? "(no error text)"}`);
+    }
+
     let userCount = -1;
     try { userCount = await db.user.count(); } catch { /* graceful */ } // audit H4 — COUNT(*), not a full scan every probe
     const auditCount = auditRingSize();
@@ -36,10 +63,20 @@ export async function GET() {
 
     return NextResponse.json(
       {
-        ok: true,
+        ok: dbReady,
         uptimeSec,
         timestamp: new Date().toISOString(),
         version: process.env.NEXT_PUBLIC_APP_VERSION ?? "1.0.0",
+        // ⛔ NO HOST, NO URL, NO ERROR TEXT. `pingDatabase()` also returns `hostHint` and the
+        // raw driver message; both name the database server, and this endpoint is public.
+        // Booleans and a latency are enough to tell an operator which of the three states
+        // they are in — no env, unreachable, or reachable-but-unmigrated.
+        database: {
+          configured: dbPing.envSet,
+          reachable: dbPing.reachable,
+          migrated: dbPing.tableExists,
+          latencyMs: dbPing.latencyMs,
+        },
         store: {
           users: userCount,
           auditEntries: auditCount,
@@ -150,9 +187,13 @@ export async function GET() {
         })(),
       },
       {
+        // 503, not 500: "I am running but not ready to serve", which is what Railway's
+        // deploy gate and any uptime monitor need to see. A 200 here is a promise that
+        // this container can take a bet.
+        status: dbReady ? 200 : 503,
         headers: {
           "cache-control": "no-store, max-age=0",
-          "x-health": "ok",
+          "x-health": dbReady ? "ok" : "not-ready",
         },
       },
     );
@@ -165,5 +206,15 @@ export async function GET() {
 }
 
 export async function HEAD() {
-  return new NextResponse(null, { status: 200, headers: { "x-health": "ok", "cache-control": "no-store" } });
+  // ⚠️ HEAD MUST AGREE WITH GET. It used to return a bare unconditional 200, so anything
+  // probing with HEAD — a monitor, a load balancer, Railway if the check ever moves to it —
+  // got "healthy" from a container that could not reach its database. Two endpoints that
+  // answer the same question differently is worse than one that answers it wrongly, because
+  // which one you believe becomes a matter of luck.
+  const dbPing = await pingDatabase();
+  const dbReady = !dbPing.envSet || (dbPing.reachable && dbPing.tableExists);
+  return new NextResponse(null, {
+    status: dbReady ? 200 : 503,
+    headers: { "x-health": dbReady ? "ok" : "not-ready", "cache-control": "no-store" },
+  });
 }
