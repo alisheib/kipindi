@@ -69,6 +69,7 @@ plants the defect on a COPY of the tree and proves the gate fails **on its own a
 | `test:validation-focus` | a refusal can name its field; the helper goes to the right place; **§4 every literal address a refusal names is actually rendered** | `red:validation-focus` |
 | `test:unsaved-changes` | **every admin component that renders a control someone can TYPE INTO** either guards its three exits or is NAMED exempt with a reason. ⭐ Rebuilt 2026-09-02: it used to select files that already computed a `dirty`, so a form was invisible to it **precisely because it was unprotected** — a true measurement of the wrong set. Lands at **zero**, not a ratchet of debt. | `red:unsaved-changes` (6 cases) |
 | `test:section-rail` | every rail of destinations names the one in force | `red:section-rail` |
+| `test:tab-anchors` | **§K 7d ③ ACROSS PAGES** — an `#anchor` link into an admin route must land on the tab that renders that id. ⚠️ It cannot hold an UNANCHORED link's INTENT; that is the human audit step in §3b, and `/admin/system` was broken for a whole wave by exactly that. | `red:tab-anchors` (3 cases) |
 | `test:contrast` | §A1, scored on the RENDERED ink (`token × alpha × opacity`), composited in gamma sRGB | `red:contrast`, `red:contrast-rendered` |
 | `test:design-frozen` | no hand-typed edge/shadow/radius beside a token | ratchet |
 | `test:tokens` · `test:design-one-door` | one definition site per token; one door into the system | `red:tokens` |
@@ -91,8 +92,14 @@ future site in that file.
 
 ## 3b. THE CONSOLE'S SHAPE — what `ADMIN-TABS-2026-09-01/02` settled
 
-**Ten admin pages carry a rail** (`/admin/payments` · `reports` · `system` · `roles` ·
-`ai-usage` · `ai-polls` · `finance` · `updown` · `config` · `sources`). Tab state is a URL
+**Fourteen admin pages carry a rail** (`/admin/payments` · `reports` · `system` · `roles` ·
+`ai-usage` · `ai-polls` · `finance` · `updown` · `config` · `sources` · `compliance` ·
+`bonuses` · `proposals` · `retention`). Measured at 390: **38 routes, 14 railed, 0 remaining**
+**candidates**. The four still over three screens each fail ① on one dominant panel
+(`updown/proposals` 80% · `markets` 80% · `candidates` 76% · `aml` 67%) — a page with ONE
+section has nothing to tab. ⚠️ `/admin/updown/proposals` is 11,580px of a *paginated* 16-row
+queue: 580px per row. That is a ROW-DENSITY question, not a tab one, and is left open.
+Tab state is a URL
 fact, so it survives a refresh, a Back and a shared link — and `qa:tab-candidates` /
 `qa:chaos` DISCOVER a page's tabs off the rendered `data-section-rail` rather than any list.
 
@@ -102,6 +109,12 @@ fact, so it survives a refresh, a Back and a shared link — and `qa:tab-candida
    measures the one mechanical part (§K 7a ①: no panel over ~40% of docH); ② and ③ are
    judgement. `/admin/markets` and `/admin/updown/proposals` are 86% and 85% one panel —
    **a page with one section has nothing to tab**, and refusing them is the rule working.
+   🔴 **AND MEASURE AT 390, NOT 1440.** `qa:tab-candidates` defaulted to the desktop and
+   reported 9 routes over three screens; at 390 the same console reports **17**, because
+   every `lg:grid-cols-*` collapses to one column and a page roughly doubles. Four pages —
+   compliance, bonuses, proposals, retention — were invisible to the candidate list for
+   exactly that reason. A rail is a REACHABILITY instrument and reachability is worst where
+   the page is longest, so the drive now defaults to the binding width (`W=1440` for desktop).
    ⚠️ `/admin/updown` is railed while FAILING ①, with the arithmetic stated in its own
    comment: the landing stays ~6,000px, and what the rail buys is reachability, not length.
 
@@ -111,7 +124,18 @@ fact, so it survives a refresh, a Back and a shared link — and `qa:tab-candida
    · `aiBudgetRefusal` → `#ai-credit-budget`, now `?tab=settings#…`;
    · `BatchGenerateForm` → `#ai-polls-pending`, now switches tabs before revealing;
    · the paused-cycle gate `#ai-cycle-gate` is kept ABOVE the rail on every tab instead.
-   ⭐ **Before railing a page, grep its `id="…"` anchors for who links to them.**
+   ⭐ **`test:tab-anchors` now holds the mechanical half** (+ `red:tab-anchors`, 3 cases): an
+   `#anchor` link into an admin route must land on the tab that renders that id.
+   🔴 **BUT THE WORST ONE HAD NO ANCHOR AT ALL, and no gate can catch it.** `/admin/system`
+   took a rail in wave 1, moving the audit-chain verify control onto `diagnostics`;
+   `/admin/compliance`'s *"verify now →"* kept pointing at the bare route and landed an
+   officer on `platform`, a page with no verify control anywhere on it. It resolved, it
+   returned 200, the page it showed was perfectly rendered, and it was wrong for a whole
+   wave. Two more of the shape: `/admin/updown`'s *"Purge a chain on /admin/retention →"*,
+   and the events table's *"drafted"* link, which offered a form for making a NEW poll
+   instead of the one just drafted.
+   ⛔ **SO THIS IS A HUMAN STEP, NOT A GREEN RUN: after railing a page, read every INBOUND
+   link to it and ask what the sentence promised.** No regex reads intent.
 
 3. **The underline is the SECTION language; the capsule is the FILTER language (§K 7c).**
    `/admin/sources` is one card shape repeated once per category — subsets of one list, not

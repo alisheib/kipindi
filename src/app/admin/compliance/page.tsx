@@ -126,7 +126,7 @@ export default async function AdminCompliancePage({
             { value: "platform", labelEn: "Platform", href: tabHref("platform") },
             { value: "kyc", labelEn: "KYC & AML", href: tabHref("kyc") },
             { value: "safety", labelEn: "Player safety", href: tabHref("safety") },
-            { value: "integrity", labelEn: "Integrity & reports", href: tabHref("integrity") },
+            { value: "integrity", labelEn: "Integrity", href: tabHref("integrity") },
           ]}
         />
 
