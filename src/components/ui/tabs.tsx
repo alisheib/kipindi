@@ -366,17 +366,35 @@ export function Tabs({
   }
 
   if (variant === "pill") {
-    return (
-      <div role="group" aria-label={ariaLabel} className={cn("flex flex-wrap gap-1.5", className)}>
+    /**
+     * 🔴 THIS VARIANT SILENTLY DROPPED `href`, AND A FILTER SHIPPED THAT DID NOTHING.
+     *
+     * It hand-rolled a `<button onClick={onChange}>` instead of using `TabControl`, so a caller
+     * that passed URL-owning options — as `/admin/sources` did on 2026-09-02, per §K rule 7c's
+     * *"the capsule is the filter language"* — got eleven capsules that rendered perfectly,
+     * highlighted nothing, and went nowhere on click. Nothing failed: `tsc` is happy because
+     * `href` is a legal `TabItem` field, and the drive that looks for a rail found no
+     * `data-section-rail` and reported the page as simply unrailed rather than as broken.
+     *
+     * ⭐ IT NOW GOES THROUGH `TabControl`, the same component the line variant uses — which is
+     * where the `href ? <Link> : <button>` decision has always lived. One decision, one home:
+     * the capsule chooses the SKIN, never whether an option can own a URL. The shared wrapper
+     * at the bottom of this function then marks it `data-section-rail` when its options do,
+     * which is what lets the design-gate drives discover it.
+     */
+    const pillCls = cn("flex flex-wrap gap-1.5", className);
+    const pillItems = (
+      <>
         {tabs.map((t) => {
           const active = value === t.value;
           return (
-            <button
+            <TabControl
               key={t.value}
-              type="button"
-              aria-pressed={active}
-              onClick={() => onChange?.(t.value)}
-              className={cn(
+              item={t}
+              active={active}
+              onSelect={() => onChange?.(t.value)}
+              style={active ? { background: "var(--pill-active)" } : undefined}
+              cls={cn(
                 // 40px = --tap-min, the chip language every other filter rail uses (was h-8 = 48px).
                 // ⛔ THIS LINE'S CONTENT IS A KEY. `scripts/design-gate/eyebrow-roles.mjs`
                 // declares this site CONTROL_LABEL keyed on the line's TEXT, not on `:line` —
@@ -393,14 +411,20 @@ export function Tabs({
                   ? "border-brand-400 text-text"
                   : "border-border bg-bg-elevated text-text-muted hover:border-border-strong hover:text-text",
               )}
-              style={active ? { background: "var(--pill-active)" } : undefined}
-            >
-              {t.labelEn}
-              {t.count !== undefined && <CountBadge count={t.count} tone="brand" size="sm" />}
-            </button>
+            />
           );
         })}
-      </div>
+      </>
+    );
+    /* ⭐ THE SAME WRAPPER RULE AS THE LINE VARIANT, stated once here rather than inherited by
+       accident: a rail whose options own a URL is a `<nav>` carrying `data-section-rail` — the
+       hook §K rule 7f's drives use to DISCOVER a page's options off the rendered page; one whose
+       options only change in-page state stays a `role="group"`. The capsule picks the skin, not
+       the semantics. */
+    return isNav ? (
+      <nav aria-label={ariaLabel} data-section-rail="" className={pillCls}>{pillItems}</nav>
+    ) : (
+      <div role="group" aria-label={ariaLabel} className={pillCls}>{pillItems}</div>
     );
   }
 
