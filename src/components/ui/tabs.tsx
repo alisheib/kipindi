@@ -483,11 +483,20 @@ export function Tabs({
               /**
                * ⭐ `group` IS LOAD-BEARING: it is what lets the underline below preview itself
                * on hover. See the indicator's own note for why that preview had to exist.
-               * ⭐ `rounded-t-md` — the hover fill is a TAB sitting on the rail's baseline, so
-               * it rounds at the top and stays square where it meets the `border-b`. A fully
-               * rounded fill would float free of the line that defines the rail.
+               * 🔴 `rounded-md`, ALL FOUR CORNERS — and the first draft had this wrong.
+               * It shipped `rounded-t-md`, reasoning that a hover fill is a TAB sitting on the
+               * rail's baseline and so should stay square where it meets the `border-b`. On
+               * screen that reads as a defect rather than as a tab: Ali, 2026-09-02 — *"when I
+               * highlight any tab item it's square while the container has round edges."*
+               * ⛔ THE SQUARE CORNERS HAVE NOTHING TO SIT ON. This rail is not a browser tab
+               * strip; it lives INSIDE a rounded card, and a square-bottomed fill collides with
+               * that radius at the first option and looks like a rendering fault everywhere
+               * else. The `focus-visible` outline follows the same radius, so the ring was
+               * half-rounded too.
+               * ⭐ The underline is what says "selected" — the fill only has to say "your
+               * cursor is here", and a soft chip does that without arguing with the container.
                */
-              "group relative h-[44px] px-4 rounded-t-md text-body-sm font-semibold transition-colors duration-quick ease-linear whitespace-nowrap",
+              "group relative h-[44px] px-4 rounded-md text-body-sm font-semibold transition-colors duration-quick ease-linear whitespace-nowrap",
               // ⚠️ The focus ring is NOT set here. It is one CSS rule on `[data-section-rail]`
               // in `globals.css` (§A3 — one recipe, one definition site), because this rail
               // CLIPS its own ring: see the note there. ⛔ Do not add a `focus-visible:` class
@@ -532,7 +541,12 @@ export function Tabs({
               <span
                 aria-hidden
                 className={cn(
-                  "m-indicator absolute left-2 right-2 -bottom-px h-[2px] rounded-pill",
+                  /* ⚠️ `bottom-0`, NOT `-bottom-px`. One pixel below the content box made the
+                     rail a vertically-overflowing scroll container, and the browser painted a
+                     full vertical scrollbar for it — a draggable control that moved nothing.
+                     See the `[data-section-rail]` note in globals.css; the two changes are one
+                     fix and neither works alone. */
+                  "m-indicator absolute left-2 right-2 bottom-0 h-[2px] rounded-pill",
                   active
                     ? "scale-x-100 bg-brand-500"
                     : "scale-x-0 bg-border-strong group-hover:scale-x-100",

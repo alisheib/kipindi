@@ -2145,6 +2145,25 @@ textarea::placeholder { color: var(--text-subtle); }
    for as long as the item fills the rail, which §K rule 7c's 44px rung guarantees. */
 [data-section-rail] :where(a, button):focus-visible { outline-offset: -2px; }
 
+/* 🔴 A VERTICAL SCROLLBAR ON A HORIZONTAL RAIL — "this buggy scroller that does nothing"
+   (Ali, 2026-09-02, screenshot of `/admin/roles`). A thin vertical track was painting down the
+   right edge of a two-option rail that has nothing to scroll vertically.
+
+   ⛔ THE CAUSE IS THE SAME ONE THE BLOCK ABOVE DOCUMENTS, showing a second face. `overflow-x:
+   auto` makes CSS compute `overflow-y` to `auto` as well, so the rail is a scroll container on
+   BOTH axes — and the travelling underline is positioned at `-bottom-px`, ONE PIXEL below the
+   content box. One pixel of vertical overflow is all it takes: the browser paints a full
+   vertical scrollbar for it, and `.scrollx` styles the thumb so it is clearly visible rather
+   than hairline. A control that appears, is draggable, and moves nothing.
+
+   ⭐ THE FIX IS BOTH HALVES, because either alone is a half-fix: `overflow-y: hidden` here
+   removes the axis, and the indicator moved from `-bottom-px` to `bottom-0` in `tabs.tsx` so
+   there is no 1px to clip — hiding the axis while leaving the overflow would have shaved the
+   selection underline instead of the scrollbar.
+   ⚠️ This does NOT re-open the focus-ring defect above: that ring is drawn at
+   `outline-offset: -2px`, i.e. INSIDE the item, so nothing about it depends on this axis. */
+[data-section-rail] { overflow-y: hidden; }
+
 /* ===========================================================================
    Motion polish layer — ⚠️ DEPRECATED ALIASES (2026-07-28)
    ---------------------------------------------------------------------------
@@ -4078,12 +4097,24 @@ html[data-sheet-open] .route-enter { animation: none; }
    figure". Making figures unbreakable lets the table's own min-content width grow to fit them,
    which `ScrollX` then scrolls: min-widths become a floor instead of a guess that goes stale
    the day a number gains a digit.
-   ⚠️ SCOPED TO `td.tabular`, deliberately. A LABEL cell may wrap and should — "Markets ·
+   ⚠️ SCOPED TO NUMERIC CELLS, deliberately. A LABEL cell may wrap and should — "Markets ·
    long-form polls" over two lines is fine. Only the figures are indivisible.
+
+   🔴 AND IT TAKES TWO SELECTORS, BECAUSE ONE FACT IS SPELLED TWO WAYS. The first version of
+   this rule named `.tabular` alone and fixed 88 cells while 92 kept wrapping — admin markup
+   uses BOTH the kit class `.tabular` and Tailwind's raw `tabular-nums` utility for the same
+   thing. That is §0a's drift exactly: a value with two homes, where a rule matching one reads
+   as a fix and leaves the other half broken. It was caught only because `qa:chaos` ⑤ still
+   reported wraps AFTER the fix deployed.
+   ⚠️ THE REAL REMEDY IS ONE SPELLING, and that is a 92-site edit this rule deliberately does
+   not smuggle in. Covering both is correct today and the drift is named here so the cleanup is
+   a decision someone takes on purpose, not a surprise.
+
    ⛔ Found by eye on a screenshot, not by a drive: `qa:chaos` and `qa:fit` both exempt content
    inside a `ScrollX` as one-scroll-away, and a value that WRAPS is not a value that is CLIPPED —
    its box never overflows. `qa:chaos` ⑤ now counts line boxes so it cannot hide there again. */
-.admin-tbl td.tabular { white-space: nowrap; }
+.admin-tbl td.tabular,
+.admin-tbl td.tabular-nums { white-space: nowrap; }
 /* ⚠️ This transition had a duration and NO easing at all — B5 rule 3 wants the pair
    stated, and an omitted timing function silently means `ease`. 120ms → `--t-quick`
    (140); a row-background change travels nowhere, so `linear`. */

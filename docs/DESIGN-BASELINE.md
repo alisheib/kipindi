@@ -145,6 +145,38 @@ fact, so it survives a refresh, a Back and a shared link — and `qa:tab-candida
 4. **A landing tab must always paint.** `/admin/ai-polls` cannot land on its queue: both
    queue cards are `{list.length > 0 && …}`, so a quiet morning would open on a blank page.
 
+### ⛔ FITTING — what a card is allowed to be put inside
+
+Two defects on `/admin/reports` on 2026-09-02, one screenshot, and **neither drive was wrong
+to miss them**. Read this before adding a card to an existing grid.
+
+1. **COUNT THE GRID'S CHILDREN BEFORE ADDING ONE.** That grid was written for TWO cards —
+   `Daily P&L` wide, the category breakdown narrow — and said so in its own comment. `By game`
+   arrived later as a THIRD child, so at `xl` the browser placed it in column 2 (**360px**) and
+   pushed the bar list, the one card that genuinely wants 360px, into the WIDE column of row 2.
+   Both cards ended up in the wrong track and nothing said so. ⚠️ This is **DG-A-22's shape**,
+   already documented once on `/admin/compliance` — auto-placement is silent, and a comment
+   describing the old child count is worse than none.
+   ⭐ **A 7-column money table does not go in a sidebar track.** Give it the full width.
+
+2. **`.admin-tbl td` DID NOT INHERIT `th`'s `white-space: nowrap`.** Headers have never
+   wrapped; cells always could. A column narrower than its content folded `TZS 550,560` into
+   "TZS" above "550,560" — §M4 says a money figure is ONE object, §M4a that a clipped number
+   is a WRONG number, and a number folded in half is read wrong the same way.
+   ⭐ Fixed with ONE rule over the marker that already existed: `.admin-tbl td.tabular
+   { white-space: nowrap }`. A table's min-content width then grows to fit its figures and
+   `ScrollX` scrolls it — **`min-w-[…]` becomes a floor, not a guess that goes stale the day a
+   number gains a digit.** ⚠️ Scoped to `.tabular`: a LABEL cell may wrap and should.
+
+🔴 **WHY NO GATE CAUGHT IT, which is the part worth keeping.** The table lives inside a
+`ScrollX`, and `qa:chaos` ①/③ and `qa:fit` all exempt content there as one-scroll-away —
+**correctly**, for a table that is merely wide. But **a value that WRAPS is not a value that is
+CLIPPED**: its box never overflows, it simply grows a second line, and no bounding box
+separates those two. `qa:chaos` ⑤ now counts LINE BOXES with a `Range`. ⚠️ Its first draft
+compared height to line-height and false-positived on every `<td>` in the console — cell
+padding alone is 2.7× a line. Proven discriminating against the live defect BEFORE the fix
+shipped: 61 wraps on `?tab=performance`, 0 on `?tab=library`.
+
 ### The tab's own states, and why
 
 🔴 Hover and active both resolved to `--text` until 2026-09-02 — **a rail whose selected
