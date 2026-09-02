@@ -235,8 +235,17 @@ export function AddSourceForm() {
           <p className="mb-1.5 font-mono text-body-sm text-warning">
             This source cannot be read directly by the AI
           </p>
-          <p className="font-mono text-caption leading-relaxed text-text-subtle">{unreachable.message}</p>
-          <div className="mt-2.5 flex gap-2">
+          {/* ⛔ `text-body-sm` (13px), NOT `text-caption` (11px). This is four sentences of
+              READING COPY, and §T4 puts the reading floor at 12.5px — `test:type-scale` holds
+              the count of sub-floor reading copy on a shrink-only ratchet and caught this the
+              moment it was added: 751 against a ceiling of 750. The rung is also simply
+              right: an operator has to read this to make the decision it is asking for. */}
+          <p className="font-mono text-body-sm leading-relaxed text-text-subtle">{unreachable.message}</p>
+          {/* ⛔ `mt-3`, NOT `mt-2.5`. This repo overrides the spacing scale, and `2.5` paints
+              10px while `2` paints 12px — a key that READS bigger and PAINTS smaller.
+              `test:spacing-scale` holds the inverted-usage count on a shrink-only ratchet and
+              caught this one the moment it was added: 562 against a ceiling of 561. */}
+          <div className="mt-3 flex gap-2">
             {/* ⛔ `claret`, a REAL kit variant. The first draft typed `btn-warning`, which does
                 not exist in `globals.css` — it would have rendered an unstyled button that
                 looked like a bug and `test:ui-consistency` counts raw `btn-` classes for
