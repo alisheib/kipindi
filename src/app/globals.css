@@ -4068,6 +4068,22 @@ html[data-sheet-open] .route-enter { animation: none; }
 .admin-tbl thead { font-family: var(--font-mono); font-size: var(--type-label); text-transform: uppercase; color: var(--text-subtle); background: var(--bg-overlay); border-bottom: 1px solid var(--border); }
 .admin-tbl th { padding: 10px 16px; font-weight: 500; white-space: nowrap; }
 .admin-tbl td { padding: 12px 16px; vertical-align: middle; }
+/* 🔴 A MONEY FIGURE IS ONE OBJECT, AND 61 OF THEM WERE BROKEN IN HALF (2026-09-02).
+   `th` above has carried `white-space: nowrap` since the table shipped; `td` never did. So a
+   column narrower than its content split `TZS 550,560` into "TZS" above "550,560" — §M4 says a
+   money figure is one object and §M4a that a clipped number is a WRONG number, and a number
+   folded onto two lines is read wrong in the same way.
+   ⭐ THE FIX IS ONE RULE, NOT A MIN-WIDTH PER TABLE. Every numeric cell in the console already
+   carries `.tabular` (162 of them in admin alone) — that class IS the marker for "this cell is a
+   figure". Making figures unbreakable lets the table's own min-content width grow to fit them,
+   which `ScrollX` then scrolls: min-widths become a floor instead of a guess that goes stale
+   the day a number gains a digit.
+   ⚠️ SCOPED TO `td.tabular`, deliberately. A LABEL cell may wrap and should — "Markets ·
+   long-form polls" over two lines is fine. Only the figures are indivisible.
+   ⛔ Found by eye on a screenshot, not by a drive: `qa:chaos` and `qa:fit` both exempt content
+   inside a `ScrollX` as one-scroll-away, and a value that WRAPS is not a value that is CLIPPED —
+   its box never overflows. `qa:chaos` ⑤ now counts line boxes so it cannot hide there again. */
+.admin-tbl td.tabular { white-space: nowrap; }
 /* ⚠️ This transition had a duration and NO easing at all — B5 rule 3 wants the pair
    stated, and an omitted timing function silently means `ease`. 120ms → `--t-quick`
    (140); a row-background change travels nowhere, so `linear`. */

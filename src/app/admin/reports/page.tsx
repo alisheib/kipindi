@@ -342,106 +342,6 @@ export default async function AdminReportsPage({
             )}
           </AdminCard>
 
-          {/* 🔴 A FAILED READ IS NOT AN EMPTY WINDOW (DG-A-01, 2026-08-29).
-              `moneyByGame` is wrapped in `.catch(() => null)`, and the condition below used to
-              begin `byGame && …` — so when the read threw, this whole card silently VANISHED
-              and the page read exactly as it does when nobody staked anything. On a
-              regulator-facing reporting console that is a money statement made by omission,
-              and the same file already argues the principle 20 lines down: *"DISCLOSED, NEVER
-              FOLDED … added to Markets, which overstated long-form GGR by an amount no reader
-              could see"*. `/admin/insights` (insights/page.tsx:173) already discloses this exact
-              failure for `categoryBreakdown` — the sibling call to the sibling function — in
-              these words. It says them here too now.
-              ⛔ A genuinely empty window still renders nothing: that is not a false statement,
-              because every other card on the page is reporting the same window. */}
-          {byGame === null && (
-            <AdminCard title="By game" sw="Kwa mchezo · Markets vs Up &amp; Down">
-              {/* `text-body-sm` (13px), not a hand-typed `text-[13px]` — the sibling
-                  disclosure on /admin/insights still hand-types it and DG-A-12's sweep will
-                  move it; a new line does not join the backlog it is being written beside. */}
-              <p className="text-body-sm text-warning-fg">
-                Couldn&apos;t load the per-game split — a data read failed, so this is not a real zero.
-                Refresh to retry.
-              </p>
-            </AdminCard>
-          )}
-
-          {byGame && (byGame.market.stakes > 0 || byGame.updown.stakes > 0 || byGame.unattributed.stakes > 0) && (
-            <AdminCard title="By game" sw="Kwa mchezo · Markets vs Up &amp; Down" padding="p-0">
-              <ScrollX label="Money by game">
-                {/* `admin-table` was a typo — that class does not exist anywhere,
-                    so this table rendered with no cell padding, no header styling
-                    and no row borders. The real one is `.admin-tbl`. */}
-                <table className="admin-tbl w-full min-w-[560px]">
-                  <thead>
-                    <tr>
-                      <th className="text-left">Game</th>
-                      <th className="text-right">Staked</th>
-                      <th className="text-right">Paid out</th>
-                      <th className="text-right">Refunds</th>
-                      <th className="text-right">GGR</th>
-                      <th className="text-right">Hold %</th>
-                      <th className="text-right">Bets</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      { label: "Markets · long-form polls", g: byGame.market, unknown: false },
-                      { label: "Up & Down · price rounds", g: byGame.updown, unknown: false },
-                      // 🔴 DISCLOSED, NEVER FOLDED. Bet money whose Position row no longer
-                      // resolves, so the game cannot be determined. This line used to be
-                      // added to "Markets", which overstated long-form GGR by an amount no
-                      // reader could see (audit F-03). Hidden only when it is genuinely zero.
-                      ...(byGame.unattributed.stakes > 0 || byGame.unattributed.payouts > 0 || byGame.unattributed.refunds > 0
-                        ? [{ label: "Unattributed · game not determinable", g: byGame.unattributed, unknown: true }]
-                        : []),
-                    ].map(({ label, g, unknown }) => (
-                      <tr key={g.game}>
-                        <td className={["text-left font-semibold", unknown ? "text-warning-fg" : "text-text"].join(" ")}>{label}</td>
-                        <td className="font-mono tabular text-right text-text">{formatTzs(g.stakes)}</td>
-                        <td className="font-mono tabular text-right text-text">{formatTzs(g.payouts)}</td>
-                        <td className="font-mono tabular text-right text-text-tertiary">{formatTzs(g.refunds)}</td>
-                        <td className={["font-mono tabular text-right font-semibold", g.ggr < 0 ? "text-danger" : "text-text"].join(" ")}>{formatTzs(g.ggr)}</td>
-                        <td className="font-mono tabular text-right text-text">{g.holdPct.toFixed(1)}%</td>
-                        <td className="font-mono tabular text-right text-text-tertiary">{g.bets.toLocaleString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr>
-                      {/* ⭐ Combined includes the unattributed line. That money is real
-                          bet-derived revenue and IS levied, so leaving it out would make the
-                          statutory total understate by exactly the amount F-03 moved off the
-                          MARKET line. Combined is therefore unchanged by that fix — only the
-                          per-game attribution above it became honest. */}
-                      <td className="text-left font-bold text-text">Combined</td>
-                      <td className="font-mono tabular text-right font-bold text-text">{formatTzs(byGame.market.stakes + byGame.updown.stakes + byGame.unattributed.stakes)}</td>
-                      <td className="font-mono tabular text-right font-bold text-text">{formatTzs(byGame.market.payouts + byGame.updown.payouts + byGame.unattributed.payouts)}</td>
-                      <td className="font-mono tabular text-right font-bold text-text-tertiary">{formatTzs(byGame.market.refunds + byGame.updown.refunds + byGame.unattributed.refunds)}</td>
-                      <td className="font-mono tabular text-right font-bold text-text">{formatTzs(byGame.market.ggr + byGame.updown.ggr + byGame.unattributed.ggr)}</td>
-                      <td className="font-mono tabular text-right font-bold text-text">—</td>
-                      <td className="font-mono tabular text-right font-bold text-text-tertiary">{(byGame.market.bets + byGame.updown.bets + byGame.unattributed.bets).toLocaleString()}</td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </ScrollX>
-              <p className="px-4 py-3 text-body-sm text-text-tertiary leading-snug">
-                Bet-derived money only. Deposits, withdrawals, bonuses and payment fees belong to neither game and stay in
-                the platform totals above. The statutory pack and the TRA/GBT levy read the COMBINED commission.
-                {(byGame.unattributed.stakes > 0 || byGame.unattributed.payouts > 0 || byGame.unattributed.refunds > 0) && (
-                  <>
-                    {" "}
-                    <span className="text-warning-fg">
-                      &ldquo;Unattributed&rdquo; is bet money whose position record no longer resolves, so the game cannot be
-                      determined ({byGame.unattributed.bets.toLocaleString()} staking {byGame.unattributed.bets === 1 ? "bet" : "bets"} in
-                      this window). It is disclosed rather than assigned to a game, and is included in Combined.
-                    </span>
-                  </>
-                )}
-              </p>
-            </AdminCard>
-          )}
-
           {categories.length > 0 && (
             <AdminCard title="GGR by category" sw="Mapato kwa aina · share of GGR">
               <AdminBarList
@@ -464,6 +364,120 @@ export default async function AdminReportsPage({
             </AdminCard>
           )}
         </div>
+
+        {/* 🔴 DG-A-22'S SHAPE AGAIN — AUTO-PLACEMENT PUT A 7-COLUMN MONEY TABLE IN A 360px
+            TRACK. The grid above was written for TWO cards — `Daily P&L` wide, the category
+            breakdown narrow — and its own comment still says so. `By game` arrived later as a
+            THIRD child, so at `xl` the browser placed it in column 2 (360px) and pushed the bar
+            list, the one card that genuinely wants 360px, into the WIDE column of row 2. Both
+            cards were in the wrong track.
+            ⛔ THE VISIBLE COST WAS A BROKEN NUMBER: seven money columns inside 360px wrapped
+            `TZS 550,560` onto TWO LINES and clipped the last column at the card edge. §M4 says
+            a money figure is ONE object; §M4a says a clipped number is a WRONG number.
+            ⚠️ NEITHER DRIVE CAUGHT IT, and the reason is worth keeping: the table sits inside a
+            `ScrollX`, which `qa:chaos` and `qa:fit` both exempt as one-scroll-away — correctly,
+            for a table that is merely wide. But a value that WRAPS is not a value that is
+            clipped, and no bounding box distinguishes them. A human looking at the screen did.
+            ⭐ So the table takes the full width it needs, below the two-column band. */}
+        {/* 🔴 A FAILED READ IS NOT AN EMPTY WINDOW (DG-A-01, 2026-08-29).
+            `moneyByGame` is wrapped in `.catch(() => null)`, and the condition below used to
+            begin `byGame && …` — so when the read threw, this whole card silently VANISHED
+            and the page read exactly as it does when nobody staked anything. On a
+            regulator-facing reporting console that is a money statement made by omission,
+            and the same file already argues the principle 20 lines down: *"DISCLOSED, NEVER
+            FOLDED … added to Markets, which overstated long-form GGR by an amount no reader
+            could see"*. `/admin/insights` (insights/page.tsx:173) already discloses this exact
+            failure for `categoryBreakdown` — the sibling call to the sibling function — in
+            these words. It says them here too now.
+            ⛔ A genuinely empty window still renders nothing: that is not a false statement,
+            because every other card on the page is reporting the same window. */}
+        {byGame === null && (
+          <AdminCard title="By game" sw="Kwa mchezo · Markets vs Up &amp; Down">
+            {/* `text-body-sm` (13px), not a hand-typed `text-[13px]` — the sibling
+                disclosure on /admin/insights still hand-types it and DG-A-12's sweep will
+                move it; a new line does not join the backlog it is being written beside. */}
+            <p className="text-body-sm text-warning-fg">
+              Couldn&apos;t load the per-game split — a data read failed, so this is not a real zero.
+              Refresh to retry.
+            </p>
+          </AdminCard>
+        )}
+
+        {byGame && (byGame.market.stakes > 0 || byGame.updown.stakes > 0 || byGame.unattributed.stakes > 0) && (
+          <AdminCard title="By game" sw="Kwa mchezo · Markets vs Up &amp; Down" padding="p-0">
+            <ScrollX label="Money by game">
+              {/* `admin-table` was a typo — that class does not exist anywhere,
+                  so this table rendered with no cell padding, no header styling
+                  and no row borders. The real one is `.admin-tbl`. */}
+              <table className="admin-tbl w-full min-w-[800px]">
+                <thead>
+                  <tr>
+                    <th className="text-left">Game</th>
+                    <th className="text-right">Staked</th>
+                    <th className="text-right">Paid out</th>
+                    <th className="text-right">Refunds</th>
+                    <th className="text-right">GGR</th>
+                    <th className="text-right">Hold %</th>
+                    <th className="text-right">Bets</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { label: "Markets · long-form polls", g: byGame.market, unknown: false },
+                    { label: "Up & Down · price rounds", g: byGame.updown, unknown: false },
+                    // 🔴 DISCLOSED, NEVER FOLDED. Bet money whose Position row no longer
+                    // resolves, so the game cannot be determined. This line used to be
+                    // added to "Markets", which overstated long-form GGR by an amount no
+                    // reader could see (audit F-03). Hidden only when it is genuinely zero.
+                    ...(byGame.unattributed.stakes > 0 || byGame.unattributed.payouts > 0 || byGame.unattributed.refunds > 0
+                      ? [{ label: "Unattributed · game not determinable", g: byGame.unattributed, unknown: true }]
+                      : []),
+                  ].map(({ label, g, unknown }) => (
+                    <tr key={g.game}>
+                      <td className={["text-left font-semibold", unknown ? "text-warning-fg" : "text-text"].join(" ")}>{label}</td>
+                      <td className="font-mono tabular text-right text-text">{formatTzs(g.stakes)}</td>
+                      <td className="font-mono tabular text-right text-text">{formatTzs(g.payouts)}</td>
+                      <td className="font-mono tabular text-right text-text-tertiary">{formatTzs(g.refunds)}</td>
+                      <td className={["font-mono tabular text-right font-semibold", g.ggr < 0 ? "text-danger" : "text-text"].join(" ")}>{formatTzs(g.ggr)}</td>
+                      <td className="font-mono tabular text-right text-text">{g.holdPct.toFixed(1)}%</td>
+                      <td className="font-mono tabular text-right text-text-tertiary">{g.bets.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    {/* ⭐ Combined includes the unattributed line. That money is real
+                        bet-derived revenue and IS levied, so leaving it out would make the
+                        statutory total understate by exactly the amount F-03 moved off the
+                        MARKET line. Combined is therefore unchanged by that fix — only the
+                        per-game attribution above it became honest. */}
+                    <td className="text-left font-bold text-text">Combined</td>
+                    <td className="font-mono tabular text-right font-bold text-text">{formatTzs(byGame.market.stakes + byGame.updown.stakes + byGame.unattributed.stakes)}</td>
+                    <td className="font-mono tabular text-right font-bold text-text">{formatTzs(byGame.market.payouts + byGame.updown.payouts + byGame.unattributed.payouts)}</td>
+                    <td className="font-mono tabular text-right font-bold text-text-tertiary">{formatTzs(byGame.market.refunds + byGame.updown.refunds + byGame.unattributed.refunds)}</td>
+                    <td className="font-mono tabular text-right font-bold text-text">{formatTzs(byGame.market.ggr + byGame.updown.ggr + byGame.unattributed.ggr)}</td>
+                    <td className="font-mono tabular text-right font-bold text-text">—</td>
+                    <td className="font-mono tabular text-right font-bold text-text-tertiary">{(byGame.market.bets + byGame.updown.bets + byGame.unattributed.bets).toLocaleString()}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </ScrollX>
+            <p className="px-4 py-3 text-body-sm text-text-tertiary leading-snug">
+              Bet-derived money only. Deposits, withdrawals, bonuses and payment fees belong to neither game and stay in
+              the platform totals above. The statutory pack and the TRA/GBT levy read the COMBINED commission.
+              {(byGame.unattributed.stakes > 0 || byGame.unattributed.payouts > 0 || byGame.unattributed.refunds > 0) && (
+                <>
+                  {" "}
+                  <span className="text-warning-fg">
+                    &ldquo;Unattributed&rdquo; is bet money whose position record no longer resolves, so the game cannot be
+                    determined ({byGame.unattributed.bets.toLocaleString()} staking {byGame.unattributed.bets === 1 ? "bet" : "bets"} in
+                    this window). It is disclosed rather than assigned to a game, and is included in Combined.
+                  </span>
+                </>
+              )}
+            </p>
+          </AdminCard>
+        )}
         </>)}
 
         {tab === "library" && (<>

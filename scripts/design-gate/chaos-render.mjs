@@ -49,7 +49,7 @@ const WIDTHS = [
 const probe = () => {
   const doc = document.documentElement;
   const vw = window.innerWidth;
-  const out = { overflow: Math.max(0, Math.round(doc.scrollWidth - vw)), zeroWidth: [], clipped: [], offscreen: [] };
+  const out = { overflow: Math.max(0, Math.round(doc.scrollWidth - vw)), zeroWidth: [], clipped: [], offscreen: [], wrappedMoney: [] };
 
   /* ⛔ THE VISUALLY-HIDDEN IDIOM IS NOT A DEFECT, and the first run of this drive said it was.
      Tailwind's `sr-only` is `position:absolute; width:1px; height:1px; overflow:hidden;
@@ -95,6 +95,40 @@ const probe = () => {
     }
     return false;
   };
+
+  /**
+   * ⑤ A MONEY FIGURE BROKEN ACROSS TWO LINES — the check a human had to make instead.
+   *
+   * 🔴 `/admin/reports` put a SEVEN-COLUMN money table in a 360px grid track, and `TZS 550,560`
+   * rendered as "TZS" above "550,560". §M4 says a money figure is ONE object and §M4a that a
+   * clipped number is a WRONG number — but nothing here saw it, and the reason matters: the
+   * table is inside a `ScrollX`, which ① and ③ both exempt as one-scroll-away (correctly, for a
+   * table that is merely wide), and **a value that WRAPS is not a value that is CLIPPED**. Its
+   * box is not overflowing; it simply grew a second line. No bounding box separates those two.
+   *
+   * ⭐ SO COUNT LINE BOXES, NOT HEIGHT — and the first draft got this wrong in a way worth
+   * recording. It compared the element's HEIGHT to its line-height, which false-positives on
+   * every `<td>` in the console: `.admin-tbl` cells carry ~12px of vertical padding, so a
+   * perfectly fine one-line money cell is already ~2.7× its own line-height. A check that fires
+   * on every healthy row is worse than no check.
+   * A `Range` over the text content returns ONE client rect per line box, padding-independent
+   * and exact: >1 means the value really is broken across lines.
+   *
+   * `TZS` is this platform's only currency prefix (§M4's one spelling), which is what makes the
+   * population findable at all.
+   */
+  const range = document.createRange();
+  for (const el of document.querySelectorAll("td,th,span,div,p")) {
+    if (el.children.length) continue;                       // leaves only — a wrapper wraps its children
+    const t = (el.textContent || "").trim();
+    if (!/^(TZS|USD)\s*[-−]?[\d,.]+$/.test(t)) continue;    // a money figure, whole and alone
+    const cs = getComputedStyle(el);
+    if (cs.display === "none" || cs.visibility === "hidden") continue;
+    if (el.getBoundingClientRect().height === 0) continue;
+    range.selectNodeContents(el);
+    const lines = range.getClientRects().length;
+    if (lines > 1) out.wrappedMoney.push(`${el.tagName.toLowerCase()} "${t}" broken across ${lines} lines`);
+  }
 
   /* ③ An interactive control whose CENTRE belongs to something else, or is off-viewport. */
   for (const el of document.querySelectorAll("button, a[href], input, select, textarea")) {
@@ -157,13 +191,14 @@ for (const wd of WIDTHS) {
       continue;
     }
     measured++;
-    const bad = (r.overflow > 0 ? 1 : 0) + r.zeroWidth.length + r.clipped.length + r.offscreen.length;
+    const bad = (r.overflow > 0 ? 1 : 0) + r.zeroWidth.length + r.clipped.length + r.offscreen.length + r.wrappedMoney.length;
     defects += bad;
     const mark = bad === 0 ? "✓" : "🔴";
-    console.log(`  ${mark} ${route.padEnd(24)} @${wd.n.padStart(4)}  overflow ${String(r.overflow).padStart(4)}px · zero-width ${r.zeroWidth.length} · clipped ${r.clipped.length} · off-viewport ${r.offscreen.length}`);
+    console.log(`  ${mark} ${route.padEnd(24)} @${wd.n.padStart(4)}  overflow ${String(r.overflow).padStart(4)}px · zero-width ${r.zeroWidth.length} · clipped ${r.clipped.length} · off-viewport ${r.offscreen.length} · wrapped-money ${r.wrappedMoney.length}`);
     for (const z of r.zeroWidth.slice(0, 3)) console.log(`        ↳ ZERO WIDTH  ${z}`);
     for (const c of r.clipped.slice(0, 3)) console.log(`        ↳ CLIPPED     ${c}`);
     for (const o of r.offscreen.slice(0, 3)) console.log(`        ↳ OFF-SCREEN  ${o}`);
+    for (const w of r.wrappedMoney.slice(0, 3)) console.log(`        ↳ MONEY WRAPS ${w}`);
   }
   if (errors.length) { defects += errors.length; console.log(`  🔴 ${errors.length} page error(s) @${wd.n}: ${errors[0]}`); }
   await ctx.close();
