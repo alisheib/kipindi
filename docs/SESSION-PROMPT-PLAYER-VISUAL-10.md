@@ -308,6 +308,13 @@ so many words. **By 13:15 they had removed it and the guard is GREEN again (re-r
 for fifteen minutes and it was already false. ⛔ **Re-derive an inherited blocker before you plan
 around it** — `qa:personas` taught this repo the same thing once ("all six are dead" was true of
 two). ⛔ Do not commit or delete anything under that folder; it is someone's live work.
+
+🟢 **SCOPE OF THE PARALLEL SESSION, from Ali 2026-09-03: it is working ONLY on the fidget
+spinner** (the Needle — `needle-drawer.tsx`, `needle*`, `--m-pivot`, `test:needle`). So rows 3–6,
+8, 11 and 12 cannot collide with it and need no coordination. ⚠️ **Row 7 is the one exception**:
+motion timing touches `motion.css` and the `--m-*` curve set, and `--m-pivot` is reserved for the
+needle and dials. Before starting row 7, `git fetch` and check whether the needle work has landed
+— and ⛔ never write a `--m-*` token inside a `/* */` block (a recorded trap in this repo).
 `test:all` is **281/282** with only `responsive` + `motion` failing, and both need a server on
 `:3000` (`BASE=http://localhost:3100 npm run test:responsive` runs them green — see §b2).
 
