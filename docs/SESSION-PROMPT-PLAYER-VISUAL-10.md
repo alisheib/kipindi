@@ -459,15 +459,25 @@ in-run control page (`/markets` reading 95% where the wrapper-probe said 100%), 
 converging counts. **Measure the control in the same run, always** — with the two filed pages
 alone, row 8's vacuous probe would have read as a clean double overturn.
 
-🔴 **AND ONE MEASUREMENT WAS THROWN AWAY RATHER THAN REPORTED.** The first `test:responsive` run
-came back **5243/193** against session 3's baseline of 5386/33, with 180 of the failures reading
-*"no `<main>` at all"* across 9 routes. ⛔ **Invalid, and not a finding**: it ran concurrently with
-three other browser drives and market seeding against one `next dev`. Checked directly —
-`/legal/terms`, `/help`, `/fairness` and `/markets` each serve **200 with exactly one `<main>`**;
-`/profile/sessions` is a 307 (signed out). A contended dev server renders partial pages and the
-sweep reads that as absence. ▶ A clean re-run on an idle server was started; **compare it against
-5386/33 before trusting any responsiveness claim.** The 320px `button[Account menu]` clip in
-the other cluster is the pre-existing one session 3 already named.
+✅ **`test:responsive` IS CLEAN — 5421 passed · 29 failed · 76 warnings**, against session 3's
+baseline of **5386 / 33**. Better than baseline on both halves, and **zero failures on any
+surface this programme has touched** (the chat surface row 7 changed included). All 29 residuals
+are the two pre-existing clusters session 3 already named: **27** are the single 320px
+`button[Account menu]` clip, counted once per route, and **2** are signed-out `/admin` redirects
+(`Execution context was destroyed … because of a navigation`). This closes the responsiveness
+claim session 6 left open (*"whoever merges this branch should still run it once"*) — for rows 3,
+4 and 6 as well as row 7, since it is a whole-site sweep of the same tree.
+
+⛔ **AND THE FIRST RUN OF IT WAS THROWN AWAY RATHER THAN REPORTED — worth carrying.** It came back
+**5243 / 193**, with **180** of the failures reading *"no `<main>` at all"* across 9 routes: on
+its face a 9-route landmark regression, which is a §B7-rule-5 emergency. It was **invalid**: it
+had run concurrently with three other browser drives and market seeding against one `next dev`.
+Checked directly rather than assumed — `/legal/terms`, `/help`, `/fairness` and `/markets` each
+serve **200 with exactly one `<main>`**, and `/profile/sessions` is a 307 (signed out). ⭐ **A
+contended dev server renders partial pages, and an absence check reads a partial page as an
+absence.** 193 → 29 with nothing changed but the server being idle. The lesson is not "re-run
+until green" — it is that a sweep measuring 5,400 cells needs the machine to itself, and that
+the way to tell a real absence from a broken reader is to **go and fetch the page yourself.**
 
 **Next — what is actually left.** No code row remains that should be built as filed. The queue is:
 👤 **Ali** — (1) the `EmptyState` alignment ruling (row 8, 45 surfaces); (2) row **5**, which chip
