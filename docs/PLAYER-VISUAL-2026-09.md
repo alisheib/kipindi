@@ -202,7 +202,19 @@ a `mcardp-nobets` caption under the rail, mirroring `.mcardp` — which printed 
 only one side is backed when betting closes, every stake comes back"). The caption was removed;
 the rail keeps the phrase as its accessible name, so a screen reader is told once too.
 
-**Evidence** `.qa-shots/pv06/` — `updown-{en,sw}-{390,1280}.png`.
+✅ **VERIFIED ON PRODUCTION 2026-09-03** (merged `79c3b65b`): `npm run qa:cold-start` → **30/0**,
+having been **12 RED** against the same URL an hour earlier. Both live cards now show the dashed
+empty rail at `VOL TZS 0` — including the **RESOLVED** round, which used to paint a 50/50 over a
+result it had already decided.
+
+⚠️ **One arm was NOT exercised on production, and the drive is what said so.** No funded Up & Down
+round existed at verification time, so it reported `NO FUNDED ROUND ON THE BOARD — the positive
+control was not exercised here` on every view rather than claiming a whole invariant it had only
+half-tested. The funded arm is proven **locally** (a real 83/17 split with the gilt needle and
+`Down × 3.90` on the thin side). ▶ **Re-run `qa:cold-start` once a funded round exists on
+production**; it is one command and it closes the other half.
+
+**Evidence** `.qa-shots/pv06/` — `updown-{en,sw}-{390,1280}.png`, `round-{en,sw}-{390,1280}.png`.
 
 ### PV-03 · MEDIUM · two surfaces render a narrow centred column on a desktop viewport
 - **Lens** 3, 5, 10. **Surfaces** `/wallet/deposit` (confirmed) and `/positions` **empty-state cards** (confirmed) at **1280·1920**. ⚠️ **Narrowed by re-derivation** — see §2b: market-detail, wallet, notifications and updown all render **real desktop layouts** and are OVERTURNED.

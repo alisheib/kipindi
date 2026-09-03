@@ -217,8 +217,8 @@ States: `☐ not started` · `◐ in progress` · `⧗ blocked (why)` · `✎ aw
 
 | # | Item | Lens | Owner | State | Definition site | Guard | Commit | Evidence | Notes |
 |---|---|---|---|---|---|---|---|---|---|
-| 1 | PV-04 · side words via `sideWord` at **all 8** commit surfaces | 3,6 | Code | ◐ | `side-picker.tsx:140,148` · `conviction-dial.tsx:1099,1124,1398,1419,1643,1660` | `test:labels` **§3b+§3c** · `qa:side-words` | *pending* | `.qa-shots/pv04/` | **Re-derived live: it was EIGHT sites, not 4** (20 RED). Code + guards DONE; `red:labels` 12/12. ⧗ **production re-verification blocked on Ali's merge** — the branch does not deploy |
-| 2 | PV-06 · Up & Down cold-start — **and the second + third split bar deleted** | 1,3,11 | Code | ◐ | `updown-board.ts` → `pricedYesPct`; `updown-card.tsx` + `updown/[roundId]/page.tsx` → `<TippingBar>` | `test:ui-consistency` **hand-rolled-split-bar** · `qa:cold-start` | *pending* | `.qa-shots/pv06/` | **The defect was a SECOND BAR, not a missing gate.** `red:split-bar` 2/2; `qa:cold-start` **32/32 green local / 12 RED prod**; `test:motion` 43/0. ⧗ **production re-verification blocked on Ali's merge** |
+| 1 | PV-04 · side words via `sideWord` at **all 8** commit surfaces | 3,6 | Code | ☑ | `side-picker.tsx:140,148` · `conviction-dial.tsx:1099,1124,1398,1419,1643,1660` | `test:labels` **§3b+§3c** · `qa:side-words` | `c50d2e82` | `.qa-shots/pv04/` | ✅ **VERIFIED ON PRODUCTION 2026-09-03** — `qa:side-words` **28/28** (was 20 RED). Merged in `79c3b65b`. The 7.5px CJK knob flag is CLOSED: 是 renders cleanly at 4× |
+| 2 | PV-06 · Up & Down cold-start — **and the second + third split bar deleted** | 1,3,11 | Code | ☑ | `updown-board.ts` → `pricedYesPct`; `updown-card.tsx` + `updown/[roundId]/page.tsx` → `<TippingBar>` | `test:ui-consistency` **hand-rolled-split-bar** · `qa:cold-start` | `79c3b65b` | `.qa-shots/pv06/` | ✅ **VERIFIED ON PRODUCTION 2026-09-03** — `qa:cold-start` **30/30** (was 12 RED); both live cards show the dashed rail at VOL 0. ⚠️ the FUNDED arm was not exercised on prod (no funded round existed) — proven locally instead |
 | 3 | PV-13a · eye toggle off `h-[42px]` | 13 | Code | ☐ | `top-app-bar.tsx` | `test:tap-target` + new rung check | — | — | §K1 |
 | 4 | PV-13b · `mcardp-info` → 44 | 13 | Code | ☐ | `globals.css .mcardp-info` | `test:design-frozen` | — | — | — |
 | 5 | PV-13c · one chip height per size | 13 | Code+Design | ☐ | `chip.tsx` + `globals.css` | `test:chip-contract` | — | — | which sizes = Design |
@@ -270,6 +270,35 @@ Seed state: every row `☐`. ⛔ Do not tick a row by intention — only by evid
   proof must live in `shots/<PV-NN>/` so `test:docs` can enforce it (§0b).
 
 ### j-resume — RESUME AT (newest at the top)
+
+**RESUME AT (session 4) — 2026-09-03. ✅ ROWS 1 AND 2 ARE ☑ — MERGED AND VERIFIED ON PRODUCTION.**
+Ali authorised the merge; `main` is at **`79c3b65b`**, the deploy landed (uptime reset 32,872s → 3s,
+clean boot, `/updown` and `/markets` both 200), and **both drives were re-run against production
+and went green**:
+
+| drive | before the merge | after |
+|---|---|---|
+| `npm run qa:side-words` (PV-04) | **20 RED** | **28 / 0** |
+| `npm run qa:cold-start` (PV-06) | **12 RED** | **30 / 0** |
+
+⭐ **That before/after pair is the evidence, not the green run on its own.** Each drive was proven
+able to see its defect on production BEFORE the fix existed there; a suite that has only ever been
+green cannot tell you it works.
+
+**Looked at, on production**: the ZH dial reads `是` on the pole tile, the readout and the commit
+button (`下注 是 TZS 1,000`) while the board cards behind it read `是 @ 56%` — one word everywhere.
+Both Up & Down cards show the dashed empty rail at `VOL TZS 0`, including the **resolved** one that
+used to paint a 50/50. **The 7.5px CJK knob flag raised in the record is CLOSED** — a 4× clipped
+capture shows `是` well-formed, so no size change is needed.
+
+⚠️ **One honest gap, and the drive is what reported it.** Production carried no FUNDED Up & Down
+round at verification time, so `qa:cold-start` exercised only the cold-start arm there and said so
+(`NO FUNDED ROUND ON THE BOARD — the positive control was not exercised here`). The funded arm was
+proven **locally** instead (a real 83/17 split with the needle). ▶ **Re-run `qa:cold-start` when a
+funded round exists on production** to close that arm properly — it costs one command.
+
+**Next.** Row 3 (PV-13a, the `h-[42px]` eye toggle off the `--h-control-*` rungs). Rows 9/10 still
+need Ali's ruling / a Design commission. ⛔ `main` now carries rows 1–2, so branch from it fresh.
 
 **RESUME AT (session 3) — 2026-09-03.** Branch **`pv10/side-words`** (⛔ not merged). Rows 1 and 2
 are code-complete, guarded and **visually validated**; rows 3–12 untouched. ⭐ Ali added a standing
