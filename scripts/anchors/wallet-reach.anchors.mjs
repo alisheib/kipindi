@@ -65,12 +65,18 @@ export const MUTATIONS = [
     expect: "4: ⛔ and the hide is NOT on the button itself",
   },
   {
+    // ⚠️ RE-ANCHORED 2026-09-03 (PV-13a). The capsule's bordering hairline moved from a real
+    // `border` to an `inset` box-shadow — a real border sits INSIDE the border-box and was
+    // eating 2px off the capsule's CONTENT height, which is why the eye (sized with `h-full`)
+    // first resolved to 42px instead of the 44px rung. Same mutation SHAPE, same property this
+    // check still requires: swap the winning property away from `boxShadow` so the capsule
+    // stops owning a border-like treatment at all.
     name: "capsule-loses-its-border",
-    why: "the border leaves the capsule, so the balance and its eye stop reading as one control and become two shapes sharing a background — which is the arrangement the 12px gap and the `-mx-1` were fighting before this was rebuilt",
+    why: "the bordering treatment leaves the capsule, so the balance and its eye stop reading as one control and become two shapes sharing a background — which is the arrangement the 12px gap and the `-mx-1` were fighting before this was rebuilt",
     file: PILL,
     suite: "wallet-reach",
-    from: `        border: flashing ? "1px solid var(--gold-300)" : "1px solid oklch(78% 0.13 80 / 0.35)",`,
-    to: `        outline: flashing ? "1px solid var(--gold-300)" : "1px solid oklch(78% 0.13 80 / 0.35)",`,
+    from: `        boxShadow: flashing`,
+    to: `        outline: flashing`,
     expect: "1: the capsule owns the border",
   },
   {

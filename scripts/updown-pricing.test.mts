@@ -315,8 +315,22 @@ console.log("\n§7 · G5 — a large multiplier means the other side is THIN; no
   const goldNearMultiplier = /formatMultiplier\([^)]*\)[^<]{0,200}(gold|--gold)/.test(multiplierMarkup)
     || /(gold|--gold)[^<]{0,200}formatMultiplier\(/.test(multiplierMarkup);
   ok("7.1 no gold anywhere near the multiplier", !goldNearMultiplier);
-  ok("7.2 the multiplier keeps the muted 12.5px it always had — no size escalation",
-     /text-\[12\.5px\][^\n]*opacity-85/.test(controlsCode) || /opacity-85[^\n]*text-\[12\.5px\]/.test(controlsCode));
+  /**
+   * ⚠️ CORRECTED 2026-09-03 (PV-10). This used to require `opacity-85` beside
+   * `text-[12.5px]` — but `opacity-85` was never "muted SIZE", it was a coincidental
+   * styling detail this check mistook for its fingerprint. It composited the button's
+   * own pearl-on-fill label ink down to ~3.5:1 (region pixel read on production),
+   * under the AA 4.5 floor, on the product's most-tapped money control — `test:contrast`
+   * §P-u2 now guards that. Dropping it is the FIX, not a regression of THIS rule: the
+   * actual claim — no size escalation, no bold, no gold — is unchanged and is what this
+   * now checks directly, against the span's own full class list rather than one value
+   * inside it that happened to also be true. Requiring exactly 2 matches (Up and Down)
+   * keeps the population honest — a check that would pass at 0 matches just as it does
+   * at 2 is the vacuous-pass shape this campaign has been burned by before.
+   */
+  const unescalated = controlsCode.match(/className="font-mono text-\[12\.5px\]">[^<]*formatMultiplier\(mult(?:Up|Down)\)/g) ?? [];
+  ok("7.2 the multiplier keeps the muted 12.5px it always had — no size escalation, no bold, no gold on the span itself",
+     unescalated.length === 2, `found ${unescalated.length}, want 2 (Up + Down)`);
   ok("7.3 the empty-side line is faint informational ink, not an alarm and not a celebration",
      /text-text-faint[\s\S]{0,400}(udNobodyBacked|emptyCopy|warnCopy)|(udNobodyBacked|emptyCopy|warnCopy)[\s\S]{0,400}text-text-faint/.test(controlsCode));
   ok("7.4 no surface brands a big multiplier — no 'big win', 'jackpot' or 'boost' copy",

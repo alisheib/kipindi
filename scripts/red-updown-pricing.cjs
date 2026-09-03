@@ -92,10 +92,16 @@ const MUTATIONS = [
     expectMiss: true,
   },
   {
+    // ⚠️ RE-ANCHORED 2026-09-03 (PV-10). The old anchor carried `opacity-85` AND a
+    // trailing " est." that had not existed in this file for a while — this mutation
+    // has been reporting "ANCHOR NOT FOUND" (proving nothing) since before PV-10 ever
+    // touched this line; PV-10 dropped `opacity-85` for a real AA contrast fix
+    // (test:contrast §P-u2) and made the drift worth fixing rather than re-measuring
+    // past. Re-anchored to the literal that actually ships.
     name: "⭐ the multiplier escapes into gold — earned-money ink on an unplaced bet (RG)",
     file: CONTROLS,
-    find: `<span className="font-mono text-[12.5px] opacity-85">× {formatMultiplier(multUp)} est.</span>`,
-    with: `<span className="font-mono text-[12.5px] opacity-85" style={{ color: "var(--gold-300)" }}>× {formatMultiplier(multUp)} est.</span>`,
+    find: `<span className="font-mono text-[12.5px]">× {formatMultiplier(multUp)}</span>`,
+    with: `<span className="font-mono text-[12.5px]" style={{ color: "var(--gold-300)" }}>× {formatMultiplier(multUp)}</span>`,
   },
   {
     name: "⭐ stripComments returns EMPTY — every absence check would pass over \"\"",

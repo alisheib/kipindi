@@ -142,14 +142,27 @@ export function WalletBalancePill({ balance }: { balance: number }) {
        nested inside a link is invalid HTML and neither control would be reliably
        operable. The capsule is a plain <div> precisely so both can be real elements. */
     <div
-      className={cn(
-        "inline-flex items-center rounded-pill transition-colors transition-shadow",
-        flashing && "shadow-[0_0_0_3px_color-mix(in_oklab,var(--gold-300)_22%,transparent)]",
-      )}
+      className="inline-flex items-center rounded-pill transition-colors transition-shadow"
       style={{
-        height: 44,
+        // ⚠️ PV-13a (2026-09-03) — WAS the bare literal `44`. Reading the rung means the
+        // eye's own `h-full` below (which used to be a hand-typed `h-[42px]`, off-rung by
+        // 2px) inherits the SAME number the rest of the kit calls --h-control-md, rather
+        // than two places agreeing on 44 by coincidence. test:tap-target §6 checks this.
+        //
+        // ⚠️ AND THE BORDER MOVED TO AN INSET box-shadow, measured, not stylistic. A real
+        // `border` is INSIDE the box per Tailwind's border-box preflight, so it was eating
+        // 2px off this element's CONTENT height (44 outer − 1px × 2) — which is exactly
+        // the 42px `h-full` on the eye first resolved to when this capsule still said
+        // `height: 44`. An inset box-shadow paints the same hairline WITHOUT consuming
+        // layout space, so a child's `h-full` reaches the full 44px rung instead of the
+        // capsule's own border tax. The outer flash ring folds into the same property
+        // (comma-joined) because an inline `boxShadow` and the Tailwind `shadow-[…]`
+        // class would otherwise fight over the same CSS property at equal specificity.
+        height: "var(--h-control-md)",
         background: "var(--bg-inset)",
-        border: flashing ? "1px solid var(--gold-300)" : "1px solid oklch(78% 0.13 80 / 0.35)",
+        boxShadow: flashing
+          ? "0 0 0 3px color-mix(in oklab, var(--gold-300) 22%, transparent), inset 0 0 0 1px var(--gold-300)"
+          : "inset 0 0 0 1px oklch(78% 0.13 80 / 0.35)",
         transitionDuration: "260ms",
       }}
       data-testid="wallet-balance-capsule"
@@ -291,11 +304,21 @@ export function WalletBalancePill({ balance }: { balance: number }) {
           ⚠️ `hover:text-gold-200` is not decoration — `CashEye`'s own base carries
           `hover:text-text`, which would flip this gold control to WHITE on hover and make it
           look like a different control mid-interaction. Overriding the hover with a BRIGHTER
-          gold keeps the ink's meaning and still answers the pointer. */}
+          gold keeps the ink's meaning and still answers the pointer.
+          ⛔ PV-13a (2026-09-03) — `h-[42px]` WAS HAND-TYPED HERE, 2px off the 40/44 rung
+          ladder (§K1), on every top bar (measured on production: 42px inside a 44px
+          capsule — the comment three lines up already said "44px tall is the WCAG 2.5.5
+          AAA hit height", so the literal disagreed with this file's own stated intent).
+          Invisible to `test:tap-target` §3 because CashEye is a kit component, not one
+          of the native tags/role attrs that gate reads — a scanner that reads a
+          VOCABULARY of tag names cannot see a wrapper around one. `h-full` inherits the
+          capsule's own height above (--h-control-md) instead of re-typing the number, so
+          there is exactly one place this control's height is decided. Guarded by
+          `test:tap-target` §6 (new), RED-proven by `red:tap-rung`. */}
       <CashEye
         bare
         size={14}
-        className="inline-flex h-[42px] w-[32px] shrink-0 sm:w-[36px] items-center justify-center rounded-r-pill text-[var(--gold-300)] transition-colors hover:bg-[color-mix(in_oklab,var(--gold-300)_10%,transparent)] hover:text-gold-200"
+        className="inline-flex h-full w-[32px] shrink-0 sm:w-[36px] items-center justify-center rounded-r-pill text-[var(--gold-300)] transition-colors hover:bg-[color-mix(in_oklab,var(--gold-300)_10%,transparent)] hover:text-gold-200"
       />
     </div>
   );

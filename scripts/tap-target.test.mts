@@ -515,5 +515,69 @@ console.log("\n§5 · DG-A-08 — THE ADMIN SURFACE, WHICH §3 EXCLUDES BY CONST
      `${adminFiles.length} admin files · ${declaring} declaring a height · ${padded} drawn as a box`);
 }
 
+// ===========================================================================
+console.log("\n§6 · TWO NAMED CONTROLS §3/§5's TAG SCAN CANNOT SEE (PV-13a/PV-13b, 2026-09-03)");
+// ===========================================================================
+/**
+ * §3 reads a height declared on the interactive tag's OWN JSX attributes. Two real
+ * controls sat outside that population for two different reasons, and both shipped a
+ * sub-rung height with every other gate — including §3 — green:
+ *
+ *   · the "Hide balances" eye toggle was `<CashEye className="h-[42px]">`. `CashEye`
+ *     is a kit component, not one of `TAGS` (button/a/Link/input/select/textarea/
+ *     summary), and it carries no `role=` at the call site — so §3's scan never opens
+ *     this tag at all. Measured on production: 42px inside a 44px capsule.
+ *   · `.mcardp-info` ("How it works", every market card) declared its box in a CSS
+ *     RULE (globals.css), not on a JSX tag — §3 only ever reads JSX attributes, by
+ *     construction. Measured on production: 46px (content-box 28 + padding 16 +
+ *     border 2), ×75 call sites, one definition.
+ *
+ * ⛔ THIS IS NOT THE GENERAL "every h-[Npx] is a control" SWEEP — THAT ONE IS REFUSED,
+ * WITH THE ARITHMETIC. 377 hand-typed `h-[Npx]` literals exist in `src/` at HEAD
+ * (104×44, 95×40, 24×36, 17×32, 17×14, 14×48 … down to 2px), and the overwhelming
+ * majority are not controls: an icon plate (`propose-promo.tsx`'s 42×42 trophy
+ * medallion — the OTHER `h-[42px]` in the tree, decorative, not a target), a divider,
+ * a skeleton bar, a chart's plot height. A population that broad cannot land at zero
+ * without an allowlist longer than the rule itself, which is exactly the shape
+ * refused in the record (`docs/PLAYER-VISUAL-2026-09.md` PV-13). The population below
+ * is instead the two NAMED, real controls THIS row's own re-derivation found — named
+ * by grep, stated here, never "every h-[Npx] anywhere":
+ */
+const NAMED_CONTROLS: Array<{ id: string; file: string; extract: (body: string) => string | null }> = [
+  {
+    id: "wallet-balance-pill.tsx → <CashEye> (the balance-hide eye toggle)",
+    file: "src/components/layout/wallet-balance-pill.tsx",
+    // The ONE call site that overrides CashEye's own default sizing (its bare default,
+    // h-7, is already exactly --tap-min on this repo's overridden scale — §1.9 above).
+    // A hand-typed h-[Npx]/min-h-[Npx] here is the PV-13a defect shape; `h-full`
+    // (inherit the capsule's own --h-control-md) or naming a --h-control-*/--tap-min
+    // var are the only legal ways to size it from the call site.
+    extract: (body) => /<CashEye\b[\s\S]{0,200}?className=\{?["'`]([^"'`]*)["'`]/.exec(body)?.[1] ?? null,
+  },
+  {
+    id: '.mcardp-info ("How it works", every market card)',
+    file: "src/app/globals.css",
+    extract: (body) => /\n\.mcardp-info\s*\{([^}]*)\}/.exec(body)?.[1] ?? null,
+  },
+];
+/** A hand-typed pixel height at the call site — the PV-13a/b defect shape itself. */
+const HAND_TYPED_PX = /\b(?:min-)?height:\s*(\d+)px\b|\bh-\[(\d+)px\]|\bmin-h-\[(\d+)px\]/;
+{
+  const notFound: string[] = [];
+  const offRung: string[] = [];
+  for (const c of NAMED_CONTROLS) {
+    const region = c.extract(rdSrc(c.file));
+    if (region === null) { notFound.push(`${c.id} — not found at ${c.file} (the gate lost its subject)`); continue; }
+    const m = HAND_TYPED_PX.exec(region);
+    if (m) offRung.push(`${c.id} hand-types ${m[1] ?? m[2] ?? m[3]}px at the call site instead of reading a --h-control-* rung`);
+  }
+  ok("6.1 both named controls were FOUND (the gate did not lose its subject)",
+     notFound.length === 0, notFound.join(" · "),
+     `${NAMED_CONTROLS.length} named controls checked: ${NAMED_CONTROLS.map((c) => c.id).join(" · ")}`);
+  ok("6.2 neither named control hand-types a pixel height at its call site — both defer to a --h-control-* rung",
+     offRung.length === 0, offRung.join(" · "),
+     "wallet-balance-pill.tsx's CashEye takes h-full (the capsule's own --h-control-md); .mcardp-info takes var(--h-control-md) directly");
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

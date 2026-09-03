@@ -425,11 +425,19 @@ export function MarketCard({
               screen reader heard "Back YES", in all three locales. That is §L4 reaching the
               ARIA channel: one control, two vocabularies. Interpolating the lexicon's own
               word makes the two channels a single source, so they cannot drift again. */}
+          {/* PV-10 (2026-09-03) — the `@pct%` suffix WAS `opacity-85`, which composites the
+              label's own pearl-on-fill ink down to ~3.5:1 on production (region pixel read;
+              measured, not composited — canvas cannot parse this ramp's oklch). Under the
+              AA 4.5 floor for text, on the two most-tapped money controls in the product.
+              Dropped, never re-hued (§B2: the green/no are untouchable) — the suffix now
+              takes the label's full ink like every other word in the button. Guarded by
+              `test:contrast` §P-u2 (the family's own ink/fill pair, at the call site's own
+              opacity — 0 today because there is none left). */}
           <button type="button" aria-label={(noPrice ? t.market.backSideAriaNoPrice : t.market.backSideAria.replace("{pct}", String(yesPct))).replace("{side}", sideWord(t, "YES", productLine))} onClick={go("YES")} className="btn btn-yes btn-md">
-            {sideWord(t, "YES", productLine)}{!noPrice && <span className="font-mono text-[11.5px] opacity-85"> @ {yesPct}%</span>}
+            {sideWord(t, "YES", productLine)}{!noPrice && <span className="font-mono text-[11.5px]"> @ {yesPct}%</span>}
           </button>
           <button type="button" aria-label={(noPrice ? t.market.backSideAriaNoPrice : t.market.backSideAria.replace("{pct}", String(100 - yesPct))).replace("{side}", sideWord(t, "NO", productLine))} onClick={go("NO")} className="btn btn-no btn-md">
-            {sideWord(t, "NO", productLine)}{!noPrice && <span className="font-mono text-[11.5px] opacity-85"> @ {100 - yesPct}%</span>}
+            {sideWord(t, "NO", productLine)}{!noPrice && <span className="font-mono text-[11.5px]"> @ {100 - yesPct}%</span>}
           </button>
         </div>
       ) : (

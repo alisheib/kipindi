@@ -257,6 +257,59 @@ passed, so the RED harness **deletes** the arm instead — the shape that actual
 - **Definition site:** the eye toggle → a `--h-control-*` rung (or `.btn-sm`); `mcardp-info` → 44 in `globals.css`; chips → one height per size in `chip.tsx`/`globals.css`.
 - **Guard:** `test:tap-target` reads a *declared* height and passed 42px (above the 40 floor) — add a rung-membership assertion (an interactive height must equal a `--h-control` value); `test:chip-contract` → one height per chip size.
 
+#### ✅ PV-13a/PV-13b RE-DERIVED AND FIXED — 2026-09-03, session 6. **Both defects existed for different, complementary reasons no single guard would have caught.**
+
+Re-derived on production first (a headless drive against `50pick.tz`, signed in as `fleet:01`,
+1280 and 390): `.mcardp-info` measured **46px** and the eye toggle **42px inside a 44px
+capsule**, exactly as filed. **PV-13c (the seven-value chip family) is untouched — it needs
+Design's ruling on which sizes survive, per §g row 5, and is not this session's to take.**
+
+⭐ **Neither defect was invisible by accident — each defeated §3 a different way.**
+`test:tap-target` §3 reads a height *declared on the interactive tag's own JSX attributes*:
+
+| control | why §3 never saw it |
+|---|---|
+| the eye toggle | `<CashEye className="h-[42px]">` — `CashEye` is a kit component, not one of `TAGS` (button/a/Link/input/select/textarea/summary), and carries no `role=` — §3's scan never opens this tag |
+| `.mcardp-info` | its box is declared in a **CSS rule** (`globals.css`), not on the JSX tag — §3 only ever reads JSX attributes, by construction |
+
+**Fixed** at the two definition sites. The eye's `h-[42px]` → `h-full`, inheriting the capsule's
+own height rather than re-typing a number (§0a); the capsule's own `height: 44` literal became
+`var(--h-control-md)` in the same commit, so the two agree by construction, not coincidence.
+⚠️ **The first attempt at `h-full` still measured 42px** — the capsule's `border: 1px solid …`
+sits *inside* the border-box, so a real border was eating 2px off the CONTENT height children's
+`h-full` resolves against. Moved to an `inset` box-shadow (same hairline, paints without
+consuming layout space) so `h-full` reaches the actual 44px rung; verified by re-measuring, not
+by re-reading the CSS. `.mcardp-info` moved from `content-box; width/height: 28px; padding: 8px`
+(28+16+2=46) to `border-box; width/height: var(--h-control-md); padding: 8px` (44 outer,
+matching the token the codebase already calls this rung).
+
+⛔ **Found by re-checking, not left as a guess: `.mcardp-info` participates in card geometry.**
+It is the tallest child of the card's meta row on a LIVE card, so shrinking it moved
+`MARKET_CARD_H` (`card-geometry.ts`) from **349 → 347** — measured before/after on the same
+board (cold-start cards 349→347, priced cards with a sparkline 356→354). The neighbour
+`.mcardp-details::after` overlay's clearance (10px above / 14px below) is **unchanged** — the
+row above absorbed the 2px, not the gap — confirmed with `elementFromPoint`-based hit-testing
+(`tap-hit-test.mjs`) rather than assumed: every Details target still ≥40px, no info button
+swallowed, at 360/768/1280/1920.
+
+**Guard — `test:tap-target` new §6, RED-proven by `red:tap-rung` (new, 2/2 caught).** Not a
+general "every `h-[Npx]` is a control" sweep, which is refused with the arithmetic: 377
+hand-typed `h-[Npx]` literals exist in `src/` at HEAD (104×44, 95×40, 24×36, 17×32 … down to
+2px), the overwhelming majority decorative (an icon plate, a divider, a skeleton bar, a chart's
+plot height — `propose-promo.tsx`'s OTHER `h-[42px]` is a 42×42 trophy medallion, not a
+control). §6's population is instead the two NAMED controls this row's own re-derivation found,
+stated by grep in the guard's own header — `wallet-balance-pill.tsx`'s `<CashEye>` call site and
+`.mcardp-info`'s rule — asserting neither hand-types a pixel height at its call site any more.
+
+**Validated:** `tsc` ✓ · `build` ✓ · `test:tap-target` **29/0** (was passing at 27/0 *without
+seeing either defect* — the population grew, not merely the pass count) · `red:tap-rung` **2/2
+caught** · `test:card-share` **26/0** (card-geometry change did not disturb the share/details hit
+area) · `tap-hit-test.mjs` against a local server: every Details target ≥40px, no info button
+swallowed, at 4 widths · screenshots at 390/1280 EN/SW/ZH — the eye fills the capsule flush
+top-to-bottom (`eyeTop`/`eyeBottom` both 0px, measured), `.mcardp-info` renders 44×44 on every
+card. ⚠️ **Not yet proven on production** — pushed to a branch; `qa:*` re-verification is owed
+on merge (§h step 6).
+
 ### PV-10 · MEDIUM · the `@pct%` odds suffix is sub-AA on the YES/NO money buttons
 - **Lens** 6. **Surfaces** every priced market card + the side-picker gate, **all widths**.
 - **Measured (region pixel read, not composite):** the `@ {pct}%` suffix at `opacity-85` renders **~3.50:1** on the green `btn-yes` / red `btn-no` fill — under the AA 4.5 floor for text. The card uses `text-[11.5px] opacity-85` ([market-card.tsx:429-432](../src/components/markets/market-card.tsx#L429-L432)); the side-picker uses `text-[12.5px] opacity-85` ([side-picker.tsx:140,148](../src/components/markets/side-picker.tsx#L145)).
@@ -264,6 +317,82 @@ passed, so the RED harness **deletes** the arm instead — the shape that actual
 - ⚠️ **The matrix composite reported 1.37:1 and was WRONG** (canvas can't parse `lab()`); the region read is the truth. So the severity is *sub-AA*, not *invisible*.
 - **Definition site:** drop the `opacity-85` on the suffix (use the label's full ink), or move the readout off the fill. ⛔ Never re-hue the green (§B2). A darker fill is the §A "darken the fill" lever but touches the brand → Ali.
 - **Guard:** `test:contrast` now composites `opacity` (DG-P-12) — confirm its population **includes** this suffix span; if it doesn't, that gap is the finding. **RED control:** the suffix at `opacity-85` on `btn-yes` must score < 4.5.
+
+#### ✅ RE-DERIVED AND FIXED — 2026-09-03, session 6. **The gap named in the finding WAS the finding, and it was FOUR sites, not four — it was NINE.**
+
+Re-derived on production first: a live priced `.mcardp` card's `YES @ 100%` suffix region-read at
+**3.87:1** — the LOOK matched the number, the "@ 100%" visibly duller than "YES" beside it.
+Confirmed the guard's own population gap named in the record: `test:contrast` had **no
+mechanism at all** that looks inside a `<button>`'s own children for a call-site `opacity-NN` —
+its existing `§P-u` only ever matched the Tailwind slash-alpha idiom (`text-text-subtle/NN`),
+never the `opacity-85` utility class.
+
+⭐ **Filed as 4 sites, found as 9 — PV-04's shape one row later.** The same
+`font-mono opacity-85` suffix on `.btn-yes`/`.btn-no` repeats on the Up & Down commit buttons
+(`updown-card.tsx`, `updown-stake-controls.tsx`) — real money-placing buttons, not board
+decoration — and the new guard's OWN sweep then found a **ninth**, previously unfiled: the bet
+panel's own commit button (`conviction-dial.tsx:1681`) dimmed its stake amount at `opacity-90`,
+scoring **4.14:1**, also under AA, on the single button that places the bet.
+
+| # | site | shape | measured |
+|---|---|---|---|
+| 1–2 | `market-card.tsx:429,432` | `@pct%` on the board card | *filed* — 3.50→3.87:1 (region read) |
+| 3–4 | `side-picker.tsx:145,153` | `@pct%` on the pick-gate | *filed* |
+| 5–6 | `updown-card.tsx:1010,1015` | `×N` multiplier, signed-out card | **new** |
+| 7–8 | `updown-stake-controls.tsx:256,265` | `×N` multiplier, the real bet control | **new** |
+| 9 | `conviction-dial.tsx:1681` | the commit button's OWN stake amount | **new — found by the guard, not by hand** |
+
+**Checked, not swept in — two look-alikes that are clean.** The resolved-state ghost pill also
+carries `opacity-85` (`market-card.tsx:447`, `updown-card.tsx:1130`), but it paints `--text` on
+the card's own surface, not the pearl/fill pair: computed at 0.85 alpha, ~12:1, nowhere near the
+floor. Left alone, named here so the next reader does not re-measure it.
+
+**Fixed** by dropping `opacity-85`/`opacity-90` at all nine sites — the label's full ink, exactly
+as the finding's own definition site specified. ⛔ **Never re-hued the green/red** (§B2) — the
+suffix now simply reads at the same ink as the word beside it.
+
+**Guard — `test:contrast` new `§P-u2`, RED-proven by `red:contrast-callsite` (new, 5/5 caught).**
+Scoped deliberately, not to "every `opacity-NN` in the tree" (~120 call sites, a real vocabulary
+for fades/disabled-states/hover-dims that this file has no way to resolve against an inherited
+ink): only the four SOLID flat-fill families this file already resolves to one literal
+(ink, fill) pair — `btn-yes`/`btn-no`/`btn-danger`/`btn-gold`. `btn-primary`/`btn-claret` are
+gradients (worst-stop, not one fill) and every `opacity-NN` inside either at HEAD is a
+`disabled:opacity-NN` variant — WCAG 1.4.3-exempt by a rendered fact (six call sites), not
+by omission. The reader needed its own small lexer (`endOfButtonOpenTag`, cited from
+`tap-target.test.mts`'s §0, which proved the same trap: an inline handler like
+`onClick={() => bet.place("UP")}` contains a literal `>` before the button's own `className`,
+so a naive regex never reaches two of this row's own nine sites) plus a `decomment` pass — the
+first version of the scanner misread this row's OWN explanatory prose (a comment saying
+`` `opacity-85` `` in English) as a live class, and separately ran off the end of 18 files whose
+open tags carried a comment using backticks for inline code.
+
+⚠️ **A pre-existing, unrelated guard broke on the fix, honestly, and was corrected.**
+`test:updown-pricing` §7.2 ("no size escalation") asserted the literal string `opacity-85`
+beside `text-[12.5px]` as its fingerprint for "still muted" — a vocabulary match, not a
+measurement of size. Dropping `opacity-85` for a real, measured AA reason broke that check's
+IMPLEMENTATION without breaking the RULE it exists to enforce (size unchanged, still `text-
+[12.5px]`, still no bold, still no gold — 7.1/7.4 independently confirm the gold half). Rewritten
+to assert the span's own full class list rather than one incidental value inside it;
+`red:updown-pricing`'s own "multiplier escapes into gold" mutation had ALSO been silently
+"ANCHOR NOT FOUND" (proving nothing) since before this row touched the file — a stale " est."
+suffix that had not existed in the source for some time — and is re-anchored to the literal that
+ships (now **11/11** required mutations caught, was 10/11).
+
+**Population + arithmetic:** `§P-u2` scans every `<button>` in `src/` naming a solid family —
+**22 at HEAD**, 0 unreadable open tags (proven at 18 before `decomment` was added), 0 call-site
+opacities remaining after the fix (was 9). A coverage floor (`buttons < 20` fails loudly) so a
+future lexer regression cannot present as "0 defects" instead of "0 reach".
+
+**Validated:** `tsc` ✓ · `build` ✓ · `test:contrast` **69 checks, 0 gate failures** (was 67
+checks before `§P-u2` existed) · `red:contrast-callsite` **5/5 caught** · `test:updown-pricing`
+**61/0** (was failing 1/61 against the fix until §7.2 was corrected) · `red:updown-pricing`
+**11/11** (was 10/11, one stale anchor since before this row) · region-pixel-read locally:
+`YES @ 75%` on a real 75/25 board now measures **4.71–4.75:1** at every width/locale tested,
+matching `test:contrast`'s own modelled `btn-yes label (pearl on yes-bg)` figure of **4.74**.
+**Looked at**, not merely counted: the suffix on every fixed surface (board card, pick-gate,
+Up & Down card and stake control, the dial's own commit button) reads at the same ink as the
+word beside it, in EN/SW/ZH at 390 and 1280. ⚠️ **Not yet proven on production** — pushed to a
+branch; the region-pixel-read drive is owed on merge.
 
 ### PV-14 · MEDIUM · timing correctness is off-system and ungated
 - **Lens** 14. **Surfaces** platform-wide, measured at 1280-EN.

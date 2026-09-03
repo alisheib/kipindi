@@ -12,5 +12,14 @@
  * ⛔ Both skeletons import THIS. Do not re-type the number anywhere. If the card's height
  * genuinely changes, re-measure in a real browser at 1280 and change it here — one edit moves
  * both, which is the whole point.
+ *
+ * ⚠️ 349 → 347, 2026-09-03 (PV-13b). `.mcardp-info` ("How it works") shrank from a hand-typed
+ * 46px to the `--h-control-md` rung (44px) — §K1, `test:tap-target` §6 — and it is the tallest
+ * child of the card's meta row on a LIVE card, so the whole card moved by exactly that 2px.
+ * Re-measured in a real browser at 1280 (`.mcardp` `getBoundingClientRect().height`), before and
+ * after, on the SAME board: cold-start cards 349 → 347, priced cards with a sparkline 356 → 354.
+ * The details-row clearance this number's neighbours depend on (`.mcardp-details::after`'s
+ * 10px-above/14px-below margin, `globals.css` ~L3958) is UNCHANGED — the row above it absorbed
+ * the shrink, not the gap — confirmed by measurement, not assumed.
  */
-export const MARKET_CARD_H = 349;
+export const MARKET_CARD_H = 347;

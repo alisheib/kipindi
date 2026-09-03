@@ -58,9 +58,22 @@ const { formatBalancePill, formatTzs, formatTzsCompact, BALANCE_COMPACT_ABOVE } 
   // element, not the text after its name.
   const capsuleEl = pill.slice(pill.lastIndexOf("<div", pill.indexOf("wallet-balance-capsule")),
                                pill.indexOf("wallet-balance-capsule"));
+  /**
+   * ⚠️ CORRECTED 2026-09-03 (PV-13a). Both assertions pinned the OLD literal rather than the
+   * rule: `border: flashing` and `height: 44`. PV-13a moved the border to an `inset`
+   * box-shadow — a real `border` sits INSIDE the border-box (Tailwind's preflight), so it was
+   * eating 2px off this element's CONTENT height, which is exactly why the eye's `h-full`
+   * first resolved to 42px instead of 44 when this capsule still said `height: 44` — and moved
+   * the bare `44` to `var(--h-control-md)` so the capsule and the rung it names cannot drift
+   * apart (§0a). Neither change removes the thing the check cares about: the capsule still
+   * visually reads as ONE bordered shape (now via `boxShadow: … flashing …`), and it still
+   * holds the 44px rung (now BY NAME, not by a literal nobody can trace to the ruling that set
+   * it) — so the assertion is rewritten to the rule, not deleted for the convenience of the fix.
+   */
   ok("1: the capsule owns the border, so the pair is not two chips",
-     /border: flashing/.test(capsuleEl) && /rounded-pill/.test(capsuleEl));
-  ok("1: it holds the 44px tap height", /height: 44/.test(pill));
+     /boxShadow: flashing/.test(capsuleEl) && /rounded-pill/.test(capsuleEl));
+  ok("1: it holds the 44px tap height, BY NAME — a --h-control-* rung, not a bare literal",
+     /height: "var\(--h-control-md\)"/.test(pill));
   // ⛔ The top bar consumes ONE component — no wrapper div, no second CashEye out there.
   ok("1: the top bar renders the capsule as a single control",
      /<WalletBalancePill balance=\{user\.balance\}\s*\/>/.test(bar));
