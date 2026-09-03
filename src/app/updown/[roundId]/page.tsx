@@ -365,7 +365,8 @@ export default async function UpDownRoundPage({
                 <span className="overflow-hidden text-ellipsis whitespace-nowrap font-display text-title-lg font-bold leading-tight text-text">
                   {name} {t.market.udTitle}
                 </span>
-                <span className="chip">{round.durationMinutes} {t.market.udMin}</span>
+                {/* PV-13c (2026-09-03) — was a raw `<span className="chip">`. */}
+                <Chip>{round.durationMinutes} {t.market.udMin}</Chip>
               </h1>
               <p className="mt-1 flex items-center gap-1.5 font-mono text-micro font-semibold uppercase tracking-[0.10em] text-text-subtle">
                 {isOpen && <span className="live-dot" />}
@@ -616,7 +617,7 @@ export default async function UpDownRoundPage({
                       <p className="m-0 font-mono text-micro uppercase eyebrow text-text-faint">
                         {t.market.udPositionsOnRound} · {myPosition.items.length}
                       </p>
-                      {myPosition.hedged && <span className="chip">{t.market.udBothSides}</span>}
+                      {myPosition.hedged && <Chip>{t.market.udBothSides}</Chip>}
                     </div>
                     <ul className="mt-2 m-0 flex list-none flex-col gap-1.5 p-0">
                       {myPosition.items.map((p) => (
@@ -625,9 +626,9 @@ export default async function UpDownRoundPage({
                           className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 rounded-md border border-border bg-bg-overlay/50 px-2.5 py-1.5"
                         >
                           <span className="flex min-w-0 items-center gap-1.5">
-                            <span className={"chip tabular-nums " + (p.side === "UP" ? "chip-yes" : "chip-no")}>
+                            <Chip className="tabular-nums" variant={p.side === "UP" ? "yes" : "no"}>
                               {p.side === "UP" ? "↑" : "↓"} {formatTzs(p.stake)}
-                            </span>
+                            </Chip>
                             <span className="font-mono text-[10px] text-text-faint">{POSITION_STATUS_LABEL(t, p.status)}</span>
                           </span>
                           {/* DG-A-12 · §M4 + §T1 — a player's own payout. `.amount` replaces

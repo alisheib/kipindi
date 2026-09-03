@@ -154,6 +154,9 @@ home already exists, so you reach for it rather than open a new one.
 | **`test:tap-target` §6** — *the* rung-membership check for a control whose height is set OUTSIDE the interactive tag's own JSX attributes | `scripts/tap-target.test.mts` §6 | row 3/4 | §3's tag scan reads a height declared ON the open tag it is looking at; it is blind to a kit-component wrapper (`<CashEye className="h-[42px]">`) and to a value declared in a CSS rule (`.mcardp-info`). §6 is a NAMED, small population (found by grep, stated in the guard's own header) — not a blanket sweep of the 377 hand-typed `h-[Npx]` literals in `src/`, which cannot land at zero (most are decorative). ⛔ A future "a control's height lives somewhere §3 cannot see" finding extends §6's `NAMED_CONTROLS` array; it does not get a new file. RED-proven by `red:tap-rung` (`anchors/tap-rung.anchors.mjs`, 2/2). |
 | **`test:contrast` §P-u2** — *the* check for a call-site `opacity-NN` dimming a label inside a SOLID money button (`btn-yes`/`btn-no`/`btn-danger`/`btn-gold`) | `scripts/contrast-audit.mts` §P-u2 | row 6 | §P-u only ever matched the Tailwind slash-alpha idiom (`text-text-subtle/NN`) on ink classes; nothing looked INSIDE a `<button>`'s own children for an `opacity-NN` utility composited against the button's own known (ink, fill) pair. ⛔ Scoped to the four SOLID families this file already resolves to one literal pair — `btn-primary`/`btn-claret` are gradients and are out of scope until a genuinely unconditional (non-`disabled:`) opacity appears inside one. Needed its own small JSX-tag lexer (`endOfButtonOpenTag`, cited from `tap-target.test.mts` §0 — the same `=>`-inside-a-handler trap) plus a `decomment` pass. RED-proven by `red:contrast-callsite` (`anchors/contrast-callsite.anchors.mjs`, 5/5). |
 
+| **a chip** — *the* one definition, component-only | `src/components/ui/chip.tsx` (`variantStyle` + `sizeStyles`) | row 5 | ⛔ The `.chip` / `.chip-*` CSS family in `globals.css` is **DELETED** (PV-13c, 2026-09-03), finishing what stage 9 ruled on 2026-08-21: the COMPONENT wins, because a per-surface descendant override (`.mcardp .chip`) is a second definition of one truth by construction and a fix that must be a PROP cannot live in a stylesheet. A new tone is a `variant`; a new size is a `sizeStyles` rung; ⛔ never a new CSS class, and never a `className="chip-…"` at a call site. **3 height tiers, and that is the system**: sm 18/20 · xs+md 21/23 (xs = the board's dense TYPE in md's box) · lg 25/27. ⚠️ Instruments find chips by **`[data-kit-chip]` / `data-kit-chip-variant`** — namespaced because `filter-pill.tsx` already owns the bare `data-chip`, measured after a bare hook matched all 39 filter pills on `/markets`. |
+| **a chip's colour, for a GATE to read** | the same `variantStyle` table, via `tsxVariantValue()` in `scripts/contrast-audit.mts` | row 5 | `test:contrast` scored the settled gold pill off the CSS rule `.chip-resolved`. Deleting that rule without repointing the gate would have thrown at its MODULE SCOPE and taken all 69 checks down — every money-button and placeholder pair — over a chip. ⛔ **A gate that cannot start is not a gate that passes; it is a gate nobody notices is gone.** The reader parses `chip.tsx`'s own table, so the value is still read from its ONE source rather than mirrored (this file's `--text` scar). |
+
 ⭐ **Why this table exists** (Ali, 2026-09-03): *"update the location of where files should be
 regarding any design or instruction, to keep a clean final ruling."* A home that is minted and not
 written down is a home the next session cannot find — and a home nobody can find gets re-invented,
@@ -223,7 +226,7 @@ States: `☐ not started` · `◐ in progress` · `⧗ blocked (why)` · `✎ aw
 | 2 | PV-06 · Up & Down cold-start — **and the second + third split bar deleted** | 1,3,11 | Code | ☑ | `updown-board.ts` → `pricedYesPct`; `updown-card.tsx` + `updown/[roundId]/page.tsx` → `<TippingBar>` | `test:ui-consistency` **hand-rolled-split-bar** · `qa:cold-start` | `79c3b65b` | `.qa-shots/pv06/` | ✅ **VERIFIED ON PRODUCTION 2026-09-03** — `qa:cold-start` **30/30** (was 12 RED); both live cards show the dashed rail at VOL 0. ⚠️ the FUNDED arm was not exercised on prod (no funded round existed) — proven locally instead |
 | 3 | PV-13a · eye toggle off `h-[42px]` | 13 | Code | ◐ | `wallet-balance-pill.tsx` (not `top-app-bar.tsx` — filed one file off) | `test:tap-target` **§6** (new) · `red:tap-rung` | `pv10/rows-3-4-6` (unmerged) | `.qa-shots/pv13-local/` (gitignored, local-only — production evidence owed on merge) | code-complete, guarded, RED-proven, visually verified locally (390/1280, EN/SW/ZH). ⛔ **NOT proven on production** — pushed to a branch only |
 | 4 | PV-13b · `mcardp-info` → 44 | 13 | Code | ◐ | `globals.css .mcardp-info` | `test:tap-target` **§6** (folded in with row 3, not `test:design-frozen` — see session-6 note) | `pv10/rows-3-4-6` (unmerged) | `.qa-shots/pv13-local/` | same branch as row 3; `MARKET_CARD_H` re-derived 349→347 as a consequence, `qa:card-geometry` owed on merge. ⛔ **NOT proven on production** |
-| 5 | PV-13c · one chip height per size | 13 | Code+Design | ☐ | `chip.tsx` + `globals.css` | `test:chip-contract` | — | — | which sizes = Design — untouched this session |
+| 5 | PV-13c · the chip family's ONE definition | 13 | Code | ◐ | `chip.tsx` (the component) — the `.chip`/`.chip-*` CSS family is DELETED | `test:chip-contract` · `test:design-frozen` (−3) · `test:type-scale` (−2) | `pv10/rulings-and-chip-audit` (unmerged) | `.qa-shots/pv13c-local/` | **Ali's ruling, 2026-09-03: finish the migration, no visual change.** ⭐ Census CORRECTED first: not "7 chaotic heights" but **3 tiers** (sm 18/20 · xs+md 21/23 · lg 25/27), and the record's 7th value was `.tier-badge` — a **circular 22px rank medallion**, not a pill. 🔴 **The real defect was a DRIFT the audit only found because the migration forced it:** `chip.tsx`'s `signal` variant still held the pre-D6 **AQUA** (§B4 bans aqua on anything semantic) while the CSS class had been corrected to ROYAL on 2026-08-21 — zero call sites, so nothing rendered it, so nothing caught it. Migrating the market card's tipping flag onto it would have silently put banned aqua back on the player board. ⛔ **NOT proven on production** |
 | 6 | PV-10 · `@pct%`/`×N` suffix contrast | 6 | Code | ◐ | `market-card.tsx` · `side-picker.tsx` · `updown-card.tsx` · `updown-stake-controls.tsx` · `conviction-dial.tsx` (filed as 4 sites, was **9**) | `test:contrast` **§P-u2** (new) · `red:contrast-callsite` | `pv10/rows-3-4-6` (unmerged) | `.qa-shots/pv10-local/` (gitignored, local-only) | guard population gap WAS the finding, confirmed; guard's own sweep found a 9th site (the bet-panel commit button). ⛔ **NOT proven on production** |
 | 7 | PV-14 · timing off `duration-150`/bare curves | 14 | Code | ☐ | Input atom + kit | new `test:motion-timing` | — | — | build the guard first |
 | 8 | PV-03 · `<DetailLayout>` template | 3,5,10 | Code+Design | ☐ | new `detail-layout.tsx` | `responsive-audit.mjs` | — | — | deposit + positions-empty |
@@ -273,10 +276,35 @@ Seed state: every row `☐`. ⛔ Do not tick a row by intention — only by evid
 
 ### j-resume — RESUME AT (newest at the top)
 
-**RESUME AT (session 6) — 2026-09-03. ROWS 3, 4, 6 ARE `◐` — code-complete, guarded, RED-proven,
-visually verified LOCALLY (EN/SW/ZH, 390/1280) — but pushed to branch `pv10/rows-3-4-6`
-(unmerged) and therefore ⛔ NOT yet proven on production. Rows 5, 9, 10, 12 still need a
-ruling/commission and were not touched. Row 7 and rows 8/11 are next (see §g2).**
+**RESUME AT (session 6) — 2026-09-03. ROWS 3, 4, 5, 6 ARE `◐` (code-complete, guarded, verified
+LOCALLY, on unmerged branches) · ROWS 9 AND 12 ARE `☑` BY ALI'S RULING · ROW 10 IS `✎`
+COMMISSIONED. Only rows 7, 8, 11 are left as code work. ⛔ Nothing is on production yet.**
+
+**Two branches, both unmerged, both Ali's call to merge:**
+- `pv10/rows-3-4-6` (`dbd72ed2`) — rows 3, 4, 6.
+- `pv10/rulings-and-chip-audit` — rows 9/10/12's rulings, then row 5's chip migration.
+
+⭐ **Ali ruled on all four open items this session** (asked as one batch; he asked for one
+question at a time in future): **row 9 KEEP the brand-mark backdrop** (not a defect, no
+`<DecorMark>` built) · **row 10 COMMISSION Design now** for the dial · **row 5 audit visually
+first, then finish the migration with no visual change** · **row 12 CONFIRMED correct**
+(`test:gold-is-money` re-verified 15/0). Rows 9 and 12 closed as rulings, not fixes.
+
+🔴 **ROW 5's AUDIT OVERTURNED ITS OWN FINDING AND FOUND A WORSE ONE.** The "seven chaotic chip
+heights" are **three deliberate tiers** plus a miscount (the 7th value is `.tier-badge`, a
+circular rank medallion, not a pill). The real defect only surfaced because the migration
+reached for it: `chip.tsx`'s `signal` variant still held the **pre-D6 AQUA** that §B4 bans, six
+weeks after the owner ruling moved it to royal — **with zero call sites, which is precisely why
+nothing caught it.** Migrating the market card's tipping flag onto that variant would have put
+banned aqua back on the player board as part of a *cleanup*. Full write-up in the record.
+
+⚠️ **And deleting one CSS rule nearly took a whole gate with it:** `test:contrast` read
+`.chip-resolved`'s gold ramp off the rule being deleted, at MODULE SCOPE — it would have thrown
+and taken all 69 checks down over a chip. Repointed at `chip.tsx` in the same commit
+(`tsxVariantValue`). Two live instruments (`measure.mjs`, `glitch-hunter.mjs`) were also found
+to have **never matched a `<Chip>` at all** and would have gone silently to zero reach; they now
+key on `[data-kit-chip]` — namespaced, because the bare `data-chip` is `filter-pill.tsx`'s and
+the first attempt matched all 39 filter pills on `/markets`.
 
 **Re-derived all three on production FIRST**, per the bar: `.mcardp-info` measured 46px, the eye
 toggle 42px inside a 44px capsule, and the `@pct%` suffix region-read at 3.87:1 — all three
@@ -411,12 +439,20 @@ proof → local visual → suite → deploy → re-verify. Sizing the rest again
 
 | session | rows | why grouped |
 |---|---|---|
-| **next** | **3, 4, 6** — eye toggle off `h-[42px]`, `mcardp-info` → 44, `@pct%` contrast | all size/contrast, all in the same guards (`test:tap-target`, `test:design-frozen`, `test:contrast`). ⚠️ Row 3's guard is the work, not the fix: **374 hand-typed `h-[…]` literals** exist (102×44, 95×40, 24×36 …), so a "control heights come only from `--h-control-*`" rule needs a measured population before it can land at zero |
+| ✅ **session 6 (done)** | **3, 4, 6** then **5** · rulings for **9, 10, 12** | all `◐`/`☑`/`✎`, all unmerged. Row 3's guard was indeed the work, and the refusal held: the "control heights only from `--h-control-*`" sweep over **377** `h-[Npx]` literals **cannot land at zero** and was refused with that arithmetic; `test:tap-target` §6 took a NAMED two-control population instead |
+| **next** | **7** — motion timing | ⚠️ **Re-measure first; the record's census is STALE** (it claims 373 `duration-150` / 391 bare curves; a re-derivation found **3 and 2**). This may be the smallest row left. ⛔ **The one row that can collide with the parallel session** — it touches `motion.css` and the `--m-*` set, and `--m-pivot` is reserved for the needle. `git fetch` and read that session's landed commits before starting |
 | **+1** | **8, 11** — `<DetailLayout>`, and the `/markets` filter drive | both are investigate-then-build; row 11 may surface new findings |
-| **+2** | **7** — motion timing | ⚠️ **re-measured today: only 3 `duration-150` and 2 bare Tailwind curves remain in `src/`, not the 373/391 the record claims.** The record's census is STALE — re-derive before planning; this may be a small row, not the largest |
-| **👤 Ali** | **9, 12** (rulings) · **5** (which chip sizes) · **10** (Design commission) | none of these are code, and all four can be answered in parallel with the sessions above |
+| **✎ Design** | **10** — the dial's weight + term unification | commissioned by Ali 2026-09-03; §d bounds the handover. Runs in parallel with the code rows above |
 
-⛔ **Do not start rows 9/10 without a ruling or a commission** (§d bounds the handover).
+⛔ **Do not start row 10's build without the handover coming back** (§d bounds it), and ⛔ do not
+re-open rows 9 or 12 — both are closed by Ali's ruling, recorded in §6 of the record.
+
+⭐ **What session 6 learned about this programme's own sizing, worth carrying:** every one of the
+four rows it touched was **mis-filed in the record** — PV-13a named the wrong file, PV-10 was
+filed as 4 sites and was 9, PV-13c's "seven heights" were three tiers plus a miscount, and
+PV-13b's fix moved a published constant (`MARKET_CARD_H`) nobody had predicted. ⛔ **Budget the
+re-derivation, not the fix.** The fixes were minutes; the audits, the guard populations and the
+three unrelated guards that broke on correct changes were the session.
 
 **RESUME AT (session 4) — 2026-09-03. ✅ ROWS 1 AND 2 ARE ☑ — MERGED AND VERIFIED ON PRODUCTION.**
 Ali authorised the merge; `main` is at **`79c3b65b`**, the deploy landed (uptime reset 32,872s → 3s,

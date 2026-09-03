@@ -27,7 +27,7 @@
  * (a bigger `lineHeight`, more `paddingBlock`), every chip on the platform grows — §3
  * pins the arithmetic so that cannot happen silently.
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -72,6 +72,71 @@ for (const p of pairs) {
      !Number.isFinite(content)
        ? "could not read lineHeight/paddingBlock — the sizing model changed shape"
        : `content box would be ${content.toFixed(2)}px — ${content > p.h ? "TALLER than the min, so every chip on the platform grows" : "under the min"}`);
+}
+
+// ===========================================================================
+console.log("\n§4 · ONE DEFINITION — the chip is the COMPONENT, and the CSS family is gone");
+// ===========================================================================
+/**
+ * ⭐ PV-13c (2026-09-03). Stage 9 ruled on 2026-08-21 that `<Chip>` is the chip's one
+ * definition and the `.chip` / `.chip-*` CSS family is "the copy that goes". That migration
+ * then sat half-done for six weeks — **twelve** raw `className="chip chip-*"` call sites across
+ * twelve files kept the family alive — and the two definitions DRIFTED exactly as chip.tsx's own
+ * header predicted: the component's `signal` variant still held the **aqua** §B4 bans while the
+ * CSS class had been corrected to royal by owner ruling. Nothing rendered that variant, so
+ * nothing caught it.
+ *
+ * ⛔ NOTHING ELSE WOULD CATCH THE REGRESSION EITHER, and that was checked rather than assumed:
+ * `test:bridge`'s resolve rule covers Tailwind UTILITIES (colour, shadow), not a bare CSS class
+ * name, and `test:dead-css` looks the other way (a rule with no consumer, not a class with no
+ * rule). So a future `className="chip chip-pending"` would render an UNSTYLED span — visibly
+ * wrong, and green in CI. This section is that missing half.
+ *
+ * ⚠️ `KP_SRC` lets `red:chip-one-home` aim this at a mutated COPY of the tree — the same
+ * mechanism `red:tap-floor` and `red:tap-rung` use, and for the same reason: two sessions share
+ * this working tree, so a harness that edits `src/` in place can leave the repo dirty if it dies
+ * halfway.
+ */
+{
+  const SRC = process.env.KP_SRC || join(ROOT, "src");
+  const CSS = join(SRC, "app/globals.css");
+  const walk = (d: string): string[] =>
+    readdirSync(d).flatMap((e) => {
+      const p = join(d, e);
+      return statSync(p).isDirectory() ? walk(p) : /\.tsx$/.test(e) ? [p] : [];
+    });
+  /** Comments are blanked so this row's OWN provenance notes are not read as call sites. */
+  const decomment = (s: string) =>
+    s.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\r\n]/g, " "))
+     .replace(/(^|[^:])\/\/[^\r\n]*/g, (m, p1) => p1 + " ".repeat(m.length - p1.length));
+
+  const cssText = readFileSync(CSS, "utf8");
+  // ⛔ The RULE, not a mention: `.chip {` / `.chip-x {` at a declaration position. The
+  // provenance comment left in globals.css names these classes on purpose and must not fail.
+  const cssRules = [...decomment(cssText).matchAll(/(?:^|\n)\s*\.chip(-[a-z-]+)?\s*(?:,[^{\n]*)?\{/g)].map((m) => m[0].trim());
+  ok("4.1 globals.css declares NO .chip / .chip-* rule — the component is the only definition",
+     cssRules.length === 0,
+     `${cssRules.length} rule(s) still declared: ${cssRules.join(" · ").slice(0, 160)}`);
+
+  const hits: string[] = [];
+  let scanned = 0;
+  for (const f of walk(SRC)) {
+    if (f.replace(/\\/g, "/").endsWith("src/components/ui/chip.tsx")) continue;   // the definition itself
+    scanned++;
+    const body = decomment(readFileSync(f, "utf8"));
+    // A raw chip class at a call site, in any of the shapes the twelve migrated sites used:
+    // a bare string, a `cn(...)` argument, or a `"chip " + (...)` concatenation.
+    for (const m of body.matchAll(/["'`]\s*chip(?:\s|["'`])|["'`]chip-(?:yes|no|live|resolved|pending|objection|signal|new|hot-rose|strong)\b/g)) {
+      hits.push(`${f.replace(/\\/g, "/").split("/src/")[1] ?? f}: ${m[0].trim()}`);
+    }
+  }
+  ok("4.2 no call site spells a chip as a CSS class — a tone is a `variant`, a size is a `size`",
+     hits.length === 0,
+     `${hits.length}: ${hits.slice(0, 6).join(" · ")}`);
+  // ⛔ A COVERAGE FLOOR. 4.2 reads "0 hits" the same way whether the tree is clean or the walk
+  // reached nothing — the vacuous pass this campaign has shipped before.
+  ok("4.3 CONTROL — the scan reached the tree, so 0 hits means 0 defects and not 0 reach",
+     scanned > 300, `${scanned} .tsx files scanned (floor 300)`);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

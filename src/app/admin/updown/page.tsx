@@ -1,4 +1,5 @@
 import { Fragment } from "react";
+import { Chip } from "@/components/ui/chip";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ScrollX } from "@/components/ui/scroll-x";
@@ -616,15 +617,16 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                           <div className="font-mono text-[10.5px] text-text-subtle">{a?.nameEn ?? "unknown asset"}</div>
                         </td>
                         <td className="px-4 py-3">
-                          <span
-                            className={
-                              "chip " +
-                              (c.state === "RUNNING" ? "chip-live" : c.state === "PAUSED" ? "chip-pending" : "chip-pending opacity-70")
-                            }
+                          {/* PV-13c (2026-09-03) — was a raw `<span className="chip chip-*">`,
+                              the legacy CSS family <Chip> replaces; `dot` is the kit's own
+                              live-pulse prop rather than a hand-rendered `.live-dot` span. */}
+                          <Chip
+                            variant={c.state === "RUNNING" ? "live" : "pending"}
+                            className={c.state !== "RUNNING" && c.state !== "PAUSED" ? "opacity-70" : undefined}
+                            dot={c.state === "RUNNING"}
                           >
-                            {c.state === "RUNNING" && <span className="live-dot" />}
                             {chainStateLabel(c.state)}
-                          </span>
+                          </Chip>
                         </td>
                         <td className="px-4 py-3 font-mono text-caption text-text-muted whitespace-nowrap">
                           {fmtTime(c.nextBoundaryAt)}
@@ -915,17 +917,10 @@ export default async function AdminUpDownPage({ searchParams }: { searchParams: 
                 <div key={asset.id} className="rounded-lg border border-border bg-[var(--bg-inset)] p-3">
                   <div className="flex items-baseline justify-between gap-2">
                     <span className="font-mono text-caption font-bold uppercase eyebrow text-text-muted">{asset.key}</span>
-                    <span
-                      className={
-                        "chip " +
-                        (!last ? "chip-pending"
-                          : last.state === "CONFIRMED" ? "chip-resolved"
-                          : last.state === "FAILED" ? "chip-hot-rose"
-                          : "chip-pending")
-                      }
-                    >
+                    {/* PV-13c (2026-09-03) — was a raw `<span className="chip chip-*">`. */}
+                    <Chip variant={!last ? "pending" : last.state === "CONFIRMED" ? "resolved" : last.state === "FAILED" ? "hot" : "pending"}>
                       {readingStateLabel(last?.state)}
-                    </span>
+                    </Chip>
                   </div>
                   {/* Real data or nothing: with no confirmed reading we show an em-dash,
                       never a zero and never a stale figure presented as current. */}

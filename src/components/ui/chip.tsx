@@ -108,8 +108,19 @@ const variantStyle: Record<Variant, React.CSSProperties> = {
   danger:    { background: "oklch(55% 0.20 25 / 0.22)",                    color: "oklch(80% 0.18 25)", borderColor: "oklch(62% 0.20 25 / 0.5)" },
   info:      { background: "oklch(54% 0.165 262 / 0.22)",                  color: "oklch(78% 0.13 240)",borderColor: "oklch(63% 0.18 262 / 0.5)" },
   /* Ported from `.chip-signal` — the tipping-point flag. Base metrics: the CSS
-   * rule set no height/padding/font-size, so it inherited plain `.chip`. */
-  signal:    { background: "oklch(74% 0.11 195 / 0.20)",                   color: "var(--aqua-300)",    borderColor: "oklch(78% 0.10 195 / 0.5)" },
+   * rule set no height/padding/font-size, so it inherited plain `.chip`.
+   * ⚠️ PV-13c (2026-09-03) — D6's RULING AND ITS MEASURED FIGURES, carried here from the
+   * globals.css rule this variant replaced, because they are the reason for the value and the
+   * CSS comment that held them is deleted. 🔴 TIPPING WAS AQUA AND §B4 BANS AQUA on "a chip, a
+   * button label, or anything semantic" — aqua is a ≤8% finishing pass. Owner ruling
+   * 2026-08-21 moved it to ROYAL, the family `new` also argues for, because "this market is at
+   * its tipping point" is CHROME, a fact about the board. It takes the family's BRIGHTEST step
+   * (`--brand-200` ink on a 22% fill) so the three royal chips stay tellable apart on one
+   * board: `new` quietest (16%), `pending`/SOON in the middle (26% on `--brand-300`), TIPPING
+   * the brightest. Measured: `--brand-200` on the fill = 8.88:1 over `--wash-raised`, 9.39
+   * over `--bg-elevated`, 10.71 over `--bg`. ⛔ It reads through `color-mix()` on the brand
+   * ramp rather than re-typing an oklch, so a brand retune carries it along. */
+  signal:    { background: "color-mix(in oklab, var(--brand-500) 22%, transparent)", color: "var(--brand-200)", borderColor: "color-mix(in oklab, var(--brand-400) 50%, transparent)" },
   /* Ported from `.chip-new`. Brand blue because "this just opened" is CHROME,
    * never money earned — a gold NEW chip is named as a law break in
    * 01-foundations/colour.md. Sits a stop lighter than `pending` so NEW and SOON
@@ -188,6 +199,35 @@ export function Chip({
   const { height, ...szRest } = isStatus(variant) ? sz.status : sz.base;
   return (
     <span
+      /**
+       * ⭐ INSTRUMENT HOOKS, ADDED PV-13c (2026-09-03) — and they are DATA ATTRIBUTES, not
+       * classes, deliberately.
+       *
+       * 🔴 WHY THEY EXIST. Two live instruments found chips by CSS class: `design-gate/
+       * measure.mjs`'s control census (`.chip` in `CONTROL_SEL`) and `glitch-hunter.mjs`'s
+       * exemption for the kit-intentional live pulse (`classList.contains("chip-live")`).
+       * Neither ever matched a `<Chip>` — this component emits no `chip` class, as its own
+       * header notes — so both were silently measuring ONLY the raw `.chip` call sites. PV-13c
+       * migrated the last twelve of those and deleted the CSS family, which would have taken
+       * both instruments to zero reach while they kept printing a clean result. ⛔ An
+       * instrument that stops finding its subject and says nothing is worse than one that
+       * fails.
+       * ⛔ NOT CLASSES: `test:bridge`'s rule is that a class must RESOLVE to something. A
+       * `chip-live` class with no CSS rule behind it (the styles are inline, per stage 9's
+       * ruling that the component wins) is exactly the "class that resolves to nothing" that
+       * guard exists to catch. A `data-` hook carries the same information and is honest about
+       * being a hook rather than a style — the same shape as `data-on`, `data-open` and
+       * `data-motion` already used across this kit.
+       */
+      /* ⛔ `data-kit-chip`, NOT `data-chip` — NAMESPACED BECAUSE THE SHORT NAME IS TAKEN, and
+         it was measured, not guessed. `filter-pill.tsx:188` already emits `data-chip={testId}`,
+         and `filter-language-scan.mjs` parses that attribute with a REGEX that expects it to
+         carry a value and be immediately followed by `data-count`. A bare `data-chip=""` here
+         made `[data-chip]` match all 39 filter pills on `/markets` as if they were chips —
+         caught by rendering it and counting, before either instrument was believed. */
+      data-kit-chip=""
+      data-kit-chip-variant={variant}
+      data-kit-chip-size={size}
       className={cn(
         // ⛔ G-7 — `max-w-full` is load-bearing, not decoration. Without it the chip lays
         //    out at max-content and is simply drawn OUTSIDE its column.

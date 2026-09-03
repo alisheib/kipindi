@@ -318,10 +318,16 @@ function ruleValueForState(stateSelector: string, baseSelector: string, prop: st
  * that happen to be literals is a gate reporting a number for a surface it only
  * partly read.
  */
-function ruleGradient(selector: string, prop: string): Oklch[] {
-  const raw = ruleDecl(selector, prop);
+/**
+ * ⛔ ONE PARSER, THREE SOURCES. `ruleGradient`, `tokenGradient` and `tsxVariantGradient` below
+ * each get their raw `linear-gradient(...)` string a different way (a CSS rule, a token, a
+ * chip.tsx variant object) and used to each re-parse it — two near-identical copies is exactly
+ * how a stop-position regex or the direction-detection rule drifts between them unnoticed.
+ * PV-13c (2026-09-03) factored this out when adding the third source.
+ */
+function parseGradientStops(where: string, raw: string): Oklch[] {
   const g = /(?:linear|radial|conic)-gradient\(([\s\S]*)\)\s*$/.exec(raw);
-  if (!g) throw new Error(`contrast-audit: "${selector} { ${prop}: ${raw} }" is not a gradient`);
+  if (!g) throw new Error(`contrast-audit: "${where}: ${raw}" is not a gradient`);
   const terms = g[1]
     .split(/,(?![^(]*\))/) // top-level commas only
     .map((t) => t.trim().replace(/\s+(?:[-\d.]+(?:%|px|r?em)\s*)+$/, "").trim()) // drop stop positions
@@ -334,11 +340,14 @@ function ruleGradient(selector: string, prop: string): Oklch[] {
   const stops = DIRECTION.test(terms[0]) ? terms.slice(1) : terms;
   if (stops.length < 2) {
     throw new Error(
-      `contrast-audit: "${selector} { ${prop} }" resolved to ${stops.length} colour stop(s) — a ramp ` +
+      `contrast-audit: "${where}" resolved to ${stops.length} colour stop(s) — a ramp ` +
         `scored on one stop is a ramp half-read.`,
     );
   }
-  return stops.map((t) => colour(`${selector} { ${prop} } stop`, t));
+  return stops.map((t) => colour(`${where} stop`, t));
+}
+function ruleGradient(selector: string, prop: string): Oklch[] {
+  return parseGradientStops(`${selector} { ${prop} }`, ruleDecl(selector, prop));
 }
 
 /**
@@ -356,19 +365,44 @@ function ruleGradient(selector: string, prop: string): Oklch[] {
  * here too (INTAKE §2a) rather than being silently read from the first one.
  */
 function tokenGradient(name: string): Oklch[] {
-  const raw = declValue(name);
-  const g = /(?:linear|radial|conic)-gradient\(([\s\S]*)\)\s*$/.exec(raw);
-  if (!g) throw new Error(`contrast-audit: --${name} is "${raw}", which is not a gradient`);
-  const terms = g[1]
-    .split(/,(?![^(]*\))/)
-    .map((t) => t.trim().replace(/\s+(?:[-\d.]+(?:%|px|r?em)\s*)+$/, "").trim())
-    .filter(Boolean);
-  const DIRECTION = /^(?:[-\d.]+(?:deg|turn|rad|grad)|to\s+[a-z\s]+|circle\b|ellipse\b|closest-|farthest-|at\s|var\(\s*--[a-z0-9-]*angle[a-z0-9-]*\s*\))/i;
-  const stops = DIRECTION.test(terms[0]) ? terms.slice(1) : terms;
-  if (stops.length < 2) {
-    throw new Error(`contrast-audit: --${name} resolved to ${stops.length} colour stop(s) — a ramp scored on one stop is a ramp half-read.`);
+  return parseGradientStops(`--${name}`, declValue(name));
+}
+
+/**
+ * ⭐ A THIRD SOURCE: A VARIANT'S VALUE THAT LIVES IN A `.tsx` OBJECT, NOT IN CSS — PV-13c,
+ * 2026-09-03.
+ *
+ * 🔴 WHY THIS EXISTS, AND IT IS NOT A CONVENIENCE. `test:contrast` scored the settled-market
+ * gold pill by reading the CSS rule `.chip-resolved` — but stage 9 (2026-08-21) had already
+ * ruled that the `<Chip>` COMPONENT is the chip's one definition and the `.chip-*` CSS family
+ * is "the copy that goes", and PV-13c finished that migration: the last twelve raw
+ * `className="chip chip-*"` call sites are gone and the CSS family is deleted. Deleting it
+ * WITHOUT this would have thrown at module scope on `ruleValue(".chip-resolved", …)` and taken
+ * the ENTIRE gate down — 69 checks, including every money-button and placeholder pair, over a
+ * chip. ⛔ A gate that cannot start is not a gate that passes; it is a gate nobody notices is
+ * gone.
+ *
+ * ⛔ IT READS THE SOURCE, NEVER A MIRROR. Same law as `token()` and `ruleValue()` above and for
+ * the same scar: this file's own header records `--text` drifting to a hand-typed `0.97/0.010`
+ * against a real `oklch(98% 0.012 268)`, which made every ratio on the most-rendered pair in
+ * the product a statement about ink the product does not use. The chip's ink now lives in
+ * `chip.tsx`'s `variantStyle` table, so that is what is parsed.
+ */
+function tsxVariantValue(file: string, variant: string, prop: string): string {
+  const src = readFileSync(`${ROOT.replace(/[\\/]+$/, "")}/${file}`, "utf8");
+  const entry = new RegExp(`\\b${variant}:\\s*\\{([^}]*)\\}`).exec(src);
+  if (!entry) {
+    throw new Error(
+      `contrast-audit: no \`${variant}: { … }\` entry in ${file} — the variant was renamed or ` +
+        `the table restructured, and this pair is now scoring nothing. Re-point it, never drop it.`,
+    );
   }
-  return stops.map((t) => colour(`--${name} stop`, t));
+  const m = new RegExp(`\\b${prop}:\\s*"([^"]*)"`).exec(entry[1]);
+  if (!m) throw new Error(`contrast-audit: \`${variant}.${prop}\` not found in ${file}`);
+  return m[1];
+}
+function tsxVariantGradient(file: string, variant: string, prop: string): Oklch[] {
+  return parseGradientStops(`${file} ${variant}.${prop}`, tsxVariantValue(file, variant, prop));
 }
 
 /**
@@ -558,13 +592,16 @@ const T = {
   giltStrong: token("gilt-strong"),
   gold500: token("gold-500"),
   gold300: token("gold-300"),
-  chipResolvedFg: ruleValue(".chip-resolved", "color"),
+  /* ⚠️ PV-13c (2026-09-03) — was `ruleValue(".chip-resolved", …)`. The `.chip-*` CSS family is
+     DELETED; `<Chip variant="resolved">` (chip.tsx's `variantStyle`) is the settled pill's one
+     definition now. See `tsxVariantValue` above for why this could not simply be dropped. */
+  chipResolvedFg: colour("chip.tsx resolved.color", tsxVariantValue("src/components/ui/chip.tsx", "resolved", "color")),
   // ── The RAMPS, and their hover rasters (2026-08-06, ATOM 3 · E-119) ───────
   // Three gradient-painted surfaces carry text. Two of them are controls, and
   // until now none of the three had its ramp read: `.chip-resolved` was scored
   // against a hand-picked `--gold-500`, and the two buttons were not scored at
   // all, because `ruleValue()` refuses anything that is not one flat colour.
-  chipResolvedStops: ruleGradient(".chip-resolved", "background"),
+  chipResolvedStops: tsxVariantGradient("src/components/ui/chip.tsx", "resolved", "background"),
   btnPrimaryStops: ruleGradient(".btn-primary", "background"),
   btnPrimaryHover: ruleFilter(".btn-primary:hover:not(:disabled)"),
   btnClaretFg: ruleValue(".btn-claret", "color"),

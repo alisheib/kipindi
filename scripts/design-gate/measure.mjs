@@ -99,7 +99,7 @@ function measure() {
      element that CONTAINS a `button, input, textarea, select, a` — which every such label does.
      It only starts reporting once `vis()` stops admitting the clipped input, so the label no
      longer contains a *visible* one. Two edits, one fix; either alone measures nothing. */
-  const CONTROL_SEL = 'button, a.btn, [role="button"], input:not([type="hidden"]), textarea, select, [role="combobox"], [role="switch"], [role="checkbox"], [role="radio"], [role="tab"], [role="menuitem"], .chip, a[class*="rounded-pill"], a[class*="rounded-md"][class*="border"], nav a, aside a, label:has(input[type="checkbox"]), label:has(input[type="radio"])';
+  const CONTROL_SEL = 'button, a.btn, [role="button"], input:not([type="hidden"]), textarea, select, [role="combobox"], [role="switch"], [role="checkbox"], [role="radio"], [role="tab"], [role="menuitem"], [data-kit-chip], a[class*="rounded-pill"], a[class*="rounded-md"][class*="border"], nav a, aside a, label:has(input[type="checkbox"]), label:has(input[type="radio"])';
   const raw = Array.from(document.querySelectorAll(CONTROL_SEL)).filter(vis);
   const nodes = raw.filter((el) => !raw.some((o) => o !== el && el.contains(o) && o.matches("button, input, textarea, select, a")));
   const flexParent = (el) => { let e = el.parentElement; while (e && e !== document.body) { const s = cs(e); if ((s.display === "flex" || s.display === "inline-flex") && !s.flexDirection.startsWith("column")) return e; if (s.display === "grid" || s.display === "inline-grid") return e; e = e.parentElement; } return null; };
@@ -109,7 +109,7 @@ function measure() {
     const fp = flexParent(el);
     let gid = null;
     if (fp) { if (!parents.has(fp)) parents.set(fp, { id: parents.size, el: fp, items: [] }); const g = parents.get(fp); gid = g.id; g.items.push(i); }
-    const kind = el.matches("input[type=checkbox], [role=checkbox]") ? "checkbox" : el.matches("input[type=radio], [role=radio]") ? "radio" : el.matches("input, textarea, select, [role=combobox]") ? "field" : el.matches("[role=switch]") ? "switch" : el.matches("[role=tab]") ? "tab" : el.matches(".chip") ? "chip" : el.matches("nav a, aside a, [role=menuitem]") ? "nav" : el.matches("button, a.btn, [role=button]") ? "button" : "pill";
+    const kind = el.matches("input[type=checkbox], [role=checkbox]") ? "checkbox" : el.matches("input[type=radio], [role=radio]") ? "radio" : el.matches("input, textarea, select, [role=combobox]") ? "field" : el.matches("[role=switch]") ? "switch" : el.matches("[role=tab]") ? "tab" : el.matches("[data-kit-chip]") ? "chip" : el.matches("nav a, aside a, [role=menuitem]") ? "nav" : el.matches("button, a.btn, [role=button]") ? "button" : "pill";
     return {
       i, kind, tag: el.tagName.toLowerCase(), type: el.getAttribute("type") || "", text: txt(el), cls: cls(el),
       x: r1(r.x + scrollX), y: r1(r.y + scrollY), w: r1(r.width), h: r1(r.height),

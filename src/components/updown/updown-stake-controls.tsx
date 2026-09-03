@@ -25,6 +25,7 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
+import { Chip } from "@/components/ui/chip";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { cn, formatTzs } from "@/lib/utils";
@@ -178,8 +179,8 @@ export function UpDownStakeControls({
       {(bet.shownUp > 0 || bet.shownDown > 0) && (
         <div className={cn("flex flex-wrap items-center gap-1.5 font-mono", compact ? "mb-2 text-[10px]" : "mb-3 text-[10.5px]")}>
           <span className="uppercase eyebrow text-text-faint">{t.market.udYoureIn}</span>
-          {bet.shownUp > 0 && <span className="chip chip-yes tabular-nums">{t.market.udUp} {formatTzs(bet.shownUp)}</span>}
-          {bet.shownDown > 0 && <span className="chip chip-no tabular-nums">{t.market.udDown} {formatTzs(bet.shownDown)}</span>}
+          {bet.shownUp > 0 && <Chip variant="yes" className="tabular-nums">{t.market.udUp} {formatTzs(bet.shownUp)}</Chip>}
+          {bet.shownDown > 0 && <Chip variant="no" className="tabular-nums">{t.market.udDown} {formatTzs(bet.shownDown)}</Chip>}
         </div>
       )}
 

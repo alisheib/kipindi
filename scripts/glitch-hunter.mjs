@@ -60,7 +60,7 @@ const HOVER_TARGETS = [
   { sel: 'a[href^="/markets/mkt_"]', label: "market-card-link" },
   { sel: '[role="progressbar"]',     label: "probability-bar" },
   { sel: ".btn",                     label: "btn-any" },
-  { sel: ".chip",                    label: "chip" },
+  { sel: "[data-kit-chip]",          label: "chip" },
   { sel: "nav a",                    label: "nav-link" },
   { sel: ".cm-bubble",               label: "chat-bubble" },
   { sel: "[data-testid='wallet-balance']", label: "wallet-balance" },
@@ -152,7 +152,7 @@ async function checkHoverGlitch(route, sel, label) {
   // hero-constellation mark-breathe + drift particles). These move
   // forever by design.
   const isIntentionallyAnimated = await el.evaluate((node) => {
-    if (node.classList.contains("chip-live")) return true;
+    if (node.dataset.kitChipVariant === "live") return true;   // PV-13c: was classList "chip-live"
     if (node.classList.contains("live-dot")) return true;
     if (node.classList.contains("mark-breathe")) return true;
     // The constellation dial wrappers also breathe.

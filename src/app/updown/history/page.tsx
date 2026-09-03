@@ -311,7 +311,10 @@ export default async function UpDownHistoryPage({ searchParams }: {
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="font-display text-[14px] font-semibold text-text">
-                        {name} <span className="chip align-middle">{r.durationMinutes} {t.market.udMin}</span>
+                        {/* PV-13c (2026-09-03) — was a raw `<span className="chip">`; the
+                            legacy CSS family <Chip> exists to replace. `variant` defaults to
+                            "neutral", the same SLATE ink/fill `.chip`'s own base rule painted. */}
+                        {name} <Chip className="align-middle">{r.durationMinutes} {t.market.udMin}</Chip>
                       </div>
                       <div className="mt-0.5 font-mono text-[10px] text-text-subtle">{r.assetKey} · {fmtDate(r.placedAt)}</div>
                     </div>
@@ -337,9 +340,9 @@ export default async function UpDownHistoryPage({ searchParams }: {
                       {g.bets.length} {t.market.udBets}
                     </span>
                     {g.bets.map((b) => (
-                      <span key={b.positionId} className={"chip tabular-nums " + (b.side === "UP" ? "chip-yes" : "chip-no")}>
+                      <Chip key={b.positionId} className="tabular-nums" variant={b.side === "UP" ? "yes" : "no"}>
                         {b.side === "UP" ? "↑" : "↓"} {formatTzs(b.stake)}
-                      </span>
+                      </Chip>
                     ))}
                   </div>
 

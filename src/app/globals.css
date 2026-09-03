@@ -1234,74 +1234,30 @@ body {
 }
 
 /* ---------- Chip ---------- */
-/* ⛔ A CHIP HAS A FIXED HEIGHT, SO IT MUST NOT WRAP — measured by `qa:fit` on production,
-   2026-09-01. `.chip` set `height: 21px` (23px on the -live/-resolved/-pending/-objection
-   variants) and said nothing about `white-space`, so a two-word label wrapped to a second line
-   and the fixed height SHEARED it: `/admin/updown/rounds` rendered "VOID · No move" into a 23px
-   box holding 37px of text, losing 14px of ink off the bottom. ⚠️ Invisible to any width-based
-   overflow check — the chip is exactly as wide as it should be; it is the HEIGHT that is wrong,
-   which is why the sweep measures vertical clipping separately.
-   ⭐ `nowrap` is the fix rather than `min-height`: a chip is a short label on one line, and
-   letting it grow taller turns a pill into a lozenge and breaks the rhythm of every row it sits
-   in. A label too long to fit now makes the chip WIDER — visible, and reported by `qa:fit` as
-   horizontal overflow — instead of silently cutting the text in half.
-   Shared by admin AND player surfaces (`/updown/history`, `/updown/[roundId]`), so this is one
-   fix for both. */
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  height: 21px;
-  padding: 0 8px;
-  white-space: nowrap;
-  border-radius: var(--r-pill);
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  border: 1px solid var(--border);
-  background: oklch(34% 0.09 268 / 0.5);
-  color: var(--text-muted);
-}
-.chip-yes      { background: oklch(52% 0.15 150 / 0.22); color: var(--yes-300); border-color: oklch(61% 0.16 150 / 0.5); }
-.chip-no       { background: oklch(50% 0.19 25 / 0.22);  color: var(--no-300);  border-color: oklch(58% 0.2 25 / 0.5); }
-.chip-live     { height: 23px; padding: 0 9px; font-size: 11px; background: oklch(55% 0.20 25 / 0.30); color: oklch(96% 0.04 25); border-color: oklch(62% 0.20 25 / 0.6); }
-.chip-resolved { height: 23px; padding: 0 9px; font-size: 11px; background: linear-gradient(180deg, var(--gold-300), var(--gold-500)); color: oklch(24% 0.06 80); border-color: oklch(60% 0.10 78); }
-.chip-pending  { height: 23px; padding: 0 9px; font-size: 11px; background: oklch(54% 0.165 262 / 0.26); color: var(--brand-300); border-color: oklch(63% 0.18 262 / 0.55); }
-.chip-objection{ height: 23px; padding: 0 9px; font-size: 11px; background: oklch(72% 0.13 80 / 0.22); color: var(--gold-300); border-color: oklch(80% 0.13 80 / 0.5); }
-/* 🔴 D6 (2026-08-21, owner ruling) — TIPPING WAS AN AQUA CHIP, AND §B4 BANS ONE
-   IN SO MANY WORDS: aqua is a finishing pass at ≤8% coverage, "never a chip, a
-   button label, or anything semantic". The ban is written 900-odd lines above
-   this rule, in this same file, and TIPPING sat under it on the player board.
-   It now joins the ROYAL family — the same family `.chip-new` argues for two
-   rules down, because "this market is at its tipping point" is CHROME, a fact
-   about the board, and chrome is royal here.
-   ⭐ It takes the family's BRIGHTEST step (`--brand-200` ink on a 22% fill), so
-   the three royal chips stay tellable apart on one board: NEW is the quietest
-   (16%), SOON/`.chip-pending` sits in the middle (26% on `--brand-300`), and
-   TIPPING — the loudest thing a market can say short of LIVE — is the brightest
-   ink. ⛔ It reads its colour through `color-mix()` on the brand ramp rather
-   than re-typing an oklch, so a brand retune carries it along.
-   Measured: `--brand-200` on the fill over `--wash-raised` = 8.88:1 (was 7.00
-   in aqua), 9.39 over `--bg-elevated`, 10.71 over `--bg`. */
-.chip-signal   { background: color-mix(in oklab, var(--brand-500) 22%, transparent); color: var(--brand-200); border-color: color-mix(in oklab, var(--brand-400) 50%, transparent); }
-.chip-hot-rose { height: 23px; padding: 0 9px; font-size: 11px; background: oklch(50% 0.19 25 / 0.22); color: var(--no-300); border-color: oklch(58% 0.2 25 / 0.5); }
-/* NEW market badge (cold-start, 2026-07-29). Brand blue: it is CHROME — "this
-   just opened" — not a betting semantic and NEVER gold. 01-foundations/colour.md
-   calls out a gold "NEW" chip by name as a law break, because gold must mean
-   money you have earned the instant it is seen (RULES law 3).
-   Sits at a lighter weight than .chip-pending above so NEW and SOON stay
-   distinguishable on the same board; they can never appear on the same CARD,
-   since a fresh market short-circuits to NEW before SOON is considered. */
-.chip-new {
-  height: 23px; padding: 0 9px; font-size: 11px;
-  color: var(--brand-300);
-  background: oklch(63% 0.18 262 / 0.16);
-  border-color: oklch(63% 0.18 262 / 0.40);
-}
-/* Signal chips carry the card's one loud word, so they run bolder than a plain
-   chip. Was `style={{ fontWeight: 700 }}` inline on the market card. */
-.chip-strong { font-weight: 700; }
+/* ⛔ THE CHIP FAMILY IS GONE FROM CSS — PV-13c, 2026-09-03. Stage 9 (2026-08-21) ruled that
+   the <Chip> COMPONENT is the chip's one definition and this `.chip` / `.chip-*` family was
+   "the copy that goes" (chip.tsx's own header states it, and states why: a per-surface
+   descendant override like `.mcardp .chip` is a second definition of one truth by
+   construction, and a fix that has to be a PROP cannot live in a stylesheet). That migration
+   was left half-done for six weeks: twelve raw `className="chip chip-*"` call sites across
+   ten files kept this family alive, including the market card's own signal flag and every
+   Up & Down status pill. They are all on <Chip> now, so the family is deleted rather than
+   left as a second place a chip could be defined.
+   ⭐ WHERE EACH THING WENT — nothing was dropped:
+     · the metrics (21/23px, 0 8px / 0 9px, 10.5/11px)  → chip.tsx `sizeStyles.md`
+     · `.mcardp .chip`'s dense treatment (9px type …)    → chip.tsx `sizeStyles.xs`
+     · every tone (yes/no/live/resolved/pending/objection/signal/new/hot-rose)
+                                                        → chip.tsx `variantStyle`
+     · `.chip-strong { font-weight: 700 }`               → the component sets 700 already
+     · D6's ruling (TIPPING is ROYAL, never aqua — §B4 bans aqua on anything semantic) and
+       its measured figures (`--brand-200` on the fill: 8.88:1 over --wash-raised, 9.39 over
+       --bg-elevated, 10.71 over --bg), plus the gold-NEW ban (RULES law 3 — gold means money
+       EARNED)                                          → chip.tsx, beside the variants they rule
+   ⚠️ `test:contrast` read `.chip-resolved`'s gold ramp straight off this rule. It now reads
+   chip.tsx's `resolved` variant (`tsxVariantValue`) — repointed in the SAME commit, because
+   deleting this rule first would have thrown at that gate's module scope and taken all 69
+   of its checks down over a chip. `design-gate/measure.mjs` and `glitch-hunter.mjs` matched
+   `.chip` / `.chip-live` in the DOM and now match `[data-kit-chip]` / `data-kit-chip-variant`. */
 
 /* ---------- CountBadge's lift ----------
    §M2: a surface PICKS a rung, it never composes one — and a rung is a CLASS, not an
@@ -3843,8 +3799,12 @@ html[data-sheet-open] .route-enter { animation: none; }
 }
 .mcardp > *:not(.mcardp-watermark) { position: relative; z-index: 1; }
 .mcardp-top { display: flex; align-items: center; flex-wrap: nowrap; gap: 5px; min-height: 20px; }
-.mcardp .chip { font-size: 9px; padding: 2px 6px; gap: 3px; letter-spacing: 0.02em; white-space: nowrap; flex-shrink: 0; }
-.mcardp .chip .live-dot { width: 5px; height: 5px; }
+/* ⛔ `.mcardp .chip` and `.mcardp .chip .live-dot` DELETED — PV-13c, 2026-09-03. This pair WAS
+   the per-surface descendant override stage 9 named as the reason the component had to win:
+   it reached around <Chip> to restyle it, and could not reach a <Chip> at all (the component
+   emits no `chip` class). Both are ported exactly into chip.tsx's `sizeStyles.xs` — 9px type,
+   0 6px padding, 3px gap, 0.02em tracking, 5px live-dot, in the same 21/23px box — which
+   `market-card.tsx` selects with `size="xs"`. See the Chip section note at the top of this file. */
 /* Category glyph — BARE neutral glyph (no box), identical to the /live dense
    card's category treatment so the cards read as one system. Never gold. */
 /* margin-left was an inline `style={{ marginLeft: 2 }}` — a 2px nudge that

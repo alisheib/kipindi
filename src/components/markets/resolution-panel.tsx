@@ -23,6 +23,7 @@
  *    the money was already paid, and disputes were routed to support truthfully.
  */
 import { I } from "@/components/ui/glyphs";
+import { Chip } from "@/components/ui/chip";
 import { cn, formatTzs } from "@/lib/utils";
 import { formatDateTime } from "@/lib/utils";
 import { Callout } from "@/components/ui/callout";
@@ -123,9 +124,12 @@ export function ResolutionPanel({
           <I.shieldcheck s={16} className="text-gilt" />
           {t.market.resTitle}
         </h2>
-        <span className={cn("chip", isVoid ? "chip-pending" : "chip-resolved")}>
+        {/* PV-13c (2026-09-03) — was `<span className={cn("chip", ...)}>`, the legacy CSS
+            family <Chip> replaces. Both tones are "status" variants (23px), matching the
+            raw classes' own height override exactly. */}
+        <Chip variant={isVoid ? "pending" : "resolved"}>
           {isVoid ? t.market.resVoided : `${t.market.resolvedOutcome} · ${outcomeWord(t, outcome, "MARKET")}`}
-        </span>
+        </Chip>
       </div>
 
       {/* Attestation (only when genuinely two-officer) + timestamp + source */}

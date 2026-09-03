@@ -1,4 +1,5 @@
 import { Fragment } from "react";
+import { Chip } from "@/components/ui/chip";
 
 /**
  * Did the AI read the market's OWN approved source? One chip, used everywhere an officer
@@ -13,6 +14,11 @@ import { Fragment } from "react";
  *
  * The verdict is DERIVED at render time (`sentinelSourceVerdict`), never stored, so it
  * cannot go stale against an edited market.
+ *
+ * ⚠️ PV-13c (2026-09-03) — was four raw `className="chip chip-*"` spans, the legacy CSS
+ * family the kit's <Chip> component was built to replace (chip.tsx's own header). Same
+ * tones, through the kit: `chip-yes`→`variant="yes"`, `chip-hot-rose`→`variant="hot"`
+ * (both share the ROSE object and the taller "status" metrics), `chip-pending`→`variant="pending"`.
  */
 export function SentinelSourceChip({
   verdict,
@@ -23,9 +29,9 @@ export function SentinelSourceChip({
 }) {
   if (verdict === "match") {
     return (
-      <span className="chip chip-yes" title="The AI read this market's approved source.">
+      <Chip variant="yes" title="The AI read this market's approved source.">
         approved source
-      </span>
+      </Chip>
     );
   }
 
@@ -39,12 +45,12 @@ export function SentinelSourceChip({
   if (verdict === "different-domain") {
     return (
       <Fragment>
-        <span
-          className="chip chip-hot-rose"
+        <Chip
+          variant="hot"
           title={`This market's approved source is ${approvedHost}. Open both before sealing.`}
         >
           not the approved source
-        </span>
+        </Chip>
         <span className="font-mono text-[10.5px] text-text-subtle">
           approved: {approvedHost}
         </span>
@@ -54,15 +60,15 @@ export function SentinelSourceChip({
 
   if (verdict === "none-cited") {
     return (
-      <span className="chip chip-pending" title="The AI returned no source URL for this assessment.">
+      <Chip variant="pending" title="The AI returned no source URL for this assessment.">
         no source cited
-      </span>
+      </Chip>
     );
   }
 
   return (
-    <span className="chip chip-pending" title="This market has no approved source to compare against.">
+    <Chip variant="pending" title="This market has no approved source to compare against.">
       no approved source
-    </span>
+    </Chip>
   );
 }

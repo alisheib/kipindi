@@ -343,19 +343,18 @@ export function MarketCard({
         <Chip size="xs" variant={TONE_CHIP[STATUS_TONE[statusWord].player]} dot={live}>
           {statusLabel}
         </Chip>
+        {/* PV-13c (2026-09-03) — was a raw `<span className="chip chip-strong chip-*">`. The
+            kit's own `fontWeight: 700` already matches `.chip-strong`'s only rule, so it needs
+            no equivalent; the four signal tones map straight across (`chip-signal` is the one
+            NON-status tone here — no height override in the raw CSS either, so both land on
+            the same 21px base box). */}
         {signal && (
-          <span
+          <Chip
             aria-label={signal.label}
-            className={cn(
-              "chip chip-strong",
-              signal.kind === "hot" && "chip-hot-rose",
-              signal.kind === "soon" && "chip-pending",
-              signal.kind === "tipping" && "chip-signal",
-              signal.kind === "new" && "chip-new",
-            )}
+            variant={signal.kind === "hot" ? "hot" : signal.kind === "soon" ? "pending" : signal.kind === "tipping" ? "signal" : "new"}
           >
             {signal.label}
-          </span>
+          </Chip>
         )}
         <span className="mcardp-catico"><CatIco /></span>
         <span className="mcardp-cat">{catLabel}</span>

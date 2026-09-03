@@ -257,6 +257,61 @@ passed, so the RED harness **deletes** the arm instead — the shape that actual
 - **Definition site:** the eye toggle → a `--h-control-*` rung (or `.btn-sm`); `mcardp-info` → 44 in `globals.css`; chips → one height per size in `chip.tsx`/`globals.css`.
 - **Guard:** `test:tap-target` reads a *declared* height and passed 42px (above the 40 floor) — add a rung-membership assertion (an interactive height must equal a `--h-control` value); `test:chip-contract` → one height per chip size.
 
+#### ✅ PV-13c RE-DERIVED AND FIXED — 2026-09-03, session 6. **The census was wrong, and the real defect was a DRIFT the migration flushed out.**
+
+Ali's ruling on the audit: *finish the migration, no visual change.* Both halves were done, and
+the audit came first — which is why the finding as filed did not survive it.
+
+⭐ **THE "SEVEN CHAOTIC HEIGHTS" WERE THREE DELIBERATE TIERS AND ONE MISCOUNT.** Re-derived from
+`chip.tsx`'s own `sizeStyles` and measured on production:
+
+| tier | base / status | call sites | note |
+|---|---|---|---|
+| `sm` | 18 / 20 | 95 | by far the most common |
+| `xs` + `md` | 21 / 23 | 1 + 49 | ⭐ **the same height on purpose** — `xs` shrinks the board card's TYPE (9px) inside md's box, so no board repaints |
+| `lg` | 25 / 27 | 16 | |
+
+The record's 7th value (22px) is **`.tier-badge`** — a **circular rank medallion** on the
+leaderboard, screenshotted to be sure. Not a pill, not a chip, and forcing it onto a chip rung
+would have been consolidating two unrelated objects because they shared a number.
+
+🔴 **AND THE REAL DEFECT WAS INVISIBLE UNTIL THE MIGRATION REACHED FOR IT.** `chip.tsx`'s
+`signal` variant still held the **pre-D6 AQUA** ink (`--aqua-300`, hue 195) while the CSS class
+`.chip-signal` had been corrected to **ROYAL** by the owner's D6 ruling on 2026-08-21 — §B4 bans
+aqua on "a chip, a button label, or anything semantic". **`variant="signal"` had ZERO call
+sites, which is exactly why the drift survived six weeks: nothing rendered it, so nothing could
+look wrong.** ⛔ Migrating the market card's tipping flag onto that variant would have made this
+row the FIRST consumer and put banned aqua back on the player board, silently, as a *cleanup*.
+This is `chip.tsx`'s own header warning — *"byte-similar, which is exactly why they drifted
+without anyone noticing"* — landing on the file that wrote it.
+
+**Fixed:** twelve raw `className="chip chip-*"` call sites across **twelve files** (the first
+census said ten — `admin/updown/page.tsx` hid two behind a multi-line string concatenation, and
+`market-card.tsx`'s own signal flag was the twelfth) migrated onto `<Chip>`; the entire
+`.chip`/`.chip-*` family plus the `.mcardp .chip` override **deleted**; `signal` corrected to
+royal with D6's measured figures carried into the variant table beside the value they justify.
+
+⛔ **Two instruments would have gone quietly blind, and one gate would have died outright.**
+`design-gate/measure.mjs` (control census) and `glitch-hunter.mjs` (live-pulse exemption) both
+found chips by CSS class — and **neither had ever matched a `<Chip>`**, since the component emits
+no `chip` class, so both were only ever measuring the raw call sites this row deleted. They now
+match `[data-kit-chip]` / `data-kit-chip-variant`. ⚠️ The hook is **namespaced** because the bare
+`data-chip` is already `filter-pill.tsx`'s: the first attempt matched all **39 filter pills** on
+`/markets` as chips — caught by rendering it and counting, not by reading the code. And
+`test:contrast` read `.chip-resolved`'s gold ramp straight off the deleted rule; it now parses
+`chip.tsx`'s `resolved` variant (`tsxVariantValue`), repointed in the SAME commit — otherwise
+deleting one chip rule would have thrown at that gate's module scope and taken **all 69 checks**
+down, every money-button and placeholder pair with it.
+
+**Validated:** `tsc` ✓ · `build` ✓ · `test:chip-contract` ✓ · `test:contrast` **69/0** (the gold
+pill still scores **6.61**, unchanged — the repointed reader gets the same value) ·
+`test:design-frozen` ✓ after recording **−3** values and one file now clean · `test:type-scale`
+inline-fontSize ratchet **36 → 34** (the moderation chips stopped hand-typing `fontSize: 9.5`)
+· `test:dead-css` · `test:bridge` · `test:ui-consistency` · `test:tap-target` · `test:labels` ·
+`test:i18n` all ✓. **Measured as rendered, per chip**: the board's `LIVE` at 23px/9px on
+`oklch(0.55 0.2 25 / 0.3)`, `NEW` at 23px/11px royal, `/updown`'s `30 MIN` at 21px/10.5px slate
+— each identical to the CSS rule it replaced. ⚠️ **Not proven on production** — branch only.
+
 #### ✅ PV-13a/PV-13b RE-DERIVED AND FIXED — 2026-09-03, session 6. **Both defects existed for different, complementary reasons no single guard would have caught.**
 
 Re-derived on production first (a headless drive against `50pick.tz`, signed in as `fleet:01`,

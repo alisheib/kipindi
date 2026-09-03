@@ -4,8 +4,10 @@
  * UpDownCard — the iconic surface of the Up & Down product.
  *
  * Built to the reviewed spec: `docs/design-system/v2-2026-07-27/02-components/_specs-as-delivered/D1-updown-card-spec.md`.
- * KIT-ONLY — `.chip`, `.live-dot`, `.btn-yes` / `.btn-no`, `formatTzs`, kit glyphs. No
+ * KIT-ONLY — `<Chip>`, `.live-dot`, `.btn-yes` / `.btn-no`, `formatTzs`, kit glyphs. No
  * primitive is forked here; anything genuinely new belongs in the kit.
+ * ⚠️ PV-13c (2026-09-03) — this used to say `.chip`, the raw CSS family `<Chip>` replaced in
+ * stage 9 (2026-08-21); this file's own four call sites were the leftover the migration missed.
  *
  * Four things are MANDATORY on this card (management requirement) and must survive
  * 360px: VOLUME · PLAYERS · AMOUNT · TIMER.
@@ -26,6 +28,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
+import { Chip } from "@/components/ui/chip";
 import { Dot } from "@/components/ui/dot";
 import { cn, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
@@ -757,7 +760,7 @@ export function UpDownCard(props: UpDownCardProps) {
           <h3 className="font-display text-[14.5px] font-semibold leading-[1.25] text-text"
               style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
             {assetName} {t.market.udTitle}
-            <span className="chip" style={{ marginLeft: 6, verticalAlign: "middle" }}>{durationMinutes} {t.market.udMin}</span>
+            <Chip style={{ marginLeft: 6, verticalAlign: "middle" }}>{durationMinutes} {t.market.udMin}</Chip>
           </h3>
           <div className="mt-1 flex items-center gap-1.5 font-mono text-micro font-semibold uppercase tracking-[0.10em] text-text-subtle">
             {/* Stage 9b — kit <Dot pulse>. It IS `.live-dot`: same 6px box, same
@@ -1046,7 +1049,7 @@ export function UpDownCard(props: UpDownCardProps) {
           <div className="rounded-xl p-3.5" style={{ background: "color-mix(in oklab, var(--bg-inset) 70%, transparent)", border: "1px solid var(--border)" }}>
             {/* V-1 — kit glyph, not the 🔒 emoji: platform rule is no emoji in
                 UI copy, and the OS-rendered glyph broke the card's ink. */}
-            <span className="chip chip-pending"><I.lock s={11} /> {t.market.udLockedTitle}</span>
+            <Chip variant="pending"><I.lock s={11} /> {t.market.udLockedTitle}</Chip>
             <p className="mt-2 text-body-sm leading-[1.5] text-text-muted">
               {lockClock ? t.market.udLockedWhy.replace("{time}", lockClock) : t.market.udLockedWhy.replace("{time}", "—")}
             </p>
@@ -1091,7 +1094,7 @@ export function UpDownCard(props: UpDownCardProps) {
         ) : state === "confirming" ? (
           // CALM. No red, no spinner, and above all no number we do not have.
           <div className="rounded-xl p-3.5" style={{ background: "color-mix(in oklab, var(--bg-inset) 70%, transparent)", border: "1px solid var(--border)" }}>
-            <span className="chip chip-pending">{t.market.udSettlingTitle}</span>
+            <Chip variant="pending">{t.market.udSettlingTitle}</Chip>
             <p className="mt-2 text-body-sm leading-[1.5] text-text-muted">{t.market.udConfirmingBody}</p>
           </div>
         ) : refundReason ? (
@@ -1107,7 +1110,7 @@ export function UpDownCard(props: UpDownCardProps) {
           // comes from `refundReasonFor` — one rule shared with the round page, the settlement
           // proof, the push and the inbox. NEUTRAL chrome throughout: a refund is not a failure.
           <div className="rounded-xl p-3.5" style={{ background: "color-mix(in oklab, var(--bg-inset) 70%, transparent)", border: "1px solid var(--border)" }}>
-            <span className="chip">{t.market.udRefundTitle}</span>
+            <Chip>{t.market.udRefundTitle}</Chip>
             <p className="mt-2 text-body-sm leading-[1.5] text-text-muted">
               {(t.market as Record<string, string>)[REFUND_REASON_KEY[refundReason]]}
             </p>

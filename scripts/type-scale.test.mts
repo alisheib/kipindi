@@ -212,7 +212,7 @@ const RATCHET_ARBITRARY_SIZE = 918;   // -2, 2026-08-31, DG-A-12 (Ali sign-off):
 // `{ fontSize: 22, letterSpacing: "-0.02em" }` for `text-title-sm sm:text-title-md` + `.amount`.
 // ⭐ The letter-spacing half was the real defect — an INLINE style outranks every stylesheet
 // rule, so §2 could never have seen -0.44px/glyph over ~170 money tiles.
-const RATCHET_INLINE_FONTSIZE = 36;
+const RATCHET_INLINE_FONTSIZE = 34;   // −2, 2026-09-03 (PV-13c): `admin/moderation`'s two comment chips stopped hand-typing `style={{ fontSize: 9.5, padding: "1px 7px" }}` around a `<Chip>` and took the kit's own `size="sm"` rung instead. ⭐ A row about finishing a COMPONENT migration paid a type-scale dividend, the same way DG-A-08's tap-floor row paid a tracking one — a call site that stops reaching around a primitive stops hand-typing its metrics too.
 
 /** §6 — arbitrary `tracking-[…]`. Measured 2026-08-21 across 200 files.
  *  ⚠️ RE-BASELINED 639 → 640 on 2026-08-22 — same merge, the `dsar-controls.tsx`

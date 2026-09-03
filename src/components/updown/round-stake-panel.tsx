@@ -23,6 +23,7 @@ import { UpDownStakeControls } from "./updown-stake-controls";
 import { UpDownBetBlockedModal } from "./updown-bet-blocked-modal";
 import { stakeChipLabel } from "./stake-math";
 import { I } from "@/components/ui/glyphs";
+import { Chip } from "@/components/ui/chip";
 // ⛔ ONE RULE for "what would I be paid" (D2). This panel must agree with the board card to the
 // shilling, so it calls the same function rather than multiplying by a rate of its own.
 import {
@@ -118,10 +119,10 @@ export function RoundStakePanel(props: {
     <div className={cn(pulse && "ud-place-pulse")}>
       <div className="flex items-center justify-between gap-2.5">
         <p className="m-0 font-mono text-micro font-semibold uppercase eyebrow text-text-faint">{t.market.udYourPick}</p>
-        <span className={cn("chip", isUp ? "chip-yes" : "chip-no")} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+        <Chip variant={isUp ? "yes" : "no"} style={{ gap: 5 }}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={arrow} /></svg>
           {pickWord}
-        </span>
+        </Chip>
       </div>
       <p className="mt-2 text-body-sm leading-[1.5] text-text-muted">{t.market.udPickLocked}</p>
 

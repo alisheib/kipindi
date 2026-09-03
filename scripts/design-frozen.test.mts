@@ -123,7 +123,7 @@ const FROZEN_RATCHET = new Map<string, number>([
   ["src/app/global-error.tsx", 24],                          // ships without app CSS
   ["src/components/onboarding/first-visit-primer.tsx", 19],
   ["src/components/markets/conviction-dial.tsx", 15],
-  ["src/components/ui/chip.tsx", 14],
+  ["src/components/ui/chip.tsx", 13],                       // −1, PV-13c 2026-09-03: the `signal` variant stopped hand-typing its aqua oklch and now reads the brand ramp through `color-mix()` — see the drift note in chip.tsx
   // ⚠️ 15, not the 13 the first pass of the rebuild measured. Two of them sit on lines
   // carrying a `${…}` binding — `fill="oklch(50% 0.14 152)"` beside a computed SVG path —
   // and every previous rule skipped a line the moment it saw a binding anywhere on it.
@@ -180,10 +180,9 @@ const FROZEN_RATCHET = new Map<string, number>([
   // ⛔ These are not new defects. They are old defects the guard could not see:
   // a literal sharing a line with a var, or a geometry property nothing judged.
   // Every one was measured on this tree; none was invented to pad the list.
-  ["src/app/updown/[roundId]/page.tsx", 8],                  // padding + letterSpacing on the round page
-  ["src/components/admin/admin-shell.tsx", 4],               // 4× hand-typed letterSpacing
+  ["src/app/updown/[roundId]/page.tsx", 7],                  // padding + letterSpacing on the round page. −1, PV-13c 2026-09-03: a raw `.chip` span became <Chip>
+  ["src/components/admin/admin-shell.tsx", 3],               // 3× hand-typed letterSpacing. −1 recorded 2026-09-03 (PV-13c): the entry was already STALE at HEAD — this file is untouched by that row, the ratchet had simply not been lowered when one value was fixed earlier
   ["src/components/updown/round-countdown.tsx", 3],
-  ["src/app/admin/moderation/moderation-client.tsx", 2],
   ["src/app/positions/performance/page.tsx", 2],             // raw-oklch radial gradients
   ["src/components/layout/live-ticker.tsx", 2],              // oklch fade beside var(--bg-inset)
   // ⬇️ 2 → 1 on 2026-08-25. The capsule rebuild added a hairline seam and an eye hover

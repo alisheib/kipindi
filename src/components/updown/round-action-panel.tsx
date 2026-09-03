@@ -19,6 +19,7 @@
  * verdict still wins when it already says locked. The belt under this braces is in
  * the hook itself, which refuses `place()` past the lock on every surface.
  */
+import { Chip } from "@/components/ui/chip";
 import { useServerNow } from "./round-countdown";
 import { roundPhase, type RoundPhaseState } from "@/lib/updown-card-phase";
 import { RoundStakePanel } from "./round-stake-panel";
@@ -103,7 +104,7 @@ export function RoundActionPanel(props: {
     void mySide; void myExactPayout;
     return (
       <section aria-label={t.market.udLockedTitle} style={{ ...insetStyle, padding: 16 }}>
-        <span className="chip chip-pending">{t.market.udLockedTitle}</span>
+        <Chip variant="pending">{t.market.udLockedTitle}</Chip>
         <p className="mt-2.5 m-0 text-body-sm leading-[1.55] text-text-muted">
           {t.market.udLockedWhy.replace("{time}", lockClock ?? "—")}
         </p>

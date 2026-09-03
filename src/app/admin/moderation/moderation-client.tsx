@@ -123,10 +123,14 @@ export function ModerationQueue({ items }: { items: ModerationItem[] }) {
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <span className="font-display text-[13px] font-semibold text-text">{c.authorName}</span>
-              <Chip className="chip-objection" style={{ fontSize: 9.5, padding: "1px 7px" }}>
+              {/* PV-13c (2026-09-03) — was `<Chip className="chip-objection" style={{...}}>`,
+                  a component call hacked with a raw legacy CSS class name for its tone and a
+                  custom inline size instead of the kit's own `variant`/`size` props. The
+                  variant already exists; `sm` is the kit's own small-status rung. */}
+              <Chip variant="objection" size="sm">
                 <I.flag s={10} /> {c.reports} report{c.reports === 1 ? "" : "s"}
               </Chip>
-              {c.hidden && <Chip className="chip-pending" style={{ fontSize: 9.5, padding: "1px 7px" }}>auto-hidden</Chip>}
+              {c.hidden && <Chip variant="pending" size="sm">auto-hidden</Chip>}
               <Link
                 href={`/markets/${c.marketId}` as never}
                 className="inline-flex items-center gap-1 font-mono text-[10.5px] text-text-subtle hover:text-text-muted"

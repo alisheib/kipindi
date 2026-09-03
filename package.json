@@ -232,6 +232,7 @@
     "red:cn-collision": "node scripts/red-cn-collision.mjs",
     "red:tap-floor": "node scripts/red-tap-floor.mjs",
     "red:tap-rung": "node scripts/red-tap-rung.mjs",
+    "red:chip-one-home": "node scripts/red-chip-one-home.mjs",
     "red:search-adoption": "node scripts/red-search-adoption.mjs",
     "test:card-share": "tsx scripts/card-share.test.mts",
     "test:chat-focus-ring": "tsx scripts/chat-focus-ring.test.mts",

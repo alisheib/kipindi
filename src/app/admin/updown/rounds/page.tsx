@@ -289,10 +289,13 @@ export default async function AdminUpDownRoundsPage({
                               against them (E-65). Now this asks it too, via
                               `updownVoidReasonLabel`, and gets the officer's short form of
                               the same answer the player is given in full. */}
-                          <span className={"chip " + (r.outcome === "UP" ? "chip-yes" : r.outcome === "DOWN" ? "chip-no" : r.outcome === "VOID" ? "chip-pending" : "chip-pending")}>
+                          {/* PV-13c (2026-09-03) — was a raw `<span className="chip chip-*">`,
+                              the legacy CSS family <Chip> was built to replace (chip.tsx's own
+                              header). Same tone mapping, through the kit. */}
+                          <Chip variant={r.outcome === "UP" ? "yes" : r.outcome === "DOWN" ? "no" : "pending"}>
                             {r.outcome ?? (r.resolvedAt ? "—" : UPDOWN.outcomePending.en)}
                             {why ? ` · ${why}` : ""}
-                          </span>
+                          </Chip>
                         </td>
                         {/* ⭐ DG-A-12 · §M4 + §T1 — THE WHOLE ROW MOVES, NOT JUST THE AMOUNT.
                             `volume` is an amount, so §M4 gives it `.amount` (mono + tabular +
