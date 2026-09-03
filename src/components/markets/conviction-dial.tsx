@@ -1678,7 +1678,12 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
               : (
                 <>
                   <span>{t.common.place} {sideLabel}</span>
-                  <span className="font-mono opacity-90">TZS {formatNumber(stake)}</span>
+                  {/* PV-10 (2026-09-03) — `opacity-90` on the STAKE AMOUNT of the panel's
+                      own commit button, found by `test:contrast` §P-u2's sweep (not filed
+                      by hand): composites to 4.14:1 on `.btn-yes`/`.btn-no`, under AA 4.5,
+                      on the single button that places the bet. Dropped like every other
+                      site in this row — see market-card.tsx's PV-10 note. */}
+                  <span className="font-mono">TZS {formatNumber(stake)}</span>
                 </>
               )}
         </button>

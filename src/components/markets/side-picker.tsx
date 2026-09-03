@@ -141,8 +141,10 @@ export function SidePicker({
               board cards already do. It read the raw `YES` until 2026-09-03 (PV-04), so a
               Chinese player met "YES @ 51%" on the money control while the `.mcardp` cards
               three inches below the same page read "是 @ 56%" — one idea, two vocabularies,
-              on one screen. The aria-label was always translated; only the visible word lied. */}
-          {sideWord(t, "YES", "MARKET")} {hasPool && <span className="font-mono text-[12.5px] opacity-85">@ {yesPct}%</span>}
+              on one screen. The aria-label was always translated; only the visible word lied.
+              PV-10 (same day) — the `@pct%` suffix WAS `opacity-85`, ~3.5:1 on production,
+              under AA 4.5. Dropped, not re-hued; see market-card.tsx's PV-10 note. */}
+          {sideWord(t, "YES", "MARKET")} {hasPool && <span className="font-mono text-[12.5px]">@ {yesPct}%</span>}
         </button>
         <button
           type="button"
@@ -150,7 +152,7 @@ export function SidePicker({
           className="btn btn-no btn-lg"
           aria-label={hasPool ? t.market.backNoAria.replace("{pct}", String(100 - yesPct)) : t.market.backNoAriaNoPrice}
         >
-          {sideWord(t, "NO", "MARKET")} {hasPool && <span className="font-mono text-[12.5px] opacity-85">@ {100 - yesPct}%</span>}
+          {sideWord(t, "NO", "MARKET")} {hasPool && <span className="font-mono text-[12.5px]">@ {100 - yesPct}%</span>}
         </button>
       </div>
       <p className="mt-3 text-center text-body-sm text-text-subtle leading-snug">

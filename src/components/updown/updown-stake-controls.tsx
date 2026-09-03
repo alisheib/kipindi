@@ -253,7 +253,9 @@ export function UpDownStakeControls({
           aria-label={`${t.market.udUp} — ${assetName}${bet.stakeReady ? ` · ${formatTzs(bet.stake)}` : ""}`}
         >
           {bet.pendingSide === "UP" ? <Spinner size={12} /> : <I.trendingUp s={compact ? 14 : 15} className={GLYPH_NO_SHRINK} />} {t.market.udUp}
-          {multUp != null && <span className="font-mono text-[12.5px] opacity-85">× {formatMultiplier(multUp)}</span>}
+          {/* PV-10 (2026-09-03) — same `opacity-85` defect as market-card.tsx's `@pct%`
+              suffix (~3.5:1 on a money button, under AA 4.5); dropped, not re-hued. */}
+          {multUp != null && <span className="font-mono text-[12.5px]">× {formatMultiplier(multUp)}</span>}
         </button>
         <button
           type="button" onClick={guard(() => bet.place("DOWN"))} disabled={!bet.stakeReady || bet.insufficient || bet.locallyLocked}
@@ -262,7 +264,7 @@ export function UpDownStakeControls({
           aria-label={`${t.market.udDown} — ${assetName}${bet.stakeReady ? ` · ${formatTzs(bet.stake)}` : ""}`}
         >
           {bet.pendingSide === "DOWN" ? <Spinner size={12} /> : <I.trendingDown s={compact ? 14 : 15} className={GLYPH_NO_SHRINK} />} {t.market.udDown}
-          {multDown != null && <span className="font-mono text-[12.5px] opacity-85">× {formatMultiplier(multDown)}</span>}
+          {multDown != null && <span className="font-mono text-[12.5px]">× {formatMultiplier(multDown)}</span>}
         </button>
       </div>
 

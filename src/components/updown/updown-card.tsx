@@ -1004,15 +1004,19 @@ export function UpDownCard(props: UpDownCardProps) {
                   went into the authed copy, which was never the broken one. ⭐ One padding
                   definition, imported, so on this axis at least the two cannot drift again. */}
               <div className="grid grid-cols-2 gap-2">
+                {/* PV-10 (2026-09-03) — this `×N` suffix carried the SAME `opacity-85` as the
+                    market-card `@pct%` suffix (market-card.tsx), found while re-deriving that
+                    row: filed as 4 sites, the shape repeats here and in updown-stake-controls.tsx
+                    (8 real sites, not 4). Dropped for the same reason — see market-card.tsx. */}
                 <button type="button" onClick={go("UP")} className="btn btn-yes btn-lg"
                         aria-label={`${t.market.udUp} — ${assetName}`}>
                   <I.trendingUp s={14} className={GLYPH_NO_SHRINK} /> {t.market.udUp}
-                  {outMultUp != null && <span className="font-mono text-[12.5px] opacity-85">× {formatMultiplier(outMultUp)}</span>}
+                  {outMultUp != null && <span className="font-mono text-[12.5px]">× {formatMultiplier(outMultUp)}</span>}
                 </button>
                 <button type="button" onClick={go("DOWN")} className="btn btn-no btn-lg"
                         aria-label={`${t.market.udDown} — ${assetName}`}>
                   <I.trendingDown s={14} className={GLYPH_NO_SHRINK} /> {t.market.udDown}
-                  {outMultDown != null && <span className="font-mono text-[12.5px] opacity-85">× {formatMultiplier(outMultDown)}</span>}
+                  {outMultDown != null && <span className="font-mono text-[12.5px]">× {formatMultiplier(outMultDown)}</span>}
                 </button>
               </div>
               {/* ⭐ D2 · the empty-side state — the same sentence the signed-in control shows,

@@ -917,15 +917,16 @@ const ALPHA_INK_ALLOWED = new Map([
   // satisfied by the label, not by their contrast.
   ["src/app/positions/performance/page.tsx", "text-text-subtle/30"],
 ]);
+/** Shared by §P-u and §P-u2: every `.tsx`/`.ts` file under `src/`. */
+const walkTsx = (d: string): string[] =>
+  readdirSync(d).flatMap((e) => {
+    const p = join(d, e);
+    return statSync(p).isDirectory() ? walkTsx(p) : /\.tsx?$/.test(e) ? [p] : [];
+  });
 {
   const hits: string[] = [];
-  const walk = (d: string): string[] =>
-    readdirSync(d).flatMap((e) => {
-      const p = join(d, e);
-      return statSync(p).isDirectory() ? walk(p) : /\.tsx?$/.test(e) ? [p] : [];
-    });
   const DISABLED = /cursor-not-allowed|pointer-events-none/;
-  for (const f of walk(join(ROOT, "src"))) {
+  for (const f of walkTsx(join(ROOT, "src"))) {
     const relf = relative(ROOT, f).split(/[\\/]/).join("/");
     const body = readFileSync(f, "utf8");
     // Read the whole quoted class list, so the disabled markers beside the ink are visible.
@@ -941,6 +942,146 @@ const ALPHA_INK_ALLOWED = new Map([
   const ok = hits.length === 0;
   console.log(`${ok ? "PASS" : "FAIL"}  §P-u no call-site alpha on subtle ink (renders under §A1)${ok ? "" : "\n   " + hits.join("\n   ")}`);
   if (!ok) process.exitCode = 1;
+}
+
+/**
+ * ── §P-u2 — A CALL-SITE `opacity-NN` ON A LABEL INSIDE A SOLID MONEY BUTTON,
+ * SCORED AS RENDERED (PV-10, 2026-09-03) ──────────────────────────────────
+ *
+ * The `@pct%` odds suffix on the board card's YES/NO buttons carried
+ * `opacity-85`, which composites the button's OWN label ink — already modelled
+ * above as `T.pearl50` on `T.btnYesBg`/`btnNoBg`/`btnDangerBg`, and
+ * `T.btnGoldFg` on `T.btnGoldBg` — down to **~3.5:1** on production (region
+ * pixel read; the in-page composite cannot parse this ramp's `oklch()` at all,
+ * so nothing already in CHECKS could have scored it). Under the AA 4.5 floor,
+ * on the product's most-tapped money control.
+ *
+ * ⛔ FILED AS 4 SITES, FOUND AS 8 — the exact PV-04 shape one row later. The
+ * same `font-mono opacity-85` suffix repeats on the Up & Down commit buttons
+ * (`updown-card.tsx`, `updown-stake-controls.tsx`), invisible to every prior
+ * check because none of them look INSIDE a `<button>`'s own children for a
+ * call-site alpha — §P-u above only ever looked at ink CLASSES
+ * (`text-text-subtle/NN`), never at the `opacity-NN` utility, and never at
+ * what a button's own fill does to whatever sits inside it.
+ *
+ * ⛔ SCOPE, STATED RATHER THAN ASSUMED. `opacity-NN` appears ~120 times across
+ * `src/` (50/80/60/40/70/85/90/100/30/75 — a real, varied vocabulary for
+ * fades, disabled states and hover dims), and this rule does NOT judge all of
+ * them — that would require resolving the INHERITED ink of an arbitrary DOM
+ * subtree, which nothing in this file (a stylesheet-rule reader) can do. It
+ * judges exactly the shape PV-10 found and no more:
+ *   · the SOLID flat-fill families only — btn-yes/btn-no/btn-danger/btn-gold —
+ *     because those are the only four this file already resolves to ONE
+ *     literal (ink, fill) pair (T.pearl50/btnGoldFg on T.btnYesBg &c, above).
+ *     btn-primary/btn-claret are GRADIENTS (worst-stop, not one fill) and at
+ *     HEAD every `opacity-NN` found inside either is a `disabled:opacity-NN`
+ *     variant — WCAG 1.4.3 exempts a disabled control's contrast outright, so
+ *     these are out of THIS rule's population by a rendered fact, not a gap:
+ *     `disabled:opacity-40` on `.btn-claret`/`.btn-primary` (six call sites,
+ *     2026-09-03) never fires unless the control is disabled.
+ *   · `.btn-ghost` is CHECKED, not exempted by omission: the two resolved-state
+ *     pills that carry `opacity-85` on a whole ghost pill (`market-card.tsx`,
+ *     `updown-card.tsx`) put `--text` (not the pearl/fill pair) on the card's
+ *     own surface — computed here at 0.85 alpha: ~12:1, nowhere near the
+ *     floor, so they are named and left alone rather than silently unscanned.
+ *
+ * ⛔ THE READER IS A SMALL LEXER, NOT `[^>]*` — for the same reason
+ * `tap-target.test.mts` §0 built one: an inline handler
+ * (`onClick={() => bet.place("UP")}`) contains a literal `>` before this
+ * button's own `className`, so a regex that stops at the first `>` never
+ * reaches it at all — proven on this file's own two Up & Down call sites,
+ * which is exactly the population §5.3-style coverage floor below exists to
+ * catch if it ever regresses. (A cited, minimal copy — `tap-target.test.mts`
+ * cannot be imported here without running its whole top-level suite; a shared
+ * `scripts/jsx-lexer.mjs` is the honest follow-up, filed rather than forced
+ * into this row.)
+ */
+/**
+ * Blank comments before the lexer ever sees them — copied verbatim from
+ * `tap-target.test.mts` (its §0.3 fixture exists for exactly this shape: a
+ * block comment's own prose uses backticks for inline code, e.g.
+ * `` `theme.extend.spacing` is overridden ``, which an un-decommented lexer
+ * reads as STRING delimiters and runs off the end of the file chasing them.
+ * Measured here, not assumed: 18 of ~150 `<button>` open tags in `src/`
+ * carry exactly this shape and ran the first version of this scanner away
+ * before this step was added.
+ */
+const decomment = (s: string) =>
+  s.replace(/(^|[\s{(,;=])\/\*[\s\S]*?\*\//g, (m, p1: string) => p1 + m.slice(p1.length).replace(/[^\n]/g, " "))
+   .replace(/(^|[^:"'`\w/])\/\/[^\n]*/g, "$1");
+function endOfButtonOpenTag(s: string, from: number): number {
+  let i = from + 1;
+  while (i < s.length && !/[\s/>]/.test(s[i])) i++;
+  const stack: string[] = [];
+  for (; i < s.length; i++) {
+    const c = s[i];
+    const top = stack[stack.length - 1];
+    if (top === '"' || top === "'") {
+      if (c === "\\") { i++; continue; }
+      if (c === top) stack.pop();
+      continue;
+    }
+    if (top === "`") {
+      if (c === "\\") { i++; continue; }
+      if (c === "`") { stack.pop(); continue; }
+      if (c === "$" && s[i + 1] === "{") { stack.push("{"); i++; }
+      continue;
+    }
+    if (c === '"' || c === "'" || c === "`") { stack.push(c); continue; }
+    if (c === "{") { stack.push("{"); continue; }
+    if (c === "}") { if (top === "{") stack.pop(); continue; }
+    if (c === ">" && stack.length === 0) return i;
+  }
+  return -1;
+}
+{
+  type Family = "yes" | "no" | "danger" | "gold";
+  const FAMILY: Record<Family, { fg: Oklch; bg: Oklch }> = {
+    yes: { fg: T.pearl50, bg: T.btnYesBg },
+    no: { fg: T.pearl50, bg: T.btnNoBg },
+    danger: { fg: T.pearl50, bg: T.danger500 },
+    gold: { fg: T.btnGoldFg, bg: T.btnGoldBg },
+  };
+  const hits: string[] = [];
+  let calls = 0, buttons = 0, runaways = 0;
+  for (const f of walkTsx(join(ROOT, "src"))) {
+    const relf = relative(ROOT, f).split(/[\\/]/).join("/");
+    const body = decomment(readFileSync(f, "utf8"));
+    for (const m of body.matchAll(/<button(?=[\s/>])/g)) {
+      const at = m.index ?? 0;
+      const end = endOfButtonOpenTag(body, at);
+      if (end < 0) { runaways++; continue; }
+      const open = body.slice(at, end);
+      const fam = (/\bbtn-(yes|no|danger|gold)\b/.exec(open)?.[1] as Family | undefined);
+      if (!fam) continue;
+      buttons++;
+      const closeIdx = body.indexOf("</button>", end);
+      if (closeIdx < 0) continue;                    // self-closing or malformed — nothing to scan inside
+      const kids = body.slice(end + 1, closeIdx);
+      for (const om of kids.matchAll(/\bopacity-(\d+)\b/g)) {
+        // A `disabled:opacity-NN` (or any other conditional Tailwind variant) is exempt by
+        // WCAG 1.4.3 — check the token immediately before the match for a variant prefix.
+        const before = kids.slice(Math.max(0, om.index! - 12), om.index);
+        if (/disabled:$/.test(before)) continue;
+        calls++;
+        const alpha = Number(om[1]) / 100;
+        const r = contrastAlpha(FAMILY[fam].fg, FAMILY[fam].bg, alpha);
+        if (r < 4.5) hits.push(`${relf}  <button btn-${fam}> child opacity-${om[1]} composites to ${r.toFixed(2)}:1 (need 4.5)`);
+      }
+    }
+  }
+  const ok = hits.length === 0;
+  console.log(`${ok ? "PASS" : "FAIL"}  §P-u2 no call-site opacity on a label inside a solid money button scores under AA, as rendered${ok ? "" : "\n   " + hits.join("\n   ")}`);
+  if (!ok) process.exitCode = 1;
+  // ⛔ A COVERAGE FLOOR, same reasoning as §5.3 in tap-target.test.mts: 0 findings must mean
+  // 0 defects, not 0 reach. `buttons` re-derives every solid-family <button> in src/ so a
+  // lexer regression (or a future refactor away from raw <button>) fails LOUDLY here rather
+  // than printing a quiet, meaningless PASS.
+  console.log(`   (checked ${calls} call-site opacity utilit${calls === 1 ? "y" : "ies"} across ${buttons} btn-yes/no/danger/gold buttons, ${runaways} unreadable open tag(s))`);
+  if (buttons < 20 || runaways > 0) {
+    console.log(`FAIL  §P-u2 CONTROL — the population collapsed (${buttons} buttons, ${runaways} runaway) — this is 0 reach, not 0 defects`);
+    process.exitCode = 1;
+  }
 }
 
 let fails = 0;

@@ -62,7 +62,7 @@ plants the defect on a COPY of the tree and proves the gate fails **on its own a
 
 | Guard | What it holds | Control |
 |---|---|---|
-| `test:tap-target` | §A2's tap floor. §3 the player surface, **§5 the ADMIN console** (5.1 no sub-floor declaration except by NAMING the 32px rung · 5.2 a padded control takes a recipe or states the floor · 5.3 a coverage floor) | `red:tap-floor` |
+| `test:tap-target` | §A2's tap floor. §3 the player surface, **§5 the ADMIN console** (5.1 no sub-floor declaration except by NAMING the 32px rung · 5.2 a padded control takes a recipe or states the floor · 5.3 a coverage floor), **§6 (2026-09-03, PV-13) two NAMED controls whose height is declared OUTSIDE the interactive tag's own JSX attributes** — a kit-component wrapper (`<CashEye className="h-[…]">`) and a CSS rule (`.mcardp-info`), both invisible to §3's tag scan by construction. Deliberately NOT a sweep of every `h-[Npx]` in `src/` (377 at HEAD, mostly decorative) — a NAMED, grep-found population, extended when a real control is found outside it. | `red:tap-floor`, `red:tap-rung` |
 | `test:type-scale` | the closed type scale, the 12.5px reading floor, money type (§M4), and the two-ladder freeze (§7) | ratchets, §0 fixtures |
 | `test:bridge` | a class must RESOLVE; `cn()` knows every rung; **§9 every app-state token the stylesheet defines is spellable as a utility** | §9.3 + manual RED |
 | `test:cn-collision` | `cn()` cannot delete a class it does not recognise | `red:cn-collision` |
@@ -70,7 +70,7 @@ plants the defect on a COPY of the tree and proves the gate fails **on its own a
 | `test:unsaved-changes` | **every admin component that renders a control someone can TYPE INTO** either guards its three exits or is NAMED exempt with a reason. ⭐ Rebuilt 2026-09-02: it used to select files that already computed a `dirty`, so a form was invisible to it **precisely because it was unprotected** — a true measurement of the wrong set. Lands at **zero**, not a ratchet of debt. | `red:unsaved-changes` (6 cases) |
 | `test:section-rail` | every rail of destinations names the one in force | `red:section-rail` |
 | `test:tab-anchors` | **§K 7d ③ ACROSS PAGES** — an `#anchor` link into an admin route must land on the tab that renders that id. ⚠️ It cannot hold an UNANCHORED link's INTENT; that is the human audit step in §3b, and `/admin/system` was broken for a whole wave by exactly that. | `red:tab-anchors` (3 cases) |
-| `test:contrast` | §A1, scored on the RENDERED ink (`token × alpha × opacity`), composited in gamma sRGB | `red:contrast`, `red:contrast-rendered` |
+| `test:contrast` | §A1, scored on the RENDERED ink (`token × alpha × opacity`), composited in gamma sRGB. **§P-u2 (2026-09-03, PV-10)** a call-site `opacity-NN` on a label inside a SOLID money button (`btn-yes`/`btn-no`/`btn-danger`/`btn-gold`), composited against that family's own known (ink, fill) pair — closes the gap that let a `@pct%`/`×N` suffix ship at `opacity-85` (~3.5:1) with `§P-u` (which only ever matched `text-text-subtle/NN`) green. Scoped to the four SOLID families on purpose; `btn-primary`/`btn-claret` are gradients and out of scope until an unconditional (non-`disabled:`) opacity appears inside one. | `red:contrast`, `red:contrast-rendered`, `red:contrast-callsite` |
 | `test:design-frozen` | no hand-typed edge/shadow/radius beside a token | ratchet |
 | `test:tokens` · `test:design-one-door` | one definition site per token; one door into the system | `red:tokens` |
 | `test:ui-consistency` | per-rule component conventions | baseline |
@@ -256,6 +256,16 @@ Stated so nobody reads a green suite as more than it is.
   `/profile/responsible-gambling` sit under the fixed bottom nav and a fixed overlay; the
   toggles measure 41px when scrolled into view and 1px where they land. That is a shell
   bottom-padding question, not a control defect.
+- **`test:tap-target` §6 and `test:contrast` §P-u2 (2026-09-03, PV-13/PV-10) are NAMED-population
+  checks, not general ones, and say so in their own headers.** §6 knows exactly two controls
+  whose height is declared outside a JSX tag's own attributes (`<CashEye>`, `.mcardp-info`); a
+  THIRD kit wrapper that hides a hand-typed height the same way is invisible until it is added
+  to `NAMED_CONTROLS` by name. §P-u2 knows the (ink, fill) pair for exactly four SOLID button
+  families; a new money-control class, or an opacity dimming a label through more than one level
+  of inherited colour, needs its own entry before this gate can see it. Both are the correct
+  trade against the alternative (a population that cannot land at zero — see PV-13's own
+  377-literal count) — but a gate that is precise is also a gate with an edge, and the edge is
+  named here rather than left to be discovered as a false "0 findings".
 
 ---
 

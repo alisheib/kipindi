@@ -150,7 +150,9 @@ home already exists, so you reach for it rather than open a new one.
 | **the UP share of an Up & Down pool** | `pricedYesPct(yesPool, noPool)` in `src/lib/markets/discovery.ts` | row 2 | ⛔ **Never `impliedYesPct`** on a player surface — it returns a hardcoded **50** on an empty pool (`market-service.ts:315`) and that is PV-06. The honest rule returns `null`; the surface renders an empty state. |
 | **a pool-split bar** | `<TippingBar empty={…}>` in `src/components/brand.tsx` | row 2 | ⛔ Never a hand-rolled two-span split. Its own doc says it: *"A STATE OF THIS BAR, not a second component — DESIGN_AUTHORITY B9."* Three files drew this bar; two have been deleted into the primitive. **Enforced by `test:ui-consistency` → `hand-rolled-split-bar` (`red:split-bar`).** |
 | **`qa:cold-start`** — *the* live cold-start invariant drive | `scripts/live/pv06-cold-start-drive.mjs` | row 2 | Asserts **`a split with percentages ⟺ volumeTzs > 0`** per card, against the card's own printed volume, and refuses to claim green unless it saw BOTH an empty and a funded round. ⛔ Any future "does this surface fabricate a price on an empty pool" question extends this drive's card loop — never a second script. |
-| **a LOCAL server to look at a change on** | `npx next dev -p 3100` + `POST /api/dev-test/updown-seed` → `/updown-advance` → `/stress-bulk-bet` | row 2 | ⛔ `next start` REFUSES to boot without `DATABASE_URL` (a deliberate production guard in `store.ts` — do not defeat it); `next dev` uses the in-memory store. This is how the visual gate is met while the fix is on a branch. `BASE=http://localhost:3100` also runs `test:responsive` and `test:motion`, which otherwise fail locally for want of a server. |
+| **a LOCAL server to look at a change on** | `npx next dev -p 3100` + `POST /api/dev-test/updown-seed` → `/updown-advance` → `/stress-bulk-bet` | row 2 | ⛔ `next start` REFUSES to boot without `DATABASE_URL` (a deliberate production guard in `store.ts` — do not defeat it); `next dev` uses the in-memory store. This is how the visual gate is met while the fix is on a branch. `BASE=http://localhost:3100` also runs `test:responsive` and `test:motion`, which otherwise fail locally for want of a server. ⭐ A market needs `/api/dev-test/seed-real-markets` + `/api/dev-test/stress-bulk-bet {marketId,n,yesRatio,stake}` to carry a real price at all — `seed-real-markets` alone makes 0-volume markets, which correctly show NO `@pct%` (PV-06's cold-start gate), so a contrast check on the suffix needs a FUNDED market. Sign in locally with `GET /auth/demo` (404s in production; a fixed "Demo Player" with a TZS 100,000 wallet) rather than the live-drive `loginOnce` fleet personas, which need production. |
+| **`test:tap-target` §6** — *the* rung-membership check for a control whose height is set OUTSIDE the interactive tag's own JSX attributes | `scripts/tap-target.test.mts` §6 | row 3/4 | §3's tag scan reads a height declared ON the open tag it is looking at; it is blind to a kit-component wrapper (`<CashEye className="h-[42px]">`) and to a value declared in a CSS rule (`.mcardp-info`). §6 is a NAMED, small population (found by grep, stated in the guard's own header) — not a blanket sweep of the 377 hand-typed `h-[Npx]` literals in `src/`, which cannot land at zero (most are decorative). ⛔ A future "a control's height lives somewhere §3 cannot see" finding extends §6's `NAMED_CONTROLS` array; it does not get a new file. RED-proven by `red:tap-rung` (`anchors/tap-rung.anchors.mjs`, 2/2). |
+| **`test:contrast` §P-u2** — *the* check for a call-site `opacity-NN` dimming a label inside a SOLID money button (`btn-yes`/`btn-no`/`btn-danger`/`btn-gold`) | `scripts/contrast-audit.mts` §P-u2 | row 6 | §P-u only ever matched the Tailwind slash-alpha idiom (`text-text-subtle/NN`) on ink classes; nothing looked INSIDE a `<button>`'s own children for an `opacity-NN` utility composited against the button's own known (ink, fill) pair. ⛔ Scoped to the four SOLID families this file already resolves to one literal pair — `btn-primary`/`btn-claret` are gradients and are out of scope until a genuinely unconditional (non-`disabled:`) opacity appears inside one. Needed its own small JSX-tag lexer (`endOfButtonOpenTag`, cited from `tap-target.test.mts` §0 — the same `=>`-inside-a-handler trap) plus a `decomment` pass. RED-proven by `red:contrast-callsite` (`anchors/contrast-callsite.anchors.mjs`, 5/5). |
 
 ⭐ **Why this table exists** (Ali, 2026-09-03): *"update the location of where files should be
 regarding any design or instruction, to keep a clean final ruling."* A home that is minted and not
@@ -219,10 +221,10 @@ States: `☐ not started` · `◐ in progress` · `⧗ blocked (why)` · `✎ aw
 |---|---|---|---|---|---|---|---|---|---|
 | 1 | PV-04 · side words via `sideWord` at **all 8** commit surfaces | 3,6 | Code | ☑ | `side-picker.tsx:140,148` · `conviction-dial.tsx:1099,1124,1398,1419,1643,1660` | `test:labels` **§3b+§3c** · `qa:side-words` | `c50d2e82` | `.qa-shots/pv04/` | ✅ **VERIFIED ON PRODUCTION 2026-09-03** — `qa:side-words` **28/28** (was 20 RED). Merged in `79c3b65b`. The 7.5px CJK knob flag is CLOSED: 是 renders cleanly at 4× |
 | 2 | PV-06 · Up & Down cold-start — **and the second + third split bar deleted** | 1,3,11 | Code | ☑ | `updown-board.ts` → `pricedYesPct`; `updown-card.tsx` + `updown/[roundId]/page.tsx` → `<TippingBar>` | `test:ui-consistency` **hand-rolled-split-bar** · `qa:cold-start` | `79c3b65b` | `.qa-shots/pv06/` | ✅ **VERIFIED ON PRODUCTION 2026-09-03** — `qa:cold-start` **30/30** (was 12 RED); both live cards show the dashed rail at VOL 0. ⚠️ the FUNDED arm was not exercised on prod (no funded round existed) — proven locally instead |
-| 3 | PV-13a · eye toggle off `h-[42px]` | 13 | Code | ☐ | `top-app-bar.tsx` | `test:tap-target` + new rung check | — | — | §K1 |
-| 4 | PV-13b · `mcardp-info` → 44 | 13 | Code | ☐ | `globals.css .mcardp-info` | `test:design-frozen` | — | — | — |
-| 5 | PV-13c · one chip height per size | 13 | Code+Design | ☐ | `chip.tsx` + `globals.css` | `test:chip-contract` | — | — | which sizes = Design |
-| 6 | PV-10 · `@pct%` suffix contrast | 6 | Code | ☐ | `market-card.tsx:429-432` · `side-picker.tsx:140,148` | `test:contrast` | — | — | confirm guard population first |
+| 3 | PV-13a · eye toggle off `h-[42px]` | 13 | Code | ◐ | `wallet-balance-pill.tsx` (not `top-app-bar.tsx` — filed one file off) | `test:tap-target` **§6** (new) · `red:tap-rung` | `pv10/rows-3-4-6` (unmerged) | `.qa-shots/pv13-local/` (gitignored, local-only — production evidence owed on merge) | code-complete, guarded, RED-proven, visually verified locally (390/1280, EN/SW/ZH). ⛔ **NOT proven on production** — pushed to a branch only |
+| 4 | PV-13b · `mcardp-info` → 44 | 13 | Code | ◐ | `globals.css .mcardp-info` | `test:tap-target` **§6** (folded in with row 3, not `test:design-frozen` — see session-6 note) | `pv10/rows-3-4-6` (unmerged) | `.qa-shots/pv13-local/` | same branch as row 3; `MARKET_CARD_H` re-derived 349→347 as a consequence, `qa:card-geometry` owed on merge. ⛔ **NOT proven on production** |
+| 5 | PV-13c · one chip height per size | 13 | Code+Design | ☐ | `chip.tsx` + `globals.css` | `test:chip-contract` | — | — | which sizes = Design — untouched this session |
+| 6 | PV-10 · `@pct%`/`×N` suffix contrast | 6 | Code | ◐ | `market-card.tsx` · `side-picker.tsx` · `updown-card.tsx` · `updown-stake-controls.tsx` · `conviction-dial.tsx` (filed as 4 sites, was **9**) | `test:contrast` **§P-u2** (new) · `red:contrast-callsite` | `pv10/rows-3-4-6` (unmerged) | `.qa-shots/pv10-local/` (gitignored, local-only) | guard population gap WAS the finding, confirmed; guard's own sweep found a 9th site (the bet-panel commit button). ⛔ **NOT proven on production** |
 | 7 | PV-14 · timing off `duration-150`/bare curves | 14 | Code | ☐ | Input atom + kit | new `test:motion-timing` | — | — | build the guard first |
 | 8 | PV-03 · `<DetailLayout>` template | 3,5,10 | Code+Design | ☐ | new `detail-layout.tsx` | `responsive-audit.mjs` | — | — | deposit + positions-empty |
 | 9 | PV-01 · `<DecorMark>` clear-space (or keep) | 4,5 | 👤 Ali → Design | ☐ | new `decor-mark.tsx` | `--m-pivot`/clear-space | — | — | keep-as-backdrop is live |
@@ -270,6 +272,98 @@ Seed state: every row `☐`. ⛔ Do not tick a row by intention — only by evid
   proof must live in `shots/<PV-NN>/` so `test:docs` can enforce it (§0b).
 
 ### j-resume — RESUME AT (newest at the top)
+
+**RESUME AT (session 6) — 2026-09-03. ROWS 3, 4, 6 ARE `◐` — code-complete, guarded, RED-proven,
+visually verified LOCALLY (EN/SW/ZH, 390/1280) — but pushed to branch `pv10/rows-3-4-6`
+(unmerged) and therefore ⛔ NOT yet proven on production. Rows 5, 9, 10, 12 still need a
+ruling/commission and were not touched. Row 7 and rows 8/11 are next (see §g2).**
+
+**Re-derived all three on production FIRST**, per the bar: `.mcardp-info` measured 46px, the eye
+toggle 42px inside a 44px capsule, and the `@pct%` suffix region-read at 3.87:1 — all three
+confirmed, none overturned. Screenshots in the session scratchpad (not committed).
+
+⭐ **Both PV-13 controls were invisible to `test:tap-target` for DIFFERENT reasons, and PV-10 was
+filed as 4 sites and found as 9 — the same "ask where else this shape lives" payoff PV-04/PV-06
+already taught this programme once each.** Full write-ups are in the record
+(`PLAYER-VISUAL-2026-09.md` → PV-13a/PV-13b and PV-10, both "RE-DERIVED AND FIXED"). The two new
+guard sections are `test:tap-target` §6 and `test:contrast` §P-u2 — see the filing table above
+for exactly why each is scoped the way it is, and why the general "every `h-[Npx]`"/"every
+`opacity-NN`" sweep is refused with arithmetic in both cases.
+
+⚠️ **Three pre-existing, UNRELATED guards broke on these fixes, honestly, and were corrected —
+not silenced.** This is worth carrying forward as its own lesson: a legitimate accessibility/
+one-home fix can break a guard that was pinned to the OLD implementation rather than to the rule
+it exists to enforce, and the fix is to correct the guard's assertion, never to leave it stale
+or delete it.
+- `test:wallet-reach` §1 asserted the literal string `border: flashing` and `height: 44` — PV-13a
+  moved the capsule's border to an `inset` box-shadow (a real `border` was eating 2px off the
+  CONTENT height a child's `h-full` resolves against, which is why the eye first measured 42px
+  even after the naive fix) and the bare `44` to `var(--h-control-md)`. Rewritten to check the
+  RULE (one bordered shape, the 44px rung by name) rather than the old spelling.
+- `red:wallet-reach`'s `capsule-loses-its-border` anchor mutated the now-gone `border:` property;
+  re-anchored to `boxShadow:`, same mutation shape.
+- `test:updown-pricing` §7.2 ("no size escalation") fingerprinted "muted" as the literal string
+  `opacity-85` beside `text-[12.5px]` — a vocabulary match, not a measurement. Dropping
+  `opacity-85` for a real AA fix broke the CHECK without breaking the RULE (still `text-
+  [12.5px]`, still no bold, still no gold). Rewritten to assert the span's own full class list.
+  `red:updown-pricing`'s "multiplier escapes into gold" mutation was ALSO separately found to
+  have been silently `ANCHOR NOT FOUND` (proving nothing) since before this row touched the file
+  — a stale " est." suffix — and was re-anchored to the literal that ships (10/11 → 11/11).
+
+⛔ **`.mcardp-info`'s shrink moved card geometry, and it was traced rather than left stale.**
+`.mcardp-info` is the tallest child of a LIVE card's meta row, so 46→44 shrank `MARKET_CARD_H`
+(the skeleton reserve both `/markets` skeletons import) from **349 → 347** — measured before/
+after on the same board. The `.mcardp-details::after` overlay's clearance to it (10px above/
+14px below) is UNCHANGED (the row above absorbed the shrink, not the gap) — confirmed by
+`tap-hit-test.mjs` against a local server, not assumed. **`qa:card-geometry` before/after is
+owed on production once this merges**, per the existing convention every prior card-geometry
+change in this file has followed.
+
+**Two new RED-provable homes minted, both extensions of an existing guard, neither a new file
+class:** `test:tap-target` §6 (`red:tap-rung`) and `test:contrast` §P-u2 (`red:contrast-callsite`)
+— both declare their mutations in `scripts/anchors/*.anchors.mjs` (the newer declarative pattern
+`red-tap-floor.mjs`/`red-wallet-reach.mjs` already use) rather than hand-rolling them inline, so
+`test:red-anchors` §4's ceiling did not need to rise — it stayed exactly at 67.
+
+**Validated:** `tsc` ✓ · `build` ✓ · `test:tap-target` **29/0** · `red:tap-rung` **2/2** ·
+`test:contrast` **69 checks, 0 failures** · `red:contrast-callsite` **5/5** · `test:wallet-reach`
+**34/0** (corrected) · `red:wallet-reach` **6/6** (re-anchored) · `test:updown-pricing` **61/0**
+(corrected) · `red:updown-pricing` **11/11** (re-anchored, was 10/11) · `test:card-share` **26/0**
+· `tap-hit-test.mjs` locally: every Details target ≥40px, no info button swallowed, 4 widths ·
+`test:red-anchors` **1113/0** · full `npm run test:all` **278/282 green** — the 4 failures are
+`test:type-scale` and `test:spacing-scale` (both from the PARALLEL SESSION's uncommitted
+`needle-drawer.tsx`, traced by hand — `text-[13.5px]`/`text-[13px]` and `mt-3.5`/`pt-3.5` on the
+new theme-menu it is building, confirmed by isolating the diff per file — NOT this row's) and
+`test:responsive`/`test:motion`, which need a live server and are excluded from `test:all` for
+that reason (documented since session 3) — both re-run against `next dev -p 3100` locally:
+`test:motion` **43/0** · `test:responsive` **5405/31** (was 5386/31 pass/fail-shape at session 3
+— the count moved with the route count, the FAILURE SHAPE did not). All 31 are the same
+pre-existing, unrelated pair session 3 already named: the "Account menu" button clipping at
+xs/320 (20 routes) and four signed-out `/admin` pages whose auth redirect races
+`page.evaluate` — nothing on `.mcardp-info`, the wallet capsule/eye, or any `@pct%`/`×N`
+surface. ⚠️ **Do not
+touch `needle-drawer.tsx`, `needle.tsx`, `needle.css`, `haptics.ts`, `needle-bridge.ts`,
+`.spin-strip.mjs`, `src/lib/needle-art.ts`** — the parallel session's own uncommitted work,
+visible in `git diff` because this tree is shared; none of it is this row's and none of it was
+staged.
+
+⛔ **A real near-miss this session, worth carrying forward: the two sessions share ONE `.git`
+index and ONE `HEAD`, not separate worktrees — the parallel session ran its own `git checkout
+main` mid-session, silently moving this session's checked-out branch too, and a subsequent
+`git add <my files> && git commit` landed on `main` with the needle session's own staged,
+uncommitted files swept in by the shared index.** Nothing was pushed and nothing was lost — the
+commit was rebuilt with `git commit -- <explicit pathspec>` (which commits only the named
+working-tree paths regardless of what else sits in the shared index) on a fresh branch cut from
+`origin/main`, cherry-picking just this row's commit across. ⭐ **The fix going forward: verify
+`git branch --show-current` immediately before every commit in a shared tree, and always commit
+with an explicit pathspec — never a bare `git commit` after `git add` — when another session may
+be touching the same index.**
+
+**Next.** Per §g2: row 7 (motion timing) next — ⚠️ `git fetch` and check whether the needle work
+has landed before touching `motion.css`/`--m-*`, that row is the one exception to "no collision".
+Then rows 8/11. Rows 5, 9, 10, 12 still need Ali's ruling/a Design commission before anyone
+starts them. Merging `pv10/rows-3-4-6` is Ali's call; once merged, re-run `qa:card-geometry`
+before/after and re-screenshot the three surfaces on production to tick rows 3/4/6 to ☑.
 
 **RESUME AT (session 5) — 2026-09-03. ROWS 1–2 ☑ AND FULLY VERIFIED ON PRODUCTION. Rows 3–12 are
 untouched; this programme needs at least three more sessions (see §g2 below).**
