@@ -358,9 +358,14 @@
 .cm-row {
   animation: cm-msg-arrive var(--cm-dur-arrive) var(--cm-ease-arrive) both;
 }
-/* User send pop — slight scale + translate */
+/* User send pop — slight scale + translate.
+   ⚠️ NOT `--cm-dur-arrive`, though this is an arrival: that token is `--t-base` (220) and
+   this pop shipped at 320, so borrowing it would take 100ms off the one animation the
+   player triggers themselves. 320 takes the ladder's nearest rung — `--t-move` (340) by
+   motion.css rule 1 — and the curve it hand-typed, cubic-bezier(0.34,1.56,0.64,1), is the
+   legacy `--ease-arrive` globals.css:2188 already bridged to `--m-settle`. */
 .cm-row-user {
-  animation: cm-msg-send 320ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation: cm-msg-send var(--t-move) var(--m-settle) both;
 }
 @keyframes cm-msg-arrive {
   from { opacity: 0; transform: translateY(8px) scale(0.98); }
@@ -372,7 +377,9 @@
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .cm-row, .cm-row-user { animation: cm-msg-fade 120ms linear both; }
+  /* `linear` stays — see chat-tokens.css's reduced block for why a fade keeps its keyword.
+     Only the raw 120ms moves, to `--t-quick` (140) by motion.css rule 1. */
+  .cm-row, .cm-row-user { animation: cm-msg-fade var(--t-quick) linear both; }
   @keyframes cm-msg-fade { from { opacity: 0; } to { opacity: 1; } }
 }
 
@@ -885,8 +892,14 @@
   font-size: 13px;
   line-height: 1.4;
   cursor: pointer;
-  transition: background var(--cm-dur-glide) var(--cm-ease-glide), border-color var(--cm-dur-glide) var(--cm-ease-glide), color var(--cm-dur-glide) var(--cm-ease-glide), transform 120ms ease-out;
-  animation: cm-starter-in 360ms cubic-bezier(0.16, 0.84, 0.36, 1) both;
+  /* ⭐ PV-14: `transform 120ms ease-out` used to sit at the END of this line, three
+     correctly-tokenised properties deep — one raw pair hiding behind its own good
+     company, which is why a per-LINE check has to keep reading past the first `var(`.
+     It is the same glide as its three siblings; there was never a reason for it to be a
+     fourth timing. `cm-starter-in`'s 360ms takes `--t-move` (340), and the curve it
+     hand-typed IS this file's own `--cm-ease-arrive` value → `--m-settle`. */
+  transition: background var(--cm-dur-glide) var(--cm-ease-glide), border-color var(--cm-dur-glide) var(--cm-ease-glide), color var(--cm-dur-glide) var(--cm-ease-glide), transform var(--cm-dur-glide) var(--cm-ease-glide);
+  animation: cm-starter-in var(--t-move) var(--m-settle) both;
 }
 .cm-empty-starter:nth-child(1) { animation-delay: 100ms; }
 .cm-empty-starter:nth-child(2) { animation-delay: 180ms; }
@@ -921,7 +934,8 @@
   to   { transform: translateY(0); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .cm-sheet-anim { animation: cm-sheet-fade 120ms linear both; }
+  /* As above: the keyword stays, the raw 120ms takes `--t-quick`. */
+  .cm-sheet-anim { animation: cm-sheet-fade var(--t-quick) linear both; }
   @keyframes cm-sheet-fade { from { opacity: 0; } to { opacity: 1; } }
 }
 

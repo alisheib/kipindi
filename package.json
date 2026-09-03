@@ -445,6 +445,7 @@
     "red:updown-positions-visible": "node scripts/updown-positions-visible-red.mjs",
     "test:crest-legibility": "tsx scripts/crest-legibility.test.mts",
     "test:motion-ladder": "tsx scripts/motion-ladder.test.mts",
+    "red:motion-ladder": "node scripts/red-motion-ladder.mjs",
     "test:glyph-motion": "tsx scripts/glyph-motion.test.mts",
     "qa:button-contrast": "node scripts/live-button-contrast.mjs",
     "qa:ring-delta": "node scripts/material-ring-delta.mjs",

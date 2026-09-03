@@ -127,13 +127,32 @@ and this table is corrected — it is a pointer, never a second source.
 
 The three new homes this programme mints — and each is final:
 
-- **`src/components/layout/detail-layout.tsx`** (PV-03) — *the* narrow-detail-page template.
-  Every future single-column detail page adopts it. ⛔ A later session must never write a second
-  narrow-page fix; if a page is narrow, it takes `<DetailLayout>`.
+- ~~**`src/components/layout/detail-layout.tsx`** (PV-03) — *the* narrow-detail-page template.~~
+  ⛔ **NEVER BUILT, AND DELIBERATELY SO — row 8, 2026-09-03. Do not create this file.** The home
+  already existed and the plan had not looked: Authority **§B7 rule 2** — *"a page states its
+  width through `<PageContainer tier>` and nothing else"* — with **six** tiers already in
+  `globals.css` (`--w-console` 1600 · `--w-board` 1280 · `--w-reading` 1080 · `--w-form` 640 ·
+  `--w-receipt` 560 · `--w-auth` 1152), a TS union so an invented width is a **compile error**,
+  and a `data-measure` stamp so the width can be measured at runtime rather than trusted. A
+  second narrow-page template would be exactly the §K5 fork clause 2 above forbids.
+  ⭐ **And the re-derivation dissolved the finding it was meant to serve:** `/wallet/deposit`
+  already declares `tier="form"` and is **correct** (a deposit page is a form; its "wasted" width
+  is what §B7 exists to produce), while `/positions`' real defect is an **alignment** mismatch
+  inside a correctly-measured container — a prop on `EmptyState`, not a layout template. ▶ If a
+  page is narrow, the question is *which `tier` does it declare*, never *does it need a template*.
 - **`src/components/brand/decor-mark.tsx`** (PV-01, *if* Ali rules to contain the mark) — *the*
   decorative-mark primitive, carrying the §M8 clear-space rule once. Every hero backdrop uses it.
-- **`test:motion-timing`** (PV-14) — *the* timing-correctness gate. It is the one place a
-  duration is checked against its distance; no second timing check is added beside it.
+- ~~**`test:motion-timing`** (PV-14) — *the* timing-correctness gate.~~ ⛔ **NEVER BUILT, AND
+  DELIBERATELY SO — row 7, 2026-09-03. Do not create this file.** The plan named a new guard
+  before anyone had re-derived the finding. When row 7 did, the rule PV-14 needed (*"only
+  `motion.css` may declare a curve or a duration"*) turned out to belong to a guard that already
+  existed — `test:motion-ladder`, whose whole job is the ladder — and this table's own row for
+  *"a rule that ALREADY has a guard"* says the answer is **a new SECTION inside that guard**,
+  because two guards owning one rule is how they drift apart (§0a). So PV-14 landed as
+  `test:motion-ladder` **§2** (the corpus) + **§3** (the declaration rule), plus the first
+  `red:motion-ladder` that guard has ever had. ⭐ **This is the one-home law overruling the
+  programme's own plan, which is the law working — a planned home is still a home you must
+  search for before you open.** ▶ A future timing rule extends §2/§3; it does not get a file.
 
 Everything else in §c is an EXISTING home being extended (`sideWord`, the cold-start rule,
 `--h-control-*`, the chip family, `status-tone.ts`) — which is the law working as intended: the
@@ -156,6 +175,10 @@ home already exists, so you reach for it rather than open a new one.
 
 | **a chip** — *the* one definition, component-only | `src/components/ui/chip.tsx` (`variantStyle` + `sizeStyles`) | row 5 | ⛔ The `.chip` / `.chip-*` CSS family in `globals.css` is **DELETED** (PV-13c, 2026-09-03), finishing what stage 9 ruled on 2026-08-21: the COMPONENT wins, because a per-surface descendant override (`.mcardp .chip`) is a second definition of one truth by construction and a fix that must be a PROP cannot live in a stylesheet. A new tone is a `variant`; a new size is a `sizeStyles` rung; ⛔ never a new CSS class, and never a `className="chip-…"` at a call site. **3 height tiers, and that is the system**: sm 18/20 · xs+md 21/23 (xs = the board's dense TYPE in md's box) · lg 25/27. ⚠️ Instruments find chips by **`[data-kit-chip]` / `data-kit-chip-variant`** — namespaced because `filter-pill.tsx` already owns the bare `data-chip`, measured after a bare hook matched all 39 filter pills on `/markets`. |
 | **a chip's colour, for a GATE to read** | the same `variantStyle` table, via `tsxVariantValue()` in `scripts/contrast-audit.mts` | row 5 | `test:contrast` scored the settled gold pill off the CSS rule `.chip-resolved`. Deleting that rule without repointing the gate would have thrown at its MODULE SCOPE and taken all 69 checks down — every money-button and placeholder pair — over a chip. ⛔ **A gate that cannot start is not a gate that passes; it is a gate nobody notices is gone.** The reader parses `chip.tsx`'s own table, so the value is still read from its ONE source rather than mirrored (this file's `--text` scar). |
+| **`test:motion-ladder` §2** — *the* pin on **what corpus a motion guard reads** | `scripts/motion-ladder.test.mts` §2 | row 7 | Pins the walk by **EXTENSION** (`.tsx`/`.ts`/`.css`) and by `src/styles/`. ⛔ It exists because §1.3 — the pin added for exactly this failure — pins by **DIRECTORY**, and all three of its directories hold `.tsx`, so it passed green for the guard's whole life while every stylesheet under `src/` was invisible. **A pin on one axis certifies nothing about another.** §2.1 asserts a **count** (≥6), not presence: "at least one `.css`" would pass while a directory of them was skipped. ▶ Any future "is this guard reading the right corpus" question extends §2. |
+| **`test:motion-ladder` §3** — *the* check that **only `motion.css` DECLARES a curve or a duration** | `scripts/motion-ladder.test.mts` §3 | row 7 | Judges a **custom-property declaration**, which is a shape no `transition:`/`animation:` line filter can see in **any** file type — `--cm-ease-arrive: cubic-bezier(…)` carries neither keyword. That is why it is a section, not a widened regex. A namespace over the ladder is legitimate (`--cm-*` exists for a real name collision); a namespace with its own **values** is a second ladder. Exemptions are **named**, never pattern-excluded: `motion.css` (the definition site, printed every run) and `--dur-stage` (frozen by a prior ruling at `motion.css:138`). Rule: Authority **§E9**. |
+| **the ambient-loop carve-out** — *the* statement of what a loop keeps | `isAmbientLoop()` in `scripts/motion-ladder.test.mts`, rule in Authority **§E10** | row 7 | A loop keeps its raw **period** (the ladder stops at `--t-max` 620ms and has no rung for `2.4s`) and ⛔ **never** its curve. ⭐ Written down, it **retired** a per-file exemption instead of adding one — `ui/spinner.tsx` had been allowlisted since 2026-08-21 with a note saying it stayed *"until the ladder gains a period rung"*, and §1.2 reported it stale on the widened guard's first run. RED-proven **at the boundary**: keep the loop, keep the period, hand-type the curve → §1.1 must still catch it. |
+| **`red:motion-ladder`** — *the* control for the ladder gate | `scripts/red-motion-ladder.mjs` + `scripts/anchors/motion-ladder.anchors.mjs` | row 7 | ⛔ **This guard had NO control for its entire life** — it is the ratchet this programme's record cites for "the tokens are pinned", it reached zero once, and nobody had ever watched it fail. ⭐ Carries the pattern worth copying: a **CORPUS mutation** (strip every `.css` from a copied tree; §2 must go RED **while §1.1 stays GREEN**) — the only way to prove a corpus pin, because *a gate reporting `0 offenders` over the wrong corpus reads exactly like a gate reporting `0 offenders`*. Also: it demands a **NAMED section** in the output and never trusts the exit code, since a crash and a catch both exit 1 — the first run scored 0/5 on an indentation bug in the harness's own parser (`  FAIL` vs `FAIL`), and under-reported rather than over-reported, which is the safe direction. |
 
 ⭐ **Why this table exists** (Ali, 2026-09-03): *"update the location of where files should be
 regarding any design or instruction, to keep a clean final ruling."* A home that is minted and not
@@ -210,10 +233,28 @@ needle and dials. `--m-press` is the only scale a control may take. **A duration
 to its distance and role, not merely to the ladder** — the new rule this programme mints; it goes
 in `DESIGN_AUTHORITY.md` §E, not here. Every animation still works with motion off and lands on
 the **same end state** (§M6, three gates). Guards `test:motion-ladder` · `test:reduce-motion` ·
-`test:keyframes` · `test:needle` — extend `test:needle`'s `--m-pivot` population to
-`conviction-dial.tsx`, and add **`test:motion-timing`** (PV-14): the timing-correctness guard
-lens 14 found missing — it fails a bare `ms`/bare cubic-bezier outside `motion.css`, and (the
-harder half) flags a duration a rung or more from its measured travel distance.
+`test:keyframes` · `test:needle`.
+
+✅ **ROW 7 CLOSED THE GUARD HALF OF THIS, 2026-09-03 — and not where this section expected.**
+The timing-correctness gate is `test:motion-ladder` **§2 + §3** (+ the first `red:motion-ladder`
+it has ever had), **not** a new `test:motion-timing` — see §b2 for why the one-home law overruled
+the plan. The rules it now holds are Authority **§E9** (only `motion.css` may *declare* a curve
+or a duration; a namespace may alias it, never re-value it) and **§E10** (a loop keeps its
+period, never its curve). ⭐ The finding was not call-site drift at all: the guard walked only
+`.tsx`/`.ts` and had **never read a stylesheet**, and a fourth motion vocabulary was living in
+that blind spot.
+
+⚠️ **STILL OPEN from this section, scoped OUT of row 7 on purpose, and it needs one decision:**
+extending `test:needle`'s `--m-pivot` population to `conviction-dial.tsx`, and the **named
+breach** `motion.css`'s own header records — `orm-pop` in
+[`operation-result-modal.tsx`](../src/components/markets/operation-result-modal.tsx) animates on
+`--m-pivot`, which §M8 reserves for the needle and dials; a result-modal crest is neither, and
+its keyframe already carries its own 1.06 overshoot, so `--m-settle` is the honest curve. The
+**fix is one line**. ⛔ **The GUARD for it is `test:needle` — the parallel session's file — and
+"who may USE `--m-pivot`" is a different rule from "who may DECLARE a curve", so it must not be
+smuggled into `test:motion-ladder` §3 as a second home.** A fix without its guard rots, so this
+is filed whole rather than half-done. 👤 Either the needle session takes it, or it waits for
+that session to land.
 
 ## g · THE PROGRESS PLANNER
 
@@ -228,11 +269,11 @@ States: `☐ not started` · `◐ in progress` · `⧗ blocked (why)` · `✎ aw
 | 4 | PV-13b · `mcardp-info` → 44 | 13 | Code | ◐ | `globals.css .mcardp-info` | `test:tap-target` **§6** (folded in with row 3, not `test:design-frozen` — see session-6 note) | `pv10/rows-3-4-6` (unmerged) | `.qa-shots/pv13-local/` | same branch as row 3; `MARKET_CARD_H` re-derived 349→347 as a consequence, `qa:card-geometry` owed on merge. ⛔ **NOT proven on production** |
 | 5 | PV-13c · the chip family's ONE definition | 13 | Code | ◐ | `chip.tsx` (the component) — the `.chip`/`.chip-*` CSS family is DELETED | `test:chip-contract` · `test:design-frozen` (−3) · `test:type-scale` (−2) | `pv10/rulings-and-chip-audit` (unmerged) | `.qa-shots/pv13c-local/` | **Ali's ruling, 2026-09-03: finish the migration, no visual change.** ⭐ Census CORRECTED first: not "7 chaotic heights" but **3 tiers** (sm 18/20 · xs+md 21/23 · lg 25/27), and the record's 7th value was `.tier-badge` — a **circular 22px rank medallion**, not a pill. 🔴 **The real defect was a DRIFT the audit only found because the migration forced it:** `chip.tsx`'s `signal` variant still held the pre-D6 **AQUA** (§B4 bans aqua on anything semantic) while the CSS class had been corrected to ROYAL on 2026-08-21 — zero call sites, so nothing rendered it, so nothing caught it. Migrating the market card's tipping flag onto it would have silently put banned aqua back on the player board. ⛔ **NOT proven on production** |
 | 6 | PV-10 · `@pct%`/`×N` suffix contrast | 6 | Code | ◐ | `market-card.tsx` · `side-picker.tsx` · `updown-card.tsx` · `updown-stake-controls.tsx` · `conviction-dial.tsx` (filed as 4 sites, was **9**) | `test:contrast` **§P-u2** (new) · `red:contrast-callsite` | `pv10/rows-3-4-6` (unmerged) | `.qa-shots/pv10-local/` (gitignored, local-only) | guard population gap WAS the finding, confirmed; guard's own sweep found a 9th site (the bet-panel commit button). ⛔ **NOT proven on production** |
-| 7 | PV-14 · timing off `duration-150`/bare curves | 14 | Code | ☐ | Input atom + kit | new `test:motion-timing` | — | — | build the guard first |
-| 8 | PV-03 · `<DetailLayout>` template | 3,5,10 | Code+Design | ☐ | new `detail-layout.tsx` | `responsive-audit.mjs` | — | — | deposit + positions-empty |
+| 7 | PV-14 · timing correctness — **the ladder's ratchet had never read a stylesheet** | 14 | Code | ◐ | `chat-tokens.css:82-85` (the `--cm-*` aliases) + 5 call sites in `chat-styles.css` — ⛔ **NOT** the Input atom, and **no** `test:motion-timing`: see the note | `test:motion-ladder` **§2+§3** (extended, not a new file) · `red:motion-ladder` (new — the guard had **no** control) | merged in the row-5+7 integration | `.qa-shots/pv14-local/` (gitignored, local-only) | code-complete, guarded, **RED-proven 5/5**, browser-verified locally **72/0** at 390+1280 × EN/SW/ZH. ⭐ The filed census was stale ×124 (`duration-150` was **3**, not 373; bare Tailwind curves **0**, not 391) and the real defect was a **corpus hole** — `walk()` took only `.tsx`/`.ts`, so a **fourth motion vocabulary** (8 hand-typed values) lived in `src/styles/chat/`. New law: Authority **§E9/§E10**. Ratchet moved **4 → 5 → 4** (`needle.css` in, scheduling; `spinner.tsx` out, §E10 covered it) |
+| 8 | PV-03 · narrow detail pages — **re-derived: half overturned, half mis-diagnosed** | 3,5,10 | Code | ◐ **re-derived; fix is a prop** | ⛔ **NOT** `detail-layout.tsx` — never build it (§b2, struck). The real site is `empty-state.tsx` (`max-w-[360px] mx-auto`) | `responsive-audit.mjs` (the ~65%-of-tier rule is **refused** — see note) | — | `.qa-shots/pv03-local/` (6 routes @1280, gitignored) | ✅ **`/wallet/deposit` OVERTURNED** — `tier="form"` (640px) is CORRECT; a deposit page is a form and its "wasted 53%" is what §B7 exists to produce. 🔴 **`/positions` is real but mis-filed**: the measure is right (`reading`/1080, container 1016px); the defect is that section headings sit left at x=132 while `EmptyState`'s `mx-auto` centres the card at 460–820. 45 call sites in 33 files inherit that `mx-auto`, so the fix is an opt-in **prop**, never a changed default |
 | 9 | PV-01 · brand-mark backdrop at 390 | 4,5 | 👤 Ali | ☑ | — (ruling, no code) | — | — | — | **Ali's ruling, 2026-09-03: KEEP AS BACKDROP.** Not a defect — the intended "question-board" backdrop per CLAUDE.md. No `<DecorMark>` primitive built; closed by ruling, not by a fix. |
 | 10 | PV-05 · dial weight + term unification | 5,9,13 | ✎ Design | ✎ | handover | visual | — | — | **Ali's ruling, 2026-09-03: COMMISSION NOW.** Handover to follow §d's bounds — `docs/design-brief/player-visual-2026-09/handover/`, TOKENS-USED.md + DECISIONS.md + MOTION.md, mechanical token-check first. |
-| 11 | Lens 12 · finish the `/markets` filter-correctness drive | 12 | Code | ☐ | — | `test:board-discovery` + `qa:filter-scan` | — | — | §5 of the record — count-vs-rendered, URL state, monotonicity |
+| 11 | Lens 12 · `/markets` filter correctness — **2 of 4 already covered, 1 overturned, 1 open** | 12 | Code | ◐ **re-derived locally; production owed** | ⛔ **NOT** a new drive — the home is **`qa:filter-stress`** (`scripts/filter-stress.mjs`), which §5 never names | extend `qa:filter-stress` with 2 sections (count-vs-rendered, monotonicity) | — | local drive **10/1**, `.qa-shots/pv11-local/` | ⛔ Both instruments §5 names are wrong: `qa:filter-scan` is a filter-*language* check. `qa:filter-stress` **already** drives all **360** status×sort×odds×pool combinations asserting "promise equals delivery" — so **combined-filter intersection was already covered**. ✅ **count==rendered HOLDS 5/5 exact** (incl. the zero case). ✅ **URL-backed OVERTURNED — it IS**: 4 of 5 pills wrote the URL; §5's doubt came from clicking **"Open"**, the *default*, which correctly writes nothing. ⚠️ **monotonicity + lazy-load UNPROVEN** (a 6-card board with 0 printed volumes cannot exercise either) → **production owed**, reported unproven not passed |
 | 12 | Invite & Earn gold on zero-bonus card | — | 👤 Ali | ☑ | `wallet-client.tsx:314` | `test:gold-is-money` | — | re-verified **15/0** 2026-09-03 | **Ali's ruling, 2026-09-03: CONFIRMED CORRECT.** The `btn-gold` CTA shown on the zero-bonus wallet card leads to real referral money (Invite & Earn) — gold ink on a genuine money surface, exactly what `test:gold-is-money` exists to require. No code change; closed by ratification. |
 
 Seed state: every row `☐`. ⛔ Do not tick a row by intention — only by evidence (§h).
@@ -305,6 +346,184 @@ and taken all 69 checks down over a chip. Repointed at `chip.tsx` in the same co
 to have **never matched a `<Chip>` at all** and would have gone silently to zero reach; they now
 key on `[data-kit-chip]` — namespaced, because the bare `data-chip` is `filter-pill.tsx`'s and
 the first attempt matched all 39 filter pills on `/markets`.
+**RESUME AT (session 7) — 2026-09-03. ROW 7 IS `◐` on branch `pv10/row-7-motion-ladder`. Rows 3,
+4, 6 remain `◐` on their two branches — ⛔ NEITHER HAS MERGED (`main` is still `8a800e9f`, the
+same tip session 6 handed over). Rows 5, 9, 10, 12 need Ali; rows 8 and 11 are the code work left.**
+
+⭐ **THE HEADLINE, AND IT IS A METHOD LESSON, NOT A MOTION ONE: the filed census was stale by two
+orders of magnitude, and the real defect was in the INSTRUMENT.** PV-14 was filed as
+`duration-150` ×**373** and bare Tailwind curves ×**391**. Re-measured: **3** and **0**. Both filed
+numbers had been taken through `getComputedStyle` in a browser — they counted *consequences*
+(every element sharing a class) where a fix has to count *definition sites*. ~124× apart. ⭐ **A
+census taken through the browser answers a different question from the one a fix asks.** §g2 had
+already flagged this ("the record's census is STALE — re-derive before planning") and was right.
+
+**What was actually wrong:** ⛔ **`test:motion-ladder` had never read a stylesheet in its life.**
+`walk()` accepted `.tsx`/`.ts` only, so all six `.css` files under `src/` — **including
+`motion.css`, the ladder the guard exists to enforce** — were outside its corpus from the day it
+was written. And its own **anti-narrowing pin (§1.3), added for exactly this failure**, passed
+throughout: it pins by **DIRECTORY**, and every directory it names holds `.tsx`. ⭐ **A pin on one
+axis certifies nothing about another.** `src/styles/` was never named at all.
+
+**Living in that blind spot: a FOURTH motion vocabulary.** `chat-tokens.css` declared
+`--cm-ease-*`/`--cm-dur-*` — eight hand-typed beziers and ms literals answering to nothing in
+`motion.css` — under a header reading *"brief names → kit easings"* while resolving to none of
+them; plus four hand-typed shorthands in `chat-styles.css`, one of them (`transform 120ms
+ease-out`) **hiding at the end of a line whose other three properties were correctly tokenised**.
+The chat surface mounts in the **root layout**, so this is platform-wide player surface. It is
+the exact defect `state-tokens.css` deleted from ITSELF on 2026-08-21 and eulogised twice in its
+own header — one directory away, where nothing was looking.
+
+**The fix took an existing ruling rather than making a new one:** `globals.css:2187-2190` had
+already bridged these same four names, so the `--cm-*` twins inherit that mapping. `--cm-*-sink`
+was **deleted** (zero consumers, measured). ⚠️ One real feel change, said plainly: 22 consumers
+move **180 → 140ms** on chat hover — `--t-quick`, the rung the kit's own `.btn` already uses.
+
+**⛔ NO `test:motion-timing` WAS BUILT, AND THAT IS DELIBERATE — do not create it.** §b2 promised
+it as one of this programme's three minted homes. Once the finding was re-derived, the rule it
+needed belonged to a guard that already existed, and §b2's own table says a rule with a guard
+gets **a new SECTION**, not a new file. PV-14 landed as `test:motion-ladder` **§2** (corpus,
+pinned by extension) + **§3** (only `motion.css` may *declare*). The strike-through and the
+reason are in §b2 so the next session cannot re-invent it. New law: Authority **§E9** + **§E10**.
+
+⭐ **This guard had NEVER had a RED control** — the ratchet this record cites for "the tokens are
+pinned", green over an entire missing file type. `red:motion-ladder` is **5/5** and one mutation
+is worth copying anywhere a guard has a corpus: ⭐ **strip every `.css` from a copied tree and
+assert §2 goes RED *while §1.1 stays GREEN*.** That reproduces the exact failure on demand — *a
+gate reporting `0 offenders` over the wrong corpus reads exactly like a gate reporting `0
+offenders`.*
+
+⭐ **The ratchet moved 4 → 5 → 4, and the shrink is the better half.** `needle.css` joined as a
+**scheduling** exemption (5 raw timings, another session owns that file — the same call this
+allowlist already made for `updown-card.tsx`/`round-countdown.tsx`, which their owner then
+cleared). `ui/spinner.tsx` **left**: its entry had said since 2026-08-21 that it stayed *"until
+the ladder gains a period rung"*, and §E10 gave it a written **rule** instead. §1.2 reported it
+stale unprompted on the widened guard's first run.
+
+⚠️ **TWO INSTRUMENT BUGS, BOTH CAUGHT BY A CONTROL AND NOT BY LUCK — the transferable part:**
+1. The first browser drive reported **43 failures**. The CSS build **minifies** computed values
+   (`340ms`→`.34s`, `0.97`→`.97`), so string-comparing against `motion.css`'s source text
+   "proved" six tokens hadn't resolved. ⭐ **The positive control is what exonerated the
+   product:** `--m-press`, untouched by this row, failed in the identical shape — only possible
+   if the comparator is the fault. Without it, *"the @import ordering broke the cascade"* was the
+   honest-looking conclusion, and the next move would have been to fix correct code.
+2. The drive's three locales were **all English** and it passed **66/66** that way. `?lang=` is
+   not the switch — `i18n.tsx:41` reads a `kp-locale` **cookie**. ⭐ **The screenshot caught it**
+   (the SW cell rendered *"How do I deposit?"*). It now proves the locale by **discrimination**:
+   ZH must render CJK **and EN must render none**; SW must carry a word only SW owns. Final: **72/0**.
+
+**Validated:** `tsc` ✓ · `build` ✓ · `test:motion-ladder` **10/0** (HEAD count outside the
+allowlist = **zero**, both new sections) · `red:motion-ladder` **5/5** · `test:red-anchors`
+**1123/0** (§4's ceiling held at 67 — the new harness declares its anchors) · `reduce-motion` ·
+`keyframes` · `tokens` · `design-frozen` · `design-one-door` · `ui-consistency` ✓ · browser drive
+**72/0** at 390 + 1280 × EN/SW/ZH, **shots opened and read**.
+
+🔴 **`test:all` IS RED ON `main` AND IT IS NOT THIS ROW'S — `test:type-scale` §4 counts 920
+against a ratchet of 918 (+2).** Traced by arithmetic, not inherited from the handoff that
+predicted it: this row's ONLY `src/` changes are two `.css` files containing **zero** `text-[`,
+and §4's population is `text-[Npx]`/inline `fontSize`. `needle-drawer.tsx` carries **7** such
+literals and is **byte-identical to HEAD**, committed by the parallel session in `4579295c`. So
+the +2 landed on `main` with the needle work and the ratchet was not addressed in the same
+commit. ⛔ **Not mine to fix** (their file, and a ratchet may only shrink — the honest options are
+to move those two literals onto the type scale or to justify them). 👤 **Ali: this needs to reach
+the needle session.** Everything else in `test:all` is green.
+
+⚠️ **Scoped OUT of row 7, filed whole rather than half-done — one Ali/needle decision:** §f also
+asked for `test:needle`'s `--m-pivot` population to reach `conviction-dial.tsx`, and `motion.css`
+records a **named breach** (`orm-pop` in `operation-result-modal.tsx` uses `--m-pivot`, which §M8
+reserves for the needle and dials). **The fix is one line** (`--m-settle`). ⛔ But its guard is
+`test:needle` — the parallel session's file — and *"who may USE `--m-pivot`"* is a different rule
+from *"who may DECLARE a curve"*, so it must **not** be smuggled into `test:motion-ladder` §3 as
+a second home. A fix without its guard rots. Also filed: `chat-styles.css`'s stagger delays
+(`animation-delay: 100ms/180ms`) are off `--m-stagger` and invisible to this guard by its written
+scope — a real finding, a different shape, worth a look with row 8.
+
+---
+
+### ROWS 8 AND 11 WERE ALSO RE-DERIVED THIS SESSION — AND ⛔ **NEITHER SHOULD BE BUILT AS FILED.**
+
+⭐ **Three rows, three wrong definition sites, and in every case the correct home already
+existed.** That is now the most reliable finding of this whole programme: budget the
+re-derivation, not the fix.
+
+**ROW 8 (PV-03) — ⛔ do NOT create `detail-layout.tsx`.** Authority **§B7 rule 2** already owns a
+page's width: *"a page states its width through `<PageContainer tier>` and nothing else"*, six
+tiers in `globals.css`, a TS union so an invented width is a **compile error**, and a
+`data-measure` stamp so it can be measured rather than trusted. Measured at 1280 and 1920 on all
+six candidate routes **plus `/markets` as a control**:
+- ✅ **`/wallet/deposit` is OVERTURNED.** It declares `tier="form"` (640px) and **a deposit page is
+  a form** — symmetric gutters, centred card, readable fields, methods 3-up (shot opened). The
+  filed *"53% of desktop width unused"* is a **true number with the wrong conclusion**: that
+  emptiness is precisely what §B7 was written to produce, after users said pages and input fields
+  were *"too wide"*. **Widening it would re-introduce the defect §B7 exists to fix.**
+- 🔴 **`/positions` is real but MIS-DIAGNOSED.** Its measure is correct (`reading`/1080 →
+  container 1016px). The defect is **alignment**: headings sit left at x=132 while
+  `empty-state.tsx:45`'s `mx-auto` centres a 360px card at 460–820. ⚠️ **45 call sites in 33
+  files** inherit that `mx-auto` → **👤 Ali's ruling**, (a) fill the section's measure or (b) stay
+  360 and align left. The primitive's docstring already promises the *"(or full-width)"* variant
+  that never existed.
+- ⛔ **§5's proposed guard is REFUSED with arithmetic**: *"narrower than ~65% of its tier at
+  ≥1280"* cannot land at zero — at 1920 it condemns `/notifications` (53%) **and `/markets`, the
+  control** (63%), both correct. The honest rule is tier-relative: *does content reach the measure
+  its own declared `tier` sets?* (1016 vs `/positions`' 639.)
+
+**ROW 11 (lens 12) — ⛔ do NOT write a new drive.** Both instruments §5 names are wrong
+(`qa:filter-scan` is a filter-*language* check), and the real home — **`qa:filter-stress`** —
+goes unmentioned while already driving **all 360** status×sort×odds×pool combinations asserting
+*"the promise still equals the delivery"*. So **combined-filter intersection was already
+covered.** Of §5's four questions: ✅ **count==rendered HOLDS 5/5 exact** (including the zero
+case); ✅ **URL-backed is OVERTURNED — it IS URL-backed**, 4 of 5 pills wrote the URL and §5's
+doubt came from clicking **"Open"**, the *default*, which correctly writes nothing; ⚠️
+**monotonicity and lazy-load are UNPROVEN, reported as unproven** — a 6-card local board printing
+zero volumes cannot exercise either. ▶ Row 11 = **two sections added to `qa:filter-stress`**, run
+against **production**.
+
+⚠️ **A THIRD INSTRUMENT BUG, and the pattern across all four is the real lesson.** Row 11's first
+counter used `[class*="mcardp"]` — a **substring** match that also counts every child of a card
+(`.mcardp-top`, `.mcardp-info`, `.mcardp-share` …), so a **6-card board counted 126**. On that
+number `"Closing today 3"`→"63" looked like a spectacular count defect and "126 before scrolling,
+126 after" looked like proof of no lazy-loading. Fixed to `[class~="mcardp"]` and trusted only
+after **three independent measures converged** (token-match, `<article>`, `.market-grid` children
+— all 6). ⭐ **Every one of this session's four instrument bugs was caught by a CONTROL, never by
+inspection**: the untouched token (`--m-press`), the screenshot (the English "SW" cell), the
+in-run control page (`/markets` reading 95% where the wrapper-probe said 100%), and three
+converging counts. **Measure the control in the same run, always** — with the two filed pages
+alone, row 8's vacuous probe would have read as a clean double overturn.
+
+✅ **`test:responsive` IS CLEAN — 5421 passed · 29 failed · 76 warnings**, against session 3's
+baseline of **5386 / 33**. Better than baseline on both halves, and **zero failures on any
+surface this programme has touched** (the chat surface row 7 changed included). All 29 residuals
+are the two pre-existing clusters session 3 already named: **27** are the single 320px
+`button[Account menu]` clip, counted once per route, and **2** are signed-out `/admin` redirects
+(`Execution context was destroyed … because of a navigation`). This closes the responsiveness
+claim session 6 left open (*"whoever merges this branch should still run it once"*) — for rows 3,
+4 and 6 as well as row 7, since it is a whole-site sweep of the same tree.
+
+⛔ **AND THE FIRST RUN OF IT WAS THROWN AWAY RATHER THAN REPORTED — worth carrying.** It came back
+**5243 / 193**, with **180** of the failures reading *"no `<main>` at all"* across 9 routes: on
+its face a 9-route landmark regression, which is a §B7-rule-5 emergency. It was **invalid**: it
+had run concurrently with three other browser drives and market seeding against one `next dev`.
+Checked directly rather than assumed — `/legal/terms`, `/help`, `/fairness` and `/markets` each
+serve **200 with exactly one `<main>`**, and `/profile/sessions` is a 307 (signed out). ⭐ **A
+contended dev server renders partial pages, and an absence check reads a partial page as an
+absence.** 193 → 29 with nothing changed but the server being idle. The lesson is not "re-run
+until green" — it is that a sweep measuring 5,400 cells needs the machine to itself, and that
+the way to tell a real absence from a broken reader is to **go and fetch the page yourself.**
+
+**Next — what is actually left.** No code row remains that should be built as filed. The queue is:
+👤 **Ali** — (1) the `EmptyState` alignment ruling (row 8, 45 surfaces); (2) row **5**, which chip
+sizes; (3) row **10**, the dial Design commission; (4) whether to merge the three `pv10/*`
+branches; (5) get the `test:type-scale` +2 / `test:spacing-scale` +4 to the **needle session** —
+`test:all` is red on `main` and it is their `needle-drawer.tsx`. **Code, once Ali rules** — row 8's
+one-prop fix + the tier-relative guard; row 11's two `qa:filter-stress` sections against
+production; the `--m-pivot`/`orm-pop` one-liner **if** the needle session hands over `test:needle`.
+⛔ On merging any branch: re-run that row's drive against production, and `qa:card-geometry`
+before/after for row 4 (`MARKET_CARD_H` 349→347).
+
+**RESUME AT (session 6) — 2026-09-03. ROWS 3, 4, 6 ARE `◐` — code-complete, guarded, RED-proven,
+visually verified LOCALLY (EN/SW/ZH, 390/1280) — but pushed to branch `pv10/rows-3-4-6`
+(unmerged) and therefore ⛔ NOT yet proven on production. Rows 5, 9, 10, 12 still need a
+ruling/commission and were not touched. Row 7 and rows 8/11 are next (see §g2).**
 
 **Re-derived all three on production FIRST**, per the bar: `.mcardp-info` measured 46px, the eye
 toggle 42px inside a 44px capsule, and the `@pct%` suffix region-read at 3.87:1 — all three
