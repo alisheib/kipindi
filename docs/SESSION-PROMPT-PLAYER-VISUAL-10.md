@@ -297,11 +297,19 @@ and a real contested market in the hero.**
 3. ⛔ **The RED proof exposed a limit in my own guard**: rewriting a branch to `{false ? (` left
    the empty arm's text in place and the mutation PASSED. The harness deletes the arm instead.
 
-**⚠️ NOT MINE, LEFT UNTOUCHED, AND CURRENTLY RED:** `docs/design-brief/sponsor-2026-09/` is a
-parallel session's **untracked** package (it cites commit `79c3b65`). Its nested copy of
-`DESIGN_AUTHORITY.md` turns **`test:design-one-door` RED** — the "never unzip a handover in-repo"
-trap this repo has paid for before. ⛔ Do not commit it and do not delete it; it is someone's live
-work. `test:all` is otherwise **279/282** (`responsive` + `motion` need a server on `:3000`).
+**⚠️ A PARALLEL SESSION IS LIVE IN THIS TREE — and the blocker it caused has already cleared.**
+`docs/design-brief/sponsor-2026-09/` is another session's **untracked** sponsor package (it cites
+commit `79c3b65`, and it has an uncommitted `.gitignore` edit in flight). At ~13:00 an extracted
+`New folder/01-rules/DESIGN_AUTHORITY.md` inside it turned **`test:design-one-door` RED** — the
+"never unzip a handover in-repo" trap, which that session's own `.gitignore` note warns about in
+so many words. **By 13:15 they had removed it and the guard is GREEN again (re-run, not assumed).**
+
+⭐ **Recorded because the correction is the lesson, not the incident.** This handoff said "RED"
+for fifteen minutes and it was already false. ⛔ **Re-derive an inherited blocker before you plan
+around it** — `qa:personas` taught this repo the same thing once ("all six are dead" was true of
+two). ⛔ Do not commit or delete anything under that folder; it is someone's live work.
+`test:all` is **281/282** with only `responsive` + `motion` failing, and both need a server on
+`:3000` (`BASE=http://localhost:3100 npm run test:responsive` runs them green — see §b2).
 
 **▶ START HERE NEXT SESSION:** read `.claude/skills/pv10-validate-as-you-go` first, then §g2.
 
