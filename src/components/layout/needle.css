@@ -11,6 +11,94 @@
    Tokens (--bg, --gilt, --brand-400/500, --aqua-300/400/500, --gold-300) all resolve
    to the live src/app/globals.css. */
 
+/* ── THE DISC'S PAINT, AS THEME VARIABLES ──────────────────────────────────────
+   The object's colour used to be ~24 hex literals inside the SVG markup in
+   needle.tsx. They are now named here, ONCE, and the markup reads `var(--ndl-*)`.
+   This block is the DEFAULT ("50pick") theme and every value in it is the literal
+   that was already shipping — byte-identical, so the default renders exactly as
+   before. A theme is a second block below that re-declares the same names; the
+   markup, the geometry, the engine and the physics are untouched by any of it.
+   ⛔ These are the needle's OWN paint, not app tokens: brand identity ≠ theme
+   tokens (DESIGN_AUTHORITY B1), which is why the disc carries delivered hexes
+   rather than `--yes-*` / `--no-*`. Do not "tidy" them onto the app ramps — the
+   disc is deliberately enamel (fired deep), not the flat brand hues; NEEDLE-SPEC
+   §0 explains why, and it is the whole reason the object does not read as a
+   prize wheel.
+   ⛔ THE SELECTOR IS `:where(...)` ON PURPOSE, AND BOTH HALVES OF IT MATTER.
+   ① `#needle-root` is listed so the disc still paints when NO `data-needle-theme`
+   attribute is present at all. Keying the palette solely on the attribute was tried
+   and it renders an UNPAINTED disc — 206,771 wrong pixels — the moment anything
+   mounts this markup without the attribute (an export script, a playground, a future
+   refactor that drops the prop). Silent, total, and invisible to tsc.
+   ② `:where()` contributes ZERO specificity, so the whole selector scores (0,0,0)
+   and the theme block below wins on SPECIFICITY rather than on source order. Without
+   it, `#needle-root` would score (1,0,0) and would beat every theme — the disc would
+   be permanently stuck on the house palette. */
+:where(#needle-root, [data-needle-theme]) {
+  --ndl-face-a-hi: #1C9264;  --ndl-face-a-lo: #146F4C;   /* left face  */
+  --ndl-face-b-hi: #A83A43;  --ndl-face-b-lo: #822A33;   /* right face */
+  --ndl-inlay-a:   #54EDA6;  --ndl-inlay-b:   #FF7B82;   /* seam hairlines */
+  --ndl-seam:        #FFE7B0;                            /* the needle itself */
+  --ndl-seam-glow:   rgba(255, 214, 120, 0.9);
+  --ndl-seam-shadow: #070A1E;
+  --ndl-hub-0: #FFF3D4; --ndl-hub-1: #EFCC7C;
+  --ndl-hub-2: #D8AE55; --ndl-hub-3: #A87D33;
+  --ndl-hub-ring: #7C5A22; --ndl-hub-spec: #FFF8E6; --ndl-pivot: #141A38;
+  --ndl-rim-warm: #E3BC66;                               /* rim gradient's warm end */
+  --ndl-ring:     #080B22;                               /* the dark outer ring */
+  --ndl-smear:    #F0D08A;                               /* spin smear strokes */
+  --ndl-aura:   var(--gilt);                             /* trail · glow · ring · whole */
+  --ndl-aura-2: var(--gold-300);
+}
+
+/* ── THEME: PEPSI ──────────────────────────────────────────────────────────────
+   A sponsor theme for the fidget. The 2023 globe is a circle split by a white
+   swash — the same object this disc already is, which is why it needs no new
+   geometry: the disc's chord BECOMES the swash, and the needle rides it.
+   ⭐ Enamel, not flat brand paint. Each face is the delivered brand hex as its
+   highlight with the lowlight stepped ~10 points of L at the SAME hue and chroma
+   — the exact discipline the default faces use (#1C9264 → #146F4C is −10.4 L).
+   ⛔ NO GILT ANYWHERE. Gold on this platform means EARNED (DESIGN_AUTHORITY §M3),
+   and a sponsor has earned nothing — so the seam, hub, rim and aura go white and
+   silver, which is also what the real logo does with its swash.
+   ⚠️ Measured before it was drawn: Pepsi red is hue 31.5, which is 9.5° from
+   `--no-500` (the LOSS colour) — while the red already shipping on this disc,
+   #A83A43, is 2.8° from it. This theme moves the disc AWAY from the money-loss
+   hue, not toward it.
+   ⭐ This block wins on SPECIFICITY, not source order: (0,1,0) against the default
+   block's (0,0,0) — see the `:where()` note above. So it is order-independent, and
+   an unknown `data-needle-theme` value still gets the full house palette rather than
+   no palette at all. Both properties are covered by the tamper suite. */
+[data-needle-theme="pepsi"] {
+  /* Hues are Pepsi's, measured off the delivered artwork: red 31.5, blue 285.7.
+     L and C are pulled into the house band (faces live at L 42-59, C 0.099-0.144).
+     ⛔ The flat brand hexes were tried first and REJECTED on the render: #E63D24 is
+     C 0.209, 45% above the house red, and beside the fired disc it read as a
+     carnival spinner — the exact failure §0 names. Fidelity here is the HUE, not
+     the hex; the disc has never worn a flat brand hue, including 50pick's own. */
+  --ndl-face-a-hi: #C54835;  --ndl-face-a-lo: #A13120;   /* Pepsi red,  fired */
+  --ndl-face-b-hi: #5C50AB;  --ndl-face-b-lo: #443987;   /* Pepsi blue, fired */
+  --ndl-inlay-a:   #F47D68;  --ndl-inlay-b:   #8C85DD;
+  --ndl-seam:        #F4F5F9;                            /* the swash — pearl, not raw white */
+  --ndl-seam-glow:   rgba(228, 232, 245, 0.62);
+  --ndl-seam-shadow: #0B0B14;
+  /* A silver ramp with real range, so the hub keeps the depth the gilt one has.
+     Pure white at every stop flattens it into a sticker.
+     ⚠️ The top stop is #F7F8FC — the brand's own white ink, NOT #FFFFFF — and the
+     pivot is a deep indigo rather than black. At full white against a black pivot
+     the hub stops reading as a jewel in its socket and starts reading as an EYE;
+     the gilt hub avoids that by being warm and mid-toned, and silver has to be
+     stepped down to earn the same read. Seen on the render, not predicted. */
+  --ndl-hub-0: #F7F8FC; --ndl-hub-1: #D8DAE4;
+  --ndl-hub-2: #A8AAB8; --ndl-hub-3: #6E7080;
+  --ndl-hub-ring: #51515D; --ndl-hub-spec: #FFFFFF; --ndl-pivot: #171726;
+  --ndl-rim-warm: #D5D5EB;
+  --ndl-ring:     #0B0B14;                               /* the logo's black ring */
+  --ndl-smear:    #D5D5EB;
+  --ndl-aura:   #DCDCF2;
+  --ndl-aura-2: #8D8AC7;
+}
+
 /* Transform responsibilities are split so nothing ever fights:
    #needle = position · #tilt = inertia lean + impact squash · #disc = spin */
 /* Reads the real safe-area insets so the object never parks under a notch,
@@ -49,15 +137,15 @@
   50%     { opacity: var(--pmax, 1);              transform: scale(1.06); }
 }
 #needle-root #trail  { inset: -15%; opacity: 0; filter: blur(6px);
-          background: conic-gradient(from 0deg, transparent 0deg, color-mix(in oklab, var(--gilt) 52%, transparent) 34deg, color-mix(in oklab, var(--gilt) 12%, transparent) 74deg, transparent 104deg, transparent 360deg); }
+          background: conic-gradient(from 0deg, transparent 0deg, color-mix(in oklab, var(--ndl-aura) 52%, transparent) 34deg, color-mix(in oklab, var(--ndl-aura) 12%, transparent) 74deg, transparent 104deg, transparent 360deg); }
 #needle-root #glow   { inset: calc(var(--halo, -34%) * 0.7); opacity: 0; transition: opacity 160ms linear;
-          background: radial-gradient(circle, color-mix(in oklab, var(--gilt) 26%, transparent) 0%, color-mix(in oklab, var(--brand-400) 10%, transparent) 45%, transparent 68%); }
-#needle-root #ring   { inset: -5%; opacity: 0; border: 1.5px solid color-mix(in oklab, var(--gilt) 78%, transparent); }
+          background: radial-gradient(circle, color-mix(in oklab, var(--ndl-aura) 26%, transparent) 0%, color-mix(in oklab, var(--brand-400) 10%, transparent) 45%, transparent 68%); }
+#needle-root #ring   { inset: -5%; opacity: 0; border: 1.5px solid color-mix(in oklab, var(--ndl-aura) 78%, transparent); }
 /* The closed ring. The trail arc only completes into a full circle above 88% of
    max spin — the mark's "tipping point" motif momentarily resolved into a whole.
    Nothing is awarded and nothing is announced. */
 #needle-root #whole  { inset: -15%; opacity: 0; pointer-events: none; border-radius: 50%;
-          background: conic-gradient(from 0deg, color-mix(in oklab, var(--gilt) 30%, transparent) 0deg, color-mix(in oklab, var(--gold-300) 46%, transparent) 120deg, color-mix(in oklab, var(--gilt) 30%, transparent) 240deg, color-mix(in oklab, var(--gold-300) 46%, transparent) 360deg);
+          background: conic-gradient(from 0deg, color-mix(in oklab, var(--ndl-aura) 30%, transparent) 0deg, color-mix(in oklab, var(--ndl-aura-2) 46%, transparent) 120deg, color-mix(in oklab, var(--ndl-aura) 30%, transparent) 240deg, color-mix(in oklab, var(--ndl-aura-2) 46%, transparent) 360deg);
           filter: blur(7px); transition: opacity 200ms linear; }
 @media (prefers-reduced-motion: reduce) { #needle-root #whole { display: none; } }
 #needle-root svg { display: block; overflow: visible; shape-rendering: geometricPrecision; }

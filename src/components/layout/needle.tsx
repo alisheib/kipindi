@@ -24,7 +24,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { getPrefs } from "@/lib/haptics";
+import { getPrefs, type NeedleTheme } from "@/lib/haptics";
 import { isMoneySurface } from "@/lib/surfaces";
 import type { NeedleOptions } from "@/lib/needle-physics";
 import "./needle.css";
@@ -53,12 +53,12 @@ const MARKUP = `
     <svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true">
       <defs>
         <linearGradient id="ndl-faceL" x1="0.2" y1="0" x2="0.8" y2="1">
-          <stop offset="0%"   stop-color="#1C9264"></stop>
-          <stop offset="100%" stop-color="#146F4C"></stop>
+          <stop offset="0%"   style="stop-color: var(--ndl-face-a-hi)"></stop>
+          <stop offset="100%" style="stop-color: var(--ndl-face-a-lo)"></stop>
         </linearGradient>
         <linearGradient id="ndl-faceR" x1="0.2" y1="0" x2="0.8" y2="1">
-          <stop offset="0%"   stop-color="#A83A43"></stop>
-          <stop offset="100%" stop-color="#822A33"></stop>
+          <stop offset="0%"   style="stop-color: var(--ndl-face-b-hi)"></stop>
+          <stop offset="100%" style="stop-color: var(--ndl-face-b-lo)"></stop>
         </linearGradient>
         <linearGradient id="ndl-spec" x1="0.12" y1="0" x2="0.72" y2="1">
           <stop offset="0%"   stop-color="#ffffff" stop-opacity="0.17"></stop>
@@ -80,17 +80,17 @@ const MARKUP = `
         <linearGradient id="ndl-rim" x1="0.15" y1="0" x2="0.85" y2="1">
           <stop offset="0%"   stop-color="#ffffff" stop-opacity="0.52"></stop>
           <stop offset="42%"  stop-color="#ffffff" stop-opacity="0.06"></stop>
-          <stop offset="100%" stop-color="#E3BC66" stop-opacity="0.34"></stop>
+          <stop offset="100%" style="stop-color: var(--ndl-rim-warm)" stop-opacity="0.34"></stop>
         </linearGradient>
         <radialGradient id="ndl-hub" cx="0.34" cy="0.28" r="0.85">
-          <stop offset="0%"   stop-color="#FFF3D4"></stop>
-          <stop offset="42%"  stop-color="#EFCC7C"></stop>
-          <stop offset="78%"  stop-color="#D8AE55"></stop>
-          <stop offset="100%" stop-color="#A87D33"></stop>
+          <stop offset="0%"   style="stop-color: var(--ndl-hub-0)"></stop>
+          <stop offset="42%"  style="stop-color: var(--ndl-hub-1)"></stop>
+          <stop offset="78%"  style="stop-color: var(--ndl-hub-2)"></stop>
+          <stop offset="100%" style="stop-color: var(--ndl-hub-3)"></stop>
         </radialGradient>
         <linearGradient id="ndl-blendA" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stop-color="#146F4C"></stop>
-          <stop offset="100%" stop-color="#822A33"></stop>
+          <stop offset="0%" style="stop-color: var(--ndl-face-a-lo)"></stop>
+          <stop offset="100%" style="stop-color: var(--ndl-face-b-lo)"></stop>
         </linearGradient>
         <filter id="ndl-cast" x="-40%" y="-40%" width="180%" height="180%">
           <feDropShadow dx="0" dy="7" stdDeviation="6.5" flood-color="oklch(5% 0.05 268)" flood-opacity="0.58"></feDropShadow>
@@ -101,31 +101,31 @@ const MARKUP = `
         <g id="disc" style="transform-origin: 50px 50px">
           <path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63 Z" fill="url(#ndl-faceL)"></path>
           <path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63 Z" fill="url(#ndl-faceR)"></path>
-          <path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63" fill="none" stroke="#54EDA6" stroke-width="var(--inlay, 2.6)" opacity="0.95"></path>
-          <path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63" fill="none" stroke="#FF7B82" stroke-width="var(--inlay, 2.6)" opacity="0.95"></path>
-          <line x1="38.39" y1="3.43" x2="61.61" y2="96.57" stroke="#070A1E" stroke-width="7.5" stroke-linecap="round" opacity="0.62"></line>
-          <line x1="38.39" y1="3.43" x2="61.61" y2="96.57" stroke="#FFE7B0" stroke-width="var(--needlew, 4.4)" stroke-linecap="round"
-                style="filter: drop-shadow(0 0 3px rgba(255,214,120,0.9))"></line>
+          <path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63" fill="none" style="stroke: var(--ndl-inlay-a)" stroke-width="var(--inlay, 2.6)" opacity="0.95"></path>
+          <path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63" fill="none" style="stroke: var(--ndl-inlay-b)" stroke-width="var(--inlay, 2.6)" opacity="0.95"></path>
+          <line x1="38.39" y1="3.43" x2="61.61" y2="96.57" style="stroke: var(--ndl-seam-shadow)" stroke-width="7.5" stroke-linecap="round" opacity="0.62"></line>
+          <line x1="38.39" y1="3.43" x2="61.61" y2="96.57" stroke-width="var(--needlew, 4.4)" stroke-linecap="round"
+                style="stroke: var(--ndl-seam); filter: drop-shadow(0 0 3px var(--ndl-seam-glow))"></line>
         </g>
         <circle id="blend" cx="50" cy="50" r="46" fill="url(#ndl-blendA)" opacity="0"></circle>
         <g id="smearA" style="transform-origin: 50px 50px" opacity="0">
-          <line x1="38.39" y1="3.43" x2="61.61" y2="96.57" stroke="#F0D08A" stroke-width="3.6" stroke-linecap="round"></line>
+          <line x1="38.39" y1="3.43" x2="61.61" y2="96.57" style="stroke: var(--ndl-smear)" stroke-width="3.6" stroke-linecap="round"></line>
         </g>
         <g id="smearB" style="transform-origin: 50px 50px" opacity="0">
-          <line x1="38.39" y1="3.43" x2="61.61" y2="96.57" stroke="#F0D08A" stroke-width="3" stroke-linecap="round"></line>
+          <line x1="38.39" y1="3.43" x2="61.61" y2="96.57" style="stroke: var(--ndl-smear)" stroke-width="3" stroke-linecap="round"></line>
         </g>
         <circle cx="50" cy="50" r="46" fill="url(#ndl-spec)"></circle>
         <circle cx="50" cy="50" r="46" fill="url(#ndl-vig)"></circle>
-        <circle cx="50" cy="50" r="46.4" fill="none" stroke="#080B22" stroke-width="1.4" opacity="0.72"></circle>
+        <circle cx="50" cy="50" r="46.4" fill="none" style="stroke: var(--ndl-ring)" stroke-width="1.4" opacity="0.72"></circle>
         <circle cx="50" cy="50" r="47.3" fill="none" stroke="url(#ndl-rim)" stroke-width="1.5"></circle>
         <circle id="edgeArc" cx="50" cy="50" r="47.3" fill="none" stroke="var(--aqua-300)" stroke-width="1.9" opacity="0"
                 style="filter: drop-shadow(0 0 5px color-mix(in oklab, var(--aqua-400) 70%, transparent))"></circle>
         <circle cx="50" cy="50" r="10" fill="#0A0E28" opacity="0.34"></circle>
         <circle cx="50" cy="50" r="7.4" fill="#0A0E28" opacity="0.58"></circle>
         <circle cx="50" cy="50" r="6.3" fill="url(#ndl-hub)"></circle>
-        <circle cx="50" cy="50" r="6.3" fill="none" stroke="#7C5A22" stroke-width="0.5" opacity="0.7"></circle>
-        <circle cx="47.9" cy="47.6" r="1.7" fill="#FFF8E6" opacity="0.72"></circle>
-        <circle cx="50" cy="50" r="1.5" fill="#141A38"></circle>
+        <circle cx="50" cy="50" r="6.3" fill="none" style="stroke: var(--ndl-hub-ring)" stroke-width="0.5" opacity="0.7"></circle>
+        <circle cx="47.9" cy="47.6" r="1.7" style="fill: var(--ndl-hub-spec)" opacity="0.72"></circle>
+        <circle cx="50" cy="50" r="1.5" style="fill: var(--ndl-pivot)"></circle>
       </g>
     </svg>
     <span id="hit" role="button" tabindex="0" aria-label="Needle — an optional fidget toy. Nothing here affects your account. Space to spin, arrow keys to move, Escape to tuck it away."></span>
@@ -621,14 +621,22 @@ export function Needle() {
   const wantSuppressed = useRef(false);
   const pathname = usePathname();
   const [hiddenPref, setHiddenPref] = useState(false);
+  /* ⭐ SSR renders the HOUSE disc, always — never the persisted value, which lives in
+     localStorage and is unreadable on the server. Reading it after mount is what keeps
+     the markup hydration-safe; the swap is a CSS variable change, so it costs one paint
+     and cannot be seen as a flash of the wrong geometry. */
+  const [theme, setTheme] = useState<NeedleTheme>("50pick");
 
-  // Track the persisted show/hide preference; both the settings panel and the navbar
-  // toggle dispatch "50pick:feedback-changed" when it flips.
+  // Track the persisted show/hide preference and the disc's theme; the settings panel,
+  // the navbar toggle and the controls drawer all dispatch "50pick:feedback-changed".
   useEffect(() => {
-    setHiddenPref(getPrefs().needleHidden === true);
-    const onPrefs = () => setHiddenPref(getPrefs().needleHidden === true);
-    window.addEventListener("50pick:feedback-changed", onPrefs);
-    return () => window.removeEventListener("50pick:feedback-changed", onPrefs);
+    const sync = () => {
+      setHiddenPref(getPrefs().needleHidden === true);
+      setTheme(getPrefs().needleTheme);
+    };
+    sync();
+    window.addEventListener("50pick:feedback-changed", sync);
+    return () => window.removeEventListener("50pick:feedback-changed", sync);
   }, []);
 
   // Mount the engine ONCE. The shell keeps a single instance across route changes;
@@ -658,7 +666,7 @@ export function Needle() {
     apiRef.current?.setSuppressed(suppressed);
   }, [hiddenPref, pathname]);
 
-  return <div id="needle-root" ref={hostRef} />;
+  return <div id="needle-root" ref={hostRef} data-needle-theme={theme} />;
 }
 
 export default Needle;

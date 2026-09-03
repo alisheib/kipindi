@@ -50,16 +50,21 @@ const STORE_KEY = "50pick:feedback";
 
 export type NeedleMode = "spin" | "bounce";
 
+/** The fidget's paint. "50pick" is the house disc; a sponsor theme repaints it and
+ *  NOTHING else — same geometry, same engine, same physics, same settle. */
+export type NeedleTheme = "50pick" | "pepsi";
+
 export type FeedbackPrefs = {
   haptics: boolean;                          // master switch
   motion: "system" | "on" | "off";           // "off" = reduce motion in-app
   perToken: Record<HapticToken, boolean>;    // fine-grained, optional
   needleHidden: boolean;                     // hide The Needle pause object (navbar/settings toggle)
   needleMode: NeedleMode;                    // "spin" = grab/flick; "bounce" = tap repels it away
+  needleTheme: NeedleTheme;                  // the fidget's paint — house disc or a sponsor theme
 };
 
 function load(): FeedbackPrefs {
-  const base: FeedbackPrefs = { haptics: true, motion: "system", perToken: { ...DEFAULT_ENABLED }, needleHidden: false, needleMode: "spin" };
+  const base: FeedbackPrefs = { haptics: true, motion: "system", perToken: { ...DEFAULT_ENABLED }, needleHidden: false, needleMode: "spin", needleTheme: "50pick" };
   if (typeof localStorage === "undefined") return base;
   try {
     const raw = localStorage.getItem(STORE_KEY);
@@ -71,6 +76,10 @@ function load(): FeedbackPrefs {
       perToken: { ...base.perToken, ...(p.perToken ?? {}) },
       needleHidden: p.needleHidden === true,
       needleMode: p.needleMode === "bounce" ? "bounce" : "spin",
+      // ⛔ Any unknown value coerces back to the HOUSE disc. A sponsor theme is a
+      // flighted thing; a stale or hand-edited key must never leave a player looking
+      // at a brand whose flight has ended.
+      needleTheme: p.needleTheme === "pepsi" ? "pepsi" : "50pick",
     };
   } catch {
     return base;

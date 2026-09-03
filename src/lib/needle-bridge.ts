@@ -4,7 +4,7 @@
 // callers never need a ref to it. All calls are safe on the server and pre-mount
 // (they simply do nothing until the object is listening).
 
-import { getPrefs, setPrefs, type NeedleMode } from "@/lib/haptics";
+import { getPrefs, setPrefs, type NeedleMode, type NeedleTheme } from "@/lib/haptics";
 
 function emit(type: string): void {
   if (typeof window === "undefined") return;
@@ -56,4 +56,21 @@ export function getNeedleMode(): NeedleMode {
 }
 export function setNeedleMode(mode: NeedleMode): void {
   setPrefs({ needleMode: mode });   // dispatches "50pick:feedback-changed"
+}
+
+/**
+ * The fidget's paint (persisted, live via "50pick:feedback-changed"):
+ *   "50pick" — the house disc: enamelled emerald/rose faces, gilt needle (default).
+ *   "pepsi"  — a sponsor theme.
+ *
+ * ⭐ A theme repaints the disc and NOTHING else. The geometry, the engine, the
+ * physics, the haptics and the settle are identical under every theme — the only
+ * thing that changes is a block of CSS custom properties in needle.css, applied by
+ * a `data-needle-theme` attribute on #needle-root.
+ */
+export function getNeedleTheme(): NeedleTheme {
+  return getPrefs().needleTheme;
+}
+export function setNeedleTheme(theme: NeedleTheme): void {
+  setPrefs({ needleTheme: theme });   // dispatches "50pick:feedback-changed"
 }

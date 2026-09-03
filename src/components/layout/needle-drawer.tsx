@@ -19,8 +19,31 @@ import { Toggle } from "@/components/ui/toggle";
 import { useExitPhase } from "@/components/ui/modal";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import { isNeedleHidden, setNeedleHidden, getNeedleMode, setNeedleMode } from "@/lib/needle-bridge";
-import type { NeedleMode } from "@/lib/haptics";
+import { isNeedleHidden, setNeedleHidden, getNeedleMode, setNeedleMode, getNeedleTheme, setNeedleTheme } from "@/lib/needle-bridge";
+import type { NeedleMode, NeedleTheme } from "@/lib/haptics";
+
+/**
+ * A live miniature of the actual disc, painted by whichever theme it is given.
+ *
+ * ⭐ It carries `data-needle-theme` and reads the SAME `--ndl-*` variables the real
+ * object does (needle.css), so the swatch cannot drift from the thing it previews —
+ * there is no second copy of the palette here to go stale. Same geometry too: these
+ * are the disc's own path/line coordinates.
+ */
+function DiscSwatch({ theme, size = 30 }: { theme: NeedleTheme; size?: number }) {
+  return (
+    <span data-needle-theme={theme} aria-hidden="true" className="block">
+      <svg width={size} height={size} viewBox="0 0 100 100" className="block">
+        <path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63 Z" style={{ fill: "var(--ndl-face-a-hi)" }} />
+        <path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63 Z" style={{ fill: "var(--ndl-face-b-hi)" }} />
+        <circle cx="50" cy="50" r="46.4" fill="none" style={{ stroke: "var(--ndl-ring)" }} strokeWidth="3" opacity="0.72" />
+        <line x1="38.39" y1="3.43" x2="61.61" y2="96.57" style={{ stroke: "var(--ndl-seam)" }} strokeWidth="6" strokeLinecap="round" />
+        <circle cx="50" cy="50" r="9" style={{ fill: "var(--ndl-hub-1)" }} />
+        <circle cx="50" cy="50" r="2.6" style={{ fill: "var(--ndl-pivot)" }} />
+      </svg>
+    </span>
+  );
+}
 
 /** The 50pick mark in miniature — a disc with the needle on its pivot. */
 function NeedleMark({ size = 16, className }: { size?: number; className?: string }) {
@@ -37,10 +60,11 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
   const [open, setOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [mode, setMode] = useState<NeedleMode>("spin");
+  const [theme, setTheme] = useState<NeedleTheme>("50pick");
 
   // Read after mount (avoid hydration mismatch) and stay in sync with every other surface.
   useEffect(() => {
-    const sync = () => { setHidden(isNeedleHidden()); setMode(getNeedleMode()); };
+    const sync = () => { setHidden(isNeedleHidden()); setMode(getNeedleMode()); setTheme(getNeedleTheme()); };
     sync();
     window.addEventListener("50pick:feedback-changed", sync);
     return () => window.removeEventListener("50pick:feedback-changed", sync);
@@ -64,6 +88,15 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
 
   const toggleShown = () => { const next = !hidden; setHidden(next); setNeedleHidden(next); };
   const pickMode = (m: NeedleMode) => { setMode(m); setNeedleMode(m); };
+  const pickTheme = (t: NeedleTheme) => { setTheme(t); setNeedleTheme(t); };
+
+  /* ⛔ The theme's NAME is never translated. "50pick" and "Pepsi" are proper nouns —
+     a brand does not get localised, and the house theme is the product's own name. Only
+     the section heading and the hints below take the three locales. */
+  const THEMES: { id: NeedleTheme; name: string; hint: string }[] = [
+    { id: "50pick", name: "50pick", hint: t("The house disc", "Diski ya nyumbani", "本站原版") },
+    { id: "pepsi", name: "Pepsi", hint: t("Sponsor edition", "Toleo la mdhamini", "赞助版") },
+  ];
 
   const trigger =
     variant === "menu-row" ? (
@@ -200,6 +233,44 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
               {hidden && (
                 <p className="mt-2 text-body-sm italic text-text-subtle">{t("Turn it on above to change how it plays.", "Iwashe hapo juu ili kubadilisha jinsi inavyocheza.", "先在上方开启，才能更改玩法。")}</p>
               )}
+            </div>
+
+            {/* theme — paint only. Same object, same physics, same settle. */}
+            <div className="border-t border-border/60 pt-3.5 mt-3.5">
+              <p className="font-display text-[13.5px] font-semibold text-text leading-tight">{t("Theme", "Mandhari", "主题")}</p>
+              <div className={cn("mt-2 grid grid-cols-2 gap-1.5", hidden && "opacity-50 pointer-events-none")} aria-disabled={hidden}>
+                {THEMES.map((th) => {
+                  const active = theme === th.id;
+                  return (
+                    <button
+                      key={th.id}
+                      type="button"
+                      onClick={() => pickTheme(th.id)}
+                      aria-pressed={active}
+                      className={cn(
+                        "flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left transition-colors",
+                        active ? "border-brand-400 bg-brand-500/[0.12] text-text" : "border-border bg-bg-overlay text-text-subtle hover:text-text",
+                      )}
+                    >
+                      <DiscSwatch theme={th.id} />
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center gap-1.5 font-display text-[13px] font-semibold">
+                          {th.name}
+                          {active && <span className="text-brand-300" aria-hidden><svg width="12" height="12" viewBox="0 0 24 24"><path d="M5 12l5 5L20 6" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg></span>}
+                        </span>
+                        <span className="mt-0.5 block text-body-sm leading-snug text-text-subtle">{th.hint}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-2 text-body-sm leading-snug text-text-subtle">
+                {t(
+                  "Paint only — it plays exactly the same.",
+                  "Rangi tu — inacheza vivyo hivyo.",
+                  "仅换配色，玩法完全相同。",
+                )}
+              </p>
             </div>
           </div>
           {/* Bespoke keyframes on purpose: the desktop panel is centred with
