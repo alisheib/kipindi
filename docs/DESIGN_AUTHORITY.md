@@ -1519,6 +1519,38 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
    documented exemption — not a convenience.
 8. ⚠️ **`motion.css` is imported LAST** (`layout.tsx`), so at equal specificity it outranks
    everything in `globals.css`. Place a rule accordingly.
+9. ⛔ **ONLY `motion.css` MAY *DECLARE* A CURVE OR A DURATION — a namespace over the ladder is
+   allowed, a second set of VALUES is not.** (Added 2026-09-03, PV-14.) A subsystem may mint
+   namespaced aliases when it has a real reason — `src/styles/chat/` carries `--cm-ease-*` /
+   `--cm-dur-*` because its four natural names (`glide`/`arrive`/`sink`/`conduct`) collide with
+   four identically-named tokens in `globals.css`, and losing that collision once left the whole
+   chat panel resolving to `0s` with no motion at all. **What the alias may hold is a `var()`
+   pointing at the ladder. What it may never hold is its own `cubic-bezier()` or its own `ms`.**
+   An alias with its own values is a second ladder, and two ladders do not stay equal — the stale
+   one is always the one somebody reads.
+   ⚠️ **The mapping for an alias is not a fresh judgement**: `globals.css` already bridged these
+   four names (`--ease-glide`→`--m-glide`, `--ease-arrive`→`--m-settle`, `--ease-sink`→`--m-leave`,
+   `--ease-conduct`→`--m-breathe`), and a namespaced twin inherits that ruling. Durations take
+   `motion.css`'s written **rule 1**, the nearest rung down.
+   ⛔ **And an alias nobody reads is deleted, not migrated** — `--cm-*-sink` had zero consumers
+   for the life of the file and went out with this rule, the same call `state-tokens.css` made
+   for three canonical-looking siblings on 2026-08-21. A dead token that looks canonical is what
+   gets copied by accident.
+   Guarded by `test:motion-ladder` **§3** (`red:motion-ladder`, 5/5). Its companion **§2** pins
+   the thing that let this hide: ⭐ **the ladder's ratchet must read STYLESHEETS.** For its whole
+   life `motion-ladder.test.mts` walked only `.tsx`/`.ts`, so all six `.css` files under `src/` —
+   `motion.css` included — were outside the corpus, and its own directory-based anti-narrowing
+   pin passed throughout, because a pin on one axis certifies nothing about another.
+10. **AN AMBIENT LOOP KEEPS ITS PERIOD AND NEVER ITS CURVE.** (Stated here 2026-09-03; it was
+   already the practice in `motion.css`'s frozen census and `state-tokens.css`'s header, and PV-14
+   needed it as one enforceable sentence.) The ladder stops at `--t-max` (620ms) because it
+   describes one-shot motion, so an `infinite` animation's raw period — `2.4s`, `2600ms`, `3.6s`
+   — has no rung to move to and is correct as written. ⛔ Its **easing** is not exempt: *"What
+   they do NOT get to keep is a hand-typed CURVE."* ⭐ Writing this rule down retired a
+   per-file exemption rather than adding one — `ui/spinner.tsx` had been allowlisted since
+   2026-08-21 with a note saying it would stay *"until the ladder gains a period rung"*, and a
+   general rule covered it instead. RED-proven at the boundary: a loop that keeps its period and
+   hand-types its curve must still fail §1.1.
 
 ---
 

@@ -67,22 +67,46 @@
      globals' --claret (hue 15). That was already true; it is now VISIBLE. */
   --claret-hover:   oklch(52% 0.17 12);
 
-  /* ---------- Motion (brief names → kit easings) -----------------------
+  /* ---------- Motion — A NAMESPACE OVER THE KIT, NOT A SECOND LADDER ----
      Glide  · default state transitions (hover, focus, color)
      Arrive · entry — bubble pop, message slide-in, citation reveal
-     Sink   · exit  — panel dismiss, hover-out
      Conduct· sheet sweep / panel mount — the longest, most deliberate
 
-     NAMESPACED --cm-* on purpose. These were once --ease-glide/--arrive/--sink/
-     --conduct, which collide with the four identically-named tokens in globals.css.
-     This file is @imported at the TOP of globals.css, so globals' bare curves won and
-     every chat transition/animation here silently resolved to 0s — the whole panel had
-     no motion at all. Curve and duration are split so a consumer must state both.
-     Guarded by scripts/token-collision.test.mts. */
-  --cm-ease-glide:   cubic-bezier(0.2, 0.8, 0.2, 1);    --cm-dur-glide:   180ms;
-  --cm-ease-arrive:  cubic-bezier(0.16, 0.84, 0.36, 1); --cm-dur-arrive:  280ms;
-  --cm-ease-sink:    cubic-bezier(0.4, 0, 1, 1);        --cm-dur-sink:    160ms;
-  --cm-ease-conduct: cubic-bezier(0.22, 0.61, 0.36, 1); --cm-dur-conduct: 420ms;
+     NAMESPACED --cm-* on purpose, and the reason is a real collision: these were once
+     --ease-glide/--arrive/--sink/--conduct, which collide with the four identically-named
+     tokens in globals.css. This file is @imported at the TOP of globals.css, so globals'
+     curves won and every chat transition/animation here silently resolved to 0s — the
+     whole panel had no motion at all. Curve and duration are split so a consumer must
+     state both. Guarded by scripts/token-collision.test.mts.
+
+     🔴 PV-14 (2026-09-03) — THE NAMESPACE WAS RIGHT AND THE VALUES WERE A FOURTH MOTION
+     VOCABULARY. Until today these four lines hand-typed their own cubic-bezier()s and
+     their own millisecond durations — eight values answering to nothing in motion.css,
+     under a header that claimed "brief names → kit easings" while resolving to none of
+     them. That is the exact defect state-tokens.css deleted from ITSELF on 2026-08-21 and
+     wrote the obituary of twice in its own header ("a THIRD motion vocabulary standing
+     beside the ladder"). It survived here because `test:motion-ladder` walked only
+     `.tsx`/`.ts` and had never read a stylesheet in its life — see that guard's §2.
+
+     ⭐ THE MAPPING IS NOT A NEW JUDGEMENT. globals.css §2187-2190 already ruled on these
+     four names when it bridged its own copies: --ease-glide→--m-glide,
+     --ease-arrive→--m-settle, --ease-sink→--m-leave, --ease-conduct→--m-breathe. The
+     --cm-* twins ARE those four names, namespaced, so they inherit that ruling rather
+     than inventing a second one. Durations take motion.css's written rule 1 (nearest rung
+     down): 180→--t-quick (140) · 280→--t-base (220) · 420→--t-move (340).
+     ⚠️ Say the feel change plainly: --cm-dur-glide has 22 consumers and drops 180→140ms
+     on chat hover/focus/colour. That is not a side effect, it is the point — it is the
+     same --t-quick the kit's own .btn uses for exactly this, so chat now hovers on the
+     product's clock instead of its own.
+
+     ⛔ --cm-ease-sink / --cm-dur-sink DELETED, not migrated: measured ZERO consumers in
+     all of src/ (declared here and in the reduced block, read nowhere), for the life of
+     the file. §0a one fact one home, and the same call state-tokens.css made when it
+     deleted three canonical-looking siblings that no one read. A dead token that looks
+     canonical is what gets copied by accident. */
+  --cm-ease-glide:   var(--m-glide);   --cm-dur-glide:   var(--t-quick);
+  --cm-ease-arrive:  var(--m-settle);  --cm-dur-arrive:  var(--t-base);
+  --cm-ease-conduct: var(--m-breathe); --cm-dur-conduct: var(--t-move);
 
   /* ---------- Z-stack ---------- */
   --z-bubble: 60;
@@ -91,12 +115,16 @@
 }
 
 /* Reduced motion — extend the kit, don't fight it.
-   Every chat-surface transition collapses to a fade or to none. */
+   Every chat-surface transition collapses to a fade or to none.
+   ⚠️ `linear` STAYS a keyword here on purpose: the reduced tier's whole job is removing
+   the arrival signature, so pointing these at `--m-settle` would put back the thing the
+   tier exists to take away. `0ms` likewise is "off", not a rung. What changed with PV-14
+   is only the one real duration — 120 → `--t-quick` (140) by motion.css rule 1 — so the
+   single fade this tier does allow is timed by the ladder like everything else. */
 @media (prefers-reduced-motion: reduce) {
   :root {
     --cm-ease-glide:   linear; --cm-dur-glide:   0ms;
     --cm-ease-arrive:  linear; --cm-dur-arrive:  0ms;
-    --cm-ease-sink:    linear; --cm-dur-sink:    0ms;
-    --cm-ease-conduct: linear; --cm-dur-conduct: 120ms; /* one quiet fade — never a slide */
+    --cm-ease-conduct: linear; --cm-dur-conduct: var(--t-quick); /* one quiet fade — never a slide */
   }
 }
