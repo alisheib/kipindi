@@ -247,8 +247,82 @@ passed, so the RED harness **deletes** the arm instead — the shape that actual
 ### PV-03 · MEDIUM · two surfaces render a narrow centred column on a desktop viewport
 - **Lens** 3, 5, 10. **Surfaces** `/wallet/deposit` (confirmed) and `/positions` **empty-state cards** (confirmed) at **1280·1920**. ⚠️ **Narrowed by re-derivation** — see §2b: market-detail, wallet, notifications and updown all render **real desktop layouts** and are OVERTURNED.
 - **Measured:** `/wallet/deposit` at 1280 is a single ~600px column with ~340px empty gutters each side (~53% of width unused); `/positions` section headers span full width while the empty-state cards sit centred-narrow.
-- **Definition site:** a shared `<DetailLayout>` (a new **template**, §K5 — a system-level primitive so every narrow detail page inherits it), or give these pages a two-track shell. ⛔ Not a per-page patch.
-- **Guard:** extend `responsive-audit.mjs`'s per-page measure — a content root narrower than ~65% of its tier at ≥1280 with no sibling track is a finding.
+- **Definition site (as filed):** a shared `<DetailLayout>` (a new **template**, §K5), or a two-track shell.
+- **Guard (as filed):** extend `responsive-audit.mjs`'s per-page measure — a content root narrower than ~65% of its tier at ≥1280 with no sibling track is a finding.
+
+#### 🔴 RE-DERIVED 2026-09-03 (row 8) — ONE HALF IS OVERTURNED, THE OTHER IS MIS-DIAGNOSED, AND ⛔ `<DetailLayout>` MUST NOT BE BUILT
+
+**Measured at 1280 and 1920 against a local server, signed in, on all six candidate routes at
+once** (the two filed as confirmed, the four §2b overturned, plus `/markets` as a control) —
+measuring the **union bounding box of painted content leaves**, not a wrapper:
+
+| route | content @1280 | side-by-side tracks | verdict |
+|---|---|---|---|
+| `/wallet/deposit` | **555px = 43%** | 0 | ✅ **OVERTURNED — correct** |
+| `/positions` (empty) | **639px = 50%**, gutters **132 / 509** | 0 | 🔴 **real, but not the filed cause** |
+| `/wallet` | 1016px = 79% | 4 | overturn holds |
+| `/notifications` | 1016px = 79% | 0 | overturn holds |
+| `/updown` | 1240px = 97% | 0 | overturn holds |
+| `/markets` (control) | 1216px = 95% | 2 | control reads wide ✓ |
+
+- ⛔ **`<DetailLayout>` IS NOT NEEDED AND MUST NOT BE BUILT — the home already exists.**
+  Authority **§B7 rule 2**: *"A page states its width through `<PageContainer tier>` and nothing
+  else. The tier is a TS union, so an invented width is a compile error, and it stamps
+  `data-measure` so the width can be measured at runtime rather than trusted."* Six tiers already
+  exist (`--w-console` 1600 · `--w-board` 1280 · `--w-reading` 1080 · `--w-form` 640 ·
+  `--w-receipt` 560 · `--w-auth` 1152). A second narrow-page template would be the §K5 fork this
+  programme's own §b2 clause 2 forbids. Struck in §b2 with its reason, like `test:motion-timing`.
+- ✅ **`/wallet/deposit` is OVERTURNED.** It declares `tier="form"` (640px) and **a deposit page
+  is a form.** Its gutters are symmetric, its card centred, its fields at a readable width, its
+  five payment methods 3-up — confirmed by opening the shot, not only by the number. ⭐ The filed
+  "~53% of desktop width unused" measured a **true number and drew the wrong conclusion**: unused
+  width around a form is the *entire point* of §B7, which exists because users reported *"sometimes
+  the pages are too wide, and the input fields as well."* **Widening this page would re-introduce
+  the defect §B7 was written to fix.**
+- 🔴 **`/positions` is real — and it is an ALIGNMENT mismatch, not a narrow measure.** The page
+  declares `tier="reading"` (1080) and gets it: the container measures 1016px, correctly. The
+  page header and the section headings **"Open"** / **"Settled"** sit left at **x=132**. But the
+  empty-state cards are **centred at 460–820px**, so each card floats in the middle of the row
+  while its own heading sits 328px to its left. That asymmetry is what the probe read as
+  "gutters 132 / 509" — the union of a left-aligned heading and a centred card. The record's
+  *"empty-state cards centred-narrow"* named the symptom and mis-attributed the cause to the
+  page's measure.
+- **ONE definition site, and it is a primitive:**
+  [`empty-state.tsx:45`](../src/components/ui/empty-state.tsx#L45) —
+  `max-w-[360px] mx-auto`. The `mx-auto` is the centring. ⭐ **And the primitive's own docstring
+  already promises the variant that would fix it** — *"EmptyState — kit-faithful: 360px (or
+  full-width) boxed"* — a full-width option that **has never existed in the code**. So the fix is
+  a **prop on the existing component** (§b2: a new component state → the kit, as a prop), not a
+  new component and not a per-page override.
+- ⚠️ **BLAST RADIUS, WHICH IS WHY THIS IS A RULING AND NOT A FIX: 45 call sites across 33 files**
+  (measured), player and admin. Changing the default alignment moves all 45. The two honest
+  options are (a) the empty state **fills its section's measure** — a full-width dashed box, so
+  "this section is empty" aligns with the heading that names it, or (b) it **stays 360px but
+  aligns left** under its heading. Both are defensible; choosing between them is a design
+  judgment on a player surface, which §6/§d route to Ali, not to a session. 👤 **Ali's call.**
+- **Verified:** the probe DISCRIMINATES — the control (`/markets`) reads 95% and the two filed
+  defects 43% / 50%, so it is measuring layout and not a wrapper. Shots at 1280 for all six
+  routes, opened and read.
+- ⛔ **THE FIRST VERSION OF THIS PROBE WAS VACUOUS AND THAT IS THE LESSON.** It walked `main` for
+  the widest block over 120px tall and reported **"100% of 1280" for all six routes**, including
+  the control and both defects — because on every route the widest such block is
+  `div.route-enter`, the full-width route shell. ⭐ **A probe that returns the same number for the
+  control and the defect is measuring the wrapper, not the layout.** It was caught only because
+  the control was measured in the same run; with the two filed pages alone, "100%, no finding
+  here" would have read as a clean overturn of both.
+- ⛔ **AND THE FILED GUARD RULE IS REFUSED, WITH ARITHMETIC.** §5 proposed *"a content root
+  narrower than ~65% of its tier at ≥1280 with no sibling track is a finding."* That rule **cannot
+  land at zero**, because a percentage of the VIEWPORT is the wrong denominator: at **1920** the
+  same measured run puts `/notifications` at **1016px = 53%** with **0** side-by-side tracks —
+  a 🔴 by that rule — and `/markets`, the control, at **63%**. Both are correct pages; they are
+  simply showing a 1080px reading measure inside a 1920px window, which is §B7 doing its job. A
+  guard that condemns the control it was calibrated against is decoration.
+  ⭐ **The honest rule uses the product's own constant, not an invented ratio:** *does the page's
+  content reach the measure its own declared `tier` sets?* `/wallet` and `/notifications` both
+  land on **1016px** — the `reading` tier's real inner width — while `/positions` reaches only
+  **639px** of the same 1016 it asked for. That comparison is tier-relative, viewport-independent,
+  and reads off the `data-measure` stamp §B7 rule 2 already puts on every page for exactly this
+  purpose. ▶ Whoever implements row 8's guard should build **that**, not the 65% rule.
 
 ### PV-13 · MEDIUM · control-height and chip-height drift off the system
 - **Lens** 13. **Surfaces** shell (top bar) + every board, **390·1280**.
@@ -569,6 +643,60 @@ record filed the browser's answer under the source's question.
 ## §5 · What this pass did NOT cover (name the drive that would settle it)
 
 - **`/markets` filter correctness** (lens 12, provisional). The board lazy-loads 15 of 36 cards, so `count == rendered` cannot be checked without paginating; my filter-click probe was inconclusive on whether `/markets` filter/sort state is **URL-backed** (the URL did not change on a pool-pill click). **Drive:** a filter sweep that scrolls to full render, clicks each pill, counts rendered cards against the pill count, asserts sort monotonicity on the sorted key, drives ≥4 combined filters against a first-principles filter of the same data, and checks Back/refresh/shared-link state. `test:board-discovery` + `qa:filter-scan` are the starting instruments.
+
+#### ✅ RE-DERIVED 2026-09-03 (row 11) — TWO OF THE FOUR ARE ALREADY COVERED, ONE IS OVERTURNED, ONE STANDS
+
+⛔ **BOTH NAMED "STARTING INSTRUMENTS" WERE THE WRONG ONES, AND THE RIGHT ONE ALREADY EXISTED.**
+`qa:filter-scan` is `scripts/filter-language-scan.mjs` — a check on filter *language* (§K6), not
+correctness. The actual home is **`qa:filter-stress`** (`scripts/filter-stress.mjs`), which this
+section does not mention, and it already drives **every real combination of `/markets`' axes — 5
+status × 6 sort × 4 odds × 3 pool = 360 boards, explicitly not a sample** — asserting each
+answers 200 (never 500), never reflects a param unescaped, and *"the promise still equals the
+delivery, even under a nonsense combination"*, plus idempotence across two identical requests.
+⭐ **So the "combined-filter intersection" item was already covered, more thoroughly than §5
+asked**, and the drive §5 specifies would have been a second home for it.
+
+**Measured locally, signed in, 1280, on a seeded 6-market board (three funded):**
+
+| §5's question | verdict |
+|---|---|
+| combined-filter intersection | ✅ **already covered** by `qa:filter-stress`'s 360-combination sweep |
+| count == rendered | ✅ **HOLDS, 5/5 exact** — `Open 6`→6 · `Closing today 3`→3 · `New 3`→3 · `Watching 0`→0 · `All 6`→6 |
+| filter state URL-backed | ✅ **OVERTURNED — it IS URL-backed** |
+| sort monotonicity | ⚠️ **STILL UNPROVEN** — and the drive says so rather than passing |
+
+- ✅ **URL-backed: OVERTURNED, and the original probe's mistake is instructive.** Four of five
+  status pills wrote the URL (`?status=today` · `?status=new` · `?status=watch` · `?status=all`)
+  with the card count changing to match each time (6→3→3→0→6). The one that wrote nothing is
+  **"Open"** — which is the **default** status, so a clean URL is the correct representation of
+  it. ⭐ **§5's doubt came from clicking the single pill that legitimately must not change the
+  URL, and generalising from it.** A filtered board on `/markets` is shareable, bookmarkable and
+  Back-navigable today.
+- ✅ **count == rendered: the pill is its own oracle.** Each pill prints its own count, so the
+  comparison needs no internal field to be trusted — it is the product's own promise against the
+  product's own delivery. All five matched exactly, including the **zero** case (`Watching 0`
+  renders 0), which is the one a "count > 0" check would have skipped.
+- ⚠️ **Sort monotonicity is UNPROVEN, reported as unproven.** `pool` is the only sort whose key is
+  printed on the card face, and the seeded board printed **no `VOL` figure at all** (0 of 6), so
+  there was nothing to order-check. The instrument refuses rather than passing on an empty read.
+  ▶ **Owed: re-run against production**, where funded markets print real volumes.
+- ⚠️ **Lazy-load is UNPROVEN locally, NOT overturned.** 6 cards at rest, 6 after scrolling to the
+  end — but a 6-card board has nothing to lazy-load, so the check could not fire. §5's "15 of 36"
+  needs **production** to settle. Stated as unexercised rather than folded into a green run.
+- ⛔ **THE PROBE'S FIRST COUNTER WAS WRONG AND IT NEARLY PRODUCED TWO FALSE OVERTURNS.**
+  `[class*="mcardp"]` is a **substring** match, so it also counted every child of a card —
+  `.mcardp-watermark`, `.mcardp-top`, `.mcardp-catico`, `.mcardp-cat`, `.mcardp-head`,
+  `.mcardp-info`, `.mcardp-share` … — and a **6-card board counted 126**, 21 parts per card. On
+  that number, `"Closing today 3"` rendering "63" looked like a spectacular count-vs-rendered
+  defect, and "126 before scrolling, 126 after" looked like proof the board does not lazy-load.
+  **Both conclusions were arithmetic on a broken count.** ⭐ The fix is `[class~="mcardp"]` (the
+  class TOKEN), and it was trusted only after **three independent measures converged** —
+  token-match, `<article>` count and `.market-grid`'s own child count all return 6. *One measure
+  agreeing with itself is what a substring selector gives you.*
+- ⇒ **Row 11 needs no new drive.** What it needs is **two sections added to `qa:filter-stress`**
+  (the existing home): count-vs-rendered per pill, and sort monotonicity on the printed key —
+  both driven against production, where the board is large enough and funded enough to exercise
+  them. ⛔ Not a new `qa:*` script beside it.
 - **`/markets` sort options** — I confirmed the active sort is "Closing soonest" but could not enumerate the full dropdown (the open failed headless). Whether a volume/activity sort exists on `/markets` is **unconfirmed** (it does on `/results`).
 - **Rendering/motion perf** (lens 8, provisional) — no CLS / long-task / per-second-re-render trace on a throttled low-end-Android profile; the two flip-clocks and the 70s ticker are candidates. **Drive:** a Playwright trace with CPU throttling + `PerformanceObserver` on the market-detail and `/live`.
 - **The sell flow and cash-out** — no position was sold (no money moved by design).

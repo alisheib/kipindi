@@ -127,9 +127,19 @@ and this table is corrected — it is a pointer, never a second source.
 
 The three new homes this programme mints — and each is final:
 
-- **`src/components/layout/detail-layout.tsx`** (PV-03) — *the* narrow-detail-page template.
-  Every future single-column detail page adopts it. ⛔ A later session must never write a second
-  narrow-page fix; if a page is narrow, it takes `<DetailLayout>`.
+- ~~**`src/components/layout/detail-layout.tsx`** (PV-03) — *the* narrow-detail-page template.~~
+  ⛔ **NEVER BUILT, AND DELIBERATELY SO — row 8, 2026-09-03. Do not create this file.** The home
+  already existed and the plan had not looked: Authority **§B7 rule 2** — *"a page states its
+  width through `<PageContainer tier>` and nothing else"* — with **six** tiers already in
+  `globals.css` (`--w-console` 1600 · `--w-board` 1280 · `--w-reading` 1080 · `--w-form` 640 ·
+  `--w-receipt` 560 · `--w-auth` 1152), a TS union so an invented width is a **compile error**,
+  and a `data-measure` stamp so the width can be measured at runtime rather than trusted. A
+  second narrow-page template would be exactly the §K5 fork clause 2 above forbids.
+  ⭐ **And the re-derivation dissolved the finding it was meant to serve:** `/wallet/deposit`
+  already declares `tier="form"` and is **correct** (a deposit page is a form; its "wasted" width
+  is what §B7 exists to produce), while `/positions`' real defect is an **alignment** mismatch
+  inside a correctly-measured container — a prop on `EmptyState`, not a layout template. ▶ If a
+  page is narrow, the question is *which `tier` does it declare*, never *does it need a template*.
 - **`src/components/brand/decor-mark.tsx`** (PV-01, *if* Ali rules to contain the mark) — *the*
   decorative-mark primitive, carrying the §M8 clear-space rule once. Every hero backdrop uses it.
 - ~~**`test:motion-timing`** (PV-14) — *the* timing-correctness gate.~~ ⛔ **NEVER BUILT, AND
@@ -258,10 +268,10 @@ States: `☐ not started` · `◐ in progress` · `⧗ blocked (why)` · `✎ aw
 | 5 | PV-13c · one chip height per size | 13 | Code+Design | ☐ | `chip.tsx` + `globals.css` | `test:chip-contract` | — | — | which sizes = Design — untouched this session |
 | 6 | PV-10 · `@pct%`/`×N` suffix contrast | 6 | Code | ◐ | `market-card.tsx` · `side-picker.tsx` · `updown-card.tsx` · `updown-stake-controls.tsx` · `conviction-dial.tsx` (filed as 4 sites, was **9**) | `test:contrast` **§P-u2** (new) · `red:contrast-callsite` | `pv10/rows-3-4-6` (unmerged) | `.qa-shots/pv10-local/` (gitignored, local-only) | guard population gap WAS the finding, confirmed; guard's own sweep found a 9th site (the bet-panel commit button). ⛔ **NOT proven on production** |
 | 7 | PV-14 · timing correctness — **the ladder's ratchet had never read a stylesheet** | 14 | Code | ◐ | `chat-tokens.css:82-85` (the `--cm-*` aliases) + 5 call sites in `chat-styles.css` — ⛔ **NOT** the Input atom, and **no** `test:motion-timing`: see the note | `test:motion-ladder` **§2+§3** (extended, not a new file) · `red:motion-ladder` (new — the guard had **no** control) | `pv10/row-7-motion-ladder` (unmerged) | `.qa-shots/pv14-local/` (gitignored, local-only) | code-complete, guarded, **RED-proven 5/5**, browser-verified locally **72/0** at 390+1280 × EN/SW/ZH. ⛔ **NOT proven on production.** ⭐ The filed census was stale ×124 (`duration-150` was **3**, not 373; bare Tailwind curves **0**, not 391) and the real defect was a **corpus hole** — `walk()` took only `.tsx`/`.ts`, so a **fourth motion vocabulary** (8 hand-typed values) lived in `src/styles/chat/`. New law: Authority **§E9/§E10**. Ratchet moved **4 → 5 → 4** (`needle.css` in, scheduling; `spinner.tsx` out, §E10 covered it) |
-| 8 | PV-03 · `<DetailLayout>` template | 3,5,10 | Code+Design | ☐ | new `detail-layout.tsx` | `responsive-audit.mjs` | — | — | deposit + positions-empty |
+| 8 | PV-03 · narrow detail pages — **re-derived: half overturned, half mis-diagnosed** | 3,5,10 | 👤 **Ali** (a design ruling, 45 surfaces) | ◐ **re-derived, not built** | ⛔ **NOT** `detail-layout.tsx` — never build it (§b2, struck). The real site is `empty-state.tsx:45` (`max-w-[360px] mx-auto`) | `responsive-audit.mjs` (the ~65%-of-tier rule is **refused** — see note) | — | `.qa-shots/pv03-local/` (6 routes @1280, gitignored) | ✅ **`/wallet/deposit` OVERTURNED** — `tier="form"` (640px) is CORRECT; a deposit page is a form and its "wasted 53%" is what §B7 exists to produce. 🔴 **`/positions` is real but mis-filed**: the measure is right (`reading`/1080, container 1016px); the defect is that section headings sit left at x=132 while `EmptyState`'s `mx-auto` centres the card at 460–820. ⚠️ **45 call sites in 33 files inherit that `mx-auto`** → a design ruling, not a session's call. The primitive's own docstring already promises the *"(or full-width)"* variant that has never existed |
 | 9 | PV-01 · `<DecorMark>` clear-space (or keep) | 4,5 | 👤 Ali → Design | ☐ | new `decor-mark.tsx` | `--m-pivot`/clear-space | — | — | keep-as-backdrop is live |
 | 10 | PV-05 · dial weight + term unification | 5,9,13 | ✎ Design | ☐ | handover | visual | — | — | commission §d |
-| 11 | Lens 12 · finish the `/markets` filter-correctness drive | 12 | Code | ☐ | — | `test:board-discovery` + `qa:filter-scan` | — | — | §5 of the record — count-vs-rendered, URL state, monotonicity |
+| 11 | Lens 12 · `/markets` filter correctness — **2 of 4 already covered, 1 overturned, 1 open** | 12 | Code | ◐ **re-derived locally; production owed** | ⛔ **NOT** a new drive — the home is **`qa:filter-stress`** (`scripts/filter-stress.mjs`), which §5 never names | extend `qa:filter-stress` with 2 sections (count-vs-rendered, monotonicity) | — | local drive **10/1**, `.qa-shots/pv11-local/` | ⛔ Both instruments §5 names are wrong: `qa:filter-scan` is a filter-*language* check. `qa:filter-stress` **already** drives all **360** status×sort×odds×pool combinations asserting "promise equals delivery" — so **combined-filter intersection was already covered**. ✅ **count==rendered HOLDS 5/5 exact** (incl. the zero case). ✅ **URL-backed OVERTURNED — it IS**: 4 of 5 pills wrote the URL; §5's doubt came from clicking **"Open"**, the *default*, which correctly writes nothing. ⚠️ **monotonicity + lazy-load UNPROVEN** (a 6-card board with 0 printed volumes cannot exercise either) → **production owed**, reported unproven not passed |
 | 12 | Invite & Earn gold on zero-bonus card | — | 👤 Ali | ☐ | `wallet-client.tsx:314` | `test:gold-is-money` | — | — | passes today (15/15) → ruling to record, not a fix |
 
 Seed state: every row `☐`. ⛔ Do not tick a row by intention — only by evidence (§h).
@@ -397,12 +407,77 @@ a second home. A fix without its guard rots. Also filed: `chat-styles.css`'s sta
 (`animation-delay: 100ms/180ms`) are off `--m-stagger` and invisible to this guard by its written
 scope — a real finding, a different shape, worth a look with row 8.
 
-**Next.** Rows **8** (`<DetailLayout>` for deposit + positions-empty) and **11** (the `/markets`
-filter-correctness drive — §5 of the record: count-vs-rendered, URL state, monotonicity) are the
-only code rows left. Rows **5** (which chip sizes), **9**/**12** (rulings — already ☑ by Ali's
-ruling per the planner header) and **10** (Design commission) are Ali's. ⛔ Merging any of the
-three `pv10/*` branches is Ali's call; on merge, re-run each row's drive against production and
-`qa:card-geometry` before/after for row 4 (`MARKET_CARD_H` 349→347).
+---
+
+### ROWS 8 AND 11 WERE ALSO RE-DERIVED THIS SESSION — AND ⛔ **NEITHER SHOULD BE BUILT AS FILED.**
+
+⭐ **Three rows, three wrong definition sites, and in every case the correct home already
+existed.** That is now the most reliable finding of this whole programme: budget the
+re-derivation, not the fix.
+
+**ROW 8 (PV-03) — ⛔ do NOT create `detail-layout.tsx`.** Authority **§B7 rule 2** already owns a
+page's width: *"a page states its width through `<PageContainer tier>` and nothing else"*, six
+tiers in `globals.css`, a TS union so an invented width is a **compile error**, and a
+`data-measure` stamp so it can be measured rather than trusted. Measured at 1280 and 1920 on all
+six candidate routes **plus `/markets` as a control**:
+- ✅ **`/wallet/deposit` is OVERTURNED.** It declares `tier="form"` (640px) and **a deposit page is
+  a form** — symmetric gutters, centred card, readable fields, methods 3-up (shot opened). The
+  filed *"53% of desktop width unused"* is a **true number with the wrong conclusion**: that
+  emptiness is precisely what §B7 was written to produce, after users said pages and input fields
+  were *"too wide"*. **Widening it would re-introduce the defect §B7 exists to fix.**
+- 🔴 **`/positions` is real but MIS-DIAGNOSED.** Its measure is correct (`reading`/1080 →
+  container 1016px). The defect is **alignment**: headings sit left at x=132 while
+  `empty-state.tsx:45`'s `mx-auto` centres a 360px card at 460–820. ⚠️ **45 call sites in 33
+  files** inherit that `mx-auto` → **👤 Ali's ruling**, (a) fill the section's measure or (b) stay
+  360 and align left. The primitive's docstring already promises the *"(or full-width)"* variant
+  that never existed.
+- ⛔ **§5's proposed guard is REFUSED with arithmetic**: *"narrower than ~65% of its tier at
+  ≥1280"* cannot land at zero — at 1920 it condemns `/notifications` (53%) **and `/markets`, the
+  control** (63%), both correct. The honest rule is tier-relative: *does content reach the measure
+  its own declared `tier` sets?* (1016 vs `/positions`' 639.)
+
+**ROW 11 (lens 12) — ⛔ do NOT write a new drive.** Both instruments §5 names are wrong
+(`qa:filter-scan` is a filter-*language* check), and the real home — **`qa:filter-stress`** —
+goes unmentioned while already driving **all 360** status×sort×odds×pool combinations asserting
+*"the promise still equals the delivery"*. So **combined-filter intersection was already
+covered.** Of §5's four questions: ✅ **count==rendered HOLDS 5/5 exact** (including the zero
+case); ✅ **URL-backed is OVERTURNED — it IS URL-backed**, 4 of 5 pills wrote the URL and §5's
+doubt came from clicking **"Open"**, the *default*, which correctly writes nothing; ⚠️
+**monotonicity and lazy-load are UNPROVEN, reported as unproven** — a 6-card local board printing
+zero volumes cannot exercise either. ▶ Row 11 = **two sections added to `qa:filter-stress`**, run
+against **production**.
+
+⚠️ **A THIRD INSTRUMENT BUG, and the pattern across all four is the real lesson.** Row 11's first
+counter used `[class*="mcardp"]` — a **substring** match that also counts every child of a card
+(`.mcardp-top`, `.mcardp-info`, `.mcardp-share` …), so a **6-card board counted 126**. On that
+number `"Closing today 3"`→"63" looked like a spectacular count defect and "126 before scrolling,
+126 after" looked like proof of no lazy-loading. Fixed to `[class~="mcardp"]` and trusted only
+after **three independent measures converged** (token-match, `<article>`, `.market-grid` children
+— all 6). ⭐ **Every one of this session's four instrument bugs was caught by a CONTROL, never by
+inspection**: the untouched token (`--m-press`), the screenshot (the English "SW" cell), the
+in-run control page (`/markets` reading 95% where the wrapper-probe said 100%), and three
+converging counts. **Measure the control in the same run, always** — with the two filed pages
+alone, row 8's vacuous probe would have read as a clean double overturn.
+
+🔴 **AND ONE MEASUREMENT WAS THROWN AWAY RATHER THAN REPORTED.** The first `test:responsive` run
+came back **5243/193** against session 3's baseline of 5386/33, with 180 of the failures reading
+*"no `<main>` at all"* across 9 routes. ⛔ **Invalid, and not a finding**: it ran concurrently with
+three other browser drives and market seeding against one `next dev`. Checked directly —
+`/legal/terms`, `/help`, `/fairness` and `/markets` each serve **200 with exactly one `<main>`**;
+`/profile/sessions` is a 307 (signed out). A contended dev server renders partial pages and the
+sweep reads that as absence. ▶ A clean re-run on an idle server was started; **compare it against
+5386/33 before trusting any responsiveness claim.** The 320px `button[Account menu]` clip in
+the other cluster is the pre-existing one session 3 already named.
+
+**Next — what is actually left.** No code row remains that should be built as filed. The queue is:
+👤 **Ali** — (1) the `EmptyState` alignment ruling (row 8, 45 surfaces); (2) row **5**, which chip
+sizes; (3) row **10**, the dial Design commission; (4) whether to merge the three `pv10/*`
+branches; (5) get the `test:type-scale` +2 / `test:spacing-scale` +4 to the **needle session** —
+`test:all` is red on `main` and it is their `needle-drawer.tsx`. **Code, once Ali rules** — row 8's
+one-prop fix + the tier-relative guard; row 11's two `qa:filter-stress` sections against
+production; the `--m-pivot`/`orm-pop` one-liner **if** the needle session hands over `test:needle`.
+⛔ On merging any branch: re-run that row's drive against production, and `qa:card-geometry`
+before/after for row 4 (`MARKET_CARD_H` 349→347).
 
 **RESUME AT (session 6) — 2026-09-03. ROWS 3, 4, 6 ARE `◐` — code-complete, guarded, RED-proven,
 visually verified LOCALLY (EN/SW/ZH, 390/1280) — but pushed to branch `pv10/rows-3-4-6`
