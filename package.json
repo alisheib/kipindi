@@ -446,6 +446,8 @@
     "test:crest-legibility": "tsx scripts/crest-legibility.test.mts",
     "test:motion-ladder": "tsx scripts/motion-ladder.test.mts",
     "red:motion-ladder": "node scripts/red-motion-ladder.mjs",
+    "test:invite-coming-soon": "tsx scripts/invite-coming-soon.test.mts",
+    "red:invite-coming-soon": "node scripts/red-invite-coming-soon.mjs",
     "test:glyph-motion": "tsx scripts/glyph-motion.test.mts",
     "qa:button-contrast": "node scripts/live-button-contrast.mjs",
     "qa:ring-delta": "node scripts/material-ring-delta.mjs",

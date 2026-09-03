@@ -9,6 +9,8 @@ import { Avatar } from "@/components/ui/avatar";
 import { I } from "@/components/ui/glyphs";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
+import { ComingSoonBadge } from "@/components/ui/coming-soon-badge";
+import { inviteIsLive } from "@/lib/invite-feature";
 import { useT, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { NeedleControlsDrawer } from "@/components/layout/needle-drawer";
@@ -193,6 +195,9 @@ export function AvatarMenu({
                   /* The state flag rides the proposals row only: gilt coming-soon /
                      amber maintenance / nothing when ACTIVE. */
                   proposalsBadge={r.proposals ? proposalsState : undefined}
+                  /* Invite carries the same gilt coming-soon flag, from its own
+                     one switch — see src/lib/invite-feature.ts. */
+                  comingSoon={r.invite ? !inviteIsLive() : false}
                 />
               ))}
             </ul>
@@ -295,6 +300,8 @@ type MenuRow = {
   accent?: boolean;
   /** Proposals rides the feature-state flag and is dropped entirely when DISABLED. */
   proposals?: boolean;
+  /** Invite rides `INVITE_STATE` (src/lib/invite-feature.ts) — one flag, one switch. */
+  invite?: boolean;
 };
 
 /**
@@ -311,7 +318,7 @@ type MenuRow = {
 const MENU_ROWS: readonly MenuRow[] = [
   { href: "/profile",        icon: I.profile,     en: "Profile",        sw: "Wasifu",                    zh: "个人资料" },
   { href: "/wallet",         icon: I.wallet,      en: "Wallet",         sw: "Pochi",                     zh: "钱包" },
-  { href: "/profile/invite", icon: I.gift,        en: "Invite & Earn",  sw: "Alika na upate zawadi",     zh: "邀请赚钱", accent: true },
+  { href: "/profile/invite", icon: I.gift,        en: "Invite & Earn",  sw: "Alika na upate zawadi",     zh: "邀请赚钱", accent: true, invite: true },
   { href: "/proposals",      icon: I.sparkle,     en: "Propose & earn", sw: "Pendekeza na upate zawadi", zh: "提议赚钱", accent: true, proposals: true },
   { href: "/positions",      icon: I.portfolio,   en: "Positions",      sw: "Nafasi",                    zh: "持仓" },
   { href: "/results",        icon: I.resolved,    en: "Results",        sw: "Matokeo",                   zh: "结果" },
@@ -319,7 +326,7 @@ const MENU_ROWS: readonly MenuRow[] = [
   { href: "/profile/kyc",    icon: I.shieldcheck, en: "Verify ID",      sw: "Kuthibitisha kitambulisho", zh: "身份验证" },
 ];
 
-function Item({ href, icon: Ico, en, sw, zh, accent, current, proposalsBadge }: { href: string; icon: (p: { s?: number; className?: string }) => React.ReactElement; en: string; sw: string; zh: string; accent?: boolean; current?: boolean; proposalsBadge?: ProposalsState }) {
+function Item({ href, icon: Ico, en, sw, zh, accent, current, proposalsBadge, comingSoon }: { href: string; icon: (p: { s?: number; className?: string }) => React.ReactElement; en: string; sw: string; zh: string; accent?: boolean; current?: boolean; proposalsBadge?: ProposalsState; comingSoon?: boolean }) {
   const { t, locale } = useT();
   // System language only — no adjacent second-language gloss.
   const primary = locale === "sw" ? sw : locale === "zh" ? zh : en;
@@ -359,6 +366,9 @@ function Item({ href, icon: Ico, en, sw, zh, accent, current, proposalsBadge }: 
         {primary}
         {proposalsBadge && (
           <ProposalsStateBadge state={proposalsBadge} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" className="ml-auto" />
+        )}
+        {comingSoon && (
+          <ComingSoonBadge label={t.profile.inviteComingSoonTag} size="xs" className="ml-auto" />
         )}
       </Link>
     </li>

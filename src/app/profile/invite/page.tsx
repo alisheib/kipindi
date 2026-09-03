@@ -18,6 +18,9 @@ import { getBonusConfig } from "@/lib/server/bonus-config";
 import { formatDateShort as fmtDate, formatNumber } from "@/lib/utils";
 import { getServerT } from "@/lib/i18n-server";
 import { PageContainer } from "@/components/layout/page-container";
+import { Callout } from "@/components/ui/callout";
+import { ComingSoonBadge } from "@/components/ui/coming-soon-badge";
+import { inviteIsLive } from "@/lib/invite-feature";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Invite & Earn", which a Swahili player saw in their browser tab and history.
@@ -105,6 +108,48 @@ export default async function InvitePage() {
   if (!session) redirect("/auth/login?next=/profile/invite");
 
   const { t, locale } = await getServerT();
+
+  /**
+   * ⛔ COMING SOON — AND THE PAGE RETURNS BEFORE THE REFERRAL READ, NOT AFTER IT.
+   * Ali's call, 2026-09-03: Invite & Earn is not open yet. A badge on the entry points
+   * is not enough on its own — this page's live body hands the player a real referral
+   * CODE, a shareable LINK and a QR that encodes it. Printing those under a "coming
+   * soon" flag would be the product contradicting itself, and a code shared today is a
+   * link that has to keep working when the programme opens.
+   * ⭐ So the guard sits ABOVE `getPlayerReferralSummary`: no summary is fetched, no
+   * code is minted into a QR, and no share link is built from the request host. The
+   * cheapest correct behaviour is also the honest one.
+   */
+  if (!inviteIsLive()) {
+    return (
+      <PageContainer tier="form" className="space-y-5">
+        <BackLink fallbackHref="/profile" label={t.common.profile} />
+        <h1 className="sr-only">{t.profile.inviteEarn}</h1>
+
+        <div className="flex items-center justify-between gap-3">
+          <p className="font-display text-[19px] font-bold leading-none">{t.profile.inviteEarn}</p>
+          <ComingSoonBadge label={t.profile.inviteComingSoonTag} />
+        </div>
+
+        {/* The same gilt Callout the Propose surfaces use for this exact state — one
+            vocabulary for "not open yet", never a second banner shape. */}
+        <Callout role="status" size="md" surface="panel" tone="gold" glyph="clock" className="p-3.5">
+          <p className="text-[13px] font-bold leading-normal text-text">{t.profile.inviteComingSoonTitle}</p>
+          <p className="mt-1 text-body-sm leading-relaxed text-text-muted">{t.profile.inviteComingSoonBody}</p>
+        </Callout>
+
+        {/* Guided onward, never a dead end — the same courtesy the DISABLED proposals
+            view extends. The board is where a player can act right now. */}
+        <div className="pt-1">
+          <Link href="/markets">
+            <Button variant="secondary" size="md" leading={<I.markets s={14} />}>
+              {t.positions.browseMarkets}
+            </Button>
+          </Link>
+        </div>
+      </PageContainer>
+    );
+  }
   // B-1 — no swallow: the fallback fabricated "0 recruits · TZS 0 earned ·
   // program off" to a player with real referral earnings. Throw to
   // profile/error.tsx instead.

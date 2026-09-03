@@ -15,6 +15,8 @@ import { computeAchievementShelf } from "@/lib/server/achievements";
 import { getServerT } from "@/lib/i18n-server";
 import { formatTzs } from "@/lib/utils";
 import { PageContainer } from "@/components/layout/page-container";
+import { ComingSoonBadge } from "@/components/ui/coming-soon-badge";
+import { inviteIsLive } from "@/lib/invite-feature";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -274,7 +276,12 @@ export default async function ProfilePage() {
           {t.profile.account}
         </h2>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-          <SettingRow icon={I.gift}            title={t.profile.inviteEarn}          subtitle={t.profile.inviteEarnSub}         href="/profile/invite" accent badge={t.common.newBadge} />
+          {/* ⚠️ THE "NEW" BADGE IS DROPPED WHILE THE PROGRAMME IS CLOSED — the two cannot both
+              be true, and "NEW" on a feature nobody can use is the worse of the two claims. It
+              returns automatically when `INVITE_STATE` flips to ACTIVE. */}
+          <SettingRow icon={I.gift}            title={t.profile.inviteEarn}          subtitle={t.profile.inviteEarnSub}         href="/profile/invite" accent
+            badge={inviteIsLive() ? t.common.newBadge : undefined}
+            comingSoon={inviteIsLive() ? undefined : t.profile.inviteComingSoonTag} />
           <SettingRow icon={I.user}            title={t.profile.myAccount}           subtitle={t.profile.myAccountSub}            href="/profile/account" />
           <SettingRow icon={I.chart}           title={t.activity.title}              subtitle={t.activity.settingSub}             href="/profile/activity" />
           <SettingRow icon={I.star}            title={t.watchlist.title}             subtitle={t.watchlist.settingSub}            href="/watchlist" />
@@ -348,7 +355,7 @@ function Step({ n, title, detail, active, done }: { n: number; title: string; de
   );
 }
 
-function SettingRow({ icon: Icon, title, subtitle, href, accent, badge }: { icon: (typeof I)[keyof typeof I]; title: string; subtitle: string; href: string; accent?: boolean; badge?: string }) {
+function SettingRow({ icon: Icon, title, subtitle, href, accent, badge, comingSoon }: { icon: (typeof I)[keyof typeof I]; title: string; subtitle: string; href: string; accent?: boolean; badge?: string; comingSoon?: string }) {
   return (
     <Link
       href={href as never}
@@ -374,6 +381,10 @@ function SettingRow({ icon: Icon, title, subtitle, href, accent, badge }: { icon
               {badge}
             </span>
           )}
+          {/* ⛔ Uses the KIT flag, not the hand-rolled pill above it. `<ComingSoonBadge>` is the
+              product's one "not open yet" mark (gilt sweep, reduced-motion aware); a second
+              spelling of it here is how the two would drift. */}
+          {comingSoon && <ComingSoonBadge label={comingSoon} size="xs" />}
         </p>
         <p className="mt-0.5 text-body-sm text-text-subtle leading-snug">{subtitle}</p>
       </div>

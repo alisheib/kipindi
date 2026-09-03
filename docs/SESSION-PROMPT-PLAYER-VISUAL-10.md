@@ -180,6 +180,10 @@ home already exists, so you reach for it rather than open a new one.
 | **the ambient-loop carve-out** — *the* statement of what a loop keeps | `isAmbientLoop()` in `scripts/motion-ladder.test.mts`, rule in Authority **§E10** | row 7 | A loop keeps its raw **period** (the ladder stops at `--t-max` 620ms and has no rung for `2.4s`) and ⛔ **never** its curve. ⭐ Written down, it **retired** a per-file exemption instead of adding one — `ui/spinner.tsx` had been allowlisted since 2026-08-21 with a note saying it stayed *"until the ladder gains a period rung"*, and §1.2 reported it stale on the widened guard's first run. RED-proven **at the boundary**: keep the loop, keep the period, hand-type the curve → §1.1 must still catch it. |
 | **`red:motion-ladder`** — *the* control for the ladder gate | `scripts/red-motion-ladder.mjs` + `scripts/anchors/motion-ladder.anchors.mjs` | row 7 | ⛔ **This guard had NO control for its entire life** — it is the ratchet this programme's record cites for "the tokens are pinned", it reached zero once, and nobody had ever watched it fail. ⭐ Carries the pattern worth copying: a **CORPUS mutation** (strip every `.css` from a copied tree; §2 must go RED **while §1.1 stays GREEN**) — the only way to prove a corpus pin, because *a gate reporting `0 offenders` over the wrong corpus reads exactly like a gate reporting `0 offenders`*. Also: it demands a **NAMED section** in the output and never trusts the exit code, since a crash and a catch both exit 1 — the first run scored 0/5 on an indentation bug in the harness's own parser (`  FAIL` vs `FAIL`), and under-reported rather than over-reported, which is the safe direction. |
 
+| **whether Invite & Earn is open** | `src/lib/invite-feature.ts` — `INVITE_STATE` + `inviteIsLive()` | row 13 | ⛔ **ONE constant, six surfaces.** A feature toggled by six independent edits is a feature that ships half-on, and the half that stays wrong is the one nobody was looking at. Opening the programme is a **one-word edit here and nowhere else**. ⚠️ Deliberately NOT a config row: `proposals-config.ts` is admin-editable because operators genuinely toggle that feature mid-session; Invite has **one** transition, once, when the referral money is signed off — a DB read, an admin screen and a cache would be machinery for a single future edit. ▶ If Invite ever needs operator control, widen `proposals-config.ts` into a feature-state table and point this module at it — ⛔ never grow a second config beside it. |
+| **the "not open yet" mark, and its banner** | `ui/coming-soon-badge.tsx` (`<ComingSoonBadge>`) + a `<Callout tone="gold" glyph="clock">` | row 13 | ⛔ **Neither is new — that is the point.** Both already dressed every Propose entry point, so Invite adopted the vocabulary rather than minting a second one. `ProposalsStateBadge` is only a *router* to the badge for that feature's four states; a one-state feature calls the badge directly. ⭐ A hand-rolled gilt pill in `profile/page.tsx` was replaced by the primitive in the same commit, so the two spellings cannot drift. |
+| **`test:invite-coming-soon` §2.1** — *the* check that a feature flag reaches every entry point | `scripts/invite-coming-soon.test.mts` §2.1 | row 13 | Judges a **POSITION**: every `/profile/invite` link must sit within 8 lines of the switch being consulted. ⛔ Its first version asked only *"does this file mention `inviteIsLive`?"* and **the RED proof caught it** — severing the usage left the IMPORT in place, so the gate stayed green over two surfaces gone silently live. Same defect `test:labels` §3 shipped: *a guard that reads the source's vocabulary cannot see a defect that leaves the vocabulary in place.* ⚠️ `ComingSoonBadge` is deliberately **not** a marker — a surface rendering it unconditionally satisfies "shows coming soon" today and keeps showing it after the programme opens, which is the failure wearing the costume of the fix. |
+
 ⭐ **Why this table exists** (Ali, 2026-09-03): *"update the location of where files should be
 regarding any design or instruction, to keep a clean final ruling."* A home that is minted and not
 written down is a home the next session cannot find — and a home nobody can find gets re-invented,
@@ -274,7 +278,8 @@ States: `☐ not started` · `◐ in progress` · `⧗ blocked (why)` · `✎ aw
 | 9 | PV-01 · brand-mark backdrop at 390 | 4,5 | 👤 Ali | ☑ | — (ruling, no code) | — | — | — | **Ali's ruling, 2026-09-03: KEEP AS BACKDROP.** Not a defect — the intended "question-board" backdrop per CLAUDE.md. No `<DecorMark>` primitive built; closed by ruling, not by a fix. |
 | 10 | PV-05 · dial weight + term unification | 5,9,13 | ✎ Design | ✎ | handover | visual | — | — | **Ali's ruling, 2026-09-03: COMMISSION NOW.** Handover to follow §d's bounds — `docs/design-brief/player-visual-2026-09/handover/`, TOKENS-USED.md + DECISIONS.md + MOTION.md, mechanical token-check first. |
 | 11 | Lens 12 · `/markets` filter correctness — **2 of 4 already covered, 1 overturned, 1 open** | 12 | Code | ◐ **re-derived locally; production owed** | ⛔ **NOT** a new drive — the home is **`qa:filter-stress`** (`scripts/filter-stress.mjs`), which §5 never names | extend `qa:filter-stress` with 2 sections (count-vs-rendered, monotonicity) | — | local drive **10/1**, `.qa-shots/pv11-local/` | ⛔ Both instruments §5 names are wrong: `qa:filter-scan` is a filter-*language* check. `qa:filter-stress` **already** drives all **360** status×sort×odds×pool combinations asserting "promise equals delivery" — so **combined-filter intersection was already covered**. ✅ **count==rendered HOLDS 5/5 exact** (incl. the zero case). ✅ **URL-backed OVERTURNED — it IS**: 4 of 5 pills wrote the URL; §5's doubt came from clicking **"Open"**, the *default*, which correctly writes nothing. ⚠️ **monotonicity + lazy-load UNPROVEN** (a 6-card board with 0 printed volumes cannot exercise either) → **production owed**, reported unproven not passed |
-| 12 | Invite & Earn gold on zero-bonus card | — | 👤 Ali | ☑ | `wallet-client.tsx:314` | `test:gold-is-money` | — | re-verified **15/0** 2026-09-03 | **Ali's ruling, 2026-09-03: CONFIRMED CORRECT.** The `btn-gold` CTA shown on the zero-bonus wallet card leads to real referral money (Invite & Earn) — gold ink on a genuine money surface, exactly what `test:gold-is-money` exists to require. No code change; closed by ratification. |
+| 12 | Invite & Earn gold on zero-bonus card | — | 👤 Ali | ☑ | `wallet-client.tsx` | `test:gold-is-money` · `test:invite-coming-soon` | — | re-verified **15/0**; visual **72/0** | **Ali's ruling, 2026-09-03: CONFIRMED CORRECT** — the `btn-gold` CTA leads to real referral money, gold ink on a genuine money surface. ⚠️ **AMENDED the same day when Ali ruled Invite COMING SOON (row 13):** the CTA **stays gold** and the ruling still holds, because gilt is *also* this product's coming-soon colour (`proposals-state-views.tsx`: *"COMING_SOON → gilt (aspirational)"*). The gold says the destination is a money surface when it opens; the badge beside it says it is not open yet. |
+| 13 | **Invite & Earn is COMING SOON** — every surface, from one switch | — | 👤 Ali → Code | ☑ | `src/lib/invite-feature.ts` (`INVITE_STATE`) | **`test:invite-coming-soon`** (new) · `red:invite-coming-soon` (4/4) | this integration | `.qa-shots/invite-coming-soon/` (18 shots, gitignored) | **Ali's call, 2026-09-03: the referral programme is not open — say so everywhere.** ⛔ Reuses the EXISTING coming-soon vocabulary (`<ComingSoonBadge>`, the gilt `<Callout>`) — no new badge, no new banner. **Six surfaces** now read one switch: the invite page, the profile row (which was claiming **"NEW"**), the wallet zero-bonus CTA, the avatar menu, the More sheet and the top-bar overflow. ⭐ **The page returns BEFORE `getPlayerReferralSummary`** — so no referral code, share link or QR is minted while the programme is closed; `§3.3` asserts that as a **position**, and its RED mutation moves the guard below the read while leaving it present. EN/SW/ZH copy added; **visual 72/0** at 390+1280 with locale proven by discrimination |
 
 Seed state: every row `☐`. ⛔ Do not tick a row by intention — only by evidence (§h).
 
@@ -316,6 +321,80 @@ Seed state: every row `☐`. ⛔ Do not tick a row by intention — only by evid
   proof must live in `shots/<PV-NN>/` so `test:docs` can enforce it (§0b).
 
 ### j-resume — RESUME AT (newest at the top)
+
+**RESUME AT (session 8) — 2026-09-03. ⭐ THE PROGRAMME IS MERGED AND LIVE. Ali authorised the
+merge and the deploy ("push live"), and delegated the remaining open calls ("take convenient
+decisions as needed… finalise until this development is marked done").**
+
+**What went live, and what deliberately did not.**
+- ✅ **Row 5** (chip migration) and **row 7** (PV-14 motion ladder) merged from their branches.
+- ⛔ **`pv10/rows-3-4-6` was NOT merged, and merging it would have been a regression.** Its code
+  was **already on `main`** as `e14394d7`; the only remaining `src/` difference was the **needle
+  files, where `main` is NEWER** — merging would have reverted **127 lines** of the parallel
+  session's committed Needle work. ⭐ **Rows 3, 4 and 6 have therefore been live all along**, and
+  the session-6/7 handoffs saying "NOTHING on production" were stale. Checked by content
+  (`git diff origin/main <branch> -- src/`), not by the branch's name or its ahead/behind count.
+- ➕ **Row 13 (new): Invite & Earn now reads COMING SOON everywhere**, per Ali.
+
+**Row 13 — Invite & Earn, closed.** Six player surfaces mention Invite; all six now read **one
+switch**, `INVITE_STATE` in `src/lib/invite-feature.ts`. ⛔ It reuses the coming-soon vocabulary
+that already existed (`<ComingSoonBadge>`, the gilt `<Callout>`) rather than minting a second one,
+and it replaced a **hand-rolled gilt pill** in `profile/page.tsx` with the primitive. Two things
+worth carrying:
+1. ⭐ **The profile row was advertising the feature as "NEW".** The two claims cannot both be true,
+   and "NEW" on something nobody can use is the worse one. It returns automatically when the
+   switch flips.
+2. ⭐ **The page returns BEFORE `getPlayerReferralSummary`.** A badge alone was not enough: the
+   live body mints a real referral **code**, a shareable **link** and a **QR** that encodes it,
+   and a code handed out today has to keep working when the programme opens. `§3.3` asserts the
+   guard's **position**, and its RED mutation moves the guard *below* the read while leaving it
+   present — the shape a "does it check?" rule passes and a positional one does not.
+
+⭐ **AND THE RED PROOF CAUGHT MY OWN GUARD BEING THE WRONG KIND.** `test:invite-coming-soon` §2.1
+first asked *"does this file mention `inviteIsLive`?"* — and passed over **both** realistic
+mutations, because severing the wallet card's `!inviteIsLive() &&` and deleting the top bar's
+`comingSoon:` left the **import** untouched. That is `test:labels` §3's defect exactly: *a guard
+that reads the source's vocabulary cannot see a defect that leaves the vocabulary in place.* It
+now judges a position (every link within 8 lines of the consultation) and is **4/4**. ⚠️ Note
+also what is deliberately **not** a marker: `ComingSoonBadge` itself, because a surface rendering
+it unconditionally passes today and keeps rendering it after the programme opens.
+
+⚠️ **THE MERGE ITSELF SURFACED A DEFECT NEITHER BRANCH HAD ALONE.** `test:decomment` §2.1 went
+RED — the private-comment-stripper ratchet moved **55 → 56** because row 5's `chip-contract.test.mts`
+carried its own four-line stripper. Fixed at the one home (`scripts/lib/decomment.mts`,
+`decommentCss` for the CSS pass), not by raising the ceiling. ⭐ The private copy had **already**
+drifted: it blanked `//` only when not preceded by `:`, a URL guard the shared module handles
+along with strings, regexes and template literals. **Integration is where one-home violations
+become visible — run `test:all` on the MERGE, never only on the branches.**
+
+**Validated on the integration** (not on the branches): `tsc` ✓ · `build` ✓ · `test:all` ✓ ·
+`test:invite-coming-soon` **12/0** · `red:invite-coming-soon` **4/4** · `test:motion-ladder`
+**10/0** · `red:motion-ladder` **5/5** · `test:chip-contract` **19/0** · `red:chip-one-home`
+**2/2** · `test:decomment` **22/0** · `test:docs` ✓ · `test:responsive` **5421/29** (baseline
+5386/33 — better on both halves; all 29 residuals are the pre-existing 320px account-menu clip
+×27 and 2 signed-out `/admin` redirects) · invite visual **72/0** at 390+1280 × EN/SW/ZH with
+locale proven by **discrimination**, shots opened and read.
+
+🔴 **THE ONE THING STILL RED, AND IT IS NOT THIS PROGRAMME'S.** `test:type-scale` (+2) and
+`test:spacing-scale` (+4) fail on `main` from the **parallel Needle session's** committed
+`needle-drawer.tsx` (`4579295c`). Traced by arithmetic, not inherited: this programme's `src/`
+changes contain **zero** `text-[` and **zero** Tailwind spacing utilities, and `needle-drawer.tsx`
+is byte-identical to HEAD with 7 arbitrary sizes and 20 inverted-spacing utilities. Both ratchets
+may only shrink, so the fix is theirs: move those literals onto the scale, or justify them.
+👤 **This needs to reach the Needle session.**
+
+**What remains, all of it now a ruling rather than a build:**
+- **Row 8** — the `EmptyState` alignment. Re-derived and diagnosed (`empty-state.tsx`'s `mx-auto`
+  centres a 360px card under a left-aligned heading); the fix is an **opt-in prop**, because **45
+  call sites in 33 files** inherit the current default. ⛔ Do NOT build `detail-layout.tsx`.
+- **Row 11** — two sections for `qa:filter-stress` (count-vs-rendered, monotonicity), run against
+  **production**, where the board is large and funded enough to exercise them.
+- **Row 10** — the dial Design commission (✎), bounded by §d.
+- **`--m-pivot` / `orm-pop`** — a one-line fix whose guard is `test:needle`, the parallel
+  session's file. Filed whole rather than half-done.
+
+---
+
 
 **RESUME AT (session 6) — 2026-09-03. ROWS 3, 4, 5, 6 ARE `◐` (code-complete, guarded, verified
 LOCALLY, on unmerged branches) · ROWS 9 AND 12 ARE `☑` BY ALI'S RULING · ROW 10 IS `✎`

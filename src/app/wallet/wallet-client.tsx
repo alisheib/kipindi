@@ -17,6 +17,8 @@ import { formatDateTimeSafe, formatTzs, formatNumber } from "@/lib/utils";
 // E-101 · one rule for "where does this ticket live", shared with the round page and the emails.
 import { positionPermalinkHref } from "@/lib/position-permalink";
 import { useT } from "@/lib/i18n";
+import { inviteIsLive } from "@/lib/invite-feature";
+import { ComingSoonBadge } from "@/components/ui/coming-soon-badge";
 import { PageContainer } from "@/components/layout/page-container";
 
 const TXNS_PER_PAGE = 12;
@@ -311,10 +313,18 @@ function BonusWalletCard({
             <p className="text-[13px] text-text/90 leading-snug">
               {t.common.noBonus}
             </p>
-            <Link href="/profile/invite" className="btn btn-gold btn-sm rounded-pill mt-3 inline-flex">
-              <I.gift s={12} />
-              {t.profile.inviteEarn}
-            </Link>
+            {/* ⚠️ THE CTA STAYS GOLD, and that is the ruling not an oversight. Gilt is this
+                product's COMING-SOON colour as well as its money colour — `proposals-state-views.tsx`
+                states it: "COMING_SOON → gilt (aspirational)". The badge beside it is what says
+                the programme is not open yet; the gold says the destination is a money surface
+                when it opens. Row 12's ruling (gold here is correct) therefore still holds. */}
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Link href="/profile/invite" className="btn btn-gold btn-sm rounded-pill inline-flex">
+                <I.gift s={12} />
+                {t.profile.inviteEarn}
+              </Link>
+              {!inviteIsLive() && <ComingSoonBadge label={t.profile.inviteComingSoonTag} size="xs" />}
+            </div>
           </div>
         )}
       </div>

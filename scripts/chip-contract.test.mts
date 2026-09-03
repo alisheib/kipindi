@@ -28,6 +28,9 @@
  * pins the arithmetic so that cannot happen silently.
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
+// ⛔ ONE HOME FOR COMMENT-STRIPPING — see the note at §4's decomment use. `decommentCss` is the
+// CSS-aware variant (a `//` inside a `url()` is not a comment); `decomment` is the TS/TSX one.
+import { decomment, decommentCss } from "./lib/decomment.mts";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -105,15 +108,17 @@ console.log("\n§4 · ONE DEFINITION — the chip is the COMPONENT, and the CSS 
       const p = join(d, e);
       return statSync(p).isDirectory() ? walk(p) : /\.tsx$/.test(e) ? [p] : [];
     });
-  /** Comments are blanked so this row's OWN provenance notes are not read as call sites. */
-  const decomment = (s: string) =>
-    s.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\r\n]/g, " "))
-     .replace(/(^|[^:])\/\/[^\r\n]*/g, (m, p1) => p1 + " ".repeat(m.length - p1.length));
-
+  /* Comments are blanked so this row's OWN provenance notes are not read as call sites.
+     ⛔ THIS USED TO BE A PRIVATE FOUR-LINE STRIPPER AND `test:decomment` §2.1 CAUGHT IT — the
+     may-only-shrink carrier ratchet went 55 → 56 the moment this file was merged, which is the
+     ratchet doing exactly its job. A comment stripper is a solved problem with one home
+     (`scripts/lib/decomment.mts`); a private copy is a second definition that drifts silently,
+     and this one already had: it blanked `//` only when not preceded by `:`, a URL guard the
+     shared module handles properly along with strings, regexes and template literals. */
   const cssText = readFileSync(CSS, "utf8");
   // ⛔ The RULE, not a mention: `.chip {` / `.chip-x {` at a declaration position. The
   // provenance comment left in globals.css names these classes on purpose and must not fail.
-  const cssRules = [...decomment(cssText).matchAll(/(?:^|\n)\s*\.chip(-[a-z-]+)?\s*(?:,[^{\n]*)?\{/g)].map((m) => m[0].trim());
+  const cssRules = [...decommentCss(cssText).matchAll(/(?:^|\n)\s*\.chip(-[a-z-]+)?\s*(?:,[^{\n]*)?\{/g)].map((m) => m[0].trim());
   ok("4.1 globals.css declares NO .chip / .chip-* rule — the component is the only definition",
      cssRules.length === 0,
      `${cssRules.length} rule(s) still declared: ${cssRules.join(" · ").slice(0, 160)}`);

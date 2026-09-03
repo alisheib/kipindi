@@ -12,6 +12,7 @@ import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
 import type { ProposalsState } from "@/lib/server/proposals-config";
+import { inviteIsLive } from "@/lib/invite-feature";
 
 /**
  * THE HEADER — round-2 kit §2 / COMPONENTS §14, rebuilt in batch 3.
@@ -50,6 +51,8 @@ type NavItem = {
   href: string;
   label: string;
   proposalsBadge?: ProposalsState;
+  /** Invite rides `INVITE_STATE` (src/lib/invite-feature.ts) — one flag, one switch. */
+  comingSoon?: boolean;
   /**
    * Marks a destination as a DISTINCT PRODUCT LINE rather than another page of the same game —
    * currently only Up & Down. It keeps destination geometry (see the note above); the accent is a
@@ -118,7 +121,8 @@ export function TopAppBar({ user, proposalsState }: { user: TopAppBarUser; propo
           ? [{ href: "/proposals", label: t.common.propose, proposalsBadge: proposalsState } as NavItem]
           : []),
         { href: "/wallet",         label: t.nav.wallet },
-        { href: "/profile/invite", label: t.common.invite },
+        /* Invite & Earn is not open yet — one switch, `src/lib/invite-feature.ts`. */
+        { href: "/profile/invite", label: t.common.invite, comingSoon: !inviteIsLive() },
         { href: "/leaderboard",    label: t.nav.leaderboard },
       ]
     : [];

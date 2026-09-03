@@ -6,6 +6,7 @@ import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
 import { NavMore } from "@/components/layout/nav-more";
 import type { ProposalsState } from "@/lib/server/proposals-config";
+import { inviteIsLive } from "@/lib/invite-feature";
 
 /**
  * THE BOTTOM RAIL — round-2 kit §2 / COMPONENTS §14, rebuilt in batch 3.
@@ -72,12 +73,13 @@ export function BottomNav({ isAuthed = false, proposalsState }: { isAuthed?: boo
     proposalsState !== "DISABLED"
       ? [{ href: "/proposals", label: t.common.propose, proposalsBadge: proposalsState }]
       : [];
-  const moreItems: { href: string; label: string; proposalsBadge?: ProposalsState }[] = isAuthed
+  const moreItems: { href: string; label: string; proposalsBadge?: ProposalsState; comingSoon?: boolean }[] = isAuthed
     ? [
         { href: "/positions",      label: t.common.positions },
         { href: "/wallet",         label: t.nav.wallet },
         { href: "/leaderboard",    label: t.nav.leaderboard },
-        { href: "/profile/invite", label: t.common.invite },
+        /* Invite & Earn is not open yet — one switch, `src/lib/invite-feature.ts`. */
+        { href: "/profile/invite", label: t.common.invite, comingSoon: !inviteIsLive() },
         ...proposalsRow,
       ]
     : [

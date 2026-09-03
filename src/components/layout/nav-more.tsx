@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
+import { ComingSoonBadge } from "@/components/ui/coming-soon-badge";
 import { useT } from "@/lib/i18n";
 import type { ProposalsState } from "@/lib/server/proposals-config";
 
@@ -26,7 +27,7 @@ export function NavMore({
   variant = "bar",
   active,
 }: {
-  items: readonly { href: string; label: string; proposalsBadge?: ProposalsState }[];
+  items: readonly { href: string; label: string; proposalsBadge?: ProposalsState; comingSoon?: boolean }[];
   label: string;
   variant?: "bar" | "rail";
   /** Rail only: `More` reads as current when the page behind it is one of its own. */
@@ -115,6 +116,13 @@ export function NavMore({
                   {it.proposalsBadge && (
                     <ProposalsStateBadge state={it.proposalsBadge} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" className="ml-auto" />
                   )}
+                  {/* Invite rides the same flag — and it is rendered in BOTH branches of this
+                      file on purpose. DG-P-11 above is the reason: the rail branch once took a
+                      badge prop and threw it away, so one destination read "Coming soon" on a
+                      laptop and bare on a phone. One flag, both variants. */}
+                  {it.comingSoon && (
+                    <ComingSoonBadge label={t.profile.inviteComingSoonTag} size="xs" className="ml-auto" />
+                  )}
                 </Link>
               );
             })}
@@ -172,6 +180,9 @@ export function NavMore({
                 {it.label}
                 {it.proposalsBadge && (
                   <ProposalsStateBadge state={it.proposalsBadge} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" className="ml-auto" />
+                )}
+                {it.comingSoon && (
+                  <ComingSoonBadge label={t.profile.inviteComingSoonTag} size="xs" className="ml-auto" />
                 )}
               </Link>
             );
