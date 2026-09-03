@@ -137,7 +137,12 @@ export function SidePicker({
           className="btn btn-yes btn-lg"
           aria-label={hasPool ? t.market.backYesAria.replace("{pct}", String(yesPct)) : t.market.backYesAriaNoPrice}
         >
-          YES {hasPool && <span className="font-mono text-[12.5px] opacity-85">@ {yesPct}%</span>}
+          {/* §L2 — the WORD comes from the lexicon, exactly as the chip at :75 and the
+              board cards already do. It read the raw `YES` until 2026-09-03 (PV-04), so a
+              Chinese player met "YES @ 51%" on the money control while the `.mcardp` cards
+              three inches below the same page read "是 @ 56%" — one idea, two vocabularies,
+              on one screen. The aria-label was always translated; only the visible word lied. */}
+          {sideWord(t, "YES", "MARKET")} {hasPool && <span className="font-mono text-[12.5px] opacity-85">@ {yesPct}%</span>}
         </button>
         <button
           type="button"
@@ -145,7 +150,7 @@ export function SidePicker({
           className="btn btn-no btn-lg"
           aria-label={hasPool ? t.market.backNoAria.replace("{pct}", String(100 - yesPct)) : t.market.backNoAriaNoPrice}
         >
-          NO {hasPool && <span className="font-mono text-[12.5px] opacity-85">@ {100 - yesPct}%</span>}
+          {sideWord(t, "NO", "MARKET")} {hasPool && <span className="font-mono text-[12.5px] opacity-85">@ {100 - yesPct}%</span>}
         </button>
       </div>
       <p className="mt-3 text-center text-body-sm text-text-subtle leading-snug">

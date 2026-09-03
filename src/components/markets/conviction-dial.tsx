@@ -545,6 +545,14 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
   // ⚠️ This used to read `t.market.sideYesWord.toUpperCase()`, which is byte-identical to
   // `t.common.yes` in ALL THREE locales — the two definition sites §L2 calls a bug. The
   // lexicon owns the choice now, so the pole and the chip cannot drift apart.
+  //
+  // ⭐ THIS IS THE ONE HOME FOR THE PICKED SIDE'S WORD IN THIS FILE. Every surface that
+  // names the player's side reads it — the knob's sub-label, the "you are picking"
+  // readout, the commit button's visible text AND its aria-label. Four of those
+  // interpolated `effectiveSide` raw until 2026-09-03 (PV-04), which is why a Swahili
+  // player's commit button read "Weka YES". ⛔ Never write `{effectiveSide}` into copy;
+  // reach for this. (`""` on NEUTRAL is deliberate — there is no side to name yet, and
+  // every consumer already branches on NEUTRAL before it gets here.)
   const sideLabel = effectiveSide === "YES" || effectiveSide === "NO"
     ? sideWord(t, effectiveSide, "MARKET")
     : "";
@@ -1096,7 +1104,11 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
           <p className="mb-2 text-center font-mono text-micro uppercase eyebrow font-bold text-text-subtle">
             {t.common.yourPick}
           </p>
-          <div className="grid grid-cols-2 gap-2" role="img" aria-label={t.market.backingLocked.replace("{side}", lock)}>
+          {/* §L2 — `lock` is the STORED token, and it was going straight into a translated
+              sentence: a Chinese screen reader heard the enum inside "您正在押注 {side}".
+              `test:labels` §3 could not see it, because its scanner matches a vocabulary of
+              identifier NAMES (`side|outcome|status`) and this variable is called `lock`. */}
+          <div className="grid grid-cols-2 gap-2" role="img" aria-label={t.market.backingLocked.replace("{side}", sideWord(t, lock, "MARKET"))}>
             {(["YES", "NO"] as const).map((s) => {
               const active = lock === s;
               const hue = s === "YES" ? "152" : "22";
@@ -1122,8 +1134,15 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
                   }}
                 >
                   {!active && <span aria-hidden style={{ opacity: 0.75 }}><I.lock s={12} /></span>}
-                  {s}
-                  <span className="font-mono text-[10px] font-normal opacity-70">{sideWord(t, s, "MARKET")}</span>
+                  {/* ⭐ ONE WORD, AT THE CHIP'S OWN WEIGHT. This tile used to render the raw
+                      token at 15px display-bold with the translation beside it as a 10px mono
+                      gloss — so a Chinese player's own pick read "YES 是", with the English
+                      enum as the headline and their language as the footnote, while the board
+                      card behind it said plainly "是". The lexicon word IS the label now.
+                      ⚠️ It is also NARROWER than what it replaces (one 15px word instead of a
+                      15px token + a 10px gloss + a 6px gap), so the 360px two-up grid that
+                      already fitted "NO HAPANA" fits "HAPANA" with room to spare. */}
+                  {sideWord(t, s, "MARKET")}
                 </div>
               );
             })}
@@ -1395,7 +1414,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
                     fontFamily="JetBrains Mono, monospace" fontWeight="500"
                     fontSize="7.5" fill={sideText}
                     letterSpacing="0.16em" opacity="0.9">
-                {effectiveSide === "NEUTRAL" ? "· · ·" : effectiveSide}
+                {effectiveSide === "NEUTRAL" ? "· · ·" : sideLabel}
               </text>
             </g>
           </g>
@@ -1416,7 +1435,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
             className="font-display font-bold text-[15px] sm:text-[22px] leading-[1.05] break-words"
             style={{ color: sideText, letterSpacing: "-0.025em" }}
           >
-            {effectiveSide === "NEUTRAL" ? t.common.pickSide : `${effectiveSide}`}
+            {effectiveSide === "NEUTRAL" ? t.common.pickSide : sideLabel}
           </p>
         </div>
         <div className="text-right min-w-0">
@@ -1641,7 +1660,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
           aria-label={
             closedNow ? t.market.closedAwaitingSettlement
             : effectiveSide === "NEUTRAL" ? t.common.dragTheDial
-            : `${t.common.place} ${effectiveSide} ${formatTzs(stake)}`
+            : `${t.common.place} ${sideLabel} ${formatTzs(stake)}`
           }
           className={`${closedNow ? "btn btn-ghost btn-md" : (effectiveSide === "NEUTRAL" ? "btn btn-ghost btn-md" : effectiveSide === "YES" ? "btn btn-yes btn-md" : "btn btn-no btn-md")} whitespace-normal`}
           // T3: drop pill radius — buttons use kit r-sm (8px).
@@ -1658,7 +1677,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
               ? "—"
               : (
                 <>
-                  <span>{t.common.place} {effectiveSide}</span>
+                  <span>{t.common.place} {sideLabel}</span>
                   <span className="font-mono opacity-90">TZS {formatNumber(stake)}</span>
                 </>
               )}

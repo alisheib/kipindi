@@ -265,8 +265,82 @@ function templateInterpolatesEnum(lit: string, before = ""): boolean {
 /** Blank out block and line comments, preserving offsets so reported line numbers stay true. */
 function stripComments(src: string): string {
   return src
+    // 🔴 A JSX COMMENT IS `{/* … */}` AND ITS BRACES MUST GO WITH IT — found by the red proof,
+    // 2026-09-03. Blanking only the `/* … */` leaves a bare `{` … `}` behind, and those braces
+    // are text-run BOUNDARIES to every scanner below: a comment sitting above a JSX text child
+    // turns `>Text{expr}` into `}Text{expr}`, which no pass matches. The PV-04 mutation was
+    // MISSED for exactly that reason — the guard's blindness was caused by a comment explaining
+    // the fix. A JSX comment renders nothing; it must leave nothing behind.
+    .replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, (m) => m.replace(/[^\r\n]/g, " "))
     .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\r\n]/g, " "))
     .replace(/(^|[^:])\/\/[^\r\n]*/g, (m, p1) => p1 + " ".repeat(m.length - p1.length));
+}
+
+/**
+ * A stored enum token TYPED OUT where a person reads it — the second shape, beside §3's
+ * interpolation. Used twice, with two vocabularies: §11b hunts the underscored schema arms
+ * across the whole tree, §3b hunts the side/outcome words on the player tree.
+ *
+ * ⛔ THE TOKEN SET IS A PARAMETER, and that is the whole reason this sits at module scope.
+ * It lived inside §11's block and judged ONLY underscored arms — deliberately, because
+ * "`SPORTS`, `YES` and `LIVE` are legitimate words in an English console". That reasoning is
+ * correct for the officer console and WRONG for a trilingual player surface, where `YES` is
+ * the English enum standing where 是 / NDIO belongs. One scanner, two populations, two
+ * vocabularies (§0a) — never a second copy of these three patterns.
+ *
+ * ⛔ DISPLAY POSITIONS ONLY. `status === "PENDING_REVIEW"` and `<option value="ERASURE">`
+ * are the enum doing its job; the defect is the token in the place a person READS.
+ * Two positions carry that: a JSX text child, and a label-shaped object field or
+ * display attribute.
+ */
+function literalArmHits(src: string, arm: RegExp): string[] {
+  const clean = stripComments(src);
+  const out: string[] = [];
+  const at = (i: number) => clean.slice(0, i).split("\n").length.toString();
+  // ⛔ NEWLINES ARE PART OF A JSX TEXT CHILD, and the first draft excluded them — which made
+  // this whole section decoration. The red harness typed the token into the player drill-in's
+  // KYC chip, where the text sits on its own line between a `/>` and a `</Chip>`, and the
+  // scanner did not see it. `<`, `>`, `{` and `}` are what bound a text run; a line break is
+  // not one of them.
+  //
+  // ⚠️ AND ALLOWING THE NEWLINE ALONE OVER-CORRECTED, IMMEDIATELY: an arrow function's `=>`
+  // supplies a `>` and the next JSX tag supplies a `<`, so `useState<KycDocSlot>(… ??
+  // "NIDA_FRONT"); const [zoom, setZoom] = useState<` read as one long "text child" and four
+  // perfectly correct files were flagged. `;` and `=` are what separate the two: they end
+  // statements and bind names, and JSX display text does neither.
+  for (const m of clean.matchAll(/>([^<>{}=;]{2,160})</g)) if (arm.test(m[1])) out.push(at(m.index));
+  // 🔴 AND A TEXT RUN MAY CLOSE ON `{`, NOT ONLY ON `<` — added 2026-09-03, and the RED PROOF
+  // is the only reason it exists. `>YES {hasPool && <span>@ {pct}%</span>}` is the PV-04 pick
+  // gate exactly as it shipped, and the two passes above could not see it: the run ends at the
+  // expression's `{`, so neither `>`…`<` nor `}`…`<` ever matched. The mutation went in, the
+  // suite stayed GREEN, and the guard would have shipped unable to catch the defect it was
+  // written for. ⭐ `Text{expr}` is ordinary JSX and was a blind spot in §11b too.
+  //
+  // ⛔ IT TAKES THE STRICTER CHARACTER CLASS, and that is measured rather than cautious. With
+  // the permissive class this pass flagged `updown/[roundId]/page.tsx:60` — a TYPE ANNOTATION,
+  // `status: "OPEN" | "WIN" | …`, whose run opens at a generic's `>` and closes at the function
+  // body's `{`. A type annotation needs `:` and a quote; JSX display text needs neither.
+  //
+  // ⚠️ AND THE OPENER ABSORBS LEADING WHITESPACE (`>\s*`), which the red proof also forced.
+  // A blanked-out comment leaves ~200 columns of spaces behind, so the run from the button's
+  // `>` to the text was over the 160-char cap and matched nothing — the guard was defeated by
+  // the LENGTH of the comment above the defect. Indentation is not part of what a player reads.
+  for (const m of clean.matchAll(/>\s*([^<>{}=;:"']{2,160})\{/g)) if (arm.test(m[1])) out.push(at(m.index));
+  // ⚠️ AND THE RUN MUST ALSO BE ALLOWED TO START AFTER A `}`. The red harness's token sat one
+  // line below a `{cond ? <A/> : <B/>}` expression child, so the nearest preceding character
+  // was a closing brace, not a `>` — and a `>`-only opener missed the SAME mutation twice.
+  // `{expr}Text<` is ordinary JSX.
+  //
+  // ⛔ BUT `}` … `{` IS ALSO THE COMMONEST SHAPE IN PLAIN CODE, and letting it close on `{`
+  // flagged six correct files in one run — a union type's arms, the receipt's chip map, the
+  // provider catalogue, `notifyKyc`'s signature. So this second pass closes on `<` ONLY, and
+  // refuses a run carrying `:` `"` or `'`: an object key, a type annotation and a string
+  // literal all need one of those, and JSX display text needs none of them.
+  for (const m of clean.matchAll(/\}([^<>{}=;:"']{2,160})</g)) if (arm.test(m[1])) out.push(at(m.index));
+  for (const m of clean.matchAll(
+    /\b(?:label|title|sw|heading|placeholder|aria-label|subtitle|caption|hint|help|message|detail|body|summary)\s*[:=]\s*(["'])([^"']{2,200})\1/g,
+  )) if (arm.test(m[2])) out.push(at(m.index));
+  return out;
 }
 
 function walk(dir: string, out: string[] = []): string[] {
@@ -323,6 +397,96 @@ for (const f of files) {
 }
 check("§3 no enum is interpolated into a sentence on a player surface",
   interpHits.length === 0, interpHits.slice(0, 8).join(" · "));
+
+// ───────────────────────────────────────────────────────────────────────────
+// §3b · The side/outcome token TYPED OUT where a player reads it.
+//
+// 🔴 WHY THIS EXISTS — PV-04, 2026-09-03. Eight sites on the market-detail commit surfaces
+// rendered the raw English enum, and this suite was ALL PASS over every one of them. Driven
+// on production in Chinese, the page showed FOUR vocabularies for one idea at once:
+//
+//     board card      是 @ 56%          ← correct, via the lexicon
+//     pick gate       YES @ 51%         ← side-picker.tsx, a literal JSX text child
+//     dial pole       YES 是            ← the enum as headline, the translation as footnote
+//     commit button   下注 YES TZS 1,000 ← visible AND aria-label
+//
+// §3 could not see any of it. Its scanner reads TEMPLATE LITERALS only, and judges an
+// interpolation by matching the identifier's NAME against `side|outcome|status`. The four
+// dial sites are called `effectiveSide`, `s` and `lock` — `\bside\b` does not match inside
+// `effectiveSide`, and no vocabulary of names was ever going to match `lock`. ⭐ THE LESSON:
+// a guard that reads the SOURCE'S VOCABULARY cannot see a defect that renames its variable.
+// §3b judges a POSITION instead — a literal token sitting where a person reads it — which is
+// the same judgement §11b already makes, so it is the same scanner with a different token set
+// rather than a second copy (§0a).
+//
+// ⚠️ SCOPE IS THE JSX RENDER TREE, not all of `src`. Turned on `src/lib/server/**` this finds
+// 27 more hits and every one is correct: the AI poll generator's few-shot examples name
+// `label: "YES"` because they are instructions to a MODEL, and `email.ts` writes an
+// English-only operator label. Those are not surfaces a player reads in three languages.
+const SIDE_ARM = /\b(?:YES|NO|UP|DOWN|VOID)\b/;
+const playerJsx = files.filter(
+  (f) => (f.includes(join("src", "app")) || f.includes(join("src", "components")))
+    && !f.includes(join("app", "admin")) && !f.includes(join("components", "admin"))
+    && !f.includes(join("api", "dev-test")),
+);
+/**
+ * ⛔ DECIDED, WITH ITS REASON AND ITS COUNT — never a place to park a defect. The count is a
+ * RATCHET: a new leak in an already-listed file still fails, which a bare file allowlist
+ * ("a guard pinned to a path") would hide.
+ */
+const SIDE_ARM_OK = new Map<string, { n: number; why: string }>([
+  ["src/app/api/og/market/[id]/route.tsx",
+   { n: 2, why: "the OG social card is English BY CONSTRUCTION — it renders beside `m.titleEn` for a link preview that has no reader locale (both poles, YES and NO)" }],
+  ["src/app/legal/terms/page.tsx",
+   { n: 1, why: "FILED, NOT EXEMPTED — the Chinese terms read '所有注金——YES 与 NO——汇入同一资金池', the ASCII enum inside Chinese legal prose. Changing the wording of a licensed operator's terms is Ali's call, not a session's (PLAYER-VISUAL-10 §b3 rules legal/compliance out of scope). Raised in the record; the count may only fall." }],
+]);
+check("§3b the scanner reached the player render tree", playerJsx.length > 300, `${playerJsx.length} files`);
+const sideArmHits: string[] = [];
+const sideArmSeen = new Map<string, number>();
+for (const f of playerJsx) {
+  const rel = f.slice(ROOT.length + 1).replace(/\\/g, "/");
+  const lines = literalArmHits(readFileSync(f, "utf8"), SIDE_ARM);
+  if (!lines.length) continue;
+  const allow = SIDE_ARM_OK.get(rel);
+  if (allow) { sideArmSeen.set(rel, lines.length); continue; }
+  sideArmHits.push(`${rel}:${lines.join(",")}`);
+}
+check("§3b no side/outcome token is typed out where a player reads it",
+  sideArmHits.length === 0,
+  sideArmHits.length ? `${sideArmHits.join(" · ")} — route it through sideWord()/outcomeWord()` : "");
+const sideArmGrown = [...sideArmSeen].filter(([rel, n]) => n > (SIDE_ARM_OK.get(rel)!.n)).map(([rel, n]) => `${rel} ${SIDE_ARM_OK.get(rel)!.n}→${n}`);
+check("§3b no exempted file has GROWN a new raw side token", sideArmGrown.length === 0, sideArmGrown.join(", "));
+const sideArmStale = [...SIDE_ARM_OK.keys()].filter((rel) => !sideArmSeen.has(rel));
+check("§3b the exemption list carries no file that is already clean",
+  sideArmStale.length === 0, `${sideArmStale.join(", ")} — delete the entry so the list keeps shrinking`);
+for (const [rel, n] of sideArmSeen) {
+  if (n < SIDE_ARM_OK.get(rel)!.n) log(`  NOTE §3b ${rel} is down to ${n} — lower its allowance.`);
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// §3c · A dictionary placeholder must be filled FROM THE LEXICON.
+//
+// 🔴 The second PV-04 shape, and the one no name-matching scanner can reach. The dial's
+// locked pole wrote `t.market.backingLocked.replace("{side}", lock)` — a translated sentence
+// with the STORED token dropped into it, so a Chinese screen reader heard "您正在押注 YES".
+// ⭐ THE SIGNAL IS THE DICTIONARY'S OWN PLACEHOLDER, not the variable's name: a string whose
+// author wrote `{side}` is asking for a SIDE WORD, and only the lexicon issues those. That
+// holds however the variable is spelled — `lock`, `s`, `effectiveSide` or anything a later
+// session invents — which is exactly the property §3's name vocabulary lacks.
+//
+// A `t.<path>` fill is accepted on §3's own reasoning: a dictionary lookup is a translated
+// string, never an enum. That is what the six Up & Down call sites pass `t.market.udUp` for.
+const PLACEHOLDER_FILL = /^\s*(?:t\.\w|sideWord|outcomeWord|positionStatusWord|sideWordIn|outcomeWordIn|\w*(?:Label|Word)\b)/;
+const phHits: string[] = [];
+for (const f of playerJsx) {
+  const src = stripComments(readFileSync(f, "utf8"));
+  const rel = f.slice(ROOT.length + 1).replace(/\\/g, "/");
+  for (const m of src.matchAll(/\.replace\(\s*(["'])\{(side|outcome|status)\}\1\s*,\s*([^)]+)\)/g)) {
+    if (!PLACEHOLDER_FILL.test(m[3])) phHits.push(`${rel}:${src.slice(0, m.index).split("\n").length} {${m[2]}} <- ${m[3].trim()}`);
+  }
+}
+check("§3c a {side}/{outcome}/{status} placeholder is filled from the lexicon, never from the stored token",
+  phHits.length === 0, phHits.join(" · "));
 
 // ───────────────────────────────────────────────────────────────────────────
 // §4 · The lexicon is the only definition site — RATCHET, downward only.
@@ -798,44 +962,9 @@ check("§5j private-map matcher ACCEPTS a tone ternary (a colour is not a word)"
     underscoredArms.size > 30, `only ${underscoredArms.size} — the schema parse has drifted`);
   const ARM = new RegExp(`\\b(?:${[...underscoredArms].join("|")})\\b`);
 
-  /**
-   * ⛔ DISPLAY POSITIONS ONLY. `status === "PENDING_REVIEW"` and `<option value="ERASURE">`
-   * are the enum doing its job; the defect is the token in the place a person READS.
-   * Two positions carry that: a JSX text child, and a label-shaped object field or
-   * display attribute.
-   */
-  function literalArmHits(src: string): string[] {
-    const clean = stripComments(src);
-    const out: string[] = [];
-    const at = (i: number) => clean.slice(0, i).split("\n").length.toString();
-    // ⛔ NEWLINES ARE PART OF A JSX TEXT CHILD, and the first draft excluded them — which made
-    // this whole section decoration. The red harness typed the token into the player drill-in's
-    // KYC chip, where the text sits on its own line between a `/>` and a `</Chip>`, and the
-    // scanner did not see it. `<`, `>`, `{` and `}` are what bound a text run; a line break is
-    // not one of them.
-    //
-    // ⚠️ AND ALLOWING THE NEWLINE ALONE OVER-CORRECTED, IMMEDIATELY: an arrow function's `=>`
-    // supplies a `>` and the next JSX tag supplies a `<`, so `useState<KycDocSlot>(… ??
-    // "NIDA_FRONT"); const [zoom, setZoom] = useState<` read as one long "text child" and four
-    // perfectly correct files were flagged. `;` and `=` are what separate the two: they end
-    // statements and bind names, and JSX display text does neither.
-    for (const m of clean.matchAll(/>([^<>{}=;]{2,160})</g)) if (ARM.test(m[1])) out.push(at(m.index));
-    // ⚠️ AND THE RUN MUST ALSO BE ALLOWED TO START AFTER A `}`. The red harness's token sat one
-    // line below a `{cond ? <A/> : <B/>}` expression child, so the nearest preceding character
-    // was a closing brace, not a `>` — and a `>`-only opener missed the SAME mutation twice.
-    // `{expr}Text<` is ordinary JSX.
-    //
-    // ⛔ BUT `}` … `{` IS ALSO THE COMMONEST SHAPE IN PLAIN CODE, and letting it close on `{`
-    // flagged six correct files in one run — a union type's arms, the receipt's chip map, the
-    // provider catalogue, `notifyKyc`'s signature. So this second pass closes on `<` ONLY, and
-    // refuses a run carrying `:` `"` or `'`: an object key, a type annotation and a string
-    // literal all need one of those, and JSX display text needs none of them.
-    for (const m of clean.matchAll(/\}([^<>{}=;:"']{2,160})</g)) if (ARM.test(m[1])) out.push(at(m.index));
-    for (const m of clean.matchAll(
-      /\b(?:label|title|sw|heading|placeholder|aria-label|subtitle|caption|hint|help|message|detail|body|summary)\s*[:=]\s*(["'])([^"']{2,200})\1/g,
-    )) if (ARM.test(m[2])) out.push(at(m.index));
-    return out;
-  }
+  /* `literalArmHits` is now at module scope, above §3b — see the note there. It reads the
+     token set as an ARGUMENT because §3b turns the very same scanner on the player tree
+     with a different vocabulary. ⛔ Do not re-inline a copy of it here. */
 
   /**
    * ⛔ DECIDED, WITH ITS REASON — this is not a place to park a defect.
@@ -855,7 +984,7 @@ check("§5j private-map matcher ACCEPTS a tone ternary (a colour is not a word)"
   let armExempt = 0;
   for (const f of walk(SRC)) {
     const rel = f.slice(ROOT.length + 1).replace(/\\/g, "/");
-    const lines = literalArmHits(readFileSync(f, "utf8"));
+    const lines = literalArmHits(readFileSync(f, "utf8"), ARM);
     if (lines.length === 0) continue;
     if (LITERAL_ARM_OK.has(rel)) { armExempt += lines.length; continue; }
     armHits.push(`${rel}:${lines.join(",")}`);
@@ -988,21 +1117,21 @@ check("§5j private-map matcher ACCEPTS a tone ternary (a colour is not a word)"
     deUnderscoreHits('// this used to render provider.replace(/_/g, " ") — see §11a').length === 0);
 
   check("§11d literal-arm scanner rejects `<Chip>PENDING_REVIEW</Chip>`",
-    literalArmHits("<Chip size=\"sm\">PENDING_REVIEW</Chip>").length === 1);
+    literalArmHits("<Chip size=\"sm\">PENDING_REVIEW</Chip>", ARM).length === 1);
   check("§11d literal-arm scanner rejects an arm in a label field",
-    literalArmHits('{ label: "SELF_EXCLUDED", value: n }').length === 1);
+    literalArmHits('{ label: "SELF_EXCLUDED", value: n }', ARM).length === 1);
   check("§11d literal-arm scanner rejects a token on its OWN LINE inside a chip",
-    literalArmHits("<Chip size=\"sm\" variant={v}>\n  KYC · PENDING_REVIEW\n</Chip>").length === 1,
+    literalArmHits("<Chip size=\"sm\" variant={v}>\n  KYC · PENDING_REVIEW\n</Chip>", ARM).length === 1,
     "the newline-spanning text child is the shape that made the first draft of §11b decoration");
   check("§11d literal-arm scanner ACCEPTS a generic + arrow run that merely spans a `>` and a `<`",
-    literalArmHits('const [a, setA] = useState<Slot>(first?.type ?? "NIDA_FRONT");\n  const b = xs.map((p) => p.n);\n  return (\n    <>').length === 0,
+    literalArmHits('const [a, setA] = useState<Slot>(first?.type ?? "NIDA_FRONT");\n  const b = xs.map((p) => p.n);\n  return (\n    <>', ARM).length === 0,
     "four correct files were flagged by exactly this before `=` and `;` bounded the run");
   check("§11d literal-arm scanner ACCEPTS an env var name — an ops page must spell it exactly",
-    literalArmHits("<code>DATABASE_URL</code> is not set").length === 0);
+    literalArmHits("<code>DATABASE_URL</code> is not set", ARM).length === 0);
   check("§11d literal-arm scanner ACCEPTS the enum doing its job in code",
-    literalArmHits('if (kyc.status === "PENDING_REVIEW") return null;').length === 0);
+    literalArmHits('if (kyc.status === "PENDING_REVIEW") return null;', ARM).length === 0);
   check("§11d literal-arm scanner ACCEPTS an <option value> carrying the arm",
-    literalArmHits('<option value="ADDITIONAL_INFO_REQUIRED">More information needed</option>').length === 0);
+    literalArmHits('<option value="ADDITIONAL_INFO_REQUIRED">More information needed</option>', ARM).length === 0);
 
   check("§11d prose scanner ACCEPTS a color-mix() paint instruction naming `status`",
     !templateInterpolatesEnum("`color-mix(in oklab, ${statusColor(q.status)} 8%, transparent)`"),

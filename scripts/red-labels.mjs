@@ -98,6 +98,31 @@ const MUTATIONS = [
     to: `                timeLeft={\`\${t.market.resolvedOutcome} \${m.resolvedOutcome}\`}`,
   },
   {
+    // 🔴 PV-04, EXACTLY AS IT SHIPPED. This is the line a Chinese player met on the live
+    // money control — "YES @ 51%" — while the board cards on the same page read "是 @ 56%".
+    name: "§3b · the pick-gate types the raw enum where a player reads it (PV-04, live 2026-09-03)",
+    file: p("src", "components", "markets", "side-picker.tsx"),
+    from: `          {sideWord(t, "YES", "MARKET")} {hasPool && <span className="font-mono text-[12.5px] opacity-85">@ {yesPct}%</span>}`,
+    to: `          YES {hasPool && <span className="font-mono text-[12.5px] opacity-85">@ {yesPct}%</span>}`,
+  },
+  {
+    // 🔴 PV-04's second shape — and the one that proves WHY §3c judges the dictionary's
+    // placeholder rather than the variable's name. The variable here is called `lock`; no
+    // vocabulary of enum-ish identifier names would ever have matched it.
+    name: "§3c · a translated sentence is filled with the STORED token (the `lock` shape)",
+    file: p("src", "components", "markets", "conviction-dial.tsx"),
+    from: `          <div className="grid grid-cols-2 gap-2" role="img" aria-label={t.market.backingLocked.replace("{side}", sideWord(t, lock, "MARKET"))}>`,
+    to: `          <div className="grid grid-cols-2 gap-2" role="img" aria-label={t.market.backingLocked.replace("{side}", lock)}>`,
+  },
+  {
+    // ⭐ §3b'S OWN BLINDNESS CONTROL, the same shape as #8 below. A population filter that
+    // matches nothing reports "0 raw tokens" in the identical words as a clean tree.
+    name: "§3b · ⭐ THE PLAYER-TREE SCANNER GOES BLIND — its population filter matches nothing",
+    file: p("scripts", "label-lexicon.test.mts"),
+    from: `  (f) => (f.includes(join("src", "app")) || f.includes(join("src", "components")))`,
+    to: `  (f) => (f.includes(join("srcZZZ", "app")) || f.includes(join("srcZZZ", "components")))`,
+  },
+  {
     name: "§2 · ⭐ THE SCANNER GOES BLIND — the locale-block locator stops matching",
     file: p("scripts", "label-lexicon.test.mts"),
     from: `const blockStart = (k: string) => dictLines.findIndex((l) => new RegExp(\`^  \${k}: \\\\{\`).test(l));`,
