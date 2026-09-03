@@ -34,4 +34,28 @@ export const MUTATIONS = [
     from: `                {upPct === null ? (`,
     to: `                {${HAND_ROLLED}                {upPct === null ? (`,
   },
+  {
+    // 🔴 THE OTHER HALF OF PV-06, and `/live` proved they are different defects: this surface
+    // used the kit primitive CORRECTLY and still fabricated, because the call passed no `empty`
+    // prop — so the cold-start rail was unreachable there under any data. Removing the branch is
+    // exactly how it shipped.
+    // ⚠️ THE BRANCH IS DELETED, NOT DISABLED, and the first draft got that wrong. Rewriting the
+    // test to `{false ? (` left the empty arm's TEXT in place, and the rule's sibling heuristic
+    // (an `empty` bar within ~700 chars counts as the cold-start branch) happily accepted it —
+    // the mutation passed. That is a real limit of a proximity heuristic, stated here rather
+    // than hidden: it proves a branch EXISTS nearby, not that it is reachable. Deleting the arm
+    // is how the defect actually shipped, and it is what this must catch.
+    name: "the live wall renders the kit bar with no cold-start branch (PV-06, second pass)",
+    file: "src/app/live/pulse-grid.tsx",
+    expect: "tipping-bar-without-cold-start in src/app/live/pulse-grid.tsx",
+    from: `        {yes === null ? (
+          <TippingBar height={9} showLabels={false} recastOnHover={false}
+            empty emptyLabel={t.market.noBetsYet} />
+        ) : (
+          <TippingBar yesPct={yes} height={9} showLabels={false} recastOnHover={false}
+            probabilityLabel={t.market.probBarAria.replace("{side}", sideWord(t, "YES", isUpDown ? "UPDOWN" : "MARKET"))} />
+        )}`,
+    to: `        <TippingBar yesPct={yes} height={9} showLabels={false} recastOnHover={false}
+          probabilityLabel={t.market.probBarAria.replace("{side}", sideWord(t, "YES", isUpDown ? "UPDOWN" : "MARKET"))} />`,
+  },
 ];

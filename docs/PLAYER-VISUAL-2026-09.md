@@ -214,7 +214,35 @@ half-tested. The funded arm is proven **locally** (a real 83/17 split with the g
 `Down × 3.90` on the thin side). ▶ **Re-run `qa:cold-start` once a funded round exists on
 production**; it is one command and it closes the other half.
 
-**Evidence** `.qa-shots/pv06/` — `updown-{en,sw}-{390,1280}.png`, `round-{en,sw}-{390,1280}.png`.
+#### 🔴 SECOND PASS, SAME DAY — the sweep found FOUR more surfaces
+
+Asked to prove rows 1–2 were finished, the honest answer was **no**. The record names `/live` as a
+PV-06 surface and the first pass never looked there. It carried the defect in a *different shape*,
+which is why the first guard was blind to it:
+
+| surface | the shape | why the first guard could not see it |
+|---|---|---|
+| `live/pulse-grid.tsx` | used the kit bar **correctly** but passed **no `empty` prop** — so the honest rail was unreachable there under any data | `hand-rolled-split-bar` only catches a surface drawing its OWN bar |
+| `live/page.tsx` `topContested` | an unpriced market scored **exactly 50**, sorted **FIRST** as "most contested", and was promoted into the hero carousel under a 32px bar at a perfect half-and-half | not a bar at all — a **SORT** |
+| `results/page.tsx` | the gilt "notable result" bar, ungated | chosen by highest volume, so empty is *near*-unreachable — and *near* is not a gate |
+| `app/page.tsx:196` | a comment reading *"it is 0 rather than 50 deliberately"* sat directly above `?? impliedYesPct(…)`, **which returns exactly 50** | a stale note describing code that had drifted out from under it |
+
+⭐ **The `topContested` one is the worst of the four, and it is not a rendering bug.** The wall's
+most prominent slot was reserved, by construction, for whichever market had the *least* information
+behind it. A `.filter()` now narrows it away — which also makes `featured-contest` safe by **type**
+rather than by a runtime branch.
+
+**Second guard — `tipping-bar-without-cold-start`**, beside the first in `test:ui-consistency`,
+**0 at HEAD**, `red:split-bar` now **3/3**. ⚠️ Its sibling heuristic has a limit, stated rather than
+hidden: rewriting a branch to `{false ? (` leaves the empty arm's text in place and the mutation
+passed, so the RED harness **deletes** the arm instead — the shape that actually shipped.
+
+⚠️ **And `test:spacing-scale` caught me.** The new copy line used `mt-2.5` in *both* arms, adding a
+562nd "inverted" usage against a ceiling of 561 — the scale is overridden here, so `2.5` paints
+10px while `2` paints 12px. Hoisted onto one wrapper; back to 561.
+
+**Evidence** `.qa-shots/pv06/` — `updown-{en,sw}-{390,1280}.png`, `round-{en,sw}-{390,1280}.png`,
+`live-en-1280.png`.
 
 ### PV-03 · MEDIUM · two surfaces render a narrow centred column on a desktop viewport
 - **Lens** 3, 5, 10. **Surfaces** `/wallet/deposit` (confirmed) and `/positions` **empty-state cards** (confirmed) at **1280·1920**. ⚠️ **Narrowed by re-derivation** — see §2b: market-detail, wallet, notifications and updown all render **real desktop layouts** and are OVERTURNED.

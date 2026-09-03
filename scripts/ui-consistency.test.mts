@@ -180,6 +180,31 @@ const ARIA_LABEL_CAMEL_ONLY: Set<string> = (() => {
 // allow-list that quietly stops policing the thing it names.
 const SPLIT_BAR_ALLOW = new Set(["src/app/positions/page.tsx"]);
 
+/**
+ * ⛔ ONE FILE, AND THE GUARANTEE IS STRONGER THAN THE BRANCH IT REPLACES.
+ *
+ * `featured-contest.tsx` renders a 32px bar with no `empty` prop, and it cannot need one: its
+ * caller (`/live`) narrows with `.filter((m): m is … & { yesPct: number })`, so an unpriced
+ * market is unrepresentable in that array — a TYPE guarantee, not a runtime hope. Adding a dead
+ * branch to satisfy a scanner would be worse code and a false claim about what can happen.
+ *
+ * ⚠️ The narrowing is the whole safeguard, so it is written at BOTH ends: the filter carries the
+ * reason, and the JSX carries "⛔ if you ever widen this prop to `number | null`, add the branch".
+ * If that filter is ever relaxed, DELETE this entry — the list may only shrink.
+ */
+const TIPPING_COLD_START_OK = new Set([
+  "src/app/live/featured-contest.tsx",
+  // `probability-bar.tsx` is a thin PASS-THROUGH wrapper, and every one of its consumers is the
+  // officer console (`admin/markets`, `admin/markets/[id]`, `admin/resolver/[id]`,
+  // `admin/resolver-queue` — verified 2026-09-03). §C2 governs what a PLAYER is shown; an
+  // officer reading the crowd's implied 50 beside a pool of zero is an internal statistic on a
+  // page that also shows them the raw pools. It sits in `components/markets/` rather than
+  // `components/admin/`, which is the only reason the path-based population sees it at all.
+  // ⛔ THE EXEMPTION IS CONDITIONAL ON THAT USAGE: the moment any player surface imports
+  // `ProbabilityBar`, delete this entry and give the wrapper an `empty` passthrough.
+  "src/components/markets/probability-bar.tsx",
+]);
+
 const RULES: Rule[] = [
   {
     id: "dropped-aria-label-prop",
@@ -236,6 +261,44 @@ const RULES: Rule[] = [
       for (const m of b.matchAll(/var\(--yes-500\)[\s\S]{0,400}?var\(--no-500\)/g)) {
         if (!/width:/.test(m[0])) continue;
         out.push({ index: m.index ?? 0, snippet: "two-span split bar — use <TippingBar empty={…}>" });
+      }
+      return out;
+    },
+  },
+  {
+    id: "tipping-bar-without-cold-start",
+    severity: "error",
+    desc: "a <TippingBar> handed a DATA-DERIVED yesPct with no `empty` branch — the kit's cold-start rail is then unreachable on that surface whatever the pool holds, and an untouched market advertises a crowd price nobody set (§C2 / RULES law 5)",
+    /**
+     * 🔴 PV-06, second pass. `hand-rolled-split-bar` catches a surface that draws its OWN bar.
+     * This catches the other half, and `/live` was living proof they are different defects: it
+     * used the kit primitive correctly and STILL fabricated, because the call passed no `empty`
+     * prop at all — so the honest rail could not render there under any data. The wall whose
+     * entire purpose is to show where the crowd is was printing "@ 50% · @ 50%" for markets
+     * nobody had bet on, and promoting them into the hero carousel as "most contested".
+     *
+     * SAFE, and each is a real pattern rather than an excuse:
+     *   · declares `empty` (market-card's `empty={noPrice}`);
+     *   · `yesPct={62}` — a numeric LITERAL is decoration (auth shell, onboarding primer);
+     *   · sits in a conditional whose other arm renders `<TippingBar … empty …>` — the branch
+     *     pattern every surface fixed by PV-06 uses.
+     */
+    scan: (b, f) => {
+      if (isKitFile(f) || TIPPING_COLD_START_OK.has(rel(f))) return [];
+      // ⛔ `b` ARRIVES ALREADY DECOMMENTED (see the file walk) — do not strip again; a second
+      // pass would shift every index and report the wrong line.
+      const clean = b;
+      const out: Array<{ index: number; snippet: string }> = [];
+      for (const m of clean.matchAll(/<TippingBar\b[\s\S]{0,700}?\/>/g)) {
+        const tag = m[0];
+        if (/\bempty\b/.test(tag)) continue;                       // declares the state
+        const yes = /yesPct=\{([^}]*)\}/.exec(tag);
+        if (!yes) continue;                                        // no price to fabricate
+        if (/^\s*\d+(\.\d+)?\s*$/.test(yes[1])) continue;          // a literal is decoration
+        // the ternary-sibling pattern: the other arm renders the empty rail
+        const around = clean.slice(Math.max(0, (m.index ?? 0) - 700), (m.index ?? 0) + tag.length + 700);
+        if (/<TippingBar\b[^/]{0,400}?\bempty\b/.test(around)) continue;
+        out.push({ index: m.index ?? 0, snippet: `<TippingBar yesPct={${yes[1].trim().slice(0, 30)}}> has no empty branch` });
       }
       return out;
     },

@@ -4,7 +4,7 @@ import { I } from "@/components/ui/glyphs";
 import { MarketCard } from "@/components/markets/market-card";
 
 import {
-  listMarkets, impliedYesPct, isClosedByTime, isSelectionClosed, traderSeedsByMarket,
+  listMarkets, isClosedByTime, isSelectionClosed, traderSeedsByMarket,
   MARKET_CATEGORIES,
 } from "@/lib/server/market-service";
 
@@ -192,8 +192,14 @@ export default async function LandingPage() {
                     category={r.category}
                     /* The card owns its own cold-start gate (`noPrice = volume === 0`), so the
                        fallback here is unreachable — and it is 0 rather than 50 deliberately: a
-                       50 would look like a price and ship, a 0 is visibly absurd and gets caught. */
-                    yesPct={r.yesPct ?? impliedYesPct({ yesPool: r.yesPool, noPool: r.noPool })}
+                       50 would look like a price and ship, a 0 is visibly absurd and gets caught.
+                       🔴 THE COMMENT WAS TRUE AND THE CODE WAS NOT (fixed 2026-09-03, PV-06
+                       sweep). This read `?? impliedYesPct({…})`, which returns exactly the
+                       hardcoded **50** the sentence above says it deliberately avoids — so the
+                       one safeguard here was a stale note describing code that had drifted out
+                       from under it. `?? 0` is now what it claims to be, and this file no longer
+                       reaches for the fabricating function at all. */
+                    yesPct={r.yesPct ?? 0}
                     volume={r.pool}
                     predictors={r.predictors}
                     timeLeft={r.selectionClosed ? t.home.waitingForResults : timeLeftStr(r.bettableUntilMs)}

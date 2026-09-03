@@ -17,7 +17,8 @@ type Market = {
   titleSw: string;
   titleZh?: string | null;
   category: string;
-  yesPct: number;
+  /** 0..100, or **null** when the pool is empty — there is no crowd price to state (PV-06). */
+  yesPct: number | null;
   volume: number;
   predictors: number;
   timeLeft: string;
@@ -187,12 +188,35 @@ function PulseCard({ market, index }: { market: Market; index: number }) {
       <h3 className="min-h-[2.6em] font-display text-[13.5px] font-semibold leading-snug text-text line-clamp-2 group-hover:text-aqua-200">
         {title}
       </h3>
+      {/* 🔴 PV-06, second pass · 2026-09-03. This bar carried NO `empty` prop, so the kit's
+          cold-start rail was structurally UNREACHABLE on this wall no matter what the pool
+          held — and `yesPct` arrived from `impliedYesPct`, which hands out a hardcoded 50 on
+          an empty one. An untouched market therefore advertised "@ 50% · @ 50%" here as a
+          crowd price, on the board whose entire purpose is to show where the crowd is.
+          ⛔ The percentages go with it: a price nobody set must not be printed either. */}
       <div className="mt-3">
-        <TippingBar yesPct={yes} height={9} showLabels={false} recastOnHover={false} probabilityLabel={t.market.probBarAria.replace("{side}", sideWord(t, "YES", isUpDown ? "UPDOWN" : "MARKET"))} />
+        {yes === null ? (
+          <TippingBar height={9} showLabels={false} recastOnHover={false}
+            empty emptyLabel={t.market.noBetsYet} />
+        ) : (
+          <TippingBar yesPct={yes} height={9} showLabels={false} recastOnHover={false}
+            probabilityLabel={t.market.probBarAria.replace("{side}", sideWord(t, "YES", isUpDown ? "UPDOWN" : "MARKET"))} />
+        )}
       </div>
-      <div className="mt-2.5 flex items-center justify-between font-mono text-[12px] tabular-nums">
-        <span className="font-bold text-yes-300">{isUpDown ? t.market.udUp : t.common.yes} <span className="opacity-75">@ {yes}%</span></span>
-        <span className="font-bold text-no-300">{isUpDown ? t.market.udDown : t.common.no} <span className="opacity-75">@ {100 - yes}%</span></span>
+      {/* ⚠️ THE `mt-2.5` IS HOISTED ONTO THE WRAPPER, NOT REPEATED IN BOTH ARMS — caught by
+          `test:spacing-scale`, which ratchets "inverted" keys downward only. The scale is
+          OVERRIDDEN here (tailwind.config.ts), so `2.5` paints 10px while `2` paints 12px: a key
+          that reads bigger and paints smaller. Writing it in each branch added a 562nd usage
+          against a ceiling of 561. One wrapper is also simply the right structure. */}
+      <div className="mt-2.5">
+        {yes === null ? (
+          <div className="text-center font-mono text-[12px] text-text-subtle">{t.market.noBetsYet}</div>
+        ) : (
+          <div className="flex items-center justify-between font-mono text-[12px] tabular-nums">
+            <span className="font-bold text-yes-300">{isUpDown ? t.market.udUp : t.common.yes} <span className="opacity-75">@ {yes}%</span></span>
+            <span className="font-bold text-no-300">{isUpDown ? t.market.udDown : t.common.no} <span className="opacity-75">@ {100 - yes}%</span></span>
+          </div>
+        )}
       </div>
     </Link>
   );

@@ -60,10 +60,10 @@ for (const m of MUTATIONS) {
   const out = r.stdout + r.stderr;
   // ⛔ THE SPECIFIC RULE, IN THE SPECIFIC FILE. `r.status !== 0` alone would be satisfied by any
   //    of the other 75 baselined pairs drifting.
-  const named = out.includes("hand-rolled-split-bar") && out.includes(m.expect);
+  const named = out.includes(m.expect);
   const caught = r.status !== 0 && named;
   console.log(`   exit=${r.status}  names-this-rule-in-this-file=${named}  ${caught ? "✓ CAUGHT" : "✗ MISSED"}`);
-  for (const line of out.split(/\r?\n/).filter((l) => /hand-rolled-split-bar/.test(l)).slice(0, 2)) {
+  for (const line of out.split(/\r?\n/).filter((l) => /split-bar|cold-start/.test(l)).slice(0, 2)) {
     console.log(`     ${line.trim().slice(0, 140)}`);
   }
   writeFileSync(target, original, "utf8");

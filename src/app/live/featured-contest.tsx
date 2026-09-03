@@ -115,6 +115,14 @@ export function FeaturedContest({
             {m.title}
           </h2>
         </Link>
+        {/* ⭐ NO `empty` BRANCH HERE, AND THAT IS A TYPE GUARANTEE RATHER THAN AN OVERSIGHT.
+            `/live`'s `topContested` narrows with `.filter((m): m is … & { yesPct: number })`, so
+            an unpriced market cannot reach this carousel at all — which is the right answer twice
+            over: a market NOBODY has bet on is not "the most contested", it is the emptiest, and
+            before PV-06 it sorted FIRST here (an untouched pool scored exactly 50 through
+            `impliedYesPct`) and was promoted into the hero under a 32px bar drawn at a perfect
+            half-and-half. ⛔ If you ever widen this prop to `number | null`, add the branch —
+            the guarantee lives in the caller's filter, not in this file. */}
         <TippingBar yesPct={m.yesPct} height={32} showLabels
           probabilityLabel={t.market.probBarAria.replace("{side}", sideWord(t, "YES", m.productLine))}
           labels={{ yes: sideWord(t, "YES", m.productLine), no: sideWord(t, "NO", m.productLine), tipping: t.market.tipping, leansYes: t.market.leansYes, leansNo: t.market.leansNo }} />

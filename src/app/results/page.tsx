@@ -6,6 +6,8 @@ import { Chip } from "@/components/ui/chip";
 import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
 import { TippingBar } from "@/components/brand";
 import { listMarkets, impliedYesPct, MARKET_CATEGORIES, listTerminalMarkets } from "@/lib/server/market-service";
+// ⛔ THE ONE COLD-START RULE (§C2) — see the `yesPct` note in FeaturedResult.
+import { pricedYesPct } from "@/lib/markets/discovery";
 import { categoryOptions } from "@/lib/markets/category-label";
 import { getCardCharts } from "@/lib/server/market-history";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -552,7 +554,12 @@ function OutcomeDonut({ yes, no, voided, size = 38 }: { yes: number; no: number;
  *  the grid, carrying the resolved gilt seal chip. */
 function FeaturedResult({ m, t, locale }: { m: Awaited<ReturnType<typeof listMarkets>>[number]; t: Awaited<ReturnType<typeof getServerT>>["t"]; locale: Awaited<ReturnType<typeof getServerT>>["locale"] }) {
   const isVoid = m.resolvedOutcome === "VOID" || m.status === "VOIDED";
-  const yesPct = impliedYesPct(m);
+  // ⛔ `pricedYesPct`, not `impliedYesPct` — PV-06 sweep, 2026-09-03. This card is chosen as the
+  // HIGHEST-VOLUME settled market, so an empty pool is close to unreachable here — and "close to
+  // unreachable" is not a gate. It is reachable on a young platform, or one where everything
+  // settled VOID, and the cost of being wrong is a fabricated crowd price under a gilt seal.
+  // Every player-facing bar answers cold start the same way; this one was the last that did not.
+  const yesPct = pricedYesPct(m.yesPool, m.noPool);
   return (
     <Link
       href={`/markets/${m.id}` as never}
@@ -573,9 +580,14 @@ function FeaturedResult({ m, t, locale }: { m: Awaited<ReturnType<typeof listMar
       <h2 className="mb-4 max-w-[70ch] font-display text-[18px] lg:text-[22px] font-semibold leading-tight text-text group-hover:text-gold-100">
         {pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}
       </h2>
-      <TippingBar yesPct={yesPct} height={28} showLabels resolved={!isVoid} recastOnHover={false}
-        probabilityLabel={t.market.probBarAria.replace("{side}", sideWord(t, "YES", m.productLine))}
-        labels={{ yes: sideWord(t, "YES", m.productLine), no: sideWord(t, "NO", m.productLine), tipping: t.market.tipping, leansYes: t.market.leansYes, leansNo: t.market.leansNo }} />
+      {yesPct === null ? (
+        <TippingBar height={28} showLabels={false} recastOnHover={false}
+          empty emptyLabel={t.market.noBetsYet} />
+      ) : (
+        <TippingBar yesPct={yesPct} height={28} showLabels resolved={!isVoid} recastOnHover={false}
+          probabilityLabel={t.market.probBarAria.replace("{side}", sideWord(t, "YES", m.productLine))}
+          labels={{ yes: sideWord(t, "YES", m.productLine), no: sideWord(t, "NO", m.productLine), tipping: t.market.tipping, leansYes: t.market.leansYes, leansNo: t.market.leansNo }} />
+      )}
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px] tabular-nums text-text-muted">
         <span>{formatTzsCompact(m.yesPool + m.noPool)} {t.common.settled}</span>
         <span className="flex items-center gap-1"><I.users s={11} /> {m.predictorCount} {t.market.predictors}</span>
