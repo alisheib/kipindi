@@ -406,10 +406,17 @@ branch; the region-pixel-read drive is owed on merge.
 - **Measured:** `.kp-hero__mark` is a large right-edge decorative watermark. At **1280+ it sits at/off the right edge** and collides with nothing (verified at 1280/1024 — the two-column layouts clear it). At **390** it sits behind the headline area as a faint backdrop. It reads as the round-2 kit's intended "question-board" backdrop (CLAUDE.md: "the brand mark as a backdrop"), not a legibility-harming collision.
 - **Verdict:** whether this breaches §M8 clear-space, or is the sanctioned backdrop, is **a design call, not a defect** → §6. If it is to be contained, the fix is one `<DecorMark>` primitive with a clear-space rule (system-level).
 
+#### ✅ RULED — 2026-09-03. **KEEP AS BACKDROP.** Ali: the mark is the intended "question-board"
+backdrop, not a defect. No `<DecorMark>` primitive built; row 9 closes by ruling, not by a fix.
+
 ### PV-05 · LOW / DESIGN-JUDGMENT · the bet panel dial reads thin, and carries three words for one idea
 - **Lens** 5, 9, 13. **Surface** `/markets/[id]` dial.
 - **Measured:** the dial is physically sound (PV-12 sound) but visually a thin 5px-ish slider with a small knob; the panel says "YOUR PICK" + the knob "21.08×" + the modal "conviction" — three registers for one concept. The **panel commit is side-green (`btn-yes`), the modal confirm is gold** — which is **correct** per §M3a/D1 (bet keeps gold; the green states *which side*, the gold states *money committed*), so that half of the old hypothesis is OVERTURNED.
 - **Verdict:** the dial's visual *weight* and the term unification are a **Design commission**, not a sweep (lens 5/9/13) → Part C §d.
+
+#### ✎ COMMISSIONED — 2026-09-03. Ali: commission Design now. Handover follows §d's bounds
+(`docs/design-brief/player-visual-2026-09/handover/`, `TOKENS-USED.md` + `DECISIONS.md` +
+`MOTION.md`, mechanical token-check first, EN+SW+ZH at 390 and ≥lg).
 
 ---
 
@@ -478,10 +485,10 @@ branch; the region-pixel-read drive is owed on merge.
 
 ## §6 · Needs Ali — visual/product only
 
-1. **PV-01 — the `.kp-hero__mark` backdrop.** Is the mark-behind-the-headline the intended "question-board" hero (keep), or should it be contained to a clear-space rule (§M8)? It harms no legibility at desktop; at 390 it is a faint backdrop.
-2. **PV-05 / the bet panel dial.** The dial is functionally perfect but visually thin, and one idea wears three words (YOUR PICK / MULTIPLIER-× / conviction). This is a **Claude Design** commission (Part C §d), not a sweep — Ali's call on scope.
-3. **PV-10 — the `@pct%` odds contrast.** The clean fix (drop `opacity-85`) is a session's; a darker green fill (the §A lever) touches the brand and is Ali's.
-4. **The "Invite & Earn" gold button on the zero-bonus card** ([wallet-client.tsx:314](../src/app/wallet/wallet-client.tsx#L314) `btn-gold`) — a possible §M3a/D5 case (gold on an inducement over a TZS 0 balance). Verify against `test:gold-is-money`; if it passes today, this is a ruling to record, not a defect to fix.
+1. ✅ **RULED 2026-09-03 — PV-01, the `.kp-hero__mark` backdrop.** Ali: **keep as backdrop**. It is the intended "question-board" hero, not a defect; no `<DecorMark>` primitive built.
+2. ✎ **COMMISSIONED 2026-09-03 — PV-05 / the bet panel dial.** Ali: **commission Design now**, per §d's bounds. The dial is functionally perfect but visually thin, and one idea wears three words (YOUR PICK / MULTIPLIER-× / conviction).
+3. ✅ **FIXED 2026-09-03 — PV-10, the `@pct%`/`×N` odds contrast.** The clean fix (drop the call-site `opacity`) shipped at all nine sites — see PV-10's own "RE-DERIVED AND FIXED" writeup above. A darker fill (the §A lever) was never needed.
+4. ✅ **RULED 2026-09-03 — the "Invite & Earn" gold button on the zero-bonus card** ([wallet-client.tsx:314](../src/app/wallet/wallet-client.tsx#L314) `btn-gold`). Ali: **confirmed correct** — re-verified `test:gold-is-money` **15/0** the same day. It leads to real referral money; gold on a genuine money surface, not an inducement. Ruling recorded, no code change.
 
 ---
 

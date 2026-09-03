@@ -227,10 +227,10 @@ States: `☐ not started` · `◐ in progress` · `⧗ blocked (why)` · `✎ aw
 | 6 | PV-10 · `@pct%`/`×N` suffix contrast | 6 | Code | ◐ | `market-card.tsx` · `side-picker.tsx` · `updown-card.tsx` · `updown-stake-controls.tsx` · `conviction-dial.tsx` (filed as 4 sites, was **9**) | `test:contrast` **§P-u2** (new) · `red:contrast-callsite` | `pv10/rows-3-4-6` (unmerged) | `.qa-shots/pv10-local/` (gitignored, local-only) | guard population gap WAS the finding, confirmed; guard's own sweep found a 9th site (the bet-panel commit button). ⛔ **NOT proven on production** |
 | 7 | PV-14 · timing off `duration-150`/bare curves | 14 | Code | ☐ | Input atom + kit | new `test:motion-timing` | — | — | build the guard first |
 | 8 | PV-03 · `<DetailLayout>` template | 3,5,10 | Code+Design | ☐ | new `detail-layout.tsx` | `responsive-audit.mjs` | — | — | deposit + positions-empty |
-| 9 | PV-01 · `<DecorMark>` clear-space (or keep) | 4,5 | 👤 Ali → Design | ☐ | new `decor-mark.tsx` | `--m-pivot`/clear-space | — | — | keep-as-backdrop is live |
-| 10 | PV-05 · dial weight + term unification | 5,9,13 | ✎ Design | ☐ | handover | visual | — | — | commission §d |
+| 9 | PV-01 · brand-mark backdrop at 390 | 4,5 | 👤 Ali | ☑ | — (ruling, no code) | — | — | — | **Ali's ruling, 2026-09-03: KEEP AS BACKDROP.** Not a defect — the intended "question-board" backdrop per CLAUDE.md. No `<DecorMark>` primitive built; closed by ruling, not by a fix. |
+| 10 | PV-05 · dial weight + term unification | 5,9,13 | ✎ Design | ✎ | handover | visual | — | — | **Ali's ruling, 2026-09-03: COMMISSION NOW.** Handover to follow §d's bounds — `docs/design-brief/player-visual-2026-09/handover/`, TOKENS-USED.md + DECISIONS.md + MOTION.md, mechanical token-check first. |
 | 11 | Lens 12 · finish the `/markets` filter-correctness drive | 12 | Code | ☐ | — | `test:board-discovery` + `qa:filter-scan` | — | — | §5 of the record — count-vs-rendered, URL state, monotonicity |
-| 12 | Invite & Earn gold on zero-bonus card | — | 👤 Ali | ☐ | `wallet-client.tsx:314` | `test:gold-is-money` | — | — | passes today (15/15) → ruling to record, not a fix |
+| 12 | Invite & Earn gold on zero-bonus card | — | 👤 Ali | ☑ | `wallet-client.tsx:314` | `test:gold-is-money` | — | re-verified **15/0** 2026-09-03 | **Ali's ruling, 2026-09-03: CONFIRMED CORRECT.** The `btn-gold` CTA shown on the zero-bonus wallet card leads to real referral money (Invite & Earn) — gold ink on a genuine money surface, exactly what `test:gold-is-money` exists to require. No code change; closed by ratification. |
 
 Seed state: every row `☐`. ⛔ Do not tick a row by intention — only by evidence (§h).
 
