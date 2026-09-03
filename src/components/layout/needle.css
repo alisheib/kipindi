@@ -11,6 +11,32 @@
    Tokens (--bg, --gilt, --brand-400/500, --aqua-300/400/500, --gold-300) all resolve
    to the live src/app/globals.css. */
 
+/* ══ TO ADD A THEME (it is four steps, and none of them touch the object) ══════
+   1. Copy the `[data-needle-theme="pepsi"]` block below and rename the attribute
+      value. ⛔ Give EVERY name in it a value — an omitted one silently inherits
+      the house colour and you get a half-painted disc. The two blocks must carry
+      the identical set of names; diff them rather than trusting a count here,
+      because a count written in a comment goes stale the first time one is added.
+   2. Add the value to `NeedleTheme` in src/lib/haptics.ts, and to the coercion
+      line in `load()` beside it. ⛔ Both — the type alone does not coerce, and an
+      unknown stored value must fall back to "50pick".
+   3. Add a row to `THEMES` in needle-drawer.tsx (id, name, hint). The preview
+      swatch paints itself from the same vars; there is nothing to draw.
+   4. ⛔ Do NOT touch needle.tsx, needle-physics.js or the markup. A theme is
+      paint. If a change needs new geometry it is not a theme.
+
+   THE THREE RULES A NEW THEME MUST OBEY
+   · Enamel, not flat brand paint. Keep the brand's HUE; pull L and C into the
+     house band (faces live at L 42-59, C 0.099-0.144). Pepsi's own #E63D24 is
+     chroma 0.209 and read as a carnival spinner until it was fired down — see
+     NEEDLE-SPEC §0, which made the same ruling about 50pick's own hues.
+   · ⛔ No gilt. Gold means EARNED (DESIGN_AUTHORITY §M3) and a sponsor has
+     earned nothing. Seam, hub, rim and aura go pearl/silver or the brand's own
+     neutral.
+   · Score the faces against `--no-500` (hue 22, the LOSS colour) before drawing.
+     A disc whose face lands within a few degrees of it reads as "you lost".
+   ══════════════════════════════════════════════════════════════════════════════ */
+
 /* ── THE DISC'S PAINT, AS THEME VARIABLES ──────────────────────────────────────
    The object's colour used to be ~24 hex literals inside the SVG markup in
    needle.tsx. They are now named here, ONCE, and the markup reads `var(--ndl-*)`.
