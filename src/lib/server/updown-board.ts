@@ -17,7 +17,14 @@ import { getUpDownConfig, stakeBoundsFor } from "./updown-config";
 // vendor in the RSC payload where View Source finds it.
 import { publicSourceClassFor, type PublicSourceClass } from "./updown-symbols";
 import { ratesFor, listPositionsForUser, listPositionsForMarket, projectedPayout } from "./market-service";
-import { impliedYesPct } from "./market-service";
+// 🔴 `pricedYesPct`, NOT `impliedYesPct` — PV-06, 2026-09-03. Two functions answer "what share
+// of the pool is on UP", and they disagree about the only case that matters: `impliedYesPct`
+// returns a hardcoded **50** on an empty pool (`market-service.ts:315`), `pricedYesPct` returns
+// **null**. This board took the fabricating one, so a round with `VOL TZS 0` and ZERO predictors
+// rendered a filled "Up 50% · 50% Down" bar on production — a crowd price invented for a crowd
+// that does not exist (RULES law 5 / §C2). Five surfaces already consume the honest rule; this
+// was the sixth that was never wired to it.
+import { pricedYesPct } from "@/lib/markets/discovery";
 // ⭐ D2 · the shape the player surfaces price a bet from. Isomorphic by design — the card is a
 // client component, this is the server, and one definition of "what would I be paid" is the
 // point (same reasoning as `updown-refund-reason.ts`).
@@ -86,7 +93,9 @@ export type BoardRound = {
   voidReason: string | null;
   volumeTzs: number;
   players: number;
-  upPct: number;
+  /** The UP share of the pool, or **null** when no money is in it — see the `pricedYesPct`
+   *  import note. ⛔ Never coalesce this to 50 at a call site; that is the defect, relocated. */
+  upPct: number | null;
   /**
    * ⭐ D2 · THE ROUND'S REAL MONEY, so a player can be told what they would ACTUALLY be paid
    * before they bet — see `@/lib/updown-pricing`.
@@ -425,7 +434,7 @@ async function toBoardRound(
     voidReason: r.voidReason,
     volumeTzs: m.yesPool + m.noPool,
     players: m.predictorCount,
-    upPct: impliedYesPct(m),
+    upPct: pricedYesPct(m.yesPool, m.noPool),
     // ⭐ D2 · the pool itself, so every player surface can price a bet through the SAME
     // `payoutFor` settlement pays with. See the field comment for what this replaced.
     pricing: {

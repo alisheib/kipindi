@@ -32,6 +32,9 @@ import { useT } from "@/lib/i18n";
 import { useUpDownQuickBet, usePlacePulse } from "./use-quick-bet";
 import { UpDownStakeControls, GLYPH_NO_SHRINK } from "./updown-stake-controls";
 import { Button } from "@/components/ui/button";
+// ⭐ The kit's ONE pool-split bar, and the home of the cold-start rail (§B9). See the pool-split
+// block below for why this card stopped drawing its own — PV-06.
+import { TippingBar } from "@/components/brand";
 import { mmss, useHoldAnchor, useTickSeconds } from "./round-countdown";
 // ⭐ ONE TIMER FOR THE WHOLE BOARD, and a card that only re-renders when its PHASE moves.
 // See `use-shared-second.ts` — a board of eight cards used to arm 32 unaligned intervals and
@@ -101,8 +104,15 @@ export type UpDownCardProps = {
   myPayoutIfDown?: number | null;
   volumeTzs: number;
   players: number;
-  /** 0..100. Down is derived — one number, one source. */
-  upPct: number;
+  /**
+   * 0..100, or **null** when the pool is empty. Down is derived — one number, one source.
+   *
+   * ⛔ NULL IS NOT "UNKNOWN, SO SHOW 50". It is *there is no crowd price*, and it is the whole
+   * point of the type (PV-06). Until 2026-09-03 this was a bare `number` fed by
+   * `impliedYesPct`, which hands out a hardcoded 50 on an empty pool — so a live round with
+   * `VOL TZS 0` and no predictors painted a confident "Up 50% · 50% Down". ⛔ Never `?? 50`.
+   */
+  upPct: number | null;
   /**
    * ⭐ D2 · THE ROUND'S REAL POOL + ITS FROZEN RATES, so the two buttons can quote what a
    * player would ACTUALLY be paid instead of a config constant. See `@/lib/updown-pricing`.
@@ -631,7 +641,9 @@ export function UpDownCard(props: UpDownCardProps) {
     voidReason: voidReason ?? null,
     refundedStake: myRefundedStake ?? 0,
   });
-  const downPct = Math.max(0, 100 - upPct);
+  // ⛔ Both null together, or both numbers. A `downPct` that stayed a number while `upPct` went
+  // null would put the cold-start branch and the paint back out of step, which is the defect.
+  const downPct = upPct === null ? null : Math.max(0, 100 - upPct);
   const dir = movePct == null ? null : movePct > 0 ? "up" : movePct < 0 ? "down" : "flat";
   const priceColor = dir === "up" ? "var(--yes-300)" : dir === "down" ? "var(--no-300)" : "var(--text-muted)";
   /**
@@ -851,16 +863,50 @@ export function UpDownCard(props: UpDownCardProps) {
         </span>
       </div>
 
-      {/* Pool split — words AND colour, never colour alone (a11y). */}
+      {/* ── Pool split — words AND colour, never colour alone (a11y) ──────
+          🔴 PV-06, 2026-09-03. This block used to render the percentages and a filled bar
+          UNCONDITIONALLY, so a live round with `VOL TZS 0` and zero predictors advertised
+          "Up 50% · 50% Down" — a crowd price for a crowd that does not exist. Measured on
+          production, on both a LIVE and an already-RESOLVED empty round.
+
+          ⭐ THE BAR IS NOW THE KIT'S, NOT THIS FILE'S. The two-span strip that stood here was
+          a second implementation of `TippingBar`, whose own documentation had already ruled on
+          exactly this: the cold-start rail is "A STATE OF THIS BAR, not a second component —
+          DESIGN_AUTHORITY B9". Thirteen surfaces used the primitive; this card did not, so it
+          was the one place the empty state could not be inherited — and the one place it was
+          missing. Adopting it also gives the bar a `role="progressbar"` and a localised
+          accessible name, which the hand-rolled strip never had at all.
+
+          ⚠️ `height={7}` matches `.mcardp`'s own bar deliberately (market-card.tsx). Both card
+          families sit in the same `.mcardp` shell; a 5px bar here and a 7px bar there was one
+          idea drawn two ways on one board. */}
       <div className="mt-2">
-        <div className="flex items-center justify-between font-mono text-[9.5px] font-bold tracking-[0.06em]">
-          <span style={{ color: "var(--yes-300)" }}>{t.market.udUp} {Math.round(upPct)}%</span>
-          <span style={{ color: "var(--no-300)" }}>{Math.round(downPct)}% {t.market.udDown}</span>
-        </div>
-        <div className="mt-1 flex gap-[2px] overflow-hidden rounded-pill" style={{ height: 5 }}>
-          <span style={{ width: `${upPct}%`, background: "var(--yes-500)" }} />
-          <span style={{ width: `${downPct}%`, background: "var(--no-500)" }} />
-        </div>
+        {upPct !== null && downPct !== null && (
+          <div className="flex items-center justify-between font-mono text-[9.5px] font-bold tracking-[0.06em]">
+            <span style={{ color: "var(--yes-300)" }}>{t.market.udUp} {Math.round(upPct)}%</span>
+            <span style={{ color: "var(--no-300)" }}>{Math.round(downPct)}% {t.market.udDown}</span>
+          </div>
+        )}
+        {/* ⛔ TWO CALLS, NO `?? 50`. A single call would need a numeric fallback for `yesPct`
+            on the empty branch, and writing `upPct ?? 50` here — three lines under a prop doc
+            that forbids exactly that — is how the fabricated 50 walks back in the moment
+            someone deletes the `empty` prop. The branch makes the contract unforgeable. */}
+        {upPct === null ? (
+          <TippingBar className="mt-1" height={7} showLabels={false} recastOnHover={false}
+            empty emptyLabel={t.market.noBetsYet} />
+        ) : (
+          <TippingBar className="mt-1" yesPct={upPct} height={7} showLabels={false}
+            recastOnHover={false} resolved={state === "resolved"}
+            probabilityLabel={t.market.probBarAria.replace("{side}", t.market.udUp)} />
+        )}
+        {/* ⛔ NO `mcardp-nobets` CAPTION HERE, and that is a difference from `.mcardp` ON PURPOSE
+            — caught by LOOKING at the render, not by any count. `.mcardp` needs the caption
+            because the dashed rail is the only thing on that card saying the pool is empty.
+            This card already says it, ten lines lower and better: "No bets yet — if only one
+            side is backed when betting closes, every stake comes back." Adding the caption put
+            the SAME four words twice inside 200px. The rail still carries `noBetsYet` as its
+            accessible name, so a screen reader is told once, exactly like a sighted reader.
+            ⭐ Consistency is one idea stated one way — not the same words pasted twice. */}
       </div>
 
       {/* ── The winning prices ────────────────────────────────────────────

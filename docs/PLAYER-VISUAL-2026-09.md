@@ -149,6 +149,61 @@ production: they are the *defect's* record. The post-merge run overwrites them w
 - **Definition site:** the shared cold-start rule (`lib/markets/discovery.ts` `pricedYesPct` → null at pool 0). Gate the card's split block on it — show the dashed empty bar + "No bets yet", mirroring `.mcardp`.
 - **Guard:** `test:hero-contract`/`test:discovery-contract` already own the five consumers — add the Up & Down card as the sixth; **RED control**: a 0-volume round must not emit a `width` other than 0 on the split bar.
 
+#### ✅ RE-DERIVED AND FIXED — 2026-09-03, session 2. **The defect was a SECOND BAR, not a missing gate.**
+
+Re-derived on production first: `/updown` served a **LIVE** round at `VOL TZS 0` with **0
+predictors** rendering a filled `Up 50% · 50% Down`, and — worse, and unfiled — a round that had
+already **RESOLVED** doing the same. `qa:cold-start` (new) goes **12 RED** on production.
+
+⭐ **The mechanism was one layer deeper than filed.** `updown-board.ts:428` read
+`impliedYesPct(m)`, which returns a **hardcoded 50** on an empty pool
+([market-service.ts:315](../src/lib/server/market-service.ts#L313-L317)) — while
+[`pricedYesPct`](../src/lib/markets/discovery.ts#L75-L79) returns **null** for the same input.
+**Two functions, one fact, disagreeing about the only case that matters** (§0a). Five surfaces
+already consumed the honest rule; the Up & Down board was the sixth that was never wired to it.
+
+⛔ **But the deeper finding is why the gate was missing at all.** `market-card.tsx` renders the
+kit's `<TippingBar>`, whose own documentation had already ruled on this — *"A STATE OF THIS BAR,
+not a second component — DESIGN_AUTHORITY B9"*. **Three files drew this bar**: the kit's, plus a
+hand-rolled two-span strip in `updown-card.tsx` (5px, 2px gap) and another in
+`updown/[roundId]/page.tsx` (6px, 0.5 gap). One idea, three drawings. The hand-rolled pair could
+not *inherit* the cold-start rail, so **the defect was not the missing gate — it was that there
+was somewhere for the gate to be missing from.**
+
+**Fixed** at the definition site (`upPct: pricedYesPct(...)`, typed `number | null` all the way to
+the paint, no `?? 50` anywhere) and by **deleting both hand-rolled bars** for the kit primitive at
+`.mcardp`'s own `height={7}`. Both card families now render one bar — which also gives the Up &
+Down bar a `role="progressbar"` and a localised accessible name it never had.
+
+**Guard — `test:ui-consistency`'s new `hand-rolled-split-bar` rule, `red:split-bar` 2/2.** Not a
+new file: "drift from the kit where a primitive exists" already had a home. It detects the SHAPE
+(an inline `--yes-500` fill, a `width:`, an inline `--no-500` fill), **0 at HEAD**, with one
+documented exemption — `/positions`, whose rail shows the **viewer's own stake**, is gated on real
+money per segment so it cannot fabricate anything, and would be actively misdescribed by a
+"where the crowd is tipping" needle. ⭐ **The rule immediately found that fourth bar, which I did
+not know about.** The second RED mutation exists because every other allow-list in that file keys
+on `basename(f)` — and `"page.tsx"` would have exempted **every page in the App Router**.
+
+⚠️ **A gap stated plainly.** The static rule stops the *structural* cause returning; it cannot see
+a re-wire of `updown-board.ts` back to `impliedYesPct`, which would paint the same fabricated 50/50
+*through* the kit. `qa:cold-start` is what covers that, by asserting the invariant
+**`a split with percentages ⟺ volumeTzs > 0`** against each card's own printed volume — and
+refusing to claim green unless it saw both an empty and a funded round.
+
+**Validated:** `tsc` ✓ · `build` ✓ · `test:ui-consistency` ✓ · `red:split-bar` 2/2 ✓ ·
+`test:motion` **43/0** ✓ · `qa:cold-start` **32/32 GREEN on a local server carrying the fix, 12 RED
+on production without it** — both arms of the invariant exercised locally (2 empty + 1 funded).
+**Looked at**, not merely counted: the empty card shows the dashed rail with no percentages, the
+funded card shows a real 83/17 split with the gilt needle and `Down × 3.90` on the thin side.
+
+⭐ **One change came from LOOKING and could not have come from the DOM counts**: the first fix put
+a `mcardp-nobets` caption under the rail, mirroring `.mcardp` — which printed *"No bets yet"*
+**twice** inside 200px, because this card already says it better ten lines lower ("No bets yet — if
+only one side is backed when betting closes, every stake comes back"). The caption was removed;
+the rail keeps the phrase as its accessible name, so a screen reader is told once too.
+
+**Evidence** `.qa-shots/pv06/` — `updown-{en,sw}-{390,1280}.png`.
+
 ### PV-03 · MEDIUM · two surfaces render a narrow centred column on a desktop viewport
 - **Lens** 3, 5, 10. **Surfaces** `/wallet/deposit` (confirmed) and `/positions` **empty-state cards** (confirmed) at **1280·1920**. ⚠️ **Narrowed by re-derivation** — see §2b: market-detail, wallet, notifications and updown all render **real desktop layouts** and are OVERTURNED.
 - **Measured:** `/wallet/deposit` at 1280 is a single ~600px column with ~340px empty gutters each side (~53% of width unused); `/positions` section headers span full width while the empty-state cards sit centred-narrow.

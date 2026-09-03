@@ -96,8 +96,12 @@ inconvenient, the fix is to reach the correct home, not to open a new one.
 | **a side/enum word for a human** | `src/lib/side-label.ts` `sideWord()` (§L2) | interpolating a raw `"YES"`/`"UP"` enum into copy (this is PV-04) |
 | **money arithmetic** | `src/lib/payout.ts` (isomorphic) | re-deriving a fee/payout anywhere else |
 | **a Tailwind bridge** (name → var) | `tailwind.config.ts` — a bridge only, it originates no value | a value invented in the config |
-| **a guard** | a `scripts/<name>.test.mts` whose key `test:<name>` is in `package.json` (declaring the key registers it) — with a `red:<name>` twin | a check that cannot land at zero; a guard not in `test:all` |
+| **a guard** (offline, runs in `test:all`) | a `scripts/<name>.test.mts` whose key `test:<name>` is in `package.json` (declaring the key registers it) — with a `red:<name>` twin | a check that cannot land at zero; a guard not in `test:all` |
+| **a rule that ALREADY has a guard** | a new **section** inside that guard (PV-04 → `test:labels` §3b/§3c) | a new `scripts/*.test.mts` beside it — two guards owning one rule is how they drift apart (§0a) |
+| **a scanner two guards share** | **module scope** in the guard that owns the rule, with the token set / population passed as an **argument** (`literalArmHits(src, arm)`) | a second copy of the patterns with one word changed |
+| **a LIVE production drive** | `scripts/live/<name>.mjs` + a **`qa:<name>`** key in `package.json`; signs in ONCE via `loginOnce` (⛔ one session per account), reads `BASE` from the harness | ⛔ a `test:<name>` key — it needs the network and a login, so it can never be in `test:all`, and a red `test:all` teaches sessions to ignore it |
 | **evidence** (screenshots, sweeps) | gitignored — `.qa-shots/`, `.qa-design*/` (unless a doc cites one as a finding's proof → `shots/<PV-NN>/`) | a committed regenerable PNG |
+| **a link from a doc to code** | square-brackets label, then round-brackets `../src/components/x/file.tsx` + `#L145` — **relative to `docs/`**, GitHub anchor form (`#L145` / `#L169-L188`) | ⛔ a target of the shape `src/file.tsx:145`. `docs-links.mjs` resolves it under `docs/` and the `:145` is part of the path, so EVERY link of that shape is dead. Nine of them made `test:docs` red on 2026-09-03. ⚠️ And do not write a live example link in this table — `test:docs` follows it too, which is how this row itself went red once |
 | **a session handoff / where you got to** | this file's §j `RESUME AT` block, at the TOP | a new handoff file |
 
 The full filing law is `DESIGN_AUTHORITY.md` §0; the guard-and-blind-spot map is
@@ -134,6 +138,24 @@ The three new homes this programme mints — and each is final:
 Everything else in §c is an EXISTING home being extended (`sideWord`, the cold-start rule,
 `--h-control-*`, the chip family, `status-tone.ts`) — which is the law working as intended: the
 home already exists, so you reach for it rather than open a new one.
+
+### Homes minted so far — the running ruling (append as rows close)
+
+| minted | its ONE home | by | the law it now carries |
+|---|---|---|---|
+| **`qa:side-words`** — *the* live side-word drive | `scripts/live/pv04-side-words-drive.mjs` | row 1 | Any future "does the right WORD reach the screen" question is answered by extending this drive's locale loop, never by a second live script. It is also the template for every `qa:*` drive this programme adds: sign in once, refuse on a missing premise, and pair every absence check with a positive control. |
+| **`test:labels` §3b** — *the* check for an enum TYPED where a player reads it | `scripts/label-lexicon.test.mts` §3b | row 1 | Judges a POSITION, not an identifier's name. Shares `literalArmHits` with §11b — one scanner, two token sets. ⛔ A future "raw enum on a player surface" rule extends §3b; it does not get its own file. |
+| **`test:labels` §3c** — *the* check that a `{side}`/`{outcome}`/`{status}` placeholder is lexicon-filled | `scripts/label-lexicon.test.mts` §3c | row 1 | Keys on the **dictionary's own placeholder**, which is the only signal that survives a variable being renamed. |
+| **the programme's working rule** — validate technically AND visually, as you go | `.claude/skills/pv10-validate-as-you-go/SKILL.md` | Ali, row 2 | ⛔ **TEMPORARY — deleted by this planner's closing ceremony.** The four-gate bar (technical · visual · consistency · responsiveness), the ALL-PASS trap, and how the visual gate is met while the fix is on a branch. Its evergreen half stays in `50pick-standards`; ⛔ never copy rules between the two. |
+| **the UP share of an Up & Down pool** | `pricedYesPct(yesPool, noPool)` in `src/lib/markets/discovery.ts` | row 2 | ⛔ **Never `impliedYesPct`** on a player surface — it returns a hardcoded **50** on an empty pool (`market-service.ts:315`) and that is PV-06. The honest rule returns `null`; the surface renders an empty state. |
+| **a pool-split bar** | `<TippingBar empty={…}>` in `src/components/brand.tsx` | row 2 | ⛔ Never a hand-rolled two-span split. Its own doc says it: *"A STATE OF THIS BAR, not a second component — DESIGN_AUTHORITY B9."* Three files drew this bar; two have been deleted into the primitive. **Enforced by `test:ui-consistency` → `hand-rolled-split-bar` (`red:split-bar`).** |
+| **`qa:cold-start`** — *the* live cold-start invariant drive | `scripts/live/pv06-cold-start-drive.mjs` | row 2 | Asserts **`a split with percentages ⟺ volumeTzs > 0`** per card, against the card's own printed volume, and refuses to claim green unless it saw BOTH an empty and a funded round. ⛔ Any future "does this surface fabricate a price on an empty pool" question extends this drive's card loop — never a second script. |
+| **a LOCAL server to look at a change on** | `npx next dev -p 3100` + `POST /api/dev-test/updown-seed` → `/updown-advance` → `/stress-bulk-bet` | row 2 | ⛔ `next start` REFUSES to boot without `DATABASE_URL` (a deliberate production guard in `store.ts` — do not defeat it); `next dev` uses the in-memory store. This is how the visual gate is met while the fix is on a branch. `BASE=http://localhost:3100` also runs `test:responsive` and `test:motion`, which otherwise fail locally for want of a server. |
+
+⭐ **Why this table exists** (Ali, 2026-09-03): *"update the location of where files should be
+regarding any design or instruction, to keep a clean final ruling."* A home that is minted and not
+written down is a home the next session cannot find — and a home nobody can find gets re-invented,
+which is §K5's fifteen reasonable-looking decisions, one row at a time.
 
 ## c · Every finding as a kit-level change
 
@@ -196,7 +218,7 @@ States: `☐ not started` · `◐ in progress` · `⧗ blocked (why)` · `✎ aw
 | # | Item | Lens | Owner | State | Definition site | Guard | Commit | Evidence | Notes |
 |---|---|---|---|---|---|---|---|---|---|
 | 1 | PV-04 · side words via `sideWord` at **all 8** commit surfaces | 3,6 | Code | ◐ | `side-picker.tsx:140,148` · `conviction-dial.tsx:1099,1124,1398,1419,1643,1660` | `test:labels` **§3b+§3c** · `qa:side-words` | *pending* | `.qa-shots/pv04/` | **Re-derived live: it was EIGHT sites, not 4** (20 RED). Code + guards DONE; `red:labels` 12/12. ⧗ **production re-verification blocked on Ali's merge** — the branch does not deploy |
-| 2 | PV-06 · Up & Down card cold-start gate (6th consumer) | 1,3,11 | Code | ☐ | `updown-card.tsx:857-862` via `discovery.ts` | `test:discovery-contract` | — | — | HIGH. Honesty/§C2 |
+| 2 | PV-06 · Up & Down cold-start — **and the second + third split bar deleted** | 1,3,11 | Code | ◐ | `updown-board.ts` → `pricedYesPct`; `updown-card.tsx` + `updown/[roundId]/page.tsx` → `<TippingBar>` | `test:ui-consistency` **hand-rolled-split-bar** · `qa:cold-start` | *pending* | `.qa-shots/pv06/` | **The defect was a SECOND BAR, not a missing gate.** `red:split-bar` 2/2; `qa:cold-start` **32/32 green local / 12 RED prod**; `test:motion` 43/0. ⧗ **production re-verification blocked on Ali's merge** |
 | 3 | PV-13a · eye toggle off `h-[42px]` | 13 | Code | ☐ | `top-app-bar.tsx` | `test:tap-target` + new rung check | — | — | §K1 |
 | 4 | PV-13b · `mcardp-info` → 44 | 13 | Code | ☐ | `globals.css .mcardp-info` | `test:design-frozen` | — | — | — |
 | 5 | PV-13c · one chip height per size | 13 | Code+Design | ☐ | `chip.tsx` + `globals.css` | `test:chip-contract` | — | — | which sizes = Design |
@@ -248,6 +270,56 @@ Seed state: every row `☐`. ⛔ Do not tick a row by intention — only by evid
   proof must live in `shots/<PV-NN>/` so `test:docs` can enforce it (§0b).
 
 ### j-resume — RESUME AT (newest at the top)
+
+**RESUME AT (session 3) — 2026-09-03.** Branch **`pv10/side-words`** (⛔ not merged). Rows 1 and 2
+are code-complete, guarded and **visually validated**; rows 3–12 untouched. ⭐ Ali added a standing
+instruction this session — **`.claude/skills/pv10-validate-as-you-go`**, read it first; it is the
+four-gate bar (technical · visual · consistency · responsiveness) and it is why both rows below
+carry screenshots rather than only suites.
+
+**Row 2 (PV-06) — the defect was a SECOND BAR, not a missing gate.** Production served a LIVE
+round at `VOL TZS 0` with **0 predictors** showing a filled `Up 50% · 50% Down`, and a **resolved**
+one doing the same. The cause ran two layers deeper than filed: `updown-board.ts` read
+`impliedYesPct` (hardcoded **50** on an empty pool) instead of `pricedYesPct` (**null**) — two
+functions for one fact — and *three files drew the split bar*, only one of them the kit's. The two
+hand-rolled copies **could not inherit** `TippingBar`'s cold-start rail, so the gate had somewhere
+to be missing from. Both are deleted into the primitive; `upPct` is `number | null` end to end
+with no `?? 50` anywhere. Full write-up in the record.
+
+**How to look at a change before it is merged — this session's most reusable finding.**
+`next start` REFUSES to boot without `DATABASE_URL` (a deliberate guard in `store.ts` — ⛔ do not
+defeat it), but `next dev` uses the in-memory store:
+
+    npx next dev -p 3100
+    curl -X POST localhost:3100/api/dev-test/updown-seed -d '{"durations":[5,15]}' -H 'Content-Type: application/json'
+    curl -X POST localhost:3100/api/dev-test/updown-advance          # opens a round
+    curl -X POST localhost:3100/api/dev-test/stress-bulk-bet -d '{"marketId":"mkt_…","n":6,"stake":2000}' -H 'Content-Type: application/json'
+    LIVE_BASE=http://localhost:3100 npm run qa:cold-start
+    BASE=http://localhost:3100 npm run test:responsive   # and test:motion — both need a server
+
+⚠️ That also settles the two suites that "fail locally": `test:motion` is **43/0** against a real
+server and `test:responsive` is **5386 pass / 33 fail**, none of the 33 on a surface this
+programme touched (a pre-existing 320px account-menu clip, plus signed-out `/admin` redirects).
+
+**Three things worth carrying, all found by LOOKING rather than by a suite.**
+1. The first PV-06 fix mirrored `.mcardp`'s `mcardp-nobets` caption — and printed *"No bets yet"*
+   **twice** inside 200px, because the card already says it better below. Removed. ⭐ Consistency
+   is one idea stated once, not the same words pasted twice.
+2. A `qa:cold-start` screenshot came out **blank** while every assertion on that page had passed —
+   the round resolved mid-capture and `UpDownHandover` navigated away. The checks were right and
+   the *evidence* was a lie. The drive now asserts the shot is of a rendered page.
+3. The new `hand-rolled-split-bar` rule found a **fourth** bar nobody knew about (`/positions`).
+   It is exempted **with its reason** (it shows the viewer's OWN stake, is gated on real money, and
+   a "where the crowd is tipping" needle would misdescribe it) — and filed as a kit follow-up: the
+   honest end state is one primitive with `needle` as a prop.
+
+**⛔ What is NOT done, for both rows: production.** Pushing a branch does not deploy. Both drives
+are RED against production right now — `qa:side-words` 20 RED, `qa:cold-start` 12 RED — which is
+the re-derivation, not a regression. On merge run **both**; they must go green, and those runs are
+what tick rows 1 and 2 to ☑.
+
+**Next.** Row 3 (PV-13a, the `h-[42px]` eye toggle) is small and independent. Rows 9/10 still need
+Ali's ruling / a Design commission before anyone starts them.
 
 **RESUME AT (session 2) — 2026-09-03.** Branch **`pv10/side-words`** (⛔ not merged; every
 production claim below is about the DEFECT, not the fix). Row 1 (PV-04) is code-complete and

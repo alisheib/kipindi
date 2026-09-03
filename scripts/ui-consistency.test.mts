@@ -157,6 +157,29 @@ const ARIA_LABEL_CAMEL_ONLY: Set<string> = (() => {
   return out;
 })();
 
+/**
+ * ⛔ ONE FILE, DECIDED, WITH ITS REASON — not a place to park a bar someone did not want to fix.
+ *
+ * `/positions` draws a two-segment rail for the VIEWER'S OWN stake — "TZS 4,000 on YES, TZS 1,000
+ * on NO, at risk". It is not a crowd price, and the difference is load-bearing twice over:
+ *   · it CANNOT fabricate anything — the block is gated on `openStake > 0` and each segment on
+ *     its own side being non-zero, so the cold-start rail this rule exists to enforce has no
+ *     case to cover here;
+ *   · `TippingBar`'s gilt needle MEANS "where the crowd is tipping". Pointing it at one player's
+ *     own money would be a false metaphor, which is a worse defect than the duplication.
+ * It already carries `role="img"` and a localised name.
+ *
+ * ⚠️ FILED, NOT DISMISSED: the honest end state is one primitive with the needle as a PROP, so
+ * this rail is the same component with `needle={false}`. That is a kit change (§K5 extend, never
+ * fork), it belongs to the kit lane, and it is recorded in PLAYER-VISUAL-10's planner. When it
+ * lands, DELETE this entry — the list may only shrink.
+ */
+// ⛔ THE FULL RELATIVE PATH, NEVER `basename(f)`. Every other rule here keys its allow-list on
+// the basename, and for `DATETIME_ALLOW` that is fine because those filenames are distinctive.
+// "page.tsx" is not: a basename match would silently exempt EVERY page in the App Router — an
+// allow-list that quietly stops policing the thing it names.
+const SPLIT_BAR_ALLOW = new Set(["src/app/positions/page.tsx"]);
+
 const RULES: Rule[] = [
   {
     id: "dropped-aria-label-prop",
@@ -190,6 +213,32 @@ const RULES: Rule[] = [
     severity: "error",
     desc: "raw <input type=checkbox> — use the kit <Checkbox>",
     scan: (b, f) => (KIT_NATIVE.has(basename(f)) ? [] : matches(/type=["']checkbox["']/g, b)),
+  },
+  {
+    id: "hand-rolled-split-bar",
+    severity: "error",
+    desc: "a two-span pool-split bar drawn by hand — use the kit <TippingBar> (src/components/brand.tsx). Its `empty` prop IS the cold-start rail, and its own doc rules on this: \"A STATE OF THIS BAR, not a second component — DESIGN_AUTHORITY B9\"",
+    /**
+     * 🔴 PV-06, 2026-09-03. Three files drew this bar: `market-card.tsx` used the kit, while
+     * `updown-card.tsx` (5px, 2px gap) and `updown/[roundId]/page.tsx` (6px, 0.5 gap) each drew
+     * their own — one idea, three drawings, on one board. The two hand-rolled copies could not
+     * inherit the primitive's cold-start state, so a round with `VOL TZS 0` and ZERO predictors
+     * advertised "Up 50% · 50% Down" on production. The defect was not the missing gate; it was
+     * that there was somewhere for the gate to be missing FROM.
+     *
+     * ⛔ Detects the SHAPE, not a file list: an inline `--yes-500` fill followed by an inline
+     * `--no-500` fill with a `width:` between them. A ternary of class names would not match and
+     * should not — this is about a hand-painted two-segment rail.
+     */
+    scan: (b, f) => {
+      if (isKitFile(f) || SPLIT_BAR_ALLOW.has(rel(f))) return [];
+      const out: Array<{ index: number; snippet: string }> = [];
+      for (const m of b.matchAll(/var\(--yes-500\)[\s\S]{0,400}?var\(--no-500\)/g)) {
+        if (!/width:/.test(m[0])) continue;
+        out.push({ index: m.index ?? 0, snippet: "two-span split bar — use <TippingBar empty={…}>" });
+      }
+      return out;
+    },
   },
   {
     id: "hardcoded-pill-active",
