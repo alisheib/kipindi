@@ -26,6 +26,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { getPrefs, type NeedleTheme } from "@/lib/haptics";
 import { isMoneySurface } from "@/lib/surfaces";
+import { PEPSI_PATHS, PEPSI_TRANSFORM } from "@/lib/needle-art";
 import type { NeedleOptions } from "@/lib/needle-physics";
 import "./needle.css";
 
@@ -89,8 +90,8 @@ const MARKUP = `
           <stop offset="100%" style="stop-color: var(--ndl-hub-3)"></stop>
         </radialGradient>
         <linearGradient id="ndl-blendA" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" style="stop-color: var(--ndl-face-a-lo)"></stop>
-          <stop offset="100%" style="stop-color: var(--ndl-face-b-lo)"></stop>
+          <stop offset="0%" style="stop-color: var(--ndl-blend-a)"></stop>
+          <stop offset="100%" style="stop-color: var(--ndl-blend-b)"></stop>
         </linearGradient>
         <filter id="ndl-cast" x="-40%" y="-40%" width="180%" height="180%">
           <feDropShadow dx="0" dy="7" stdDeviation="6.5" flood-color="oklch(5% 0.05 268)" flood-opacity="0.58"></feDropShadow>
@@ -99,13 +100,18 @@ const MARKUP = `
 
       <g filter="url(#ndl-cast)">
         <g id="disc" style="transform-origin: 50px 50px">
-          <path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63 Z" fill="url(#ndl-faceL)"></path>
-          <path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63 Z" fill="url(#ndl-faceR)"></path>
-          <path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63" fill="none" style="stroke: var(--ndl-inlay-a)" stroke-width="var(--inlay, 2.6)" opacity="0.95"></path>
-          <path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63" fill="none" style="stroke: var(--ndl-inlay-b)" stroke-width="var(--inlay, 2.6)" opacity="0.95"></path>
-          <line x1="38.39" y1="3.43" x2="61.61" y2="96.57" style="stroke: var(--ndl-seam-shadow)" stroke-width="7.5" stroke-linecap="round" opacity="0.62"></line>
-          <line x1="38.39" y1="3.43" x2="61.61" y2="96.57" stroke-width="var(--needlew, 4.4)" stroke-linecap="round"
-                style="stroke: var(--ndl-seam); filter: drop-shadow(0 0 3px var(--ndl-seam-glow))"></line>
+          <g class="ndl-house">
+            <path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63 Z" fill="url(#ndl-faceL)"></path>
+            <path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63 Z" fill="url(#ndl-faceR)"></path>
+            <path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63" fill="none" style="stroke: var(--ndl-inlay-a)" stroke-width="var(--inlay, 2.6)" opacity="0.95"></path>
+            <path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63" fill="none" style="stroke: var(--ndl-inlay-b)" stroke-width="var(--inlay, 2.6)" opacity="0.95"></path>
+            <line x1="38.39" y1="3.43" x2="61.61" y2="96.57" style="stroke: var(--ndl-seam-shadow)" stroke-width="7.5" stroke-linecap="round" opacity="0.62"></line>
+            <line x1="38.39" y1="3.43" x2="61.61" y2="96.57" stroke-width="var(--needlew, 4.4)" stroke-linecap="round"
+                  style="stroke: var(--ndl-seam); filter: drop-shadow(0 0 3px var(--ndl-seam-glow))"></line>
+          </g>
+          <g class="ndl-art" transform="${PEPSI_TRANSFORM}">
+            ${PEPSI_PATHS.map((p) => `<path d="${p.d}" fill="${p.fill}"></path>`).join("\n            ")}
+          </g>
         </g>
         <circle id="blend" cx="50" cy="50" r="46" fill="url(#ndl-blendA)" opacity="0"></circle>
         <g id="smearA" style="transform-origin: 50px 50px" opacity="0">
@@ -120,12 +126,14 @@ const MARKUP = `
         <circle cx="50" cy="50" r="47.3" fill="none" stroke="url(#ndl-rim)" stroke-width="1.5"></circle>
         <circle id="edgeArc" cx="50" cy="50" r="47.3" fill="none" stroke="var(--aqua-300)" stroke-width="1.9" opacity="0"
                 style="filter: drop-shadow(0 0 5px color-mix(in oklab, var(--aqua-400) 70%, transparent))"></circle>
-        <circle cx="50" cy="50" r="10" fill="#0A0E28" opacity="0.34"></circle>
-        <circle cx="50" cy="50" r="7.4" fill="#0A0E28" opacity="0.58"></circle>
-        <circle cx="50" cy="50" r="6.3" fill="url(#ndl-hub)"></circle>
-        <circle cx="50" cy="50" r="6.3" fill="none" style="stroke: var(--ndl-hub-ring)" stroke-width="0.5" opacity="0.7"></circle>
-        <circle cx="47.9" cy="47.6" r="1.7" style="fill: var(--ndl-hub-spec)" opacity="0.72"></circle>
-        <circle cx="50" cy="50" r="1.5" style="fill: var(--ndl-pivot)"></circle>
+        <g class="ndl-pivot-stack">
+          <circle cx="50" cy="50" r="10" fill="#0A0E28" opacity="0.34"></circle>
+          <circle cx="50" cy="50" r="7.4" fill="#0A0E28" opacity="0.58"></circle>
+          <circle cx="50" cy="50" r="6.3" fill="url(#ndl-hub)"></circle>
+          <circle cx="50" cy="50" r="6.3" fill="none" style="stroke: var(--ndl-hub-ring)" stroke-width="0.5" opacity="0.7"></circle>
+          <circle cx="47.9" cy="47.6" r="1.7" style="fill: var(--ndl-hub-spec)" opacity="0.72"></circle>
+          <circle cx="50" cy="50" r="1.5" style="fill: var(--ndl-pivot)"></circle>
+        </g>
       </g>
     </svg>
     <span id="hit" role="button" tabindex="0" aria-label="Needle — an optional fidget toy. Nothing here affects your account. Space to spin, arrow keys to move, Escape to tuck it away."></span>

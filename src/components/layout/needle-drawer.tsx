@@ -21,6 +21,7 @@ import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { isNeedleHidden, setNeedleHidden, getNeedleMode, setNeedleMode, getNeedleTheme, setNeedleTheme } from "@/lib/needle-bridge";
 import type { NeedleMode, NeedleTheme } from "@/lib/haptics";
+import { PEPSI_PATHS, PEPSI_TRANSFORM } from "@/lib/needle-art";
 
 /**
  * A live miniature of the actual disc, painted by whichever theme it is given.
@@ -30,16 +31,28 @@ import type { NeedleMode, NeedleTheme } from "@/lib/haptics";
  * there is no second copy of the palette here to go stale. Same geometry too: these
  * are the disc's own path/line coordinates.
  */
-function DiscSwatch({ theme, size = 30 }: { theme: NeedleTheme; size?: number }) {
+function DiscSwatch({ theme, size = 34 }: { theme: NeedleTheme; size?: number }) {
+  // The sponsor themes that replace the artwork preview it with the artwork, read
+  // from `@/lib/needle-art` — the same module the object itself uses, so the picker
+  // can never show a mark the disc does not actually paint.
+  const art = theme === "pepsi";
   return (
-    <span data-needle-theme={theme} aria-hidden="true" className="block">
+    <span data-needle-theme={theme} aria-hidden="true" className="block shrink-0">
       <svg width={size} height={size} viewBox="0 0 100 100" className="block">
-        <path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63 Z" style={{ fill: "var(--ndl-face-a-hi)" }} />
-        <path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63 Z" style={{ fill: "var(--ndl-face-b-hi)" }} />
-        <circle cx="50" cy="50" r="46.4" fill="none" style={{ stroke: "var(--ndl-ring)" }} strokeWidth="3" opacity="0.72" />
-        <line x1="38.39" y1="3.43" x2="61.61" y2="96.57" style={{ stroke: "var(--ndl-seam)" }} strokeWidth="6" strokeLinecap="round" />
-        <circle cx="50" cy="50" r="9" style={{ fill: "var(--ndl-hub-1)" }} />
-        <circle cx="50" cy="50" r="2.6" style={{ fill: "var(--ndl-pivot)" }} />
+        {art ? (
+          <g transform={PEPSI_TRANSFORM}>
+            {PEPSI_PATHS.map((p, i) => <path key={i} d={p.d} fill={p.fill} />)}
+          </g>
+        ) : (
+          <>
+            <path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63 Z" style={{ fill: "var(--ndl-face-a-hi)" }} />
+            <path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63 Z" style={{ fill: "var(--ndl-face-b-hi)" }} />
+            <circle cx="50" cy="50" r="46.4" fill="none" style={{ stroke: "var(--ndl-ring)" }} strokeWidth="3" opacity="0.72" />
+            <line x1="38.39" y1="3.43" x2="61.61" y2="96.57" style={{ stroke: "var(--ndl-seam)" }} strokeWidth="6" strokeLinecap="round" />
+            <circle cx="50" cy="50" r="9" style={{ fill: "var(--ndl-hub-1)" }} />
+            <circle cx="50" cy="50" r="2.6" style={{ fill: "var(--ndl-pivot)" }} />
+          </>
+        )}
       </svg>
     </span>
   );
@@ -95,7 +108,8 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
      the section heading and the hints below take the three locales. */
   const THEMES: { id: NeedleTheme; name: string; hint: string }[] = [
     { id: "50pick", name: "50pick", hint: t("The house disc", "Diski ya nyumbani", "本站原版") },
-    { id: "pepsi", name: "Pepsi", hint: t("Sponsor edition", "Toleo la mdhamini", "赞助版") },
+    { id: "enamel", name: t("Enamel", "Enameli", "珐琅"), hint: t("Red & blue firing", "Nyekundu na buluu", "红蓝配色") },
+    { id: "pepsi", name: "Pepsi", hint: t("The sponsor's mark", "Alama ya mdhamini", "赞助商标志") },
   ];
 
   const trigger =
@@ -238,7 +252,7 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
             {/* theme — paint only. Same object, same physics, same settle. */}
             <div className="border-t border-border/60 pt-3.5 mt-3.5">
               <p className="font-display text-[13.5px] font-semibold text-text leading-tight">{t("Theme", "Mandhari", "主题")}</p>
-              <div className={cn("mt-2 grid grid-cols-2 gap-1.5", hidden && "opacity-50 pointer-events-none")} aria-disabled={hidden}>
+              <div className={cn("mt-2 grid gap-1.5", hidden && "opacity-50 pointer-events-none")} aria-disabled={hidden}>
                 {THEMES.map((th) => {
                   const active = theme === th.id;
                   return (

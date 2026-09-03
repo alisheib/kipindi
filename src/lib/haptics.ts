@@ -50,9 +50,14 @@ const STORE_KEY = "50pick:feedback";
 
 export type NeedleMode = "spin" | "bounce";
 
-/** The fidget's paint. "50pick" is the house disc; a sponsor theme repaints it and
- *  NOTHING else — same geometry, same engine, same physics, same settle. */
-export type NeedleTheme = "50pick" | "pepsi";
+/**
+ * The fidget's skin. Same object, same engine, same physics, same settle under all
+ * three — a theme changes what is PAINTED inside the rotating group, nothing else.
+ *   "50pick" — the house disc: enamelled emerald/rose faces, gilt needle.
+ *   "enamel" — the same house disc in a red-and-blue firing.
+ *   "pepsi"  — the sponsor's actual mark replaces the house faces.
+ */
+export type NeedleTheme = "50pick" | "enamel" | "pepsi";
 
 export type FeedbackPrefs = {
   haptics: boolean;                          // master switch
@@ -79,7 +84,7 @@ function load(): FeedbackPrefs {
       // ⛔ Any unknown value coerces back to the HOUSE disc. A sponsor theme is a
       // flighted thing; a stale or hand-edited key must never leave a player looking
       // at a brand whose flight has ended.
-      needleTheme: p.needleTheme === "pepsi" ? "pepsi" : "50pick",
+      needleTheme: p.needleTheme === "pepsi" || p.needleTheme === "enamel" ? p.needleTheme : "50pick",
     };
   } catch {
     return base;

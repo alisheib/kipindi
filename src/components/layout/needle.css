@@ -11,6 +11,32 @@
    Tokens (--bg, --gilt, --brand-400/500, --aqua-300/400/500, --gold-300) all resolve
    to the live src/app/globals.css. */
 
+/* ══ TO ADD A THEME (it is four steps, and none of them touch the object) ══════
+   1. Copy the `[data-needle-theme="pepsi"]` block below and rename the attribute
+      value. ⛔ Give EVERY name in it a value — an omitted one silently inherits
+      the house colour and you get a half-painted disc. The two blocks must carry
+      the identical set of names; diff them rather than trusting a count here,
+      because a count written in a comment goes stale the first time one is added.
+   2. Add the value to `NeedleTheme` in src/lib/haptics.ts, and to the coercion
+      line in `load()` beside it. ⛔ Both — the type alone does not coerce, and an
+      unknown stored value must fall back to "50pick".
+   3. Add a row to `THEMES` in needle-drawer.tsx (id, name, hint). The preview
+      swatch paints itself from the same vars; there is nothing to draw.
+   4. ⛔ Do NOT touch needle.tsx, needle-physics.js or the markup. A theme is
+      paint. If a change needs new geometry it is not a theme.
+
+   THE THREE RULES A NEW THEME MUST OBEY
+   · Enamel, not flat brand paint. Keep the brand's HUE; pull L and C into the
+     house band (faces live at L 42-59, C 0.099-0.144). Pepsi's own #E63D24 is
+     chroma 0.209 and read as a carnival spinner until it was fired down — see
+     NEEDLE-SPEC §0, which made the same ruling about 50pick's own hues.
+   · ⛔ No gilt. Gold means EARNED (DESIGN_AUTHORITY §M3) and a sponsor has
+     earned nothing. Seam, hub, rim and aura go pearl/silver or the brand's own
+     neutral.
+   · Score the faces against `--no-500` (hue 22, the LOSS colour) before drawing.
+     A disc whose face lands within a few degrees of it reads as "you lost".
+   ══════════════════════════════════════════════════════════════════════════════ */
+
 /* ── THE DISC'S PAINT, AS THEME VARIABLES ──────────────────────────────────────
    The object's colour used to be ~24 hex literals inside the SVG markup in
    needle.tsx. They are now named here, ONCE, and the markup reads `var(--ndl-*)`.
@@ -47,6 +73,10 @@
   --ndl-rim-warm: #E3BC66;                               /* rim gradient's warm end */
   --ndl-ring:     #080B22;                               /* the dark outer ring */
   --ndl-smear:    #F0D08A;                               /* spin smear strokes */
+  /* The spin blur disc. Defaults are byte-identical to the face lowlights it used to
+     read directly, so the house disc cannot move; a theme can now tune the blur
+     WITHOUT dragging its faces with it. */
+  --ndl-blend-a: #146F4C;  --ndl-blend-b: #822A33;
   --ndl-aura:   var(--gilt);                             /* trail · glow · ring · whole */
   --ndl-aura-2: var(--gold-300);
 }
@@ -69,8 +99,13 @@
    block's (0,0,0) — see the `:where()` note above. So it is order-independent, and
    an unknown `data-needle-theme` value still gets the full house palette rather than
    no palette at all. Both properties are covered by the tamper suite. */
+[data-needle-theme="enamel"],
 [data-needle-theme="pepsi"] {
-  /* Hues are Pepsi's, measured off the delivered artwork: red 31.5, blue 285.7.
+  /* ⭐ ONE definition site for BOTH themes, deliberately. `enamel` is 50pick's own
+     disc wearing this colourway; `pepsi` swaps the artwork for the sponsor's real
+     mark but keeps the same chrome — rim, aura, smear, blend and hub have to agree
+     with the globe's red-and-blue, and two copies of these values would drift.
+     Hues are Pepsi's, measured off the delivered artwork: red 31.5, blue 285.7.
      L and C are pulled into the house band (faces live at L 42-59, C 0.099-0.144).
      ⛔ The flat brand hexes were tried first and REJECTED on the render: #E63D24 is
      C 0.209, 45% above the house red, and beside the fired disc it read as a
@@ -94,6 +129,7 @@
   --ndl-hub-ring: #51515D; --ndl-hub-spec: #FFFFFF; --ndl-pivot: #171726;
   --ndl-rim-warm: #D5D5EB;
   --ndl-ring:     #0B0B14;                               /* the logo's black ring */
+  --ndl-blend-a: #A13120;  --ndl-blend-b: #443987;
   --ndl-smear:    #D5D5EB;
   --ndl-aura:   #DCDCF2;
   --ndl-aura-2: #8D8AC7;
@@ -156,3 +192,34 @@
    what "hide on money surfaces" requires. The engine instance stays mounted so
    position/presence persist; the host pauses its rAF loop while hidden. */
 #needle-root[hidden], #needle-root.needle-suppressed { display: none; }
+
+/* ── THEME: PEPSI — the sponsor's ACTUAL MARK, not our disc recoloured ─────────
+   `enamel` above is 50pick's own two-face disc in Pepsi's colourway. This theme is
+   the different thing Ali actually asked for: the disc becomes the Pepsi globe
+   itself, reproduced unaltered from the supplied vector, spinning on our physics.
+   ⭐ The settle still lands the mark upright, because the artwork replaces the
+   house faces INSIDE #disc — the element the engine rotates. Nothing about the
+   simulation, the geometry or the hit area changes; only which paths are painted.
+   ⛔ The mark is never recoloured, cropped or outlined — see the note in the markup.
+   ⚠️ Specificity, again: the "off" rule is wrapped in :where() so it scores (0,1,0)
+   and the two theme rules at (0,2,0) win. Written bare as `#needle-root .ndl-art`
+   it would score (1,1,0) and no theme could ever turn the artwork on. */
+:where(#needle-root, [data-needle-theme]) .ndl-art { display: none; }
+[data-needle-theme="pepsi"] .ndl-art   { display: block; }
+[data-needle-theme="pepsi"] .ndl-house { display: none; }
+/* The globe carries its own hub in the artwork, so our gilt pivot stack would sit
+   on top of the wordmark as a foreign blob. Hidden for this theme only. */
+[data-needle-theme="pepsi"] .ndl-pivot-stack { display: none; }
+
+/* ⭐ PEPSI'S SPIN BLUR IS ITS OWN, and this is the one thing the render forced.
+   Sharing enamel's blend put a pale red-to-blue wash over the globe at speed: the
+   wordmark stayed legible THROUGH it, so it read as a dirty translucent overlay
+   rather than as motion — cheap, and on someone else's trademark. Deepened and
+   desaturated so speed reads as the mark blurring into its own colours going dark,
+   which is what a real spinning cap does.
+   ⚠️ Same (0,1,0) specificity as the shared enamel/pepsi block above, so this wins
+   on SOURCE ORDER and must stay below it. It is a two-value override, not a second
+   palette — everything else still comes from the one shared block. */
+[data-needle-theme="pepsi"] {
+  --ndl-blend-a: #5E2417;  --ndl-blend-b: #241C52;
+}
