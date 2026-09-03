@@ -271,6 +271,54 @@ Seed state: every row `☐`. ⛔ Do not tick a row by intention — only by evid
 
 ### j-resume — RESUME AT (newest at the top)
 
+**RESUME AT (session 5) — 2026-09-03. ROWS 1–2 ☑ AND FULLY VERIFIED ON PRODUCTION. Rows 3–12 are
+untouched; this programme needs at least three more sessions (see §g2 below).**
+
+`main` = **`35188277`**. Three deploys today, each verified by an uptime reset, never by a 200.
+
+**Row 2 grew a second pass, and it is the important part of this handoff.** Asked to prove rows
+1–2 were finished, the answer was **no**: the record names `/live` as a PV-06 surface and the first
+pass never looked there. It carried the same defect in a shape the first guard could not see —
+`pulse-grid.tsx` used the kit bar *correctly* but passed **no `empty` prop**, and `topContested`
+sorted an unpriced market (score exactly 50) **FIRST** into the hero carousel as "most contested".
+⭐ **Measured on production after the fix: 13 honest rails where there had been fabricated 50/50s,
+and a real contested market in the hero.**
+
+| drive | before | after |
+|---|---|---|
+| `qa:side-words` (PV-04) | 20 RED | **28 / 0** |
+| `qa:cold-start` (PV-06) | 12 RED | **36 / 0** |
+
+**Three lessons this programme should not have to re-learn:**
+1. ⭐ **"The finding is fixed" and "the defect class is gone" are different claims.** PV-06 was
+   filed as one surface and was five. Ask *where else does this shape live* before ticking.
+2. A guard catches a **shape**, not a defect. `hand-rolled-split-bar` (a surface drawing its own
+   bar) was blind to `/live` (the kit's bar with no `empty`). Two rules, both needed, both 0.
+3. ⛔ **The RED proof exposed a limit in my own guard**: rewriting a branch to `{false ? (` left
+   the empty arm's text in place and the mutation PASSED. The harness deletes the arm instead.
+
+**⚠️ NOT MINE, LEFT UNTOUCHED, AND CURRENTLY RED:** `docs/design-brief/sponsor-2026-09/` is a
+parallel session's **untracked** package (it cites commit `79c3b65`). Its nested copy of
+`DESIGN_AUTHORITY.md` turns **`test:design-one-door` RED** — the "never unzip a handover in-repo"
+trap this repo has paid for before. ⛔ Do not commit it and do not delete it; it is someone's live
+work. `test:all` is otherwise **279/282** (`responsive` + `motion` need a server on `:3000`).
+
+**▶ START HERE NEXT SESSION:** read `.claude/skills/pv10-validate-as-you-go` first, then §g2.
+
+## g2 · WHAT IS LEFT, HONESTLY SIZED
+
+Rows 1–2 took a full session **each half**, because Ali's bar is re-derive → fix → guard → RED
+proof → local visual → suite → deploy → re-verify. Sizing the rest against that measured rate:
+
+| session | rows | why grouped |
+|---|---|---|
+| **next** | **3, 4, 6** — eye toggle off `h-[42px]`, `mcardp-info` → 44, `@pct%` contrast | all size/contrast, all in the same guards (`test:tap-target`, `test:design-frozen`, `test:contrast`). ⚠️ Row 3's guard is the work, not the fix: **374 hand-typed `h-[…]` literals** exist (102×44, 95×40, 24×36 …), so a "control heights come only from `--h-control-*`" rule needs a measured population before it can land at zero |
+| **+1** | **8, 11** — `<DetailLayout>`, and the `/markets` filter drive | both are investigate-then-build; row 11 may surface new findings |
+| **+2** | **7** — motion timing | ⚠️ **re-measured today: only 3 `duration-150` and 2 bare Tailwind curves remain in `src/`, not the 373/391 the record claims.** The record's census is STALE — re-derive before planning; this may be a small row, not the largest |
+| **👤 Ali** | **9, 12** (rulings) · **5** (which chip sizes) · **10** (Design commission) | none of these are code, and all four can be answered in parallel with the sessions above |
+
+⛔ **Do not start rows 9/10 without a ruling or a commission** (§d bounds the handover).
+
 **RESUME AT (session 4) — 2026-09-03. ✅ ROWS 1 AND 2 ARE ☑ — MERGED AND VERIFIED ON PRODUCTION.**
 Ali authorised the merge; `main` is at **`79c3b65b`**, the deploy landed (uptime reset 32,872s → 3s,
 clean boot, `/updown` and `/markets` both 200), and **both drives were re-run against production
