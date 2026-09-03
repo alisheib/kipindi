@@ -427,7 +427,15 @@ export function OperationResultModal({
             boxShadow: tone.shadow,
             ...(variant === "success" && (stripTone === "yes" || stripTone === "no")
               ? {}
-              : { animation: "orm-pop var(--t-move) var(--m-pivot)" }),
+              /* ⭐ `--m-settle`, NOT `--m-pivot` (2026-09-03). §M8 reserves the pivot curve for
+                 THE NEEDLE AND DIALS, and a result-modal crest is neither. `motion.css`'s own
+                 header has named this breach since 2026-08-21 — *"a `.tsx`, named here rather
+                 than reached from here"* — and gave the fix with it: the `orm-pop` keyframe
+                 below already carries its own 1.06 overshoot at 60%, so the curve only has to
+                 ARRIVE. `--m-settle` is the token that says exactly that, and the overshoot the
+                 pivot was adding on top of a keyframe that already overshoots was never
+                 intended. Now guarded by `test:motion-ladder` §4. */
+              : { animation: "orm-pop var(--t-move) var(--m-settle)" }),
           }}
           aria-hidden
         >

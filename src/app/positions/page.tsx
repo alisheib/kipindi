@@ -375,7 +375,14 @@ function Section({ title, count, children }: { title: string; count: number; chi
 
 function Empty({ kind, title, body, browseLabel }: { kind: "positions" | "default"; title: string; body?: string; browseLabel?: string }) {
   return (
+    /* ⭐ PV-03 — `fill` because this page's sections are FULL-WIDTH. The page declares
+       `tier="reading"` and gets its 1016px container correctly; what was wrong is that the
+       default `mx-auto` centred a 360px card at 460–820 while its own section heading ("Open",
+       "Settled") sat left at x=132 — 328px apart, reading as two unrelated things. Filled, the
+       box spans the section it belongs to and the heading names it. ⛔ Not a width fix: the
+       measure was always right (see the record, PV-03 "re-derived"). */
     <EmptyState
+      fill
       kind={kind}
       title={title}
       body={body}

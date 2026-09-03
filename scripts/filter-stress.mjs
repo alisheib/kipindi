@@ -71,6 +71,32 @@ async function drive(path) {
       promised,
       cards: hrefs.size,
       resultCount: document.querySelector("[data-result-count]")?.getAttribute("data-result-count") ?? null,
+      /**
+       * PV-14/row-11 · THE SORTED KEY, READ OFF THE CARD FACES IN DOM ORDER.
+       *
+       * ⛔ `pool` IS THE ONLY SORT THIS CAN HONESTLY VERIFY FROM THE OUTSIDE, and saying so is
+       * the point. Volume is the one sort key a card PRINTS ("VOL TZS 12,500"); `closing`,
+       * `people`, `move` and `new` order on fields the board does not render, so checking them
+       * would mean trusting an internal value — which is a test agreeing with the code it is
+       * testing. One sort proven against what a player can actually see beats five proven
+       * against the sorter's own opinion.
+       */
+      /* ⛔ READ THE CARD, NOT THE LINK — the first version of this took
+         `a[href^="/markets/"]`, which is the card's **"Details" button**, so every card yielded
+         the string "Details" and the check honestly reported "0 printed volumes on 6 cards".
+         `[class~=mcardp]` is the class TOKEN (never `*=`, which also matches `.mcardp-info`,
+         `.mcardp-share` and nineteen other children — that substring cost a earlier drive a
+         6-card board counted as 126). The figure ships as `TZS 94,500`, with no `VOL` prefix. */
+      /* ⚠️ `\d{1,3}(?:,\d{3})*` — THOUSAND GROUPS, NOT `[\d,]+`, AND THE DIFFERENCE IS A WRONG
+         ANSWER THAT LOOKS RIGHT. A card's text runs the volume straight into the countdown:
+         `…TZS 94,50019d left…`. `[\d,]+` swallows the countdown's digits and yields **94,50019**.
+         The order check still passed on that — the trailing digits happened not to reorder the
+         five cards — which is the worst kind of instrument bug: confidently right by luck. This
+         pattern stops at the last complete `,ddd` group. */
+      vols: [...scope.querySelectorAll("[class~=mcardp]")]
+        .map((c) => /TZS\s*(\d{1,3}(?:,\d{3})*)/i.exec(c.textContent || ""))
+        .filter(Boolean)
+        .map((m) => Number(m[1].replace(/,/g, ""))),
     };
   });
   return { status, ...info };
@@ -137,6 +163,45 @@ for (const qs of ["?status=all&pool=10k", "?odds=cont&sort=pool", "?topic=sports
   ok(`/markets${qs} is stable across two identical requests (${a.cards} vs ${b.cards})`,
     a.cards === b.cards && a.resultCount === b.resultCount,
     `${a.resultCount}/${a.cards} then ${b.resultCount}/${b.cards}`);
+}
+
+/**
+ * ── SORT MONOTONICITY (row 11, 2026-09-03) ───────────────────────────────────────────────────
+ *
+ * The last of the four questions `PLAYER-VISUAL-2026-09.md` §5 left open, and the only one that
+ * was genuinely uncovered. ⭐ The other three were answered by re-derivation rather than by code:
+ * **count == rendered** is already asserted by the combination sweep above (`promised` vs
+ * `cards`); **combined-filter intersection** is what those 288 combinations ARE; and
+ * **URL-backed state** was OVERTURNED — `/markets` writes the URL on a pill press, and §5's doubt
+ * came from clicking "Open", the DEFAULT status, for which a clean URL is the correct result.
+ *
+ * ⛔ THE SWEEP ABOVE DRIVES ALL SIX SORTS AND NEVER CHECKS THAT ANYTHING IS SORTED. It asserts
+ * each sorted board renders and delivers its promised count — which a board returning rows in
+ * arbitrary order satisfies perfectly. That is the gap: a sort control that silently does nothing
+ * passes every check this file had.
+ *
+ * ⚠️ AND IT REFUSES RATHER THAN PASSES ON A THIN BOARD. Fewer than three printed volumes cannot
+ * order-check anything, and a green line there would be the "0 offenders over the wrong corpus"
+ * failure in miniature — so the premise is asserted first, by name.
+ */
+console.log("\n── a sorted board is actually sorted ──");
+{
+  const r = await drive("/markets?sort=pool&status=all");
+  ok("?sort=pool renders (the premise for the order check)", r.status === 200, `status ${r.status}`);
+  ok("…and enough cards PRINT their volume to judge order (refuses rather than passing on a thin board)",
+    r.vols.length >= 3,
+    `${r.vols.length} printed volume(s) on ${r.cards} card(s) — unprovable from the outside here`);
+  if (r.vols.length >= 3) {
+    const desc = r.vols.every((v, i) => i === 0 || r.vols[i - 1] >= v);
+    const asc = r.vols.every((v, i) => i === 0 || r.vols[i - 1] <= v);
+    ok("⭐ ?sort=pool orders the board monotonically on the key it prints",
+      desc || asc, `neither ascending nor descending: [${r.vols.join(", ")}]`);
+    /* ⛔ AND A CONTROL, because "monotonic" is trivially true of a one-value board: if every
+       printed volume is identical the check above cannot fail, and would report a working sort
+       over a sorter that had been deleted. */
+    ok("control · the volumes are not all identical (else 'monotonic' proves nothing)",
+      new Set(r.vols).size > 1, `all ${r.vols.length} cards print ${r.vols[0]}`);
+  }
 }
 
 await browser.close();

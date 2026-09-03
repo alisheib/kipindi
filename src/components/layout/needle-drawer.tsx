@@ -118,7 +118,12 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
         type="button"
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
-        className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 font-display text-body-sm font-medium text-text transition-colors hover:bg-bg-overlay text-left"
+        /* ⚠️ 2.5 → 2 and 3.5 → 3 throughout this file (2026-09-03). `2.5`/`3.5` are TAILWIND
+           STOCK keys (10px / 14px) that survive alongside this product's OVERRIDDEN scale, where
+           `2` is 12px and `3` is 16px — so `gap-2.5` painted SMALLER than `gap-2`, a key that
+           reads bigger and paints smaller. `test:spacing-scale` derives that inversion from the
+           two scales and forbids it. Every move here is +2px, on the scale. */
+        className="w-full flex items-center gap-2 rounded-lg px-2 py-2 font-display text-body-sm font-medium text-text transition-colors hover:bg-bg-overlay text-left"
       >
         <span className={hidden ? "text-text-subtle" : "text-brand-300"}><NeedleMark /></span>
         <span className="flex-1">{t("The Needle", "Sindano", "指针玩具")}</span>
@@ -176,7 +181,7 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
             <div aria-hidden className="mx-auto mb-3 h-1 w-9 rounded-full bg-border-strong sm:hidden" />
 
             {/* header */}
-            <div className="flex items-start gap-2.5 mb-4">
+            <div className="flex items-start gap-2 mb-4">
               <span className="mt-0.5 text-brand-300"><NeedleMark size={20} /></span>
               <div className="min-w-0 flex-1">
                 <p className="font-display text-[15px] font-bold text-text leading-tight">{t("The Needle", "Sindano", "指针玩具")}</p>
@@ -202,7 +207,7 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
             </div>
 
             {/* view-sight control */}
-            <div className="flex items-center gap-3 border-t border-border/60 py-3.5">
+            <div className="flex items-center gap-3 border-t border-border/60 py-3">
               <div className="min-w-0 flex-1">
                 <p className="font-display text-[13.5px] font-semibold text-text leading-tight">{t("Show on screen", "Onyesha kwenye skrini", "在屏幕上显示")}</p>
                 <p className="mt-0.5 text-body-sm text-text-muted leading-snug">{t("The fidget on the edge of the screen", "Kichezeo kwenye ukingo wa skrini", "屏幕边缘的小玩具")}</p>
@@ -211,7 +216,7 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
             </div>
 
             {/* interaction mode */}
-            <div className="border-t border-border/60 pt-3.5">
+            <div className="border-t border-border/60 pt-3">
               <p className="font-display text-[13.5px] font-semibold text-text leading-tight">{t("Interaction", "Mwingiliano", "互动方式")}</p>
               <div className={cn("mt-2 grid grid-cols-2 gap-1.5", hidden && "opacity-50 pointer-events-none")} aria-disabled={hidden}>
                 {(["spin", "bounce"] as const).map((m) => {
@@ -227,7 +232,7 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
                       onClick={() => pickMode(m)}
                       aria-pressed={active}
                       className={cn(
-                        "rounded-lg border px-3 py-2.5 text-left transition-colors",
+                        "rounded-lg border px-3 py-2 text-left transition-colors",
                         // `/[0.12]`, not `/12`: Tailwind's opacity scale runs in steps of 5, so a
                         // `/12` modifier is dropped before the colour is ever mixed and the ACTIVE
                         // mode button rendered with no fill at all while the inactive ones (bare
@@ -235,7 +240,7 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
                         active ? "border-brand-400 bg-brand-500/[0.12] text-text" : "border-border bg-bg-overlay text-text-subtle hover:text-text",
                       )}
                     >
-                      <span className="flex items-center gap-1.5 font-display text-[13px] font-semibold">
+                      <span className="flex items-center gap-1.5 font-display text-body-sm font-semibold">
                         {label}
                         {active && <span className="text-brand-300" aria-hidden><svg width="12" height="12" viewBox="0 0 24 24"><path d="M5 12l5 5L20 6" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg></span>}
                       </span>
@@ -250,7 +255,7 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
             </div>
 
             {/* theme — paint only. Same object, same physics, same settle. */}
-            <div className="border-t border-border/60 pt-3.5 mt-3.5">
+            <div className="border-t border-border/60 pt-3 mt-3">
               <p className="font-display text-[13.5px] font-semibold text-text leading-tight">{t("Theme", "Mandhari", "主题")}</p>
               <div className={cn("mt-2 grid gap-1.5", hidden && "opacity-50 pointer-events-none")} aria-disabled={hidden}>
                 {THEMES.map((th) => {
@@ -262,13 +267,13 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
                       onClick={() => pickTheme(th.id)}
                       aria-pressed={active}
                       className={cn(
-                        "flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left transition-colors",
+                        "flex items-center gap-2 rounded-lg border px-3 py-2 text-left transition-colors",
                         active ? "border-brand-400 bg-brand-500/[0.12] text-text" : "border-border bg-bg-overlay text-text-subtle hover:text-text",
                       )}
                     >
                       <DiscSwatch theme={th.id} />
                       <span className="min-w-0 flex-1">
-                        <span className="flex items-center gap-1.5 font-display text-[13px] font-semibold">
+                        <span className="flex items-center gap-1.5 font-display text-body-sm font-semibold">
                           {th.name}
                           {active && <span className="text-brand-300" aria-hidden><svg width="12" height="12" viewBox="0 0 24 24"><path d="M5 12l5 5L20 6" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg></span>}
                         </span>

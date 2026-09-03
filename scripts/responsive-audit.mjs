@@ -114,6 +114,32 @@ const PLAYER = [
    state, adding them would buy a number instead of a measurement. */
 import { ADMIN_ROUTES as ADMIN } from "./design-gate/routes.mjs";
 
+/**
+ * PV-03 · THE PAGE-LEVEL EMPTY STATES, PENDING A DESIGN RULING. ⛔ THIS LIST MAY ONLY SHRINK.
+ *
+ * The alignment rule below (an empty state aligns with the heading that introduces it) found a
+ * defect class **four times the size the record filed**: PV-03 named two surfaces; the guard
+ * named nine on its first full run. Two are fixed (`/positions`, `/positions/performance` — a
+ * card centred 328px from its own "Open"/"Settled" section heading, now `fill`). The seven below
+ * are a DIFFERENT SHAPE and are held, not swept:
+ *
+ * ⭐ THE DISTINCTION, because it is the whole reason this is a list and not a sweep. On
+ * `/positions` the empty state belongs to a SECTION — the page has several, each with its own
+ * heading, and a card floating 328px from the heading that names it reads as an unrelated thing.
+ * On these seven the empty state IS THE PAGE: it replaces a full-width grid, under the page's own
+ * title, and a centred message there is a defensible design rather than a mistake. Restyling
+ * seven live player routes to satisfy a guard is the wrong way round — that is a design ruling,
+ * and this file does not get to take it.
+ *
+ * So they are SOFT here: the number is printed on every run, the routes are named, and nothing
+ * silently passes. ▶ When the ruling comes, each route either takes `fill` (and leaves this list)
+ * or gains a written reason for centring. ⛔ Adding a route re-opens the hole.
+ */
+const EMPTY_ALIGN_PENDING = new Set([
+  "/markets", "/results", "/live", "/updown", "/updown/history", "/fairness", "/wallet",
+]);
+const emptyAlignSeen = new Set();
+
 let pass = 0, fail = 0, warn = 0;
 const failures = [], warnings = [];
 function ok(name, cond, detail = "") {
@@ -242,6 +268,48 @@ async function assertCell(page) {
       w: Math.round(el.getBoundingClientRect().width),
     }));
 
+    /**
+     * PV-03 · B7's LOWER bound — AN EMPTY STATE ALIGNS WITH THE SECTION THAT NAMES IT.
+     *
+     * B7's check above is an UPPER bound: no content column exceeds its tier. That is only half
+     * the law, and the half that was never checked is where PV-03 lived. `/positions` declared
+     * `tier="reading"` and got its 1016px container **correctly** — then centred a 360px
+     * empty-state card at 460–820 while its own section heading ("Open") sat left at x=132.
+     * **328px apart, and every width check passed**, because nothing was too wide, too narrow,
+     * clipped or overflowing. It was simply not aligned with the thing it belonged to.
+     *
+     * ⛔ THE FILED RULE — "content narrower than ~65% of its tier at ≥1280" — IS REFUSED, with
+     * arithmetic: a percentage of the VIEWPORT is the wrong denominator. At 1920 it condemns
+     * `/notifications` (1016px = 53%) and `/markets` (63%), both correct pages showing a reading
+     * measure in a wide window. A guard that condemns the control it was calibrated against is
+     * decoration. This measures alignment against the page's own headings instead — no ratio,
+     * no viewport, nothing to tune.
+     *
+     * ⚠️ It reads `data-empty-state`, a CONTRACT the primitive stamps, never `border-dashed`.
+     * A class-name probe stops working the day the box is restyled, and would silently report
+     * zero — which reads exactly like a clean sweep.
+     */
+    const HEAD = "h1,h2,h3,h4,[data-section-heading]";
+    const emptyStates = [...document.querySelectorAll("[data-empty-state]")].map((el) => {
+      const r = el.getBoundingClientRect();
+      /* The heading that introduces it: the nearest preceding heading in document order that
+         is actually above it on the page. `compareDocumentPosition` keeps this honest across
+         the wrappers a card may sit in. */
+      let head = null;
+      for (const h of document.querySelectorAll(HEAD)) {
+        const hr = h.getBoundingClientRect();
+        if (hr.top <= r.top + 1 && hr.width > 0 && h.textContent.trim()) head = { el: h, r: hr };
+      }
+      return {
+        variant: el.getAttribute("data-empty-state"),
+        left: Math.round(r.left),
+        width: Math.round(r.width),
+        headText: head ? head.el.textContent.trim().slice(0, 24) : null,
+        headLeft: head ? Math.round(head.r.left) : null,
+        delta: head ? Math.round(Math.abs(r.left - head.r.left)) : null,
+      };
+    });
+
     // DESIGN_AUTHORITY B7 / WCAG landmark navigation — EXACTLY ONE <main>, and it
     // is the shell's own #main-content.
     //
@@ -299,7 +367,7 @@ async function assertCell(page) {
       }
     }
 
-    return { overflowPx, widestName, widestRight: Math.round(widestRight), vw, vh, offscreen, clipped: clipped.slice(0, 6), clippedCount: clipped.length, small: small.slice(0, 6), smallCount: small.length, measured, mains };
+    return { overflowPx, widestName, widestRight: Math.round(widestRight), vw, vh, offscreen, clipped: clipped.slice(0, 6), clippedCount: clipped.length, small: small.slice(0, 6), smallCount: small.length, measured, mains, emptyStates };
   });
 }
 
@@ -347,6 +415,21 @@ async function sweep(browser, label, paths, contextFactory, guestContextFactory)
             over.map((m) => `${m.tier} ${m.w}px > ${TIER_MAX[m.tier]}px`).join(" | "));
           ok(`${cell} exactly one measure root`, r.measured.length <= 1,
             r.measured.length > 1 ? `${r.measured.length} nested: ${r.measured.map((m) => m.tier).join(",")}` : "");
+
+          // ── B7's LOWER bound (PV-03) ───────────────────────────────────────
+          // An empty state aligns with the heading that introduces it. 24px is the
+          // tolerance a card's own border/padding can legitimately introduce; the
+          // defect this caught was 328px.
+          const misaligned = (r.emptyStates ?? []).filter((e) => e.delta !== null && e.delta > 24);
+          if (EMPTY_ALIGN_PENDING.has(path)) {
+            if (misaligned.length) emptyAlignSeen.add(path);
+            soft(`${cell} empty states align with their section heading (PENDING — see EMPTY_ALIGN_PENDING)`,
+              misaligned.length === 0,
+              misaligned.map((e) => `${e.variant} ${e.width}px is ${e.delta}px from "${e.headText}"`).join(" | "));
+          } else {
+            ok(`${cell} empty states align with their section heading`, misaligned.length === 0,
+              misaligned.map((e) => `${e.variant} ${e.width}px is ${e.delta}px from "${e.headText}"`).join(" | "));
+          }
 
           // ── The LANDMARK bound ─────────────────────────────────────────────
           // Exactly one <main>, and it is the shell's #main-content — the element
@@ -603,6 +686,24 @@ async function main() {
 
   await browser.close();
 
+  /* ⛔ A STALE EXEMPTION IS HOW A RATCHET QUIETLY STOPS RATCHETING — the route gets cleaned, the
+     entry stays, and the next misalignment hides behind it. So it is checked, every full run.
+     ⚠️ IT IS SOFT, AND THAT IS A MEASURED DECISION, NOT TIMIDITY. Whether a route shows an empty
+     state at all depends on the DATA in front of it: seeding five markets locally emptied
+     `/markets` and `/live` off this list within one run, and neither had been fixed. A hard
+     failure keyed on that would go red every time someone seeds a board — a guard that cries wolf
+     gets muted, and a muted guard protects nothing.
+     ⭐ IT ALSO USED TO RUN TOO LATE TO BE SEEN. Placed after the failure list was printed, it
+     incremented `fail` without ever printing its message — the run reported `42 failed` above a
+     list of 41, and the missing one was this check. A finding nobody can read is not a finding.
+     ⚠️ Only meaningful over a full run; a scoped run (ONLY=…) cannot see the routes it skipped. */
+  if (!ONLY && (SURFACE === "all" || SURFACE === "player")) {
+    const staleEmptyAlign = [...EMPTY_ALIGN_PENDING].filter((p) => !emptyAlignSeen.has(p));
+    soft(`PV-03 the empty-align PENDING list holds nothing stale (${EMPTY_ALIGN_PENDING.size} route(s))`,
+      staleEmptyAlign.length === 0,
+      `${staleEmptyAlign.join(", ")} showed no misaligned empty state this run — if that is a FIX and not just data, remove them from EMPTY_ALIGN_PENDING`);
+  }
+
   if (warnings.length) {
     console.log(`\n--- touch-target / soft warnings (${warn}) ---`);
     warnings.slice(0, 60).forEach((w) => console.log("  ⚠ " + w));
@@ -614,6 +715,10 @@ async function main() {
   }
   console.log(`\n${"=".repeat(64)}`);
   console.log(`responsive-audit: ${pass} passed · ${fail} failed · ${warn} warnings`);
+  if (emptyAlignSeen.size) {
+    console.log(`PV-03 · ${emptyAlignSeen.size} route(s) still centre a page-level empty state, pending a design ruling:`);
+    console.log(`        ${[...emptyAlignSeen].sort().join(" · ")}`);
+  }
   console.log(`surfaces=${SURFACE} locales=${LOCALES.join("/")} widths=${widths.map((w) => w.tag).join(",")}`);
   console.log(`shots → ${SHOTS}/`);
   console.log("=".repeat(64));

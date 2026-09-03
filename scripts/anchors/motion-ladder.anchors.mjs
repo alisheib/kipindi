@@ -60,4 +60,15 @@ export const MUTATIONS = [
     to: `  animation: m-breathe 2600ms cubic-bezier(0.65, 0, 0.35, 1) infinite;`,
     expect: "1.1",
   },
+  {
+    // §4.1 — restores the §M8 breach `motion.css` named in prose for six weeks and nothing
+    // enforced: a result-modal crest animating on the needle's reserved curve. ⚠️ Note it is a
+    // fully TOKENISED line — `var(--t-move) var(--m-pivot)` breaks no other rule in this file —
+    // so §1.1 and §3.1 both pass it. Only a section that knows WHICH curve this is can object.
+    name: "operation-result-modal.tsx — the crest takes back the needle's reserved --m-pivot",
+    file: "src/components/markets/operation-result-modal.tsx",
+    from: `              : { animation: "orm-pop var(--t-move) var(--m-settle)" }),`,
+    to: `              : { animation: "orm-pop var(--t-move) var(--m-pivot)" }),`,
+    expect: "4.1",
+  },
 ];

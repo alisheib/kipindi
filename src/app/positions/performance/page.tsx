@@ -125,7 +125,11 @@ export default async function PerformancePage() {
       <PageHeader eyebrow={t.common.positions} title={t.performance.title} />
 
       {totalBets === 0 ? (
+        /* ⭐ PV-03 — `fill`, and this instance was found by the GUARD rather than by the audit:
+           the same 328px offset from its `<PageHeader>` as `/positions`, on a page nobody had
+           named. That is the difference between fixing a finding and closing a defect class. */
         <EmptyState
+          fill
           kind="positions"
           title={t.performance.noPerformance}
           body={t.performance.noPerformanceBody}

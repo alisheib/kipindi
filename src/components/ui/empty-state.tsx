@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * EmptyState — kit-faithful: 360px (or full-width) boxed, dashed border,
+ * EmptyState — kit-faithful: 360px (or full-width, via `fill`) boxed, dashed border,
  * line-art SVG illustration: a restrained --text-faint etch (via currentColor) with a
  * single gold accent. (v1.1 reconciliation, 2026-07-27: the old kit "--teal-400 stroke"
  * is retired with the teal era; where a brand stroke is wanted it is --brand-400, never
@@ -27,6 +27,7 @@ export function EmptyState({
   title,
   body,
   action,
+  fill,
   className,
 }: {
   kind?: Kind;
@@ -37,12 +38,36 @@ export function EmptyState({
   titleSw?: string;
   bodySw?: string;
   action?: ReactNode;
+  /**
+   * ⭐ PV-03 (2026-09-03) — THE VARIANT THIS FILE'S OWN HEADER HAS PROMISED SINCE IT WAS
+   * WRITTEN ("360px **or full-width** boxed") AND NEVER HAD.
+   *
+   * The default centres a 360px box with `mx-auto`, which is right inside a narrow column and
+   * wrong under a full-width section heading. Measured on `/positions` at 1280: the page
+   * correctly declares `tier="reading"` and gets a 1016px container, the headings "Open" and
+   * "Settled" sit left at x=132 — and each empty card floated centred at 460–820, **328px
+   * away from the heading that names it.** The filed finding called that a narrow *measure*;
+   * the measure was never wrong, the alignment was.
+   *
+   * ⛔ OPT-IN, NEVER A CHANGED DEFAULT. 45 call sites across 33 files inherit `mx-auto`, most
+   * of them genuinely inside narrow columns where centring is correct. Flipping the default
+   * would silently restyle 44 surfaces to fix one — the opposite of a system-level fix.
+   */
+  fill?: boolean;
   className?: string;
 }) {
   return (
     <div
+      /* ⭐ A CONTRACT FOR THE INSTRUMENTS, exactly like `<PageContainer>`'s `data-measure`.
+         `responsive-audit.mjs` asserts an empty state aligns with the heading that introduces
+         it; without a stamp it would have to guess at `border-dashed`, and a guard that matches
+         a CLASS NAME stops working the day someone restyles the box. The value says which
+         variant shipped, so the sweep can report "boxed, 328px from its heading" rather than a
+         bare failure. */
+      data-empty-state={fill ? "fill" : "boxed"}
       className={cn(
-        "rounded-xl border border-dashed border-border-strong bg-bg-elevated px-8 py-8 text-center max-w-[360px] mx-auto",
+        "rounded-xl border border-dashed border-border-strong bg-bg-elevated px-8 py-8 text-center",
+        fill ? "w-full" : "max-w-[360px] mx-auto",
         className,
       )}
     >

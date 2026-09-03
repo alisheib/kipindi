@@ -2,6 +2,7 @@ import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
+import { ComingSoonBanner, FeatureStateBanner } from "@/components/ui/coming-soon-banner";
 import { IconPlate } from "@/components/ui/icon-plate";
 import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
 import type { ProposalsState } from "@/lib/server/proposals-config";
@@ -51,21 +52,14 @@ export function ProposalsStateBanner({
   body: string;
 }) {
   if (state !== "COMING_SOON" && state !== "MAINTENANCE") return null;
-  const comingSoon = state === "COMING_SOON";
-  return (
-    <Callout
-      role="status"
-      size="md"
-      surface="panel"
-      tone={comingSoon ? "gold" : "maintenance"}
-      glyph={comingSoon ? "clock" : "pause"}
-      /* The banner's box is a uniform 14px inset; the `md` rung is 20px/14px. */
-      className="p-3.5"
-    >
-      <p className="text-[13px] font-bold leading-normal text-text">{title}</p>
-      <p className="mt-1 text-body-sm leading-relaxed text-text-muted">{body}</p>
-    </Callout>
-  );
+  /* ⭐ THE COMING-SOON ARM IS THE KIT'S NOW (2026-09-03). Invite & Earn needed the identical box,
+     and pasting these five lines into a second file would have been a second definition of one
+     thing — `test:spacing-scale` said so out loud, counting the pasted `p-3.5` as a NEW inverted
+     usage on a may-only-shrink ratchet. `<ComingSoonBanner>` is the one home; this file keeps
+     only the MAINTENANCE arm, which is proposals-shaped (amber, pause, "back shortly"). */
+  return state === "COMING_SOON"
+    ? <ComingSoonBanner title={title} body={body} />
+    : <FeatureStateBanner title={title} body={body} tone="maintenance" glyph="pause" />;
 }
 
 /**

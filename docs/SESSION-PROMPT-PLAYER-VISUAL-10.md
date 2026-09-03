@@ -184,6 +184,11 @@ home already exists, so you reach for it rather than open a new one.
 | **the "not open yet" mark, and its banner** | `ui/coming-soon-badge.tsx` (`<ComingSoonBadge>`) + a `<Callout tone="gold" glyph="clock">` | row 13 | ⛔ **Neither is new — that is the point.** Both already dressed every Propose entry point, so Invite adopted the vocabulary rather than minting a second one. `ProposalsStateBadge` is only a *router* to the badge for that feature's four states; a one-state feature calls the badge directly. ⭐ A hand-rolled gilt pill in `profile/page.tsx` was replaced by the primitive in the same commit, so the two spellings cannot drift. |
 | **`test:invite-coming-soon` §2.1** — *the* check that a feature flag reaches every entry point | `scripts/invite-coming-soon.test.mts` §2.1 | row 13 | Judges a **POSITION**: every `/profile/invite` link must sit within 8 lines of the switch being consulted. ⛔ Its first version asked only *"does this file mention `inviteIsLive`?"* and **the RED proof caught it** — severing the usage left the IMPORT in place, so the gate stayed green over two surfaces gone silently live. Same defect `test:labels` §3 shipped: *a guard that reads the source's vocabulary cannot see a defect that leaves the vocabulary in place.* ⚠️ `ComingSoonBadge` is deliberately **not** a marker — a surface rendering it unconditionally satisfies "shows coming soon" today and keeps showing it after the programme opens, which is the failure wearing the costume of the fix. |
 
+| **a full-width empty state** | the **`fill`** prop on `ui/empty-state.tsx` | row 8 | ⛔ **A PROP, NEVER A CHANGED DEFAULT.** 45 call sites in 33 files inherit `mx-auto`, most inside narrow columns where centring is right; flipping the default would restyle 44 surfaces to fix one. ⭐ The variant was **already promised by the file's own docstring** — *"360px (or full-width) boxed"* — and had never existed. A section-level empty state takes `fill` so it aligns with the heading that names it; a page-level one stays centred. |
+| **`data-empty-state`** — the contract instruments read | stamped by `ui/empty-state.tsx` | row 8 | Same law as `<PageContainer>`'s `data-measure`: a guard must key on a **contract**, never on `border-dashed`. A class-name probe stops working the day the box is restyled — and reports **zero**, which reads exactly like a clean sweep. The value (`fill`/`boxed`) lets the sweep say *"boxed, 328px from its heading"* instead of a bare failure. |
+| **`responsive-audit.mjs` · B7's LOWER bound** | the empty-state alignment check + `EMPTY_ALIGN_PENDING` | row 8 | B7 already had an UPPER bound (no column exceeds its tier); the half nobody checked is where PV-03 lived — `/positions` got its 1080 tier **correctly** and still floated a card 328px from its heading, passing every width, clip and overflow check. ⛔ The filed *"narrower than ~65% of its tier"* rule is **refused with arithmetic**: at 1920 it condemns `/notifications` (53%) **and `/markets`, the control** (63%). Alignment against the page's own headings needs no ratio and no viewport. ⚠️ The 7 page-level cases are a **named ratchet with a stale-check**, not a sweep — restyling 7 player routes to satisfy a guard is the wrong way round. |
+| **who may USE `--m-pivot`** | `test:motion-ladder` **§4** | row 10 | ⛔ **§M8's reservation had NO guard for the life of the repo** — it lived in a `motion.css` comment that named its own breach in prose and waited for someone to read it. The programme's handoff assumed `test:needle` owned it; that is a physics suite. ⚠️ A DIFFERENT rule from §3 (who may *declare* a curve), so a different section — one section with two jobs has an allowlist with two meanings. RED-proven by a mutation that is **fully tokenised** (`var(--t-move) var(--m-pivot)`) and therefore invisible to §1.1 and §3.1: only a section that knows *which* curve this is can object. |
+
 ⭐ **Why this table exists** (Ali, 2026-09-03): *"update the location of where files should be
 regarding any design or instruction, to keep a clean final ruling."* A home that is minted and not
 written down is a home the next session cannot find — and a home nobody can find gets re-invented,
@@ -274,10 +279,10 @@ States: `☐ not started` · `◐ in progress` · `⧗ blocked (why)` · `✎ aw
 | 5 | PV-13c · the chip family's ONE definition | 13 | Code | ◐ | `chip.tsx` (the component) — the `.chip`/`.chip-*` CSS family is DELETED | `test:chip-contract` · `test:design-frozen` (−3) · `test:type-scale` (−2) | `pv10/rulings-and-chip-audit` (unmerged) | `.qa-shots/pv13c-local/` | **Ali's ruling, 2026-09-03: finish the migration, no visual change.** ⭐ Census CORRECTED first: not "7 chaotic heights" but **3 tiers** (sm 18/20 · xs+md 21/23 · lg 25/27), and the record's 7th value was `.tier-badge` — a **circular 22px rank medallion**, not a pill. 🔴 **The real defect was a DRIFT the audit only found because the migration forced it:** `chip.tsx`'s `signal` variant still held the pre-D6 **AQUA** (§B4 bans aqua on anything semantic) while the CSS class had been corrected to ROYAL on 2026-08-21 — zero call sites, so nothing rendered it, so nothing caught it. Migrating the market card's tipping flag onto it would have silently put banned aqua back on the player board. ⛔ **NOT proven on production** |
 | 6 | PV-10 · `@pct%`/`×N` suffix contrast | 6 | Code | ◐ | `market-card.tsx` · `side-picker.tsx` · `updown-card.tsx` · `updown-stake-controls.tsx` · `conviction-dial.tsx` (filed as 4 sites, was **9**) | `test:contrast` **§P-u2** (new) · `red:contrast-callsite` | `pv10/rows-3-4-6` (unmerged) | `.qa-shots/pv10-local/` (gitignored, local-only) | guard population gap WAS the finding, confirmed; guard's own sweep found a 9th site (the bet-panel commit button). ⛔ **NOT proven on production** |
 | 7 | PV-14 · timing correctness — **the ladder's ratchet had never read a stylesheet** | 14 | Code | ◐ | `chat-tokens.css:82-85` (the `--cm-*` aliases) + 5 call sites in `chat-styles.css` — ⛔ **NOT** the Input atom, and **no** `test:motion-timing`: see the note | `test:motion-ladder` **§2+§3** (extended, not a new file) · `red:motion-ladder` (new — the guard had **no** control) | merged in the row-5+7 integration | `.qa-shots/pv14-local/` (gitignored, local-only) | code-complete, guarded, **RED-proven 5/5**, browser-verified locally **72/0** at 390+1280 × EN/SW/ZH. ⭐ The filed census was stale ×124 (`duration-150` was **3**, not 373; bare Tailwind curves **0**, not 391) and the real defect was a **corpus hole** — `walk()` took only `.tsx`/`.ts`, so a **fourth motion vocabulary** (8 hand-typed values) lived in `src/styles/chat/`. New law: Authority **§E9/§E10**. Ratchet moved **4 → 5 → 4** (`needle.css` in, scheduling; `spinner.tsx` out, §E10 covered it) |
-| 8 | PV-03 · narrow detail pages — **re-derived: half overturned, half mis-diagnosed** | 3,5,10 | Code | ◐ **re-derived; fix is a prop** | ⛔ **NOT** `detail-layout.tsx` — never build it (§b2, struck). The real site is `empty-state.tsx` (`max-w-[360px] mx-auto`) | `responsive-audit.mjs` (the ~65%-of-tier rule is **refused** — see note) | — | `.qa-shots/pv03-local/` (6 routes @1280, gitignored) | ✅ **`/wallet/deposit` OVERTURNED** — `tier="form"` (640px) is CORRECT; a deposit page is a form and its "wasted 53%" is what §B7 exists to produce. 🔴 **`/positions` is real but mis-filed**: the measure is right (`reading`/1080, container 1016px); the defect is that section headings sit left at x=132 while `EmptyState`'s `mx-auto` centres the card at 460–820. 45 call sites in 33 files inherit that `mx-auto`, so the fix is an opt-in **prop**, never a changed default |
+| 8 | PV-03 · narrow detail pages — **re-derived, fixed, and the class is 4× the filed size** | 3,5,10 | Code | ☑ (locally; prod on merge) | `empty-state.tsx` — new opt-in **`fill`** prop + a `data-empty-state` contract. ⛔ **NOT** `detail-layout.tsx` — never build it (§b2, struck) | `responsive-audit.mjs` **B7's LOWER bound** (new) — the filed ~65%-of-tier rule is **REFUSED with arithmetic** | this integration | `.qa-shots/pv03-local/` | ✅ **`/wallet/deposit` OVERTURNED** — `tier="form"` (640px) is CORRECT; its "wasted 53%" is what §B7 exists to produce. 🔴 **`/positions` was ALIGNMENT, not measure**: headings left at x=132, card centred at 460 — **delta 328px → 0**, verified at 1280 and 390. ⭐ **The guard then found the class was 9 routes, not 2** — `/positions/performance` fixed too; the other 7 are **page-level** empty states (the card IS the page) and are held in a named `EMPTY_ALIGN_PENDING` ratchet with a stale-check, pending a design ruling, rather than 7 player routes being restyled to satisfy a guard |
 | 9 | PV-01 · brand-mark backdrop at 390 | 4,5 | 👤 Ali | ☑ | — (ruling, no code) | — | — | — | **Ali's ruling, 2026-09-03: KEEP AS BACKDROP.** Not a defect — the intended "question-board" backdrop per CLAUDE.md. No `<DecorMark>` primitive built; closed by ruling, not by a fix. |
-| 10 | PV-05 · dial weight + term unification | 5,9,13 | ✎ Design | ✎ | handover | visual | — | — | **Ali's ruling, 2026-09-03: COMMISSION NOW.** Handover to follow §d's bounds — `docs/design-brief/player-visual-2026-09/handover/`, TOKENS-USED.md + DECISIONS.md + MOTION.md, mechanical token-check first. |
-| 11 | Lens 12 · `/markets` filter correctness — **2 of 4 already covered, 1 overturned, 1 open** | 12 | Code | ◐ **re-derived locally; production owed** | ⛔ **NOT** a new drive — the home is **`qa:filter-stress`** (`scripts/filter-stress.mjs`), which §5 never names | extend `qa:filter-stress` with 2 sections (count-vs-rendered, monotonicity) | — | local drive **10/1**, `.qa-shots/pv11-local/` | ⛔ Both instruments §5 names are wrong: `qa:filter-scan` is a filter-*language* check. `qa:filter-stress` **already** drives all **360** status×sort×odds×pool combinations asserting "promise equals delivery" — so **combined-filter intersection was already covered**. ✅ **count==rendered HOLDS 5/5 exact** (incl. the zero case). ✅ **URL-backed OVERTURNED — it IS**: 4 of 5 pills wrote the URL; §5's doubt came from clicking **"Open"**, the *default*, which correctly writes nothing. ⚠️ **monotonicity + lazy-load UNPROVEN** (a 6-card board with 0 printed volumes cannot exercise either) → **production owed**, reported unproven not passed |
+| 10 | PV-05 · dial weight + term unification | 5,9,13 | ✎ Design | ◐ **half delivered** | `docs/design-brief/player-visual-2026-09/handover/` | `test:motion-ladder` §4 · `test:docs` | this integration | the handover's three docs | ✅ **Part 2 DELIVERED — the commit-sequence motion spec** (`MOTION.md`), five beats each naming its real travel distance and its rung, with §d's **mechanical gate RUN FIRST and passing 14/14** (`TOKENS-USED.md`). ⭐ Four of five beats were **already correct** and are documented, not changed. 🔴 The fifth was a real §M8 breach — `orm-pop` on `--m-pivot` — **fixed to `--m-settle` and now guarded by `test:motion-ladder` §4** (the reservation had **no guard at all**; the handoff's belief that `test:needle` owned it was wrong). ✎ **Part 1 (dial visual weight) NOT delivered, deliberately** — it needs comparative artboards; `DECISIONS.md` §2 says so and splits out the **term unification**, which is 👤 a one-word ruling from Ali, not a Design commission |
+| 11 | Lens 12 · `/markets` filter correctness — **3 of 4 were already true; the 4th is now guarded** | 12 | Code | ☑ (locally; prod on merge) | ⛔ **NOT** a new drive — the home is **`qa:filter-stress`**, which §5 never names | `qa:filter-stress` **+ sort monotonicity** (new section, with its own control) | this integration | drive green incl. **288 combinations** | ⛔ Both instruments §5 names are wrong (`qa:filter-scan` is a filter-*language* check). ✅ **combined-filter intersection** was already covered — `qa:filter-stress` drives all **288** status×sort×odds×pool boards. ✅ **count==rendered** was already asserted there (`resultCount` vs `cards`) and holds **5/5 exact** incl. the zero case. ✅ **URL-backed OVERTURNED — it IS**; §5's doubt came from clicking **"Open"**, the *default*, which correctly writes nothing. 🔴 **The one real gap: all six sorts were driven and NOTHING checked anything was sorted** — a sort control that silently did nothing passed every check. Now asserted on `pool`, the only key a card prints, **with a control that the volumes are not all identical**, and proven to DISCRIMINATE (`?sort=new` reads non-monotonic, `?sort=pool` monotonic) |
 | 12 | Invite & Earn gold on zero-bonus card | — | 👤 Ali | ☑ | `wallet-client.tsx` | `test:gold-is-money` · `test:invite-coming-soon` | — | re-verified **15/0**; visual **72/0** | **Ali's ruling, 2026-09-03: CONFIRMED CORRECT** — the `btn-gold` CTA leads to real referral money, gold ink on a genuine money surface. ⚠️ **AMENDED the same day when Ali ruled Invite COMING SOON (row 13):** the CTA **stays gold** and the ruling still holds, because gilt is *also* this product's coming-soon colour (`proposals-state-views.tsx`: *"COMING_SOON → gilt (aspirational)"*). The gold says the destination is a money surface when it opens; the badge beside it says it is not open yet. |
 | 13 | **Invite & Earn is COMING SOON** — every surface, from one switch | — | 👤 Ali → Code | ☑ | `src/lib/invite-feature.ts` (`INVITE_STATE`) | **`test:invite-coming-soon`** (new) · `red:invite-coming-soon` (4/4) | this integration | `.qa-shots/invite-coming-soon/` (18 shots, gitignored) | **Ali's call, 2026-09-03: the referral programme is not open — say so everywhere.** ⛔ Reuses the EXISTING coming-soon vocabulary (`<ComingSoonBadge>`, the gilt `<Callout>`) — no new badge, no new banner. **Six surfaces** now read one switch: the invite page, the profile row (which was claiming **"NEW"**), the wallet zero-bonus CTA, the avatar menu, the More sheet and the top-bar overflow. ⭐ **The page returns BEFORE `getPlayerReferralSummary`** — so no referral code, share link or QR is minted while the programme is closed; `§3.3` asserts that as a **position**, and its RED mutation moves the guard below the read while leaving it present. EN/SW/ZH copy added; **visual 72/0** at 390+1280 with locale proven by discrimination |
 
@@ -383,15 +388,43 @@ is byte-identical to HEAD with 7 arbitrary sizes and 20 inverted-spacing utiliti
 may only shrink, so the fix is theirs: move those literals onto the scale, or justify them.
 👤 **This needs to reach the Needle session.**
 
-**What remains, all of it now a ruling rather than a build:**
-- **Row 8** — the `EmptyState` alignment. Re-derived and diagnosed (`empty-state.tsx`'s `mx-auto`
-  centres a 360px card under a left-aligned heading); the fix is an **opt-in prop**, because **45
-  call sites in 33 files** inherit the current default. ⛔ Do NOT build `detail-layout.tsx`.
-- **Row 11** — two sections for `qa:filter-stress` (count-vs-rendered, monotonicity), run against
-  **production**, where the board is large and funded enough to exercise them.
-- **Row 10** — the dial Design commission (✎), bounded by §d.
-- **`--m-pivot` / `orm-pop`** — a one-line fix whose guard is `test:needle`, the parallel
-  session's file. Filed whole rather than half-done.
+**ROWS 8, 10 AND 11 WERE THEN CLOSED IN THIS SAME SESSION, and `test:all` is green.** Ali's
+instruction was *"nothing pending should be kept… until cleanly perfectly rendered and finalised
+and pushed."* What that took:
+
+- **Row 8 — fixed, and the class was 4× the filed size.** `EmptyState` gained an opt-in **`fill`**
+  prop (⛔ never a changed default — 45 call sites in 33 files inherit `mx-auto`) plus a
+  `data-empty-state` contract for instruments. `/positions` went from **328px → 0px** offset,
+  measured at 1280 and 390 and looked at. ⭐ **Then the new guard found the class is NINE routes,
+  not two** — `/positions/performance` was fixed with it; the other 7 are *page-level* empty states
+  (the card IS the page, not a section's) and sit in a named `EMPTY_ALIGN_PENDING` ratchet with a
+  stale-check. ⛔ Restyling 7 live player routes to satisfy a guard is the wrong way round.
+- **Row 11 — the one real gap closed.** Three of §5's four questions were already true (the 288-
+  combination sweep covers intersection AND count-vs-rendered; URL state was overturned). The
+  fourth was real and embarrassing: **all six sorts were driven and nothing checked anything was
+  sorted** — a sort control that silently did nothing passed every check the file had. Now asserted
+  on `pool` (the only key a card prints), **with a control that the volumes are not all identical**,
+  and proven to DISCRIMINATE: `?sort=new` reads non-monotonic where `?sort=pool` reads monotonic.
+- **Row 10 — half delivered, and the half that is not says why.** `MOTION.md` specifies the
+  five-beat commit sequence with every duration named in a rung and every curve in a `--m-*`;
+  §d's mechanical gate was **run first and passed 14/14** (`TOKENS-USED.md`). ⭐ Four of five beats
+  were **already correct** and are documented rather than changed. ✎ The dial's visual *weight*
+  needs comparative artboards and is NOT delivered — `DECISIONS.md` §2 states that plainly and
+  splits out the **term unification**, which is 👤 a one-word ruling from Ali, not a commission.
+- **`--m-pivot` / `orm-pop` — fixed and guarded.** 🔴 The §M8 reservation had **no guard anywhere
+  in the repo**; the handoff's belief that `test:needle` owned it was wrong (that is a physics
+  suite). `orm-pop` took `--m-settle` — and not only for §M8: its keyframe **already overshoots
+  1.06 at 60%**, so the pivot was stacking a second overshoot. `test:motion-ladder` **§4** now
+  owns the rule, RED-proven by a mutation that is fully tokenised and therefore invisible to
+  §1.1 and §3.1.
+- ✅ **THE NEEDLE SESSION'S RATCHET DEBT IS PAID.** `test:type-scale` and `test:spacing-scale` were
+  red on `main` from `needle-drawer.tsx`. Eleven inverted-spacing keys moved onto the scale
+  (`2.5`→`2`, `3.5`→`3`; Tailwind STOCK 10/14px where this product's OVERRIDDEN `2`/`3` are
+  12/16px — the file's author had written the **larger-looking key for the smaller box**, four
+  times, with no way to notice), and two exact-match `text-[13px]` took `text-body-sm`. Ceiling
+  lowered **561 → 554** in the same commit, as the guard demands. ⚠️ **Measured before/after
+  rather than assumed:** the drawer is 20px taller (611→631) and its last line sits at **the
+  identical 827px** — no content moved relative to the viewport, verified in a browser.
 
 ---
 
@@ -589,15 +622,37 @@ absence.** 193 → 29 with nothing changed but the server being idle. The lesson
 until green" — it is that a sweep measuring 5,400 cells needs the machine to itself, and that
 the way to tell a real absence from a broken reader is to **go and fetch the page yourself.**
 
+⭐ **THREE MORE INSTRUMENT BUGS, ALL CAUGHT BY A CONTROL — bringing this session's total to seven,
+and not one was found by reading the code.** They are listed because the pattern is the finding:
+1. ⛔ **A "green baseline" that ran ZERO cells.** `ONLY=/positions npm run test:responsive`
+   reported `21 passed · 0 failed` — over nothing. **Git Bash rewrote `/positions` into
+   `C:/Program Files/Git/positions`** (MSYS path conversion), so the filter matched no route. The
+   RED proof is what exposed it: the mutation *also* passed, which is impossible if the check runs.
+   ▶ Use `MSYS_NO_PATHCONV=1` for any env var holding a `/path`.
+2. ⛔ **The wrong element, twice.** Row 11's volume reader took `a[href^="/markets/"]` — which is
+   the card's **"Details" button** — so every card yielded the string `"Details"` and the drive
+   honestly reported *"0 printed volumes on 6 cards"*.
+3. ⛔ **A regex that was right by luck.** `TZS\s*([\d,]+)` on `…TZS 94,50019d left…` swallows the
+   countdown and yields **94,50019**. The order check still PASSED on those numbers — the trailing
+   digits happened not to reorder five cards. ⭐ **The worst kind of instrument bug is the one that
+   is confidently right by accident**, and only printing the parsed values revealed it.
+
 **Next — what is actually left.** No code row remains that should be built as filed. The queue is:
-👤 **Ali** — (1) the `EmptyState` alignment ruling (row 8, 45 surfaces); (2) row **5**, which chip
-sizes; (3) row **10**, the dial Design commission; (4) whether to merge the three `pv10/*`
-branches; (5) get the `test:type-scale` +2 / `test:spacing-scale` +4 to the **needle session** —
-`test:all` is red on `main` and it is their `needle-drawer.tsx`. **Code, once Ali rules** — row 8's
-one-prop fix + the tier-relative guard; row 11's two `qa:filter-stress` sections against
-production; the `--m-pivot`/`orm-pop` one-liner **if** the needle session hands over `test:needle`.
-⛔ On merging any branch: re-run that row's drive against production, and `qa:card-geometry`
-before/after for row 4 (`MARKET_CARD_H` 349→347).
+👤 **Ali, and all three are one sentence each** — (1) the **term unification** for the dial: which
+single word names the idea (*"your pick"* / *"conviction"* / the multiplier), unblocking three call
+sites plus SW/ZH; (2) the **page-level empty state** ruling: do the 7 routes in
+`EMPTY_ALIGN_PENDING` fill their measure or stay centred; (3) commission the **dial's visual
+weight** with the `design` skill, bounded by `DECISIONS.md` §3.
+
+⛔ **On production, once this is deployed:** re-run `qa:card-geometry` before/after for row 4
+(`MARKET_CARD_H` 349→347 — rows 3/4/6 have been live since `e14394d7` and that measurement was
+never taken), and re-run `qa:filter-stress` there, where the board is larger and busier than the
+6-market local one that proved the new monotonicity section.
+
+⚠️ **And tell the Needle session what moved in their file** — eleven spacing keys and two type
+literals, every one listed with its before/after in `spacing-scale.test.mts`'s ceiling comment.
+Nothing about the Needle's design was reinterpreted; the keys were simply the ones that paint
+smaller than their number reads.
 
 **RESUME AT (session 6) — 2026-09-03. ROWS 3, 4, 6 ARE `◐` — code-complete, guarded, RED-proven,
 visually verified LOCALLY (EN/SW/ZH, 390/1280) — but pushed to branch `pv10/rows-3-4-6`

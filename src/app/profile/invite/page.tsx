@@ -18,7 +18,7 @@ import { getBonusConfig } from "@/lib/server/bonus-config";
 import { formatDateShort as fmtDate, formatNumber } from "@/lib/utils";
 import { getServerT } from "@/lib/i18n-server";
 import { PageContainer } from "@/components/layout/page-container";
-import { Callout } from "@/components/ui/callout";
+import { ComingSoonBanner } from "@/components/ui/coming-soon-banner";
 import { ComingSoonBadge } from "@/components/ui/coming-soon-badge";
 import { inviteIsLive } from "@/lib/invite-feature";
 
@@ -127,16 +127,22 @@ export default async function InvitePage() {
         <h1 className="sr-only">{t.profile.inviteEarn}</h1>
 
         <div className="flex items-center justify-between gap-3">
-          <p className="font-display text-[19px] font-bold leading-none">{t.profile.inviteEarn}</p>
+          {/* ⚠️ `text-title-sm` (18px), NOT the live body's hand-typed `text-[19px]`. This branch
+              is NEW code, and new code names a rung — `test:type-scale` §4's ratchet counted the
+              copied literal the moment it was written. The two titles never render together
+              (they are alternate branches of the same page), so the 1px is not a seam. */}
+          <p className="font-display text-title-sm font-bold leading-none">{t.profile.inviteEarn}</p>
           <ComingSoonBadge label={t.profile.inviteComingSoonTag} />
         </div>
 
-        {/* The same gilt Callout the Propose surfaces use for this exact state — one
-            vocabulary for "not open yet", never a second banner shape. */}
-        <Callout role="status" size="md" surface="panel" tone="gold" glyph="clock" className="p-3.5">
-          <p className="text-[13px] font-bold leading-normal text-text">{t.profile.inviteComingSoonTitle}</p>
-          <p className="mt-1 text-body-sm leading-relaxed text-text-muted">{t.profile.inviteComingSoonBody}</p>
-        </Callout>
+        {/* ⭐ THE SAME BOX THE PROPOSE SURFACES RENDER — literally, not "matching". It was
+            pasted here first, and `test:spacing-scale` caught the paste by counting its `p-3.5`
+            as a NEW inverted-spacing usage. That pushed it into the kit as
+            `<ComingSoonBanner>`, which is where it should always have been. */}
+        <ComingSoonBanner
+          title={t.profile.inviteComingSoonTitle}
+          body={t.profile.inviteComingSoonBody}
+        />
 
         {/* Guided onward, never a dead end — the same courtesy the DISABLED proposals
             view extends. The board is where a player can act right now. */}

@@ -343,6 +343,51 @@ ok("3.1 ⭐ no custom property outside motion.css hand-types a cubic-bezier or a
 ok("3.2 the frozen-declaration list is not empty (a silent pattern-exclusion would read the same)",
   FROZEN_DECLARATIONS.size >= 1, `${FROZEN_DECLARATIONS.size}`);
 
+/**
+ * §4 — ⭐ `--m-pivot` IS RESERVED FOR THE NEEDLE AND DIALS (§M8), AND NOTHING GUARDED IT.
+ *
+ * ⛔ THE RESERVATION HAD NO HOME AT ALL. `motion.css`'s header has carried this breach in prose
+ * since 2026-08-21 — *"`--m-pivot`'S RESERVATION HAS ONE KNOWN BREACH: `orm-pop` in
+ * `markets/operation-result-modal.tsx` … a `.tsx`, named here rather than reached from here"* —
+ * and a rule that lives only in a comment is a rule that waits for someone to read it. The
+ * programme's handoff assumed `test:needle` owned this; it does not (it is a physics suite), and
+ * `motion-adoption-verify.mjs` only lists the curve among five. Measured: **nothing** in the repo
+ * asserted who may USE the pivot.
+ *
+ * ⚠️ THIS IS A DIFFERENT RULE FROM §3, WHICH IS WHY IT IS A DIFFERENT SECTION. §3 says who may
+ * DECLARE a curve; §4 says who may USE this one. Folding them together would give one section two
+ * jobs and one allowlist two meanings.
+ *
+ * THE POPULATION, re-derived rather than assumed — five legitimate consumers, all of them
+ * literally the needle:
+ *   · `motion.css` `.m-needle`, `.needle-sweep`, `.needle-settle-*` — the mark itself.
+ *   · `globals.css` `.tipbar-needle` — the tipping bar's needle, which the rule's own comment
+ *     there already argues is WITHIN the reservation ("this IS a needle"), not an exception to it.
+ * HEAD count outside the allowlist: **zero**, after `orm-pop` took `--m-settle`.
+ */
+console.log("\n§4 · --m-pivot is reserved for the needle and dials (§M8)");
+{
+  /** Files whose pivot use IS the needle. ⛔ May only shrink; a new entry re-opens §M8. */
+  const PIVOT_HOMES = new Set<string>(["src/app/motion.css", "src/app/globals.css"]);
+  const pivotUsers: string[] = [];
+  for (const f of files) {
+    const src = readFileSync(`${SRC}/${f.slice(4)}`, "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "));
+    src.split("\n").forEach((line, i) => {
+      if (/^\s*\/\//.test(line)) return;
+      if (!/var\(\s*--m-pivot\s*\)/.test(line)) return;
+      if (PIVOT_HOMES.has(f)) return;
+      pivotUsers.push(`${f}:${i + 1}`);
+    });
+  }
+  ok("4.1 ⭐ nothing outside the needle's own files animates on --m-pivot (§M8's reservation)",
+     pivotUsers.length === 0, pivotUsers.join(" · "));
+  // ⛔ The reservation is worthless if the curve stops existing under that name.
+  const ladder = readFileSync(`${SRC}/app/motion.css`, "utf8");
+  ok("4.2 control · --m-pivot is still declared (a renamed token would empty §4.1 silently)",
+     /^\s*--m-pivot\s*:/m.test(ladder), "not declared in motion.css");
+}
+
 console.log(`\n  (ratchet holds ${ALLOWLIST.size} file(s) — the list may only shrink)`);
 for (const f of [...ALLOWLIST].sort()) console.log(`      · ${f}`);
 console.log(`  (exempt by name, not skipped silently: ${DEFINITION_SITE} — the definition site)`);
