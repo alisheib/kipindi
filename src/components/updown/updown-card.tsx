@@ -31,6 +31,7 @@ import { I } from "@/components/ui/glyphs";
 import { Chip } from "@/components/ui/chip";
 import { Dot } from "@/components/ui/dot";
 import { cn, formatTzs } from "@/lib/utils";
+import { usd } from "@/lib/usd-price";
 import { useT } from "@/lib/i18n";
 import { useUpDownQuickBet, usePlacePulse } from "./use-quick-bet";
 import { UpDownStakeControls, GLYPH_NO_SHRINK } from "./updown-stake-controls";
@@ -192,36 +193,11 @@ export type UpDownCardProps = {
 };
 
 
-/**
- * ⭐ THE FORMATTERS ARE BUILT ONCE, NOT PER CALL — the same discipline `formatTzs` already
- * keeps with its module-scope `TZ_NUMBER` in `@/lib/utils`.
- *
- * 🔴 WHY THIS IS A DEVICE PROBLEM AND NOT A TIDINESS ONE. `n.toLocaleString("en-US", {…})`
- * constructs a fresh `Intl.NumberFormat` on **every call** — the single most expensive thing
- * this card did. A card renders up to five of them (live price, open price, both targets, the
- * margin, and a close price once settled), and the card used to re-render once a second, per
- * card, for the whole life of a round. Eight cards on a board is forty `Intl` constructions a
- * second on a handset that has to build one from the ICU locale data each time.
- *
- * Keyed by `decimals`, because that is the only thing that varies — a chain quotes BTC to 2 and
- * gold to 2 but FX to 4, and the board can show several assets' cards in one session.
- * ⛔ Output is byte-identical to what it replaced; this is a caching change, not a format one.
- */
-const USD_FORMATS = new Map<number, Intl.NumberFormat>();
-function usdFormat(decimals: number): Intl.NumberFormat {
-  let f = USD_FORMATS.get(decimals);
-  if (f === undefined) {
-    f = new Intl.NumberFormat("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
-    USD_FORMATS.set(decimals, f);
-  }
-  return f;
-}
-
-/** Asset prices are quoted in USD because that is what the source publishes. Player
- *  money is ALWAYS TZS via formatTzs — the two must never be confusable. */
-function usd(n: number, decimals: number): string {
-  return `$${usdFormat(decimals).format(n)}`;
-}
+// ⭐ THE FORMATTERS ARE BUILT ONCE, NOT PER CALL — this card's own memoized USD formatter
+// was hoisted to `@/lib/usd-price` (session 80): six byte-equivalent private copies lived
+// across the chart home and the updown/admin pages, the "private copies" class the chart
+// one-home sprint exists to kill. The device-cost story (forty Intl constructions a second
+// on an eight-card board) and the USD-vs-TZS confusability rule moved with it.
 
 /**
  * The player count, in the DEVICE's own locale — exactly what `players.toLocaleString()` gave,

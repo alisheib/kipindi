@@ -48,6 +48,7 @@ import { UpDownResultAnnouncer } from "@/components/updown/updown-result-announc
 import { refreshCadence, handoverPollUntil } from "@/lib/refresh-cadence";
 // E-166 · the auto-advance. Client-side because it is a navigation on an observed transition.
 import { UpDownHandover } from "@/components/updown/updown-handover";
+import { usd } from "@/lib/usd-price";
 
 export const dynamic = "force-dynamic";
 
@@ -73,8 +74,7 @@ const card = { background: "var(--bg-elevated)", border: "1px solid var(--border
 const inset = { background: "var(--bg-inset)", border: "1px solid color-mix(in oklab, var(--border) 70%, transparent)", borderRadius: "var(--r-md)" } as const;
 const eyebrow = "m-0 font-mono text-micro font-semibold uppercase eyebrow text-text-faint";
 
-const usd = (n: number | null, d: number): string =>
-  n == null ? "—" : `$${n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d })}`;
+// usd() → the ONE spelling in @/lib/usd-price (session 80 — six private copies unified).
 
 // fmtEAT moved to updown-source-label.ts (E-262) — the board chart panel now renders the
 // same receipt line, and two private copies of one formatter is the drift that file stops.

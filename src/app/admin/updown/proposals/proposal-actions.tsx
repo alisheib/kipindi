@@ -31,6 +31,7 @@ import {
   rejectProposalAction, armProposalAction, deleteProposalAction,
 } from "./actions";
 import { ALLOWED_DURATIONS } from "@/lib/updown-durations";
+import { usd } from "@/lib/usd-price";
 
 // ⛔ E-62 · ONE SOURCE FOR THE DURATIONS — see `src/lib/updown-durations.ts`. This was a
 // hand-copied `[5, 15, 30]`; a duration added server-side would have been unreachable here.
@@ -122,7 +123,7 @@ export function EvidencePanel({
   return (
     <div className="text-body-sm leading-snug">
       <span className="font-mono text-[13px] font-bold tabular-nums text-text">
-        ${observedPrice.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}
+        {usd(observedPrice, decimals)}
       </span>
       <div className={stale ? "text-warning-fg" : "text-text-subtle"}>
         quoted {human(ageSec)} before we read it

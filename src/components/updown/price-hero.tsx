@@ -31,6 +31,8 @@
  * Pure and exported so the arithmetic can be tested without a browser; the component is the
  * only caller.
  */
+import { usd as usdPrice } from "@/lib/usd-price";
+
 export function priceTagOffsetY(
   lastY: number,
   targetBaselines: ReadonlyArray<number | null>,
@@ -72,8 +74,9 @@ export function PriceHero({
     chartAlt: string;
   };
 }) {
-  const usd = (n: number | null) =>
-    n == null ? "—" : `$${n.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
+  // The ONE usd spelling (@/lib/usd-price, session 80), bound to this hero's decimals —
+  // the local one-arg shape every call site here already speaks.
+  const usd = (n: number | null) => usdPrice(n, decimals);
 
   const hasPrice = livePrice != null;
   const isUp = hasPrice && openPrice != null ? livePrice! >= openPrice : true;

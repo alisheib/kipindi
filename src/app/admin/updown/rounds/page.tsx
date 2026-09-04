@@ -14,6 +14,7 @@ import { UPDOWN } from "@/lib/admin-status-lexicon";
 import { updownVoidReasonLabel } from "@/components/admin/status-badge";
 import { VoidRoundControl } from "./void-round-control";
 import { formatTzs, formatBalancePill } from "@/lib/utils";
+import { usd } from "@/lib/usd-price";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
 
@@ -151,7 +152,8 @@ export default async function AdminUpDownRoundsPage({
   ).reduce((s, v) => s + v, 0);
   const stuckMoneyLabel = `${stuckAll.length > MONEY_SCAN ? "at least " : ""}${formatTzs(stuckMoney)}`;
 
-  const usd = (n: number, d: number) => (n == null ? "—" : `$${n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d })}`);
+  // usd() → the ONE spelling in @/lib/usd-price (session 80). The old local copy here was
+  // even mistyped (`n: number` guarding `n == null`) — a drift the unification retires.
 
   return (
     <>

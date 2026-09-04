@@ -442,7 +442,11 @@ export function TerminalChart({
     : labels.sourceLabel;
 
   const pct = legend ? ((legend.c - legend.o) / (legend.o || 1)) * 100 : null;
-  const legendInk = legend ? (legend.c >= legend.o ? "var(--yes-300)" : "var(--no-300)") : undefined;
+  // E-261's three-state grammar (§B12.2: up=yes · down=no · flat=muted) — the `>=` here was
+  // the last two-state residue in the chart system, green-at-flat on the legend's own window.
+  const legendInk = legend
+    ? (legend.c > legend.o ? "var(--yes-300)" : legend.c < legend.o ? "var(--no-300)" : "var(--text-muted)")
+    : undefined;
   return (
     <div>
       {legend && (
@@ -450,7 +454,7 @@ export function TerminalChart({
           {([['O', legend.o], ['H', legend.h], ['L', legend.l], ['C', legend.c]] as const).map(([k, v]) => (
             <span key={k}><span className="text-text-faint">{k}</span> <span className="text-text">{v.toLocaleString(locale, { minimumFractionDigits: decimalsRef.current, maximumFractionDigits: decimalsRef.current })}</span></span>
           ))}
-          {pct != null && <span style={{ color: legendInk }}>{pct >= 0 ? "+" : "−"}{Math.abs(pct).toFixed(2)}%</span>}
+          {pct != null && <span style={{ color: legendInk }}>{pct > 0 ? "+" : pct < 0 ? "−" : ""}{Math.abs(pct).toFixed(2)}%</span>}
         </p>
       )}
       <div role="img" aria-label={labels.aria} className="relative" style={{ height }}>

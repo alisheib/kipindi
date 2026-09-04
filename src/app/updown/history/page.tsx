@@ -43,7 +43,7 @@ const fmtDate = (iso: string) => {
   }).format(d);
   return `${s} EAT`;
 };
-const usd = (n: number | null, d: number) => (n == null ? "—" : `$${n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d })}`);
+import { usd } from "@/lib/usd-price"; // the ONE spelling (session 80)
 
 /**
  * How many recent EAT days the picker offers. A week is the span a player reasons about on a

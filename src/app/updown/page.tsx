@@ -27,6 +27,7 @@ import { BoardViz } from "@/components/charts/board-viz";
 import { OutcomeCubes } from "@/components/charts/outcome-cubes";
 import { UpDownChartLab } from "@/components/charts/updown-chart-lab";
 import { SOURCE_CLASS_KEY } from "@/lib/updown-source-label";
+import { usd } from "@/lib/usd-price";
 
 export const dynamic = "force-dynamic";
 
@@ -35,9 +36,7 @@ export async function generateMetadata() {
   return { title: t.market.udTitle };
 }
 
-function usd(n: number, decimals: number): string {
-  return `$${n.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
-}
+// usd() → the ONE spelling in @/lib/usd-price (session 80 — six private copies unified).
 
 export default async function UpDownPage({
   searchParams,
