@@ -391,6 +391,16 @@ touch scrubbing, A-5 empty states, E-93 label collision avoidance, E-198 legibil
 gap was CONSISTENCY, not capability — so the sprint consolidated instead of importing.
 **Bundle delta of the consolidation: ≤ 0** (code deleted, none added from npm).
 
+**The board's cubes ↔ chart toggle (CHART-SPRINT B).** `/updown` offers CUBES (default —
+the outcome heartbeat, now `charts/outcome-cubes.tsx` on tokens instead of four hand-typed
+`oklch()` literals) or CHART (`charts/round-chart.tsx` — the CURRENT round's confirmed reads
+against its gilt open line, zones tinted in direction ink, the kit `RoundCountdown` composed
+in so the chart's clock is the same component as every other clock). `charts/board-viz.tsx`
+is the client switch: `.pchart-range` pressed-buttons rail, localStorage `kp-updown-viz`,
+server renders CUBES first (no per-device state in SSR). A missing body removes the rail —
+no live round means chart mode has no question to answer. Data: `getBoard` gained ONE
+bounded read (`currentRoundChart`), the same `priceSeriesFor` the detail hero uses.
+
 ⚠️ `updown/price-hero.tsx` is a named member AT ITS PINNED ADDRESS, not moved:
 `updown-chart.test.mts` imports it, `updown-chart-red.mjs` anchors it CRLF-sensitively, and
 `design-frozen`/`eyebrow-roles` pin the path. Moving it would churn three guards and a RED

@@ -23,6 +23,10 @@ import { pickLocalized } from "@/lib/localized";
 import { UpDownCard } from "@/components/updown/updown-card";
 import { UpDownResultAnnouncer } from "@/components/updown/updown-result-announcer";
 import { UpDownBoardTabs } from "@/components/updown/updown-board-tabs";
+import { BoardViz } from "@/components/charts/board-viz";
+import { OutcomeCubes } from "@/components/charts/outcome-cubes";
+import { RoundChart } from "@/components/charts/round-chart";
+import { RoundCountdown } from "@/components/updown/round-countdown";
 
 export const dynamic = "force-dynamic";
 
@@ -65,9 +69,16 @@ export default async function UpDownPage({
     );
   }
 
-  const { assets, activeAsset, activeDuration, rounds, recent, chainPaused, stakeBounds, walletBalance } = board;
+  const { assets, activeAsset, activeDuration, rounds, recent, chainPaused, stakeBounds, walletBalance, currentRoundChart } = board;
   const href = (assetKey: string, d?: number) => `/updown?asset=${assetKey}${d ? `&d=${d}` : ""}`;
   const isAuthed = !!session;
+
+  // CHART-SPRINT B · the round the chart view draws — located by id, never by position.
+  const chartRound = currentRoundChart ? rounds.find((r) => r.roundId === currentRoundChart.roundId) ?? null : null;
+  const chartMove =
+    chartRound?.openPrice != null && activeAsset?.livePrice != null
+      ? activeAsset.livePrice - chartRound.openPrice
+      : null;
 
   return (
     <div className="mx-auto w-full max-w-[1280px] px-4 py-6">
@@ -124,29 +135,49 @@ export default async function UpDownPage({
         sheetDone={t.common.done}
       >
 
-      {/* ── Heartbeat: real outcomes only; hidden entirely when there are none ── */}
-      {recent.length > 0 && (
-        <div className="mt-4 flex items-center gap-2">
-          <span className="font-mono text-micro font-semibold uppercase eyebrow text-text-faint">
-            {t.market.udLastRounds}
-          </span>
-          <span className="flex gap-1">
-            {recent.map((o, i) => (
-              <span key={i}
-                    aria-label={o === "UP" ? t.market.udUp : o === "DOWN" ? t.market.udDown : t.market.statusVoid}
-                    className="inline-flex items-center justify-center rounded-sm"
-                    style={{
-                      width: 18, height: 18,
-                      background: o === "UP" ? "oklch(52% 0.15 150 / 0.22)" : o === "DOWN" ? "oklch(52% 0.17 22 / 0.22)" : "transparent",
-                      border: `1px solid ${o === "UP" ? "oklch(61% 0.16 150 / 0.5)" : o === "DOWN" ? "oklch(61% 0.18 22 / 0.5)" : "var(--border)"}`,
-                      color: o === "UP" ? "var(--yes-300)" : o === "DOWN" ? "var(--no-300)" : "var(--text-faint)",
-                    }}>
-                {o === "UP" ? <I.trendingUp s={9} /> : o === "DOWN" ? <I.trendingDown s={9} /> : <I.arrowRight s={9} />}
-              </span>
-            ))}
-          </span>
-          <span className="font-mono text-[9px] text-text-faint">{t.market.udOldestNewest}</span>
-        </div>
+      {/* ── CHART-SPRINT B · the heartbeat strip and the live round chart, one switch.
+             CUBES (real outcomes, oldest → newest) stays the default; CHART is the
+             current round's confirmed price action against its open (A-5 throughout —
+             both bodies render real data or nothing, and a missing body removes the
+             toggle rather than offering an empty destination). ────────────────────── */}
+      {(recent.length > 0 || chartRound != null) && (
+        <BoardViz
+          labels={{
+            aria: t.market.udViewAria,
+            cubes: t.market.udViewCubes,
+            chart: t.market.udViewChart,
+            cubesEyebrow: t.market.udLastRounds,
+            chartEyebrow: t.market.udLiveChart,
+          }}
+          cubes={recent.length > 0 ? (
+            <OutcomeCubes
+              outcomes={recent}
+              labels={{ up: t.market.udUp, down: t.market.udDown, void: t.market.statusVoid, oldestNewest: t.market.udOldestNewest }}
+            />
+          ) : null}
+          chart={chartRound != null ? (
+            <RoundChart
+              openPrice={chartRound.openPrice}
+              upTarget={chartRound.upTarget}
+              downTarget={chartRound.downTarget}
+              livePrice={activeAsset!.livePrice}
+              series={currentRoundChart!.series}
+              decimals={activeAsset!.decimals}
+              copy={{
+                openLabel: t.market.udOpenPrice,
+                upLabel: t.market.udUp,
+                downLabel: t.market.udDown,
+                awaitingRead: t.market.udAwaitingRead,
+                aboveBelow: chartMove != null && chartMove !== 0
+                  ? `${chartMove > 0 ? t.market.udAboveOpenBy : t.market.udBelowOpenBy} $${Math.abs(chartMove).toFixed(activeAsset!.decimals)}`
+                  : null,
+                source: null,
+                chartAlt: `${pickLocalized(locale, activeAsset!.nameEn, activeAsset!.nameSw, activeAsset!.nameZh)} ${t.market.udLiveChart}`,
+              }}
+              countdown={<RoundCountdown closesAtMs={Date.parse(chartRound.closesAt)} label={t.market.udClosesIn} />}
+            />
+          ) : null}
+        />
       )}
 
       {/* ── The grid. 1 / 2 / 3 columns — and STAYS 3 at 1920. ───────────── */}
