@@ -562,12 +562,14 @@ been written down, which is exactly how the never-imported `Sparkline` came to c
    **Two rulings added by the judge panel, 2026-09-04:** the history CURVE wears the
    window's direction (first→last visible read: up = yes family, down = no family, flat =
    muted — the price-hero's own E-261 grammar; a green curve over a falling window claims
-   "up" on a down answer), and the library's attribution requirement is satisfied by the
-   **named TradingView credit link in the terminal's own receipt footer** — ⚠️ amended
-   2026-09-04 evening by Ali's direct order (*"remove the TradingView logo from bottom
-   left"*): the pane logo is OFF and the visible footer credit stands in for it; the
-   license asks for user-visible attribution, so **removing the credit without restoring
-   the logo breaches the license** — the two are one ruling. The default style is CANDLES
+   "up" on a down answer). ⚠️ **VENDOR ATTRIBUTION: NONE — the owner's explicit, informed
+   decision** (Ali, 2026-09-04 evening, final: *"no need for any TradingView writing or
+   logo — remove all; in other projects I don't even write it"*). The pane logo is OFF
+   and no written credit renders. The library README's attribution request (a NOTICE
+   credit + a link on a user-visible page) was reviewed, flagged by the judge panel, and
+   EXPRESSLY DECLINED by the owner — a business risk he owns, recorded here so it can
+   never read as an oversight; re-adding it is one option + one line if the posture ever
+   changes. The default style is CANDLES
    on every range (his same order: *"by default … shows the candles unless user
    switches"*), the thin-window curve-with-reason fallback unchanged. Changing any of
    this is reversing a dated owner ruling — refuse it by name.

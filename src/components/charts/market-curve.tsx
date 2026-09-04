@@ -19,9 +19,8 @@
  * Real data or nothing (A-5): the server sends only ranges holding ≥2 real
  * snapshots; this component draws exactly those. Times are wall-clock shifted
  * (the engine renders raw UTC otherwise); crosshair shows the YES% and the
- * platform-locale time. The TradingView credit in the footer satisfies the
- * library license wherever the pane logo is off (§B12.6 — ONE ruling, both
- * halves).
+ * platform-locale time. No vendor attribution renders anywhere — the owner's
+ * explicit, informed decision, recorded in §B12.6.
  */
 import { useEffect, useRef, useState } from "react";
 import type { IChartApi, ISeriesApi, UTCTimestamp } from "lightweight-charts";
@@ -71,9 +70,9 @@ export function MarketCurve({
           textColor: ink("--text-subtle"),
           fontFamily: tokRaw("--font-mono"),
           fontSize: Math.round(parseFloat(tokRaw("--type-micro"))) || undefined,
-          // §B12.6: the pane logo is OFF and the visible TradingView credit in
-          // the footer stands in for it — removing that credit without
-          // restoring the logo breaches the library license.
+          // §B12.6: NO vendor attribution anywhere — the owner's explicit,
+          // informed decision (the README's attribution request was flagged by
+          // the judge panel and expressly declined by Ali, 2026-09-04).
           attributionLogo: false,
         },
         grid: {
@@ -167,15 +166,9 @@ export function MarketCurve({
       <div role="img" aria-label={labels.chartAria} className="relative" style={{ height }}>
         <div ref={wrapRef} className="absolute inset-0" />
       </div>
-      <p className="mt-1 mb-0 text-right font-mono text-body-sm text-text-faint">
-        {/* §B12.6 — the license's user-visible attribution, standing in for the
-            pane logo. Removing it without restoring the logo breaches the
-            library license. */}
-        <a href="https://www.tradingview.com" target="_blank" rel="noopener noreferrer"
-           className="underline underline-offset-2 hover:text-text-muted" style={{ color: "inherit" }}>
-          TradingView
-        </a>
-      </p>
+      {/* No vendor attribution by the owner's explicit, informed decision —
+          §B12.6 records it (the library README's attribution request was
+          reviewed and declined by Ali, 2026-09-04). */}
     </div>
   );
 }
