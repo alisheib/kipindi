@@ -1083,7 +1083,13 @@ export async function getAssetTerminalSeries(
   // The bucket rung: smallest that holds READS_PER_CANDLE median gaps. A
   // cadence too slow for the window's largest sensible rung → line.
   const bucketMs = (BUCKET_RUNGS_MIN.map((m) => m * 60_000).find((b) => b >= READS_PER_CANDLE * medianDeltaMs) ?? Infinity);
-  if (!Number.isFinite(bucketMs) || bucketMs > cfg.windowMs / 6) {
+  // The window must FIT enough buckets: six on "auto" (a candle chart of five is
+  // a thin claim to make silently), but an EXPLICIT request already owns the
+  // form, so the fit bar is MIN_EXPLICIT_CANDLES — measured live: at the real
+  // 3-min cadence, 1H+Candles honestly yields four 15-min candles and was being
+  // refused by the auto bar (full usage of data, Ali's ruling).
+  const fitDivisor = style === "candles" ? MIN_EXPLICIT_CANDLES : 6;
+  if (!Number.isFinite(bucketMs) || bucketMs > cfg.windowMs / fitDivisor) {
     return {
       series: lineFrom(reads),
       ...base,

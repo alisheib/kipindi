@@ -207,11 +207,17 @@ console.log("\n§10 · the style toggle's contract — the player owns the form,
   const r3 = await getAssetTerminalSeries("tst", "4H", "candles");
   ok("10.3 explicit candles on a thin window → line + candlesUnavailable",
      r3!.series.mode === "line" && r3!.candlesUnavailable === true);
-  // "candles" can reach a SHORT window the auto rule never candles (1H at
-  // per-minute cadence has 12 honest 5-min buckets) — full usage of the data.
+  // "candles" can reach a SHORT window the auto rule never candles — full
+  // usage of the data, at BOTH cadences: per-minute (12 honest 5-min buckets)
+  // and the REAL 6-min spacing (1H fits four 30-min-rung… no — 1H at 6-min
+  // yields a 30-min rung > 1H/3, honestly refused; the per-minute case is the
+  // unlock, the 6-min case must still say why).
   const r4 = await getAssetTerminalSeries("tsm", "1H", "candles");
   ok("10.4 explicit candles unlocks an auto-line window when the data honestly allows",
      r4!.series.mode === "candles", r4!.series.mode);
+  const r5 = await getAssetTerminalSeries("tsl", "1H", "candles");
+  ok("10.5 explicit candles at a cadence too slow for the window still answers line + the reason",
+     r5!.series.mode === "line" && r5!.candlesUnavailable === true);
 }
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);
