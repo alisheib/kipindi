@@ -231,9 +231,13 @@ export function TerminalChart({
           // Axis type from the LADDER (canvas needs a number): the stylesheet's
           // --type-micro rung, parsed off the same token the CSS reads.
           fontSize: Math.round(parseFloat(tokRaw("--type-micro"))) || undefined,
-          // The library license asks for attribution available to users; the
-          // built-in pane link satisfies it (README §License). Ruled in §B12.
-          attributionLogo: true,
+          // Ali's final ruling (2026-09-04): the pane logo is OFF — and the
+          // license's user-visible attribution requirement is satisfied INSTEAD
+          // by the named TradingView credit link in this chart's own receipt
+          // footer (rendered below, wherever the chart is). §B12.6 records both
+          // halves; removing the credit without restoring the logo would breach
+          // the license.
+          attributionLogo: false,
         },
         grid: {
           vertLines: { color: grid, style: lib.LineStyle.Dotted },
@@ -514,6 +518,15 @@ export function TerminalChart({
       {feed && (
         <p className="mt-1 mb-0 text-right font-mono text-body-sm" style={{ color: feed.liveStale ? "var(--no-300)" : "var(--text-faint)" }}>
           {receipt}
+          {/* The license's user-visible attribution, standing in for the pane
+              logo Ali turned off (§B12.6) — a proper noun, no i18n. Removing
+              this without restoring the logo breaches the library license. */}
+          {" · "}
+          <a href="https://www.tradingview.com" target="_blank" rel="noopener noreferrer"
+             className="underline underline-offset-2 hover:text-text-muted"
+             style={{ color: "inherit" }}>
+            TradingView
+          </a>
         </p>
       )}
     </div>

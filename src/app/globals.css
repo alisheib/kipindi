@@ -2949,15 +2949,6 @@ textarea::placeholder { color: var(--text-subtle); }
    The selected range is now `--pill-active`, the same token every selected filter pill in the
    product uses — one fill, one meaning. */
 .pchart-ranges { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--r-pill); background: var(--bg-overlay); border: 1px solid var(--border); }
-/* CHART-SPRINT-2 · the terminal's 8-pill rail (the sealed ladder + Round) must
-   fit 360 whole — measured: the Round pill clipped mid-glyph, unreachable under
-   the page's overflow-x clip (re-sign panel, visual lens). Tighter pill padding
-   under 400px reclaims ~30px; every other rail user (4 pills, 2 pills) simply
-   breathes easier. The hit-area pseudo-element is untouched. */
-@media (max-width: 400px) {
-  .pchart-ranges { gap: 1px; }
-  .pchart-range { padding: 4px 8px; }
-}
 .pchart-range {
   appearance: none; border: none; background: transparent; cursor: pointer;
   font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
@@ -2986,6 +2977,16 @@ textarea::placeholder { color: var(--text-subtle); }
   min-height: 44px;
 }
 .pchart-range.is-active { color: var(--text); background: var(--pill-active); }
+/* CHART-SPRINT-2 · the terminal's 8-pill rail (the sealed ladder + Round) must
+   fit 360 whole. ⛔ BELOW the base .pchart-range rule ON PURPOSE: the first
+   landing of this fix sat ABOVE it and was DEAD CSS by source order — the
+   final-scoring judge measured the live rect (rail 371px in a 360 viewport,
+   the Round pill sheared 8px) to prove the padding never applied. Equal
+   specificity: order IS the mechanism. Hit-area pseudo untouched. */
+@media (max-width: 400px) {
+  .pchart-ranges { gap: 1px; }
+  .pchart-range { padding: 4px 8px; }
+}
 .pchart-range:not(.is-active):hover { color: var(--text); background: var(--bg-overlay); }
 
 @media (prefers-reduced-motion: reduce) {
