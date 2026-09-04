@@ -64,6 +64,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   // used to release BOTH on any stack change, so a burst of arrivals silently re-armed the
   // real timer under a toast the player was hovering, with its progress bar still frozen.
   const userPausedRef = React.useRef(new Set<string>());
+  // Which toasts have already been punctuated. A toast is buzzed ONCE, at the moment it is
+  // first painted — not when it arrives, and never twice if it is held and released again.
+  const punctuatedRef = React.useRef(new Set<string>());
 
   const remove = React.useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -72,6 +75,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     if (tm) { clearTimeout(tm); timersRef.current.delete(id); }
     metaRef.current.delete(id);
     userPausedRef.current.delete(id);
+    punctuatedRef.current.delete(id);
   }, []);
 
   // Two-phase dismiss: mark exiting (plays the 200ms slide/fade-out) then remove,
@@ -123,39 +127,38 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
    * i.e. the one that must least of all behave differently.
    */
   const present = React.useCallback((next: Toast) => {
-    setToasts((prev) => {
-      const merged = [...prev, next];
-      // Flood guard: when more than MAX_VISIBLE pile up, drop the oldest — and
-      // CLEAR their pending dismiss timers so a sliced-off toast can't fire a
-      // late no-op setState (orphan timers were the only leak under rapid bursts).
-      if (merged.length > MAX_VISIBLE) {
-        for (const d of merged.slice(0, merged.length - MAX_VISIBLE)) {
-          const tm = timersRef.current.get(d.id);
-          if (tm) { clearTimeout(tm); timersRef.current.delete(d.id); }
-          metaRef.current.delete(d.id);
-          userPausedRef.current.delete(d.id);
-        }
-        return merged.slice(-MAX_VISIBLE);
-      }
-      return merged;
-    });
-    // Haptic punctuation, matched to the toast's meaning. Every one of these marks a
-    // real event landing — the kit's physical-only rule. `gold` takes `success` (money
-    // settled), never the `celebrate` flourish: a reward buzz is reinforcement, which
-    // the rule forbids. Routine `default` toasts stay silent.
+    setToasts((prev) => [...prev, next]);
+    // Sticky (durationMs 0): no countdown at all — dismiss is the user's act.
+    // ⭐ For everything else the dwell is BANKED here and ARMED when the toast is actually
+    // painted (the overflow effect below). Arming on arrival is what let a queued toast
+    // burn its 8 seconds off-screen and expire the moment it appeared.
+    if (next.durationMs! > 0) {
+      metaRef.current.set(next.id, { remaining: next.durationMs!, start: Date.now() });
+    }
+  }, []);
+
+  /* Haptic punctuation, matched to the toast's meaning. Every one of these marks a
+   * real event landing — the kit's physical-only rule. `gold` takes `success` (money
+   * settled), never the `celebrate` flourish: a reward buzz is reinforcement, which
+   * the rule forbids. Routine `default` toasts stay silent.
+   *
+   * ⭐ FIRED WHEN THE TOAST IS PAINTED, NOT WHEN IT ARRIVES. It used to buzz once per
+   * arrival — including for the toasts the flood guard was about to destroy, and for toasts
+   * held behind a result modal by §F1. A buzz for something the player cannot see is a signal
+   * about nothing, which is §F5 read from the other end.
+   *
+   * ⛔ NO SECOND THROTTLE HERE. `haptics` already rate-limits to 40ms (§H.3), so simultaneous
+   * arrivals collapse into one buzz on the handset. A throttle in this file would be that rule
+   * written twice.
+   */
+  const punctuate = React.useCallback((next: Toast) => {
     switch (next.variant) {
       case "gold":    haptics.success(); break;
       case "success": haptics.success(); break;
       case "warning": haptics.warning(); break;
       case "danger":  haptics.error(); break;
     }
-    // Sticky (durationMs 0): no countdown at all — dismiss is the user's act.
-    if (next.durationMs! > 0) {
-      metaRef.current.set(next.id, { remaining: next.durationMs!, start: Date.now() });
-      const tm = setTimeout(() => dismiss(next.id), next.durationMs);
-      timersRef.current.set(next.id, tm);
-    }
-  }, [dismiss]);
+  }, []);
 
   /* ── §F1 · WHILE A RESULT MODAL IS UP, THE SECONDARY SIGNAL WAITS ITS TURN ──────────────
    *
@@ -229,6 +232,40 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     prevModalOpenRef.current = resultModalOpen;
   }, [resultModalOpen, toasts, pause, resume]);
 
+  /* ── OVERFLOW IS A VIEWPORT CONCERN, EXACTLY AS §F1's HOLD IS ───────────────────────────
+   *
+   * 🔴 THE FLOOD GUARD USED TO DESTROY. Past MAX_VISIBLE it sliced the oldest toasts out of
+   * the stack and cleared their timers, so they never rendered a frame — while their CALLERS
+   * had already been told they were delivered. `notify-poller` marked each settled position
+   * announced in sessionStorage and pruned its market from the localStorage watch list in the
+   * same pass, so a player returning to eight settled positions was told about four of them,
+   * ever, across reloads and across sessions. A money announcement is not a decoration.
+   *
+   * ⭐ SO OVERFLOW IS HELD, NOT DROPPED — the same construction §F1 already uses and states in
+   * as many words: the toast never leaves `toasts`, it simply is not painted yet, and its
+   * countdown is not running while it is unseen. The viewport paints the first MAX_VISIBLE; as
+   * each one leaves, the next is painted and gets its FULL dwell from that moment. ⛔ Nothing
+   * is queued elsewhere — a side queue is a second place a money-path refusal can be dropped
+   * from, which is the very thing 10.5 pins.
+   *
+   * ⛔ AND A STICKY FAILURE CAN NO LONGER BE EVICTED. `durationMs: 0` was exempt from the
+   * timer and NOT from the slice, so a refusal fired just before a burst was destroyed unread —
+   * the exact opposite of what a sticky toast is for.
+   *
+   * ⚠️ IT RUNS AFTER THE §F1 EFFECT ON PURPOSE. That one releases every countdown on the
+   * modal's falling edge, overflow included; this one has the last word and re-holds the
+   * toasts that are still off-screen.
+   */
+  React.useEffect(() => {
+    const visible = new Set(toasts.slice(0, MAX_VISIBLE).map((x) => x.id));
+    for (const x of toasts) {
+      if (!visible.has(x.id)) { pause(x.id); continue; }
+      if (resultModalOpen) continue;
+      if (!punctuatedRef.current.has(x.id)) { punctuatedRef.current.add(x.id); punctuate(x); }
+      if (!userPausedRef.current.has(x.id)) resume(x.id);
+    }
+  }, [toasts, resultModalOpen, pause, resume, punctuate]);
+
   const toast = React.useCallback((input: ToastInput) => {
     const id = `t_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const next: Toast = {
@@ -246,11 +283,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     const timers = timersRef.current;
     const meta = metaRef.current;
     const userPaused = userPausedRef.current;
+    const punctuated = punctuatedRef.current;
     return () => {
       for (const tm of timers.values()) clearTimeout(tm);
       timers.clear();
       meta.clear();
       userPaused.clear();
+      punctuated.clear();
     };
   }, []);
 
@@ -416,7 +455,11 @@ function ToastViewport({ toasts, exiting, held, onDismiss, onPause, onResume }: 
       aria-label={t.common.notifications}
       className="pointer-events-none fixed inset-x-0 top-0 z-[1800] flex flex-col items-center gap-2 px-3 pt-3 sm:inset-x-auto sm:right-4 sm:top-4 sm:items-end sm:pt-0"
     >
-      {toasts.map((t) => (
+      {/* ⛔ THE WINDOW, NOT THE STACK. `toasts` holds every live toast — overflow included —
+          and the provider's overflow effect keeps the ones past this window paused and unbuzzed.
+          Slicing HERE rather than in the store is what makes "nothing is dropped" true by
+          construction instead of by promise. */}
+      {toasts.slice(0, MAX_VISIBLE).map((t) => (
         <ToastItem
           key={t.id}
           toast={t}
@@ -554,10 +597,15 @@ function ToastItem({ toast, exiting, onDismiss, onPause, onResume }: { toast: To
       {/* Countdown hairline — a sticky toast has no countdown, so no bar. */}
       {!sticky && (
         <div className="absolute inset-x-0 bottom-0 h-[3px] bg-border/30" aria-hidden>
+          {/* ⛔ THE CURVE AND THE DURATION LIVE IN `motion.css`, NOT HERE (§E rule 9). This
+              carried `animation: toast-bar ${ms} linear forwards` inline, which is a component
+              declaring both — and it is why the bar could not be given a reduced-motion answer:
+              an inline rule is unreachable from a stylesheet. Only the dwell crosses over, as a
+              custom property, because it is data rather than motion. */}
           <div
-            className={cn("h-full origin-left relative", v.bar)}
+            className={cn("h-full origin-left relative toast-countdown", v.bar)}
             style={{
-              animation: `toast-bar ${toast.durationMs}ms linear forwards`,
+              ["--toast-dwell" as string]: `${toast.durationMs}ms`,
               animationPlayState: paused ? "paused" : "running",
               boxShadow: "0 0 6px 0 currentColor",
             }}

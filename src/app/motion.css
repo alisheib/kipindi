@@ -314,6 +314,36 @@ html.kp-reduce-motion *, html.kp-reduce-motion *::before, html.kp-reduce-motion 
   .m-urgent           { animation: none !important; opacity: 1; }
 }
 
+/* ── THE TOAST COUNTDOWN — the one calm branch that corrects a FALSE STATEMENT ──
+   The hairline under a toast drains left-to-right over the toast's own dwell. The
+   keyframe is `toast-bar` (globals.css) — `scaleX(1) → scaleX(0)`, `forwards`.
+
+   🔴 UNDER EITHER HARD CLAMP ABOVE IT LIED — E-262. `animation-duration: .01ms
+   !important` finishes the drain in a single frame and `forwards` then HOLDS the empty
+   frame, so a reduced-motion player read "your time is up" under a toast the JS timer
+   was still holding for its full 4.5–8 seconds. Every other entry in this block calms a
+   decoration; this one withdraws a claim about time that was not true.
+
+   ⭐ THE RAIL STAYS FULL, IT IS NOT HIDDEN. Full says "this toast is still here", which
+   is true for as long as it is on screen. Empty said "expired". Hiding it would drop the
+   toast's bottom edge and say nothing at all — M6 asks the end frame to render, not to
+   vanish.
+
+   ⛔ NO ENTRY IN globals.css §6's `[data-motion="reduced"]` LIST. That gate is the
+   low-end-Android THROTTLE, and its list is of `infinite` loops — `test:reduce-motion`
+   2.1 scopes itself to those and 2.2 fails a dead selector. A single-shot countdown
+   costs that tier nothing and stays correct there; switching it off would recreate this
+   very defect on the devices most of our players use.
+   ⛔ The duration is NOT declared here: it arrives as `--toast-dwell` from the toast's own
+   `durationMs`, because it is data. The curve and the keyframe are motion, so they are. */
+.toast-countdown { animation: toast-bar var(--toast-dwell) linear forwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  .toast-countdown  { animation: none !important; transform: scaleX(1); }
+}
+html.kp-reduce-motion .toast-countdown,
+[data-motion="minimal"] .toast-countdown { animation: none !important; transform: scaleX(1); }
+
 
 /* ═══════════════════════════════════════════════════════════════════════════
    §C · THE MATERIAL UTILITIES — Claude Design, merged 2026-08-07 (ATOM C)

@@ -60,10 +60,30 @@ function readWatch(): string[] {
   }
 }
 
+/* 🔴 STORAGE IS A CONVENIENCE, NEVER A DEPENDENCY — E-261.
+ *
+ * `readSeen` used to answer an empty set whenever `sessionStorage` threw, and `writeSeen`
+ * silently dropped the write. In a browser that blocks storage — Chrome set to block all
+ * cookies, and several in-app webviews, which is the exact class `reality-check.tsx` was
+ * hardened for after an unguarded touch took the whole signed-in app to the error page —
+ * that meant the announced-set was empty on EVERY tick. At the 2s active cadence a player
+ * with settled positions was shown the same win celebration and the same loss toasts every
+ * two seconds, indefinitely, with no way to stop it but closing the tab.
+ *
+ * ⛔ The memory Map is not a cache of the storage — it is the primary, and storage is the
+ * copy that survives a reload. Written in that order so a throw on the way out cannot lose
+ * the fact that we already announced. Shape copied deliberately from `reality-check.tsx:40-53`
+ * rather than re-invented; there is one right answer here and it is already written down. */
+const memSeen = new Map<string, string>();
+
 function readSeen(): Set<string> {
+  let raw: string | null = null;
   try {
-    const raw = sessionStorage.getItem(SEEN_KEY);
-    if (!raw) return new Set();
+    raw = sessionStorage.getItem(SEEN_KEY);
+  } catch { /* storage blocked — fall through to memory */ }
+  if (raw === null) raw = memSeen.get(SEEN_KEY) ?? null;
+  if (!raw) return new Set();
+  try {
     const v = JSON.parse(raw);
     return new Set(Array.isArray(v) ? v : []);
   } catch {
@@ -72,10 +92,12 @@ function readSeen(): Set<string> {
 }
 
 function writeSeen(s: Set<string>) {
+  const raw = JSON.stringify(Array.from(s));
+  memSeen.set(SEEN_KEY, raw);
   try {
-    sessionStorage.setItem(SEEN_KEY, JSON.stringify(Array.from(s)));
+    sessionStorage.setItem(SEEN_KEY, raw);
   } catch {
-    /* private browsing */
+    /* private browsing — memory already holds it, so the re-announce storm cannot start */
   }
 }
 
@@ -169,8 +191,6 @@ export function NotifyPoller() {
 
             for (const p of pj.positions ?? []) {
               if (seen.has(p.positionId)) continue;
-              seen.add(p.positionId);
-              added = true;
 
               const label = p.title || adjudicated.find((a) => a.marketId === p.marketId)?.titleEn || "";
 
@@ -206,6 +226,19 @@ export function NotifyPoller() {
                   durationMs: DWELL_RESULT_MS,
                 });
               }
+
+              // 🔴 ANNOUNCE FIRST, THEN MARK — E-259. These two lines used to sit at the TOP of
+              // the loop, so a position was recorded as announced before anything had been
+              // shown. When the toast layer's flood guard still DESTROYED everything past four,
+              // a return with eight settled positions marked all eight seen, pruned all eight
+              // markets from the localStorage watch list, and painted four. The other four were
+              // unrecoverable — sessionStorage said announced, and the watch list that would
+              // have re-fetched them was already gone.
+              // ⛔ The toast layer no longer drops (see `present` / the overflow effect), so this
+              // ordering is belt AND braces: nothing may claim delivery it did not perform, and
+              // a throw above leaves the row unmarked to be retried on the next tick.
+              seen.add(p.positionId);
+              added = true;
 
               // A browser notification only for money that MOVED, and only once.
               if (typeof Notification !== "undefined" && Notification.permission === "granted") {

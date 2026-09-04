@@ -35,6 +35,7 @@ import { FiftyMark } from "@/components/brand";
 import { haptics } from "@/lib/haptics";
 import { acknowledgeNeedle } from "@/lib/needle-bridge";
 import { DWELL_CELEBRATION_MS } from "@/lib/feedback-timing";
+import { useResultModalPresence } from "@/lib/result-modal-presence";
 import { useT } from "@/lib/i18n";
 import { formatNumber, formatTzs } from "@/lib/utils";
 
@@ -124,6 +125,21 @@ export function WinCelebrationHost() {
   const [open, setOpen] = useState(false);
   const [payload, setPayload] = useState<WinCelebrationPayload | null>(null);
   const [struck, setStruck] = useState(false);
+
+  /* 🔴 §F1 · THE SEAL IS A RESULT POPUP AND MUST COUNT AS ONE — E-260.
+   *
+   * This host mounts a `Modal` but was the one result surface that never registered its
+   * presence, so the toast stand-down simply did not apply to it. The toast viewport is
+   * `z-[1800]` and this seal is `zIndex={1700}` — deliberately, because a failure fired during
+   * a CONFIRM dialog must stay readable — so a mixed settlement painted up to four `factual`
+   * loss toasts directly over a player's win celebration, at the top of a 360px screen, for the
+   * seal's whole 7-second dwell.
+   *
+   * ⛔ The fix is presence, not stacking: registering here holds the secondary signal until the
+   * seal is dismissed, and the held toasts then get their FULL dwell (§F1). No z-index moves —
+   * 10.3 pins that, and the confirm-dialog case it protects is unrelated to this one. */
+  useResultModalPresence(open);
+
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Focus lands on the primary CTA, not the demoted ✕ — the spec's copy law says
   // the close control "rings only on focus-visible", and letting the Modal's

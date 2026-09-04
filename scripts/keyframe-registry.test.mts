@@ -259,10 +259,17 @@ for (const r of unplayable) {
  */
 const JSX_PINS: { file: string; name: string; why: string }[] = [
   { file: "src/components/ui/spinner.tsx", name: "spin", why: "every SubmitButton on the platform" },
-  { file: "src/components/ui/toast.tsx", name: "toast-bar", why: "the countdown hairline under every toast" },
   { file: "src/components/markets/operation-result-modal.tsx", name: "orm-pop", why: "every money confirmation's crest" },
   // `date-select.tsx::cd-rise` LEFT THIS LIST on 2026-08-21 — the site moved onto the kit
   // class `.m-dialog-in`, which is what a pin leaving is supposed to look like.
+  //
+  // `toast.tsx::toast-bar` LEFT IT on 2026-09-04, the same way and for a reason this file
+  // will appreciate: as an INLINE style the countdown was ungateable, so both reduced-motion
+  // clamps zeroed it and `forwards` held the EMPTY frame — the hairline read "your time is
+  // up" under a toast the JS timer was still holding for its full 4.5–8 seconds (E-262). It
+  // now rides `.toast-countdown`, declared in `motion.css`, which is what lets a stylesheet
+  // give it a calm state at all; only `--toast-dwell` stays inline, because a dwell is data.
+  // 2.2 sees it as a CSS consumer from here on, which is the stronger half of this registry.
 ];
 const missedPins = JSX_PINS.filter((p) => !jsxAnims.some((a) => a.file === p.file && a.name === p.name));
 say(missedPins.length === 0, `2.3 ⭐ the JSX inline-style reader still finds all ${JSX_PINS.length} pinned sites (a reader that matches nothing passes everything)`);

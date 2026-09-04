@@ -438,8 +438,19 @@ for (const k of staleKept) console.log(`         "${k.sel}" no longer names an i
  */
 const JSX_PINS: { file: string; name: string; why: string }[] = [
   { file: "src/components/ui/spinner.tsx", name: "spin", why: "the one inline loop we keep — see JSX_KEPT" },
-  { file: "src/components/ui/toast.tsx", name: "toast-bar", why: "one-shot: the countdown hairline under every toast" },
   { file: "src/components/markets/operation-result-modal.tsx", name: "orm-pop", why: "one-shot: every money confirmation's crest" },
+  // ⛔ `toast.tsx` / `toast-bar` WAS PINNED HERE AND IS DELETED, 2026-09-04 — the same
+  // prescription this check's own failure message gives, and the same move `cd-rise` made
+  // below.
+  //
+  // It moved onto `.toast-countdown`, and the reason is this rule's own subject. As an
+  // INLINE style the countdown was ungateable, so both hard clamps zeroed it and `forwards`
+  // held the EMPTY frame: a reduced-motion player read "your time is up" under a toast the
+  // JS timer was still holding for its full 4.5–8 seconds (E-262). A class is gateable, so
+  // `motion.css` can now say what the calm state should be — the rail stays FULL, which is
+  // true — and the duration crosses over as `--toast-dwell`, which is data, not motion.
+  // Keeping the pin would hold this guard permanently red to commemorate a defect it
+  // existed to find.
   // ⛔ `date-select.tsx` / `cd-rise` WAS PINNED HERE AND IS DELETED, 2026-08-22, exactly as
   // this check's own failure message prescribes: *"if it moved onto a class, DELETE this pin."*
   //
