@@ -70,12 +70,41 @@ export function UpDownBoardTabs({
     startTransition(() => router.push(hrefTarget));
   };
 
-  // Optimistic `aria-current`: the chip moves the moment the tap lands, off the
-  // pending href — the board follows when the data does.
+  /* Optimistic `aria-current`: the chip moves the moment the tap lands, off the
+     pending href — the board follows when the data does.
+
+     🔴 UD-13d (2026-09-05) · AND THE OPTIMISM USED TO OUTLIVE THE TRANSITION, WHICH MADE THE
+     RAIL LIE ABOUT THE BOARD PERMANENTLY. `pendingHref` was set on every click and cleared by
+     nothing, so `pendingHref != null` won for the rest of the page's life. Tapping an ASSET
+     navigates to `?asset=ETH`, which is equal to no duration href at all, so every duration
+     chip read OFF — for ever, not for a frame.
+
+     ⭐ MEASURED ON PRODUCTION, the same URL reached two ways:
+       · direct load `/updown?asset=ETH` → trigger `Ethereum · 5 min`, rail `[5 min]`
+       · TAP `Ethereum` on the board     → trigger `Ethereum · Duration`, rail: nothing on
+       · reload                          → correct again
+     The board was filtered to the 5-minute round while its own control said no duration was
+     chosen. ⛔ That is a false statement about what a player is betting on, and it survived
+     because a bounding box, a screenshot and every source-grepping guard all agree with it.
+
+     ⭐ THE FIX IS TO TIE THE OPTIMISM TO THE TRANSITION THAT OWNS IT — `isPending` — rather
+     than to clear the state in an effect. A `useEffect` would clear it one render LATE and
+     flash the true state through; deriving it means the optimistic answer simply stops
+     existing the moment React commits the new board, which is the same instant the props
+     become right. There is no window in which both are wrong.
+
+     ⚠️ AND THE PENDING HREF IS PARSED, NOT SUBSTRING-MATCHED. `includes("asset=" + key)` was
+     true for any key that is a PREFIX of another (`BTC` inside a future `BTCX`), and it could
+     match the `d=` segment of a different parameter. `URLSearchParams` answers the question
+     that was actually being asked.
+     ⚠️ An asset-only href carries no `d`, so while it is in flight the duration keeps showing
+     the one the board is still on — the best available knowledge, and true a moment later in
+     the overwhelming majority of cases. Never "none", which is true in none of them. */
+  const pending = isPending && pendingHref != null ? new URLSearchParams(pendingHref.split("?")[1] ?? "") : null;
   const assetOn = (tab: BoardTab) =>
-    pendingHref != null ? pendingHref.includes(`asset=${tab.key}`) : tab.key === activeAssetKey;
+    pending != null ? pending.get("asset") === tab.key : tab.key === activeAssetKey;
   const durationOn = (t: { d: number; href: string }) =>
-    pendingHref != null ? pendingHref === t.href : t.d === activeDuration;
+    pending != null && pending.has("d") ? Number(pending.get("d")) === t.d : t.d === activeDuration;
 
   /* ── UD-13b · WHAT THE PHONE SHOWS INSTEAD ────────────────────────────────────────────
      🔴 THE DEFECT, MEASURED ON PRODUCTION 2026-08-25 BEFORE ANY CODE MOVED. At 360 and 414

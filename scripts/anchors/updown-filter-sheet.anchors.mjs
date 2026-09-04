@@ -52,6 +52,25 @@ export const MUTATIONS = [
     expect: "2: ⭐ the trigger label is composed from the active ASSET and the active DURATION",
   },
   {
+    // ⭐ THE UD-13d POSITIVE CONTROL — the defect exactly as it shipped.
+    name: "optimism-outlives-the-transition",
+    why: "🔴 the optimistic on-state stops being scoped to `isPending`, so `pendingHref` — which nothing clears — wins for the rest of the page's life. Tapping an ASSET goes to `?asset=ETH`, which equals no duration href, so every duration chip reads OFF permanently: the board is filtered to the 5-minute round while its own control says no duration is chosen. MEASURED on production: the same URL reached by tap said `Ethereum · Duration` and by direct load said `Ethereum · 5 min`",
+    file: TABS,
+    suite: "updown-filter-sheet",
+    from: "  const pending = isPending && pendingHref != null ? new URLSearchParams(pendingHref.split(\"?\")[1] ?? \"\") : null;",
+    to: "  const pending = pendingHref != null ? new URLSearchParams(pendingHref.split(\"?\")[1] ?? \"\") : null;",
+    expect: "9: 🔴 the optimistic on-state is scoped to `isPending`, so it cannot outlive the navigation",
+  },
+  {
+    name: "duration-falls-to-none-while-pending",
+    why: "the other half: a pending href with no `d` stops falling through to the REAL active duration and reports NONE selected instead. This is the visible symptom — the rail empties on every asset tap — while the asset half still looks perfect",
+    file: TABS,
+    suite: "updown-filter-sheet",
+    from: '    pending != null && pending.has("d") ? Number(pending.get("d")) === t.d : t.d === activeDuration;',
+    to: '    pending != null ? Number(pending.get("d")) === t.d : t.d === activeDuration;',
+    expect: "9: ⛔ …and a pending href with no `d` falls through to the real active duration",
+  },
+  {
     name: "split-at-lg",
     why: "⭐ the disclosure widens from `sm` to `lg`, which reads like more of a good thing. It removes working controls from tablets, where BOTH rails measured a single clean 44px row — the defect had a band and the fix has to have the same one",
     file: TABS,

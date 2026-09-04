@@ -208,5 +208,45 @@ const { dict } = await import("../src/lib/i18n-dict.ts");
      /padding:[^;]*env\(safe-area-inset-bottom/.test(decls), decls.trim());
 }
 
+// ── 9 · 🔴 THE OPTIMISM MUST NOT OUTLIVE THE TRANSITION THAT OWNS IT ──
+/**
+ * 🔴 UD-13d, MEASURED ON PRODUCTION 2026-09-05 — the same URL reached two ways disagreed,
+ * permanently. `pendingHref` was set on every click and cleared by NOTHING, so the optimistic
+ * branch won for the rest of the page's life. Tapping an asset navigates to `?asset=ETH`,
+ * which equals no duration href, so every duration chip read OFF for ever:
+ *
+ *   direct load /updown?asset=ETH  →  `Ethereum · 5 min`,  rail `[5 min]`
+ *   TAP `Ethereum` on the board    →  `Ethereum · Duration`, rail: nothing selected
+ *   reload                         →  correct again
+ *
+ * ⛔ The board was filtered to the 5-minute round while its own control said no duration was
+ * chosen — a false statement about what a player is betting on. §2 stayed green throughout,
+ * because §2 asks what the trigger is COMPOSED FROM, not whether the answer is true.
+ * ⚠️ It is the same family as every other finding in this file: visible, correctly laid out,
+ * correctly translated, and wrong — invisible to a screenshot and to a bounding box.
+ */
+{
+  ok("9: 🔴 the optimistic on-state is scoped to `isPending`, so it cannot outlive the navigation",
+     /const pending = isPending && pendingHref != null/.test(tabs));
+  /* ⚠️ WRITTEN AS A COUNT, NOT AS AN ABSENCE, because the CORRECT line contains the defect's
+     own substring (`isPending && pendingHref != null ?`). The first draft of this assertion
+     was `!/pendingHref != null \?/` and it failed on the fix — a guard that cannot tell the
+     repair from the disease. Every reference must be the scoped one. */
+  const refs = (tabs.match(/pendingHref != null/g) ?? []).length;
+  const scoped = (tabs.match(/isPending && pendingHref != null/g) ?? []).length;
+  ok("9: ⛔ …and EVERY `pendingHref != null` reference is the `isPending`-scoped one",
+     refs > 0 && refs === scoped, `${scoped} scoped of ${refs}`);
+  // ⚠️ A substring match is true for any key that is a PREFIX of another, and can hit the
+  // wrong parameter entirely. The pending href is a URL; parse it.
+  ok("9: ⚠️ the pending href is PARSED, never substring-matched",
+     !/pendingHref\.includes\(/.test(tabs) && /new URLSearchParams\(pendingHref/.test(tabs));
+  ok("9: …the asset is compared against the parsed `asset` param",
+     /pending\.get\("asset"\) === tab\.key/.test(tabs));
+  // ⛔ An asset-only href carries no `d`. The duration must then fall through to the REAL
+  // active duration, never to "none" — which is the exact shape of the defect.
+  ok("9: ⛔ …and a pending href with no `d` falls through to the real active duration",
+     /pending != null && pending\.has\("d"\)/.test(tabs) && /: t\.d === activeDuration/.test(tabs));
+}
+
 console.log(`\nupdown-filter-sheet: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

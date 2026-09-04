@@ -26,6 +26,7 @@ import { cpSync, mkdtempSync, readFileSync, writeFileSync, rmSync, mkdirSync } f
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { MUTATIONS } from "./anchors/css-vars-defined.anchors.mjs";
 
 const GATE = "scripts/css-vars-defined.test.mts";
 const REAL = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
@@ -54,43 +55,11 @@ console.log("precondition: gate is GREEN on the untouched tree\n");
 const CSS = "src/app/globals.css";
 const ANCHOR = ".kp-fsheet-panel {";
 
-/** @type {{name:string, why:string, expect:"red"|"green", from:string, to:string, match?:string}[]} */
-const CASES = [
-  {
-    name: "gutter-restored",
-    why: "⭐ POSITIVE CONTROL · the real defect, put back verbatim: the sheet's padding references `--gutter`, which is defined nowhere, so the whole shorthand is invalid at computed-value time and every side computes to 0",
-    expect: "red",
-    match: "--gutter",
-    from: "  padding: var(--sp-3) var(--sp-5) calc(env(safe-area-inset-bottom, 0px) + var(--sp-4));",
-    to: "  padding: 10px var(--gutter) calc(env(safe-area-inset-bottom, 0px) + 14px);",
-  },
-  {
-    name: "typo-in-a-real-token",
-    why: "the commonest live shape of this bug: a token that EXISTS is referenced with one character wrong. `--sp-5` is defined; `--sp5` is not, and the declaration silently evaporates",
-    expect: "red",
-    match: "--sp5",
-    from: "  padding: var(--sp-3) var(--sp-5) calc(env(safe-area-inset-bottom, 0px) + var(--sp-4));",
-    to: "  padding: var(--sp-3) var(--sp5) calc(env(safe-area-inset-bottom, 0px) + var(--sp-4));",
-  },
-  {
-    name: "fallback-is-exempt",
-    why: "⭐ CONTROL, THE OTHER WAY · `var(--x, fallback)` cannot compute to nothing, so an undefined name WITH a fallback must stay green. A gate that reddens here would forbid every optional hook and would be switched off within a week",
-    expect: "green",
-    from: "  padding: var(--sp-3) var(--sp-5) calc(env(safe-area-inset-bottom, 0px) + var(--sp-4));",
-    to: "  padding: var(--sp-3) var(--kp-red-probe-absent, 20px) calc(env(safe-area-inset-bottom, 0px) + var(--sp-4));",
-  },
-  {
-    name: "undefined-inside-a-comment",
-    why: "⛔ CONTROL · this repo documents its traps in prose, and the gate's FIRST run reported `--royal-N` and `--x` from paragraphs explaining them. A reference that exists only inside a comment must NOT be reported, or the gate teaches people to delete their own documentation",
-    expect: "green",
-    /* ⚠️ `.kp-fsheet-grab {` and NOT `.kp-fsheet-panel {`: the latter occurs twice, once as
-       the rule and once inside the paragraph documenting the `--gutter` defect — which is the
-       very hazard this case is about. The harness refuses an ambiguous anchor rather than
-       silently mutating the first hit. */
-    from: ".kp-fsheet-grab {",
-    to: "/* a note mentioning var(--kp-red-probe-in-prose) which is not real code */\n.kp-fsheet-grab {",
-  },
-];
+/* ⛔ THE CASES ARE DATA, IN `scripts/anchors/css-vars-defined.anchors.mjs`, so
+   `test:red-anchors` can audit that every anchor still resolves exactly once WITHOUT
+   executing a harness that rewrites real source — and so this harness stops counting
+   against that suite's §4 ratchet. */
+const CASES = MUTATIONS;
 
 const tmpRoot = mkdtempSync(join(tmpdir(), "red-cssvars-"));
 let caught = 0;
@@ -118,13 +87,13 @@ for (const [i, c] of CASES.entries()) {
   const r = runGate(work);
   const wentRed = r.code === 1;
 
-  if (c.expect === "red") {
+  if (c.outcome === "red") {
     if (!wentRed) {
       problems.push(`${c.name}: stayed GREEN (exit ${r.code})`);
       console.log(`  ${i + 1}. NOT CAUGHT   ${c.name}`);
-    } else if (c.match && !r.out.includes(`FAIL ${c.match} is referenced but never defined`)) {
+    } else if (c.expect && !r.out.includes(`FAIL ${c.expect}`)) {
       const got = r.out.split("\n").filter((l) => l.startsWith("FAIL")).slice(0, 3).join(" | ");
-      problems.push(`${c.name}: red, but not on "${c.match}" — got ${got || "(no FAIL line)"}`);
+      problems.push(`${c.name}: red, but not on "${c.expect}" — got ${got || "(no FAIL line)"}`);
       console.log(`  ${i + 1}. WRONG REASON ${c.name}`);
     } else { caught++; console.log(`  ${i + 1}. caught       ${c.name}`); }
   } else {
