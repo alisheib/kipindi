@@ -487,18 +487,22 @@ been written down, which is exactly how the never-imported `Sparkline` came to c
      rose-below — carried whole into `MarketCurve`; git history holds the svg form).
    - **Reference ink** — gilt marks the line a chart is READ AGAINST (the 50% tipping line,
      break-even, the open price) and never a data series: a gold data line would claim
-     earnings the round has not decided (B4/Q5). ⭐ *Ruled 2026-09-04 (round 2):* the
-     probability chart's current-value flag and hover cross-dot also wear gilt — they STATE
-     the value read against the gilt tipping scale, part of the reference grammar, not a
-     data series. (Left unwritten, this shipped-before-the-law paint was a coin-flip
-     precedent — the never-imported-Sparkline failure shape.) ⚠️ Two reference-line stroke
-     dialects ship (pchart/pnl quiet: 1px · dash "2 5" · 0.55 · cap 0.14em/0.7 — updown
-     heavy: 1.25px · "3 4" · 0.75 · cap 0.12em/0.9). A recorded split, not a rule: a NEW
-     chart takes the quiet dialect unless its plot is as dense as the Up & Down pair's.
+     earnings the round has not decided (B4/Q5). ⭐ *Ruled 2026-09-04 (round 2), and its subject retired the SAME evening:* the svg
+     ProbabilityChart's gilt current-value flag + hover cross-dot were licensed as reference
+     grammar (they stated the value read against the gilt tipping scale) — hours later the
+     component itself was replaced by the engine `MarketCurve`, whose value tag wears SIDE
+     ink (green above the 50 baseline, rose below — the half-plane grammar). The ruling's
+     lesson outlives its subject: paint that the law neither licenses nor forbids gets
+     RULED, dated, or it becomes a coin-flip precedent (the never-imported-Sparkline shape).
+     ⚠️ Two reference-line stroke dialects ship in the remaining svg charts (pnl quiet:
+     1px · dash "2 5" · 0.55 · cap 0.14em/0.7 — updown-hero heavy: 1.25px · "3 4" · 0.75 ·
+     cap 0.12em/0.9). A recorded split, not a rule: a NEW svg chart takes the quiet dialect
+     unless its plot is as dense as the hero's; the ENGINE charts draw their own reference
+     lines (§B12.6's vendor tier) and are out of this dialect note's scope.
    - **Live ink** — aqua is the heartbeat: every MICRO spark (card, wallet, leaderboard) and
      the live end-point dot **on charts whose price path is not itself direction ink** (the
-     P&L walk, the probability line's finishing accent). ⭐ *Ruled 2026-09-04 (round 2), by
-     DOT ROLE:* a direction-ink price path (Up & Down board + detail) caps its own live dot
+     P&L walk — its aqua dot + halo). ⭐ *Ruled 2026-09-04 (round 2), by
+     DOT ROLE:* a direction-ink price path (the updown detail hero) caps its own live dot
      and value tag in the path's ink — that dot's job is "where the price is NOW on this
      path", not the heartbeat accent; two shipped answers existed and the law now picks the
      role split that ships (the D3 spec chose the direction dot deliberately, pre-§B12). A
