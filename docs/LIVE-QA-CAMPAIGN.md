@@ -5910,6 +5910,44 @@ state**, 1,338,504 of players' stakes in escrow, and every ledger entry ever wri
 > landing one atom per commit. Read the block directly below this note before touching
 > `src/app/globals.css`, `src/app/motion.css`, or anything under `src/components/ui/`.
 
+### 🟢 Session 84 (2026-09-05) — THE PHONE FILTER ON BUY & SELL: A DEAD TOKEN, A CONTROL NOBODY SAW, AND FOUR THINGS FOUND BY DRIVING IT
+
+#### ⏭️ **RESUME AT (session 85 · FILTER-UX is CLOSED — read the OPEN ITEM below before touching /updown navigation):** 🏁 **Ali asked for one thing — *"the responsive filter on buy and sell is ugly … users are reporting they are not noticing that there is a filter"* — and everything in this block came out of driving that one control rather than reading it.** 💰 **MONEY POSITION: NOT ONE SHILLING MOVED.** No schema, no migration, no server write, no money path anywhere in this programme. Seven findings, all LIVE on production and all verified there, not locally.
+
+**WHAT SHIPPED, AND WHERE IT IS**
+
+| # | Finding | What it was | State |
+|---|---|---|---|
+| 1 | **E-270** | `.kp-fsheet-panel` used `var(--gutter)`, **defined nowhere in the repo**, since the sheet's first commit. An unresolved `var()` is invalid at *computed-value time*, so `padding` fell back to `unset` = **0 on all four sides** — taking the top rung and the `env(safe-area-inset-bottom)` with it. Live 21 days. | ✅ LIVE |
+| 2 | **E-271** | The trigger named the selection correctly and players still could not see it was a control. Fixed by AFFORDANCE, not copy: `FilterSheet` gained an optional `value`, which switches the trigger to a full-width FIELD with a rotating caret. `/markets` keeps its pill and gained the caret. | ✅ LIVE |
+| 3 | **E-272** | `--gold-edge` / `--gold-soft` never existed either, so the **selected** payout-status option on `/admin/payments` had rendered with no selected styling since 2026-07-31. Found by the new gate on its first run. | ✅ LIVE |
+| 4 | **E-273** | `pendingHref` was cleared by nothing, so after any asset tap the duration rail read OFF **permanently**: the board was filtered to the 5-minute round while its own control said no duration was chosen. | ✅ LIVE |
+| 5 | **E-274** | The sheet rose over 340ms and then vanished in one frame. The exit is now the entrance played backwards (`reverse`, `--t-quick`, `--m-leave`), holding the attribute for `exitBeatMs` — now exported from `modal.tsx` so the three reduced-motion gates are decided once. | ✅ LIVE |
+| 6 | **E-275** | `router.push` with default scrolling, against a rule the repo had already written down and `/markets` already obeyed. Now `replace` + `scroll: false` on all four pill call sites. **History growth fixed and verified: two taps add 0 entries, and one Back leaves the board.** | ✅ LIVE (see OPEN ITEM) |
+| 7 | **E-276** | Ali's own report: signed out on a phone the header showed **only Sign up** — `a[href="/auth/login"]` measured **width 0** at 320/360/390/414. A returning player had no way into their account. Both actions now render at every width; `.kp-auth-cta` tightens the pair below `sm` so 320 fits. | ✅ LIVE |
+
+**⛔ THE ONE OPEN ITEM — DO NOT "FIX" IT WITHOUT READING THIS.** `/updown` filter taps still reset scroll to top. It is **pre-existing** (`router.push` always scrolled to top; E-275 fixed the history half, not this half) and it is **not** a regression from this programme. Measured, with a control: **`/markets` HOLDS scroll (450 → 450); `/updown` RESETS (450 → 0)** — and `window.scrollTo`, `scroll`, `scrollIntoView` and `scrollingElement.scrollTop` were all instrumented during the transition and fired **zero** times, while `document.scrollHeight` stayed constant at 1392. So nothing in our code scrolls; the browser does. ⭐ **The difference between the two boards is the MECHANISM**: `/markets` lets `<Link replace scroll={false}>` navigate, `/updown` intercepts the click and calls `router.replace`. ⚠️ **The obvious repair — drop the interception — is exactly what UD-13 exists to prevent**: plain `<Link>`s made the board fall to `loading.tsx`'s skeleton with the countdown restarting, which is why `go()` wraps navigation in `startTransition`. Anyone taking this on must prove the board still does NOT blank, at 390 and at 1280, before and after. ⛔ It is not a one-line change and it was deliberately not attempted at the end of a long session.
+
+**HOW TO VERIFY ANY OF IT, WITHOUT TRUSTING THIS DOCUMENT**
+
+| Step | Command | What it proves |
+|---|---|---|
+| 1 | `npm run test:updown-filter-sheet` | 50/0 · §7 affordance, §8 gutter, §9 optimism, §10 exit, §11 routing |
+| 2 | `npm run red:updown-filter-sheet` | 14/14 — every one of those sections goes RED on its own real defect |
+| 3 | `npm run test:css-vars-defined` | every `var()` in `src/` resolves; exits **2 = INCONCLUSIVE** on an empty scan |
+| 4 | `npm run red:css-vars-defined` | 5/5 — catches the real `--gutter` line, catches a typo, deliberately exempts `var(--x, fallback)`, ignores prose |
+| 5 | `npm run test:red-anchors` | 1209/0 · the §4 ratchet is back at **67/67** — the new harness declares its anchors as data rather than loosening the ceiling |
+| 6 | `npm run test:wallet-reach` | §4 now carries the OPPOSITE rule to the Deposit CTA's: that may yield below `sm`, **`Sign in` may not** |
+
+**⚠️ TRAPS THIS PROGRAMME PAID FOR — worth more than the fixes**
+
+- 🔴 **Reading the artefact is not enough when the artefact is a REFERENCE.** `qa:bundle-css` read `padding: 10px var(--gutter) …` in the shipped bundle and correctly reported the rule PRESENT. It was present. It computed to nothing. Only resolving the reference can see that — which is why `test:css-vars-defined` exists and why it is in `test:all`.
+- 🔴 **A guard can ask what a control is COMPOSED FROM and never whether the answer is TRUE.** §2 pinned that the trigger is built from both axes and stayed green for the whole life of E-273, while the rail told players no duration was selected on a board filtered to five minutes.
+- ⛔ **A guard whose first draft cannot tell the repair from the disease.** §9's second assertion was written as `!/pendingHref != null \?/` — which FAILS on the fix, because the correct line contains the defect's own substring. It is a count now.
+- ⚠️ **A comment can document its own refutation and still be acted on.** E-276's yield was justified by "the two pills do not fit at 360" in a paragraph that then recorded the hide had never applied, the control had been rendering at 91px, and it never overflowed. The 2026-08-25 repair made the hiding finally work — closing a door that had never been shut.
+- ⚠️ **One flaky-looking audit run was a HYDRATION race, not a defect.** Clicking the trigger before React attaches opens the sheet natively (correct — the `<details>` is the no-JS path) but leaves Escape and the scroll lock unwired for that instant. Re-run before believing it: measured 12 of 13 clean, then 59/59 three times consecutively.
+- ⛔ **`.kp-menu` may not appear in `filter-sheet.tsx`** — `test:filter-language` §5.3 keeps the desktop row's two menus countable. The sheet's caret is `.kp-fsheet-caret`, sharing ONE pair of declarations with `.kp-menu-caret` via a selector list.
+
 ### 🟢 Session 71 (2026-08-28) — 🔴 CI HAD NOT BEEN GREEN ONCE IN 200 RUNS, AND EVERY CLOSE-OUT GATE IN THIS DOCUMENT IS WHY
 
 #### ⏭️ **RESUME AT (session 84 · ✅ PRESENCE IS CLOSED — NOTHING PENDING):** 🏁 **ALI MARKED THIS PROGRAMME DONE ON 2026-09-04. There is no outstanding work in it, no owed verification, and no known defect. Do not re-open it looking for a loose end — read the ⓐ ruling at the foot of this block before concluding that the thirty-minute drive is one.** The next session should take its work from elsewhere; this block is kept as the record of what shipped and as the four harness traps nobody should pay for twice. 💰 **MONEY POSITION: NOT ONE SHILLING MOVED.** No schema, no migration, no server write, no money path. Every figure shown is read from a settled row and formatted with `formatTzs`.
