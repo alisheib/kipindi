@@ -39,12 +39,18 @@ export function ProbabilityChart({
   width: widthProp,
   height = 256,
   ranges = ["1D", "1W", "1M", "ALL"],
+  hideTitle = false,
 }: {
   series: Record<string, ProbPoint[]>;
   defaultRange?: string;
   width?: number;
   height?: number;
   ranges?: string[];
+  /** CHART-SPRINT E3 · when a framing surface already titles the chart (the
+   *  detail page's ChartToggle button says "YES probability over time"), the
+   *  internal eyebrow would print the same words twice on one panel — visible
+   *  the day the chart stopped being collapsed. The range rail stays. */
+  hideTitle?: boolean;
 }) {
   const { t } = useT();
   const uid = useId().replace(/:/g, "");
@@ -155,11 +161,13 @@ export function ProbabilityChart({
 
   return (
     <div ref={wrapRef} className={"pchart" + (hover != null ? " is-hover" : "")}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: hideTitle ? "flex-end" : "space-between", marginBottom: 10 }}>
+        {!hideTitle && (
         <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
           <SignalPip size={7} />
           <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--text-subtle)" }}>{t.market.probOverTime}</span>
         </div>
+        )}
         {/* 🔴 A5 (2026-08-21) — PRESSED BUTTONS, NOT AN ARIA TAB WIDGET. The range rail carried
             `role="tablist"`/`role="tab"`/`aria-selected` with no roving tabindex, no arrow keys
             and no `aria-controls`, i.e. a tab widget in name only.

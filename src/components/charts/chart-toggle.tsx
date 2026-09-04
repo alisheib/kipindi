@@ -78,6 +78,7 @@ export function ChartToggle({
               ranges={ranges}
               defaultRange={defaultRange}
               height={height}
+              hideTitle
             />
           </div>
         </div>
