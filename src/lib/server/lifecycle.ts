@@ -149,6 +149,26 @@ async function maybeRunRetention(): Promise<void> {
   }
 }
 
+// ── Backup watchdog — the alert that ARRIVES ────────────────────────────────
+// Once a day, same cadence discipline as retention. Runs inside the
+// leader-leased pass so exactly one container speaks, and re-arms on deploy
+// (module-local timer), which is the right bias: an unhealthy backup gets
+// re-announced after every deploy rather than staying silent. See
+// backup/watchdog.ts for why this exists (THE ELEVEN NIGHTS) and why it fires
+// on the ABSENCE of a good run rather than on a CI failure event.
+const BACKUP_WATCH_EVERY_MS = 24 * 60 * 60 * 1000;
+let lastBackupWatchAt = 0;
+
+async function maybeRunBackupWatchdog(): Promise<void> {
+  const now = Date.now();
+  if (now - tickerStartedAt < RETENTION_BOOT_GRACE_MS) return;
+  if (now - lastBackupWatchAt < BACKUP_WATCH_EVERY_MS) return;
+  lastBackupWatchAt = now;
+  const { runBackupWatchdog } = await import("./backup/watchdog");
+  const r = await runBackupWatchdog();
+  if (r.alerted) console.log(`[lifecycle] backup watchdog — officers alerted (${r.kind})`);
+}
+
 // ── Payment reconciliation + stuck-deposit notice ───────────────────────────
 // Every 5 minutes (not every tick — each stale txn costs a signed round-trip to
 // Selcom's status endpoint, and the cutoff is 30 minutes anyway, so a 1-minute
@@ -425,6 +445,9 @@ export async function runLifecyclePass(): Promise<void> {
     // that fails must never take the market lifecycle down with it. Deleting aged rows is
     // the least urgent thing this ticker does.
     await maybeRunRetention().catch((e) => console.error("[lifecycle] retention:", e));
+    // After retention, same contract: a watchdog that fails must never take the
+    // lifecycle down — it exists to talk about failures, not to cause one.
+    await maybeRunBackupWatchdog().catch((e) => console.error("[lifecycle] backup watchdog:", e));
   } finally {
     // A completed pass ends the overrun: clear the consecutive count and re-arm the
     // alert so the NEXT episode is reported too. `skippedTotal` is lifetime and is

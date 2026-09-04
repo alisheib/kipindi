@@ -481,6 +481,7 @@
     "test:board-discovery": "tsx scripts/board-discovery.test.mts",
     "red:board-discovery": "node scripts/board-discovery-red.mjs",
     "test:discovery-contract": "tsx scripts/discovery-contract.test.mts",
+    "test:backup-watchdog": "tsx scripts/backup-watchdog.test.mts",
     "test:health-readiness": "tsx scripts/health-readiness.test.mts",
     "test:hero-contract": "tsx scripts/hero-contract.test.mts",
     "red:hero-contract": "node scripts/hero-contract-red.mjs",

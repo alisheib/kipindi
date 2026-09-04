@@ -1,5 +1,13 @@
 import postmark from "postmark";
-const client = new postmark.ServerClient(process.env.POSTMARK_API_KEY || "701daae0-b109-40e0-80bb-b9ad79e59cc0");
+// 🔴 No hardcoded fallback token. A live Postmark server token sat here as a
+// string literal in a committed file (found 2026-09-04, launch-1k validation)
+// — that token must be treated as burned and rotated in the Postmark console.
+// A credential in a repo is published; env or nothing.
+if (!process.env.POSTMARK_API_KEY) {
+  console.error("POSTMARK_API_KEY is not set — refusing to run with a hardcoded credential.");
+  process.exit(2);
+}
+const client = new postmark.ServerClient(process.env.POSTMARK_API_KEY);
 const TO = process.argv[2] || "ali.sheib@50pick.tz";
 
 const G="#e8c05a",GM="#c49a2e",GD="#8a6c1a",BG="#0c0e28",C="#161845",B="#2b2e63",L="#7060d0",T="#f0eff4",TM="#c8c6d8",TS="#8b89a8",TF="#5c5a78",Y="#2db872",R="#c04848";

@@ -1504,6 +1504,28 @@ export function aiCreditLimitAdminHtml({ level, spentUsd, limitUsd }: {
   `);
 }
 
+/** Admin alert — the nightly backup is missing, failed, unverified or stale.
+ *  Fired by the backup watchdog on the daily lifecycle pass (THE ELEVEN NIGHTS:
+ *  the amber card was correct for ten days and nobody was looking — this is the
+ *  version that arrives instead of waiting to be read). Kit-styled. */
+export function backupUnhealthyAdminHtml({ kind, reason, ageHours, destination }: {
+  kind: string; reason: string; ageHours: number | null; destination: string | null;
+}): string {
+  return wrap(`
+    ${eyebrow("Backups", "Hifadhi rudufu")}
+    ${heading("The nightly backup needs attention")}
+    ${subtitle(reason)}
+    ${subtitle("Until this is green, the recovery window is growing — every hour without a verified backup is an hour of bets, deposits and payouts that cannot be restored.")}
+    ${detailRows([
+      { label: "State", value: kind.toUpperCase(), tone: "bad" },
+      ...(ageHours !== null ? [{ label: "Last verified backup", value: `${ageHours} hours ago` }] : []),
+      ...(destination ? [{ label: "Last destination", value: destination }] : []),
+      { label: "Check", value: "GitHub → Actions → backup-nightly, or npm run ops:backup-status" },
+    ])}
+    ${ctaButton("/admin/compliance", "Open compliance · Fungua")}
+  `);
+}
+
 export function bonusCreditedHtml({ amountTzs, wagerRequiredTzs, sourceLabel }: {
   amountTzs: number; wagerRequiredTzs: number; sourceLabel?: string;
 }): string {

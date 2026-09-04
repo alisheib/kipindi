@@ -1473,6 +1473,49 @@ export async function notifyAdminsAiCreditLimit(opts: { level: "warn" | "limit";
   } catch { /* officer email is best-effort */ }
 }
 
+/** Operational alert: the nightly backup is missing, failed, unverified or
+ *  stale (>36 h). Fired once a day by the backup watchdog on the leader-leased
+ *  lifecycle pass — the alert that ARRIVES, vs the compliance card an operator
+ *  must remember to read (THE ELEVEN NIGHTS, docs/BACKUP-RUNBOOK.md). In-app
+ *  SECURITY bell + best-effort email to every ADMIN/COMPLIANCE officer. */
+export async function notifyAdminsBackupUnhealthy(opts: { kind: string; reason: string; ageHours: number | null; destination: string | null }) {
+  const officers = await db.user.listByRoles(["ADMIN", "COMPLIANCE"]); // audit M5
+  const age = opts.ageHours !== null ? ` (${opts.ageHours}h)` : "";
+  for (const o of officers) {
+    await notify({
+      userId: o.id,
+      kind: "SECURITY",
+      // No emoji in UI copy (CLAUDE.md design rule) — see notifyAdminsSentinelDown.
+      titleEn: `Nightly backup is ${opts.kind.toUpperCase()}${age}`,
+      titleSw: `Hifadhi rudufu ya usiku iko ${opts.kind.toUpperCase()}${age}`,
+      titleZh: `夜间备份状态异常：${opts.kind.toUpperCase()}${age}`,
+      bodyEn: `${opts.reason} Until this is green the recovery window is growing. Check GitHub Actions → backup-nightly, or run ops:backup-status.`,
+      bodySw: `${opts.reason} Hadi hili liwe salama, dirisha la urejeshaji linakua. Angalia GitHub Actions → backup-nightly.`,
+      bodyZh: `${opts.reason} 在恢复正常之前，可恢复窗口正在扩大。请检查 GitHub Actions → backup-nightly。`,
+      href: "/admin/compliance",
+    }).catch(() => {});
+  }
+  try {
+    const { sendEmail, backupUnhealthyAdminHtml } = await import("./email");
+    const { resolvePhoneEmail } = await import("./email-map");
+    const emails = [...new Set(
+      officers
+        .map((o) => (o.email || resolvePhoneEmail(o.phoneE164) || "").trim().toLowerCase())
+        .filter((e) => e && !e.endsWith("@stub") && !e.endsWith("@none")),
+    )];
+    const html = backupUnhealthyAdminHtml(opts);
+    for (const to of emails) {
+      sendEmail({
+        to,
+        subject: `50pick nightly backup is ${opts.kind.toUpperCase()}${age}`,
+        html,
+        tag: "backup-watchdog",
+        trackLinks: false,
+      }).catch(() => {});
+    }
+  } catch { /* officer email is best-effort */ }
+}
+
 /** Source-of-funds review outcome. ACCEPTED unblocks the deposit gate; REJECTED
  *  asks the player to re-declare (deposits over the threshold stay blocked). */
 export function notifySof(userId: string, status: "ACCEPTED" | "REJECTED" | "MORE_INFO") {
