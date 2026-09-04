@@ -87,14 +87,21 @@ async function drive(path) {
          `[class~=mcardp]` is the class TOKEN (never `*=`, which also matches `.mcardp-info`,
          `.mcardp-share` and nineteen other children — that substring cost a earlier drive a
          6-card board counted as 126). The figure ships as `TZS 94,500`, with no `VOL` prefix. */
-      /* ⚠️ `\d{1,3}(?:,\d{3})*` — THOUSAND GROUPS, NOT `[\d,]+`, AND THE DIFFERENCE IS A WRONG
-         ANSWER THAT LOOKS RIGHT. A card's text runs the volume straight into the countdown:
-         `…TZS 94,50019d left…`. `[\d,]+` swallows the countdown's digits and yields **94,50019**.
-         The order check still passed on that — the trailing digits happened not to reorder the
-         five cards — which is the worst kind of instrument bug: confidently right by luck. This
-         pattern stops at the last complete `,ddd` group. */
+      /* ⚠️ TWO TRAPS HERE, AND BOTH PRODUCED A CONFIDENT WRONG ANSWER BEFORE BEING FIXED.
+         1 · `\d{1,3}(?:,\d{3})*` — THOUSAND GROUPS, never `[\d,]+`. A card runs the volume
+             straight into the countdown (`…TZS 94,50019d left…`), so `[\d,]+` swallows the
+             countdown and yields **94,50019**. The order check still PASSED on those numbers —
+             the trailing digits happened not to reorder five cards.
+         2 · ⭐ **THE LAST MATCH, NOT THE FIRST** — and this one nearly filed a false SORT DEFECT
+             against production. A market's own QUESTION can contain a TZS figure ("…closes above
+             TZS 2,850…"), so three of twelve live cards carry two matches. Taking the first read
+             `[…, 2850, …, 395000]` out of an otherwise perfectly descending board and reported
+             `?sort=pool` as broken. The volume is the card's LAST money figure — it sits in the
+             meta row, immediately before the countdown.
+         ⛔ The lesson both share: a reader that is right on the common case and silently wrong on
+         the uncommon one is more dangerous than one that fails outright. */
       vols: [...scope.querySelectorAll("[class~=mcardp]")]
-        .map((c) => /TZS\s*(\d{1,3}(?:,\d{3})*)/i.exec(c.textContent || ""))
+        .map((c) => [...(c.textContent || "").matchAll(/TZS\s*(\d{1,3}(?:,\d{3})*)/gi)].pop())
         .filter(Boolean)
         .map((m) => Number(m[1].replace(/,/g, ""))),
     };
