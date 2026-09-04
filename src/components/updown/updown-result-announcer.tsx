@@ -48,9 +48,24 @@ import { dispatchWinCelebration } from "@/components/markets/win-celebration";
 import { useT } from "@/lib/i18n";
 import { formatTzs } from "@/lib/utils";
 import { DWELL_RESULT_MS } from "@/lib/feedback-timing";
+import { routeOutcome } from "@/lib/outcome-announcement";
+import { isAttentive, presenceSinceMs, serverNow } from "@/lib/presence-window";
+import { recordAway } from "@/lib/away-ledger";
 
 export type AnnounceableRound = {
   roundId: string;
+  /**
+   * When the SERVER recorded the result — `BoardRound.resolvedAtMs`, already finite-checked
+   * where it is built (`updown-board.ts`), so it is a real instant or `null` and never NaN.
+   *
+   * ⭐ IT IS WHAT LETS THIS LANE OBEY THE PRESENCE LAW, AND IT COST NO SERVER CHANGE: both
+   * pages that mount this announcer already had the field on the round they were rendering.
+   * ⛔ OPTIONAL ON PURPOSE, AND THE LAW HANDLES THE ABSENCE. A caller that omits it hands
+   * `undefined` to `routeOutcome`, whose rule 2 routes an unknown instant to the ledger — the
+   * calm channel — rather than to the seal. Missing information must never read as "yes, just
+   * now"; that is exactly the case the RED harness found.
+   */
+  settledAtMs?: number | null;
   myResult: { status: "WIN" | "LOSS" | "VOID"; side: "UP" | "DOWN"; stake: number; payout: number } | null;
 };
 
@@ -91,25 +106,40 @@ export function UpDownResultAnnouncer({ rounds }: { rounds: AnnounceableRound[] 
 
       const res = r.myResult!;
       if (alreadyAnnounced(r.roundId)) continue;
-      markAnnounced(r.roundId);
 
       const sideWord = res.side === "UP" ? t.market.udUp : t.market.udDown;
 
-      if (res.status === "WIN") {
+      /* ⭐ THE SAME LAW THE MARKET LANE OBEYS, FROM THE SAME MODULE. A round that settled while
+       * the player was away is held for the calm bar; one they watched land still gets its
+       * moment. ⛔ Not a second copy of the rules — `routeOutcome` is pure and is the only place
+       * the 30-minute window, the freshness cap and the ceremony gate are written. */
+      const routing = routeOutcome(
+        { kind: res.status, settledAtMs: r.settledAtMs },
+        { presenceSinceMs: presenceSinceMs(), serverNowMs: serverNow(), attentive: isAttentive() },
+      );
+
+      /* 🔴 THIS LANE CARRIED E-266 TOO, AND NOBODY HAD FILED IT. `markAnnounced(r.roundId)` used
+       * to run HERE — before a single word had been shown — so a result whose announcement never
+       * landed was burned for the whole browser session: `sessionStorage` said announced, and
+       * nothing re-reads a settled round. The marker now moves below the delivery, behind the
+       * same `delivered` gate the market poller uses. */
+      let delivered = false;
+
+      if (routing.channel === "CEREMONY" && res.status === "WIN") {
         // ⛔ THE REALISED PAYOUT, from the settled row — never a place-time projection. On a
         // pari-mutuel pool those differ, and a celebrated figure that is not the figure paid is
         // a false money statement. `net` is profit, so it is payout − stake and can be shown
         // with a "+".
-        dispatchWinCelebration({
+        // ⭐ AND IT ANSWERS: the dispatch returns whether a host took the seal. `AppShell`
+        // mounts that host behind `lazy()`, so "nobody was listening yet" is a real state on a
+        // cold load — and an unacknowledged seal must not be recorded as announced.
+        delivered = dispatchWinCelebration({
           kind: "WIN",
           amount: res.payout,
           net: res.payout - res.stake,
           label: `${t.market.udUpDown} · ${sideWord}`,
         });
-        continue;
-      }
-
-      if (res.status === "VOID") {
+      } else if (routing.channel === "TOAST" && res.status === "VOID") {
         // A refund is neither a win nor a loss and must say so in its own words. The amount is
         // the stake that came back, which for a void IS the payout.
         // ⛔ DA-4 (E-114) · `factual`, NOT `default` — the same reasoning as the LOSS toast
@@ -121,9 +151,16 @@ export function UpDownResultAnnouncer({ rounds }: { rounds: AnnounceableRound[] 
           description: `${sideWord} · ${formatTzs(res.payout)}`,
           variant: "factual",
           durationMs: DWELL_RESULT_MS,
+          groupKey: routing.groupKey,
+          groupAmount: res.payout,
+          groupLabel: (n, total) => ({
+            title: t.notif.groupedReturned
+              .replace("{n}", String(n))
+              .replace("{amount}", formatTzs(total)),
+          }),
         });
-        continue;
-      }
+        delivered = true;
+      } else if (routing.channel === "TOAST") {
 
       // LOSS — plain, direct, no glow and no haptic. It states the amount because a result
       // screen that will not name the number is the euphemism RG rules exist to prevent.
@@ -135,12 +172,42 @@ export function UpDownResultAnnouncer({ rounds }: { rounds: AnnounceableRound[] 
       // `danger` is red and reads as *something went wrong*, but losing a round is not an error,
       // it is the game working. The kit had no way to state a fact, so one was added to the KIT
       // (§0.1b rule 1) rather than a colour being hand-picked here.
-      toast({
-        title: t.market.udLostTitle,
-        description: `${sideWord} · ${formatTzs(res.stake)}`,
-        variant: "factual",
-        durationMs: DWELL_RESULT_MS,
-      });
+        toast({
+          title: t.market.udLostTitle,
+          description: `${sideWord} · ${formatTzs(res.stake)}`,
+          variant: "factual",
+          durationMs: DWELL_RESULT_MS,
+          groupKey: routing.groupKey,
+          groupAmount: res.stake,
+          groupLabel: (n, total) => ({
+            title: t.notif.groupedLost
+              .replace("{n}", String(n))
+              .replace("{amount}", formatTzs(total)),
+          }),
+        });
+        delivered = true;
+      } else {
+        /* ── LEDGER · held for the calm bar, exactly as the market lane holds its own ────────
+         * The round settled while nobody was looking. Nothing fires; the entry joins the one
+         * `AwaySummaryBar`, and a win among them still opens its seal on a TAP (ruling ①). */
+        delivered = recordAway({
+          id: r.roundId,
+          kind: res.status,
+          amount: res.payout,
+          stake: res.stake,
+          settledAtMs: r.settledAtMs ?? null,
+          label: `${t.market.udUpDown} · ${sideWord}`,
+        });
+      }
+
+      /* ⛔ THE MARKER MOVES ONLY ON A REAL DELIVERY. And when nothing was delivered the
+       * transition is REWOUND — `map` was set to `settled` at the top of this iteration, so
+       * leaving it there would make the next render read `before === true` and skip the round
+       * forever. Rewinding lets the very next `router.refresh()` re-detect the same false → true
+       * edge and try again, which is what makes the lazy-host window survivable rather than
+       * merely detectable. */
+      if (!delivered) { map.set(r.roundId, false); continue; }
+      markAnnounced(r.roundId);
     }
   }, [rounds, toast, t]);
 

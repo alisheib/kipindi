@@ -115,6 +115,27 @@ export function routeOutcome(
   //     below both go false on NaN and wave it straight through to the seal.
   if (outcome.settledAtMs == null) return { channel: "LEDGER", presence: "RETURNING" };
 
+  // 2b · ⛔ AND `NaN` IS NOT A TIME EITHER — the same hole as rule 2, through a different door.
+  //     `Date.parse` answers NaN for a malformed date string, and NaN defeats both comparisons
+  //     below exactly as `undefined` does: `NaN < n` is false, `n - NaN` is NaN, `NaN > MAX` is
+  //     false. So without this gate an instant that failed to parse falls through EVERY check
+  //     and lands on the seal. Producers normalise too (`notify-poller` parses defensively, the
+  //     board's `resolvedAtMs` is finite-checked server-side); this is the backstop for the next
+  //     producer, which is the one this module cannot see.
+  //
+  //     ⭐ THE `typeof` GUARD IS LOAD-BEARING AND THE RED HARNESS PROVED IT, ON THIS VERY LINE.
+  //     The first draft was the obvious `if (!Number.isFinite(x))`, which is strictly broader —
+  //     it swallows `null` and `undefined` as well. That looked like a free simplification and
+  //     it silently DESTROYED RULE 2's PROOF: with this line present, deleting rule 2 changed
+  //     no behaviour, so `red:presence-class`'s unknown-timestamp mutation stopped being caught
+  //     (10/11, the miss named exactly that gate). A broader gate upstream makes the gate below
+  //     it untestable, and an untestable gate is one refactor away from being deleted as dead.
+  //     ⛔ So the two gates are kept DISJOINT ON PURPOSE: rule 2 owns absence, 2b owns NaN, and
+  //     each can be removed and independently caught. Never widen this back.
+  if (typeof outcome.settledAtMs === "number" && !Number.isFinite(outcome.settledAtMs)) {
+    return { channel: "LEDGER", presence: "RETURNING" };
+  }
+
   // 3 · The presence clock was never established. Same reasoning as 2, one layer up.
   if (ctx.presenceSinceMs == null) return { channel: "LEDGER", presence: "RETURNING" };
 

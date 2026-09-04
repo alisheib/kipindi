@@ -307,6 +307,7 @@ export default async function UpDownRoundPage({
           ⛔ In-app only; Ali's 2026-07-24 notification suppression is untouched. */}
       <UpDownResultAnnouncer rounds={[{
         roundId,
+        settledAtMs: round.resolvedAtMs,
         myResult: myPosition && myPosition.result
           ? { status: myPosition.result, side: myPosition.side, stake: myPosition.stake, payout: myPosition.payout ?? 0 }
           : null,

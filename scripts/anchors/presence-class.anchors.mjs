@@ -62,6 +62,18 @@ export const MUTATIONS = [
     expect: "1.2",
   },
   {
+    // ⭐ THE GATE THIS HARNESS ARGUED THE SHAPE OF. Its first draft was the broader
+    // `!Number.isFinite(x)`, which also swallowed null/undefined and thereby made the
+    // unknown-timestamp mutation above uncatchable — the run came back 10/11 naming that gate.
+    // The two are disjoint now, so each is provable on its own; this anchor is the proof for
+    // the NaN half. ⛔ Widening either gate makes the other's mutation a MISS again.
+    name: "outcome-announcement.ts — remove the NaN gate (a malformed date parses onto the seal)",
+    file: "src/lib/outcome-announcement.ts",
+    from: `  if (typeof outcome.settledAtMs === "number" && !Number.isFinite(outcome.settledAtMs)) {`,
+    to: `  if (typeof outcome.settledAtMs === "string") {`,
+    expect: "1.2b",
+  },
+  {
     // The boundary comparison, inverted by one character — the classic off-by-one that a
     // presence check written by hand gets wrong and a cross-product catches.
     name: "outcome-announcement.ts — invert the presence-window boundary",

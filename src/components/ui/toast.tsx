@@ -37,6 +37,41 @@ type ToastInput = {
    *  toast stays until the close button / swipe. For money-path failures that
    *  must stay until read (the house primary/secondary rule). */
   durationMs?: number;
+  /**
+   * ⭐ COALESCING KEY — §F6 read literally, and Ali's ruling ④ of 2026-09-04: *"for toasts,
+   * they are grouping under each other… find a way intelligent and professional to compact."*
+   *
+   * Toasts sharing one key MERGE into the single live toast that already holds that key,
+   * instead of stacking a second one under it. Three settled losses in one poller tick become
+   * one statement, not a column.
+   *
+   * ⛔ THE KEY MUST ENCODE THE OUTCOME, NEVER JUST "a settled result" — `routeOutcome` returns
+   * `outcome:LOSS` / `outcome:VOID` for exactly this reason. Merging a loss with a refund would
+   * state that a returned stake was lost, which is a false money statement about a real row.
+   * ⛔ IGNORED on `danger` and on `durationMs: 0`. A money-path refusal collapsed into a count
+   * is a refusal the player never reads, which is the defect grouping is supposed to prevent.
+   */
+  groupKey?: string;
+  /**
+   * The money quantity THIS toast states, so a group can carry an honest total.
+   *
+   * ⛔ EACH OUTCOME'S QUANTITY IS ITS OWN COLUMN and they are never added to one another — a
+   * win states what was PAID, a refund what came BACK, a loss what was STAKED. The provider
+   * only sums; it is `groupKey` that guarantees the addends are alike. Same law `summarise()`
+   * enforces for the away-bar, and the same reason.
+   */
+  groupAmount?: number;
+  /**
+   * How the coalesced statement reads, given the group's size and its summed figure.
+   *
+   * ⭐ THE CALLER OWNS THE WORDS BECAUSE THE CALLER OWNS THE DICTIONARY. This provider sits
+   * above the app and must not reach for `useT`; a group's sentence is a trilingual money
+   * statement, and the one place that can write it correctly is the announcement site that
+   * already has `t` and already knows whether the figure is a payout or a stake.
+   * ⚠️ Called on every merge — from the SECOND member onward. A group of one is never
+   * rewritten, so a single loss reads exactly as it always has.
+   */
+  groupLabel?: (count: number, total: number) => { title: string; description?: string };
 };
 
 type Toast = ToastInput & { id: string; createdAt: number };
@@ -67,6 +102,16 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   // Which toasts have already been punctuated. A toast is buzzed ONCE, at the moment it is
   // first painted — not when it arrives, and never twice if it is held and released again.
   const punctuatedRef = React.useRef(new Set<string>());
+  /* The live group per `groupKey` — which toast currently holds it, how many results it now
+   * stands for, and their summed figure.
+   *
+   * ⭐ A REF, NOT STATE, BECAUSE `toast()` MUST ANSWER SYNCHRONOUSLY. It returns an id on the
+   * line it is called, so it has to decide "merge or create" before React has re-rendered
+   * anything — reading `toasts` there would read the PREVIOUS commit and let two members of one
+   * burst each create their own toast, which is the stacking this exists to end.
+   * ⛔ Cleared in `remove`, not in `dismiss`: a toast mid-exit is still on screen, and a member
+   * arriving during those 200ms belongs to the group the player can still see. */
+  const groupsRef = React.useRef(new Map<string, { id: string; count: number; total: number }>());
 
   const remove = React.useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -76,6 +121,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     metaRef.current.delete(id);
     userPausedRef.current.delete(id);
     punctuatedRef.current.delete(id);
+    // The group dies with the toast that held it — the next member of that key opens a fresh
+    // group rather than merging into an id that is no longer on screen.
+    for (const [k, g] of groupsRef.current) if (g.id === id) groupsRef.current.delete(k);
   }, []);
 
   // Two-phase dismiss: mark exiting (plays the 200ms slide/fade-out) then remove,
@@ -266,15 +314,60 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     }
   }, [toasts, resultModalOpen, pause, resume, punctuate]);
 
+  /* ── COALESCING · A BURST BECOMES ONE STATEMENT, NEVER A COLUMN ─────────────────────────
+   *
+   * ⭐ ALI, 2026-09-04: *"for toasts, they are grouping under each other… find a way intelligent
+   * and professional to compact."* Three markets settling in one poller tick used to be three
+   * stacked toasts — and past four, before E-266 was fixed, the tail was destroyed outright.
+   * Held-not-dropped made that safe; this makes it CALM, which is what was actually asked for.
+   *
+   * ⛔ TWO THINGS ARE NEVER GROUPED, AND BOTH EXCLUSIONS ARE MONEY RULES, NOT TASTE:
+   *   · `danger` — a refusal. Collapsing "deposit declined" into "2 results" is exactly the
+   *     swallowed money-path failure §F1 and UD-3 exist to prevent.
+   *   · `durationMs: 0` — sticky, which is the shape a refusal takes so it stays until read.
+   * A caller that sets `groupKey` on either gets the ungrouped toast it should have asked for,
+   * silently and safely: the guard is here, at the one place that can enforce it, rather than
+   * trusted to every call site.
+   *
+   * ⚠️ THE MERGE RE-BANKS THE DWELL BUT DOES NOT ARM IT. `metaRef` is reset to the full
+   * duration so the rewritten sentence gets a fair reading, and the timer is dropped — the
+   * overflow effect below re-arms it on the next commit through the SAME `resume` the hover and
+   * §F1 paths use. Arming here would restart a countdown on a toast the player is hovering, or
+   * on one a result modal is holding down.
+   */
   const toast = React.useCallback((input: ToastInput) => {
+    const dur = input.durationMs ?? DEFAULT_DURATION;
+    const variant = input.variant ?? "default";
+    const groupKey = variant !== "danger" && dur > 0 ? input.groupKey : undefined;
+
+    if (groupKey) {
+      const g = groupsRef.current.get(groupKey);
+      if (g) {
+        const count = g.count + 1;
+        const total = g.total + (input.groupAmount ?? 0);
+        groupsRef.current.set(groupKey, { id: g.id, count, total });
+        const said = input.groupLabel?.(count, total);
+        if (said) {
+          setToasts((prev) => prev.map((x) => (
+            x.id === g.id ? { ...x, title: said.title, description: said.description } : x
+          )));
+        }
+        const tm = timersRef.current.get(g.id);
+        if (tm) { clearTimeout(tm); timersRef.current.delete(g.id); }
+        metaRef.current.set(g.id, { remaining: dur, start: Date.now() });
+        return g.id;
+      }
+    }
+
     const id = `t_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const next: Toast = {
       ...input,
       id,
       createdAt: Date.now(),
-      durationMs: input.durationMs ?? DEFAULT_DURATION,
-      variant: input.variant ?? "default",
+      durationMs: dur,
+      variant,
     };
+    if (groupKey) groupsRef.current.set(groupKey, { id, count: 1, total: input.groupAmount ?? 0 });
     present(next);
     return id;
   }, [present]);
@@ -284,12 +377,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     const meta = metaRef.current;
     const userPaused = userPausedRef.current;
     const punctuated = punctuatedRef.current;
+    const groups = groupsRef.current;
     return () => {
       for (const tm of timers.values()) clearTimeout(tm);
       timers.clear();
       meta.clear();
       userPaused.clear();
       punctuated.clear();
+      groups.clear();
     };
   }, []);
 

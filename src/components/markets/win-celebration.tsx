@@ -50,11 +50,35 @@ export type WinCelebrationPayload = {
   net?: number;
   /** Market title or short context line. */
   label?: string;
+  /** ⛔ SET BY `dispatchWinCelebration`, NEVER BY A CALLER — see the function below. */
+  ack?: { accepted: boolean };
 };
 
-export function dispatchWinCelebration(p: WinCelebrationPayload) {
-  if (typeof window === "undefined") return;
-  window.dispatchEvent(new CustomEvent<WinCelebrationPayload>(EVENT_NAME, { detail: p }));
+/**
+ * Fire the seal, and answer whether anything actually took it.
+ *
+ * 🔴 WHY THIS RETURNS A BOOLEAN — E-266, ONE LAYER UP. A caller that announces a settled
+ * position then writes an announced-marker must know the announcement LANDED; the market
+ * poller's marker is persisted and its watch-list entry is pruned in the same pass, so a
+ * dispatch that reached nobody is a money result the player can never be told about again.
+ * "I emitted an event" is not delivery.
+ *
+ * ⭐ AND THE HOST IS GENUINELY SOMETIMES ABSENT — this is not a hypothetical. `AppShell`
+ * mounts `WinCelebrationHost` behind `lazy()` + `Suspense`, so on a cold load there is a real
+ * window in which the poller's 2s tick fires before the chunk has resolved. Returning `false`
+ * there costs one retry; returning `void` cost the announcement.
+ *
+ * ⚠️ THE ACK OBJECT WORKS BECAUSE `dispatchEvent` IS SYNCHRONOUS. Every listener has run by
+ * the time it returns, so a flag the host sets is readable on the next line — no promise, no
+ * timeout, no second event. ⛔ Do not "modernise" this into an async handshake: the caller
+ * needs the answer before it decides whether to mark the row, and that decision is in a
+ * synchronous loop.
+ */
+export function dispatchWinCelebration(p: WinCelebrationPayload): boolean {
+  if (typeof window === "undefined") return false;
+  const ack = { accepted: false };
+  window.dispatchEvent(new CustomEvent<WinCelebrationPayload>(EVENT_NAME, { detail: { ...p, ack } }));
+  return ack.accepted;
 }
 
 /** All the gates that mean "snap, don't animate" for the JS half of the beat.
@@ -220,6 +244,14 @@ export function WinCelebrationHost() {
       const detail = (e as CustomEvent<WinCelebrationPayload>).detail;
       if (!detail) return;
       queueRef.current.push(detail);
+      /* ⭐ ACCEPTED THE INSTANT IT IS QUEUED, AND THAT IS THE HONEST MOMENT. From here the seal
+       * cannot be lost: the queue presents them one at a time, and a tail past MAX_INDIVIDUAL is
+       * COLLAPSED into a summary that still carries its figure — it is not dropped. So a caller
+       * may safely mark the position announced on the strength of this flag.
+       * ⛔ NOT after `present()`. A win queued behind one already on screen has not been painted
+       * yet and is still perfectly delivered; waiting for paint would make the second of two
+       * simultaneous wins look undelivered and re-announce it on every tick, forever. */
+      if (detail.ack) detail.ack.accepted = true;
       if (queueRef.current.length > MAX_INDIVIDUAL) {
         const tail = queueRef.current.splice(MAX_INDIVIDUAL - 1);
         queueRef.current.push({

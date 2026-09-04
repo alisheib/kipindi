@@ -35,6 +35,20 @@
  * ⚠️ RG: the win is celebratory, the loss is NOT its mirror. A loss gets a plain factual
  * toast — no glow, no counter, no haptic — and it NAMES the amount, because a result
  * screen that will not say the number is the euphemism RG rules exist to prevent.
+ *
+ * ── §F9 · AND *WHETHER* IT IS ANNOUNCED AT ALL IS NO LONGER THIS FILE'S DECISION ──────
+ *
+ * ⭐ Ali, 2026-09-04: *"if I'm logged in and in platform show the celebration, but if I come
+ * back after a while I don't think it's needed."* Every settled row now passes through
+ * `routeOutcome`, which classifies it by PRESENCE and returns one of three channels:
+ * CEREMONY (the seal), TOAST (the receipt), or LEDGER (held for the one calm `AwaySummaryBar`,
+ * where an old win still opens its seal on the player's own tap).
+ *
+ * ⛔ THE LAW IS NOT WRITTEN HERE, AND MUST NOT BE COPIED HERE. `outcome-announcement.ts` is
+ * pure — no DOM, no clock of its own — precisely so `test:presence-class` can EXECUTE it over
+ * the whole cross-product rather than grep this file for a symbol. This poller supplies three
+ * facts (when the sitting began, the server clock, whether anyone is looking) and obeys the
+ * answer.
  */
 import { useEffect } from "react";
 import { useToast } from "@/components/ui/toast";
@@ -43,6 +57,9 @@ import { positionStatusWord } from "@/lib/side-label";
 import { dispatchWinCelebration } from "@/components/markets/win-celebration";
 import { formatTzs } from "@/lib/utils";
 import { DWELL_RESULT_MS } from "@/lib/feedback-timing";
+import { routeOutcome } from "@/lib/outcome-announcement";
+import { isAttentive, presenceSinceMs, serverNow } from "@/lib/presence-window";
+import { recordAway } from "@/lib/away-ledger";
 
 const WATCH_KEY = "50pick-notify-markets";
 /** Announced-once key. ⛔ Per POSITION, not per market — two bets on one market are two
@@ -194,16 +211,51 @@ export function NotifyPoller() {
 
               const label = p.title || adjudicated.find((a) => a.marketId === p.marketId)?.titleEn || "";
 
-              if (p.status === "WIN") {
+              /* ⛔ NORMALISE THE INSTANT AT THE PRODUCER. `settledAt` is an ISO string off the
+               * row and `Date.parse` answers NaN for anything malformed — a value that defeats
+               * every comparison in the routing law and would ride straight to the seal. The law
+               * carries its own backstop (rule 2b); this is the belt, and it belongs here because
+               * the producer is the only layer that knows the field arrived as a string. */
+              const parsed = p.settledAt == null ? null : Date.parse(p.settledAt);
+              const settledAtMs = parsed != null && Number.isFinite(parsed) ? parsed : null;
+
+              /* ⭐ THE DECISION IS NOT TAKEN HERE. `routeOutcome` is the one place the routing law
+               * is written, and it is pure precisely so the guard suite can EXECUTE it rather than
+               * grep for it. This tick supplies only the three facts the law cannot know: when
+               * this sitting began, what the server clock reads now, and whether anyone is
+               * looking. Everything else — the 30-minute window, the freshness cap, the rule that
+               * every uncertainty routes away from ceremony — lives there. */
+              const routing = routeOutcome(
+                { kind: p.status, settledAtMs },
+                { presenceSinceMs: presenceSinceMs(), serverNowMs: serverNow(), attentive: isAttentive() },
+              );
+
+              /* 🔴 EVERY BRANCH REPORTS WHETHER IT DELIVERED — E-266's other half, and the reason
+               * this variable exists at all. Below, `seen.add` is PERSISTED and the market is
+               * pruned from the watch list in the same pass; a branch that claims delivery it did
+               * not perform therefore destroys a money announcement permanently, across reloads
+               * and across sessions. ⛔ Nothing between here and `if (!delivered)` may assume
+               * success, and the marker may never move above it. */
+              let delivered = false;
+
+              if (routing.channel === "CEREMONY" && p.status === "WIN") {
                 // ⛔ THE REALISED PAYOUT, from the settled row. `net` is profit, so it is
                 // payout − stake.
-                dispatchWinCelebration({
+                // ⚠️ `p.status === "WIN"` IS ASSERTED HERE TOO, AND IT IS NOT REDUNDANCE. The law
+                // already guarantees CEREMONY implies WIN — this is the belt on the one surface
+                // whose failure mode is telling a player they won money they were not paid, and
+                // it costs a comparison.
+                // ⭐ The seal ANSWERS: `dispatchWinCelebration` returns whether a host took it.
+                // `AppShell` mounts that host behind `lazy()`, so on a cold load there is a real
+                // window in which nothing is listening — and an unacknowledged dispatch must be
+                // retried on the next tick, not marked announced.
+                delivered = dispatchWinCelebration({
                   kind: "WIN",
                   amount: p.payout,
                   net: p.payout - p.stake,
                   label,
                 });
-              } else if (p.status === "VOID") {
+              } else if (routing.channel === "TOAST" && p.status === "VOID") {
                 // ⛔ `factual`, NOT `default` — E-114. `default` paints checkCircle, a
                 // CONFIRMATION TICK, over a stake that merely came back. A refund is not
                 // an achievement and not an alarm; it is a fact, and the kit has a variant
@@ -214,8 +266,20 @@ export function NotifyPoller() {
                   description: `${label} · ${formatTzs(p.payout)}`,
                   variant: "factual",
                   durationMs: DWELL_RESULT_MS,
+                  groupKey: routing.groupKey,
+                  groupAmount: p.payout,
+                  groupLabel: (n, total) => ({
+                    title: t.notif.groupedReturned
+                      .replace("{n}", String(n))
+                      .replace("{amount}", formatTzs(total)),
+                  }),
                 });
-              } else {
+                // ⭐ A HANDED-OVER TOAST IS DELIVERED, AND THAT IS TRUE BY CONSTRUCTION NOW. The
+                // stack no longer destroys on overflow (E-266) — it HOLDS, and paints each toast
+                // with its full dwell as room appears. A coalesced member is delivered too: it is
+                // counted and its figure is summed into the group's own statement.
+                delivered = true;
+              } else if (routing.channel === "TOAST") {
                 // LOSS — plain and direct. ⛔ NOT `warning`, which is GOLD, the celebration
                 // ink; and not `danger`, which reads as *something went wrong* when losing
                 // is the game working.
@@ -224,8 +288,43 @@ export function NotifyPoller() {
                   description: `${label} · ${formatTzs(p.stake)}`,
                   variant: "factual",
                   durationMs: DWELL_RESULT_MS,
+                  groupKey: routing.groupKey,
+                  groupAmount: p.stake,
+                  groupLabel: (n, total) => ({
+                    title: t.notif.groupedLost
+                      .replace("{n}", String(n))
+                      .replace("{amount}", formatTzs(total)),
+                  }),
+                });
+                delivered = true;
+              } else {
+                /* ── LEDGER · THE RESULT IS HELD, NOT SHOWN AND NOT LOST ────────────────────
+                 *
+                 * ⭐ THIS IS THE BRANCH ALI ASKED FOR: *"if I come back after a while I don't
+                 * think it's needed."* The money already landed; what is refused is the AMBUSH.
+                 * The entry surfaces as one calm `AwaySummaryBar`, and an old win still gets its
+                 * seal the moment the player TAPS for it (ruling ①) — the ceremony is handed
+                 * over, not withdrawn.
+                 *
+                 * ⛔ AND IT IS A DELIVERY, WHICH IS WHY IT MAY MARK THE ROW. `recordAway` is
+                 * idempotent by id and answers whether the entry is now held. The durable record
+                 * was never this buffer anyway — it is the bell, written server-side inside the
+                 * same transaction as the money, with 180-day retention. */
+                delivered = recordAway({
+                  id: p.positionId,
+                  kind: p.status,
+                  amount: p.payout,
+                  stake: p.stake,
+                  settledAtMs,
+                  label,
                 });
               }
+
+              /* ⛔ THE GATE. Nothing below this line may run for an announcement that did not
+               * land: not the announced-marker, not the watch-list prune, not the OS
+               * notification. An undelivered row is left exactly as it was and retried on the
+               * next tick — which is the whole of E-266 stated as one branch. */
+              if (!delivered) continue;
 
               // 🔴 ANNOUNCE FIRST, THEN MARK — E-266. These two lines used to sit at the TOP of
               // the loop, so a position was recorded as announced before anything had been

@@ -1654,6 +1654,19 @@ past four while the poller marked all of them announced, no account at all of th
 7. ⛔ **DELTAS IN DEVICE TIME, INSTANTS IN SERVER TIME.** How long a tab was hidden is measured
    between two readings of the *same* clock; the window start is stored in server time. Nothing
    compares one to the other.
+8. ⛔ **A LIVE BURST COALESCES INTO ONE STATEMENT, NEVER A COLUMN** (Ali's ruling ④, and §F6
+   applied to the burst that prompted this row). Toasts carrying the same `groupKey` merge into
+   the toast already holding it and rewrite it as a count plus a total; the group's dwell is
+   re-banked so the new sentence gets a fair reading. Three constraints, each a money rule:
+   **(a)** the key names the **outcome**, never merely "a settled result" — merging a loss with a
+   refund would state that a returned stake was lost, so `routeOutcome` issues `outcome:LOSS` and
+   `outcome:VOID` separately and rule 4's column law then holds by construction;
+   **(b)** ⛔ **`danger` and `durationMs: 0` are NEVER grouped** — that is the shape a money-path
+   refusal takes so it stays until read, and a refusal collapsed into a count is a refusal nobody
+   reads; the exclusion is enforced in the provider, not trusted to call sites;
+   **(c)** the **caller owns the words and the provider owns only the arithmetic** — a group's
+   sentence is a trilingual money statement, so it is written where `t` and the payout/stake
+   distinction already are, never assembled inside the toast layer.
 
 **Where the values live** (§0d — never restated here): the away boundary is `PLAY_SESSION_GAP_MIN`
 in `src/lib/play-session.ts`, imported by *both* the server session and the client attention window

@@ -174,6 +174,18 @@ ok("1.2 · an UNKNOWN settle instant is never LIVE — null AND undefined, all t
     routeOutcome({ kind: k, settledAtMs: null }, ctx()).channel === "LEDGER"
     && routeOutcome({ kind: k, settledAtMs: undefined }, ctx()).channel === "LEDGER"),
   "'we do not know when' must never read as 'yes, just now'");
+/* ⭐ 1.2b — THE THIRD SPELLING OF "UNKNOWN", AND IT IS A `number`, SO THE TYPE CANNOT STOP IT.
+ * `Date.parse` answers NaN for a malformed date string, and NaN walks through rule 4 (`NaN < n`
+ * is false) and rule 5 (`n - NaN` is NaN, `NaN > MAX` is false) to reach the seal by exactly the
+ * route rule 2 exists to close for `undefined`.
+ * ⛔ ITS GATE IS DELIBERATELY DISJOINT FROM RULE 2's, and this suite is why. The obvious
+ * `!Number.isFinite(x)` also swallows null and undefined — which made rule 2 behaviourally dead
+ * and its RED mutation uncatchable (10/11, the miss naming that very gate). Two classes, two
+ * gates, two independent proofs. */
+ok("1.2b · a NaN settle instant — a `number` that is not a time — never reaches the seal",
+  (["WIN", "LOSS", "VOID"] as OutcomeKind[]).every((k) =>
+    routeOutcome({ kind: k, settledAtMs: Number.NaN }, ctx()).channel === "LEDGER"),
+  "Date.parse answers NaN for a malformed string, and NaN defeats every comparison below it");
 ok("1.3 · an unestablished presence clock routes to the ledger, not optimistically to the seal",
   routeOutcome(fresh, ctx({ presenceSinceMs: null })).channel === "LEDGER");
 ok("1.4a · one millisecond BEFORE this sitting began is RETURNING",
@@ -200,7 +212,7 @@ ok("1.6 · a LIVE loss and a LIVE refund are BOTH toasts, in DIFFERENT groups",
 {
   const kinds: OutcomeKind[] = ["WIN", "LOSS", "VOID"];
   const settles: [string, number | null | undefined][] = [
-    ["null", null], ["undefined", undefined],
+    ["null", null], ["undefined", undefined], ["nan", Number.NaN],
     ["stale", NOW - (MAX_LIVE_AGE_MS + 5_000)], ["fresh", NOW - 1_000],
   ];
   const sinces: [string, number | null][] = [

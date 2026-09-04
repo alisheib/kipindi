@@ -1619,6 +1619,12 @@ export const dict = {
       awayReturned: "{n} returned · {amount}",
       awayMixed: "{n} results settled",
       awayView: "See results",
+      // A LIVE burst, coalesced into one toast (Ali's ruling ④, 2026-09-04). ⛔ Same money-column
+      // law as `awayLost`/`awayReturned` above: a group of losses states what was STAKED, a group
+      // of refunds states what came BACK, and the two never share a sentence — which is enforced
+      // upstream by `routeOutcome` giving each outcome its own `groupKey`.
+      groupedLost: "{n} results lost · {amount} staked",
+      groupedReturned: "{n} stakes returned · {amount}",
       seeAll: "See all",
       eyebrow: "Your inbox",
       showLabel: "Show",
@@ -3355,6 +3361,8 @@ export const dict = {
       awayReturned: "{n} zimerudishwa · {amount}",
       awayMixed: "Matokeo {n} yamekamilika",
       awayView: "Ona matokeo",
+      groupedLost: "Matokeo {n} yamepotea · {amount} zilizowekwa",
+      groupedReturned: "Dau {n} yamerudishwa · {amount}",
       seeAll: "Ona zote",
       eyebrow: "Kikasha chako",
       showLabel: "Onyesha",
@@ -5027,6 +5035,8 @@ export const dict = {
       awayReturned: "{n} 项已退回 · {amount}",
       awayMixed: "{n} 项结果已结算",
       awayView: "查看结果",
+      groupedLost: "{n} 项未中 · 投注 {amount}",
+      groupedReturned: "{n} 项已退回 · {amount}",
       seeAll: "查看全部",
       eyebrow: "您的收件箱",
       showLabel: "显示",
