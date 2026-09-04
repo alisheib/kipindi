@@ -318,34 +318,42 @@ export function TopAppBar({ user, proposalsState }: { user: TopAppBarUser; propo
           {/* ⭐ AUTH IS IN THE HEADER AT EVERY WIDTH — kit §2, and the reason the bottom rail is
               destinations only. `Sign in` is the ghost action, `Sign up` the filled one; both take
               `--r-pill`, which now means "account action" and nothing else.
-              ⚠️ `Sign in` yields below `sm`: at 360 the two pills plus the language control
-              and the avatar do not fit, and of the two, the one a NEW visitor needs is
-              Sign up. `aria-label` keeps the shortened control named.
-              🔴 AND IT WAS NOT ACTUALLY YIELDING — FOUND 2026-08-25 BY A GUARD WRITTEN FOR A
-              DIFFERENT CONTROL. `hidden sm:inline-flex` sat ON the `.btn`, and
-              `.btn { display: inline-flex }` is declared at globals.css:911, AFTER
-              `@tailwind utilities` (line 19) — so at equal specificity the component class
-              wins and `.hidden` is ignored. Measured on a real guest at 360: the control
-              rendered at **91px wide**, i.e. the paragraph above has been false since it was
-              written. ⚠️ It never overflowed only because a GUEST has no balance capsule and
-              no bell, so the slack it was meant to create was never needed — a latent
-              defect, not a visible one. The wrapper span is not a `.btn`, so the utility
-              applies to it. Same trap, same fix, as the Deposit CTA above. */}
+
+              🔴 E-276 (2026-09-05) · AND "EVERY WIDTH" HAD STOPPED BEING TRUE FOR `Sign in`.
+              Ali, on his own phone: *"when I'm a player on phone not signed in there is only a
+              Sign up button."* Measured signed-out on production at 320 / 360 / 390 / 414:
+              `a[href="/auth/login"]` rendered at **width 0** at every one of them. **A returning
+              player had no way into their account from the header** — the only account control
+              on the screen was the one that makes a NEW account.
+
+              ⭐ THE HISTORY IS THE ARGUMENT, AND IT IS WRITTEN IN THIS FILE'S OWN COMMENT. The
+              yield was justified as "at 360 the two pills plus the language control and the
+              avatar do not fit" — but the same paragraph then recorded that the `hidden` had
+              NEVER APPLIED (it sat on a `.btn`, whose own `display: inline-flex` wins at equal
+              specificity), that the control had been rendering at 91px all along, and that **it
+              never overflowed, because a guest has no balance capsule and no bell.** So the
+              premise was measured false at the time and the fix wrapped it in a span that made
+              the hiding finally work — closing a door that had never actually been shut.
+
+              ⭐ RE-MEASURED BEFORE CHANGING ANYTHING: with both pills shown, `pastRight` is 0 at
+              360, 390 and 414, and at 320 the pair ended 0.5px over. That last half-pixel is the
+              whole reason `.kp-auth-cta` exists — the pair tightens by 6px a side below `sm`
+              (globals.css), same height, same radius, same idiom — after which `pastRight` is
+              **0 at 320 too**. ⛔ Not a new breakpoint: `max-width: 639.98px` is the mirror of
+              Tailwind's `sm`, the boundary this pair was already being judged against. */}
           {!user.isAuthed && (
             <>
-              <span className="hidden sm:inline-flex">
               <Link
                 href={"/auth/login" as never}
                 aria-label={t.common.signIn}
-                className="btn btn-ghost btn-lg btn-pill"
+                className="btn btn-ghost btn-lg btn-pill kp-auth-cta"
               >
                 {t.common.signIn}
               </Link>
-              </span>
               <Link
                 href={"/auth/register" as never}
                 aria-label={t.common.signUp}
-                className="btn btn-primary btn-lg btn-pill"
+                className="btn btn-primary btn-lg btn-pill kp-auth-cta"
               >
                 {t.common.signUp}
               </Link>

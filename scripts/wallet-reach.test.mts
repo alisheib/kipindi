@@ -130,6 +130,31 @@ const { formatBalancePill, formatTzs, formatTzsCompact, BALANCE_COMPACT_ABOVE } 
   ok("4: …and the full lockup returns at xl", /hidden xl:inline-flex"><FiftyLockup/.test(bar));
   ok("4: ⛔ the brand is never absent — one of the two always renders",
      /inline-flex xl:hidden/.test(bar) && /hidden xl:inline-flex/.test(bar));
+
+  /**
+   * 🔴 E-276 · AND `Sign in` IS NOT ALLOWED TO YIELD, WHICH IS THE OPPOSITE RULE.
+   * The Deposit CTA above may yield below `sm` — a signed-in player reaches the wallet three
+   * other ways. `Sign in` may not: it is the ONLY route into an existing account from the
+   * header, and hiding it leaves a returning player looking at a screen whose single account
+   * control creates a SECOND account.
+   *
+   * Ali, from his own phone: *"when I'm a player on phone not signed in there is only a Sign
+   * up button."* Measured signed-out on production at 320/360/390/414 — `a[href="/auth/login"]`
+   * rendered at **width 0** at every one.
+   *
+   * ⚠️ The yield had been justified as "the two pills do not fit at 360", and this file's own
+   * §4 comment recorded that the `hidden` had never actually applied — so the pair had been
+   * rendering at 360 all along without overflowing. The premise was false when it was written;
+   * re-measured 2026-09-05, `pastRight` is 0 at 360/390/414, and 0 at 320 once `.kp-auth-cta`
+   * tightens the pair below `sm`.
+   */
+  const authAt = bar.indexOf('href={"/auth/login" as never}');
+  const auth = bar.slice(Math.max(0, authAt - 300), authAt + 300);
+  ok("4: 🔴 `Sign in` is NOT wrapped in a width hide — it is the only way back into an account",
+     authAt > 0 && !/<span className="hidden sm:inline-flex">\s*<Link\s+href=\{"\/auth\/login"/.test(auth));
+  ok("4: …and both account actions carry `.kp-auth-cta`, which is what makes 320 fit",
+     (bar.match(/btn-pill kp-auth-cta/g) ?? []).length === 2,
+     `${(bar.match(/kp-auth-cta/g) ?? []).length} occurrence(s)`);
 }
 
 // ── 5 · THE THRESHOLD RULE — pure, exported, and driven ─────────────────────

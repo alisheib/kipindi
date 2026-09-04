@@ -3371,6 +3371,23 @@ html[data-sheet-open] .route-enter { animation: none; }
   border-top: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
 }
 
+/* 🔴 E-276 · BOTH ACCOUNT ACTIONS, AT EVERY WIDTH — and the 6px that makes 320 fit.
+   `Sign in` used to be wrapped in `hidden sm:inline-flex`, so a signed-out player on a phone
+   saw ONLY `Sign up`: measured at 320/360/390/414 on production, the sign-in pill rendered at
+   width 0 at all four. A returning player had no way into their own account from the header.
+
+   ⭐ Re-measured with both shown: no overflow at 360, 390 or 414 — the yield was never needed,
+   exactly as `top-app-bar.tsx`'s own comment had already recorded. At 320 alone the pair ended
+   0.5px past the viewport, so below `sm` the two account pills tighten from the `btn-lg` 20px
+   measure to 14px a side. Same height, same radius, same idiom — only the measure moves, which
+   is the one thing a control is allowed to change with width.
+   ⛔ NOT A NEW BREAKPOINT. `639.98px` is the mirror of Tailwind's `sm` (640), the boundary this
+   pair was already being judged against; inventing a 360 or 400 rung here would add a tier to a
+   system that documents exactly five. */
+@media (max-width: 639.98px) {
+  .kp-auth-cta { padding-left: 14px; padding-right: 14px; }
+}
+
 /* The direction button's arrow points the way the board is ordered. One glyph, rotated —
    never two glyphs, which would be two things to keep in agreement. */
 .kp-sortdir { transition: transform var(--t-quick) ease-out; }
