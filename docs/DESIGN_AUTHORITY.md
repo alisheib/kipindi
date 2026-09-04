@@ -540,10 +540,11 @@ been written down, which is exactly how the never-imported `Sparkline` came to c
 6. **THE TERMINAL'S FORM IS FROZEN** (Ali, 2026-09-04: *"we need consistency… we can't
    mess around with how layout is rendered"* — after the form changed shape twice in one
    day). The `/updown` chart view is the LAB and exactly the lab: range rail
-   **15M · 30M · 1H · 6H · 12H · 24H · ROUND** (ROUND last, and the ladder is his
+   **15M · 30M · 1H · 6H · 12H · 24H · 7D · ROUND** (ROUND last, and the ladder is his
    2026-09-04 final list — 1m/5m REFUSED on the measured ~3-min feed cadence: a
    window holding ≤2 reads is a dead pill, and the sub-15-minute now is the ROUND
-   view), style rail
+   view; **7D added the same evening under his "widest range possible" order** —
+   1h vendor bars, candles default), style rail
    **Curve | Candles** on history ranges, both on the `.pchart-range` vocabulary; the
    pane is 300px (380px ≥1024); panel chrome `px-3 pt-2 pb-1.5` on the elevated-card
    recipe; the gilt dashed line is the ONE live-price statement (no series value labels);

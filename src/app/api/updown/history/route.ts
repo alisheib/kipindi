@@ -54,7 +54,10 @@ export async function GET(req: Request) {
     if (req.headers.get("if-none-match") === etag) {
       return new NextResponse(null, { status: 304, headers });
     }
-    return NextResponse.json({ ...data, serverNow: Date.now() }, { headers });
+    // serverNow was appended here and read by NOTHING — a write-only field whose
+    // per-response churn defeated the client's identical-payload skip AND every
+    // conditional match (re-sign panel). The payload is now pure data.
+    return new NextResponse(body, { headers: { ...headers, "Content-Type": "application/json" } });
   } catch (err) {
     console.error("[updown/history] read failed", { asset, range, err });
     return NextResponse.json({ error: "temporarily unavailable" }, { status: 503, headers: { "Cache-Control": "no-store" } });

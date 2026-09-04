@@ -1042,7 +1042,7 @@ export async function getAssetTerminalSeries(
   // these bars are the market context every trading product charts. A vendor
   // miss falls through to the confirmed-reads tier — never a blank pane.
   const vendorBars = await vendorBarsFor(
-    { id: asset.id, symbol: asset.symbol, priceSourceUrl: asset.priceSourceUrl },
+    { id: asset.id, symbol: asset.symbol, priceSourceUrl: asset.priceSourceUrl, sourceDomain: asset.sourceDomain },
     range,
     process.env.TWELVEDATA_API_KEY,
   );
@@ -1051,8 +1051,20 @@ export async function getAssetTerminalSeries(
     const plan = VENDOR_PLAN[range];
     const inWindow = vendorBars.filter((b) => b.t >= now - cfg.windowMs && b.t <= now);
     if (inWindow.length >= 2) {
-      const vLiveStale = liveForBase?.quotedAt
-        ? now - Date.parse(liveForBase.quotedAt) > Math.max(2.5 * plan.intervalMs, 5 * 60_000)
+      // ⛔ STALENESS IS A PROPERTY OF THE QUOTE, NOT THE VIEWING WINDOW (re-sign
+      // panel, finance lens): keyed to the bar interval, the 7D pill tolerated a
+      // dead oracle for 2.5 hours while 15M flagged the SAME quote at 5 minutes —
+      // two contradictory verdicts one tap apart. The gate now measures the quote
+      // feed's own cadence (its recent confirmed reads); plan.intervalMs stays in
+      // medianDeltaMs for POLL PACING only.
+      const recentQuotes = await observationStore
+        .list({ assetId: asset.id, state: "CONFIRMED", limit: 8 })
+        .catch(() => []);
+      const qTimes = recentQuotes.map((o) => Date.parse(o.boundaryAt)).filter(Number.isFinite).sort((a, b) => a - b);
+      const qDeltas = qTimes.slice(1).map((t, i) => t - qTimes[i]).sort((a, b) => a - b);
+      const quoteCadence = qDeltas.length >= 2 ? qDeltas[Math.floor(qDeltas.length / 2)] : null;
+      const vLiveStale = liveForBase?.quotedAt != null
+        ? now - Date.parse(liveForBase.quotedAt) > Math.max(quoteCadence != null ? GAP_FACTOR * quoteCadence : 0, 5 * 60_000)
         : null;
       const vBase = {
         livePrice: liveForBase?.price ?? null,

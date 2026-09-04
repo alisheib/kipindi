@@ -150,6 +150,9 @@ export function TerminalChart({
   const seqRef = useRef(0);
   const lastRawRef = useRef<string>("");
   const cadenceRef = useRef<number | null>(null);
+  const rangeRef = useRef<TerminalRange>(range);
+  const decimalsRef = useRef<number>(2);
+  const latestBarRef = useRef<{ o: number; h: number; l: number; c: number; t: number } | null>(null);
 
   // ── data: fetch the window; poll while visible; refresh on tab reveal ─────
   useEffect(() => {
@@ -163,7 +166,11 @@ export function TerminalChart({
       const seq = ++seqRef.current;
       try {
         const r = await fetch(`/api/updown/history?asset=${encodeURIComponent(assetKey)}&range=${range}&style=${style}`, {
-          cache: "no-store",
+          // no-cache (NOT no-store): the browser stores the body, sends
+          // If-None-Match, and the route's 304 answers with ZERO bytes — the
+          // bandwidth saving the ETag was built for now reaches the phone
+          // (re-sign panel, data + graphing lenses).
+          cache: "no-cache",
           signal: ac.signal,
         });
         if (!alive || seq !== seqRef.current) return; // a newer request owns the state
@@ -175,6 +182,7 @@ export function TerminalChart({
         const data: Feed = JSON.parse(raw);
         const has = data.series.mode === "line" ? data.series.points.some((p) => p.price != null) : data.series.candles.length > 0;
         cadenceRef.current = data.medianDeltaMs;
+        decimalsRef.current = data.decimals;
         if (has) { setFeed(data); setStatus("ok"); }
         else { setFeed(null); setStatus("empty"); } // VERIFIED empty — the only path to the no-reads claim
       } catch {
@@ -182,6 +190,7 @@ export function TerminalChart({
         setStatus((s) => (s === "ok" ? "ok" : "error"));
       }
     };
+    rangeRef.current = range;
     load();
     // Poll pacing follows the DATA, not a constant (judge panel, data lens):
     // the server states the window's cadence in every payload, so a 1h-bar 7D
@@ -240,7 +249,15 @@ export function TerminalChart({
           // '4日' by browser locale). Times are already wall-clock shifted, so the
           // day boundary IS honest midnight — rendered as "00:00", one grammar for
           // every locale; all other tick kinds keep the library default (null).
-          tickMarkFormatter: (_t: number, type: number) => (type === 2 ? "00:00" : null),
+          tickMarkFormatter: (t: number, type: number) => {
+            if (type !== 2) return null;
+            // Intraday windows: the day boundary IS honest midnight. Multi-day
+            // windows (7D): six identical "00:00"s carry zero calendar
+            // information (re-sign panel) — the boundary names its DAY, in the
+            // platform locale, over the already wall-clock-shifted instant.
+            if (rangeRef.current !== "7D") return "00:00";
+            return new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", timeZone: "UTC" }).format((t as number) * 1000);
+          },
         },
         localization: { locale },
         crosshair: {
@@ -275,8 +292,12 @@ export function TerminalChart({
         const bar = param.seriesData.get(s0) as { open?: number; high?: number; low?: number; close?: number; time?: number } | undefined;
         if (bar && bar.open != null) {
           setLegend({ o: bar.open, h: bar.high!, l: bar.low!, c: bar.close!, t: (bar.time as number) ?? 0 });
+        } else {
+          // Pointer left the pane (or sits on whitespace): the legend returns to
+          // the LATEST bar immediately — a hovered mid-window bar must never keep
+          // reading as current (re-sign panel; worst case was ~1h on 7D).
+          if (latestBarRef.current) setLegend(latestBarRef.current);
         }
-        // leaving the pane falls back to the latest bar via the draw effect's default
       });
       chartRef.current = chart;
       ro = new ResizeObserver(() => chart.applyOptions({ width: el.clientWidth }));
@@ -308,7 +329,12 @@ export function TerminalChart({
     const tzShift = -new Date().getTimezoneOffset() * 60;
     // Pane-space discipline: the volume band exists only in candle mode — the
     // line reclaims its 18% (margins re-applied per draw).
-    chart.priceScale("right").applyOptions({ scaleMargins: data.series.mode === "candles" ? { top: 0.08, bottom: 0.26 } : { top: 0.08, bottom: 0.08 } });
+    // Pane-space discipline: the volume band exists only when volume will
+    // actually PAINT — a reserved dead strip under volume-less instruments was
+    // ~70px of nothing on every current asset (re-sign panel, visual lens).
+    const willPaintVolume = data.series.mode === "candles"
+      && data.series.candles.filter((c) => c.v != null && c.v > 0).length >= 2;
+    chart.priceScale("right").applyOptions({ scaleMargins: { top: 0.08, bottom: willPaintVolume ? 0.26 : 0.08 } });
     const at = (ms: number) => ((Math.round(ms / 1000) + tzShift) as UTCTimestamp);
 
     for (const s of seriesListRef.current) chart.removeSeries(s);
@@ -350,7 +376,11 @@ export function TerminalChart({
       lastSeries = s;
       legendModeRef.current = "candles";
       const lastReal = data.series.candles[data.series.candles.length - 1];
-      if (lastReal) setLegend({ o: lastReal.o, h: lastReal.h, l: lastReal.l, c: lastReal.c, t: lastReal.t });
+      if (lastReal) {
+        const bar = { o: lastReal.o, h: lastReal.h, l: lastReal.l, c: lastReal.c, t: lastReal.t };
+        latestBarRef.current = bar;
+        setLegend(bar);
+      }
       // Volume histogram — the vendor's real traded volume, bottom band, coloured
       // by bar direction at low alpha. Omitted entirely when the instrument
       // reports none (gold): an empty histogram is a fabricated statement.
@@ -457,9 +487,9 @@ export function TerminalChart({
   return (
     <div>
       {legend && (
-        <p className="mb-1 mt-0 flex flex-wrap items-baseline gap-x-2.5 font-mono text-body-sm tabular-nums">
+        <p className="mb-1 mt-0 flex flex-wrap items-baseline gap-x-2 font-mono text-body-sm tabular-nums">
           {([['O', legend.o], ['H', legend.h], ['L', legend.l], ['C', legend.c]] as const).map(([k, v]) => (
-            <span key={k}><span className="text-text-faint">{k}</span> <span className="text-text">{v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
+            <span key={k}><span className="text-text-faint">{k}</span> <span className="text-text">{v.toLocaleString(locale, { minimumFractionDigits: decimalsRef.current, maximumFractionDigits: decimalsRef.current })}</span></span>
           ))}
           {pct != null && <span style={{ color: legendInk }}>{pct >= 0 ? "+" : "−"}{Math.abs(pct).toFixed(2)}%</span>}
         </p>

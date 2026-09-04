@@ -232,5 +232,52 @@ console.log("\n§10 · the style toggle's contract — the player owns the form,
      r5!.series.mode === "line" && r5!.candlesUnavailable === true);
 }
 
+console.log("\n§11 · the VENDOR tier, driven through fixtures (the primary tier must not be the only unexecuted one)");
+{
+  const { vendorBarsFor, __clearVendorCacheForTests } = await import("../src/lib/server/updown-terminal-vendor");
+  const A = { id: "udast_vt", symbol: "BTC/USD", priceSourceUrl: "https://api.example.test/quote", sourceDomain: "example.test" };
+  const bar = (minAgo: number, o: number, h: number, l: number, c: number, vol?: string) => ({
+    datetime: new Date(Math.floor((NOW - minAgo * MIN) / MIN) * MIN).toISOString().slice(0, 19).replace("T", " "),
+    open: String(o), high: String(h), low: String(l), close: String(c), ...(vol != null ? { volume: vol } : {}),
+  });
+  let calls = 0; let lastUrl = "";
+  const fetchOk = (async (url: URL | RequestInfo) => {
+    calls++; lastUrl = String(url);
+    return new Response(JSON.stringify({ values: [
+      bar(1, 100, 105, 99, 104, "12"),
+      bar(2, 99, 100, 98, 100),
+      // GARBAGE: high below the body — a decimal-shift-shaped provider fault.
+      bar(3, 100, 90, 80, 100),
+      bar(4, 98, 99.5, 97, 99),
+    ] }), { status: 200 });
+  }) as typeof fetch;
+
+  __clearVendorCacheForTests();
+  const bars = await vendorBarsFor(A, "1H", "k-test", fetchOk);
+  ok("11.1 real rows survive, the garbage row is REFUSED", bars != null && bars.length === 3
+     && !bars.some((b) => b.h < Math.max(b.o, b.c)), `${bars?.length} bars`);
+  ok("11.2 oldest-first, volume carried when present and null when absent",
+     bars![0].t < bars![2].t && bars!.some((b) => b.v === 12) && bars!.some((b) => b.v === null));
+  ok("11.3 the outgoing URL pins timezone=UTC and /time_series (E-71)",
+     lastUrl.includes("timezone=UTC") && lastUrl.includes("/time_series") && lastUrl.includes("symbol=BTC%2FUSD"));
+  await vendorBarsFor(A, "1H", "k-test", fetchOk);
+  ok("11.4 a second call inside the TTL is served from cache — one credit per window", calls === 1, `${calls} calls`);
+
+  __clearVendorCacheForTests();
+  const fetchErrBody = (async () => new Response(JSON.stringify({ status: "error", message: "quota" }), { status: 200 })) as typeof fetch;
+  ok("11.5 a 200-with-error-body answers null (tier-2 fallthrough)", (await vendorBarsFor(A, "1H", "k-test", fetchErrBody)) === null);
+  let failCalls = 0;
+  const fetchBoom = (async () => { failCalls++; throw new Error("down"); }) as typeof fetch;
+  __clearVendorCacheForTests();
+  await vendorBarsFor(A, "1H", "k-test", fetchBoom);
+  await vendorBarsFor(A, "1H", "k-test", fetchBoom);
+  ok("11.6 a FAILURE is cached too — a vendor incident is one billable call per TTL", failCalls === 1, `${failCalls} calls`);
+  __clearVendorCacheForTests();
+  const wrongHost = { ...A, sourceDomain: "not-the-approved.test" };
+  ok("11.7 the use-time host gate refuses an untrusted endpoint (the settlement reader's own defence)",
+     (await vendorBarsFor(wrongHost, "1H", "k-test", fetchOk)) === null);
+  __clearVendorCacheForTests();
+}
+
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

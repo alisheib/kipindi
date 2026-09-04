@@ -30,6 +30,10 @@
  */
 import type { StoredAsset } from "./updown-dal";
 import type { TerminalRange } from "./updown-board";
+// The money path's own use-time host gate — the SAME defence-in-depth the
+// settlement reader carries (re-sign panel: a doc that names a check the code
+// does not perform is the checks-that-lie class; now the code performs it).
+import { hostMatchesDomain } from "./updown-feed";
 
 export type VendorBar = { t: number; o: number; h: number; l: number; c: number; v: number | null };
 
@@ -45,7 +49,11 @@ export const VENDOR_PLAN: Record<TerminalRange, { interval: string; outputsize: 
 };
 
 const CACHE_TTL_MS = 30_000;
-const cache = new Map<string, { at: number; bars: VendorBar[] }>();
+/** Failure TTL — shorter, so recovery is quick but an incident is one billable
+ *  call per window per TTL, not one per viewer. ⚠️ Both bounds are PER-PROCESS;
+ *  they multiply under the multi-container programme. */
+const FAIL_TTL_MS = 15_000;
+const cache = new Map<string, { at: number; bars: VendorBar[] | null }>();
 
 /** Provider rows are "YYYY-MM-DD HH:MM:SS" in the REQUESTED zone (UTC, pinned). */
 function parseUtc(dt: string): number {
@@ -58,7 +66,7 @@ function parseUtc(dt: string): number {
  * the confirmed-reads tier. Never throws.
  */
 export async function vendorBarsFor(
-  asset: Pick<StoredAsset, "id" | "symbol" | "priceSourceUrl">,
+  asset: Pick<StoredAsset, "id" | "symbol" | "priceSourceUrl" | "sourceDomain">,
   range: TerminalRange,
   apiKey: string | undefined,
   fetchImpl: typeof fetch = fetch,
@@ -66,10 +74,16 @@ export async function vendorBarsFor(
   if (!apiKey) return null;
   const plan = VENDOR_PLAN[range];
   if (!plan) return null;
+  // Use-time trust recheck — the settlement reader's own gate, applied to the
+  // second path that carries this credential.
+  if (!hostMatchesDomain(asset.priceSourceUrl, asset.sourceDomain)) return null;
 
   const key = `${asset.id}:${range}`;
   const hit = cache.get(key);
-  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.bars;
+  // A cached NULL is a real answer too: during a vendor incident the credit
+  // bound must hold (one billable failure per TTL, everyone else falls to the
+  // confirmed-reads tier instantly, no 8s timeout queue).
+  if (hit && Date.now() - hit.at < (hit.bars ? CACHE_TTL_MS : FAIL_TTL_MS)) return hit.bars;
 
   let url: URL;
   try {
@@ -85,11 +99,12 @@ export async function vendorBarsFor(
   url.searchParams.set("timezone", "UTC"); // E-71 — never the provider's silent Exchange default
   url.searchParams.set("apikey", apiKey);
 
+  const fail = (): null => { cache.set(key, { at: Date.now(), bars: null }); return null; };
   try {
     const res = await fetchImpl(url, { signal: AbortSignal.timeout(8000) });
-    if (!res.ok) return null;
+    if (!res.ok) return fail();
     const body = (await res.json()) as { values?: Array<{ datetime: string; open: string; high: string; low: string; close: string; volume?: string }> };
-    if (!Array.isArray(body.values) || body.values.length === 0) return null;
+    if (!Array.isArray(body.values) || body.values.length === 0) return fail();
     const bars: VendorBar[] = [];
     for (const v of body.values) {
       const t = parseUtc(v.datetime);
@@ -101,12 +116,12 @@ export async function vendorBarsFor(
       const vol = v.volume != null ? Number(v.volume) : NaN;
       bars.push({ t, o, h, l, c, v: Number.isFinite(vol) && vol >= 0 ? vol : null });
     }
-    if (bars.length === 0) return null;
+    if (bars.length === 0) return fail();
     bars.sort((a, b) => a.t - b.t);
     cache.set(key, { at: Date.now(), bars });
     return bars;
   } catch {
-    return null;
+    return fail();
   }
 }
 
