@@ -97,7 +97,31 @@ function seededWalk(seed: string, length: number, max = 100_000): number[] {
  *  page no longer depends on how many players the platform has. */
 const BOARD_SIZE = 50;
 
+/** LAUNCH-1K F — the board is GLOBAL (no viewer data anywhere in a Row), so one
+ *  computation can serve every viewer inside the TTL. At the page's own 30 s
+ *  poll cadence this collapses ~101 bounded queries per viewer-render into
+ *  ~3.4/s worst case → one recompute per 20 s regardless of viewer count.
+ *  Same idiom as platform-stats.ts / market-service.ts terminal memo. 20 s, not
+ *  30: at most one poll cycle can see a stale board, and a settlement's rank
+ *  change still lands within the cadence a viewer already experiences. */
+const LEADERBOARD_TTL_MS = 20_000;
+declare global {
+  // eslint-disable-next-line no-var
+  var __50PICK_LEADERBOARD: { at: number; value: Row[] } | undefined;
+}
+
 async function buildLeaderboard() {
+  const cached = globalThis.__50PICK_LEADERBOARD;
+  if (cached && Date.now() - cached.at < LEADERBOARD_TTL_MS) return cached.value;
+  const value = await buildLeaderboardUncached();
+  // B-1 note: a THROW above propagates to leaderboard/error.tsx unchanged — a
+  // failed aggregate must never be cached, and an empty board (a real, correct
+  // answer) is cached like any other.
+  globalThis.__50PICK_LEADERBOARD = { at: Date.now(), value };
+  return value;
+}
+
+async function buildLeaderboardUncached() {
   // 🔴 This used to load EVERY user with no `where` or `take`, then fire one positions
   // query per user. The old comment said "N+1 → 1"; running them in parallel does not
   // remove an N+1, it aims all of it at the connection pool at once. Measured at 1,000
