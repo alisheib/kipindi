@@ -39,7 +39,7 @@ import { RoundCountdownPod } from "@/components/updown/round-countdown";
 import { PriceHero } from "@/components/updown/price-hero";
 import { RoundActionPanel } from "@/components/updown/round-action-panel";
 import { AssetMark } from "@/components/updown/updown-card";
-import { SOURCE_CLASS_KEY } from "@/lib/updown-source-label";
+import { SOURCE_CLASS_KEY, fmtEAT } from "@/lib/updown-source-label";
 // E-101 · one rule for "where does this ticket live", shared with the wallet and the emails.
 import { positionListHref } from "@/lib/position-permalink";
 // E-102 · how often this page re-asks the server, and when it stops.
@@ -76,15 +76,8 @@ const eyebrow = "m-0 font-mono text-micro font-semibold uppercase eyebrow text-t
 const usd = (n: number | null, d: number): string =>
   n == null ? "—" : `$${n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d })}`;
 
-/** Source's own / our observed time in EAT (Africa/Nairobi), with the zone stated — a
- *  receipt without a timezone is not auditable. */
-const fmtEAT = (iso: string | null): string | null => {
-  if (!iso) return null;
-  const d = new Date(iso);
-  if (!Number.isFinite(d.getTime())) return null;
-  const s = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Nairobi", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(d);
-  return `${s} EAT`;
-};
+// fmtEAT moved to updown-source-label.ts (E-262) — the board chart panel now renders the
+// same receipt line, and two private copies of one formatter is the drift that file stops.
 
 export async function generateMetadata({ params }: { params: Promise<{ roundId: string }> }) {
   const { roundId } = await params;

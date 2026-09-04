@@ -29,11 +29,25 @@ export const MUTATIONS = [
     expect: "3.2 every exemption still matches a detector",
   },
   {
-    name: "a charting library arriving in package.json is a reversed ruling",
+    name: "a SECOND charting library arriving in package.json is a reversed ruling",
     file: "package.json",
     from: '"dependencies": {',
     to: '"dependencies": {\n    "uplot": "^1.6.31",',
-    expect: "5.1 package.json carries no charting dependency",
+    expect: "5.1 package.json carries no charting dependency beyond the allowed one",
+  },
+  {
+    name: "the allowed library imported OUTSIDE the home is a stray chart wearing a library",
+    file: "src/app/wallet/wallet-client.tsx",
+    from: 'import { MicroSpark } from "@/components/charts/micro-spark";',
+    to: 'import { MicroSpark } from "@/components/charts/micro-spark";\nimport { createChart } from "lightweight-charts";',
+    expect: "5.3 the allowed library is imported ONLY under the home",
+  },
+  {
+    name: "a DYNAMIC import of the allowed library outside the home is the same stray (review F24)",
+    file: "src/app/results/page.tsx",
+    from: "import { Ring } from \"@/components/charts/ring\";",
+    to: "import { Ring } from \"@/components/charts/ring\";\nconst lazyLib = () => import(\"lightweight-charts\");",
+    expect: "5.3 the allowed library is imported ONLY under the home",
   },
   {
     name: "a member losing its last import site is the Sparkline defect reborn",

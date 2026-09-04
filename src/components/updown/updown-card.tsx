@@ -666,7 +666,10 @@ export function UpDownCard(props: UpDownCardProps) {
     up: upTarget == null ? null : usd(upTarget, decimals),
     down: downTarget == null ? null : usd(downTarget, decimals),
     margin: upTarget == null || openPrice == null ? null : usd(upTarget - openPrice, decimals),
-    move: movePct == null ? null : `${movePct > 0 ? "+" : ""}${movePct.toFixed(2)}%`,
+    // E-264 · U+2212 for negatives, the charts' own sgn glyph — one figure class had two
+    // minus grammars on one board (§M4's one-grammar spirit). Zero stays unsigned: flat
+    // has no direction, the three-state rule this card taught the charts.
+    move: movePct == null ? null : `${movePct > 0 ? "+" : movePct < 0 ? "−" : ""}${Math.abs(movePct).toFixed(2)}%`,
   }), [livePrice, openPrice, closePrice, upTarget, downTarget, decimals, movePct]);
   const playersText = useMemo(() => formatCount(players), [players]);
   const quoted = useMemo(() => hhmmss(sourceQuotedAt), [sourceQuotedAt]);

@@ -29,3 +29,19 @@ export const SOURCE_CLASS_KEY: Record<PublicSourceClass, "udSourceCrypto" | "udS
   fx:      "udSourceFx",
   generic: "udSourceGeneric",
 };
+
+/**
+ * Source's own / our observed time in EAT (Africa/Nairobi), with the zone stated — a
+ * receipt without a timezone is not auditable.
+ *
+ * Hoisted here 2026-09-04 (session 80, E-262): the round detail page held this privately
+ * and the board chart panel gained the same receipt line — a second private copy is the
+ * drift this file's own header exists to stop.
+ */
+export const fmtEAT = (iso: string | null): string | null => {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (!Number.isFinite(d.getTime())) return null;
+  const s = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Nairobi", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(d);
+  return `${s} EAT`;
+};

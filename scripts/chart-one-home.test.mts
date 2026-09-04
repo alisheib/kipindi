@@ -141,20 +141,33 @@ for (const m of coreAndMembers) {
      imported ? "" : "a chart component nothing imports is one import away from a defect — delete it or wire it");
 }
 
-// ── §5 · the library ban ────────────────────────────────────────────────────
-console.log("\n§5 · no charting library (DESIGN-BASELINE §8 — a dated decision)");
-const BANNED = /(recharts|chart\.js|chartjs-|lightweight-charts|\buplot\b|echarts|@nivo\/|victory|@visx\/|plotly|highcharts|apexcharts|"d3"|"d3-)/;
+// ── §5 · EXACTLY ONE charting library, confined to the home ─────────────────
+// 2026-09-04, Ali's direct order (same day, reversing the morning's zero-dep
+// decision — both dated in DESIGN-BASELINE §8): TradingView lightweight-charts
+// is adopted for the Up & Down terminal chart. The ban did not die, it became
+// an ALLOWLIST OF ONE: any OTHER charting dependency is still a failure, and
+// even the allowed one may only be imported by members of the home — a page
+// reaching for createChart directly is a stray chart wearing a library.
+console.log("\n§5 · exactly one charting library, imported only by the home");
+const ALLOWED_LIB = "lightweight-charts";
+const BANNED = /(recharts|chart\.js|chartjs-|\buplot\b|echarts|@nivo\/|victory|@visx\/|plotly|highcharts|apexcharts|klinecharts|"d3"|"d3-)/;
 const pkg = JSON.parse(readFileSync(PKG, "utf8"));
 const depNames = Object.keys({ ...pkg.dependencies, ...pkg.devDependencies });
 const bannedDeps = depNames.filter((d) => BANNED.test(`"${d}"`));
-ok("5.1 package.json carries no charting dependency", bannedDeps.length === 0,
-   bannedDeps.length ? `found: ${bannedDeps.join(", ")}` : `${depNames.length} deps checked`);
-const importers = all.filter((p) => {
-  const b = corpusBodies.get(p)!;
-  return /from\s+["'](recharts|chart\.js|lightweight-charts|uplot|echarts|d3|victory|@nivo|@visx|plotly|highcharts|apexcharts)/.test(b);
-});
-ok("5.2 no user-level file imports one either", importers.length === 0,
+ok("5.1 package.json carries no charting dependency beyond the allowed one", bannedDeps.length === 0,
+   bannedDeps.length ? `found: ${bannedDeps.join(", ")}` : `${depNames.length} deps checked · allowed: ${ALLOWED_LIB}`);
+// ⛔ BOTH import forms — static `from "x"` AND dynamic `import("x")`/`require("x")`.
+// The review's refuters proved the first version matched only the static form, so
+// `await import("lightweight-charts")` from any page kept the suite ALL PASS (F24) —
+// and the home itself now legitimately uses the dynamic form.
+const BANNED_IMPORT = /(?:from\s+["']|import\s*\(\s*["']|require\s*\(\s*["'])(recharts|chart\.js|uplot|echarts|d3|victory|@nivo|@visx|plotly|highcharts|apexcharts|klinecharts)/;
+const ALLOWED_IMPORT = /(?:from\s+["']|import\s*\(\s*["']|require\s*\(\s*["'])lightweight-charts["']/;
+const importers = all.filter((p) => BANNED_IMPORT.test(corpusBodies.get(p)!));
+ok("5.2 no user-level file imports a banned one (static or dynamic)", importers.length === 0,
    importers.length ? `found: ${importers.join(", ")}` : "");
+const libStrays = all.filter((p) => !p.startsWith(HOME) && ALLOWED_IMPORT.test(corpusBodies.get(p)!));
+ok("5.3 the allowed library is imported ONLY under the home (static or dynamic)", libStrays.length === 0,
+   libStrays.length ? `stray import: ${libStrays.join(", ")}` : "");
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed (${hits.length} chart-shaped files · ${memberFiles.length} members in the home · ${EXEMPT.size} named exemptions)`);
 process.exit(fail === 0 ? 0 : 1);

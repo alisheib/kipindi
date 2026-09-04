@@ -24,7 +24,11 @@ export function VolumeSparkline({ data, width = 220, height = 38, className, ari
       {data.map((v, i) => {
         const h = (v / max) * (height - 4);
         return (
-          <rect key={i} x={i * (barW + 2)} y={height - h - 2} width={barW} height={h} rx="1" fill="var(--aqua-300)" opacity={0.35 + 0.65 * (v / max)} />
+          // E-264 · --aqua-400, the micro colour law's own token (micro-spark.tsx §law:
+          // "a micro chart is ALWAYS aqua (--aqua-400)") — the -300 was kit-port residue
+          // and the one micro surface off the stated tint. The opacity ramp still
+          // differentiates the bars.
+          <rect key={i} x={i * (barW + 2)} y={height - h - 2} width={barW} height={h} rx="1" fill="var(--aqua-400)" opacity={0.35 + 0.65 * (v / max)} />
         );
       })}
     </svg>

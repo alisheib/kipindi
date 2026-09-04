@@ -191,6 +191,14 @@ const FROZEN_RATCHET = new Map<string, number>([
   // afterwards showed the file needs only one, so the budget follows the code down.
   ["src/components/layout/wallet-balance-pill.tsx", 1],
   ["src/components/updown/price-hero.tsx", 2],
+  // CHART-SPRINT-2 · the terminal chart's token BRIDGE, not a palette: canvas
+  // cannot resolve var(), so tokens are painted through a 1×1 probe and read
+  // back as bytes. The three literals are the probe's own mechanics — a "#000"
+  // sentinel written twice to DETECT a parse failure, and the transparent
+  // "rgba(0,0,0,0)" error ink a missing token paints (visibly broken, caught
+  // by the screenshot pass). No design value lives here; every rendered colour
+  // still originates in globals.css.
+  ["src/components/charts/terminal-chart.tsx", 3],
   ["src/app/admin/live/page.tsx", 1],
   ["src/app/admin/payments/control-plane.tsx", 1],
   ["src/app/admin/proposals/admin-proposals-client.tsx", 1], // rounded-[10px]

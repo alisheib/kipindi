@@ -375,7 +375,23 @@ languages. The data: MarketSnapshot rows are bet/settle events (≤800/market, c
 grid boundaries — **a 5-minute round holds ~5 real ticks with no intra-minute high/low, so
 honest OHLC is underivable and candlesticks are forbidden** (§B12.3).
 
-**Decision: dependency-free SVG, consolidated into `src/components/charts/`.** Weighed and
+> ⚠️ **THE NO-LIBRARY HALF OF THIS DECISION WAS REVERSED BY ALI THE SAME DAY — read
+> §B12.4 for the standing law.** The reversal (2026-09-04, Ali's direct order: *"search for
+> the perfect library… harmonize with our whole platform design and theme kit… we proceed
+> on your call alone"*, after judging the honest-but-sparse round chart "nice but not like
+> financial graphs") adopted **TradingView `lightweight-charts@5.2.1`** (Apache-2.0,
+> pinned exact) for the Up & Down terminal chart ONLY — re-weighed fresh against KLineChart
+> (API churn, indicator bloat, thinner docs), ECharts 6 (weight, dashboard aesthetic) and
+> ApexCharts (license ambiguity, SVG perf): lightweight-charts is the genre-defining
+> renderer with native price-lines, baseline series, whitespace gaps (A-5's gap markers
+> render as REAL holes) and kinetic mobile pan/zoom. Confinement: imported only by
+> `charts/terminal-chart.tsx` (guard §5.3, red-proven), lazy-loaded only when a history
+> range is opened (+168 KB static total, ~46 KB gz, zero on cubes/ROUND paths), themed
+> through a no-fallback `getComputedStyle` token bridge. The paragraphs below record the
+> morning's reasoning unchanged — a reversed ruling stays readable (⚪ SPENT in part).
+
+**Decision (2026-09-04 morning, ⚪ partially SPENT — see the reversal box above):
+dependency-free SVG, consolidated into `src/components/charts/`.** Weighed and
 rejected, each on measurement:
 - **TradingView lightweight-charts** (Apache-2.0, ~45KB gz) — canvas + client-only: two
   shipped charts (PnlChart, PriceHero) render with ZERO client JS and would forfeit it;
@@ -406,6 +422,44 @@ bounded read (`currentRoundChart`), the same `priceSeriesFor` the detail hero us
 `updown-chart.test.mts` imports it, `updown-chart-red.mjs` anchors it CRLF-sensitively, and
 `design-frozen`/`eyebrow-roles` pin the path. Moving it would churn three guards and a RED
 harness for zero player value — the guard names it instead.
+
+### 8b. CHART ROUND 2 — the four-lens review, its verdicts and its parks (2026-09-04, session 80)
+
+The day after the sprint closed, Ali asked for a perfection pass: *"make sure they are
+visually perfect… see if they tolerate any additions, especially Up & Down… the toggle —
+validate it's in the visually perfect place as a UI/UX engineer."* Method: fresh production
+shots (28: board both toggle states + detail hero + probability rail, 3 locales, lang-verified),
+then a **four-lens review workflow — toggle-UX · design-law · honest-additions ·
+cross-surface consistency — 26 findings, every one adversarially verified by an independent
+refuter: 24 confirmed, 2 killed.** Fixes shipped as E-260..E-264 (campaign register); the
+§B12.2 live-dot-role and gilt-value-flag rulings came out of the same pass.
+
+**The toggle verdict: KEEP, exactly where it is.** Right-aligned opposite the section
+eyebrow, directly above the content it governs — the same geometry as `.pchart-ranges` in
+the probability chart's header; visually distinct from the filter pills above (joined
+segmented capsule vs standalone pills, and at 360 the filter collapses to one sheet-trigger);
+pressed-buttons vocabulary complete (aria-pressed, role=group, localized aria, 44px literal,
+--pill-active, focus ring); rail removed when only one body exists. The one label defect
+(the cubes pill echoing the nav's "Results") is E-264 ①.
+
+**Parks — judged, recorded, NOT to be re-litigated as bolt-ons:**
+- **Per-cube tap detail / links** — the data is free (`recent` already holds roundId before
+  the board read discards it) but an 18×18 cube is tap-hostile; park until a cube redesign
+  gives each ≥44px. Honest destination when revisited: `/updown/[roundId]`, the proof page.
+- **Time-axis marks** — dishonest under index-spaced x (the live point is pinned to the
+  right edge, so a "close" mark there would label an 18-second-old read as the close). The
+  honest version re-plots x by timestamp; that is a deliberate form change, not axis text.
+- **Hi/lo ticks** — at per-minute reads a 5-min round has ≤6 vertices; the path IS the
+  visible high/low. Reconsider only if a 60-min duration becomes flagship.
+- **Sparse-series count note** — parked permanently: §B12.3 makes the straight segment the
+  honesty statement, and a "2 reads" caption narrates the feed on a player surface.
+- **Pool/multiplier on the chart panel** — VETO stands: the sprint ruled the cards below
+  carry the full money statement; the panel answers "above or below, how long".
+
+**Killed by the adversarial pass (so they are not re-filed):** "toggle undiscoverable during
+round gaps" — deliberate-and-documented (a toggle with one destination is decoration;
+CHART-SPRINT-2's history ranges moot it anyway); "probability alt fabricates 0%" — the
+empty-range branch is unreachable dead defense (the page gates on ranges with ≥2 points).
 
 ---
 

@@ -26,7 +26,9 @@ import { UpDownBoardTabs } from "@/components/updown/updown-board-tabs";
 import { BoardViz } from "@/components/charts/board-viz";
 import { OutcomeCubes } from "@/components/charts/outcome-cubes";
 import { RoundChart } from "@/components/charts/round-chart";
+import { UpDownChartLab } from "@/components/charts/updown-chart-lab";
 import { RoundCountdown } from "@/components/updown/round-countdown";
+import { SOURCE_CLASS_KEY, fmtEAT } from "@/lib/updown-source-label";
 
 export const dynamic = "force-dynamic";
 
@@ -138,7 +140,7 @@ export default async function UpDownPage({
              current round's confirmed price action against its open (A-5 throughout —
              both bodies render real data or nothing, and a missing body removes the
              toggle rather than offering an empty destination). ────────────────────── */}
-      {(recent.length > 0 || chartRound != null) && (
+      {(recent.length > 0 || activeAsset != null) && (
         <BoardViz
           labels={{
             aria: t.market.udViewAria,
@@ -153,22 +155,57 @@ export default async function UpDownPage({
               labels={{ up: t.market.udUp, down: t.market.udDown, void: t.market.statusVoid, oldestNewest: t.market.udOldestNewest }}
             />
           ) : null}
-          chart={chartRound != null ? (
-            <RoundChart
-              openPrice={chartRound.openPrice}
-              upTarget={chartRound.upTarget}
-              downTarget={chartRound.downTarget}
-              livePrice={activeAsset!.livePrice}
-              series={currentRoundChart!.series}
-              decimals={activeAsset!.decimals}
-              copy={{
-                openLabel: t.market.udOpenPrice,
-                upLabel: t.market.udUp,
-                downLabel: t.market.udDown,
-                awaitingRead: t.market.udAwaitingRead,
-                chartAlt: `${pickLocalized(locale, activeAsset!.nameEn, activeAsset!.nameSw, activeAsset!.nameZh)} ${t.market.udLiveChart}`,
+          // CHART-SPRINT-2 · chart mode is offered whenever an asset is active —
+          // between rounds the HISTORY ranges are the honest content; the ROUND
+          // range appears only while a round's window contains now.
+          chart={activeAsset != null ? (
+            <UpDownChartLab
+              assetKey={activeAsset.key}
+              labels={{
+                round: t.market.udRangeRound,
+                railAria: t.market.udRangeAria,
+                empty: t.market.udNoReads,
+                loading: t.common.loading,
+                error: t.market.udChartError,
+                chartAria: `${pickLocalized(locale, activeAsset.nameEn, activeAsset.nameSw, activeAsset.nameZh)} ${t.market.udLiveChart}`,
+                // E-53 grammar for the terminal's receipt footer — the KIND of
+                // market, never the vendor; the quote time is per-poll client data.
+                sourceLabel: t.market[SOURCE_CLASS_KEY[activeAsset.sourceClass]],
+                quotedWord: t.market.udQuoted,
               }}
-              countdown={<RoundCountdown closesAtMs={Date.parse(chartRound.closesAt)} label={t.market.udClosesIn} />}
+              roundView={chartRound != null ? (
+                <RoundChart
+                  openPrice={chartRound.openPrice}
+                  upTarget={chartRound.upTarget}
+                  downTarget={chartRound.downTarget}
+                  livePrice={activeAsset.livePrice}
+                  series={currentRoundChart!.series}
+                  decimals={activeAsset.decimals}
+                  copy={{
+                    openLabel: t.market.udOpenPrice,
+                    upLabel: t.market.udUp,
+                    downLabel: t.market.udDown,
+                    awaitingRead: t.market.udAwaitingRead,
+                    chartAlt: `${pickLocalized(locale, activeAsset.nameEn, activeAsset.nameSw, activeAsset.nameZh)} ${t.market.udLiveChart}`,
+                    // E-262 · the same receipt grammar the detail hero and the card footer
+                    // use — kind of market, never the vendor (E-53), + the source's own
+                    // quote time, so a flat line is tellable from a stalled feed.
+                    source: `${t.market[SOURCE_CLASS_KEY[activeAsset.sourceClass]]}${activeAsset.sourceQuotedAt ? ` · ${t.market.udQuoted} ${fmtEAT(activeAsset.sourceQuotedAt)}` : ""}`,
+                  }}
+                  // E-260 · ONE clock story on one screen: the panel counts to the betting
+                  // LOCK first (the deadline a betting player acts on — the card's own
+                  // caption), then hands over to the round close. Server-anchored (E-72).
+                  countdown={
+                    <RoundCountdown
+                      closesAtMs={Date.parse(chartRound.closesAt)}
+                      label={t.market.udClosesIn}
+                      lockAtMs={chartRound.selectionClosedAt ? Date.parse(chartRound.selectionClosedAt) : null}
+                      lockLabel={t.market.udBetsCloseIn}
+                      serverNowMs={chartRound.serverNowMs}
+                    />
+                  }
+                />
+              ) : null}
             />
           ) : null}
         />

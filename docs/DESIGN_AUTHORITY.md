@@ -481,11 +481,24 @@ been written down, which is exactly how the never-imported `Sparkline` came to c
      Up & Down price path, the outcome cubes and donut).
    - **Reference ink** — gilt marks the line a chart is READ AGAINST (the 50% tipping line,
      break-even, the open price) and never a data series: a gold data line would claim
-     earnings the round has not decided (B4/Q5).
+     earnings the round has not decided (B4/Q5). ⭐ *Ruled 2026-09-04 (round 2):* the
+     probability chart's current-value flag and hover cross-dot also wear gilt — they STATE
+     the value read against the gilt tipping scale, part of the reference grammar, not a
+     data series. (Left unwritten, this shipped-before-the-law paint was a coin-flip
+     precedent — the never-imported-Sparkline failure shape.) ⚠️ Two reference-line stroke
+     dialects ship (pchart/pnl quiet: 1px · dash "2 5" · 0.55 · cap 0.14em/0.7 — updown
+     heavy: 1.25px · "3 4" · 0.75 · cap 0.12em/0.9). A recorded split, not a rule: a NEW
+     chart takes the quiet dialect unless its plot is as dense as the Up & Down pair's.
    - **Live ink** — aqua is the heartbeat: every MICRO spark (card, wallet, leaderboard) and
-     the live end-point dot. A micro chart is a statement that activity exists, not which
-     way it points — direction on a card belongs to the move chip. A micro chart that wants
-     semantic colour is asking to be a full chart: promote it, don't tint it.
+     the live end-point dot **on charts whose price path is not itself direction ink** (the
+     P&L walk, the probability line's finishing accent). ⭐ *Ruled 2026-09-04 (round 2), by
+     DOT ROLE:* a direction-ink price path (Up & Down board + detail) caps its own live dot
+     and value tag in the path's ink — that dot's job is "where the price is NOW on this
+     path", not the heartbeat accent; two shipped answers existed and the law now picks the
+     role split that ships (the D3 spec chose the direction dot deliberately, pre-§B12). A
+     micro chart is a statement that activity exists, not which way it points — direction on
+     a card belongs to the move chip. A micro chart that wants semantic colour is asking to
+     be a full chart: promote it, don't tint it.
    - **Neutral ink** — a sided-less data series (cumulative P&L) takes `--brand-300`;
      grid/axis/VOID take the `--border` / `--text-subtle` / `--text-faint` inks.
 
@@ -497,9 +510,19 @@ been written down, which is exactly how the never-imported `Sparkline` came to c
    (oracle reads, settlements); Catmull-Rom smoothing (chart-core, tension 0.16) only on
    dense event series.
 
-4. **No charting library.** The system is dependency-free SVG — decided 2026-09-04, with the
-   weighed and rejected alternatives recorded in `DESIGN-BASELINE.md` §8. A charting
-   dependency appearing in `package.json` is a guard failure, not an upgrade.
+4. **EXACTLY ONE charting library, confined to the home.** ⚠️ **REVERSED BY ALI,
+   2026-09-04, the same day the zero-dep rule was written** — his direct order, verbatim
+   authority: *"search for the perfect library with perfect design and ability to harmonize
+   with our whole platform design and theme kit… we proceed on your call alone"*. The
+   morning's zero-dep decision and this reversal are BOTH dated in `DESIGN-BASELINE.md` §8 —
+   a reversed ruling is recorded, never erased. The standing law is now:
+   **TradingView `lightweight-charts` (Apache-2.0, pinned exact) is the one permitted
+   charting dependency**, imported ONLY by members of `src/components/charts/`
+   (`test:chart-one-home` §5.1–§5.3 + red mutations); its canvas reads the platform tokens
+   through a `getComputedStyle` bridge with **no fallback values** — a hex beside a token
+   would be a second palette. Any OTHER charting dependency, or an import of the permitted
+   one outside the home, is still a guard failure, not an upgrade. Every chart that is not
+   the Up & Down terminal remains dependency-free kit SVG.
 
 5. Chart numbers follow the money-type law (§M4: tabular mono, the one compaction grammar);
    motion follows the one ladder (B5/§E9) and snaps under reduced motion. ⚠️ Paint

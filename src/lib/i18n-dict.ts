@@ -875,7 +875,10 @@ export const dict = {
       udSourceMetals: "Live metals market", udSourceFx: "Live currency market",
       udSourceGeneric: "Live market data",
       udLastRounds: "Last rounds", udOldestNewest: "oldest → newest",
-      udViewAria: "Board view", udViewCubes: "Results", udViewChart: "Chart", udLiveChart: "Live chart",
+      // E-264 · the cubes pill said "Results" — the global nav item visible in the SAME
+      // viewport — while its own eyebrow says "Last rounds". Round vocabulary, like its eyebrow.
+      udViewAria: "Board view", udViewCubes: "Rounds", udViewChart: "Chart", udLiveChart: "Live chart",
+      udRangeRound: "Round", udRangeAria: "Chart range", udNoReads: "No confirmed price reads in this window", udChartError: "Chart unavailable — retrying",
       udNoRounds: "No rounds open right now",
       udNoRoundsBody: "No round is open on this market at the moment. Rounds are opened by our team — check back shortly, or try another duration.",
       udPaused: "Paused",
@@ -1487,6 +1490,9 @@ export const dict = {
     },
     performance: {
       title: "Performance",
+      // E-262 · the P&L chart's reference-line cap — was a hardcoded English "BREAK-EVEN"
+      // inside the svg on a trilingual page (the E-258 class, one label over).
+      breakEven: "Break-even",
       netPnl: "Net P&L",
       winRate: "Win rate",
       totalPredictions: "Predictions",
@@ -2722,7 +2728,8 @@ export const dict = {
       udSourceMetals: "Soko la madini la moja kwa moja", udSourceFx: "Soko la fedha za kigeni la moja kwa moja",
       udSourceGeneric: "Data ya soko ya moja kwa moja",
       udLastRounds: "Raundi za mwisho", udOldestNewest: "za zamani → mpya",
-      udViewAria: "Muonekano wa ubao", udViewCubes: "Matokeo", udViewChart: "Chati", udLiveChart: "Chati mubashara",
+      udViewAria: "Muonekano wa ubao", udViewCubes: "Raundi", udViewChart: "Chati", udLiveChart: "Chati mubashara",
+      udRangeRound: "Raundi", udRangeAria: "Kipindi cha chati", udNoReads: "Hakuna bei zilizothibitishwa katika kipindi hiki", udChartError: "Chati haipatikani — inajaribu tena",
       udNoRounds: "Hakuna raundi zilizo wazi sasa",
       udNoRoundsBody: "Hakuna raundi iliyo wazi kwenye soko hili kwa sasa. Raundi hufunguliwa na timu yetu — angalia tena hivi karibuni, au jaribu muda mwingine.",
       udPaused: "Imesimamishwa",
@@ -3227,6 +3234,7 @@ export const dict = {
     },
     performance: {
       title: "Utendaji",
+      breakEven: "Bila faida wala hasara",
       netPnl: "Faida halisi",
       winRate: "Kiwango cha ushindi",
       totalPredictions: "Utabiri",
@@ -4383,7 +4391,8 @@ export const dict = {
       udSourceMetals: "贵金属实时行情", udSourceFx: "外汇市场实时行情",
       udSourceGeneric: "实时市场行情",
       udLastRounds: "最近几轮", udOldestNewest: "由旧至新",
-      udViewAria: "面板视图", udViewCubes: "结果", udViewChart: "走势图", udLiveChart: "实时走势图",
+      udViewAria: "面板视图", udViewCubes: "轮次", udViewChart: "走势图", udLiveChart: "实时走势图",
+      udRangeRound: "本轮", udRangeAria: "图表时间段", udNoReads: "此时间段内暂无已确认价格", udChartError: "图表暂不可用——正在重试",
       udNoRounds: "目前没有进行中的回合",
       udNoRoundsBody: "该市场当前没有进行中的回合。回合由我们的团队开启——请稍后再看，或试试其他时长。",
       udPaused: "已暂停",
@@ -4891,6 +4900,7 @@ export const dict = {
     },
     performance: {
       title: "表现",
+      breakEven: "保本",
       netPnl: "净盈亏",
       winRate: "胜率",
       totalPredictions: "预测",

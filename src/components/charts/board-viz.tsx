@@ -17,8 +17,12 @@
  * convenience, not shared state. Reads/writes are try/catch'd: a blocked
  * storage renders the default and the toggle still works for the session.
  * ⚠️ The server always renders CUBES first; a stored "chart" applies on mount.
- * That one-frame settle is the honest cost of not leaking per-device state
- * into SSR — and with no stored choice there is no flip at all.
+ * That hydration-length settle (first paint → hydration, NOT one frame — a
+ * stored-chart player sees the strip repaint as the chart, a ~170px shift on
+ * the low-end handsets this product targets) is the honest cost of not leaking
+ * per-device state into SSR — and with no stored choice there is no flip at
+ * all. If players report the shift, the dependency-free fix is a tiny inline
+ * pre-hydration script stamping a data-attribute the first paint honours.
  *
  * When only one body exists (no live round → no chart; no outcomes yet → no
  * cubes) the rail is not rendered — a toggle with one destination is
@@ -74,11 +78,14 @@ export function BoardViz({
         )}
       </div>
       <div className="mt-2">
-        {/* Both stay mounted so a switch is instant and the poller's fresh render
-            lands in whichever is hidden too; `hidden` keeps the DOM honest for
-            readers (display:none subtrees are skipped by AT). */}
+        {/* CUBES stay mounted (cheap SSR strip, instant switch-back). The CHART
+            body mounts ONLY while selected: keeping it hidden-mounted made every
+            cubes-mode player load the terminal's library chunk and poll its feed
+            for a pane nobody could see (review F1). The chart's own state (range
+            choice) survives unmount in localStorage. `hidden` keeps the strip
+            honest for readers (display:none subtrees are skipped by AT). */}
         {cubes && <div hidden={showChart}>{cubes}</div>}
-        {chart && <div hidden={!showChart}>{chart}</div>}
+        {chart && showChart && <div>{chart}</div>}
       </div>
     </div>
   );

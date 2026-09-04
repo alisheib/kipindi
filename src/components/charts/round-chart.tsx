@@ -48,6 +48,10 @@ export function RoundChart({
     downLabel?: string;
     awaitingRead: string;
     chartAlt: string;
+    /** E-262 · the source receipt line (kind of market · quoted HH:MM:SS EAT), built by the
+     *  page from the SAME payload the card and the detail hero already render — a flat line
+     *  must be tellable from a stalled feed on the one surface built for watching. */
+    source?: string;
   };
   /** The kit RoundCountdown, composed by the page. */
   countdown?: React.ReactNode;
@@ -57,8 +61,16 @@ export function RoundChart({
 
   const hasPrice = livePrice != null;
   const isUp = hasPrice && openPrice != null ? livePrice! >= openPrice : true;
-  const ink = isUp ? "var(--yes-300)" : "var(--no-300)";
   const move = hasPrice && openPrice != null ? livePrice! - openPrice : null;
+  // ⭐ E-261 · THREE states, not two. At exactly-flat — the guaranteed state for the first
+  // minute of every round — a two-state `>=` painted price, chip, path and dot UP-green
+  // while a flat close on a banded round VOIDs (decideOutcomeByTargets: strictly between
+  // the targets → "no-move" + refund; D3 spec ruled close===open VOID, published copy
+  // "Up if above · Down if below · Void if it does not move"). The board card beside this
+  // chart already held the rule (dir "flat" → text-muted, zero unsigned); the charts now
+  // agree with it. Green/rose stay strictly above/below the open (§B2 untouched).
+  const flat = move === 0;
+  const ink = flat ? "var(--text-muted)" : isUp ? "var(--yes-300)" : "var(--no-300)";
   const movePct = move != null && openPrice ? (move / openPrice) * 100 : null;
   const sgn = (v: number) => (v >= 0 ? "+" : "−");
 
@@ -110,8 +122,14 @@ export function RoundChart({
               {/* title-md — the ladder's rung beside the countdown's 24px digits; the
                   ladder owns its own tracking (§T1: no hand-typed sizes in a new file). */}
               <span className="font-mono font-bold tabular-nums text-title-md leading-none" style={{ color: ink }}>{usd(livePrice)}</span>
-              {movePct != null && (
-                <span className="font-mono font-semibold tabular-nums text-body-sm" style={{ color: ink }}>{sgn(movePct)}{Math.abs(movePct).toFixed(2)}%</span>
+              {/* ⭐ E-261/E-262 · the DOLLAR move beside the % — a 2-dp percentage on an $81k
+                  asset steps in ~$8 while the winning band is a few cents, so the decision
+                  variable was computed and thrown away. Flat renders one unsigned figure in
+                  neutral ink, the card's own grammar. */}
+              {move != null && movePct != null && (
+                <span className="font-mono font-semibold tabular-nums text-body-sm" style={{ color: ink }}>
+                  {flat ? "0.00%" : `${sgn(move)}${usd(Math.abs(move))} · ${sgn(movePct)}${Math.abs(movePct).toFixed(2)}%`}
+                </span>
               )}
             </>
           ) : (
@@ -192,9 +210,17 @@ export function RoundChart({
           renderings, never a second source of truth. */}
       {upTarget != null && downTarget != null && (
         <p className="sm:hidden mt-1.5 mb-0 flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-body-sm font-semibold tabular-nums">
+          {/* E-259-adjacent (session 80): the OPEN was the ONE hidden svg label with no HTML
+              twin here — the gilt line the whole chart is read against, unlabeled at 360. */}
+          <span style={{ color: "var(--gilt)" }}>{copy.openLabel.toUpperCase()} {usd(openPrice)}</span>
           <span style={{ color: "var(--yes-300)" }}>{(copy.upLabel ?? "UP").toUpperCase()} ≥ {usd(upTarget)}</span>
           <span style={{ color: "var(--no-300)" }}>{(copy.downLabel ?? "DOWN").toUpperCase()} ≤ {usd(downTarget)}</span>
         </p>
+      )}
+      {/* E-262 · the source receipt, the card's and the hero's own integrity line, on the
+          watching surface too. Ladder rung, not a hand-typed size (§T1). */}
+      {copy.source && (
+        <p className="mt-1 mb-0 text-right font-mono text-body-sm text-text-faint">{copy.source}</p>
       )}
     </section>
   );

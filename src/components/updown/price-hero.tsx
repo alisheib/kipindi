@@ -77,8 +77,13 @@ export function PriceHero({
 
   const hasPrice = livePrice != null;
   const isUp = hasPrice && openPrice != null ? livePrice! >= openPrice : true;
-  const ink = isUp ? "var(--yes-300)" : "var(--no-300)";
   const move = hasPrice && openPrice != null ? livePrice! - openPrice : null;
+  // ⭐ E-261 · THREE states — the board card's own rule (dir "flat" → text-muted, zero
+  // unsigned), adopted here and in the board RoundChart in the same commit so the one
+  // recipe keeps agreeing with itself. At exactly-flat a banded round VOIDs; UP-green at
+  // 0.00% was a false direction claim in §B2 ink. Green/rose stay strictly above/below.
+  const flat = move === 0;
+  const ink = flat ? "var(--text-muted)" : isUp ? "var(--yes-300)" : "var(--no-300)";
   const movePct = move != null && openPrice ? (move / openPrice) * 100 : null;
   const sgn = (v: number) => (v >= 0 ? "+" : "−");
 
@@ -133,7 +138,7 @@ export function PriceHero({
               <>
                 <span className="font-mono font-bold tabular-nums" style={{ fontSize: 26, lineHeight: 1, letterSpacing: "-0.01em", color: ink }}>{usd(livePrice)}</span>
                 {movePct != null && (
-                  <span className="font-mono font-semibold tabular-nums" style={{ fontSize: 12, color: ink }}>{sgn(movePct)}{Math.abs(movePct).toFixed(2)}%</span>
+                  <span className="font-mono font-semibold tabular-nums" style={{ fontSize: 12, color: ink }}>{flat ? "0.00%" : `${sgn(movePct)}${Math.abs(movePct).toFixed(2)}%`}</span>
                 )}
               </>
             ) : (
@@ -199,8 +204,14 @@ export function PriceHero({
 
           {/* The money line — the open price the bet is measured against. Gilt is correct
               here: it is the reference, not decoration. */}
+          {/* ⭐ E-263 · every in-svg label wears .ud-svg-label — E-257's hide-below-sm
+              remedy, backported to the surface E-198 was originally MEASURED on: these
+              four painted ~4.34px at 393 (the measurement lives at the E-198 note above)
+              as unreadable ghost text under a header that states all four numbers in
+              real HTML. Nothing is lost at <sm: live (:134), open (:149), both targets
+              (:168-174) and aboveBelow (:244) are always-visible HTML twins. */}
           <line x1="0" y1={openY} x2="606" y2={openY} stroke="var(--gilt)" strokeWidth="1.25" strokeDasharray="3 4" opacity="0.75" />
-          <text x="0" y={(parseFloat(openY) - 6).toFixed(1)} fill="var(--gilt)" fontFamily="var(--font-mono)" fontSize="9" fontWeight="600" letterSpacing="0.12em" opacity="0.9">
+          <text className="ud-svg-label" x="0" y={(parseFloat(openY) - 6).toFixed(1)} fill="var(--gilt)" fontFamily="var(--font-mono)" fontSize="9" fontWeight="600" letterSpacing="0.12em" opacity="0.9">
             {copy.openLabel.toUpperCase()} {usd(openPrice)}
           </text>
 
@@ -209,7 +220,7 @@ export function PriceHero({
           {upY && (
             <g>
               <line x1="0" y1={upY} x2="606" y2={upY} stroke="var(--yes-400)" strokeWidth="1" strokeDasharray="2 5" opacity="0.6" />
-              <text x="606" y={(parseFloat(upY) - 4).toFixed(1)} textAnchor="end" fill="var(--yes-300)" fontFamily="var(--font-mono)" fontSize="8.5" fontWeight="600" letterSpacing="0.10em" opacity="0.9">
+              <text className="ud-svg-label" x="606" y={(parseFloat(upY) - 4).toFixed(1)} textAnchor="end" fill="var(--yes-300)" fontFamily="var(--font-mono)" fontSize="8.5" fontWeight="600" letterSpacing="0.10em" opacity="0.9">
                 {(copy.upLabel ?? "UP").toUpperCase()} {usd(upTarget!)}
               </text>
             </g>
@@ -217,7 +228,7 @@ export function PriceHero({
           {downY && (
             <g>
               <line x1="0" y1={downY} x2="606" y2={downY} stroke="var(--no-400)" strokeWidth="1" strokeDasharray="2 5" opacity="0.6" />
-              <text x="606" y={(parseFloat(downY) + 11).toFixed(1)} textAnchor="end" fill="var(--no-300)" fontFamily="var(--font-mono)" fontSize="8.5" fontWeight="600" letterSpacing="0.10em" opacity="0.9">
+              <text className="ud-svg-label" x="606" y={(parseFloat(downY) + 11).toFixed(1)} textAnchor="end" fill="var(--no-300)" fontFamily="var(--font-mono)" fontSize="8.5" fontWeight="600" letterSpacing="0.10em" opacity="0.9">
                 {(copy.downLabel ?? "DOWN").toUpperCase()} {usd(downTarget!)}
               </text>
             </g>
@@ -229,7 +240,7 @@ export function PriceHero({
             <g>
               <circle className="ud-point" cx={lastX} cy={lastY} r="7" fill={ink} opacity="0.22" />
               <circle cx={lastX} cy={lastY} r="3.6" fill={ink} />
-              <text x={tagX} y={tagY} textAnchor="end" fill={ink} fontFamily="var(--font-mono)" fontSize="11" fontWeight="700">{usd(livePrice)}</text>
+              <text className="ud-svg-label" x={tagX} y={tagY} textAnchor="end" fill={ink} fontFamily="var(--font-mono)" fontSize="11" fontWeight="700">{usd(livePrice)}</text>
             </g>
           )}
         </svg>

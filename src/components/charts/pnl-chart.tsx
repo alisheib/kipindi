@@ -36,7 +36,15 @@ type Point = { label: string; value: number }; // cumulative TZS P&L, chronologi
  */
 const short = (n: number) => formatCompactNumber(n, { explicitPlus: true });
 
-export function PnlChart({ data, ariaLabel }: { data: Point[]; ariaLabel: string }) {
+export function PnlChart({ data, ariaLabel, breakEvenLabel }: {
+  data: Point[];
+  ariaLabel: string;
+  /** E-262 · the reference-line cap, translated by the page (t.performance.breakEven).
+   *  Was a hardcoded English "BREAK-EVEN" in the svg on a trilingual player page — the
+   *  E-258 class one label over, while this file's own E4 note claimed the line named
+   *  the zero point "in every locale". */
+  breakEvenLabel: string;
+}) {
   // Prepend the zero start so the walk always begins at break-even.
   // ⛔ Unlabelled on purpose (CHART-SPRINT E4): it used to say a hardcoded English
   // "start" on a trilingual surface — and painted as "tart", because a middle-anchored
@@ -59,27 +67,40 @@ export function PnlChart({ data, ariaLabel }: { data: Point[]; ariaLabel: string
   const lastX = xAt(li), lastY = yAt(pts[li].value);
 
   return (
-    <svg viewBox="0 0 720 240" width="100%" style={{ display: "block", fontFamily: "var(--font-mono)" }} role="img" aria-label={ariaLabel}>
-      <line x1={X0} y1={topY} x2={X1} y2={topY} stroke="var(--border)" strokeWidth="1" strokeDasharray="2 3" opacity="0.45" />
-      <line x1={X0} y1={botY} x2={X1} y2={botY} stroke="var(--border)" strokeWidth="1" strokeDasharray="2 3" opacity="0.45" />
-      <line x1={X0} y1={zeroY} x2={X1} y2={zeroY} stroke="var(--gilt)" strokeWidth="1" strokeDasharray="2 5" opacity="0.55" />
-      <text x={X0} y={zeroY - 5} fill="var(--gilt)" fontSize="9" letterSpacing="0.14em" opacity="0.7">BREAK-EVEN</text>
-      <text x={X1 + 6} y={topY + 3} fill="var(--text-subtle)" fontSize="9">{short(maxV)}</text>
-      <text x={X1 + 6} y={zeroY + 3} fill="var(--gilt)" fontSize="9" opacity="0.8">0</text>
-      <text x={X1 + 6} y={botY + 3} fill="var(--text-subtle)" fontSize="9">{short(minV)}</text>
-      <path
-        d={line} fill="none" stroke="var(--brand-300)" strokeWidth="2.25"
-        strokeLinecap="round" strokeLinejoin="round"
-        style={{ filter: "drop-shadow(0 0 5px color-mix(in oklab, var(--brand-400) 35%, transparent))" }}
-      />
-      <circle cx={lastX} cy={lastY} r="3.5" fill="var(--aqua-300)" />
-      <circle className="pchart-dot-halo" cx={lastX} cy={lastY} r="8" fill="none" stroke="var(--aqua-300)" strokeWidth="1" />
-      {/* Edge-aware anchors — the probability chart's own rule: a middle-anchored
-          label at the plot edge clips half of itself. */}
-      {[0, mi, li].map((i) => (
-        <text key={i} x={xAt(i).toFixed(0)} y="234" fill="var(--text-subtle)" fontSize="9"
-              textAnchor={i === 0 ? "start" : i === li ? "end" : "middle"}>{pts[i].label}</text>
-      ))}
-    </svg>
+    <>
+      {/* ⭐ E-262 · every in-svg label wears .ud-svg-label — E-198's remedy, both halves:
+          9-unit type in a 720-unit viewBox paints ~4.0-4.3 CSS px in a phone-width panel
+          (the exact arithmetic E-198 measured on the hero), so below `sm` the svg labels
+          hide and the HTML row after the svg states the same values in readable type. */}
+      <svg viewBox="0 0 720 240" width="100%" style={{ display: "block", fontFamily: "var(--font-mono)" }} role="img" aria-label={ariaLabel}>
+        <line x1={X0} y1={topY} x2={X1} y2={topY} stroke="var(--border)" strokeWidth="1" strokeDasharray="2 3" opacity="0.45" />
+        <line x1={X0} y1={botY} x2={X1} y2={botY} stroke="var(--border)" strokeWidth="1" strokeDasharray="2 3" opacity="0.45" />
+        <line x1={X0} y1={zeroY} x2={X1} y2={zeroY} stroke="var(--gilt)" strokeWidth="1" strokeDasharray="2 5" opacity="0.55" />
+        <text className="ud-svg-label" x={X0} y={zeroY - 5} fill="var(--gilt)" fontSize="9" letterSpacing="0.14em" opacity="0.7">{breakEvenLabel.toUpperCase()}</text>
+        <text className="ud-svg-label" x={X1 + 6} y={topY + 3} fill="var(--text-subtle)" fontSize="9">{short(maxV)}</text>
+        <text className="ud-svg-label" x={X1 + 6} y={zeroY + 3} fill="var(--gilt)" fontSize="9" opacity="0.8">0</text>
+        <text className="ud-svg-label" x={X1 + 6} y={botY + 3} fill="var(--text-subtle)" fontSize="9">{short(minV)}</text>
+        <path
+          d={line} fill="none" stroke="var(--brand-300)" strokeWidth="2.25"
+          strokeLinecap="round" strokeLinejoin="round"
+          style={{ filter: "drop-shadow(0 0 5px color-mix(in oklab, var(--brand-400) 35%, transparent))" }}
+        />
+        <circle cx={lastX} cy={lastY} r="3.5" fill="var(--aqua-300)" />
+        <circle className="pchart-dot-halo" cx={lastX} cy={lastY} r="8" fill="none" stroke="var(--aqua-300)" strokeWidth="1" />
+        {/* Edge-aware anchors — the probability chart's own rule: a middle-anchored
+            label at the plot edge clips half of itself. */}
+        {[0, mi, li].map((i) => (
+          <text className="ud-svg-label" key={i} x={xAt(i).toFixed(0)} y="234" fill="var(--text-subtle)" fontSize="9"
+                textAnchor={i === 0 ? "start" : i === li ? "end" : "middle"}>{pts[i].label}</text>
+        ))}
+      </svg>
+      {/* E-262 · the sub-sm HTML twin: break-even, the real range ends (signed by the one
+          compaction grammar), and the walk's date span. Ladder rungs, no hand-typed sizes. */}
+      <p className="sm:hidden mt-1.5 mb-0 flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-body-sm tabular-nums">
+        <span style={{ color: "var(--gilt)" }}>{breakEvenLabel.toUpperCase()}</span>
+        <span className="text-text-subtle">{short(maxV)} · {short(minV)}</span>
+        {data.length > 0 && <span className="text-text-faint">{data[0].label} – {data[data.length - 1].label}</span>}
+      </p>
+    </>
   );
 }

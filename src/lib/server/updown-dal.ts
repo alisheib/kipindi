@@ -382,7 +382,11 @@ export interface ObservationStore {
   /** Terminal failure — every round bounded by this observation VOIDs and refunds.
    *  Conditional on PENDING for the same reason as `confirm`. */
   fail(id: string, failReason: string): Promise<boolean>;
-  list(opts?: { assetId?: string; state?: ObservationState; limit?: number }): Promise<StoredObservation[]>;
+  /** `boundaryFrom` (ISO) bounds the read in TIME — the terminal chart's history
+   *  windows read weeks-old tables and must never scan them (CHART-SPRINT-2).
+   *  Served by `@@index([assetId, state, boundaryAt])`. Same name + semantics as
+   *  the rounds store's `boundaryFrom`. */
+  list(opts?: { assetId?: string; state?: ObservationState; limit?: number; boundaryFrom?: string }): Promise<StoredObservation[]>;
 }
 
 // ---------------------------------------------------------------------------
@@ -558,6 +562,7 @@ const memoryObservations: ObservationStore = {
     const rows = [...memObs.values()]
       .filter((o) => !opts?.assetId || o.assetId === opts.assetId)
       .filter((o) => !opts?.state || o.state === opts.state)
+      .filter((o) => !opts?.boundaryFrom || Date.parse(o.boundaryAt) >= Date.parse(opts.boundaryFrom))
       .sort((a, b) => b.boundaryAt.localeCompare(a.boundaryAt));
     return opts?.limit != null ? rows.slice(0, opts.limit) : rows;
   },
@@ -879,7 +884,11 @@ const prismaObservations: ObservationStore = {
   },
   async list(opts) {
     const rows = await pc().upDownObservation.findMany({
-      where: { ...(opts?.assetId ? { assetId: opts.assetId } : {}), ...(opts?.state ? { state: opts.state } : {}) },
+      where: {
+        ...(opts?.assetId ? { assetId: opts.assetId } : {}),
+        ...(opts?.state ? { state: opts.state } : {}),
+        ...(opts?.boundaryFrom ? { boundaryAt: { gte: new Date(opts.boundaryFrom) } } : {}),
+      },
       orderBy: { boundaryAt: "desc" },
       ...(opts?.limit != null ? { take: opts.limit } : {}),
     });

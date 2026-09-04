@@ -415,14 +415,40 @@ export function RoundCountdownPod({
  * The countdown as a standalone readout — used on the round detail page, where the
  * card's full countdown band would be redundant but the player still needs to see how
  * long is left. Same hook, same digits, same urgency rule as the card.
+ *
+ * ⭐ E-260 · THE LOCK PHASE, additive. The board chart panel composed this clock with the
+ * ROUND close while the card one viewport-inch below counted to the BETTING lock — two
+ * clocks ~2 minutes apart on one screen, captions differing by one word, and the chart's
+ * was not the deadline a betting player acts on (E-99's order: deadlines in the order the
+ * player meets them). Given `lockAtMs` + `lockLabel`, the readout counts to the LOCK while
+ * it is in the future and hands over to the close the moment it passes — derived from the
+ * instants on the tick (E-104's law), never from a server-rendered phase. Omit them and
+ * the component behaves exactly as before.
  */
-export function RoundCountdown({ closesAtMs, label }: { closesAtMs: number; label: string }) {
-  const left = useCountdown(closesAtMs);
+export function RoundCountdown({ closesAtMs, label, lockAtMs, lockLabel, serverNowMs }: {
+  closesAtMs: number; label: string;
+  /** The betting lock instant, when it differs from the round close. */
+  lockAtMs?: number | null;
+  /** Caption while counting to the lock (e.g. udBetsCloseIn), translated by the caller. */
+  lockLabel?: string;
+  /** The server's clock at render (E-72) — anchors both counts on a drifting handset. */
+  serverNowMs?: number;
+}) {
+  const hasLock = lockAtMs != null && lockLabel != null;
+  // Unconditional hooks, like every clock in this file; `enabled` keeps the idle one silent.
+  const lockLeft = useTickSeconds(lockAtMs ?? closesAtMs, serverNowMs, hasLock, null);
+  const closeLeft = useCountdown(closesAtMs, serverNowMs);
+  // Pre-hydration both are null — decide the caption from the server's own instant so the
+  // first paint already says the right thing and no caption flip lands on hydration.
+  const inLock = hasLock && (lockLeft != null ? lockLeft > 0
+    : serverNowMs != null ? lockAtMs! > serverNowMs : true);
+  const left = inLock ? lockLeft : closeLeft;
+  const shownLabel = inLock ? lockLabel! : label;
   const running = left == null || left > 0;
   const urgent = left != null && left > 0 && left <= 30;
   return (
     <div className="text-right">
-      <div className="font-mono text-micro uppercase eyebrow text-text-faint">{label}</div>
+      <div className="font-mono text-micro uppercase eyebrow text-text-faint">{shownLabel}</div>
       <div
         className={urgent ? "ud-count-pulse" : undefined}
         style={{

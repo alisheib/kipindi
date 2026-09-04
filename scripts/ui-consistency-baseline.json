@@ -1,14 +1,15 @@
 {
-  "_note": "UI-consistency baseline: known drift counts per rule::file. Regenerate after a remediation phase with `npm run test:ui-consistency -- --update-baseline`. DONE when this is empty. See docs/UI-CONSISTENCY-AUDIT.md.",
   "_generated": "run with --update-baseline",
+  "_note": "UI-consistency baseline: known drift counts per rule::file. Regenerate after a remediation phase with `npm run test:ui-consistency -- --update-baseline`. DONE when this is empty. See docs/UI-CONSISTENCY-AUDIT.md.",
   "_total": 137,
   "counts": {
     "adhoc-portal::src/components/ui/unsaved-changes.tsx": 1,
     "bare-text-button::src/components/auth/resend-otp-button.tsx": 1,
-    "bare-text-button::src/components/chat/ChatBubble.tsx": 1,
-    "bare-text-button::src/components/chat/messages/EmptyState.tsx": 1,
     "bare-text-button::src/components/charts/board-viz.tsx": 2,
     "bare-text-button::src/components/charts/probability-chart.tsx": 1,
+    "bare-text-button::src/components/charts/updown-chart-lab.tsx": 2,
+    "bare-text-button::src/components/chat/ChatBubble.tsx": 1,
+    "bare-text-button::src/components/chat/messages/EmptyState.tsx": 1,
     "bare-text-button::src/components/rg/rg-confirm-submit.tsx": 1,
     "numeric-size-utility::src/app/admin/affiliate/affiliate-admin-client.tsx": 1,
     "numeric-size-utility::src/app/admin/approvals/loading.tsx": 1,

@@ -929,6 +929,195 @@ export async function getMyUpDownHistory(userId: string, limit = 200): Promise<M
   return rows;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// CHART-SPRINT-2 · the terminal chart's HISTORY windows (Ali, 2026-09-04:
+// "history plus live — show them history until a period based on what they
+// filter, and what's happening now will be the last candle or last point").
+//
+// ⚠️ THE CADENCE IS A MEASUREMENT, NEVER AN ASSUMPTION. The first version of
+// this reader hard-coded a per-minute feed; the adversarial review executed
+// the real writers and proved reads land only at CHAIN GRID BOUNDARIES —
+// every `roundSpanMinutes(duration)` (duration + result phase), i.e. 4 to 72
+// minutes apart per chain, interleaved when an asset runs several chains, and
+// the reader's own test had seeded the assumption back to itself. Everything
+// below therefore DERIVES from the window's observed median inter-read delta:
+//  · the gap threshold (a hole > GAP_FACTOR × median becomes a MARKER — the
+//    client renders it as a real break, never a bridge),
+//  · the candle bucket (smallest rung holding ≥ READS_PER_CANDLE medians),
+//  · the per-bucket floor (a HISTORICAL bucket under half its expected reads
+//    is a gap, not a candle — §B12.3 bans invented wicks, and aggregating
+//    too-few real reads invents a wick's confidence if not its values),
+//  · the FORMING bucket (newest, still filling) is exempt from the floor —
+//    a partial candle of real reads is Ali's "what's happening now IS the
+//    last candle", and it is labelled by its own n.
+// A window whose eligible candles cover under half its span degrades to the
+// line form. Store failures PROPAGATE (no catch): a DB blip must reach the
+// route as a 503, never render as a cacheable "no data" (A-5/B-1).
+// ═══════════════════════════════════════════════════════════════════════════
+
+export type TerminalRange = "30M" | "1H" | "4H" | "1D";
+
+const TERMINAL_WINDOWS: Record<TerminalRange, { windowMs: number; wantCandles: boolean }> = {
+  "30M": { windowMs: 30 * 60_000, wantCandles: false },
+  "1H": { windowMs: 60 * 60_000, wantCandles: false },
+  "4H": { windowMs: 4 * 3600_000, wantCandles: true },
+  "1D": { windowMs: 24 * 3600_000, wantCandles: true },
+};
+
+/** Candle bucket rungs, minutes — the smallest that fits the cadence wins. */
+const BUCKET_RUNGS_MIN = [5, 10, 15, 30, 60, 120, 240];
+/** A candle wants at least this many median inter-read gaps of width. */
+const READS_PER_CANDLE = 4;
+/** A hole wider than this many medians is a gap marker. */
+const GAP_FACTOR = 2.5;
+
+export type TerminalPoint = { t: number; price: number | null }; // price null = gap marker
+export type TerminalCandle = { t: number; o: number; h: number; l: number; c: number; n: number; forming?: boolean };
+export type TerminalSeries =
+  | { mode: "line"; points: TerminalPoint[] }
+  | { mode: "candles"; candles: TerminalCandle[]; bucketMs: number; gaps: number[] };
+
+export type TerminalFeed = {
+  series: TerminalSeries;
+  livePrice: number | null;
+  sourceQuotedAt: string | null;
+  /** True when the newest confirmed read is older than GAP_FACTOR × the window's
+   *  median cadence — the client dims the live reference line and the receipt
+   *  line carries the quote time, so a stalled feed cannot wear a flat market's
+   *  face (review finding F20). Null when the window cannot measure a cadence. */
+  liveStale: boolean | null;
+  medianDeltaMs: number | null;
+  decimals: number;
+};
+
+/**
+ * The history window for one asset. Bounded in TIME and COUNT (the DAL read is
+ * index-served via `boundaryFrom`). Returns null only for an UNKNOWN/disabled
+ * asset — the route's 404. ⛔ Reads that FAIL throw: the route answers 503
+ * with no-store, because a store error rendered as an empty chart is a
+ * fabricated statement about the world, cached for every viewer.
+ */
+export async function getAssetTerminalSeries(
+  assetKey: string,
+  range: TerminalRange,
+): Promise<TerminalFeed | null> {
+  const cfg = TERMINAL_WINDOWS[range];
+  if (!cfg) return null;
+  const assets = await assetStore.list({ enabledOnly: true });
+  const asset = assets.find((a) => a.key === assetKey);
+  if (!asset) return null;
+
+  const now = Date.now();
+  const since = new Date(now - cfg.windowMs).toISOString();
+  const rows = await observationStore.list({ assetId: asset.id, state: "CONFIRMED", boundaryFrom: since, limit: 1600 });
+  const reads = rows
+    .filter((o) => o.price != null && o.boundaryAt != null)
+    .map((o) => ({ t: Date.parse(o.boundaryAt), price: o.price as number }))
+    .filter((o) => Number.isFinite(o.t))
+    .sort((a, b) => a.t - b.t);
+
+  const live = await latestConfirmed(asset.id);
+
+  // The window's own cadence — the median inter-read delta. Needs ≥3 reads to
+  // mean anything; below that everything degrades to the sparse line.
+  const deltas = reads.slice(1).map((r, i) => r.t - reads[i].t).sort((a, b) => a - b);
+  const medianDeltaMs = deltas.length >= 2 ? deltas[Math.floor(deltas.length / 2)] : null;
+  const gapMs = medianDeltaMs != null ? Math.max(3 * 60_000, GAP_FACTOR * medianDeltaMs) : null;
+  const liveStale =
+    medianDeltaMs != null && live?.quotedAt
+      ? now - Date.parse(live.quotedAt) > Math.max(GAP_FACTOR * medianDeltaMs, 5 * 60_000)
+      : null;
+
+  const base = {
+    livePrice: live?.price ?? null,
+    sourceQuotedAt: live?.quotedAt ?? null,
+    liveStale,
+    medianDeltaMs,
+    decimals: asset.decimals,
+  };
+
+  // ONE line-builder for the line ranges and every degrade path, so no two
+  // paths can disagree about what a gap is. Without a measurable cadence there
+  // are no markers — the client draws the isolated points it was given.
+  // ⚠️ A hole emits one marker PER MISSING GRID STEP, not one per hole: the
+  // renderer's time scale is INDEX-spaced (a trading-chart property the review
+  // probe measured — absent times occupy no axis width at all), so an outage
+  // keeps honest width only if each missing step reserves its slot, exactly
+  // how trading terminals draw session breaks.
+  const lineFrom = (rs: typeof reads): TerminalSeries => {
+    const points: TerminalPoint[] = [];
+    for (let i = 0; i < rs.length; i++) {
+      if (i > 0 && gapMs != null && medianDeltaMs != null && rs[i].t - rs[i - 1].t > gapMs) {
+        for (let k = rs[i - 1].t + medianDeltaMs; k <= rs[i].t - medianDeltaMs / 2; k += medianDeltaMs) {
+          points.push({ t: Math.round(k), price: null });
+        }
+      }
+      points.push({ t: rs[i].t, price: rs[i].price });
+    }
+    return { mode: "line", points };
+  };
+
+  if (!cfg.wantCandles || medianDeltaMs == null) {
+    return { series: lineFrom(reads), ...base };
+  }
+
+  // The bucket rung: smallest that holds READS_PER_CANDLE median gaps. A
+  // cadence too slow for the window's largest sensible rung → line.
+  const bucketMs = (BUCKET_RUNGS_MIN.map((m) => m * 60_000).find((b) => b >= READS_PER_CANDLE * medianDeltaMs) ?? Infinity);
+  if (!Number.isFinite(bucketMs) || bucketMs > cfg.windowMs / 6) {
+    return { series: lineFrom(reads), ...base };
+  }
+
+  // Bucket on ALIGNED boundaries across an ALIGNED window start, so the oldest
+  // bucket is never structurally partial (review F10).
+  const windowStart = Math.ceil((now - cfg.windowMs) / bucketMs) * bucketMs;
+  const formingBucket = Math.floor(now / bucketMs) * bucketMs;
+  const buckets = new Map<number, number[]>();
+  for (const r of reads) {
+    if (r.t < windowStart) continue;
+    const b = Math.floor(r.t / bucketMs) * bucketMs;
+    const arr = buckets.get(b);
+    if (arr) arr.push(r.price);
+    else buckets.set(b, [r.price]);
+  }
+
+  // A HISTORICAL bucket earns its candle with at least half its expected reads
+  // (never fewer than 2); the FORMING bucket is exempt — its partial OHLC is
+  // real reads, growing, and labelled by its own n.
+  const expectedPerBucket = bucketMs / medianDeltaMs;
+  const floor = Math.max(2, Math.round(expectedPerBucket / 2));
+  const candles: TerminalCandle[] = [];
+  const gaps: number[] = [];
+  for (let b = windowStart; b <= formingBucket; b += bucketMs) {
+    const prices = buckets.get(b);
+    const forming = b === formingBucket;
+    if (prices && (forming || prices.length >= floor)) {
+      candles.push({
+        t: b,
+        o: prices[0],
+        h: Math.max(...prices),
+        l: Math.min(...prices),
+        c: prices[prices.length - 1],
+        n: prices.length,
+        ...(forming ? { forming: true } : {}),
+      });
+    } else {
+      // The dropped/empty bucket stays VISIBLE as reserved axis space — the
+      // client feeds these as whitespace so a feed outage looks like exactly
+      // what it is, never like candles closing ranks (review F19).
+      gaps.push(b);
+    }
+  }
+
+  // Under half the window's buckets qualified → the honest form is the line.
+  const expectedBuckets = Math.max(1, Math.floor((formingBucket - windowStart) / bucketMs));
+  if (candles.filter((c) => !c.forming).length < expectedBuckets / 2) {
+    return { series: lineFrom(reads), ...base };
+  }
+
+  return { series: { mode: "candles", candles, bucketMs, gaps }, ...base };
+}
+
 /** Real intra-round price points for the D3 hero — CONFIRMED observations only, inside
  *  the round window, oldest→newest, capped at ~60. NOTHING is sampled or simulated: the
  *  oracle reads at grid boundaries, so a short round yields few real points and a long

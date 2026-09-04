@@ -196,7 +196,7 @@ export default async function PerformancePage() {
                 <span className="gilt-eyebrow">{t.performance.pnlOverTime}</span>
                 <span className="font-mono text-micro uppercase tracking-[0.08em] text-text-subtle">{t.performance.cumulativePerSettlement}</span>
               </div>
-              <PnlChart data={pnlSeries} ariaLabel={t.performance.pnlOverTime} />
+              <PnlChart data={pnlSeries} ariaLabel={t.performance.pnlOverTime} breakEvenLabel={t.performance.breakEven} />
             </section>
           )}
 
