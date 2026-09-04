@@ -457,7 +457,11 @@ export function RoundCountdown({ closesAtMs, label, lockAtMs, lockLabel, serverN
           color: urgent ? "var(--no-300)" : running ? "var(--text)" : "var(--text-subtle)",
         }}
       >
-        {mmss(left)}
+        {/* ⛔ `—:—`, NEVER a dead `0:00` — the pod's own rule (E-99/E-166), owed here
+            too: measured on production 2026-09-04, the board panel sat at "CLOSES IN
+            00:00" while the card one inch below counted "RESULT IN 00:23". Past the
+            close this readout has nothing left to count, and says so. */}
+        {running ? mmss(left) : "—:—"}
       </div>
     </div>
   );

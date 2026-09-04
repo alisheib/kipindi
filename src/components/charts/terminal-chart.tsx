@@ -184,7 +184,9 @@ export function TerminalChart({
           horzLines: { color: grid, style: lib.LineStyle.Dotted },
         },
         rightPriceScale: { borderColor: ink("--border") },
-        timeScale: { borderColor: ink("--border"), timeVisible: true, secondsVisible: false },
+        // fixRightEdge keeps the newest bar and its time label fully inside the
+        // pane (the rightmost label clipped to "16:3" at 360 without it).
+        timeScale: { borderColor: ink("--border"), timeVisible: true, secondsVisible: false, fixRightEdge: true },
         crosshair: {
           mode: lib.CrosshairMode.Magnet,
           vertLine: { color: ink("--border-strong"), width: 1, style: lib.LineStyle.Dashed, labelBackgroundColor: ink("--bg-inset") },
@@ -239,6 +241,11 @@ export function TerminalChart({
         borderUpColor: yes, borderDownColor: no,
         wickUpColor: yes, wickDownColor: no,
         priceFormat,
+        // The gilt line is THE live-price statement; the series' own last-value
+        // label duplicated it (two stacked axis tags, production 2026-09-04) and
+        // would DISAGREE with it the moment live ≠ the last candle's close.
+        lastValueVisible: false,
+        priceLineVisible: false,
       });
       const formingUp = ink("--yes-400", 0.45);
       const formingDown = ink("--no-400", 0.45);
@@ -294,7 +301,9 @@ export function TerminalChart({
         seriesListRef.current.push(s);
         lastSeries = s;
       });
-      if (lastSeries) (lastSeries as ISeriesApi<"Area">).applyOptions({ lastValueVisible: true });
+      // ⛔ No per-series last-value label in line mode either: the newest read IS
+      // the live price, so the gilt reference tag already states it — two axis
+      // tags carrying one number is the candle-mode duplication again.
     }
 
     // The live price as ONE gilt reference line — hidden when the feed is
