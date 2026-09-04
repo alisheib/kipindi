@@ -3356,9 +3356,14 @@ export const dict = {
       unreadOne: "1 haijasomwa",
       unreadN: "{n} hazijasomwa",
       awayTitle: "Ulipokuwa mbali",
-      awayWon: "{n} zimeshinda · {amount} zimelipwa",
-      awayLost: "{n} zimepotea · {amount} zilizowekwa",
-      awayReturned: "{n} zimerudishwa · {amount}",
+      // ⚠️ NOUN PHRASES, NOT VERBS — deliberately. These read "Wins 3 · TZS X paid", not
+      // "3 have won": a Swahili verb carries plural concord, so `{n} zimeshinda` is simply
+      // wrong the moment n is 1 — and n=1 is the ORDINARY case for this bar, which fires
+      // whenever a single result settled while the player was away. A noun followed by a
+      // number is correct at every count and needs no singular variant.
+      awayWon: "Ushindi {n} · {amount} zimelipwa",
+      awayLost: "Hasara {n} · {amount} zilizowekwa",
+      awayReturned: "Marejesho {n} · {amount}",
       awayMixed: "Matokeo {n} yamekamilika",
       awayView: "Ona matokeo",
       groupedLost: "Matokeo {n} yamepotea · {amount} zilizowekwa",

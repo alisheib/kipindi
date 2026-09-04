@@ -39,7 +39,7 @@ import { useT } from "@/lib/i18n";
 import { formatTzs } from "@/lib/utils";
 import { initPresence, subscribeReturn } from "@/lib/presence-window";
 import {
-  initLedger, readAway, subscribeAway, clearAway, summarise, type LedgerEntry,
+  initLedger, readAway, subscribeAway, clearAway, removeAway, summarise, type LedgerEntry,
 } from "@/lib/away-ledger";
 import { dispatchWinCelebration } from "@/components/markets/win-celebration";
 
@@ -66,7 +66,9 @@ export function AwaySummaryBar({
     // login and logout, so an unscoped or stale key would show one account's settled results
     // to the next person on the same browser. Same leak `reality-check.tsx` records.
     initLedger(userId);
-    initPresence({ playStartedAtMs, serverNowMs });
+    // `userId` re-seeds the attention window when the player changes — a sitting belongs to
+    // whoever is sitting, and this module outlives a logout/login soft-nav.
+    initPresence({ playStartedAtMs, serverNowMs, userId });
     setEntries(readAway());
     const offAway = subscribeAway(setEntries);
     // A return that happens WHILE the tab is open re-reads the ledger, so a player who walks
@@ -96,15 +98,33 @@ export function AwaySummaryBar({
 
   const wins = entries.filter((e) => e.kind === "WIN");
 
+  /* 🔴 TWO DEFECTS LIVED IN THIS HANDLER AND BOTH SHIPPED. Found by comparing two independent
+   * implementations of this programme against each other, and both are money-facing:
+   *
+   *   ① IT CALLED `clearAway()`. On a MIXED backlog — a state this very component renders, via
+   *      `awayMixed` — that opened a gold seal for the WINS and deleted the losses and refunds
+   *      in the same breath. They were never named. RG requires a loss to state its amount, and
+   *      deleting it is that offence with the evidence removed. ⛔ Only the wins may leave.
+   *   ② IT DISCARDED THE DELIVERY ACK. `dispatchWinCelebration` returns whether a host actually
+   *      took the celebration, which is the whole point of that return value — and this cleared
+   *      the ledger regardless, so with no host mounted it wiped the backlog having shown
+   *      nothing at all. That is E-266's shape ("marked delivered, never delivered") on a new
+   *      path, in the one place the player asked to be shown something.
+   *
+   * ⭐ Now: nothing leaves unless the seal is genuinely on screen, and only the wins it covered
+   * leave. The bar immediately re-states whatever remains, so every result is accounted for
+   * exactly once and the losses keep their number. */
   const openSeal = () => {
-    if (wins.length > 0) {
-      dispatchWinCelebration({
-        kind: "WIN",
-        amount: wins.reduce((sum, e) => sum + e.amount, 0),
-        net: wins.reduce((sum, e) => sum + (e.amount - e.stake), 0),
-      });
-    }
-    clearAway();
+    if (wins.length === 0) return;
+    const delivered = dispatchWinCelebration({
+      kind: "WIN",
+      amount: wins.reduce((sum, e) => sum + e.amount, 0),
+      net: wins.reduce((sum, e) => sum + (e.amount - e.stake), 0),
+      // ⛔ No label: this seal stands for several results, and naming one of them would be a
+      // false statement about the figure above it — the rule the collapsed seal already follows.
+    });
+    if (!delivered) return;
+    removeAway(wins.map((e) => e.id));
   };
 
   return (

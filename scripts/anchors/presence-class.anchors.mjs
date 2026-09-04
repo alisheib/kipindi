@@ -150,4 +150,30 @@ export const MUTATIONS = [
     to: `    setEntries(readAway()); haptics.success();`,
     expect: "6.1",
   },
+  {
+    // 🔴 THE DEFECT THAT SHIPPED. Restores the unconditional clear: on a MIXED backlog the
+    // player is shown a gold total for the wins and the losses are deleted, never named.
+    name: "away-summary-bar.tsx — clear the WHOLE ledger on tap, deleting the losses unnamed",
+    file: "src/components/layout/away-summary-bar.tsx",
+    from: `    removeAway(wins.map((e) => e.id));`,
+    to: `    clearAway();`,
+    expect: "6.4",
+  },
+  {
+    // 🔴 ALSO SHIPPED. The ack `dispatchWinCelebration` returns is the whole point of that
+    // return value; ignoring it clears the backlog having shown nothing at all.
+    name: "away-summary-bar.tsx — clear the ledger even when the seal was never shown",
+    file: "src/components/layout/away-summary-bar.tsx",
+    from: `    if (!delivered) return;`,
+    to: `    if (false) return;`,
+    expect: "6.5",
+  },
+  {
+    // The cross-account window: module state outliving a logout/login soft-nav.
+    name: "presence-window.ts — never re-seed the window, so the next player inherits the last one's",
+    file: "src/lib/presence-window.ts",
+    from: `  if (!initialised || who !== identity) {`,
+    to: `  if (!initialised) {`,
+    expect: "6.6",
+  },
 ];

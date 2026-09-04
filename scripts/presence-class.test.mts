@@ -362,6 +362,27 @@ ok("6.3 · the bar is a NoticeBar — it blocks nothing and takes no focus",
   /<NoticeBar/.test(read(BAR)) && !/<Modal/.test(read(BAR)),
   "a modal on arrival interrupts for something the player did not do");
 
+/* 🔴 6.4/6.5 — THE TAP HANDLER. Both of these SHIPPED and were found by comparing two
+ * independent implementations of this programme against each other, which is the only reason
+ * they surfaced at all: every suite was green over them. */
+{
+  const barSrc = stripComments(read(BAR));
+  const seal = sliceBraces(barSrc, "const openSeal = ()");
+  ok("6.4.control · the tap handler's body is locatable", seal != null && (seal?.length ?? 0) > 80);
+  ok("6.4 · ⛔ the seal clears ONLY the wins it celebrated — never the whole ledger",
+    !!seal && /removeAway\(wins\.map/.test(seal) && !/clearAway\(\)/.test(seal),
+    "on a MIXED backlog — a state this bar renders, via awayMixed — clearing everything deleted "
+    + "the losses behind a gold total, unnamed. RG requires a loss to state its amount");
+  ok("6.5 · ⛔ …and nothing is cleared unless the seal was actually delivered",
+    !!seal && /const delivered = dispatchWinCelebration/.test(seal)
+      && /if \(!delivered\) return;/.test(seal),
+    "with no host mounted it wiped the backlog having shown nothing — E-266's shape on a new path");
+}
+ok("6.6 · ⛔ the attention window re-seeds when the PLAYER changes, not once per page-load",
+  /who !== identity/.test(stripComments(read(PRESENCE)))
+    && /userId\?: string \| null/.test(read(PRESENCE)),
+  "module state outlives a logout/login soft-nav, so the next person inherited the last one's sitting");
+
 /* ═══ §7 · THE COUNTDOWN TELLS THE TRUTH UNDER REDUCED MOTION ══════════════════════════ */
 console.log("\n§7 · E-269 — the calm state withdraws a false claim about time");
 

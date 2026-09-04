@@ -51,6 +51,8 @@ type ReturnInfo = { hiddenForMs: number; presenceSinceMs: number };
  *  disagree with the next by the network latency between them. */
 let offsetMs = 0;
 let initialised = false;
+/** Whose sitting this window describes. A change of player re-seeds it — see `initPresence`. */
+let identity: string | null = null;
 
 /** When the current uninterrupted attentive window began, in SERVER time. */
 let presenceSince: number | null = null;
@@ -109,15 +111,25 @@ function handleVisibility(): void {
  * mismatch. That is the same discipline `useServerNow` uses (`null` until the first client
  * effect).
  */
-export function initPresence(opts: { playStartedAtMs: number; serverNowMs: number }): void {
+export function initPresence(opts: { playStartedAtMs: number; serverNowMs: number; userId?: string | null }): void {
   offsetMs = opts.serverNowMs - Date.now();
 
-  // ⛔ The seed is applied ONCE. A re-render that re-ran this with the same stale
+  // ⛔ The seed is applied ONCE PER PLAYER. A re-render that re-ran it with the same stale
   // `playStartedAt` would drag the window backwards over a return the client had already
-  // detected, and quietly restore the ambush.
-  if (!initialised) {
+  // detected, and quietly restore the ambush — so it is not re-applied on every render.
+  //
+  // ⚠️ BUT IT MUST RE-APPLY WHEN THE PLAYER CHANGES. This module is module-scoped and AppShell
+  // survives a soft-nav across logout and login, so with `initialised` alone the next person on
+  // this browser inherited the previous one's attention window — the same cross-account shape
+  // `away-ledger` scopes its storage key for and `reality-check.tsx` records. The window is not
+  // PII and the freshness cap masked the effect, but a sitting belongs to whoever is sitting,
+  // and a stale window is exactly the input the routing law is not allowed to be wrong about.
+  const who = opts.userId ?? null;
+  if (!initialised || who !== identity) {
     presenceSince = opts.playStartedAtMs;
+    identity = who;
     initialised = true;
+    hiddenAtDevice = null;
   }
 
   if (!listening && typeof document !== "undefined") {
@@ -136,6 +148,7 @@ export function subscribeReturn(fn: (info: ReturnInfo) => void): () => void {
 export function __resetPresence(): void {
   offsetMs = 0;
   initialised = false;
+  identity = null;
   presenceSince = null;
   hiddenAtDevice = null;
   returnSubs.clear();

@@ -110,6 +110,29 @@ export function clearAway(): void {
   write([]);
 }
 
+/**
+ * Drop only the entries just accounted for, leaving the rest standing.
+ *
+ * 🔴 THIS EXISTS BECAUSE CLEARING EVERYTHING WAS A LIE, AND IT SHIPPED. The bar's "See results"
+ * opens a seal for the WINS — correctly, since a seal is a win's alone (§M7) — and then called
+ * `clearAway()`. On a MIXED backlog that wiped the losses and refunds too: the player was shown a
+ * gold total and the money that went the other way was deleted without ever being named.
+ *
+ * ⛔ THE MIXED SET IS NOT HYPOTHETICAL — the bar has a branch for it. `summarise()` returns
+ * `homogeneous: null` and the copy falls through to `awayMixed` ("{n} results settled"), which is
+ * precisely the state where tapping destroyed the losses. RG is explicit that a loss must state
+ * its amount, and "an unnamed number is the euphemism RG rules exist to prevent" — deleting the
+ * number outright is that same offence with the evidence removed.
+ *
+ * ⭐ Now the celebrated wins leave and the bar re-states what remains, so every result is
+ * accounted for exactly once.
+ */
+export function removeAway(ids: string[]): void {
+  if (ids.length === 0) return;
+  const drop = new Set(ids);
+  write(read().filter((e) => !drop.has(e.id)));
+}
+
 export function subscribeAway(fn: (entries: LedgerEntry[]) => void): () => void {
   subs.add(fn);
   return () => { subs.delete(fn); };
