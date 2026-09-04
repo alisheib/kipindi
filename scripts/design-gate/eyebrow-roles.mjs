@@ -82,7 +82,6 @@ export const INLINE_EYEBROWS = new Map([
   ["components/admin/admin-shell.tsx :: <span className=\"font-mono uppercase text-text-tertiary truncate\" style={{ fontSize: 9.5, letterSpacing: \"0.14em\", lineHeight: 1.3 }}>{label}</span> ↵ <div className=\"fon", 1],
   ["components/admin/admin-shell.tsx :: className=\"font-mono uppercase text-text-tertiary truncate\" ↵ title={typeof label === \"string\" ? label : undefined}", 1],
   ["components/brand.tsx :: textTransform: \"uppercase\", ↵ }}", 1],
-  ["components/charts/probability-chart.tsx :: <span style={{ fontFamily: \"var(--font-mono)\", fontSize: 10, letterSpacing: \"0.14em\", textTransform: \"uppercase\", color: \"var(--text-subtle)\" }}>{t.market.probOverTime}</", 1],
   ["lib/server/email.ts :: <p style=\"margin:14px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:${TEXT_MUTED};line-height:1.55\"><span style=\"font-family:'JetBrains Mono','C", 1],
   ["lib/server/email.ts :: let html = `<p style=\"margin:0 0 6px;font-family:'JetBrains Mono','Courier New',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.14em;font-weight:700;co", 1],
   ["lib/server/email.ts :: return `<tr><td class=\"sp-row-label\" style=\"padding:11px 0;border-bottom:1px solid ${BRAND_BORDER};font-family:'JetBrains Mono','Courier New',monospace;font-size:10px;tex", 1],

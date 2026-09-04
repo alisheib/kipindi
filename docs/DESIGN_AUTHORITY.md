@@ -477,8 +477,14 @@ been written down, which is exactly how the never-imported `Sparkline` came to c
 
 2. **The four-ink chart language** (derived from what ships, now binding):
    - **Direction ink** — YES/UP = green family, NO/DOWN = rose family (B2, untouchable).
-     Only a FULL chart answering "which way" wears it (ProbabilityChart's half-planes, the
+     Only a FULL chart answering "which way" wears it (the market curve's half-planes, the
      Up & Down price path, the outcome cubes and donut).
+   - ⚠️ **THE FORM RULE FOR NON-CANDLE SURFACES (Ali, 2026-09-04 evening):** wherever
+     candlesticks are not applicable — probability/poll markets, any event-driven series —
+     the chart is the ENGINE CURVE (`MarketCurve` and its kin on the one permitted
+     library), never a hand-rolled svg and never candles. The old `ProbabilityChart` svg
+     was deleted under this rule (its grammar — gilt 50 tipping line, emerald-above /
+     rose-below — carried whole into `MarketCurve`; git history holds the svg form).
    - **Reference ink** — gilt marks the line a chart is READ AGAINST (the 50% tipping line,
      break-even, the open price) and never a data series: a gold data line would claim
      earnings the round has not decided (B4/Q5). ⭐ *Ruled 2026-09-04 (round 2):* the
@@ -540,7 +546,7 @@ been written down, which is exactly how the never-imported `Sparkline` came to c
 6. **THE TERMINAL'S FORM IS FROZEN** (Ali, 2026-09-04: *"we need consistency… we can't
    mess around with how layout is rendered"* — after the form changed shape twice in one
    day). The `/updown` chart view is the LAB and exactly the lab: range rail
-   **15M · 30M · 1H · 6H · 12H · 24H · 7D · ROUND** (ROUND last, and the ladder is his
+   **15M · 30M · 1H · 6H · 12H · 24H · 7D** (the ladder is his
    2026-09-04 final list — 1m/5m REFUSED on the measured ~3-min feed cadence: a
    window holding ≤2 reads is a dead pill, and the sub-15-minute now is the ROUND
    view; **7D added the same evening under his "widest range possible" order** —

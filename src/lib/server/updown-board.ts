@@ -673,12 +673,6 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
    *  the read failed — UNKNOWN, never zero (B-1): a fabricated 0 would falsely
    *  disable betting, so a failed read simply leaves the gate unarmed. */
   walletBalance: number | null;
-  /** CHART-SPRINT B · the board's chart view. The CURRENT round's id and its real
-   *  confirmed reads so far (same `priceSeriesFor` the detail hero uses — A-5, real
-   *  data or nothing; null series ⇒ the chart draws the open line alone). Null when
-   *  no round's window contains NOW — chart mode has no question to answer then and
-   *  the board renders cubes without a toggle. */
-  currentRoundChart: { roundId: string; series: { t: string; price: number }[] | null } | null;
 }> {
   const cfg = await getUpDownConfig();
   const defaultBounds = { min: cfg.defaultMinStake, max: cfg.defaultMaxStake };
@@ -774,24 +768,24 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
     ?? assets.find((a) => runningDurations(a.id).length > 0)
     ?? assets.find((a) => a.durations.length > 0)
     ?? assets[0] ?? null;
-  if (!activeAsset) return { assets, activeAsset: null, activeDuration: null, rounds: [], recent: [], chainPaused: false, stakeBounds: defaultBounds, walletBalance, currentRoundChart: null };
+  if (!activeAsset) return { assets, activeAsset: null, activeDuration: null, rounds: [], recent: [], chainPaused: false, stakeBounds: defaultBounds, walletBalance };
   // The STORED row behind the active card. `BoardAsset` is the mapped, player-safe shape and
   // deliberately carries no `symbol`/`category` — E-53 keeps the vendor's identifiers off the
   // wire — but `publicSourceClassFor` classifies FROM those fields, so the receipt is built
   // from the row rather than by widening what crosses to the browser.
   const activeAssetRow = enabled.find((a) => a.id === activeAsset.id);
-  if (!activeAssetRow) return { assets, activeAsset, activeDuration: null, rounds: [], recent: [], chainPaused: true, stakeBounds: defaultBounds, walletBalance, currentRoundChart: null };
+  if (!activeAssetRow) return { assets, activeAsset, activeDuration: null, rounds: [], recent: [], chainPaused: true, stakeBounds: defaultBounds, walletBalance };
 
   const activeDuration =
     (opts?.durationMinutes && activeAsset.durations.includes(opts.durationMinutes) ? opts.durationMinutes : undefined)
     ?? runningDurations(activeAsset.id)[0]
     ?? activeAsset.durations[0] ?? null;
   if (activeDuration == null) {
-    return { assets, activeAsset, activeDuration: null, rounds: [], recent: [], chainPaused: true, stakeBounds: defaultBounds, walletBalance, currentRoundChart: null };
+    return { assets, activeAsset, activeDuration: null, rounds: [], recent: [], chainPaused: true, stakeBounds: defaultBounds, walletBalance };
   }
 
   const chain = allChains.find((c) => c.assetId === activeAsset.id && c.durationMinutes === activeDuration);
-  if (!chain) return { assets, activeAsset, activeDuration, rounds: [], recent: [], chainPaused: true, stakeBounds: defaultBounds, walletBalance, currentRoundChart: null };
+  if (!chain) return { assets, activeAsset, activeDuration, rounds: [], recent: [], chainPaused: true, stakeBounds: defaultBounds, walletBalance };
 
   // ONE resolver, shared with the money path (buyPosition → stakeBoundsForUpDownMarket):
   // the product default is the FLOOR — a chain override may raise the min, never drop it
@@ -852,14 +846,7 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
     .reverse()
     .map((r) => r.outcome!) as Array<"UP" | "DOWN" | "VOID">;
 
-  // CHART-SPRINT B · the chart view's series — ONE extra bounded read (the same
-  // `priceSeriesFor` the detail hero uses), only when a round's window contains NOW.
-  // A thin series degrades to null and the chart draws the open line alone (A-5).
-  const currentRoundChart = current
-    ? { roundId: current.roundId, series: await priceSeriesFor(activeAsset.id, Date.parse(current.opensAt), nowMs) }
-    : null;
-
-  return { assets, activeAsset, activeDuration, rounds, recent, chainPaused: chain.state !== "RUNNING", stakeBounds, walletBalance, currentRoundChart };
+  return { assets, activeAsset, activeDuration, rounds, recent, chainPaused: chain.state !== "RUNNING", stakeBounds, walletBalance };
 }
 
 /**

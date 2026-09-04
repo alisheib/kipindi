@@ -2861,81 +2861,19 @@ textarea::placeholder { color: var(--text-subtle); }
    1 · Probability chart — the signature "tipping line" chart
    --------------------------------------------------------------------------- */
 
-.pchart {
-  position: relative;
-  width: 100%;
-  font-family: var(--font-mono);
-  -webkit-user-select: none;
-  user-select: none;
-}
-/* overflow: visible lets the line's end-dot and hover crosshair render past
-   the chart bounds. The parent wrapper MUST have overflow: hidden to prevent
-   page-wide horizontal overflow on Android. */
-.pchart { overflow: hidden; }
-.pchart svg { display: block; width: 100%; height: auto; overflow: visible; }
+/* ⛔ THE HAND-ROLLED PCHART SVG FAMILY WAS RETIRED 2026-09-04 (CHART-SPRINT-2
+   final, Ali: polls take "the TradingView curve — more professional"): the
+   `ProbabilityChart` component and its draw classes (.pchart, -grid, -tip,
+   -tip-cap, -axis, -line/.is-drawn, -dot, -cross, -cross-dot, -readout,
+   .is-hover, .lean-no) were DELETED together — `MarketCurve` renders the same
+   grammar (gilt 50 tipping line, emerald-above/rose-below) on the engine. Git
+   history holds both halves if the svg form is ever needed again.
+   ⚠️ What SURVIVES on purpose: `.pchart-dot-halo` (the pnl chart's live pip)
+   and the `.pchart-ranges/.pchart-range` rail family below — the platform's
+   one pressed-buttons vocabulary, used by every chart rail. */
 
-/* Background gridlines — quiet royal hairlines */
-.pchart-grid line { stroke: var(--border); stroke-width: 1; opacity: 0.45; }
-
-/* The 50% reference — heraldic gilt dashed "tipping" line. The brand pivot. */
-.pchart-tip       { stroke: var(--gilt); stroke-width: 1; stroke-dasharray: 2 5; opacity: 0.55; }
-.pchart-tip-cap   { fill: var(--gilt); font-size: 9px; letter-spacing: 0.14em; opacity: 0.7; }
-
-/* Axes */
-.pchart-axis      { fill: var(--text-subtle); font-size: 10px; letter-spacing: 0.06em; }
-
-/* The YES probability line. Single emerald stroke with a soft emerald glow —
-   the headline metric of every 50pick market is YES. */
-.pchart-line {
-  fill: none;
-  stroke: var(--yes-400);
-  stroke-width: 2.25;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  filter: drop-shadow(0 0 5px color-mix(in oklab, var(--yes-400) 35%, transparent));
-}
-
-/* Draw-in on mount — standard SVG stroke draw; not a layout property, so no
-   reflow. Length (--pchart-len) is set per-instance by the component. */
-.pchart-line.is-drawn {
-  stroke-dasharray: var(--pchart-len);
-  stroke-dashoffset: var(--pchart-len);
-  /* `m-draw` is the kit's line-draw keyframe (motion.css) — identical to the
-     `pchart-draw` this used to define locally. One draw-on, one home. */
-  animation: m-draw var(--dur-stage) var(--ease-glide) forwards;
-}
-
-/* Live point — aqua SignalPip echo + gilt value flag */
-.pchart-dot       { fill: var(--aqua-300); }
+/* Live point halo — aqua SignalPip echo (consumer: pnl-chart). */
 .pchart-dot-halo  { fill: none; stroke: var(--aqua-300); opacity: 0.5; animation: aqua-pulse 2.2s ease-in-out infinite; }
-
-/* Hover crosshair + readout */
-.pchart-cross     { stroke: var(--border-royal); stroke-width: 1; stroke-dasharray: 3 3; opacity: 0; transition: opacity var(--dur-micro) var(--ease-micro); }
-.pchart.is-hover .pchart-cross { opacity: 0.8; }
-.pchart-cross-dot { fill: var(--gilt); opacity: 0; transition: opacity var(--dur-micro) var(--ease-micro); }
-.pchart.is-hover .pchart-cross-dot { opacity: 1; }
-
-.pchart-readout {
-  position: absolute;
-  top: 0;
-  transform: translateX(-50%);
-  padding: 4px 8px;
-  border-radius: var(--r-sm);
-  background: var(--slate-950);
-  border: 1px solid var(--border-strong);
-  color: var(--pearl-50);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity var(--dur-micro) var(--ease-micro);
-  z-index: 5;
-}
-.pchart.is-hover .pchart-readout { opacity: 1; }
-.pchart-readout b { color: var(--yes-300); font-weight: 600; }
-.pchart-readout .lean-no { color: var(--no-300); }
 
 /* The chart's time-range selector — a FILTER control, and it speaks the one filter language.
    🔴 IT WAS GOLD, AND GOLD IS MONEY (Q5, Ali 2026-08-10). `is-active` painted `var(--gilt)` on
@@ -2990,7 +2928,6 @@ textarea::placeholder { color: var(--text-subtle); }
 .pchart-range:not(.is-active):hover { color: var(--text); background: var(--bg-overlay); }
 
 @media (prefers-reduced-motion: reduce) {
-  .pchart-line.is-drawn { animation: none; stroke-dashoffset: 0; }
   .pchart-dot-halo { animation: none; }
 }
 

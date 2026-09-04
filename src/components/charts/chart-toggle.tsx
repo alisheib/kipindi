@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ProbabilityChart, type ProbPoint } from "./probability-chart";
+import { MarketCurve, type CurvePoint } from "./market-curve";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
 
@@ -16,9 +16,14 @@ import { useT } from "@/lib/i18n";
  * product's signature price history hidden behind an unlabelled chevron was
  * the fold rule outliving the fold.
  *
- * The player's own collapse still wins: the choice persists per device
- * (localStorage, same contract as the board's `kp-updown-viz` — try/catch'd,
- * SSR renders the default and a stored "closed" applies on mount).
+ * ⭐ THE BODY IS THE ENGINE CURVE since CHART-SPRINT-2 final (Ali: polls take
+ * "the TradingView curve, not candlestick — more professional"): `MarketCurve`
+ * replaced the hand-rolled `ProbabilityChart` svg (deleted; git history holds
+ * it), keeping its exact grammar — gilt 50 tipping line, emerald-above /
+ * rose-below half-planes, the same range rail vocabulary.
+ *
+ * The player's collapse persists per device (localStorage, the
+ * `kp-updown-viz` contract — try/catch'd, SSR renders the default).
  */
 const STORE_KEY = "kp-market-chart";
 
@@ -28,13 +33,13 @@ export function ChartToggle({
   defaultRange,
   height = 240,
 }: {
-  series: Record<string, ProbPoint[]>;
+  series: Record<string, CurvePoint[]>;
   ranges: string[];
   defaultRange?: string;
   height?: number;
 }) {
   const [open, setOpen] = useState(true);
-  const { t } = useT();
+  const { t, locale } = useT();
 
   useEffect(() => {
     try {
@@ -73,12 +78,13 @@ export function ChartToggle({
       {open && (
         <div className="px-4 pb-4 w-full overflow-hidden border-t border-border/40">
           <div className="pt-3">
-            <ProbabilityChart
+            <MarketCurve
               series={series}
               ranges={ranges}
               defaultRange={defaultRange}
               height={height}
-              hideTitle
+              locale={locale}
+              labels={{ rangeAria: t.market.timeRange, chartAria: t.market.probOverTime }}
             />
           </div>
         </div>

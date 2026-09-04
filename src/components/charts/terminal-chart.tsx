@@ -41,6 +41,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import type { IChartApi, ISeriesApi, IPriceLine, UTCTimestamp } from "lightweight-charts";
 import { fmtEAT } from "@/lib/updown-source-label";
+import { makeInkResolver, tokRaw } from "./ink-bridge";
 
 export type TerminalRange = "15M" | "30M" | "1H" | "6H" | "12H" | "24H" | "7D";
 export type TerminalStyle = "line" | "candles";
@@ -58,50 +59,6 @@ type Feed = {
   candlesUnavailable?: boolean;
 };
 
-/** Paint a token through the engine's own parser and read back sRGB bytes. */
-function makeInkResolver(): (name: string, alpha?: number) => string {
-  const canvas = typeof document !== "undefined" ? document.createElement("canvas") : null;
-  if (canvas) { canvas.width = 1; canvas.height = 1; }
-  const ctx = canvas?.getContext("2d", { willReadFrequently: true }) ?? null;
-  const cache = new Map<string, [number, number, number, number]>();
-  return (name: string, alpha?: number) => {
-    if (!ctx) return "rgba(0,0,0,0)";
-    let rgba = cache.get(name);
-    if (!rgba) {
-      const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-      // Two-sentinel probe: paint the token over BLACK and over WHITE — if both
-      // readbacks equal their sentinel the value never parsed (empty OR
-      // malformed), and the honest face is transparent + a named error, never
-      // silent black (the doc contract, now held for both failure classes).
-      const probe = (sentinel: string): [number, number, number, number] => {
-        ctx.clearRect(0, 0, 1, 1);
-        ctx.fillStyle = sentinel;
-        ctx.fillStyle = raw || sentinel;
-        ctx.fillRect(0, 0, 1, 1);
-        const d = ctx.getImageData(0, 0, 1, 1).data;
-        return [d[0], d[1], d[2], d[3] / 255];
-      };
-      const overBlack = probe("#000");
-      const overWhite = probe("#fff");
-      const parsed = !(overBlack[0] === 0 && overBlack[1] === 0 && overBlack[2] === 0
-        && overWhite[0] === 255 && overWhite[1] === 255 && overWhite[2] === 255);
-      rgba = overBlack;
-      if (!raw || !parsed) {
-        console.error(`[terminal-chart] token ${name} ${raw ? "did not parse" : "is empty"} — painting transparent`);
-        rgba = [0, 0, 0, 0];
-      }
-      cache.set(name, rgba);
-    }
-    const a = alpha != null ? rgba[3] * alpha : rgba[3];
-    return `rgba(${rgba[0]},${rgba[1]},${rgba[2]},${a.toFixed(3)})`;
-  };
-}
-
-/** Non-color token read (font family, sizes). */
-function tokRaw(name: string): string {
-  if (typeof window === "undefined") return "";
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-}
 
 export function TerminalChart({
   assetKey,

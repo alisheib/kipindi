@@ -25,10 +25,8 @@ import { UpDownResultAnnouncer } from "@/components/updown/updown-result-announc
 import { UpDownBoardTabs } from "@/components/updown/updown-board-tabs";
 import { BoardViz } from "@/components/charts/board-viz";
 import { OutcomeCubes } from "@/components/charts/outcome-cubes";
-import { RoundChart } from "@/components/charts/round-chart";
 import { UpDownChartLab } from "@/components/charts/updown-chart-lab";
-import { RoundCountdown } from "@/components/updown/round-countdown";
-import { SOURCE_CLASS_KEY, fmtEAT } from "@/lib/updown-source-label";
+import { SOURCE_CLASS_KEY } from "@/lib/updown-source-label";
 
 export const dynamic = "force-dynamic";
 
@@ -71,14 +69,10 @@ export default async function UpDownPage({
     );
   }
 
-  const { assets, activeAsset, activeDuration, rounds, recent, chainPaused, stakeBounds, walletBalance, currentRoundChart } = board;
+  const { assets, activeAsset, activeDuration, rounds, recent, chainPaused, stakeBounds, walletBalance } = board;
   const href = (assetKey: string, d?: number) => `/updown?asset=${assetKey}${d ? `&d=${d}` : ""}`;
   const isAuthed = !!session;
 
-  // CHART-SPRINT B · the round the chart view draws — located by id, never by position.
-  // (No above/below caption on the compact panel: the header's ±% and the tinted zones
-  //  already answer it, and the cards below carry the full statement.)
-  const chartRound = currentRoundChart ? rounds.find((r) => r.roundId === currentRoundChart.roundId) ?? null : null;
 
   return (
     <div className="mx-auto w-full max-w-[1280px] px-4 py-6">
@@ -155,15 +149,15 @@ export default async function UpDownPage({
               labels={{ up: t.market.udUp, down: t.market.udDown, void: t.market.statusVoid, oldestNewest: t.market.udOldestNewest }}
             />
           ) : null}
-          // CHART-SPRINT-2 · chart mode is offered whenever an asset is active —
-          // between rounds the HISTORY ranges are the honest content; the ROUND
-          // range appears only while a round's window contains now.
+          // CHART-SPRINT-2 · chart mode is offered whenever an asset is active.
+          // ⚠️ The ROUND frame was REMOVED by Ali's closing order (2026-09-04
+          // evening, §B12.6): the terminal is history-only; the round's own
+          // numbers live on the cards below and the detail hero.
           chart={activeAsset != null ? (
             <UpDownChartLab
               assetKey={activeAsset.key}
               locale={locale}
               labels={{
-                round: t.market.udRangeRound,
                 railAria: t.market.udRangeAria,
                 styleAria: t.market.udStyleAria,
                 curve: t.market.udStyleCurve,
@@ -178,39 +172,6 @@ export default async function UpDownPage({
                 sourceLabel: t.market[SOURCE_CLASS_KEY[activeAsset.sourceClass]],
                 quotedWord: t.market.udQuoted,
               }}
-              roundView={chartRound != null ? (
-                <RoundChart
-                  openPrice={chartRound.openPrice}
-                  upTarget={chartRound.upTarget}
-                  downTarget={chartRound.downTarget}
-                  livePrice={activeAsset.livePrice}
-                  series={currentRoundChart!.series}
-                  decimals={activeAsset.decimals}
-                  copy={{
-                    openLabel: t.market.udOpenPrice,
-                    upLabel: t.market.udUp,
-                    downLabel: t.market.udDown,
-                    awaitingRead: t.market.udAwaitingRead,
-                    chartAlt: `${pickLocalized(locale, activeAsset.nameEn, activeAsset.nameSw, activeAsset.nameZh)} ${t.market.udLiveChart}`,
-                    // E-262 · the same receipt grammar the detail hero and the card footer
-                    // use — kind of market, never the vendor (E-53), + the source's own
-                    // quote time, so a flat line is tellable from a stalled feed.
-                    source: `${t.market[SOURCE_CLASS_KEY[activeAsset.sourceClass]]}${activeAsset.sourceQuotedAt ? ` · ${t.market.udQuoted} ${fmtEAT(activeAsset.sourceQuotedAt)}` : ""}`,
-                  }}
-                  // E-260 · ONE clock story on one screen: the panel counts to the betting
-                  // LOCK first (the deadline a betting player acts on — the card's own
-                  // caption), then hands over to the round close. Server-anchored (E-72).
-                  countdown={
-                    <RoundCountdown
-                      closesAtMs={Date.parse(chartRound.closesAt)}
-                      label={t.market.udClosesIn}
-                      lockAtMs={chartRound.selectionClosedAt ? Date.parse(chartRound.selectionClosedAt) : null}
-                      lockLabel={t.market.udBetsCloseIn}
-                      serverNowMs={chartRound.serverNowMs}
-                    />
-                  }
-                />
-              ) : null}
             />
           ) : null}
         />

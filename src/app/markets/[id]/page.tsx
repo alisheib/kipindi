@@ -691,7 +691,7 @@ export default async function MarketDetail({
               persists per device. */}
           {probChart.ranges.length > 0 && (
             <ChartToggle
-              series={probChart.series as Record<string, { t: string; p: number }[]>}
+              series={probChart.series as Record<string, { t: string; ts: number; p: number }[]>}
               ranges={probChart.ranges}
               defaultRange={probChart.ranges[probChart.ranges.length - 1]}
               height={240}

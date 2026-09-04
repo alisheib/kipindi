@@ -191,14 +191,12 @@ const FROZEN_RATCHET = new Map<string, number>([
   // afterwards showed the file needs only one, so the budget follows the code down.
   ["src/components/layout/wallet-balance-pill.tsx", 1],
   ["src/components/updown/price-hero.tsx", 2],
-  // CHART-SPRINT-2 · the terminal chart's token BRIDGE, not a palette: canvas
-  // cannot resolve var(), so tokens are painted through a 1×1 probe and read
-  // back as bytes. The three literals are the probe's own mechanics — a "#000"
-  // sentinel written twice to DETECT a parse failure, and the transparent
-  // "rgba(0,0,0,0)" error ink a missing token paints (visibly broken, caught
-  // by the screenshot pass). No design value lives here; every rendered colour
-  // still originates in globals.css.
-  ["src/components/charts/terminal-chart.tsx", 3],
+  // ⚠️ CHART-SPRINT-2 final: the terminal's token-bridge probe literals moved
+  // to `charts/ink-bridge.ts` — a .ts file this tsx-only scanner cannot see
+  // (a pre-existing edge of this guard, stated here rather than discovered):
+  // the "#000" sentinels and the transparent error ink live there now, still
+  // mechanics rather than palette. Both chart entries below were deleted when
+  // their sites went (the ratchet shrinking as designed).
   ["src/app/admin/live/page.tsx", 1],
   ["src/app/admin/payments/control-plane.tsx", 1],
   ["src/app/admin/proposals/admin-proposals-client.tsx", 1], // rounded-[10px]
@@ -206,7 +204,6 @@ const FROZEN_RATCHET = new Map<string, number>([
   ["src/components/admin/admin-charts.tsx", 1],
   ["src/components/markets/bet-confirm-modal.tsx", 1],
   ["src/components/markets/countdown.tsx", 1],
-  ["src/components/charts/probability-chart.tsx", 1],
   ["src/components/updown/round-action-panel.tsx", 1],
   ["src/components/updown/round-stake-panel.tsx", 1],
   ["src/components/updown/updown-card.tsx", 1],

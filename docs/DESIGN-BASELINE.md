@@ -408,7 +408,19 @@ touch scrubbing, A-5 empty states, E-93 label collision avoidance, E-198 legibil
 gap was CONSISTENCY, not capability — so the sprint consolidated instead of importing.
 **Bundle delta of the consolidation: ≤ 0** (code deleted, none added from npm).
 
-**The board's cubes ↔ chart toggle (CHART-SPRINT B).** `/updown` offers CUBES (default —
+> ⚠️ **THE FINAL FORM (2026-09-04 evening, Ali's closing orders — supersedes the
+> paragraphs below where they conflict):** the board's chart view is the TradingView-engine
+> TERMINAL only (rail **15M·30M·1H·6H·12H·24H·7D**, style **Curve|Candles**, candles the
+> default everywhere); **the ROUND frame is REMOVED** (*"no need for round chart — remove
+> the option"*) — `RoundChart` and the lab's `roundView` slot were deleted and live intact
+> at commit `98b309d5` if ever needed, with `udRangeRound`/related i18n keys left dormant
+> in the dict; **every non-candle chart moved onto the engine curve** — `MarketCurve`
+> replaced the hand-rolled `ProbabilityChart` svg on the market detail page (same grammar:
+> gilt 50 tipping line, emerald/rose half-planes, the `.pchart-range` rail; the pchart svg
+> CSS family was retired with it, `.pchart-dot-halo` + the rail classes surviving with
+> their consumers); the shared token↔canvas mechanics live in `charts/ink-bridge.ts`.
+
+**The board's cubes ↔ chart toggle (CHART-SPRINT B, ⚪ partially SPENT — see the box above).** `/updown` offers CUBES (default —
 the outcome heartbeat, now `charts/outcome-cubes.tsx` on tokens instead of four hand-typed
 `oklch()` literals) or CHART (`charts/round-chart.tsx` — the CURRENT round's confirmed reads
 against its gilt open line, zones tinted in direction ink, the kit `RoundCountdown` composed

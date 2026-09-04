@@ -276,7 +276,9 @@ export async function getProbabilityChart(marketId: string): Promise<{
   for (const w of RANGE_WINDOWS) {
     const slice = w.ms == null ? all : all.filter((s) => now - Date.parse(s.t) <= w.ms!);
     if (slice.length < 2) continue;
-    const pts = compress(slice, 24).map((s) => ({ t: labelFor(s.t), p: Math.round(s.yes * 100) }));
+    // CHART-SPRINT-2 final · epoch ms travels WITH the label: the pro curve
+    // renders a real time axis (the hand-rolled chart consumed labels only).
+    const pts = compress(slice, 24).map((s) => ({ t: labelFor(s.t), ts: Date.parse(s.t), p: Math.round(s.yes * 100) }));
     pts[pts.length - 1] = { ...pts[pts.length - 1], t: "now" };
     series[w.id] = pts;
     ranges.push(w.id);

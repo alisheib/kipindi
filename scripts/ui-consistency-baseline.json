@@ -6,7 +6,7 @@
     "adhoc-portal::src/components/ui/unsaved-changes.tsx": 1,
     "bare-text-button::src/components/auth/resend-otp-button.tsx": 1,
     "bare-text-button::src/components/charts/board-viz.tsx": 2,
-    "bare-text-button::src/components/charts/probability-chart.tsx": 1,
+    "bare-text-button::src/components/charts/market-curve.tsx": 1,
     "bare-text-button::src/components/charts/updown-chart-lab.tsx": 4,
     "bare-text-button::src/components/chat/ChatBubble.tsx": 1,
     "bare-text-button::src/components/chat/messages/EmptyState.tsx": 1,
