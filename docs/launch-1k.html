@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>50pick · Launch Readiness — The First 1,000 Clients</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm 14mm; }
+  * { box-sizing: border-box; }
+  body { font: 10.5pt/1.45 "Segoe UI", Helvetica, Arial, sans-serif; color: #14161c; margin: 0; }
+  h1 { font-size: 22pt; margin: 0 0 1.5mm; letter-spacing: -.5pt; }
+  h2 { font-size: 13pt; margin: 8mm 0 3mm; padding-bottom: 1.5mm;
+       border-bottom: 1.5pt solid #14161c; page-break-after: avoid; }
+  h3 { font-size: 11pt; margin: 5mm 0 2mm; page-break-after: avoid; }
+  p, li { margin: 0 0 2.2mm; }
+  ul, ol { margin: 0 0 3mm; padding-left: 6mm; }
+  li { margin-bottom: 1.2mm; }
+  code { font: 9.5pt/1.4 Consolas, monospace; background: #f1f2f5; padding: .3mm 1mm; border-radius: 1mm; }
+  .sub { color: #5b6070; font-size: 9.5pt; margin: 0 0 5mm; }
+  .brk { page-break-before: always; }
+  table { width: 100%; border-collapse: collapse; margin: 0 0 4mm; font-size: 9.5pt; }
+  th, td { border: .5pt solid #c8ccd6; padding: 1.5mm 2mm; text-align: left; vertical-align: top; }
+  th { background: #eef0f4; font-weight: 600; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tr.tot td { font-weight: 700; background: #f7f8fa; }
+  .box { border: .5pt solid #c8ccd6; border-left: 2.5pt solid #14161c; background: #f7f8fa;
+         padding: 2.5mm 3mm; margin: 0 0 4mm; page-break-inside: avoid; }
+  .stop { border-left-color: #a8202a; background: #fdf4f4; }
+  .done { border-left-color: #1c7a3d; background: #f2faf5; }
+  .arch { font: 8.4pt/1.45 Consolas, monospace; background: #f7f8fa; border: .5pt solid #c8ccd6;
+          padding: 3mm; margin: 0 0 4mm; white-space: pre; page-break-inside: avoid; }
+  .kpi { display: flex; gap: 2.5mm; margin: 0 0 5mm; }
+  .kpi div { flex: 1; border: .5pt solid #c8ccd6; border-top: 2pt solid #14161c;
+             padding: 2mm 2.5mm; page-break-inside: avoid; }
+  .kpi b { display: block; font-size: 14pt; letter-spacing: -.3pt; margin-bottom: .3mm; }
+  .kpi span { font-size: 8pt; color: #5b6070; }
+  .sev { display: inline-block; width: 3.6mm; height: 3.6mm; border-radius: 50%; vertical-align: -.4mm; }
+  .r { background: #a8202a; } .o { background: #c8791a; } .y { background: #b8a11a; } .g { background: #1c7a3d; }
+  .foot { margin-top: 7mm; padding-top: 2mm; border-top: .5pt solid #c8ccd6;
+          font-size: 8.5pt; color: #5b6070; }
+  .part { font: 8.5pt/1 Consolas, monospace; text-transform: uppercase; letter-spacing: 1pt;
+          color: #5b6070; margin: 0 0 1mm; }
+</style>
+
+<p class="part">Part One · For management</p>
+<h1>Launch Readiness — The First 1,000 Clients</h1>
+<p class="sub">50pick · <code>50pick.tz</code> · brief of 3 September 2026, <strong>re-verified line by line
+and updated 4 September 2026</strong> · production commit <code>011733eb</code>.
+Every figure re-measured on the live system; two claims in the original brief were wrong and are
+corrected below.</p>
+
+<div class="box done"><strong>What changed on 4 September (backups-first, by Ali's decision, to
+keep early costs minimal).</strong><br>
+✔ <strong>Backup schedules are ON</strong> — daily + weekly + monthly snapshots of the database
+volume, daily + weekly of the cache volume, plus a named baseline snapshot. Cost: cents.<br>
+✔ <strong>The backup alarm now arrives by itself</strong> — if the nightly backup fails, stalls,
+or silently stops running, every administrator gets an email and an in-app alert within a day.
+The "eleven nights unnoticed" failure can no longer repeat quietly.<br>
+✔ <strong>The status page can now say "not ready"</strong> — it answers 503 when the database is
+unreachable, proven both ways by an automated test, live on production.<br>
+✔ <strong>A spending alarm exists</strong> — Railway emails at $75/month. No hard cap (a hard cap
+would switch production off).<br>
+✔ A live credential found committed in the repository was removed (rotate it in Postmark).<br>
+⛔ <strong>One command is still yours to run</strong> — enabling point-in-time recovery:
+<code>railway postgres pitr enable --service Postgres</code> (~$1–3/mo, a brief database
+restart, and the recovery window only starts counting once it is on).</div>
+
+<h2>1 · What we pay now</h2>
+
+<table>
+  <tr><th>Service</th><th class="n">Per month</th><th>What it is for</th></tr>
+  <tr><td>Railway — 50pick hosting</td><td class="n">$23.57</td><td>The application, database and cache</td></tr>
+  <tr><td>Railway — five other projects</td><td class="n">$8.24</td><td>Amanat Watan, Intercontinental Glass, LMC, two others</td></tr>
+  <tr><td>Anthropic — AI</td><td class="n">$50.75</td><td>Writing markets and auto-settling results</td></tr>
+  <tr><td>Cloudflare R2</td><td class="n">~$1.00</td><td>Customer ID documents and backups</td></tr>
+  <tr><td>Postmark email / Sentry / SMS</td><td class="n">$0.00</td><td>Free tier or not yet sending</td></tr>
+  <tr><td>Twelve Data price feed</td><td class="n">not measured</td><td>Billed outside Railway — needs confirming</td></tr>
+  <tr class="tot"><td>Total today</td><td class="n">≈ $84</td><td>+ cents for the new volume snapshots; +$1–3 when PITR is enabled</td></tr>
+</table>
+
+<div class="box"><strong>The two facts that decide where the money goes — both re-confirmed.</strong><br>
+<strong>The AI bill is bigger than the hosting bill</strong> ($50.75 vs $31.81) and 99.98% of it
+does not depend on customer numbers.<br>
+<strong>Memory is 87% of the 50pick hosting bill</strong> — the cheapest saving available, parked
+for phase 2 at your instruction.</div>
+
+<h2>2 · What we will pay with 1,000 clients</h2>
+<p>Unchanged from the original brief (re-checked): <strong>budget $200 per month</strong>, range
+$155–290, dominated by hosting growth, the AI clock, and ~$35–45 of SMS once the Selcom contract
+lands.</p>
+
+<h2>3 · The readiness list — verified state, 4 September</h2>
+
+<table>
+  <tr><th style="width:4%"></th><th style="width:26%">Item</th><th class="n">Cost</th><th>Verified state</th></tr>
+  <tr>
+    <td><span class="sev g"></span></td>
+    <td><strong>Alerts that arrive by themselves</strong></td>
+    <td class="n">$0</td>
+    <td><strong>DONE, live.</strong> A daily watchdog inside the platform emails and pings every
+    administrator when the nightly backup is missing, failed, unverified or stale — including the
+    case where the schedule silently stops running, which no CI-side alert can see. Proven by 24
+    automated checks including the "must stay silent when healthy" direction.</td>
+  </tr>
+  <tr>
+    <td><span class="sev g"></span></td>
+    <td><strong>Volume snapshots</strong></td>
+    <td class="n">~cents</td>
+    <td><strong>DONE, live.</strong> Railway-native daily/weekly/monthly snapshots of the database
+    volume (kept 6/27/89 days), daily/weekly of the cache, plus a named baseline. A second recovery
+    mechanism sharing nothing with the nightly backup.</td>
+  </tr>
+  <tr>
+    <td><span class="sev g"></span></td>
+    <td><strong>The status page can fail</strong></td>
+    <td class="n">$0</td>
+    <td><strong>DONE, live.</strong> <code>/api/health</code> answers 503 when the database is
+    unreachable or unmigrated; HEAD agrees with GET; proven RED first by an automated suite, then
+    green against production. (The original brief said this was "proved both ways" on a branch —
+    it had no automated proof, and its green case exercised the one branch designed never to fail.)</td>
+  </tr>
+  <tr>
+    <td><span class="sev r"></span></td>
+    <td><strong>Continuous database backup (PITR)</strong></td>
+    <td class="n">$1–3/mo</td>
+    <td><strong>One command, yours:</strong> <code>railway postgres pitr enable --service
+    Postgres</code>. Brief database restart on enable; the ~4-week restore window starts only
+    after it is on — every day it stays off is a day it does not cover. Restoring creates a NEW
+    sibling database and never touches the live one. Cuts possible data loss from ~24 hours to
+    minutes.</td>
+  </tr>
+  <tr>
+    <td><span class="sev r"></span></td>
+    <td><strong>Turn on SMS</strong></td>
+    <td class="n">$35–45/mo</td>
+    <td><strong>Commercial step stands — but the original justification was wrong.</strong> The
+    brief said "no member of the public can register today". Re-verified in code: registration is
+    phone + password and works with SMS off; the code-by-text path is written but deliberately
+    bypassed until the contract lands. SMS is needed for phone verification and codes — a
+    compliance and quality item, not a sign-up blocker. The Selcom adapter has never sent a real
+    message: first send needs a live-handset test.</td>
+  </tr>
+  <tr>
+    <td><span class="sev r"></span></td>
+    <td><strong>Two-factor on the admin console</strong></td>
+    <td class="n">$0</td>
+    <td><strong>Open (campaign item E-255), and one fear in the file is disproven:</strong> the
+    code contains a forced-enrolment flow (an admin without a code app is sent to the setup page,
+    which is exempt from the gate — no lockout is possible by design). But that flow has never
+    been driven live, so the order is: prove it locally, flip the flag, walk one QA admin account
+    through enrolment on production, then every admin enrols at next login.</td>
+  </tr>
+  <tr>
+    <td><span class="sev o"></span></td>
+    <td><strong>Updates without downtime</strong></td>
+    <td class="n">$0</td>
+    <td><strong>Authored, one command from live.</strong> The deploy gate (health check + 60s
+    overlap + 30s draining) is written as reviewable infrastructure-as-code on branch
+    <code>launch-1k-phase2</code>; Railway's preview confirms it changes exactly four fields and
+    destroys nothing. Discovery that mattered: the config file format the original plan assumed
+    (<code>railway.json</code>) has been deprecated by Railway and is silently ignored — a deploy
+    carrying it went live unconfigured while looking green.</td>
+  </tr>
+  <tr>
+    <td><span class="sev o"></span></td>
+    <td><strong>Payouts on large markets</strong></td>
+    <td class="n">$0</td>
+    <td><strong>Re-measured today on a scratch database, and the original number was right:</strong>
+    26 database round-trips per winner, one at a time, inside a 30-second limit — settlement
+    dies at ~576 winners at Railway's own network distance (the brief said ~660). Worse than the
+    brief knew: a failed settlement now rolls back completely and retries forever without
+    progress, so an over-limit market freezes permanently. The batch fix is designed (all winners
+    in a handful of set-based statements, same all-or-nothing safety) and is phase 2's first code
+    item, with a 1,000–5,000-winner proof harness already in the repo.</td>
+  </tr>
+  <tr>
+    <td><span class="sev o"></span></td>
+    <td><strong>Cache the busy screens</strong></td>
+    <td class="n">$0</td>
+    <td><strong>Mostly already true — the brief's premise was stale.</strong> Re-derived: the
+    results archive has a 5-minute cache, card charts are one batched query per board, platform
+    stats are cached 60s, and board reads are indexed scans over ~93 rows. The one real gap —
+    the leaderboard recomputing ~100 queries per viewer — is fixed on branch
+    <code>launch-1k-phase2</code> (computed once per 20s for everyone). No new infrastructure,
+    $0.</td>
+  </tr>
+  <tr>
+    <td><span class="sev y"></span></td>
+    <td><strong>Move servers to Amsterdam</strong></td>
+    <td class="n">$0</td>
+    <td>Parked for phase 2 (your call: minimal changes first). Confirmed live: no CDN in front,
+    ~330–490 ms first byte from distance alone, halving available. Needs a maintenance window —
+    the app, database and cache move together, maintenance mode on (withdrawals stay open).</td>
+  </tr>
+  <tr>
+    <td><span class="sev y"></span></td>
+    <td><strong>Enlarge the database disk</strong></td>
+    <td class="n">$0 now</td>
+    <td>919 MB of 5 GB, ~14 MB/day, ~6 months of headroom. Discovery: enlarging is
+    <strong>dashboard-only</strong> — one click for you, no API exists. Costs nothing until used.</td>
+  </tr>
+  <tr>
+    <td><span class="sev y"></span></td>
+    <td><strong>Recovery procedure and rehearsal</strong></td>
+    <td class="n">$0</td>
+    <td>The backup half is now written into the backup runbook (watchdog, snapshot layers, PITR
+    enable/verify/restore steps). Still owed: one timed restore rehearsal at production size —
+    the platform's recovery time remains unmeasured until then. Scheduled right after PITR is on.</td>
+  </tr>
+</table>
+
+<div class="box stop"><strong>Three things only you can do:</strong> run the PITR command ·
+rotate the exposed Postmark token · sign the Selcom SMS contract. Everything else on this list is
+either done, one <code>railway config apply</code> away, or parked in phase 2 at your instruction.</div>
+
+<h2>4 · Decisions taken</h2>
+<table>
+  <tr><th style="width:32%">Question</th><th>Decision</th></tr>
+  <tr><td>Sizing</td><td>1,000 registered · <strong>100–200</strong> online at peak (unchanged)</td></tr>
+  <tr><td>Scope, September</td><td><strong>Backups and alarms first, minimal cost</strong> (Ali, 4 Sep). Deploy gate, payout batching, Amsterdam, memory cap, 2FA flip = phase 2, staged and documented on <code>launch-1k-phase2</code></td></tr>
+  <tr><td>Run several copies?</td><td><strong>No</strong> — re-confirmed with stronger evidence: a second copy would silently defeat self-exclusion enforcement (a regulatory control), not just ops conveniences</td></tr>
+  <tr><td>Selcom SMS contract</td><td>In progress; switch is env-only + one code re-route, first send needs a real handset</td></tr>
+</table>
+
+<h2 class="brk">Part Two · Technical detail</h2>
+<p class="part" style="margin-top:-3mm">Measured 3 September · re-derived 4 September 2026</p>
+
+<h3>Architecture as deployed (unchanged 4 Sep except where marked)</h3>
+<div class="arch">Players (Tanzania)
+   |   no CDN, no WAF (verified: no cf-ray; edge cdg1 -> origin us-west2)
+   v
+Railway edge  ---->  ORIGIN: us-west2 (California) -- all three services
+   |
+   +-- 50pick        Next.js 16, RAILPACK      1 container
+   |                 health endpoint CAN FAIL (503) ✔ · Railway gate pending `config apply`
+   +-- PostgreSQL 18.6    5 GB disk (919 MB)  · volume snapshots D/W/M ✔ · PITR pending 1 cmd
+   +-- Redis 8.2.1        connected, cross-container · volume snapshots D/W ✔
+
+External services: Selcom LIVE · Postmark LIVE · R2 LIVE · Sentry LIVE ·
+Anthropic LIVE · Twelve Data LIVE · SMS NOT DELIVERING (provider=console)</div>
+
+<div class="kpi">
+  <div><b>26</b><span>DB round-trips per winner (measured 4 Sep)</span></div>
+  <div><b>~576</b><span>winners where settlement dies (Railway RTT)</span></div>
+  <div><b>24/24</b><span>backup-watchdog proof suite</span></div>
+  <div><b>329/0</b><span>1 Hz probe ok/fail through a live deploy</span></div>
+</div>
+
+<h3>Corrections to the 3 September brief — each re-measured, not argued</h3>
+<ul>
+  <li><strong>"No member of the public can register today" — false.</strong> Registration is
+  phone + password (<code>auth/register/actions.ts</code>); the OTP path is preserved-but-bypassed.
+  SMS remains a launch item for phone verification, not for sign-up.</li>
+  <li><strong>"Proved both ways" on the health fix — overstated.</strong> No automated test
+  existed; the manual green exercised the no-database bypass branch. Now:
+  <code>test:health-readiness</code> proves RED (8 assertions, dead DB → 503, no host leak)
+  before trusting any green, and the true-positive branch is proven against production.</li>
+  <li><strong>The "~660 winners" figure was right</strong> — re-measured at ~576 at same-region
+  RTT (26 round-trips/winner, current code, scratch DB at production schema). What the brief
+  missed: the failure mode is now a permanent freeze, not a slow grind (full rollback + 5-min
+  retry with zero progress). Detection exists ("Ready to settle" &gt; 0 on /admin/system).</li>
+  <li><strong>"Nothing is cached" — stale.</strong> Five server-side cache layers already exist;
+  the genuine gap (leaderboard) is fixed on the phase-2 branch.</li>
+  <li><strong>The branch <code>launch-1k-readiness</code> must never be merged</strong> — it is 33
+  commits behind and carries another session's swept-in work (its own tracker records the
+  <code>git add -A</code> incident). Its one valuable code change was cherry-picked onto main
+  with tests; its docs were rewritten fresh (this file, RAILWAY-LIVE.md).</li>
+  <li><strong>Two API paths in the ops doc rotted within a day:</strong> the CLI user token no
+  longer answers billing queries (workspace token now), and <code>railway.json</code> is
+  deprecated and silently ignored (<code>.railway/railway.ts</code> + plan/apply is the home).</li>
+</ul>
+
+<h3>Money safety — built, tested, and not rebuilt (re-verified in code 4 Sep)</h3>
+<ul>
+  <li>Maintenance mode pauses bets + deposits, withdrawals stay open · payment kill switches per
+  network and direction · deposits settled from a signed re-query, exactly once · dead Redis
+  cannot break a bet · no idempotency key → no automatic retry · 200 simultaneous bets: zero
+  drift · the Up &amp; Down safety net is independent of the game's off switch — <strong>every
+  claim confirmed at file:line in the settlement path review.</strong></li>
+  <li><strong>New since the brief:</strong> backups are now watched by an alert that arrives
+  (bell + email to every officer), and the volume layer snapshots independently of the nightly.</li>
+</ul>
+
+<h3>Recovery position</h3>
+<table>
+  <tr><th style="width:28%">Question</th><th>3 Sep</th><th>4 Sep</th><th>After PITR + rehearsal</th></tr>
+  <tr><td>Data loss window</td><td>up to 24–27 h</td><td>24 h nightly <strong>+ daily volume snapshots</strong></td><td><strong>minutes</strong></td></tr>
+  <tr><td>Told of backup failure?</td><td><strong>No</strong></td><td><strong>Yes — watchdog email + bell</strong></td><td>unchanged</td></tr>
+  <tr><td>Written procedure</td><td>none</td><td>backup half in BACKUP-RUNBOOK.md</td><td>one-page DR runbook</td></tr>
+  <tr><td>Time to restore</td><td>never measured</td><td>never measured</td><td><strong>measured and recorded</strong></td></tr>
+</table>
+
+<h3>Order of work — updated</h3>
+<table>
+  <tr><th style="width:5%">#</th><th style="width:40%">Step</th><th>State / proof</th></tr>
+  <tr><td>1</td><td>Volume snapshot schedules + baseline</td><td>✔ live — read back via API (D/W/M, retentions 6/27/89 d)</td></tr>
+  <tr><td>2</td><td>Backup watchdog</td><td>✔ live — 24/24 incl. silent-when-healthy; re-announces after each deploy</td></tr>
+  <tr><td>3</td><td>Health endpoint can fail</td><td>✔ live — RED 8/8 proven before green; 503 + not-ready on prod verified impossible-to-fake</td></tr>
+  <tr><td>4</td><td>Spend alarm</td><td>✔ live — $75 soft, email, no hard cap</td></tr>
+  <tr><td>5</td><td>Enable PITR</td><td>⛔ <strong>Ali, one command</strong>; then verify archiver + first base backup</td></tr>
+  <tr><td>6</td><td>Deploy gate (healthcheck/overlap/draining)</td><td>staged on <code>launch-1k-phase2</code>; merge + <code>railway config apply</code>; prove with 1 Hz probe <em>and</em> a manifest read (the probe alone lied once already)</td></tr>
+  <tr><td>7</td><td>Batch large-market payouts</td><td>phase 2 first code item — baseline measured, harness sweeps to 5,000 winners</td></tr>
+  <tr><td>8</td><td>Timed restore rehearsal → DR runbook</td><td>after PITR; record the wall-clock number</td></tr>
+  <tr><td>9</td><td>Amsterdam · memory cap · 2FA flip · SMS</td><td>phase 2 / commercial, in that order of ceremony</td></tr>
+</table>
+
+<p class="foot">Original brief 3 September 2026 (commit <code>78c3876e</code>); re-verified and
+updated 4 September 2026 against production commit <code>011733eb</code>. Sources: Railway
+GraphQL API (workspace token), Railway CLI v5.49, the production database via read-only ops
+probes, timed requests to <code>50pick.tz</code>, a scratch PostgreSQL 18 at production schema
+for the settlement measurement, and the repo's own proof suites. Still unmeasured: the Twelve
+Data subscription. Rebuild:
+<code>node docs/runbooks/mkpdf.mjs ../launch-1k.html ../50pick-launch-1k.pdf</code>.</p>

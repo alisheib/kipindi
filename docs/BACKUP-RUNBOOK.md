@@ -105,6 +105,79 @@ deleted**) · `red:backup-order` **4/4 caught, 0 missed**, anchors declared as d
 
 ---
 
+## 🟢 2026-09-04 — the alert that ARRIVES, and a second recovery layer (LAUNCH-1K)
+
+The eleven-nights repair above closed the *causes* and left the *structure*: an amber card
+an operator must remember to read, and a status tool an operator must remember to run. Two
+things landed 2026-09-04 that change the structure, plus one that waits on a single command.
+
+### 1 · The backup watchdog — live on production (commit `011733eb`)
+
+`src/lib/server/backup/watchdog.ts`, called once a day from the **leader-leased** lifecycle
+pass (so exactly one container speaks). It reads the same `backupHealth()` the compliance
+card renders, and on anything but `ok` — **none / failed / unverified / stale >36 h** — it
+sends every ADMIN/COMPLIANCE officer the trilingual SECURITY bell **and** a Postmark email
+(`notifyAdminsBackupUnhealthy`, shaped exactly like the sentinel-down and AI-credit alerts
+beside it). Fail-open throughout: a watchdog that fails must never take the lifecycle down.
+
+⭐ **Why in-app and not a CI `if: failure()` step:** a workflow step can only report a job
+that RAN and failed. GitHub delays schedules (the 00:15 UTC job has finished at 04:36) and
+silently disables them after 60 days of repo inactivity — the job that never runs never
+reports. The watchdog fires on the **absence of a good run**, which covers failure,
+throttling and silent disablement alike. (A belt-and-braces CI step remains open — it needs
+a `POSTMARK_API_KEY` repo secret; one `gh secret set` for Ali.)
+
+**Proof:** `npm run test:backup-watchdog` — 24/24. Clock injected (nobody waits 36 h);
+stale fires with age + destination, fresh stays SILENT (a watchdog that cries wolf gets
+filtered, and then the real alarm is ignored too), failed/unverified/none each alert with
+their own sentence, and a no-database boot skips.
+
+⚠️ The daily timer is module-local and **re-arms on deploy** — deliberate: an unhealthy
+backup gets re-announced after every deploy rather than staying silent.
+
+### 2 · Railway-native volume backups — schedules are ON (set 2026-09-04 via API)
+
+A second, independent recovery layer at the VOLUME level — nothing shared with the nightly
+(different mechanism, different storage, different failure modes):
+
+| Volume | Schedules | Retention |
+|---|---|---|
+| `postgres-volume` | DAILY + WEEKLY + MONTHLY | 6 days / 27 days / 89 days |
+| `redis-volume` | DAILY + WEEKLY | 6 days / 27 days |
+
+Plus a manual baseline: **"launch-1k baseline 2026-09-04"**. Incremental copy-on-write,
+billed per incremental GB — cents at this database's size. Verify any time:
+`volumeInstanceBackupScheduleList` via the GraphQL API, or the service's Backups tab.
+
+### 3 · PITR — one command away, NOT yet enabled
+
+```
+railway postgres pitr enable --service Postgres     # from F:\kipindi-main, CLI ≥5.42
+```
+
+What it does (re-derived from Railway's docs + schema, 2026-09-04): pgBackRest archives
+every WAL segment to a private Railway bucket, weekly full + daily incremental base
+backups, last 4 fulls ≈ a 4-week window. **RPO collapses from ~24–27 h to minutes.** Cost
+is bucket storage + egress for compressed WAL — ~$1–3/mo at this write load.
+
+⚠️ **Enabling REDEPLOYS the Postgres service** — seconds of database unavailability. The
+app container stays up (only new boots are DB-fatal, RAILWAY-LIVE trap 8); in-flight
+queries error briefly and every consumer of them is retried/fail-open. Pick a quiet hour.
+
+⚠️ **The restore window starts from the first post-enable base backup — nothing is
+retroactive.** Every day it stays off is a day the window doesn't cover. Verify after
+enabling: `railway postgres pitr status --service Postgres` (archiver healthy), then the
+first base backup, then `volumeInstancePitrRestoreEstimate` returns non-null.
+
+**Restore is non-destructive:** it provisions a NEW sibling service
+(`Postgres-restored-YYYYMMDD-HHMM`) recovered to the chosen moment; the original keeps
+serving. Cutover is manual. ⛔ **The RTO rehearsal is still owed** — once PITR has its
+first base backup, do one timed restore into a sibling, re-run the money invariants against
+the copy, record the wall-clock time here, delete the sibling. Until that number exists,
+"time to restore" remains UNKNOWN, exactly as the recovery table below says.
+
+---
+
 ## The four commands
 
 | Command | Does | Safe? |
