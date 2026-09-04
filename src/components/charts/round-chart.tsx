@@ -47,8 +47,6 @@ export function RoundChart({
     upLabel?: string;
     downLabel?: string;
     awaitingRead: string;
-    aboveBelow: string | null;
-    source: string | null;
     chartAlt: string;
   };
   /** The kit RoundCountdown, composed by the page. */
@@ -102,28 +100,33 @@ export function RoundChart({
   return (
     <section
       aria-label={copy.chartAlt}
-      style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", boxShadow: "var(--shadow-card)", padding: "12px 14px 8px", minWidth: 0 }}
+      className="px-3 pt-2 pb-1.5 min-w-0"
+      style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", boxShadow: "var(--shadow-card)" }}
     >
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-baseline gap-1.5">
           {hasPrice ? (
             <>
-              <span className="font-mono font-bold tabular-nums" style={{ fontSize: 20, lineHeight: 1, letterSpacing: "-0.01em", color: ink }}>{usd(livePrice)}</span>
+              {/* title-md — the ladder's rung beside the countdown's 24px digits; the
+                  ladder owns its own tracking (§T1: no hand-typed sizes in a new file). */}
+              <span className="font-mono font-bold tabular-nums text-title-md leading-none" style={{ color: ink }}>{usd(livePrice)}</span>
               {movePct != null && (
-                <span className="font-mono font-semibold tabular-nums" style={{ fontSize: 11, color: ink }}>{sgn(movePct)}{Math.abs(movePct).toFixed(2)}%</span>
+                <span className="font-mono font-semibold tabular-nums text-body-sm" style={{ color: ink }}>{sgn(movePct)}{Math.abs(movePct).toFixed(2)}%</span>
               )}
             </>
           ) : (
             <>
-              <span className="font-mono font-bold" style={{ fontSize: 20, lineHeight: 1, color: "var(--text-faint)" }}>—</span>
-              <span className="font-mono font-semibold uppercase tracking-[0.10em]" style={{ fontSize: 9, color: "var(--text-faint)" }}>{copy.awaitingRead}</span>
+              <span className="font-mono font-bold text-title-md leading-none text-text-faint">—</span>
+              {/* Sentence copy, so it sits ABOVE the 12.5px reading floor (§T4) — not the
+                  hero's micro-eyebrow: a new file adds no tracked-uppercase site. */}
+              <span className="font-mono text-body-sm text-text-faint">{copy.awaitingRead}</span>
             </>
           )}
         </div>
         {countdown}
       </div>
 
-      <div style={{ marginTop: 10, position: "relative" }}>
+      <div className="relative mt-2">
         <svg viewBox="0 0 640 170" width="100%" style={{ display: "block", overflow: "visible" }} role="img" aria-label={copy.chartAlt}>
           <defs>
             <linearGradient id="udbUp" x1="0" y1="0" x2="0" y2="1">
@@ -179,11 +182,6 @@ export function RoundChart({
           )}
         </svg>
       </div>
-
-      <p style={{ margin: "6px 0 0", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }} className="font-mono text-[9.5px] text-text-faint">
-        <span>{copy.aboveBelow ?? " "}</span>
-        {copy.source && <span>{copy.source}</span>}
-      </p>
     </section>
   );
 }

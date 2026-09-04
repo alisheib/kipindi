@@ -74,11 +74,9 @@ export default async function UpDownPage({
   const isAuthed = !!session;
 
   // CHART-SPRINT B · the round the chart view draws — located by id, never by position.
+  // (No above/below caption on the compact panel: the header's ±% and the tinted zones
+  //  already answer it, and the cards below carry the full statement.)
   const chartRound = currentRoundChart ? rounds.find((r) => r.roundId === currentRoundChart.roundId) ?? null : null;
-  const chartMove =
-    chartRound?.openPrice != null && activeAsset?.livePrice != null
-      ? activeAsset.livePrice - chartRound.openPrice
-      : null;
 
   return (
     <div className="mx-auto w-full max-w-[1280px] px-4 py-6">
@@ -168,10 +166,6 @@ export default async function UpDownPage({
                 upLabel: t.market.udUp,
                 downLabel: t.market.udDown,
                 awaitingRead: t.market.udAwaitingRead,
-                aboveBelow: chartMove != null && chartMove !== 0
-                  ? `${chartMove > 0 ? t.market.udAboveOpenBy : t.market.udBelowOpenBy} $${Math.abs(chartMove).toFixed(activeAsset!.decimals)}`
-                  : null,
-                source: null,
                 chartAlt: `${pickLocalized(locale, activeAsset!.nameEn, activeAsset!.nameSw, activeAsset!.nameZh)} ${t.market.udLiveChart}`,
               }}
               countdown={<RoundCountdown closesAtMs={Date.parse(chartRound.closesAt)} label={t.market.udClosesIn} />}

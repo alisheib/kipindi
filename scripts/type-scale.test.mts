@@ -228,7 +228,7 @@ const RATCHET_ARBITRARY_TRACKING = 237;   // -4, 2026-08-31, DG-A-08: same three
  *  says so and this list gets trimmed); a NEW one is a hard failure. This is the
  *  line that stops a 30th step in a closed scale. */
 const KNOWN_SIZES = new Set([
-  "8", "8.5", "9", "9.5", "10", "10.5", "11", "11.5", "12", "12.5",
+  "8", "9", "9.5", "10", "10.5", "11", "11.5", "12", "12.5",
   "13", "13.5", "14", "14.5", "15", "15.5", "16", "17", "18", "19",
   "20", "21", "22", "24", "26", "28", "30", "34", "38",
 ]);

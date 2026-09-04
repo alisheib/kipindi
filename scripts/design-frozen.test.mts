@@ -146,7 +146,6 @@ const FROZEN_RATCHET = new Map<string, number>([
   ["src/components/ui/nav-progress.tsx", 2],
   ["src/components/ui/toggle.tsx", 2],
   ["src/app/auth/register/page.tsx", 1],
-  ["src/app/updown/page.tsx", 1],
   ["src/components/ui/checkbox.tsx", 1],
   ["src/components/ui/empty-state.tsx", 1],
   ["src/components/ui/propose-promo.tsx", 1],
