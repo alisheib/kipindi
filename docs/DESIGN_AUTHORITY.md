@@ -1593,6 +1593,56 @@ come from the same function the money path uses.
 > once, in `src/lib/updown-receipt.ts`, and `test:feedback-law` §6.6–6.10 pins it against the
 > server's own expression so the two cannot drift.
 
+### F9 — The ceremony belongs to the moment, not to the backlog
+
+*(Ali, 2026-09-04. Guarded by `npm run test:presence-class`, controlled by `npm run red:presence-class`.)*
+
+🔴 **THE DEFECT.** A player opened 50pick after a night away. Several rounds had settled while
+they slept, so the poller found them in one tick and announced them in one tick: a queue of gold
+seals for money that had landed hours earlier — and, because the toast layer destroyed everything
+past four while the poller marked all of them announced, no account at all of the rest. Ali:
+*"they appear all of a sudden."*
+
+⭐ **EVERY OUTCOME ANNOUNCEMENT IS CLASSIFIED BY PRESENCE**, and the class decides the channel:
+
+| Class | Meaning | Channel |
+|---|---|---|
+| **LIVE** | It settled during the player's current uninterrupted **attentive** window | Full ceremony — the seal for a win, the `factual` receipt for a loss or refund |
+| **RETURNING** | The player is here now, but it settled while they were away | **No auto-ceremony.** One calm `NoticeBar`; the seal only on their own tap |
+| **ABSENT** | Nobody is looking | The inbox row and push — the durable record, unchanged |
+
+1. ⛔ **EVERY UNCERTAINTY ROUTES AWAY FROM CEREMONY.** A missing settle instant, an unestablished
+   presence clock, a hidden tab, a stale result — all produce the calm channel. On a licensed
+   real-money product a **false** celebration is strictly worse than a missed one: a missed one
+   costs a moment, a false one tells a player they won at a time they did not, which is a money
+   statement the rows do not support. There is exactly one path to the seal.
+2. ⛔ **THE SEAL IS NEVER FIRED BY A POLL.** That is §F5 read from the other end — *nothing
+   answers an action the player did not take*, and arriving is not an act. §M7 still holds; the
+   ceremony is not withdrawn, it is **handed to the player**. Tapping is the act §F5 asks for, so
+   both laws are satisfied rather than traded against each other.
+3. ⛔ **THE RETURN SURFACE FIRES NOTHING** — no haptic, no sound, no modal, no focus steal, no
+   auto-dismiss. It needs no dialog-deferral (the `reality-check` pattern) precisely because a bar
+   in document flow blocks nothing and any modal's scrim covers it.
+4. ⛔ **A SUMMARY CARRIES A FIGURE ONLY WHEN EVERY RESULT SHARES ONE OUTCOME.** Two wins and a
+   loss is not one number. Each honest quantity is its own column — a win states what was **paid**,
+   a refund what came **back**, a loss what was **staked** — and they are never added to one
+   another. A mixed set states counts and sends the player to the record.
+5. ⛔ **NOTHING IS MARKED DELIVERED BEFORE IT IS DELIVERED.** An announced-marker, a watch-list
+   prune and an OS notification all follow the presentation; none may precede it.
+6. ⚠️ **ATTENTION IS A CLIENT FACT AND THE SERVER CANNOT SEE IT.** A backgrounded tab keeps
+   polling, every poll refreshes the session's `lastSeenAt`, so a tab left open overnight never
+   trips the server's play-session reset. The server **seeds** the window; the client **maintains**
+   it. ⛔ Do not simplify to one.
+7. ⛔ **DELTAS IN DEVICE TIME, INSTANTS IN SERVER TIME.** How long a tab was hidden is measured
+   between two readings of the *same* clock; the window start is stored in server time. Nothing
+   compares one to the other.
+
+**Where the values live** (§0d — never restated here): the away boundary is `PLAY_SESSION_GAP_MIN`
+in `src/lib/play-session.ts`, imported by *both* the server session and the client attention window
+so the two can never drift. The freshness cap is `MAX_LIVE_AGE_MS` in
+`src/lib/outcome-announcement.ts`, beside the rule that consumes it. Dwells stay in
+`feedback-timing.ts`.
+
 ---
 
 ## E — Elevation and motion mechanics
