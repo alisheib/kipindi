@@ -88,6 +88,7 @@
     "qa:read-tiers": "node scripts/live-read-tiers.mjs",
     "qa:side-words": "node scripts/live/pv04-side-words-drive.mjs",
     "qa:cold-start": "node scripts/live/pv06-cold-start-drive.mjs",
+    "qa:presence-bar": "node scripts/live/presence-bar-drive.mjs",
     "qa:e177": "node scripts/live-e177-unverified-payer.mjs",
     "qa:selcom-statement": "node scripts/live-selcom-statement.mjs",
     "test:updown-quickbet": "tsx scripts/updown-quickbet.test.mts",
