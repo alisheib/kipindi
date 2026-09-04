@@ -115,7 +115,28 @@ const PLAYER = [
 import { ADMIN_ROUTES as ADMIN } from "./design-gate/routes.mjs";
 
 /**
- * PV-03 · THE PAGE-LEVEL EMPTY STATES, PENDING A DESIGN RULING. ⛔ THIS LIST MAY ONLY SHRINK.
+ * PV-03 · PAGE- AND TAB-LEVEL EMPTY STATES — **RULED CORRECT, 2026-09-04. NOT A BACKLOG.**
+ *
+ * ⭐ THE RULING, so nobody "fixes" seven correct surfaces later. There are TWO kinds of empty
+ * state and only one of them has an alignment obligation:
+ *
+ *   · A **SECTION-level** empty state sits in a page of several sections, each with its own
+ *     heading. It MUST align with the heading that names it — `/positions` had a 360px card
+ *     floating 328px from its own "Open"/"Settled" heading, and it read as an unrelated object.
+ *     Those take `fill`. FIXED.
+ *   · A **PAGE- or TAB-level** empty state REPLACES the entire content area. Centring is the
+ *     correct, conventional treatment, and the page's `h1` is not its parent — on `/wallet` the
+ *     card belongs to the **Activity tab**, not to "Your funds". Looked at, at 1280: a 1016px
+ *     dashed box drawn around one sentence is worse than a centred card, not better.
+ *
+ * ⚠️ SO THE CHECK'S HEADING-PAIRING IS APPROXIMATE FOR THIS KIND, and that is why they are named
+ * rather than warned about. The probe takes the nearest PRECEDING heading, which for a tab panel
+ * is the page title several levels up — a real relationship the DOM does not express. ⛔ These do
+ * NOT warn: a warning that fires on correct behaviour is noise, and noise gets muted. The count
+ * is printed on every run instead, so the exemption can never become an assumption.
+ *
+ * ⛔ THIS LIST MAY ONLY SHRINK — a NEW route appearing here means a genuinely misaligned empty
+ * state, not another exemption.
  *
  * The alignment rule below (an empty state aligns with the heading that introduces it) found a
  * defect class **four times the size the record filed**: PV-03 named two surfaces; the guard
@@ -716,7 +737,7 @@ async function main() {
   console.log(`\n${"=".repeat(64)}`);
   console.log(`responsive-audit: ${pass} passed · ${fail} failed · ${warn} warnings`);
   if (emptyAlignSeen.size) {
-    console.log(`PV-03 · ${emptyAlignSeen.size} route(s) still centre a page-level empty state, pending a design ruling:`);
+    console.log(`PV-03 · ${emptyAlignSeen.size} route(s) centre a page/tab-level empty state — RULED CORRECT 2026-09-04, counted so the exemption is never silent:`);
     console.log(`        ${[...emptyAlignSeen].sort().join(" · ")}`);
   }
   console.log(`surfaces=${SURFACE} locales=${LOCALES.join("/")} widths=${widths.map((w) => w.tag).join(",")}`);

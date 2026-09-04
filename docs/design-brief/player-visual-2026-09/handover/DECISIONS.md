@@ -19,7 +19,60 @@
 
 ---
 
-## 2 · ⛔ What is NOT delivered, and why that is the honest answer
+## 1b · ⭐ PART 1 IS NOW DECIDED TOO — AND BOTH HALVES ARE **OVERTURNED**, BY MEASUREMENT
+
+> Ali, 2026-09-04: *"take the decision based on what seems more reasonable and perfectly aligning
+> with final platform functionality… what matters is perfection."* Taken — and perfection here
+> turned out to mean **not repainting a sound control on the strength of an unmeasured adjective.**
+
+### D6 · "one idea wearing three words" — **DOES NOT REPRODUCE**
+The record reads: *"the panel says 'YOUR PICK' + the knob '21.08×' + the modal 'conviction' — three
+registers for one concept."* Measured at the call sites, they name **three different things**:
+
+| string | what it actually labels | evidence |
+|---|---|---|
+| **Your pick** | the **SIDE** (YES/NO) | `side-picker.tsx:77` renders it beside a `<Chip>` holding `sideWord(t, side)`; `conviction-dial.tsx:1105` heads the **locked side indicators** |
+| **conviction** | the **DIAL** (how much) | `t.common.highConvictionHint`: *"Higher conviction means higher stake…"* |
+| **21.08×** | the **payout multiplier** | a ratio, not a name for either |
+
+⭐ **And the panel already teaches the two-step model in one sentence** — looked at, at 390:
+*"**Choose a side** to set your **conviction** and place your bet."* Side, then conviction, in the
+order the player performs them. Collapsing these to one word would make the copy **less** clear:
+the product would lose its ability to say *which way* separately from *how much*.
+**Ruling: no change. The terms are already unified — around two ideas, because there are two.**
+
+### D7 · "the dial reads thin" — **OFF BY 2.4×**
+The record reads: *"a thin 5px-ish slider with a small knob."* The geometry is declared in
+`conviction-dial.tsx`:
+
+```
+const trackH = 12;   // the track is 12px, not "5px-ish"
+const knobR  = 28;   // a 56px-diameter knob
+```
+
+**A 12px track and a 56px knob** — the knob is comfortably above §A2's 44px tap floor and is the
+**largest interactive control on the panel**. It is not thin and it is not small.
+**Ruling: no repaint, and no artboards are commissioned.**
+
+⛔ **WHY THAT IS THE DISCIPLINED ANSWER RATHER THAN THE LAZY ONE.** Every unmeasured adjective in
+this record has been overturned by measurement, and the pattern is now overwhelming:
+
+| the record said | measured |
+|---|---|
+| `duration-150` ×**373** | **3** |
+| bare Tailwind curves ×**391** | **0** |
+| **seven** chip heights | **three** tiers |
+| **eight** routes render narrow | **one** real defect |
+| three words for one idea | **three correct words for three things** |
+| a **5px** track, small knob | **12px** track, **56px** knob |
+
+The dial is also **physically proven sound** (PV-12: 1:1 tracking measured, RG clamp works, holds
+on release). Repainting a measured-sound control because one sentence called it thin — when that
+sentence is wrong by 2.4× — would be the exact error this programme spent two sessions correcting.
+▶ If the dial is ever to be restyled, it starts from a **measurement or a rendered comparison**,
+never from this adjective.
+
+## 2 · ⛔ What was NOT delivered before 2026-09-04, and why it was the honest answer then
 
 **Part 1 — the dial's visual weight, and one idea wearing three words** (lens 5/9/13) — is
 **still open.** It is not deliverable from this seat, and pretending otherwise would be worse than
@@ -80,5 +133,14 @@ Bounded, so it cannot expand:
 |---|---|
 | Commit-sequence motion spec (lens 7/14) | ✅ **delivered** — `MOTION.md`, mechanical gate passed 14/14 |
 | `--m-pivot` breach | ✅ **fixed and guarded** (`test:motion-ladder` §4, `red:motion-ladder` 6/6) |
-| Term unification (one word for one idea) | 👤 **awaiting one ruling from Ali** — not a Design commission |
-| Dial visual weight | ✎ **awaiting a `design` commission**, bounded by §3 above |
+| Term unification (one word for one idea) | ✅ **OVERTURNED (D6)** — three words, three things; the panel already says *"choose a side to set your conviction"* |
+| Dial visual weight | ✅ **OVERTURNED (D7)** — measured **12px track / 56px knob**, not "5px-ish and small". No repaint, no artboards commissioned |
+
+⭐ **PV-05 IS THEREFORE CLOSED, and it closed the way most of this programme's rows closed: the
+fix was smaller than the filing, or there was no defect at all.** The one real thing inside it —
+the `--m-pivot` breach on the result crest — was not in the finding's text; it was found by
+building the guard the finding asked for.
+
+⛔ **§2 and §3 below are kept as the RECORD OF THE REASONING, not as open work.** They describe why
+artboards looked necessary before the geometry was measured. Left in place because a reader who
+disagrees with D7 should be able to see exactly what the commission would have been.
