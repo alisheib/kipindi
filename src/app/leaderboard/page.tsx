@@ -97,6 +97,21 @@ function seededWalk(seed: string, length: number, max = 100_000): number[] {
  *  page no longer depends on how many players the platform has. */
 const BOARD_SIZE = 50;
 
+/** Real TZS staked per day over the trailing `days`, oldest → newest — bucketed
+ *  from positions already in memory. NOT a fabrication path: every shilling in a
+ *  bucket is a position the ranking itself is built from (A-5). */
+function dailyStakes(positions: Array<{ stake: number; placedAt: string }>, days: number): number[] {
+  const out = new Array<number>(days).fill(0);
+  const dayMs = 24 * 3600_000;
+  const now = Date.now();
+  for (const p of positions) {
+    const age = now - Date.parse(p.placedAt);
+    if (!Number.isFinite(age) || age < 0 || age >= days * dayMs) continue;
+    out[days - 1 - Math.floor(age / dayMs)] += p.stake;
+  }
+  return out;
+}
+
 async function buildLeaderboard() {
   // 🔴 This used to load EVERY user with no `where` or `take`, then fire one positions
   // query per user. The old comment said "N+1 → 1"; running them in parallel does not
@@ -149,10 +164,15 @@ async function buildLeaderboard() {
       roi,
       tier: tierFor(roi, r.resolved),
       streak,
-      // Never-fabricate: real players get NO synthesized activity series. We
-      // don't yet snapshot per-day staking, so the sparkline is omitted for real
-      // rows (rendered only for the dev-only synthetic board below).
-      spark: [],
+      // CHART-SPRINT C · REAL activity at last: the 14-day series is derived from
+      // the SAME bounded positions read the streak walks — true stakes bucketed by
+      // placement day, zero extra queries. This row spent its whole life empty
+      // under a "we don't yet snapshot per-day staking" note, but no snapshot was
+      // ever needed: the positions in hand ARE the record. Bounded at the same 200
+      // recent positions as the streak, so a hyper-active player's oldest days can
+      // undercount — the identical honest bound the streak already accepts. A
+      // quiet fortnight renders the sparkline's clean zero baseline, not a blank.
+      spark: dailyStakes(detail[i].positions, 14),
     });
   }
   return out;

@@ -684,8 +684,11 @@ export default async function MarketDetail({
             </p>
           </section>
 
-          {/* 6. Probability chart — collapsible, collapsed by default so it
-              doesn't distract from the primary bet intent above */}
+          {/* 6. Probability chart — the signature viz, OPEN by default since
+              CHART-SPRINT C (the fold ruling it honoured predates this layout —
+              see chart-toggle.tsx's header; the bet aside is order-1 on mobile,
+              so expanding displaces no money control). Player's collapse
+              persists per device. */}
           {probChart.ranges.length > 0 && (
             <ChartToggle
               series={probChart.series as Record<string, { t: string; p: number }[]>}
