@@ -38,7 +38,11 @@ const short = (n: number) => formatCompactNumber(n, { explicitPlus: true });
 
 export function PnlChart({ data, ariaLabel }: { data: Point[]; ariaLabel: string }) {
   // Prepend the zero start so the walk always begins at break-even.
-  const pts = [{ label: "start", value: 0 }, ...data];
+  // ⛔ Unlabelled on purpose (CHART-SPRINT E4): it used to say a hardcoded English
+  // "start" on a trilingual surface — and painted as "tart", because a middle-anchored
+  // label at x=8 hangs half its width off the plot's left edge. The break-even line
+  // already names what this point is, in every locale, at a readable size.
+  const pts = [{ label: "", value: 0 }, ...data];
   const minV = Math.min(0, ...pts.map((p) => p.value));
   const maxV = Math.max(0, ...pts.map((p) => p.value));
   const pad = (maxV - minV) * 0.08 || 1;
@@ -70,8 +74,11 @@ export function PnlChart({ data, ariaLabel }: { data: Point[]; ariaLabel: string
       />
       <circle cx={lastX} cy={lastY} r="3.5" fill="var(--aqua-300)" />
       <circle className="pchart-dot-halo" cx={lastX} cy={lastY} r="8" fill="none" stroke="var(--aqua-300)" strokeWidth="1" />
+      {/* Edge-aware anchors — the probability chart's own rule: a middle-anchored
+          label at the plot edge clips half of itself. */}
       {[0, mi, li].map((i) => (
-        <text key={i} x={xAt(i).toFixed(0)} y="234" fill="var(--text-subtle)" fontSize="9" textAnchor="middle">{pts[i].label}</text>
+        <text key={i} x={xAt(i).toFixed(0)} y="234" fill="var(--text-subtle)" fontSize="9"
+              textAnchor={i === 0 ? "start" : i === li ? "end" : "middle"}>{pts[i].label}</text>
       ))}
     </svg>
   );
