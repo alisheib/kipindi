@@ -531,6 +531,20 @@ been written down, which is exactly how the never-imported `Sparkline` came to c
    theme measured this): when one does, move the value to a class or inline `style`, never
    hand-type the resolved colour.
 
+6. **THE TERMINAL'S FORM IS FROZEN** (Ali, 2026-09-04: *"we need consistency… we can't
+   mess around with how layout is rendered"* — after the form changed shape twice in one
+   day). The `/updown` chart view is the LAB and exactly the lab: range rail
+   **30M · 1H · 4H · 1D · ROUND** (ROUND last — his ordering), style rail
+   **Curve | Candles** on history ranges, both on the `.pchart-range` vocabulary; the
+   pane is 300px (380px ≥1024); panel chrome `px-3 pt-2 pb-1.5` on the elevated-card
+   recipe; the gilt dashed line is the ONE live-price statement (no series value labels);
+   the receipt footer carries the E-53 source grammar. **The chart's FORM changes only by
+   the player's own tap** — never by data shape, never by a poll, never by a session's
+   taste: untouched ranges keep their natural default (30M/1H curve · 4H/1D candles), a
+   pinned style rules every range, and a window too thin for honest candles answers the
+   curve WITH the stated reason (`udNoCandles`) rather than a silently different form.
+   Changing any of this is reversing a dated owner ruling — refuse it by name.
+
 ---
 
 ## Accessibility floor (see audit H10)

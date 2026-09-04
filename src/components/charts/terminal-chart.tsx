@@ -43,6 +43,7 @@ import type { IChartApi, ISeriesApi, IPriceLine, UTCTimestamp } from "lightweigh
 import { fmtEAT } from "@/lib/updown-source-label";
 
 export type TerminalRange = "30M" | "1H" | "4H" | "1D";
+export type TerminalStyle = "line" | "candles";
 type LinePoint = { t: number; price: number | null };
 type Candle = { t: number; o: number; h: number; l: number; c: number; n: number; forming?: boolean };
 type Feed = {
@@ -54,6 +55,7 @@ type Feed = {
   liveStale: boolean | null;
   medianDeltaMs: number | null;
   decimals: number;
+  candlesUnavailable?: boolean;
 };
 
 /** Paint a token through the engine's own parser and read back sRGB bytes. */
@@ -93,12 +95,16 @@ function tokRaw(name: string): string {
 export function TerminalChart({
   assetKey,
   range,
+  style,
   height = 300,
   labels,
   pollMs = 30_000,
 }: {
   assetKey: string;
   range: TerminalRange;
+  /** The player-chosen form — the server may answer candlesUnavailable and the
+   *  pane then shows the curve WITH the reason (never invented candles). */
+  style: TerminalStyle;
   height?: number;
   labels: {
     empty: string;
@@ -108,6 +114,8 @@ export function TerminalChart({
     /** Already-translated receipt parts — the card's own grammar (E-53/E-262). */
     sourceLabel: string;
     quotedWord: string;
+    /** Shown when the player chose candles and the window is too thin for honest ones. */
+    noCandles: string;
   };
   pollMs?: number;
 }) {
@@ -132,7 +140,7 @@ export function TerminalChart({
       if (document.visibilityState === "hidden") return;
       const seq = ++seqRef.current;
       try {
-        const r = await fetch(`/api/updown/history?asset=${encodeURIComponent(assetKey)}&range=${range}`, {
+        const r = await fetch(`/api/updown/history?asset=${encodeURIComponent(assetKey)}&range=${range}&style=${style}`, {
           cache: "no-store",
           signal: ac.signal,
         });
@@ -153,7 +161,7 @@ export function TerminalChart({
     const onReveal = () => { if (document.visibilityState === "visible") load(); };
     document.addEventListener("visibilitychange", onReveal);
     return () => { alive = false; ac.abort(); clearInterval(id); document.removeEventListener("visibilitychange", onReveal); };
-  }, [assetKey, range, pollMs]);
+  }, [assetKey, range, style, pollMs]);
 
   // ── the chart object — built once the library chunk arrives ──────────────
   useEffect(() => {
@@ -186,7 +194,7 @@ export function TerminalChart({
         rightPriceScale: { borderColor: ink("--border") },
         // fixRightEdge keeps the newest bar and its time label fully inside the
         // pane (the rightmost label clipped to "16:3" at 360 without it).
-        timeScale: { borderColor: ink("--border"), timeVisible: true, secondsVisible: false, fixRightEdge: true },
+        timeScale: { borderColor: ink("--border"), timeVisible: true, secondsVisible: false, fixRightEdge: true, fixLeftEdge: true, lockVisibleTimeRangeOnResize: true },
         crosshair: {
           mode: lib.CrosshairMode.Magnet,
           vertLine: { color: ink("--border-strong"), width: 1, style: lib.LineStyle.Dashed, labelBackgroundColor: ink("--bg-inset") },
@@ -322,12 +330,12 @@ export function TerminalChart({
 
     // Fit ONCE per (range, mode); later polls must never yank the viewport
     // out of the player's hands (F2).
-    const fitKey = `${range}:${data.series.mode}`;
+    const fitKey = `${range}:${style}:${data.series.mode}`;
     if (fitKeyRef.current !== fitKey) {
       chart.timeScale().fitContent();
       fitKeyRef.current = fitKey;
     }
-  }, [range]);
+  }, [range, style]);
 
   // The engine (async library chunk) and the first feed race freely; the draw
   // effect keys on BOTH, so whichever arrives second triggers the paint — a
@@ -354,6 +362,9 @@ export function TerminalChart({
           </div>
         )}
       </div>
+      {feed?.candlesUnavailable && style === "candles" && (
+        <p className="mt-1 mb-0 font-mono text-body-sm text-text-subtle">{labels.noCandles}</p>
+      )}
       {feed && (
         <p className="mt-1 mb-0 text-right font-mono text-body-sm" style={{ color: feed.liveStale ? "var(--no-300)" : "var(--text-faint)" }}>
           {receipt}

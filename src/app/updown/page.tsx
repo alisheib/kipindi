@@ -164,6 +164,10 @@ export default async function UpDownPage({
               labels={{
                 round: t.market.udRangeRound,
                 railAria: t.market.udRangeAria,
+                styleAria: t.market.udStyleAria,
+                curve: t.market.udStyleCurve,
+                candles: t.market.udStyleCandles,
+                noCandles: t.market.udNoCandles,
                 empty: t.market.udNoReads,
                 loading: t.common.loading,
                 error: t.market.udChartError,

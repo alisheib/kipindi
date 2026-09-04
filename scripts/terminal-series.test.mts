@@ -195,5 +195,24 @@ console.log("\n§9 · a stalled feed is FLAGGED, never dressed as a flat market"
   ok("9.1 liveStale is true when the newest read exceeds the cadence tolerance", r!.liveStale === true, String(r!.liveStale));
 }
 
+console.log("\n§10 · the style toggle's contract — the player owns the form, honesty owns the floor");
+{
+  // "line" forces the curve even where candles are possible — and claims nothing.
+  const r1 = await getAssetTerminalSeries("tsc", "4H", "line");
+  ok("10.1 explicit line wins on a candle-capable window", r1!.series.mode === "line" && r1!.candlesUnavailable === undefined);
+  // "candles" on the healthy window answers candles.
+  const r2 = await getAssetTerminalSeries("tsc", "4H", "candles");
+  ok("10.2 explicit candles answers candles where honest", r2!.series.mode === "candles");
+  // "candles" on a too-thin window answers the LINE and SAYS WHY — never invents.
+  const r3 = await getAssetTerminalSeries("tst", "4H", "candles");
+  ok("10.3 explicit candles on a thin window → line + candlesUnavailable",
+     r3!.series.mode === "line" && r3!.candlesUnavailable === true);
+  // "candles" can reach a SHORT window the auto rule never candles (1H at
+  // per-minute cadence has 12 honest 5-min buckets) — full usage of the data.
+  const r4 = await getAssetTerminalSeries("tsm", "1H", "candles");
+  ok("10.4 explicit candles unlocks an auto-line window when the data honestly allows",
+     r4!.series.mode === "candles", r4!.series.mode);
+}
+
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

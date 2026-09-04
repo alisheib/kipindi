@@ -878,7 +878,7 @@ export const dict = {
       // E-264 · the cubes pill said "Results" — the global nav item visible in the SAME
       // viewport — while its own eyebrow says "Last rounds". Round vocabulary, like its eyebrow.
       udViewAria: "Board view", udViewCubes: "Rounds", udViewChart: "Chart", udLiveChart: "Live chart",
-      udRangeRound: "Round", udRangeAria: "Chart range", udNoReads: "No confirmed price reads in this window", udChartError: "Chart unavailable — retrying",
+      udRangeRound: "Round", udRangeAria: "Chart range", udNoReads: "No confirmed price reads in this window", udChartError: "Chart unavailable — retrying", udStyleAria: "Chart style", udStyleCurve: "Curve", udStyleCandles: "Candles", udNoCandles: "Too few confirmed reads for candles in this window — showing the curve",
       udNoRounds: "No rounds open right now",
       udNoRoundsBody: "No round is open on this market at the moment. Rounds are opened by our team — check back shortly, or try another duration.",
       udPaused: "Paused",
@@ -2729,7 +2729,7 @@ export const dict = {
       udSourceGeneric: "Data ya soko ya moja kwa moja",
       udLastRounds: "Raundi za mwisho", udOldestNewest: "za zamani → mpya",
       udViewAria: "Muonekano wa ubao", udViewCubes: "Raundi", udViewChart: "Chati", udLiveChart: "Chati mubashara",
-      udRangeRound: "Raundi", udRangeAria: "Kipindi cha chati", udNoReads: "Hakuna bei zilizothibitishwa katika kipindi hiki", udChartError: "Chati haipatikani — inajaribu tena",
+      udRangeRound: "Raundi", udRangeAria: "Kipindi cha chati", udNoReads: "Hakuna bei zilizothibitishwa katika kipindi hiki", udChartError: "Chati haipatikani — inajaribu tena", udStyleAria: "Mtindo wa chati", udStyleCurve: "Mstari", udStyleCandles: "Mishumaa", udNoCandles: "Bei zilizothibitishwa ni chache mno kwa mishumaa katika kipindi hiki — tunaonyesha mstari",
       udNoRounds: "Hakuna raundi zilizo wazi sasa",
       udNoRoundsBody: "Hakuna raundi iliyo wazi kwenye soko hili kwa sasa. Raundi hufunguliwa na timu yetu — angalia tena hivi karibuni, au jaribu muda mwingine.",
       udPaused: "Imesimamishwa",
@@ -4392,7 +4392,7 @@ export const dict = {
       udSourceGeneric: "实时市场行情",
       udLastRounds: "最近几轮", udOldestNewest: "由旧至新",
       udViewAria: "面板视图", udViewCubes: "轮次", udViewChart: "走势图", udLiveChart: "实时走势图",
-      udRangeRound: "本轮", udRangeAria: "图表时间段", udNoReads: "此时间段内暂无已确认价格", udChartError: "图表暂不可用——正在重试",
+      udRangeRound: "本轮", udRangeAria: "图表时间段", udNoReads: "此时间段内暂无已确认价格", udChartError: "图表暂不可用——正在重试", udStyleAria: "图表样式", udStyleCurve: "曲线", udStyleCandles: "K线", udNoCandles: "此时间段已确认价格不足以绘制K线——已显示曲线",
       udNoRounds: "目前没有进行中的回合",
       udNoRoundsBody: "该市场当前没有进行中的回合。回合由我们的团队开启——请稍后再看，或试试其他时长。",
       udPaused: "已暂停",

@@ -977,6 +977,14 @@ export type TerminalSeries =
   | { mode: "line"; points: TerminalPoint[] }
   | { mode: "candles"; candles: TerminalCandle[]; bucketMs: number; gaps: number[] };
 
+/** The player's explicit style choice (Ali, 2026-09-04: "should we have a
+ *  toggle for each version" — auto-switching between forms read as a glitch).
+ *  "auto" keeps the range defaults; an explicit "candles" NEVER relaxes the
+ *  per-bucket honesty floor — a window too thin for ≥MIN_EXPLICIT_CANDLES
+ *  honest candles answers with the line and says so via `candlesUnavailable`. */
+export type TerminalStyle = "auto" | "line" | "candles";
+const MIN_EXPLICIT_CANDLES = 3;
+
 export type TerminalFeed = {
   series: TerminalSeries;
   livePrice: number | null;
@@ -988,6 +996,9 @@ export type TerminalFeed = {
   liveStale: boolean | null;
   medianDeltaMs: number | null;
   decimals: number;
+  /** Set only when the player EXPLICITLY asked for candles and the window
+   *  cannot honestly provide them — the client states why it shows the curve. */
+  candlesUnavailable?: boolean;
 };
 
 /**
@@ -1000,6 +1011,7 @@ export type TerminalFeed = {
 export async function getAssetTerminalSeries(
   assetKey: string,
   range: TerminalRange,
+  style: TerminalStyle = "auto",
 ): Promise<TerminalFeed | null> {
   const cfg = TERMINAL_WINDOWS[range];
   if (!cfg) return null;
@@ -1057,15 +1069,26 @@ export async function getAssetTerminalSeries(
     return { mode: "line", points };
   };
 
-  if (!cfg.wantCandles || medianDeltaMs == null) {
-    return { series: lineFrom(reads), ...base };
+  // The player's explicit "line" always wins; explicit "candles" ATTEMPTS the
+  // candle build on any window; "auto" keeps the per-range defaults.
+  const wantCandles = style === "candles" ? true : style === "line" ? false : cfg.wantCandles;
+  if (!wantCandles || medianDeltaMs == null) {
+    return {
+      series: lineFrom(reads),
+      ...base,
+      ...(style === "candles" ? { candlesUnavailable: true } : {}),
+    };
   }
 
   // The bucket rung: smallest that holds READS_PER_CANDLE median gaps. A
   // cadence too slow for the window's largest sensible rung → line.
   const bucketMs = (BUCKET_RUNGS_MIN.map((m) => m * 60_000).find((b) => b >= READS_PER_CANDLE * medianDeltaMs) ?? Infinity);
   if (!Number.isFinite(bucketMs) || bucketMs > cfg.windowMs / 6) {
-    return { series: lineFrom(reads), ...base };
+    return {
+      series: lineFrom(reads),
+      ...base,
+      ...(style === "candles" ? { candlesUnavailable: true } : {}),
+    };
   }
 
   // Bucket on ALIGNED boundaries across an ALIGNED window start, so the oldest
@@ -1109,10 +1132,21 @@ export async function getAssetTerminalSeries(
     }
   }
 
-  // Under half the window's buckets qualified → the honest form is the line.
+  // The mode threshold: on "auto", under half the window's buckets → line (a
+  // sparse window must not wear a candle chart's confidence). On an EXPLICIT
+  // "candles" request the player owns the form, so the bar is the floor of
+  // meaning instead: at least MIN_EXPLICIT_CANDLES honest historical candles —
+  // below that the window answers with the line AND says why. ⛔ The per-bucket
+  // floor above never relaxes on any path: thin buckets stay gaps.
+  const done = candles.filter((c) => !c.forming).length;
   const expectedBuckets = Math.max(1, Math.floor((formingBucket - windowStart) / bucketMs));
-  if (candles.filter((c) => !c.forming).length < expectedBuckets / 2) {
-    return { series: lineFrom(reads), ...base };
+  const enough = style === "candles" ? done >= MIN_EXPLICIT_CANDLES : done >= expectedBuckets / 2;
+  if (!enough) {
+    return {
+      series: lineFrom(reads),
+      ...base,
+      ...(style === "candles" ? { candlesUnavailable: true } : {}),
+    };
   }
 
   return { series: { mode: "candles", candles, bucketMs, gaps }, ...base };

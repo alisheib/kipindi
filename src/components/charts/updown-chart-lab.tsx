@@ -1,30 +1,39 @@
 "use client";
 
 /**
- * UpDownChartLab — the board chart view's range rail and body switch
- * (CHART-SPRINT-2, Ali: "history plus live … based on the filter they chose").
+ * UpDownChartLab — the board chart view's rails and body switch
+ * (CHART-SPRINT-2; form finalised to Ali's rulings, 2026-09-04).
  *
- * ONE rail: ROUND · 30M · 1H · 4H · 1D.
- *  · ROUND — the current round's own frame (the server-rendered RoundChart
- *    arriving as a prop: open line, winning boundaries, countdown). It is the
- *    bet's context, it costs zero client JS, and it is the DEFAULT.
- *  · 30M/1H/4H/1D — the TradingView-engine TerminalChart over real confirmed
- *    reads (line, or cadence-derived honest candles on the long windows). The
- *    library chunk is dynamic-imported INSIDE TerminalChart, which only mounts
- *    once a history range is actually selected — cubes-mode and ROUND-view
- *    players load and poll nothing (review F1).
+ * TWO rails, one locked form — the chart NEVER changes shape by itself:
+ *  · RANGE — 30M · 1H · 4H · 1D · ROUND (ROUND deliberately LAST: the history
+ *    windows read left→right small→large, and the round frame is its own kind,
+ *    parked at the end — Ali's ordering).
+ *  · STYLE — Curve | Candles, shown on history ranges only. The PLAYER owns
+ *    the form: the effective style is always the one highlighted, and it only
+ *    ever changes by their tap. Untouched, each range keeps its natural
+ *    default (30M/1H curve · 4H/1D candles); one tap pins a style for every
+ *    range, persisted per device. A window too thin for honest candles shows
+ *    the curve WITH the stated reason — never invented candles, never a
+ *    silently different form (the "sometimes candles, sometimes curves"
+ *    confusion this rail exists to end).
  *
- * The stored choice applies in an effect (SSR carries no per-device state);
- * `ready` gates the terminal mount so the first render after hydration cannot
- * fire a wasted default-range fetch that the stored range immediately aborts
- * (review F6). No live round → no ROUND option, default 1H.
+ * ROUND = the server-rendered round frame (zero client JS, targets + open +
+ * the lock-then-close clock). History = the TradingView-engine terminal; its
+ * chunk loads only when a history range is first selected (review F1).
+ * The pane is taller on desktop (the frame follows the screen, not one size).
  */
 import { useEffect, useState } from "react";
-import { TerminalChart, type TerminalRange } from "./terminal-chart";
+import { TerminalChart, type TerminalRange, type TerminalStyle } from "./terminal-chart";
 
-const STORE_KEY = "kp-updown-range";
+const RANGE_KEY = "kp-updown-range";
+const STYLE_KEY = "kp-updown-style";
 const HISTORY_RANGES: TerminalRange[] = ["30M", "1H", "4H", "1D"];
 type LabRange = "ROUND" | TerminalRange;
+
+/** Each range's natural default form — overridden the moment the player pins one. */
+const DEFAULT_STYLE: Record<TerminalRange, TerminalStyle> = {
+  "30M": "line", "1H": "line", "4H": "candles", "1D": "candles",
+};
 
 export function UpDownChartLab({
   roundView,
@@ -37,6 +46,10 @@ export function UpDownChartLab({
   labels: {
     round: string;
     railAria: string;
+    styleAria: string;
+    curve: string;
+    candles: string;
+    noCandles: string;
     empty: string;
     loading: string;
     error: string;
@@ -47,40 +60,67 @@ export function UpDownChartLab({
 }) {
   const hasRound = roundView != null;
   const [range, setRange] = useState<LabRange>(hasRound ? "ROUND" : "1H");
+  const [pinnedStyle, setPinnedStyle] = useState<TerminalStyle | null>(null);
+  const [tall, setTall] = useState(false);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     try {
-      const stored = window.localStorage.getItem(STORE_KEY) as LabRange | null;
-      if (stored && (stored === "ROUND" ? hasRound : (HISTORY_RANGES as string[]).includes(stored))) {
-        setRange(stored);
+      const storedRange = window.localStorage.getItem(RANGE_KEY) as LabRange | null;
+      if (storedRange && (storedRange === "ROUND" ? hasRound : (HISTORY_RANGES as string[]).includes(storedRange))) {
+        setRange(storedRange);
       }
-    } catch { /* blocked storage → default stands */ }
+      const storedStyle = window.localStorage.getItem(STYLE_KEY) as TerminalStyle | null;
+      if (storedStyle === "line" || storedStyle === "candles") setPinnedStyle(storedStyle);
+    } catch { /* blocked storage → defaults stand */ }
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const apply = () => setTall(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
     setReady(true);
+    return () => mq.removeEventListener("change", apply);
   }, [hasRound]);
 
-  const pick = (r: LabRange) => {
+  const pickRange = (r: LabRange) => {
     setRange(r);
-    try { window.localStorage.setItem(STORE_KEY, r); } catch { /* per-device nicety */ }
+    try { window.localStorage.setItem(RANGE_KEY, r); } catch { /* per-device nicety */ }
+  };
+  const pickStyle = (s: TerminalStyle) => {
+    setPinnedStyle(s);
+    try { window.localStorage.setItem(STYLE_KEY, s); } catch { /* per-device nicety */ }
   };
 
   const active: LabRange = range === "ROUND" && !hasRound ? "1H" : range;
+  const isHistory = active !== "ROUND";
+  const effectiveStyle: TerminalStyle = isHistory
+    ? (pinnedStyle ?? DEFAULT_STYLE[active as TerminalRange])
+    : "line";
 
   return (
     <div>
-      <div className="mb-2 flex items-center justify-between gap-3">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
         <div className="pchart-ranges" role="group" aria-label={labels.railAria}>
-          {hasRound && (
-            <button type="button" aria-pressed={active === "ROUND"} className={"pchart-range" + (active === "ROUND" ? " is-active" : "")} onClick={() => pick("ROUND")}>
-              {labels.round}
-            </button>
-          )}
           {HISTORY_RANGES.map((r) => (
-            <button key={r} type="button" aria-pressed={active === r} className={"pchart-range" + (active === r ? " is-active" : "")} onClick={() => pick(r)}>
+            <button key={r} type="button" aria-pressed={active === r} className={"pchart-range" + (active === r ? " is-active" : "")} onClick={() => pickRange(r)}>
               {r}
             </button>
           ))}
+          {hasRound && (
+            <button type="button" aria-pressed={active === "ROUND"} className={"pchart-range" + (active === "ROUND" ? " is-active" : "")} onClick={() => pickRange("ROUND")}>
+              {labels.round}
+            </button>
+          )}
         </div>
+        {isHistory && (
+          <div className="pchart-ranges" role="group" aria-label={labels.styleAria}>
+            <button type="button" aria-pressed={effectiveStyle === "line"} className={"pchart-range" + (effectiveStyle === "line" ? " is-active" : "")} onClick={() => pickStyle("line")}>
+              {labels.curve}
+            </button>
+            <button type="button" aria-pressed={effectiveStyle === "candles"} className={"pchart-range" + (effectiveStyle === "candles" ? " is-active" : "")} onClick={() => pickStyle("candles")}>
+              {labels.candles}
+            </button>
+          </div>
+        )}
       </div>
 
       {active === "ROUND" ? (
@@ -95,6 +135,8 @@ export function UpDownChartLab({
             <TerminalChart
               assetKey={assetKey}
               range={active as TerminalRange}
+              style={effectiveStyle}
+              height={tall ? 380 : 300}
               labels={{
                 empty: labels.empty,
                 loading: labels.loading,
@@ -102,6 +144,7 @@ export function UpDownChartLab({
                 aria: labels.chartAria,
                 sourceLabel: labels.sourceLabel,
                 quotedWord: labels.quotedWord,
+                noCandles: labels.noCandles,
               }}
             />
           ) : (

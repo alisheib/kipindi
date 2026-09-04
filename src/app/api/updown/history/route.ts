@@ -20,24 +20,26 @@
  * limiter here — the board page itself is the heavier read.
  */
 import { NextResponse } from "next/server";
-import { getAssetTerminalSeries, type TerminalRange } from "@/lib/server/updown-board";
+import { getAssetTerminalSeries, type TerminalRange, type TerminalStyle } from "@/lib/server/updown-board";
 
 export const dynamic = "force-dynamic";
 
 const RANGES: TerminalRange[] = ["30M", "1H", "4H", "1D"];
+const STYLES: TerminalStyle[] = ["auto", "line", "candles"];
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const asset = (url.searchParams.get("asset") ?? "").slice(0, 32);
   const range = (url.searchParams.get("range") ?? "") as TerminalRange;
-  if (!asset || !RANGES.includes(range)) {
+  const style = (url.searchParams.get("style") || "auto") as TerminalStyle;
+  if (!asset || !RANGES.includes(range) || !STYLES.includes(style)) {
     return NextResponse.json(
-      { error: "asset and range (30M|1H|4H|1D) are required" },
+      { error: "asset and range (30M|1H|4H|1D) are required; style is line|candles|auto" },
       { status: 400, headers: { "Cache-Control": "no-store" } },
     );
   }
   try {
-    const data = await getAssetTerminalSeries(asset, range);
+    const data = await getAssetTerminalSeries(asset, range, style);
     if (!data) {
       return NextResponse.json({ error: "unknown asset" }, { status: 404, headers: { "Cache-Control": "no-store" } });
     }
