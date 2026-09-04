@@ -54,7 +54,7 @@ import type { LedgerEntry } from "../src/lib/away-ledger.ts";
  * ⭐ So the harness copies `src/` to a temp dir and points this variable at it; the suite
  * reads AND imports from there. Same construction `red-motion-ladder.mjs` uses and states.
  *
- * ⚠️ The three modules imported below have NO runtime imports of their own (the ledger's
+ * ⚠️ The four modules imported below have NO runtime imports of their own (the ledger's
  * `OutcomeKind` is a TYPE import and is erased), so they load cleanly from a copied tree with
  * no path-alias resolution. ⛔ If any of them ever gains a real runtime import, this dynamic
  * load breaks and the harness must copy more than `src/`.
@@ -66,6 +66,8 @@ const { routeOutcome, MAX_LIVE_AGE_MS } = (await load("src/lib/outcome-announcem
   typeof import("../src/lib/outcome-announcement.ts");
 const { summarise } = (await load("src/lib/away-ledger.ts")) as
   typeof import("../src/lib/away-ledger.ts");
+const { groupKeyFor, mergeGroup } = (await load("src/lib/toast-group.ts")) as
+  typeof import("../src/lib/toast-group.ts");
 
 const POLICY = "src/lib/outcome-announcement.ts";
 const PRESENCE = "src/lib/presence-window.ts";
@@ -395,6 +397,59 @@ for (const key of ["awayWon", "awayLost", "awayReturned", "awayMixed"]) {
     vals.length === 3 && vals.every((v) => v.includes("{n}")),
     "a dropped placeholder prints the brace to the player");
 }
+
+/* ═══ §9 · COALESCING — EXECUTED, LIKE §1 AND §5 ═══════════════════════════════════════
+ *
+ * Ali's ruling ④: *"for toasts, they are grouping under each other… find a way intelligent and
+ * professional to compact."* The eligibility rule is a MONEY rule — it decides which refusals
+ * may never be collapsed out of sight — so it is asserted by CALLING it, not by grepping
+ * `toast.tsx` for the word `danger`. A guard that reads the symbol survives an inverted
+ * condition; this one does not.
+ */
+console.log("\n§9 · a burst coalesces into one — but a refusal never joins a group");
+
+ok("9.1 · ⛔ a `danger` toast is NEVER grouped, whatever key it carries",
+  groupKeyFor({ groupKey: "outcome:LOSS", variant: "danger", durationMs: 4500 }) === undefined,
+  "'deposit declined' collapsed into '2 results' is the swallowed money-path failure itself");
+ok("9.2 · ⛔ a STICKY toast (durationMs 0) is never grouped either",
+  groupKeyFor({ groupKey: "outcome:LOSS", variant: "factual", durationMs: 0 }) === undefined,
+  "sticky is the shape a refusal takes so it stays until read; merging revokes that");
+ok("9.3 · …and a negative duration cannot sneak past the sticky rule",
+  groupKeyFor({ groupKey: "outcome:LOSS", variant: "factual", durationMs: -1 }) === undefined);
+ok("9.4 · a toast with no key stands alone (grouping is opt-in, never inferred)",
+  groupKeyFor({ groupKey: undefined, variant: "factual", durationMs: 4500 }) === undefined);
+ok("9.control · an ordinary `factual` result IS groupable (9.1–9.4 are not vacuous)",
+  groupKeyFor({ groupKey: "outcome:LOSS", variant: "factual", durationMs: 4500 }) === "outcome:LOSS");
+/* ⭐ THE ENUMERATION. Every variant the kit has, against both duration shapes — `CEREMONY`'s
+ * equivalent here is "may group", and only the safe cells may say yes. */
+{
+  const variants = ["default", "success", "warning", "danger", "gold", "factual"];
+  const wrong: string[] = [];
+  for (const v of variants) for (const d of [0, 4500]) {
+    const got = groupKeyFor({ groupKey: "k", variant: v, durationMs: d }) !== undefined;
+    const may = v !== "danger" && d > 0;
+    if (got !== may) wrong.push(`${v}/dur=${d} → ${got ? "grouped" : "alone"}`);
+  }
+  ok(`9.5 · ⭐ across all ${variants.length * 2} variant × duration cells, only the safe ones group`,
+    wrong.length === 0, wrong.join(" · "));
+}
+ok("9.6 · the fold sums the group's figure",
+  (() => {
+    const a = mergeGroup({ id: "t1", count: 1, total: 2_000 }, 3_000);
+    return a.count === 2 && a.total === 5_000 && a.id === "t1";
+  })());
+ok("9.7 · ⛔ a member with NO figure raises the count and leaves the total intact",
+  (() => {
+    const a = mergeGroup({ id: "t1", count: 1, total: 2_000 }, undefined);
+    return a.count === 2 && a.total === 2_000;
+  })(),
+  "`total + undefined` is NaN, and 'TZS NaN' over real money is arithmetic overruling policy");
+ok("9.8 · …and a NaN figure is refused the same way",
+  mergeGroup({ id: "t1", count: 1, total: 2_000 }, Number.NaN).total === 2_000);
+ok("9.9 · the provider defers to that rule rather than re-deciding it",
+  /groupKeyFor\(/.test(toastSrc) && /mergeGroup\(/.test(toastSrc)
+    && !/variant\s*!==\s*"danger"/.test(toastSrc),
+  "a second copy of the eligibility rule is a second thing to get wrong");
 
 /* ═══ FOOTER ══════════════════════════════════════════════════════════════════════════ */
 console.log(`\npresence-class: ${pass} passed, ${fails.length} failed  (of ${pass + fails.length})`);

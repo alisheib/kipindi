@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { haptics } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { subscribeResultModal } from "@/lib/result-modal-presence";
+import { groupKeyFor, mergeGroup } from "@/lib/toast-group";
 
 /**
  * ⭐ `factual` states something that is neither good news, a warning, nor an error — see
@@ -338,13 +339,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const toast = React.useCallback((input: ToastInput) => {
     const dur = input.durationMs ?? DEFAULT_DURATION;
     const variant = input.variant ?? "default";
-    const groupKey = variant !== "danger" && dur > 0 ? input.groupKey : undefined;
+    // ⛔ THE ELIGIBILITY RULE IS NOT WRITTEN HERE — `toast-group.ts` is pure so the guard suite
+    // can EXECUTE it over the cross-product rather than grep this file for the word "danger".
+    const groupKey = groupKeyFor({ groupKey: input.groupKey, variant, durationMs: dur });
 
     if (groupKey) {
       const g = groupsRef.current.get(groupKey);
       if (g) {
-        const count = g.count + 1;
-        const total = g.total + (input.groupAmount ?? 0);
+        const { count, total } = mergeGroup(g, input.groupAmount);
         groupsRef.current.set(groupKey, { id: g.id, count, total });
         const said = input.groupLabel?.(count, total);
         if (said) {
@@ -367,7 +369,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       durationMs: dur,
       variant,
     };
-    if (groupKey) groupsRef.current.set(groupKey, { id, count: 1, total: input.groupAmount ?? 0 });
+    // ⚠️ The opening member goes through the SAME fold, so a missing or non-finite
+    // `groupAmount` contributes zero here exactly as it does on every later merge. A group
+    // seeded with `undefined` would carry NaN forward and render "TZS NaN" over real money.
+    if (groupKey) groupsRef.current.set(groupKey, mergeGroup({ id, count: 0, total: 0 }, input.groupAmount));
     present(next);
     return id;
   }, [present]);

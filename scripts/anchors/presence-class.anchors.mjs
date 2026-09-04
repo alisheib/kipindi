@@ -116,6 +116,33 @@ export const MUTATIONS = [
     expect: "7.3",
   },
   {
+    // ⭐ THE REFUSAL, SWALLOWED. Letting `danger` coalesce is the defect grouping was supposed
+    // to prevent: "deposit declined" folded into "2 results" and gone in 4.5 seconds.
+    name: "toast-group.ts — let a `danger` refusal join a group (a money-path failure, collapsed)",
+    file: "src/lib/toast-group.ts",
+    from: `  if (input.variant === "danger") return undefined;`,
+    to: `  if (input.variant === "no-such-variant") return undefined;`,
+    expect: "9.1",
+  },
+  {
+    // Sticky is the shape a refusal takes so it stays until read; `< 0` silently revokes it
+    // for the exact value (`0`) the rule exists for — the classic boundary slip.
+    name: "toast-group.ts — let a STICKY toast group (its stickiness quietly revoked)",
+    file: "src/lib/toast-group.ts",
+    from: `  if (input.durationMs <= 0) return undefined;`,
+    to: `  if (input.durationMs < 0) return undefined;`,
+    expect: "9.2",
+  },
+  {
+    // ⭐ ARITHMETIC OVERRULING POLICY: `total + undefined` is NaN, and the group then renders
+    // "TZS NaN" to a player over real money.
+    name: "toast-group.ts — let a missing figure poison the group's total with NaN",
+    file: "src/lib/toast-group.ts",
+    from: `  const add = typeof amount === "number" && Number.isFinite(amount) ? amount : 0;`,
+    to: `  const add = amount as number;`,
+    expect: "9.7",
+  },
+  {
     // §F5 — a buzz for a render, on the one surface that must answer nothing.
     name: "away-summary-bar.tsx — buzz the player for arriving",
     file: "src/components/layout/away-summary-bar.tsx",
