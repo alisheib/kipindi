@@ -14,7 +14,7 @@ import { resolveWinShareToken } from "@/lib/server/share-token";
 import { SidePicker } from "@/components/markets/side-picker";
 import { MarketCard } from "@/components/markets/market-card";
 import { getSimilarMarkets } from "@/lib/server/market-service";
-import { ChartToggle } from "@/components/markets/chart-toggle";
+import { ChartToggle } from "@/components/charts/chart-toggle";
 import { SellButton } from "@/components/markets/sell-button";
 import { ResolutionPanel } from "@/components/markets/resolution-panel";
 import { Chip } from "@/components/ui/chip";

@@ -1,14 +1,14 @@
 /**
  * VolumeSparkline — inline density bars. One consumer: the /leaderboard row's
- * "recent activity" column.
+ * "recent activity" column. Aqua on purpose: volume is ACTIVITY, not direction
+ * — the micro/full colour law in `micro-spark.tsx`. Bars rather than a line
+ * because per-day staking is bucketed, not continuous.
  *
- * ⚠️ The file is named price-chart.tsx because `PriceChart` used to live here.
- * It was DELETED (2026-08-21): it had zero import sites, its header claimed to be
- * "the primary market viz on /markets/[id]" — which is `ProbabilityChart` via
- * `ChartToggle`, and has been for a long time — and its line gradient faded to
- * `oklch(58% 0.14 215)`, the BANNED teal-215 kit hue. Unmounted code carrying a
- * banned recipe is one import away from putting teal on a money page.
- * Do not restore it; extend `probability-chart.tsx` instead.
+ * ⚠️ This file was `markets/price-chart.tsx` until the chart system got its
+ * one home (2026-09-04). The `PriceChart` that named it was DELETED 2026-08-21:
+ * zero import sites and a gradient fading to the BANNED teal-215 hue —
+ * unmounted code carrying a banned recipe is one import away from a money
+ * page. Do not restore it; extend `probability-chart.tsx` instead.
  */
 
 /** VolumeSparkline — kit port for inline density bars. */

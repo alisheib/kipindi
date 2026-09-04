@@ -357,6 +357,47 @@ is deployed** — measure something the commit changed and use that as the deplo
 
 ---
 
+## 8. THE CHART SYSTEM — the decision and the graveyard (CHART-SPRINT, 2026-09-04)
+
+**The law is `DESIGN_AUTHORITY.md` §B12** (one home · the four-ink chart language · honest
+form · no library). This section is the record of how it was decided.
+
+**The census that decided it** (every user-level data visual, walked before any decision):
+ProbabilityChart (`/markets/[id]`) · card spark (boards + landing hero) · LAST ROUNDS cubes
+(`/updown`) · PriceHero (`/updown/[roundId]`) · PnlChart + win-rate NeedleDial
+(`/positions/performance`) · outcome donut (`/results`) · balance spark (`/wallet`) ·
+VolumeSparkline (`/leaderboard`, series EMPTY for real players — A-5, no per-day feed) · plus
+one export with ZERO import sites (`Sparkline`, deleted with its `.spark-*` CSS).
+Six implementations, six homes, four private copies of one Catmull-Rom smoother, two colour
+languages. The data: MarketSnapshot rows are bet/settle events (≤800/market, compressed to
+≤24 before render); UpDownObservation rows are single CONFIRMED point-reads at one-minute
+grid boundaries — **a 5-minute round holds ~5 real ticks with no intra-minute high/low, so
+honest OHLC is underivable and candlesticks are forbidden** (§B12.3).
+
+**Decision: dependency-free SVG, consolidated into `src/components/charts/`.** Weighed and
+rejected, each on measurement:
+- **TradingView lightweight-charts** (Apache-2.0, ~45KB gz) — canvas + client-only: two
+  shipped charts (PnlChart, PriceHero) render with ZERO client JS and would forfeit it;
+  canvas cannot read `var()` at paint time, so every token needs a `getComputedStyle`
+  bridge — a second definition site for every colour; its centrepiece (candles, pan/zoom
+  over 10k bars) is unusable at this platform's honest tick density.
+- **uPlot** (MIT, ~12KB gz) — same canvas/client/theme-bridge costs; its headroom (~150k pts
+  @60fps) is unreachable by series that render 16–24 points; scrubbing, i18n labels and
+  empty states would still be hand-built on top.
+- **Apache ECharts** (Apache-2.0, ~90KB+ gz tree-shaken) — fails the 2G bar on weight alone.
+The in-house kit already held every locally-hard win a library would reopen: token classes
+that resolve `oklch` `var()`s, the motion ladder + reduced-motion snap, trilingual labels,
+touch scrubbing, A-5 empty states, E-93 label collision avoidance, E-198 legibility. The
+gap was CONSISTENCY, not capability — so the sprint consolidated instead of importing.
+**Bundle delta of the consolidation: ≤ 0** (code deleted, none added from npm).
+
+⚠️ `updown/price-hero.tsx` is a named member AT ITS PINNED ADDRESS, not moved:
+`updown-chart.test.mts` imports it, `updown-chart-red.mjs` anchors it CRLF-sensitively, and
+`design-frozen`/`eyebrow-roles` pin the path. Moving it would churn three guards and a RED
+harness for zero player value — the guard names it instead.
+
+---
+
 *Superseded: `docs/SESSION-PROMPT-DESIGN-GATE.md`, deleted 2026-08-31 when the last of its 45
 rows closed. Its state lives in the planner history of that file's final commit, and everything
 still TRUE from it is above.*

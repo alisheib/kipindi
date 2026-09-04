@@ -257,11 +257,14 @@ const BASELINE = new Set<string>([
   //   · `.pnl-val` reads "script-only" — `type-scale.test.mts` names it. Nothing RENDERS it
   //     (its three siblings above are dead), but a gate would break if the rule vanished,
   //     so it belongs in the script-only tier and not here.
-  //   · `.spark-line-yes` / `.spark-line-no` are BUILT — `` `spark-line spark-line-${lean}` ``
-  //     in probability-chart.tsx:280 — and are perfectly alive. The first draft's dynamic
+  //   · `.spark-line-yes` / `.spark-line-no` were BUILT — `` `spark-line spark-line-${lean}` ``
+  //     in probability-chart.tsx — and read as alive to §1.2. The first draft's dynamic
   //     detector required the prefix to sit against the opening backtick, so a template with
   //     two classes in it hid the second. A ratchet that catches its own author's guesses is
-  //     doing its job; this one caught three.
+  //     doing its job; this one caught three. ⚠️ 2026-09-04: the only builder was the
+  //     never-imported `Sparkline`, so the whole `.spark-*` family was deleted WITH it
+  //     (chart one-home sprint) — "built by dead code" was one import from semantic
+  //     green/rose on a card, against the micro/full colour law in `micro-spark.tsx`.
 
   // ── ⓢ SCRIPT-ONLY: nothing renders these either. What names them is a guard's exemption
   //    list, a driver's selector, or a CSS fixture inside a test — none of which is a

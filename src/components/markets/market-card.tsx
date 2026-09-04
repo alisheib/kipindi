@@ -14,6 +14,7 @@ import { cn, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { pickLocalized, marketCategoryLabel } from "@/lib/localized";
 import { outcomeWord, sideWord, type LabelProductLine } from "@/lib/side-label";
+import { MicroSpark } from "@/components/charts/micro-spark";
 
 type Props = {
   id: string;
@@ -131,45 +132,11 @@ function MoveText({ move, label }: { move: number; label: string }) {
   );
 }
 
-/** Catmull-Rom → cubic-bezier smoothing — a clean sparkline with no kinks. */
-function smoothPath(pts: { x: number; y: number }[]): string {
-  if (pts.length < 2) return "";
-  const f = (v: number) => v.toFixed(1);
-  let d = `M ${f(pts[0].x)} ${f(pts[0].y)}`;
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[i - 1] ?? pts[i];
-    const p1 = pts[i];
-    const p2 = pts[i + 1];
-    const p3 = pts[i + 2] ?? p2;
-    const c1x = p1.x + (p2.x - p0.x) / 6, c1y = p1.y + (p2.y - p0.y) / 6;
-    const c2x = p2.x - (p3.x - p1.x) / 6, c2y = p2.y - (p3.y - p1.y) / 6;
-    d += ` C ${f(c1x)} ${f(c1y)}, ${f(c2x)} ${f(c2y)}, ${f(p2.x)} ${f(p2.y)}`;
-  }
-  return d;
-}
-
-/** 24h YES% history as a full-width sparkline under the bar. Aqua = live
- *  heartbeat (never gold). The caller hides it when the series has <4 real
- *  points — this only ever renders the true YES% history, never a synthetic
- *  walk (honesty rule A-5). Draws in on mount via mcardp-spark-line. */
-function Spark({ data }: { data: number[] }) {
-  const W = 300, H = 28, pad = 4;
-  const n = data.length;
-  const min = Math.min(...data), max = Math.max(...data);
-  const span = max - min || 1;
-  const pts = data.map((v, i) => ({
-    x: n === 1 ? W / 2 : +((i / (n - 1)) * W).toFixed(1),
-    y: +(H - pad - ((v - min) / span) * (H - 2 * pad)).toFixed(1),
-  }));
-  const line = smoothPath(pts);
-  const area = `${line} L ${pts[n - 1].x} ${H} L ${pts[0].x} ${H} Z`;
-  return (
-    <svg className="mcardp-spark" width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden>
-      <path d={area} fill="var(--aqua-400)" fillOpacity={0.06} stroke="none" />
-      <path className="mcardp-spark-line" d={line} pathLength={1} fill="none" stroke="var(--aqua-400)" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-    </svg>
-  );
-}
+/* The card's 24h YES% sparkline is the kit `MicroSpark` (aqua = live heartbeat,
+ * never gold — the micro/full colour law lives at that component). The caller
+ * hides it when the series has <4 real points — only ever the true YES%
+ * history, never a synthetic walk (honesty rule A-5). Draws in on mount via
+ * the `.mcardp-spark-line` class this file's CSS family owns. */
 
 /** Deterministic 2-char face for an anonymous trader crest (no name is leaked —
  *  the crest visual is seeded from the id, the label is just a couple of chars). */
@@ -394,7 +361,10 @@ export function MarketCard({
       <TippingBar yesPct={yesPct} height={7} resolved={isResolved} showLabels={false} recastOnHover={false} empty={noPrice} emptyLabel={t.market.noBetsYet} probabilityLabel={t.market.probBarAria.replace("{side}", sideWord(t, "YES", productLine))} />
       {noPrice && <div className="mcardp-nobets">{t.market.noBetsYet}</div>}
 
-      {showSpark && <Spark data={spark!} />}
+      {showSpark && (
+        <MicroSpark data={spark!} width={300} height={28} padX={0} padY={4} smooth area stretch
+                    className="mcardp-spark" lineClassName="mcardp-spark-line" />
+      )}
 
       {/* Trader row — rendered on every card (min-height fixed) so the grid stays
           even. A fresh market invites the first prediction instead of showing 0,

@@ -14,6 +14,7 @@
  */
 
 import { formatCompactNumber } from "@/lib/utils";
+import { linePath } from "./chart-core";
 
 type Point = { label: string; value: number }; // cumulative TZS P&L, chronological
 
@@ -46,7 +47,9 @@ export function PnlChart({ data, ariaLabel }: { data: Point[]; ariaLabel: string
   const xAt = (i: number) => X0 + (i / Math.max(1, pts.length - 1)) * (X1 - X0);
   const yAt = (v: number) => Y0 + ((hi - v) / (hi - lo)) * (Y1 - Y0);
 
-  const line = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${xAt(i).toFixed(1)} ${yAt(p.value).toFixed(1)}`).join(" ");
+  // Straight segments on purpose — each vertex IS a settlement; smoothing
+  // would draw P&L values that never existed (chart-core's linePath doctrine).
+  const line = linePath(pts.map((p, i) => [xAt(i), yAt(p.value)] as const));
   const zeroY = yAt(0), topY = yAt(maxV), botY = yAt(minV);
   const li = pts.length - 1, mi = Math.floor(li / 2);
   const lastX = xAt(li), lastY = yAt(pts[li].value);

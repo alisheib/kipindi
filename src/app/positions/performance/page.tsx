@@ -7,7 +7,7 @@ import { GiltCorner } from "@/components/brand";
 import { formatTzsAbs, formatTzsSigned, formatDayShort } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Stat } from "@/components/ui/stat";
-import { PnlChart } from "@/components/positions/pnl-chart";
+import { PnlChart } from "@/components/charts/pnl-chart";
 import { listPositionsForUser, getMarket } from "@/lib/server/market-service";
 import { currentSession } from "@/lib/server/auth-service";
 import { getServerT } from "@/lib/i18n-server";

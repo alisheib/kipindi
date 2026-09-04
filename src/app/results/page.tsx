@@ -17,6 +17,7 @@ import { parseQuery, matchesQuery, fieldNames, MARKET_SEARCH } from "@/lib/searc
 import { NotableCarousel } from "./notable-carousel";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { formatTzsCompact } from "@/lib/utils";
+import { Ring } from "@/components/charts/ring";
 import { pickLocalized } from "@/lib/localized";
 import { getServerT } from "@/lib/i18n-server";
 import { outcomeWord, sideWord, type LabelProductLine } from "@/lib/side-label";
@@ -528,25 +529,20 @@ async function ResultsContent({
 }
 
 /** C2b — aggregate YES/NO outcome donut (green YES · rose NO · neutral void).
- *  Pure SVG, presentational. Segments drawn clockwise from 12 o'clock. */
+ *  The kit `Ring` with three segments, clockwise from 12 o'clock — real
+ *  resolved counts only. */
 function OutcomeDonut({ yes, no, voided, size = 38 }: { yes: number; no: number; voided: number; size?: number }) {
   const total = yes + no + voided || 1;
-  const sw = 5;
-  const r = size / 2 - sw / 2 - 0.5;
-  const c = 2 * Math.PI * r;
-  const seg = (n: number) => (n / total) * c;
-  const yesLen = seg(yes), noLen = seg(no), voidLen = seg(voided);
-  const cx = size / 2;
-  const ring = (len: number, offset: number, stroke: string) => (
-    <circle cx={cx} cy={cx} r={r} fill="none" stroke={stroke} strokeWidth={sw} strokeDasharray={`${len} ${c - len}`} strokeDashoffset={offset} />
-  );
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden style={{ transform: "rotate(-90deg)" }}>
-      <circle cx={cx} cy={cx} r={r} fill="none" stroke="var(--bg-overlay)" strokeWidth={sw} />
-      {voided > 0 && ring(voidLen, -(yesLen + noLen), "var(--text-subtle)")}
-      {ring(noLen, -yesLen, "var(--no-400)")}
-      {ring(yesLen, 0, "var(--yes-400)")}
-    </svg>
+    <Ring
+      size={size}
+      strokeWidth={5}
+      segments={[
+        { frac: yes / total, stroke: "var(--yes-400)" },
+        { frac: no / total, stroke: "var(--no-400)" },
+        { frac: voided / total, stroke: "var(--text-subtle)" },
+      ]}
+    />
   );
 }
 

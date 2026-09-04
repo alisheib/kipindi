@@ -2985,16 +2985,14 @@ textarea::placeholder { color: var(--text-subtle); }
 }
 
 /* ---------------------------------------------------------------------------
-   2 · Micro sparkline (card variant of the chart)
+   2 · Micro sparkline
+   ⛔ The `.spark-*` family (a lean-coloured card variant) was DELETED 2026-09-04
+   with its only consumer, the never-imported `Sparkline` — an unmounted recipe
+   whose semantic green/rose line contradicted the micro/full colour law now
+   written in `src/components/charts/micro-spark.tsx`. The shipped micro-chart
+   is `<MicroSpark>`, styled by its own attributes + the consumer's class
+   (e.g. `.mcardp-spark-line` below). Do not restore the family.
    --------------------------------------------------------------------------- */
-
-.spark { display: inline-block; line-height: 0; overflow: hidden; }
-.spark svg { display: block; overflow: visible; }
-.spark-line { fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
-.spark-line-yes { stroke: var(--yes-400); }
-.spark-line-no  { stroke: var(--no-400); }
-.spark-dot-yes  { fill: var(--yes-300); }
-.spark-dot-no   { fill: var(--no-300); }
 
 /* ---------------------------------------------------------------------------
    3 · Market card — YES probability as hero

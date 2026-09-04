@@ -199,7 +199,7 @@ const FROZEN_RATCHET = new Map<string, number>([
   ["src/components/admin/admin-charts.tsx", 1],
   ["src/components/markets/bet-confirm-modal.tsx", 1],
   ["src/components/markets/countdown.tsx", 1],
-  ["src/components/markets/probability-chart.tsx", 1],
+  ["src/components/charts/probability-chart.tsx", 1],
   ["src/components/updown/round-action-panel.tsx", 1],
   ["src/components/updown/round-stake-panel.tsx", 1],
   ["src/components/updown/updown-card.tsx", 1],

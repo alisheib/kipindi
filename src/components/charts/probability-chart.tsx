@@ -1,16 +1,24 @@
 "use client";
 
 /**
- * ProbabilityChart + Sparkline — the signature "tipping line" chart from
- * Claude Design's market-surfaces handoff, ported to TSX against the kit.
+ * ProbabilityChart — the signature "tipping line" chart from Claude Design's
+ * market-surfaces handoff, ported to TSX against the kit.
  * Gilt 50% reference, emerald-above / rose-below half-plane fill, soft-glow
  * YES line that draws in on mount (snaps under reduced-motion), aqua live
- * point, range tabs + hover crosshair. Styling lives in globals.css (.pchart
- * / .spark). Dependency-free SVG.
+ * point, range tabs + hover crosshair. Styling lives in globals.css (.pchart).
+ * Dependency-free SVG; geometry from the chart system's shared core.
+ *
+ * ⚠️ A `Sparkline` card variant lived here from the original handoff until
+ * 2026-09-04 with ZERO import sites — the same class as the deleted
+ * `PriceChart` (an unmounted recipe one import away from a money page), and
+ * its lean-coloured line contradicted the micro/full colour law written in
+ * `micro-spark.tsx`. Deleted with its `.spark-*` CSS; the shipped micro-chart
+ * is `MicroSpark`.
  */
 import { useState, useRef, useId, useEffect, useMemo, useCallback } from "react";
 import { SignalPip } from "@/components/brand";
 import { useT } from "@/lib/i18n";
+import { smoothPath } from "./chart-core";
 
 export type ProbPoint = { t: string; p: number };
 
@@ -24,20 +32,6 @@ const padL = 34, padR = 14, padT = 16, padB = 24;
 /** Stable identity for "this range has no points" — a fresh `[]` per render would
  *  invalidate the geometry memo on every hover frame, which is the bug it exists to fix. */
 const NO_POINTS: ProbPoint[] = [];
-
-/** Light Catmull-Rom smoothing → cubic beziers. Low tension: reads as data. */
-function smoothPath(pts: number[][]): string {
-  if (pts.length < 2) return pts.length ? `M ${pts[0][0]} ${pts[0][1]}` : "";
-  let d = `M ${pts[0][0]} ${pts[0][1]}`;
-  const t = 0.16;
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
-    const c1x = p1[0] + (p2[0] - p0[0]) * t, c1y = p1[1] + (p2[1] - p0[1]) * t;
-    const c2x = p2[0] - (p3[0] - p1[0]) * t, c2y = p2[1] - (p3[1] - p1[1]) * t;
-    d += ` C ${c1x.toFixed(2)} ${c1y.toFixed(2)}, ${c2x.toFixed(2)} ${c2y.toFixed(2)}, ${p2[0].toFixed(2)} ${p2[1].toFixed(2)}`;
-  }
-  return d;
-}
 
 export function ProbabilityChart({
   series,
@@ -106,7 +100,7 @@ export function ProbabilityChart({
    * the value flag still re-render on every frame, because those genuinely do move.
    */
   const { linePath, areaPath } = useMemo(() => {
-    const p = data.map((d, i) => [x(i), y(d.p)]);
+    const p = data.map((d, i) => [x(i), y(d.p)] as const);
     const line = smoothPath(p);
     return {
       linePath: line,
@@ -251,35 +245,3 @@ export function ProbabilityChart({
   );
 }
 
-/** Card-sized variant of the same idea. */
-export function Sparkline({ data, width = 72, height = 26 }: { data: number[]; width?: number; height?: number }) {
-  const uid = useId().replace(/:/g, "");
-  const pad = 3;
-  const W = width - pad * 2, H = height - pad * 2;
-  const n = data.length;
-  if (n < 2) return null;
-  const min = Math.min(...data), max = Math.max(...data);
-  const span = Math.max(1, max - min);
-  const x = (i: number) => pad + (n <= 1 ? 0 : (i / (n - 1)) * W);
-  const y = (p: number) => pad + (1 - (p - min) / span) * H;
-  const pts = data.map((p, i) => [x(i), y(p)]);
-  const path = smoothPath(pts);
-  const last = data[n - 1];
-  const lean = last >= 50 ? "yes" : "no";
-  const areaPath = `${path} L ${x(n - 1).toFixed(2)} ${height - pad} L ${x(0).toFixed(2)} ${height - pad} Z`;
-  return (
-    <span className="spark">
-      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} aria-hidden>
-        <defs>
-          <linearGradient id={`sp-${uid}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={`var(--${lean}-500)`} stopOpacity="0.28" />
-            <stop offset="100%" stopColor={`var(--${lean}-500)`} stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <path d={areaPath} fill={`url(#sp-${uid})`} />
-        <path className={`spark-line spark-line-${lean}`} d={path} />
-        <circle className={`spark-dot-${lean}`} cx={x(n - 1)} cy={y(last)} r="2.4" />
-      </svg>
-    </span>
-  );
-}

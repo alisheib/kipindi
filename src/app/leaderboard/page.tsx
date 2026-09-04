@@ -12,7 +12,7 @@ import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { listPositionsForUser } from "@/lib/server/market-service";
 import { positionStore, roiOf } from "@/lib/server/market-dal";
-import { VolumeSparkline } from "@/components/markets/price-chart";
+import { VolumeSparkline } from "@/components/charts/volume-spark";
 import { Tooltip } from "@/components/ui/tooltip";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";

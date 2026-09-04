@@ -461,6 +461,55 @@ sites at all. The console's own 17, in four files, are untouched and still owed.
 
 ---
 
+## B12 — Charts: one home, one colour language, honest form
+
+Added 2026-09-04 (chart one-home sprint). Before this law there were six chart
+implementations in six homes carrying four private copies of one smoothing function, and the
+colour language below was already being OBEYED by every shipped chart — it had simply never
+been written down, which is exactly how the never-imported `Sparkline` came to contradict it.
+
+1. **One home.** Every user-level chart is a component in **`src/components/charts/`**, or a
+   NAMED member at a pinned address (`updown/price-hero.tsx` — two guards and a CRLF-anchored
+   RED harness pin that path; the guard states the reason). Shared geometry lives in
+   `charts/chart-core.ts` and nowhere else. Guard: `test:chart-one-home` + its RED control.
+   The admin console's `admin/admin-charts.tsx` is a separate admin-only home, out of this
+   law's player scope.
+
+2. **The four-ink chart language** (derived from what ships, now binding):
+   - **Direction ink** — YES/UP = green family, NO/DOWN = rose family (B2, untouchable).
+     Only a FULL chart answering "which way" wears it (ProbabilityChart's half-planes, the
+     Up & Down price path, the outcome cubes and donut).
+   - **Reference ink** — gilt marks the line a chart is READ AGAINST (the 50% tipping line,
+     break-even, the open price) and never a data series: a gold data line would claim
+     earnings the round has not decided (B4/Q5).
+   - **Live ink** — aqua is the heartbeat: every MICRO spark (card, wallet, leaderboard) and
+     the live end-point dot. A micro chart is a statement that activity exists, not which
+     way it points — direction on a card belongs to the move chip. A micro chart that wants
+     semantic colour is asking to be a full chart: promote it, don't tint it.
+   - **Neutral ink** — a sided-less data series (cumulative P&L) takes `--brand-300`;
+     grid/axis/VOID take the `--border` / `--text-subtle` / `--text-faint` inks.
+
+3. **Honest form — A-5 applied to SHAPE.** A chart renders real points or nothing: no seeded
+   walks, no placeholder series, and **no interpolated candles** — OHLC requires observed
+   intra-period highs and lows, and Up & Down observations are single per-minute point
+   reads, so candlesticks are forbidden on those surfaces; the line/area against the open
+   reference is the honest form. Straight segments where each vertex IS an observation
+   (oracle reads, settlements); Catmull-Rom smoothing (chart-core, tension 0.16) only on
+   dense event series.
+
+4. **No charting library.** The system is dependency-free SVG — decided 2026-09-04, with the
+   weighed and rejected alternatives recorded in `DESIGN-BASELINE.md` §8. A charting
+   dependency appearing in `package.json` is a guard failure, not an upgrade.
+
+5. Chart numbers follow the money-type law (§M4: tabular mono, the one compaction grammar);
+   motion follows the one ladder (B5/§E9) and snaps under reduced motion. ⚠️ Paint
+   attributes (`fill`/`stroke`/`stopColor`) resolve `var()` in our targets and the shipped
+   charts rely on it — but NON-paint presentation attributes can refuse `var()` (the needle
+   theme measured this): when one does, move the value to a class or inline `style`, never
+   hand-type the resolved colour.
+
+---
+
 ## Accessibility floor (see audit H10)
 
 Money controls must meet WCAG AA (≥ 4.5:1 for text on button fills, ≥ 3.0:1 for

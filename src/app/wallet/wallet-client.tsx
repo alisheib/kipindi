@@ -20,27 +20,20 @@ import { useT } from "@/lib/i18n";
 import { inviteIsLive } from "@/lib/invite-feature";
 import { ComingSoonBadge } from "@/components/ui/coming-soon-badge";
 import { PageContainer } from "@/components/layout/page-container";
+import { MicroSpark } from "@/components/charts/micro-spark";
 
 const TXNS_PER_PAGE = 12;
 
-/** Wallet 30-day balance spark (A9) — aqua line + terminal pip (balance is
- *  state, not earnings → aqua, never gold). Hidden with fewer than 2 points. */
+/** Wallet 30-day balance spark (A9) — the kit `MicroSpark`, line + terminal
+ *  pip (balance is state, not earnings → aqua, never gold — the micro/full
+ *  colour law lives at that component). Hidden with fewer than 2 points, which
+ *  MicroSpark itself enforces; the panel hides with it. */
 function BalanceSpark({ series, label }: { series: number[]; label: string }) {
   if (!series || series.length < 2) return null;
-  const w = 320, h = 46, pad = 4;
-  const max = Math.max(...series);
-  const min = Math.min(...series);
-  const range = Math.max(max - min, 1);
-  const xs = series.map((_, i) => pad + (i / (series.length - 1)) * (w - 2 * pad));
-  const ys = series.map((v) => pad + (h - 2 * pad) - ((v - min) / range) * (h - 2 * pad));
-  const d = xs.map((x, i) => `${i === 0 ? "M" : "L"} ${x.toFixed(1)} ${ys[i].toFixed(1)}`).join(" ");
   return (
     <div className="rounded-xl glass-panel p-3">
       <p className="mb-1.5 font-mono text-micro uppercase eyebrow font-bold text-text-subtle">{label}</p>
-      <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="block w-full" style={{ height: 46 }} aria-hidden>
-        <path d={d} fill="none" stroke="var(--aqua-400)" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-        <circle cx={xs[xs.length - 1]} cy={ys[ys.length - 1]} r="2.4" fill="var(--aqua-400)" vectorEffect="non-scaling-stroke" />
-      </svg>
+      <MicroSpark data={series} width={320} height={46} pip stretch className="block w-full" />
     </div>
   );
 }

@@ -13,7 +13,8 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Stat } from "@/components/ui/stat";
 import { ReferralShare } from "./invite-client";
-import { fill } from "@/lib/utils";
+import { fill, formatCompactNumber } from "@/lib/utils";
+import { Ring } from "@/components/charts/ring";
 import { getBonusConfig } from "@/lib/server/bonus-config";
 import { formatDateShort as fmtDate, formatNumber } from "@/lib/utils";
 import { getServerT } from "@/lib/i18n-server";
@@ -30,51 +31,40 @@ export async function generateMetadata() {
 }
 export const dynamic = "force-dynamic";
 
-/** Compact TZS for the ring center: 31000 → "31K", 1_284_000 → "1.3M". */
-function compact(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(n % 1_000 === 0 ? 0 : 1)}K`;
-  return String(n);
-}
-
 const PROMISE_ICON = { percent: I.percent, ticket: I.ticket, gift: I.gift } as const;
 
-/** Gold earnings ring — a brand-correct progress dial (NOT the betting
- *  ConfidenceDial, which is green/red). Pure kit tokens. */
+/** Gold earnings ring — the kit `Ring` as a progress dial (NOT the betting
+ *  ConfidenceDial, which is green/red). Gold is correct here and only here on
+ *  this page: the ring counts money that was EARNED (§B4). The center label is
+ *  the platform's one compaction grammar (S-14) — a private spelling of it
+ *  lived here until 2026-09-04. */
 function EarningsRing({ value, label }: { value: number; label: string }) {
   const v = Math.max(0, Math.min(100, value));
-  const r = 42;
-  const c = 2 * Math.PI * r;
-  const dash = (v / 100) * c;
   return (
-    <svg width={96} height={96} viewBox="0 0 100 100" style={{ display: "block" }} aria-hidden>
-      <circle cx="50" cy="50" r={r} fill="none" stroke="var(--bg-overlay)" strokeWidth="8" />
-      <circle
-        cx="50"
-        cy="50"
-        r={r}
-        fill="none"
-        stroke="var(--gold-400)"
-        strokeWidth="8"
-        strokeLinecap="round"
-        strokeDasharray={`${dash} ${c - dash}`}
-        transform="rotate(-90 50 50)"
-        style={{ filter: "drop-shadow(0 0 6px color-mix(in oklab, var(--gold-300) 50%, transparent))" }}
-      />
+    <Ring
+      size={96}
+      strokeWidth={8}
+      segments={[{
+        frac: v / 100,
+        stroke: "var(--gold-400)",
+        round: true,
+        style: { filter: "drop-shadow(0 0 6px color-mix(in oklab, var(--gold-300) 50%, transparent))" },
+      }]}
+      className="block"
+    >
       <text
-        x="50"
-        y="52"
+        x="48"
+        y="50"
         textAnchor="middle"
         dominantBaseline="middle"
-        fontFamily="'JetBrains Mono', ui-monospace, monospace"
         fontWeight={700}
         fontSize="22"
         fill="var(--gold-300)"
-        style={{ letterSpacing: "-0.03em" }}
+        style={{ fontFamily: "var(--font-mono)", letterSpacing: "-0.03em" }}
       >
         {label}
       </text>
-    </svg>
+    </Ring>
   );
 }
 
@@ -163,7 +153,7 @@ export default async function InvitePage() {
   // F5 · the wagering multiple the requirements list quotes — READ, never written.
   const bonusCfg = getBonusConfig();
   const ringValue = s.recruitCount === 0 ? 0 : Math.min(100, 30 + s.recruitCount * 12);
-  const ringLabel = s.earnedTzs > 0 ? compact(s.earnedTzs) : "0";
+  const ringLabel = s.earnedTzs > 0 ? formatCompactNumber(s.earnedTzs) : "0";
   const shareText = t.profile.shareText;
 
   // Build the referral link from the ACTUAL request host so it always matches
