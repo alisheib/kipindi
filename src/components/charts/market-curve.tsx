@@ -85,7 +85,18 @@ export function MarketCurve({
           entireTextOnly: true,
           scaleMargins: { top: 0.12, bottom: 0.12 },
         },
-        timeScale: { borderColor: ink("--border"), timeVisible: true, secondsVisible: false, fixRightEdge: true, fixLeftEdge: true, lockVisibleTimeRangeOnResize: true },
+        timeScale: {
+          borderColor: ink("--border"), timeVisible: true, secondsVisible: false,
+          fixRightEdge: true, fixLeftEdge: true, lockVisibleTimeRangeOnResize: true,
+          // The library's day-boundary tick leaks a bare day number (the
+          // terminal's fix, applied here too): market windows span days, so the
+          // boundary names its DAY in the platform locale over the already
+          // wall-clock-shifted instant.
+          tickMarkFormatter: (t: number, type: number) =>
+            type === 2
+              ? new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", timeZone: "UTC" }).format((t as number) * 1000)
+              : null,
+        },
         localization: { locale },
         crosshair: {
           mode: lib.CrosshairMode.Magnet,
