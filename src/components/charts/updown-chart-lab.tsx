@@ -5,13 +5,13 @@
  * (CHART-SPRINT-2; form finalised to Ali's rulings, 2026-09-04).
  *
  * TWO rails, one locked form — the chart NEVER changes shape by itself:
- *  · RANGE — 30M · 1H · 4H · 1D · ROUND (ROUND deliberately LAST: the history
+ *  · RANGE — 15M · 30M · 1H · 6H · 12H · 24H · ROUND (ROUND deliberately LAST: the history
  *    windows read left→right small→large, and the round frame is its own kind,
  *    parked at the end — Ali's ordering).
  *  · STYLE — Curve | Candles, shown on history ranges only. The PLAYER owns
  *    the form: the effective style is always the one highlighted, and it only
  *    ever changes by their tap. Untouched, each range keeps its natural
- *    default (30M/1H curve · 4H/1D candles); one tap pins a style for every
+ *    default (15M/30M/1H curve · 6H/12H/24H candles); one tap pins a style for every
  *    range, persisted per device. A window too thin for honest candles shows
  *    the curve WITH the stated reason — never invented candles, never a
  *    silently different form (the "sometimes candles, sometimes curves"
@@ -27,12 +27,12 @@ import { TerminalChart, type TerminalRange, type TerminalStyle } from "./termina
 
 const RANGE_KEY = "kp-updown-range";
 const STYLE_KEY = "kp-updown-style";
-const HISTORY_RANGES: TerminalRange[] = ["30M", "1H", "4H", "1D"];
+const HISTORY_RANGES: TerminalRange[] = ["15M", "30M", "1H", "6H", "12H", "24H"];
 type LabRange = "ROUND" | TerminalRange;
 
 /** Each range's natural default form — overridden the moment the player pins one. */
 const DEFAULT_STYLE: Record<TerminalRange, TerminalStyle> = {
-  "30M": "line", "1H": "line", "4H": "candles", "1D": "candles",
+  "15M": "line", "30M": "line", "1H": "line", "6H": "candles", "12H": "candles", "24H": "candles",
 };
 
 export function UpDownChartLab({
@@ -66,7 +66,9 @@ export function UpDownChartLab({
 
   useEffect(() => {
     try {
-      const storedRange = window.localStorage.getItem(RANGE_KEY) as LabRange | null;
+      // Legacy stored ranges from the first ladder map to their nearest rung.
+      const rawRange = window.localStorage.getItem(RANGE_KEY);
+      const storedRange = (rawRange === "4H" ? "6H" : rawRange === "1D" ? "24H" : rawRange) as LabRange | null;
       if (storedRange && (storedRange === "ROUND" ? hasRound : (HISTORY_RANGES as string[]).includes(storedRange))) {
         setRange(storedRange);
       }

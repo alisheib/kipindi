@@ -1,5 +1,5 @@
 /**
- * GET /api/updown/history?asset=btc&range=1H — the terminal chart's history feed
+ * GET /api/updown/history?asset=BTC&range=1H — the terminal chart's history feed
  * (CHART-SPRINT-2). Public, read-only market data: exactly the confirmed reads
  * the board page itself renders, one asset, one bounded window (see
  * `getAssetTerminalSeries` — index-served, capped, cadence-derived gaps and
@@ -24,7 +24,7 @@ import { getAssetTerminalSeries, type TerminalRange, type TerminalStyle } from "
 
 export const dynamic = "force-dynamic";
 
-const RANGES: TerminalRange[] = ["30M", "1H", "4H", "1D"];
+const RANGES: TerminalRange[] = ["15M", "30M", "1H", "6H", "12H", "24H"];
 const STYLES: TerminalStyle[] = ["auto", "line", "candles"];
 
 export async function GET(req: Request) {
@@ -34,7 +34,7 @@ export async function GET(req: Request) {
   const style = (url.searchParams.get("style") || "auto") as TerminalStyle;
   if (!asset || !RANGES.includes(range) || !STYLES.includes(style)) {
     return NextResponse.json(
-      { error: "asset and range (30M|1H|4H|1D) are required; style is line|candles|auto" },
+      { error: "asset and range (15M|30M|1H|6H|12H|24H) are required; style is line|candles|auto" },
       { status: 400, headers: { "Cache-Control": "no-store" } },
     );
   }

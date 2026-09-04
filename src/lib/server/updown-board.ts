@@ -955,13 +955,20 @@ export async function getMyUpDownHistory(userId: string, limit = 200): Promise<M
 // route as a 503, never render as a cacheable "no data" (A-5/B-1).
 // ═══════════════════════════════════════════════════════════════════════════
 
-export type TerminalRange = "30M" | "1H" | "4H" | "1D";
+export type TerminalRange = "15M" | "30M" | "1H" | "6H" | "12H" | "24H";
 
 const TERMINAL_WINDOWS: Record<TerminalRange, { windowMs: number; wantCandles: boolean }> = {
+  // Ali's final ladder (2026-09-04): 15M · 30M · 1H · 6H · 12H · 24H — his 1m/5m
+  // were REFUSED on the data: at the measured ~3-min grid cadence those windows
+  // hold ≤2 reads, and a pill that mostly answers "no reads" is a dead control;
+  // the sub-15-minute now belongs to the ROUND view. Short windows default to
+  // the curve, long ones to candles; the style rail overrides either way.
+  "15M": { windowMs: 15 * 60_000, wantCandles: false },
   "30M": { windowMs: 30 * 60_000, wantCandles: false },
   "1H": { windowMs: 60 * 60_000, wantCandles: false },
-  "4H": { windowMs: 4 * 3600_000, wantCandles: true },
-  "1D": { windowMs: 24 * 3600_000, wantCandles: true },
+  "6H": { windowMs: 6 * 3600_000, wantCandles: true },
+  "12H": { windowMs: 12 * 3600_000, wantCandles: true },
+  "24H": { windowMs: 24 * 3600_000, wantCandles: true },
 };
 
 /** Candle bucket rungs, minutes — the smallest that fits the cadence wins. */

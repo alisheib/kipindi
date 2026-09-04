@@ -95,11 +95,11 @@ console.log("\n§3 · a feed hole becomes a MARKER — threshold derived from th
 console.log("\n§4 · candles at the REAL cadence — the rung, the OHLC, the forming edge");
 {
   const a = await seedAsset("tsc");
-  // 4H of 6-min reads: 40 reads; price = 1000 + (i % 7).
-  const total = 40;
+  // 6H of 6-min reads: 61 reads; price = 1000 + (i % 7).
+  const total = 61;
   for (let i = 0; i < total; i++) await confirmRead(a, (total - 1 - i) * SPAN, 1000 + (i % 7));
-  const r = await getAssetTerminalSeries("tsc", "4H");
-  ok("4.1 mode is candles for a full 4H window", r!.series.mode === "candles");
+  const r = await getAssetTerminalSeries("tsc", "6H");
+  ok("4.1 mode is candles for a full 6H window", r!.series.mode === "candles");
   if (r!.series.mode !== "candles") throw new Error("cannot continue §4");
   const s = r!.series;
   // Smallest rung ≥ 4 × 6min = 24min → 30 minutes.
@@ -128,14 +128,14 @@ console.log("\n§5 · the honesty floors");
   // A 4H window with only ~40 minutes of reads → far under half the buckets → LINE.
   const a = await seedAsset("tst");
   for (let i = 0; i < 7; i++) await confirmRead(a, (6 - i) * SPAN, 200 + i);
-  const r = await getAssetTerminalSeries("tst", "4H");
+  const r = await getAssetTerminalSeries("tst", "6H");
   ok("5.1 a thin window degrades to the line form", r!.series.mode === "line", r!.series.mode);
 }
 {
   // A healthy 4H feed EXCEPT one mid-window outage bucket (one lone read where
   // ~5 are expected) → that bucket is a GAP, and the outage stays visible.
   const a = await seedAsset("tsf");
-  const total = 40;
+  const total = 61;
   const rung = 30 * MIN;
   const holeBucket = Math.floor((NOW - 2 * 3600_000) / rung) * rung;
   for (let i = 0; i < total; i++) {
@@ -147,7 +147,7 @@ console.log("\n§5 · the honesty floors");
     if (inHole && posInBucket >= rung / 6) continue;
     await confirmRead(a, msAgo, 300 + (i % 5));
   }
-  const r = await getAssetTerminalSeries("tsf", "4H");
+  const r = await getAssetTerminalSeries("tsf", "6H");
   ok("5.2 mode stays candles around one bad bucket", r!.series.mode === "candles", r!.series.mode);
   if (r!.series.mode === "candles") {
     ok("5.3 the thin bucket is a GAP, not a candle — and it is REPORTED",
@@ -181,7 +181,7 @@ console.log("\n§8 · the rung adapts — a per-minute feed (a future oracle upg
   const a = await seedAsset("tsm");
   const total = 230;
   for (let i = 0; i < total; i++) await confirmRead(a, (total - i) * MIN, 1000 + (i % 7));
-  const r = await getAssetTerminalSeries("tsm", "4H");
+  const r = await getAssetTerminalSeries("tsm", "6H");
   ok("8.1 per-minute reads take the 5-minute rung", r!.series.mode === "candles" && r!.series.bucketMs === 5 * MIN,
      r!.series.mode === "candles" ? `${r!.series.bucketMs / MIN}min` : r!.series.mode);
 }
@@ -191,20 +191,20 @@ console.log("\n§9 · a stalled feed is FLAGGED, never dressed as a flat market"
   const a = await seedAsset("tss");
   // Healthy 6-min cadence that STOPPED 50 minutes ago.
   for (let i = 0; i < 10; i++) await confirmRead(a, 50 * MIN + (9 - i) * SPAN, 400 + i);
-  const r = await getAssetTerminalSeries("tss", "4H");
+  const r = await getAssetTerminalSeries("tss", "6H");
   ok("9.1 liveStale is true when the newest read exceeds the cadence tolerance", r!.liveStale === true, String(r!.liveStale));
 }
 
 console.log("\n§10 · the style toggle's contract — the player owns the form, honesty owns the floor");
 {
   // "line" forces the curve even where candles are possible — and claims nothing.
-  const r1 = await getAssetTerminalSeries("tsc", "4H", "line");
+  const r1 = await getAssetTerminalSeries("tsc", "6H", "line");
   ok("10.1 explicit line wins on a candle-capable window", r1!.series.mode === "line" && r1!.candlesUnavailable === undefined);
   // "candles" on the healthy window answers candles.
-  const r2 = await getAssetTerminalSeries("tsc", "4H", "candles");
+  const r2 = await getAssetTerminalSeries("tsc", "6H", "candles");
   ok("10.2 explicit candles answers candles where honest", r2!.series.mode === "candles");
   // "candles" on a too-thin window answers the LINE and SAYS WHY — never invents.
-  const r3 = await getAssetTerminalSeries("tst", "4H", "candles");
+  const r3 = await getAssetTerminalSeries("tst", "6H", "candles");
   ok("10.3 explicit candles on a thin window → line + candlesUnavailable",
      r3!.series.mode === "line" && r3!.candlesUnavailable === true);
   // "candles" can reach a SHORT window the auto rule never candles — full

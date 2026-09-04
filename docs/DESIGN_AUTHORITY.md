@@ -540,7 +540,7 @@ been written down, which is exactly how the never-imported `Sparkline` came to c
    recipe; the gilt dashed line is the ONE live-price statement (no series value labels);
    the receipt footer carries the E-53 source grammar. **The chart's FORM changes only by
    the player's own tap** — never by data shape, never by a poll, never by a session's
-   taste: untouched ranges keep their natural default (30M/1H curve · 4H/1D candles), a
+   taste: untouched ranges keep their natural default (15M/30M/1H curve · 6H/12H/24H candles), a
    pinned style rules every range, and a window too thin for honest candles answers the
    curve WITH the stated reason (`udNoCandles`) rather than a silently different form.
    Changing any of this is reversing a dated owner ruling — refuse it by name.

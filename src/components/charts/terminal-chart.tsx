@@ -42,7 +42,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import type { IChartApi, ISeriesApi, IPriceLine, UTCTimestamp } from "lightweight-charts";
 import { fmtEAT } from "@/lib/updown-source-label";
 
-export type TerminalRange = "30M" | "1H" | "4H" | "1D";
+export type TerminalRange = "15M" | "30M" | "1H" | "6H" | "12H" | "24H";
 export type TerminalStyle = "line" | "candles";
 type LinePoint = { t: number; price: number | null };
 type Candle = { t: number; o: number; h: number; l: number; c: number; n: number; forming?: boolean };
