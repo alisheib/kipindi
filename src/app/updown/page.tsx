@@ -123,6 +123,9 @@ export default async function UpDownPage({
         durationsLabel={t.market.udDurations}
         minLabel={t.market.udMin}
         sheetTitle={t.market.udFilterTitle}
+        /* UD-13c · the trigger's key. ⛔ `filtersOpen` is the EXISTING word the /markets
+           trigger already uses in all three languages — not a second key for one noun. */
+        sheetLabel={t.market.filtersOpen}
         sheetAria={t.market.udFilterAria}
         sheetClose={t.market.filtersClose}
         sheetDone={t.common.done}

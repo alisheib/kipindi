@@ -51,6 +51,8 @@
     "test:lock-hash": "tsx scripts/lock-hash.test.mts",
     "test:contrast": "tsx scripts/contrast-audit.mts",
     "test:tokens": "tsx scripts/token-collision.test.mts",
+    "test:css-vars-defined": "tsx scripts/css-vars-defined.test.mts",
+    "red:css-vars-defined": "node scripts/red-css-vars-defined.mjs",
     "test:chat-availability": "tsx scripts/chat-availability.test.mts",
     "test:ui-consistency": "tsx scripts/ui-consistency.test.mts",
     "test:type-scale": "tsx scripts/type-scale.test.mts",

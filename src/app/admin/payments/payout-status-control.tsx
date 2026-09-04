@@ -124,8 +124,18 @@ export function PayoutStatusControl({
             disabled={!mayAct}
             title={disabledReason}
             className="min-h-[var(--tap-min)] rounded-md border px-2 py-1.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+            /* 🔴 `--gold-edge` AND `--gold-soft` NEVER EXISTED — found 2026-09-05 by
+               `test:css-vars-defined`, undefined since this control shipped (397ec65e,
+               2026-07-31). Both references were invalid at computed-value time, so the
+               SELECTED option rendered `border-color: unset` and `background: unset` and
+               was indistinguishable from the two it was chosen over — on the console that
+               decides whether players can be paid. ⚠️ Nothing was red: an unresolved var()
+               is not an error, and the selected state simply did not paint.
+               ⭐ The replacements are the tokens the intent was reaching for: `--gilt` is
+               this repo's semantic gold edge, and the 9% gilt wash is the soft gold fill
+               already used for the struck-seal highlight in globals.css. */
             style={pick === o.id
-              ? { borderColor: "var(--gold-edge)", background: "var(--gold-soft)", color: "var(--text)" }
+              ? { borderColor: "var(--gilt)", background: "color-mix(in oklab, var(--gilt) 9%, transparent)", color: "var(--text)" }
               : { borderColor: "var(--border)", color: "var(--text-muted)" }}
           >
             <span className="block font-mono text-micro uppercase tracking-[0.1em] font-bold">{o.label}</span>

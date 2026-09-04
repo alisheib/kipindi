@@ -71,6 +71,7 @@ const FOCUSABLE =
 
 export function FilterSheet({
   label,
+  value,
   title,
   ariaLabel,
   closeLabel,
@@ -81,6 +82,25 @@ export function FilterSheet({
 }: {
   /** The trigger's visible word — "Filters". */
   label: string;
+  /**
+   * ⭐ THE ACTIVE SELECTION, WHEN THE HOST HAS ONE — and passing it switches the trigger from
+   * the hug PILL to the full-width FIELD. Measured complaint, /updown at 390 (2026-09-05):
+   * players did not realise the control was a control. The pill read `⚙ Bitcoin · 5 min`,
+   * which is a *caption* — and the board directly beneath it says "Bitcoin Up & Down / 5 MIN"
+   * and the tape above it says "BITCOIN $79,811.94", so a bordered pill carrying the same two
+   * words is read as a third label rather than as the thing that changes them.
+   *
+   * ⭐ THE FIX IS AFFORDANCE, NOT COPY. Naming the selection is right and stays (it is what
+   * `test:updown-filter-sheet` §2 exists to protect). What was missing is every signal that
+   * says "this opens": a caret, a field shape, and a quiet KEY naming the axis so the value
+   * reads as a value. `label` becomes the key, `value` the answer.
+   *
+   * ⛔ OPTIONAL, so `/markets` — whose trigger is the word "Filters" plus a count badge, in a
+   * row beside other controls — keeps the hug pill it needs. One component, two shapes, and
+   * the caret is added to BOTH: the desktop sort/topic menus have always had one and this
+   * control never did.
+   */
+  value?: string;
   /** The sheet's own heading. It labels the dialog through `aria-labelledby`. */
   title: string;
   /** Accessible name for the trigger, which carries a count a sighted user reads as a badge. */
@@ -178,10 +198,21 @@ export function FilterSheet({
            globals.css, the same `--pill-active` + halo a selected pill uses. At this width it
            IS those pills, so it must read as they do. */
         data-on={count > 0 || undefined}
-        className="kp-fsheet-trigger inline-flex min-h-[44px] cursor-pointer list-none items-center gap-2 rounded-pill border border-border-control bg-bg-inset px-3.5 text-[13px] font-semibold text-text-muted hover:text-text"
+        /* ⛔ THE SHAPE IS AN ATTRIBUTE, NOT A CLASS STRING AT THE CALL SITE (law 82). The two
+           variants differ in geometry only, and both live in `.kp-fsheet-trigger*` in
+           globals.css so neither can be re-typed slightly differently by the next host. */
+        data-shape={value ? "field" : "pill"}
+        className="kp-fsheet-trigger cursor-pointer list-none items-center border border-border-control bg-bg-inset font-semibold text-text-muted hover:text-text"
       >
         <I.sliders s={15} aria-hidden className="shrink-0 opacity-80" />
-        {label}
+        {/* In the FIELD shape this is the quiet key over on the left; in the PILL shape it is
+            the control's whole visible word. One element, because it is one thing: the name of
+            what the control does. */}
+        <span className="kp-fsheet-trigger-label">{label}</span>
+        {/* ⭐ The answer to "what am I looking at?", at full text strength — the key is muted so
+            the VALUE is the loudest thing in the control. `ml-auto` is what pushes it to the
+            far side of the field; in the pill shape there is no free space, so it is inert. */}
+        {value != null && <span className="kp-fsheet-trigger-value ml-auto">{value}</span>}
         {/* ⛔ Rendered only when something is on. A badge reading `0` is a control announcing
             its own irrelevance, and it would sit there on the default board for ever. */}
         {count > 0 && (
@@ -189,6 +220,14 @@ export function FilterSheet({
             {count}
           </span>
         )}
+        {/* 🔴 THE MISSING AFFORDANCE. Every other disclosure in the product carries a caret that
+            rotates on open — the language menu in the top bar, both desktop sort/topic menus —
+            and this one, the only disclosure a phone player ever sees, carried none.
+            ⛔ The class is NOT `kp-menu-caret`: `test:filter-language` §5.3 asserts the string
+            `kp-menu` never appears in this file, so that the desktop row's two menus stay
+            countable by `qa:discovery-board`. The two carets share ONE pair of declarations in
+            globals.css (a selector list), so there is no second definition to drift. */}
+        <I.chevronDown s={14} aria-hidden className="kp-fsheet-caret shrink-0 opacity-70" />
       </summary>
 
       {/* The scrim — byte-for-byte the shared `<Modal>`'s: an inert click target that is never
@@ -232,7 +271,13 @@ export function FilterSheet({
                This said `h-9 w-9`, which is 64×64px on the OVERRIDDEN spacing
                scale (tailwind.config.ts:200-215), so the product's close
                affordance shipped in two sizes. ⛔ Never a scale token here. */
-            className="-mr-1 -mt-1 inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-md text-text-subtle transition-colors hover:bg-bg-overlay hover:text-text"
+            /* ⚠️ `-mr-3` IS OPTICAL ALIGNMENT, NOT A NUDGE, and it only became correct once the
+               panel had real padding. The 48px target holds a 16px glyph, so 16px of the box
+               is slack on each side. Pulling the BOX 16px past the 20px content edge puts the
+               GLYPH's right edge exactly on that edge — so the ✕ lines up with the 20px gutter
+               the heading starts at, instead of floating 24px in. It was `-mr-1` against a
+               padding of zero, which is how it came to overflow the viewport by 3px. */
+            className="-mr-3 -mt-1 inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-md text-text-subtle transition-colors hover:bg-bg-overlay hover:text-text"
           >
             <I.x s={16} />
           </button>
@@ -274,7 +319,10 @@ export function FilterSheetGroup({
       <span className="kp-fsheet-key font-mono text-micro font-bold uppercase eyebrow text-text-subtle">
         {label}
       </span>
-      <div className={className ?? "flex flex-wrap items-center gap-1.5"}>{children}</div>
+      {/* ⚠️ 12px, NOT 8. `gap-1.5` is 8px on this repo's overridden scale, and between 44px-tall
+          chips it read as one continuous bar rather than as separable choices — the wrapped
+          duration row in particular. `gap-2` is 12px here (NOT Tailwind's stock 8px). */}
+      <div className={className ?? "flex flex-wrap items-center gap-2"}>{children}</div>
     </section>
   );
 }

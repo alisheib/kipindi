@@ -988,6 +988,10 @@ body {
 .kp-hero__eyebrow,
 .kp-proof__cap,
 .mcardp-cat,
+/* The filter FIELD's key ("FILTER"), which is a section eyebrow in every sense §T3 uses: it
+   names the axis the value beside it answers. It joins the list rather than carrying a
+   seventh copy of 0.14em. */
+.kp-fsheet-trigger[data-shape="field"] .kp-fsheet-trigger-label,
 .mcardp-pctcap { letter-spacing: 0.14em; }
 
 /* ===========================================================================
@@ -3150,6 +3154,59 @@ textarea::placeholder { color: var(--text-subtle); }
 .kp-fsheet-trigger[data-on] { background: var(--pill-active); border-color: var(--brand-400); color: var(--text); box-shadow: var(--glow-selected); }
 .kp-fsheet[open] > summary { border-color: var(--brand-400); color: var(--text); }
 
+/* ── THE TRIGGER'S TWO SHAPES — geometry only, and BOTH live here ─────────────────────────
+   ⛔ The call site emits `data-shape` and NO geometry classes (law 82). Two hosts render this
+   control and they need different shapes; a shape typed at each call site is two definitions
+   of one control, which is the disease `FilterPill`'s header documents at four heights. */
+.kp-fsheet-trigger {
+  display: inline-flex; gap: var(--sp-2);
+  min-height: var(--h-control-md);   /* 44px — the tap floor, --h-control-md exactly */
+  padding: 0 14px;
+  border-radius: var(--r-pill);
+  font-size: 13px;
+}
+
+/* 🔴 THE FIELD SHAPE, AND WHY IT IS NOT A PILL. Measured complaint on /updown at 390
+   (2026-09-05): players did not see that the control WAS a control. A hug-width pill reading
+   `⚙ Bitcoin · 5 min` sits three lines under a tape reading `BITCOIN $79,811.94` and directly
+   above a card reading `Bitcoin Up & Down · 5 MIN`, so it is read as a third caption. Worse,
+   an OUTLINED pill is this product's own word for "selected" (`.kp-fchip[data-on]`), so the
+   one control on the screen was wearing the costume of a settled answer.
+
+   ⭐ A full-width row with a key on the left, a value on the right and a caret is the phone's
+   universal "tap to change" — and it is not invented here: `--r-md` is the semantic `control`
+   radius (DESIGN_AUTHORITY B10: "buttons, inputs, selects") and `--h-control-lg` is the
+   existing 48px rung. The control now looks like what it is: a select. */
+.kp-fsheet-trigger[data-shape="field"] {
+  display: flex; width: 100%;
+  min-height: var(--h-control-lg);   /* 48px */
+  padding: 0 var(--sp-4);            /* 16px */
+  border-radius: var(--r-md);        /* the `control` radius — inputs and selects */
+}
+/* The key is muted and quiet so the VALUE is the loudest thing in the control; the player's
+   eye should land on "Bitcoin · 5 min", not on the word "Filters". */
+.kp-fsheet-trigger[data-shape="field"] .kp-fsheet-trigger-label {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+  text-transform: uppercase; color: var(--text-subtle);
+}
+.kp-fsheet-trigger-value { color: var(--text); }
+.kp-fsheet-trigger-label, .kp-fsheet-trigger-value { white-space: nowrap; }
+/* ⚠️ The value is the one thing here allowed to shrink: at 360 a long asset name plus a
+   60-minute duration is the widest this control ever gets. It ellipsises rather than pushing
+   the caret off the row — a caret that leaves the screen takes the affordance with it. */
+.kp-fsheet-trigger[data-shape="field"] .kp-fsheet-trigger-value {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ⭐ ONE PAIR OF DECLARATIONS FOR EVERY CARET IN THE PRODUCT, as a selector list — never a
+   second `-caret` class with its own copy of the same two lines. ⛔ The sheet's caret cannot
+   be called `kp-menu-caret`: `test:filter-language` §5.3 asserts the string `kp-menu` never
+   appears in `filter-sheet.tsx`, so that `qa:discovery-board` can keep counting exactly two
+   `details.kp-menu` under the bar. Different name, same definition. */
+.kp-menu-caret, .kp-fsheet-caret { transition: transform var(--t-quick) ease-out; }
+.kp-menu[open] > summary .kp-menu-caret,
+.kp-fsheet[open] > summary .kp-fsheet-caret { transform: rotate(180deg); }
+
 /* `--pill-active` behind `--brand-200` is the pairing a SELECTED pill's count already ships
    (`filter-pill.tsx`), so the badge inherits a combination that has been measured rather than
    introducing one that has not. */
@@ -3228,24 +3285,66 @@ html[data-sheet-open] .route-enter { animation: none; }
 /* ⭐ THE PANEL DOES NOT SCROLL — ITS BODY DOES. A column with a `min-height: 0` scrolling
    middle keeps the heading and the dismiss button on screen at every content length, so the
    count a player is about to accept is never the thing they have to scroll past to reach. */
+/* 🔴 `var(--gutter)` WAS NEVER DEFINED — ANYWHERE — AND IT TOOK THE WHOLE SHORTHAND WITH IT.
+   Shipped in this sheet's FIRST commit (1cfa155c, 2026-08-15) and live until 2026-09-05.
+
+   ⭐ WHY IT IS SILENT, AND WHY NOTHING CAUGHT IT. An unresolved `var()` is not a parse error:
+   the declaration is *invalid at computed-value time*, so the property falls back to `unset`
+   — and `padding` is not inherited, so `unset` is `0`. The rule PARSES, survives PostCSS,
+   survives the minifier, and reaches the browser intact; `qa:bundle-css` reads it in the
+   bundle and reports the rule present. It simply computes to nothing. Every gate in this
+   repo greps SOURCE or bundle text, and the string `padding: 10px var(--gutter) …` is
+   present in both. ⛔ That is why `test:css-vars-defined` now exists: the only instrument
+   that can catch this class of defect is one that resolves the reference.
+
+   MEASURED ON PRODUCTION 2026-09-05, /updown at 390×844, computed padding `0px` on ALL FOUR
+   sides — the top `10px` and the bottom safe-area inset were destroyed too, not just the
+   sides that were written with the var:
+     · the `<h2>` "Filter the board"      x = 1     (1px from the screen edge)
+     · the close ✕                        l345 r393 > vw390 — OVERFLOWING the viewport
+     · the "Done" button                  x = 1, w = 388, bottom 843 of 844
+     · safe-area-inset-bottom             0 — the primary action sits UNDER the iPhone
+                                          home indicator, which is what the inset is for
+   ⚠️ `responsive-audit` never saw the ✕ overflow because it does not OPEN the sheet; the
+   overflow it did once catch (§5.23) was the CLOSED sheet's phantom panel, a different bug.
+
+   ⭐ 20px IS NOT A NEW NUMBER — it is `--sp-5`, and it is the page's own gutter: `/updown`
+   and `/markets` both lay out inside `px-4`, which is 20px on this repo's OVERRIDDEN spacing
+   scale (tailwind.config.ts:211-224 — `4` is 20px, not 16). So the sheet's content lines up
+   with the content of the page behind it instead of choosing its own inset. ⛔ Never a bare
+   literal here: the two must move together or the sheet will drift off the page's column. */
 .kp-fsheet-panel {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 2;
   display: flex; flex-direction: column;
   max-height: min(82vh, 640px);
   border-radius: var(--r-xl) var(--r-xl) 0 0;
-  padding: 10px var(--gutter) calc(env(safe-area-inset-bottom, 0px) + 14px);
+  padding: var(--sp-3) var(--sp-5) calc(env(safe-area-inset-bottom, 0px) + var(--sp-4));
 }
 .kp-fsheet-grab {
   display: block; width: 44px; height: 4px; margin: 0 auto 12px;
   border-radius: var(--r-pill); background: var(--border-strong);
 }
+/* ⚠️ THE RHYTHM IS THE SPACING SCALE, NOT FOUR HAND-TYPED NEIGHBOURS. 14/18/8/14 were
+   literals that belonged to no rung, and at 8px the axis key sat closer to the chips of the
+   group ABOVE it than to its own row — the proximity read the wrong grouping. The four gaps
+   now step 20 · 24 · 12 · 16 off `--sp-*`, so the key belongs to the chips under it and the
+   two groups are visibly two. */
 .kp-fsheet-body {
   flex: 1 1 auto; min-height: 0;
   overflow-y: auto; overscroll-behavior: contain;
-  margin-top: 14px; display: grid; gap: 18px; align-content: start;
+  margin-top: var(--sp-5); display: grid; gap: var(--sp-6); align-content: start;
 }
-.kp-fsheet-grp { display: grid; gap: 8px; }
-.kp-fsheet-foot { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; padding-top: 14px; }
+.kp-fsheet-grp { display: grid; gap: var(--sp-3); }
+/* ⭐ THE HAIRLINE IS FUNCTIONAL, NOT DECORATION. `.kp-fsheet-body` is a scroll container, so
+   on `/markets` (three groups plus the topic list) the content runs UNDER the footer with
+   nothing to say the list continues. The rule is the scroll boundary, and it also stops the
+   primary action floating against the last chip row. ⛔ Not a wash and not a shadow — the
+   panel's material stays `.mat-modal` exactly as the header of this block requires. */
+.kp-fsheet-foot {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 10px;
+  margin-top: var(--sp-4); padding-top: var(--sp-4);
+  border-top: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
+}
 
 /* The direction button's arrow points the way the board is ordered. One glyph, rotated —
    never two glyphs, which would be two things to keep in agreement. */

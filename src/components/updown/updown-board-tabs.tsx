@@ -34,6 +34,7 @@ export function UpDownBoardTabs({
   durationsLabel,
   minLabel,
   sheetTitle,
+  sheetLabel,
   sheetAria,
   sheetClose,
   sheetDone,
@@ -48,6 +49,10 @@ export function UpDownBoardTabs({
   minLabel: string;
   /** UD-13b · the phone sheet's own copy, from the dictionary. */
   sheetTitle: string;
+  /** UD-13c · the trigger's KEY — the word for what the control does, beside the value it
+   *  currently holds. Reuses `market.filtersOpen` ("Filters"), which already exists in all
+   *  three languages for the /markets trigger, rather than minting a second word for it. */
+  sheetLabel: string;
   sheetAria: string;
   sheetClose: string;
   sheetDone: string;
@@ -89,6 +94,21 @@ export function UpDownBoardTabs({
      because the player loses the answer to "what am I looking at?". Both axes always carry a
      value on this board, so the trigger always reads e.g. `Bitcoin · 3 min`.
 
+     🔴 UD-13c (2026-09-05) · AND NAMING THE SELECTION IS EXACTLY WHY PLAYERS STOPPED SEEING IT.
+     Ali, from real reports: *"users are reporting they are not noticing that there is a filter
+     … we want, as he sees maybe Bitcoin for example, he knows that there is a filter and other
+     options to select."* Both facts are true at once and they are not in tension: the label was
+     right and the AFFORDANCE was missing. `⚙ Bitcoin · 5 min` in a hug pill sits under a tape
+     reading `BITCOIN $79,811.94` and over a card reading `Bitcoin Up & Down · 5 MIN`, so it
+     reads as a third caption — and an OUTLINED pill is this product's own word for "selected"
+     (`.kp-fchip[data-on]`), so the one control on the screen wore the costume of a settled
+     answer. It also had no caret, while every other disclosure in the product has one.
+
+     ⭐ SO THE VALUE STAYS AND THE SHAPE CHANGES: `label` is now the KEY ("Filters") and `value`
+     carries the same two axes, in `FilterSheet`'s field shape — a full-width row with a caret
+     that rotates on open. ⛔ The two-axis text is still composed here and still passed whole,
+     because §2 of `test:updown-filter-sheet` is the assertion that keeps it honest.
+
      ⛔ `count={0}` ON PURPOSE, so no badge renders. `FilterSheet`'s badge counts NON-DEFAULT
      axes; here both axes are always set, so a badge would read `2` on every board for ever — a
      number announcing its own irrelevance, which is the same argument that file's own comment
@@ -110,7 +130,8 @@ export function UpDownBoardTabs({
       {/* ── The phone sheet — ONE trigger, naming what the board is showing ───────────── */}
       <div className="mt-4 sm:hidden">
         <FilterSheet
-          label={`${activeAssetText} · ${activeDurText}`}
+          label={sheetLabel}
+          value={`${activeAssetText} · ${activeDurText}`}
           title={sheetTitle}
           ariaLabel={sheetAria.replace("{asset}", activeAssetText).replace("{duration}", activeDurText)}
           closeLabel={sheetClose}
@@ -130,6 +151,15 @@ export function UpDownBoardTabs({
             ))}
           </FilterSheetGroup>
           {durationTabs.length > 0 && (
+            /* ⭐ PRIMARY IN HERE, SECONDARY ON THE RAIL — and that is the rank prop being used
+               for what it is for, not an inconsistency. `rank` expresses "the asset is the
+               subject, the duration refines it", and on the rail the two sit in one visual
+               field where only the type treatment can say so. Inside the sheet the axes are
+               already separated by their own labelled groups, so the hierarchy is carried by
+               the STRUCTURE — and paying for it twice costs legibility at the moment of
+               choosing: `secondary` is 11.5px mono, which under a 10px key, on a phone, in a
+               44px target, is the smallest text in the sheet on half its choices. The
+               selection idiom is untouched; only the measure is. */
             <FilterSheetGroup label={durationsLabel}>
               {durationTabs.map((tItem) => (
                 <FilterPill
@@ -138,7 +168,6 @@ export function UpDownBoardTabs({
                   label={`${tItem.d} ${minLabel}`}
                   on={durationOn(tItem)}
                   semantics="tab"
-                  rank="secondary"
                   onClick={go(tItem.href)}
                 />
               ))}

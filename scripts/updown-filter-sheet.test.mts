@@ -61,8 +61,12 @@ const { dict } = await import("../src/lib/i18n-dict.ts");
 // ── 2 · ⭐ THE TRIGGER NAMES THE ACTIVE SELECTION — the assertion this file is for ──
 {
   // The label must be built from BOTH axes. Either half alone loses half the answer.
+  // ⚠️ UD-13c MOVED IT FROM `label` TO `value` AND THE ASSERTION IS UNCHANGED IN MEANING.
+  // `label` is now the control's KEY ("Filters") and `value` is the selection — the same two
+  // axes, in the prop that makes `FilterSheet` render its field shape. What §2 protects is
+  // that the SELECTION is on the trigger, not which attribute carries it.
   ok("2: ⭐ the trigger label is composed from the active ASSET and the active DURATION",
-     /label=\{`\$\{activeAssetText\} · \$\{activeDurText\}`\}/.test(tabs));
+     /value=\{`\$\{activeAssetText\} · \$\{activeDurText\}`\}/.test(tabs));
   ok("2: the active asset is resolved from the chips' own on-state, not re-derived",
      /const activeAsset = assetTabs\.find\(\(a\) => assetOn\(a\)\)/.test(tabs));
   ok("2: the active duration likewise", /const activeDur = durationTabs\.find\(\(d\) => durationOn\(d\)\)/.test(tabs));
@@ -145,6 +149,63 @@ const { dict } = await import("../src/lib/i18n-dict.ts");
   // rules solve different halves; deleting either re-opens one of them.
   ok("6: \u26a0\uFE0F \u2026and the discovery-bar lift is still there, because it solves the other half",
      /\.kp-discovery-bar:has\(\.kp-fsheet\[open\]\)/.test(css));
+}
+
+// ── 7 · 🔴 UD-13c — THE TRIGGER MUST LOOK LIKE A CONTROL, NOT LIKE A CAPTION ──
+/**
+ * 🔴 THE DEFECT §2 COULD NOT SEE. §2 proved the trigger SAID the right thing and every
+ * assertion above it stayed green while players reported not noticing the filter at all —
+ * *"users are reporting they are not noticing that there is a filter"* (Ali, 2026-09-05).
+ * Naming the selection is necessary and it is not sufficient: `⚙ Bitcoin · 5 min` in an
+ * outlined hug pill is read as a third caption on a screen whose tape already says
+ * `BITCOIN $79,811.94` and whose card already says `Bitcoin Up & Down · 5 MIN` — and an
+ * outline is this product's own word for "selected" (`.kp-fchip[data-on]`).
+ *
+ * ⭐ SO §7 GUARDS THE AFFORDANCE, WHICH IS THE HALF §2 IS BLIND TO: a caret that rotates on
+ * open, and the field shape. ⛔ It asserts on `filter-sheet.tsx` and the stylesheet rather
+ * than on the call site, because the call site only passes `value` — the shape is the
+ * primitive's, so guarding the call site would prove nothing about what renders.
+ */
+{
+  const sheet = decomment(readFileSync(join(ROOT, "src/components/markets/filter-sheet.tsx"), "utf8"));
+  ok("7: 🔴 the trigger carries a caret — the affordance every other disclosure has",
+     /kp-fsheet-caret/.test(sheet) && /I\.chevronDown/.test(sheet));
+  ok("7: …and it rotates when the sheet opens, so the caret is live and not an ornament",
+     /\.kp-fsheet\[open\]\s*>\s*summary\s+\.kp-fsheet-caret\s*\{[^}]*rotate\(180deg\)/.test(css));
+  // ⛔ The caret must NOT be `kp-menu-caret` — §5.3 of `test:filter-language` asserts the
+  // string `kp-menu` never appears in this file so the desktop row's two menus stay countable.
+  ok("7: ⛔ …without joining the `.kp-menu` count that qa:discovery-board asserts",
+     !/kp-menu/.test(sheet));
+  ok("7: the /updown trigger asks for the FIELD shape by passing a value",
+     /value=\{`\$\{activeAssetText\} · \$\{activeDurText\}`\}/.test(tabs));
+  ok("7: …and the field shape is defined as a full-width control-radius row",
+     /\.kp-fsheet-trigger\[data-shape="field"\]\s*\{[^}]*width:\s*100%/.test(css));
+}
+
+// ── 8 · 🔴 THE PANEL HAS REAL PADDING — the `var(--gutter)` that never existed ──
+/**
+ * 🔴 SHIPPED IN THIS SHEET'S FIRST COMMIT (1cfa155c, 2026-08-15) AND LIVE FOR 21 DAYS.
+ * `padding: 10px var(--gutter) calc(…)` — and `--gutter` was defined NOWHERE in the repo. An
+ * unresolved `var()` makes the whole declaration invalid at computed-value time, so `padding`
+ * fell back to `unset` → `0`, destroying the top rung and the bottom safe-area inset as well
+ * as the sides. Measured on production, /updown 390×844: `0px` on all four sides, the heading
+ * at x=1, the close ✕ at l345 r393 on a 390 viewport, and "Done" 1px off the bottom with no
+ * safe-area inset — i.e. under the iPhone home indicator.
+ *
+ * ⚠️ THIS ASSERTION IS A BACKSTOP, NOT THE INSTRUMENT. Text in a stylesheet cannot tell you
+ * whether a reference RESOLVES — that is `test:css-vars-defined`, which is the gate that
+ * would actually have caught this on the day it was written. What §8 pins is the specific
+ * value: the sheet's gutter is the PAGE's gutter, so the two cannot drift apart.
+ */
+{
+  const panelRule = css.match(/(?:^|\n)\.kp-fsheet-panel\s*\{([^}]*)\}/);
+  ok("8: CONTROL: the panel rule exists to be checked", !!panelRule);
+  const decls = panelRule?.[1] ?? "";
+  ok("8: 🔴 the panel's padding does not reference the undefined `--gutter`", !/--gutter/.test(decls), decls.trim());
+  ok("8: …the horizontal gutter is --sp-5 (20px), the same inset the page lays out on",
+     /padding:[^;]*var\(--sp-5\)/.test(decls), decls.trim());
+  ok("8: …and the bottom keeps the safe-area inset, so `Done` clears the home indicator",
+     /padding:[^;]*env\(safe-area-inset-bottom/.test(decls), decls.trim());
 }
 
 console.log(`\nupdown-filter-sheet: ${pass} passed, ${fail} failed`);

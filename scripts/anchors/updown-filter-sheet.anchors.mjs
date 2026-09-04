@@ -38,8 +38,8 @@ export const MUTATIONS = [
     why: "⭐ POSITIVE CONTROL · the filters collapse PERFECTLY and the trigger stops naming the selection — it reads 'Filters' instead of 'Bitcoin · 3 min'. Every space-saving claim about this unit still holds, and the player loses the answer to \"what am I looking at?\". A collapsed filter that does not say what is selected is worse than the four rows of chips it replaced",
     file: TABS,
     suite: "updown-filter-sheet",
-    from: "          label={`${activeAssetText} · ${activeDurText}`}",
-    to: "          label={sheetTitle}",
+    from: "          value={`${activeAssetText} · ${activeDurText}`}",
+    to: "          value={sheetTitle}",
     expect: "2: ⭐ the trigger label is composed from the active ASSET and the active DURATION",
   },
   {
@@ -47,8 +47,8 @@ export const MUTATIONS = [
     why: "half the answer: the trigger names the ASSET and forgets the DURATION, so a player on `Bitcoin` cannot tell a 3-minute board from a 60-minute one — and the two play completely differently",
     file: TABS,
     suite: "updown-filter-sheet",
-    from: "          label={`${activeAssetText} · ${activeDurText}`}",
-    to: "          label={`${activeAssetText}`}",
+    from: "          value={`${activeAssetText} · ${activeDurText}`}",
+    to: "          value={`${activeAssetText}`}",
     expect: "2: ⭐ the trigger label is composed from the active ASSET and the active DURATION",
   },
   {
