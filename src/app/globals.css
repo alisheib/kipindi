@@ -3207,6 +3207,31 @@ textarea::placeholder { color: var(--text-subtle); }
 .kp-menu[open] > summary .kp-menu-caret,
 .kp-fsheet[open] > summary .kp-fsheet-caret { transform: rotate(180deg); }
 
+/* 🔴 UD-13e · THE SHEET HAD NO EXIT. It rises on `.m-sheet-in` and used to leave by having
+   `display: none` applied in the same frame the `open` attribute went — a considered 240ms
+   arrival and an instantaneous disappearance, on the dialog a phone player uses most. The
+   shared `<Modal>` this sheet copies its contract from has had a real exit for months; only
+   the exit was never copied across.
+
+   ⭐ AND THE EXIT IS THE ENTRANCE PLAYED BACKWARDS — the SAME two keyframes with `reverse`,
+   never a new pair. A bottom sheet's dismissal is exactly the inverse of its arrival, so a
+   second keyframe would be a second definition of one movement, and the keyframe registry
+   gains nothing to keep in step. ⛔ This block's own rule stands: no new keyframe here.
+
+   ⚠️ `--t-quick` and `--m-leave`, not `--t-move`/`--m-settle`: leaving is quicker than
+   arriving and uses the leave curve — the rungs `.m-out` already picks for every other
+   dialog in the product. `exitBeatMs("--t-quick")` in the component reads the SAME token, so
+   the attribute is held for exactly as long as the animation runs.
+   ⛔ Under reduced motion `exitBeatMs` returns 0 and `data-closing` is never set, so the
+   sheet closes instantly — an exit that still ran would DELAY a dismissal for someone who
+   asked for no motion, which is worse than having none. */
+.kp-fsheet[data-closing] > .kp-fsheet-panel {
+  animation: m-sheet-rise var(--t-quick) var(--m-leave) reverse both;
+}
+.kp-fsheet[data-closing] > .kp-fsheet-scrim {
+  animation: m-scrim-in var(--t-quick) linear reverse both;
+}
+
 /* `--pill-active` behind `--brand-200` is the pairing a SELECTED pill's count already ships
    (`filter-pill.tsx`), so the badge inherits a combination that has been measured rather than
    introducing one that has not. */

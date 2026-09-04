@@ -78,7 +78,16 @@ const FOCUSABLE =
  *  `--t-flick` (float `.m-float-out`). Named, so a call site cannot invent a third. */
 export type ExitBeat = "--t-quick" | "--t-flick";
 
-function exitBeatMs(beat: ExitBeat): number {
+/**
+ * ⭐ EXPORTED FOR THE ONE SURFACE THAT CANNOT USE `useExitPhase` (UD-13e, 2026-09-05).
+ * `FilterSheet` is an UNCONTROLLED `<details>` — its open state is a DOM attribute, not React
+ * state, because it must open with no JavaScript. So it cannot gate a render on `present`; it
+ * has to hold the attribute itself for one beat. ⛔ It reuses THIS function rather than
+ * re-deriving the beat, because the reduced-motion decision above is three separate gates and
+ * a second copy of it is exactly how a surface ends up delaying an unmount for someone who
+ * asked for no motion. One definition of "how long may a surface hold before it leaves".
+ */
+export function exitBeatMs(beat: ExitBeat): number {
   if (typeof window === "undefined") return 0;
   const root = document.documentElement;
   if (

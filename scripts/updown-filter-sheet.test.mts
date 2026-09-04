@@ -248,5 +248,67 @@ const { dict } = await import("../src/lib/i18n-dict.ts");
      /pending != null && pending\.has\("d"\)/.test(tabs) && /: t\.d === activeDuration/.test(tabs));
 }
 
+// ── 10 · 🔴 THE SHEET MUST LEAVE, NOT VANISH ──
+/**
+ * 🔴 UD-13e · it arrived on `.m-sheet-in` (340ms, `--m-settle`) and left by having
+ * `display: none` applied in the same frame the `open` attribute went — a considered entrance
+ * and an instantaneous disappearance, on the dialog a phone player uses most. The shared
+ * `<Modal>` whose CONTRACT this sheet copies has had a real exit for months (`useExitPhase` +
+ * `.m-out`); only the exit was never copied across.
+ *
+ * ⭐ THE EXIT IS THE ENTRANCE PLAYED BACKWARDS — the same keyframes with `reverse`, so there is
+ * no second definition of "a sheet leaving" and the keyframe registry gains nothing.
+ * ⛔ AND THE BEAT IS THE SHARED FUNCTION. `exitBeatMs` decides three reduced-motion gates; a
+ * second copy is exactly how a surface ends up DELAYING a dismissal for someone who asked for
+ * no motion, which is worse than having no exit at all.
+ */
+{
+  const sheet = decomment(readFileSync(join(ROOT, "src/components/markets/filter-sheet.tsx"), "utf8"));
+  ok("10: 🔴 the panel has an exit animation while closing",
+     /\.kp-fsheet\[data-closing\]\s*>\s*\.kp-fsheet-panel\s*\{[^}]*animation:\s*m-sheet-rise[^}]*reverse/.test(css));
+  ok("10: …and the scrim leaves with it, rather than cutting out",
+     /\.kp-fsheet\[data-closing\]\s*>\s*\.kp-fsheet-scrim\s*\{[^}]*animation:\s*m-scrim-in[^}]*reverse/.test(css));
+  // ⛔ `reverse` of the ENTRANCE, never a newly-minted pair of keyframes at this layer.
+  ok("10: ⛔ …reusing the entrance keyframes, not new ones",
+     !/@keyframes\s+kp-fsheet/.test(css));
+  ok("10: ⛔ the exit beat comes from the shared `exitBeatMs`, not a literal",
+     /import \{ exitBeatMs \} from "@\/components\/ui\/modal"/.test(sheet) && /exitBeatMs\("--t-quick"\)/.test(sheet));
+  ok("10: ⚠️ …and a zero beat (reduced motion) closes INSTANTLY rather than holding",
+     /if \(ms <= 0\) \{ finish\(\); return; \}/.test(sheet));
+  // ⚠️ Re-opening mid-exit must cancel the pending close, or the timeout shuts the sheet the
+  // player has just re-opened. `useExitPhase`'s "rising edge cancels any hold", by hand.
+  ok("10: ⚠️ re-opening mid-exit cancels the pending close",
+     /cancelClosing/.test(sheet) && /clearTimeout\(closingTimer\.current\)/.test(sheet));
+}
+
+// ── 11 · 🔴 A FILTER IS NOT A NAVIGATION ──
+/**
+ * 🔴 UD-13f · the rule already existed, was written down (kit README §3), and already had a
+ * call site obeying it — `/markets` binds `<Link replace scroll={false}>` as an explicit
+ * invariant. This board used a plain `router.push` with default scrolling.
+ *
+ * ⭐ MEASURED ON PRODUCTION, 390×844, as an ordinary two-tap flow:
+ *   · a player scrolled to `scrollY 400` to read the board, tapped one asset → thrown to **0**
+ *   · two filter taps added **two history entries**, so Back walks backwards through filter
+ *     states one at a time instead of leaving the board
+ *
+ * ⛔ BOTH HALVES, AND ON BOTH PATHS. `router.replace(href, { scroll: false })` covers the
+ * intercepted plain left-click; the `<Link>` underneath must carry the same two props or the
+ * fallback path (and the no-JS path) disagrees with the one the player usually gets.
+ */
+{
+  ok("11: 🔴 the transition REPLACES rather than pushes, and does not scroll",
+     /router\.replace\(hrefTarget, \{ scroll: false \}\)/.test(tabs));
+  ok("11: ⛔ …and no `router.push` survives on this board",
+     !/router\.push\(/.test(tabs));
+  // ⚠️ Every pill on this board is a filter — the sheet's two groups and both desktop rails.
+  const semantics = (tabs.match(/semantics="tab"/g) ?? []).length;
+  const replaces = (tabs.match(/^\s*replace$/gm) ?? []).length;
+  const noScroll = (tabs.match(/^\s*scroll=\{false\}$/gm) ?? []).length;
+  ok("11: ⚠️ EVERY pill carries the same invariant on its Link — all four call sites",
+     semantics === 4 && replaces === semantics && noScroll === semantics,
+     `${semantics} pills · ${replaces} replace · ${noScroll} scroll={false}`);
+}
+
 console.log(`\nupdown-filter-sheet: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

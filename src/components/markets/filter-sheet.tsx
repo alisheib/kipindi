@@ -64,6 +64,8 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { I } from "@/components/ui/glyphs";
 import { useModalLock } from "@/lib/use-modal-lock";
+/* ⛔ ONE definition of the exit beat, and of the three reduced-motion gates behind it. */
+import { exitBeatMs } from "@/components/ui/modal";
 
 /** The same list `Modal` traps against — kept identical so the two cannot drift apart. */
 const FOCUSABLE =
@@ -121,14 +123,48 @@ export function FilterSheet({
 
   useModalLock(open);
 
+  /**
+   * 🔴 UD-13e (2026-09-05) · THE SHEET ROSE AND THEN VANISHED. It arrives on `.m-sheet-in`
+   * (`m-sheet-rise`, `--t-move`, `--m-settle`) and left by having its `display` set to `none`
+   * in the same frame the attribute was removed — no exit at all, on the one dialog a phone
+   * player uses most. The shared `<Modal>` this component copies its CONTRACT from has had a
+   * real exit for months (`useExitPhase` + `.m-out`); only the exit was never copied.
+   *
+   * ⛔ AND IT CANNOT USE `useExitPhase`, which is why this is written out. That hook gates a
+   * RENDER on `present`; this `<details>` is uncontrolled on purpose — React never writes
+   * `open` — so the attribute itself has to be held for one beat.
+   * ⭐ The beat comes from `exitBeatMs`, the shared function, so the three reduced-motion gates
+   * are decided once. When it returns 0 the close is instant, which is the correct behaviour
+   * for someone who asked for no motion — an exit that still runs then is worse than none,
+   * because it DELAYS the dismissal.
+   */
+  const closingTimer = React.useRef<number | null>(null);
   const close = React.useCallback(() => {
     const el = ref.current;
-    if (!el?.open) return;
-    el.removeAttribute("open");
+    if (!el?.open || el.hasAttribute("data-closing")) return;
     // `toggle` fires asynchronously, and the focus-return cleanup below reads `open`. Setting
     // it here keeps the two in step even if the event is coalesced away by a fast re-render.
-    setOpen(false);
+    const finish = () => {
+      closingTimer.current = null;
+      el.removeAttribute("data-closing");
+      el.removeAttribute("open");
+      setOpen(false);
+    };
+    const ms = exitBeatMs("--t-quick");
+    if (ms <= 0) { finish(); return; }
+    el.setAttribute("data-closing", "");
+    closingTimer.current = window.setTimeout(finish, ms);
   }, []);
+
+  /** ⚠️ Re-opening mid-exit must CANCEL the hold, or the pending timeout closes the sheet the
+   *  player has just re-opened — `useExitPhase`'s "rising edge cancels any hold", by hand. */
+  const cancelClosing = React.useCallback(() => {
+    if (closingTimer.current == null) return;
+    clearTimeout(closingTimer.current);
+    closingTimer.current = null;
+    ref.current?.removeAttribute("data-closing");
+  }, []);
+  React.useEffect(() => () => { if (closingTimer.current != null) clearTimeout(closingTimer.current); }, []);
   const closeRef = React.useRef(close);
   React.useEffect(() => { closeRef.current = close; }, [close]);
 
@@ -202,6 +238,16 @@ export function FilterSheet({
            variants differ in geometry only, and both live in `.kp-fsheet-trigger*` in
            globals.css so neither can be re-typed slightly differently by the next host. */
         data-shape={value ? "field" : "pill"}
+        /* ⚠️ CLOSING VIA THE TRIGGER MUST ALSO PLAY THE EXIT. The browser toggles a
+           `<details>` shut in the same frame, which would skip the leave animation on the one
+           control a player is most likely to use to dismiss it. Taking the click over only
+           when it is ALREADY OPEN leaves the no-JS opening path exactly as it was. */
+        onClick={(e) => {
+          const el = ref.current;
+          if (!el) return;
+          if (el.hasAttribute("data-closing")) { e.preventDefault(); cancelClosing(); return; }
+          if (el.open) { e.preventDefault(); close(); }
+        }}
         className="kp-fsheet-trigger cursor-pointer list-none items-center border border-border-control bg-bg-inset font-semibold text-text-muted hover:text-text"
       >
         <I.sliders s={15} aria-hidden className="shrink-0 opacity-80" />

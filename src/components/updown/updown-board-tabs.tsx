@@ -67,7 +67,18 @@ export function UpDownBoardTabs({
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
     setPendingHref(hrefTarget);
-    startTransition(() => router.push(hrefTarget));
+    /* 🔴 UD-13f (2026-09-05) · `replace`, AND `scroll: false`, BECAUSE A FILTER IS NOT A
+       NAVIGATION (kit README §3). `/markets` has bound both as an explicit invariant since the
+       discovery bar shipped — `<Link replace scroll={false}>`, i.e. `replaceState` — and this
+       board used a plain `router.push` with default scrolling. MEASURED on production:
+         · a player scrolled to `scrollY 400` to see the board, tapped one asset, and was
+           thrown back to **0** — the board they were reading jumps out from under the tap;
+         · two filter taps added **two history entries**, so Back no longer leaves the board,
+           it walks backwards through filter states one at a time.
+       ⛔ Both are the same rule, and the rule already existed and already had a call site
+       obeying it. ⚠️ The `<Link>` underneath carries the same two props, so the intercepted
+       path and the fallback path cannot disagree. */
+    startTransition(() => router.replace(hrefTarget, { scroll: false }));
   };
 
   /* Optimistic `aria-current`: the chip moves the moment the tap lands, off the
@@ -175,6 +186,8 @@ export function UpDownBoardTabs({
                 label={tab.label}
                 on={assetOn(tab)}
                 semantics="tab"
+                replace
+                scroll={false}
                 onClick={go(tab.href)}
               />
             ))}
@@ -197,6 +210,8 @@ export function UpDownBoardTabs({
                   label={`${tItem.d} ${minLabel}`}
                   on={durationOn(tItem)}
                   semantics="tab"
+                  replace
+                  scroll={false}
                   onClick={go(tItem.href)}
                 />
               ))}
@@ -221,6 +236,8 @@ export function UpDownBoardTabs({
             label={tab.label}
             on={assetOn(tab)}
             semantics="tab"
+            replace
+            scroll={false}
             /* ⚠️ `go()` needs the RAW MouseEvent — it reads `e.button` and the four modifier
                keys to hand new-tab clicks back to the browser. The primitive passes it through
                untouched for exactly this. */
@@ -245,6 +262,8 @@ export function UpDownBoardTabs({
               label={`${tItem.d} ${minLabel}`}
               on={durationOn(tItem)}
               semantics="tab"
+              replace
+              scroll={false}
               rank="secondary"
               onClick={go(tItem.href)}
             />

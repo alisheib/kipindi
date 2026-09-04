@@ -71,6 +71,37 @@ export const MUTATIONS = [
     expect: "9: ⛔ …and a pending href with no `d` falls through to the real active duration",
   },
   {
+    name: "sheet-vanishes-instead-of-leaving",
+    why: "🔴 UD-13e restored: the exit animation is dropped, so the sheet rises over 340ms and then disappears in a single frame when `display: none` lands. Nothing is red, every geometry assertion still passes, and the one dialog a phone player uses most is the only surface in the product that does not leave",
+    file: CSS,
+    suite: "updown-filter-sheet",
+    from: `.kp-fsheet[data-closing] > .kp-fsheet-panel {
+  animation: m-sheet-rise var(--t-quick) var(--m-leave) reverse both;
+}`,
+    to: `.kp-fsheet[data-closing] > .kp-fsheet-panel {
+  opacity: 1;
+}`,
+    expect: "10: 🔴 the panel has an exit animation while closing",
+  },
+  {
+    name: "exit-beat-hardcoded",
+    why: "⛔ the exit beat becomes a literal instead of the shared `exitBeatMs`, which is where the THREE reduced-motion gates are decided. A hard-coded hold delays the dismissal for someone who asked for no motion — worse than having no exit at all — and it silently stops tracking `--t-quick` if that rung is ever retuned",
+    file: "src/components/markets/filter-sheet.tsx",
+    suite: "updown-filter-sheet",
+    from: `    const ms = exitBeatMs("--t-quick");`,
+    to: `    const ms = 140;`,
+    expect: "10: ⛔ the exit beat comes from the shared `exitBeatMs`, not a literal",
+  },
+  {
+    name: "filter-becomes-a-navigation",
+    why: "🔴 the filter goes back to `router.push` with default scrolling. MEASURED on production: a player reading the board at `scrollY 400` is thrown to 0 by one tap, and two taps add two history entries so Back walks filter states instead of leaving the board. `/markets` has bound `replace scroll={false}` as an invariant since the discovery bar shipped — the rule existed and this board did not follow it",
+    file: TABS,
+    suite: "updown-filter-sheet",
+    from: "    startTransition(() => router.replace(hrefTarget, { scroll: false }));",
+    to: "    startTransition(() => router.push(hrefTarget));",
+    expect: "11: 🔴 the transition REPLACES rather than pushes, and does not scroll",
+  },
+  {
     name: "split-at-lg",
     why: "⭐ the disclosure widens from `sm` to `lg`, which reads like more of a good thing. It removes working controls from tablets, where BOTH rails measured a single clean 44px row — the defect had a band and the fix has to have the same one",
     file: TABS,
