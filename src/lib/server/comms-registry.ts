@@ -65,7 +65,7 @@ export type EmailSpec = {
 };
 
 /**
- * All 47 transactional templates.
+ * All 49 transactional templates.
  *
  * `chrome` is asserted against the actual `wrap` / `wrapGold` call in the
  * builder — the gold-discipline law (gold ONLY on earned money / earned status)
@@ -132,6 +132,7 @@ export const EMAIL_TEMPLATES: readonly EmailSpec[] = [
   // ── Platform health (officer only) ────────────────────────────────────────
   { template: "sentinelDownAdminHtml",     trigger: "src/lib/server/notification-service.ts", audience: "officer", chrome: "royal", money: false },
   { template: "aiCreditLimitAdminHtml",    trigger: "src/lib/server/notification-service.ts", audience: "officer", chrome: "royal", money: false },
+  { template: "backupUnhealthyAdminHtml",  trigger: "src/lib/server/notification-service.ts", audience: "officer", chrome: "royal", money: false },
 ];
 
 /**
@@ -250,4 +251,5 @@ export const NOTIFICATION_EMITTERS: readonly EmitterSpec[] = [
   { fn: "notifyAdminsAmlReview",       kind: "SECURITY",          audience: "officer" },
   { fn: "notifyAdminsSentinelDown",    kind: "SECURITY",          audience: "officer" },
   { fn: "notifyAdminsAiCreditLimit",   kind: "SECURITY",          audience: "officer" },
+  { fn: "notifyAdminsBackupUnhealthy", kind: "SECURITY",          audience: "officer" },
 ];

@@ -131,7 +131,7 @@ ok("every registered emitter exists", registeredFns.every((f) => exportedFns.inc
   `phantom: ${registeredFns.filter((f) => !exportedFns.includes(f)).join(", ") || "-"}`);
 ok("every registered kind is a real kind", NOTIFICATION_EMITTERS.every((e) => NOTIFICATION_KINDS.includes(e.kind)));
 // The fan-out emitters return void, so they are exercised in §5 instead.
-const FANOUT = ["notifyAdminObjectionFiled", "notifyAdminsAmlReview", "notifyAdminsSentinelDown", "notifyAdminsAiCreditLimit"];
+const FANOUT = ["notifyAdminObjectionFiled", "notifyAdminsAmlReview", "notifyAdminsSentinelDown", "notifyAdminsAiCreditLimit", "notifyAdminsBackupUnhealthy"];
 ok("every emitter is driven by this suite",
   exportedFns.every((f) => EMITTED.some((e) => e.fn === f) || FANOUT.includes(f)),
   `never driven: ${exportedFns.filter((f) => !EMITTED.some((e) => e.fn === f) && !FANOUT.includes(f)).join(", ") || "-"}`);
@@ -214,9 +214,12 @@ section("5 · fan-out — officer alerts reach officers, complete in 3 locales")
   await N.notifyAdminsAmlReview({ txnKind: "WITHDRAWAL", amountTzs: 2_000_000, reference: "wdr_1" });
   await N.notifyAdminsSentinelDown({ reason: "anthropic-401", errorCount: 3, sampleError: "invalid x-api-key" });
   await N.notifyAdminsAiCreditLimit({ level: "limit", spentUsd: 50, limitUsd: 50 });
+  // The backup watchdog (E-256) — driven with the real "stale" shape from
+  // watchdog.ts §describeBackupAlert, not a minimal string.
+  await N.notifyAdminsBackupUnhealthy({ kind: "stale", reason: "The last verified backup is 49 hours old — the nightly has not completed since. GitHub may be delaying, failing, or silently no longer running the schedule.", ageHours: 49, destination: "github-artifact" });
   await N.notifyAdminObjectionFiled("obj_1", "A disputed poll");
   const rows = await db.notification.findByUser("c3_officer", 500);
-  ok("officer received the fan-out alerts", rows.length >= before + 4, `before=${before} after=${rows.length}`);
+  ok("officer received the fan-out alerts", rows.length >= before + 5, `before=${before} after=${rows.length}`);
   const fresh = rows.slice(0, rows.length - before);
   for (const r of fresh) {
     ok(`fan-out "${r.titleEn.slice(0, 34)}": has Chinese`, !!r.titleZh && !!r.bodyZh && /[一-鿿]/.test(r.titleZh));

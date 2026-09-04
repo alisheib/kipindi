@@ -1,7 +1,7 @@
 /**
  * C1 · EMAIL TRUTH — what actually lands in the player's inbox.
  *
- * ⚠️ WHY THIS EXISTS. 50pick ships 48 transactional templates and, until this
+ * ⚠️ WHY THIS EXISTS. 50pick ships 49 transactional templates and, until this
  * suite, exactly FIVE of them had ever been rendered by a test — and that test
  * only asserted they did not THROW. It even fed
  * `welcomeHtml({ name: "<script>alert(1)</script>" })` and passed, because
@@ -20,7 +20,7 @@
  *
  * Neither is findable by reading the code — both were found by rendering the
  * template and looking at the bytes. So that is what this file does: it renders
- * ALL 48, twice (benign input and hostile input), and reads the output.
+ * ALL 49, twice (benign input and hostile input), and reads the output.
  *
  * ⛔ NO FIXTURE IS CAST. Every builder below is invoked with literal arguments
  * that TypeScript checks against the real parameter type. An `as never` fixture
@@ -62,7 +62,7 @@ const SAFE = "Manchester United to win the derby";
 type Rendered = { template: string; benign: string; hostile: string };
 
 /**
- * All 48, built from their real types.
+ * All 49, built from their real types.
  *
  * `benign` proves the template reads correctly; `hostile` proves every
  * caller-supplied string reaches the page escaped. Where a builder takes several
@@ -216,6 +216,12 @@ const RENDERS: Rendered[] = [
   { template: "aiCreditLimitAdminHtml",
     benign:  E.aiCreditLimitAdminHtml({ level: "warn", spentUsd: 40, limitUsd: 50 }),
     hostile: E.aiCreditLimitAdminHtml({ level: "limit", spentUsd: 50, limitUsd: 50 }) },
+  // Benign is the watchdog's real "stale" shape (watchdog.ts §describeBackupAlert);
+  // hostile puts the payload in every free-text field and exercises the null
+  // branches of ageHours/destination that the stale render cannot reach.
+  { template: "backupUnhealthyAdminHtml",
+    benign:  E.backupUnhealthyAdminHtml({ kind: "stale", reason: "The last verified backup is 49 hours old — the nightly has not completed since. GitHub may be delaying, failing, or silently no longer running the schedule.", ageHours: 49, destination: "github-artifact" }),
+    hostile: E.backupUnhealthyAdminHtml({ kind: HOSTILE, reason: HOSTILE, ageHours: null, destination: HOSTILE }) },
 ];
 
 // ── 1 · The registry is the inventory, and it matches reality ───────────────────
@@ -236,7 +242,7 @@ ok("no template is registered twice",
 ok("every template is rendered by this suite",
   exported.every((n) => RENDERS.some((r) => r.template === n)),
   `never rendered: ${exported.filter((n) => !RENDERS.some((r) => r.template === n)).join(", ") || "-"}`);
-ok(`the inventory is 48 templates (found ${exported.length})`, exported.length === 48);
+ok(`the inventory is 49 templates (found ${exported.length})`, exported.length === 49);
 
 // ── 2 · Every template has a real sender ───────────────────────────────────────
 section("2 · wiring — a template with no sender is a template nobody gets");

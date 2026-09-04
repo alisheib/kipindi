@@ -6,7 +6,7 @@
  * correct escaping and still arrive as a wall of text on a phone, with a CTA
  * too small to hit or a card that scrolls sideways.
  *
- * Renders all 47 at the 50pick responsiveness matrix — 360 / 768 / 1280 / 1920 —
+ * Renders all 49 at the 50pick responsiveness matrix — 360 / 768 / 1280 / 1920 —
  * and asserts, on the rendered page:
  *   · zero horizontal overflow (the card must never force a sideways scroll)
  *   · the CTA is a real tap target (>= 44 px tall) and inside the viewport
@@ -54,6 +54,10 @@ const PAGES: { name: string; html: string }[] = [
   { name: "cashOutReceiptHtml", html: E.cashOutReceiptHtml({ reference: "pos_41ab77cd", value: 23_100, stake: 25_000, marketTitle: SAFE, soldAt: "2026-07-31T09:00:00.000Z", gracePeriod: false }) },
   { name: "cashOutReceiptHtml.grace", html: E.cashOutReceiptHtml({ reference: "pos_41ab77cd", value: 25_000, stake: 25_000, marketTitle: SAFE, soldAt: "2026-07-31T09:00:00.000Z", gracePeriod: true }) },
   { name: "oneSidedRefundHtml", html: E.oneSidedRefundHtml({ reference: "pos_41ab77cd", stake: 25_000, marketTitle: SAFE, settledAt: "2026-07-31T09:00:00.000Z" }) },
+  // The Up & Down daily digest, on a LOSING day — the branch carrying the LCCP
+  // claim. Registered since E-37 but absent from this pass until 2026-09-04:
+  // the coverage check below was red and nobody had re-run the visual gate.
+  { name: "updownDigestHtml", html: E.updownDigestHtml({ dayLabel: "2 Aug", rounds: 4, wins: 1, losses: 3, refunds: 0, wonPayout: 8_700, lostStake: 15_000, refundedStake: 0, staked: 20_000, returned: 8_700, net: -11_300 }) },
   { name: "marketCancelledRefundHtml", html: E.marketCancelledRefundHtml({ title: LONG, reason: "The published source retracted its result after settlement", amount: 25_000, reference: "pos_41ab77cd" }) },
   { name: "marketCancelledAdminHtml", html: E.marketCancelledAdminHtml({ title: LONG, reason: "Source retracted", refundedCount: 42, refundedTzs: 1_050_000 }) },
   { name: "marketResolutionAdminHtml", html: E.marketResolutionAdminHtml({ title: LONG, closedAt: "2026-07-31T09:00:00.000Z", reviewUrl: "/admin/resolver-queue" }) },
@@ -88,6 +92,7 @@ const PAGES: { name: string; html: string }[] = [
   { name: "proposalDeclinedHtml", html: E.proposalDeclinedHtml({ titleEn: LONG, reason: "Not verifiable from a public source", note: "No published figure exists on that date." }) },
   { name: "sentinelDownAdminHtml", html: E.sentinelDownAdminHtml({ reason: "anthropic-401", errorCount: 3, sampleError: "invalid x-api-key: the key provided is not valid for this account" }) },
   { name: "aiCreditLimitAdminHtml", html: E.aiCreditLimitAdminHtml({ level: "limit", spentUsd: 50, limitUsd: 50 }) },
+  { name: "backupUnhealthyAdminHtml", html: E.backupUnhealthyAdminHtml({ kind: "stale", reason: "The last verified backup is 49 hours old — the nightly has not completed since. GitHub may be delaying, failing, or silently no longer running the schedule.", ageHours: 49, destination: "github-artifact" }) },
 ];
 
 // Coverage: every registered template must appear at least once.
