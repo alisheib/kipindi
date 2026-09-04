@@ -6,8 +6,11 @@
  * ⛔ THIS GUARD RAN FOR ITS WHOLE LIFE WITHOUT A CONTROL. It is the ratchet the design record
  * cites for "the motion tokens are pinned", it reached an allowlist of zero once, and nobody
  * had ever watched it fail. It was green over an entire missing FILE TYPE (its hole 3) and over
- * a fourth motion vocabulary in `src/styles/chat/`. §5 of `.claude/skills/pv10-validate-as-you-go`
- * is the law being paid here: **write the mutation before you believe the check.**
+ * a fourth motion vocabulary in `src/styles/chat/`. The law being paid here lives in
+ * `50pick-standards` §5 and `DESIGN-BASELINE.md` §3: **write the mutation before you believe the
+ * check.** (It was also §5 of `.claude/skills/pv10-validate-as-you-go`, a TEMPORARY skill deleted
+ * by PLAYER-VISUAL-10's closing ceremony on 2026-09-04 — cited to its permanent home instead, so
+ * this comment does not rot into a pointer at something that no longer exists.)
  *
  * FIVE MUTATIONS, AND THE LAST ONE IS THE POINT OF THE ROW:
  *   1-4 · content reversions, declared in `anchors/motion-ladder.anchors.mjs` (so

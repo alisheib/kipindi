@@ -75,7 +75,10 @@ plants the defect on a COPY of the tree and proves the gate fails **on its own a
 | `test:tokens` · `test:design-one-door` | one definition site per token; one door into the system | `red:tokens` |
 | `test:ui-consistency` | per-rule component conventions | baseline |
 | `test:eyebrow-roles` | every uppercase-and-tracked site is `.eyebrow` or has its role written down | census must total exactly |
-| `test:chip-contract` · `test:motion-ladder` · `test:reduce-motion` · `test:stacking` · `test:dead-css` | chips, motion tokens, §M6, z-order, unused CSS | — |
+| `test:chip-contract` · `test:reduce-motion` · `test:stacking` · `test:dead-css` | chips, §M6, z-order, unused CSS | `red:chip-one-home` |
+| `test:motion-ladder` | the motion ladder, and **the guard PV-10 had to repair before it could use it**. §1.1 no hardcoded duration/easing · **§2 (2026-09-03) THE CORPUS, pinned by EXTENSION** — for its whole life `walk()` took only `.tsx`/`.ts`, so all six `.css` files under `src/` (including `motion.css`, the ladder it enforces) were invisible, while §1.3's directory pin passed throughout · **§3 only `motion.css` may DECLARE a curve or a duration** — a namespace may alias the ladder, never re-value it (Authority §E9) · **§4 `--m-pivot` is reserved for the needle and dials** (§M8), a rule that had **no guard anywhere** and lived in a `motion.css` comment naming its own breach | **`red:motion-ladder` (6/6) — the guard had NO control until 2026-09-03.** Carries the pattern worth copying: a **CORPUS mutation** (strip every `.css` from a copied tree; §2 must go RED **while §1.1 stays GREEN**) |
+| `test:invite-coming-soon` | a feature flag reaches **every** entry point. §2.1 judges a **POSITION** — each `/profile/invite` link must sit within 8 lines of the switch being consulted, because its first version asked only *"does this file mention `inviteIsLive`?"* and passed over two surfaces gone silently live with the import still present · §3.3 the page consults the switch **BEFORE** minting a referral code | `red:invite-coming-soon` (4/4) |
+| `responsive-audit.mjs` **B7's LOWER bound** | B7 had only an UPPER bound (no column exceeds its tier). PV-03 lived in the missing half: `/positions` got its 1080 tier **correctly** and still floated an empty state 328px from its own section heading, passing every width, clip and overflow check. Keys on `data-empty-state`, a **contract**, never `border-dashed` | the fix measured 328px → 0 at 1280 and 390 |
 | `qa:fit` (live) · `test:popup-fit` | **§M4a — text fits its container, and a clipped NUMBER is a wrong number.** ⚠️ Added by a parallel programme on 2026-09-01, after this file was first written; listed here so the table stays the one place that answers *"what holds this rule?"* | `red:header-fit` |
 
 ### ⛔ If you add a guard, it must state three things or it is not a guard
@@ -294,6 +297,40 @@ Stated so nobody reads a green suite as more than it is.
 - ⛔ **A blocker measured once and generalised can hold work for days.** *"All six QA secrets are
   rejected"* was true of two accounts and false of six, and it blocked four rows for three days.
   Re-derive a blocker before you inherit it.
+
+#### ⭐ And the four PLAYER-VISUAL-10 paid for (closed 2026-09-04, all 13 rows ☑)
+
+- ⛔ **AN UNMEASURED ADJECTIVE IS A HYPOTHESIS, AND IT WAS WRONG EVERY TIME IT WAS CHECKED.**
+  `duration-150` ×373 → **3** · bare Tailwind curves ×391 → **0** · "seven chip heights" → **three
+  tiers** · "eight narrow routes" → **one** real defect · "three words for one idea" → **three
+  correct words for three things** · "a thin 5px-ish slider" → a **12px** track and a **56px**
+  knob. Six of twelve findings shrank or vanished under measurement. ⚠️ **A census taken through
+  `getComputedStyle` counts CONSEQUENCES; a fix has to count DEFINITION SITES** — the two differ
+  by however many elements share a class, which was ~124× in PV-14's case.
+- ⛔ **THE INSTRUMENTS WERE WRONG MORE OFTEN THAN THE PRODUCT WAS — eight times in two sessions,
+  and NOT ONE was found by reading code.** Each was caught by a control, a screenshot, or a number
+  that did not survive being printed: a probe that returned the same value for the control and the
+  defect (it was measuring the route wrapper); a substring selector that counted a 6-card board as
+  **126** (`[class*="mcardp"]` also matches `.mcardp-info` and nineteen other children — use
+  `[class~=…]`); a regex right **by luck** (`TZS 94,50019d left`); three "locales" that were all
+  English because the switch is a **cookie**, not `?lang=`; a "green baseline" over **zero cells**
+  because Git Bash rewrote `/positions` into `C:/Program Files/Git/positions` (`MSYS_NO_PATHCONV=1`);
+  a check that ran **after** the failure list printed, so it incremented `fail` invisibly; and — on
+  production — a reader that took the **first** `TZS` figure where a market's own question contains
+  one, nearly filing a false sort defect against a live money product.
+  ⭐ **Measure the control in the same run, always.** With only the suspect surfaces measured, four
+  of those would have read as clean passes.
+- ⛔ **CHECK A BRANCH BY ITS CONTENT, NEVER BY ITS NAME OR AHEAD/BEHIND COUNT.** `pv10/rows-3-4-6`
+  was already in `main` by content; its only remaining `src/` delta was the **needle files, where
+  `main` was NEWER**, so merging it would have reverted 127 lines of a parallel session's work.
+  Three consecutive handoffs said *"NOTHING on production"* about work that had been live for a day.
+  `git diff origin/main <branch> -- src/` answers this in one command.
+- ⛔ **A GUARD THAT READS THE SOURCE'S VOCABULARY CANNOT SEE A DEFECT THAT LEAVES THE VOCABULARY IN
+  PLACE.** `test:invite-coming-soon` §2.1 first asked *"does this file mention `inviteIsLive`?"*
+  and passed over two surfaces gone live, because severing the usage left the **import** intact.
+  Judge a **position**, not a mention. ⚠️ And never make the *fix's own mark* the marker — a
+  surface rendering a "coming soon" badge unconditionally satisfies "shows coming soon" today and
+  keeps showing it after the feature opens: the failure wearing the costume of the fix.
 
 ---
 
