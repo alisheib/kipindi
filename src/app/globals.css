@@ -4178,6 +4178,13 @@ textarea::-webkit-resizer {
    image still reads as "live" without any movement. Kit-level beside its sibling
    above; reduced-motion turns it off (the dot stays, just no breath). */
 .ud-point { animation: ud-point 1.6s var(--ease-conduct, ease-in-out) infinite; }
+
+/* CHART-SPRINT E2 · the board round-chart's in-svg labels scale with the PAGE
+   (viewBox), so at 360 a 9-unit label paints ~4.6px — the E-198 defect class,
+   measured on production the day the panel shipped. Below `sm` the svg labels
+   hide and `round-chart.tsx` states the two decision numbers in real HTML
+   (its `sm:hidden` row) — same remedy the detail hero took, one class here. */
+@media (max-width: 639px) { .ud-svg-label { display: none; } }
 @keyframes ud-point { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
 @media (prefers-reduced-motion: reduce) { .ud-point { animation: none; } }
 

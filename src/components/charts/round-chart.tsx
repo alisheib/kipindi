@@ -148,16 +148,19 @@ export function RoundChart({
             </>
           )}
 
-          {/* The reference line the bet is measured against — gilt is §B12's reference ink. */}
+          {/* The reference line the bet is measured against — gilt is §B12's reference ink.
+              ⚠️ Every in-svg label wears .ud-svg-label: viewBox type scales with the page,
+              and below `sm` it paints ~4.6px (E-198's defect class, measured on production)
+              — the labels hide there and the HTML row below the svg states the numbers. */}
           <line x1="0" y1={openY} x2="606" y2={openY} stroke="var(--gilt)" strokeWidth="1.25" strokeDasharray="3 4" opacity="0.75" />
-          <text x="0" y={(parseFloat(openY) - 6).toFixed(1)} fill="var(--gilt)" fontFamily="var(--font-mono)" fontSize="9" fontWeight="600" letterSpacing="0.12em" opacity="0.9">
+          <text className="ud-svg-label" x="0" y={(parseFloat(openY) - 6).toFixed(1)} fill="var(--gilt)" fontFamily="var(--font-mono)" fontSize="9" fontWeight="600" letterSpacing="0.12em" opacity="0.9">
             {copy.openLabel.toUpperCase()} {usd(openPrice)}
           </text>
 
           {upY && (
             <g>
               <line x1="0" y1={upY} x2="606" y2={upY} stroke="var(--yes-400)" strokeWidth="1" strokeDasharray="2 5" opacity="0.6" />
-              <text x="606" y={(parseFloat(upY) - 4).toFixed(1)} textAnchor="end" fill="var(--yes-300)" fontFamily="var(--font-mono)" fontSize="8.5" fontWeight="600" letterSpacing="0.10em" opacity="0.9">
+              <text className="ud-svg-label" x="606" y={(parseFloat(upY) - 4).toFixed(1)} textAnchor="end" fill="var(--yes-300)" fontFamily="var(--font-mono)" fontSize="8.5" fontWeight="600" letterSpacing="0.10em" opacity="0.9">
                 {(copy.upLabel ?? "UP").toUpperCase()} {usd(upTarget!)}
               </text>
             </g>
@@ -165,7 +168,7 @@ export function RoundChart({
           {downY && (
             <g>
               <line x1="0" y1={downY} x2="606" y2={downY} stroke="var(--no-400)" strokeWidth="1" strokeDasharray="2 5" opacity="0.6" />
-              <text x="606" y={(parseFloat(downY) + 11).toFixed(1)} textAnchor="end" fill="var(--no-300)" fontFamily="var(--font-mono)" fontSize="8.5" fontWeight="600" letterSpacing="0.10em" opacity="0.9">
+              <text className="ud-svg-label" x="606" y={(parseFloat(downY) + 11).toFixed(1)} textAnchor="end" fill="var(--no-300)" fontFamily="var(--font-mono)" fontSize="8.5" fontWeight="600" letterSpacing="0.10em" opacity="0.9">
                 {(copy.downLabel ?? "DOWN").toUpperCase()} {usd(downTarget!)}
               </text>
             </g>
@@ -177,11 +180,22 @@ export function RoundChart({
             <g>
               <circle className="ud-point" cx={lastX} cy={lastY} r="7" fill={ink} opacity="0.22" />
               <circle cx={lastX} cy={lastY} r="3.6" fill={ink} />
-              <text x={tagX} y={tagY} textAnchor="end" fill={ink} fontFamily="var(--font-mono)" fontSize="11" fontWeight="700">{usd(livePrice)}</text>
+              <text className="ud-svg-label" x={tagX} y={tagY} textAnchor="end" fill={ink} fontFamily="var(--font-mono)" fontSize="11" fontWeight="700">{usd(livePrice)}</text>
             </g>
           )}
         </svg>
       </div>
+
+      {/* E-198's HTML copy, scoped to where the svg labels are hidden: below `sm` the two
+          winning boundaries — the numbers the bet turns on — in real, readable type. Same
+          props, same usd() precision as the svg labels: one pair of frozen targets, two
+          renderings, never a second source of truth. */}
+      {upTarget != null && downTarget != null && (
+        <p className="sm:hidden mt-1.5 mb-0 flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-body-sm font-semibold tabular-nums">
+          <span style={{ color: "var(--yes-300)" }}>{(copy.upLabel ?? "UP").toUpperCase()} ≥ {usd(upTarget)}</span>
+          <span style={{ color: "var(--no-300)" }}>{(copy.downLabel ?? "DOWN").toUpperCase()} ≤ {usd(downTarget)}</span>
+        </p>
+      )}
     </section>
   );
 }
