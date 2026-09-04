@@ -318,7 +318,7 @@ html.kp-reduce-motion *, html.kp-reduce-motion *::before, html.kp-reduce-motion 
    The hairline under a toast drains left-to-right over the toast's own dwell. The
    keyframe is `toast-bar` (globals.css) — `scaleX(1) → scaleX(0)`, `forwards`.
 
-   🔴 UNDER EITHER HARD CLAMP ABOVE IT LIED — E-262. `animation-duration: .01ms
+   🔴 UNDER EITHER HARD CLAMP ABOVE IT LIED — E-269. `animation-duration: .01ms
    !important` finishes the drain in a single frame and `forwards` then HOLDS the empty
    frame, so a reduced-motion player read "your time is up" under a toast the JS timer
    was still holding for its full 4.5–8 seconds. Every other entry in this block calms a

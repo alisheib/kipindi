@@ -60,7 +60,7 @@ function readWatch(): string[] {
   }
 }
 
-/* 🔴 STORAGE IS A CONVENIENCE, NEVER A DEPENDENCY — E-261.
+/* 🔴 STORAGE IS A CONVENIENCE, NEVER A DEPENDENCY — E-268.
  *
  * `readSeen` used to answer an empty set whenever `sessionStorage` threw, and `writeSeen`
  * silently dropped the write. In a browser that blocks storage — Chrome set to block all
@@ -227,7 +227,7 @@ export function NotifyPoller() {
                 });
               }
 
-              // 🔴 ANNOUNCE FIRST, THEN MARK — E-259. These two lines used to sit at the TOP of
+              // 🔴 ANNOUNCE FIRST, THEN MARK — E-266. These two lines used to sit at the TOP of
               // the loop, so a position was recorded as announced before anything had been
               // shown. When the toast layer's flood guard still DESTROYED everything past four,
               // a return with eight settled positions marked all eight seen, pruned all eight

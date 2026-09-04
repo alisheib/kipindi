@@ -422,6 +422,8 @@
     "red:updown-result-clock-boundary": "node scripts/red-e104.cjs",
     "test:feedback-law": "tsx scripts/feedback-law.test.mts",
     "red:feedback-law": "node scripts/red-feedback-law.cjs",
+    "test:presence-class": "tsx scripts/presence-class.test.mts",
+    "red:presence-class": "node scripts/red-presence-class.mjs",
     "test:updown-bet-feedback": "tsx scripts/updown-bet-feedback.test.mts",
     "red:updown-bet-feedback": "node scripts/red-e64.cjs",
     "test:shell-boundary": "tsx scripts/shell-boundary.test.mts",

@@ -266,7 +266,7 @@ const JSX_PINS: { file: string; name: string; why: string }[] = [
   // `toast.tsx::toast-bar` LEFT IT on 2026-09-04, the same way and for a reason this file
   // will appreciate: as an INLINE style the countdown was ungateable, so both reduced-motion
   // clamps zeroed it and `forwards` held the EMPTY frame — the hairline read "your time is
-  // up" under a toast the JS timer was still holding for its full 4.5–8 seconds (E-262). It
+  // up" under a toast the JS timer was still holding for its full 4.5–8 seconds (E-269). It
   // now rides `.toast-countdown`, declared in `motion.css`, which is what lets a stylesheet
   // give it a calm state at all; only `--toast-dwell` stays inline, because a dwell is data.
   // 2.2 sees it as a CSS consumer from here on, which is the stronger half of this registry.

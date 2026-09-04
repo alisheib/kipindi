@@ -43,6 +43,7 @@ import { getPlatformConfig, maintenanceMessage } from "@/lib/server/platform-con
 import { getProposalsConfig } from "@/lib/server/proposals-config";
 import { AnnouncementBanner } from "./announcement-banner";
 import { EmailVerifyBanner } from "./email-verify-banner";
+import { AwaySummaryBar } from "./away-summary-bar";
 import { Needle } from "./needle";
 import { HeaderScrollCast } from "./scroll-cast";
 
@@ -161,6 +162,20 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       <TopAppBar user={topUser} proposalsState={proposalsState} />
       <AnnouncementBanner maintenance={maintBanner} announcement={announcement} />
       {emailVerifyState && <EmailVerifyBanner email={emailVerifyState.email} />}
+      {/* ⭐ BELOW THE EMAIL GATE, ON PURPOSE. That bar names a COMPLIANCE condition blocking
+          the player's first deposit; this one is a courtesy summary of results they already
+          hold. If both are up, the one that costs them something must read first.
+          ⛔ It renders null whenever nothing settled while they were away, which is almost
+          always — and it fires nothing when it does appear (§F5). `playStartedAt` is already
+          on the signed session (`getSession()` returns it, and `markets/actions.ts` already
+          consumes it), so this costs no change to auth code at all. */}
+      {session && (
+        <AwaySummaryBar
+          userId={session.userId}
+          playStartedAtMs={session.playStartedAt ?? Date.now()}
+          serverNowMs={Date.now()}
+        />
+      )}
       {/* REAL settlements only, and NOTHING when the platform has settled nothing —
           `LiveTicker` returns null on an empty list, so the strip stops existing rather than
           inventing a line to fill itself. */}

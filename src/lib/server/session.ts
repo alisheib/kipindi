@@ -58,9 +58,21 @@ const COOKIE_NAME = "kp_session";
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;            // 7-day absolute cap
 const IDLE_TIMEOUT_MS = 24 * 60 * 60 * 1000;               // 24 h since last activity
 const REFRESH_THROTTLE_MS = 5 * 60 * 1000;                 // resign cookie at most every 5 min
-/** E-235 — a gap this long ends one play session and begins the next. */
-export const PLAY_SESSION_GAP_MIN = 30;
-const PLAY_SESSION_GAP_MS = PLAY_SESSION_GAP_MIN * 60 * 1000;
+/* E-235 — a gap this long ends one play session and begins the next.
+ *
+ * ⭐ MOVED TO `@/lib/play-session` ON 2026-09-04 AND RE-EXPORTED HERE, so this module's
+ * surface is unchanged. The client needs the same boundary — `presence-window.ts` measures
+ * it in ATTENTION, which is the half of the truth this file cannot see (every poll from a
+ * backgrounded tab runs `getSession()` and refreshes `lastSeenAt`, so a sleeping player looks
+ * present to the server) — and this module is unreachable from the client graph: it imports
+ * `next/headers`, `./crypto`, `./audit` and `./session-registry`.
+ *
+ * ⛔ Importing the constant from here would drag the session machinery into a browser chunk.
+ * That is the `hashKey64` → `lock-key.ts` extraction, for the identical measured reason, and
+ * Ali's ruling of the same date was explicit that the two sides must share ONE definition
+ * rather than agree by coincidence. */
+export { PLAY_SESSION_GAP_MIN } from "@/lib/play-session";
+import { PLAY_SESSION_GAP_MS } from "@/lib/play-session";
 
 // ── Server-side session registry ─────────────────────────────────────
 // One active sessionId per userId. A new login replaces it, invalidating ALL

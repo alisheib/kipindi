@@ -446,7 +446,7 @@ const JSX_PINS: { file: string; name: string; why: string }[] = [
   // It moved onto `.toast-countdown`, and the reason is this rule's own subject. As an
   // INLINE style the countdown was ungateable, so both hard clamps zeroed it and `forwards`
   // held the EMPTY frame: a reduced-motion player read "your time is up" under a toast the
-  // JS timer was still holding for its full 4.5–8 seconds (E-262). A class is gateable, so
+  // JS timer was still holding for its full 4.5–8 seconds (E-269). A class is gateable, so
   // `motion.css` can now say what the calm state should be — the rail stays FULL, which is
   // true — and the duration crosses over as `--toast-dwell`, which is data, not motion.
   // Keeping the pin would hold this guard permanently red to commemorate a defect it

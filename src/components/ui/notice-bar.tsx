@@ -136,18 +136,39 @@ export function NoticeBar({
  *  40% outline and a 10% hover wash, unchanged from the author's intent.
  *  ⛔ A future bar on another tone must key this off the tone the way `TONE`
  *  above does — do NOT reach back for `current/NN`, which cannot ever render. */
+/* ⭐ THE TONE MAP THE COMMENT ABOVE ASKED FOR (2026-09-04). It ends: *"A future bar on
+ * another tone must key this off the tone the way `TONE` above does — do NOT reach back for
+ * `current/NN`, which cannot ever render."* `AwaySummaryBar` is that future bar: it is
+ * `tone="info"`, and on a real-money product an info-tone summary must not wear a GOLD
+ * outline — `--warning-fg` IS `--gilt`, and gold means money EARNED (§M3). A calm account of
+ * what settled while you were away is not an earning.
+ *
+ * ⛔ Each row is the accent from `TONE` above, at the same 40% outline / 10% hover wash the
+ * author matched to `--warning-fg`. All four are `alpha()`-bridged in tailwind.config.ts, so
+ * unlike `current/NN` these actually render. */
+const ACTION_TONE: Record<NoticeBarTone, string> = {
+  maintenance: "border-claret-400/40 hover:bg-claret-400/10",
+  warning:     "border-warning-fg/40 hover:bg-warning-fg/10",
+  info:        "border-info-fg/40 hover:bg-info-fg/10",
+  success:     "border-success-fg/40 hover:bg-success-fg/10",
+};
+
 export function NoticeBarAction({
   children,
   onClick,
   href,
   disabled,
   glyph,
+  tone = "warning",
 }: {
   children: React.ReactNode;
   onClick?: () => void;
   href?: string;
   disabled?: boolean;
   glyph?: GlyphKey;
+  /** ⚠️ Must match the `tone` of the `NoticeBar` this sits in. Defaults to `warning` so the
+   *  original caller (`EmailVerifyBanner`) is unchanged, byte for byte. */
+  tone?: NoticeBarTone;
 }) {
   const Glyph = glyph ? I[glyph] : null;
   // 44, not 40 — §A2's "44px preferred on mobile", and this control is the mobile case by
@@ -156,7 +177,7 @@ export function NoticeBarAction({
   // deposit, resend the code). 40 is the absolute floor, not the target, for a button a
   // thumb reaches for on a bar that is deliberately never in the reading flow.
   const cls =
-    "inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-pill border border-warning-fg/40 px-3.5 text-body-sm font-semibold transition-colors hover:bg-warning-fg/10 disabled:opacity-50";
+    `inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-pill border px-3.5 text-body-sm font-semibold transition-colors disabled:opacity-50 ${ACTION_TONE[tone]}`;
   if (href) {
     return (
       <a href={href} className={cls}>

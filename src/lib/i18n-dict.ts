@@ -1608,6 +1608,17 @@ export const dict = {
          the three languages. Same discipline as `oneResult`/`nResults` above. */
       unreadOne: "1 unread",
       unreadN: "{n} unread",
+      // The away-summary bar. ⛔ `awayWon`/`awayLost`/`awayReturned` are only ever shown when
+      // EVERY settled result shares that one outcome — a figure across a mixed set was never
+      // paid and never lost. A mixed set gets `awayMixed`, which states a count and no money.
+      // ⚠️ Each phrasing must read correctly at n=1 as well as n=5; there are deliberately no
+      // singular variants, because "1 won" and "3 won" are both true sentences.
+      awayTitle: "While you were away",
+      awayWon: "{n} won · {amount} paid",
+      awayLost: "{n} lost · {amount} staked",
+      awayReturned: "{n} returned · {amount}",
+      awayMixed: "{n} results settled",
+      awayView: "See results",
       seeAll: "See all",
       eyebrow: "Your inbox",
       showLabel: "Show",
@@ -3338,6 +3349,12 @@ export const dict = {
          noun class, so one string with a number in front of it is wrong for every n > 1. */
       unreadOne: "1 haijasomwa",
       unreadN: "{n} hazijasomwa",
+      awayTitle: "Ulipokuwa mbali",
+      awayWon: "{n} zimeshinda · {amount} zimelipwa",
+      awayLost: "{n} zimepotea · {amount} zilizowekwa",
+      awayReturned: "{n} zimerudishwa · {amount}",
+      awayMixed: "Matokeo {n} yamekamilika",
+      awayView: "Ona matokeo",
       seeAll: "Ona zote",
       eyebrow: "Kikasha chako",
       showLabel: "Onyesha",
@@ -5004,6 +5021,12 @@ export const dict = {
          cannot be prefixed to a bare word the way English allows. */
       unreadOne: "1 条未读",
       unreadN: "{n} 条未读",
+      awayTitle: "您离开期间",
+      awayWon: "{n} 项获胜 · 已支付 {amount}",
+      awayLost: "{n} 项未中 · 投注 {amount}",
+      awayReturned: "{n} 项已退回 · {amount}",
+      awayMixed: "{n} 项结果已结算",
+      awayView: "查看结果",
       seeAll: "查看全部",
       eyebrow: "您的收件箱",
       showLabel: "显示",

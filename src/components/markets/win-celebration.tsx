@@ -126,7 +126,7 @@ export function WinCelebrationHost() {
   const [payload, setPayload] = useState<WinCelebrationPayload | null>(null);
   const [struck, setStruck] = useState(false);
 
-  /* 🔴 §F1 · THE SEAL IS A RESULT POPUP AND MUST COUNT AS ONE — E-260.
+  /* 🔴 §F1 · THE SEAL IS A RESULT POPUP AND MUST COUNT AS ONE — E-267.
    *
    * This host mounts a `Modal` but was the one result surface that never registered its
    * presence, so the toast stand-down simply did not apply to it. The toast viewport is
