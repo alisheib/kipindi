@@ -66,6 +66,7 @@ console.log("\n§2 · ⭐ the levies are already out of HOUSE:COMMISSION — tak
     accounts: { commission: 8_500, traLevy: 1_000, gbtLevy: 500, aggregator: 300 },
     playerLiability: 0,
     custodialCash: 10_300,
+    adjustmentBackedLiability: 0,
   });
   ok("2.1 · ⭐ net retained IS the commission balance — the levies are NOT taken again",
     p.netRetained === 8_500,
@@ -86,6 +87,7 @@ console.log("\n§3 · gross float is not profit");
     accounts: { commission: 5_000_000, traLevy: 2_000_000, gbtLevy: 1_000_000, aggregator: 0 },
     playerLiability: 92_000_000,
     custodialCash: 100_000_000,
+    adjustmentBackedLiability: 0,
   });
   ok("3.1 · ⭐ free house cash subtracts player money AND unremitted levies",
     p.freeHouseCash === 5_000_000,
@@ -93,19 +95,57 @@ console.log("\n§3 · gross float is not profit");
   ok("3.2 · the gateway's share also reduces free cash",
     housePosition({
       accounts: { commission: 1_000, traLevy: 0, gbtLevy: 0, aggregator: 400 },
-      playerLiability: 0, custodialCash: 1_400,
+      playerLiability: 0, custodialCash: 1_400, adjustmentBackedLiability: 0,
     }).freeHouseCash === 1_000);
   ok("3.3 · ⚠️ free cash may go NEGATIVE and must SAY so, never clamp to zero",
     housePosition({
       accounts: { commission: 0, traLevy: 0, gbtLevy: 0, aggregator: 0 },
-      playerLiability: 500, custodialCash: 100,
+      playerLiability: 500, custodialCash: 100, adjustmentBackedLiability: 0,
     }).freeHouseCash === -400,
     "a clamped zero hides exactly the condition an owner must be told about");
   ok("3.control · a solvent house reports its real surplus (3.1–3.3 are not vacuous)",
     housePosition({
       accounts: { commission: 10, traLevy: 0, gbtLevy: 0, aggregator: 0 },
-      playerLiability: 0, custodialCash: 10,
+      playerLiability: 0, custodialCash: 10, adjustmentBackedLiability: 0,
     }).freeHouseCash === 10);
+}
+
+/* ═══ §3b · ⭐ SEEDED BALANCES MUST NOT READ AS INSOLVENCY ══════════════════════════════
+ *
+ * 🔴 MEASURED ON PRODUCTION 2026-09-04: player liability 20,105,687, of which ADJUSTMENT was
+ * 20,600,000 while real DEPOSIT was 680,000 and custodial cash 605,110. The strict solvency
+ * line is therefore −19,555,989 — arithmetically correct, and as a headline it would tell the
+ * owner his platform is insolvent by nineteen million shillings when what it holds is seeded
+ * test money. ⛔ A false alarm is as serious as a missed one: an owner who learns this line
+ * cries wolf stops reading it, and then it cannot warn him on the day it matters.
+ */
+console.log("\n§3b · ⭐ admin-credited balances are separated, and NEITHER figure is softened");
+{
+  const p = housePosition({
+    accounts: { commission: 312_099, traLevy: 36_658, gbtLevy: 18_374, aggregator: 380 },
+    playerLiability: 20_105_687,
+    custodialCash: 605_110,
+    adjustmentBackedLiability: 20_600_000,
+  });
+  ok("3b.1 · ⛔ the STRICT line is still reported, unsoftened",
+    p.freeHouseCash === 605_110 - 20_105_687 - 55_032 - 380,
+    `got ${p.freeHouseCash} — the honest arithmetic must never be replaced by the kind one`);
+  ok("3b.2 · ⭐ …and the ex-adjustments line shows what is really owed",
+    p.freeHouseCashExAdjustments === 605_110 - 0 - 55_032 - 380,
+    `got ${p.freeHouseCashExAdjustments}`);
+  ok("3b.3 · the split adds back to the whole — no liability is lost between the two",
+    p.playerLiabilityFunded + p.playerLiabilityAdjusted === p.playerLiability);
+  ok("3b.4 · ⚠️ an adjustment total ABOVE the wallet total cannot make funded liability negative",
+    p.playerLiabilityFunded === 0 && p.playerLiabilityAdjusted === 20_105_687,
+    "a credit later staked and lost still happened; a negative funded liability is not actionable");
+  ok("3b.control · with no adjustments the two lines are IDENTICAL (3b.2 is not vacuous)",
+    (() => {
+      const q = housePosition({
+        accounts: { commission: 0, traLevy: 0, gbtLevy: 0, aggregator: 0 },
+        playerLiability: 1_000, custodialCash: 1_000, adjustmentBackedLiability: 0,
+      });
+      return q.freeHouseCash === q.freeHouseCashExAdjustments;
+    })());
 }
 
 /* ═══ §4 · PER GAME ════════════════════════════════════════════════════════════════════ */
@@ -198,7 +238,7 @@ console.log("\n§8 · a ledger figure can never be rendered under a rail heading
 ok("8.1 · the position is stamped `ledger`, out of the same object as its numbers",
   housePosition({
     accounts: { commission: 1, traLevy: 0, gbtLevy: 0, aggregator: 0 },
-    playerLiability: 0, custodialCash: 1,
+    playerLiability: 0, custodialCash: 1, adjustmentBackedLiability: 0,
   }).source === "ledger",
   "the Selcom float is the only `rail` figure and it is read, never derived");
 

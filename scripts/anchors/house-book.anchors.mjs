@@ -29,8 +29,8 @@ export const MUTATIONS = [
     // Gross float presented as the owner's money — the number insolvency is built from.
     name: "house-book.ts — drop player liability from free cash (float reported as profit)",
     file: "src/lib/house-book.ts",
-    from: `    freeHouseCash: input.custodialCash - input.playerLiability - leviesPayable - aggregator,`,
-    to: `    freeHouseCash: input.custodialCash - leviesPayable - aggregator,`,
+    from: `    freeHouseCash: input.custodialCash - input.playerLiability - owedToOthers,`,
+    to: `    freeHouseCash: input.custodialCash - owedToOthers,`,
     expect: "3.1",
   },
   {
@@ -38,9 +38,28 @@ export const MUTATIONS = [
     // clamping it to zero hides insolvency behind a reassuring floor.
     name: "house-book.ts — clamp free cash at zero (insolvency hidden behind a floor)",
     file: "src/lib/house-book.ts",
-    from: `    freeHouseCash: input.custodialCash - input.playerLiability - leviesPayable - aggregator,`,
-    to: `    freeHouseCash: Math.max(0, input.custodialCash - input.playerLiability - leviesPayable - aggregator),`,
+    from: `    freeHouseCash: input.custodialCash - input.playerLiability - owedToOthers,`,
+    to: `    freeHouseCash: Math.max(0, input.custodialCash - input.playerLiability - owedToOthers),`,
     expect: "3.3",
+  },
+  {
+    // ⭐ THE KIND LIE. Seeded balances made the strict solvency line read −19,555,989 on
+    // production, and the tempting fix is to quietly show the flattering ex-adjustments
+    // figure under the honest label. Both must exist; neither may stand in for the other.
+    name: "house-book.ts — substitute the flattering figure for the strict solvency line",
+    file: "src/lib/house-book.ts",
+    from: `    freeHouseCash: input.custodialCash - input.playerLiability - owedToOthers,`,
+    to: `    freeHouseCash: input.custodialCash - (input.playerLiability - adjusted) - owedToOthers,`,
+    expect: "3b.1",
+  },
+  {
+    // The other direction: collapse the split so the owner can never see WHY the strict line
+    // is negative, leaving a page that cries wolf with no explanation beside it.
+    name: "house-book.ts — collapse the liability split (the alarm loses its explanation)",
+    file: "src/lib/house-book.ts",
+    from: `    playerLiabilityAdjusted: adjusted,`,
+    to: `    playerLiabilityAdjusted: 0,`,
+    expect: "3b.3",
   },
   {
     // A VOID game refunds and books no fee. Dropping its marker makes it indistinguishable

@@ -313,8 +313,37 @@ handoff a fresh session can act on.)*
 
 | Step | State |
 |---|---|
-| 1 · Pure `house-book.ts` + `test:house-book` + `red:house-book` | ☐ |
-| 2 · Ledger-backed DAL (position, earnings, per-game, provenance) | ☐ |
+| 1 · Pure `house-book.ts` + `test:house-book` + `red:house-book` | ☑ `6c591222` |
+| 2 · Ledger-backed DAL (position, earnings, per-game, provenance) | ☑ driven read-only on production |
+
+### ⭐ WHAT DRIVING THE DAL AGAINST THE LIVE DATABASE CHANGED (2026-09-04)
+
+⛔ **`tsc` PROVES NOTHING ABOUT SQL.** Most suites run with no `DATABASE_URL`, so `hasDatabase()`
+is false and the whole Prisma branch never executes — the exact hole a verification defect
+shipped through on 2026-08-28. So every reader was driven **read-only against production**
+(`railway run --service Postgres npx tsx …`), and it found three things no amount of reading
+would have:
+
+1. ⭐ **THE PER-GAME TOTAL CANNOT EQUAL THE HOUSE TOTAL, AND THAT IS CORRECT.** Measured gap:
+   **760**, and it is entirely `WITHDRAWAL_FEE` credited to `HOUSE:COMMISSION` with a **NULL
+   `marketId`** (15 rows). Withdrawal fees are not attributable to any game. ⛔ The BY GAME tab
+   must SAY this, or an owner reconciling the two columns will conclude money is missing.
+2. 🔴 **SEEDED BALANCES MAKE THE STRICT SOLVENCY LINE SCREAM.** Player liability **20,105,687**,
+   of which **`ADJUSTMENT` = 20,600,000**, against real `DEPOSIT` of only **680,000** and
+   custodial cash of **605,110** — so free house cash reads **−19,555,989**. Arithmetically
+   right; as a headline it tells the owner he is insolvent by nineteen million when what he
+   holds is test money. ⛔ **A false alarm is as serious as a missed one** — an owner who learns
+   this line cries wolf stops reading it. `housePosition` now returns **both** the strict line
+   and an ex-adjustments line, plus the liability split. ⛔ Neither may stand in for the other,
+   and two RED anchors enforce exactly that.
+3. ✅ **THE BOOKS ARE INTERNALLY CONSISTENT.** ACTIVE wallets **20,105,687** vs the `PLAYER:`
+   ledger sum **20,105,687** — **difference 0**. Whatever else the page reports, the wallet
+   ledger and the wallet table agree to the shilling.
+
+⚠️ Also measured, so nobody re-derives it: `HOUSE:COMMISSION` **312,099** (already net),
+`TRA` 36,658, `GBT` 18,374, `AGGREGATOR` 380; 588 markets touched money in the last year, 243
+with a booked fee, **345 rows correctly kept as VOID/no-fee**; the waterfall identity closes.
+⚠️ **These are dated readings and they rot — re-derive before quoting any of them.**
 | 3 · Tab 1 POSITION | ☐ |
 | 4 · Tab 2 EARNINGS | ☐ |
 | 5 · Tab 3 BY GAME | ☐ |

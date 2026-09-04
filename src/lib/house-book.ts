@@ -68,8 +68,14 @@ export type HousePosition = {
   aggregatorPayable: number;
   /** Owed to players — Σ ACTIVE wallet balance + hold. */
   playerLiability: number;
+  /** ⚠️ The part of that credited by an ADMIN, with no deposit behind it. */
+  playerLiabilityAdjusted: number;
+  /** The part actually funded by money that came through the payment rail. */
+  playerLiabilityFunded: number;
   /** ⭐ The solvency line: custodial cash minus everything owed to somebody else. */
   freeHouseCash: number;
+  /** ⭐ The same line with admin-credited balances excluded — see `housePosition`. */
+  freeHouseCashExAdjustments: number;
   source: BookSource;
 };
 
@@ -91,9 +97,32 @@ export function housePosition(input: {
   accounts: HouseAccounts;
   playerLiability: number;
   custodialCash: number;
+  /**
+   * ⭐ THE PART OF PLAYER LIABILITY AN ADMIN CREATED — Σ `ADJUSTMENT` credited to players.
+   *
+   * 🔴 MEASURED ON PRODUCTION 2026-09-04, AND IT IS WHY THIS PARAMETER EXISTS. Player
+   * liability was **20,105,687**, of which **ADJUSTMENT accounted for 20,600,000** while real
+   * `DEPOSIT` was only **680,000**. Custodial cash — which counts only money that crossed the
+   * external boundary — was 605,110. So the strict solvency line read **−19,555,989**, and a
+   * page that showed that alone would have told the owner his platform was insolvent by
+   * nineteen million shillings when what it actually held was seeded test balances.
+   *
+   * ⛔ **A FALSE ALARM IS AS SERIOUS AS A MISSED ONE HERE.** An owner who learns the solvency
+   * line cries wolf stops reading it, and then it cannot warn him on the day it matters. So
+   * both figures are produced: the strict one, which is arithmetically correct and never
+   * softened, and the ex-adjustments one, which says what the position would be if only
+   * genuinely funded balances were owed. ⛔ The page shows BOTH, labelled — it must never
+   * quietly substitute the flattering one.
+   */
+  adjustmentBackedLiability: number;
 }): HousePosition {
   const { commission, traLevy, gbtLevy, aggregator } = input.accounts;
   const leviesPayable = traLevy + gbtLevy;
+  const owedToOthers = leviesPayable + aggregator;
+
+  // ⚠️ Clamped at zero: admin credits can exceed the wallet total (a credit later staked and
+  // lost still happened), and a NEGATIVE funded liability is not a thing the owner can act on.
+  const adjusted = Math.max(0, Math.min(input.adjustmentBackedLiability, input.playerLiability));
 
   return {
     // ⛔ NOT `commission - leviesPayable`. See the header: the levies are already out.
@@ -103,7 +132,10 @@ export function housePosition(input: {
     leviesPayable,
     aggregatorPayable: aggregator,
     playerLiability: input.playerLiability,
-    freeHouseCash: input.custodialCash - input.playerLiability - leviesPayable - aggregator,
+    playerLiabilityAdjusted: adjusted,
+    playerLiabilityFunded: input.playerLiability - adjusted,
+    freeHouseCash: input.custodialCash - input.playerLiability - owedToOthers,
+    freeHouseCashExAdjustments: input.custodialCash - (input.playerLiability - adjusted) - owedToOthers,
     source: "ledger",
   };
 }
