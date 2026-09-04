@@ -16,6 +16,8 @@ import { getUpDownConfig, stakeBoundsFor } from "./updown-config";
 // HERE, on the server, because translating a vendor string in the browser still ships the
 // vendor in the RSC payload where View Source finds it.
 import { publicSourceClassFor, type PublicSourceClass } from "./updown-symbols";
+// CHART-SPRINT-2 · the terminal chart's vendor-bars tier (real market OHLC; E-53-safe proxying).
+import { vendorBarsFor, VENDOR_PLAN } from "./updown-terminal-vendor";
 import { ratesFor, listPositionsForUser, listPositionsForMarket, projectedPayout } from "./market-service";
 // 🔴 `pricedYesPct`, NOT `impliedYesPct` — PV-06, 2026-09-03. Two functions answer "what share
 // of the pool is on UP", and they disagree about the only case that matters: `impliedYesPct`
@@ -951,11 +953,15 @@ export async function getMyUpDownHistory(userId: string, limit = 200): Promise<M
 //    a partial candle of real reads is Ali's "what's happening now IS the
 //    last candle", and it is labelled by its own n.
 // A window whose eligible candles cover under half its span degrades to the
-// line form. Store failures PROPAGATE (no catch): a DB blip must reach the
-// route as a 503, never render as a cacheable "no data" (A-5/B-1).
+// line form. Store failures on the SERIES read PROPAGATE (no catch): a DB blip
+// must reach the route as a 503, never render as a cacheable "no data"
+// (A-5/B-1). ⚠️ The ONE deliberate exception: the live-price garnish rides
+// `latestConfirmed`, which degrades to null on failure — an honest-null "no
+// live line" while the series still draws, judged correct because a chart
+// that 503s over its garnish read punishes the working 95%.
 // ═══════════════════════════════════════════════════════════════════════════
 
-export type TerminalRange = "15M" | "30M" | "1H" | "6H" | "12H" | "24H";
+export type TerminalRange = "15M" | "30M" | "1H" | "6H" | "12H" | "24H" | "7D";
 
 const TERMINAL_WINDOWS: Record<TerminalRange, { windowMs: number; wantCandles: boolean }> = {
   // Ali's final ladder (2026-09-04): 15M · 30M · 1H · 6H · 12H · 24H — his 1m/5m
@@ -969,6 +975,7 @@ const TERMINAL_WINDOWS: Record<TerminalRange, { windowMs: number; wantCandles: b
   "6H": { windowMs: 6 * 3600_000, wantCandles: true },
   "12H": { windowMs: 12 * 3600_000, wantCandles: true },
   "24H": { windowMs: 24 * 3600_000, wantCandles: true },
+  "7D": { windowMs: 7 * 24 * 3600_000, wantCandles: true },
 };
 
 /** Candle bucket rungs, minutes — the smallest that fits the cadence wins. */
@@ -979,7 +986,7 @@ const READS_PER_CANDLE = 4;
 const GAP_FACTOR = 2.5;
 
 export type TerminalPoint = { t: number; price: number | null }; // price null = gap marker
-export type TerminalCandle = { t: number; o: number; h: number; l: number; c: number; n: number; forming?: boolean };
+export type TerminalCandle = { t: number; o: number; h: number; l: number; c: number; n?: number; v?: number | null; forming?: boolean };
 export type TerminalSeries =
   | { mode: "line"; points: TerminalPoint[] }
   | { mode: "candles"; candles: TerminalCandle[]; bucketMs: number; gaps: number[] };
@@ -1027,6 +1034,62 @@ export async function getAssetTerminalSeries(
   if (!asset) return null;
 
   const now = Date.now();
+
+  // ── TIER 1 · the vendor's own bars (Ali's full-access grant, 2026-09-04) ──
+  // Real market OHLC(+volume) at the range's native resolution, one credit per
+  // 30s per (asset, range) across all viewers. The MONEY stays untouched: the
+  // gilt live line and every settlement remain the platform's confirmed reads;
+  // these bars are the market context every trading product charts. A vendor
+  // miss falls through to the confirmed-reads tier — never a blank pane.
+  const vendorBars = await vendorBarsFor(
+    { id: asset.id, symbol: asset.symbol, priceSourceUrl: asset.priceSourceUrl },
+    range,
+    process.env.TWELVEDATA_API_KEY,
+  );
+  const liveForBase = await latestConfirmed(asset.id);
+  if (vendorBars && vendorBars.length >= 2) {
+    const plan = VENDOR_PLAN[range];
+    const inWindow = vendorBars.filter((b) => b.t >= now - cfg.windowMs && b.t <= now);
+    if (inWindow.length >= 2) {
+      const vLiveStale = liveForBase?.quotedAt
+        ? now - Date.parse(liveForBase.quotedAt) > Math.max(2.5 * plan.intervalMs, 5 * 60_000)
+        : null;
+      const vBase = {
+        livePrice: liveForBase?.price ?? null,
+        sourceQuotedAt: liveForBase?.quotedAt ?? null,
+        liveStale: vLiveStale,
+        medianDeltaMs: plan.intervalMs,
+        decimals: asset.decimals,
+      };
+      // Missing grid steps between the first and last bar are REAL market
+      // closures or feed holes — reserved as gaps either way (a shut gold
+      // weekend must keep its width, §B12.3's spirit at market scale).
+      const gaps: number[] = [];
+      for (let t = inWindow[0].t + plan.intervalMs; t < inWindow[inWindow.length - 1].t; t += plan.intervalMs) {
+        if (!inWindow.some((b) => b.t === t)) gaps.push(t);
+      }
+      if (style === "line" || (style === "auto" && !cfg.wantCandles)) {
+        const points: TerminalPoint[] = [];
+        for (let i = 0; i < inWindow.length; i++) {
+          if (i > 0 && inWindow[i].t - inWindow[i - 1].t > plan.intervalMs) {
+            for (let k = inWindow[i - 1].t + plan.intervalMs; k < inWindow[i].t; k += plan.intervalMs) {
+              points.push({ t: k, price: null });
+            }
+          }
+          points.push({ t: inWindow[i].t, price: inWindow[i].c });
+        }
+        return { series: { mode: "line", points }, ...vBase };
+      }
+      const formingT = Math.floor(now / plan.intervalMs) * plan.intervalMs;
+      const candles: TerminalCandle[] = inWindow.map((b) => ({
+        t: b.t, o: b.o, h: b.h, l: b.l, c: b.c, v: b.v,
+        ...(b.t === formingT ? { forming: true } : {}),
+      }));
+      return { series: { mode: "candles", candles, bucketMs: plan.intervalMs, gaps }, ...vBase };
+    }
+  }
+
+  // ── TIER 2 · the platform's own confirmed reads (the settlement truth) ────
   const since = new Date(now - cfg.windowMs).toISOString();
   const rows = await observationStore.list({ assetId: asset.id, state: "CONFIRMED", boundaryFrom: since, limit: 1600 });
   const reads = rows
@@ -1035,16 +1098,21 @@ export async function getAssetTerminalSeries(
     .filter((o) => Number.isFinite(o.t))
     .sort((a, b) => a.t - b.t);
 
-  const live = await latestConfirmed(asset.id);
+  const live = liveForBase;
 
   // The window's own cadence — the median inter-read delta. Needs ≥3 reads to
   // mean anything; below that everything degrades to the sparse line.
   const deltas = reads.slice(1).map((r, i) => r.t - reads[i].t).sort((a, b) => a - b);
   const medianDeltaMs = deltas.length >= 2 ? deltas[Math.floor(deltas.length / 2)] : null;
   const gapMs = medianDeltaMs != null ? Math.max(3 * 60_000, GAP_FACTOR * medianDeltaMs) : null;
+  // ⛔ The stale gate must not FAIL OPEN on an unmeasurable window (judge panel,
+  // finance + data lenses): during the first minutes of a real outage a 15M/30M
+  // window can hold 1–2 reads, cadence unmeasurable — exactly when a dead feed
+  // is most likely. With a quote in hand the ABSOLUTE 5-minute floor always
+  // applies; null only when there is no quote at all.
   const liveStale =
-    medianDeltaMs != null && live?.quotedAt
-      ? now - Date.parse(live.quotedAt) > Math.max(GAP_FACTOR * medianDeltaMs, 5 * 60_000)
+    live?.quotedAt != null
+      ? now - Date.parse(live.quotedAt) > Math.max(medianDeltaMs != null ? GAP_FACTOR * medianDeltaMs : 0, 5 * 60_000)
       : null;
 
   const base = {
@@ -1106,7 +1174,15 @@ export async function getAssetTerminalSeries(
 
   // Bucket on ALIGNED boundaries across an ALIGNED window start, so the oldest
   // bucket is never structurally partial (review F10).
-  const windowStart = Math.ceil((now - cfg.windowMs) / bucketMs) * bucketMs;
+  // ⛔ If the row cap truncated the OLDEST edge, tile candles only from the
+  // oldest read actually fetched — otherwise the missing-but-existing early
+  // buckets would render as gap whitespace: a fabricated outage (judge panel,
+  // data lens; reachable at any future sub-54s cadence against the 1600 cap).
+  const capped = rows.length >= 1600 && reads.length > 0;
+  const windowStart = Math.max(
+    Math.ceil((now - cfg.windowMs) / bucketMs) * bucketMs,
+    capped ? Math.ceil(reads[0].t / bucketMs) * bucketMs : -Infinity,
+  );
   const formingBucket = Math.floor(now / bucketMs) * bucketMs;
   const buckets = new Map<number, number[]>();
   for (const r of reads) {

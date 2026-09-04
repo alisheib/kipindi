@@ -504,9 +504,15 @@ been written down, which is exactly how the never-imported `Sparkline` came to c
 
 3. **Honest form — A-5 applied to SHAPE.** A chart renders real points or nothing: no seeded
    walks, no placeholder series, and **no interpolated candles** — OHLC requires observed
-   intra-period highs and lows, and Up & Down observations are single per-minute point
-   reads, so candlesticks are forbidden on those surfaces; the line/area against the open
-   reference is the honest form. Straight segments where each vertex IS an observation
+   intra-period highs and lows, and Up & Down observations are single point reads at chain
+   grid boundaries, so candlesticks are forbidden on the INTRA-ROUND surfaces (the round
+   frame, the detail hero); the line/area against the open reference is their honest form.
+   ⚠️ **Amended 2026-09-04 (with §B12.6, Ali's terminal):** the Up & Down TERMINAL's
+   history ranges may render candles from TWO honest sources only — bucketed OHLC
+   aggregated from ≥floor real point reads (observed extremes of real ticks), or the
+   trusted source's own native OHLC bars fetched server-side; a window meeting neither
+   answers the curve WITH the stated reason. Interpolated or padded candles remain
+   forbidden everywhere. Straight segments where each vertex IS an observation
    (oracle reads, settlements); Catmull-Rom smoothing (chart-core, tension 0.16) only on
    dense event series.
 
@@ -546,7 +552,13 @@ been written down, which is exactly how the never-imported `Sparkline` came to c
    taste: untouched ranges keep their natural default (15M/30M/1H curve · 6H/12H/24H candles), a
    pinned style rules every range, and a window too thin for honest candles answers the
    curve WITH the stated reason (`udNoCandles`) rather than a silently different form.
-   Changing any of this is reversing a dated owner ruling — refuse it by name.
+   **Two rulings added by the judge panel, 2026-09-04:** the history CURVE wears the
+   window's direction (first→last visible read: up = yes family, down = no family, flat =
+   muted — the price-hero's own E-261 grammar; a green curve over a falling window claims
+   "up" on a down answer), and the renderer library's built-in pane attribution link stays
+   ON — its license asks for user-visible attribution, and a licensed money product does
+   not run unlicensed furniture. Changing any of this is reversing a dated owner ruling —
+   refuse it by name.
 
 ---
 

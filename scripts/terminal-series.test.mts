@@ -195,6 +195,18 @@ console.log("\n§9 · a stalled feed is FLAGGED, never dressed as a flat market"
   ok("9.1 liveStale is true when the newest read exceeds the cadence tolerance", r!.liveStale === true, String(r!.liveStale));
 }
 
+console.log("\n§9b · the stale gate must not FAIL OPEN on an unmeasurable window (judge panel)");
+{
+  // Two reads only — cadence unmeasurable — and the newest is 10 minutes old:
+  // the ABSOLUTE 5-minute floor must still flag the feed stale.
+  const a = await seedAsset("tsn");
+  await confirmRead(a, 16 * MIN, 500);
+  await confirmRead(a, 10 * MIN, 501);
+  const r = await getAssetTerminalSeries("tsn", "15M");
+  ok("9b.1 liveStale is true from the absolute floor alone", r!.liveStale === true, String(r!.liveStale));
+  ok("9b.2 …with the cadence honestly unmeasured", r!.medianDeltaMs === null || r!.medianDeltaMs === 6 * MIN);
+}
+
 console.log("\n§10 · the style toggle's contract — the player owns the form, honesty owns the floor");
 {
   // "line" forces the curve even where candles are possible — and claims nothing.

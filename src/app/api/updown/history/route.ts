@@ -19,12 +19,13 @@
  * deliberate flood hits Railway's edge before it hits Postgres. No per-IP
  * limiter here — the board page itself is the heavier read.
  */
+import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getAssetTerminalSeries, type TerminalRange, type TerminalStyle } from "@/lib/server/updown-board";
 
 export const dynamic = "force-dynamic";
 
-const RANGES: TerminalRange[] = ["15M", "30M", "1H", "6H", "12H", "24H"];
+const RANGES: TerminalRange[] = ["15M", "30M", "1H", "6H", "12H", "24H", "7D"];
 const STYLES: TerminalStyle[] = ["auto", "line", "candles"];
 
 export async function GET(req: Request) {
@@ -34,7 +35,7 @@ export async function GET(req: Request) {
   const style = (url.searchParams.get("style") || "auto") as TerminalStyle;
   if (!asset || !RANGES.includes(range) || !STYLES.includes(style)) {
     return NextResponse.json(
-      { error: "asset and range (15M|30M|1H|6H|12H|24H) are required; style is line|candles|auto" },
+      { error: "asset and range (15M|30M|1H|6H|12H|24H|7D) are required; style is line|candles|auto" },
       { status: 400, headers: { "Cache-Control": "no-store" } },
     );
   }
@@ -43,10 +44,17 @@ export async function GET(req: Request) {
     if (!data) {
       return NextResponse.json({ error: "unknown asset" }, { status: 404, headers: { "Cache-Control": "no-store" } });
     }
-    return NextResponse.json(
-      { ...data, serverNow: Date.now() },
-      { headers: { "Cache-Control": "public, s-maxage=10, stale-while-revalidate=20" } },
-    );
+    // Conditional requests (judge panel, data lens): the ETag hashes the DATA
+    // only (serverNow excluded — a timestamp would defeat every match), so an
+    // unchanged window answers 304 through the shared cache instead of
+    // re-shipping ~7–15KB to a phone on a Tanzanian data plan.
+    const body = JSON.stringify(data);
+    const etag = `W/"${createHash("sha1").update(body).digest("base64url").slice(0, 16)}"`;
+    const headers = { "Cache-Control": "public, s-maxage=10, stale-while-revalidate=20", ETag: etag };
+    if (req.headers.get("if-none-match") === etag) {
+      return new NextResponse(null, { status: 304, headers });
+    }
+    return NextResponse.json({ ...data, serverNow: Date.now() }, { headers });
   } catch (err) {
     console.error("[updown/history] read failed", { asset, range, err });
     return NextResponse.json({ error: "temporarily unavailable" }, { status: 503, headers: { "Cache-Control": "no-store" } });

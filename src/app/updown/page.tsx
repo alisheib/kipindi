@@ -161,6 +161,7 @@ export default async function UpDownPage({
           chart={activeAsset != null ? (
             <UpDownChartLab
               assetKey={activeAsset.key}
+              locale={locale}
               labels={{
                 round: t.market.udRangeRound,
                 railAria: t.market.udRangeAria,

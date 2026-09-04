@@ -27,22 +27,25 @@ import { TerminalChart, type TerminalRange, type TerminalStyle } from "./termina
 
 const RANGE_KEY = "kp-updown-range";
 const STYLE_KEY = "kp-updown-style";
-const HISTORY_RANGES: TerminalRange[] = ["15M", "30M", "1H", "6H", "12H", "24H"];
+const HISTORY_RANGES: TerminalRange[] = ["15M", "30M", "1H", "6H", "12H", "24H", "7D"];
 type LabRange = "ROUND" | TerminalRange;
 
 /** Each range's natural default form — overridden the moment the player pins one. */
 const DEFAULT_STYLE: Record<TerminalRange, TerminalStyle> = {
-  "15M": "line", "30M": "line", "1H": "line", "6H": "candles", "12H": "candles", "24H": "candles",
+  "15M": "line", "30M": "line", "1H": "line", "6H": "candles", "12H": "candles", "24H": "candles", "7D": "candles",
 };
 
 export function UpDownChartLab({
   roundView,
   assetKey,
+  locale,
   labels,
 }: {
   /** The server-rendered current-round chart, or null when no round is live. */
   roundView: React.ReactNode | null;
   assetKey: string;
+  /** Platform locale — the chart chrome follows the page, not the browser. */
+  locale: string;
   labels: {
     round: string;
     railAria: string;
@@ -136,6 +139,8 @@ export function UpDownChartLab({
           {ready ? (
             <TerminalChart
               assetKey={assetKey}
+              watermark={assetKey.toUpperCase()}
+              locale={locale}
               range={active as TerminalRange}
               style={effectiveStyle}
               height={tall ? 380 : 300}
