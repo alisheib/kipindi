@@ -339,8 +339,20 @@ handoff a fresh session can act on.)*
    available through this API at all. If Ali wants true bank cash, that is a **separate bank
    integration or a manual reconciliation input**, and it is the one thing this page genuinely
    cannot answer today (§1e).
-2. **Are TRA/GBT levies already remitted, or accruing?** Changes whether they are a *payable* on
-   the balance sheet or an expense already gone.
-3. **Bonus cost** — does the owner want it as a cost line in the waterfall? (It is real money out.)
-4. **Per-player drill-down inside a game** — wanted, or is per-game the floor? ⚠️ Player-level money
-   on an admin screen carries a privacy/data-handling obligation (`docs/DATA-RETENTION.md`).
+2. ✅ **ANSWERED — LEVIES ARE A LIABILITY, AND THE HEADLINE SUBTRACTS THEM.** Ali's call,
+   2026-09-04: TRA/GBT are **money still owed**. So
+   `free house cash = cash held − player liability − levies payable`, and ⛔ **no view may present
+   a figure that includes unremitted levies as the owner's money.** This is the conservative
+   reading and it is deliberate: an owner must never see as theirs money that must still be paid.
+3. ✅ **ANSWERED — PER GAME IS THE FLOOR, AND THERE IS NO PLAYER-LEVEL DRILL-DOWN.** Ali's call:
+   detail stops at the game (pool in · paid out · fee · levies · net kept · rate used). ⛔ **Do NOT
+   render individual player stakes or payouts on this page** — that carries a data-handling duty
+   under `docs/DATA-RETENTION.md`, and the owner did not ask for it. The per-player view already
+   has homes (`/admin/players`, `/admin/transactions`).
+4. ✅ **ANSWERED — ONE COMBINED BOOK, FILTERABLE BY PRODUCT.** Ali's call: polls and Up & Down live
+   in **one** table with a product filter, because *"how much we made"* is one number. ⛔ This makes
+   the `productLine: "ALL"` trap (§8) load-bearing — a money read that defaults to `"MARKET"`
+   silently omits every Up & Down round and understates the total. Per-product subtotals are shown
+   **within** the one book, never as two books the owner must add up.
+5. **Bonus cost** — still open. It is real money out; the default is to show it as its own labelled
+   line in the waterfall, never silently netted into GGR.
