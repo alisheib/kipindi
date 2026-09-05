@@ -200,6 +200,8 @@
     "test:float-guard": "tsx scripts/test-float-guard.test.mts",
     "test:card-deposit": "tsx scripts/card-deposit.test.mts",
     "test:deposit-gate": "tsx scripts/deposit-gate-return.test.mts",
+    "test:kyc-gate": "tsx scripts/kyc-gate.test.mts",
+    "red:kyc-gate": "node scripts/kyc-gate-red.mjs",
     "test:deposit-notifications": "tsx scripts/deposit-notifications.test.mts",
     "test:auth-email-integrity": "tsx scripts/auth-email-integrity.test.mts",
     "test:auth-email": "tsx scripts/auth-email-signin.test.mts",
