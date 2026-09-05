@@ -238,6 +238,117 @@ export async function closeObjectionsForVoidedMarket(
 }
 
 /**
+ * ⭐ THE OFFICER HOLD — freeze one market's payout without holding a stake.
+ *
+ * 🔴 WHY IT DID NOT EXIST, AND WHY IT HAD TO (management ruling ②, 2026-09-05). The
+ * management specification says settlement locks in "unless an official dispute is raised by
+ * an authorized admin". No such mechanism was here. The ONLY thing that freezes `settleMarket`
+ * is an OPEN objection row, and `fileObjection` routes every filer through
+ * `objectionEligibility`, which refuses `NO_POSITION` — so an officer who could see a verdict
+ * was wrong, but held no stake in it, could not stop the payout. Their only instrument was
+ * `emergencyVoidMarket`: refund the entire market, right or wrong. A tool that can only do the
+ * largest possible thing is a tool nobody reaches for in the sixty minutes that matter.
+ *
+ * ⭐ IT REUSES THE FREEZE RATHER THAN INVENTING ONE. This writes exactly the row
+ * `countOpenObjections` already counts and `settleMarket` already refuses on, so there is ONE
+ * settlement freeze on this platform with one definition — not a second `settlementHeldBy`
+ * column that the money path would have to learn about. No schema change, and every existing
+ * proof of the freeze covers this too.
+ *
+ * ⭐ SEPARATION OF DUTIES COMES FREE, AND THAT IS THE REASON FOR THIS SHAPE. The row's `userId`
+ * is the OFFICER who raised it, and both rulings already refuse when `o.userId === officerId`
+ * ("You cannot rule on your own objection"). So the officer who freezes a market structurally
+ * cannot be the one who releases it — a second officer must. That property is inherited, not
+ * re-implemented, which is why it cannot drift away from the player path's version of it.
+ *
+ * ⛔ TWO DELIBERATE DIFFERENCES FROM A PLAYER OBJECTION, both widening:
+ *   1. NO STAKE REQUIRED — the whole point.
+ *   2. NO WINDOW CHECK. A player may not object after `objectionsClosedAt`, because by then
+ *      the money is about to move and a late case cannot be honoured fairly. An officer may
+ *      hold right up to the instant the money actually moves: the settle timer can lag behind
+ *      its deadline (a back-off, a boot grace, a queued burst), and in that gap an officer who
+ *      spots a wrong verdict must be able to stop it. `settledAt` is still an absolute wall —
+ *      once money has moved, a freeze would be theatre.
+ *
+ * ⚠️ It is NOT idempotent by design: a second hold by a DIFFERENT officer on the same market is
+ * a second, independent case, and both must be ruled on before the pool moves. A repeat by the
+ * SAME officer is refused, so a double-click cannot manufacture two.
+ */
+export async function holdSettlementAsOfficer(
+  officerId: string,
+  input: { marketId: string; reason: ObjectionReason; detail: string },
+): Promise<ServiceResult<{ objectionId: string }>> {
+  const detail = (input.detail ?? "").trim().slice(0, DETAIL_MAX);
+  if (detail.length < DETAIL_MIN) {
+    return { ok: false, error: `Record why this payout is being held — at least ${DETAIL_MIN} characters.`, code: "INVALID" };
+  }
+  if (!OBJECTION_REASONS.includes(input.reason)) {
+    return { ok: false, error: "Pick a reason for the hold.", code: "INVALID" };
+  }
+  if (!(await requireRulingOfficer(officerId, "objection.officer_hold"))) {
+    return { ok: false, error: "Forbidden: ADMIN or COMPLIANCE role required to hold a settlement.", code: "INVALID" };
+  }
+
+  // Under the market lock for the same reason `fileObjection` is: without it a hold could be
+  // written against a market that is being paid out in the same instant, and be born moot.
+  return withLock(`market:${input.marketId}`, async (): Promise<ServiceResult<{ objectionId: string }>> => {
+    const m = await getMarket(input.marketId);
+    if (!m) return { ok: false, error: "Market not found.", code: "NOT_FOUND" };
+    if (m.status !== "RESOLVED" && m.status !== "VOIDED") {
+      return { ok: false, error: "Only a market with a recorded verdict can have its payout held.", code: "INVALID" };
+    }
+    if (m.settledAt) {
+      return { ok: false, error: "This market has already paid out — a hold cannot recall money. Use the reversal path.", code: "INVALID" };
+    }
+    const mine = (await db.objection.listForUser(officerId)).filter(
+      (o) => o.marketId === input.marketId && o.status === "OPEN",
+    );
+    if (mine.length > 0) {
+      return { ok: false, error: "You already have a hold open on this market.", code: "INVALID" };
+    }
+
+    const now = new Date().toISOString();
+    const objection: StoredObjection = {
+      id: `obj_${randomId(12)}`,
+      marketId: input.marketId,
+      userId: officerId,
+      reason: input.reason,
+      detail,
+      status: "OPEN",
+      createdAt: now,
+      reviewedBy: null,
+      reviewedAt: null,
+      reviewNote: null,
+      remedy: null,
+      outcomeAtFiling: m.resolvedOutcome,
+    };
+    await db.objection.create(objection);
+
+    audit({
+      category: "COMPLIANCE",
+      action: "objection.officer_hold",
+      actorId: officerId,
+      targetType: "Market",
+      targetId: input.marketId,
+      payload: {
+        objectionId: objection.id,
+        reason: input.reason,
+        outcomeAtFiling: m.resolvedOutcome,
+        objectionsClosedAt: m.objectionsClosedAt,
+        pastWindow: !!m.objectionsClosedAt && Date.now() > Date.parse(m.objectionsClosedAt),
+        effect: "settlement frozen until a DIFFERENT officer rules — the filer cannot release their own hold",
+      },
+    });
+
+    // Every other officer needs to know the pool is frozen and why — the same fan-out a
+    // player objection triggers, so one queue shows both kinds of case.
+    notifyAdminObjectionFiled(objection.id, m.titleEn).catch(() => {});
+
+    return { ok: true, data: { objectionId: objection.id } };
+  });
+}
+
+/**
  * REJECT — the officer has read the case and the verdict stands. This releases
  * the freeze; the market settles on the next sweep (if its window has elapsed).
  * A reason is mandatory: "we looked and you're wrong" must be on the record.
@@ -285,6 +396,26 @@ export async function rejectObjection(
     payload: { objectionId, objectorId: o.userId, reason: o.reason, note: reviewNote, effect: "verdict stands; settlement released" },
   });
   notifyObjectionDecided(o.userId, { upheld: false, marketId: o.marketId, note: reviewNote }).catch(() => {});
+
+  // 🔴 RE-ARM THE SETTLE TIMER — THE REJECT PATH NEVER DID, AND THE UPHOLD PATH ALWAYS HAS.
+  //
+  // Rejecting releases the freeze, but it does not move `objectionsClosedAt`, so this looked
+  // like a case that needed no timer work. It is not. The armed timer already FIRED at the
+  // window and was refused with OBJECTION_OPEN, which re-arms it on the 5-minute back-off
+  // (`SETTLE_RETRY_MS`). So after a rejection the market waits out the remainder of that
+  // back-off instead of paying at once — and the reconciler cannot help, because it skips any
+  // market that already has a live timer.
+  //
+  // ⛔ At a 24-hour window a few minutes was noise. At ONE HOUR it is a material share of the
+  // whole window, on a payout an officer has just explicitly released. One call, mirroring
+  // exactly what the uphold path does and for the same reason.
+  //
+  // ⚠️ Fire-and-forget and outside nothing (this path holds no lock): the ruling is already
+  // written and audited, and a scheduler hiccup must not fail it.
+  {
+    const { armMarket } = await import("./market-scheduler");
+    void armMarket(o.marketId).catch(() => {});
+  }
   return { ok: true };
 }
 
@@ -427,6 +558,23 @@ export async function upholdObjection(
   if (ruling.ok) {
     const { armMarket } = await import("./market-scheduler");
     void armMarket(o.marketId).catch(() => {});
+    // ⭐ AND ON A REVERSE, TELL EVERY BETTOR AGAIN (management ruling ①, 2026-09-05).
+    //
+    // 🔴 A REVERSE IS THE ONE SEAL NOBODY WAS EVER TOLD ABOUT. It flips the verdict and
+    // re-opens a FRESH objection window — deliberately, because the players it now goes
+    // against deserve the same right the original side had. But the only message it sent was
+    // `notifyObjectionDecided` to the OBJECTOR, and it does not even emit `market:resolve`,
+    // so an open page did not refresh either. The side that just lost learned nothing, and
+    // with a one-hour window their new right to object would expire unexercised.
+    //
+    // `reversed: true` so the notice reads "Result corrected", not "Result recorded" — a
+    // player who already had the first notice must be able to tell the second one apart.
+    // ⚠️ A VOID remedy backdates the deadline to a second ago so refunds go out immediately;
+    // there is no window left to announce, and the refund receipt is the honest message.
+    if (input.remedy === "REVERSE") {
+      const { notifyVerdictRecordedForMarket } = await import("./market-service");
+      void notifyVerdictRecordedForMarket(o.marketId, { reversed: true }).catch(() => {});
+    }
   }
   return ruling;
 }

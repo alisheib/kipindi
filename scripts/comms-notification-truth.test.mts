@@ -114,6 +114,13 @@ const EMITTED: { fn: string; row: StoredNotification | null }[] = [
   { fn: "notifyProposalChanges",     row: await N.notifyProposalChanges(U, { titleEn: "A market idea", note: "Name the source" }) },
   { fn: "notifyProposalDeclined",    row: await N.notifyProposalDeclined(U, { titleEn: "A market idea", reason: "Not verifiable" }) },
   { fn: "notifyObjectionDecided",    row: await N.notifyObjectionDecided(U, { upheld: true, marketId: "mkt_10", note: "Result corrected" }) },
+  // The seal-time notice (management ruling ①, 2026-09-05). Driven in BOTH shapes it can take:
+  // a first verdict and a corrected one, because the two say different words in three languages
+  // and §6's money-copy rules must hold for each. `paysFrom` is a formatted instant, never a
+  // number of hours — that is the whole reason this message can be sent about a market sealed
+  // under the old window as well as the new one.
+  { fn: "notifyVerdictRecorded",     row: await N.notifyVerdictRecorded(U, { marketTitle: { en: "Sealed poll", sw: "Kura iliyofungwa", zh: "已封存的投票" }, marketId: "mkt_12", outcome: "YES", paysFrom: "5 Sep 2026, 14:32" }) },
+  { fn: "notifyVerdictRecorded",     row: await N.notifyVerdictRecorded(U, { marketTitle: { en: "Sealed poll", sw: "Kura iliyofungwa", zh: "已封存的投票" }, marketId: "mkt_12", outcome: "NO", paysFrom: "5 Sep 2026, 15:47", reversed: true }) },
   { fn: "notifyAdminKycReview",      row: await N.notifyAdminKycReview("c3_officer", { playerLabel: "Asha M.", userId: U }) },
   { fn: "notifyAdminMarketResolution", row: await N.notifyAdminMarketResolution("c3_officer", { title: "Closed poll", marketId: "mkt_11" }) },
   { fn: "notifyAdminMarketCancelled", row: await N.notifyAdminMarketCancelled("c3_officer", { title: "Cancelled poll", reason: "Source retracted", refundedCount: 3, refundedTzs: 30_000 }) },

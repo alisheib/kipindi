@@ -87,6 +87,104 @@ wake unable to withdraw.
 **Tests:** `test:kyc-gate` (58) + `red:kyc-gate` (6/6, each on its own assertion) ·
 `test:deposit-gate` §C · `test:kyc-approved-copy` §5 (inverted a second time) ·
 `test:failure-reasons` §8c.
+---
+
+## 2026-09-05 · TWO NEW CONTROLS BEFORE THE OBJECTION WINDOW SHORTENS (rulings ① and ②)
+
+Management asked for the post-settlement objection window to fall from **24 hours to 1 hour**.
+That change is a SEPARATE, later entry — it is not made by this one. What is recorded here are
+the two controls built FIRST, because shortening the window without them would have left the
+platform describing a control it no longer had.
+
+⛔ **Do not remove either of these on the grounds that "the window is the control".** The window
+is the *time*; these two are what make it reachable and enforceable inside that time.
+
+### The gap that prompted ruling ① — nobody was ever told a verdict had been recorded
+
+Measured, not assumed. Sealing a market wrote the row, emitted an SSE `market:resolve` for pages
+that happened to be open, and audited. It notified **nobody**. `alertWatchersSettled` fires
+inside `settleMarket`, i.e. *after* the money has moved, and `notify-poller` announces from
+`settledAt` rows only. So a bettor's first word of the result arrived together with the payout —
+one instant after the only window in which an objection can change anything.
+
+At 24 hours a player plausibly opened the app inside the window. At one hour most never will.
+This log cites the objection window as the compensating control for **single-admin resolution**
+and again for **AI auto-resolve**; both citations require that a player can actually reach it.
+
+**Shipped:** `notifyVerdictRecorded` — a bell row and push to every holder of an open position,
+at the moment a verdict is recorded, from all three seal sites: the human seal, the AI auto path,
+and an upheld objection whose remedy is REVERSE.
+
+⭐ **The REVERSE case was the worst of the three and had no message at all.** It flips the verdict
+and re-opens a fresh window — deliberately, so the players it now goes against get the same right
+the original side had — but the only notice it sent went to the *objector*, and it does not even
+emit `market:resolve`. The side that had just lost learned nothing. The notice now says "Result
+corrected" there, so a player who received the first one can tell the second apart.
+
+⛔ **It states a TIME, never a number of hours** — read from that market's own
+`objectionsClosedAt`. A "you have 1 hour" phrasing would be a second definition of
+`objectionWindowHours` living inside a notification, and it would be wrong for every market
+sealed before the window changed, because those keep their original deadline.
+
+⛔ **And it never promises an instant.** "Payout from HH:MM" is a LOWER bound. The settle timer
+fires at that second, but a refused settle backs off five minutes, a deploy adds a boot grace,
+and markets sealed together share one deadline and queue behind the fire gate.
+
+### The gap that prompted ruling ② — the spec described an admin dispute that did not exist
+
+The management specification says settlement locks in *"unless an official dispute is raised by
+an authorized admin"*. **There was no such act.** The only thing that freezes `settleMarket` is
+an OPEN objection row, and filing one required a POSITION in the market (`NO_POSITION`). An
+officer who could see that a verdict was wrong, but held no stake in it, could not stop the
+payout. Their only instrument was `emergencyVoidMarket`: refund the entire market, right or
+wrong. There was nothing between "do nothing" and "unwind everything".
+
+**Shipped:** `holdSettlementAsOfficer`, surfaced as **Hold payout** on `/admin/settlement`.
+
+⭐ **It reuses the existing freeze rather than inventing one.** It writes exactly the row
+`countOpenObjections` already counts and `settleMarket` already refuses on, so this platform
+still has ONE settlement freeze with one definition — not a second column the money path would
+have to learn about. No schema change, and every existing proof of the freeze covers this too.
+
+⭐ **Separation of duties is inherited, not re-implemented.** The row's `userId` is the officer
+who raised it, and both rulings already refuse when the filer is the ruler. So **an officer who
+freezes a market structurally cannot be the one who releases it** — a second officer must. The
+confirm dialog says so before the act, not after it.
+
+⛔ **Two deliberate differences from a player objection, both widening, both recorded here so
+neither is "corrected" later:**
+1. **No stake required** — the whole point.
+2. **No window check.** A player may not object after `objectionsClosedAt`; an officer may hold
+   right up to the instant the money actually moves. The settle timer can lag its own deadline
+   (a five-minute back-off, a boot grace, a queued burst), and in that gap an officer who spots
+   a wrong verdict must still be able to stop it. `settledAt` remains an absolute wall — once
+   money has moved, a freeze would be theatre.
+
+### A defect found and fixed on the way
+
+**A rejected objection never re-armed the settle timer.** Rejecting releases the freeze but does
+not move `objectionsClosedAt`, so it looked like a case needing no timer work. It is not: the
+armed timer had already fired at the window, been refused with `OBJECTION_OPEN`, and re-armed on
+the five-minute back-off — and the reconciler skips any market that already has a live timer. So
+a payout an officer had explicitly released waited out the remainder of that back-off. At 24
+hours that was noise; at one hour it is a material share of the whole window. The uphold path had
+always re-armed; the reject path now does too.
+
+### Proof
+
+`test:settlement-gate` §14 (**142 passed, 0 failed**, +21 assertions) drives the hold end to end:
+a player is refused, an officer with no stake succeeds, the freeze blocks both `settleMarket` and
+the timer sweep, the filer cannot release their own hold, a **different** officer can, the money
+then moves, a settled market cannot be held, a repeat by the same officer is refused, and an
+officer can still hold after the window has closed **while a player in the same market cannot**
+(a positive control in the same run). `red:officer-hold` **5/5** — each of the five design
+decisions is re-injected as its own defect and the gate must go red on that case's own assertion.
+`test:cert-c3` **1,038 passed, 0 failed** with the new notice driven in both shapes it can take.
+
+⚠️ **What is NOT yet done and is coming in the next entry:** the window itself is still 24 hours
+on production. Rulings ③ (AI auto-resolve continues, paying unattended about an hour after the
+event, at any hour) and ④ (Terms §6's source-correction void ground narrows to the configured
+window) are recorded when that change ships.
 
 ---
 

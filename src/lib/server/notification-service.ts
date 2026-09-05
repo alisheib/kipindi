@@ -990,6 +990,81 @@ export function notifyObjectionDecided(userId: string, opts: { upheld: boolean; 
   });
 }
 
+/**
+ * ⭐ THE VERDICT IS IN, AND THE MONEY HAS NOT MOVED YET — the notice that makes the
+ * objection window a right a player can actually exercise.
+ *
+ * 🔴 WHY THIS EXISTS (management ruling ①, 2026-09-05). Until this function, 50pick told a
+ * bettor NOTHING when an officer — or the AI — recorded a verdict on their market. The only
+ * seal-time surface was the market page itself: `resolveMarket` writes the row, emits an SSE
+ * `market:resolve` for pages that happen to be open, and audits; `alertWatchersSettled` runs
+ * inside `settleMarket`, i.e. AFTER the money has already moved; and `notify-poller` announces
+ * from `settledAt` rows only. So the player learned the result at the same instant they learned
+ * they had been paid — which is one instant too late to object.
+ *
+ * ⛔ THAT WAS SURVIVABLE AT 24 HOURS AND IS NOT AT ONE. With a day-long window a player
+ * plausibly opened the app inside it. With a one-hour window most never will. The platform
+ * describes the objection window to the Gaming Board as a real control (COMPLIANCE-DECISIONS,
+ * single-admin resolution and AI auto-resolve both cite it); a control nobody is told about is
+ * a control on paper. This notice is what keeps that description true at one hour.
+ *
+ * ⛔ IT STATES A TIME, NEVER A NUMBER OF HOURS. The caller passes the market's own
+ * `objectionsClosedAt`, already formatted. A "you have 1 hour" phrasing would be a second
+ * definition of `objectionWindowHours` living in a notification — the defect RULES.md §5 and
+ * `test:rate-copy` exist to prevent — and it would be wrong for any market sealed before the
+ * window changed, which keeps its original deadline.
+ *
+ * ⛔ AND IT NEVER PROMISES AN INSTANT. "Payout from" is a LOWER bound: the settle timer fires
+ * at that second, but a refused settle backs off five minutes, a deploy adds a boot grace, and
+ * a burst of shared deadlines queues behind the fire gate. "Pays at 14:32" would be a confident
+ * wrong number on a money surface — the same class of defect as the stale projection the
+ * positions card was fixed for.
+ *
+ * The `outcome` is READ from the stored verdict, never inferred (law 25 / `test:outcome`), and
+ * each language takes its own word from the one lexicon — the §L3 rule that stopped `YES` being
+ * interpolated into a Swahili sentence.
+ */
+export function notifyVerdictRecorded(userId: string, opts: {
+  marketTitle: LocalizedText;
+  marketId: string;
+  outcome: StoredOutcome;
+  /** The market's own `objectionsClosedAt`, pre-formatted by the caller. */
+  paysFrom: string;
+  /** True when this verdict REPLACED an earlier one (an upheld objection, remedy REVERSE). */
+  reversed?: boolean;
+}) {
+  const isVoid = opts.outcome === "VOID";
+  const word = {
+    en: outcomeWordIn("en", opts.outcome, "MARKET"),
+    sw: outcomeWordIn("sw", opts.outcome, "MARKET"),
+    zh: outcomeWordIn("zh", opts.outcome, "MARKET"),
+  };
+  // A VOID refunds every stake, so "result recorded: VOID" would read as an outcome someone
+  // won on. It gets its own sentence — §C4: a refund is neutral, never an error treatment.
+  const titleEn = isVoid
+    ? "Market voided · every stake is refunded"
+    : opts.reversed ? `Result corrected: ${word.en}` : `Result recorded: ${word.en}`;
+  const titleSw = isVoid
+    ? "Soko limebatilishwa · kila dau linarejeshwa"
+    : opts.reversed ? `Matokeo yamerekebishwa: ${word.sw}` : `Matokeo yamerekodiwa: ${word.sw}`;
+  const titleZh = isVoid
+    ? "市场已作废 · 每一笔投注均全额退还"
+    : opts.reversed ? `结果已更正：${word.zh}` : `结果已记录：${word.zh}`;
+
+  const title = opts.marketTitle;
+  return notify({
+    userId,
+    kind: "VERDICT",
+    titleEn,
+    titleSw,
+    titleZh,
+    bodyEn: `${title.en.slice(0, 60)} · No money has moved yet. Payout from ${opts.paysFrom} — if you think this result is wrong, object before then.`,
+    bodySw: `${title.sw.slice(0, 60)} · Hakuna fedha iliyohamishwa bado. Malipo kuanzia ${opts.paysFrom} — kama unaamini matokeo haya si sahihi, pinga kabla ya muda huo.`,
+    bodyZh: `${title.zh.slice(0, 45)} · 尚未有任何资金转移。赔付不早于 ${opts.paysFrom} — 若您认为该结果有误，请在此之前提出异议。`,
+    href: `/markets/${opts.marketId}`,
+  });
+}
+
 /** In-app alert to an officer that a NEW proposal is awaiting review. Lands in
  *  the main admin bell and deep-links to the proposals review console. */
 export function notifyAdminProposalReview(adminUserId: string, opts: { proposerLabel: string; titleEn: string; proposalId: string }) {

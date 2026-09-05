@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { softRequireStaff } from "@/lib/server/rbac-guard";
 import { settleMarket } from "@/lib/server/market-service";
+import { holdSettlementAsOfficer, OBJECTION_REASONS } from "@/lib/server/objections-service";
+import type { ObjectionReason } from "@/lib/server/store";
 import { formatTzs } from "@/lib/utils";
 
 /**
@@ -67,5 +69,58 @@ export async function settleMarketAction(formData: FormData): Promise<{ ok: true
   return {
     ok: true,
     detail: `${r.data!.positionsSettled} position${r.data!.positionsSettled === 1 ? "" : "s"} settled · ${formatTzs(r.data!.winnersPaid)} paid to winners`,
+  };
+}
+
+/**
+ * OFFICER HOLD — stop one market's payout, without holding a stake in it.
+ *
+ * ⛔ THE SPEC SAID THIS EXISTED AND IT DID NOT (management ruling ②, 2026-09-05). The only
+ * thing that has ever frozen `settleMarket` is an OPEN objection row, and filing one required
+ * a POSITION in the market. So an officer who could see a verdict was wrong had exactly one
+ * instrument — `emergencyVoidMarket`, which refunds the entire market — and nothing between
+ * "do nothing" and "unwind everything".
+ *
+ * ⭐ WHY THIS ACTION IS THIN. The service does the deciding: role, market state, the
+ * already-settled wall, the one-hold-per-officer rule, the audit row and the officer fan-out
+ * all live in `holdSettlementAsOfficer`, gated at the SERVICE layer the way every money act on
+ * this platform is. This action's whole job is to carry the form across and revalidate. A
+ * route guard protects one door; the service guard protects the act.
+ *
+ * ⚠️ `accounting` is the domain, matching `settleMarketAction` above: holding a payout and
+ * releasing one are two halves of the same authority, and an officer who may pay a market must
+ * be able to stop it. The service additionally requires a MONEY role (ADMIN / COMPLIANCE), so
+ * the narrower of the two wins.
+ */
+export async function holdSettlementAction(formData: FormData): Promise<{ ok: true; detail: string } | { ok: false; error: string }> {
+  const session = await softRequireStaff("accounting", "holdSettlement",
+    "Forbidden: holding a payout is a money act — accounting access is required.");
+  if (!session.ok) return { ok: false, error: session.error };
+
+  const marketId = String(formData.get("marketId") ?? "");
+  if (!marketId) return { ok: false, error: "Missing market id." };
+  const rawReason = String(formData.get("reason") ?? "");
+  // Narrowed against the service's own list rather than cast — an unknown reason must be a
+  // refusal here, not a string that reaches the stored row and reads as a category later.
+  if (!(OBJECTION_REASONS as readonly string[]).includes(rawReason)) {
+    return { ok: false, error: "Pick a reason for the hold." };
+  }
+  const detail = String(formData.get("detail") ?? "");
+
+  const r = await holdSettlementAsOfficer(session.userId, {
+    marketId,
+    reason: rawReason as ObjectionReason,
+    detail,
+  });
+  if (!r.ok) return { ok: false, error: r.error };
+
+  revalidatePath("/admin/settlement");
+  revalidatePath("/admin/objections");
+  revalidatePath("/admin/system");
+  return {
+    ok: true,
+    // ⛔ States the consequence the officer most needs to know and is most likely to assume
+    // otherwise: they cannot lift this themselves.
+    detail: "Payout frozen. A different officer must review and release it before this market can pay.",
   };
 }

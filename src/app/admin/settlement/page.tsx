@@ -7,6 +7,7 @@ import { I } from "@/components/ui/glyphs";
 import { listSettlementQueue, getSettlementHealth } from "@/lib/server/market-service";
 import { formatTzs, formatDateTime } from "@/lib/utils";
 import { SettleButton } from "./settle-button";
+import { HoldButton } from "./hold-button";
 import Link from "next/link";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
@@ -130,13 +131,25 @@ export default async function AdminSettlementPage({ searchParams }: { searchPara
                       </td>
                       <td>
                         {r.state === "READY" ? (
-                          <SettleButton
-                            marketId={r.id}
-                            title={r.titleEn}
-                            pool={r.pool}
-                            positions={r.positions}
-                            outcome={r.outcome}
-                          />
+                          // Pay it, or stop it. Both are available on a market that is due:
+                          // "ready" only means the clock has run out, not that anyone has
+                          // looked at the verdict.
+                          <div className="flex flex-wrap items-center gap-[8px]">
+                            <SettleButton
+                              marketId={r.id}
+                              title={r.titleEn}
+                              pool={r.pool}
+                              positions={r.positions}
+                              outcome={r.outcome}
+                            />
+                            <HoldButton
+                              marketId={r.id}
+                              title={r.titleEn}
+                              pool={r.pool}
+                              positions={r.positions}
+                              outcome={r.outcome}
+                            />
+                          </div>
                         ) : r.state === "FROZEN" ? (
                           <Link
                             href={"/admin/objections" as never}
@@ -145,9 +158,23 @@ export default async function AdminSettlementPage({ searchParams }: { searchPara
                             Rule on it
                           </Link>
                         ) : (
-                          <span className="font-mono text-[10.5px] text-text-subtle">
-                            Too early — window open
-                          </span>
+                          // ⭐ THE HOLD BELONGS HERE MOST OF ALL. This row's window is still
+                          // open, which is exactly when an officer who spots a bad verdict can
+                          // still act cheaply — before the timer fires and the money is gone.
+                          // With a one-hour window that gap is short, so the control must be on
+                          // the screen rather than a page away.
+                          <div className="flex flex-wrap items-center gap-[8px]">
+                            <span className="font-mono text-[10.5px] text-text-subtle">
+                              Too early — window open
+                            </span>
+                            <HoldButton
+                              marketId={r.id}
+                              title={r.titleEn}
+                              pool={r.pool}
+                              positions={r.positions}
+                              outcome={r.outcome}
+                            />
+                          </div>
                         )}
                       </td>
                     </tr>

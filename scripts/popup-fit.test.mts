@@ -74,9 +74,13 @@ const popups = all.filter((f) => IS_POPUP.test(code(f)));
  */
 // ⚠️ 56, NOT 58 — AND THE GUARD CORRECTED ME. A plain grep counted 58 because two files
 // only MENTION a popup primitive in a comment. The code-stripped detector is the honest number.
-const POPUPS_EXPECTED = 56;
+// +1, 2026-09-05: `src/app/admin/settlement/hold-button.tsx` — the officer hold's confirm
+// (management ruling ②). Its copy is whole: no `truncate`, no `line-clamp`, and the sentence
+// that matters most in it ("you will not be able to release it yourself") is a full paragraph
+// rather than a clipped line, so it is NOT on the CLIP_DEBT list below.
+const POPUPS_EXPECTED = 57;
 ok(`1.1 ⛔ RATCHET · ${popups.length} popup/warning components found, and the reviewed count is ${POPUPS_EXPECTED}`,
-   popups.length === POPUPS_EXPECTED, popups.length > POPUPS_EXPECTED ? `new: ${popups.filter((f) => !f.includes("node_modules")).slice(-3).join(" · ")}` : "");
+   popups.length === POPUPS_EXPECTED, popups.length > POPUPS_EXPECTED ? `${popups.length - POPUPS_EXPECTED} more than expected — the tail of the sorted population is: ${popups.slice(-3).join(" · ")}. The walk cannot name WHICH is new (there is no stored list), so diff against the previous commit.` : "");
 // ⭐ POSITIVE CONTROL · a walk that found nothing would satisfy every check below.
 ok("1.2 ⭐ POSITIVE CONTROL · the walk really found the kit's own popup primitives and the ones this session touched",
    popups.includes("src/components/markets/bet-confirm-modal.tsx")

@@ -304,7 +304,14 @@ export type StoredNotification = {
     /** F3 — a market on the player's watchlist closed soon / settled. */
     | "WATCHLIST"
     /** F11 — a player disputed a verdict, or an officer ruled on their dispute. */
-    | "OBJECTION";
+    | "OBJECTION"
+    /**
+     * A verdict was RECORDED and the money has not moved yet (management ruling ①,
+     * 2026-09-05). Deliberately not `WIN`/`LOSS`: nobody has been paid, and the same
+     * message goes to both sides of the market. Deliberately not `SELECTION_CLOSED`:
+     * that is the earlier event, when betting shut and the pools froze.
+     */
+    | "VERDICT";
   titleEn: string;
   titleSw: string;
   titleZh?: string | null;

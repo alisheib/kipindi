@@ -34,13 +34,16 @@ import { marketStore, positionStore } from "../src/lib/server/market-dal.ts";
 import {
   createMarket, buyPosition, getMarket, resolveMarket, settleMarket,
   emergencyVoidMarket, getSettlementHealth, listSettlementQueue,
+  // §15 calls the fan-out directly for its negative control; its positive assertions read the
+  // rows the SEAL itself produced, which is the half `test:cert-c3` structurally cannot cover.
+  notifyVerdictRecordedForMarket,
 } from "../src/lib/server/market-service.ts";
 import {
   runDueMarketTransitions, armMarket, getSchedulerHealth,
 } from "../src/lib/server/market-scheduler.ts";
 import {
   fileObjection, upholdObjection, rejectObjection,
-  countOpenObjections, objectionEligibility,
+  countOpenObjections, objectionEligibility, holdSettlementAsOfficer,
 } from "../src/lib/server/objections-service.ts";
 import { getGlobalConfig } from "../src/lib/server/market-config.ts";
 import { setRequireTwoOfficerResolution } from "../src/lib/server/resolution-policy.ts";
@@ -726,6 +729,203 @@ async function closeWindow(mid: string): Promise<void> {
   const fired = await runDueMarketTransitions();
   ok("13: single-admin market settles via the same timer path once its window closes",
      (await bal("g13_win")) > cBefore, `delta=${(await bal("g13_win")) - cBefore} ${JSON.stringify(fired)}`);
+}
+
+
+// === 14 · THE OFFICER HOLD — a payout can be stopped by someone with no stake ===
+//
+// Management ruling ② of 2026-09-05. The specification says settlement locks in "unless an
+// official dispute is raised by an authorized admin", and until this section there was no such
+// act: only a STAKEHOLDER could freeze a payout, so an officer who could see that a verdict was
+// wrong had emergencyVoidMarket — refund the whole market — or nothing at all.
+//
+// Every assertion here is about the SAME freeze the player path uses. That is the point: if the
+// hold wrote its own kind of freeze, settleMarket would have to learn a second rule, and the
+// two would drift. The separation-of-duties property is likewise inherited rather than rebuilt —
+// the row's userId is the officer, so the existing self-review block does the work.
+{
+  const mid = await makeMarket();
+  await fundedUser("g14_win");
+  await fundedUser("g14_lose");
+  await buyPosition("g14_win", { marketId: mid, side: "YES", stake: 10_000 });
+  await buyPosition("g14_lose", { marketId: mid, side: "NO", stake: 10_000 });
+  await adjudicate(mid, "YES");
+
+  // A second officer, so separation of duties is EXERCISED rather than asserted.
+  await fundedUser("g14_officer2", 0);
+  await db.user.update("g14_officer2", { role: "ADMIN" });
+  // And a non-officer, to prove the role gate is real.
+  await fundedUser("g14_player", 0);
+
+  // ── the gate: only a money role may hold ──
+  const denied = await holdSettlementAsOfficer("g14_player", {
+    marketId: mid, reason: "OTHER", detail: "I would like to stop this payout please.",
+  });
+  ok("14: a player cannot hold a settlement", !denied.ok, JSON.stringify(denied));
+  ok("14: …and the refusal froze nothing", (await countOpenObjections(mid)) === 0);
+
+  // ── the officer holds, WITHOUT any position in the market ──
+  const holds = (await positionStore.listForMarket(mid)).some((p) => p.userId === "gate_officer");
+  ok("14: CONTROL · the officer holds no position in this market", !holds);
+  const held = await holdSettlementAsOfficer("gate_officer", {
+    marketId: mid, reason: "SOURCE_CONTRADICTS",
+    detail: "The cited source was updated after the seal and now reports NO. Holding pending review.",
+  });
+  ok("14: an officer with no stake CAN hold the payout", held.ok, JSON.stringify(held));
+  ok("14: the hold is counted as an open objection", (await countOpenObjections(mid)) === 1);
+
+  // ── the hold is a real settlement freeze, on the same gate ──
+  await closeWindow(mid);
+  const winBefore = await bal("g14_win");
+  const blocked = await settleMarket(mid);
+  ok("14: settlement is FROZEN by the officer hold", !blocked.ok && blocked.code === "OBJECTION_OPEN", JSON.stringify(blocked));
+  const swept = await runDueMarketTransitions();
+  ok("14: the timer will not settle a held market", swept.ran === 0, JSON.stringify(swept));
+  ok("14: money is still in the pool", (await bal("g14_win")) === winBefore);
+
+  // ── separation of duties: the filer cannot release their own hold ──
+  const objId = (await db.objection.listForMarket(mid)).find((o) => o.status === "OPEN")!.id;
+  const selfRelease = await rejectObjection(objId, "gate_officer", "On reflection the source was fine.");
+  ok("14: the SAME officer cannot release their own hold", !selfRelease.ok && selfRelease.code === "CONFLICT",
+     JSON.stringify(selfRelease));
+  ok("14: …so the market is still frozen", (await countOpenObjections(mid)) === 1);
+
+  // ── a DIFFERENT officer can, and the money then moves ──
+  const release = await rejectObjection(objId, "g14_officer2",
+    "Re-read the source with the compliance lead: it does report YES. Releasing the hold.");
+  ok("14: a DIFFERENT officer can release the hold", release.ok, JSON.stringify(release));
+  ok("14: no open objections remain", (await countOpenObjections(mid)) === 0);
+  const after = await runDueMarketTransitions();
+  ok("14: the market settles once the hold is released", after.ran === 1, JSON.stringify(after));
+  ok("14: the winner is paid", (await bal("g14_win")) > winBefore);
+
+  // ── a hold cannot recall money that has already moved ──
+  const late = await holdSettlementAsOfficer("g14_officer2", {
+    marketId: mid, reason: "WRONG_OUTCOME", detail: "Trying to hold a market that has already paid out.",
+  });
+  ok("14: a settled market cannot be held", !late.ok, JSON.stringify(late));
+
+  // ── a double-click by the same officer is one case, not two ──
+  const mid2 = await makeMarket();
+  await fundedUser("g14_b");
+  await buyPosition("g14_b", { marketId: mid2, side: "YES", stake: 5_000 });
+  await adjudicate(mid2, "YES");
+  const h1 = await holdSettlementAsOfficer("gate_officer", { marketId: mid2, reason: "OTHER", detail: "Holding this one for review." });
+  const h2 = await holdSettlementAsOfficer("gate_officer", { marketId: mid2, reason: "OTHER", detail: "Holding this one for review." });
+  ok("14: the first hold is accepted", h1.ok, JSON.stringify(h1));
+  ok("14: a repeat by the SAME officer is refused", !h2.ok, JSON.stringify(h2));
+  ok("14: …and there is exactly one freeze on the market", (await countOpenObjections(mid2)) === 1);
+
+  // ── an officer may hold AFTER the window has closed; a player may not ──
+  // The settle timer can lag its own deadline (a five-minute back-off, a boot grace, a queued
+  // burst). A player is out of time by then; an officer is not, until the money actually moves.
+  await closeWindow(mid2);
+  const elig = await objectionEligibility("g14_b", mid2);
+  ok("14: CONTROL · a player is out of time once the window closes",
+     !elig.eligible && elig.why === "WINDOW_CLOSED", JSON.stringify(elig));
+  const lateHold = await holdSettlementAsOfficer("g14_officer2", {
+    marketId: mid2, reason: "RESOLVED_EARLY", detail: "Spotted after the window closed but before the money moved.",
+  });
+  ok("14: an officer CAN still hold after the window closes", lateHold.ok, JSON.stringify(lateHold));
+  ok("14: …and both freezes stand", (await countOpenObjections(mid2)) === 2);
+}
+
+
+// === 15 · THE SEAL NOTICE — the bettors are actually told, on a real seal ===
+//
+// Management ruling ① of 2026-09-05. §14 proves an officer can stop a payout; this proves the
+// PLAYER is given the chance to ask for one.
+//
+// ⛔ WHY THIS SECTION EXISTS SEPARATELY FROM `test:cert-c3`. That suite proves the MESSAGE is
+// well-formed — three locales, money copy, no euphemism — by calling the emitter directly. It
+// cannot prove anything CALLS it. That is the exact shape of the defect this repo has already
+// paid for: `PRESENCE-2` shipped a routing law whose only caller was its own test file, so a
+// player saw no change whatsoever while every gate stayed green. A notice nobody sends is
+// indistinguishable, from the gates' side, from a notice that works.
+{
+  const mid = await makeMarket();
+  await fundedUser("g15_a");
+  await fundedUser("g15_b");
+  await fundedUser("g15_bystander", 0);
+  // Two positions for ONE player, so the dedupe is exercised rather than assumed.
+  await buyPosition("g15_a", { marketId: mid, side: "YES", stake: 4_000 });
+  await buyPosition("g15_a", { marketId: mid, side: "YES", stake: 3_000 });
+  await buyPosition("g15_b", { marketId: mid, side: "NO", stake: 5_000 });
+
+  const verdictRows = async (uid: string) =>
+    (await db.notification.findByUser(uid, 200)).filter((n) => n.kind === "VERDICT");
+
+  ok("15: CONTROL · nobody has a verdict notice before the seal",
+     (await verdictRows("g15_a")).length === 0 && (await verdictRows("g15_b")).length === 0);
+
+  await adjudicate(mid, "YES");
+  // The emitters are fire-and-forget on the seal path (a notification failure must never fail a
+  // ruling that is already recorded), so let the microtask queue drain before reading.
+  await new Promise((r) => setTimeout(r, 50));
+
+  const aRows = await verdictRows("g15_a");
+  const bRows = await verdictRows("g15_b");
+  ok("15: the WINNING side is told a verdict was recorded", aRows.length === 1, `${aRows.length} rows`);
+  // ⭐ THE LOSING SIDE IS THE WHOLE POINT. They are the ones with a reason to object, and they
+  // are the ones a 24-hour window used to reach by accident and a one-hour window will not.
+  ok("15: the LOSING side is told too", bRows.length === 1, `${bRows.length} rows`);
+  ok("15: two positions for one player produce ONE notice, not two", aRows.length === 1);
+  ok("15: a bystander who never staked is not told", (await verdictRows("g15_bystander")).length === 0);
+
+  // ⛔ THE MONEY HAS NOT MOVED. If this ever fails, the notice is arriving after the payout and
+  // the window it names has already closed — which is the defect the whole ruling is about.
+  ok("15: …and the notice arrives while the pool is still whole",
+     (await getMarket(mid))!.settledAt === null);
+
+  const body = aRows[0]!.bodyEn;
+  ok("15: it names the market's own payout time, not a number of hours",
+     body.includes("Payout from") && !/\b\d+\s*-?\s*hours?\b/i.test(body), body.slice(0, 140));
+  ok("15: it says plainly that no money has moved yet", body.includes("No money has moved yet"), body.slice(0, 140));
+  ok("15: it is a money-kind row, so it lands in the player's money lens", aRows[0]!.kind === "VERDICT");
+  ok("15: it deep-links to the market, where the objection control lives",
+     aRows[0]!.href === `/markets/${mid}`, String(aRows[0]!.href));
+
+  // ── the notice is NOT sent when there is nothing true to say ──
+  //
+  // ⛔ THREE CONTROLS, NOT ONE, AND THE RED HARNESS IS WHY. The first draft had only the
+  // plain unsealed market below — and `red:officer-hold` proved that control could not fail:
+  // an unsealed market trips BOTH refusals (no outcome AND no deadline), so removing either
+  // one left the suite green and the control certified nothing. A check that passes whichever
+  // guard you delete is a check that is not reading either of them.
+  //
+  // The two states below are unreachable through any normal path — the seal stamps the verdict
+  // and the deadline in one write — so they are constructed deliberately. That is the point:
+  // each isolates ONE refusal so a mutation to it has somewhere to show up.
+  const quiet = await makeMarket();
+  await fundedUser("g15_c");
+  await buyPosition("g15_c", { marketId: quiet, side: "YES", stake: 1_000 });
+  const before = (await verdictRows("g15_c")).length;
+  await notifyVerdictRecordedForMarket(quiet);
+  ok("15: CONTROL · an UNSEALED market produces no notice (no verdict to report)",
+     (await verdictRows("g15_c")).length === before);
+
+  // A verdict with NO deadline — isolates the deadline refusal. Without it the notice would
+  // reach a player promising a payout time built from `null`.
+  const noDeadline = await makeMarket();
+  await fundedUser("g15_d");
+  await buyPosition("g15_d", { marketId: noDeadline, side: "YES", stake: 1_000 });
+  await marketStore.stamp(noDeadline, { status: "RESOLVED", resolvedOutcome: "YES", objectionsClosedAt: null });
+  await notifyVerdictRecordedForMarket(noDeadline);
+  ok("15: CONTROL · a verdict with no payout deadline sends nothing (isolates the deadline guard)",
+     (await verdictRows("g15_d")).length === 0);
+
+  // A deadline with NO verdict — isolates the outcome refusal (law 25: a side is read, never
+  // inferred, so a notice naming an outcome we do not hold must not be sent).
+  const noOutcome = await makeMarket();
+  await fundedUser("g15_e");
+  await buyPosition("g15_e", { marketId: noOutcome, side: "YES", stake: 1_000 });
+  await marketStore.stamp(noOutcome, {
+    status: "RESOLVED", resolvedOutcome: null,
+    objectionsClosedAt: new Date(Date.now() + 3600_000).toISOString(),
+  });
+  await notifyVerdictRecordedForMarket(noOutcome);
+  ok("15: CONTROL · a deadline with no recorded verdict sends nothing (isolates the outcome guard)",
+     (await verdictRows("g15_e")).length === 0);
 }
 
 console.log(`\nsettlement-gate: ${pass} passed, ${fail} failed`);

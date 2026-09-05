@@ -43,7 +43,9 @@ import { notifyBetPlaced, notifyWin, notifyLoss, notifyRefund, notifyCashout, no
   // Up & Down per-round result rows (owner decision 2026-08-22 — see the block above
   // `notifyUpDownWin`). These REPLACE the four `pushOnly` result calls: they write the bell
   // row AND push it, from one copy, so the two channels can no longer disagree.
-  notifyUpDownWin, notifyUpDownLoss, notifyUpDownRefund, notifyUpDownOneSidedRefund } from "./notification-service";
+  notifyUpDownWin, notifyUpDownLoss, notifyUpDownRefund, notifyUpDownOneSidedRefund,
+  // Management ruling ① (2026-09-05) — the seal-time notice that makes the objection window reachable.
+  notifyVerdictRecorded } from "./notification-service";
 import { sendEmailToUser, betPlacedHtml, winNotificationHtml, lossNotificationHtml, cashOutReceiptHtml, oneSidedRefundHtml, marketResolutionAdminHtml, marketCancelledRefundHtml, marketCancelledAdminHtml, bonusFulfilledHtml, selectionClosedHtml } from "./email";
 import { onRecruitBet, onRecruitSettlement } from "./affiliate-service";
 import { postLedgerEntries, stakeEntries, settlementPayoutEntries, refundEntries, cashoutEntries, withMoneyTx } from "./ledger";
@@ -1888,6 +1890,63 @@ export async function notifySelectionClosedForMarket(marketId: string): Promise<
   return { notified: true, bettors: bettorsNotified };
 }
 
+/**
+ * ⭐ TELL EVERY BETTOR A VERDICT HAS BEEN RECORDED — while the pool is still whole.
+ *
+ * 🔴 THE GAP THIS CLOSES (management ruling ①, 2026-09-05). Sealing a market wrote the row,
+ * emitted an SSE event for pages that happened to be open, and audited. It notified NOBODY.
+ * `alertWatchersSettled` fires inside `settleMarket`, i.e. after the money has moved, and
+ * `notify-poller` announces from `settledAt` rows only — so a bettor's first word of the result
+ * arrived together with the payout. The objection window sat between those two moments and no
+ * player was ever told it had opened.
+ *
+ * ⛔ AT ONE HOUR THAT IS THE DIFFERENCE BETWEEN A CONTROL AND A CLAIM. `COMPLIANCE-DECISIONS`
+ * cites this window as the compensating control for single-admin resolution AND for AI
+ * auto-resolve. Both citations require that a player can actually reach it.
+ *
+ * ⚠️ BEST-EFFORT AND NON-BLOCKING, LIKE EVERY OTHER EMITTER ON A SEAL PATH. A notification
+ * failure must never fail a ruling that has already been recorded and audited — so every send
+ * swallows its own error and the caller does not await this. It is deliberately NOT stamped
+ * idempotent on the market row: the three call sites are each already inside the market lock's
+ * one-transition guarantee (`resolutionNotifiedAt`, the two-stage seal, and a ruling that can
+ * only fire once), and a REVERSE must be allowed to notify a SECOND time — that is the whole
+ * point of it, because the verdict changed under the players it now goes against.
+ */
+export async function notifyVerdictRecordedForMarket(
+  marketId: string,
+  opts?: { reversed?: boolean },
+): Promise<{ bettors: number }> {
+  const m = await marketStore.get(marketId);
+  // Demo markets auto-resolve the instant they expire, so "object before 14:32" would be
+  // contradicted by the receipt arriving in the same second — the same exclusion
+  // `notifySelectionClosedForMarket` makes, for the same reason.
+  if (!m || isDemoMarket(m)) return { bettors: 0 };
+  const outcome = m.resolvedOutcome;
+  // Law 25 / `test:outcome`: a side is READ or it is not shown. A verdict notice with no
+  // recorded verdict is not a message we can make true, so it is not sent.
+  if (outcome !== "YES" && outcome !== "NO" && outcome !== "VOID") return { bettors: 0 };
+  // ⛔ The deadline comes off the MARKET's own row, never from live config. A market sealed
+  // before the window changed keeps its original deadline, and this notice must state that
+  // market's deadline — not today's setting.
+  if (!m.objectionsClosedAt) return { bettors: 0 };
+  const paysFrom = formatDateTime(m.objectionsClosedAt);
+
+  const open = (await listPositionsForMarket(marketId)).filter((p) => p.status === "OPEN");
+  // One message per PLAYER, not per position — a hedged holder with six positions on one
+  // market gets one notice about one verdict.
+  const bettors = Array.from(new Set(open.map((p) => p.userId)));
+  for (const userId of bettors) {
+    notifyVerdictRecorded(userId, {
+      marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh),
+      marketId: m.id,
+      outcome,
+      paysFrom,
+      reversed: opts?.reversed === true,
+    }).catch(() => {});
+  }
+  return { bettors: bettors.length };
+}
+
 /** How far ahead of close we nudge watchers. */
 const CLOSING_SOON_WINDOW_MS = 60 * 60_000; // 1 hour
 
@@ -2335,6 +2394,11 @@ export async function resolveDueMarket(
       },
     });
     emit("market:resolve", { marketId, outcome: applied.outcome }); // SSE broadcast
+    // ⭐ THE SEAL NOTICE MATTERS MOST ON THIS PATH (management ruling ①). An auto-resolved
+    // market was sealed by nobody: no officer read it, and with a one-hour window it pays
+    // within the hour, at whatever time of day the event resolved. Ali's ruling ③
+    // (2026-09-05) accepts that; this notice is the reason a player can still object to it.
+    void notifyVerdictRecordedForMarket(marketId).catch(() => {});
     // The settle timer (for objectionsClosedAt) is armed by the caller: fireMarket
     // re-arms after every fire, and the "re-check now" admin action arms explicitly.
     return { status: "resolved-auto", outcome: applied.outcome, confidence: a?.confidence ?? null, mode };
@@ -2982,6 +3046,13 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
   // so it must see the committed state): stage-1 → CLOSED has no deadline (disarm);
   // stage-2 → RESOLVED arms the settle timer for objectionsClosedAt.
   if (result.ok) void armMarketTimer(opts.marketId);
+  // ⭐ AND TELL THE BETTORS (management ruling ①). Only on a COMPLETE seal — a two-officer
+  // stage-1 has staged a verdict that no second officer has countersigned yet, so there is
+  // nothing to announce and `objectionsClosedAt` has not been stamped. Outside the lock and
+  // fire-and-forget, for the same reason the timer arm is: the ruling is already recorded.
+  if (result.ok && result.data?.stage === "complete") {
+    void notifyVerdictRecordedForMarket(opts.marketId).catch(() => {});
+  }
   return result;
 }
 

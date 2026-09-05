@@ -175,6 +175,9 @@ export const NOTIFICATION_KINDS = [
   "WIN", "LOSS", "BET_PLACED", "SELECTION_CLOSED", "ROUND_RESULT",
   "DEPOSIT", "WITHDRAW", "KYC", "MATCH_START", "RG", "SECURITY",
   "AFFILIATE", "PROPOSAL", "BONUS", "WATCHLIST", "OBJECTION",
+  // A verdict is recorded but nothing has been paid — the notice that makes the
+  // objection window exercisable (management ruling ①, 2026-09-05).
+  "VERDICT",
 ] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 
@@ -184,6 +187,9 @@ export const MONEY_KINDS: readonly NotificationKind[] = [
   // player receives about a day of real settled rounds — so it accounts for money
   // by definition and its copy is compliance copy.
   "WIN", "LOSS", "BET_PLACED", "SELECTION_CLOSED", "ROUND_RESULT", "DEPOSIT", "WITHDRAW", "BONUS", "AFFILIATE",
+  // VERDICT names the instant a payout becomes due and states when it will be paid.
+  // It promises money, so its copy is compliance copy and it belongs in the money lens.
+  "VERDICT",
 ];
 
 /**
@@ -242,6 +248,7 @@ export const NOTIFICATION_EMITTERS: readonly EmitterSpec[] = [
   { fn: "notifyProposalChanges",       kind: "PROPOSAL",          audience: "player" },
   { fn: "notifyProposalDeclined",      kind: "PROPOSAL",          audience: "player" },
   { fn: "notifyObjectionDecided",      kind: "OBJECTION",         audience: "player" },
+  { fn: "notifyVerdictRecorded",       kind: "VERDICT",           audience: "player" },
   // Officer-facing — same bell, same completeness rule.
   { fn: "notifyAdminKycReview",        kind: "KYC",               audience: "officer" },
   { fn: "notifyAdminMarketResolution", kind: "PROPOSAL",          audience: "officer" },

@@ -497,6 +497,7 @@
     "test:predictor-count": "tsx scripts/predictor-count.test.mts",
     "test:settle-atomicity": "tsx scripts/settle-atomicity.test.mts",
     "red:settle-atomicity": "node scripts/settle-atomicity-red.mjs",
+    "red:officer-hold": "node scripts/officer-hold-red.mjs",
     "test:board-discovery": "tsx scripts/board-discovery.test.mts",
     "red:board-discovery": "node scripts/board-discovery-red.mjs",
     "test:discovery-contract": "tsx scripts/discovery-contract.test.mts",

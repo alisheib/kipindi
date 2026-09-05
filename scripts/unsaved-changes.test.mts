@@ -128,6 +128,12 @@ const EXEMPT: Record<string, string> = {
   "app/admin/aml/aml-actions-client.tsx": "① fields open inside <Modal>",
   "app/admin/approvals/sof-review-client.tsx": "① fields open inside <Modal>",
   "app/admin/markets/emergency-void-control.tsx": "① fields open inside <Modal>",
+  // ⭐ STRONGER THAN THE REST OF CLASS ①, and worth the extra words because the difference is
+  //    the thing a reviewer would otherwise re-check: this modal sets `closeOnScrim={false}`,
+  //    so a stray click cannot dismiss it at all, AND the typed note is deliberately NOT
+  //    cleared on Cancel — only after a successful hold — so reopening the dialog restores
+  //    what the officer wrote. There is no state in which the work is lost.
+  "app/admin/settlement/hold-button.tsx": "① fields open inside <Modal>, scrim-close disabled, and the note survives Cancel",
   "app/admin/objections/objection-decision.tsx": "① fields open inside <Modal>",
   "app/admin/payments/reconcile-controls.tsx": "① fields open inside <Modal>",
   "app/admin/payments/stuck-payout-controls.tsx": "① fields open inside <Modal>",
