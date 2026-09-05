@@ -380,7 +380,8 @@ with a booked fee, **345 rows correctly kept as VOID/no-fee**; the waterfall ide
 | 6 · Drill-down + ⭐ rate provenance + reconciliation | ☑ `2fe0c975` |
 | 7 · RBAC gate + nav + cross-links | ☑ `2fe0c975` |
 | 8 · ~~Trilingual copy~~ → English copy + `sw` glosses | ☑ see §5 correction 2 |
-| 9 · Live visual drive, READ, 4 widths × 3 tabs + drill-down + a refused role | ☑ `npm run qa:house` — 316/316 |
+| 9 · Live visual drive, READ, 6 widths × 3 tabs + drill-down + a refused role | ☑ `npm run qa:house` — 494/494 |
+| 9b · ⭐ Live JOURNEY drive — the page WORKS, not just renders | ☑ `npm run qa:house-flow` — 84/84 |
 | 10 · Close-out, every number re-derived | ☑ 2026-09-05 |
 
 ### 🔴 STEP 0 — FOUR DEFECTS IN THE SHIPPED ARITHMETIC, FOUND AFTER IT WENT GREEN (2026-09-05)
@@ -551,7 +552,8 @@ on production. Two commits: `a47db847` (the four defects in the shipped arithmet
 | The join | `MarketStore.bookByIds()` in `src/lib/server/market-dal.ts` — ⛔ no `productLine` param, by design |
 | The pages | `src/app/admin/house/{page,loading}.tsx` + `[marketId]/{page,loading}.tsx` |
 | The structural guard | `test:house-page` (67) · `red:house-page` (16) |
-| The live drive | `npm run qa:house` → `scripts/live/house-drive.mjs` |
+| The live RENDER drive | `npm run qa:house` → `scripts/live/house-drive.mjs` — 494, six widths |
+| The live JOURNEY drive | `npm run qa:house-flow` → `scripts/live/house-flow.mjs` — 84, real navigation |
 
 ### ⛔ Read these before touching any of it
 
@@ -566,6 +568,15 @@ on production. Two commits: `a47db847` (the four defects in the shipped arithmet
 5. **`tsc` proves nothing about SQL.** Most suites run with no `DATABASE_URL`, so the Prisma
    branch never executes. Drive any new reader read-only against production, then delete the
    probe. Every reader here was driven that way.
+6. ⭐ **MONEY COMES SECOND IN EVERY TABLE, PROSE LAST.** At 360 a card's inner width is 318px,
+   so whatever is furthest right is invisible until somebody scrolls sideways INSIDE the card —
+   and no guard in this repo can see that. What scrolls off is the courtesy text, never the
+   figure. ⛔ And do not put a `min-width` on a narrow table: `admin-tbl` is `width: 100%`, so a
+   min-width both forces a scroll AND stretches every column to fill it.
+7. ⚠️ **A DRIVE MUST WAIT FOR THE CONTENT, NOT THE URL.** `waitForURL` fires on `pushState`,
+   before the App Router has rendered anything, and `loading.tsx` is a skeleton with no text.
+   Reading `main` there reports the destination page wrong — five times, on this page alone.
+   Use `settle()`.
 
 ### 🔴 Two things that are somebody's, and are not this page's
 
@@ -577,14 +588,96 @@ on production. Two commits: `a47db847` (the four defects in the shipped arithmet
   `9ce071aa`, before any of this work — verified in a throwaway worktree, not assumed. They
   belong to the parallel `/updown` lane.
 
+### 🔴 THE RE-VALIDATION PASS — SIX MORE DEFECTS, ALL FOUND BY DRIVING AND LOOKING (2026-09-05)
+
+Ali asked for a full re-validation before closing. The page was green on 316 assertions when
+that pass began. It was wrong in six more places.
+
+**⭐ THE BIGGEST: AT 360, THE EARNINGS TAB SHOWED NO MONEY AT ALL.** The waterfall was
+`Step | What it is | Amount`, and the prose column ate the width — so every one of the eight
+figures sat off the right edge of the card. The owner read eight step names, eight
+descriptions, and not a single number, on the tab whose entire job is the number. The by-game
+variance — the figure that must read zero — was clipped mid-digit for the same reason.
+
+⛔ **AND NO GUARD COULD HAVE SEEN IT.** A figure inside a `ScrollX` region is not CLIPPED; it
+is off to the right, reachable by scrolling sideways INSIDE the card. `measureClipping` cannot
+see it, the page reports no overflow, and `tsc` and every ratchet stay green.
+
+The law that came out of it, now applied to every table on the page and asserted on every
+width: **money comes SECOND, prose comes last. What scrolls off a phone is the courtesy text,
+never the figure.** House accounts, the earnings waterfall, the product subtotals, the
+fee-by-source table and the drill-down's rate-change trail were all reordered — in the last
+one, "Touched a rate?" was scrolling off while eight identical `config.global.updated` rows
+stayed visible, so the panel answering Ali's fourth question showed everything except the
+answer.
+
+**Three more, each measured:**
+
+- ⛔ `min-w-[320px]` on a two-column table FORCED the scroll it was meant to prevent. The
+  card's inner width at 360 is 318px, and `admin-tbl` is `width: 100%` — so a min-width also
+  makes the browser STRETCH every column to fill it, which is why moving money second was not
+  enough on the five-column subtotals until the min-width came off too. Only the ten-column
+  games table has one now.
+- `SETTLEMENT_COMMISSION` is one unbreakable 200px mono token and was pushing the fee beside
+  it off the screen. `break-all` fixed the layout; the same edit had already fixed a lexicon
+  problem (see the enum-arm note above).
+- 🔴 **1024 IS WHERE THE LAYOUT FLIPS, AND NOTHING WAS EVER MEASURED THERE.** The drive sampled
+  360/768/1280/1920 — four settled states and neither transition. `KpiGrid` is
+  `grid-cols-2 lg:grid-cols-4`, so at 1024 a tile is **148px**, not the 212px it gets at 1280,
+  and four delta captions written against 1280 truncated by 4–30px. Adding 640 and 1024 found
+  it immediately. ⭐ **A tile overflows at the moment its layout CHANGES, not in the middle of
+  a range.**
+
+### ⭐ AND A SECOND DRIVE, BECAUSE RENDERING AND WORKING ARE DIFFERENT CLAIMS
+
+`qa:house` proves the page RENDERS. `qa:house-flow` (84 assertions) proves it WORKS — it opens
+the book from the sidebar, changes the window, switches tabs, filters, pages, drills in and
+comes back, and after every step asks whether the state survived and whether the numbers still
+agree with themselves:
+
+- ⭐ the KPI band is **byte-identical** between `today` and `all time` — a balance has no
+  window, and the caption above it promises exactly that, so the sentence is now checked
+  rather than trusted;
+- ⭐ EARNINGS and BY GAME report the **same fee on four different windows**, and the by-game
+  identity closes on each;
+- ⭐ the by-product subtotals are **byte-identical before and after filtering** — the rows
+  narrow, the book stays whole;
+- a game's fee in the table equals its own booked fee in its drill-down;
+- a VOID offers no recompute and says why; an Up & Down round reads Up/Down in both places; a
+  game whose market row is gone renders its money;
+- five mangled URLs degrade, an unknown market renders an empty book rather than a 404, an
+  empty window renders zeros with the balances above it unmoved;
+- Back, Forward and refresh all land where they should;
+- eight computed style properties match `/admin/finance` exactly.
+
+⚠️ **AND FIVE OF ITS OWN FAILURES WERE THE DRIVE, NOT THE PAGE** — four of them the same
+thing. `waitForURL` fires on `pushState`, which in the App Router happens BEFORE the new page
+renders, and Next shows `loading.tsx` in the gap: **a skeleton with no text in it**.
+`networkidle` does not close that gap. Reading `main` there reported a working filter broken,
+a drill-down as opening the wrong game, and a cross-link as landing on the wrong tab — and
+sometimes the same assertion PASSED. There are now **no fixed navigation waits left**: every
+one waits for a URL predicate or for `settle()` on the text the destination is supposed to say.
+
+⛔ And once, the failing thing was **my own assertion, not the page**: the off-screen-money
+check demanded that NO money cell sit outside its card, which is unachievable for a
+five-column comparison and could only be satisfied by deleting the comparison. Measured, `Net
+retained` ends at 223px inside a 318px card — readable — while the workings run to 545. The
+check now states the law actually designed to: the FIRST money cell in every row must be
+within the card.
+
 ### ⭐ THE SHAPE OF THIS SESSION, IN ONE LINE
 
 Steps 1–2 shipped green and were wrong in four places. The page then shipped green and was
-wrong in five more — a truncated solvency figure, a one-pixel ellipsis, money columns off a
-phone, enum arms reaching the owner, and a missing space in the sentence that explains a
-number. **Not one of those was caught by a suite. Every one was caught by driving the live
-page and then LOOKING at what came back.** ⛔ Green is the beginning of verification here,
-never the end of it.
+wrong in five more. A re-validation pass over a page that was green on 316 assertions found
+**six more** — including an Earnings tab that showed a phone user no money at all.
+
+**Fifteen defects. Not one was caught by a suite.** Every one was caught by driving the live
+page and then LOOKING at what came back — and several only after ADDING the width, the
+interaction or the assertion that could see them.
+
+⛔ Green is where verification starts here, never where it stops. `qa:house` (494) and
+`qa:house-flow` (84) are the two that would have caught these, and they exist because the
+suites could not.
 
 ### ⚠️ Every number in this document is dated and will rot
 
