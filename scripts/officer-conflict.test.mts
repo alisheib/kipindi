@@ -20,7 +20,7 @@ import { createMarket, buyPosition, resolveMarket, emergencyVoidMarket } from ".
 import { setRequireTwoOfficerResolution } from "../src/lib/server/resolution-policy.ts";
 import { marketStore } from "../src/lib/server/market-dal.ts";
 
-import "./lib/verified-fixtures.mts";
+import { approveFixtureIdentity } from "./lib/verified-fixtures.mts";
 let pass = 0, fail = 0;
 function ok(label: string, cond: boolean, extra?: string) {
   if (cond) { pass++; } else { fail++; console.log(`FAIL ${label}${extra ? ` — ${extra}` : ""}`); }
@@ -48,6 +48,10 @@ async function mkUser(id: string, role: "PLAYER" | "ADMIN", balance = 100_000): 
 const futureDate = new Date(Date.now() + 3600_000).toISOString();
 
 await mkUser("officer_a", "ADMIN");
+// ⛔ An ADMIN is not auto-approved by  (staff are skipped there on
+// purpose). This suite needs this officer to place a REAL bet — that is the conflict it
+// proves — so its identity is approved explicitly.
+await approveFixtureIdentity("officer_a");
 await mkUser("officer_b", "ADMIN");
 await mkUser("clean_officer", "ADMIN", 0);
 await mkUser("player_1", "PLAYER");

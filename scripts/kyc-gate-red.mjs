@@ -59,10 +59,22 @@ for (const d of DEFECTS) {
   write(path, src.replace(d.from, d.to));
   let red = false, output = "";
   try {
-    execSync("npm run test:kyc-gate", { stdio: "pipe", encoding: "utf8" });
+    // ⚠️ `maxBuffer` IS LOAD-BEARING, and its absence produced the most misleading result
+    // this harness can produce. Node's default is 1 MB; the suite prints every audit line
+    // it provokes, and the BET mutation makes seventeen assertions fail at once — which
+    // pushed the output past 1 MB, made `execSync` throw ENOBUFS with `stdout` EMPTY, and
+    // reported "went red, but not on its own assertion" with nothing after the arrow. The
+    // mutation was caught perfectly; the harness could not read the evidence. ⛔ A harness
+    // that loses output reports the wrong verdict, not no verdict.
+    execSync("npm run test:kyc-gate", { stdio: "pipe", encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
   } catch (e) {
     red = true;
-    output = `${e.stdout ?? ""}`;
+    // ⚠️ STDERR TOO. The first version read only `stdout`, so a mutation that made the
+    // suite CRASH rather than fail reported "suite went red, but not on its own assertion"
+    // with an EMPTY explanation — the harness could see that something happened and not
+    // what. A crash is also not a catch: §0.1a's rule is that a harness which only checks
+    // "did it change?" prints comfort. Both streams are read so the distinction is visible.
+    output = `${e.stdout ?? ""}${e.stderr ?? ""}`;
   } finally {
     write(path, src);
   }

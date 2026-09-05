@@ -39,7 +39,13 @@ export const MUTATIONS = [
        + "before money comes in. If §1 stays green here, the suite cannot tell the gate from "
        + "its own absence.",
     file: GATE,
-    from: `  if (kycStatus === "APPROVED") return { eligible: true };`,
+    // ⚠️ TWO LINES, NOT ONE, AND THE HARNESS IS WHY. `if (kycStatus === "APPROVED") return
+    // { eligible: true };` appears TWICE in the seam since the WITHDRAW arm learned to
+    // accept "approved right now" as well as "approved ever" — so the one-line anchor
+    // stopped being unique and `red:kyc-gate` reported both of these STALE rather than
+    // silently mutating whichever it found first. Anchoring on the refusal that follows
+    // pins the final branch, which is the one these two mutations are about.
+    from: `  if (kycStatus === "APPROVED") return { eligible: true };\n  return { eligible: false, kycStatus, reason: REFUSAL_BY_STATUS[kycStatus].reason };`,
     to: `  if (action === "DEPOSIT") return { eligible: true };\n  if (kycStatus === "APPROVED") return { eligible: true };`,
     check: "1.NOT_STARTED.deposit · refused",
   },
@@ -49,8 +55,20 @@ export const MUTATIONS = [
        + "in as many words — \"a new player is PENDING_KYC but can already bet\" — so this is "
        + "the exact regression a future reader is most likely to reintroduce from an old doc.",
     file: GATE,
-    from: `  if (kycStatus === "APPROVED") return { eligible: true };`,
-    to: `  if (action === "BET") return { eligible: true };\n  if (kycStatus === "APPROVED") return { eligible: true };`,
+    // ⚠️ TWO LINES, NOT ONE, AND THE HARNESS IS WHY. `if (kycStatus === "APPROVED") return
+    // { eligible: true };` appears TWICE in the seam since the WITHDRAW arm learned to
+    // accept "approved right now" as well as "approved ever" — so the one-line anchor
+    // stopped being unique and `red:kyc-gate` reported both of these STALE rather than
+    // silently mutating whichever it found first. Anchoring on the refusal that follows
+    // pins the final branch, which is the one these two mutations are about.
+    from: `  if (kycStatus === "APPROVED") return { eligible: true };\n  return { eligible: false, kycStatus, reason: REFUSAL_BY_STATUS[kycStatus].reason };`,
+    // ⛔ THE FINAL `return` MUST BE CARRIED THROUGH. An earlier draft of this widening
+    // updated the DEPOSIT twin and silently missed this one, so the injection deleted the
+    // refusal line: `assertKycForMoney` then fell off the end and returned `undefined`,
+    // and the suite CRASHED on `gate.eligible` instead of failing. A mutation that breaks
+    // the function proves nothing about the gate — the harness read it as "went red on the
+    // wrong assertion", which is exactly the honest complaint it should have made.
+    to: `  if (action === "BET") return { eligible: true };\n  if (kycStatus === "APPROVED") return { eligible: true };\n  return { eligible: false, kycStatus, reason: REFUSAL_BY_STATUS[kycStatus].reason };`,
     check: "1.NOT_STARTED.bet · refused",
   },
   {

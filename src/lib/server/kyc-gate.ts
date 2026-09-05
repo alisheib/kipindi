@@ -94,8 +94,12 @@ const REFUSAL_BY_STATUS: Record<KycGateStatus, { reason: FailureReason }> = {
   PENDING_REVIEW: { reason: "kyc_pending_review" },
   ADDITIONAL_INFO_REQUIRED: { reason: "kyc_more_info" },
   REJECTED: { reason: "kyc_rejected" },
-  // Unreachable: an APPROVED account never refuses. Kept so the record stays TOTAL — a new
-  // `KycStatus` member then becomes a TYPE error here, not a silent pass at a money gate.
+  // ⚠️ NOT DEAD, AND THE FIRST DRAFT SAID IT WAS. An APPROVED row with no `approvedAt`
+  // stamp used to land here on the WITHDRAW arm and produce *"Identity not verified
+  // (APPROVED)"* — a refusal whose own text contradicted itself. That case is now handled
+  // above (approved-now counts as well as approved-ever), so this row should not be reached
+  // in practice; it is kept because the record must stay TOTAL — a new `KycStatus` member
+  // then becomes a TYPE error here rather than a silent pass at a money gate.
   APPROVED: { reason: "kyc_not_verified" },
 };
 
@@ -116,9 +120,21 @@ export async function assertKycForMoney(userId: string, action: MoneyAction): Pr
   const kycStatus: KycGateStatus = k?.status ?? "NOT_STARTED";
 
   if (action === "WITHDRAW") {
-    // ⛔ `approvedAt`, NOT `status`. See the header — this is the branch that decides
-    // whether a re-verified player can reach money they already earned.
+    // ⛔ `approvedAt` FIRST — see the header. This is the branch that decides whether a
+    // re-verified player can reach money they already earned.
     if (k?.approvedAt) return { eligible: true };
+    // ⚠️ …AND `status === "APPROVED"` AS WELL, which is not redundant and is not a
+    // loophole. It answers "approved right now" for a row where the stamp is missing —
+    // a submission written before 2026-09-05 whose backfill did not run, or one created
+    // outside `reviewKyc`. Refusing there would trap a VERIFIED player's money on the
+    // strength of a bookkeeping gap, which is the one outcome this whole design exists to
+    // prevent. It cannot let an unapproved account through: both halves demand approval,
+    // one now and one ever.
+    // 🔴 FOUND BY A TEST FIXTURE, NOT BY REVIEW: a suite whose row said APPROVED with no
+    // stamp was refused with *"Identity not verified (APPROVED)"* — a sentence that is
+    // its own bug report, and the reason the note below on `REFUSAL_BY_STATUS.APPROVED`
+    // no longer claims that branch is unreachable.
+    if (kycStatus === "APPROVED") return { eligible: true };
     return { eligible: false, kycStatus, reason: REFUSAL_BY_STATUS[kycStatus].reason };
   }
 

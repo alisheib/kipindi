@@ -33,6 +33,28 @@ import { db } from "../../src/lib/server/store.ts";
 
 type UserLike = { id: string; role?: string };
 
+/**
+ * Approve one account explicitly — for the staff accounts the automatic wrap skips.
+ *
+ * ⚠️ IT EXISTS BECAUSE ONE SUITE HAS AN OFFICER WHO MUST BE ABLE TO BET.
+ * `officer-conflict` proves an officer cannot resolve a market they staked on, so its
+ * ADMIN fixture has to place a real bet — and from 2026-09-05 an account with no approved
+ * identity cannot. Widening the automatic wrap to cover staff would have fixed it too, and
+ * more quietly: staff accounts appear in KYC queues and self-review checks across other
+ * suites, and giving all of them submissions changes populations nobody asked to change.
+ * One named call in the one suite that needs it is the smaller blast radius.
+ */
+export async function approveFixtureIdentity(userId: string): Promise<void> {
+  const now = new Date().toISOString();
+  await db.kyc.upsert({
+    id: `kyc_${userId}`, userId, status: "APPROVED", rejectReason: null, rejectNote: null,
+    idType: "NIDA", idNumber: `199001018${String(Date.now()).slice(-11)}`, idExpiry: null,
+    idVerifiedAt: now, fullName: "Fixture Officer", dob: "1990-01-01", documents: [],
+    reviewerId: null, reviewedAt: now, submittedAt: now, approvedAt: now,
+    createdAt: now, updatedAt: now,
+  });
+}
+
 const MARK = Symbol.for("50pick.verifiedFixtures.wrapped");
 const g = globalThis as unknown as Record<symbol, boolean>;
 
@@ -55,7 +77,14 @@ if (!g[MARK]) {
       // identity bug in code that never touched identity.
       const n = String(++seq).padStart(11, "0");
       await db.kyc.upsert({
-        id: `kycfx_${u.id}`,
+        // ⛔ `kyc_<userId>` — THE SAME ID THE SUITES' OWN FIXTURES USE, and that is the
+        // whole trick. A distinct id (`kycfx_…`) left suites that write their own row with
+        // TWO submissions for one player; `findByUserId` returns the newest by `createdAt`,
+        // both were stamped in the same millisecond, and the winner was a coin flip. It
+        // surfaced as one intermittently-failing assertion in `withdrawal-fee`, not as an
+        // error. Sharing the id means a suite's own upsert REPLACES this row instead of
+        // racing it — including when the suite deliberately wants a non-APPROVED state.
+        id: `kyc_${u.id}`,
         userId: u.id,
         status: "APPROVED",
         rejectReason: null,

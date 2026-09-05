@@ -27,6 +27,7 @@ import { withdrawalEntries } from "../src/lib/server/ledger.ts";
 import { computeWithdrawalFee, minWithdrawalForRate, PROVIDER_MIN_PAYOUT_TZS } from "../src/lib/payout.ts";
 import { WITHDRAW_MIN_TZS } from "../src/lib/server/validators.ts";
 
+import "./lib/verified-fixtures.mts";
 let pass = 0, fail = 0;
 function ok(label: string, cond: boolean, extra?: string) {
   if (cond) { pass++; } else { fail++; console.log(`FAIL ${label}${extra ? ` — ${extra}` : ""}`); }

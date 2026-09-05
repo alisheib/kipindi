@@ -22,6 +22,7 @@ import { setGlobalConfig } from "../src/lib/server/market-config.ts";
 import { getAuditPage } from "../src/lib/server/audit.ts";
 
 import "./lib/verified-fixtures.mts";
+import { approveFixtureIdentity } from "./lib/verified-fixtures.mts";
 let pass = 0, fail = 0;
 function ok(label: string, cond: boolean, extra?: string) {
   if (cond) { pass++; console.log(`PASS ${label}${extra ? ` — ${extra}` : ""}`); }
@@ -54,6 +55,10 @@ const mkMarket = (title: string) => createMarket({
 await setGlobalConfig({ feeModel: "capped-commission" }, "two-admin-test-setup");
 
 await mkUser("officerX", "ADMIN");   // admin AND bettor (holds a position)
+// ⛔ An ADMIN is not auto-approved by verified-fixtures (staff are skipped there on
+// purpose), and this one has to place a REAL bet — being an admin who holds a position is
+// the whole premise of case B. Approved explicitly.
+await approveFixtureIdentity("officerX");
 await mkUser("officerY", "ADMIN", 0);
 await mkUser("clean", "ADMIN", 0);
 await mkUser("playerP", "PLAYER");

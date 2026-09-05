@@ -246,19 +246,37 @@ console.log("\n§5 · the long way round — a real stake, and a CONFIRMED BONUS
      paid.ok === true, paid.ok ? "" : `refused: ${(paid as { error: string }).error}`);
 }
 
-// ── §6 · no identity in the path ─────────────────────────────────────────────
-console.log("\n§6 · B × J — the player who is paid has no KYC submission at all");
+// ── §6 · identity IS in the path — and it is not what this file measures ─────
+console.log("\n§6 · the payout path requires identity, and the bonus rule is still the thing under test");
 {
-  // Every fixture above was created WITHOUT a KycSubmission, so §1.4/§3.4/§4.4/§5.6 already
-  // paid unverified players. This section says so out loud, and fails if a future change
-  // quietly re-introduces the gate — which would break the Board's comment #1 while every
-  // other suite in this file went on passing for the wrong reason.
-  ok("6.1 · ★ no fixture in this file ever held a KYC submission",
-     (await db.kyc.listByUser("bw_real")).length === 0 && (await db.kyc.listByUser("bw_flip")).length === 0);
+  // 🔴 INVERTED 2026-09-05, AND THE REASON IT EXISTED IS WHY IT MUST NOT SIMPLY BE DELETED.
+  // This section asserted the OPPOSITE — "no fixture in this file ever held a KYC
+  // submission", "an account with no identity record at all is still paid" — written to
+  // protect Board comment #1 so that a re-introduced gate could not slip in while every
+  // other assertion in the file went on passing for the wrong reason.
+  //
+  // The owner has now re-imposed the identity precondition on withdrawal, as a control
+  // stricter than the Board required and disclosed as such
+  // (`docs/COMPLIANCE-DECISIONS.md`, 2026-09-05). So the assertion flips — but its JOB is
+  // unchanged: keep this file honest about WHY its payouts succeed.
+  //
+  // ⭐ THAT MATTERS MORE NOW, NOT LESS. Every fixture here is verified (`verified-fixtures`),
+  // so §1.4/§3.4/§4.4/§5.6 pass a gate they are not about. If the bonus rule regressed AND
+  // identity were the only thing being proved, this file would look green while measuring
+  // nothing. 6.2 is the control that keeps the two apart: an UNVERIFIED account with ample
+  // cash is refused — on identity, by name — so we know the payouts above cleared identity
+  // and were decided by the bonus rule.
+  ok("6.1 · ★ the fixtures this file pays ARE verified — so §1.4/§3.4/§4.4/§5.6 test the bonus rule, not the gate",
+     !!(await db.kyc.findByUserId("bw_real"))?.approvedAt && !!(await db.kyc.findByUserId("bw_flip"))?.approvedAt);
+  // ⛔ Built by hand, NOT through `player()`, because the wrapper approves everything it
+  // creates — the one fixture in this file that must stay unverified cannot come from it.
   await player("bw_unverified", 12_000);
-  const r = await tryWithdraw("bw_unverified", 12_000);
-  ok("6.2 · ★★ …and an account with no identity record at all is still paid",
-     r.ok === true, r.ok ? "" : `refused: ${(r as { error: string }).error}`);
+  const k = await db.kyc.findByUserId("bw_unverified");
+  if (k) await db.kyc.upsert({ ...k, status: "NOT_STARTED", approvedAt: null, updatedAt: new Date().toISOString() });
+  const r = await tryWithdraw("bw_unverified", 12_000) as ReasonedResult;
+  ok("6.2 · ★★ CONTROL — an account with no identity is refused, and refused ON IDENTITY",
+     r.ok === false && r.reason === "kyc_not_verified",
+     r.ok ? "PAID" : `reason=${r.reason}`);
 }
 
 // ── §7 · E-223 · the refusal has to SAY something, and say the right number ──

@@ -13,6 +13,7 @@
 import { db } from "../src/lib/server/store.ts";
 import { deposit, withdraw, settlePaymentWebhook, reconcileStalePayments, dispatchApprovedWithdrawal } from "../src/lib/server/wallet-service.ts";
 
+import "./lib/verified-fixtures.mts";
 let pass = 0, fail = 0;
 function ok(label: string, cond: boolean) {
   if (cond) { pass++; } else { fail++; console.log(`FAIL ${label}`); }

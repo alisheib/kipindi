@@ -24,6 +24,7 @@ import { bindRecruit, ensureAffiliateAccount, onRecruitBet } from "../src/lib/se
 import { getAffiliateConfig } from "../src/lib/server/affiliate-config.ts";
 import { getBonusSummary } from "../src/lib/server/bonus-service.ts";
 
+import "./lib/verified-fixtures.mts";
 let pass = 0, fail = 0;
 function ok(label: string, cond: boolean, extra?: string) {
   if (cond) { pass++; } else { fail++; console.log(`FAIL ${label}${extra ? ` — ${extra}` : ""}`); }

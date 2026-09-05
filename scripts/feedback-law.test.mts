@@ -303,8 +303,24 @@ ok("5.6 · the receipt takes the SIDE tone, never gold (a projection is not earn
   /stripTone=\{placed\.side === "UP" \? "yes" : "no"\}/.test(RECEIPT) && !/stripTone=\{?"gold"/.test(RECEIPT));
 ok("5.7 · success auto-dismisses on the SHARED default (no bespoke timer)",
   !/autoCloseMs/.test(RECEIPT), "an autoCloseMs here would be a second definition of the 5s");
-ok("5.8 · the refusal does NOT auto-dismiss (LCCP informed consent)",
-  /variant="danger"/.test(BLOCKED));
+// 🔴 RE-AIMED 2026-09-05 — THE PROXY WENT STALE, THE LAW DID NOT.
+// This read `/variant="danger"/` in the blocked modal's source, as a stand-in for "does not
+// auto-dismiss". That held while the refusal had exactly one tone. The identity gate added
+// `kyc_pending_review` at severity `info` — our own review queue, which must not arrive as a
+// red crest with an ✗ and `role="alertdialog"` — so the variant became dynamic and the literal
+// vanished, reddening a check about auto-dismissal on a change that never touched timers.
+//
+// ⛔ THE ACTUAL RULE IS IN `OperationResultModal`: auto-close is armed ONLY for
+// `variant === "success"`. So the law to pin is that a refusal is NEVER `success` — which is
+// stricter than the old proxy, since it now covers all four tones instead of asserting one.
+ok("5.8 · the refusal does NOT auto-dismiss (LCCP informed consent) — it is never `success`",
+  !/variant=\{?["']?success/.test(BLOCKED) && /variant=\{blocked\?\.variant \?\? "danger"\}/.test(BLOCKED),
+  "the blocked modal must take its tone from the refusal and may never be the auto-closing success variant");
+// ⛔ AND THE ONLY PLACE AUTO-CLOSE IS ARMED IS STILL `success` — the premise the line above
+// rests on. If that ever widens, 5.8 becomes a proxy again without anybody noticing.
+ok("5.8b · …and the shared modal still arms its timer ONLY for success",
+  /if \(open && variant === "success"\)/.test(read("src/components/markets/operation-result-modal.tsx")),
+  "auto-close is no longer success-only, so 'not success' no longer implies 'does not auto-dismiss'");
 // The projection disclaimer is REUSED, never restated — one sentence, one home.
 ok("5.9 · the receipt reuses `udEstimateNote` rather than writing its own disclaimer",
   /t\.market\.udEstimateNote/.test(RECEIPT));

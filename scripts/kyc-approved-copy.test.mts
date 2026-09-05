@@ -65,20 +65,29 @@ const RAIL_S = stripComments(RAIL_RAW);
 
 const LOCALES = ["en", "sw", "zh"] as const;
 
-// ── 1 · The burst no longer promises a deposit, in any language ─────────────
-// Each locale gets its OWN forbidden term, because the bug was invisible in
-// review precisely by being in a language the reviewer did not read.
-section("1 · no locale promises depositing");
+// ── 1 · The burst NAMES depositing, in every language ───────────────────────
+// 🔴 INVERTED 2026-09-05. This required the burst NOT to mention depositing, because
+// approval did not unlock it — promising it was E-5, a screen claiming what the next one
+// refuses. Approval now unlocks depositing, playing and cashing out, so the same sentence
+// that was a lie is the truth, and OMITTING it is the new understatement.
+// ⭐ The per-locale discipline is unchanged and is the reason this section exists: the
+// original defect was invisible in review precisely by being in a language the reviewer
+// did not read, so each locale is checked with its OWN term rather than one shared regex.
+// ⚠️ AND THE ENGLISH TERM HAD TO WIDEN. The old pattern was `/deposit/i`; the player-facing
+// copy says "add money", which is better English and which that pattern cannot see — so on
+// the first run after the inversion, EN passed while SW and ZH failed. A locale passing
+// because the checker cannot read its wording is the exact failure this section is about.
+section("1 · every locale names what approval unlocks");
 
 const DEPOSIT_WORDS: Record<(typeof LOCALES)[number], RegExp> = {
-  en: /deposit/i,
+  en: /deposit|add money/i,
   sw: /kuweka/i,   // "kuweka pesa" — to put money in
   zh: /充值/,       // top up
 };
 
 for (const loc of LOCALES) {
   const body = dict[loc].profile.kycApprovedBody as string;
-  ok(`${loc}: the burst does not promise depositing`, !DEPOSIT_WORDS[loc].test(body), body);
+  ok(`${loc}: the burst names depositing`, DEPOSIT_WORDS[loc].test(body), body);
 }
 
 // "freely" was the second half of the lie — nothing about this is free of gates.
