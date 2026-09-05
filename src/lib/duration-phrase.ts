@@ -12,7 +12,7 @@
  *   · English inflects the noun — "1 hour", "24 hours";
  *   · Swahili does not inflect `saa` here, and the unit PRECEDES the number — "saa 1", "saa 24",
  *     which is also why the copy guard had to learn both word orders;
- *   · Chinese has no plural form and takes a measure word — "1 小时".
+ *   · Chinese has no plural form and takes a measure word, set tight against the numeral — "1小时".
  * Writing that as one template with a bolted-on `(s)` would be wrong in two languages out of
  * three while looking correct in the one most readers of this file speak.
  *
@@ -27,7 +27,7 @@ import type { Locale } from "@/lib/i18n-dict";
  * @example durationHours("en", 1)  // "1 hour"
  * @example durationHours("en", 24) // "24 hours"
  * @example durationHours("sw", 1)  // "saa 1"
- * @example durationHours("zh", 1)  // "1 小时"
+ * @example durationHours("zh", 1)  // "1小时"
  */
 export function durationHours(locale: Locale, hours: number): string {
   // ⚠️ Guarded, not trusted. A NaN or negative reaching a legal page as "NaN hours" would be a
@@ -38,7 +38,7 @@ export function durationHours(locale: Locale, hours: number): string {
     case "sw":
       return `saa ${n}`;
     case "zh":
-      return `${n} 小时`;
+      return `${n}小时`;
     default:
       return `${n} ${n === 1 ? "hour" : "hours"}`;
   }

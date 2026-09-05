@@ -70,7 +70,7 @@ const MUTATIONS = [
     name: "fairness-copy-restates-the-window-in-chinese",
     why: "the same restatement in the third locale, where the unit is a single character and no space separates it from the digit",
     file: DICT,
-    from: `结算后开放 {hours} 的公开异议窗口，窗口关闭前不会有任何资金转移。`,
+    from: `结算后开放{hours}的公开异议窗口，窗口关闭前不会有任何资金转移。`,
     to: `结算后开放24小时公开异议窗口。`,
   },
   {

@@ -114,6 +114,46 @@ console.log("\n§1 · no player-facing string states a rate it cannot read");
   }
 }
 
+// ── §1b · the interpolated value already carries its unit ───────────────────
+/**
+ * 🔴 THIS SHIPPED, AND FOR ABOUT TEN MINUTES THE CHINESE HELP PAGE READ "1 小时小时内".
+ *
+ * `durationHours()` returns a COMPLETE phrase — "1 hour", "saa 1", "1小时" — so a copy string
+ * that keeps its own unit beside `{hours}` prints the unit twice. The English and Swahili
+ * strings had their units removed in the same edit; the Chinese one did not, because its unit
+ * is two characters wedged between escaped code points and the eye slides straight over it.
+ *
+ * ⛔ NEITHER §1 NOR `test:i18n` COULD SEE IT. §1 hunts for a NUMBER stated inline and there is
+ * no number here — the defect is a duplicated WORD. Placeholder parity was satisfied: all three
+ * locales carried `{hours}`, exactly once. The strings were individually well-formed and the
+ * composition was wrong, which is the shape a per-string scanner is blind to by construction.
+ */
+console.log("\n§1b · no string states an hour unit that {hours} already supplies");
+{
+  // Immediately before or after the placeholder, allowing one space (and the Swahili form,
+  // where the unit legitimately PRECEDES the number in the phrase the helper builds).
+  const DOUBLED = /(?:(?:hours?|小时|saa|masaa)\s*\{hours\}|\{hours\}\s*(?:hours?|小时|saa|masaa))/i;
+  for (const loc of ["en", "sw", "zh"] as const) {
+    const bad: string[] = [];
+    const walk = (node: unknown, path: string): void => {
+      if (typeof node === "string") {
+        if (node.includes("{hours}") && DOUBLED.test(node)) bad.push(`${path}: "${node.slice(0, 90)}"`);
+        return;
+      }
+      if (node && typeof node === "object") {
+        for (const [k, v] of Object.entries(node as Record<string, unknown>)) walk(v, path ? `${path}.${k}` : k);
+      }
+    };
+    walk(dict[loc], "");
+    ok(`1b.${loc} · no doubled unit beside {hours}`, bad.length === 0, bad.join("  ·  "));
+  }
+  // ⭐ POSITIVE CONTROL, same run — the exact string that shipped, in the locale it shipped in.
+  const SHIPPED = "{hours}小时内的结算修正将被尊重";
+  ok("1b.control · ★ the scanner catches the string that actually shipped", DOUBLED.test(SHIPPED),
+     "if this fails the check above is green because it inspects nothing");
+  ok("1b.control · ★ …and accepts the corrected form", !DOUBLED.test("{hours}内的结算修正将被尊重"), "");
+}
+
 // ── §2 · POSITIVE CONTROL — the scanner can say no ──────────────────────────
 console.log("\n§2 · the scanner catches what F2 actually fixed");
 {
