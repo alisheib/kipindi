@@ -174,7 +174,7 @@ export default async function HouseGamePage({
 
         <AdminCard title="The arithmetic" sw="Hesabu">
           <ScrollX label="This game's derivation" className="-mx-4 px-4">
-            <table className="admin-tbl min-w-[320px]">
+            <table className="admin-tbl">
               <thead><tr><th className="text-left">Line</th><th className="text-right">Amount</th></tr></thead>
               <tbody>
                 <tr><td className="text-left">Real stake into the pool</td><td className="tabular text-right"><Signed v={g.poolIn} /></td></tr>
@@ -232,7 +232,7 @@ export default async function HouseGamePage({
           ) : (
             <>
               <ScrollX label="Reconciliation" className="-mx-4 px-4">
-                <table className="admin-tbl min-w-[320px]">
+                <table className="admin-tbl">
                   <thead><tr><th className="text-left">Line</th><th className="text-right">Amount</th></tr></thead>
                   <tbody>
                     <tr><td className="text-left">Settlement fee, as booked</td><td className="tabular text-right"><Amt v={rec.booked} /></td></tr>

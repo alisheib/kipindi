@@ -425,7 +425,7 @@ export default async function AdminHousePage({ searchParams }: { searchParams: P
               <ScrollX label="Custodial cash by counterparty" className="-mx-4 px-4">
                 {/* ⚠️ 300, not 480 — a two-column table has no reason to push its money column off a
                     360px screen. Measured: this card's inner width is 318px. */}
-                <table className="admin-tbl min-w-[300px]">
+                <table className="admin-tbl">
                   <thead><tr><th className="text-left">Counterparty</th><th className="text-right">Cash held</th></tr></thead>
                   <tbody>
                     {cash.byAccount.map((r) => (
@@ -470,7 +470,7 @@ export default async function AdminHousePage({ searchParams }: { searchParams: P
             {position === null || cash === null ? <AdminLoadError what="the position" /> : (
               <>
                 <ScrollX label="Position derivation" className="-mx-4 px-4">
-                  <table className="admin-tbl min-w-[300px]">
+                  <table className="admin-tbl">
                     <thead><tr><th className="text-left">Line</th><th className="text-right">Amount</th></tr></thead>
                     <tbody>
                       <tr><td className="text-left">Custodial cash (through a rail)</td><td className="tabular text-right"><Signed v={cash.railBacked} /></td></tr>
@@ -533,21 +533,25 @@ export default async function AdminHousePage({ searchParams }: { searchParams: P
               <>
                 <ScrollX label="Earnings waterfall" className="-mx-4 px-4">
                   <table className="admin-tbl min-w-[560px]">
-                    <thead><tr><th className="text-left">Step</th><th className="text-left">What it is</th><th className="text-right">Amount</th></tr></thead>
+                    {/* ⭐ AMOUNT SECOND, PROSE LAST — the same rule as the house-accounts table, and it was
+                        bought the same way. With "What it is" in the middle, EVERY FIGURE IN THE
+                        WATERFALL sat off a 360px screen: the owner read eight step names and eight
+                        descriptions and not one number, on the tab whose entire job is the number. */}
+                    <thead><tr><th className="text-left">Step</th><th className="text-right">Amount</th><th className="text-left">What it is</th></tr></thead>
                     <tbody>
-                      <tr><td className="text-left">Handle — real stake</td><td className="text-left text-text-secondary">money staked into pools</td><td className="tabular text-right"><Amt v={flow.stakeIn} /></td></tr>
+                      <tr><td className="text-left">Handle — real stake</td><td className="tabular text-right"><Amt v={flow.stakeIn} /></td><td className="text-left text-text-secondary">money staked into pools</td></tr>
                       {/* ⛔ THE BONUS LEG STAYS ITS OWN LINE. It is real turnover and it is not
                           real cash; collapsing the two would report promotional stake as money
                           that came in. It is also why a bonus-funded game's book can close. */}
-                      <tr><td className="text-left">Handle — bonus stake</td><td className="text-left text-text-secondary">turnover, but not cash we received</td><td className="tabular text-right"><Amt v={flow.bonusIn} /></td></tr>
-                      <tr><td className="text-left">Winnings paid</td><td className="text-left text-text-secondary">payouts, refunds and cash-outs to players</td><td className="tabular text-right"><Signed v={-flow.winningsPaid} /></td></tr>
-                      <tr className="font-semibold"><td className="text-left">Gross gaming revenue</td><td className="text-left text-text-secondary">handle minus winnings paid</td><td className="tabular text-right"><Amt v={flow.ggr} /></td></tr>
-                      <tr><td className="text-left">Fee earned</td><td className="text-left text-text-secondary">what we actually charged, gross</td><td className="tabular text-right"><Amt v={flow.feeEarned} /></td></tr>
-                      <tr><td className="text-left">Levies</td><td className="text-left text-text-secondary">TRA + GBT, taken out of our fee</td><td className="tabular text-right"><Signed v={-flow.leviesOut} /></td></tr>
+                      <tr><td className="text-left">Handle — bonus stake</td><td className="tabular text-right"><Amt v={flow.bonusIn} /></td><td className="text-left text-text-secondary">turnover, but not cash we received</td></tr>
+                      <tr><td className="text-left">Winnings paid</td><td className="tabular text-right"><Signed v={-flow.winningsPaid} /></td><td className="text-left text-text-secondary">payouts, refunds and cash-outs to players</td></tr>
+                      <tr className="font-semibold"><td className="text-left">Gross gaming revenue</td><td className="tabular text-right"><Amt v={flow.ggr} /></td><td className="text-left text-text-secondary">handle minus winnings paid</td></tr>
+                      <tr><td className="text-left">Fee earned</td><td className="tabular text-right"><Amt v={flow.feeEarned} /></td><td className="text-left text-text-secondary">what we actually charged, gross</td></tr>
+                      <tr><td className="text-left">Levies</td><td className="tabular text-right"><Signed v={-flow.leviesOut} /></td><td className="text-left text-text-secondary">TRA + GBT, taken out of our fee</td></tr>
                       {/* ⛔ BONUS COST IS ITS OWN STEP, NEVER NETTED INTO GGR — netting it there
                           would flatter the gaming result with money that left the platform. */}
-                      <tr><td className="text-left">Bonus cost</td><td className="text-left text-text-secondary">bonus that became withdrawable cash, net of re-locks</td><td className="tabular text-right"><Signed v={-flow.bonusCost} /></td></tr>
-                      <tr className="font-semibold"><td className="text-left">Net retained</td><td className="text-left text-text-secondary">what this window left the owner</td><td className="tabular text-right"><Amt v={flow.netRetained} /></td></tr>
+                      <tr><td className="text-left">Bonus cost</td><td className="tabular text-right"><Signed v={-flow.bonusCost} /></td><td className="text-left text-text-secondary">bonus that became withdrawable cash, net of re-locks</td></tr>
+                      <tr className="font-semibold"><td className="text-left">Net retained</td><td className="tabular text-right"><Amt v={flow.netRetained} /></td><td className="text-left text-text-secondary">what this window left the owner</td></tr>
                     </tbody>
                   </table>
                 </ScrollX>
@@ -570,7 +574,7 @@ export default async function AdminHousePage({ searchParams }: { searchParams: P
             {feeBySource === null ? <AdminLoadError what="the fee breakdown" /> : (
               <>
                 <ScrollX label="Fee earned by source" className="-mx-4 px-4">
-                  <table className="admin-tbl min-w-[480px]">
+                  <table className="admin-tbl min-w-[420px]">
                     <thead><tr><th className="text-left">Source</th><th className="text-right">Fee</th><th className="text-left">What it is</th><th className="text-right">Entries</th></tr></thead>
                     <tbody>
                       {/* ⛔ NOTHING IS ENUMERATED HERE. Whatever entry types the books return are
@@ -614,7 +618,7 @@ export default async function AdminHousePage({ searchParams }: { searchParams: P
                   sides are shown adding up rather than left to disagree.
                 </p>
                 <ScrollX label="Per-game reconciliation" className="-mx-4 px-4">
-                  <table className="admin-tbl min-w-[320px]">
+                  <table className="admin-tbl">
                     <thead><tr><th className="text-left">Line</th><th className="text-right">Amount</th></tr></thead>
                     <tbody>
                       <tr><td className="text-left">Fee attributed to a game</td><td className="tabular text-right"><Amt v={recon.perGameFee} /></td></tr>

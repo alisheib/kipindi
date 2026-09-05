@@ -92,6 +92,7 @@
     "qa:cold-start": "node scripts/live/pv06-cold-start-drive.mjs",
     "qa:presence-bar": "node scripts/live/presence-bar-drive.mjs",
     "qa:house": "node scripts/live/house-drive.mjs",
+    "qa:house-flow": "node scripts/live/house-flow.mjs",
     "test:house-book": "tsx scripts/house-book.test.mts",
     "test:house-page": "tsx scripts/house-page.test.mts",
     "red:house-page": "node scripts/red-house-page.mjs",
