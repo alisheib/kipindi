@@ -19,6 +19,7 @@ import { getMarket } from "../src/lib/server/market-service.ts";
 import { setProposalsConfig } from "../src/lib/server/proposals-config.ts";
 import { setBonusConfig } from "../src/lib/server/bonus-config.ts";
 
+import "./lib/verified-fixtures.mts";
 let pass = 0, fail = 0;
 function ok(label: string, cond: boolean, extra?: string) {
   if (cond) { pass++; } else { fail++; console.log(`FAIL ${label}${extra ? ` — ${extra}` : ""}`); }

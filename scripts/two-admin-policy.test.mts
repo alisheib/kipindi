@@ -21,6 +21,7 @@ import { setRequireTwoOfficerResolution, getRequireTwoOfficerResolution } from "
 import { setGlobalConfig } from "../src/lib/server/market-config.ts";
 import { getAuditPage } from "../src/lib/server/audit.ts";
 
+import "./lib/verified-fixtures.mts";
 let pass = 0, fail = 0;
 function ok(label: string, cond: boolean, extra?: string) {
   if (cond) { pass++; console.log(`PASS ${label}${extra ? ` — ${extra}` : ""}`); }

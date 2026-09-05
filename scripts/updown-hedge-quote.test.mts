@@ -37,6 +37,7 @@ import { openRound, closeRound } from "../src/lib/server/updown-service.ts";
 import { seedDefaultSources, addSource } from "../src/lib/server/source-registry.ts";
 import { dict as DICT } from "../src/lib/i18n-dict.ts";
 
+import "./lib/verified-fixtures.mts";
 let pass = 0, fail = 0;
 const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"} ${l}${x ? ` — ${x}` : ""}`); };
 // ⛔ A crash must be COUNTED, or the RED harness reads an exploding product as an absent test.

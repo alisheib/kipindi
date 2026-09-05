@@ -23,6 +23,7 @@ import { selfExclusionStanding, checkSessionTimeLimit, setLimits } from "../src/
 import { readFileSync } from "node:fs";
 import { decomment } from "./lib/decomment.mts";
 
+import "./lib/verified-fixtures.mts";
 let pass = 0, fail = 0;
 function ok(label: string, cond: boolean, extra?: string) {
   if (cond) { pass++; } else { fail++; console.log(`FAIL ${label}${extra ? ` — ${extra}` : ""}`); }

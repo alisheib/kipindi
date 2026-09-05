@@ -12,7 +12,8 @@
  *  2) Phone verified (already done at signup)
  *  3) Documents: the slots THAT TYPE requires, plus a selfie, through the storage seam
  *  4) Submitted → PENDING_REVIEW (compliance reviewer assigns + decides)
- *  5) APPROVED unlocks withdrawals; REJECTED returns reason code
+ *  5) APPROVED unlocks DEPOSITS, BETTING and WITHDRAWALS (owner ruling 2026-09-05 —
+ *     see `kyc-gate.ts`); REJECTED returns a reason code
  *
  * Compliance:
  *  - Every step audited (KYC category) with correlation IDs.
@@ -592,8 +593,14 @@ export async function getKycStatus(userId: string) {
 
 /** All KYC submissions awaiting an officer decision (for the review queue). */
 export async function listPendingKyc() {
-  return (await db.kyc.list())
-    .filter((k) => k.status === "PENDING_REVIEW" || k.status === "ADDITIONAL_INFO_REQUIRED")
+  // ⛔ FILTERED IN THE DATABASE SINCE 2026-09-05. This read `db.kyc.list()` — every row,
+  // documents joined — and filtered here. Correct while KYC was optional and production
+  // held 56 submissions; from the day identity gates all three money actions, every
+  // registered player has one, and this became a full-table scan on the screen that is now
+  // the only route to a player spending anything.
+  // ⚠️ The sort stays: `listByStatus` orders by `submittedAt` in SQL, and re-sorting here
+  // costs nothing on a page-sized list while keeping FIFO true if a backend ever forgets.
+  return (await db.kyc.listByStatus(["PENDING_REVIEW", "ADDITIONAL_INFO_REQUIRED"]))
     .sort((a, b) => (a.submittedAt ?? "").localeCompare(b.submittedAt ?? "")); // oldest first (FIFO)
 }
 
@@ -617,24 +624,30 @@ export async function listPendingKyc() {
  * Force an already-APPROVED player to re-verify (audit §9.3 #4) — document
  * expiry, a name mismatch, suspicious activity. Moves KYC APPROVED →
  * ADDITIONAL_INFO_REQUIRED with the officer's reason, which reopens the document
- * upload + resubmit flow so the player can re-verify. Login and betting are left
- * alone. COMPLIANCE-audited; an officer cannot force-reverify themselves.
+ * upload + resubmit flow so the player can re-verify. Login is left alone.
+ * COMPLIANCE-audited; an officer cannot force-reverify themselves.
  *
- * 🔴 THIS NO LONGER STOPS A WITHDRAWAL, AND THAT USED TO BE ITS ENTIRE POINT.
- * Until 2026-08-20 this doc said it "re-locks WITHDRAWALS immediately (the withdraw
- * gate requires kyc.status === 'APPROVED')". That gate is gone — identity verification
- * stopped being a precondition of withdrawal on the Gaming Board's instruction (comment
- * #1, relayed by the owner 2026-08-19). So this call now changes the player's KYC state
- * and the documents they must resubmit, and NOTHING about their ability to be paid.
+ * 🔴 WHAT THIS BUTTON DOES CHANGED TWICE, AND THE OFFICER MUST BE TOLD THE CURRENT
+ * ANSWER. Until 2026-08-20 it "re-locked withdrawals". From 2026-08-20 it stopped being a
+ * money control at all (Board comment #1). From 2026-09-05 it is a money control again —
+ * but a PARTIAL one, and the partiality is deliberate:
  *
- * ⛔ AN OFFICER WHO NEEDS TO STOP MONEY LEAVING MUST USE A MONEY CONTROL. There are
- * three, and they are the whole list:
+ *   · DEPOSITS  → LOCKED immediately. The gate asks current status.
+ *   · BETTING   → LOCKED immediately. Same.
+ *   · WITHDRAWAL → **STILL OPEN.** The gate asks `approvedAt` — "was this account ever
+ *     approved?" — so a player re-verifying keeps access to money they already earned
+ *     under an identity we accepted. Trapping it is the harm
+ *     `docs/BOARD-DISCLOSURE-B-E.md` §6 recorded when it noted this button had stopped
+ *     being a money control.
+ *
+ * ⛔ SO AN OFFICER WHO NEEDS TO STOP MONEY *LEAVING* STILL MUST USE A MONEY CONTROL.
+ * There are three, and they are the whole list:
  *   · freeze the wallet — `wallet.status !== "ACTIVE"`, the only account-level control
- *     left inside `wallet-service.withdraw()`;
+ *     inside `wallet-service.withdraw()` that stops an already-approved payer;
  *   · pause payouts — platform-wide, enforced in the withdraw route;
  *   · the AML hold — gross ≥ TZS 1,000,000 goes to two-officer review, and it never
  *     read identity status, so it is unaffected by any of this.
- * Full statement of what remains and what does not: `docs/BOARD-DISCLOSURE-B-E.md` §6.1.
+ * ⚠️ The player's own screen must say the same thing — see `force-reverify-controls.tsx`.
  */
 export async function forceReverifyKyc(officerId: string, userId: string, reason: string): Promise<ServiceResult> {
   if (!userId) return { ok: false, error: "Missing user.", code: "INVALID" };

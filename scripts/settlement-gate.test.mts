@@ -45,6 +45,7 @@ import {
 import { getGlobalConfig } from "../src/lib/server/market-config.ts";
 import { setRequireTwoOfficerResolution } from "../src/lib/server/resolution-policy.ts";
 
+import "./lib/verified-fixtures.mts";
 // This suite's `adjudicate()` helper models a two-DISTINCT-officer ceremony (stage-1
 // by alpha, stage-2 by beta). Two-admin authorization is OPTIONAL and OFF by default
 // now, so enable it for the bulk of the suite; the final block flips it OFF to prove

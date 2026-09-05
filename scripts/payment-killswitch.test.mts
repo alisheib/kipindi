@@ -10,6 +10,7 @@ import { deposit, withdraw } from "../src/lib/server/wallet-service.ts";
 import { setKillSwitch, isPaymentPaused, getKillSwitches } from "../src/lib/server/payment-ops.ts";
 import { getAuditPage } from "../src/lib/server/audit.ts";
 
+import "./lib/verified-fixtures.mts";
 let pass = 0, fail = 0;
 function ok(label: string, cond: boolean, extra?: string) {
   if (cond) { pass++; console.log(`PASS ${label}${extra ? ` — ${extra}` : ""}`); }

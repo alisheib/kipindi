@@ -41,6 +41,7 @@ import { db } from "../src/lib/server/store.ts";
 import { deriveTime, resolveTimeSegment, applyTimeInput, emptyTimeState } from "../src/components/ui/time-mask.ts";
 import { sanitizeNumericInput } from "../src/components/ui/input.tsx";
 
+import "./lib/verified-fixtures.mts";
 let pass = 0, fail = 0;
 function ok(label: string, cond: boolean, extra = "") {
   if (cond) { pass++; console.log(`  PASS ${label}`); }

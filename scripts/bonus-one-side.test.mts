@@ -34,6 +34,7 @@ import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { createMarket, buyPosition, cashOutPosition } from "../src/lib/server/market-service.ts";
 import { creditBonus } from "../src/lib/server/bonus-service.ts";
 
+import "./lib/verified-fixtures.mts";
 let pass = 0, fail = 0;
 const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"} ${l}${x ? ` — ${x}` : ""}`); };
 

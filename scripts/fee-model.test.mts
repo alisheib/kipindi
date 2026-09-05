@@ -44,6 +44,7 @@
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { createMarket, buyPosition, getMarket, resolveMarket, settleMarket, listPositionsForMarket, ratesFor } from "../src/lib/server/market-service.ts";
 import { setGlobalConfig, getGlobalConfig } from "../src/lib/server/market-config.ts";
+import "./lib/verified-fixtures.mts";
 import {
   poolFee, settledPayoutFor, payoutFor, levySplit, worstCaseWinnerRatio,
   DEFAULT_COMMISSION_RATE, DEFAULT_FEE_CEILING_RATE, MAX_COMMISSION_RATE,

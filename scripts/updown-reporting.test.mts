@@ -21,6 +21,7 @@ import { seedDefaultSources, addSource } from "../src/lib/server/source-registry
 import { getAuditPage } from "../src/lib/server/audit.ts";
 import { readFileSync } from "node:fs";
 
+import "./lib/verified-fixtures.mts";
 let pass = 0, fail = 0;
 const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"} ${l}${x ? ` — ${x}` : ""}`); };
 

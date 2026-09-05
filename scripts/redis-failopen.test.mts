@@ -28,6 +28,7 @@ import { emit, subscribe, eventBus } from "../src/lib/server/event-bus.ts";
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { createMarket, buyPosition, getMarket } from "../src/lib/server/market-service.ts";
 
+import "./lib/verified-fixtures.mts";
 let pass = 0, fail = 0;
 function ok(label: string, cond: boolean, extra?: string) {
   if (cond) { pass++; } else { fail++; console.log(`FAIL ${label}${extra ? ` — ${extra}` : ""}`); }

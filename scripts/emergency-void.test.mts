@@ -23,6 +23,7 @@ import { listForUser } from "../src/lib/server/notification-service.ts";
 import { marketCancelledRefundHtml, marketCancelledAdminHtml } from "../src/lib/server/email.ts";
 import { emailOutbox } from "../src/lib/server/email.ts";
 
+import "./lib/verified-fixtures.mts";
 let pass = 0, fail = 0;
 function ok(label: string, cond: boolean, extra?: string) {
   if (cond) { pass++; } else { fail++; console.log(`FAIL ${label}${extra ? ` — ${extra}` : ""}`); }

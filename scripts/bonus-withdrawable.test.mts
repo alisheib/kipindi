@@ -55,6 +55,7 @@ import { createMarket, buyPosition } from "../src/lib/server/market-service.ts";
 import { errorCopy } from "../src/lib/error-copy.ts";
 import { dict as DICT } from "../src/lib/i18n-dict.ts";
 
+import "./lib/verified-fixtures.mts";
 /** What a refused `withdraw()` looks like once it carries a reason (E-223). */
 type ReasonedResult = {
   ok: boolean; error?: string; code?: string;

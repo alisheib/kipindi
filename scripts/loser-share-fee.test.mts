@@ -27,6 +27,7 @@ import { createMarket, buyPosition, resolveMarket, settleMarket, listPositionsFo
 import { setGlobalConfig } from "../src/lib/server/market-config.ts";
 import { settlementFeesByPoll } from "../src/lib/server/analytics.ts";
 
+import "./lib/verified-fixtures.mts";
 let pass = 0, fail = 0;
 function ok(label: string, cond: boolean, extra = "") {
   console.log(`${cond ? "PASS" : "FAIL"} ${label}${extra ? ` — ${extra}` : ""}`);

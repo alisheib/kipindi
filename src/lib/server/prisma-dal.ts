@@ -818,6 +818,29 @@ export const prismaDb = {
       const res = await pc().kycDocument.deleteMany({ where: { submissionId } });
       return res.count;
     },
+    /**
+     * The officer review queue, filtered IN THE DATABASE.
+     *
+     * ⛔ `list()` below is the unfiltered one and stays for the admin exports that genuinely
+     * want everything. `listPendingKyc` used to call it and filter in JavaScript, which was
+     * fine while KYC was optional and this table held 56 rows. From 2026-09-05 every
+     * registered player has a submission, so that call became a full-table scan with a
+     * documents join on every `/admin/approvals` render — growing with sign-ups, on the
+     * screen that is now the only route to a player spending anything.
+     * ⚠️ `documents` is still joined: the queue shows a per-submission document COUNT.
+     * Production runs `KYC_STORAGE=r2`, so a row carries a short `r2:<key>` reference and
+     * not image bytes — but if inline storage is ever reinstated this join is where audit
+     * H5's "~1.2 TB pulled per submission at scale" comes back, and it should become a
+     * `_count` instead.
+     */
+    listByStatus: async (statuses: StoredKyc["status"][]): Promise<StoredKyc[]> => {
+      const rows = await pc().kycSubmission.findMany({
+        where: { status: { in: statuses as never } },
+        include: { documents: true },
+        orderBy: { submittedAt: "asc" }, // oldest first — FIFO, as the queue promises
+      });
+      return rows.map(toStoredKyc);
+    },
     list: async (): Promise<StoredKyc[]> => {
       const rows = await pc().kycSubmission.findMany({ include: { documents: true } });
       return rows.map(toStoredKyc);

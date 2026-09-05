@@ -78,6 +78,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { decomment as stripComments } from "./lib/decomment.mts";
 
+import "./lib/verified-fixtures.mts";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p: string) => (existsSync(join(ROOT, p)) ? readFileSync(join(ROOT, p), "utf8") : "");
 

@@ -15,6 +15,7 @@ import { deposit } from "../src/lib/server/wallet-service.ts";
 import { setPlatformConfig, getPlatformConfig, isMaintenanceMode } from "../src/lib/server/platform-config.ts";
 import { auditFlush, getAuditPage } from "../src/lib/server/audit.ts";
 
+import "./lib/verified-fixtures.mts";
 let pass = 0, fail = 0;
 function ok(label: string, cond: boolean, extra?: string) {
   if (cond) { pass++; } else { fail++; console.log(`FAIL ${label}${extra ? ` — ${extra}` : ""}`); }

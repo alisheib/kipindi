@@ -12,6 +12,7 @@ import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { bindRecruit, ensureAffiliateAccount, onRecruitBet } from "../src/lib/server/affiliate-service.ts";
 import { getAffiliateConfig } from "../src/lib/server/affiliate-config.ts";
 
+import "./lib/verified-fixtures.mts";
 let pass = 0, fail = 0;
 function ok(label: string, cond: boolean, extra?: string) {
   if (cond) { pass++; } else { fail++; console.log(`FAIL ${label}${extra ? ` — ${extra}` : ""}`); }

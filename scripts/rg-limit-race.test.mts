@@ -16,6 +16,7 @@ import { deposit } from "../src/lib/server/wallet-service.ts";
 import { buyPosition, createMarket } from "../src/lib/server/market-service.ts";
 import { setLimits } from "../src/lib/server/responsible-gambling.ts";
 
+import "./lib/verified-fixtures.mts";
 let pass = 0, fail = 0;
 function ok(label: string, cond: boolean, extra?: string) {
   if (cond) { pass++; } else { fail++; console.log(`FAIL ${label}${extra ? ` — ${extra}` : ""}`); }

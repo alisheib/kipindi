@@ -29,6 +29,7 @@ import { emailOutbox, clearEmailOutbox } from "../src/lib/server/email.ts";
 import { setPaymentControls } from "../src/lib/server/payment-control.ts";
 import { selfExclude } from "../src/lib/server/responsible-gambling.ts";
 
+import "./lib/verified-fixtures.mts";
 let pass = 0, fail = 0;
 const ok = (label: string, cond: boolean, extra?: string) => {
   if (cond) { pass++; console.log(`PASS ${label}`); }

@@ -35,6 +35,7 @@ import { positionStore } from "../src/lib/server/market-dal.ts";
 import { setGlobalConfig, getGlobalConfig, settledPayoutWhole } from "../src/lib/server/market-config.ts";
 import { DEFAULT_CASHOUT_FEE_RATE } from "../src/lib/payout.ts";
 
+import "./lib/verified-fixtures.mts";
 /** Backdate a position's placedAt so it is past the free-exit grace window. */
 async function backdatePastGrace(posId: string) {
   const p = await positionStore.get(posId);

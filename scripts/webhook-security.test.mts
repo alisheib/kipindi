@@ -17,6 +17,7 @@ import { verifyWebhookSignature, signWebhook } from "../src/lib/server/crypto.ts
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { deposit, settlePaymentWebhook } from "../src/lib/server/wallet-service.ts";
 
+import "./lib/verified-fixtures.mts";
 let pass = 0, fail = 0;
 function ok(label: string, cond: boolean, extra?: string) {
   if (cond) { pass++; } else { fail++; console.log(`FAIL ${label}${extra ? ` — ${extra}` : ""}`); }

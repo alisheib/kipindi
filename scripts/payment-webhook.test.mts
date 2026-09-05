@@ -63,7 +63,7 @@ async function makePlayer(id: string, opts: { balance?: number; kyc?: "APPROVED"
   } as never);
   await db.wallet.create({ id: `wlt_${id}`, userId: id, balance: opts.balance ?? 0, pending: 0, hold: 0, currency: "TZS", status: "ACTIVE", createdAt: now, updatedAt: now });
   if (opts.kyc) {
-    await db.kyc.upsert({ id: `kyc_${id}`, userId: id, status: opts.kyc, rejectReason: null, rejectNote: null, idType: "NIDA", idNumber: "19900101456712341234", idExpiry: null, idVerifiedAt: now, fullName: "Test Player", dob: "1990-01-01", documents: [], reviewerId: null, reviewedAt: null, submittedAt: now, createdAt: now, updatedAt: now } as never);
+    await db.kyc.upsert({ id: `kyc_${id}`, userId: id, status: opts.kyc, rejectReason: null, rejectNote: null, idType: "NIDA", idNumber: "19900101456712341234", idExpiry: null, idVerifiedAt: now, fullName: "Test Player", dob: "1990-01-01", documents: [], reviewerId: null, reviewedAt: null, submittedAt: now, approvedAt: opts.kyc === "APPROVED" ? now : null, createdAt: now, updatedAt: now } as never);
   }
 }
 const ref = async (txnId: string) => (await db.txn.findById(txnId))?.providerRef ?? "";

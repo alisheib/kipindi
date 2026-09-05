@@ -5,12 +5,15 @@
  *  Shown only when KYC is APPROVED. The confirm happens in the kit <Modal> (portal +
  *  focus-trap + scroll-lock + Esc) — changing a player's compliance state deserves a
  *  deliberate surface, not an inline link.
- *  🔴 IT DOES NOT RE-LOCK WITHDRAWALS. It said so here, in the modal body and in the
- *  success toast until 2026-08-20; the withdrawal identity gate is gone (Board comment
- *  #1, 2026-08-19). Telling an officer this stops a payout, at the moment they choose
- *  it to stop a payout, is the officer-facing twin of E-5. To stop money leaving:
- *  freeze the wallet, pause payouts, or the AML ≥ TZS 1,000,000 two-officer hold.
- *  docs/BOARD-DISCLOSURE-B-E.md §6.1. */
+ *  🔴 WHAT IT LOCKS CHANGED TWICE — TELL THE OFFICER THE CURRENT ANSWER. Until 2026-08-20
+ *  this said it re-locked withdrawals; from 2026-08-20 it stopped being a money control at
+ *  all (Board comment #1); from 2026-09-05 it locks DEPOSITS and BETTING immediately and
+ *  STILL DOES NOT STOP A PAYOUT — the withdraw gate asks whether the account was EVER
+ *  approved, so a player re-verifying keeps money they already earned under an identity we
+ *  accepted.
+ *  ⛔ Telling an officer this stops a payout, at the moment they choose it to stop a payout,
+ *  is the officer-facing twin of E-5. To stop money leaving: freeze the wallet, pause
+ *  payouts, or the AML ≥ TZS 1,000,000 two-officer hold. docs/BOARD-DISCLOSURE-B-E.md §6. */
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
@@ -54,7 +57,7 @@ export function ForceReverifyControls({ userId }: { userId: string }) {
       }
       setOpen(false); setReason("");
       router.refresh();
-      toast({ title: "Re-verification required", description: "Player asked to re-submit documents. This does not stop withdrawals — freeze the wallet or pause payouts for that.", variant: "warning" });
+      toast({ title: "Re-verification required", description: "Deposits and betting are locked now. This does NOT stop withdrawals — freeze the wallet or pause payouts for that.", variant: "warning" });
     });
   };
 
@@ -78,7 +81,7 @@ export function ForceReverifyControls({ userId }: { userId: string }) {
         <p className="font-mono text-micro uppercase eyebrow font-bold text-text mb-1">KYC · Re-verify</p>
         <h3 className="font-display text-[18px] font-bold text-text leading-tight">Force KYC re-verification?</h3>
         <p className="mt-1 text-body-sm italic text-text-subtle">
-          Moves this APPROVED player back to re-verification and asks them to re-submit their documents. Audit-logged. It does <strong>not</strong> stop withdrawals — to hold money, freeze the wallet or pause payouts.
+          Moves this APPROVED player back to re-verification and asks them to re-submit their documents. Audit-logged. <strong>Deposits and betting stop immediately.</strong> It does <strong>not</strong> stop withdrawals — money they have already earned stays reachable, so to hold it, freeze the wallet or pause payouts.
         </p>
         <label className="mt-3 block">
           {/* DG-A-14: "Reason · Sababu (required, audit-logged)" was one microlabel with its

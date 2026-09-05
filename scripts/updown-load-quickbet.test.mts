@@ -30,6 +30,7 @@ import { marketStore as mStore } from "../src/lib/server/market-dal.ts";
 import { openRound } from "../src/lib/server/updown-service.ts";
 import { seedDefaultSources, addSource } from "../src/lib/server/source-registry.ts";
 
+import "./lib/verified-fixtures.mts";
 const ON_PG = !!process.env.DATABASE_URL && process.env.USE_PRISMA_DAL === "true";
 let pass = 0, fail = 0;
 const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"} ${l}${x ? ` — ${x}` : ""}`); };

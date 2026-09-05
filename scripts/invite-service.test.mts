@@ -4,6 +4,7 @@
  * registration → bonus binding (idempotent, source INVITE).
  */
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
+import "./lib/verified-fixtures.mts";
 import {
   classifyContact, parseContacts, createCampaign, addContacts, addContactsStructured, sendCampaign,
   bindRegistration, getCampaignDetail,

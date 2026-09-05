@@ -36,6 +36,7 @@ import { addSource, seedDefaultSources } from "../src/lib/server/source-registry
 import { db } from "../src/lib/server/store.ts";
 import { poolFee } from "../src/lib/payout.ts";
 
+import "./lib/verified-fixtures.mts";
 let pass = 0, fail = 0;
 const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"} ${l}${x ? ` — ${x}` : ""}`); };
 

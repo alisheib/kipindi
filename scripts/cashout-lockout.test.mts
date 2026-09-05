@@ -35,6 +35,7 @@ import {
 } from "../src/lib/server/market-service.ts";
 import { setGlobalConfig } from "../src/lib/server/market-config.ts";
 
+import "./lib/verified-fixtures.mts";
 // This suite tests the SELECTION-CLOSE lockout, not the time window. The default
 // paidExitWindowMinutes is now 0 (exit locks at the free window), so open an
 // explicit paid window so the "can still sell while selections are open" case

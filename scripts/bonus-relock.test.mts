@@ -48,6 +48,7 @@ import {
 import { setBonusConfig } from "../src/lib/server/bonus-config.ts";
 import { auditFlush, getAuditPage } from "../src/lib/server/audit.ts";
 
+import "./lib/verified-fixtures.mts";
 let pass = 0, fail = 0;
 function ok(label: string, cond: boolean, extra?: string) {
   if (cond) { pass++; console.log(`  PASS ${label}${extra ? ` — ${extra}` : ""}`); }

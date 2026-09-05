@@ -621,6 +621,20 @@ const memoryDb = {
       return latest;
     },
     upsert: (k: StoredKyc) => { store.kyc.set(k.id, k); return k; },
+    /**
+     * Submissions in the given statuses — the officer review queue.
+     *
+     * ⛔ IT EXISTS BECAUSE THE POLICY CHANGED THE POPULATION, NOT BECAUSE THE OLD CODE WAS
+     * SLOPPY. `listPendingKyc` used to call `db.kyc.list()` — `findMany` with NO `where`
+     * and NO `select`, documents joined — and filter in JavaScript. Fine while KYC was
+     * optional and production held 56 rows. From 2026-09-05 every registered player has a
+     * submission, so that is a full-table scan with a join on every `/admin/approvals`
+     * render, growing with sign-ups, on the screen that is now the only route to revenue.
+     */
+    listByStatus: (statuses: StoredKyc["status"][]) => {
+      const want = new Set(statuses);
+      return Array.from(store.kyc.values()).filter((k) => want.has(k.status));
+    },
     // ⚠️ `findByNida` / `findActiveByNida` LIVED HERE UNTIL 2026-08-20. They read the
     // deprecated `nidaNumber` column and had ZERO callers from the day the identity
     // tuple shipped — `findActiveByIdNumber` below replaced them, matching on the PAIR.

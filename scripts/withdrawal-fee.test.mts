@@ -68,6 +68,9 @@ async function kycdUser(id: string, balance: number): Promise<void> {
     // ⛔ Same trap as money-e2e: this said `nidaNumber` alone, so after the contract
     // migration it seeded an APPROVED submission with no identity number.
     userId: id, status: "APPROVED", idType: "NIDA", idNumber: "12345678901234567890", idVerifiedAt: now(),
+    // The column the WITHDRAW gate reads (2026-09-05). An APPROVED fixture without it is a
+    // player who can bet and cannot be paid — a state the product never produces.
+    approvedAt: now(),
     documents: [],
     createdAt: now(), updatedAt: now(),
   } as never);

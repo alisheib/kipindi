@@ -25,6 +25,7 @@ import { openRound, closeRound } from "../src/lib/server/updown-service.ts";
 import { seedDefaultSources, addSource } from "../src/lib/server/source-registry.ts";
 import { parseStake, quickStakes, stakeIsValid } from "../src/components/updown/stake-math.ts";
 
+import "./lib/verified-fixtures.mts";
 let pass = 0, fail = 0;
 const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"} ${l}${x ? ` — ${x}` : ""}`); };
 

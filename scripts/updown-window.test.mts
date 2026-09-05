@@ -46,6 +46,7 @@ import {
 } from "../src/lib/updown-durations.ts";
 import { db } from "../src/lib/server/store.ts";
 
+import "./lib/verified-fixtures.mts";
 let pass = 0, fail = 0;
 const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"} ${l}${x ? ` — ${x}` : ""}`); };
 
