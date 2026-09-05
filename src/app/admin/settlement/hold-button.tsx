@@ -160,8 +160,13 @@ export function HoldButton({
             <I.alertCircle s={14} className="mt-[1px] shrink-0" />
             <span>
               This freezes the market: no winner is paid until it is resolved.{" "}
-              <strong>You will not be able to release it yourself</strong> — a different officer
-              must review your case, the same rule that applies to a player&rsquo;s objection.
+              {/* ⛔ `{" "}` BEFORE THE DASH, NOT A PLAIN SPACE — measured, not assumed. Written
+                  as `</strong> — a`, the live DOM read "yourself— a different": the space was
+                  eaten. Same defect as HOUSE-6 ("It is notsubtracted above"), one sentence over.
+                  The explicit expression is the only form that survives. */}
+              <strong>You will not be able to release it yourself</strong>{" "}
+              — a different officer must review your case, the same rule that applies to a
+              player&rsquo;s objection.
             </span>
           </p>
 
