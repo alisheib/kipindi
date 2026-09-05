@@ -189,7 +189,17 @@ export function FilterSheet({
     if (!open) return;
     const onViewportChange = () => {
       const el = ref.current;
-      if (!el || getComputedStyle(el).display !== "none") return;
+      /* ⛔ `getClientRects()`, NOT `getComputedStyle(el).display`. The first version of this
+         effect asked the ELEMENT for its own display and never fired, because `/updown` hides
+         the sheet by putting `sm:hidden` on the WRAPPER — and `display: none` on an ancestor
+         does not change the child's computed display, which stays `block`. Measured live at
+         852×393: `detailsDisplay: "block"`, `open: true`, `htmlOverflow: "hidden"` — the lock
+         was still on. An element hidden by any ancestor has NO layout boxes, so this is the
+         one question that is true for both spellings of "hidden".
+         ⚠️ The check that exposed it also lied: `window.scrollTo()` still moves the page under
+         `overflow: hidden`, so a scroll test "passed" over a locked document. The honest
+         assertion is the lock itself. */
+      if (!el || el.getClientRects().length > 0) return;
       if (closingTimer.current != null) { clearTimeout(closingTimer.current); closingTimer.current = null; }
       el.removeAttribute("data-closing");
       el.removeAttribute("open");
