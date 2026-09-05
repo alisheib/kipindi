@@ -1,8 +1,30 @@
-# ▶ THE BOARD — there are exactly TWO ongoing programmes
+# ▶ THE BOARD — the ongoing programmes
 
 > **Read this first, then pick one.** Everything else in `docs/` is a RECORD of finished work.
-> If a document is not one of the two below, it is not a live task, whatever its own header says.
-> ⛔ Do not start a third thing. Ask Ali which of the two to proceed with.
+> If a document is not listed below, it is not a live task, whatever its own header says.
+> ⛔ Do not start something that is not on this board. Ask Ali which item to proceed with.
+
+## 0 · MANAGEMENT SPEC — `MGMT-SPEC-2026-09-05` · 🟡 **DEPLOY 1 OF 3 IS LIVE**
+
+⭐ **Opened on Ali's instruction, 2026-09-05**, from a two-page specification management sent
+([`management-spec-2026-09-05.md`](management-spec-2026-09-05.md)). Two asks: a player **"In Progress"** view, and the
+objection window cut from **24 hours to 1**.
+
+| | |
+|---|---|
+| **Authority** | The plan, plus its four owner rulings — reproduced in `COMPLIANCE-DECISIONS.md` (2026-09-05) |
+| **Handoff** | [`LIVE-QA-CAMPAIGN.md`](LIVE-QA-CAMPAIGN.md) §6b, topmost `RESUME AT` (session 87) |
+| **Deploy 1** | ✅ **LIVE** — the seal-time notice (`E-295`) and the officer hold (`E-296`), plus `E-297`–`E-299`. The two controls that had to exist BEFORE the window could shorten |
+| **Deploy 2** | ☐ **The 1-hour window.** ⛔ The code default is not the live value; the flip is an audited act through the FINANCE screen. The "24" inventory is ~20 sites and includes the **live chatbot system prompt** |
+| **Deploy 3** | ☐ **The In-progress view.** ⛔ `PositionCard` is NOT reusable unchanged — a losing player would read a gold *"If your side wins"* for the whole window |
+| **Blocked** | Nothing |
+
+⚠️ **Why the window is still 24 hours on production**, deliberately: shortening it first would
+have left the platform describing a control it no longer had. 50pick told a bettor **nothing**
+when a verdict was recorded, and the spec's "dispute raised by an authorized admin" had **no
+mechanism at all**. Both are fixed; the window moves next.
+
+## THE TWO PROGRAMMES THAT WERE ALREADY HERE
 
 ---
 
