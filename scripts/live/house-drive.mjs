@@ -88,6 +88,35 @@ async function assertFits(page, w, tag) {
       .map((el) => `"${(el.textContent || "").trim().slice(0, 30)}" ${el.clientWidth}<${el.scrollWidth}`));
   ok(`${tag} · ⭐ no KPI tile clips its label or its figure, to the pixel`,
     tiles.length === 0, tiles.join(" · "));
+
+  /* ⭐ AND NO MONEY IS SCROLLED OUT OF VIEW ON A NARROW CARD.
+   *
+   * 🔴 A figure inside a `ScrollX` region is not CLIPPED — it is off to the right, reachable by
+   * scrolling sideways INSIDE the card — so `measureClipping` cannot see it and the page shows
+   * no overflow. Measured at 360 on the shipped page: EVERY amount in the earnings waterfall
+   * and FOUR of six in the product subtotals sat off-screen, plus the by-game variance, the one
+   * figure on that card that must read zero. The owner read step names and prose and no money.
+   *
+   * ⛔ THE GAMES TABLE IS EXEMPT AND ONLY IT. Ten columns read left to right as a derivation and
+   * genuinely have to scroll; the exemption is BY NAME so a new wide table cannot inherit it. */
+  const SCROLLS_BY_DESIGN = ["Games that moved money", "Ledger evidence", "Configuration changes"];
+  const buried = await page.evaluate((exempt) => {
+    const res = [];
+    for (const reg of document.querySelectorAll('[role="region"]')) {
+      const label = reg.getAttribute("aria-label") || "";
+      if (exempt.includes(label)) continue;
+      const box = reg.getBoundingClientRect();
+      let off = 0, total = 0;
+      for (const a of reg.querySelectorAll("table.admin-tbl tbody .amount")) {
+        total++;
+        if (a.getBoundingClientRect().right > box.right + 1) off++;
+      }
+      if (off > 0) res.push(`${label}: ${off}/${total} money cells off-screen`);
+    }
+    return res;
+  }, SCROLLS_BY_DESIGN);
+  ok(`${tag} · ⭐ no money figure is scrolled out of view on a narrow card`,
+    buried.length === 0, buried.join(" · "));
 }
 
 const { b, ctx: seed } = await browser();

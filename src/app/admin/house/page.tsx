@@ -574,7 +574,7 @@ export default async function AdminHousePage({ searchParams }: { searchParams: P
             {feeBySource === null ? <AdminLoadError what="the fee breakdown" /> : (
               <>
                 <ScrollX label="Fee earned by source" className="-mx-4 px-4">
-                  <table className="admin-tbl min-w-[420px]">
+                  <table className="admin-tbl">
                     <thead><tr><th className="text-left">Source</th><th className="text-right">Fee</th><th className="text-left">What it is</th><th className="text-right">Entries</th></tr></thead>
                     <tbody>
                       {/* ⛔ NOTHING IS ENUMERATED HERE. Whatever entry types the books return are
@@ -583,7 +583,10 @@ export default async function AdminHousePage({ searchParams }: { searchParams: P
                           permanent zero for early-exit fees, which have never yet been booked. */}
                       {feeSlice.map((r) => (
                         <tr key={r.entryType}>
-                          <td className="text-left font-mono whitespace-nowrap">{r.entryType}</td>
+                          {/* ⚠️ `break-all`, not `whitespace-nowrap`: `SETTLEMENT_COMMISSION` is one unbreakable
+                              mono token ~200px wide, and it pushed the FEE beside it off a 360px
+                              screen. A token that may wrap is a fee that stays readable. */}
+                          <td className="text-left font-mono break-all">{r.entryType}</td>
                           <td className="tabular text-right"><Amt v={r.amount} /></td>
                           <td className="text-left text-text-secondary">{FEE_SOURCE_NOTE[r.entryType] ?? "—"}</td>
                           <td className="tabular text-right text-text-secondary">{formatNumber(r.entries)}</td>
@@ -659,17 +662,20 @@ export default async function AdminHousePage({ searchParams }: { searchParams: P
             {byProduct === null ? <AdminLoadError what="the product subtotals" /> : (
               <ScrollX label="Subtotals by product" className="-mx-4 px-4">
                 <table className="admin-tbl min-w-[560px]">
-                  <thead><tr><th className="text-left">Product</th><th className="text-right">Games</th><th className="text-right">Handle</th><th className="text-right">Fee</th><th className="text-right">Net retained</th></tr></thead>
+                  {/* ⭐ NET RETAINED SECOND — it is the answer; games/handle/fee are the workings. Measured
+                      at 360: with it last, FOUR of this card's six money cells were scrolled out of
+                      view. A reader on a phone now sees what each product made without scrolling. */}
+                  <thead><tr><th className="text-left">Product</th><th className="text-right">Net retained</th><th className="text-right">Handle</th><th className="text-right">Fee</th><th className="text-right">Games</th></tr></thead>
                   <tbody>
                     {/* ⚠️ These are over the WHOLE window, never the filtered view. A subtotal
                         that moved with the filter would only ever agree with itself. */}
                     {byProduct.map((p) => (
                       <tr key={p.pl}>
                         <td className="text-left">{p.pl === "UPDOWN" ? "Up & Down" : "Polls"}</td>
-                        <td className="tabular text-right text-text-secondary">{formatNumber(p.n)}</td>
+                        <td className="tabular text-right font-semibold"><Amt v={p.net} /></td>
                         <td className="tabular text-right"><Amt v={p.handle} /></td>
                         <td className="tabular text-right"><Amt v={p.fee} /></td>
-                        <td className="tabular text-right font-semibold"><Amt v={p.net} /></td>
+                        <td className="tabular text-right text-text-secondary">{formatNumber(p.n)}</td>
                       </tr>
                     ))}
                   </tbody>
