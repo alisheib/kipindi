@@ -148,11 +148,21 @@ export function HoldButton({
             />
           </div>
 
+          {/* 🔴 THE SENTENCE IS WRAPPED IN ONE <span>, AND IT HAS TO BE. Photographed at 360 on
+              the live deploy, this paragraph rendered as THREE RAGGED COLUMNS — "This freezes
+              the market: no" / "You will not be able to release it yourself" / "— a different
+              officer must…" — because `flex` makes every child a flex ITEM, and the `<strong>`
+              is a child. So the most important sentence in the dialog was laid out as a column
+              two words wide. ⛔ No guard could see it: `test:popup-fit` looks for `truncate`
+              and `line-clamp`, and nothing was clipped — the text was all present and unreadable.
+              One text child beside the icon restores a single flowing paragraph. */}
           <p className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-body-sm leading-relaxed text-warning-fg">
             <I.alertCircle s={14} className="mt-[1px] shrink-0" />
-            This freezes the market: no winner is paid until it is resolved.{" "}
-            <strong>You will not be able to release it yourself</strong> — a different officer must
-            review your case, the same rule that applies to a player&rsquo;s objection.
+            <span>
+              This freezes the market: no winner is paid until it is resolved.{" "}
+              <strong>You will not be able to release it yourself</strong> — a different officer
+              must review your case, the same rule that applies to a player&rsquo;s objection.
+            </span>
           </p>
 
           <div className="flex justify-end gap-[8px]">
