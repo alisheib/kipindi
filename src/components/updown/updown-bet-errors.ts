@@ -58,7 +58,26 @@ import { renderFailure, hasReason, type FailureDetail, type FailureReason } from
  */
 const MODAL_TITLE_BY_REASON: Partial<Record<FailureReason, keyof UdErrDict>> = {
   loss_limit_daily: "udErrRgLimitTitle",
+  // ── The identity gate (2026-09-05) ────────────────────────────────────────────────
+  // ⛔ FOUR ROWS FOR FOUR REASONS, and omitting any one of them is not a missing nicety —
+  // it is the loss-cap defect above, repeated. Without a row the heading falls back to
+  // `udErrSuspendedTitle` ("Betting unavailable"), which over a body reading "we are
+  // reviewing your documents" states an operator outage on the one refusal that is
+  // ordinary progress. The bodies already differ per reason via the registry; the
+  // headings have to as well or the loudest line on the screen is the wrong one.
+  kyc_not_verified:   "udErrKycNotVerifiedTitle",
+  kyc_pending_review: "udErrKycPendingTitle",
+  kyc_more_info:      "udErrKycMoreInfoTitle",
+  kyc_rejected:       "udErrKycRejectedTitle",
 };
+
+/**
+ * Registry `severity` → `OperationResultModal` variant. The two vocabularies share three
+ * members by construction (`Severity` = info | warning | error; `OperationVariant` adds
+ * `success`, which no refusal may ever be). ⛔ A refusal is NEVER `success` — gold is
+ * earned money, `failure-reasons.ts` §6.
+ */
+const SEVERITY_VARIANT = { error: "danger", warning: "warning", info: "info" } as const;
 
 /** How the surface must present the refusal (§5 decision matrix). */
 export type UdBetFailure =
@@ -71,9 +90,25 @@ export type UdBetFailure =
     }
   | {
       kind: "blocked";
-      /** OperationResultModal (danger, no gold): compliance/account blocks must be acknowledged. */
+      /** OperationResultModal (never gold): compliance/account blocks must be acknowledged. */
       title: string;
       body: string;
+      /**
+       * 🔴 THE MODAL'S TONE, AND IT USED TO BE HARD-WIRED TO `danger`.
+       *
+       * That was true while every `modal`-channel reason in the registry was severity
+       * `error`. The 2026-09-05 identity gate broke that assumption on purpose:
+       * `kyc_pending_review` is severity **`info`** — the player has done everything
+       * asked of them and is waiting on OUR review queue. Rendering that in the red
+       * `danger` crest, with the ✗ glyph and `role="alertdialog"`, tells a player who did
+       * nothing wrong that something failed. It is our delay, and it must not be coloured
+       * as their fault.
+       *
+       * ⛔ Derive it from the registry `severity`, never from `kind`. `OperationVariant`
+       * and `Severity` share three members by construction; the mapping is the whole of
+       * `SEVERITY_VARIANT` below.
+       */
+      variant: "danger" | "warning" | "info";
     };
 
 type UdErrDict = {
@@ -86,6 +121,12 @@ type UdErrDict = {
   udErrSuspendedBody: string;
   udErrRgLimitTitle: string;
   udErrRgLimitBody: string;
+  /** Identity-gate modal headings (2026-09-05). The BODIES come from the reason
+   *  registry (`t.error.errKyc*`); only the heading is chosen here. */
+  udErrKycNotVerifiedTitle: string;
+  udErrKycPendingTitle: string;
+  udErrKycMoreInfoTitle: string;
+  udErrKycRejectedTitle: string;
 };
 
 export function udBetErrorCopy(
@@ -121,7 +162,10 @@ export function udBetErrorCopy(
       // ⛔ THE HEADING COMES FROM THE REASON, NOT THE SEVERITY — `MODAL_TITLE_BY_REASON`
       // above records what titling by severity did to the loss cap.
       const titleKey = (f.reason && MODAL_TITLE_BY_REASON[f.reason]) ?? "udErrSuspendedTitle";
-      return { kind: "blocked", title: m[titleKey], body: f.body };
+      // ⛔ THE TONE COMES FROM THE REGISTRY TOO. See the `variant` note on UdBetFailure:
+      // hard-wiring `danger` here painted `kyc_pending_review` — our own review queue —
+      // as the player's failure.
+      return { kind: "blocked", title: m[titleKey], body: f.body, variant: SEVERITY_VARIANT[f.severity] };
     }
     return { kind: "transient", description: f.body, lockNow: f.reason === "selection_closed" };
   }
@@ -135,7 +179,9 @@ export function udBetErrorCopy(
     case "NOT_FOUND":
       return { kind: "transient", description: m.udErrNotFound, lockNow: false };
     case "SUSPENDED":
-      return { kind: "blocked", title: m.udErrSuspendedTitle, body: m.udErrSuspendedBody };
+      // The legacy `SUSPENDED` arm, for services that emit no reason yet: genuinely a
+      // hard operator block, so `danger` is correct here and stays explicit.
+      return { kind: "blocked", title: m.udErrSuspendedTitle, body: m.udErrSuspendedBody, variant: "danger" };
     case "INVALID":
       // ⭐ THE RG DAILY-LOSS PHRASE TEST STOOD HERE AND IS DELETED (2026-08-15).
       // It read `if (serverError && /daily loss limit|loss limit/i.test(serverError))` and was

@@ -118,6 +118,13 @@ export async function startKyc(userId: string): Promise<ServiceResult<{ kycId: s
     reviewerId: null,
     reviewedAt: null,
     submittedAt: null,
+    // 🔴 THE ONE FIELD THIS RESET MUST *NOT* CLEAR, and the only rebuild-from-scratch
+    // upsert in the file — every other one spreads `...k` and carries it for free.
+    // Reachable: APPROVED → forceReverify → REJECTED → the player taps "start again".
+    // That player HOLDS MONEY earned under an identity we accepted; nulling their
+    // first-approval date locks them out of it, and no suite would go red. Approval is
+    // a fact about the past, not a state — see the column note in prisma/schema.prisma.
+    approvedAt: existing?.approvedAt ?? null,
     createdAt: existing?.createdAt ?? new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   });
@@ -727,7 +734,12 @@ export async function reviewKyc(opts: {
     const now = new Date().toISOString();
 
     if (decision === "APPROVE") {
-      await db.kyc.upsert({ ...k, status: "APPROVED", reviewerId: officerId, reviewedAt: now, rejectReason: null, rejectNote: null, updatedAt: now });
+      // ⭐ `approvedAt` IS STAMPED ONCE AND ONLY ONCE — `k.approvedAt ?? now`, never a
+      // bare `now`. It records the FIRST time this account satisfied us, which is the
+      // question the withdrawal gate asks; re-stamping it on every re-approval would
+      // turn it into a duplicate of `reviewedAt` and quietly lose the fact that a
+      // re-verified player was already trusted once.
+      await db.kyc.upsert({ ...k, status: "APPROVED", reviewerId: officerId, reviewedAt: now, approvedAt: k.approvedAt ?? now, rejectReason: null, rejectNote: null, updatedAt: now });
       const u = await db.user.findById(userId);
       // Build a single user patch: unlock the account if it's gated purely by
       // KYC, and surface the NIDA-verified legal name as the display name.

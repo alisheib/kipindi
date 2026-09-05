@@ -105,6 +105,13 @@ export type StoredKyc = {
   reviewerId: string | null;
   reviewedAt: string | null;
   submittedAt: string | null;
+  /** 🔴 First-ever approval — set once, NEVER cleared. Withdrawal asks THIS
+   *  (`assertKycForMoney(userId, "WITHDRAW")`); deposit and betting ask
+   *  `status`. The split is what stops `forceReverifyKyc` freezing money a
+   *  player earned under an identity we already accepted — see the column note
+   *  in `prisma/schema.prisma`. Optional so rows written before 2026-09-05
+   *  still load. */
+  approvedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 };

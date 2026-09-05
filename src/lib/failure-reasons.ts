@@ -147,15 +147,37 @@ export type FailureReason =
    */
   | "withdraw_balance_insufficient"
   | "withdraw_bonus_locked"
-  // ⛔ RETIRED 2026-08-20 — do not re-add. `kyc_required` was the withdrawal
-  // identity refusal, and identity verification stopped being a precondition of
-  // withdrawal on the Gaming Board's instruction (comment #1, relayed by the owner
-  // 2026-08-19; `docs/COMPLIANCE-DECISIONS.md` and `docs/BOARD-DISCLOSURE-B-E.md`).
+  // ⛔ `kyc_required` WAS RETIRED 2026-08-20 AND IS STILL RETIRED — the four reasons
+  // below are NOT it coming back under a new spelling, and the distinction is the
+  // history, not the semantics.
+  //
+  // THEN: `kyc_required` was the WITHDRAWAL identity refusal, and identity verification
+  // stopped being a precondition of withdrawal on the Gaming Board's instruction
+  // (comment #1, relayed by the owner 2026-08-19; `docs/BOARD-DISCLOSURE-B-E.md` §1).
   // Its union member, registry row, three dictionary keys and its single emitter in
-  // `wallet-service.withdraw()` went in one commit. What replaced the refusal is a
-  // RECORD, not another code: an identity stamp on every withdrawal's audit entry
-  // and a COMPLIANCE fact when the payer is unverified. A refusal code here would
-  // re-create the gate the Board asked us to remove.
+  // `wallet-service.withdraw()` went in one commit, replaced by a RECORD rather than a
+  // code: an identity stamp on every withdrawal's audit entry, and a COMPLIANCE fact
+  // when the payer was unverified.
+  //
+  // NOW: on 2026-09-05 the owner ruled that a player may not deposit, bet OR withdraw
+  // until we approve their identity (`docs/COMPLIANCE-DECISIONS.md`; re-disclosed to the
+  // Board). Two thirds of that is new policy the Board never spoke to — deposits and
+  // staking. One third, withdrawal, is a deliberate reversal, taken as a control
+  // STRICTER than instructed and disclosed as such.
+  //
+  // ⛔ THE OLD NAME STAYS DEAD ANYWAY. A retired token carries its retirement note into
+  // every future reader's head; reviving it for a differently-scoped gate would make
+  // both decisions unreadable. Four names, because the refusal is four different asks —
+  // and one token cannot tell a player waiting on US from a player we are waiting on.
+  /** Identity not yet proven — no submission, or one still being filled in. */
+  | "kyc_not_verified"
+  /** Submitted and sitting with an officer. ⚠️ The player has nothing to do; the copy
+   *  must not imply they do. This is the one of the four that is our delay, not theirs. */
+  | "kyc_pending_review"
+  /** An officer asked for more or clearer documents. The ask itself is on /profile/kyc. */
+  | "kyc_more_info"
+  /** Turned down. `humanizeRejectReason` renders the categorised reason on /profile/kyc. */
+  | "kyc_rejected"
   // ⛔ RENAMED 2026-08-20, and the rename is the point. `nida_taken` /
   // `nida_not_verified` were named for the only document the product accepted.
   // From 2026-08-20 a player proves identity with any ONE of four, so leaving
@@ -304,6 +326,32 @@ export const REASONS: Record<FailureReason, ReasonSpec> = {
   // email gate shipped, and until now nothing rendered it: `errorCopy` had no branch for it, so
   // it fell to `default:` and printed the SERVER'S OWN ENGLISH SENTENCE to a SW/ZH player.
   email_unverified:     { severity: "warning", channel: "inline", key: "errEmailUnverified" },
+
+  // ── THE IDENTITY GATE ON THE MONEY PATH (2026-09-05) ──────────────────────────────
+  // Emitted by `deposit()`, `buyPositionInner()` and `withdraw()` through
+  // `assertKycForMoney` (`src/lib/server/kyc-gate.ts`), which carries the whole rationale.
+  //
+  // ⛔ `channel: "modal"` FOR ALL FOUR, and it is a deliberate cost. A betting refusal is
+  // normally a sticky toast; these seize the screen because they are hard blocks the player
+  // cannot clear in the moment, and because the fix lives on ANOTHER PAGE. A toast that
+  // scrolls away is how a player learns nothing and taps again. Same reasoning the registry
+  // already applies to `wallet_frozen` and `account_blocked`.
+  //
+  // 🔴 A `modal` REASON MUST ALSO GET A ROW IN `MODAL_TITLE_BY_REASON`
+  // (`src/components/updown/updown-bet-errors.ts`) OR IT INHERITS THE FALLBACK HEADING
+  // "Betting unavailable" — which, over a body reading "verify your identity to play", is
+  // the exact loss-cap defect that map was written to fix. Four reasons, four title rows.
+  //
+  // ⚠️ SEVERITY IS NOT UNIFORM, ON PURPOSE. Three of these the player can act on, so they
+  // are `warning` — docs/RULES.md §2.9: *"warning = THE PLAYER CAN FIX IT, and their money
+  // did not move"*. `kyc_pending_review` is `info`: nothing is wrong, we are simply not
+  // finished, and colouring our own review queue as the player's problem would be a lie
+  // told in red on a money screen.
+  kyc_not_verified:     { severity: "warning", channel: "modal",  key: "errKycNotVerified" },
+  kyc_pending_review:   { severity: "info",    channel: "modal",  key: "errKycPendingReview" },
+  kyc_more_info:        { severity: "warning", channel: "modal",  key: "errKycMoreInfo" },
+  kyc_rejected:         { severity: "warning", channel: "modal",  key: "errKycRejected" },
+
   name_invalid:         { severity: "warning", channel: "inline", key: "errNameInvalid" },
   avatar_type:          { severity: "warning", channel: "inline", key: "errAvatarType" },
   avatar_size:          { severity: "warning", channel: "inline", key: "errAvatarSize" },

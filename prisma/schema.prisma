@@ -380,6 +380,27 @@ model KycSubmission {
   reviewerId     String?
   reviewedAt     DateTime?
   submittedAt    DateTime?
+  /// 🔴 THE FIRST TIME THIS ACCOUNT EVER SATISFIED US — SET ONCE, NEVER CLEARED.
+  ///
+  /// ⭐ IT EXISTS BECAUSE `status` CANNOT ANSWER THE WITHDRAWAL QUESTION. From
+  /// 2026-09-05 identity verification gates deposit, betting AND withdrawal
+  /// (owner ruling — docs/COMPLIANCE-DECISIONS.md). Deposit and betting ask
+  /// `status === APPROVED`: current standing, because they add NEW exposure.
+  /// Withdrawal asks THIS: has the account ever been approved?
+  ///
+  /// ⛔ THE DIFFERENCE IS NOT PEDANTRY — IT IS THE ONE PATH THAT TRAPS MONEY.
+  /// `forceReverifyKyc` moves an APPROVED player to ADDITIONAL_INFO_REQUIRED,
+  /// and that player HOLDS REAL MONEY earned under a verified identity. Gating
+  /// their withdrawal on current status would freeze it — which is exactly the
+  /// harm docs/BOARD-DISCLOSURE-B-E.md §6 recorded when it noted that
+  /// force-reverify had STOPPED being a money control. It also covers the real
+  /// race: a deposit authorised while approved whose Selcom callback lands
+  /// after a rejection.
+  ///
+  /// ⛔ NEVER NULL THIS. Not on force-reverify, not on rejection, not on
+  /// `startKyc`'s reset of a REJECTED submission. A cleared value re-opens the
+  /// trap silently, and nothing would go red. `test:kyc-gate` drives it.
+  approvedAt     DateTime?
   /**
    * Officer-requested extra documents (each with a description). JSON array of
    * { id, description, requestedAt, storageKey, uploadedAt }. Empty normally.

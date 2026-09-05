@@ -160,6 +160,12 @@ export function toStoredKyc(row: any): StoredKyc {
     reviewerId: row.reviewerId,
     reviewedAt: iso(row.reviewedAt),
     submittedAt: iso(row.submittedAt),
+    // 🔴 CARRIED BOTH WAYS OR THE WITHDRAWAL GATE FORGETS. `db.kyc.upsert` writes
+    // back the whole StoredKyc every caller builds by reading here first — so a
+    // field dropped on the way OUT is nulled on the next write. That is the E-3
+    // shape (see the documents note above), and on THIS column it would null a
+    // player's first-approval date and lock them out of their own money.
+    approvedAt: iso(row.approvedAt),
     extraRequests: Array.isArray(row.extraRequests) ? row.extraRequests : [],
     createdAt: iso(row.createdAt)!,
     updatedAt: iso(row.updatedAt)!,
@@ -690,6 +696,9 @@ export const prismaDb = {
         reviewerId: k.reviewerId,
         reviewedAt: k.reviewedAt ? new Date(k.reviewedAt) : null,
         submittedAt: k.submittedAt ? new Date(k.submittedAt) : null,
+        // ⛔ WRITE HALF of the round trip above. Never derive this from `status`:
+        // the whole point of the column is that it outlives an APPROVED status.
+        approvedAt: k.approvedAt ? new Date(k.approvedAt) : null,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         extraRequests: (k.extraRequests ?? []) as any,
       };
