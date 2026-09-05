@@ -267,6 +267,13 @@ export default async function AdminHousePage({ searchParams }: { searchParams: P
             out-of-balance banner sit ABOVE the rail on every tab: what we hold and whether the
             books balance are the frame the rest of the page is read against, not a section of
             it. Hiding the solvency line behind a tab is how an owner stops seeing it. */}
+        {/* ⚠️ AND EVERY DELTA CAPTION IS ≤ 15 CHARACTERS, WHICH IS ALSO MEASURED. At 1024 —
+            where `lg:grid-cols-4` has just kicked in but the console is still narrow — a KPI tile
+            is 148px, not the 212px it gets at 1280. Four captions written for 1280 overflowed
+            there by 4–30px, and NONE of 360/768/1280/1920 could see it: a tile overflows at the
+            moment its layout CHANGES, not in the middle of a range. The budget is ~19 characters
+            including the leading dot; these are kept under 15 for headroom, and the precision
+            they gave up lives in the caption below the bands and in the derivation table. */}
         {/* 🔴 THE TILES CARRY `formatTzsCompact`, AND THAT IS A CORRECTION, NOT A PREFERENCE.
             They shipped with full `formatTzs` and the live drive read the result: at 360 the
             strict solvency figure `TZS −19,555,989` needed 162px in a 126px box and `AdminKpi`
@@ -280,21 +287,21 @@ export default async function AdminHousePage({ searchParams }: { searchParams: P
         <KpiGrid cols="4">
           <AdminKpi label="Net retained" sw="Faida halisi" gold
             value={position ? formatTzsCompact(position.netRetained) : ""} unavailable={position === null}
-            delta="levies already out" deltaDir="flat" />
+            delta="levies are out" deltaDir="flat" />
           <AdminKpi label="Gross fee" sw="Ada jumla"
             value={position ? formatTzsCompact(position.grossFeeEarned) : ""} unavailable={position === null}
             delta="before levies" deltaDir="flat" />
           <AdminKpi label="Levies payable" sw="Kodi za kulipa"
             value={position ? formatTzsCompact(position.leviesPayable) : ""} unavailable={position === null}
-            delta="TRA + GBT, owed" deltaDir="flat" />
+            delta="TRA + GBT owed" deltaDir="flat" />
           <AdminKpi label="Gateway payable" sw="Ada ya lango"
             value={position ? formatTzsCompact(position.aggregatorPayable) : ""} unavailable={position === null}
-            delta="owed to the gateway" deltaDir="flat" />
+            delta="owed, not ours" deltaDir="flat" />
         </KpiGrid>
         <KpiGrid cols="4">
           <AdminKpi label="Custodial cash" sw="Fedha tulizonazo"
             value={cash ? formatTzsCompact(cash.railBacked) : ""} unavailable={cash === null}
-            delta="through a payment rail" deltaDir="flat" />
+            delta="through a rail" deltaDir="flat" />
           <AdminKpi label="Player liability" sw="Tunachodaiwa"
             value={liability === null ? "" : formatTzsCompact(liability)} unavailable={liability === null}
             delta={position ? `${formatTzsCompact(position.playerLiabilityAdjusted)} admin-set` : undefined}
@@ -311,7 +318,7 @@ export default async function AdminHousePage({ searchParams }: { searchParams: P
             delta="cash − all owed" deltaDir="flat" />
           <AdminKpi label="Funded free cash" sw="Bila marekebisho"
             value={position ? formatTzsCompact(position.freeHouseCashExAdjustments) : ""} unavailable={position === null}
-            delta="ex admin-set balances" deltaDir="flat" />
+            delta="ex admin-set" deltaDir="flat" />
         </KpiGrid>
 
         <p className="text-body-sm text-text-subtle">
