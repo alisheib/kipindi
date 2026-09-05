@@ -4,7 +4,7 @@
 > If a document is not listed below, it is not a live task, whatever its own header says.
 > ⛔ Do not start something that is not on this board. Ask Ali which item to proceed with.
 
-## 0 · MANAGEMENT SPEC — `MGMT-SPEC-2026-09-05` · 🟡 **DEPLOY 1 OF 3 IS LIVE**
+## 0 · MANAGEMENT SPEC — `MGMT-SPEC-2026-09-05` · 🟡 **DEPLOYS 1 AND 2 OF 3 ARE LIVE**
 
 ⭐ **Opened on Ali's instruction, 2026-09-05**, from a two-page specification management sent
 ([`management-spec-2026-09-05.md`](management-spec-2026-09-05.md)). Two asks: a player **"In Progress"** view, and the
@@ -15,14 +15,19 @@ objection window cut from **24 hours to 1**.
 | **Authority** | The plan, plus its four owner rulings — reproduced in `COMPLIANCE-DECISIONS.md` (2026-09-05) |
 | **Handoff** | [`LIVE-QA-CAMPAIGN.md`](LIVE-QA-CAMPAIGN.md) §6b, topmost `RESUME AT` (session 87) |
 | **Deploy 1** | ✅ **LIVE** — the seal-time notice (`E-295`) and the officer hold (`E-296`), plus `E-297`–`E-299`. The two controls that had to exist BEFORE the window could shorten |
-| **Deploy 2** | ☐ **The 1-hour window.** ⛔ The code default is not the live value; the flip is an audited act through the FINANCE screen. The "24" inventory is ~20 sites and includes the **live chatbot system prompt** |
+| **Deploy 2** | ✅ **LIVE — the window is 1 hour on production.** Flipped through the audited `/admin/config` action; `market-config-diff.cjs` snapshots either side prove exactly one field moved (24 → 1). Verified in all three locales on `/fairness` and `/legal/terms` §6, whose version bumped to 2026-09-05. ⚠️ Markets sealed BEFORE the flip keep their 24-hour deadline — five were read from the database and each still carries 24.0 h |
 | **Deploy 3** | ☐ **The In-progress view.** ⛔ `PositionCard` is NOT reusable unchanged — a losing player would read a gold *"If your side wins"* for the whole window |
+| **Owed** | A post-flip long-form seal has not happened yet, so the 1-hour stamp is proven by `test:settlement-gate` §7 (which derives the stamp from config rather than asserting a literal) and **has not yet been observed on a live row**. Say so; do not claim it |
 | **Blocked** | Nothing |
 
-⚠️ **Why the window is still 24 hours on production**, deliberately: shortening it first would
-have left the platform describing a control it no longer had. 50pick told a bettor **nothing**
-when a verdict was recorded, and the spec's "dispute raised by an authorized admin" had **no
-mechanism at all**. Both are fixed; the window moves next.
+⚠️ **Why the window moved SECOND and not first.** Shortening it before Deploy 1 would have left
+the platform describing a control it no longer had: 50pick told a bettor **nothing** when a
+verdict was recorded, and the spec's "dispute raised by an authorized admin" had **no mechanism
+at all**. Both were built first, and only then was the window shortened.
+
+⛔ **What is left is the half management asked for FIRST** — the player's own "In Progress" view.
+Read the plan's §6 before starting it: the phase belongs in `discovery.ts` beside `matchesStatus`
+(not a new module), and the position card cannot be reused unchanged.
 
 ## THE TWO PROGRAMMES THAT WERE ALREADY HERE
 

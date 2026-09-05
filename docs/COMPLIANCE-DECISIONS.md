@@ -184,9 +184,53 @@ window"* — and the first two clauses had been untrue since the window became a
 Sealing pays nobody. Interpolating the hours into it would have preserved a false money
 statement and made it look freshly checked, so the sentence was rewritten.
 
+### The operator action, as performed
+
+**Flipped on production 2026-09-05 ~17:10 UTC**, through `/admin/config`, by the audited server
+action (`updateGlobalConfigAction` → `setGlobalConfig`, which writes a `config.global.updated`
+audit row). `market-config-diff.cjs` snapshots either side prove **exactly one field moved**:
+
+```
+🔴 1 field(s) differ between "pre-1h-flip" and "post-1h-flip":
+   global.objectionWindowHours:  24  ->  1
+```
+
+⚠️ **Performed as ADMIN, not FINANCE.** `requireStaff("accounting")` is the gate and FINANCE is
+the role that owns it, but **the FINANCE QA persona is rejected on production** — a stale
+credential, not an RBAC refusal — so the drill would not run at all. ADMIN holds every domain,
+so the action's own gate was satisfied; the audit row names ADMIN. Recorded here rather than
+left for a reader to infer a finance officer did it.
+
+**Production settings as read at the moment of the flip** (ruling ③'s evidence, not a memory):
+
+| | |
+|---|---|
+| `resolutionMode` | **`auto`** |
+| `resolveConfidenceThreshold` | 90 |
+| `resolveOffsetMinutes` | 0 |
+| instances | **one** (uptime climbed monotonically across six probes) |
+
+So ruling ③ is live and consequential exactly as it was put to Ali: an AI seals unattended and
+the money follows about an hour later, at any hour.
+
+**Verified on the live deploy, in all three languages**, by reading the value back from the
+database and then reading the pages — never by looking for the literal "1":
+
+- `/fairness` — *"A public objection window of 1 hour opens after resolution, and no money moves
+  until it closes."* · *"Dirisha la pingamizi la saa 1 …"* · *"结算后开放1小时的公开异议窗口…"*
+- `/legal/terms` §6 — *"within 1 hour of resolution, while the payout is still on hold"*, and the
+  version reads **2026-09-05**.
+
+⚠️ **NOT RETROACTIVE, AND OBSERVED TO BE SO.** Five long-form markets sealed before the flip were
+read straight from the database and each still carries **`objectionsClosedAt − resolutionStage2At`
+= 24.0 h**; they pay tomorrow on their original deadline. A post-flip long-form seal has not
+happened yet, so the 1-hour stamp is proven by `test:settlement-gate` §7 (which derives the
+stamped window from config rather than asserting a literal) and **is still owed as a live
+observation** — the honest state, recorded rather than claimed.
+
 ### Proof
 
-`test:rate-copy` **36/0** with the objection window matched **number-agnostically** (a guard that
+`test:rate-copy` **41/0** with the objection window matched **number-agnostically** (a guard that
 banned "24" would go green the moment someone typed "1") and in **both word orders** — Swahili
 puts the unit first, and the first draft caught English and Chinese while silently passing
 Swahili. `red:rate-copy` **12/12**, including a mutation that restores the literal to the chat
