@@ -95,7 +95,7 @@ console.log("§1 · from the console, not from a URL somebody pasted");
   ok("1.1 · ⭐ the House link is in the console sidebar", (await link.count()) > 0);
   await link.click();
   await page.waitForURL(/\/admin\/house/, { timeout: 20_000 });
-  await page.waitForLoadState("networkidle");
+  await settle(page, /How the position is derived/);
   ok("1.2 · …and it lands on the book, with no query string to remember",
     page.url().replace(BASE, "") === "/admin/house", page.url());
   ok("1.3 · the default tab is POSITION — what do we hold",
@@ -119,7 +119,7 @@ console.log("\n§2 · ⭐ the window survives the rail, and the rail survives th
 
   await page.locator('[data-section-rail] a', { hasText: "Earnings" }).click();
   await page.waitForURL(/tab=earnings/, { timeout: 20_000 });
-  await page.waitForLoadState("networkidle");
+  await settle(page, /What we made/);
   ok("2.2 · ⭐ switching to EARNINGS keeps the 7-day window",
     /range=7d/.test(page.url()), page.url());
   ok("2.3 · …and the card heading says so, not just the URL",
@@ -127,19 +127,20 @@ console.log("\n§2 · ⭐ the window survives the rail, and the rail survives th
 
   await page.locator('[data-section-rail] a', { hasText: "By game" }).click();
   await page.waitForURL(/tab=games/, { timeout: 20_000 });
-  await page.waitForLoadState("networkidle");
+  await settle(page, /Games that moved money/);
   ok("2.4 · …and so does BY GAME", /range=7d/.test(page.url()) && /tab=games/.test(page.url()), page.url());
 
   /* The other direction: changing the window must not throw away the tab. */
   await page.locator('button, a').filter({ hasText: /^28 days$/ }).first().click();
-  await page.waitForLoadState("networkidle");
-  await page.waitForTimeout(1500);
+  /* ⚠️ Wait for the WINDOW to change, not for a clock — see `settle`. */
+  await page.waitForFunction(() => !location.search.includes("range=7d"), null, { timeout: 20_000 }).catch(() => {});
+  await settle(page, /Games that moved money/);
   ok("2.5 · ⭐ changing the WINDOW keeps you on the tab you were reading",
     /tab=games/.test(page.url()), page.url());
 
   await page.locator('[data-section-rail] a', { hasText: "Position" }).click();
-  await page.waitForLoadState("networkidle");
-  await page.waitForTimeout(1200);
+  await page.waitForFunction(() => !location.search.includes("tab="), null, { timeout: 20_000 }).catch(() => {});
+  await settle(page, /How the position is derived/);
   ok("2.6 · returning to the DEFAULT tab drops the param rather than carrying `tab=position`",
     !/tab=position/.test(page.url()), page.url());
 }
@@ -215,8 +216,11 @@ console.log("\n§5 · the filter narrows what is listed and leaves the book whol
     polls.length > 0 && polls.every((r) => r.product === "Poll"), [...new Set(polls.map((r) => r.product))].join(" · "));
 
   await page.locator('[data-filter-rail] a', { hasText: /^All$/ }).click();
-  await page.waitForLoadState("networkidle");
-  await page.waitForTimeout(1200);
+  /* ⚠️ WAIT FOR THE ABSENCE, NOT FOR A CLOCK. There is no new param to watch for here — the
+   * whole point is that `product=` goes away — so a fixed `waitForTimeout` was the only thing
+   * holding this check up, and 1,200ms was not enough. It reported a working pill broken. */
+  await page.waitForFunction(() => !location.search.includes("product="), null, { timeout: 20_000 }).catch(() => {});
+  await settle(page, /Games that moved money/);
   ok("5.6 · clearing the filter drops the param rather than writing `product=`",
     !/product=/.test(page.url()), page.url());
 }
@@ -372,6 +376,170 @@ console.log("\n§11 · House looks like it belongs beside Finance");
   for (const k of Object.keys(house)) {
     ok(`11.x · ${k} matches /admin/finance`, house[k] === finance[k], `house ${house[k]} · finance ${finance[k]}`);
   }
+}
+
+/* ═══ §12 · ⭐ THE THREE DRILL-DOWNS THAT ARE NOT THE ORDINARY ONE ═════════════════════
+ *
+ * A settled YES/NO poll is the easy case and §7 covered it. The three that can go wrong are
+ * a VOID (where `poolFee` would happily invent a fee), an Up & Down round (where the outcome
+ * is stored YES/NO and must READ Up/Down), and a game whose market row is gone (where the
+ * money is real and the row is not). ⛔ The drive FINDS them rather than hard-coding ids — a
+ * pinned id rots the day that market is purged, and then this section passes by not running.
+ */
+console.log("\n§12 · ⭐ a VOID, an Up & Down round, and a game whose row is gone");
+{
+  const find = async (q, pick) => {
+    await page.goto(`${BASE}/admin/house?tab=games&range=all${q}`, { waitUntil: "networkidle" });
+    /* ⭐ THE BOOK IS SORTED BY NET RETAINED, DESCENDING — so a VOID (which books no fee, by
+     * definition) is at the BOTTOM, not the top. Searching only the first pages found none and
+     * reported the population empty; the check would then have passed by not running. Read the
+     * head AND the tail. */
+    const lastPage = await page.evaluate(() => {
+      const nums = [...document.querySelectorAll('main a[href*="gpage="]')]
+        .map((a) => Number(new URL(a.href).searchParams.get("gpage")))
+        .filter((n) => Number.isFinite(n));
+      return nums.length ? Math.max(...nums) : 1;
+    });
+    const pages = [...new Set([1, 2, 3, lastPage, lastPage - 1, lastPage - 2].filter((n) => n >= 1))];
+    for (const p of pages) {
+      if (p > 1) {
+        await page.goto(`${BASE}/admin/house?tab=games&range=all${q}&gpage=${p}`, { waitUntil: "networkidle" });
+      }
+      const rows = await page.evaluate(() => {
+        const tbl = [...document.querySelectorAll("main table.admin-tbl")].at(-1);
+        return [...(tbl?.querySelectorAll("tbody tr") ?? [])].map((r) => ({
+          href: r.querySelector('a[href^="/admin/house/"]')?.getAttribute("href") ?? null,
+          title: (r.children[0]?.textContent || "").replace(/\s+/g, " ").trim(),
+          outcome: (r.children[2]?.textContent || "").trim(),
+        }));
+      });
+      const hit = rows.find(pick);
+      if (hit) return hit;
+    }
+    return null;
+  };
+
+  /* ── A VOID ────────────────────────────────────────────────────────────────────────── */
+  const voided = await find("", (r) => /VOID/i.test(r.outcome));
+  if (ok("12.1 · a VOIDED game exists in the book", !!voided, "nothing to check if none is listed")) {
+    await page.goto(`${BASE}${voided.href}`, { waitUntil: "networkidle" });
+    const t = await settle(page, /One game/);
+    ok("12.2 · ⭐ a VOID offers NO recompute — and says why, rather than showing a variance",
+      /every stake was refunded and no fee was booked/i.test(t) && !/Variance/.test(t),
+      "capped-commission ignores the winning side and would price a VOID at a real fee");
+    ok("12.3 · …and its own arithmetic still closes to zero",
+      /Left in the pool[\s\S]{0,80}TZS 0/.test(t.replace(/\n/g, " ")),
+      t.replace(/\s+/g, " ").match(/Left in the pool.{0,40}/)?.[0] ?? "");
+    ok("12.4 · the row said VOID and the book agrees", /Void|VOID/.test(t));
+  }
+
+  /* ── AN UP & DOWN ROUND ────────────────────────────────────────────────────────────── */
+  const ud = await find("&product=UPDOWN", (r) => /^(Up|Down)$/.test(r.outcome));
+  if (ok("12.5 · an Up & Down round is listed with an UP/DOWN outcome, not YES/NO",
+    !!ud, "the schema stores YES/NO here; the reader must never see it")) {
+    await page.goto(`${BASE}${ud.href}`, { waitUntil: "networkidle" });
+    const t = await settle(page, /One game/);
+    ok("12.6 · ⭐ its own book also reads Up/Down, never YES/NO",
+      /·\s(Up|Down)\s·/.test(t.replace(/\s+/g, " ")) && !/·\s(YES|NO)\s·/.test(t.replace(/\s+/g, " ")),
+      t.replace(/\s+/g, " ").match(/RESOLVED.{0,30}/)?.[0] ?? "");
+    ok("12.7 · …and it is labelled as the Up & Down product", /Up & Down/.test(t));
+  }
+
+  /* ── A GAME WHOSE MARKET ROW IS GONE ───────────────────────────────────────────────── */
+  const orphan = await find("", (r) => /^mkt_[a-z0-9]+$/i.test(r.title.split(" ")[0]) && /market row missing/i.test(r.title));
+  if (orphan) {
+    await page.goto(`${BASE}${orphan.href}`, { waitUntil: "networkidle" });
+    const t = await settle(page, /One game/);
+    ok("12.8 · ⭐ a game whose row is gone renders its MONEY, with the row named as missing",
+      /market row missing/i.test(t) && /TZS/.test(t),
+      "121 of these carry 54,650 on production, one of them the 2nd-largest earner");
+    ok("12.9 · …and it does not pretend to know an outcome or a rate",
+      /no market row left|redacted or removed/i.test(t));
+  } else {
+    ok("12.8 · a row-missing game is reachable from the book",
+      false, "none found in the first 6 pages — the label may have changed");
+  }
+}
+
+/* ═══ §13 · THE OTHER TWO PAGERS ══════════════════════════════════════════════════════
+ * §6 drove `gpage`. There are two more, and the whole reason they have separate names is
+ * that one shared `page` would move every list on the screen at once. */
+console.log("\n§13 · the fee-source pager and the evidence pager are their own");
+{
+  await page.goto(`${BASE}/admin/house?tab=earnings&range=all&gpage=3`, { waitUntil: "networkidle" });
+  const t = await settle(page, /Fee earned, by source/);
+  ok("13.1 · ⛔ a stale `gpage` from BY GAME does not disturb EARNINGS",
+    /Fee earned, by source/.test(t) && !/\bNaN\b/.test(t));
+
+  /* The evidence pager on a busy game. Find the busiest by taking the top earner. */
+  await page.goto(`${BASE}/admin/house?tab=games&range=all`, { waitUntil: "networkidle" });
+  const first = (await gameRows(page))[0];
+  await page.goto(`${BASE}${first.href}`, { waitUntil: "networkidle" });
+  const detail = await settle(page, /The ledger behind these numbers/);
+  ok("13.2 · the evidence panel names how many entries it stands for", /entries/.test(detail));
+  const pager2 = page.locator('main a[href*="epage=2"]');
+  if ((await pager2.count()) > 0) {
+    const before = await page.evaluate(() =>
+      [...document.querySelectorAll("main table.admin-tbl")].at(-1)?.innerText ?? "");
+    await pager2.first().click();
+    await page.waitForURL(/epage=2/, { timeout: 20_000 });
+    await settle(page, /The ledger behind these numbers/);
+    const after = await page.evaluate(() =>
+      [...document.querySelectorAll("main table.admin-tbl")].at(-1)?.innerText ?? "");
+    ok("13.3 · the evidence pager shows a different page of lines", before !== after);
+  } else {
+    ok("13.3 · this game's evidence fits one page (no pager needed)", true);
+  }
+}
+
+/* ═══ §14 · BACK AND FORWARD — a URL fact survives the browser, not just a click ═══════ */
+console.log("\n§14 · the browser's own back button");
+{
+  await page.goto(`${BASE}/admin/house`, { waitUntil: "networkidle" });
+  await page.locator('[data-section-rail] a', { hasText: "Earnings" }).click();
+  await page.waitForURL(/tab=earnings/, { timeout: 20_000 });
+  await settle(page, /What we made/);
+  await page.locator('[data-section-rail] a', { hasText: "By game" }).click();
+  await page.waitForURL(/tab=games/, { timeout: 20_000 });
+  await settle(page, /Games that moved money/);
+  await page.goBack();
+  await settle(page, /What we made/);
+  ok("14.1 · ⭐ Back returns to EARNINGS — the tab is a real history entry",
+    /tab=earnings/.test(page.url()), page.url());
+  await page.goForward();
+  await settle(page, /Games that moved money/);
+  ok("14.2 · …and Forward returns to BY GAME", /tab=games/.test(page.url()), page.url());
+  await page.reload({ waitUntil: "networkidle" });
+  ok("14.3 · a refresh keeps you where you were", /tab=games/.test(page.url()), page.url());
+}
+
+/* ═══ §15 · A CUSTOM WINDOW, AND A WINDOW WITH NOTHING IN IT ══════════════════════════ */
+console.log("\n§15 · a hand-picked window, and an empty one");
+{
+  await page.goto(`${BASE}/admin/house?tab=earnings&from=2026-08-01&to=2026-08-31`, { waitUntil: "networkidle" });
+  const aug = await settle(page, /What we made/);
+  ok("15.1 · a custom from/to window is accepted and named on the card",
+    /What we made ·/.test(aug) && !/\bNaN\b/.test(aug),
+    aug.split("\n").find((l) => l.startsWith("What we made")) ?? "");
+  const augFee = await rowMoney(page, "Fee earned");
+  ok("15.2 · …and it reports a real figure for that month", /TZS/.test(String(augFee)), String(augFee));
+
+  /* ⭐ A WINDOW BEFORE THE LEDGER EXISTS. Every read returns nothing, and the page must say
+   * so rather than print a wall of confident zeros with no explanation. */
+  await page.goto(`${BASE}/admin/house?tab=earnings&from=2020-01-01&to=2020-01-31`, { waitUntil: "networkidle" });
+  const empty = await settle(page, /What we made/);
+  ok("15.3 · ⭐ an empty window renders zeros, not NaN and not a crash",
+    !/\bNaN\b|\bundefined\b/.test(empty) && /TZS 0/.test(empty));
+  ok("15.4 · …and the fee-source table states it is empty rather than showing a blank grid",
+    /No fee booked in this window|Widen the window/i.test(empty),
+    empty.slice(-200));
+  await page.goto(`${BASE}/admin/house?tab=games&from=2020-01-01&to=2020-01-31`, { waitUntil: "networkidle" });
+  const emptyGames = await settle(page, /Games that moved money/);
+  ok("15.5 · an empty BY GAME states it, and its identity still closes at zero",
+    /No game moved money in this window/i.test(emptyGames) && /Variance — must be zero[\s\S]{0,40}TZS 0/.test(emptyGames.replace(/\n/g, " ")),
+    emptyGames.replace(/\s+/g, " ").match(/Variance.{0,40}/)?.[0] ?? "");
+  ok("15.6 · ⛔ …and the BALANCES above it are unchanged — they have no window",
+    /Strict free cash/i.test(emptyGames));
 }
 
 await page.screenshot({ path: `${SHOT}/house-flow-final.png`, fullPage: false });

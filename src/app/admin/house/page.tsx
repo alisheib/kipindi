@@ -661,7 +661,14 @@ export default async function AdminHousePage({ searchParams }: { searchParams: P
           <AdminCard title="By product" sw="Kwa bidhaa">
             {byProduct === null ? <AdminLoadError what="the product subtotals" /> : (
               <ScrollX label="Subtotals by product" className="-mx-4 px-4">
-                <table className="admin-tbl min-w-[560px]">
+                {/* ⛔ NO MIN-WIDTH, AND THAT IS THE FIX RATHER THAN A TIDY-UP. `admin-tbl` is
+                    `width: 100%`, so a `min-w-[560px]` makes the browser STRETCH every column to
+                    fill 560px — and the first column takes a proportional share it does not need,
+                    pushing `Net retained` off a 318px card even though it sits second. Measured:
+                    4 of this card's 6 money cells were out of view at 360 WITH the reorder in
+                    place. Without the min-width the table falls back to its min-content width and
+                    the answer is readable. */}
+                <table className="admin-tbl">
                   {/* ⭐ NET RETAINED SECOND — it is the answer; games/handle/fee are the workings. Measured
                       at 360: with it last, FOUR of this card's six money cells were scrolled out of
                       view. A reader on a phone now sees what each product made without scrolling. */}
