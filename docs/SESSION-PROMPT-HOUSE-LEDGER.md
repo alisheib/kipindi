@@ -1,6 +1,6 @@
 # SESSION PROMPT — `/admin/house`, the owner's book
 
-**Commission opened 2026-09-04 by Ali. Status: NOT STARTED.**
+**Commission opened 2026-09-04 by Ali. Status: ⭐ CLOSED 2026-09-05 — live on production.**
 **Authority: this file. Progress lives in §9; nothing else records this work.**
 
 ---
@@ -230,18 +230,47 @@ substituted** → levies → net retained. Then:
 ⛔ The old design_handoff kit is **deleted and forbidden**.
 
 Use: `AdminPageHead`, `AdminKpi`, `KpiGrid`, `AdminCard`, `AdminBody`, `AdminLoadError`,
-`AdminRestricted`, `AdminTableEmpty`, `AdminPagination`, `AdminSort`, `StatusPill`, `Tabs`,
-`ScrollX`, `Stat`, `DateTimeRangeFilter`, and from `admin-charts`: `AdminAreaChart`,
-`AdminStackedBars`, `AdminBarList`, `AdminMeter`, `AdminGauge`, `AdminSpark`.
+`AdminRestricted`, `AdminTableEmpty`, `AdminPagination`, `Tabs`, `ScrollX`, `FilterPill`,
+`DateTimeRangeFilter`, the `admin-skeletons` kit for `loading.tsx`, and from `admin-charts`:
+`AdminAreaChart`, `AdminStackedBars`, `AdminBarList`, `AdminMeter`, `AdminGauge`, `AdminSpark`.
+⚠️ **`AdminSort` is not an export** — it is `parseSort` / `applySort` / `SortTh` from
+`@/components/admin/admin-sort`. `AdminPagination` is an alias of `Pagination`.
 
 ⛔ **No hand-written colour, shadow, border or spacing.** Tokens only; a shadow is composed from
 `--shadow-*`. ⛔ **A new Tailwind rung must be added to `tailwind.config.ts` AND `src/lib/utils.ts`
 in the SAME commit** — `twMerge` files this repo's fontSize keys as colours and will silently
-delete a size that is not registered. ⛔ Money is `formatTzs` / `formatTzsCompact` on tabular
-figures — never a raw number, never a hand-rolled format. ⛔ Widths: admin board tier, via the kit.
+delete a size that is not registered.
 
-⛔ **Trilingual (en/sw/zh), no hardcoded user-facing strings** — every key in all three locales,
-`npm run test:i18n` must keep parity. ⚠️ Swahili is the longest; the 360 layout is designed for it.
+### 🔴 THREE CORRECTIONS TO THIS SECTION (2026-09-05, measured while building the page)
+
+**1. ⛔ MONEY IS `<span className="amount">{formatTzs(x)}</span>` — NEVER `<Stat money>` AND
+NEVER `<Cash>`.** This section did list `Stat`, and following it would have been a defect.
+`Stat money` wraps its value in `<Cash>`, which honours the PLAYER's balance-privacy blur
+(`window.__cashHidden` + `localStorage.cashHidden`) — and **the admin console renders no
+`<CashEye />`**. An operator who once hid balances in the player app would open the owner's book
+and read `TZS •••••` with no way to reveal it. `AdminKpi` is safe: it writes its value under
+`.amount` directly and does not route through `Cash`. A money `<td>` must carry `amount` (or
+`font-mono tabular`) or `.admin-tbl td.tabular`'s nowrap rule cannot see it and `TZS 550,560`
+folds onto two lines. `formatTzsCompact` only where a figure would clip — ⛔ never in a
+reconciliation, where the reader is checking digits.
+
+**2. ⛔ THE PAGE IS ENGLISH, WITH `sw` GLOSSES — NOT TRILINGUAL. This overrules the paragraph
+above.** `/admin` is English-only **by design**, and it is written down in four places:
+`tabs.tsx` (*"`TabItem.labelSw` was dead API … the admin console is English-only by design"*),
+`admin/roles/page.tsx`, `admin/players/[id]/page.tsx` (*"ENGLISH LITERALS ON PURPOSE — /admin is
+a staff surface … test:failure-reasons §10 excludes it from the trilingual ratchet"*), and
+`utils.ts`'s `adminCount` (*"⛔ ENGLISH ONLY, AND THAT IS WHY IT IS NAMED `adminCount`"*).
+Measured: 4 of 157 admin files touch i18n at all and every one borrows a player-kit string;
+there is **no `admin` section in the dictionary** and **zero `zh` in the console**. `test:i18n`
+makes no parity claim over `/admin` and stays green either way. So: hardcoded English body copy,
+plus the `sw` gloss prop on `AdminPageHead` / `AdminCard` / `AdminKpi`. ⛔ Do not invent Swahili
+— every gloss on `/admin/house` was lifted from a shipped admin page.
+
+**3. ⛔ THERE IS NO "ADMIN BOARD TIER". This overrules the width line above.** The cap lives
+once, on `admin/layout.tsx` (`max-w-console`); admin routes are excluded from tier parity by
+design, and a page that renders its own `<main>` is banned. Use `AdminBody` (which *is*
+`px-4 lg:px-6 py-5 space-y-4`) and `KpiGrid`. A wide table gets `<ScrollX>` plus a
+`min-w-[Npx]` on the `.admin-tbl` — never a page-level width.
 
 ⛔ **Charts follow the existing engine grammar** — no new chart library, no vendor attribution
 (§B12.6: attribution is expressly declined).
@@ -344,14 +373,88 @@ would have:
 `TRA` 36,658, `GBT` 18,374, `AGGREGATOR` 380; 588 markets touched money in the last year, 243
 with a booked fee, **345 rows correctly kept as VOID/no-fee**; the waterfall identity closes.
 ⚠️ **These are dated readings and they rot — re-derive before quoting any of them.**
-| 3 · Tab 1 POSITION | ☐ |
-| 4 · Tab 2 EARNINGS | ☐ |
-| 5 · Tab 3 BY GAME | ☐ |
-| 6 · Drill-down + ⭐ rate provenance + reconciliation | ☐ |
-| 7 · RBAC gate + nav + cross-links | ☐ |
-| 8 · Trilingual copy | ☐ |
-| 9 · Live visual drive, READ, 4 widths × 3 locales | ☐ |
-| 10 · Close-out, every number re-derived | ☐ |
+| 0 · ⭐ **Four defects found in steps 1–2 AFTER they shipped green** | ☑ `a47db847` |
+| 3 · Tab 1 POSITION | ☑ `2fe0c975` |
+| 4 · Tab 2 EARNINGS | ☑ `2fe0c975` |
+| 5 · Tab 3 BY GAME | ☑ `2fe0c975` |
+| 6 · Drill-down + ⭐ rate provenance + reconciliation | ☑ `2fe0c975` |
+| 7 · RBAC gate + nav + cross-links | ☑ `2fe0c975` |
+| 8 · ~~Trilingual copy~~ → English copy + `sw` glosses | ☑ see §5 correction 2 |
+| 9 · Live visual drive, READ, 4 widths × 3 tabs + drill-down + a refused role | ☑ `npm run qa:house` |
+| 10 · Close-out, every number re-derived | ☑ 2026-09-05 |
+
+### 🔴 STEP 0 — FOUR DEFECTS IN THE SHIPPED ARITHMETIC, FOUND AFTER IT WENT GREEN (2026-09-05)
+
+Steps 1–2 shipped at **34/0 green** and were wrong in four places. ⭐ **THE GUARD AGREED WITH
+TWO OF THEM**, which is why the green meant nothing: `test:house-book` §5.2 asserted `60_000`,
+the wrong answer, so the suite and the code were wrong in the same direction.
+
+1. 🔴 **`waterfall()` subtracted the gateway share that was never in the fee.**
+   `withdrawalEntries` splits the withdrawal fee AT THE POINT OF BOOKING — `gatewayShare` goes
+   straight to `HOUSE:AGGREGATOR`, only `houseShare` reaches `HOUSE:COMMISSION` — while
+   `feeEarned` reads positive `HOUSE:COMMISSION` rows only. **`house-book.ts`'s own header
+   forbids exactly this, one account over**, and the code contradicted it. Now a labelled
+   pass-through rendered outside the subtraction.
+2. 🔴 **`bonusCost` was gross of re-locks.** `bonusRelockEntries` writes a **negative**
+   `BONUS_CREDIT` to `PLAYER:`; an `amount > 0` filter dropped every reversal. Measured: gross
+   **16,000** against a net of **2,000** — seven re-locks — so the owner's net retained was
+   understated by **14,000**. The largest of the four live errors.
+3. 🔴 **Bonus-funded stakes were missing from the handle.** `stakeEntries` credits the pool
+   TWICE (`STAKE_DEBIT` + `BONUS_SPEND`) while payouts from it are counted in full, so a
+   bonus-funded market **cannot close** and the reconciliation panel would cry wolf on a correct
+   book. `BONUS_REFUND` (to `PLAYER_BONUS:`, which `LIKE 'PLAYER:%'` cannot match) was missing
+   for the same reason and was fixed in the same pass — ⚠️ **that one is not in the original
+   brief; it was found by measuring, and fixing only half would still not close.**
+4. 🔴 **`readHouseAccounts` named four accounts.** `acct` mints three more — `HOUSE:RG_SUSPENSE`
+   (*"money the platform HOLDS but does not own"*) and the retired `HOUSE:TAX` / `HOUSE:RESERVE`
+   — so RG suspense was invisible to the solvency line and the page could disagree with
+   `houseAccountBalances()`, which reads `LIKE 'HOUSE:%'`. Now read as a group.
+
+⭐ **AND HERE IS THE HONEST PART: THREE OF THESE MOVE NO NUMBER TODAY.** `BONUS_SPEND`,
+`HOUSE:RG_SUSPENSE` and `EXTERNAL:INTERNAL` are all **ZERO on production**. They are latent, one
+bonus bet or one self-excluded deposit from being real. The brief asserted them as live
+misstatements; the measurement says otherwise, and the measurement wins. Only the gateway
+(**380**) and the bonus re-locks (**14,000**) were actually misreporting — **14,380 total**.
+
+`test:house-book` 34 → **48**. `red:house-book` 10 → **17 mutations, all caught**.
+
+### ⭐ WHAT BUILDING THE PAGE FOUND (2026-09-05, re-derived at close)
+
+- **A REAL MONEY DISCREPANCY ON PRODUCTION.** Of 419 settled markets, **405 close EXACTLY**;
+  twelve differ by ±1–2 (the documented per-winner allocation dust), one by +15, and
+  `mkt_037b284976b9dd2bd9e2` by **−19,999** — its ledger recorded **10,500** of stakes while its
+  `yesPool`/`noPool` columns said **30,500**, and settlement priced and paid against the columns.
+  ⛔ An epsilon would have hidden it. This is the page working.
+- **121 LEDGER `marketId`s HAVE NO MARKET ROW**, carrying **54,650** of real fees between them —
+  and the **second-largest earner in the whole book (22,321) is one of them**. They render with
+  the raw id and a *market row missing* label; dropping them would break the identity by that
+  much, silently.
+- **THE IDENTITY CLOSES:** per-game **366,371** + unattributed **760** (15 `WITHDRAWAL_FEE` rows,
+  no `marketId`) = **367,131** = the house fee. **Variance 0.**
+- **Up & Down is 353 of the 467 named money-moving markets** — three quarters. This is the
+  measurement behind `bookByIds` having no `productLine` parameter.
+- **`CASHOUT_FEE` has never been booked** (0 rows): every cash-out so far fell inside the
+  free-exit grace. A hard-coded fee-source table would have shown a confident permanent zero,
+  which is why `readFeeBySource` enumerates nothing.
+- **`stampedAt === "legacy"` would mislabel 0 markets today** — every snapshot on production
+  carries a `stampedAt`, and 44 markets have no snapshot at all. `hasOwnSnapshot()` closes the
+  hole before a restore or a race opens it, not after.
+
+### ⭐ AND A GUARD THAT READS THE FILE — `test:house-page` + `red:house-page`
+
+None of the page's rules is a value a function returns: *this read is not reachable from here*,
+*this fabricating idiom does not appear*, *this decision is taken through the one function
+allowed to take it*. So there is a source-reading suite (**67 assertions**) with a mutation
+harness (**16, all caught**).
+
+🔴 **IT EARNED ITS KEEP TWICE, BOTH TIMES AGAINST ME.** First it caught a real defect in the
+page: the reconciliation variance rendered as `?? 0`, printing *"TZS 0 · the books reconcile"*
+on a window where the check **could not be run at all**. Then `red:house-page` found **five of
+my own checks that could not fail** — a ternary that was always true, an `===`-only regex that
+read straight past `!==`, an order check that ignored what the subtotal actually read. All five
+are closed and the notes stay in the file. ⭐ **A guard nobody has watched go red is a green
+light over an unread road, and that is as true of a guard I wrote this session as of one from
+last year.**
 
 ---
 
@@ -385,3 +488,53 @@ with a booked fee, **345 rows correctly kept as VOID/no-fee**; the waterfall ide
    **within** the one book, never as two books the owner must add up.
 5. **Bonus cost** — still open. It is real money out; the default is to show it as its own labelled
    line in the waterfall, never silently netted into GGR.
+
+---
+
+## 11 · HANDOVER — 2026-09-05
+
+**The commission is CLOSED.** `/admin/house` is live: three tabs, a drill-down, registered in
+`ROUTE_DOMAINS` / `NAV_GROUPS` / `ROUTE_KEYS` / `ADMIN_ROUTES`, gated to `accounting`, and driven
+on production. Two commits: `a47db847` (the four defects in the shipped arithmetic) and
+`2fe0c975` (the page, its structural guard and the live drive).
+
+### Where things are
+
+| What | Where |
+|---|---|
+| The arithmetic, pure | `src/lib/house-book.ts` — `test:house-book` (48) · `red:house-book` (17) |
+| The readers | `src/lib/server/house-ledger.ts` |
+| The join | `MarketStore.bookByIds()` in `src/lib/server/market-dal.ts` — ⛔ no `productLine` param, by design |
+| The pages | `src/app/admin/house/{page,loading}.tsx` + `[marketId]/{page,loading}.tsx` |
+| The structural guard | `test:house-page` (67) · `red:house-page` (16) |
+| The live drive | `npm run qa:house` → `scripts/live/house-drive.mjs` |
+
+### ⛔ Read these before touching any of it
+
+1. **`?? 0` is banned in the two page files** and `test:house-page` §3 enforces it. It is the
+   idiom that turns a failed read into *"the books reconcile"*. It already happened once here.
+2. **Never reach for `listMarkets()` from this page.** §2 of the guard forbids it, and the
+   reason is measured: Up & Down is three quarters of the money-moving markets.
+3. **Never badge rate provenance off `stampedAt`.** Two paths produce `"legacy"`. Ask
+   `hasOwnSnapshot()`, which `snapshotOrLegacy` itself calls so the two cannot drift.
+4. **Narrow the outcome to `YES`/`NO` before `poolFee`.** Under `capped-commission` it ignores
+   the winning side and will price a VOID, manufacturing a variance on a correct book.
+5. **`tsc` proves nothing about SQL.** Most suites run with no `DATABASE_URL`, so the Prisma
+   branch never executes. Drive any new reader read-only against production, then delete the
+   probe. Every reader here was driven that way.
+
+### 🔴 Two things that are somebody's, and are not this page's
+
+- **`mkt_037b284976b9dd2bd9e2` is short 19,999 shillings.** Its ledger recorded 10,500 of stakes;
+  its pool columns said 30,500; settlement priced and paid against the columns. `/admin/house`
+  now displays it rather than absorbing it. **Nobody has investigated why.** It is a MARKET-line
+  poll, settled 2026-08-30, and it has no `feeSnapshot`.
+- **`test:updown-source-class` and `test:updown-handover` are RED on `main`** and were red at
+  `9ce071aa`, before any of this work — verified in a throwaway worktree, not assumed. They
+  belong to the parallel `/updown` lane.
+
+### ⚠️ Every number in this document is dated and will rot
+
+⛔ **Re-derive before quoting any of them.** The whole reason `test:house-book` executes the
+arithmetic instead of grepping it, and the whole reason this page reads the ledger instead of a
+recompute, is that a recorded number is a claim about a moment that has passed.

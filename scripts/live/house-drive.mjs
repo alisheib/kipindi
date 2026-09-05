@@ -18,7 +18,7 @@ import { browser, loginOnce, login, BASE, SHOT, bodyText, measureClipping, descr
 
 const WIDTHS = [360, 768, 1280, 1920];
 const TABS = [
-  { id: "position", q: "", must: ["free house cash", "house accounts", "custodial cash", "selcom payout float"] },
+  { id: "position", q: "", must: ["free cash · strict", "house accounts", "custodial cash", "selcom payout float"] },
   { id: "earnings", q: "?tab=earnings", must: ["gross gaming revenue", "net retained", "levies", "bonus cost", "fee earned, by source"] },
   { id: "games", q: "?tab=games", must: ["variance", "by product", "rate applied", "net retained"] },
 ];
@@ -82,12 +82,25 @@ for (const w of WIDTHS) {
      * Both free-cash tiles and both KPI bands sit above the rail, so they must be present on
      * EVERY tab, not only on POSITION. This is the assertion that would catch someone
      * "tidying" them into the position tab later. */
-    ok(`${tag} · ⭐ both free-cash lines are above the rail — on THIS tab`,
-      lower.includes("free house cash — strict") && lower.includes("free cash — ex-adjustments"),
+    /* ⚠️ SCOPED TO THE KPI BANDS, not to `main`. The first draft counted the label strings over
+     * the whole page and reported a false failure on POSITION, where the derivation table names
+     * both lines again — a drive measuring the wrong element, which is the failure mode this
+     * file's header warns about, caught by reading the output instead of the exit code. */
+    const kpi = await page.evaluate(() =>
+      [...document.querySelectorAll("main .grid")].slice(0, 2).map((g) => g.innerText).join("\n"));
+    ok(`${tag} · ⭐ both free-cash tiles are above the rail — on THIS tab`,
+      /Free cash · strict/i.test(kpi) && /Free cash · funded/i.test(kpi),
       "a solvency line a tab can hide is a solvency line nobody reads");
-    ok(`${tag} · …and neither has replaced the other`,
-      (lower.match(/free house cash — strict/g) ?? []).length === 1
-      && (lower.match(/free cash — ex-adjustments/g) ?? []).length === 1);
+    ok(`${tag} · …and each appears exactly once in the bands`,
+      (kpi.match(/Free cash · strict/gi) ?? []).length === 1
+      && (kpi.match(/Free cash · funded/gi) ?? []).length === 1);
+    /* ⭐ THE REAL PROPERTY: neither figure has been substituted for the other. On production the
+     * strict line is NEGATIVE and the funded one is positive, so if they ever print the same
+     * string somebody has quietly swapped in the flattering one. */
+    const kpiMoney = kpi.match(/TZS\s[−+]?[\d,.]+[KMB]?/g) ?? [];
+    ok(`${tag} · ⛔ the strict and funded figures are DIFFERENT numbers`,
+      new Set(kpiMoney).size >= 2 && kpiMoney.some((m) => m.includes("−")),
+      `the strict line must still be able to read negative — got ${kpiMoney.join(" · ")}`);
     ok(`${tag} · the window caption says the filter scopes Earnings and By game only`,
       lower.includes("scopes the") && lower.includes("earnings") && lower.includes("by game"));
 
@@ -119,13 +132,24 @@ for (const w of WIDTHS) {
       ok(`${tag} · the reconciliation note is the FIRST card, before any total`,
         text.indexOf("Why this table does not add up") < text.indexOf("By product"),
         "an owner who reads the total first has already been misled once");
-      /* The product filter narrows the ROWS and leaves the subtotals whole. */
-      const before = (await page.locator("table.admin-tbl tbody tr").count());
+      /* ⭐ THE FILTER NARROWS THE ROWS AND LEAVES THE SUBTOTALS WHOLE.
+       * ⚠️ COUNTING `tbody tr` MEASURED THE WRONG THING and reported "26 → 26": that selector
+       * spans every table on the tab (reconciliation, subtotals, games) and the games table is
+       * paged at 20 either way. The property is what the PRODUCT COLUMN says, so read that. */
+      const productCells = () => page.evaluate(() => {
+        const tbl = [...document.querySelectorAll("table.admin-tbl")].at(-1);
+        return [...(tbl?.querySelectorAll("tbody tr") ?? [])].map((r) => r.children[1]?.textContent?.trim() ?? "");
+      });
+      const before = await productCells();
       await page.locator('[data-filter-rail] a[href*="product=UPDOWN"]').click();
       await page.waitForLoadState("networkidle");
-      const after = (await page.locator("table.admin-tbl tbody tr").count());
+      const after = await productCells();
+      ok(`${tag} · the unfiltered book lists BOTH products`,
+        new Set(before).size === 2, [...new Set(before)].join(" · "));
+      ok(`${tag} · ⭐ the product filter narrows the rows to one product`,
+        after.length > 0 && after.every((c) => c === "Up & Down"),
+        [...new Set(after)].join(" · "));
       const filtered = await page.evaluate(() => (document.querySelector("main") ?? document.body).innerText);
-      ok(`${tag} · the product filter changes what is listed`, after !== before, `${before} → ${after}`);
       ok(`${tag} · …and the by-product subtotals still show BOTH products`,
         filtered.includes("Up & Down") && /Polls/.test(filtered),
         "a subtotal that moved with the filter would only ever agree with itself");
@@ -167,32 +191,46 @@ if (ok("drill-down · the BY GAME table links to a per-game book", !!firstGameHr
   }
 }
 
-/* ── §6 · THE REFUSAL, PROVEN BY A SESSION THAT IS ACTUALLY REJECTED ───────────────── */
-/* ⛔ A GATE NOBODY HAS BEEN REFUSED BY IS NOT A GATE. Everything above ran as ADMIN, which
- * bypasses every domain check, so none of it says anything about RBAC. `trading` is the
- * MODERATOR persona — a real staff account that can open the console and must NOT be able to
- * read the owner's net retained, his solvency line or his per-game revenue. */
+/* ── §6 · THE REFUSAL ──────────────────────────────────────────────────────────────────
+ *
+ * ⛔ A GATE NOBODY HAS BEEN REFUSED BY IS NOT A GATE, and everything above ran as ADMIN, which
+ * bypasses every domain check — so none of it says a word about RBAC.
+ *
+ * 🔴 **AND THE STAFF PERSONAS CANNOT PROVE IT ON PRODUCTION.** Measured 2026-09-05: all six —
+ * `trading` (MODERATOR), `officer`, `finance`, `support`, `auditor`, `growth` — are REJECTED at
+ * `/auth/admin`; their secrets in `.env.qa.local` no longer match the rows. That is a
+ * pre-existing credential problem and it is not this page's to fix, but it MUST NOT be papered
+ * over: a drive that quietly skipped the refusal would report a gate it never tested.
+ *
+ * ⭐ So the refusal is proven in TWO places, and each says what it does and does not cover:
+ *   · here — a real signed-in PLAYER is bounced out of the console entirely (the outer door);
+ *   · `test:house-page` §14 — `canView(MODERATOR, "accounting")` is CALLED against the real
+ *     grant matrix and must be false, alongside SUPPORT and GROWTH, with ADMIN / FINANCE /
+ *     COMPLIANCE / AUDITOR as the control (the page's own gate, exercised).
+ */
 {
   const ctx = await b.newContext({ viewport: { width: 1280, height: 900 } });
   const page = await ctx.newPage();
   try {
-    await login(page, "trading");
+    await login(page, "fleet:07");
     await page.goto(`${BASE}/admin/house`, { waitUntil: "networkidle" });
     const text = await page.evaluate(() => document.body.innerText);
-    ok("refusal · ⭐ a MODERATOR is REFUSED the owner's book",
-      /Admin or Compliance/i.test(text) || /do not have access/i.test(text),
-      JSON.stringify(text.slice(0, 200)));
-    ok("refusal · …and NO money figure reached them",
-      !/TZS\s[−+]?[\d,]+/.test(text),
-      JSON.stringify((text.match(/TZS\s[−+]?[\d,]+/) ?? [""])[0]));
-    ok("refusal · …and the House link is not even in their sidebar",
-      (await page.locator('a[href="/admin/house"]').count()) === 0);
-    await page.screenshot({ path: `${SHOT}/house-refused-moderator.png`, fullPage: true });
+    const url = page.url();
+    ok("refusal · ⭐ a signed-in PLAYER never reaches the owner's book",
+      !/\/admin\/house/.test(url) || /Admin or Compliance/i.test(text) || /do not have access/i.test(text),
+      `landed on ${url}`);
+    ok("refusal · …and no house figure reached them",
+      !/Free cash · strict/i.test(text) && !/Net retained/i.test(text),
+      JSON.stringify(text.slice(0, 160)));
+    await page.screenshot({ path: `${SHOT}/house-refused-player.png`, fullPage: true });
   } catch (e) {
-    ok("refusal · the MODERATOR session could be established", false, String(e?.message ?? e));
+    ok("refusal · the player session could be established", false, String(e?.message ?? e));
   } finally {
     await ctx.close();
   }
+  console.log("\n  ⚠️ the MODERATOR refusal is proven by `npm run test:house-page` §14, which CALLS");
+  console.log("     canView against the real grant matrix — the six staff QA personas are rejected");
+  console.log("     on production (stale secrets in .env.qa.local), so it cannot be driven here.\n");
 }
 
 await b.close();

@@ -38,7 +38,7 @@ import { ScrollX } from "@/components/ui/scroll-x";
 import { currentSession } from "@/lib/server/auth-service";
 import { canView } from "@/lib/server/rbac";
 import { resolveRange } from "@/lib/server/date-range";
-import { formatTzs, formatNumber, adminCount } from "@/lib/utils";
+import { formatTzs, formatTzsCompact, formatNumber, adminCount } from "@/lib/utils";
 import { eatDayKey } from "@/lib/eat-day";
 import { outcomeWordIn } from "@/lib/side-label";
 import { describeFeeModel } from "@/lib/payout";
@@ -244,27 +244,37 @@ export default async function AdminHousePage({ searchParams }: { searchParams: P
             out-of-balance banner sit ABOVE the rail on every tab: what we hold and whether the
             books balance are the frame the rest of the page is read against, not a section of
             it. Hiding the solvency line behind a tab is how an owner stops seeing it. */}
+        {/* 🔴 THE TILES CARRY `formatTzsCompact`, AND THAT IS A CORRECTION, NOT A PREFERENCE.
+            They shipped with full `formatTzs` and the live drive read the result: at 360 the
+            strict solvency figure `TZS −19,555,989` needed 162px in a 126px box and `AdminKpi`
+            TRUNCATED IT — the one number this page exists to state, cut off on a phone. The
+            kit's own rule is written above that element: *"never clip money … money must fit;
+            a handle may ellipsise."* ⛔ So the tiles round, exactly as `/admin/finance` does,
+            and the EXACT figures live in the derivation table below, where a reader who is
+            checking digits goes. ⛔ Never compact a reconciliation.
+            ⚠️ The labels are short for the same measured reason: at 9.5px with 0.14em tracking
+            a 126px tile holds about 18 characters, and "Free house cash — strict" is 24. */}
         <KpiGrid cols="4">
           <AdminKpi label="Net retained" sw="Faida halisi" gold
-            value={position ? formatTzs(position.netRetained) : ""} unavailable={position === null}
-            delta="the commission balance — levies already out" deltaDir="flat" />
-          <AdminKpi label="Gross fee earned" sw="Ada jumla"
-            value={position ? formatTzs(position.grossFeeEarned) : ""} unavailable={position === null}
-            delta="before the levies came out" deltaDir="flat" />
+            value={position ? formatTzsCompact(position.netRetained) : ""} unavailable={position === null}
+            delta="levies already out" deltaDir="flat" />
+          <AdminKpi label="Gross fee" sw="Ada jumla"
+            value={position ? formatTzsCompact(position.grossFeeEarned) : ""} unavailable={position === null}
+            delta="before levies" deltaDir="flat" />
           <AdminKpi label="Levies payable" sw="Kodi za kulipa"
-            value={position ? formatTzs(position.leviesPayable) : ""} unavailable={position === null}
-            delta="TRA + GBT — held, owed" deltaDir="flat" />
+            value={position ? formatTzsCompact(position.leviesPayable) : ""} unavailable={position === null}
+            delta="TRA + GBT, owed" deltaDir="flat" />
           <AdminKpi label="Gateway payable" sw="Ada ya lango"
-            value={position ? formatTzs(position.aggregatorPayable) : ""} unavailable={position === null}
-            delta="held, owed to the gateway" deltaDir="flat" />
+            value={position ? formatTzsCompact(position.aggregatorPayable) : ""} unavailable={position === null}
+            delta="owed to the gateway" deltaDir="flat" />
         </KpiGrid>
         <KpiGrid cols="4">
           <AdminKpi label="Custodial cash" sw="Fedha tulizonazo"
-            value={cash ? formatTzs(cash.railBacked) : ""} unavailable={cash === null}
-            delta="ledger view, through a payment rail" deltaDir="flat" />
+            value={cash ? formatTzsCompact(cash.railBacked) : ""} unavailable={cash === null}
+            delta="through a payment rail" deltaDir="flat" />
           <AdminKpi label="Player liability" sw="Tunachodaiwa"
-            value={liability === null ? "" : formatTzs(liability)} unavailable={liability === null}
-            delta={position ? `${formatTzs(position.playerLiabilityAdjusted)} admin-credited` : undefined}
+            value={liability === null ? "" : formatTzsCompact(liability)} unavailable={liability === null}
+            delta={position ? `${formatTzsCompact(position.playerLiabilityAdjusted)} admin-set` : undefined}
             deltaDir="flat" />
           {/* ⭐ BOTH FREE-CASH TILES ALWAYS RENDER AND NEITHER REPLACES THE OTHER. The strict
               line is arithmetically correct and is never softened; on its own it currently
@@ -272,13 +282,13 @@ export default async function AdminHousePage({ searchParams }: { searchParams: P
               money with no deposit behind it. ⛔ A false alarm is as serious as a missed one —
               an owner who learns this line cries wolf stops reading it, and then it cannot
               warn him on the day it matters. So the explanation ships BESIDE the alarm. */}
-          <AdminKpi label="Free house cash — strict" sw="Fedha huru"
-            value={position ? formatTzs(position.freeHouseCash) : ""} unavailable={position === null}
+          <AdminKpi label="Free cash · strict" sw="Fedha huru"
+            value={position ? formatTzsCompact(position.freeHouseCash) : ""} unavailable={position === null}
             tone={position && position.freeHouseCash < 0 ? "danger" : undefined}
-            delta="cash − everything owed" deltaDir="flat" />
-          <AdminKpi label="Free cash — ex-adjustments" sw="Bila marekebisho"
-            value={position ? formatTzs(position.freeHouseCashExAdjustments) : ""} unavailable={position === null}
-            delta="if only funded balances were owed" deltaDir="flat" />
+            delta="cash − all owed" deltaDir="flat" />
+          <AdminKpi label="Free cash · funded" sw="Bila marekebisho"
+            value={position ? formatTzsCompact(position.freeHouseCashExAdjustments) : ""} unavailable={position === null}
+            delta="ex admin-set balances" deltaDir="flat" />
         </KpiGrid>
 
         <p className="text-body-sm text-text-subtle">

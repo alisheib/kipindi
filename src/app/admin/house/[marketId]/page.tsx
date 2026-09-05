@@ -20,7 +20,7 @@ import { ScrollX } from "@/components/ui/scroll-x";
 import { I } from "@/components/ui/glyphs";
 import { currentSession } from "@/lib/server/auth-service";
 import { canView } from "@/lib/server/rbac";
-import { formatTzs, formatNumber, adminCount } from "@/lib/utils";
+import { formatTzs, formatTzsCompact, formatNumber, adminCount } from "@/lib/utils";
 import { eatDayKey } from "@/lib/eat-day";
 import { outcomeWordIn } from "@/lib/side-label";
 import { describeFeeModel, poolFee } from "@/lib/payout";
@@ -164,10 +164,12 @@ export default async function HouseGamePage({
         </AdminCard>
 
         <KpiGrid cols="4">
-          <AdminKpi label="Handle" sw="Jumla ya dau" value={formatTzs(g.handle)} delta="real + bonus stake" deltaDir="flat" />
-          <AdminKpi label="Paid out" sw="Kilicholipwa" value={formatTzs(g.paidOut + g.bonusRefunded)} delta="to players" deltaDir="flat" />
-          <AdminKpi label="Fee booked" sw="Ada" value={formatTzs(g.feeBooked)} delta="gross, before the levies" deltaDir="flat" />
-          <AdminKpi label="Net retained" sw="Faida halisi" gold value={formatTzs(g.netRetained)} delta="fee minus this game's levies" deltaDir="flat" />
+          {/* ⛔ COMPACT, for the reason recorded on `/admin/house` — `AdminKpi` truncates and
+              the kit forbids clipping money. The exact figures are in the table directly below. */}
+          <AdminKpi label="Handle" sw="Jumla ya dau" value={formatTzsCompact(g.handle)} delta="real + bonus" deltaDir="flat" />
+          <AdminKpi label="Paid out" sw="Kilicholipwa" value={formatTzsCompact(g.paidOut + g.bonusRefunded)} delta="to players" deltaDir="flat" />
+          <AdminKpi label="Fee booked" sw="Ada" value={formatTzsCompact(g.feeBooked)} delta="gross, pre-levy" deltaDir="flat" />
+          <AdminKpi label="Net retained" sw="Faida halisi" gold value={formatTzsCompact(g.netRetained)} delta="after its levies" deltaDir="flat" />
         </KpiGrid>
 
         <AdminCard title="The arithmetic" sw="Hesabu">

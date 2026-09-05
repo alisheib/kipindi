@@ -82,9 +82,9 @@ import { Cash } from "@/components/ui/cash";`,
     // ⭐ THE KIND LIE. Show the flattering figure whenever the honest one is ugly.
     name: "house/page.tsx — substitute the ex-adjustments figure when the strict line is negative",
     file: "src/app/admin/house/page.tsx",
-    from: `            value={position ? formatTzs(position.freeHouseCash) : ""} unavailable={position === null}
+    from: `            value={position ? formatTzsCompact(position.freeHouseCash) : ""} unavailable={position === null}
             tone={position && position.freeHouseCash < 0 ? "danger" : undefined}`,
-    to: `            value={position ? formatTzs(position.freeHouseCash < 0 ? position.freeHouseCashExAdjustments : position.freeHouseCash) : ""} unavailable={position === null}
+    to: `            value={position ? formatTzsCompact(position.freeHouseCash < 0 ? position.freeHouseCashExAdjustments : position.freeHouseCash) : ""} unavailable={position === null}
             tone={position && position.freeHouseCash < 0 ? "danger" : undefined}`,
     expect: "10.2",
   },

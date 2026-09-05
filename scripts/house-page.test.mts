@@ -239,8 +239,8 @@ console.log("\n§10 · ⭐ a tab may hide a detail, never a state");
 {
   const p = src[PAGE];
   const rail = p.indexOf("<Tabs");
-  const strict = p.indexOf("Free house cash — strict");
-  const exAdj = p.indexOf("Free cash — ex-adjustments");
+  const strict = p.indexOf("Free cash · strict");
+  const exAdj = p.indexOf("Free cash · funded");
   /* ⚠️ AND NOTHING ABOVE THE RAIL MAY BE TAB-CONDITIONAL. `indexOf` alone passes a version
    * that wraps the band in `{tab === "position" && …}`, which hides the state on two tabs
    * out of three while still "rendering it above the rail". */
@@ -305,6 +305,43 @@ for (const f of PAGES) {
     /outcomeWordIn\("en", [^,]+, [^)]*productLine\)/.test(src[f]));
   ok(`13.3 · ${f} prints no outcome enum as display text`,
     !/>\s*\{?\s*["']?(YES|NO|VOID)["']?\s*\}?\s*</.test(raw[f]));
+}
+
+/* ═══ §14 · ⭐ THE REFUSAL, BY CALLING THE REAL DECIDER ════════════════════════════════
+ *
+ * ⛔ **THE LIVE DRIVE CANNOT PROVE THIS, AND SAYS SO.** Everything `qa:house` reads runs as
+ * ADMIN, which bypasses every domain check; and all six staff QA personas (`trading`,
+ * `officer`, `finance`, `support`, `auditor`, `growth`) are REJECTED on production — measured
+ * 2026-09-05, a pre-existing credential problem this page did not create. So the refusal is
+ * proven here instead, by EXECUTING `canView` against the real grant matrix rather than by
+ * matching a string on a rendered page.
+ *
+ * ⭐ This is the stronger proof anyway: it exercises the function the page actually calls, for
+ * every role at once, and it fails if somebody grants `accounting` to a trading officer.
+ */
+console.log("\n§14 · ⭐ who can open the owner's book — asked of the real decider");
+{
+  const { canView, __resetGrantsForTest } = await import("../src/lib/server/rbac.ts");
+  __resetGrantsForTest();
+  /* The gate is `role === "ADMIN" || canView(role, "accounting")` — the page's own line. */
+  const opens = async (role: string) =>
+    role === "ADMIN" || (await canView(role as never, "accounting" as never));
+
+  ok("14.1 · ⭐ a MODERATOR is REFUSED — the role that reaches the console but not the money",
+    (await opens("MODERATOR")) === false,
+    "the admin layout gates ADMIN_CONSOLE_ROLES, which INCLUDES MODERATOR; only this gate stops them");
+  for (const role of ["SUPPORT", "GROWTH"]) {
+    ok(`14.2 · …and so is ${role}`, (await opens(role)) === false);
+  }
+  ok("14.3 · ⭐ CONTROL — the roles that SHOULD read it, do",
+    (await opens("ADMIN")) && (await opens("FINANCE")) && (await opens("COMPLIANCE")) && (await opens("AUDITOR")),
+    "a gate that refuses everybody is not a gate, it is an outage");
+  ok("14.4 · the page asks for `accounting`, which is the domain the route is registered under",
+    /canView\(session\.role, "accounting"\)/.test(src[PAGE]) && /canView\(session\.role, "accounting"\)/.test(src[DRILL]));
+  const roles = decomment(read("src/lib/server/roles.ts"));
+  ok("14.5 · ⛔ …and the ROUTE is registered, so it does not fall closed to `ops` (Owner-only)",
+    /\["\/admin\/house", "accounting"\]/.test(roles),
+    "unregistered, FINANCE/COMPLIANCE/AUDITOR lose the page and the sidebar link disappears");
 }
 
 /* ═══ FOOTER ══════════════════════════════════════════════════════════════════════════ */
