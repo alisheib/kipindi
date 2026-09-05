@@ -558,7 +558,7 @@ export default async function AdminHousePage({ searchParams }: { searchParams: P
                 <p className="mt-3 text-body-sm text-text-secondary">
                   The payment gateway took{" "}
                   <span className="amount">{formatTzs(flow.aggregatorOut)}</span> in this window.
-                  It is <strong>not</strong> subtracted above: it is charged to the player at
+                  It is <strong>not</strong>{" "}subtracted above: it is charged to the player at
                   withdrawal and credited straight to the gateway&rsquo;s own account, so it never
                   passed through our fee. Subtracting it here would charge the owner for it twice.
                 </p>

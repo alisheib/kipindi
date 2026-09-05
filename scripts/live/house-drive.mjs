@@ -41,6 +41,26 @@ async function assertNoGarbage(page, tag) {
     !/\{[a-zA-Z_$][\w.$]*\}/.test(text),
     JSON.stringify((text.match(/\{[a-zA-Z_$][\w.$]*\}/) ?? [""])[0]));
   ok(`${tag} · no bare "TZS TZS" (the doubled unit)`, !/TZS\s+TZS/.test(text));
+
+  /* ⭐ WORDS GLUED TO AN EMPHASIS TAG — a whole class no guard in this repo can see, and one
+   * this page shipped: `It is <strong>not</strong> subtracted above` rendered as
+   * "notsubtracted" on production, because JSX drops a lone space between a closing tag and
+   * the text after it. `tsc` is happy, the build is happy, and a sentence about the owner's
+   * money is missing a word boundary. The fix is `{" "}`; this is what finds the next one. */
+  const glued = await page.evaluate(() => {
+    const out = [];
+    for (const el of document.querySelectorAll("main strong, main em, main b, main i, main code")) {
+      const t = el.textContent || "";
+      const prev = el.previousSibling, next = el.nextSibling;
+      const p = prev && prev.nodeType === 3 ? prev.textContent || "" : "";
+      const n = next && next.nodeType === 3 ? next.textContent || "" : "";
+      if (p && /[A-Za-z0-9]$/.test(p) && /^[A-Za-z0-9]/.test(t)) out.push(`${p.slice(-14)}|${t.slice(0, 14)}`);
+      if (n && /[A-Za-z0-9]$/.test(t) && /^[A-Za-z0-9]/.test(n)) out.push(`${t.slice(-14)}|${n.slice(0, 14)}`);
+    }
+    return out;
+  });
+  ok(`${tag} · ⭐ no word is glued to a bold or code span (the JSX space JSX eats)`,
+    glued.length === 0, glued.join(" · "));
   return text;
 }
 

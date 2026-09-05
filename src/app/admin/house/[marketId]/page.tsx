@@ -298,7 +298,7 @@ export default async function HouseGamePage({
                   </>
                 ) : (
                   <>
-                    This game has <strong>no frozen rates of its own</strong> — it predates rate
+                    This game has <strong>no frozen rates of its own</strong>{" "}— it predates rate
                     snapshotting. It was therefore priced by the legacy reconstruction,{" "}
                     <span className="font-mono">{caption}</span>, which is what those players were
                     quoted. ⚠️ This is a reconstruction, not a record: it is what the rules say
