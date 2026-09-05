@@ -40,6 +40,7 @@ import { canView } from "@/lib/server/rbac";
 import { resolveRange } from "@/lib/server/date-range";
 import { formatTzs, formatTzsCompact, formatNumber, adminCount } from "@/lib/utils";
 import { eatDayKey } from "@/lib/eat-day";
+import { txnProviderLabel } from "@/components/admin/status-badge";
 import { outcomeWordIn } from "@/lib/side-label";
 import { describeFeeModel } from "@/lib/payout";
 import { ratesFor } from "@/lib/server/market-service";
@@ -407,8 +408,14 @@ export default async function AdminHousePage({ searchParams }: { searchParams: P
                   <tbody>
                     {cash.byAccount.map((r) => (
                       <tr key={r.account}>
-                        <td className="text-left font-mono whitespace-nowrap">
-                          {r.account}
+                        <td className="text-left whitespace-nowrap">
+                          {/* ⛔ THE PROVIDER IS SPELLED BY THE LEXICON, NOT PRINTED AS AN ENUM.
+                              `AIRTEL_MONEY` is a schema arm with an underscore in it, and the
+                              rest of the console renders it through `txnProviderLabel` — so this
+                              reads "Airtel Money" like /admin/transactions and /admin/payments do.
+                              ⚠️ It is also what makes this table FIT: the raw account string is
+                              ~21 mono characters and pushed the money column off a 360px screen. */}
+                          {txnProviderLabel(r.account.replace(/^EXTERNAL:/, ""))}
                           {/* ⛔ THE SYNTHETIC COUNTERPARTY GETS ITS OWN LABEL. `acct.external()`
                               falls back to INTERNAL when no provider is given, so money booked
                               there never crossed a payment boundary at all. */}
