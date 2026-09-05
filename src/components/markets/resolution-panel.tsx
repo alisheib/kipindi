@@ -200,9 +200,33 @@ export function ResolutionPanel({
           {t.market.resPaidOut} <span className="font-mono tabular-nums">{formatDateTime(settledAt)}</span>
         </p>
       ) : (
+        /**
+         * 🔴 THIS BRANCH TOLD A PLAYER "Resolution is final" OVER MONEY THAT HAD NOT MOVED.
+         *
+         * Reach it by elimination: `held` is false and `settledAt` is null, so the pool is
+         * still whole and the verdict can still be VOIDed or REVERSEd by an upheld objection —
+         * and the panel said the resolution was final, with a green tick.
+         *
+         * ⛔ THE STATE IS ORDINARY, NOT EXOTIC. `held` is purely a CLOCK test
+         * (`serverNow < objectionsClosedAt`), so any unsettled market past its deadline lands
+         * here: one frozen by a standing objection while an officer reads it, one waiting out
+         * the settle timer's five-minute back-off, or one an officer has deliberately held
+         * AFTER the window closed — a state the officer hold introduced on purpose, because
+         * the timer can lag and money must still be stoppable in that gap.
+         *
+         * ⚠️ AND THE ONE-HOUR WINDOW MADE IT MUCH LARGER. At 24 h the post-deadline sliver was
+         * a rounding error in a market's life; at 1 h it is a materially bigger share of it.
+         * A pre-existing gap that this programme made reachable is this programme's to close.
+         *
+         * ⭐ NO NEW STRING AND NO NEW PROP. `closedAwaitingSettlement` already exists in all
+         * three locales and says exactly this; and the honest test is simply "has the money
+         * moved", which `settledAt` answers without the panel needing to know WHY it has not.
+         * The tick is dropped too — a green check over unpaid money is the same claim in
+         * another alphabet.
+         */
         <p className="flex items-center gap-1.5 text-body-sm text-text-subtle">
-          <I.check s={13} className="text-yes-300" />
-          {t.market.resFinal}
+          <I.hourglassHalf s={13} className="shrink-0" />
+          {t.market.closedAwaitingSettlement}
         </p>
       )}
 

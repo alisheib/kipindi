@@ -24,6 +24,7 @@
 
 const SVC = "src/lib/server/objections-service.ts";
 const MKT = "src/lib/server/market-service.ts";
+const PANEL = "src/components/markets/resolution-panel.tsx";
 
 export const MUTATIONS = [
   /* ── §15 · the seal notice (management ruling ①) ───────────────────────────────────────
@@ -74,6 +75,29 @@ export const MUTATIONS = [
     expect: "15: CONTROL · a verdict with no payout deadline sends nothing (isolates the deadline guard)",
     from: `  if (!m.objectionsClosedAt) return { bettors: 0 };`,
     to: `  if (false) return { bettors: 0 };`,
+  },
+  {
+    /* 🔴 THE FALSE MONEY STATEMENT. Removing this guard is not a hypothetical: at
+       `objectionWindowHours: 0` the market settles immediately, so a fire-and-forget notice
+       queued at the seal lands AFTER the payout as a matter of course, telling a player who
+       has already been paid that "No money has moved yet". Found by scanning the change
+       rather than by any suite, which is why it needs a mutation of its own. */
+    name: "🔴 the notice is sent about money that has ALREADY been paid",
+    file: MKT,
+    expect: "15: ⭐ a market whose money HAS MOVED sends nothing",
+    from: `  if (m.settledAt) return { bettors: 0 };`,
+    to: `  if (false) return { bettors: 0 };`,
+  },
+  {
+    /* 🔴 THE PANEL CALLS AN UNPAID VERDICT "FINAL". `held` is a pure clock test, so any
+       unsettled market past its deadline — frozen by an objection, waiting out the settle
+       timer's back-off, or held by an officer after the window closed — fell through to
+       "Resolution is final" under a green tick, over a pool that is still whole. */
+    name: "🔴 the panel tells a player an UNPAID verdict is final",
+    file: PANEL,
+    expect: "15b: ⭐ the unsettled fallback no longer claims the resolution is FINAL",
+    from: `          {t.market.closedAwaitingSettlement}`,
+    to: `          {t.market.resFinal}`,
   },
   {
     name: "law 25 · the notice names an outcome the market does not hold",

@@ -29,6 +29,7 @@
 process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-aaaa";
 process.env.OTP_PEPPER ??= "test-only-otp-pepper-16chars";
 
+import { readFileSync } from "node:fs";
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { marketStore, positionStore } from "../src/lib/server/market-dal.ts";
 import {
@@ -977,6 +978,50 @@ async function closeWindow(mid: string): Promise<void> {
   await notifyVerdictRecordedForMarket(noOutcome);
   ok("15: CONTROL · a deadline with no recorded verdict sends nothing (isolates the outcome guard)",
      (await verdictRows("g15_e")).length === 0);
+
+  // 🔴 AND THE ONE THAT NAMES A FALSE MONEY STATEMENT. The fan-out reads market state outside
+  // any lock and is called fire-and-forget, so the settle timer can run first — and at
+  // `objectionWindowHours: 0`, a setting the admin form permits, settlement is IMMEDIATE, so
+  // this is the ordinary case rather than a race. Without the `settledAt` refusal the notice
+  // tells a player "No money has moved yet" about money already in their wallet.
+  const paid = await makeMarket();
+  await fundedUser("g15_f");
+  await buyPosition("g15_f", { marketId: paid, side: "YES", stake: 2_000 });
+  await marketStore.stamp(paid, {
+    status: "RESOLVED", resolvedOutcome: "YES",
+    objectionsClosedAt: new Date(Date.now() - 60_000).toISOString(),
+    settledAt: new Date().toISOString(),
+  });
+  await notifyVerdictRecordedForMarket(paid);
+  ok("15: ⭐ a market whose money HAS MOVED sends nothing — never 'no money has moved yet' after a payout",
+     (await verdictRows("g15_f")).length === 0);
+
+  // ── §15b · THE PANEL MUST NOT CALL A VERDICT FINAL WHILE THE MONEY IS STILL THERE ──
+  //
+  // 🔴 `ResolutionPanel`'s `held` flag is a pure CLOCK test, so an unsettled market PAST its
+  // deadline fell through to "Resolution is final" — under a green tick, over a pool that is
+  // still whole and a verdict an upheld objection can still VOID or REVERSE. Reachable by a
+  // standing objection, by the settle timer's five-minute back-off, and now deliberately by an
+  // officer hold placed after the window closed. The 1-hour window makes that sliver a large
+  // share of a market's life.
+  //
+  // ⛔ A SOURCE ASSERTION, DELIBERATELY. The defect is which STRING renders in a branch; there
+  // is no server behaviour to drive, and rendering React here would prove less than reading the
+  // branch. It is paired with a positive control so it cannot pass by reading nothing.
+  {
+    const panel = readFileSync(new URL("../src/components/markets/resolution-panel.tsx", import.meta.url), "utf8");
+    ok("15b: ⭐ the unsettled fallback no longer claims the resolution is FINAL",
+       !/t\.market\.resFinal\b/.test(panel),
+       "the branch reached when settledAt is null must not say 'Resolution is final'");
+    ok("15b: …it says the market is awaiting settlement instead",
+       /t\.market\.closedAwaitingSettlement/.test(panel), "");
+    ok("15b: …and drops the green tick over unpaid money",
+       !/I\.check[\s\S]{0,120}closedAwaitingSettlement/.test(panel), "");
+    // ⭐ POSITIVE CONTROL — prove the file was really read and the other two branches survive.
+    ok("15b: CONTROL · the panel still renders the on-hold and settled branches",
+       /t\.market\.resHeld/.test(panel) && /t\.market\.resPaidOut/.test(panel) && panel.length > 4_000,
+       `${panel.length}B`);
+  }
 }
 
 console.log(`\nsettlement-gate: ${pass} passed, ${fail} failed`);

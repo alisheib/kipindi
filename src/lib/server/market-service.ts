@@ -1929,6 +1929,26 @@ export async function notifyVerdictRecordedForMarket(
   // before the window changed keeps its original deadline, and this notice must state that
   // market's deadline — not today's setting.
   if (!m.objectionsClosedAt) return { bettors: 0 };
+  /**
+   * 🔴 THE MONEY HAS NOT MOVED — CHECKED, NOT ASSUMED. Found by scanning my own change: this
+   * function reads market state OUTSIDE any lock and is called fire-and-forget, so between the
+   * seal and this line the settle timer can have run. Every word of the message it sends is
+   * then false: it says "No money has moved yet" and names a payout time in the past.
+   *
+   * ⛔ IT IS REACHABLE BY A CONFIG VALUE, NOT A RACE YOU HAVE TO IMAGINE. At
+   * `objectionWindowHours: 0` — a legal setting the admin form permits, warns about, and which
+   * `resolveMarket` itself audits as "IMMEDIATE — objection window is configured to 0h" — the
+   * market settles at once, so the queued notice lands after the payout as a matter of course
+   * rather than by bad luck. At the current 1-hour setting the window is an hour wide and this
+   * cannot bite; the guard exists so that changing one number in an admin form cannot turn
+   * every seal notice into a false money statement.
+   *
+   * ⭐ AND IT FAILS IN THE SAFE DIRECTION. A player who was paid learns it from the payout
+   * receipt, which is the honest surface for that fact. A player told "nothing has moved yet"
+   * about money already in their wallet has been misinformed by the platform about their own
+   * balance — the one thing this notice exists to prevent.
+   */
+  if (m.settledAt) return { bettors: 0 };
   const paysFrom = formatDateTime(m.objectionsClosedAt);
 
   const open = (await listPositionsForMarket(marketId)).filter((p) => p.status === "OPEN");
