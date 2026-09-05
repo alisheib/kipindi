@@ -70,6 +70,28 @@ const ACCOUNT_NOTE: Record<string, string> = {
   "HOUSE:RESERVE": "RETIRED — historical rows only",
 };
 
+/**
+ * What each fee source IS, in the owner's language.
+ *
+ * ⛔ A GLOSS BESIDE THE TOKEN, NEVER INSTEAD OF IT. `SETTLEMENT_COMMISSION` is the ledger's own
+ * vocabulary and an accountant reconciling against the books needs the exact string to query —
+ * but it is a schema enum arm with an underscore in it, on the page the OWNER reads, which is
+ * the shape `test:labels` §11b exists to stop. (§11b cannot see these: they arrive from the
+ * database, not from a literal in this file.) So both ship, in two columns.
+ *
+ * ⚠️ A type absent here still RENDERS, with its token and an em-dash — which is what keeps
+ * `readFeeBySource`'s "enumerate nothing" property true. ⛔ Never filter by this map.
+ */
+const FEE_SOURCE_NOTE: Record<string, string> = {
+  SETTLEMENT_COMMISSION: "our cut of a settled game's pool",
+  CASHOUT_FEE: "charged when a player exits a game early",
+  WITHDRAWAL_FEE: "our share of the fee on a withdrawal",
+  SETTLEMENT_TAX: "RETIRED — historical rows only",
+  SETTLEMENT_RESERVE: "RETIRED — historical rows only",
+  SETTLEMENT_AGGREGATOR: "RETIRED — historical rows only",
+  WITHDRAWAL_TAX: "RETIRED — historical rows only",
+};
+
 const HOUSE_TABS = ["position", "earnings", "games"] as const;
 type HouseTab = (typeof HOUSE_TABS)[number];
 
@@ -549,7 +571,7 @@ export default async function AdminHousePage({ searchParams }: { searchParams: P
               <>
                 <ScrollX label="Fee earned by source" className="-mx-4 px-4">
                   <table className="admin-tbl min-w-[480px]">
-                    <thead><tr><th className="text-left">Source</th><th className="text-right">Entries</th><th className="text-right">Fee</th></tr></thead>
+                    <thead><tr><th className="text-left">Source</th><th className="text-right">Fee</th><th className="text-left">What it is</th><th className="text-right">Entries</th></tr></thead>
                     <tbody>
                       {/* ⛔ NOTHING IS ENUMERATED HERE. Whatever entry types the books return are
                           the rows — so a retired type keeps being counted and a new one appears
@@ -558,12 +580,13 @@ export default async function AdminHousePage({ searchParams }: { searchParams: P
                       {feeSlice.map((r) => (
                         <tr key={r.entryType}>
                           <td className="text-left font-mono whitespace-nowrap">{r.entryType}</td>
-                          <td className="tabular text-right text-text-secondary">{formatNumber(r.entries)}</td>
                           <td className="tabular text-right"><Amt v={r.amount} /></td>
+                          <td className="text-left text-text-secondary">{FEE_SOURCE_NOTE[r.entryType] ?? "—"}</td>
+                          <td className="tabular text-right text-text-secondary">{formatNumber(r.entries)}</td>
                         </tr>
                       ))}
                       {feeBySource.length === 0 && (
-                        <AdminTableEmpty colSpan={3} kind="admin" title="No fee booked in this window"
+                        <AdminTableEmpty colSpan={4} kind="admin" title="No fee booked in this window"
                           body="Nothing was charged between these dates. Widen the window to see earlier activity." />
                       )}
                     </tbody>
@@ -597,7 +620,10 @@ export default async function AdminHousePage({ searchParams }: { searchParams: P
                       <tr><td className="text-left">Fee attributed to a game</td><td className="tabular text-right"><Amt v={recon.perGameFee} /></td></tr>
                       {recon.unattributed.byType.map((t) => (
                         <tr key={t.entryType}>
-                          <td className="text-left">Fee with no game — {t.entryType} ({adminCount(t.entries, "entry", "entries")})</td>
+                          <td className="text-left">
+                            Fee with no game — {FEE_SOURCE_NOTE[t.entryType] ?? "booked with no market against it"}{" "}
+                            <span className="text-text-tertiary">({adminCount(t.entries, "entry", "entries")} · <span className="font-mono">{t.entryType}</span>)</span>
+                          </td>
                           <td className="tabular text-right"><Amt v={t.amount} /></td>
                         </tr>
                       ))}
