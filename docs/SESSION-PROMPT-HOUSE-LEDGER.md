@@ -380,7 +380,7 @@ with a booked fee, **345 rows correctly kept as VOID/no-fee**; the waterfall ide
 | 6 · Drill-down + ⭐ rate provenance + reconciliation | ☑ `2fe0c975` |
 | 7 · RBAC gate + nav + cross-links | ☑ `2fe0c975` |
 | 8 · ~~Trilingual copy~~ → English copy + `sw` glosses | ☑ see §5 correction 2 |
-| 9 · Live visual drive, READ, 4 widths × 3 tabs + drill-down + a refused role | ☑ `npm run qa:house` |
+| 9 · Live visual drive, READ, 4 widths × 3 tabs + drill-down + a refused role | ☑ `npm run qa:house` — 300/300 |
 | 10 · Close-out, every number re-derived | ☑ 2026-09-05 |
 
 ### 🔴 STEP 0 — FOUR DEFECTS IN THE SHIPPED ARITHMETIC, FOUND AFTER IT WENT GREEN (2026-09-05)
@@ -439,6 +439,36 @@ misstatements; the measurement says otherwise, and the measurement wins. Only th
 - **`stampedAt === "legacy"` would mislabel 0 markets today** — every snapshot on production
   carries a `stampedAt`, and 44 markets have no snapshot at all. `hasOwnSnapshot()` closes the
   hole before a restore or a race opens it, not after.
+
+### 🔴 WHAT THE LIVE DRIVE FOUND — AND WHAT ONLY LOOKING FOUND (2026-09-05)
+
+`npm run qa:house` reads the page at 360/768/1280/1920 across three tabs and the drill-down.
+Its first run was **13 failures**, and the split is the lesson:
+
+- 🔴 **At 360, `TZS −19,555,989` needed 162px in a 126px tile and `AdminKpi` TRUNCATED IT.** The
+  strict solvency line — the single number this page exists to state — cut off on a phone. It
+  did not register as page overflow, because **clipping INSIDE a card never reaches
+  `document.scrollWidth`**; only a per-element scan sees it. Tiles now round through
+  `formatTzsCompact` (the `/admin/finance` precedent) with the exact figures in the derivation
+  table below. ⛔ Never compact a reconciliation.
+- 🔴 **AND THE ASSERTIONS STILL MISSED A ONE-PIXEL CLIP.** After the fix, `Free cash · strict`
+  measured **box 126, content 127** — an ellipsis on the two most important labels on the page,
+  invisible to `measureClipping` (which allows `> w + 1`) and to my own filter. ⭐ **It was
+  caught by READING THE SCREENSHOT, then confirmed by measuring rather than by arguing with the
+  picture.** Labels are now "Strict free cash" / "Funded free cash", and the drive re-checks
+  the KPI tiles at ZERO tolerance beside the shared helper.
+- 🔴 **Every money column sat off a 360px screen.** The card's inner width is 318px and the
+  tables were 480–560. Two-column tables are now 300–320 and fit; the house-accounts table kept
+  its width but BALANCE moved to second, so what scrolls away is the courtesy note. The
+  custodial-cash amounts needed one more fix — the raw `EXTERNAL:AIRTEL_MONEY` was 21 mono
+  characters — and the answer was `txnProviderLabel`, which also stops an enum arm being
+  printed where a person reads.
+- ⚠️ **Two of the thirteen were the DRIVE measuring the wrong element**, which is the failure
+  mode this platform has hit four separate times: a label count that spanned the whole page
+  (the derivation table legitimately names both lines again), and a row count over every table
+  on the tab that reported "26 → 26" while the filter worked perfectly. A third was
+  `waitForLoadState("networkidle")` returning before a client-side navigation completed and
+  reporting a working filter broken. ⛔ **Read the captured content before believing a count.**
 
 ### ⭐ AND A GUARD THAT READS THE FILE — `test:house-page` + `red:house-page`
 
