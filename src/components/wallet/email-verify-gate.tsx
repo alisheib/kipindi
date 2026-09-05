@@ -4,7 +4,9 @@
  * The deposit email gate — shown INSTEAD of the deposit form until the player's
  * address is confirmed.
  *
- * The trust ladder is: browse free → CONFIRM EMAIL TO DEPOSIT → KYC to withdraw.
+ * The trust ladder is: browse free → VERIFY IDENTITY → deposit, play, withdraw
+ * (2026-09-05). Confirming an email is a SECOND, independent requirement for depositing
+ * only — it is not a rung, and neither step blocks the other from being completed.
  * This is the middle rung. `wallet-service.deposit()` enforces it server-side;
  * this component exists so the player meets the gate *before* filling in a form
  * they'd only be rejected on, and so the thing that unblocks them (resend the

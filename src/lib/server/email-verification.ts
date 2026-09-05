@@ -16,7 +16,8 @@
  *
  * ⚠️ As of the 2026-07-18 real-money launch, `emailVerifiedAt` IS a hard gate on
  * the money-in path: `wallet-service.deposit()` refuses a deposit until it is
- * set (browse free → verify email to deposit → KYC to withdraw). Anything that
+ * set (a confirmed address is required before the first deposit, independently of the
+ * identity gate — see `kyc-gate.ts`). Anything that
  * changes an address therefore clears the flag and re-gates depositing — that is
  * intentional, and `setUserEmail` is the single writer that guarantees it.
  */

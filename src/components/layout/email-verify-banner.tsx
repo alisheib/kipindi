@@ -5,7 +5,7 @@
  * whose address is still unconfirmed.
  *
  * Why it exists: confirming your email is what unlocks depositing (browse free →
- * CONFIRM EMAIL TO DEPOSIT → KYC to withdraw), but until now the ONLY place that
+ * a second requirement for depositing, alongside identity), but until now the ONLY place that
  * said so was the deposit page itself. A player who signed up, browsed markets
  * and never opened /wallet/deposit had no signal at all that their account was
  * in a limited state, and no idea a confirmation mail was waiting in their

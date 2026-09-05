@@ -2,7 +2,11 @@
  * Wallet service — deposits, withdrawals, balance management.
  * Compliance:
  *  - All money movements posted via Transaction rows (immutable history)
- *  - Withdrawals require KYC APPROVED
+ *  - Deposits, bets AND withdrawals all require an approved identity (2026-09-05).
+ *    ⚠️ This line said "Withdrawals require KYC APPROVED" throughout the period when
+ *    they did NOT — it outlived the 2026-08-20 removal by a fortnight and was true again
+ *    before anyone corrected it. A header that drifts is worse than no header: it is
+ *    read as authority. The rule lives in `kyc-gate.ts`; this is a pointer, not a copy.
  *  - AML threshold (TZS 1M) holds withdrawal in `AML_REVIEW`
  *  - Daily/weekly/monthly deposit limits enforced (Responsible Gambling)
  *  - A withdrawal is charged ONE fee: `withdrawalFeeRate` (1%), part of which

@@ -33,6 +33,69 @@ const DEMO_STARTING_BALANCE = 100_000;
  */
 type EmailState = "verified" | "unverified" | "none";
 
+/**
+ * 🔴 `kycState` — AND THE DEFAULT IS THE BUG FIX.
+ *
+ * Until 2026-09-05 this route minted a session stamped `kycStatus: "APPROVED"` and created
+ * NO `KycSubmission` row at all. Nothing read the cookie for authorization, so the lie was
+ * invisible. The moment identity became a money gate — reading the DATABASE, correctly —
+ * the demo player resolved to NOT_STARTED and was refused every deposit and every bet.
+ *
+ * ⛔ THAT WOULD HAVE BROKEN `qa:live` SECTION [F] — the authed sweep over /positions,
+ * /wallet, /profile/invite and THE BET-DIAL CONTRACT ON /markets — which sits at the end
+ * of the `predeploy` chain. So the fixture writes a real APPROVED row, and the session
+ * stamp is no longer the only thing claiming approval.
+ *
+ * ⭐ AND IT TAKES THE OTHER FOUR STATES, exactly as `?email=` already does, so the harness
+ * can drive every gate panel without hand-editing the database:
+ *   /auth/demo?kyc=none | pending | more_info | rejected | approved (default)
+ * ⛔ `none` writes NO ROW, because that is what a real new account looks like; a row that
+ * merely SAYS NOT_STARTED would exercise a state the product never produces at sign-up.
+ */
+type KycState = "approved" | "none" | "pending" | "more_info" | "rejected";
+
+const KYC_STATUS: Record<Exclude<KycState, "none">, "APPROVED" | "PENDING_REVIEW" | "ADDITIONAL_INFO_REQUIRED" | "REJECTED"> = {
+  approved: "APPROVED",
+  pending: "PENDING_REVIEW",
+  more_info: "ADDITIONAL_INFO_REQUIRED",
+  rejected: "REJECTED",
+};
+
+async function ensureDemoKyc(userId: string, kycState: KycState) {
+  const existing = await db.kyc.findByUserId(userId);
+  if (kycState === "none") {
+    // Re-applied on every visit like the wallet balance, so a single demo account can be
+    // flipped between gate states across successive harness runs.
+    if (existing) await db.kyc.upsert({ ...existing, status: "NOT_STARTED", approvedAt: null, updatedAt: new Date().toISOString() });
+    return;
+  }
+  const now = new Date().toISOString();
+  const status = KYC_STATUS[kycState];
+  await db.kyc.upsert({
+    id: existing?.id ?? `kyc_${randomId(10)}`,
+    userId,
+    status,
+    rejectReason: null,
+    rejectNote: status === "REJECTED" ? "Demo fixture — document illegible." : null,
+    idType: "NIDA",
+    idNumber: "19900101700000000000",
+    idExpiry: null,
+    idVerifiedAt: now,
+    fullName: DEMO_DISPLAY,
+    dob: "1990-01-01",
+    documents: [],
+    reviewerId: null,
+    reviewedAt: now,
+    submittedAt: now,
+    // ⛔ ONLY the approved fixture carries the first-approval stamp. The withdraw gate asks
+    // THIS, not `status`, so a `pending`/`rejected` fixture that carried it would silently
+    // let the payout form render and the harness would prove the wrong thing.
+    approvedAt: status === "APPROVED" ? (existing?.approvedAt ?? now) : null,
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+  });
+}
+
 async function ensureDemoUser(emailState: EmailState) {
   const emailFields = {
     email: emailState === "none" ? null : DEMO_EMAIL,
@@ -100,12 +163,21 @@ async function bootstrapDemo(req: NextRequest) {
   }
   const raw = req.nextUrl.searchParams.get("email");
   const emailState: EmailState = raw === "unverified" || raw === "none" ? raw : "verified";
+  const rawKyc = req.nextUrl.searchParams.get("kyc");
+  const kycState: KycState =
+    rawKyc === "none" || rawKyc === "pending" || rawKyc === "more_info" || rawKyc === "rejected"
+      ? rawKyc : "approved";
   const { userId, phoneE164 } = await ensureDemoUser(emailState);
+  await ensureDemoKyc(userId, kycState);
   await createSession({
     userId,
     phoneE164,
     role: "PLAYER",
-    kycStatus: "APPROVED",
+    // ⚠️ The cookie stamp MIRRORS the row now instead of contradicting it. Nothing gates on
+    // this value — every money gate re-reads the database (`kyc-gate.ts`) — but a fixture
+    // whose cookie says APPROVED over a REJECTED row is a trap for whoever debugs the next
+    // failure, and it is what made the pre-2026-09-05 lie invisible.
+    kycStatus: kycState === "none" ? "NOT_STARTED" : KYC_STATUS[kycState],
   });
   return NextResponse.redirect(new URL("/", req.url));
 }

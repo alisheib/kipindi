@@ -103,16 +103,22 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
   const extraRequests = kyc?.extraRequests ?? [];
   const rejectLabel = humanizeRejectReason(kyc?.rejectReason ? String(kyc.rejectReason) : null, t);
 
-  // E-5. The approval burst used to read "You can now deposit and withdraw freely", which was
-  // wrong twice over. Deposits are NOT gated on KYC at all — the ladder is
-  // browse free → verify email to deposit → KYC to withdraw (wallet/deposit/page.tsx:125) — so
-  // approval never unlocked depositing, and the burst rendered directly beneath the very banner
-  // telling the player to confirm their email before adding money. And withdrawals carry a
-  // SECOND gate: when the payout provider cannot pay, /wallet/withdraw refuses the request
-  // outright. Promising both, at the player's proudest moment, was contradicted twice within one
-  // screen. So state only what approval actually unlocked, and ask the live gate rather than
-  // assuming it. Default to `operational` on failure, matching derivePayoutStatus's own fallback
-  // (payout-status.ts:120) — an unreachable DB is not evidence that payouts are down.
+  // E-5, AND ITS SECOND CHAPTER. The burst once read "You can now deposit and withdraw
+  // freely", which was wrong twice over: deposits were not KYC-gated at all, so approval
+  // never unlocked them, and the burst rendered directly beneath the banner telling the
+  // player to confirm their email before adding money. It was then narrowed to say only
+  // what approval really unlocked.
+  //
+  // ⭐ FROM 2026-09-05 THE ORIGINAL SENTENCE IS TRUE — approval unlocks depositing,
+  // playing and cashing out — so the copy widens back out. ⛔ But the DISCIPLINE that
+  // narrowed it does not relax: the second gate is still real. When the payout provider
+  // cannot pay, /wallet/withdraw refuses regardless of identity, so the burst still ASKS
+  // the live gate instead of assuming it, and says "add money and play" rather than
+  // promising a payout we cannot make. Promising anything at the player's proudest moment
+  // that the next screen refuses is the defect, not the specific sentence.
+  //
+  // ⚠️ Default to `operational` on failure, matching derivePayoutStatus's own fallback —
+  // an unreachable DB is not evidence that payouts are down.
   let payoutsAccepting = true;
   try {
     payoutsAccepting = payoutsAcceptingRequests((await getPayoutStatus()).status);
@@ -165,9 +171,16 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
               {t.profile.kycWelcomeLater}
             </p>
           </div>
+          {/* 🔴 THIS WAS THE PRIMARY BUTTON AND IT SAID "SKIP FOR NOW", pointing at
+              /markets — correct while a PENDING_KYC player could stake, and actively
+              misleading from 2026-09-05, when it became a gold call-to-action inviting a
+              player to a board where every stake control is a gate panel.
+              ⛔ It is now GHOST, not primary: the primary action on this screen is the
+              form below it. Looking around is still offered — browsing is genuinely free
+              — but it is no longer dressed as the thing to do next. */}
           <Link
             href="/markets"
-            className="btn btn-primary btn-lg btn-pill whitespace-nowrap"
+            className="btn btn-ghost btn-lg btn-pill whitespace-nowrap"
           >
             {t.profile.kycSkipForNow}
           </Link>

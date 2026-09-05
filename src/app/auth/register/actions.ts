@@ -51,10 +51,21 @@ export async function startRegisterAction(formData: FormData) {
   if (result.data?.role && result.data.role !== "PLAYER" && result.data.role !== "AGENT") {
     redirect("/admin");
   }
-  // Honor the player's intent: a new player is PENDING_KYC but can already bet
-  // with the starter balance (KYC only gates withdrawal), so send them back to
-  // the market they wanted. No intent → the KYC welcome nudge.
-  redirect((safeNext || "/profile/kyc?welcome=new") as never);
+  // 🔴 EVERY NEW PLAYER GOES TO VERIFICATION FIRST — 2026-09-05.
+  //
+  // This used to honour `safeNext` and drop the player straight back on the market they
+  // came from, because *"a new player is PENDING_KYC but can already bet with the starter
+  // balance (KYC only gates withdrawal)"*. All three clauses of that sentence are now
+  // false: the starter balance is 0 in live mode, KYC gates depositing and staking, and
+  // the market they wanted would greet them with a gate panel where the dial should be.
+  // Honouring their intent would mean routing them to a wall.
+  //
+  // ⚠️ THEIR INTENT IS NOT DISCARDED, IT IS DEFERRED. `?next=` rides along, and
+  // /profile/kyc offers it as the Continue CTA the moment they are approved — so the
+  // market they wanted is where verification DELIVERS them, rather than where it
+  // strands them.
+  const next = safeNext ? `&next=${encodeURIComponent(safeNext)}` : "";
+  redirect(`/profile/kyc?welcome=new${next}` as never);
 }
 
 /** Legacy OTP-driven registration — re-enable once SMS provider goes live. */
