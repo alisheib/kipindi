@@ -16,7 +16,7 @@ objection window cut from **24 hours to 1**.
 | **Handoff** | [`LIVE-QA-CAMPAIGN.md`](LIVE-QA-CAMPAIGN.md) §6b, topmost `RESUME AT` (session 87) |
 | **Deploy 1** | ✅ **LIVE** — the seal-time notice (`E-295`) and the officer hold (`E-296`), plus `E-297`–`E-299`. The two controls that had to exist BEFORE the window could shorten |
 | **Deploy 2** | ✅ **LIVE — the window is 1 hour on production.** Flipped through the audited `/admin/config` action; `market-config-diff.cjs` snapshots either side prove exactly one field moved (24 → 1). Verified in all three locales on `/fairness` and `/legal/terms` §6, whose version bumped to 2026-09-05. ⚠️ Markets sealed BEFORE the flip keep their 24-hour deadline — five were read from the database and each still carries 24.0 h |
-| **Deploy 3** | ☐ **The In-progress view.** ⛔ `PositionCard` is NOT reusable unchanged — a losing player would read a gold *"If your side wins"* for the whole window |
+| **Deploy 3** | ⚠️ **SUPERSEDED BY ALI 2026-09-06 — READ THE NEW DOOR.** It was scoped to /positions; Ali corrected that: the tab belongs on the MARKETS BOARD, because the player who loses sight of a closed poll is the one with NO position. New door: [SESSION-PROMPT-PROGRESS-AND-PHONE.md](SESSION-PROMPT-PROGRESS-AND-PHONE.md), which also carries a second job (full phone numbers in admin behind an eye). |
 | **Owed** | A post-flip long-form seal has not happened yet, so the 1-hour stamp is proven by `test:settlement-gate` §7 (which derives the stamp from config rather than asserting a literal) and **has not yet been observed on a live row**. Say so; do not claim it |
 | **Blocked** | Nothing |
 
