@@ -5959,6 +5959,62 @@ state**, 1,338,504 of players' stakes in escrow, and every ledger entry ever wri
 
 ⚠️ **TWO SUITES ARE RED ON `main` AND NEITHER IS THIS WORK** — measured on a pristine checkout before this branch existed. `test:updown-source-class` §2 is a **false alarm**: its rule is "`sourceDomain` must not appear in `updown-board.ts`", and the chart sprint added a legitimate **server-side** use at `:1032` (an argument to `vendorBarsFor`); every player-facing shape still carries `sourceClass` and the domain reaches no payload. The guard has become over-broad, not the code wrong. `test:updown-handover` 8.4d reads *"4 of 3 call sites"*. Both belong to the chart/Up-&-Down lane.
 
+### 🔁 END-TO-END REVALIDATION (Ali asked for it explicitly; every number below was RE-DERIVED, none quoted)
+
+⛔ **READ THIS FIRST: THE ADVERSARIAL PASS DID NOT COMPLETE.** A 69-agent refutation of 22 shipped
+claims **lost 68 agents to a session usage limit**. Exactly ONE finished — and it found **`E-300`**,
+the separation-of-duties over-claim that was being written into a production audit row. **The
+other 21 claims are UNVERIFIED, not verified.** Zero refuter votes is never a pass; this document
+has been burned by a tally that read an empty result set as a clean one. The adversarial pass
+should be **re-run when the limit resets** — the script is at
+`.claude/…/workflows/scripts/mgmt-spec-final-refute-*.js` and is read-only by construction.
+
+**Verified BY HAND after the agents died** (so these are checked, not assumed): the settle path
+and its freeze gate are untouched by this work (`countOpenObjections` / `OBJECTION_OPEN` /
+`TOO_EARLY` appear in **zero** changed lines); the seal notice has **exactly three** call sites
+and the `resolveMarket` one is gated on `stage === "complete"`; `Notification.kind` is
+`String?` so **no migration** was added (`git diff --name-only prisma/` is empty); `rejectObjection`
+re-arms the timer; **no** `CONFIG_VERSION` reconcile rule was added; both role gates on the hold
+exist (service + action); the config form has **no** `?? 24` in executable code and imports
+market-config as a **type only**; and the KYC lane's `market-service.ts` hunks (lines 25, 1034)
+do not overlap this work's (43, 432, 445, 1888, 2335, 2982) — proven by the rebase itself, which
+conflicted only in `COMPLIANCE-DECISIONS.md`.
+
+**Re-derived locally:** `tsc` clean · `next build` clean · `test:all` **289/291** ·
+`test:settlement-gate` **161/0** · `red:officer-hold` **10/10 each on its own assertion** ·
+`red:rate-copy` **12/12** · `test:rate-copy` 41/0 · `test:i18n` en=sw=zh=1998.
+
+⚠️ **The two failures were RE-MEASURED, not quoted.** Both `test:updown-source-class` and
+`test:updown-handover` are RED on `a058390f` — the commit predating *both* this work and the KYC
+lane — so they belong to neither.
+
+**Re-verified ON PRODUCTION:** health `ok` with the database reachable and migrated · ten public
+routes all **200** · four gated routes all **307** to the right sign-in · the live config
+**identical on all 27 fields** to the post-flip snapshot · the window stated as **1 hour** on
+`/fairness`, `/legal/terms` §6 and the help FAQ **in all three locales** · the Terms version
+reading **2026-09-05** · `qa:officer-hold` **19/19** · and the **running process itself** renders
+`1` in the FINANCE field with the hint *"Currently 1h"*, which is what proves the in-memory config
+moved and not merely the database row.
+
+⚠️ **NEGATIVE CONTROL, and it is the one that makes the sweep believable:** `/legal/terms` §5
+still says the AML review hold is **24 hours** in English *and* Swahili, and the 7-year AML
+records line is untouched. Only objection-window statements moved.
+
+⛔ **STILL OWED, AND NOT CLAIMED.** No long-form market has been sealed since the flip — measured:
+in the last 24 h there were **9 MARKET seals, every one stamped 24 h** (all before the flip) and
+**890 UPDOWN seals stamped 0 h** (correct by design). So the 1-hour stamp is proven by
+`test:settlement-gate` §7 and by the live config, but **has not been observed on a real row**.
+Proving it needs a deliberate seal of a poll whose stakes are all QA-fleet money — a real money
+act, deliberately not taken unilaterally.
+
+⚠️ **A near-miss worth keeping.** Reading settlement times straight from the database appeared to
+show **nothing settling for three hours** while nine Up & Down chains were RUNNING — the exact
+shape of a stalled scheduler on a live-money platform. It is a **timezone artifact**: those
+columns are `timestamp without time zone` and the driver applies a +03:00 offset, so `now()` and
+a stored stamp sit three hours apart inside one query. Measured before reporting: the newest
+round had settled **1.5 minutes** earlier. ⛔ Compare stored column to stored column; only their
+DIFFERENCE is sound.
+
 ✅ **PROOF, RE-DERIVED ON THE REBASED TREE (not quoted from an earlier run):** `tsc` clean · `next build` clean · `test:settlement-gate` **155/0** (+34 assertions) · `red:officer-hold` **10/10, each on its own assertion** · `test:cert-c3` **1,038/0** with the notice driven in both shapes it can take · `test:all` **289/291**, the two failures named above · `qa:officer-hold` **19/19 on the live deploy**. Four commits, `0bc02744…d080dfd9`, each verified on production by watching the uptime reset.
 
 ⭐ **THE RED HARNESS OVERTURNED TWO OF MY OWN CHECKS BEFORE THEY SHIPPED, AND THIS IS THE TRANSFERABLE PART.** The negative control for the seal notice **could not fail**: an unsealed market trips BOTH refusals (no outcome AND no deadline), so deleting either one left the suite green and the control certified nothing. It is now **three** controls, two of them constructing states the seal can never produce, so each refusal has somewhere to show up. And one anchor **matched twice** — byte-identical to `notifySelectionClosedForMarket`'s dedupe line — which `resolveAnchor` refused rather than injecting into the wrong function.
