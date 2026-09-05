@@ -11,8 +11,10 @@ export default function Loading() {
         <SkCard lines={1} titleW="w-64" />
         <SkKpiRow count={4} />
         {/* The arithmetic · the reconciliation · the rate provenance */}
-        <SkTableCard cols={2} rows={6} minWidth={520} headW="w-36" />
-        <SkTableCard cols={2} rows={3} minWidth={520} headW="w-48" />
+        {/* ⚠️ Both are two-column and carry no min-width on the page — see the note in
+            ../loading.tsx. A wider ghost draws a scroll the real table does not have. */}
+        <SkTableCard cols={2} rows={6} minWidth={280} headW="w-36" />
+        <SkTableCard cols={2} rows={3} minWidth={280} headW="w-48" />
         <SkCard lines={3} titleW="w-56" />
         {/* The ledger evidence, with its pager */}
         <SkTableCard cols={4} rows={8} minWidth={640} headW="w-44" pager />

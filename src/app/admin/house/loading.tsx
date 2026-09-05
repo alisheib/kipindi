@@ -23,7 +23,10 @@ export default function Loading() {
         {/* POSITION: float · house accounts · custodial cash · derivation · books */}
         <SkCard lines={2} titleW="w-44" />
         <SkTableCard cols={3} rows={5} minWidth={560} headW="w-36" />
-        <SkTableCard cols={2} rows={7} minWidth={520} headW="w-48" />
+        {/* ⚠️ MIRROR THE PAGE, NOT AN EARLIER DRAFT OF IT. The derivation table carries no
+            min-width any more (a two-column table fits a 318px card by definition), so a 520px
+            ghost would draw a scrolling card and then jump when the real one landed. */}
+        <SkTableCard cols={2} rows={7} minWidth={280} headW="w-48" />
       </SkBody>
     </>
   );
