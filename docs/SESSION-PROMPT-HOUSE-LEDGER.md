@@ -380,7 +380,7 @@ with a booked fee, **345 rows correctly kept as VOID/no-fee**; the waterfall ide
 | 6 · Drill-down + ⭐ rate provenance + reconciliation | ☑ `2fe0c975` |
 | 7 · RBAC gate + nav + cross-links | ☑ `2fe0c975` |
 | 8 · ~~Trilingual copy~~ → English copy + `sw` glosses | ☑ see §5 correction 2 |
-| 9 · Live visual drive, READ, 4 widths × 3 tabs + drill-down + a refused role | ☑ `npm run qa:house` — 300/300 |
+| 9 · Live visual drive, READ, 4 widths × 3 tabs + drill-down + a refused role | ☑ `npm run qa:house` — 316/316 |
 | 10 · Close-out, every number re-derived | ☑ 2026-09-05 |
 
 ### 🔴 STEP 0 — FOUR DEFECTS IN THE SHIPPED ARITHMETIC, FOUND AFTER IT WENT GREEN (2026-09-05)
@@ -463,6 +463,20 @@ Its first run was **13 failures**, and the split is the lesson:
   custodial-cash amounts needed one more fix — the raw `EXTERNAL:AIRTEL_MONEY` was 21 mono
   characters — and the answer was `txnProviderLabel`, which also stops an enum arm being
   printed where a person reads.
+- 🔴 **THE LEDGER'S OWN VOCABULARY WAS REACHING THE OWNER.** `SETTLEMENT_COMMISSION`,
+  `WITHDRAWAL_FEE`, `EXTERNAL:AIRTEL_MONEY` — schema enum arms, underscores and all, printed
+  where a non-technical owner reads. ⛔ `test:labels` §11b cannot see these: they arrive from
+  the DATABASE, not from a literal in the file, so the guard that exists for exactly this shape
+  is structurally blind to it. Providers now go through `txnProviderLabel` (which also made the
+  column fit); fee sources keep their exact token AND gain a plain-English gloss column, because
+  an accountant needs the string they would query with and Ali needs the sentence.
+- 🔴 **AND THE PAGE SHIPPED SAYING "It is notsubtracted above".** JSX drops a lone space between
+  a closing tag and the text after it, so `It is <strong>not</strong> subtracted above` lost the
+  word boundary — on the sentence that explains why the gateway share is not deducted. ⭐ The
+  SOURCE HAS A SPACE IN IT, so reading the file would have proved the screenshot wrong; pulling
+  `innerText` off the live page settled it in one call. The drive now walks every `<strong>`,
+  `<em>`, `<b>`, `<i>` and `<code>` in `main` and asserts a word boundary against its adjacent
+  text nodes, on every width and tab.
 - ⚠️ **Two of the thirteen were the DRIVE measuring the wrong element**, which is the failure
   mode this platform has hit four separate times: a label count that spanned the whole page
   (the derivation table legitimately names both lines again), and a row count over every table
@@ -562,6 +576,15 @@ on production. Two commits: `a47db847` (the four defects in the shipped arithmet
 - **`test:updown-source-class` and `test:updown-handover` are RED on `main`** and were red at
   `9ce071aa`, before any of this work — verified in a throwaway worktree, not assumed. They
   belong to the parallel `/updown` lane.
+
+### ⭐ THE SHAPE OF THIS SESSION, IN ONE LINE
+
+Steps 1–2 shipped green and were wrong in four places. The page then shipped green and was
+wrong in five more — a truncated solvency figure, a one-pixel ellipsis, money columns off a
+phone, enum arms reaching the owner, and a missing space in the sentence that explains a
+number. **Not one of those was caught by a suite. Every one was caught by driving the live
+page and then LOOKING at what came back.** ⛔ Green is the beginning of verification here,
+never the end of it.
 
 ### ⚠️ Every number in this document is dated and will rot
 
