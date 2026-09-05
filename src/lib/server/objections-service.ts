@@ -255,11 +255,32 @@ export async function closeObjectionsForVoidedMarket(
  * column that the money path would have to learn about. No schema change, and every existing
  * proof of the freeze covers this too.
  *
- * ⭐ SEPARATION OF DUTIES COMES FREE, AND THAT IS THE REASON FOR THIS SHAPE. The row's `userId`
- * is the OFFICER who raised it, and both rulings already refuse when `o.userId === officerId`
- * ("You cannot rule on your own objection"). So the officer who freezes a market structurally
- * cannot be the one who releases it — a second officer must. That property is inherited, not
- * re-implemented, which is why it cannot drift away from the player path's version of it.
+ * ⭐ SEPARATION OF DUTIES ON THE RULING PATHS COMES FREE, AND THAT IS THE REASON FOR THIS SHAPE.
+ * The row's `userId` is the OFFICER who raised it, and both rulings already refuse when
+ * `o.userId === officerId` ("You cannot rule on your own objection"). So the officer who freezes
+ * a market cannot REJECT their own hold (letting the recorded verdict pay) nor UPHOLD it (paying
+ * the other side) — a second officer must. That property is inherited, not re-implemented, which
+ * is why it cannot drift away from the player path's version of it.
+ *
+ * ⛔ AND HERE IS THE LIMIT OF THAT SENTENCE, BECAUSE THE FIRST VERSION OF THIS COMMENT OVERCLAIMED
+ * IT AND THE CLAIM WAS WRITTEN INTO A PRODUCTION AUDIT ROW. It said the filer "structurally cannot
+ * be the one who releases it". There is a third writer of objection status and it has NO
+ * self-review check: `closeObjectionsForVoidedMarket` (below) closes EVERY open objection on a
+ * market — the caller's own hold included — and its only caller is `emergencyVoidMarket`, whose
+ * role gate is the SAME `["ADMIN","COMPLIANCE"]` set that may file a hold, and whose officer-
+ * conflict block was deliberately removed (owner decision 2026-07-24).
+ *
+ * ⚠️ SO THE HONEST STATEMENT IS NARROWER, AND IT IS STILL THE PROPERTY WORTH HAVING: a lone
+ * officer cannot turn their own hold into a PAYOUT. Both directions that move money to a player
+ * — reject (pay the recorded verdict) and uphold/REVERSE (pay the other side) — require a second
+ * officer. What one officer can still do alone is VOID the market, which refunds every stake at
+ * zero fee and answers their own case by destroying it. That is the pre-existing kill switch, not
+ * a hole this feature opened, and it is deliberately NOT closed here: leaving an objection OPEN
+ * on a market that has been voided and fully refunded would strand the row and the market, which
+ * is worse than the thing it would be protecting against.
+ *
+ * ⛔ Do not "restore" the stronger wording. It was refuted by reading the code, and the audit
+ * payload below says the narrower true thing on purpose.
  *
  * ⛔ TWO DELIBERATE DIFFERENCES FROM A PLAYER OBJECTION, both widening:
  *   1. NO STAKE REQUIRED — the whole point.
@@ -336,7 +357,16 @@ export async function holdSettlementAsOfficer(
         outcomeAtFiling: m.resolvedOutcome,
         objectionsClosedAt: m.objectionsClosedAt,
         pastWindow: !!m.objectionsClosedAt && Date.now() > Date.parse(m.objectionsClosedAt),
-        effect: "settlement frozen until a DIFFERENT officer rules — the filer cannot release their own hold",
+        // ⛔ NARROWED 2026-09-05, AND THE OLD WORDING WAS A FALSE STATEMENT ON A REGULATOR-FACING
+        // TRAIL. It read "…the filer cannot release their own hold", which is true of both RULING
+        // paths and false of `emergencyVoidMarket`, where the same officer can close their own
+        // case by voiding the market. An audit row is the one place a claim must be exactly as
+        // strong as the code — see the note on the function above.
+        effect:
+          "settlement frozen: no winner is paid until an objection ruling. Both paying outcomes " +
+          "(reject → the recorded verdict pays; uphold → the other side pays) require a DIFFERENT " +
+          "officer, because a filer cannot rule on their own case. A void, which refunds every " +
+          "stake, remains available to a single ADMIN/COMPLIANCE officer and would close this hold.",
       },
     });
 

@@ -296,10 +296,29 @@ wrong. There was nothing between "do nothing" and "unwind everything".
 still has ONE settlement freeze with one definition — not a second column the money path would
 have to learn about. No schema change, and every existing proof of the freeze covers this too.
 
-⭐ **Separation of duties is inherited, not re-implemented.** The row's `userId` is the officer
-who raised it, and both rulings already refuse when the filer is the ruler. So **an officer who
-freezes a market structurally cannot be the one who releases it** — a second officer must. The
-confirm dialog says so before the act, not after it.
+⭐ **Separation of duties on the ruling paths is inherited, not re-implemented.** The row's
+`userId` is the officer who raised it, and both rulings already refuse when the filer is the
+ruler. So **a lone officer cannot turn their own hold into a payout**: rejecting it (the recorded
+verdict pays) and upholding it (the other side pays) each require a second officer. The confirm
+dialog says so before the act, not after it.
+
+🔴 **CORRECTED THE SAME DAY, AND THE CORRECTION MATTERS MORE THAN THE FEATURE.** This entry, the
+function's own header, and — worst — **an audit row written on every hold** originally said the
+filer *"structurally cannot be the one who releases it"*. An adversarial read of the shipped code
+refuted it: `closeObjectionsForVoidedMarket` closes **every** open objection on a market, the
+caller's own included, with no self-review check; its only caller is `emergencyVoidMarket`, whose
+role gate is the **same** `ADMIN`/`COMPLIANCE` set that may file a hold, and whose officer-conflict
+block was deliberately removed on 2026-07-24.
+
+⛔ **The behaviour is right and was NOT changed.** Leaving an objection OPEN on a market that has
+been voided and fully refunded would strand both the row and the market. What was wrong was the
+CLAIM — and a claim on a regulator-facing audit trail must be exactly as strong as the code.
+
+⚠️ **What one officer can still do alone is VOID**, which refunds every stake at zero fee. That
+moves money *away* from a verdict rather than toward one, which is why it is an acceptable
+single-officer power — and it **pre-dates this work**, so no new money authority was created here.
+`test:settlement-gate` §14b now pins the real behaviour in both directions: the two paying
+outcomes are refused to the filer, and the void path does close their own case.
 
 ⛔ **Two deliberate differences from a player objection, both widening, both recorded here so
 neither is "corrected" later:**

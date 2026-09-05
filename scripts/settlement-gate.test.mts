@@ -833,6 +833,52 @@ async function closeWindow(mid: string): Promise<void> {
   });
   ok("14: an officer CAN still hold after the window closes", lateHold.ok, JSON.stringify(lateHold));
   ok("14: …and both freezes stand", (await countOpenObjections(mid2)) === 2);
+
+  // ── §14b · THE LIMIT OF THE SEPARATION-OF-DUTIES CLAIM, ASSERTED SO IT CANNOT OVER-REACH ──
+  //
+  // 🔴 THE FIRST VERSION OF THIS FEATURE CLAIMED THE FILER "STRUCTURALLY CANNOT" RELEASE THEIR
+  // OWN HOLD, and wrote that sentence into a production audit row on every hold. An adversarial
+  // read found the third writer of objection status: `closeObjectionsForVoidedMarket`, which
+  // closes EVERY open objection including the caller's own, reached from `emergencyVoidMarket`,
+  // whose role gate is the SAME ADMIN/COMPLIANCE set and whose officer-conflict block was
+  // deliberately removed in 2026-07-24.
+  //
+  // ⛔ THE BEHAVIOUR IS CORRECT AND IS NOT CHANGED HERE — leaving an objection OPEN on a market
+  // that has been voided and fully refunded would strand both. What was wrong was the CLAIM. So
+  // the real behaviour is pinned below, in both directions: the two PAYING outcomes still need a
+  // second officer, and the void path does close the filer's own case.
+  {
+    const mid3 = await makeMarket();
+    await fundedUser("g14b_a");
+    await buyPosition("g14b_a", { marketId: mid3, side: "YES", stake: 6_000 });
+    await adjudicate(mid3, "YES");
+    const held = await holdSettlementAsOfficer("gate_officer", {
+      marketId: mid3, reason: "WRONG_OUTCOME", detail: "Holding while I check the source myself.",
+    });
+    ok("14b: the officer holds their own case", held.ok, JSON.stringify(held));
+
+    // ⭐ THE PROPERTY THAT ACTUALLY MATTERS: neither way of PAYING is available to the filer.
+    const objId3 = (await db.objection.listForMarket(mid3)).find((o) => o.status === "OPEN")!.id;
+    const selfReject = await rejectObjection(objId3, "gate_officer", "Letting the verdict stand after all.");
+    const selfUphold = await upholdObjection(objId3, "gate_officer", { remedy: "REVERSE", note: "Flipping it myself." });
+    ok("14b: ⭐ the filer cannot make their own hold PAY the recorded verdict",
+       !selfReject.ok && selfReject.code === "CONFLICT", JSON.stringify(selfReject));
+    ok("14b: ⭐ …nor make it pay the OTHER side",
+       !selfUphold.ok && selfUphold.code === "CONFLICT", JSON.stringify(selfUphold));
+
+    // ⚠️ AND THE ONE THING THEY CAN DO ALONE, PINNED RATHER THAN CLAIMED AWAY. A void refunds
+    // every stake at zero fee, so it moves money AWAY from a verdict rather than toward one —
+    // which is why it is an acceptable single-officer power and why the audit copy now says so.
+    const before = await bal("g14b_a");
+    const voided = await emergencyVoidMarket({
+      marketId: mid3, officerId: "gate_officer", reason: "Source withdrawn; voiding rather than ruling.",
+    });
+    ok("14b: a single officer CAN void the market they hold", voided.ok, JSON.stringify(voided));
+    ok("14b: ⚠️ …which closes their OWN hold — the claim the audit copy must not over-state",
+       (await countOpenObjections(mid3)) === 0);
+    ok("14b: …and the stake came back rather than paying a verdict", (await bal("g14b_a")) > before,
+       `delta=${(await bal("g14b_a")) - before}`);
+  }
 }
 
 
