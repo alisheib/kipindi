@@ -224,6 +224,12 @@ export const ROUTE_DOMAINS: ReadonlyArray<readonly [prefix: string, domain: Admi
   ["/admin/insights", "accounting"],
   ["/admin/settlement", "accounting"],
   ["/admin/finance", "accounting"],
+  /* ⛔ REGISTERING THIS IS NOT PAPERWORK. `domainForPath` falls CLOSED to `"ops"`, and no
+   * non-Owner role holds an `ops` grant — so an unregistered `/admin/house` would render for
+   * ADMIN alone and be invisible to FINANCE, COMPLIANCE and AUDITOR, who are precisely the
+   * people who read a house book. The matcher is `path === prefix || startsWith(prefix + "/")`,
+   * so this one line also covers the `/admin/house/<marketId>` drill-down. */
+  ["/admin/house", "accounting"],
   ["/admin/reports", "accounting"],
   ["/admin/payments", "accounting"],
   ["/admin/transactions", "accounting"],

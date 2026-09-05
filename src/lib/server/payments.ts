@@ -29,7 +29,7 @@ import { randomId } from "./crypto";
 import { getPaymentProvider, getDemoAsyncEnabled, type PaymentProviderId } from "./payment-control";
 import type { PaymentMethodId } from "@/lib/payment-providers";
 import { isLiveMoneyMode } from "./runtime-mode";
-import { selcomEnv, selcomDisburseEnv, selcomDeposit, selcomCardCheckout, selcomPayout, selcomVerifyOrder, selcomVerifyPayout, selcomCashinNameLookup, selcomFloatBalance, selcomProbeRails, mnoToSelcomCashin, railOf, type SelcomBilling, type SelcomEnv, type PayoutRail, type RailProbe } from "./selcom";
+import { selcomEnv, selcomDisburseEnv, selcomDeposit, selcomCardCheckout, selcomPayout, selcomVerifyOrder, selcomVerifyPayout, selcomCashinNameLookup, selcomFloatBalance, selcomFloatBalanceDetailed, selcomProbeRails, mnoToSelcomCashin, railOf, type SelcomBilling, type SelcomEnv, type PayoutRail, type RailProbe } from "./selcom";
 
 /**
  * The rail a movement travelled. ⚠️ NOT `PaymentProviderId` above — that one is the
@@ -543,6 +543,31 @@ export async function getFloatBalance(): Promise<{ balance: number } | null> {
   const env = selcomDisburseEnv();
   if (!env) return null;
   return selcomFloatBalance(env, `fb_${randomId(10)}`);
+}
+
+/**
+ * The float, WITH the reason it could not be read.
+ *
+ * 🔴 `getFloatBalance()` above returns a bare `null` for four completely different causes, and
+ * `selcomFloatBalance` throws away the diagnosis `selcomFloatBalanceDetailed` already computed.
+ * On 2026-07-29 that made an operator read *"Selcom refused our IP"* as *"the PIN is missing"*
+ * while a real payout stalled — which is the whole reason the detailed variant was written, and
+ * it has had no caller able to reach its `reason` until now.
+ *
+ * ⛔ The two not-Selcom cases are reasons too, and they are DIFFERENT reasons. "Selcom is not
+ * the active provider" and "the disbursement credentials are not set" are different problems
+ * with different fixes, and a page that renders one sentence for both sends somebody to look in
+ * the wrong place.
+ */
+export async function getFloatBalanceDetailed(): Promise<{ balance: { balance: number } | null; reason: string }> {
+  if ((await getPaymentProvider()) !== "selcom") {
+    return { balance: null, reason: "Selcom is not the active payment provider" };
+  }
+  const env = selcomDisburseEnv();
+  if (!env) {
+    return { balance: null, reason: "the Selcom disbursement credentials are not configured" };
+  }
+  return selcomFloatBalanceDetailed(env, `fb_${randomId(10)}`);
 }
 
 const azampayAdapter: PaymentAdapter = {

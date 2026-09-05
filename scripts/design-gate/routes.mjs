@@ -14,7 +14,7 @@
 
 /** Every admin console route the drive visits. */
 export const ADMIN_ROUTES = [
-  "/admin", "/admin/live", "/admin/finance", "/admin/reports", "/admin/players", "/admin/players/cohorts",
+  "/admin", "/admin/live", "/admin/finance", "/admin/house", "/admin/reports", "/admin/players", "/admin/players/cohorts",
   "/admin/markets", "/admin/markets/new", "/admin/resolver-queue", "/admin/settlement", "/admin/objections",
   "/admin/proposals", "/admin/candidates", "/admin/ai-polls", "/admin/ai-usage", "/admin/sources",
   "/admin/updown", "/admin/updown/rounds", "/admin/updown/proposals",

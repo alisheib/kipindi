@@ -126,6 +126,7 @@ const ok = (label: string, cond: boolean, extra = "") => {
     "/admin/invites/[id]": "invite detail — from the /admin/invites list",
     "/admin/kyc/[id]": "the KYC workstation — from /admin/approvals (there is no /admin/kyc list page)",
     "/admin/markets/[id]": "market detail — from the /admin/markets list",
+    "/admin/house/[marketId]": "per-game book — from the BY GAME table on /admin/house",
     "/admin/players/[id]": "player detail — from the /admin/players list",
     "/admin/resolver/[id]": "resolution ceremony — from /admin/resolver-queue",
     "/admin/staff/[id]": "staff member detail — from the /admin/staff list",

@@ -27,6 +27,33 @@ export type MarketAttribution = {
   productLine: ProductLine;
 };
 
+/**
+ * What `/admin/house` needs about a market to close its book — see `MarketStore.bookByIds()`.
+ *
+ * ⚠️ `resolvedOutcome` is `null` for a market that has not settled AND for one whose row the
+ * purge ceremony redacted. Both are real arms: the house window is ENTRY-TIME, so a live poll
+ * whose player took an early exit appears in the book having genuinely moved money. ⛔ The page
+ * renders the word through `outcomeWord`, never a literal — Up & Down stores `YES`/`NO` here and
+ * a reader must see Up and Down.
+ */
+export type MarketBook = {
+  id: string;
+  titleEn: string;
+  productLine: ProductLine;
+  status: MarketStatus;
+  resolvedOutcome: string | null;
+  settledAt: string | null;
+  yesPool: number;
+  noPool: number;
+  /**
+   * The market's own FROZEN rates, coerced exactly as `toStoredMarket` coerces them so this
+   * projection and a full row cannot disagree about the same column.
+   * ⛔ Read it through `ratesFor()` (which is `snapshotOrLegacy`) and ask `hasOwnSnapshot()`
+   * whether the game has its own — never inspect `stampedAt`, which two paths produce.
+   */
+  feeSnapshot: StoredMarket["feeSnapshot"];
+};
+
 /** The two position columns a money attribution read uses. See `PositionStore.attribution()`. */
 export type PositionAttribution = { id: string; marketId: string };
 
@@ -203,6 +230,29 @@ export interface MarketStore {
    * `listMarkets`). Being unable to filter is what makes it safe; do not add one.
    */
   attribution(): Promise<MarketAttribution[]>;
+  /**
+   * THE HOUSE-BOOK PROJECTION — the columns `/admin/house` needs, for the ids it already holds.
+   *
+   * ⭐ THE LEDGER IS THE LEFT SIDE OF THIS JOIN. `readGameRows()` returns every `marketId` that
+   * moved money in the window; this fills in what each one is CALLED and how it settled. So the
+   * caller never asks the market table which games to show — it asks the books, and the market
+   * table only supplies names. A game whose row is gone still has its money.
+   *
+   * ⛔ THERE IS NO `productLine` PARAMETER, FOR EXACTLY THE REASON `attribution()` HAS NONE.
+   * Up & Down rounds are 353 of the 467 named markets that have moved money on production, so a
+   * filter here could silently delete three quarters of the owner's book — and every number
+   * would still reconcile with itself. Being unable to filter is what makes it safe.
+   *
+   * ⛔ AND DO NOT REACH FOR `listMarkets()` INSTEAD. It defaults to `productLine: "MARKET"` AND
+   * drops `Demo · ` rows, so it would do both halves of that damage at once; `test:product-line`
+   * would then require an opt-in entry, and its trap is a hand-written list — a page that never
+   * calls it is safe by construction rather than by remembering.
+   *
+   * Absent ids are absent from the map. The page renders those as a labelled row carrying the
+   * raw id: on production the SECOND-largest earner in the whole book (22,321 TZS) has no market
+   * row, so dropping the unmatched ids would break the reconciliation identity by that much.
+   */
+  bookByIds(ids: readonly string[]): Promise<Map<string, MarketBook>>;
   /**
    * Every market with a PENDING time-based transition — i.e. what the per-market
    * scheduler must arm a timer for: LIVE markets (closing-soon / selection-closed /
@@ -428,6 +478,27 @@ const memoryMarkets: MarketStore = {
     for (const id of ids) {
       const m = markets.get(id);
       if (m) out.set(id, { yesPool: m.yesPool, noPool: m.noPool });
+    }
+    return out;
+  },
+  async bookByIds(ids) {
+    // Same nine fields as the Prisma twin, so a test that passes here means the same thing
+    // in production. ⛔ No product filter — see the interface comment.
+    const out = new Map<string, MarketBook>();
+    for (const id of ids) {
+      const m = markets.get(id);
+      if (!m) continue;
+      out.set(id, {
+        id: m.id,
+        titleEn: m.titleEn,
+        productLine: (m.productLine === "UPDOWN" ? "UPDOWN" : "MARKET") as ProductLine,
+        status: m.status,
+        resolvedOutcome: m.resolvedOutcome ?? null,
+        settledAt: m.settledAt ?? null,
+        yesPool: m.yesPool,
+        noPool: m.noPool,
+        feeSnapshot: m.feeSnapshot ?? null,
+      });
     }
     return out;
   },
@@ -715,6 +786,36 @@ const prismaMarkets: MarketStore = {
       select: { id: true, yesPool: true, noPool: true },
     });
     for (const r of rows) out.set(r.id, { yesPool: Number(r.yesPool), noPool: Number(r.noPool) });
+    return out;
+  },
+  async bookByIds(ids) {
+    const out = new Map<string, MarketBook>();
+    if (ids.length === 0) return out;
+    // ⛔ NO `productLine` IN THE `where`, and none is reachable — see the interface comment.
+    // One indexed `findMany` over the ids the ledger already named, selecting nine columns of
+    // a very wide table (`attribution()`'s measurements are why the projection is narrow).
+    const rows = await pc().predictionMarket.findMany({
+      where: { id: { in: [...ids] } },
+      select: {
+        id: true, titleEn: true, productLine: true, status: true,
+        resolvedOutcome: true, settledAt: true, yesPool: true, noPool: true, feeSnapshot: true,
+      },
+    });
+    for (const r of rows) {
+      out.set(r.id, {
+        id: r.id,
+        titleEn: r.titleEn,
+        // Same coercion as `attribution()` — an unknown value is MARKET, never UPDOWN, so a
+        // bad row cannot invent Up & Down turnover.
+        productLine: (r.productLine === "UPDOWN" ? "UPDOWN" : "MARKET") as ProductLine,
+        status: r.status as MarketStatus,
+        resolvedOutcome: r.resolvedOutcome ?? null,
+        settledAt: r.settledAt ? r.settledAt.toISOString() : null,
+        yesPool: Number(r.yesPool),
+        noPool: Number(r.noPool),
+        feeSnapshot: (r.feeSnapshot as StoredMarket["feeSnapshot"]) ?? null,
+      });
+    }
     return out;
   },
   async pending(productLine = "MARKET") {

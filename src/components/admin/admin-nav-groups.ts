@@ -73,6 +73,12 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
       { href: "/admin/insights", label: "Insights", key: "insights", domain: "accounting" },
       { href: "/admin/settlement",    label: "Settlement", key: "settlement", domain: "accounting" },
       { href: "/admin/finance", label: "Finance", key: "finance", domain: "accounting" },
+      /* ⭐ THE OWNER'S BOOK — what we hold, what we made, per game, and which rate applied.
+       * Beside Finance because it is read against it: Finance keeps the books and proves them
+       * (trial balance, drift); House answers what is left after everything owed to somebody
+       * else comes out. ⛔ Without this entry `test:admin-nav` §7 reports the page as having
+       * no way in — a route nobody can reach from the console is a route nobody reads. */
+      { href: "/admin/house", label: "House", key: "house", domain: "accounting" },
       { href: "/admin/reports", label: "Reports", key: "reports", domain: "accounting" },
       { href: "/admin/payments", label: "Payments ops", key: "payments", domain: "accounting" },
       { href: "/admin/transactions", label: "Transactions", key: "transactions", domain: "accounting" },
@@ -194,6 +200,7 @@ export function filterNavGroups(
 const ROUTE_KEYS: ReadonlyArray<readonly [prefix: string, key: string]> = [
   ["/admin/live", "live"],
   ["/admin/finance", "finance"],
+  ["/admin/house", "house"],
   ["/admin/reports", "reports"],
   ["/admin/payments", "payments"],
   ["/admin/players/cohorts", "cohorts"],

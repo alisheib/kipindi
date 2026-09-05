@@ -127,6 +127,52 @@ export async function readCustodialCash(): Promise<CustodialCash | null> {
   return { railBacked, total, byAccount };
 }
 
+/**
+ * ⭐ WHAT WE OWE PLAYERS — Σ (balance + hold) over EVERY wallet.
+ *
+ * 🔴 **EVERY WALLET, NOT THE ACTIVE ONES, AND THAT IS A DELIBERATE DIFFERENCE FROM
+ * `walletLiabilityTotal()`.** That reader filters `w.status === "ACTIVE"`, which is right for
+ * the *activity* figure `/admin/finance` shows beside its KPIs. It is wrong for a SOLVENCY line:
+ * freezing a wallet does not discharge the debt, and a page that quietly stopped counting a
+ * frozen player's balance would report free cash we do not have. The one number an owner must
+ * never be flattered on is what he owes.
+ *
+ * ⚠️ `hold` is included because in-flight stake money is still the player's until it settles.
+ * ⚠️ `bonusBalance` is EXCLUDED — it is non-withdrawable promotional credit, not a cash debt.
+ * ⚠️ Measured on production 2026-09-05: every wallet is ACTIVE, so this equals
+ * `walletLiabilityTotal()` at 20,105,687 today. The two diverge the first time a wallet freezes.
+ */
+export async function readPlayerLiability(): Promise<number | null> {
+  const pc = prisma();
+  if (!pc) return null;
+  const rows = await pc.$queryRawUnsafe<Array<{ sum: string | null }>>(
+    `SELECT SUM(balance + hold) AS sum FROM "Wallet"`,
+  );
+  return Number(rows[0]?.sum ?? 0);
+}
+
+/**
+ * ⭐ THE PART OF THAT LIABILITY AN ADMIN TYPED INTO EXISTENCE — Σ net `ADJUSTMENT` to players.
+ *
+ * ⛔ **NET, NOT Σ(amount > 0).** An adjustment can be a debit as well as a credit, and the gross
+ * figure double-counts a balance that was credited and then corrected. Measured on production
+ * 2026-09-05: gross 26,264,342 against a NET of 20,600,000 — and the net matches the
+ * `SYSTEM:ADJUSTMENT` balance exactly, which is the check that the pairing is right.
+ *
+ * ⚠️ This is what makes the strict solvency line readable rather than terrifying: 20,600,000 of
+ * a 20,105,687 liability is seeded test money with no deposit behind it. ⛔ It never SOFTENS the
+ * strict line — `housePosition` returns both figures and the page shows both.
+ */
+export async function readAdjustmentBackedLiability(): Promise<number | null> {
+  const pc = prisma();
+  if (!pc) return null;
+  const rows = await pc.$queryRawUnsafe<Array<{ sum: string | null }>>(
+    `SELECT SUM(amount) AS sum FROM "LedgerEntry"
+      WHERE "entryType" = 'ADJUSTMENT' AND account LIKE 'PLAYER:%'`,
+  );
+  return Number(rows[0]?.sum ?? 0);
+}
+
 export type WaterfallRead = {
   stakeIn: number;
   bonusIn: number;
@@ -321,6 +367,58 @@ export async function readFeeBySource(start: Date, end: Date): Promise<
     amount: Number(r.sum ?? 0),
     entries: Number(r.n ?? 0),
   }));
+}
+
+export type GameTotals = GameLedgerRow & {
+  /**
+   * ⭐ Σ `SETTLEMENT_COMMISSION` ALONE — the ONLY slice `poolFee` models.
+   *
+   * ⛔ The drill-down reconciles THIS against the recompute, not `feeBooked`. `feeBooked` also
+   * contains `CASHOUT_FEE`, which is booked PER EXIT from the pool as it stood at that moment;
+   * `poolFee` knows nothing about early exits and would report a variance equal to every
+   * early-exit fee the game ever charged, on a perfectly correct book.
+   */
+  settlementFee: number;
+  /** Σ `CASHOUT_FEE` — shown BESIDE the reconciliation, labelled, never inside it. */
+  earlyExitFee: number;
+  /** Total ledger rows for this market, before the evidence panel collapses them. */
+  entries: number;
+};
+
+/** One game's booked sums, all time — the drill-down's arithmetic. */
+export async function readGameTotals(marketId: string): Promise<GameTotals | null> {
+  const pc = prisma();
+  if (!pc) return null;
+  const rows = await pc.$queryRawUnsafe<Array<Record<string, string | null>>>(
+    `SELECT
+       SUM(CASE WHEN "entryType"='STAKE_DEBIT'  AND account LIKE 'POOL:%'   AND amount>0 THEN amount ELSE 0 END) AS poolin,
+       SUM(CASE WHEN "entryType"='BONUS_SPEND'  AND account LIKE 'POOL:%'   AND amount>0 THEN amount ELSE 0 END) AS bonusin,
+       SUM(CASE WHEN "entryType" IN ('PAYOUT_CREDIT','REFUND','CASHOUT')
+                 AND account LIKE 'PLAYER:%' AND amount>0 THEN amount ELSE 0 END) AS paidout,
+       SUM(CASE WHEN "entryType"='BONUS_REFUND' AND account LIKE 'PLAYER\\_BONUS:%' AND amount>0 THEN amount ELSE 0 END) AS bonusrefunded,
+       SUM(CASE WHEN account='HOUSE:COMMISSION' AND amount>0 THEN amount ELSE 0 END) AS feebooked,
+       SUM(CASE WHEN account='HOUSE:COMMISSION' AND "entryType"='SETTLEMENT_COMMISSION' AND amount>0 THEN amount ELSE 0 END) AS settlementfee,
+       SUM(CASE WHEN account='HOUSE:COMMISSION' AND "entryType"='CASHOUT_FEE' AND amount>0 THEN amount ELSE 0 END) AS earlyexitfee,
+       SUM(CASE WHEN account IN ('HOUSE:TRA_LEVY','HOUSE:GBT_LEVY') AND amount>0 THEN amount ELSE 0 END) AS leviesbooked,
+       COUNT(*) AS entries
+     FROM "LedgerEntry" WHERE "marketId" = $1`,
+    marketId,
+  );
+  const r = rows[0];
+  if (!r) return null;
+  const n = (k: string) => Number(r[k] ?? 0);
+  return {
+    marketId,
+    poolIn: n("poolin"),
+    bonusIn: n("bonusin"),
+    paidOut: n("paidout"),
+    bonusRefunded: n("bonusrefunded"),
+    feeBooked: n("feebooked"),
+    settlementFee: n("settlementfee"),
+    earlyExitFee: n("earlyexitfee"),
+    leviesBooked: n("leviesbooked"),
+    entries: n("entries"),
+  };
 }
 
 export type GameEvidenceRow = {

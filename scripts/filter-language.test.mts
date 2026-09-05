@@ -146,6 +146,7 @@ const ADMIN_SURFACES = [
   "src/app/admin/proposals/admin-proposals-client.tsx", // /admin/proposals — the queue rail
   "src/app/admin/ai-usage/page.tsx",                // window only
   "src/app/admin/finance/page.tsx",                 // window only
+  "src/app/admin/house/page.tsx",                   // /admin/house — window + the product rail on BY GAME
   "src/app/admin/reports/page.tsx",                 // window only
   "src/app/admin/transactions/page.tsx",            // window only
   "src/app/admin/updown/page.tsx",                  // window only
