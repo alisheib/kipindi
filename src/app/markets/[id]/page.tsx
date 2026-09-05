@@ -12,6 +12,8 @@ import { WatchStar } from "@/components/markets/watch-star";
 import { isWatching } from "@/lib/server/watchlist-service";
 import { resolveWinShareToken } from "@/lib/server/share-token";
 import { SidePicker } from "@/components/markets/side-picker";
+import { KycGatePanel, kycGateState } from "@/components/kyc/kyc-gate-panel";
+import { getKycStatus } from "@/lib/server/kyc-service";
 import { MarketCard } from "@/components/markets/market-card";
 import { getSimilarMarkets } from "@/lib/server/market-service";
 import { ChartToggle } from "@/components/charts/chart-toggle";
@@ -308,11 +310,23 @@ export default async function MarketDetail({
   // over a stake the server would have funded without complaint — the platform
   // refusing to spend the bonus it had just given them.
   let myBalance: number | undefined;
+  // The identity gate, for RENDERING only — `buyPosition` re-checks it on submit, so this
+  // decides what the player is shown, never what they are allowed. `null` = approved.
+  //
+  // ⛔ A FAILED READ SHOWS THE GATE, NOT THE DIAL. Every other degrade on this page fails
+  // toward showing the player MORE; this one fails toward showing them a step they may not
+  // need, because the alternative is a stake control the server will refuse. Being asked to
+  // verify when you already have is a moment of confusion; being handed a dial that eats
+  // your tap and returns a modal is a money surface lying.
+  let playGate: ReturnType<typeof kycGateState> = "not_started";
   if (session) {
     try {
       const w = await db.wallet.findByUserId(session.userId);
       myBalance = (w?.balance ?? 0) + (w?.bonusBalance ?? 0);
     } catch { myBalance = undefined; }
+    try {
+      playGate = kycGateState((await getKycStatus(session.userId))?.status);
+    } catch { /* graceful — the gate shows, see above */ }
   }
 
   // Pre-compute hedge-warning for the aside
@@ -751,6 +765,14 @@ export default async function MarketDetail({
                   )}
                 </div>
               )}
+              {/* ⛔ THE DIAL IS NOT RENDERED FOR AN UNVERIFIED PLAYER — not disabled.
+                  Same rule the guest branch below already follows: a control that cannot
+                  be used is replaced by the thing that unblocks it, one tap away. The
+                  server refuses the stake either way (`buyPositionInner`); this is so the
+                  refusal is never met by surprise, mid-gesture, on the conviction dial. */}
+              {playGate ? (
+                <KycGatePanel state={playGate} returnTo={`/markets/${m.id}`} />
+              ) : (
               <SidePicker
                 marketId={m.id}
                 marketTitle={pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}
@@ -767,6 +789,7 @@ export default async function MarketDetail({
                 maxStake={stakeCfg.maxStake}
                 boardHref="/markets"
               />
+              )}
               </>
             ) : (
               /* Sign-in CTA — styled to invite prediction */

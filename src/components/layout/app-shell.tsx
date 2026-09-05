@@ -43,6 +43,9 @@ import { getPlatformConfig, maintenanceMessage } from "@/lib/server/platform-con
 import { getProposalsConfig } from "@/lib/server/proposals-config";
 import { AnnouncementBanner } from "./announcement-banner";
 import { EmailVerifyBanner } from "./email-verify-banner";
+import { KycVerifyBanner } from "./kyc-verify-banner";
+import { kycGateState } from "@/components/kyc/kyc-gate-panel";
+import { getKycStatus } from "@/lib/server/kyc-service";
 import { AwaySummaryBar } from "./away-summary-bar";
 import { Needle } from "./needle";
 import { HeaderScrollCast } from "./scroll-cast";
@@ -78,18 +81,25 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   let realityCheckMin = 30;
   /** Non-null = signed in with an UNCONFIRMED address → show the standing bar. */
   let emailVerifyState: { email: string | null } | null = null;
+  /** Non-null = signed in and NOT yet verified → show the standing identity bar. */
+  let kycVerifyState: { state: NonNullable<ReturnType<typeof kycGateState>> } | null = null;
   if (session) {
     // Batch all three queries in parallel — eliminates the sequential
     // waterfall. Promise.allSettled so one failing query can't crash
     // the entire shell (graceful degradation: show what we have).
-    const [uResult, walletResult, rgResult] = await Promise.allSettled([
+    // ⛔ THE KYC READ JOINS THE EXISTING BATCH — it is NOT awaited separately. This
+    // component renders on EVERY page; a fourth sequential round trip here is a latency
+    // tax on the whole platform, which is the same rule the ticker note below states.
+    const [uResult, walletResult, rgResult, kycResult] = await Promise.allSettled([
       db.user.findById(session.userId),
       db.wallet.findByUserId(session.userId),
       getRgSettings(session.userId),
+      getKycStatus(session.userId),
     ]);
     const u = uResult.status === "fulfilled" ? uResult.value : null;
     const wallet = walletResult.status === "fulfilled" ? walletResult.value : null;
     const rg = rgResult.status === "fulfilled" ? rgResult.value : null;
+    const kyc = kycResult.status === "fulfilled" ? kycResult.value : null;
     const userRef = u ?? { id: session.userId, displayName: null };
     const display = displayLabel(userRef);
     const initials = displayInitials(userRef);
@@ -116,6 +126,24 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     // player of being unverified on the strength of a failed query.
     emailVerifyState = u
       ? (u.emailVerifiedAt ? null : { email: u.email ?? null })
+      : null;
+
+    // ⭐ THE SAME ARGUMENT, ONE RUNG UP. Identity now gates depositing, playing AND
+    // withdrawing, so an unverified account is the LARGEST live limitation there is — and
+    // until this bar existed the only places that said so were the money screens
+    // themselves. A player who signs up, browses for a week and never opens /wallet
+    // would first learn at the moment they tried to stake: the worst possible moment to
+    // introduce a step with a review queue behind it.
+    //
+    // ⚠️ SILENT ON A FAILED READ, exactly like the email bar above. `kycResult` rejecting
+    // is a database problem, and accusing a verified player of being unverified — on every
+    // page — is worse than showing nothing. The money paths still refuse safely; they fail
+    // toward refusing, this fails toward quiet.
+    // ⛔ `kycResult` FULFILLED WITH `null` IS NOT A FAILURE — it is a real account with no
+    // submission yet, which is precisely the population this bar is for. The two cases are
+    // distinguished by the settled STATUS, never by the value being null.
+    kycVerifyState = kycResult.status === "fulfilled"
+      ? (kycGateState(kyc?.status) ? { state: kycGateState(kyc?.status)! } : null)
       : null;
   }
 
@@ -161,6 +189,12 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       <Suspense fallback={null}><NavProgress /></Suspense>
       <TopAppBar user={topUser} proposalsState={proposalsState} />
       <AnnouncementBanner maintenance={maintBanner} announcement={announcement} />
+      {/* ⭐ IDENTITY ABOVE EMAIL, for the reason the note below the email bar already
+          gives: when two bars are up, the one that costs the player more must read first.
+          Since 2026-09-05 identity gates depositing, playing AND withdrawing, while an
+          unconfirmed address gates depositing alone — so identity is now the larger of the
+          two, and it takes the top slot the email bar used to hold. */}
+      {kycVerifyState && <KycVerifyBanner state={kycVerifyState.state} />}
       {emailVerifyState && <EmailVerifyBanner email={emailVerifyState.email} />}
       {/* ⭐ BELOW THE EMAIL GATE, ON PURPOSE. That bar names a COMPLIANCE condition blocking
           the player's first deposit; this one is a courtesy summary of results they already

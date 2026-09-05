@@ -18,6 +18,8 @@ import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { I } from "@/components/ui/glyphs";
 import { getBoard } from "@/lib/server/updown-board";
 import { currentSession } from "@/lib/server/auth-service";
+import { kycGateState } from "@/components/kyc/kyc-gate-panel";
+import { getKycStatus } from "@/lib/server/kyc-service";
 import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
 import { UpDownCard } from "@/components/updown/updown-card";
@@ -71,6 +73,14 @@ export default async function UpDownPage({
   const { assets, activeAsset, activeDuration, rounds, recent, chainPaused, stakeBounds, walletBalance } = board;
   const href = (assetKey: string, d?: number) => `/updown?asset=${assetKey}${d ? `&d=${d}` : ""}`;
   const isAuthed = !!session;
+  // Identity gate for the board: quick-bet is off until approved, and the buttons then
+  // route to the round detail where the panel explains why. ⛔ A failed read blocks
+  // quick-bet rather than arming it — one extra tap, versus a stake the server refuses.
+  let kycBlocked = false;
+  if (session) {
+    try { kycBlocked = kycGateState((await getKycStatus(session.userId))?.status) !== null; }
+    catch { kycBlocked = true; }
+  }
 
 
   return (
@@ -260,6 +270,7 @@ export default async function UpDownPage({
                 sourceQuotedAt={activeAsset!.sourceQuotedAt}
                 marketId={r.marketId}
                 isAuthed={isAuthed}
+                kycBlocked={kycBlocked}
                 minStake={stakeBounds.min}
                 maxStake={stakeBounds.max}
                 walletBalance={walletBalance}

@@ -1824,6 +1824,43 @@ export const dict = {
       // === i18n coverage pass ===
       helpline: "Helpline",
     },
+    /**
+     * The identity gate's panels (2026-09-05) — the copy shown INSTEAD of a stake
+     * control, a deposit form or a withdrawal form while an account is unverified.
+     *
+     * ⛔ NONE OF IT SAYS "BLOCKED", "DENIED" OR "FAILED". Verification is a step every
+     * player takes once, not a punishment, and three of the four states are ordinary
+     * progress. The rejection state is the only one that raises its voice, and even it
+     * names the next step rather than the failure.
+     * ⛔ AND THE PENDING COPY PROMISES NOTHING IT CANNOT KEEP: "usually within a day" is
+     * the honest shape of a human review queue. Never name an hour.
+     */
+    kycGate: {
+      eyebrowVerify: "One step first",
+      eyebrowPending: "With our team",
+      eyebrowAction: "Your move",
+      titleNotStarted: "Verify your identity",
+      bodyNotStarted: "Adding money, playing and cashing out all open up once we've verified you. It takes a few minutes — one ID document and a selfie.",
+      ctaStart: "Verify identity",
+      titlePending: "We're checking your documents",
+      bodyPending: "Nothing more to do — we'll let you know the moment you're verified, usually within a day.",
+      titleMoreInfo: "One more thing needed",
+      bodyMoreInfo: "Our team asked for something else before they can verify you. Open your verification to see what.",
+      ctaUpload: "See what's needed",
+      titleRejected: "We couldn't verify you",
+      bodyRejected: "The documents we received weren't enough to confirm your identity. You can see why and send new ones.",
+      ctaRetry: "Try again",
+      /* The app-wide standing bar. FULL and SHORT say the SAME thing at two lengths —
+         collapsed is a smaller statement of the condition, never its absence. */
+      barNotStarted: "Verify your identity to add money, play and cash out.",
+      barShortNotStarted: "Identity not verified",
+      barPending: "We're checking your documents — we'll let you know as soon as you're verified.",
+      barShortPending: "Verification in progress",
+      barMoreInfo: "We need one more thing before we can verify your identity.",
+      barShortMoreInfo: "One more document needed",
+      barRejected: "We couldn't verify your identity. Open your verification to see why.",
+      barShortRejected: "Identity not verified",
+    },
     error: {
       notFound: "Page not found",
       notFoundCode: "404",
@@ -3548,6 +3585,30 @@ export const dict = {
       // === i18n coverage pass ===
       helpline: "Simu ya msaada",
     },
+    kycGate: {
+      eyebrowVerify: "Hatua moja kwanza",
+      eyebrowPending: "Iko kwa timu yetu",
+      eyebrowAction: "Zamu yako",
+      titleNotStarted: "Thibitisha utambulisho wako",
+      bodyNotStarted: "Kuweka pesa, kucheza na kutoa pesa hufunguka tunapokuthibitisha. Inachukua dakika chache — hati moja ya kitambulisho na picha yako ya uso.",
+      ctaStart: "Thibitisha utambulisho",
+      titlePending: "Tunakagua hati zako",
+      bodyPending: "Hakuna kingine cha kufanya — tutakujulisha mara tu utakapothibitishwa, kwa kawaida ndani ya siku moja.",
+      titleMoreInfo: "Kitu kimoja zaidi kinahitajika",
+      bodyMoreInfo: "Timu yetu imeomba kitu kingine kabla ya kukuthibitisha. Fungua uthibitisho wako uone ni nini.",
+      ctaUpload: "Ona kinachohitajika",
+      titleRejected: "Hatukuweza kukuthibitisha",
+      bodyRejected: "Hati tulizopokea hazikutosha kuthibitisha utambulisho wako. Unaweza kuona sababu na kutuma nyingine.",
+      ctaRetry: "Jaribu tena",
+      barNotStarted: "Thibitisha utambulisho wako ili kuweka pesa, kucheza na kutoa pesa.",
+      barShortNotStarted: "Utambulisho haujathibitishwa",
+      barPending: "Tunakagua hati zako — tutakujulisha mara tu utakapothibitishwa.",
+      barShortPending: "Uthibitishaji unaendelea",
+      barMoreInfo: "Tunahitaji kitu kimoja zaidi kabla ya kuthibitisha utambulisho wako.",
+      barShortMoreInfo: "Hati moja zaidi inahitajika",
+      barRejected: "Hatukuweza kuthibitisha utambulisho wako. Fungua uthibitisho wako uone sababu.",
+      barShortRejected: "Utambulisho haujathibitishwa",
+    },
     error: {
       notFound: "Hakuna ukurasa",
       notFoundCode: "404",
@@ -5226,6 +5287,30 @@ export const dict = {
       exportClose: "导出/关闭我的账户",
       // === i18n coverage pass ===
       helpline: "求助热线",
+    },
+    kycGate: {
+      eyebrowVerify: "先完成一步",
+      eyebrowPending: "审核中",
+      eyebrowAction: "轮到您了",
+      titleNotStarted: "验证您的身份",
+      bodyNotStarted: "完成验证后即可充值、投注和提现。只需几分钟——一份身份证件和一张自拍照。",
+      ctaStart: "验证身份",
+      titlePending: "我们正在审核您的证件",
+      bodyPending: "您无需再做任何操作——通过后我们会立即通知您，通常在一天之内。",
+      titleMoreInfo: "还需要一项材料",
+      bodyMoreInfo: "在完成验证前，我们的团队还需要一份材料。请打开身份验证查看详情。",
+      ctaUpload: "查看所需材料",
+      titleRejected: "未能完成验证",
+      bodyRejected: "我们收到的证件不足以确认您的身份。您可以查看原因并重新提交。",
+      ctaRetry: "重新提交",
+      barNotStarted: "验证身份后即可充值、投注和提现。",
+      barShortNotStarted: "身份未验证",
+      barPending: "我们正在审核您的证件——通过后会立即通知您。",
+      barShortPending: "验证进行中",
+      barMoreInfo: "在完成身份验证前，我们还需要一项材料。",
+      barShortMoreInfo: "还需一份材料",
+      barRejected: "未能完成身份验证。请打开身份验证查看原因。",
+      barShortRejected: "身份未验证",
     },
     error: {
       notFound: "页面未找到",

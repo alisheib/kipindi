@@ -38,6 +38,8 @@ import { TippingBar } from "@/components/brand";
 import { RoundCountdownPod } from "@/components/updown/round-countdown";
 import { PriceHero } from "@/components/updown/price-hero";
 import { RoundActionPanel } from "@/components/updown/round-action-panel";
+import { kycGateState } from "@/components/kyc/kyc-gate-panel";
+import { getKycStatus } from "@/lib/server/kyc-service";
 import { AssetMark } from "@/components/updown/updown-card";
 import { SOURCE_CLASS_KEY, fmtEAT } from "@/lib/updown-source-label";
 // E-101 · one rule for "where does this ticket live", shared with the wallet and the emails.
@@ -105,6 +107,16 @@ export default async function UpDownRoundPage({
   // every real throw reaches this route's error.tsx with a retry.
   const detail = await getRoundDetail(roundId, session?.userId);
   if (!detail) notFound();
+
+  // The identity gate, for RENDERING the stake panel only — `buyPosition` re-checks on
+  // submit. `null` = verified. A guest never reaches it: `isAuthed` is checked first.
+  // ⛔ A failed read leaves the gate SHOWING, matching the market detail page: on a stake
+  // surface, a control the server will refuse is worse than a step the player may not need.
+  let playGate: ReturnType<typeof kycGateState> = session ? "not_started" : null;
+  if (session) {
+    try { playGate = kycGateState((await getKycStatus(session.userId))?.status); }
+    catch { /* graceful — the gate shows */ }
+  }
 
   /**
    * ⭐ E-166 · THE ROUND THE PLAYER WAS HANDED OVER FROM, for the compact result strip.
@@ -551,6 +563,11 @@ export default async function UpDownRoundPage({
                 stakePanel={{
                   marketId: round.marketId,
                   isAuthed: !!session,
+                  kycGate: playGate,
+                  // ⚠️ PLAIN PATH, not the encoded one `signInHref` carries below. The panel
+                  // does its own `encodeURIComponent`; handing it a pre-encoded string sends
+                  // the player back to a double-escaped 404.
+                  returnTo: `/updown/${roundId}${lockedSide ? `?side=${lockedSide}` : ""}`,
                   minStake,
                   maxStake,
                   myUpStake: round.myUpStake,

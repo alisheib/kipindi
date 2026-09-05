@@ -27,6 +27,8 @@ import { getServerT } from "@/lib/i18n-server";
 import { ProviderRadioGrid } from "@/components/wallet/provider-radio-grid";
 import { getPayoutStatus, payoutsAcceptingRequests } from "@/lib/server/payout-status";
 import { PayoutStatusNotice } from "@/components/wallet/payout-status-notice";
+import { KycGatePanel, kycGateState } from "@/components/kyc/kyc-gate-panel";
+import { getKycStatus } from "@/lib/server/kyc-service";
 import { PageContainer } from "@/components/layout/page-container";
 
 export async function generateMetadata() {
@@ -80,12 +82,26 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
   // B-1: a swallowed wallet read made the form silently unusable (max = 0). A failed
   // read throws to the wallet error boundary instead of fabricating that state.
   //
-  // ⛔ THE KYC READ IS GONE FROM THIS PAGE, DELIBERATELY — not overlooked. Identity
-  // verification stopped being a precondition of withdrawal (Board comment #1, relayed
-  // by the owner 2026-08-19), so this page has nothing left to decide from it, and a
-  // page-level read with nothing to decide is how the gate gets re-added. The read that
-  // survives is in `wallet-service.withdraw()`, where it RECORDS identity instead of
-  // gating on it. See docs/BOARD-DISCLOSURE-B-E.md.
+  // ⛔ THE KYC READ IS BACK ON THIS PAGE — 2026-09-05, AND READ THE DATES BEFORE CHANGING IT.
+  // It was deleted on 2026-08-20 because identity had stopped being a precondition of
+  // withdrawal (Board comment #1, relayed by the owner 2026-08-19) and a page-level read
+  // with nothing to decide is how a gate gets re-added by accident. The owner has since
+  // ruled that identity precedes deposit, play AND withdrawal — a control stricter than the
+  // Board required, disclosed rather than slipped in. So the read has something to decide
+  // again. `wallet-service.withdraw()` is still the enforcement; this is presentation.
+  //
+  // 🔴 IT ASKS `approvedAt`, NOT THE CURRENT STATUS, and the page must agree with the
+  // service or it will show a gate to a player the server would happily pay — or, worse,
+  // show a working form to one it will refuse. A re-verifying player HOLDS MONEY earned
+  // under an identity we accepted, and their withdrawal stays open.
+  let everApproved = false;
+  let withdrawGateState: ReturnType<typeof kycGateState> = "not_started";
+  try {
+    const k = await getKycStatus(session.userId);
+    everApproved = !!k?.approvedAt;
+    withdrawGateState = kycGateState(k?.status) ?? "not_started";
+  } catch { /* graceful — the gate stays shut, which is the safe direction */ }
+
   const wallet = await db.wallet.findByUserId(session.userId);
 
   // Can we actually pay a withdrawal right now? Since 2026-07-29 the honest answer has been no,
@@ -95,11 +111,16 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
   // action for the full note). One gate, everyone, no exceptions.
   const payouts = await getPayoutStatus();
   const payoutsOpen = payoutsAcceptingRequests(payouts.status);
-  // ⛔ PAYOUT CAPACITY IS THE ONLY THING THAT DISABLES THIS FORM NOW. It used to be
-  // `kycApproved && payoutsOpen`; identity came out on the Board's instruction. The
-  // service agrees — it no longer refuses on identity either, which is the point: a
-  // page that promised what the next screen refused is E-5, and this is the same
-  // failure read backwards.
+  // ⛔ PAYOUT CAPACITY IS THE ONLY THING THAT *DISABLES* THIS FORM — and since 2026-09-05
+  // identity decides whether the form is RENDERED AT ALL, which is a different question
+  // with a different answer.
+  //
+  // ⭐ THE DISTINCTION IS DELIBERATE, NOT A LEFTOVER. A paused payout rail is temporary and
+  // outside the player's control, so the form stays on screen, dimmed, with the notice
+  // above explaining why — the state is "not right now". An unverified account is a
+  // standing condition with an action attached, so it gets a panel that names the action
+  // instead of a dead form. Dimming that one would read as an outage and still invite the
+  // tap; `wallet-service.withdraw()` would refuse it either way.
   const canSubmit = payoutsOpen;
 
   return (
@@ -153,9 +174,16 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
         }}
       />
 
-      {/* The verify-first panel stood here until 2026-08-20. It is gone, not hidden:
-          nothing on this page is conditional on identity any more. */}
-
+      {/* 🔴 THE VERIFY-FIRST PANEL IS BACK — it stood here until 2026-08-20, was deleted
+          on the Board's instruction, and returns on the owner's ruling of 2026-09-05.
+          ⛔ The form is NOT RENDERED at all for an unverified account — not disabled. A
+          disabled payout form on a money screen reads as an outage and still invites the
+          tap; `wallet-service.withdraw()` would refuse it anyway.
+          ⚠️ The condition is `everApproved`, NOT the current status: a player under
+          re-verification keeps access to money they already earned. */}
+      {!everApproved ? (
+        <KycGatePanel state={withdrawGateState} returnTo="/wallet/withdraw" />
+      ) : (
       <form
         action={withdrawAction}
         className={`rounded-xl glass-panel p-5 lg:p-6 space-y-5 ${canSubmit ? "" : "opacity-60"}`}
@@ -221,6 +249,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
 
         {canSubmit ? <WithdrawConfirm feeRate={wcfg.withdrawalFeeRate} /> : <SubmitButton label={t.common.confirm} pendingLabel={t.common.loading} disabled={!canSubmit} />}
       </form>
+      )}
     </PageContainer>
   );
 }

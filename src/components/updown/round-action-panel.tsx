@@ -46,6 +46,10 @@ export function RoundActionPanel(props: {
   stakePanel: {
     marketId: string;
     isAuthed: boolean;
+    /** The identity gate (2026-09-05) — `null`/absent = verified. Spread through untouched. */
+    kycGate?: "not_started" | "pending_review" | "more_info" | "rejected" | null;
+    /** Plain (unencoded) path to return to after verifying. */
+    returnTo?: string;
     minStake: number;
     maxStake: number;
     myUpStake: number;

@@ -150,6 +150,9 @@ export type UpDownCardProps = {
   marketId?: string;
   /** Signed-out taps route to sign-in instead of placing. */
   isAuthed?: boolean;
+  /** Identity not yet approved (2026-09-05) — quick-bet is off and taps route to the
+   *  round detail, where the gate panel explains why and offers the one action. */
+  kycBlocked?: boolean;
   /** Quick-stake selector bounds (the chain's, else the platform default). */
   minStake?: number;
   maxStake?: number;
@@ -455,7 +458,7 @@ export function UpDownCard(props: UpDownCardProps) {
     pricing, state, outcome, closePrice, voidReason,
     sourceClass, sourceQuotedAt, className,
     selectionClosesAtMs, serverNowMs, myExactPayout, myPayoutIfUp, myPayoutIfDown, myRefundedStake,
-    marketId, isAuthed, minStake, maxStake, walletBalance, myUpStake = 0, myDownStake = 0,
+    marketId, isAuthed, kycBlocked, minStake, maxStake, walletBalance, myUpStake = 0, myDownStake = 0,
     expectedResultAtMs = null, resolvedAtMs = null, successor, receipt,
   } = props;
   const { t } = useT();
@@ -655,7 +658,13 @@ export function UpDownCard(props: UpDownCardProps) {
   // logic the round-detail bet box uses too). The card does NOT reorder the board or
   // router.refresh() per tap — the game is fast, so taps must feel instant; the
   // board's 20s poller reconciles server truth.
-  const canQuickBet = bettable && !!marketId && isAuthed === true;
+  // ⭐ `!kycBlocked` (2026-09-05) NEEDS NO NEW UI ON THE BOARD, and that is why it is the
+  // right shape here. When quick-bet is off the buttons already ROUTE TO THE ROUND DETAIL
+  // instead of placing — and that is where the identity panel lives, with the explanation
+  // and the one action that clears it. So an unverified player taps UP, lands on the round,
+  // and is told why in full. A gate panel squeezed into a board card would repeat that
+  // sentence up to six times on one screen and crowd out the game.
+  const canQuickBet = bettable && !!marketId && isAuthed === true && !kycBlocked;
 
   // ── UD-17 (option a — default per the audit's recommendation, 2026-08-07) ──
   //
