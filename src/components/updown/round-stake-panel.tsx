@@ -20,7 +20,8 @@ import { cn, formatNumber, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { useUpDownQuickBet, usePlacePulse } from "./use-quick-bet";
 import { UpDownStakeControls } from "./updown-stake-controls";
-import { KycGatePanel, type KycGateState } from "@/components/kyc/kyc-gate-panel";
+import { KycGatePanel } from "@/components/kyc/kyc-gate-panel";
+import type { KycGateState } from "@/lib/kyc-gate-state";
 import { UpDownBetBlockedModal } from "./updown-bet-blocked-modal";
 import { stakeChipLabel } from "./stake-math";
 import { I } from "@/components/ui/glyphs";
@@ -106,7 +107,7 @@ export function RoundStakePanel(props: {
   // No side chosen (direct nav) → the safe two-way control, so betting is never blocked.
   if (!lockedSide) {
     return (
-      <div className={cn(pulse && "ud-place-pulse")}>
+      <div data-testid="updown-stake-panel" className={cn(pulse && "ud-place-pulse")}>
         <p className="mb-3 text-body-sm leading-[1.55] text-text-muted">{t.market.udTagline}</p>
         {/* UD-22 · no `onWatchRound`: the player is already on the round, and a ghost CTA
             that navigates to the page you are standing on is the dead-end this session's
@@ -141,7 +142,7 @@ export function RoundStakePanel(props: {
   const arrow = isUp ? "M5 15l7-7 7 7" : "M5 9l7 7 7-7";
 
   return (
-    <div className={cn(pulse && "ud-place-pulse")}>
+    <div data-testid="updown-stake-panel" className={cn(pulse && "ud-place-pulse")}>
       <div className="flex items-center justify-between gap-2.5">
         <p className="m-0 font-mono text-micro font-semibold uppercase eyebrow text-text-faint">{t.market.udYourPick}</p>
         <Chip variant={isUp ? "yes" : "no"} style={{ gap: 5 }}>

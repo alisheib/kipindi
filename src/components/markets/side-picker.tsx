@@ -64,7 +64,7 @@ export function SidePicker({
 
   if (side) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-3" data-testid="side-picker">
         {/* Side indicator + switch button */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -114,7 +114,7 @@ export function SidePicker({
   }
 
   return (
-    <div className="rounded-xl border border-border bg-bg-elevated p-5 lg:p-6">
+    <div className="rounded-xl border border-border bg-bg-elevated p-5 lg:p-6" data-testid="side-picker">
       <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle text-center">
         {t.common.pickYourSide}
       </p>

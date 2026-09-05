@@ -27,7 +27,8 @@ import { getServerT } from "@/lib/i18n-server";
 import { ProviderRadioGrid } from "@/components/wallet/provider-radio-grid";
 import { getPayoutStatus, payoutsAcceptingRequests } from "@/lib/server/payout-status";
 import { PayoutStatusNotice } from "@/components/wallet/payout-status-notice";
-import { KycGatePanel, kycGateState } from "@/components/kyc/kyc-gate-panel";
+import { KycGatePanel } from "@/components/kyc/kyc-gate-panel";
+import { kycGateState } from "@/lib/kyc-gate-state";
 import { getKycStatus } from "@/lib/server/kyc-service";
 import { PageContainer } from "@/components/layout/page-container";
 

@@ -44,7 +44,7 @@ import { getProposalsConfig } from "@/lib/server/proposals-config";
 import { AnnouncementBanner } from "./announcement-banner";
 import { EmailVerifyBanner } from "./email-verify-banner";
 import { KycVerifyBanner } from "./kyc-verify-banner";
-import { kycGateState } from "@/components/kyc/kyc-gate-panel";
+import { kycGateState } from "@/lib/kyc-gate-state";
 import { getKycStatus } from "@/lib/server/kyc-service";
 import { AwaySummaryBar } from "./away-summary-bar";
 import { Needle } from "./needle";

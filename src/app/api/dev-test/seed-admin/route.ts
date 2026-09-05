@@ -103,6 +103,9 @@ export async function POST(req: Request) {
     reviewerId: "system",
     reviewedAt: now,
     submittedAt: now,
+    // The column the WITHDRAW gate reads (2026-09-05). An APPROVED fixture without it is a
+    // player who can bet and cannot be paid — a state the product never produces.
+    approvedAt: now,
     createdAt: now,
     updatedAt: now,
   };

@@ -384,7 +384,7 @@ export const dict = {
       // \u26d4 THIS ONE WAS WRONG TWICE OVER: play was NEVER gated on identity
       // (`market-service.ts` holds no KYC reference), and withdrawal stopped being gated
       // on it on 2026-08-20. A welcome message is the first thing a new player reads.
-      welcomeNewBody: "You\u2019re in. You can play straight away, and verifying your ID is not required in order to withdraw.",
+      welcomeNewBody: "You\u2019re in. Verify your identity and you can add money, play and cash out \u2014 it takes a few minutes.",
       welcomeBack: "Welcome back",
       welcomeBackBody: "You\u2019re signed in.",
       // withdraw confirm
@@ -1134,7 +1134,7 @@ export const dict = {
       verifyAlreadyDone: "Your email is already confirmed. Reload this page to continue.",
       verifyNoEmailTitle: "No email address on your account",
       verifyNoEmailBody: "Add one so we can send your deposit receipts and confirm it's you.",
-      verifyGateFootnote: "Browsing and betting stay open. Confirming your email is only required to add money — identity verification is not required to withdraw.",
+      verifyGateFootnote: "Browsing stays open. Adding money also needs a confirmed email — verifying your identity is what opens playing and cashing out.",
       // ── Standing app-wide unconfirmed-email bar (app-shell) ───────────────
       verifyBannerText: "Confirm your email to add money to your account. We sent you a link.",
       verifyBannerCta: "Resend link",
@@ -1204,7 +1204,7 @@ export const dict = {
       // "ID verified", telling an unverified player they were verified.
       idSaved: "Document details saved",
       verifyIdentity: "Verify your identity",
-      verifyBody: "We verify your identity to keep your account yours: one document, one account. It is not required in order to withdraw. Takes about 2 minutes.",
+      verifyBody: "We verify your identity to keep your account yours: one document, one account. It is what opens adding money, playing and cashing out. Takes about 2 minutes.",
       nida: "NIDA", nationalId: "National ID number",
       // The four documents, one label each. ⛔ NIDA is a proper noun and stays
       // "NIDA" in every language — it is the authority's own name, not a word.
@@ -1792,7 +1792,7 @@ export const dict = {
       // legal claim the Board's own instruction contradicts (comment #1, 2026-08-19). The
       // AML half is kept because it is true and comes from a different authority: the
       // \u2265 TZS 1,000,000 two-officer hold is untouched by that instruction.
-      faq4a: "Identity verification is not required before a withdrawal. You can verify with any one of four documents \u2014 National ID (NIDA), passport, driving licence or voter\u2019s card \u2014 and our compliance team reviews it once; one document can only be used on one account. Separately, under anti-money-laundering rules, withdrawals of TZS 1,000,000 or more are held for review by two compliance officers.",
+      faq4a: "Yes \u2014 verifying your identity is what opens adding money, playing and cashing out, so it comes first. You can verify with any one of four documents \u2014 National ID (NIDA), passport, driving licence or voter\u2019s card \u2014 and our compliance team reviews it once, usually within a day; one document can only be used on one account. If we later ask you to re-verify, you can still withdraw money you already hold. Separately, under anti-money-laundering rules, withdrawals of TZS 1,000,000 or more are held for review by two compliance officers.",
       faq5q: "I think I have a problem with gambling. What can I do?",
       faq5a: "Open Profile \u2192 Responsible gambling. You can set deposit and time limits, take a break, or self-exclude.",
       faq6q: "Can I cash out before resolution?",
@@ -2421,7 +2421,7 @@ export const dict = {
       highConvictionHint: "Imani ya juu ina dau kubwa na mgao mkubwa wa malipo ukiwa sahihi.",
       confirmPrediction: "Thibitisha utabiri",
       welcomeTo50pick: "Karibu kwenye 50pick",
-      welcomeNewBody: "Umeingia. Unaweza kucheza mara moja, na uthibitisho wa kitambulisho hauhitajiki ili kutoa pesa.",
+      welcomeNewBody: "Umeingia. Thibitisha utambulisho wako kisha unaweza kuweka pesa, kucheza na kutoa pesa \u2014 inachukua dakika chache.",
       welcomeBack: "Karibu tena",
       welcomeBackBody: "Umeingia kwenye akaunti.",
       confirmWithdrawal: "Thibitisha kutoa",
@@ -2981,7 +2981,7 @@ export const dict = {
       verifyAlreadyDone: "Barua pepe yako tayari imethibitishwa. Pakia upya ukurasa huu ili kuendelea.",
       verifyNoEmailTitle: "Hakuna barua pepe kwenye akaunti yako",
       verifyNoEmailBody: "Ongeza moja ili tuweze kutuma risiti za amana na kuthibitisha ni wewe.",
-      verifyGateFootnote: "Kuvinjari na kuweka dau vinaendelea. Kuthibitisha barua pepe kunahitajika tu ili kuongeza fedha — uthibitisho wa utambulisho hauhitajiki ili kutoa pesa.",
+      verifyGateFootnote: "Kuvinjari kunaendelea. Kuweka pesa kunahitaji pia barua pepe iliyothibitishwa — kuthibitisha utambulisho ndiko kunakofungua kucheza na kutoa pesa.",
       verifyBannerText: "Thibitisha barua pepe yako ili kuweka fedha kwenye akaunti. Tumekutumia kiungo.",
       verifyBannerCta: "Tuma kiungo tena",
       verifyBannerNoEmail: "Ongeza anwani ya barua pepe kwenye akaunti yako — utaihitaji ili kuweka fedha.",
@@ -3037,7 +3037,7 @@ export const dict = {
       idVerified: "Imethibitishwa", inReview: "Inakaguliwa", rejected: "Imekataliwa",
       idSaved: "Taarifa za hati zimehifadhiwa",
       verifyIdentity: "Thibitisha kitambulisho",
-      verifyBody: "Tunathibitisha utambulisho wako ili akaunti yako ibaki yako: kitambulisho kimoja, akaunti moja. Hauhitajiki ili kutoa pesa. Inachukua dakika 2.",
+      verifyBody: "Tunathibitisha utambulisho wako ili akaunti yako ibaki yako: kitambulisho kimoja, akaunti moja. Ndiko kunakofungua kuweka pesa, kucheza na kutoa pesa. Inachukua dakika 2.",
       nida: "NIDA", nationalId: "Nambari ya kitambulisho",
       idTypeNida: "NIDA", idTypePassport: "Pasipoti",
       idTypeDriverLicence: "Leseni ya udereva", idTypeVoterCard: "Kadi ya mpiga kura",
@@ -3553,7 +3553,7 @@ export const dict = {
       faq3q: "Nitatoa pesa zangu vipi?",
       faq3a: "Fungua Pochi \u2192 Toa. Weka nambari yako ya M-pesa, kiasi, na msimbo wa OTP. Kutoa chini ya TZS 1,000,000 kunakamilika ndani ya sekunde 60.",
       faq4q: "Kwa nini nathibitisha kitambulisho?",
-      faq4a: "Uthibitisho wa utambulisho hauhitajiki kabla ya kutoa pesa. Unaweza kuthibitisha kwa kutumia mojawapo ya nyaraka nne — Kitambulisho cha Taifa (NIDA), pasipoti, leseni ya udereva au kadi ya mpiga kura — na timu yetu ya uzingatiaji inakagua mara moja; kitambulisho kimoja kinaweza kutumika kwenye akaunti moja tu. Kwa mujibu wa sheria za kuzuia utakatishaji wa fedha, kutoa TZS 1,000,000 au zaidi kunashikiliwa kwa ukaguzi wa maafisa wawili wa uzingatiaji.",
+      faq4a: "Ndiyo — kuthibitisha utambulisho wako ndiko kunakofungua kuweka pesa, kucheza na kutoa pesa, hivyo huja kwanza. Unaweza kuthibitisha kwa kutumia mojawapo ya nyaraka nne — Kitambulisho cha Taifa (NIDA), pasipoti, leseni ya udereva au kadi ya mpiga kura — na timu yetu ya uzingatiaji inakagua mara moja, kwa kawaida ndani ya siku moja; kitambulisho kimoja kinaweza kutumika kwenye akaunti moja tu. Tukikuomba kuthibitisha upya baadaye, bado unaweza kutoa pesa ulizonazo. Kwa mujibu wa sheria za kuzuia utakatishaji wa fedha, kutoa TZS 1,000,000 au zaidi kunashikiliwa kwa ukaguzi wa maafisa wawili wa uzingatiaji.",
       faq5q: "Nina shida ya kucheza kupita kiasi. Nifanye nini?",
       faq5a: "Fungua Wasifu \u2192 Vikomo. Unaweza kuweka mipaka ya amana na muda, kupumzika, au kujizuia.",
       faq6q: "Nitatoa dau mapema?",
@@ -4131,7 +4131,7 @@ export const dict = {
       highConvictionHint: "更高信念意味着更高投注额和更高的赔付份额（如果您正确的话）。",
       confirmPrediction: "确认预测",
       welcomeTo50pick: "欢迎来到50pick",
-      welcomeNewBody: "您已注册。您可以立即开始游戏，提现无需验证身份。",
+      welcomeNewBody: "您已注册。完成身份验证后即可充值、投注和提现——只需几分钟。",
       welcomeBack: "欢迎回来",
       welcomeBackBody: "您已登录。",
       confirmWithdrawal: "确认提现",
@@ -4692,7 +4692,7 @@ export const dict = {
       verifyAlreadyDone: "您的邮箱已确认。请重新加载此页面以继续。",
       verifyNoEmailTitle: "您的账户没有邮箱地址",
       verifyNoEmailBody: "请添加一个，以便我们发送存款收据并确认您的身份。",
-      verifyGateFootnote: "浏览和投注不受限制。确认邮箱仅用于充值——提现无需身份验证。",
+      verifyGateFootnote: "浏览不受限制。充值还需确认邮箱——完成身份验证后即可投注和提现。",
       verifyBannerText: "请确认您的邮箱后才能充值。我们已向您发送验证链接。",
       verifyBannerCta: "重新发送链接",
       verifyBannerNoEmail: "请为账户添加邮箱地址 — 充值时需要使用。",
@@ -4748,7 +4748,7 @@ export const dict = {
       idVerified: "已验证", inReview: "审核中", rejected: "已拒绝",
       idSaved: "证件信息已保存",
       verifyIdentity: "验证您的身份",
-      verifyBody: "我们验证您的身份以确保账户属于您本人：一份证件，一个账户。提现无需验证。大约需要2分钟。",
+      verifyBody: "我们验证您的身份以确保账户属于您本人：一份证件，一个账户。完成验证后即可充值、投注和提现。大约需要2分钟。",
       nida: "NIDA", nationalId: "国民身份证号",
       idTypeNida: "NIDA", idTypePassport: "护照",
       idTypeDriverLicence: "驾驶执照", idTypeVoterCard: "选民证",
@@ -5256,7 +5256,7 @@ export const dict = {
       faq3q: "\u5982\u4f55\u63d0\u73b0\u5956\u91d1\uff1f",
       faq3a: "\u6253\u5f00\u94b1\u5305 \u2192 \u63d0\u73b0\u3002\u8f93\u5165\u79fb\u52a8\u652f\u4ed8\u53f7\u7801\u3001\u91d1\u989d\u548cOTP\u9a8c\u8bc1\u7801\u3002TZS 1,000,000\u4ee5\u4e0b\u7684\u63d0\u73b0\u572860\u79d2\u5185\u5b8c\u6210\u3002",
       faq4q: "\u4e3a\u4ec0\u4e48\u9700\u8981\u9a8c\u8bc1\u8eab\u4efd\uff1f",
-      faq4a: "\u63d0\u73b0\u65e0\u9700\u5148\u9a8c\u8bc1\u8eab\u4efd\u3002\u60a8\u53ef\u4ee5\u4f7f\u7528\u56db\u79cd\u8bc1\u4ef6\u4e4b\u4e00\u8fdb\u884c\u9a8c\u8bc1\u2014\u2014\u56fd\u6c11\u8eab\u4efd\u8bc1\uff08NIDA\uff09\u3001\u62a4\u7167\u3001\u9a7e\u9a76\u8bc1\u6216\u9009\u6c11\u8bc1\u2014\u2014\u7531\u6211\u4eec\u7684\u5408\u89c4\u56e2\u961f\u5ba1\u6838\u4e00\u6b21\uff1b\u4e00\u4efd\u8bc1\u4ef6\u53ea\u80fd\u7528\u4e8e\u4e00\u4e2a\u8d26\u6237\u3002\u53e6\u5916\uff0c\u6839\u636e\u53cd\u6d17\u94b1\u89c4\u5b9a\uff0cTZS 1,000,000 \u53ca\u4ee5\u4e0a\u7684\u63d0\u73b0\u5c06\u7531\u4e24\u540d\u5408\u89c4\u4e13\u5458\u5ba1\u6838\u3002",
+      faq4a: "\u662f\u7684\u2014\u2014\u5b8c\u6210\u8eab\u4efd\u9a8c\u8bc1\u540e\u624d\u80fd\u5145\u503c\u3001\u6295\u6ce8\u548c\u63d0\u73b0\uff0c\u56e0\u6b64\u9700\u8981\u5148\u5b8c\u6210\u3002\u60a8\u53ef\u4ee5\u4f7f\u7528\u56db\u79cd\u8bc1\u4ef6\u4e4b\u4e00\u8fdb\u884c\u9a8c\u8bc1\u2014\u2014\u56fd\u6c11\u8eab\u4efd\u8bc1\uff08NIDA\uff09\u3001\u62a4\u7167\u3001\u9a7e\u9a76\u8bc1\u6216\u9009\u6c11\u8bc1\u2014\u2014\u7531\u6211\u4eec\u7684\u5408\u89c4\u56e2\u961f\u5ba1\u6838\u4e00\u6b21\uff0c\u901a\u5e38\u5728\u4e00\u5929\u4e4b\u5185\uff1b\u4e00\u4efd\u8bc1\u4ef6\u53ea\u80fd\u7528\u4e8e\u4e00\u4e2a\u8d26\u6237\u3002\u82e5\u6211\u4eec\u65e5\u540e\u8bf7\u60a8\u91cd\u65b0\u9a8c\u8bc1\uff0c\u60a8\u4ecd\u53ef\u63d0\u53d6\u5df2\u6301\u6709\u7684\u8d44\u91d1\u3002\u53e6\u5916\uff0c\u6839\u636e\u53cd\u6d17\u94b1\u89c4\u5b9a\uff0cTZS 1,000,000 \u53ca\u4ee5\u4e0a\u7684\u63d0\u73b0\u5c06\u7531\u4e24\u540d\u5408\u89c4\u4e13\u5458\u5ba1\u6838\u3002",
       faq5q: "\u6211\u89c9\u5f97\u6211\u6709\u535a\u5f69\u95ee\u9898\u3002\u600e\u4e48\u529e\uff1f",
       faq5a: "\u6253\u5f00\u4e2a\u4eba\u8d44\u6599 \u2192 \u8d1f\u8d23\u4efb\u535a\u5f69\u3002\u60a8\u53ef\u4ee5\u8bbe\u7f6e\u5145\u503c\u548c\u65f6\u95f4\u9650\u989d\u3001\u4f11\u606f\u6216\u81ea\u6211\u6392\u9664\u3002",
       faq6q: "\u53ef\u4ee5\u5728\u7ed3\u7b97\u524d\u5151\u73b0\u5417\uff1f",

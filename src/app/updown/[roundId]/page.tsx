@@ -38,7 +38,7 @@ import { TippingBar } from "@/components/brand";
 import { RoundCountdownPod } from "@/components/updown/round-countdown";
 import { PriceHero } from "@/components/updown/price-hero";
 import { RoundActionPanel } from "@/components/updown/round-action-panel";
-import { kycGateState } from "@/components/kyc/kyc-gate-panel";
+import { kycGateState } from "@/lib/kyc-gate-state";
 import { getKycStatus } from "@/lib/server/kyc-service";
 import { AssetMark } from "@/components/updown/updown-card";
 import { SOURCE_CLASS_KEY, fmtEAT } from "@/lib/updown-source-label";

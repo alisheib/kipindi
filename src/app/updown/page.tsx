@@ -18,7 +18,7 @@ import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { I } from "@/components/ui/glyphs";
 import { getBoard } from "@/lib/server/updown-board";
 import { currentSession } from "@/lib/server/auth-service";
-import { kycGateState } from "@/components/kyc/kyc-gate-panel";
+import { kycGateState } from "@/lib/kyc-gate-state";
 import { getKycStatus } from "@/lib/server/kyc-service";
 import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";

@@ -26,7 +26,7 @@
 import { useEffect, useState } from "react";
 import { NoticeBar, NoticeBarAction } from "@/components/ui/notice-bar";
 import { useT } from "@/lib/i18n";
-import type { KycGateState } from "@/components/kyc/kyc-gate-panel";
+import type { KycGateState } from "@/lib/kyc-gate-state";
 
 const COLLAPSE_KEY = "50pick:kyc-banner-collapsed";
 

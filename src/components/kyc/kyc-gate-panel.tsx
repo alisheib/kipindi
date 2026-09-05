@@ -27,9 +27,7 @@
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
-
-/** Which of the four identity states the player is in, in the panel's own vocabulary. */
-export type KycGateState = "not_started" | "pending_review" | "more_info" | "rejected";
+import type { KycGateState } from "@/lib/kyc-gate-state";
 
 const TONE = {
   /** Nothing has gone wrong; there is simply a step to take. Brand blue, not red. */
@@ -110,23 +108,4 @@ export function KycGatePanel({
       )}
     </section>
   );
-}
-
-/**
- * Map the server's `KycStatus` onto the panel's vocabulary.
- *
- * ⛔ `APPROVED` RETURNS `null`, AND CALLERS MUST BRANCH ON THAT rather than defaulting to
- * a panel. An approved player seeing any gate at all is the worst failure this component
- * can have — it withholds a control they are entitled to, on a money screen.
- * ⚠️ A MISSING ROW IS `not_started`, matching `assertKycForMoney`. If these two ever
- * disagree the screen and the server tell different stories about the same account.
- */
-export function kycGateState(status: string | null | undefined): KycGateState | null {
-  switch (status) {
-    case "APPROVED": return null;
-    case "PENDING_REVIEW": return "pending_review";
-    case "ADDITIONAL_INFO_REQUIRED": return "more_info";
-    case "REJECTED": return "rejected";
-    default: return "not_started"; // NOT_STARTED, IN_PROGRESS, and no row at all
-  }
 }
