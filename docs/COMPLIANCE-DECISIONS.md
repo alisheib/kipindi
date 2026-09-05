@@ -6,6 +6,90 @@
 
 ---
 
+## 2026-09-05 · Identity verification precedes DEPOSITING, PLAYING and WITHDRAWING
+
+**Ruling:** the owner (Ali), **2026-09-05**, relaying management's decision. In his words:
+
+> *"He cannot deposit nor withdraw nor play until KYC is verified. He registers and starts
+> pending, he can walk around in the platform until we verify him; he receives his notification
+> and congrats, his state gets updated, then he can freely deposit and withdraw."*
+
+The ladder is now **register free → verify identity → everything**.
+
+### ⛔ One third of this reverses a Board instruction, and it is disclosed, not slipped in
+
+The 2026-08-20 entry below records the Gaming Board's comment #1: identity must stop being a
+precondition of **withdrawal**. That instruction said nothing about money coming *in* or about
+staking — §9.4 of [`BOARD-DISCLOSURE-B-E.md`](BOARD-DISCLOSURE-B-E.md) records deposits being
+left unbound for an unrelated reason (destination binding). So:
+
+- **deposit and betting gates** are new policy and contradict nothing the Board said;
+- **the withdrawal gate** is a deliberate reversal, taken by the owner as a control **stricter**
+  than the regulator required. It was raised with him explicitly before implementation, and he
+  reaffirmed it. A fresh disclosure goes to the Board — see
+  [`BOARD-DISCLOSURE-KYC-FIRST.md`](BOARD-DISCLOSURE-KYC-FIRST.md).
+
+⛔ **Do not "restore" either behaviour by reading the older entry.** Both are below, in order.
+
+### The rule, and the one asymmetry that keeps money safe
+
+| Action | Question asked | Why |
+|---|---|---|
+| Deposit | `status === "APPROVED"` | adds NEW exposure — stop it the moment a doubt appears |
+| Bet | `status === "APPROVED"` | same |
+| **Withdraw** | **`approvedAt != null`** — *ever* approved | taking out what you already hold is a different question |
+
+🔴 **The asymmetry is the whole money-safety story.** `forceReverifyKyc` moves an APPROVED player
+to `ADDITIONAL_INFO_REQUIRED`, and that player **holds real money earned under an identity we
+accepted**. Gating their payout on current status would freeze it — precisely the harm
+`BOARD-DISCLOSURE-B-E.md` §6 named when it recorded that force-reverify had stopped being a money
+control. The same column covers the race where a deposit authorised while approved has its Selcom
+callback land after a rejection. `approvedAt` is set once and **never cleared** — not on
+force-reverify, not on rejection, not on `startKyc`'s reset of a REJECTED submission.
+
+### Never gated
+
+Cash-out, settlement, refunds, and every deposit-completion path (webhook, return leg, fast-credit
+lane, reconcile sweep). Money already in a wallet is the player's; a deposit already authorised has
+already been paid for. Refusing there takes a player's money and gives them nothing.
+
+### Bonuses are HELD, not cancelled
+
+`invite-service.bindRegistration` and `affiliate-service.payBonus` credit a brand-new account's
+**bonus wallet during registration itself**, and bonus money is stakeable — so "no money until we
+validate" was false on the one path nobody looks at. Grants now land in `PENDING_KYC`: nothing
+enters `bonusBalance`, and the **expiry clock is stopped** (the date is shifted forward at release
+by the hold's duration, because the delay is ours). `releaseKycHeldGrants()` runs from `reviewKyc`'s
+APPROVE branch, so the money arrives with the congratulations.
+
+### Email confirmation stays, and runs INDEPENDENTLY
+
+Ali, same date: *"keep both, but he can confirm email before or after, order doesn't matter."*
+Depositing requires both; the deposit screen shows them as a two-item checklist so a player waiting
+on our review queue can clear their inbox meanwhile. The server asks **RG lockout → identity →
+email**, and the screen renders in that same order.
+
+⚠️ **Fixing an ordering defect found on the way:** the email gate sat *above* the responsible-gambling
+lockout while its own comment claimed it sat below, so a self-excluded player with an unconfirmed
+address was sent off on an email errand. A protective control the player set for their own safety
+now outranks both trust-ladder doors. `test:deposit-gate` §C4 drives it.
+
+### Cut-over
+
+Ali's ruling: **production is emptied the day before go-live**, so there is no legacy population.
+⛔ The migration backfills `approvedAt` from `reviewedAt` anyway — "there are no APPROVED rows" is
+true right up until that reset slips, and without the backfill every already-verified player would
+wake unable to withdraw.
+
+**Code:** `src/lib/server/kyc-gate.ts` (the seam) · `wallet-service.deposit()/withdraw()` ·
+`market-service.buyPositionInner()` · `bonus-service.creditBonus()/releaseKycHeldGrants()` ·
+`prisma/migrations/20260905120000_kyc_approved_at` + `…130000_bonus_pending_kyc`.
+**Tests:** `test:kyc-gate` (58) + `red:kyc-gate` (6/6, each on its own assertion) ·
+`test:deposit-gate` §C · `test:kyc-approved-copy` §5 (inverted a second time) ·
+`test:failure-reasons` §8c.
+
+---
+
 ## 2026-08-29 · MASWALI MILLIONEA — the four remaining calls, and D-1's real status
 
 Follows the §0 entry below. These are the items the build door listed as owner-owned once §0's

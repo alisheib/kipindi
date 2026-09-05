@@ -26,8 +26,25 @@ Updated 2026-05-17 (Sprint 59.6 — flow-architecture pass).
 
 | Trigger | Behaviour | Source |
 |---|---|---|
-| Withdraw without identity verification | ✅ **ALLOWED — there is no gate.** The withdrawal proceeds on its money preconditions alone. `withdraw()` still READS the identity status and RECORDS it: `kycStatus` on the `withdraw.initiated` audit for every payout, plus an awaited COMPLIANCE fact `withdraw.unverified_payer` carrying `txnId` when the payer is unverified | `src/lib/server/wallet-service.ts` in `withdraw()` — ⛔ **REMOVED 2026-08-20 on the Gaming Board's instruction** (comment #1, relayed by Ali 2026-08-19), register row `E-175`. The refusal, its `withdraw.kyc_blocked` audit and the `kyc_required` failure reason are all retired. ⚠️ This row cited `:100-104` until 2026-08-20, which is the DEPOSIT email gate, not this one. **Do not re-add the gate by reading an older doc:** the authority is [`BOARD-DISCLOSURE-B-E.md`](BOARD-DISCLOSURE-B-E.md) and [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) |
-| Bet placement (no identity required) | Allowed — `market-service.ts` carries no identity reference at all, and never has | `src/lib/server/market-service.ts:178-250` |
+| **Deposit without identity verification** | ⛔ **REFUSED** (2026-09-05). `assertKycForMoney(userId, "DEPOSIT")` — asks CURRENT status. Refused before the reserving lock, so no `PROCESSING` row, no deposit cap consumed, nothing reaches Selcom. Audit `deposit.kyc_blocked` | `src/lib/server/kyc-gate.ts` + `wallet-service.deposit()` |
+| **Bet placement without identity verification** | ⛔ **REFUSED** (2026-09-05). `assertKycForMoney(userId, "BET")` — CURRENT status. Sits below the RG/account-status block and above the market read. One gate covers BOTH products: Up & Down stakes go through the same `buyPositionAction` → `buyPosition`. Audit `bet.kyc_blocked` | `src/lib/server/market-service.ts` in `buyPositionInner()` |
+| **Withdraw without identity verification** | ⛔ **REFUSED** (2026-09-05) — but the question is different. `assertKycForMoney(userId, "WITHDRAW")` asks **`approvedAt != null`**: *has this account EVER been approved?* Audit `withdraw.kyc_blocked`. 🔴 **The asymmetry is deliberate and is the money-safety rule.** Deposit and betting add NEW exposure, so they ask current standing; a player mid-re-verification HOLDS REAL MONEY earned under an identity we accepted, and gating their payout on current status would freeze it — the harm [`BOARD-DISCLOSURE-B-E.md`](BOARD-DISCLOSURE-B-E.md) §6 named. It also covers the race where a deposit authorised while approved has its Selcom callback land after a rejection | `src/lib/server/kyc-gate.ts` + `wallet-service.withdraw()` |
+| Payout to an account under re-verification | ✅ **ALLOWED** (`approvedAt` is set). Still RECORDED: `kycStatus` on `withdraw.initiated` for every payout, plus an awaited COMPLIANCE fact `withdraw.unverified_payer` carrying `txnId`. ⭐ That event is now NARROWER and more useful than when it covered everybody — it is the only record of a payout made while an identity was in doubt | `wallet-service.withdraw()` |
+| Bonus credit to an unverified account | ⛔ **HELD, not cancelled** — grant status `PENDING_KYC`, nothing enters `bonusBalance`, expiry clock stopped. Released by `releaseKycHeldGrants()` from `reviewKyc`'s APPROVE branch, with the expiry shifted forward by the hold's duration | `src/lib/server/bonus-service.ts` |
+| Cash-out, settlement, refunds | ✅ **NEVER gated.** Money already in a wallet is the player's; a bet already placed always settles | `market-service.ts` |
+| Deposit webhook / return leg / reconcile sweep | ✅ **NEVER gated.** They complete a deposit `deposit()` already authorised and the player has already paid the telco | `wallet-service.settleDepositConfirmed()` |
+
+> 🔴 **THIS SECTION HAS BEEN REVERSED TWICE. READ THE DATES BEFORE CHANGING IT.**
+> Until **2026-08-20** identity gated withdrawal. On **2026-08-20** that gate was removed on
+> the Gaming Board's instruction (comment #1, relayed by Ali 2026-08-19; register row `E-175`)
+> and replaced by a RECORD. On **2026-09-05** the owner ruled that identity precedes deposit,
+> play **and** withdrawal — a control **stricter** than the Board required, taken deliberately
+> and **re-disclosed** to them rather than slipped in.
+> ⛔ Two thirds of the current rule (deposits, staking) contradict nothing the Board said —
+> its instruction was strictly about withdrawal, and §9.4 of that letter records deposits being
+> left unbound for an unrelated reason. One third is a disclosed reversal.
+> ⛔ **Do not "restore" either behaviour by reading the older document.** The authority is
+> [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md), which carries both entries in order.
 | Withdraw ≥ TZS 1,000,000 | Held for **two-officer** AML review before any gateway adapter is touched. ⚠️ Unaffected by the row above: it comes from the AML/FIU regime, a different authority, and `payments.ts` contains no identity reference | `src/lib/server/payments.ts:176` (`dispatchWithdrawal`) |
 | Deposit during self-exclusion / cooling-off | Blocked, error names the lockout type + expiry, audit `deposit.lockout_blocked` | `src/lib/server/wallet-service.ts:34-37` |
 | Bet during self-exclusion / cooling-off | Same — `isLockedOut()` check before `buyPosition()` | `src/lib/server/market-service.ts:182-183` |
