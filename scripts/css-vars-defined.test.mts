@@ -120,31 +120,60 @@ for (const f of files) {
   const isCss = f.endsWith(".css");
   const src = isCss ? decommentCss(raw) : decomment(raw);
 
-  // ── definitions ──────────────────────────────────────────────────────────
-  if (isCss) {
-    // `--x: value` (a declaration, never the inside of a `var()` — the negative lookbehind
-    // for `var(` is not needed because `var(--x: …)` is not valid syntax anywhere).
-    for (const m of src.matchAll(/(^|[;{\s])(--[\w-]+)\s*:/g)) defined.add(m[2]);
-    // `@property --x { … }` — a registered custom property is a definition too.
-    for (const m of src.matchAll(/@property\s+(--[\w-]+)/g)) defined.add(m[1]);
-  } else {
-    // A component setting a variable: `style={{ "--x": v }}`, `setProperty("--x", v)`,
-    // and next/font's `variable: "--font-display"`. All three are the same shape — the
-    // NAME appearing inside a string literal — so one pattern collects all of them.
-    for (const m of src.matchAll(/["'`](--[\w-]+)["'`]/g)) defined.add(m[1]);
+  /* ── definitions ────────────────────────────────────────────────────────────────────────
+     🔴 A DEFINITION IS A **WRITE**, AND THE FIRST VERSION COULD NOT TELL A WRITE FROM A READ.
+     It collected any `--name` appearing inside ANY string literal in a `.ts`/`.tsx`, so a READ
+     certified its own token: `exitBeatMs("--t-quick")` and `getPropertyValue("--gilt")` both
+     made the gate believe those properties were declared.
+
+     ⭐ MEASURED 2026-09-05 by deleting the real declaration and re-running:
+       · remove `--gilt: var(--gold-300);` from globals.css  → gate still GREEN, while all 32
+         `var(--gilt)` declarations become invalid at computed-value time;
+       · remove `--t-quick: 140ms` from motion.css           → gate still GREEN, while roughly a
+         hundred transitions and animations silently lose their duration.
+     Sixteen live tokens were self-certifying that way — so the gate was blind to exactly the
+     class of defect it exists for, on exactly the tokens it most needed to watch.
+
+     ⛔ A WRITE IS NOW MATCHED BY ITS SHAPE, never by the name alone. */
+  // A declaration — `--x: value` — in a stylesheet, or inside a component's `<style>` block,
+  // which is CSS that happens to live in a template literal. ⚠️ Running this on TS/TSX too is
+  // what makes a component-scoped `<style>` variable visible; a READ has no colon after the
+  // name, and a quoted key is caught by the pattern below instead, so neither can slip in here.
+  for (const m of src.matchAll(/(^|[;{\s])(--[\w-]+)\s*:/g)) defined.add(m[2]);
+  // `@property --x { … }` — a registered custom property is a definition too.
+  for (const m of src.matchAll(/@property\s+(--[\w-]+)/g)) defined.add(m[1]);
+  if (!isCss) {
+    // `style={{ "--x": v }}` — an object KEY, so the closing quote is followed by a colon.
+    for (const m of src.matchAll(/["'`](--[\w-]+)["'`]\s*:/g)) defined.add(m[1]);
+    /* `style={{ ["--x" as string]: v }}` — a COMPUTED key, which is how this repo actually
+       writes them (a custom property is not in `React.CSSProperties`, so the cast is needed):
+       `toast.tsx:708` and `i18n.tsx:196` both use it. ⚠️ Found by this very hardening: tightening
+       the quoted form to require a colon correctly stopped counting reads, and immediately
+       reported `--toast-dwell` and `--lcl-a` as undefined — they are written, in this shape.
+       ⛔ Still a WRITE-only pattern: a read has no `[ … ]:` wrapper around it. */
+    for (const m of src.matchAll(/\[\s*["'`](--[\w-]+)["'`][^\]\n]*\]\s*:/g)) defined.add(m[1]);
+    // `el.style.setProperty("--x", v)` — the name is the FIRST argument, never a read.
+    for (const m of src.matchAll(/setProperty\(\s*["'`](--[\w-]+)["'`]/g)) defined.add(m[1]);
+    // next/font: `variable: "--font-display"` in the loader config.
+    for (const m of src.matchAll(/variable:\s*["'`](--[\w-]+)["'`]/g)) defined.add(m[1]);
   }
 
-  // ── uses, in stylesheets and in inline styles alike ───────────────────────
-  const lines = src.split(/\r?\n/);
-  lines.forEach((line, i) => {
-    for (const m of line.matchAll(/var\(\s*(--[\w-]+)\s*([,)])/g)) {
-      if (m[2] === ",") continue;               // has a fallback — cannot compute to nothing
-      const name = m[1];
-      if (EXTERNAL.some((re) => re.test(name))) continue;
-      if (!used.has(name)) used.set(name, []);
-      used.get(name)!.push({ file: relative(ROOT, f), line: i + 1, text: line.trim().slice(0, 120) });
-    }
-  });
+  /* ── uses, in stylesheets and in inline styles alike ─────────────────────────────────────
+     ⛔ SCANNED OVER THE WHOLE FILE, NOT LINE BY LINE. The first version split on newlines, so a
+     `var(` whose name wrapped to the next line was not judged AND not counted — the reference
+     was invisible rather than reported, which is the same silence this gate exists to end.
+     Reproduced: wrapping the sheet's own padding as `var(\n  --probe-multiline\n)` restored the
+     E-270 defect in full and the gate stayed green with an unchanged reference count.
+     `\s` already spans newlines; the line number is derived from the match index instead. */
+  for (const m of src.matchAll(/var\(\s*(--[\w-]+)\s*([,)])/g)) {
+    if (m[2] === ",") continue;                 // has a fallback — cannot compute to nothing
+    const name = m[1];
+    if (EXTERNAL.some((re) => re.test(name))) continue;
+    const line = 1 + (src.slice(0, m.index ?? 0).match(/\n/g) ?? []).length;
+    const text = (src.split(/\r?\n/)[line - 1] ?? "").trim().slice(0, 120);
+    if (!used.has(name)) used.set(name, []);
+    used.get(name)!.push({ file: relative(ROOT, f), line, text });
+  }
 }
 
 console.log(`css-vars-defined: read ${files.length} files under ${SRC}`);

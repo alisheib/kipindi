@@ -76,12 +76,22 @@ export const MUTATIONS = [
     file: CSS,
     suite: "updown-filter-sheet",
     from: `.kp-fsheet[data-closing] > .kp-fsheet-panel {
-  animation: m-sheet-rise var(--t-quick) var(--m-leave) reverse both;
+  animation: m-leave-out var(--t-quick) var(--m-leave) both;
 }`,
     to: `.kp-fsheet[data-closing] > .kp-fsheet-panel {
   opacity: 1;
 }`,
-    expect: "10: 🔴 the panel has an exit animation while closing",
+    expect: "10: CONTROL: all four animation names were located — a reader that finds nothing passes everything",
+  },
+  {
+    // ⭐ THE E-284 POSITIVE CONTROL — the repair that was the same shape as the defect.
+    name: "exit-reuses-the-entrance-name",
+    why: "🔴 the exit is written as the ENTRANCE PLAYED BACKWARDS (`m-sheet-rise … reverse`). `animation-name` is then unchanged from `.m-sheet-in`, and CSS only creates or cancels an animation when the NAME changes — so `reverse` re-times a FINISHED animation instead of restarting it. Measured on production: the panel jumped 407px in one frame with `m-sheet-rise@340/finished`, and the 140ms hold became dead time with a transparent full-viewport scrim eating the next tap. The rule reads perfectly and does nothing",
+    file: CSS,
+    suite: "updown-filter-sheet",
+    from: `  animation: m-leave-out var(--t-quick) var(--m-leave) both;`,
+    to: `  animation: m-sheet-rise var(--t-quick) var(--m-leave) reverse both;`,
+    expect: "10: 🔴 the panel's EXIT keyframe NAME differs from its ENTRANCE's — or the animation never restarts",
   },
   {
     name: "exit-beat-hardcoded",

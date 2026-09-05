@@ -117,6 +117,23 @@ export function UpDownBoardTabs({
   const durationOn = (t: { d: number; href: string }) =>
     pending != null && pending.has("d") ? Number(pending.get("d")) === t.d : t.d === activeDuration;
 
+  /**
+   * 🔴 E-290 · A DURATION CHIP MUST NOT BE PRESSABLE WHILE ITS ASSET IS STILL IN FLIGHT.
+   * `durationTabs` is built by the server from the ACTIVE asset — `page.tsx:119` maps
+   * `activeAsset.durations` into hrefs carrying `activeAsset.key`. So during an asset switch
+   * the Assets group has already flipped to the new chip (optimistic `aria-current`) while the
+   * Durations group below it still lists the OLD asset's hrefs.
+   * ⛔ THE TWO-TAP FLOW THE SHEET IS DESIGNED AROUND THEN NAVIGATES BACKWARDS: tap `Ethereum`,
+   * tap `5 min` inside the same round trip, and `go("/updown?asset=BTC&d=5")` fires — the
+   * player lands back on Bitcoin having chosen Ethereum. ⚠️ And UD-13f's `replace` removed the
+   * recovery: Back no longer walks out of it, because there is no history entry to walk.
+   * ⭐ Blocking the chip is the honest answer rather than rewriting its href to the pending
+   * asset: the new asset's duration LIST is exactly what has not arrived yet, so a rewritten
+   * `?asset=ETH&d=60` could ask for a chain Ethereum does not run. The chips return the moment
+   * the board does — one round trip — and until then they say so instead of lying.
+   */
+  const assetSwitching = pending != null && pending.get("asset") !== activeAssetKey;
+
   /* ── UD-13b · WHAT THE PHONE SHOWS INSTEAD ────────────────────────────────────────────
      🔴 THE DEFECT, MEASURED ON PRODUCTION 2026-08-25 BEFORE ANY CODE MOVED. At 360 and 414
      these two rails wrap to FOUR rows of chips — 100px of assets over 96px of durations,
@@ -208,6 +225,7 @@ export function UpDownBoardTabs({
                   key={tItem.d}
                   href={tItem.href}
                   label={`${tItem.d} ${minLabel}`}
+                  className={assetSwitching ? "kp-fchip-waiting" : undefined}
                   on={durationOn(tItem)}
                   semantics="tab"
                   replace
@@ -260,6 +278,7 @@ export function UpDownBoardTabs({
               key={tItem.d}
               href={tItem.href}
               label={`${tItem.d} ${minLabel}`}
+                  className={assetSwitching ? "kp-fchip-waiting" : undefined}
               on={durationOn(tItem)}
               semantics="tab"
               replace

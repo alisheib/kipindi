@@ -65,6 +65,34 @@ export const MUTATIONS = [
     to: "  padding: var(--sp-3) var(--sp5) calc(env(safe-area-inset-bottom, 0px) + var(--sp-4));",
   },
   {
+    /* ⭐ THE E-286 POSITIVE CONTROL — the hole the first version of this gate had.
+       It counted any `--name` inside ANY string literal in a .ts/.tsx as a DEFINITION, so a
+       READ certified its own token: `getPropertyValue("--gilt")` made `--gilt` "defined".
+       Deleting the real declaration therefore left the gate green while all 32 `var(--gilt)`
+       declarations became invalid at computed-value time. */
+    name: "a-read-must-not-certify-its-own-token",
+    why: "🔴 POSITIVE CONTROL · the real declaration of `--gilt` is deleted. Sixteen tokens used to self-certify because a quoted name in a component counted as a definition regardless of whether it was a write or a read — so the gate stayed GREEN over a stylesheet in which every `var(--gilt)` had just become invalid at computed-value time. A definition must be matched by its SHAPE (a declaration, an object key, `setProperty`, a font `variable`), never by the name appearing somewhere",
+    file: CSS,
+    suite: "css-vars-defined",
+    outcome: "red",
+    expect: "--gilt is referenced but never defined",
+    from: "  --gilt:          var(--gold-300);",
+    to: "  /* declaration deleted by red:css-vars-defined */",
+  },
+  {
+    /* ⭐ THE E-287 POSITIVE CONTROL — the use scanner used to split on newlines, so a wrapped
+       reference was neither judged NOR counted. Invisible, not reported: the same silence the
+       gate exists to end, and it restores E-270 in full. */
+    name: "a-wrapped-var-is-still-measured",
+    why: "🔴 POSITIVE CONTROL · the sheet's padding references an undefined token across a LINE BREAK. The first version scanned line by line, so `var(` and its name had to sit on one line — a reformatted reference simply vanished from the gate while the declaration was still invalid at computed-value time and the sheet lost all four sides of its padding exactly as in E-270",
+    file: CSS,
+    suite: "css-vars-defined",
+    outcome: "red",
+    expect: "--kp-red-probe-wrapped is referenced but never defined",
+    from: PAD,
+    to: "  padding: var(--sp-3) var(\n    --kp-red-probe-wrapped\n  ) calc(env(safe-area-inset-bottom, 0px) + var(--sp-4));",
+  },
+  {
     name: "fallback-is-exempt",
     why: "⭐ CONTROL, THE OTHER WAY · `var(--x, fallback)` cannot compute to nothing, so an undefined name WITH a fallback must stay green. A gate that reddened here would forbid every optional hook and would be switched off within a week",
     file: CSS,

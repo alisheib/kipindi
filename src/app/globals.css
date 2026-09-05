@@ -3159,7 +3159,14 @@ textarea::placeholder { color: var(--text-subtle); }
    control and they need different shapes; a shape typed at each call site is two definitions
    of one control, which is the disease `FilterPill`'s header documents at four heights. */
 .kp-fsheet-trigger {
-  display: inline-flex; gap: var(--sp-2);
+  /* ⚠️ E-285 · `--sp-3`, NOT `--sp-2`. The class this rule replaced carried `gap-2`, which on
+     this repo's OVERRIDDEN Tailwind scale is **12px** (tailwind.config.ts `"2": "12px"`), while
+     `--sp-2` is **8px**. The two scales are offset by one rung — Tailwind 2/3/4/5 = 12/16/20/24
+     against --sp-3/4/5/6 = 12/16/20/24 — so the faithful token is `--sp-3`. Lifting the
+     geometry off the call site was meant to be like-for-like and silently tightened the icon-to
+     -word gap on both hosts. Every other value DID carry across exactly: `min-h-[44px]` →
+     `--h-control-md`, `px-3.5` → 14px, `rounded-pill` → `--r-pill`, `text-[13px]` → 13px. */
+  display: inline-flex; gap: var(--sp-3);
   min-height: var(--h-control-md);   /* 44px — the tap floor, --h-control-md exactly */
   padding: 0 14px;
   border-radius: var(--r-pill);
@@ -3225,11 +3232,41 @@ textarea::placeholder { color: var(--text-subtle); }
    ⛔ Under reduced motion `exitBeatMs` returns 0 and `data-closing` is never set, so the
    sheet closes instantly — an exit that still ran would DELAY a dismissal for someone who
    asked for no motion, which is worse than having none. */
+/* 🔴 E-284 · AND THE FIRST VERSION OF THIS EXIT DID NOT RUN AT ALL — the repair was the same
+   shape as the defect it was repairing. It was written as the ENTRANCE PLAYED BACKWARDS:
+
+     .kp-fsheet[data-closing] > .kp-fsheet-panel { animation: m-sheet-rise … reverse both; }
+
+   ⛔ `animation-name` WAS UNCHANGED. The panel already carries `m-sheet-rise` from
+   `.m-sheet-in`, and per CSS Animations an animation is only created or cancelled when the
+   NAME changes; every other `animation-*` longhand updates the EXISTING animation in place and
+   preserves its start time. So `reverse` did not restart anything — it re-timed a finished
+   animation. By dismissal the entrance had ended 340ms ago, which is past the new 140ms
+   duration, so the element sat in the after-phase; `direction: reverse` resolves that fill to
+   the 0% keyframe, `translateY(100%)`.
+
+   ⭐ MEASURED ON PRODUCTION, FRAME BY FRAME, before this correction:
+     t=26ms  panel y=437  m-sheet-rise@340/finished
+     t=43ms  panel y=844  m-sheet-rise@340/finished   ← 407px in ONE frame, currentTime pinned
+     t=159ms panel y=844  open=true                   ← 116ms invisible, scroll still locked,
+                                                        caret still up, scrim still hit-testing
+   So the "fix" bought no animation AND made dismissal 140ms slower, with a transparent
+   full-viewport scrim absorbing the next tap. ⚠️ `test:updown-filter-sheet` §10 could not see
+   it: it regex-matched the rule's TEXT — the exact instrument class this file's own `--gutter`
+   post-mortem says cannot see a computed-value defect. §10 now asserts the PROPERTY that
+   matters (the exit's keyframe name differs from the entrance's), not the spelling.
+
+   ⭐ THE CORRECTION IS THE PRODUCT'S OWN EXIT, NOT A NEW ONE. `m-leave-out` is what `.m-out`
+   plays and what every other dialog — including the shared `<Modal sheet>` this sheet copies
+   its contract from — leaves on. Its name differs from BOTH entrances (`m-sheet-rise`,
+   `m-scrim-in`), which is precisely why it restarts. ⛔ INTAKE §2 forbids minting a second
+   name for a motion that already exists, so a bespoke `m-sheet-fall` would have been the wrong
+   repair even though it reads more literally. */
 .kp-fsheet[data-closing] > .kp-fsheet-panel {
-  animation: m-sheet-rise var(--t-quick) var(--m-leave) reverse both;
+  animation: m-leave-out var(--t-quick) var(--m-leave) both;
 }
 .kp-fsheet[data-closing] > .kp-fsheet-scrim {
-  animation: m-scrim-in var(--t-quick) linear reverse both;
+  animation: m-leave-out var(--t-quick) linear both;
 }
 
 /* `--pill-active` behind `--brand-200` is the pairing a SELECTED pill's count already ships
@@ -3387,6 +3424,17 @@ html[data-sheet-open] .route-enter { animation: none; }
 @media (max-width: 639.98px) {
   .kp-auth-cta { padding-left: 14px; padding-right: 14px; }
 }
+
+/* 🔴 E-290 · A CHIP WHOSE OWN AXIS IS STILL IN FLIGHT. `/updown`'s duration chips are built by
+   the server from the ACTIVE asset, so during an asset switch they still carry the OLD asset's
+   hrefs — and the sheet's designed two-tap flow (asset, then duration) would navigate straight
+   back to the asset the player just left. ⛔ Since UD-13f made filters `replace`, there is no
+   history entry to walk back out of that.
+   ⚠️ It is BLOCKED AND SAID, not silently swallowed: `pointer-events: none` alone is a control
+   that ignores a tap for no visible reason. The opacity is `--state-disabled-opacity`, the same
+   token the board itself dims with while pending, so the chip and the board it belongs to fade
+   together and recover together — one round trip. */
+.kp-fchip-waiting { pointer-events: none; opacity: var(--state-disabled-opacity); }
 
 /* The direction button's arrow points the way the board is ordered. One glyph, rotated —
    never two glyphs, which would be two things to keep in agreement. */

@@ -165,6 +165,56 @@ export function FilterSheet({
     ref.current?.removeAttribute("data-closing");
   }, []);
   React.useEffect(() => () => { if (closingTimer.current != null) clearTimeout(closingTimer.current); }, []);
+
+  /**
+   * 🔴 E-288 · THE SHEET IS HIDDEN BY A MEDIA QUERY, AND REACT'S `open` DID NOT KNOW.
+   * Each host hides this control at its OWN breakpoint — `/updown` wraps it in `sm:hidden`,
+   * `/markets` relies on the `lg:hidden` on the `<details>` itself. Rotating a 390×844 phone to
+   * landscape (852×393) crosses BOTH: the whole disclosure is `display: none`, so the panel,
+   * the scrim and the trigger all disappear — while React still holds `open === true`, so
+   * `useModalLock` keeps `<html>`/`<body>` at `overflow: hidden`.
+   * ⛔ THE RESULT IS AN UNSCROLLABLE BOARD WITH NOTHING ON SCREEN TO DISMISS: no scrim to tap,
+   * no ✕, and on a phone no keyboard to press Escape. The only way out is to rotate back or
+   * reload. Same shape as every other finding in this file — correct markup, correct styling,
+   * and a state the player cannot escape.
+   *
+   * ⚠️ IT ASKS THE DOM, IT DOES NOT HARD-CODE A WIDTH. A `matchMedia("(min-width: 640px)")`
+   * here would be right for `/updown` and wrong for `/markets`, and wrong again for the next
+   * host. "Am I still rendered?" is the question that actually matters, and it is the same
+   * question at every breakpoint.
+   * ⛔ It closes SYNCHRONOUSLY rather than through `close()`: there is nothing on screen left
+   * to animate, and the scroll lock must lift in the same frame the control vanishes.
+   */
+  React.useEffect(() => {
+    if (!open) return;
+    const onViewportChange = () => {
+      const el = ref.current;
+      if (!el || getComputedStyle(el).display !== "none") return;
+      if (closingTimer.current != null) { clearTimeout(closingTimer.current); closingTimer.current = null; }
+      el.removeAttribute("data-closing");
+      el.removeAttribute("open");
+      setOpen(false);
+    };
+    window.addEventListener("resize", onViewportChange);
+    window.addEventListener("orientationchange", onViewportChange);
+    return () => {
+      window.removeEventListener("resize", onViewportChange);
+      window.removeEventListener("orientationchange", onViewportChange);
+    };
+  }, [open]);
+
+  /**
+   * ⚠️ E-289 · AND THE STATE MUST BE SYNCED FROM THE DOM ON MOUNT, because the `<details>` can
+   * be opened BEFORE React attaches. That is not a hypothetical — it is the whole point of the
+   * no-JS design: the disclosure works natively. On a slow phone a player who taps the trigger
+   * during hydration got a sheet that looked right and had no scroll lock, no Escape, no focus
+   * trap and no focus move, because `open` had never been anything but `false`.
+   * ⛔ Deliberately not `defaultValue`-style init: the attribute is the browser's to own, so
+   * this reads it once on mount rather than trying to control it.
+   */
+  React.useEffect(() => {
+    if (ref.current?.open) setOpen(true);
+  }, []);
   const closeRef = React.useRef(close);
   React.useEffect(() => { closeRef.current = close; }, [close]);
 

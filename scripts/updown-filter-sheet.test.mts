@@ -264,13 +264,40 @@ const { dict } = await import("../src/lib/i18n-dict.ts");
  */
 {
   const sheet = decomment(readFileSync(join(ROOT, "src/components/markets/filter-sheet.tsx"), "utf8"));
-  ok("10: 🔴 the panel has an exit animation while closing",
-     /\.kp-fsheet\[data-closing\]\s*>\s*\.kp-fsheet-panel\s*\{[^}]*animation:\s*m-sheet-rise[^}]*reverse/.test(css));
-  ok("10: …and the scrim leaves with it, rather than cutting out",
-     /\.kp-fsheet\[data-closing\]\s*>\s*\.kp-fsheet-scrim\s*\{[^}]*animation:\s*m-scrim-in[^}]*reverse/.test(css));
-  // ⛔ `reverse` of the ENTRANCE, never a newly-minted pair of keyframes at this layer.
-  ok("10: ⛔ …reusing the entrance keyframes, not new ones",
-     !/@keyframes\s+kp-fsheet/.test(css));
+  /* 🔴 E-284 · THIS SECTION USED TO MATCH THE RULE'S SPELLING AND WAS GREEN OVER AN EXIT THAT
+     NEVER RAN. The first version asserted the literal text `animation: m-sheet-rise … reverse`,
+     which is exactly what was written — and exactly what does not work, because the panel
+     already carries `m-sheet-rise` from `.m-sheet-in` and CSS only creates or cancels an
+     animation when the NAME changes. `reverse` re-timed a finished animation instead of
+     restarting it, so the panel jumped 407px in one frame (measured on production).
+     ⭐ SO §10 NOW ASSERTS THE PROPERTY, NOT THE SPELLING: the exit's keyframe NAME must differ
+     from the entrance's. That is the thing that makes an exit possible at all, it is true of
+     every working exit in this repo (`.m-out` swaps `m-leave-out` in over `m-dialog-in`), and
+     no amount of re-wording the rule can satisfy it while the defect is present. */
+  const motion = readFileSync(join(ROOT, "src/app/motion.css"), "utf8");
+  const animName = (block: string) => (block.match(/animation:\s*([A-Za-z][\w-]*)/) ?? [])[1] ?? "";
+  const entrancePanel = animName((motion.match(/\.m-sheet-in\s*\{[^}]*\}/) ?? [""])[0]);
+  const entranceScrim = animName((motion.match(/\.m-scrim\s*\{[^}]*\}/) ?? [""])[0]);
+  /* ⛔ ANCHORED TO THE START OF A LINE, AND THIS SUITE PROVED WHY ON ITSELF. `css` is read
+     UN-decommented (see the note at the top of this file), and the paragraph documenting E-284
+     QUOTES the defective rule verbatim — so an unanchored match read `m-sheet-rise` out of the
+     comment explaining that `m-sheet-rise` is wrong, and reported a defect over a correct
+     stylesheet. Same family as §5.13 in `test:filter-language`. A rule starts at column 0; the
+     quotation inside a comment is indented, so the anchor separates them. */
+  const exitPanel = animName((css.match(/(?:^|\n)\.kp-fsheet\[data-closing\]\s*>\s*\.kp-fsheet-panel\s*\{[^}]*\}/) ?? [""])[0]);
+  const exitScrim = animName((css.match(/(?:^|\n)\.kp-fsheet\[data-closing\]\s*>\s*\.kp-fsheet-scrim\s*\{[^}]*\}/) ?? [""])[0]);
+
+  ok("10: CONTROL: all four animation names were located — a reader that finds nothing passes everything",
+     [entrancePanel, entranceScrim, exitPanel, exitScrim].every((n) => n.length > 0),
+     `entrance ${entrancePanel}/${entranceScrim} · exit ${exitPanel}/${exitScrim}`);
+  ok("10: 🔴 the panel's EXIT keyframe NAME differs from its ENTRANCE's — or the animation never restarts",
+     exitPanel !== entrancePanel, `${entrancePanel} → ${exitPanel}`);
+  ok("10: 🔴 …and the scrim's likewise",
+     exitScrim !== entranceScrim, `${entranceScrim} → ${exitScrim}`);
+  // ⛔ INTAKE §2: no second name for a motion that already exists. The exit reuses `m-leave-out`,
+  // which is what `.m-out` and every other dialog in the product already leaves on.
+  ok("10: ⛔ …and the exit reuses the product's existing leave motion rather than minting one",
+     exitPanel === "m-leave-out" && !/@keyframes\s+kp-fsheet/.test(css), exitPanel);
   ok("10: ⛔ the exit beat comes from the shared `exitBeatMs`, not a literal",
      /import \{ exitBeatMs \} from "@\/components\/ui\/modal"/.test(sheet) && /exitBeatMs\("--t-quick"\)/.test(sheet));
   ok("10: ⚠️ …and a zero beat (reduced motion) closes INSTANTLY rather than holding",
