@@ -306,9 +306,35 @@ function safeRate(v: unknown, fallback: number, hi = 1): number {
   return typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(0, v)) : fallback;
 }
 
+/**
+ * ⭐ DOES THIS MARKET HAVE ITS OWN FROZEN RATES? — the ONLY honest discriminator.
+ *
+ * ⛔ **DO NOT ASK `stampedAt === "legacy"` INSTEAD.** `snapshotOrLegacy` produces that string
+ * from TWO different facts and they are not the same fact:
+ *
+ *   · the snapshot arm writes `stampedAt: s.stampedAt ?? "legacy"` — a **genuine, fully valid
+ *     snapshot** that merely predates the `stampedAt` field, priced by its OWN frozen rates;
+ *   · the fallback arm writes the literal `stampedAt: "legacy"` — **no snapshot at all**,
+ *     reconstructed at `LEGACY_COMMISSION_RATE` from nothing.
+ *
+ * A page that badges off the returned string therefore tells the owner that a correctly frozen
+ * game was never frozen — on `/admin/house`, whose fourth question is *which rate applied, and
+ * from when*. This predicate is the `if` below, extracted, and `snapshotOrLegacy` CALLS it, so
+ * the two cannot drift apart later.
+ *
+ * ⚠️ Measured on production 2026-09-05: every market carrying a `feeSnapshot` also carries a
+ * `stampedAt`, so the mislabelled population is currently EMPTY — 44 markets have no snapshot at
+ * all and are genuine fallbacks. This closes the hole before a restore or a race opens it.
+ */
+export function hasOwnSnapshot(raw: unknown): boolean {
+  const s = raw as Partial<FeeSnapshot> | null | undefined;
+  return !!s && Number.isFinite(s.commissionRate) && Number.isFinite(s.feeCeilingRate);
+}
+
 export function snapshotOrLegacy(raw: unknown): FeeSnapshot {
   const s = raw as Partial<FeeSnapshot> | null | undefined;
-  if (s && Number.isFinite(s.commissionRate) && Number.isFinite(s.feeCeilingRate)) {
+  // ⛔ ONE predicate, called — never re-typed. See `hasOwnSnapshot`.
+  if (hasOwnSnapshot(raw) && s) {
     // THE NO-MIX GUARANTEE. Only a snapshot that explicitly froze `feeModel:
     // "loser-share"` (a v2 poll created after 2026-07-23) reads as loser-share.
     // Everything else — every poll created before this change has NO feeModel —

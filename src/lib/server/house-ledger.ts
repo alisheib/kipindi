@@ -35,23 +35,46 @@
 import { prisma } from "@/lib/server/prisma";
 import type { HouseAccounts } from "@/lib/house-book";
 
-/** ⛔ Read `HOUSE:COMMISSION` as a BALANCE — it is already net of the levies (see
- *  `house-book.ts`'s header). Anything that pre-adjusts it here double-subtracts them. */
+/**
+ * Every `HOUSE:%` account with a balance.
+ *
+ * ⛔ Read `HOUSE:COMMISSION` as a BALANCE — it is already net of the levies (see
+ * `house-book.ts`'s header). Anything that pre-adjusts it here double-subtracts them.
+ *
+ * 🔴 **BY PREFIX, AS A GROUP — NOT FOUR ACCOUNTS BY NAME.** This shipped enumerating
+ * `IN ('HOUSE:COMMISSION','HOUSE:TRA_LEVY','HOUSE:GBT_LEVY','HOUSE:AGGREGATOR')`, which is the
+ * same mistake as enumerating entry types and is refuted by the same sentence twenty lines
+ * above: *an account balance cannot forget a type it has never heard of* — but a NAMED LIST
+ * forgets an ACCOUNT it has never heard of, and `acct` in `ledger.ts` mints three the list did
+ * not contain: `HOUSE:RG_SUSPENSE` (live, money we owe a self-excluded player) and the retired
+ * `HOUSE:TAX` / `HOUSE:RESERVE` (historical rows only). `ledger.ts → houseAccountBalances()`
+ * already reads `LIKE 'HOUSE:%'`, so the named list could also make `/admin/house` disagree with
+ * `/admin/finance` about the same books with nothing going red.
+ *
+ * ⚠️ Measured on production 2026-09-05: exactly the four named accounts exist, so the shipped
+ * read was CORRECT TODAY and this is a latent defect being closed before it can bite — not a
+ * live misstatement. `HOUSE:RG_SUSPENSE` is one self-excluded deposit away from being real.
+ */
 export async function readHouseAccounts(): Promise<HouseAccounts | null> {
   const pc = prisma();
   if (!pc) return null;
   const rows = await pc.$queryRawUnsafe<Array<{ account: string; sum: string }>>(
     `SELECT account, SUM(amount) AS sum
        FROM "LedgerEntry"
-      WHERE account IN ('HOUSE:COMMISSION','HOUSE:TRA_LEVY','HOUSE:GBT_LEVY','HOUSE:AGGREGATOR')
-      GROUP BY account`,
+      WHERE account LIKE 'HOUSE:%'
+      GROUP BY account
+      ORDER BY account`,
   );
-  const at = (a: string) => Number(rows.find((r) => r.account === a)?.sum ?? 0);
+  const all: Record<string, number> = {};
+  for (const r of rows) all[r.account] = Number(r.sum ?? 0);
+  const at = (a: string) => all[a] ?? 0;
   return {
     commission: at("HOUSE:COMMISSION"),
     traLevy: at("HOUSE:TRA_LEVY"),
     gbtLevy: at("HOUSE:GBT_LEVY"),
     aggregator: at("HOUSE:AGGREGATOR"),
+    rgSuspense: at("HOUSE:RG_SUSPENSE"),
+    all,
   };
 }
 
@@ -68,18 +91,45 @@ export async function readHouseAccounts(): Promise<HouseAccounts | null> {
  * Selcom rail float — that float is the disbursement account alone, deposits never touch it,
  * and Selcom publishes no collections balance at all. The two are shown side by side and
  * never summed (`selcom-statement.ts` carries the provenance types that enforce this).
+ *
+ * 🔴 **AND `EXTERNAL:INTERNAL` IS NOT A PAYMENT RAIL.** `acct.external()` is
+ * `` `EXTERNAL:${provider || "INTERNAL"}` ``, so every booking made with no provider lands on a
+ * SYNTHETIC counterparty that no money ever crossed. Summing it into "cash we hold" claims cash
+ * that never arrived — and because the offsetting player credit DOES raise the liability, a
+ * wholesale sum quietly cancels a real hole in the solvency line. So `railBacked` excludes it,
+ * `total` keeps it for continuity with the trial balance, and `byAccount` is returned so the
+ * page can never present a bare figure without showing what it is made of.
+ * ⚠️ Measured 0 on production 2026-09-05 — no `EXTERNAL:INTERNAL` row exists, so `railBacked`
+ * and `total` are the same 605,110 today. Latent, not live.
  */
-export async function readCustodialCash(): Promise<number | null> {
+export type CustodialCash = {
+  /** ⭐ Cash actually received through a payment rail. THE figure for "can we pay?". */
+  railBacked: number;
+  /** Every `EXTERNAL:%` account, including the synthetic one. Continuity with the books. */
+  total: number;
+  /** Per-counterparty, cash held (already negated). Rendered as rows, never summed blind. */
+  byAccount: Array<{ account: string; cashHeld: number }>;
+};
+
+export async function readCustodialCash(): Promise<CustodialCash | null> {
   const pc = prisma();
   if (!pc) return null;
-  const rows = await pc.$queryRawUnsafe<Array<{ sum: string | null }>>(
-    `SELECT SUM(amount) AS sum FROM "LedgerEntry" WHERE account LIKE 'EXTERNAL:%'`,
+  const rows = await pc.$queryRawUnsafe<Array<{ account: string; sum: string | null }>>(
+    `SELECT account, SUM(amount) AS sum
+       FROM "LedgerEntry" WHERE account LIKE 'EXTERNAL:%'
+      GROUP BY account ORDER BY account`,
   );
-  return -Number(rows[0]?.sum ?? 0);
+  const byAccount = rows.map((r) => ({ account: r.account, cashHeld: -Number(r.sum ?? 0) }));
+  const total = byAccount.reduce((s, r) => s + r.cashHeld, 0);
+  const railBacked = byAccount
+    .filter((r) => r.account !== "EXTERNAL:INTERNAL")
+    .reduce((s, r) => s + r.cashHeld, 0);
+  return { railBacked, total, byAccount };
 }
 
 export type WaterfallRead = {
-  handle: number;
+  stakeIn: number;
+  bonusIn: number;
   winningsPaid: number;
   feeEarned: number;
   leviesOut: number;
@@ -104,9 +154,17 @@ export async function readWaterfall(start: Date, end: Date): Promise<WaterfallRe
   };
   const win = `"createdAt" >= $1 AND "createdAt" < $2`;
 
-  const handle = await q(
+  const stakeIn = await q(
     `SELECT SUM(amount) AS sum FROM "LedgerEntry"
       WHERE ${win} AND "entryType" = 'STAKE_DEBIT' AND account LIKE 'POOL:%' AND amount > 0`);
+  /* ⭐ THE OTHER HALF OF THE HANDLE. `stakeEntries` credits the pool TWICE — `STAKE_DEBIT` for
+   * the real part, `BONUS_SPEND` for the bonus part — and this read counted only the first while
+   * `winningsPaid` counts payouts from that pool in full. GGR was therefore understated by every
+   * bonus shilling ever staked. ⚠️ Measured 0 on production 2026-09-05: no bonus stake exists
+   * yet, so nothing on the page moves today. It moves the first time somebody bets a bonus. */
+  const bonusIn = await q(
+    `SELECT SUM(amount) AS sum FROM "LedgerEntry"
+      WHERE ${win} AND "entryType" = 'BONUS_SPEND' AND account LIKE 'POOL:%' AND amount > 0`);
   const winningsPaid = await q(
     `SELECT SUM(amount) AS sum FROM "LedgerEntry"
       WHERE ${win} AND "entryType" IN ('PAYOUT_CREDIT','REFUND','CASHOUT')
@@ -120,18 +178,29 @@ export async function readWaterfall(start: Date, end: Date): Promise<WaterfallRe
   const aggregatorOut = await q(
     `SELECT SUM(amount) AS sum FROM "LedgerEntry"
       WHERE ${win} AND account = 'HOUSE:AGGREGATOR' AND amount > 0`);
-  // Bonus money that became real — the promotional cost that actually left.
+  /* Bonus money that became real — the promotional cost that actually left.
+   *
+   * 🔴 **NET, NOT `amount > 0`.** `bonusRelockEntries` (E-224) is the exact mirror of
+   * `bonusCreditEntries`: it writes a NEGATIVE `BONUS_CREDIT` to `PLAYER:` when a refunded wager
+   * turns out not to have discharged the wagering requirement, and the cash goes back to the
+   * locked bonus account. A `> 0` filter drops every one of those reversals, so a bonus that was
+   * unlocked and then re-locked counted as a cost FOREVER.
+   * ⚠️ Measured on production 2026-09-05: gross 16,000 over 8 rows against a NET of 2,000 — seven
+   * re-locks — so this line was overstating the promotional cost by 14,000 and understating the
+   * owner's net retained by the same. This is the largest of the four live arithmetic errors. */
   const bonusCost = await q(
     `SELECT SUM(amount) AS sum FROM "LedgerEntry"
-      WHERE ${win} AND "entryType" = 'BONUS_CREDIT' AND account LIKE 'PLAYER:%' AND amount > 0`);
+      WHERE ${win} AND "entryType" = 'BONUS_CREDIT' AND account LIKE 'PLAYER:%'`);
 
-  return { handle, winningsPaid, feeEarned, leviesOut, aggregatorOut, bonusCost };
+  return { stakeIn, bonusIn, winningsPaid, feeEarned, leviesOut, aggregatorOut, bonusCost };
 }
 
 export type GameLedgerRow = {
   marketId: string;
   poolIn: number;
+  bonusIn: number;
   paidOut: number;
+  bonusRefunded: number;
   feeBooked: number;
   leviesBooked: number;
 };
@@ -152,15 +221,27 @@ export async function readGameRows(start: Date, end: Date): Promise<GameLedgerRo
   const pc = prisma();
   if (!pc) return null;
   const rows = await pc.$queryRawUnsafe<Array<{
-    marketid: string; poolin: string | null; paidout: string | null;
-    feebooked: string | null; leviesbooked: string | null;
+    marketid: string; poolin: string | null; bonusin: string | null; paidout: string | null;
+    bonusrefunded: string | null; feebooked: string | null; leviesbooked: string | null;
   }>>(
+    /* ⛔ FOUR LEGS OF THE POOL, NOT TWO. `stakeEntries` credits the pool with BOTH
+     * `STAKE_DEBIT` and `BONUS_SPEND`, and `refundEntries` returns them down two different
+     * paths — `REFUND` to `PLAYER:`, `BONUS_REFUND` to `PLAYER_BONUS:`. Reading only the real
+     * legs while counting the fee in full leaves the per-game identity short by exactly the
+     * bonus, so a correct bonus-funded book would render as a variance. ⚠️ `LIKE 'PLAYER:%'`
+     * does NOT match `PLAYER_BONUS:` — the character after `PLAYER` must be a colon — which is
+     * why the bonus refund needs its own arm rather than falling into `paidout`. */
     `SELECT "marketId" AS marketid,
             SUM(CASE WHEN "entryType" = 'STAKE_DEBIT' AND account LIKE 'POOL:%' AND amount > 0
                      THEN amount ELSE 0 END) AS poolin,
+            SUM(CASE WHEN "entryType" = 'BONUS_SPEND' AND account LIKE 'POOL:%' AND amount > 0
+                     THEN amount ELSE 0 END) AS bonusin,
             SUM(CASE WHEN "entryType" IN ('PAYOUT_CREDIT','REFUND','CASHOUT')
                       AND account LIKE 'PLAYER:%' AND amount > 0
                      THEN amount ELSE 0 END) AS paidout,
+            SUM(CASE WHEN "entryType" = 'BONUS_REFUND'
+                      AND account LIKE 'PLAYER\\_BONUS:%' AND amount > 0
+                     THEN amount ELSE 0 END) AS bonusrefunded,
             SUM(CASE WHEN account = 'HOUSE:COMMISSION' AND amount > 0
                      THEN amount ELSE 0 END) AS feebooked,
             SUM(CASE WHEN account IN ('HOUSE:TRA_LEVY','HOUSE:GBT_LEVY') AND amount > 0
@@ -173,27 +254,147 @@ export async function readGameRows(start: Date, end: Date): Promise<GameLedgerRo
   return rows.map((r) => ({
     marketId: r.marketid,
     poolIn: Number(r.poolin ?? 0),
+    bonusIn: Number(r.bonusin ?? 0),
     paidOut: Number(r.paidout ?? 0),
+    bonusRefunded: Number(r.bonusrefunded ?? 0),
     feeBooked: Number(r.feebooked ?? 0),
     leviesBooked: Number(r.leviesbooked ?? 0),
   }));
 }
 
-/** Every ledger row for one game — the drill-down's evidence. */
-export async function readGameEntries(marketId: string): Promise<Array<{
-  account: string; entryType: string; amount: number; memo: string | null; createdAt: Date;
-}> | null> {
+/**
+ * ⭐ THE UNATTRIBUTED FEE — the other half of the BY GAME reconciliation.
+ *
+ * `withdrawalEntries` books its fee with **no `marketId`**, because a withdrawal is not a game.
+ * So Σ(per-game fee) can never equal the house fee, and the honest product is to state the gap
+ * and show that the two sides add up rather than to hide the difference or to quietly print two
+ * numbers that disagree.
+ *
+ * ⚠️ Measured on production 2026-09-05: 760 across 15 `WITHDRAWAL_FEE` rows, against 366,371
+ * attributed — and `366,371 + 760 = 367,131`, the house fee exactly. Variance 0.
+ */
+export async function readUnattributedFees(start: Date, end: Date): Promise<
+  { total: number; byType: Array<{ entryType: string; amount: number; entries: number }> } | null
+> {
   const pc = prisma();
   if (!pc) return null;
+  const rows = await pc.$queryRawUnsafe<Array<{ entrytype: string; sum: string | null; n: bigint }>>(
+    `SELECT "entryType" AS entrytype, SUM(amount) AS sum, COUNT(*) AS n
+       FROM "LedgerEntry"
+      WHERE "createdAt" >= $1 AND "createdAt" < $2
+        AND account = 'HOUSE:COMMISSION' AND amount > 0 AND "marketId" IS NULL
+      GROUP BY "entryType" ORDER BY 2 DESC`,
+    start, end,
+  );
+  const byType = rows.map((r) => ({
+    entryType: r.entrytype,
+    amount: Number(r.sum ?? 0),
+    entries: Number(r.n ?? 0),
+  }));
+  return { total: byType.reduce((s, r) => s + r.amount, 0), byType };
+}
+
+/**
+ * Fee earned in the window, split by the entry type that booked it.
+ *
+ * ⛔ NOTHING IS ENUMERATED. The page renders whatever rows come back, so a retired type keeps
+ * being counted and a new one appears without an edit — the same law as reading by account.
+ * ⚠️ Measured 2026-09-05: `SETTLEMENT_COMMISSION` 366,371 (435 rows) and `WITHDRAWAL_FEE` 760
+ * (15). `CASHOUT_FEE` has never been booked — every cash-out so far fell inside the free-exit
+ * grace — so a hard-coded three-row table would have shown a confident, permanent zero.
+ */
+export async function readFeeBySource(start: Date, end: Date): Promise<
+  Array<{ entryType: string; amount: number; entries: number }> | null
+> {
+  const pc = prisma();
+  if (!pc) return null;
+  const rows = await pc.$queryRawUnsafe<Array<{ entrytype: string; sum: string | null; n: bigint }>>(
+    `SELECT "entryType" AS entrytype, SUM(amount) AS sum, COUNT(*) AS n
+       FROM "LedgerEntry"
+      WHERE "createdAt" >= $1 AND "createdAt" < $2
+        AND account = 'HOUSE:COMMISSION' AND amount > 0
+      GROUP BY "entryType" ORDER BY 2 DESC`,
+    start, end,
+  );
+  return rows.map((r) => ({
+    entryType: r.entrytype,
+    amount: Number(r.sum ?? 0),
+    entries: Number(r.n ?? 0),
+  }));
+}
+
+export type GameEvidenceRow = {
+  account: string;
+  entryType: string;
+  amount: number;
+  /** How many ledger rows this line stands for. `1` for a house or pool row. */
+  entries: number;
+  /** `true` when this line COLLAPSES many players into one. */
+  aggregated: boolean;
+};
+
+/**
+ * One game's ledger, as evidence — house and pool rows in full, players collapsed.
+ *
+ * ⛔ **NO PER-PLAYER ROWS, AND THAT OVERRULES THE ORIGINAL BRIEF'S "every ledger entry".**
+ * `PLAYER:` and `PLAYER_BONUS:` rows are one line per entry type with a count. Three reasons,
+ * in order of weight: a settled market can carry hundreds of them (measured: one market with
+ * 1,485 entries), so the panel stops being readable exactly when it matters; the account string
+ * IS the user id, so a full dump is a player-identity list on a revenue page that FINANCE and
+ * AUDITOR can open; and none of it is evidence about the HOUSE's money, which is what this page
+ * is for. `/admin/players/[id]` is where a person's ledger belongs.
+ *
+ * ⚠️ `limit`/`offset` page the aggregated lines, so even a pathological market cannot render an
+ * unbounded table.
+ */
+export async function readGameEntries(
+  marketId: string,
+  limit = 100,
+  offset = 0,
+): Promise<GameEvidenceRow[] | null> {
+  const pc = prisma();
+  if (!pc) return null;
+  const lim = Math.max(1, Math.min(500, Math.trunc(limit)));
+  const off = Math.max(0, Math.trunc(offset));
   const rows = await pc.$queryRawUnsafe<Array<{
-    account: string; entryType: string; amount: string; memo: string | null; createdAt: Date;
+    account: string; entrytype: string; amount: string | null; n: bigint;
   }>>(
-    `SELECT account, "entryType", amount, memo, "createdAt"
+    /* ⭐ The collapse happens in POSTGRES, in exact numeric — the same law as every other sum in
+     * this file. Pulling rows and grouping them in JS would add `Decimal(18,2)` values as
+     * floats, and this panel sits beside a reconciliation whose whole job is to notice one
+     * shilling. `CASE` rather than `LEFT()` so the two player prefixes stay distinguishable. */
+    `SELECT CASE WHEN account LIKE 'PLAYER:%'        THEN 'PLAYER:*'
+                 WHEN account LIKE 'PLAYER\\_BONUS:%' THEN 'PLAYER_BONUS:*'
+                 ELSE account END AS account,
+            "entryType" AS entrytype, SUM(amount) AS amount, COUNT(*) AS n
        FROM "LedgerEntry" WHERE "marketId" = $1
-      ORDER BY "createdAt" ASC, account ASC`,
+      GROUP BY 1, 2
+      ORDER BY 1 ASC, 2 ASC
+      LIMIT ${lim} OFFSET ${off}`,
     marketId,
   );
-  return rows.map((r) => ({ ...r, amount: Number(r.amount) }));
+  return rows.map((r) => ({
+    account: r.account,
+    entryType: r.entrytype,
+    amount: Number(r.amount ?? 0),
+    entries: Number(r.n ?? 0),
+    aggregated: r.account.endsWith(":*"),
+  }));
+}
+
+/** How many aggregated evidence lines one game has — the pager's total. */
+export async function countGameEntryLines(marketId: string): Promise<number | null> {
+  const pc = prisma();
+  if (!pc) return null;
+  const rows = await pc.$queryRawUnsafe<Array<{ n: bigint }>>(
+    `SELECT COUNT(*) AS n FROM (
+       SELECT CASE WHEN account LIKE 'PLAYER:%'        THEN 'PLAYER:*'
+                   WHEN account LIKE 'PLAYER\\_BONUS:%' THEN 'PLAYER_BONUS:*'
+                   ELSE account END AS a, "entryType" AS t
+         FROM "LedgerEntry" WHERE "marketId" = $1 GROUP BY 1, 2) g`,
+    marketId,
+  );
+  return Number(rows[0]?.n ?? 0);
 }
 
 /**

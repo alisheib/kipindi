@@ -62,6 +62,74 @@ export const MUTATIONS = [
     expect: "3b.3",
   },
   {
+    // ⭐ THE SHIPPED DEFECT, RESTORED — and §5.2 pinned `60_000` for it, so 34/0 green was not
+    // evidence. `withdrawalEntries` credits the gateway's share STRAIGHT to HOUSE:AGGREGATOR;
+    // `feeEarned` reads positive HOUSE:COMMISSION rows only, so the share was never in it.
+    // Taking it out here is the file header's own forbidden double-subtraction, one account over.
+    name: "house-book.ts — subtract the gateway share that was never in the fee (the header's own ban, one account over)",
+    file: "src/lib/house-book.ts",
+    from: `    netRetained: input.feeEarned - input.leviesOut - input.bonusCost,`,
+    to: `    netRetained: input.feeEarned - input.leviesOut - input.aggregatorOut - input.bonusCost,`,
+    expect: "5.2",
+  },
+  {
+    // The other direction: answer the double-subtraction by DELETING the gateway figure. The
+    // arithmetic becomes right and the owner can no longer see what the gateway took.
+    name: "house-book.ts — drop the gateway pass-through entirely (the fix that hides the fact)",
+    file: "src/lib/house-book.ts",
+    from: `    handle,
+    ggr,`,
+    to: `    handle,
+    ggr,
+    aggregatorOut: 0,`,
+    expect: "5.2b",
+  },
+  {
+    // ⭐ THE POOL IS CREDITED TWICE. Reading `STAKE_DEBIT` alone while counting the payouts from
+    // that same pool in full understates GGR by every bonus shilling ever staked.
+    name: "house-book.ts — count only the REAL stake in the period handle (bonus turnover vanishes)",
+    file: "src/lib/house-book.ts",
+    from: `  const handle = input.stakeIn + input.bonusIn;`,
+    to: `  const handle = input.stakeIn;`,
+    expect: "5.6",
+  },
+  {
+    // The same defect per game — and here it is worse, because the book then cannot close and a
+    // CORRECT bonus-funded market renders as a variance on the reconciliation panel.
+    name: "house-book.ts — count only the REAL stake per game (a correct bonus book reads as broken)",
+    file: "src/lib/house-book.ts",
+    from: `  const handle = g.poolIn + g.bonusIn;`,
+    to: `  const handle = g.poolIn;`,
+    expect: "4.4",
+  },
+  {
+    // A voided bonus market returns its stake as BONUS_REFUND to PLAYER_BONUS:, which
+    // `LIKE 'PLAYER:%'` cannot match. Dropping the leg leaves the identity short by the bonus.
+    name: "house-book.ts — ignore the bonus refund leg (a voided bonus market never closes)",
+    file: "src/lib/house-book.ts",
+    from: `    closesTo: handle - g.paidOut - g.bonusRefunded - g.feeBooked,`,
+    to: `    closesTo: handle - g.paidOut - g.feeBooked,`,
+    expect: "4.5",
+  },
+  {
+    // ⭐ MONEY WE HOLD BUT DO NOT OWN, reported as ours. `HOUSE:RG_SUSPENSE` is a self-excluded
+    // player's deposit awaiting return; leaving it out of the solvency line calls it free cash.
+    name: "house-book.ts — leave RG suspense out of what is owed (a held deposit reported as free cash)",
+    file: "src/lib/house-book.ts",
+    from: `  const owedToOthers = leviesPayable + aggregator + rgSuspense;`,
+    to: `  const owedToOthers = leviesPayable + aggregator;`,
+    expect: "3c.1",
+  },
+  {
+    // Deducted, but unnamed — so the owner sees free cash fall and has nothing to act on, and
+    // nobody learns there is a player waiting to be repaid.
+    name: "house-book.ts — fold RG suspense into the levy line (a deduction nobody can act on)",
+    file: "src/lib/house-book.ts",
+    from: `    rgSuspensePayable: rgSuspense,`,
+    to: `    rgSuspensePayable: 0,`,
+    expect: "3c.2",
+  },
+  {
     // A VOID game refunds and books no fee. Dropping its marker makes it indistinguishable
     // from an ordinary game on a page whose job is completeness.
     name: "house-book.ts — stop marking VOID games as fee-less (a refund reads as a result)",
@@ -75,8 +143,8 @@ export const MUTATIONS = [
     // money that left the platform.
     name: "house-book.ts — net the bonus cost into GGR (the gaming result flattered)",
     file: "src/lib/house-book.ts",
-    from: `  const ggr = input.handle - input.winningsPaid;`,
-    to: `  const ggr = input.handle - input.winningsPaid - input.bonusCost;`,
+    from: `  const ggr = handle - input.winningsPaid;`,
+    to: `  const ggr = handle - input.winningsPaid - input.bonusCost;`,
     expect: "5.1",
   },
   {

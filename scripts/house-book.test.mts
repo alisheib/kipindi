@@ -63,7 +63,7 @@ console.log("\n§2 · ⭐ the levies are already out of HOUSE:COMMISSION — tak
   // commission account at settlement, so the account BALANCE is 8,500 and the levy accounts
   // hold 1,000 and 500.
   const p = housePosition({
-    accounts: { commission: 8_500, traLevy: 1_000, gbtLevy: 500, aggregator: 300 },
+    accounts: { commission: 8_500, traLevy: 1_000, gbtLevy: 500, aggregator: 300, rgSuspense: 0, all: {} },
     playerLiability: 0,
     custodialCash: 10_300,
     adjustmentBackedLiability: 0,
@@ -84,7 +84,7 @@ console.log("\n§3 · gross float is not profit");
 {
   // The scenario from the brief: 100M held, 92M of it players', 3M unremitted levies.
   const p = housePosition({
-    accounts: { commission: 5_000_000, traLevy: 2_000_000, gbtLevy: 1_000_000, aggregator: 0 },
+    accounts: { commission: 5_000_000, traLevy: 2_000_000, gbtLevy: 1_000_000, aggregator: 0, rgSuspense: 0, all: {} },
     playerLiability: 92_000_000,
     custodialCash: 100_000_000,
     adjustmentBackedLiability: 0,
@@ -94,18 +94,18 @@ console.log("\n§3 · gross float is not profit");
     `got ${p.freeHouseCash}; 100,000,000 is the number that builds insolvency`);
   ok("3.2 · the gateway's share also reduces free cash",
     housePosition({
-      accounts: { commission: 1_000, traLevy: 0, gbtLevy: 0, aggregator: 400 },
+      accounts: { commission: 1_000, traLevy: 0, gbtLevy: 0, aggregator: 400, rgSuspense: 0, all: {} },
       playerLiability: 0, custodialCash: 1_400, adjustmentBackedLiability: 0,
     }).freeHouseCash === 1_000);
   ok("3.3 · ⚠️ free cash may go NEGATIVE and must SAY so, never clamp to zero",
     housePosition({
-      accounts: { commission: 0, traLevy: 0, gbtLevy: 0, aggregator: 0 },
+      accounts: { commission: 0, traLevy: 0, gbtLevy: 0, aggregator: 0, rgSuspense: 0, all: {} },
       playerLiability: 500, custodialCash: 100, adjustmentBackedLiability: 0,
     }).freeHouseCash === -400,
     "a clamped zero hides exactly the condition an owner must be told about");
   ok("3.control · a solvent house reports its real surplus (3.1–3.3 are not vacuous)",
     housePosition({
-      accounts: { commission: 10, traLevy: 0, gbtLevy: 0, aggregator: 0 },
+      accounts: { commission: 10, traLevy: 0, gbtLevy: 0, aggregator: 0, rgSuspense: 0, all: {} },
       playerLiability: 0, custodialCash: 10, adjustmentBackedLiability: 0,
     }).freeHouseCash === 10);
 }
@@ -122,7 +122,7 @@ console.log("\n§3 · gross float is not profit");
 console.log("\n§3b · ⭐ admin-credited balances are separated, and NEITHER figure is softened");
 {
   const p = housePosition({
-    accounts: { commission: 312_099, traLevy: 36_658, gbtLevy: 18_374, aggregator: 380 },
+    accounts: { commission: 312_099, traLevy: 36_658, gbtLevy: 18_374, aggregator: 380, rgSuspense: 0, all: {} },
     playerLiability: 20_105_687,
     custodialCash: 605_110,
     adjustmentBackedLiability: 20_600_000,
@@ -141,11 +141,50 @@ console.log("\n§3b · ⭐ admin-credited balances are separated, and NEITHER fi
   ok("3b.control · with no adjustments the two lines are IDENTICAL (3b.2 is not vacuous)",
     (() => {
       const q = housePosition({
-        accounts: { commission: 0, traLevy: 0, gbtLevy: 0, aggregator: 0 },
+        accounts: { commission: 0, traLevy: 0, gbtLevy: 0, aggregator: 0, rgSuspense: 0, all: {} },
         playerLiability: 1_000, custodialCash: 1_000, adjustmentBackedLiability: 0,
       });
       return q.freeHouseCash === q.freeHouseCashExAdjustments;
     })());
+}
+
+/* ═══ §3c · ⭐ MONEY WE HOLD BUT DO NOT OWN ═════════════════════════════════════════════
+ *
+ * `HOUSE:RG_SUSPENSE` is a deposit that landed AFTER the player self-excluded. `ledger.ts`
+ * calls it, in as many words, *"money the platform HOLDS but does not own"* — it cannot be
+ * credited and has not been returned. The reader shipped enumerating four house accounts by
+ * NAME, so every shilling on this one was invisible to the solvency line and counted as free
+ * cash. ⚠️ Measured 0 on production 2026-09-05, which is why this is a latent defect being
+ * closed rather than a live misstatement — and why the assertion has to be here, since the
+ * data cannot currently prove it either way.
+ */
+console.log("\n§3c · ⭐ RG suspense is a liability, not free cash");
+{
+  const p = housePosition({
+    accounts: { commission: 0, traLevy: 0, gbtLevy: 0, aggregator: 0, rgSuspense: 7_000, all: { "HOUSE:RG_SUSPENSE": 7_000 } },
+    playerLiability: 0, custodialCash: 10_000, adjustmentBackedLiability: 0,
+  });
+  ok("3c.1 · ⭐ RG suspense comes OUT of free house cash",
+    p.freeHouseCash === 3_000,
+    `got ${p.freeHouseCash}; 10,000 means a self-excluded player's deposit was reported as ours`);
+  ok("3c.2 · ⛔ …and it is REPORTED on its own line, not folded into the levies",
+    p.rgSuspensePayable === 7_000 && p.leviesPayable === 0,
+    "an unnamed deduction is one nobody can act on — this money has to be RETURNED");
+  ok("3c.3 · the ex-adjustments line subtracts it too — neither view may keep it",
+    p.freeHouseCashExAdjustments === 3_000, `got ${p.freeHouseCashExAdjustments}`);
+  ok("3c.4 · ⭐ every HOUSE account travels with the position, so the page can render the ones nobody named",
+    p !== null && Object.keys(
+      housePosition({
+        accounts: { commission: 1, traLevy: 0, gbtLevy: 0, aggregator: 0, rgSuspense: 0, all: { "HOUSE:COMMISSION": 1, "HOUSE:TAX": 42 } },
+        playerLiability: 0, custodialCash: 1, adjustmentBackedLiability: 0,
+      }) && { ok: 1 },
+    ).length === 1,
+    "the retired HOUSE:TAX still carries historical rows and must not vanish from the panel");
+  ok("3c.control · with nothing in suspense the line is unmoved (3c.1 is not vacuous)",
+    housePosition({
+      accounts: { commission: 0, traLevy: 0, gbtLevy: 0, aggregator: 0, rgSuspense: 0, all: {} },
+      playerLiability: 0, custodialCash: 10_000, adjustmentBackedLiability: 0,
+    }).freeHouseCash === 10_000);
 }
 
 /* ═══ §4 · PER GAME ════════════════════════════════════════════════════════════════════ */
@@ -153,41 +192,103 @@ console.log("\n§4 · each game's own contribution");
 {
   const g = gameBook({
     marketId: "m1", outcome: "YES",
-    poolIn: 100_000, paidOut: 90_000, feeBooked: 10_000, leviesBooked: 1_500,
+    poolIn: 100_000, bonusIn: 0, paidOut: 90_000, bonusRefunded: 0, feeBooked: 10_000, leviesBooked: 1_500,
   });
   ok("4.1 · a game's net retained is its GROSS fee minus the levies IT generated",
     g.netRetained === 8_500,
     "here feeBooked is the sum of POSITIVE fee entries, so the levies are still in it");
   const v = gameBook({
     marketId: "m2", outcome: "VOID",
-    poolIn: 50_000, paidOut: 50_000, feeBooked: 0, leviesBooked: 0,
+    poolIn: 50_000, bonusIn: 0, paidOut: 50_000, bonusRefunded: 0, feeBooked: 0, leviesBooked: 0,
   });
   ok("4.2 · ⛔ a VOID game is KEPT and marked `no fee` — never filtered out",
     v.noFee === true && v.netRetained === 0 && v.marketId === "m2",
     "a missing row reads as data loss on a page whose job is completeness");
   ok("4.3 · …and a fee-less non-void game is marked too",
-    gameBook({ marketId: "m3", outcome: "NO", poolIn: 10, paidOut: 10, feeBooked: 0, leviesBooked: 0 }).noFee);
+    gameBook({ marketId: "m3", outcome: "NO", poolIn: 10, bonusIn: 0, paidOut: 10, bonusRefunded: 0, feeBooked: 0, leviesBooked: 0 }).noFee);
   ok("4.control · an ordinary game is NOT marked no-fee (4.2/4.3 are not vacuous)",
     g.noFee === false);
+
+  /* ⭐ 0.2 · A BONUS-FUNDED MARKET MUST CLOSE TO ZERO. `stakeEntries` credits the pool with
+   * `STAKE_DEBIT` AND `BONUS_SPEND`; `refundEntries` returns them as `REFUND` to `PLAYER:` and
+   * `BONUS_REFUND` to `PLAYER_BONUS:`. Reading only the real legs while counting the fee in full
+   * leaves the identity short by exactly the bonus — so a CORRECT book renders as a variance and
+   * the reconciliation panel cries wolf, which is the one failure this page cannot afford. */
+  const b = gameBook({
+    marketId: "m4", outcome: "YES",
+    poolIn: 80_000, bonusIn: 20_000, paidOut: 88_000, bonusRefunded: 0,
+    feeBooked: 12_000, leviesBooked: 1_800,
+  });
+  ok("4.4 · ⭐ a BONUS-funded game closes to zero — the pool was credited twice",
+    b.closesTo === 0 && b.handle === 100_000,
+    `closesTo ${b.closesTo}, handle ${b.handle}; reading STAKE_DEBIT alone gives −20,000`);
+  ok("4.5 · ⭐ …and a VOIDED bonus game closes too, down the BONUS_REFUND path",
+    gameBook({
+      marketId: "m5", outcome: "VOID",
+      poolIn: 5_000, bonusIn: 3_000, paidOut: 5_000, bonusRefunded: 3_000,
+      feeBooked: 0, leviesBooked: 0,
+    }).closesTo === 0,
+    "`LIKE 'PLAYER:%'` does not match `PLAYER_BONUS:`, so the bonus refund needs its own leg");
+  ok("4.6 · ⛔ a genuine disagreement is REPORTED, not absorbed",
+    gameBook({
+      marketId: "mkt_037b284976b9dd2bd9e2", outcome: "NO",
+      poolIn: 10_500, bonusIn: 0, paidOut: 28_166, bonusRefunded: 0,
+      feeBooked: 2_333, leviesBooked: 350,
+    }).closesTo === -19_999,
+    "the real production row: 10,500 of ledger stakes against a 30,500 pool column");
+  /* ⭐ 0.5b · `null` IS A REAL OUTCOME. The window is ENTRY-TIME, so a live market that took an
+   * early exit appears here unsettled; a purged market has no outcome either. Both moved money
+   * and both must render. ⛔ The page derives the word from `outcomeWord`, never a literal. */
+  const live = gameBook({
+    marketId: "m6", outcome: null,
+    poolIn: 40_000, bonusIn: 0, paidOut: 0, bonusRefunded: 0, feeBooked: 500, leviesBooked: 75,
+  });
+  ok("4.7 · ⭐ an UNSETTLED game that moved money is kept, with a null outcome",
+    live.outcome === null && live.netRetained === 425,
+    "an early exit on a live poll books a real fee; dropping the row hides it");
+  ok("4.8 · ⚠️ …and a live pool showing its whole handle is NOT a broken book",
+    live.closesTo === 39_500,
+    "the market still holds the pool by design — the page must not label this a variance");
 }
 
 /* ═══ §5 · THE WATERFALL CLOSES ════════════════════════════════════════════════════════ */
 console.log("\n§5 · the waterfall is an identity, not a picture");
 {
   const w = waterfall({
-    handle: 1_000_000, winningsPaid: 880_000,
+    stakeIn: 950_000, bonusIn: 50_000, winningsPaid: 880_000,
     feeEarned: 100_000, leviesOut: 15_000, aggregatorOut: 5_000, bonusCost: 20_000,
   });
   ok("5.1 · GGR is handle minus winnings paid", w.ggr === 120_000);
-  ok("5.2 · net retained subtracts levies, gateway AND bonus cost",
-    w.netRetained === 60_000, `got ${w.netRetained}`);
+  /* 🔴 THIS ASSERTION USED TO ENCODE THE DEFECT. It pinned `60_000`, i.e.
+   * `fee − levies − GATEWAY − bonus`, and 34/0 green was therefore not evidence of anything:
+   * the suite agreed with the code because both were wrong in the same direction. The gateway's
+   * share is credited straight to `HOUSE:AGGREGATOR` by `withdrawalEntries` and was never inside
+   * `feeEarned`, so taking it out here charged the owner for it twice — the file header forbids
+   * exactly this, one account over. Measured on production 2026-09-05: 309,719 reported against
+   * a booked 310,099. */
+  ok("5.2 · ⭐ net retained subtracts levies and bonus cost — NOT the gateway share",
+    w.netRetained === 65_000, `got ${w.netRetained}`);
+  ok("5.2b · ⛔ …and the gateway share is still REPORTED, as a pass-through beside the total",
+    w.aggregatorOut === 5_000,
+    "dropping it would answer the double-subtraction by hiding what the gateway took");
   ok("5.3 · ⛔ bonus cost is its OWN step — never silently netted into GGR",
     w.ggr === 120_000 && w.bonusCost === 20_000,
     "netting it into GGR would flatter the gaming result with money that left");
-  ok("5.4 · ⭐ the identity closes: fee − levies − gateway − bonus = net retained",
-    w.feeEarned - w.leviesOut - w.aggregatorOut - w.bonusCost === w.netRetained);
+  ok("5.4 · ⭐ the identity closes: fee − levies − bonus = net retained",
+    w.feeEarned - w.leviesOut - w.bonusCost === w.netRetained);
   ok("5.5 · a losing period reports a NEGATIVE result rather than a floor of zero",
-    waterfall({ handle: 100, winningsPaid: 500, feeEarned: 0, leviesOut: 0, aggregatorOut: 0, bonusCost: 0 }).ggr === -400);
+    waterfall({ stakeIn: 100, bonusIn: 0, winningsPaid: 500, feeEarned: 0, leviesOut: 0, aggregatorOut: 0, bonusCost: 0 }).ggr === -400);
+  /* ⭐ 0.2 — the handle counts BOTH legs of the pool. `stakeEntries` credits `STAKE_DEBIT` for
+   * the real part and `BONUS_SPEND` for the bonus part, while the payouts from that pool are
+   * counted in full; reading one leg understates GGR by every bonus shilling staked. */
+  ok("5.6 · ⭐ the handle is real stake PLUS bonus stake — the pool is credited twice",
+    w.handle === 1_000_000 && w.stakeIn === 950_000 && w.bonusIn === 50_000,
+    `handle ${w.handle}`);
+  ok("5.7 · ⛔ …and the two legs stay SEPARATELY visible — bonus handle is not real cash",
+    w.stakeIn + w.bonusIn === w.handle && w.bonusIn !== 0,
+    "collapsing them would report promotional turnover as money that came in");
+  ok("5.control · a bonus-free period is unmoved by 5.6 (the split is not vacuous)",
+    waterfall({ stakeIn: 100, bonusIn: 0, winningsPaid: 0, feeEarned: 0, leviesOut: 0, aggregatorOut: 0, bonusCost: 0 }).handle === 100);
 }
 
 /* ═══ §6 · RECONCILIATION HAS NO TOLERANCE ═════════════════════════════════════════════ */
@@ -237,7 +338,7 @@ console.log("\n§7 · ⭐ a game settled before a rate change still reports the 
 console.log("\n§8 · a ledger figure can never be rendered under a rail heading");
 ok("8.1 · the position is stamped `ledger`, out of the same object as its numbers",
   housePosition({
-    accounts: { commission: 1, traLevy: 0, gbtLevy: 0, aggregator: 0 },
+    accounts: { commission: 1, traLevy: 0, gbtLevy: 0, aggregator: 0, rgSuspense: 0, all: {} },
     playerLiability: 0, custodialCash: 1, adjustmentBackedLiability: 0,
   }).source === "ledger",
   "the Selcom float is the only `rail` figure and it is read, never derived");
