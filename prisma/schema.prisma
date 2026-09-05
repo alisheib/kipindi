@@ -605,6 +605,16 @@ enum BonusSource {
 enum BonusGrantStatus {
   ACTIVE // wagering in progress; remainingTzs sits in bonusBalance
   QUEUED // sequential mode §6: waiting for the current bonus to finish before activating
+  /// Held until the player's identity is approved (2026-09-05). Like QUEUED, the amount
+  /// is NOT in bonusBalance and cannot be staked.
+  ///
+  /// ⛔ IT IS NOT QUEUED, AND REUSING QUEUED WOULD HAVE BEEN THE CHEAPER MISTAKE.
+  /// `activateNextQueued` promotes on a completely different trigger (the previous grant
+  /// finishing) and returns early unless `sequentialBonuses` is on — so a KYC hold parked
+  /// in QUEUED would release, or never release, depending on an unrelated config switch.
+  /// The two also say different things to the player: "waiting for your current bonus" is
+  /// not "waiting for us to check your documents", and one status cannot carry both.
+  PENDING_KYC
   FULFILLED // wagering met; remainingTzs converted to real balance
   EXPIRED // expiresAt passed before fulfilment; remainder removed
   CANCELLED // admin/player cancelled; remainder removed

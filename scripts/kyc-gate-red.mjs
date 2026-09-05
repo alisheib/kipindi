@@ -22,8 +22,13 @@
 import { readFileSync, writeFileSync, renameSync, unlinkSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { createHash } from "node:crypto";
+// ⛔ THE MUTATIONS LIVE IN A SIDECAR, not inline here. `test:red-anchors` §3 re-resolves
+// every one of them on every run WITHOUT executing this harness, so a rewritten source line
+// is caught the day it lands instead of the next time somebody runs the fleet — and §4's
+// ceiling of undeclared harnesses may only shrink. The first draft of this file declared
+// them inline, which pushed that count from 67 to 68 and was correctly refused.
+import { MUTATIONS as DEFECTS } from "./anchors/kyc-gate.anchors.mjs";
 
-const GATE = "src/lib/server/kyc-gate.ts";
 const sha = (p) => createHash("sha256").update(readFileSync(p)).digest("hex");
 
 const write = (p, s) => {
@@ -34,60 +39,24 @@ const write = (p, s) => {
   if (readFileSync(p, "utf8") !== s) throw new Error(`read-back mismatch on ${p}`);
 };
 
-/**
- * Each defect makes ONE action answer "eligible" unconditionally. That is precisely the
- * pre-2026-09-05 behaviour for that action, so a green suite means the guard cannot tell
- * the gate from its own absence.
- */
-const DEFECTS = [
-  {
-    name: "DEPOSIT gate removed",
-    find: `  if (kycStatus === "APPROVED") return { eligible: true };`,
-    repl: `  if (action === "DEPOSIT") return { eligible: true };\n  if (kycStatus === "APPROVED") return { eligible: true };`,
-  },
-  {
-    name: "BET gate removed",
-    find: `  if (kycStatus === "APPROVED") return { eligible: true };`,
-    repl: `  if (action === "BET") return { eligible: true };\n  if (kycStatus === "APPROVED") return { eligible: true };`,
-  },
-  {
-    name: "WITHDRAW gate removed",
-    find: `    if (k?.approvedAt) return { eligible: true };`,
-    repl: `    return { eligible: true };\n    if (k?.approvedAt) return { eligible: true };`,
-  },
-  {
-    // 🔴 THE SUBTLE ONE, AND THE WHOLE REASON THE COLUMN EXISTS. Not a missing gate — a
-    // gate asking the WRONG QUESTION. Withdrawal checks current status instead of "was
-    // this account ever approved", which reads as stricter and is the money trap:
-    // a re-verifying player loses access to money they already earned. §3.5 is the only
-    // assertion in the suite that can see this.
-    name: "WITHDRAW asks current status instead of approvedAt (the money trap)",
-    find: `    if (k?.approvedAt) return { eligible: true };`,
-    repl: `    if (kycStatus === "APPROVED") return { eligible: true };`,
-  },
-  {
-    // The other half of the same trap, written into the write path rather than the read.
-    name: "first-approval stamp cleared by startKyc's reset",
-    file: "src/lib/server/kyc-service.ts",
-    find: `    approvedAt: existing?.approvedAt ?? null,`,
-    repl: `    approvedAt: null,`,
-  },
-];
-
 const original = new Map();
-for (const d of DEFECTS) original.set(d.file ?? GATE, readFileSync(d.file ?? GATE, "utf8"));
+for (const d of DEFECTS) original.set(d.file, readFileSync(d.file, "utf8"));
 const shaBefore = new Map([...original.keys()].map((p) => [p, sha(p)]));
 
 let caught = 0, missed = 0;
 for (const d of DEFECTS) {
-  const path = d.file ?? GATE;
+  const path = d.file;
   const src = original.get(path);
-  if (!src.includes(d.find)) {
-    console.log(`SKIP ${d.name} — anchor not found; the harness is stale, which is itself a failure`);
+  // ⛔ AN ANCHOR THAT NO LONGER RESOLVES IS A FAILURE, NOT A SKIP. A stale harness reports
+  // nothing and reads as healthy — the exact rot `test:red-anchors` §3 exists to catch, and
+  // it must not be survivable here either.
+  const hits = src.split(d.from).length - 1;
+  if (hits !== 1) {
+    console.log(`STALE ${d.name} — anchor resolves ${hits}× (need exactly 1); the harness is measuring nothing`);
     missed++;
     continue;
   }
-  write(path, src.replace(d.find, d.repl));
+  write(path, src.replace(d.from, d.to));
   let red = false, output = "";
   try {
     execSync("npm run test:kyc-gate", { stdio: "pipe", encoding: "utf8" });
@@ -97,9 +66,23 @@ for (const d of DEFECTS) {
   } finally {
     write(path, src);
   }
-  const firstFail = output.split("\n").find((l) => l.startsWith("FAIL")) ?? "";
-  if (red) { caught++; console.log(`CAUGHT ${d.name}\n        ↳ ${firstFail.trim()}`); }
-  else { missed++; console.log(`MISSED ${d.name} — the suite stayed GREEN with this gate gone`); }
+  const fails = output.split("\n").filter((l) => l.startsWith("FAIL"));
+  // ⛔ CAUGHT ON ITS *OWN* ASSERTION, not merely caught. A mutation that reddens the suite
+  // via some unrelated check has proved the suite is fragile, not that this defect is
+  // detected — and `withdraw-asks-current-status` is the whole reason that distinction
+  // matters: it is invisible to every assertion except §3.5, so "something went red" would
+  // have let it through if another check happened to be brittle.
+  const onOwn = fails.some((l) => l.includes(d.check));
+  if (red && onOwn) {
+    caught++;
+    console.log(`CAUGHT ${d.name}\n        ↳ ${fails.find((l) => l.includes(d.check)).trim()}`);
+  } else if (red) {
+    missed++;
+    console.log(`WRONG-ASSERTION ${d.name} — suite went red, but NOT on "${d.check}"\n        ↳ ${(fails[0] ?? "").trim()}`);
+  } else {
+    missed++;
+    console.log(`MISSED ${d.name} — the suite stayed GREEN with this defect injected`);
+  }
 }
 
 // ⛔ The tree must come back EXACTLY as it was. A harness that leaves a source file altered

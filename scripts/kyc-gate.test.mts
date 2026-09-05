@@ -216,9 +216,22 @@ section("§4 · the stamp is written once and never cleared");
   // 4b — re-approval must not RE-STAMP. The column records the FIRST time we were
   // satisfied; overwriting it on every approval makes it a duplicate of `reviewedAt` and
   // loses the fact that this player had been trusted before.
-  await reviewKyc({ officerId: "kg_officer", userId: "kg_restart", decision: "APPROVE" } as never)
-    .catch(() => { /* needs a submitted state; the stamp check below is what matters */ });
+  //
+  // 🔴 THE FIRST DRAFT OF THIS CHECK PROVED NOTHING, AND `red:kyc-gate` IS WHAT SAID SO.
+  // It called `reviewKyc(APPROVE)` on a submission `startKyc` had just reset to
+  // IN_PROGRESS — a state `reviewKyc` refuses — and swallowed the refusal in a `.catch()`.
+  // So no approval ever happened, `approvedAt` was trivially unchanged, and the assertion
+  // passed against a mutation that re-stamps on EVERY approval. A test that never reaches
+  // the code it names is the quietest kind of green.
+  // ⛔ The submission is therefore moved to PENDING_REVIEW first, and the approval's own
+  // return value is asserted before the stamp is read.
+  const k2 = (await db.kyc.findByUserId("kg_restart"))!;
+  await db.kyc.upsert({ ...k2, status: "PENDING_REVIEW", submittedAt: now(), updatedAt: now() });
+  const reapproval = await reviewKyc({ officerId: "kg_officer", userId: "kg_restart", decision: "APPROVE" } as never);
+  ok("4.4b · fixture · the re-approval actually happened", reapproval.ok,
+    reapproval.ok ? "" : String((reapproval as { error: string }).error));
   const reapproved = await db.kyc.findByUserId("kg_restart");
+  ok("4.4c · fixture · …and the account really is APPROVED again", reapproved?.status === "APPROVED", String(reapproved?.status));
   ok("4.5 · ★ re-approval did NOT move the first-approval date",
     reapproved?.approvedAt === before, `${String(before)} → ${String(reapproved?.approvedAt)}`);
 }

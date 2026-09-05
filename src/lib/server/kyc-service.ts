@@ -48,6 +48,7 @@ import { sendEmail, sendEmailToUser, kycRejectedHtml, kycApprovedHtml, kycSubmit
 import { resolvePhoneEmail } from "./email-map";
 import { setUserEmail } from "./email-verification";
 import { withLock } from "./locks";
+import { releaseKycHeldGrants } from "./bonus-service";
 import { displayLabel } from "@/lib/display-label";
 
 const BASE_URL = () => process.env.NEXT_PUBLIC_APP_URL || "https://kipindi-production.up.railway.app";
@@ -752,6 +753,18 @@ export async function reviewKyc(opts: {
       if (k.fullName?.trim()) patch.displayName = k.fullName.trim();
       if (Object.keys(patch).length) await db.user.update(userId, patch);
       audit({ category: "KYC", action: "kyc.approved", actorId: officerId, targetType: "User", targetId: userId, payload: { kycId: k.id, priorStatus: u?.status ?? null, nameBackfilled: !!k.fullName?.trim() } });
+      // ⭐ THE MONEY THAT WAS WAITING FOR THIS. Referral and invite bonuses fire during
+      // registration, before anyone has looked at the player, and were held rather than
+      // cancelled so the incentive survives and verifying is worth doing
+      // (`bonus-service.creditBonus`). Released HERE so it lands in the same moment as
+      // the congratulations, not on some later sweep.
+      // ⚠️ AWAITED, unlike the notifications below. This moves money and adjusts
+      // `bonusBalance`; a fire-and-forget release could lose to the redirect that follows
+      // an officer's click, and the player would open a wallet that is still empty.
+      // ⛔ Never fatal: the approval itself has already been written, and refusing to
+      // approve someone because a promotional credit failed would be the wrong trade.
+      try { await releaseKycHeldGrants(userId); }
+      catch (err) { audit({ category: "WALLET", action: "bonus.release_failed", actorId: officerId, targetType: "User", targetId: userId, payload: { error: String(err) } }); }
       notifyKyc(userId, "APPROVED").catch(() => {});
       const greetName = firstName(k.fullName) ?? displayLabel(u ?? { id: userId, displayName: null });
       sendEmailToUser(userId, (email) => ({

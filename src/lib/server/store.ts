@@ -145,7 +145,7 @@ export type StoredWallet = {
 };
 
 export type BonusSource = "ADMIN" | "REFERRAL" | "PROPOSAL" | "INVITE" | "PROMOTION" | "CASHBACK";
-export type BonusGrantStatus = "ACTIVE" | "QUEUED" | "FULFILLED" | "EXPIRED" | "CANCELLED" | "FORFEITED";
+export type BonusGrantStatus = "ACTIVE" | "QUEUED" | "PENDING_KYC" | "FULFILLED" | "EXPIRED" | "CANCELLED" | "FORFEITED";
 
 /**
  * One promotional bonus credit. Lives in Wallet.bonusBalance and is not

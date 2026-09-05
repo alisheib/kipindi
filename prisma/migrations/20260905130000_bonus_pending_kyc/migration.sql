@@ -1,0 +1,24 @@
+-- A BONUS IS HELD UNTIL WE HAVE VERIFIED THE PLAYER — it is not cancelled, and it is not
+-- QUEUED behind another bonus.
+--
+-- Owner record: docs/COMPLIANCE-DECISIONS.md (2026-09-05, Ali — "hold until approval").
+-- Two paths credited a brand-new, unverified account's BONUS WALLET during registration
+-- itself (`invite-service.bindRegistration`, `affiliate-service.payBonus`), and bonus money
+-- is stakeable. So "the player has no money until we validate" was false on the one path
+-- nobody looks at — not deposits, which were already 0 in live mode.
+--
+-- ⛔ WHY NOT REUSE `QUEUED`. Its promoter, `activateNextQueued`, fires on an unrelated
+-- trigger (the previous grant finishing) and returns early unless `sequentialBonuses` is
+-- on. A KYC hold parked there would release — or never release — depending on a config
+-- switch that has nothing to do with identity. The two states also say different things to
+-- a player, and one status cannot carry both meanings.
+--
+-- ⛔ EXPAND ONLY, and additive at that: adding a VALUE to an enum invalidates no existing
+-- row, so there is nothing to backfill. Same one-release rule as 20260821140000 — the DDL
+-- commits inside the NEW container before it serves, and the OLD container never names a
+-- value it cannot produce.
+--
+-- ⚠️ `IF NOT EXISTS` because `ALTER TYPE … ADD VALUE` is not transactional on older
+-- PostgreSQL and a retried migration would otherwise fail on the second attempt.
+
+ALTER TYPE "BonusGrantStatus" ADD VALUE IF NOT EXISTS 'PENDING_KYC';
