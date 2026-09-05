@@ -315,21 +315,25 @@ export default async function HouseGamePage({
               ) : (
                 <ScrollX label="Configuration changes" className="-mx-4 px-4 mt-2">
                   <table className="admin-tbl min-w-[520px]">
-                    <thead><tr><th className="text-left">When</th><th className="text-left">Change</th><th className="text-left">By</th><th className="text-left">Touched a rate?</th></tr></thead>
+                    {/* ⭐ "TOUCHED A RATE?" SECOND — it is the ANSWER to the question this panel exists for
+                        ("when did admin change rates, and did it move this game?"). It was last, and at
+                        360 it scrolled off with the actor while eight identical `config.global.updated`
+                        rows stayed visible, telling the owner nothing he asked. */}
+                    <thead><tr><th className="text-left">When</th><th className="text-left">Touched a rate?</th><th className="text-left">Change</th><th className="text-left">By</th></tr></thead>
                     <tbody>
                       {changes.map((c, i) => (
                         <tr key={`${c.at}-${i}`}>
                           <td className="text-left whitespace-nowrap">{eatDayKey(new Date(c.at).getTime())}</td>
-                          <td className="text-left font-mono">{c.action}</td>
-                          <td className="text-left">{c.actor ? actors.get(c.actor) ?? c.actor : "—"}</td>
                           {/* ⛔ THE RAW PAYLOAD IS NEVER RENDERED — it is an unbounded JSON blob
                               that can carry any setting the console holds. Only whether it
                               touched a rate field, which is the question being asked. */}
-                          <td className="text-left">
+                          <td className="text-left whitespace-nowrap">
                             {c.payload && /"(commissionRate|feeCeilingRate|cashOutFeeRate|traTaxOnCommissionRate|gbtLevyOnCommissionRate|platformFeeRate|operatorFeeRate)"/.test(c.payload)
                               ? "yes"
                               : <span className="text-text-tertiary">no</span>}
                           </td>
+                          <td className="text-left font-mono">{c.action}</td>
+                          <td className="text-left">{c.actor ? actors.get(c.actor) ?? c.actor : "—"}</td>
                         </tr>
                       ))}
                       {changes.length === 0 && (
