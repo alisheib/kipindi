@@ -7,6 +7,7 @@ import { getServerT } from "@/lib/i18n-server";
 import { getEffectiveConfig } from "@/lib/server/market-config";
 import { isChatbotEnabled } from "@/lib/server/ai-controls";
 import { fill, fmtRate, pctNum } from "@/lib/utils";
+import { durationHours } from "@/lib/duration-phrase";
 import { PageContainer } from "@/components/layout/page-container";
 
 export async function generateMetadata() {
@@ -28,7 +29,7 @@ const FAQ_ITEMS = [
 ] as const;
 
 export default async function HelpPage() {
-  const { t } = await getServerT();
+  const { t, locale } = await getServerT();
   // The FAQ quotes the LIVE rates — i.e. what a poll created right now would be
   // priced at. The numbers are interpolated, never written into the copy: a
   // hardcoded "9%" in an FAQ was true the day it shipped and false ever after.
@@ -113,7 +114,7 @@ export default async function HelpPage() {
                       % of the losing side, not a capped commission on the pool. */}
                   {key === "faq1" && cfg.feeModel === "loser-share"
                     ? fill(t.help.faq1aLoser, { pct: pctNum((cfg.platformFeeRate ?? 0) + (cfg.operatorFeeRate ?? 0)) })
-                    : fill(t.help[`${key}a` as keyof typeof t.help], { pct: pctNum(cfg.commissionRate), ceiling: fmtRate(cfg.feeCeilingRate), hours: cfg.objectionWindowHours })}
+                    : fill(t.help[`${key}a` as keyof typeof t.help], { pct: pctNum(cfg.commissionRate), ceiling: fmtRate(cfg.feeCeilingRate), hours: durationHours(locale, cfg.objectionWindowHours) })}
                   {key === "faq5" && ` ${SUPPORT_PHONE()} (${t.common.free}).`}
                 </p>
               </details>

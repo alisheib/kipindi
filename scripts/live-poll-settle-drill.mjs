@@ -44,6 +44,20 @@ const OUTCOME = process.env.OUTCOME ?? "YES";
 // limited to trading & markets access. Moderators are excluded by policy." RBAC working as
 // designed, and the driver was the thing that was wrong.
 const RESOLVER_ROLE = process.env.RESOLVER_ROLE ?? "trading";
+/**
+ * Who saves `/admin/config`. FINANCE is the RIGHT role — `updateGlobalConfigAction` is gated on
+ * `requireStaff("accounting")`, which is exactly the domain a finance officer holds — and it is
+ * the default so the drill keeps documenting the correct authority.
+ *
+ * ⛔ BUT THE FINANCE PERSONA IS REJECTED ON PRODUCTION and has been for some time: its
+ * `.env.qa.local` secret no longer matches the row, and the sign-in lands back on the signed-out
+ * home page. That is a QA-credential problem, not an RBAC one, and it used to leave this drill
+ * unrunnable against the one environment it exists for. `WINDOW_ROLE=admin` is the way through:
+ * ADMIN holds every domain, so the action's own gate is satisfied and the audit row names a real
+ * officer. ⚠️ The audit trail then reads ADMIN rather than FINANCE — say so in the record rather
+ * than letting a reader infer the finance officer performed it.
+ */
+const WINDOW_ROLE = process.env.WINDOW_ROLE ?? "finance";
 const rec = recorder(`LIVE POLL SETTLE DRILL · ${CMD}`);
 
 async function windowCmd() {
@@ -51,8 +65,9 @@ async function windowCmd() {
   const page = await ctx.newPage();
   page.on("response", (r) => { if (r.request().method() === "POST") console.log(`  [POST ${r.status()}] ${r.url().slice(0, 70)}`); });
   try {
-    // ⚠️ FINANCE, not ADMIN — `requireStaff("accounting")` is what guards this action.
-    await login(page, "finance");
+    // ⚠️ `requireStaff("accounting")` is what guards this action — FINANCE by default, and
+    // `WINDOW_ROLE=admin` when that persona's production secret is stale (see the note above).
+    await login(page, WINDOW_ROLE);
     await page.goto(`${BASE}/admin/config`, { waitUntil: "domcontentloaded" });
     await page.waitForSelector("main", { timeout: 45_000 });
 
