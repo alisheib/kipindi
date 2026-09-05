@@ -5921,6 +5921,38 @@ state**, 1,338,504 of players' stakes in escrow, and every ledger entry ever wri
 > landing one atom per commit. Read the block directly below this note before touching
 > `src/app/globals.css`, `src/app/motion.css`, or anything under `src/components/ui/`.
 
+### 🟢 Session 86 (2026-09-05) — IDENTITY BEFORE MONEY: THE GATE SHIPPED, AND A BROWSER FOUND WHAT `tsc` AND `next build` BOTH MISSED
+
+#### ⏭️ **RESUME AT (session 86 · KYC-FIRST is LIVE on `main` — read the THREE OPEN ITEMS before touching identity, deposits, betting or payouts):** 💰 **MONEY POSITION: two additive migrations, no data rewritten, no balance moved.** `20260905120000_kyc_approved_at` (column + backfill) and `20260905130000_bonus_pending_kyc` (enum value) both applied cleanly on production at 14:43 UTC, deploy `c5144fd1`, commit `8ab97bfe`.
+
+🏁 **THE RULE, from the owner on 2026-09-05:** *"He cannot deposit nor withdraw nor play until KYC is verified. He registers and starts pending, he can walk around in the platform until we verify him; he receives his notification and congrats, his state gets updated, then he can freely deposit and withdraw."* The ladder is now **register free → verify identity → everything**. Full record: `docs/COMPLIANCE-DECISIONS.md` (2026-09-05) and the gate matrix in `docs/FLOWS.md` §2, both rewritten rather than contradicted.
+
+⛔ **ONE THIRD OF THIS REVERSES A BOARD INSTRUCTION, AND IT IS DISCLOSED.** Comment #1 (2026-08-19) removed identity as a precondition of **withdrawal**; it is back, as a control *stricter* than instructed. Deposits and staking were never covered by that instruction — §9.4 of the August letter left deposits unbound for an unrelated reason. The new letter is `docs/BOARD-DISCLOSURE-KYC-FIRST.md`, drafted **before** the change reached players. ⛔ Do not "restore" either behaviour from the older document; read the dates.
+
+🔴 **THE ONE RULE A READER WILL DOUBT, AND IT IS THE WHOLE MONEY-SAFETY STORY.** Deposit and betting ask `status === "APPROVED"` — current standing, because both add NEW exposure. **Withdrawal asks `approvedAt != null`** — *has this account EVER satisfied us?* `forceReverifyKyc` moves an APPROVED player back, and that player **holds real money earned under an identity we accepted**; gating their payout on current status would freeze it, which is exactly the harm `BOARD-DISCLOSURE-B-E.md` §6 named. `approvedAt` is set once and **never cleared** — not by force-reverify, not by rejection, not by `startKyc`'s reset of a REJECTED submission (the one rebuild-from-scratch upsert in the codebase).
+
+⭐ **AND THE BROWSER FOUND A SITE-WIDE OUTAGE THAT BOTH GATES MISSED.** `kycGateState()` lived in a `"use client"` file and every SERVER page called it — `AppShell` included, so the blast radius was *every page*. It throws at render. **`tsc` was clean and `next build` PASSED**: the client/server boundary is a runtime contract. It surfaced on the first browser load, during a run that was meant to check button sizes. ⛔ The lesson is the campaign's own: a build is not a render.
+
+⭐ **SIX PLAYER-FACING STRINGS STILL SAID THE OPPOSITE, AND A SOURCE SWEEP HAD MISSED ALL SIX.** `/profile/kyc` said *"Verify your identity to add money, play and cash out"* and, two lines below, *"It is not required in order to withdraw."* Same screen. Also the post-registration flash, the deposit gate's footnote and the public FAQ. ⛔ **Not one contained the ladder phrase I had grepped for** — a sweep finds the sentences written in the words you searched. `test:kyc-copy-truth` now tests the CLAIM in en/sw/zh with controls that must reject the real sentences.
+
+**PROOF, RE-DERIVED THIS SESSION**
+
+| Gate | Result |
+|---|---|
+| `test:kyc-gate` | 58/0 — five KYC states × three money actions, every refusal paired with an acceptance |
+| `red:kyc-gate` | **6 caught, 0 missed**, each on its OWN assertion, tree byte-identical |
+| `qa:kyc-gate` | 92/0 (1 skipped) — every state × every surface, in a browser, en/sw/zh, 360 + 1280 |
+| `qa:kyc-e2e` | 31/0 — register → doors shut → real documents → officer approves → doors open |
+| **LIVE on 50pick.tz** | **9/0** — a real account registered on production holds TZS 0 and is refused at every door |
+| `test:deposit-gate` · `test:kyc-approved-copy` · `test:failure-reasons` · `test:i18n` · `test:kyc` | 67/0 · 44/0 · 348/0 · 1998×3 · 20/0 |
+
+⚠️ **FOUR GUARDS ASSERTED THE OLD RULE AND WERE INVERTED, NOT WEAKENED** — `failure-reasons` §8c, `kyc-approved-copy` §5 (flipped a SECOND time), `deposit-gate` (extended with a precedence section), and `bonus-withdrawable` §6, whose whole job was to stop the withdrawal gate coming back. Each kept its teeth and had them re-aimed.
+
+▶ **THREE THINGS STILL OPEN — none blocks a player, all block "done":**
+① **The production database reset and the QA fleet approvals are DEFERRED by the owner.** Until the reset, any pre-existing unapproved account holding a balance cannot withdraw. On today's test data that is acceptable and deliberate; before real money it must be measured, not assumed — count unapproved players holding a balance or an open position and require **zero**. Every production money drive (`qa:e177`, the bet drives) will fail until the fleet personas are approved: the drives are unverified, not the product.
+② **The officer review queue is now the only route to revenue.** Every registration produces a review item and nothing moves until it clears. `listPendingKyc` was changed from a full-table scan to a filtered query for exactly this reason, but no code fixes an unstaffed queue. The player-facing copy promises *"usually within a day"* — that is now a commitment.
+③ **`DISABLE_ADMIN_TOTP=true` is still set in production** (pre-existing, warned about on every boot). Unrelated to this change, and unchanged by it, but it is the loudest thing in the deploy log and it must be unset before real money — after confirming at least one ADMIN has TOTP enrolled, or the flip locks the owner out of his own console.
+
 ### 🟢 Session 84 (2026-09-05) — THE PHONE FILTER ON BUY & SELL: A DEAD TOKEN, A CONTROL NOBODY SAW, AND FOUR THINGS FOUND BY DRIVING IT
 
 #### ⏭️ **RESUME AT (session 82 · PRESENCE-8 — ⛔ THE PRESENCE PROGRAMME WAS MARKED CLOSED WITH THREE DEFECTS LIVE IN IT):** 💰 **MONEY POSITION: NOT ONE SHILLING MOVED.** No schema, no migration, no server write.
