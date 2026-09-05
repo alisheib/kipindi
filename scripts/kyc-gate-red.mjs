@@ -19,7 +19,7 @@
  * NUL-bearing file — so every "is my edit still there?" check read as REVERTED rather than
  * DESTROYED. Never write a source file in place from a harness.
  */
-import { readFileSync, writeFileSync, renameSync, unlinkSync } from "node:fs";
+import { readFileSync, writeFileSync, renameSync, unlinkSync, existsSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { createHash } from "node:crypto";
 // ⛔ THE MUTATIONS LIVE IN A SIDECAR, not inline here. `test:red-anchors` §3 re-resolves
@@ -28,6 +28,8 @@ import { createHash } from "node:crypto";
 // ceiling of undeclared harnesses may only shrink. The first draft of this file declared
 // them inline, which pushed that count from 67 to 68 and was correctly refused.
 import { MUTATIONS as DEFECTS } from "./anchors/kyc-gate.anchors.mjs";
+// ⛔ THE SAME RESOLVER `test:red-anchors` §3 AUDITS WITH — never a second implementation.
+import { injectDefect } from "./red-anchor.mjs";
 
 const sha = (p) => createHash("sha256").update(readFileSync(p)).digest("hex");
 
@@ -38,6 +40,49 @@ const write = (p, s) => {
   // Read back — a rename that lands on a full disk is still a rename.
   if (readFileSync(p, "utf8") !== s) throw new Error(`read-back mismatch on ${p}`);
 };
+
+/**
+ * 🔴 REFUSE TO START ON A DIRTY TREE, AND REFUSE TO RUN TWICE AT ONCE.
+ *
+ * This harness edits PRODUCT SOURCE and restores it. Two instances overlapping is therefore
+ * not a race that produces a wrong result — it is a race that CORRUPTS THE REPOSITORY: one
+ * run restores its own snapshot over the other's injection, and whatever was in flight is
+ * left behind.
+ *
+ * ⛔ IT HAPPENED. A shell line ending in `&` backgrounded one run while a second was started
+ * in the foreground, and the pair left `return { eligible: true };` sitting at the top of the
+ * WITHDRAW branch — the identity gate on payouts, DISABLED, in the working tree. The suites
+ * kept passing because each restore made the file look plausible. It was caught only because
+ * a mutation then failed on the wrong assertion and the diff was read.
+ *
+ * ⚠️ The pre-existing "0 files left dirty" check cannot see this: it compares each file to
+ * the snapshot THIS run took at startup, and that snapshot was already poisoned.
+ *
+ * So: a lock file, and a comparison against git HEAD before the first injection.
+ */
+const LOCK = "scripts/.kyc-gate-red.lock";
+if (existsSync(LOCK)) {
+  console.error(`REFUSING TO RUN — ${LOCK} exists, so another red drive is in flight.\n` +
+    "Two instances editing the same source WILL leave an injection behind. If you are sure " +
+    "no other run is active, delete the lock file and re-run.");
+  process.exit(1);
+}
+for (const d of DEFECTS) {
+  const head = execSync(`git show HEAD:${d.file}`, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  const disk = readFileSync(d.file, "utf8");
+  // Compare with line endings normalised — the repo checks out CRLF on Windows while
+  // `git show` yields LF, and that difference is not a modification.
+  if (head.replace(/\r\n/g, "\n") !== disk.replace(/\r\n/g, "\n")) {
+    console.error(`REFUSING TO RUN — ${d.file} differs from git HEAD.\n` +
+      "This harness restores files to the state it found them in, so starting from an " +
+      "uncommitted edit would BAKE that edit in as the baseline. Commit or stash first.");
+    process.exit(1);
+  }
+}
+writeFileSync(LOCK, `${process.pid} ${new Date().toISOString()}\n`);
+const releaseLock = () => { try { unlinkSync(LOCK); } catch { /* already gone */ } };
+process.on("exit", releaseLock);
+for (const sig of ["SIGINT", "SIGTERM"]) process.on(sig, () => { releaseLock(); process.exit(1); });
 
 const original = new Map();
 for (const d of DEFECTS) original.set(d.file, readFileSync(d.file, "utf8"));
@@ -50,13 +95,23 @@ for (const d of DEFECTS) {
   // ⛔ AN ANCHOR THAT NO LONGER RESOLVES IS A FAILURE, NOT A SKIP. A stale harness reports
   // nothing and reads as healthy — the exact rot `test:red-anchors` §3 exists to catch, and
   // it must not be survivable here either.
-  const hits = src.split(d.from).length - 1;
-  if (hits !== 1) {
-    console.log(`STALE ${d.name} — anchor resolves ${hits}× (need exactly 1); the harness is measuring nothing`);
+  //
+  // 🔴 AND IT MUST USE THE SHARED RESOLVER, NOT `String.split`. My own `split(d.from)` matched
+  // while the file happened to hold LF — the state my editor left it in — and reported BOTH
+  // multi-line anchors as resolving 0× the moment `git checkout` restored the repo's CRLF.
+  // The mutations were fine; the matcher could not see across line endings. `red-anchors` §3
+  // re-resolves these same anchors with `resolveAnchor`, and its own header warns that a
+  // SECOND implementation here "could certify an anchor the harness would then fail to find".
+  // That is exactly what happened, in the other direction.
+  let mutated;
+  try {
+    mutated = injectDefect(src, d.from, d.to);
+  } catch (err) {
+    console.log(`STALE ${d.name} — ${err.message}; the harness is measuring nothing`);
     missed++;
     continue;
   }
-  write(path, src.replace(d.from, d.to));
+  write(path, mutated);
   let red = false, output = "";
   try {
     // ⚠️ `maxBuffer` IS LOAD-BEARING, and its absence produced the most misleading result

@@ -250,3 +250,4 @@ scripts/live/ops/.cfg-snapshots/
 # node_modules (a temp-dir copy dies on MODULE_NOT_FOUND, which reads as a caught defect
 # and is not one). Removed in the harness `finally`; ignored so a killed run leaves nothing.
 .cn-red-tmp/
+scripts/.kyc-gate-red.lock
