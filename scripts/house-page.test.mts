@@ -239,8 +239,8 @@ console.log("\n§10 · ⭐ a tab may hide a detail, never a state");
 {
   const p = src[PAGE];
   const rail = p.indexOf("<Tabs");
-  const strict = p.indexOf("Free cash · strict");
-  const exAdj = p.indexOf("Free cash · funded");
+  const strict = p.indexOf("Strict free cash");
+  const exAdj = p.indexOf("Funded free cash");
   /* ⚠️ AND NOTHING ABOVE THE RAIL MAY BE TAB-CONDITIONAL. `indexOf` alone passes a version
    * that wraps the band in `{tab === "position" && …}`, which hides the state on two tabs
    * out of three while still "rendering it above the rail". */
@@ -342,6 +342,49 @@ console.log("\n§14 · ⭐ who can open the owner's book — asked of the real d
   ok("14.5 · ⛔ …and the ROUTE is registered, so it does not fall closed to `ops` (Owner-only)",
     /\["\/admin\/house", "accounting"\]/.test(roles),
     "unregistered, FINANCE/COMPLIANCE/AUDITOR lose the page and the sidebar link disappears");
+}
+
+/* ═══ §15 · ⭐ THE FAILURE STATE, EXECUTED ═════════════════════════════════════════════
+ *
+ * ⛔ **THIS IS THE ONLY STATE THAT CAN BE PROVEN WITHOUT A DATABASE, AND IT IS THE STATE THE
+ * PAGE MUST GET RIGHT.** Every reader returns `null` when `prisma()` does — the suite runs with
+ * no `DATABASE_URL`, so calling them here IS the no-database render's input. If any of them
+ * returned `0`, `[]` or a `{}` instead, the page would print a confident zero for a read that
+ * never happened, and that is A-5's whole subject.
+ *
+ * ⚠️ A screenshot of the empty page would prove less: it cannot distinguish "the read failed
+ * and we said so" from "the read returned zero and we printed it".
+ */
+console.log("\n§15 · ⭐ with no database, every reader returns null — not 0, not []");
+{
+  const L = await import("../src/lib/server/house-ledger.ts");
+  const { prisma } = await import("../src/lib/server/prisma.ts");
+  ok("15.control · this suite really is running WITHOUT a database (else §15 proves nothing)",
+    prisma() === null, "a DATABASE_URL here would make every assertion below vacuous");
+
+  const start = new Date(0);
+  const end = new Date();
+  const reads: Array<[string, unknown]> = [
+    ["readHouseAccounts", await L.readHouseAccounts()],
+    ["readCustodialCash", await L.readCustodialCash()],
+    ["readPlayerLiability", await L.readPlayerLiability()],
+    ["readAdjustmentBackedLiability", await L.readAdjustmentBackedLiability()],
+    ["readWaterfall", await L.readWaterfall(start, end)],
+    ["readGameRows", await L.readGameRows(start, end)],
+    ["readUnattributedFees", await L.readUnattributedFees(start, end)],
+    ["readFeeBySource", await L.readFeeBySource(start, end)],
+    ["readGameTotals", await L.readGameTotals("mkt_nope")],
+    ["readGameEntries", await L.readGameEntries("mkt_nope")],
+    ["countGameEntryLines", await L.countGameEntryLines("mkt_nope")],
+    ["readRateChangesBefore", await L.readRateChangesBefore(end)],
+  ];
+  for (const [name, value] of reads) {
+    ok(`15.x · ${name}() is null with no database`, value === null,
+      `got ${JSON.stringify(value)} — a zero here is a fabricated figure on the owner's book`);
+  }
+  ok("15.1 · ⭐ …so the page's composition yields NO position at all",
+    (reads[0][1] === null && reads[1][1] === null),
+    "and `accounts && cash && …` therefore renders every tile `unavailable`");
 }
 
 /* ═══ FOOTER ══════════════════════════════════════════════════════════════════════════ */

@@ -18,7 +18,7 @@ import { browser, loginOnce, login, BASE, SHOT, bodyText, measureClipping, descr
 
 const WIDTHS = [360, 768, 1280, 1920];
 const TABS = [
-  { id: "position", q: "", must: ["free cash · strict", "house accounts", "custodial cash", "selcom payout float"] },
+  { id: "position", q: "", must: ["strict free cash", "house accounts", "custodial cash", "selcom payout float"] },
   { id: "earnings", q: "?tab=earnings", must: ["gross gaming revenue", "net retained", "levies", "bonus cost", "fee earned, by source"] },
   { id: "games", q: "?tab=games", must: ["variance", "by product", "rate applied", "net retained"] },
 ];
@@ -55,6 +55,19 @@ async function assertFits(page, w, tag) {
   const bad = clipped.filter((c) => !/^Will |Up or Down|Gold |Bitcoin /.test(c.text));
   ok(`${tag} · nothing clips its own content except the deliberately truncated titles`,
     bad.length === 0, describeClipping(bad));
+
+  /* ⭐ AND THE KPI TILES ARE CHECKED AT ZERO TOLERANCE, because the shared `measureClipping`
+   * allows `scrollWidth > w + 1` — and "Free cash · strict" came in at content 127 against a
+   * 126px box, a one-pixel ellipsis on the two most important labels on the page that BOTH
+   * this drive and the screenshot-reader nearly missed. A 1px clip is still a clipped label. */
+  const tiles = await page.evaluate(() =>
+    [...document.querySelectorAll("main .grid")].slice(0, 2)
+      .flatMap((g) => [...g.querySelectorAll("span,div")])
+      .filter((el) => !el.children.length && (el.textContent || "").trim())
+      .filter((el) => el.scrollWidth > el.clientWidth && el.clientWidth > 12)
+      .map((el) => `"${(el.textContent || "").trim().slice(0, 30)}" ${el.clientWidth}<${el.scrollWidth}`));
+  ok(`${tag} · ⭐ no KPI tile clips its label or its figure, to the pixel`,
+    tiles.length === 0, tiles.join(" · "));
 }
 
 const { b, ctx: seed } = await browser();
@@ -89,11 +102,11 @@ for (const w of WIDTHS) {
     const kpi = await page.evaluate(() =>
       [...document.querySelectorAll("main .grid")].slice(0, 2).map((g) => g.innerText).join("\n"));
     ok(`${tag} · ⭐ both free-cash tiles are above the rail — on THIS tab`,
-      /Free cash · strict/i.test(kpi) && /Free cash · funded/i.test(kpi),
+      /Strict free cash/i.test(kpi) && /Funded free cash/i.test(kpi),
       "a solvency line a tab can hide is a solvency line nobody reads");
     ok(`${tag} · …and each appears exactly once in the bands`,
-      (kpi.match(/Free cash · strict/gi) ?? []).length === 1
-      && (kpi.match(/Free cash · funded/gi) ?? []).length === 1);
+      (kpi.match(/Strict free cash/gi) ?? []).length === 1
+      && (kpi.match(/Funded free cash/gi) ?? []).length === 1);
     /* ⭐ THE REAL PROPERTY: neither figure has been substituted for the other. On production the
      * strict line is NEGATIVE and the funded one is positive, so if they ever print the same
      * string somebody has quietly swapped in the flattering one. */
@@ -142,6 +155,10 @@ for (const w of WIDTHS) {
       });
       const before = await productCells();
       await page.locator('[data-filter-rail] a[href*="product=UPDOWN"]').click();
+      /* ⚠️ `waitForLoadState("networkidle")` IS NOT ENOUGH AFTER A CLIENT-SIDE NAVIGATION, and
+       * reading the table before the RSC payload lands reports the filter broken when it is
+       * not — this drive did exactly that once. Wait for the URL the click is FOR. */
+      await page.waitForURL(/product=UPDOWN/, { timeout: 20_000 });
       await page.waitForLoadState("networkidle");
       const after = await productCells();
       ok(`${tag} · the unfiltered book lists BOTH products`,
@@ -213,14 +230,18 @@ if (ok("drill-down · the BY GAME table links to a per-game book", !!firstGameHr
   const page = await ctx.newPage();
   try {
     await login(page, "fleet:07");
-    await page.goto(`${BASE}/admin/house`, { waitUntil: "networkidle" });
+    /* ⚠️ `domcontentloaded`, NOT `networkidle`: a refused session is REDIRECTED, and the login
+     * page it lands on polls, so `networkidle` never settles and the drive times out — reporting
+     * a refusal that worked as a failure. What is being read is where the browser ended up. */
+    await page.goto(`${BASE}/admin/house`, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(2_000);
     const text = await page.evaluate(() => document.body.innerText);
     const url = page.url();
     ok("refusal · ⭐ a signed-in PLAYER never reaches the owner's book",
       !/\/admin\/house/.test(url) || /Admin or Compliance/i.test(text) || /do not have access/i.test(text),
       `landed on ${url}`);
     ok("refusal · …and no house figure reached them",
-      !/Free cash · strict/i.test(text) && !/Net retained/i.test(text),
+      !/Strict free cash/i.test(text) && !/Net retained/i.test(text),
       JSON.stringify(text.slice(0, 160)));
     await page.screenshot({ path: `${SHOT}/house-refused-player.png`, fullPage: true });
   } catch (e) {

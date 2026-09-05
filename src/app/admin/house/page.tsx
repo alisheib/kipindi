@@ -282,11 +282,11 @@ export default async function AdminHousePage({ searchParams }: { searchParams: P
               money with no deposit behind it. ⛔ A false alarm is as serious as a missed one —
               an owner who learns this line cries wolf stops reading it, and then it cannot
               warn him on the day it matters. So the explanation ships BESIDE the alarm. */}
-          <AdminKpi label="Free cash · strict" sw="Fedha huru"
+          <AdminKpi label="Strict free cash" sw="Fedha huru"
             value={position ? formatTzsCompact(position.freeHouseCash) : ""} unavailable={position === null}
             tone={position && position.freeHouseCash < 0 ? "danger" : undefined}
             delta="cash − all owed" deltaDir="flat" />
-          <AdminKpi label="Free cash · funded" sw="Bila marekebisho"
+          <AdminKpi label="Funded free cash" sw="Bila marekebisho"
             value={position ? formatTzsCompact(position.freeHouseCashExAdjustments) : ""} unavailable={position === null}
             delta="ex admin-set balances" deltaDir="flat" />
         </KpiGrid>
@@ -370,7 +370,11 @@ export default async function AdminHousePage({ searchParams }: { searchParams: P
               <ScrollX label="House accounts" className="-mx-4 px-4">
                 <table className="admin-tbl min-w-[560px]">
                   <thead>
-                    <tr><th className="text-left">Account</th><th className="text-left">What it holds</th><th className="text-right">Balance</th></tr>
+                    {/* ⭐ BALANCE SECOND, NOT LAST. At 360 this card's inner width is 318px and the table
+                        is wider, so the LAST column sits off-screen until the reader scrolls
+                        sideways INSIDE the card. Putting the note last means what scrolls away is
+                        the courtesy text, never the money. */}
+                    <tr><th className="text-left">Account</th><th className="text-right">Balance</th><th className="text-left">What it holds</th></tr>
                   </thead>
                   <tbody>
                     {/* ⛔ EVERY `HOUSE:%` ACCOUNT, read as a group. A named list forgets an
@@ -379,8 +383,8 @@ export default async function AdminHousePage({ searchParams }: { searchParams: P
                     {Object.entries(accounts.all).map(([acct, amount]) => (
                       <tr key={acct}>
                         <td className="text-left font-mono whitespace-nowrap">{acct}</td>
-                        <td className="text-left text-text-secondary">{ACCOUNT_NOTE[acct] ?? "—"}</td>
                         <td className="tabular text-right"><Amt v={amount} /></td>
+                        <td className="text-left text-text-secondary">{ACCOUNT_NOTE[acct] ?? "—"}</td>
                       </tr>
                     ))}
                     {Object.keys(accounts.all).length === 0 && (
@@ -396,7 +400,9 @@ export default async function AdminHousePage({ searchParams }: { searchParams: P
           <AdminCard title="Custodial cash, by counterparty" sw="Fedha kwa mtoa huduma">
             {cash === null ? <AdminLoadError what="custodial cash" /> : (
               <ScrollX label="Custodial cash by counterparty" className="-mx-4 px-4">
-                <table className="admin-tbl min-w-[480px]">
+                {/* ⚠️ 300, not 480 — a two-column table has no reason to push its money column off a
+                    360px screen. Measured: this card's inner width is 318px. */}
+                <table className="admin-tbl min-w-[300px]">
                   <thead><tr><th className="text-left">Counterparty</th><th className="text-right">Cash held</th></tr></thead>
                   <tbody>
                     {cash.byAccount.map((r) => (
@@ -435,7 +441,7 @@ export default async function AdminHousePage({ searchParams }: { searchParams: P
             {position === null || cash === null ? <AdminLoadError what="the position" /> : (
               <>
                 <ScrollX label="Position derivation" className="-mx-4 px-4">
-                  <table className="admin-tbl min-w-[520px]">
+                  <table className="admin-tbl min-w-[300px]">
                     <thead><tr><th className="text-left">Line</th><th className="text-right">Amount</th></tr></thead>
                     <tbody>
                       <tr><td className="text-left">Custodial cash (through a rail)</td><td className="tabular text-right"><Signed v={cash.railBacked} /></td></tr>
@@ -578,7 +584,7 @@ export default async function AdminHousePage({ searchParams }: { searchParams: P
                   sides are shown adding up rather than left to disagree.
                 </p>
                 <ScrollX label="Per-game reconciliation" className="-mx-4 px-4">
-                  <table className="admin-tbl min-w-[520px]">
+                  <table className="admin-tbl min-w-[320px]">
                     <thead><tr><th className="text-left">Line</th><th className="text-right">Amount</th></tr></thead>
                     <tbody>
                       <tr><td className="text-left">Fee attributed to a game</td><td className="tabular text-right"><Amt v={recon.perGameFee} /></td></tr>
