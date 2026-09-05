@@ -78,15 +78,25 @@ export type MoneyEligibility =
  * on 2026-08-20 with a reason tied to Board comment #1 (`failure-reasons.ts`), and
  * re-using a retired token for a differently-scoped gate is how the next reader
  * inherits the wrong history.
+ *
+ * ⛔ EACH LITERAL SITS IN A REAL `reason:` POSITION, AND THAT IS NOT COSMETIC. This map IS
+ * the emitter — the money paths return `reason: gate.reason`, one level of indirection
+ * away — and `test:failure-reasons` §9d proves a registry row is reachable by finding the
+ * token in a `reason:` property somewhere under `src/`. Written as a bare
+ * `Record<Status, FailureReason>` the tokens sit in VALUE positions, §9d reports all four
+ * rows as copy no player can ever see, and the honest answer is not to widen the guard —
+ * it is that the seam should say `reason:` where it means "this is the reason". The guard
+ * was right; the first draft of this file was not.
  */
-const REASON_BY_STATUS: Record<KycGateStatus, FailureReason> = {
-  NOT_STARTED: "kyc_not_verified",
-  IN_PROGRESS: "kyc_not_verified",
-  PENDING_REVIEW: "kyc_pending_review",
-  ADDITIONAL_INFO_REQUIRED: "kyc_more_info",
-  REJECTED: "kyc_rejected",
-  APPROVED: "kyc_not_verified", // unreachable: APPROVED never refuses. Kept total so a
-                                // new KycStatus member is a TYPE error, not a silent pass.
+const REFUSAL_BY_STATUS: Record<KycGateStatus, { reason: FailureReason }> = {
+  NOT_STARTED: { reason: "kyc_not_verified" },
+  IN_PROGRESS: { reason: "kyc_not_verified" },
+  PENDING_REVIEW: { reason: "kyc_pending_review" },
+  ADDITIONAL_INFO_REQUIRED: { reason: "kyc_more_info" },
+  REJECTED: { reason: "kyc_rejected" },
+  // Unreachable: an APPROVED account never refuses. Kept so the record stays TOTAL — a new
+  // `KycStatus` member then becomes a TYPE error here, not a silent pass at a money gate.
+  APPROVED: { reason: "kyc_not_verified" },
 };
 
 /**
@@ -109,9 +119,9 @@ export async function assertKycForMoney(userId: string, action: MoneyAction): Pr
     // ⛔ `approvedAt`, NOT `status`. See the header — this is the branch that decides
     // whether a re-verified player can reach money they already earned.
     if (k?.approvedAt) return { eligible: true };
-    return { eligible: false, kycStatus, reason: REASON_BY_STATUS[kycStatus] };
+    return { eligible: false, kycStatus, reason: REFUSAL_BY_STATUS[kycStatus].reason };
   }
 
   if (kycStatus === "APPROVED") return { eligible: true };
-  return { eligible: false, kycStatus, reason: REASON_BY_STATUS[kycStatus] };
+  return { eligible: false, kycStatus, reason: REFUSAL_BY_STATUS[kycStatus].reason };
 }

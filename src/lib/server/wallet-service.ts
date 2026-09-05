@@ -22,6 +22,7 @@ import { isMaintenanceMode, maintenanceMessage } from "./platform-config";
 import { rateCheckAsync } from "./rate-limit";
 import { DepositSchema, AdminDepositSchema, WithdrawSchema } from "./validators";
 import { checkDepositLimit, isLockedOut } from "./responsible-gambling";
+import { assertKycForMoney } from "./kyc-gate";
 import type { FailureReason, FailureDetail } from "@/lib/failure-reasons";
 import { paymentMethodName } from "@/lib/payment-providers";
 import { notifyDeposit, notifyWithdraw, notifyAdminsAmlReview } from "./notification-service";
@@ -107,40 +108,30 @@ export async function deposit(
   if (!wallet) return { ok: false, error: "Wallet not found.", code: "NOT_FOUND" };
   if (wallet.status !== "ACTIVE") return { ok: false, error: "Wallet frozen.", code: "SUSPENDED" };
 
-  // ── EMAIL-VERIFICATION GATE (the middle rung of the trust ladder) ───────────
-  // browse free → VERIFY EMAIL TO DEPOSIT → KYC to withdraw.
+  // ══ THE THREE DOORS ON THE MONEY-IN PATH, IN THE ORDER THEY MUST BE ASKED ══════
   //
-  // Why deposit and not sign-up: blocking sign-up costs conversion for no safety
-  // gain, whereas the first deposit is the first moment a real inbox actually
-  // matters — that address is where the receipt goes, and it is the evidence we
-  // rely on in a chargeback or a regulator dispute. Withdrawal stays KYC-gated
-  // (a heavier check for money leaving).
+  //     RG lockout  →  identity  →  email  →  (lock) caps + SOF
   //
-  // Deliberately placed AFTER the wallet/lockout checks and BEFORE the reserving
-  // lock: a blocked deposit must not create a PROCESSING row, consume a deposit
-  // cap, or reach the gateway. `depositor` is already loaded above.
+  // 🔴 THE ORDER IS THE INTERFACE, AND IT WAS WRONG BEFORE 2026-09-05. The email gate
+  // used to stand HERE, above the lockout — and its own comment claimed it was placed
+  // *"AFTER the wallet/lockout checks"*, which the code it sat in had never done. So a
+  // SELF-EXCLUDED player with an unconfirmed address was told to go and confirm their
+  // email: a protective control the player set for their own safety, losing to a
+  // trust-ladder step, on the money-in path. Nothing was measuring the sequence, so the
+  // comment and the code disagreed silently for as long as both existed.
   //
-  // ⚠️ Admins are NOT exempt. The bypass above only relaxes caps/SOF for test
-  // funding off-production; the ownership signal is cheap to satisfy and an
-  // exemption here is exactly how a gate rots.
-  if (!depositor?.emailVerifiedAt) {
-    audit({
-      category: "COMPLIANCE",
-      action: "deposit.email_unverified_blocked",
-      actorId: userId, targetType: "User", targetId: userId,
-      payload: { hasEmail: !!depositor?.email },
-    });
-    return {
-      ok: false,
-      code: "EMAIL_UNVERIFIED",
-      error: depositor?.email
-        ? "Confirm your email address before your first deposit. We sent a link to your inbox — open it, then come back."
-        : "Add and confirm your email address before your first deposit.",
-    };
-  }
+  // ⛔ A RESPONSIBLE-GAMBLING CONTROL OUTRANKS EVERY OTHER DOOR. It is the player's own
+  // decision, it carries an end date they are entitled to be told, and it is the one
+  // refusal that must never be dressed up as an errand. `test:deposit-gate` §C pins this
+  // sequence so it cannot drift back.
+  //
+  // ⛔ AND THE UI MUST RENDER ITS GATES IN THIS SAME ORDER (`/wallet/deposit`). A player
+  // who fixes the thing the screen asked for and is then refused for a different thing
+  // has been told two contradictory stories on one surface — campaign finding E-5.
 
-  // Self-exclusion / cooling-off lockout — enforced even for admin test-funding
-  // so a self-excluded player cannot receive deposits regardless of role.
+  // ── 1 · Self-exclusion / cooling-off lockout ────────────────────────────────
+  // Enforced even for admin test-funding, so a self-excluded player cannot receive
+  // deposits regardless of role.
   const lockout = await isLockedOut(userId);
   if (lockout.locked) {
     await audit({ category: "COMPLIANCE", action: "deposit.lockout_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { reason: lockout.reason, until: lockout.until } });
@@ -156,6 +147,66 @@ export async function deposit(
       return { ok: false, error: `You are in a cooling-off period until ${until}.`, code: "SUSPENDED", reason: "cooling_off", detail: { until } };
     }
     return { ok: false, error: `You are in a self-exclusion period until ${until}.`, code: "SUSPENDED", reason: "self_excluded", detail: { until } };
+  }
+
+  // ── 2 · IDENTITY GATE (owner ruling, Ali, 2026-09-05) ───────────────────────
+  // The ladder is now: register free → VERIFY IDENTITY → deposit, play, withdraw.
+  // Whole rationale — including why this contradicts no Board instruction, and why
+  // withdrawal asks a different question — in `src/lib/server/kyc-gate.ts`.
+  //
+  // ⛔ ABOVE THE EMAIL GATE ON PURPOSE. Both must be satisfied to deposit, but this is
+  // the larger step and the one an OFFICER must act on, and the KYC flow collects and
+  // prompts for the email along the way. Leading with the smaller errand would tell a
+  // brand-new player to fix their inbox, then — once they had — reveal a second door
+  // with a queue behind it. The deposit screen shows BOTH as a checklist so neither is
+  // a surprise; this order only decides which token a refused submit carries.
+  //
+  // ⚠️ Admins are NOT exempt, for the same reason the email gate does not exempt them:
+  // the off-production bypass above relaxes caps and SOF for test funding, and an
+  // exemption on an identity control is exactly how a gate rots.
+  const kycGate = await assertKycForMoney(userId, "DEPOSIT");
+  if (!kycGate.eligible) {
+    audit({
+      category: "COMPLIANCE",
+      action: "deposit.kyc_blocked",
+      actorId: userId, targetType: "User", targetId: userId,
+      payload: { kycStatus: kycGate.kycStatus, reason: kycGate.reason },
+    });
+    // `code: "INVALID"` — API and audit truth, as everywhere else in this file. The
+    // `reason` is what the player's screen reads; the English below is audit prose and
+    // must never be rendered raw (`error-copy.ts` §7).
+    return { ok: false, error: `Identity not verified (${kycGate.kycStatus}).`, code: "INVALID", reason: kycGate.reason };
+  }
+
+  // ── 3 · EMAIL-VERIFICATION GATE ─────────────────────────────────────────────
+  // Why deposit and not sign-up: blocking sign-up costs conversion for no safety
+  // gain, whereas the first deposit is the first moment a real inbox actually
+  // matters — that address is where the receipt goes, and it is the evidence we
+  // rely on in a chargeback or a regulator dispute.
+  //
+  // ⭐ IT SURVIVES THE IDENTITY GATE RATHER THAN BEING FOLDED INTO IT (Ali, 2026-09-05:
+  // *"keep both… he can confirm email before or after, order doesn't matter"*). The two
+  // run INDEPENDENTLY: a player waiting on our review queue can clear their inbox in the
+  // meantime, and neither step blocks the other from being completed.
+  //
+  // Placed BEFORE the reserving lock: a blocked deposit must not create a PROCESSING
+  // row, consume a deposit cap, or reach the gateway. `depositor` is already loaded above.
+  //
+  // ⚠️ Admins are NOT exempt.
+  if (!depositor?.emailVerifiedAt) {
+    audit({
+      category: "COMPLIANCE",
+      action: "deposit.email_unverified_blocked",
+      actorId: userId, targetType: "User", targetId: userId,
+      payload: { hasEmail: !!depositor?.email },
+    });
+    return {
+      ok: false,
+      code: "EMAIL_UNVERIFIED",
+      error: depositor?.email
+        ? "Confirm your email address before your first deposit. We sent a link to your inbox — open it, then come back."
+        : "Add and confirm your email address before your first deposit.",
+    };
   }
 
   // ── Atomic reservation: RG deposit-cap + SOF gate + PROCESSING row (audit C4) ──
@@ -1388,29 +1439,66 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
     };
   }
 
-  // ⛔ IDENTITY IS RECORDED HERE, IT IS NO LONGER ENFORCED — and the read stays for
-  // exactly that reason. Identity verification stopped being a precondition of
-  // withdrawal on the Gaming Board's instruction (comment #1, relayed by the owner
-  // 2026-08-19). Deleting this read would leave the platform unable to answer the one
-  // question the regulator asks: "which payouts went to unverified accounts?"
+  // ══ IDENTITY IS ENFORCED HERE AGAIN — 2026-09-05, AND IT IS A DISCLOSED REVERSAL ══
   //
-  // What replaced the refusal is a RECORD, in two parts:
-  //   1. `kycStatus` on `withdraw.initiated`, for EVERY payout — so the verified and
-  //      the unverified are distinguishable in the ledger, and only by that stamp.
-  //   2. a COMPLIANCE fact when the payer is unverified, emitted AFTER the txn exists
-  //      and carrying `txnId`, so it can be joined to the payout it explains. It is
-  //      awaited, like every other money/compliance write on this path.
+  // ⛔ READ THE DATES BEFORE YOU CHANGE THIS. From 2026-08-20 this was a RECORD and not
+  // a refusal: identity verification stopped being a precondition of withdrawal on the
+  // Gaming Board's instruction (comment #1, relayed by the owner 2026-08-19;
+  // `docs/BOARD-DISCLOSURE-B-E.md` §1). On 2026-09-05 the owner ruled that a player may
+  // not deposit, bet OR withdraw until we approve their identity — a control STRICTER
+  // than the Board required, taken deliberately and re-disclosed to them rather than
+  // slipped in. `docs/COMPLIANCE-DECISIONS.md` carries both entries, in order.
+  // ⛔ Do not "restore" either behaviour from the older document. Read the dates.
   //
-  // ⚠️ WHAT REMAINS, because a future reader will ask: the AML ≥ TZS 1,000,000
-  // two-officer hold (`payments.ts`, which contains no identity reference at all and
-  // therefore cannot be weakened by this change), the wallet freeze below, the
-  // per-provider kill-switch, the gateway floor, and the payout pause — the last of
-  // which lives in the ROUTE (`wallet/withdraw/actions.ts`), not here. After this
-  // change `w.status !== "ACTIVE"` is the ONLY account-level control inside this
-  // function: there is no `user.status` check and no self-exclusion check on the
-  // withdraw path. Full statement: `docs/BOARD-DISCLOSURE-B-E.md` §5-§6.
+  // 🔴 IT ASKS `approvedAt`, NOT `status`, AND THAT IS THE WHOLE MONEY-SAFETY STORY.
+  // `forceReverifyKyc` moves an APPROVED player to ADDITIONAL_INFO_REQUIRED, and that
+  // player HOLDS REAL MONEY earned under an identity we accepted. Asking current status
+  // here would freeze it — precisely the harm `BOARD-DISCLOSURE-B-E.md` §6 recorded when
+  // it noted that force-reverify had STOPPED being a money control. Deposits and bets ask
+  // current status, because those add NEW exposure; taking out what you already have is a
+  // different question. Same reason a deposit authorised while approved still credits
+  // when its Selcom callback lands after a rejection. Full rationale: `kyc-gate.ts`.
+  //
+  // ⚠️ THE STAMP SURVIVES THE GATE, and deleting it would be the easy mistake now that a
+  // refusal exists. `kycStatus` still rides on `withdraw.initiated` for EVERY payout: the
+  // regulator's question is "which payouts went to unverified accounts?", and after this
+  // change the honest answer is "none, and here is the field that proves it". A stamp that
+  // only appeared while it could be non-APPROVED would make its own absence ambiguous.
+  //
+  // ⚠️ WHAT ELSE REMAINS: the AML ≥ TZS 1,000,000 two-officer hold (`payments.ts`, which
+  // contains no identity reference at all), the wallet freeze below, the per-provider
+  // kill-switch, the gateway floor, and the payout pause — the last of which lives in the
+  // ROUTE (`wallet/withdraw/actions.ts`), not here. There is still no `user.status` check
+  // and no self-exclusion check on the withdraw path; that predates this change and is
+  // unaffected by it.
   const kyc = await db.kyc.findByUserId(userId);
   const kycStatus = kyc?.status ?? "NOT_STARTED";
+
+  const withdrawGate = await assertKycForMoney(userId, "WITHDRAW");
+  if (!withdrawGate.eligible) {
+    // ⛔ REFUSED BEFORE THE HOLD, for the same reason the destination check is. Everything
+    // below this line moves money; refusing after it would leave a player debited for a
+    // payout that was never allowed to leave. Nothing has moved when this returns.
+    audit({
+      category: "COMPLIANCE",
+      action: "withdraw.kyc_blocked",
+      actorId: actor,
+      targetType: "User",
+      targetId: userId,
+      payload: {
+        kycStatus: withdrawGate.kycStatus,
+        reason: withdrawGate.reason,
+        everApproved: false,
+        onBehalfOf: userId,
+        operatorInitiated,
+        amount: parse.data.amount,
+        // The authority of record, in the row itself — the same discipline the
+        // `withdraw.unverified_payer` fact used, pointed at the decision that replaced it.
+        instruction: "Owner ruling 2026-09-05 · identity precedes deposit, play and withdrawal",
+      },
+    });
+    return { ok: false, error: `Identity not verified (${withdrawGate.kycStatus}).`, code: "INVALID", reason: withdrawGate.reason };
+  }
 
   const amount = parse.data.amount;
   // The withdrawal fee — the ONLY thing a player is charged here. Admin-tunable,
@@ -1520,9 +1608,21 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
     return { ok: true, data: { txnId: dup.id, status: dup.status, fee: f, net: Math.abs(dup.amount) - f } };
   }
 
-  // ── THE COMPLIANCE RECORD THAT REPLACED THE GATE ───────────────────────────
-  // A FACT, not a refusal: this payout is going to an account that has not proved its
-  // identity, the Board instructed that on 2026-08-19, and here is the instance.
+  // ── THE COMPLIANCE RECORD BESIDE THE GATE ──────────────────────────────────
+  //
+  // ⭐ THIS USED TO BE THE RECORD THAT *REPLACED* THE GATE, AND IT DID NOT BECOME DEAD
+  // CODE WHEN THE GATE CAME BACK — IT BECAME NARROWER AND MORE INTERESTING. From
+  // 2026-09-05 an account with no approval at all is refused above, before any money
+  // moves. So the only way to reach this line with a non-APPROVED status is the one
+  // population the gate deliberately lets through: a player who WAS approved
+  // (`approvedAt` is set) and is CURRENTLY under re-verification — `forceReverifyKyc`
+  // moved them to ADDITIONAL_INFO_REQUIRED, or a later review rejected them, while they
+  // still hold money earned under the identity we accepted.
+  //
+  // ⛔ THAT IS EXACTLY THE POPULATION A REGULATOR ASKS ABOUT, so the fact is worth more
+  // now than when it covered everybody. Deleting it as "unreachable" would be wrong
+  // twice: it is reachable, and it is the only place the platform records a payout made
+  // while an identity was in doubt.
   //
   // Placed HERE for three reasons, each of which was a way to get it wrong:
   //   · AFTER the txn exists and carrying `txnId` — an event that cannot be joined to
@@ -1546,15 +1646,21 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
       targetId: txnId,
       payload: {
         kycStatus,
+        // ⭐ ALWAYS TRUE ON THIS PATH SINCE 2026-09-05, AND STAMPED ANYWAY. It is what
+        // separates "we paid someone we never checked" from "we paid someone we checked
+        // once and are re-checking" — and an auditor must not have to infer which of
+        // those they are reading from the absence of a field.
+        everApproved: true,
+        firstApprovedAt: kyc?.approvedAt ?? null,
         onBehalfOf: userId,
         operatorInitiated,
         amount,
         net,
         provider: parse.data.provider,
         // The authority of record, in the row itself. An auditor reading this event
-        // should not have to be handed a separate document to learn why it is not a
-        // refusal — and a future engineer should not "fix" it back into one.
-        instruction: "TZ Gaming Board comment #1, relayed by the owner 2026-08-19",
+        // should not have to be handed a separate document to learn why this payout was
+        // ALLOWED while the identity was in doubt.
+        instruction: "Owner ruling 2026-09-05 · withdrawal asks whether the account was EVER approved, so re-verification never traps money already earned",
       },
     });
   }

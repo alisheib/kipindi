@@ -25,6 +25,7 @@ import { emit } from "./event-bus";
 import { spendBonusLocked, recordWageringLocked, reverseWagering, reverseWageringLocked, refundBonusToActive, refundBonusLocked, expireActiveGrants, type BonusAllocation } from "./bonus-service";
 import { notifyBonusFulfilled } from "./notification-service";
 import { isLockedOut, checkLossLimit, checkSessionTimeLimit } from "./responsible-gambling";
+import { assertKycForMoney } from "./kyc-gate";
 import { rateCheck } from "./rate-limit";
 // The storage half of the criterion-translation rule. ⛔ Defence in depth: even a
 // caller that skipped the action's validation cannot write the English into a
@@ -1032,6 +1033,39 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
       u.status === "SELF_EXCLUDED" ? "Self-excluded (status set without a live RG timer) — betting is disabled." :
       "Cooled off (status set without a live RG timer) — betting is paused.";
     return { ok: false, error: blockedMsg, code: "SUSPENDED", reason: "account_blocked" as const };
+  }
+
+  // ── IDENTITY GATE (owner ruling, Ali, 2026-09-05) ──────────────────────────────────
+  // A player may not stake until we have approved their identity. Until this shipped,
+  // `PENDING_KYC` could bet freely and `auth/register/actions.ts` said so in as many
+  // words — *"a new player is PENDING_KYC but can already bet"*. Whole rationale, and
+  // why withdrawal asks a different question, in `src/lib/server/kyc-gate.ts`.
+  //
+  // ⛔ IT SITS *BELOW* THE RG AND ACCOUNT-STATUS BLOCKS AND *ABOVE* THE MARKET READ, and
+  // both halves are deliberate:
+  //   · below, so a self-excluded or cooled-off player is told about THEIR OWN break —
+  //     which carries an end date they are entitled to — rather than being sent off on
+  //     an identity errand. A protective control outranks a trust-ladder one, always.
+  //   · above, so a refused stake never loads a market, never touches `stakeBoundsFor`,
+  //     never reaches the wallet, and cannot consume an admission slot's work.
+  //
+  // ⭐ ONE GATE COVERS BOTH PRODUCTS. Up & Down stakes come through the SAME
+  // `buyPositionAction` → `buyPosition` (`use-quick-bet.ts`), and `updown-service.ts`
+  // never debits a wallet on its own. There is no second stake path to forget.
+  const kycGate = await assertKycForMoney(userId, "BET");
+  if (!kycGate.eligible) {
+    audit({
+      category: "COMPLIANCE",
+      action: "bet.kyc_blocked",
+      actorId: userId,
+      targetType: "User",
+      targetId: userId,
+      payload: { kycStatus: kycGate.kycStatus, reason: kycGate.reason, marketId: opts.marketId },
+    });
+    // The English is audit prose. The `reason` is what the player's screen reads — and on
+    // this path it reaches a MODAL, whose heading and tone both key off it
+    // (`updown-bet-errors.ts`). ⛔ Never render this sentence raw.
+    return { ok: false, error: `Identity not verified (${kycGate.kycStatus}).`, code: "INVALID", reason: kycGate.reason };
   }
 
   const market = await marketStore.get(opts.marketId);

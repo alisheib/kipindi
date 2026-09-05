@@ -54,6 +54,25 @@ async function fundedUser(id: string, balance: number): Promise<void> {
     id: `wal_${id}`, userId: id, balance, pending: 0, hold: 0, bonusBalance: 0,
     currency: "TZS", status: "ACTIVE", createdAt: now(), updatedAt: now(),
   } as StoredWallet);
+  // 🔴 APPROVED KYC IS PART OF "FUNDED" FROM 2026-09-05, AND LEAVING IT OUT DID NOT MAKE
+  // THIS FILE FAIL HONESTLY — IT MADE IT MEASURE THE WRONG GATE. Identity now precedes
+  // the stake-bounds check in `buyPositionInner`, so an unverified fixture turned §1.8's
+  // "over-max is refused with `stake_above_max`" into "…refused with `kyc_not_verified`":
+  // three assertions still red, none of them about stake bounds any more, and §1.10's
+  // "the refusals above are not blanket" quietly proving nothing at all.
+  // ⛔ This is the fixture catching up with the product, NOT the gate being relaxed for
+  // the suite. The refusal itself is proven — deliberately, against its own unverified
+  // fixtures — in `test:kyc-gate`.
+  await db.kyc.upsert({
+    id: `kyc_${id}`, userId: id, status: "APPROVED", rejectReason: null, rejectNote: null,
+    idType: "NIDA", idNumber: `199001011${String(seq).padStart(11, "0")}`, idExpiry: null,
+    idVerifiedAt: now(), fullName: "Fixture Player", dob: "1990-01-01", documents: [],
+    reviewerId: null, reviewedAt: now(), submittedAt: now(),
+    // The column the WITHDRAW arm of the gate reads. A fixture approved without it is a
+    // player who can bet and cannot be paid — a state the product never produces.
+    approvedAt: now(),
+    createdAt: now(), updatedAt: now(),
+  });
 }
 
 // ── §1 · the acceptance criterion, driven ────────────────────────────────────

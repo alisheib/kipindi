@@ -46,6 +46,11 @@ const KYC_PAGE_RAW = read("../src/app/profile/kyc/page.tsx");
 const DEPOSIT_RAW = read("../src/app/wallet/deposit/page.tsx");
 const WALLET = read("../src/lib/server/wallet-service.ts");     // the enforcement, not the page
 const MARKET = read("../src/lib/server/market-service.ts");
+// The identity seam itself (2026-09-05). `GATE` answers WHICH question each money action
+// asks; `KYC_SERVICE` is where the first-approval stamp is written and preserved. Both are
+// money-safety surfaces in their own right, so both are read here rather than inferred.
+const GATE = read("../src/lib/server/kyc-gate.ts");
+const KYC_SERVICE = read("../src/lib/server/kyc-service.ts");
 const RAIL_RAW = read("../src/app/admin/kyc/[id]/kyc-decision-rail.tsx");
 const KYC_PAGE = stripComments(KYC_PAGE_RAW);
 const DEPOSIT = stripComments(DEPOSIT_RAW);
@@ -148,26 +153,53 @@ ok("an unreadable gate defaults to accepting, not to a claimed pause",
 // cannot happen silently.
 section("5 · the ladder the copy describes");
 
-ok("the deposit gate is still email verification", /const emailVerified = !!user\?\.emailVerifiedAt;/.test(DEPOSIT));
-ok("…and it renders the email gate instead of the form", /!emailVerified \?[\s\S]{0,80}EmailVerifyGate/.test(DEPOSIT));
-ok("the deposit page does NOT gate on KYC approval",
-  !/kycApproved/.test(DEPOSIT),
-  "if this fires, KYC now unlocks deposits too and the burst may understate what was unlocked");
+// 🔴 INVERTED AGAIN 2026-09-05 — SECOND TIME, OPPOSITE DIRECTION, SAME DISCIPLINE.
+// On 2026-08-20 this section was flipped to prove the withdrawal identity gate was GONE
+// (Board comment #1). The owner has now ruled that identity precedes deposit, play AND
+// withdrawal — a control stricter than the Board required, disclosed rather than slipped
+// in (`docs/COMPLIANCE-DECISIONS.md`). So the assertions MOVE a second time. They do not
+// go away: on the money path, at the exact moment behaviour changes, is when the platform
+// can least afford to have no proof either way.
+// ⛔ The dates are the point. Anyone reading only one of the two entries will "fix" this
+// file back to the other one.
+ok("the deposit page gates on identity", /kycEligible|kycApproved/.test(DEPOSIT),
+  "the deposit form must not be reachable by an unverified player");
+ok("…and it still gates on email verification too", /const emailVerified = !!user\?\.emailVerifiedAt;/.test(DEPOSIT),
+  "Ali 2026-09-05: keep both, running independently — neither folded into the other");
 
 // The page is presentation; the SERVICE is enforcement. Pin the real thing, because
 // that is what makes the claim true or false.
-ok("🔴 the deposit SERVICE enforces email verification, not KYC",
-  /if \(!depositor\?\.emailVerifiedAt\)/.test(WALLET));
-// 🔴 INVERTED 2026-08-20, NOT RELAXED. This asserted that the withdraw SERVICE enforces
-// KYC APPROVED. It stopped doing so on the Gaming Board's instruction (comment #1, relayed
-// by the owner 2026-08-19), so the assertion had to MOVE, not go away: deleting it would
-// have left the platform with no proof either way, on the money path, at the exact moment
-// the behaviour changed. Three things are pinned instead — the gate is ABSENT, the identity
-// read SURVIVES, and the record that replaced the gate is actually emitted.
 const WALLET_CODE = stripComments(WALLET);
-ok("🔴 the withdraw SERVICE no longer refuses on identity",
-  !/kyc\?\.status !== "APPROVED"/.test(WALLET_CODE) && !/withdraw\.kyc_blocked/.test(WALLET_CODE),
-  "the withdrawal identity gate is back — docs/BOARD-DISCLOSURE-B-E.md is then false to the Board");
+ok("🔴 the deposit SERVICE enforces identity AND email",
+  /assertKycForMoney\(userId, "DEPOSIT"\)/.test(WALLET_CODE) && /if \(!depositor\?\.emailVerifiedAt\)/.test(WALLET_CODE));
+// ⛔ ORDER, NOT JUST PRESENCE. A responsible-gambling break outranks every trust-ladder
+// door: a self-excluded player must be told about their OWN break, which carries an end
+// date, not sent off on an identity errand. Before 2026-09-05 the email gate sat ABOVE
+// the lockout check while its own comment claimed it sat below — nothing measured the
+// sequence, so the code and its comment disagreed silently for as long as both existed.
+{
+  const iLock = WALLET_CODE.indexOf("deposit.lockout_blocked");
+  const iKyc = WALLET_CODE.indexOf('assertKycForMoney(userId, "DEPOSIT")');
+  const iMail = WALLET_CODE.indexOf("deposit.email_unverified_blocked");
+  ok("🔴 …in the order RG lockout → identity → email",
+    iLock > 0 && iKyc > iLock && iMail > iKyc,
+    `lockout@${iLock} kyc@${iKyc} email@${iMail}`);
+}
+ok("🔴 the withdraw SERVICE refuses on identity again",
+  /assertKycForMoney\(userId, "WITHDRAW"\)/.test(WALLET_CODE) && /withdraw\.kyc_blocked/.test(WALLET_CODE),
+  "the gate is missing — every 'what approval unlocks' string on the player's screen is then false");
+// 🔴 THE HALF THAT IS EASY TO GET WRONG, AND THE ONLY REASON MONEY IS NOT TRAPPED.
+// Withdrawal asks whether the account was EVER approved, not whether it is approved NOW.
+// `forceReverifyKyc` moves an APPROVED player to ADDITIONAL_INFO_REQUIRED while they hold
+// real money earned under an identity we accepted; asking current status would freeze it.
+ok("🔴 …asking `approvedAt`, NEVER the current status",
+  /if \(k\?\.approvedAt\) return \{ eligible: true \}/.test(stripComments(GATE))
+  && !/status === "APPROVED"[\s\S]{0,120}WITHDRAW/.test(stripComments(GATE)),
+  "gate the payout on current status and a re-verified player is locked out of their own money");
+ok("🔴 …and the first-approval stamp is never cleared",
+  /approvedAt: k\.approvedAt \?\? now/.test(stripComments(KYC_SERVICE))
+  && /approvedAt: existing\?\.approvedAt \?\? null/.test(stripComments(KYC_SERVICE)),
+  "re-stamping on re-approval, or dropping it in startKyc's reset, re-opens the money trap");
 ok("🔴 …but it STILL READS identity, because the record depends on it",
   /db\.kyc\.findByUserId\(userId\)/.test(WALLET_CODE) && /kycStatus\s*=\s*kyc\?\.status/.test(WALLET_CODE),
   "without this read the platform cannot answer 'which payouts went to unverified accounts?'");
@@ -187,9 +219,35 @@ ok("🔴 …and an unverified payer produces an AWAITED compliance fact carrying
 // ⭐ CONTROLLED, not assumed: with comments stripped this still goes RED for a
 // `db.kyc.findByUserId` read AND for `u.status === "PENDING_KYC"` joining the blocked-status
 // branch — the two ways play could actually become identity-gated. It lost reach over prose only.
-ok("play is not gated on identity at all",
-  !/kyc/i.test(stripComments(MARKET)),
-  "market-service carries no KYC reference; if it gains one, every 'what approval unlocks' string moves");
+// 🔴 INVERTED 2026-09-05. Until this date `PENDING_KYC` could stake freely and
+// `auth/register/actions.ts` said so in as many words. Play is now identity-gated, so the
+// assertion flips from "carries no KYC reference" to "refuses, and refuses in the right
+// PLACE". Presence alone would be satisfied by a gate that never fires.
+// ⭐ The stripComments() discipline stays for the reason recorded above: on 2026-08-27 one
+// word of prose in an unrelated repair reddened this suite.
+{
+  const MARKET_CODE = stripComments(MARKET);
+  ok("🔴 play IS gated on identity",
+    /assertKycForMoney\(userId, "BET"\)/.test(MARKET_CODE) && /bet\.kyc_blocked/.test(MARKET_CODE),
+    "an unverified player can stake — the approval burst then over-promises nothing, it under-states everything");
+  // ⛔ BELOW the account-status block, ABOVE the market read. Below, so a self-excluded
+  // player hears about their own break rather than an identity errand. Above, so a refused
+  // stake never loads a market or reaches the wallet.
+  //
+  // ⚠️ SCOPED TO `buyPositionInner` FIRST, AND THE UNSCOPED DRAFT FAILED AGAINST CORRECT
+  // CODE. `marketStore.get(opts.marketId)` appears in an EARLIER function in this file, so
+  // a whole-file `indexOf` reported the market being loaded at 4107 — before a gate at
+  // 18791 — and called a right answer wrong. An ordering assertion has to be made inside
+  // the one function whose ordering it is talking about.
+  const fnStart = MARKET_CODE.indexOf("async function buyPositionInner");
+  const body = fnStart >= 0 ? MARKET_CODE.slice(fnStart) : "";
+  const iBlocked = body.indexOf('reason: "account_blocked"');
+  const iKyc = body.indexOf('assertKycForMoney(userId, "BET")');
+  const iMarket = body.indexOf("await marketStore.get(opts.marketId)");
+  ok("🔴 …after the RG/status block and before the market is loaded",
+    fnStart > 0 && iBlocked > 0 && iKyc > iBlocked && iMarket > iKyc,
+    `fn@${fnStart} blocked@${iBlocked} kyc@${iKyc} market@${iMarket}`);
+}
 
 // ── 7 · The officer is told the same truth as the player (E-9) ──────────────
 section("7 · the officer's confirm dialog");

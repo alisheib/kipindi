@@ -342,15 +342,24 @@ export const REASONS: Record<FailureReason, ReasonSpec> = {
   // "Betting unavailable" — which, over a body reading "verify your identity to play", is
   // the exact loss-cap defect that map was written to fix. Four reasons, four title rows.
   //
-  // ⚠️ SEVERITY IS NOT UNIFORM, ON PURPOSE. Three of these the player can act on, so they
-  // are `warning` — docs/RULES.md §2.9: *"warning = THE PLAYER CAN FIX IT, and their money
-  // did not move"*. `kyc_pending_review` is `info`: nothing is wrong, we are simply not
-  // finished, and colouring our own review queue as the player's problem would be a lie
-  // told in red on a money screen.
-  kyc_not_verified:     { severity: "warning", channel: "modal",  key: "errKycNotVerified" },
-  kyc_pending_review:   { severity: "info",    channel: "modal",  key: "errKycPendingReview" },
-  kyc_more_info:        { severity: "warning", channel: "modal",  key: "errKycMoreInfo" },
-  kyc_rejected:         { severity: "warning", channel: "modal",  key: "errKycRejected" },
+  // ⚠️ ALL FOUR ARE `error`, AND MY FIRST PASS GOT THIS WRONG — §6.2 caught it.
+  // "Warning" reads like the right word for something the player can go and fix, and three
+  // of these ARE eventually fixable by them. But this file's own definition is narrower:
+  // *"warning — THE PLAYER CAN FIX IT, and their money did not move"* versus *"error — a
+  // genuine fault, OR A HARD BLOCK THEY CANNOT LIFT THEMSELVES"*. A player cannot approve
+  // their own identity; only an officer can. Every one of these is therefore a hard block,
+  // and §6.2 exists precisely to stop a "fixable" label being attached to a modal.
+  //
+  // ⛔ SEVERITY DOES NOT DECIDE THE MODAL'S COLOUR. That would make `kyc_pending_review` —
+  // our own review queue — arrive as a red `danger` crest with an ✗ and
+  // `role="alertdialog"`, an emergency about nothing the player did. Tone is chosen
+  // separately, by reason, in `MODAL_TONE_BY_REASON` (`updown-bet-errors.ts`), for exactly
+  // the argument `MODAL_TITLE_BY_REASON` already makes one screen over: severity answers
+  // *how loud*, which is a real and separate question from *whose decision was this*.
+  kyc_not_verified:     { severity: "error",   channel: "modal",  key: "errKycNotVerified" },
+  kyc_pending_review:   { severity: "error",   channel: "modal",  key: "errKycPendingReview" },
+  kyc_more_info:        { severity: "error",   channel: "modal",  key: "errKycMoreInfo" },
+  kyc_rejected:         { severity: "error",   channel: "modal",  key: "errKycRejected" },
 
   name_invalid:         { severity: "warning", channel: "inline", key: "errNameInvalid" },
   avatar_type:          { severity: "warning", channel: "inline", key: "errAvatarType" },

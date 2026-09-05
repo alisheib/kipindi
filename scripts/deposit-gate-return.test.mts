@@ -28,7 +28,20 @@ const ok = (label: string, cond: boolean, extra?: string) => {
 const now = () => new Date().toISOString();
 let seq = 0;
 
-async function mkUser(id: string, opts: { verified: boolean; email?: string | null; role?: string }): Promise<void> {
+/**
+ * ⛔ `kyc` DEFAULTS TO APPROVED, AND THE DEFAULT IS THE INTERESTING PART.
+ *
+ * From 2026-09-05 identity is checked BEFORE email on the deposit path. Every fixture in
+ * PART A is about the EMAIL gate, so each one needs to be past the identity gate or it
+ * never reaches the door under test — an unverified default turned all eleven email
+ * assertions into KYC refusals, including *"verified email → deposit accepted"*, which
+ * then proved the opposite of its own name.
+ *
+ * ⚠️ A test fixture that cannot reach the gate it is named after is worse than a failing
+ * one: it goes green the moment somebody "fixes" the expectation. PART C below drives the
+ * identity gate deliberately, with `kyc` set to each refusing state.
+ */
+async function mkUser(id: string, opts: { verified: boolean; email?: string | null; role?: string; kyc?: "APPROVED" | "NOT_STARTED" | "PENDING_REVIEW" | "ADDITIONAL_INFO_REQUIRED" | "REJECTED" }): Promise<void> {
   await db.user.create({
     id,
     phoneE164: `+25578${String(++seq).padStart(7, "0")}`,
@@ -45,6 +58,23 @@ async function mkUser(id: string, opts: { verified: boolean; email?: string | nu
     id: `wal_${id}`, userId: id, balance: 0, pending: 0, hold: 0,
     currency: "TZS", status: "ACTIVE", createdAt: now(), updatedAt: now(),
   } as never);
+  const kycStatus = opts.kyc ?? "APPROVED";
+  // `NOT_STARTED` writes NO row at all — that is what a brand-new account really looks
+  // like, and defaulting a missing row to "fine" is the exact hole the gate exists to
+  // close. Writing a row that merely SAYS NOT_STARTED would test a state the product
+  // does not produce at sign-up.
+  if (kycStatus !== "NOT_STARTED") {
+    await db.kyc.upsert({
+      id: `kyc_${id}`, userId: id, status: kycStatus, rejectReason: null, rejectNote: null,
+      idType: "NIDA", idNumber: `199001011${String(seq).padStart(11, "0")}`, idExpiry: null,
+      idVerifiedAt: now(), fullName: "Test Player", dob: "1990-01-01", documents: [],
+      reviewerId: null, reviewedAt: now(), submittedAt: now(),
+      // Only an APPROVED fixture carries the first-approval stamp. The re-verification
+      // case — approved once, currently not — is built explicitly in PART C.
+      approvedAt: kycStatus === "APPROVED" ? now() : null,
+      createdAt: now(), updatedAt: now(),
+    });
+  }
 }
 
 const txnsFor = async (uid: string) => (await db.txn.findByUser(uid)).length;
@@ -221,6 +251,116 @@ const ref = seededTxn.providerRef!;
   ok("FAILED credits nothing", (await db.wallet.findByUserId("usr_ret_failed"))!.balance === 0);
   ok("FAILED still shows the reference so the player can quote it to support",
     out.txn?.providerRef === "dep_declined");
+}
+
+// ═══ PART C — THE IDENTITY GATE, AND THE ORDER THE DOORS ARE ASKED IN ═══════
+//
+// Owner ruling, Ali, 2026-09-05: no deposit until we approve the player's identity.
+// PART A proves the email door. This proves the identity door AND — the half that has no
+// other home — that the two are asked in the right order, after the responsible-gambling
+// break. Rationale for all of it: `src/lib/server/kyc-gate.ts`.
+
+// C1 — each refusing state is refused, with its OWN reason, and leaves NO trace.
+// ⛔ FOUR STATES, NOT ONE. "Unverified" is four different sentences with four different
+// next actions; a single `kyc_not_verified` for all of them is the E-232 shape — one
+// token standing in for four meanings, so the player is told the wrong next step three
+// times out of four.
+{
+  const CASES: { id: string; kyc: "NOT_STARTED" | "PENDING_REVIEW" | "ADDITIONAL_INFO_REQUIRED" | "REJECTED"; reason: string }[] = [
+    { id: "usr_kyc_none",    kyc: "NOT_STARTED",              reason: "kyc_not_verified" },
+    { id: "usr_kyc_pending", kyc: "PENDING_REVIEW",           reason: "kyc_pending_review" },
+    { id: "usr_kyc_more",    kyc: "ADDITIONAL_INFO_REQUIRED", reason: "kyc_more_info" },
+    { id: "usr_kyc_rej",     kyc: "REJECTED",                 reason: "kyc_rejected" },
+  ];
+  for (const c of CASES) {
+    // `verified: true` — the email door is OPEN, so anything refused here was refused on
+    // identity and nothing else.
+    await mkUser(c.id, { verified: true, kyc: c.kyc });
+    const before = await txnsFor(c.id);
+    const r = await deposit(c.id, { provider: "MPESA", amount: 5_000, msisdn: "712345678" });
+    ok(`C1.${c.kyc} · deposit refused`, !r.ok);
+    ok(`C1.${c.kyc} · …carrying reason "${c.reason}"`,
+      !r.ok && (r as { reason?: string }).reason === c.reason,
+      !r.ok ? String((r as { reason?: string }).reason) : "accepted");
+    // The three facts PART A pins for the email gate, on the new door. A refusal that
+    // still created a row would consume a deposit cap and leave a PROCESSING txn for the
+    // reconcile sweep to puzzle over.
+    ok(`C1.${c.kyc} · …and left NO transaction behind`, (await txnsFor(c.id)) === before);
+    ok(`C1.${c.kyc} · …and credited nothing`, (await db.wallet.findByUserId(c.id))!.balance === 0);
+  }
+}
+
+// C2 — THE POSITIVE CONTROL. Without this, every assertion above is satisfied by a
+// `deposit()` that refuses everybody.
+{
+  await mkUser("usr_kyc_ok", { verified: true, kyc: "APPROVED" });
+  const r = await deposit("usr_kyc_ok", { provider: "MPESA", amount: 5_000, msisdn: "712345678" });
+  ok("C2 · ★ an APPROVED player still deposits — the gate is not a blanket refusal", r.ok, r.ok ? "" : (r as { error: string }).error);
+}
+
+// C3 — ADMINS ARE NOT EXEMPT. Same rule PART A applies to the email door, same reason:
+// the off-production bypass relaxes caps and SOF for test funding, and an exemption on an
+// identity control is exactly how a gate rots.
+{
+  for (const role of ["ADMIN", "COMPLIANCE", "MODERATOR"]) {
+    await mkUser(`usr_kyc_${role}`, { verified: true, role, kyc: "NOT_STARTED" });
+    const r = await deposit(`usr_kyc_${role}`, { provider: "MPESA", amount: 5_000, msisdn: "712345678" });
+    ok(`C3 · ${role} with no identity is ALSO blocked`, !r.ok, r.ok ? "DEPOSITED" : "");
+  }
+}
+
+// C4 — ⛔ PRECEDENCE: A RESPONSIBLE-GAMBLING BREAK OUTRANKS BOTH DOORS.
+//
+// 🔴 THIS IS THE ONE THAT HAD NO GUARD AND WAS ALREADY WRONG. Before 2026-09-05 the email
+// gate sat ABOVE the lockout check while its own comment claimed it sat *"AFTER the
+// wallet/lockout checks"* — so a SELF-EXCLUDED player with an unconfirmed address was sent
+// off to go and confirm their email. Nothing measured the sequence, so the code and the
+// comment disagreed silently for as long as both existed.
+//
+// A break is the player's own protective decision and it carries an end date they are
+// entitled to be told. Being handed an errand instead is the worst available answer on
+// the responsible-gambling path — it reads as an operator problem and it invites them
+// back. Both other doors must lose to it.
+// ⚠️ COOLING-OFF, NOT SELF-EXCLUSION, AND THE FIRST DRAFT USED THE WRONG ONE. `selfExclude`
+// also FREEZES THE WALLET (`responsible-gambling.ts` — `db.wallet.update(..., FROZEN)`), so
+// a self-excluded player is stopped by the `wallet.status !== "ACTIVE"` check several lines
+// ABOVE the lockout branch, and never reaches the doors this section is about. The draft
+// asserted `reason === "self_excluded"` and got `undefined` — it was measuring the wallet
+// freeze while claiming to measure precedence. `coolOff` sets the user status and leaves the
+// wallet ACTIVE, so it is the instrument that actually exercises the ordering.
+{
+  const { coolOff } = await import("../src/lib/server/responsible-gambling.ts");
+  // Neither other door is open: no identity, no confirmed address. If precedence is
+  // wrong, this refusal comes back as an identity or email errand instead of the break.
+  await mkUser("usr_rg_wins", { verified: false, kyc: "NOT_STARTED" });
+  await coolOff("usr_rg_wins", "24h");
+  const r = await deposit("usr_rg_wins", { provider: "MPESA", amount: 5_000, msisdn: "712345678" });
+  ok("C4 · a player on a break is refused", !r.ok);
+  ok("C4 · ★ …told about THEIR BREAK, not sent on an identity or email errand",
+    !r.ok && (r as { reason?: string }).reason === "cooling_off",
+    !r.ok ? String((r as { reason?: string }).reason) : "accepted");
+  ok("C4 · …and the refusal carries the END DATE the break promised them",
+    !r.ok && !!(r as { detail?: { until?: string } }).detail?.until);
+}
+
+// C5 — ⚠️ WHAT ACTUALLY STOPS A SELF-EXCLUDED DEPOSIT, RECORDED BECAUSE IT SURPRISED ME.
+// It is not the lockout branch: `selfExclude` freezes the wallet, and `wallet.status !==
+// "ACTIVE"` is checked first. The refusal is therefore correct and immediate — but it
+// carries `code: "SUSPENDED"` and NO `reason`, so `error-copy.ts` renders its generic
+// *"This service is temporarily paused. Try again shortly."* to a player whose own
+// protective choice is what stopped them. That is E-232's exact shape on the deposit path,
+// it PRE-DATES this change, and it is pinned here so it is a known, measured fact rather
+// than a surprise — the fix belongs with the wallet-frozen reason token, not with this gate.
+{
+  const { selfExclude } = await import("../src/lib/server/responsible-gambling.ts");
+  await mkUser("usr_rg_se", { verified: true, kyc: "APPROVED" });
+  await selfExclude("usr_rg_se", "6m");
+  const r = await deposit("usr_rg_se", { provider: "MPESA", amount: 5_000, msisdn: "712345678" });
+  ok("C5 · a self-excluded player is refused (by the wallet freeze)", !r.ok);
+  ok("C5 · …and it is NOT an identity or email errand — the doors below still lose to it",
+    !r.ok && (r as { reason?: string }).reason !== "kyc_not_verified"
+          && (r as { code?: string }).code !== "EMAIL_UNVERIFIED",
+    !r.ok ? `${(r as { code?: string }).code}/${(r as { reason?: string }).reason}` : "accepted");
 }
 
 console.log(`\ndeposit-gate-return: ${pass} passed, ${fail} failed`);

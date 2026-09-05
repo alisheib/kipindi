@@ -72,12 +72,32 @@ const MODAL_TITLE_BY_REASON: Partial<Record<FailureReason, keyof UdErrDict>> = {
 };
 
 /**
- * Registry `severity` → `OperationResultModal` variant. The two vocabularies share three
- * members by construction (`Severity` = info | warning | error; `OperationVariant` adds
- * `success`, which no refusal may ever be). ⛔ A refusal is NEVER `success` — gold is
- * earned money, `failure-reasons.ts` §6.
+ * Which TONE a `modal`-channel refusal wears — keyed on the REASON, and deliberately NOT
+ * on the severity.
+ *
+ * ⭐ SAME ARGUMENT AS `MODAL_TITLE_BY_REASON` ABOVE, ONE FIELD OVER: severity answers
+ * *how loud, and can the player lift it themselves*. It cannot also answer *whose
+ * decision was this*. Every modal-channel reason in the registry is severity `error` —
+ * including `kyc_pending_review`, correctly, because the player genuinely cannot lift it
+ * (only an officer can approve them). Mapping error→danger everywhere would then paint
+ * OUR OWN REVIEW QUEUE as a red crest with an ✗ glyph and `role="alertdialog"`: an
+ * emergency, about nothing the player did wrong. They submitted everything asked of them.
+ *
+ * ⛔ DEFAULT IS `danger`, and that is the safe direction: a refusal nobody has classified
+ * reads as a hard failure rather than as reassurance. Only reasons that are ORDINARY
+ * PROGRESS get softened, and only by being named here.
+ * ⛔ NEVER `success` — gold is earned money (`failure-reasons.ts` §6).
  */
-const SEVERITY_VARIANT = { error: "danger", warning: "warning", info: "info" } as const;
+const MODAL_TONE_BY_REASON: Partial<Record<FailureReason, "danger" | "warning" | "info">> = {
+  // Nothing is wrong: we have their documents and we have not finished looking.
+  kyc_pending_review: "info",
+  // The player has a specific, do-able next step. Amber says "your move" without
+  // claiming a fault.
+  kyc_more_info: "warning",
+  // `kyc_not_verified` and `kyc_rejected` keep `danger`: one is a wall they have not
+  // started climbing, the other is a decision that went against them. Both are honest
+  // in red.
+};
 
 /** How the surface must present the refusal (§5 decision matrix). */
 export type UdBetFailure =
@@ -162,10 +182,11 @@ export function udBetErrorCopy(
       // ⛔ THE HEADING COMES FROM THE REASON, NOT THE SEVERITY — `MODAL_TITLE_BY_REASON`
       // above records what titling by severity did to the loss cap.
       const titleKey = (f.reason && MODAL_TITLE_BY_REASON[f.reason]) ?? "udErrSuspendedTitle";
-      // ⛔ THE TONE COMES FROM THE REGISTRY TOO. See the `variant` note on UdBetFailure:
+      // ⛔ THE TONE IS CHOSEN BY REASON TOO. See the `variant` note on UdBetFailure:
       // hard-wiring `danger` here painted `kyc_pending_review` — our own review queue —
-      // as the player's failure.
-      return { kind: "blocked", title: m[titleKey], body: f.body, variant: SEVERITY_VARIANT[f.severity] };
+      // as the player's failure. Unclassified reasons keep `danger`.
+      const tone = (f.reason && MODAL_TONE_BY_REASON[f.reason]) ?? "danger";
+      return { kind: "blocked", title: m[titleKey], body: f.body, variant: tone };
     }
     return { kind: "transient", description: f.body, lockNow: f.reason === "selection_closed" };
   }

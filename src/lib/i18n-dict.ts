@@ -915,6 +915,13 @@ export const dict = {
       udErrSuspendedBody: "Your account cannot place bets right now. Details are in your account — contact support if this is unexpected.",
       udErrRgLimitTitle: "Daily loss limit reached",
       udErrRgLimitBody: "You've reached the daily loss limit you set. Betting reopens when the window resets.",
+      // Identity-gate modal HEADINGS (2026-09-05). Bodies live at `error.errKyc*`.
+      // ⛔ Four, not one: "Betting unavailable" over "we're reviewing your documents"
+      // states an outage on the one refusal that is ordinary progress.
+      udErrKycNotVerifiedTitle: "Verify your identity first",
+      udErrKycPendingTitle: "We're checking your documents",
+      udErrKycMoreInfoTitle: "One more thing needed",
+      udErrKycRejectedTitle: "Identity not verified",
       udInsufficientBalance: "Not enough balance for this stake.",
       udDepositCta: "Deposit",
       udPlacing: "Placing…",
@@ -1903,6 +1910,18 @@ export const dict = {
       errEmailInvalid: "Enter a valid email address.",
       errEmailTaken: "That email is already linked to another account.",
       errEmailUnverified: "Confirm your email address before your first deposit. Open the link we sent you, or add an address in your profile.",
+      // ── The identity gate (2026-09-05) ─────────────────────────────────────────
+      // ⛔ NONE OF THESE SAY "BLOCKED", "DENIED" OR "FAILED". Verification is a step
+      // every player takes once, not a punishment — and three of the four are ordinary
+      // progress. Each names the ONE next action, because a refusal that does not is
+      // a dead end (docs/RULES.md §2.9).
+      // ⚠️ And none of them names deposit ALONE: one sentence is reached from the
+      // deposit form, the bet dial and the withdrawal form, so it must be true on all
+      // three. "Adding money, playing and cashing out" is that sentence.
+      errKycNotVerified: "Verify your identity to add money, play and cash out. It takes a few minutes — you'll need one ID document and a selfie.",
+      errKycPendingReview: "Your documents are with our team. Nothing more to do — we'll let you know as soon as you're verified, usually within a day.",
+      errKycMoreInfo: "We need one more thing before we can verify you. Open Verify identity to see what our team asked for.",
+      errKycRejected: "We couldn't verify your identity from the documents sent. Open Verify identity to see why and try again.",
       errRgLimitInvalid: "That limit isn't a whole number of shillings. Enter a whole number, or leave it blank to remove the limit.",
       errRgPeriodInvalid: "Choose one of the listed periods and try again.",
       errSofIncomplete: "Fill in every field before submitting — source of funds, annual income band and occupation are all required.",
@@ -2776,6 +2795,10 @@ export const dict = {
       udErrSuspendedBody: "Akaunti yako haiwezi kuweka dau kwa sasa. Maelezo yako kwenye akaunti yako — wasiliana na msaada ikiwa hukutarajia hili.",
       udErrRgLimitTitle: "Kikomo cha hasara cha siku kimefikiwa",
       udErrRgLimitBody: "Umefikia kikomo cha hasara cha siku ulichojiwekea. Kuweka dau kutafunguka dirisha likianza upya.",
+      udErrKycNotVerifiedTitle: "Thibitisha utambulisho wako kwanza",
+      udErrKycPendingTitle: "Tunakagua hati zako",
+      udErrKycMoreInfoTitle: "Kitu kimoja zaidi kinahitajika",
+      udErrKycRejectedTitle: "Utambulisho haujathibitishwa",
       udInsufficientBalance: "Salio halitoshi kwa dau hili.",
       udDepositCta: "Weka pesa",
       udPlacing: "Inaweka…",
@@ -3592,6 +3615,10 @@ export const dict = {
       errEmailInvalid: "Weka barua pepe sahihi.",
       errEmailTaken: "Barua pepe hiyo tayari imeunganishwa na akaunti nyingine.",
       errEmailUnverified: "Thibitisha barua pepe yako kabla ya amana yako ya kwanza. Fungua kiungo tulichokutumia, au ongeza anwani kwenye wasifu wako.",
+      errKycNotVerified: "Thibitisha utambulisho wako ili kuweka pesa, kucheza na kutoa pesa. Inachukua dakika chache — utahitaji hati moja ya kitambulisho na picha yako ya uso.",
+      errKycPendingReview: "Hati zako ziko kwa timu yetu. Hakuna kingine cha kufanya — tutakujulisha mara tu utakapothibitishwa, kwa kawaida ndani ya siku moja.",
+      errKycMoreInfo: "Tunahitaji kitu kimoja zaidi kabla ya kukuthibitisha. Fungua Thibitisha utambulisho ili kuona timu yetu iliomba nini.",
+      errKycRejected: "Hatukuweza kuthibitisha utambulisho wako kutokana na hati zilizotumwa. Fungua Thibitisha utambulisho ili kuona sababu na ujaribu tena.",
       errRgLimitInvalid: "Kikomo hicho si namba kamili ya shilingi. Weka namba kamili, au acha wazi ili kuondoa kikomo.",
       errRgPeriodInvalid: "Chagua mojawapo ya vipindi vilivyoorodheshwa kisha jaribu tena.",
       errSofIncomplete: "Jaza kila sehemu kabla ya kuwasilisha — chanzo cha fedha, kiwango cha mapato ya mwaka na kazi yako vyote vinahitajika.",
@@ -4452,6 +4479,10 @@ export const dict = {
       udErrSuspendedBody: "您的账户目前无法投注。详情见您的账户——如有疑问请联系客服。",
       udErrRgLimitTitle: "已达每日损失上限",
       udErrRgLimitBody: "您已达到自己设定的每日损失上限。窗口重置后可继续投注。",
+      udErrKycNotVerifiedTitle: "请先验证您的身份",
+      udErrKycPendingTitle: "我们正在审核您的证件",
+      udErrKycMoreInfoTitle: "还需要一项材料",
+      udErrKycRejectedTitle: "身份未通过验证",
       udInsufficientBalance: "余额不足，无法下此注。",
       udDepositCta: "充值",
       udPlacing: "下注中…",
@@ -5263,6 +5294,10 @@ export const dict = {
       errEmailInvalid: "请输入有效的电子邮箱地址。",
       errEmailTaken: "该邮箱已与其他账户绑定。",
       errEmailUnverified: "首次充值前请先确认您的电子邮箱。请打开我们发送给您的链接，或在个人资料中添加邮箱地址。",
+      errKycNotVerified: "请先验证身份，之后即可充值、投注和提现。只需几分钟——准备一份身份证件和一张自拍照。",
+      errKycPendingReview: "您的证件已提交给我们的团队。您无需再做任何操作——审核通过后我们会立即通知您，通常在一天之内。",
+      errKycMoreInfo: "在完成验证前，我们还需要一项材料。请打开「身份验证」查看团队的具体要求。",
+      errKycRejected: "根据您提交的证件，我们无法完成身份验证。请打开「身份验证」查看原因并重新提交。",
       errRgLimitInvalid: "该限额不是整数先令。请输入整数，或留空以取消该限额。",
       errRgPeriodInvalid: "请从列出的时段中选择一个后重试。",
       errSofIncomplete: "提交前请填写所有字段——资金来源、年收入区间和职业均为必填。",
