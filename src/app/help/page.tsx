@@ -113,7 +113,7 @@ export default async function HelpPage() {
                       % of the losing side, not a capped commission on the pool. */}
                   {key === "faq1" && cfg.feeModel === "loser-share"
                     ? fill(t.help.faq1aLoser, { pct: pctNum((cfg.platformFeeRate ?? 0) + (cfg.operatorFeeRate ?? 0)) })
-                    : fill(t.help[`${key}a` as keyof typeof t.help], { pct: pctNum(cfg.commissionRate), ceiling: fmtRate(cfg.feeCeilingRate) })}
+                    : fill(t.help[`${key}a` as keyof typeof t.help], { pct: pctNum(cfg.commissionRate), ceiling: fmtRate(cfg.feeCeilingRate), hours: cfg.objectionWindowHours })}
                   {key === "faq5" && ` ${SUPPORT_PHONE()} (${t.common.free}).`}
                 </p>
               </details>

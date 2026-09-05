@@ -10,6 +10,7 @@ import { ProbabilityBar } from "@/components/markets/probability-bar";
 import { CountdownRing } from "@/components/positions/countdown-ring";
 import { getMarket, impliedYesPct, listPositionsForMarket } from "@/lib/server/market-service";
 import { getRequireTwoOfficerResolution } from "@/lib/server/resolution-policy";
+import { getGlobalConfig } from "@/lib/server/market-config";
 import { getAuditPage } from "@/lib/server/audit";
 import { officerLabel } from "@/lib/server/actor-label";
 import { currentSession } from "@/lib/server/auth-service";
@@ -48,6 +49,8 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
   // no second officer, no self-countersign block. ON ⇒ stage-2 must be a DIFFERENT
   // officer, so a same-officer countersign is blocked.
   const requireTwoOfficer = await getRequireTwoOfficerResolution().catch(() => false);
+  // The window in force, read once and passed down — never restated as a literal in copy.
+  const { objectionWindowHours } = await getGlobalConfig();
   const isSelfCountersign = requireTwoOfficer && stage === "stage2" && !!currentOfficerId && currentOfficerId === stage1By;
   // E-18: ask the same question `resolveMarketAction` will ask, before offering the seal.
   const canResolve = await canUseControl(session?.role, "resolveMarket");
@@ -252,7 +255,7 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
                   <div>
                     <p className="font-mono text-micro uppercase eyebrow text-text-subtle">{bi(CEREMONY.objectionWindow)}</p>
                     <p className="mt-0.5 text-[13px] font-semibold text-text">Closes {formatDateTime(m.objectionsClosedAt)}</p>
-                    <p className="mt-0.5 text-body-sm text-text-muted">Payouts are provisional until the 24-hour window elapses.</p>
+                    <p className="mt-0.5 text-body-sm text-text-muted">{objectionWindowHours > 0 ? `Payouts are provisional until this ${objectionWindowHours}-hour window elapses.` : "The objection window is configured to 0 hours — payouts are not held."}</p>
                   </div>
                 </div>
               </AdminCard>
@@ -284,6 +287,7 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
                   stagedOutcome={m.resolvedOutcome}
                   isSelfCountersign={isSelfCountersign}
                   twoAdmin={requireTwoOfficer}
+                  objectionWindowHours={objectionWindowHours}
                 />
               ) : (
                 // E-18, same class as the resolver queue: this page is `trading` VIEW,

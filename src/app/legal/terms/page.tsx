@@ -1,6 +1,11 @@
 import { LegalHeader, LegalSection } from "../_components";
 import { SUPPORT_EMAIL } from "@/lib/support-config";
 import { getServerT, type Locale } from "@/lib/i18n-server";
+import { getGlobalConfig } from "@/lib/server/market-config";
+
+// The void ground in §6 tracks a LIVE setting, so this page cannot be statically baked — it
+// would freeze a legal promise at whatever the window was on the day of the last build.
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata() {
   const { locale } = await getServerT();
@@ -13,10 +18,16 @@ const TITLE: Record<Locale, string> = {
   sw: "Masharti ya Huduma",
   zh: "服务条款",
 };
+/**
+ * ⛔ BUMPED 2026-09-05, AND THE BUMP IS THE POINT. §6's void ground narrowed from a flat 24
+ * hours to the objection window actually in force (Ali's ruling ④). That is a change to the
+ * BINDING English text — a player protection got shorter — so it cannot ride in on a version
+ * that still claims 2026-04-01. `COMPLIANCE-DECISIONS.md` carries the reasoning.
+ */
 const META: Record<Locale, string> = {
-  en: "Version 2026-04-01 · Effective on account registration.",
-  sw: "Toleo 2026-04-01 · Yanaanza kutumika unaposajili akaunti.",
-  zh: "版本 2026-04-01 · 自账户注册时生效。",
+  en: "Version 2026-09-05 · Effective on account registration.",
+  sw: "Toleo 2026-09-05 · Yanaanza kutumika unaposajili akaunti.",
+  zh: "版本 2026-09-05 · 自账户注册时生效。",
 };
 const BINDING: Record<Locale, string> = {
   en: "The English version of this document is the legally binding text; translations are provided for convenience.",
@@ -24,7 +35,25 @@ const BINDING: Record<Locale, string> = {
   zh: "本文件的英文版本为具有法律约束力的文本；其他语言译本仅供参考之便。",
 };
 
-const CONTENT: Record<Locale, React.ReactNode> = {
+/**
+ * ⛔ A FUNCTION OF THE CONFIGURED WINDOW, NOT A CONSTANT — and the reason is §6, not §5.
+ *
+ * §6 is a VOID GROUND, and it is a DIFFERENT promise from the objection window: it says a bet
+ * may be voided when the source authority CORRECTS a result within a stated time of resolution.
+ * It was written as a flat 24 hours while the objection window happened to be 24 hours too, so
+ * the two read as one rule. They never were one rule.
+ *
+ * 🔴 THE PLATFORM CANNOT KEEP THE 24-HOUR FORM ONCE THE WINDOW IS SHORTER. After `settledAt` is
+ * stamped the money is in players' wallets: `emergencyVoidMarket` refuses a settled market and
+ * `objectionEligibility` returns `ALREADY_SETTLED` by design. So a source correction arriving at
+ * hour two could not be honoured, and a public promise the code refuses is worse than a shorter
+ * one it keeps. Ali ruled ④ (2026-09-05) to narrow it to the window actually in force, and the
+ * META version below is bumped in the same change because the binding English text moved.
+ *
+ * ⚠️ THE OTHER THREE "24 hours" IN THIS FILE ARE NOT THIS. §5 and its SW/ZH twins are the AML
+ * review hold on large withdrawals — unrelated, unchanged, and they must stay 24.
+ */
+function content(objectionHours: number): Record<Locale, React.ReactNode> { return {
   en: (
     <>
       <LegalSection n="1" title="Operator + licence">
@@ -110,7 +139,8 @@ const CONTENT: Record<Locale, React.ReactNode> = {
       <LegalSection n="6" title="Voids and disputes">
         <p>
           Bets may be voided where the underlying event is abandoned, the wrong outcome is initially settled,
-          or the result is corrected by the source authority within 24 hours of resolution. Disputes must be
+          or the result is corrected by the source authority within {objectionHours} hour
+          {objectionHours === 1 ? "" : "s"} of resolution, while the payout is still on hold. Disputes must be
           raised in writing to <span className="font-mono text-text-muted">{SUPPORT_EMAIL()}</span> within
           30 days of placement.
         </p>
@@ -233,7 +263,8 @@ const CONTENT: Record<Locale, React.ReactNode> = {
       <LegalSection n="6" title="Kufuta dau na migogoro">
         <p>
           Dau zinaweza kufutwa endapo tukio husika litaachwa, matokeo yasiyo sahihi yatakuwa yamefungwa awali, au matokeo
-          yatarekebishwa na mamlaka ya chanzo ndani ya saa 24 baada ya kufungwa. Migogoro ni lazima iwasilishwe kwa maandishi
+          yatarekebishwa na mamlaka ya chanzo ndani ya saa {objectionHours} baada ya kufungwa, wakati malipo bado
+          yamesimamishwa. Migogoro ni lazima iwasilishwe kwa maandishi
           kwenda <span className="font-mono text-text-muted">{SUPPORT_EMAIL()}</span> ndani ya siku 30 tangu kuwekwa kwa dau.
         </p>
       </LegalSection>
@@ -338,7 +369,7 @@ const CONTENT: Record<Locale, React.ReactNode> = {
 
       <LegalSection n="6" title="作废与争议">
         <p>
-          在相关赛事被取消、最初结算了错误结果，或来源主管机构在结算后 24 小时内更正结果的情况下，下注可被作废。争议须于下注后
+          在相关赛事被取消、最初结算了错误结果，或来源主管机构在结算后 {objectionHours} 小时内（赔付仍处于暂缓期间）更正结果的情况下，下注可被作废。争议须于下注后
           30 天内以书面形式提交至 <span className="font-mono text-text-muted">{SUPPORT_EMAIL()}</span>。
         </p>
       </LegalSection>
@@ -372,10 +403,15 @@ const CONTENT: Record<Locale, React.ReactNode> = {
       </LegalSection>
     </>
   ),
-};
+}; }
 
 export default async function TermsPage() {
   const { locale } = await getServerT();
+  // ⛔ THE LIVE VALUE, NOT A LITERAL. `getGlobalConfig()` merges the persisted production
+  // snapshot over the code defaults, so this page states the window that is actually in force —
+  // including on the day it changes, and without a second definition of the number living in a
+  // legal document. `dynamic = "force-dynamic"` below is what stops it being baked at build time.
+  const { objectionWindowHours } = await getGlobalConfig();
   return (
     <>
       <LegalHeader
@@ -385,7 +421,7 @@ export default async function TermsPage() {
         glyph="scrollText"
       />
       <p className="text-body-sm italic text-text-subtle">{BINDING[locale]}</p>
-      {CONTENT[locale]}
+      {content(objectionWindowHours)[locale]}
     </>
   );
 }

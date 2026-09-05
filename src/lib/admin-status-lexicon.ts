@@ -81,7 +81,8 @@ export const CEREMONY = {
   awaitingStage1:         { en: "Awaiting Stage 1" },
   awaitingSignature:      { en: "awaiting signature" },
   coSignRequired:         { en: "Co-sign required" },
-  /** The 24-hour objection window that opens on seal. SW from resolver page. */
+  /** The objection window that opens on seal — its LENGTH is live config and is never restated
+   *  here. SW from resolver page. */
   objectionWindow:        { en: "Objection window",        sw: "Dirisha la pingamizi" },
   /** Officer evidence captured at Stage 1. SW = "Ushahidi" (evidence). */
   recordedEvidence:       { en: "Recorded evidence",       sw: "Ushahidi" },

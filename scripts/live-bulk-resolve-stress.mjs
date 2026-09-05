@@ -330,10 +330,17 @@ try {
   // stale selection: it must report already-applied, and nothing may move.
   const steal = key("E-STEAL");
   if (steal && (await statusOf(steal.id)) === "CLOSED") {
+    // ⚠️ A FAR-FUTURE FIXTURE DEADLINE, NOT A COPY OF THE LIVE WINDOW. This row exists to be
+    // "sealed but not yet settled" for the length of one assertion; what it must NOT be is a
+    // second definition of `objectionWindowHours` sitting in production SQL, which is what
+    // `interval '24 hours'` had quietly become — it would have gone on stamping the old figure
+    // onto QA markets after the window moved, and contaminated any census that reads the column.
+    // The interval is deliberately unrelated to the setting and long enough that no timer fires
+    // mid-run.
     await q(`update "PredictionMarket" set status='RESOLVED', "resolvedOutcome"='YES',
              "resolutionStage1By"='qa-steal', "resolutionStage1At"=now(),
              "resolutionStage2By"='qa-steal', "resolutionStage2At"=now(),
-             "objectionsClosedAt"=now() + interval '24 hours' where id=$1`, [steal.id]);
+             "objectionsClosedAt"=now() + interval '7 days' where id=$1`, [steal.id]);
     const adjB = await countAudit("market.adjudicated");
     const r8 = await replay(withIds(steal.id));
     const j8 = actionResult(r8.text);

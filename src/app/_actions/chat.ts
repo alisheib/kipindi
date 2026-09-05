@@ -3,6 +3,7 @@
 import { getSession } from "@/lib/server/session";
 import { rateCheckAsync } from "@/lib/server/rate-limit";
 import { loadConfig, saveConfig } from "@/lib/server/config-store";
+import { getGlobalConfig } from "@/lib/server/market-config";
 import { SUPPORT_EMAIL, SUPPORT_PHONE } from "@/lib/support-config";
 
 /**
@@ -79,7 +80,20 @@ const CAPACITY_MESSAGES: Record<string, string> = {
   zh: `您已达到本次会话的提问上限。如需更多帮助，请联系我们的支持团队 — 致电 ${SUPPORT_PHONE()}（免费，全天候）或发送邮件至 ${SUPPORT_EMAIL()}。`,
 };
 
-function buildSystemPrompt(locale: string) {
+/**
+ * ⛔ `objectionHours` IS A PARAMETER, AND THE MISS IT FIXES WAS THE WORST IN THE SWEEP.
+ *
+ * This prompt is what the LIVE chatbot answers every player from. It said, flatly,
+ * "24h objection window" — so after the window changed, a player who asked when they get paid
+ * would have been told the old number, on demand, by the platform's own assistant. A stale
+ * string in a system prompt is not a stale comment: it is a wrong answer delivered to a person
+ * asking about their money.
+ *
+ * ⚠️ The same line also claimed "two-officer sign-off". Single-admin resolution has been the
+ * recorded default since 2026-07-24 (COMPLIANCE-DECISIONS), so that half was already false and
+ * is corrected here rather than carried forward with a new number attached to it.
+ */
+function buildSystemPrompt(locale: string, objectionHours: number) {
   const langLine = locale === "zh"
     ? "LANGUAGE: The user's interface is set to Chinese (中文). Reply primarily in Mandarin Chinese. You may also use English or Kiswahili if the user writes in those languages. Warm, direct, brief. No emojis unless the user uses them first."
     : locale === "sw"
@@ -115,7 +129,7 @@ WHAT YOU KNOW:
 - Early cash-out (sell position): FREE for 5 minutes after placing the bet (full refund). After that the position LOCKS and rides to settlement — there is no paid exit window and no fee, because there is nothing to sell. Selling also closes the moment betting closes.
 - Responsible gambling: deposit/loss/session limits, reality checks, breaks, self-exclusion.
 - Proposals: players propose markets and earn a prize if listed + resolved. Invite & Earn referral programme.
-- Resolution: two-officer sign-off against a public source URL, 24h objection window.
+- Resolution: an officer seals the outcome against a public source URL (a second officer countersigns when two-admin authorization is switched on). The verdict is recorded but pays NOBODY yet: the pool stays whole for a ${objectionHours}-hour objection window, and a stakeholder who thinks the result is wrong can object in that time and freeze the payout until an officer rules.
 - 18+ only, licensed by the Gaming Board of Tanzania. Helpline ${SUPPORT_PHONE()} (free, 24/7), ${SUPPORT_EMAIL()}.
 
 KEY PAGES: /markets, /live, /positions, /wallet, /wallet/deposit, /wallet/withdraw, /profile, /profile/kyc, /profile/responsible-gambling, /profile/invite, /proposals, /fairness, /help, /leaderboard.
@@ -164,7 +178,8 @@ export async function chatWithClaude(
     const resp = await client.messages.create({
       model,
       max_tokens: 350,
-      system: buildSystemPrompt(locale),
+      // The window the assistant quotes is the one in force, read at answer time.
+      system: buildSystemPrompt(locale, (await getGlobalConfig()).objectionWindowHours),
       messages,
     }, { timeout: 15_000 }); // user-facing: don't let a hung API call block the request
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

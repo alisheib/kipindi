@@ -89,6 +89,112 @@ wake unable to withdraw.
 `test:failure-reasons` §8c.
 ---
 
+## 2026-09-05 · THE OBJECTION WINDOW IS ONE HOUR (rulings ③ and ④)
+
+**Ruling:** management, relayed by Ali on **2026-09-05**. The post-settlement objection window
+falls from **24 hours to 1**, to shorten payout cycles. Follows the entry below, which shipped
+the two controls that had to exist first.
+
+⛔ **DO NOT "RESTORE" 24.** It is not a default that drifted. Every statement of 24 hours in this
+repository that is not a dated record is superseded by this entry.
+
+### What the window IS, and why shortening it is a compliance act and not a setting change
+
+This log cites the objection window in two places as the **compensating control** that makes
+another decision acceptable: for **single-admin resolution** (one officer may seal alone) and for
+**AI auto-resolve** (no officer reads the verdict at all). Both citations rest on a player being
+able to reach the dispute before the money moves. Shortening the window shortens that reach —
+**including overnight**, and including for verdicts no human ever read.
+
+That is why the two controls in the entry below shipped **first**: until 2026-09-05 the platform
+told a bettor nothing when a verdict was recorded, and the specification's "dispute raised by an
+authorized admin" had no mechanism at all. A one-hour window without those would have been a
+control the platform describes and does not have.
+
+### Ruling ③ — AI auto-resolve continues, and Ali accepts what that means at one hour
+
+Production was measured running `resolutionMode: auto` (threshold 90) on 2026-08-28. Under it an
+AI seals a verdict unattended and, with a one-hour window, **real money is paid about an hour
+after the event, at any hour of the day or night, unless a stakeholder objects inside that hour.**
+
+Ali was given the three options — keep auto, pause auto while the window is short, or push seals
+into business hours with `resolveOffsetMinutes` — and **chose to keep auto**. Recorded here in
+those words so that nobody later reads the combination as an oversight. The live
+`resolutionMode`, `resolveConfidenceThreshold` and `resolveOffsetMinutes` are read from
+production and recorded at the moment of the flip.
+
+### Ruling ④ — Terms §6's void ground narrows with it, and the Terms version is bumped
+
+⚠️ **§6 IS NOT THE OBJECTION WINDOW, AND CONFLATING THE TWO WAS THE MISTAKE THIS RULING FIXES.**
+It is a **void ground**: a bet may be voided where *"the result is corrected by the source
+authority within 24 hours of resolution."* It was written as a flat 24 while the window happened
+to be 24, so the two read as one rule.
+
+🔴 **The platform cannot keep the 24-hour form once the window is shorter.** After `settledAt` is
+stamped the money is in players' wallets: `emergencyVoidMarket` refuses a settled market and
+`objectionEligibility` returns `ALREADY_SETTLED` by design. A correction arriving at hour two
+could not be honoured. **A public promise the code refuses is worse than a shorter one it keeps**,
+so §6 now tracks the window in force, in all three languages, and the binding English text's
+version moved from **2026-04-01 to 2026-09-05**.
+
+⛔ The other three "24 hours" in that document are the **AML review hold** on large withdrawals.
+Unrelated, unchanged, and they stay 24.
+
+### The mechanics, stated so they are not rediscovered
+
+- **The code default is not the live value.** Production runs a persisted snapshot that
+  `ensureHydrated` merges OVER the defaults. Changing the constant moves nothing; the flip is an
+  audited act through the FINANCE officer's own `/admin/config` screen, bracketed by
+  `market-config-diff.cjs` proving exactly one field moved.
+- ⛔ **No `CONFIG_VERSION` reconcile rule was added, deliberately.** The forward-migration path
+  exists and was used twice before for stake bounds — but it is **un-audited** and fires on a
+  deploy. This is the control described to the regulator; it moves by a recorded human act.
+  ⚠️ The consequence is that a snapshot restore would silently bring 24 back, which is why
+  `market-config-diff.cjs` is the standing check rather than a one-time verification.
+- ⚠️ **Config hydrates once per process and is never invalidated.** If more than one instance is
+  running, the others keep the old value until restart, and seals there stamp the old window.
+  Confirm a single instance, or restart after the flip.
+- **It is not retroactive.** `objectionsClosedAt` is stamped at seal from the config then in
+  force, so every market sealed before the flip keeps its 24-hour deadline. ⚠️ **Until an upheld
+  objection with remedy `REVERSE` re-stamps it at the live value** — so "pre-flip markets keep
+  24 h" holds only until an officer rules on one.
+- **A minute-59 objection is honoured** (filing and settlement serialise on the same market lock)
+  and freezes the pool **indefinitely** until an officer rules. There is no time limit on a freeze.
+- **Payment follows the deadline, it does not coincide with it.** A refused settle backs off five
+  minutes, a deploy adds a boot grace, and markets sealed together share one deadline and queue.
+  Every player-facing surface says "Payout from", never "pays at".
+
+### Where the number lived, and where it lives now
+
+The sweep found the window stated as a literal in **nine dictionary strings across three
+locales**, the **live chatbot's system prompt**, the legal terms in three languages, two admin
+copy sites, three fallbacks on the FINANCE form itself, a production SQL fixture, and five
+comments. It now lives in exactly one place — `objectionWindowHours` — and every surface
+interpolates it.
+
+🔴 **The worst of them was the chatbot's system prompt.** It is not in the dictionary, so no copy
+scan could see it, and it said "24h objection window" as a flat fact. After the flip the
+platform's own assistant would have gone on telling players the old number, on demand, about
+their own money. `test:rate-copy` §3b now reads it, and `red:rate-copy` re-injects the literal
+and requires the guard to catch it.
+
+⚠️ **One admin sentence was false before the number was.** The resolver ceremony read *"Sealing
+credits every winning wallet, closes every losing position, starts the 24-hour objection
+window"* — and the first two clauses had been untrue since the window became a real gate.
+Sealing pays nobody. Interpolating the hours into it would have preserved a false money
+statement and made it look freshly checked, so the sentence was rewritten.
+
+### Proof
+
+`test:rate-copy` **36/0** with the objection window matched **number-agnostically** (a guard that
+banned "24" would go green the moment someone typed "1") and in **both word orders** — Swahili
+puts the unit first, and the first draft caught English and Chinese while silently passing
+Swahili. `red:rate-copy` **12/12**, including a mutation that restores the literal to the chat
+prompt and one to the legal text. Five negative controls prove the unrelated 24-hour statements
+(AML hold, email expiry, RG cooling-off, the range picker) do not trip it.
+
+---
+
 ## 2026-09-05 · TWO NEW CONTROLS BEFORE THE OBJECTION WINDOW SHORTENS (rulings ① and ②)
 
 Management asked for the post-settlement objection window to fall from **24 hours to 1 hour**.

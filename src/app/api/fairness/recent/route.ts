@@ -50,7 +50,7 @@ export async function GET() {
     //
     // This used to window on `resolutionStage2At` alone — the instant the VERDICT was
     // recorded. But the money moves later: `settleMarket` stamps `settledAt` only once
-    // the objection window has elapsed, which is 24 hours by default. So a market's
+    // the objection window has elapsed. So a market's
     // position in this 50-row feed was fixed a full day before the event the feed
     // exists to announce.
     //

@@ -45,6 +45,48 @@ if (suiteFails()) {
 console.log("  ✓ CONTROL  the unmutated tree is GREEN — a red below is caused by the mutation\n");
 
 const MUTATIONS = [
+  /* ── the objection window, added 2026-09-05 ──────────────────────────────────────────
+     ⛔ THE FOURTH ONE IS THE POINT. The first three re-state the window in the dictionary,
+     one per locale, and any competent regex catches those. The fourth puts it back in the
+     CHATBOT'S SYSTEM PROMPT — which is not in the dictionary, was the worst miss of the
+     original sweep, and would go on answering players with the old number while every
+     dictionary check stayed green. If §3b ever stops catching it, the guard has quietly
+     narrowed back to the surface that was already safe. */
+  {
+    name: "fairness-copy-restates-the-window-in-english",
+    why: "⭐ THE SHIPPED STRING — the fairness page told every player a flat 24 hours, on the surface the regulator reads",
+    file: DICT,
+    from: `A public objection window of {hours} hour(s) opens after resolution, and no money moves until it closes.`,
+    to: `A 24-hour public objection window opens after resolution.`,
+  },
+  {
+    name: "fairness-copy-restates-the-window-in-swahili",
+    why: "⛔ SWAHILI PUTS THE UNIT FIRST (\"masaa 24\"), and the first draft of the pattern only knew number-then-unit — it caught EN and ZH and passed this one",
+    file: DICT,
+    from: `Dirisha la pingamizi la saa {hours} linafunguliwa baada ya utatuzi, na hakuna fedha inayohamishwa hadi lifungwe.`,
+    to: `Dirisha la pingamizi la masaa 24 linafunguliwa baada ya utatuzi.`,
+  },
+  {
+    name: "fairness-copy-restates-the-window-in-chinese",
+    why: "the same restatement in the third locale, where the unit is a single character and no space separates it from the digit",
+    file: DICT,
+    from: `结算后开放 {hours} 小时的公开异议窗口，窗口关闭前不会有任何资金转移。`,
+    to: `结算后开放24小时公开异议窗口。`,
+  },
+  {
+    name: "assistant-prompt-hardcodes-the-window",
+    why: "🔴 THE LIVE CHATBOT — a literal here is a WRONG ANSWER DELIVERED ON DEMAND to a player asking when they get paid, and no dictionary scan can see it",
+    file: CHAT,
+    from: `The verdict is recorded but pays NOBODY yet: the pool stays whole for a \${objectionHours}-hour objection window`,
+    to: `The verdict is recorded but pays NOBODY yet: the pool stays whole for a 24-hour objection window`,
+  },
+  {
+    name: "terms-void-ground-hardcodes-24-hours",
+    why: "⛔ THE BINDING LEGAL TEXT — §6's void ground back to a flat 24 hours, a promise the platform cannot keep once the window is shorter",
+    file: TERMS,
+    from: `          or the result is corrected by the source authority within {objectionHours} hour`,
+    to: `          or the result is corrected by the source authority within 24 hours`,
+  },
   {
     name: "estimate-hint-hardcodes-1.5x",
     why: "⭐ THE SHIPPED STRING — the hint explaining the estimate quoted 1.5× while Up & Down pays 1.4×, so it disagreed with the button beside it",

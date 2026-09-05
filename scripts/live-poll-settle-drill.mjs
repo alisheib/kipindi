@@ -4,11 +4,16 @@
  *
  *   OBJ=0  node scripts/live-poll-settle-drill.mjs window   # FINANCE sets the objection window
  *   MKT=mkt_x node scripts/live-poll-settle-drill.mjs resolve   # COMPLIANCE seals the verdict
- *   OBJ=24 node scripts/live-poll-settle-drill.mjs window   # …and puts it straight back
+ *   OBJ=1  node scripts/live-poll-settle-drill.mjs window   # …and puts it straight back
+ *
+ * ⛔ `OBJ` MUST BE THE VALUE THE WINDOW WAS BEFORE YOU TOUCHED IT — read it off the field, do
+ * not copy it from this header. It was 24 until 2026-09-05 and is 1 now; the next change will
+ * not update this comment either. `windowCmd()` prints the value it found before typing.
  *
  * ⭐ WHY THE WINDOW HAS TO MOVE AT ALL. `docs/RULES.md`'s definition of done needs a long-form
  * poll settling at 13% of the losing side on production. Up & Down rounds settle the instant
- * they resolve; a long-form market is HELD for `objectionWindowHours` — **24 on production** —
+ * they resolve; a long-form market is HELD for `objectionWindowHours` — **read it live, never
+ * assume; it moved 24 → 1 on 2026-09-05** —
  * so players can dispute a verdict while the pool is still intact. "Settle now" on
  * `/admin/settlement` deliberately cannot pay early: *"this button cannot pay a market early,
  * one under dispute, or one twice."* That is correct, and it means the only two ways to have a
@@ -29,7 +34,10 @@ import { BASE, browser, login, bodyText, shot, recorder } from "./live/harness.m
 
 const CMD = process.argv[2] ?? "window";
 const MKT = process.env.MKT ?? "";
-const OBJ = process.env.OBJ ?? "24";
+// ⛔ NO DEFAULT WORTH TRUSTING. The restore value is whatever the field held BEFORE this run,
+// and only the operator knows that. 1 matches the code default since 2026-09-05, but pass OBJ
+// explicitly on the restore leg rather than relying on this line.
+const OBJ = process.env.OBJ ?? "1";
 const OUTCOME = process.env.OUTCOME ?? "YES";
 // ⚠️ TRADING, NOT COMPLIANCE. The resolver screen refused the COMPLIANCE officer outright:
 // "Your role cannot view this page. This surface exposes regulator-grade financial data and is
@@ -145,7 +153,7 @@ async function resolveCmd() {
  *
  * ⛔ WHY A DRY MODE EXISTS. The seal is irreversible and it stamps the objection window that
  * is open AT THAT MOMENT. Debugging the driver by re-running `resolve` would either seal the
- * market under a 24-hour window (wasting the bracket) or force the window to be re-opened for
+ * market under the full window (wasting the bracket) or force the window to be re-opened for
  * every attempt. Look first, act once.
  */
 async function probeCmd() {

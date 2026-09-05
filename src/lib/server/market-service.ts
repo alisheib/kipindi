@@ -434,7 +434,7 @@ export async function listMarkets(filter?: {
  * minutes moves the ordinary visit into the warm band.
  *
  * ⛔ THE CEILING IS THE OBJECTION WINDOW, AND IT IS NOT A FREE CHOICE. Settlement carries a
- * 24-hour objection window, so staleness on an archive of already-paid markets is not a fact
+ * objection-window CEILING, so staleness on an archive of already-paid markets is not a fact
  * anyone can act on differently — but that argument stops holding somewhere, and this constant
  * must stay far below it. `test:product-line` asserts the bound so nobody "optimises" it to a
  * day. (`platform-stats.ts` memoises its own ALL read on the same table for the same reason;
@@ -447,7 +447,7 @@ declare global {
   // eslint-disable-next-line no-var
   var __50PICK_TERMINAL_MARKETS: Map<string, { at: number; value: Awaited<ReturnType<typeof listMarkets>> }> | undefined;
 }
-/** 5 minutes. ⛔ Bounded from ABOVE by the 24-hour objection window — see the note above and
+/** 5 minutes. ⛔ Bounded from ABOVE by the objection-window CEILING — see the note above and
  *  `TERMINAL_TTL_CEILING_MS`. Exported so the bound can be asserted rather than remembered. */
 export const TERMINAL_TTL_MS = 300_000;
 

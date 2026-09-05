@@ -181,7 +181,8 @@ then, assume the standard poll rules apply.
 ## 6 · Settlement timing
 
 Winners are paid **immediately** on a confirmed outcome (Ali, 2026-07-24). A five-minute
-round cannot hold money for the platform's standard 24-hour objection window.
+round cannot hold money for the platform's standard objection window (a live setting — 1 hour
+from 2026-09-05, and 24 before that; `docs/COMPLIANCE-DECISIONS.md` carries the ruling).
 
 What still protects the money:
 

@@ -389,7 +389,14 @@ const ids = (rows: Array<{ id: string }>) => rows.map((r) => r.id).filter((i) =>
     TERMINAL_TTL_MS >= 120_000,
     `${TERMINAL_TTL_MS}ms. Measured 2026-08-21: cold 1.29-2.42s, warm 0.65-1.28s. A 60s TTL ` +
     "expires between visits on a low-traffic page, so every visitor paid the cold path.");
-  okC("C3 CONTROL · the ceiling really is the 24-hour objection window",
+  // ⚠️ RE-LABELLED 2026-09-05, NOT RE-VALUED. This read "the ceiling really is the 24-hour
+  // objection window", and that sentence stopped being true the day the window became 1 hour.
+  // The CONSTANT is right and stays: it is the archive-staleness ceiling, chosen as the LONGEST
+  // window an operator may configure without the archive lagging a live dispute — and the
+  // configurable maximum is 168h, so 24h remains a safe, deliberate bound well inside it. What
+  // was wrong was calling it "the objection window", which coupled a cache bound to a setting
+  // that moves. C1 above is the assertion that still carries the real relationship.
+  okC("C3 CONTROL · the archive ceiling is a fixed 24h bound, not a copy of the live window",
     TERMINAL_TTL_CEILING_MS === 24 * 60 * 60 * 1000);
 }
 

@@ -348,7 +348,12 @@ async function closeWindow(mid: string): Promise<void> {
   const cfg = await getGlobalConfig();
   ok("7: objectionWindowHours is a real config knob", typeof cfg.objectionWindowHours === "number",
      `value=${cfg.objectionWindowHours}`);
-  ok("7: it defaults to 24h", cfg.objectionWindowHours === 24, `value=${cfg.objectionWindowHours}`);
+  // ⚠️ 1, not 24, from 2026-09-05 (management's ruling, relayed by Ali). This is the CODE
+  // default — production runs on a persisted snapshot that shadows it, which is why the live
+  // value is flipped through the FINANCE screen and read back from the database, never inferred
+  // from this line. ⛔ It stays a LITERAL on purpose: deriving it from the same constant the
+  // product reads would make the assertion true by construction and prove nothing.
+  ok("7: the code default is 1h", cfg.objectionWindowHours === 1, `value=${cfg.objectionWindowHours}`);
 
   const mid = await makeMarket();
   await fundedUser("g7_a");

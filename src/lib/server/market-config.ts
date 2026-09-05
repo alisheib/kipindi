@@ -229,8 +229,24 @@ export const DEFAULT_GLOBAL_CONFIG: RateConfig = {
   // Levies on OUR FEE. Out of the operator's take, never the player's payout.
   traTaxOnCommissionRate: DEFAULT_TRA_TAX_ON_COMMISSION_RATE,    // 10% of our fee → TRA
   gbtLevyOnCommissionRate: DEFAULT_GBT_LEVY_ON_COMMISSION_RATE,  // 5% of our fee → GBT
-  // The objection window players get before a verdict's money moves.
-  objectionWindowHours: 24,
+  /**
+   * The objection window players get before a verdict's money moves.
+   *
+   * ⭐ 1, not 24, from 2026-09-05 — management's decision, relayed by Ali, to shorten the
+   * post-settlement dispute period and speed up payout cycles.
+   *
+   * ⛔ CHANGING THIS CONSTANT DOES NOT CHANGE PRODUCTION. The live value is the persisted
+   * snapshot that `ensureHydrated` merges OVER these defaults, so a deploy alone moves
+   * nothing — the flip is an audited act through `/admin/config` (see `live-poll-settle-drill`
+   * and `market-config-diff.cjs`). No `CONFIG_VERSION` reconcile rule was added on purpose:
+   * this is the control the platform describes to the regulator, and it must move by a
+   * recorded human act rather than silently on a deploy.
+   *
+   * ⚠️ AND IT IS NOT RETROACTIVE. `objectionsClosedAt` is stamped at SEAL from the config then
+   * in force, so every market sealed before the flip keeps its original deadline — until an
+   * upheld objection with remedy REVERSE re-stamps it at the live value.
+   */
+  objectionWindowHours: 1,
   // Scheduled resolution. Default HUMAN — the AI recommends, officers seal (POCA §16).
   // Flip to "auto" (globally or per-market) to let the AI seal + settle on its own
   // above the confidence floor; low-confidence always falls back to human.

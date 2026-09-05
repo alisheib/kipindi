@@ -202,7 +202,7 @@ export async function movementByAssetKey(): Promise<Map<string, MovementProfile>
  *
  * ⚠️ IT WAS WRITTEN AS 5 MINUTES FIRST, copying `TERMINAL_TTL_MS`, and §9.1 failed on the
  * first run: 300,000 against a 180,000 ceiling. The archive memo's 5 minutes is bounded by a
- * 24-hour objection window; this one is bounded by a 3-minute round. Copying a number across
+ * objection-window ceiling; this one is bounded by a 3-minute round. Copying a number across
  * two caches whose ceilings differ by 480× is exactly what an asserted bound is for.
  */
 export const FEED_ADVICE_TTL_MS = 120_000;

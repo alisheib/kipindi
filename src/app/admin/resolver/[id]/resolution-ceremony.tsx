@@ -48,6 +48,7 @@ export function ResolutionCeremony({
   stagedOutcome,
   isSelfCountersign,
   twoAdmin,
+  objectionWindowHours,
 }: {
   marketId: string;
   stage: "stage1" | "stage2";
@@ -55,6 +56,9 @@ export function ResolutionCeremony({
   isSelfCountersign: boolean;
   /** false (default) = single admin seals in one act; true = two-officer ceremony. */
   twoAdmin: boolean;
+  /** The window in force, read from live config by the page. 0 = the seal pays immediately,
+   *  and the copy says so rather than promising a hold that will not happen. */
+  objectionWindowHours: number;
 }) {
   const [pending, startTransition] = useTransition();
   const router = useRouter();
@@ -299,9 +303,30 @@ export function ResolutionCeremony({
           </span>
           <span className="ml-auto font-mono text-[10px] text-text-subtle">seal to publish</span>
         </div>
+        {/* 🔴 THE WHOLE SENTENCE WAS REWRITTEN, NOT RENUMBERED. It read "Sealing credits every
+            winning wallet, closes every losing position, starts the 24-hour objection window" —
+            and the first two clauses have been FALSE since F11 made the window a real gate.
+            Sealing pays nobody: `resolveMarket` moves no money, leaves every position OPEN and
+            stamps `settledAt: null`; the settle timer pays later. Interpolating the hours into
+            a false money sentence would have kept the false money sentence and made it look
+            freshly checked. The model is `bulk-resolve-bar.tsx`, which has always said it
+            correctly — and, like that one, this states what happens when the window is 0. */}
         <p className="mt-2 text-body-sm leading-relaxed text-text-muted">
-          Sealing credits every winning wallet, closes every losing position, starts the 24-hour objection
-          window, and writes an immutable audit entry. <strong className="text-text">This is final.</strong>
+          {objectionWindowHours > 0 ? (
+            <>
+              Sealing RECORDS the verdict and writes an immutable audit entry.{" "}
+              <strong className="text-text">No money moves yet</strong> — the pool stays whole and
+              every position stays open for a {objectionWindowHours}-hour objection window, and
+              winners are paid automatically once it closes with nothing standing. An upheld
+              objection can still change the outcome until then.
+            </>
+          ) : (
+            <>
+              Sealing records the verdict AND PAYS, immediately: the objection window is
+              configured to 0 hours, so there is no window to object in.{" "}
+              <strong className="text-text">This is final.</strong>
+            </>
+          )}
         </p>
       </div>
 

@@ -181,7 +181,11 @@ function stubReply(userText: string, lang: Lang): Reply {
       lang,
       paragraphs: [
         "Here's how payouts and withdrawals work:",
-        "1. Winnings settle after the market resolves and the {24-hour} objection window closes[1]",
+        // ⛔ NO NUMBER HERE, DELIBERATELY. This is the OFFLINE keyword stub — a pure module with
+        // no server import, so it cannot read `objectionWindowHours`, and a literal would be a
+        // second definition of it that goes stale the first time the window moves. The live
+        // assistant (`_actions/chat.ts`) states the real figure; this fallback states the rule.
+        "1. Winnings settle after the market resolves and the objection window closes[1]",
         "2. Once settled, winnings go directly to your **Wallet**",
         "3. To withdraw, go to **Wallet → Withdraw** and enter the amount",
         "4. Funds go to the M-Pesa number on your account — typically within {60 seconds}[2]",

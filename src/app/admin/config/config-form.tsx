@@ -174,13 +174,24 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
         {/* F11 — this is a SETTLEMENT GATE, not a display timer. A resolved market
             pays nobody until this many hours have passed with no objection standing.
             0 disables the gate: legal for play-money, but it is the control we
-            describe to the regulator, so it must be a deliberate act. */}
+            describe to the regulator, so it must be a deliberate act.
+
+            ⛔ NO `?? 24` FALLBACK, ANYWHERE BELOW. It appeared three times — twice in this hint
+            and once on the input's defaultValue — and each was a restatement of the default this
+            very screen exists to CHANGE: after the window moved to 1, the officer's own form
+            would still have read "Currently 24h" on any render where the field was undefined.
+            ⭐ It was also dead: `config` arrives from the server page as a full `RateConfig`, and
+            `getEffectiveConfig()` merges the persisted snapshot OVER the code defaults, so the
+            field is never undefined. A fallback that cannot fire but can lie is strictly worse
+            than none. ⚠️ Importing the default as a VALUE was the other candidate and is refused:
+            this file is `"use client"` and imports market-config as a TYPE only — a value import
+            would drag the server graph into a browser chunk. */}
         <Field
           label="Objection window (hours)"
           hint={
-            (config.objectionWindowHours ?? 24) === 0
+            config.objectionWindowHours === 0
               ? "⚠ 0 = NO objection window. Resolved markets pay out on the next sweep, and players cannot dispute a verdict before the money moves. Do not ship real money like this."
-              : `Currently ${config.objectionWindowHours ?? 24}h. A resolved market's money is HELD this long before payout, so players can object while the pool is still intact. An open objection freezes it further.`
+              : `Currently ${config.objectionWindowHours}h. A resolved market's money is HELD this long before payout, so players can object while the pool is still intact. An open objection freezes it further.`
           }
         >
           <Input
@@ -189,7 +200,7 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
             step="1"
             min="0"
             max="168"
-            defaultValue={config.objectionWindowHours ?? 24}
+            defaultValue={config.objectionWindowHours}
             mono
           />
         </Field>

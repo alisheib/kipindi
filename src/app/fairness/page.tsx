@@ -14,7 +14,8 @@ import { Chip } from "@/components/ui/chip";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { listMarkets } from "@/lib/server/market-service";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
-import { formatDateTimeSafe } from "@/lib/utils";
+import { formatDateTimeSafe, fill } from "@/lib/utils";
+import { getGlobalConfig } from "@/lib/server/market-config";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getServerT } from "@/lib/i18n-server";
 import { outcomeWord } from "@/lib/side-label";
@@ -74,6 +75,10 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
   const { t, locale } = await getServerT();
   // B-1 — no swallow: the attestation list IS this page; a failed read must
   // throw to fairness/error.tsx, never render "no resolved markets yet".
+  // ⛔ THE LIVE WINDOW, READ ONCE. This page is the regulator's own reading surface, so the
+  // number it states must be the number in force — not a literal that agrees with the code
+  // default and disagrees with the persisted production snapshot.
+  const { objectionWindowHours } = await getGlobalConfig();
   const allResolved = await listMarkets({ status: "RESOLVED" });
   const sp = await searchParams;
   const totalPages = Math.max(1, Math.ceil(allResolved.length / PLAYER_PER_PAGE));
@@ -87,7 +92,7 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
           <PageHeader eyebrow={t.common.resolutionAttestation} title={t.common.howAMarketResolves} tone="info" icon={<I.shieldcheck s={18} />} />
         </PageHero>
         <p className="text-[15px] leading-relaxed text-text-muted max-w-[68ch]">
-          {t.common.fairnessIntro}
+          {fill(t.common.fairnessIntro, { hours: objectionWindowHours })}
         </p>
       </header>
 
@@ -122,7 +127,7 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
             <strong className="text-text">{t.common.fairnessStage1}</strong> — {t.common.fairnessStage1Body}
           </li>
           <li>
-            <strong className="text-text">{t.common.fairnessStage2}</strong> — {t.common.fairnessStage2Body}
+            <strong className="text-text">{t.common.fairnessStage2}</strong> — {fill(t.common.fairnessStage2Body, { hours: objectionWindowHours })}
           </li>
           <li>
             <strong className="text-text">{t.common.fairnessSettlement}</strong> — {t.common.fairnessSettlementBody}

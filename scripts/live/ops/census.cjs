@@ -95,7 +95,7 @@ const q = (c, sql, params) => c.query(sql, params).then((r) => r.rows);
   // stranded = an OPEN position whose market already resolved
   // ⚠️ "OPEN position on a RESOLVED/VOIDED market" IS NOT STRANDING ON ITS OWN, and reading it
   // that way produced a false 🔴 on 2026-08-10. `settleMarket` REFUSES to move money until the
-  // objection window closes — 24h by default — so between adjudication and settlement a market
+  // objection window closes — a live setting, not a constant — so between adjudication and settlement a market
   // legitimately sits VOIDED with its positions still OPEN and its pool intact. That is the
   // system working, and it is the very window DA-5's `settledAt` requirement was built around.
   // ⛔ The honest test is whether the window has CLOSED and settlement still has not run.

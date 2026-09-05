@@ -26,6 +26,7 @@
  * the boundary between the two, which is why the scan is anchored there.
  */
 import { readFileSync } from "node:fs";
+import { decomment } from "./lib/decomment.mts";
 import { dict } from "../src/lib/i18n-dict.ts";
 
 let pass = 0, fail = 0;
@@ -48,6 +49,34 @@ const RATE_PATTERNS: Array<{ re: RegExp; what: string }> = [
   { re: /(?<!\{)\b\d{1,3}(?:\.\d+)?\s*[×x](?![\w])/gi, what: "a multiple" },
   { re: /\bthird of the (?:smaller side|pool)\b/gi, what: "the retired ceiling, in words" },
   { re: /\btheluthi moja ya upande mdogo\b/gi, what: "the retired ceiling, in Swahili" },
+  /**
+   * ⭐ THE OBJECTION WINDOW, ADDED 2026-09-05 — and it is NUMBER-AGNOSTIC on purpose.
+   *
+   * Management moved it from 24 hours to 1, and the sweep found the figure written out in nine
+   * dictionary strings across three locales plus the live chatbot's system prompt. A guard that
+   * banned the literal "24" would go green the moment someone typed "1 hour" instead, which is
+   * the same defect wearing the new number. So this matches ANY digit next to an hour word next
+   * to an objection word, and the copy is expected to carry `{hours}` and let the render site
+   * fill it from `objectionWindowHours`.
+   *
+   * ⛔ SCOPED BY THE OBJECTION WORD, NOT BY THE HOURS. The dictionary is full of legitimate
+   * 24-hour statements that must NOT trip this: the AML review hold on large withdrawals, the
+   * email-link expiry, the responsible-gambling cooling-off durations, the "Last 24 hours"
+   * range picker. Only a number standing next to the word for an objection is a restatement of
+   * this setting. The three languages are matched in one alternation so a translation cannot
+   * quietly fall outside the rule.
+   */
+  /**
+   * ⚠️ THE QUANTITY MATCHES IN BOTH ORDERS, and the Swahili control is why. English and Chinese
+   * put the number first ("24 hours", "24小时"); Swahili puts the UNIT first — "masaa 24". The
+   * first draft only knew `number-then-unit`, so it caught the English and Chinese strings and
+   * silently passed the Swahili one, which is exactly the shape of a guard that protects two of
+   * three locales and reports full coverage.
+   */
+  {
+    re: /(?:(?:\d{1,3}\s*-?\s*(?:h\b|hours?|小时)|(?:saa|masaa)\s*\d{1,3})[^.!?]{0,40}?(?:objection|pingamizi|异议)|(?:objection|pingamizi|异议)[^.!?]{0,40}?(?:\d{1,3}\s*-?\s*(?:h\b|hours?|小时)|(?:saa|masaa)\s*\d{1,3}))/gi,
+    what: "the objection window, stated as a number instead of {hours}",
+  },
 ];
 
 /**
@@ -95,6 +124,13 @@ console.log("\n§2 · the scanner catches what F2 actually fixed");
     ["howStep3B", "minus a commission capped at a third of the smaller side."],
     ["swCeiling", "kamisheni ambayo haizidi theluthi moja ya upande mdogo."],
     ["withdrawFee", "A withdrawal is charged a 1% fee, and nothing else."],
+    // ⭐ The objection window, in all three languages, exactly as they read before 2026-09-05.
+    ["fairnessIntro", "A 24-hour public objection window opens after resolution."],
+    ["fairnessSw", "Dirisha la pingamizi la masaa 24 linafunguliwa baada ya utatuzi."],
+    ["fairnessZh", "结算后开放24小时公开异议窗口。"],
+    // ⛔ AND THE NEW NUMBER MUST TRIP IT TOO. A guard that only knew "24" would go green the
+    // moment someone typed the replacement, which is the same defect wearing today's figure.
+    ["fairnessOneHour", "A 1-hour public objection window opens after resolution."],
   ];
   for (const [key, text] of BEFORE) {
     const hits: Array<{ key: string; text: string; what: string }> = [];
@@ -106,6 +142,18 @@ console.log("\n§2 · the scanner catches what F2 actually fixed");
     ["estimateHowItWorks", "A rough guide ({mult}× your stake). Your real winnings come from the pool."],
     ["card3Body", "Our commission comes only out of the losing side — the winners' stakes are returned in full."],
     ["feePct", "our {pct}% commission applies"],
+    ["fairnessIntro", "A public objection window of {hours} hour(s) opens after resolution."],
+    /**
+     * ⛔ THE NEGATIVE CONTROLS THAT KEEP THIS PATTERN HONEST. The dictionary is full of
+     * legitimate 24-hour statements, and a guard scoped to "hours" alone would condemn every
+     * one of them — then be widened by the next session until it caught nothing. Each of these
+     * is a REAL string from the product, and none is a restatement of the objection window.
+     */
+    ["amlHold", "Amounts ≥ TZS 1,000,000 may require AML review (up to 24 hours)."],
+    ["emailExpiry", "Check your inbox and click the link. The link expires in 24 hours."],
+    ["rgLimits", "Decreases take effect immediately. Increases deferred 24 hours."],
+    ["rangePicker", "Last 24 hours"],
+    ["coolOff", "Take a break (cooling-off): 1 hour, 24 hours, or 1 week."],
   ];
   for (const [key, text] of AFTER) {
     const hits: Array<{ key: string; text: string; what: string }> = [];
@@ -138,6 +186,52 @@ console.log("\n§3 · the two surfaces that state the rule in prose");
   // is easiest to get wrong: the maximum is PER BET and does not bound total exposure.
   ok("3.7 · ★ …and it says the maximum is PER BET, not a cap on total exposure",
      /PER BET/.test(chat) && /does NOT limit their total exposure/i.test(chat), "");
+
+  /**
+   * ⭐ §3b · THE OBJECTION WINDOW, ON THE TWO SURFACES THAT STATE IT IN PROSE — added 2026-09-05.
+   *
+   * 🔴 THE CHAT PROMPT WAS THE WORST MISS OF THE WHOLE SWEEP and is why this section exists.
+   * §1 scans the DICTIONARY; the assistant's system prompt is not in the dictionary, and it
+   * said "24h objection window" as a flat literal. So the platform's own assistant would have
+   * gone on telling players the old number, on demand, about their own money, while every
+   * dictionary check stayed green.
+   *
+   * ⛔ Both surfaces must INTERPOLATE. The terms page reads `objectionHours` from live config;
+   * the prompt takes it as a parameter. Neither may carry the figure.
+   */
+  /**
+   * ⚠️ IT COUNTS, IT DOES NOT MERELY LOOK — and `red:rate-copy` is what proved the difference.
+   * The first version asked whether `{objectionHours}` appeared ANYWHERE in the file. It does,
+   * three times, so putting the ENGLISH clause back to a flat 24 hours left the check green:
+   * the two other locales carried it. A presence test over a three-locale document cannot tell
+   * "all three interpolate" from "one still does".
+   */
+  const interpolations = (terms.match(/\{objectionHours\}/g) ?? []).length;
+  ok("3b.1 · ★ /legal/terms interpolates the objection window in ALL THREE locales",
+     interpolations >= 3, `${interpolations} occurrences — §6's void ground must track the live setting in every language`);
+  ok("3b.2 · ★ …and reads it from the live config, not a literal",
+     /getGlobalConfig\(\)/.test(terms) && /objectionWindowHours/.test(terms), "");
+  ok("3b.3 · ★ the assistant's system prompt takes the window as a parameter",
+     /objectionHours: number/.test(chat) && /\$\{objectionHours\}/.test(chat),
+     "a literal here is a wrong answer delivered on demand");
+  /**
+   * ⛔ READS THE CODE, NOT THE COMMENTS — and it went red on its first run for exactly the
+   * reason this project keeps re-learning. The phrase only survives in the note EXPLAINING
+   * that it was removed, so a whole-file scan condemned the fix's own documentation. Same
+   * shape as anchoring a handoff on the words "RESUME AT" in a paragraph about the words
+   * "RESUME AT". A guard must never be locatable by text its own record will one day contain.
+   */
+  const chatCode = decomment(chat);
+  ok("3b.4 · ★ …and no longer claims two-officer sign-off as the default",
+     !/two-officer sign-off/.test(chatCode),
+     "single-admin has been the recorded default since 2026-07-24");
+  ok("3b.4b · ★ CONTROL · decomment kept the prompt itself, so 3b.4 is not green on an empty string",
+     /objection window/i.test(chatCode) && chatCode.length > 1_500, `${chatCode.length}B after decomment`);
+  // ⭐ POSITIVE CONTROL, same run: the checks above are refusals, and a refusal is green on a
+  // deleted file. Prove both surfaces were actually read and still say what they should.
+  ok("3b.5 · ★ CONTROL · both files were really read and still describe the window",
+     /objection window/i.test(terms + chat) && terms.length > 2_000 && chat.length > 2_000,
+     `terms ${terms.length}B, chat ${chat.length}B`);
 }
 
 // ── §4 · the known-duplicates table ─────────────────────────────────────────
