@@ -1763,8 +1763,8 @@ export async function listTransactions(userId: string, limit = 50) {
  * same stale balance and clobbering each other (e.g. affiliate reward + proposal
  * prize firing simultaneously for the same user).
  *
- * Returns the new balance, or null if the wallet is missing/frozen or the
- * amount is non-positive.
+ * Returns the new balance, or null if the wallet is missing/frozen, the player
+ * is self-excluded / cooling-off, or the amount is non-positive.
  */
 export async function creditInternal(
   userId: string,
@@ -1772,6 +1772,34 @@ export async function creditInternal(
   opts: { description: string; type?: StoredTxn["type"] },
 ): Promise<number | null> {
   if (!Number.isFinite(amount) || amount <= 0) return null;
+
+  // 🔴 RESPONSIBLE-GAMBLING SUPPRESSION ON THE **CASH** INCENTIVE PATH (GLI-19 / LCCP SR 3.4).
+  //
+  // `creditBonus` has carried this gate for both of us, and its comment claims it covers
+  // "every incentive path … so this one gate suppresses all bonus marketing". That was only
+  // ever true while incentives ROUTED THROUGH BONUS. This function is the fallback the same
+  // callers take when the bonus programme is off — and it had no such gate.
+  //
+  // ⛔ AND THE WALLET-STATUS CHECK BELOW IS NOT A SUBSTITUTE. `selfExclude` freezes the wallet
+  // (`responsible-gambling.ts` → status FROZEN), so exclusion was caught by accident. `coolOff`
+  // sets `User.status = COOLED_OFF` and **leaves the wallet ACTIVE** — so a cooling-off player
+  // was paid promotional money in cash, in full, while the bonus path was refusing them.
+  //
+  // ⭐ Every caller already treats `null` as "not credited" and records the reward HELD rather
+  // than PAID, so refusing here never claims money moved that did not.
+  const rgLock = await isLockedOut(userId);
+  if (rgLock.locked) {
+    audit({
+      category: "COMPLIANCE",
+      action: "credit_internal.suppressed.rg_lockout",
+      actorId: userId,
+      targetType: "User",
+      targetId: userId,
+      payload: { reason: rgLock.reason, until: rgLock.until, amountTzs: amount, description: opts.description },
+    });
+    return null;
+  }
+
   return withLock(`wallet:${userId}`, async () => {
     const wallet = await db.wallet.findByUserId(userId);
     if (!wallet || wallet.status !== "ACTIVE") return null;
