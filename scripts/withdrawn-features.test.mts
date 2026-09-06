@@ -411,6 +411,45 @@ function ok(label: string, cond: boolean, extra?: string) {
   }
 }
 
+// ── §5j · THE PROPOSAL PRIZE IS PAID IN CASH, SO IT MUST NOT BE CALLED A BONUS ──
+//
+// 🔴 A FALSE MONEY STATEMENT IN THREE LANGUAGES, CREATED BY THE WITHDRAWAL ITSELF.
+// With the bonus wallet withdrawn, `creditBonus` refuses and `approveProposal` falls through to
+// `creditInternal`, so an approved proposal pays REAL, WITHDRAWABLE CASH. The email still said
+// *"your reward has landed in your bonus wallet"* / *"zawadi yako ipo kwenye pochi yako ya
+// bonasi"*, labelled the destination **"Bonus wallet"**, and offered *"View bonus wallet"* —
+// pointing at a card `bonusIsLiveFor()` no longer renders. The notification said the same in
+// en, sw and zh.
+//
+// ⛔ IT ERRS IN THE SAFER DIRECTION AND IS NO LESS FALSE: a player told their reward is locked
+// play-through money does not try to withdraw cash that is already theirs.
+//
+// ⭐ The destination is PASSED, not re-derived — `approveProposal` knows which branch paid
+// because `grantId` is set only on the bonus one. Same seam discipline as §5h.
+{
+  const { proposalApprovedHtml } = await import("../src/lib/server/email.ts");
+  const BONUS_WORDS = /bonus wallet|pochi ya bonasi|pochi yako ya bonasi|奖金钱包/i;
+
+  const cash = proposalApprovedHtml({ titleEn: "Will X happen?", amountTzs: 20_000, wagerRequiredTzs: 0, paidAsCash: true });
+  ok("§5j the cash email never names a bonus wallet", !BONUS_WORDS.test(cash), "bonus-wallet wording on a cash payment");
+  ok("§5j …and it says the money is withdrawable", /withdraw/i.test(cash), "no withdrawable statement");
+  ok("§5j …and it does not promise a play-through", !/Play through/i.test(cash), "play-through promised on cash");
+
+  // ⭐ THE CONTROL. Without it this passes just as well against a template that never mentions a
+  // bonus wallet in ANY branch — proving the string, not the branch.
+  const bonus = proposalApprovedHtml({ titleEn: "Will X happen?", amountTzs: 20_000, wagerRequiredTzs: 100_000, paidAsCash: false });
+  ok("§5j CONTROL · the bonus branch still names the bonus wallet", BONUS_WORDS.test(bonus), "the bonus branch lost its wording");
+
+  // ⛔ POSITIONAL: the service must PASS the fact. A template that can tell the truth is useless
+  // if its caller never says which branch ran.
+  const svc = decomment(readFileSync("src/lib/server/proposals-service.ts", "utf8"));
+  ok("§5j the service derives paidAsCash from the branch that actually paid",
+     /paidAsCash\s*=\s*grantedTzs\s*>\s*0\s*&&\s*grantId === null/.test(svc), "paidAsCash not derived from grantId");
+  ok("§5j …and threads it into BOTH the notification and the email",
+     /notifyProposalApproved\([^)]*paidAsCash/s.test(svc) && /proposalApprovedHtml\(\{[^}]*paidAsCash/s.test(svc),
+     "paidAsCash not passed to one of the two surfaces");
+}
+
 // ── §5f · THE SKELETON MUST DESCRIBE THE PAGE THAT IS COMING ───────────────
 // 🔴 A LOADING STATE IS A PROMISE ABOUT THE NEXT FRAME. `wallet/loading.tsx` ghosted TWO
 // cards side by side — main + bonus — because that is what the page used to render. With the
