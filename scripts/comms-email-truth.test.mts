@@ -29,6 +29,7 @@
  * Every negative assertion here was broken on purpose and observed to go red —
  * see the commit message.
  */
+import { HELPLINE, SUPPORT_PHONE } from "../src/lib/support-config.ts";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -299,7 +300,15 @@ for (const r of RENDERS) {
   // and the licence footer; a fragment renders as a wall of text in some clients.
   ok(`${r.template}: is a complete HTML document`, r.benign.startsWith("<!DOCTYPE html>") && r.benign.trimEnd().endsWith("</html>"));
   ok(`${r.template}: carries the 18+ / GBT licence footer`, r.benign.includes("18+") && r.benign.includes("Gaming Board of Tanzania"));
-  ok(`${r.template}: carries the helpline`, r.benign.includes("+255 22 211 5811"));
+  // 🔴 THIS ASSERTED THE WRONG NUMBER, AND SO ENFORCED THE DEFECT (fixed 2026-09-07).
+  // It pinned the literal `+255 22 211 5811` — **50pick's own support desk** — as "the
+  // helpline". The national gambling helpline is `0800 11 0011`. `selfExcludeHtml` printed
+  // the operator's number under the words *"Tanzania Gambling Helpline"*, and this guard
+  // made that mandatory: correcting the number alone would have turned the suite RED.
+  // ⛔ A guard asserting the wrong answer is worse than no guard — it converts a defect
+  // into a requirement. ⭐ It now reads the value from the single source of truth instead
+  // of a literal, so the two cannot disagree again and an admin override travels with it.
+  ok(`${r.template}: carries the helpline`, r.benign.includes(HELPLINE()), HELPLINE());
 
   // 3e — LINKS. A relative href is dead in an inbox.
   const hrefs = [...r.benign.matchAll(/href="([^"]+)"/g)].map((m) => m[1]);
@@ -421,6 +430,23 @@ const none = await E.sendEmail({ to: "0712@none", subject: "s", html: "<p>x</p>"
 ok("an address-less user is reported as 'no-address'", none.reason === "no-address", none.reason);
 ok("sendEmail never throws for any input",
   (await E.sendEmail({ to: "", subject: "", html: "" }).then(() => true, () => false)));
+
+// ── §3g · THE HELPLINE MUST BE INDEPENDENT OF THE OPERATOR ──────────────────────────
+//
+// 🔴 §3d above now reads the helpline from `support-config.ts` instead of a literal, which stops
+// it ENFORCING a wrong number — but it only proves the email agrees with the config. Move both
+// together and it still passes. So the property that actually matters is asserted here, once:
+// **the number printed under the words "Tanzania Gambling Helpline" must not be our own support
+// desk.** That is the entire point of an independent helpline, and it is exactly what was wrong
+// until 2026-09-07 — `selfExcludeHtml` routed a person self-excluding because gambling was
+// harming them back to the operator they were excluding themselves from.
+//
+// ⛔ CONSISTENCY AND CORRECTNESS ARE DIFFERENT ASSERTIONS. A guard that checks only the first is
+// satisfied by two wrong values that happen to match.
+ok("§3g the gambling helpline is not the operator's own support phone",
+   HELPLINE().replace(/\D/g, "") !== SUPPORT_PHONE().replace(/\D/g, ""),
+   `helpline=${HELPLINE()} support=${SUPPORT_PHONE()}`);
+ok("§3g …and it is a real, non-empty number", /\d{6,}/.test(HELPLINE().replace(/\D/g, "")), HELPLINE());
 
 console.log(`\ncert-c1 (email truth): ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);
