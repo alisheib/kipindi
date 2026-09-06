@@ -324,6 +324,14 @@ log("\n── 6 · the board carries the whole unsettled book ──────
     check("6.7 · ⛔ nothing outside dev-test mutates resolutionAt on an existing MARKET",
       mutators.length === 0,
       mutators.join(", ") || `0 — the pair can only be set at creation, where it is corrected (${REVIEWED_NON_MARKET.size} reviewed non-market writer)`);
+    // ⭐ POSITIVE CONTROL. 6.7 is an ABSENCE over a walked population, which is the shape that
+    // passes hardest when it is measuring nothing: an empty `files` array reports "0 mutators"
+    // in exactly the words a clean tree does. So the population is asserted, and so is its
+    // ability to still match — the dev-test writer it deliberately excludes must be findable.
+    check("6.7b · ⭐ POSITIVE CONTROL · the walk found a real tree, and can still see a writer",
+      files.length > 200
+      && /\.resolutionAt\s*=[^=]/.test(readFileSync(join(ROOT, "src/app/api/dev-test/fast-forward-market/route.ts"), "utf8")),
+      `${files.length} src files scanned`);
   }
 }
 

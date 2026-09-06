@@ -59,10 +59,23 @@ if (LOCAL) {
   adminPhone = j.phone;
   ok("0.1 a local ADMIN session was minted", r.ok() && !!adminId, adminId ?? String(r.status()));
 } else {
-  const cookie = process.env.KP_SESSION;
-  if (!cookie) { console.log("  SKIP — set KP_SESSION to a staff session cookie for a production drive"); process.exit(0); }
-  await ctx.addCookies([{ name: "kp_session", value: cookie, url: BASE }]);
-  ok("0.1 a production staff cookie was supplied", true);
+  /**
+   * ⭐ SIGN IN THROUGH THE SHARED HARNESS, not a hand-pasted cookie. `loginOnce` encodes traps
+   * this file would otherwise re-learn — it fills `#phone` (the VISIBLE PhoneInput; the
+   * `input[name=phone]` mirror is hidden and filling it times out, which reads as a broken login
+   * page), sends STAFF to `/auth/admin`, and takes the 9-digit local part.
+   *
+   * ⚠️ The persona is `admin` deliberately. This machine's `.env.qa.local` is dated: the six
+   * player/officer secrets are REJECTED on production and only ADMIN signs in — recorded, and
+   * ⛔ the fix is to copy the file across, never to re-mint, which would break the other laptop
+   * and start a re-mint war.
+   */
+  const { loginOnce } = await import("./live/harness.mjs");
+  const b = await chromium.launch();
+  const state = await loginOnce(b, process.env.PERSONA ?? "admin");
+  await b.close();
+  await ctx.addCookies(state.cookies.filter((c) => c.domain && BASE.includes(c.domain.replace(/^\./, ""))));
+  ok("0.1 signed in to production as the ADMIN persona", state.cookies.length > 0, `${state.cookies.length} cookie(s)`);
 }
 
 const auditCount = async () => {
