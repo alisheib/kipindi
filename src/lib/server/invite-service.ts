@@ -204,6 +204,42 @@ export async function sendCampaign(campaignId: string, adminId: string):
   if (!campaign) return { ok: false as const, error: "Campaign not found." };
   if (campaign.status === "CANCELLED") return { ok: false as const, error: "Campaign is cancelled." };
 
+  /**
+   * 🔴 DO NOT SEND A PROMISE WE HAVE DECIDED NOT TO KEEP — and this one goes to STRANGERS.
+   *
+   * Every entry in this loop is an unsolicited email or SMS whose entire subject line is the
+   * money: *"You're invited to 50pick — TZS 10,000 bonus"*. With the bonus wallet WITHDRAWN,
+   * `bindRegistration` → `creditBonus` refuses, so a person who accepts that invitation and
+   * registers receives **nothing**. We would be advertising a bonus to people who are not yet
+   * users, at our own initiative, having already decided not to pay it.
+   *
+   * ⛔ THIS IS THE OFFER, SO IT IS GATED — the sharpest case of the rule rather than an
+   * exception to it. `getInvitePreview` already returns null so the registration ribbon does
+   * not promise it (`docs/BONUS-WITHDRAWAL.md`); a campaign SEND is the same promise, pushed,
+   * to a wider audience, and it was the one surface still making it.
+   *
+   * ⚠️ CAMPAIGN ADMINISTRATION IS UNTOUCHED. Creating, listing, editing, adding contacts,
+   * cancelling and auditing all still work; `/admin/invites` reads exactly as before. What is
+   * refused is DELIVERY, and the officer is told why rather than watching a send report zero.
+   * ⭐ Entries stay QUEUED, so the campaign sends in full the day the feature returns — the
+   * same shape as the existing "no live SMS channel" branch below, which also declines to
+   * mark anything SENT rather than lying to the admin.
+   */
+  if (!bonusIsLiveFor()) {
+    audit({
+      category: "ADMIN",
+      action: "invite.send.refused_withdrawn",
+      actorId: adminId,
+      targetType: "InviteCampaign",
+      targetId: campaignId,
+      payload: { code: campaign.code, name: campaign.name },
+    });
+    return {
+      ok: false as const,
+      error: "The bonus wallet is withdrawn from the product, so this campaign's bonus would never be paid. Nothing was sent and every invite stays QUEUED — it will send in full if the programme is re-enabled.",
+    };
+  }
+
   const smsLive = smsConfigured();
   await db.inviteCampaign.update(campaignId, { status: "SENDING" });
   const entries = (await db.inviteEntry.findByCampaign(campaignId)).filter((e) => e.status === "QUEUED");

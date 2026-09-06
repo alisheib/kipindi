@@ -513,6 +513,54 @@ function ok(label: string, cond: boolean, extra?: string) {
      "the detail page still hard-codes one caption");
 }
 
+// ── §5k · A CAMPAIGN SEND IS AN UNSOLICITED PROMISE, TO PEOPLE WHO ARE NOT YET USERS ──
+//
+// 🔴 THE WIDEST-REACHING SURFACE THE WITHDRAWAL LEFT OPEN. `sendCampaign` emails and SMSes
+// STRANGERS with the money in the subject line — *"You're invited to 50pick — TZS 10,000
+// bonus"*. With the wallet withdrawn, `bindRegistration` → `creditBonus` refuses, so anyone who
+// accepts and registers gets nothing. Advertising, at our own initiative, a bonus we have
+// already decided not to pay.
+//
+// ⛔ Delivery is refused; ADMINISTRATION is not. Creating, listing, editing, adding contacts,
+// cancelling and auditing a campaign all still work — and entries stay QUEUED so the campaign
+// sends in full if the programme returns.
+{
+  const { sendCampaign, createCampaign, addContacts } = await import("../src/lib/server/invite-service.ts");
+
+  const made = await createCampaign(
+    { name: "Audit send-gate", bonusAmountTzs: 10_000, messageEn: "hello", messageSw: "habari" },
+    "officer_w5k",
+  );
+  ok("§5k SETUP · a campaign can still be CREATED while the wallet is withdrawn", made.ok === true, JSON.stringify(made));
+  if (made.ok) {
+    const added = await addContacts(made.campaign.id, "w5k@t.tz", "officer_w5k");
+    ok("§5k SETUP · …and contacts can still be added", added.ok === true, JSON.stringify(added));
+
+    const sent = await sendCampaign(made.campaign.id, "officer_w5k");
+    ok("§5k the send is REFUSED while the bonus wallet is withdrawn", sent.ok === false, JSON.stringify(sent));
+    ok("§5k …and the officer is told why, not shown a zero",
+       sent.ok === false && /withdrawn/i.test(sent.error) && /QUEUED/i.test(sent.error),
+       sent.ok === false ? sent.error : "sent");
+
+    // ⛔ Nothing may be marked SENT — the same rule the "no live SMS channel" branch already
+    // follows. A campaign that reports delivery it did not perform is worse than one that stops.
+    const entries = await db.inviteEntry.findByCampaign(made.campaign.id);
+    ok("§5k …and no entry was marked SENT", entries.every((e) => e.status !== "SENT"),
+       entries.map((e) => e.status).join(","));
+
+    // ⭐ THE CONTROL — without it this passes just as well against a send path that is simply
+    // broken, or a campaign with no deliverable contacts.
+    process.env.FEATURE_BONUS = "ACTIVE";
+    try {
+      const ok2 = await sendCampaign(made.campaign.id, "officer_w5k");
+      ok("§5k CONTROL · the same campaign DOES send once the product state is ACTIVE",
+         ok2.ok === true, JSON.stringify(ok2));
+    } finally {
+      delete process.env.FEATURE_BONUS;
+    }
+  }
+}
+
 // ── §5f · THE SKELETON MUST DESCRIBE THE PAGE THAT IS COMING ───────────────
 // 🔴 A LOADING STATE IS A PROMISE ABOUT THE NEXT FRAME. `wallet/loading.tsx` ghosted TWO
 // cards side by side — main + bonus — because that is what the page used to render. With the
