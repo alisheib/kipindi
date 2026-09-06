@@ -221,8 +221,4 @@ export const ResponsibleLimitsSchema = z.object({
   realityCheckMin: z.number().int().min(15).max(120).optional(),
 });
 
-export const SelfExclusionSchema = z.object({
-  duration: z.enum(["24h", "7d", "30d", "6m", "permanent"]),
-  reason: z.string().max(500).optional(),
-  otpCode,
-});
+// 🔴 `SelfExclusionSchema` DELETED 2026-09-07 — unreferenced, and it required an OTP self-exclusion does not.
