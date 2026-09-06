@@ -158,31 +158,54 @@ for (const s of SURFACES) {
      reach.reachH >= 30, `box ${reach.boxH}px · reach ${reach.reachH}px`);
 
   {
-    // The neighbour must still own its own centre — no row can steal another's tap.
-    const stolen = await eyes.evaluateAll((els) =>
-      els.filter((el, i) => {
-        if (i === 0) return false;
-        const b = el.getBoundingClientRect();
-        const n = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
-        return !(n === el || el.contains(n));
-      }).length,
-    );
-    ok(`${s.label}: ⛔ no row's reach steals its neighbour's centre`, stolen === 0, `${stolen} stolen`);
+    /**
+     * Every row must own its own centre — no row's reach may steal its neighbour's tap.
+     *
+     * 🔴 THE FIRST VERSION OF THIS CHECK WAS WRONG AND SAID SO LOUDLY: it tested all 20 rows
+     * without scrolling, and `elementFromPoint` returns `null` for a coordinate OUTSIDE the
+     * viewport — so the 17 rows below the fold came back "stolen" and the run reported a
+     * neighbour-overlap catastrophe on a page whose row pitch is 65px and which overlaps
+     * nothing. ⛔ A true measurement over the wrong population is the most convincing way to
+     * be wrong. Each row is scrolled into view before its own centre is tested.
+     */
+    const n = await eyes.count();
+    let stolen = 0, checked = 0;
+    for (let i = 0; i < n; i++) {
+      const el = eyes.nth(i);
+      await el.scrollIntoViewIfNeeded();
+      const owns = await el.evaluate((node) => {
+        const b = node.getBoundingClientRect();
+        if (b.top < 0 || b.bottom > innerHeight) return null; // still not measurable — do not guess
+        const hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+        return !!hit && (hit === node || node.contains(hit));
+      });
+      if (owns === null) continue;
+      checked++;
+      if (!owns) stolen++;
+    }
+    ok(`${s.label}: ⛔ no row's reach steals its neighbour's centre`,
+       stolen === 0 && checked > 1, `${stolen} stolen of ${checked} measurable rows`);
   }
 
   // The reveal itself. ⚠️ Re-resolve nothing: the click re-renders the tree, and a LOCATOR
   // would silently point at a different row — which is exactly how an earlier run of this
   // file reported a working reveal as broken.
   const handle = await first.elementHandle();
+  await first.scrollIntoViewIfNeeded();
   await handle.click();
-  await page.waitForTimeout(1500);
+  /**
+   * ⚠️ WAIT FOR THE STATE TO FLIP, NOT FOR A CLOCK. A fixed 1500ms wait reported the STAFF
+   * roster as broken on production when the round trip simply took longer than the guess —
+   * the very next read, 600ms later, held the full number. A timeout is not a signal.
+   */
+  await page.waitForFunction((el) => el.getAttribute("aria-label")?.startsWith("Hide"), handle, { timeout: 20_000 }).catch(() => {});
   const shownText = (await handle.textContent())?.trim() ?? "";
   ok(`${s.label}: clicking the eye produces the FULL number`,
      /\+\d{9,}/.test(shownText) && !/••••/.test(shownText), shownText);
 
   // …and hiding again is local, and must NOT pretend the read did not happen.
   await handle.click();
-  await page.waitForTimeout(600);
+  await page.waitForFunction((el) => el.getAttribute("aria-label")?.startsWith("Reveal"), handle, { timeout: 20_000 }).catch(() => {});
   const hiddenAgain = (await handle.textContent())?.trim() ?? "";
   ok(`${s.label}: the eye toggles back to dots`, /••••/.test(hiddenAgain), hiddenAgain);
 }

@@ -5158,12 +5158,18 @@ textarea::-webkit-resizer {
    That is how `.mcardp-share` originally shipped visible, named, translated and
    UNCLICKABLE, and the note there says so in as many words.
 
-   ⚠️ THE VERTICAL REACH IS DELIBERATELY NOT `--tap-min` (40px) ON ALL SIDES. These
-   controls stack one per table row, so a reach taller than the row pitch would put one
-   row's hit area over its neighbour's — trading an under-sized target for a MIS-TAP,
-   which is worse: the first fails visibly, the second reveals the wrong player's number
-   and writes an audit row saying so. The expansion is bounded and verified with
-   `elementFromPoint` rather than with a bounding box, because a box cannot see reach.
+   ⭐ THE VERTICAL REACH IS 15 + 13 + 13 = 41px, WHICH CLEARS `--tap-min` (40px), AND THE
+   ROOM FOR IT WAS MEASURED RATHER THAN ASSUMED: the roster's row pitch is **65px** on
+   production, so a 41px reach cannot touch its neighbour. That mattered — these controls
+   stack one per row, and a reach taller than the pitch would trade an under-sized target
+   for a MIS-TAP, which is strictly worse here: it would reveal the WRONG player's number
+   and write an audit row saying so.
+
+   ⛔ VERIFIED WITH `elementFromPoint`, NEVER A BOUNDING BOX — a box cannot see a
+   pseudo-element. ⚠️ And the first version of that check was itself wrong: it tested every
+   row's centre without scrolling, so the 17 rows BELOW THE FOLD returned `null` and were
+   counted as "stolen by a neighbour". The product was fine; the guard was measuring a
+   population it could not see. `qa:phone-reveal` scrolls each row into view now.
    ───────────────────────────────────────────────────────────────────────────── */
 .sensitive-reveal {
   position: relative;
@@ -5171,8 +5177,8 @@ textarea::-webkit-resizer {
 .sensitive-reveal::after {
   content: "";
   position: absolute;
-  left: -8px;
-  right: -8px;
-  top: -9px;
-  bottom: -9px;
+  left: -10px;
+  right: -10px;
+  top: -13px;
+  bottom: -13px;
 }
