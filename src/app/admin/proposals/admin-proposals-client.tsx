@@ -323,7 +323,19 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
     start(async () => {
       try {
         const r = await approveProposalAction(sel.id);
-        if (r.ok) { overlay.succeed("Approved · bonus paid", r.grantedTzs > 0 ? `${formatTzs(r.grantedTzs)} credited to the proposer's bonus wallet.` : "Proposer notified. Publish it live when ready."); resetReview(); refresh(); }
+        if (r.ok) {
+          /* ⛔ "Approved · TZS 0" WITH NO REASON READS AS A BUG, and an officer who reads it
+             that way will retry, or escalate, or quietly pay the prize by hand. When the
+             prize is withheld because the proposer is self-excluded or cooling off, the
+             officer is told exactly that — the approval succeeded, the money did not move,
+             and nothing is misconfigured. */
+          if (r.prizeSuppressedByRg) {
+            overlay.succeed("Approved · prize withheld", "The proposer is self-excluded or cooling off, so no promotional prize was paid (GLI-19 / LCCP SR 3.4). The proposal itself is approved — publish it live when ready.");
+          } else {
+            overlay.succeed("Approved · bonus paid", r.grantedTzs > 0 ? `${formatTzs(r.grantedTzs)} credited to the proposer's bonus wallet.` : "Proposer notified. Publish it live when ready.");
+          }
+          resetReview(); refresh();
+        }
         else overlay.fail("Couldn't approve", r.error);
       } catch { overlay.fail("Couldn't approve", "Server error — please try again."); }
     });

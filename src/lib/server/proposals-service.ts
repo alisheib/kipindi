@@ -38,6 +38,7 @@ import { maskName } from "./affiliate-service";
 import type { FailureReason } from "@/lib/failure-reasons";
 import { creditBonus } from "./bonus-service";
 import { creditInternal } from "./wallet-service";
+import { isLockedOut } from "./responsible-gambling";
 import { displayLabel } from "@/lib/display-label";
 import { wallClockToUtcIso } from "@/lib/zoned-time";
 import { getPlatformTimezone } from "./platform-config";
@@ -472,7 +473,10 @@ export function timelineStep(v: ProposalView): number {
 
 // ── Officer actions ─────────────────────────────────────────────────────
 export type ApproveResult =
-  | { ok: true; grantedTzs: number }
+  /** `prizeSuppressedByRg` — the proposal was approved but its prize was withheld because the
+   *  proposer is self-excluded or cooling off. The officer needs to be told that plainly:
+   *  "approved, TZS 0 granted" with no reason reads as a bug. */
+  | { ok: true; grantedTzs: number; prizeSuppressedByRg?: boolean }
   | { ok: false; error: string };
 
 /**
@@ -519,7 +523,46 @@ export async function approveProposal(proposalId: string, officerId: string): Pr
     let wagerRequiredTzs = 0;
     let queued = false;
 
+    /**
+     * 🔴 A PROPOSAL IS APPROVED ON ITS MERITS; A PRIZE IS AN INCENTIVE. THEY ARE NOT
+     * THE SAME DECISION, AND CONFLATING THEM BROKE THE OFFICER'S DOOR.
+     *
+     * Responsible-gambling suppression (GLI-19 / LCCP SR 3.4) says a player on a break is
+     * paid no promotional money. It does NOT say their market idea stops being good.
+     *
+     * ⛔ WHAT HAPPENED WITHOUT THIS BRANCH: `creditBonus` refused with RG_LOCKED, the code
+     * fell through to `creditInternal`, which (since 2026-09-06) also refuses — and the
+     * `credited === null` arm then ABANDONED THE WHOLE APPROVAL, telling the officer to
+     * "check the bonus/wallet setup and retry". Nothing was misconfigured, and no retry
+     * could ever succeed until the player's break expired. A compliance control on the
+     * PLAYER had become a block on the OFFICER, with a misattributed error.
+     *
+     * ⛔ AND THE PRE-2026-09-06 BEHAVIOUR WAS WORSE, not better: `creditInternal` had no RG
+     * gate, so the fall-through PAID a self-excluded proposer in cash — silently bypassing
+     * the very suppression `creditBonus` had just applied.
+     *
+     * ⭐ So the prize is suppressed and the approval proceeds. This matches how RG
+     * suppression already works everywhere else in this codebase: `creditBonus` suppresses,
+     * it does not defer. The audit row is the record an officer can act on later if the
+     * operator ever decides to pay a withheld prize by hand.
+     */
+    let prizeSuppressedByRg = false;
     if (prize > 0) {
+      const rgLock = await isLockedOut(p.proposerId);
+      if (rgLock.locked) {
+        prizeSuppressedByRg = true;
+        audit({
+          category: "COMPLIANCE",
+          action: "proposal.prize_suppressed.rg_lockout",
+          actorId: officerId,
+          targetType: "Proposal",
+          targetId: p.id,
+          payload: { proposerId: p.proposerId, prize, reason: rgLock.reason, until: rgLock.until },
+        });
+      }
+    }
+
+    if (prize > 0 && !prizeSuppressedByRg) {
       // Prefer the bonus wallet (must be played through). Idempotent by sourceRef.
       // notifyPlayer:false — we send the single, contextual "proposal approved"
       // notice below instead of the generic "bonus added" one (no double-notify).
@@ -569,7 +612,7 @@ export async function approveProposal(proposalId: string, officerId: string): Pr
       tag: "proposal-approved",
     }));
 
-    return { ok: true, grantedTzs };
+    return { ok: true, grantedTzs, prizeSuppressedByRg };
   });
 }
 

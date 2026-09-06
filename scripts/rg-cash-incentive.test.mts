@@ -140,6 +140,56 @@ const HOUR = 3_600_000;
   ok("§5 the reward is recorded HELD, not silently dropped", rewards.some((r) => r.status === "HELD"), `rows=${JSON.stringify(rewards.map((r) => r.status))}`);
 }
 
+// ── §6 · A PROPOSAL IS APPROVED ON ITS MERITS; ONLY THE PRIZE IS SUPPRESSED ──
+// 🔴 THE REGRESSION THIS CATCHES. §1–§5 made `creditInternal` refuse an RG-locked player,
+// which is right. But the proposals caller had no suppression branch: `creditBonus` refused
+// with RG_LOCKED, the code fell through to `creditInternal`, that refused too, and the
+// `credited === null` arm ABANDONED THE WHOLE APPROVAL — telling the officer to "check the
+// bonus/wallet setup and retry" when nothing was misconfigured and no retry could work until
+// the player's break expired. A compliance control on the PLAYER became a block on the OFFICER.
+// ⛔ And the behaviour before §1–§5 was worse, not better: the fall-through PAID a
+// self-excluded proposer in cash, bypassing the suppression creditBonus had just applied.
+//
+// ⛔ §6b IS THE CONTROL. Suppressing every proposal approval would satisfy §6a while having
+// broken the officer's door completely — which is the exact defect §6a exists to prevent.
+{
+  const { createProposal, approveProposal } = await import("../src/lib/server/proposals-service.ts");
+  const { setProposalsConfig } = await import("../src/lib/server/proposals-config.ts");
+  setProposalsConfig({ state: "ACTIVE" }, "test-officer");
+
+  const mkProposal = async (proposerId: string) => {
+    const r = await createProposal(proposerId, {
+      titleEn: `Will the harbour crane be repaired by December ${proposerId.slice(-3)}?`,
+      resolutionCriterion: "Resolved YES if the Port Authority confirms the repair in writing.",
+      resolutionDate: new Date(Date.now() + 30 * 24 * HOUR).toISOString().slice(0, 10),
+      category: "infrastructure",
+      sourceUrl: "https://www.thecitizen.co.tz/tanzania/news/harbour-crane-repair",
+    } as never);
+    if (!r.ok) throw new Error(`fixture proposal failed: ${r.error}`);
+    return r.proposal.id;
+  };
+
+  await mkUser("prop_locked");
+  await rg("prop_locked", { coolingOffUntil: new Date(Date.now() + HOUR).toISOString() });
+  await mkUser("prop_clear");
+  await mkUser("prop_officer");
+
+  // §6a · the locked proposer — approved, but paid nothing
+  const lockedId = await mkProposal("prop_locked");
+  const a1 = await approveProposal(lockedId, "prop_officer");
+  ok("§6a the approval SUCCEEDS for a cooling-off proposer", a1.ok === true, JSON.stringify(a1));
+  ok("§6a …and it reports the prize was suppressed", a1.ok === true && a1.prizeSuppressedByRg === true, JSON.stringify(a1));
+  ok("§6a …and no money reached them", (await cash("prop_locked")) === 0, `cash=${await cash("prop_locked")}`);
+  ok("§6a …and the proposal really is APPROVED", (await db.proposal.findById(lockedId))?.status === "APPROVED");
+
+  // §6b · CONTROL — an unrestricted proposer is approved AND paid
+  const clearId = await mkProposal("prop_clear");
+  const a2 = await approveProposal(clearId, "prop_officer");
+  ok("§6b CONTROL · an unrestricted proposer is approved", a2.ok === true, JSON.stringify(a2));
+  ok("§6b CONTROL · …and the prize is NOT suppressed", a2.ok === true && !a2.prizeSuppressedByRg, JSON.stringify(a2));
+  ok("§6b CONTROL · …and they were actually paid", a2.ok === true && a2.grantedTzs > 0, JSON.stringify(a2));
+}
+
 console.log(`\n${pass} passed · ${fail} failed`);
 if (pass === 0) { console.log("⛔ 0 passed — treat a zero-assertion run as a SKIPPED run, never a green one."); process.exit(1); }
 process.exit(fail === 0 ? 0 : 1);
