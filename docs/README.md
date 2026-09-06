@@ -220,4 +220,15 @@ to teal and resurrects the killed light theme.
 3. **Never silently "update" a ⚪ RECORD.** Its value is being a true account of a moment.
    Write a correction beneath it, fenced, so nobody re-derives the wrong answer.
 4. **Add every new doc to this index, with a status.** An unindexed doc is one nobody trusts.
-5. **`npm run test:docs` before you claim the docs are clean.**
+   🔒 **ENFORCED since 2026-09-06 by `npm run test:docs`** — it compares the set of `docs/*.md`
+   on disk against the set this file links, and fails naming each one that is missing.
+   ⛔ It was a rule with no gate until then, and it had already been broken twice by the same
+   amount: `CLAUDE.md` records eleven unindexed docs once, and the count on 2026-09-06 was
+   **eleven again** — including `BONUS-WITHDRAWAL.md`, the authority for withdrawing Invite and
+   the bonus wallet. An authority nobody can reach from the index is an authority nobody reads.
+   ⭐ The gate compares SETS, never counts, so it cannot pass by agreeing with itself.
+5. **`npm run test:docs` before you claim the docs are clean.** It now checks five things:
+   markdown links resolve · `scripts/<file>` paths exist · `npm run <name>` scripts exist ·
+   **every bare backticked `` `test:foo` `` / `` `qa:foo` `` / `` `ops:foo` `` citation resolves**
+   (3,136 of them, and NONE was checked before 2026-09-06 — the gate register in
+   `DESIGN-BASELINE.md` was naming a DELETED suite) · and rule 4 above.
