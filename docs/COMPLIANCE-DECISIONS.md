@@ -51,6 +51,29 @@ ADMIN and COMPLIANCE `read`; FINANCE, AUDITOR, SUPPORT and GROWTH `masked`; MODE
 `RoleReadGrant` holds **0 rows on production** (re-measured 2026-09-06), so the code defaults are
 the live matrix.
 
+### ⚠️ ONE ROLE DOES LOSE A READ, AND IT IS THE POINT RATHER THAN A SIDE EFFECT
+
+**MODERATOR's `identity.contact` cell is `none`,** and `<Sensitive>` renders **nothing** for that
+cell — not a mask, not a dash. So on `/admin/markets/[id]` (the trading domain, which is
+MODERATOR's own home) the predictors table's Phone column is now **empty** for them, where before
+this change it showed a hand-masked `+255*****01`.
+
+⭐ **That is the correction, not a regression.** The page was masking with a `.slice()` that
+consulted no matrix; the matrix has always said a trading role has no business with contact
+details, and the page simply was not asking. Wiring the field to the axis is what made the page
+obey a rule that already existed. READ_TIERS only ever SUBTRACTS (§2.2), and this is the one place
+in this change where it actually did.
+
+⛔ **The empty cell is the DESIGN, and it is deliberate.** §5a asserts that a refused field is
+*"absent entirely"* rather than dashed, because a refusal that renders a placeholder is
+indistinguishable from a value that does not exist — and the ABSENCE of a control is what makes
+the refusal unreachable by a modified client. It reads harsher in a table than in a sentence;
+that is the accepted cost, stated here so it is not discovered as a bug.
+
+⚠️ **NOT verified live.** The six staff QA personas are rejected on production, so the only account
+this session could drive was ADMIN. MODERATOR's view is derived from the matrix and from
+`sensitive.tsx:75`, not observed.
+
 ### ⚠️ TWO RULINGS THAT DO GO BEYOND THE DESIGN, PUT TO ALI AND ANSWERED
 
 | | Ali's ruling | The cost, stated |
