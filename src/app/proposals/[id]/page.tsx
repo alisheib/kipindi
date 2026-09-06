@@ -117,7 +117,20 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
               amount={formatTzsSigned(p.bonusGrantedTzs)}
               caption={t.common.earnedAPrize}
             />
-            <p className="mt-2 text-body-sm text-text-muted">{t.common.creditedToBonusWallet}</p>
+            {/*
+              🔴 THE CAPTION MUST NAME THE WALLET THE MONEY IS ACTUALLY IN.
+              This said "Credited to your bonus wallet" (and the sw/zh equivalents) on every
+              approved proposal. With the bonus wallet withdrawn, `approveProposal` pays through
+              `creditInternal`, so the prize is real, withdrawable cash — and the player was told
+              it was locked play-through money. ⛔ Wrong in the SAFER direction and no less wrong:
+              somebody who believes their reward is locked never tries to withdraw it.
+              ⭐ `rewardPaidAsCash` is the DTO's copy of the one rule in `proposals-service.ts` —
+              not a `bonusIsLiveFor()` call here. A grant minted before the withdrawal must keep
+              reading as a grant for ever; this states where THIS money went, not what we offer today.
+            */}
+            <p className="mt-2 text-body-sm text-text-muted">
+              {p.rewardPaidAsCash ? t.common.creditedToBalance : t.common.creditedToBonusWallet}
+            </p>
           </div>
         </section>
       )}

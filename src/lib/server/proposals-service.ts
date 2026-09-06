@@ -390,6 +390,8 @@ export type ProposalView = {
   myVote: "up" | "down" | null;
   publishedMarketId: string | null;
   bonusGrantedTzs: number;
+  /** True when the prize was paid as real withdrawable cash rather than a bonus grant. */
+  rewardPaidAsCash: boolean;
   approvedAt: string | null;
   declineReason: string | null;
   declineNote: string | null;
@@ -422,6 +424,7 @@ async function toView(p: StoredProposal, viewerId: string | null): Promise<Propo
     myVote: viewerId ? ((await db.proposalVote.get(p.id, viewerId))?.dir ?? null) : null,
     publishedMarketId: p.publishedMarketId,
     bonusGrantedTzs: p.bonusGrantedTzs,
+    rewardPaidAsCash: rewardPaidAsCash(p),
     approvedAt: p.approvedAt,
     declineReason: p.declineReason,
     declineNote: p.declineNote,
@@ -507,6 +510,21 @@ export function timelineStep(v: ProposalView): number {
 }
 
 // ── Officer actions ─────────────────────────────────────────────────────
+/**
+ * ⭐ WHICH WALLET A PRIZE LANDED IN — ONE definition, read by the payer, the receipt and the page.
+ *
+ * 🔴 `bonusGrantId` is set ONLY when `creditBonus` succeeded. With the bonus wallet WITHDRAWN
+ * from the product it always refuses, so `approveProposal` falls through to `creditInternal` and the
+ * prize is REAL, WITHDRAWABLE CASH — leaving the grant id null. That null IS the fact.
+ *
+ * ⛔ DO NOT re-derive this from `bonusIsLiveFor()` at a display site. That predicate answers what
+ * the product OFFERS TODAY; a receipt must state where THIS payment actually went. A grant made
+ * before the withdrawal, or during a mid-flight state flip, must still read as a grant for ever.
+ */
+export function rewardPaidAsCash(p: { bonusGrantedTzs: number; bonusGrantId: string | null }): boolean {
+  return p.bonusGrantedTzs > 0 && p.bonusGrantId === null;
+}
+
 export type ApproveResult =
   /** `prizeSuppressedByRg` — the proposal was approved but its prize was withheld because the
    *  proposer is self-excluded or cooling off. The officer needs to be told that plainly:
@@ -647,7 +665,7 @@ export async function approveProposal(proposalId: string, officerId: string): Pr
      * product OFFERS, and what this message must state is where the money ACTUALLY went — a
      * grant could exist from before the withdrawal, or from a mid-flight state flip.
      */
-    const paidAsCash = grantedTzs > 0 && grantId === null;
+    const paidAsCash = rewardPaidAsCash({ bonusGrantedTzs: grantedTzs, bonusGrantId: grantId });
 
     notifyProposalApproved(p.proposerId, { titleEn: p.titleEn, amountTzs: grantedTzs, queued, paidAsCash }).catch(() => {});
     sendEmailToUser(p.proposerId, (email) => ({
