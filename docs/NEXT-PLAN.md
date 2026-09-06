@@ -36,6 +36,34 @@ outcome already stamped and the money not yet moved; Ali's stopping condition is
 that market is NOT in progress. It is guarded as a **partition** over the unsettled book rather
 than as a membership test.
 
+## 0b · THE WITHDRAWAL — Invite & the bonus wallet · 🔴 **BUILT, NOT MERGED, NOT LIVE**
+
+🔴 **THE MOST IMPORTANT LINE ON THIS BOARD, because the board did not have it until 2026-09-06.**
+This programme is finished on a branch and a player is still using the old product. It was
+invisible here — and this board's own opening rule is *"if a document is not listed below, it is
+not a live task"*, which would have told the next session to ignore twenty-five commits of
+shipped-quality work.
+
+| | |
+|---|---|
+| **Authority** | [`BONUS-WITHDRAWAL.md`](BONUS-WITHDRAWAL.md) — the decision, the three laws, and §4b, the audit that found granting was never actually withdrawn |
+| **Handoff** | [`LIVE-QA-CAMPAIGN.md`](LIVE-QA-CAMPAIGN.md) §6b, topmost `RESUME AT` (session 89) |
+| **What it does** | Normal players get **no bonus wallet and no Invite & Earn**. Referral earning becomes something only a vetted, fee-paying, compliance-approved **Agent Affiliate** does. The switch is `src/lib/feature-state.ts` |
+| **Where it lives** | `agent-affiliate-programme` (14 commits ahead of `origin/main`, 0 behind) + `audit/system-cleanup-2026-09-06` (11 more, a clean fast-forward on top) |
+| **State** | ⛔ **NOT ON `main`, THEREFORE NOT LIVE.** Measured, not assumed — re-derive with `git log --oneline origin/main..agent-affiliate-programme` before believing any claim about what a player sees |
+| **Proven** | `test:withdrawn-features` **61/0** · `red:withdrawn-features` 3/3 · full gate **290/292** (the two failures are pre-existing and were re-measured byte-identically at the base commit) · the player surfaces RENDERED in both states, with a `FEATURE_*=ACTIVE` control |
+| **Owed** | ① The **AGENT** view of `/profile/invite` has never been rendered — nothing assigns `UserRole.AGENT` yet. ② Production `BonusGrant` rows have not been re-counted this session. ③ `SMS_PROVIDER=console` still blocks registration and is unrelated to this programme, but it blocks the same launch |
+| **Blocked on** | **Ali's decision to merge.** Merging to `main` deploys it to real players and real money |
+
+⛔ **THE FINDING WORTH CARRYING FORWARD, whatever happens to the merge.** §1 of the authority
+listed *"Granting"* as withdrawn from the day it shipped and **nothing enforced it**: `creditBonus`
+gated on the DB-backed operator config, never on the product state. An approved agent's commission
+was paid as a played-through bonus grant — and `test:withdrawn-features` printed
+`bonus.credited … BonusGrant#…` plus an email titled *"Bonus added"* **while reporting 43 passed ·
+0 failed**, because its assertion was `balance + bonusBalance > 0` — a SUM, structurally blind to
+*which* wallet. ⭐ **The assertion that would have caught it is the one the section declined to
+make.** That is the shape to look for, not the bug.
+
 ## THE TWO PROGRAMMES THAT WERE ALREADY HERE
 
 ---
