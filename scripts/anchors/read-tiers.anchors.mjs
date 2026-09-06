@@ -274,6 +274,15 @@ export const MUTATIONS = [
     expect: "8.10 …and the column NAMES itself when masked",
   },
   {
+    name: "ratchet-population-narrows-again",
+    why: "the drift ratchet goes back to walking `src/app/admin` alone, dropping `src/components/admin/**` — where the console's SHARED pieces live (the shell, the nav, the tables). A component there rendering a player's phone would be invisible to a guard whose stated purpose is a population that is the WHOLE app. ⛔ 7.1 would still print `0 unreviewed`, because there is nothing to find in a tree you do not walk — which is why the POPULATION is asserted separately from the result",
+    file: "scripts/read-tiers.test.mts",
+    suite: "read-tiers",
+    from: `const adminTsx = [\n  ...walk(join(ROOT, "src", "app", "admin")),\n  ...walk(join(ROOT, "src", "components", "admin")),\n];`,
+    to: `const adminTsx = walk(join(ROOT, "src", "app", "admin"));`,
+    expect: "7.2 ⭐ POSITIVE CONTROL · the population is BOTH admin trees",
+  },
+  {
     name: "roster-label-falls-back-to-a-phone",
     why: "⭐ THIS MUTATION IS NOT HYPOTHETICAL — it is the exact body that appeared in the working tree on 2026-09-06, under the twenty-line comment explaining why it must not. `maskedRosterLabel` collapses to a plain `maskName` delegation, so a player with no display name is labelled `+255•••101` on the self-exclusion and DSAR rosters: a phone fragment keeping the last THREE digits, ungoverned and unaudited, beside a column showing the last two behind an eye. ⛔ §8.12 CANNOT SEE THIS — it checks the call sites, and the call sites are unchanged. A guard on the caller cannot catch a lie inside the callee, which is why §8.14–8.16 drive the function instead of reading it",
     file: "src/lib/server/affiliate-service.ts",

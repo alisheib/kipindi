@@ -455,7 +455,21 @@ const GOVERNED_ALLOW = new Map<string, string>([
   // shrink is meant to shrink; this is what that looks like.
 ]);
 
-const adminTsx = walk(join(ROOT, "src", "app", "admin"));
+/**
+ * ⚠️ THE POPULATION IS BOTH ADMIN TREES — widened 2026-09-06.
+ *
+ * It walked `src/app/admin` alone, and `src/components/admin/**` is where the console's SHARED
+ * pieces live: the shell, the nav, the tables, the sort controls. A component there rendering a
+ * player's phone would have been invisible to a ratchet whose stated purpose is "a population
+ * that is the WHOLE APP, not the part you remembered" — the same failure this section's header
+ * describes, one directory over. ⭐ Measured before widening: the only phone in that tree is the
+ * signed-in officer's OWN number in the top bar, which §6 puts out of scope and which is listed
+ * as reviewed below. So this costs nothing today and catches the next one.
+ */
+const adminTsx = [
+  ...walk(join(ROOT, "src", "app", "admin")),
+  ...walk(join(ROOT, "src", "components", "admin")),
+];
 type Offender = { file: string; prop: string; cls: string; snippet: string };
 const governedOffenders: Offender[] = [];
 for (const f of adminTsx) {
@@ -503,8 +517,15 @@ ok(`7.1 ⛔ RATCHET · every governed field on an admin surface is wired or revi
 
 // ⭐ POSITIVE CONTROL ON THE DETECTOR ITSELF. A ratchet whose population is empty reads exactly
 // like a ratchet with nothing to find — the failure that let this gap exist for a whole delivery.
-ok("7.2 ⭐ POSITIVE CONTROL · the population is the WHOLE admin tree, not a remembered list",
-   adminTsx.length > 50, `${adminTsx.length} admin .tsx files scanned`);
+// ⛔ BOTH ROOTS ASSERTED SEPARATELY. `adminTsx.length > 50` alone passes even if the
+// `src/components/admin` walk silently returns nothing — a widened population that quietly
+// stayed narrow reads exactly like a widened one that worked.
+{
+  const rooted = (seg: string) => adminTsx.filter((f) => f.replace(/\\/g, "/").includes(seg)).length;
+  const app = rooted("/src/app/admin/"), comp = rooted("/src/components/admin/");
+  ok("7.2 ⭐ POSITIVE CONTROL · the population is BOTH admin trees, not a remembered list",
+     app > 50 && comp > 5, `${app} in app/admin + ${comp} in components/admin = ${adminTsx.length}`);
+}
 
 ok("7.3 ⭐ …and it CAN still match: the wired page holds the accessors, inside <Sensitive>",
    /<Sensitive field="email"/.test(readFileSync(join(ROOT, "src/app/admin/players/[id]/page.tsx"), "utf8")),
