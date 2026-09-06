@@ -1246,7 +1246,7 @@ export const dict = {
       // ⚠️ RETAINED, UNRENDERED. Invite is WITHDRAWN for players (`src/lib/feature-state.ts`),
       // not coming soon, so no surface reads these three keys today — a withdrawn destination
       // is absent, never badged. They are kept, in all three locales, because the state is
-      // reversible and `scripts/reenablement.test.mts` drives the ON path on every deploy.
+      // reversible and `scripts/withdrawn-features.test.mts` §4 drives the ON path every deploy.
       // ⛔ The withdrawn-vocabulary guard asserts these never reach a player RENDER; that is a
       // check on the rendered page, not on this dictionary.
       inviteComingSoonTag: "Coming soon",

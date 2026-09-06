@@ -217,29 +217,29 @@ function stubReply(userText: string, lang: Lang): Reply {
     };
   }
 
-  // Affiliate / referral — "Invite & Earn" (/profile/invite).
+  /**
+   * Referral — WITHDRAWN from the player product (2026-09-06).
+   *
+   * ⛔ THIS BRANCH USED TO TEACH THE PROGRAMME AND CITE `/profile/invite`. That page now
+   * returns the not-found view for an ordinary player, so the fallback was walking people
+   * to a dead door and promising rewards nobody could earn.
+   *
+   * ⚠️ IT CANNOT ASK WHO IS TYPING. This is a keyword matcher over the message text, called
+   * from a client component with no session or role in scope — so the answer has to be true
+   * for EVERY asker, agent or player. It says the one thing that is: earning by referral is
+   * limited to approved agents. No citation, because the only page it could cite is one most
+   * askers cannot open. An approved agent asking this gets the full answer from the live
+   * model, whose system prompt carries the real rule; this is only the offline fallback.
+   */
   if (/\b(referr?al|refer a friend|affiliate|invite|alika|tume|kiungo)\b/.test(t)) {
     return {
       role: "ai",
-      kind: "text_with_citations",
+      kind: "text",
       lang,
-      paragraphs:
+      text:
         lang === "sw"
-          ? [
-              "Hivi ndivyo mpango wa Alika na Upate unavyofanya kazi:",
-              "1. Nenda **Wasifu → Alika na Upate** kupata kiungo chako[1]",
-              "2. Shiriki kiungo na marafiki kupitia WhatsApp, SMS, au njia yoyote",
-              "3. Rafiki anaposajili na kucheza, unapata zawadi",
-              "4. Zawadi inaweza kuwa tume, bonasi, au tuzo — kulingana na mpango ulioko hai[1]",
-            ]
-          : [
-              "Here's how the Invite & Earn programme works:",
-              "1. Go to **Profile → Invite & Earn** to get your personal referral link[1]",
-              "2. Share it with friends via WhatsApp, SMS, or any channel",
-              "3. When a friend signs up with your link and plays, you earn rewards",
-              "4. Rewards can be commission, a bonus, or a milestone prize — depending on which modes are live[1]",
-            ],
-      citations: [{ n: 1, href: "/profile/invite", label: "/profile/invite" }],
+          ? "Kwa sasa kupata zawadi kwa kualika wengine ni kwa Mawakala walioidhinishwa wa 50pick pekee — si sehemu ya akaunti ya kawaida ya mchezaji. Kama unataka kuwa Wakala, wasiliana na huduma kwa wateja."
+          : "Earning by referral is currently limited to approved 50pick Agents — it is not part of an ordinary player account. If you would like to become an Agent, contact support.",
     };
   }
 

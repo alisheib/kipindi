@@ -69,8 +69,11 @@ const PRODUCT_STATE: Record<FeatureName, FeatureState> = {
  * A dormant path rots because nothing runs it — that is the whole reason re-enabling a
  * feature months later ships broken. `invite-feature.ts` was a hardcoded `const`, so the
  * ACTIVE path was UNTESTABLE and had not been executed by anything since the day it was
- * switched off. Here the state is readable, so `scripts/reenablement.test.mts` can drive
- * the full ON journey on every deploy for as long as the feature sleeps.
+ * switched off. Here the state is readable, so `scripts/withdrawn-features.test.mts` §4 drives
+ * the ON branch on every deploy for as long as the feature sleeps.
+ * ⚠️ This comment named `scripts/reenablement.test.mts` until an audit checked and found no
+ * such file had ever existed on any branch. A comment that cites a guard by name is read as
+ * evidence the guard exists — so it must name one that does.
  *
  * ⛔ Server-side only, and deliberately not `NEXT_PUBLIC_`: this must never be flippable
  * from a browser, and clients receive resolved booleans rather than reading state at all.

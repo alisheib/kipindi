@@ -303,7 +303,11 @@ function ok(label: string, cond: boolean, extra?: string) {
   // marker set is the gate function, the product state, the prop that carries its answer, and
   // the menu-row flag that routes to it.
   const NOT_ENTRY_POINTS = new Set([
-    "src/lib/chat/send-message.ts",        // an AI citation href, not a nav surface
+    // ⛔ `src/lib/chat/send-message.ts` WAS listed here as "an AI citation href". It no longer
+    // links to the page at all — the fallback stopped citing a door most askers cannot open —
+    // so the exemption went stale and §7's staleness check caught it. That is the assertion
+    // earning its place: a stale exemption is how a coverage rule quietly stops covering, and
+    // the next uncovered surface would have hidden behind this entry.
     "src/lib/server/email.ts",             // email templates, not a rendered page
     "src/lib/server/notification-service.ts",
     "src/app/admin/affiliate/actions.ts",  // admin console, not the player product

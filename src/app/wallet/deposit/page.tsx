@@ -7,6 +7,7 @@ import { PageHero } from "@/components/ui/page-hero";
 import { FieldLegend } from "@/components/ui/field-legend";
 import { Input } from "@/components/ui/input";
 import { CashbackPromo } from "@/components/ui/cashback-promo";
+import { bonusIsLiveFor } from "@/lib/feature-state";
 import { currentSession } from "@/lib/server/auth-service";
 import { moneyFormMsisdn, normalizeTzLocalDigits } from "@/lib/phone-normalize";
 import { DepositNumberChoice } from "@/components/wallet/deposit-number-choice";
@@ -99,7 +100,14 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
   const maxAmount = adminTest ? 1_000_000_000 : DEPOSIT_MAX_TZS;
   const quickAmounts = adminTest ? [100_000, 1_000_000, 5_000_000, 20_000_000, 100_000_000] : QUICK_AMOUNTS;
   const bonusCfg = getBonusConfig();
-  const showCashback = bonusCfg.enabled && bonusCfg.cashbackEnabled && bonusCfg.cashbackPercentage > 0;
+  /* ⛔ PRODUCT STATE SITS ABOVE OPERATOR CONFIG, AND BOTH DISPLAY SURFACES MUST SAY SO.
+     `/wallet` already gated this on `bonusIsLiveFor()`; this page did not. So an operator
+     flipping `cashbackEnabled` back on at /admin/config would have resurrected the promo
+     HERE while /wallet stayed silent — the withdrawn programme advertising itself on one of
+     its two surfaces, which is exactly the "half-on" failure the one-seam rule exists to
+     prevent. `feature-state.ts` is explicit: an operator cannot switch a withdrawn feature
+     back on by editing a row. */
+  const showCashback = bonusIsLiveFor() && bonusCfg.enabled && bonusCfg.cashbackEnabled && bonusCfg.cashbackPercentage > 0;
 
   return (
     <PageContainer tier="form" className="space-y-5">
