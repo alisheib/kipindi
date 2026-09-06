@@ -75,10 +75,28 @@ scripts/_walkthrough/
 # Per-market override panel shots (npm run qa:override-visual --shots). Same rule.
 .qa-f3/
 # Live-drive evidence shots (SHOT_DIR=./shots/... — qa:loser-share-money,
-# qa:updown-card-widths, and the live-*.mjs drivers generally). Same rule again: the
-# DRIVER is committed so the shot can be re-taken against production at any width; a
-# checked-in PNG is a claim nobody can re-derive.
-shots/
+# qa:updown-card-widths, and the live-*.mjs drivers generally). The DRIVER is committed so
+# the shot can be re-taken against production at any width.
+#
+# 🔴 THE BLANKET `shots/` RULE WAS DELETED HERE ON 2026-09-06, and it is worth knowing why.
+# This file carried TWO OPPOSITE POLICIES for the same directory. This block said ignore ALL of
+# `shots/` because "a checked-in PNG is a claim nobody can re-derive". The block further down
+# (`shots/chrome/`, `shots/emails/`, `shots/*.png`) says the opposite and is the one the repo
+# actually practises: "a screenshot that is EVIDENCE for a finding is committed under its own
+# `shots/<FINDING>/` directory and is cited by `docs/`, which `npm run test:docs` now checks
+# actually exists."
+#
+# ⛔ THE BLANKET RULE WON, SILENTLY, AND IT COST US THE EVIDENCE. A session would take a
+# shot into `shots/<FINDING>/`, cite it in a finding, run `git add -A` — and git skipped it.
+# The doc kept the citation; the file never landed. That is the whole explanation for
+# `docs-links.mjs`'s MISSING_EVIDENCE ratchet: **19 cited screenshots that were never
+# committed**, all unrecoverable because the rounds and players they photographed are gone.
+# 111 shots DID survive — tracked while ignored, because they were added before this rule.
+#
+# ⭐ So the precise rules below now stand alone, and they say exactly what we mean: loose
+# shots at the root of `shots/` are regenerable and ignored; a per-finding directory is
+# EVIDENCE and is committed. A rule that silently discards the proof a finding cites is worse
+# than a repo that is a few MB larger.
 
 # Test images (user reference, not for production)
 Test Images/
