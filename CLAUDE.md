@@ -40,6 +40,14 @@ corrected.
 > (DNS→R2→payment keys→the switch) is `docs/NEXT-PLAN.md`. **Nothing in
 > the plan now blocks launch — the one remaining unblock is the payment aggregator
 > API keys.** Remaining code = optional admin features (A6/A7/A13–A16) + polish.
+> ⚠️ **CORRECTED 2026-09-06 — THE SENTENCE ABOVE IS FALSE AND THIS FILE'S OWN HEADER ALREADY
+> SAID SO.** It names the payment-aggregator API keys as "the one remaining unblock"; the
+> header thirty lines up cites this exact sentence as its example of what has gone stale, and
+> mobile-money deposits have worked end-to-end since 2026-07-20 (the paragraph directly below
+> this one). **Knowing a claim is false and leaving it in the present tense is not a disclosure
+> — the next reader meets the claim, not the caveat.** 🔴 The real commercial blocker, measured
+> on `/api/health` on 2026-09-06, is **`sms.provider: "console"`** — no OTP can reach a phone,
+> so nobody can register. Payment keys are done; SMS is not.
 > 💳 **MOBILE-MONEY DEPOSITS NOW WORK END-TO-END (2026-07-20) — full record:
 > [`docs/SELCOM-API-DIGEST.md`](`docs/SELCOM-API-DIGEST.md`).**
 > EVERY mobile-money deposit had been failing: `create-order-minimal` requires `no_of_items`
