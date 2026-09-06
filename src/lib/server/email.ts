@@ -30,7 +30,27 @@ import { positionPermalinkHref } from "@/lib/position-permalink";
 const FROM = "noreply@50pick.tz";
 const REPLY_TO = "support@50pick.tz";
 const COMPANY = "50pick";
-const HELPLINE = "+255 22 211 5811";
+/**
+ * 🔴 THE HELPLINE IS THE INDEPENDENT ONE, NOT OURS — corrected 2026-09-07.
+ *
+ * This was a private constant holding `+255 22 211 5811`, which is **50pick's own support
+ * desk** (`support-config.ts` → `phone`). The national gambling helpline is `0800 11 0011`
+ * (→ `helpline`). The two were swapped here, and the damage lands on the one message where
+ * it matters most: `selfExcludeHtml` says *"Need help? Contact the **Tanzania Gambling
+ * Helpline**: …"* — naming an INDEPENDENT service and printing the operator's number.
+ * A person self-excluding because gambling is harming them was routed back to the operator.
+ * The footer of every other email carried it too.
+ *
+ * ⛔ AND A GUARD PINNED THE WRONG ANSWER. `comms-email-truth.test.mts` asserted
+ * *"carries the helpline"* against the literal `+255 22 211 5811`, so the defect was not
+ * merely unguarded — it was ENFORCED, and correcting the number alone would have gone red.
+ *
+ * ⭐ `support-config.ts` already declares itself the single source of truth and exports a
+ * synchronous, admin-overridable `HELPLINE()`. A private copy beside it could only ever
+ * disagree. Import it.
+ */
+import { HELPLINE } from "@/lib/support-config";
+
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://kipindi-production.up.railway.app";
 
 let _client: ServerClient | null = null;
@@ -483,7 +503,7 @@ function wrap(body: string, opts: { accent?: "gold" | "royal" } = {}): string {
     </p>
     <p style="margin:12px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_FAINT};line-height:1.7">
       18+ · Licensed by Gaming Board of Tanzania<br>
-      Helpline ${HELPLINE} · <a href="mailto:${REPLY_TO}" style="color:${TEXT_SUBTLE};text-decoration:none">${REPLY_TO}</a>
+      Helpline ${HELPLINE()} · <a href="mailto:${REPLY_TO}" style="color:${TEXT_SUBTLE};text-decoration:none">${REPLY_TO}</a>
     </p>
     <p style="margin:14px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:10px;color:${TEXT_FAINT}">
       You're receiving this because you have a 50pick account.<br>
@@ -1307,7 +1327,7 @@ export function selfExclusionHtml({ period, endDate }: { period: string; endDate
       { label: "Period", value: period },
       { label: "Unlocks", value: endDate },
     ])}
-    ${subtitle(`Need help? Contact the Tanzania Gambling Helpline: ${HELPLINE}`)}
+    ${subtitle(`Need help? Contact the Tanzania Gambling Helpline: ${HELPLINE()}`)}
   `);
 }
 
