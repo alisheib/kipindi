@@ -21,6 +21,9 @@
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+// ⛔ ONE HOME FOR COMMENT-STRIPPING — `test:decomment` §2.1 exists because two suites shipped
+// private four-line strippers. A note ABOUT a link must never be read as a link.
+import { decomment } from "./lib/decomment.mts";
 import { inviteIsLiveFor, bonusIsLiveFor, inviteStateFor } from "../src/lib/feature-state.ts";
 import { cashOutValue } from "../src/lib/server/market-service.ts";
 import { db } from "../src/lib/server/store.ts";
@@ -187,6 +190,91 @@ function ok(label: string, cond: boolean, extra?: string) {
   ok("§5c CONTROL · recruitedBy is written for the agent", recB?.recruitedBy === "w5_agent_ref", `recruitedBy=${recB?.recruitedBy}`);
   const previewAgent = await resolveReferralPreview(agentCode);
   ok("§5c CONTROL · the ribbon renders for an agent", previewAgent !== null && typeof previewAgent?.referrerName === "string", JSON.stringify(previewAgent));
+}
+
+// ── §6–§8 · PORTED FROM THE RETIRED `test:invite-coming-soon` ──────────────
+// ⭐ WHY THESE ARE HERE AND THAT SUITE IS GONE. It guarded the rule "Invite is COMING_SOON and
+// every surface says so from ONE switch". That rule is superseded — invite is WITHDRAWN, and its
+// switch moved from `invite-feature.ts` to `feature-state.ts` — so the suite went red on its own
+// premise. But its INTENT outlived its subject, and it is the intent worth keeping:
+//   · one fact, one home;
+//   · ⭐ no entry point decides on its own — a POSITIONAL rule, not a file-level mention;
+//   · ⭐ the page guards BEFORE it mints a code.
+// ⛔ Ported rather than deleted, and ported HERE rather than left as a second suite: two guards
+// over one withdrawal is exactly the drift that produces a stale one. The old §4 (coming-soon
+// copy in three locales) is deliberately NOT ported — there is no coming-soon copy any more.
+{
+  const SRC = (process.env.KP_SRC ?? "src").replace(/\\/g, "/").replace(/\/$/, "");
+  const walk = (dir: string, out: string[] = []): string[] => {
+    for (const e of readdirSync(dir)) {
+      const p = join(dir, e);
+      if (statSync(p).isDirectory()) walk(p, out);
+      else if (/\.(tsx|ts)$/.test(e)) out.push(p.replace(/\\/g, "/"));
+    }
+    return out;
+  };
+  const files = walk(SRC).map((p) => `src/${p.slice(SRC.length + 1)}`);
+  const read = (rel: string) => readFileSync(`${SRC}/${rel.slice(4)}`, "utf8");
+
+  // §6.0 · CONTROL — a walk that reached nothing reports "0 offenders" in the same words as a
+  // clean sweep, so every assertion below is meaningless without this line.
+  ok("§6.0 CONTROL · the walk read a plausible source tree", files.length > 300, `${files.length} files`);
+
+  // §6 · ONE HOME for the product state.
+  const declarers = files.filter((f) => /^\s*const PRODUCT_STATE\b/m.test(decomment(read(f))));
+  ok("§6 exactly ONE file declares PRODUCT_STATE", declarers.length === 1, declarers.join(", ") || "NONE — the switch is gone");
+  ok("§6 …and it is src/lib/feature-state.ts", declarers[0] === "src/lib/feature-state.ts", declarers[0] ?? "none");
+
+  // §7 · COVERAGE — every player-facing link to the page sits beside the gate.
+  //
+  // ⛔ POSITION, NOT MENTION, and the retired suite's own header explains why: its first version
+  // asked "does this file reference the switch?" and passed over both realistic mutations,
+  // because severing a surface's condition leaves the file's IMPORT untouched. A guard that
+  // reads the source's vocabulary cannot see a defect that leaves the vocabulary in place.
+  //
+  // ⚠️ THE MARKERS CHANGED WITH THE MECHANISM. The client surfaces no longer call the switch at
+  // all — they receive `inviteVisible` as a prop, because the role lives on the server. So the
+  // marker set is the gate function, the product state, the prop that carries its answer, and
+  // the menu-row flag that routes to it.
+  const NOT_ENTRY_POINTS = new Set([
+    "src/lib/chat/send-message.ts",        // an AI citation href, not a nav surface
+    "src/lib/server/email.ts",             // email templates, not a rendered page
+    "src/lib/server/notification-service.ts",
+    "src/app/admin/affiliate/actions.ts",  // admin console, not the player product
+  ]);
+  const linkers = files.filter((f) => decomment(read(f)).includes('"/profile/invite"'));
+  ok("§7.0 the population is non-empty (a rule over zero surfaces proves nothing)", linkers.length >= 3, `${linkers.length} linkers`);
+
+  const MARKER = /inviteIsLiveFor|inviteStateFor|PRODUCT_STATE|inviteVisible|(^|[^a-zA-Z])invite\s*:/;
+  const WINDOW = 8;
+  const uncovered: string[] = [];
+  for (const f of linkers) {
+    if (NOT_ENTRY_POINTS.has(f)) continue;
+    const lines = decomment(read(f)).split("\n");
+    lines.forEach((line, i) => {
+      if (!line.includes('"/profile/invite"')) return;
+      const near = lines.slice(Math.max(0, i - WINDOW), i + WINDOW + 1).join("\n");
+      if (!MARKER.test(near)) uncovered.push(`${f}:${i + 1}`);
+    });
+  }
+  ok("§7 ⭐ every /profile/invite link sits WITHIN 8 lines of the gate", uncovered.length === 0, uncovered.join(" · "));
+  // ⛔ A stale exemption is how a coverage rule quietly stops covering.
+  const staleExempt = [...NOT_ENTRY_POINTS].filter((f) => !linkers.includes(f));
+  ok("§7 the exemption list holds nothing stale", staleExempt.length === 0, staleExempt.join(", "));
+
+  // §8 · THE PAGE GUARDS BEFORE IT MINTS.
+  // ⭐ The highest-value assertion the retired suite had, and it is a POSITION. The page's live
+  // body hands out a real referral CODE, a LINK and a QR encoding it. A gate consulted AFTER the
+  // summary is fetched still mints. Only ordering catches that.
+  {
+    const PAGE = "src/app/profile/invite/page.tsx";
+    const body = decomment(read(PAGE));
+    const guardAt = body.search(/\binviteIsLiveFor\s*\(/);
+    const readAt = body.search(/\bgetPlayerReferralSummary\s*\(/);
+    ok("§8 the page consults the gate at all", guardAt >= 0, "no inviteIsLiveFor() in the page");
+    ok("§8 the page still has a live body to guard", readAt >= 0, "no getPlayerReferralSummary — §8 would pass vacuously");
+    ok("§8 ⭐ the gate is consulted BEFORE the referral summary is fetched", guardAt >= 0 && readAt >= 0 && guardAt < readAt, `gate at ${guardAt}, read at ${readAt}`);
+  }
 }
 
 console.log(`\n${pass} passed · ${fail} failed`);
