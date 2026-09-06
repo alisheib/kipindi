@@ -489,11 +489,28 @@ function ok(label: string, cond: boolean, extra?: string) {
   // ⛔ POSITIONAL: the service must PASS the fact. A template that can tell the truth is useless
   // if its caller never says which branch ran.
   const svc = decomment(readFileSync("src/lib/server/proposals-service.ts", "utf8"));
-  ok("§5j the service derives paidAsCash from the branch that actually paid",
-     /paidAsCash\s*=\s*grantedTzs\s*>\s*0\s*&&\s*grantId === null/.test(svc), "paidAsCash not derived from grantId");
-  ok("§5j …and threads it into BOTH the notification and the email",
+  // ⭐ ONE HOME for "which wallet did this land in" — the rule itself, not a copy of it.
+  // ⚠️ This assertion used to pin the inline expression `grantedTzs > 0 && grantId === null`
+  // in `approveProposal`, and it went red the moment that was lifted into a shared exported
+  // helper so the DTO could use it too. The guard was RIGHT to fail — the source it reads
+  // changed — but it was pinning the wrong thing: the SHAPE of one call site rather than the
+  // property that there is exactly one definition. It now pins the property.
+  ok("§5j the destination rule has ONE definition, keyed on the grant id",
+     /export function rewardPaidAsCash\([^)]*\)[^{]*\{\s*return p\.bonusGrantedTzs > 0 && p\.bonusGrantId === null;/s.test(svc),
+     "rewardPaidAsCash is missing or no longer keyed on bonusGrantId");
+  ok("§5j …and the payer uses it rather than re-deriving",
+     /const paidAsCash = rewardPaidAsCash\(/.test(svc), "approveProposal re-derives the destination");
+  ok("§5j …and the read model exposes it to the page",
+     /rewardPaidAsCash: rewardPaidAsCash\(p\)/.test(svc), "the proposal DTO does not carry rewardPaidAsCash");
+  ok("§5j …and it threads into BOTH the notification and the email",
      /notifyProposalApproved\([^)]*paidAsCash/s.test(svc) && /proposalApprovedHtml\(\{[^}]*paidAsCash/s.test(svc),
      "paidAsCash not passed to one of the two surfaces");
+
+  // ⛔ AND THE PAGE MUST BRANCH ON IT. A DTO field nothing reads is not a fix.
+  const page = decomment(readFileSync("src/app/proposals/[id]/page.tsx", "utf8"));
+  ok("§5j the approved-proposal card names the wallet the money is really in",
+     /p\.rewardPaidAsCash \? t\.common\.creditedToBalance : t\.common\.creditedToBonusWallet/.test(page),
+     "the detail page still hard-codes one caption");
 }
 
 // ── §5f · THE SKELETON MUST DESCRIBE THE PAGE THAT IS COMING ───────────────
