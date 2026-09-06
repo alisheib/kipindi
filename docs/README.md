@@ -42,6 +42,11 @@ file exists so the *next* session can tell them apart in thirty seconds.
 
 **Guarded by `npm run test:docs`** — every relative link, `scripts/*` path and `npm run`
 reference in `docs/` must resolve on disk. Broken on purpose and observed to go red.
+⭐ **Widened 2026-09-06** with the two checks that were missing: every **bare backticked**
+script citation (`test:<name>`, `qa:<name>`, `ops:<name>` — 3,136 of them, and the form this
+directory actually uses, none of it checked before), and **every `docs/*.md` must be linked from
+this index**. The first found a gate register naming a DELETED suite; the second found eleven
+unindexed docs, including an authority.
 
 ## Status key
 
@@ -229,6 +234,6 @@ to teal and resurrects the killed light theme.
    ⭐ The gate compares SETS, never counts, so it cannot pass by agreeing with itself.
 5. **`npm run test:docs` before you claim the docs are clean.** It now checks five things:
    markdown links resolve · `scripts/<file>` paths exist · `npm run <name>` scripts exist ·
-   **every bare backticked `` `test:foo` `` / `` `qa:foo` `` / `` `ops:foo` `` citation resolves**
+   **every bare backticked `test:<name>` / `qa:<name>` / `ops:<name>` citation resolves**
    (3,136 of them, and NONE was checked before 2026-09-06 — the gate register in
    `DESIGN-BASELINE.md` was naming a DELETED suite) · and rule 4 above.
