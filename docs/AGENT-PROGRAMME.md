@@ -1,78 +1,84 @@
 # 50pick Agent Affiliate Programme — the authority
 
-**Decided:** Ali, 2026-09-06. **Source of record:** the management framework
-`50pick_affiliate_agent_framework` (Confidential & Proprietary), taken as the decision wherever
-it speaks. Where it is silent, Ali's rulings below fill the gap. Where it is **wrong about this
-system**, §9 records the correction and the reason.
+**v2, 2026-09-07.** Rewritten after a 293-agent adversarial stress-test raised 142 findings and
+confirmed 78 — including one that **overturned v1's architecture**. Evidence:
+[`AGENT-STRESS-TEST-FINDINGS.md`](AGENT-STRESS-TEST-FINDINGS.md). Build instructions:
+[`SESSION-PROMPT-AGENT-BUILD.md`](SESSION-PROMPT-AGENT-BUILD.md).
 
-⛔ **This file is the authority.** Rates live in [`RULES.md`](RULES.md) §2.10 and nowhere else.
-Nothing here may be restated in code comments or on a screen.
+**Source of record:** the management framework `50pick_affiliate_agent_framework`, taken as the
+decision wherever it speaks. Where it is silent, Ali's rulings fill the gap. Where it is **wrong
+about this system**, §10 records the correction.
+
+⛔ **This file is the authority for _what_ the programme is.** Rates live in
+[`RULES.md`](RULES.md) and nowhere else — ⚠️ **§2.10 does not exist yet and must be WRITTEN**;
+`RULES.md` §2 currently stops at §2.9. Do not cite it as though it were already there.
 
 ---
 
 ## 1 · What an agent is, and is not
 
-An **Agent Affiliate** is a vetted, fee-paying, compliance-approved business partner who
-introduces players to 50pick and earns commission on the revenue those players generate.
+A vetted, fee-paying, compliance-approved business partner who introduces players and earns
+commission on the revenue those players generate.
 
 | An agent **is** | An agent is **not** |
 |---|---|
 | A recruiter with a verified identity and a public badge | A cashier — they never hold float |
-| Paid commission on revenue we actually collected | Paid for signups alone |
+| Paid commission on revenue we actually **kept** | Paid for signups alone |
 | Approved once, by a compliance officer | Self-service, or assignable from the staff-roles screen |
-| An ordinary player account with `role = AGENT` | A staff account — `isStaffRole` excludes AGENT, and it reaches no admin surface |
+| An ordinary player account with `role = AGENT` | Staff — `isStaffRole` excludes AGENT; it reaches no admin surface |
 
-⛔ **Recruiter only** (Ali, 2026-09-06). The framework's §3 language about *"peer-to-peer
-top-ups"* through an agent is **out of scope and must not be built**: it describes an agent
-float/cash-in-cash-out product, which is a different, money-critical system. Players deposit
-themselves, through Selcom, exactly as they do today.
+⛔ **Recruiter only** (Ali, 2026-09-06). The framework's §3 *"peer-to-peer top-ups"* language
+describes an agent float / cash-in-cash-out product. **Out of scope, and must not be built.**
+Players deposit themselves through Selcom, exactly as today.
 
----
-
-## 2 · The lifecycle
-
-```
-PLAYER → KYC approved → APPLY → PAY → SUBMIT → UNDER REVIEW → APPROVED → RECRUITS → EARNS → WITHDRAWS
-                                                            ↘ REJECTED → fee refunded → may re-apply
-```
-
-The framework's §4 state machine, honoured exactly, plus one state it omits:
-
-| State | Meaning | Set by |
-|---|---|---|
-| `DRAFT` | Started, still attaching documents | Applicant |
-| `KYC_SUBMITTED` | All seven documents attached | Applicant |
-| `PAYMENT_PENDING` | Fee reference + receipt recorded, awaiting submit | Applicant |
-| `UNDER_REVIEW` | Submitted. **Shown to the applicant as "Awaiting Compliance Approval"** — the framework's own wording | Applicant |
-| `ADDITIONAL_INFO_REQUIRED` | An officer asked for a clearer document | Officer |
-| `APPROVED` | Role granted, code minted | Officer |
-| `REJECTED` | Refused, with a categorised reason. Fee refunded | Officer |
-
-⭐ **`ADDITIONAL_INFO_REQUIRED` is the state the framework omits, and it is not optional.**
-Without it a blurry scan forces a rejection, which triggers a refund and a re-application for a
-problem a single message solves. The KYC workstation already works this way.
+⭐ **Single level. No downline.** An agent earns on their recruits' own betting, **never** on
+their recruits' recruits. A programme that pays on a second level is a pyramid scheme and is
+regulated as one. The engine is single-level today; this must be **stated and guarded**, not left
+as an accident of implementation.
 
 ---
 
-## 3 · What the applicant must supply — framework §2, verbatim
+## 2 · The lifecycle — two doors, one state machine
 
-Seven documents. The framework lists five items; two of them are pairs.
+```
+SELF-SERVICE   /agent → apply → pay → submit ──┐
+                                               ├─→ UNDER_REVIEW → APPROVED
+OFFICER-LED    invite → INVITED → accept ──────┘         ↘ REJECTED (fee refunded)
+                                                         ↘ DECLINED / EXPIRED
+```
 
-| # | Document | Framework wording |
-|---|---|---|
-| 1 | **CV** | "Detailed professional history and background" |
-| 2 | **Formal request letter** | "Written application letter addressed to 50pick requesting Agent Affiliate status" |
-| 3 | **Serikali ya Mtaa letter** | "Official introduction/residence letter issued by the local government authority where the applicant resides" |
-| 4 | **Referee letter 1** | "2 Professional/Character Referral Letters" |
-| 5 | **Referee ID 1** | "Must include attached clear copies of the referees' national identification documents" |
-| 6 | **Referee letter 2** | as above |
-| 7 | **Referee ID 2** | as above |
+| State | Meaning |
+|---|---|
+| `DRAFT` | Started, still attaching documents |
+| `INVITED` | An officer proposed it; awaiting the invitee's acceptance |
+| `KYC_SUBMITTED` | All documents attached |
+| `PAYMENT_PENDING` | Fee reference + receipt recorded (or waived), awaiting submit |
+| `UNDER_REVIEW` | ⭐ Shown to the applicant as **"Awaiting Compliance Approval"** — the framework's own wording |
+| `ADDITIONAL_INFO_REQUIRED` | An officer asked for a clearer document. ⚠️ **Needs an explicit exit transition** |
+| `APPROVED` | Role granted, code minted |
+| `REJECTED` / `DECLINED` / `EXPIRED` | Refused, declined, or the invitation lapsed. Fee refunded |
 
-⭐ **The framework's fifth item — "Government-Issued Identification" — is the platform's
-existing KYC**, which is live and certified (modules D1–D4, the only 4 of 52 certified). An
-applicant may not submit until their own `KycSubmission` is `APPROVED`. ⛔ Do not build a second
-identity flow; the framework's NIDA / Passport / Driving Licence / Voter's Card list is already
-`docs/IDENTITY-POLICY.md`.
+⭐ `ADDITIONAL_INFO_REQUIRED` is the state the framework omits, and it is not optional: without
+it a blurry scan forces a rejection, which triggers a refund and a re-application for something
+one message solves.
+
+---
+
+## 3 · The documents — framework §2, verbatim
+
+Seven: **CV** · **formal request letter** · **Serikali ya Mtaa letter** · **referee letter ×2** ·
+**referee national ID ×2** (the framework requires *"clear copies of the referees' national
+identification documents"*).
+
+⭐ The framework's fifth item, *"Government-Issued Identification"*, **is the platform's existing
+KYC** — live and certified (D1–D4, the only 4 of 52 certified modules). An applicant may not
+submit until their own `KycSubmission` is `APPROVED`. ⛔ Do not build a second identity flow.
+
+🔴 **Referee national IDs are third-party personal data.** The referee never used 50pick and never
+consented in-app. They need a lawful basis, a retention row, an erasure path and a DSAR route —
+none of which exist today, and the erasure sweep is a hardcoded bucket list that passes clean over
+them. ⛔ And **never put a name or phone in the R2 object key**: that is the one class of PII
+erasure can never reach.
 
 ---
 
@@ -80,139 +86,178 @@ identity flow; the framework's NIDA / Passport / Driving Licence / Voter's Card 
 
 | | |
 |---|---|
-| **Amount** | TZS 100,000 — stated in `RULES.md` §2.10, nowhere else |
+| **Amount** | TZS 100,000 — stated in `RULES.md` §2.10 (to be written) |
 | **Destination** | Digital Selcom Bank, account **0769777877** |
-| **How** | Paid **out of band**. The applicant uploads the receipt and types the transaction reference |
-| **Reconciled by** | A compliance officer, against the Selcom statement |
-| **On rejection** | ⭐ **Refunded in full** (Ali, 2026-09-06) — we did not provide the service |
+| **How** | Paid **out of band**; the applicant uploads the receipt and types the reference |
+| **Waiver** | ⭐ An officer may waive it or record it as collected in cash — **with a typed reason, audited** (Ali, 2026-09-06) |
+| **On rejection** | **Refunded in full** — we did not provide the service |
 
-⛔ **THE FEE NEVER ENTERS THE PLAYER LEDGER.** No wallet credit, no `Transaction` row, no ledger
-entry. It is a business receipt recorded on the application and attested by an officer. This is
-why the programme adds **zero** risk to the money invariants, and it is not negotiable: every
-Selcom money-in path in this platform settles into a player wallet, and a registration fee is
-not a deposit.
+⛔ **The fee never enters the player ledger** — no wallet credit, no `Transaction` row. It is a
+business receipt attested by an officer, which is why the programme adds zero risk to the money
+invariants.
 
-🔴 **One receipt, one application.** `feeReference` is unique. Two applicants submitting the
-same Selcom reference must not both be onboarded on one payment.
+🔴 **But it must post a `LedgerEntry`.** This is money taken from a member of the public. Today it
+would be invisible to the house book, the trial balance, the regulator pack and every tax figure.
+⚠️ **VAT on the fee is unhandled anywhere in this repo** — raise it with Ali; do not invent a
+treatment.
 
-**The refund** is an officer action recorded on the application (`feeRefundedAt`,
-`feeRefundReference`), paid out of band the same way it came in. It moves no player money, so it
-touches no ledger.
+🔴 **One receipt, one application** — `feeReference` is unique. And a refund needs **evidence and a
+deadline**: money *in* requires a receipt image, so money *out* must not be one officer typing a
+string. Reject and refund need **one worklist**, or TZS 100,000 sits owed with nothing tracking it.
 
 ---
 
 ## 5 · What an agent earns
 
-**Commission on revenue.** Taken from the framework §4: *"track user acquisition, volume
-turnover, and automated commission payouts."* No flat sign-up prize is mentioned, so none is
-paid — the framework is the decision.
+**Commission on revenue.** From framework §4: *"track user acquisition, volume turnover, and
+automated commission payouts."* No flat sign-up prize is mentioned, so **none is paid**.
 
-⭐ **PRICED ON THE FEE WE ACTUALLY COLLECTED, NOT ON TURNOVER — and this is a deliberate,
-disclosed improvement on the framework's wording.** Commission accrues at **settlement**, as a
-share of the operator fee 50pick actually took on that recruit's settled position. It once
-accrued at bet time against `stake × rate` — i.e. turnover — and that was fixed as a defect,
-because a share of turnover can exceed the revenue the turnover produced. You cannot pay out a
-share of money you did not earn.
+🔴 **On the NET fee, not the gross.** Commission is a share of the operator fee 50pick actually
+**kept** — roughly 15% of the gross fee has already left as TRA and GBT levies (`RULES.md` §2.2).
+Paying on the gross would share out money we never had.
 
-▶ **"Volume turnover" is honoured as a DISPLAY.** The agent's sub-ledger shows recruits, their
-turnover and their generated revenue. Turnover is what an agent is measured on; collected fee is
-what they are paid on. Both are true, and the sub-ledger says both.
+⭐ **Priced at settlement, on fee collected — not on turnover.** This engine once accrued at bet
+time against `stake × rate` and it was fixed as a defect: a share of turnover can exceed the
+revenue that turnover produced. ▶ *"Volume turnover"* is honoured as a **display** — the sub-ledger
+shows turnover and revenue, and pays on revenue.
 
-**Rate:** ⭐ **one rate per agent** (Ali, 2026-09-06 — *"if it's not mentioned in the document of
-the management make it one rate per agent"*). The framework specifies no tiers, so there are
-none. An officer sets `commissionPct` on the individual agent, bounded by a ceiling in
-`RULES.md` §2.10.
+**Rate:** ⭐ **one rate per agent** (Ali — the framework specifies no tiers, so there are none).
+⛔ The `tier` column is **dropped**, not left dead.
 
-⛔ **The `tier` column is DROPPED**, not left dead. It was never read or written, the framework
-does not ask for it, and a column nobody sets is a rule nobody enforces.
+🔴 **Only `approvedAt` identifies an agent.** `AffiliateAgent` is *simultaneously* every player's
+referral account and the vetted-agent record: rows already exist for ordinary players, each with
+`commissionPct` NOT NULL defaulting to **5.00** and `active` defaulting **true**. So a row's
+existence proves nothing, and a "refuse when the rate is unset" branch is unreachable. Make
+`commissionPct` **nullable with no default**, and treat `approvedAt` as the only discriminator.
+⚠️ `approveAgent` therefore **UPDATEs** a row that already exists with a player-format code.
 
-**Paid as real, withdrawable cash.** An agent is a business partner who paid a fee, not a promo
-recipient — so no wagering requirement, no bonus wallet. They withdraw like any player (1.5%
-fee, KYC already approved).
+**Paid as real, withdrawable cash** — no wagering requirement, its own transaction type, its own
+line in the owner's book. ⛔ Never `BONUS_CREDIT`: that reports agent commission to the regulator
+as *bonus cost*, for a programme we told the Board we withdrew.
 
-**Recorded per accrual:** `rateApplied` and `programme`. A later rate change must never rewrite
-history — the same reason `PredictionMarket.feeSnapshot` exists.
+**Recorded per accrual:** `rateApplied` and `programme`, so a later rate change never rewrites
+history.
+
+### 5b · Responsible gambling — commission is a payable, not a promo
+
+🔴 **The one place the agent rule departs from the player rule.** RG suppression exists to stop
+*promotional inducements*. Agent commission is **contractual income for services rendered**. It
+must not be paid into a self-excluded person's wallet — and it must not be destroyed either.
+Accrue it as a **payable** and settle it out of band.
+
+⛔ Today it would be written `HELD`, and `HELD` is terminal **and consumes the once-per-recruit
+budget** — a business debt silently written off.
+
+⛔ Separately: **a self-excluded, suspended or closed agent must stop recruiting.** Eligibility
+today reads the **role** and never the **account status**.
 
 ---
 
 ## 6 · Agent and player referral — where the line runs
 
-The player Invite & Earn programme is **withdrawn** today ([`BONUS-WITHDRAWAL.md`](BONUS-WITHDRAWAL.md))
-and may return. When it does, the two must not collide.
+> **Separate the policy. Share the ledger. Never fork the attribution.**
 
-| Layer | Shared or separate | Why |
-|---|---|---|
-| **Attribution** — who recruited whom | ⭐ **SHARED — one system, always** | `User.recruitedBy` is written once and never re-attributed. Two attribution systems would let one player be recruited twice and both referrers paid |
-| **Eligibility** | Shared seam, branches on role | `feature-state.ts`, already built and guarded |
-| **Economics** | 🔴 **SEPARATE** | Agent rate on the agent's own row; player promo in `affiliate-config.ts` |
-| **Destination** | 🔴 **SEPARATE** | Agent → real cash. Player → bonus wallet, played through |
-| **Ledger** | One table, one `programme` column | So "what did we pay agents" and "what did the promo cost" are separable |
-| **Admin surface** | 🔴 **SEPARATE** | `/admin/agents` is compliance; `/admin/affiliate` is growth |
+| Layer | Shared or separate |
+|---|---|
+| **Attribution** — who recruited whom | ⭐ **SHARED — one system, always.** Two attribution stores would let one player be recruited twice and both referrers paid |
+| **Provenance** — under which programme | Stamped **on the attribution at bind**, immutable (§6b) |
+| **Economics · destination · caps · switch · config · admin surface** | 🔴 **SEPARATE** |
+| **Ledger** | One table, one `programme` column |
 
-### ⛔ The invariant
+### 6b · 🔴 Provenance is stamped at bind — the exploit this closes
 
-> **One referrer, one programme, one payment per event.** The programme is decided by the
-> referrer's role at the moment of accrual — never both.
+**v1 was wrong.** It put `programme` only on the *reward*, derived at accrual from the referrer's
+**current role**. That is a **purchasable arbitrage**: farm attributions for free as an ordinary
+player, then pay TZS 100,000 for AGENT status, and every one of those old binds flips to paying
+agent commission at the negotiated rate — with the window opening on recruits who joined months
+ago.
 
-Without it an agent double-dips: agent commission **and** the player prize, on the same recruit,
-from the same bet.
+✅ **Stamp `recruitedProgramme`, `recruitedAt` and `recruitedByCode` on `User`**, in the same write
+that already sets `recruitedBy`. Two columns beside an existing one — **not a new table**, which
+would create a second writer beside readers that already exist. Legacy rows backfill to `PLAYER`;
+**NULL means PLAYER**, never a fall-through to the agent branch.
 
----
+⛔ **Do not gate on `boundAt >= approvedAt`.** That is a second discriminator derived from mutable
+state: a deactivate→reactivate restamps `approvedAt` and silently deletes the agent's genuine book.
+`programme === "AGENT"` alone is immutable and sufficient.
 
-## 7 · What the player sees — framework §3
+### 6c · The invariant
 
-- **The badge.** A player arriving on an agent's link, or entering an agent code, sees
-  **"Verified 50pick Agent"** with the agent's name and registration status, on the register
-  page. The ribbon already exists; it gains the verified marker.
-- **Responsible gaming.** The framework requires `18+ · Cheza Kwa Busara · Bara & Zanzibar` on
-  every player portal. ✅ Already live in the footer on every page — nothing to add.
-- **Fees.** The framework says "fees (0%)". ⚠️ True of deposits, **false of withdrawals**, which
-  carry 1.5% (`RULES.md` §2.7). The corrected framework says so.
-- ⛔ **Dispute tickets tied to an agent** (framework §3) are **not built**: they exist to
-  escalate *transaction* queries against an agent who handled your money, and under the
-  recruiter-only ruling no agent ever handles a player's money. Ordinary support covers it.
+> **One referrer, one programme, one payment per event** — decided by the programme **stamped on
+> the attribution**, never by the referrer's current role.
 
 ---
 
-## 8 · The agent's code
+## 7 · Officer-initiated invitation
 
-Framework §4: *"unique cryptographic referral tokens (`50PICK-AG-[ID]`) linked to agent
-sub-ledgers."*
+⭐ **The invitee's acceptance is the second party.** Self-service has a two-party control built in
+— the applicant submits, a different person approves. An invitation removes it, letting one
+officer mint an agent single-handedly. So **an invited application can never be approved before
+the invitee accepts**, and every document records **who supplied it**.
 
-⭐ **Agent codes take the framework's format**; player codes (if the player programme returns)
-keep the existing short form. The format is a specification from management, and it is also
-useful: an agent code is visually distinct from a player code in a share link, a WhatsApp
-message and a support conversation.
+🔴 **KYC cross-acceptance, done safely.** Agent paperwork cannot satisfy player KYC — that needs
+NIDA/passport/licence/voter **plus a selfie**, format validation, the one-document-one-account
+index and four attestations. ✅ The invitation collects the **standard KYC documents** alongside,
+and the officer's single approval writes an `APPROVED` `KycSubmission` **through the ordinary KYC
+service**: one review, two records, no second trip. ⛔ Never flag an agent KYC-approved without the
+identity documents actually being checked. **The invitee uploads their own ID and selfie** — an
+officer cannot take a selfie for someone else.
 
-⚠️ Codes are minted **at approval**, not at application. The framework is explicit: the system
-*"generates a unique Agent Affiliate ID/referral link"* **upon clearance**.
+**Token:** single-use · expiring · bound to the officer-entered phone with OTP proof · revocable ·
+audited on issue, accept, decline, expiry and revoke.
+
+**Refused at issue** (not at acceptance): already an agent · staff · self-excluded.
 
 ---
 
-## 9 · Where the framework is wrong about this system
+## 8 · What the player sees — framework §3
 
-These must be corrected before the document goes to applicants or the Gaming Board. A document
-that asserts controls we do not have is worse than one that claims less.
+- **"Verified 50pick Agent"** with the agent's name and registration status, on the register page
+  ribbon. ⚠️ Needs a read model — it is required by the verification and absent from the build.
+- **Responsible gaming**: `18+ · Cheza Kwa Busara · Bara & Zanzibar` — ✅ already live in the footer.
+- **Fees.** The framework says "fees (0%)": true of deposits, **false of withdrawals** (1.5%).
+- ⛔ **Dispute tickets tied to an agent** (framework §3) are **not built** — they exist to escalate
+  *transaction* queries against an agent who handled your money, and under recruiter-only no agent
+  ever does.
+
+---
+
+## 9 · The agent's code
+
+Framework §4: *"unique cryptographic referral tokens (`50PICK-AG-[ID]`)"*, minted **at approval** —
+§2 Step 3 is explicit that the ID is generated *upon clearance*.
+
+🔴 **The registration path truncates a referral code at 16 characters and fails silently.** The
+prefix is 10, leaving six for the ID — no error, no audit row, the attribution simply lost. The
+limit must be raised **and** the format validated.
+
+---
+
+## 10 · Where the framework is wrong about this system
+
+Correct these before the document reaches an applicant or the Gaming Board.
 
 | Framework says | Reality |
 |---|---|
-| "Secure **AWS S3** bucket with AES-256" | Cloudflare **R2** (`50pick-kyc`, WEUR) via `src/lib/server/storage.ts`, or base64 in Postgres when `KYC_STORAGE` is unset |
-| "**Automated webhook** integration with Digital Selcom Bank API to instantly match incoming TZS 100,000 deposits" | Does not exist, and is not a small build. Every Selcom money-in path settles into a player wallet; there is no fee or order concept. Reconciliation is a **human officer** reading a receipt |
-| "displaying fees (**0%**)" | Deposits 0%. **Withdrawals 1.5%** |
+| "Secure **AWS S3** with AES-256" | Cloudflare **R2** (`50pick-kyc`, WEUR), or base64 in Postgres when `KYC_STORAGE` is unset |
+| "**Automated webhook** matching TZS 100,000 deposits via Selcom Bank API" | Does not exist. Reconciliation is a **human officer** reading a receipt |
+| "displaying fees (**0%**)" | Deposits 0%; **withdrawals 1.5%** |
 | "peer-to-peer top-ups" through an agent | Out of scope — recruiter only (§1) |
-| "volume turnover" as the commission base | Displayed, but commission is paid on the operator fee actually collected (§5) |
+| "volume turnover" as the commission base | Displayed; **paid on the net fee actually collected** (§5) |
 
 ---
 
-## 10 · Non-negotiables for the build
+## 11 · Non-negotiables
 
-- **RBAC:** `/admin/agents*` → `compliance` domain, step-up 2FA. `/admin/affiliate` stays `growth`.
-- **Single officer.** ⛔ No two-officer hard-lock — Ali's dated decision, and `test:two-admin`
-  asserts its absence. Self-review is blocked; a second signature is not required.
-- **Documents through the existing KYC storage seam only** — `putKycDocument` / `readKycDocument`,
-  magic-byte validated on the sniffed mime. No second storage path.
-- **Both DAL backends** plus the entity map in `DATA-LAYER.md`, or memory and Prisma diverge.
-- **`/agent/*` in en / sw / zh.** Admin console is English by design. Emails are EN+SW; there is
-  no Chinese in any email.
+- `/admin/agents*` → **`compliance`** domain with step-up 2FA. `/admin/affiliate` stays `growth`.
+  ⚠️ Today **every switch controlling agent money sits in `growth`** — the officer who approves and
+  prices an agent cannot see any of them.
+- **Single officer.** ⛔ No two-officer lock — Ali's dated decision; `test:two-admin` asserts its
+  absence. Self-review is blocked; the invitee's acceptance is the second party.
+- **Documents through the existing KYC storage seam only**, magic-byte validated on the sniffed mime.
+- **Both DAL backends** plus the `DATA-LAYER.md` entity map. 🔴 `db.affiliate.update` currently
+  whitelists three fields in Prisma while memory spreads everything — a rate change would be a
+  **silent production no-op** with every suite green.
+- **`/agent/*` in en / sw / zh.** Admin console is English. Emails EN+SW; no Chinese in any email.
 - **Approval is the only place `UserRole.AGENT` is ever assigned.**
 - **A red harness per guard.** A guard that has never failed is a hypothesis.
