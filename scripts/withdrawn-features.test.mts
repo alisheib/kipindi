@@ -262,6 +262,35 @@ function ok(label: string, cond: boolean, extra?: string) {
   ok("§5e CONTROL · …and a reward row exists", (await db.referralReward.listByReferrer("w5e_ref")).length > 0);
 }
 
+// ── §5f · THE SKELETON MUST DESCRIBE THE PAGE THAT IS COMING ───────────────
+// 🔴 A LOADING STATE IS A PROMISE ABOUT THE NEXT FRAME. `wallet/loading.tsx` ghosted TWO
+// cards side by side — main + bonus — because that is what the page used to render. With the
+// bonus card gone, a player watched two ghosts resolve into one card and their real balance
+// snap from half width to full. That is the same defect B-29 fixed on this very file, running
+// in the opposite direction, and this repo has shipped it before: "the loading skeletons still
+// described the tables as they used to be".
+// ⛔ Source-level on purpose: a skeleton is visible for a few hundred milliseconds, which is
+// exactly the window a render drive is least able to catch reliably.
+{
+  const skeleton = readFileSync("src/app/wallet/loading.tsx", "utf8");
+  const page = readFileSync("src/app/wallet/wallet-client.tsx", "utf8");
+  const stripped = decomment(skeleton);
+
+  ok("§5f the wallet skeleton reads the same feature seam as the page",
+     stripped.includes("bonusIsLiveFor"), "loading.tsx never consults feature-state");
+  // ⛔ Not a bare `lg:grid-cols-2` — it must be CONDITIONAL, exactly as the page's is.
+  ok("§5f …and its column count is conditional, not hard-coded",
+     !/className="grid grid-cols-1 lg:grid-cols-2/.test(stripped),
+     "the skeleton pins two columns regardless of state");
+  ok("§5f CONTROL · the page itself is conditional too (the thing being mirrored)",
+     /bonusCardVisible && "lg:grid-cols-2"/.test(decomment(page)),
+     "wallet-client no longer gates its grid — this mirror has nothing to mirror");
+  // ⛔ The bonus ghost is KEPT, not deleted: re-enablement needs it back, and a skeleton that
+  // lost its second card would ship bare the day the programme returns.
+  ok("§5f the bonus ghost is retained for the ON path", stripped.includes("mat-raised"),
+     "the bonus skeleton was deleted rather than gated");
+}
+
 // ── §6–§8 · PORTED FROM THE RETIRED `test:invite-coming-soon` ──────────────
 // ⭐ WHY THESE ARE HERE AND THAT SUITE IS GONE. It guarded the rule "Invite is COMING_SOON and
 // every surface says so from ONE switch". That rule is superseded — invite is WITHDRAWN, and its

@@ -1,4 +1,6 @@
 import { getServerT } from "@/lib/i18n-server";
+import { bonusIsLiveFor } from "@/lib/feature-state";
+import { cn } from "@/lib/utils";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/ui/page-header";
 
@@ -32,8 +34,22 @@ export default async function WalletLoading() {
       {/* B-29 / V-2 — the page renders TWO wallet cards side-by-side at lg
           (main + bonus). The old single full-width ghost snapped to half-width
           and popped a second card when the real page resolved — the most
-          visible "cheap" moment on the money page. Mirror the real grid. */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch" aria-hidden>
+          visible "cheap" moment on the money page. Mirror the real grid.
+
+          🔴 …AND SINCE 2026-09-06 THE REAL GRID IS ONE CARD, so this mirrors that instead.
+          The bonus programme is withdrawn (`feature-state.ts`), `BonusWalletCard` returns
+          null for a player who holds no grant, and `wallet-client.tsx` drops `lg:grid-cols-2`
+          to match. A skeleton left at two columns would ghost a card that never arrives and
+          then snap the balance from half to full width — the same defect B-29 fixed, running
+          in the opposite direction. ⛔ This repo has shipped exactly this before: loading
+          skeletons that still described the page as it used to be.
+
+          ⚠️ IT MIRRORS THE FEATURE STATE, NOT THE PLAYER. A skeleton has no data, so it
+          cannot know whether THIS viewer still holds a legacy grant. It follows the state it
+          can know, which means the rare grant-holder sees one ghost and gains a second card.
+          That is the safe direction: under-promising costs a reflow, over-promising shows a
+          player a money card that never comes. */}
+      <div className={cn("grid grid-cols-1 gap-4 items-stretch", bonusIsLiveFor() && "lg:grid-cols-2")} aria-hidden>
         <div
           className="rounded-xl border border-border overflow-hidden kp-shimmer-track"
           style={{ height: 160, background: "linear-gradient(135deg, oklch(23% 0.075 268), oklch(16% 0.05 268))" }}
@@ -49,22 +65,26 @@ export default async function WalletLoading() {
             </div>
           </div>
         </div>
-        {/* Bonus wallet card. ⭐ D5 (2026-08-21) — ROYAL, because the real card behind it
-            is royal now. It used to ghost in a warm gold gradient, so the wallet loaded
-            gold-on-the-right and then repainted; a skeleton that lies about the colour of
-            the surface it stands in for is a flash of the exact hierarchy this ruling
-            removed. `.mat-raised` is the same rung the real panel picks. */}
-        <div
-          className="mat-raised rounded-xl overflow-hidden kp-shimmer-track"
-          style={{ height: 160 }}
-        >
-          <div className="p-5 lg:p-6 space-y-4">
-            <div className="h-3 w-24 rounded bg-bg-overlay/30" />
-            {/* ⚠️ LITERAL, not `h-10` — the bonus balance is also 38px (wallet-client.tsx:162). */}
-            <div className="h-[38px] w-32 rounded bg-bg-overlay/20" />
-            <div className="h-16 rounded-md bg-bg-overlay/15" />
+        {/* Bonus wallet card — ghosted ONLY while the programme is live. ⭐ D5 (2026-08-21)
+            — ROYAL, because the real card behind it is royal now. It used to ghost in a warm
+            gold gradient, so the wallet loaded gold-on-the-right and then repainted; a
+            skeleton that lies about the colour of the surface it stands in for is a flash of
+            the exact hierarchy that ruling removed. `.mat-raised` is the same rung the real
+            panel picks. ⛔ Kept, not deleted: it is what the ON path needs back the day the
+            programme returns, and deleting it is how re-enablement ships a bare skeleton. */}
+        {bonusIsLiveFor() && (
+          <div
+            className="mat-raised rounded-xl overflow-hidden kp-shimmer-track"
+            style={{ height: 160 }}
+          >
+            <div className="p-5 lg:p-6 space-y-4">
+              <div className="h-3 w-24 rounded bg-bg-overlay/30" />
+              {/* ⚠️ LITERAL, not `h-10` — the bonus balance is also 38px (wallet-client.tsx:162). */}
+              <div className="h-[38px] w-32 rounded bg-bg-overlay/20" />
+              <div className="h-16 rounded-md bg-bg-overlay/15" />
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Tab skeleton */}
