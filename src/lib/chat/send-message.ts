@@ -21,8 +21,8 @@
  *   When a player-facing page or feature is ADDED, RENAMED, or REMOVED, add or
  *   update an intent branch in `stubReply()` below (keyword → reply + a
  *   citation to the route). Current intents: deposits, conviction dial,
- *   payouts/withdrawals, KYC, affiliate (Invite & Earn → /profile/invite),
- *   proposals (→ /proposals), escalation. Treat this list as the chatbot's
+ *   payouts/withdrawals, KYC, referral (agents only — NO citation, deliberately: see the
+ *   branch itself), proposals (→ /proposals), escalation. Treat this list as the chatbot's
  *   knowledge index; a page without an intent here falls through to the
  *   "I'm not sure" → support handoff. (Live mode replaces this with the
  *   system prompt + web_search over the live site.)
