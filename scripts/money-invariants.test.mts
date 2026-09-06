@@ -30,6 +30,7 @@
 // runs the real transition code path.
 process.env.MARKET_SCHEDULER = "false";
 
+import { readFileSync } from "node:fs";
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { createMarket, buyPosition, cashOutPosition, getMarket, resolveMarket, settleMarket, listPositionsForMarket, ratesFor } from "../src/lib/server/market-service.ts";
 import { setRequireTwoOfficerResolution } from "../src/lib/server/resolution-policy.ts";
@@ -405,6 +406,37 @@ ok("audit chain verifies end-to-end", verifyChain().valid);
   const payouts = getAuditPage({ limit: 500 }).filter((e) => e.action === "bet.payout");
   ok("settlement payouts are audited", payouts.length >= winnerCount, `audited=${payouts.length} winners=${winnerCount}`);
 }
+
+// ── §S · THE LIVE-MONEY STARTER-BALANCE CLAMP IS ON *BOTH* REGISTRATION DOORS ──────────
+//
+// 🔴 A starter balance is written straight onto the wallet with NO ledger entry, so every
+// shilling it creates is money minted from nothing and the wallet↔ledger trial balance breaks
+// by exactly that amount, permanently. `registerWithPassword` says so and states the rule in
+// absolute terms — *"In LIVE money mode BOTH sources are forced to 0 … so no env var or config
+// row can mint"*.
+//
+// ⛔ THAT SENTENCE WAS FALSE UNTIL 2026-09-07. `verifyOtpAndAuth` read the SAME admin-settable
+// `starterBalanceTzs` and applied NO clamp — so an operator who set it would mint free money on
+// live money for every OTP registration while the password door correctly refused. Same config
+// row, same money, different door. **A money rule enforced on one of two doors is not a rule.**
+//
+// ⭐ Source-level on purpose: the clamp is a one-line pure function, and what actually failed
+// here was not its logic but its ABSENCE at a second call site. So the assertion is about
+// call sites, which is the thing that was wrong.
+{
+  const src = readFileSync("src/lib/server/auth-service.ts", "utf8");
+  const clampSites = (src.match(/clampStarterBalanceForLiveMoney\(/g) ?? []).length;
+  // one definition + two call sites
+  ok("§S the live-money clamp has ONE definition", /function clampStarterBalanceForLiveMoney\(/.test(src));
+  ok("§S …and it is applied at BOTH registration paths", clampSites >= 3, `occurrences=${clampSites}`);
+  ok("§S …and no starter balance reaches a wallet unclamped",
+     !/balance:\s*starterBalance/.test(src) || clampSites >= 3,
+     "a starterBalance is written without passing the clamp");
+  ok("§S …and the clamp is keyed on live-money mode",
+     /function clampStarterBalanceForLiveMoney\([^)]*\)[^{]*\{\s*return isLiveMoneyMode\(\) \? 0 :/.test(src),
+     "the clamp no longer keys on isLiveMoneyMode()");
+}
+
 
 console.log(`\nmoney-invariants: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);
