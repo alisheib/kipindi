@@ -27,7 +27,8 @@ import { decomment } from "./lib/decomment.mts";
 import { inviteIsLiveFor, bonusIsLiveFor, inviteStateFor } from "../src/lib/feature-state.ts";
 import { cashOutValue } from "../src/lib/server/market-service.ts";
 import { db } from "../src/lib/server/store.ts";
-import { bindRecruit, ensureAffiliateAccount, resolveReferralPreview } from "../src/lib/server/affiliate-service.ts";
+import { bindRecruit, ensureAffiliateAccount, resolveReferralPreview, onRecruitBet } from "../src/lib/server/affiliate-service.ts";
+import { setAffiliateConfig } from "../src/lib/server/affiliate-config.ts";
 
 let pass = 0, fail = 0;
 function ok(label: string, cond: boolean, extra?: string) {
@@ -190,6 +191,71 @@ function ok(label: string, cond: boolean, extra?: string) {
   ok("§5c CONTROL · recruitedBy is written for the agent", recB?.recruitedBy === "w5_agent_ref", `recruitedBy=${recB?.recruitedBy}`);
   const previewAgent = await resolveReferralPreview(agentCode);
   ok("§5c CONTROL · the ribbon renders for an agent", previewAgent !== null && typeof previewAgent?.referrerName === "string", JSON.stringify(previewAgent));
+}
+
+// ── §5d · THE LEGACY ATTRIBUTION — bound BEFORE the gate existed ───────────
+// 🔴 THE HARDER HALF TO NOTICE. §5a stops NEW attributions, but `User.recruitedBy` rows
+// written before that gate are still on the table and are PERMANENT (`already_bound` means
+// they are never re-attributed). Every one of those pairs would keep accruing on the
+// recruit's next bet/deposit/settlement — the prize mode is enabled by default, and with the
+// bonus wallet withdrawn the reward now lands as REAL, WITHDRAWABLE CASH rather than a
+// played-through grant, plus an AFFILIATE notification and an email pointing at
+// /profile/invite, a page that no longer exists for that player.
+// ⛔ So attribution and PAYMENT must read the same seam. This writes the legacy row directly,
+// exactly as the old code would have left it, and proves nothing accrues on it.
+//
+// 🔴 THE FIRST VERSION OF THIS SECTION WAS VACUOUS, AND ONLY THE RED HARNESS SAID SO. It used
+// the shipped defaults — `requireDeposit: true`, `minBetAmountTzs: 20_000` — and never gave the
+// recruit a deposit, so the prize could not fire whatever the gate did. Neutralising
+// `referrerMayEarn` left the section GREEN: it was measuring the config, not the gate. The
+// config is now set so the path WOULD pay, and §5e is the control that proves it does.
+{
+  const stamp = () => new Date().toISOString();
+  const cfgSnap = setAffiliateConfig(
+    { enabled: true, prize: { enabled: true, milestone: "FIRST_BET", amountTzs: 10_000, requireDeposit: false, minBetAmountTzs: 1_000 } },
+    "test-officer",
+  );
+  ok("§5d SETUP · a prize really would be payable on this path", cfgSnap.ok === true, JSON.stringify(cfgSnap));
+
+  const mkPair = async (n: string, referrerRole: "PLAYER" | "AGENT") => {
+    for (const [id, role, ref] of [
+      [`${n}_ref`, referrerRole, null],
+      [`${n}_rec`, "PLAYER", `${n}_ref`],
+    ] as const) {
+      await db.user.create({
+        id, phoneE164: `+2557900${String(id.length * 7 + n.length).padStart(5, "0")}${n.slice(-1)}`, email: `${id}@t.tz`,
+        passwordHash: null, passwordSalt: null, failedLoginCount: 0, lockedUntil: null,
+        role, status: "ACTIVE", locale: "EN", displayName: null, dob: null, region: null,
+        acceptedTermsVersion: null, acceptedTermsAt: null, marketingOptIn: false,
+        twoFactorEnabled: false, avatarDataUrl: null,
+        recruitedBy: ref,                     // ⬅ written directly: the legacy row shape
+        createdAt: stamp(), updatedAt: stamp(), lastLoginAt: null, closedAt: null,
+      } as never);
+      await db.wallet.create({ id: `wal_${id}`, userId: id, balance: 0, pending: 0, hold: 0, bonusBalance: 0, currency: "TZS", status: "ACTIVE", createdAt: stamp(), updatedAt: stamp() } as never);
+    }
+    await ensureAffiliateAccount(`${n}_ref`);
+  };
+
+  // §5d · the withdrawn referrer — a legacy attribution that must now pay nothing
+  await mkPair("w5d", "PLAYER");
+  ok("§5d PRECONDITION · the legacy attribution really is on the row",
+     (await db.user.findById("w5d_rec"))?.recruitedBy === "w5d_ref");
+  await onRecruitBet("w5d_rec", { stake: 25_000 });
+  const wLegacy = await db.wallet.findByUserId("w5d_ref");
+  ok("§5d a legacy attribution accrues NOTHING in cash", (wLegacy?.balance ?? -1) === 0, `cash=${wLegacy?.balance}`);
+  ok("§5d …and nothing in bonus either", (wLegacy?.bonusBalance ?? -1) === 0, `bonus=${wLegacy?.bonusBalance}`);
+  ok("§5d …and writes no reward row at all", (await db.referralReward.listByReferrer("w5d_ref")).length === 0);
+
+  // §5e · CONTROL — the SAME shape with an AGENT referrer DOES pay.
+  // ⛔ Without this, §5d passes whenever the reward path is broken for any reason at all —
+  // which is exactly how its first version passed with the gate removed.
+  await mkPair("w5e", "AGENT");
+  await onRecruitBet("w5e_rec", { stake: 25_000 });
+  const wAgent = await db.wallet.findByUserId("w5e_ref");
+  ok("§5e CONTROL · an AGENT referrer on the same path IS paid",
+     (wAgent?.balance ?? 0) + (wAgent?.bonusBalance ?? 0) > 0,
+     `cash=${wAgent?.balance} bonus=${wAgent?.bonusBalance}`);
+  ok("§5e CONTROL · …and a reward row exists", (await db.referralReward.listByReferrer("w5e_ref")).length > 0);
 }
 
 // ── §6–§8 · PORTED FROM THE RETIRED `test:invite-coming-soon` ──────────────

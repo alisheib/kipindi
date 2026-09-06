@@ -346,6 +346,29 @@ function referrerSharesIp(referrerUserId: string, ip: string): boolean {
 // ── Reward payers (idempotent, capped, config-gated) ─────────────────────
 
 /** Pay the sign-up / first-deposit bonus once per recruit. */
+/**
+ * 🔴 MAY THIS REFERRER STILL EARN? — asked by all three accrual hooks, for a reason the
+ * binding gate alone does not cover.
+ *
+ * `bindRecruit` refuses new attributions from a withdrawn referrer, but `User.recruitedBy`
+ * rows written BEFORE that gate existed are still on the table, and they are permanent —
+ * `already_bound` means they are never re-attributed. Every one of those pairs would keep
+ * accruing on the recruit's next bet, deposit or settlement: the prize mode is enabled by
+ * default, and with the bonus wallet withdrawn the reward now lands as REAL, WITHDRAWABLE
+ * CASH rather than a played-through grant. It would also fire an `AFFILIATE` notification
+ * and a "referral reward" email pointing at `/profile/invite`, a page that no longer exists
+ * for that player.
+ *
+ * ⛔ SO ATTRIBUTION AND PAYMENT MUST READ THE SAME SEAM. Gating only the bind would leave
+ * the older population paying quietly, which is the harder half to notice.
+ * ⭐ And it is deliberately NOT a blanket "affiliate off" switch: an approved AGENT keeps
+ * earning, because that is the programme this withdrawal exists to make room for.
+ */
+async function referrerMayEarn(referrerUserId: string): Promise<boolean> {
+  const referrer = await db.user.findById(referrerUserId);
+  return !!referrer && inviteIsLiveFor(referrer.role);
+}
+
 async function payBonus(opts: { referrerUserId: string; recruitUserId: string; held: boolean }): Promise<void> {
   const cfg = getAffiliateConfig();
   if (!cfg.enabled || !cfg.bonus.enabled) return;
@@ -468,6 +491,8 @@ export async function onRecruitBet(recruitUserId: string, opts: { stake: number 
   const recruit = await db.user.findById(recruitUserId);
   const referrerUserId = recruit?.recruitedBy;
   if (!referrerUserId) return;
+  // A pre-existing attribution does not entitle a withdrawn referrer to earn — see referrerMayEarn.
+  if (!(await referrerMayEarn(referrerUserId))) return;
   const cfg = getAffiliateConfig();
   if (!cfg.enabled) return;
 
@@ -515,6 +540,8 @@ export async function onRecruitSettlement(recruitUserId: string, opts: { operato
   const recruit = await db.user.findById(recruitUserId);
   const referrerUserId = recruit?.recruitedBy;
   if (!referrerUserId) return;
+  // A pre-existing attribution does not entitle a withdrawn referrer to earn — see referrerMayEarn.
+  if (!(await referrerMayEarn(referrerUserId))) return;
   const cfg = getAffiliateConfig();
   if (!cfg.enabled) return;
 
@@ -579,6 +606,8 @@ export async function onRecruitDeposit(recruitUserId: string, opts: { cumulative
   const recruit = await db.user.findById(recruitUserId);
   const referrerUserId = recruit?.recruitedBy;
   if (!referrerUserId) return;
+  // A pre-existing attribution does not entitle a withdrawn referrer to earn — see referrerMayEarn.
+  if (!(await referrerMayEarn(referrerUserId))) return;
   const cfg = getAffiliateConfig();
   if (!cfg.enabled) return;
 
