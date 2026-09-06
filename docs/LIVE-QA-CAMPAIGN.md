@@ -6012,12 +6012,45 @@ edit, so the graph argument was not enough — it was run with the dictionary re
 
 > ### ⚠️ WHAT THIS AUDIT DID **NOT** PROVE, STATED SO IT IS NOT MISTAKEN FOR PASSED
 >
-> 🟡 **No browser drove these changes.** The fixes are proven by suites, by mutation and by
-> production reads of the surfaces that are already live. `next dev` paints an empty admin body
-> on this machine (a recorded, standing limitation) and the branch is not deployed, so
-> `/profile/invite`, `/auth/register?invite=…` and `/wallet` were **not** rendered with the new
-> code. ⛔ Zero votes is UNVERIFIED, never a pass. **Drive those three surfaces after the branch
-> deploys.**
+> ✅ **CORRECTED — THE PLAYER SURFACES *WERE* RENDERED, IN BOTH STATES.** This block first said no
+> browser drove these changes, on the standing note that `next dev` paints an empty admin body on
+> this machine. ⭐ **That limitation is ADMIN-only and nobody had ever checked the player app.** It
+> boots fine: `DATABASE_URL="" npm run dev`, session from `/auth/demo`, in-memory store.
+>
+> **Measured on a real request, shipped state vs. a `FEATURE_*=ACTIVE` control:**
+>
+> | Surface | Withdrawn (shipped) | Control (features ON) |
+> |---|---|---|
+> | `/wallet` bonus card (`mat-raised`) | **0** | **2** |
+> | `/wallet` `lg:grid-cols-2` | **0** | **2** |
+> | `/profile` links to `/profile/invite` | **0** | **1** |
+> | `/profile/invite` QR minted · `?ref=` link | **0 · 0** | **1 · 1** |
+>
+> ⭐ **THE CONTROL IS THE POINT.** A page that renders nothing because a feature is off is
+> indistinguishable from one that is broken; the right-hand column is what makes the left-hand
+> column mean "gated" rather than "dead". The withdrawal is real AND reversible, rendered.
+> Also confirmed in the same pass: `/wallet`'s surviving card takes the full width (the grid is
+> `grid-cols-1` with **no** `lg:grid-cols-2`), so the 518px hole is fixed in the DOM, not just in
+> the source; `/profile/invite` returns the not-found body with **no code, link or QR minted**,
+> which is the §8 positional rule holding in a real render; and the only `invite` left anywhere on
+> `/profile` is `install-invite.tsx`, the PWA install prompt, a different feature entirely.
+> `/`, `/auth/register`, `/auth/register?invite=…`, `/auth/login`, `/markets`,
+> `/markets?status=progress`, `/results`, `/legal/terms` — all 200, zero runtime errors. That last
+> set matters for one specific reason: `invite-service.ts` gained a `feature-state` import this
+> session, and **a `"use client"` helper reaching server-only code has taken every page in this
+> repo down before while `tsc` and `next build` both stayed green.** Loading the pages is the only
+> check that can see it.
+>
+> ⛔ **AND THE FIRST RUN OF THAT CONTROL WAS A FALSE ALARM — recorded because it is the trap.**
+> It reported the ON state rendering nothing, which would have read as "the withdrawal broke the
+> feature". `TaskStop` had killed the shell wrapper but **not** the `next dev` child, so the
+> ON-state server found port 3000 taken, exited, and every request was answered by the OLD
+> process — the OFF server, measured twice. `netstat` named the PID. **Always confirm WHICH
+> process answered before believing a control.**
+>
+> 🟡 Still not rendered: the **AGENT** view of `/profile/invite` (nothing assigns `UserRole.AGENT`
+> yet), and the register ribbon against a **seeded live campaign** — that one is proven by
+> `withdrawn-features` §5i plus its control instead.
 >
 > 🟡 **The AGENT path is still unit-level only.** `inviteIsLiveFor("AGENT")` is tested and
 > `referralRewardDestination()` is proven, but nothing assigns `UserRole.AGENT` yet, so no drive
