@@ -6005,7 +6005,42 @@ state**, 1,338,504 of players' stakes in escrow, and every ledger entry ever wri
 | 9 | `BASE=… node scripts/shot-sweep.mjs --routes "/markets?status=progress" --widths 360,768,1280,1920 --locales en,sw,zh` | ⛔ **and READ them** — `E-308` was invisible to every gate and obvious in the picture |
 | 10 | `BASE=https://www.50pick.tz node scripts/live-phone-reveal.mjs` | the eye in a real browser + the `pii.revealed` row. ⚠️ Exit **2 = inconclusive**, which is not a pass |
 
-⚠️ **Two suites were RED on `main` before this session and are NOT mine:** `test:updown-source-class` (a recorded false alarm) and `test:updown-handover` 8.4d. Re-measure before believing either.
+⚠️ **Two suites were RED on `main` before this session and are NOT mine:** `test:updown-source-class` (a recorded false alarm) and `test:updown-handover` 8.4d. ⭐ **Re-measured rather than believed** — both were run in a throwaway worktree at `origin/main~n` with this work absent and fail **byte-identically** there. Final `test:all` on the shipped code: **289/291**, and those two are the two.
+
+### ⏹ THE END-TO-END PASS ALI ASKED FOR — driven, and the pictures were read
+
+**Player, signed out, at 1280:** `/` · `/markets` (default, progress, all, new, today) · `/live` ·
+`/results` · `/updown` · a market **detail** page reached from the new tab · `/watchlist` ·
+`/positions` — all 200, no overflow, **zero console errors** (Cloudflare's own blocked beacon is
+pre-existing noise and is filtered by name).
+
+**The partition, on production, twice, hours apart:** `open 43 + progress 14 = all 57`, then
+`open 39 + progress 18 = all 57` as markets closed underneath. ⭐ **The board's own chip counts
+matched the database re-derived at read time on both occasions** — the lens is not merely
+plausible, it is arithmetically the complement of `open` within the unsettled book. `new 0`
+throughout, which is `E-304` staying fixed.
+
+**Admin, one login (single-active-session — do not log in twice):** `/admin`, players roster,
+player detail, privacy, self-exclusions, transactions, payments, staff, audit, roles, markets —
+all clean. **No PLAYER's raw phone appears in any roster's HTML at rest**; the only `+255…` in the
+markup is the signed-in officer's OWN number in the top bar, which is §6's declared exemption and
+was confirmed by eye in the screenshot. The eye reveals `+255••••00 → +255795355800`, and the
+player's own Activity tab shows the resulting `COMPLIANCE · pii.revealed` rows — the whole D4 loop,
+visible in the console.
+
+⚠️ **Two "failures" in that pass were the harness, not the product, and both are worth knowing:**
+`/admin/kyc` 404s because there IS no index route (only `[id]`), and `/admin/payments` and
+`/admin/self-exclusions` show zero eyes because both populations are genuinely EMPTY — no frozen
+payouts (every withdrawal terminal, checked in the DB) and "Roster empty · 0 EXCLUDED · 0
+COOLING-OFF" on screen. ⛔ Zero controls over an empty table is not evidence of anything; it was
+checked rather than assumed.
+
+🟡 **What the drives could NOT prove, stated so it is not mistaken for passed:** state D (verdict
+recorded, money not yet moved) is **0 rows on production**, so `progress` excluding it is proven by
+unit test and by mutation, never observed live. And `B2` — a LIVE market past `resolutionAt` — was
+also 0 at census, so the `getBoard` widening admits nothing extra today and is currently
+**unexercised on production**; it is proven locally against a seeded state-C market and by the
+`board-refilters-on-time` mutation.
 
 ### 🟢 Session 87 (2026-09-05) — THE CONTROLS THAT HAVE TO EXIST BEFORE THE OBJECTION WINDOW CAN SHORTEN
 
