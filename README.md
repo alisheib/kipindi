@@ -2,13 +2,13 @@
 
 **The wisdom of YES & NO.** Tanzania-licensed pari-mutuel prediction-markets platform.
 
-Players pick **YES** or **NO** on a proposition (sports, weather, macro, crypto, culture, tech). Stakes from every player on the same market join one pool. Our commission is **`min(10% of the pool, ⅓ of the smaller side)`** — so a winning bet is never paid below its stake — and the net pool is paid out only to the correct side, pro-rata to each correct stake's share of the winning pool. **Players are never taxed on their own money;** taxes apply only to 50pick's commission. The implied probability on the conviction dial is live and updates with every new bet.
+Players pick **YES** or **NO** on a proposition (sports, weather, macro, crypto, culture, tech). Stakes from every player on the same market join one pool. Our fee is **13% of the LOSING side** (Platform 3% + Operator 10%) — so a winning bet is never paid below its stake — and the net pool is paid out only to the correct side, pro-rata to each correct stake's share of the winning pool. **Players are never taxed on their own money;** taxes apply only to 50pick's commission. The implied probability on the conviction dial is live and updates with every new bet.
 
 Trilingual **EN + SW + ZH**. Mobile-first. Calm, premium, regulator-ready.
 
 ---
 
-> 🧭 **Engineers/agents:** start with the **`50pick-audit`** skill (`.claude/skills/50pick-audit/SKILL.md`) — the platform operational playbook. Active launch work: [`docs/perfection-plan.md`](docs/perfection-plan.md) · next session: [`docs/NEXT-PLAN.md`](docs/NEXT-PLAN.md).
+> 🧭 **Engineers/agents:** start with the **`50pick-audit`** skill (`.claude/skills/50pick-audit/SKILL.md`) — the platform operational playbook. **The live plan is [`docs/NEXT-PLAN.md`](docs/NEXT-PLAN.md)** — it opens with THE BOARD. ⚠️ This line used to send you to `docs/perfection-plan.md` as "active launch work"; that file's own header says it is an *"aspirational planning doc (not a verified list of current defects)"* and points back at `NEXT-PLAN.md`. Corrected 2026-09-06.
 
 ---
 
@@ -28,7 +28,7 @@ For documentation written for the next engineer onboarding the codebase, read [`
 
 ## What's built
 
-All surfaces below are E2E-tested. Total: **9 suites · 246 tests passing**.
+All surfaces below are E2E-tested. ⚠️ **This line used to say "9 suites · 246 tests passing". The real number on 2026-09-06 was 293 suites** — a count stated once and never re-derived, wrong by a factor of thirty-two, on the repo's front page. So it does not state one now: run `node scripts/test-all.mjs` and read the total it prints. **A number nobody re-derives is a number that will be wrong.**
 
 | Area | Status | Tests |
 |---|---|---|
@@ -47,15 +47,17 @@ All surfaces below are E2E-tested. Total: **9 suites · 246 tests passing**.
 | i18n EN/SW/ZH | ✅ 13 | Cookie + localStorage + `<html lang>` round trip survives reload + navigation |
 | Flow architecture | ✅ 16 | Auth gates, KYC gates, RG gates, admin role gates, SOF threshold, /not-found, /error |
 
-**Mocked / stubbed for dev** (interface stable, swap is one line per service):
+**What is real, and what is still a stub.** ⚠️ **This section listed six things as "mocked / stubbed for dev" long after four of them shipped** — it described a prototype this platform stopped being, on the page a partner or a new engineer reads first. Re-derived from the code on 2026-09-06:
 
-- DB persistence — PostgreSQL via Prisma ORM (all entities in dedicated tables)
-- SMS dispatch — console provider (production swaps to Twilio / Africa's Talking)
-- NIDA verify — deterministic mock (production swaps to real mTLS endpoint)
-- Document upload — storage-key stub (production swaps to S3-compatible bucket)
-- Payment dispatch — instant approve (production swaps to Selcom or Azampay aggregator)
-- AI market generation — pipeline + state machine ready; Claude API call site is stubbed (catalogue + fixtures wired)
-- Sportradar match-integrity — stub adapter labeled in `/admin` + `/admin/compliance`
+| Service | State | Evidence |
+|---|---|---|
+| DB persistence | ✅ **LIVE** — PostgreSQL via Prisma, not a mock | `/api/health` reports `database.reachable` + `migrated` |
+| Payment dispatch | ✅ **LIVE** — Selcom, a BoT-licensed aggregator | `src/lib/server/selcom.ts`: real deposit, card checkout, payout, order-status verify, float balance |
+| AI generation | ✅ **LIVE** — a real Anthropic client | `src/lib/server/ai-provider-claude.ts` imports `@anthropic-ai/sdk`; no key ⇒ every AI feature is inert, by design |
+| Document upload | ✅ **WIRED** — real S3/R2 client | `src/lib/server/storage.ts` uses `S3Client` + `PutObjectCommand`; `KYC_STORAGE=r2` selects it, and it REFUSES to fall back to inline if misconfigured |
+| SMS dispatch | ⛔ **console provider** | `/api/health` says `sms.provider: "console"`. This is the commercial launch blocker: nobody can receive an OTP |
+| NIDA verify | ⛔ **format check, and it says so** | By owner decision no authority endpoint is required (`docs/IDENTITY-POLICY.md`). With none wired it audits `nida.check.requested`, never `nida.verify.requested`, and never synthesises a match score |
+| Match integrity | ⛔ **stub adapter** | `INTEGRITY_PROVIDER` / `INTEGRITY_API_KEY` are read by nothing — see `.env.example` |
 
 ---
 
