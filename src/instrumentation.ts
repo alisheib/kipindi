@@ -110,8 +110,28 @@ export async function onRequestError(
 
     // Off-box mirror (audit H6) — ships to Sentry when SENTRY_DSN is configured,
     // otherwise a no-op. Awaited-not-blocking-safe: it never throws.
-    const { captureServerError } = await import("./lib/server/monitoring");
-    void captureServerError(err, { path, method, digest, routePath: context?.routePath });
+    //
+    // 🔴 NODE ONLY, AND THE GUARD IS THE FIX FOR A SILENT GAP (2026-09-06).
+    // `onRequestError` fires in BOTH runtimes, and `src/proxy.ts` is an EDGE middleware with a
+    // route matcher. This import reaches `monitoring.ts` → `audit.ts` → `lock-key.ts`, which
+    // loads `node:crypto` and Prisma — neither of which exists in the Edge Runtime. Turbopack
+    // says so on every build ("A Node.js module is loaded ('node:crypto') which is not supported
+    // in the Edge Runtime", import trace: Edge Instrumentation → instrumentation.ts), and the
+    // build stays GREEN because it is only a warning.
+    //
+    // ⛔ WHAT IT COST: on an edge error the import threw, the outer `catch {}` swallowed it, and
+    // the off-box mirror silently did not happen. The `[snag]` block above still printed, so the
+    // failure was invisible — an error reporter that stops reporting exactly where nobody is
+    // watching. That is audit H6 quietly not holding, not a missing feature.
+    //
+    // ⭐ `register()` above has guarded its Node-only imports on `NEXT_RUNTIME` since it was
+    // written; this call site was simply never given the same treatment. Node behaviour is
+    // unchanged. On edge the local console block still runs, and the mirror is now SKIPPED
+    // deliberately rather than failing in the dark.
+    if (process.env.NEXT_RUNTIME === "nodejs") {
+      const { captureServerError } = await import("./lib/server/monitoring");
+      void captureServerError(err, { path, method, digest, routePath: context?.routePath });
+    }
   } catch {
     // Never let the reporter itself throw.
   }
