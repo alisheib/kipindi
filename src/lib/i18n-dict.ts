@@ -1243,8 +1243,12 @@ export const dict = {
       badgesHint: "More badges unlock as you predict, win, propose and invite.",
       account: "Account",
       inviteEarn: "Invite & Earn", inviteEarnSub: "Refer friends · earn rewards",
-      // Invite & Earn is COMING_SOON (src/lib/invite-feature.ts). Same three-key shape
-      // as `proposals.comingSoon*` so both features speak with one voice.
+      // ⚠️ RETAINED, UNRENDERED. Invite is WITHDRAWN for players (`src/lib/feature-state.ts`),
+      // not coming soon, so no surface reads these three keys today — a withdrawn destination
+      // is absent, never badged. They are kept, in all three locales, because the state is
+      // reversible and `scripts/reenablement.test.mts` drives the ON path on every deploy.
+      // ⛔ The withdrawn-vocabulary guard asserts these never reach a player RENDER; that is a
+      // check on the rendered page, not on this dictionary.
       inviteComingSoonTag: "Coming soon",
       inviteComingSoonTitle: "Invite & Earn is coming soon",
       inviteComingSoonBody: "Soon you'll be able to invite friends and earn a reward when they join and play. Check back shortly.",

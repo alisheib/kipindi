@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { I } from "@/components/ui/glyphs";
 import { BackLink } from "@/components/ui/back-link";
 import { currentSession } from "@/lib/server/auth-service";
+import { db } from "@/lib/server/store";
 import { getPlayerReferralSummary } from "@/lib/server/affiliate-service";
 import QRCode from "qrcode";
 import { FiftyMark, GiltCorner } from "@/components/brand";
@@ -19,9 +20,7 @@ import { getBonusConfig } from "@/lib/server/bonus-config";
 import { formatDateShort as fmtDate, formatNumber } from "@/lib/utils";
 import { getServerT } from "@/lib/i18n-server";
 import { PageContainer } from "@/components/layout/page-container";
-import { ComingSoonBanner } from "@/components/ui/coming-soon-banner";
-import { ComingSoonBadge } from "@/components/ui/coming-soon-badge";
-import { inviteIsLive } from "@/lib/invite-feature";
+import { inviteIsLiveFor } from "@/lib/feature-state";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Invite & Earn", which a Swahili player saw in their browser tab and history.
@@ -100,52 +99,26 @@ export default async function InvitePage() {
   const { t, locale } = await getServerT();
 
   /**
-   * ⛔ COMING SOON — AND THE PAGE RETURNS BEFORE THE REFERRAL READ, NOT AFTER IT.
-   * Ali's call, 2026-09-03: Invite & Earn is not open yet. A badge on the entry points
-   * is not enough on its own — this page's live body hands the player a real referral
-   * CODE, a shareable LINK and a QR that encodes it. Printing those under a "coming
-   * soon" flag would be the product contradicting itself, and a code shared today is a
-   * link that has to keep working when the programme opens.
-   * ⭐ So the guard sits ABOVE `getPlayerReferralSummary`: no summary is fetched, no
-   * code is minted into a QR, and no share link is built from the request host. The
-   * cheapest correct behaviour is also the honest one.
+   * ⛔ NOT THIS VIEWER'S PAGE → 404, NOT A "COMING SOON" BODY.
+   *
+   * This branch used to render a gilt coming-soon panel, which was the honest answer while
+   * Invite & Earn was merely waiting for sign-off. It is not waiting any more: referral
+   * earning belongs to vetted, fee-paying, APPROVED AGENTS, and an ordinary player is not
+   * in a queue for it. A "coming soon" page would promise them a programme they will never
+   * be offered — the product contradicting itself, which is the exact failure the original
+   * guard was written to avoid. It is the same reasoning, applied to a changed decision.
+   *
+   * ⭐ AND THE GUARD STILL SITS ABOVE `getPlayerReferralSummary`, for the original reason:
+   * the live body below mints a real referral CODE, a shareable LINK and a QR encoding it.
+   * Nothing is fetched, nothing is minted and no link is built from the request host for
+   * someone who may not have one.
+   *
+   * ⚠️ `notFound()` and not `redirect("/profile")`: this route genuinely does not exist for
+   * this account, and a 404 is also what stops the URL being a probe that reveals whether
+   * the programme exists at all.
    */
-  if (!inviteIsLive()) {
-    return (
-      <PageContainer tier="form" className="space-y-5">
-        <BackLink fallbackHref="/profile" label={t.common.profile} />
-        <h1 className="sr-only">{t.profile.inviteEarn}</h1>
-
-        <div className="flex items-center justify-between gap-3">
-          {/* ⚠️ `text-title-sm` (18px), NOT the live body's hand-typed `text-[19px]`. This branch
-              is NEW code, and new code names a rung — `test:type-scale` §4's ratchet counted the
-              copied literal the moment it was written. The two titles never render together
-              (they are alternate branches of the same page), so the 1px is not a seam. */}
-          <p className="font-display text-title-sm font-bold leading-none">{t.profile.inviteEarn}</p>
-          <ComingSoonBadge label={t.profile.inviteComingSoonTag} />
-        </div>
-
-        {/* ⭐ THE SAME BOX THE PROPOSE SURFACES RENDER — literally, not "matching". It was
-            pasted here first, and `test:spacing-scale` caught the paste by counting its `p-3.5`
-            as a NEW inverted-spacing usage. That pushed it into the kit as
-            `<ComingSoonBanner>`, which is where it should always have been. */}
-        <ComingSoonBanner
-          title={t.profile.inviteComingSoonTitle}
-          body={t.profile.inviteComingSoonBody}
-        />
-
-        {/* Guided onward, never a dead end — the same courtesy the DISABLED proposals
-            view extends. The board is where a player can act right now. */}
-        <div className="pt-1">
-          <Link href="/markets">
-            <Button variant="secondary" size="md" leading={<I.markets s={14} />}>
-              {t.positions.browseMarkets}
-            </Button>
-          </Link>
-        </div>
-      </PageContainer>
-    );
-  }
+  const viewer = await db.user.findById(session.userId);
+  if (!inviteIsLiveFor(viewer?.role ?? null)) notFound();
   // B-1 — no swallow: the fallback fabricated "0 recruits · TZS 0 earned ·
   // program off" to a player with real referral earnings. Throw to
   // profile/error.tsx instead.

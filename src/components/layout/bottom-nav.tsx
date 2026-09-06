@@ -6,7 +6,6 @@ import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
 import { NavMore } from "@/components/layout/nav-more";
 import type { ProposalsState } from "@/lib/server/proposals-config";
-import { inviteIsLive } from "@/lib/invite-feature";
 
 /**
  * THE BOTTOM RAIL — round-2 kit §2 / COMPONENTS §14, rebuilt in batch 3.
@@ -36,7 +35,7 @@ import { inviteIsLive } from "@/lib/invite-feature";
  * tap meant for Markets could grab the toy instead. The physics is vendored and do-not-edit; its
  * RESTING POSITION is not. See `needle-rest.css`, loaded beside this component's own layer.
  */
-export function BottomNav({ isAuthed = false, proposalsState }: { isAuthed?: boolean; proposalsState: ProposalsState }) {
+export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = false }: { isAuthed?: boolean; proposalsState: ProposalsState; inviteVisible?: boolean }) {
   const pathname = usePathname();
   const { t } = useT();
 
@@ -73,13 +72,21 @@ export function BottomNav({ isAuthed = false, proposalsState }: { isAuthed?: boo
     proposalsState !== "DISABLED"
       ? [{ href: "/proposals", label: t.common.propose, proposalsBadge: proposalsState }]
       : [];
+  /* ⛔ INVITE IS ABSENT UNLESS THIS VIEWER IS AN APPROVED AGENT — the same shape as
+     `proposalsRow` above, and for the same reason: a destination the operator has closed
+     must not be shown at all. It used to sit here permanently wearing a "coming soon"
+     flag, which was honest while the programme was merely unopened. It is withdrawn from
+     the player product now, so the row goes rather than wears a badge.
+     ⚠️ The role lives on the server, so the SHELL resolves this and passes the answer —
+     `feature-state.ts` explains why a client component never reads the state itself. */
+  const inviteRow: { href: string; label: string }[] =
+    inviteVisible ? [{ href: "/profile/invite", label: t.common.invite }] : [];
   const moreItems: { href: string; label: string; proposalsBadge?: ProposalsState; comingSoon?: boolean }[] = isAuthed
     ? [
         { href: "/positions",      label: t.common.positions },
         { href: "/wallet",         label: t.nav.wallet },
         { href: "/leaderboard",    label: t.nav.leaderboard },
-        /* Invite & Earn is not open yet — one switch, `src/lib/invite-feature.ts`. */
-        { href: "/profile/invite", label: t.common.invite, comingSoon: !inviteIsLive() },
+        ...inviteRow,
         ...proposalsRow,
       ]
     : [

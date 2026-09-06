@@ -10,7 +10,6 @@ import { I } from "@/components/ui/glyphs";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
 import { ComingSoonBadge } from "@/components/ui/coming-soon-badge";
-import { inviteIsLive } from "@/lib/invite-feature";
 import { useT, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { NeedleControlsDrawer } from "@/components/layout/needle-drawer";
@@ -25,6 +24,7 @@ export function AvatarMenu({
   seed,
   isAdmin = false,
   proposalsState = "COMING_SOON",
+  inviteVisible = false,
 }: {
   initials: string;
   name: string;
@@ -34,6 +34,8 @@ export function AvatarMenu({
   seed?: string;
   isAdmin?: boolean;
   proposalsState?: ProposalsState;
+  /** Resolved by the SERVER shell — a client component cannot know the viewer's role. */
+  inviteVisible?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -92,7 +94,13 @@ export function AvatarMenu({
 
   /** The rows actually rendered — Proposals is hidden entirely when DISABLED
    *  ("every entry point is hidden", `proposals-config.ts`). */
-  const rows = MENU_ROWS.filter((r) => !r.proposals || proposalsState !== "DISABLED");
+  /* ⛔ A WITHDRAWN DESTINATION IS FILTERED OUT, NOT BADGED. Proposals has always been dropped
+     here when DISABLED; Invite now joins it. It used to render permanently wearing a gilt
+     "coming soon" flag — right while the programme was waiting for sign-off, wrong now that
+     referral earning belongs to vetted, approved AGENTS only. Filtering (rather than badging)
+     also keeps the current-page predicate below honest: it derives from `rows`, so a row that
+     cannot be reached can never be marked as where you are. */
+  const rows = MENU_ROWS.filter((r) => (!r.proposals || proposalsState !== "DISABLED") && (!r.invite || inviteVisible));
   /* ⭐ DG-P-11 — WHICH ROW IS THE CURRENT PAGE, BY LONGEST MATCH.
      ⛔ Longest-match is load-bearing, not tidiness: `/profile` is a prefix of both
      `/profile/invite` and `/profile/kyc`, so a plain per-row test would raise THREE current
@@ -195,9 +203,9 @@ export function AvatarMenu({
                   /* The state flag rides the proposals row only: gilt coming-soon /
                      amber maintenance / nothing when ACTIVE. */
                   proposalsBadge={r.proposals ? proposalsState : undefined}
-                  /* Invite carries the same gilt coming-soon flag, from its own
-                     one switch — see src/lib/invite-feature.ts. */
-                  comingSoon={r.invite ? !inviteIsLive() : false}
+                  /* Invite no longer carries a coming-soon flag: when it is not this
+                     viewer's, the row is not here at all (see the filter above). */
+                  comingSoon={false}
                 />
               ))}
             </ul>
@@ -300,7 +308,8 @@ type MenuRow = {
   accent?: boolean;
   /** Proposals rides the feature-state flag and is dropped entirely when DISABLED. */
   proposals?: boolean;
-  /** Invite rides `INVITE_STATE` (src/lib/invite-feature.ts) — one flag, one switch. */
+  /** Invite rides the product feature state (`feature-state.ts`), resolved per ROLE by the
+   *  server shell. When it is not this viewer's, the row is filtered out entirely. */
   invite?: boolean;
 };
 

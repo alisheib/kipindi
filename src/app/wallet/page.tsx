@@ -7,6 +7,7 @@ import type { Transaction } from "@/lib/ui-stubs";
 import type { StoredTxn } from "@/lib/server/store";
 import { getBonusSummary } from "@/lib/server/bonus-service";
 import { getBonusConfig } from "@/lib/server/bonus-config";
+import { bonusIsLiveFor } from "@/lib/feature-state";
 import { DEPOSIT_MIN_TZS, DEPOSIT_MAX_TZS, WITHDRAW_MIN_TZS, WITHDRAW_MAX_TZS } from "@/lib/server/validators";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { getServerT } from "@/lib/i18n-server";
@@ -85,9 +86,18 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
   const resultTxn = resultId ? rawTxns.find((x) => x.id === resultId) : undefined;
 
   // Bonus balance is money too — same B-1 rule, no zero-on-failure.
+  // ⛔ THE SUMMARY IS STILL READ WHEN THE PROGRAMME IS WITHDRAWN, deliberately: a player
+  // holding a live grant must still see it and still be able to play it through. What the
+  // feature state gates is the OFFER (the empty-state pitch, the cashback promo), never the
+  // statement of money that exists. See `feature-state.ts` — gate the offer, not the refusal.
   const bonus = await getBonusSummary(session.userId);
   const bonusCfg = getBonusConfig();
-  const cashbackPercent = bonusCfg.enabled && bonusCfg.cashbackEnabled ? bonusCfg.cashbackPercentage : 0;
+  const bonusFeatureLive = bonusIsLiveFor();
+  // ⭐ TWO LEVELS, AND THE PRODUCT STATE WINS. `bonusCfg.cashbackEnabled` is the OPERATOR's
+  // switch; `bonusFeatureLive` is whether the programme is part of the product at all. An
+  // operator re-enabling cashback in /admin/config must not be able to resurrect a promo for
+  // a withdrawn programme, so the product state is ANDed in here rather than trusted to it.
+  const cashbackPercent = bonusFeatureLive && bonusCfg.enabled && bonusCfg.cashbackEnabled ? bonusCfg.cashbackPercentage : 0;
   const cashbackMode = bonusCfg.cashbackMode ?? "REQUEST";
   const bonusGrants = bonus.grants
     .filter((g) => g.status === "ACTIVE" || g.status === "QUEUED")
@@ -130,6 +140,7 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
         bonusActiveCount={bonus.activeCount}
         bonusWagerRemaining={bonus.activeWagerRemainingTzs}
         bonusGrants={bonusGrants}
+        bonusFeatureLive={bonusFeatureLive}
         cashbackPercent={cashbackPercent}
         cashbackMode={cashbackMode}
         limits={{

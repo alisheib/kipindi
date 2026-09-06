@@ -16,7 +16,7 @@ import { getServerT } from "@/lib/i18n-server";
 import { formatTzs } from "@/lib/utils";
 import { PageContainer } from "@/components/layout/page-container";
 import { ComingSoonBadge } from "@/components/ui/coming-soon-badge";
-import { inviteIsLive } from "@/lib/invite-feature";
+import { inviteIsLiveFor } from "@/lib/feature-state";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -276,12 +276,16 @@ export default async function ProfilePage() {
           {t.profile.account}
         </h2>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-          {/* ⚠️ THE "NEW" BADGE IS DROPPED WHILE THE PROGRAMME IS CLOSED — the two cannot both
-              be true, and "NEW" on a feature nobody can use is the worse of the two claims. It
-              returns automatically when `INVITE_STATE` flips to ACTIVE. */}
-          <SettingRow icon={I.gift}            title={t.profile.inviteEarn}          subtitle={t.profile.inviteEarnSub}         href="/profile/invite" accent
-            badge={inviteIsLive() ? t.common.newBadge : undefined}
-            comingSoon={inviteIsLive() ? undefined : t.profile.inviteComingSoonTag} />
+          {/* ⛔ INVITE IS WITHDRAWN FOR ORDINARY PLAYERS — THE ROW IS ABSENT, NOT BADGED.
+              It used to render with a gilt "coming soon" tag, which was right while the
+              programme was merely waiting for sign-off. It is no longer waiting: referral
+              earning now belongs to vetted, fee-paying, approved AGENTS only, so a badge
+              here would advertise a programme this player can never enter. A grid item that
+              is not rendered leaves no hole — the remaining rows simply flow up. */}
+          {inviteIsLiveFor(user.role) && (
+            <SettingRow icon={I.gift}          title={t.profile.inviteEarn}          subtitle={t.profile.inviteEarnSub}         href="/profile/invite" accent
+              badge={t.common.newBadge} />
+          )}
           <SettingRow icon={I.user}            title={t.profile.myAccount}           subtitle={t.profile.myAccountSub}            href="/profile/account" />
           <SettingRow icon={I.chart}           title={t.activity.title}              subtitle={t.activity.settingSub}             href="/profile/activity" />
           <SettingRow icon={I.star}            title={t.watchlist.title}             subtitle={t.watchlist.settingSub}            href="/watchlist" />

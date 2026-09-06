@@ -36,7 +36,8 @@ import { guestUser } from "@/lib/ui-stubs";
 import { getTickerFeed } from "@/lib/server/ticker-feed";
 import { RealityCheckHost } from "@/components/rg/reality-check";
 import { getRgSettings } from "@/lib/server/responsible-gambling";
-import { hasRole, ADMIN_CONSOLE_ROLES } from "@/lib/server/roles";
+import { hasRole, ADMIN_CONSOLE_ROLES, type Role } from "@/lib/server/roles";
+import { inviteIsLiveFor } from "@/lib/feature-state";
 import { displayLabel, displayInitials } from "@/lib/display-label";
 import { getServerT } from "@/lib/i18n-server";
 import { getPlatformConfig, maintenanceMessage } from "@/lib/server/platform-config";
@@ -83,6 +84,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   let emailVerifyState: { email: string | null } | null = null;
   /** Non-null = signed in and NOT yet verified → show the standing identity bar. */
   let kycVerifyState: { state: NonNullable<ReturnType<typeof kycGateState>> } | null = null;
+  /** The viewer's role, hoisted out of the session block for the feature-state read below.
+   *  ⚠️ Stays null when the user fetch FAILED — which resolves every role-gated feature to
+   *  hidden, the only safe direction for a failed read. */
+  let viewerRole: Role | null = null;
   if (session) {
     // Batch all three queries in parallel — eliminates the sequential
     // waterfall. Promise.allSettled so one failing query can't crash
@@ -118,6 +123,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       // hasRole is null-safe, so a failed user fetch simply hides it.
       isAdmin: hasRole(u?.role, ADMIN_CONSOLE_ROLES),
     };
+    viewerRole = u?.role ?? null;
     realityCheckMin = rg?.realityCheckIntervalMin || 30;
     // Email confirmation gates depositing, so an unconfirmed address is a live
     // limitation on the account and belongs on every page — not only on the
@@ -166,6 +172,16 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   // menu, footer). Sync cache read; safe default (COMING_SOON) if unhydrated.
   const proposalsState = getProposalsConfig().state;
 
+  /* ⭐ INVITE IS RESOLVED HERE, ONCE, BECAUSE THIS IS THE ONLY PLACE THAT KNOWS THE ROLE.
+     The three surfaces that offer Invite are all `"use client"` and none of them can read a
+     role — so the shell answers the question and threads the ANSWER down, exactly as
+     `proposalsState` above already does. ⛔ Do not push `feature-state.ts` into those
+     components to save a prop: importing a server module from a client file is what took
+     every page in this app down once already.
+     ⚠️ `u` is null only when the user fetch above FAILED. Defaulting to hidden is the safe
+     direction — a failed read must never open a withdrawn programme. */
+  const inviteVisible = inviteIsLiveFor(viewerRole);
+
   return (
     <div className="min-h-screen bg-bg-base text-text">
       {/* Skip-to-content — WCAG 2.4.1. Visually hidden until focused,
@@ -187,7 +203,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           state so React owns it. Do not reintroduce a shell-level DOM mutation for this. */}
       <HeaderScrollCast />
       <Suspense fallback={null}><NavProgress /></Suspense>
-      <TopAppBar user={topUser} proposalsState={proposalsState} />
+      <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} />
       <AnnouncementBanner maintenance={maintBanner} announcement={announcement} />
       {/* ⭐ IDENTITY ABOVE EMAIL, for the reason the note below the email bar already
           gives: when two bars are up, the one that costs the player more must read first.
@@ -221,7 +237,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       {/* DG-P-11 — the rail's `More` needs the feature state for the same two reasons the bar
           and the footer already take it: DISABLED hides every proposals entry point, and the
           state flag (coming-soon / maintenance) must read the same on a phone as on a laptop. */}
-      <BottomNav isAuthed={!!session} proposalsState={proposalsState} />
+      <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} />
       <RealityCheckHost enabled={!!session} intervalMin={realityCheckMin} userId={session?.userId ?? null} />
       {/* 🔴 SESSION-GATED, like its neighbours on the lines above and below (audit F-08).
           It was the only one of the three that was not, and the omission had no upper bound.

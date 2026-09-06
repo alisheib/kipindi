@@ -12,7 +12,6 @@ import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
 import type { ProposalsState } from "@/lib/server/proposals-config";
-import { inviteIsLive } from "@/lib/invite-feature";
 
 /**
  * THE HEADER — round-2 kit §2 / COMPONENTS §14, rebuilt in batch 3.
@@ -51,7 +50,8 @@ type NavItem = {
   href: string;
   label: string;
   proposalsBadge?: ProposalsState;
-  /** Invite rides `INVITE_STATE` (src/lib/invite-feature.ts) — one flag, one switch. */
+  /** Retained for any destination that is promised-but-not-open. Invite no longer uses it:
+   *  it is withdrawn for players, and a withdrawn destination is absent, not badged. */
   comingSoon?: boolean;
   /**
    * Marks a destination as a DISTINCT PRODUCT LINE rather than another page of the same game —
@@ -79,7 +79,7 @@ export type TopAppBarUser = {
   isAdmin?: boolean;
 };
 
-export function TopAppBar({ user, proposalsState }: { user: TopAppBarUser; proposalsState: ProposalsState }) {
+export function TopAppBar({ user, proposalsState, inviteVisible = false }: { user: TopAppBarUser; proposalsState: ProposalsState; inviteVisible?: boolean }) {
   const pathname = usePathname();
   const { t } = useT();
 
@@ -121,8 +121,12 @@ export function TopAppBar({ user, proposalsState }: { user: TopAppBarUser; propo
           ? [{ href: "/proposals", label: t.common.propose, proposalsBadge: proposalsState } as NavItem]
           : []),
         { href: "/wallet",         label: t.nav.wallet },
-        /* Invite & Earn is not open yet — one switch, `src/lib/invite-feature.ts`. */
-        { href: "/profile/invite", label: t.common.invite, comingSoon: !inviteIsLive() },
+        /* ⛔ Invite is DROPPED from the nav entirely unless this viewer is an approved agent —
+           the same treatment Proposals gets when DISABLED, three lines above. It is withdrawn
+           from the player product, not merely unopened, so it does not wear a badge here. */
+        ...(inviteVisible
+          ? [{ href: "/profile/invite", label: t.common.invite } as NavItem]
+          : []),
         { href: "/leaderboard",    label: t.nav.leaderboard },
       ]
     : [];
@@ -369,6 +373,7 @@ export function TopAppBar({ user, proposalsState }: { user: TopAppBarUser; propo
             seed={user.seed}
             isAdmin={user.isAdmin ?? false}
             proposalsState={proposalsState}
+            inviteVisible={inviteVisible}
           />
         </div>
       </div>

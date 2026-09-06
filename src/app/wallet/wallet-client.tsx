@@ -17,8 +17,6 @@ import { formatDateTimeSafe, formatTzs, formatNumber } from "@/lib/utils";
 // E-101 · one rule for "where does this ticket live", shared with the round page and the emails.
 import { positionPermalinkHref } from "@/lib/position-permalink";
 import { useT } from "@/lib/i18n";
-import { inviteIsLive } from "@/lib/invite-feature";
-import { ComingSoonBadge } from "@/components/ui/coming-soon-badge";
 import { PageContainer } from "@/components/layout/page-container";
 import { MicroSpark } from "@/components/charts/micro-spark";
 
@@ -152,14 +150,29 @@ const BONUS_SOURCE_LABEL: Record<string, string> = {
  * Shown beside the main wallet always (friendly empty state when there are no bonuses).
  */
 function BonusWalletCard({
-  bonusBalance, activeCount, grants, currency,
-}: { bonusBalance: number; activeCount: number; grants: (BonusGrantView & { status?: "ACTIVE" | "QUEUED" })[]; currency: string }) {
+  bonusBalance, activeCount, grants, currency, featureLive = false,
+}: { bonusBalance: number; activeCount: number; grants: (BonusGrantView & { status?: "ACTIVE" | "QUEUED" })[]; currency: string; featureLive?: boolean }) {
   const { t } = useT();
   const totalReq = grants.reduce((s, g) => s + g.wagerRequiredTzs, 0);
   const totalWagered = grants.reduce((s, g) => s + Math.min(g.wageredTzs, g.wagerRequiredTzs), 0);
   const totalRemainingWager = grants.reduce((s, g) => s + g.remainingWagerTzs, 0);
   const overallPct = totalReq > 0 ? Math.min(100, Math.round((totalWagered / totalReq) * 100)) : 0;
   const hasBonus = bonusBalance > 0 || activeCount > 0;
+
+  /**
+   * ⛔ THE EMPTY STATE IS THE ADVERTISEMENT. THE POPULATED STATE IS A BANK STATEMENT.
+   * They are not the same thing and the withdrawal treats them differently.
+   *
+   * With the bonus programme withdrawn, a player who holds NO bonus sees no card at all —
+   * the "no bonus yet" branch is pure marketing for a programme they can never enter, and
+   * it carried an Invite CTA for a second withdrawn programme on top.
+   *
+   * ⭐ BUT A PLAYER WHO STILL HOLDS A GRANT KEEPS SEEING IT, and that is Law 1 —
+   * gate the OFFER, never the REFUSAL, and never the money. Hiding a live balance would
+   * leave real money invisible in an account while its wagering requirement kept running.
+   * `feature-state.ts` says the same thing about fulfilment and expiry: those never gate.
+   */
+  if (!featureLive && !hasBonus) return null;
 
   return (
     /* ⭐ D5 — THE PANEL PICKS A RUNG INSTEAD OF PAINTING ITSELF. `.mat-raised` (M2 rung 1)
@@ -306,18 +319,10 @@ function BonusWalletCard({
             <p className="text-[13px] text-text/90 leading-snug">
               {t.common.noBonus}
             </p>
-            {/* ⚠️ THE CTA STAYS GOLD, and that is the ruling not an oversight. Gilt is this
-                product's COMING-SOON colour as well as its money colour — `proposals-state-views.tsx`
-                states it: "COMING_SOON → gilt (aspirational)". The badge beside it is what says
-                the programme is not open yet; the gold says the destination is a money surface
-                when it opens. Row 12's ruling (gold here is correct) therefore still holds. */}
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <Link href="/profile/invite" className="btn btn-gold btn-sm rounded-pill inline-flex">
-                <I.gift s={12} />
-                {t.profile.inviteEarn}
-              </Link>
-              {!inviteIsLive() && <ComingSoonBadge label={t.profile.inviteComingSoonTag} size="xs" />}
-            </div>
+            {/* ⚠️ THE INVITE CTA IS GONE FROM HERE. It used to sit in this empty state wearing a
+                gilt coming-soon badge — one withdrawn programme advertising another. This branch
+                now renders ONLY when the bonus programme is genuinely live (see the guard at the
+                top of this component), so there is nothing left for it to promise. */}
           </div>
         )}
       </div>
@@ -486,7 +491,7 @@ export function WalletPageClient({
   balance, pending, hold, currency,
   transactions,
   balanceSeries = [],
-  bonusBalance, bonusActiveCount, bonusWagerRemaining, bonusGrants,
+  bonusBalance, bonusActiveCount, bonusWagerRemaining, bonusGrants, bonusFeatureLive = false,
   cashbackPercent = 0,
   cashbackMode = "REQUEST",
   limits,
@@ -497,6 +502,9 @@ export function WalletPageClient({
   /** 30-day end-of-day balance points for the A9 spark; <2 hides it. */
   balanceSeries?: number[];
   bonusBalance: number; bonusActiveCount: number; bonusWagerRemaining: number; bonusGrants: (BonusGrantView & { status?: "ACTIVE" | "QUEUED" })[];
+  /** Product feature state, resolved on the server. Gates the OFFER only — a live grant
+   *  still renders, because hiding money a player holds is not a feature flag. */
+  bonusFeatureLive?: boolean;
   cashbackPercent?: number;
   cashbackMode?: "REQUEST" | "AUTO";
   /** Single-txn money caps, threaded from the server's zod validators (the
@@ -557,7 +565,7 @@ export function WalletPageClient({
       {/* Two wallets, one page: main (cool royal) + bonus (warm gold/jackpot). */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
         <BalanceCard balance={balance} pending={pending} hold={hold} currency={currency} />
-        <BonusWalletCard bonusBalance={bonusBalance} activeCount={bonusActiveCount} grants={bonusGrants} currency={currency} />
+        <BonusWalletCard bonusBalance={bonusBalance} activeCount={bonusActiveCount} grants={bonusGrants} currency={currency} featureLive={bonusFeatureLive} />
       </div>
       {bonusWagerRemaining > 0 && (
         <p className="sr-only">{t.common.bonus}: {formatTzs(bonusWagerRemaining)}</p>
