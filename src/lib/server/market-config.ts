@@ -104,7 +104,12 @@ export type RateConfig = {
    *  settlement; the time-lock is what makes a late exit — the only kind that can
    *  gut a winner's prize or void a poll you're losing — impossible. */
   paidExitWindowMinutes: number;
-  /** Charged to the player on withdrawal (0.01 = 1%). This is the ONLY thing a
+  /** Charged to the player on withdrawal. Live value **0.015 = 1.5%**
+   *  (`DEFAULT_WITHDRAWAL_FEE_RATE`), admin-settable up to 0.05.
+   *  ⚠️ This said `0.01 = 1%` until 2026-09-07 — the fee moved to 1.5% and the Terms of
+   *  Service were corrected while seven comments on the money path were not. The example a
+   *  field's own docblock gives is the number the next reader will code against.
+   *  This is the ONLY thing a
    *  player is ever charged besides the pool commission — there is no withholding
    *  tax. See the note on `traTaxOnCommissionRate`. */
   withdrawalFeeRate: number;
