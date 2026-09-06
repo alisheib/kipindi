@@ -17,6 +17,7 @@
  * Money rule: every figure is whole TZS. No fractional shillings.
  */
 import { db, type StoredAffiliateAccount, type StoredReferralReward } from "./store";
+import { inviteIsLiveFor } from "@/lib/feature-state";
 import { getAffiliateConfig } from "./affiliate-config";
 import { displayLabel } from "@/lib/display-label";
 import { audit } from "./audit";
@@ -152,6 +153,16 @@ export async function resolveReferralPreview(code: string) {
   if (!affiliate) return null;
   const referrer = await db.user.findById(affiliate.userId);
   if (!referrer) return null;
+  /**
+   * ⛔ THE RIBBON IS A PROMISE, SO IT OBEYS THE SAME GATE AS THE BIND.
+   * `/auth/register?ref=CODE` is reachable by anyone holding an old shared link, and those
+   * links do not expire. Rendering "You were invited by X · Claim your welcome bonus" for a
+   * code that `bindRecruit` is now going to REFUSE would be the product promising a reward it
+   * has already decided not to pay — the exact contradiction this programme exists to remove.
+   * Returning null degrades gracefully: the page shows no ribbon, exactly as for an unknown
+   * code, and the hidden `ref` field is never rendered.
+   */
+  if (!inviteIsLiveFor(referrer.role)) return null;
   const cfg = getAffiliateConfig();
   // New-player bonus is only advertised when the program + bonus mode are on
   // and the new player is actually a recipient.
@@ -242,6 +253,41 @@ export async function bindRecruit(opts: { recruitUserId: string; code: string; i
   const affiliate = await db.affiliate.findByCode(code);
   if (!affiliate) return { bound: false, reason: "invalid_code" };
   const referrerUserId = affiliate.userId;
+
+  /**
+   * 🔴 A CODE ONLY RECRUITS IF ITS OWNER MAY ACTUALLY REFER — AND THIS IS AN ATTRIBUTION
+   * GATE, NOT A PAYMENT ONE.
+   *
+   * Every player was minted a code automatically, and until this programme every shared
+   * market and position link carried one. Those links are already out there and they do not
+   * expire. `recruitedBy` is written ONCE, a few lines below, and `already_bound` above means
+   * it is NEVER re-attributed — so a bind made today is permanent.
+   *
+   * ⛔ "It pays nothing right now" is not a defence. Nothing pays *today* because the reward
+   * modes are gated; the ROW still gets written. Re-enable the programme in a month and every
+   * one of those silent binds becomes a live attribution nobody chose, on a relationship no
+   * agent was vetted for. The cheapest moment to refuse is before the write.
+   *
+   * ⭐ It reads the SAME seam as every other surface, so binding can never disagree with what
+   * the product shows: if `feature-state.ts` says this owner may not refer, their code does
+   * not recruit. Under re-enablement the gate opens for everyone at once, by construction.
+   *
+   * ⚠️ Role is the test available today. `AffiliateAgent.approvedAt` / `.active` arrive with
+   * the agent-application service; when they do, this predicate gains them — it must not grow
+   * a SECOND definition of "may refer" somewhere else.
+   */
+  const referrer = await db.user.findById(referrerUserId);
+  if (!referrer || !inviteIsLiveFor(referrer.role)) {
+    audit({
+      category: "ADMIN",
+      action: "affiliate.bind.refused_withdrawn",
+      actorId: opts.recruitUserId,
+      targetType: "User",
+      targetId: opts.recruitUserId,
+      payload: { code, referrerUserId, referrerRole: referrer?.role ?? null },
+    });
+    return { bound: false, reason: "referrer_not_eligible" };
+  }
 
   // Anti-fraud: a user can never recruit themselves.
   if (referrerUserId === opts.recruitUserId) {

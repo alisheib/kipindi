@@ -30,11 +30,11 @@ function ok(label: string, cond: boolean, extra?: string) {
 const now = () => new Date().toISOString();
 let seq = 0;
 
-async function mkUser(id: string, walletStatus: StoredWallet["status"] = "ACTIVE"): Promise<void> {
+async function mkUser(id: string, walletStatus: StoredWallet["status"] = "ACTIVE", role: "PLAYER" | "AGENT" = "PLAYER"): Promise<void> {
   await db.user.create({
     id, phoneE164: `+25578${String(++seq).padStart(7, "0")}`, email: `${id}@t.tz`,
     passwordHash: null, passwordSalt: null, failedLoginCount: 0, lockedUntil: null,
-    role: "PLAYER", status: "ACTIVE", locale: "EN", displayName: null, dob: null, region: null,
+    role, status: "ACTIVE", locale: "EN", displayName: null, dob: null, region: null,
     acceptedTermsVersion: null, acceptedTermsAt: null, marketingOptIn: false,
     twoFactorEnabled: false, avatarDataUrl: null, recruitedBy: null,
     createdAt: now(), updatedAt: now(), lastLoginAt: null, closedAt: null,
@@ -120,7 +120,10 @@ const HOUR = 3_600_000;
   );
   ok("§5 SETUP · prize enabled on FIRST_BET", affSnap.ok === true);
 
-  await mkUser("aff_referrer");
+  // ⚠️ AGENT on purpose. Since 2026-09-06 a code only recruits if its owner may refer, so a
+  // PLAYER referrer would be refused by the ATTRIBUTION gate and this section would pass for
+  // entirely the wrong reason — never reaching the RG gate it exists to measure.
+  await mkUser("aff_referrer", "ACTIVE", "AGENT");
   await rg("aff_referrer", { coolingOffUntil: new Date(Date.now() + HOUR).toISOString() });
   const acct = await ensureAffiliateAccount("aff_referrer");
 

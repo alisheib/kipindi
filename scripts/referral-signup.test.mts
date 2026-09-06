@@ -19,10 +19,17 @@ function ok(label: string, cond: boolean, extra?: string) {
 }
 const now = () => new Date().toISOString();
 let seq = 0;
-async function mkUser(id: string): Promise<void> {
+/**
+ * ⚠️ THE `role` PARAMETER IS THE 2026-09-06 PRODUCT RULE, NOT TEST PLUMBING.
+ * Referral earning was withdrawn from the player product: a code only recruits if its owner
+ * may actually refer, which today means `role === "AGENT"` (`feature-state.ts`). Every
+ * REFERRER fixture below is therefore an AGENT — recruits stay PLAYERs, as real recruits are.
+ * ⛔ Do not "fix" a future failure here by relaxing the gate; §6 asserts the refusal on purpose.
+ */
+async function mkUser(id: string, role: "PLAYER" | "AGENT" = "PLAYER"): Promise<void> {
   await db.user.create({
     id, phoneE164: `+25577${String(++seq).padStart(7, "0")}`, email: `${id}@t.tz`, passwordHash: null, passwordSalt: null,
-    failedLoginCount: 0, lockedUntil: null, role: "PLAYER", status: "ACTIVE", locale: "EN",
+    failedLoginCount: 0, lockedUntil: null, role, status: "ACTIVE", locale: "EN",
     displayName: null, dob: null, region: null, acceptedTermsVersion: null, acceptedTermsAt: null,
     marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null, recruitedBy: null,
     createdAt: now(), updatedAt: now(), lastLoginAt: null, closedAt: null,
@@ -44,7 +51,7 @@ const cash = async (uid: string) => (await db.wallet.findByUserId(uid))?.balance
 
 // ── bind recruit → no immediate reward (FIRST_BET, not SIGNUP) ──────────────
 const PRIZE = getAffiliateConfig().prize.amountTzs;
-await mkUser("ref_alice");
+await mkUser("ref_alice", "AGENT");
 const aliceAcct = await ensureAffiliateAccount("ref_alice");
 ok("referrer has a referral code", !!aliceAcct.code);
 
@@ -89,13 +96,28 @@ const aliceGrants = await db.bonusGrant.listByUser("ref_alice");
 ok("second recruit bet → two grants total", aliceGrants.length === 2, `grants=${aliceGrants.length}`);
 
 // ── anti-fraud: self-referral blocked, unknown code rejected ─────────────────
-await mkUser("ref_dave");
+await mkUser("ref_dave", "AGENT");
 const dave = await ensureAffiliateAccount("ref_dave");
 const self = await bindRecruit({ recruitUserId: "ref_dave", code: dave.code });
 ok("self-referral blocked", self.bound === false);
 const bad = await bindRecruit({ recruitUserId: "ref_dave", code: "NOPE9999" });
 ok("unknown code rejected", bad.bound === false);
 ok("blocked binds paid nothing", (await bonus("ref_dave")) === 0 && (await cash("ref_dave")) === 0);
+
+// ── the 2026-09-06 rule: an ordinary player's code does not recruit ──────────
+// ⛔ THIS IS WHY EVERY REFERRER ABOVE IS AN AGENT, and it is asserted rather than assumed.
+// Without this case the fixtures could quietly be relaxed back to PLAYER one day and the
+// suite would go green while the withdrawal had been undone. The refusal is the rule now.
+// ⭐ Note the pairing: the whole file above is the CONTROL — an agent's code recruits and
+// pays, all the way to a real grant — so this refusal cannot be a gate that simply says no
+// to everyone.
+await mkUser("ref_erin");                       // deliberately a PLAYER
+await mkUser("rec_frank");
+const erin = await ensureAffiliateAccount("ref_erin");
+const viaPlayer = await bindRecruit({ recruitUserId: "rec_frank", code: erin.code });
+ok("a PLAYER's code does not recruit", viaPlayer.bound === false, JSON.stringify(viaPlayer));
+ok("…and it says why", viaPlayer.bound === false && viaPlayer.reason === "referrer_not_eligible", JSON.stringify(viaPlayer));
+ok("…and nothing was attributed", !(await db.user.findById("rec_frank"))?.recruitedBy);
 
 console.log(`\nreferral-signup: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

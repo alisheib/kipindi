@@ -23,6 +23,8 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { inviteIsLiveFor, bonusIsLiveFor, inviteStateFor } from "../src/lib/feature-state.ts";
 import { cashOutValue } from "../src/lib/server/market-service.ts";
+import { db } from "../src/lib/server/store.ts";
+import { bindRecruit, ensureAffiliateAccount, resolveReferralPreview } from "../src/lib/server/affiliate-service.ts";
 
 let pass = 0, fail = 0;
 function ok(label: string, cond: boolean, extra?: string) {
@@ -131,6 +133,60 @@ function ok(label: string, cond: boolean, extra?: string) {
   // ⛔ And the override must not leak past this block, or every later assertion in any suite
   // that imports this module would be measuring the wrong state.
   ok("§4 the override is restored, not leaked", !inviteIsLiveFor("PLAYER") && !bonusIsLiveFor("PLAYER"));
+}
+
+// ── §5 · ATTRIBUTION — A CODE ONLY RECRUITS IF ITS OWNER MAY REFER ─────────
+// 🔴 THE LIABILITY THIS CLOSES. Every player was auto-minted a code, and until this
+// programme every shared market/position link carried one. Those links are already out there
+// and they never expire. `bindRecruit` writes `recruitedBy` ONCE and `already_bound` means it
+// is never re-attributed — so a bind made today is permanent.
+// ⛔ "It pays nothing right now" is not a defence: nothing pays today because the reward modes
+// are gated, but the ROW is still written, and it becomes a live attribution nobody chose the
+// moment the programme returns.
+//
+// ⛔ §5c IS THE CONTROL AND IT CARRIES THIS WHOLE SECTION. A gate that refused EVERYONE would
+// pass §5a and §5b while having silently broken the agent programme. The control is what makes
+// the two refusals mean something.
+{
+  const stamp = () => new Date().toISOString();
+  let n = 0;
+  const mk = async (id: string, role: "PLAYER" | "AGENT") => {
+    await db.user.create({
+      id, phoneE164: `+25579${String(++n).padStart(7, "0")}`, email: `${id}@t.tz`,
+      passwordHash: null, passwordSalt: null, failedLoginCount: 0, lockedUntil: null,
+      role, status: "ACTIVE", locale: "EN", displayName: null, dob: null, region: null,
+      acceptedTermsVersion: null, acceptedTermsAt: null, marketingOptIn: false,
+      twoFactorEnabled: false, avatarDataUrl: null, recruitedBy: null,
+      createdAt: stamp(), updatedAt: stamp(), lastLoginAt: null, closedAt: null,
+    } as never);
+  };
+
+  await mk("w5_player_ref", "PLAYER");
+  await mk("w5_agent_ref", "AGENT");
+  await mk("w5_recruit_a", "PLAYER");
+  await mk("w5_recruit_b", "PLAYER");
+
+  const playerCode = (await ensureAffiliateAccount("w5_player_ref")).code;
+  const agentCode = (await ensureAffiliateAccount("w5_agent_ref")).code;
+
+  // §5a · an ordinary player's code must not recruit
+  const viaPlayer = await bindRecruit({ recruitUserId: "w5_recruit_a", code: playerCode });
+  ok("§5a a PLAYER's code does not recruit", viaPlayer.bound === false, JSON.stringify(viaPlayer));
+  ok("§5a the refusal names its reason", viaPlayer.bound === false && viaPlayer.reason === "referrer_not_eligible", JSON.stringify(viaPlayer));
+  const recA = await db.user.findById("w5_recruit_a");
+  ok("§5a recruitedBy is NOT written — nothing to un-attribute later", !recA?.recruitedBy, `recruitedBy=${recA?.recruitedBy}`);
+
+  // §5b · the register ribbon must not promise what the bind will refuse
+  const previewPlayer = await resolveReferralPreview(playerCode);
+  ok("§5b no ribbon for a withdrawn referrer", previewPlayer === null, JSON.stringify(previewPlayer));
+
+  // §5c · CONTROL — an AGENT's code still recruits, and still shows its ribbon
+  const viaAgent = await bindRecruit({ recruitUserId: "w5_recruit_b", code: agentCode });
+  ok("§5c CONTROL · an AGENT's code DOES recruit", viaAgent.bound === true, JSON.stringify(viaAgent));
+  const recB = await db.user.findById("w5_recruit_b");
+  ok("§5c CONTROL · recruitedBy is written for the agent", recB?.recruitedBy === "w5_agent_ref", `recruitedBy=${recB?.recruitedBy}`);
+  const previewAgent = await resolveReferralPreview(agentCode);
+  ok("§5c CONTROL · the ribbon renders for an agent", previewAgent !== null && typeof previewAgent?.referrerName === "string", JSON.stringify(previewAgent));
 }
 
 console.log(`\n${pass} passed · ${fail} failed`);
