@@ -32,7 +32,7 @@ npm ci && npx prisma generate
 - Session M stays in `F:\kipindi-main` on `main`.
 - Session E works in `F:\kipindi-enhance` on `enhance/perfection-9`.
 - If Session E runs the app, use **port 3001** (`next dev -p 3001`), never 3000.
-- Session E must **NOT** touch the local Postgres at `F:\pg-loadtest:5433`
+- Session E must **NOT** touch the local Postgres at `C:\pg-loadtest:5433` (⚠️ said `F:\` until 2026-09-06 — no such drive exists)
   (Session M's). In-memory tests only (no `DATABASE_URL`).
 
 ## Git rules

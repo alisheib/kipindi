@@ -24,7 +24,7 @@ npm run test:all        # full suite on a FRESH store
 ## Money paths need REAL Postgres
 The in-memory `withLock` is a single-process mutex, so multi-instance defects (cross-instance
 double-spend, ledger/audit-chain forks) only surface on real PG.
-- Local disposable cluster: **`F:\pg-loadtest`, port 5433** (`fsync=off`, disposable). Full
+- Local disposable cluster: **`C:\pg-loadtest`, port 5433** (`fsync=off`, disposable). ⚠️ Said `F:\` until 2026-09-06; there is no `F:` drive on this machine — measured, see `scripts/load/README.md`. Full
   setup + the three prod-safety gates are in the `50pick-audit` skill §3.
 - Load / cross-instance harnesses live in `scripts/load/`:
   - `s10-cross-instance.mts` — wallet double-spend safety (advisory lock is DB-global).

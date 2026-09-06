@@ -9,22 +9,28 @@ the services directly under `tsx`, so the advisory-lock + connection-pool path f
 
 ## Local Postgres (no Docker, no admin, disposable)
 
-A user-space PG 16 cluster lives at `F:\pg-loadtest`, on **port 5433** (never collides with a
+A user-space PG 16 cluster lives at `C:\pg-loadtest`, on **port 5433** (never collides with a
 default install). It is disposable — `fsync=off`, so it measures our code, not the SSD.
+
+> ⚠️ **THIS FILE SAID `F:\pg-loadtest` UNTIL 2026-09-06 AND EVERY COMMAND IN IT WAS UNRUNNABLE.** Measured: `C:\pg-loadtest` holds `data\`, `pg.log`, `pwfile.txt` and `pgsql\bin\pg_ctl.exe`, and **there is no `F:` drive mounted on this machine at all**.
+>
+> 🔴 It also took the skill down with it. `.claude/skills/50pick-audit/SKILL.md` §3 originally said `C:\` — correctly — and session 43 changed it to `F:\` on the rule *"when the skill and the README differ, the README wins"*, naming this file as the authority. The rule is sound; the authority was wrong. **Deferring to a source of truth is not the same as checking one**, and a wrong authority propagates further than a wrong copy.
+>
+> ⭐ The check is one command: `ls /c/pg-loadtest`.
 
 ```powershell
 # start it (if not already running)
-& F:\pg-loadtest\pgsql\bin\pg_ctl.exe -D F:\pg-loadtest\data -l F:\pg-loadtest\pg.log start
+& C:\pg-loadtest\pgsql\bin\pg_ctl.exe -D C:\pg-loadtest\data -l C:\pg-loadtest\pg.log start
 
 # stop it
-& F:\pg-loadtest\pgsql\bin\pg_ctl.exe -D F:\pg-loadtest\data stop
+& C:\pg-loadtest\pgsql\bin\pg_ctl.exe -D C:\pg-loadtest\data stop
 
 # connection string (set before every run)
 $env:DATABASE_URL='postgresql://postgres:pw@localhost:5433/kipindi_load?schema=public'
 ```
 
 Fresh box? Re-create the cluster: download the PG16 **binaries** zip from EnterpriseDB, unzip
-to `F:\pg-loadtest\pgsql`, `initdb -D F:\pg-loadtest\data -U postgres --pwfile=... --locale=C`,
+to `C:\pg-loadtest\pgsql`, `initdb -D C:\pg-loadtest\data -U postgres --pwfile=... --locale=C`,
 append `port = 5433` + `fsync = off` + `shared_preload_libraries = 'pg_stat_statements'` to
 `postgresql.conf`, start, `createdb kipindi_load`, then `npx prisma migrate deploy`.
 

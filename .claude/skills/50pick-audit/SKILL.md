@@ -35,28 +35,28 @@ next start` **against the live money DB**. There is no staging. So:
 
 ## 1. Where the work stands — read this FIRST
 - **GO-LIVE runbook & execution record (source of truth for launch):** [`docs/GO-LIVE-RUNBOOK.md`](../../docs/GO-LIVE-RUNBOOK.md) — architecture, the exact DNS-cutover steps we ran (Netpoa→Cloudflare, 2026-07-17) + gotchas, the final DNS/mail config, the env-var registry, and the R2/Selcom/switch procedures. 🔐 It contains NO secret values (secrets live in Railway env vars only).
-- **Living tracker (audit source of truth):** [`docs/perfection-plan.md`](../../docs/perfection-plan.md). Its **"▶ WHERE WE ARE"** block names the current stage, what's closed, and what's LEFT. Update it at the end of every stage.
+- **The live plan:** [`docs/NEXT-PLAN.md`](../../docs/NEXT-PLAN.md) — it opens with THE BOARD, and anything not on that board is not a live task. ⚠️ **This line named `docs/perfection-plan.md` as the "audit source of truth" until 2026-09-06.** That file's own header says it is an *"aspirational planning doc (not a verified list of current defects)"* and points back at `NEXT-PLAN.md` — so the entry point every session reads first was routing people to a document that disclaims the job.
 - The audit itself: `Final Audit 1507/50pick-FINAL-AUDIT-v8-FINAL-2026-07-15.md` (11 Critical, 11 High, 11 Medium, 6 Low).
-- Work in **stages**: after each → run tests → update the tracker's WHERE-WE-ARE block → commit → `git push origin main`.
+- Work in **stages**: after each → run tests → update the doc that owns the subject → commit → push. ⛔ **To a BRANCH, not `main`.** §0 above says every push to `main` is a live production deploy against the real money DB; this line used to end `git push origin main`, which made the most dangerous command in the repo the default rhythm of a working session. Merging to `main` is Ali's call.
 - Keep the tracker, `CLAUDE.md`'s "ACTIVE WORK" banner, and the `final-audit-remediation` memory in sync so any new session instantly knows the stage.
 
 ## 2. Testing
-- **Default (no DB):** every `test:*` suite runs against an in-memory `Map` when `DATABASE_URL` is unset. `npm run typecheck` then `npm run test:all` (stays green, ~57 suites). Per-suite: `npx tsx scripts/<name>.test.mts`.
+- **Default (no DB):** every `test:*` suite runs against an in-memory `Map` when `DATABASE_URL` is unset. `npm run typecheck` then `npm run test:all`. ⚠️ **This said "~57 suites" until 2026-09-06; the real number was 293.** It does not quote one now — the runner prints the total, and a count nobody re-derives is a count that will be wrong. Per-suite: `npx tsx scripts/<name>.test.mts`.
 - **Real Postgres (load/concurrency/ledger/audit-chain):** the in-memory `withLock` is a single-process mutex, so C4/C6-class multi-instance defects only show on real PG. Use the **local disposable cluster** (§3).
 - New proof suites added during remediation: `bonus-void-restitution`, `rg-limit-race`, `webhook-security`, `lock-hash`, `contrast` (+ `test:*` scripts). `test-all.mjs` auto-discovers any `test:*` script in `package.json`.
 - **`npm run test:integrity`** — content-integrity guard: fails if a superseded/removed pattern returns in a current-truth surface (README/CLAUDE/source): the 15% withholding tax, a French UI locale, "bilingual EN/SW", the flat-9% fee, a light theme / next-themes, a committed `db-check.*`, raw-PII selects outside the server layer, or a doc mandating the teal kit. Keep it green — it's how the "docs say things that aren't true" class stays fixed.
 
 ## 3. Local disposable Postgres — the SAFE DB target
-A user-space PG16 cluster lives at **`F:\pg-loadtest`, port 5433** (`fsync=off`, disposable). Full guide: `scripts/load/README.md`. ⚠️ **This said `C:\` until 2026-08-11 (session 43) and had been wrong the whole time** — `scripts/load/README.md`, the file this line names as the source of truth, said `F:\` all along. A skill that DISAGREES with the doc it points at is worse than one that stays silent: it is read first and believed. **When these two differ, the README wins; fix the skill.** Three gates refuse prod (hostname denylist `rlwy.net`/`railway.app`/`50pick.tz`, localhost-only, and a `SystemConfig['__LOAD_TEST_TARGET__']` marker row).
+A user-space PG16 cluster lives at **`C:\pg-loadtest`, port 5433** (`fsync=off`, disposable). Full guide: `scripts/load/README.md`. ⚠️ **THIS SAID `F:\` UNTIL 2026-09-06 AND EVERY COMMAND IN IT WAS UNRUNNABLE.** Measured: `C:\pg-loadtest` holds `data\`, `pg.log`, `pwfile.txt` and `pgsql\bin\pg_ctl.exe`; **there is no `F:` drive mounted on this machine at all.** 🔴 The history is the lesson. This line originally said `C:\` — correctly — and session 43 CHANGED IT TO `F:\` on the rule *"when the skill and the README differ, the README wins"*, citing `scripts/load/README.md`. The rule is sound and the authority was wrong: the README said `F:\` too, and had always been wrong. **Deferring to a source of truth is not the same as checking one.** Both are corrected now, and the check is one command: `ls /c/pg-loadtest`. Three gates refuse prod (hostname denylist `rlwy.net`/`railway.app`/`50pick.tz`, localhost-only, and a `SystemConfig['__LOAD_TEST_TARGET__']` marker row).
 
 ```powershell
 # start (idempotent)
-& F:\pg-loadtest\pgsql\bin\pg_ctl.exe -D F:\pg-loadtest\data -l F:\pg-loadtest\pg.log start
+& C:\pg-loadtest\pgsql\bin\pg_ctl.exe -D C:\pg-loadtest\data -l C:\pg-loadtest\pg.log start
 $env:DATABASE_URL='postgresql://postgres:pw@localhost:5433/kipindi_load?schema=public'
 node scripts/load/reset-db.mjs         # clean + migrate + re-plant marker (before any money-total assertion)
 npx tsx scripts/load/s10-cross-instance.mts   # the multi-instance (C6/C4) harness
 ```
-psql: `& F:\pg-loadtest\pgsql\bin\psql.exe "postgresql://postgres:pw@localhost:5433/kipindi_load" -c "..."`
+psql: `& C:\pg-loadtest\pgsql\bin\psql.exe "postgresql://postgres:pw@localhost:5433/kipindi_load" -c "..."`
 
 ## 4. Migrations — the ONLY safe workflow ⛔
 **Never hand-run an untested schema change against the production money DB.** A push that outran its schema once took checkout + admin down (see memory).
