@@ -216,10 +216,10 @@ console.log(`  ${authored.size} classes authored · ${live.length} rendered · $
  * but deleting the rule also breaks a gate or a driver, so they come out in pairs.
  */
 const BASELINE = new Set<string>([
-  // ── The parallel probability bar. `.tipbar-*` in brand.tsx is the live one; this whole
-  //    family is the kit's documented atom, recorded as dead in DESIGN_AUTHORITY B6 since
-  //    2026-07-20. ⛔ Transitions `width` on the legacy `--dur-quick`/`--ease-stage` pair.
-  "pbar-micro", "pbar-large", "pbar-label-yes", "pbar-label-no", "pbar-resolved",
+  // ✅ THE `.pbar*` FAMILY IS GONE — DELETED FROM globals.css 2026-09-07, and these seven
+  //    entries came off this list in the same commit. That is the ratchet doing its job in the
+  //    direction it was built for: check 1.2 named every stale entry the moment the rules went.
+  //    B6 had recorded it dead since 2026-07-20 without the count ever moving.
   // ── The badge-unlock celebration. Rays are banned by M3; the card and coin outlived the
   //    surface that showed them.
   "badge-unlock-card", "badge-unlock-coin", "badge-unlock-rays",
@@ -275,7 +275,7 @@ const BASELINE = new Set<string>([
     // `mat-raised` LEFT THIS LIST on 2026-08-21 — `ui/cashback-promo.tsx` and the wallet
   // bonus card both pick that rung now (D5), so it has real consumers and check 1.2 said so.
   "mark-breathe", "mark-flip", "mark-pending", "mat-float", "mat-inset",
-  "pbar", "pbar-no", "pbar-yes", "skeleton", "stagger-item",
+  "skeleton", "stagger-item",
 ]);
 
 /* ═══ 1 · THE SWEEP ══════════════════════════════════════════════════════════ */

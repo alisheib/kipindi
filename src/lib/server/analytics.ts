@@ -229,21 +229,11 @@ export async function rgRosterCounts() {
   return { selfExcluded, cooledOff, expiringThisWeek, pendingLimitIncrease };
 }
 
-/** AML queue stats for the period. */
-export async function amlStats(period: Period = "7d") {
-  const pending = (await db.txn.listByStatus("AML_REVIEW")).length;
-  // Approved = transactions that were AML_REVIEW then flipped to CONFIRMED via the
-  // approve action. We don't track that directly in the txn record, so we count
-  // ADMIN audit entries with action=aml.approved/rejected as a proxy.
-  const cutoff = Date.now() - periodToMs(period);
-  // The audit module is async-ringed; use a simple count proxy:
-  return {
-    pending,
-    approved: 0,         // populated when audit-by-action exists
-    rejected: 0,
-    avgTimeToDecisionMin: 0,
-  };
-}
+// 🔴 `amlStats()` DELETED 2026-09-07 — zero callers anywhere in the repo, and it returned
+// HARDCODED ZEROS for `approved`, `rejected` and `avgTimeToDecisionMin`, with its own comments
+// admitting it ("populated when audit-by-action exists"). ⛔ Wired to any compliance surface it
+// would have reported "0 rejected, 0 minutes to decision" as fact — a fabricated number on an
+// AML metric, which A-5 forbids. Dead is safer than a stub that lies when someone finds it.
 
 /** Active player counts grouped by wallet status — used by /admin/players summary chips. */
 export async function userStatusCounts() {
@@ -287,12 +277,8 @@ export async function operatorMarginPct(period: Window = "28d") {
   return holdPct;
 }
 
-/** Withdrawals over the AML threshold (1M TZS) — count + total. */
-export async function amlThresholdBreaches(period: Period = "7d") {
-  const ts = (await txnsInPeriod(period)).filter((t) => t.type === "WITHDRAWAL" && Math.abs(t.amount) >= 1_000_000);
-  return { count: ts.length, total: ts.reduce((s, t) => s + Math.abs(t.amount), 0) };
-}
-
+// 🔴 `amlThresholdBreaches()` DELETED 2026-09-07 — zero callers, and it inlined a THIRD copy
+// of the 1,000,000 TZS AML threshold (see `AML_REVIEW_THRESHOLD_TZS` in payments.ts).
 /**
  * Time-bucketed series for charting. Returns evenly-spaced buckets covering
  * the period. Each bucket has the net flow (deposits + bets stake) − (payouts +

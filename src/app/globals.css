@@ -1334,75 +1334,14 @@ body {
   border: 1px solid color-mix(in oklab, var(--gold-500) 22%, var(--border));
 }
 
-/* ---------- Probability bar ---------- */
-.pbar {
-  position: relative;
-  width: 100%;
-  background: var(--bg-inset);
-  border-radius: var(--r-pill);
-  overflow: hidden;
-  border: 1px solid var(--border);
-}
-.pbar-micro { height: 14px; }
-.pbar-large { height: 28px; }
-/* ⭐ M1 (ATOM 2c-c) — both fills carried `inset 0 1px 0 oklch(100% 0 0 / …)`: a
-   top-edge line in PURE WHITE, which M1 bans on both counts. Each now takes the
-   same ring its own family's button carries — `.btn-yes`'s `oklch(80% 0.14 152)`
-   and `.btn-no`'s `oklch(80% 0.15 25)` — at the alpha these bars already used,
-   so the geometry and the hue change and the weight does not.
-   ⛔ AND SAY THE UNCOMFORTABLE PART: THESE TWO RULES ARE DEAD CSS. `.pbar-*` has
-   ZERO consumers in `src/` — the live probability bar is `.tipbar-*` (TippingBar,
-   `brand.tsx`), whose fills carry `--bar-glow-*`, an OUTER glow that was already
-   M1-clean. `DESIGN_AUTHORITY.md` B6 has recorded `.pbar-yes`/`.pbar-no` as
-   "0 usages — dead CSS" since 2026-07-20. So NO PRODUCTION PHOTOGRAPH OF THIS
-   CHANGE IS POSSIBLE, and none is claimed; the only surface that renders it is
-   the design system's own `02-components/progress-bars/preview.html`.
-   ⚠️ They are converted rather than DELETED because `.pbar` is a documented kit
-   atom with a spec page and a preview, and deleting a documented atom is a
-   design-system decision, not an M1 conversion. Filed, not acted on.
-   ⚠️ 2026-08-21, MOTION PASS — the same verdict, for the same reason. Both fills
-   transition `width` (a layout property) on the LEGACY `--dur-quick` / `--ease-stage`
-   pair rather than the ladder, so on paper they are two defects each. They are left
-   exactly as they are because the rule above still holds: this is dead CSS with a
-   spec page, and rewriting an atom nothing renders buys a cleaner grep and nothing
-   else — while quietly making the shipped preview disagree with the atom it
-   documents. If `.pbar` is ever revived it takes `scaleX` off
-   `admin-bar-grow`'s model and the `--t-` ladder, in one deliberate change. */
-.pbar-yes {
-  position: absolute;
-  inset: 0 auto 0 0;
-  background: linear-gradient(90deg, var(--yes-700), var(--yes-500));
-  box-shadow: inset 0 0 0 1px oklch(80% 0.14 152 / 0.22), 0 0 12px oklch(60% 0.18 150 / 0.20);
-  transition: width var(--dur-quick) var(--ease-stage);
-}
-.pbar-no {
-  position: absolute;
-  inset: 0 0 0 auto;
-  background: linear-gradient(270deg, var(--no-700), var(--no-500));
-  box-shadow: inset 0 0 0 1px oklch(80% 0.15 25 / 0.20), 0 0 12px oklch(60% 0.20 25 / 0.20);
-  transition: width var(--dur-quick) var(--ease-stage);
-}
-.pbar-large .pbar-label {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  font-family: var(--font-mono);
-  font-weight: 600;
-  font-size: 12px;
-  color: var(--pearl-50);
-  text-shadow: 0 1px 2px oklch(10% 0.05 264 / 0.4);
-}
-.pbar-label-yes { left: 10px; }
-.pbar-label-no  { right: 10px; }
-.pbar-resolved::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(110deg, transparent 30%, color-mix(in oklab, var(--gold-300) 70%, transparent) 50%, transparent 70%);
-  background-size: 220% 100%;
-  animation: gold-shimmer 1.6s ease-in-out infinite;
-  pointer-events: none;
-}
+/* 🔴 THE `.pbar*` PROBABILITY BAR WAS DELETED HERE 2026-09-07 — 9 rules and a keyframe,
+   ZERO renderers, and `DESIGN_AUTHORITY.md` B6 had it recorded as "0 usages — dead CSS" since
+   2026-07-20 without the count ever moving. The live probability bar is `.tipbar-*` below.
+   ⛔ It was not neutral while it sat here: it was a SECOND answer to the question `.tipbar-*`
+   already answers, it painted with `--aqua-300` from the killed teal era, it transitioned
+   `width` — a layout property — on the legacy duration/easing pair rather than the ladder, and
+   an M1 pass spent real work converting its inset rings to family hues on rules no player has
+   ever seen. A recipe nobody renders is still a recipe somebody copies. */
 
 /* ── TippingBar — the signature split rail + gilt needle (DESIGN_AUTHORITY B10) ──
    Every rule here used to be an inline `style={{…}}` object inside brand.tsx —
@@ -2760,7 +2699,6 @@ textarea::placeholder { color: var(--text-subtle); }
 [data-motion="reduced"] .hm-halo-pulse,
 [data-motion="reduced"] .ticker-track,
 [data-motion="reduced"] .prog-sweep::after,
-[data-motion="reduced"] .pbar-resolved::after,
 [data-motion="reduced"] .mark-breathe,
 [data-motion="reduced"] .pchart-dot-halo,
 [data-motion="reduced"] .notif-badge-pulse,
