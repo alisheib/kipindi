@@ -35,6 +35,7 @@ import { sideToOutcome } from "@/lib/server/updown-service";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { ensureAffiliateAccount } from "@/lib/server/affiliate-service";
+import { inviteIsLiveFor } from "@/lib/feature-state";
 import { listComments } from "@/lib/server/comments-store";
 import { CommentsThread } from "@/components/markets/comments-thread";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
@@ -179,7 +180,18 @@ export default async function MarketDetail({
   // B-1: a swallowed positions read rendered "You haven't bet yet" to a player
   // whose stake is IN this market. Fail loudly to markets/error.tsx instead.
   const myPositions = session ? (await listPositionsForUser(session.userId)).filter((p) => p.marketId === m!.id) : [];
-  const myRefCode = session ? await ensureAffiliateAccount(session.userId).then((a) => a.code).catch(() => undefined) : undefined;
+  /**
+   * 🔴 THE SHARE BUTTON USED TO MINT A REFERRAL CODE FOR EVERY SIGNED-IN PLAYER, and the
+   * binding it produced is PERMANENT — `bindRecruit` writes `recruitedBy` once and never
+   * re-attributes. So every shared market link was quietly recruiting, paying nothing today
+   * but standing ready to pay against attributions nobody chose if the programme returned.
+   * ⭐ A code is now minted only for an account the programme belongs to; everyone else
+   * shares the plain link they always believed they were sharing. Same fix in
+   * `positions/page.tsx`, which had the identical line.
+   */
+  const myRefCode = session && inviteIsLiveFor((await db.user.findById(session.userId))?.role ?? null)
+    ? await ensureAffiliateAccount(session.userId).then((a) => a.code).catch(() => undefined)
+    : undefined;
   // F3 — is this market on the signed-in player's watchlist?
   let watching = false;
   if (session) { try { watching = await isWatching(m.id, session.userId); } catch { /* graceful */ } }

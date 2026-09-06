@@ -8,6 +8,7 @@ import { db } from "./store";
 import { listPositionsForUser } from "./market-service";
 import { getPlayerReferralSummary } from "./affiliate-service";
 import type { AchievementId } from "@/components/badges/icons";
+import { inviteIsLiveFor } from "@/lib/feature-state";
 
 export type ShelfItem = {
   achievement: AchievementId;
@@ -25,9 +26,27 @@ export async function computeAchievementShelf(userId: string) {
   const kyc = await db.kyc.findByUserId(userId);
   const verified = kyc?.status === "APPROVED";
 
+  /**
+   * ⛔ CONNECTOR IS ONLY ON THE SHELF OF SOMEONE WHO CAN ACTUALLY EARN IT.
+   *
+   * Referral earning is withdrawn from the player product (`feature-state.ts`), so for an
+   * ordinary player this badge could never move off `locked` — a permanently unearnable
+   * award sitting on every profile, with a 1 / 5 / 25 ladder nobody can climb. A shelf is a
+   * statement about what this account has done and can do; a badge with no reachable path
+   * is the shelf lying quietly.
+   *
+   * ⭐ Approved AGENTS keep it, and for them it is real: recruits are exactly what they were
+   * vetted and approved to bring in. So the badge is not deleted — it is scoped to the
+   * population it describes, and it returns for everyone the moment the state flips back.
+   */
+  const viewer = await db.user.findById(userId);
+  const showConnector = inviteIsLiveFor(viewer?.role ?? null);
+
   // Defensive: never let the referral lookup crash the whole shelf render.
   let recruits = 0;
-  try { recruits = (await getPlayerReferralSummary(userId)).recruitCount; } catch { recruits = 0; }
+  if (showConnector) {
+    try { recruits = (await getPlayerReferralSummary(userId)).recruitCount; } catch { recruits = 0; }
+  }
   const listed = (await db.proposal.listByProposer(userId)).some((p) => p.status === "LISTED" || p.status === "RESOLVED");
 
   // Connector — tiered 1 · 5 · 25.
@@ -43,12 +62,12 @@ export async function computeAchievementShelf(userId: string) {
     { achievement: "first-win", title: "First Win · Ushindi wa Kwanza", state: wins > 0 ? "unlocked" : "locked" },
     { achievement: "verified", title: "Verified · Umethibitishwa", state: verified ? "unlocked" : "locked" },
     { achievement: "market-maker", title: "Market Maker · Mtengeneza Soko", state: listed ? "unlocked" : "locked" },
-    {
-      achievement: "connector",
+    ...(showConnector ? [{
+      achievement: "connector" as const,
       title: "Connector · Mwunganishi",
-      state: recruits >= 25 ? "unlocked" : recruits >= 1 ? "progress" : "locked",
+      state: (recruits >= 25 ? "unlocked" : recruits >= 1 ? "progress" : "locked") as ShelfItem["state"],
       progress: recruits >= 1 && recruits < 25 ? { value: recruits, max: connNext, tier: connTier ?? undefined } : undefined,
-    },
+    }] : []),
     {
       achievement: "sharp",
       title: "Sharp · Mahiri",

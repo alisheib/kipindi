@@ -12,6 +12,8 @@ import { formatTzsCompact, formatDeadline } from "@/lib/utils";
 import { listPositionsForUser, getMarket, cashOutValue, isSelectionClosed } from "@/lib/server/market-service";
 import { currentSession } from "@/lib/server/auth-service";
 import { ensureAffiliateAccount } from "@/lib/server/affiliate-service";
+import { inviteIsLiveFor } from "@/lib/feature-state";
+import { db } from "@/lib/server/store";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FilterPill } from "@/components/ui/filter-pill";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
@@ -42,8 +44,21 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
   // B-1: a failed read must NOT render as "No open positions yet" — held money
   // vanishing on a DB blip reads as theft. Throw to positions/error.tsx instead.
   const positions = await listPositionsForUser(session.userId, 5_000, "MARKET");
-  // F5 — the viewer's affiliate code, so a shared pick/win carries their link.
-  const myRefCode = await ensureAffiliateAccount(session.userId).then((a) => a.code).catch(() => undefined);
+  /**
+   * 🔴 A SHARE LINK USED TO CARRY A LIVE REFERRAL CODE FOR EVERY PLAYER, AND THE BIND IS
+   * PERMANENT. `ensureAffiliateAccount` mints a code for whoever asks, so this line attached
+   * one to every shared position — and anyone registering through it was bound by
+   * `bindRecruit`, which sets `recruitedBy` ONCE and never re-attributes. It paid nothing,
+   * so nothing showed; it was a standing liability that would begin paying the moment the
+   * programme was re-enabled, against attributions nobody chose.
+   *
+   * ⭐ Now a code is minted and attached ONLY for someone the programme actually belongs to.
+   * Everyone else shares a plain link, which is what they always thought they were sharing.
+   */
+  const viewer = await db.user.findById(session.userId);
+  const myRefCode = inviteIsLiveFor(viewer?.role ?? null)
+    ? await ensureAffiliateAccount(session.userId).then((a) => a.code).catch(() => undefined)
+    : undefined;
   const open = positions.filter((p) => p.status === "OPEN");
   const settled = positions.filter((p) => p.status !== "OPEN");
 
