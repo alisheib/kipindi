@@ -6007,6 +6007,22 @@ state**, 1,338,504 of players' stakes in escrow, and every ledger entry ever wri
 
 ⚠️ **Two suites were RED on `main` before this session and are NOT mine:** `test:updown-source-class` (a recorded false alarm) and `test:updown-handover` 8.4d. ⭐ **Re-measured rather than believed** — both were run in a throwaway worktree at `origin/main~n` with this work absent and fail **byte-identically** there. Final `test:all` on the shipped code: **289/291**, and those two are the two.
 
+### ⏸ LOADING · EMPTY · TRANSITIONAL — the three states, each driven rather than assumed
+
+⛔ **Ali asked for these by name, so each is stated with what actually proves it — and one of them
+is proven by a guard rather than a photograph, which is said plainly rather than glossed.**
+
+| State | How it is proven |
+|---|---|
+| **Empty** | DRIVEN in all three locales on a seeded board (6 markets, 0 in progress — the only shape that yields `progress-empty` rather than `no-inventory`). Reads *"Nothing is waiting for a result"* / *"Hakuna linalosubiri matokeo"* / *"目前没有市场在等待结果"*, and offers ONE exit carrying a REAL count — `Include everything 6` — so the exit cannot lead to another empty board. Every secondary chip correctly reads 0. |
+| **Loading** | The Suspense fallback ships in the FIRST HTML (78 `kp-shimmer-track` elements measured in the raw response). ⚠️ **The styled skeleton is a sub-second transient this session could not reliably photograph** — throttling hard enough to hold it produced a pre-CSS frame instead. Its SHAPE is guarded instead, which is stronger than one screenshot: `test:board-discovery` §7.1 asserts `STATUS_PILL_W` has exactly one entry per `STATUS_IDS` member, red-proven by `skeleton-drops-a-status-pill`, and card height/count come from `MARKET_CARD_H` / `PLAYER_PER_PAGE` rather than literals. |
+| **Transitional** | DRIVEN at 360 through a full poll cycle, and it is the proof that `E-318` is fixed: initial `open` visible at scroll 0 → tap **All** (a chip past the fold) → strip scrolls to **264** and the active chip is fully visible → the reader drags it back to 0 → **34 seconds later (a 30s `RefreshPoller` cycle) it is STILL 0.** The poll no longer steals the scroll. Page scroll preserved, zero page errors. |
+
+⭐ **Pagination is part of the same seal**: 21 in progress → page 1 renders 12, page 2 renders 9,
+`page=99` clamps to the last page, and every pager href carries `status=progress` — the
+four-independent-href-builders defect the contract exists to prevent. Cross-filtering is honest on
+the new lens: `topic:sports` 21 and `topic:macro` 0, because all 21 genuinely are sports.
+
 ### ⏹ THE END-TO-END PASS ALI ASKED FOR — driven, and the pictures were read
 
 **Player, signed out, at 1280:** `/` · `/markets` (default, progress, all, new, today) · `/live` ·
