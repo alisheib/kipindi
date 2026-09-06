@@ -327,6 +327,25 @@ async function applyTestFloat(userId: string): Promise<void> {
   }
 }
 
+/**
+ * ⛔ THE LIVE-MONEY STARTER-BALANCE CLAMP — ONE definition, used by BOTH registration paths.
+ *
+ * A starter balance is written straight onto the wallet with NO ledger entry, so every shilling
+ * it creates is money minted from nothing and the wallet↔ledger trial balance breaks by exactly
+ * that amount, permanently. That was acceptable pre-launch (test float, DB rebaselined at
+ * go-live). It is not acceptable now.
+ *
+ * 🔴 UNTIL 2026-09-07 THIS RULE LIVED IN ONE PATH ONLY. `registerWithPassword` clamped and
+ * said so in absolute terms — *"no env var or config row can mint"* — while `verifyOtpAndAuth`
+ * read the same admin-settable `starterBalanceTzs` and applied nothing. The sentence was false
+ * and the asymmetry was invisible: same config row, same money, different door.
+ *
+ * ⭐ A real welcome promo goes through the BONUS wallet (`bonus-service`), which is properly
+ * ledgered and wagering-tracked — not through this knob.
+ */
+function clampStarterBalanceForLiveMoney(requestedTzs: number): number {
+  return isLiveMoneyMode() ? 0 : requestedTzs;
+}
 /** Step 2: verify OTP, create or sign in user, set session cookie. */
 export async function verifyOtpAndAuth(input: z.input<typeof OtpVerifySchema>): Promise<ServiceResult<{ userId: string; isNew: boolean }>> {
   const parse = OtpVerifySchema.safeParse(input);
@@ -409,9 +428,19 @@ export async function verifyOtpAndAuth(input: z.input<typeof OtpVerifySchema>): 
     });
     // Auto-create wallet — starter balance is the admin-tunable
     // `starterBalanceTzs` config knob; defaults to 0 (no free funds).
+    //
+    // 🔴 THE LIVE-MONEY CLAMP WAS MISSING HERE, ON ONE OF TWO REGISTRATION PATHS (fixed
+    // 2026-09-07). `registerWithPassword` states the rule as absolute — *"In LIVE money mode
+    // BOTH sources are forced to 0 … so no env var or config row can mint"* — and explains the
+    // cost: a starter balance has no ledger entry, so every shilling it creates is money minted
+    // from nothing and the wallet↔ledger trial balance breaks by exactly that amount,
+    // permanently. This path read the same config knob and applied no clamp, so an operator who
+    // set `starterBalanceTzs` would mint free funds on live money for every OTP registration
+    // while the password path correctly refused. ⛔ A money rule enforced on one of two doors is
+    // not a rule; it is a coin flip on which door the player used.
     const { db: dbRef } = await import("./store");
     const { getEffectiveConfig } = await import("./market-config");
-    const starterBalance = (await getEffectiveConfig()).starterBalanceTzs ?? 0;
+    const starterBalance = clampStarterBalanceForLiveMoney((await getEffectiveConfig()).starterBalanceTzs ?? 0);
     // MUST await: under the Prisma DAL this is a real INSERT. Un-awaited, the
     // wallet row races the redirect — a brand-new user could land on /wallet or
     // place a first bet before the row exists and hit "Wallet not found".
@@ -620,13 +649,12 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
   // the tester bootstrap AND an admin-set `starterBalanceTzs` — so no env var
   // or config row can mint. A real welcome promo must go through the BONUS
   // wallet (bonus-service), which is properly ledgered and wagering-tracked.
-  const liveMoney = isLiveMoneyMode();
   const testerPhones = new Set(
     (process.env.TESTER_BOOTSTRAP_PHONES ?? "").split(",").map(s => s.trim()).filter(Boolean),
   );
   const { getEffectiveConfig } = await import("./market-config");
   const requestedStarter = testerPhones.has(phone) ? 100_000 : ((await getEffectiveConfig()).starterBalanceTzs ?? 0);
-  const starterBalance = liveMoney ? 0 : requestedStarter;
+  const starterBalance = clampStarterBalanceForLiveMoney(requestedStarter);
   await db.wallet.create({
     id: `wlt_${randomId(12)}`,
     userId: user.id,
