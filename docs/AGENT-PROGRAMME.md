@@ -86,7 +86,7 @@ erasure can never reach.
 
 | | |
 |---|---|
-| **Amount** | TZS 100,000 — stated in `RULES.md` §2.10 (to be written) |
+| **Amount** | TZS 100,000, ⭐ **VAT-INCLUSIVE** (Ali, 2026-09-07) — so the applicant-facing figure stays exactly what the management framework already published. Stated in `RULES.md` §2.10 (to be written) |
 | **Destination** | Digital Selcom Bank, account **0769777877** |
 | **How** | Paid **out of band**; the applicant uploads the receipt and types the reference |
 | **Waiver** | ⭐ An officer may waive it or record it as collected in cash — **with a typed reason, audited** (Ali, 2026-09-06) |
@@ -123,6 +123,20 @@ shows turnover and revenue, and pays on revenue.
 
 **Rate:** ⭐ **one rate per agent** (Ali — the framework specifies no tiers, so there are none).
 ⛔ The `tier` column is **dropped**, not left dead.
+
+| Term | Value (Ali, 2026-09-07) |
+|---|---|
+| **Normal rate** | **20%** of the net operator fee — of every TZS 100 we keep from that agent's recruit, TZS 20 goes to the agent |
+| **Hard ceiling** | **40%** — no officer may set more. A *rule*, so it belongs in `RULES.md` §2.10 |
+| **Window** | **Lifetime** — an agent earns for as long as the recruit keeps playing |
+| **Per-recruit cap** | **None** |
+
+⚠️ **TWO SCALES EXIST IN THIS CODEBASE AND THEY ARE NOT THE SAME.** `AffiliateAgent.commissionPct`
+is a **percent** (`20.00` = 20%); the player config's `commission.rate` is a **fraction**
+(`0.5` = 50%). ⛔ Never feed one into the other. The agent resolver reads the percent.
+
+⭐ **Lifetime and uncapped is safe** precisely because the base is the fee we *kept*: the house
+always retains the majority, so commission can never cost more than the recruit earned us.
 
 🔴 **Only `approvedAt` identifies an agent.** `AffiliateAgent` is *simultaneously* every player's
 referral account and the vetted-agent record: rows already exist for ordinary players, each with
