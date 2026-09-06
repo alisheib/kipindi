@@ -42,6 +42,8 @@ import { randomId } from "./crypto";
 import { withLock } from "./locks";
 import { audit } from "./audit";
 import { getBonusConfig } from "./bonus-config";
+// The PRODUCT state (a constant), which outranks the operator config above it — see `creditBonus`.
+import { bonusIsLiveFor } from "@/lib/feature-state";
 import { notifyBonusCredited, notifyBonusFulfilled, notifyBonusExpired } from "./notification-service";
 import { sendEmailToUser, bonusCreditedHtml, bonusFulfilledHtml } from "./email";
 import { postLedgerEntries, bonusGrantEntries, bonusCreditEntries, bonusExpireEntries, bonusRelockEntries } from "./ledger";
@@ -83,7 +85,7 @@ export type CreditBonusInput = {
 
 export type CreditBonusResult =
   | { ok: true; grant: StoredBonusGrant; deduped: boolean }
-  | { ok: false; error: string; code: "DISABLED" | "INVALID" | "NOT_FOUND" | "RG_LOCKED" };
+  | { ok: false; error: string; code: "DISABLED" | "WITHDRAWN" | "INVALID" | "NOT_FOUND" | "RG_LOCKED" };
 
 /**
  * Credit a bonus grant to a player's bonus wallet. Idempotent by `sourceRef`.
@@ -91,6 +93,54 @@ export type CreditBonusResult =
  * wallet lock. Returns the grant (deduped=true if it already existed).
  */
 export async function creditBonus(userId: string, input: CreditBonusInput): Promise<CreditBonusResult> {
+  /**
+   * 🔴 THE PRODUCT STATE OUTRANKS THE OPERATOR CONFIG — AND UNTIL THIS LINE IT DID NOT.
+   *
+   * `feature-state.ts` states the guarantee this gate is the whole enforcement of:
+   * *"Product off ⇒ off, whatever the config says. An operator cannot switch a withdrawn
+   * feature back on by editing a row."* Granting is the ONE thing that guarantee is about,
+   * and it was the one thing nothing checked: `getBonusConfig()` ships `enabled: true`, so
+   * with the wallet withdrawn from the product every grant path still minted grants.
+   *
+   * ⛔ MEASURED, NOT REASONED — `test:withdrawn-features` §5e printed it while passing:
+   *     [audit] WALLET bonus.credited w5e_ref BonusGrant#bg_ef1914…
+   *     [email] "Bonus added · TZS 10,000"
+   * An approved AGENT's commission landed as a played-through grant, with a wagering
+   * requirement and an expiry, in a wallet the product says does not exist — and the player
+   * was emailed about it. Three places asserted the opposite in prose (this repo's rule:
+   * a comment is not a measurement), including `affiliate-service.ts` §referrerMayEarn:
+   * *"the reward now lands as REAL, WITHDRAWABLE CASH rather than a played-through grant."*
+   * That sentence is now TRUE, because refusing here is what makes it true: `creditWallet`
+   * already falls through to `creditInternal` on a refusal.
+   *
+   * ── ⛔ WHY THIS IS LAW 1 AND NOT A BREACH OF IT ──────────────────────────────
+   * Gate the OFFER, never the REFUSAL. `creditBonus` is the promotional-OFFER funnel and
+   * nothing else — every path that owes a player money already bypasses it, and says so:
+   *   · void restitution mints its grant DIRECTLY (`refundBonusToActive`, and its comment
+   *     already explains it must not inherit this function's suppression);
+   *   · wagering accrual, fulfilment, expiry and the `BONUS_FUNDED` cash-out refusal are
+   *     separate functions and are untouched;
+   *   · `house-ledger` accounting counts money that EXISTS, not money we advertise.
+   * It sits beside the RG-lockout suppression below because it is the same shape of rule:
+   * a promotional credit that must not be made, refused at the single funnel every
+   * incentive path already routes through, rather than at five call sites.
+   *
+   * ⭐ EVERY CALLER ALREADY DEGRADES CORRECTLY, which is why this is one line and not five:
+   * affiliate rewards and proposal prizes fall through to `creditInternal` and are paid as
+   * REAL CASH (money promised is still money paid); invite-campaign registration and AUTO
+   * cashback simply do not grant; the admin grant screen surfaces the reason to the officer.
+   * ⚠️ `/admin/bonuses` stays fully readable and auditable — withdrawal is a player-product
+   * decision, not a data deletion. What it may no longer do is MINT a new grant into a
+   * wallet the product has withdrawn.
+   */
+  if (!bonusIsLiveFor()) {
+    return {
+      ok: false,
+      error: "The bonus wallet is withdrawn from the product, so no new bonus can be granted.",
+      code: "WITHDRAWN",
+    };
+  }
+
   const cfg = getBonusConfig();
   if (!cfg.enabled) return { ok: false, error: "Bonus program is currently disabled.", code: "DISABLED" };
 

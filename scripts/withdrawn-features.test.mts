@@ -260,6 +260,72 @@ function ok(label: string, cond: boolean, extra?: string) {
      (wAgent?.balance ?? 0) + (wAgent?.bonusBalance ?? 0) > 0,
      `cash=${wAgent?.balance} bonus=${wAgent?.bonusBalance}`);
   ok("§5e CONTROL · …and a reward row exists", (await db.referralReward.listByReferrer("w5e_ref")).length > 0);
+
+  // ── §5e2 · WHICH WALLET THE AGENT IS PAID INTO — the assertion §5e deliberately would not make
+  //
+  // 🔴 §5e above sums `balance + bonusBalance`, so it passes whichever wallet the money lands in.
+  // It passed while the money was landing in the WRONG one, and printed the proof in its own run
+  // log: `bonus.credited … BonusGrant#bg_ef1914…` and an email titled "Bonus added · TZS 10,000".
+  // An approved agent's COMMISSION was being paid as a played-through grant — carrying a wagering
+  // requirement and an expiry — into a wallet the product declares WITHDRAWN for every role.
+  //
+  // ⛔ THREE PLACES ASSERTED THE OPPOSITE IN PROSE and none of them was a measurement:
+  // `affiliate-service.ts` §referrerMayEarn, §5d's own comment directly above, and
+  // `docs/BONUS-WITHDRAWAL.md` §1 — all say the reward "now lands as REAL, WITHDRAWABLE CASH
+  // rather than a played-through grant". A sentence is not a guard. This is the guard.
+  ok("§5e2 the agent's commission is paid in REAL CASH", (wAgent?.balance ?? 0) > 0, `cash=${wAgent?.balance}`);
+  ok("§5e2 …and NOT as a bonus grant in a withdrawn wallet",
+     (wAgent?.bonusBalance ?? -1) === 0, `bonus=${wAgent?.bonusBalance}`);
+  const agentGrants = await db.bonusGrant.listByUser("w5e_ref");
+  ok("§5e2 …and no BonusGrant row was minted at all", agentGrants.length === 0,
+     `grants=${agentGrants.length}`);
+}
+
+// ── §5g · THE FUNNEL ITSELF — an operator cannot re-enable a withdrawn feature by a row ────
+//
+// 🔴 THE GUARANTEE THIS SECTION IS THE ONLY ENFORCEMENT OF. `feature-state.ts` says in its own
+// header: *"Product off ⇒ off, whatever the config says. An operator cannot switch a withdrawn
+// feature back on by editing a row."* GRANTING is the one thing that promise is about, and it
+// was the one thing nothing checked — `getBonusConfig()` ships `enabled: true`, so every
+// incentive path kept minting grants with the wallet withdrawn from the product.
+//
+// ⛔ THE CONTROL IS THE POINT. §5g2 re-enables the PRODUCT state (not the config) and proves the
+// same call succeeds — without it this section would pass just as well if `creditBonus` were
+// simply broken, which is the failure mode §5d shipped with once already.
+{
+  const { creditBonus } = await import("../src/lib/server/bonus-service.ts");
+  const stamp = () => new Date().toISOString();
+  await db.user.create({
+    id: "w5g_p", phoneE164: "+255790000091", email: "w5g_p@t.tz",
+    passwordHash: null, passwordSalt: null, failedLoginCount: 0, lockedUntil: null,
+    role: "PLAYER", status: "ACTIVE", locale: "EN", displayName: null, dob: null, region: null,
+    acceptedTermsVersion: null, acceptedTermsAt: null, marketingOptIn: false,
+    twoFactorEnabled: false, avatarDataUrl: null, recruitedBy: null,
+    createdAt: stamp(), updatedAt: stamp(), lastLoginAt: null, closedAt: null,
+  } as never);
+  await db.wallet.create({ id: "wal_w5g_p", userId: "w5g_p", balance: 0, pending: 0, hold: 0, bonusBalance: 0, currency: "TZS", status: "ACTIVE", createdAt: stamp(), updatedAt: stamp() } as never);
+
+  // §5g1 · the operator config is ON (the shipped default) and it must not be enough
+  const cfgNow = (await import("../src/lib/server/bonus-config.ts")).getBonusConfig();
+  ok("§5g1 PRECONDITION · the operator config really does say enabled", cfgNow.enabled === true,
+     `enabled=${cfgNow.enabled}`);
+  const refused = await creditBonus("w5g_p", { amountTzs: 5_000, source: "ADMIN", note: "audit probe" });
+  ok("§5g1 …and creditBonus still refuses", refused.ok === false, JSON.stringify(refused));
+  ok("§5g1 …naming the product state, not the config",
+     refused.ok === false && refused.code === "WITHDRAWN",
+     refused.ok === false ? refused.code : "ok");
+  const wNone = await db.wallet.findByUserId("w5g_p");
+  ok("§5g1 …and no bonus money exists", (wNone?.bonusBalance ?? -1) === 0, `bonus=${wNone?.bonusBalance}`);
+
+  // §5g2 · CONTROL — re-enable the PRODUCT state and the identical call must succeed.
+  process.env.FEATURE_BONUS = "ACTIVE";
+  try {
+    const allowed = await creditBonus("w5g_p", { amountTzs: 5_000, source: "ADMIN", note: "audit probe control" });
+    ok("§5g2 CONTROL · the same call succeeds once the product state is ACTIVE", allowed.ok === true,
+       JSON.stringify(allowed));
+  } finally {
+    delete process.env.FEATURE_BONUS;
+  }
 }
 
 // ── §5f · THE SKELETON MUST DESCRIBE THE PAGE THAT IS COMING ───────────────

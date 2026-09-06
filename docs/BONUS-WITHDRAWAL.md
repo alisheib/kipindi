@@ -18,7 +18,7 @@ table was dropped, no rule was repealed.
 
 | | Withdrawn | Kept and still working |
 |---|---|---|
-| Bonus | Granting, the wallet card's empty-state pitch, the cashback promo | Wagering accrual, grant fulfilment, expiry, the `BONUS_FUNDED` cash-out refusal, `house-ledger` accounting, `/admin/bonuses` |
+| Bonus | Granting **(enforced at `creditBonus` since 2026-09-06 — see §4b; before that this row was a claim, not a fact)**, the wallet card's empty-state pitch, the cashback promo | Wagering accrual, grant fulfilment, expiry, the `BONUS_FUNDED` cash-out refusal, `house-ledger` accounting, `/admin/bonuses` **as a place to read and audit the grants that exist** |
 | Invite | Every player entry point, the page itself, the code on share links | The whole affiliate engine, the admin config screen, all three reward modes |
 
 ---
@@ -92,6 +92,74 @@ exactly how `proposalsState` already reaches the nav. Do not import `feature-sta
 
 ---
 
+## 4b · 🔴 THE WITHDRAWAL DID NOT WITHDRAW GRANTING (found 2026-09-06, cleanup audit)
+
+**§1 above listed "Granting" as withdrawn from the day this programme shipped. Nothing enforced
+it.** The table was a statement of intent that four green suites, a 110-agent adversarial audit
+and this document all read straight past.
+
+**What was actually happening.** `creditBonus` is the single funnel every incentive path routes
+through, and its only master switch was `getBonusConfig().enabled` — the **operator** config,
+which ships `enabled: true`. The **product** state was never consulted. So with the bonus wallet
+withdrawn from the product, every grant path still minted grants: affiliate rewards, proposal
+prizes, invite-campaign registration, AUTO cashback and admin grants.
+
+⛔ **MEASURED, NOT REASONED — and the guard printed the evidence while passing.** Running
+`test:withdrawn-features` at `22e96d12`:
+
+```
+[audit] WALLET bonus.credited w5e_ref BonusGrant#bg_ef1914…
+[email] sending "Bonus added · TZS 10,000" → w***@t.tz (tag=bonus)
+43 passed · 0 failed
+```
+
+An approved **AGENT's commission** was paid as a played-through bonus grant — carrying a wagering
+requirement and an expiry — into a wallet the product says does not exist, and the agent was
+emailed *"Bonus added"* about it.
+
+**Three places asserted the opposite in prose, and none of them was a measurement:**
+
+| Where | What it claimed |
+|---|---|
+| `affiliate-service.ts` §`referrerMayEarn` | *"with the bonus wallet withdrawn the reward now lands as REAL, WITHDRAWABLE CASH rather than a played-through grant"* |
+| `withdrawn-features.test.mts` §5d comment | the same sentence, restated |
+| `feature-state.ts` header + §3 of this doc | *"An operator cannot switch a withdrawn feature back on by editing a row"* |
+
+⭐ **Why the guard could not see it.** §5e's control asserted `balance + bonusBalance > 0` — a sum.
+It is a correct control for *"is the agent paid at all"* and it is structurally blind to *"paid
+into which wallet"*. **The assertion that would have caught this is the one the section declined
+to make.** That is this repo's recurring shape: a true measurement over the wrong population.
+
+**The fix — one gate, at the funnel, no caller changed.** `creditBonus` now refuses with a new
+`WITHDRAWN` code when `bonusIsLiveFor()` is false, immediately above the existing operator-config
+check. Every caller already degraded correctly, which is why this is one place and not five:
+
+| Caller | Behaviour on refusal |
+|---|---|
+| `affiliate-service.creditWallet` | falls through to `creditInternal` → **paid as real cash**, which is what the docs already claimed |
+| `proposals-service.approveProposal` | falls through to `creditInternal` → prize paid in cash; *"never lose the promised reward"* |
+| `invite-service.bindRegistration` | returns `null` → no grant, campaign entry not marked |
+| `wallet-service` AUTO cashback | result ignored → no cashback (its display was already gated) |
+| `admin/bonuses` grant action | surfaces the reason to the officer |
+
+⛔ **This is Law 1, not a breach of it.** `creditBonus` is the promotional-**offer** funnel and
+nothing else. Every path that owes a player money already bypasses it and says so in its own
+comment — void restitution mints its grant directly *precisely* so it cannot inherit this
+function's suppression; wagering, fulfilment, expiry and the `BONUS_FUNDED` refusal are separate
+functions; `house-ledger` counts money that exists.
+
+**And it turned eleven suites red** — the bonus machinery's own suites, none of whose failures
+were about the thing they test (`bonus=0 · grants=0`, then `undefined.wageredTzs`). That is Law 2
+arriving on schedule. They now declare the ON state in one visible line via
+`scripts/lib/bonus-feature-on.mts`, exactly as `verified-fixtures.mts` did when KYC-first turned
+59 suites red. ⛔ `withdrawn-features` and `cashback-hidden` must **never** import it: they
+measure the OFF state, and a gate that chooses its own population cannot fail.
+
+**Verified:** baseline re-measured at `HEAD` with the change stashed (59 · 24 · 16 · 62 · 48 · 12 ·
+32 · 25 · 18, all 0 failed), then identical after. `test:withdrawn-features` 43 → **51/0**.
+
+---
+
 ## 5 · The gates, and exactly what each one measures
 
 | Gate | Measures | Does **not** measure |
@@ -107,6 +175,7 @@ exactly how `proposalsState` already reaches the nav. Do not import `feature-sta
 | Neutralise the RG gate in `creditInternal` | 7 refusals fail; the cooling-off referrer's reward is recorded **PAID** with TZS 10,000 of real cash moved. Control still green |
 | Drop `!bonusFunded` from `sellable` | §2 fails with `sellable=true`, `reason=undefined` — the laundering route, demonstrated |
 | Soften `WITHDRAWN` → `COMING_SOON` | §1 fails — the product starts promising again |
+| **Neutralise the granting gate** (`if (!bonusIsLiveFor())` → `if (false)` in `creditBonus`) | **6 named failures, and the detail reproduces the original defect verbatim**: `§5e2 …NOT as a bonus grant — bonus=10000`, `§5e2 …no BonusGrant row was minted — grants=1`, and §5g1 returning an ACTIVE grant with `wagerRequiredTzs: 25000`. 45 passed · 6 failed. Working tree verified byte-identical to `HEAD` after restore |
 
 ---
 
@@ -175,6 +244,10 @@ superseded, so it failed on its own premise. Its intent outlived its subject, so
   live grant rows on production have **not** been re-measured in this pass.
   ⚠️ `bonus-config.ts` warns that the file's defaults are what production actually runs on when no
   `SystemConfig` row exists — *check the live state, not the file*.
+  ⭐ **UPDATED 2026-09-06:** for **granting** this no longer matters, and that is the point of §4b.
+  The product state is a shipped constant, so whatever `enabled` says in the live row, no new grant
+  is minted. It still matters for everything the operator config governs that is not granting
+  (wagering multiplier, expiry window, sequential ordering).
 
 - 🔴 **A HELD reward is terminal, and it consumes the budget.** Measured, and left as it is
   deliberately — but it is a money decision, so it is recorded here rather than buried.
@@ -206,5 +279,12 @@ One word in `PRODUCT_STATE` in `src/lib/feature-state.ts`, per feature. Then:
    before and after; §1 and §3 will correctly go red, because they assert the withdrawn state.
 2. Re-run `scripts/live/withdrawn-render-drive.mjs` — its assertions are all absences and will
    invert.
-3. The bonus machinery needs no change: it was never gated. `test:bonus` (59), `test:bonus-betting`
-   (24), `test:bonus-one-side` (22) and `test:cashout` (24) were green throughout this programme.
+3. ⚠️ **CORRECTED 2026-09-06 — this step used to read *"The bonus machinery needs no change: it was
+   never gated."* That sentence was true, and it was the defect** (§4b): granting was listed as
+   withdrawn and nothing enforced it. The machinery IS gated now, at `creditBonus`, on the product
+   state. Re-enablement therefore needs nothing extra — flipping `bonus` to `ACTIVE` opens the
+   funnel by construction — but the eleven suites that drive the machinery now carry
+   `import "./lib/bonus-feature-on.mts"`. That import is **idempotent and non-clobbering**: it only
+   fills an ABSENT `FEATURE_BONUS`, so once the product state is ACTIVE it changes nothing and can
+   be removed at leisure rather than urgently. `test:bonus` (59), `test:bonus-betting` (24),
+   `test:bonus-one-side` (22) and `test:cashout` (24) are green on both sides of the change.

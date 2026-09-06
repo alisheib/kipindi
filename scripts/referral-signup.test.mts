@@ -8,6 +8,11 @@
  *   - Self-referral blocked, unknown codes rejected
  *   - Idempotency: a recruit can only be bound once, prize paid once per recruit
  */
+// ⚠️ THE BONUS WALLET IS WITHDRAWN FROM THE PRODUCT (`src/lib/feature-state.ts`), and since
+// 2026-09-06 `creditBonus` enforces that: the product state outranks the operator config, so no
+// grant is minted while the feature sleeps. This suite exercises the bonus machinery a
+// re-enablement depends on, so it drives the ON path — Law 2, one home, see the module header.
+import "./lib/bonus-feature-on.mts";
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { bindRecruit, ensureAffiliateAccount, onRecruitBet } from "../src/lib/server/affiliate-service.ts";
 import { getAffiliateConfig } from "../src/lib/server/affiliate-config.ts";

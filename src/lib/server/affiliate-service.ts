@@ -363,6 +363,14 @@ function referrerSharesIp(referrerUserId: string, ip: string): boolean {
  * the older population paying quietly, which is the harder half to notice.
  * ⭐ And it is deliberately NOT a blanket "affiliate off" switch: an approved AGENT keeps
  * earning, because that is the programme this withdrawal exists to make room for.
+ *
+ * ⚠️ "LANDS AS REAL, WITHDRAWABLE CASH" ABOVE WAS FALSE UNTIL 2026-09-06, and it is worth
+ * knowing which line makes it true. `creditWallet` prefers the bonus wallet whenever the
+ * OPERATOR config says so, and that config ships `enabled: true` — so an agent's commission
+ * was landing as a played-through grant, with a wagering requirement, in a wallet the product
+ * had withdrawn. What makes this sentence true is the product-state refusal at the top of
+ * `creditBonus` (`docs/BONUS-WITHDRAWAL.md` §4b); `creditWallet`'s existing fall-through to
+ * `creditInternal` then does the rest. ⛔ Do not "simplify" that fall-through away.
  */
 async function referrerMayEarn(referrerUserId: string): Promise<boolean> {
   const referrer = await db.user.findById(referrerUserId);
