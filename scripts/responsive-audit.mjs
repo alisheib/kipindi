@@ -174,6 +174,34 @@ function soft(name, cond, detail = "") {
 // Assertions run in the page: overflow, clipped-not-scrolled, off-screen fixed,
 // small touch targets. Returns a plain object (no Playwright handles).
 async function assertCell(page) {
+  /**
+   * 🔴 RETRY ONCE ON A DESTROYED CONTEXT (2026-09-06).
+   *
+   * `page.evaluate` throws "Execution context was destroyed, most likely because of a
+   * navigation" when the page navigates mid-evaluation — which happens on the admin sweep,
+   * where `/admin/players` can redirect after `domcontentloaded` has already fired. It is a
+   * RACE IN THE HARNESS, not a finding about the product.
+   *
+   * ⛔ AND IT TOOK THE WHOLE RUN DOWN. The throw escaped `main()`, which was called with no
+   * `.catch()`, so the gauntlet died at the admin sweep and **every route after it went
+   * unmeasured** — a 99-route × 9-width audit that stopped early and said nothing about it.
+   *
+   * ⭐ So: settle the navigation and ask once more. If it still cannot evaluate, the caller
+   * turns it into a NAMED failure rather than an uncaught crash — one route reported, the
+   * rest of the sweep still measured. A harness that cannot survive a redirect measures
+   * whatever happened to come before it.
+   */
+  try {
+    return await assertCellOnce(page);
+  } catch (err) {
+    if (!/Execution context was destroyed|navigating and changing/i.test(String(err?.message ?? err))) throw err;
+    await page.waitForLoadState("domcontentloaded").catch(() => {});
+    await page.waitForTimeout(500);
+    return await assertCellOnce(page);
+  }
+}
+
+async function assertCellOnce(page) {
   return await page.evaluate(() => {
     const root = document.documentElement;
     const vw = root.clientWidth, vh = window.innerHeight;

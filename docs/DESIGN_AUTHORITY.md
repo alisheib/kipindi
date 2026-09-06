@@ -2261,8 +2261,36 @@ identical escapes. 700ms. An instrument that races the product measures a frame,
 header crest button is cut by ~8px on the narrowest phones. ⚠️ It reproduces **only with a
 session** — an unauthenticated probe of the same page finds nothing, which is why it survived
 earlier responsive passes. Recovering those pixels means changing padding or gaps on the header
-every page shares, on a live money platform: **a design call, not a bug fix's**, and it needs
+every page shares, on a live money platform: **a design call, not a bug fix**, and it needs
 Ali rather than a session.
+
+> ⭐ **RE-MEASURED 2026-09-06, AND THE CAUSE IS NOW EXACT** — so the decision Ali is being asked
+> for has numbers attached instead of a symptom. Signed in at 320×568 on `/markets`:
+>
+> | | |
+> |---|---|
+> | **What is clipped** | the **account/avatar button** — `left 299 → right 339` in a 320px viewport, **19px off-screen and `visible`** |
+> | **Why no gate saw it** | `documentElement.scrollWidth - clientWidth` = **0**. The header clips internally, so document-overflow checks are honestly reporting 0 over a control cut in half. This is E-30's lesson exactly: *a document-level overflow check is not a visual test* |
+> | **The mechanism** | the right cluster is `shrink-0 flex items-center gap-1 sm:gap-2`. **`shrink-0` forbids flexbox from absorbing the shortfall**, so it renders at its natural 273px starting at x=66 and simply runs off the edge |
+> | **The arithmetic** | container `px-3` (16px each side) ⇒ **238px** of room from x=66 to x=304. Cluster needs **273px**. Short by **35px** |
+> | **Where the 273px goes** | language `58` · wallet pill `119` · deposit CTA `0` (already correctly hidden below `sm`) · bell `40` · avatar `40` · gaps `16` |
+>
+> **The three levers, with what each costs — this is the actual decision:**
+> 1. **Compact the balance at `xs` only** (`TZS 100,000` → the platform's S-14 compaction). Saves
+>    ~30px, the largest single win. ⛔ It changes how MONEY reads, which is why it is Ali's.
+> 2. **Drop `shrink-0` and let the cluster absorb it.** ⛔ **REJECTED unless paired with (1)** —
+>    with nothing else to give, flex would squeeze the pill and §M4a is unambiguous: *a clipped
+>    NUMBER is a wrong number*. Truncation here is worse than the clipping it replaces.
+> 3. **Trim `px-3` → `px-2` and the cluster gap at `xs`.** Saves ~12px — not enough alone, and it
+>    touches the header every page shares.
+>
+> ⛔ **Hiding the balance is NOT on the list.** Ali ruled it visible at every width on 2026-08-25
+> after players voted down the phone-only wallet icon (`top-app-bar.tsx`). Any fix keeps it.
+>
+> ⚠️ **`npm run test:responsive` reports this as 27 HARD FAILURES** — one per signed-in route at
+> `xs`, all the same defect. Left red on purpose: it is a real clip, and a named exemption for it
+> would be this repo's own "gate that chooses its own population" defect. Read the count as **one
+> finding × 27 routes**, not 27 findings.
 
 ### M5 — A glyph moves for a reason, and all 178 move the same way
 
