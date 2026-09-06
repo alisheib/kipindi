@@ -6048,6 +6048,25 @@ edit, so the graph argument was not enough — it was run with the dictionary re
 > process — the OFF server, measured twice. `netstat` named the PID. **Always confirm WHICH
 > process answered before believing a control.**
 >
+> ✅ **AND THE IMAGES WERE OPENED, not just captured.** `shot-sweep` over `/wallet`, `/profile`,
+> `/profile/invite`, `/auth/register` × {360, 1280} × {en, sw, zh} — **22 captured, 0 horizontal
+> overflow, 0 console errors**. What the pictures show, read rather than inferred:
+> `/wallet` at 1280 is a SINGLE Available card spanning the full width — the 518px hole is gone;
+> `/profile` has no Invite row and its account grid is an even 2-column block with no orphan cell;
+> the achievements shelf correctly omits the agent-scoped **Connector** badge; `/profile/invite` is
+> a properly designed 404 with three real exits, not a broken page and not a "coming soon" promise;
+> and zh at 360 is fully translated with the money still `TZS 100,000` in tabular mono.
+>
+> ⚠️ **TWO THINGS THAT LOOKED LIKE DEFECTS IN THE IMAGES AND WERE NOT** — checked at viewport
+> scale before filing, which is the whole discipline: a ~250px void above the footer at 360, and
+> the bottom nav sitting ON TOP of the activity card. Both are `--full` page-capture artifacts of
+> a `position: fixed` nav and a short document. Re-shot at true viewport scale the page is clean
+> and the nav is pinned where it belongs. ⛔ A full-page screenshot is not what the user sees.
+>
+> ⚠️ The sweep also refused 2 of 24 with `LANG MISMATCH … got ""` on `/auth/register`. Checked, and
+> it is the harness, not the product: with `kp-locale` set, that route serves `<html lang="sw">`
+> and `lang="zh"` correctly, and it does not redirect for a signed-in viewer. A read-timing flake.
+>
 > 🟡 Still not rendered: the **AGENT** view of `/profile/invite` (nothing assigns `UserRole.AGENT`
 > yet), and the register ribbon against a **seeded live campaign** — that one is proven by
 > `withdrawn-features` §5i plus its control instead.
