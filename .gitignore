@@ -251,3 +251,10 @@ scripts/live/ops/.cfg-snapshots/
 # and is not one). Removed in the harness `finally`; ignored so a killed run leaves nothing.
 .cn-red-tmp/
 scripts/.kyc-gate-red.lock
+
+# Loose visual-QA evidence at the repo ROOT. Drives write here by default when SHOT_DIR is
+# unset; 18 such files (13.5 MB) were tracked with ZERO references anywhere in the repo and were
+# deleted 2026-09-06. Evidence is regenerable — a GUARD is not — so the shots go, the drive stays.
+/*.png
+/*.jpg
+/*.jpeg
