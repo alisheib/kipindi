@@ -1793,7 +1793,7 @@ money-minting one (that is `TEST_FUNDING`, which stays deployment-level and is N
 **Code:** `src/lib/server/payment-control.ts` · `payments.ts` (`resolveActiveAdapter`) ·
 `admin/payments/control-plane.tsx`.
 **Tests:** `test:payment-control` (mock selectable + dispatch runs the simulator in LIVE; demo-async
-settable; credential gate remains; simulation flag, 39/39) · `test:payment-killswitch` (kill-switch
+settable; credential gate remains; simulation flag, 39/39) · `test:killswitch` (kill-switch
 still the stop, 11/11).
 
 ---
@@ -2035,5 +2035,5 @@ re-reading this entry. The lock MUST stay coupled to real-money state.
 
 **Code:** `src/lib/server/test-overrides.ts` · `admin/resolver-queue/conflict-override-action.ts`
 · `admin/resolver-queue/conflict-override-toggle.tsx` · `admin/resolver-queue/page.tsx`.
-**Tests:** `test:conflict-gate` (the lock matrix, 10/10) · `test:solo-resolution`
+**Tests:** `test:officer-conflict` (the lock matrix, 10/10) · `test:two-admin`
 (full effects, 18/18) · `test:officer-conflict` (33/33).

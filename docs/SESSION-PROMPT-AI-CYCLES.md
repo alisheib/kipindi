@@ -755,7 +755,7 @@ its red harness `red:ai-cycles`, with anchors in `scripts/anchors/`). At minimum
    their old `sizeUsd`.
 4. **Rollover across N cycles** — one call, tiny size, assert N closes.
 5. **Concurrency** — fire M concurrent `recordAiUsage` calls, assert conservation holds
-   and no duplicate index. (`test:bet-concurrency` is the pattern to copy.)
+   and no duplicate index. (`test:concurrency` is the pattern to copy.)
 6. **Projection refuses short windows** — under `minDaysForProjection`, no year figure.
 7. **Div-by-zero renders `—`.**
 8. **CONTROL: the corpus was non-empty** — a conservation check over zero rows passes

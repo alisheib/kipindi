@@ -673,7 +673,9 @@
     "qa:dg-rhythm": "node scripts/design-gate/rhythm-probe.mjs",
     "test:tab-anchors": "tsx scripts/tab-anchors.test.mts",
     "red:tab-anchors": "node scripts/red-tab-anchors.mjs",
-    "qa:phone-reveal": "node scripts/live-phone-reveal.mjs"
+    "qa:phone-reveal": "node scripts/live-phone-reveal.mjs",
+    "ops:payments-now": "node scripts/live/ops/payments-now.cjs",
+    "ops:updown-probe-bars": "tsx scripts/ops-updown-probe-bars.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

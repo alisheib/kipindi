@@ -22,9 +22,21 @@ const scripts = new Set(Object.keys(JSON.parse(readFileSync(join(ROOT, "package.
 /**
  * A doc may legitimately name a file that no longer exists — recording that something was
  * DELETED is the point of the sentence. Only lines that frame it that way are exempt.
+ *
+ * 🔴 THIS GATE WAS RED ON `agent-affiliate-programme` AND NOBODY HAD NOTICED (found 2026-09-06).
+ * `BONUS-WITHDRAWAL.md` §6b records finding #7 — *"Two comments cited `scripts/reenablement.test.mts`,
+ * *which has never existed* — I named a guard I had planned and not written"*. Writing that
+ * finding down is what turned the gate red: the sentence has to NAME the path to be about it, and
+ * the vocabulary below did not admit the phrase it was written in.
+ *
+ * ⛔ THE DOC IS RIGHT AND THE CHECK IS RIGHT; THE EXEMPTION WAS TOO NARROW. It matched *"does not
+ * exist"* but not *"has never existed"* — a different tense of the same statement. That is this
+ * repo's oldest recurring shape, one layer up: **an anchor must admit every form the structure
+ * legitimately takes** (§0.1a, the four `RESUME AT` drifts). A file that never existed is a
+ * stronger case for exemption than one that was deleted, not a weaker one.
  */
 const documentsARemoval = (line) =>
-  /~~|deleted|removed|no longer exists|does not exist|gone\b/i.test(line);
+  /~~|deleted|removed|no longer exists?|does not exist|never existed|never exists|has never|gone\b/i.test(line);
 
 let bad = 0, links = 0, paths = 0, npms = 0;
 const report = (kind, file, ref, line) => {
@@ -119,7 +131,90 @@ for (const p of MISSING_EVIDENCE) {
   else if (!seenEvidence.has(p)) { bad++; console.log(`  ✗ ${p} is no longer cited — remove it from MISSING_EVIDENCE`); }
 }
 
-console.log(`\nchecked ${links} links · ${paths} script paths · ${npms} npm refs · ${shots} evidence shots across docs/`);
+// ═══════════════════════════════════════════════════════════════════════════
+// ⭐ BARE SCRIPT CITATIONS — the way this repo actually names its gates
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// 🔴 FOUND 2026-09-06 (cleanup audit). The `npm run <name>` check above is real and it was
+// green — over the WRONG POPULATION. Almost nothing in these docs writes `npm run test:foo`.
+// The gate registers, the verification recipes and the findings tables all cite a suite as a
+// bare backticked **`test:foo`** / **`red:foo`** / **`qa:foo`** / **`ops:foo`**, and not one of
+// those 3,113 citations was ever checked. `DESIGN-BASELINE.md`'s gate register — the table whose
+// own caption says it is *"the one place that answers what holds this rule?"* — listed
+// `test:invite-coming-soon` · `red:invite-coming-soon` (4/4) for a suite that had been DELETED,
+// and this guard passed over it.
+//
+// ⛔ A REGISTER THAT NAMES A GATE WHICH NO LONGER EXISTS IS THE "gate not in the pipeline"
+// DEFECT READ FROM THE OTHER END: the rule looks held, and nothing holds it. Same for a runbook
+// step naming a command that cannot be typed — this file's own header says a doc read under
+// pressure is worse than no doc.
+//
+// ⚠️ A doc may legitimately name a script that does not exist, and the shapes are specific
+// enough to list rather than pattern-match. Anything NOT listed here must resolve.
+const PLANNED_OR_DELIBERATE = new Map([
+  // The MASWALI-MILLIONEA programme is SPECIFIED and not yet built (CLAUDE.md: one of the two
+  // ongoing programmes). Its implementation doc names the gates it will ship with. Naming a
+  // gate you are about to write is a plan; naming one you already deleted is rot.
+  ["test:maswali-engine", "planned · MASWALI-BUILD"],
+  ["test:maswali-money", "planned · MASWALI-BUILD"],
+  ["test:maswali-cap", "planned · MASWALI-BUILD"],
+  ["test:maswali-law", "planned · MASWALI-BUILD"],
+  ["test:maswali-config", "planned · MASWALI-BUILD"],
+  ["test:maswali-fairness", "planned · MASWALI-BUILD"],
+  ["test:maswali-reporting", "planned · MASWALI-BUILD"],
+  ["test:maswali-adversarial", "planned · MASWALI-BUILD"],
+  ["test:maswali-rbac", "planned · MASWALI-BUILD"],
+  ["test:maswali-ceremony", "planned · MASWALI-BUILD"],
+  ["test:maswali-admissibility", "planned · MASWALI-BUILD"],
+  ["test:maswali-i18n", "planned · MASWALI-BUILD"],
+  ["test:maswali-ui", "planned · MASWALI-BUILD"],
+  ["test:maswali-design", "planned · MASWALI-BUILD"],
+  ["test:maswali-notify", "planned · MASWALI-BUILD"],
+  ["red:maswali-engine", "planned · MASWALI-BUILD"],
+  // An EXIT CRITERION in the certification programme — the gate a module must gain to pass.
+  ["test:cert-a2", "planned · MODULE-CERTIFICATION-PROGRAM exit criterion"],
+  // A guard named in a design-gate plan and never written. ⚠️ Kept visible rather than quietly
+  // deleted: this repo has shipped comments citing guards that never existed, and the honest
+  // record of a plan not carried out is more useful than a tidy sentence.
+  ["test:copy-enums", "named in a plan, never written — DESIGN-GATE-ADMIN"],
+  // Named in the NEGATIVE — the sentence exists to say this name is NOT what we use.
+  ["red:refusal", "cited as the name we deliberately do NOT use (red:* means source mutation)"],
+  // Hypothetical: "any audit, any `backfill:sw`" — a class of task, not a command.
+  ["backfill:sw", "hypothetical — a class of task, not a command"],
+  // Struck with its reason by the programme that proposed it.
+  ["test:motion-timing", "struck in PLAYER-VISUAL §b2, with its reason"],
+  // HISTORY. The defect really did happen under this name, and the lesson is about that suite.
+  ["test:invite-coming-soon", "history — retired 2026-09-06, intent ported to withdrawn-features"],
+  // Not a script at all: the literal value stored in `roleChangedBy` to mark a QA role change.
+  ["qa:live-experience", "a stored marker VALUE, not a command"],
+]);
+
+const CITE = /`([a-z]+:[a-z0-9-]+)`/g;
+const CITED_PREFIX = /^(test|red|qa|e2e|ops|db|migrate|verify|perf|selcom|backfill|build):/;
+let cites = 0;
+const seenPlanned = new Set();
+for (const f of readdirSync(DOCS).filter((n) => n.endsWith(".md"))) {
+  readFileSync(join(DOCS, f), "utf8").split(/\r?\n/).forEach((line, i) => {
+    const exempt = documentsARemoval(line);
+    for (const m of line.matchAll(CITE)) {
+      const name = m[1];
+      if (!CITED_PREFIX.test(name)) continue;
+      cites++;
+      if (scripts.has(name)) continue;
+      if (PLANNED_OR_DELIBERATE.has(name)) { seenPlanned.add(name); continue; }
+      if (exempt) continue;
+      report("no such script", f, name, i + 1);
+    }
+  });
+}
+// ⛔ The same two-way ratchet MISSING_EVIDENCE carries, for the same reason: a list that only
+// ever grows stops being a record of exceptions and becomes a licence.
+for (const [name, why] of PLANNED_OR_DELIBERATE) {
+  if (scripts.has(name)) { bad++; console.log(`  ✗ ${name} EXISTS now — remove it from PLANNED_OR_DELIBERATE (${why})`); }
+  else if (!seenPlanned.has(name)) { bad++; console.log(`  ✗ ${name} is no longer cited — remove it from PLANNED_OR_DELIBERATE (${why})`); }
+}
+
+console.log(`\nchecked ${links} links · ${paths} script paths · ${npms} npm refs · ${cites} bare script citations · ${shots} evidence shots across docs/`);
 if (MISSING_EVIDENCE.size) {
   console.log(`⚠️  ${MISSING_EVIDENCE.size} historical screenshot(s) cited but never committed — listed in MISSING_EVIDENCE, and that list may only shrink.`);
 }

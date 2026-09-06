@@ -266,7 +266,7 @@ family of whole-table reads that are fine at 100 users and will not be at 10,000
 | Identity uniqueness enforced by the DATABASE: partial unique `(idType, idNumber)` WHERE not REJECTED | migration `20260820120000` |
 | Audit payloads: phones masked via `maskPhoneForAudit`; grep found **no credential in any `payload:`** | `auth-service.ts` et al. |
 | `msisdn`-bearing CSV export: RBAC-gated, every export COMPLIANCE-audited with filter set + row count | `api/admin/transactions/export` |
-| KYC document reads TOTP-gated **in code — ⚠️ VOID IN PRODUCTION**: `DISABLE_ADMIN_TOTP=true` is set, so an ADMIN session reaches identity documents with no second factor. That is Ali's dated decision (`GO-LIVE-RUNBOOK.md` §7), surfaced honestly by `/api/health` and `test:admin-2fa-honesty`, and is not being re-raised — but this table should not have listed the gate as an effective control. | `api/admin/kyc-doc/route.ts:46` |
+| KYC document reads TOTP-gated **in code — ⚠️ VOID IN PRODUCTION**: `DISABLE_ADMIN_TOTP=true` is set, so an ADMIN session reaches identity documents with no second factor. That is Ali's dated decision (`GO-LIVE-RUNBOOK.md` §7), surfaced honestly by `/api/health` and `test:cert-a6` (`scripts/admin-2fa-honesty.test.mts`), and is not being re-raised — but this table should not have listed the gate as an effective control. | `api/admin/kyc-doc/route.ts:46` |
 | All 40 `api/dev-test/*` routes 404 in production — **verified per-file, 0 unguarded** | grep sweep |
 | `/api/diagnostic`: session-required, masked phone, self-only data | `api/diagnostic/route.ts` |
 | SSE `/api/events`: session-validated, user-scoped events filtered to the connected session's userId | `api/events/route.ts` |

@@ -11,6 +11,11 @@
  * Also unit-tests refundBonusLocked (the lock-free unwind primitive) for exact
  * money conservation.
  */
+// ⚠️ THE BONUS WALLET IS WITHDRAWN FROM THE PRODUCT (`src/lib/feature-state.ts`), and since
+// 2026-09-06 `creditBonus` enforces that: the product state outranks the operator config, so no
+// grant is minted while the feature sleeps. This suite exercises the bonus machinery a
+// re-enablement depends on, so it drives the ON path — Law 2, one home, see the module header.
+import "./lib/bonus-feature-on.mts";
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { createMarket, buyPosition, getMarket } from "../src/lib/server/market-service.ts";
 import { creditBonus, spendBonusLocked, refundBonusLocked } from "../src/lib/server/bonus-service.ts";

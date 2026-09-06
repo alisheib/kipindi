@@ -266,7 +266,19 @@ async function makeMarket(): Promise<string> {
 // The milestone prize is once-per-recruit. Two concurrent qualifying bets both
 // read the "no prior prize" guard before either records → without the payPrize
 // lock they'd BOTH pay → double reward. The lock makes it exactly-once.
+//
+// ⚠️ FEATURE_BONUS IS PINNED **ACTIVE FOR THIS SECTION ONLY**, and the scope is the point.
+// Since 2026-09-06 `creditBonus` refuses while the bonus wallet is withdrawn from the product,
+// so the prize would land as cash and the `bonusDelta` assertion below would read 0 — measuring
+// the feature state instead of the LOCK, which is this section's entire subject. §F exists to
+// prove the exactly-once guard on the BONUS payer under a real race, so it must drive the bonus
+// destination. ⛔ Scoped rather than ambient (no `lib/bonus-feature-on.mts` import) because §A–§E
+// and §G–§H of this suite are about wallet and settlement concurrency and must keep running
+// against the SHIPPED product state. See that module's header for which of the two to reach for.
 {
+  const bonusStateBefore = process.env.FEATURE_BONUS;
+  process.env.FEATURE_BONUS = "ACTIVE";
+  try {
   const cfg = getAffiliateConfig();
   if (cfg.enabled && cfg.prize.enabled && cfg.prize.milestone === "FIRST_BET") {
     const PRIZE = cfg.prize.amountTzs;
@@ -296,6 +308,12 @@ async function makeMarket(): Promise<string> {
     ok("F: referrer credited the prize exactly once", bonusDelta === PRIZE, `Δ=${bonusDelta} expected=${PRIZE}`);
   } else {
     ok("F: skipped (prize/FIRST_BET not default-enabled)", true);
+  }
+  } finally {
+    // ⛔ RESTORED, not deleted: an unscoped override would leak into §G/§H and every later
+    // assertion would be measuring a product state this suite never meant to change.
+    if (bonusStateBefore === undefined) delete process.env.FEATURE_BONUS;
+    else process.env.FEATURE_BONUS = bonusStateBefore;
   }
 }
 
