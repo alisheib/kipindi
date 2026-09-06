@@ -1292,9 +1292,15 @@ Each is fine today and bites at a stated threshold — none is speculative:
 
 ## What still governs (read before touching anything)
 
-- [`docs/README.md`](README.md) — **the index. 41 docs, each with an honest status: LAW, LIVE,
+- [`docs/README.md`](README.md) — **the index. Every doc, each with an honest status: LAW, LIVE,
   RECORD, OPEN, DESIGN or HISTORICAL.** Read it before opening anything else in `docs/`; from
-  the outside a snapshot of a Tuesday in May looks identical to a law
+  the outside a snapshot of a Tuesday in May looks identical to a law.
+  ⚠️ **This line said "41 docs" until 2026-09-06; there were 83.** The index itself already
+  refuses to quote a count — *"Derive it, never quote it"* — after being wrong about its own
+  file total twice. Quoting one here reintroduced the same defect one level up, in the document
+  that tells you which documents to trust. 🔒 The index is now gated: `npm run test:docs`
+  compares the SET of `docs/*.md` on disk against the set README links, so an unindexed doc is a
+  red run rather than a discovery two months later
 - [`docs/MODULE-CERTIFICATION-PROGRAM.md`](MODULE-CERTIFICATION-PROGRAM.md) — **52 modules, 8
   gates, 0 certified.** The program that finishes the platform module by module. This file
   (launch hardening) and that one (certification) are siblings; neither supersedes the other
