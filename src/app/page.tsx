@@ -89,7 +89,11 @@ export default async function LandingPage() {
     move24h: undefined,
     createdAtMs: Date.parse(m.createdAt),
     bettableUntilMs: Date.parse(m.selectionClosedAt ?? m.resolutionAt),
+    resolvesAtMs: Date.parse(m.resolutionAt),
     selectionClosed: isSelectionClosed(m),
+    // The landing hero shows `open` only, which cannot contain a decided market — but the field
+    // is required rather than optional precisely so this is a stated fact and not an omission.
+    verdictRecorded: m.resolvedOutcome != null,
     status: m.status as HeroRow["status"],
     // No watchlist on the landing page; `matchesStatus(…, "open")` does not read this field.
     watched: false,

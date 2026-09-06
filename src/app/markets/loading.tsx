@@ -34,6 +34,12 @@ import { MARKET_CARD_H } from "@/components/markets/card-geometry";
  * how the two skeletons stay equal — the previous pair drifted to 220 vs 349 precisely because
  * each carried its own literal.
  */
+/**
+ * The status segment widths, in `STATUS_IDS` order: open · today · new · progress · watch · all.
+ * Exported so a guard can count them against the real status list without parsing JSX.
+ */
+export const STATUS_PILL_W = [64, 104, 60, 92, 84, 52];
+
 export default async function MarketsLoading() {
   const { t } = await getServerT();
   return (
@@ -60,7 +66,13 @@ export default async function MarketsLoading() {
       <div aria-hidden className="sticky top-[56px] z-20 -mx-3 bg-bg-base px-3 lg:-mx-6 lg:px-6">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 pt-2.5">
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
-            {[64, 104, 60, 84, 52].map((w, i) => (
+            {/* ⛔ ONE WIDTH PER STATUS, IN `STATUS_IDS` ORDER — open · today · new · progress ·
+                watch · all. The widths are per-LABEL so they stay literal, but the COUNT is not
+                allowed to drift: `test:board-discovery` §7 asserts this array is exactly as long
+                as `STATUS_IDS`. It was five entries when a sixth status shipped on 2026-09-06,
+                which would have drawn a bar one pill short and then widened it under the
+                reader's eye — the B-29 shape this file's own header exists to document. */}
+            {STATUS_PILL_W.map((w, i) => (
               <div key={i} className="kp-shimmer-track h-[44px] rounded-pill bg-bg-elevated" style={{ width: w }} />
             ))}
           </div>

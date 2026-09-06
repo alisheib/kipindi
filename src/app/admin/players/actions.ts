@@ -17,11 +17,9 @@
  * directly — the modified-client case — is refused by the same matrix the UI consulted, so the
  * absent button and the refused request are the SAME rule rather than two that can drift.
  */
-import { currentSession } from "@/lib/server/auth-service";
-import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
 import { mayReveal } from "@/lib/server/rbac";
-import { requireStaff } from "@/lib/server/rbac-guard";
+import { softRequireConsole } from "@/lib/server/rbac-guard";
 import { SENSITIVE_FIELDS, isSensitiveFieldKey } from "@/lib/server/sensitive-fields";
 
 export type RevealResult =
@@ -32,13 +30,16 @@ export async function revealSensitiveAction(
   field: string,
   subjectId: string,
 ): Promise<RevealResult> {
-  // The route itself is `support`-domain; reaching this action requires the same.
-  await requireStaff("support");
-  const session = await currentSession();
-  if (!session) return { ok: false, error: "Not signed in." };
-  const viewer = await db.user.findById(session.userId);
-  const role = viewer?.role;
-  if (!role) return { ok: false, error: "Not signed in." };
+  // 🔴 THIS USED TO READ `await requireStaff("support")` AND IT REFUSED COMPLIANCE EVERYWHERE.
+  // `<Sensitive>` renders on support, compliance, trading AND accounting routes, so no single
+  // domain describes this action — and `DEFAULT_GRANTS.COMPLIANCE` has `support.canAct: false`,
+  // so the one non-ADMIN role holding `identity.contact: read` was refused on every reveal on
+  // every page, by a THROW the control could not display, while writing a SECURITY escalation
+  // row for an officer doing their job. See `softRequireConsole`'s header.
+  const gate = await softRequireConsole("pii.reveal", "You are not signed in to the console.");
+  if (!gate.ok) return gate;
+  const session = { userId: gate.userId };
+  const role = gate.role;
 
   // ⛔ An unknown field key is refused rather than resolved — the client supplies this string.
   if (!isSensitiveFieldKey(field)) return { ok: false, error: "Unknown field." };
@@ -65,7 +66,12 @@ export async function revealSensitiveAction(
     category: "COMPLIANCE",
     action: "pii.revealed",
     actorId: session.userId,
-    targetType: "User",
+    // ⛔ FROM THE REGISTRY, NOT THE LITERAL "User". `msisdn`'s subject is a TRANSACTION, and an
+    // audit row that files a payout-destination read against a player id points an investigator
+    // at the wrong record — the one place this trail is read is after an incident.
+    // (`in`, not `?.` — the registry is `as const`, so entries that omit the key genuinely do
+    // not carry the property and `spec.targetType` is a compile error rather than `undefined`.)
+    targetType: "targetType" in spec ? spec.targetType : "User",
     targetId: subjectId,
     payload: { field, readClass: spec.readClass, role },
   });

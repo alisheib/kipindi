@@ -16,8 +16,8 @@ objection window cut from **24 hours to 1**.
 | **Handoff** | [`LIVE-QA-CAMPAIGN.md`](LIVE-QA-CAMPAIGN.md) §6b, topmost `RESUME AT` (session 87) |
 | **Deploy 1** | ✅ **LIVE** — the seal-time notice (`E-295`) and the officer hold (`E-296`), plus `E-297`–`E-299`. The two controls that had to exist BEFORE the window could shorten |
 | **Deploy 2** | ✅ **LIVE — the window is 1 hour on production.** Flipped through the audited `/admin/config` action; `market-config-diff.cjs` snapshots either side prove exactly one field moved (24 → 1). Verified in all three locales on `/fairness` and `/legal/terms` §6, whose version bumped to 2026-09-05. ⚠️ Markets sealed BEFORE the flip keep their 24-hour deadline — five were read from the database and each still carries 24.0 h |
-| **Deploy 3** | ⚠️ **SUPERSEDED BY ALI 2026-09-06 — READ THE NEW DOOR.** It was scoped to /positions; Ali corrected that: the tab belongs on the MARKETS BOARD, because the player who loses sight of a closed poll is the one with NO position. New door: [SESSION-PROMPT-PROGRESS-AND-PHONE.md](SESSION-PROMPT-PROGRESS-AND-PHONE.md), which also carries a second job (full phone numbers in admin behind an eye). |
-| **Owed** | A post-flip long-form seal has not happened yet, so the 1-hour stamp is proven by `test:settlement-gate` §7 (which derives the stamp from config rather than asserting a literal) and **has not yet been observed on a live row**. Say so; do not claim it |
+| **Deploy 3** | ✅ **DELIVERED 2026-09-06 (session 88) AS A BOARD LENS, NOT A POSITIONS TAB.** Ali corrected the scope: the player who loses sight of a closed poll is the one with **no** position, so `/positions` can never help them. Shipped as the sixth `STATUS_IDS` entry on `/markets`, with the second job from the same door (full phone numbers in admin behind an audited eye). Findings `E-303`…`E-313`; door [SESSION-PROMPT-PROGRESS-AND-PHONE.md](SESSION-PROMPT-PROGRESS-AND-PHONE.md) |
+| **Owed** | ① A post-flip long-form seal has not happened yet, so the 1-hour stamp is proven by `test:settlement-gate` §7 (which derives the stamp from config rather than asserting a literal) and **has not yet been observed on a live row**. Say so; do not claim it. ② `E-313` — the READ-TIERS drift ratchet does not sweep `src/lib/server/**.ts`. ③ The `getBoard` widening is **unexercised on production** while state C is empty (B2 was 0 at the 2026-09-06 census); proven locally and by mutation only |
 | **Blocked** | Nothing |
 
 ⚠️ **Why the window moved SECOND and not first.** Shortening it before Deploy 1 would have left
@@ -25,9 +25,16 @@ the platform describing a control it no longer had: 50pick told a bettor **nothi
 verdict was recorded, and the spec's "dispute raised by an authorized admin" had **no mechanism
 at all**. Both were built first, and only then was the window shortened.
 
-⛔ **What is left is the half management asked for FIRST** — the player's own "In Progress" view.
-Read the plan's §6 before starting it: the phase belongs in `discovery.ts` beside `matchesStatus`
-(not a new module), and the position card cannot be reused unchanged.
+✅ **THE "IN PROGRESS" HALF IS DONE (2026-09-06), AND IT LANDED WHERE THE PLAN SAID IT WOULD** —
+in `discovery.ts` beside `matchesStatus`, not a new module. ⛔ **But not where the plan said it
+BELONGED:** its D4 read *"positions page only, no lens on the board"*, and that was wrong. The
+board is the surface, because the person who loses the poll is the person with no position.
+
+⭐ **The definition that shipped, because it is easy to get subtly wrong:** in progress =
+selection closed **AND no verdict recorded**. A market can sit at `status: "CLOSED"` with an
+outcome already stamped and the money not yet moved; Ali's stopping condition is the RESULT, so
+that market is NOT in progress. It is guarded as a **partition** over the unsettled book rather
+than as a membership test.
 
 ## THE TWO PROGRAMMES THAT WERE ALREADY HERE
 

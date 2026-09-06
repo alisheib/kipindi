@@ -1,6 +1,28 @@
 # SESSION PROMPT — the "In Progress" board tab, and full phone numbers in admin
 
-> 🔵 **LIVE — this is the door for the next session.** Ali dictated both items on 2026-09-06.
+> ✅ **BOTH JOBS DELIVERED — session 88, 2026-09-06. THIS DOOR IS SPENT.**
+> Findings `E-303`…`E-313` in [`LIVE-QA-CAMPAIGN.md`](LIVE-QA-CAMPAIGN.md) §6; the handoff is the
+> topmost `RESUME AT` in §6b; the phone ruling is in
+> [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) (2026-09-06).
+>
+> ⭐ **§2b ASKED WHICH OF TWO THINGS THE PHONE JOB WAS, AND THE ANSWER IS THE FIRST: A WIRING
+> JOB.** READ-TIERS D3 is *completed*, not reversed — §4c's `read` cell already means "masked at
+> rest, MAY reveal", and D1 is argued FROM the phone being exactly that. `identity.contact` had
+> named the phone in its own summary since the axis shipped and governed only the email. ⚠️ Two
+> genuine owner rulings were still needed and were put to Ali before any code: money-movement
+> pages come under the eye (crossing D3's own scope fence), and lists get an eye per row.
+>
+> ⚠️ **Its measured numbers below are from 2026-09-06 and the census was RE-RUN that morning:**
+> A 43 · B 2 · C 12 · **D 0** · E **127** — so §1b's "D 8 / E 119" is already stale, exactly as
+> its own header warns. Re-derive; do not quote.
+>
+> ⛔ **Kept, not deleted, because §1e's traps were all real** — the Chinese `进行中` collision
+> (avoided: the tab is `等待结果`), the scroll-reset warning, the type-scale ratchet, and the
+> skeleton note, which caught a live defect (`E-307`).
+>
+> ---
+>
+> 🔵 **Originally: the door for the next session.** Ali dictated both items on 2026-09-06.
 > Copy the block in §0 into a fresh session. Everything after it is the evidence that block
 > refers to, gathered and measured on 2026-09-06 so the next session does not have to re-derive
 > it from scratch — but ⛔ **every number in here is a measurement with a date on it, and this

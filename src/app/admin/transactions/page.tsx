@@ -27,6 +27,7 @@ import { AdminRestricted } from "@/components/admin/admin-restricted";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Chip } from "@/components/ui/chip";
+import { Sensitive } from "@/components/ui/sensitive";
 import { Select } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { currentSession } from "@/lib/server/auth-service";
@@ -293,7 +294,7 @@ export default async function AdminTransactionsPage({ searchParams }: { searchPa
                             ? <span className="text-[var(--gold-300)]" title={t.providerStatus ?? "No gateway reference — this movement cannot be reconciled"}>missing</span>
                             : <span className="text-text-tertiary">—</span>}
                       </td>
-                      <td className="whitespace-nowrap font-mono text-xs text-text-tertiary">{t.msisdn ?? "—"}</td>
+                      <td className="whitespace-nowrap font-mono text-xs text-text-tertiary">{t.msisdn ? <Sensitive field="msisdn" subjectId={t.id} value={t.msisdn} /> : "—"}</td>
                       <td className="whitespace-nowrap text-right font-mono tabular text-text-tertiary">{t.fee ? formatTzs(t.fee) : "—"}</td>
                     </tr>
                   );

@@ -18,65 +18,51 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { injectDefect } from "./red-anchor.mjs";
+import { MUTATIONS } from "./anchors/board-discovery.anchors.mjs";
 
-const CONTRACT = "src/lib/markets/discovery.ts";
-const PAGE = "src/app/markets/page.tsx";
+// (The file paths live with the mutations, in scripts/anchors/board-discovery.anchors.mjs.)
 
-const originals = new Map([
-  [CONTRACT, readFileSync(CONTRACT, "utf8")],
-  [PAGE, readFileSync(PAGE, "utf8")],
-]);
+/**
+ * ⛔ DERIVED FROM THE MUTATIONS, NOT HAND-LISTED. It was a two-entry literal until 2026-09-06,
+ * so a case naming a third file would have read `undefined` as its source and thrown somewhere
+ * unhelpful — and, worse, that file would never have been snapshotted, so the restore-and-verify
+ * in the `finally` would have reported a clean tree while leaving a real edit on disk. A red
+ * harness that mutates the repo and then certifies it clean is the failure this fleet has
+ * already paid for once.
+ */
+const originals = new Map(MUTATIONS.map((m) => [m.file, readFileSync(m.file, "utf8")]));
 
-/** Every case is a defect with a provenance, not an invented mutation. */
-const CASES = [
-  {
-    name: 'the landing board goes back to a 24-hour window (THE 2026-08-10 BUG)',
-    file: CONTRACT,
-    from: '  status: "open" as StatusId,',
-    to: '  status: "today" as StatusId,',
-  },
-  {
-    name: 'the default status quietly gains a clock (same harm, different spelling)',
-    file: CONTRACT,
-    from: '      return row.status === "LIVE" && !row.selectionClosed;',
-    to: '      return row.status === "LIVE" && !row.selectionClosed && row.bettableUntilMs - nowMs <= DAY_MS;',
-  },
-  {
-    name: 'counts computed over the census instead of the active filters',
-    file: CONTRACT,
-    from: "  const next = { ...state, ...patch };",
-    to: "  const next = { ...state, ...patch, pool: 'any', odds: 'any', topic: 'all' };",
-  },
-  {
-    name: '`New` drifts back to the kit\'s clock ("added in the last four days")',
-    file: CONTRACT,
-    from: '      return row.status === "LIVE" && row.pool === 0 && row.predictors === 0;',
-    to: '      return row.status === "LIVE" && nowMs - row.createdAtMs <= 4 * DAY_MS;',
-  },
-  {
-    name: '"recently resolved" goes back to slicing the ascending board order',
-    file: PAGE,
-    from: "    .sort((a, b) => b.resolutionAt.localeCompare(a.resolutionAt));",
-    to: "    .slice();",
-  },
-  {
-    name: "the page falls back to its own bare status literal again",
-    file: PAGE,
-    from: "  const state = parseDiscoveryParams(sp, MARKET_CATEGORIES);",
-    to: '  const state = { ...parseDiscoveryParams(sp, MARKET_CATEGORIES), status: (sp.status as never) ?? "open" };',
-  },
-];
+/**
+ * ⛔ THE CASES ARE DECLARED AS DATA IN `scripts/anchors/board-discovery.anchors.mjs`, NOT HERE.
+ *
+ * 🔴 They were inline until 2026-09-06, and that cost exactly what the sidecar convention exists
+ * to prevent. Repairing a live defect in `matchesStatus`'s `new` arm moved the line the
+ * `new-drifts-to-a-clock` case anchored on; this harness printed `anchor missing` in the middle
+ * of an otherwise healthy-looking run, and `test:red-anchors` §3 could not audit it because it
+ * audits declaration FILES and this harness had none. A red proof that has stopped proving
+ * anything is worse than no proof, because the gate above it still prints green.
+ */
+const CASES = MUTATIONS;
 
 let failures = 0;
 
-function gateExits() {
+/**
+ * Run the gate and return BOTH its exit code and what it printed.
+ *
+ * ⭐ THE OUTPUT IS THE POINT. Matching on a non-zero exit alone cannot distinguish a defect
+ * caught by the assertion that exists to catch it from a syntax error, an unrelated regression,
+ * or a suite that crashed before it ever reached that leg — all three "go red". So every case
+ * declares the assertion it must break and this harness matches `FAIL <expect>`.
+ */
+function runGate() {
   try {
-    execFileSync("npx", ["tsx", "scripts/board-discovery.test.mts"], { stdio: "pipe", shell: true });
-    return 0;
+    const out = execFileSync("npx", ["tsx", "scripts/board-discovery.test.mts"], { stdio: "pipe", shell: true });
+    return { code: 0, out: String(out) };
   } catch (e) {
-    return e.status ?? 1;
+    return { code: e.status ?? 1, out: `${e.stdout ?? ""}${e.stderr ?? ""}` };
   }
 }
+const gateExits = () => runGate().code;
 
 const restore = () => {
   for (const [f, s] of originals) writeFileSync(f, s, "utf8");
@@ -102,13 +88,23 @@ try {
       continue;
     }
     writeFileSync(c.file, mutated, "utf8");
-    const code = gateExits();
+    const { code, out } = runGate();
     restore();
     if (code === 0) {
-      console.log(`  ⛔ NOT CAUGHT — ${c.name}`);
+      console.log(`  ⛔ NOT CAUGHT — ${c.name}\n     ${c.why}`);
+      failures++;
+    // ⚠️ MATCHED PER LINE, not as `FAIL ${expect}`. The gate's labels carry section numbers and
+    // markers ("6.5 · ⛔ getBoard does not…"), so a naive prefix match forces every `expect` to
+    // restate a label verbatim — and then a label reworded for clarity silently turns a proof
+    // into a "wrong reason". A line that FAILED and contains the distinctive phrase is the
+    // property actually meant.
+    } else if (c.expect && !out.split(/\r?\n/).some((l) => /^\s*FAIL\b/.test(l) && l.includes(c.expect))) {
+      // ⛔ RED FOR THE WRONG REASON IS NOT A PASS. The gate fell over, but not on the assertion
+      // this defect was supposed to break — so this case is proving something else, or nothing.
+      console.log(`  ⛔ WRONG REASON — ${c.name}\n     expected the gate to print: FAIL ${c.expect}`);
       failures++;
     } else {
-      console.log(`  ✔ CAUGHT  ${c.name}`);
+      console.log(`  ✔ CAUGHT  ${c.name} — on its own assertion`);
     }
   }
 } finally {

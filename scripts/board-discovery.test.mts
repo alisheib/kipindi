@@ -48,16 +48,30 @@
  *
  * Run: npm run test:board-discovery     RED proof: npm run red:board-discovery
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import {
   DEFAULTS,
   DEFAULT_STATE,
+  STATUS_IDS,
   countFor,
   filterRows,
   matchesStatus,
   type DiscoveryRow,
 } from "../src/lib/markets/discovery.ts";
+// The skeleton's own declaration of how many status pills it reserves space for. Imported, not
+// re-typed, so §7 compares the real array against the real status list.
+import { STATUS_PILL_W } from "../src/app/markets/loading.tsx";
+
+/**
+ * The status-id alternation used by §2's source scans, BUILT FROM `STATUS_IDS`.
+ *
+ * ⛔ It was a hand-typed `(open|today|new|watch|all)` until 2026-09-06. A hand-typed population
+ * silently stops covering a new member: adding `progress` would have left two scans that read
+ * as prohibitions on "a bare status literal" while being blind to the newest literal anyone
+ * could type. A guard that chooses its own population cannot fail.
+ */
+const STATUS_ALT = STATUS_IDS.join("|");
 
 const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
 const PAGE = join(ROOT, "src/app/markets/page.tsx");
@@ -87,7 +101,9 @@ function row(over: Partial<DiscoveryRow> = {}): DiscoveryRow {
     move24h: 1,
     createdAtMs: NOW - DAY,
     bettableUntilMs: NOW + DAY,
+    resolvesAtMs: NOW + 2 * DAY,
     selectionClosed: false,
+    verdictRecorded: false,
     status: "LIVE",
     watched: false,
     ...over,
@@ -141,7 +157,7 @@ log("\n── 2 · one definition, not four ────────────
 {
   // The page must not re-express a default it can import. Four sites once hard-coded the
   // window independently; changing three of four produced links that disagreed with the page.
-  const bareStatusLiteral = /\?\?\s*"(open|today|new|watch|all)"/.test(src);
+  const bareStatusLiteral = new RegExp(`\\?\\?\\s*"(${STATUS_ALT})"`).test(src);
   check("the page does not fall back to a bare status literal", !bareStatusLiteral,
     'use DEFAULTS/parseDiscoveryParams so every site moves together');
 
@@ -156,7 +172,7 @@ log("\n── 2 · one definition, not four ────────────
 
   // Omitting a default from the URL must be decided by comparing against DEFAULTS, which is
   // the builder's job — so the page should never compare a status to a literal itself.
-  const literalOmit = /!==\s*"(open|today|new|watch|all)"\s*\)/.test(src);
+  const literalOmit = new RegExp(`!==\\s*"(${STATUS_ALT})"\\s*\\)`).test(src);
   check("no href builder compares the status to a literal", !literalOmit,
     "an omit-if-default check pinned to a literal produces links that disagree with the page");
 }
@@ -218,6 +234,115 @@ log("\n── 5 · 'New' follows the card, never a clock ───────�
   check("a market created minutes ago but already staked is NOT New",
     !matchesStatus(busyNew, "new", NOW),
     "New has drifted back to a clock — it must follow market-card.tsx");
+
+  // 🔴 THE LEAK, LIVE UNTIL 2026-09-06. `market-card.tsx` gates its NEW badge on its own
+  // `live = status === "LIVE" && !selectionClosed`, so it never drew NEW on a shut market —
+  // while this predicate happily filed one under New. The board and the card disagreed, which
+  // is the exact thing the comment above promises they cannot do.
+  check("a market with no pool and no predictors whose SELECTION HAS CLOSED is not New",
+    !matchesStatus(row({ pool: 0, predictors: 0, selectionClosed: true }), "new", NOW),
+    "the board would advertise a market that has stopped taking bets as somewhere to place the first one");
+}
+
+log("\n── 6 · the board carries the whole unsettled book ──────────────");
+/**
+ * ⭐ THE INVARIANT THE 2026-09-06 WIDENING RESTS ON, ASSERTED RATHER THAN ASSUMED.
+ *
+ * `getBoard` stopped filtering on `isClosedByTime`, so LIVE rows past their resolution clock now
+ * reach the board. That is only safe because such a row can never land in `open` or `today` —
+ * and that in turn holds only because `selectionClosedAt` is always EARLIER than `resolutionAt`
+ * (`market-service.ts` computeSelectionClosedAt; the AI-poll editor enforces the same). If a
+ * write path ever inverted them, a market nobody can bet on would appear on the default board
+ * with a live YES/NO pair. So the property is pinned here instead of trusted.
+ */
+{
+  const pastResolution = row({ selectionClosed: true, bettableUntilMs: NOW - 2 * DAY, resolvesAtMs: NOW - DAY });
+  check("6.1 · a market past its resolution clock is NOT offered as open",
+    !matchesStatus(pastResolution, "open", NOW),
+    "the widened board would put an unbettable market under the default lens");
+  check("6.2 · …nor under Closing today",
+    !matchesStatus(pastResolution, "today", NOW));
+  check("6.3 · …but it IS in progress — that is the whole reason the filter was removed",
+    matchesStatus(pastResolution, "progress", NOW));
+  check("6.4 · …and it is still inside the unsettled book",
+    matchesStatus(pastResolution, "all", NOW));
+
+  // The source-level half: the filter must stay gone, or the tab silently empties again.
+  check("6.5 · ⛔ getBoard does not re-filter LIVE rows on isClosedByTime",
+    !/live\.filter\(\s*\(m\)\s*=>\s*!isClosedByTime/.test(src),
+    "restoring that filter hides every market whose result is overdue from every player surface");
+
+  /**
+   * ⛔ 6.6 / 6.7 — THE INVARIANT THE WIDENING RESTS ON, PINNED WHERE IT CAN ROT.
+   *
+   * Removing the `isClosedByTime` filter also removed a BACKSTOP. If a market could ever hold
+   * `selectionClosedAt >= resolutionAt`, then `isSelectionClosed` would read false while the
+   * resolution clock had passed — and the row would land in `open`, on the DEFAULT board, with
+   * live YES/NO buttons on a market that cannot take a bet. The old filter caught that by
+   * accident; nothing else does.
+   *
+   * Two things make it impossible, and neither lives in this file:
+   *   · `createMarket` corrects any `selectionClosedAt` that is not strictly inside
+   *     (now, resolutionAt) — every creation path funnels through it (admin, AI polls, events,
+   *     player proposals).
+   *   · Nothing MUTATES `resolutionAt` on an existing market outside `/api/dev-test/`, which is
+   *     404 in production and blocked at the edge.
+   * The second is a claim about a POPULATION, so it is measured rather than asserted in prose.
+   */
+  const svc = readFileSync(join(ROOT, "src/lib/server/market-service.ts"), "utf8");
+  check("6.6 · createMarket refuses a selection close that is not strictly before resolution",
+    /selMs <= nowMs \|\| selMs >= resMs/.test(svc),
+    "without this correction an inverted pair would put an unbettable market under the default lens");
+
+  {
+    const files: string[] = [];
+    (function walk(d: string) {
+      for (const e of readdirSync(d)) {
+        const full = join(d, e);
+        if (statSync(full).isDirectory()) walk(full);
+        else if (/\.(ts|tsx)$/.test(e)) files.push(full);
+      }
+    })(join(ROOT, "src"));
+    /**
+     * ⚠️ REVIEWED, WITH A REASON — and the reason is the difference between a POLL and a MARKET.
+     * `ai-poll-generation.ts` assigns `poll.resolutionAt` / `sanitised.resolutionAt` on an AI
+     * CANDIDATE, which is a draft row in a different table. A candidate becomes a market only by
+     * being published through `createMarket`, which is where 6.6's correction runs — so these
+     * assignments cannot produce an inverted pair on a `PredictionMarket`. ⛔ Kept as a named
+     * exemption rather than by narrowing the regex to `m.` / `market.`, because a variable-name
+     * regex would silently stop covering the next author who calls their local `row`.
+     */
+    const REVIEWED_NON_MARKET = new Map<string, string>([
+      ["src/lib/server/ai-poll-generation.ts",
+       "assigns on an AI poll CANDIDATE, not a PredictionMarket — publication goes through createMarket, where 6.6's correction runs"],
+    ]);
+    const mutators = files
+      .map((f) => f.slice(join(ROOT, "src").length - 3).replace(/\\/g, "/"))
+      .filter((rel) => !rel.includes("/api/dev-test/"))
+      .filter((rel) => !REVIEWED_NON_MARKET.has(rel))
+      .filter((rel) => /\.resolutionAt\s*=[^=]/.test(readFileSync(join(ROOT, rel), "utf8")));
+    check("6.7 · ⛔ nothing outside dev-test mutates resolutionAt on an existing MARKET",
+      mutators.length === 0,
+      mutators.join(", ") || `0 — the pair can only be set at creation, where it is corrected (${REVIEWED_NON_MARKET.size} reviewed non-market writer)`);
+  }
+}
+
+log("\n── 7 · the skeleton is the right shape ─────────────────────────");
+/**
+ * 🔴 A SKELETON THAT LIES ABOUT THE PAGE IS WORSE THAN NO SKELETON — `markets/loading.tsx`'s own
+ * header documents the 2026-08-10 measurement where it drew 220px cards against a real 349.4px.
+ * The status strip has the same exposure one dimension along: its pill widths are a hand-typed
+ * array, so shipping a sixth status leaves the first paint one pill short and then widens the
+ * bar under the reader's eye. The widths must stay literal (they are per-label); the COUNT must
+ * not. Caught here rather than by looking, because a missing pill is four pixels of shimmer.
+ */
+{
+  check("7.1 · the skeleton draws exactly one status pill per status",
+    STATUS_PILL_W.length === STATUS_IDS.length,
+    `skeleton draws ${STATUS_PILL_W.length}, STATUS_IDS has ${STATUS_IDS.length}`);
+  check("7.2 · …and every one of them has a real width",
+    STATUS_PILL_W.every((w) => Number.isFinite(w) && w > 0),
+    "a zero-width shimmer pill reserves no space at all");
 }
 
 log("\n────────────────────────────────────────────────────────────────");

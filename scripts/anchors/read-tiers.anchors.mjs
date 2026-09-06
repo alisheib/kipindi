@@ -183,4 +183,76 @@ export const MUTATIONS = [
     to: `  if (false) await audit({`,
     expect: "6.9 \u26d4 D4 \u00b7 the reveal AWAITS an audit row",
   },
+
+  /* \u2500\u2500 \u00a78 \u00b7 the phone, wired 2026-09-06 on Ali's ruling \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+   *
+   * \u2b50 EVERY ONE OF THESE IS A WAY THE PHONE COULD LOOK GOVERNED AND BE GOVERNED BY NOTHING.
+   * That is the failure this field actually had for the whole life of the axis: seven surfaces
+   * masked it by hand, the /admin/roles editor told the Owner the cell controlled it, and the
+   * two facts had never met. A guard for a REFUSAL is the easiest thing in software to write
+   * vacuously, so each mutation restores a real, shipped shape rather than tripping a regex.
+   */
+  {
+    name: "phone-loses-its-class",
+    why: "the registry entry survives but stops naming `identity.contact`, so the cell an Owner flips at /admin/roles governs the email and silently not the phone \u2014 which is EXACTLY the state this work found and fixed, and the state a reviewer would call harmless",
+    file: "src/lib/server/sensitive-fields.ts",
+    suite: "read-tiers",
+    from: `  phone: {\n    readClass: "identity.contact",`,
+    to: `  phone: {\n    readClass: "history.activity",`,
+    expect: "8.1 the phone is IN the registry, under identity.contact",
+  },
+  {
+    name: "msisdn-reads-the-account-phone",
+    why: "\ud83d\udd34 the payout destination is read back off `user.phoneE164`. The mask still renders, the eye still opens, the audit row is still written \u2014 and the number revealed on a MONEY row is the player's account phone rather than where the money actually went. Nothing about the screen looks wrong",
+    file: "src/lib/server/sensitive-fields.ts",
+    suite: "read-tiers",
+    from: `    read: async (subjectId) => (await db.txn.findById(subjectId))?.msisdn ?? null,`,
+    to: `    read: async (subjectId) => (await db.user.findById(subjectId))?.phoneE164 ?? null,`,
+    expect: "8.2 \u26d4 msisdn is a SEPARATE field addressing a TRANSACTION",
+  },
+  {
+    name: "reveal-pinned-to-one-domain-again",
+    why: "\ud83d\udd34 the exact defect that was live until 2026-09-06: the reveal goes back to `requireStaff(\"support\")`, and COMPLIANCE \u2014 the one non-ADMIN role holding `identity.contact: read` \u2014 is refused on every reveal on every page by a THROW the control cannot display, while a SECURITY escalation row is written for an officer doing their job",
+    file: PLAYER_ACTIONS,
+    suite: "read-tiers",
+    from: `  const gate = await softRequireConsole("pii.reveal", "You are not signed in to the console.");`,
+    to: `  const gate = await requireStaff("support") && { ok: true, userId: "", role: "ADMIN" };`,
+    expect: "8.4 \ud83d\udd34 the reveal is NOT gated on one hardcoded domain",
+  },
+  {
+    name: "mask-echoes-a-short-number",
+    why: "the mask goes back to `raw.length > 6 ? masked : raw`, the shape SIX of the seven hand-written masks had \u2014 so the one input class most likely to be junk, a truncated or corrupt row, is the one printed in full. A mask whose failure mode is 'show everything' is not a mask",
+    file: "src/lib/phone-normalize.ts",
+    suite: "read-tiers",
+    from: `  if (!raw || raw.length < 10) return "\u2022\u2022\u2022\u2022";`,
+    to: `  if (!raw) return "";\n  if (raw.length <= 6) return raw;`,
+    expect: "8.7 \u26d4 a short or malformed number masks to dots",
+  },
+  {
+    name: "an-admin-surface-hand-rolls-a-mask-again",
+    why: "a page goes back to masking with its own `.slice()` instead of the registry \u2014 how seven copies in three different shapes came to exist, none of them consulting the matrix and none assertable. \u26a0\ufe0f The \u00a77 ratchet CANNOT catch this one: its `mask[A-Z](` skip cannot tell a local lookalike from the real thing, which is why \u00a78.8 exists",
+    file: "src/app/admin/privacy/page.tsx",
+    suite: "read-tiers",
+    from: `<td className="py-2 pr-3 font-mono whitespace-nowrap"><Sensitive field="phone" subjectId={u.id} value={u.phoneE164} /></td>`,
+    to: "<td className=\"py-2 pr-3 font-mono whitespace-nowrap\">{`${u.phoneE164.slice(0, 4)}****${u.phoneE164.slice(-2)}`}</td>",
+    expect: "8.8 \u26d4 no admin surface hand-rolls a phone mask",
+  },
+  {
+    name: "csv-hands-out-unmasked-numbers",
+    why: "\ud83d\udd34 the bulk-PII exposure, restored: the export stops consulting the read cell and writes every msisdn in full. FINANCE and AUDITOR both hold `accounting` and both sit at the `masked` ceiling, so two roles the matrix forbids a single unmasked phone pull fifty thousand into a file, in one click",
+    file: "src/app/api/admin/transactions/export/route.ts",
+    suite: "read-tiers",
+    from: `  const fullMsisdn = await mayReveal(session.role, "identity.contact");`,
+    to: `  const fullMsisdn = true;`,
+    expect: "8.9 \ud83d\udd34 the transactions CSV masks msisdn unless",
+  },
+  {
+    name: "bulk-pull-is-not-recorded-as-a-pii-read",
+    why: "a full export stops writing `pii.revealed`. `transactions.exported` still records that a file was pulled, so the audit log looks complete \u2014 it simply no longer says that PII left the building, which is the one sentence D4 exists to produce",
+    file: "src/app/api/admin/transactions/export/route.ts",
+    suite: "read-tiers",
+    from: `  if (fullMsisdn && msisdnRows > 0) {`,
+    to: `  if (false) {`,
+    expect: "8.11 \u2026and a FULL pull writes pii.revealed",
+  },
 ];

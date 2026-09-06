@@ -340,7 +340,13 @@ __resetGrantsForTest();
     // ASKING — `admin/players/[id]/page.tsx` computes capSupport/capMoney/capCompliance to
     // decide what to render, which IS the E-18 fix. Flagging it would demand a declaration
     // for doing the right thing, and the fix would be to stop asking.
-    const enforces = /privilege_escalation_blocked|requireStaff\(/.test(src);
+    // ⚠️ `softRequireConsole` ADDED 2026-09-06. It is a THIRD enforcing idiom — a cross-route
+    // action that refuses without naming a domain — and a detector that does not know its name
+    // cannot see the files that use it. It yields no literal, so those files still fall out of
+    // the loop below; what this buys is that the day one of them DOES hard-code a domain, §5 is
+    // watching. A guard blind to the newest way of spelling the thing it polices is how E-28
+    // came back the first time.
+    const enforces = /privilege_escalation_blocked|requireStaff\(|softRequireConsole\(/.test(src);
     if (!enforces) continue;
     const literals = literalDomains(src);
     if (literals.length === 0) continue; // fully CONTROL_DOMAIN-driven, or a tier
@@ -374,6 +380,11 @@ __resetGrantsForTest();
      literalDomains('if (!canAct(role, "compliance")) throw 0;').includes("compliance"));
   ok("5 · a file that gates only through CONTROL_DOMAIN yields no literal",
      literalDomains('const s = await requireStaff(CONTROL_DOMAIN.armProposal, "armProposal");').length === 0);
+  // ⭐ AND THE CROSS-ROUTE IDIOM: `softRequireConsole` takes an ACTION NAME, never a domain, so
+  // its argument must not be mistaken for one. `pii.reveal` reaching `literalDomains` would have
+  // §5 demand that the route's domain equal "pii.reveal" — a guard failing on correct code.
+  ok("5 · softRequireConsole(\"action\") contributes NO domain literal",
+     literalDomains('const g = await softRequireConsole("pii.reveal", "not signed in");').length === 0);
 }
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);

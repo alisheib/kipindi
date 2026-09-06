@@ -65,10 +65,22 @@ type SP = Record<string, string | string[] | undefined>;
  * (The enrichments below — traders, charts, comments — DO degrade with `.catch()`: their
  * absence garnishes a card, it never mimics an empty board.)
  *
- * ⚠️ The read now spans LIVE ∪ CLOSED, because `All` is the UNSETTLED book (PLAN-OF-RECORD
- * §8.2). `isClosedByTime` still gates LIVE rows: a LIVE market past its settlement clock is in
- * the resolver queue, not on the board. CLOSED rows are admitted deliberately — CLOSED appears
- * on no other player discovery surface.
+ * ⚠️ The read spans LIVE ∪ CLOSED, because `All` is the UNSETTLED book (PLAN-OF-RECORD §8.2).
+ *
+ * 🔴 THE `isClosedByTime` FILTER WAS REMOVED HERE ON 2026-09-06, AND THAT IS THE WHOLE POINT OF
+ * THE `progress` LENS. This line used to read `live.filter((m) => !isClosedByTime(m))` under a
+ * comment saying "a LIVE market past its settlement clock is in the resolver queue, not on the
+ * board". The comment was true and the consequence was not acceptable: `/results` reads
+ * RESOLVED ∪ VOIDED only (`listTerminalMarkets`), so a market past its resolution clock and not
+ * yet sealed appeared on **no player surface at all**. A player who had bet could still find it
+ * under `/positions`; a player who had not simply lost it. Ali, 2026-09-06: "as long as
+ * selection closed but result not out he should see it."
+ *
+ * ⚠️ Nothing is admitted to `open` by this. A row past `resolutionAt` is necessarily past
+ * `selectionClosedAt ?? resolutionAt` too, so `isSelectionClosed` is true for every row this
+ * change adds, and `open`/`today` both require `!selectionClosed`. That holds only because
+ * `selectionClosedAt < resolutionAt` is enforced at creation — asserted, not assumed, by
+ * `test:board-discovery`.
  *
  * ⛔ productLine stays the MARKET default. `test:product-line` lists this file as
  * MUST_STAY_DEFAULT: opting into "ALL" would flood the board with Up & Down rounds (~300k/yr).
@@ -78,7 +90,7 @@ const getBoard = cache(async () => {
     listMarkets({ status: "LIVE" }),
     listMarkets({ status: "CLOSED" }),
   ]);
-  return [...live.filter((m) => !isClosedByTime(m)), ...closed];
+  return [...live, ...closed];
 });
 
 const getWatchedIds = cache(async (userId: string | null): Promise<Set<string>> => {
@@ -112,7 +124,14 @@ function toRow(m: BoardMarket, watched: Set<string>, move24h: number | undefined
     move24h,
     createdAtMs: Date.parse(m.createdAt),
     bettableUntilMs: Date.parse(m.selectionClosedAt ?? m.resolutionAt),
+    resolvesAtMs: Date.parse(m.resolutionAt),
     selectionClosed: isSelectionClosed(m),
+    // ⛔ THE VERDICT, NOT THE SETTLEMENT. `resolvedOutcome` is stamped when an officer records
+    // the answer; `settledAt` is when the money moves, and they are hours apart across the
+    // objection window. Ali's stopping condition for the `progress` lens is the RESULT, so it is
+    // this column the lens must read — keying off `settledAt` would keep advertising a market
+    // whose answer everybody already knows.
+    verdictRecorded: m.resolvedOutcome != null,
     status: m.status as DiscoveryRow["status"],
     watched: watched.has(m.id),
   };
@@ -437,15 +456,20 @@ function BoardEmptyState({
   const title =
     cause === "search-miss" ? `${t.market.noLiveMatch} "${state.q}"`
     : cause === "watching-empty" ? t.market.watchingEmptyTitle
+    : cause === "progress-empty" ? t.market.progressEmptyTitle
     : cause === "no-inventory" ? t.market.noMarketsAvailable
     : t.market.filterMissTitle;
   const body =
     cause === "search-miss" ? t.market.checkSpelling
     : cause === "watching-empty" ? t.market.watchingEmptyBody
+    : cause === "progress-empty" ? t.market.progressEmptyBody
     : cause === "no-inventory" ? t.market.noMarketsAvailableBody
     : t.market.filterMissBody;
 
   // An empty PLATFORM is not the filters' fault and must not offer to widen them.
+  // ⚠️ `progress-empty` KEEPS its exits. Unlike `no-inventory` it is a statement about this lens
+  // only — there are markets, none of them is waiting on a result — so "see everything" is a
+  // real and useful door, and `relaxations` only ever offers one whose count is above zero.
   const exits = cause === "no-inventory" ? [] : relaxations(rows, state, now, matchesText);
 
   return (

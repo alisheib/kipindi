@@ -230,7 +230,7 @@ export default async function KycWorkstationPage({ params }: { params: Promise<{
                 <Field label="DOB" value={<span className="font-mono">{kyc.dob ? <Sensitive field="dob" subjectId={id} value={kyc.dob} /> : "—"}</span>} />
                 <Field label="Region" value={user?.region ? <Sensitive field="region" subjectId={id} value={user.region} /> : "—"} />
                 <Field label="Submitted" value={<span className="font-mono">{kyc.submittedAt ? formatDateTime(kyc.submittedAt) : "—"}</span>} />
-                <Field label="Phone" value={<span className="font-mono">{user ? `${user.phoneE164.slice(0, 4)}••••${user.phoneE164.slice(-2)}` : "—"}</span>} />
+                <Field label="Phone" value={<span className="font-mono">{user ? <Sensitive field="phone" subjectId={user.id} value={user.phoneE164} /> : "—"}</span>} />
               </dl>
             </AdminCard>
           </div>

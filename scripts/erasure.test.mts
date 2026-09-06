@@ -38,6 +38,7 @@ process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-min-aaaa";
 process.env.OTP_PEPPER ??= "test-only-pepper";
 
 import { readFileSync, readdirSync, statSync } from "node:fs";
+import { decomment } from "./lib/decomment.mts";
 import { db } from "../src/lib/server/store.ts";
 import {
   anonymizeClosedAccount, erasedPhoneTombstone, isErasedPhone,
@@ -745,7 +746,12 @@ section("11 · the DATABASE half — what a unit run cannot execute, it can stil
         else if (/\.(ts|tsx)$/.test(e)) srcFiles.push(full);
       }
     })("src");
-    const hits = srcFiles.filter((f) => /\bavatarDataUrl\b/.test(readFileSync(f, "utf8")));
+    // ⚠️ DECOMMENTED — the scan must read CODE, not prose. Until 2026-09-06 this matched the bare
+    // token anywhere in the file, so a comment merely NAMING the field made its file an offender:
+    // `sensitive.tsx` was flagged for a note explaining that `findById` returns the avatar and
+    // `user.list()` omits it — a sentence that exists BECAUSE of this rule. A guard that a
+    // correct explanation can fail teaches the next author to stop explaining.
+    const hits = srcFiles.filter((f) => /\bavatarDataUrl\b/.test(decomment(readFileSync(f, "utf8"))));
     const offenders: string[] = [];
     for (const f of hits) {
       const rel = f.replace(/\\/g, "/");

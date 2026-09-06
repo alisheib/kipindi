@@ -669,7 +669,8 @@
     "qa:bulk-confirm-gate": "node scripts/live-bulk-confirm-gate.mjs",
     "qa:dg-rhythm": "node scripts/design-gate/rhythm-probe.mjs",
     "test:tab-anchors": "tsx scripts/tab-anchors.test.mts",
-    "red:tab-anchors": "node scripts/red-tab-anchors.mjs"
+    "red:tab-anchors": "node scripts/red-tab-anchors.mjs",
+    "qa:phone-reveal": "node scripts/live-phone-reveal.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

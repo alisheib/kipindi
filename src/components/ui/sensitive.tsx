@@ -19,11 +19,35 @@
  * default is `true` because most call sites sit inside a block the domain has already gated —
  * pass it explicitly wherever the field is NOT already behind one.
  */
+import { cache } from "react";
 import { readCell } from "@/lib/server/rbac";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { SENSITIVE_FIELDS, type SensitiveFieldKey } from "@/lib/server/sensitive-fields";
 import { SensitiveReveal } from "./sensitive-reveal";
+
+/**
+ * WHO IS LOOKING — resolved ONCE per render pass, not once per masked field.
+ *
+ * 🔴 THE N+1 THIS CLOSES, MEASURED NOT GUESSED. `db.user.findById` is a real `findUnique` on
+ * every call and returns the WHOLE row including `avatarDataUrl` — a column `user.list()`
+ * explicitly `omit`s for exactly this reason. Admin tables page at 20, and Ali's 2026-09-06
+ * ruling puts an eye on every row, so a roster carrying a phone AND an email column would have
+ * fired FORTY identical `SELECT … FROM "User" WHERE id = <the viewer>` queries, each dragging a
+ * base64 avatar, to answer one question that cannot change mid-render. `admin/players/page.tsx`
+ * carries a comment about killing this same shape in its table body once already.
+ *
+ * ⛔ THE ANSWER STAYS IN THIS FILE. `test:read-tiers` 4.4 permits only `sensitive.tsx` to import
+ * the resolver, because §6 says that if "can support see X?" is ever answered in a `.tsx` the
+ * matrix has stopped being the authority. Passing a `viewer` prop from each page would move a
+ * fragment of that answer to the call site AND let a caller pass a role that is not theirs.
+ * React's `cache()` is per render pass, so this memoises the LOOKUP and decides nothing.
+ */
+const viewerRole = cache(async () => {
+  const session = await currentSession();
+  if (!session) return null;
+  return (await db.user.findById(session.userId))?.role ?? null;
+});
 
 export async function Sensitive({
   field,
@@ -42,9 +66,8 @@ export async function Sensitive({
   if (!domainAllows) return null;
   if (value == null || value === "") return null;
 
-  const session = await currentSession();
-  const role = session ? (await db.user.findById(session.userId))?.role : null;
   // ⛔ No session, no role, no read. Fails closed, like the resolver it calls.
+  const role = await viewerRole();
   if (!role) return null;
 
   const spec = SENSITIVE_FIELDS[field];

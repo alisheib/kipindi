@@ -776,7 +776,15 @@ export const dict = {
       // ⚠️ `statusOpen` is NOT `statusLive`. A market can be LIVE and no longer taking
       // bets, and the card already labels exactly that case "Closed". Open means a
       // player can act on it right now — see PLAN-OF-RECORD §8.1.
+      // ⛔ `statusInProgress` MUST NOT BE TRANSLATED LITERALLY. "In progress" is `进行中` in
+      // Chinese — which is ALREADY this dictionary's word for OPEN (`positions.tabOpen`,
+      // `common.open` and three more surfaces), so a literal translation would render the new
+      // tab identically to the one beside it for a Chinese reader. Swahili `Inaendelea` is
+      // likewise already taken, by Up & Down's "In play". Both locales therefore borrow the
+      // board's own existing phrase for this state — `waitingForResults` — which is accurate,
+      // distinct, and already first-language reviewed. Only the English is Ali's literal word.
       statusOpen: "Open", statusClosingToday: "Closing today", statusNew: "New",
+      statusInProgress: "In progress",
       statusWatching: "Watching", statusAll: "All", statusAria: "Market status",
       sortClosing: "Closing soonest", sortPool: "Biggest pool", sortPeople: "Most predictors",
       sortClose: "Closest call", sortMove: "Biggest move", sortNew: "Newest first",
@@ -793,6 +801,11 @@ export const dict = {
       filtersApply: "Show {n}",
       watchingEmptyTitle: "You are not watching any market",
       watchingEmptyBody: "Tap the star on a market to follow it. Everything you watch collects here.",
+      // ⭐ An empty "In progress" board is the HEALTHY state, not a miss — it means every market
+      // that has closed has already been decided. The copy has to say that, or a normal quiet
+      // day reads as a broken page.
+      progressEmptyTitle: "Nothing is waiting for a result",
+      progressEmptyBody: "Every market that has closed has already been decided. Markets appear here between the moment betting stops and the moment the result is published.",
       filterMissTitle: "No markets match these filters",
       filterMissBody: "Nothing on the board satisfies all of them at once. Widen one:",
       relaxPool: "Drop the pool filter", relaxOdds: "Drop the odds filter",
@@ -2727,6 +2740,7 @@ export const dict = {
       paidLabel: "imelipwa",
       // ── upau wa ugunduzi (kit ya raundi ya 2; PLAN-OF-RECORD §8) ─────────────────
       statusOpen: "Wazi", statusClosingToday: "Zinafunga leo", statusNew: "Mpya",
+      statusInProgress: "Inasubiri matokeo",
       statusWatching: "Ninafuatilia", statusAll: "Zote", statusAria: "Hali ya soko",
       sortClosing: "Zinazofunga kwanza", sortPool: "Dimbwi kubwa", sortPeople: "Watabiri wengi",
       sortClose: "Karibu na sare", sortMove: "Mabadiliko makubwa", sortNew: "Mpya kwanza",
@@ -2741,6 +2755,8 @@ export const dict = {
       filtersApply: "Onyesha {n}",
       watchingEmptyTitle: "Hufuatilii soko lolote",
       watchingEmptyBody: "Gusa nyota kwenye soko ili kulifuatilia. Kila unachofuatilia kitakusanyika hapa.",
+      progressEmptyTitle: "Hakuna linalosubiri matokeo",
+      progressEmptyBody: "Kila soko lililofungwa tayari limeamuliwa. Masoko huonekana hapa kati ya wakati kuweka dau kunapokoma na wakati matokeo yanapotangazwa.",
       filterMissTitle: "Hakuna soko linalolingana na vichujio hivi",
       filterMissBody: "Hakuna lililo ubaoni linalokidhi vyote kwa pamoja. Panua kimoja:",
       relaxPool: "Ondoa kichujio cha dimbwi", relaxOdds: "Ondoa kichujio cha uwezekano",
@@ -4436,6 +4452,7 @@ export const dict = {
       paidLabel: "已支付",
       // ── 发现栏（第二轮设计交付；PLAN-OF-RECORD §8）────────────────────────────
       statusOpen: "开放", statusClosingToday: "今日截止", statusNew: "新增",
+      statusInProgress: "等待结果",
       statusWatching: "关注中", statusAll: "全部", statusAria: "市场状态",
       sortClosing: "最快截止", sortPool: "奖池最大", sortPeople: "参与人数最多",
       sortClose: "势均力敌", sortMove: "波动最大", sortNew: "最新优先",
@@ -4450,6 +4467,8 @@ export const dict = {
       filtersApply: "显示{n}",
       watchingEmptyTitle: "您还没有关注任何市场",
       watchingEmptyBody: "点击市场上的星标即可关注。关注的市场都会汇集在这里。",
+      progressEmptyTitle: "目前没有市场在等待结果",
+      progressEmptyBody: "所有已截止的市场都已裁定。市场会在停止投注到公布结果之间出现在这里。",
       filterMissTitle: "没有符合这些筛选条件的市场",
       filterMissBody: "看板上没有同时满足全部条件的市场。请放宽其中一项：",
       relaxPool: "取消奖池筛选", relaxOdds: "取消概率筛选",

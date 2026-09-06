@@ -7,15 +7,22 @@
  * matched — or explicitly shown as unmatched.
  *
  * ⚠️ This exports money data AND PII (msisdn). Therefore:
- *  - MONEY_ROLES only (ADMIN, COMPLIANCE), same gate as the page;
- *  - every export is COMPLIANCE-audited with the exact filter set and row count,
- *    so who pulled which data, when, is provable;
+ *  - the `accounting` domain reaches it, same gate as the page;
+ *  - ⛔ but the msisdn COLUMN is governed separately, by the READ axis: full only for a role
+ *    whose `identity.contact` cell is `read`, masked otherwise, and the header says which.
+ *    ⚠️ CORRECTED 2026-09-06 — this block used to claim "MONEY_ROLES only (ADMIN, COMPLIANCE)"
+ *    and the code said `canView(role, "accounting")`, which is also FINANCE and AUDITOR. Both of
+ *    those sit at the `masked` ceiling, so the doc named a narrower gate than the one that ran
+ *    and the file handed out fifty thousand unmasked handsets to roles forbidden a single one;
+ *  - a FULL pull additionally writes `pii.revealed` with the row count, because
+ *    `transactions.exported` alone does not record that PII left the building;
  *  - values are CSV-injection-escaped (a leading =, +, -, @ becomes text) so an
  *    exported cell can never execute in Excel.
  */
 import { NextResponse } from "next/server";
 import { currentSession } from "@/lib/server/auth-service";
-import { canView } from "@/lib/server/rbac";
+import { canView, mayReveal } from "@/lib/server/rbac";
+import { maskPhone } from "@/lib/phone-normalize";
 import { audit } from "@/lib/server/audit";
 import { db } from "@/lib/server/store";
 import { attentionOf, type TxnSearchFilters } from "@/lib/server/txn-filters";
@@ -39,17 +46,24 @@ function cell(v: string | number | null | undefined): string {
   return `"${safe.replace(/"/g, '""')}"`;
 }
 
-const HEADERS = [
+/**
+ * ⭐ THE COLUMN NAMES ITSELF `msisdn_masked` WHEN IT IS MASKED, AND THAT IS NOT COSMETIC. A CSV
+ * has no eye and no tooltip; a reconciler matching our file against Selcom's statement would
+ * otherwise read `+255••••01` as a corrupt number and open an incident. The header is the only
+ * place a spreadsheet can say which of the two artefacts this is.
+ */
+const headers = (full: boolean) => [
   "txn_id", "created_at", "completed_at", "player_id", "type", "status",
-  "provider", "gateway_ref", "msisdn", "amount_tzs", "fee_tzs", "currency",
+  "provider", "gateway_ref", full ? "msisdn" : "msisdn_masked", "amount_tzs", "fee_tzs", "currency",
   "balance_after_tzs", "flag", "description",
-] as const;
+];
 
-function toRow(t: StoredTxn): string {
+function toRow(t: StoredTxn, full: boolean): string {
   const flag = attentionOf(t);
   return [
     cell(t.id), cell(t.createdAt), cell(t.completedAt), cell(t.userId), cell(t.type), cell(t.status),
-    cell(t.provider), cell(t.providerRef), cell(t.msisdn), cell(t.amount), cell(t.fee), cell(t.currency),
+    cell(t.provider), cell(t.providerRef), cell(t.msisdn == null ? null : full ? t.msisdn : maskPhone(t.msisdn)),
+    cell(t.amount), cell(t.fee), cell(t.currency),
     cell(t.balanceAfter), cell(flag?.code ?? "ok"), cell(t.description),
   ].join(",");
 }
@@ -87,6 +101,40 @@ export async function GET(req: Request) {
   const { rows, total, summary } = await Promise.resolve(db.txn.search(filters));
   const truncated = total > rows.length;
 
+  /**
+   * 🔴 THE EXPOSURE THIS CLOSES (found 2026-09-06, live since the export shipped). The gate above
+   * is `accounting`, which FINANCE and AUDITOR both hold — and both sit at `identity.contact:
+   * masked`, the ceiling meaning "may never reveal". So two roles the matrix forbids from reading
+   * one unmasked phone could pull FIFTY THOUSAND of them into a file, in a single click, and
+   * nothing anywhere said no. It is the same shape §7 already found for GROWTH reading emails:
+   * a role scoped to one domain handed another domain's facts because they share a route.
+   *
+   * ⛔ THE ANSWER IS NOT TO REFUSE THE EXPORT. Its purpose is reconciling our ledger against
+   * Selcom's settlement statement, which needs the amounts and the gateway refs, not the
+   * handsets — so the artefact stays, and the ONE column the matrix governs is masked for a role
+   * that may not reveal it. READ_TIERS only ever subtracts (§2.2), and a masked cell is exactly
+   * what the `masked` cell means; nobody loses a reconciliation they could do yesterday.
+   *
+   * ⭐ AND A FULL PULL IS RECORDED AS WHAT IT IS: a bulk PII read, under the same `pii.revealed`
+   * action a single eye-click writes, carrying the ROW COUNT. "Support did read it, at 14:02,
+   * for player X" is D4's whole point; an export is that sentence multiplied, and it was
+   * previously recorded only as `transactions.exported`, which does not say PII left the
+   * building. ⚠️ Awaited BEFORE the file is returned, for the same reason the single reveal is.
+   */
+  const fullMsisdn = await mayReveal(session.role, "identity.contact");
+  const msisdnRows = rows.filter((t) => t.msisdn != null).length;
+  if (fullMsisdn && msisdnRows > 0) {
+    await audit({
+      category: "COMPLIANCE",
+      action: "pii.revealed",
+      actorId: session.userId,
+      targetType: "Transaction",
+      targetId: null,
+      // ⛔ The COUNT and the CLASS, never a value — the same rule the single-field reveal obeys.
+      payload: { field: "msisdn", readClass: "identity.contact", role: session.role, bulk: true, rows: msisdnRows },
+    });
+  }
+
   audit({
     category: "COMPLIANCE",
     action: "transactions.exported",
@@ -102,7 +150,7 @@ export async function GET(req: Request) {
     },
   });
 
-  const body = [HEADERS.join(","), ...rows.map(toRow)].join("\r\n") + "\r\n";
+  const body = [headers(fullMsisdn).join(","), ...rows.map((t) => toRow(t, fullMsisdn))].join("\r\n") + "\r\n";
   const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
   return new NextResponse(body, {
     status: 200,

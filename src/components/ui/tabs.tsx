@@ -103,6 +103,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { centredScrollLeft } from "@/lib/strip-scroll";
 import { CountBadge } from "@/components/ui/count-badge";
 
 export type TabItem = {
@@ -307,10 +308,18 @@ export function Tabs({
     // looks deliberate. Rect deltas are relative to nothing and cannot drift.
     const railBox = rail.getBoundingClientRect();
     const itemBox = active.getBoundingClientRect();
-    const leftWithinRail = itemBox.left - railBox.left + rail.scrollLeft;
-    // Centre it when there is room on both sides; the clamp keeps the two ends flush.
-    const target = leftWithinRail - (rail.clientWidth - itemBox.width) / 2;
-    rail.scrollLeft = Math.max(0, Math.min(target, rail.scrollWidth - rail.clientWidth));
+    // ⭐ THE ARITHMETIC MOVED TO `src/lib/strip-scroll.ts` ON 2026-09-06, unchanged, because
+    // `/markets`' status strip needed the identical behaviour and a second copy is how two
+    // surfaces start disagreeing about where "centred" is (B9 / law 81). The three traps this
+    // block was written around are recorded there, with the code that avoids them.
+    rail.scrollLeft = centredScrollLeft({
+      railLeft: railBox.left,
+      scrollLeft: rail.scrollLeft,
+      clientWidth: rail.clientWidth,
+      scrollWidth: rail.scrollWidth,
+      itemLeft: itemBox.left,
+      itemWidth: itemBox.width,
+    });
   }, [value, tabs.length]);
 
   if (variant === "segmented") {

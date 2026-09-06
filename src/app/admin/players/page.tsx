@@ -6,6 +6,7 @@ import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { AccountStatusBadge, accountStatusLabel } from "@/components/admin/status-badge";
 import { Avatar } from "@/components/ui/avatar";
 import { Select } from "@/components/ui/select";
+import { Sensitive } from "@/components/ui/sensitive";
 import { db } from "@/lib/server/store";
 import { currentSession } from "@/lib/server/auth-service";
 import { canView } from "@/lib/server/rbac";
@@ -226,8 +227,16 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                           </div>
                         </a>
                       </td>
-                      {/* Masked in the broad list view — full number only on the detail page (PII minimization). Search still matches the full number. */}
-                      <td className="font-mono whitespace-nowrap">{u.phoneE164.length > 6 ? `${u.phoneE164.slice(0, 4)}****${u.phoneE164.slice(-2)}` : u.phoneE164}</td>
+                      {/* ⛔ THE COMMENT THAT USED TO SIT HERE SAID "Masked in the broad list view
+                          — full number only on the detail page (PII minimization)", AND IT HAD
+                          BEEN FALSE FOR MONTHS: the detail page masked too, so there was no
+                          surface anywhere in the console that showed a full number. Ali ruled on
+                          2026-09-06 that the roster is exactly where he needs to tell one player
+                          from another, and that the eye belongs on every row. Each reveal is a
+                          server round trip that writes a `pii.revealed` audit row, so a list is
+                          not a bulk read — it is N individually recorded ones. Search still
+                          matches the full number. `docs/COMPLIANCE-DECISIONS.md`, 2026-09-06. */}
+                      <td className="font-mono whitespace-nowrap"><Sensitive field="phone" subjectId={u.id} value={u.phoneE164} /></td>
                       <td><AccountStatusBadge status={u.status} /></td>
                       {/* `pageBalances` is empty unless the viewer passed the accounting
                           gate, so this stays exactly the old `canSeeMoney && wallet` cell:

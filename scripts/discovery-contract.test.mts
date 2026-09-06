@@ -39,6 +39,7 @@ import {
   DEFAULTS,
   DEFAULT_STATE,
   SORT_NATURAL_DIR,
+  STATUS_IDS,
   buildDiscoveryHref,
   clearedState,
   compareRows,
@@ -79,7 +80,9 @@ function row(over: Partial<DiscoveryRow> = {}): DiscoveryRow {
     move24h: 3,
     createdAtMs: NOW - 10 * H,
     bettableUntilMs: NOW + 10 * H,
+    resolvesAtMs: NOW + 12 * H,
     selectionClosed: false,
+    verdictRecorded: false,
     status: "LIVE",
     watched: false,
     ...over,
@@ -184,6 +187,66 @@ log("\n── 2 · status predicates (PLAN-OF-RECORD §8.1 / §8.2) ────
 
   ok("watch is membership, not lifecycle", matchesStatus(row({ watched: true, selectionClosed: true }), "watch", NOW));
   ok("watch excludes an unwatched market", !matchesStatus(row({ watched: false }), "watch", NOW));
+
+  /* ── 2b · `progress` — the lens Ali asked for, 2026-09-06 ──────────────────────────────
+   *
+   * ⭐ ASSERTED AS A PARTITION, NOT AS MEMBERSHIP. Membership checks ("progress contains a
+   * selection-closed row") pass over a population where the defect cannot appear — the shape
+   * that let three guards stay green through E-190. Every row of `all` must be in exactly ONE
+   * of: `open` (still bettable), `progress` (waiting for a result), or neither (verdict
+   * recorded, awaiting settlement — /results' business, not the board's).
+   */
+  const decided = row({ status: "CLOSED", selectionClosed: true, verdictRecorded: true });
+
+  ok("2b.1 · progress includes a LIVE market whose selection has closed",
+    matchesStatus(selClosed, "progress", NOW));
+  ok("2b.2 · progress includes a CLOSED market with no verdict yet",
+    matchesStatus(closed, "progress", NOW));
+  ok("2b.3 · ⛔ progress EXCLUDES a market whose verdict is recorded — Ali's stopping condition is the RESULT, not the settlement",
+    !matchesStatus(decided, "progress", NOW));
+  ok("2b.4 · progress excludes a bettable market", !matchesStatus(bettable, "progress", NOW));
+  ok("2b.5 · progress excludes RESOLVED", !matchesStatus(resolved, "progress", NOW));
+  ok("2b.6 · progress excludes VOIDED", !matchesStatus(voided, "progress", NOW));
+
+  {
+    const uni = [bettable, selClosed, closed, decided, resolved, voided];
+    const inAll = uni.filter((r) => matchesStatus(r, "all", NOW));
+    const inOpen = uni.filter((r) => matchesStatus(r, "open", NOW));
+    const inProg = uni.filter((r) => matchesStatus(r, "progress", NOW));
+    const both = inOpen.filter((r) => inProg.includes(r));
+
+    ok("2b.7 · ⛔ open and progress are DISJOINT — a market cannot be both bettable and waiting",
+      both.length === 0, `${both.length} row(s) in both`);
+    ok("2b.8 · progress is a strict subset of all",
+      inProg.every((r) => inAll.includes(r)) && inAll.length > inProg.length,
+      `progress=${inProg.length} all=${inAll.length}`);
+    // The partition, stated as arithmetic. `decided` is the row that makes it a real test:
+    // without it open+progress would trivially equal all and this would prove nothing.
+    ok("2b.9 · ⭐ open + progress + verdict-recorded EXACTLY partitions all",
+      inOpen.length + inProg.length + 1 === inAll.length,
+      `open=${inOpen.length} progress=${inProg.length} +1 decided vs all=${inAll.length}`);
+    ok("2b.10 · …and the row outside both IS the decided one, not something else",
+      inAll.filter((r) => !inOpen.includes(r) && !inProg.includes(r)).every((r) => r === decided));
+  }
+
+  // ⛔ THE LEAK THIS CLOSES (live before 2026-09-06). Every market is created with a category
+  // selection lead, so an unstaked market spent that whole window LIVE and matching `new` —
+  // offered as somewhere to place the first bet after it had stopped taking them, while
+  // `market-card.tsx` refused to draw the NEW badge on it. The board and the card disagreed.
+  ok("2b.11 · 🔴 new EXCLUDES a selection-closed market, so the board cannot advertise a shut market as new",
+    !matchesStatus(row({ pool: 0, predictors: 0, selectionClosed: true }), "new", NOW));
+
+  // The sort key follows the clock the card SHOWS — this module's own law, second half of life.
+  // 🔴 The defect this pins: keyed on `bettableUntilMs` a selection-closed row carries a deadline
+  // already 50 hours in the past, so ascending "Closing soonest" put the markets nobody can bet
+  // on at the TOP of the board. Keyed on the result clock it sorts behind the bettable one.
+  ok("2b.12 · a selection-closed row sorts on its RESULT time, not its past betting deadline",
+    compareRows(
+      row({ selectionClosed: true, bettableUntilMs: NOW - 50 * H, resolvesAtMs: NOW + 9 * H }),
+      row({ selectionClosed: false, bettableUntilMs: NOW + 2 * H, resolvesAtMs: NOW + 3 * H }),
+      "closing",
+      "asc",
+    ) > 0);
 }
 
 // ── 3 · odds and pool buckets ─────────────────────────────────────────────────
@@ -293,7 +356,12 @@ log("\n── 5 · counts are cross-filtered ───────────�
     const actual = filterRows(rows, { ...state, topic }, NOW, noText).length;
     ok(`pressing topic=${topic} yields exactly its promised count`, promised === actual, `${promised} vs ${actual}`);
   }
-  for (const status of ["open", "today", "new", "all"] as const) {
+  // ⛔ DERIVED FROM `STATUS_IDS`, NEVER A LITERAL LIST — changed 2026-09-06. This loop used to
+  // read `["open","today","new","all"]`, so `progress` was added to the product and this
+  // property silently stopped covering it: the suite went on printing four PASS lines over a
+  // five-member set. A guard that chooses its own population cannot fail. `watch` is the one
+  // exclusion and it is BY NAME, because it is membership-only and reads no other field.
+  for (const status of STATUS_IDS.filter((s) => s !== "watch")) {
     const promised = countFor(rows, state, NOW, noText, { status });
     const actual = filterRows(rows, { ...state, status }, NOW, noText).length;
     ok(`pressing status=${status} yields exactly its promised count`, promised === actual, `${promised} vs ${actual}`);
@@ -307,6 +375,23 @@ log("\n── 6 · empty causes + relaxations ───────────�
     emptyCause({ ...DEFAULT_STATE, q: "zzz" }, 0, 40) === "search-miss");
   ok("an empty Watching list is its own cause",
     emptyCause({ ...DEFAULT_STATE, status: "watch" }, 0, 40) === "watching-empty");
+  // ⭐ An empty In-progress board is the HEALTHY state — everything that closed has been
+  // decided — and must never be reported as a filter that found nothing.
+  ok("an empty In-progress board is its own cause, not a filter miss",
+    emptyCause({ ...DEFAULT_STATE, status: "progress" }, 0, 40) === "progress-empty");
+  // …but a SEARCH inside it is still a search miss: the more specific cause wins, exactly as it
+  // does for Watching. Otherwise a typo on this tab reads as "nothing is waiting for a result".
+  ok("a search inside In-progress is still reported as a search miss",
+    emptyCause({ ...DEFAULT_STATE, status: "progress", q: "zzz" }, 0, 40) === "search-miss");
+  // ⛔ AND THE SAME FOR EVERY OTHER NARROWING AXIS. `progress` is a LIFECYCLE lens and composes
+  // with topic/odds/pool, so an empty result under one of those is NOT evidence that nothing is
+  // waiting for a result — saying so is a confident false statement, and it withholds the exits.
+  ok("In-progress narrowed by TOPIC to nothing is a filter miss, not 'nothing is waiting'",
+    emptyCause({ ...DEFAULT_STATE, status: "progress", topic: "sports" }, 0, 40) === "filter-miss");
+  ok("In-progress narrowed by POOL to nothing is a filter miss",
+    emptyCause({ ...DEFAULT_STATE, status: "progress", pool: "50k" }, 0, 40) === "filter-miss");
+  ok("In-progress narrowed by ODDS to nothing is a filter miss",
+    emptyCause({ ...DEFAULT_STATE, status: "progress", odds: "long" }, 0, 40) === "filter-miss");
   ok("filters that match nothing over a non-empty book is a FILTER miss",
     emptyCause({ ...DEFAULT_STATE, pool: "50k" }, 0, 40) === "filter-miss");
   ok("an empty platform is not blamed on the filters",

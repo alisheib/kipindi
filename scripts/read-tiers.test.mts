@@ -375,6 +375,26 @@ const GOVERNED_ACCESSORS: Array<{ prop: string; cls: string }> = [
   { prop: "region", cls: "identity.personal" },
   { prop: "dob", cls: "identity.personal" },
   { prop: "idNumber", cls: "identity.personal" },
+  /**
+   * 🔴 `phoneE164` AND `msisdn` WERE ABSENT FROM THIS LIST UNTIL 2026-09-06, AND THAT ABSENCE IS
+   * THE WHOLE STORY OF THE PHONE.
+   *
+   * `roles.ts` READ_CLASS_SUMMARY has described `identity.contact` as "email address and
+   * **unmasked phone number**" since the axis shipped — so the /admin/roles editor promised an
+   * Owner that flipping this cell governed the phone. It governed nothing: seven admin surfaces
+   * masked the number with hand-written `.slice()` expressions in three different shapes, none
+   * of which consulted the matrix, and `grep '\*\*\*\*\*' scripts/` found no assertion anywhere
+   * that a phone was masked at all. The ratchet whose stated purpose is "a population that is
+   * the WHOLE APP, not the part you remembered" could not see a single one of them, because the
+   * field was not in its own list.
+   *
+   * ⭐ THE MISS HAS THE SAME SHAPE AS THE ONE THIS SECTION'S HEADER DESCRIBES, one layer down: it
+   * is not that a guard was wrong, it is that a guard's POPULATION was chosen by hand and the
+   * hand forgot something. Adding these two is what turns Ali's ruling into an enforced rule
+   * rather than another silent one.
+   */
+  { prop: "phoneE164", cls: "identity.contact" },
+  { prop: "msisdn", cls: "identity.contact" },
 ];
 
 /**
@@ -404,12 +424,35 @@ const GOVERNED_REVIEWED = new Map<string, string>([
    "a PROP carrying the value into KycTab, which renders it through <Sensitive> — the render is wired, and the prop is how it gets there"],
   ["src/app/admin/invites/invite-admin-client.tsx::email: row.email",
    "an object literal shaping a payload, not a render — the render is the separate {row.email} entry"],
+
+  // ── phone, reviewed 2026-09-06 with Ali's ruling ────────────────────────────────────────
+  // ⚠️ ALL THREE ARE OBJECT LITERALS THAT SHAPE A ROW, NOT RENDERS. Each of these pages now
+  // renders its phone through <Sensitive>; what is left is the `{ …, phoneE164: u.phoneE164, … }`
+  // that carries the value from the query to that render. The distinction is the same one the
+  // invites entries above already draw, and it is the honest one: this ratchet governs a value
+  // REACHING A READER, and a value reaching a component that masks it has not reached anybody.
+  ["src/app/admin/markets/[id]/page.tsx::phoneE164: u.phoneE164",
+   "an object literal building the predictors row; the render beside it is wired through <Sensitive field=\"phone\">"],
+  ["src/app/admin/self-exclusions/page.tsx::phoneE164: u.phoneE164",
+   "an object literal building the roster row; the render is wired through <Sensitive field=\"phone\">"],
+  ["src/app/admin/privacy/page.tsx::maskedRosterLabel(u, u.phoneE164)",
+   "the phone is PASSED to `maskedRosterLabel`, which renders a masked NAME or the non-PII handle and never the number — see §8.12, which asserts this roster no longer reaches maskName's phone fallback. The phone COLUMN beside it is wired through <Sensitive>"],
+  ["src/app/admin/layout.tsx::phoneE164: session.phoneE164",
+   "the SIGNED-IN OFFICER'S OWN number, taken from their session cookie and handed to AdminShell as a display-name fallback. §6 scopes this axis to a staff member reading a PLAYER's record; a person reading their own number is outside it, the same reason staff/[id] is exempt"],
 ]);
 
 // ⚠️ Deliberate structural exemptions (whole files), each with a reason. May only SHRINK.
 const GOVERNED_ALLOW = new Map<string, string>([
   ["src/components/ui/sensitive.tsx", "the primitive itself — it is what every other site resolves through"],
-  ["src/app/admin/staff/[id]/page.tsx", "a STAFF member's own address on an Owner-only page — §6 scopes this axis to a staff member reading a PLAYER's record"],
+  // ⭐ `src/app/admin/staff/[id]/page.tsx` WAS EXEMPT HERE AND IS NOT ANY MORE (2026-09-06).
+  // Its reason — "§6 scopes this axis to a staff member reading a PLAYER's record" — was true and
+  // was covering a real asymmetry: the staff ROSTER masked while the staff DETAIL rendered a full
+  // number with no eye, no audit row and no matrix, so the console spoke two vocabularies about
+  // the same datum. Ali's 2026-09-06 ruling is "everywhere a phone is shown in admin,
+  // consistently", and both pages are `OWNER_ONLY_PREFIXES`, so wiring them costs NO role a read
+  // it had — ADMIN holds `identity.contact: read` and is one click from the number — while
+  // adding the audit row that made masking acceptable in the first place. A list that may only
+  // shrink is meant to shrink; this is what that looks like.
 ]);
 
 const adminTsx = walk(join(ROOT, "src", "app", "admin"));
@@ -471,6 +514,112 @@ ok("7.4 every exemption and every reviewed site carries a reason, and both lists
    [...GOVERNED_ALLOW.values()].every((r) => r.length > 30)
    && [...GOVERNED_REVIEWED.values()].every((r) => r.length > 30),
    `${GOVERNED_ALLOW.size} file exemptions · ${GOVERNED_REVIEWED.size} reviewed sites`);
+
+/* ═══════════════════════════════════════════════════════════════════════════════════════════
+ * §8 · THE PHONE — and the two surfaces §7's population structurally cannot reach
+ *
+ * ⛔ §7 WALKS `src/app/admin/**` FOR `.tsx`. That is the right population for a RENDER, and it
+ * is blind to the two places PII leaves this platform as a FILE: the transactions CSV
+ * (`src/app/api/...`, a `.ts` route) and the DSAR bundle (`src/lib/server/privacy.ts`). Both were
+ * outside every guard in this suite, and the CSV was the largest bulk-PII surface on the
+ * platform. A ratchet's honesty depends on saying what it does NOT cover, so these are asserted
+ * by name rather than left to a population that was never going to include them.
+ *
+ * 🟡 STILL OWED, AND RECORDED AS OWED: the rest of `src/lib/server/**.ts` is not swept for
+ * governed accessors. Those sites mask for LOGS and EMAILS (`sms.ts`, `auth-service.ts`,
+ * `kyc-service.ts`, `selcom.ts`, `payments.ts`) rather than rendering to a staff reader, so they
+ * are a different question from this axis — but "different question" is a judgement, not a
+ * measurement, and nobody has measured it. E-313.
+ * ═══════════════════════════════════════════════════════════════════════════════════════════ */
+console.log("\n§8 · the phone, and the file-producing surfaces");
+
+const maskSrc = decomment(readFileSync(join(ROOT, "src/lib/phone-normalize.ts"), "utf8"));
+const registrySrc = decomment(readFileSync(join(ROOT, "src/lib/server/sensitive-fields.ts"), "utf8"));
+const exportSrc = decomment(readFileSync(join(ROOT, "src/app/api/admin/transactions/export/route.ts"), "utf8"));
+
+ok("8.1 the phone is IN the registry, under identity.contact",
+   /phone:\s*\{[\s\S]{0,200}?readClass:\s*"identity\.contact"/.test(registrySrc),
+   "the class has always CLAIMED the phone (roles.ts READ_CLASS_SUMMARY); this is where it becomes true");
+
+ok("8.2 ⛔ msisdn is a SEPARATE field addressing a TRANSACTION, not the player's account phone",
+   /msisdn:\s*\{[\s\S]{0,260}?targetType:\s*"Transaction"/.test(registrySrc)
+   && /msisdn:\s*\{[\s\S]{0,320}?db\.txn\.findById/.test(registrySrc),
+   "a payout destination read back off user.phoneE164 would state, on a money row, that the money went somewhere it did not");
+
+ok("8.3 the reveal's audit row takes its targetType from the registry, never the literal \"User\"",
+   /targetType:\s*"targetType" in spec/.test(revealSrc),
+   "an msisdn reveal filed against a player id points an investigator at the wrong record");
+
+ok("8.4 🔴 the reveal is NOT gated on one hardcoded domain",
+   !/requireStaff\(\s*"(support|compliance|accounting|trading|ops|growth|overview)"\s*\)/.test(revealSrc),
+   "<Sensitive> renders on four different domains' routes; pinning the action to one refused COMPLIANCE on every reveal, everywhere, by a throw the control could not display");
+
+ok("8.5 …and it refuses SOFTLY, so the control can show the reason",
+   /softRequireConsole\(/.test(revealSrc) && /if \(!gate\.ok\) return gate;/.test(revealSrc));
+
+ok("8.6 ⛔ the mask lives in a module with NO imports, so a client component cannot drag the store into a browser chunk",
+   /export function maskPhone/.test(maskSrc) && !/^import /m.test(maskSrc),
+   "sensitive-fields.ts imports the store; app-shell.tsx and auth/otp mask phones on the client");
+
+ok("8.7 ⛔ a short or malformed number masks to dots and is NEVER echoed",
+   /if \(!raw \|\| raw\.length < 10\) return "••••";/.test(maskSrc),
+   "six hand-written masks read `phone.length > 6 ? masked : phone` — the junk row was the one printed in full");
+
+{
+  // The shape rule, over the same population §7 already trusts: no admin surface may re-express
+  // a phone mask by hand. ⚠️ This is the check that would have caught the seven divergent copies.
+  const handRolled = adminTsx
+    .filter((f) => !GOVERNED_ALLOW.has(rel(f)))
+    .filter((f) => /phoneE164\.slice\s*\(|msisdn\.slice\s*\(/.test(decomment(readFileSync(f, "utf8"))))
+    .map(rel);
+  ok("8.8 ⛔ no admin surface hand-rolls a phone mask — there were SEVEN, in THREE different shapes",
+     handRolled.length === 0, handRolled.join(", ") || "0");
+}
+
+ok("8.9 🔴 the transactions CSV masks msisdn unless the reader's cell permits a reveal",
+   /mayReveal\(session\.role,\s*"identity\.contact"\)/.test(exportSrc)
+   && /full \? t\.msisdn : maskPhone\(t\.msisdn\)/.test(exportSrc),
+   "the gate is `accounting`, which FINANCE and AUDITOR hold — and both sit at the `masked` ceiling, so two roles forbidden a single unmasked phone could pull 50,000 into a file");
+
+ok("8.10 …and the column NAMES itself when masked, because a CSV has no eye",
+   /full \? "msisdn" : "msisdn_masked"/.test(exportSrc),
+   "otherwise a reconciler reads the dots as a corrupt number and opens an incident");
+
+// ⚠️ THIS ASSERTION CHECKS THE BLOCK IS *REACHED*, NOT MERELY PRESENT — and it only does so
+// because a red mutation proved the weaker version worthless. `bulk-pull-is-not-recorded-as-a-
+// pii-read` wraps the audit in `if (false)`, which leaves every string this leg looks for exactly
+// where it was: the guard stayed green over provably dead code. A source-level check that reads
+// for a fragment is satisfied by a comment. So the CONDITION is named too.
+ok("8.11 …and a FULL pull writes pii.revealed with the row count, never a value",
+   /if \(fullMsisdn && msisdnRows > 0\) \{/.test(exportSrc)
+   && /action: "pii\.revealed"/.test(exportSrc) && /bulk: true, rows: msisdnRows/.test(exportSrc)
+   && !/payload:[^}]*t\.msisdn/.test(exportSrc),
+   "`transactions.exported` alone does not record that PII left the building");
+
+{
+  /**
+   * 🔴 THE LOOSER OF TWO MASKINGS DECIDES WHAT LEAKED. `/admin/privacy` and
+   * `/admin/self-exclusions` labelled their name column with `maskName`, whose fallback for a
+   * player with no display name is a PHONE FRAGMENT keeping the last THREE digits — beside a
+   * phone column that now shows the last two behind an audited eye. One row, one number, two
+   * maskings, and the ungoverned one gave away more.
+   *
+   * ⛔ `maskName` is deliberately NOT changed: `scripts/erasure.test.mts:224` pins its phone form
+   * and asserts it differs from the name mask, so a redacted record cannot be re-identified by
+   * matching the two. This is a call-site rule, and it is asserted at the call sites.
+   */
+  const rosters = ["src/app/admin/privacy/page.tsx", "src/app/admin/self-exclusions/page.tsx"];
+  const offenders = rosters.filter((f) => /\bmaskName\s*\(/.test(decomment(readFileSync(join(ROOT, f), "utf8"))));
+  ok("8.12 ⛔ a sensitive roster does not label a row with maskName's PHONE fallback",
+     offenders.length === 0,
+     offenders.join(", ") || "both use maskedRosterLabel — a masked name, else the non-PII handle");
+  ok("8.13 ⭐ POSITIVE CONTROL · the detector can still see a `maskName(` call",
+     /\bmaskName\s*\(/.test("const x = maskName(a, b);"));
+}
+
+ok("8.14 ⭐ POSITIVE CONTROL · §8 reads real files, not empty strings",
+   maskSrc.length > 500 && registrySrc.length > 500 && exportSrc.length > 500,
+   `${maskSrc.length} / ${registrySrc.length} / ${exportSrc.length} bytes`);
 
 console.log(`\nread-tiers: ${pass} passed, ${fail} failed`);
 process.exit(fail > 0 ? 1 : 0);

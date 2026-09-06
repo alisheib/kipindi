@@ -4,6 +4,7 @@ import { AdminPageHead, AdminCard, AdminLoadError } from "@/components/admin/adm
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { AdminMeter } from "@/components/admin/admin-charts";
 import { Chip } from "@/components/ui/chip";
+import { Sensitive } from "@/components/ui/sensitive";
 import { Tabs } from "@/components/ui/tabs";
 import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
@@ -138,7 +139,7 @@ export default async function PaymentsOpsPage({ searchParams }: { searchParams: 
                 <li key={t.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                   <div className="min-w-0">
                     <p className="amount text-caption text-text-secondary">
-                      {formatTzs(Math.abs(t.amount))} · {t.msisdn ?? "—"} · held {ageLabel(Date.now() - Date.parse(t.createdAt))}
+                      {formatTzs(Math.abs(t.amount))} · {t.msisdn ? <Sensitive field="msisdn" subjectId={t.id} value={t.msisdn} /> : "—"} · held {ageLabel(Date.now() - Date.parse(t.createdAt))}
                     </p>
                     {/* What the gateway last said. Before 2026-07-29 this was never
                         recorded and a frozen payout was completely unexplainable. */}

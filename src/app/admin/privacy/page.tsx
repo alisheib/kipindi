@@ -8,10 +8,11 @@ import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/component
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { Chip } from "@/components/ui/chip";
+import { Sensitive } from "@/components/ui/sensitive";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { db } from "@/lib/server/store";
 import { listDsarRequests } from "@/lib/server/privacy";
-import { maskName } from "@/lib/server/affiliate-service";
+import { maskedRosterLabel } from "@/lib/server/affiliate-service";
 import { ExportDsarBundleButton, FulfillDsarButton, FileDsarOnBehalfButton } from "./dsar-controls";
 import { formatDateTime } from "@/lib/utils";
 import { I } from "@/components/ui/glyphs";
@@ -163,11 +164,11 @@ export default async function AdminPrivacyPage({
                           Full identity only on the audited detail page; matches
                           the masked-phone column beside it. */}
                       <a href={`/admin/players/${u.id}`} className="font-medium text-text hover:text-royal-300 hover:underline">
-                        {maskName(u.displayName, u.phoneE164)}
+                        {maskedRosterLabel(u, u.phoneE164)}
                       </a>
                       <span className="block font-mono text-micro text-text-tertiary">{u.id.slice(0, 14)}…</span>
                     </td>
-                    <td className="py-2 pr-3 font-mono whitespace-nowrap">{u.phoneE164.length > 6 ? `${u.phoneE164.slice(0, 4)}****${u.phoneE164.slice(-2)}` : u.phoneE164}</td>
+                    <td className="py-2 pr-3 font-mono whitespace-nowrap"><Sensitive field="phone" subjectId={u.id} value={u.phoneE164} /></td>
                     <td className="py-2 pr-3">
                       <Chip size="sm" variant={u.status === "ACTIVE" ? "success" : "neutral"}>{accountStatusLabel(u.status)}</Chip>
                     </td>

@@ -22,10 +22,26 @@
 import { db } from "./store";
 import type { ReadClass } from "./roles";
 import { formatDate } from "@/lib/utils";
+// ⛔ FROM THE PURE MODULE, NEVER DEFINED HERE. Client components mask phones too
+// (`app-shell.tsx`, `auth/otp`), and this file imports the store — so a `maskPhone` living here
+// would drag Prisma into a browser chunk the first time one of them reached for it.
+import { maskPhone } from "@/lib/phone-normalize";
 
 export type SensitiveField = {
   /** Which class governs it — the ONLY place this mapping lives. */
   readClass: ReadClass;
+  /**
+   * What `subjectId` NAMES, and therefore what the D4 audit row's `targetType` records.
+   * Defaults to `"User"`.
+   *
+   * ⛔ IT EXISTS BECAUSE `msisdn` IS NOT A PROPERTY OF A PLAYER. It is the destination a player
+   * typed on one money movement, and it can legitimately differ from the phone on their account
+   * — a withdrawal sent to a relative's handset is an ordinary thing. A registry entry that
+   * masked `transaction.msisdn` and then revealed `user.phoneE164` would state, on a money row,
+   * that the money went somewhere it did not. So the money surfaces address a TRANSACTION, and
+   * the audit row must say so or it points a regulator at the wrong record.
+   */
+  targetType?: "User" | "Transaction";
   /** Human label, used by the audit payload and the reveal control's accessible name. */
   label: string;
   /**
@@ -79,6 +95,47 @@ export const SENSITIVE_FIELDS = {
     label: "Email address",
     mask: maskEmail,
     read: async (subjectId) => (await db.user.findById(subjectId))?.email ?? null,
+  },
+  /**
+   * ⭐ THE PHONE NUMBER, WIRED 2026-09-06 — completing a read `identity.contact` ALWAYS CLAIMED.
+   *
+   * `roles.ts` READ_CLASS_SUMMARY has described this class as "email address and **unmasked
+   * phone number** — the account-recovery set" since the axis shipped, and the /admin/roles
+   * editor showed an Owner exactly that sentence beside a cell they could flip. Flipping it did
+   * nothing to any phone: seven admin surfaces masked the number with hand-written `.slice()`
+   * expressions that consulted no matrix, so the field behaved as the `masked` CEILING for every
+   * role including ADMIN, and no reveal existed at any seniority.
+   *
+   * ⛔ THAT IS NOT WHAT D3 RULED, AND THIS DOES NOT REVERSE IT. READ-TIERS §4c defines the
+   * `read` cell as "masked AT REST, and this role may REVEAL it (audited)" — masking is not the
+   * ceiling, it is the resting state. D1's own argument turns on it: "it treats identity data as
+   * masked at rest **and lets seniority reveal, not bypass**", citing the phone as its
+   * precedent. The phone stays masked at rest for everybody here; what changes is that the
+   * matrix now decides who may go further, which is the design as written.
+   *
+   * Owner ruling and the surfaces it reaches: `docs/COMPLIANCE-DECISIONS.md`, 2026-09-06.
+   */
+  phone: {
+    readClass: "identity.contact",
+    label: "Phone number",
+    mask: maskPhone,
+    read: async (subjectId) => (await db.user.findById(subjectId))?.phoneE164 ?? null,
+  },
+  /**
+   * ⛔ A SEPARATE FIELD FROM `phone`, AND THE SEPARATION IS THE WHOLE POINT. `subjectId` here is
+   * a TRANSACTION id, not a player id: this is the destination handset for one money movement,
+   * which a player may legitimately give as someone else's number. Reading it back off
+   * `user.phoneE164` would put a number on a payout row that is not where the money went.
+   *
+   * Same class as `phone` — `identity.contact` is "the account-recovery set", and a handset
+   * number is that whether it was typed on a profile or on a withdrawal form.
+   */
+  msisdn: {
+    readClass: "identity.contact",
+    targetType: "Transaction",
+    label: "Payout number",
+    mask: maskPhone,
+    read: async (subjectId) => (await db.txn.findById(subjectId))?.msisdn ?? null,
   },
   region: {
     readClass: "identity.personal",

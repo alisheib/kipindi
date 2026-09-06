@@ -157,7 +157,11 @@ console.log("\n§4 · the ratchet — harnesses still outside the anchor audit")
   // else may raise it. This is the same shape as `test:failure-reasons` §10's raw-string
   // ratchet and `test:labels` §4's, and for the same reason: a gap that is printed every run
   // gets closed, a gap described in a comment does not.
-  const UNDECLARED_CEILING = 67;
+  // 67 → 65 on 2026-09-06: `red:board-discovery` and `red:discovery-contract` both moved their
+  // cases into `scripts/anchors/`. ⭐ The board one is why: its inline `new` anchor rotted the
+  // moment a live defect in that arm was repaired, and this ratchet was structurally unable to
+  // notice — §3 audits declaration files, and it had none.
+  const UNDECLARED_CEILING = 65;
   const declaredNames = new Set(declFiles.map((f) => f.replace(/\.anchors\.mjs$/, "")));
   // A harness "declares" when a declaration file exists whose name appears in its command.
   const undeclared = harnesses.filter((key) => {

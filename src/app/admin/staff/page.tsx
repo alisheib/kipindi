@@ -2,6 +2,7 @@ import { AdminPageHead, AdminCard, AdminKpi, AdminLoadError } from "@/components
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
 import { Chip } from "@/components/ui/chip";
+import { Sensitive } from "@/components/ui/sensitive";
 import { Avatar } from "@/components/ui/avatar";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { db } from "@/lib/server/store";
@@ -88,7 +89,7 @@ export default async function AdminStaffPage() {
                           </div>
                         </a>
                       </td>
-                      <td className="font-mono whitespace-nowrap">{u.phoneE164.length > 6 ? `${u.phoneE164.slice(0, 4)}****${u.phoneE164.slice(-2)}` : u.phoneE164}</td>
+                      <td className="font-mono whitespace-nowrap"><Sensitive field="phone" subjectId={u.id} value={u.phoneE164} /></td>
                       <td><Chip size="sm" variant={roleChipVariant(u.role)}>{roleLabel(u.role)}</Chip></td>
                       <td><Chip size="sm" variant={u.status === "ACTIVE" ? "success" : "neutral"}>{accountStatusLabel(u.status)}</Chip></td>
                       <td className="font-mono whitespace-nowrap">{u.lastLoginAt ? formatDate(u.lastLoginAt) : "—"}</td>

@@ -13,66 +13,44 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { injectDefect } from "./red-anchor.mjs";
+import { MUTATIONS } from "./anchors/discovery-contract.anchors.mjs";
 
 const SRC = "src/lib/markets/discovery.ts";
 
-/** Each mutation is a real defect, with the source of the behaviour it restores. */
-const MUTATIONS = [
-  {
-    name: "absent move24h coerced to 0 (the kit prototype's own `Math.abs(m.move||0)`)",
-    from: "return row.move24h == null ? null : Math.abs(row.move24h);",
-    to: "return Math.abs(row.move24h ?? 0);",
-    expect: "Biggest move",
-  },
-  {
-    name: "cold-start markets admitted to the odds buckets on impliedYesPct's hardcoded 50",
-    from: "  const pct = row.yesPct;\n  if (pct == null) return false;",
-    to: "  const pct = row.yesPct ?? 50;",
-    expect: "no pool is in NO odds bucket",
-  },
-  {
-    name: "`open` counts a selection-closed market (the branch that makes Open lie)",
-    from: '      return row.status === "LIVE" && !row.selectionClosed;',
-    to: '      return row.status === "LIVE";',
-    expect: "open EXCLUDES a selection-closed market",
-  },
-  {
-    name: "`all` reaches into the settled archive /results already owns",
-    from: '      return row.status === "LIVE" || row.status === "CLOSED";',
-    to: '      return row.status !== "DRAFT";',
-    expect: "all EXCLUDES RESOLVED",
-  },
-  {
-    name: "counts computed over the census instead of cross-filtered (the 2026-08-10 shape)",
-    from: "  const next = { ...state, ...patch };",
-    to: "  const next = { ...state, ...patch, pool: 'any', odds: 'any', topic: 'all' };",
-    expect: "respects the ACTIVE pool filter",
-  },
-  {
-    name: "a default written into the URL, so a clean board no longer has a clean URL",
-    from: '  if (s.status !== DEFAULTS.status) p.set("status", s.status);',
-    to: '  p.set("status", s.status);',
-    expect: "clean board has a clean URL",
-  },
-  {
-    name: "ties left to JS sort stability (the grid reshuffles under the reader on refresh)",
-    from: "  return TIE_BREAK[sort](a, b) || byId(a, b);\n}",
-    to: "  return 0;\n}",
-    expect: "ties are broken deterministically",
-  },
-];
+/**
+ * ⛔ THE MUTATIONS ARE DECLARED AS DATA IN `scripts/anchors/discovery-contract.anchors.mjs`.
+ *
+ * They were inline until 2026-09-06. `test:red-anchors` §3 audits declaration FILES, so an
+ * inline anchor is one nobody can check without running a harness that rewrites real source —
+ * and on that same day its sibling `board-discovery-red.mjs` proved the cost: an anchor rotted
+ * against a repaired line, the harness printed `anchor missing`, and the gate above it went on
+ * printing green.
+ */
 
 const original = readFileSync(SRC, "utf8");
 let failures = 0;
 
-function gateExits() {
+/**
+ * 🔴 THIS USED TO RETURN THE EXIT CODE ALONE, AND EVERY MUTATION ALREADY CARRIED AN `expect`
+ * THAT NOTHING READ — corrected 2026-09-06. The data declared "this defect must break THAT
+ * assertion" and the runner checked only that something, somewhere, went red. A syntax error, an
+ * unrelated regression, or a suite that crashed before reaching the leg in question all look
+ * identical to a proof under exit-code matching, and the file's own header claimed the stronger
+ * property. It now matches the FAILING LINE.
+ */
+function runGate() {
   try {
-    execFileSync("npx", ["tsx", "scripts/discovery-contract.test.mts"], { stdio: "pipe", shell: true });
-    return 0;
+    const out = execFileSync("npx", ["tsx", "scripts/discovery-contract.test.mts"], { stdio: "pipe", shell: true });
+    return { code: 0, out: String(out) };
   } catch (e) {
-    return e.status ?? 1;
+    return { code: e.status ?? 1, out: `${e.stdout ?? ""}${e.stderr ?? ""}` };
   }
 }
+const gateExits = () => runGate().code;
+
+/** A line that FAILED and carries the distinctive phrase — see board-discovery-red.mjs. */
+const failedOn = (out, expect) =>
+  out.split(/\r?\n/).some((l) => /^\s*FAIL\b/.test(l) && l.includes(expect));
 
 try {
   console.log("\n── baseline: the gate must be GREEN before anything is broken ──");
@@ -94,12 +72,15 @@ try {
       continue;
     }
     writeFileSync(SRC, mutated, "utf8");
-    const code = gateExits();
+    const { code, out } = runGate();
     if (code === 0) {
-      console.log(`  FAIL gate stayed GREEN with: ${m.name}`);
+      console.log(`  FAIL gate stayed GREEN with: ${m.name}\n       ${m.why ?? ""}`);
+      failures++;
+    } else if (m.expect && !failedOn(out, m.expect)) {
+      console.log(`  FAIL gate went red for the WRONG REASON on: ${m.name}\n       expected a FAIL line containing: ${m.expect}`);
       failures++;
     } else {
-      console.log(`  PASS gate went red (exit ${code}) on: ${m.name}`);
+      console.log(`  PASS gate went red on its own assertion (${m.expect}): ${m.name}`);
     }
   }
 } finally {

@@ -1,6 +1,13 @@
 # READ_TIERS — what a support agent may READ, and how that becomes data rather than a habit
 
 > ✅ **BUILT AND PROVEN ON PRODUCTION — `qa:read-tiers` 18/0. Read §1a FIRST.**
+> 🔴 **AND THEN §3.5a, WHICH IS NEWER THAN MOST OF THIS FILE.** On 2026-09-06 the axis was
+> extended to the PHONE across the whole admin console (Ali's ruling). Until that day
+> `identity.contact` named the phone in its own summary, in §1's table and in the `/admin/roles`
+> editor, and governed **only the email** — seven surfaces masked the number by hand and §7's
+> ratchet was blind to the field. ⚠️ **Sections written before that date describe "the one
+> surface wired"; that is history now.** The masthead is corrected here in the same commit
+> because this file has already paid once for updating every section except its door.
 > ⚠️ **This masthead used to read "THIS IS A DESIGN FOR AGREEMENT, NOT SHIPPED CODE. Nothing
 > in §3 exists yet."** That was true when the design was written and false the moment §3.4
 > landed — and it sat above four “AS BUILT / AS PROVEN” sections for a whole delivery, found
@@ -69,7 +76,7 @@ So the whole player drill-down is already open to them. Read from
 
 | On the page | State today | Gate |
 |---|---|---|
-| Phone number | **Masked** — `+255*****01` (`:205`) | none needed |
+| Phone number | **Masked at rest, revealable by cell** — `+255••••01` | `identity.contact` ✅ (⚠️ this row said *"none needed"* until 2026-09-06 — see §3.5a) |
 | KYC document number | **Masked** — first 4 … last 4 (`:484`) | inside the KYC tab |
 | Email address | **FULL, in the clear** (`:207-211`) | ⛔ none |
 | Date of birth | **FULL** (`:487`) | ⛔ none |
@@ -274,7 +281,36 @@ property is asserted as a positive control in the same run (`test:read-tiers` 5.
 excludes it — for the same reason: a permanently-exempt role would make §4c's *"masked at rest for
 everyone"* untrue for the only account that exists on production.
 
-### 3.5 · AS BUILT — the primitive, the reveal, and the one surface wired
+### 3.5a · 🔴 THE PHONE WAS IN THE CLASS AND NOT IN THE CODE — closed 2026-09-06
+
+⛔ **Read this before the section below, which describes "the ONE surface wired" and was written
+when that was true.** The axis now governs the phone across the whole console, on Ali's ruling of
+2026-09-06 ([`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md)).
+
+**The gap, stated plainly.** `roles.ts` `READ_CLASS_SUMMARY` has defined `identity.contact` as
+*"email address and **unmasked phone number** — the account-recovery set"* since the axis shipped,
+and §3.1 below says the same. **The code did not.** Seven admin surfaces masked the number with
+hand-written `.slice()` expressions in **three different shapes** (`+255****01`, `+255*****01`,
+`+255••••01`), none consulting the matrix, so `identity.contact` governed the email and silently
+not the phone — while `/admin/roles` → Reads showed an Owner a sentence promising otherwise.
+
+⚠️ **AND §7'S DRIFT RATCHET COULD NOT SEE ANY OF IT**, because `phoneE164` and `msisdn` were not
+in its own `GOVERNED_ACCESSORS` list. The ratchet whose stated purpose is *"a population that is
+the WHOLE APP, not the part you remembered"* had its population chosen by hand, and the hand
+forgot the field. That is the same failure this section's own §7 header describes, one layer down.
+
+⭐ **This does not overturn D3 — it is what D3 said.** §4c's `read` cell is *"masked at rest, and
+this role may reveal it"*, and D1 is argued **from** the phone being masked-at-rest-with-a-reveal.
+The phone stays masked at rest for every role; what changed is that the matrix now decides who may
+go further. Six of the seven masks also read `p.length > 6 ? masked : p` — printing a short or
+malformed number **in full**, the one input class most likely to be junk.
+
+**Now:** one `maskPhone` in `src/lib/phone-normalize.ts` (a module with no imports, so a client
+component cannot drag the store into a browser bundle); `phone` and `msisdn` in the registry —
+⛔ **two entries, because `msisdn` is a payout DESTINATION addressed by transaction id, and reading
+it back off `user.phoneE164` would state on a money row that the money went somewhere it did not.**
+
+### 3.5 · AS BUILT — the primitive, the reveal, and the surfaces wired
 
 **`<Sensitive>` is a SERVER component** (`src/components/ui/sensitive.tsx`) and is the only file in
 `src/` permitted to import the resolver — `test:read-tiers` 4.4 enforces it by looking for an

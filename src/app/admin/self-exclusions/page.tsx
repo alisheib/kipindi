@@ -2,11 +2,12 @@ import { AdminPageHead, AdminCard, AdminKpi, AdminLoadError } from "@/components
 import { AdminPagination, PER_PAGE, parsePage } from "@/components/admin/admin-pagination";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { Chip } from "@/components/ui/chip";
+import { Sensitive } from "@/components/ui/sensitive";
 import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { db } from "@/lib/server/store";
 import { rgRosterCounts } from "@/lib/server/analytics";
-import { maskName } from "@/lib/server/affiliate-service";
+import { maskedRosterLabel } from "@/lib/server/affiliate-service";
 import { formatDateTime } from "@/lib/utils";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
@@ -127,10 +128,10 @@ export default async function AdminSelfExclusionsPage({
                       {/* PII-minimised in the roster (self-excluded players are a
                           sensitive cohort). Full identity only on the audited
                           detail page — matches the masked-phone column. */}
-                      <a href={`/admin/players/${r.userId}`} className="font-medium text-text hover:text-royal-300 hover:underline">{maskName(r.displayName, r.phoneE164)}</a>
+                      <a href={`/admin/players/${r.userId}`} className="font-medium text-text hover:text-royal-300 hover:underline">{maskedRosterLabel({ id: r.userId, displayName: r.displayName }, r.phoneE164)}</a>
                       <span className="block font-mono text-micro text-text-tertiary">{r.userId.slice(0, 14)}…</span>
                     </td>
-                    <td className="font-mono whitespace-nowrap">{r.phoneE164.length > 6 ? `${r.phoneE164.slice(0, 4)}****${r.phoneE164.slice(-2)}` : r.phoneE164}</td>
+                    <td className="font-mono whitespace-nowrap"><Sensitive field="phone" subjectId={r.userId} value={r.phoneE164} /></td>
                     <td>
                       {r.status === "self_exclusion" ? (
                         <Chip size="sm" variant="danger"><I.lock s={10} /> excluded</Chip>

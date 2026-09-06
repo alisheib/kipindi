@@ -6,6 +6,101 @@
 
 ---
 
+## 2026-09-06 · The owner can read a player's full phone number — behind an audited eye, on every admin surface
+
+**Owner decision:** Ali, **2026-09-06**, in his words:
+
+> *"In admin, I the owner of the platform cannot see full phone numbers of players. Please put
+> next to it an eye like for email, to show full number in roster so I know who is who perfectly.
+> Make it end to end, make sure it reflects everywhere else needed. Consistency with our UI theme
+> kit and coherence is more important."*
+
+Register rows **`E-309`**…**`E-313`** in [`LIVE-QA-CAMPAIGN.md`](LIVE-QA-CAMPAIGN.md) §6.
+Door: [`SESSION-PROMPT-PROGRESS-AND-PHONE.md`](SESSION-PROMPT-PROGRESS-AND-PHONE.md) §2.
+
+### ⭐ THIS DOES **NOT** REVERSE READ-TIERS D3 — it completes it, and the difference matters
+
+The session brief anticipated two possibilities and asked which this was
+(§2b: *"establish which of the two it is before writing code"*). **It is the first: a wiring job.**
+
+`READ-TIERS` **D3** ruled *"ADMIN is not exempt from masking"*, and §4c defines the cell that
+ruling grants ADMIN — `read` — as **"masked AT REST, and this role may REVEAL it (audited)"**.
+Masking is the resting state, not the ceiling; the ceiling is the separate `masked` cell.
+D3's own text says so: *"ADMIN sees `••••` and gets an explicit reveal, which is D4."*
+
+**And D1's argument depends on the phone being revealable.** §4a D1 reads: *"The phone number and
+the KYC document number are already masked for ADMIN too. So this page does not treat masking as
+a junior-role concession — it treats identity data as masked at rest **and lets seniority reveal,
+not bypass**."* Until today the phone had **no reveal at any seniority**, so it behaved as the
+`masked` ceiling for every role — contradicting ADMIN's and COMPLIANCE's `identity.contact: read`
+cells and the premise D1 is argued from. **The state we found was the deviation.**
+
+🔴 **And the matrix had been promising this all along.** `roles.ts` `READ_CLASS_SUMMARY` has
+described `identity.contact` as *"email address and **unmasked phone number** — the
+account-recovery set"* since the axis shipped, and `/admin/roles` → Reads showed an Owner that
+sentence beside a cell they could flip. Flipping it changed nothing about any phone: seven admin
+surfaces masked with hand-written `.slice()` expressions that consulted no matrix. **A control
+that names a field it does not govern is worse than an absent one.**
+
+**What changed.** `phone` and `msisdn` are entries in `sensitive-fields.ts`; every admin render
+resolves through `<Sensitive>`; every reveal is a server round trip writing `pii.revealed` with
+the actor, the target, the field and the class — **never the value**.
+
+**Deliberately NOT changed.** No role gains a read it did not hold. The cells are untouched:
+ADMIN and COMPLIANCE `read`; FINANCE, AUDITOR, SUPPORT and GROWTH `masked`; MODERATOR `none`.
+`RoleReadGrant` holds **0 rows on production** (re-measured 2026-09-06), so the code defaults are
+the live matrix.
+
+### ⚠️ TWO RULINGS THAT DO GO BEYOND THE DESIGN, PUT TO ALI AND ANSWERED
+
+| | Ali's ruling | The cost, stated |
+|---|---|---|
+| **Money pages** | `/admin/transactions`, `/admin/payments` and the transactions CSV come **under the eye** | ⛔ D3's own scope fence said *"`ops` and money-movement pages are NOT in scope"*. This crosses it, on the owner's instruction. It costs one click where a number was previously instant |
+| **List views** | **An eye on every row**, not just on the single-player page | ⛔ Reverses the intent in `players/page.tsx`'s own comment (*"full number only on the detail page (PII minimization)"*) — a comment that had been false for months anyway, since the detail page masked too. A list is not a bulk read: each reveal is one server round trip and one audit row |
+
+### 🔴 THE EXPOSURE THIS CLOSED, WHICH NOBODY HAD FILED
+
+`/admin/transactions`, `/admin/payments` and `/api/admin/transactions/export` rendered or wrote
+the **full msisdn** to any holder of the `accounting` domain — which is **FINANCE and AUDITOR**,
+both of whose `identity.contact` cell is `masked`, the ceiling meaning *may never reveal*. Two
+roles the matrix forbids a single unmasked phone could pull **up to 50,000** into a CSV in one
+click. Same shape as §7's existing GROWTH-reads-emails finding: a role scoped to one domain
+handed another domain's facts because they share a route.
+
+⛔ **The export was not refused, it was scoped.** Its purpose is reconciling our ledger against
+Selcom's settlement statement, which needs amounts and gateway references, not handsets. The one
+governed column is masked for a role that may not reveal it, the header renames itself
+`msisdn_masked` so a reconciler cannot mistake dots for a corrupt number, and a **full** pull now
+writes `pii.revealed` carrying the row count — because `transactions.exported` alone does not
+record that PII left the building.
+
+### 🔴 AND A DEFECT THAT MADE THE WHOLE AXIS SINGLE-ROLE
+
+`revealSensitiveAction` opened with `requireStaff("support")`, and `DEFAULT_GRANTS.COMPLIANCE`
+holds `support: { canView: true, canAct: false }`. **COMPLIANCE was refused on every reveal, on
+every surface, including `/admin/players/[id]` itself** — so ADMIN was the only actor for whom the
+READ axis had ever worked, while `test:read-tiers` 2.8 asserted at the matrix level that
+*"COMPLIANCE may"*. A green guard over a broken product. Worse, it **threw**, so the control could
+not display the reason, and it wrote a SECURITY `privilege_escalation_blocked` row for an officer
+doing their job — into the log a regulator reads after an incident.
+
+Replaced by `softRequireConsole`: a real session, a role that can view **some** part of the
+console, step-up 2FA, and a soft refusal. The seal on a reveal is `mayReveal` against the same
+matrix the UI consulted, so the absent button and the refused request stay one rule.
+
+### ⚠️ WHAT IS NOT CLAIMED
+
+🟡 **`src/lib/server/**.ts` is not swept** for governed accessors (`E-313`). Those sites mask for
+LOGS and EMAILS and keep different digit counts on purpose — a different concern from a staff
+member reading a record — but "different concern" is a judgement, not a measurement, and nobody
+has measured it.
+
+**Code:** `src/lib/phone-normalize.ts` (`maskPhone`, the one home) · `src/lib/server/sensitive-fields.ts` · `src/components/ui/sensitive.tsx` · `src/lib/server/rbac-guard.ts` (`softRequireConsole`) · `src/app/api/admin/transactions/export/route.ts` · nine admin surfaces
+**Tests:** `test:read-tiers` **64/0** (§8 is the phone) · `red:read-tiers` **21/21**, each on its own assertion · `test:player-page-reads` · `test:control-gates` **263/0** · `test:pii-logs` · `qa:phone-reveal` (browser drive)
+**Docs:** [`READ-TIERS.md`](READ-TIERS.md) §1, §3.5 and §4a amended in the same commit.
+
+---
+
 ## 2026-09-05 · Identity verification precedes DEPOSITING, PLAYING and WITHDRAWING
 
 **Ruling:** the owner (Ali), **2026-09-05**, relaying management's decision. In his words:

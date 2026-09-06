@@ -9,6 +9,7 @@ import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { Avatar } from "@/components/ui/avatar";
 import { Chip } from "@/components/ui/chip";
+import { Sensitive } from "@/components/ui/sensitive";
 import { Stat } from "@/components/ui/stat";
 import { Callout } from "@/components/ui/callout";
 import { poolFee, payoutViewFor } from "@/lib/payout";
@@ -59,10 +60,11 @@ const STATUS_VARIANT: Record<string, "success" | "warning" | "danger" | "neutral
   CASHED_OUT: "warning",
 };
 
-function maskPhone(p: string) {
-  if (p.length <= 6) return p;
-  return `${p.slice(0, 4)}*****${p.slice(-2)}`;
-}
+// ⛔ A LOCAL `maskPhone` USED TO LIVE HERE AND IT IS DELETED, NOT MOVED (2026-09-06). Beyond
+// being one of seven divergent copies, it defeated the very guard meant to find it:
+// `read-tiers.test.mts` §7 skips a line matching /\bmask[A-Z]\w*\(/, which cannot tell a local
+// lookalike from the registry's real one — so a hand-rolled mask satisfied the ratchet while
+// consulting no matrix at all. Its `p.length <= 6 ? p` branch also printed short values IN FULL.
 
 export default async function MarketPredictorsPage({
   params,
@@ -391,7 +393,7 @@ export default async function MarketPredictorsPage({
                         </a>
                       </td>
                       <td className="font-mono whitespace-nowrap text-text-muted">
-                        {u ? maskPhone(u.phoneE164) : "—"}
+                        {u ? <Sensitive field="phone" subjectId={u.id} value={u.phoneE164} /> : "—"}
                       </td>
                       <td>
                         <Chip size="sm" variant={p.side === "YES" ? "yes" : "no"}>{p.side}</Chip>

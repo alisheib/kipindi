@@ -16,7 +16,7 @@ import { requireAdminTotp } from "./admin-guard";
 import { canAct, canView } from "./rbac";
 import type { OperatorRefusal } from "../operator-refusal";
 import type { SessionData } from "./session";
-import type { AdminDomain, Role } from "./roles";
+import { ADMIN_DOMAINS, type AdminDomain, type Role } from "./roles";
 
 /**
  * The single shared ACTION guard — replaces the per-file `ensureAdmin()`/`requireAdmin()`.
@@ -137,6 +137,68 @@ export async function softRequireStaff(
   }
   await requireAdminTotp(session.userId, session.sessionId); // step-up 2FA, as requireStaff does
   return { ok: true, userId: session.userId, sessionId: session.sessionId };
+}
+
+/**
+ * THE CONSOLE guard — for a cross-route action that no single DOMAIN can describe.
+ *
+ * 🔴 WHY IT EXISTS, AND IT IS A LIVE DEFECT, NOT A REFACTOR (2026-09-06).
+ * `revealSensitiveAction` opened with `requireStaff("support")`, which resolves to
+ * `canAct(role, "support")`. `DEFAULT_GRANTS.COMPLIANCE` holds `support: { canView: true,
+ * canAct: FALSE }` — so a COMPLIANCE officer was refused on EVERY reveal, on every surface,
+ * including `/admin/players/[id]` itself. Since ADMIN and COMPLIANCE are the only roles holding
+ * `identity.contact: read`, and ADMIN bypasses the domain check, **ADMIN was the only actor for
+ * whom the READ axis had ever worked** — while `test:read-tiers` 2.8 asserted at the matrix
+ * level that "COMPLIANCE may". A green guard over a broken product.
+ *
+ * Two further harms, both quiet:
+ *   · `requireStaff` THROWS. The reveal control reads `{ ok: false, error }` and renders the
+ *     message; a thrown error rejects the transition instead, so the officer saw nothing at all.
+ *   · It wrote a SECURITY `privilege_escalation_blocked` row for an officer doing their job,
+ *     into the one log a regulator reads after an incident.
+ *
+ * ⛔ THE FIX IS THE AXIS, NOT THE SEVERITY. A reveal is reachable from wherever `<Sensitive>`
+ * renders — support, compliance, trading and accounting routes — so pinning it to ONE domain is
+ * a category error, and taking the domain from the CALLER would be client-supplied and therefore
+ * forgeable. What this guard asserts is console staff-ness: a real session, a role that can see
+ * SOME part of the console, and step-up 2FA. The actual seal on a reveal is `mayReveal`, checked
+ * by the caller against the same matrix the UI consulted — so the absent button and the refused
+ * request stay one rule rather than two that can drift.
+ *
+ * ⛔ IT MUST NOT AUDIT ESCALATION FOR A MISSING READ CELL. Being refused a reveal is an ORDINARY
+ * outcome of the matrix — that refusal belongs to `mayReveal` and names the class. Logging it as
+ * attempted escalation would fill the SECURITY log with COMPLIANCE doing exactly as designed,
+ * which is how a real signal gets buried.
+ */
+export async function softRequireConsole(
+  action: string,
+  refusal: string,
+): Promise<{ ok: true; userId: string; sessionId: string; role: Role } | { ok: false; error: string }> {
+  const session = await currentSession();
+  if (!session) redirect("/auth/admin");
+  const me = await db.user.findById(session.userId);
+  if (!me) redirect("/auth/admin");
+  const role = me.role as Role;
+
+  if (role !== "ADMIN") {
+    // Reaching the console at all — ANY domain this role can view. A role with none is not a
+    // console user, and `defaultGrant` returns canView:false for every unlisted pair, so a
+    // PLAYER or AGENT forging this request fails here.
+    const seen = await Promise.all(ADMIN_DOMAINS.map((d) => canView(role, d)));
+    if (!seen.some(Boolean)) {
+      audit({
+        category: "SECURITY",
+        action: "privilege_escalation_blocked",
+        actorId: session.userId,
+        targetType: "Action",
+        targetId: action,
+        payload: { role, domain: "console", action },
+      });
+      return { ok: false, error: refusal };
+    }
+  }
+  await requireAdminTotp(session.userId, session.sessionId); // step-up 2FA, as every action guard takes
+  return { ok: true, userId: session.userId, sessionId: session.sessionId, role };
 }
 
 /**

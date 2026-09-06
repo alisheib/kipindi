@@ -3,6 +3,7 @@ import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
 import { Avatar } from "@/components/ui/avatar";
 import { Chip } from "@/components/ui/chip";
+import { Sensitive } from "@/components/ui/sensitive";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { db } from "@/lib/server/store";
 import { currentSession } from "@/lib/server/auth-service";
@@ -26,6 +27,8 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
   const { id } = await params;
   const u = await db.user.findById(id);
   if (!u) notFound();
+  // Whether to draw the separator between the two masked fields — see the note at the render.
+  const hasEmail = !!u.email;
 
   const roleInfos = await staffRoleInfos();
   const audit = await getAuditForTarget("User", id, 100);
@@ -42,7 +45,15 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
             <Avatar initials={displayInitials(u)} size="lg" seed={u.id} />
             <div className="min-w-0">
               <p className="font-display font-bold text-title-sm text-text truncate">{displayLabel(u)}</p>
-              <p className="font-mono text-caption text-text-tertiary">{u.phoneE164}{u.email ? ` · ${u.email}` : ""}</p>
+              {/* ⚠️ The separator reads a BOOLEAN computed above, not `u.email` itself. Both
+                  values render through <Sensitive>, and the §7 ratchet strips those elements
+                  before it looks — so a bare `{u.email ? … : ""}` left behind would be reported
+                  as an unwired read of the very field it is correctly wiring. */}
+              <p className="font-mono text-caption text-text-tertiary">
+                <Sensitive field="phone" subjectId={u.id} value={u.phoneE164} />
+                {hasEmail ? " · " : ""}
+                <Sensitive field="email" subjectId={u.id} value={u.email} />
+              </p>
             </div>
             <div className="ml-auto flex items-center gap-2">
               <Chip size="sm" variant={u.role === "ADMIN" ? "gold" : "info"}>Current: {roleLabel(u.role)}</Chip>

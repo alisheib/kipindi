@@ -29,6 +29,7 @@
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
+import { StripAutoScroll } from "@/components/ui/strip-autoscroll";
 import { cn } from "@/lib/utils";
 import {
   ODDS_IDS,
@@ -123,6 +124,7 @@ export function DiscoveryBar({
     open: t.market.statusOpen,
     today: t.market.statusClosingToday,
     new: t.market.statusNew,
+    progress: t.market.statusInProgress,
     watch: t.market.statusWatching,
     all: t.market.statusAll,
   };
@@ -235,8 +237,15 @@ export function DiscoveryBar({
              the row overflow its own container by 16px. `.kp-strip-fade` now carries the
              "there is more this way" signal properly, so the strips sit inside the content box
              and nothing overflows. */
+          /* ⭐ THE PRESSED CHIP IS SCROLLED INTO VIEW ON LOAD — <StripAutoScroll/>, below.
+             Measured at 360 on 2026-09-06: six chips in a 328px box, so the fourth (In progress)
+             starts past the fold and the board opened with the ACTIVE lens entirely off-screen,
+             reading `Open · Closing today · Mpy…`. Pre-existing for Watching and All; the sixth
+             chip is what landed it on the lens a player had just pressed. */
+          data-strip-autoscroll
           className="kp-thin-scroll kp-strip-fade flex min-w-0 flex-1 items-center gap-1 overflow-x-auto pr-2 lg:flex-wrap lg:overflow-visible lg:pr-0"
         >
+          <StripAutoScroll />
           {statuses.map((s) => (
             <Chip
               key={s}

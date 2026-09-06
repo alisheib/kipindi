@@ -92,11 +92,23 @@ type Props = {
   className?: string;
 };
 
+/**
+ * 🔴 THE FIRST ARGUMENT IS `live`, NOT `status` — CORRECTED 2026-09-06.
+ *
+ * It used to bail on `status !== "LIVE"`, and `/markets` passes `status="LIVE"` for a
+ * selection-closed row (its `status` prop distinguishes CLOSED from everything else, while
+ * `selectionClosed` is a separate prop). So a market that had stopped taking bets could still
+ * wear **HOT** or **TIPPING** beside its own "Closed" chip — the board inviting a player into a
+ * market it had already shut. The card computes `live = status === "LIVE" && !selectionClosed`
+ * one screen below and every other derived state on this card already reads it; the badge was
+ * the one that did not. Passing `live` fixes /markets, /live, /watchlist and the detail rail at
+ * once, because all four render this component.
+ */
 function getSignalBadge(
-  status: Props["status"], yesPct: number, volume: number, predictors: number, timeLeft: string, fresh: boolean,
+  live: boolean, yesPct: number, volume: number, predictors: number, timeLeft: string, fresh: boolean,
   labels: { hot: string; soon: string; tipping: string; new: string },
 ): { kind: "hot" | "soon" | "tipping" | "new"; label: string } | null {
-  if (status !== "LIVE") return null;
+  if (!live) return null;
   // A brand-new market is NEW, never "tipping" — it isn't balanced, it's empty.
   if (fresh) return { kind: "new", label: labels.new };
   if (volume >= 30_000 || predictors >= 40) return { kind: "hot", label: labels.hot };
@@ -250,7 +262,7 @@ export function MarketCard({
   // RULES law 5 is real data or nothing, so the price gate is now the pool.
   const fresh = live && (isNew ?? (volume === 0 && predictors === 0));
   const noPrice = live && (isNew ?? volume === 0);
-  const signal = getSignalBadge(status, yesPct, volume, predictors, timeLeft, fresh, {
+  const signal = getSignalBadge(live, yesPct, volume, predictors, timeLeft, fresh, {
     hot: t.common.hot, soon: t.common.soon, tipping: t.market.tipping, new: t.common.newBadge,
   });
   /** The settled side, or null when we genuinely don't know. Never inferred from

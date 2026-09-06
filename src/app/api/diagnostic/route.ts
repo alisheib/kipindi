@@ -24,11 +24,13 @@ import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { hasDatabase, pingDatabase } from "@/lib/server/prisma";
 import { verifyChain } from "@/lib/server/audit";
+import { maskPhone } from "@/lib/phone-normalize";
 
-function maskPhone(p: string): string {
-  if (p.length <= 6) return p;
-  return `${p.slice(0, 4)}*****${p.slice(-2)}`;
-}
+// ⛔ A LOCAL `maskPhone` LIVED HERE AND IS DELETED (2026-09-06) — one of seven copies, and one of
+// the six whose `p.length <= 6 ? p` branch printed a short or malformed number IN FULL. This is
+// an operator-facing DISPLAY, so it takes the one shared definition; the deliberately different
+// masks in `sms.ts` / `auth-service.ts` / `selcom.ts` are LOG redactions, a separate concern that
+// keeps its own digit counts on purpose.
 
 function bootstrapPhones(): string[] {
   return (process.env.ADMIN_BOOTSTRAP_PHONES ?? "")

@@ -18,6 +18,7 @@
  */
 import { db, type StoredAffiliateAccount, type StoredReferralReward } from "./store";
 import { getAffiliateConfig } from "./affiliate-config";
+import { displayLabel } from "@/lib/display-label";
 import { audit } from "./audit";
 import { randomId } from "./crypto";
 import { notifyReferralJoined, notifyReferralReward } from "./notification-service";
@@ -110,6 +111,35 @@ export function maskName(displayName: string | null, phoneE164: string): string 
   }
   const digits = phoneE164.replace(/\D/g, "");
   return `+${digits.slice(0, 3)}•••${digits.slice(-3)}`;
+}
+
+/**
+ * The label for a SENSITIVE ADMIN ROSTER — the self-exclusion register and the on-behalf DSAR
+ * list. A masked name when the player has one, and the anonymous handle when they do not.
+ *
+ * 🔴 WHY IT EXISTS (2026-09-06). Those two tables called `maskName` directly, whose fallback for
+ * a player with no display name is a PHONE FRAGMENT — `+255•••678`, the last THREE digits. After
+ * the phone came under the READ axis on the same day, each of those rows carried the number
+ * masked TWO different ways: the governed column showed the last two behind an audited eye, and
+ * the name column beside it leaked a third digit with no gate and no audit row. The looser of
+ * two maskings of the same value is the one that decides what leaked.
+ *
+ * ⛔ AND THE FALLBACK IS NOT A TIGHTER PHONE MASK — it is not a phone at all. `display-label.ts`
+ * already records the standard this product chose: *"every account has a non-PII handle that
+ * operators and players can refer to in chat / disputes without exposing the real name or the
+ * masked phone."* The phone is one column over, behind the eye, for anyone who needs it.
+ *
+ * ⚠️ `maskName` itself is deliberately UNCHANGED. `scripts/erasure.test.mts:224` pins its phone
+ * form to the last three digits AND asserts it differs from the name mask, because a redacted
+ * record must not be re-identifiable by matching two masks against each other. That is a real
+ * control on a different surface; this is a call-site decision, not a rewrite of theirs.
+ */
+export function maskedRosterLabel(
+  user: { id: string; displayName: string | null },
+  phoneE164: string,
+): string {
+  const named = (user.displayName ?? "").trim().length > 1;
+  return named ? maskName(user.displayName, phoneE164) : displayLabel({ id: user.id, displayName: null });
 }
 
 /**

@@ -52,7 +52,28 @@ export type DiscoveryRow = {
    * clock they must be filtered and sorted by.
    */
   bettableUntilMs: number;
+  /**
+   * When the RESULT is due — `resolutionAt`. Distinct from `bettableUntilMs` because the
+   * selection lead is per-category and runs 1h–48h (`computeSelectionClosedAt`), so betting-close
+   * does NOT order by result-due.
+   *
+   * ⛔ REQUIRED, not optional, on purpose. Optional would let a row arrive without it and sort
+   * silently last, which is the failure this module's own header exists to prevent. `tsc` names
+   * every construction site instead.
+   */
+  resolvesAtMs: number;
   selectionClosed: boolean;
+  /**
+   * An outcome has been recorded (`resolvedOutcome !== null`) — the RESULT IS OUT, even though
+   * the money may not have moved yet.
+   *
+   * ⭐ This is the field that stops `progress` lying. A market can sit at `status: "CLOSED"` with
+   * a verdict already stamped (`market-service.ts:2261` keys the resolver queue off exactly that
+   * pair), and Ali's stopping condition is the RESULT, not the settlement: "when results are out
+   * he won't see it anymore". Without this the tab would go on advertising a market whose answer
+   * is already known.
+   */
+  verdictRecorded: boolean;
   status: MarketLifecycle;
   watched: boolean;
 };
@@ -80,7 +101,7 @@ export function pricedYesPct(yesPool: number, noPool: number): number | null {
 
 /* ─────────────────────────────────── the URL contract ─────────────────────────────────── */
 
-export const STATUS_IDS = ["open", "today", "new", "watch", "all"] as const;
+export const STATUS_IDS = ["open", "today", "new", "progress", "watch", "all"] as const;
 export const SORT_IDS = ["closing", "pool", "people", "close", "move", "new"] as const;
 export const ODDS_IDS = ["any", "call", "cont", "long"] as const;
 export const POOL_IDS = ["any", "10k", "50k"] as const;
@@ -262,15 +283,25 @@ export const DAY_MS = 24 * 3600_000;
  * flagged them as invented; its own prototype gave `open` and `all` the byte-identical
  * predicate `() => true` over a fixture with no status field, so there was nothing to inherit.
  *
- *   open  = LIVE and still taking bets. Measured on production 2026-08-13: this hides 1 of 41
- *           cards (2.4%). ⚠️ Category selection-lead runs to 48h for macro, so on a
- *           differently-shaped book it could hide far more — re-measure before assuming.
- *   all   = the UNSETTLED book: LIVE ∪ CLOSED. NOT resolved/voided — /results already owns the
- *           settled archive, and CLOSED is on no player discovery board today.
+ *   open     = LIVE and still taking bets. Measured on production 2026-08-13: this hides 1 of 41
+ *              cards (2.4%). ⚠️ Category selection-lead runs to 48h for macro, so on a
+ *              differently-shaped book it could hide far more — re-measure before assuming.
+ *   progress = selection shut and NO verdict recorded yet. Added 2026-09-06 on Ali's
+ *              instruction: "as long as selection closed but result not out he should see it…
+ *              when results are out he won't see it anymore".
+ *   all      = the UNSETTLED book: LIVE ∪ CLOSED. NOT resolved/voided — /results already owns
+ *              the settled archive.
  *
- * ⛔ `isClosedByTime` remains the board-INCLUSION gate upstream of this module. A
- * selection-closed market is still fetched and still reachable; it simply lives under `all`
- * rather than `open`.
+ * ⭐ THE LENSES OVER `all` ARE A PARTITION, AND THE GUARD ASSERTS THAT RATHER THAN MEMBERSHIP.
+ * Every row of `all` is exactly one of: still bettable (`open`), waiting for a result
+ * (`progress`), or verdict-recorded-but-not-yet-settled (neither, and it belongs to /results).
+ * A membership check can pass over a population where the defect cannot appear; a partition
+ * cannot — which is this campaign's most expensive recurring lesson.
+ *
+ * ⛔ `isClosedByTime` NO LONGER GATES BOARD INCLUSION — corrected 2026-09-06. It used to, and
+ * that is precisely why a market past its resolution clock vanished from every player surface:
+ * `/markets` dropped it and `/results` reads RESOLVED ∪ VOIDED only. The board now fetches the
+ * whole unsettled book and these predicates do the choosing.
  */
 export function matchesStatus(row: DiscoveryRow, status: StatusId, nowMs: number): boolean {
   switch (status) {
@@ -286,7 +317,26 @@ export function matchesStatus(row: DiscoveryRow, status: StatusId, nowMs: number
       // Follows market-card.tsx's own rule (`volume === 0 && predictors === 0`), NOT the kit's
       // "added in the last four days" — ACCEPTANCE.md:109-110. One definition of "new", so the
       // board and the card can never disagree about which markets wear the badge.
-      return row.status === "LIVE" && row.pool === 0 && row.predictors === 0;
+      //
+      // 🔴 `!row.selectionClosed` ADDED 2026-09-06 — this was a live defect, not a consequence
+      // of the `progress` work. A market whose category lead fits inside (now, resolutionAt)
+      // gets a `selectionClosedAt` earlier than its resolution clock (`createMarket` →
+      // `computeSelectionClosedAt`; ⚠️ it returns NULL when the lead cannot fit, and then
+      // betting runs to resolution — so the window exists for some markets, not all). For the
+      // ones that have it, an unstaked market spent that whole window LIVE, on the board, and
+      // matching `new` — advertised as somewhere to place the first bet when it had already
+      // stopped taking them. `market-card.tsx` never drew the NEW badge on it (`fresh` is gated
+      // on its own `live`), so the board and the card disagreed, which is the one thing this
+      // predicate's comment promises they cannot do.
+      return row.status === "LIVE" && !row.selectionClosed && row.pool === 0 && row.predictors === 0;
+    case "progress":
+      // ⭐ IN PROGRESS = selection shut, result not out. Both halves matter:
+      //   · `selectionClosed` is passed IN from `isSelectionClosed` (market-service.ts) and is
+      //     already true for a CLOSED row, so this arm needs no status test of its own beyond
+      //     staying inside the unsettled book.
+      //   · `!verdictRecorded` is Ali's own stopping condition. A CLOSED market with an outcome
+      //     stamped has had its result out since the stamp, whatever the money has done since.
+      return (row.status === "LIVE" || row.status === "CLOSED") && row.selectionClosed && !row.verdictRecorded;
     case "watch":
       // Membership only — a watched market that has closed still shows under Watching, because
       // the player asked to follow it. Server-side watchlist; the kit's localStorage loses.
@@ -347,7 +397,13 @@ export function effectiveDir(state: Pick<DiscoveryState, "sort" | "dir">): SortD
 function sortKey(row: DiscoveryRow, sort: SortId): number | null {
   switch (sort) {
     case "closing":
-      return row.bettableUntilMs;
+      // ⭐ THE CLOCK A PLAYER IS SHOWN IS THE CLOCK THEY ARE SORTED BY — this module's own law,
+      // stated on `bettableUntilMs` above, applied to the second half of a market's life.
+      // Once selection has shut, the countdown the card shows is the one to the RESULT, so that
+      // is the key. 🔴 Before 2026-09-06 every selection-closed row keyed on a betting deadline
+      // already in the past, so `All` sorted ascending led with the markets nobody could bet on
+      // — the loudest position on the board given to its least actionable rows.
+      return row.selectionClosed ? row.resolvesAtMs : row.bettableUntilMs;
     case "pool":
       return row.pool;
     case "people":
@@ -505,7 +561,12 @@ export function relaxations(
 }
 
 /** The three genuinely different reasons a board can be empty. Never one generic message. */
-export type EmptyCause = "search-miss" | "watching-empty" | "filter-miss" | "no-inventory";
+export type EmptyCause =
+  | "search-miss"
+  | "watching-empty"
+  | "progress-empty"
+  | "filter-miss"
+  | "no-inventory";
 
 export function emptyCause(
   state: DiscoveryState,
@@ -515,6 +576,20 @@ export function emptyCause(
   if (shownCount > 0) return null;
   if (state.q) return "search-miss";
   if (state.status === "watch") return "watching-empty";
+  // ⭐ An empty `progress` board is the NORMAL, HEALTHY state — it means nothing is waiting on a
+  // result — and it must read that way rather than as a filter that found nothing or a page that
+  // broke. Same reasoning as `watching-empty`, and the reason this function refuses to have one
+  // generic message.
+  //
+  // ⛔ …BUT ONLY WHEN NOTHING ELSE NARROWED IT, AND THAT CONDITION IS LOAD-BEARING. `progress`
+  // is a LIFECYCLE lens, so unlike `watch` it composes with topic, odds and pool. Claiming
+  // "nothing is waiting for a result" on `?status=progress&topic=sports` would be a confident
+  // false statement whenever a market is waiting under some OTHER topic — the reader is then
+  // told the platform is idle and offered no way back. A filter miss is a filter miss, and it
+  // already has exits that carry real counts.
+  if (state.status === "progress" && state.topic === DEFAULTS.topic && state.odds === DEFAULTS.odds && state.pool === DEFAULTS.pool) {
+    return "progress-empty";
+  }
   if (boardTotal === 0) return "no-inventory";
   return "filter-miss";
 }
