@@ -534,6 +534,9 @@ ok("7.4 every exemption and every reviewed site carries a reason, and both lists
 console.log("\n§8 · the phone, and the file-producing surfaces");
 
 const maskSrc = decomment(readFileSync(join(ROOT, "src/lib/phone-normalize.ts"), "utf8"));
+// Driven, not read: 8.14-8.16 call the real helper. Imported here rather than at the top
+// because this suite otherwise reads source, and a behavioural leg needs the module itself.
+const A = await import("../src/lib/server/affiliate-service.ts");
 const registrySrc = decomment(readFileSync(join(ROOT, "src/lib/server/sensitive-fields.ts"), "utf8"));
 const exportSrc = decomment(readFileSync(join(ROOT, "src/app/api/admin/transactions/export/route.ts"), "utf8"));
 
@@ -615,9 +618,37 @@ ok("8.11 …and a FULL pull writes pii.revealed with the row count, never a valu
      offenders.join(", ") || "both use maskedRosterLabel — a masked name, else the non-PII handle");
   ok("8.13 ⭐ POSITIVE CONTROL · the detector can still see a `maskName(` call",
      /\bmaskName\s*\(/.test("const x = maskName(a, b);"));
+
+  /**
+   * ⛔ AND THE BEHAVIOUR, NOT ONLY THE CALL SITES — added 2026-09-06 after a near miss.
+   *
+   * 8.12 above proves the two rosters do not call `maskName`. It says NOTHING about what
+   * `maskedRosterLabel` itself does, and on 2026-09-06 that helper appeared in the working tree
+   * rewritten to `return maskName(user.displayName, phoneE164)` — a one-line body that
+   * reintroduces the exact phone-fragment leak the function exists to prevent, underneath a
+   * twenty-line comment explaining why it must not. 8.12 would have passed. `tsc` would have
+   * passed. ⭐ A guard on the CALL SITE cannot see a lie inside the CALLEE, so the property is
+   * asserted where it actually lives: drive the function and look at what comes out.
+   */
+  const ROSTER_PHONE = "+255712000101";
+  const noName = A.maskedRosterLabel({ id: "usr_9f3k2qm1a8", displayName: null }, ROSTER_PHONE);
+  const named = A.maskedRosterLabel({ id: "usr_9f3k2qm1a8", displayName: "Asha Mwakalinga" }, ROSTER_PHONE);
+  // ⚠️ "CONTAINS NO DIGITS" WOULD BE THE WRONG PROPERTY, and the first draft of this leg asserted
+  // it and failed on correct output. The handle is `Player #2QM1A8` — its digits come from the
+  // USER ID, which is not PII and is already rendered beside it. The property that matters is
+  // that the label is not a PHONE: no `+` form, and no run of the number's own digits.
+  ok("8.14 ⛔ a roster label for a player with NO name is not a phone in any form",
+     !noName.includes("+")
+     && !noName.includes(ROSTER_PHONE.slice(-3))
+     && !noName.includes(ROSTER_PHONE.replace(/\D/g, "").slice(0, 4)),
+     `got "${noName}" against ${ROSTER_PHONE}`);
+  ok("8.15 …and it is the non-PII handle this product already chose",
+     /^Player #/.test(noName), `got "${noName}"`);
+  ok("8.16 ⭐ POSITIVE CONTROL · a player WITH a name still gets the masked name, not the handle",
+     named.includes("***") && !/^Player #/.test(named), `got "${named}"`);
 }
 
-ok("8.14 ⭐ POSITIVE CONTROL · §8 reads real files, not empty strings",
+ok("8.17 ⭐ POSITIVE CONTROL · §8 reads real files, not empty strings",
    maskSrc.length > 500 && registrySrc.length > 500 && exportSrc.length > 500,
    `${maskSrc.length} / ${registrySrc.length} / ${exportSrc.length} bytes`);
 

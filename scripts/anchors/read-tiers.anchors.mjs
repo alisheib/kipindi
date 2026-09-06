@@ -274,6 +274,15 @@ export const MUTATIONS = [
     expect: "8.10 …and the column NAMES itself when masked",
   },
   {
+    name: "roster-label-falls-back-to-a-phone",
+    why: "⭐ THIS MUTATION IS NOT HYPOTHETICAL — it is the exact body that appeared in the working tree on 2026-09-06, under the twenty-line comment explaining why it must not. `maskedRosterLabel` collapses to a plain `maskName` delegation, so a player with no display name is labelled `+255•••101` on the self-exclusion and DSAR rosters: a phone fragment keeping the last THREE digits, ungoverned and unaudited, beside a column showing the last two behind an eye. ⛔ §8.12 CANNOT SEE THIS — it checks the call sites, and the call sites are unchanged. A guard on the caller cannot catch a lie inside the callee, which is why §8.14–8.16 drive the function instead of reading it",
+    file: "src/lib/server/affiliate-service.ts",
+    suite: "read-tiers",
+    from: `  const named = (user.displayName ?? "").trim().length > 1;\n  return named ? maskName(user.displayName, phoneE164) : displayLabel({ id: user.id, displayName: null });`,
+    to: `  return maskName(user.displayName, phoneE164);`,
+    expect: "8.14 ⛔ a roster label for a player with NO name is not a phone in any form",
+  },
+  {
     name: "csv-hands-out-unmasked-numbers",
     why: "\ud83d\udd34 the bulk-PII exposure, restored: the export stops consulting the read cell and writes every msisdn in full. FINANCE and AUDITOR both hold `accounting` and both sit at the `masked` ceiling, so two roles the matrix forbids a single unmasked phone pull fifty thousand into a file, in one click",
     file: "src/app/api/admin/transactions/export/route.ts",
