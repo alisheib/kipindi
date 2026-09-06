@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
-import { ComingSoonBadge } from "@/components/ui/coming-soon-badge";
 import { useT } from "@/lib/i18n";
 import type { ProposalsState } from "@/lib/server/proposals-config";
 
@@ -27,7 +26,7 @@ export function NavMore({
   variant = "bar",
   active,
 }: {
-  items: readonly { href: string; label: string; proposalsBadge?: ProposalsState; comingSoon?: boolean }[];
+  items: readonly { href: string; label: string; proposalsBadge?: ProposalsState }[];
   label: string;
   variant?: "bar" | "rail";
   /** Rail only: `More` reads as current when the page behind it is one of its own. */
@@ -116,13 +115,13 @@ export function NavMore({
                   {it.proposalsBadge && (
                     <ProposalsStateBadge state={it.proposalsBadge} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" className="ml-auto" />
                   )}
-                  {/* Invite rides the same flag — and it is rendered in BOTH branches of this
-                      file on purpose. DG-P-11 above is the reason: the rail branch once took a
-                      badge prop and threw it away, so one destination read "Coming soon" on a
-                      laptop and bare on a phone. One flag, both variants. */}
-                  {it.comingSoon && (
-                    <ComingSoonBadge label={t.profile.inviteComingSoonTag} size="xs" className="ml-auto" />
-                  )}
+                  {/* ⛔ THE GENERIC `comingSoon` FLAG IS GONE FROM THIS MENU, both branches.
+                      Invite was its only producer, and Invite is WITHDRAWN now, not coming
+                      soon — a withdrawn destination is filtered out upstream, never badged.
+                      What is left would have been worse than dead code: a flag named
+                      generically that hard-coded the INVITE label, so the next feature to set
+                      it would have rendered Invite's copy. Proposals keeps its own
+                      `proposalsBadge` above, which carries its own state and its own words. */}
                 </Link>
               );
             })}
@@ -181,9 +180,7 @@ export function NavMore({
                 {it.proposalsBadge && (
                   <ProposalsStateBadge state={it.proposalsBadge} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" className="ml-auto" />
                 )}
-                {it.comingSoon && (
-                  <ComingSoonBadge label={t.profile.inviteComingSoonTag} size="xs" className="ml-auto" />
-                )}
+                {/* See the note in the other branch — the generic flag is gone from both. */}
               </Link>
             );
           })}

@@ -9,7 +9,6 @@ import { Avatar } from "@/components/ui/avatar";
 import { I } from "@/components/ui/glyphs";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
-import { ComingSoonBadge } from "@/components/ui/coming-soon-badge";
 import { useT, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { NeedleControlsDrawer } from "@/components/layout/needle-drawer";
@@ -203,9 +202,6 @@ export function AvatarMenu({
                   /* The state flag rides the proposals row only: gilt coming-soon /
                      amber maintenance / nothing when ACTIVE. */
                   proposalsBadge={r.proposals ? proposalsState : undefined}
-                  /* Invite no longer carries a coming-soon flag: when it is not this
-                     viewer's, the row is not here at all (see the filter above). */
-                  comingSoon={false}
                 />
               ))}
             </ul>
@@ -335,7 +331,7 @@ const MENU_ROWS: readonly MenuRow[] = [
   { href: "/profile/kyc",    icon: I.shieldcheck, en: "Verify ID",      sw: "Kuthibitisha kitambulisho", zh: "身份验证" },
 ];
 
-function Item({ href, icon: Ico, en, sw, zh, accent, current, proposalsBadge, comingSoon }: { href: string; icon: (p: { s?: number; className?: string }) => React.ReactElement; en: string; sw: string; zh: string; accent?: boolean; current?: boolean; proposalsBadge?: ProposalsState; comingSoon?: boolean }) {
+function Item({ href, icon: Ico, en, sw, zh, accent, current, proposalsBadge }: { href: string; icon: (p: { s?: number; className?: string }) => React.ReactElement; en: string; sw: string; zh: string; accent?: boolean; current?: boolean; proposalsBadge?: ProposalsState }) {
   const { t, locale } = useT();
   // System language only — no adjacent second-language gloss.
   const primary = locale === "sw" ? sw : locale === "zh" ? zh : en;
@@ -376,9 +372,10 @@ function Item({ href, icon: Ico, en, sw, zh, accent, current, proposalsBadge, co
         {proposalsBadge && (
           <ProposalsStateBadge state={proposalsBadge} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" className="ml-auto" />
         )}
-        {comingSoon && (
-          <ComingSoonBadge label={t.profile.inviteComingSoonTag} size="xs" className="ml-auto" />
-        )}
+        {/* ⛔ No generic coming-soon badge here. Invite was its only producer and Invite is
+            WITHDRAWN — filtered out of `rows` above, never badged. Keeping a generically
+            named flag that hard-coded the INVITE label would have handed the next feature
+            to set it Invite's words. Proposals keeps its own badge, with its own state. */}
       </Link>
     </li>
   );

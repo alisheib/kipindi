@@ -50,9 +50,11 @@ type NavItem = {
   href: string;
   label: string;
   proposalsBadge?: ProposalsState;
-  /** Retained for any destination that is promised-but-not-open. Invite no longer uses it:
-   *  it is withdrawn for players, and a withdrawn destination is absent, not badged. */
-  comingSoon?: boolean;
+  /* ⛔ A generic `comingSoon?: boolean` used to live here. Invite was its ONLY producer, and
+     Invite is WITHDRAWN now rather than promised — a withdrawn destination is dropped from
+     the list entirely (see MORE_ITEMS below), never badged. The field is deleted rather than
+     left unused because it was worse than dead: generically named, it rendered the INVITE
+     copy key, so the next feature to set it would have worn Invite's words. */
   /**
    * Marks a destination as a DISTINCT PRODUCT LINE rather than another page of the same game —
    * currently only Up & Down. It keeps destination geometry (see the note above); the accent is a

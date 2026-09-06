@@ -81,7 +81,7 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
      `feature-state.ts` explains why a client component never reads the state itself. */
   const inviteRow: { href: string; label: string }[] =
     inviteVisible ? [{ href: "/profile/invite", label: t.common.invite }] : [];
-  const moreItems: { href: string; label: string; proposalsBadge?: ProposalsState; comingSoon?: boolean }[] = isAuthed
+  const moreItems: { href: string; label: string; proposalsBadge?: ProposalsState }[] = isAuthed
     ? [
         { href: "/positions",      label: t.common.positions },
         { href: "/wallet",         label: t.nav.wallet },
