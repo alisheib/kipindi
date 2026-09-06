@@ -6092,6 +6092,80 @@ edit, so the graph argument was not enough — it was run with the dictionary re
 `share links` — `markets/[id]` and `positions` both gate `ensureAffiliateAccount` behind the role; `market-card` shares with no code at all.
 `orphaned scripts` — the 237 are a **DECLARED, ratcheted set**, not rot. ⛔ Do not re-file this as a finding: I suspected "194 unreferenced scripts" at the start of this audit and the ratchet already covers that ground.
 
+### 🧹 THE SANITIZATION PASS (session 89, second half) — 18 commits, and what it says about the repo
+
+Ali: *"delete stale everywhere… redundant designs, misleading information, misleading copy…
+old logic, old documentation that changed already."* What follows is what that actually found.
+⚠️ **Every number re-derived 2026-09-06.** Full gate after all of it: **290/292**, the two
+failures the same pre-existing pair.
+
+**⭐ THE PATTERN, because it repeated in six independent places.** Not rot from neglect —
+**a true statement that stopped being true, in a file whose job is to be trusted.** The repo is
+disciplined (one design rulebook, records marked RECORD, spent gate files marked SPENT, orphan
+scripts on a declared ratchet), and that is exactly why the failures cluster in the *entry
+points* rather than the corners.
+
+| What was wrong | Where | Why it mattered |
+|---|---|---|
+| A **superseded money formula** — `min(10% of pool, ⅓ of smaller side)` | `README.md`, the front page | `RULES.md` §2.1 (Ali, 2026-08-14) says **13% of the LOSING side**, and explicitly supersedes that model. Wrong percentage, wrong base, on the sentence describing how we take money |
+| Four LIVE services listed as **"mocked / stubbed for dev"** | `README.md` | DB, Selcom, the Anthropic client and R2 had all shipped. It described a prototype this platform stopped being |
+| *"the one remaining unblock is the payment aggregator API keys"* | `CLAUDE.md` | The file's own header cites THAT SENTENCE as its example of what went stale. **Knowing a claim is false and leaving it in the present tense is not a disclosure** — the reader meets the claim, not the caveat. The real blocker is `sms.provider: "console"` |
+| The **withdrawal was not on THE BOARD at all** | `NEXT-PLAN.md` | Its own rule: *"if a document is not listed below, it is not a live task"*. 25 commits of finished work were invisible to the authority |
+| **Eleven docs unreachable from the index** — including `BONUS-WITHDRAWAL.md` | `docs/README.md` | `CLAUDE.md` records this happening once before, at **eleven**. The old fix was to stop stating a count, which cured the symptom |
+| `C:\pg-loadtest` → `F:\`, in **four files** | both skills, `scripts/load/README.md`, coordination doc | **There is no `F:` drive on this machine.** Every command was unrunnable |
+
+> ### 🔴 THE ONE WORTH READING TWICE — A CORRECTION THAT MADE THE DOCUMENT WORSE
+>
+> The Postgres path was **right**, and session 43 changed it to wrong. It applied the rule
+> *"when the skill and the README differ, the README wins"* — sound — and the README said `F:\`
+> too, and always had. ⛔ **Deferring to a source of truth is not the same as CHECKING one.** A
+> wrong authority propagates further than a wrong copy, because everyone downstream corrects
+> *toward* it. All four now carry the history so it is not re-corrected a third time. The check
+> was always one command: `ls /c/pg-loadtest`.
+
+**Deleted, each with the reference search that made it safe:** 13.5 MB of root screenshots cited
+by nothing · nine `inviteComingSoon*` strings across three locales, readable by no code path in
+any state · the `COMING_SOON` feature state itself, which **no consumer ever distinguished** —
+identical to `WITHDRAWN` at every call site while its NAME promised a badge and a waiting list.
+
+> ### ⛔ AND TWO GUARDS WOULD HAVE GONE VACUOUS IN THE SAME EDIT
+>
+> Deleting the copy left §3 scanning player files for keys that no longer exist — **a check whose
+> population went to zero has stopped being a check**. Deleting the state made §1's
+> `inviteStateFor("PLAYER") !== "COMING_SOON"` read `"WITHDRAWN" !== "COMING_SOON"`, true for
+> ever. ⚠️ **`tsc` could not say so: `scripts/**.mts` is outside the typechecker (E-317)**, so an
+> impossible comparison a typed file would reject compiles fine in a suite. **A suite is where a
+> dead assertion hides best, because it keeps passing.** Both replaced with stronger properties,
+> both proven by mutation.
+
+**Two things only a BUILD could see** — `tsc` cannot, and no suite can. `next build` succeeded
+while printing 3 warnings, and both were real: ① `onRequestError` imported `monitoring` →
+`audit` → `lock-key` → `node:crypto` + Prisma **unguarded**, and `proxy.ts` is an EDGE
+middleware — so on an edge error the import threw, the outer `catch {}` swallowed it, and the
+off-box Sentry mirror silently did not happen. An error reporter that stops reporting exactly
+where nobody is watching. ② A `Cache-Control` on `/_next/static/*` that **duplicated Next's own
+default** — measured by removing it, running `next start` and reading the header back — buying
+only the "can break development behavior" warning and a stale-bundle hazard in `next dev`.
+**Build warnings 3 → 0.**
+
+**Gates added, because a rule without one is a rule that drifts:** `test:docs` now checks
+**3,136 bare backticked script citations** (the form these docs actually use — none had ever been
+checked, which is how a gate register came to name a DELETED suite) and **every `docs/*.md` must
+be linked from the index** (SETS, never counts, so it cannot pass by agreeing with itself).
+
+> ⚠️ **AND THE NEW GATE IMMEDIATELY CAUGHT MY OWN DOC.** Rewriting the rules to describe it, I
+> wrote `` `test:foo` `` as an example; the checker cannot tell an example from a citation and
+> went red on the file that documents it. **I pushed a red gate and fixed it in the next commit.**
+> That is the check earning its place within minutes of existing.
+
+**Refuted rather than filed — each was a finding I nearly wrote:** `buildFiuSar` "called by
+nothing" (registered in a same-file map); a compliance guard "that never runs" (wired as
+`test:cert-a6`); "194 orphan scripts" (a DECLARED, ratcheted set); competing design authorities
+(one rulebook, the rest marked RECORD or SPENT); a Chinese gap in the chat fallback (B-7 returns
+a Chinese hand-off *above* every keyword branch); and a NIDA warning I drafted before reading
+`nida.ts` and finding it already scrupulous. ⭐ **389 "unused exports" measured, then NOT acted
+on** — same-file registration makes that metric mean "exported unnecessarily", not "dead".
+
 ### 🟢 Session 88 (2026-09-06) — THE TAB FOR A MARKET NOBODY COULD SEE, AND A PHONE THE MATRIX HAD ONLY PROMISED
 
 #### ⏭️ **RESUME AT (session 88 · PROGRESS-AND-PHONE — both jobs LIVE; read the ONE OWED ITEM and the ONE THING NOT PROVEN LOCALLY below):** 💰 **MONEY POSITION: NOT ONE SHILLING MOVED.** No schema, no migration, no balance, no ledger row. Two pure-module fields (`resolvesAtMs`, `verdictRecorded`), one registry entry pair, one guard rename. ⚠️ **Every number here was re-derived on 2026-09-06; re-derive before relying on one.**
