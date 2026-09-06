@@ -11,6 +11,11 @@
  *   - a 250-contact invite campaign sends every entry with zero failures
  *   - no unhandledRejection fires across a burst of concurrent sends
  */
+// ⚠️ THIS SUITE DRIVES A BULK INVITE-CAMPAIGN SEND, and since 2026-09-07 `sendCampaign`
+// REFUSES while the bonus wallet is withdrawn — the campaign advertises a bonus that would
+// never be paid (withdrawn-features §5k). The send machinery is what this suite measures, so
+// it drives the ON path — Law 2, one home, see the module header.
+import "./lib/bonus-feature-on.mts";
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import {
   sendEmail, sendEmailToUser,
