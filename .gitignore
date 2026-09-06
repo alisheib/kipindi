@@ -276,3 +276,12 @@ scripts/.kyc-gate-red.lock
 /*.png
 /*.jpg
 /*.jpeg
+
+# Crash and merge debris. `grep.exe.stackdump` appeared in the working tree during this
+# session's sweeps: Git Bash writes one on a native crash, and nothing here ignored it. A
+# stackdump committed to a money repo is noise at best and a core-dump-shaped leak at worst.
+# `*.log`, `*.bak`, `*.orig` and `.DS_Store` were already covered; these four were the gap.
+*.stackdump
+*.tmp
+*.rej
+Thumbs.db
