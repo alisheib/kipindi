@@ -114,8 +114,18 @@ export default async function InvitePage() {
    * someone who may not have one.
    *
    * ⚠️ `notFound()` and not `redirect("/profile")`: this route genuinely does not exist for
-   * this account, and a 404 is also what stops the URL being a probe that reveals whether
-   * the programme exists at all.
+   * this account, and the not-found view says so rather than bouncing them somewhere else.
+   *
+   * 🔴 MEASURED, AND NOT WHAT YOU WOULD ASSUME — THE HTTP STATUS IS **200**, NOT 404.
+   * This segment has a `loading.tsx`, which is a Suspense boundary, so Next flushes the
+   * shell (and commits the status) BEFORE this async component throws. The player sees the
+   * not-found view; the response line says 200. Verified on a running server, not reasoned
+   * about: role PLAYER → gate false → `notFound()` called → body is the not-found UI, and
+   * **no code, link or QR is rendered** — the referral read below never runs.
+   * ⛔ DO NOT "FIX" THE STATUS BY DELETING `loading.tsx`. Every async route in this app has
+   * one (CLAUDE.md), and the status is cosmetic here: nothing leaks either way. If a true
+   * 404 is ever required, the gate has to move ahead of the render — `proxy.ts` — not be
+   * bought by removing a loading state.
    */
   const viewer = await db.user.findById(session.userId);
   if (!inviteIsLiveFor(viewer?.role ?? null)) notFound();
