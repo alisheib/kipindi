@@ -13,7 +13,7 @@ import { Cash } from "@/components/ui/cash";
 import { Stat } from "@/components/ui/stat";
 import { CashbackPromo } from "@/components/ui/cashback-promo";
 import { PaymentLogo } from "@/components/wallet/payment-logo";
-import { formatDateTimeSafe, formatTzs, formatNumber } from "@/lib/utils";
+import { formatDateTimeSafe, formatTzs, formatNumber, cn } from "@/lib/utils";
 // E-101 · one rule for "where does this ticket live", shared with the round page and the emails.
 import { positionPermalinkHref } from "@/lib/position-permalink";
 import { useT } from "@/lib/i18n";
@@ -149,6 +149,24 @@ const BONUS_SOURCE_LABEL: Record<string, string> = {
  * that gold IS legitimate: it measures progress toward money the player will own.
  * Shown beside the main wallet always (friendly empty state when there are no bonuses).
  */
+/**
+ * ⛔ ONE PREDICATE FOR "IS THERE A BONUS CARD", BECAUSE TWO PLACES NEED THE ANSWER.
+ * The card itself decides whether to render, and the GRID above it must know the same thing to
+ * choose its column count — a `lg:grid-cols-2` holding one child leaves the player's real balance
+ * at half width with a ~520px hole beside it. Deriving that answer twice is how the two drift.
+ *
+ * ⭐ `grants.length` IS PART OF IT, and that is not defensive padding. `bonusBalance` and
+ * `activeCount` are both ACTIVE-only (bonus-service keeps the invariant `bonusBalance == Σ ACTIVE
+ * remainingTzs`, so a QUEUED grant deliberately touches neither), while the page passes the card
+ * an ACTIVE-**or-QUEUED** list. A player holding only a QUEUED grant would therefore have been
+ * shown nothing at all — and bonus-service states plainly that "a QUEUED grant genuinely holds
+ * its full amount pending activation". That is money in the account, so it is never hidden:
+ * Law 1 gates the OFFER, never the balance.
+ */
+function bonusCardHasContent(bonusBalance: number, activeCount: number, grantCount: number): boolean {
+  return bonusBalance > 0 || activeCount > 0 || grantCount > 0;
+}
+
 function BonusWalletCard({
   bonusBalance, activeCount, grants, currency, featureLive = false,
 }: { bonusBalance: number; activeCount: number; grants: (BonusGrantView & { status?: "ACTIVE" | "QUEUED" })[]; currency: string; featureLive?: boolean }) {
@@ -157,7 +175,7 @@ function BonusWalletCard({
   const totalWagered = grants.reduce((s, g) => s + Math.min(g.wageredTzs, g.wagerRequiredTzs), 0);
   const totalRemainingWager = grants.reduce((s, g) => s + g.remainingWagerTzs, 0);
   const overallPct = totalReq > 0 ? Math.min(100, Math.round((totalWagered / totalReq) * 100)) : 0;
-  const hasBonus = bonusBalance > 0 || activeCount > 0;
+  const hasBonus = bonusCardHasContent(bonusBalance, activeCount, grants.length);
 
   /**
    * ⛔ THE EMPTY STATE IS THE ADVERTISEMENT. THE POPULATED STATE IS A BANK STATEMENT.
@@ -513,6 +531,9 @@ export function WalletPageClient({
   isAuthed: boolean;
 }) {
   const { t } = useT();
+  /** ⛔ THE GRID AND THE CARD MUST AGREE — see `bonusCardHasContent`. Derived once, here, and
+   *  used both to choose the column count and (inside the card) to decide whether to render. */
+  const bonusCardVisible = bonusFeatureLive || bonusCardHasContent(bonusBalance, bonusActiveCount, bonusGrants.length);
   const [tab, setTab] = useState<TabValue>("activity");
   const [page, setPage] = useState(0);
   const pageCount = Math.max(1, Math.ceil(transactions.length / TXNS_PER_PAGE));
@@ -562,8 +583,16 @@ export function WalletPageClient({
         )}
       </header>
 
-      {/* Two wallets, one page: main (cool royal) + bonus (warm gold/jackpot). */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+      {/* Two wallets, one page: main (cool royal) + bonus (warm gold/jackpot).
+          🔴 …AND ONE WALLET WHEN THERE IS ONLY ONE. `lg:grid-cols-2` is applied ONLY when the
+          bonus card will actually render. With the bonus programme withdrawn the card returns
+          null, and a two-column grid holding a single child left the player's real balance —
+          the most important object on this page — at half width with a ~520px hole beside it
+          at 1280. ⛔ Measured on a rendered frame, not reasoned about: three DOM guards and a
+          109-assertion visual drive all passed over it, because the grid is not EMPTY (it has
+          one child) and nothing is orphaned. A lonely card in a multi-column grid is its own
+          defect class, and `qa:withdrawal-visual` now measures it by name. */}
+      <div className={cn("grid grid-cols-1 gap-4 items-stretch", bonusCardVisible && "lg:grid-cols-2")}>
         <BalanceCard balance={balance} pending={pending} hold={hold} currency={currency} />
         <BonusWalletCard bonusBalance={bonusBalance} activeCount={bonusActiveCount} grants={bonusGrants} currency={currency} featureLive={bonusFeatureLive} />
       </div>

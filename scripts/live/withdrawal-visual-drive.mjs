@@ -119,7 +119,38 @@ function auditInPage() {
     emptyFlex.push({ cls: el.className && el.className.toString().slice(0, 90), h: Math.round(r.height) });
   }
 
+  // 4 · 🔴 THE LONELY CARD — a multi-column grid left holding exactly ONE child.
+  //
+  // ⛔ THIS IS THE ONE THE FIRST VERSION OF THIS DRIVE MISSED, and it shipped a real regression:
+  // the wallet's `lg:grid-cols-2` lost its bonus card and left the player's REAL BALANCE at half
+  // width with a ~520px hole beside it at 1280. Checks 1–3 all passed over it, because the grid
+  // is not empty (it has a child) and nothing is orphaned. Removing an element does not only
+  // leave holes where the element was — it changes how its SURVIVING SIBLINGS are laid out.
+  //
+  // ⚠️ Measured from the COMPUTED grid, not from class names: a `lg:` prefix tells you nothing
+  // about the width actually in force. A single-child grid is only a defect when the track count
+  // is >1 AND the child occupies materially less than the container, so a deliberate half-width
+  // element is not reported.
+  const lonelyCards = [];
+  for (const el of document.querySelectorAll("main [class*=grid]")) {
+    if (el.children.length !== 1) continue;
+    const cs = getComputedStyle(el);
+    if (cs.display !== "grid") continue;
+    const tracks = cs.gridTemplateColumns.split(" ").filter(Boolean).length;
+    if (tracks < 2) continue;
+    const parentW = el.getBoundingClientRect().width;
+    const childW = el.children[0].getBoundingClientRect().width;
+    if (parentW < 200 || childW <= 0) continue;
+    if (childW / parentW > 0.75) continue; // occupies the row — not lonely
+    lonelyCards.push({
+      cls: el.className && el.className.toString().slice(0, 80),
+      tracks, parentW: Math.round(parentW), childW: Math.round(childW),
+      holePx: Math.round(parentW - childW),
+    });
+  }
+
   return {
+    lonelyCards,
     overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     mainCount: document.querySelectorAll("main").length,
     bodyLen: textOf(document.body).length,
@@ -155,6 +186,7 @@ for (const width of WIDTHS) {
     ok(`${at} · no empty container still painting`, a.emptyPainted.length === 0, JSON.stringify(a.emptyPainted).slice(0, 300));
     ok(`${at} · no orphan heading`, a.orphanHeadings.length === 0, JSON.stringify(a.orphanHeadings).slice(0, 300));
     ok(`${at} · no empty flex/grid reserving space`, a.emptyFlex.length === 0, JSON.stringify(a.emptyFlex).slice(0, 300));
+    ok(`${at} · no lonely card in a multi-column grid`, a.lonelyCards.length === 0, JSON.stringify(a.lonelyCards).slice(0, 300));
   }
 }
 
