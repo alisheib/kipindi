@@ -1082,9 +1082,38 @@ export function notifyAdminProposalReview(adminUserId: string, opts: { proposerL
 
 /** Proposer notice: their proposal was approved and the reward bonus was credited
  *  (or queued behind an active bonus in sequential mode). */
-export function notifyProposalApproved(userId: string, opts: { titleEn: string; amountTzs: number; queued?: boolean }) {
+/**
+ * 🔴 `paidAsCash` — WHERE THE PRIZE ACTUALLY LANDED, and it is not decoration.
+ *
+ * With the bonus wallet WITHDRAWN from the product, `creditBonus` refuses and
+ * `approveProposal` falls through to `creditInternal`, so the prize is REAL, WITHDRAWABLE
+ * CASH. Until 2026-09-07 this notification said *"bonus X credited"* and *"X is in your bonus
+ * wallet"* in all three languages anyway, with `href: "/wallet"` — where `bonusIsLiveFor()`
+ * gates the bonus card OFF, so the player was sent to look for a card that no longer renders.
+ *
+ * ⛔ It understates what they were given — locked play-through money instead of cash they can
+ * withdraw — which makes it the safer direction to be wrong in and no less false. A player who
+ * believes their reward is locked does not try to withdraw it.
+ *
+ * ⭐ The caller passes the fact rather than re-deriving it: `approveProposal` knows which branch
+ * paid, because `grantId` is set only on the bonus one. Same discipline as
+ * `referralRewardDestination()` — the surface that PROMISES and the code that PAYS read one fact.
+ */
+export function notifyProposalApproved(userId: string, opts: { titleEn: string; amountTzs: number; queued?: boolean; paidAsCash?: boolean }) {
   if (opts.amountTzs > 0) {
     const amount = formatTzs(opts.amountTzs);
+    if (opts.paidAsCash) {
+      return notify({
+        userId, kind: "PROPOSAL",
+        titleEn: `Proposal approved · ${amount} credited`,
+        titleSw: `Pendekezo limekubaliwa · ${amount} imewekwa`,
+        titleZh: `提案已通过 · ${amount} 已到账`,
+        bodyEn: `"${opts.titleEn.slice(0, 55)}" was approved. ${amount} was added to your balance — it is yours to withdraw.`,
+        bodySw: `Pendekezo lako limekubaliwa. ${amount} imewekwa kwenye salio lako — unaweza kuitoa.`,
+        bodyZh: `"${opts.titleEn.slice(0, 55)}" 已通过审核。${amount} 已计入您的余额，可随时提现。`,
+        href: "/wallet",
+      });
+    }
     if (opts.queued) {
       return notify({
         userId, kind: "PROPOSAL",

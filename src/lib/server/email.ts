@@ -1394,11 +1394,34 @@ export function proposalSubmittedAdminHtml({ reference, proposer, titleEn, title
   `);
 }
 
-/** Player: proposal approved — reward bonus credited (or queued behind an
- *  active bonus in sequential mode). */
-export function proposalApprovedHtml({ titleEn, amountTzs, wagerRequiredTzs, queued }: {
-  titleEn: string; amountTzs: number; wagerRequiredTzs: number; queued?: boolean;
+/** Player: proposal approved — the reward, stated as the wallet it ACTUALLY landed in:
+ *  real withdrawable cash while the bonus wallet is withdrawn (`paidAsCash`), otherwise a
+ *  bonus grant, or one queued behind an active bonus in sequential mode. */
+export function proposalApprovedHtml({ titleEn, amountTzs, wagerRequiredTzs, queued, paidAsCash }: {
+  titleEn: string; amountTzs: number; wagerRequiredTzs: number; queued?: boolean; paidAsCash?: boolean;
 }): string {
+  /**
+   * 🔴 THE CASH BRANCH — see `notifyProposalApproved` for the full story.
+   * With the bonus wallet withdrawn, `approveProposal` pays the prize through `creditInternal`
+   * as real, withdrawable cash. This email said *"your reward has landed in your bonus wallet"*
+   * (and the Swahili equivalent), labelled the destination **"Bonus wallet"**, and offered a
+   * *"View bonus wallet"* button pointing at a card that `bonusIsLiveFor()` no longer renders.
+   * ⛔ No play-through row is emitted here because `wagerRequiredTzs` is genuinely 0 on this
+   * branch — the row was already correct; the WALLET NAME was not.
+   */
+  if (amountTzs > 0 && paidAsCash) {
+    return wrapGold(`
+      ${eyebrow("Proposal approved", "Pendekezo limekubaliwa", true)}
+      ${heading(`Approved · ${formatTzs(amountTzs)} credited`, GILT)}
+      ${subtitle(`Great news — "${titleEn}" was approved and ${formatTzs(amountTzs)} has been added to your balance. It is yours to withdraw whenever you like.`)}
+      ${subtitleSw(`Habari njema — pendekezo lako limekubaliwa na ${formatTzs(amountTzs)} imewekwa kwenye salio lako. Unaweza kuitoa wakati wowote.`)}
+      ${detailRows([
+        { label: "Credited", value: formatTzs(amountTzs), tone: "good" },
+        { label: "Wallet", value: "Main balance · withdrawable" },
+      ])}
+      ${ctaButton("/wallet", "View wallet · Pochi yako")}
+    `);
+  }
   if (amountTzs > 0) {
     return wrapGold(`
       ${eyebrow("Proposal approved", "Pendekezo limekubaliwa", true)}

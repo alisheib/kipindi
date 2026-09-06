@@ -604,11 +604,25 @@ export async function approveProposal(proposalId: string, officerId: string): Pr
     }
     audit({ category: "ADMIN", action: "proposal.approved", actorId: officerId, targetType: "Proposal", targetId: proposalId, payload: { proposerId: p.proposerId, grantedTzs, grantId } });
 
-    notifyProposalApproved(p.proposerId, { titleEn: p.titleEn, amountTzs: grantedTzs, queued }).catch(() => {});
+    /**
+     * ⭐ WHICH BRANCH PAID — passed, never re-derived. `grantId` is set ONLY when `creditBonus`
+     * succeeded; the `creditInternal` fall-through leaves it null. So this one boolean is the
+     * fact, and the notification, the email and the subject line all read it rather than each
+     * guessing. ⛔ Do not replace it with a `bonusIsLiveFor()` call here: that asks what the
+     * product OFFERS, and what this message must state is where the money ACTUALLY went — a
+     * grant could exist from before the withdrawal, or from a mid-flight state flip.
+     */
+    const paidAsCash = grantedTzs > 0 && grantId === null;
+
+    notifyProposalApproved(p.proposerId, { titleEn: p.titleEn, amountTzs: grantedTzs, queued, paidAsCash }).catch(() => {});
     sendEmailToUser(p.proposerId, (email) => ({
       to: email,
-      subject: grantedTzs > 0 ? `Proposal approved · bonus ${formatTzs(grantedTzs)} credited` : "Proposal approved",
-      html: proposalApprovedHtml({ titleEn: p.titleEn, amountTzs: grantedTzs, wagerRequiredTzs, queued }),
+      subject: grantedTzs > 0
+        ? (paidAsCash
+            ? `Proposal approved · ${formatTzs(grantedTzs)} credited`
+            : `Proposal approved · bonus ${formatTzs(grantedTzs)} credited`)
+        : "Proposal approved",
+      html: proposalApprovedHtml({ titleEn: p.titleEn, amountTzs: grantedTzs, wagerRequiredTzs, queued, paidAsCash }),
       tag: "proposal-approved",
     }));
 
