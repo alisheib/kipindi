@@ -590,7 +590,7 @@ function mask(msisdn: string) {
 // booking it as tax.
 //
 // Ali's decision (2026-07): taxes are only ever on OUR commission. A player pays
-// the pool fee (indirectly, through the payout) and the 1% withdrawal fee, and
+// the pool fee (indirectly, through the payout) and the withdrawal fee (1.5% live), and
 // nothing else. The withdrawal fee lives in RateConfig — `withdrawalFeeRate` /
 // `withdrawalGatewayShareRate` — and is applied in wallet-service.ts.
 //

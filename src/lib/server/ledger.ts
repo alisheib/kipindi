@@ -11,7 +11,7 @@
  *   EXTERNAL:{provider}      — external payment provider (M-Pesa, Airtel, etc.)
  *   POOL:{marketId}          — market's betting pool
  *   HOUSE:COMMISSION         — operator revenue: the capped pool fee, the
- *                              early-exit fee, and our slice of the 1% withdrawal fee
+ *                              early-exit fee, and our slice of the withdrawal fee
  *   HOUSE:AGGREGATOR         — the payment gateway's slice of the withdrawal fee
  *   HOUSE:TRA_LEVY           — TRA tax, levied on our commission
  *   HOUSE:GBT_LEVY           — GBT gaming board levy, levied on our commission
@@ -229,7 +229,8 @@ export function depositEntries(opts: {
  * 100,000, place no bet, withdraw, receive 85,000. Ali's decision: taxes are only
  * ever on OUR commission, never on the player. That function is deleted.
  *
- * A player now pays exactly one thing on a withdrawal: `withdrawalFeeRate` (1%).
+ * A player now pays exactly one thing on a withdrawal: `withdrawalFeeRate` — 1.5% on
+ * production today, and config-driven, so read it rather than restating it here.
  * Of that, `withdrawalGatewayShareRate` (0.5% of the amount) is what the payment
  * gateway charges us, and we keep the rest.
  */

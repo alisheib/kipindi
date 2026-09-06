@@ -9,7 +9,7 @@
  *    read as authority. The rule lives in `kyc-gate.ts`; this is a pointer, not a copy.
  *  - AML threshold (TZS 1M) holds withdrawal in `AML_REVIEW`
  *  - Daily/weekly/monthly deposit limits enforced (Responsible Gambling)
- *  - A withdrawal is charged ONE fee: `withdrawalFeeRate` (1%), part of which
+ *  - A withdrawal is charged ONE fee: `withdrawalFeeRate` (1.5% live), part of which
  *    (`withdrawalGatewayShareRate`) is the payment gateway's. There is NO
  *    withholding tax — see the note in payments.ts. Taxes are only ever levied
  *    on OUR commission, never on a player's money.
@@ -642,7 +642,7 @@ async function settleWithdrawalConfirmed(txnId: string): Promise<boolean> {
  */
 export function notifyWithdrawalSent(txn: { id: string; userId: string; amount: number; fee: number; provider: string | null; msisdn?: string | null; providerRef?: string | null; payoutRail?: string | null }): void {
   const gross = Math.abs(txn.amount);
-  // Net of the 1% withdrawal fee — the only deduction. There is no withholding tax.
+  // Net of the withdrawal fee (1.5% live) — the only deduction. No withholding tax.
   const net = gross - (txn.fee ?? 0);
   notifyWithdraw(txn.userId, { status: "CONFIRMED", amount: gross, net, provider: friendlyProvider(txn.provider) });
   sendEmailToUser(txn.userId, (email) => ({
@@ -1316,7 +1316,7 @@ export async function notifyStillPendingDeposits(olderThanMs = 30 * 60 * 1000): 
 /**
  * Withdrawal.
  *
- * The player is charged ONE thing: `withdrawalFeeRate` (1% of the amount). Of
+ * The player is charged ONE thing: `withdrawalFeeRate` (1.5% of the amount, live). Of
  * that, `withdrawalGatewayShareRate` (0.5%) is what the payment gateway costs us
  * and the rest is ours.
  *
