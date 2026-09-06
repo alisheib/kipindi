@@ -6154,7 +6154,7 @@ checked, which is how a gate register came to name a DELETED suite) and **every 
 be linked from the index** (SETS, never counts, so it cannot pass by agreeing with itself).
 
 > ⚠️ **AND THE NEW GATE IMMEDIATELY CAUGHT MY OWN DOC.** Rewriting the rules to describe it, I
-> wrote `` `test:foo` `` as an example; the checker cannot tell an example from a citation and
+> wrote a backticked `test:<name>`-shaped placeholder as an example; the checker cannot tell an example from a citation and
 > went red on the file that documents it. **I pushed a red gate and fixed it in the next commit.**
 > That is the check earning its place within minutes of existing.
 
