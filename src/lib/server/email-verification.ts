@@ -21,6 +21,7 @@
  * changes an address therefore clears the flag and re-gates depositing — that is
  * intentional, and `setUserEmail` is the single writer that guarantees it.
  */
+import { appUrl } from "@/lib/app-url";
 import { db } from "./store";
 import { audit } from "./audit";
 import { signSession, verifySession } from "./crypto";
@@ -31,7 +32,11 @@ import { displayLabel } from "@/lib/display-label";
 import type { FailureReason } from "@/lib/failure-reasons";
 
 const VERIFY_TTL_MS = 24 * 60 * 60 * 1000; // 24h
-const BASE_URL = () => process.env.NEXT_PUBLIC_APP_URL || "https://kipindi-production.up.railway.app";
+// ⭐ THE BASE URL HAS ONE HOME: `appUrl()` (`src/lib/app-url.ts`).
+// 🔴 This file carried a private `BASE_URL` defaulting to `kipindi-production.up.railway.app`
+// until 2026-09-07 — a RETIRED host, and precisely the failure `app-url.ts` exists to prevent:
+// its own header says the old default "meant any environment that forgot the env var would email
+// people a railway.app link". Five files kept a copy of the bug beside the fix.
 
 type VerifyTokenPayload = {
   purpose: "email-verify";
@@ -49,7 +54,7 @@ export function buildEmailVerifyUrl(userId: string, email: string): string {
     email,
     exp: Date.now() + VERIFY_TTL_MS,
   } satisfies VerifyTokenPayload);
-  return `${BASE_URL()}/auth/verify-email?token=${encodeURIComponent(token)}`;
+  return `${appUrl()}/auth/verify-email?token=${encodeURIComponent(token)}`;
 }
 
 /**

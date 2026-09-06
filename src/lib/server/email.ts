@@ -50,7 +50,12 @@ const COMPANY = "50pick";
  */
 import { HELPLINE } from "@/lib/support-config";
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://kipindi-production.up.railway.app";
+// ⭐ THE BASE URL HAS ONE HOME: `appUrl()` (`src/lib/app-url.ts`).
+// 🔴 This file carried a private `BASE_URL` defaulting to `kipindi-production.up.railway.app`
+// until 2026-09-07 — a RETIRED host, and precisely the failure `app-url.ts` exists to prevent:
+// its own header says the old default "meant any environment that forgot the env var would email
+// people a railway.app link". Five files kept a copy of the bug beside the fix.
+// ⚠️ And this file ALREADY imported `appUrl` — the private copy sat beside the real one.
 
 let _client: ServerClient | null = null;
 function client(): ServerClient | null {
@@ -389,7 +394,7 @@ const YES_COLOR = "#2db872";        // --yes-500
 const NO_COLOR = "#c04848";         // --no-500
 
 // Brand mark — hosted PNG from the real logo kit (never recreated)
-const MARK_IMG = `<img src="${BASE_URL}/icons/mark-color-512.png" width="56" height="56" alt="50pick" class="sp-mark" style="display:block;margin:0 auto;border:0;max-width:56px;height:auto">`;
+const MARK_IMG = `<img src="${appUrl()}/icons/mark-color-512.png" width="56" height="56" alt="50pick" class="sp-mark" style="display:block;margin:0 auto;border:0;max-width:56px;height:auto">`;
 
 /** Card chrome. `accent` colours the top bar + footer rule: **gold ONLY on
  *  earned-money / earned-status / money-in emails** (deposit, win, bonus, KYC-
@@ -472,7 +477,7 @@ function wrap(body: string, opts: { accent?: "gold" | "royal" } = {}): string {
     </p>
     <p style="margin:14px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:10px;color:${TEXT_FAINT}">
       You're receiving this because you have a 50pick account.<br>
-      <a href="${BASE_URL}/profile/account" style="color:${TEXT_SUBTLE};text-decoration:underline">Manage preferences</a>
+      <a href="${appUrl()}/profile/account" style="color:${TEXT_SUBTLE};text-decoration:underline">Manage preferences</a>
     </p>
   </td></tr>
 
@@ -552,7 +557,7 @@ function detailRows(rows: { label: string; value: string; tone?: "good" | "bad" 
 /** Resolve a path to an absolute URL. Email links MUST be absolute — a bare
  *  "/markets" is dead in an inbox. Pass a full http(s) URL through unchanged. */
 function link(pathOrUrl: string): string {
-  return /^https?:\/\//.test(pathOrUrl) ? pathOrUrl : `${BASE_URL}${pathOrUrl.startsWith("/") ? "" : "/"}${pathOrUrl}`;
+  return /^https?:\/\//.test(pathOrUrl) ? pathOrUrl : `${appUrl()}${pathOrUrl.startsWith("/") ? "" : "/"}${pathOrUrl}`;
 }
 
 /** CTA pill. `primary` (royal) is the default — gold is reserved for direct
