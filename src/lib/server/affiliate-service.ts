@@ -17,7 +17,7 @@
  * Money rule: every figure is whole TZS. No fractional shillings.
  */
 import { db, type StoredAffiliateAccount, type StoredReferralReward } from "./store";
-import { inviteIsLiveFor } from "@/lib/feature-state";
+import { inviteIsLiveFor, bonusIsLiveFor } from "@/lib/feature-state";
 import { getAffiliateConfig } from "./affiliate-config";
 import { displayLabel } from "@/lib/display-label";
 import { audit } from "./audit";
@@ -178,13 +178,37 @@ export async function resolveReferralPreview(code: string) {
 }
 
 // ── Wallet credit (internal) ─────────────────────────────────────────────
-/** Credit a referral reward. Routes to the BONUS wallet when the bonus program
- *  is enabled and affiliate→bonus routing is on (Ali's default — rewards must be
- *  played through); otherwise credits real balance directly. Falls back to real
- *  if a bonus credit can't be made, so a reward is never silently dropped. */
-async function creditWallet(userId: string, amount: number, description: string, sourceRef?: string): Promise<boolean> {
+/**
+ * ⭐ WHERE A REFERRAL REWARD LANDS — asked by the PAYER and by the PAGE THAT PROMISES IT,
+ * so the two cannot disagree.
+ *
+ * 🔴 THEY DID DISAGREE. `/profile/invite` renders a requirements list that states, in all three
+ * locales: *"Bonus credited to your Bonus Wallet — 5× wagering required before withdrawal"*,
+ * *"Bonuses expire 30 days after being credited"* and *"Bonuses are used one at a time"*. Once
+ * the bonus wallet was withdrawn from the product the reward began landing as real, withdrawable
+ * cash — and those three lines became false, on a money surface, for the only audience that can
+ * still open the page: an approved AGENT. A promise about money is not decoration.
+ *
+ * ⛔ SO THIS IS THE ONE HOME (DESIGN_AUTHORITY B9 / LAWS 81: a derived state on more than one
+ * surface is defined once). A second copy of this condition on the page is exactly how the two
+ * drifted apart the first time.
+ */
+export type ReferralRewardDestination = "BONUS" | "CASH";
+
+export function referralRewardDestination(): ReferralRewardDestination {
+  // The PRODUCT state outranks the operator config — `creditBonus` refuses outright while the
+  // wallet is withdrawn, so routing there would only take the fall-through the long way round.
+  if (!bonusIsLiveFor()) return "CASH";
   const bcfg = getBonusConfig();
-  if (bcfg.enabled && bcfg.affiliateToBonus) {
+  return bcfg.enabled && bcfg.affiliateToBonus ? "BONUS" : "CASH";
+}
+
+/** Credit a referral reward. Routes to the BONUS wallet when the bonus programme is part of the
+ *  product AND affiliate→bonus routing is on (Ali's default — rewards must be played through);
+ *  otherwise credits real balance directly. Falls back to real if a bonus credit can't be made,
+ *  so a reward is never silently dropped. */
+async function creditWallet(userId: string, amount: number, description: string, sourceRef?: string): Promise<boolean> {
+  if (referralRewardDestination() === "BONUS") {
     // Pass a deterministic sourceRef so creditBonus dedupes: even if a reward
     // payer is somehow re-entered, the grant lands at most once. (The payer's
     // own lock + existence check is the primary guard; this is belt-and-suspenders
