@@ -87,6 +87,7 @@ const raw = readFileSync(PAGE, "utf8");
 /** Strip comments — this file's own prose quotes the buggy forms on purpose. */
 const src = raw.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
+import { fixtureIsComplete } from "./lib/discovery-row-keys.mts";
 const NOW = Date.parse("2026-08-13T12:00:00Z");
 const DAY = 24 * 3600_000;
 const noText = () => true;
@@ -111,6 +112,13 @@ function row(over: Partial<DiscoveryRow> = {}): DiscoveryRow {
 }
 
 log("\n── 0 · the corpus is real ──────────────────────────────────────");
+{
+  // ⛔ E-317 — THE FIXTURE MUST BE A REAL ROW. `.mts` is outside `tsconfig.include`, so a REQUIRED
+  // field added to `DiscoveryRow` fails no factory here. The key list is parsed from the TYPE.
+  const [complete, detail] = fixtureIsComplete(row() as unknown as Record<string, unknown>);
+  check("0.0 ⛔ the row fixture builds a COMPLETE DiscoveryRow (tsc does not check .mts)", complete, detail);
+}
+
 // ⛔ A guard that reads nothing prints PASS forever.
 check("the board page was read", src.length > 4000, `${src.length} chars`);
 check("it is the board (it builds the live grid)", /market-grid/.test(src));

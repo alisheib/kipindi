@@ -5182,3 +5182,29 @@ textarea::-webkit-resizer {
   top: -13px;
   bottom: -13px;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   E-316 — WHERE TWO OF THESE STACK, THE REACH GROWS *AWAY* FROM ITS NEIGHBOUR.
+
+   🔴 The symmetric ±13px rule above is right in a table (row pitch 65px, measured) and WRONG on
+   `/admin/players/[id]`, where the phone eye and the email eye sit on consecutive lines **2px
+   apart** — measured on production: phone y 283–298, email y 300–315. Their reaches overlapped
+   by 24px, so a tap at the phone eye's lower-left hit the EMAIL, revealing the wrong field and
+   writing an audit row that says so.
+
+   ⭐ THE FIX IS ASYMMETRY, NOT SPACING. Each control expands into the room it actually has:
+     · line 1 (id · phone · region · joined) — above it is a non-interactive `<h2>`, so it takes
+       24px upward and yields the 2px gap to its neighbour. 15 + 24 + 1 = **40px**, `--tap-min`.
+     · line 2 (the email) — 12px below it is the status-chip row, which contains a real `<a>` to
+       the KYC tab. So it takes 11px downward and stops short of it. 15 + 1 + 11 = **27px**.
+
+   ⚠️ 27px IS BELOW THE FLOOR AND IS NOT PRETENDED OTHERWISE. Two 15px controls two pixels apart
+   cannot both carry 40px without moving the layout, and moving a designed header to win 13px on
+   the SECOND of two identity eyes is the worse trade. What is fixed is the thing that could
+   actually harm: **no control's reach overlaps another control**, so a tap always lands where it
+   was aimed. `qa:phone-reveal` asserts exactly that, per surface, and prints the measurement.
+
+   ⛔ DO NOT "SIMPLIFY" THESE BACK TO THE SYMMETRIC RULE. The numbers are the gaps, not taste.
+   ───────────────────────────────────────────────────────────────────────────── */
+[data-identity-line="1"] .sensitive-reveal::after { top: -24px; bottom: -1px; }
+[data-identity-line="2"] .sensitive-reveal::after { top: -1px; bottom: -11px; }

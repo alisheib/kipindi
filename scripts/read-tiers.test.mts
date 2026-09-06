@@ -674,6 +674,38 @@ ok("8.11 …and a FULL pull writes pii.revealed with the row count, never a valu
      named.includes("***") && !/^Player #/.test(named), `got "${named}"`);
 }
 
+/* ── E-313 · THE SERVER-SIDE PII SURFACES, ASSERTED BY NAME ────────────────────────────────
+ *
+ * ⛔ AND NOT BY WIDENING §7'S WALK, WHICH WAS MEASURED AND WOULD HAVE BEEN THEATRE. §7's offender
+ * pattern is JSX-shaped — `\{[^{}]*\.prop[^{}]*\}` — so it cannot match a multi-line server
+ * object literal, which has nested braces. Pointing it at `src/lib/server` and `src/app/api`
+ * yields **0 hits across 194 files**: not a clean tree, a blind one. A ratchet that prints
+ * "0 unreviewed" over a population it structurally cannot read is worse than one that admits it
+ * has no coverage, because the zero reads as proof.
+ *
+ * ⭐ SO EACH SURFACE IS PINNED TO ITS OWN INTENDED BEHAVIOUR. These three are the places a
+ * player's phone legitimately leaves the platform, and each is deliberate in a DIFFERENT
+ * direction — full, masked, hashed. That is exactly what makes "we swept the server" a useless
+ * claim and "this file does this, on purpose" a useful one.
+ */
+ok("8.18 ⛔ the DSAR bundle carries the FULL phone — deliberate, GDPR Art. 15",
+   /phoneE164:\s*user\.phoneE164/.test(decomment(readFileSync(join(ROOT, "src/lib/server/privacy.ts"), "utf8"))),
+   "the subject is entitled to their own data; masking it here would be a compliance defect, not a control");
+
+ok("8.19 …and that export is AUDITED, which is what makes 8.18 acceptable",
+   /action:\s*"player\.data_exported"/.test(decomment(readFileSync(join(ROOT, "src/app/admin/players/[id]/actions.ts"), "utf8"))),
+   "a full-PII bundle handed out with no record is the failure D4 exists to prevent");
+
+{
+  const cat = decomment(readFileSync(join(ROOT, "src/lib/server/reports/catalogue.ts"), "utf8"));
+  ok("8.20 ⛔ the FIU suspicious-activity report MASKS the phone",
+     /u\.phoneE164\.slice\(0, 4\)\}\*\*\*\*\*\$\{u\.phoneE164\.slice\(-2\)/.test(cat),
+     "a regulator artefact keeps ASCII stars on purpose — `••••` is non-ASCII and would break a CSV consumer");
+  ok("8.21 ⛔ the cross-operator self-exclusion register HASHES it, never masks it",
+     /hashIdentifier\(u\.phoneE164\)/.test(cat),
+     "it is matched against other operators' registers, so it must be a stable salted digest and not a display string");
+}
+
 ok("8.17 ⭐ POSITIVE CONTROL · §8 reads real files, not empty strings",
    maskSrc.length > 500 && registrySrc.length > 500 && exportSrc.length > 500,
    `${maskSrc.length} / ${registrySrc.length} / ${exportSrc.length} bytes`);

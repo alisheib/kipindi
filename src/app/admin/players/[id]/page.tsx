@@ -209,11 +209,11 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
             <Avatar initials={initials} size="xl" seed={user.id} />
             <div className="flex-1 min-w-[260px]">
               <h2 className={`font-display font-bold text-title-md text-text leading-none ${isAutoHandle ? "font-mono" : ""}`}>{headerLabel}</h2>
-              <p className="font-mono text-caption text-text-tertiary mt-1">
+              <p data-identity-line="1" className="font-mono text-caption text-text-tertiary mt-1">
                 {id.slice(0, 14)}… · <Sensitive field="phone" subjectId={id} value={user.phoneE164} /> · {user.region ? <Sensitive field="region" subjectId={id} value={user.region} /> : "—"} · joined {user.createdAt.split("T")[0]}
               </p>
               {user.email && (
-                <p className="font-mono text-caption text-text-tertiary mt-0.5 flex items-center gap-1">
+                <p data-identity-line="2" className="font-mono text-caption text-text-tertiary mt-0.5 flex items-center gap-1">
                   <I.mail s={10} />
                   <Sensitive field="email" subjectId={id} value={user.email} />
                   {user.emailVerifiedAt && <I.check s={10} className="text-success" />}

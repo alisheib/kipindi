@@ -66,6 +66,7 @@ function ok(label: string, cond: boolean, detail = "") {
   else { log(`  FAIL ${label}${detail ? ` — ${detail}` : ""}`); fail++; }
 }
 
+import { fixtureIsComplete } from "./lib/discovery-row-keys.mts";
 const NOW = Date.parse("2026-08-13T12:00:00Z");
 const H = 3600_000;
 const TOPICS = ["sports", "macro", "weather", "crypto", "culture", "tech", "other"];
@@ -89,6 +90,15 @@ function row(over: Partial<DiscoveryRow> = {}): DiscoveryRow {
   };
 }
 const noText = () => true;
+
+// ⛔ E-317 — THE FIXTURE MUST BE A REAL ROW. `.mts` files are outside `tsconfig.include`, so a
+// REQUIRED field added to `DiscoveryRow` does not fail these factories; `hero-contract` shipped
+// rows missing two of them and stayed green because its question never read them. The field list
+// is parsed from the TYPE, so it cannot drift from what a row actually is.
+{
+  const [complete, detail] = fixtureIsComplete(row() as unknown as Record<string, unknown>);
+  ok("0.1 ⛔ the row fixture builds a COMPLETE DiscoveryRow (tsc does not check .mts)", complete, detail);
+}
 
 // ── 1 · the URL contract: defaults omitted, everything round-trips ─────────────
 log("\n── 1 · URL contract ────────────────────────────────────────────");

@@ -36,6 +36,7 @@ function ok(label: string, cond: boolean, detail = "") {
   else { log(`  FAIL ${label}${detail ? ` — ${detail}` : ""}`); fail++; }
 }
 
+import { fixtureIsComplete } from "./lib/discovery-row-keys.mts";
 const NOW = Date.parse("2026-08-13T12:00:00Z");
 const H = 3600_000;
 let seq = 0;
@@ -77,6 +78,15 @@ function heroRow(over: Partial<HeroRow> = {}): HeroRow {
 }
 
 log("Hero contract guard (licence condition 1 · DESIGN_AUTHORITY §B6 / law 81)");
+
+{
+  // 🔴 E-317 — THIS SUITE IS THE ONE THAT PROVED THE GAP. It shipped rows missing BOTH new
+  // required `DiscoveryRow` fields and stayed green for a full session, because `.mts` is outside
+  // `tsconfig.include` and the hero only ever asks `matchesStatus(…, "open")`, which reads
+  // neither. The key list is parsed from the TYPE, so the fixture cannot drift from it again.
+  const [complete, detail] = fixtureIsComplete(heroRow() as unknown as Record<string, unknown>);
+  ok("0.1 ⛔ the hero fixture builds a COMPLETE DiscoveryRow (tsc does not check .mts)", complete, detail);
+}
 
 // ── 1 · the shared pricing rule ────────────────────────────────────────────────
 log("\n── 1 · pricedYesPct: the ONE cold-start rule ───────────────────");
