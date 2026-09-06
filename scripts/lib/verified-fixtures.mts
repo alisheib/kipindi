@@ -65,11 +65,24 @@ if (!g[MARK]) {
 
   db.user.create = (async (u: UserLike) => {
     const created = await original(u as never);
-    // ⚠️ PLAYERS ONLY. Staff accounts are created by these suites too, and an officer with
+    // ⚠️ NON-STAFF ONLY. Staff accounts are created by these suites too, and an officer with
     // a KYC submission of their own is a state the product does not produce — worse, some
     // suites assert that an officer cannot review their own identity, which needs there to
     // be no submission to find.
-    if ((u.role ?? "PLAYER") === "PLAYER") {
+    //
+    // ⭐ `AGENT` JOINS `PLAYER` HERE (2026-09-06), and the rule this encodes is "not staff",
+    // not "player". `AGENT` is explicitly NOT a staff role — `isStaffRole` excludes it,
+    // `DEFAULT_GRANTS` cannot even represent it, and login/register route it into the player
+    // app exactly like a PLAYER. It is a non-staff account that deposits, bets and earns, so
+    // it belongs in the verified population for the same reason a player does. It was simply
+    // not a fixture role anywhere when this wrap was written.
+    //
+    // ⛔ HOW ITS ABSENCE PRESENTED, because the symptom named neither KYC nor roles: referral
+    // fixtures became AGENTs (a code only recruits if its owner may refer), the wrap skipped
+    // them, their bonus grants landed `PENDING_KYC`, and three suites failed with
+    // "referrer rewarded … bonus=0". Including the CONTROL that exists to prove an eligible
+    // referrer IS paid — which is exactly the control earning its place.
+    if ((u.role ?? "PLAYER") === "PLAYER" || u.role === "AGENT") {
       const now = new Date().toISOString();
       // ⛔ A UNIQUE `idNumber` PER FIXTURE. One document, one account is enforced by a
       // partial unique index and by `findActiveByIdNumber`; a shared literal here would

@@ -19,6 +19,10 @@
  * the whole point — a true measurement over the wrong population is the most convincing way
  * to be wrong.
  */
+// ⚠️ Fixtures must be VERIFIED players: since 2026-09-05 an unverified account cannot deposit,
+// bet or hold an ACTIVE bonus grant, so §5e's control would read bonus=0 for the identity gate
+// rather than for anything this suite measures.
+import "./lib/verified-fixtures.mts";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 // ⛔ ONE HOME FOR COMMENT-STRIPPING — `test:decomment` §2.1 exists because two suites shipped
