@@ -15,6 +15,8 @@ import { randomId } from "./crypto";
 import { audit } from "./audit";
 import { withLock } from "./locks";
 import { getBonusConfig } from "./bonus-config";
+// The PRODUCT state, which outranks the operator config — see `getInvitePreview`.
+import { bonusIsLiveFor } from "@/lib/feature-state";
 import { creditBonus } from "./bonus-service";
 import { tzPhone } from "./validators";
 import { sendEmail, inviteHtml } from "./email";
@@ -295,6 +297,24 @@ export async function listCampaigns(limit = 200): Promise<StoredInviteCampaign[]
 export async function getInvitePreview(code: string): Promise<{ name: string; bonusAmountTzs: number } | null> {
   const c = await db.inviteCampaign.findByCode(code);
   if (!c || c.status === "CANCELLED") return null;
+  /**
+   * ⛔ THE RIBBON IS A PROMISE, SO IT OBEYS THE SAME GATE AS THE GRANT.
+   *
+   * `/auth/register?invite=CODE` renders **"Claim bonus TZS 10,000"** off this preview
+   * (`register/page.tsx`, `t.auth.claimBonus`). With the bonus wallet withdrawn from the
+   * product, `bindRegistration` → `creditBonus` now REFUSES — so without this gate the very
+   * first thing the platform says to a brand-new player is a promise of money it has already
+   * decided not to pay. That is a false money statement at the worst possible moment.
+   *
+   * ⭐ EXACT PRECEDENT, deliberately the same shape: `affiliate-service.resolveReferralPreview`
+   * returns null for a withdrawn referrer for this reason, and its comment is the one this
+   * follows. Returning null degrades gracefully — the page shows no ribbon, exactly as for an
+   * unknown code, and the hidden `invite` field is never rendered.
+   *
+   * ⚠️ Campaign ADMINISTRATION is untouched: `/admin/invites` still lists, reads and audits
+   * every campaign. This gates what a PLAYER is PROMISED, not what an operator can see.
+   */
+  if (!bonusIsLiveFor()) return null;
   return { name: c.name, bonusAmountTzs: c.bonusAmountTzs };
 }
 
