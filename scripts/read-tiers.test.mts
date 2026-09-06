@@ -539,12 +539,17 @@ ok("7.4 every exemption and every reviewed site carries a reason, and both lists
 /* ═══════════════════════════════════════════════════════════════════════════════════════════
  * §8 · THE PHONE — and the two surfaces §7's population structurally cannot reach
  *
- * ⛔ §7 WALKS `src/app/admin/**` FOR `.tsx`. That is the right population for a RENDER, and it
- * is blind to the two places PII leaves this platform as a FILE: the transactions CSV
- * (`src/app/api/...`, a `.ts` route) and the DSAR bundle (`src/lib/server/privacy.ts`). Both were
- * outside every guard in this suite, and the CSV was the largest bulk-PII surface on the
- * platform. A ratchet's honesty depends on saying what it does NOT cover, so these are asserted
- * by name rather than left to a population that was never going to include them.
+ * ⛔ §7 WALKS THE ADMIN `.tsx` TREES. That is the right population for a RENDER, and it is blind
+ * to the two places PII leaves this platform as a FILE: the transactions CSV (`src/app/api/...`,
+ * a `.ts` route) and the DSAR bundle (`src/lib/server/privacy.ts`). Both sat outside every guard
+ * in this suite, and the CSV was the largest bulk-PII surface on the platform.
+ *
+ * ⚠️ ONLY THE CSV IS ASSERTED BELOW — corrected 2026-09-06, because the first draft of this
+ * header claimed BOTH were "asserted by name" and an adversarial audit checked and found zero
+ * assertions about the DSAR bundle. It is deliberately full (GDPR Art. 15 hands the subject
+ * their own data) and is audited as `player.data_exported`, so there is nothing here to refuse —
+ * but "nothing to assert" and "asserted" are different words, and a header that overstates its
+ * own coverage is how the next reader stops looking. E-313.
  *
  * 🟡 STILL OWED, AND RECORDED AS OWED: the rest of `src/lib/server/**.ts` is not swept for
  * governed accessors. Those sites mask for LOGS and EMAILS (`sms.ts`, `auth-service.ts`,

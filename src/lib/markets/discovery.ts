@@ -58,8 +58,14 @@ export type DiscoveryRow = {
    * does NOT order by result-due.
    *
    * ⛔ REQUIRED, not optional, on purpose. Optional would let a row arrive without it and sort
-   * silently last, which is the failure this module's own header exists to prevent. `tsc` names
-   * every construction site instead.
+   * silently last, which is the failure this module's own header exists to prevent.
+   *
+   * ⚠️ AND `tsc` DOES NOT NAME EVERY CONSTRUCTION SITE — this comment claimed it did until
+   * 2026-09-06, and an adversarial audit refuted it. `tsconfig.json` includes the `.ts` files
+   * under `scripts/` but NOT the `.mts` ones, so every fixture factory in that directory is
+   * outside the typechecker: `hero-contract.test.mts` went on building rows without these two
+   * fields, green, because the hero only asks `matchesStatus(…, "open")` and that reads neither.
+   * `tsc` covers `src/`; the fixtures are on their authors.
    */
   resolvesAtMs: number;
   selectionClosed: boolean;

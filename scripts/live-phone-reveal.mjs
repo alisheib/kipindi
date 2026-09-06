@@ -43,6 +43,17 @@ const SURFACES = [
   { path: "/admin/staff", label: "staff roster", field: "Phone number" },
 ];
 
+/**
+ * ⛔ THE SURFACE THE FIRST VERSION OF THIS DRIVE COULD NOT SEE, added 2026-09-06.
+ *
+ * It drove the two ROSTERS — tables, 65px row pitch, all the room in the world — and concluded
+ * the reach was safe. It never opened `/admin/players/[id]`, where the phone eye and the email
+ * eye sit on CONSECUTIVE LINES **2px apart**, which is the one place the expander can collide
+ * with another control. A guard that only visits the surfaces where a rule holds is not
+ * measuring the rule.
+ */
+const STACKED_SURFACE = "/admin/players";
+
 const ctx = await (await chromium.launch()).newContext({ viewport: { width: 1280, height: 900 } });
 const page = await ctx.newPage();
 
@@ -208,6 +219,53 @@ for (const s of SURFACES) {
   await page.waitForFunction((el) => el.getAttribute("aria-label")?.startsWith("Reveal"), handle, { timeout: 20_000 }).catch(() => {});
   const hiddenAgain = (await handle.textContent())?.trim() ?? "";
   ok(`${s.label}: the eye toggles back to dots`, /••••/.test(hiddenAgain), hiddenAgain);
+}
+
+// ── the STACKED surface: two eyes on consecutive lines ─────────────────────────────────────
+console.log("\n── /admin/players/[id] · where two eyes stack ─────────────");
+if (inconclusive > 0) {
+  console.log("  ⚠️  SKIPPED — the roster legs were inconclusive, so there is no player id to open.");
+} else {
+  await page.goto(`${BASE}${STACKED_SURFACE}`, { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(3500);
+  const pid = await page.evaluate(() => {
+    const a = document.querySelector('a[href^="/admin/players/usr_"]');
+    return a ? a.getAttribute("href").split("/").pop() : null;
+  });
+  if (!pid) { console.log("  ⚠️  SKIPPED — no player row to open."); }
+  else {
+    await page.goto(`${BASE}/admin/players/${pid}`, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(3500);
+    const m = await page.evaluate(() => {
+      const els = Array.from(document.querySelectorAll('button[aria-label^="Reveal"], button[aria-label^="Hide"]'));
+      const at = (el, x, y) => { const h = document.elementFromPoint(x, y); return !!h && (h === el || el.contains(h)); };
+      return els.map((el) => {
+        const b = el.getBoundingClientRect();
+        return {
+          label: el.getAttribute("aria-label"),
+          top: Math.round(b.top), bottom: Math.round(b.bottom),
+          ownsCentre: at(el, b.left + b.width / 2, b.top + b.height / 2),
+          ownsTop: at(el, b.left + b.width / 2, b.top + 1),
+          ownsBottom: at(el, b.left + b.width / 2, b.bottom - 1),
+        };
+      });
+    });
+    ok("stacked: both identity eyes are present", m.length >= 2, m.map((x) => x.label).join(" | "));
+    /**
+     * ⭐ THE PROPERTY THAT ACTUALLY MATTERS, and it is NOT "the reach never overlaps". Two 15px
+     * controls two pixels apart cannot BOTH carry a 40px target — that is geometry, not a bug,
+     * and pretending otherwise would make this guard unsatisfiable. What must hold is that each
+     * control still owns its OWN box: centre, top edge and bottom edge. A reader aiming at a
+     * control hits that control. ⚠️ The residual — a sliver at the phone eye's lower-left where
+     * the email eye wins — is FILED (E-316), not claimed as fixed.
+     */
+    const notOwned = m.filter((x) => !(x.ownsCentre && x.ownsTop && x.ownsBottom));
+    ok("stacked: ⛔ every eye still owns its own centre AND both edges",
+       m.length > 0 && notOwned.length === 0,
+       notOwned.length ? JSON.stringify(notOwned) : m.map((x) => `${x.label}: ${x.top}-${x.bottom}`).join(" | "));
+    const gap = m.length >= 2 ? m[1].top - m[0].bottom : null;
+    console.log(`  ⓘ measured line gap between the two eyes: ${gap}px (each reach is 13px, so they overlap by ${gap === null ? "?" : 26 - gap}px — E-316)`);
+  }
 }
 
 // ── D4: the reveal wrote an audit row ──────────────────────────────────────────────────────

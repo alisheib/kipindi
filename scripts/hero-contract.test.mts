@@ -52,6 +52,14 @@ function heroRow(over: Partial<HeroRow> = {}): HeroRow {
     move24h: undefined,
     createdAtMs: NOW - 10 * H,
     bettableUntilMs: NOW + 10 * H,
+    // ⚠️ ADDED 2026-09-06 AND NOT BY `tsc`. `DiscoveryRow` gained these two as REQUIRED fields,
+    // and this fixture went on omitting them silently: `tsconfig.json` includes
+    // `scripts/**/*.ts` but NOT `.mts`, so every fixture in this directory is outside the
+    // typechecker. The suite stayed green because the hero only ever asks `matchesStatus(…,
+    // "open")`, which reads neither — a fixture that is not a real row, passing because the
+    // question was narrow. The moment a hero predicate reads one it would have read `undefined`.
+    resolvesAtMs: NOW + 12 * H,
+    verdictRecorded: false,
     selectionClosed: false,
     status: "LIVE",
     watched: false,
