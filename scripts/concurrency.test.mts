@@ -35,7 +35,15 @@ let seq = 0;
 /** Local digits of the fixture phone — `withdraw()` refuses any other destination (E-215). */
 const localDigits = new Map<string, string>();
 
-async function fundedUser(id: string, balance: number): Promise<void> {
+/**
+ * ⚠️ `role` EXISTS FOR THE 2026-09-06 ATTRIBUTION RULE, and it is not test plumbing.
+ * A referral code only recruits if its owner may actually refer — today, `role === "AGENT"`
+ * (`src/lib/feature-state.ts`). §F below drives the prize payer's exactly-once lock, so its
+ * REFERRER must be an agent or `bindRecruit` refuses and the section measures nothing.
+ * ⛔ Do not "fix" a failure here by relaxing the gate; `test:withdrawn-features` §5 asserts
+ * the refusal deliberately.
+ */
+async function fundedUser(id: string, balance: number, role: "PLAYER" | "AGENT" = "PLAYER"): Promise<void> {
   // A REGISTRABLE number. `tzPhone` — the schema the real registration path goes through —
   // only accepts `[67]\d{8}`, so the old `97…` fixtures were numbers no player could own
   // and no `WithdrawSchema` would accept as a destination.
@@ -43,7 +51,7 @@ async function fundedUser(id: string, balance: number): Promise<void> {
   localDigits.set(id, local);
   await db.user.create({
     id, phoneE164: `+255${local}`, passwordHash: null, passwordSalt: null,
-    failedLoginCount: 0, lockedUntil: null, role: "PLAYER", status: "ACTIVE", locale: "EN",
+    failedLoginCount: 0, lockedUntil: null, role, status: "ACTIVE", locale: "EN",
     displayName: null, dob: null, region: null, acceptedTermsVersion: null, acceptedTermsAt: null,
     marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null,
     createdAt: now(), updatedAt: now(), lastLoginAt: null, closedAt: null,
@@ -264,7 +272,7 @@ async function makeMarket(): Promise<string> {
     const PRIZE = cfg.prize.amountTzs;
     const ref = "cc_ref_x";
     const rec = "cc_rec_y";
-    await fundedUser(ref, 0);
+    await fundedUser(ref, 0, "AGENT"); // ⬅ only an eligible referrer binds (2026-09-06)
     await fundedUser(rec, 0);
     const acct = await ensureAffiliateAccount(ref);
     await bindRecruit({ recruitUserId: rec, code: acct.code });

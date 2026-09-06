@@ -132,6 +132,39 @@ population is the most convincing way to be wrong.
 
 ---
 
+## 6b · What a 110-agent adversarial audit found after I called it done
+
+I ran an 8-dimension refute-by-default audit over the finished branch: 34 claimed findings,
+**17 confirmed** by a ≥2-of-3 verifier panel. It found things four green suites and my own
+109-assertion visual drive had all passed over. The pattern in almost every one is the same —
+**a true measurement over the wrong population.**
+
+| # | What it found | Why nothing caught it |
+|---|---|---|
+| 1 | **`test:invite-coming-soon` was RED and still wired into CI**, and its three RED anchors quoted source lines this change deleted, so `red-anchors` went 1291/0 → **1288/3** | I re-ran the suites I had *touched*. This one I had *broken*. A red harness that cannot inject is a control that has silently stopped controlling |
+| 2 | **The wallet's real balance rendered at half width with a 518px hole** at 1280 | Every guard looked for holes where the element had BEEN — an empty container, an orphan heading. This grid has a child and nothing is orphaned. Removing an element also re-lays-out its **surviving siblings** |
+| 3 | **A cooling-off proposer blocked the OFFICER** — the whole approval was abandoned with "check the bonus/wallet setup and retry" | I introduced it with the RG gate and reasoned "refusing is correct" instead of measuring who got refused |
+| 4 | **Legacy `recruitedBy` rows still paid** — gating the bind left every attribution written before the gate accruing in real cash, with an email pointing at the dead page | The bind gate looked complete. The older population is the quieter half |
+| 5 | The cashback promo was gated on `/wallet` but **not** on `/wallet/deposit` | One surface of two — the classic half-on |
+| 6 | The chat had a **second layer** (the offline fallback) still teaching the programme and citing `/profile/invite` | I fixed the system prompt and stopped looking |
+| 7 | Two comments cited **`scripts/reenablement.test.mts`, which has never existed** | I named a guard I had planned and not written |
+
+⭐ **And the red harness caught my own guard being worthless.** The first version of the
+legacy-attribution test (§5d) used the shipped defaults — `requireDeposit: true`,
+`minBetAmountTzs: 20_000` — and never gave the recruit a deposit, so the prize could not fire
+whatever the gate did. Neutralising the gate left it **green**. It was measuring the config, not
+the gate. Rewritten with a config that genuinely pays, plus §5e: the same legacy row shape with
+an AGENT referrer **is** paid. Without that control §5d passes whenever the reward path is broken
+for any reason at all — which is exactly how its first version passed.
+
+**Retired, not patched:** `invite-coming-soon.test.mts` guarded the rule this programme
+superseded, so it failed on its own premise. Its intent outlived its subject, so §1–§3 were
+**ported** into `withdrawn-features` (one home · positional coverage · gate-before-mint) and its
+§4 (coming-soon copy) dropped, because there is no coming-soon copy any more. New red control:
+`red:withdrawn-features`, 3/3.
+
+---
+
 ## 7 · What is NOT yet proven
 
 - **The AGENT render path.** `inviteIsLiveFor("AGENT") === true` is unit-tested, but no drive has
@@ -142,6 +175,26 @@ population is the most convincing way to be wrong.
   live grant rows on production have **not** been re-measured in this pass.
   ⚠️ `bonus-config.ts` warns that the file's defaults are what production actually runs on when no
   `SystemConfig` row exists — *check the live state, not the file*.
+
+- 🔴 **A HELD reward is terminal, and it consumes the budget.** Measured, and left as it is
+  deliberately — but it is a money decision, so it is recorded here rather than buried.
+
+  When an accrual is RG-suppressed on the cash path, `creditWallet` returns false and the reward
+  is recorded **HELD** — correctly, because "otherwise the ledger claims money was paid that never
+  moved". But **nothing anywhere transitions a reward out of HELD** (`PENDING` is a schema default
+  no code path writes), and the once-per-recruit and per-recruit-cap guards count rows *regardless
+  of status*. So a reward suppressed while an agent is on a break can never be paid afterwards —
+  the milestone is spent.
+
+  ⚠️ Note the two routes also disagree: `creditBonus` RG-suppression writes **no row at all**,
+  while the cash route writes a HELD one. Same suppression, different ledger artefact.
+
+  ⛔ **Not changed in this pass, on purpose.** Releasing a HELD reward is a payout queue with an
+  officer action behind it — a feature, not a withdrawal fix — and inventing one late in a session
+  on a money path is how the next defect gets written. The audit trail exists
+  (`credit_internal.suppressed.rg_lockout` plus the HELD row), so an operator can find and pay
+  these by hand. ▶ If an agent ever loses commission this way in practice, the fix is a release
+  action on `/admin/affiliate`, not a change to the accrual guards.
 
 ---
 

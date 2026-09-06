@@ -50,7 +50,10 @@ export const MUTATIONS = [
     why: "the deposit page stops consulting the switch and renders the promo off the percentage alone — a second definition of one truth, so the offer keeps appearing on that surface after it has been turned off everywhere else",
     file: DEP,
     suite: "cashback-hidden",
-    from: `  const showCashback = bonusCfg.enabled && bonusCfg.cashbackEnabled && bonusCfg.cashbackPercentage > 0;`,
+    // ⚠️ RE-ANCHORED 2026-09-06: the deposit page gained the PRODUCT-state gate
+    // (`bonusIsLiveFor()`) that /wallet already had, so this line changed. The mutation is
+    // unchanged in spirit — strip every gate and render off the percentage alone.
+    from: `  const showCashback = bonusIsLiveFor() && bonusCfg.enabled && bonusCfg.cashbackEnabled && bonusCfg.cashbackPercentage > 0;`,
     to: `  const showCashback = bonusCfg.cashbackPercentage > 0;`,
     expect: "2: the deposit page gates the promo on the switch",
   },
