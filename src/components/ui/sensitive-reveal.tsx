@@ -59,7 +59,10 @@ export function SensitiveReveal({
         // ⚠️ The accessible name says WHICH field, because a page carries several of these and
         // "Reveal" alone is the same control repeated to a screen reader.
         aria-label={shown ? `Hide ${label}` : `Reveal ${label}`}
-        className="inline-flex items-center gap-1.5 font-mono text-caption text-text-tertiary hover:text-text-muted disabled:cursor-default"
+        // ⚠️ `sensitive-reveal` carries the REACH, not a size. Measured on production
+        // 2026-09-06 the box is 86 × 15px, and it must stay text-sized because it renders
+        // mid-sentence in the player header as well as in table cells — see globals.css.
+        className="sensitive-reveal inline-flex items-center gap-1.5 font-mono text-caption text-text-tertiary hover:text-text-muted disabled:cursor-default"
       >
         <span>{shown && raw !== null ? raw : masked}</span>
         <GlyphSwap state={shown} className="text-text-subtle">

@@ -5142,3 +5142,37 @@ textarea::-webkit-resizer {
   top: -9px;
   bottom: -14px;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   .sensitive-reveal — THE EYE ON A MASKED FIELD, AND ITS REACH.
+
+   🔴 MEASURED ON PRODUCTION 2026-09-06: the control's box is **86 × 15px**. It is a
+   text-sized inline button by design — it sits mid-sentence in the player header
+   (`id… · +255••••01 · region · joined …`) and inside dense admin table cells — so the
+   fix cannot be to give it a 44px BOX: that would stretch the line it lives in and
+   re-space every roster row. The reach is expanded instead, exactly as
+   `.mcardp-share` above does, and for the same reason.
+
+   ⛔ `position: relative` IS LOAD-BEARING. Without it the `::after` resolves against the
+   nearest positioned ancestor — the ROW — and the reach covers whatever sits beside it.
+   That is how `.mcardp-share` originally shipped visible, named, translated and
+   UNCLICKABLE, and the note there says so in as many words.
+
+   ⚠️ THE VERTICAL REACH IS DELIBERATELY NOT `--tap-min` (40px) ON ALL SIDES. These
+   controls stack one per table row, so a reach taller than the row pitch would put one
+   row's hit area over its neighbour's — trading an under-sized target for a MIS-TAP,
+   which is worse: the first fails visibly, the second reveals the wrong player's number
+   and writes an audit row saying so. The expansion is bounded and verified with
+   `elementFromPoint` rather than with a bounding box, because a box cannot see reach.
+   ───────────────────────────────────────────────────────────────────────────── */
+.sensitive-reveal {
+  position: relative;
+}
+.sensitive-reveal::after {
+  content: "";
+  position: absolute;
+  left: -8px;
+  right: -8px;
+  top: -9px;
+  bottom: -9px;
+}

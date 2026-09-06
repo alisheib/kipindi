@@ -134,21 +134,56 @@ for (const s of SURFACES) {
        !html.includes(adminPhone), adminPhone);
   }
 
-  // Tap target — the eye is a thumb-sized control on a phone-first product.
-  const box = await first.boundingBox();
-  ok(`${s.label}: the eye clears the tap floor`, !!box && box.height >= 24, box ? `${Math.round(box.height)}px` : "no box");
+  /**
+   * ⛔ REACH IS MEASURED WITH `elementFromPoint`, NOT WITH A BOUNDING BOX. The control is a
+   * text-sized 86 × 15px button whose hit area is an `::after` expander (globals.css
+   * `.sensitive-reveal`), and a bounding box cannot see a pseudo-element — the same reason
+   * `.mcardp-share`'s note says its reach was re-proven this way on production.
+   *
+   * ⚠️ AND THE NEIGHBOUR IS CHECKED IN THE SAME PASS. An expander taller than the row pitch
+   * would trade an under-sized target for a MIS-TAP, which is strictly worse here: it would
+   * reveal the WRONG player's number and write an audit row saying so.
+   */
+  const reach = await first.evaluate((el) => {
+    const b = el.getBoundingClientRect();
+    const hit = (dx, dy) =>
+      document.elementFromPoint(b.left + b.width / 2 + dx, b.top + b.height / 2 + dy);
+    const owns = (n) => !!n && (n === el || el.contains(n));
+    let up = 0, down = 0;
+    for (let d = 0; d <= 40; d++) { if (owns(hit(0, -d))) up = d; else break; }
+    for (let d = 0; d <= 40; d++) { if (owns(hit(0, d))) down = d; else break; }
+    return { boxH: Math.round(b.height), reachH: up + down + 1 };
+  });
+  ok(`${s.label}: the eye's REACH clears the tap floor (the box stays text-sized)`,
+     reach.reachH >= 30, `box ${reach.boxH}px · reach ${reach.reachH}px`);
 
-  // The reveal itself.
-  await first.click();
-  await page.waitForTimeout(900);
-  const shownText = (await first.textContent())?.trim() ?? "";
+  {
+    // The neighbour must still own its own centre — no row can steal another's tap.
+    const stolen = await eyes.evaluateAll((els) =>
+      els.filter((el, i) => {
+        if (i === 0) return false;
+        const b = el.getBoundingClientRect();
+        const n = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+        return !(n === el || el.contains(n));
+      }).length,
+    );
+    ok(`${s.label}: ⛔ no row's reach steals its neighbour's centre`, stolen === 0, `${stolen} stolen`);
+  }
+
+  // The reveal itself. ⚠️ Re-resolve nothing: the click re-renders the tree, and a LOCATOR
+  // would silently point at a different row — which is exactly how an earlier run of this
+  // file reported a working reveal as broken.
+  const handle = await first.elementHandle();
+  await handle.click();
+  await page.waitForTimeout(1500);
+  const shownText = (await handle.textContent())?.trim() ?? "";
   ok(`${s.label}: clicking the eye produces the FULL number`,
      /\+\d{9,}/.test(shownText) && !/••••/.test(shownText), shownText);
 
   // …and hiding again is local, and must NOT pretend the read did not happen.
-  await first.click();
-  await page.waitForTimeout(300);
-  const hiddenAgain = (await first.textContent())?.trim() ?? "";
+  await handle.click();
+  await page.waitForTimeout(600);
+  const hiddenAgain = (await handle.textContent())?.trim() ?? "";
   ok(`${s.label}: the eye toggles back to dots`, /••••/.test(hiddenAgain), hiddenAgain);
 }
 
