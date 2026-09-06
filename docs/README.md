@@ -104,6 +104,7 @@ to teal and resurrects the killed light theme.
 | [`FEE-MODEL-DECISION-2026-07-14.md`](FEE-MODEL-DECISION-2026-07-14.md) | ⚪ RECORD | **SHIPPED.** Fixed the bug where a winner was paid less than they staked (the capped fee). ⚠️ This index used to carry a second row claiming a "newer 2026-07-22 file" awaiting a ruling — **no such file exists, and the question it described was RULED 2026-07-23**: new long-form polls freeze `loser-share` (3%+10% of the losing pool), Up & Down rounds freeze `capped-commission` @ 13% with the ⅓ ceiling, models never mix. The ruling's record is `COMPLIANCE-DECISIONS.md` § 2026-07-23; the maths is `src/lib/payout.ts`. |
 | [`F6-LIQUIDITY-DESIGN.md`](F6-LIQUIDITY-DESIGN.md) | 🟠 DESIGN | Seeded liquidity. **No code written.** |
 | [`bonus-wallet-plan.md`](bonus-wallet-plan.md) | ⚪ RECORD | Shipped 2026-06-26. |
+| [`BONUS-WITHDRAWAL.md`](BONUS-WITHDRAWAL.md) | 🟢 **LAW — the authority for the withdrawal** | ⭐ **Invite & Earn and the bonus wallet are WITHDRAWN from the player product** (Ali, 2026-09-06). The switch is `src/lib/feature-state.ts`; this file is why, what is KEPT (wagering, fulfilment, expiry, the `BONUS_FUNDED` cash-out refusal, `house-ledger` accounting) and the three laws it is built on. ⛔ **It was absent from this index until 2026-09-06** — an authority nobody could find from here. §4b records the audit finding that granting was listed as withdrawn while nothing enforced it. |
 | [`proposals.md`](proposals.md) | 🟢 LAW | Player market proposals → instant approval bonus. Supersedes the old prize model. |
 
 ## Backups, ops, infrastructure
@@ -112,6 +113,7 @@ to teal and resurrects the killed light theme.
 |---|---|---|
 | [`BACKUP-RUNBOOK.md`](BACKUP-RUNBOOK.md) | 🟢 LAW | The four commands, the drill, **the eight defects a green suite missed**, and the `\| tee` bug that made the nightly report success while shipping nothing. Read before touching backups. |
 | [`LIVE-HOSTING-STATUS.md`](LIVE-HOSTING-STATUS.md) | 🔵 LIVE | Living snapshot of go-live hosting. Cloudflare zone, DNS, R2. |
+| [`RAILWAY-LIVE.md`](RAILWAY-LIVE.md) | 🔵 LIVE | The live Railway picture — services, plan, volumes, connection ceilings and what the repo asserts about them. ⚠️ Read it before quoting an infrastructure number: several the repo states elsewhere are stale. |
 | [`GO-LIVE-RUNBOOK.md`](GO-LIVE-RUNBOOK.md) | ⚪ RECORD | How 50pick.tz *was* taken live (2026-07-17). |
 | [`LAUNCH-GO-NO-GO.md`](LAUNCH-GO-NO-GO.md) | 🔵 LIVE | The env/infra walk-down before real money. |
 | [`CLOUDFLARE-SETUP-GUIDE.md`](CLOUDFLARE-SETUP-GUIDE.md) | ⚪ RECORD | Mostly done. ⚠️ Keep the mail-records section — it is what stops `ali.sheib@50pick.tz` breaking. |
@@ -128,6 +130,8 @@ to teal and resurrects the killed light theme.
 |---|---|---|
 | [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) | 🟢 LAW | Owner-authorised decisions touching a compliance control. Append, never rewrite. |
 | [`BOARD-DISCLOSURE-B-E.md`](BOARD-DISCLOSURE-B-E.md) | ⚪ RECORD | The statement sent to the Gaming Board **before** identity verification stopped gating withdrawal (`E-175`) — the joint effect of comments #1 and #8, every control that remains and where it actually runs, the three that do **not**, and the fail-open caveat on the record that replaced the gate. ⛔ Says `(idType, idNumber)` across four documents, never *"one NIDA, one account"* — overstating the residual control to a regulator is the failure it exists to prevent. |
+| [`BOARD-DISCLOSURE-KYC-FIRST.md`](BOARD-DISCLOSURE-KYC-FIRST.md) | ⚪ RECORD | The disclosure to the Board for **KYC-first** (2026-09-05): no deposit, no bet, no withdrawal until identity is approved — including the part that reverses an earlier Board instruction on withdrawal, disclosed rather than buried. |
+| [`RG-AUDIT-2026-08-27.md`](RG-AUDIT-2026-08-27.md) | ⚪ RECORD | The responsible-gambling audit of 2026-08-27 — the doors, the limits and what each one was measured to actually enforce. |
 | [`IDENTITY-POLICY.md`](IDENTITY-POLICY.md) | 🟢 LAW | Owner decision 2026-07-19, widened 2026-08-19. Authoritative over any contradicting doc. ⚠️ **Was `NIDA-POLICY.md` until 2026-08-20** — renamed because it stopped being about one document: a player proves identity with **any ONE of four** (NIDA · passport · driving licence · voter's card). Carries the per-document format table with its sources — two published, two openly absent — and the 🔴 **residual gap** that per-`(type, number)` uniqueness cannot stop one human using two *different* documents on two accounts. |
 | [`gli-remediation-plan.md`](gli-remediation-plan.md) | 🟢 LAW | Canonical GLI spec of record, ticket-level acceptance criteria. |
 | [`gli-remediation-tracker.md`](gli-remediation-tracker.md) | 🔵 LIVE | The done / not-done companion to the plan above. |
@@ -198,6 +202,14 @@ to teal and resurrects the killed light theme.
 | [`FEE-DOCX-SUPERSEDED.md`](FEE-DOCX-SUPERSEDED.md) | ⚪ RECORD | The banner for two `.docx` hand-outs that state **retired** rates. A binary cannot carry its own warning, so it lives here. ⛔ Regenerate from `RULES.md` before either is handed to anyone. |
 | [`FINDING-SCHEDULER-BUSY-WAIT.md`](FINDING-SCHEDULER-BUSY-WAIT.md) | ⚪ RECORD | A single filed finding, kept as its own file because it predates the register. |
 | [`HANDOVER-E166-NEXT-SESSION.md`](HANDOVER-E166-NEXT-SESSION.md) | ⚫ HISTORICAL | A single session's handover for `E-166`, which has since shipped. It was the only file in `docs/` this index never listed — which is exactly how a spent artifact gets mistaken for live instruction. ⛔ Not a plan: [`NEXT-PLAN.md`](NEXT-PLAN.md) is the only live one. |
+| [`SESSION-PROMPT-HOUSE-LEDGER.md`](SESSION-PROMPT-HOUSE-LEDGER.md) | ⚪ RECORD | The engineering prompt and handover for `/admin/house`, the owner's book. §11 is its closing record, including the two open money questions it left named. |
+| [`SESSION-PROMPT-FINISH-THE-BOARD.md`](SESSION-PROMPT-FINISH-THE-BOARD.md) | ⚪ **RECORD — SUPERSEDED** | Superseded by `SESSION-PROMPT-BONUS-AND-CARE-DESK.md`; its Unit B (`E-177`) shipped 2026-08-26. ⚠️ Listed so a reader who finds the FILE learns that from the index rather than from a sentence inside another row — it was the only doc on disk that this index mentioned in prose but never listed. ⛔ Do not resume from it.|
+| [`SESSION-PROMPT-INFRA-HARDENING.md`](SESSION-PROMPT-INFRA-HARDENING.md) | ⚪ RECORD | Infrastructure-hardening session prompt. |
+| [`SESSION-PROMPT-MONEY-PHONE-AND-CARDS.md`](SESSION-PROMPT-MONEY-PHONE-AND-CARDS.md) | ⚪ RECORD | Money, phone and card-deposit session prompt. |
+| [`SESSION-PROMPT-SHELL-CARE-AND-INSTALL.md`](SESSION-PROMPT-SHELL-CARE-AND-INSTALL.md) | ⚪ RECORD | App-shell, care-desk and PWA-install session prompt. |
+| [`SESSION-PROMPT-TWO-RULINGS-AND-THE-REMAINDER.md`](SESSION-PROMPT-TWO-RULINGS-AND-THE-REMAINDER.md) | ⚪ RECORD | Two owner rulings and the remainder they left. |
+| [`SCAN-2026-08-28.md`](SCAN-2026-08-28.md) | ⚪ RECORD | The 2026-08-28 platform scan and its findings. |
+| [`PLAYER-VISUAL-2026-09.md`](PLAYER-VISUAL-2026-09.md) | ⚪ RECORD | The 2026-09 player-visual programme (PV-10) — rows, rulings and the chip audit. |
 | [`rates-for-admins.html`](rates-for-admins.html) · [`rates-decisions-needed.html`](rates-decisions-needed.html) | ⚪ RECORD | Two generated hand-outs from the 2026-08-14 rates programme. Snapshots — `RULES.md` is the truth. |
 
 ## Rules for this directory

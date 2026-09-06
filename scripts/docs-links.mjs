@@ -214,6 +214,31 @@ for (const [name, why] of PLANNED_OR_DELIBERATE) {
   else if (!seenPlanned.has(name)) { bad++; console.log(`  ✗ ${name} is no longer cited — remove it from PLANNED_OR_DELIBERATE (${why})`); }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ⭐ EVERY DOC IS IN THE INDEX — the drift CLAUDE.md already complains about
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// 🔴 THIS HAS NOW HAPPENED TWICE, WITH THE SAME COUNT. `CLAUDE.md`'s START-HERE table records it
+// the first time: *"This row used to say '42 docs' and the index itself said 45; the real number
+// was 59, and ELEVEN were unindexed."* Measured again on 2026-09-06: **eleven again** — including
+// `BONUS-WITHDRAWAL.md`, the authority for withdrawing Invite and the bonus wallet. An authority
+// nobody can reach from the index is an authority nobody reads.
+//
+// ⛔ THE OLD FIX WAS TO STOP STATING A COUNT, which prevents the two numbers disagreeing and does
+// nothing about the docs. Only a gate closes this: the index is the map, and a map missing a
+// street is wrong in the way that matters. Counting is deliberately NOT how it works — this
+// compares the two SETS, so it cannot pass by agreeing with itself.
+{
+  const indexSrc = readFileSync(join(DOCS, "README.md"), "utf8");
+  const onDisk = readdirSync(DOCS).filter((n) => n.endsWith(".md") && n !== "README.md");
+  const unindexed = onDisk.filter((n) => !indexSrc.includes(`(${n})`));
+  for (const n of unindexed) {
+    bad++;
+    console.log(`  ✗ ${"not in the index".padEnd(14)} README.md  →  ${n} is on disk and nothing links it`);
+  }
+  console.log(`\nindex: ${onDisk.length} docs on disk · ${onDisk.length - unindexed.length} linked from README.md`);
+}
+
 console.log(`\nchecked ${links} links · ${paths} script paths · ${npms} npm refs · ${cites} bare script citations · ${shots} evidence shots across docs/`);
 if (MISSING_EVIDENCE.size) {
   console.log(`⚠️  ${MISSING_EVIDENCE.size} historical screenshot(s) cited but never committed — listed in MISSING_EVIDENCE, and that list may only shrink.`);
