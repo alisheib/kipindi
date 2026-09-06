@@ -381,6 +381,41 @@ function ok(label: string, cond: boolean, extra?: string) {
      `found=${cashKeys.length}`);
 }
 
+// ── §5i · THE FIRST THING WE SAY TO A NEW PLAYER MUST NOT BE A PROMISE WE WON'T KEEP ──
+//
+// 🔴 `/auth/register?invite=CODE` renders **"Claim bonus TZS 10,000"** from `getInvitePreview`.
+// Once `creditBonus` began refusing (the withdrawal is real now), `bindRegistration` grants
+// nothing — so that ribbon promised money the platform had already decided not to pay, to a
+// person who had not yet signed up. A false money statement at the worst possible moment.
+//
+// ⭐ The fix follows an EXACT precedent rather than inventing one: `resolveReferralPreview`
+// already returns null for a withdrawn referrer, with the comment *"THE RIBBON IS A PROMISE, SO
+// IT OBEYS THE SAME GATE AS THE BIND."* Same shape, same seam, same graceful degradation.
+{
+  const { getInvitePreview } = await import("../src/lib/server/invite-service.ts");
+  const stamp = () => new Date().toISOString();
+  await db.inviteCampaign.create({
+    id: "inv_w5i", code: "W5ICODE", name: "Audit campaign", bonusAmountTzs: 10_000,
+    wagerMultiplier: 5, expiresInDays: 30, messageEn: "m", messageSw: "m",
+    status: "SENT", totalInvites: 0, totalRegistered: 0, createdById: "sys",
+    createdAt: stamp(), updatedAt: stamp(),
+  } as never);
+
+  const hidden = await getInvitePreview("W5ICODE");
+  ok("§5i no bonus ribbon while the wallet is withdrawn", hidden === null, JSON.stringify(hidden));
+
+  // ⭐ THE CONTROL — without it this passes just as well against a campaign that simply is not
+  // there, which would prove the fixture rather than the gate.
+  process.env.FEATURE_BONUS = "ACTIVE";
+  try {
+    const shown = await getInvitePreview("W5ICODE");
+    ok("§5i CONTROL · the ribbon DOES render once the product state is ACTIVE",
+       shown !== null && shown.bonusAmountTzs === 10_000, JSON.stringify(shown));
+  } finally {
+    delete process.env.FEATURE_BONUS;
+  }
+}
+
 // ── §5f · THE SKELETON MUST DESCRIBE THE PAGE THAT IS COMING ───────────────
 // 🔴 A LOADING STATE IS A PROMISE ABOUT THE NEXT FRAME. `wallet/loading.tsx` ghosted TWO
 // cards side by side — main + bonus — because that is what the page used to render. With the
