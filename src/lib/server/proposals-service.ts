@@ -21,6 +21,7 @@
  * officer approves. Exactly-once via the proposal status guard + the bonus grant's
  * sourceRef idempotency key. There is NO pay-on-listing/resolution logic anymore.
  */
+import { appUrl } from "@/lib/app-url";
 import {
   db,
   type StoredProposal,
@@ -62,7 +63,11 @@ import {
   proposalListedHtml,
 } from "./email";
 
-const BASE_URL = () => process.env.NEXT_PUBLIC_APP_URL || "https://kipindi-production.up.railway.app";
+// ⭐ THE BASE URL HAS ONE HOME: `appUrl()` (`src/lib/app-url.ts`).
+// 🔴 This file carried a private `BASE_URL` defaulting to `kipindi-production.up.railway.app`
+// until 2026-09-07 — a RETIRED host, and precisely the failure `app-url.ts` exists to prevent:
+// its own header says the old default "meant any environment that forgot the env var would email
+// people a railway.app link". Five files kept a copy of the bug beside the fix.
 
 export const PROPOSAL_CATEGORIES: ProposalCategory[] = ["sports", "macro", "weather", "crypto", "culture", "infrastructure", "tech", "mixed"];
 export const DECLINE_REASONS = [
@@ -284,7 +289,7 @@ async function notifyOfficersOfNewProposal(proposal: StoredProposal): Promise<vo
     notifyAdminProposalReview(o.id, { proposerLabel, titleEn: proposal.titleEn, proposalId: proposal.id }).catch(() => {});
   }
 
-  const reviewUrl = `${BASE_URL()}/admin/proposals`;
+  const reviewUrl = `${appUrl()}/admin/proposals`;
   const html = proposalSubmittedAdminHtml({
     reference: proposal.id,
     proposer: proposerLabel,

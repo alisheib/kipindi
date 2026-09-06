@@ -20,6 +20,7 @@
  *  - PII at rest in fields only; not in logs.
  *  - Documents are storage keys; binaries never enter app DB.
  */
+import { appUrl } from "@/lib/app-url";
 import { audit } from "./audit";
 import { db } from "./store";
 import type { StoredUser, KycExtraRequest } from "./store";
@@ -52,7 +53,11 @@ import { withLock } from "./locks";
 import { releaseKycHeldGrants } from "./bonus-service";
 import { displayLabel } from "@/lib/display-label";
 
-const BASE_URL = () => process.env.NEXT_PUBLIC_APP_URL || "https://kipindi-production.up.railway.app";
+// ⭐ THE BASE URL HAS ONE HOME: `appUrl()` (`src/lib/app-url.ts`).
+// 🔴 This file carried a private `BASE_URL` defaulting to `kipindi-production.up.railway.app`
+// until 2026-09-07 — a RETIRED host, and precisely the failure `app-url.ts` exists to prevent:
+// its own header says the old default "meant any environment that forgot the env var would email
+// people a railway.app link". Five files kept a copy of the bug beside the fix.
 
 /** First word of a full name, used as a friendly greeting in emails. */
 function firstName(full?: string | null): string | undefined {
@@ -549,7 +554,7 @@ export async function submitForReview(userId: string): Promise<ServiceResult> {
 
   // Compliance/ops: one best-effort send per recipient. No PII (masked NIDA,
   // masked phone, no images, no DOB) — the reviewer opens the secured drill-in.
-  const reviewUrl = `${BASE_URL()}/admin/players/${userId}?tab=kyc`;
+  const reviewUrl = `${appUrl()}/admin/players/${userId}?tab=kyc`;
   // ⚠️ The document TYPE travels with the masked tail, because from 2026-08-20
   // "•••• 5678" alone no longer says what was submitted — and an officer opening
   // the queue decides which case to pick up from this line.

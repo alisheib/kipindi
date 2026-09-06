@@ -11,6 +11,7 @@
  *   2. Admin-initiated: officer generates a temporary password directly
  *      (for support requests from users without email).
  */
+import { appUrl } from "@/lib/app-url";
 import { createHash } from "node:crypto";
 import { db } from "./store";
 import { signSession, verifySession, hashPassword, randomId } from "./crypto";
@@ -49,7 +50,11 @@ function maskEmailForReset(email: string): string {
   const [local = "", domain = ""] = email.split("@");
   return `${local.slice(0, 2)}***@${domain}`;
 }
-const BASE_URL = () => process.env.NEXT_PUBLIC_APP_URL || "https://kipindi-production.up.railway.app";
+// ⭐ THE BASE URL HAS ONE HOME: `appUrl()` (`src/lib/app-url.ts`).
+// 🔴 This file carried a private `BASE_URL` defaulting to `kipindi-production.up.railway.app`
+// until 2026-09-07 — a RETIRED host, and precisely the failure `app-url.ts` exists to prevent:
+// its own header says the old default "meant any environment that forgot the env var would email
+// people a railway.app link". Five files kept a copy of the bug beside the fix.
 
 type ResetTokenPayload = {
   purpose: "password-reset";
@@ -79,7 +84,7 @@ function buildResetUrl(userId: string, email: string, passwordHash: string | nul
     pwh: passwordFingerprint(passwordHash),
     exp: Date.now() + RESET_TTL_MS,
   } satisfies ResetTokenPayload);
-  return `${BASE_URL()}/auth/reset-password?token=${encodeURIComponent(token)}`;
+  return `${appUrl()}/auth/reset-password?token=${encodeURIComponent(token)}`;
 }
 
 /**
