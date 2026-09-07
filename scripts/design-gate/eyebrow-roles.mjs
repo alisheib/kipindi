@@ -267,7 +267,6 @@ export const NOT_EYEBROW = new Map([
   ["components/admin/ai-toolkit.tsx :: className={`font-mono text-micro tracking-[0.12em] uppercase px-2.5 h-7 inline-flex items-center gap-1.5 rounded-md border transition-colors ${ ↵ !hasKey", "CONTROL_LABEL"],
   ["components/admin/ai-toolkit.tsx :: className={`shrink-0 rounded-md border px-1.5 py-0.5 font-mono text-micro uppercase tracking-[0.12em] ${ ↵ on ? \"border-border-strong bg-bg-elevated text-text-secondary\" ", "STATUS_CHIP"],
   ["components/admin/control-locked.tsx :: className={`inline-flex items-center gap-1.5 rounded-md border border-border bg-bg-inset px-2.5 font-mono text-micro uppercase tracking-[0.10em] text-text-subtle ${ ↵ // ", "STATUS_CHIP"],
-  ["components/admin/controlled-elsewhere.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.12em] text-text-subtle\"> ↵ Display only", "STATUS_CHIP"],
   ["components/admin/kyc-review-controls.tsx :: No action needed — this submission is <span className=\"font-mono uppercase\">{status}</span>. ↵ </p>", "STATUS_CHIP"],
   ["components/auth/auth-shell.tsx :: <div className=\"mb-2 flex items-center justify-between font-mono text-micro uppercase tracking-[0.14em]\"> ↵ <span className=\"text-yes-300\">{t.common.yes} 64%</span>", "OTHER"],
   ["components/auth/auth-shell.tsx :: <div className=\"relative font-mono text-micro uppercase tracking-[0.16em] text-text-subtle\"> ↵ {t.auth.licensedByGbt} {HELPLINE()} · EN · SW · 中文", "OTHER"],
